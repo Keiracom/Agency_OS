@@ -11,6 +11,7 @@ v6 design: cheapest possible gate before spending real money in Layer 4.
 Cost: $0.10/task + $0.001/domain = $1.10 per 1,000 domains (DFS Historical Bulk Traffic Estimation).
 1,500 domains = 2 batches = ~$2.20. Still 20x cheaper than individual domain_rank_overview ($0.02/domain).
 """
+
 from __future__ import annotations
 
 import logging
@@ -24,9 +25,9 @@ from src.enrichment.signal_config import SignalConfigRepository
 logger = logging.getLogger(__name__)
 
 BATCH_SIZE = 1000
-DEFAULT_MIN_ORGANIC_ETV = 0.0     # any organic traffic = alive
-DEFAULT_MIN_PAID_ETV = 0.0        # any paid spend = alive
-DEFAULT_MIN_BACKLINKS = 5         # minimum backlinks to not be parked
+DEFAULT_MIN_ORGANIC_ETV = 0.0  # any organic traffic = alive
+DEFAULT_MIN_PAID_ETV = 0.0  # any paid spend = alive
+DEFAULT_MIN_BACKLINKS = 5  # minimum backlinks to not be parked
 DEFAULT_MAX_BATCH_COST_USD = 50.0  # hard stop (DFS $50/day cap)
 
 
@@ -35,7 +36,7 @@ class FilterStats:
     total_processed: int = 0
     passed: int = 0
     rejected: int = 0
-    no_domain_advanced: int = 0   # no_domain rows passed through without API call
+    no_domain_advanced: int = 0  # no_domain rows passed through without API call
     batches_called: int = 0
     estimated_cost_usd: float = 0.0
     budget_exceeded: bool = False
@@ -110,8 +111,10 @@ class Layer3BulkFilter:
 
         accumulated_cost = 0.0
         for i in range(0, len(domains_all), BATCH_SIZE):
-            batch = domains_all[i:i + BATCH_SIZE]
-            batch_cost = 0.10 + len(batch) * 0.001  # $0.10/task + $0.001/domain (DFS bulk_traffic_estimation)
+            batch = domains_all[i : i + BATCH_SIZE]
+            batch_cost = (
+                0.10 + len(batch) * 0.001
+            )  # $0.10/task + $0.001/domain (DFS bulk_traffic_estimation)
 
             if accumulated_cost + batch_cost > daily_budget_usd:
                 logger.warning(

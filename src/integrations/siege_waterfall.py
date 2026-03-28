@@ -698,20 +698,24 @@ class SiegeWaterfall:
         # resolution; T3/T5 have ALS gates that depend on merged T1+T1.5 results.
 
         # Pre-compute GMB skip condition from original lead data (independent of T1)
-        has_gmb_from_t0 = any([
-            enriched_data.get("gmb_rating"),
-            enriched_data.get("gmb_review_count"),
-            enriched_data.get("gmb_category"),
-            enriched_data.get("gmb_address"),
-            enriched_data.get("gmb_phone"),
-            enriched_data.get("gmb_website"),
-            enriched_data.get("gmb_data"),
-        ])
+        has_gmb_from_t0 = any(
+            [
+                enriched_data.get("gmb_rating"),
+                enriched_data.get("gmb_review_count"),
+                enriched_data.get("gmb_category"),
+                enriched_data.get("gmb_address"),
+                enriched_data.get("gmb_phone"),
+                enriched_data.get("gmb_website"),
+                enriched_data.get("gmb_data"),
+            ]
+        )
 
         async def _run_t1_abn() -> TierResult:
             if EnrichmentTier.ABN in skip_tiers:
                 return TierResult(
-                    tier=EnrichmentTier.ABN, success=False, skipped=True,
+                    tier=EnrichmentTier.ABN,
+                    success=False,
+                    skipped=True,
                     skip_reason="Tier skipped by request",
                 )
             try:
@@ -733,43 +737,62 @@ class SiegeWaterfall:
                 return TierResult(tier=EnrichmentTier.GMB, success=False, error=str(_e))
 
         t1_result_raw, t2_result_raw = await asyncio.gather(
-            _run_t1_abn(), _run_t2_gmb(),
+            _run_t1_abn(),
+            _run_t2_gmb(),
             return_exceptions=True,
         )
 
         # Process T1 ABN result
         if isinstance(t1_result_raw, Exception):
-            t1_result_raw = TierResult(tier=EnrichmentTier.ABN, success=False, error=str(t1_result_raw))
+            t1_result_raw = TierResult(
+                tier=EnrichmentTier.ABN, success=False, error=str(t1_result_raw)
+            )
         tier_results.append(t1_result_raw)
         if t1_result_raw.success:
             enriched_data = self._merge_data(
-                enriched_data, t1_result_raw.data, source=t1_result_raw.tier.value, conflicts=field_conflicts
+                enriched_data,
+                t1_result_raw.data,
+                source=t1_result_raw.tier.value,
+                conflicts=field_conflicts,
             )
             total_cost_aud += t1_result_raw.cost_aud
 
         # Process T2 GMB result
         if EnrichmentTier.GMB not in skip_tiers:
             if has_gmb_from_t0:
-                tier_results.append(TierResult(
-                    tier=EnrichmentTier.GMB, success=True, skipped=True,
-                    skip_reason="T0 discovery already has GMB data (T0/T2 merge)",
-                ))
+                tier_results.append(
+                    TierResult(
+                        tier=EnrichmentTier.GMB,
+                        success=True,
+                        skipped=True,
+                        skip_reason="T0 discovery already has GMB data (T0/T2 merge)",
+                    )
+                )
                 logger.info("[T2] Skipping GMB enrichment — T0 already has data")
             else:
                 if isinstance(t2_result_raw, Exception):
-                    t2_result_raw = TierResult(tier=EnrichmentTier.GMB, success=False, error=str(t2_result_raw))
+                    t2_result_raw = TierResult(
+                        tier=EnrichmentTier.GMB, success=False, error=str(t2_result_raw)
+                    )
                 if t2_result_raw is not None:
                     tier_results.append(t2_result_raw)
                     if t2_result_raw.success:
                         enriched_data = self._merge_data(
-                            enriched_data, t2_result_raw.data, source=t2_result_raw.tier.value, conflicts=field_conflicts
+                            enriched_data,
+                            t2_result_raw.data,
+                            source=t2_result_raw.tier.value,
+                            conflicts=field_conflicts,
                         )
                         total_cost_aud += t2_result_raw.cost_aud
         else:
-            tier_results.append(TierResult(
-                tier=EnrichmentTier.GMB, success=False, skipped=True,
-                skip_reason="Tier skipped by request",
-            ))
+            tier_results.append(
+                TierResult(
+                    tier=EnrichmentTier.GMB,
+                    success=False,
+                    skipped=True,
+                    skip_reason="Tier skipped by request",
+                )
+            )
 
         # ===== TIER 2.5: GMB Reviews (Directive #198 — wired) =====
         # Fires when gmb_place_id is available (populated by pool_population_flow).
@@ -785,15 +808,21 @@ class SiegeWaterfall:
             tier_results.append(t25_result)
             if t25_result.success:
                 enriched_data = self._merge_data(
-                    enriched_data, t25_result.data,
-                    source=t25_result.tier.value, conflicts=field_conflicts,
+                    enriched_data,
+                    t25_result.data,
+                    source=t25_result.tier.value,
+                    conflicts=field_conflicts,
                 )
                 total_cost_aud += t25_result.cost_aud
         else:
-            tier_results.append(TierResult(
-                tier=EnrichmentTier.GMB_REVIEWS, success=False, skipped=True,
-                skip_reason="Tier skipped by request",
-            ))
+            tier_results.append(
+                TierResult(
+                    tier=EnrichmentTier.GMB_REVIEWS,
+                    success=False,
+                    skipped=True,
+                    skip_reason="Tier skipped by request",
+                )
+            )
 
         # ===== LINKEDIN URL RESOLUTION =====
         # Directive #148: Resolve LinkedIn URL before T1.5
@@ -821,7 +850,9 @@ class SiegeWaterfall:
             except Exception as e:
                 # Directive #196: per-tier graceful degradation
                 logger.warning(f"[enrich_lead] Tier 1.5 LinkedIn raised unexpectedly: {e}")
-                result = TierResult(tier=EnrichmentTier.LINKEDIN_COMPANY, success=False, error=str(e))
+                result = TierResult(
+                    tier=EnrichmentTier.LINKEDIN_COMPANY, success=False, error=str(e)
+                )
             tier_results.append(result)
             if result.success:
                 enriched_data = self._merge_data(
@@ -855,7 +886,9 @@ class SiegeWaterfall:
                 except Exception as e:
                     # Directive #196: per-tier graceful degradation
                     logger.warning(f"[enrich_lead] Tier 3 Leadmagic email raised unexpectedly: {e}")
-                    result = TierResult(tier=EnrichmentTier.LEADMAGIC_EMAIL, success=False, error=str(e))
+                    result = TierResult(
+                        tier=EnrichmentTier.LEADMAGIC_EMAIL, success=False, error=str(e)
+                    )
                 tier_results.append(result)
                 if result.success:
                     enriched_data = self._merge_data(
@@ -891,7 +924,9 @@ class SiegeWaterfall:
 
             if current_als >= 85 or force_tier5:
                 try:
-                    result = await self.tier5_identity(enriched_data, current_als, force=force_tier5)
+                    result = await self.tier5_identity(
+                        enriched_data, current_als, force=force_tier5
+                    )
                 except Exception as e:
                     # Directive #196: per-tier graceful degradation
                     logger.warning(f"[enrich_lead] Tier 5 Identity raised unexpectedly: {e}")

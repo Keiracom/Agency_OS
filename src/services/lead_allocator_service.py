@@ -142,7 +142,9 @@ class LeadAllocatorService:
             params["technologies"] = techs
 
         # Email quality filter — None by default (GMB leads are unenriched at discovery)
-        email_status = icp_criteria.get("email_status")  # None by default — GMB leads are unenriched
+        email_status = icp_criteria.get(
+            "email_status"
+        )  # None by default — GMB leads are unenriched
         if email_status:
             conditions.append("lp.email_status = :email_status")
             params["email_status"] = email_status
@@ -184,9 +186,7 @@ class LeadAllocatorService:
               AND client_id = :client_id
               AND pool_status = 'available'
             RETURNING id, email, first_name, last_name, title, company_name
-        """).bindparams(
-            bindparam("lead_ids", type_=PG_ARRAY(SA_UUID(as_uuid=True)))
-        )
+        """).bindparams(bindparam("lead_ids", type_=PG_ARRAY(SA_UUID(as_uuid=True))))
 
         bulk_result = await self.session.execute(
             bulk_update,

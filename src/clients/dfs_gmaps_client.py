@@ -40,11 +40,13 @@ DFS_STATUS_INVALID_LOCATION = 40501
 
 class DFSInvalidLocationError(Exception):
     """Raised when DataForSEO rejects the location coordinates."""
+
     pass
 
 
 class DFSAuthError(Exception):
     """Raised when DataForSEO authentication fails."""
+
     pass
 
 
@@ -237,7 +239,9 @@ class DFSGMapsClient:
             "gmb_review_count": (raw_item.get("rating") or {}).get("votes_count"),
             "gmb_category": raw_item.get("category"),
             "gmb_additional_categories": raw_item.get("additional_categories") or [],
-            "gmb_work_hours": json.dumps(raw_item.get("work_hours")) if raw_item.get("work_hours") else None,
+            "gmb_work_hours": json.dumps(raw_item.get("work_hours"))
+            if raw_item.get("work_hours")
+            else None,
             "gmb_total_photos": raw_item.get("total_photos"),
             "gmb_maps_url": raw_item.get("maps_url"),
             "discovery_source": "dfs_gmaps",

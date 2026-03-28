@@ -5,6 +5,7 @@ Directive #260
 Searches for a business's Google Maps listing by name.
 Cost: $0.001 USD per record.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -22,7 +23,9 @@ load_dotenv("/home/elliotbot/.config/agency-os/.env", override=True)
 logger = logging.getLogger(__name__)
 
 BRIGHT_DATA_API_KEY = os.getenv("BRIGHTDATA_API_KEY", "")
-BD_GMB_DATASET_ID = "gd_m8ebnr0q2qlklc02fz"   # Google Maps full information (verified in BD inventory)
+BD_GMB_DATASET_ID = (
+    "gd_m8ebnr0q2qlklc02fz"  # Google Maps full information (verified in BD inventory)
+)
 BD_API_BASE = "https://api.brightdata.com/datasets/v3"
 COST_PER_RECORD_USD = Decimal("0.001")
 POLL_INTERVAL_S = 5
@@ -171,6 +174,7 @@ class BrightDataGMBClient:
             # Python list repr: "[{'id': 'advertising_agency', ...}]"
             if s.startswith("[{"):
                 import ast
+
                 try:
                     parsed = ast.literal_eval(s)
                     if parsed and isinstance(parsed[0], dict):

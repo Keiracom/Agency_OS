@@ -8,6 +8,7 @@ Reads signal config → extracts technology list → calls DFS domains_by_techno
 
 Discovers ONLY. No enrichment, no scoring, no outreach.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -143,9 +144,7 @@ class Stage1Discovery:
 
         return discovered, dupes, api_calls
 
-    async def _upsert_domain(
-        self, domain: str, technology_name: str, item: dict
-    ) -> bool:
+    async def _upsert_domain(self, domain: str, technology_name: str, item: dict) -> bool:
         """
         Insert domain if new, append technology if exists.
         Returns True if new row inserted, False if existing row updated or blocked.
@@ -188,10 +187,10 @@ class Stage1Discovery:
                     pipeline_updated_at = EXCLUDED.pipeline_updated_at
             RETURNING (xmax = 0) AS inserted
             """,
-            item.get("title") or domain,   # display_name
+            item.get("title") or domain,  # display_name
             domain,
-            [technology_name],              # dfs_technologies
-            [DISCOVERY_SOURCE],             # dfs_discovery_sources
+            [technology_name],  # dfs_technologies
+            [DISCOVERY_SOURCE],  # dfs_discovery_sources
             now,
             PIPELINE_STAGE_S1,
             now,

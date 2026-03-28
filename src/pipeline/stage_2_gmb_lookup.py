@@ -8,6 +8,7 @@ via Bright Data GMB client, and writes physical identity to BU.
 Enriches ONLY. No scoring, no DM discovery, no outreach.
 Pipeline progresses to stage 2 whether or not GMB is found.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -159,7 +160,9 @@ class Stage2GMBLookup:
                 else:
                     await self.conn.execute(
                         "UPDATE business_universe SET pipeline_stage=$1, pipeline_updated_at=$2 WHERE id=$3",
-                        PIPELINE_STAGE_S2, now, row_id,
+                        PIPELINE_STAGE_S2,
+                        now,
+                        row_id,
                     )
                     no_gmb += 1
             except Exception as e:
@@ -190,13 +193,18 @@ class Stage2GMBLookup:
         if gmb_data:
             await self.conn.execute(
                 "UPDATE business_universe SET gmb_place_id=$1, gmb_category=$2, pipeline_stage=$3, pipeline_updated_at=$4 WHERE id=$5",
-                gmb_data.get("gmb_place_id"), gmb_data.get("gmb_category"),
-                PIPELINE_STAGE_S2, now, row["id"],
+                gmb_data.get("gmb_place_id"),
+                gmb_data.get("gmb_category"),
+                PIPELINE_STAGE_S2,
+                now,
+                row["id"],
             )
             return {"status": "enriched"}
         else:
             await self.conn.execute(
                 "UPDATE business_universe SET pipeline_stage=$1, pipeline_updated_at=$2 WHERE id=$3",
-                PIPELINE_STAGE_S2, now, row["id"],
+                PIPELINE_STAGE_S2,
+                now,
+                row["id"],
             )
             return {"status": "no_gmb_found"}

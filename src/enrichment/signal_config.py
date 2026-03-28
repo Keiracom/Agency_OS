@@ -6,6 +6,7 @@ Imports: asyncpg
 Consumers: engines, orchestration
 Directive: #271 (v6 redesign from #256)
 """
+
 from __future__ import annotations
 
 import logging
@@ -193,18 +194,20 @@ class SignalConfigRepository:
                             explicit_techs = t
                             break
 
-            services.append(ServiceSignal(
-                service_name=service_name,
-                label=label,
-                dfs_technologies=explicit_techs,
-                gmb_categories=svc.get("gmb_categories", []),
-                scoring_weights=svc.get("scoring_weights", {}),
-                must_not_have_technologies=svc.get("must_not_have_technologies", []),
-                weight=float(svc.get("weight", 1.0)),
-                problem_signals=svc.get("problem_signals", []),
-                budget_signals=svc.get("budget_signals", []),
-                not_served_signals=svc.get("not_served_signals", []),
-            ))
+            services.append(
+                ServiceSignal(
+                    service_name=service_name,
+                    label=label,
+                    dfs_technologies=explicit_techs,
+                    gmb_categories=svc.get("gmb_categories", []),
+                    scoring_weights=svc.get("scoring_weights", {}),
+                    must_not_have_technologies=svc.get("must_not_have_technologies", []),
+                    weight=float(svc.get("weight", 1.0)),
+                    problem_signals=svc.get("problem_signals", []),
+                    budget_signals=svc.get("budget_signals", []),
+                    not_served_signals=svc.get("not_served_signals", []),
+                )
+            )
 
         return SignalConfig(
             id=str(row["id"]),

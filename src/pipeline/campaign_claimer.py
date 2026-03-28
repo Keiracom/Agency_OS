@@ -76,7 +76,7 @@ class CampaignClaimer:
         select_sql = f"""
             SELECT bu.id as bu_id
             FROM business_universe bu
-            WHERE {' AND '.join(where_parts)}
+            WHERE {" AND ".join(where_parts)}
             ORDER BY bu.propensity_score DESC, bu.reachability_score DESC
             LIMIT {limit_placeholder}
         """
@@ -89,12 +89,17 @@ class CampaignClaimer:
 
             for row in rows:
                 try:
-                    await conn.execute("""
+                    await conn.execute(
+                        """
                         INSERT INTO campaign_leads
                             (campaign_id, business_universe_id, client_id, status, claimed_at)
                         VALUES ($1, $2, $3, 'never_touched', NOW())
                         ON CONFLICT (campaign_id, business_universe_id) DO NOTHING
-                    """, campaign_id, row["bu_id"], client_id)
+                    """,
+                        campaign_id,
+                        row["bu_id"],
+                        client_id,
+                    )
                     claimed += 1
                 except Exception as e:
                     errors.append({"bu_id": str(row["bu_id"]), "error": str(e)})

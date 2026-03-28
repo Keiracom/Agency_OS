@@ -49,9 +49,16 @@ logger = logging.getLogger(__name__)
 
 # Default suburb rotation for quota loop — NSW (Directive #218)
 AUSTRALIAN_SUBURBS_NSW = [
-    "Sydney", "Parramatta", "Penrith", "Liverpool",
-    "Blacktown", "Newcastle", "Wollongong",
-    "Central Coast", "Campbelltown", "Gosford",
+    "Sydney",
+    "Parramatta",
+    "Penrith",
+    "Liverpool",
+    "Blacktown",
+    "Newcastle",
+    "Wollongong",
+    "Central Coast",
+    "Campbelltown",
+    "Gosford",
 ]
 
 
@@ -482,8 +489,7 @@ async def check_campaign_quota_task(campaign_id: str) -> dict[str, Any]:
 
     if quota_filled:
         logger.info(
-            f"[Quota] Campaign {campaign_id} quota filled: "
-            f"{enriched_count}/{monthly_quota}"
+            f"[Quota] Campaign {campaign_id} quota filled: {enriched_count}/{monthly_quota}"
         )
     else:
         logger.info(
@@ -688,6 +694,7 @@ async def daily_enrichment_flow(
                         from src.orchestration.flows.pool_population_flow import (
                             get_next_unswept_location,
                         )
+
                         next_loc = await get_next_unswept_location(
                             campaign_id=cid,
                             candidate_locations=AUSTRALIAN_SUBURBS_NSW,

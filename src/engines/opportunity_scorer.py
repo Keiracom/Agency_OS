@@ -8,28 +8,43 @@ Pure function — no DB calls, no side effects.
 Ratified: March 18 2026 | Directive #217
 See ARCHITECTURE.md Section 6.
 """
+
 from typing import Any
 
 OPPORTUNITY_PRIORITY_THRESHOLD = 60
 
 STRUCTURAL_GAP_INDUSTRIES = [
-    "construction", "trade", "plumbing",
-    "electrical", "roofing", "concreting",
-    "landscaping", "cleaning", "pest control",
-    "healthcare", "dental", "medical",
-    "physiotherapy", "chiropractic",
-    "professional services", "accounting",
-    "legal", "financial planning",
-    "hospitality", "restaurant", "cafe",
-    "hotel", "accommodation",
-    "manufacturing", "wholesale",
-    "automotive", "mechanic",
+    "construction",
+    "trade",
+    "plumbing",
+    "electrical",
+    "roofing",
+    "concreting",
+    "landscaping",
+    "cleaning",
+    "pest control",
+    "healthcare",
+    "dental",
+    "medical",
+    "physiotherapy",
+    "chiropractic",
+    "professional services",
+    "accounting",
+    "legal",
+    "financial planning",
+    "hospitality",
+    "restaurant",
+    "cafe",
+    "hotel",
+    "accommodation",
+    "manufacturing",
+    "wholesale",
+    "automotive",
+    "mechanic",
 ]
 
 
-def score_business_opportunity(
-    signals: dict[str, Any]
-) -> int:
+def score_business_opportunity(signals: dict[str, Any]) -> int:
     """
     Score a business's opportunity level 0-100.
     High score = real business + low digital
@@ -79,9 +94,7 @@ def score_business_opportunity(
     return min(score, 100)
 
 
-def is_priority_opportunity(
-    signals: dict[str, Any]
-) -> bool:
+def is_priority_opportunity(signals: dict[str, Any]) -> bool:
     """
     Returns True if business is a priority
     opportunity — real scale, clear gap.
@@ -90,9 +103,7 @@ def is_priority_opportunity(
     return score_business_opportunity(signals) >= OPPORTUNITY_PRIORITY_THRESHOLD
 
 
-def get_opportunity_reason(
-    signals: dict[str, Any]
-) -> str:
+def get_opportunity_reason(signals: dict[str, Any]) -> str:
     """
     Returns plain English reason for opportunity
     score. Feeds dashboard display.
@@ -101,20 +112,14 @@ def get_opportunity_reason(
     reasons = []
     reviews = signals.get("gmb_review_count", 0)
     if reviews and int(reviews) >= 20:
-        reasons.append(
-            f"{reviews} customer reviews — established trading volume"
-        )
+        reasons.append(f"{reviews} customer reviews — established trading volume")
     if signals.get("hiring_signals_detected"):
         reasons.append("actively hiring — growing business")
     if (signals.get("abr_age_years") or 0) >= 5:
         reasons.append("trading 5+ years — proven operation")
     paid = signals.get("dfs_paid_traffic_cost")
     if paid is None or float(paid or 0) == 0:
-        reasons.append(
-            "no digital ad spend detected — clear gap for agency value"
-        )
+        reasons.append("no digital ad spend detected — clear gap for agency value")
     if not reasons:
-        reasons.append(
-            "established business with marketing opportunity identified"
-        )
+        reasons.append("established business with marketing opportunity identified")
     return ". ".join(reasons[:2]).capitalize()

@@ -203,10 +203,13 @@ class ScoutEngine(BaseEngine):
             # --- Confidence gate (Directive #217) ---
             _conf_signals = {
                 "gst_registered": tier1_result.get("gst_registered"),
-                "dfs_paid_traffic_cost": tier1_result.get("dfs_paid_traffic_cost") or tier1_result.get("estimated_paid_traffic_cost"),
-                "dfs_organic_traffic": tier1_result.get("dfs_organic_traffic") or tier1_result.get("organic_etv"),
+                "dfs_paid_traffic_cost": tier1_result.get("dfs_paid_traffic_cost")
+                or tier1_result.get("estimated_paid_traffic_cost"),
+                "dfs_organic_traffic": tier1_result.get("dfs_organic_traffic")
+                or tier1_result.get("organic_etv"),
                 # job_listings_active removed - not populated by any data source (Directive #218)
-                "gmb_review_count": tier1_result.get("gmb_review_count") or getattr(lead, "gmb_review_count", None),
+                "gmb_review_count": tier1_result.get("gmb_review_count")
+                or getattr(lead, "gmb_review_count", None),
                 "linkedin_employee_count": (
                     tier1_result.get("linkedin_company_size")
                     or tier1_result.get("linkedin_employee_count")
@@ -228,13 +231,17 @@ class ScoutEngine(BaseEngine):
 
             # Opportunity score (Directive #217 — runs when confidence passes)
             _opp_signals = {
-                "gmb_review_count": tier1_result.get("gmb_review_count") or getattr(lead, "gmb_review_count", None),
+                "gmb_review_count": tier1_result.get("gmb_review_count")
+                or getattr(lead, "gmb_review_count", None),
                 "abr_age_years": tier1_result.get("abr_age_years"),
                 "multiple_gmb_locations": tier1_result.get("multiple_gmb_locations"),
                 "hiring_signals_detected": tier1_result.get("hiring_signals_detected"),
-                "gmb_category": tier1_result.get("gmb_category") or getattr(lead, "gmb_category", None),
-                "dfs_paid_traffic_cost": tier1_result.get("dfs_paid_traffic_cost") or tier1_result.get("estimated_paid_traffic_cost"),
-                "dfs_organic_traffic": tier1_result.get("dfs_organic_traffic") or tier1_result.get("organic_etv"),
+                "gmb_category": tier1_result.get("gmb_category")
+                or getattr(lead, "gmb_category", None),
+                "dfs_paid_traffic_cost": tier1_result.get("dfs_paid_traffic_cost")
+                or tier1_result.get("estimated_paid_traffic_cost"),
+                "dfs_organic_traffic": tier1_result.get("dfs_organic_traffic")
+                or tier1_result.get("organic_etv"),
             }
             _opp_score = score_business_opportunity(_opp_signals)
             _opp_reason = get_opportunity_reason(_opp_signals)
@@ -250,7 +257,9 @@ class ScoutEngine(BaseEngine):
             # Update lead
             await self._update_lead_from_enrichment(db, lead, tier1_result)
             # [BU] Write-backs: LinkedIn, DataForSEO, confidence score (Directive #215), opportunity score (Directive #217)
-            await self._bu_write_backs(db, domain, tier1_result, lead, opp_score=_opp_score, opp_reason=_opp_reason)
+            await self._bu_write_backs(
+                db, domain, tier1_result, lead, opp_score=_opp_score, opp_reason=_opp_reason
+            )
             # Write opportunity scores to lead record (Directive #217)
             try:
                 await db.execute(
@@ -295,7 +304,9 @@ class ScoutEngine(BaseEngine):
                     except Exception as e:
                         logger.warning(f"[Stage2] DM write failed for {domain}: {e}")
                 else:
-                    logger.info(f"[Stage2] No DM found for {domain} — proceeding without person data")
+                    logger.info(
+                        f"[Stage2] No DM found for {domain} — proceeding without person data"
+                    )
             return EngineResult.ok(
                 data=tier1_result,
                 metadata={"source": tier1_result.get("source", "siege_waterfall"), "tier": 1},
@@ -358,16 +369,16 @@ class ScoutEngine(BaseEngine):
                 )
                 rows = (await db.execute(stmt)).all()
                 bulk_urls = [
-                    row.organization_linkedin_url
-                    for row in rows
-                    if row.organization_linkedin_url
+                    row.organization_linkedin_url for row in rows if row.organization_linkedin_url
                 ]
                 if bulk_urls:
                     bulk_results = await bd_client.scrape_linkedin_companies_bulk(bulk_urls)
                     for company in bulk_results:
-                        url = str(
-                            company.get("url") or company.get("linkedin_url") or ""
-                        ).rstrip("/").lower()
+                        url = (
+                            str(company.get("url") or company.get("linkedin_url") or "")
+                            .rstrip("/")
+                            .lower()
+                        )
                         if url:
                             bd_client._bulk_company_cache[url] = company
                     logging.getLogger(__name__).info(
@@ -467,14 +478,19 @@ class ScoutEngine(BaseEngine):
 
         # Tier 1: Siege Waterfall
         tier1_result = await self._enrich_tier1(lead, domain)
-        if tier1_result and self._validate_enrichment(tier1_result, company_level=True):  # Directive #199: GMB leads pass with company identity
+        if tier1_result and self._validate_enrichment(
+            tier1_result, company_level=True
+        ):  # Directive #199: GMB leads pass with company identity
             # --- Confidence gate (Directive #217) ---
             _conf_signals = {
                 "gst_registered": tier1_result.get("gst_registered"),
-                "dfs_paid_traffic_cost": tier1_result.get("dfs_paid_traffic_cost") or tier1_result.get("estimated_paid_traffic_cost"),
-                "dfs_organic_traffic": tier1_result.get("dfs_organic_traffic") or tier1_result.get("organic_etv"),
+                "dfs_paid_traffic_cost": tier1_result.get("dfs_paid_traffic_cost")
+                or tier1_result.get("estimated_paid_traffic_cost"),
+                "dfs_organic_traffic": tier1_result.get("dfs_organic_traffic")
+                or tier1_result.get("organic_etv"),
                 # job_listings_active removed - not populated by any data source (Directive #218)
-                "gmb_review_count": tier1_result.get("gmb_review_count") or getattr(lead, "gmb_review_count", None),
+                "gmb_review_count": tier1_result.get("gmb_review_count")
+                or getattr(lead, "gmb_review_count", None),
                 "linkedin_employee_count": (
                     tier1_result.get("linkedin_company_size")
                     or tier1_result.get("linkedin_employee_count")
@@ -496,13 +512,17 @@ class ScoutEngine(BaseEngine):
 
             # Opportunity score (Directive #217 — runs when confidence passes)
             _opp_signals = {
-                "gmb_review_count": tier1_result.get("gmb_review_count") or getattr(lead, "gmb_review_count", None),
+                "gmb_review_count": tier1_result.get("gmb_review_count")
+                or getattr(lead, "gmb_review_count", None),
                 "abr_age_years": tier1_result.get("abr_age_years"),
                 "multiple_gmb_locations": tier1_result.get("multiple_gmb_locations"),
                 "hiring_signals_detected": tier1_result.get("hiring_signals_detected"),
-                "gmb_category": tier1_result.get("gmb_category") or getattr(lead, "gmb_category", None),
-                "dfs_paid_traffic_cost": tier1_result.get("dfs_paid_traffic_cost") or tier1_result.get("estimated_paid_traffic_cost"),
-                "dfs_organic_traffic": tier1_result.get("dfs_organic_traffic") or tier1_result.get("organic_etv"),
+                "gmb_category": tier1_result.get("gmb_category")
+                or getattr(lead, "gmb_category", None),
+                "dfs_paid_traffic_cost": tier1_result.get("dfs_paid_traffic_cost")
+                or tier1_result.get("estimated_paid_traffic_cost"),
+                "dfs_organic_traffic": tier1_result.get("dfs_organic_traffic")
+                or tier1_result.get("organic_etv"),
             }
             _opp_score = score_business_opportunity(_opp_signals)
             _opp_reason = get_opportunity_reason(_opp_signals)
@@ -516,7 +536,9 @@ class ScoutEngine(BaseEngine):
                 await enrichment_cache.set(domain, tier1_result)
             await self._update_lead_from_enrichment(db, lead, tier1_result)
             # [BU] Write-backs: LinkedIn, DataForSEO, confidence score (Directive #215), opportunity score (Directive #217)
-            await self._bu_write_backs(db, domain, tier1_result, lead, opp_score=_opp_score, opp_reason=_opp_reason)
+            await self._bu_write_backs(
+                db, domain, tier1_result, lead, opp_score=_opp_score, opp_reason=_opp_reason
+            )
             # Write opportunity scores to lead record (Directive #217)
             try:
                 await db.execute(
@@ -561,7 +583,9 @@ class ScoutEngine(BaseEngine):
                     except Exception as e:
                         logger.warning(f"[Stage2] DM write failed for {domain}: {e}")
                 else:
-                    logger.info(f"[Stage2] No DM found for {domain} — proceeding without person data")
+                    logger.info(
+                        f"[Stage2] No DM found for {domain} — proceeding without person data"
+                    )
             return EngineResult.ok(
                 data=tier1_result,
                 metadata={"source": tier1_result.get("source", "siege_waterfall"), "tier": 1},
@@ -572,11 +596,7 @@ class ScoutEngine(BaseEngine):
             metadata={"lead_id": str(lead_id)},
         )
 
-    async def _discover_decision_maker(
-        self,
-        lead,
-        domain: str
-    ) -> dict | None:
+    async def _discover_decision_maker(self, lead, domain: str) -> dict | None:
         """
         Stage 2: find decision maker at company.
         Primary: Leadmagic employee-finder
@@ -584,33 +604,32 @@ class ScoutEngine(BaseEngine):
         Returns {first_name, last_name, title, linkedin_url} or None.
         """
         TARGET_TITLES = [
-            "owner", "founder", "co-founder",
-            "director", "ceo", "chief executive",
-            "managing director", "md",
-            "general manager", "head of",
-            "principal", "partner"
+            "owner",
+            "founder",
+            "co-founder",
+            "director",
+            "ceo",
+            "chief executive",
+            "managing director",
+            "md",
+            "general manager",
+            "head of",
+            "principal",
+            "partner",
         ]
 
         if not domain:
-            logger.info(
-                f"[Stage2] No domain for "
-                f"{lead.company} — skipping"
-            )
+            logger.info(f"[Stage2] No domain for {lead.company} — skipping")
             return None
 
         # Primary: employee-finder
-        employees = await self.leadmagic\
-            .find_employees(
-                company_domain=domain,
-                limit=10
-            )
+        employees = await self.leadmagic.find_employees(company_domain=domain, limit=10)
 
         if employees:
             # Find highest priority title match
             for target in TARGET_TITLES:
                 for emp in employees:
-                    title = emp.get(
-                        "title", "").lower()
+                    title = emp.get("title", "").lower()
                     if target in title:
                         logger.info(
                             f"[Stage2] DM found: "
@@ -621,23 +640,12 @@ class ScoutEngine(BaseEngine):
                         )
                         return emp
             # No title match — take first employee
-            logger.info(
-                f"[Stage2] No title match at "
-                f"{lead.company} — using first "
-                f"employee"
-            )
+            logger.info(f"[Stage2] No title match at {lead.company} — using first employee")
             return employees[0]
 
         # Fallback: role-finder for CEO
-        logger.info(
-            f"[Stage2] No employees found for "
-            f"{domain} — trying role-finder"
-        )
-        person = await self.leadmagic\
-            .find_by_role(
-                company_domain=domain,
-                job_title="CEO"
-            )
+        logger.info(f"[Stage2] No employees found for {domain} — trying role-finder")
+        person = await self.leadmagic.find_by_role(company_domain=domain, job_title="CEO")
 
         if person:
             logger.info(
@@ -648,10 +656,7 @@ class ScoutEngine(BaseEngine):
             )
             return person
 
-        logger.info(
-            f"[Stage2] No DM found for "
-            f"{lead.company} ({domain})"
-        )
+        logger.info(f"[Stage2] No DM found for {lead.company} ({domain})")
         return None
 
     async def _bu_write_backs(
@@ -675,8 +680,12 @@ class ScoutEngine(BaseEngine):
 
         # --- WRITE-BACK 1: LinkedIn Company (Directive #215) ---
         try:
-            linkedin_url = tier1_result.get("linkedin_company_url") or tier1_result.get("company_linkedin_url")
-            employee_count = tier1_result.get("linkedin_company_size") or tier1_result.get("linkedin_employee_count")
+            linkedin_url = tier1_result.get("linkedin_company_url") or tier1_result.get(
+                "company_linkedin_url"
+            )
+            employee_count = tier1_result.get("linkedin_company_size") or tier1_result.get(
+                "linkedin_employee_count"
+            )
             industry = tier1_result.get("linkedin_company_industry")
             if linkedin_url or employee_count or industry:
                 await db.execute(
@@ -694,7 +703,7 @@ class ScoutEngine(BaseEngine):
                         "employee_count": employee_count,
                         "industry": industry,
                         "domain": domain,
-                    }
+                    },
                 )
                 await db.commit()
                 logger.info(f"[BU] LinkedIn write-back: {domain}")
@@ -734,7 +743,7 @@ class ScoutEngine(BaseEngine):
                         "referring_domains": referring_domains,
                         "spam_score": spam_score,
                         "domain": domain,
-                    }
+                    },
                 )
                 await db.commit()
                 logger.info(f"[BU] DataForSEO write-back: {domain}, paid_traffic={paid_cost}")
@@ -745,14 +754,17 @@ class ScoutEngine(BaseEngine):
         try:
             _signals = {
                 "gst_registered": tier1_result.get("gst_registered"),
-                "gmb_review_count": tier1_result.get("gmb_review_count") or getattr(lead, "gmb_review_count", None),
+                "gmb_review_count": tier1_result.get("gmb_review_count")
+                or getattr(lead, "gmb_review_count", None),
                 "linkedin_employee_count": (
                     tier1_result.get("linkedin_company_size")
                     or tier1_result.get("linkedin_employee_count")
                     or getattr(lead, "linkedin_employee_count", None)
                 ),
-                "dfs_paid_traffic_cost": tier1_result.get("estimated_paid_traffic_cost") or tier1_result.get("dfs_paid_traffic_cost"),
-                "dfs_organic_traffic": tier1_result.get("organic_etv") or tier1_result.get("dfs_organic_traffic"),
+                "dfs_paid_traffic_cost": tier1_result.get("estimated_paid_traffic_cost")
+                or tier1_result.get("dfs_paid_traffic_cost"),
+                "dfs_organic_traffic": tier1_result.get("organic_etv")
+                or tier1_result.get("dfs_organic_traffic"),
                 # job_listings_active removed - not populated by any data source (Directive #218)
                 # domain_age_years removed - not available from DataForSEO (Directive #218)
             }
@@ -765,7 +777,7 @@ class ScoutEngine(BaseEngine):
                         updated_at = NOW()
                     WHERE gmb_domain = :domain
                 """),
-                {"score": _conf_score, "domain": domain}
+                {"score": _conf_score, "domain": domain},
             )
             await db.commit()
             logger.info(f"[BU] Confidence score: {domain} → {_conf_score}/100")
@@ -783,7 +795,7 @@ class ScoutEngine(BaseEngine):
                             updated_at = NOW()
                         WHERE gmb_domain = :domain
                     """),
-                    {"opp_score": opp_score, "opp_reason": opp_reason, "domain": domain}
+                    {"opp_score": opp_score, "opp_reason": opp_reason, "domain": domain},
                 )
                 await db.commit()
                 logger.info(f"[BU] Opportunity score: {domain} → {opp_score}/100")
@@ -795,7 +807,11 @@ class ScoutEngine(BaseEngine):
         try:
             return await enrichment_cache.get(domain)
         except Exception as e:
-            logger.error("[Scout] _check_cache exception", extra={"domain": domain, "error": str(e)}, exc_info=True)
+            logger.error(
+                "[Scout] _check_cache exception",
+                extra={"domain": domain, "error": str(e)},
+                exc_info=True,
+            )
             return None
 
     async def _enrich_tier1(
@@ -835,7 +851,9 @@ class ScoutEngine(BaseEngine):
                     "city": getattr(lead, "city", None),
                     "state": getattr(lead, "company_state", None),  # Directive #198: fix key
                     "country": primary_country,
-                    "gmb_place_id": getattr(lead, "gmb_place_id", None),  # Directive #198: unlocks T2.5
+                    "gmb_place_id": getattr(
+                        lead, "gmb_place_id", None
+                    ),  # Directive #198: unlocks T2.5
                     "gmb_rating": getattr(lead, "gmb_rating", None),
                     "gmb_review_count": getattr(lead, "gmb_review_count", None),
                 }
@@ -879,7 +897,9 @@ class ScoutEngine(BaseEngine):
                         for tr in siege_result.tier_results
                         if not tr.success and not tr.skipped
                     ]
-                    enrichment_status = "fully_enriched" if not tiers_failed else "partially_enriched"
+                    enrichment_status = (
+                        "fully_enriched" if not tiers_failed else "partially_enriched"
+                    )
                     result["_enrichment_tier_results"] = tiers_attempted
                     result["_enrichment_tiers_failed"] = tiers_failed
                     result["_enrichment_status"] = enrichment_status
@@ -940,7 +960,9 @@ class ScoutEngine(BaseEngine):
                 try:
                     dfs_client = get_dataforseo_client()
                     dfs_metrics = await dfs_client.get_full_domain_metrics(domain)
-                    result["estimated_paid_traffic_cost"] = dfs_metrics.get("estimated_paid_traffic_cost")
+                    result["estimated_paid_traffic_cost"] = dfs_metrics.get(
+                        "estimated_paid_traffic_cost"
+                    )
                     result["organic_etv"] = dfs_metrics.get("organic_etv")
                     result["domain_rank"] = dfs_metrics.get("domain_rank")
                     result["backlinks"] = dfs_metrics.get("backlinks")
@@ -1024,7 +1046,9 @@ class ScoutEngine(BaseEngine):
                 dfs_client = get_dataforseo_client()
                 dfs_metrics = await dfs_client.get_full_domain_metrics(domain)
                 # Merge DataForSEO fields into result so confidence gate can read them
-                result["estimated_paid_traffic_cost"] = dfs_metrics.get("estimated_paid_traffic_cost")
+                result["estimated_paid_traffic_cost"] = dfs_metrics.get(
+                    "estimated_paid_traffic_cost"
+                )
                 result["organic_etv"] = dfs_metrics.get("organic_etv")
                 result["domain_rank"] = dfs_metrics.get("domain_rank")
                 result["backlinks"] = dfs_metrics.get("backlinks")
@@ -1123,8 +1147,6 @@ class ScoutEngine(BaseEngine):
         # Check phone number
         phone = getattr(lead, "phone", None)
         return bool(phone and (phone.startswith("+61") or phone.startswith("61")))
-
-
 
     # ============================================
     # SDK ENRICHMENT (Hot Leads with Signals)
@@ -1262,9 +1284,7 @@ class ScoutEngine(BaseEngine):
 
         if company_level:
             # Company-level: needs company identity (name or domain)
-            return bool(
-                data.get("company") or data.get("company_name") or data.get("domain")
-            )
+            return bool(data.get("company") or data.get("company_name") or data.get("domain"))
 
         # Person-level: full required fields check
         return all(data.get(field) for field in REQUIRED_FIELDS)
@@ -1386,7 +1406,11 @@ class ScoutEngine(BaseEngine):
                     "hot" if als_score >= 85 else "warm" if als_score >= 50 else "cold"
                 )
         except Exception as e:
-            logger.error("[Scout] _update_lead_from_enrichment scoring exception", extra={"error": str(e)}, exc_info=True)
+            logger.error(
+                "[Scout] _update_lead_from_enrichment scoring exception",
+                extra={"error": str(e)},
+                exc_info=True,
+            )
             pass  # non-blocking — scoring failure must not block enrichment write
 
         # Remove None values

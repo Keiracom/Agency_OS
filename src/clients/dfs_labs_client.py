@@ -41,6 +41,7 @@ AUD_RATE = Decimal("1.55")
 
 class DFSAuthError(Exception):
     """Raised when DataForSEO authentication fails."""
+
     pass
 
 
@@ -213,8 +214,7 @@ class DFSLabsClient:
         setattr(self, cost_attr, current + cost_per_call)
 
         logger.info(
-            f"DFS {endpoint}: status={dfs_status}, cost_usd={cost_per_call}, "
-            f"elapsed={elapsed:.2f}s"
+            f"DFS {endpoint}: status={dfs_status}, cost_usd={cost_per_call}, elapsed={elapsed:.2f}s"
         )
 
         result = task.get("result") or []
@@ -407,11 +407,13 @@ class DFSLabsClient:
         """
         result = await self._post(
             endpoint="/v3/dataforseo_labs/google/domain_rank_overview/live",
-            payload=[{
-                "target": target_domain,
-                "location_code": location_code,
-                "language_code": language_code,
-            }],
+            payload=[
+                {
+                    "target": target_domain,
+                    "location_code": location_code,
+                    "language_code": language_code,
+                }
+            ],
             cost_per_call=Decimal("0.010"),
             cost_attr="_cost_domain_rank_overview",
         )
@@ -481,8 +483,7 @@ class DFSLabsClient:
         if tech_categories is None and not target_domain.startswith("www."):
             www_domain = f"www.{target_domain}"
             logger.info(
-                f"DFS domain_technologies: no data for {target_domain}, "
-                f"retrying with {www_domain}"
+                f"DFS domain_technologies: no data for {target_domain}, retrying with {www_domain}"
             )
             tech_categories = await _fetch_technologies(www_domain)
 
@@ -561,13 +562,15 @@ class DFSLabsClient:
             # position: first SERP item's rank_group
             position = serp_items[0].get("rank_group") if serp_items else None
 
-            mapped_items.append({
-                "keyword": item.get("keyword"),
-                "search_volume": keyword_info.get("search_volume"),
-                "cpc": keyword_info.get("cpc"),
-                "competition": keyword_info.get("competition"),
-                "position": position,
-            })
+            mapped_items.append(
+                {
+                    "keyword": item.get("keyword"),
+                    "search_volume": keyword_info.get("search_volume"),
+                    "cpc": keyword_info.get("cpc"),
+                    "competition": keyword_info.get("competition"),
+                    "position": position,
+                }
+            )
 
         return {"items": mapped_items}
 
@@ -597,11 +600,13 @@ class DFSLabsClient:
         """
         result = await self._post(
             endpoint="/v3/dataforseo_labs/google/historical_rank_overview/live",
-            payload=[{
-                "target": target_domain,
-                "location_code": location_code,
-                "language_code": language_code,
-            }],
+            payload=[
+                {
+                    "target": target_domain,
+                    "location_code": location_code,
+                    "language_code": language_code,
+                }
+            ],
             cost_per_call=Decimal("0.106"),
             cost_attr="_cost_historical_rank_overview",
         )
@@ -641,12 +646,14 @@ class DFSLabsClient:
         """
         result = await self._post(
             endpoint="/v3/dataforseo_labs/google/domain_metrics_by_categories/live",
-            payload=[{
-                "category_codes": category_codes,
-                "location_name": location_name,
-                "language_name": "English",
-                "filters": [["metrics.organic.etv", ">", 0]],
-            }],
+            payload=[
+                {
+                    "category_codes": category_codes,
+                    "location_name": location_name,
+                    "language_name": "English",
+                    "filters": [["metrics.organic.etv", ">", 0]],
+                }
+            ],
             cost_per_call=Decimal("0.10"),
             cost_attr="_cost_domain_metrics_by_categories",
         )
@@ -659,7 +666,9 @@ class DFSLabsClient:
             if paid_etv >= paid_etv_min:
                 domain = item.get("domain") or item.get("target")
                 if domain:
-                    results.append({"domain": domain, "paid_etv": paid_etv, "organic_etv": organic_etv})
+                    results.append(
+                        {"domain": domain, "paid_etv": paid_etv, "organic_etv": organic_etv}
+                    )
         return results
 
     # ============================================
@@ -678,14 +687,17 @@ class DFSLabsClient:
         TODO: verify payload format against DFS API docs before live run.
         """
         from urllib.parse import urlparse
+
         result = await self._post(
             endpoint="/v3/serp/google/ads/live/advanced",
-            payload=[{
-                "keyword": keyword,
-                "location_name": location_name,
-                "language_name": "English",
-                "depth": 100,
-            }],
+            payload=[
+                {
+                    "keyword": keyword,
+                    "location_name": location_name,
+                    "language_name": "English",
+                    "depth": 100,
+                }
+            ],
             cost_per_call=Decimal("0.006"),
             cost_attr="_cost_google_ads_advertisers",
         )
@@ -699,11 +711,13 @@ class DFSLabsClient:
             domain = parsed.netloc or url
             if domain.startswith("www."):
                 domain = domain[4:]
-            results.append({
-                "domain": domain.lower().rstrip("/"),
-                "title": item.get("title", ""),
-                "url": url,
-            })
+            results.append(
+                {
+                    "domain": domain.lower().rstrip("/"),
+                    "title": item.get("title", ""),
+                    "url": url,
+                }
+            )
         return results
 
     # ============================================
@@ -756,14 +770,17 @@ class DFSLabsClient:
         TODO: verify payload format against DFS API docs before live run.
         """
         from urllib.parse import urlparse
+
         result = await self._post(
             endpoint="/v3/serp/google/jobs/live/advanced",
-            payload=[{
-                "keyword": keyword,
-                "location_name": location_name,
-                "language_name": "English",
-                "depth": 100,
-            }],
+            payload=[
+                {
+                    "keyword": keyword,
+                    "location_name": location_name,
+                    "language_name": "English",
+                    "depth": 100,
+                }
+            ],
             cost_per_call=Decimal("0.006"),
             cost_attr="_cost_google_jobs_advertisers",
         )
@@ -817,8 +834,11 @@ class DFSLabsClient:
         # Fallback if above fails: /v3/domain_analytics/whois/overview/live
         result = await self._post(
             endpoint="/v3/dataforseo_labs/google/bulk_traffic_estimation/live",
-            payload=[{"targets": domains, "location_name": "Australia", "language_name": "English"}],
-            cost_per_call=Decimal("0.10") + Decimal(str(len(domains))) * Decimal("0.001"),  # $0.10/task + $0.001/domain
+            payload=[
+                {"targets": domains, "location_name": "Australia", "language_name": "English"}
+            ],
+            cost_per_call=Decimal("0.10")
+            + Decimal(str(len(domains))) * Decimal("0.001"),  # $0.10/task + $0.001/domain
             cost_attr="_cost_bulk_domain_metrics",
         )
         items = result.get("items") or []
@@ -827,13 +847,17 @@ class DFSLabsClient:
             metrics = item.get("metrics", {})
             organic = metrics.get("organic") or {}
             paid = metrics.get("paid") or {}
-            results.append({
-                "domain": item.get("target") or item.get("domain", ""),
-                "organic_etv": float(organic.get("etv") or 0),
-                "paid_etv": float(paid.get("etv") or 0),
-                "backlinks_count": int(item.get("backlinks") or item.get("backlinks_count") or 0),
-                "domain_rank": int(item.get("domain_rank") or 0),
-            })
+            results.append(
+                {
+                    "domain": item.get("target") or item.get("domain", ""),
+                    "organic_etv": float(organic.get("etv") or 0),
+                    "paid_etv": float(paid.get("etv") or 0),
+                    "backlinks_count": int(
+                        item.get("backlinks") or item.get("backlinks_count") or 0
+                    ),
+                    "domain_rank": int(item.get("domain_rank") or 0),
+                }
+            )
         return results
 
     # ============================================
@@ -861,7 +885,7 @@ class DFSLabsClient:
         # Strip protocol
         for prefix in ("https://", "http://"):
             if domain.startswith(prefix):
-                domain = domain[len(prefix):]
+                domain = domain[len(prefix) :]
         # Strip trailing slashes
         domain = domain.rstrip("/")
         # Strip www. prefix

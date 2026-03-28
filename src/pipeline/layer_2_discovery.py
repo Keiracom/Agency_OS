@@ -9,6 +9,7 @@ Directive: #280
 v7 design: single source (domain_metrics_by_categories), sequential per category code,
 AU domain filter, blocklist, dedup, trajectory computation, writes to business_universe.
 """
+
 from __future__ import annotations
 
 import logging
@@ -32,20 +33,50 @@ PIPELINE_STAGE_DISCOVERED = 1
 COST_PER_CATEGORY_CALL = Decimal("0.10")
 
 # AU TLDs to keep unconditionally
-_AU_TLDS = frozenset({
-    ".com.au", ".net.au", ".org.au", ".edu.au", ".id.au", ".asn.au",
-})
+_AU_TLDS = frozenset(
+    {
+        ".com.au",
+        ".net.au",
+        ".org.au",
+        ".edu.au",
+        ".id.au",
+        ".asn.au",
+    }
+)
 
 # Known foreign country-code TLDs to reject
-_FOREIGN_TLDS = frozenset({
-    ".co.uk", ".co.nz", ".ca", ".ie", ".us", ".de", ".fr", ".co.in",
-    ".co.za", ".co.jp", ".cn", ".nl", ".se", ".no", ".dk", ".fi",
-    ".it", ".es", ".pt", ".ru", ".pl", ".com.br", ".com.mx",
-    ".org.uk", ".me.uk",
-})
+_FOREIGN_TLDS = frozenset(
+    {
+        ".co.uk",
+        ".co.nz",
+        ".ca",
+        ".ie",
+        ".us",
+        ".de",
+        ".fr",
+        ".co.in",
+        ".co.za",
+        ".co.jp",
+        ".cn",
+        ".nl",
+        ".se",
+        ".no",
+        ".dk",
+        ".fi",
+        ".it",
+        ".es",
+        ".pt",
+        ".ru",
+        ".pl",
+        ".com.br",
+        ".com.mx",
+        ".org.uk",
+        ".me.uk",
+    }
+)
 
 # Trajectory thresholds
-_GROWING_THRESHOLD = 10.0    # >10% change → GROWING
+_GROWING_THRESHOLD = 10.0  # >10% change → GROWING
 _DECLINING_THRESHOLD = -10.0  # <-10% change → DECLINING
 
 
@@ -53,10 +84,10 @@ _DECLINING_THRESHOLD = -10.0  # <-10% change → DECLINING
 class DiscoveryStats:
     category_codes: list[int] = field(default_factory=list)
     domains_returned: int = 0
-    domains_au_filtered: int = 0   # rejected by AU filter
-    domains_blocked: int = 0        # rejected by blocklist
-    domains_deduped: int = 0        # already in BU, skipped
-    domains_inserted: int = 0       # new rows written
+    domains_au_filtered: int = 0  # rejected by AU filter
+    domains_blocked: int = 0  # rejected by blocklist
+    domains_deduped: int = 0  # already in BU, skipped
+    domains_inserted: int = 0  # new rows written
     cost_usd: Decimal = field(default_factory=lambda: Decimal("0"))
     run_id: uuid.UUID = field(default_factory=uuid.uuid4)
     budget_exceeded: bool = False
@@ -325,13 +356,16 @@ class Layer2Discovery:
         )
         filtered_organic = int(r_organic.split()[-1]) if isinstance(r_organic, str) else 0
 
-        passed = await self._conn.fetchval(
-            """
+        passed = (
+            await self._conn.fetchval(
+                """
             SELECT COUNT(*) FROM business_universe
             WHERE discovery_batch_id = $1 AND pipeline_stage = 1
             """,
-            batch_id,
-        ) or 0
+                batch_id,
+            )
+            or 0
+        )
 
         logger.info(
             f"Gate 1 batch={batch_id}: filtered_budget={filtered_budget} "

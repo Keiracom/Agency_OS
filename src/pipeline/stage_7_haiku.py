@@ -10,6 +10,7 @@ Model: claude-haiku-4-5-20251001
 Gate: propensity_score >= min_score_to_outreach (65)
 Stores messages in outreach_messages JSONB on BU.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -28,8 +29,8 @@ PIPELINE_STAGE_S7 = 7
 HAIKU_MODEL = "claude-haiku-4-5-20251001"
 
 # Haiku 4.5 pricing (USD per token)
-HAIKU_INPUT_COST_PER_TOKEN = 0.0000008    # $0.80 per million input tokens
-HAIKU_OUTPUT_COST_PER_TOKEN = 0.000004    # $4.00 per million output tokens
+HAIKU_INPUT_COST_PER_TOKEN = 0.0000008  # $0.80 per million input tokens
+HAIKU_OUTPUT_COST_PER_TOKEN = 0.000004  # $4.00 per million output tokens
 
 _CHANNEL_PROMPTS = {
     "email": (
@@ -177,13 +178,21 @@ class Stage7Haiku:
                     max_tokens=400,
                     temperature=0.7,
                 )
-                content = response.get("content", "") if isinstance(response, dict) else str(response)
-                self._total_input_tokens += response.get("input_tokens", 0) if isinstance(response, dict) else 0
-                self._total_output_tokens += response.get("output_tokens", 0) if isinstance(response, dict) else 0
+                content = (
+                    response.get("content", "") if isinstance(response, dict) else str(response)
+                )
+                self._total_input_tokens += (
+                    response.get("input_tokens", 0) if isinstance(response, dict) else 0
+                )
+                self._total_output_tokens += (
+                    response.get("output_tokens", 0) if isinstance(response, dict) else 0
+                )
                 messages[channel] = content.strip()
                 await asyncio.sleep(0.5)  # Rate limiting
             except Exception as e:
-                logger.warning(f"Haiku call failed for {business.get('domain')} channel={channel}: {e}")
+                logger.warning(
+                    f"Haiku call failed for {business.get('domain')} channel={channel}: {e}"
+                )
 
         return messages
 

@@ -11,6 +11,7 @@ does NOT have (gap score input for S4).
 Enriches ONLY. No scoring, no DM discovery, no outreach.
 Cost: ~$0.03/business (rank $0.01 + tech $0.01-0.02).
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -140,26 +141,30 @@ class Stage3DFSProfile:
 
         # Rank fields (all nullable — small businesses may not rank)
         if rank_data:
-            update.update({
-                "dfs_organic_etv":       rank_data.get("dfs_organic_etv"),
-                "dfs_paid_etv":          rank_data.get("dfs_paid_etv"),
-                "dfs_organic_keywords":  rank_data.get("dfs_organic_keywords"),
-                "dfs_paid_keywords":     rank_data.get("dfs_paid_keywords"),
-                "dfs_organic_pos_1":     rank_data.get("dfs_organic_pos_1"),
-                "dfs_organic_pos_2_3":   rank_data.get("dfs_organic_pos_2_3"),
-                "dfs_organic_pos_4_10":  rank_data.get("dfs_organic_pos_4_10"),
-                "dfs_organic_pos_11_20": rank_data.get("dfs_organic_pos_11_20"),
-            })
+            update.update(
+                {
+                    "dfs_organic_etv": rank_data.get("dfs_organic_etv"),
+                    "dfs_paid_etv": rank_data.get("dfs_paid_etv"),
+                    "dfs_organic_keywords": rank_data.get("dfs_organic_keywords"),
+                    "dfs_paid_keywords": rank_data.get("dfs_paid_keywords"),
+                    "dfs_organic_pos_1": rank_data.get("dfs_organic_pos_1"),
+                    "dfs_organic_pos_2_3": rank_data.get("dfs_organic_pos_2_3"),
+                    "dfs_organic_pos_4_10": rank_data.get("dfs_organic_pos_4_10"),
+                    "dfs_organic_pos_11_20": rank_data.get("dfs_organic_pos_11_20"),
+                }
+            )
 
         # Tech fields
         if tech_data:
             tech_stack: list[str] = tech_data.get("tech_stack") or []
-            update.update({
-                "tech_stack":       tech_stack,
-                "tech_categories":  tech_data.get("tech_categories"),
-                "tech_stack_depth": tech_data.get("tech_stack_depth") or len(tech_stack),
-                "tech_gaps":        self._calculate_tech_gaps(tech_stack, signal_technologies),
-            })
+            update.update(
+                {
+                    "tech_stack": tech_stack,
+                    "tech_categories": tech_data.get("tech_categories"),
+                    "tech_stack_depth": tech_data.get("tech_stack_depth") or len(tech_stack),
+                    "tech_gaps": self._calculate_tech_gaps(tech_stack, signal_technologies),
+                }
+            )
 
         await self._write_update(row_id, update)
 
@@ -173,11 +178,7 @@ class Stage3DFSProfile:
         These are the gaps S4 uses to score outreach angle quality.
         """
         detected_set = {t.lower() for t in detected_tech}
-        return [
-            tech
-            for tech in sorted(signal_technologies)
-            if tech.lower() not in detected_set
-        ]
+        return [tech for tech in sorted(signal_technologies) if tech.lower() not in detected_set]
 
     async def _write_update(self, row_id: str, update: dict[str, Any]) -> None:
         """Write all non-None fields to BU in a single UPDATE."""
@@ -191,7 +192,7 @@ class Stage3DFSProfile:
 
         cols = list(fields.keys())
         vals = list(fields.values())
-        set_clause = ", ".join(f"{col} = ${i+1}" for i, col in enumerate(cols))
+        set_clause = ", ".join(f"{col} = ${i + 1}" for i, col in enumerate(cols))
         vals.append(row_id)
 
         await self.conn.execute(

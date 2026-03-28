@@ -10,15 +10,24 @@ Examples:
   "digitalgrowth.co" → "Digitalgrowth"  (single word, keep as-is)
   "the-local-seo-agency.com" → "The Local Seo Agency"
 """
+
 from __future__ import annotations
 
 import re
 
 # Multi-part TLDs to strip (order matters — longer first)
 _MULTI_PART_TLDS = {
-    ".com.au", ".net.au", ".org.au", ".edu.au", ".gov.au",
-    ".co.nz", ".net.nz", ".org.nz",
-    ".co.uk", ".org.uk", ".me.uk",
+    ".com.au",
+    ".net.au",
+    ".org.au",
+    ".edu.au",
+    ".gov.au",
+    ".co.nz",
+    ".net.nz",
+    ".org.nz",
+    ".co.uk",
+    ".org.uk",
+    ".me.uk",
 }
 _SINGLE_TLDS = re.compile(r"\.[a-z]{2,6}$")
 

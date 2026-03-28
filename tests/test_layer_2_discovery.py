@@ -11,6 +11,7 @@ from src.enrichment.signal_config import ServiceSignal, SignalConfig
 from src.pipeline.layer_2_discovery import (
     Layer2Discovery,
     _compute_trajectory,
+    _normalise_domain,
 )
 
 
@@ -271,3 +272,110 @@ async def test_discovery_inserts_to_bu():
     assert "validagency.com.au" in positional_args
     assert 1 in positional_args               # pipeline_stage=1
     assert "dfs_categories" in positional_args  # discovery_source
+
+
+# ─── Test 8: blocklist filters platform domains ────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_blocklist_filters_platform_domains():
+    """
+    DFS returns facebook.com, instagram.com, linkedin.com (all platform domains),
+    and acme.com.au. Only acme.com.au passes through the blocklist.
+    """
+    cfg = {"category_codes": [10233]}
+    results = [
+        {"domain": "facebook.com", "organic_etv": 500.0, "paid_etv": 100.0},
+        {"domain": "instagram.com", "organic_etv": 400.0, "paid_etv": 80.0},
+        {"domain": "linkedin.com", "organic_etv": 300.0, "paid_etv": 60.0},
+        {"domain": "acme.com.au", "organic_etv": 200.0, "paid_etv": 40.0},
+    ]
+    conn = make_conn()
+    # fetchval: dedup check for acme.com.au returns None (not existing), then gate count
+    conn.fetchval = AsyncMock(side_effect=[None, 1])
+    conn.execute = AsyncMock(return_value="UPDATE 0")
+    dfs = make_dfs(results=results)
+    engine = Layer2Discovery(conn=conn, dfs=dfs)
+    config = make_signal_config(cfg)
+
+    with patch("src.pipeline.layer_2_discovery.SignalConfigRepository") as MockRepo:
+        MockRepo.return_value.get_config = AsyncMock(return_value=config)
+        stats = await engine.run("marketing_agency", daily_budget_usd=10.0)
+
+    # Only acme.com.au makes it through; the 3 platform domains are blocked
+    assert stats.domains_blocked == 3
+    assert stats.domains_inserted == 1
+
+
+# ─── Test 9: domain normalisation ─────────────────────────────────────────────
+
+
+def test_domain_normalisation():
+    """_normalise_domain strips scheme, www., trailing slash, and lowercases."""
+    assert _normalise_domain("https://www.acme.com.au/") == "acme.com.au"
+    assert _normalise_domain("WWW.ACME.COM.AU") == "acme.com.au"
+    assert _normalise_domain("http://acme.com.au") == "acme.com.au"
+    assert _normalise_domain("acme.com.au") == "acme.com.au"
+
+
+# ─── Test 10: source error does not abort run ──────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_source_error_does_not_abort_run():
+    """
+    If the DFS source raises an exception for a category, run() continues
+    and returns a DiscoveryStats dict without propagating the exception.
+    """
+    cfg = {"category_codes": [10233, 10234]}
+    conn = make_conn()
+    conn.fetchval = AsyncMock(return_value=0)
+    conn.execute = AsyncMock(return_value="UPDATE 0")
+
+    dfs = MagicMock()
+    # First category raises, second succeeds with empty list
+    dfs.domain_metrics_by_categories = AsyncMock(
+        side_effect=[RuntimeError("DFS timeout"), []]
+    )
+    engine = Layer2Discovery(conn=conn, dfs=dfs)
+    config = make_signal_config(cfg)
+
+    with patch("src.pipeline.layer_2_discovery.SignalConfigRepository") as MockRepo:
+        MockRepo.return_value.get_config = AsyncMock(return_value=config)
+        stats = await engine.run("marketing_agency", daily_budget_usd=10.0)
+
+    # run() must complete and return DiscoveryStats
+    assert isinstance(stats, __import__("src.pipeline.layer_2_discovery", fromlist=["DiscoveryStats"]).DiscoveryStats)
+    assert len(stats.source_errors) == 1
+
+
+# ─── Test 11: idempotency skips existing domain ────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_idempotency_skips_existing_domain():
+    """
+    Domain already in business_universe (fetchval returns 1) is skipped.
+    DB INSERT must NOT be called for that domain.
+    """
+    cfg = {"category_codes": [10233]}
+    results = [{"domain": "existing.com.au", "organic_etv": 500.0, "paid_etv": 100.0}]
+    conn = make_conn()
+    # fetchval: dedup check returns existing row (1), then gate count returns 0
+    conn.fetchval = AsyncMock(side_effect=[1, 0])
+    conn.execute = AsyncMock(return_value="UPDATE 0")
+    dfs = make_dfs(results=results)
+    engine = Layer2Discovery(conn=conn, dfs=dfs)
+    config = make_signal_config(cfg)
+
+    with patch("src.pipeline.layer_2_discovery.SignalConfigRepository") as MockRepo:
+        MockRepo.return_value.get_config = AsyncMock(return_value=config)
+        stats = await engine.run("marketing_agency", daily_budget_usd=10.0)
+
+    assert stats.domains_deduped == 1
+    assert stats.domains_inserted == 0
+
+    # Verify no INSERT was called — only Gate 1 UPDATE calls should be present
+    for call_args in conn.execute.call_args_list:
+        sql = call_args[0][0]
+        assert "INSERT INTO business_universe" not in sql

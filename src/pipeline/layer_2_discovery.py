@@ -276,7 +276,75 @@ class Layer2Discovery:
             f"trajectory: growing={stats.trajectory_growing} declining={stats.trajectory_declining} "
             f"stable={stats.trajectory_stable} unknown={stats.trajectory_unknown}"
         )
+
+        # Auto-apply Gate 1 after all inserts
+        gate_result = await self.apply_gate_1(run_id)
+        logger.info(
+            f"Layer2 [{vertical_slug}] Gate 1 result: "
+            f"filtered_budget={gate_result['filtered_budget']} "
+            f"filtered_organic={gate_result['filtered_organic']} "
+            f"passed={gate_result['passed']}"
+        )
+
         return stats
+
+    async def apply_gate_1(self, batch_id: uuid.UUID) -> dict:
+        """
+        Gate 1: post-insert quality filters on newly discovered domains.
+
+        Queries business_universe rows for this batch at pipeline_stage=1 and applies:
+        - Budget floor: dfs_paid_traffic_cost < 1000 AND NOT NULL
+          → pipeline_stage=-1, filter_reason='below_budget_floor'
+          (NULL dfs_paid_traffic_cost skips this check)
+        - No organic signal: dfs_organic_etv=0 AND dfs_organic_keywords=0
+          → pipeline_stage=-1, filter_reason='no_organic_signal'
+
+        Returns:
+            {"filtered_budget": N, "filtered_organic": N, "passed": N}
+        """
+        r_budget = await self._conn.execute(
+            """
+            UPDATE business_universe
+            SET pipeline_stage = -1, filter_reason = 'below_budget_floor'
+            WHERE discovery_batch_id = $1
+              AND pipeline_stage = 1
+              AND dfs_paid_traffic_cost IS NOT NULL
+              AND dfs_paid_traffic_cost < 1000
+            """,
+            batch_id,
+        )
+        filtered_budget = int(r_budget.split()[-1]) if isinstance(r_budget, str) else 0
+
+        r_organic = await self._conn.execute(
+            """
+            UPDATE business_universe
+            SET pipeline_stage = -1, filter_reason = 'no_organic_signal'
+            WHERE discovery_batch_id = $1
+              AND pipeline_stage = 1
+              AND (dfs_organic_etv IS NULL OR dfs_organic_etv = 0)
+              AND (dfs_organic_keywords IS NULL OR dfs_organic_keywords = 0)
+            """,
+            batch_id,
+        )
+        filtered_organic = int(r_organic.split()[-1]) if isinstance(r_organic, str) else 0
+
+        passed = await self._conn.fetchval(
+            """
+            SELECT COUNT(*) FROM business_universe
+            WHERE discovery_batch_id = $1 AND pipeline_stage = 1
+            """,
+            batch_id,
+        ) or 0
+
+        logger.info(
+            f"Gate 1 batch={batch_id}: filtered_budget={filtered_budget} "
+            f"filtered_organic={filtered_organic} passed={passed}"
+        )
+        return {
+            "filtered_budget": filtered_budget,
+            "filtered_organic": filtered_organic,
+            "passed": int(passed),
+        }
 
     async def run_batch(
         self,

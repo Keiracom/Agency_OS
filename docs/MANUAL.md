@@ -23,10 +23,10 @@ Revenue model for BU: API subscriptions, Salesforce/HubSpot marketplace, bulk an
 
 ## SECTION 2 — CURRENT STATE
 
-- Last directive issued: #281 (Sprint 2 Prep: Schema + Audit — COMPLETE)
-- Next directive: #282 (Sprint 2 — Free Intelligence Sweep Implementation)
-- Test baseline: 990 passed, 0 failed, 28 skipped (+4 from #281)
-- Last merged PR: #242 (Sprint 1 — Discovery Engine v7); PRs open: #243 (schema), #244 (tests)
+- Last directive issued: #282 (Sprint 2: Free Intelligence Sweep — COMPLETE)
+- Next directive: #283 (Sprint 2 — Google Ads Intelligence)
+- Test baseline: 1002 passed, 0 failed, 28 skipped (+12 from #282)
+- Last merged PR: #242 (Sprint 1 — Discovery Engine v7); Last merged PRs: #243 (schema), #244 (tests); PR open: #245 (free enrichment)
 - Architecture: **v7 ratified Mar 28 2026** — signal-first organic discovery, free intelligence sweep, proven with live AU data across 5 dental domains
 - **v6 pipeline SUPERSEDED. Layer 2 (5-source parallel) and Layer 3 (bulk filter) replaced. Layer 4 (DFS tech/rank/historical) replaced with free scrape stack.**
 - **Live testing confirmed: domain_metrics_by_categories returns 22,592 AU dental domains at $0.001/domain. Google Ads Transparency free scraper: 5/5 AU coverage. Website scraping direct HTTP: 5/5 coverage, full tech stack, FREE.**

@@ -1,8 +1,8 @@
 # Agency OS Manual
 
-Last updated: 2026-03-26 21:55 UTC
-Directive #271: Signal config schema v6 — migration 029 in progress
-Next scheduled update: Directive #271 completion (PR merge)
+Last updated: 2026-03-28 UTC
+Directive #278: v7 architecture alignment — documentation only
+Next scheduled update: Directive #279 (Sprint 0 — clean house)
 
 > **Primary store.** This file is the CEO SSOT. Google Doc is an auto-generated mirror.
 > After every save-trigger write, verify with: `cat docs/MANUAL.md | grep "SECTION"`
@@ -23,21 +23,46 @@ Revenue model for BU: API subscriptions, Salesforce/HubSpot marketplace, bulk an
 
 ## SECTION 2 — CURRENT STATE
 
-- Last directive issued: #274 (Layer 3 Bulk Domain Filter — COMPLETE, PR #238 merged)
-- Next directive: #275 (Layer 4 qualification)
+- Last directive issued: #278 (v7 architecture alignment — documentation only)
+- Next directive: #279 (Sprint 0 — clean house)
 - Test baseline: 1032 passed, 0 failed, 28 skipped
-- Test baseline: 1009 passed, 2 failed (pre-existing DFS serp client tests), 28 skipped
-- Last merged PRs: #233 (dedup + blocklist), #232 (bug fixes), #231 (live test v2), #230 (stages 6+7)
-- Architecture: **v6 ratified Mar 27 2026** — spend + gaps + fit discovery (10-layer engine)
-- **All 7 pipeline stages S1-S7 built and on main (v5 era). v6 rebuild starts at #271 — see Section 12**
-- **Live Test v2 (#265–#266): PASS. Pipeline working end-to-end. First Haiku messages produced.**
-- **Open bugs: BUG-268-1 (S1 unnest jsonb) + BUG-268-2 (BD GMB 401) — fix in v6 sprint**
+- Last merged PR: #238 (Layer 3 bulk filter — now superseded by v7)
+- Architecture: **v7 ratified Mar 28 2026** — signal-first organic discovery, free intelligence sweep, proven with live AU data across 5 dental domains
+- **v6 pipeline SUPERSEDED. Layer 2 (5-source parallel) and Layer 3 (bulk filter) replaced. Layer 4 (DFS tech/rank/historical) replaced with free scrape stack.**
+- **Live testing confirmed: domain_metrics_by_categories returns 22,592 AU dental domains at $0.001/domain. Google Ads Transparency free scraper: 5/5 AU coverage. Website scraping direct HTTP: 5/5 coverage, full tech stack, FREE.**
 
 ---
 
-## SECTION 3 — ARCHITECTURE v6 (ratified Mar 27 2026)
+## SECTION 3 — ARCHITECTURE v7 (ratified Mar 28 2026)
 
-Core principle: Discovery by SPEND + GAPS + FIT. Industry and location are outputs of enrichment. Each agency's services map to specific DFS endpoint conditions that define what "perfect fit" looks like for their prospects. The pipeline runs ALL service checks and stacks the results. More matched gaps = higher propensity = bigger potential retainer.
+Core principle: Signal-first organic discovery. Find businesses spending on Google Ads in target industries. Sweep them for free. Score against agency services. Only spend money at DM stage.
+
+**PROVEN WITH LIVE AU DATA (5-domain dental sample, Mar 2026)**
+
+---
+
+### DEAD ENDPOINTS (do not use in v7)
+
+| Endpoint | Why Dead |
+|----------|---------|
+| DFS paid_etv | AU: top dental domain = $150/mo. Unusable for budget detection. |
+| DFS Domain Technologies | AU: 1.3% coverage (1/78 domains). Cannot build tech gap signals. |
+| DFS Ranked Keywords | AU: 20% coverage (16/78 domains). Unreliable for SEO gap signals. |
+| DFS Backlinks | 40204 error — separate subscription not provisioned. |
+| DFS Google Jobs | 40402 Invalid Path on all calls. Broken endpoint. |
+| Layer 3 Bulk Traffic Estimation | Redundant — domain_metrics_by_categories already returns organic metrics. |
+
+---
+
+### PROVEN ENDPOINTS (v7 foundation)
+
+| Endpoint | Coverage | Cost | Signal |
+|----------|---------|------|--------|
+| DFS domain_metrics_by_categories | 22,592 AU dental domains returned | $0.001/domain | Organic ETV, keyword count, category confirmation |
+| Google Ads Transparency Center | 5/5 AU coverage | FREE (Python scraper) | Binary: is business running Google Ads |
+| Website scraping (direct HTTP) | 5/5 AU coverage | FREE | Full tech stack, CMS, tracking codes, team names, contact info |
+| ABN verification (local JOIN) | 5/5 AU coverage | FREE | GST registration = $75k+ revenue confirmed |
+| GMB + Reviews (DFS SERP) | 4/5 GMB match, 5/5 reviews | $0.0035/domain | Rating, review count, owner response rate, complaint themes |
 
 ---
 
@@ -46,293 +71,259 @@ Core principle: Discovery by SPEND + GAPS + FIT. Industry and location are outpu
 CRM connect → extract services sold, client history, deal sizes per service, industries won.
 LinkedIn connect → communication style, connection exclusion list.
 System builds Agency Profile automatically.
-Signal config generated from their services — each service maps to DFS endpoint conditions.
+Signal config generated from their services — each service maps to category codes + scoring weights.
 Output: Agency Profile + Signal Config + Exclusion List
 
----
-
-### LAYER 2: DISCOVERY (find businesses worth investigating)
-
-Sources (run in parallel, dedup at BU write):
-
-**a) Domain Metrics by Categories ($0.10)**
-Input: Google Ads category codes for prospect industries. Filter: location_code=AU, paid_etv > configurable threshold.
-Output: AU businesses with confirmed ad spend in target industries.
-
-**b) Google Ads Search ($0.006/keyword)**
-Input: industry-specific keywords ("dentist Sydney", "plumber Melbourne" etc).
-Output: businesses actively bidding on those keywords RIGHT NOW. Real-time budget signal.
-
-**c) Domains by HTML Terms ($0.01)**
-Input: tech gap combinations (has Google Ads pixel but NOT conversion tracking, has WordPress but NOT Yoast, etc).
-Output: businesses with specific provable gaps.
-
-**d) Google Jobs ($0.006/keyword)**
-Input: "marketing manager [city]" etc.
-Output: businesses hiring = growth signal. A business hiring a $70k marketer should hear "for $2,500/month you get a team not one person."
-
-**e) Competitors Domain (from prior month, $0.01)**
-Input: top prospects from previous month.
-Output: their SERP competitors. Network expansion — one good prospect generates 5-10 more.
-
-All results deduped against BU + agency exclusion list.
-Output: raw domains into BU, pipeline_stage = 1.
-
-**Layer 2 implementation (Directive #272 — COMPLETE, PR #236):**
-- Class: `src/pipeline/layer_2_discovery.py` → `Layer2Discovery`
-- 5 sources run concurrently via asyncio.gather (source failure does not abort run)
-- New DFS endpoints added to `dfs_labs_client.py`: `domain_metrics_by_categories`, `google_ads_advertisers`, `domains_by_html_terms`, `google_jobs_advertisers`
-- Rate limiting: configurable `daily_budget_usd` (default $10.0) — stops when budget would be exceeded
-- Idempotency: skips existing BU rows by domain/place_id
-- Migration 030: adds `discovery_batch_id uuid`, `no_domain boolean`, `dfs_discovery_category text`, `dfs_discovery_keyword text`
-- Cost per run: ~$0.47 (marketing_agency, all 5 sources) → expected 500–2,000 raw domains
-- Note: uses DFS Labs/SERP endpoints per v6 spec — NOT DFS GMaps coordinate sweep (v4/v5 pattern)
+**Status: BUILT** — HubSpot/GHL/Pipedrive/Close OAuth complete. Unipile LinkedIn complete. Onboarding flow complete. Signal configs seeded for marketing_agency.
 
 ---
 
-### LAYER 3: CHEAP FILTER (kill junk before spending)
+### LAYER 2: DISCOVERY (domain_metrics_by_categories only)
 
-a) Bulk Domain Metrics ($0.001 per domain, 1000/call) — remove zero-traffic, zero-spend, dead domains.
-b) Domain blocklist (platforms, government, etc).
-c) AU verification (domain TLD or GMB confirms AU).
+Single DFS call: `domain_metrics_by_categories` with AU category codes for target industry.
+Filter: location_code=2036 (AU), ordered by organic_etv descending.
+Returns: domain, organic_etv, organic_keywords, category, subcategory.
+Dedup against BU + blocklist. Insert new rows at pipeline_stage=1.
 
-Output: surviving domains, pipeline_stage = 2.
+**v7 change from v6:** 5-source parallel discovery REPLACED with single endpoint. Rationale: Google Jobs broken (40402), HTML Terms unreliable for AU, Competitors expansion better as an enrichment step. domain_metrics_by_categories alone returns 22,592 AU dental domains — more than sufficient.
 
-**Layer 3 implementation (Directive #274 — COMPLETE, PR #238):**
-- Class: `src/pipeline/layer_3_bulk_filter.py` → `Layer3BulkFilter`
-- Endpoint 12 added to `dfs_labs_client.py`: `bulk_domain_metrics` (batch up to 1000 domains/call)
-- Filter thresholds (configurable via enrichment_gates): REJECT if organic_etv=0 AND paid_etv=0 AND backlinks<5; PASS if organic_etv>0 OR paid_etv>0 OR backlinks≥10
-- REJECT → pipeline_stage=-1, filter_reason='bulk_metrics_below_threshold'
-- no_domain rows: advance to pipeline_stage=2 without API call (→ Layer 7 GMB path)
-- Migration 031: adds filter_reason text, backlinks_count int, domain_rank int
-- **Confirmed pricing (DFS): $0.10/task + $0.001/domain = $1.10 per 1,000 domains. 1,500 domains = 2 batches = $2.20. 20× cheaper than individual domain_rank_overview ($0.02/domain)**
+Cost: $0.001/domain
+Sprint: Sprint 1
 
 ---
 
-### LAYER 4: QUALIFICATION (is this business worth $0.15?)
+### GATE 1: Organic Signal Gate
 
-Per domain, three calls:
-
-**a) Domain Technologies ($0.01)**
-Full tech stack. Identify gaps per agency service. "Not well-served" check: no agency tools (no HubSpot, no SEMrush, no marketing automation = nobody managing this for them).
-
-**b) Domain Rank Overview ($0.02)**
-Paid ETV = budget confirmation. Organic ETV = traffic baseline. Paid vs organic ratio: high paid + low organic = over-dependent on ads, spending badly. Keyword count + position distribution.
-
-**c) Historical Rank Overview ($0.02)**
-Traffic trajectory: declining = active pain NOW. Paid spend rising while organic falls = panicking, throwing money at ads to compensate. TIMING signal: recent pain, not chronic.
-
-Output: budget + gap + pain signals populated, pipeline_stage = 3. Cost: $0.05/domain.
+PASS if organic_etv > 0 OR organic_keywords > 0
+REJECT if both zero → pipeline_stage = -1, filter_reason = "no_organic_signal"
+No-domain rows → advance for GMB-only path
 
 ---
 
-### LAYER 5: FIT SCORING (how many ways can the agency help?)
+### LAYER 3: FREE INTELLIGENCE SWEEP
 
-For each service the agency sells:
-- Check: does this business have the matching problem? (from Layer 4 data)
-- Check: is the gap provable? (specific data points)
-- Score: 0-100 per service
+All free. Run in parallel on passing domains:
 
-Composite propensity = weighted sum across all matching services. Weight per service configurable (PPC weighted higher — confirmed budget).
+**a) Website scrape (direct HTTP)**
+- Full page HTML fetch
+- Extract: tech stack (JS libraries, pixels, CMS, CDN), tracking codes (GA4, GTM, FB Pixel, Google Ads), team names (About page), contact info (email, phone)
+- Cost: FREE
+- Coverage: 5/5 proven
 
-Revenue estimate = sum of agency's average retainer per matched service (from CRM onboarding data).
+**b) Google Ads Transparency Center**
+- Python scraper against `adstransparency.google.com`
+- Output: binary `is_running_ads: true/false`
+- Cost: FREE
+- Coverage: 5/5 proven
+- Note: scraper fragility — Google may change HTML structure. Monitor and maintain.
 
-Score reason in plain English: "SEO weak (page 2 for 30 keywords), running ads without conversion tracking, no CRM. Estimated retainer: $4,500/mo."
+**c) DNS + TLS check**
+- MX record presence → has email infrastructure
+- SPF/DKIM presence → email sender configured
+- TLS cert issuer → hosting provider signal
+- Cost: FREE
 
-Gate: propensity >= threshold → proceed. Below threshold → stays in BU for future re-scoring.
+**d) ABN registry JOIN (local)**
+- Match `display_name` + `state` against 2.4M-row local table
+- Output: abn, gst_registered (confirmed $75k+ revenue), entity_type, registration_date
+- Cost: FREE
+- Never describe as external API call
 
-Output: scored + revenue-estimated, pipeline_stage = 4.
+**e) Phone carrier lookup**
+- AU mobile → carrier name (Telstra, Optus, Vodafone)
+- Validates number is real + active AU mobile
+- Cost: FREE API (planned Sprint 2)
 
----
+Output: free_intelligence_complete, pipeline_stage = 2
 
-### LAYER 6: COMPETITIVE INTELLIGENCE (deepen + expand)
-
-Only for prospects passing Layer 5 gate:
-
-**a) Competitors Domain ($0.01)**
-Top 5 SERP competitors per prospect. Store top 3 for messaging: "competitor X ranks above you for Y." Feed competitor domains back to Layer 2 for network expansion in next round.
-
-**b) Google Ads Advertisers ($0.006)** — top prospects only
-Their ad strategy: keywords, ad copy, landing pages. Specific ammunition for messaging.
-
-**c) On-Page Summary ($0.01)** — top prospects only
-Technical SEO: load time, broken links, mobile, SSL. Specific provable problems.
-
-**d) Backlinks Summary ($0.02)** — top prospects only
-Authority gap vs competitors.
-
-**e) Categories for Domain ($0.01)**
-Industry confirmation. Cross-check with GMB.
-
-Output: enriched with competitive + technical intelligence, pipeline_stage = 5.
+Sprint: Sprint 2
 
 ---
 
-### LAYER 7: GMB ENRICHMENT (physical identity)
+### GATE 2: Revenue Confirmation Gate
 
-Bright Data GMB lookup ($0.001/record): Place ID, category, rating, reviews, address, phone, hours. Suburb, state, postcode extracted. GMB rating declining = additional pain signal.
-
-Output: physically located, pipeline_stage = 6.
+PASS if: gst_registered = true (confirmed $75k+ revenue) OR organic_etv > configurable threshold
+WARN if gst not matched (possible sole trader or young business)
+NEVER hard-reject on GST alone — sole traders and new businesses are valid prospects
 
 ---
 
-### LAYER 8: DECISION MAKER DISCOVERY
+### LAYER 4: GMB + REVIEWS (paid enrichment, cheap)
+
+DFS SERP Google Maps: Place ID, category, rating, review count, address, phone, hours, owner response rate.
+Reviews analysis: complaint themes, sentiment (from review text sample).
+GMB claimed status via Bright Data ($0.001/record) — optional, for top-tier prospects only.
+
+Cost: $0.0035/domain (DFS SERP)
+Coverage: 4/5 GMB match proven on AU dental sample
+Sprint: Sprint 3
+
+---
+
+### GATE 3: Business Legitimacy Gate
+
+PASS if: GMB listing found OR ABN matched
+REJECT if: no GMB, no ABN, and no website → likely dissolved or non-trading business
+
+---
+
+### LAYER 5: COMPETITIVE + BRAND INTELLIGENCE (paid, selective)
+
+Only for prospects passing Gate 3. Run in parallel:
+
+**a) Competitors Domain ($0.01)** — top 5 SERP competitors per prospect
+**b) Brand SERP / Indexed Pages ($0.005)** — how many pages indexed, brand search presence
+**c) Google Ads Advertisers ($0.006)** — which keywords they actively bid on (supplements Transparency Center binary signal)
+
+Cost: ~$0.02/domain average (not all get all endpoints)
+Sprint: Sprint 3
+
+---
+
+### GATE 4: Scoring Gate (propensity threshold)
+
+PASS if propensity_score >= 30
+REJECT: stays in BU for future re-scoring when signals refresh
+
+---
+
+### LAYER 6: SCORING (v7 signal alignment)
+
+v7 scoring uses only CONFIRMED AU signals (no dead DFS endpoints):
+
+| Dimension | v7 Signal Source | v6 Source (replaced) |
+|-----------|-----------------|---------------------|
+| Budget | Google Ads Transparency (binary) + Competitors Domain ads spend | DFS paid_etv (DEAD) |
+| Pain | GMB rating + review complaints + organic_etv trend | DFS Historical Rank (unreliable AU) |
+| Gap | Website scrape tech stack gaps + ABN entity age | DFS Domain Technologies (DEAD) |
+| Fit | GMB category + organic_keywords count + competitor analysis | DFS Ranked Keywords (weak AU) |
+
+Score: 0-100 propensity. Best-matched service = outreach angle.
+Revenue estimate: sum of agency retainers per matched service.
+Score reason in plain English.
+
+Sprint: Sprint 4
+
+---
+
+### GATE 5: DM Enrichment Gate
+
+PASS if propensity_score >= 50
+
+---
+
+### LAYER 7: DECISION MAKER DISCOVERY
 
 Waterfall (cheapest first):
-a) GMB contact extraction (free)
-b) Leadmagic ($0.02) — name, title, email, phone, LinkedIn
+a) Website scrape contact extraction (free — from Layer 3 data)
+b) GMB phone/contact (free — from Layer 4 data)
+c) Leadmagic employee-finder ($0.05/domain) → name, title, LinkedIn
+d) Leadmagic email-finder ($0.015) → verified email
+e) Leadmagic mobile-finder ($0.077) → AU mobile
+f) ZeroBounce verification ($0.005) → catch-all/invalid filter
 
-Reachability validation: Email format, AU phone format, LinkedIn URL. Confirmed channels array. Reachability score from confirmed channels.
-
-Output: DM found + channels confirmed, pipeline_stage = 7.
+Cost: ~$0.05-$0.15/domain depending on waterfall depth
+Sprint: Sprint 5
 
 ---
 
-### LAYER 9: MESSAGE GENERATION (Haiku)
+### GATE 6: Reachability Gate
 
-Inputs to Haiku:
-- Agency Profile (voice, tone, case studies)
-- ALL intelligence from Layers 4–7
-- Best angle: lead with strongest gap matching agency's best case study
-- Competitor data for pain amplification
+PASS if: at least one confirmed channel (email OR LinkedIn OR phone)
+REJECT to BU backlog if no contact found
+
+---
+
+### LAYER 8: MESSAGE GENERATION (Haiku)
+
+Model: `claude-haiku-4-5-20251001` with prompt caching (90% discount on system prompt).
+
+Inputs:
+- Agency Profile (voice, tone, case studies, value prop)
+- ALL intelligence from Layers 3–7
+- Best outreach angle (matched service with strongest gap evidence)
+- Competitor data for pain amplification (Layer 5)
 - Revenue estimate for internal prioritisation
 
 Per channel:
-- Email: reference one signal, ask one question
-- LinkedIn: shared context, 300 chars
-- Voice: knowledge card for Alex
-- SMS: direct, one line
+- Email: reference one specific signal, ask one question, <150 words
+- LinkedIn: shared context, connection note, <300 chars
+- Voice: knowledge card JSON {trigger, talking_point, objective, fallback}
+- SMS: direct, one line, <160 chars
 
-Output: messages ready for approval, pipeline_stage = 8.
-
----
-
-### LAYER 10: SCHEDULING
-
-All prospects found at start of month. Outreach scheduled across 30 days respecting:
-- Email daily send limits per inbox
-- LinkedIn 20–25 connections/day, business hours, randomised delays
-- Voice AI calling hours (TCP Code)
-- SMS daily caps
-
-Follow-up sequences timed per channel. Agency sees full schedule on day 1.
+Cost: ~$0.003/prospect (with caching)
+Sprint: Sprint 6
 
 ---
 
-### QUOTA LOOP
+### GATE 7: Outreach Approval Gate
+
+Agency reviews top 10. Batch release: "Release All" / "Review More" / "Release with Exceptions".
+Kill switch always visible.
+
+---
+
+### LAYER 9: SCHEDULING
+
+All prospects found at start of month. Outreach scheduled across 30 days:
+- Email: daily send limits per warmed inbox
+- LinkedIn: 20–25 connections/day, business hours, randomised delays
+- Voice AI: TCP Code calling hours (9am-8pm weekday, 9am-5pm Saturday, no Sunday, no public holidays)
+- SMS: daily caps, DNCR pre-check
+
+Follow-up sequences timed per channel.
+Sprint: Sprint 6
+
+---
+
+### LAYER 10: QUOTA LOOP
 
 Runs at start of month until tier target met:
 1. Run Layers 2–9 (primary discovery)
 2. Count outreach-ready prospects
-3. If gap > 0:
-   a) Re-score BU backlog near threshold ($0.05 each — re-run Layer 4 for fresh signals)
-   b) Advance stuck rows through remaining layers
-   c) Expand discovery: broader category codes, deeper pagination, competitor network expansion
-   d) Cross-service discovery: lean into different service signals
-   e) Retry DM discovery on prior failures
+3. If gap > 0: re-score BU backlog near threshold, advance stuck rows, expand discovery, cross-service discovery, retry DM failures
 4. Loop until gap = 0 or strategies exhausted
-5. If still short: deliver what we have + notify
+5. If still short: deliver what we have + notify agency
+
+Sprint: Sprint 6
 
 ---
 
-### COST PER QUALIFIED PROSPECT (estimated)
+### COST PER QUALIFIED PROSPECT (v7, proven AU data)
 
-| Layer | Cost |
-|-------|------|
-| Layer 2 Discovery | ~$0.10 (amortised across batch) |
-| Layer 3 Cheap Filter | ~$0.001 |
-| Layer 4 Qualification | ~$0.05 |
-| Layer 5 Scoring | free |
-| Layer 6 Competitive | ~$0.04 (average, not all get all endpoints) |
-| Layer 7 GMB | ~$0.001 |
-| Layer 8 DM | ~$0.02 |
-| Layer 9 Haiku | ~$0.01 |
-| **Total** | **~$0.27/prospect** |
+| Layer | v7 Cost | v6 Cost (replaced) |
+|-------|---------|-------------------|
+| Layer 2 Discovery | $0.001 amortised | $0.10 (5-source) |
+| Layer 3 Free Sweep | FREE | $0.001 (bulk filter) |
+| Layer 4 GMB + Reviews | $0.0035 | $0.001 |
+| Layer 5 Competitive | $0.02 avg | $0.04 |
+| Layer 6 Scoring | FREE | FREE |
+| Layer 7 DM Discovery | $0.05–$0.15 | $0.02 |
+| Layer 8 Haiku | $0.003 | $0.01 |
+| **Total** | **$0.08–$0.15** | **$0.27** |
 
-Tier economics:
-- Spark (150): ~$40 COGS → 95% margin at $750
-- Ignition (600): ~$162 COGS → 94% margin at $2,500
-- Velocity (1500): ~$405 COGS → 92% margin at $5,000
-
-Network expansion from Layer 6 reduces Layer 2 cost each subsequent month. By month 3, competitor-sourced domains skip Layer 2 entirely → effective cost drops to ~$0.17/prospect.
+**Margin improvement (v7 vs v6):**
+- Spark (150 records): COGS ~$12–$22 → margin **97%** at $750 AUD
+- Ignition (600 records): COGS ~$48–$90 → margin **96%** at $2,500 AUD
+- Velocity (1500 records): COGS ~$120–$225 → margin **95%** at $5,000 AUD
 
 ---
 
-### SIGNAL CONFIG SCHEMA (updated for v6)
+### SIGNAL CONFIG SCHEMA (v7)
 
-`signal_configurations` table redesign (Directive #270):
+`signal_configurations` table (v6 schema, Directive #271 — unchanged for v7):
+- `vertical`: industry slug (marketing_agency, dental_practice, etc.)
+- `services`: JSONB array with problem_signals/budget_signals/not_served_signals per service
+- `discovery_config`: category_codes for domain_metrics_by_categories
+- `enrichment_gates`: score thresholds
+- `competitor_config`: expansion settings
+- `channel_config`: email/LinkedIn/voice/SMS toggles
 
-```
-services: jsonb array of:
-  {
-    service_name: "SEO",
-    weight: 1.0,
-    problem_signals: {
-      ranked_keywords: {condition: "positions 11-30 count > 20"},
-      historical_rank: {condition: "organic_etv declined > 20% in 90 days"},
-      backlinks_summary: {condition: "referring_domains < 50"}
-    },
-    budget_signals: {
-      domain_rank_overview: {condition: "paid_etv > 200"}
-    },
-    not_served_signals: {
-      domain_technologies: {condition: "missing: [semrush, ahrefs, moz]"}
-    }
-  }
-
-discovery_config: jsonb:
-  {
-    category_codes: [13418, ...],
-    ad_spend_threshold: 200,
-    keywords_for_ads_search: ["dentist Sydney", ...],
-    html_gap_combos: [
-      {has: "google-ads-pixel", missing: "gtag-conversion"},
-      ...
-    ],
-    job_search_keywords: ["marketing manager", ...],
-    competitor_expansion: true,
-    max_competitors_per_prospect: 5
-  }
-
-enrichment_gates: jsonb:
-  {
-    min_score_to_qualify: 30,
-    min_score_to_compete: 50,
-    min_score_to_dm: 50,
-    min_score_to_outreach: 65
-  }
-
-competitor_config: jsonb:
-  {
-    max_competitors_per_prospect: 5,
-    min_competitor_organic_etv: 100,
-    store_top_n_for_messaging: 3,
-    feed_back_to_discovery: true
-  }
-```
-
-Migration 029 (Directive #271): DROP old table → CREATE v6 schema (`vertical`, `services`, `discovery_config`, `enrichment_gates`, `competitor_config`, `channel_config`) → seed marketing_agency with 6 services (paid_ads, seo, social_media_marketing, web_design, marketing_automation, content_marketing). Python model updated (`src/enrichment/signal_config.py`). BUG-268-1 confirmed pre-fixed (stage_1_discovery.py already uses jsonb_array_elements_text). DFS v2 audit: PASS — all calls on /v3/.
-
----
-
-### v5 IMPLEMENTATION NOTES (retained for reference — v5 era stages S1–S7)
-
-v5 stages (S1–S7) are built and on main. They are the starting point for v6 rebuild. Key files:
-- `src/pipeline/stage_1_discovery.py` — Stage1Discovery (DFS domains by technology)
-- `src/pipeline/stage_2_gmb_lookup.py` — Stage2GMBLookup
-- `src/pipeline/stage_3_dfs_profile.py` — Stage3DFSProfile
-- `src/pipeline/stage_4_scoring.py` — Stage4Scorer
-- `src/pipeline/stage_5_dm_waterfall.py` — Stage5DMWaterfall
-- `src/pipeline/stage_6_reachability.py` — Stage6Reachability
-- `src/pipeline/stage_7_haiku.py` — Stage7Haiku
-
-Migrations applied: 022, 022b, 023, 024, 025, 026, 027, 028. Next: 029.
-
-Two separate scores:
-- Reachability (channel access, 100 pts)
-- Propensity (fit + timing signals, service-aware, ICP-configured, 100 pts)
-
-Dashboard shows priority rank + plain English reason only. No raw scores exposed. Algorithm is proprietary; no weight documentation in code comments.
+**v7 signal source mapping per service:**
+Budget signals: Google Ads Transparency (binary) + Competitors Domain spend
+Pain signals: GMB rating < 4.0, GMB review complaint themes, organic_etv decline
+Gap signals: website scrape — missing tools/pixels/CMS capabilities
+Fit signals: GMB category codes, organic_keywords, competitor SERP presence
 
 ---
 
@@ -393,35 +384,52 @@ Approval flow:
 
 ---
 
-## SECTION 8 — ENRICHMENT STACK (current)
+## SECTION 8 — ENRICHMENT STACK (v7 — updated Mar 28 2026)
 
-| Tier | Provider | What | Cost | Status |
-|------|----------|------|------|--------|
-| T1 | ABN Supabase JOIN | ABN lookup (3.6M records) | Free | ✅ Live |
-| T1.25 | ABR SearchByASIC | Trading name lookup | Free | ✅ Live |
-| T1.5 | Bright Data LinkedIn | Company enrichment | $0.75/1k | ✅ Live |
-| T-DM0 | DataForSEO | Ad spend detection | Variable | ✅ Live |
-| T2 | Bright Data GMB | GMB discovery + enrichment | $0.001/record | ✅ Live — dataset `gd_m8ebnr0q2qlklc02fz` (Google Maps full information), keyword discovery mode: `type=discover_new&discover_by=keyword` |
-| T3+T5 | Leadmagic | Email + mobile (Essential plan) | Variable | ✅ Live |
-| DFS | DataForSEO Labs | 7 endpoints (PR #220) | Variable | ✅ Live |
-| Jina | Jina AI Reader | Website scraping fallback | Free | ~~Live~~ Removed from S5 (#267) |
-| BD Web | Bright Data Unlocker | Heavy scraping | Variable | ✅ Live |
+### FREE TIER (v7 foundation)
 
-Domain blocklist (`src/utils/domain_blocklist.py`) filters platform/social/government domains before BU insert. Blocklist checked in S1 before any INSERT. Covers: social platforms (facebook.com, instagram.com, etc.), search/tech giants (google.com, etc.), website builders, hosting/infra, and *.gov.au subdomains. Directive #267.
+| Source | What | Cost | Status |
+|--------|------|------|--------|
+| ABN registry local JOIN | GST status (confirms $75k+ revenue), entity type, registration date | FREE | ✅ Live — 2,418,836 rows |
+| Website scrape (direct HTTP) | Tech stack, CMS, tracking codes (GA4, GTM, FB Pixel, Google Ads), team names, contact info | FREE | ✅ Proven (5/5 AU coverage) |
+| Google Ads Transparency Center | Binary: is business running Google Ads | FREE | ✅ Proven (5/5 AU coverage) — Python scraper, monitor for HTML changes |
+| DNS + TLS check | MX record, SPF/DKIM, TLS cert (hosting signal) | FREE | Planned Sprint 2 |
+| Phone carrier lookup | AU mobile carrier validation | FREE | Planned Sprint 2 |
 
-DEPRECATED — do not use: Hunter.io, Kaspr, Proxycurl, Apollo (enrichment), Clay (enrichment)
+### PAID TIER
 
-Deferred post-core pipeline:
-- T-DM3: BD LinkedIn Profiles: `gd_lwxmeb2u1cniijd7t4`, Posts: `gd_lwxkxvnf1cynvib9co` ($0.0015/record). Gate: Propensity ≥70.
-- T-DM4: Facebook business page posts via Bright Data ($0.00075–0.0015/post). Gate: Propensity ≥70.
+| Source | What | Cost | Status |
+|--------|------|------|--------|
+| DFS domain_metrics_by_categories | Domain discovery by AU industry category. Returns organic_etv, organic_keywords, category | $0.001/domain | ✅ Proven (22,592 AU dental domains) |
+| DFS SERP Google Maps | GMB: Place ID, category, rating, reviews, address, phone, hours | $0.0035/domain | ✅ Live — 4/5 AU GMB match proven |
+| DFS Competitors Domain | Top 5 SERP competitors per prospect | $0.01/call | ✅ Live |
+| DFS Brand SERP / Indexed Pages | Brand search presence, indexed page count | $0.005/call | Planned Sprint 3 |
+| DFS Google Ads Advertisers | Keywords actively bid on (complements Transparency binary) | $0.006/call | ✅ Live in layer_2_discovery.py |
+| Bright Data GMB Dataset | GMB deep enrichment (claimed status, full hours, photos) | $0.001/record | ✅ Live — dataset `gd_m8ebnr0q2qlklc02fz` |
+| Bright Data LinkedIn Company | Company headcount, industry, LinkedIn URL | $0.025/record | ✅ Live |
+| Leadmagic email-finder | DM email from name + domain | $0.015/call | ✅ Live (plan unpurchased — mock mode) |
+| Leadmagic mobile-finder | DM mobile from LinkedIn URL | $0.077/call | ✅ Live (plan unpurchased) |
+| Leadmagic employee-finder | Employees at domain | ~$0.05/domain | ✅ Live |
+| ZeroBounce | Email verification (catch-all, invalid, spamtrap) | $0.005/call | ✅ Live |
 
-Key data provider details:
-- Bright Data Scrapers API key: `2bab0747-ede2-4437-9b6f-6a77e8f0ca3e`
-- ABN Lookup Web Services GUID: `d894987c-8df1-4daa-a527-04208c677c0b`
-- BD LinkedIn needs funding before social scraping works
+### DEAD ENDPOINTS (do not re-enable)
 
-T1 is a local JOIN, not an API call. Never describe it as external.
-Siege Waterfall is proprietary. Never describe it as a vendor.
+| Endpoint | Why Dead | Confirmed |
+|----------|---------|-----------|
+| DFS paid_etv | AU: top dental domain = $150/mo. Unusable. | Mar 2026 live test |
+| DFS Domain Technologies | AU: 1.3% coverage (1/78 domains). | Mar 2026 live test |
+| DFS Ranked Keywords | AU: 20% coverage (16/78). | Mar 2026 live test |
+| DFS Backlinks | 40204 error — subscription not provisioned. | Mar 2026 live test |
+| DFS Google Jobs | 40402 Invalid Path. Broken endpoint. | Mar 2026 live test |
+| DFS Bulk Traffic Estimation (Layer 3) | Redundant — domain_metrics_by_categories returns organic metrics. | v7 decision |
+| Hunter.io | DEPRECATED | Directive #167 |
+| Kaspr | DEPRECATED | Directive #167 |
+| Proxycurl | DEPRECATED | Directive #167 |
+| Apollo (enrichment) | DEPRECATED | Directive #167 |
+| Clay (enrichment) | DEPRECATED | Directive #167 |
+| Jina AI Reader (Stage 5) | Removed — too slow (16s per domain) | Directive #266 |
+
+Domain blocklist (`src/utils/domain_blocklist.py`): platforms, social, government, builder/hosting domains. Checked at BU INSERT.
 
 ---
 
@@ -470,25 +478,36 @@ Outreach sequence timing: defined in Layer 10 scheduling engine (Directive #278)
 
 ## SECTION 12 — BUILD SEQUENCE (active)
 
-v5 era (#247–#270): all 7 pipeline stages built, tested, and live on main. Superseded by v6.
+v5 era (#247–#270): all 7 pipeline stages built on main. Superseded.
+v6 era (#271–#277): Layer 2 (discovery), Layer 3 (bulk filter), signal config v6 built. Superseded by v7.
 
-### v6 Build Sequence (active — starts #271)
+### v7 Sprint Plan (starts #279)
+
+| Sprint | Directive(s) | What | Status |
+|--------|-------------|------|--------|
+| Sprint 0 | #279 | Clean house: delete 7 deprecated stage files, fix DNCR hard-block, verify test baseline 1032/0/28 | Queued |
+| Sprint 1 | #280 | Discovery engine: rebuild layer_2_discovery.py → single domain_metrics_by_categories call, remove 4 dead sources | Queued |
+| Sprint 2 | #281–#282 | Free intelligence sweep: website scraper (direct HTTP), Google Ads Transparency Center (Python scraper), DNS+TLS check, phone carrier lookup | Queued |
+| Sprint 3 | #283–#284 | Paid enrichment: Brand SERP, Indexed Pages, Competitors expansion, GMB full enrichment, Reviews sentiment | Queued |
+| Sprint 4 | #285 | Scoring redesign: align all 5 scorers to v7 signals (remove dead DFS signals, add scrape signals, add Ads Transparency) | Queued |
+| Sprint 5 | #286–#287 | DM discovery: email waterfall (scrape→Leadmagic→ZeroBounce), mobile waterfall, reachability v7 | Queued |
+| Sprint 6 | #288–#289 | Message generation + outreach wiring: Haiku redesign with v7 signal inputs, scheduling engine, quota loop | Queued |
+| Sprint 7 | #290 | Multi-vertical: seed dental, recruitment, IT MSP signal configs + category codes | Queued (parallel with 4–6) |
+| Sprint 8 | #291 | Integration test + hardening: live pipeline test against 100 real domains, cost/quality audit | Queued |
+| Sprint 9 | #292 | Founding customer prep: onboarding wizard, approval flow, territory locking, demo mode | Queued |
+| Sprint 10 | #293 | Launch | Queued |
+
+### Completed Directives Log
 
 | Directive | What | Status |
 |-----------|------|--------|
-| #271 | Signal config schema redesign (services + competitor_config + discovery_config) | Next |
-| #272 | Layer 2 discovery engine (multi-source: Categories, Ads Search, HTML Terms, Jobs, Competitors) | COMPLETE — PR #236 merged |
-| #273 | Fix pre-existing DFS SERP test failures | COMPLETE — PR #237 merged |
-| #274 | Layer 3 cheap filter + Bulk Domain Metrics client | COMPLETE — PR #238 merged |
-| #274 | Layer 4 qualification (Domain Technologies + Rank Overview + Historical Rank) | Queued |
-| #275 | Layer 5 fit scoring (multi-service, per-service problem/budget/gap scoring) | Queued |
-| #276 | Layer 6 competitive intelligence (5 endpoints, top-prospect gating) | Queued |
-| #277 | Layer 7–8 (GMB enrichment + DM waterfall — mostly reuse from v5) | Queued |
-| #278 | Layer 9 message generation (Haiku redesign with Agency Profile + competitive data) | Queued |
-| #279 | Layer 10 scheduling engine | Queued |
-| #280 | Quota loop | Queued |
-| #281 | Full pipeline live test v3 | Queued |
-| #282 | Prefect wiring | Queued |
+| #271 | Signal config schema v6 (migration 029 + model + 6-service seed) | COMPLETE — PR #235 merged |
+| #272 | Layer 2 discovery engine (5-source — now superseded by v7) | COMPLETE — PR #236 merged |
+| #273 | Fix DFS SERP test failures | COMPLETE — PR #237 merged |
+| #274 | Layer 3 bulk filter (now superseded by v7) | COMPLETE — PR #238 merged |
+| #275 | asyncpg JSONB codec fix | COMPLETE — PR open (branch feat/275-asyncpg-jsonb-codec) |
+| #277 | Codebase audit (92 components, all sections) | COMPLETE — docs/v7-audit-results.md |
+| #278 | v7 architecture alignment (this directive) | COMPLETE |
 
 ---
 
@@ -647,18 +666,27 @@ Compliance: SPAM Act 2003, DNCR registered, TCP Code (voice), Australian-built
 
 ## SECTION 20 — KNOWN ISSUES + BACKLOG
 
-- Supabase: 29 security advisor errors need resolution
-- BD LinkedIn account needs funding before social scraping (T-DM3/T-DM4) works
-- ARCHITECTURE.md Section 5 needs T-DM3 corrected endpoints + price ($0.0015, not $0.0025)
-- Remotion video + Stripe checkout pending for landing page
-- S7 prompt engineering needed (backlog — deferred post-#281)
-- S2 parallelisation needed (production speed — currently sequential)
-- BUG-268-1: CONFIRMED PRE-FIXED — stage_1_discovery.py already uses jsonb_array_elements_text() (no action needed)
-- BUG-268-2: BD GMB returning 401 on new-domain discovery requests — credentials issue in BD account (Dave to check dashboard)
+### v7 Architecture Risks (identified Mar 28 2026)
 
-### Directive Log
-| Directive | What | Status |
-|-----------|------|--------|
-| #271 | Signal config schema v6 (migration 029 + model + 6-service seed) | COMPLETE — PR #235 open |
+| Risk | Severity | Mitigation |
+|------|----------|-----------|
+| Google Ads Transparency scraper fragility | HIGH | Google may change HTML structure. Monitor weekly. Build CSS selector abstraction to allow fast updates. |
+| 5-domain sample size | HIGH | v7 validated on 5 AU dental domains. 78-domain audit found dead endpoints but scrape coverage not re-tested at scale. Run 100-domain test in Sprint 8. |
+| Uncalibrated scoring | HIGH | All 5 scorers use v6 signal assumptions. v7 signals (scrape-based, Ads Transparency) not yet wired. Scores meaningless until Sprint 4. |
+| domain_metrics_by_categories coverage gaps | MEDIUM | Returns organic-signal domains. New businesses with low organic = excluded. Supplement with Google Ads Advertisers endpoint for paid-only businesses. |
+| Leadmagic plan unpurchased | HIGH | All Leadmagic calls in mock mode. Must purchase before Sprint 5 go-live. Dave action required. |
+| DNCR fail-open | HIGH | If DNCR_API_KEY unset, calls proceed without DNCR check. Fix in Sprint 0. Must hard-block. |
+| ABN JOIN false negatives | MEDIUM | ~10% SQL match rate (vs 67% API). Sole traders often registered under personal name, not trading name. Supplement with ABN live API for unmatched rows. |
+| GMB match rate 80% | MEDIUM | 4/5 (80%) proven at small scale. May degrade at scale for rural or less-established businesses. No hard dependency — GMB miss = continue without GMB signals. |
+| category_codes hardcoded | MEDIUM | [13418,13420,13421] for marketing_agency only. Multi-vertical requires Sprint 7 seed migrations. No dynamic mapping from client services to DFS codes. |
+| Old stage files not deleted | LOW | stageN_* (no underscore) coexist with stage_N_* active files. Delete in Sprint 0. |
+| Deprecated v6 Layer 2/3 code still present | LOW | layer_2_discovery.py (5-source) and layer_3_bulk_filter.py not deleted. Rebuild in Sprint 1. |
+| Sender ABN in email footer unconfirmed | MEDIUM | email_signature_service.py signature exists. ABN inclusion in footer not confirmed. Verify before outreach goes live. |
+
+### Infrastructure Issues
+- Supabase: 29 security advisor errors unresolved
+- BD LinkedIn account needs funding before social scraping (T-DM3/T-DM4) works
+- PR #275 (asyncpg JSONB codec) still open — Dave to merge before any live pipeline test
+- PR #221 (research-1 brief config) still open — awaiting Dave
 
 

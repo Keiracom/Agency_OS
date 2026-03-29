@@ -12,7 +12,9 @@ AU domain filter, blocklist, dedup, trajectory computation, writes to business_u
 
 from __future__ import annotations
 
+import asyncio
 import logging
+import traceback
 import uuid
 from dataclasses import dataclass, field
 from decimal import Decimal
@@ -20,6 +22,7 @@ from enum import Enum
 from urllib.parse import urlparse
 
 import asyncpg
+import httpx
 
 from src.clients.dfs_labs_client import DFSLabsClient
 from src.enrichment.signal_config import SignalConfigRepository
@@ -220,8 +223,26 @@ class Layer2Discovery:
                     location_name="Australia",
                     paid_etv_min=0.0,
                 )
+            except (httpx.HTTPStatusError, ValueError) as exc:
+                # API errors (4xx/5xx) and explicit protocol errors must propagate
+                logger.error(
+                    f"Layer2 [{vertical_slug}] category={code} DFS API error: {exc}\n"
+                    f"{traceback.format_exc()}"
+                )
+                raise
+            except (asyncio.TimeoutError, httpx.TimeoutException) as exc:
+                # Timeouts are expected and non-fatal — log and skip this category
+                logger.warning(
+                    f"Layer2 [{vertical_slug}] category={code} DFS timeout: {exc}"
+                )
+                stats.source_errors.append(f"category={code}: timeout: {exc}")
+                continue
             except Exception as exc:
-                logger.error(f"Layer2 [{vertical_slug}] category={code} DFS error: {exc}")
+                # Unexpected errors — log full traceback and continue (do not abort run)
+                logger.error(
+                    f"Layer2 [{vertical_slug}] category={code} DFS unexpected error: {exc}\n"
+                    f"{traceback.format_exc()}"
+                )
                 stats.source_errors.append(f"category={code}: {exc}")
                 continue
 

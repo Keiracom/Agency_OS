@@ -10,10 +10,12 @@ Directive: #282
 from __future__ import annotations
 
 import asyncio
+import difflib
 import json
 import logging
 import os
 import re
+from enum import Enum
 from typing import Any
 
 import asyncpg
@@ -73,6 +75,18 @@ DKIM_SELECTORS = ["google._domainkey", "selector1._domainkey", "default._domaink
 TEAM_SLUGS = ["/about", "/team", "/our-team", "/people", "/staff"]
 
 
+class ABNMatchConfidence(str, Enum):
+    EXACT   = "exact"    # >=90% similarity
+    PARTIAL = "partial"  # 60-89% similarity
+    LOW     = "low"      # <60% similarity
+
+
+class EmailMaturity(str, Enum):
+    PROFESSIONAL = "professional"   # custom domain MX + SPF
+    WEBMAIL      = "webmail"        # has MX but no SPF
+    NONE         = "none"           # no MX record
+
+
 class FreeEnrichment:
     """
     Zero-cost enrichment pass for business_universe rows.
@@ -85,6 +99,63 @@ class FreeEnrichment:
         self._conn = conn
         self._spider_key = os.environ.get("SPIDER_API_KEY", "")
         self._logger = logging.getLogger(__name__)
+
+    # ── Helpers ──────────────────────────────────────────────────────────────
+
+    def _abn_confidence(self, search_name: str, api_name: str) -> ABNMatchConfidence:
+        """Compute name similarity between search term and ABN registry name."""
+        ratio = difflib.SequenceMatcher(
+            None, search_name.lower(), api_name.lower()
+        ).ratio()
+        if ratio >= 0.90:
+            return ABNMatchConfidence.EXACT
+        if ratio >= 0.60:
+            return ABNMatchConfidence.PARTIAL
+        return ABNMatchConfidence.LOW
+
+    def _compute_email_maturity(
+        self, mx_provider: str | None, has_spf: bool
+    ) -> EmailMaturity:
+        """Classify email infrastructure maturity from MX provider + SPF presence."""
+        if mx_provider is None:
+            return EmailMaturity.NONE
+        if has_spf:
+            return EmailMaturity.PROFESSIONAL
+        return EmailMaturity.WEBMAIL
+
+    def _extract_jsonld_address(self, html: str) -> dict[str, str | None] | None:
+        """Extract structured address from JSON-LD schema.org blocks in HTML."""
+        blocks = re.findall(
+            r'<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>',
+            html,
+            re.IGNORECASE | re.DOTALL,
+        )
+        for block in blocks:
+            try:
+                data = json.loads(block)
+            except (json.JSONDecodeError, ValueError):
+                continue
+            # Normalise to a list of items
+            if isinstance(data, dict) and "@graph" in data:
+                items = data["@graph"]
+            elif isinstance(data, list):
+                items = data
+            else:
+                items = [data]
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                address = item.get("address")
+                if not address:
+                    continue
+                if isinstance(address, dict):
+                    return {
+                        "street": address.get("streetAddress"),
+                        "suburb": address.get("addressLocality"),
+                        "state": address.get("addressRegion"),
+                        "postcode": address.get("postalCode"),
+                    }
+        return None
 
     async def run(self, limit: int = 500) -> dict:
         rows = await self._conn.fetch(
@@ -177,6 +248,8 @@ class FreeEnrichment:
             metadata: dict = item.get("metadata") or {}
             if not content:
                 return {}
+            # JSON-LD address extraction (falls back to None — regex not used here)
+            website_address = self._extract_jsonld_address(content)
             return {
                 "title": metadata.get("title", ""),
                 "website_cms": self._extract_cms(content),
@@ -184,6 +257,7 @@ class FreeEnrichment:
                 "website_tracking_codes": self._extract_trackers(content),
                 "website_team_names": self._extract_team_urls(links),
                 "website_contact_emails": self._extract_emails(content, links),
+                "website_address": website_address,
             }
         except Exception as exc:
             self._logger.warning("Spider error for %s: %s", domain, exc)
@@ -294,7 +368,7 @@ class FreeEnrichment:
         except Exception:
             pass
 
-        # DKIM
+        # DKIM — collected for storage only; not used in maturity classification
         for selector in DKIM_SELECTORS:
             try:
                 resolver.resolve(f"{selector}.{domain}", "TXT")
@@ -302,6 +376,11 @@ class FreeEnrichment:
                 break
             except Exception:
                 continue
+
+        # Email maturity classification from MX + SPF
+        result["email_maturity"] = self._compute_email_maturity(
+            result["dns_mx_provider"], result["dns_has_spf"]
+        ).value
 
         return result
 
@@ -337,11 +416,14 @@ class FreeEnrichment:
                         if (row.get("state") or "").upper() == state_hint.upper():
                             match = row
                             break
+                api_name = match.get("trading_name") or match.get("legal_name") or ""
+                confidence = self._abn_confidence(search_name, api_name)
                 return {
                     "abn_matched": True,
                     "gst_registered": match["gst_registered"],
                     "entity_type": match["entity_type"],
                     "registration_date": match["registration_date"],
+                    "abn_confidence": confidence,
                 }
         except Exception as exc:
             self._logger.warning("ABN registry query failed for %s: %s", domain, exc)
@@ -355,11 +437,14 @@ class FreeEnrichment:
                 api_results = await abn.search_by_name(search_name)
             if api_results and isinstance(api_results, list) and api_results[0]:
                 r = api_results[0]
+                api_name = r.get("legal_name") or r.get("trading_name") or ""
+                confidence = self._abn_confidence(search_name, api_name)
                 return {
                     "abn_matched": True,
                     "gst_registered": r.get("gst_registered", False),
                     "entity_type": r.get("entity_type"),
                     "registration_date": r.get("registration_date"),
+                    "abn_confidence": confidence,
                 }
         except Exception as exc:
             self._logger.warning("ABN API fallback failed for %s: %s", domain, exc)
@@ -388,6 +473,7 @@ class FreeEnrichment:
                 gst_registered                = COALESCE($11, gst_registered),
                 entity_type                   = COALESCE($12, entity_type),
                 registration_date             = COALESCE($13, registration_date),
+                email_maturity                = $14,  -- column may need migration if not present
                 free_enrichment_completed_at  = NOW()
             WHERE id = $1
             """,
@@ -404,4 +490,5 @@ class FreeEnrichment:
             abn_data.get("gst_registered"),
             abn_data.get("entity_type"),
             abn_data.get("registration_date"),
+            dns_data.get("email_maturity"),
         )

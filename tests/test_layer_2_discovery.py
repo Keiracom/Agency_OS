@@ -9,6 +9,7 @@ import pytest
 
 from src.enrichment.signal_config import ServiceSignal, SignalConfig
 from src.pipeline.layer_2_discovery import (
+    DiscoverySource,
     Layer2Discovery,
     _compute_trajectory,
     _normalise_domain,
@@ -382,3 +383,17 @@ async def test_idempotency_skips_existing_domain():
     for call_args in conn.execute.call_args_list:
         sql = call_args[0][0]
         assert "INSERT INTO business_universe" not in sql
+
+
+# ─── Test 12: DiscoverySource.MAPS_SERP raises NotImplementedError ─────────────
+
+
+@pytest.mark.asyncio
+async def test_maps_serp_raises_not_implemented():
+    """Layer2Discovery with source=MAPS_SERP must raise NotImplementedError on run()."""
+    conn = make_conn()
+    dfs = make_dfs()
+    engine = Layer2Discovery(conn=conn, dfs=dfs, source=DiscoverySource.MAPS_SERP)
+
+    with pytest.raises(NotImplementedError, match="Maps SERP"):
+        await engine.run("marketing_agency")

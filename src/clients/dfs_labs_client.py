@@ -12,6 +12,7 @@ Wraps 7 DataForSEO endpoints for pipeline v4 discovery and intelligence.
 import base64
 import logging
 import time
+from datetime import date, timedelta
 from decimal import Decimal
 
 import httpx
@@ -159,6 +160,7 @@ class DFSLabsClient:
         payload: list,
         cost_per_call: Decimal,
         cost_attr: str,
+        swallow_no_data: bool = True,
     ) -> dict:
         """
         POST to a DataForSEO endpoint with retry, cost tracking, and error handling.
@@ -201,8 +203,13 @@ class DFSLabsClient:
         if dfs_status == DFS_STATUS_AUTH_FAILURE:
             raise DFSAuthError(f"DataForSEO authentication failed: {dfs_message}")
 
-        # No data — expected for small/unknown domains
+        # No data / invalid field (40501)
         if dfs_status == DFS_STATUS_NO_DATA:
+            if not swallow_no_data:
+                raise ValueError(
+                    f"DFS {endpoint}: 40501 Invalid Field — {dfs_message}. "
+                    "This is a programming error (bad payload), not a missing-data condition."
+                )
             logger.info(
                 f"DFS {endpoint}: 40501 no data (expected for unknown domains), "
                 f"elapsed={elapsed:.2f}s"
@@ -636,14 +643,23 @@ class DFSLabsClient:
         category_codes: list[int],
         location_name: str = "Australia",
         paid_etv_min: float = 0.0,
+        first_date: str | None = None,
+        second_date: str | None = None,
     ) -> list[dict]:
         """
         Discover domains with Google Ads spend in specified categories.
         Uses location_name (NOT location_code — causes 40501 error per DFS gotcha).
         Cost: ~$0.10/call.
         Returns list of {"domain": str, "paid_etv": float, "organic_etv": float}.
-        TODO: verify exact payload format against DFS API docs before live run.
+
+        Args:
+            first_date: Start date YYYY-MM-DD (default: 6 months ago / today - 180 days).
+            second_date: End date YYYY-MM-DD (default: today).
         """
+        today = date.today()
+        resolved_first_date = first_date or (today - timedelta(days=180)).strftime("%Y-%m-%d")
+        resolved_second_date = second_date or today.strftime("%Y-%m-%d")
+
         result = await self._post(
             endpoint="/v3/dataforseo_labs/google/domain_metrics_by_categories/live",
             payload=[
@@ -651,11 +667,14 @@ class DFSLabsClient:
                     "category_codes": category_codes,
                     "location_name": location_name,
                     "language_name": "English",
+                    "first_date": resolved_first_date,
+                    "second_date": resolved_second_date,
                     "filters": [["metrics.organic.etv", ">", 0]],
                 }
             ],
             cost_per_call=Decimal("0.10"),
             cost_attr="_cost_domain_metrics_by_categories",
+            swallow_no_data=False,
         )
         items = result.get("items") or []
         results = []

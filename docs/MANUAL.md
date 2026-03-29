@@ -23,15 +23,15 @@ Revenue model for BU: API subscriptions, Salesforce/HubSpot marketplace, bulk an
 
 ## SECTION 2 — CURRENT STATE
 
-- Last directive issued: #283 (Sprint 3: Paid Enrichment + Affordability Gate — COMPLETE)
-- Next directive: #284 (Segment 1+2 live test)
-- Test baseline: 1012 passed, 0 failed, 28 skipped (+10 from #283)
-- Last merged PRs: #242 (Sprint 1), #243 (schema), #244 (tests), #245 (Sprint 2), #246 (Sprint 3)
+- Last directive issued: #284 (DFS date params fix + dual discovery source — COMPLETE)
+- Next directive: #285 (Segment 1+2 live test)
+- Test baseline: 1016 passed, 0 failed, 28 skipped (+4 from #284)
+- Last merged PRs: #242 (Sprint 1), #243 (schema), #244 (tests), #245 (Sprint 2), #246 (Sprint 3), #247 (Directive #284 pending merge)
 - Spider.cloud: validated, API key in env SPIDER_API_KEY
 - Segment testing: ratified March 29 2026 — Segments 1+2 ready for live test
 - Architecture: **v7 ratified Mar 28 2026** — signal-first organic discovery, free intelligence sweep, proven with live AU data across 5 dental domains
 - **v6 pipeline SUPERSEDED. Layer 2 (5-source parallel) and Layer 3 (bulk filter) replaced. Layer 4 (DFS tech/rank/historical) replaced with free scrape stack.**
-- **Live testing confirmed: domain_metrics_by_categories returns 22,592 AU dental domains at $0.001/domain. Google Ads Transparency free scraper: 5/5 AU coverage. Website scraping direct HTTP: 5/5 coverage, full tech stack, FREE.**
+- **Live testing confirmed: domain_metrics_by_categories returns 24,231 AU dental / 31,445 AU plumbing domains at $0.0015/domain. Tail ($101–$500 ETV) = 90% real businesses in both categories. Plumbing top-200 = 0% local plumbers (gov/supplier pollution). Google Ads Transparency free scraper: 5/5 AU coverage. Website scraping direct HTTP: 5/5 coverage, full tech stack, FREE.**
 
 ---
 
@@ -60,7 +60,7 @@ Core principle: Signal-first organic discovery. Find businesses spending on Goog
 
 | Endpoint | Coverage | Cost | Signal |
 |----------|---------|------|--------|
-| DFS domain_metrics_by_categories | 22,592 AU dental domains returned | $0.001/domain | Organic ETV, keyword count, category confirmation |
+| DFS domain_metrics_by_categories | 24,231 AU dental / 31,445 AU plumbing domains | $0.0015/domain | Organic ETV, keyword count, category confirmation |
 | Google Ads Transparency Center | 5/5 AU coverage | FREE (Python scraper) | Binary: is business running Google Ads |
 | Website scraping (direct HTTP) | 5/5 AU coverage | FREE | Full tech stack, CMS, tracking codes, team names, contact info |
 | ABN verification (local JOIN) | 5/5 AU coverage | FREE | GST registration = $75k+ revenue confirmed |
@@ -89,10 +89,16 @@ Dedup against BU + blocklist. Insert new rows at pipeline_stage=1.
 
 **v7 change from v6:** 5-source parallel discovery REPLACED with single endpoint. Rationale: Google Jobs broken (40402), HTML Terms unreliable for AU, Competitors expansion better as an enrichment step. domain_metrics_by_categories alone returns 22,592 AU dental domains — more than sufficient.
 
-Cost: $0.001/domain
+Cost: $0.0015/domain (corrected Mar 2026 — was estimated $0.001)
 Sprint: Sprint 1
 
-**Status: BUILT (v7)** — single `domain_metrics_by_categories` call, sequential per category, AU domain filter, trajectory computation, Gate 1 applied post-insert. Directive #280, PR #242.
+**Dual discovery sources (Directive #284):**
+- `DiscoverySource.DOMAIN_CATEGORIES` — `domain_metrics_by_categories` (default). Professional categories (dental, medical): clean. Trades categories (plumbing, construction): top-200 polluted by gov/suppliers; tail ($101–$500 ETV) is 90% real businesses.
+- `DiscoverySource.MAPS_SERP` — DFS Maps SERP suburb sweep (stub only — Sprint 5). Required for trades categories where professional-to-aggregator ratio at top is 0%.
+
+**Bug fixed (Directive #284):** `first_date`/`second_date` were missing from the API payload — all calls returned 40501 silently. Fixed: defaults to 6-month window, caller can override. Error no longer swallowed.
+
+**Status: BUILT (v7)** — single `domain_metrics_by_categories` call, sequential per category, AU domain filter, trajectory computation, Gate 1 applied post-insert. Directive #280, PR #242. Date params fixed + DiscoverySource enum added: Directive #284, PR #247.
 
 ---
 
@@ -404,7 +410,7 @@ Approval flow:
 
 | Source | What | Cost | Status |
 |--------|------|------|--------|
-| DFS domain_metrics_by_categories | Domain discovery by AU industry category. Returns organic_etv, organic_keywords, category | $0.001/domain | ✅ Proven (22,592 AU dental domains) |
+| DFS domain_metrics_by_categories | Domain discovery by AU industry category. Returns organic_etv, organic_keywords, category | $0.0015/domain | ✅ Proven (24,231 AU dental / 31,445 AU plumbing domains, Mar 2026 spike) |
 | DFS SERP Google Maps | GMB: Place ID, category, rating, reviews, address, phone, hours | $0.0035/domain | ✅ Live — 4/5 AU GMB match proven |
 | DFS Competitors Domain | Top 5 SERP competitors per prospect | $0.01/call | ✅ Live |
 | DFS Brand SERP / Indexed Pages | Brand search presence, indexed page count | $0.005/call | Planned Sprint 3 |
@@ -493,7 +499,8 @@ v6 era (#271–#277): Layer 2 (discovery), Layer 3 (bulk filter), signal config 
 | Sprint 1 | #280 | Discovery engine: rebuild layer_2_discovery.py → single domain_metrics_by_categories call, remove 4 dead sources | COMPLETE — PR #242 |
 | Sprint 2 | #281–#282 | Free intelligence sweep: website scrape (Spider.cloud), DNS/MX/SPF/DKIM, ABN registry JOIN, free_enrichment.py | COMPLETE — PR #245 |
 | Sprint 3 | #283 | Paid enrichment: affordability gate + DFS bulk metrics + DFS Maps GMB, paid_enrichment.py | COMPLETE — PR #246 |
-| Sprint 4+ | #284+ | Segments 3-8 build (DM identification, email, phone, social, scoring, outreach) | ON HOLD — pending Segment 1+2 live test |
+| Sprint 4 | #284 | DFS date params fix + DiscoverySource enum (DOMAIN_CATEGORIES / MAPS_SERP stub) | COMPLETE — PR #247 (pending merge) |
+| Sprint 4+ | #285+ | Segments 3-8 build (DM identification, email, phone, social, scoring, outreach) | ON HOLD — pending Segment 1+2 live test |
 | Sprint 5 | #286–#287 | DM discovery: email waterfall (scrape→Leadmagic→ZeroBounce), mobile waterfall, reachability v7 | Queued |
 | Sprint 6 | #288–#289 | Message generation + outreach wiring: Haiku redesign with v7 signal inputs, scheduling engine, quota loop | Queued |
 | Sprint 7 | #290 | Multi-vertical: seed dental, recruitment, IT MSP signal configs + category codes | Queued (parallel with 4–6) |
@@ -512,6 +519,8 @@ v6 era (#271–#277): Layer 2 (discovery), Layer 3 (bulk filter), signal config 
 | #275 | asyncpg JSONB codec fix | COMPLETE — PR open (branch feat/275-asyncpg-jsonb-codec) |
 | #277 | Codebase audit (92 components, all sections) | COMPLETE — docs/v7-audit-results.md |
 | #278 | v7 architecture alignment (this directive) | COMPLETE |
+| #283 | Sprint 3: Paid enrichment + affordability gate | COMPLETE — PR #246 merged |
+| #284 | DFS date params fix (first_date/second_date) + DiscoverySource enum | COMPLETE — PR #247 (pending merge) |
 
 ---
 

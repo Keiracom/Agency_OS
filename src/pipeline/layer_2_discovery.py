@@ -16,6 +16,7 @@ import logging
 import uuid
 from dataclasses import dataclass, field
 from decimal import Decimal
+from enum import Enum
 from urllib.parse import urlparse
 
 import asyncpg
@@ -25,6 +26,12 @@ from src.enrichment.signal_config import SignalConfigRepository
 from src.utils.domain_blocklist import is_blocked
 
 logger = logging.getLogger(__name__)
+
+
+class DiscoverySource(str, Enum):
+    DOMAIN_CATEGORIES = "domain_categories"
+    MAPS_SERP = "maps_serp"
+
 
 # pipeline_stage value for Layer 2 discoveries (matches Stage 1 convention)
 PIPELINE_STAGE_DISCOVERED = 1
@@ -152,9 +159,11 @@ class Layer2Discovery:
         self,
         conn: asyncpg.Connection,
         dfs: DFSLabsClient,
+        source: DiscoverySource = DiscoverySource.DOMAIN_CATEGORIES,
     ) -> None:
         self._conn = conn
         self._dfs = dfs
+        self._source = source
 
     async def run(
         self,
@@ -176,6 +185,9 @@ class Layer2Discovery:
         Returns:
             DiscoveryStats with per-run counts and cost.
         """
+        if self._source == DiscoverySource.MAPS_SERP:
+            raise NotImplementedError("Maps SERP discovery not yet implemented — Sprint 5")
+
         run_id = batch_id or uuid.uuid4()
         stats = DiscoveryStats(run_id=run_id)
 

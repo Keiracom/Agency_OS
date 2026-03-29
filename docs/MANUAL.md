@@ -23,10 +23,10 @@ Revenue model for BU: API subscriptions, Salesforce/HubSpot marketplace, bulk an
 
 ## SECTION 2 — CURRENT STATE
 
-- Last directive issued: #287 (SERP-first DM waterfall + AU location filter — COMPLETE)
-- Next directive: #288
-- Test baseline: 1056 passed, 0 failed, 28 skipped (+12 from #287)
-- Last merged PRs: #242–#249 (Sprints 1-4), #250 (Directive #287 pending merge)
+- Last directive issued: #288 (Composite affordability scorer + streaming pipeline orchestrator — COMPLETE)
+- Next directive: #289
+- Test baseline: 1067 passed, 0 failed, 28 skipped (+11 from #288)
+- Last merged PRs: #242–#250 (Sprints 1-4), #251 (Directive #288 pending merge)
 - Spider.cloud: validated, API key in env SPIDER_API_KEY
 - Segment testing: ratified March 29 2026 — Segments 1+2 ready for live test
 - Architecture: **v7 ratified Mar 28 2026** — signal-first organic discovery, free intelligence sweep, proven with live AU data across 5 dental domains
@@ -253,10 +253,65 @@ Waterfall (return on first hit — ordered by hit rate, not cost):
 
 Orchestration: `src/pipeline/dm_identification.py` (`DMIdentification.identify()`)
 Returns: `DMResult(name, title, source, confidence, linkedin_url, tier_used)`
-Note: NOT yet wired into free_enrichment.py / paid_enrichment.py — Directive #288.
+Note: NOT yet wired into free_enrichment.py / paid_enrichment.py — Directive #289.
 
 Cost: $0.01/domain (T-DM1 SERP, 70% hit) → $0.00075/record (T-DM2 BD, fallback)
 Sprint: Sprint 4 (Directive #287)
+
+---
+
+### COMPOSITE AFFORDABILITY SCORING (Directive #288)
+
+`src/pipeline/affordability_scoring.py` — `AffordabilityScorer.score(enrichment)`.
+
+Signal dimensions and point values (max 20):
+
+| Signal | Source | Points |
+|--------|--------|--------|
+| Entity type | ABN | trust=3, company=2, partnership=1 |
+| GST registered | ABN | yes=1 |
+| Google Ads active | Ads Transparency | active+>5=3, active=2, none=0 |
+| Review count | DFS Maps GMB | 0–5=0, 6–20=1, 21–50=2, 51–100=3, 101+=4 |
+| Website sophistication | Spider scrape | professional CMS + tracking + booking + SSL + multi-page (max 5) |
+| Employee signals | Spider team page | 1–2=1, 3–5=2, 6+=3 |
+| Email maturity | DNS | PROFESSIONAL=1 |
+
+Band thresholds: **LOW (0–4, reject)** | **MEDIUM (5–8, pass)** | **HIGH (9–13, pass)** | **VERY_HIGH (14+, pass)**
+
+Hard gates: sole_trader → always reject | gst_registered=False → always reject | unreachable → always reject
+
+Returns `AffordabilityResult(raw_score, band, signals, gaps, passed_gate)`.
+
+`gaps` = plain-English list of zero-scoring signals (e.g. "Not running Google Ads", "Only 3 Google reviews"). **This is what Haiku uses for outreach angle generation.**
+
+---
+
+### STREAMING PIPELINE ORCHESTRATOR (Directive #288)
+
+`src/pipeline/pipeline_orchestrator.py` — `PipelineOrchestrator.run()`.
+
+Agency asks for 100 prospects. System delivers exactly 100. No prediction — keeps pulling until done.
+
+```
+results = []
+while len(results) < target_count:
+    domains = discovery.pull_batch(category_code, location, limit=batch_size, offset=offset)
+    if not domains: break  # category exhausted
+    for domain in domains:
+        enrichment = free_enrichment.enrich(domain)
+        score = scorer.score(enrichment)
+        if not score.passed_gate: continue
+        dm = dm_identification.identify(domain, ...)
+        if not dm.name: continue
+        results.append(ProspectCard(...))
+```
+
+`ProspectCard`: domain, company_name, location, services, **gaps** (from scorer), affordability_band, affordability_score, dm_name, dm_title, dm_linkedin_url, dm_confidence.
+
+`PipelineStats`: discovered / enriched / gate_passed / gate_failed / dm_found / dm_failed / total_cost_usd / elapsed_seconds.
+
+All dependencies injected (fully testable without DB).
+Sprint: Sprint 5 (Directive #288)
 
 ---
 
@@ -534,9 +589,10 @@ v6 era (#271–#277): Layer 2 (discovery), Layer 3 (bulk filter), signal config 
 | Sprint 4 | #285 | Free enrichment quality: ABN confidence, JSON-LD address, email maturity collapse, silent exception fix | COMPLETE — PR #248 merged |
 | Sprint 4 | #286 | DM Identification: BrightDataLinkedInClient + DMIdentification pipeline (4-tier fallback) | COMPLETE — PR #249 merged |
 | Sprint 4 | #287 | SERP-first DM waterfall: DFS SERP T-DM1 (70% hit), BD T-DM2, AU location filter | COMPLETE — PR #250 (pending merge) |
-| Sprint 5 | #288 | Wire DMIdentification into pipeline (free_enrichment.py / paid_enrichment.py) + Segment 4 live test | NEXT |
-| Sprint 5 | #289 | DM discovery: email waterfall (scrape→Leadmagic→ZeroBounce), mobile waterfall, reachability v7 | Queued |
-| Sprint 6 | #288–#289 | Message generation + outreach wiring: Haiku redesign with v7 signal inputs, scheduling engine, quota loop | Queued |
+| Sprint 5 | #288 | Composite affordability scorer (7 signals, 4 bands) + streaming PipelineOrchestrator + ProspectCard | COMPLETE — PR #251 (pending merge) |
+| Sprint 5 | #289 | Wire DMIdentification + orchestrator into pipeline (free_enrichment / paid_enrichment) + Segment 4 live test | NEXT |
+| Sprint 6 | #290 | DM email waterfall (scrape→Leadmagic→ZeroBounce), mobile waterfall, reachability v7 | Queued |
+| Sprint 7 | #291–#292 | Message generation + outreach wiring: Haiku redesign with v7 signal inputs, scheduling engine, quota loop | Queued |
 | Sprint 7 | #290 | Multi-vertical: seed dental, recruitment, IT MSP signal configs + category codes | Queued (parallel with 4–6) |
 | Sprint 8 | #291 | Integration test + hardening: live pipeline test against 100 real domains, cost/quality audit | Queued |
 | Sprint 9 | #292 | Founding customer prep: onboarding wizard, approval flow, territory locking, demo mode | Queued |
@@ -557,7 +613,8 @@ v6 era (#271–#277): Layer 2 (discovery), Layer 3 (bulk filter), signal config 
 | #284 | DFS date params fix (first_date/second_date) + DiscoverySource enum | COMPLETE — PR #247 merged |
 | #285 | Free enrichment quality: ABN confidence, JSON-LD address, EmailMaturity enum, silent exception fix | COMPLETE — PR #248 merged |
 | #286 | DM Identification: BrightDataLinkedInClient (brightdata_client.py) + DMIdentification pipeline (4-tier fallback T-DM1→T-DM3) | COMPLETE — PR #249 merged |
-| #287 | SERP-first DM waterfall: DFS SERP site:linkedin.com/in as T-DM1 (70% hit), BD as T-DM2, AU location filter | COMPLETE — PR #250 (pending merge) |
+| #287 | SERP-first DM waterfall: DFS SERP site:linkedin.com/in as T-DM1 (70% hit), BD as T-DM2, AU location filter | COMPLETE — PR #250 merged |
+| #288 | Composite affordability scorer (AffordabilityScorer, 7 signals, 4 bands) + PipelineOrchestrator + ProspectCard | COMPLETE — PR #251 (pending merge) |
 
 ---
 

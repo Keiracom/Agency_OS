@@ -24,9 +24,11 @@ Revenue model for BU: API subscriptions, Salesforce/HubSpot marketplace, bulk an
 ## SECTION 2 — CURRENT STATE
 
 - Last directive issued: #283 (Sprint 3: Paid Enrichment + Affordability Gate — COMPLETE)
-- Next directive: #284 (Sprint 3 continued)
+- Next directive: #284 (Segment 1+2 live test)
 - Test baseline: 1012 passed, 0 failed, 28 skipped (+10 from #283)
-- Last merged PR: #242 (Sprint 1 — Discovery Engine v7); Last merged PRs: #243 (schema), #244 (tests); Last merged PR: #245 (free enrichment); PR open: #246 (paid enrichment)
+- Last merged PRs: #242 (Sprint 1), #243 (schema), #244 (tests), #245 (Sprint 2), #246 (Sprint 3)
+- Spider.cloud: validated, API key in env SPIDER_API_KEY
+- Segment testing: ratified March 29 2026 — Segments 1+2 ready for live test
 - Architecture: **v7 ratified Mar 28 2026** — signal-first organic discovery, free intelligence sweep, proven with live AU data across 5 dental domains
 - **v6 pipeline SUPERSEDED. Layer 2 (5-source parallel) and Layer 3 (bulk filter) replaced. Layer 4 (DFS tech/rank/historical) replaced with free scrape stack.**
 - **Live testing confirmed: domain_metrics_by_categories returns 22,592 AU dental domains at $0.001/domain. Google Ads Transparency free scraper: 5/5 AU coverage. Website scraping direct HTTP: 5/5 coverage, full tech stack, FREE.**
@@ -489,9 +491,9 @@ v6 era (#271–#277): Layer 2 (discovery), Layer 3 (bulk filter), signal config 
 |--------|-------------|------|--------|
 | Sprint 0 | #279 | Clean house: delete 7 deprecated stage files, fix DNCR hard-block, verify test baseline 1032/0/28 | COMPLETE — PR feat/279-sprint0-cleanup |
 | Sprint 1 | #280 | Discovery engine: rebuild layer_2_discovery.py → single domain_metrics_by_categories call, remove 4 dead sources | COMPLETE — PR #242 |
-| Sprint 2 | #281–#282 | Free intelligence sweep: website scraper (direct HTTP), Google Ads Transparency Center (Python scraper), DNS+TLS check, phone carrier lookup | Queued |
-| Sprint 3 | #283–#284 | Paid enrichment: Brand SERP, Indexed Pages, Competitors expansion, GMB full enrichment, Reviews sentiment | Queued |
-| Sprint 4 | #285 | Scoring redesign: align all 5 scorers to v7 signals (remove dead DFS signals, add scrape signals, add Ads Transparency) | Queued |
+| Sprint 2 | #281–#282 | Free intelligence sweep: website scrape (Spider.cloud), DNS/MX/SPF/DKIM, ABN registry JOIN, free_enrichment.py | COMPLETE — PR #245 |
+| Sprint 3 | #283 | Paid enrichment: affordability gate + DFS bulk metrics + DFS Maps GMB, paid_enrichment.py | COMPLETE — PR #246 |
+| Sprint 4+ | #284+ | Segments 3-8 build (DM identification, email, phone, social, scoring, outreach) | ON HOLD — pending Segment 1+2 live test |
 | Sprint 5 | #286–#287 | DM discovery: email waterfall (scrape→Leadmagic→ZeroBounce), mobile waterfall, reachability v7 | Queued |
 | Sprint 6 | #288–#289 | Message generation + outreach wiring: Haiku redesign with v7 signal inputs, scheduling engine, quota loop | Queued |
 | Sprint 7 | #290 | Multi-vertical: seed dental, recruitment, IT MSP signal configs + category codes | Queued (parallel with 4–6) |
@@ -690,3 +692,68 @@ Compliance: SPAM Act 2003, DNCR registered, TCP Code (voice), Australian-built
 - PR #221 (research-1 brief config) still open — awaiting Dave
 
 
+
+## SECTION 21 — SEGMENT TESTING STRATEGY
+
+Ratified: March 29, 2026
+
+Pipeline validated in 8 sequential segments. Each
+segment tested with 10 FRESH real AU domains before
+next segment is built. Domains are NOT recycled
+between segment tests.
+
+SEGMENT 1 — DISCOVERY
+Find domains. DFS domain_metrics_by_categories.
+Components: layer_2_discovery.py (Sprint 1)
+Status: CODE COMPLETE — ready for live test
+
+SEGMENT 2 — BUSINESS INTELLIGENCE
+Understand the business. Website scrape (Spider.cloud),
+DNS/MX/SPF/DKIM, ABN registry JOIN, affordability
+gate, DFS bulk metrics, DFS Maps GMB + reviews.
+Components: free_enrichment.py (Sprint 2),
+paid_enrichment.py (Sprint 3)
+Status: CODE COMPLETE — ready for live test
+
+SEGMENT 3 — DECISION MAKER IDENTIFICATION
+Find the human. GMB name, ABN legal name, team page
+URLs, review mentions, Brand SERP knowledge panel.
+Components: not yet built (Sprint 5)
+Status: BLOCKED — awaiting Segment 1+2 validation
+
+SEGMENT 4 — EMAIL DISCOVERY
+Get verified email. 4-tier waterfall: contact page
+scrape, pattern gen + SMTP verify, Leadmagic,
+FullEnrich/BetterContact. ZeroBounce verification.
+Components: partially built (Sprint 5)
+Status: BLOCKED — awaiting Segment 3 validation
+
+SEGMENT 5 — PHONE DISCOVERY
+Get mobile/direct number. GMB phone carrier check,
+Voice AI landline-to-mobile, Leadmagic mobile-finder.
+Components: not yet built (Sprint 5)
+Status: BLOCKED — awaiting Segment 4 validation
+
+SEGMENT 6 — SOCIAL DISCOVERY
+Find LinkedIn profile. Bright Data + Unipile.
+Components: partially wired
+Status: BLOCKED — awaiting Segment 5 validation
+
+SEGMENT 7 — SCORING + MESSAGE GENERATION
+Rank and write outreach. 5 scoring engines + Haiku
+message gen (4 channels).
+Components: built but need v7 signal recalibration
+(Sprint 4 + Sprint 6)
+Status: BLOCKED — awaiting Segments 1-6 validation
+
+SEGMENT 8 — OUTREACH EXECUTION
+Send across channels. Salesforge email, Unipile
+LinkedIn, ElevenAgents Voice AI, SMS (provider TBD).
+Components: email + LinkedIn + voice built, SMS not
+Status: BLOCKED — awaiting Segment 7 validation
+
+RULE: Do NOT build next segment until prior segment
+passes live test with 10 fresh domains.
+
+CURRENT STATE: Segments 1+2 code complete, awaiting
+live test. All other segments blocked.

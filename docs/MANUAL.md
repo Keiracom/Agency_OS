@@ -23,10 +23,10 @@ Revenue model for BU: API subscriptions, Salesforce/HubSpot marketplace, bulk an
 
 ## SECTION 2 — CURRENT STATE
 
-- Last directive issued: #285 (Free enrichment quality fixes — COMPLETE)
-- Next directive: #286
-- Test baseline: 1034 passed, 0 failed, 28 skipped (+18 from #285)
-- Last merged PRs: #242–#247 (Sprints 1-4), #248 (Directive #285 pending merge)
+- Last directive issued: #286 (DM Identification Layer — COMPLETE)
+- Next directive: #287
+- Test baseline: 1044 passed, 0 failed, 28 skipped (+10 from #286)
+- Last merged PRs: #242–#248 (Sprints 1-4), #249 (Directive #286 pending merge)
 - Spider.cloud: validated, API key in env SPIDER_API_KEY
 - Segment testing: ratified March 29 2026 — Segments 1+2 ready for live test
 - Architecture: **v7 ratified Mar 28 2026** — signal-first organic discovery, free intelligence sweep, proven with live AU data across 5 dental domains
@@ -506,8 +506,9 @@ v6 era (#271–#277): Layer 2 (discovery), Layer 3 (bulk filter), signal config 
 | Sprint 2 | #281–#282 | Free intelligence sweep: website scrape (Spider.cloud), DNS/MX/SPF/DKIM, ABN registry JOIN, free_enrichment.py | COMPLETE — PR #245 |
 | Sprint 3 | #283 | Paid enrichment: affordability gate + DFS bulk metrics + DFS Maps GMB, paid_enrichment.py | COMPLETE — PR #246 |
 | Sprint 4 | #284 | DFS date params fix + DiscoverySource enum (DOMAIN_CATEGORIES / MAPS_SERP stub) | COMPLETE — PR #247 merged |
-| Sprint 4 | #285 | Free enrichment quality: ABN confidence, JSON-LD address, email maturity collapse, silent exception fix | COMPLETE — PR #248 (pending merge) |
-| Sprint 4+ | #286+ | Segments 3-8 build (DM identification, email, phone, social, scoring, outreach) | ON HOLD — pending Segment 1+2 live test |
+| Sprint 4 | #285 | Free enrichment quality: ABN confidence, JSON-LD address, email maturity collapse, silent exception fix | COMPLETE — PR #248 merged |
+| Sprint 4 | #286 | DM Identification: BrightDataLinkedInClient + DMIdentification pipeline (4-tier fallback) | COMPLETE — PR #249 (pending merge) |
+| Sprint 4+ | #287+ | DM wiring into enrichment pipeline + Segment 4 live test | NEXT |
 | Sprint 5 | #286–#287 | DM discovery: email waterfall (scrape→Leadmagic→ZeroBounce), mobile waterfall, reachability v7 | Queued |
 | Sprint 6 | #288–#289 | Message generation + outreach wiring: Haiku redesign with v7 signal inputs, scheduling engine, quota loop | Queued |
 | Sprint 7 | #290 | Multi-vertical: seed dental, recruitment, IT MSP signal configs + category codes | Queued (parallel with 4–6) |

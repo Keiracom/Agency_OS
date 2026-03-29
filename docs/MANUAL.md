@@ -26,7 +26,7 @@ Revenue model for BU: API subscriptions, Salesforce/HubSpot marketplace, bulk an
 - Last directive issued: #286 (DM Identification Layer — COMPLETE)
 - Next directive: #287
 - Test baseline: 1044 passed, 0 failed, 28 skipped (+10 from #286)
-- Last merged PRs: #242–#248 (Sprints 1-4), #249 (Directive #286 pending merge)
+- Last merged PRs: #242–#249 (Sprints 1-4)
 - Spider.cloud: validated, API key in env SPIDER_API_KEY
 - Segment testing: ratified March 29 2026 — Segments 1+2 ready for live test
 - Architecture: **v7 ratified Mar 28 2026** — signal-first organic discovery, free intelligence sweep, proven with live AU data across 5 dental domains
@@ -224,16 +224,35 @@ PASS if propensity_score >= 50
 
 ### LAYER 7: DECISION MAKER DISCOVERY
 
-Waterfall (cheapest first):
-a) Website scrape contact extraction (free — from Layer 3 data)
-b) GMB phone/contact (free — from Layer 4 data)
-c) Leadmagic employee-finder ($0.05/domain) → name, title, LinkedIn
-d) Leadmagic email-finder ($0.015) → verified email
-e) Leadmagic mobile-finder ($0.077) → AU mobile
-f) ZeroBounce verification ($0.005) → catch-all/invalid filter
+Waterfall (cheapest first, return on first hit):
 
-Cost: ~$0.05-$0.15/domain depending on waterfall depth
-Sprint: Sprint 5
+**T-DM1 — Bright Data LinkedIn Company Lookup (Directive #286)**
+- Client: `src/integrations/brightdata_client.py` (`BrightDataLinkedInClient`)
+- Method: `lookup_company_people(company_name, domain, linkedin_url)`
+- Uses LinkedIn company dataset `gd_l1vikfnt1wgvvqz95w` via Datasets v3 API
+- Returns employees list → `pick_decision_maker()` scores by title priority: owner > founder > co-founder > director > principal > managing > ceo > partner
+- Confidence: HIGH (owner/founder/director/principal/managing) | MEDIUM (ceo/partner/president) | LOW (any other employee)
+- Cost: **$0.00075/record** (NEW — much cheaper than Leadmagic)
+- If `linkedin_company_url` found in Spider social links → use directly; else search by company name
+
+**T-DM2 — Website Scrape Fallback (free, from Layer 3)**
+- Team page names from `spider_data.team_names` or About page text
+- Confidence: MEDIUM
+- Cost: FREE
+
+**T-DM3 — ABN Entity Name Fallback**
+- Extract non-biz-word from entity_name (sole trader) → surname candidate
+- Confidence: LOW
+- Cost: FREE
+
+**T-DM4 (future) — Leadmagic employee-finder ($0.05/domain)**
+
+Orchestration: `src/pipeline/dm_identification.py` (`DMIdentification.identify()`)
+Returns: `DMResult(name, title, source, confidence, linkedin_url, tier_used)`
+Note: NOT yet wired into free_enrichment.py / paid_enrichment.py — scheduled Directive #287.
+
+Cost: $0.00075/record (BD LinkedIn) + $0 (fallback tiers)
+Sprint: Sprint 4 (Directive #286)
 
 ---
 
@@ -422,7 +441,8 @@ Approval flow:
 | DFS Brand SERP / Indexed Pages | Brand search presence, indexed page count | $0.005/call | Planned Sprint 3 |
 | DFS Google Ads Advertisers | Keywords actively bid on (complements Transparency binary) | $0.006/call | ✅ Live in layer_2_discovery.py |
 | Bright Data GMB Dataset | GMB deep enrichment (claimed status, full hours, photos) | $0.001/record | ✅ Live — dataset `gd_m8ebnr0q2qlklc02fz` |
-| Bright Data LinkedIn Company | Company headcount, industry, LinkedIn URL | $0.025/record | ✅ Live |
+| Bright Data LinkedIn Company (company enrichment) | Company headcount, industry, LinkedIn URL via `bright_data_client.py` | $0.025/record | ✅ Live |
+| Bright Data LinkedIn DM lookup (Directive #286) | Company employees + titles → pick_decision_maker() via `brightdata_client.py`. Key: `2bab0747...` | **$0.00075/record** | ✅ Built — not yet wired to pipeline |
 | Leadmagic email-finder | DM email from name + domain | $0.015/call | ✅ Live (plan unpurchased — mock mode) |
 | Leadmagic mobile-finder | DM mobile from LinkedIn URL | $0.077/call | ✅ Live (plan unpurchased) |
 | Leadmagic employee-finder | Employees at domain | ~$0.05/domain | ✅ Live |
@@ -507,7 +527,7 @@ v6 era (#271–#277): Layer 2 (discovery), Layer 3 (bulk filter), signal config 
 | Sprint 3 | #283 | Paid enrichment: affordability gate + DFS bulk metrics + DFS Maps GMB, paid_enrichment.py | COMPLETE — PR #246 |
 | Sprint 4 | #284 | DFS date params fix + DiscoverySource enum (DOMAIN_CATEGORIES / MAPS_SERP stub) | COMPLETE — PR #247 merged |
 | Sprint 4 | #285 | Free enrichment quality: ABN confidence, JSON-LD address, email maturity collapse, silent exception fix | COMPLETE — PR #248 merged |
-| Sprint 4 | #286 | DM Identification: BrightDataLinkedInClient + DMIdentification pipeline (4-tier fallback) | COMPLETE — PR #249 (pending merge) |
+| Sprint 4 | #286 | DM Identification: BrightDataLinkedInClient + DMIdentification pipeline (4-tier fallback) | COMPLETE — PR #249 merged |
 | Sprint 4+ | #287+ | DM wiring into enrichment pipeline + Segment 4 live test | NEXT |
 | Sprint 5 | #286–#287 | DM discovery: email waterfall (scrape→Leadmagic→ZeroBounce), mobile waterfall, reachability v7 | Queued |
 | Sprint 6 | #288–#289 | Message generation + outreach wiring: Haiku redesign with v7 signal inputs, scheduling engine, quota loop | Queued |
@@ -529,7 +549,8 @@ v6 era (#271–#277): Layer 2 (discovery), Layer 3 (bulk filter), signal config 
 | #278 | v7 architecture alignment (this directive) | COMPLETE |
 | #283 | Sprint 3: Paid enrichment + affordability gate | COMPLETE — PR #246 merged |
 | #284 | DFS date params fix (first_date/second_date) + DiscoverySource enum | COMPLETE — PR #247 merged |
-| #285 | Free enrichment quality: ABN confidence, JSON-LD address, EmailMaturity enum, silent exception fix | COMPLETE — PR #248 (pending merge) |
+| #285 | Free enrichment quality: ABN confidence, JSON-LD address, EmailMaturity enum, silent exception fix | COMPLETE — PR #248 merged |
+| #286 | DM Identification: BrightDataLinkedInClient (brightdata_client.py) + DMIdentification pipeline (4-tier fallback T-DM1→T-DM3) | COMPLETE — PR #249 merged |
 
 ---
 

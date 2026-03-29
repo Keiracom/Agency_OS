@@ -23,8 +23,8 @@ Revenue model for BU: API subscriptions, Salesforce/HubSpot marketplace, bulk an
 
 ## SECTION 2 — CURRENT STATE
 
-- Last directive issued: #288 (Composite affordability scorer + streaming pipeline orchestrator — COMPLETE)
-- Next directive: #289
+- Last directive issued: #289 (ABN multi-strategy matching waterfall — COMPLETE)
+- Next directive: #290
 - Test baseline: 1067 passed, 0 failed, 28 skipped (+11 from #288)
 - Last merged PRs: #242–#250 (Sprints 1-4), #251 (Directive #288 pending merge)
 - Spider.cloud: validated, API key in env SPIDER_API_KEY
@@ -490,6 +490,23 @@ Approval flow:
 - **Email maturity collapsed:** Old MATURE/BASIC/WEBMAIL/NONE → New PROFESSIONAL (custom MX + SPF) / WEBMAIL (MX, no SPF) / NONE. DKIM kept for data collection but excluded from classification.
 - **Spider.cloud cost validated:** $0.01/page (10-page Segment 2 test = $0.10). DNS + ABN = FREE. Total per-domain free enrichment cost: ~$0.01.
 
+**ABN multi-strategy matching (Directive #289, Mar 29 2026):**
+
+Root cause of 0/200 ABN matches in E2E test: single `LIKE '%phrase%'` query never matched ABN entity names derived from domain strings ("dentists at pymble" ≠ "PYMBLE DENTAL PTY LTD").
+
+Replaced with a 4-strategy waterfall in `_match_abn` — returns on first EXACT or PARTIAL hit, falls back to best LOW if all strategies return LOW, returns `abn_matched=False` only when all strategies find nothing:
+
+| Strategy | Method | Notes |
+|---|---|---|
+| S1 Domain keywords | Strip TLD, split hyphens/stopwords (≥5-char threshold), AND-intersect keywords in local table | Handles `dentistsatpymble` → `["dentists","pymble"]` |
+| S2 Title keywords | Clean Spider page title (strip "Home \|", nav suffixes), AND-intersect in local table | Dominant strategy in live test (5/10) |
+| S3 Suburb + keyword | JSON-LD address suburb + primary domain keyword, AND-intersect | Needs `website_address.suburb` from Spider scrape |
+| S4 Live ABN API | `ABRSearchByNameAdvancedSimpleProtocol2017` fuzzy search, cross-ref local table for `gst_registered`/`entity_type` | Fallback; ABN API returns individual profiles not gst_registered, so local ABN lookup follows |
+
+New helpers: `_abn_clean_entity_name()` (strips PTY LTD, THE TRUSTEE FOR), `_extract_domain_keywords()`, `_local_abn_match()`, `_local_abn_gst()`, `_abn_result_from_row()`.
+
+Live Task D validation: **8/10 domains matched** (vs 0/200 before fix). Cost: FREE (local table + ABN API free tier).
+
 ### PAID TIER
 
 | Source | What | Cost | Status |
@@ -590,7 +607,8 @@ v6 era (#271–#277): Layer 2 (discovery), Layer 3 (bulk filter), signal config 
 | Sprint 4 | #286 | DM Identification: BrightDataLinkedInClient + DMIdentification pipeline (4-tier fallback) | COMPLETE — PR #249 merged |
 | Sprint 4 | #287 | SERP-first DM waterfall: DFS SERP T-DM1 (70% hit), BD T-DM2, AU location filter | COMPLETE — PR #250 (pending merge) |
 | Sprint 5 | #288 | Composite affordability scorer (7 signals, 4 bands) + streaming PipelineOrchestrator + ProspectCard | COMPLETE — PR #251 (pending merge) |
-| Sprint 5 | #289 | Wire DMIdentification + orchestrator into pipeline (free_enrichment / paid_enrichment) + Segment 4 live test | NEXT |
+| Sprint 5 | #289 | ABN multi-strategy matching: 4-strategy waterfall, domain/title/suburb keywords, live API fallback, PTY LTD stripping | COMPLETE — PR #252 |
+| Sprint 5 | #290 | Wire DMIdentification + orchestrator into pipeline (free_enrichment / paid_enrichment) + Segment 4 live test | NEXT |
 | Sprint 6 | #290 | DM email waterfall (scrape→Leadmagic→ZeroBounce), mobile waterfall, reachability v7 | Queued |
 | Sprint 7 | #291–#292 | Message generation + outreach wiring: Haiku redesign with v7 signal inputs, scheduling engine, quota loop | Queued |
 | Sprint 7 | #290 | Multi-vertical: seed dental, recruitment, IT MSP signal configs + category codes | Queued (parallel with 4–6) |
@@ -614,7 +632,8 @@ v6 era (#271–#277): Layer 2 (discovery), Layer 3 (bulk filter), signal config 
 | #285 | Free enrichment quality: ABN confidence, JSON-LD address, EmailMaturity enum, silent exception fix | COMPLETE — PR #248 merged |
 | #286 | DM Identification: BrightDataLinkedInClient (brightdata_client.py) + DMIdentification pipeline (4-tier fallback T-DM1→T-DM3) | COMPLETE — PR #249 merged |
 | #287 | SERP-first DM waterfall: DFS SERP site:linkedin.com/in as T-DM1 (70% hit), BD as T-DM2, AU location filter | COMPLETE — PR #250 merged |
-| #288 | Composite affordability scorer (AffordabilityScorer, 7 signals, 4 bands) + PipelineOrchestrator + ProspectCard | COMPLETE — PR #251 (pending merge) |
+| #288 | Composite affordability scorer (AffordabilityScorer, 7 signals, 4 bands) + PipelineOrchestrator + ProspectCard | COMPLETE — PR #251 merged |
+| #289 | ABN multi-strategy matching: 4-strategy waterfall (domain/title/suburb/live-API), PTY LTD stripping, 8/10 live match rate | COMPLETE — PR #252 |
 
 ---
 

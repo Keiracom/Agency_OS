@@ -91,6 +91,8 @@ class DFSLabsClient:
         self._cost_bulk_domain_metrics = Decimal("0")
         # SERP LinkedIn people lookup (Directive #287)
         self._cost_search_linkedin_people = Decimal("0")
+        # SERP Google Maps GMB lookup (Directive #290)
+        self._cost_maps_search_gmb = Decimal("0")
 
         # Cache for get_categories (free, rarely changes)
         self._categories_cache: list[dict] | None = None
@@ -130,6 +132,7 @@ class DFSLabsClient:
             + self._cost_google_jobs_advertisers
             + self._cost_bulk_domain_metrics
             + self._cost_search_linkedin_people
+            + self._cost_maps_search_gmb
         )
         return float(total)
 
@@ -149,6 +152,7 @@ class DFSLabsClient:
             + self._cost_google_jobs_advertisers
             + self._cost_bulk_domain_metrics
             + self._cost_search_linkedin_people
+            + self._cost_maps_search_gmb
         )
         return float(total_usd * AUD_RATE)
 
@@ -742,6 +746,47 @@ class DFSLabsClient:
                 }
             )
         return results
+
+    # ============================================
+    # ENDPOINT 9c: maps_search_gmb  (Directive #290)
+    # ============================================
+
+    async def maps_search_gmb(
+        self,
+        business_name: str,
+        location_name: str = "Australia",
+    ) -> dict | None:
+        """
+        Search DFS SERP Google Maps for a business GMB listing.
+        Endpoint: /v3/serp/google/maps/live/advanced
+        Cost: $0.0035/call.
+        Returns dict with gmb_review_count, gmb_rating, etc. or None.
+        """
+        result = await self._post(
+            endpoint="/v3/serp/google/maps/live/advanced",
+            payload=[
+                {
+                    "keyword": business_name,
+                    "location_name": location_name,
+                    "language_name": "English",
+                    "depth": 1,
+                }
+            ],
+            cost_per_call=Decimal("0.0035"),
+            cost_attr="_cost_maps_search_gmb",
+        )
+        items = result.get("items") or []
+        if not items:
+            return None
+        item = items[0]
+        return {
+            "gmb_place_id": item.get("place_id"),
+            "gmb_rating": item.get("rating"),
+            "gmb_review_count": item.get("rating_count") or item.get("reviews_count") or 0,
+            "gmb_address": item.get("address"),
+            "gmb_phone": item.get("phone"),
+            "gmb_found": True,
+        }
 
     # ============================================
     # ENDPOINT 9b: search_linkedin_people  (Directive #287 — DM waterfall T-DM1)

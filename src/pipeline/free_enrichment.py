@@ -183,6 +183,40 @@ class FreeEnrichment:
             )
         return stats
 
+    async def enrich(self, domain: str) -> dict | None:
+        """
+        Single-domain enrichment for pipeline orchestration.
+        Does NOT write to DB. Returns enrichment dict or None on failure.
+        Used by PipelineOrchestrator.run().
+        """
+        try:
+            domain_alive = self._dns_precheck(domain)
+            website_data: dict = {}
+            if domain_alive:
+                website_data = await self._scrape_website(domain) or {}
+            dns_data = self._enrich_dns(domain)
+            suburb = (website_data.get("website_address") or {}).get("suburb")
+            abn_data = await self._match_abn(
+                domain,
+                website_data.get("title"),
+                state_hint=None,
+            )
+            title = website_data.get("title", "")
+            company_name = (
+                title.split("|")[0].split("-")[0].strip()[:60]
+                or domain.split(".")[0].replace("-", " ").title()
+            )
+            return {
+                **website_data,
+                **dns_data,
+                **abn_data,
+                "company_name": company_name,
+                "domain": domain,
+            }
+        except Exception as exc:
+            self._logger.warning("enrich failed for %s: %s", domain, exc)
+            return None
+
     async def _process_domain(self, row: asyncpg.Record, stats: dict) -> None:
         domain = row["domain"]
         bu_id = row["id"]

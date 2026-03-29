@@ -397,6 +397,52 @@ class Layer2Discovery:
             "passed": int(passed),
         }
 
+    async def pull_batch(
+        self,
+        category_code: str,
+        location: str = "Australia",
+        limit: int = 50,
+        offset: int = 0,
+        etv_min: float = 200.0,
+        etv_max: float = 5000.0,
+    ) -> list[dict]:
+        """
+        Stateless batch pull for pipeline orchestration.
+        Does NOT write to DB. Does NOT apply blocklist/dedup.
+        Returns list of {"domain": str, "organic_etv": float}.
+        Used by PipelineOrchestrator.run(). Distinct from run() which reads
+        signal_configurations and writes to BU.
+        """
+        from datetime import date as _date, timedelta as _td
+        today = _date.today()
+        first_date = (today - _td(days=180)).strftime("%Y-%m-%d")
+        second_date = today.strftime("%Y-%m-%d")
+
+        try:
+            code_int = int(category_code)
+        except (ValueError, TypeError):
+            logger.warning("pull_batch: invalid category_code %r", category_code)
+            return []
+
+        try:
+            results = await self._dfs.domain_metrics_by_categories(
+                category_codes=[code_int],
+                location_name=location,
+                paid_etv_min=0.0,
+                first_date=first_date,
+                second_date=second_date,
+            )
+        except Exception as exc:
+            logger.error("pull_batch: DFS error category=%s offset=%d: %s", category_code, offset, exc)
+            return []
+
+        filtered = [
+            {"domain": r["domain"], "organic_etv": r.get("organic_etv", 0.0)}
+            for r in results
+            if etv_min <= r.get("organic_etv", 0.0) <= etv_max
+        ]
+        return filtered[offset: offset + limit]
+
     async def run_batch(
         self,
         vertical_slugs: list[str],

@@ -70,11 +70,13 @@ class PipelineOrchestrator:
         free_enrichment,
         affordability_scorer,
         dm_identification,
+        gmb_client=None,
     ):
         self._discovery = discovery
         self._enrichment = free_enrichment
         self._scorer = affordability_scorer
         self._dm = dm_identification
+        self._gmb_client = gmb_client
 
     async def run(
         self,
@@ -141,6 +143,28 @@ class PipelineOrchestrator:
                     stats.gate_failed += 1
                     continue
                 stats.gate_passed += 1
+
+                # --- GMB reviews (optional, only for gate passers) ---
+                if self._gmb_client is not None:
+                    company_name_for_gmb = (
+                        enrichment.get("company_name")
+                        or enrichment.get("abn_entity_name")
+                        or domain
+                    )
+                    suburb = (enrichment.get("website_address") or {}).get("suburb", "")
+                    gmb_query = f"{company_name_for_gmb} {suburb}".strip()
+                    try:
+                        gmb_data = await self._gmb_client.maps_search_gmb(
+                            business_name=gmb_query,
+                            location_name=location,
+                        )
+                        if gmb_data:
+                            enrichment = {**enrichment, **gmb_data}
+                            stats.total_cost_usd += 0.0035
+                            # Re-score with GMB data
+                            score = self._scorer.score(enrichment)
+                    except Exception:
+                        logger.exception("orchestrator_gmb_failed domain=%s", domain)
 
                 # --- DM identification ---
                 try:

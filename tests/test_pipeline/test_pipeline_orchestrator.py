@@ -1,4 +1,4 @@
-"""Tests for PipelineOrchestrator — Directive #288."""
+"""Tests for PipelineOrchestrator — updated for Directive #291."""
 import asyncio
 import pytest
 from unittest.mock import AsyncMock, MagicMock
@@ -31,20 +31,37 @@ def make_dm_result(name="Alice Owner"):
     return dm
 
 
-def make_score_result(passed=True, band="HIGH", score=10, gaps=None):
+def make_afford_result(passed=True, band="HIGH", score=10):
     result = MagicMock()
     result.passed_gate = passed
     result.band = band
     result.raw_score = score
-    result.gaps = gaps or []
+    result.gaps = []
     return result
+
+
+def make_intent_result(passed=True, band="TRYING", score=5):
+    result = MagicMock()
+    result.passed_free_gate = passed
+    result.band = band
+    result.raw_score = score
+    result.evidence = []
+    return result
+
+
+def make_scorer(afford_passed=True):
+    scorer = MagicMock()
+    scorer.score_affordability = MagicMock(return_value=make_afford_result(passed=afford_passed))
+    scorer.score_intent_free = MagicMock(return_value=make_intent_result())
+    scorer.score_intent_full = MagicMock(return_value=make_intent_result())
+    return scorer
 
 
 def make_orchestrator(discovery, free_enrichment, scorer, dm):
     return PipelineOrchestrator(
         discovery=discovery,
         free_enrichment=free_enrichment,
-        affordability_scorer=scorer,
+        prospect_scorer=scorer,
         dm_identification=dm,
     )
 
@@ -58,8 +75,7 @@ async def test_orchestrator_stops_at_target():
     free_enrichment = MagicMock()
     free_enrichment.enrich = AsyncMock(return_value=make_enrichment())
 
-    scorer = MagicMock()
-    scorer.score = MagicMock(return_value=make_score_result())
+    scorer = make_scorer()
 
     dm = MagicMock()
     dm.identify = AsyncMock(return_value=make_dm_result())
@@ -87,8 +103,7 @@ async def test_orchestrator_stops_on_category_exhausted():
     free_enrichment = MagicMock()
     free_enrichment.enrich = AsyncMock(return_value=make_enrichment())
 
-    scorer = MagicMock()
-    scorer.score = MagicMock(return_value=make_score_result())
+    scorer = make_scorer()
 
     dm = MagicMock()
     dm.identify = AsyncMock(return_value=make_dm_result())
@@ -104,9 +119,9 @@ async def test_orchestrator_tracks_stats():
     """
     5 domains:
       domain0 — enrich returns None → enrichment_failed
-      domain1 — gate_failed
-      domain2 — gate_failed
-      domain3 — dm_failed (dm.name is None)
+      domain1 — affordability gate fails
+      domain2 — affordability gate fails
+      domain3 — gate passed, dm.name is None → dm_not_found
       domain4 — success
     """
     domains = [{"domain": f"domain{i}.com"} for i in range(5)]
@@ -123,16 +138,18 @@ async def test_orchestrator_tracks_stats():
     free_enrichment = MagicMock()
     free_enrichment.enrich = enrich
 
-    score_responses = [
-        make_score_result(passed=False),
-        make_score_result(passed=False),
-        make_score_result(passed=True),
-        make_score_result(passed=True),
+    afford_responses = [
+        make_afford_result(passed=False),
+        make_afford_result(passed=False),
+        make_afford_result(passed=True),
+        make_afford_result(passed=True),
     ]
-    score_iter = iter(score_responses)
+    afford_iter = iter(afford_responses)
 
     scorer = MagicMock()
-    scorer.score = MagicMock(side_effect=lambda e: next(score_iter))
+    scorer.score_affordability = MagicMock(side_effect=lambda e: next(afford_iter))
+    scorer.score_intent_free = MagicMock(return_value=make_intent_result())
+    scorer.score_intent_full = MagicMock(return_value=make_intent_result())
 
     dm_responses = [make_dm_result(name=None), make_dm_result(name="Alice")]
     dm_iter = iter(dm_responses)
@@ -148,8 +165,8 @@ async def test_orchestrator_tracks_stats():
 
     assert result.stats.discovered == 5
     assert result.stats.enrichment_failed == 1
-    assert result.stats.gate_failed == 2
-    assert result.stats.dm_failed == 1
+    assert result.stats.affordability_rejected == 2
+    assert result.stats.dm_not_found == 1
     assert result.stats.dm_found == 1
 
 
@@ -164,8 +181,7 @@ async def test_prospect_card_fields():
     free_enrichment = MagicMock()
     free_enrichment.enrich = AsyncMock(return_value=enrichment)
 
-    scorer = MagicMock()
-    scorer.score = MagicMock(return_value=make_score_result(band="HIGH", score=11, gaps=["Not running Google Ads"]))
+    scorer = make_scorer()
 
     dm = MagicMock()
     dm.identify = AsyncMock(return_value=make_dm_result())
@@ -179,7 +195,7 @@ async def test_prospect_card_fields():
     assert card.domain == "example.com"
     assert isinstance(card.company_name, str) and card.company_name
     assert isinstance(card.location, str)
-    assert isinstance(card.gaps, list)
+    assert isinstance(card.evidence, list)
     assert isinstance(card.affordability_band, str)
     assert isinstance(card.affordability_score, int)
     assert isinstance(card.dm_name, str) and card.dm_name

@@ -27,6 +27,10 @@ BATCH_SIZE = 50
 DNS_TIMEOUT = 5
 SPIDER_MAX_CREDITS_PER_PAGE = 50
 
+AW_TAG_RE    = re.compile(r'AW-\d{4,12}', re.IGNORECASE)
+GADS_RMK_RE  = re.compile(r'googleads\.g\.doubleclick\.net|google_conversion_id', re.IGNORECASE)
+META_PIXEL_RE = re.compile(r'fbq\s*\(|connect\.facebook\.net[^"]*fbevents|_fbq\b', re.IGNORECASE)
+
 CMS_PATTERNS = {
     "wp-content/": "wordpress",
     "wp-includes/": "wordpress",
@@ -101,6 +105,24 @@ class FreeEnrichment:
         self._logger = logging.getLogger(__name__)
 
     # ── Helpers ──────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _detect_ad_tags(html: str) -> dict[str, bool]:
+        """Scan Spider-scraped HTML for advertising pixel/tag patterns.
+        Free signal: no extra API calls, uses already-scraped content.
+        Returns: has_google_ads_tag, has_meta_pixel, has_any_ad_tag
+        """
+        if not html:
+            return {"has_google_ads_tag": False, "has_meta_pixel": False, "has_any_ad_tag": False}
+        aw    = bool(AW_TAG_RE.search(html))
+        rmk   = bool(GADS_RMK_RE.search(html))
+        meta  = bool(META_PIXEL_RE.search(html))
+        gads  = aw or rmk
+        return {
+            "has_google_ads_tag": gads,
+            "has_meta_pixel": meta,
+            "has_any_ad_tag": gads or meta,
+        }
 
     def _abn_confidence(self, search_name: str, api_name: str) -> ABNMatchConfidence:
         """Compute name similarity between search term and ABN registry name."""
@@ -292,6 +314,7 @@ class FreeEnrichment:
                 "website_team_names": self._extract_team_urls(links),
                 "website_contact_emails": self._extract_emails(content, links),
                 "website_address": website_address,
+                **self._detect_ad_tags(content),
             }
         except Exception as exc:
             self._logger.warning("Spider error for %s: %s", domain, exc)

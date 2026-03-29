@@ -93,6 +93,8 @@ class DFSLabsClient:
         self._cost_search_linkedin_people = Decimal("0")
         # SERP Google Maps GMB lookup (Directive #290)
         self._cost_maps_search_gmb = Decimal("0")
+        # Ads Search by domain (Directive #291)
+        self._cost_ads_search_by_domain = Decimal("0")
 
         # Cache for get_categories (free, rarely changes)
         self._categories_cache: list[dict] | None = None
@@ -133,6 +135,7 @@ class DFSLabsClient:
             + self._cost_bulk_domain_metrics
             + self._cost_search_linkedin_people
             + self._cost_maps_search_gmb
+            + self._cost_ads_search_by_domain
         )
         return float(total)
 
@@ -153,6 +156,7 @@ class DFSLabsClient:
             + self._cost_bulk_domain_metrics
             + self._cost_search_linkedin_people
             + self._cost_maps_search_gmb
+            + self._cost_ads_search_by_domain
         )
         return float(total_usd * AUD_RATE)
 
@@ -786,6 +790,68 @@ class DFSLabsClient:
             "gmb_address": item.get("address"),
             "gmb_phone": item.get("phone"),
             "gmb_found": True,
+        }
+
+    # ============================================
+    # ENDPOINT 9d: ads_search_by_domain  (Directive #291)
+    # ============================================
+
+    async def ads_search_by_domain(
+        self,
+        domain: str,
+        location_name: str = "Australia",
+    ) -> dict | None:
+        """
+        Check if a domain is running Google Ads via Ads Transparency endpoint.
+        Endpoint: /v3/serp/google/ads_search/live/advanced
+        Cost: $0.002/call.
+        Status 40102 = no ads found (not an error).
+        Returns dict with is_running_ads, ad_count, formats, first_shown, last_shown
+        or None on error.
+        """
+        try:
+            result = await self._post(
+                endpoint="/v3/serp/google/ads_search/live/advanced",
+                payload=[
+                    {
+                        "target": domain,
+                        "location_name": location_name,
+                        "language_name": "English",
+                    }
+                ],
+                cost_per_call=Decimal("0.002"),
+                cost_attr="_cost_ads_search_by_domain",
+            )
+        except Exception as exc:
+            logger.warning("ads_search_by_domain error for %s: %s", domain, exc)
+            return None
+
+        items = result.get("items") or []
+        if not items:
+            return {
+                "is_running_ads": False,
+                "ad_count": 0,
+                "formats": [],
+                "first_shown": None,
+                "last_shown": None,
+            }
+
+        dates = []
+        formats = set()
+        for item in items:
+            formats.add(item.get("format") or item.get("type") or "unknown")
+            for dk in ("first_shown", "date_from"):
+                if item.get(dk):
+                    dates.append(item[dk])
+        # last_shown from first item (highest rank)
+        last_shown = items[0].get("last_shown") or items[0].get("date_to")
+
+        return {
+            "is_running_ads": True,
+            "ad_count": len(items),
+            "formats": sorted(formats),
+            "first_shown": min(dates) if dates else None,
+            "last_shown": last_shown,
         }
 
     # ============================================

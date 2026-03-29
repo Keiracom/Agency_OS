@@ -23,10 +23,10 @@ Revenue model for BU: API subscriptions, Salesforce/HubSpot marketplace, bulk an
 
 ## SECTION 2 — CURRENT STATE
 
-- Last directive issued: #288 (Composite affordability scorer + streaming pipeline orchestrator — COMPLETE)
-- Next directive: #289
-- Test baseline: 1067 passed, 0 failed, 28 skipped (+11 from #288)
-- Last merged PRs: #242–#250 (Sprints 1-4), #251 (Directive #288 pending merge)
+- Last directive issued: #290 (Orchestrator wiring + GMB + ads stub — COMPLETE)
+- Next directive: #291
+- Test baseline: 1088 passed, 0 failed, 28 skipped (+21 from #290)
+- Last merged PRs: #242–#253 (Sprints 1-5), #289+#290 pending merge
 - Spider.cloud: validated, API key in env SPIDER_API_KEY
 - Segment testing: ratified March 29 2026 — Segments 1+2 ready for live test
 - Architecture: **v7 ratified Mar 28 2026** — signal-first organic discovery, free intelligence sweep, proven with live AU data across 5 dental domains
@@ -253,7 +253,8 @@ Waterfall (return on first hit — ordered by hit rate, not cost):
 
 Orchestration: `src/pipeline/dm_identification.py` (`DMIdentification.identify()`)
 Returns: `DMResult(name, title, source, confidence, linkedin_url, tier_used)`
-Note: NOT yet wired into free_enrichment.py / paid_enrichment.py — Directive #289.
+Wired into pipeline via PipelineOrchestrator — Directive #290.
+FreeEnrichment.enrich() calls DMIdentification; GMB enrichment added for gate passers.
 
 Cost: $0.01/domain (T-DM1 SERP, 70% hit) → $0.00075/record (T-DM2 BD, fallback)
 Sprint: Sprint 4 (Directive #287)
@@ -480,7 +481,7 @@ Approval flow:
 |--------|------|------|--------|
 | ABN registry local JOIN | GST status (confirms $75k+ revenue), entity type, registration date | FREE | ✅ Live — 2,418,836 rows |
 | Website scrape (Spider.cloud) | Tech stack, CMS, tracking codes (GA4, GTM, Meta Pixel, Google Ads), contact info, JSON-LD address | FREE (direct HTTP) / $0.01/page (Spider.cloud) | ✅ Proven (10/10 Segment 2 test, Mar 2026) |
-| Google Ads Transparency Center | Binary: is business running Google Ads | FREE | ✅ Proven (5/5 AU coverage) — Python scraper, monitor for HTML changes |
+| Google Ads Transparency Center | Binary: is business running Google Ads | FREE | ⚠️ STUB — `src/integrations/ads_transparency.py` returns None. No public API. Sprint 6: implement via Playwright or Bright Data Ads dataset. `is_running_ads` and `ads_count` always 0 until implemented. |
 | DNS + MX/SPF/DKIM check | Email maturity scoring (PROFESSIONAL/WEBMAIL/NONE), MX provider | FREE | ✅ Live — Segment 2 validated. DKIM excluded from scoring (0/10 AU SMBs have detectable DKIM). |
 | Phone carrier lookup | AU mobile carrier validation | FREE | Planned Sprint 5 |
 
@@ -495,7 +496,7 @@ Approval flow:
 | Source | What | Cost | Status |
 |--------|------|------|--------|
 | DFS domain_metrics_by_categories | Domain discovery by AU industry category. Returns organic_etv, organic_keywords, category | $0.0015/domain | ✅ Proven (24,231 AU dental / 31,445 AU plumbing domains, Mar 2026 spike) |
-| DFS SERP Google Maps | GMB: Place ID, category, rating, reviews, address, phone, hours | $0.0035/domain | ✅ Live — 4/5 AU GMB match proven |
+| DFS SERP Google Maps | GMB: Place ID, category, rating, reviews, address, phone, hours | $0.0035/domain | ✅ Live — `DFSLabsClient.maps_search_gmb()` wired. Called for gate passers only. Returns `gmb_review_count` into affordability scorer. |
 | DFS Competitors Domain | Top 5 SERP competitors per prospect | $0.01/call | ✅ Live |
 | DFS Brand SERP / Indexed Pages | Brand search presence, indexed page count | $0.005/call | Planned Sprint 3 |
 | DFS Google Ads Advertisers | Keywords actively bid on (complements Transparency binary) | $0.006/call | ✅ Live in layer_2_discovery.py |
@@ -590,10 +591,12 @@ v6 era (#271–#277): Layer 2 (discovery), Layer 3 (bulk filter), signal config 
 | Sprint 4 | #286 | DM Identification: BrightDataLinkedInClient + DMIdentification pipeline (4-tier fallback) | COMPLETE — PR #249 merged |
 | Sprint 4 | #287 | SERP-first DM waterfall: DFS SERP T-DM1 (70% hit), BD T-DM2, AU location filter | COMPLETE — PR #250 (pending merge) |
 | Sprint 5 | #288 | Composite affordability scorer (7 signals, 4 bands) + streaming PipelineOrchestrator + ProspectCard | COMPLETE — PR #251 (pending merge) |
-| Sprint 5 | #289 | Wire DMIdentification + orchestrator into pipeline (free_enrichment / paid_enrichment) + Segment 4 live test | NEXT |
-| Sprint 6 | #290 | DM email waterfall (scrape→Leadmagic→ZeroBounce), mobile waterfall, reachability v7 | Queued |
-| Sprint 7 | #291–#292 | Message generation + outreach wiring: Haiku redesign with v7 signal inputs, scheduling engine, quota loop | Queued |
-| Sprint 7 | #290 | Multi-vertical: seed dental, recruitment, IT MSP signal configs + category codes | Queued (parallel with 4–6) |
+| Sprint 5 | #289 | ABN multi-strategy matching waterfall (4 strategies, 8/10 live match rate) | COMPLETE — PR #252 |
+| Sprint 5 | #290 | Wire orchestrator: pull_batch + enrich methods, DFS Maps GMB, ads transparency stub | COMPLETE — PR #253 |
+| Sprint 6 | #291 | DM email waterfall (scrape→Leadmagic→ZeroBounce), mobile waterfall, reachability v7 | NEXT |
+| Sprint 7 | #292–#293 | Message generation + outreach wiring: Haiku redesign with v7 signal inputs, scheduling engine, quota loop | Queued |
+| Sprint 8 | #294 | Multi-vertical: seed dental, recruitment, IT MSP signal configs + category codes | Queued |
+| Sprint 9 | #295 | Integration test + hardening: live pipeline test against 100 real domains, cost/quality audit | Queued |
 | Sprint 8 | #291 | Integration test + hardening: live pipeline test against 100 real domains, cost/quality audit | Queued |
 | Sprint 9 | #292 | Founding customer prep: onboarding wizard, approval flow, territory locking, demo mode | Queued |
 | Sprint 10 | #293 | Launch | Queued |
@@ -614,7 +617,9 @@ v6 era (#271–#277): Layer 2 (discovery), Layer 3 (bulk filter), signal config 
 | #285 | Free enrichment quality: ABN confidence, JSON-LD address, EmailMaturity enum, silent exception fix | COMPLETE — PR #248 merged |
 | #286 | DM Identification: BrightDataLinkedInClient (brightdata_client.py) + DMIdentification pipeline (4-tier fallback T-DM1→T-DM3) | COMPLETE — PR #249 merged |
 | #287 | SERP-first DM waterfall: DFS SERP site:linkedin.com/in as T-DM1 (70% hit), BD as T-DM2, AU location filter | COMPLETE — PR #250 merged |
-| #288 | Composite affordability scorer (AffordabilityScorer, 7 signals, 4 bands) + PipelineOrchestrator + ProspectCard | COMPLETE — PR #251 (pending merge) |
+| #288 | Composite affordability scorer (AffordabilityScorer, 7 signals, 4 bands) + PipelineOrchestrator + ProspectCard | COMPLETE — PR #251 merged |
+| #289 | ABN multi-strategy matching: 4-strategy waterfall, domain/title/suburb/live-API, PTY LTD stripping, 8/10 live match rate | COMPLETE — PR #252 |
+| #290 | Orchestrator wiring: pull_batch + enrich methods, DFS Maps GMB (maps_search_gmb), ads transparency stub | COMPLETE — PR #253 |
 
 ---
 

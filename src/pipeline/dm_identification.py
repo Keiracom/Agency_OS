@@ -1,12 +1,12 @@
 """
 Contract: src/pipeline/dm_identification.py
-Purpose: Decision maker identification pipeline — tiered lookup (LinkedIn → website → ABN)
+Purpose: Decision maker identification pipeline — tiered lookup (SERP LinkedIn → BD LinkedIn → website → ABN)
 Layer: 4 - orchestration-adjacent pipeline
 Imports: integrations
 Consumers: enrichment_flow.py, lead_enrichment_flow.py
 
 dm_identification.py — Decision maker identification pipeline.
-Directive #286
+Directive #287 — SERP-first DM waterfall + AU location filter.
 """
 import logging
 import re
@@ -25,21 +25,39 @@ _BUSINESS_WORDS = {
     "THE", "AND", "OF", "FOR",
 }
 
+# Title keywords that indicate a decision maker, scored by seniority
+_DM_TITLE_KEYWORDS: dict[str, int] = {
+    "owner": 10,
+    "founder": 10,
+    "director": 9,
+    "ceo": 9,
+    "coo": 8,
+    "cfo": 8,
+    "principal": 7,
+    "partner": 7,
+    "manager": 5,
+    "head": 4,
+}
+
 
 @dataclass
 class DMResult:
     name: Optional[str] = None
     title: Optional[str] = None
-    source: str = "none"         # brightdata_linkedin | website_scrape | abn_entity
+    source: str = "none"         # serp_linkedin | brightdata_linkedin | website_scrape | abn_entity
     confidence: str = "none"     # HIGH | MEDIUM | LOW | none
     linkedin_url: Optional[str] = None
-    tier_used: str = "none"      # T-DM1 | T-DM2 | T-DM3 | none (for CIS tracking)
+    tier_used: str = "none"      # T-DM1 | T-DM2 | T-DM3 | T-DM4 | none (for CIS tracking)
 
 
 class DMIdentification:
-    def __init__(self, bd_client=None):
-        """bd_client: instance of BrightDataLinkedInClient (injected for testability)."""
+    def __init__(self, bd_client=None, dfs_client=None):
+        """
+        bd_client: instance of BrightDataLinkedInClient (injected for testability).
+        dfs_client: instance of DFSLabsClient for SERP LinkedIn lookup (injected for testability).
+        """
         self._bd = bd_client
+        self._dfs = dfs_client
 
     async def identify(
         self,
@@ -52,12 +70,42 @@ class DMIdentification:
         """
         Identify the decision maker for a business using tiered fallback logic.
 
+        Waterfall (Directive #287):
+          T-DM1: Google SERP site:linkedin.com/in (DFS Labs, AU-filtered)
+          T-DM2: Bright Data LinkedIn company lookup
+          T-DM3: Website scrape team_names / Dr. names
+          T-DM4: ABN entity surname extraction
+
         Returns DMResult with source and tier_used for CIS tracking.
         """
         spider_data = spider_data or {}
         abn_data = abn_data or {}
 
-        # --- Step 1: Bright Data LinkedIn ---
+        # --- T-DM1: Google SERP LinkedIn (Directive #287) ---
+        if self._dfs is not None:
+            try:
+                people = await self._dfs.search_linkedin_people(
+                    company_name=company_name,
+                    location_name="Australia",
+                )
+                dm = self._pick_serp_dm(people)
+                if dm and dm.get("name"):
+                    logger.info(
+                        "dm_found source=serp_linkedin name=%s",
+                        dm["name"],
+                    )
+                    return DMResult(
+                        name=dm["name"],
+                        title=dm.get("title") or None,
+                        source="serp_linkedin",
+                        confidence="HIGH",
+                        linkedin_url=dm.get("linkedin_url") or None,
+                        tier_used="T-DM1",
+                    )
+            except Exception:
+                logger.exception("dm_serp_failed domain=%s", domain)
+
+        # --- T-DM2: Bright Data LinkedIn ---
         if self._bd is not None:
             linkedin_url = self._resolve_linkedin_url(spider_data, linkedin_company_url)
             try:
@@ -77,12 +125,12 @@ class DMIdentification:
                         source="brightdata_linkedin",
                         confidence=dm["confidence"],
                         linkedin_url=dm.get("linkedin_url"),
-                        tier_used="T-DM1",
+                        tier_used="T-DM2",
                     )
             except Exception:
                 logger.exception("dm_brightdata_failed domain=%s", domain)
 
-        # --- Step 2: Website scrape fallback ---
+        # --- T-DM3: Website scrape fallback ---
         team_names: list[str] = spider_data.get("team_names") or []
 
         # Also check title field for Dr. names
@@ -98,10 +146,10 @@ class DMIdentification:
                 title=None,
                 source="website_scrape",
                 confidence="MEDIUM",
-                tier_used="T-DM2",
+                tier_used="T-DM3",
             )
 
-        # --- Step 3: ABN entity name fallback ---
+        # --- T-DM4: ABN entity name fallback ---
         entity_name = abn_data.get("entity_name") or ""
         if entity_name:
             candidate = self._extract_name_from_entity(entity_name)
@@ -112,12 +160,35 @@ class DMIdentification:
                     title=None,
                     source="abn_entity",
                     confidence="LOW",
-                    tier_used="T-DM3",
+                    tier_used="T-DM4",
                 )
 
-        # --- Step 4: No DM found ---
+        # --- No DM found ---
         logger.info("dm_not_found domain=%s", domain)
         return DMResult()
+
+    @staticmethod
+    def _pick_serp_dm(people: list[dict]) -> Optional[dict]:
+        """
+        Pick the best decision maker from SERP LinkedIn results.
+        Scores by title keyword seniority; falls back to first result with a name.
+        """
+        if not people:
+            return None
+
+        def _score(p: dict) -> int:
+            title_lower = (p.get("title") or "").lower()
+            return max(
+                (_DM_TITLE_KEYWORDS[kw] for kw in _DM_TITLE_KEYWORDS if kw in title_lower),
+                default=0,
+            )
+
+        # Only consider results that have a name
+        named = [p for p in people if p.get("name")]
+        if not named:
+            return None
+
+        return max(named, key=_score)
 
     def _resolve_linkedin_url(
         self,

@@ -89,6 +89,8 @@ class DFSLabsClient:
         self._cost_google_jobs_advertisers = Decimal("0")
         # Layer 3 bulk filter endpoint (Directive #274)
         self._cost_bulk_domain_metrics = Decimal("0")
+        # SERP LinkedIn people lookup (Directive #287)
+        self._cost_search_linkedin_people = Decimal("0")
 
         # Cache for get_categories (free, rarely changes)
         self._categories_cache: list[dict] | None = None
@@ -127,6 +129,7 @@ class DFSLabsClient:
             + self._cost_domains_by_html_terms
             + self._cost_google_jobs_advertisers
             + self._cost_bulk_domain_metrics
+            + self._cost_search_linkedin_people
         )
         return float(total)
 
@@ -145,6 +148,7 @@ class DFSLabsClient:
             + self._cost_domains_by_html_terms
             + self._cost_google_jobs_advertisers
             + self._cost_bulk_domain_metrics
+            + self._cost_search_linkedin_people
         )
         return float(total_usd * AUD_RATE)
 
@@ -735,6 +739,65 @@ class DFSLabsClient:
                     "domain": domain.lower().rstrip("/"),
                     "title": item.get("title", ""),
                     "url": url,
+                }
+            )
+        return results
+
+    # ============================================
+    # ENDPOINT 9b: search_linkedin_people  (Directive #287 — DM waterfall T-DM1)
+    # ============================================
+
+    async def search_linkedin_people(
+        self,
+        company_name: str,
+        location_name: str = "Australia",
+    ) -> list[dict]:
+        """
+        Search Google SERP for LinkedIn people profiles at a company.
+        Query: site:linkedin.com/in "{company_name}"
+        Cost: $0.01/call.
+        Returns list of {"name": str, "title": str, "linkedin_url": str, "snippet": str}.
+        """
+        import re
+
+        query = f'site:linkedin.com/in "{company_name}"'
+
+        result = await self._post(
+            endpoint="/v3/serp/google/organic/live/advanced",
+            payload=[
+                {
+                    "keyword": query,
+                    "location_name": location_name,
+                    "language_name": "English",
+                    "depth": 10,
+                }
+            ],
+            cost_per_call=Decimal("0.01"),
+            cost_attr="_cost_search_linkedin_people",
+        )
+        items = result.get("items") or []
+        results = []
+        for item in items:
+            url = item.get("url") or ""
+            if "linkedin.com/in/" not in url:
+                continue
+            title_raw = item.get("title") or ""
+            snippet = item.get("description") or ""
+
+            # LinkedIn profile titles: "Name - Job Title | LinkedIn"
+            name = ""
+            job_title = ""
+            m = re.match(r"^([^|\u2013\-]+?)(?:\s*[-\u2013]\s*(.+?))?(?:\s*\|\s*LinkedIn.*)?$", title_raw.strip())
+            if m:
+                name = m.group(1).strip()
+                job_title = (m.group(2) or "").strip()
+
+            results.append(
+                {
+                    "name": name,
+                    "title": job_title,
+                    "linkedin_url": url,
+                    "snippet": snippet,
                 }
             )
         return results

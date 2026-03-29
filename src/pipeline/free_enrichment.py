@@ -27,6 +27,26 @@ BATCH_SIZE = 50
 DNS_TIMEOUT = 5
 SPIDER_MAX_CREDITS_PER_PAGE = 50
 
+# ── ABN multi-strategy matching constants ────────────────────────────────────
+_ABN_STOPWORDS: frozenset[str] = frozenset({
+    "at", "and", "the", "of", "in", "for", "by", "to", "a", "an",
+    "my", "your", "our", "its", "with", "from", "on", "is", "as", "or",
+})
+_RE_ABN_ENTITY_SUFFIXES = re.compile(
+    r"\s*(PTY\.?\s*LTD\.?|PROPRIETARY\s+LIMITED|PTY\s+LIMITED|LIMITED"
+    r"|LTD\.?|TRUST|TRADING\s+AS|T/A|ABN)\s*$",
+    re.IGNORECASE,
+)
+_RE_ABN_ENTITY_PREFIXES = re.compile(
+    r"^(THE\s+TRUSTEE\s+FOR\s+THE\s+|THE\s+TRUSTEE\s+FOR\s+"
+    r"|THE\s+TRUST\s+OF\s+|TRUSTEE\s+FOR\s+THE\s+|TRUSTEE\s+FOR\s+)",
+    re.IGNORECASE,
+)
+_RE_ABN_TITLE_CLEANUP = re.compile(
+    r"^\s*(Home\s*[\|\u2013\-]|Welcome\s+to|About\s*[\|\u2013\-]|Contact)\s*",
+    re.IGNORECASE,
+)
+
 CMS_PATTERNS = {
     "wp-content/": "wordpress",
     "wp-includes/": "wordpress",
@@ -113,6 +133,127 @@ class FreeEnrichment:
             return ABNMatchConfidence.PARTIAL
         return ABNMatchConfidence.LOW
 
+    @staticmethod
+    def _abn_clean_entity_name(name: str) -> str:
+        """Strip common ABN registry suffixes/prefixes before similarity comparison.
+
+        Examples:
+            "DENTISTS@PYMBLE PTY LIMITED" → "DENTISTS@PYMBLE"
+            "THE TRUSTEE FOR ABC TRUST" → "ABC TRUST"
+        """
+        name = _RE_ABN_ENTITY_PREFIXES.sub("", name).strip()
+        name = _RE_ABN_ENTITY_SUFFIXES.sub("", name).strip()
+        return name
+
+    @staticmethod
+    def _extract_domain_keywords(domain: str) -> list[str]:
+        """Extract meaningful keywords from a domain name.
+
+        Strips TLD, splits on hyphens/underscores, and splits concatenated
+        words by removing stopwords.  Only splits on a stopword when both
+        neighbouring sides have ≥ 5 non-space characters, preventing false
+        splits on embedded stopword fragments (e.g. "is" inside "dentists").
+
+        Examples:
+            "dentistsatpymble.com.au" → ["dentists", "pymble"]
+            "bright-smile-dental.com" → ["bright", "smile", "dental"]
+            "brunswick-east-dental.com.au" → ["brunswick", "east", "dental"]
+        """
+        stem = domain.split(".")[0].lower()
+        # Split on explicit separators first
+        parts = re.split(r"[-_]", stem)
+        if len(parts) == 1:
+            # Concatenated word: inject spaces around stopwords only when both
+            # neighbouring sides have ≥ 5 non-space characters.
+            word = stem
+            for sw in sorted(_ABN_STOPWORDS, key=len, reverse=True):
+                buf: list[str] = []
+                i = 0
+                while i < len(word):
+                    if word[i : i + len(sw)] == sw:
+                        left_len = len("".join(buf).replace(" ", ""))
+                        right_len = len(word[i + len(sw) :].replace(" ", ""))
+                        if left_len >= 5 and right_len >= 5:
+                            buf.append(" ")
+                            i += len(sw)
+                            buf.append(" ")
+                            continue
+                    buf.append(word[i])
+                    i += 1
+                word = "".join(buf)
+            parts = word.split()
+        return [w for w in parts if len(w) > 2 and w not in _ABN_STOPWORDS]
+
+    async def _local_abn_match(
+        self,
+        keywords: list[str],
+        state_hint: str | None = None,
+    ) -> asyncpg.Record | None:
+        """Search local abn_registry requiring ALL keywords to appear in legal/trading name.
+
+        Uses AND-intersection so that e.g. ["dentists", "pymble"] only matches
+        entities that contain BOTH words — avoiding broad false positives.
+        """
+        if not keywords:
+            return None
+        conditions: list[str] = []
+        params: list[str] = []
+        for kw in keywords[:4]:  # cap at 4 to avoid over-constraining
+            idx = len(params) + 1
+            conditions.append(
+                f"(LOWER(legal_name) LIKE ${idx} OR LOWER(trading_name) LIKE ${idx})"
+            )
+            params.append(f"%{kw}%")
+        sql = (
+            "SELECT abn, legal_name, trading_name, gst_registered, "
+            "entity_type, registration_date, state "
+            f"FROM abn_registry WHERE {' AND '.join(conditions)} LIMIT 10"
+        )
+        rows = await self._conn.fetch(sql, *params)
+        if not rows:
+            return None
+        if state_hint and len(rows) > 1:
+            for r in rows:
+                if (r.get("state") or "").upper() == state_hint.upper():
+                    return r
+        return rows[0]
+
+    async def _local_abn_gst(self, abn_raw: str) -> tuple[bool | None, str | None, Any]:
+        """Return (gst_registered, entity_type, registration_date) for a given ABN from local table."""
+        if not abn_raw:
+            return None, None, None
+        try:
+            row = await self._conn.fetchrow(
+                "SELECT gst_registered, entity_type, registration_date "
+                "FROM abn_registry WHERE abn = $1",
+                abn_raw,
+            )
+            if row:
+                return row["gst_registered"], row["entity_type"], row.get("registration_date")
+        except Exception:
+            pass
+        return None, None, None
+
+    def _abn_result_from_row(
+        self,
+        row: asyncpg.Record,
+        search_name: str,
+        strategy: str,
+    ) -> dict[str, Any]:
+        """Build the standard abn_matched result dict from a local DB row."""
+        api_name = row.get("trading_name") or row.get("legal_name") or ""
+        confidence = self._abn_confidence(
+            search_name, self._abn_clean_entity_name(api_name)
+        )
+        return {
+            "abn_matched": True,
+            "gst_registered": row["gst_registered"],
+            "entity_type": row["entity_type"],
+            "registration_date": row.get("registration_date"),
+            "abn_confidence": confidence,
+            "_abn_strategy": strategy,
+        }
+
     def _compute_email_maturity(
         self, mx_provider: str | None, has_spf: bool
     ) -> EmailMaturity:
@@ -195,7 +336,10 @@ class FreeEnrichment:
             else:
                 stats["dns_skipped"] += 1
             dns_data = self._enrich_dns(domain)
-            abn_data = await self._match_abn(domain, website_data.get("title"), state_hint)
+            suburb = (website_data.get("website_address") or {}).get("suburb")
+            abn_data = await self._match_abn(
+                domain, website_data.get("title"), state_hint, suburb=suburb
+            )
             if abn_data.get("abn_matched"):
                 stats["abn_matched"] += 1
             else:
@@ -385,70 +529,146 @@ class FreeEnrichment:
         return result
 
     async def _match_abn(
-        self, domain: str, title: str | None, state_hint: str | None
+        self,
+        domain: str,
+        title: str | None = None,
+        state_hint: str | None = None,
+        suburb: str | None = None,
     ) -> dict[str, Any]:
+        """Multi-strategy ABN matching waterfall.
+
+        Tries 4 strategies in order, returning on the first EXACT or PARTIAL
+        confidence match.  Tracks the best LOW-confidence result as a fallback.
+
+        Strategy 1 — Domain keywords (local DB):
+            Extract meaningful words from the domain stem and require ALL to
+            appear in the ABN entity name.
+            e.g. "dentistsatpymble.com.au" → keywords ["dentists","pymble"]
+            Matches "Pymble Dental Loving Care Pty Limited" (PARTIAL).
+
+        Strategy 2 — Title keywords (local DB):
+            Clean the Spider page title, strip common nav suffixes, and use
+            the remaining words as keyword intersection.
+            e.g. "Dentists at Pymble | Family Dental" → ["dentists","pymble"]
+
+        Strategy 3 — Suburb + first domain keyword (local DB):
+            When a suburb is available from Spider JSON-LD address, combine it
+            with the primary domain keyword for a tight two-word intersection.
+            e.g. suburb="Pymble", keyword="dental" → finds dental practices in Pymble.
+
+        Strategy 4 — Live ABN API fuzzy search:
+            Falls back to the ABR XML API which performs full-text fuzzy search.
+            On a match, the returned ABN is cross-referenced with the local table
+            to retrieve gst_registered/entity_type (the search endpoint omits these).
+
+        Returns:
+            Dict with keys: abn_matched, gst_registered, entity_type,
+            registration_date, abn_confidence, _abn_strategy (debug).
+            abn_matched=False if nothing found.
+        """
         result: dict[str, Any] = {"abn_matched": False}
 
+        # ── Prepare candidate search terms ────────────────────────────────
+        domain_keywords = self._extract_domain_keywords(domain)
+
+        title_cleaned: str | None = None
         if title and len(title.strip()) > 3:
-            search_name = re.sub(r"\s*[\|\u2013\-]\s*.+$", "", title.strip()).strip()
-        else:
-            search_name = domain.split(".")[0].replace("-", " ").replace("_", " ")
+            t = _RE_ABN_TITLE_CLEANUP.sub("", title.strip())
+            title_cleaned = re.sub(r"\s*[\|\u2013\-]\s*.+$", "", t).strip()
+            if len(title_cleaned) < 3:
+                title_cleaned = None
 
-        if len(search_name) < 3:
-            return result
+        best_low: dict[str, Any] | None = None
 
-        search_lower = search_name.lower()
+        def _keep(r: dict[str, Any]) -> dict[str, Any] | None:
+            """Return r if EXACT/PARTIAL; stash as best_low if LOW; else None."""
+            nonlocal best_low
+            if r["abn_confidence"] in (ABNMatchConfidence.EXACT, ABNMatchConfidence.PARTIAL):
+                return r
+            if best_low is None:
+                best_low = r
+            return None
 
-        # Try local abn_registry table
-        try:
-            rows = await self._conn.fetch(
-                "SELECT abn, legal_name, trading_name, gst_registered, "
-                "entity_type, registration_date, state "
-                "FROM abn_registry "
-                "WHERE LOWER(trading_name) LIKE $1 OR LOWER(legal_name) LIKE $1 "
-                "LIMIT 5",
-                f"%{search_lower}%",
-            )
-            if rows:
-                match = rows[0]
-                if state_hint and len(rows) > 1:
-                    for row in rows:
-                        if (row.get("state") or "").upper() == state_hint.upper():
-                            match = row
-                            break
-                api_name = match.get("trading_name") or match.get("legal_name") or ""
-                confidence = self._abn_confidence(search_name, api_name)
-                return {
+        # ── Strategy 1: Domain keyword intersection (local DB) ────────────
+        if len(domain_keywords) >= 2:
+            try:
+                row = await self._local_abn_match(domain_keywords, state_hint)
+                if row:
+                    r = _keep(self._abn_result_from_row(
+                        row, " ".join(domain_keywords), "domain_keywords"
+                    ))
+                    if r:
+                        return r
+            except Exception as exc:
+                self._logger.debug("ABN strategy1 (domain) failed %s: %s", domain, exc)
+
+        # ── Strategy 2: Title keyword intersection (local DB) ─────────────
+        if title_cleaned:
+            title_kw = [
+                w for w in re.split(r"\s+", title_cleaned.lower())
+                if len(w) > 2 and w not in _ABN_STOPWORDS
+            ]
+            if len(title_kw) >= 2:
+                try:
+                    row = await self._local_abn_match(title_kw, state_hint)
+                    if row:
+                        r = _keep(self._abn_result_from_row(row, title_cleaned, "title_keywords"))
+                        if r:
+                            return r
+                except Exception as exc:
+                    self._logger.debug("ABN strategy2 (title) failed %s: %s", domain, exc)
+
+        # ── Strategy 3: Suburb + primary domain keyword (local DB) ────────
+        if suburb and domain_keywords:
+            suburb_kw = [suburb.lower().strip()] + domain_keywords[:1]
+            if len(suburb_kw) >= 2:
+                try:
+                    row = await self._local_abn_match(suburb_kw, state_hint)
+                    if row:
+                        r = _keep(self._abn_result_from_row(
+                            row, f"{suburb} {domain_keywords[0]}", "suburb_category"
+                        ))
+                        if r:
+                            return r
+                except Exception as exc:
+                    self._logger.debug("ABN strategy3 (suburb) failed %s: %s", domain, exc)
+
+        # ── Strategy 4: Live ABN API fuzzy search ─────────────────────────
+        api_terms = [t for t in [title_cleaned, " ".join(domain_keywords) if domain_keywords else None]
+                     if t and len(t) >= 3]
+        for api_term in api_terms:
+            try:
+                from src.config.settings import settings
+                from src.integrations.abn_client import ABNClient
+
+                async with ABNClient(guid=settings.ABN_LOOKUP_GUID) as abn_client:
+                    api_results = await abn_client.search_by_name(api_term, limit=5)
+                if not api_results:
+                    continue
+                best = api_results[0]
+                api_name = best.get("business_name") or ""
+                confidence = self._abn_confidence(
+                    api_term, self._abn_clean_entity_name(api_name)
+                )
+                abn_raw = (best.get("abn") or "").replace(" ", "")
+                gst, etype, reg_date = await self._local_abn_gst(abn_raw)
+                candidate = {
                     "abn_matched": True,
-                    "gst_registered": match["gst_registered"],
-                    "entity_type": match["entity_type"],
-                    "registration_date": match["registration_date"],
+                    "gst_registered": gst,
+                    "entity_type": etype,
+                    "registration_date": reg_date,
                     "abn_confidence": confidence,
+                    "_abn_strategy": "live_api",
                 }
-        except Exception as exc:
-            self._logger.warning("ABN registry query failed for %s: %s", domain, exc)
+                r = _keep(candidate)
+                if r:
+                    return r
+            except Exception as exc:
+                self._logger.warning("ABN strategy4 (api) failed %s: %s", domain, exc)
 
-        # Fallback: live ABN API
-        try:
-            from src.config.settings import settings
-            from src.integrations.abn_client import ABNClient
-
-            async with ABNClient(guid=settings.ABN_LOOKUP_GUID) as abn:
-                api_results = await abn.search_by_name(search_name)
-            if api_results and isinstance(api_results, list) and api_results[0]:
-                r = api_results[0]
-                api_name = r.get("legal_name") or r.get("trading_name") or ""
-                confidence = self._abn_confidence(search_name, api_name)
-                return {
-                    "abn_matched": True,
-                    "gst_registered": r.get("gst_registered", False),
-                    "entity_type": r.get("entity_type"),
-                    "registration_date": r.get("registration_date"),
-                    "abn_confidence": confidence,
-                }
-        except Exception as exc:
-            self._logger.warning("ABN API fallback failed for %s: %s", domain, exc)
-
+        # ── Return best LOW match if found, else no match ─────────────────
+        if best_low:
+            return best_low
         return result
 
     async def _write_results(

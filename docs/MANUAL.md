@@ -23,9 +23,9 @@ Revenue model for BU: API subscriptions, Salesforce/HubSpot marketplace, bulk an
 
 ## SECTION 2 — CURRENT STATE
 
-- Last directive issued: #290 (Orchestrator wiring + GMB + ads stub — COMPLETE)
-- Next directive: #291
-- Test baseline: 1088 passed, 0 failed, 28 skipped (+21 from #290)
+- Last directive issued: #291 (Two-dimension prospect scorer + real ads detection — COMPLETE)
+- Next directive: #292
+- Test baseline: 1120 passed, 0 failed, 28 skipped (+32 from #291)
 - Last merged PRs: #242–#253 (Sprints 1-5), #289+#290 pending merge
 - Spider.cloud: validated, API key in env SPIDER_API_KEY
 - Segment testing: ratified March 29 2026 — Segments 1+2 ready for live test
@@ -261,23 +261,46 @@ Sprint: Sprint 4 (Directive #287)
 
 ---
 
-### COMPOSITE AFFORDABILITY SCORING (Directive #288)
+### TWO-DIMENSION PROSPECT SCORING (Directive #291)
 
-`src/pipeline/affordability_scoring.py` — `AffordabilityScorer.score(enrichment)`.
+`src/pipeline/prospect_scorer.py` — `ProspectScorer` (replaces AffordabilityScorer in orchestrator).
+`AffordabilityScorer` (pipeline/affordability_scoring.py) left in place but disconnected from pipeline.
 
-Signal dimensions and point values (max 20):
+**Dimension 1: Affordability** — can they pay?
 
-| Signal | Source | Points |
-|--------|--------|--------|
-| Entity type | ABN | trust=3, company=2, partnership=1 |
-| GST registered | ABN | yes=1 |
-| Google Ads active | Ads Transparency | active+>5=3, active=2, none=0 |
-| Review count | DFS Maps GMB | 0–5=0, 6–20=1, 21–50=2, 51–100=3, 101+=4 |
-| Website sophistication | Spider scrape | professional CMS + tracking + booking + SSL + multi-page (max 5) |
-| Employee signals | Spider team page | 1–2=1, 3–5=2, 6+=3 |
-| Email maturity | DNS | PROFESSIONAL=1 |
+Hard gates (reject immediately): sole_trader, gst=False, unreachable (no website + no ABN).
 
-Band thresholds: **LOW (0–4, reject)** | **MEDIUM (5–8, pass)** | **HIGH (9–13, pass)** | **VERY_HIGH (14+, pass)**
+Soft signals: entity_type (trust/company/partner), GST, professional email, CMS, SSL, multi-page.
+
+Bands: **LOW (reject)** | **MEDIUM** | **HIGH** | **VERY_HIGH**. Gate passes at score ≥ 3.
+
+**Dimension 2: Intent** — will they buy?
+
+Free signals (from Spider HTML — zero extra cost):
+- website_no_analytics: has website but no GA4/GTM
+- ads_tag_no_conversion: AW- tag in HTML but no conversion tracking
+- meta_pixel: Facebook Pixel present
+- social_links, booking_no_analytics, stale_cms
+
+Band: **NOT_TRYING (skip paid enrichment)** | **DABBLING** | **TRYING** | **STRUGGLING**
+
+Full intent score (adds paid signals after free gate passes):
+- running_gads: DFS Ads Search confirms active Google Ads ($0.002/call)
+- gmb_established: GMB review count > 20
+
+**Evidence strings**: each signal generates a plain-English paired statement (effort + gap) for Haiku message generation. Example: "Running Google Ads but missing conversion tracking — wasting budget"
+
+**Pipeline gate flow** (Directive #291):
+```
+1. Free enrichment (Spider + DNS + ABN)
+2. GATE 1: Affordability → reject sole traders, no GST, unreachable
+3. GATE 2: Intent free → NOT_TRYING skips paid enrichment  
+4. Paid enrichment (gate passers only): DFS Ads Search + DFS Maps GMB
+5. Full intent score with paid signals
+6. DM identification
+7. Reachability check (LinkedIn or email)
+8. Build ProspectCard with evidence for Haiku
+```
 
 Hard gates: sole_trader → always reject | gst_registered=False → always reject | unreachable → always reject
 
@@ -481,7 +504,7 @@ Approval flow:
 |--------|------|------|--------|
 | ABN registry local JOIN | GST status (confirms $75k+ revenue), entity type, registration date | FREE | ✅ Live — 2,418,836 rows |
 | Website scrape (Spider.cloud) | Tech stack, CMS, tracking codes (GA4, GTM, Meta Pixel, Google Ads), contact info, JSON-LD address | FREE (direct HTTP) / $0.01/page (Spider.cloud) | ✅ Proven (10/10 Segment 2 test, Mar 2026) |
-| Google Ads Transparency Center | Binary: is business running Google Ads | FREE | ⚠️ STUB — `src/integrations/ads_transparency.py` returns None. No public API. Sprint 6: implement via Playwright or Bright Data Ads dataset. `is_running_ads` and `ads_count` always 0 until implemented. |
+| Google Ads Detection (two-tier) | Binary: is business running Google Ads | FREE (tag) + $0.002 (DFS) | ✅ LIVE — Directive #291. Tier 1: Spider AW-tag/Meta Pixel detection (free, 4/10 dental SMBs detected). Tier 2: DFS /ads_search/live/advanced (3/10 detected, complementary). Combined: 5/10 (50%) hit rate on dental SMBs. |
 | DNS + MX/SPF/DKIM check | Email maturity scoring (PROFESSIONAL/WEBMAIL/NONE), MX provider | FREE | ✅ Live — Segment 2 validated. DKIM excluded from scoring (0/10 AU SMBs have detectable DKIM). |
 | Phone carrier lookup | AU mobile carrier validation | FREE | Planned Sprint 5 |
 
@@ -593,7 +616,8 @@ v6 era (#271–#277): Layer 2 (discovery), Layer 3 (bulk filter), signal config 
 | Sprint 5 | #288 | Composite affordability scorer (7 signals, 4 bands) + streaming PipelineOrchestrator + ProspectCard | COMPLETE — PR #251 (pending merge) |
 | Sprint 5 | #289 | ABN multi-strategy matching waterfall (4 strategies, 8/10 live match rate) | COMPLETE — PR #252 |
 | Sprint 5 | #290 | Wire orchestrator: pull_batch + enrich methods, DFS Maps GMB, ads transparency stub | COMPLETE — PR #253 |
-| Sprint 6 | #291 | DM email waterfall (scrape→Leadmagic→ZeroBounce), mobile waterfall, reachability v7 | NEXT |
+| Sprint 6 | #291 | Two-dimension ProspectScorer (Affordability+Intent), DFS Ads Search, Spider ad tag detection, new orchestrator gates | COMPLETE — PR #254 |
+| Sprint 6 | #292 | DM email waterfall (scrape→Leadmagic→ZeroBounce), mobile waterfall, reachability v7 | NEXT |
 | Sprint 7 | #292–#293 | Message generation + outreach wiring: Haiku redesign with v7 signal inputs, scheduling engine, quota loop | Queued |
 | Sprint 8 | #294 | Multi-vertical: seed dental, recruitment, IT MSP signal configs + category codes | Queued |
 | Sprint 9 | #295 | Integration test + hardening: live pipeline test against 100 real domains, cost/quality audit | Queued |
@@ -620,6 +644,7 @@ v6 era (#271–#277): Layer 2 (discovery), Layer 3 (bulk filter), signal config 
 | #288 | Composite affordability scorer (AffordabilityScorer, 7 signals, 4 bands) + PipelineOrchestrator + ProspectCard | COMPLETE — PR #251 merged |
 | #289 | ABN multi-strategy matching: 4-strategy waterfall, domain/title/suburb/live-API, PTY LTD stripping, 8/10 live match rate | COMPLETE — PR #252 |
 | #290 | Orchestrator wiring: pull_batch + enrich methods, DFS Maps GMB (maps_search_gmb), ads transparency stub | COMPLETE — PR #253 |
+| #291 | Two-dimension ProspectScorer: score_affordability + score_intent_free + score_intent_full. DFS Ads Search ($0.002/call). Spider AW-tag/Meta Pixel detection (free). Gated orchestrator flow. | COMPLETE — PR #254 |
 
 ---
 

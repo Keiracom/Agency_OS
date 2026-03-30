@@ -23,9 +23,9 @@ Revenue model for BU: API subscriptions, Salesforce/HubSpot marketplace, bulk an
 
 ## SECTION 2 — CURRENT STATE
 
-- Last directive issued: #298 (multi-category service-first discovery — PR #260 open)
-- Test baseline: 1238 passed, 0 failed, 5 skipped
-- Last merged PRs: #247–#259 | Open: #260
+- Last directive issued: #299 (email discovery waterfall — PR #261 open)
+- Test baseline: 1254 passed, 0 failed, 5 skipped
+- Last merged PRs: #247–#260 | Open: #261
 - PR #254 (Directive #291 — ProspectScorer) pending merge
 - Architecture: **FINAL ratified Mar 30 2026** — service-signal discovery, two-dimension scoring, stage-parallel processing
 - **Pipeline test Run 1 (Mar 29):** 100 DMs from 200 domains, $3.51, 7.3 min
@@ -890,7 +890,8 @@ v6 era (#271–#277): Layer 2 (discovery), Layer 3 (bulk filter), signal config 
 | #295 | httpx primary scraper (Spider fallback), GMB rating dict→scalar fix, AU country filter, run_parallel() + global semaphore pool | COMPLETE — PR #257 |
 | #296 | Sonnet/Haiku intelligence layer: comprehend_website, classify_intent, analyse_reviews, judge_affordability, refine_evidence. Wired into run_parallel(). Prompt caching. | COMPLETE — PR #258 |
 | #297 | ABN matching audit: confirmed working on main (2.4M rows, live match verified). PR #249 abandoned (6k lines behind). 11 verification tests. | COMPLETE — PR #259 |
-| #298 | Multi-category service-first discovery: category_registry.py, MultiCategoryDiscovery, run_parallel(discover_all=True). 14 verticals, 20 codes. 13 tests. | PR #260 — pending merge |
+| #298 | Multi-category service-first discovery: category_registry.py, MultiCategoryDiscovery, run_parallel(discover_all=True). 14 verticals, 20 codes. 13 tests. | COMPLETE — PR #260 |
+| #299 | Email discovery waterfall: 4 layers (HTML/pattern/Leadmagic/Bright Data), GLOBAL_SEM_LEADMAGIC=10, ProspectCard email fields, Stage 9 wired. 16 tests. | PR #261 — pending merge |
 
 ---
 
@@ -1100,12 +1101,15 @@ URLs, review mentions, Brand SERP knowledge panel.
 Components: not yet built (Sprint 5)
 Status: BLOCKED — awaiting Segment 1+2 validation
 
-SEGMENT 4 — EMAIL DISCOVERY
-Get verified email. 4-tier waterfall: contact page
-scrape, pattern gen + SMTP verify, Leadmagic,
-FullEnrich/BetterContact. ZeroBounce verification.
-Components: partially built (Sprint 5)
-Status: BLOCKED — awaiting Segment 3 validation
+SEGMENT 4 — EMAIL DISCOVERY (Directive #299 — COMPLETE)
+4-layer waterfall wired into run_parallel Stage 9:
+- L1: Website HTML mailto:/regex (free, name-matched)
+- L2: Pattern generation + MX check (free)
+- L3: Leadmagic /email-finder ($0.015, SMTP-verified)
+- L4: Bright Data LinkedIn profile ($0.00075)
+Short-circuits on first hit. ProspectCard fields: dm_email, dm_email_verified, dm_email_source, dm_email_confidence, email_cost_usd.
+GLOBAL_SEM_LEADMAGIC = 10.
+Status: BUILT — src/pipeline/email_waterfall.py, PR #261
 
 SEGMENT 5 — PHONE DISCOVERY
 Get mobile/direct number. GMB phone carrier check,

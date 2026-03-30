@@ -27,6 +27,8 @@ from dataclasses import dataclass, field
 from typing import Any, Optional
 
 from src.pipeline.prospect_scorer import ProspectScorer, ProspectScore
+from src.pipeline.intelligence import GLOBAL_SEM_SONNET, GLOBAL_SEM_HAIKU  # shared semaphores
+from src.pipeline import intelligence as _intel_module  # optional: used when self._intelligence is set
 
 logger = logging.getLogger(__name__)
 
@@ -37,10 +39,9 @@ SEM_PAID   = 20    # DFS Ads Search + GMB concurrent
 SEM_DM     = 20    # DFS SERP LinkedIn concurrent
 
 # Global semaphore pool — shared across parallel workers (module-level singletons)
+# GLOBAL_SEM_SONNET and GLOBAL_SEM_HAIKU are defined in intelligence.py and imported above
 GLOBAL_SEM_DFS    = asyncio.Semaphore(25)
 GLOBAL_SEM_SCRAPE = asyncio.Semaphore(50)
-GLOBAL_SEM_SONNET = asyncio.Semaphore(12)
-GLOBAL_SEM_HAIKU  = asyncio.Semaphore(15)
 
 
 @dataclass
@@ -115,6 +116,7 @@ class PipelineOrchestrator:
         gmb_client=None,
         ads_client=None,
         prospect_scorer=None,
+        intelligence=None,
     ):
         self._discovery = discovery
         self._fe = free_enrichment
@@ -122,6 +124,7 @@ class PipelineOrchestrator:
         self._dm = dm_identification
         self._gmb_client = gmb_client
         self._ads_client = ads_client
+        self._intelligence = intelligence  # optional: IntelligenceLayer instance or module
 
     # ── Stage helpers ─────────────────────────────────────────────────────
 
@@ -198,6 +201,52 @@ class PipelineOrchestrator:
             except Exception:
                 logger.debug("stage_dm_failed domain=%s", domain)
                 return None
+
+    async def _stage_intelligence(
+        self,
+        domain: str,
+        html: str,
+        enrichment: dict,
+        ads_data: dict | None,
+        gmb_data: dict | None,
+    ) -> dict:
+        """
+        STAGE 7b: Run intelligence pipeline for one domain.
+        Calls comprehend_website → classify_intent → refine_evidence.
+        Returns merged intel dict with evidence_statements, intent_band, services, etc.
+        """
+        try:
+            intel = self._intelligence
+            url = f"https://{domain}"
+
+            # Comprehend website
+            website_data = await intel.comprehend_website(domain, html or "", url)
+
+            # Classify intent
+            intent_data = await intel.classify_intent(domain, website_data, gmb_data, ads_data)
+
+            # Analyse reviews if available
+            reviews = (gmb_data or {}).get("reviews") or []
+            review_data = await intel.analyse_reviews(domain, reviews)
+
+            # Refine evidence into final card copy
+            refined = await intel.refine_evidence(domain, intent_data, review_data, website_data)
+
+            return {
+                "website_data": website_data,
+                "intent_data": intent_data,
+                "review_data": review_data,
+                "evidence_statements": refined.get("evidence_statements", []),
+                "headline_signal": refined.get("headline_signal", ""),
+                "recommended_service": refined.get("recommended_service", ""),
+                "outreach_angle": refined.get("outreach_angle", ""),
+                "intent_band": intent_data.get("band"),
+                "intent_score": intent_data.get("score", 0),
+                "services": website_data.get("services", []),
+            }
+        except Exception as exc:
+            logger.warning("_stage_intelligence failed domain=%s: %s", domain, exc)
+            return {}
 
     # ── Main run ──────────────────────────────────────────────────────────
 
@@ -404,6 +453,28 @@ class PipelineOrchestrator:
                         intent_full = intent_free  # legacy fallback
                     dm_candidates.append((domain, enrichment, afford, intent_full, paid))
 
+                # ── STAGE 7b: Intelligence layer (optional, Sonnet/Haiku) ─────
+                # Runs comprehend_website → classify_intent → refine_evidence
+                # for each dm_candidate if intelligence module is wired.
+                intel_results: dict[str, dict] = {}
+                if self._intelligence is not None:
+                    intel_coros = []
+                    for domain, enrichment, afford, intent_full, paid in dm_candidates:
+                        spider_html = enrichment.get("html", "")
+                        ads_data = paid.get("ads_data")
+                        gmb_data = paid.get("gmb_data")
+                        intel_coros.append(
+                            self._stage_intelligence(domain, spider_html, enrichment, ads_data, gmb_data)
+                        )
+                    intel_raw = await asyncio.gather(*intel_coros, return_exceptions=True)
+                    for (domain, *_), intel in zip(dm_candidates, intel_raw):
+                        if isinstance(intel, Exception):
+                            logger.warning("intelligence failed domain=%s: %s", domain, intel)
+                            intel_results[domain] = {}
+                        else:
+                            intel_results[domain] = intel or {}
+                    logger.info("stage7b_intelligence_complete domains=%d", len(intel_results))
+
                 # ── STAGE 8: DM identification ALL concurrently ───────────────
                 dm_coros = []
                 for domain, enrichment, afford, intent_full, paid in dm_candidates:
@@ -444,15 +515,22 @@ class PipelineOrchestrator:
                         or enrichment.get("abn_entity_name")
                         or domain
                     )
-                    evidence = getattr(intent_full, "evidence", []) if intent_full else []
-                    intent_band = getattr(intent_full, "band", "UNKNOWN") if intent_full else "UNKNOWN"
-                    intent_score = getattr(intent_full, "raw_score", 0) if intent_full else 0
+                    # Use intelligence layer results if available, else fall back to scorer
+                    intel = intel_results.get(domain, {})
+                    if intel.get("evidence_statements"):
+                        evidence = intel["evidence_statements"]
+                        intent_band = intel.get("intent_band") or (getattr(intent_full, "band", "UNKNOWN") if intent_full else "UNKNOWN")
+                        intent_score = intel.get("intent_score") or (getattr(intent_full, "raw_score", 0) if intent_full else 0)
+                    else:
+                        evidence = getattr(intent_full, "evidence", []) if intent_full else []
+                        intent_band = getattr(intent_full, "band", "UNKNOWN") if intent_full else "UNKNOWN"
+                        intent_score = getattr(intent_full, "raw_score", 0) if intent_full else 0
 
                     card = ProspectCard(
                         domain=domain,
                         company_name=company_name,
                         location=(enrichment.get("website_address") or {}).get("suburb", location),
-                        services=enrichment.get("services") or [],
+                        services=enrichment.get("services") or intel.get("services") or [],
                         evidence=evidence,
                         affordability_band=afford.band,
                         affordability_score=afford.raw_score,
@@ -596,25 +674,40 @@ class PipelineOrchestrator:
                             stats.affordability_rejected += 1
                         continue
 
-                    # GATE 1: Affordability
-                    afford = self._scorer.score_affordability(enrichment)
-                    if not afford.passed_gate:
-                        async with stats_lock:
-                            stats.affordability_rejected += 1
-                        continue
-
-                    # GATE 2: Intent free
-                    intent_free = self._scorer.score_intent_free(enrichment)
-                    if getattr(intent_free, "band", None) == "NOT_TRYING":
-                        async with stats_lock:
-                            stats.intent_rejected += 1
-                        continue
-
-                    # STAGE 6: Paid enrichment
+                    intel = self._intelligence  # None if not wired
+                    html = enrichment.get("html", "")
                     company_name = enrichment.get("company_name") or domain
                     addr = enrichment.get("website_address") or {}
                     suburb = (addr.get("suburb") or addr.get("city") or "") if isinstance(addr, dict) else ""
 
+                    # ── STAGE 3b: Website comprehension (Sonnet, optional) ────
+                    website_data: dict = {}
+                    if intel is not None:
+                        website_data = await intel.comprehend_website(domain, html, f"https://{domain}")
+
+                    # ── GATE 1: Affordability ─────────────────────────────────
+                    if intel is not None:
+                        # Haiku affordability judgment replaces rule-based scorer
+                        afford_intel = await intel.judge_affordability(domain, enrichment, website_data)
+                        if afford_intel.get("hard_gate"):
+                            async with stats_lock:
+                                stats.affordability_rejected += 1
+                            continue
+                        # Build a duck-typed result compatible with ProspectCard fields
+                        class _AffordResult:
+                            band = afford_intel.get("band", "MEDIUM")
+                            raw_score = afford_intel.get("score", 5)
+                            passed_gate = not afford_intel.get("hard_gate", False)
+                            gaps: list = []
+                        afford = _AffordResult()
+                    else:
+                        afford = self._scorer.score_affordability(enrichment)
+                        if not afford.passed_gate:
+                            async with stats_lock:
+                                stats.affordability_rejected += 1
+                            continue
+
+                    # ── STAGE 6: Paid enrichment ──────────────────────────────
                     async with GLOBAL_SEM_DFS:
                         paid = await self._stage_paid(sem_paid, domain, company_name, suburb, location)
 
@@ -626,12 +719,39 @@ class PipelineOrchestrator:
                     if gmb_data:
                         enrichment = {**enrichment, **gmb_data}
 
-                    # STAGE 7: Full intent score
-                    intent = self._scorer.score_intent_full(enrichment, ads_data, gmb_data)
-                    intent_band = getattr(intent, "band", "UNKNOWN")
-                    evidence = getattr(intent, "evidence", [])
+                    # ── STAGE 7: Intent classification ────────────────────────
+                    if intel is not None:
+                        # Sonnet classify_intent replaces point-counting scorer
+                        intent_data = await intel.classify_intent(domain, website_data, gmb_data, ads_data)
+                        intent_band = intent_data.get("band", "NOT_TRYING")
+                        intent_score = intent_data.get("score", 0)
 
-                    # STAGE 8: DM identification
+                        # Intent gate: NOT_TRYING rejected
+                        if intent_band == "NOT_TRYING":
+                            async with stats_lock:
+                                stats.intent_rejected += 1
+                            continue
+
+                        # Sonnet analyse_reviews
+                        reviews = (gmb_data or {}).get("reviews") or []
+                        review_data = await intel.analyse_reviews(domain, reviews)
+
+                        # Haiku refine_evidence → final card copy
+                        refined = await intel.refine_evidence(domain, intent_data, review_data, website_data)
+                        evidence = refined.get("evidence_statements", [])
+                    else:
+                        # Fallback: rule-based scorer
+                        intent_free = self._scorer.score_intent_free(enrichment)
+                        if getattr(intent_free, "band", None) == "NOT_TRYING":
+                            async with stats_lock:
+                                stats.intent_rejected += 1
+                            continue
+                        intent = self._scorer.score_intent_full(enrichment, ads_data, gmb_data)
+                        intent_band = getattr(intent, "band", "UNKNOWN")
+                        intent_score = getattr(intent, "raw_score", 0)
+                        evidence = getattr(intent, "evidence", [])
+
+                    # ── STAGE 8: DM identification ────────────────────────────
                     async with GLOBAL_SEM_DFS:
                         dm = await self._stage_dm(sem_dm, domain, company_name, enrichment)
 
@@ -660,7 +780,7 @@ class PipelineOrchestrator:
                         affordability_band=afford.band,
                         affordability_score=afford.raw_score,
                         intent_band=intent_band,
-                        intent_score=getattr(intent, "raw_score", 0),
+                        intent_score=intent_score,
                         gmb_rating=enrichment.get("gmb_rating"),
                         gmb_review_count=enrichment.get("gmb_review_count", 0),
                         dm_name=dm.name,

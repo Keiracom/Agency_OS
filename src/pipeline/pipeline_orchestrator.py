@@ -30,6 +30,7 @@ from src.pipeline.prospect_scorer import ProspectScorer, ProspectScore
 from src.pipeline.intelligence import GLOBAL_SEM_SONNET, GLOBAL_SEM_HAIKU  # shared semaphores
 from src.pipeline import intelligence as _intel_module  # optional: used when self._intelligence is set
 from src.config.category_registry import get_discovery_categories, SERVICE_CATEGORY_MAP  # noqa: F401
+from src.pipeline.email_waterfall import discover_email, GLOBAL_SEM_LEADMAGIC  # noqa: F401
 
 logger = logging.getLogger(__name__)
 
@@ -80,6 +81,12 @@ class ProspectCard:
     dm_title: Optional[str] = None
     dm_linkedin_url: Optional[str] = None
     dm_confidence: Optional[str] = None
+    # Email waterfall fields (Directive #299)
+    dm_email: Optional[str] = None
+    dm_email_verified: bool = False
+    dm_email_source: Optional[str] = None
+    dm_email_confidence: Optional[str] = None
+    email_cost_usd: float = 0.0
 
 
 @dataclass
@@ -804,8 +811,17 @@ class PipelineOrchestrator:
                     async with stats_lock:
                         stats.dm_found += 1
 
-                    # GATE: Reachability
-                    has_email = bool(enrichment.get("website_contact_emails"))
+                    # ── STAGE 9: Email waterfall (after DM identification) ────
+                    email_result = await discover_email(
+                        domain=domain,
+                        dm_name=dm.name or "",
+                        dm_linkedin=getattr(dm, "linkedin_url", None),
+                        html=enrichment.get("html") or enrichment.get("_raw_html") or "",
+                        company_name=company_name,
+                    )
+
+                    # GATE: Reachability — email OR LinkedIn required
+                    has_email = bool(email_result.email) or bool(enrichment.get("website_contact_emails"))
                     has_linkedin = bool(getattr(dm, "linkedin_url", None))
                     if not (has_email or has_linkedin):
                         async with stats_lock:
@@ -828,6 +844,11 @@ class PipelineOrchestrator:
                         dm_title=getattr(dm, "title", None),
                         dm_linkedin_url=getattr(dm, "linkedin_url", None),
                         dm_confidence=getattr(dm, "confidence", None),
+                        dm_email=email_result.email,
+                        dm_email_verified=email_result.verified,
+                        dm_email_source=email_result.source,
+                        dm_email_confidence=email_result.confidence,
+                        email_cost_usd=email_result.cost_usd,
                     )
 
                     async with results_lock:

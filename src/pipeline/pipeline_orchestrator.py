@@ -602,26 +602,60 @@ class PipelineOrchestrator:
         """
         t0 = time.monotonic()
 
-        # ── Optional: pre-fetch all domains via multi-category discovery ──────
+        # ── On-demand discovery queue (replaces pre-fetch model) ─────────────
+        # When discover_all=True and discovery has next_batch(), use on-demand
+        # batching: pull 100 domains at a time, refill when queue < 20.
+        # Stops pulling as soon as target_reached fires — DFS cost tracks need.
         pre_fetched_queue: asyncio.Queue | None = None
-        if discover_all and hasattr(self._discovery, "discover_prospects"):
-            logger.info("run_parallel: discover_all mode — pre-fetching all categories")
-            category_ints = []
+        discovery_lock: asyncio.Lock | None = None
+        discovery_refill_task: asyncio.Task | None = None
+
+        if discover_all and hasattr(self._discovery, "next_batch"):
+            logger.info("run_parallel: on-demand discovery mode")
+            category_ints: list[int] = []
             for code in category_codes:
                 try:
                     category_ints.append(int(code))
                 except (ValueError, TypeError):
                     pass
-            all_domains = await self._discovery.discover_prospects(
-                category_codes=category_ints,
-                location=location,
-                exclude_domains=set(exclude_domains or []),
-            )
+
+            # Reset discovery pagination state
+            if hasattr(self._discovery, "reset"):
+                self._discovery.reset(category_ints)
+
             pre_fetched_queue = asyncio.Queue()
-            for d in all_domains:
-                await pre_fetched_queue.put(d)
-            logger.info("run_parallel: pre-fetched %d domains across %d categories",
-                        len(all_domains), len(category_ints))
+            discovery_lock = asyncio.Lock()
+
+            async def _refill_loop() -> None:
+                """Pull next_batch() whenever queue drops below REFILL_THRESHOLD."""
+                REFILL_THRESHOLD = 20
+                DISCOVERY_BATCH = 100
+                while not target_reached.is_set():
+                    if pre_fetched_queue.qsize() < REFILL_THRESHOLD:
+                        async with GLOBAL_SEM_DFS:
+                            try:
+                                batch = await self._discovery.next_batch(
+                                    category_codes=category_ints,
+                                    location=location,
+                                    batch_size=DISCOVERY_BATCH,
+                                    exclude_domains=set(exclude_domains or []),
+                                )
+                            except Exception as exc:
+                                logger.warning("discovery refill error: %s", exc)
+                                break
+                        if not batch:
+                            logger.info("run_parallel: all discovery categories exhausted")
+                            break
+                        for item in batch:
+                            await pre_fetched_queue.put(item)
+                        logger.info(
+                            "run_parallel: refilled queue with %d domains (qsize=%d)",
+                            len(batch), pre_fetched_queue.qsize(),
+                        )
+                    else:
+                        await asyncio.sleep(0.1)
+
+            discovery_refill_task = asyncio.create_task(_refill_loop())
 
         # ── Shared state ─────────────────────────────────────────────────
         results: list[ProspectCard] = []
@@ -874,6 +908,14 @@ class PipelineOrchestrator:
         # ── Launch workers ────────────────────────────────────────────────
         workers = [_worker(i) for i in range(num_workers)]
         await asyncio.gather(*workers, return_exceptions=True)
+
+        # Cancel refill loop once workers are done
+        if discovery_refill_task is not None and not discovery_refill_task.done():
+            discovery_refill_task.cancel()
+            try:
+                await discovery_refill_task
+            except asyncio.CancelledError:
+                pass
 
         stats.elapsed_seconds = time.monotonic() - t0
         logger.info(

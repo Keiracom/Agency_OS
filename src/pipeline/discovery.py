@@ -3,19 +3,28 @@ Contract: src/pipeline/discovery.py
 Purpose: Multi-category discovery flow for service-first campaign model.
          Sweeps DFS domain_metrics_by_categories across all category codes
          matching an agency's services, deduplicates, and feeds the pipeline.
-Directive: #298
+Directive: #298, #300a (on-demand batching)
 
 Usage:
     discovery = MultiCategoryDiscovery(dfs_client)
+
+    # On-demand: pull one batch at a time (run_parallel refill loop)
+    batch = await discovery.next_batch(
+        category_codes=[10514, 13462, 11295],
+        location="Australia",
+        batch_size=100,
+        exclude_domains=already_claimed_set,
+    )
+
+    # Full sweep (legacy — fetches entire pool upfront)
     domains = await discovery.discover_prospects(
         category_codes=[10514, 13462, 11295],
         location="Australia",
         exclude_domains=already_claimed_set,
     )
 
-The discover_prospects function is the entry point for run_parallel.
-It pre-fetches all domains across categories before the worker pool starts,
-so workers process enrichment in parallel without DFS rate-limit contention.
+On-demand model: run_parallel calls next_batch() as the queue drains.
+Discovery stops as soon as target_reached fires — DFS cost tracks actual need.
 """
 from __future__ import annotations
 
@@ -31,8 +40,12 @@ logger = logging.getLogger(__name__)
 class MultiCategoryDiscovery:
     """
     Service-first multi-category discovery.
-    Batches category codes (max 20/call), deduplicates, and returns
-    a flat list of domain dicts ready for the pipeline worker pool.
+
+    Supports two modes:
+    1. On-demand (run_parallel): next_batch() returns one page at a time.
+       State (offsets, exhausted flags) is tracked on the instance.
+       Call reset() to start a fresh sweep.
+    2. Full sweep (legacy): discover_prospects() fetches the entire pool.
     """
 
     def __init__(self, dfs_client) -> None:
@@ -41,6 +54,126 @@ class MultiCategoryDiscovery:
             dfs_client: DFSLabsClient instance with domain_metrics_by_categories().
         """
         self._dfs = dfs_client
+        # On-demand state — reset per run_parallel call via reset()
+        self._offsets: dict[int, int] = {}
+        self._exhausted: set[int] = set()
+        self._total_counts: dict[int, int] = {}
+
+    def reset(self, category_codes: list[int]) -> None:
+        """Reset pagination state for a new sweep."""
+        self._offsets = {code: 0 for code in category_codes}
+        self._exhausted = set()
+        self._total_counts = {}
+
+    async def next_batch(
+        self,
+        category_codes: list[int],
+        location: str = "Australia",
+        batch_size: int = 100,
+        exclude_domains: set[str] | None = None,
+        etv_min: float = 100.0,
+        etv_max: float = 50000.0,
+    ) -> list[dict]:
+        """
+        Pull the next batch of domains across category codes (on-demand model).
+
+        Maintains internal offset state — each call returns the next page.
+        Skips exhausted categories (min_etv < etv_min or offset >= total_count).
+        Returns empty list when all categories are exhausted.
+
+        Args:
+            category_codes: DFS category codes to sweep.
+            location: DFS location_name string.
+            batch_size: Domains per DFS API call (max 100).
+            exclude_domains: Domains to skip.
+            etv_min: Minimum organic ETV to include.
+            etv_max: Maximum organic ETV to include.
+        """
+        exclude: set[str] = set(exclude_domains or [])
+
+        # Initialise offsets on first call
+        for code in category_codes:
+            if code not in self._offsets:
+                self._offsets[code] = 0
+
+        results: list[dict] = []
+
+        # Round-robin through non-exhausted categories until we have batch_size domains
+        active_codes = [c for c in category_codes if c not in self._exhausted]
+        if not active_codes:
+            return []
+
+        for code in active_codes:
+            if len(results) >= batch_size:
+                break
+
+            offset = self._offsets.get(code, 0)
+            total_count = self._total_counts.get(code)
+
+            # Skip if already past total_count
+            if total_count is not None and offset >= total_count:
+                self._exhausted.add(code)
+                continue
+
+            try:
+                raw = await self._dfs.domain_metrics_by_categories(
+                    category_codes=[code],
+                    location_name=location,
+                    paid_etv_min=0.0,
+                    limit=batch_size,
+                    offset=offset,
+                )
+            except Exception as exc:
+                logger.error("next_batch: DFS error code=%s offset=%d: %s", code, offset, exc)
+                self._exhausted.add(code)
+                continue
+
+            if not raw:
+                self._exhausted.add(code)
+                continue
+
+            # Record total_count from first item
+            if code not in self._total_counts and raw:
+                tc = raw[0].get("_total_count", 0)
+                if tc:
+                    self._total_counts[code] = tc
+
+            etvs = [item.get("organic_etv", 0) or 0 for item in raw]
+            min_etv_in_batch = min(etvs) if etvs else 0
+
+            for item in raw:
+                domain = item.get("domain", "")
+                if not domain or domain in exclude:
+                    continue
+                organic_etv = item.get("organic_etv", 0.0) or 0.0
+                if not (etv_min <= organic_etv <= etv_max):
+                    continue
+                results.append({
+                    "domain": domain,
+                    "organic_etv": organic_etv,
+                    "paid_etv": item.get("paid_etv", 0.0) or 0.0,
+                    "category_codes": [code],
+                })
+
+            # Advance offset
+            self._offsets[code] = offset + len(raw)
+
+            # Mark exhausted if past SMB tail or last page
+            if min_etv_in_batch < etv_min:
+                self._exhausted.add(code)
+            elif len(raw) < batch_size:
+                self._exhausted.add(code)
+
+        logger.info(
+            "next_batch: returned %d domains (active_cats=%d, exhausted=%d)",
+            len(results), len(active_codes), len(self._exhausted),
+        )
+        return results
+
+    @property
+    def all_exhausted(self) -> bool:
+        """True when all category codes have been fully paginated."""
+        return len(self._exhausted) >= len(self._offsets)
 
     async def discover_prospects(
         self,

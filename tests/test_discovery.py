@@ -183,9 +183,11 @@ async def test_run_parallel_discover_all_feeds_worker_pool():
     """run_parallel with discover_all=True pre-fetches domains and workers process them."""
     from src.pipeline.pipeline_orchestrator import PipelineOrchestrator
 
-    # Discovery mock with discover_prospects
+    # Discovery mock with next_batch (on-demand model)
     disc = MagicMock()
-    disc.discover_prospects = AsyncMock(return_value=[
+    disc.reset = MagicMock()
+    disc.all_exhausted = False
+    disc.next_batch = AsyncMock(return_value=[
         {"domain": f"dental{i}.com.au", "organic_etv": 500.0, "category_codes": [10514]}
         for i in range(5)
     ])
@@ -234,8 +236,163 @@ async def test_run_parallel_discover_all_feeds_worker_pool():
         discover_all=True,
     )
 
-    # discover_prospects must have been called (not pull_batch)
-    disc.discover_prospects.assert_called_once()
-    assert "discover_prospects" in str(disc.method_calls)
-    # Got prospects from the pre-fetched pool
+    # next_batch must have been called (on-demand model replaced pre-fetch)
+    disc.next_batch.assert_called()
+    # Got prospects from the on-demand pool
     assert len(result.prospects) >= 1
+
+
+# ── On-demand next_batch tests ────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_next_batch_returns_domains():
+    """next_batch returns domains from first page."""
+    from src.pipeline.discovery import MultiCategoryDiscovery
+    dfs = _make_dfs(5)
+    disc = MultiCategoryDiscovery(dfs)
+    disc.reset([10514])
+    batch = await disc.next_batch(
+        category_codes=[10514],
+        location="Australia",
+        batch_size=100,
+        etv_min=0.0,
+        etv_max=99999.0,
+    )
+    assert len(batch) == 5
+    assert all("domain" in d for d in batch)
+
+
+@pytest.mark.asyncio
+async def test_next_batch_advances_offset():
+    """Successive next_batch calls advance offset — each call uses a higher offset."""
+    from src.pipeline.discovery import MultiCategoryDiscovery
+    call_offsets = []
+
+    async def mock_dfs(category_codes, location_name="Australia", paid_etv_min=0.0,
+                       limit=100, offset=0, **kwargs):
+        call_offsets.append(offset)
+        # Return exactly limit items so pagination doesn't stop (not a last page)
+        return [{"domain": f"d{offset}x{i}.com.au",
+                 "organic_etv": 500.0, "paid_etv": 0.0, "_total_count": 1000}
+                for i in range(limit)]
+
+    dfs = MagicMock()
+    dfs.domain_metrics_by_categories = mock_dfs
+    disc = MultiCategoryDiscovery(dfs)
+    disc.reset([10514])
+
+    await disc.next_batch(category_codes=[10514], batch_size=100, etv_min=0.0, etv_max=99999.0)
+    await disc.next_batch(category_codes=[10514], batch_size=100, etv_min=0.0, etv_max=99999.0)
+
+    assert len(call_offsets) == 2
+    assert call_offsets[0] == 0
+    assert call_offsets[1] == 100  # advanced by len(raw) = limit = 100
+
+
+@pytest.mark.asyncio
+async def test_next_batch_exhausts_when_min_etv_drops():
+    """Category marked exhausted when min_etv in batch drops below etv_min."""
+    from src.pipeline.discovery import MultiCategoryDiscovery
+
+    async def mock_dfs(*args, **kwargs):
+        # Return low-ETV items that are below the 100 floor
+        return [{"domain": f"low{i}.com.au", "organic_etv": 50.0, "paid_etv": 0.0}
+                for i in range(5)]
+
+    dfs = MagicMock()
+    dfs.domain_metrics_by_categories = mock_dfs
+    disc = MultiCategoryDiscovery(dfs)
+    disc.reset([10514])
+
+    batch = await disc.next_batch(
+        category_codes=[10514], batch_size=100, etv_min=100.0, etv_max=99999.0
+    )
+    # Items below etv_min are filtered out
+    assert len(batch) == 0
+    # Category should be exhausted
+    assert disc.all_exhausted
+
+
+@pytest.mark.asyncio
+async def test_all_exhausted_returns_empty():
+    """next_batch returns [] when all categories exhausted."""
+    from src.pipeline.discovery import MultiCategoryDiscovery
+    dfs = MagicMock()
+    dfs.domain_metrics_by_categories = AsyncMock(return_value=[])
+    disc = MultiCategoryDiscovery(dfs)
+    disc.reset([10514])
+
+    result = await disc.next_batch(category_codes=[10514], batch_size=100, etv_min=0.0, etv_max=99999.0)
+    assert result == []
+    assert disc.all_exhausted
+
+
+@pytest.mark.asyncio
+async def test_run_parallel_on_demand_stops_refill_at_target():
+    """run_parallel with discover_all=True stops calling next_batch after target_reached."""
+    from src.pipeline.pipeline_orchestrator import PipelineOrchestrator
+
+    next_batch_calls = {"n": 0}
+
+    class MockDiscovery:
+        def reset(self, codes): pass
+
+        @property
+        def all_exhausted(self): return False
+
+        async def next_batch(self, **kwargs):
+            next_batch_calls["n"] += 1
+            return [{"domain": f"d{next_batch_calls['n']}x{i}.com.au",
+                     "organic_etv": 500.0, "category_codes": [10514]}
+                    for i in range(20)]
+
+    fe = MagicMock()
+    fe.scrape_website = AsyncMock(return_value={"title": "T", "_raw_html": "<html>NSW</html>"})
+    fe.enrich_from_spider = AsyncMock(return_value={
+        "domain": "d.com.au", "company_name": "Test", "entity_type": "Company",
+        "gst_registered": True, "non_au": False,
+        "website_contact_emails": ["info@d.com.au"], "html": "<html>NSW</html>",
+    })
+    scorer = MagicMock()
+    scorer.score_affordability = MagicMock(
+        return_value=MagicMock(passed_gate=True, band="HIGH", raw_score=9, gaps=[]))
+    scorer.score_intent_free = MagicMock(
+        return_value=MagicMock(band="TRYING", passed_free_gate=True, raw_score=5, evidence=[]))
+    scorer.score_intent_full = MagicMock(
+        return_value=MagicMock(band="TRYING", raw_score=6, evidence=["Signal"]))
+    dm_result = MagicMock()
+    dm_result.name = "Jane"
+    dm_result.title = "Owner"
+    dm_result.linkedin_url = "https://au.linkedin.com/in/jane"
+    dm_result.confidence = "HIGH"
+    dm_id = MagicMock()
+    dm_id.identify = AsyncMock(return_value=dm_result)
+
+    from unittest.mock import patch
+    from src.pipeline.email_waterfall import EmailResult
+
+    mock_email_result = EmailResult(
+        email="jane@d.com.au", verified=True, source="website", confidence="high", cost_usd=0.0
+    )
+
+    with patch("src.pipeline.pipeline_orchestrator.discover_email",
+               AsyncMock(return_value=mock_email_result)):
+        orch = PipelineOrchestrator(
+            discovery=MockDiscovery(),
+            free_enrichment=fe,
+            scorer=scorer,
+            dm_identification=dm_id,
+        )
+
+        result = await orch.run_parallel(
+            category_codes=["10514"],
+            location="Australia",
+            target_count=1,
+            num_workers=1,
+            batch_size=5,
+            discover_all=True,
+        )
+
+    assert len(result.prospects) == 1
+    # next_batch must have been called (refill loop ran)
+    assert next_batch_calls["n"] >= 1

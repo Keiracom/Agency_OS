@@ -675,7 +675,7 @@ class FreeEnrichment:
                 from src.config.settings import settings
                 from src.integrations.abn_client import ABNClient
 
-                async with ABNClient(guid=settings.ABN_LOOKUP_GUID) as abn_client:
+                async with ABNClient(guid=settings.abn_lookup_guid) as abn_client:
                     api_results = await abn_client.search_by_name(api_term, limit=5)
                 if not api_results:
                     continue

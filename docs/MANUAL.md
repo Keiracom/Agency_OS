@@ -23,27 +23,179 @@ Revenue model for BU: API subscriptions, Salesforce/HubSpot marketplace, bulk an
 
 ## SECTION 2 — CURRENT STATE
 
-- Last directive issued: #290 (Orchestrator wiring + GMB + ads stub — COMPLETE)
-- Next directive: #291
-- Test baseline: 1088 passed, 0 failed, 28 skipped (+21 from #290)
-- Last merged PRs: #242–#253 (Sprints 1-5), #289+#290 pending merge
-- Spider.cloud: validated, API key in env SPIDER_API_KEY
-- Segment testing: ratified March 29 2026 — Segments 1+2 ready for live test
-- Architecture: **v7 ratified Mar 28 2026** — signal-first organic discovery, free intelligence sweep, proven with live AU data across 5 dental domains
-- **v6 pipeline SUPERSEDED. Layer 2 (5-source parallel) and Layer 3 (bulk filter) replaced. Layer 4 (DFS tech/rank/historical) replaced with free scrape stack.**
-- **Live testing confirmed: domain_metrics_by_categories returns 24,231 AU dental / 31,445 AU plumbing domains at $0.0015/domain. Tail ($101–$500 ETV) = 90% real businesses in both categories. Plumbing top-200 = 0% local plumbers (gov/supplier pollution). Google Ads Transparency free scraper: 5/5 AU coverage. Website scraping direct HTTP: 5/5 coverage, full tech stack, FREE.**
+- Last directive issued: #292 (Architecture alignment + ABN fix — IN PROGRESS)
+- Next directive: #293
+- Test baseline: 1119 passed, 0 failed, 28 skipped (post-#289 merge, pre-#291 merge)
+- Last merged PRs: #242–#253 + #252 (ABN multistrategy) now merged via #292
+- PR #254 (Directive #291 — ProspectScorer) pending merge
+- Architecture: **FINAL ratified Mar 30 2026** — service-signal discovery, two-dimension scoring, stage-parallel processing
+- **Pipeline test Run 1 (Mar 29):** 100 DMs from 200 domains, $3.51, 7.3 min
+- **Pipeline test Run 2 (Mar 30, partial):** 69/100 DMs from 300 domains before timeout. Intent gate working — rejecting 64% NOT_TRYING. ABN API bug fixed in #292.
+- **ABN API Settings.abn_lookup_guid bug:** FIXED in #292 (was `settings.ABN_LOOKUP_GUID` → `settings.abn_lookup_guid`)
+- ETV range 200–5000 validated as SMB sweet spot for dental AU
 
 ---
 
-## SECTION 3 — ARCHITECTURE v7 (ratified Mar 28 2026)
+## SECTION 3 — PIPELINE FINAL ARCHITECTURE (ratified Mar 30 2026)
 
-Core principle: Signal-first organic discovery. Find businesses spending on Google Ads in target industries. Sweep them for free. Score against agency services. Only spend money at DM stage.
-
-**PROVEN WITH LIVE AU DATA (5-domain dental sample, Mar 2026)**
+Core principle: Agency sells services. Prospects have problems. Industry is irrelevant to the match. Geography is a delivery constraint. Signals are the discovery engine.
 
 ---
 
-### DEAD ENDPOINTS (do not use in v7)
+### ONBOARDING
+
+Agency connects CRM + LinkedIn. System extracts services and service area. No industry selection. No ICP definition. Two inputs: what they sell, where they operate.
+
+System builds Agency Profile automatically. Signal config generated from their services — each service maps to category codes + scoring weights.
+Output: Agency Profile + Signal Config + Exclusion List
+
+**Status: BUILT** — HubSpot/GHL/Pipedrive/Close OAuth complete. Unipile LinkedIn complete. Onboarding flow complete.
+
+---
+
+### MONTHLY CYCLE
+
+**Phase 1 — Re-score (days 1–2):** Re-scrape all prior-month rejects in agency's BU. Fresh Spider data through scoring. Promote any that now pass. Zero discovery cost.
+
+**Phase 2 — Discover (days 2–3):** Fill remaining quota with fresh discovery across ALL categories within service area. Monthly rotation through categories. Pool never exhausts.
+
+**Phase 3 — Enrich + Score + Identify (days 2–3):** Stage-parallel processing. All domains in batch go through each stage concurrently:
+
+| Stage | Operation | Concurrency | Time/200 domains |
+|-------|-----------|-------------|-----------------|
+| 1 | Spider scrape | sem=15 | ~30s |
+| 2 | DNS + ABN | sem=20 | ~15s |
+| 3 | Affordability gate | in-memory | <1s |
+| 4 | Intent free gate | in-memory | <1s — rejects NOT_TRYING before paid enrichment |
+| 5 | DFS Ads Search + Maps GMB | sem=20 | ~20s |
+| 6 | Intent full scoring | in-memory | <1s |
+| 7 | SERP LinkedIn DM | sem=20 | ~20s |
+| 8 | Reachability check | in-memory | <1s |
+
+**Target: 200 domains processed in under 2 minutes.**
+
+**Phase 4 — Rank + Present (day 3):** Dashboard populates. Sorted by STRUGGLING > TRYING > DABBLING. Evidence statements on each card.
+
+---
+
+### TWO-DIMENSION SCORING (Directive #291 — `src/pipeline/prospect_scorer.py`)
+
+**Dimension 1: Affordability** — can they pay?
+
+Hard gates (reject immediately): sole_trader, gst=False, unreachable (no website + no ABN).
+
+Soft signals: entity_type (trust/company/partner), GST, professional email, CMS, SSL, multi-page. Max ~10.
+
+Gate: score ≥ 3. Bands: **LOW (reject)** | **MEDIUM** | **HIGH** | **VERY_HIGH**
+
+**Dimension 2: Intent** — will they buy?
+
+Free signals (from Spider HTML — zero extra cost):
+
+| Signal | Trigger | Points |
+|--------|---------|--------|
+| website_no_analytics | has website but no GA4/GTM | 2 |
+| ads_tag_no_conversion | AW- tag in HTML, no conversion tracking | 3 |
+| booking_no_analytics | has booking system, no analytics | 2 |
+| meta_pixel | Facebook Pixel present | 1 |
+| social_links | team page or social links | 1 |
+| stale_cms | professional CMS present | 1 |
+
+Gate: NOT_TRYING band skips paid enrichment entirely.
+
+Paid signals (after free gate passes, gate passers only):
+
+| Signal | Source | Points |
+|--------|--------|--------|
+| running_gads | DFS Ads Search $0.002 | 2 |
+| gmb_established | GMB review count > 20 | 1 |
+
+Bands: **NOT_TRYING (0–2, skip paid)** | **DABBLING (3–4)** | **TRYING (5–7)** | **STRUGGLING (8+)**
+
+**Evidence strings:** Each signal produces a paired statement (effort + gap) for Haiku outreach generation. Examples:
+- "Running Google Ads but missing conversion tracking — wasting budget"
+- "Has a WordPress site but no analytics installed"
+- "Has online booking but can't measure which channels drive bookings"
+
+**Reachability:** Delivery gate only. Email OR LinkedIn required. Not scored.
+
+---
+
+### DM IDENTIFICATION WATERFALL
+
+T-DM1 — DFS SERP site:linkedin.com/in (70% hit, $0.01/query, AU-filtered)
+T-DM2 — Bright Data LinkedIn company lookup ($0.00075/record, fallback)
+T-DM3 — Spider team page names (free)
+T-DM4 — ABN entity surname (free, LOW confidence)
+
+ABN multi-strategy matching (Directive #289): 4-strategy keyword waterfall before live API call. 8/10 domains matched in live test.
+
+---
+
+### TERRITORY
+
+Locks by geography only, not industry. Two agencies in same city — different service areas or pool large enough (cross-category) that collision is minimal. First to discover claims the prospect.
+
+---
+
+### PIPELINE ORCHESTRATOR (Directive #288 + #290 + #291)
+
+`src/pipeline/pipeline_orchestrator.py` — `PipelineOrchestrator.run()`
+
+```
+while len(results) < target_count:
+    domains = discovery.pull_batch(category_code, location, limit, offset)
+    if not domains: break  # category exhausted
+    for domain in domains:
+        enrichment = free_enrichment.enrich(domain)   # Spider + DNS + ABN
+        
+        # GATE 1: Affordability
+        afford = scorer.score_affordability(enrichment)
+        if not afford.passed_gate: continue
+        
+        # GATE 2: Intent free (rejects NOT_TRYING before paid enrichment)
+        intent_free = scorer.score_intent_free(enrichment)
+        if not intent_free.passed_free_gate: continue
+        
+        # Paid enrichment (gate passers only)
+        ads_data = await dfs.ads_search_by_domain(domain)
+        gmb_data = await dfs.maps_search_gmb(company + suburb)
+        
+        # Full intent score with paid data
+        intent = scorer.score_intent_full(enrichment, ads_data, gmb_data)
+        
+        dm = dm_identification.identify(domain, ...)
+        if not dm.name: continue
+        
+        if not (dm.linkedin_url or has_email): continue  # reachability
+        results.append(ProspectCard(evidence=intent.evidence, ...))
+```
+
+`PipelineStats`: discovered / enriched / affordability_rejected / intent_rejected / paid_enrichment_calls / dm_found / dm_not_found / unreachable / viable_prospects / total_cost_usd / elapsed_seconds
+
+All dependencies injected (fully testable without DB).
+
+---
+
+### PIPELINE TEST RESULTS (Run 1: Mar 29 2026, pre-#291 scoring)
+
+| Metric | Result |
+|--------|--------|
+| Target | 100 viable DMs |
+| Domains tested | 200 |
+| Enrichment success | 84% |
+| Affordability gate pass | 74% of enriched |
+| DM hit rate | 81% of gate passers |
+| Viable prospects | 100/200 = 50% conversion |
+| Cost | $3.51 = $0.035/DM |
+| Time | 7.3 min |
+
+Run 2 (Mar 30 2026, with #291 Intent gate): 69/100 DMs from 300 domains before timeout. Intent gate rejected 64% of affordable businesses (NOT_TRYING). Conversion 23% — correct behaviour, higher quality. Cost ~$0.071/DM. Speed blocked by ABN API fallback bug (fixed in #292).
+
+---
+
+### DEAD ENDPOINTS (do not use)
+
 
 | Endpoint | Why Dead |
 |----------|---------|
@@ -261,65 +413,10 @@ Sprint: Sprint 4 (Directive #287)
 
 ---
 
-### COMPOSITE AFFORDABILITY SCORING (Directive #288)
+### SCORING (legacy reference — superseded by ProspectScorer)
 
-`src/pipeline/affordability_scoring.py` — `AffordabilityScorer.score(enrichment)`.
-
-Signal dimensions and point values (max 20):
-
-| Signal | Source | Points |
-|--------|--------|--------|
-| Entity type | ABN | trust=3, company=2, partnership=1 |
-| GST registered | ABN | yes=1 |
-| Google Ads active | Ads Transparency | active+>5=3, active=2, none=0 |
-| Review count | DFS Maps GMB | 0–5=0, 6–20=1, 21–50=2, 51–100=3, 101+=4 |
-| Website sophistication | Spider scrape | professional CMS + tracking + booking + SSL + multi-page (max 5) |
-| Employee signals | Spider team page | 1–2=1, 3–5=2, 6+=3 |
-| Email maturity | DNS | PROFESSIONAL=1 |
-
-Band thresholds: **LOW (0–4, reject)** | **MEDIUM (5–8, pass)** | **HIGH (9–13, pass)** | **VERY_HIGH (14+, pass)**
-
-Hard gates: sole_trader → always reject | gst_registered=False → always reject | unreachable → always reject
-
-Returns `AffordabilityResult(raw_score, band, signals, gaps, passed_gate)`.
-
-`gaps` = plain-English list of zero-scoring signals (e.g. "Not running Google Ads", "Only 3 Google reviews"). **This is what Haiku uses for outreach angle generation.**
-
----
-
-### STREAMING PIPELINE ORCHESTRATOR (Directive #288)
-
-`src/pipeline/pipeline_orchestrator.py` — `PipelineOrchestrator.run()`.
-
-Agency asks for 100 prospects. System delivers exactly 100. No prediction — keeps pulling until done.
-
-```
-results = []
-while len(results) < target_count:
-    domains = discovery.pull_batch(category_code, location, limit=batch_size, offset=offset)
-    if not domains: break  # category exhausted
-    for domain in domains:
-        enrichment = free_enrichment.enrich(domain)
-        score = scorer.score(enrichment)
-        if not score.passed_gate: continue
-        dm = dm_identification.identify(domain, ...)
-        if not dm.name: continue
-        results.append(ProspectCard(...))
-```
-
-`ProspectCard`: domain, company_name, location, services, **gaps** (from scorer), affordability_band, affordability_score, dm_name, dm_title, dm_linkedin_url, dm_confidence.
-
-`PipelineStats`: discovered / enriched / gate_passed / gate_failed / dm_found / dm_failed / total_cost_usd / elapsed_seconds.
-
-All dependencies injected (fully testable without DB).
-Sprint: Sprint 5 (Directive #288)
-
----
-
-### GATE 6: Reachability Gate
-
-PASS if: at least one confirmed channel (email OR LinkedIn OR phone)
-REJECT to BU backlog if no contact found
+`src/pipeline/affordability_scoring.py` — `AffordabilityScorer` — left in place, no longer primary scorer.
+**Active scorer:** `src/pipeline/prospect_scorer.py` — `ProspectScorer` — see Two-Dimension Scoring above.
 
 ---
 
@@ -608,15 +705,14 @@ v6 era (#271–#277): Layer 2 (discovery), Layer 3 (bulk filter), signal config 
 | Sprint 4 | #286 | DM Identification: BrightDataLinkedInClient + DMIdentification pipeline (4-tier fallback) | COMPLETE — PR #249 merged |
 | Sprint 4 | #287 | SERP-first DM waterfall: DFS SERP T-DM1 (70% hit), BD T-DM2, AU location filter | COMPLETE — PR #250 (pending merge) |
 | Sprint 5 | #288 | Composite affordability scorer (7 signals, 4 bands) + streaming PipelineOrchestrator + ProspectCard | COMPLETE — PR #251 (pending merge) |
-| Sprint 5 | #289 | ABN multi-strategy matching waterfall (4 strategies, 8/10 live match rate) | COMPLETE — PR #252 |
-| Sprint 5 | #290 | Wire orchestrator: pull_batch + enrich methods, DFS Maps GMB, ads transparency stub | COMPLETE — PR #253 |
-| Sprint 6 | #291 | DM email waterfall (scrape→Leadmagic→ZeroBounce), mobile waterfall, reachability v7 | NEXT |
-| Sprint 7 | #292–#293 | Message generation + outreach wiring: Haiku redesign with v7 signal inputs, scheduling engine, quota loop | Queued |
-| Sprint 8 | #294 | Multi-vertical: seed dental, recruitment, IT MSP signal configs + category codes | Queued |
-| Sprint 9 | #295 | Integration test + hardening: live pipeline test against 100 real domains, cost/quality audit | Queued |
-| Sprint 8 | #291 | Integration test + hardening: live pipeline test against 100 real domains, cost/quality audit | Queued |
-| Sprint 9 | #292 | Founding customer prep: onboarding wizard, approval flow, territory locking, demo mode | Queued |
-| Sprint 10 | #293 | Launch | Queued |
+| Sprint 5 | #289 | ABN multi-strategy matching waterfall (4 strategies, 8/10 live match rate) | COMPLETE — PR #252 merged |
+| Sprint 5 | #290 | Wire orchestrator: pull_batch + enrich methods, DFS Maps GMB, ads transparency real | COMPLETE — PR #253 merged |
+| Sprint 6 | #291 | Two-dimension ProspectScorer: Affordability + Intent gates, DFS Ads Search, Spider ad tag detection | COMPLETE — PR #254 (pending merge) |
+| Sprint 6 | #292 | Architecture alignment: Manual final architecture + ABN Settings bug fix + merge #252 | IN PROGRESS |
+| Sprint 7 | #293 | Pipeline v2 rerun: 100 DMs with full scoring, clean ProspectCards, timing/cost audit | NEXT |
+| Sprint 8 | #294 | Message generation: Haiku outreach from evidence statements | Queued |
+| Sprint 9 | #295 | Multi-vertical: dental + plumbing signal configs, category codes, ETV ranges | Queued |
+| Sprint 10 | #296 | Integration test + hardening + launch prep | Queued |
 
 ### Completed Directives Log
 
@@ -636,7 +732,9 @@ v6 era (#271–#277): Layer 2 (discovery), Layer 3 (bulk filter), signal config 
 | #287 | SERP-first DM waterfall: DFS SERP site:linkedin.com/in as T-DM1 (70% hit), BD as T-DM2, AU location filter | COMPLETE — PR #250 merged |
 | #288 | Composite affordability scorer (AffordabilityScorer, 7 signals, 4 bands) + PipelineOrchestrator + ProspectCard | COMPLETE — PR #251 merged |
 | #289 | ABN multi-strategy matching: 4-strategy waterfall, domain/title/suburb/live-API, PTY LTD stripping, 8/10 live match rate | COMPLETE — PR #252 |
-| #290 | Orchestrator wiring: pull_batch + enrich methods, DFS Maps GMB (maps_search_gmb), ads transparency stub | COMPLETE — PR #253 |
+| #290 | Orchestrator wiring: pull_batch + enrich methods, DFS Maps GMB (maps_search_gmb), ads transparency real | COMPLETE — PR #253 merged |
+| #291 | Two-dimension ProspectScorer: score_affordability + score_intent_free + score_intent_full. DFS Ads Search ($0.002/call). Spider AW-tag/Meta Pixel detection (free). | COMPLETE — PR #254 |
+| #292 | Manual final architecture + ABN Settings.abn_lookup_guid fix + PR #252 merge | IN PROGRESS |
 
 ---
 

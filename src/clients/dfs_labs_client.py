@@ -783,10 +783,22 @@ class DFSLabsClient:
         if not items:
             return None
         item = items[0]
+        # rating may be a scalar float or a dict like {"value": 4.2, "votes_count": 87}
+        rating_raw = item.get("rating")
+        rating_obj = rating_raw if isinstance(rating_raw, dict) else {}
+        gmb_rating = rating_obj.get("value") if rating_obj else (
+            float(rating_raw) if rating_raw is not None else None
+        )
+        gmb_review_count = (
+            item.get("rating_count")
+            or item.get("reviews_count")
+            or rating_obj.get("votes_count")
+            or 0
+        )
         return {
             "gmb_place_id": item.get("place_id"),
-            "gmb_rating": item.get("rating"),
-            "gmb_review_count": item.get("rating_count") or item.get("reviews_count") or 0,
+            "gmb_rating": gmb_rating,
+            "gmb_review_count": gmb_review_count,
             "gmb_address": item.get("address"),
             "gmb_phone": item.get("phone"),
             "gmb_found": True,

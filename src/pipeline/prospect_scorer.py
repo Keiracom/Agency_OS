@@ -311,7 +311,11 @@ class ProspectScorer:
 
         # Paid: GMB reviews
         if gmb_data:
-            review_count = gmb_data.get("gmb_review_count") or 0
+            _rc = gmb_data.get("gmb_review_count") or 0
+            try:
+                review_count = int(_rc)
+            except (TypeError, ValueError):
+                review_count = 0
             if review_count > 20:
                 signals["gmb_established"] = _IW_GMB_ESTABLISHED
                 evidence.append(

@@ -22,6 +22,8 @@ import asyncpg
 import dns.resolver
 import httpx
 
+from src.integrations.httpx_scraper import HttpxScraper
+
 SPIDER_API_URL = "https://api.spider.cloud/scrape"
 BATCH_SIZE = 50
 DNS_TIMEOUT = 5
@@ -133,6 +135,7 @@ class FreeEnrichment:
         self._conn = conn
         self._spider_key = os.environ.get("SPIDER_API_KEY", "")
         self._logger = logging.getLogger(__name__)
+        self._httpx = HttpxScraper()
 
     # ── Helpers ──────────────────────────────────────────────────────────────
 
@@ -330,6 +333,25 @@ class FreeEnrichment:
                     }
         return None
 
+    def _is_au_domain(self, domain: str, html: str) -> bool:
+        """Return True if domain is likely Australian."""
+        # 1. .au TLD check (fast path)
+        if domain.endswith(".au"):
+            return True
+        # 2. Australian phone patterns in HTML
+        AU_PHONE_RE = re.compile(r"\b(0[2347]|0[45]\d|\+61)\d{8}\b")
+        if AU_PHONE_RE.search(html):
+            return True
+        # 3. Australian state abbreviations (as standalone words)
+        AU_STATE_RE = re.compile(r"\b(NSW|VIC|QLD|SA|WA|TAS|NT|ACT)\b")
+        if AU_STATE_RE.search(html):
+            return True
+        # 4. Australian postcode pattern (4-digit, 2000-9999 range)
+        AU_POSTCODE_RE = re.compile(r"\b[2-9]\d{3}\b")
+        if AU_POSTCODE_RE.search(html):
+            return True
+        return False
+
     async def run(self, limit: int = 500) -> dict:
         rows = await self._conn.fetch(
             "SELECT id, domain, state FROM business_universe "
@@ -420,12 +442,15 @@ class FreeEnrichment:
                 title.split("|")[0].split("-")[0].strip()[:60]
                 or domain.split(".")[0].replace("-", " ").title()
             )
+            html_content = spider_data.get("_raw_html", "")
+            is_au = self._is_au_domain(domain, html_content)
             return {
                 **spider_data,
                 **dns_data,
                 **abn_data,
                 "company_name": company_name,
                 "domain": domain,
+                "non_au": not is_au,
             }
         except Exception as exc:
             self._logger.warning("enrich_from_spider failed for %s: %s", domain, exc)
@@ -471,6 +496,25 @@ class FreeEnrichment:
         return False
 
     async def _scrape_website(self, domain: str) -> dict[str, Any]:
+        # ── Try httpx first (fast, free) ──────────────────────────────────────
+        httpx_result = await self._httpx.scrape(domain)
+        if httpx_result is not None and len(httpx_result["html"]) >= 1000:
+            content = httpx_result["html"]
+            website_address = self._extract_jsonld_address(content)
+            return {
+                "title": httpx_result["title"] or "",
+                "website_cms": self._extract_cms(content),
+                "website_tech_stack": self._extract_tech_stack(content),
+                "website_tracking_codes": self._extract_trackers(content),
+                "website_team_names": self._extract_team_urls([]),
+                "website_contact_emails": self._extract_emails(content, []),
+                "website_address": website_address,
+                "_raw_html": content,
+                "scraper_used": "httpx",
+                **self._detect_ad_tags(content),
+            }
+
+        # ── Fall back to Spider ────────────────────────────────────────────────
         payload = {
             "url": f"https://{domain}",
             "return_format": "raw",
@@ -494,7 +538,7 @@ class FreeEnrichment:
             if not data or not isinstance(data, list):
                 return {}
             item = data[0]
-            content: str = item.get("content") or ""
+            content = item.get("content") or ""
             links: list = item.get("links") or []
             metadata: dict = item.get("metadata") or {}
             if not content:
@@ -509,6 +553,8 @@ class FreeEnrichment:
                 "website_team_names": self._extract_team_urls(links),
                 "website_contact_emails": self._extract_emails(content, links),
                 "website_address": website_address,
+                "_raw_html": content,
+                "scraper_used": "spider",
                 **self._detect_ad_tags(content),
             }
         except Exception as exc:

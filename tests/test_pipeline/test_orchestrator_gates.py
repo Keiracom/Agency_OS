@@ -23,7 +23,9 @@ def _intent_fail():
 
 def _make_orch(afford=None, intent_free=None, intent_full=None, dm=None):
     disc = MagicMock(); disc.pull_batch = AsyncMock(side_effect=[[{"domain": "dental.com.au"}], []])
-    enr = MagicMock(); enr.enrich = AsyncMock(return_value={"domain":"dental.com.au","company_name":"Dental"})
+    enr = MagicMock()
+    enr.scrape_website = AsyncMock(return_value={"title": "Dental"})
+    enr.enrich_from_spider = AsyncMock(return_value={"domain": "dental.com.au", "company_name": "Dental", "entity_type": "Company", "gst_registered": True})
     scorer = MagicMock()
     scorer.score_affordability = MagicMock(return_value=afford or _afford_pass())
     scorer.score_intent_free = MagicMock(return_value=intent_free or _intent_pass())
@@ -69,9 +71,10 @@ async def test_full_prospect_card_with_evidence():
 
 @pytest.mark.asyncio
 async def test_dm_not_found_counted():
-    orch, _ = _make_orch(dm=None)
     disc = MagicMock(); disc.pull_batch = AsyncMock(side_effect=[[{"domain":"x.com"}],[]])
-    enr = MagicMock(); enr.enrich = AsyncMock(return_value={"domain":"x.com","company_name":"X"})
+    enr = MagicMock()
+    enr.scrape_website = AsyncMock(return_value={"title": "X"})
+    enr.enrich_from_spider = AsyncMock(return_value={"domain":"x.com","company_name":"X","entity_type":"Company","gst_registered":True})
     scorer = MagicMock()
     scorer.score_affordability = MagicMock(return_value=_afford_pass())
     scorer.score_intent_free = MagicMock(return_value=_intent_pass())
@@ -87,8 +90,9 @@ async def test_dm_not_found_counted():
 async def test_stops_at_target_count():
     disc = MagicMock()
     disc.pull_batch = AsyncMock(return_value=[{"domain": f"d{i}.com.au"} for i in range(20)])
-    enr = MagicMock(); enr.enrich = AsyncMock(return_value={"domain":"d.com.au","company_name":"D",
-                                                             "website_contact_emails":["a@b.com"]})
+    enr = MagicMock()
+    enr.scrape_website = AsyncMock(return_value={"title": "D"})
+    enr.enrich_from_spider = AsyncMock(return_value={"domain":"d.com.au","company_name":"D","entity_type":"Company","gst_registered":True,"website_contact_emails":["a@b.com"]})
     scorer = MagicMock()
     scorer.score_affordability = MagicMock(return_value=_afford_pass())
     scorer.score_intent_free = MagicMock(return_value=_intent_pass())

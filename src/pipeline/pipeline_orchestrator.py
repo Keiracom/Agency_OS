@@ -104,14 +104,15 @@ class PipelineOrchestrator:
         self,
         discovery,
         free_enrichment,
-        scorer,
-        dm_identification,
+        scorer=None,
+        dm_identification=None,
         gmb_client=None,
         ads_client=None,
+        prospect_scorer=None,
     ):
         self._discovery = discovery
         self._fe = free_enrichment
-        self._scorer = scorer
+        self._scorer = scorer if scorer is not None else prospect_scorer
         self._dm = dm_identification
         self._gmb_client = gmb_client
         self._ads_client = ads_client

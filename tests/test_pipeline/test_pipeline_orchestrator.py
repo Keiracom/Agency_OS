@@ -41,6 +41,11 @@ def make_afford_result(passed=True, band="HIGH", score=10):
     return result
 
 
+# Alias used by some tests
+def make_score_result(passed=True, band="HIGH", score=10):
+    return make_afford_result(passed=passed, band=band, score=score)
+
+
 def make_intent_result(passed=True, band="TRYING", score=5):
     result = MagicMock()
     result.passed_free_gate = passed
@@ -157,7 +162,7 @@ async def test_orchestrator_tracks_stats():
     afford_iter = iter(afford_responses)
 
     scorer = MagicMock()
-    scorer.score_affordability = MagicMock(side_effect=lambda e: next(score_iter))
+    scorer.score_affordability = MagicMock(side_effect=lambda e: next(afford_iter))
     scorer.score_intent_free = MagicMock(return_value=MagicMock(band="TRYING"))
     scorer.score_intent_full = MagicMock(return_value=MagicMock(band="TRYING", raw_score=6, evidence=[]))
 

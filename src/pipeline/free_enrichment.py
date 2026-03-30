@@ -27,6 +27,20 @@ BATCH_SIZE = 50
 DNS_TIMEOUT = 5
 SPIDER_MAX_CREDITS_PER_PAGE = 50
 
+# ── Ad tag detection regexes ─────────────────────────────────────────────────
+AW_TAG_RE = re.compile(
+    r'gtag\s*\(\s*["\']config["\']\s*,\s*["\']AW-|googleadservices\.com/pagead/conversion',
+    re.IGNORECASE,
+)
+GADS_RMK_RE = re.compile(
+    r'google_remarketing_only|google_conversion_id|googleads\.g\.doubleclick\.net',
+    re.IGNORECASE,
+)
+META_PIXEL_RE = re.compile(
+    r'connect\.facebook\.net|fbq\s*\(|facebook-jssdk',
+    re.IGNORECASE,
+)
+
 # ── ABN multi-strategy matching constants ────────────────────────────────────
 _ABN_STOPWORDS: frozenset[str] = frozenset({
     "at", "and", "the", "of", "in", "for", "by", "to", "a", "an",

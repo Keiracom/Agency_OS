@@ -23,11 +23,9 @@ Revenue model for BU: API subscriptions, Salesforce/HubSpot marketplace, bulk an
 
 ## SECTION 2 — CURRENT STATE
 
-- Last directive issued: #293 (Stage-parallel pipeline refactor — COMPLETE)
-- Test baseline: 1128 passed, 0 failed, 28 skipped (+9 from #293)
-- Next directive: #293
-- Test baseline: 1119 passed, 0 failed, 28 skipped (post-#289 merge, pre-#291 merge)
-- Last merged PRs: #242–#253 + #252 (ABN multistrategy) now merged via #292
+- Last directive issued: #295 (httpx scraper + GMB fix + AU filter + parallel workers — COMPLETE)
+- Test baseline: 1193 passed, 0 failed, 5 skipped
+- Last merged PRs: #247–#257
 - PR #254 (Directive #291 — ProspectScorer) pending merge
 - Architecture: **FINAL ratified Mar 30 2026** — service-signal discovery, two-dimension scoring, stage-parallel processing
 - **Pipeline test Run 1 (Mar 29):** 100 DMs from 200 domains, $3.51, 7.3 min
@@ -64,9 +62,9 @@ Output: Agency Profile + Signal Config + Exclusion List
 
 | Stage | Operation | Concurrency | Time/200 domains |
 |-------|-----------|-------------|-----------------|
-| 1 | Spider scrape | sem=15 | ~30s |
+| 1 | httpx scrape (Spider fallback) | sem=15 | ~15s (httpx) / ~30s (Spider) |
 | 2 | DNS + ABN | sem=20 | ~15s |
-| 3 | Affordability gate | in-memory | <1s |
+| 3 | AU country filter + Affordability gate | in-memory | <1s |
 | 4 | Intent free gate | in-memory | <1s — rejects NOT_TRYING before paid enrichment |
 | 5 | DFS Ads Search + Maps GMB | sem=20 | ~20s |
 | 6 | Intent full scoring | in-memory | <1s |
@@ -74,6 +72,46 @@ Output: Agency Profile + Signal Config + Exclusion List
 | 8 | Reachability check | in-memory | <1s |
 
 **Target: 200 domains processed in under 2 minutes.**
+
+### SCRAPER STACK (Directive #295)
+
+**Primary: httpx** (`src/integrations/httpx_scraper.py`) — free, no rate limit, ~2–5s/domain.
+- HTTPS-first, browser User-Agent, returns `status_code / html / title / content_length`
+- Fallback to Spider if httpx returns `None` or HTML < 1000 chars (JS-rendered stub)
+- `scraper_used: "httpx" | "spider"` tracked on every enrichment record
+
+### AU COUNTRY FILTER (Directive #295)
+
+Applied in `free_enrichment.py` after scrape, before affordability scoring.
+
+`_is_au_domain(domain, html)`:
+1. `.au` TLD → pass immediately
+2. AU phone pattern (`02/03/04/07/08` or `+61`) in HTML → pass
+3. AU state abbreviation (`NSW/VIC/QLD/SA/WA/TAS/NT/ACT`) in HTML → pass
+4. 4-digit AU postcode pattern in HTML → pass
+5. None found → `non_au: True` → rejected at affordability gate
+
+Catches foreign domains that pass TLD check (e.g. `dentatur.com`, `uswatersystems.com`).
+
+### PARALLEL WORKER ORCHESTRATOR (Directive #295)
+
+`PipelineOrchestrator.run_parallel()` — for demo-speed dashboard population.
+
+**Global semaphore pool** (module-level singletons shared across all workers):
+| Semaphore | Limit | Controls |
+|-----------|-------|---------|
+| `GLOBAL_SEM_DFS` | 25 | All DFS API calls |
+| `GLOBAL_SEM_SCRAPE` | 50 | httpx + Spider scrapes |
+| `GLOBAL_SEM_SONNET` | 12 | Claude Sonnet calls |
+| `GLOBAL_SEM_HAIKU` | 15 | Claude Haiku calls |
+
+**Worker design:**
+- `num_workers` coroutines (default 4) launched via `asyncio.gather`
+- Round-robin across `category_codes` list
+- Shared state: `asyncio.Lock` on results list, stats, seen_domains set
+- Race-condition guard: target check inside `results_lock` before append
+- `on_prospect_found` async callback for streaming to dashboard
+- `exclude_domains` set passed in (caller builds from `campaign_leads`)
 
 **Phase 4 — Rank + Present (day 3):** Dashboard populates. Sorted by STRUGGLING > TRYING > DABBLING. Evidence statements on each card.
 
@@ -765,7 +803,7 @@ v6 era (#271–#277): Layer 2 (discovery), Layer 3 (bulk filter), signal config 
 | Sprint 6 | #292 | Architecture alignment: Manual final architecture + ABN Settings bug fix + merge #252 | COMPLETE |
 | Sprint 7 | #293 | Stage-parallel pipeline refactor (SEM_SPIDER=15, SEM_ABN=1, SEM_PAID=20, SEM_DM=20) | COMPLETE — PR #255 |
 | Sprint 7 | #294 | Multi-category rotation (15 categories, 5/month, monthly wrap) + exclude_domains + category_stats | COMPLETE — PR #256 |
-| Sprint 7 | #295 | Re-scoring engine (monthly re-scrape of BU rejects, zero discovery cost) | Queued |
+| Sprint 7 | #295 | httpx primary scraper + GMB rating fix + AU country filter + parallel worker orchestrator | COMPLETE — PR #257 |
 | Sprint 8 | — | Final 100-DM test: multi-category, parallel, ABN working, full ProspectCards | Queued |
 | Segments 4–8 | #296–#300 | Email waterfall, phone, social, message generation (Haiku), outreach scheduling | Queued |
 | Launch | #301 | Founding customer onboarding, territory locking, demo mode | Queued |
@@ -792,6 +830,8 @@ v6 era (#271–#277): Layer 2 (discovery), Layer 3 (bulk filter), signal config 
 | #291 | Two-dimension ProspectScorer: score_affordability + score_intent_free + score_intent_full. DFS Ads Search ($0.002/call). Spider AW-tag/Meta Pixel detection (free). | COMPLETE — PR #254 |
 | #292 | Manual final architecture (ratified Mar 30 2026) + ABN Settings.abn_lookup_guid fix + PR #252 merge | COMPLETE |
 | #293 | Stage-parallel orchestrator: 9-stage concurrent processing, SEM_SPIDER=15/SEM_ABN=1/SEM_PAID=20/SEM_DM=20 | COMPLETE — PR #255 |
+| #294 | Multi-category rotation: 15 AU categories, 5/month rotation, exclude_domains, category_stats | COMPLETE — PR #256 |
+| #295 | httpx primary scraper (Spider fallback), GMB rating dict→scalar fix, AU country filter, run_parallel() + global semaphore pool | COMPLETE — PR #257 |
 
 ---
 

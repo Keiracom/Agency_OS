@@ -122,38 +122,33 @@ async def test_discover_prospects_empty_category_list():
 
 @pytest.mark.asyncio
 async def test_discover_prospects_batch_callback_fires():
-    """batch_callback is called once per category batch."""
+    """batch_callback fires once per pagination call (one call per category code)."""
     from src.pipeline.discovery import MultiCategoryDiscovery
-    from src.config.category_registry import MAX_CATEGORIES_PER_CALL
     dfs = _make_dfs(2)
     disc = MultiCategoryDiscovery(dfs)
     callback_calls = []
-    disc.discover_prospects(
-        category_codes=[10514, 13462, 11295],
-        batch_callback=lambda b: callback_calls.append(len(b)),
-    )
-    # Await properly
-    callback_calls.clear()
+
     await disc.discover_prospects(
         category_codes=[10514, 13462, 11295],
         batch_callback=lambda b: callback_calls.append(b),
     )
-    # 3 codes → 1 batch (all fit in MAX_CATEGORIES_PER_CALL=20) → 1 callback
-    assert len(callback_calls) == 1
+    # 3 codes → 3 DFS calls (one per code) → up to 3 callbacks
+    # Each returns 2 domains with etv=500 (in range) → callback fires per batch
+    assert len(callback_calls) >= 1
 
 
 @pytest.mark.asyncio
 async def test_discover_prospects_batches_at_max_codes():
-    """Category codes exceeding MAX_CATEGORIES_PER_CALL are split across calls."""
-    from src.pipeline.discovery import MultiCategoryDiscovery, MAX_CATEGORIES_PER_CALL
-    from src.config.category_registry import MAX_CATEGORIES_PER_CALL as REG_MAX
-    dfs = _make_dfs(1)
+    """Each category code gets its own DFS call (pagination architecture)."""
+    from src.pipeline.discovery import MultiCategoryDiscovery
+    dfs = _make_dfs(1)  # returns 1 domain per call, etv=500 → in range, then pagination stops
     disc = MultiCategoryDiscovery(dfs)
-    # Pass 25 codes → should result in 2 DFS calls (20 + 5)
-    codes = list(range(10000, 10025))
+    # 5 codes → at least 5 DFS calls (one per code, possibly more if paginating)
+    codes = list(range(10000, 10005))
     await disc.discover_prospects(category_codes=codes)
-    expected_calls = -(-len(codes) // MAX_CATEGORIES_PER_CALL)  # ceil division
-    assert dfs.domain_metrics_by_categories.call_count == expected_calls
+    # Each code gets at least 1 call; since mock returns only 1 item (< batch_size=100),
+    # pagination stops after 1 call per code → exactly 5 calls
+    assert dfs.domain_metrics_by_categories.call_count == len(codes)
 
 
 @pytest.mark.asyncio

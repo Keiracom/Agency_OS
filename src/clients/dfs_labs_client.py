@@ -657,16 +657,25 @@ class DFSLabsClient:
         paid_etv_min: float = 0.0,
         first_date: str | None = None,
         second_date: str | None = None,
+        limit: int = 100,
+        offset: int = 0,
     ) -> list[dict]:
         """
-        Discover domains with Google Ads spend in specified categories.
+        Discover domains with organic traffic in specified categories.
         Uses location_name (NOT location_code — causes 40501 error per DFS gotcha).
-        Cost: ~$0.10/call.
+        Cost: ~$0.10/call regardless of limit/offset.
         Returns list of {"domain": str, "paid_etv": float, "organic_etv": float}.
+
+        IMPORTANT: API returns domains sorted by organic ETV descending.
+        Top 100 (offset=0) are high-traffic chains/aggregators.
+        SMB sweet spot (ETV 200-5000) typically starts around offset 400-600.
+        Use discover_prospects() which paginates automatically.
 
         Args:
             first_date: Start date YYYY-MM-DD (default: 6 months ago / today - 180 days).
             second_date: End date YYYY-MM-DD (default: today).
+            limit: Items per API call (max 100, API default 100).
+            offset: Pagination offset (0-indexed).
         """
         today = date.today()
         resolved_first_date = first_date or (today - timedelta(days=180)).strftime("%Y-%m-%d")
@@ -681,7 +690,8 @@ class DFSLabsClient:
                     "language_name": "English",
                     "first_date": resolved_first_date,
                     "second_date": resolved_second_date,
-                    "filters": [["metrics.organic.etv", ">", 0]],
+                    "limit": limit,
+                    "offset": offset,
                 }
             ],
             cost_per_call=Decimal("0.10"),
@@ -689,16 +699,28 @@ class DFSLabsClient:
             swallow_no_data=False,
         )
         items = result.get("items") or []
+        total_count = result.get("total_count", 0)
         results = []
         for item in items:
-            metrics = item.get("metrics", {})
-            paid_etv = (metrics.get("paid") or {}).get("etv", 0) or 0
-            organic_etv = (metrics.get("organic") or {}).get("etv", 0) or 0
+            # API returns organic_etv + paid_etv directly on the item
+            # (not nested under metrics.organic.etv as originally expected)
+            organic_etv = item.get("organic_etv") or 0
+            paid_etv = item.get("paid_etv") or 0
+            # Fallback: try nested metrics structure (older response format)
+            if not organic_etv:
+                metrics = item.get("metrics", {})
+                organic_etv = (metrics.get("organic") or {}).get("etv", 0) or 0
+                paid_etv = paid_etv or (metrics.get("paid") or {}).get("etv", 0) or 0
             if paid_etv >= paid_etv_min:
-                domain = item.get("domain") or item.get("target")
+                domain = item.get("domain") or item.get("target") or item.get("main_domain")
                 if domain:
                     results.append(
-                        {"domain": domain, "paid_etv": paid_etv, "organic_etv": organic_etv}
+                        {
+                            "domain": domain,
+                            "paid_etv": paid_etv,
+                            "organic_etv": organic_etv,
+                            "_total_count": total_count,  # propagate for pagination
+                        }
                     )
         return results
 

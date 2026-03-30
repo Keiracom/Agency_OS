@@ -81,60 +81,88 @@ class MultiCategoryDiscovery:
         seen: set[str] = set()
         results: list[dict] = []
 
-        # Batch category codes at MAX_CATEGORIES_PER_CALL
-        batches = [
-            category_codes[i: i + MAX_CATEGORIES_PER_CALL]
-            for i in range(0, len(category_codes), MAX_CATEGORIES_PER_CALL)
-        ]
+        # Process one category at a time (pagination needed per category)
+        # Batching multiple codes per call cannot be combined with offset pagination
+        # because the total_count varies per category.
+        for code in category_codes:
+            offset = 0
+            batch_size = 100
+            total_count: int | None = None
+            code_done = False
 
-        for batch_codes in batches:
-            try:
-                raw = await self._dfs.domain_metrics_by_categories(
-                    category_codes=batch_codes,
-                    location_name=location,
-                    paid_etv_min=0.0,
-                )
-            except Exception as exc:
-                logger.error(
-                    "discover_prospects: DFS error for codes=%s: %s",
-                    batch_codes, exc,
-                )
-                continue
-
-            batch_results: list[dict] = []
-            for item in raw:
-                domain = item.get("domain", "")
-                if not domain:
-                    continue
-                organic_etv = item.get("organic_etv", 0.0) or 0.0
-                if not (etv_min <= organic_etv <= etv_max):
-                    continue
-                if domain in exclude or domain in seen:
-                    continue
-                seen.add(domain)
-                batch_results.append({
-                    "domain": domain,
-                    "organic_etv": organic_etv,
-                    "paid_etv": item.get("paid_etv", 0.0) or 0.0,
-                    "category_codes": batch_codes,
-                })
-
-            results.extend(batch_results)
-
-            logger.info(
-                "discover_prospects: batch codes=%s → %d new domains (total=%d)",
-                batch_codes, len(batch_results), len(results),
-            )
-
-            if batch_callback is not None:
+            while not code_done:
                 try:
-                    batch_callback(batch_results)
+                    raw = await self._dfs.domain_metrics_by_categories(
+                        category_codes=[code],
+                        location_name=location,
+                        paid_etv_min=0.0,
+                        limit=batch_size,
+                        offset=offset,
+                    )
                 except Exception as exc:
-                    logger.warning("batch_callback error: %s", exc)
+                    logger.error(
+                        "discover_prospects: DFS error code=%s offset=%d: %s",
+                        code, offset, exc,
+                    )
+                    break
+
+                if not raw:
+                    break
+
+                # Extract total_count from first item (propagated from API response)
+                if total_count is None and raw:
+                    total_count = raw[0].get("_total_count", 0)
+
+                etvs = [item.get("organic_etv", 0) or 0 for item in raw]
+                min_etv_in_batch = min(etvs) if etvs else 0
+
+                batch_results: list[dict] = []
+                for item in raw:
+                    domain = item.get("domain", "")
+                    if not domain:
+                        continue
+                    organic_etv = item.get("organic_etv", 0.0) or 0.0
+                    if not (etv_min <= organic_etv <= etv_max):
+                        continue
+                    if domain in exclude or domain in seen:
+                        continue
+                    seen.add(domain)
+                    batch_results.append({
+                        "domain": domain,
+                        "organic_etv": organic_etv,
+                        "paid_etv": item.get("paid_etv", 0.0) or 0.0,
+                        "category_codes": [code],
+                    })
+
+                results.extend(batch_results)
+
+                logger.info(
+                    "discover_prospects: code=%s offset=%d → %d new domains (total=%d)",
+                    code, offset, len(batch_results), len(results),
+                )
+
+                if batch_callback is not None:
+                    try:
+                        batch_callback(batch_results)
+                    except Exception as exc:
+                        logger.warning("batch_callback error: %s", exc)
+
+                offset += batch_size
+
+                # Stop conditions:
+                # 1. Min ETV in this batch dropped below etv_min (we're past SMB tail)
+                # 2. We've paginated past total_count
+                # 3. Batch returned fewer items than requested (last page)
+                if min_etv_in_batch < etv_min:
+                    code_done = True
+                elif total_count and offset >= total_count:
+                    code_done = True
+                elif len(raw) < batch_size:
+                    code_done = True
 
         logger.info(
-            "discover_prospects: complete codes=%d domains=%d excluded=%d",
-            len(category_codes), len(results), len(seen & exclude),
+            "discover_prospects: complete codes=%d domains=%d",
+            len(category_codes), len(results),
         )
         return results
 

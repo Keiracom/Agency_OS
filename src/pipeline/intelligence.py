@@ -33,8 +33,8 @@ logger = logging.getLogger(__name__)
 
 # ── Semaphores — defined here and re-exported; pipeline_orchestrator imports these ──
 # Defined in intelligence.py to avoid circular import with pipeline_orchestrator.
-GLOBAL_SEM_SONNET = asyncio.Semaphore(12)
-GLOBAL_SEM_HAIKU  = asyncio.Semaphore(15)
+GLOBAL_SEM_SONNET = asyncio.Semaphore(55)   # Sonnet concurrent calls (prompt caching reduces ITPM)
+GLOBAL_SEM_HAIKU  = asyncio.Semaphore(55)   # Haiku concurrent calls
 
 # ── Model constants ───────────────────────────────────────────────────────────
 _MODEL_SONNET = "claude-sonnet-4-5"

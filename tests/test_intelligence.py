@@ -280,8 +280,8 @@ def test_intelligence_module_imports():
 def test_global_semaphores_used():
     """Intelligence module imports GLOBAL_SEM_SONNET and GLOBAL_SEM_HAIKU."""
     from src.pipeline.intelligence import GLOBAL_SEM_SONNET, GLOBAL_SEM_HAIKU
-    assert GLOBAL_SEM_SONNET._value == 12
-    assert GLOBAL_SEM_HAIKU._value == 15
+    assert GLOBAL_SEM_SONNET._value == 55
+    assert GLOBAL_SEM_HAIKU._value == 55
 
 
 # ── Semaphore acquisition test ────────────────────────────────────────────────

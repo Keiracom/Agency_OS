@@ -42,8 +42,9 @@ SEM_DM     = 20    # DFS SERP LinkedIn concurrent
 
 # Global semaphore pool — shared across parallel workers (module-level singletons)
 # GLOBAL_SEM_SONNET and GLOBAL_SEM_HAIKU are defined in intelligence.py and imported above
-GLOBAL_SEM_DFS    = asyncio.Semaphore(25)
-GLOBAL_SEM_SCRAPE = asyncio.Semaphore(50)
+GLOBAL_SEM_DFS         = asyncio.Semaphore(28)   # DFS API concurrent calls
+GLOBAL_SEM_SCRAPE      = asyncio.Semaphore(80)   # httpx + Spider concurrent scrapes
+GLOBAL_SEM_ADS_SCRAPER = asyncio.Semaphore(15)   # Ads Transparency concurrent scrapes (new)
 
 
 @dataclass

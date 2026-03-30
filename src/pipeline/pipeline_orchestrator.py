@@ -36,6 +36,12 @@ SEM_ABN    = 1     # asyncpg single-connection safety
 SEM_PAID   = 20    # DFS Ads Search + GMB concurrent
 SEM_DM     = 20    # DFS SERP LinkedIn concurrent
 
+# Global semaphore pool — shared across parallel workers (module-level singletons)
+GLOBAL_SEM_DFS    = asyncio.Semaphore(25)
+GLOBAL_SEM_SCRAPE = asyncio.Semaphore(50)
+GLOBAL_SEM_SONNET = asyncio.Semaphore(12)
+GLOBAL_SEM_HAIKU  = asyncio.Semaphore(15)
+
 
 @dataclass
 class PipelineStats:
@@ -471,4 +477,225 @@ class PipelineOrchestrator:
         stats.elapsed_seconds = time.monotonic() - t0
         logger.info("orchestrator_complete prospects=%d discovered=%d elapsed=%.1fs",
                     len(results), stats.discovered, stats.elapsed_seconds)
+        return PipelineResult(prospects=results, stats=stats)
+
+    # ── Parallel worker run ───────────────────────────────────────────────
+
+    async def run_parallel(
+        self,
+        category_codes: list[str],
+        location: str = "Australia",
+        target_count: int = 100,
+        num_workers: int = 4,
+        batch_size: int = 50,
+        exclude_domains: set | None = None,
+        on_prospect_found: Any = None,
+    ) -> PipelineResult:
+        """
+        Multi-worker parallel pipeline (Directive #295 Task E).
+
+        Spawns num_workers coroutines, each pulling batches from category_codes
+        in round-robin. Workers share a global semaphore pool and accumulate
+        results into a shared list protected by asyncio.Lock.
+
+        Args:
+            category_codes: DFS category codes to sweep (round-robin across workers).
+            location: Location string passed to discovery layer.
+            target_count: Stop once this many viable prospects are found.
+            num_workers: Number of concurrent worker coroutines.
+            batch_size: Domains per pull_batch call.
+            exclude_domains: Domains already claimed — skipped without processing.
+            on_prospect_found: Optional async callable(card: ProspectCard) called
+                               immediately when each prospect is found (for streaming).
+        """
+        t0 = time.monotonic()
+
+        # ── Shared state ─────────────────────────────────────────────────
+        results: list[ProspectCard] = []
+        results_lock = asyncio.Lock()
+        target_reached = asyncio.Event()
+
+        stats = PipelineStats()
+        stats_lock = asyncio.Lock()
+
+        seen_domains: set[str] = set(exclude_domains or [])
+        seen_lock = asyncio.Lock()
+
+        # Per-category offset counters (each worker advances its own category slot)
+        offsets: dict[str, int] = {code: 0 for code in category_codes}
+        offsets_lock = asyncio.Lock()
+
+        # Per-worker semaphores (each worker gets its own; global sems still apply)
+        sem_spider = asyncio.Semaphore(SEM_SPIDER)
+        sem_abn    = asyncio.Semaphore(SEM_ABN)
+        sem_paid   = asyncio.Semaphore(SEM_PAID)
+        sem_dm     = asyncio.Semaphore(SEM_DM)
+
+        # ── Worker coroutine ─────────────────────────────────────────────
+        async def _worker(worker_id: int) -> None:
+            cat_idx = worker_id  # each worker starts on a different category
+
+            while not target_reached.is_set():
+                # Round-robin category + advance offset
+                async with offsets_lock:
+                    cat_code = category_codes[cat_idx % len(category_codes)]
+                    offset = offsets[cat_code]
+                    offsets[cat_code] += batch_size
+                    cat_idx += 1
+
+                # STAGE 1: Discovery
+                try:
+                    async with GLOBAL_SEM_DFS:
+                        batch = await self._discovery.pull_batch(
+                            category_code=cat_code,
+                            location_name=location,
+                            limit=batch_size,
+                            offset=offset,
+                        )
+                except Exception as exc:
+                    logger.warning("worker_%d pull_batch error: %s", worker_id, exc)
+                    break
+
+                if not batch:
+                    break  # category exhausted for this worker
+
+                for domain_row in batch:
+                    if target_reached.is_set():
+                        return
+
+                    domain = domain_row.get("domain", "")
+                    if not domain:
+                        continue
+
+                    # Dedup across workers
+                    async with seen_lock:
+                        if domain in seen_domains:
+                            continue
+                        seen_domains.add(domain)
+
+                    async with stats_lock:
+                        stats.discovered += 1
+
+                    # STAGE 2: Scrape
+                    async with GLOBAL_SEM_SCRAPE:
+                        spider_data = await self._stage_spider(sem_spider, domain)
+
+                    # STAGE 3: Enrich (DNS + ABN)
+                    enrichment = await self._stage_enrich(sem_abn, domain, spider_data)
+                    if enrichment is None:
+                        async with stats_lock:
+                            stats.enrichment_failed += 1
+                        continue
+
+                    async with stats_lock:
+                        stats.enriched += 1
+
+                    # Non-AU filter (Task D)
+                    if enrichment.get("non_au"):
+                        async with stats_lock:
+                            stats.affordability_rejected += 1
+                        continue
+
+                    # GATE 1: Affordability
+                    afford = self._scorer.score_affordability(enrichment)
+                    if not afford.passed_gate:
+                        async with stats_lock:
+                            stats.affordability_rejected += 1
+                        continue
+
+                    # GATE 2: Intent free
+                    intent_free = self._scorer.score_intent_free(enrichment)
+                    if getattr(intent_free, "band", None) == "NOT_TRYING":
+                        async with stats_lock:
+                            stats.intent_rejected += 1
+                        continue
+
+                    # STAGE 6: Paid enrichment
+                    company_name = enrichment.get("company_name") or domain
+                    addr = enrichment.get("website_address") or {}
+                    suburb = (addr.get("suburb") or addr.get("city") or "") if isinstance(addr, dict) else ""
+
+                    async with GLOBAL_SEM_DFS:
+                        paid = await self._stage_paid(sem_paid, domain, company_name, suburb, location)
+
+                    async with stats_lock:
+                        stats.paid_enrichment_calls += 1
+
+                    ads_data = paid.get("ads_data")
+                    gmb_data = paid.get("gmb_data")
+                    if gmb_data:
+                        enrichment = {**enrichment, **gmb_data}
+
+                    # STAGE 7: Full intent score
+                    intent = self._scorer.score_intent_full(enrichment, ads_data, gmb_data)
+                    intent_band = getattr(intent, "band", "UNKNOWN")
+                    evidence = getattr(intent, "evidence", [])
+
+                    # STAGE 8: DM identification
+                    async with GLOBAL_SEM_DFS:
+                        dm = await self._stage_dm(sem_dm, domain, company_name, enrichment)
+
+                    if not dm or not getattr(dm, "name", None):
+                        async with stats_lock:
+                            stats.dm_not_found += 1
+                        continue
+
+                    async with stats_lock:
+                        stats.dm_found += 1
+
+                    # GATE: Reachability
+                    has_email = bool(enrichment.get("website_contact_emails"))
+                    has_linkedin = bool(getattr(dm, "linkedin_url", None))
+                    if not (has_email or has_linkedin):
+                        async with stats_lock:
+                            stats.unreachable += 1
+                        continue
+
+                    # Build ProspectCard
+                    card = ProspectCard(
+                        domain=domain,
+                        company_name=company_name,
+                        location=suburb,
+                        evidence=evidence,
+                        affordability_band=afford.band,
+                        affordability_score=afford.raw_score,
+                        intent_band=intent_band,
+                        intent_score=getattr(intent, "raw_score", 0),
+                        gmb_rating=enrichment.get("gmb_rating"),
+                        gmb_review_count=enrichment.get("gmb_review_count", 0),
+                        dm_name=dm.name,
+                        dm_title=getattr(dm, "title", None),
+                        dm_linkedin_url=getattr(dm, "linkedin_url", None),
+                        dm_confidence=getattr(dm, "confidence", None),
+                    )
+
+                    async with results_lock:
+                        if target_reached.is_set():
+                            return  # another worker just hit the target
+                        results.append(card)
+                        if on_prospect_found is not None:
+                            try:
+                                await on_prospect_found(card)
+                            except Exception:
+                                pass
+                        if len(results) >= target_count:
+                            target_reached.set()
+
+                    async with stats_lock:
+                        stats.viable_prospects += 1
+                        stats.category_stats[cat_code] = stats.category_stats.get(cat_code, 0) + 1
+                        logger.info(
+                            "parallel_prospect_found worker=%d domain=%s afford=%s intent=%s dm=%s",
+                            worker_id, domain, afford.band, intent_band, dm.name,
+                        )
+
+        # ── Launch workers ────────────────────────────────────────────────
+        workers = [_worker(i) for i in range(num_workers)]
+        await asyncio.gather(*workers, return_exceptions=True)
+
+        stats.elapsed_seconds = time.monotonic() - t0
+        logger.info(
+            "parallel_orchestrator_complete prospects=%d discovered=%d workers=%d elapsed=%.1fs",
+            len(results), stats.discovered, num_workers, stats.elapsed_seconds,
+        )
         return PipelineResult(prospects=results, stats=stats)

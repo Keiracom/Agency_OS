@@ -321,6 +321,10 @@ class PipelineOrchestrator:
                 # ── STAGE 4: Affordability gate (in-memory) ───────────────────
                 afford_passed: list[tuple[str, dict, Any]] = []
                 for domain, enrichment in enriched_pairs:
+                    # Non-AU filter: reject before scoring
+                    if enrichment.get("non_au"):
+                        stats.affordability_rejected += 1
+                        continue
                     try:
                         afford = self._scorer.score_affordability(enrichment)
                     except AttributeError:

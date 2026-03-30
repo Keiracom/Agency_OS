@@ -23,7 +23,8 @@ Revenue model for BU: API subscriptions, Salesforce/HubSpot marketplace, bulk an
 
 ## SECTION 2 — CURRENT STATE
 
-- Last directive issued: #292 (Architecture alignment + ABN fix — COMPLETE)
+- Last directive issued: #293 (Stage-parallel pipeline refactor — COMPLETE)
+- Test baseline: 1128 passed, 0 failed, 28 skipped (+9 from #293)
 - Next directive: #293
 - Test baseline: 1119 passed, 0 failed, 28 skipped (post-#289 merge, pre-#291 merge)
 - Last merged PRs: #242–#253 + #252 (ABN multistrategy) now merged via #292
@@ -762,7 +763,7 @@ v6 era (#271–#277): Layer 2 (discovery), Layer 3 (bulk filter), signal config 
 | Sprint 5 | #290 | Wire orchestrator: pull_batch + enrich methods, DFS Maps GMB, ads transparency real | COMPLETE — PR #253 merged |
 | Sprint 5 | #284–#291 | Discovery + enrichment quality + DM waterfall + scoring + ads detection + pipeline orchestrator | ALL COMPLETE — PRs #247–#254 |
 | Sprint 6 | #292 | Architecture alignment: Manual final architecture + ABN Settings bug fix + merge #252 | COMPLETE |
-| Sprint 7 | #293 | Stage-parallel pipeline refactor (sem=15/20, target 200 domains in <2 min) | NEXT |
+| Sprint 7 | #293 | Stage-parallel pipeline refactor (SEM_SPIDER=15, SEM_ABN=1, SEM_PAID=20, SEM_DM=20) | COMPLETE — PR #255 |
 | Sprint 7 | #294 | Multi-category discovery + rotation (dental/plumbing/medical/legal seeded) | Queued |
 | Sprint 7 | #295 | Re-scoring engine (monthly re-scrape of BU rejects, zero discovery cost) | Queued |
 | Sprint 8 | — | Final 100-DM test: multi-category, parallel, ABN working, full ProspectCards | Queued |
@@ -790,6 +791,7 @@ v6 era (#271–#277): Layer 2 (discovery), Layer 3 (bulk filter), signal config 
 | #290 | Orchestrator wiring: pull_batch + enrich methods, DFS Maps GMB (maps_search_gmb), ads transparency real | COMPLETE — PR #253 merged |
 | #291 | Two-dimension ProspectScorer: score_affordability + score_intent_free + score_intent_full. DFS Ads Search ($0.002/call). Spider AW-tag/Meta Pixel detection (free). | COMPLETE — PR #254 |
 | #292 | Manual final architecture (ratified Mar 30 2026) + ABN Settings.abn_lookup_guid fix + PR #252 merge | COMPLETE |
+| #293 | Stage-parallel orchestrator: 9-stage concurrent processing, SEM_SPIDER=15/SEM_ABN=1/SEM_PAID=20/SEM_DM=20 | COMPLETE — PR #255 |
 
 ---
 

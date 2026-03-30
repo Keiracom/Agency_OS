@@ -115,6 +115,7 @@ class PipelineOrchestrator:
         gmb_client=None,
         ads_client=None,
         prospect_scorer=None,
+        intelligence=None,
     ):
         self._discovery = discovery
         self._fe = free_enrichment
@@ -122,6 +123,7 @@ class PipelineOrchestrator:
         self._dm = dm_identification
         self._gmb_client = gmb_client
         self._ads_client = ads_client
+        self._intelligence = intelligence  # optional: IntelligenceLayer instance or module
 
     # ── Stage helpers ─────────────────────────────────────────────────────
 
@@ -198,6 +200,52 @@ class PipelineOrchestrator:
             except Exception:
                 logger.debug("stage_dm_failed domain=%s", domain)
                 return None
+
+    async def _stage_intelligence(
+        self,
+        domain: str,
+        html: str,
+        enrichment: dict,
+        ads_data: dict | None,
+        gmb_data: dict | None,
+    ) -> dict:
+        """
+        STAGE 7b: Run intelligence pipeline for one domain.
+        Calls comprehend_website → classify_intent → refine_evidence.
+        Returns merged intel dict with evidence_statements, intent_band, services, etc.
+        """
+        try:
+            intel = self._intelligence
+            url = f"https://{domain}"
+
+            # Comprehend website
+            website_data = await intel.comprehend_website(domain, html or "", url)
+
+            # Classify intent
+            intent_data = await intel.classify_intent(domain, website_data, gmb_data, ads_data)
+
+            # Analyse reviews if available
+            reviews = (gmb_data or {}).get("reviews") or []
+            review_data = await intel.analyse_reviews(domain, reviews)
+
+            # Refine evidence into final card copy
+            refined = await intel.refine_evidence(domain, intent_data, review_data, website_data)
+
+            return {
+                "website_data": website_data,
+                "intent_data": intent_data,
+                "review_data": review_data,
+                "evidence_statements": refined.get("evidence_statements", []),
+                "headline_signal": refined.get("headline_signal", ""),
+                "recommended_service": refined.get("recommended_service", ""),
+                "outreach_angle": refined.get("outreach_angle", ""),
+                "intent_band": intent_data.get("band"),
+                "intent_score": intent_data.get("score", 0),
+                "services": website_data.get("services", []),
+            }
+        except Exception as exc:
+            logger.warning("_stage_intelligence failed domain=%s: %s", domain, exc)
+            return {}
 
     # ── Main run ──────────────────────────────────────────────────────────
 
@@ -404,6 +452,28 @@ class PipelineOrchestrator:
                         intent_full = intent_free  # legacy fallback
                     dm_candidates.append((domain, enrichment, afford, intent_full, paid))
 
+                # ── STAGE 7b: Intelligence layer (optional, Sonnet/Haiku) ─────
+                # Runs comprehend_website → classify_intent → refine_evidence
+                # for each dm_candidate if intelligence module is wired.
+                intel_results: dict[str, dict] = {}
+                if self._intelligence is not None:
+                    intel_coros = []
+                    for domain, enrichment, afford, intent_full, paid in dm_candidates:
+                        spider_html = enrichment.get("html", "")
+                        ads_data = paid.get("ads_data")
+                        gmb_data = paid.get("gmb_data")
+                        intel_coros.append(
+                            self._stage_intelligence(domain, spider_html, enrichment, ads_data, gmb_data)
+                        )
+                    intel_raw = await asyncio.gather(*intel_coros, return_exceptions=True)
+                    for (domain, *_), intel in zip(dm_candidates, intel_raw):
+                        if isinstance(intel, Exception):
+                            logger.warning("intelligence failed domain=%s: %s", domain, intel)
+                            intel_results[domain] = {}
+                        else:
+                            intel_results[domain] = intel or {}
+                    logger.info("stage7b_intelligence_complete domains=%d", len(intel_results))
+
                 # ── STAGE 8: DM identification ALL concurrently ───────────────
                 dm_coros = []
                 for domain, enrichment, afford, intent_full, paid in dm_candidates:
@@ -444,15 +514,22 @@ class PipelineOrchestrator:
                         or enrichment.get("abn_entity_name")
                         or domain
                     )
-                    evidence = getattr(intent_full, "evidence", []) if intent_full else []
-                    intent_band = getattr(intent_full, "band", "UNKNOWN") if intent_full else "UNKNOWN"
-                    intent_score = getattr(intent_full, "raw_score", 0) if intent_full else 0
+                    # Use intelligence layer results if available, else fall back to scorer
+                    intel = intel_results.get(domain, {})
+                    if intel.get("evidence_statements"):
+                        evidence = intel["evidence_statements"]
+                        intent_band = intel.get("intent_band") or (getattr(intent_full, "band", "UNKNOWN") if intent_full else "UNKNOWN")
+                        intent_score = intel.get("intent_score") or (getattr(intent_full, "raw_score", 0) if intent_full else 0)
+                    else:
+                        evidence = getattr(intent_full, "evidence", []) if intent_full else []
+                        intent_band = getattr(intent_full, "band", "UNKNOWN") if intent_full else "UNKNOWN"
+                        intent_score = getattr(intent_full, "raw_score", 0) if intent_full else 0
 
                     card = ProspectCard(
                         domain=domain,
                         company_name=company_name,
                         location=(enrichment.get("website_address") or {}).get("suburb", location),
-                        services=enrichment.get("services") or [],
+                        services=enrichment.get("services") or intel.get("services") or [],
                         evidence=evidence,
                         affordability_band=afford.band,
                         affordability_score=afford.raw_score,

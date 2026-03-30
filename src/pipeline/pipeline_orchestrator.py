@@ -29,6 +29,7 @@ from typing import Any, Optional
 from src.pipeline.prospect_scorer import ProspectScorer, ProspectScore
 from src.pipeline.intelligence import GLOBAL_SEM_SONNET, GLOBAL_SEM_HAIKU  # shared semaphores
 from src.pipeline import intelligence as _intel_module  # optional: used when self._intelligence is set
+from src.config.category_registry import get_discovery_categories, SERVICE_CATEGORY_MAP  # noqa: F401
 
 logger = logging.getLogger(__name__)
 
@@ -568,9 +569,10 @@ class PipelineOrchestrator:
         batch_size: int = 50,
         exclude_domains: set | None = None,
         on_prospect_found: Any = None,
+        discover_all: bool = False,
     ) -> PipelineResult:
         """
-        Multi-worker parallel pipeline (Directive #295 Task E).
+        Multi-worker parallel pipeline (Directive #295 Task E, extended #298).
 
         Spawns num_workers coroutines, each pulling batches from category_codes
         in round-robin. Workers share a global semaphore pool and accumulate
@@ -585,8 +587,34 @@ class PipelineOrchestrator:
             exclude_domains: Domains already claimed — skipped without processing.
             on_prospect_found: Optional async callable(card: ProspectCard) called
                                immediately when each prospect is found (for streaming).
+            discover_all: If True and self._discovery has discover_prospects(),
+                          pre-fetch ALL domains across all category_codes before
+                          workers start. Domains fed into a shared asyncio.Queue.
+                          Workers consume from queue instead of calling pull_batch.
+                          Use for service-first multi-category sweeps (#298).
         """
         t0 = time.monotonic()
+
+        # ── Optional: pre-fetch all domains via multi-category discovery ──────
+        pre_fetched_queue: asyncio.Queue | None = None
+        if discover_all and hasattr(self._discovery, "discover_prospects"):
+            logger.info("run_parallel: discover_all mode — pre-fetching all categories")
+            category_ints = []
+            for code in category_codes:
+                try:
+                    category_ints.append(int(code))
+                except (ValueError, TypeError):
+                    pass
+            all_domains = await self._discovery.discover_prospects(
+                category_codes=category_ints,
+                location=location,
+                exclude_domains=set(exclude_domains or []),
+            )
+            pre_fetched_queue = asyncio.Queue()
+            for d in all_domains:
+                await pre_fetched_queue.put(d)
+            logger.info("run_parallel: pre-fetched %d domains across %d categories",
+                        len(all_domains), len(category_ints))
 
         # ── Shared state ─────────────────────────────────────────────────
         results: list[ProspectCard] = []
@@ -614,28 +642,41 @@ class PipelineOrchestrator:
             cat_idx = worker_id  # each worker starts on a different category
 
             while not target_reached.is_set():
-                # Round-robin category + advance offset
-                async with offsets_lock:
-                    cat_code = category_codes[cat_idx % len(category_codes)]
-                    offset = offsets[cat_code]
-                    offsets[cat_code] += batch_size
-                    cat_idx += 1
 
-                # STAGE 1: Discovery
-                try:
-                    async with GLOBAL_SEM_DFS:
-                        batch = await self._discovery.pull_batch(
-                            category_code=cat_code,
-                            location_name=location,
-                            limit=batch_size,
-                            offset=offset,
-                        )
-                except Exception as exc:
-                    logger.warning("worker_%d pull_batch error: %s", worker_id, exc)
-                    break
+                # ── STAGE 1: Discovery ────────────────────────────────────
+                if pre_fetched_queue is not None:
+                    # Multi-category pre-fetch mode: consume from shared queue
+                    batch = []
+                    while len(batch) < batch_size:
+                        try:
+                            item = pre_fetched_queue.get_nowait()
+                            batch.append(item)
+                        except asyncio.QueueEmpty:
+                            break
+                    if not batch:
+                        break  # queue exhausted
+                else:
+                    # Legacy per-category pull mode
+                    async with offsets_lock:
+                        cat_code = category_codes[cat_idx % len(category_codes)]
+                        offset = offsets[cat_code]
+                        offsets[cat_code] += batch_size
+                        cat_idx += 1
 
-                if not batch:
-                    break  # category exhausted for this worker
+                    try:
+                        async with GLOBAL_SEM_DFS:
+                            batch = await self._discovery.pull_batch(
+                                category_code=cat_code,
+                                location_name=location,
+                                limit=batch_size,
+                                offset=offset,
+                            )
+                    except Exception as exc:
+                        logger.warning("worker_%d pull_batch error: %s", worker_id, exc)
+                        break
+
+                    if not batch:
+                        break  # category exhausted for this worker
 
                 for domain_row in batch:
                     if target_reached.is_set():

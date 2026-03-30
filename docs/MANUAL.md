@@ -23,9 +23,9 @@ Revenue model for BU: API subscriptions, Salesforce/HubSpot marketplace, bulk an
 
 ## SECTION 2 — CURRENT STATE
 
-- Last directive issued: #297 (ABN matching audit + verification — PR #259 open)
-- Test baseline: 1225 passed, 0 failed, 5 skipped
-- Last merged PRs: #247–#258 | Open: #259
+- Last directive issued: #298 (multi-category service-first discovery — PR #260 open)
+- Test baseline: 1238 passed, 0 failed, 5 skipped
+- Last merged PRs: #247–#259 | Open: #260
 - PR #254 (Directive #291 — ProspectScorer) pending merge
 - Architecture: **FINAL ratified Mar 30 2026** — service-signal discovery, two-dimension scoring, stage-parallel processing
 - **Pipeline test Run 1 (Mar 29):** 100 DMs from 200 domains, $3.51, 7.3 min
@@ -369,6 +369,25 @@ Returns: domain, organic_etv, organic_keywords, category, subcategory.
 Dedup against BU + blocklist. Insert new rows at pipeline_stage=1.
 
 **v7 change from v6:** 5-source parallel discovery REPLACED with single endpoint. Rationale: Google Jobs broken (40402), HTML Terms unreliable for AU, Competitors expansion better as an enrichment step. domain_metrics_by_categories alone returns 22,592 AU dental domains — more than sufficient.
+
+### MULTI-CATEGORY SERVICE-FIRST DISCOVERY (Directive #298)
+
+**Architectural shift:** Campaign = service the agency sells. Discovery sweeps nationally across ALL DFS categories for businesses showing signals they need that service. Industry and geography are optional filters, not campaign definitions.
+
+**`src/config/category_registry.py`** — Category registry:
+- `SERVICE_CATEGORY_MAP`: seo / google_ads / social_media / web_design → 20 AU category codes each
+- `INDUSTRY_VERTICALS`: dental, trades, legal, construction, hospitality, automotive, real_estate, accounting, medical, fitness, hair_beauty, veterinary, hvac, marketing
+- `get_discovery_categories(services, preferred_industries)`: returns union of codes matching services; preferred_industries codes sort first
+- `MAX_CATEGORIES_PER_CALL = 20` (safe DFS batch limit per call)
+
+**`src/pipeline/discovery.py`** — `MultiCategoryDiscovery`:
+- `discover_prospects(category_codes, location, exclude_domains, batch_callback)`: batches codes at 20/call, deduplicates, fires callback per batch
+- `pull_batch()`: single-category stateless batch (orchestrator-compatible)
+
+**`run_parallel(discover_all=True)`**: pre-fetches ALL domains across categories into `asyncio.Queue` before workers start — workers consume from queue instead of lazy `pull_batch` calls.
+
+**Category coverage (20 unique AU categories across 14 verticals):**
+Dental, Plumbing, Electrical, HVAC, Legal, Construction, Real Estate, Accounting, Medical, Fitness, Hair & Beauty, Veterinary, Home Services, Marketing.
 
 Cost: $0.0015/domain (corrected Mar 2026 — was estimated $0.001)
 Sprint: Sprint 1
@@ -870,7 +889,8 @@ v6 era (#271–#277): Layer 2 (discovery), Layer 3 (bulk filter), signal config 
 | #294 | Multi-category rotation: 15 AU categories, 5/month rotation, exclude_domains, category_stats | COMPLETE — PR #256 |
 | #295 | httpx primary scraper (Spider fallback), GMB rating dict→scalar fix, AU country filter, run_parallel() + global semaphore pool | COMPLETE — PR #257 |
 | #296 | Sonnet/Haiku intelligence layer: comprehend_website, classify_intent, analyse_reviews, judge_affordability, refine_evidence. Wired into run_parallel(). Prompt caching. | COMPLETE — PR #258 |
-| #297 | ABN matching audit: confirmed working on main (2.4M rows, live match verified). PR #249 abandoned (6k lines behind). 11 verification tests. | PR #259 — pending merge |
+| #297 | ABN matching audit: confirmed working on main (2.4M rows, live match verified). PR #249 abandoned (6k lines behind). 11 verification tests. | COMPLETE — PR #259 |
+| #298 | Multi-category service-first discovery: category_registry.py, MultiCategoryDiscovery, run_parallel(discover_all=True). 14 verticals, 20 codes. 13 tests. | PR #260 — pending merge |
 
 ---
 

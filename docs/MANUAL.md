@@ -23,9 +23,9 @@ Revenue model for BU: API subscriptions, Salesforce/HubSpot marketplace, bulk an
 
 ## SECTION 2 — CURRENT STATE
 
-- Last directive issued: #296 (Sonnet/Haiku intelligence layer — PR #258 open, pending merge)
+- Last directive issued: #296 (Sonnet/Haiku intelligence layer — COMPLETE)
 - Test baseline: 1214 passed, 0 failed, 5 skipped
-- Last merged PRs: #247–#257 | Open: #258
+- Last merged PRs: #247–#258
 - PR #254 (Directive #291 — ProspectScorer) pending merge
 - Architecture: **FINAL ratified Mar 30 2026** — service-signal discovery, two-dimension scoring, stage-parallel processing
 - **Pipeline test Run 1 (Mar 29):** 100 DMs from 200 domains, $3.51, 7.3 min
@@ -867,7 +867,7 @@ v6 era (#271–#277): Layer 2 (discovery), Layer 3 (bulk filter), signal config 
 | #293 | Stage-parallel orchestrator: 9-stage concurrent processing, SEM_SPIDER=15/SEM_ABN=1/SEM_PAID=20/SEM_DM=20 | COMPLETE — PR #255 |
 | #294 | Multi-category rotation: 15 AU categories, 5/month rotation, exclude_domains, category_stats | COMPLETE — PR #256 |
 | #295 | httpx primary scraper (Spider fallback), GMB rating dict→scalar fix, AU country filter, run_parallel() + global semaphore pool | COMPLETE — PR #257 |
-| #296 | Sonnet/Haiku intelligence layer: comprehend_website, classify_intent, analyse_reviews, judge_affordability, refine_evidence. Wired into run_parallel(). Prompt caching. | PR #258 — pending merge |
+| #296 | Sonnet/Haiku intelligence layer: comprehend_website, classify_intent, analyse_reviews, judge_affordability, refine_evidence. Wired into run_parallel(). Prompt caching. | COMPLETE — PR #258 |
 
 ---
 

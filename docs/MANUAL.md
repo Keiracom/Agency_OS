@@ -23,9 +23,9 @@ Revenue model for BU: API subscriptions, Salesforce/HubSpot marketplace, bulk an
 
 ## SECTION 2 — CURRENT STATE
 
-- Last directive issued: #296 (Sonnet/Haiku intelligence layer — COMPLETE)
-- Test baseline: 1214 passed, 0 failed, 5 skipped
-- Last merged PRs: #247–#258
+- Last directive issued: #297 (ABN matching audit + verification — PR #259 open)
+- Test baseline: 1225 passed, 0 failed, 5 skipped
+- Last merged PRs: #247–#258 | Open: #259
 - PR #254 (Directive #291 — ProspectScorer) pending merge
 - Architecture: **FINAL ratified Mar 30 2026** — service-signal discovery, two-dimension scoring, stage-parallel processing
 - **Pipeline test Run 1 (Mar 29):** 100 DMs from 200 domains, $3.51, 7.3 min
@@ -202,7 +202,9 @@ T-DM2 — Bright Data LinkedIn company lookup ($0.00075/record, fallback)
 T-DM3 — Spider team page names (free)
 T-DM4 — ABN entity surname (free, LOW confidence)
 
-ABN multi-strategy matching (Directive #289): 4-strategy keyword waterfall before live API call. 8/10 domains matched in live test.
+ABN multi-strategy matching (Directive #289, verified #297): 4-strategy keyword waterfall before live API call. 8/10 domains matched in live test.
+
+**Directive #297 audit confirmed:** abn_registry has 2.4M rows and is queryable. FreeEnrichment.enrich_from_spider() correctly calls _match_abn() → _local_abn_match() → keyword intersection against abn_registry. The 0/300 result in Run 2 was caused by PR #252 not yet being merged + Settings.ABN_LOOKUP_GUID case bug — both fixed on main. ABN data (entity_type, gst_registered, abn_confidence) flows through enrichment dict to score_affordability() and judge_affordability() gates.
 
 ---
 
@@ -868,6 +870,7 @@ v6 era (#271–#277): Layer 2 (discovery), Layer 3 (bulk filter), signal config 
 | #294 | Multi-category rotation: 15 AU categories, 5/month rotation, exclude_domains, category_stats | COMPLETE — PR #256 |
 | #295 | httpx primary scraper (Spider fallback), GMB rating dict→scalar fix, AU country filter, run_parallel() + global semaphore pool | COMPLETE — PR #257 |
 | #296 | Sonnet/Haiku intelligence layer: comprehend_website, classify_intent, analyse_reviews, judge_affordability, refine_evidence. Wired into run_parallel(). Prompt caching. | COMPLETE — PR #258 |
+| #297 | ABN matching audit: confirmed working on main (2.4M rows, live match verified). PR #249 abandoned (6k lines behind). 11 verification tests. | PR #259 — pending merge |
 
 ---
 

@@ -32,13 +32,30 @@ def make_dm_result(name="Alice Owner"):
     return dm
 
 
-def make_score_result(passed=True, band="HIGH", score=10, gaps=None):
+def make_afford_result(passed=True, band="HIGH", score=10):
     result = MagicMock()
     result.passed_gate = passed
     result.band = band
     result.raw_score = score
-    result.gaps = gaps or []
+    result.gaps = []
     return result
+
+
+def make_intent_result(passed=True, band="TRYING", score=5):
+    result = MagicMock()
+    result.passed_free_gate = passed
+    result.band = band
+    result.raw_score = score
+    result.evidence = []
+    return result
+
+
+def make_scorer(afford_passed=True):
+    scorer = MagicMock()
+    scorer.score_affordability = MagicMock(return_value=make_afford_result(passed=afford_passed))
+    scorer.score_intent_free = MagicMock(return_value=make_intent_result())
+    scorer.score_intent_full = MagicMock(return_value=make_intent_result())
+    return scorer
 
 
 def make_orchestrator(discovery, free_enrichment, scorer, dm):
@@ -131,13 +148,13 @@ async def test_orchestrator_tracks_stats():
     free_enrichment.scrape_website = AsyncMock(return_value={"title": "Test"})
     free_enrichment.enrich_from_spider = enrich_from_spider
 
-    score_responses = [
-        make_score_result(passed=False),
-        make_score_result(passed=False),
-        make_score_result(passed=True),
-        make_score_result(passed=True),
+    afford_responses = [
+        make_afford_result(passed=False),
+        make_afford_result(passed=False),
+        make_afford_result(passed=True),
+        make_afford_result(passed=True),
     ]
-    score_iter = iter(score_responses)
+    afford_iter = iter(afford_responses)
 
     scorer = MagicMock()
     scorer.score_affordability = MagicMock(side_effect=lambda e: next(score_iter))

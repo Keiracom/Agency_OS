@@ -632,7 +632,7 @@ Approval flow:
 |--------|------|------|--------|
 | ABN registry local JOIN | GST status (confirms $75k+ revenue), entity type, registration date | FREE | ✅ Live — 2,418,836 rows |
 | Website scrape (Spider.cloud) | Tech stack, CMS, tracking codes (GA4, GTM, Meta Pixel, Google Ads), contact info, JSON-LD address | FREE (direct HTTP) / $0.01/page (Spider.cloud) | ✅ Proven (10/10 Segment 2 test, Mar 2026) |
-| Google Ads Transparency Center | Binary: is business running Google Ads | FREE | ⚠️ STUB — `src/integrations/ads_transparency.py` returns None. No public API. Sprint 6: implement via Playwright or Bright Data Ads dataset. `is_running_ads` and `ads_count` always 0 until implemented. |
+| Google Ads Detection (two-tier) | Binary: is business running Google Ads | FREE (tag) + $0.002 (DFS) | ✅ LIVE — Directive #291. Tier 1: Spider AW-tag/Meta Pixel detection (free, 4/10 dental SMBs detected). Tier 2: DFS /ads_search/live/advanced (3/10 detected, complementary). Combined: 5/10 (50%) hit rate on dental SMBs. |
 | DNS + MX/SPF/DKIM check | Email maturity scoring (PROFESSIONAL/WEBMAIL/NONE), MX provider | FREE | ✅ Live — Segment 2 validated. DKIM excluded from scoring (0/10 AU SMBs have detectable DKIM). |
 | Phone carrier lookup | AU mobile carrier validation | FREE | Planned Sprint 5 |
 

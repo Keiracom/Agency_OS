@@ -26,6 +26,8 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
+from src.pipeline.prospect_scorer import ProspectScorer, ProspectScore
+
 logger = logging.getLogger(__name__)
 
 # Semaphore limits — tuned for DFS 30-concurrent + Spider 15-concurrent limits
@@ -462,8 +464,6 @@ class PipelineOrchestrator:
                     )
 
         stats.elapsed_seconds = time.monotonic() - t0
-        logger.info(
-            "orchestrator_complete prospects=%d discovered=%d elapsed=%.1fs",
-            len(results), stats.discovered, stats.elapsed_seconds,
-        )
+        logger.info("orchestrator_complete prospects=%d discovered=%d elapsed=%.1fs",
+                    len(results), stats.discovered, stats.elapsed_seconds)
         return PipelineResult(prospects=results, stats=stats)

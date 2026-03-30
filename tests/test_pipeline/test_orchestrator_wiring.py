@@ -4,6 +4,24 @@ from unittest.mock import AsyncMock, MagicMock
 from src.pipeline.pipeline_orchestrator import PipelineOrchestrator
 
 
+def _make_scorer(afford_pass=True):
+    scorer = MagicMock()
+    afford = MagicMock()
+    afford.passed_gate = afford_pass
+    afford.band = "MEDIUM" if afford_pass else "LOW"
+    afford.raw_score = 5 if afford_pass else 0
+    afford.gaps = []
+    scorer.score_affordability = MagicMock(return_value=afford)
+    intent = MagicMock()
+    intent.passed_free_gate = True
+    intent.band = "TRYING"
+    intent.raw_score = 5
+    intent.evidence = []
+    scorer.score_intent_free = MagicMock(return_value=intent)
+    scorer.score_intent_full = MagicMock(return_value=intent)
+    return scorer
+
+
 def _make_orch(**overrides):
     disc = MagicMock(); disc.pull_batch = AsyncMock(return_value=[])
     enr = MagicMock()

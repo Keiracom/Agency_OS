@@ -27,6 +27,8 @@ from dataclasses import dataclass, field
 from typing import Any, Optional
 
 from src.pipeline.prospect_scorer import ProspectScorer, ProspectScore
+from src.pipeline.intelligence import GLOBAL_SEM_SONNET, GLOBAL_SEM_HAIKU  # shared semaphores
+from src.pipeline import intelligence as _intel_module  # optional: used when self._intelligence is set
 
 logger = logging.getLogger(__name__)
 
@@ -37,10 +39,9 @@ SEM_PAID   = 20    # DFS Ads Search + GMB concurrent
 SEM_DM     = 20    # DFS SERP LinkedIn concurrent
 
 # Global semaphore pool — shared across parallel workers (module-level singletons)
+# GLOBAL_SEM_SONNET and GLOBAL_SEM_HAIKU are defined in intelligence.py and imported above
 GLOBAL_SEM_DFS    = asyncio.Semaphore(25)
 GLOBAL_SEM_SCRAPE = asyncio.Semaphore(50)
-GLOBAL_SEM_SONNET = asyncio.Semaphore(12)
-GLOBAL_SEM_HAIKU  = asyncio.Semaphore(15)
 
 
 @dataclass
@@ -673,25 +674,40 @@ class PipelineOrchestrator:
                             stats.affordability_rejected += 1
                         continue
 
-                    # GATE 1: Affordability
-                    afford = self._scorer.score_affordability(enrichment)
-                    if not afford.passed_gate:
-                        async with stats_lock:
-                            stats.affordability_rejected += 1
-                        continue
-
-                    # GATE 2: Intent free
-                    intent_free = self._scorer.score_intent_free(enrichment)
-                    if getattr(intent_free, "band", None) == "NOT_TRYING":
-                        async with stats_lock:
-                            stats.intent_rejected += 1
-                        continue
-
-                    # STAGE 6: Paid enrichment
+                    intel = self._intelligence  # None if not wired
+                    html = enrichment.get("html", "")
                     company_name = enrichment.get("company_name") or domain
                     addr = enrichment.get("website_address") or {}
                     suburb = (addr.get("suburb") or addr.get("city") or "") if isinstance(addr, dict) else ""
 
+                    # ── STAGE 3b: Website comprehension (Sonnet, optional) ────
+                    website_data: dict = {}
+                    if intel is not None:
+                        website_data = await intel.comprehend_website(domain, html, f"https://{domain}")
+
+                    # ── GATE 1: Affordability ─────────────────────────────────
+                    if intel is not None:
+                        # Haiku affordability judgment replaces rule-based scorer
+                        afford_intel = await intel.judge_affordability(domain, enrichment, website_data)
+                        if afford_intel.get("hard_gate"):
+                            async with stats_lock:
+                                stats.affordability_rejected += 1
+                            continue
+                        # Build a duck-typed result compatible with ProspectCard fields
+                        class _AffordResult:
+                            band = afford_intel.get("band", "MEDIUM")
+                            raw_score = afford_intel.get("score", 5)
+                            passed_gate = not afford_intel.get("hard_gate", False)
+                            gaps: list = []
+                        afford = _AffordResult()
+                    else:
+                        afford = self._scorer.score_affordability(enrichment)
+                        if not afford.passed_gate:
+                            async with stats_lock:
+                                stats.affordability_rejected += 1
+                            continue
+
+                    # ── STAGE 6: Paid enrichment ──────────────────────────────
                     async with GLOBAL_SEM_DFS:
                         paid = await self._stage_paid(sem_paid, domain, company_name, suburb, location)
 
@@ -703,12 +719,39 @@ class PipelineOrchestrator:
                     if gmb_data:
                         enrichment = {**enrichment, **gmb_data}
 
-                    # STAGE 7: Full intent score
-                    intent = self._scorer.score_intent_full(enrichment, ads_data, gmb_data)
-                    intent_band = getattr(intent, "band", "UNKNOWN")
-                    evidence = getattr(intent, "evidence", [])
+                    # ── STAGE 7: Intent classification ────────────────────────
+                    if intel is not None:
+                        # Sonnet classify_intent replaces point-counting scorer
+                        intent_data = await intel.classify_intent(domain, website_data, gmb_data, ads_data)
+                        intent_band = intent_data.get("band", "NOT_TRYING")
+                        intent_score = intent_data.get("score", 0)
 
-                    # STAGE 8: DM identification
+                        # Intent gate: NOT_TRYING rejected
+                        if intent_band == "NOT_TRYING":
+                            async with stats_lock:
+                                stats.intent_rejected += 1
+                            continue
+
+                        # Sonnet analyse_reviews
+                        reviews = (gmb_data or {}).get("reviews") or []
+                        review_data = await intel.analyse_reviews(domain, reviews)
+
+                        # Haiku refine_evidence → final card copy
+                        refined = await intel.refine_evidence(domain, intent_data, review_data, website_data)
+                        evidence = refined.get("evidence_statements", [])
+                    else:
+                        # Fallback: rule-based scorer
+                        intent_free = self._scorer.score_intent_free(enrichment)
+                        if getattr(intent_free, "band", None) == "NOT_TRYING":
+                            async with stats_lock:
+                                stats.intent_rejected += 1
+                            continue
+                        intent = self._scorer.score_intent_full(enrichment, ads_data, gmb_data)
+                        intent_band = getattr(intent, "band", "UNKNOWN")
+                        intent_score = getattr(intent, "raw_score", 0)
+                        evidence = getattr(intent, "evidence", [])
+
+                    # ── STAGE 8: DM identification ────────────────────────────
                     async with GLOBAL_SEM_DFS:
                         dm = await self._stage_dm(sem_dm, domain, company_name, enrichment)
 
@@ -737,7 +780,7 @@ class PipelineOrchestrator:
                         affordability_band=afford.band,
                         affordability_score=afford.raw_score,
                         intent_band=intent_band,
-                        intent_score=getattr(intent, "raw_score", 0),
+                        intent_score=intent_score,
                         gmb_rating=enrichment.get("gmb_rating"),
                         gmb_review_count=enrichment.get("gmb_review_count", 0),
                         dm_name=dm.name,

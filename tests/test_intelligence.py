@@ -282,3 +282,147 @@ def test_global_semaphores_used():
     from src.pipeline.intelligence import GLOBAL_SEM_SONNET, GLOBAL_SEM_HAIKU
     assert GLOBAL_SEM_SONNET._value == 12
     assert GLOBAL_SEM_HAIKU._value == 15
+
+
+# ── Semaphore acquisition test ────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_comprehend_website_acquires_sonnet_semaphore():
+    """GLOBAL_SEM_SONNET is acquired and released on each comprehend_website call."""
+    import asyncio
+    from src.pipeline.intelligence import GLOBAL_SEM_SONNET
+
+    acquire_calls = []
+    release_calls = []
+
+    original_acquire = GLOBAL_SEM_SONNET.__class__.__aenter__
+    original_release = GLOBAL_SEM_SONNET.__class__.__aexit__
+
+    expected = {
+        "services": [], "team_size_indicator": "unknown",
+        "technology_signals": {
+            "has_analytics": False, "has_ads_tag": False, "has_meta_pixel": False,
+            "has_booking_system": False, "has_conversion_tracking": False,
+            "cms": "unknown", "analytics_tools": [],
+        },
+        "contact_methods": [], "content_freshness": "unknown",
+        "business_maturity": "unknown", "location_signals": [], "pain_indicators": [],
+    }
+
+    semaphore_acquired = []
+
+    async def patched_aenter(self):
+        semaphore_acquired.append(True)
+        return self
+
+    async def patched_aexit(self, *args):
+        semaphore_acquired.append(False)
+
+    with patch.object(GLOBAL_SEM_SONNET.__class__, "__aenter__", patched_aenter), \
+         patch.object(GLOBAL_SEM_SONNET.__class__, "__aexit__", patched_aexit), \
+         _patch_httpx(expected):
+        from src.pipeline.intelligence import comprehend_website
+        await comprehend_website("test.com.au", "<html>test</html>", "https://test.com.au")
+
+    # Semaphore was both acquired (True) and released (False)
+    assert True in semaphore_acquired
+    assert False in semaphore_acquired
+
+
+@pytest.mark.asyncio
+async def test_token_usage_logged(caplog):
+    """comprehend_website logs input/output token counts for cost tracking."""
+    import logging
+    expected = {
+        "services": ["plumbing"], "team_size_indicator": "small(2-5)",
+        "technology_signals": {
+            "has_analytics": True, "has_ads_tag": False, "has_meta_pixel": False,
+            "has_booking_system": False, "has_conversion_tracking": False,
+            "cms": "wordpress", "analytics_tools": ["ga4"],
+        },
+        "contact_methods": ["phone"],
+        "content_freshness": "current", "business_maturity": "established",
+        "location_signals": ["Melbourne", "VIC"], "pain_indicators": [],
+    }
+    with _patch_httpx(expected), caplog.at_level(logging.INFO, logger="src.pipeline.intelligence"):
+        from src.pipeline.intelligence import comprehend_website
+        await comprehend_website("plumber.com.au", "<html>plumbing</html>", "https://plumber.com.au")
+
+    # Log should contain domain and token counts (100 input, 50 output from mock)
+    assert any("plumber.com.au" in r.message and "100" in r.message for r in caplog.records)
+
+
+@pytest.mark.asyncio
+async def test_run_parallel_with_intelligence_wired():
+    """run_parallel uses intelligence flow when self._intelligence is set."""
+    from src.pipeline.pipeline_orchestrator import PipelineOrchestrator
+
+    # Mock discovery: 2 domains then empty
+    disc = MagicMock()
+    disc.pull_batch = AsyncMock(side_effect=[
+        [{"domain": "dental.com.au"}, {"domain": "plumber.com.au"}],
+        [],
+    ])
+
+    # Mock free enrichment
+    fe = MagicMock()
+    fe.scrape_website = AsyncMock(return_value={"title": "Test", "html": "<html>Test</html>"})
+    fe.enrich_from_spider = AsyncMock(return_value={
+        "domain": "dental.com.au", "company_name": "Test Dental",
+        "entity_type": "Company", "gst_registered": True,
+        "non_au": False, "website_contact_emails": ["info@dental.com.au"],
+        "html": "<html>Test</html>",
+    })
+
+    # Mock intelligence module
+    intel = MagicMock()
+    intel.comprehend_website = AsyncMock(return_value={"services": ["dentistry"], "technology_signals": {"has_ads_tag": True}})
+    intel.judge_affordability = AsyncMock(return_value={"hard_gate": False, "band": "HIGH", "score": 8})
+    intel.classify_intent = AsyncMock(return_value={"band": "TRYING", "score": 6, "evidence": [{"effort": "Ads", "gap": "No tracking"}]})
+    intel.analyse_reviews = AsyncMock(return_value={"sentiment_trend": "stable", "pain_themes": []})
+    intel.refine_evidence = AsyncMock(return_value={
+        "evidence_statements": ["Running ads without conversion tracking"],
+        "headline_signal": "Active ad spend, no measurement",
+        "recommended_service": "Google Ads audit",
+        "outreach_angle": "You're spending blind",
+    })
+
+    # Mock DM
+    dm_id = MagicMock()
+    dm_result = MagicMock()
+    dm_result.name = "Dr. Jane Smith"
+    dm_result.title = "Principal Dentist"
+    dm_result.linkedin_url = "https://au.linkedin.com/in/janesmith"
+    dm_result.confidence = "HIGH"
+    dm_id.identify = AsyncMock(return_value=dm_result)
+
+    # Minimal scorer (fallback path, shouldn't be called with intel wired)
+    scorer = MagicMock()
+    scorer.score_affordability = MagicMock(side_effect=AssertionError("scorer should not be called with intel wired"))
+
+    orch = PipelineOrchestrator(
+        discovery=disc,
+        free_enrichment=fe,
+        scorer=scorer,
+        dm_identification=dm_id,
+        intelligence=intel,
+    )
+
+    result = await orch.run_parallel(
+        category_codes=["10514"],
+        location="Australia",
+        target_count=1,
+        num_workers=1,
+        batch_size=5,
+    )
+
+    assert len(result.prospects) >= 1
+    card = result.prospects[0]
+    assert card.evidence == ["Running ads without conversion tracking"]
+    assert card.intent_band == "TRYING"
+    assert card.dm_name == "Dr. Jane Smith"
+    # Verify intelligence functions were called
+    intel.comprehend_website.assert_called()
+    intel.judge_affordability.assert_called()
+    intel.classify_intent.assert_called()
+    intel.refine_evidence.assert_called()

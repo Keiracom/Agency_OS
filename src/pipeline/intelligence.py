@@ -20,6 +20,7 @@ All calls:
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
@@ -28,9 +29,12 @@ from typing import Any
 
 import httpx
 
-from src.pipeline.pipeline_orchestrator import GLOBAL_SEM_SONNET, GLOBAL_SEM_HAIKU
-
 logger = logging.getLogger(__name__)
+
+# ── Semaphores — defined here and re-exported; pipeline_orchestrator imports these ──
+# Defined in intelligence.py to avoid circular import with pipeline_orchestrator.
+GLOBAL_SEM_SONNET = asyncio.Semaphore(12)
+GLOBAL_SEM_HAIKU  = asyncio.Semaphore(15)
 
 # ── Model constants ───────────────────────────────────────────────────────────
 _MODEL_SONNET = "claude-sonnet-4-5"

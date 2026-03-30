@@ -23,7 +23,7 @@ Revenue model for BU: API subscriptions, Salesforce/HubSpot marketplace, bulk an
 
 ## SECTION 2 — CURRENT STATE
 
-- Last directive issued: #292 (Architecture alignment + ABN fix — IN PROGRESS)
+- Last directive issued: #292 (Architecture alignment + ABN fix — COMPLETE)
 - Next directive: #293
 - Test baseline: 1119 passed, 0 failed, 28 skipped (post-#289 merge, pre-#291 merge)
 - Last merged PRs: #242–#253 + #252 (ABN multistrategy) now merged via #292
@@ -135,6 +135,59 @@ ABN multi-strategy matching (Directive #289): 4-strategy keyword waterfall befor
 ### TERRITORY
 
 Locks by geography only, not industry. Two agencies in same city — different service areas or pool large enough (cross-category) that collision is minimal. First to discover claims the prospect.
+
+---
+
+### PROSPECT CARD FORMAT
+
+Each viable prospect contains:
+
+| Field | Source |
+|-------|--------|
+| Domain | DFS discovery |
+| Company name | Spider page title (cleaned) |
+| Location | JSON-LD suburb |
+| Entity type | ABN registry |
+| GST registered | ABN registry |
+| Affordability band + score | ProspectScorer.score_affordability() |
+| Intent band + score | ProspectScorer.score_intent_full() |
+| Evidence statements | Intent signals — each produces effort+gap pair for Haiku |
+| Google Ads active | DFS Ads Search ($0.002) or Spider AW- tag (free) |
+| Ad count | DFS Ads Search |
+| Meta Pixel | Spider HTML tag detection (free) |
+| GMB rating | DFS Maps GMB ($0.0035) |
+| GMB review count | DFS Maps GMB |
+| GMB response rate | DFS Maps GMB (when available) |
+| DM name | DMIdentification waterfall |
+| DM title | DMIdentification waterfall |
+| DM LinkedIn URL | T-DM1 SERP or T-DM2 Bright Data |
+| DM confidence | HIGH/MEDIUM/LOW |
+| DM tier | T-DM1/T-DM2/T-DM3/T-DM4 |
+
+---
+
+### COST MODEL
+
+Variable cost per viable DM: **~$0.07**
+
+| Step | Cost |
+|------|------|
+| Spider scrape | $0.01 |
+| DFS Ads Search | $0.002 (gate passers only) |
+| DFS Maps GMB | $0.0035 (gate passers only) |
+| DFS SERP LinkedIn | $0.01 |
+| DFS discovery (amortised) | $0.001 |
+| **Total** | **~$0.027–$0.07** |
+
+At Ignition tier (600 prospects/month): **~$42/month variable COGS**
+Subscription: $2,500 AUD/month → **98.3% gross margin**
+
+Per tier:
+| Tier | Prospects | Variable COGS | Revenue | Margin |
+|------|-----------|--------------|---------|--------|
+| Spark | 150 | ~$10 | $750 AUD | 98.7% |
+| Ignition | 600 | ~$42 | $2,500 AUD | 98.3% |
+| Velocity | 1,500 | ~$105 | $5,000 AUD | 97.9% |
 
 ---
 
@@ -707,12 +760,14 @@ v6 era (#271–#277): Layer 2 (discovery), Layer 3 (bulk filter), signal config 
 | Sprint 5 | #288 | Composite affordability scorer (7 signals, 4 bands) + streaming PipelineOrchestrator + ProspectCard | COMPLETE — PR #251 (pending merge) |
 | Sprint 5 | #289 | ABN multi-strategy matching waterfall (4 strategies, 8/10 live match rate) | COMPLETE — PR #252 merged |
 | Sprint 5 | #290 | Wire orchestrator: pull_batch + enrich methods, DFS Maps GMB, ads transparency real | COMPLETE — PR #253 merged |
-| Sprint 6 | #291 | Two-dimension ProspectScorer: Affordability + Intent gates, DFS Ads Search, Spider ad tag detection | COMPLETE — PR #254 (pending merge) |
-| Sprint 6 | #292 | Architecture alignment: Manual final architecture + ABN Settings bug fix + merge #252 | IN PROGRESS |
-| Sprint 7 | #293 | Pipeline v2 rerun: 100 DMs with full scoring, clean ProspectCards, timing/cost audit | NEXT |
-| Sprint 8 | #294 | Message generation: Haiku outreach from evidence statements | Queued |
-| Sprint 9 | #295 | Multi-vertical: dental + plumbing signal configs, category codes, ETV ranges | Queued |
-| Sprint 10 | #296 | Integration test + hardening + launch prep | Queued |
+| Sprint 5 | #284–#291 | Discovery + enrichment quality + DM waterfall + scoring + ads detection + pipeline orchestrator | ALL COMPLETE — PRs #247–#254 |
+| Sprint 6 | #292 | Architecture alignment: Manual final architecture + ABN Settings bug fix + merge #252 | COMPLETE |
+| Sprint 7 | #293 | Stage-parallel pipeline refactor (sem=15/20, target 200 domains in <2 min) | NEXT |
+| Sprint 7 | #294 | Multi-category discovery + rotation (dental/plumbing/medical/legal seeded) | Queued |
+| Sprint 7 | #295 | Re-scoring engine (monthly re-scrape of BU rejects, zero discovery cost) | Queued |
+| Sprint 8 | — | Final 100-DM test: multi-category, parallel, ABN working, full ProspectCards | Queued |
+| Segments 4–8 | #296–#300 | Email waterfall, phone, social, message generation (Haiku), outreach scheduling | Queued |
+| Launch | #301 | Founding customer onboarding, territory locking, demo mode | Queued |
 
 ### Completed Directives Log
 
@@ -734,7 +789,7 @@ v6 era (#271–#277): Layer 2 (discovery), Layer 3 (bulk filter), signal config 
 | #289 | ABN multi-strategy matching: 4-strategy waterfall, domain/title/suburb/live-API, PTY LTD stripping, 8/10 live match rate | COMPLETE — PR #252 |
 | #290 | Orchestrator wiring: pull_batch + enrich methods, DFS Maps GMB (maps_search_gmb), ads transparency real | COMPLETE — PR #253 merged |
 | #291 | Two-dimension ProspectScorer: score_affordability + score_intent_free + score_intent_full. DFS Ads Search ($0.002/call). Spider AW-tag/Meta Pixel detection (free). | COMPLETE — PR #254 |
-| #292 | Manual final architecture + ABN Settings.abn_lookup_guid fix + PR #252 merge | IN PROGRESS |
+| #292 | Manual final architecture (ratified Mar 30 2026) + ABN Settings.abn_lookup_guid fix + PR #252 merge | COMPLETE |
 
 ---
 

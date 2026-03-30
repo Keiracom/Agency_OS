@@ -358,6 +358,47 @@ class FreeEnrichment:
             self._logger.warning("enrich failed for %s: %s", domain, exc)
             return None
 
+    async def scrape_website(self, domain: str) -> dict:
+        """Public Spider scrape method for stage-parallel pipeline."""
+        return await self._scrape_website(domain)
+
+    async def enrich_from_spider(
+        self,
+        domain: str,
+        spider_data: dict,
+    ) -> dict | None:
+        """
+        DNS + ABN enrichment given pre-scraped Spider data.
+        Used by stage-parallel PipelineOrchestrator where Spider runs as its own stage.
+        Does NOT call _scrape_website(). Accepts pre-scraped output or empty dict.
+        ABN uses asyncpg — caller must ensure only 1 concurrent call (sem=1) or pass
+        sem_abn explicitly.
+        """
+        try:
+            dns_data = self._enrich_dns(domain)
+            title = spider_data.get("title", "")
+            suburb = (spider_data.get("website_address") or {}).get("suburb")
+            abn_data = await self._match_abn(
+                domain,
+                title or None,
+                state_hint=None,
+                suburb=suburb,
+            )
+            company_name = (
+                title.split("|")[0].split("-")[0].strip()[:60]
+                or domain.split(".")[0].replace("-", " ").title()
+            )
+            return {
+                **spider_data,
+                **dns_data,
+                **abn_data,
+                "company_name": company_name,
+                "domain": domain,
+            }
+        except Exception as exc:
+            self._logger.warning("enrich_from_spider failed for %s: %s", domain, exc)
+            return None
+
     async def _process_domain(self, row: asyncpg.Record, stats: dict) -> None:
         domain = row["domain"]
         bu_id = row["id"]

@@ -491,6 +491,23 @@ Approval flow:
 - **Email maturity collapsed:** Old MATURE/BASIC/WEBMAIL/NONE → New PROFESSIONAL (custom MX + SPF) / WEBMAIL (MX, no SPF) / NONE. DKIM kept for data collection but excluded from classification.
 - **Spider.cloud cost validated:** $0.01/page (10-page Segment 2 test = $0.10). DNS + ABN = FREE. Total per-domain free enrichment cost: ~$0.01.
 
+**ABN multi-strategy matching (Directive #289, Mar 29 2026):**
+
+Root cause of 0/200 ABN matches in E2E test: single `LIKE '%phrase%'` query never matched ABN entity names derived from domain strings ("dentists at pymble" ≠ "PYMBLE DENTAL PTY LTD").
+
+Replaced with a 4-strategy waterfall in `_match_abn` — returns on first EXACT or PARTIAL hit, falls back to best LOW if all strategies return LOW, returns `abn_matched=False` only when all strategies find nothing:
+
+| Strategy | Method | Notes |
+|---|---|---|
+| S1 Domain keywords | Strip TLD, split hyphens/stopwords (≥5-char threshold), AND-intersect keywords in local table | Handles `dentistsatpymble` → `["dentists","pymble"]` |
+| S2 Title keywords | Clean Spider page title (strip "Home \|", nav suffixes), AND-intersect in local table | Dominant strategy in live test (5/10) |
+| S3 Suburb + keyword | JSON-LD address suburb + primary domain keyword, AND-intersect | Needs `website_address.suburb` from Spider scrape |
+| S4 Live ABN API | `ABRSearchByNameAdvancedSimpleProtocol2017` fuzzy search, cross-ref local table for `gst_registered`/`entity_type` | Fallback; ABN API returns individual profiles not gst_registered, so local ABN lookup follows |
+
+New helpers: `_abn_clean_entity_name()` (strips PTY LTD, THE TRUSTEE FOR), `_extract_domain_keywords()`, `_local_abn_match()`, `_local_abn_gst()`, `_abn_result_from_row()`.
+
+Live Task D validation: **8/10 domains matched** (vs 0/200 before fix). Cost: FREE (local table + ABN API free tier).
+
 ### PAID TIER
 
 | Source | What | Cost | Status |

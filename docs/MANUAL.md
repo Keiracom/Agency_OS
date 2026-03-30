@@ -764,7 +764,7 @@ v6 era (#271–#277): Layer 2 (discovery), Layer 3 (bulk filter), signal config 
 | Sprint 5 | #284–#291 | Discovery + enrichment quality + DM waterfall + scoring + ads detection + pipeline orchestrator | ALL COMPLETE — PRs #247–#254 |
 | Sprint 6 | #292 | Architecture alignment: Manual final architecture + ABN Settings bug fix + merge #252 | COMPLETE |
 | Sprint 7 | #293 | Stage-parallel pipeline refactor (SEM_SPIDER=15, SEM_ABN=1, SEM_PAID=20, SEM_DM=20) | COMPLETE — PR #255 |
-| Sprint 7 | #294 | Multi-category discovery + rotation (dental/plumbing/medical/legal seeded) | Queued |
+| Sprint 7 | #294 | Multi-category rotation (15 categories, 5/month, monthly wrap) + exclude_domains + category_stats | COMPLETE — PR #256 |
 | Sprint 7 | #295 | Re-scoring engine (monthly re-scrape of BU rejects, zero discovery cost) | Queued |
 | Sprint 8 | — | Final 100-DM test: multi-category, parallel, ABN working, full ProspectCards | Queued |
 | Segments 4–8 | #296–#300 | Email waterfall, phone, social, message generation (Haiku), outreach scheduling | Queued |

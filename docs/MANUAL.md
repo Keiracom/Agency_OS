@@ -23,9 +23,9 @@ Revenue model for BU: API subscriptions, Salesforce/HubSpot marketplace, bulk an
 
 ## SECTION 2 — CURRENT STATE
 
-- Last directive issued: #295 (httpx scraper + GMB fix + AU filter + parallel workers — COMPLETE)
-- Test baseline: 1193 passed, 0 failed, 5 skipped
-- Last merged PRs: #247–#257
+- Last directive issued: #296 (Sonnet/Haiku intelligence layer — PR #258 open, pending merge)
+- Test baseline: 1214 passed, 0 failed, 5 skipped
+- Last merged PRs: #247–#257 | Open: #258
 - PR #254 (Directive #291 — ProspectScorer) pending merge
 - Architecture: **FINAL ratified Mar 30 2026** — service-signal discovery, two-dimension scoring, stage-parallel processing
 - **Pipeline test Run 1 (Mar 29):** 100 DMs from 200 domains, $3.51, 7.3 min
@@ -92,6 +92,41 @@ Applied in `free_enrichment.py` after scrape, before affordability scoring.
 5. None found → `non_au: True` → rejected at affordability gate
 
 Catches foreign domains that pass TLD check (e.g. `dentatur.com`, `uswatersystems.com`).
+
+### SONNET/HAIKU INTELLIGENCE LAYER (Directive #296)
+
+Replaces regex/rule-based analysis with LLM comprehension at five pipeline stages.
+
+**Five stages** (`src/pipeline/intelligence.py`):
+
+| Stage | Function | Model | Replaces | Cost/domain |
+|-------|----------|-------|----------|-------------|
+| 3b | `comprehend_website()` | Sonnet | Regex extraction | ~$0.010 |
+| 7 | `classify_intent()` | Sonnet | Point-counting scorer | ~$0.008 |
+| 7b | `analyse_reviews()` | Sonnet | No equivalent (new) | ~$0.005 |
+| 4 | `judge_affordability()` | Haiku | Rule-based gates | ~$0.001 |
+| 7c | `refine_evidence()` | Haiku | Hardcoded evidence strings | ~$0.002 |
+
+**Total: ~$0.026/domain. ~$16.50/100 DMs at 23% yield. Ignition margin >96%.**
+
+**Prompt caching design:** Static system prompt block (marked `cache_control: ephemeral`) always first; variable HTML/review content last. Anthropic prompt-caching-2024-07-31 beta header on every call.
+
+**Semaphores:** `GLOBAL_SEM_SONNET=12` and `GLOBAL_SEM_HAIKU=15` defined in `intelligence.py`, imported by `pipeline_orchestrator.py`. Prevents circular import.
+
+**Reliability:** httpx direct API (no SDK). JSON response with `try/except` fallback on every call — pipeline never crashes on LLM failure. Token usage logged per call for cost tracking.
+
+**Wiring in `run_parallel()` when `intelligence=` is passed:**
+```
+httpx scrape → comprehend_website (Sonnet)
+→ judge_affordability (Haiku) → affordability gate
+→ DFS ads + GMB → classify_intent (Sonnet)
+→ intent gate (NOT_TRYING rejected)
+→ analyse_reviews (Sonnet) → refine_evidence (Haiku)
+→ DM discovery → ProspectCard
+```
+Graceful fallback to rule-based scorer when `intelligence=None` (backwards compatible).
+
+---
 
 ### PARALLEL WORKER ORCHESTRATOR (Directive #295)
 
@@ -832,6 +867,7 @@ v6 era (#271–#277): Layer 2 (discovery), Layer 3 (bulk filter), signal config 
 | #293 | Stage-parallel orchestrator: 9-stage concurrent processing, SEM_SPIDER=15/SEM_ABN=1/SEM_PAID=20/SEM_DM=20 | COMPLETE — PR #255 |
 | #294 | Multi-category rotation: 15 AU categories, 5/month rotation, exclude_domains, category_stats | COMPLETE — PR #256 |
 | #295 | httpx primary scraper (Spider fallback), GMB rating dict→scalar fix, AU country filter, run_parallel() + global semaphore pool | COMPLETE — PR #257 |
+| #296 | Sonnet/Haiku intelligence layer: comprehend_website, classify_intent, analyse_reviews, judge_affordability, refine_evidence. Wired into run_parallel(). Prompt caching. | PR #258 — pending merge |
 
 ---
 

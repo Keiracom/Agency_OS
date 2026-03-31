@@ -4,14 +4,13 @@ Purpose: 4-layer email discovery waterfall for pipeline v7.
          Runs after DM identification. Finds and verifies deliverable email
          addresses for decision makers before reachability scoring.
 Layer: 3 - pipeline
-Directive: #299
+Directive: #299, #300-FIX-4
 
-Waterfall layers (short-circuit — returns on first verified hit):
-  Layer 1: Website HTML scrape (free) — mailto: links, email regex on cached HTML
-  Layer 2: Pattern generation (free) — first.last@, first@, flast@, firstl@
-            + MX record check to confirm domain accepts mail
-  Layer 3: Leadmagic email finder ($0.015 USD) — API lookup by name + domain
-  Layer 4: Bright Data LinkedIn enrichment ($0.00075 USD) — profile → email
+Waterfall layers (short-circuit — returns on first hit):
+  Layer 0: Contact registry (free) — company_email from contact_data, unverified
+  Layer 1: Website HTML scrape (free) — mailto: links, email regex on cached HTML, unverified
+  Layer 2: Leadmagic email finder ($0.015 USD) — API lookup by name + domain, verified
+  Layer 3: Bright Data LinkedIn enrichment ($0.00075 USD) — profile → email, unverified
 
 Semaphore: GLOBAL_SEM_LEADMAGIC (10 concurrent) added to global pool.
 """
@@ -49,11 +48,14 @@ _EMAIL_RE = re.compile(
 # Pattern templates: (format_name, template)
 # {f} = first name, {l} = last name, {fi} = first initial, {li} = last initial
 _PATTERN_TEMPLATES = [
-    ("first.last", "{f}.{l}"),
-    ("first", "{f}"),
-    ("flast", "{fi}{l}"),
-    ("firstl", "{f}{li}"),
-    ("last", "{l}"),
+    ("first.last",  "{f}.{l}"),
+    ("first",       "{f}"),
+    ("flast",       "{fi}{l}"),
+    ("firstl",      "{f}{li}"),
+    ("f.last",      "{fi}.{l}"),
+    ("first_last",  "{f}_{l}"),
+    ("last",        "{l}"),
+    ("firstlast",   "{f}{l}"),
 ]
 
 # Cost constants (USD)
@@ -82,13 +84,76 @@ class EmailResult:
 
 # ── Name parsing ──────────────────────────────────────────────────────────────
 
+_NAME_PREFIXES = re.compile(
+    r"^(Dr\.?\s*|Prof\.?\s*|Mr\.?\s*|Mrs\.?\s*|Ms\.?\s*|Miss\.?\s*|Sir\s+)",
+    re.IGNORECASE,
+)
+_NAME_SUFFIXES = re.compile(
+    r"\s*(OAM|AM|AO|PhD|MD|DDS|BDS|MBBS|FRCDS|FRACDS|Esq\.?)$",
+    re.IGNORECASE,
+)
+# Strip LinkedIn noise: everything from " at ", " - ", " | ", " @ ", "of " onwards
+_LINKEDIN_NOISE = re.compile(
+    r"\s+(?:at|of|for|from|-|–|\|)\s+.+$",
+    re.IGNORECASE,
+)
+
+_ROLE_WORDS = {
+    "owner", "founder", "director", "manager", "principal",
+    "partner", "associate", "consultant", "engineer", "head",
+    "president", "ceo", "cto", "coo", "cfo",
+}
+
+
 def _parse_name(dm_name: str) -> tuple[str, str]:
-    """Split 'Michael Chen' → ('michael', 'chen'). Handles middle names."""
-    parts = dm_name.strip().split()
+    """
+    Parse a DM name string into (first, last) for email pattern generation.
+
+    Handles:
+    - Prefixes: Dr., Prof., Mr., Mrs., Ms., Miss
+    - Suffixes: OAM, AM, AO, PhD, MD, DDS, BDS
+    - LinkedIn noise: "Owner at X", "Director - Y", "Founder of Z"
+    - Single-word names: returns (name, "")
+
+    Examples:
+        "Dr. Harry Marget"                    → ("harry", "marget")
+        "Dr. Teresa Sung"                     → ("teresa", "sung")
+        "Prof. James Smith OAM"               → ("james", "smith")
+        "Sam Carigliano"                      → ("sam", "carigliano")
+        "Owner at VC Dental"                  → ("", "")  -- no real name
+        "Dr. Harry Marget East Bentleigh..."  → ("harry", "marget")
+    """
+    if not dm_name:
+        return "", ""
+
+    name = dm_name.strip()
+
+    # Strip LinkedIn noise first (e.g. "James Smith at Dental Co" → "James Smith")
+    name = _LINKEDIN_NOISE.sub("", name).strip()
+
+    # Strip title prefixes
+    name = _NAME_PREFIXES.sub("", name).strip()
+
+    # Strip honorific suffixes
+    name = _NAME_SUFFIXES.sub("", name).strip()
+
+    parts = name.split()
     if not parts:
         return "", ""
+
+    # If first word is a known role word and no other distinguishing words, skip
+    if len(parts) <= 2 and parts[0].lower() in _ROLE_WORDS:
+        return "", ""
+
     first = parts[0].lower()
     last = parts[-1].lower() if len(parts) > 1 else ""
+
+    # Sanity: reject if first or last look like non-names (numbers, single chars)
+    if len(first) < 2:
+        first = ""
+    if len(last) < 2:
+        last = ""
+
     return first, last
 
 
@@ -292,17 +357,14 @@ async def discover_email(
     dm_linkedin: str | None = None,
     html: str | None = None,
     company_name: str | None = None,
-    skip_layers: list[int] | None = None,
     contact_data: dict | None = None,
+    skip_layers: list[int] | None = None,
 ) -> EmailResult:
     """
-    4-layer email discovery waterfall.
-
-    Short-circuits on first verified/found email. Layers:
-      1: Website HTML (free)
-      2: Pattern generation + MX check (free)
-      3: Leadmagic finder ($0.015)
-      4: Bright Data LinkedIn ($0.00075)
+    Email discovery waterfall.
+    Layers 0-1 return unverified emails.
+    Layer 2 (Leadmagic) returns verified.
+    Layer 3 (Bright Data) returns unverified.
 
     Args:
         domain: Business domain (e.g. "dentist.com.au")
@@ -310,57 +372,51 @@ async def discover_email(
         dm_linkedin: LinkedIn URL if available from DM waterfall
         html: Cached website HTML from scrape stage
         company_name: Company name for API lookup context
-        skip_layers: List of layer numbers to skip (e.g. [3,4] to skip paid)
+        contact_data: Pre-scraped contact data dict (may contain company_email)
+        skip_layers: List of layer numbers to skip (e.g. [2,3] to skip paid)
 
     Returns:
         EmailResult with email, verified flag, source, confidence, cost_usd.
     """
     skip = set(skip_layers or [])
-    # Strip www. prefix so patterns like first.last@www.domain.com.au don't occur
-    domain = domain[4:] if domain.startswith("www.") else domain
+
+    # Strip www. from domain for all pattern/lookup use
+    clean_domain = domain[4:] if domain.startswith("www.") else domain
+
     first, last = _parse_name(dm_name)
 
-    # Layer 0: contact registry — check company_email from HTML scrape (free)
-    if contact_data and (contact_data.get("company_email") or contact_data.get("email")):
+    # Layer 0: contact_data company_email (free, unverified)
+    if 0 not in skip and contact_data:
         email_val = contact_data.get("company_email") or contact_data.get("email")
-        return EmailResult(
-            email=email_val,
-            verified=False,
-            source="contact_registry",
-            confidence="low",  # company email, not DM-specific
-            cost_usd=0.0,
-        )
+        if email_val:
+            logger.info("email_waterfall L0 contact_registry domain=%s email=%s", domain, email_val)
+            return EmailResult(
+                email=email_val,
+                verified=False,
+                source="contact_registry",
+                confidence="low",
+                cost_usd=0.0,
+            )
 
-    # Layer 1: Website HTML
+    # Layer 1: Website HTML (free, unverified)
     if 1 not in skip:
-        result = _extract_emails_from_html(html or "", domain, dm_name)
+        result = _extract_emails_from_html(html or "", clean_domain, dm_name)
         if result and result.email:
-            logger.info("email_waterfall L1 hit domain=%s email=%s", domain, result.email)
+            logger.info("email_waterfall L1 website domain=%s email=%s", domain, result.email)
             return result
 
-    # Layer 2: Pattern + MX
+    # Layer 2: Leadmagic find_email (verified — Leadmagic finds real address)
     if 2 not in skip and first and last:
-        result = await _try_patterns(first, last, domain)
+        result = await _leadmagic_lookup(first, last, clean_domain, company_name)
         if result and result.email:
-            logger.info("email_waterfall L2 hit domain=%s email=%s", domain, result.email)
             return result
 
-    # Layer 3: Leadmagic
-    if 3 not in skip and first and last:
-        result = await _leadmagic_lookup(first, last, domain, company_name)
+    # Layer 3: Bright Data (unverified)
+    if 3 not in skip:
+        result = await _brightdata_lookup(dm_linkedin, clean_domain, company_name)
         if result and result.email:
-            logger.info("email_waterfall L3 hit domain=%s email=%s confidence=%s",
-                        domain, result.email, result.confidence)
             return result
 
-    # Layer 4: Bright Data
-    if 4 not in skip:
-        result = await _brightdata_lookup(dm_linkedin, domain, company_name)
-        if result and result.email:
-            logger.info("email_waterfall L4 hit domain=%s email=%s", domain, result.email)
-            return result
-
-    # No email found
     logger.debug("email_waterfall miss domain=%s", domain)
     return EmailResult(
         email=None,

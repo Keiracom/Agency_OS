@@ -29,7 +29,7 @@ async def test_layer1_mailto_returns_email():
         domain="pymbledental.com.au",
         dm_name="Michael Chen",
         html=DENTAL_HTML,
-        skip_layers=[2, 3, 4],
+        skip_layers=[2, 3],
     )
     assert result.email == "michael.chen@pymbledental.com.au"
     assert result.source == "website"
@@ -44,24 +44,22 @@ async def test_layer1_name_match_gives_high_confidence():
         domain="pymbledental.com.au",
         dm_name="Michael Chen",
         html=DENTAL_HTML,
-        skip_layers=[2, 3, 4],
+        skip_layers=[2, 3],
     )
     assert result.confidence == "high"
 
 
 @pytest.mark.asyncio
 async def test_layer1_no_html_falls_through():
-    """Empty HTML skips Layer 1 and falls to Layer 2."""
+    """Empty HTML skips Layer 1; no paid layers → returns none."""
     from src.pipeline.email_waterfall import discover_email
-    with patch("src.pipeline.email_waterfall._check_mx", AsyncMock(return_value=True)):
-        result = await discover_email(
-            domain="dentist.com.au",
-            dm_name="Jane Smith",
-            html=None,
-            skip_layers=[3, 4],
-        )
-    # Should reach Layer 2 pattern
-    assert result.source in ("pattern", "none")
+    result = await discover_email(
+        domain="dentist.com.au",
+        dm_name="Jane Smith",
+        html=None,
+        skip_layers=[2, 3],
+    )
+    assert result.source == "none"
 
 
 # ── Layer 2: Pattern generation ───────────────────────────────────────────────
@@ -108,8 +106,8 @@ async def test_layer2_mx_pass_returns_pattern():
 # ── Layer 3: Leadmagic ────────────────────────────────────────────────────────
 
 @pytest.mark.asyncio
-async def test_layer3_leadmagic_verified_email():
-    """Layer 3 returns verified email from Leadmagic mock."""
+async def test_layer2_leadmagic_verified_email():
+    """Layer 2 returns verified email from Leadmagic mock."""
     from src.pipeline.email_waterfall import discover_email
     mock_result = MagicMock()
     mock_result.found = True
@@ -128,7 +126,7 @@ async def test_layer3_leadmagic_verified_email():
             domain="dentist.com.au",
             dm_name="Michael Chen",
             html=NO_EMAIL_HTML,
-            skip_layers=[1, 2, 4],
+            skip_layers=[1, 3],
         )
 
     assert result.source == "leadmagic"
@@ -138,8 +136,8 @@ async def test_layer3_leadmagic_verified_email():
 
 
 @pytest.mark.asyncio
-async def test_layer3_leadmagic_not_found_falls_through():
-    """Layer 3 miss falls through to Layer 4 (or returns none)."""
+async def test_layer2_leadmagic_not_found_falls_through():
+    """Layer 2 miss falls through to Layer 3 (or returns none)."""
     from src.pipeline.email_waterfall import discover_email
     mock_result = MagicMock()
     mock_result.found = False
@@ -155,7 +153,7 @@ async def test_layer3_leadmagic_not_found_falls_through():
             domain="dentist.com.au",
             dm_name="Michael Chen",
             html=NO_EMAIL_HTML,
-            skip_layers=[1, 2, 4],
+            skip_layers=[1, 3],
         )
 
     assert result.email is None
@@ -282,3 +280,33 @@ def test_global_sem_leadmagic_exported():
     """GLOBAL_SEM_LEADMAGIC is importable from email_waterfall."""
     from src.pipeline.email_waterfall import GLOBAL_SEM_LEADMAGIC
     assert GLOBAL_SEM_LEADMAGIC._value == 10
+
+
+# ── _parse_name: prefix/suffix/noise stripping ────────────────────────────────
+
+def test_parse_name_dr_prefix():
+    from src.pipeline.email_waterfall import _parse_name
+    assert _parse_name("Dr. Harry Marget") == ("harry", "marget")
+
+
+def test_parse_name_dr_teresa():
+    from src.pipeline.email_waterfall import _parse_name
+    assert _parse_name("Dr. Teresa Sung") == ("teresa", "sung")
+
+
+def test_parse_name_prof_suffix():
+    from src.pipeline.email_waterfall import _parse_name
+    first, last = _parse_name("Prof. James Smith OAM")
+    assert first == "james" and last == "smith"
+
+
+def test_parse_name_plain():
+    from src.pipeline.email_waterfall import _parse_name
+    assert _parse_name("Sam Carigliano") == ("sam", "carigliano")
+
+
+def test_parse_name_linkedin_noise():
+    """Role-only name after noise strip returns ("", "")."""
+    from src.pipeline.email_waterfall import _parse_name
+    first, last = _parse_name("Owner at VC Dental")
+    assert first == "" and last == ""

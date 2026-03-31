@@ -22,6 +22,10 @@ _EMAIL_RE      = re.compile(r'[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}')
 _LINKEDIN_RE   = re.compile(r'linkedin\.com/(?:in|company)/[\w\-]+')
 _CLEAN_RE      = re.compile(r'[\s.\-]')
 _GENERIC_EMAIL = frozenset({"noreply", "info", "support", "admin", "webmaster", "hello", "contact", "enquiries", "enquiry"})
+_PLACEHOLDER_EMAIL_RE = re.compile(
+    r"(example\.|yourdomain\.|placeholder|test@|you@|your@|user@)",
+    re.IGNORECASE,
+)
 _UA = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -89,7 +93,9 @@ class HttpxScraper:
         # Company email (first non-generic)
         for email in _EMAIL_RE.findall(html):
             local = email.split("@")[0].lower()
-            if local not in _GENERIC_EMAIL and not email.endswith((".png", ".jpg", ".gif")):
+            if (local not in _GENERIC_EMAIL
+                    and not email.endswith((".png", ".jpg", ".gif"))
+                    and not _PLACEHOLDER_EMAIL_RE.search(email)):
                 contact["company_email"] = email.lower()
                 break
         # LinkedIn — split company vs person

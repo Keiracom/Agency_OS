@@ -11,6 +11,7 @@ Directive #287 — SERP-first DM waterfall + AU location filter.
 import logging
 import re
 from dataclasses import dataclass, field
+from decimal import Decimal
 from typing import Optional
 
 logger = logging.getLogger(__name__)
@@ -44,10 +45,11 @@ _DM_TITLE_KEYWORDS: dict[str, int] = {
 class DMResult:
     name: Optional[str] = None
     title: Optional[str] = None
-    source: str = "none"         # serp_linkedin | brightdata_linkedin | website_scrape | abn_entity
+    source: str = "none"         # html_linkedin | serp_linkedin | brightdata_linkedin | website_scrape | abn_entity
     confidence: str = "none"     # HIGH | MEDIUM | LOW | none
     linkedin_url: Optional[str] = None
-    tier_used: str = "none"      # T-DM1 | T-DM2 | T-DM3 | T-DM4 | none (for CIS tracking)
+    tier_used: str = "none"      # T-DM0 | T-DM1 | T-DM2 | T-DM3 | T-DM4 | none (for CIS tracking)
+    cost_usd: Decimal = field(default_factory=Decimal)
 
 
 class DMIdentification:
@@ -66,6 +68,7 @@ class DMIdentification:
         linkedin_company_url: Optional[str] = None,
         spider_data: Optional[dict] = None,
         abn_data: Optional[dict] = None,
+        contact_data: Optional[dict] = None,
     ) -> DMResult:
         """
         Identify the decision maker for a business using tiered fallback logic.
@@ -80,6 +83,18 @@ class DMIdentification:
         """
         spider_data = spider_data or {}
         abn_data = abn_data or {}
+
+        # --- T-DM0: Free shortcut — LinkedIn URL found in scraped HTML ---
+        if contact_data and contact_data.get("linkedin"):
+            return DMResult(
+                name=None,
+                title=None,
+                source="html_linkedin",
+                confidence="LOW",   # found URL but no name/title yet
+                linkedin_url=contact_data["linkedin"],
+                tier_used="T-DM0",
+                cost_usd=Decimal("0"),
+            )
 
         # --- T-DM1: Google SERP LinkedIn (Directive #287) ---
         if self._dfs is not None:

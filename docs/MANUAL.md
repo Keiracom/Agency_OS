@@ -832,6 +832,10 @@ Outreach sequence timing: defined in Layer 10 scheduling engine (Directive #278)
 - CIS tables all 0 rows (not yet populated)
 - BU House Seed strategy: 10% of campaign volume, gap-fill by default, steerable toward institutional buyer industries when deal in pipeline — must be disclosed to customers with incentive
 - BU schema: ~97 columns. Query `information_schema.columns WHERE table_name = 'business_universe'` for current column list. Key signal fields: `dfs_paid_etv` (budget), `tech_gaps` (service gaps), `propensity_score` + `reachability_score` (two separate scores, both 0–100).
+- `contact_data` (jsonb) — free signals: mobile, landline, email, linkedin from HTML scrape (Directive #300-FIX Issue 12)
+- Mobile waterfall cost: $0.077 worst case (Leadmagic Layer 2; free if found in HTML)
+- Pipeline total: ~$0.196 per complete lead (with mobile)
+- Ignition margin: 95.3% at $3.99/lead tier
 
 ---
 

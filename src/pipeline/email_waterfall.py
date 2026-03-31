@@ -66,9 +66,10 @@ class EmailResult:
     """Result from email waterfall discovery."""
     email: str | None
     verified: bool
-    source: str  # "website" | "pattern" | "leadmagic" | "brightdata" | "none"
+    source: str  # "html_regex" | "website" | "pattern" | "leadmagic" | "brightdata" | "none"
     confidence: str  # "high" | "medium" | "low"
     cost_usd: float
+    tier_used: int | None = None
 
     def to_dict(self) -> dict:
         return {
@@ -292,6 +293,7 @@ async def discover_email(
     html: str | None = None,
     company_name: str | None = None,
     skip_layers: list[int] | None = None,
+    contact_data: dict | None = None,
 ) -> EmailResult:
     """
     4-layer email discovery waterfall.
@@ -315,6 +317,17 @@ async def discover_email(
     """
     skip = set(skip_layers or [])
     first, last = _parse_name(dm_name)
+
+    # Layer 0: Free — check contact_data from scrape stage
+    if contact_data and contact_data.get("email"):
+        return EmailResult(
+            email=contact_data["email"],
+            source="html_regex",
+            cost_usd=0.0,
+            tier_used=0,
+            verified=False,  # unverified — came from HTML
+            confidence="low",
+        )
 
     # Layer 1: Website HTML
     if 1 not in skip:

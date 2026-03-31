@@ -124,6 +124,20 @@ class EmailMaturity(str, Enum):
     NONE         = "none"           # no MX record
 
 
+class _SingleConnCtx:
+    """Async context manager wrapping a single asyncpg Connection for pool-compatible usage."""
+    __slots__ = ("_conn",)
+
+    def __init__(self, conn: asyncpg.Connection) -> None:
+        self._conn = conn
+
+    async def __aenter__(self) -> asyncpg.Connection:
+        return self._conn
+
+    async def __aexit__(self, *args) -> None:
+        pass  # Don't close — caller owns the connection lifecycle
+
+
 class FreeEnrichment:
     """
     Zero-cost enrichment pass for business_universe rows.
@@ -132,11 +146,25 @@ class FreeEnrichment:
     Writes results back to business_universe and stamps free_enrichment_completed_at.
     """
 
-    def __init__(self, conn: asyncpg.Connection) -> None:
-        self._conn = conn
+    def __init__(self, conn: asyncpg.Connection | asyncpg.Pool) -> None:
+        # Accept either a single Connection (legacy) or a Pool (preferred).
+        # Pool supports concurrent ABN queries; Connection serialises them.
+        if isinstance(conn, asyncpg.Pool):
+            self._pool: asyncpg.Pool | None = conn
+            self._conn: asyncpg.Connection | None = None
+        else:
+            self._pool = None
+            self._conn = conn
         self._spider_key = os.environ.get("SPIDER_API_KEY", "")
         self._logger = logging.getLogger(__name__)
         self._httpx = HttpxScraper()
+
+    def _acquire(self):
+        """Return async context manager yielding a connection from pool or single conn."""
+        if self._pool is not None:
+            return self._pool.acquire()
+        # Wrap single connection in a compatible async context manager
+        return _SingleConnCtx(self._conn)
 
     # ── Helpers ──────────────────────────────────────────────────────────────
 
@@ -245,7 +273,8 @@ class FreeEnrichment:
             "entity_type, registration_date, state "
             f"FROM abn_registry WHERE {' AND '.join(conditions)} LIMIT 10"
         )
-        rows = await self._conn.fetch(sql, *params)
+        async with self._acquire() as conn:
+            rows = await conn.fetch(sql, *params)
         if not rows:
             return None
         if state_hint and len(rows) > 1:
@@ -259,11 +288,12 @@ class FreeEnrichment:
         if not abn_raw:
             return None, None, None
         try:
-            row = await self._conn.fetchrow(
-                "SELECT gst_registered, entity_type, registration_date "
-                "FROM abn_registry WHERE abn = $1",
-                abn_raw,
-            )
+            async with self._acquire() as conn:
+                row = await conn.fetchrow(
+                    "SELECT gst_registered, entity_type, registration_date "
+                    "FROM abn_registry WHERE abn = $1",
+                    abn_raw,
+                )
             if row:
                 return row["gst_registered"], row["entity_type"], row.get("registration_date")
         except Exception:
@@ -354,12 +384,13 @@ class FreeEnrichment:
         return False
 
     async def run(self, limit: int = 500) -> dict:
-        rows = await self._conn.fetch(
-            "SELECT id, domain, state FROM business_universe "
-            "WHERE pipeline_stage >= 1 AND free_enrichment_completed_at IS NULL "
-            "AND domain IS NOT NULL LIMIT $1",
-            limit,
-        )
+        async with self._acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT id, domain, state FROM business_universe "
+                "WHERE pipeline_stage >= 1 AND free_enrichment_completed_at IS NULL "
+                "AND domain IS NOT NULL LIMIT $1",
+                limit,
+            )
         stats = {
             "total": len(rows),
             "completed": 0,
@@ -839,37 +870,38 @@ class FreeEnrichment:
         dns_data: dict,
         abn_data: dict,
     ) -> None:
-        await self._conn.execute(
-            """
-            UPDATE business_universe SET
-                website_cms                   = $2,
-                website_tech_stack            = $3::jsonb,
-                website_tracking_codes        = $4::jsonb,
-                website_team_names            = $5::jsonb,
-                website_contact_emails        = $6::jsonb,
-                dns_mx_provider               = $7,
-                dns_has_spf                   = $8,
-                dns_has_dkim                  = $9,
-                abn_matched                   = $10,
-                gst_registered                = COALESCE($11, gst_registered),
-                entity_type                   = COALESCE($12, entity_type),
-                registration_date             = COALESCE($13, registration_date),
-                email_maturity                = $14,  -- column may need migration if not present
-                free_enrichment_completed_at  = NOW()
-            WHERE id = $1
-            """,
-            bu_id,
-            website_data.get("website_cms"),
-            json.dumps(website_data.get("website_tech_stack") or []),
-            json.dumps(website_data.get("website_tracking_codes") or []),
-            json.dumps(website_data.get("website_team_names") or []),
-            json.dumps(website_data.get("website_contact_emails") or []),
-            dns_data.get("dns_mx_provider"),
-            dns_data.get("dns_has_spf", False),
-            dns_data.get("dns_has_dkim", False),
-            abn_data.get("abn_matched", False),
-            abn_data.get("gst_registered"),
-            abn_data.get("entity_type"),
-            abn_data.get("registration_date"),
-            dns_data.get("email_maturity"),
-        )
+        async with self._acquire() as conn:
+            await conn.execute(
+                """
+                UPDATE business_universe SET
+                    website_cms                   = $2,
+                    website_tech_stack            = $3::jsonb,
+                    website_tracking_codes        = $4::jsonb,
+                    website_team_names            = $5::jsonb,
+                    website_contact_emails        = $6::jsonb,
+                    dns_mx_provider               = $7,
+                    dns_has_spf                   = $8,
+                    dns_has_dkim                  = $9,
+                    abn_matched                   = $10,
+                    gst_registered                = COALESCE($11, gst_registered),
+                    entity_type                   = COALESCE($12, entity_type),
+                    registration_date             = COALESCE($13, registration_date),
+                    email_maturity                = $14,
+                    free_enrichment_completed_at  = NOW()
+                WHERE id = $1
+                """,
+                bu_id,
+                website_data.get("website_cms"),
+                json.dumps(website_data.get("website_tech_stack") or []),
+                json.dumps(website_data.get("website_tracking_codes") or []),
+                json.dumps(website_data.get("website_team_names") or []),
+                json.dumps(website_data.get("website_contact_emails") or []),
+                dns_data.get("dns_mx_provider"),
+                dns_data.get("dns_has_spf", False),
+                dns_data.get("dns_has_dkim", False),
+                abn_data.get("abn_matched", False),
+                abn_data.get("gst_registered"),
+                abn_data.get("entity_type"),
+                abn_data.get("registration_date"),
+                dns_data.get("email_maturity"),
+            )

@@ -24,11 +24,12 @@ def _make_fe(rows=None):
     conn.fetchrow = AsyncMock(return_value=None)
     conn.execute = AsyncMock()
     fe = FreeEnrichment.__new__(FreeEnrichment)
+    fe._pool = None
     fe._conn = conn
+    fe._pool = None  # pool=None → _acquire() uses _SingleConnCtx(self._conn)
     fe._spider_key = "test"
     fe._httpx = MagicMock()
     fe._logger = MagicMock()
-    # Attach httpx with scrape returning None (no web calls)
     fe._httpx.scrape = AsyncMock(return_value=None)
     return fe
 
@@ -94,6 +95,7 @@ def test_abn_clean_entity_name_strips_pty_ltd_variants():
     """Common Pty Ltd variants normalise to the same cleaned name."""
     from src.pipeline.free_enrichment import FreeEnrichment
     fe = FreeEnrichment.__new__(FreeEnrichment)
+    fe._pool = None
 
     # These four variants all normalise to "pymble dental"
     variants = [
@@ -198,6 +200,7 @@ def test_abn_confidence_exact_on_high_similarity():
     """_abn_confidence returns EXACT when names are ≥90% similar."""
     from src.pipeline.free_enrichment import FreeEnrichment, ABNMatchConfidence
     fe = FreeEnrichment.__new__(FreeEnrichment)
+    fe._pool = None
     result = fe._abn_confidence("Pymble Dental", "Pymble Dental")
     assert result == ABNMatchConfidence.EXACT
 
@@ -206,6 +209,7 @@ def test_abn_confidence_low_on_dissimilar():
     """_abn_confidence returns LOW when names are dissimilar."""
     from src.pipeline.free_enrichment import FreeEnrichment, ABNMatchConfidence
     fe = FreeEnrichment.__new__(FreeEnrichment)
+    fe._pool = None
     result = fe._abn_confidence("Pymble Dental", "Completely Different Business Pty Ltd")
     assert result == ABNMatchConfidence.LOW
 
@@ -216,6 +220,7 @@ def test_extract_domain_keywords_hyphenated():
     """Hyphenated domains split correctly."""
     from src.pipeline.free_enrichment import FreeEnrichment
     fe = FreeEnrichment.__new__(FreeEnrichment)
+    fe._pool = None
     kw = fe._extract_domain_keywords("bright-smile-dental.com.au")
     assert "bright" in kw
     assert "dental" in kw
@@ -225,6 +230,7 @@ def test_extract_domain_keywords_concatenated():
     """Concatenated domains split on stopword boundaries."""
     from src.pipeline.free_enrichment import FreeEnrichment
     fe = FreeEnrichment.__new__(FreeEnrichment)
+    fe._pool = None
     kw = fe._extract_domain_keywords("dentistsatpymble.com.au")
     # Should extract at least ["dentists", "pymble"] or similar
     assert len(kw) >= 1

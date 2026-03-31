@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 
 BRIGHTDATA_SCRAPER_KEY = "2bab0747-ede2-4437-9b6f-6a77e8f0ca3e"
 DATASET_LINKEDIN_COMPANY = "gd_l1vikfnt1wgvvqz95w"
+DATASET_LINKEDIN_PROFILE = "gd_l1vikfnt1wgvvqzb1n0"  # LinkedIn person profile dataset
 COST_PER_RECORD_USD = 0.00075
 
 # DM title priority (lower index = higher priority)

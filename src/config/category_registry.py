@@ -92,8 +92,8 @@ SERVICE_CATEGORY_MAP: dict[str, list[int]] = {
         11295,  # Electrical Wiring
         11147,  # HVAC Service & Repair
         11284,  # HVAC & Climate Control
-        10163,  # Legal
         13686,  # Attorneys & Law Firms
+        10163,  # Legal
         10520,  # Hospitals & Health Clinics
         10282,  # Building Construction & Maintenance
         11138,  # Building Painting Services
@@ -114,8 +114,8 @@ SERVICE_CATEGORY_MAP: dict[str, list[int]] = {
         13462,  # Plumbing
         11295,  # Electrical Wiring
         11147,  # HVAC Service & Repair
-        10163,  # Legal
         13686,  # Attorneys & Law Firms
+        10163,  # Legal
         10520,  # Hospitals & Health Clinics
         10282,  # Building Construction & Maintenance
         10531,  # Real Estate Investments
@@ -145,8 +145,8 @@ SERVICE_CATEGORY_MAP: dict[str, list[int]] = {
         10282,  # Building Construction & Maintenance
         11138,  # Building Painting Services
         10531,  # Real Estate Investments
-        10163,  # Legal
         13686,  # Attorneys & Law Firms
+        10163,  # Legal
         10520,  # Hospitals & Health Clinics
         11093,  # Accounting & Auditing
         11147,  # HVAC Service & Repair
@@ -159,8 +159,8 @@ SERVICE_CATEGORY_MAP: dict[str, list[int]] = {
         10514,  # Dentists & Dental Services
         13462,  # Plumbing
         11295,  # Electrical Wiring
-        10163,  # Legal
         13686,  # Attorneys & Law Firms
+        10163,  # Legal
         10520,  # Hospitals & Health Clinics
         10282,  # Building Construction & Maintenance
         11138,  # Building Painting Services
@@ -190,7 +190,7 @@ ALL_DISCOVERY_CATEGORIES: list[int] = sorted(set(
 INDUSTRY_VERTICALS: dict[str, list[int]] = {
     "dental":       [10514],
     "trades":       [13462, 11295, 11147, 11284, 10418, 11138],
-    "legal":        [10163, 13686],
+    "legal":        [13686, 10163],
     "construction": [10282, 11138],
     "hospitality":  [10020, 12975],
     "automotive":   [10193],  # Vehicle Repair & Maintenance (corrected from GPS/parts codes)

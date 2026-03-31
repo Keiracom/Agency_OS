@@ -244,16 +244,16 @@ Each viable prospect contains:
 
 ### COST MODEL
 
-Variable cost per viable DM: **~$0.07**
+Variable cost per viable DM: **~$0.09**
 
 | Step | Cost |
 |------|------|
 | Spider scrape | $0.01 |
 | DFS Ads Search | $0.002 (gate passers only) |
 | DFS Maps GMB | $0.0035 (gate passers only) |
-| DFS SERP LinkedIn | $0.01 |
+| DFS SERP LinkedIn | $0.01 (DFS organic SERP, not ads_search) |
 | DFS discovery (amortised) | $0.001 |
-| **Total** | **~$0.027–$0.07** |
+| **Total** | **~$0.09/DM (fully enriched prospect)** |
 
 At Ignition tier (600 prospects/month): **~$42/month variable COGS**
 Subscription: $2,500 AUD/month → **98.3% gross margin**

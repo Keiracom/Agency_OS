@@ -1,14 +1,28 @@
-"""Tests for FreeEnrichment.enrich() — Directive #290."""
+"""Tests for FreeEnrichment.enrich() — Directive #290, updated pool mock — #300."""
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from src.pipeline.free_enrichment import FreeEnrichment
 
 
-def _make_fe(spider=None, dns=None, abn=None):
+def _make_pool_mock() -> MagicMock:
+    """Return a MagicMock that behaves like asyncpg.Pool.acquire() context manager."""
     conn = MagicMock()
     conn.fetch = AsyncMock(return_value=[])
     conn.fetchrow = AsyncMock(return_value=None)
-    fe = FreeEnrichment(conn)
+    conn.execute = AsyncMock(return_value=None)
+
+    acquire_ctx = MagicMock()
+    acquire_ctx.__aenter__ = AsyncMock(return_value=conn)
+    acquire_ctx.__aexit__ = AsyncMock(return_value=False)
+
+    pool = MagicMock(spec=["acquire"])
+    pool.acquire = MagicMock(return_value=acquire_ctx)
+    return pool
+
+
+def _make_fe(spider=None, dns=None, abn=None):
+    pool = _make_pool_mock()
+    fe = FreeEnrichment(pool)
     fe._dns_precheck = MagicMock(return_value=True)
     fe._scrape_website = AsyncMock(return_value=spider or {"title": "Test Dental"})
     fe._enrich_dns = MagicMock(return_value=dns or {"has_spf": True})
@@ -40,8 +54,8 @@ async def test_merges_all_sources():
 
 @pytest.mark.asyncio
 async def test_returns_none_on_exception():
-    conn = MagicMock()
-    fe = FreeEnrichment(conn)
+    pool = _make_pool_mock()
+    fe = FreeEnrichment(pool)
     fe._scrape_website = AsyncMock(side_effect=Exception("Spider down"))
     fe._enrich_dns = MagicMock(return_value={})
     fe._match_abn = AsyncMock(return_value={"abn_matched": False})

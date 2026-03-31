@@ -36,6 +36,28 @@ logger = logging.getLogger(__name__)
 GLOBAL_SEM_SONNET = asyncio.Semaphore(55)   # Sonnet concurrent calls (prompt caching reduces ITPM)
 GLOBAL_SEM_HAIKU  = asyncio.Semaphore(55)   # Haiku concurrent calls
 
+
+async def ramp_semaphore(
+    sem: asyncio.Semaphore,
+    target: int,
+    start: int = 5,
+    step: int = 5,
+    interval: float = 2.0,
+) -> None:
+    """
+    Gradually release a semaphore from `start` slots up to `target`.
+    Call as a background task before launching parallel Sonnet work.
+    The caller must initialise the semaphore with `start` slots (not target).
+    Adds `step` slots every `interval` seconds until `target` is reached.
+    """
+    current = start
+    while current < target:
+        await asyncio.sleep(interval)
+        add = min(step, target - current)
+        for _ in range(add):
+            sem.release()
+        current += add
+
 # ── Model constants ───────────────────────────────────────────────────────────
 _MODEL_SONNET = "claude-sonnet-4-5"
 _MODEL_HAIKU  = "claude-haiku-4-5"
@@ -221,6 +243,7 @@ async def classify_intent(
     website_data: dict,
     gmb_data: dict | None,
     ads_data: dict | None,
+    category_name: str | None = None,
 ) -> dict:
     """
     Stage 2 — Sonnet. Classify digital marketing intent from aggregated signals.
@@ -232,6 +255,16 @@ async def classify_intent(
     }
     async with GLOBAL_SEM_SONNET:
         try:
+            system_text = _INTENT_SYSTEM
+            if category_name:
+                system_text = system_text + f"\n\nThis business operates in the {category_name} industry. Do not reference other industries in evidence statements."
+
+            system_block = {
+                "type": "text",
+                "text": system_text,
+                "cache_control": {"type": "ephemeral"},
+            }
+
             signals_summary = {
                 "website": website_data,
                 "gmb": {
@@ -250,7 +283,7 @@ async def classify_intent(
             )
             text, in_tok, out_tok = await _call_anthropic(
                 model=_MODEL_SONNET,
-                system_blocks=[_INTENT_SYSTEM_BLOCK],
+                system_blocks=[system_block],
                 user_content=user_content,
                 max_tokens=600,
             )

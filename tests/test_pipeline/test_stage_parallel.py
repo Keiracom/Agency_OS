@@ -90,7 +90,7 @@ def _make_orch(
 @pytest.mark.asyncio
 async def test_semaphore_constants_defined():
     assert SEM_SPIDER == 15
-    assert SEM_ABN == 10
+    assert SEM_ABN == 50
     assert SEM_PAID == 20
     assert SEM_DM == 20
 

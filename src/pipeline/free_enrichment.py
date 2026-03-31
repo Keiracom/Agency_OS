@@ -429,9 +429,10 @@ class FreeEnrichment:
                 state_hint=None,
             )
             title = website_data.get("title", "")
+            _d = domain[4:] if domain.startswith("www.") else domain
             company_name = (
                 title.split("|")[0].split("-")[0].strip()[:60]
-                or domain.split(".")[0].replace("-", " ").title()
+                or _d.split(".")[0].replace("-", " ").title()
             )
             return {
                 **website_data,
@@ -470,9 +471,10 @@ class FreeEnrichment:
                 state_hint=None,
                 suburb=suburb,
             )
+            _d = domain[4:] if domain.startswith("www.") else domain
             company_name = (
                 title.split("|")[0].split("-")[0].strip()[:60]
-                or domain.split(".")[0].replace("-", " ").title()
+                or _d.split(".")[0].replace("-", " ").title()
             )
             html_content = spider_data.get("_raw_html", "")
             is_au = self._is_au_domain(domain, html_content)

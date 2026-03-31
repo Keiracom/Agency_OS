@@ -1,4 +1,4 @@
-"""Tests for HttpxScraper — Directive #295 Task B."""
+"""Tests for HttpxScraper — Directive #295, updated #300-FIX (Issue 9)."""
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -19,13 +19,11 @@ async def test_scrape_returns_dict_on_200():
     mock_resp.status_code = 200
     mock_resp.text = HTML_WITH_TITLE
 
-    with patch("httpx.AsyncClient") as mock_client_cls:
-        mock_client = AsyncMock()
-        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-        mock_client.__aexit__ = AsyncMock(return_value=False)
-        mock_client.get = AsyncMock(return_value=mock_resp)
-        mock_client_cls.return_value = mock_client
+    mock_client = MagicMock()
+    mock_client.is_closed = False
+    mock_client.get = AsyncMock(return_value=mock_resp)
 
+    with patch("src.integrations.httpx_scraper.httpx.AsyncClient", return_value=mock_client):
         result = await scraper.scrape("example.com")
 
     assert result is not None
@@ -38,13 +36,11 @@ async def test_scrape_returns_dict_on_200():
 async def test_scrape_returns_none_on_timeout():
     scraper = HttpxScraper()
 
-    with patch("httpx.AsyncClient") as mock_client_cls:
-        mock_client = AsyncMock()
-        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-        mock_client.__aexit__ = AsyncMock(return_value=False)
-        mock_client.get = AsyncMock(side_effect=httpx.TimeoutException("timed out"))
-        mock_client_cls.return_value = mock_client
+    mock_client = MagicMock()
+    mock_client.is_closed = False
+    mock_client.get = AsyncMock(side_effect=httpx.TimeoutException("timed out"))
 
+    with patch("src.integrations.httpx_scraper.httpx.AsyncClient", return_value=mock_client):
         result = await scraper.scrape("example.com")
 
     assert result is None
@@ -57,13 +53,11 @@ async def test_scrape_returns_none_on_non_200():
     mock_resp.status_code = 404
     mock_resp.text = "Not Found"
 
-    with patch("httpx.AsyncClient") as mock_client_cls:
-        mock_client = AsyncMock()
-        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-        mock_client.__aexit__ = AsyncMock(return_value=False)
-        mock_client.get = AsyncMock(return_value=mock_resp)
-        mock_client_cls.return_value = mock_client
+    mock_client = MagicMock()
+    mock_client.is_closed = False
+    mock_client.get = AsyncMock(return_value=mock_resp)
 
+    with patch("src.integrations.httpx_scraper.httpx.AsyncClient", return_value=mock_client):
         result = await scraper.scrape("example.com")
 
     assert result is None
@@ -76,14 +70,51 @@ async def test_scrape_extracts_title():
     mock_resp.status_code = 200
     mock_resp.text = "<html><head><title>  My Dental Clinic  </title></head><body>hello</body></html>"
 
-    with patch("httpx.AsyncClient") as mock_client_cls:
-        mock_client = AsyncMock()
-        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-        mock_client.__aexit__ = AsyncMock(return_value=False)
-        mock_client.get = AsyncMock(return_value=mock_resp)
-        mock_client_cls.return_value = mock_client
+    mock_client = MagicMock()
+    mock_client.is_closed = False
+    mock_client.get = AsyncMock(return_value=mock_resp)
 
+    with patch("src.integrations.httpx_scraper.httpx.AsyncClient", return_value=mock_client):
         result = await scraper.scrape("example.com")
 
     assert result is not None
     assert result["title"] == "My Dental Clinic"
+
+
+@pytest.mark.asyncio
+async def test_scraper_reuses_persistent_client():
+    """Verify the persistent client is reused across multiple scrape() calls."""
+    scraper = HttpxScraper()
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.text = HTML_WITH_TITLE
+
+    mock_client = MagicMock()
+    mock_client.is_closed = False
+    mock_client.get = AsyncMock(return_value=mock_resp)
+
+    with patch("src.integrations.httpx_scraper.httpx.AsyncClient", return_value=mock_client) as mock_cls:
+        await scraper.scrape("example.com")
+        await scraper.scrape("example2.com")
+        # AsyncClient constructor called only once (persistent)
+        assert mock_cls.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_close_resets_client():
+    scraper = HttpxScraper()
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.text = HTML_WITH_TITLE
+
+    mock_client = MagicMock()
+    mock_client.is_closed = False
+    mock_client.get = AsyncMock(return_value=mock_resp)
+    mock_client.aclose = AsyncMock()
+
+    with patch("src.integrations.httpx_scraper.httpx.AsyncClient", return_value=mock_client):
+        await scraper.scrape("example.com")
+        await scraper.close()
+
+    mock_client.aclose.assert_called_once()
+    assert scraper._client is None

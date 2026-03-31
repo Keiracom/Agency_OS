@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 
 # Semaphore limits — tuned for DFS 30-concurrent + Spider 15-concurrent limits
 SEM_SPIDER = 15    # Spider.cloud concurrent scrapes
-SEM_ABN    = 1     # asyncpg single-connection safety
+SEM_ABN    = 10    # asyncpg pool connections (raised from 1; requires asyncpg Pool not single Connection)
 SEM_PAID   = 20    # DFS Ads Search + GMB concurrent
 SEM_DM     = 20    # DFS SERP LinkedIn concurrent
 
@@ -44,7 +44,8 @@ SEM_DM     = 20    # DFS SERP LinkedIn concurrent
 # GLOBAL_SEM_SONNET and GLOBAL_SEM_HAIKU are defined in intelligence.py and imported above
 GLOBAL_SEM_DFS         = asyncio.Semaphore(28)   # DFS API concurrent calls
 GLOBAL_SEM_SCRAPE      = asyncio.Semaphore(80)   # httpx + Spider concurrent scrapes
-GLOBAL_SEM_ADS_SCRAPER = asyncio.Semaphore(15)   # Ads Transparency concurrent scrapes (new)
+GLOBAL_SEM_ADS_SCRAPER = asyncio.Semaphore(15)   # Ads Transparency concurrent scrapes
+GLOBAL_SEM_ABN         = asyncio.Semaphore(10)   # asyncpg ABN queries (requires connection pool)
 
 
 @dataclass

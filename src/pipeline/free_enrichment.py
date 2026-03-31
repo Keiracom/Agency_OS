@@ -23,6 +23,7 @@ import dns.resolver
 import httpx
 
 from src.integrations.httpx_scraper import HttpxScraper
+from src.pipeline.pipeline_orchestrator import GLOBAL_SEM_ABN  # shared ABN query semaphore
 
 SPIDER_API_URL = "https://api.spider.cloud/scrape"
 BATCH_SIZE = 50
@@ -690,6 +691,12 @@ class FreeEnrichment:
         suburb: str | None = None,
     ) -> dict[str, Any]:
         """Multi-strategy ABN matching waterfall.
+
+        Callers should acquire GLOBAL_SEM_ABN (from pipeline_orchestrator) before
+        calling this method when using an asyncpg connection pool. With a single
+        Connection, the caller's sem_abn gate is sufficient.
+        Production: use asyncpg.create_pool() with min_size=10 to support
+        GLOBAL_SEM_ABN=10 concurrency without serialisation.
 
         Tries 4 strategies in order, returning on the first EXACT or PARTIAL
         confidence match.  Tracks the best LOW-confidence result as a fallback.

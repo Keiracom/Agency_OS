@@ -14,7 +14,14 @@ import re
 
 import httpx
 
-_TITLE_RE = re.compile(r"<title[^>]*>(.*?)</title>", re.IGNORECASE | re.DOTALL)
+_TITLE_RE      = re.compile(r"<title[^>]*>(.*?)</title>", re.IGNORECASE | re.DOTALL)
+_MOBILE_AU_RE  = re.compile(r'04\d{2}[\s.\-]?\d{3}[\s.\-]?\d{3}')
+_MOBILE_INT_RE = re.compile(r'\+614\d{2}[\s.\-]?\d{3}[\s.\-]?\d{3}')
+_LANDLINE_RE   = re.compile(r'0[2378][\s.\-]?\d{4}[\s.\-]?\d{4}')
+_EMAIL_RE      = re.compile(r'[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}')
+_LINKEDIN_RE   = re.compile(r'linkedin\.com/(?:in|company)/[\w\-]+')
+_CLEAN_RE      = re.compile(r'[\s.\-]')
+_GENERIC_EMAIL = frozenset({"noreply", "info", "support", "admin", "webmaster", "hello", "contact", "enquiries", "enquiry"})
 _UA = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -47,6 +54,36 @@ class HttpxScraper:
             await self._client.aclose()
             self._client = None
 
+    def _extract_contact_data(self, html: str) -> dict:
+        """Extract free contact signals from scraped HTML. Never raises."""
+        contact: dict = {"mobile": None, "landline": None, "email": None, "linkedin": None}
+        if not html:
+            return contact
+        # Mobile (intl takes priority)
+        m = _MOBILE_INT_RE.search(html)
+        if m:
+            raw = _CLEAN_RE.sub("", m.group(0))
+            contact["mobile"] = "0" + raw[3:]  # +614 → 04
+        else:
+            m = _MOBILE_AU_RE.search(html)
+            if m:
+                contact["mobile"] = _CLEAN_RE.sub("", m.group(0))
+        # Landline
+        m = _LANDLINE_RE.search(html)
+        if m:
+            contact["landline"] = _CLEAN_RE.sub("", m.group(0))
+        # Email (first non-generic)
+        for email in _EMAIL_RE.findall(html):
+            local = email.split("@")[0].lower()
+            if local not in _GENERIC_EMAIL and not email.endswith((".png", ".jpg", ".gif")):
+                contact["email"] = email.lower()
+                break
+        # LinkedIn URL
+        m = _LINKEDIN_RE.search(html)
+        if m:
+            contact["linkedin"] = "https://www." + m.group(0)
+        return contact
+
     async def scrape(self, domain: str, timeout: float = 10.0) -> dict | None:
         """
         Fetch https://{domain} and return a result dict.
@@ -75,4 +112,5 @@ class HttpxScraper:
             "html": html,
             "title": title,
             "content_length": len(html),
+            "contact_data": self._extract_contact_data(html),
         }

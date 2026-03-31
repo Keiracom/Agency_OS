@@ -18,7 +18,7 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
-BRIGHTDATA_SCRAPER_KEY = "2bab0747-ede2-4437-9b6f-6a77e8f0ca3e"
+BRIGHTDATA_SCRAPER_KEY = "636a81d7-4f89-4fb5-904b-f1e195ec20d2"  # updated 2026-03-31 (Directive #300g+h)
 DATASET_LINKEDIN_COMPANY = "gd_l1vikfnt1wgvvqz95w"
 DATASET_LINKEDIN_PROFILE = "gd_l1vikfnt1wgvvqzb1n0"  # LinkedIn person profile dataset
 COST_PER_RECORD_USD = 0.00075
@@ -48,8 +48,8 @@ HIGH_CONFIDENCE_THRESHOLD = 6  # owner, founder, co-founder, director, principal
 class BrightDataLinkedInClient:
     """Focused LinkedIn DM lookup client using new Scrapers API key."""
 
-    def __init__(self, api_key: str = BRIGHTDATA_SCRAPER_KEY):
-        self.api_key = api_key
+    def __init__(self, api_key: str | None = None):
+        self.api_key = api_key or BRIGHTDATA_SCRAPER_KEY
         self._client: Optional[httpx.AsyncClient] = None
 
     async def _get_client(self) -> httpx.AsyncClient:

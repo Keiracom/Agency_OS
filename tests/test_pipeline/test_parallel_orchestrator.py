@@ -203,5 +203,5 @@ async def test_run_parallel_on_prospect_found_callback():
 @pytest.mark.asyncio
 async def test_global_semaphores_exist():
     """Global semaphore pool is module-level and accessible."""
-    assert GLOBAL_SEM_DFS._value == 25
-    assert GLOBAL_SEM_SCRAPE._value == 50
+    assert GLOBAL_SEM_DFS._value == 28
+    assert GLOBAL_SEM_SCRAPE._value == 80

@@ -38,14 +38,13 @@ CATEGORY_LABELS: dict[int, str] = {
     10163: "Legal",
     13686: "Attorneys & Law Firms",
 
-    # Automotive
-    13309: "Automotive GPS Systems",
-    10040: "Auto Parts & Accessories",
-    11284: "HVAC & Climate Control",
+    # Automotive (corrected: 10193 = Vehicle Repair & Maintenance, not GPS/parts)
+    10193: "Vehicle Repair & Maintenance",
 
     # Real Estate
     10531: "Real Estate Investments",
-    10830: "Real Estate Rental & Leasing",
+    10040: "Real Estate Agents & Brokerages",  # corrected: was wrongly labelled Auto Parts
+    10830: "Real Estate Rental & Leasing Forms",  # corrected full DFS name
 
     # Accounting & Finance
     11093: "Accounting & Auditing",
@@ -53,15 +52,15 @@ CATEGORY_LABELS: dict[int, str] = {
 
     # Medical
     10520: "Hospitals & Health Clinics",
-    10509: "Laboratory & Diagnostic Services",
+    10509: "Laboratory Testing & Medical Diagnostic Services",  # corrected full DFS name
 
     # Hospitality
     10020: "Dining & Nightlife",
-    12975: "Restaurant Reviews & Listings",
+    12975: "Restaurant Reviews, Guides & Listings",  # corrected full DFS name
 
     # Fitness
     10123: "Fitness",
-    12049: "Fitness Instruction & Training",
+    12049: "Fitness Instruction Training",  # corrected: no ampersand in DFS name
 
     # Hair & Beauty
     10333: "Hair Salons & Styling Services",
@@ -124,12 +123,12 @@ SERVICE_CATEGORY_MAP: dict[str, list[int]] = {
         10123,  # Fitness
         10333,  # Hair Salons & Styling Services
         11979,  # Veterinary
-        12049,  # Fitness Instruction & Training
+        12049,  # Fitness Instruction Training
         11138,  # Building Painting Services
         11284,  # HVAC & Climate Control
         12391,  # Bookkeeping
         10020,  # Dining & Nightlife
-        11979,  # Veterinary
+        10193,  # Vehicle Repair & Maintenance
         10418,  # Home Heating & Cooling
     ],
     "social_media": [
@@ -194,7 +193,7 @@ INDUSTRY_VERTICALS: dict[str, list[int]] = {
     "legal":        [10163, 13686],
     "construction": [10282, 11138],
     "hospitality":  [10020, 12975],
-    "automotive":   [13309, 10040],
+    "automotive":   [10193],  # Vehicle Repair & Maintenance (corrected from GPS/parts codes)
     "real_estate":  [10531, 10830],
     "accounting":   [11093, 12391],
     "medical":      [10520, 10509],

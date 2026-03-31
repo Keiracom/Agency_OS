@@ -84,9 +84,11 @@ async def run_mobile_waterfall(
     _sem = sem_paid if sem_paid is not None else contextlib.nullcontext()
 
     # ── Layer 1: HTML regex (already extracted — check contact_data) ──────────
-    if contact_data and contact_data.get("mobile"):
+    # company_mobile: new schema key; mobile: legacy fallback
+    if contact_data and (contact_data.get("company_mobile") or contact_data.get("mobile")):
+        mobile_val = contact_data.get("company_mobile") or contact_data.get("mobile")
         return MobileResult(
-            mobile=contact_data["mobile"],
+            mobile=mobile_val,
             source="html_regex",
             cost_usd=Decimal("0"),
             tier_used=1,

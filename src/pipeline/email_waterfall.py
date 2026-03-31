@@ -123,7 +123,8 @@ def _extract_emails_from_html(html: str, domain: str, dm_name: str) -> EmailResu
         return None
 
     # Filter to emails on the same domain (or subdomain)
-    domain_clean = domain.lower().lstrip("www.")
+    _d = domain.lower()
+    domain_clean = _d[4:] if _d.startswith("www.") else _d
     domain_emails = [e for e in found if domain_clean in e.lower().split("@")[-1]]
     all_emails = domain_emails or found[:5]  # fallback to any email if no domain match
 
@@ -292,6 +293,7 @@ async def discover_email(
     html: str | None = None,
     company_name: str | None = None,
     skip_layers: list[int] | None = None,
+    contact_data: dict | None = None,
 ) -> EmailResult:
     """
     4-layer email discovery waterfall.
@@ -314,7 +316,20 @@ async def discover_email(
         EmailResult with email, verified flag, source, confidence, cost_usd.
     """
     skip = set(skip_layers or [])
+    # Strip www. prefix so patterns like first.last@www.domain.com.au don't occur
+    domain = domain[4:] if domain.startswith("www.") else domain
     first, last = _parse_name(dm_name)
+
+    # Layer 0: contact registry — check company_email from HTML scrape (free)
+    if contact_data and (contact_data.get("company_email") or contact_data.get("email")):
+        email_val = contact_data.get("company_email") or contact_data.get("email")
+        return EmailResult(
+            email=email_val,
+            verified=False,
+            source="contact_registry",
+            confidence="low",  # company email, not DM-specific
+            cost_usd=0.0,
+        )
 
     # Layer 1: Website HTML
     if 1 not in skip:

@@ -55,33 +55,50 @@ class HttpxScraper:
             self._client = None
 
     def _extract_contact_data(self, html: str) -> dict:
-        """Extract free contact signals from scraped HTML. Never raises."""
-        contact: dict = {"mobile": None, "landline": None, "email": None, "linkedin": None}
+        """
+        Extract free contact signals from scraped HTML.
+        Returns separated company_* and dm/linkedin fields.
+        Never raises.
+        """
+        contact: dict = {
+            "company_email":   None,   # from website mailto/contact page
+            "company_phone":   None,   # landline: 0[2378]XXXXXXXX
+            "company_mobile":  None,   # 04XX mobile from website
+            "linkedin_company": None,  # company LinkedIn page URL
+            "linkedin_dm":     None,   # person LinkedIn profile URL (/in/)
+            # DM fields (populated by paid waterfalls, not scrape)
+            "dm_email":        None,
+            "dm_email_verified": False,
+            "dm_mobile":       None,
+        }
         if not html:
             return contact
-        # Mobile (intl takes priority)
+        # Company mobile (04XX — intl takes priority)
         m = _MOBILE_INT_RE.search(html)
         if m:
             raw = _CLEAN_RE.sub("", m.group(0))
-            contact["mobile"] = "0" + raw[3:]  # +614 → 04
+            contact["company_mobile"] = "0" + raw[3:]  # +614 → 04
         else:
             m = _MOBILE_AU_RE.search(html)
             if m:
-                contact["mobile"] = _CLEAN_RE.sub("", m.group(0))
-        # Landline
+                contact["company_mobile"] = _CLEAN_RE.sub("", m.group(0))
+        # Company landline
         m = _LANDLINE_RE.search(html)
         if m:
-            contact["landline"] = _CLEAN_RE.sub("", m.group(0))
-        # Email (first non-generic)
+            contact["company_phone"] = _CLEAN_RE.sub("", m.group(0))
+        # Company email (first non-generic)
         for email in _EMAIL_RE.findall(html):
             local = email.split("@")[0].lower()
             if local not in _GENERIC_EMAIL and not email.endswith((".png", ".jpg", ".gif")):
-                contact["email"] = email.lower()
+                contact["company_email"] = email.lower()
                 break
-        # LinkedIn URL
-        m = _LINKEDIN_RE.search(html)
-        if m:
-            contact["linkedin"] = "https://www." + m.group(0)
+        # LinkedIn — split company vs person
+        for m in _LINKEDIN_RE.finditer(html):
+            url = "https://www." + m.group(0)
+            if "/in/" in url and not contact["linkedin_dm"]:
+                contact["linkedin_dm"] = url
+            elif "/company/" in url and not contact["linkedin_company"]:
+                contact["linkedin_company"] = url
         return contact
 
     async def scrape(self, domain: str, timeout: float = 10.0) -> dict | None:

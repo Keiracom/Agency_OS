@@ -23,7 +23,8 @@ _LINKEDIN_RE   = re.compile(r'linkedin\.com/(?:in|company)/[\w\-]+')
 _CLEAN_RE      = re.compile(r'[\s.\-]')
 _GENERIC_EMAIL = frozenset({"noreply", "info", "support", "admin", "webmaster", "hello", "contact", "enquiries", "enquiry"})
 _PLACEHOLDER_EMAIL_RE = re.compile(
-    r"(example\.|yourdomain\.|placeholder|test@|you@|your@|user@)",
+    r"(?:^|\b)(example@|test@|you@|your@|user@|mail@|email@|no-?reply@"
+    r"|noreply@)|example\.com|yourdomain|placeholder|samplesite",
     re.IGNORECASE,
 )
 _UA = (

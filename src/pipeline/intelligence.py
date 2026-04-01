@@ -430,24 +430,31 @@ async def judge_affordability(
 
 # ── Stage 5: Evidence refinement (Haiku) ─────────────────────────────────────
 
-_EVIDENCE_SYSTEM = """You are writing prospect card copy for a digital marketing agency's CRM. \
-Given intent signals, review intelligence, and website analysis for an Australian SMB, \
-produce concise, specific, human-readable evidence statements.
+_EVIDENCE_SYSTEM = """You are writing prospect card copy for a digital marketing agency's CRM.
+Given intent signals and website analysis for an Australian SMB, produce specific, compelling copy.
 
 Rules:
-- Be specific (name the actual signal, not generic statements)
+- Be specific: name the actual signal, not generic statements
 - Use plain Australian business English
 - Each evidence statement = one observable fact + one implied opportunity
 - Headline signal = the single most compelling reason to reach out NOW
-- Recommended service = the most logical first service to offer
+- Recommended service = the most logical first service to offer (keep to 3-5 words max)
 - Outreach angle = the emotional hook for the first message (problem-aware, not solution-first)
+- Draft email subject: specific to THIS prospect's top signal, not generic
+- Draft email body: 4-6 sentences. Reference ONE specific signal. Match to the service. End with ONE question. Sign off with {{agency_name}}.
+
+The draft email body must feel like a human wrote it after researching this business for 20 minutes.
+NOT: "I noticed you could improve your digital marketing."
+YES: "I was looking at your Google Ads and noticed you're running 18 campaigns — but there's no conversion tracking installed, so there's no way to know which ones are actually booking patients."
 
 Return ONLY valid JSON:
 {
   "evidence_statements": ["list of 2-5 specific evidence strings"],
   "headline_signal": "single most compelling signal (one sentence)",
-  "recommended_service": "most logical first service to pitch",
-  "outreach_angle": "emotional hook for first outreach message"
+  "recommended_service": "most logical first service (3-5 words)",
+  "outreach_angle": "emotional hook for first outreach message",
+  "draft_email_subject": "specific subject line referencing this prospect's top signal",
+  "draft_email_body": "4-6 sentence email body. References specific signal. No pitch. Ends with one question. Signed {{agency_name}}."
 }"""
 
 _EVIDENCE_SYSTEM_BLOCK = {
@@ -472,6 +479,8 @@ async def refine_evidence(
         "headline_signal": "",
         "recommended_service": "",
         "outreach_angle": "",
+        "draft_email_subject": "",
+        "draft_email_body": "",
     }
     async with GLOBAL_SEM_HAIKU:
         try:
@@ -498,7 +507,7 @@ async def refine_evidence(
                 model=_MODEL_HAIKU,
                 system_blocks=[_EVIDENCE_SYSTEM_BLOCK],
                 user_content=user_content,
-                max_tokens=400,
+                max_tokens=700,
             )
             logger.info("refine_evidence domain=%s tokens=%d/%d", domain, in_tok, out_tok)
             return _parse_json_response(text, fallback)

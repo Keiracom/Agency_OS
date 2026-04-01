@@ -153,7 +153,7 @@ async def scrape_linkedin_dm(
             bd = BrightDataLinkedInClient()
             # Use profile dataset ID
             records = await bd._scraper_request(
-                dataset_id="gd_l1vikfnt1wgvvqzb1n0",
+                dataset_id="gd_l1viktl72bvl7bjuj0",
                 inputs=[{"url": profile_url}],
             )
             if not records:
@@ -190,13 +190,26 @@ async def scrape_linkedin_dm(
                 for e in (experience[:5] if isinstance(experience, list) else [])
             ]
 
+            # BD profile response uses "activity" (list of liked/shared posts)
+            raw_activity = r.get("activity") or []
+            post_count = len(raw_activity) if isinstance(raw_activity, list) else None
+            recent_posts_from_activity = [
+                {
+                    "date": None,  # activity items don't expose date
+                    "text": (p.get("title") or "")[:300],
+                    "interaction": p.get("interaction", ""),
+                }
+                for p in (raw_activity[:3] if isinstance(raw_activity, list) else [])
+            ]
+
             result = {
-                "headline":          r.get("headline") or r.get("title") or "",
+                "headline":          (r.get("headline") or r.get("occupation") or r.get("title") or ""),
                 "summary":           (r.get("summary") or r.get("about") or "")[:500],
-                "recent_posts":      recent_posts,
+                "recent_posts":      recent_posts if recent_posts else recent_posts_from_activity,
                 "career_history":    career_history,
                 "skills":            (r.get("skills") or [])[:20],
                 "connections_count": r.get("connections") or r.get("connection_count"),
+                "location":          r.get("city") or r.get("location"),
                 "activity_level":    _activity_level(post_count),
                 "cost_usd":          str(_COST),
             }

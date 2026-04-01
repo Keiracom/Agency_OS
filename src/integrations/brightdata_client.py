@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 BRIGHTDATA_SCRAPER_KEY = "636a81d7-4f89-4fb5-904b-f1e195ec20d2"  # updated 2026-03-31 (Directive #300g+h)
 DATASET_LINKEDIN_COMPANY = "gd_l1vikfnt1wgvvqz95w"
-DATASET_LINKEDIN_PROFILE = "gd_l1vikfnt1wgvvqzb1n0"  # LinkedIn person profile dataset
+DATASET_LINKEDIN_PROFILE = "gd_l1viktl72bvl7bjuj0"   # LinkedIn person profile dataset (confirmed 2026-04-01)
 COST_PER_RECORD_USD = 0.00075
 
 # DM title priority (lower index = higher priority)
@@ -150,25 +150,54 @@ class BrightDataLinkedInClient:
         inputs: list[dict],
         discover_by: Optional[str] = None,
     ) -> list[dict]:
-        """Trigger → poll → download pattern. 120s timeout (24 × 5s)."""
+        """
+        Trigger → poll → download pattern. 120s timeout (24 × 5s).
+
+        Supports two BD endpoint styles:
+        - /v3/trigger (company dataset, existing)
+        - /v3/scrape  (profile dataset, notify=false&include_errors=true)
+        """
         base_url = "https://api.brightdata.com/datasets/v3"
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
         }
 
-        trigger_url = f"{base_url}/trigger?dataset_id={dataset_id}&include_errors=true"
-        if discover_by:
-            trigger_url += f"&type=discover_new&discover_by={discover_by}"
-
         client = await self._get_client()
 
-        # Trigger
-        response = await client.post(trigger_url, headers=headers, json=inputs, timeout=30.0)
+        # Profile dataset uses /scrape endpoint with {"input": [...]} wrapper
+        # Company dataset uses /trigger endpoint with plain list
+        if dataset_id == DATASET_LINKEDIN_PROFILE:
+            trigger_url = (
+                f"{base_url}/scrape?dataset_id={dataset_id}"
+                f"&notify=false&include_errors=true"
+            )
+            payload = {"input": inputs}
+        else:
+            trigger_url = f"{base_url}/trigger?dataset_id={dataset_id}&include_errors=true"
+            if discover_by:
+                trigger_url += f"&type=discover_new&discover_by={discover_by}"
+            payload = inputs  # plain list
+
+        response = await client.post(trigger_url, headers=headers, json=payload, timeout=30.0)
         if response.status_code >= 400:
             body = response.text
             raise ValueError(f"Bright Data API error: {response.status_code} {body}")
-        snapshot_id = response.json()["snapshot_id"]
+        # Handle empty response body
+        if not response.text.strip():
+            return []
+        resp_data = response.json()
+        # /scrape may return data directly (list or single dict) or a snapshot_id
+        if isinstance(resp_data, list):
+            return resp_data
+        if isinstance(resp_data, dict):
+            # Single record returned directly (synchronous /scrape)
+            if "snapshot_id" not in resp_data and "id" in resp_data and "name" in resp_data:
+                return [resp_data]
+            # Snapshot async response
+            snapshot_id = resp_data.get("snapshot_id") or resp_data.get("id")
+            if not snapshot_id:
+                raise ValueError(f"No snapshot_id in BD response: {resp_data}")
         logger.info("brightdata_triggered snapshot_id=%s dataset_id=%s", snapshot_id, dataset_id)
 
         # Poll until ready (max 120s = 24 × 5s intervals)

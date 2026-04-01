@@ -165,11 +165,50 @@ class BrightDataLinkedInClient:
 
         client = await self._get_client()
 
-        # Both company and profile datasets use /trigger with plain list payload
+        # Profile dataset: synchronous /scrape endpoint (blocks until data ready, up to 300s)
+        # Company dataset: async /trigger endpoint (returns snapshot_id, then poll)
+        if dataset_id == DATASET_LINKEDIN_PROFILE:
+            scrape_url = (
+                f"{base_url}/scrape?dataset_id={dataset_id}"
+                f"&notify=false&include_errors=true"
+            )
+            response = await client.post(
+                scrape_url, headers=headers,
+                json={"input": inputs},
+                timeout=300.0,  # synchronous — wait up to 5 min
+            )
+            if response.status_code >= 400:
+                raise ValueError(f"Bright Data API error: {response.status_code} {response.text[:200]}")
+            if not response.text.strip():
+                return []
+            data = response.json()
+            if isinstance(data, list):
+                return data
+            if isinstance(data, dict) and "name" in data:
+                return [data]  # single record
+            # Async 202 fallback — continue to poll
+            snapshot_id_from_scrape = data.get("snapshot_id")
+            if not snapshot_id_from_scrape:
+                return []
+            # Poll this snapshot
+            for _ in range(60):
+                await asyncio.sleep(5)
+                prog = await client.get(
+                    f"{base_url}/progress/{snapshot_id_from_scrape}", headers=headers, timeout=10.0
+                )
+                if prog.json().get("status") == "ready":
+                    dl = await client.get(
+                        f"{base_url}/snapshot/{snapshot_id_from_scrape}?format=json",
+                        headers=headers, timeout=60.0
+                    )
+                    dl.raise_for_status()
+                    return dl.json()
+            raise TimeoutError(f"BD profile snapshot timeout (snapshot={snapshot_id_from_scrape})")
+
         trigger_url = f"{base_url}/trigger?dataset_id={dataset_id}&include_errors=true"
         if discover_by:
             trigger_url += f"&type=discover_new&discover_by={discover_by}"
-        payload = inputs  # plain list for both
+        payload = inputs  # plain list for company
 
         response = await client.post(trigger_url, headers=headers, json=payload, timeout=30.0)
         if response.status_code >= 400:

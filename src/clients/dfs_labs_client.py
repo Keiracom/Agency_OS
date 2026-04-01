@@ -823,6 +823,7 @@ class DFSLabsClient:
             "gmb_review_count": gmb_review_count,
             "gmb_address": item.get("address"),
             "gmb_phone": item.get("phone"),
+            "gmb_email": item.get("email") or None,
             "gmb_found": True,
         }
 
@@ -1119,6 +1120,61 @@ class DFSLabsClient:
         if domain.startswith("www."):
             domain = domain[4:]
         return domain
+
+
+    # ============================================
+    # ENDPOINT 13: serp_email_search  (Directive #300-FIX-7)
+    # ============================================
+
+    async def serp_email_search(
+        self,
+        business_name: str,
+        domain: str,
+        location_name: str = "Australia",
+    ) -> list[str]:
+        """
+        Search Google SERP for email contact info for a business.
+        Query: "[business name] email contact"
+        Parses snippets for email addresses.
+        Cost: $0.002/call.
+        Only call for domains where no email was found from free sources.
+        Returns list of email strings found in SERP snippets (deduped, lowercased).
+        """
+        import re as _re
+        _EMAIL_RE = _re.compile(r"[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}")
+
+        query = f'"{business_name}" email contact'
+        result = await self._post(
+            endpoint="/v3/serp/google/organic/live/advanced",
+            payload=[
+                {
+                    "keyword": query,
+                    "location_name": location_name,
+                    "language_name": "English",
+                    "depth": 10,
+                }
+            ],
+            cost_per_call=Decimal("0.002"),
+            cost_attr="_cost_serp_email_search",
+        )
+        items = result.get("items") or []
+        found: set[str] = set()
+        for item in items:
+            # Check snippet, title, description fields
+            for field in ("snippet", "description", "title", "extra_snippet"):
+                text = item.get(field) or ""
+                for email in _EMAIL_RE.findall(text):
+                    # Filter out common false positives
+                    if not any(email.endswith(ext) for ext in (".png", ".jpg", ".css", ".js", ".gif")):
+                        found.add(email.lower())
+            # Check nested items (e.g. sitelinks)
+            for nested in item.get("items") or []:
+                for field in ("snippet", "description"):
+                    text = nested.get(field) or ""
+                    for email in _EMAIL_RE.findall(text):
+                        if not any(email.endswith(ext) for ext in (".png", ".jpg", ".css", ".js", ".gif")):
+                            found.add(email.lower())
+        return list(found)
 
 
 # ============================================

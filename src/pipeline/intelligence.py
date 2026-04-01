@@ -164,8 +164,13 @@ Return ONLY valid JSON with these exact keys:
   "content_freshness": "current|stale|no_content",
   "business_maturity": "startup|growing|established|unknown",
   "location_signals": ["list of AU states/cities mentioned"],
-  "pain_indicators": ["list of business problems the site hints at"]
-}"""
+  "pain_indicators": ["list of business problems the site hints at"],
+  "emails_found": [
+    {"email": "address@example.com", "owner": "owner|office|reception|person_name|generic", "location": "header|footer|contact_page|about_page|other"}
+  ]
+}
+
+For emails_found: extract ALL email addresses visible in the content. Identify who each likely belongs to and where on the site it appears. Return an empty array if none found."""
 
 _WEBSITE_SYSTEM_BLOCK = {
     "type": "text",
@@ -188,6 +193,7 @@ async def comprehend_website(domain: str, html: str, url: str) -> dict:
         },
         "contact_methods": [], "content_freshness": "unknown",
         "business_maturity": "unknown", "location_signals": [], "pain_indicators": [],
+        "emails_found": [],
     }
     async with GLOBAL_SEM_SONNET:
         try:
@@ -197,7 +203,7 @@ async def comprehend_website(domain: str, html: str, url: str) -> dict:
                 model=_MODEL_SONNET,
                 system_blocks=[_WEBSITE_SYSTEM_BLOCK],
                 user_content=user_content,
-                max_tokens=800,
+                max_tokens=1024,
             )
             logger.info("comprehend_website domain=%s tokens=%d/%d", domain, in_tok, out_tok)
             return _parse_json_response(text, fallback)

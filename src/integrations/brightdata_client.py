@@ -179,7 +179,9 @@ class BrightDataLinkedInClient:
                 trigger_url += f"&type=discover_new&discover_by={discover_by}"
             payload = inputs  # plain list
 
-        response = await client.post(trigger_url, headers=headers, json=payload, timeout=30.0)
+        # Profile /scrape endpoint is synchronous — needs up to 90s for response
+        post_timeout = 90.0 if dataset_id == DATASET_LINKEDIN_PROFILE else 30.0
+        response = await client.post(trigger_url, headers=headers, json=payload, timeout=post_timeout)
         if response.status_code >= 400:
             body = response.text
             raise ValueError(f"Bright Data API error: {response.status_code} {body}")

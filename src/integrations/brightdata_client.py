@@ -165,23 +165,13 @@ class BrightDataLinkedInClient:
 
         client = await self._get_client()
 
-        # Profile dataset uses /scrape endpoint with {"input": [...]} wrapper
-        # Company dataset uses /trigger endpoint with plain list
-        if dataset_id == DATASET_LINKEDIN_PROFILE:
-            trigger_url = (
-                f"{base_url}/scrape?dataset_id={dataset_id}"
-                f"&notify=false&include_errors=true"
-            )
-            payload = {"input": inputs}
-        else:
-            trigger_url = f"{base_url}/trigger?dataset_id={dataset_id}&include_errors=true"
-            if discover_by:
-                trigger_url += f"&type=discover_new&discover_by={discover_by}"
-            payload = inputs  # plain list
+        # Both company and profile datasets use /trigger with plain list payload
+        trigger_url = f"{base_url}/trigger?dataset_id={dataset_id}&include_errors=true"
+        if discover_by:
+            trigger_url += f"&type=discover_new&discover_by={discover_by}"
+        payload = inputs  # plain list for both
 
-        # Profile /scrape endpoint is synchronous — needs up to 90s for response
-        post_timeout = 90.0 if dataset_id == DATASET_LINKEDIN_PROFILE else 30.0
-        response = await client.post(trigger_url, headers=headers, json=payload, timeout=post_timeout)
+        response = await client.post(trigger_url, headers=headers, json=payload, timeout=30.0)
         if response.status_code >= 400:
             body = response.text
             raise ValueError(f"Bright Data API error: {response.status_code} {body}")
@@ -202,8 +192,8 @@ class BrightDataLinkedInClient:
                 raise ValueError(f"No snapshot_id in BD response: {resp_data}")
         logger.info("brightdata_triggered snapshot_id=%s dataset_id=%s", snapshot_id, dataset_id)
 
-        # Poll until ready (max 120s = 24 × 5s intervals)
-        for _ in range(24):
+        # Poll until ready (max 300s = 60 × 5s intervals)
+        for _ in range(60):
             await asyncio.sleep(5)
             try:
                 progress = await client.get(
@@ -225,7 +215,7 @@ class BrightDataLinkedInClient:
                 pass  # retry on transient network errors
 
         else:
-            raise TimeoutError("Bright Data scraper timed out")
+            raise TimeoutError(f"Bright Data scraper timed out after 300s (snapshot_id={snapshot_id})")
 
         # Download results
         data = await client.get(

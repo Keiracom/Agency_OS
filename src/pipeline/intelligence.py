@@ -447,7 +447,7 @@ Rules:
 - Recommended service = the most logical first service to offer (keep to 3-5 words max)
 - Outreach angle = the emotional hook for the first message (problem-aware, not solution-first)
 - Draft email subject: specific to THIS prospect's top signal, not generic
-- Draft email body: 4-6 sentences. Reference ONE specific signal. Match to the service. End with ONE question. Sign off with {{agency_name}}.
+- Draft email body: 4-6 sentence email body. Address {dm_name} by first name. Reference the business name and location. Reference ONE specific signal. Match to the service. End with ONE question. Sign off with {{agency_name}}.
 
 The draft email body must feel like a human wrote it after researching this business for 20 minutes.
 NOT: "I noticed you could improve your digital marketing."
@@ -492,6 +492,11 @@ async def refine_evidence(
         try:
             context = {
                 "domain": domain,
+                "business_name": website_data.get("business_name", domain),
+                "dm_name": website_data.get("dm_name", ""),
+                "dm_title": website_data.get("dm_title", ""),
+                "location": website_data.get("location", ""),
+                "category": website_data.get("category", ""),
                 "intent_band": intent_data.get("band", "UNKNOWN"),
                 "intent_score": intent_data.get("score", 0),
                 "primary_signal": intent_data.get("primary_signal", ""),

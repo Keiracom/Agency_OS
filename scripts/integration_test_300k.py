@@ -35,6 +35,8 @@ import re as _re
 
 # ── Helper: placeholder email filter ──────────────────────────────────────────
 
+# Filters out HTML template placeholder emails only.
+# DO NOT add real business emails like info@, admin@, contact@ — those are legitimate.
 _PLACEHOLDER_RE = _re.compile(
     r"example@|test@|you@|your@|user@|mail@|email@|no-?reply@|noreply@"
     r"|example\.com|yourdomain|placeholder|samplesite",
@@ -72,9 +74,37 @@ def _is_contaminated_dm(dm: dict) -> tuple[bool, str]:
 # ── Helper: business name extractors ─────────────────────────────────────────
 
 def _extract_biz_from_lico_desc(desc: str) -> str:
-    """'Finchly | 272 followers...' → 'Finchly'"""
+    """'FOCUS DENTAL GROUP | 6 followers' → 'Focus Dental Group'"""
     if desc and "|" in desc:
-        return desc.split("|")[0].strip()
+        name = desc.split("|")[0].strip()
+        if name and name == name.upper() and len(name) > 2:
+            name = name.title()
+        return name
+    return ""
+
+
+_TITLE_SEP_RE = _re.compile(r'\s*[|—–\-]\s*')
+_TITLE_FILLER_RE = _re.compile(
+    r'^(home|welcome|about|dentist|dental|clinic|medical|law|legal|accounting'
+    r'|plumber|electrician|builder|#\d+|best|top|leading|professional)',
+    _re.IGNORECASE,
+)
+
+
+def _extract_biz_from_title_tag(title: str) -> str:
+    """'#1 Dentist in Browns Plains - Dental Aspects' → 'Dental Aspects'"""
+    if not title:
+        return ""
+    title = title.replace("&amp;", "&").replace("&#039;", "'")
+    parts = [p.strip() for p in _TITLE_SEP_RE.split(title) if p.strip()]
+    if not parts:
+        return ""
+    last = parts[-1]
+    first = parts[0]
+    if 1 <= len(last.split()) <= 5 and not _TITLE_FILLER_RE.match(last):
+        return last[:60]
+    if 1 <= len(first.split()) <= 5 and not _TITLE_FILLER_RE.match(first):
+        return first[:60]
     return ""
 
 
@@ -98,6 +128,29 @@ _AU_CITIES_RE = _re.compile(
 def _extract_location_from_desc(desc: str) -> str:
     """Try to find a suburb/city in LinkedIn company description."""
     m = _AU_CITIES_RE.search(desc or "")
+    return m.group(0) if m else ""
+
+
+_STATE_ABBR = {
+    "New South Wales": "NSW", "Victoria": "VIC", "Queensland": "QLD",
+    "Western Australia": "WA", "South Australia": "SA", "Tasmania": "TAS",
+    "Australian Capital Territory": "ACT", "Northern Territory": "NT",
+}
+
+
+def _shorten_location(location: str) -> str:
+    """'Sydney, New South Wales, Australia' → 'Sydney NSW'"""
+    if not location:
+        return ""
+    for full, abbr in _STATE_ABBR.items():
+        location = location.replace(full, abbr)
+    location = location.replace(", Australia", "").strip().rstrip(",").strip()
+    return location[:50]
+
+
+def _extract_location_from_title(title: str) -> str:
+    """'#1 Dentist in Browns Plains & Regents Park' → 'Browns Plains'"""
+    m = _AU_CITIES_RE.search(title or "")
     return m.group(0) if m else ""
 
 
@@ -147,6 +200,7 @@ def build_domain_index(dm_found: list[dict]) -> dict[str, dict]:
     combined    = load_json("300gh_combined.json")
     lico_data   = load_json("300i_linkedin_co.json")
     lidm_data   = load_json("300j_linkedin_dm.json")
+    scrape_data = load_json("300b_scrape.json")
 
     # Load affordability data (has entity/ABN info)
     try:
@@ -162,6 +216,7 @@ def build_domain_index(dm_found: list[dict]) -> dict[str, dict]:
     mobile_map = {d["domain"]: d for d in combined.get("domains", [])}
     lico_map   = {d["domain"]: d for d in lico_data.get("domains", []) if d.get("data")}
     lidm_map   = {d["domain"]: d for d in lidm_data.get("domains", []) if d.get("data")}
+    scrape_map = {d["domain"]: d for d in scrape_data.get("domains", [])}
 
     index = {}
     for p in dm_found:
@@ -175,6 +230,7 @@ def build_domain_index(dm_found: list[dict]) -> dict[str, dict]:
             "lico":    lico_map.get(domain, {}).get("data") or {},
             "lidm":    lidm_map.get(domain, {}).get("data") or {},
             "afford":  afford_map.get(domain, {}),
+            "scrape":  scrape_map.get(domain, {}),
         }
     return index
 
@@ -209,6 +265,7 @@ async def process_domain(
     mobile = data["mobile"]
     lico   = data["lico"]
     lidm   = data["lidm"]
+    scrape = data.get("scrape", {})
 
     # ── DM contamination check ────────────────────────────────────────────────
     is_bad, bad_reason = _is_contaminated_dm(dm)
@@ -257,18 +314,24 @@ async def process_domain(
     # ── Derive business name & location ──────────────────────────────────────
     comp_comprehension = comp.get("comprehension") or {}
 
-    # FIX 3: Business name priority
-    lico_biz      = _extract_biz_from_lico_desc(lico.get("description", ""))
-    dm_title_biz  = _extract_biz_from_title(dm.get("dm_title", ""))
-    lidm_biz      = _extract_biz_from_title(lidm.get("headline", ""))
-    domain_stem   = (domain[4:] if domain.startswith("www.") else domain).split(".")[0].replace("-", " ").title()
-    business_name = (lico_biz or dm_title_biz or lidm_biz or domain_stem)[:60]
+    # Business name priority: lico > dm_title > lidm headline > HTML title > domain stem
+    lico_biz         = _extract_biz_from_lico_desc(lico.get("description", ""))
+    dm_title_biz     = _extract_biz_from_title(dm.get("dm_title", ""))
+    lidm_biz         = _extract_biz_from_title(lidm.get("headline", ""))
+    scrape_title_biz = _extract_biz_from_title_tag(scrape.get("title", ""))
+    domain_stem      = (domain[4:] if domain.startswith("www.") else domain).split(".")[0].replace("-", " ").title()
+    business_name    = (lico_biz or dm_title_biz or lidm_biz or scrape_title_biz or domain_stem)[:60]
 
-    # FIX 4: Location priority
+    # Location priority: lidm > lico desc > comp signals > HTML title > empty
+    lidm_location = _shorten_location(lidm.get("location") or "")
     lico_location = _extract_location_from_desc(lico.get("description", ""))
-    lidm_location = lidm.get("location") or ""
-    gmb_address   = intent.get("gmb_address") or ""
-    location      = (lico_location or lidm_location or gmb_address or "Australia")[:50]
+    comp_location_sigs = (comp.get("comprehension") or {}).get("location_signals") or []
+    comp_location = next(
+        (s for s in comp_location_sigs if s and s.lower() != "australia"),
+        ""
+    )
+    scrape_location = _extract_location_from_title(scrape.get("title", ""))
+    location = (lidm_location or lico_location or comp_location or scrape_location or "")[:50]
 
     # ── Build refine_evidence inputs ──────────────────────────────────────────
     intent_d = {
@@ -292,8 +355,10 @@ async def process_domain(
         "has_booking":      (comp_comprehension.get("technology_signals") or {}).get("has_booking_system", False),
         "has_analytics":    (comp_comprehension.get("technology_signals") or {}).get("has_analytics", False),
         "has_conversion":   (comp_comprehension.get("technology_signals") or {}).get("has_conversion_tracking", False),
+        "business_name":    business_name,
         "dm_name":          dm.get("dm_name"),
         "dm_title":         dm.get("dm_title"),
+        "location":         location,
         "category":         dm.get("category"),
         "linkedin_company": {
             "followers":      lico.get("follower_count"),

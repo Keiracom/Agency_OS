@@ -148,6 +148,25 @@ def _shorten_location(location: str) -> str:
     return location[:50]
 
 
+_AU_LOCATION_RE = _re.compile(
+    r'\b(Australia|NSW|VIC|QLD|WA|SA|TAS|ACT|NT'
+    r'|New South Wales|Victoria|Queensland|Western Australia'
+    r'|South Australia|Tasmania|Northern Territory'
+    r'|Australian Capital Territory)\b',
+    _re.IGNORECASE,
+)
+
+
+def _is_au_location(location: str) -> bool:
+    """Return True only if location string references Australia or an AU state.
+
+    DM personal LinkedIn locations are often overseas (US, UK, etc.).
+    We only use lidm.location if it's clearly Australian — otherwise we fall
+    through to lico/comp/title sources which reflect the business's actual location.
+    """
+    return bool(location and _AU_LOCATION_RE.search(location))
+
+
 def _extract_location_from_title(title: str) -> str:
     """'#1 Dentist in Browns Plains & Regents Park' → 'Browns Plains'"""
     m = _AU_CITIES_RE.search(title or "")
@@ -303,7 +322,13 @@ async def process_domain(
     dm_mobile   = mobile.get("mobile") or None
     dm_linkedin = dm.get("dm_linkedin_url")
     landline    = (mobile.get("contact_data_prefill") or {}).get("company_phone")
-    company_email = (mobile.get("contact_data_prefill") or {}).get("company_email")
+    # FIX 3 (#300-FIX-8): placeholder scan on company_email at card assembly
+    _raw_company_email = (mobile.get("contact_data_prefill") or {}).get("company_email")
+    company_email = (
+        _raw_company_email
+        if _raw_company_email and not _is_placeholder_email(_raw_company_email)
+        else None
+    )
 
     channels = []
     if dm_email:    channels.append("email")
@@ -322,8 +347,11 @@ async def process_domain(
     domain_stem      = (domain[4:] if domain.startswith("www.") else domain).split(".")[0].replace("-", " ").title()
     business_name    = (lico_biz or dm_title_biz or lidm_biz or scrape_title_biz or domain_stem)[:60]
 
-    # Location priority: lidm > lico desc > comp signals > HTML title > empty
-    lidm_location = _shorten_location(lidm.get("location") or "")
+    # Location priority: lidm (AU only) > lico desc > comp signals > HTML title > empty
+    # FIX 1 (#300-FIX-8): skip lidm.location if it's not an AU location —
+    # DM's personal LinkedIn location is often overseas or interstate.
+    _raw_lidm_loc = lidm.get("location") or ""
+    lidm_location = _shorten_location(_raw_lidm_loc) if _is_au_location(_raw_lidm_loc) else ""
     lico_location = _extract_location_from_desc(lico.get("description", ""))
     comp_location_sigs = (comp.get("comprehension") or {}).get("location_signals") or []
     comp_location = next(

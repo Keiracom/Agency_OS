@@ -386,17 +386,34 @@ async def discover_email(
     first, last = _parse_name(dm_name)
 
     # Layer 0: contact_data company_email (free, unverified)
+    # FIX (#300-FIX-8): name-match gate — only promote to dm_email if the email's
+    # local part contains at least one name component from dm_name. If it doesn't
+    # match (e.g. gavin.fawkes@ when dm_name is "Seymour Green"), the email is a
+    # generic company/staff address and should NOT be returned as the DM's email.
     if 0 not in skip and contact_data:
         email_val = contact_data.get("company_email") or contact_data.get("email")
-        if email_val:
-            logger.info("email_waterfall L0 contact_registry domain=%s email=%s", domain, email_val)
-            return EmailResult(
-                email=email_val,
-                verified=False,
-                source="contact_registry",
-                confidence="low",
-                cost_usd=0.0,
-            )
+        if email_val and "@" in email_val:
+            local = email_val.split("@")[0].lower()
+            name_parts = [p for p in [first, last] if len(p) >= 3]
+            name_match = any(p in local for p in name_parts) if name_parts else False
+            if name_match:
+                logger.info(
+                    "email_waterfall L0 contact_registry domain=%s email=%s (name match)",
+                    domain, email_val,
+                )
+                return EmailResult(
+                    email=email_val,
+                    verified=False,
+                    source="contact_registry",
+                    confidence="low",
+                    cost_usd=0.0,
+                )
+            else:
+                logger.debug(
+                    "email_waterfall L0 contact_registry domain=%s email=%s SKIPPED "
+                    "(name mismatch: dm=%r local=%r)",
+                    domain, email_val, dm_name, local,
+                )
 
     # Layer 1: Website HTML (free, unverified)
     if 1 not in skip:

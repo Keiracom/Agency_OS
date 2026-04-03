@@ -1,7 +1,7 @@
 # Agency OS Manual
 
 Last updated: 2026-04-03 UTC
-Directive #302 Task H: Add Section 9 — Decisions Pending
+Directive #303: Wire four proven intelligence endpoints (PR #266)
 Next scheduled update: Next architecture change or milestone
 
 > **Primary store.** This file is the CEO SSOT. Google Doc is an auto-generated mirror.
@@ -162,6 +162,20 @@ Paid signals (gate passers only):
 | gmb_established | GMB review count > 20 | $0.0035 | 1 |
 
 Bands: NOT_TRYING (0–2, skip paid) | DABBLING (3–4) | TRYING (5–7) | STRUGGLING (8+)
+
+### INTELLIGENCE ENDPOINTS (post-intent-gate, Directive #303)
+
+Runs in parallel via `asyncio.gather` + `GLOBAL_SEM_DFS` after intent gate. Only processes domains that passed NOT_TRYING rejection.
+
+| Endpoint | Method | Cost | Stores |
+|----------|--------|------|--------|
+| DFS Competitors Domain | `competitors_domain()` | $0.01 | `competitors_top3`, `competitor_count` |
+| DFS Backlinks Summary | `backlinks_summary()` | $0.02 | `referring_domains`, `domain_rank`, `backlink_trend` |
+| DFS Brand SERP | `brand_serp(business_name)` | $0.002 | `brand_position`, `brand_gmb_showing`, `brand_competitors_bidding` |
+| DFS Indexed Pages | `indexed_pages(domain)` | $0.002 | `indexed_pages_count` |
+
+Total added cost per domain: **$0.034**. Results written to BU + returned in `stats["intelligence_enriched"]`.
+These fields feed the **Vulnerability Report** (designed, not yet built — see Section 9).
 
 ### DM IDENTIFICATION
 
@@ -341,10 +355,10 @@ Filters are views only — they do not restrict discovery or billing.
 | DFS `domain_metrics_by_categories` | Domain discovery by AU industry category. Returns organic_etv, organic_keywords, category | $0.10/100 domains | 22,592 AU dental, 31,445 AU plumbing domains |
 | DFS Maps SERP (GMB) | GMB rating, reviews, phone, address, hours | $0.002/query | 169/517 coverage. Rating + reviews flowing through pipeline. |
 | DFS SERP Organic | site:linkedin.com/in DM search | $0.01/call (corrected from $0.002) | 70.3% DM hit rate across 730 domains |
-| DFS Competitors Domain | Top 5 SERP competitors per domain | $0.01/domain | 100% AU coverage, rich data |
-| DFS Brand SERP | Brand search presence audit | $0.002/domain | 100% AU coverage |
-| DFS Indexed Pages | Page count, content depth signal | $0.002/domain | 100% AU coverage |
-| DFS Backlinks Summary | Domain authority signals | $0.02/domain | 100% AU coverage. Parser fix needed but data returns. NOT dead — subscription issue resolved. |
+| DFS Competitors Domain | Top 5 SERP competitors per domain — domains sharing organic keyword overlap | $0.01/domain | 100% AU coverage. **Wired in pipeline (#303).** Returns competitors_top3 + competitor_count. |
+| DFS Brand SERP | Brand search presence — position, GMB knowledge panel, competitor bidding on brand | $0.002/domain | 100% AU coverage. **Wired in pipeline (#303).** Returns brand_position, brand_gmb_showing, brand_competitors_bidding. |
+| DFS Indexed Pages | Approximate indexed page count via site: query | $0.002/domain | 100% AU coverage. **Wired in pipeline (#303).** Returns indexed_pages_count. |
+| DFS Backlinks Summary | Referring domains, domain rank, backlink trend | $0.02/domain | 100% AU coverage. **Wired in pipeline (#303). #276 parser bug fixed** — data was at tasks[0].result[0] not items[]. |
 | Google Ads Transparency | Binary: is business running Google Ads | FREE | 119/517 ads detected. Real-time scraper. |
 | httpx website scraping | Tech stack, contact data, tracking pixels | FREE | 97.5% success rate, 0.23s average, 730-domain test |
 | ABN registry (local JOIN) | GST status, entity type, registration date | FREE | 91% match rate on 730 domains |
@@ -363,8 +377,8 @@ Filters are views only — they do not restrict discovery or billing.
 |----------|------|------|--------|
 | DFS Ranked Keywords | Keyword-level SEO gap analysis | $0.002/domain | 20% AU coverage — useful as enrichment where available, not reliable for gate |
 | DFS Keyword Suggestions | Keyword opportunity discovery | $0.002/call | Untested at scale |
-| DFS SERP keyword scraping | Broader keyword landscape | $0.002/call | Untested at scale |
-| DFS Google Ads Detailed | Full ads keyword + spend breakdown | $0.05/domain | Untested. High value if coverage proves out. |
+| DFS SERP keyword scraping | Broader keyword landscape | $0.002/call | Untested at scale. Part of keyword discovery Track B (designed, not built). |
+| DFS Google Ads Detailed | Full ads keyword + spend breakdown | $0.05/domain | Untested. High value if AU coverage proves out. |
 | DFS Historical Rank | Rank trajectory over time | varies | In codebase, never called. Coverage unknown for AU. |
 | Google PageSpeed API | Core Web Vitals signals | FREE | Needs API key. Blocked — Dave action required. |
 
@@ -406,20 +420,18 @@ Three paths exist; all blocked:
 
 Until one of these is resolved, email channel goes out unverified. Acceptable for initial testing; not acceptable for at-scale live outreach.
 
-### DFS Intelligence Endpoints — Proven But Not Wired
+### DFS Intelligence Endpoints
 
-The following DFS endpoints have been tested and confirmed working for AU but are not yet called in the live pipeline:
+**WIRED (Directive #303, PR #266):** Competitors Domain, Backlinks Summary, Brand SERP, Indexed Pages. All four run in parallel after the intent gate via `asyncio.gather + GLOBAL_SEM_DFS`. Data flows to ProspectCard and BU columns.
+
+**NOT YET WIRED:**
 
 | Endpoint | Signal | Cost | Build needed |
 |----------|--------|------|-------------|
-| DFS Competitors Domain | Top 5 SERP competitors per domain — who is winning their market | $0.01/domain | Wire into paid_enrichment.py after intent gate |
-| DFS Backlinks Summary | Domain authority — content investment signal | $0.02/domain | Parser fix + wire into paid_enrichment.py |
-| DFS Brand SERP | Brand search presence — are they findable by name | $0.002/domain | Wire into free_enrichment.py |
-| DFS Indexed Pages | Page count — content depth indicator | $0.002/domain | Wire into free_enrichment.py |
-| DFS Google Ads Detailed | Full keyword + spend breakdown (supplements binary Transparency signal) | $0.05/domain | Evaluate coverage before wiring |
-| DFS On-Page SEO | On-page signals — meta, H1, schema | $0.002/domain | Untested. Evaluate coverage first. |
+| DFS Google Ads Detailed | Full keyword + spend breakdown (supplements binary Transparency signal) | $0.05/domain | Evaluate AU coverage before wiring — expensive if low |
+| DFS On-Page SEO | On-page signals — meta, H1, schema | $0.002/domain | Untested. Evaluate AU coverage first. |
 
-These endpoints are the foundation of the **Vulnerability Report** — a structured gap analysis per prospect showing exactly where their marketing is failing vs competitors. The Vulnerability Report is designed but not built. It depends on Competitors + Backlinks + Brand SERP being wired.
+The **Vulnerability Report** (structured gap analysis showing exactly where a prospect's marketing fails vs competitors) now has all its data dependencies satisfied. It is designed but not yet built as a rendered output.
 
 ### Keyword Discovery Architecture — Designed, Not Tested
 
@@ -553,7 +565,8 @@ v6 era (#271–#277): Layer 2 (discovery), Layer 3 (bulk filter), signal config 
 | Sprint 6 | #300-FIX-6 | Draft emails: business_name/dm_name/location passed to refine_evidence. Business name chain + location chain. BD snapshot merged. | COMPLETE — commit ecbe0b9 |
 | Sprint 6 | #300-FIX-8 | AU location filter on lidm.location. DM name-email match gate (email_waterfall L0). company_email placeholder scan. | COMPLETE — PR fad25df |
 | Sprint 6 | #301 | SMTP email verifier (email_verifier.py, 13 patterns, MX resolution). Railway Reacher deployed. Port 25 blocked everywhere. | COMPLETE — committed |
-| Testing | #302 | Manual rewrite (this directive) | IN PROGRESS |
+| Testing | #302 | Manual full rewrite: Sections 2–8 + Section 9 Decisions Pending | COMPLETE — PR #265 merged |
+| Testing | #303 | Wire four intelligence endpoints: Competitors, Backlinks, Brand SERP, Indexed Pages. Fix #276 backlinks parser. ProspectCard +9 fields. 11 new tests. | PR #266 open |
 
 ### Post-Test Build Queue (next priorities after provider resolution)
 
@@ -600,7 +613,8 @@ v6 era (#271–#277): Layer 2 (discovery), Layer 3 (bulk filter), signal config 
 | #300-FIX-6 | refine_evidence context: business_name, dm_name, dm_title, location, category passed. Business name chain (lico→dm_title→lidm→title tag→stem). Location chain (AU-filtered lidm→lico→comp→title). BD snapshot sd_mnfd94hgsyllcqjlx: 257 profiles merged. | COMPLETE — ecbe0b9 |
 | #300-FIX-8 | AU location filter on lidm.location (skip if non-AU). DM name-email match gate (email_waterfall Layer 0). company_email placeholder scan at card assembly. Test baseline: 204 passed. | COMPLETE — fad25df |
 | #301 | SMTP email discovery: email_verifier.py (13 patterns, MX resolution, SMTP RCPT TO). Railway Reacher deployed. Port 25 blocked on Vultr AND Railway. SMTP not viable on managed cloud. | COMPLETE |
-| #302 | Manual full rewrite: Sections 2–8 current state (this directive) | COMPLETE |
+| #302 | Manual full rewrite: Sections 2–8 current state + Section 9 Decisions Pending | COMPLETE — PRs #265 merged |
+| #303 | Wire four proven DFS endpoints into paid_enrichment.py: Competitors Domain, Backlinks Summary (fix #276 parser), Brand SERP, Indexed Pages. 3 new dfs_labs_client methods. ProspectCard +9 fields. 11 new tests. | PR #266 open |
 
 ---
 

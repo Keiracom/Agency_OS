@@ -1,7 +1,7 @@
 # Agency OS Manual
 
 Last updated: 2026-04-03 UTC
-Directive #302: Manual Full Rewrite — Sections 2–8 current state
+Directive #302 Task H: Add Section 9 — Decisions Pending
 Next scheduled update: Next architecture change or milestone
 
 > **Primary store.** This file is the CEO SSOT. Google Doc is an auto-generated mirror.
@@ -392,7 +392,91 @@ Filters are views only — they do not restrict discovery or billing.
 
 ---
 
-## SECTION 9 — DATA PROVIDER OPERATIONAL NOTES
+## SECTION 9 — DECISIONS PENDING
+
+Items that are designed, blocked, or awaiting external resolution before build can proceed. Each item must be resolved (or formally de-scoped) before the next launch-gate is passed.
+
+### Contact Provider Resolution (Dave action required)
+
+**Email verification — 87% of pipeline emails are unverified.**
+Three paths exist; all blocked:
+- **Reacher (SMTP):** Docker image ready on Railway. Port 25 blocked on Vultr, Railway Standard, and all standard managed cloud. Needs a dedicated VPS with port 25 unblocked (e.g. Oracle Cloud free tier, Hetzner, Linode) or Railway Pro with custom networking. Dave to provision.
+- **ContactOut:** $49/mo subscribed. Web dashboard confirms AU coverage is strong. API key is demo-locked — production key not provisioned. Dave to follow up on support ticket.
+- **Forager:** Best APAC accuracy in independent benchmarks. API key returns 404. Dave to follow up on support ticket. Highest priority when unblocked.
+
+Until one of these is resolved, email channel goes out unverified. Acceptable for initial testing; not acceptable for at-scale live outreach.
+
+### DFS Intelligence Endpoints — Proven But Not Wired
+
+The following DFS endpoints have been tested and confirmed working for AU but are not yet called in the live pipeline:
+
+| Endpoint | Signal | Cost | Build needed |
+|----------|--------|------|-------------|
+| DFS Competitors Domain | Top 5 SERP competitors per domain — who is winning their market | $0.01/domain | Wire into paid_enrichment.py after intent gate |
+| DFS Backlinks Summary | Domain authority — content investment signal | $0.02/domain | Parser fix + wire into paid_enrichment.py |
+| DFS Brand SERP | Brand search presence — are they findable by name | $0.002/domain | Wire into free_enrichment.py |
+| DFS Indexed Pages | Page count — content depth indicator | $0.002/domain | Wire into free_enrichment.py |
+| DFS Google Ads Detailed | Full keyword + spend breakdown (supplements binary Transparency signal) | $0.05/domain | Evaluate coverage before wiring |
+| DFS On-Page SEO | On-page signals — meta, H1, schema | $0.002/domain | Untested. Evaluate coverage first. |
+
+These endpoints are the foundation of the **Vulnerability Report** — a structured gap analysis per prospect showing exactly where their marketing is failing vs competitors. The Vulnerability Report is designed but not built. It depends on Competitors + Backlinks + Brand SERP being wired.
+
+### Keyword Discovery Architecture — Designed, Not Tested
+
+Dual-track discovery designed to supplement `domain_metrics_by_categories`:
+- **Track A (category):** Current pipeline. DFS `domain_metrics_by_categories` — returns domains ranking in a category. Proven.
+- **Track B (keyword SERP):** DFS SERP scraping for target keywords (e.g. "plumber sydney") — returns domains actively competing for commercial intent searches. Untested at scale.
+
+Track B fills a gap: businesses with good SEO but no organic keyword volume (new businesses, service-area businesses) are invisible to Track A. Track B catches them.
+
+Estimated cost: ~$5/customer/month added to pipeline COGS at Ignition tier (600 records × ~$0.008/keyword SERP call).
+Status: Architecture designed, code not written, not tested.
+
+### Client Monitoring — Designed, Not Built
+
+Weekly refresh loop per active agency client:
+1. Re-run DFS enrichment on all in-pipeline prospects (detect signal changes)
+2. Delta detection: did their ads start/stop? GMB rating change? New reviews?
+3. Alert generation: surface prospects whose situation changed since last month
+
+Use case: a prospect who was DABBLING last month is now running 15 ads — they've entered the buying window. System surfaces them to the agency automatically.
+
+Architecture: designed. Code: not written. Depends on BU lifecycle schema (see below).
+
+### BU Lifecycle Schema — Designed, Not Built
+
+The `business_universe` table currently tracks discovery and pipeline state. It does not track outreach history, response signals, or client monitoring state.
+
+Fields needed (not yet in schema):
+- `outreach_status`: pending / active / replied / converted / suppressed
+- `last_outreach_at`: timestamp per channel
+- `signal_snapshot_at`: when signals were last re-checked
+- `signal_delta`: JSON diff of what changed since last check
+- `agency_notes`: freetext field for human annotations
+
+Status: schema designed in ceo_memory (`ceo:bu_lifecycle_schema`). Migration not written. Build depends on outreach execution being live-tested first.
+
+### Vertical Config Architecture — Designed, Not Built
+
+The pipeline currently has one hardcoded signal config (`marketing_agency` vertical). For multi-vertical launch (recruitment, MSPs, accounting, etc.), the pipeline needs to be vertical-agnostic — loading config from a `vertical_config` JSON per customer.
+
+Design: `vertical_config.json` per vertical → pipeline loads at runtime → scoring weights, category codes, service mappings, and DM title priorities all vary by vertical.
+Status: Design ratified. `signal_configurations` table exists. Migration for non-marketing verticals not written. Not a blocker for marketing agency launch.
+
+### Landing Page — Built, Incomplete
+
+`agency_os_v5.html` exists with Bloomberg aesthetic and "Who built yours?" hero copy. Three things missing before external use:
+- **Vertical tabs:** currently marketing-agency only. Add recruitment/MSP/accounting tabs with vertical-specific copy.
+- **Remotion video:** dashboard animation and Maya walkthrough. Assets not rendered.
+- **Stripe Checkout:** pricing CTAs link to nothing. Dave to add Stripe product IDs.
+
+### Dave's LinkedIn Profile
+
+Critically underdeveloped before any external outreach begins. The outreach sequences reference the agency founder — if Dave's LinkedIn doesn't reflect the product, conversion drops significantly. Needs: updated headline, current role (Agency OS founder), recent activity, headshot. Dave to update before first founding customer outreach.
+
+---
+
+## SECTION 10 — DATA PROVIDER OPERATIONAL NOTES
 
 - BD GMB dataset: `gd_m8ebnr0q2qlklc02fz` (Google Maps full information). Discovery mode: `type=discover_new&discover_by=keyword`. Enrichment mode: `discover_by=location` or `discover_by=place_id`.
 - DFS spending cap: $50 USD/day — not a blocker for normal runs.
@@ -402,7 +486,7 @@ Filters are views only — they do not restrict discovery or billing.
 
 ---
 
-## SECTION 10 — OUTREACH STACK
+## SECTION 11 — OUTREACH STACK
 
 | Channel | Provider | Status |
 |---------|----------|--------|
@@ -420,7 +504,7 @@ Voice AI / Alex details:
 
 ---
 
-## SECTION 11 — BUSINESS UNIVERSE
+## SECTION 12 — BUSINESS UNIVERSE
 
 - BU is THE PRODUCT — one row per discovered business, all intelligence accumulates over time
 - `abn_registry` = 2.4M ABR records, enrichment source only (not the BU itself)
@@ -431,7 +515,7 @@ Voice AI / Alex details:
 
 ---
 
-## SECTION 12 — BUILD SEQUENCE (active)
+## SECTION 13 — BUILD SEQUENCE (active)
 
 v5 era (#247–#270): all 7 pipeline stages built on main. Superseded.
 v6 era (#271–#277): Layer 2 (discovery), Layer 3 (bulk filter), signal config v6 built. Superseded by v7.
@@ -520,7 +604,7 @@ v6 era (#271–#277): Layer 2 (discovery), Layer 3 (bulk filter), signal config 
 
 ---
 
-## SECTION 13 — COMPETITIVE INTELLIGENCE
+## SECTION 14 — COMPETITIVE INTELLIGENCE
 
 Direct competitors (signal-based AI BDR category):
 
@@ -546,7 +630,7 @@ DROPPED from primary watchlist: Apollo (tool), Instantly (email-only), Smartlead
 
 ---
 
-## SECTION 14 — RESEARCH-1 STANDING BRIEF (updated Mar 26 2026)
+## SECTION 15 — RESEARCH-1 STANDING BRIEF (updated Mar 26 2026)
 
 Schedule: daily 20:00 UTC
 Writes to: Intelligence Feed (`1CHG295kALLODiT5orRG4lfsKJ1Ts8Ma1AHy-A6r0zFc`) + Supabase `cis_improvement_log`
@@ -580,7 +664,7 @@ Config tracked in repo: `governance/research1-standing-brief.md` (PR #221)
 
 ---
 
-## SECTION 15 — ICP + MARKET
+## SECTION 16 — ICP + MARKET
 
 Primary ICP: Australian marketing agencies, 5–50 employees, $30k–$300k MRR
 Core addressable market: ~900–1,200 agencies
@@ -601,7 +685,7 @@ Wave 2: Pivot from vertical SaaS to horizontal GTM platform serving any B2B comp
 
 ---
 
-## SECTION 16 — GOVERNANCE + OPERATIONS
+## SECTION 17 — GOVERNANCE + OPERATIONS
 
 Three-node chain: Claude (CEO) → Dave (Founder/Chairman) → Elliottbot (CTO)
 
@@ -629,13 +713,13 @@ Dave's lane:
 
 ---
 
-## SECTION 17 — OUTREACH + CONTENT (pre-launch)
+## SECTION 18 — OUTREACH + CONTENT (pre-launch)
 
 Landing page (`agency_os_v5.html`) is built with Bloomberg aesthetic and "Who built yours?" hero. Pending: Remotion video hero, Stripe Checkout on pricing CTAs, live founding counter from Supabase. Video strategy: 5 versions (dashboard animation, Maya walkthrough, HeyGen avatar, customer-specific, results) built via Remotion + HeyGen (Maya avatar). Content distribution via Prefect Flow #28 (Claude API → Remotion → HeyGen → distribution APIs). Demo mode active via `?demo=true` URL param with seeded Supabase demo tenant. Onboarding starts with a 15-minute activation call (CRM + LinkedIn connect, watch dashboard populate live).
 
 ---
 
-## SECTION 18 — DESIGN SYSTEM
+## SECTION 19 — DESIGN SYSTEM
 
 - Pure Bloomberg palette: warm charcoal `#0C0A08` + amber `#D4956A` only
 - Lucide icons throughout (all emoji replaced)
@@ -645,7 +729,7 @@ Landing page (`agency_os_v5.html`) is built with Bloomberg aesthetic and "Who bu
 
 ---
 
-## SECTION 19 — INFRASTRUCTURE + CREDENTIALS
+## SECTION 20 — INFRASTRUCTURE + CREDENTIALS
 
 Elliottbot:
 - Vultr Sydney server
@@ -673,7 +757,7 @@ Compliance: SPAM Act 2003, DNCR registered, TCP Code (voice), Australian-built
 
 ---
 
-## SECTION 20 — KNOWN ISSUES + BACKLOG
+## SECTION 21 — KNOWN ISSUES + BACKLOG
 
 ### Active Blockers
 
@@ -698,7 +782,7 @@ Compliance: SPAM Act 2003, DNCR registered, TCP Code (voice), Australian-built
 
 ---
 
-## SECTION 21 — SEGMENT TESTING STRATEGY
+## SECTION 22 — SEGMENT TESTING STRATEGY
 
 Ratified: March 29, 2026
 

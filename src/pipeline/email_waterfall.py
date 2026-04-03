@@ -39,6 +39,84 @@ except ImportError:
 # Added to global pool alongside GLOBAL_SEM_SONNET / GLOBAL_SEM_HAIKU
 GLOBAL_SEM_LEADMAGIC = asyncio.Semaphore(10)
 
+# ── Placeholder email/phone blocklists (Directive #305) ──────────────────────
+
+PLACEHOLDER_EMAILS: frozenset[str] = frozenset({
+    "example@mail.com",
+    "you@mail.com",
+    "email@example.com",
+    "info@example.com",
+    "your@email.com",
+    "name@email.com",
+    "test@test.com",
+    "admin@example.com",
+    "yourname@email.com",
+    "user@example.com",
+    "email@yourdomain.com",
+    "you@yourdomain.com",
+    "hello@example.com",
+    "someone@example.com",
+    "address@example.com",
+    "noreply@example.com",
+})
+
+PLACEHOLDER_PHONES: frozenset[str] = frozenset({
+    "+1234567891",
+    "1234567890",
+    "0000000000",
+    "1111111111",
+    "2222222222",
+    "3333333333",
+    "4444444444",
+    "5555555555",
+    "6666666666",
+    "7777777777",
+    "8888888888",
+    "9999999999",
+    "0412345678",
+    "0400000000",
+    "0412000000",
+})
+
+_PLACEHOLDER_EMAIL_PATTERN = re.compile(
+    r"(example|yourname|placeholder|test|yourdomain|your-domain"
+    r"|your_email|youremail|noreply|no-reply)",
+    re.IGNORECASE,
+)
+
+_ALL_SAME_DIGIT_RE = re.compile(r"^(\d)\1{7,}$")  # 8+ same digits
+_SEQUENTIAL_PHONE_RE = re.compile(r"^(0?1234567|01234567|12345678|23456789|34567890)[\d]*$")
+
+
+def is_placeholder_email(email: str) -> bool:
+    """Return True if email is a known placeholder or matches placeholder patterns."""
+    if not email:
+        return False
+    email_lower = email.lower().strip()
+    if email_lower in PLACEHOLDER_EMAILS:
+        return True
+    local = email_lower.split("@")[0] if "@" in email_lower else email_lower
+    if _PLACEHOLDER_EMAIL_PATTERN.search(local):
+        return True
+    return False
+
+
+def is_placeholder_phone(phone: str) -> bool:
+    """Return True if phone is a known placeholder or sequential/all-same-digit."""
+    if not phone:
+        return False
+    digits_only = re.sub(r"[^\d]", "", phone)
+    if not digits_only:
+        return False
+    norm = re.sub(r"[\s\-\(\)\+]", "", phone)
+    if norm in PLACEHOLDER_PHONES or digits_only in {p.lstrip("+") for p in PLACEHOLDER_PHONES}:
+        return True
+    if _ALL_SAME_DIGIT_RE.match(digits_only):
+        return True
+    if _SEQUENTIAL_PHONE_RE.match(digits_only):
+        return True
+    return False
+
 # Email regex — matches standard email formats
 _EMAIL_RE = re.compile(
     r"[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}",
@@ -397,17 +475,23 @@ async def discover_email(
             name_parts = [p for p in [first, last] if len(p) >= 3]
             name_match = any(p in local for p in name_parts) if name_parts else False
             if name_match:
-                logger.info(
-                    "email_waterfall L0 contact_registry domain=%s email=%s (name match)",
-                    domain, email_val,
-                )
-                return EmailResult(
-                    email=email_val,
-                    verified=False,
-                    source="contact_registry",
-                    confidence="low",
-                    cost_usd=0.0,
-                )
+                if is_placeholder_email(email_val):
+                    logger.debug(
+                        "email_waterfall L0 placeholder rejected domain=%s email=%s",
+                        domain, email_val,
+                    )
+                else:
+                    logger.info(
+                        "email_waterfall L0 contact_registry domain=%s email=%s (name match)",
+                        domain, email_val,
+                    )
+                    return EmailResult(
+                        email=email_val,
+                        verified=False,
+                        source="contact_registry",
+                        confidence="low",
+                        cost_usd=0.0,
+                    )
             else:
                 logger.debug(
                     "email_waterfall L0 contact_registry domain=%s email=%s SKIPPED "
@@ -419,8 +503,15 @@ async def discover_email(
     if 1 not in skip:
         result = _extract_emails_from_html(html or "", clean_domain, dm_name)
         if result and result.email:
-            logger.info("email_waterfall L1 website domain=%s email=%s", domain, result.email)
-            return result
+            if is_placeholder_email(result.email):
+                logger.debug(
+                    "email_waterfall L1 placeholder rejected domain=%s email=%s",
+                    domain, result.email,
+                )
+                result = None  # fall through to next layer
+            else:
+                logger.info("email_waterfall L1 website domain=%s email=%s", domain, result.email)
+                return result
 
     # Layer 2: Leadmagic find_email (verified — Leadmagic finds real address)
     if 2 not in skip and first and last:

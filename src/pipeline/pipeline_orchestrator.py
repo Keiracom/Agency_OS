@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 import time
 from dataclasses import dataclass, field
 from typing import Any, Optional
@@ -33,6 +34,171 @@ from src.config.category_registry import get_discovery_categories, SERVICE_CATEG
 from src.pipeline.email_waterfall import discover_email, GLOBAL_SEM_LEADMAGIC  # noqa: F401
 
 logger = logging.getLogger(__name__)
+
+# ── Business name waterfall helpers (Directive #305) ─────────────────────────
+
+_ABN_ENTITY_SUFFIX_RE = re.compile(
+    r"\b(pty\.?\s*ltd\.?|pty\.?\s*limited|limited|ltd\.?|inc\.?|llc|"
+    r"proprietary|trustee\s+for|the\s+trustee|as\s+trustee)\b",
+    re.IGNORECASE,
+)
+
+
+def resolve_business_name(
+    domain: str,
+    enrichment: dict,
+    gmb_data: dict | None = None,
+) -> str:
+    """
+    Business name waterfall — returns the best available display name.
+
+    Priority:
+    1. ABN trading_name (if not just entity suffixes and not blank)
+    2. GMB business name from gmb_data
+    3. ABN legal_name (cleaned of entity suffixes)
+    4. Page title prefix (enrichment["company_name"])
+    5. Domain stem
+    """
+    def _is_valid(name: str) -> bool:
+        if not name or not name.strip():
+            return False
+        cleaned = _ABN_ENTITY_SUFFIX_RE.sub("", name).strip(" .,")
+        if not cleaned:
+            return False  # was only suffixes
+        if re.fullmatch(r"\d{9,11}", name.replace(" ", "")):
+            return False  # ABN number
+        if cleaned.lower() in ("com", "com.au", "net.au", "org.au", "au"):
+            return False
+        return True
+
+    candidates = [
+        enrichment.get("abn_trading_name", ""),
+        (gmb_data or {}).get("gmb_name", ""),
+        enrichment.get("abn_legal_name", ""),
+        enrichment.get("company_name", ""),  # title-derived
+    ]
+
+    for name in candidates:
+        if name and _is_valid(name.strip()):
+            return name.strip()[:80]
+
+    # Domain stem fallback
+    stem = domain[4:] if domain.startswith("www.") else domain
+    stem = stem.split(".")[0].replace("-", " ").replace("_", " ").title()
+    return stem or domain
+
+
+# ── Location waterfall helpers (Directive #305) ───────────────────────────────
+
+_AU_STATE_ABBR_RE = re.compile(
+    r"\b(NSW|VIC|QLD|WA|SA|TAS|ACT|NT)\b", re.IGNORECASE
+)
+
+_STATE_NAME_TO_ABBR: dict[str, str] = {
+    "new south wales": "NSW", "victoria": "VIC", "queensland": "QLD",
+    "western australia": "WA", "south australia": "SA", "tasmania": "TAS",
+    "australian capital territory": "ACT", "northern territory": "NT",
+}
+
+
+def _postcode_to_state(postcode: str) -> str:
+    """Map Australian postcode prefix to state abbreviation."""
+    try:
+        pc = int(postcode)
+        if 1000 <= pc <= 2999:
+            return "NSW"
+        if 3000 <= pc <= 3999:
+            return "VIC"
+        if 4000 <= pc <= 4999:
+            return "QLD"
+        if 5000 <= pc <= 5999:
+            return "SA"
+        if 6000 <= pc <= 6999:
+            return "WA"
+        if 7000 <= pc <= 7999:
+            return "TAS"
+        if 800 <= pc <= 999:
+            return "NT"
+        if 200 <= pc <= 299:
+            return "ACT"
+    except (ValueError, TypeError):
+        pass
+    return ""
+
+
+def resolve_location(
+    domain: str,
+    enrichment: dict,
+    gmb_data: dict | None = None,
+    default_location: str = "Australia",
+) -> tuple[str, str, str]:
+    """
+    Location waterfall — returns (suburb, state, display_string).
+
+    Priority:
+    1. GMB address — parse suburb + state from "123 Main St, Surry Hills NSW 2010"
+    2. website_address (JSON-LD) suburb + state
+    3. ABN state (from abn_state field if available)
+    4. State hint from enrichment
+    5. default_location passed from discovery
+    """
+    suburb = ""
+    state = ""
+
+    # Priority 1: GMB address
+    gmb_address = (
+        (gmb_data or {}).get("gmb_address")
+        or (gmb_data or {}).get("address")
+        or ""
+    )
+    if gmb_address:
+        state_match = _AU_STATE_ABBR_RE.search(gmb_address)
+        if state_match:
+            state = state_match.group(0).upper()
+            before_state = gmb_address[:state_match.start()].strip().rstrip(",").strip()
+            parts = [p.strip() for p in before_state.split(",") if p.strip()]
+            if parts:
+                suburb = parts[-1]
+
+    # Priority 2: JSON-LD address from website
+    if not suburb:
+        wa = enrichment.get("website_address") or {}
+        if isinstance(wa, dict):
+            suburb = wa.get("suburb") or wa.get("addressLocality") or wa.get("city") or ""
+            if not state:
+                state = wa.get("state") or wa.get("addressRegion") or ""
+                if state and len(state) > 3:
+                    state = _STATE_NAME_TO_ABBR.get(state.lower(), state)
+            if not state:
+                postcode = wa.get("postcode") or wa.get("postalCode") or ""
+                state = _postcode_to_state(str(postcode)) if postcode else ""
+
+    # Priority 3: ABN state
+    if not state:
+        abn_state = enrichment.get("abn_state") or ""
+        if abn_state:
+            state = _STATE_NAME_TO_ABBR.get(abn_state.lower(), abn_state)
+
+    # Priority 4: State hint from enrichment
+    if not state:
+        state_hint = enrichment.get("state_hint") or enrichment.get("state") or ""
+        if state_hint:
+            state = _STATE_NAME_TO_ABBR.get(state_hint.lower(), state_hint).upper()[:3]
+            if not _AU_STATE_ABBR_RE.match(state):
+                state = ""
+
+    # Build display string
+    if suburb and state:
+        display = f"{suburb}, {state}"
+    elif suburb:
+        display = suburb
+    elif state:
+        display = state
+    else:
+        display = default_location or "Australia"
+
+    return suburb, state, display
+
 
 # Semaphore limits — tuned for DFS 30-concurrent + Spider 15-concurrent limits
 SEM_SPIDER = 15    # Spider.cloud concurrent scrapes
@@ -89,6 +255,10 @@ class ProspectCard:
     dm_email_source: Optional[str] = None
     dm_email_confidence: Optional[str] = None
     email_cost_usd: float = 0.0
+    # Location fields (Directive #305 — supplements single "location" string)
+    location_suburb: str = ""
+    location_state: str = ""
+    location_display: str = ""  # "Surry Hills, NSW" or "NSW" or "Australia"
     # Intelligence endpoints (Directive #303)
     competitors_top3: list = field(default_factory=list)
     competitor_count: int = 0
@@ -530,11 +700,7 @@ class PipelineOrchestrator:
                         stats.unreachable += 1
                         continue
 
-                    company_name = (
-                        enrichment.get("company_name")
-                        or enrichment.get("abn_entity_name")
-                        or domain
-                    )
+                    company_name = resolve_business_name(domain, enrichment)
                     # Use intelligence layer results if available, else fall back to scorer
                     intel = intel_results.get(domain, {})
                     if intel.get("evidence_statements"):
@@ -546,10 +712,14 @@ class PipelineOrchestrator:
                         intent_band = getattr(intent_full, "band", "UNKNOWN") if intent_full else "UNKNOWN"
                         intent_score = getattr(intent_full, "raw_score", 0) if intent_full else 0
 
+                    _loc_suburb, _loc_state, _loc_display = resolve_location(domain, enrichment, default_location=location)
                     card = ProspectCard(
                         domain=domain,
                         company_name=company_name,
-                        location=(enrichment.get("website_address") or {}).get("suburb", location),
+                        location=_loc_display,
+                        location_suburb=_loc_suburb,
+                        location_state=_loc_state,
+                        location_display=_loc_display,
                         services=enrichment.get("services") or intel.get("services") or [],
                         evidence=evidence,
                         affordability_band=afford.band,
@@ -770,7 +940,7 @@ class PipelineOrchestrator:
 
                     intel = self._intelligence  # None if not wired
                     html = enrichment.get("html", "")
-                    company_name = enrichment.get("company_name") or domain
+                    company_name = resolve_business_name(domain, enrichment)
                     addr = enrichment.get("website_address") or {}
                     suburb = (addr.get("suburb") or addr.get("city") or "") if isinstance(addr, dict) else ""
 
@@ -875,10 +1045,16 @@ class PipelineOrchestrator:
                         continue
 
                     # Build ProspectCard
+                    # Re-resolve with GMB data now available (gmb_data merged into enrichment above)
+                    company_name = resolve_business_name(domain, enrichment, gmb_data)
+                    _loc_suburb, _loc_state, _loc_display = resolve_location(domain, enrichment, gmb_data, default_location=location)
                     card = ProspectCard(
                         domain=domain,
                         company_name=company_name,
-                        location=suburb,
+                        location=_loc_display,
+                        location_suburb=_loc_suburb,
+                        location_state=_loc_state,
+                        location_display=_loc_display,
                         evidence=evidence,
                         affordability_band=afford.band,
                         affordability_score=afford.raw_score,

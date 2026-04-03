@@ -318,6 +318,8 @@ class FreeEnrichment:
             "registration_date": row.get("registration_date"),
             "abn_confidence": confidence,
             "_abn_strategy": strategy,
+            "abn_trading_name": row.get("trading_name") or "",
+            "abn_legal_name": row.get("legal_name") or "",
         }
 
     def _compute_email_maturity(
@@ -853,6 +855,8 @@ class FreeEnrichment:
                     "registration_date": reg_date,
                     "abn_confidence": confidence,
                     "_abn_strategy": "live_api",
+                    "abn_trading_name": best.get("business_name") or "",
+                    "abn_legal_name": "",
                 }
                 r = _keep(candidate)
                 if r:

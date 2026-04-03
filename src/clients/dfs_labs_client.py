@@ -63,6 +63,9 @@ class DFSLabsClient:
     - domain_technologies()        — $0.010/call, S2 tech stack detection
     - keywords_for_site()          — $0.011/call, keyword intelligence
     - historical_rank_overview()   — $0.106/call, trend signal (EXPENSIVE — gate callers)
+    - backlinks_summary()          — $0.020/call, Directive #303 intelligence
+    - brand_serp()                 — $0.002/call, Directive #303 intelligence
+    - indexed_pages()              — $0.002/call, Directive #303 intelligence
     """
 
     def __init__(self, login: str, password: str) -> None:
@@ -95,6 +98,10 @@ class DFSLabsClient:
         self._cost_maps_search_gmb = Decimal("0")
         # Ads Search by domain (Directive #291)
         self._cost_ads_search_by_domain = Decimal("0")
+        # Intelligence endpoints (Directive #303)
+        self._cost_backlinks_summary = Decimal("0")
+        self._cost_brand_serp = Decimal("0")
+        self._cost_indexed_pages = Decimal("0")
 
         # Cache for get_categories (free, rarely changes)
         self._categories_cache: list[dict] | None = None
@@ -136,6 +143,9 @@ class DFSLabsClient:
             + self._cost_search_linkedin_people
             + self._cost_maps_search_gmb
             + self._cost_ads_search_by_domain
+            + self._cost_backlinks_summary
+            + self._cost_brand_serp
+            + self._cost_indexed_pages
         )
         return float(total)
 
@@ -157,6 +167,9 @@ class DFSLabsClient:
             + self._cost_search_linkedin_people
             + self._cost_maps_search_gmb
             + self._cost_ads_search_by_domain
+            + self._cost_backlinks_summary
+            + self._cost_brand_serp
+            + self._cost_indexed_pages
         )
         return float(total_usd * AUD_RATE)
 
@@ -1175,6 +1188,140 @@ class DFSLabsClient:
                         if not any(email.endswith(ext) for ext in (".png", ".jpg", ".css", ".js", ".gif")):
                             found.add(email.lower())
         return list(found)
+
+    # ============================================
+    # ENDPOINT 14: backlinks_summary  (Directive #303)
+    # ============================================
+
+    async def backlinks_summary(self, target_domain: str) -> dict:
+        """
+        Get backlink summary for a domain.
+        Cost: $0.02 USD per call
+
+        Returns:
+            {
+                "referring_domains": int,
+                "domain_rank": int,
+                "backlink_trend": str,  # "growing" | "stable" | "declining"
+                "total_backlinks": int,
+            }
+        """
+        result = await self._post(
+            endpoint="/v3/backlinks/summary/live",
+            payload=[{"target": target_domain, "include_subdomains": True}],
+            cost_per_call=Decimal("0.02"),
+            cost_attr="_cost_backlinks_summary",
+        )
+
+        # NOTE: backlinks/summary returns data directly at tasks[0].result[0]
+        # (not under "items" key) — bug fix from Directive #276.
+        referring_domains = result.get("referring_domains") or 0
+        domain_rank = result.get("rank") or 0
+        total_backlinks = result.get("backlinks") or 0
+        new = result.get("referring_domains_new") or 0
+        lost = result.get("referring_domains_lost") or 0
+        if new > lost * 1.1:
+            trend = "growing"
+        elif lost > new * 1.1:
+            trend = "declining"
+        else:
+            trend = "stable"
+
+        return {
+            "referring_domains": referring_domains,
+            "domain_rank": domain_rank,
+            "backlink_trend": trend,
+            "total_backlinks": total_backlinks,
+        }
+
+    # ============================================
+    # ENDPOINT 15: brand_serp  (Directive #303)
+    # ============================================
+
+    async def brand_serp(
+        self,
+        business_name: str,
+        location_code: int = 2036,
+        language_code: str = "en",
+    ) -> dict:
+        """
+        Check brand search presence for a business name.
+        Cost: $0.002 USD per call
+
+        Returns:
+            {
+                "brand_position": int | None,
+                "gmb_showing": bool,
+                "competitors_bidding": bool,
+            }
+        """
+        result = await self._post(
+            endpoint="/v3/serp/google/organic/live/advanced",
+            payload=[
+                {
+                    "keyword": business_name,
+                    "location_code": location_code,
+                    "language_code": language_code,
+                    "depth": 10,
+                    "se_domain": "google.com.au",
+                }
+            ],
+            cost_per_call=Decimal("0.002"),
+            cost_attr="_cost_brand_serp",
+        )
+        items = result.get("items") or []
+
+        brand_position: int | None = None
+        gmb_showing = False
+        competitors_bidding = False
+
+        for item in items:
+            item_type = item.get("type")
+            if item_type == "organic" and brand_position is None:
+                brand_position = item.get("rank_absolute")
+            if item_type in ("local_pack", "knowledge_graph", "maps_pack"):
+                gmb_showing = True
+            if item_type == "paid":
+                competitors_bidding = True
+
+        return {
+            "brand_position": brand_position,
+            "gmb_showing": gmb_showing,
+            "competitors_bidding": competitors_bidding,
+        }
+
+    # ============================================
+    # ENDPOINT 16: indexed_pages  (Directive #303)
+    # ============================================
+
+    async def indexed_pages(
+        self,
+        domain: str,
+        location_code: int = 2036,
+        language_code: str = "en",
+    ) -> int:
+        """
+        Get approximate indexed page count via site: SERP query.
+        Cost: $0.002 USD per call
+
+        Returns:
+            int: estimated indexed pages (0 if not found)
+        """
+        result = await self._post(
+            endpoint="/v3/serp/google/organic/live/advanced",
+            payload=[
+                {
+                    "keyword": f"site:{domain}",
+                    "location_code": location_code,
+                    "language_code": language_code,
+                    "depth": 1,
+                    "se_domain": "google.com.au",
+                }
+            ],
+            cost_per_call=Decimal("0.002"),
+            cost_attr="_cost_indexed_pages",
+        )
+        return int(result.get("se_results_count") or 0)
 
 
 # ============================================

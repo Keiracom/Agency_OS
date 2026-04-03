@@ -89,6 +89,16 @@ class ProspectCard:
     dm_email_source: Optional[str] = None
     dm_email_confidence: Optional[str] = None
     email_cost_usd: float = 0.0
+    # Intelligence endpoints (Directive #303)
+    competitors_top3: list = field(default_factory=list)
+    competitor_count: int = 0
+    referring_domains: int = 0
+    domain_rank: int = 0
+    backlink_trend: str = "unknown"
+    brand_position: Optional[int] = None
+    brand_gmb_showing: bool = False
+    brand_competitors_bidding: bool = False
+    indexed_pages: int = 0
 
 
 @dataclass

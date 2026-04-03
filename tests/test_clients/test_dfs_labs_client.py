@@ -138,3 +138,85 @@ async def test_domain_metrics_by_categories_custom_dates(client):
 
     assert item["first_date"] == custom_first
     assert item["second_date"] == custom_second
+
+
+# ============================================
+# Test 4: _get_latest_available_date — success
+# Directive #304-FIX
+# ============================================
+
+@pytest.mark.asyncio
+async def test_get_latest_available_date_uses_api(client):
+    """
+    When domain_metrics_by_categories is called with no explicit dates,
+    it calls _get_latest_available_date() and uses the returned date
+    as second_date (NOT today's date, which exceeds the DFS history window).
+    The result is cached so available_history is only called once per session.
+    """
+    available_date = "2026-03-01"
+
+    # Stub _get_latest_available_date so no real HTTP call is needed
+    with patch.object(
+        client,
+        "_get_latest_available_date",
+        new=AsyncMock(return_value=available_date),
+    ):
+        result_data = {"items": [], "total_count": 0}
+        mock_resp = make_mock_response(make_dfs_response(result_data))
+        mock_http_client = AsyncMock()
+        mock_http_client.post = AsyncMock(return_value=mock_resp)
+
+        with patch.object(client, "_get_client", return_value=mock_http_client):
+            await client.domain_metrics_by_categories(category_codes=[10514])
+
+    call_args = mock_http_client.post.call_args
+    payload_sent = call_args[1]["json"] if "json" in call_args[1] else call_args[0][1]
+    item = payload_sent[0]
+
+    # second_date must come from available_history, not today
+    assert item["second_date"] == available_date, (
+        f"second_date should be {available_date} from available_history, got {item['second_date']}"
+    )
+    # first_date must be ~180 days before the available_history date
+    d1 = date.fromisoformat(item["first_date"])
+    d2 = date.fromisoformat(available_date)
+    delta = (d2 - d1).days
+    assert 170 <= delta <= 190, (
+        f"first_date should be ~180 days before {available_date}, gap was {delta} days"
+    )
+
+
+# ============================================
+# Test 5: _get_latest_available_date — fallback on empty response
+# Directive #304-FIX
+# ============================================
+
+@pytest.mark.asyncio
+async def test_get_latest_available_date_fallback_on_empty(client):
+    """
+    If available_history returns an empty result list,
+    _get_latest_available_date() falls back to today minus 35 days.
+    No exception is raised; the fallback date is used for the API call.
+    """
+    from datetime import date, timedelta
+
+    # Mock GET available_history returning empty result
+    empty_hist_resp = make_mock_response(
+        {"tasks": [{"status_code": 20000, "status_message": "Ok.", "result": []}]}
+    )
+    metrics_resp = make_mock_response(make_dfs_response({"items": [], "total_count": 0}))
+
+    mock_http_client = AsyncMock()
+    mock_http_client.get = AsyncMock(return_value=empty_hist_resp)
+    mock_http_client.post = AsyncMock(return_value=metrics_resp)
+
+    with patch.object(client, "_get_client", return_value=mock_http_client):
+        # Clear any cached value
+        client._available_history_date = None
+        result = await client._get_latest_available_date()
+
+    expected_fallback = (date.today() - timedelta(days=35)).strftime("%Y-%m-%d")
+    assert result == expected_fallback, (
+        f"Fallback should be today-35d ({expected_fallback}), got {result}"
+    )
+    assert client._available_history_date == expected_fallback

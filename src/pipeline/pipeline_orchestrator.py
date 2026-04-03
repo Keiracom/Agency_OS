@@ -269,6 +269,8 @@ class ProspectCard:
     brand_gmb_showing: bool = False
     brand_competitors_bidding: bool = False
     indexed_pages: int = 0
+    # Vulnerability Report (Directive #306)
+    vulnerability_report: dict = field(default_factory=dict)
 
 
 @dataclass
@@ -713,6 +715,36 @@ class PipelineOrchestrator:
                         intent_score = getattr(intent_full, "raw_score", 0) if intent_full else 0
 
                     _loc_suburb, _loc_state, _loc_display = resolve_location(domain, enrichment, default_location=location)
+
+                    # ── STAGE 7c: Vulnerability Report ───────────────────────────
+                    vuln_report: dict = {}
+                    if self._intelligence is not None:
+                        _comp_data = {
+                            "top3": (paid.get("ads_data") or {}).get("competitors_top3", []),
+                            "count": (paid.get("ads_data") or {}).get("competitor_count", 0),
+                        }
+                        _bl_data = {
+                            "referring_domains": enrichment.get("backlinks_referring_domains", 0),
+                            "domain_rank": enrichment.get("backlinks_domain_rank", 0),
+                            "trend": enrichment.get("backlinks_trend", "unknown"),
+                        }
+                        _brand_data = {
+                            "position": enrichment.get("brand_serp_position"),
+                            "gmb_showing": enrichment.get("brand_serp_gmb_showing", False),
+                            "competitors_bidding": enrichment.get("brand_serp_competitors_bidding", False),
+                        }
+                        _indexed = enrichment.get("indexed_pages_count", 0)
+                        vuln_report = await self._intelligence.generate_vulnerability_report(
+                            domain=domain,
+                            company_name=company_name,
+                            enrichment=enrichment,
+                            intelligence=intel,
+                            competitors_data=_comp_data,
+                            backlinks_data=_bl_data,
+                            brand_serp_data=_brand_data,
+                            indexed_pages=_indexed,
+                        )
+
                     card = ProspectCard(
                         domain=domain,
                         company_name=company_name,
@@ -733,6 +765,7 @@ class PipelineOrchestrator:
                         dm_title=dm.title,
                         dm_linkedin_url=dm.linkedin_url,
                         dm_confidence=dm.confidence,
+                        vulnerability_report=vuln_report,
                     )
                     results.append(card)
                     stats.viable_prospects += 1
@@ -1015,6 +1048,39 @@ class PipelineOrchestrator:
                         intent_score = getattr(intent, "raw_score", 0)
                         evidence = getattr(intent, "evidence", [])
 
+                    # ── STAGE 7c: Vulnerability Report ───────────────────────────
+                    vuln_report: dict = {}
+                    if intel is not None and hasattr(intel, "generate_vulnerability_report"):
+                        try:
+                            _comp_data = {
+                                "top3": paid.get("competitors_top3", []) if isinstance(paid, dict) else [],
+                                "count": paid.get("competitor_count", 0) if isinstance(paid, dict) else 0,
+                            }
+                            _bl_data = {
+                                "referring_domains": paid.get("backlinks_referring_domains", 0) if isinstance(paid, dict) else 0,
+                                "domain_rank": paid.get("backlinks_domain_rank", 0) if isinstance(paid, dict) else 0,
+                                "trend": paid.get("backlinks_trend", "unknown") if isinstance(paid, dict) else "unknown",
+                            }
+                            _brand_data = {
+                                "position": paid.get("brand_serp_position") if isinstance(paid, dict) else None,
+                                "gmb_showing": paid.get("brand_serp_gmb_showing", False) if isinstance(paid, dict) else False,
+                                "competitors_bidding": paid.get("brand_serp_competitors_bidding", False) if isinstance(paid, dict) else False,
+                            }
+                            _indexed = paid.get("indexed_pages_count", 0) if isinstance(paid, dict) else 0
+                            _intel_data = {"intent_band": intent_band, "intent_score": intent_score} if not isinstance(intent_data, dict) else intent_data
+                            vuln_report = await intel.generate_vulnerability_report(
+                                domain=domain,
+                                company_name=company_name,
+                                enrichment=enrichment,
+                                intelligence=_intel_data,
+                                competitors_data=_comp_data,
+                                backlinks_data=_bl_data,
+                                brand_serp_data=_brand_data,
+                                indexed_pages=_indexed,
+                            )
+                        except Exception as _vuln_exc:
+                            logger.warning("vulnerability_report failed domain=%s: %s", domain, _vuln_exc)
+
                     # ── STAGE 8: DM identification ────────────────────────────
                     async with GLOBAL_SEM_DFS:
                         dm = await self._stage_dm(sem_dm, domain, company_name, enrichment)
@@ -1071,6 +1137,7 @@ class PipelineOrchestrator:
                         dm_email_source=email_result.source,
                         dm_email_confidence=email_result.confidence,
                         email_cost_usd=email_result.cost_usd,
+                        vulnerability_report=vuln_report,
                     )
 
                     async with results_lock:

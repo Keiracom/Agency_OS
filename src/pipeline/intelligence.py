@@ -525,3 +525,122 @@ async def refine_evidence(
         except Exception as exc:
             logger.warning("refine_evidence failed domain=%s: %s", domain, exc)
             return fallback
+
+
+# ── Stage 7c: Marketing Vulnerability Report (Sonnet) ─────────────────────────
+
+_VULN_SYSTEM = """You are a marketing analyst producing a Marketing Vulnerability Report for an Australian business.
+
+You receive raw data from multiple intelligence sources. Your job is to synthesise it into a structured assessment that a marketing agency can show the business owner to explain their marketing gaps.
+
+Rules:
+- Assign grades: A (excellent), B (good), C (average), D (poor), F (critical failure)
+- Use "Insufficient Data" grade when data for a section is missing or null
+- Every finding must reference specific numbers from the data provided
+- Do NOT fabricate numbers or make assumptions beyond the data
+- Competitive comparisons only where competitor data is actually present
+- Be direct and specific — no vague statements like "could be improved"
+
+Output ONLY valid JSON. No preamble, no explanation."""
+
+_VULN_SYSTEM_BLOCK = {
+    "type": "text",
+    "text": _VULN_SYSTEM,
+    "cache_control": {"type": "ephemeral"},
+}
+
+_VULN_FALLBACK = {
+    "overall_grade": "Insufficient Data",
+    "sections": {
+        "search_visibility": {"grade": "Insufficient Data", "findings": [], "data": {}},
+        "technical_seo": {"grade": "Insufficient Data", "findings": [], "data": {}},
+        "backlink_profile": {"grade": "Insufficient Data", "findings": [], "data": {}},
+        "paid_advertising": {"grade": "Insufficient Data", "findings": [], "data": {}},
+        "reputation": {"grade": "Insufficient Data", "findings": [], "data": {}},
+        "competitive_position": {"grade": "Insufficient Data", "findings": [], "competitors": []},
+    },
+    "priority_action": "",
+    "three_month_roadmap": [],
+}
+
+
+async def generate_vulnerability_report(
+    domain: str,
+    company_name: str,
+    enrichment: dict,
+    intelligence: dict,
+    competitors_data: dict | None = None,
+    backlinks_data: dict | None = None,
+    brand_serp_data: dict | None = None,
+    indexed_pages: int = 0,
+) -> dict:
+    """
+    Stage 7c — Sonnet. Synthesise all available intelligence into a structured
+    Marketing Vulnerability Report.
+
+    Cost: ~$0.02–0.03 per domain (Sonnet, cached system prompt, ~2K variable tokens).
+    Semaphore: GLOBAL_SEM_SONNET.
+    Prompt caching: static system prompt cached, variable data last.
+
+    Returns dict with sections: search_visibility, technical_seo, backlink_profile,
+    paid_advertising, reputation, competitive_position. Plus overall_grade,
+    priority_action, three_month_roadmap.
+    """
+    async with GLOBAL_SEM_SONNET:
+        try:
+            website_data = intelligence.get("website_data", {}) if intelligence else {}
+            intent_data = intelligence.get("intent_data", {}) if intelligence else {}
+
+            context_dict = {
+                "company_name": company_name,
+                "domain": domain,
+                "intent_band": intent_data.get("band", intelligence.get("intent_band", "UNKNOWN")) if intelligence else "UNKNOWN",
+                "intent_score": intent_data.get("score", intelligence.get("intent_score", 0)) if intelligence else 0,
+                "website": {
+                    "services": enrichment.get("services") or website_data.get("services", []),
+                    "cms": (website_data.get("technology_signals") or {}).get("cms", enrichment.get("cms", "unknown")),
+                    "has_analytics": (website_data.get("technology_signals") or {}).get("has_analytics", enrichment.get("has_analytics", False)),
+                    "has_ads_tag": (website_data.get("technology_signals") or {}).get("has_ads_tag", enrichment.get("has_ads_tag", False)),
+                    "has_booking_system": (website_data.get("technology_signals") or {}).get("has_booking_system", enrichment.get("has_booking_system", False)),
+                    "has_conversion_tracking": (website_data.get("technology_signals") or {}).get("has_conversion_tracking", enrichment.get("has_conversion_tracking", False)),
+                },
+                "ads": {
+                    "is_running_ads": enrichment.get("is_running_ads", False),
+                    "ad_count": enrichment.get("ad_count", 0),
+                    "google_ads_active": enrichment.get("google_ads_active", False),
+                },
+                "gmb": {
+                    "rating": enrichment.get("gmb_rating"),
+                    "review_count": enrichment.get("gmb_review_count", 0),
+                    "gmb_found": enrichment.get("gmb_found", False),
+                },
+                "competitors": (competitors_data or {}).get("top3", []),
+                "competitor_count": (competitors_data or {}).get("count", 0),
+                "backlinks": {
+                    "referring_domains": (backlinks_data or {}).get("referring_domains", 0),
+                    "domain_rank": (backlinks_data or {}).get("domain_rank", 0),
+                    "backlink_trend": (backlinks_data or {}).get("trend", "unknown"),
+                },
+                "brand_serp": {
+                    "brand_position": (brand_serp_data or {}).get("position"),
+                    "gmb_showing": (brand_serp_data or {}).get("gmb_showing", False),
+                    "competitors_bidding": (brand_serp_data or {}).get("competitors_bidding", False),
+                },
+                "indexed_pages": indexed_pages,
+            }
+
+            user_content = (
+                f"Business intelligence data:\n{json.dumps(context_dict, indent=2)}\n\n"
+                "Produce the Marketing Vulnerability Report JSON."
+            )
+            text, in_tok, out_tok = await _call_anthropic(
+                model=_MODEL_SONNET,
+                system_blocks=[_VULN_SYSTEM_BLOCK],
+                user_content=user_content,
+                max_tokens=1200,
+            )
+            logger.info("generate_vulnerability_report domain=%s tokens=%d/%d", domain, in_tok, out_tok)
+            return _parse_json_response(text, _VULN_FALLBACK)
+        except Exception as exc:
+            logger.warning("generate_vulnerability_report failed domain=%s: %s", domain, exc)
+            return _VULN_FALLBACK

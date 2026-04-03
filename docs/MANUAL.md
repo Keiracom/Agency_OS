@@ -233,6 +233,32 @@ All defined in `src/pipeline/pipeline_orchestrator.py`:
 
 Each card contains: domain, category, business_name, location, intent_band, intent_score, dm_name, dm_title, dm_email, dm_email_verified, dm_mobile, dm_linkedin, company_email, landline, channels_available, headline_signal, recommended_service, outreach_angle, evidence_statements (2–5), draft_email_subject, draft_email_body.
 
+**Location fields (Directive #305):** `location_suburb`, `location_state`, `location_display` ("Surry Hills, NSW"). Waterfall: GMB address → JSON-LD → ABN postcode → state hint → "Australia".
+
+### CARD QUALITY WATERFALLS (Directive #305)
+
+**Business name waterfall** (`resolve_business_name()` in `pipeline_orchestrator.py`):
+1. ABN `trading_name` (if not just entity suffixes like "Pty Ltd")
+2. GMB business name
+3. ABN `legal_name` (cleaned)
+4. Page title prefix (from `company_name` field)
+5. Domain stem (e.g. "dental1" → "Dental1")
+
+ABN result dict now includes `abn_trading_name` + `abn_legal_name` (added to `_abn_result_from_row()` in `free_enrichment.py`).
+
+**Location waterfall** (`resolve_location()` in `pipeline_orchestrator.py`):
+1. GMB address — parsed for suburb and state abbreviation
+2. JSON-LD `website_address` suburb + state
+3. ABN postcode → state (via `_postcode_to_state()`)
+4. State hint from enrichment
+5. "Australia" fallback only when all above fail
+
+**Placeholder filter** (`is_placeholder_email()` / `is_placeholder_phone()` in `email_waterfall.py`):
+- Blocklist: 16 known placeholder emails (`example@mail.com`, `you@mail.com`, etc.)
+- Pattern filter: rejects emails with local part matching `example|yourname|placeholder|test|yourdomain`
+- Phone blocklist + all-same-digit + sequential digit rejection
+- Applied to Layers 0+1 of `discover_email()` (free layers only; Leadmagic/BD trusted)
+
 ### COST MODEL (proven, #300 integration test)
 
 | Component | Cost |
@@ -566,7 +592,10 @@ v6 era (#271–#277): Layer 2 (discovery), Layer 3 (bulk filter), signal config 
 | Sprint 6 | #300-FIX-8 | AU location filter on lidm.location. DM name-email match gate (email_waterfall L0). company_email placeholder scan. | COMPLETE — PR fad25df |
 | Sprint 6 | #301 | SMTP email verifier (email_verifier.py, 13 patterns, MX resolution). Railway Reacher deployed. Port 25 blocked everywhere. | COMPLETE — committed |
 | Testing | #302 | Manual full rewrite: Sections 2–8 + Section 9 Decisions Pending | COMPLETE — PR #265 merged |
-| Testing | #303 | Wire four intelligence endpoints: Competitors, Backlinks, Brand SERP, Indexed Pages. Fix #276 backlinks parser. ProspectCard +9 fields. 11 new tests. | PR #266 open |
+| Testing | #303 | Wire four intelligence endpoints: Competitors, Backlinks, Brand SERP, Indexed Pages. Fix #276 backlinks parser. ProspectCard +9 fields. 11 new tests. | COMPLETE — PR #266 merged |
+| Testing | #304 | Keyword discovery test: 382 domains, 83.8% AU, $0.25 cost. Track B validated. | COMPLETE — test only |
+| Testing | #304-FIX | Fix domain_metrics_by_categories: second_date exceeded available_history window. Dynamic _get_latest_available_date() with session cache. Discovery restored. | COMPLETE — PR #267 merged |
+| Testing | #305 | Card quality: business name waterfall, location waterfall (suburb+state+display), placeholder email/phone filter. 13 new tests. | PR #268 open |
 
 ### Post-Test Build Queue (next priorities after provider resolution)
 
@@ -783,6 +812,14 @@ Compliance: SPAM Act 2003, DNCR registered, TCP Code (voice), Australian-built
 | BD LinkedIn DM batch SLA (30+ min for 260 URLs) | HIGH | Dave: needs BD support ticket on Stage 10 batch timing |
 | Email verification: 87% unverified | HIGH | Blocked on all above |
 | Leadmagic mobile: 0% AU coverage | MEDIUM | Dead for AU — replaced when Forager/ContactOut unblocked |
+
+### Resolved (Directive #305)
+
+| Issue | Resolution |
+|-------|-----------|
+| Business name = domain stem on 14% of cards | Fixed: ABN trading_name → GMB name → ABN legal_name → title prefix waterfall in `resolve_business_name()` |
+| Location = "Australia" on 54% of cards | Fixed: GMB address → JSON-LD → postcode → state hint waterfall in `resolve_location()`. Cards now carry `location_suburb`, `location_state`, `location_display`. |
+| Placeholder emails leaking (example@mail.com, etc.) | Fixed: `is_placeholder_email()` blocklist + pattern filter applied to Layers 0+1 of email discovery |
 
 ### Infrastructure Issues
 - Supabase: 29 security advisor errors unresolved

@@ -106,6 +106,10 @@ class DFSLabsClient:
         # Cache for get_categories (free, rarely changes)
         self._categories_cache: list[dict] | None = None
 
+        # Cache for available_history date (free, changes monthly)
+        # Populated on first call to _get_latest_available_date().
+        self._available_history_date: str | None = None
+
     async def _get_client(self) -> httpx.AsyncClient:
         """Lazy-init httpx.AsyncClient with Basic Auth header."""
         if self._client is None or self._client.is_closed:
@@ -660,6 +664,47 @@ class DFSLabsClient:
         }
 
     # ============================================
+    # HELPER: available_history date  (Directive #304-FIX)
+    # ============================================
+
+    async def _get_latest_available_date(self) -> str:
+        """
+        Fetch the latest date available in DFS Labs history.
+
+        The domain_metrics_by_categories endpoint requires first_date and second_date
+        to be within the available history window. DFS updates this monthly; the
+        available_history endpoint returns the single latest valid date.
+
+        Cost: FREE (GET request, no task charge).
+        Result cached for the lifetime of this client instance — one call per session.
+
+        Returns:
+            ISO date string e.g. "2026-03-01", or today-35d as fallback if fetch fails.
+        """
+        if self._available_history_date is not None:
+            return self._available_history_date
+
+        try:
+            client = await self._get_client()
+            response = await client.get("/v3/dataforseo_labs/google/available_history")
+            response.raise_for_status()
+            data = response.json()
+            result_list = (data.get("tasks") or [{}])[0].get("result") or []
+            date_str = (result_list[0] if result_list else {}).get("date", "")
+            if date_str:
+                self._available_history_date = date_str
+                logger.info("DFS available_history: latest date = %s", date_str)
+                return date_str
+        except Exception as exc:
+            logger.warning("DFS available_history fetch failed: %s", exc)
+
+        # Fallback: 35 days ago (safely within last monthly snapshot)
+        fallback = (date.today() - timedelta(days=35)).strftime("%Y-%m-%d")
+        logger.warning("DFS available_history: using fallback date %s", fallback)
+        self._available_history_date = fallback
+        return fallback
+
+    # ============================================
     # ENDPOINT 8: domain_metrics_by_categories  (Directive #272 — Layer 2)
     # ============================================
 
@@ -685,14 +730,21 @@ class DFSLabsClient:
         Use discover_prospects() which paginates automatically.
 
         Args:
-            first_date: Start date YYYY-MM-DD (default: 6 months ago / today - 180 days).
-            second_date: End date YYYY-MM-DD (default: today).
+            first_date: Start date YYYY-MM-DD (default: latest available date - 180 days).
+                        Uses _get_latest_available_date() to stay within DFS history window.
+            second_date: End date YYYY-MM-DD (default: latest available date from DFS).
+                         Must not exceed the date returned by available_history endpoint.
+                         Bug fixed in Directive #304-FIX: was incorrectly defaulting to
+                         today, which exceeds the available window and causes 40501.
             limit: Items per API call (max 100, API default 100).
             offset: Pagination offset (0-indexed).
         """
-        today = date.today()
-        resolved_first_date = first_date or (today - timedelta(days=180)).strftime("%Y-%m-%d")
-        resolved_second_date = second_date or today.strftime("%Y-%m-%d")
+        # Fetch the latest date in DFS history (cached after first call).
+        # Both first_date and second_date must fall within available history.
+        latest_date = await self._get_latest_available_date()
+        latest_dt = date.fromisoformat(latest_date)
+        resolved_second_date = second_date or latest_date
+        resolved_first_date = first_date or (latest_dt - timedelta(days=180)).strftime("%Y-%m-%d")
 
         result = await self._post(
             endpoint="/v3/dataforseo_labs/google/domain_metrics_by_categories/live",

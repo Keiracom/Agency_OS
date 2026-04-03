@@ -128,7 +128,10 @@ All stages in `src/pipeline/intelligence.py`. Prompt caching (`cache_control: ep
 | 4 | `judge_affordability()` | Haiku | ~$0.00056 | Affordability band + hard gate decision |
 | 5 | `classify_intent()` | Sonnet | ~$0.0084 | Intent band, evidence statements, score |
 | 5b | `analyse_reviews()` | Sonnet | ~$0.005 | Sentiment trend, pain themes (not yet wired to GMB deep reviews) |
+| 7c | `generate_vulnerability_report()` | Sonnet | ~$0.02–0.03 | 6-section Marketing Vulnerability Report: search visibility, technical SEO, backlinks, paid ads, reputation, competitive position |
 | 11 | `refine_evidence()` | Haiku | ~$0.003 | Headline signal, recommended service, outreach angle, draft email subject + body |
+
+**Stage 7c — Marketing Vulnerability Report** runs after intent classification and before evidence refinement. Sonnet reads all available intelligence (ads, GMB, competitors, backlinks, brand SERP, indexed pages, website comprehension) and returns a structured JSON report with grades (A–F), specific findings, a priority action, and a 3-month roadmap. Stored as `vulnerability_report` dict on `ProspectCard`. Feeds into Haiku evidence refinement so draft emails can reference report findings.
 
 `refine_evidence` context includes: `business_name`, `dm_name`, `dm_title`, `location`, `category`, GMB signals, LinkedIn company/DM data. Draft emails address DM by first name.
 
@@ -595,7 +598,8 @@ v6 era (#271–#277): Layer 2 (discovery), Layer 3 (bulk filter), signal config 
 | Testing | #303 | Wire four intelligence endpoints: Competitors, Backlinks, Brand SERP, Indexed Pages. Fix #276 backlinks parser. ProspectCard +9 fields. 11 new tests. | COMPLETE — PR #266 merged |
 | Testing | #304 | Keyword discovery test: 382 domains, 83.8% AU, $0.25 cost. Track B validated. | COMPLETE — test only |
 | Testing | #304-FIX | Fix domain_metrics_by_categories: second_date exceeded available_history window. Dynamic _get_latest_available_date() with session cache. Discovery restored. | COMPLETE — PR #267 merged |
-| Testing | #305 | Card quality: business name waterfall, location waterfall (suburb+state+display), placeholder email/phone filter. 13 new tests. | PR #268 open |
+| Testing | #305 | Card quality: business name waterfall, location waterfall (suburb+state+display), placeholder email/phone filter. 13 new tests. | COMPLETE — PR #268 merged |
+| Testing | #306 | Marketing Vulnerability Report: generate_vulnerability_report() Sonnet Stage 7c, 6 sections, grades + roadmap, wired in both run() and run_parallel(). vulnerability_report on ProspectCard. 8 tests. | PR #269 open |
 
 ### Post-Test Build Queue (next priorities after provider resolution)
 

@@ -1,7 +1,7 @@
 # Agency OS Manual
 
 Last updated: 2026-04-03 UTC
-Directive #303: Wire four proven intelligence endpoints (PR #266)
+Directive #306: Marketing Vulnerability Report (PR #269)
 Next scheduled update: Next architecture change or milestone
 
 > **Primary store.** This file is the CEO SSOT. Google Doc is an auto-generated mirror.

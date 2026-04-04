@@ -41,3 +41,28 @@ def update_queue_status(task_id: str, status: str) -> None:
 def fail_task(task_id: str, reason: str = "") -> None:
     sb_patch("evo_task_queue", {"id": f"eq.{task_id}"},
              {"status": "failed", "completed_at": datetime.datetime.utcnow().isoformat()})
+
+
+def invoke_agent_local(agent_id: str, description: str, timeout: int = 300) -> dict:
+    """Run openclaw agent locally; JSON is in stderr after log lines."""
+    import subprocess, json
+    cmd = ["openclaw", "agent", "--agent", agent_id, "--local",
+           "--message", description, "--json", "--timeout", str(timeout)]
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout + 10)
+        combined = proc.stderr + proc.stdout
+        json_start = combined.find("{")
+        if proc.returncode != 0:
+            return {"text": "", "exit_code": proc.returncode, "error": combined.strip()}
+        data = json.loads(combined[json_start:])
+        text = (data.get("payloads") or [{}])[0].get("text") or data.get("text", "")
+        return {"text": text, "exit_code": 0}
+    except Exception as e:
+        return {"text": "", "exit_code": getattr(proc, "returncode", 1), "error": str(e)}
+
+
+def verify_output(cmd: str, expected: str) -> tuple[bool, str]:
+    """Run shell verification command, return (matched, stdout)."""
+    import subprocess
+    r = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=30)
+    return expected in r.stdout, r.stdout

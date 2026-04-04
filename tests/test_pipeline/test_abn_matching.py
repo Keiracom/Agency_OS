@@ -372,6 +372,90 @@ class TestMatchABNWaterfall:
             assert "home" not in str(term).lower()
 
     @pytest.mark.asyncio
+    async def test_single_keyword_domain_uses_strategy1(self):
+        """Single-keyword domain (dentist) should use Strategy 1, was previously skipped with >= 2 gate."""
+        # Domain: "dentist.com.au" → keywords = ["dentist"]
+        row = _make_row("Dentist Services Pty Ltd")  # Closer match to "dentist"
+        self.fe._conn.fetch = AsyncMock(return_value=[row])
+        self.fe._conn.fetchrow = AsyncMock(return_value={
+            "gst_registered": True,
+            "entity_type": "Australian Private Company",
+            "registration_date": None,
+        })
+
+        result = await self.fe._match_abn("dentist.com.au")
+
+        assert result["abn_matched"] is True
+        assert result.get("_abn_strategy") in ("domain_keywords", "title_keywords")
+
+    @pytest.mark.asyncio
+    async def test_single_keyword_title_uses_strategy2(self):
+        """Single-word title (Plumber) should use Strategy 2 when domain keyword is meaningless."""
+        # Domain: "abc.com.au" → keywords = ["abc"] (meaningless)
+        # Title: "Plumber" → title_kw = ["plumber"]
+        call_count = 0
+
+        async def mock_fetch(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return []  # S1 misses (domain keyword "abc" doesn't match anything)
+            return [_make_row("City Plumbing Pty Ltd")]  # S2 hits with title keyword "plumber"
+
+        self.fe._conn.fetch = mock_fetch
+        self.fe._conn.fetchrow = AsyncMock(return_value={
+            "gst_registered": True,
+            "entity_type": "Australian Private Company",
+            "registration_date": None,
+        })
+
+        with patch("src.integrations.abn_client.ABNClient") as MockABNClient:
+            instance = AsyncMock()
+            instance.search_by_name = AsyncMock(return_value=[])  # S4 returns nothing
+            MockABNClient.return_value.__aenter__ = AsyncMock(return_value=instance)
+            MockABNClient.return_value.__aexit__ = AsyncMock(return_value=False)
+
+            with patch("src.config.settings.settings"):
+                result = await self.fe._match_abn(
+                    "abc.com.au",
+                    title="Plumber",
+                )
+
+        assert result["abn_matched"] is True
+        assert result["_abn_strategy"] == "title_keywords"
+
+    @pytest.mark.asyncio
+    async def test_strategy4_fires_on_two_char_term(self):
+        """Strategy 4 (live API) fires with short domain (ab.com.au) and title with 2+ char terms."""
+        # Domain: "ab.com.au" → short domain
+        # Title: "AB Legal" → title_cleaned = "AB Legal", api_terms includes terms >= 2 chars
+        self.fe._conn.fetch = AsyncMock(return_value=[])
+        self.fe._conn.fetchrow = AsyncMock(return_value={
+            "gst_registered": True,
+            "entity_type": "Australian Private Company",
+            "registration_date": None,
+        })
+
+        mock_api_result = [{"business_name": "AB Legal Services Pty Ltd", "abn": "12 345 678 901"}]
+
+        with patch(
+            "src.integrations.abn_client.ABNClient"
+        ) as MockABNClient:
+            instance = AsyncMock()
+            instance.search_by_name = AsyncMock(return_value=mock_api_result)
+            MockABNClient.return_value.__aenter__ = AsyncMock(return_value=instance)
+            MockABNClient.return_value.__aexit__ = AsyncMock(return_value=False)
+
+            with patch("src.config.settings.settings"):
+                result = await self.fe._match_abn(
+                    "ab.com.au",
+                    title="AB Legal",
+                )
+
+        assert result["abn_matched"] is True
+        assert result["_abn_strategy"] == "live_api"
+
+    @pytest.mark.asyncio
     async def test_state_hint_prefers_matching_state(self):
         """When multiple rows returned, state_hint picks the row in the correct state."""
         nsw_row = _make_row("Pymble Dental NSW", state="NSW")

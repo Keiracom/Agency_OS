@@ -22,6 +22,9 @@ import asyncpg
 import dns.resolver
 import httpx
 
+from src.integrations.httpx_scraper import HttpxScraper
+from src.pipeline.pipeline_orchestrator import GLOBAL_SEM_ABN  # shared ABN query semaphore
+
 SPIDER_API_URL = "https://api.spider.cloud/scrape"
 BATCH_SIZE = 50
 DNS_TIMEOUT = 5
@@ -121,6 +124,20 @@ class EmailMaturity(str, Enum):
     NONE         = "none"           # no MX record
 
 
+class _SingleConnCtx:
+    """Async context manager wrapping a single asyncpg Connection for pool-compatible usage."""
+    __slots__ = ("_conn",)
+
+    def __init__(self, conn: asyncpg.Connection) -> None:
+        self._conn = conn
+
+    async def __aenter__(self) -> asyncpg.Connection:
+        return self._conn
+
+    async def __aexit__(self, *args) -> None:
+        pass  # Don't close — caller owns the connection lifecycle
+
+
 class FreeEnrichment:
     """
     Zero-cost enrichment pass for business_universe rows.
@@ -129,11 +146,26 @@ class FreeEnrichment:
     Writes results back to business_universe and stamps free_enrichment_completed_at.
     """
 
-    def __init__(self, conn: asyncpg.Connection) -> None:
-        self._conn = conn
+    def __init__(self, conn: asyncpg.Connection | asyncpg.Pool) -> None:
+        # Accept either a single Connection (legacy) or a Pool (preferred).
+        # Pool supports concurrent ABN queries; Connection serialises them.
+        if isinstance(conn, asyncpg.Pool):
+            self._pool: asyncpg.Pool | None = conn
+            self._conn: asyncpg.Connection | None = None
+        else:
+            self._pool = None
+            self._conn = conn
         self._spider_key = os.environ.get("SPIDER_API_KEY", "")
         self._logger = logging.getLogger(__name__)
+        self._httpx = HttpxScraper()
         self._spider_fallback_count: int = 0
+
+    def _acquire(self):
+        """Return async context manager yielding a connection from pool or single conn."""
+        if self._pool is not None:
+            return self._pool.acquire()
+        # Wrap single connection in a compatible async context manager
+        return _SingleConnCtx(self._conn)
 
     # ── Helpers ──────────────────────────────────────────────────────────────
 
@@ -242,7 +274,8 @@ class FreeEnrichment:
             "entity_type, registration_date, state "
             f"FROM abn_registry WHERE {' AND '.join(conditions)} LIMIT 10"
         )
-        rows = await self._conn.fetch(sql, *params)
+        async with self._acquire() as conn:
+            rows = await conn.fetch(sql, *params)
         if not rows:
             return None
         if state_hint and len(rows) > 1:
@@ -256,11 +289,12 @@ class FreeEnrichment:
         if not abn_raw:
             return None, None, None
         try:
-            row = await self._conn.fetchrow(
-                "SELECT gst_registered, entity_type, registration_date "
-                "FROM abn_registry WHERE abn = $1",
-                abn_raw,
-            )
+            async with self._acquire() as conn:
+                row = await conn.fetchrow(
+                    "SELECT gst_registered, entity_type, registration_date "
+                    "FROM abn_registry WHERE abn = $1",
+                    abn_raw,
+                )
             if row:
                 return row["gst_registered"], row["entity_type"], row.get("registration_date")
         except Exception:
@@ -285,6 +319,8 @@ class FreeEnrichment:
             "registration_date": row.get("registration_date"),
             "abn_confidence": confidence,
             "_abn_strategy": strategy,
+            "abn_trading_name": row.get("trading_name") or "",
+            "abn_legal_name": row.get("legal_name") or "",
         }
 
     def _compute_email_maturity(
@@ -331,13 +367,33 @@ class FreeEnrichment:
                     }
         return None
 
+    def _is_au_domain(self, domain: str, html: str) -> bool:
+        """Return True if domain is likely Australian."""
+        # 1. .au TLD check (fast path)
+        if domain.endswith(".au"):
+            return True
+        # 2. Australian phone patterns in HTML
+        AU_PHONE_RE = re.compile(r"\b(0[2347]|0[45]\d|\+61)\d{8}\b")
+        if AU_PHONE_RE.search(html):
+            return True
+        # 3. Australian state abbreviations (as standalone words)
+        AU_STATE_RE = re.compile(r"\b(NSW|VIC|QLD|SA|WA|TAS|NT|ACT)\b")
+        if AU_STATE_RE.search(html):
+            return True
+        # 4. Australian postcode pattern (4-digit, 2000-9999 range)
+        AU_POSTCODE_RE = re.compile(r"\b[2-9]\d{3}\b")
+        if AU_POSTCODE_RE.search(html):
+            return True
+        return False
+
     async def run(self, limit: int = 500) -> dict:
-        rows = await self._conn.fetch(
-            "SELECT id, domain, state FROM business_universe "
-            "WHERE pipeline_stage >= 1 AND free_enrichment_completed_at IS NULL "
-            "AND domain IS NOT NULL LIMIT $1",
-            limit,
-        )
+        async with self._acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT id, domain, state FROM business_universe "
+                "WHERE pipeline_stage >= 1 AND free_enrichment_completed_at IS NULL "
+                "AND domain IS NOT NULL LIMIT $1",
+                limit,
+            )
         stats = {
             "total": len(rows),
             "completed": 0,
@@ -355,11 +411,6 @@ class FreeEnrichment:
                 min(i + BATCH_SIZE, len(rows)),
                 len(rows),
             )
-        self._logger.info(
-            "Spider fallbacks: %d/%d domains",
-            self._spider_fallback_count,
-            len(rows),
-        )
         return stats
 
     async def enrich(self, domain: str) -> dict | None:
@@ -381,9 +432,10 @@ class FreeEnrichment:
                 state_hint=None,
             )
             title = website_data.get("title", "")
+            _d = domain[4:] if domain.startswith("www.") else domain
             company_name = (
                 title.split("|")[0].split("-")[0].strip()[:60]
-                or domain.split(".")[0].replace("-", " ").title()
+                or _d.split(".")[0].replace("-", " ").title()
             )
             return {
                 **website_data,
@@ -422,16 +474,20 @@ class FreeEnrichment:
                 state_hint=None,
                 suburb=suburb,
             )
+            _d = domain[4:] if domain.startswith("www.") else domain
             company_name = (
                 title.split("|")[0].split("-")[0].strip()[:60]
-                or domain.split(".")[0].replace("-", " ").title()
+                or _d.split(".")[0].replace("-", " ").title()
             )
+            html_content = spider_data.get("_raw_html", "")
+            is_au = self._is_au_domain(domain, html_content)
             return {
                 **spider_data,
                 **dns_data,
                 **abn_data,
                 "company_name": company_name,
                 "domain": domain,
+                "non_au": not is_au,
             }
         except Exception as exc:
             self._logger.warning("enrich_from_spider failed for %s: %s", domain, exc)
@@ -476,72 +532,26 @@ class FreeEnrichment:
                 continue
         return False
 
-    def _is_content_usable(self, content: str) -> bool:
-        """Return False when content indicates a bot-challenge or empty page (trigger Spider fallback)."""
-        if len(content) < 500:
-            return False
-        lower = content.lower()
-        if "cf-browser-verification" in lower:
-            return False
-        if "just a moment" in lower and "cloudflare" in lower:
-            return False
-        if "<script" not in lower and len(content) < 2000:
-            return False
-        return True
-
-    def _parse_html_content(self, html: str, base_url: str) -> dict[str, Any]:
-        """Extract structured data from raw HTML — shared by httpx and Spider paths."""
-        # Title from <title> tag
-        title_match = re.search(r"<title[^>]*>(.*?)</title>", html, re.IGNORECASE | re.DOTALL)
-        title = title_match.group(1).strip() if title_match else ""
-        # Links from <a href="...">
-        raw_links = re.findall(r'<a[^>]+href=["\']([^"\']+)["\']', html, re.IGNORECASE)
-        links: list[str] = []
-        for link in raw_links:
-            link = link.strip()
-            if link.startswith("//"):
-                link = "https:" + link
-            elif link.startswith("/"):
-                link = base_url.rstrip("/") + link
-            links.append(link)
-        website_address = self._extract_jsonld_address(html)
-        return {
-            "title": title,
-            "website_cms": self._extract_cms(html),
-            "website_tech_stack": self._extract_tech_stack(html),
-            "website_tracking_codes": self._extract_trackers(html),
-            "website_team_names": self._extract_team_urls(links),
-            "website_contact_emails": self._extract_emails(html, links),
-            "website_address": website_address,
-            **self._detect_ad_tags(html),
-        }
-
     async def _scrape_website(self, domain: str) -> dict[str, Any]:
-        url = f"https://{domain}"
+        # ── Try httpx first (fast, free) ──────────────────────────────────────
+        httpx_result = await self._httpx.scrape(domain)
+        if httpx_result is not None and len(httpx_result["html"]) >= 1000:
+            content = httpx_result["html"]
+            website_address = self._extract_jsonld_address(content)
+            return {
+                "title": httpx_result["title"] or "",
+                "website_cms": self._extract_cms(content),
+                "website_tech_stack": self._extract_tech_stack(content),
+                "website_tracking_codes": self._extract_trackers(content),
+                "website_team_names": self._extract_team_urls([]),
+                "website_contact_emails": self._extract_emails(content, []),
+                "website_address": website_address,
+                "_raw_html": content,
+                "scraper_used": "httpx",
+                **self._detect_ad_tags(content),
+            }
 
-        # Try httpx first (free)
-        try:
-            async with httpx.AsyncClient(
-                timeout=20,
-                follow_redirects=True,
-                headers={"User-Agent": "Mozilla/5.0 (compatible; AgencyOS/1.0)"},
-            ) as client:
-                resp = await client.get(url)
-                content = resp.text
-
-            if self._is_content_usable(content):
-                parsed = self._parse_html_content(content, url)
-                parsed["_raw_html"] = content
-                return parsed
-        except Exception as exc:
-            self._logger.debug("httpx failed for %s: %s", domain, exc)
-
-        # Fall back to Spider for JS-heavy / blocked pages
-        self._logger.debug("Falling back to Spider for %s", domain)
-        return await self._spider_scrape(domain)
-
-    async def _spider_scrape(self, domain: str) -> dict[str, Any]:
-        """Call Spider Cloud API and parse the result — used as fallback when httpx fails."""
+        # ── Fall back to Spider ────────────────────────────────────────────────
         self._spider_fallback_count += 1
         payload = {
             "url": f"https://{domain}",
@@ -566,7 +576,7 @@ class FreeEnrichment:
             if not data or not isinstance(data, list):
                 return {}
             item = data[0]
-            content: str = item.get("content") or ""
+            content = item.get("content") or ""
             links: list = item.get("links") or []
             metadata: dict = item.get("metadata") or {}
             if not content:
@@ -582,6 +592,7 @@ class FreeEnrichment:
                 "website_contact_emails": self._extract_emails(content, links),
                 "website_address": website_address,
                 "_raw_html": content,
+                "scraper_used": "spider",
                 **self._detect_ad_tags(content),
             }
         except Exception as exc:
@@ -718,6 +729,12 @@ class FreeEnrichment:
     ) -> dict[str, Any]:
         """Multi-strategy ABN matching waterfall.
 
+        Callers should acquire GLOBAL_SEM_ABN (from pipeline_orchestrator) before
+        calling this method when using an asyncpg connection pool. With a single
+        Connection, the caller's sem_abn gate is sufficient.
+        Production: use asyncpg.create_pool() with min_size=10 to support
+        GLOBAL_SEM_ABN=10 concurrency without serialisation.
+
         Tries 4 strategies in order, returning on the first EXACT or PARTIAL
         confidence match.  Tracks the best LOW-confidence result as a fallback.
 
@@ -771,7 +788,7 @@ class FreeEnrichment:
             return None
 
         # ── Strategy 1: Domain keyword intersection (local DB) ────────────
-        if len(domain_keywords) >= 2:
+        if len(domain_keywords) >= 1:
             try:
                 row = await self._local_abn_match(domain_keywords, state_hint)
                 if row:
@@ -789,7 +806,7 @@ class FreeEnrichment:
                 w for w in re.split(r"\s+", title_cleaned.lower())
                 if len(w) > 2 and w not in _ABN_STOPWORDS
             ]
-            if len(title_kw) >= 2:
+            if len(title_kw) >= 1:
                 try:
                     row = await self._local_abn_match(title_kw, state_hint)
                     if row:
@@ -816,7 +833,7 @@ class FreeEnrichment:
 
         # ── Strategy 4: Live ABN API fuzzy search ─────────────────────────
         api_terms = [t for t in [title_cleaned, " ".join(domain_keywords) if domain_keywords else None]
-                     if t and len(t) >= 3]
+                     if t and len(t) >= 2]
         for api_term in api_terms:
             try:
                 from src.config.settings import settings
@@ -840,6 +857,8 @@ class FreeEnrichment:
                     "registration_date": reg_date,
                     "abn_confidence": confidence,
                     "_abn_strategy": "live_api",
+                    "abn_trading_name": best.get("business_name") or "",
+                    "abn_legal_name": "",
                 }
                 r = _keep(candidate)
                 if r:
@@ -859,37 +878,38 @@ class FreeEnrichment:
         dns_data: dict,
         abn_data: dict,
     ) -> None:
-        await self._conn.execute(
-            """
-            UPDATE business_universe SET
-                website_cms                   = $2,
-                website_tech_stack            = $3::jsonb,
-                website_tracking_codes        = $4::jsonb,
-                website_team_names            = $5::jsonb,
-                website_contact_emails        = $6::jsonb,
-                dns_mx_provider               = $7,
-                dns_has_spf                   = $8,
-                dns_has_dkim                  = $9,
-                abn_matched                   = $10,
-                gst_registered                = COALESCE($11, gst_registered),
-                entity_type                   = COALESCE($12, entity_type),
-                registration_date             = COALESCE($13, registration_date),
-                email_maturity                = $14,  -- column may need migration if not present
-                free_enrichment_completed_at  = NOW()
-            WHERE id = $1
-            """,
-            bu_id,
-            website_data.get("website_cms"),
-            json.dumps(website_data.get("website_tech_stack") or []),
-            json.dumps(website_data.get("website_tracking_codes") or []),
-            json.dumps(website_data.get("website_team_names") or []),
-            json.dumps(website_data.get("website_contact_emails") or []),
-            dns_data.get("dns_mx_provider"),
-            dns_data.get("dns_has_spf", False),
-            dns_data.get("dns_has_dkim", False),
-            abn_data.get("abn_matched", False),
-            abn_data.get("gst_registered"),
-            abn_data.get("entity_type"),
-            abn_data.get("registration_date"),
-            dns_data.get("email_maturity"),
-        )
+        async with self._acquire() as conn:
+            await conn.execute(
+                """
+                UPDATE business_universe SET
+                    website_cms                   = $2,
+                    website_tech_stack            = $3::jsonb,
+                    website_tracking_codes        = $4::jsonb,
+                    website_team_names            = $5::jsonb,
+                    website_contact_emails        = $6::jsonb,
+                    dns_mx_provider               = $7,
+                    dns_has_spf                   = $8,
+                    dns_has_dkim                  = $9,
+                    abn_matched                   = $10,
+                    gst_registered                = COALESCE($11, gst_registered),
+                    entity_type                   = COALESCE($12, entity_type),
+                    registration_date             = COALESCE($13, registration_date),
+                    email_maturity                = $14,
+                    free_enrichment_completed_at  = NOW()
+                WHERE id = $1
+                """,
+                bu_id,
+                website_data.get("website_cms"),
+                json.dumps(website_data.get("website_tech_stack") or []),
+                json.dumps(website_data.get("website_tracking_codes") or []),
+                json.dumps(website_data.get("website_team_names") or []),
+                json.dumps(website_data.get("website_contact_emails") or []),
+                dns_data.get("dns_mx_provider"),
+                dns_data.get("dns_has_spf", False),
+                dns_data.get("dns_has_dkim", False),
+                abn_data.get("abn_matched", False),
+                abn_data.get("gst_registered"),
+                abn_data.get("entity_type"),
+                abn_data.get("registration_date"),
+                dns_data.get("email_maturity"),
+            )

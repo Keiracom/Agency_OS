@@ -9,7 +9,10 @@ from src.pipeline.free_enrichment import ABNMatchConfidence, EmailMaturity, Free
 
 def make_fe() -> FreeEnrichment:
     """Instantiate FreeEnrichment without a real DB connection."""
-    return FreeEnrichment.__new__(FreeEnrichment)
+    fe = FreeEnrichment.__new__(FreeEnrichment)
+    fe._pool = None
+    fe._conn = None
+    return fe
 
 
 # ─── Task B: ABN confidence ────────────────────────────────────────────────────

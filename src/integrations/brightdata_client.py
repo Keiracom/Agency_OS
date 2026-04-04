@@ -18,8 +18,9 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
-BRIGHTDATA_SCRAPER_KEY = "2bab0747-ede2-4437-9b6f-6a77e8f0ca3e"
+BRIGHTDATA_SCRAPER_KEY = "636a81d7-4f89-4fb5-904b-f1e195ec20d2"  # updated 2026-03-31 (Directive #300g+h)
 DATASET_LINKEDIN_COMPANY = "gd_l1vikfnt1wgvvqz95w"
+DATASET_LINKEDIN_PROFILE = "gd_l1viktl72bvl7bjuj0"   # LinkedIn person profile dataset (confirmed 2026-04-01)
 COST_PER_RECORD_USD = 0.00075
 
 # DM title priority (lower index = higher priority)
@@ -47,8 +48,8 @@ HIGH_CONFIDENCE_THRESHOLD = 6  # owner, founder, co-founder, director, principal
 class BrightDataLinkedInClient:
     """Focused LinkedIn DM lookup client using new Scrapers API key."""
 
-    def __init__(self, api_key: str = BRIGHTDATA_SCRAPER_KEY):
-        self.api_key = api_key
+    def __init__(self, api_key: str | None = None):
+        self.api_key = api_key or BRIGHTDATA_SCRAPER_KEY
         self._client: Optional[httpx.AsyncClient] = None
 
     async def _get_client(self) -> httpx.AsyncClient:
@@ -149,29 +150,89 @@ class BrightDataLinkedInClient:
         inputs: list[dict],
         discover_by: Optional[str] = None,
     ) -> list[dict]:
-        """Trigger → poll → download pattern. 120s timeout (24 × 5s)."""
+        """
+        Trigger → poll → download pattern. 120s timeout (24 × 5s).
+
+        Supports two BD endpoint styles:
+        - /v3/trigger (company dataset, existing)
+        - /v3/scrape  (profile dataset, notify=false&include_errors=true)
+        """
         base_url = "https://api.brightdata.com/datasets/v3"
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
         }
 
+        client = await self._get_client()
+
+        # Profile dataset: synchronous /scrape endpoint (blocks until data ready, up to 300s)
+        # Company dataset: async /trigger endpoint (returns snapshot_id, then poll)
+        if dataset_id == DATASET_LINKEDIN_PROFILE:
+            scrape_url = (
+                f"{base_url}/scrape?dataset_id={dataset_id}"
+                f"&notify=false&include_errors=true"
+            )
+            response = await client.post(
+                scrape_url, headers=headers,
+                json={"input": inputs},
+                timeout=300.0,  # synchronous — wait up to 5 min
+            )
+            if response.status_code >= 400:
+                raise ValueError(f"Bright Data API error: {response.status_code} {response.text[:200]}")
+            if not response.text.strip():
+                return []
+            data = response.json()
+            if isinstance(data, list):
+                return data
+            if isinstance(data, dict) and "name" in data:
+                return [data]  # single record
+            # Async 202 fallback — continue to poll
+            snapshot_id_from_scrape = data.get("snapshot_id")
+            if not snapshot_id_from_scrape:
+                return []
+            # Poll this snapshot
+            for _ in range(60):
+                await asyncio.sleep(5)
+                prog = await client.get(
+                    f"{base_url}/progress/{snapshot_id_from_scrape}", headers=headers, timeout=10.0
+                )
+                if prog.json().get("status") == "ready":
+                    dl = await client.get(
+                        f"{base_url}/snapshot/{snapshot_id_from_scrape}?format=json",
+                        headers=headers, timeout=60.0
+                    )
+                    dl.raise_for_status()
+                    return dl.json()
+            raise TimeoutError(f"BD profile snapshot timeout (snapshot={snapshot_id_from_scrape})")
+
         trigger_url = f"{base_url}/trigger?dataset_id={dataset_id}&include_errors=true"
         if discover_by:
             trigger_url += f"&type=discover_new&discover_by={discover_by}"
+        payload = inputs  # plain list for company
 
-        client = await self._get_client()
-
-        # Trigger
-        response = await client.post(trigger_url, headers=headers, json=inputs, timeout=30.0)
+        response = await client.post(trigger_url, headers=headers, json=payload, timeout=30.0)
         if response.status_code >= 400:
             body = response.text
             raise ValueError(f"Bright Data API error: {response.status_code} {body}")
-        snapshot_id = response.json()["snapshot_id"]
+        # Handle empty response body
+        if not response.text.strip():
+            return []
+        resp_data = response.json()
+        # /scrape may return data directly (list or single dict) or a snapshot_id
+        if isinstance(resp_data, list):
+            return resp_data
+        if isinstance(resp_data, dict):
+            # Single record returned directly (synchronous /scrape)
+            if "snapshot_id" not in resp_data and "id" in resp_data and "name" in resp_data:
+                return [resp_data]
+            # Snapshot async response
+            snapshot_id = resp_data.get("snapshot_id") or resp_data.get("id")
+            if not snapshot_id:
+                raise ValueError(f"No snapshot_id in BD response: {resp_data}")
         logger.info("brightdata_triggered snapshot_id=%s dataset_id=%s", snapshot_id, dataset_id)
 
-        # Poll until ready (max 120s = 24 × 5s intervals)
-        for _ in range(24):
+        # Poll until ready (max 300s = 60 × 5s intervals)
+        for _ in range(60):
             await asyncio.sleep(5)
             try:
                 progress = await client.get(
@@ -193,7 +254,7 @@ class BrightDataLinkedInClient:
                 pass  # retry on transient network errors
 
         else:
-            raise TimeoutError("Bright Data scraper timed out")
+            raise TimeoutError(f"Bright Data scraper timed out after 300s (snapshot_id={snapshot_id})")
 
         # Download results
         data = await client.get(

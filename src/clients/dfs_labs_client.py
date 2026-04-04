@@ -63,6 +63,9 @@ class DFSLabsClient:
     - domain_technologies()        — $0.010/call, S2 tech stack detection
     - keywords_for_site()          — $0.011/call, keyword intelligence
     - historical_rank_overview()   — $0.106/call, trend signal (EXPENSIVE — gate callers)
+    - backlinks_summary()          — $0.020/call, Directive #303 intelligence
+    - brand_serp()                 — $0.002/call, Directive #303 intelligence
+    - indexed_pages()              — $0.002/call, Directive #303 intelligence
     """
 
     def __init__(self, login: str, password: str) -> None:
@@ -95,9 +98,17 @@ class DFSLabsClient:
         self._cost_maps_search_gmb = Decimal("0")
         # Ads Search by domain (Directive #291)
         self._cost_ads_search_by_domain = Decimal("0")
+        # Intelligence endpoints (Directive #303)
+        self._cost_backlinks_summary = Decimal("0")
+        self._cost_brand_serp = Decimal("0")
+        self._cost_indexed_pages = Decimal("0")
 
         # Cache for get_categories (free, rarely changes)
         self._categories_cache: list[dict] | None = None
+
+        # Cache for available_history date (free, changes monthly)
+        # Populated on first call to _get_latest_available_date().
+        self._available_history_date: str | None = None
 
     async def _get_client(self) -> httpx.AsyncClient:
         """Lazy-init httpx.AsyncClient with Basic Auth header."""
@@ -136,6 +147,9 @@ class DFSLabsClient:
             + self._cost_search_linkedin_people
             + self._cost_maps_search_gmb
             + self._cost_ads_search_by_domain
+            + self._cost_backlinks_summary
+            + self._cost_brand_serp
+            + self._cost_indexed_pages
         )
         return float(total)
 
@@ -157,6 +171,9 @@ class DFSLabsClient:
             + self._cost_search_linkedin_people
             + self._cost_maps_search_gmb
             + self._cost_ads_search_by_domain
+            + self._cost_backlinks_summary
+            + self._cost_brand_serp
+            + self._cost_indexed_pages
         )
         return float(total_usd * AUD_RATE)
 
@@ -647,6 +664,47 @@ class DFSLabsClient:
         }
 
     # ============================================
+    # HELPER: available_history date  (Directive #304-FIX)
+    # ============================================
+
+    async def _get_latest_available_date(self) -> str:
+        """
+        Fetch the latest date available in DFS Labs history.
+
+        The domain_metrics_by_categories endpoint requires first_date and second_date
+        to be within the available history window. DFS updates this monthly; the
+        available_history endpoint returns the single latest valid date.
+
+        Cost: FREE (GET request, no task charge).
+        Result cached for the lifetime of this client instance — one call per session.
+
+        Returns:
+            ISO date string e.g. "2026-03-01", or today-35d as fallback if fetch fails.
+        """
+        if self._available_history_date is not None:
+            return self._available_history_date
+
+        try:
+            client = await self._get_client()
+            response = await client.get("/v3/dataforseo_labs/google/available_history")
+            response.raise_for_status()
+            data = response.json()
+            result_list = (data.get("tasks") or [{}])[0].get("result") or []
+            date_str = (result_list[0] if result_list else {}).get("date", "")
+            if date_str:
+                self._available_history_date = date_str
+                logger.info("DFS available_history: latest date = %s", date_str)
+                return date_str
+        except Exception as exc:
+            logger.warning("DFS available_history fetch failed: %s", exc)
+
+        # Fallback: 35 days ago (safely within last monthly snapshot)
+        fallback = (date.today() - timedelta(days=35)).strftime("%Y-%m-%d")
+        logger.warning("DFS available_history: using fallback date %s", fallback)
+        self._available_history_date = fallback
+        return fallback
+
+    # ============================================
     # ENDPOINT 8: domain_metrics_by_categories  (Directive #272 — Layer 2)
     # ============================================
 
@@ -657,20 +715,36 @@ class DFSLabsClient:
         paid_etv_min: float = 0.0,
         first_date: str | None = None,
         second_date: str | None = None,
+        limit: int = 100,
+        offset: int = 0,
     ) -> list[dict]:
         """
-        Discover domains with Google Ads spend in specified categories.
+        Discover domains with organic traffic in specified categories.
         Uses location_name (NOT location_code — causes 40501 error per DFS gotcha).
-        Cost: ~$0.10/call.
+        Cost: ~$0.10/call regardless of limit/offset.
         Returns list of {"domain": str, "paid_etv": float, "organic_etv": float}.
 
+        IMPORTANT: API returns domains sorted by organic ETV descending.
+        Top 100 (offset=0) are high-traffic chains/aggregators.
+        SMB sweet spot (ETV 200-5000) typically starts around offset 400-600.
+        Use discover_prospects() which paginates automatically.
+
         Args:
-            first_date: Start date YYYY-MM-DD (default: 6 months ago / today - 180 days).
-            second_date: End date YYYY-MM-DD (default: today).
+            first_date: Start date YYYY-MM-DD (default: latest available date - 180 days).
+                        Uses _get_latest_available_date() to stay within DFS history window.
+            second_date: End date YYYY-MM-DD (default: latest available date from DFS).
+                         Must not exceed the date returned by available_history endpoint.
+                         Bug fixed in Directive #304-FIX: was incorrectly defaulting to
+                         today, which exceeds the available window and causes 40501.
+            limit: Items per API call (max 100, API default 100).
+            offset: Pagination offset (0-indexed).
         """
-        today = date.today()
-        resolved_first_date = first_date or (today - timedelta(days=180)).strftime("%Y-%m-%d")
-        resolved_second_date = second_date or today.strftime("%Y-%m-%d")
+        # Fetch the latest date in DFS history (cached after first call).
+        # Both first_date and second_date must fall within available history.
+        latest_date = await self._get_latest_available_date()
+        latest_dt = date.fromisoformat(latest_date)
+        resolved_second_date = second_date or latest_date
+        resolved_first_date = first_date or (latest_dt - timedelta(days=180)).strftime("%Y-%m-%d")
 
         result = await self._post(
             endpoint="/v3/dataforseo_labs/google/domain_metrics_by_categories/live",
@@ -681,7 +755,8 @@ class DFSLabsClient:
                     "language_name": "English",
                     "first_date": resolved_first_date,
                     "second_date": resolved_second_date,
-                    "filters": [["metrics.organic.etv", ">", 0]],
+                    "limit": limit,
+                    "offset": offset,
                 }
             ],
             cost_per_call=Decimal("0.10"),
@@ -689,16 +764,28 @@ class DFSLabsClient:
             swallow_no_data=False,
         )
         items = result.get("items") or []
+        total_count = result.get("total_count", 0)
         results = []
         for item in items:
-            metrics = item.get("metrics", {})
-            paid_etv = (metrics.get("paid") or {}).get("etv", 0) or 0
-            organic_etv = (metrics.get("organic") or {}).get("etv", 0) or 0
+            # API returns organic_etv + paid_etv directly on the item
+            # (not nested under metrics.organic.etv as originally expected)
+            organic_etv = item.get("organic_etv") or 0
+            paid_etv = item.get("paid_etv") or 0
+            # Fallback: try nested metrics structure (older response format)
+            if not organic_etv:
+                metrics = item.get("metrics", {})
+                organic_etv = (metrics.get("organic") or {}).get("etv", 0) or 0
+                paid_etv = paid_etv or (metrics.get("paid") or {}).get("etv", 0) or 0
             if paid_etv >= paid_etv_min:
-                domain = item.get("domain") or item.get("target")
+                domain = item.get("domain") or item.get("target") or item.get("main_domain")
                 if domain:
                     results.append(
-                        {"domain": domain, "paid_etv": paid_etv, "organic_etv": organic_etv}
+                        {
+                            "domain": domain,
+                            "paid_etv": paid_etv,
+                            "organic_etv": organic_etv,
+                            "_total_count": total_count,  # propagate for pagination
+                        }
                     )
         return results
 
@@ -783,12 +870,25 @@ class DFSLabsClient:
         if not items:
             return None
         item = items[0]
+        # rating may be a scalar float or a dict like {"value": 4.2, "votes_count": 87}
+        rating_raw = item.get("rating")
+        rating_obj = rating_raw if isinstance(rating_raw, dict) else {}
+        gmb_rating = rating_obj.get("value") if rating_obj else (
+            float(rating_raw) if rating_raw is not None else None
+        )
+        gmb_review_count = (
+            item.get("rating_count")
+            or item.get("reviews_count")
+            or rating_obj.get("votes_count")
+            or 0
+        )
         return {
             "gmb_place_id": item.get("place_id"),
-            "gmb_rating": item.get("rating"),
-            "gmb_review_count": item.get("rating_count") or item.get("reviews_count") or 0,
+            "gmb_rating": gmb_rating,
+            "gmb_review_count": gmb_review_count,
             "gmb_address": item.get("address"),
             "gmb_phone": item.get("phone"),
+            "gmb_email": item.get("email") or None,
             "gmb_found": True,
         }
 
@@ -1085,6 +1185,195 @@ class DFSLabsClient:
         if domain.startswith("www."):
             domain = domain[4:]
         return domain
+
+
+    # ============================================
+    # ENDPOINT 13: serp_email_search  (Directive #300-FIX-7)
+    # ============================================
+
+    async def serp_email_search(
+        self,
+        business_name: str,
+        domain: str,
+        location_name: str = "Australia",
+    ) -> list[str]:
+        """
+        Search Google SERP for email contact info for a business.
+        Query: "[business name] email contact"
+        Parses snippets for email addresses.
+        Cost: $0.002/call.
+        Only call for domains where no email was found from free sources.
+        Returns list of email strings found in SERP snippets (deduped, lowercased).
+        """
+        import re as _re
+        _EMAIL_RE = _re.compile(r"[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}")
+
+        query = f'"{business_name}" email contact'
+        result = await self._post(
+            endpoint="/v3/serp/google/organic/live/advanced",
+            payload=[
+                {
+                    "keyword": query,
+                    "location_name": location_name,
+                    "language_name": "English",
+                    "depth": 10,
+                }
+            ],
+            cost_per_call=Decimal("0.002"),
+            cost_attr="_cost_serp_email_search",
+        )
+        items = result.get("items") or []
+        found: set[str] = set()
+        for item in items:
+            # Check snippet, title, description fields
+            for field in ("snippet", "description", "title", "extra_snippet"):
+                text = item.get(field) or ""
+                for email in _EMAIL_RE.findall(text):
+                    # Filter out common false positives
+                    if not any(email.endswith(ext) for ext in (".png", ".jpg", ".css", ".js", ".gif")):
+                        found.add(email.lower())
+            # Check nested items (e.g. sitelinks)
+            for nested in item.get("items") or []:
+                for field in ("snippet", "description"):
+                    text = nested.get(field) or ""
+                    for email in _EMAIL_RE.findall(text):
+                        if not any(email.endswith(ext) for ext in (".png", ".jpg", ".css", ".js", ".gif")):
+                            found.add(email.lower())
+        return list(found)
+
+    # ============================================
+    # ENDPOINT 14: backlinks_summary  (Directive #303)
+    # ============================================
+
+    async def backlinks_summary(self, target_domain: str) -> dict:
+        """
+        Get backlink summary for a domain.
+        Cost: $0.02 USD per call
+
+        Returns:
+            {
+                "referring_domains": int,
+                "domain_rank": int,
+                "backlink_trend": str,  # "growing" | "stable" | "declining"
+                "total_backlinks": int,
+            }
+        """
+        result = await self._post(
+            endpoint="/v3/backlinks/summary/live",
+            payload=[{"target": target_domain, "include_subdomains": True}],
+            cost_per_call=Decimal("0.02"),
+            cost_attr="_cost_backlinks_summary",
+        )
+
+        # NOTE: backlinks/summary returns data directly at tasks[0].result[0]
+        # (not under "items" key) — bug fix from Directive #276.
+        referring_domains = result.get("referring_domains") or 0
+        domain_rank = result.get("rank") or 0
+        total_backlinks = result.get("backlinks") or 0
+        new = result.get("referring_domains_new") or 0
+        lost = result.get("referring_domains_lost") or 0
+        if new > lost * 1.1:
+            trend = "growing"
+        elif lost > new * 1.1:
+            trend = "declining"
+        else:
+            trend = "stable"
+
+        return {
+            "referring_domains": referring_domains,
+            "domain_rank": domain_rank,
+            "backlink_trend": trend,
+            "total_backlinks": total_backlinks,
+        }
+
+    # ============================================
+    # ENDPOINT 15: brand_serp  (Directive #303)
+    # ============================================
+
+    async def brand_serp(
+        self,
+        business_name: str,
+        location_code: int = 2036,
+        language_code: str = "en",
+    ) -> dict:
+        """
+        Check brand search presence for a business name.
+        Cost: $0.002 USD per call
+
+        Returns:
+            {
+                "brand_position": int | None,
+                "gmb_showing": bool,
+                "competitors_bidding": bool,
+            }
+        """
+        result = await self._post(
+            endpoint="/v3/serp/google/organic/live/advanced",
+            payload=[
+                {
+                    "keyword": business_name,
+                    "location_code": location_code,
+                    "language_code": language_code,
+                    "depth": 10,
+                    "se_domain": "google.com.au",
+                }
+            ],
+            cost_per_call=Decimal("0.002"),
+            cost_attr="_cost_brand_serp",
+        )
+        items = result.get("items") or []
+
+        brand_position: int | None = None
+        gmb_showing = False
+        competitors_bidding = False
+
+        for item in items:
+            item_type = item.get("type")
+            if item_type == "organic" and brand_position is None:
+                brand_position = item.get("rank_absolute")
+            if item_type in ("local_pack", "knowledge_graph", "maps_pack"):
+                gmb_showing = True
+            if item_type == "paid":
+                competitors_bidding = True
+
+        return {
+            "brand_position": brand_position,
+            "gmb_showing": gmb_showing,
+            "competitors_bidding": competitors_bidding,
+        }
+
+    # ============================================
+    # ENDPOINT 16: indexed_pages  (Directive #303)
+    # ============================================
+
+    async def indexed_pages(
+        self,
+        domain: str,
+        location_code: int = 2036,
+        language_code: str = "en",
+    ) -> int:
+        """
+        Get approximate indexed page count via site: SERP query.
+        Cost: $0.002 USD per call
+
+        Returns:
+            int: estimated indexed pages (0 if not found)
+        """
+        result = await self._post(
+            endpoint="/v3/serp/google/organic/live/advanced",
+            payload=[
+                {
+                    "keyword": f"site:{domain}",
+                    "location_code": location_code,
+                    "language_code": language_code,
+                    "depth": 1,
+                    "se_domain": "google.com.au",
+                }
+            ],
+            cost_per_call=Decimal("0.002"),
+            cost_attr="_cost_indexed_pages",
+        )
+        return int(result.get("se_results_count") or 0)
 
 
 # ============================================

@@ -9,9 +9,64 @@ dm_identification.py — Decision maker identification pipeline.
 Directive #287 — SERP-first DM waterfall + AU location filter.
 """
 import logging
+import re as _re
 import re
 from dataclasses import dataclass, field
 from typing import Optional
+
+_COMPANY_NAME_RE = _re.compile(
+    r"\b(PTY|LTD|AUSTRALIA|GROUP|COMPANY|CORP|HOLDINGS|SERVICES|SOLUTIONS|INDUSTRIES)\b",
+    _re.IGNORECASE,
+)
+
+_RE_CORP_SUFFIX = _re.compile(
+    r"\s*(PTY\.?\s*LTD\.?|PROPRIETARY\s+LIMITED|PTY\s+LIMITED|LIMITED|LTD\.?|TRUST)\s*$",
+    _re.IGNORECASE,
+)
+_RE_TITLE_SPLIT = _re.compile(r"\s*[\|\-\u2013]\s*.+$")
+
+
+def _is_company_profile(candidate: dict) -> bool:
+    """Return True if the LinkedIn candidate looks like a company page, not a person."""
+    name = (candidate.get("name") or "").strip()
+    title = (candidate.get("title") or "").strip()
+    if not name:
+        return False
+    # ALL CAPS name (company page pattern)
+    if name == name.upper() and len(name) > 3 and " " in name:
+        return True
+    # Corporate keyword in name with no job title
+    if _COMPANY_NAME_RE.search(name) and not title:
+        return True
+    return False
+
+
+def _best_company_name(
+    domain: str,
+    abn_display: str | None = None,
+    gmb_name: str | None = None,
+    website_title: str | None = None,
+) -> tuple[str, str]:
+    """
+    Return (company_name, source) using priority:
+    1. ABN display_name (stripped of PTY LTD etc)
+    2. GMB business_name
+    3. Website title (stripped of nav suffixes)
+    4. Domain stem (fallback — strips www. prefix)
+    """
+    if abn_display and len(abn_display.strip()) > 3:
+        name = _RE_CORP_SUFFIX.sub("", abn_display).strip()
+        if len(name) > 3:
+            return name, "abn_display"
+    if gmb_name and len(gmb_name.strip()) > 3:
+        return gmb_name.strip(), "gmb_name"
+    if website_title and len(website_title.strip()) > 3:
+        title = _RE_TITLE_SPLIT.sub("", website_title).strip()
+        if len(title) > 3:
+            return title, "website_title"
+    _d = domain[4:] if domain.startswith("www.") else domain
+    stem = _d.split(".")[0].replace("-", " ").title()
+    return stem, "domain_stem"
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +103,7 @@ class DMResult:
     confidence: str = "none"     # HIGH | MEDIUM | LOW | none
     linkedin_url: Optional[str] = None
     tier_used: str = "none"      # T-DM1 | T-DM2 | T-DM3 | T-DM4 | none (for CIS tracking)
+    dm_search_source: str = "none"  # abn_display | gmb_name | website_title | domain_stem
 
 
 class DMIdentification:
@@ -88,6 +144,7 @@ class DMIdentification:
                     company_name=company_name,
                     location_name="Australia",
                 )
+                people = [p for p in people if not _is_company_profile(p)]
                 dm = self._pick_serp_dm(people)
                 if dm and dm.get("name"):
                     logger.info(

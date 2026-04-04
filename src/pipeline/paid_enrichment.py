@@ -9,6 +9,7 @@ Directive: #283
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
@@ -16,6 +17,7 @@ import asyncpg
 
 from src.clients.dfs_gmaps_client import DFSGMapsClient
 from src.clients.dfs_labs_client import DFSLabsClient
+from src.pipeline.pipeline_orchestrator import GLOBAL_SEM_DFS
 from src.utils.domain_parser import extract_business_name
 
 BATCH_SIZE = 50
@@ -141,6 +143,7 @@ class PaidEnrichment:
             "gate_failed": len(failing_rows),
             "dfs_enriched": 0,
             "gmb_enriched": 0,
+            "intelligence_enriched": 0,
             "completed": 0,
             "errors": [],
         }
@@ -217,7 +220,115 @@ class PaidEnrichment:
             if (i + 1) % 10 == 0:
                 self._logger.info("PaidEnrichment GMB: %d/%d", i + 1, len(passing_rows))
 
-        # STEP 3 — Mark completion for all passing rows
+        # STEP 3 — Intelligence endpoints (Directive #303)
+        # Runs competitors, backlinks, brand SERP, and indexed pages for each domain.
+        intel_results: dict[str, Any] = {}
+
+        async def _sem_call(coro):  # type: ignore[type-arg]
+            async with GLOBAL_SEM_DFS:
+                return await coro
+
+        for row in passing_rows:
+            domain = row["domain"]
+            bu_id = row["id"]
+            business_name = row.get("display_name") or row.get("gmb_name") or extract_business_name(domain)
+            try:
+                (
+                    comp_result,
+                    bl_result,
+                    serp_result,
+                    idx_result,
+                ) = await asyncio.gather(
+                    _sem_call(self._dfs.competitors_domain(domain)),
+                    _sem_call(self._dfs.backlinks_summary(domain)),
+                    _sem_call(self._dfs.brand_serp(business_name, location_code=2036)),
+                    _sem_call(self._dfs.indexed_pages(domain)),
+                    return_exceptions=True,
+                )
+
+                # Parse competitors
+                comp_items = []
+                competitor_count = 0
+                if isinstance(comp_result, dict):
+                    comp_items = [
+                        item.get("domain")
+                        for item in (comp_result.get("items") or [])
+                        if item.get("domain")
+                    ][:3]
+                    competitor_count = len(comp_result.get("items") or [])
+
+                # Parse backlinks
+                referring_domains = 0
+                domain_rank = 0
+                backlink_trend = "unknown"
+                if isinstance(bl_result, dict):
+                    referring_domains = bl_result.get("referring_domains") or 0
+                    domain_rank = bl_result.get("domain_rank") or 0
+                    backlink_trend = bl_result.get("backlink_trend") or "unknown"
+
+                # Parse brand SERP
+                brand_position = None
+                brand_gmb_showing = False
+                brand_competitors_bidding = False
+                if isinstance(serp_result, dict):
+                    brand_position = serp_result.get("brand_position")
+                    brand_gmb_showing = bool(serp_result.get("gmb_showing"))
+                    brand_competitors_bidding = bool(serp_result.get("competitors_bidding"))
+
+                # Parse indexed pages
+                indexed_pages = int(idx_result) if isinstance(idx_result, int) else 0
+
+                intel_results[domain] = {
+                    "competitors_top3": comp_items,
+                    "competitor_count": competitor_count,
+                    "referring_domains": referring_domains,
+                    "domain_rank": domain_rank,
+                    "backlink_trend": backlink_trend,
+                    "brand_position": brand_position,
+                    "brand_gmb_showing": brand_gmb_showing,
+                    "brand_competitors_bidding": brand_competitors_bidding,
+                    "indexed_pages": indexed_pages,
+                }
+
+                try:
+                    await self._conn.execute(
+                        """UPDATE business_universe SET
+                               competitors_top3                = $2,
+                               competitor_count                = $3,
+                               backlinks_referring_domains     = $4,
+                               backlinks_domain_rank           = $5,
+                               backlinks_trend                 = $6,
+                               brand_serp_position             = $7,
+                               brand_serp_gmb_showing          = $8,
+                               brand_serp_competitors_bidding  = $9,
+                               indexed_pages_count             = $10,
+                               intelligence_enriched_at        = NOW()
+                           WHERE id = $1""",
+                        bu_id,
+                        comp_items,
+                        competitor_count,
+                        referring_domains,
+                        domain_rank,
+                        backlink_trend,
+                        brand_position,
+                        brand_gmb_showing,
+                        brand_competitors_bidding,
+                        indexed_pages,
+                    )
+                except Exception as db_exc:
+                    self._logger.warning(
+                        "Intelligence DB write error for %s (columns may not exist yet): %s",
+                        domain,
+                        db_exc,
+                    )
+
+            except Exception as exc:
+                self._logger.error("Intelligence enrichment error for %s: %s", domain, exc)
+                stats["errors"].append({"step": "intelligence", "domain": domain, "error": str(exc)})
+
+        stats["intelligence_enriched"] = len(intel_results)
+
+        # STEP 4 — Mark completion for all passing rows
         for row in passing_rows:
             try:
                 await self._conn.execute(

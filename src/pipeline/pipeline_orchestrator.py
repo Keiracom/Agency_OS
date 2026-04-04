@@ -22,20 +22,196 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 import time
 from dataclasses import dataclass, field
-from typing import Any, Callable, Optional
+from typing import Any, Optional
 
 from src.pipeline.prospect_scorer import ProspectScorer, ProspectScore
+from src.pipeline.intelligence import GLOBAL_SEM_SONNET, GLOBAL_SEM_HAIKU  # shared semaphores
+from src.pipeline import intelligence as _intel_module  # optional: used when self._intelligence is set
+from src.config.category_registry import get_discovery_categories, SERVICE_CATEGORY_MAP  # noqa: F401
+from src.pipeline.email_waterfall import discover_email, GLOBAL_SEM_LEADMAGIC  # noqa: F401
 
 logger = logging.getLogger(__name__)
 
+# ── Business name waterfall helpers (Directive #305) ─────────────────────────
+
+_ABN_ENTITY_SUFFIX_RE = re.compile(
+    r"\b(pty\.?\s*ltd\.?|pty\.?\s*limited|limited|ltd\.?|inc\.?|llc|"
+    r"proprietary|trustee\s+for|the\s+trustee|as\s+trustee)\b",
+    re.IGNORECASE,
+)
+
+
+def resolve_business_name(
+    domain: str,
+    enrichment: dict,
+    gmb_data: dict | None = None,
+) -> str:
+    """
+    Business name waterfall — returns the best available display name.
+
+    Priority:
+    1. ABN trading_name (if not just entity suffixes and not blank)
+    2. GMB business name from gmb_data
+    3. ABN legal_name (cleaned of entity suffixes)
+    4. Page title prefix (enrichment["company_name"])
+    5. Domain stem
+    """
+    def _is_valid(name: str) -> bool:
+        if not name or not name.strip():
+            return False
+        cleaned = _ABN_ENTITY_SUFFIX_RE.sub("", name).strip(" .,")
+        if not cleaned:
+            return False  # was only suffixes
+        if re.fullmatch(r"\d{9,11}", name.replace(" ", "")):
+            return False  # ABN number
+        if cleaned.lower() in ("com", "com.au", "net.au", "org.au", "au"):
+            return False
+        return True
+
+    candidates = [
+        enrichment.get("abn_trading_name", ""),
+        (gmb_data or {}).get("gmb_name", ""),
+        enrichment.get("abn_legal_name", ""),
+        enrichment.get("company_name", ""),  # title-derived
+    ]
+
+    for name in candidates:
+        if name and _is_valid(name.strip()):
+            return name.strip()[:80]
+
+    # Domain stem fallback
+    stem = domain[4:] if domain.startswith("www.") else domain
+    stem = stem.split(".")[0].replace("-", " ").replace("_", " ").title()
+    return stem or domain
+
+
+# ── Location waterfall helpers (Directive #305) ───────────────────────────────
+
+_AU_STATE_ABBR_RE = re.compile(
+    r"\b(NSW|VIC|QLD|WA|SA|TAS|ACT|NT)\b", re.IGNORECASE
+)
+
+_STATE_NAME_TO_ABBR: dict[str, str] = {
+    "new south wales": "NSW", "victoria": "VIC", "queensland": "QLD",
+    "western australia": "WA", "south australia": "SA", "tasmania": "TAS",
+    "australian capital territory": "ACT", "northern territory": "NT",
+}
+
+
+def _postcode_to_state(postcode: str) -> str:
+    """Map Australian postcode prefix to state abbreviation."""
+    try:
+        pc = int(postcode)
+        if 1000 <= pc <= 2999:
+            return "NSW"
+        if 3000 <= pc <= 3999:
+            return "VIC"
+        if 4000 <= pc <= 4999:
+            return "QLD"
+        if 5000 <= pc <= 5999:
+            return "SA"
+        if 6000 <= pc <= 6999:
+            return "WA"
+        if 7000 <= pc <= 7999:
+            return "TAS"
+        if 800 <= pc <= 999:
+            return "NT"
+        if 200 <= pc <= 299:
+            return "ACT"
+    except (ValueError, TypeError):
+        pass
+    return ""
+
+
+def resolve_location(
+    domain: str,
+    enrichment: dict,
+    gmb_data: dict | None = None,
+    default_location: str = "Australia",
+) -> tuple[str, str, str]:
+    """
+    Location waterfall — returns (suburb, state, display_string).
+
+    Priority:
+    1. GMB address — parse suburb + state from "123 Main St, Surry Hills NSW 2010"
+    2. website_address (JSON-LD) suburb + state
+    3. ABN state (from abn_state field if available)
+    4. State hint from enrichment
+    5. default_location passed from discovery
+    """
+    suburb = ""
+    state = ""
+
+    # Priority 1: GMB address
+    gmb_address = (
+        (gmb_data or {}).get("gmb_address")
+        or (gmb_data or {}).get("address")
+        or ""
+    )
+    if gmb_address:
+        state_match = _AU_STATE_ABBR_RE.search(gmb_address)
+        if state_match:
+            state = state_match.group(0).upper()
+            before_state = gmb_address[:state_match.start()].strip().rstrip(",").strip()
+            parts = [p.strip() for p in before_state.split(",") if p.strip()]
+            if parts:
+                suburb = parts[-1]
+
+    # Priority 2: JSON-LD address from website
+    if not suburb:
+        wa = enrichment.get("website_address") or {}
+        if isinstance(wa, dict):
+            suburb = wa.get("suburb") or wa.get("addressLocality") or wa.get("city") or ""
+            if not state:
+                state = wa.get("state") or wa.get("addressRegion") or ""
+                if state and len(state) > 3:
+                    state = _STATE_NAME_TO_ABBR.get(state.lower(), state)
+            if not state:
+                postcode = wa.get("postcode") or wa.get("postalCode") or ""
+                state = _postcode_to_state(str(postcode)) if postcode else ""
+
+    # Priority 3: ABN state
+    if not state:
+        abn_state = enrichment.get("abn_state") or ""
+        if abn_state:
+            state = _STATE_NAME_TO_ABBR.get(abn_state.lower(), abn_state)
+
+    # Priority 4: State hint from enrichment
+    if not state:
+        state_hint = enrichment.get("state_hint") or enrichment.get("state") or ""
+        if state_hint:
+            state = _STATE_NAME_TO_ABBR.get(state_hint.lower(), state_hint).upper()[:3]
+            if not _AU_STATE_ABBR_RE.match(state):
+                state = ""
+
+    # Build display string
+    if suburb and state:
+        display = f"{suburb}, {state}"
+    elif suburb:
+        display = suburb
+    elif state:
+        display = state
+    else:
+        display = default_location or "Australia"
+
+    return suburb, state, display
+
+
 # Semaphore limits — tuned for DFS 30-concurrent + Spider 15-concurrent limits
 SEM_SPIDER = 15    # Spider.cloud concurrent scrapes
-SEM_ABN    = 1     # asyncpg single-connection safety
+SEM_ABN    = 50    # asyncpg pool connections (Supabase Pro; pool max_size=50)
 SEM_PAID   = 20    # DFS Ads Search + GMB concurrent
 SEM_DM     = 20    # DFS SERP LinkedIn concurrent
-SEM_LLM    = 10    # Anthropic concurrent limit (Haiku: 50 RPM, Sonnet: 10 RPM — conservative)
+
+# Global semaphore pool — shared across parallel workers (module-level singletons)
+# GLOBAL_SEM_SONNET and GLOBAL_SEM_HAIKU are defined in intelligence.py and imported above
+GLOBAL_SEM_DFS         = asyncio.Semaphore(28)   # DFS API concurrent calls
+GLOBAL_SEM_SCRAPE      = asyncio.Semaphore(80)   # httpx + Spider concurrent scrapes
+GLOBAL_SEM_ADS_SCRAPER = asyncio.Semaphore(15)   # Ads Transparency concurrent scrapes
+GLOBAL_SEM_ABN         = asyncio.Semaphore(50)   # asyncpg ABN queries (Supabase Pro; pool max_size=50)
 
 
 @dataclass
@@ -73,6 +249,28 @@ class ProspectCard:
     dm_title: Optional[str] = None
     dm_linkedin_url: Optional[str] = None
     dm_confidence: Optional[str] = None
+    # Email waterfall fields (Directive #299)
+    dm_email: Optional[str] = None
+    dm_email_verified: bool = False
+    dm_email_source: Optional[str] = None
+    dm_email_confidence: Optional[str] = None
+    email_cost_usd: float = 0.0
+    # Location fields (Directive #305 — supplements single "location" string)
+    location_suburb: str = ""
+    location_state: str = ""
+    location_display: str = ""  # "Surry Hills, NSW" or "NSW" or "Australia"
+    # Intelligence endpoints (Directive #303)
+    competitors_top3: list = field(default_factory=list)
+    competitor_count: int = 0
+    referring_domains: int = 0
+    domain_rank: int = 0
+    backlink_trend: str = "unknown"
+    brand_position: Optional[int] = None
+    brand_gmb_showing: bool = False
+    brand_competitors_bidding: bool = False
+    indexed_pages: int = 0
+    # Vulnerability Report (Directive #306)
+    vulnerability_report: dict = field(default_factory=dict)
 
 
 @dataclass
@@ -110,8 +308,7 @@ class PipelineOrchestrator:
         gmb_client=None,
         ads_client=None,
         prospect_scorer=None,
-        intelligence=None,           # NEW: WebsiteIntelligenceEngine | None
-        on_card: Callable[["ProspectCard"], None] | None = None,
+        intelligence=None,
     ):
         self._discovery = discovery
         self._fe = free_enrichment
@@ -119,8 +316,7 @@ class PipelineOrchestrator:
         self._dm = dm_identification
         self._gmb_client = gmb_client
         self._ads_client = ads_client
-        self._intel = intelligence
-        self._on_card = on_card
+        self._intelligence = intelligence  # optional: IntelligenceLayer instance or module
 
     # ── Stage helpers ─────────────────────────────────────────────────────
 
@@ -178,32 +374,6 @@ class PipelineOrchestrator:
             ads_data, gmb_data = await asyncio.gather(_get_ads(), _get_gmb())
             return {"ads_data": ads_data, "gmb_data": gmb_data}
 
-    async def _stage_intelligence(
-        self,
-        sem: asyncio.Semaphore,
-        domain: str,
-        html: str,
-        intent_free: Any,
-        enrichment: dict,
-    ) -> Any:
-        """STAGE 4.5: LLM website intelligence for one domain."""
-        async with sem:
-            try:
-                gmb_data = enrichment.get("gmb_data")  # may not exist yet at stage 4.5
-                signals = {
-                    "evidence": getattr(intent_free, "evidence", []),
-                    "signals": getattr(intent_free, "signals", {}),
-                    "has_analytics": any(
-                        "analytics" in t for t in enrichment.get("website_tracking_codes", [])
-                    ),
-                    "has_ads_tag": enrichment.get("has_google_ads_tag", False),
-                    "has_conversion": enrichment.get("has_conversion_tag", False),
-                }
-                return await self._intel.analyze(domain, html, signals, gmb_data)
-            except Exception:
-                logger.debug("stage_intelligence_failed domain=%s", domain)
-                return None
-
     async def _stage_dm(
         self,
         sem: asyncio.Semaphore,
@@ -223,6 +393,52 @@ class PipelineOrchestrator:
             except Exception:
                 logger.debug("stage_dm_failed domain=%s", domain)
                 return None
+
+    async def _stage_intelligence(
+        self,
+        domain: str,
+        html: str,
+        enrichment: dict,
+        ads_data: dict | None,
+        gmb_data: dict | None,
+    ) -> dict:
+        """
+        STAGE 7b: Run intelligence pipeline for one domain.
+        Calls comprehend_website → classify_intent → refine_evidence.
+        Returns merged intel dict with evidence_statements, intent_band, services, etc.
+        """
+        try:
+            intel = self._intelligence
+            url = f"https://{domain}"
+
+            # Comprehend website
+            website_data = await intel.comprehend_website(domain, html or "", url)
+
+            # Classify intent
+            intent_data = await intel.classify_intent(domain, website_data, gmb_data, ads_data)
+
+            # Analyse reviews if available
+            reviews = (gmb_data or {}).get("reviews") or []
+            review_data = await intel.analyse_reviews(domain, reviews)
+
+            # Refine evidence into final card copy
+            refined = await intel.refine_evidence(domain, intent_data, review_data, website_data)
+
+            return {
+                "website_data": website_data,
+                "intent_data": intent_data,
+                "review_data": review_data,
+                "evidence_statements": refined.get("evidence_statements", []),
+                "headline_signal": refined.get("headline_signal", ""),
+                "recommended_service": refined.get("recommended_service", ""),
+                "outreach_angle": refined.get("outreach_angle", ""),
+                "intent_band": intent_data.get("band"),
+                "intent_score": intent_data.get("score", 0),
+                "services": website_data.get("services", []),
+            }
+        except Exception as exc:
+            logger.warning("_stage_intelligence failed domain=%s: %s", domain, exc)
+            return {}
 
     # ── Main run ──────────────────────────────────────────────────────────
 
@@ -352,6 +568,10 @@ class PipelineOrchestrator:
                 # ── STAGE 4: Affordability gate (in-memory) ───────────────────
                 afford_passed: list[tuple[str, dict, Any]] = []
                 for domain, enrichment in enriched_pairs:
+                    # Non-AU filter: reject before scoring
+                    if enrichment.get("non_au"):
+                        stats.affordability_rejected += 1
+                        continue
                     try:
                         afford = self._scorer.score_affordability(enrichment)
                     except AttributeError:
@@ -365,35 +585,6 @@ class PipelineOrchestrator:
                     "stage4_complete afford_passed=%d rejected=%d",
                     len(afford_passed), stats.affordability_rejected,
                 )
-
-                # ── STAGE 4.5: LLM website intelligence (optional) ────────────
-                if self._intel is not None and afford_passed:
-                    sem_intel = asyncio.Semaphore(SEM_LLM)
-                    intel_coros = []
-                    for domain, enrichment, afford in afford_passed:
-                        spider_html = enrichment.get("_raw_html", "")
-                        try:
-                            intent_free_result = self._scorer.score_intent_free(enrichment)
-                        except AttributeError:
-                            intent_free_result = None
-                        intel_coros.append(
-                            self._stage_intelligence(
-                                sem_intel, domain, spider_html, intent_free_result, enrichment
-                            )
-                        )
-                    intel_results = list(await asyncio.gather(*intel_coros, return_exceptions=False))
-                    for i, (domain, enrichment, afford) in enumerate(afford_passed):
-                        intel = intel_results[i]
-                        if intel:
-                            enrichment["services"] = intel.services
-                            enrichment["business_type"] = intel.business_type
-                            enrichment["team_size_signal"] = intel.team_size_signal
-                            enrichment["intent_grade"] = intel.intent_grade
-                            enrichment["intent_reasoning"] = intel.intent_reasoning
-                            enrichment["gmb_pain_themes"] = intel.gmb_pain_themes
-                            enrichment["gmb_opportunity_score"] = intel.gmb_opportunity_score
-                            enrichment["_intel_fallback"] = intel.fallback_used
-                    logger.info("stage4_5_complete intel_analyzed=%d", len(intel_results))
 
                 # ── STAGE 5: Intent free gate (in-memory) ─────────────────────
                 intent_passed: list[tuple[str, dict, Any, Any]] = []
@@ -452,33 +643,29 @@ class PipelineOrchestrator:
                         )
                     except AttributeError:
                         intent_full = intent_free  # legacy fallback
-
-                    # Boost with LLM intelligence if available and regex scored lower
-                    if (
-                        intent_full is not None
-                        and enrichment.get("intent_grade") == "HOT"
-                        and not enrichment.get("_intel_fallback")
-                        and getattr(intent_full, "band", None) not in ("STRUGGLING", "TRYING")
-                    ):
-                        logger.info(
-                            "stage7_intel_boost domain=%s llm=HOT regex=%s",
-                            domain, getattr(intent_full, "band", "UNKNOWN"),
-                        )
-                        try:
-                            intent_full = type(intent_full)(
-                                raw_score=max(getattr(intent_full, "raw_score", 0), 8),
-                                band="STRUGGLING",
-                                signals=getattr(intent_full, "signals", {}),
-                                evidence=(
-                                    getattr(intent_full, "evidence", [])
-                                    + [enrichment.get("intent_reasoning", "")]
-                                ),
-                                passed_free_gate=True,
-                            )
-                        except Exception:
-                            logger.debug("stage7_intel_boost_failed domain=%s", domain)
-
                     dm_candidates.append((domain, enrichment, afford, intent_full, paid))
+
+                # ── STAGE 7b: Intelligence layer (optional, Sonnet/Haiku) ─────
+                # Runs comprehend_website → classify_intent → refine_evidence
+                # for each dm_candidate if intelligence module is wired.
+                intel_results: dict[str, dict] = {}
+                if self._intelligence is not None:
+                    intel_coros = []
+                    for domain, enrichment, afford, intent_full, paid in dm_candidates:
+                        spider_html = enrichment.get("html", "")
+                        ads_data = paid.get("ads_data")
+                        gmb_data = paid.get("gmb_data")
+                        intel_coros.append(
+                            self._stage_intelligence(domain, spider_html, enrichment, ads_data, gmb_data)
+                        )
+                    intel_raw = await asyncio.gather(*intel_coros, return_exceptions=True)
+                    for (domain, *_), intel in zip(dm_candidates, intel_raw):
+                        if isinstance(intel, Exception):
+                            logger.warning("intelligence failed domain=%s: %s", domain, intel)
+                            intel_results[domain] = {}
+                        else:
+                            intel_results[domain] = intel or {}
+                    logger.info("stage7b_intelligence_complete domains=%d", len(intel_results))
 
                 # ── STAGE 8: DM identification ALL concurrently ───────────────
                 dm_coros = []
@@ -515,20 +702,57 @@ class PipelineOrchestrator:
                         stats.unreachable += 1
                         continue
 
-                    company_name = (
-                        enrichment.get("company_name")
-                        or enrichment.get("abn_entity_name")
-                        or domain
-                    )
-                    evidence = getattr(intent_full, "evidence", []) if intent_full else []
-                    intent_band = getattr(intent_full, "band", "UNKNOWN") if intent_full else "UNKNOWN"
-                    intent_score = getattr(intent_full, "raw_score", 0) if intent_full else 0
+                    company_name = resolve_business_name(domain, enrichment)
+                    # Use intelligence layer results if available, else fall back to scorer
+                    intel = intel_results.get(domain, {})
+                    if intel.get("evidence_statements"):
+                        evidence = intel["evidence_statements"]
+                        intent_band = intel.get("intent_band") or (getattr(intent_full, "band", "UNKNOWN") if intent_full else "UNKNOWN")
+                        intent_score = intel.get("intent_score") or (getattr(intent_full, "raw_score", 0) if intent_full else 0)
+                    else:
+                        evidence = getattr(intent_full, "evidence", []) if intent_full else []
+                        intent_band = getattr(intent_full, "band", "UNKNOWN") if intent_full else "UNKNOWN"
+                        intent_score = getattr(intent_full, "raw_score", 0) if intent_full else 0
+
+                    _loc_suburb, _loc_state, _loc_display = resolve_location(domain, enrichment, default_location=location)
+
+                    # ── STAGE 7c: Vulnerability Report ───────────────────────────
+                    vuln_report: dict = {}
+                    if self._intelligence is not None:
+                        _comp_data = {
+                            "top3": (paid.get("ads_data") or {}).get("competitors_top3", []),
+                            "count": (paid.get("ads_data") or {}).get("competitor_count", 0),
+                        }
+                        _bl_data = {
+                            "referring_domains": enrichment.get("backlinks_referring_domains", 0),
+                            "domain_rank": enrichment.get("backlinks_domain_rank", 0),
+                            "trend": enrichment.get("backlinks_trend", "unknown"),
+                        }
+                        _brand_data = {
+                            "position": enrichment.get("brand_serp_position"),
+                            "gmb_showing": enrichment.get("brand_serp_gmb_showing", False),
+                            "competitors_bidding": enrichment.get("brand_serp_competitors_bidding", False),
+                        }
+                        _indexed = enrichment.get("indexed_pages_count", 0)
+                        vuln_report = await self._intelligence.generate_vulnerability_report(
+                            domain=domain,
+                            company_name=company_name,
+                            enrichment=enrichment,
+                            intelligence=intel,
+                            competitors_data=_comp_data,
+                            backlinks_data=_bl_data,
+                            brand_serp_data=_brand_data,
+                            indexed_pages=_indexed,
+                        )
 
                     card = ProspectCard(
                         domain=domain,
                         company_name=company_name,
-                        location=(enrichment.get("website_address") or {}).get("suburb", location),
-                        services=enrichment.get("services") or [],
+                        location=_loc_display,
+                        location_suburb=_loc_suburb,
+                        location_state=_loc_state,
+                        location_display=_loc_display,
+                        services=enrichment.get("services") or intel.get("services") or [],
                         evidence=evidence,
                         affordability_band=afford.band,
                         affordability_score=afford.raw_score,
@@ -541,13 +765,9 @@ class PipelineOrchestrator:
                         dm_title=dm.title,
                         dm_linkedin_url=dm.linkedin_url,
                         dm_confidence=dm.confidence,
+                        vulnerability_report=vuln_report,
                     )
                     results.append(card)
-                    if self._on_card is not None:
-                        try:
-                            self._on_card(card)
-                        except Exception:
-                            pass  # never let streaming break the pipeline
                     stats.viable_prospects += 1
                     stats.category_stats[category_code] = stats.category_stats.get(category_code, 0) + 1
                     logger.info(
@@ -560,21 +780,401 @@ class PipelineOrchestrator:
                     len(results), stats.discovered, stats.elapsed_seconds)
         return PipelineResult(prospects=results, stats=stats)
 
+    # ── Parallel worker run ───────────────────────────────────────────────
 
-class SSECardStreamer:
-    """
-    Converts ProspectCard callbacks into Server-Sent Events for dashboard streaming.
-    Usage:
-        streamer = SSECardStreamer(response_queue)
-        orchestrator = PipelineOrchestrator(..., on_card=streamer.emit)
-    """
+    async def run_parallel(
+        self,
+        category_codes: list[str],
+        location: str = "Australia",
+        target_count: int = 100,
+        num_workers: int = 4,
+        batch_size: int = 50,
+        exclude_domains: set | None = None,
+        on_prospect_found: Any = None,
+        discover_all: bool = False,
+    ) -> PipelineResult:
+        """
+        Multi-worker parallel pipeline (Directive #295 Task E, extended #298).
 
-    def __init__(self, queue: asyncio.Queue) -> None:
-        self._queue = queue
+        Spawns num_workers coroutines, each pulling batches from category_codes
+        in round-robin. Workers share a global semaphore pool and accumulate
+        results into a shared list protected by asyncio.Lock.
 
-    def emit(self, card: ProspectCard) -> None:
-        """Serialize card and put onto asyncio queue for SSE emission."""
-        import json
-        from dataclasses import asdict
-        data = asdict(card)
-        self._queue.put_nowait({"event": "prospect_card", "data": json.dumps(data)})
+        Args:
+            category_codes: DFS category codes to sweep (round-robin across workers).
+            location: Location string passed to discovery layer.
+            target_count: Stop once this many viable prospects are found.
+            num_workers: Number of concurrent worker coroutines.
+            batch_size: Domains per pull_batch call.
+            exclude_domains: Domains already claimed — skipped without processing.
+            on_prospect_found: Optional async callable(card: ProspectCard) called
+                               immediately when each prospect is found (for streaming).
+            discover_all: If True and self._discovery has discover_prospects(),
+                          pre-fetch ALL domains across all category_codes before
+                          workers start. Domains fed into a shared asyncio.Queue.
+                          Workers consume from queue instead of calling pull_batch.
+                          Use for service-first multi-category sweeps (#298).
+        """
+        t0 = time.monotonic()
+
+        # ── On-demand discovery queue (replaces pre-fetch model) ─────────────
+        # When discover_all=True and discovery has next_batch(), use on-demand
+        # batching: pull 100 domains at a time, refill when queue < 20.
+        # Stops pulling as soon as target_reached fires — DFS cost tracks need.
+        pre_fetched_queue: asyncio.Queue | None = None
+        discovery_lock: asyncio.Lock | None = None
+        discovery_refill_task: asyncio.Task | None = None
+
+        if discover_all and hasattr(self._discovery, "next_batch"):
+            logger.info("run_parallel: on-demand discovery mode")
+            category_ints: list[int] = []
+            for code in category_codes:
+                try:
+                    category_ints.append(int(code))
+                except (ValueError, TypeError):
+                    pass
+
+            # Reset discovery pagination state
+            if hasattr(self._discovery, "reset"):
+                self._discovery.reset(category_ints)
+
+            pre_fetched_queue = asyncio.Queue()
+            discovery_lock = asyncio.Lock()
+
+            async def _refill_loop() -> None:
+                """Pull next_batch() whenever queue drops below REFILL_THRESHOLD."""
+                REFILL_THRESHOLD = 20
+                DISCOVERY_BATCH = 100
+                while not target_reached.is_set():
+                    if pre_fetched_queue.qsize() < REFILL_THRESHOLD:
+                        async with GLOBAL_SEM_DFS:
+                            try:
+                                batch = await self._discovery.next_batch(
+                                    category_codes=category_ints,
+                                    location=location,
+                                    batch_size=DISCOVERY_BATCH,
+                                    exclude_domains=set(exclude_domains or []),
+                                )
+                            except Exception as exc:
+                                logger.warning("discovery refill error: %s", exc)
+                                break
+                        if not batch:
+                            logger.info("run_parallel: all discovery categories exhausted")
+                            break
+                        for item in batch:
+                            await pre_fetched_queue.put(item)
+                        logger.info(
+                            "run_parallel: refilled queue with %d domains (qsize=%d)",
+                            len(batch), pre_fetched_queue.qsize(),
+                        )
+                    else:
+                        await asyncio.sleep(0.1)
+
+            discovery_refill_task = asyncio.create_task(_refill_loop())
+
+        # ── Shared state ─────────────────────────────────────────────────
+        results: list[ProspectCard] = []
+        results_lock = asyncio.Lock()
+        target_reached = asyncio.Event()
+
+        stats = PipelineStats()
+        stats_lock = asyncio.Lock()
+
+        seen_domains: set[str] = set(exclude_domains or [])
+        seen_lock = asyncio.Lock()
+
+        # Per-category offset counters (each worker advances its own category slot)
+        offsets: dict[str, int] = {code: 0 for code in category_codes}
+        offsets_lock = asyncio.Lock()
+
+        # Per-worker semaphores (each worker gets its own; global sems still apply)
+        sem_spider = asyncio.Semaphore(SEM_SPIDER)
+        sem_abn    = asyncio.Semaphore(SEM_ABN)
+        sem_paid   = asyncio.Semaphore(SEM_PAID)
+        sem_dm     = asyncio.Semaphore(SEM_DM)
+
+        # ── Worker coroutine ─────────────────────────────────────────────
+        async def _worker(worker_id: int) -> None:
+            cat_idx = worker_id  # each worker starts on a different category
+
+            while not target_reached.is_set():
+
+                # ── STAGE 1: Discovery ────────────────────────────────────
+                if pre_fetched_queue is not None:
+                    # Multi-category pre-fetch mode: consume from shared queue
+                    batch = []
+                    while len(batch) < batch_size:
+                        try:
+                            item = pre_fetched_queue.get_nowait()
+                            batch.append(item)
+                        except asyncio.QueueEmpty:
+                            break
+                    if not batch:
+                        break  # queue exhausted
+                else:
+                    # Legacy per-category pull mode
+                    async with offsets_lock:
+                        cat_code = category_codes[cat_idx % len(category_codes)]
+                        offset = offsets[cat_code]
+                        offsets[cat_code] += batch_size
+                        cat_idx += 1
+
+                    try:
+                        async with GLOBAL_SEM_DFS:
+                            batch = await self._discovery.pull_batch(
+                                category_code=cat_code,
+                                location_name=location,
+                                limit=batch_size,
+                                offset=offset,
+                            )
+                    except Exception as exc:
+                        logger.warning("worker_%d pull_batch error: %s", worker_id, exc)
+                        break
+
+                    if not batch:
+                        break  # category exhausted for this worker
+
+                for domain_row in batch:
+                    if target_reached.is_set():
+                        return
+
+                    domain = domain_row.get("domain", "")
+                    if not domain:
+                        continue
+
+                    # Dedup across workers
+                    async with seen_lock:
+                        if domain in seen_domains:
+                            continue
+                        seen_domains.add(domain)
+
+                    async with stats_lock:
+                        stats.discovered += 1
+
+                    # STAGE 2: Scrape
+                    async with GLOBAL_SEM_SCRAPE:
+                        spider_data = await self._stage_spider(sem_spider, domain)
+
+                    # STAGE 3: Enrich (DNS + ABN)
+                    enrichment = await self._stage_enrich(sem_abn, domain, spider_data)
+                    if enrichment is None:
+                        async with stats_lock:
+                            stats.enrichment_failed += 1
+                        continue
+
+                    async with stats_lock:
+                        stats.enriched += 1
+
+                    # Non-AU filter (Task D)
+                    if enrichment.get("non_au"):
+                        async with stats_lock:
+                            stats.affordability_rejected += 1
+                        continue
+
+                    intel = self._intelligence  # None if not wired
+                    html = enrichment.get("html", "")
+                    company_name = resolve_business_name(domain, enrichment)
+                    addr = enrichment.get("website_address") or {}
+                    suburb = (addr.get("suburb") or addr.get("city") or "") if isinstance(addr, dict) else ""
+
+                    # ── STAGE 3b: Website comprehension (Sonnet, optional) ────
+                    website_data: dict = {}
+                    if intel is not None:
+                        website_data = await intel.comprehend_website(domain, html, f"https://{domain}")
+
+                    # ── GATE 1: Affordability ─────────────────────────────────
+                    if intel is not None:
+                        # Haiku affordability judgment replaces rule-based scorer
+                        afford_intel = await intel.judge_affordability(domain, enrichment, website_data)
+                        if afford_intel.get("hard_gate"):
+                            async with stats_lock:
+                                stats.affordability_rejected += 1
+                            continue
+                        # Build a duck-typed result compatible with ProspectCard fields
+                        class _AffordResult:
+                            band = afford_intel.get("band", "MEDIUM")
+                            raw_score = afford_intel.get("score", 5)
+                            passed_gate = not afford_intel.get("hard_gate", False)
+                            gaps: list = []
+                        afford = _AffordResult()
+                    else:
+                        afford = self._scorer.score_affordability(enrichment)
+                        if not afford.passed_gate:
+                            async with stats_lock:
+                                stats.affordability_rejected += 1
+                            continue
+
+                    # ── STAGE 6: Paid enrichment ──────────────────────────────
+                    async with GLOBAL_SEM_DFS:
+                        paid = await self._stage_paid(sem_paid, domain, company_name, suburb, location)
+
+                    async with stats_lock:
+                        stats.paid_enrichment_calls += 1
+
+                    ads_data = paid.get("ads_data")
+                    gmb_data = paid.get("gmb_data")
+                    if gmb_data:
+                        enrichment = {**enrichment, **gmb_data}
+
+                    # ── STAGE 7: Intent classification ────────────────────────
+                    if intel is not None:
+                        # Sonnet classify_intent replaces point-counting scorer
+                        intent_data = await intel.classify_intent(domain, website_data, gmb_data, ads_data)
+                        intent_band = intent_data.get("band", "NOT_TRYING")
+                        intent_score = intent_data.get("score", 0)
+
+                        # Intent gate: NOT_TRYING rejected
+                        if intent_band == "NOT_TRYING":
+                            async with stats_lock:
+                                stats.intent_rejected += 1
+                            continue
+
+                        # Sonnet analyse_reviews
+                        reviews = (gmb_data or {}).get("reviews") or []
+                        review_data = await intel.analyse_reviews(domain, reviews)
+
+                        # Haiku refine_evidence → final card copy
+                        refined = await intel.refine_evidence(domain, intent_data, review_data, website_data)
+                        evidence = refined.get("evidence_statements", [])
+                    else:
+                        # Fallback: rule-based scorer
+                        intent_free = self._scorer.score_intent_free(enrichment)
+                        if getattr(intent_free, "band", None) == "NOT_TRYING":
+                            async with stats_lock:
+                                stats.intent_rejected += 1
+                            continue
+                        intent = self._scorer.score_intent_full(enrichment, ads_data, gmb_data)
+                        intent_band = getattr(intent, "band", "UNKNOWN")
+                        intent_score = getattr(intent, "raw_score", 0)
+                        evidence = getattr(intent, "evidence", [])
+
+                    # ── STAGE 7c: Vulnerability Report ───────────────────────────
+                    vuln_report: dict = {}
+                    if intel is not None and hasattr(intel, "generate_vulnerability_report"):
+                        try:
+                            _comp_data = {
+                                "top3": paid.get("competitors_top3", []) if isinstance(paid, dict) else [],
+                                "count": paid.get("competitor_count", 0) if isinstance(paid, dict) else 0,
+                            }
+                            _bl_data = {
+                                "referring_domains": paid.get("backlinks_referring_domains", 0) if isinstance(paid, dict) else 0,
+                                "domain_rank": paid.get("backlinks_domain_rank", 0) if isinstance(paid, dict) else 0,
+                                "trend": paid.get("backlinks_trend", "unknown") if isinstance(paid, dict) else "unknown",
+                            }
+                            _brand_data = {
+                                "position": paid.get("brand_serp_position") if isinstance(paid, dict) else None,
+                                "gmb_showing": paid.get("brand_serp_gmb_showing", False) if isinstance(paid, dict) else False,
+                                "competitors_bidding": paid.get("brand_serp_competitors_bidding", False) if isinstance(paid, dict) else False,
+                            }
+                            _indexed = paid.get("indexed_pages_count", 0) if isinstance(paid, dict) else 0
+                            _intel_data = {"intent_band": intent_band, "intent_score": intent_score} if not isinstance(intent_data, dict) else intent_data
+                            vuln_report = await intel.generate_vulnerability_report(
+                                domain=domain,
+                                company_name=company_name,
+                                enrichment=enrichment,
+                                intelligence=_intel_data,
+                                competitors_data=_comp_data,
+                                backlinks_data=_bl_data,
+                                brand_serp_data=_brand_data,
+                                indexed_pages=_indexed,
+                            )
+                        except Exception as _vuln_exc:
+                            logger.warning("vulnerability_report failed domain=%s: %s", domain, _vuln_exc)
+
+                    # ── STAGE 8: DM identification ────────────────────────────
+                    async with GLOBAL_SEM_DFS:
+                        dm = await self._stage_dm(sem_dm, domain, company_name, enrichment)
+
+                    if not dm or not getattr(dm, "name", None):
+                        async with stats_lock:
+                            stats.dm_not_found += 1
+                        continue
+
+                    async with stats_lock:
+                        stats.dm_found += 1
+
+                    # ── STAGE 9: Email waterfall (after DM identification) ────
+                    email_result = await discover_email(
+                        domain=domain,
+                        dm_name=dm.name or "",
+                        dm_linkedin=getattr(dm, "linkedin_url", None),
+                        html=enrichment.get("html") or enrichment.get("_raw_html") or "",
+                        company_name=company_name,
+                    )
+
+                    # GATE: Reachability — email OR LinkedIn required
+                    has_email = bool(email_result.email) or bool(enrichment.get("website_contact_emails"))
+                    has_linkedin = bool(getattr(dm, "linkedin_url", None))
+                    if not (has_email or has_linkedin):
+                        async with stats_lock:
+                            stats.unreachable += 1
+                        continue
+
+                    # Build ProspectCard
+                    # Re-resolve with GMB data now available (gmb_data merged into enrichment above)
+                    company_name = resolve_business_name(domain, enrichment, gmb_data)
+                    _loc_suburb, _loc_state, _loc_display = resolve_location(domain, enrichment, gmb_data, default_location=location)
+                    card = ProspectCard(
+                        domain=domain,
+                        company_name=company_name,
+                        location=_loc_display,
+                        location_suburb=_loc_suburb,
+                        location_state=_loc_state,
+                        location_display=_loc_display,
+                        evidence=evidence,
+                        affordability_band=afford.band,
+                        affordability_score=afford.raw_score,
+                        intent_band=intent_band,
+                        intent_score=intent_score,
+                        gmb_rating=enrichment.get("gmb_rating"),
+                        gmb_review_count=enrichment.get("gmb_review_count", 0),
+                        dm_name=dm.name,
+                        dm_title=getattr(dm, "title", None),
+                        dm_linkedin_url=getattr(dm, "linkedin_url", None),
+                        dm_confidence=getattr(dm, "confidence", None),
+                        dm_email=email_result.email,
+                        dm_email_verified=email_result.verified,
+                        dm_email_source=email_result.source,
+                        dm_email_confidence=email_result.confidence,
+                        email_cost_usd=email_result.cost_usd,
+                        vulnerability_report=vuln_report,
+                    )
+
+                    async with results_lock:
+                        if target_reached.is_set():
+                            return  # another worker just hit the target
+                        results.append(card)
+                        if on_prospect_found is not None:
+                            try:
+                                await on_prospect_found(card)
+                            except Exception:
+                                pass
+                        if len(results) >= target_count:
+                            target_reached.set()
+
+                    async with stats_lock:
+                        stats.viable_prospects += 1
+                        stats.category_stats[cat_code] = stats.category_stats.get(cat_code, 0) + 1
+                        logger.info(
+                            "parallel_prospect_found worker=%d domain=%s afford=%s intent=%s dm=%s",
+                            worker_id, domain, afford.band, intent_band, dm.name,
+                        )
+
+        # ── Launch workers ────────────────────────────────────────────────
+        workers = [_worker(i) for i in range(num_workers)]
+        await asyncio.gather(*workers, return_exceptions=True)
+
+        # Cancel refill loop once workers are done
+        if discovery_refill_task is not None and not discovery_refill_task.done():
+            discovery_refill_task.cancel()
+            try:
+                await discovery_refill_task
+            except asyncio.CancelledError:
+                pass
+
+        stats.elapsed_seconds = time.monotonic() - t0
+        logger.info(
+            "parallel_orchestrator_complete prospects=%d discovered=%d workers=%d elapsed=%.1fs",
+            len(results), stats.discovered, num_workers, stats.elapsed_seconds,
+        )
+        return PipelineResult(prospects=results, stats=stats)

@@ -7,6 +7,25 @@ description: Self-decomposition protocol — breaks high-level objectives into v
 
 When the main agent receives a directive or high-level objective, BEFORE any execution:
 
+## Step 0 — RESTATE
+
+Before any decomposition, restate the objective back to Dave as a structured brief:
+
+```
+UNDERSTOOD AS:
+
+Objective:          [one sentence — what will be different when this is done]
+Scope:              [which files, systems, or components are affected]
+Success criteria:   [how Dave will know it worked]
+Assumptions:        [what you're taking as given — flag anything uncertain]
+Estimated cost:     [rough AUD based on expected API calls]
+
+Confirm / Edit?
+```
+
+**Do NOT proceed to Step 1 until Dave responds with "go", "confirmed", "yes", or equivalent.**
+If Dave edits, restate the edited version and confirm again.
+
 ## Step 1 — DECOMPOSE
 
 Break the objective into discrete numbered tasks. For each task specify:

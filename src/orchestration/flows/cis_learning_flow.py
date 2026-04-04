@@ -38,6 +38,8 @@ from src.services.cis_outcome_service import (
     log_weight_adjustment,
     save_propensity_weights,
 )
+from src.prefect_utils.completion_hook import on_completion_hook
+from src.prefect_utils.hooks import on_failure_hook
 
 CEO_MEMORY_WEIGHTS_KEY = "ceo:propensity_weights_v3"
 MIN_OUTCOMES_THRESHOLD = int(os.environ.get("CIS_MIN_OUTCOMES_THRESHOLD", "20"))
@@ -417,10 +419,4 @@ async def run_cis_manually(customer_id: str | None = None):
 
 if __name__ == "__main__":
     import asyncio
-import sys as _sys
-_sys.path.insert(0, "/home/elliotbot/clawd/Agency_OS")
-from src.prefect_utils.completion_hook import on_completion_hook
-from src.prefect_utils.hooks import on_failure_hook
-
-
     asyncio.run(run_cis_manually())

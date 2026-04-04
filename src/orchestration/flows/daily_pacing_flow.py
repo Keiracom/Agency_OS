@@ -28,6 +28,8 @@ from src.integrations.supabase import get_db_session
 from src.models.activity import Activity
 from src.models.base import SubscriptionStatus
 from src.models.client import Client
+from src.prefect_utils.completion_hook import on_completion_hook
+from src.prefect_utils.hooks import on_failure_hook
 
 logger = logging.getLogger(__name__)
 
@@ -174,10 +176,6 @@ async def calculate_daily_pacing_task(client_data: dict[str, Any]) -> dict[str, 
         else:
             # Assume cycle started 30 days ago
             from datetime import timedelta
-import sys as _sys
-_sys.path.insert(0, "/home/elliotbot/clawd/Agency_OS")
-from src.prefect_utils.completion_hook import on_completion_hook
-from src.prefect_utils.hooks import on_failure_hook
 
 
             cycle_start = now - timedelta(days=30)

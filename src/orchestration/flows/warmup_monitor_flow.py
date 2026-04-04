@@ -21,6 +21,8 @@ from sqlalchemy import select
 from src.config.database import get_db_session
 from src.integrations.warmforge import get_warmforge_client
 from src.models.resource_pool import ResourcePool, ResourceStatus, ResourceType
+from src.prefect_utils.completion_hook import on_completion_hook
+from src.prefect_utils.hooks import on_failure_hook
 
 logger = logging.getLogger(__name__)
 
@@ -135,10 +137,6 @@ async def update_domain_status_task(
     # Domain is ready - update to available
     async with get_db_session() as db:
         from uuid import UUID
-import sys as _sys
-_sys.path.insert(0, "/home/elliotbot/clawd/Agency_OS")
-from src.prefect_utils.completion_hook import on_completion_hook
-from src.prefect_utils.hooks import on_failure_hook
 
 
         result = await db.execute(select(ResourcePool).where(ResourcePool.id == UUID(resource_id)))

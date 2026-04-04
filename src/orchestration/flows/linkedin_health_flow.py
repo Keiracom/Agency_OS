@@ -37,8 +37,6 @@ from prefect.task_runners import ConcurrentTaskRunner
 from src.integrations.supabase import get_db_session
 from src.services.linkedin_health_service import linkedin_health_service
 from src.services.linkedin_warmup_service import linkedin_warmup_service
-import sys as _sys
-_sys.path.insert(0, "/home/elliotbot/clawd/Agency_OS")
 from src.prefect_utils.completion_hook import on_completion_hook
 from src.prefect_utils.hooks import on_failure_hook
 

@@ -26,14 +26,11 @@ from prefect.task_runners import ConcurrentTaskRunner
 
 from src.integrations.supabase import get_db_session
 from src.services.recording_cleanup_service import (
-import sys as _sys
-_sys.path.insert(0, "/home/elliotbot/clawd/Agency_OS")
-from src.prefect_utils.completion_hook import on_completion_hook
-from src.prefect_utils.hooks import on_failure_hook
-
     RECORDING_RETENTION_DAYS,
     RecordingCleanupService,
 )
+from src.prefect_utils.completion_hook import on_completion_hook
+from src.prefect_utils.hooks import on_failure_hook
 
 logger = logging.getLogger(__name__)
 

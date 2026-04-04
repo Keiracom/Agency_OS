@@ -34,8 +34,6 @@ from src.integrations.unipile import get_unipile_client
 from src.models.activity import Activity
 from src.models.base import ChannelType
 from src.models.lead import Lead
-import sys as _sys
-_sys.path.insert(0, "/home/elliotbot/clawd/Agency_OS")
 from src.prefect_utils.completion_hook import on_completion_hook
 from src.prefect_utils.hooks import on_failure_hook
 

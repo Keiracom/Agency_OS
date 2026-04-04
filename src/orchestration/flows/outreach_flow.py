@@ -64,6 +64,8 @@ from src.services.content_qa_service import (
     validate_linkedin_content,
     validate_sms_content,
 )
+from src.prefect_utils.completion_hook import on_completion_hook
+from src.prefect_utils.hooks import on_failure_hook
 
 logger = logging.getLogger(__name__)
 
@@ -865,10 +867,6 @@ async def send_linkedin_outreach_task(
     # Sunday: No LinkedIn activity allowed
     if timing_engine.is_weekend(timezone):
         from zoneinfo import ZoneInfo
-import sys as _sys
-_sys.path.insert(0, "/home/elliotbot/clawd/Agency_OS")
-from src.prefect_utils.completion_hook import on_completion_hook
-from src.prefect_utils.hooks import on_failure_hook
 
 
         tz = ZoneInfo(timezone)

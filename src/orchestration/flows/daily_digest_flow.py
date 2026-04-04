@@ -22,6 +22,8 @@ from prefect.runtime import flow_run
 from src.config.database import get_db_session
 from src.config.settings import settings
 from src.services.digest_service import DigestService
+from src.prefect_utils.completion_hook import on_completion_hook
+from src.prefect_utils.hooks import on_failure_hook
 
 logger = logging.getLogger(__name__)
 
@@ -165,10 +167,6 @@ async def send_digest_email_task(
     try:
         # Import email engine
         from src.engines.email import EmailEngine
-import sys as _sys
-_sys.path.insert(0, "/home/elliotbot/clawd/Agency_OS")
-from src.prefect_utils.completion_hook import on_completion_hook
-from src.prefect_utils.hooks import on_failure_hook
 
 
         async with get_db_session() as db:

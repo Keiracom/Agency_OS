@@ -42,6 +42,8 @@ from src.models.campaign_suggestion import (
     SuggestionStatus,
 )
 from src.models.client import Client
+from src.prefect_utils.completion_hook import on_completion_hook
+from src.prefect_utils.hooks import on_failure_hook
 
 logger = logging.getLogger(__name__)
 
@@ -268,10 +270,6 @@ async def fetch_client_context_task(client_id: UUID) -> dict[str, Any]:
 
         # Get tier config
         from src.config.tiers import get_leads_for_tier
-import sys as _sys
-_sys.path.insert(0, "/home/elliotbot/clawd/Agency_OS")
-from src.prefect_utils.completion_hook import on_completion_hook
-from src.prefect_utils.hooks import on_failure_hook
 
 
         tier_name = client.tier.value if client.tier else "ignition"

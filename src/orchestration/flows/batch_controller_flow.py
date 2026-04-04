@@ -34,6 +34,8 @@ from sqlalchemy import text
 
 from src.integrations.supabase import get_db_session
 from src.services.icp_filter_service import get_icp_filter_service
+from src.prefect_utils.completion_hook import on_completion_hook
+from src.prefect_utils.hooks import on_failure_hook
 
 logger = logging.getLogger(__name__)
 
@@ -670,10 +672,6 @@ async def _soft_discard_lead(
         Discard record UUID or None
     """
     import json
-import sys as _sys
-_sys.path.insert(0, "/home/elliotbot/clawd/Agency_OS")
-from src.prefect_utils.completion_hook import on_completion_hook
-from src.prefect_utils.hooks import on_failure_hook
 
 
     try:

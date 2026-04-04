@@ -43,8 +43,6 @@ from src.models.base import LeadStatus, SubscriptionStatus
 from src.models.client import Client
 from src.models.conversion_patterns import ConversionPattern
 from src.models.lead import Lead
-import sys as _sys
-_sys.path.insert(0, "/home/elliotbot/clawd/Agency_OS")
 from src.prefect_utils.completion_hook import on_completion_hook
 from src.prefect_utils.hooks import on_failure_hook
 

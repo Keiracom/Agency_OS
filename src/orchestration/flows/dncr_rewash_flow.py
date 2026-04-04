@@ -34,6 +34,8 @@ from sqlalchemy import and_, or_, select
 from src.integrations.supabase import get_db_session
 from src.models.lead import Lead
 from src.models.lead_pool import LeadPool
+from src.prefect_utils.completion_hook import on_completion_hook
+from src.prefect_utils.hooks import on_failure_hook
 
 logger = logging.getLogger(__name__)
 
@@ -168,10 +170,6 @@ async def dncr_rewash_batch_task(
         Dict with re-wash results
     """
     from src.integrations.dncr import get_dncr_client
-import sys as _sys
-_sys.path.insert(0, "/home/elliotbot/clawd/Agency_OS")
-from src.prefect_utils.completion_hook import on_completion_hook
-from src.prefect_utils.hooks import on_failure_hook
 
 
     if not leads:

@@ -39,8 +39,6 @@ from src.orchestration.flows.lead_enrichment_flow import lead_enrichment_flow
 from src.services.jit_validator import JITValidator
 from src.services.lead_allocator_service import LeadAllocatorService
 from src.services.lead_pool_service import LeadPoolService
-import sys as _sys
-_sys.path.insert(0, "/home/elliotbot/clawd/Agency_OS")
 from src.prefect_utils.completion_hook import on_completion_hook
 from src.prefect_utils.hooks import on_failure_hook
 

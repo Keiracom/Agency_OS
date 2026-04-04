@@ -37,6 +37,8 @@ from src.engines.scorer import get_scorer_engine
 from src.engines.scout import get_scout_engine
 from src.integrations.anthropic import get_anthropic_client
 from src.integrations.supabase import get_db_session
+from src.prefect_utils.completion_hook import on_completion_hook
+from src.prefect_utils.hooks import on_failure_hook
 
 logger = logging.getLogger(__name__)
 
@@ -387,10 +389,6 @@ async def score_enriched_lead_task(
             """)
 
             import json
-import sys as _sys
-_sys.path.insert(0, "/home/elliotbot/clawd/Agency_OS")
-from src.prefect_utils.completion_hook import on_completion_hook
-from src.prefect_utils.hooks import on_failure_hook
 
 
             await db.execute(

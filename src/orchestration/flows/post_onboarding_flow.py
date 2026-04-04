@@ -43,6 +43,8 @@ from prefect.task_runners import ConcurrentTaskRunner
 from sqlalchemy import text
 
 from src.integrations.supabase import get_db_session
+from src.prefect_utils.completion_hook import on_completion_hook
+from src.prefect_utils.hooks import on_failure_hook
 
 logger = logging.getLogger(__name__)
 
@@ -1191,10 +1193,6 @@ def deploy_post_onboarding_flows():
     Run this to register flows with the Prefect server.
     """
     from prefect.deployments import Deployment
-import sys as _sys
-_sys.path.insert(0, "/home/elliotbot/clawd/Agency_OS")
-from src.prefect_utils.completion_hook import on_completion_hook
-from src.prefect_utils.hooks import on_failure_hook
 
 
     # Main post-onboarding setup flow

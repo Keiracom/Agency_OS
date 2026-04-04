@@ -38,6 +38,8 @@ from src.integrations.supabase import get_db_session
 from src.models.base import SubscriptionStatus
 from src.models.client import Client
 from src.services.who_refinement_service import get_who_refined_criteria
+from src.prefect_utils.completion_hook import on_completion_hook
+from src.prefect_utils.hooks import on_failure_hook
 
 logger = logging.getLogger(__name__)
 
@@ -494,10 +496,6 @@ async def populate_pool_from_icp_task(
             return None
 
     from src.integrations.bright_data_client import DATASET_IDS, get_bright_data_client
-import sys as _sys
-_sys.path.insert(0, "/home/elliotbot/clawd/Agency_OS")
-from src.prefect_utils.completion_hook import on_completion_hook
-from src.prefect_utils.hooks import on_failure_hook
 
 
     MAX_ONBOARDING_COMBOS = 3

@@ -46,6 +46,8 @@ from src.integrations.supabase import get_db_session
 from src.models.base import (
     CampaignStatus,
 )
+from src.prefect_utils.completion_hook import on_completion_hook
+from src.prefect_utils.hooks import on_failure_hook
 
 logger = logging.getLogger(__name__)
 
@@ -786,10 +788,6 @@ async def voice_outreach_flow(agency_id: str | None = None) -> dict[str, Any]:
 if __name__ == "__main__":
     # For local testing
     import asyncio
-import sys as _sys
-_sys.path.insert(0, "/home/elliotbot/clawd/Agency_OS")
-from src.prefect_utils.completion_hook import on_completion_hook
-from src.prefect_utils.hooks import on_failure_hook
 
 
     asyncio.run(voice_outreach_flow())

@@ -44,6 +44,8 @@ from src.models.base import (
 from src.models.campaign import Campaign
 from src.models.client import Client
 from src.models.lead import Lead
+from src.prefect_utils.completion_hook import on_completion_hook
+from src.prefect_utils.hooks import on_failure_hook
 
 logger = logging.getLogger(__name__)
 
@@ -694,10 +696,6 @@ async def daily_enrichment_flow(
                         gap = quota_result["gap"]
                         # Get next unswept location for this campaign
                         from src.orchestration.flows.pool_population_flow import (
-import sys as _sys
-_sys.path.insert(0, "/home/elliotbot/clawd/Agency_OS")
-from src.prefect_utils.completion_hook import on_completion_hook
-from src.prefect_utils.hooks import on_failure_hook
 
                             get_next_unswept_location,
                         )

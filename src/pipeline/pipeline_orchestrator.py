@@ -24,7 +24,7 @@ import asyncio
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 from src.pipeline.prospect_scorer import ProspectScorer, ProspectScore
 
@@ -35,6 +35,7 @@ SEM_SPIDER = 15    # Spider.cloud concurrent scrapes
 SEM_ABN    = 1     # asyncpg single-connection safety
 SEM_PAID   = 20    # DFS Ads Search + GMB concurrent
 SEM_DM     = 20    # DFS SERP LinkedIn concurrent
+SEM_LLM    = 10    # Anthropic concurrent limit (Haiku: 50 RPM, Sonnet: 10 RPM — conservative)
 
 
 @dataclass
@@ -110,6 +111,7 @@ class PipelineOrchestrator:
         ads_client=None,
         prospect_scorer=None,
         intelligence=None,           # NEW: WebsiteIntelligenceEngine | None
+        on_card: Callable[["ProspectCard"], None] | None = None,
     ):
         self._discovery = discovery
         self._fe = free_enrichment
@@ -118,6 +120,7 @@ class PipelineOrchestrator:
         self._gmb_client = gmb_client
         self._ads_client = ads_client
         self._intel = intelligence
+        self._on_card = on_card
 
     # ── Stage helpers ─────────────────────────────────────────────────────
 
@@ -365,7 +368,7 @@ class PipelineOrchestrator:
 
                 # ── STAGE 4.5: LLM website intelligence (optional) ────────────
                 if self._intel is not None and afford_passed:
-                    sem_intel = asyncio.Semaphore(10)  # 10 concurrent Haiku calls
+                    sem_intel = asyncio.Semaphore(SEM_LLM)
                     intel_coros = []
                     for domain, enrichment, afford in afford_passed:
                         spider_html = enrichment.get("_raw_html", "")
@@ -540,6 +543,11 @@ class PipelineOrchestrator:
                         dm_confidence=dm.confidence,
                     )
                     results.append(card)
+                    if self._on_card is not None:
+                        try:
+                            self._on_card(card)
+                        except Exception:
+                            pass  # never let streaming break the pipeline
                     stats.viable_prospects += 1
                     stats.category_stats[category_code] = stats.category_stats.get(category_code, 0) + 1
                     logger.info(
@@ -551,3 +559,22 @@ class PipelineOrchestrator:
         logger.info("orchestrator_complete prospects=%d discovered=%d elapsed=%.1fs",
                     len(results), stats.discovered, stats.elapsed_seconds)
         return PipelineResult(prospects=results, stats=stats)
+
+
+class SSECardStreamer:
+    """
+    Converts ProspectCard callbacks into Server-Sent Events for dashboard streaming.
+    Usage:
+        streamer = SSECardStreamer(response_queue)
+        orchestrator = PipelineOrchestrator(..., on_card=streamer.emit)
+    """
+
+    def __init__(self, queue: asyncio.Queue) -> None:
+        self._queue = queue
+
+    def emit(self, card: ProspectCard) -> None:
+        """Serialize card and put onto asyncio queue for SSE emission."""
+        import json
+        from dataclasses import asdict
+        data = asdict(card)
+        self._queue.put_nowait({"event": "prospect_card", "data": json.dumps(data)})

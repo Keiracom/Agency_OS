@@ -786,7 +786,7 @@ class FreeEnrichment:
             return None
 
         # ── Strategy 1: Domain keyword intersection (local DB) ────────────
-        if len(domain_keywords) >= 2:
+        if len(domain_keywords) >= 1:
             try:
                 row = await self._local_abn_match(domain_keywords, state_hint)
                 if row:
@@ -804,7 +804,7 @@ class FreeEnrichment:
                 w for w in re.split(r"\s+", title_cleaned.lower())
                 if len(w) > 2 and w not in _ABN_STOPWORDS
             ]
-            if len(title_kw) >= 2:
+            if len(title_kw) >= 1:
                 try:
                     row = await self._local_abn_match(title_kw, state_hint)
                     if row:
@@ -831,7 +831,7 @@ class FreeEnrichment:
 
         # ── Strategy 4: Live ABN API fuzzy search ─────────────────────────
         api_terms = [t for t in [title_cleaned, " ".join(domain_keywords) if domain_keywords else None]
-                     if t and len(t) >= 3]
+                     if t and len(t) >= 2]
         for api_term in api_terms:
             try:
                 from src.config.settings import settings

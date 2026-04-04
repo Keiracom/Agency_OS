@@ -11,6 +11,7 @@ import {
   BarChart3,
   Settings,
   Check,
+  Radio,
 } from "lucide-react";
 import { DemoBanner } from "@/components/demo/DemoBanner";
 import { useDemoMode } from "@/lib/demo-context";
@@ -22,6 +23,7 @@ interface AppShellProps {
 
 const navItems = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Command Center" },
+  { href: "/dashboard/pipeline", icon: Radio, label: "Live Pipeline" },
   { href: "/leads", icon: Users, label: "Leads" },
   { href: "/campaigns", icon: Megaphone, label: "Campaigns" },
   { href: "/replies", icon: MessageSquareReply, label: "Replies" },

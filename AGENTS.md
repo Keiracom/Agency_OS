@@ -2,6 +2,25 @@
 
 This folder is home. Treat it that way.
 
+## 📣 Proactive Completion Alerts — MANDATORY
+
+When background agents complete, **do not rely on heartbeat responses to notify Dave**.
+
+**Rule:** When all spawned agents for a task batch finish, immediately send a direct Telegram message using the `message` tool:
+
+```
+message(action=send, channel=telegram, to=7267788033, message="✅ All done. [1-line summary of what completed]. What's next?")
+```
+
+**When to send:**
+- Final agent in a wave completes → send wave summary
+- All waves complete → send full completion summary
+- Any agent fails → send failure alert immediately
+
+**Never assume Dave saw a heartbeat response.** Heartbeats are background noise. Direct messages are the signal.
+
+---
+
 ## 🛑 /kill — EMERGENCY STOP (NON-NEGOTIABLE)
 
 When Dave types `/kill`:

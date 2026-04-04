@@ -205,6 +205,7 @@ SEM_SPIDER = 15    # Spider.cloud concurrent scrapes
 SEM_ABN    = 50    # asyncpg pool connections (Supabase Pro; pool max_size=50)
 SEM_PAID   = 20    # DFS Ads Search + GMB concurrent
 SEM_DM     = 20    # DFS SERP LinkedIn concurrent
+SEM_LLM    = 10    # Anthropic concurrent limit (Haiku: 50 RPM, Sonnet: 10 RPM — conservative)
 
 # Global semaphore pool — shared across parallel workers (module-level singletons)
 # GLOBAL_SEM_SONNET and GLOBAL_SEM_HAIKU are defined in intelligence.py and imported above
@@ -279,6 +280,25 @@ class PipelineResult:
     stats: PipelineStats
 
 
+class SSECardStreamer:
+    """
+    Converts ProspectCard callbacks into Server-Sent Events for dashboard streaming.
+    Usage:
+        streamer = SSECardStreamer(response_queue)
+        orchestrator = PipelineOrchestrator(..., on_card=streamer.emit)
+    """
+
+    def __init__(self, queue: asyncio.Queue) -> None:
+        self._queue = queue
+
+    def emit(self, card: ProspectCard) -> None:
+        """Serialize card and put onto asyncio queue for SSE emission."""
+        import json
+        from dataclasses import asdict
+        data = asdict(card)
+        self._queue.put_nowait({"event": "prospect_card", "data": json.dumps(data)})
+
+
 class PipelineOrchestrator:
     """
     Stage-parallel pipeline orchestrator (Directive #293).
@@ -309,6 +329,7 @@ class PipelineOrchestrator:
         ads_client=None,
         prospect_scorer=None,
         intelligence=None,
+        on_card=None,
     ):
         self._discovery = discovery
         self._fe = free_enrichment
@@ -317,6 +338,7 @@ class PipelineOrchestrator:
         self._gmb_client = gmb_client
         self._ads_client = ads_client
         self._intelligence = intelligence  # optional: IntelligenceLayer instance or module
+        self._on_card = on_card  # optional: callable(ProspectCard) — fires as each card completes
 
     # ── Stage helpers ─────────────────────────────────────────────────────
 
@@ -768,6 +790,11 @@ class PipelineOrchestrator:
                         vulnerability_report=vuln_report,
                     )
                     results.append(card)
+                    if self._on_card is not None:
+                        try:
+                            self._on_card(card)
+                        except Exception:
+                            pass  # never let streaming break the pipeline
                     stats.viable_prospects += 1
                     stats.category_stats[category_code] = stats.category_stats.get(category_code, 0) + 1
                     logger.info(

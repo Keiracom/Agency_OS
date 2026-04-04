@@ -1,10 +1,9 @@
 """
 Tests for Task 1.3 — httpx primary scraper with Spider fallback.
 
-Verifies:
-- httpx usable content → Spider NOT called
-- httpx returns Cloudflare challenge → Spider IS called
-- httpx returns empty response → Spider IS called
+Architecture: FreeEnrichment._scrape_website() calls self._httpx.scrape() (HttpxScraper).
+- If HttpxScraper returns a result with html >= 1000 chars → use it, Spider NOT called
+- If HttpxScraper returns None or short html → Spider fallback (increment _spider_fallback_count)
 """
 
 from __future__ import annotations
@@ -40,131 +39,151 @@ We bulk-bill eligible patients and offer flexible payment plans.</p>
 </html>
 """
 
-CF_CHALLENGE_HTML = """<!DOCTYPE html>
-<html>
-<head><title>Just a moment...</title></head>
-<body>
-<div class="cf-browser-verification">Checking your browser before accessing the site.</div>
-<p>Cloudflare Ray ID: abc123</p>
-</body>
-</html>
-"""
-
-EMPTY_HTML = ""
-
-
-def _mock_httpx_response(text: str, status_code: int = 200) -> MagicMock:
-    resp = MagicMock()
-    resp.text = text
-    resp.status_code = status_code
-    return resp
-
 
 @pytest.mark.asyncio
 async def test_usable_httpx_content_does_not_call_spider():
-    """When httpx returns usable HTML, Spider should NOT be called."""
+    """When HttpxScraper returns usable HTML (>=1000 chars), Spider should NOT be called."""
     fe = _make_enrichment()
 
-    mock_response = _mock_httpx_response(USABLE_HTML)
-    mock_client = AsyncMock()
-    mock_client.get = AsyncMock(return_value=mock_response)
-    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-    mock_client.__aexit__ = AsyncMock(return_value=False)
+    # HttpxScraper returns a good result
+    httpx_result = {"html": USABLE_HTML * 5, "title": "Acme Dental | Sydney", "status_code": 200}
+    fe._httpx.scrape = AsyncMock(return_value=httpx_result)
 
-    with patch("src.pipeline.free_enrichment.httpx.AsyncClient", return_value=mock_client):
-        with patch.object(fe, "_spider_scrape", new_callable=AsyncMock) as mock_spider:
-            result = await fe._scrape_website("acmedental.com.au")
+    with patch("src.pipeline.free_enrichment.httpx.AsyncClient") as mock_httpx_cls:
+        result = await fe._scrape_website("acmedental.com.au")
 
-    mock_spider.assert_not_called()
-    assert result.get("title") == "Acme Dental | Sydney"
+    # Spider (httpx.AsyncClient.post) should NOT have been called
+    mock_httpx_cls.assert_not_called()
+    assert result.get("scraper_used") == "httpx"
     assert fe._spider_fallback_count == 0
 
 
 @pytest.mark.asyncio
-async def test_cloudflare_challenge_triggers_spider_fallback():
-    """When httpx returns a Cloudflare challenge page, Spider should be called."""
+async def test_httpx_returns_none_triggers_spider_fallback():
+    """When HttpxScraper returns None (failed/blocked), Spider should be called."""
     fe = _make_enrichment()
+    fe._httpx.scrape = AsyncMock(return_value=None)
 
-    mock_response = _mock_httpx_response(CF_CHALLENGE_HTML)
-    mock_client = AsyncMock()
-    mock_client.get = AsyncMock(return_value=mock_response)
-    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-    mock_client.__aexit__ = AsyncMock(return_value=False)
+    spider_result = {
+        "title": "Acme Dental",
+        "website_cms": "wordpress",
+        "website_tech_stack": [],
+        "website_tracking_codes": [],
+        "website_team_names": [],
+        "website_contact_emails": [],
+        "website_address": None,
+        "_raw_html": "<html>real content</html>",
+        "scraper_used": "spider",
+        "has_google_ads_tag": False,
+        "has_meta_pixel": False,
+        "has_any_ad_tag": False,
+    }
 
-    spider_result = {"title": "Acme Dental", "website_cms": None}
+    async with MagicMock() as mock_client:
+        mock_client.post = AsyncMock(return_value=MagicMock(
+            status_code=200,
+            json=MagicMock(return_value=[{
+                "content": "<html>real content</html>",
+                "links": [],
+                "metadata": {"title": "Acme Dental"},
+            }]),
+        ))
 
-    with patch("src.pipeline.free_enrichment.httpx.AsyncClient", return_value=mock_client):
-        with patch.object(fe, "_spider_scrape", new_callable=AsyncMock, return_value=spider_result) as mock_spider:
-            result = await fe._scrape_website("acmedental.com.au")
+    with patch("src.pipeline.free_enrichment.httpx.AsyncClient") as mock_httpx_cls:
+        mock_client_instance = AsyncMock()
+        mock_client_instance.__aenter__ = AsyncMock(return_value=mock_client_instance)
+        mock_client_instance.__aexit__ = AsyncMock(return_value=False)
+        mock_client_instance.post = AsyncMock(return_value=MagicMock(
+            status_code=200,
+            json=MagicMock(return_value=[{
+                "content": "real content " * 100,
+                "links": [],
+                "metadata": {"title": "Acme Dental"},
+            }]),
+        ))
+        mock_httpx_cls.return_value = mock_client_instance
 
-    mock_spider.assert_called_once_with("acmedental.com.au")
-    assert result == spider_result
+        result = await fe._scrape_website("acmedental.com.au")
+
+    assert fe._spider_fallback_count == 1
+    assert result.get("scraper_used") == "spider"
 
 
 @pytest.mark.asyncio
-async def test_empty_response_triggers_spider_fallback():
-    """When httpx returns an empty response, Spider should be called."""
+async def test_httpx_returns_short_html_triggers_spider_fallback():
+    """When HttpxScraper returns html < 1000 chars, Spider should be called."""
     fe = _make_enrichment()
+    fe._httpx.scrape = AsyncMock(return_value={"html": "<html>short</html>", "title": None, "status_code": 200})
 
-    mock_response = _mock_httpx_response(EMPTY_HTML)
-    mock_client = AsyncMock()
-    mock_client.get = AsyncMock(return_value=mock_response)
-    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-    mock_client.__aexit__ = AsyncMock(return_value=False)
+    with patch("src.pipeline.free_enrichment.httpx.AsyncClient") as mock_httpx_cls:
+        mock_client_instance = AsyncMock()
+        mock_client_instance.__aenter__ = AsyncMock(return_value=mock_client_instance)
+        mock_client_instance.__aexit__ = AsyncMock(return_value=False)
+        mock_client_instance.post = AsyncMock(return_value=MagicMock(
+            status_code=200,
+            json=MagicMock(return_value=[{
+                "content": "real content " * 100,
+                "links": [],
+                "metadata": {"title": "Test"},
+            }]),
+        ))
+        mock_httpx_cls.return_value = mock_client_instance
 
-    spider_result = {"title": "Acme Dental", "website_cms": "wordpress"}
+        result = await fe._scrape_website("acmedental.com.au")
 
-    with patch("src.pipeline.free_enrichment.httpx.AsyncClient", return_value=mock_client):
-        with patch.object(fe, "_spider_scrape", new_callable=AsyncMock, return_value=spider_result) as mock_spider:
-            result = await fe._scrape_website("acmedental.com.au")
-
-    mock_spider.assert_called_once_with("acmedental.com.au")
-    assert result == spider_result
+    assert fe._spider_fallback_count == 1
 
 
 @pytest.mark.asyncio
-async def test_httpx_exception_triggers_spider_fallback():
-    """When httpx raises an exception, Spider should be called."""
+async def test_spider_fallback_count_increments_per_fallback():
+    """_spider_fallback_count increments each time Spider is used."""
     fe = _make_enrichment()
+    fe._httpx.scrape = AsyncMock(return_value=None)
 
-    mock_client = AsyncMock()
-    mock_client.get = AsyncMock(side_effect=Exception("Connection refused"))
-    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-    mock_client.__aexit__ = AsyncMock(return_value=False)
+    with patch("src.pipeline.free_enrichment.httpx.AsyncClient") as mock_httpx_cls:
+        mock_client_instance = AsyncMock()
+        mock_client_instance.__aenter__ = AsyncMock(return_value=mock_client_instance)
+        mock_client_instance.__aexit__ = AsyncMock(return_value=False)
+        mock_client_instance.post = AsyncMock(return_value=MagicMock(
+            status_code=200,
+            json=MagicMock(return_value=[{
+                "content": "content " * 100,
+                "links": [],
+                "metadata": {"title": "Test"},
+            }]),
+        ))
+        mock_httpx_cls.return_value = mock_client_instance
 
-    spider_result = {"title": "Acme Dental", "website_cms": None}
+        await fe._scrape_website("domain1.com.au")
+        await fe._scrape_website("domain2.com.au")
 
-    with patch("src.pipeline.free_enrichment.httpx.AsyncClient", return_value=mock_client):
-        with patch.object(fe, "_spider_scrape", new_callable=AsyncMock, return_value=spider_result) as mock_spider:
-            result = await fe._scrape_website("acmedental.com.au")
-
-    mock_spider.assert_called_once_with("acmedental.com.au")
-    assert result == spider_result
+    assert fe._spider_fallback_count == 2
 
 
-def test_is_content_usable_returns_false_for_short_content():
+@pytest.mark.asyncio
+async def test_usable_result_has_raw_html_key():
+    """httpx path must include _raw_html in result for intelligence layer."""
     fe = _make_enrichment()
-    assert fe._is_content_usable("short") is False
+    long_html = USABLE_HTML * 10  # ensure >= 1000 chars
+    httpx_result = {"html": long_html, "title": "Test", "status_code": 200}
+    fe._httpx.scrape = AsyncMock(return_value=httpx_result)
+
+    result = await fe._scrape_website("test.com.au")
+
+    assert "_raw_html" in result
+    assert result["_raw_html"] == long_html
 
 
-def test_is_content_usable_returns_false_for_cf_browser_verification():
+@pytest.mark.asyncio
+async def test_spider_not_called_when_httpx_succeeds():
+    """Confirm Spider API endpoint is never hit when httpx returns good content."""
     fe = _make_enrichment()
-    content = "x" * 1000 + " cf-browser-verification present"
-    assert fe._is_content_usable(content) is False
+    long_html = USABLE_HTML * 10
+    fe._httpx.scrape = AsyncMock(return_value={"html": long_html, "title": "Test", "status_code": 200})
 
+    with patch("src.pipeline.free_enrichment.httpx.AsyncClient") as mock_cls:
+        await fe._scrape_website("test.com.au")
+        # httpx.AsyncClient should not have been instantiated (Spider uses it for POST)
+        mock_cls.assert_not_called()
 
-def test_is_content_usable_returns_false_for_cf_waiting_room():
-    fe = _make_enrichment()
-    content = "just a moment... cloudflare is checking " + "x" * 1000
-    assert fe._is_content_usable(content) is False
-
-
-def test_is_content_usable_returns_false_no_script_under_2000():
-    fe = _make_enrichment()
-    content = "<html><body>" + "x" * 700 + "</body></html>"
-    assert fe._is_content_usable(content) is False
-
-
-def test_is_content_usable_returns_true_for_normal_page():
-    fe = _make_enrichment()
-    assert fe._is_content_usable(USABLE_HTML) is True
+    assert fe._spider_fallback_count == 0

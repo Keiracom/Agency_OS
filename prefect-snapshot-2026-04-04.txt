@@ -1,0 +1,247 @@
+                                   Flow Runs                                    
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━┳━━━┳━━━━━━━┓
+┃                            ID ┃ Flow           ┃ Name            ┃ … ┃ When  ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━╇━━━╇━━━━━━━┩
+│ 019d54b7-7db9-7460-a71b-00ba… │ daily_learnin… │ brawny-junglef… │ … │ in 3… │
+│ 019d54b1-0f5d-7967-bf70-17b0… │ crm-sync-flow  │ optimal-tamarin │ … │ in 1… │
+│ 019d53d5-41e9-7cb3-9ce3-4bac… │ crm-sync-flow  │ neon-flounder   │ … │ in 6… │
+│ 019d52f9-07e9-73ed-aeaf-f703… │ crm-sync-flow  │ elusive-chamois │ … │ in 2… │
+│ 019d52f9-07e9-7169-b630-27ef… │ crm-sync-flow  │ modest-bandico… │ … │ 1 ho… │
+│ 019d52f9-07e8-7df5-8652-8020… │ crm-sync-flow  │ debonair-caiman │ … │ 5 ho… │
+│ 0f8bb6fe-7087-40c1-ad35-d9cc… │ campaign_acti… │ saffron-lynx    │ … │ 10 h… │
+│ 5ec42d4f-6601-4465-bd22-7560… │ campaign_acti… │ loutish-starli… │ … │ 10 h… │
+│ 2e70a3d7-0339-41e6-837c-f6b4… │ campaign_acti… │ grumpy-skunk    │ … │ 10 h… │
+│ 780950dd-59d5-4c55-8088-68ca… │ campaign_acti… │ papaya-hound    │ … │ 10 h… │
+│ 0423d425-a6d7-4d8e-a3a3-3160… │ campaign_acti… │ innocent-viper  │ … │ 10 h… │
+│ 0c13e21b-53bc-4d1e-bcbd-7c15… │ campaign_acti… │ notorious-llama │ … │ 10 h… │
+│ 4c1ad916-9105-4f7c-866a-c26b… │ campaign_acti… │ lime-trout      │ … │ 10 h… │
+│ e18b4a2f-b6d2-447c-921c-cf84… │ campaign_acti… │ slick-caracara  │ … │ 10 h… │
+│ 3623d2ee-5ff6-448d-b6c5-f6b1… │ campaign_acti… │ cerise-pony     │ … │ 11 h… │
+│ e5be2106-1f9e-4ad5-a71b-598f… │ campaign_acti… │ aloof-owl       │ … │ 11 h… │
+│ 1229d19f-e587-4e2d-96f2-2833… │ campaign_acti… │ complex-loris   │ … │ 11 h… │
+│ ba80d6cd-ddfa-4d13-9ea6-ac2c… │ campaign_acti… │ unbeatable-sta… │ … │ 11 h… │
+│ d4680c59-e616-4056-a90b-9c09… │ campaign_acti… │ colorful-rattl… │ … │ 11 h… │
+│ 98bb1c6d-f2b6-467a-9cf6-e46c… │ campaign_acti… │ rampant-petrel  │ … │ 11 h… │
+│ 019d5196-1bd5-78bc-ae49-29d7… │ crm-sync-flow  │ burrowing-grif… │ … │ 12 h… │
+│ 019d4f91-6277-74ec-bbc1-ef8f… │ daily_learnin… │ noble-starling  │ … │ in 2… │
+│ 019d4e5b-88a6-74a0-a6f9-bccf… │ crm-sync-flow  │ elastic-rook    │ … │ 19 h… │
+│ 019d4d7f-c461-7ecc-82df-fd51… │ crm-sync-flow  │ quartz-chinchi… │ … │ 23 h… │
+│ 019d4ca3-6055-7641-9497-a391… │ crm-sync-flow  │ bronze-lemur    │ … │ 1 da… │
+│ 019d4ca3-6055-7b67-b679-8be0… │ crm-sync-flow  │ astonishing-boa │ … │ 1 da… │
+│ 019d4ca3-6054-7571-bb8c-590f… │ crm-sync-flow  │ banana-chamois  │ … │ 1 da… │
+│ 63b792dd-b47e-429f-9549-1420… │ campaign_acti… │ nocturnal-chee… │ … │ 1 da… │
+│ 6a95f523-13fa-4368-b1d1-a8e4… │ campaign_acti… │ innocent-antel… │ … │ 1 da… │
+│ 666efce6-ddc0-44b2-84d1-e22e… │ campaign_acti… │ origami-nighti… │ … │ 1 da… │
+│ dc882eec-0653-4623-9e9d-bc91… │ campaign_acti… │ savvy-piculet   │ … │ 1 da… │
+│ 524ee3e7-06fb-4f9a-b8e6-cd69… │ campaign_acti… │ ginger-flounder │ … │ 1 da… │
+│ 555b216b-ff08-4d80-ab24-9a29… │ campaign_acti… │ hospitable-coc… │ … │ 1 da… │
+│ 019d4a6a-d9cd-7f4a-adb1-edfe… │ daily_learnin… │ advanced-whale  │ … │ in 2… │
+│ 019d4945-7296-7585-b890-6fc8… │ crm-sync-flow  │ favorite-pecca… │ … │ 1 da… │
+│ 019d4869-1021-710c-964e-559e… │ crm-sync-flow  │ fair-mastodon   │ … │ 2 da… │
+│ 019d4869-1021-7c73-a2d9-34c4… │ crm-sync-flow  │ resolute-falcon │ … │ 2 da… │
+│ 019d4869-1020-7942-b98c-fc23… │ crm-sync-flow  │ thundering-don… │ … │ 2 da… │
+│ dd1aba44-ebb1-4e17-82af-af4c… │ campaign_acti… │ vague-locust    │ … │ 2 da… │
+│ ccfbba1f-7b72-4e2d-8998-c140… │ campaign_acti… │ towering-ermine │ … │ 2 da… │
+│ 019d46e5-a0b6-793b-a1fc-d08f… │ crm-sync-flow  │ vanilla-grebe   │ … │ 2 da… │
+│ 62d745f2-405a-4d47-848b-df48… │ campaign_acti… │ worthy-puffin   │ … │ 2 da… │
+│ a9e81080-c98a-43a2-8930-cfc7… │ campaign_acti… │ primitive-capy… │ … │ 2 da… │
+│ 54efe787-90d9-4ee1-8000-696c… │ campaign_acti… │ pistachio-hippo │ … │ 3 da… │
+│ 1483ab97-faf4-41af-b24e-17c6… │ campaign_acti… │ voracious-orca  │ … │ 3 da… │
+│ 50a5c2e3-4ce0-4c97-bac4-c857… │ campaign_acti… │ lovely-grebe    │ … │ 3 da… │
+│ 0c218be3-25c9-4650-9ec7-0db6… │ campaign_acti… │ proud-chowchow  │ … │ 3 da… │
+│ dcfb9ac3-3996-4044-b57f-ae57… │ campaign_acti… │ capable-silkwo… │ … │ 3 da… │
+│ d59b349e-fe1a-4139-86f6-3245… │ campaign_acti… │ amiable-lobster │ … │ 3 da… │
+│ 019d4545-0af7-7506-8a56-461f… │ daily_learnin… │ cream-flamingo  │ … │ 1 ho… │
+│ 019d4406-bb0f-7237-96c0-87e1… │ crm-sync-flow  │ competent-tapir │ … │ 3 da… │
+│ 9969aa5a-7c9b-4eeb-a9c0-38f5… │ campaign_acti… │ rampant-hawk    │ … │ 3 da… │
+│ d5073a0d-b9da-4082-997f-e5ea… │ campaign_acti… │ brawny-serval   │ … │ 3 da… │
+│ 9de91c58-8e7d-4f25-9d3c-8505… │ campaign_acti… │ observant-cond… │ … │ 3 da… │
+│ d91e1ec1-9ee8-4b14-994c-0a88… │ campaign_acti… │ infallible-por… │ … │ 3 da… │
+│ 3a176b6d-8874-4aca-9002-3c7b… │ campaign_acti… │ subtle-seriema  │ … │ 3 da… │
+│ 3b0d26a2-cff3-414c-a71a-16b9… │ campaign_acti… │ tourmaline-bul… │ … │ 3 da… │
+│ 8d2c00f2-d29a-4f41-baf9-aab4… │ campaign_acti… │ smart-wildcat   │ … │ 3 da… │
+│ d58f8c1d-9105-4df3-9ede-c653… │ campaign_acti… │ turquoise-fossa │ … │ 3 da… │
+│ def69643-5042-4571-ae5e-ff25… │ campaign_acti… │ qualified-womb… │ … │ 3 da… │
+│ eaa03c4c-7863-480a-90d4-a999… │ campaign_acti… │ serious-emu     │ … │ 3 da… │
+│ b4445736-4c53-40ef-8127-2c05… │ campaign_acti… │ masked-goldfish │ … │ 3 da… │
+│ 273de191-464e-4ee6-8b71-b40b… │ campaign_acti… │ unbeatable-sna… │ … │ 3 da… │
+│ dec5832f-2b60-457a-b5aa-2ed0… │ campaign_acti… │ charming-smilo… │ … │ 3 da… │
+│ 17b3dd4f-e4c5-4676-b4e5-a2f1… │ campaign_acti… │ terrific-ibex   │ … │ 3 da… │
+│ 5c5e5dd7-d414-412b-a715-c76a… │ campaign_acti… │ devious-asp     │ … │ 3 da… │
+│ 5679747a-962a-4502-83ef-e5a2… │ campaign_acti… │ utopian-puma    │ … │ 3 da… │
+│ 17d519c0-97da-46ba-aedf-93c2… │ campaign_acti… │ mindful-hedgeh… │ … │ 3 da… │
+│ 20815865-4e53-4766-b09d-4a59… │ campaign_acti… │ elegant-agama   │ … │ 3 da… │
+│ 54bc23b7-d269-4cba-9624-a6bf… │ campaign_acti… │ wandering-pug   │ … │ 3 da… │
+│ 01cd4140-1c4c-4bd2-8b9e-65a0… │ campaign_acti… │ stylish-snail   │ … │ 3 da… │
+│ ee6e9fcb-14bd-4f92-bc52-399c… │ campaign_acti… │ airborne-lyreb… │ … │ 3 da… │
+│ 98c2a618-4156-43b1-9e64-3d3b… │ campaign_acti… │ noble-panda     │ … │ 3 da… │
+│ 164963f9-80e0-4315-8f39-e963… │ campaign_acti… │ cooperative-qu… │ … │ 3 da… │
+│ 84461e13-761b-42c2-a0a1-58e2… │ campaign_acti… │ cobalt-turtle   │ … │ 3 da… │
+│ d2618856-5b47-405b-8d01-1127… │ campaign_acti… │ watchful-pudu   │ … │ 3 da… │
+│ fcc994da-d6a0-4866-b442-03cf… │ campaign_acti… │ crazy-starling  │ … │ 3 da… │
+│ 019d4147-7cb9-7138-b7c3-4e17… │ crm-sync-flow  │ imperious-numb… │ … │ 3 da… │
+│ 019d4147-7cb9-7fc8-90fd-185e… │ crm-sync-flow  │ delectable-emu  │ … │ 3 da… │
+│ 73dbfecf-8f54-451e-a46f-144b… │ campaign_acti… │ apricot-clam    │ … │ 3 da… │
+│ 46884e8c-af48-483f-aa96-ec7d… │ campaign_acti… │ solemn-prongho… │ … │ 3 da… │
+│ f10139cf-fae9-4abd-86eb-fb10… │ campaign_acti… │ tireless-marten │ … │ 3 da… │
+│ e72db8b4-574f-47d7-ac55-9d3d… │ campaign_acti… │ fancy-tanuki    │ … │ 3 da… │
+│ c0fce6c3-9ef5-42ef-a8fd-a6da… │ campaign_acti… │ discerning-erm… │ … │ 4 da… │
+│ 7bc389ff-1eba-40fd-a9e1-0f2f… │ campaign_acti… │ classy-dingo    │ … │ 4 da… │
+│ b87799e0-b2aa-41c9-b803-8428… │ campaign_acti… │ unbeatable-tua… │ … │ 4 da… │
+│ 88f8e652-44d8-4004-af0d-08c9… │ campaign_acti… │ ochre-hippo     │ … │ 4 da… │
+│ 69bc6d27-9597-48b3-84bb-9743… │ campaign_acti… │ dainty-mule     │ … │ 4 da… │
+│ 8f151ce0-c5cd-404f-bc0f-8b2a… │ campaign_acti… │ carmine-rat     │ … │ 4 da… │
+│ 5194bb46-acec-425e-b47e-53bc… │ campaign_acti… │ nostalgic-mouse │ … │ 4 da… │
+│ 1b6a9764-a058-4d65-af27-a14e… │ campaign_acti… │ neat-monkey     │ … │ 4 da… │
+│ b6f5d669-4cda-4911-afb6-0452… │ campaign_acti… │ lovely-dogfish  │ … │ 4 da… │
+│ 9ac52db5-5ace-4112-a50b-1600… │ campaign_acti… │ wandering-dingo │ … │ 4 da… │
+│ 00ea7db5-ee16-4bab-9075-cb85… │ campaign_acti… │ capable-labrad… │ … │ 4 da… │
+│ 01b5b2fe-cb3e-4d3d-957e-c5ff… │ campaign_acti… │ gifted-crocodi… │ … │ 4 da… │
+│ 520f2ffe-a405-4055-84c6-2088… │ campaign_acti… │ aloof-shrew     │ … │ 4 da… │
+│ 6a615380-8a0c-4045-953f-10b3… │ campaign_acti… │ passionate-fri… │ … │ 4 da… │
+│ abdf5b0a-0495-4d42-a83d-7699… │ campaign_acti… │ modern-dragonf… │ … │ 4 da… │
+│ e0442687-4961-401c-986b-a78c… │ campaign_acti… │ unique-jacamar  │ … │ 4 da… │
+│ 019d401e-92b4-70de-b0b9-1a2b… │ daily_learnin… │ tomato-shark    │ … │ 1 da… │
+│ 767b9f35-3aa7-4bf8-891a-c08a… │ campaign_acti… │ warping-grouse  │ … │ 4 da… │
+│ 33b26c31-4134-48fa-950c-d4e3… │ campaign_acti… │ yellow-salmon   │ … │ 4 da… │
+│ 019d3d99-f788-7aba-aa0e-3224… │ crm-sync-flow  │ spectral-flami… │ … │ 4 da… │
+│ 019d3d99-f788-7365-8ce1-d5b2… │ crm-sync-flow  │ steadfast-malk… │ … │ 4 da… │
+│ 019d3d99-f788-72ea-b03f-dee0… │ crm-sync-flow  │ nifty-tapir     │ … │ 4 da… │
+│ b8d691e6-d035-4263-9757-0c9c… │ campaign_acti… │ skilled-nautil… │ … │ 4 da… │
+│ cd09e66d-4ee8-4cb2-9fd4-573b… │ campaign_acti… │ myrtle-leopard  │ … │ 4 da… │
+│ 9ff03ab5-b09f-43ce-9676-7cb3… │ campaign_acti… │ gigantic-mosqu… │ … │ 4 da… │
+│ 855c9c63-2b8f-4eff-b960-ef0d… │ campaign_acti… │ turquoise-catf… │ … │ 4 da… │
+│ ebf36baf-d408-4fc2-b7ea-3b11… │ campaign_acti… │ uber-uakari     │ … │ 4 da… │
+│ 07e34599-b69d-4e88-b19f-bbe2… │ campaign_acti… │ axiomatic-musk… │ … │ 4 da… │
+│ 193584f1-287e-4f39-a18d-3689… │ campaign_acti… │ nostalgic-skunk │ … │ 4 da… │
+│ e6bad172-631b-4174-b9f6-ec1f… │ campaign_acti… │ opalescent-liz… │ … │ 4 da… │
+│ 73dbf27e-a5db-45f4-a6bb-62bb… │ campaign_acti… │ unbiased-whale  │ … │ 4 da… │
+│ b5a06204-39d3-4f13-9ef3-9c57… │ campaign_acti… │ satisfied-pole… │ … │ 4 da… │
+│ 05829fb9-9630-4e89-9517-a722… │ campaign_acti… │ thoughtful-hyr… │ … │ 4 da… │
+│ 963cc7b6-a6cf-44df-b55a-ca8c… │ campaign_acti… │ devious-duck    │ … │ 4 da… │
+│ 6f93b564-d40f-412a-8da9-17a1… │ campaign_acti… │ abstract-cuscus │ … │ 4 da… │
+│ 85a351c2-130e-4ae2-bf6b-01f9… │ campaign_acti… │ gifted-monkey   │ … │ 4 da… │
+│ 882ca630-7ceb-4e25-9862-69f3… │ campaign_acti… │ cerise-meerkat  │ … │ 4 da… │
+│ cc974833-bf33-4b67-9eec-2932… │ campaign_acti… │ white-albatross │ … │ 4 da… │
+│ d6b09c5a-19ae-4765-bbb0-e8b3… │ campaign_acti… │ bouncy-tench    │ … │ 4 da… │
+│ 8c424d25-d866-417d-b588-52d5… │ campaign_acti… │ modern-finch    │ … │ 4 da… │
+│ dcdac4b6-7756-40b4-a100-6e4f… │ campaign_acti… │ elite-caribou   │ … │ 4 da… │
+│ e9e67e27-c4dc-4967-8b1d-b0db… │ campaign_acti… │ amigurumi-gosh… │ … │ 4 da… │
+│ edf09c1d-ffe7-4b2f-9795-305c… │ campaign_acti… │ cocky-zebu      │ … │ 4 da… │
+│ 5ebc79dd-55b8-49ce-91bb-0ddb… │ campaign_acti… │ naughty-butter… │ … │ 4 da… │
+│ 288bb793-8022-4e0e-9ab5-0429… │ campaign_acti… │ enigmatic-phoe… │ … │ 4 da… │
+│ dfc8f9c9-9aa7-48f3-99ab-a155… │ campaign_acti… │ tangerine-cari… │ … │ 4 da… │
+│ a6e37fc1-c32f-4ed9-989c-c1a6… │ campaign_acti… │ golden-dog      │ … │ 4 da… │
+│ 8b9c5562-0a78-4881-baf7-f996… │ campaign_acti… │ controversial-… │ … │ 4 da… │
+│ 7524d79f-3fdc-40b0-b70f-f119… │ campaign_acti… │ meteoric-marten │ … │ 4 da… │
+│ 9cdfd8c1-9afc-426e-bbb6-d462… │ campaign_acti… │ talkative-pyth… │ … │ 4 da… │
+│ 019d3c9f-ebc1-7e21-a55b-9fb3… │ crm-sync-flow  │ famous-toad     │ … │ 4 da… │
+│ 663a9083-6cd0-44b1-bd0c-a900… │ campaign_acti… │ nostalgic-chih… │ … │ 4 da… │
+│ 7076fa24-75b9-4879-81fc-466a… │ campaign_acti… │ brave-mongrel   │ … │ 4 da… │
+│ ba830c1a-0457-48b6-a4ad-1ff9… │ campaign_acti… │ smooth-coyote   │ … │ 4 da… │
+│ 4c6b5c4e-cd53-4464-bcd4-8c69… │ campaign_acti… │ perky-bug       │ … │ 4 da… │
+│ 63825c1c-1c39-4d87-b9ef-b669… │ campaign_acti… │ outgoing-chinc… │ … │ 4 da… │
+│ 6d50dfe0-8bcd-4f99-827d-5cb9… │ campaign_acti… │ loose-rook      │ … │ 4 da… │
+│ 473411c5-13e9-43c2-b72d-8421… │ campaign_acti… │ just-catfish    │ … │ 4 da… │
+│ 2d196aee-dd41-4f5e-97d9-5506… │ campaign_acti… │ urban-teal      │ … │ 4 da… │
+│ 39fa6a7d-33a4-46ef-b06d-1a5d… │ campaign_acti… │ boisterous-jer… │ … │ 4 da… │
+│ 13256385-6d92-4293-ac5e-9b22… │ campaign_acti… │ fluorescent-gi… │ … │ 4 da… │
+│ 3264723b-6859-481e-b9e2-261d… │ campaign_acti… │ gregarious-mal… │ … │ 4 da… │
+│ d5d2de17-891e-4e6f-be62-0ff3… │ campaign_acti… │ giga-agouti     │ … │ 4 da… │
+│ 1282420c-b933-4523-a40a-8c12… │ campaign_acti… │ smoky-chinchil… │ … │ 4 da… │
+│ 241fb00f-688d-49e3-ba06-1cfd… │ campaign_acti… │ roaring-raccoon │ … │ 4 da… │
+│ 370ef34e-b293-4b39-a76b-40f0… │ campaign_acti… │ amusing-swan    │ … │ 4 da… │
+│ 4c5ee029-8641-43da-931b-2d33… │ campaign_acti… │ lyrical-lemming │ … │ 4 da… │
+│ 96e3d601-8ba3-423c-b5c9-3c79… │ campaign_acti… │ speedy-mastiff  │ … │ 4 da… │
+│ 9476f67d-b265-4669-86b2-d210… │ campaign_acti… │ quantum-rook    │ … │ 4 da… │
+│ 2b37434d-fdc2-4df7-a231-8875… │ campaign_acti… │ simple-stingray │ … │ 5 da… │
+│ b50783f2-c844-46a2-94a9-ef13… │ campaign_acti… │ natural-koala   │ … │ 5 da… │
+│ beaad59d-cb0f-4daa-9cbf-43f6… │ campaign_acti… │ aromatic-sawfly │ … │ 5 da… │
+│ 59433ccb-91f3-46ef-a814-a38b… │ campaign_acti… │ hopping-emu     │ … │ 5 da… │
+│ 00df2125-e52d-475b-a5b8-49b8… │ campaign_acti… │ honored-dragon  │ … │ 5 da… │
+│ b5759195-e2fb-40f2-8ed6-9f4e… │ campaign_acti… │ terrific-dodo   │ … │ 5 da… │
+│ 8ff5a276-5256-4917-b0ea-aa18… │ campaign_acti… │ grateful-raven  │ … │ 5 da… │
+│ 995f4b7c-1b7f-4bc4-9716-2f05… │ campaign_acti… │ noble-ammonite  │ … │ 5 da… │
+│ 46a3a252-9edb-493b-b6f2-0c90… │ campaign_acti… │ mysterious-lynx │ … │ 5 da… │
+│ 370f9b0e-e434-4d59-af7c-69f0… │ campaign_acti… │ groovy-corgi    │ … │ 5 da… │
+│ b1d8562f-0e91-477b-bedd-2924… │ campaign_acti… │ incredible-bul… │ … │ 5 da… │
+│ dbce3344-5fde-454c-a460-b309… │ campaign_acti… │ nifty-hamster   │ … │ 5 da… │
+│ b248eb15-6b54-44fc-8806-5d63… │ campaign_acti… │ acoustic-porpo… │ … │ 5 da… │
+│ 11f321c2-f3aa-4d86-be4a-39e8… │ campaign_acti… │ wakeful-goldfi… │ … │ 5 da… │
+│ 019d3af8-813a-77ea-9955-f0ff… │ daily_learnin… │ curly-cow       │ … │ 2 da… │
+│ 019d3981-b602-7886-8781-4ecc… │ crm-sync-flow  │ manipulative-p… │ … │ 5 da… │
+│ 019d3981-b601-769d-8c73-da09… │ crm-sync-flow  │ quantum-ara     │ … │ 5 da… │
+│ 6472f43e-c0e3-4f69-be0d-5380… │ campaign_acti… │ sapphire-manti… │ … │ 5 da… │
+│ b4978fb1-3011-49f2-9599-86fe… │ campaign_acti… │ outrageous-saw… │ … │ 5 da… │
+│ 16106d6f-2f1e-4fce-94fb-2015… │ campaign_acti… │ hospitable-pic… │ … │ 5 da… │
+│ 78d7b6ac-8093-4e1c-89dd-6de3… │ campaign_acti… │ rich-seal       │ … │ 5 da… │
+│ b8327346-b2e0-4f25-8090-71b7… │ campaign_acti… │ micro-ocelot    │ … │ 5 da… │
+│ 5925b336-20d0-4f07-a29d-17ea… │ campaign_acti… │ cautious-zebra  │ … │ 5 da… │
+│ 5f73bbd7-9d15-48f3-9d96-3a99… │ campaign_acti… │ devious-wolver… │ … │ 5 da… │
+│ af61e5af-50c7-4b3b-94bb-404b… │ campaign_acti… │ divergent-mole  │ … │ 5 da… │
+│ 3d71c633-e474-4056-b085-7dc3… │ campaign_acti… │ fervent-pudu    │ … │ 5 da… │
+│ b3de70fe-5766-4da9-a300-cbe7… │ campaign_acti… │ analytic-lion   │ … │ 5 da… │
+│ 019d3792-14b2-7acc-b127-c4e0… │ crm-sync-flow  │ celadon-yak     │ … │ 5 da… │
+│ 019d3789-1740-7ed1-ae1d-eff1… │ cis-learning-… │ judicious-hoat… │ … │ in 2… │
+│ e201e35f-69b3-4040-82a7-d050… │ campaign_acti… │ observant-tort… │ … │ 5 da… │
+│ 47eadf70-cd03-44fa-85cc-9283… │ campaign_acti… │ azure-cow       │ … │ 5 da… │
+│ 73fede5a-a5d3-4a46-8261-b22f… │ campaign_acti… │ mustard-gazelle │ … │ 5 da… │
+│ a0c78e29-9185-4318-b68a-1841… │ campaign_acti… │ advanced-wyvern │ … │ 5 da… │
+│ 019d35d2-2e9e-7616-998b-13e2… │ daily_learnin… │ ultramarine-mo… │ … │ 3 da… │
+│ 019d3431-7bb1-74a1-8745-04d0… │ crm-sync-flow  │ simple-coua     │ … │ 5 da… │
+│ 019d3431-7bb1-7c01-bc26-751f… │ crm-sync-flow  │ grateful-termi… │ … │ 6 da… │
+│ 019d3431-7bb0-7f7c-b801-797c… │ crm-sync-flow  │ lively-spaniel  │ … │ 6 da… │
+│ 7355a3ec-f621-48ff-86f4-bf73… │ campaign_acti… │ resilient-jaca… │ … │ 6 da… │
+│ 368f8a11-48e9-4d16-966e-23ad… │ campaign_acti… │ electric-numbat │ … │ 6 da… │
+│ ca83b509-c5b6-4eef-a1fc-46aa… │ campaign_acti… │ gracious-moufl… │ … │ 6 da… │
+│ a574e789-d8b9-4f6c-b1ec-7691… │ campaign_acti… │ shrewd-rat      │ … │ 6 da… │
+│ b0b7bfb2-e6f5-4199-904a-0abf… │ campaign_acti… │ green-gharial   │ … │ 6 da… │
+│ 019d30ab-83dd-73c6-8994-6476… │ daily_learnin… │ pastel-agouti   │ … │ 4 da… │
+│ 019d2b84-9adf-777c-bcb7-2bec… │ daily_learnin… │ orthodox-mink   │ … │ 5 da… │
+│ 019d265e-9bde-779e-9ce9-0342… │ daily_learnin… │ primitive-ante… │ … │ 6 da… │
+│ 019d137c-96dd-7696-bee1-e1c8… │ cis-learning-… │ vociferous-cam… │ … │ in 1… │
+│ 019cef70-349a-7c07-bc11-c483… │ cis-learning-… │ incredible-ter… │ … │ in 1… │
+│ 019ccb63-47d2-747f-9a37-ff6e… │ cis-learning-… │ offbeat-kraken  │ … │ 5 da… │
+└───────────────────────────────┴────────────────┴─────────────────┴───┴───────┘
+=== DEPLOYMENTS ===
+                                  Deployments                                   
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┓
+┃ Name                          ┃ ID                           ┃ Work Pool     ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━┩
+│ batch_campaign_evolution/bat… │ d7049b04-66ff-4bf7-b4de-32c… │ agency-os-poo │
+│ campaign_activation/campaign… │ 17f970ca-70ce-4587-8c20-9f4… │ agency-os-poo │
+│ campaign_evolution/campaign-… │ 895a1d88-d89a-41f4-8d88-bd0… │ agency-os-poo │
+│ cis-learning-engine/cis-manu… │ 81ed5ef8-ce2e-477f-a4a9-d55… │ agency-os-poo │
+│ cis-learning-engine/cis-week… │ c631c77e-a7b3-4907-8e50-44f… │ agency-os-poo │
+│ credit_reset_check/credit-re… │ ee4cf804-343a-47df-9c46-ef2… │ agency-os-poo │
+│ crm-sync-flow/crm-sync-flow   │ 8f587a6d-7cc7-4a74-86cc-036… │ agency-os-poo │
+│ daily_enrichment/enrichment-… │ 23f36d60-8a30-408d-9c46-0cb… │ agency-os-poo │
+│ daily_learning_scrape/daily-… │ 85749b11-866f-4663-8856-c8a… │ agency-os-poo │
+│ hourly_outreach/outreach-flow │ c5ea5d3c-1c2a-4623-acc9-20f… │ agency-os-poo │
+│ icp_onboarding_flow/onboardi… │ 816e85ff-d41a-4cc7-a5ba-495… │ agency-os-poo │
+│ icp_reextract_flow/icp-reext… │ f986e8ac-2e3f-400a-a22e-a44… │ agency-os-poo │
+│ intelligence_research/intell… │ d3ecb417-a928-45a1-b76a-01b… │ agency-os-poo │
+│ monthly_replenishment/monthl… │ b23e8b49-a669-4df6-aacc-4be… │ agency-os-poo │
+│ pattern_backfill/pattern-bac… │ 645bcabc-0553-41d9-b8e5-100… │ agency-os-poo │
+│ persona_buffer_replenishment… │ a1a6d9e6-b6ce-4ae0-939a-073… │ agency-os-poo │
+│ pool_campaign_assignment/poo… │ fb02b080-4804-4232-a39a-e0f… │ agency-os-poo │
+│ pool_daily_allocation/pool-d… │ 348e61d7-90c2-492d-9c98-5b7… │ agency-os-poo │
+│ pool_population/pool-populat… │ f7644ba0-3799-4a48-a43a-76c… │ agency-os-poo │
+│ post_onboarding_setup/post-o… │ 3fcc81db-a33f-43cc-8448-239… │ agency-os-poo │
+│ reply_recovery/reply-recover… │ 59f50a47-db7a-4638-abc5-6d7… │ agency-os-poo │
+│ single_client_backfill/clien… │ 79ae2330-639d-4dcd-b4fd-e08… │ agency-os-poo │
+│ single_client_pattern_learni… │ 99ba9f2b-c25f-4ea8-89ec-540… │ agency-os-poo │
+│ trigger_lead_research/trigge… │ 80dcb263-97f1-4766-a1a1-7af… │ agency-os-poo │
+│ voice-outreach-flow/voice-ou… │ 5c3a21e4-f0ad-4d9d-86ca-70c… │ agency-os-poo │
+│ warmup_monitor/warmup-monito… │ 813be399-c90d-47bf-8569-13e… │ agency-os-poo │
+│ weekly_pattern_learning/patt… │ b1051959-205d-4e85-8b24-114… │ agency-os-poo │
+└───────────────────────────────┴──────────────────────────────┴───────────────┘
+=== WORK POOLS ===
+                                   Work Pools                                   
+┏━━━━━━━━━━━━━━┳━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┓
+┃ Name         ┃ Type  ┃                                 ID ┃ Concurrency Lim… ┃
+┡━━━━━━━━━━━━━━╇━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━┩
+│ local-pool   │ proc… │ c2f5008d-5b8b-478b-957a-f9daa693b… │ None             │
+│ agency-os-p… │ proc… │ 8baecd48-5726-45a7-a902-df7ea54dd… │ None             │
+└──────────────┴───────┴────────────────────────────────────┴──────────────────┘
+                           (**) denotes a paused pool                           

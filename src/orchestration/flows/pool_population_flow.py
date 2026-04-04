@@ -494,6 +494,11 @@ async def populate_pool_from_icp_task(
             return None
 
     from src.integrations.bright_data_client import DATASET_IDS, get_bright_data_client
+import sys as _sys
+_sys.path.insert(0, "/home/elliotbot/clawd/Agency_OS")
+from src.prefect_utils.completion_hook import on_completion_hook
+from src.prefect_utils.hooks import on_failure_hook
+
 
     MAX_ONBOARDING_COMBOS = 3
 
@@ -703,25 +708,32 @@ async def populate_pool_from_icp_task(
 
         # Directive #215: GMB write-back to business_universe
         try:
-            bu_gmb_rows = [
-                {
-                    "abn": row["abn"],
-                    "gmb_place_id": row.get("gmb_place_id"),
-                    "gmb_cid": row.get("gmb_cid"),
-                    "gmb_category": row.get("gmb_category"),
-                    "gmb_rating": row.get("gmb_rating"),
-                    "gmb_review_count": row.get("gmb_review_count"),
-                    "gmb_phone": row.get("phone"),
-                    "gmb_website": row.get("company_website"),
-                    "gmb_domain": row.get("company_domain"),
-                    "gmb_address": row.get("address"),
-                    "gmb_city": row.get("city"),
-                    "gmb_latitude": row.get("latitude"),
-                    "gmb_longitude": row.get("longitude"),
-                }
-                for row in rows_to_insert
-                if row.get("abn") is not None
-            ]
+            bu_gmb_rows = []
+            for row in rows_to_insert:
+                if row.get("abn") is None:
+                    continue
+                # AU-only filter: only store .au TLD in gmb_domain (#task-1.2)
+                raw_gmb_domain = row.get("company_domain")
+                if raw_gmb_domain and not raw_gmb_domain.lower().endswith(".au"):
+                    logger.warning(f"[BU] Nulling non-AU gmb_domain: {raw_gmb_domain!r}")
+                    raw_gmb_domain = None
+                bu_gmb_rows.append(
+                    {
+                        "abn": row["abn"],
+                        "gmb_place_id": row.get("gmb_place_id"),
+                        "gmb_cid": row.get("gmb_cid"),
+                        "gmb_category": row.get("gmb_category"),
+                        "gmb_rating": row.get("gmb_rating"),
+                        "gmb_review_count": row.get("gmb_review_count"),
+                        "gmb_phone": row.get("phone"),
+                        "gmb_website": row.get("company_website"),
+                        "gmb_domain": raw_gmb_domain,
+                        "gmb_address": row.get("address"),
+                        "gmb_city": row.get("city"),
+                        "gmb_latitude": row.get("latitude"),
+                        "gmb_longitude": row.get("longitude"),
+                    }
+                )
             if bu_gmb_rows:
                 async with get_db_session() as _bu_db:
                     await _bu_db.execute(
@@ -787,7 +799,9 @@ async def populate_pool_from_icp_task(
     name="pool_population",
     description="Populate lead pool using waterfall strategy with Siege Waterfall enrichment",
     log_prints=True,
-    timeout_seconds=900,  # 15 minute timeout for batched BD job
+    timeout_seconds=900,  # 15 minute timeout for batched BD job,
+    on_completion=[on_completion_hook],
+    on_failure=[on_failure_hook],
 )
 async def pool_population_flow(
     client_id: str | UUID,
@@ -940,6 +954,8 @@ async def pool_population_flow(
     name="pool_population_batch",
     description="Populate pool for multiple clients using Siege Waterfall enrichment",
     log_prints=True,
+    on_completion=[on_completion_hook],
+    on_failure=[on_failure_hook],
 )
 async def pool_population_batch_flow(
     client_ids: list[UUID],

@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import re
 from decimal import Decimal
 from typing import Any
 
@@ -147,6 +148,36 @@ class BrightDataGMBClient:
             return None
 
     @staticmethod
+    def _parse_rating(raw_val: Any) -> float | None:
+        """
+        Normalise Bright Data rating field to a rounded float or None.
+
+        Handles:
+          - None / empty string  → None
+          - int / float          → float rounded to 1dp
+          - str "4.5 (123 reviews)" → 4.5
+          - dict {"value": 4.5}  → 4.5
+        Never raises.
+        """
+        try:
+            if raw_val is None:
+                return None
+            if isinstance(raw_val, (int, float)):
+                return round(float(raw_val), 1)
+            if isinstance(raw_val, dict):
+                val = raw_val.get("value")
+                return round(float(val), 1) if val is not None else None
+            if isinstance(raw_val, str):
+                s = raw_val.strip()
+                if not s:
+                    return None
+                m = re.search(r"[\d.]+", s)
+                return round(float(m.group()), 1) if m else None
+            return None
+        except Exception:
+            return None
+
+    @staticmethod
     def _extract_category(raw_cat: Any) -> str | None:
         """
         Normalise BD GMB category field to a plain lowercase string.
@@ -193,7 +224,7 @@ class BrightDataGMBClient:
         return {
             "gmb_place_id": place_id,
             "gmb_category": self._extract_category(raw.get("category") or raw.get("type")),
-            "gmb_rating": raw.get("rating"),
+            "gmb_rating": self._parse_rating(raw.get("rating")),
             "gmb_review_count": raw.get("reviews") or raw.get("review_count"),
             "gmb_work_hours": raw.get("working_hours") or raw.get("work_hours"),
             "gmb_claimed": raw.get("claimed"),

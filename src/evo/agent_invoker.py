@@ -20,7 +20,7 @@ HEADERS = {
 def invoke_agent(task_id: str, agent_id: str, description: str, flow_run_id: str) -> dict:
     payload = {
         "task_id": task_id,
-        "agent": agent_id,
+        "agent_id": agent_id,
         "description": description,
         "flow_run_id": flow_run_id,
         "status": "pending",

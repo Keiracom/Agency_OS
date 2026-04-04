@@ -11,7 +11,15 @@ def on_completion_hook(flow, flow_run, state) -> None:
 
     try:
         result = state.result(raise_on_failure=False)
-        result_summary = result if isinstance(result, dict) else {"result": str(result)}
+        if isinstance(result, dict):
+            result_summary = result
+        else:
+            import json
+            try:
+                json.dumps(result)
+                result_summary = {"result": result}
+            except (TypeError, ValueError):
+                result_summary = {"result": str(result)}
     except Exception as exc:
         result_summary = {"error_extracting_result": str(exc)}
 

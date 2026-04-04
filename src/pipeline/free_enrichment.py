@@ -133,6 +133,7 @@ class FreeEnrichment:
         self._conn = conn
         self._spider_key = os.environ.get("SPIDER_API_KEY", "")
         self._logger = logging.getLogger(__name__)
+        self._spider_fallback_count: int = 0
 
     # ── Helpers ──────────────────────────────────────────────────────────────
 
@@ -354,6 +355,11 @@ class FreeEnrichment:
                 min(i + BATCH_SIZE, len(rows)),
                 len(rows),
             )
+        self._logger.info(
+            "Spider fallbacks: %d/%d domains",
+            self._spider_fallback_count,
+            len(rows),
+        )
         return stats
 
     async def enrich(self, domain: str) -> dict | None:
@@ -470,7 +476,71 @@ class FreeEnrichment:
                 continue
         return False
 
+    def _is_content_usable(self, content: str) -> bool:
+        """Return False when content indicates a bot-challenge or empty page (trigger Spider fallback)."""
+        if len(content) < 500:
+            return False
+        lower = content.lower()
+        if "cf-browser-verification" in lower:
+            return False
+        if "just a moment" in lower and "cloudflare" in lower:
+            return False
+        if "<script" not in lower and len(content) < 2000:
+            return False
+        return True
+
+    def _parse_html_content(self, html: str, base_url: str) -> dict[str, Any]:
+        """Extract structured data from raw HTML — shared by httpx and Spider paths."""
+        # Title from <title> tag
+        title_match = re.search(r"<title[^>]*>(.*?)</title>", html, re.IGNORECASE | re.DOTALL)
+        title = title_match.group(1).strip() if title_match else ""
+        # Links from <a href="...">
+        raw_links = re.findall(r'<a[^>]+href=["\']([^"\']+)["\']', html, re.IGNORECASE)
+        links: list[str] = []
+        for link in raw_links:
+            link = link.strip()
+            if link.startswith("//"):
+                link = "https:" + link
+            elif link.startswith("/"):
+                link = base_url.rstrip("/") + link
+            links.append(link)
+        website_address = self._extract_jsonld_address(html)
+        return {
+            "title": title,
+            "website_cms": self._extract_cms(html),
+            "website_tech_stack": self._extract_tech_stack(html),
+            "website_tracking_codes": self._extract_trackers(html),
+            "website_team_names": self._extract_team_urls(links),
+            "website_contact_emails": self._extract_emails(html, links),
+            "website_address": website_address,
+            **self._detect_ad_tags(html),
+        }
+
     async def _scrape_website(self, domain: str) -> dict[str, Any]:
+        url = f"https://{domain}"
+
+        # Try httpx first (free)
+        try:
+            async with httpx.AsyncClient(
+                timeout=20,
+                follow_redirects=True,
+                headers={"User-Agent": "Mozilla/5.0 (compatible; AgencyOS/1.0)"},
+            ) as client:
+                resp = await client.get(url)
+                content = resp.text
+
+            if self._is_content_usable(content):
+                return self._parse_html_content(content, url)
+        except Exception as exc:
+            self._logger.debug("httpx failed for %s: %s", domain, exc)
+
+        # Fall back to Spider for JS-heavy / blocked pages
+        self._logger.debug("Falling back to Spider for %s", domain)
+        return await self._spider_scrape(domain)
+
+    async def _spider_scrape(self, domain: str) -> dict[str, Any]:
+        """Call Spider Cloud API and parse the result — used as fallback when httpx fails."""
+        self._spider_fallback_count += 1
         payload = {
             "url": f"https://{domain}",
             "return_format": "raw",

@@ -186,6 +186,32 @@ Think of it like a human reviewing their journal and updating their mental model
 
 The goal: Be helpful without being annoying. Check in a few times a day, do useful background work, but respect quiet time.
 
+## EVO PROTOCOL — MANDATORY FOR ALL WORK
+
+Step 0 — RESTATE: Before any work, restate Dave's request as a structured brief:
+- Objective (one sentence)
+- Scope (files/systems affected)
+- Success criteria (how Dave knows it worked)
+- Assumptions (flag anything uncertain)
+- Estimated cost (expected API calls + USD)
+Wait for Dave to confirm before proceeding.
+
+Step 1 — DECOMPOSE: Break into numbered tasks with agent assignment, dependencies, verification commands, and cost per task.
+
+Step 2 — PRESENT: Show the plan. Do not execute until Dave says go.
+
+Step 3 — EXECUTE: Spawn agents per plan. Use Haiku for research/test/devops, Sonnet for build/review, Opus for architecture only.
+
+Step 4 — VERIFY: Every task must pass its verification gate before marking complete.
+
+Step 5 — REPORT: Consolidated results with evidence from every verification gate.
+
+Never skip steps. Never execute before approval. Never report done without evidence.
+
+Full protocol detail: skills/decomposer/SKILL.md
+
+---
+
 ## Make It Yours
 
 This is a starting point. Add your own conventions, style, and rules as you figure out what works.

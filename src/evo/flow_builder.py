@@ -1,16 +1,21 @@
 """flow_builder.py — Task wrapping and dependency wiring helpers."""
 from prefect import task
-from src.evo.task_executor import execute_task
+import prefect.runtime.flow_run as _fr
+from src.evo.agent_invoker import enqueue_and_wait
 
 
 def make_prefect_task(t: dict):
     """Wrap a task graph entry as a Prefect @task(retries=1) callable."""
-    tid, desc, agent = t["id"], t["description"], t["agent"]
-    vcmd, vexp = t["verification"]["command"], t["verification"]["expected"]
+    tid = t["id"]
+    agent = t["agent"]
+    desc = t["description"]
+    vcmd = t["verification"]["command"]
+    vexp = t["verification"]["expected"]
+    cost = t.get("estimated_cost")
 
     @task(retries=1, task_run_name=tid)
     def _task_fn():
-        return execute_task(tid, desc, agent, vcmd, vexp)
+        return enqueue_and_wait(tid, agent, desc, str(_fr.id), vcmd, vexp, cost)
 
     _task_fn.__name__ = f"task_{tid}"
     return _task_fn

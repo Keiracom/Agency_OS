@@ -1,48 +1,48 @@
-"""task_consumer.py — Poll evo_task_queue, execute tasks, enforce budget guardrails."""
-import sys, os, time
+"""task_consumer.py — Poll queue, execute, verify, write result."""
+import time, os, sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from src.evo.task_executor import execute_task
+from src.evo.consumer_helpers import (
+    fetch_pending, claim_task, write_result, update_queue_status,
+    fail_task, invoke_agent_local, verify_output,
+)
 from src.evo.auth_gate import request_authorisation
-from src.evo.consumer_helpers import fetch_pending, claim_task, write_result, update_queue_status
-
-try:  # api_tracker added in T4; stub until then
-    from src.evo.api_tracker import check_budget
-except ImportError:
-    def check_budget(task_id: str, estimated: dict) -> tuple[bool, dict]:
-        return False, {}
+from src.evo.api_tracker import ApiTracker
+from src.evo.tg_notify import tg_send
 
 
 def run_consumer_once() -> int:
     task = fetch_pending()
     if not task:
         return 0
-
     task_id = task["id"]
     if not claim_task(task_id):
         return 0
-
-    flow_run_id = task.get("flow_run_id", "")
-    estimated_cost = task.get("estimated_cost") or {}
-
-    result = execute_task(
-        task_id=task_id,
-        description=task.get("description", ""),
-        agent_id=task.get("agent_id", ""),
-        verification_cmd=task.get("verification_cmd", "echo ok"),
-        expected=task.get("expected_output", "ok"),
-    )
-
-    over_budget, actual_cost = check_budget(task_id, estimated_cost)
-    if over_budget:
-        decision = request_authorisation(task_id, flow_run_id,
-            reason="API usage exceeded 120% of estimate",
-            estimated=estimated_cost, actual=actual_cost)
-        if decision in ("stop", "timeout"):
-            result["status"] = "failed"
-    write_result(task_id, flow_run_id, task.get("agent_id", ""), result, actual_cost)
-    update_queue_status(task_id, result["status"])
+    try:
+        agent_id, description = task.get("agent_id", ""), task.get("description", "")
+        flow_run_id = task.get("flow_run_id", "")
+        vcmd, expected = task.get("verification_cmd", "echo ok"), task.get("expected_output", "ok")
+        estimated_cost = task.get("estimated_cost") or {}
+        tracker = ApiTracker()
+        tracker.track_call("api.anthropic.com")
+        agent_result = invoke_agent_local(agent_id, description)
+        verified, verify_out = verify_output(vcmd, expected)
+        if not verified:
+            tracker.track_call("api.anthropic.com")
+            agent_result = invoke_agent_local(agent_id, description)
+            verified, verify_out = verify_output(vcmd, expected)
+        status = "completed" if verified else "failed"
+        write_result(task_id, flow_run_id, agent_id, {
+            "status": status, "agent_output": agent_result.get("text", ""),
+            "verification_output": verify_out, "verified": verified,
+        }, tracker.get_counts())
+        update_queue_status(task_id, status)
+        if not tracker.check_budget(estimated_cost)["within_budget"]:
+            request_authorisation(task_id, flow_run_id, reason="API >120% estimate",
+                estimated=estimated_cost, actual=tracker.get_counts())
+    except Exception as e:
+        fail_task(task_id, str(e))
+        tg_send(f"[EVO consumer] task {task_id} failed: {e}")
     return 1
-
 
 if __name__ == "__main__":
     while True:

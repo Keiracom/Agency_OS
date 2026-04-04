@@ -2,6 +2,17 @@
 
 This folder is home. Treat it that way.
 
+## 🛑 /kill — EMERGENCY STOP (NON-NEGOTIABLE)
+
+When Dave types `/kill`:
+
+1. **Immediately** call `subagents(action=list)` and kill every active sub-agent with `subagents(action=kill, target=<id>)`
+2. Run `bash /home/elliotbot/clawd/scripts/kill_all.sh` — kills local agent processes + cancels active Prefect flow runs
+3. Reply with exactly: **"All stopped. What's wrong?"**
+4. Do **nothing else** until Dave gives the next instruction
+
+This overrides everything. No questions. No "are you sure". No finishing current tasks first. Stop, kill, ask.
+
 ## First Run
 
 If `BOOTSTRAP.md` exists, that's your birth certificate. Follow it, figure out who you are, then delete it. You won't need it again.

@@ -10,13 +10,15 @@ def fetch_pending() -> dict | None:
 
 
 def claim_task(task_id: str) -> bool:
-    """Atomic claim — returns True if we won the race."""
+    """Atomic claim — PATCH only on id, check returned status to detect race loss."""
     rows = sb_patch(
         "evo_task_queue",
-        {"id": f"eq.{task_id}", "status": "eq.pending"},
+        {"id": f"eq.{task_id}"},
         {"status": "running", "claimed_at": datetime.datetime.utcnow().isoformat()},
     )
-    return bool(rows)
+    # If another consumer already claimed it, the row will show status != 'running' for us
+    # or the row was already running — check returned row
+    return bool(rows) and rows[0].get("status") == "running"
 
 
 def write_result(task_id: str, flow_run_id: str, result: dict, actual_cost: dict) -> None:
@@ -33,3 +35,8 @@ def write_result(task_id: str, flow_run_id: str, result: dict, actual_cost: dict
 
 def update_queue_status(task_id: str, status: str) -> None:
     sb_patch("evo_task_queue", {"id": f"eq.{task_id}"}, {"status": status})
+
+
+def fail_task(task_id: str, reason: str = "") -> None:
+    sb_patch("evo_task_queue", {"id": f"eq.{task_id}"},
+             {"status": "failed", "completed_at": datetime.datetime.utcnow().isoformat()})

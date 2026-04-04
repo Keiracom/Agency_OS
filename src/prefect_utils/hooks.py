@@ -11,8 +11,8 @@ def on_failure_hook(flow, flow_run, state) -> None:
     deployment_id = str(getattr(flow_run, "deployment_id", None) or "") or None
 
     try:
-        result = state.result(raise_on_failure=False)
-        error_message = str(result) if result is not None else "Unknown error"
+        # In Prefect 3.x, state.result() is async — use message attribute instead
+        error_message = getattr(state, "message", None) or str(state)
     except Exception as exc:
         error_message = str(exc)
 

@@ -21,10 +21,11 @@ def claim_task(task_id: str) -> bool:
     return bool(rows) and rows[0].get("status") == "running"
 
 
-def write_result(task_id: str, flow_run_id: str, result: dict, actual_cost: dict) -> None:
+def write_result(task_id: str, flow_run_id: str, agent_id: str, result: dict, actual_cost: dict) -> None:
     sb_post("evo_task_results", {
         "task_id": task_id,
         "flow_run_id": flow_run_id,
+        "agent_id": agent_id,
         "status": result["status"],
         "agent_output": result.get("agent_output", ""),
         "verification_output": result.get("verification_output", ""),

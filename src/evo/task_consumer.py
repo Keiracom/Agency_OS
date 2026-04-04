@@ -1,5 +1,6 @@
 """task_consumer.py — Poll evo_task_queue, execute tasks, enforce budget guardrails."""
-import time
+import sys, os, time
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from src.evo.task_executor import execute_task
 from src.evo.auth_gate import request_authorisation
 from src.evo.consumer_helpers import fetch_pending, claim_task, write_result, update_queue_status
@@ -38,7 +39,7 @@ def run_consumer_once() -> int:
             estimated=estimated_cost, actual=actual_cost)
         if decision in ("stop", "timeout"):
             result["status"] = "failed"
-    write_result(task_id, flow_run_id, result, actual_cost)
+    write_result(task_id, flow_run_id, task.get("agent_id", ""), result, actual_cost)
     update_queue_status(task_id, result["status"])
     return 1
 

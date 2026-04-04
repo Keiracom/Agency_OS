@@ -9,17 +9,21 @@ def on_completion_hook(flow, flow_run, state) -> None:
     flow_run_id = str(getattr(flow_run, "id", "unknown"))
     deployment_id = str(getattr(flow_run, "deployment_id", None) or "") or None
 
+    import json
     try:
-        result = state.result(raise_on_failure=False)
-        if isinstance(result, dict):
-            result_summary = result
-        else:
-            import json
+        raw = state.result(raise_on_failure=False)
+        # Recursively stringify anything not JSON-serializable
+        def _safe(v):
+            if isinstance(v, dict):
+                return {k: _safe(val) for k, val in v.items()}
+            if isinstance(v, (list, tuple)):
+                return [_safe(i) for i in v]
             try:
-                json.dumps(result)
-                result_summary = {"result": result}
+                json.dumps(v)
+                return v
             except (TypeError, ValueError):
-                result_summary = {"result": str(result)}
+                return str(v)
+        result_summary = _safe(raw) if isinstance(raw, dict) else {"result": _safe(raw)}
     except Exception as exc:
         result_summary = {"error_extracting_result": str(exc)}
 

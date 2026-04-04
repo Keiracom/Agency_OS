@@ -109,6 +109,7 @@ class PipelineOrchestrator:
         gmb_client=None,
         ads_client=None,
         prospect_scorer=None,
+        intelligence=None,           # NEW: WebsiteIntelligenceEngine | None
     ):
         self._discovery = discovery
         self._fe = free_enrichment
@@ -116,6 +117,7 @@ class PipelineOrchestrator:
         self._dm = dm_identification
         self._gmb_client = gmb_client
         self._ads_client = ads_client
+        self._intel = intelligence
 
     # ── Stage helpers ─────────────────────────────────────────────────────
 
@@ -172,6 +174,32 @@ class PipelineOrchestrator:
 
             ads_data, gmb_data = await asyncio.gather(_get_ads(), _get_gmb())
             return {"ads_data": ads_data, "gmb_data": gmb_data}
+
+    async def _stage_intelligence(
+        self,
+        sem: asyncio.Semaphore,
+        domain: str,
+        html: str,
+        intent_free: Any,
+        enrichment: dict,
+    ) -> Any:
+        """STAGE 4.5: LLM website intelligence for one domain."""
+        async with sem:
+            try:
+                gmb_data = enrichment.get("gmb_data")  # may not exist yet at stage 4.5
+                signals = {
+                    "evidence": getattr(intent_free, "evidence", []),
+                    "signals": getattr(intent_free, "signals", {}),
+                    "has_analytics": any(
+                        "analytics" in t for t in enrichment.get("website_tracking_codes", [])
+                    ),
+                    "has_ads_tag": enrichment.get("has_google_ads_tag", False),
+                    "has_conversion": enrichment.get("has_conversion_tag", False),
+                }
+                return await self._intel.analyze(domain, html, signals, gmb_data)
+            except Exception:
+                logger.debug("stage_intelligence_failed domain=%s", domain)
+                return None
 
     async def _stage_dm(
         self,
@@ -335,6 +363,35 @@ class PipelineOrchestrator:
                     len(afford_passed), stats.affordability_rejected,
                 )
 
+                # ── STAGE 4.5: LLM website intelligence (optional) ────────────
+                if self._intel is not None and afford_passed:
+                    sem_intel = asyncio.Semaphore(10)  # 10 concurrent Haiku calls
+                    intel_coros = []
+                    for domain, enrichment, afford in afford_passed:
+                        spider_html = enrichment.get("_raw_html", "")
+                        try:
+                            intent_free_result = self._scorer.score_intent_free(enrichment)
+                        except AttributeError:
+                            intent_free_result = None
+                        intel_coros.append(
+                            self._stage_intelligence(
+                                sem_intel, domain, spider_html, intent_free_result, enrichment
+                            )
+                        )
+                    intel_results = list(await asyncio.gather(*intel_coros, return_exceptions=False))
+                    for i, (domain, enrichment, afford) in enumerate(afford_passed):
+                        intel = intel_results[i]
+                        if intel:
+                            enrichment["services"] = intel.services
+                            enrichment["business_type"] = intel.business_type
+                            enrichment["team_size_signal"] = intel.team_size_signal
+                            enrichment["intent_grade"] = intel.intent_grade
+                            enrichment["intent_reasoning"] = intel.intent_reasoning
+                            enrichment["gmb_pain_themes"] = intel.gmb_pain_themes
+                            enrichment["gmb_opportunity_score"] = intel.gmb_opportunity_score
+                            enrichment["_intel_fallback"] = intel.fallback_used
+                    logger.info("stage4_5_complete intel_analyzed=%d", len(intel_results))
+
                 # ── STAGE 5: Intent free gate (in-memory) ─────────────────────
                 intent_passed: list[tuple[str, dict, Any, Any]] = []
                 for domain, enrichment, afford in afford_passed:
@@ -392,6 +449,32 @@ class PipelineOrchestrator:
                         )
                     except AttributeError:
                         intent_full = intent_free  # legacy fallback
+
+                    # Boost with LLM intelligence if available and regex scored lower
+                    if (
+                        intent_full is not None
+                        and enrichment.get("intent_grade") == "HOT"
+                        and not enrichment.get("_intel_fallback")
+                        and getattr(intent_full, "band", None) not in ("STRUGGLING", "TRYING")
+                    ):
+                        logger.info(
+                            "stage7_intel_boost domain=%s llm=HOT regex=%s",
+                            domain, getattr(intent_full, "band", "UNKNOWN"),
+                        )
+                        try:
+                            intent_full = type(intent_full)(
+                                raw_score=max(getattr(intent_full, "raw_score", 0), 8),
+                                band="STRUGGLING",
+                                signals=getattr(intent_full, "signals", {}),
+                                evidence=(
+                                    getattr(intent_full, "evidence", [])
+                                    + [enrichment.get("intent_reasoning", "")]
+                                ),
+                                passed_free_gate=True,
+                            )
+                        except Exception:
+                            logger.debug("stage7_intel_boost_failed domain=%s", domain)
+
                     dm_candidates.append((domain, enrichment, afford, intent_full, paid))
 
                 # ── STAGE 8: DM identification ALL concurrently ───────────────

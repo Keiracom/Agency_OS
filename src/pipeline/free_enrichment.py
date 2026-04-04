@@ -530,7 +530,9 @@ class FreeEnrichment:
                 content = resp.text
 
             if self._is_content_usable(content):
-                return self._parse_html_content(content, url)
+                parsed = self._parse_html_content(content, url)
+                parsed["_raw_html"] = content
+                return parsed
         except Exception as exc:
             self._logger.debug("httpx failed for %s: %s", domain, exc)
 
@@ -579,6 +581,7 @@ class FreeEnrichment:
                 "website_team_names": self._extract_team_urls(links),
                 "website_contact_emails": self._extract_emails(content, links),
                 "website_address": website_address,
+                "_raw_html": content,
                 **self._detect_ad_tags(content),
             }
         except Exception as exc:

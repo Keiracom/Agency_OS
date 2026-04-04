@@ -45,6 +45,22 @@ def run_consumer_once() -> int:
     return 1
 
 if __name__ == "__main__":
+    _consecutive_failures = 0
+    _last_error = ""
+    _CIRCUIT_BREAKER_LIMIT = 3
     while True:
-        run_consumer_once()
+        try:
+            result = run_consumer_once()
+            if result == 1:
+                _consecutive_failures = 0
+                _last_error = ""
+        except Exception as e:
+            _consecutive_failures += 1
+            _last_error = str(e)
+            if _consecutive_failures >= _CIRCUIT_BREAKER_LIMIT:
+                tg_send(
+                    f"🔴 Consumer paused: {_CIRCUIT_BREAKER_LIMIT} consecutive failures.\n"
+                    f"Error: {_last_error}\nManual restart required."
+                )
+                break
         time.sleep(10)

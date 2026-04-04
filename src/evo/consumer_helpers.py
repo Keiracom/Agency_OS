@@ -48,6 +48,7 @@ def invoke_agent_local(agent_id: str, description: str, timeout: int = 300) -> d
     import subprocess, json
     cmd = ["openclaw", "agent", "--agent", agent_id, "--local",
            "--message", description, "--json", "--timeout", str(timeout)]
+    proc = None
     try:
         proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout + 10)
         combined = proc.stderr + proc.stdout
@@ -58,7 +59,8 @@ def invoke_agent_local(agent_id: str, description: str, timeout: int = 300) -> d
         text = (data.get("payloads") or [{}])[0].get("text") or data.get("text", "")
         return {"text": text, "exit_code": 0}
     except Exception as e:
-        return {"text": "", "exit_code": getattr(proc, "returncode", 1), "error": str(e)}
+        exit_code = proc.returncode if proc is not None else 1
+        return {"text": "", "exit_code": exit_code, "error": str(e)}
 
 
 def verify_output(cmd: str, expected: str) -> tuple[bool, str]:

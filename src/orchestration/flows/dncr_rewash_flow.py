@@ -168,6 +168,11 @@ async def dncr_rewash_batch_task(
         Dict with re-wash results
     """
     from src.integrations.dncr import get_dncr_client
+import sys as _sys
+_sys.path.insert(0, "/home/elliotbot/clawd/Agency_OS")
+from src.prefect_utils.completion_hook import on_completion_hook
+from src.prefect_utils.hooks import on_failure_hook
+
 
     if not leads:
         return {"total": 0, "checked": 0, "changed": 0}
@@ -251,6 +256,8 @@ async def dncr_rewash_batch_task(
     description="Quarterly DNCR re-wash to refresh cached compliance status",
     log_prints=True,
     task_runner=ConcurrentTaskRunner(max_workers=5),
+    on_completion=[on_completion_hook],
+    on_failure=[on_failure_hook],
 )
 async def dncr_quarterly_rewash_flow(
     stale_days: int = DNCR_STALE_DAYS,

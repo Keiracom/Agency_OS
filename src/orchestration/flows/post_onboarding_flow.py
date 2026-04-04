@@ -752,7 +752,9 @@ async def inject_demo_leads(client_id: UUID, campaign_id: UUID) -> int:
     description="Generate campaigns and source leads after onboarding",
     task_runner=ConcurrentTaskRunner(),
     retries=0,
-    timeout_seconds=1800,  # Directive #197: raised from 900s → 1800s (Flow A now ~5 min, headroom for retries)
+    timeout_seconds=1800,  # Directive #197: raised from 900s → 1800s (Flow A now ~5 min, headroom for retries),
+    on_completion=[on_completion_hook],
+    on_failure=[on_failure_hook],
 )
 async def post_onboarding_setup_flow(
     client_id: str | UUID,
@@ -1096,6 +1098,8 @@ async def post_onboarding_setup_flow(
 @flow(
     name="trigger_lead_sourcing",
     description="Source additional leads for a client",
+    on_completion=[on_completion_hook],
+    on_failure=[on_failure_hook],
 )
 async def trigger_lead_sourcing_flow(
     client_id: str | UUID,
@@ -1187,6 +1191,11 @@ def deploy_post_onboarding_flows():
     Run this to register flows with the Prefect server.
     """
     from prefect.deployments import Deployment
+import sys as _sys
+_sys.path.insert(0, "/home/elliotbot/clawd/Agency_OS")
+from src.prefect_utils.completion_hook import on_completion_hook
+from src.prefect_utils.hooks import on_failure_hook
+
 
     # Main post-onboarding setup flow
     setup_deployment = Deployment.build_from_flow(

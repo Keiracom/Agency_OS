@@ -579,6 +579,11 @@ async def poll_ghl_opportunities(
             # Process each opportunity
             from src.services.deal_service import DealService
             from src.services.meeting_service import MeetingService
+import sys as _sys
+_sys.path.insert(0, "/home/elliotbot/clawd/Agency_OS")
+from src.prefect_utils.completion_hook import on_completion_hook
+from src.prefect_utils.hooks import on_failure_hook
+
 
             deal_service = DealService(db)
             meeting_service = MeetingService(db)
@@ -712,7 +717,11 @@ async def log_crm_sync_results(
 # ============================================================================
 
 
-@flow(name="crm-sync-flow", log_prints=True)
+@flow(
+    name="crm-sync-flow", log_prints=True,
+    on_completion=[on_completion_hook],
+    on_failure=[on_failure_hook],
+)
 async def crm_sync_flow(
     since_hours: int = 24,
     client_id: str | None = None,

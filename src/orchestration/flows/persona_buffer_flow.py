@@ -26,6 +26,11 @@ from src.config.database import get_db_session
 from src.models.resource_pool import ResourcePool, ResourceStatus, ResourceType
 from src.services.domain_provisioning_service import provision_persona_with_domains
 from src.services.persona_service import generate_persona
+import sys as _sys
+_sys.path.insert(0, "/home/elliotbot/clawd/Agency_OS")
+from src.prefect_utils.completion_hook import on_completion_hook
+from src.prefect_utils.hooks import on_failure_hook
+
 
 logger = logging.getLogger(__name__)
 
@@ -130,7 +135,11 @@ async def provision_persona_set_task() -> dict:
             raise
 
 
-@flow(name="persona_buffer_replenishment", log_prints=True)
+@flow(
+    name="persona_buffer_replenishment", log_prints=True,
+    on_completion=[on_completion_hook],
+    on_failure=[on_failure_hook],
+)
 async def persona_buffer_flow() -> dict:
     """
     Check buffer and provision if below 40%.

@@ -670,6 +670,11 @@ async def _soft_discard_lead(
         Discard record UUID or None
     """
     import json
+import sys as _sys
+_sys.path.insert(0, "/home/elliotbot/clawd/Agency_OS")
+from src.prefect_utils.completion_hook import on_completion_hook
+from src.prefect_utils.hooks import on_failure_hook
+
 
     try:
         result = await db.execute(
@@ -729,6 +734,8 @@ def _get_tier_from_score(propensity_score: int) -> str:
     name="batch_controller",
     description="Batch controller with quota monitoring, discard-and-replace, and discovery loop",
     log_prints=True,
+    on_completion=[on_completion_hook],
+    on_failure=[on_failure_hook],
 )
 async def batch_controller_flow(campaign_id: str) -> dict[str, Any]:
     """
@@ -826,6 +833,8 @@ async def batch_controller_flow(campaign_id: str) -> dict[str, Any]:
     name="apply_quality_gates",
     description="Apply all quality gates to a batch of leads",
     log_prints=True,
+    on_completion=[on_completion_hook],
+    on_failure=[on_failure_hook],
 )
 async def apply_quality_gates_flow(
     lead_pool_ids: list[str],

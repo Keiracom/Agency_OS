@@ -657,6 +657,8 @@ def _is_within_calling_hours() -> bool:
     retries=1,
     retry_delay_seconds=300,
     log_prints=True,
+    on_completion=[on_completion_hook],
+    on_failure=[on_failure_hook],
 )
 async def voice_outreach_flow(agency_id: str | None = None) -> dict[str, Any]:
     """
@@ -784,5 +786,10 @@ async def voice_outreach_flow(agency_id: str | None = None) -> dict[str, Any]:
 if __name__ == "__main__":
     # For local testing
     import asyncio
+import sys as _sys
+_sys.path.insert(0, "/home/elliotbot/clawd/Agency_OS")
+from src.prefect_utils.completion_hook import on_completion_hook
+from src.prefect_utils.hooks import on_failure_hook
+
 
     asyncio.run(voice_outreach_flow())

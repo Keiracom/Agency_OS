@@ -174,6 +174,11 @@ async def calculate_daily_pacing_task(client_data: dict[str, Any]) -> dict[str, 
         else:
             # Assume cycle started 30 days ago
             from datetime import timedelta
+import sys as _sys
+_sys.path.insert(0, "/home/elliotbot/clawd/Agency_OS")
+from src.prefect_utils.completion_hook import on_completion_hook
+from src.prefect_utils.hooks import on_failure_hook
+
 
             cycle_start = now - timedelta(days=30)
 
@@ -294,6 +299,8 @@ async def check_pacing_alerts_task(
     description="Daily pacing check at 7 AM AEST - monitors lead consumption rate",
     retries=1,
     retry_delay_seconds=60,
+    on_completion=[on_completion_hook],
+    on_failure=[on_failure_hook],
 )
 async def daily_pacing_check_flow(
     fast_threshold: float = 1.2,

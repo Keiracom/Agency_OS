@@ -165,6 +165,11 @@ async def send_digest_email_task(
     try:
         # Import email engine
         from src.engines.email import EmailEngine
+import sys as _sys
+_sys.path.insert(0, "/home/elliotbot/clawd/Agency_OS")
+from src.prefect_utils.completion_hook import on_completion_hook
+from src.prefect_utils.hooks import on_failure_hook
+
 
         async with get_db_session() as db:
             email_engine = EmailEngine(db)
@@ -260,7 +265,11 @@ async def log_digest_result_task(
         log.info(f"Logged digest result for client {client_id}: {status}")
 
 
-@flow(name="send_client_digest", log_prints=True)
+@flow(
+    name="send_client_digest", log_prints=True,
+    on_completion=[on_completion_hook],
+    on_failure=[on_failure_hook],
+)
 async def send_client_digest_flow(client_id: str, client_name: str, digest_date: date) -> dict:
     """
     Send digest email to a single client.
@@ -324,7 +333,11 @@ async def send_client_digest_flow(client_id: str, client_name: str, digest_date:
     }
 
 
-@flow(name="daily_digest_flow", log_prints=True)
+@flow(
+    name="daily_digest_flow", log_prints=True,
+    on_completion=[on_completion_hook],
+    on_failure=[on_failure_hook],
+)
 async def daily_digest_flow(
     target_hour: int = 7,
     digest_date: date | None = None,

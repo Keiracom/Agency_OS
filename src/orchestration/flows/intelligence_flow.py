@@ -29,6 +29,11 @@ from src.integrations.supabase import get_db_session
 from src.models.base import SubscriptionStatus
 from src.models.client import Client
 from src.models.lead import Lead
+import sys as _sys
+_sys.path.insert(0, "/home/elliotbot/clawd/Agency_OS")
+from src.prefect_utils.completion_hook import on_completion_hook
+from src.prefect_utils.hooks import on_failure_hook
+
 
 logger = logging.getLogger(__name__)
 
@@ -229,6 +234,8 @@ async def update_lead_research_status_task(
     description="Auto-trigger Deep Research for Hot leads (ALS >= 85)",
     log_prints=True,
     task_runner=ConcurrentTaskRunner(max_workers=5),
+    on_completion=[on_completion_hook],
+    on_failure=[on_failure_hook],
 )
 async def intelligence_research_flow(
     batch_size: int = 50,
@@ -337,6 +344,8 @@ async def intelligence_research_flow(
     name="trigger_lead_research",
     description="Trigger deep research for a single lead (on-demand)",
     log_prints=True,
+    on_completion=[on_completion_hook],
+    on_failure=[on_failure_hook],
 )
 async def trigger_lead_research_flow(
     lead_id: str | UUID,

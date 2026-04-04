@@ -477,7 +477,9 @@ async def scrape_client_intelligence_task(
     description="Extract ICP from client website during onboarding",
     task_runner=ConcurrentTaskRunner(),
     retries=0,
-    timeout_seconds=900,  # 15 minute timeout
+    timeout_seconds=900,  # 15 minute timeout,
+    on_completion=[on_completion_hook],
+    on_failure=[on_failure_hook],
 )
 async def icp_onboarding_flow(
     job_id: str | UUID,
@@ -584,6 +586,8 @@ async def icp_onboarding_flow(
 @flow(
     name="icp_reextract_flow",
     description="Re-extract ICP for existing client",
+    on_completion=[on_completion_hook],
+    on_failure=[on_failure_hook],
 )
 async def icp_reextract_flow(
     client_id: str | UUID,
@@ -640,6 +644,8 @@ async def icp_reextract_flow(
     description="Assign resources from pool to client based on tier",
     retries=1,
     timeout_seconds=60,
+    on_completion=[on_completion_hook],
+    on_failure=[on_failure_hook],
 )
 async def resource_assignment_flow(
     client_id: str | UUID,
@@ -912,6 +918,8 @@ async def auto_allocate_pool_task(
 @flow(
     name="complete_onboarding_flow",
     description="Complete onboarding with campaign auto-creation and pool allocation",
+    on_completion=[on_completion_hook],
+    on_failure=[on_failure_hook],
 )
 async def complete_onboarding_flow(
     client_id: str | UUID,
@@ -1046,6 +1054,11 @@ def deploy_onboarding_flows():
     Run this to register flows with the Prefect server.
     """
     from prefect.deployments import Deployment
+import sys as _sys
+_sys.path.insert(0, "/home/elliotbot/clawd/Agency_OS")
+from src.prefect_utils.completion_hook import on_completion_hook
+from src.prefect_utils.hooks import on_failure_hook
+
 
     # Main onboarding flow deployment
     onboarding_deployment = Deployment.build_from_flow(

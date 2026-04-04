@@ -33,6 +33,11 @@ from src.models.base import CampaignStatus, LeadStatus, SubscriptionStatus
 from src.models.campaign import Campaign
 from src.models.client import Client
 from src.models.lead import Lead
+import sys as _sys
+_sys.path.insert(0, "/home/elliotbot/clawd/Agency_OS")
+from src.prefect_utils.completion_hook import on_completion_hook
+from src.prefect_utils.hooks import on_failure_hook
+
 
 logger = logging.getLogger(__name__)
 
@@ -328,6 +333,8 @@ async def trigger_discovery_task(campaign_id: str) -> dict[str, Any]:
     name="campaign_activation",
     description="Activate campaign with validation and enrichment trigger",
     log_prints=True,
+    on_completion=[on_completion_hook],
+    on_failure=[on_failure_hook],
 )
 async def campaign_activation_flow(
     campaign_id: str | UUID,

@@ -268,6 +268,11 @@ async def fetch_client_context_task(client_id: UUID) -> dict[str, Any]:
 
         # Get tier config
         from src.config.tiers import get_leads_for_tier
+import sys as _sys
+_sys.path.insert(0, "/home/elliotbot/clawd/Agency_OS")
+from src.prefect_utils.completion_hook import on_completion_hook
+from src.prefect_utils.hooks import on_failure_hook
+
 
         tier_name = client.tier.value if client.tier else "ignition"
         monthly_leads = get_leads_for_tier(tier_name)
@@ -569,6 +574,8 @@ async def store_suggestions_task(
     description="Generate campaign optimization suggestions from CIS patterns",
     retries=1,
     retry_delay_seconds=60,
+    on_completion=[on_completion_hook],
+    on_failure=[on_failure_hook],
 )
 async def campaign_evolution_flow(
     client_id: str | UUID,
@@ -667,6 +674,8 @@ async def campaign_evolution_flow(
 @flow(
     name="batch_campaign_evolution",
     description="Run campaign evolution for all eligible clients",
+    on_completion=[on_completion_hook],
+    on_failure=[on_failure_hook],
 )
 async def batch_campaign_evolution_flow() -> dict[str, Any]:
     """

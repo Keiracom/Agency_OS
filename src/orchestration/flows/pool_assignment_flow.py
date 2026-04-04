@@ -39,6 +39,11 @@ from src.orchestration.flows.lead_enrichment_flow import lead_enrichment_flow
 from src.services.jit_validator import JITValidator
 from src.services.lead_allocator_service import LeadAllocatorService
 from src.services.lead_pool_service import LeadPoolService
+import sys as _sys
+_sys.path.insert(0, "/home/elliotbot/clawd/Agency_OS")
+from src.prefect_utils.completion_hook import on_completion_hook
+from src.prefect_utils.hooks import on_failure_hook
+
 
 logger = logging.getLogger(__name__)
 
@@ -413,6 +418,8 @@ async def trigger_enrichment_for_leads_task(
     name="pool_campaign_assignment",
     description="Assign leads from pool to a campaign based on ICP",
     log_prints=True,
+    on_completion=[on_completion_hook],
+    on_failure=[on_failure_hook],
 )
 async def pool_campaign_assignment_flow(
     campaign_id: str | UUID,
@@ -515,6 +522,8 @@ async def pool_campaign_assignment_flow(
     description="Daily flow to allocate pool leads to all active campaigns",
     log_prints=True,
     task_runner=ConcurrentTaskRunner(max_workers=5),
+    on_completion=[on_completion_hook],
+    on_failure=[on_failure_hook],
 )
 async def pool_daily_allocation_flow(
     leads_per_campaign: int = 20,
@@ -606,6 +615,8 @@ async def pool_daily_allocation_flow(
     name="jit_validate_outreach_batch",
     description="JIT validate a batch of pool leads before outreach",
     log_prints=True,
+    on_completion=[on_completion_hook],
+    on_failure=[on_failure_hook],
 )
 async def jit_validate_outreach_batch_flow(
     lead_pool_ids: list[UUID],

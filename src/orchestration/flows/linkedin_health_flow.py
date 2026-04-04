@@ -37,6 +37,11 @@ from prefect.task_runners import ConcurrentTaskRunner
 from src.integrations.supabase import get_db_session
 from src.services.linkedin_health_service import linkedin_health_service
 from src.services.linkedin_warmup_service import linkedin_warmup_service
+import sys as _sys
+_sys.path.insert(0, "/home/elliotbot/clawd/Agency_OS")
+from src.prefect_utils.completion_hook import on_completion_hook
+from src.prefect_utils.hooks import on_failure_hook
+
 
 logger = logging.getLogger(__name__)
 
@@ -176,6 +181,8 @@ async def detect_restrictions_task() -> dict[str, Any]:
     description="Daily LinkedIn seat health and warmup management",
     log_prints=True,
     task_runner=ConcurrentTaskRunner(max_workers=4),
+    on_completion=[on_completion_hook],
+    on_failure=[on_failure_hook],
 )
 async def linkedin_daily_health_flow(
     client_id: str | None = None,

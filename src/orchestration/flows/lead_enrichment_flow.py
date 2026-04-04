@@ -387,6 +387,11 @@ async def score_enriched_lead_task(
             """)
 
             import json
+import sys as _sys
+_sys.path.insert(0, "/home/elliotbot/clawd/Agency_OS")
+from src.prefect_utils.completion_hook import on_completion_hook
+from src.prefect_utils.hooks import on_failure_hook
+
 
             await db.execute(
                 update_query,
@@ -432,6 +437,8 @@ async def score_enriched_lead_task(
     task_runner=ConcurrentTaskRunner(max_workers=5),
     retries=1,
     retry_delay_seconds=30,
+    on_completion=[on_completion_hook],
+    on_failure=[on_failure_hook],
 )
 async def lead_enrichment_flow(
     assignment_id: str,
@@ -541,6 +548,8 @@ async def lead_enrichment_flow(
     name="batch_lead_enrichment",
     description="Enrich multiple assigned leads",
     task_runner=ConcurrentTaskRunner(max_workers=10),
+    on_completion=[on_completion_hook],
+    on_failure=[on_failure_hook],
 )
 async def batch_lead_enrichment_flow(
     assignment_ids: list[str],

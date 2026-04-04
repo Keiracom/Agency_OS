@@ -135,6 +135,11 @@ async def update_domain_status_task(
     # Domain is ready - update to available
     async with get_db_session() as db:
         from uuid import UUID
+import sys as _sys
+_sys.path.insert(0, "/home/elliotbot/clawd/Agency_OS")
+from src.prefect_utils.completion_hook import on_completion_hook
+from src.prefect_utils.hooks import on_failure_hook
+
 
         result = await db.execute(select(ResourcePool).where(ResourcePool.id == UUID(resource_id)))
         resource = result.scalar_one_or_none()
@@ -163,7 +168,11 @@ async def update_domain_status_task(
         }
 
 
-@flow(name="process_single_domain", log_prints=True)
+@flow(
+    name="process_single_domain", log_prints=True,
+    on_completion=[on_completion_hook],
+    on_failure=[on_failure_hook],
+)
 async def process_single_domain_flow(domain_record: dict) -> dict:
     """
     Process a single domain: check WarmForge and update if ready.
@@ -207,7 +216,11 @@ async def process_single_domain_flow(domain_record: dict) -> dict:
     }
 
 
-@flow(name="warmup_monitor", log_prints=True)
+@flow(
+    name="warmup_monitor", log_prints=True,
+    on_completion=[on_completion_hook],
+    on_failure=[on_failure_hook],
+)
 async def warmup_monitor_flow() -> dict:
     """
     Check WarmForge for completed warmups, update resource_pool.

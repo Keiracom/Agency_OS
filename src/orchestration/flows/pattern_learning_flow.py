@@ -43,6 +43,11 @@ from src.models.base import LeadStatus, SubscriptionStatus
 from src.models.client import Client
 from src.models.conversion_patterns import ConversionPattern, ConversionPatternHistory
 from src.models.lead import Lead
+import sys as _sys
+_sys.path.insert(0, "/home/elliotbot/clawd/Agency_OS")
+from src.prefect_utils.completion_hook import on_completion_hook
+from src.prefect_utils.hooks import on_failure_hook
+
 
 logger = logging.getLogger(__name__)
 
@@ -522,6 +527,8 @@ async def run_all_detectors_task(client_id: str) -> dict[str, Any]:
     description="Weekly pattern learning flow for Conversion Intelligence",
     log_prints=True,
     task_runner=ConcurrentTaskRunner(max_workers=5),
+    on_completion=[on_completion_hook],
+    on_failure=[on_failure_hook],
 )
 async def weekly_pattern_learning_flow(
     min_conversions: int = MIN_CONVERSIONS,
@@ -624,6 +631,8 @@ async def weekly_pattern_learning_flow(
     name="single_client_pattern_learning",
     description="Run pattern learning for a single client (manual/testing)",
     log_prints=True,
+    on_completion=[on_completion_hook],
+    on_failure=[on_failure_hook],
 )
 async def single_client_pattern_learning_flow(
     client_id: str | UUID,

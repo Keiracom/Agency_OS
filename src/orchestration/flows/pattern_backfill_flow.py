@@ -43,6 +43,11 @@ from src.models.base import LeadStatus, SubscriptionStatus
 from src.models.client import Client
 from src.models.conversion_patterns import ConversionPattern
 from src.models.lead import Lead
+import sys as _sys
+_sys.path.insert(0, "/home/elliotbot/clawd/Agency_OS")
+from src.prefect_utils.completion_hook import on_completion_hook
+from src.prefect_utils.hooks import on_failure_hook
+
 
 logger = logging.getLogger(__name__)
 
@@ -331,6 +336,8 @@ async def optimize_weights_backfill_task(client_id: str) -> dict[str, Any]:
     name="pattern_backfill",
     description="Backfill conversion patterns for clients missing data",
     log_prints=True,
+    on_completion=[on_completion_hook],
+    on_failure=[on_failure_hook],
 )
 async def pattern_backfill_flow(
     client_id: str | UUID | None = None,
@@ -418,6 +425,8 @@ async def pattern_backfill_flow(
     name="single_client_backfill",
     description="Backfill patterns for a single client",
     log_prints=True,
+    on_completion=[on_completion_hook],
+    on_failure=[on_failure_hook],
 )
 async def single_client_backfill_flow(client_id: str | UUID) -> dict[str, Any]:
     """

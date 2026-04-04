@@ -844,7 +844,11 @@ async def log_content_run_task(
 # =============================================================================
 
 
-@flow(name="daily_content_flow", log_prints=True)
+@flow(
+    name="daily_content_flow", log_prints=True,
+    on_completion=[on_completion_hook],
+    on_failure=[on_failure_hook],
+)
 async def daily_content_flow(
     content_date: date | None = None,
     test_mode: bool = False,
@@ -975,7 +979,11 @@ async def daily_content_flow(
     return summary
 
 
-@flow(name="milestone_content_flow", log_prints=True)
+@flow(
+    name="milestone_content_flow", log_prints=True,
+    on_completion=[on_completion_hook],
+    on_failure=[on_failure_hook],
+)
 async def milestone_content_flow(
     milestone_type: str,
     milestone_data: dict[str, Any],
@@ -1047,6 +1055,11 @@ async def milestone_content_flow(
 
     # Generate celebratory posts
     from src.integrations.anthropic import get_anthropic_client
+import sys as _sys
+_sys.path.insert(0, "/home/elliotbot/clawd/Agency_OS")
+from src.prefect_utils.completion_hook import on_completion_hook
+from src.prefect_utils.hooks import on_failure_hook
+
 
     client = get_anthropic_client()
 
@@ -1132,7 +1145,11 @@ Be concise and impactful. Include key metric. Use 1-2 relevant emojis.""",
 # =============================================================================
 
 
-@flow(name="preview_daily_content", log_prints=True)
+@flow(
+    name="preview_daily_content", log_prints=True,
+    on_completion=[on_completion_hook],
+    on_failure=[on_failure_hook],
+)
 async def preview_daily_content_flow(
     content_date: date | None = None,
 ) -> dict[str, Any]:

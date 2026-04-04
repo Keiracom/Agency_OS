@@ -574,6 +574,8 @@ async def trigger_flow_a_for_quota(
     description="Daily enrichment flow with billing checks, scoring, and allocation",
     log_prints=True,
     task_runner=ConcurrentTaskRunner(max_workers=10),
+    on_completion=[on_completion_hook],
+    on_failure=[on_failure_hook],
 )
 async def daily_enrichment_flow(
     batch_size: int = 500, client_id: str | UUID | None = None
@@ -692,6 +694,11 @@ async def daily_enrichment_flow(
                         gap = quota_result["gap"]
                         # Get next unswept location for this campaign
                         from src.orchestration.flows.pool_population_flow import (
+import sys as _sys
+_sys.path.insert(0, "/home/elliotbot/clawd/Agency_OS")
+from src.prefect_utils.completion_hook import on_completion_hook
+from src.prefect_utils.hooks import on_failure_hook
+
                             get_next_unswept_location,
                         )
 

@@ -27,6 +27,11 @@ from prefect.task_runners import ConcurrentTaskRunner
 from sqlalchemy import text
 
 from src.integrations.supabase import get_db_session
+import sys as _sys
+_sys.path.insert(0, "/home/elliotbot/clawd/Agency_OS")
+from src.prefect_utils.completion_hook import on_completion_hook
+from src.prefect_utils.hooks import on_failure_hook
+
 
 logger = logging.getLogger(__name__)
 
@@ -262,6 +267,8 @@ async def batch_refresh_leads_task(
     task_runner=ConcurrentTaskRunner(max_workers=5),
     retries=1,
     retry_delay_seconds=60,
+    on_completion=[on_completion_hook],
+    on_failure=[on_failure_hook],
 )
 async def refresh_stale_leads_flow(
     client_id: str | None = None,
@@ -337,6 +344,8 @@ async def refresh_stale_leads_flow(
     description="Prepare leads for daily outreach (refresh stale data)",
     retries=1,
     retry_delay_seconds=60,
+    on_completion=[on_completion_hook],
+    on_failure=[on_failure_hook],
 )
 async def daily_outreach_prep_flow(
     client_id: str | None = None,

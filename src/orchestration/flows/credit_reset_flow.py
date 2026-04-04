@@ -29,6 +29,11 @@ from src.config.tiers import get_leads_for_tier
 from src.integrations.supabase import get_db_session
 from src.models.base import SubscriptionStatus
 from src.models.client import Client
+import sys as _sys
+_sys.path.insert(0, "/home/elliotbot/clawd/Agency_OS")
+from src.prefect_utils.completion_hook import on_completion_hook
+from src.prefect_utils.hooks import on_failure_hook
+
 
 logger = logging.getLogger(__name__)
 
@@ -209,6 +214,8 @@ async def trigger_replenishment_task(client_id: UUID, client_name: str) -> dict[
     description="Hourly check to reset client credits on billing date",
     retries=1,
     retry_delay_seconds=60,
+    on_completion=[on_completion_hook],
+    on_failure=[on_failure_hook],
 )
 async def credit_reset_check_flow() -> dict[str, Any]:
     """

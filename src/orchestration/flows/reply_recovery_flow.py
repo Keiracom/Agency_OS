@@ -34,6 +34,11 @@ from src.integrations.unipile import get_unipile_client
 from src.models.activity import Activity
 from src.models.base import ChannelType
 from src.models.lead import Lead
+import sys as _sys
+_sys.path.insert(0, "/home/elliotbot/clawd/Agency_OS")
+from src.prefect_utils.completion_hook import on_completion_hook
+from src.prefect_utils.hooks import on_failure_hook
+
 
 logger = logging.getLogger(__name__)
 
@@ -387,6 +392,8 @@ async def process_missed_reply_task(
     name="reply_recovery",
     description="Safety net flow for polling missed webhook replies (6-hourly)",
     log_prints=True,
+    on_completion=[on_completion_hook],
+    on_failure=[on_failure_hook],
 )
 async def reply_recovery_flow(since_hours: int = 6) -> dict[str, Any]:
     """

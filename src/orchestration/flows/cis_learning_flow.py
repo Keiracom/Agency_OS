@@ -222,7 +222,11 @@ async def complete_cis_run(
         return result.get("success", False)
 
 
-@flow(name="cis-learning-engine", log_prints=True)
+@flow(
+    name="cis-learning-engine", log_prints=True,
+    on_completion=[on_completion_hook],
+    on_failure=[on_failure_hook],
+)
 async def cis_learning_flow(
     customer_id: str | None = None,
     run_type: str = "weekly",
@@ -413,5 +417,10 @@ async def run_cis_manually(customer_id: str | None = None):
 
 if __name__ == "__main__":
     import asyncio
+import sys as _sys
+_sys.path.insert(0, "/home/elliotbot/clawd/Agency_OS")
+from src.prefect_utils.completion_hook import on_completion_hook
+from src.prefect_utils.hooks import on_failure_hook
+
 
     asyncio.run(run_cis_manually())

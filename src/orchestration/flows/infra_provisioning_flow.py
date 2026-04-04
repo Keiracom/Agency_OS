@@ -27,6 +27,11 @@ from prefect.task_runners import ConcurrentTaskRunner
 
 from src.integrations.infraforge import get_infraforge_client
 from src.integrations.supabase import get_db_session
+import sys as _sys
+_sys.path.insert(0, "/home/elliotbot/clawd/Agency_OS")
+from src.prefect_utils.completion_hook import on_completion_hook
+from src.prefect_utils.hooks import on_failure_hook
+
 
 logger = logging.getLogger(__name__)
 
@@ -304,7 +309,9 @@ async def log_provisioning_cost_task(
     name="infra_provisioning_flow",
     description="Provision email infrastructure via Mailforge (domains + mailboxes + warmup)",
     task_runner=ConcurrentTaskRunner(),
-    tags=["tier:bulk", "infra:spot"],  # FCO-001: Run on spot instances
+    tags=["tier:bulk", "infra:spot"],  # FCO-001: Run on spot instances,
+    on_completion=[on_completion_hook],
+    on_failure=[on_failure_hook],
 )
 async def infra_provisioning_flow(
     client_id: UUID,

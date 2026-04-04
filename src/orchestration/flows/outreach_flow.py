@@ -865,6 +865,11 @@ async def send_linkedin_outreach_task(
     # Sunday: No LinkedIn activity allowed
     if timing_engine.is_weekend(timezone):
         from zoneinfo import ZoneInfo
+import sys as _sys
+_sys.path.insert(0, "/home/elliotbot/clawd/Agency_OS")
+from src.prefect_utils.completion_hook import on_completion_hook
+from src.prefect_utils.hooks import on_failure_hook
+
 
         tz = ZoneInfo(timezone)
         today = datetime.now(tz).weekday()
@@ -1135,6 +1140,8 @@ async def send_sms_outreach_task(
     description="Hourly outreach flow with JIT validation and multi-channel execution",
     log_prints=True,
     task_runner=ConcurrentTaskRunner(max_workers=10),
+    on_completion=[on_completion_hook],
+    on_failure=[on_failure_hook],
 )
 async def hourly_outreach_flow(batch_size: int = 50) -> dict[str, Any]:
     """

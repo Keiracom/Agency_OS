@@ -26,6 +26,11 @@ from prefect.task_runners import ConcurrentTaskRunner
 
 from src.integrations.supabase import get_db_session
 from src.services.recording_cleanup_service import (
+import sys as _sys
+_sys.path.insert(0, "/home/elliotbot/clawd/Agency_OS")
+from src.prefect_utils.completion_hook import on_completion_hook
+from src.prefect_utils.hooks import on_failure_hook
+
     RECORDING_RETENTION_DAYS,
     RecordingCleanupService,
 )
@@ -81,6 +86,8 @@ async def cleanup_old_recordings_task(
     name="recording-cleanup",
     description="Daily cleanup of voice recordings older than 90 days for compliance",
     task_runner=ConcurrentTaskRunner(),
+    on_completion=[on_completion_hook],
+    on_failure=[on_failure_hook],
 )
 async def recording_cleanup_flow(
     retention_days: int = RECORDING_RETENTION_DAYS,

@@ -20,30 +20,30 @@ module.exports = {
     extend: {
       // Pure Bloomberg Dark Theme — Warm Charcoal + Amber ONLY
       colors: {
-        // Background layers (warm charcoal)
-        'bg-void': '#0C0A08',
-        'bg-base': '#141210',
-        'bg-surface': '#1C1A17',
-        'bg-elevated': '#242220',
-        
-        // Borders (subtle glass edges)
-        'border-subtle': 'rgba(255,255,255,0.06)',
-        'border-default': 'rgba(255,255,255,0.10)',
-        'border-focus': 'rgba(255,255,255,0.20)',
-        
-        // Text (warm cream palette)
-        'text-primary': '#F5F0EB',
-        'text-secondary': '#A39E96',
-        'text-muted': '#6B6660',
-        
-        // Accent — AMBER ONLY (the only color)
-        'amber': '#D4956A',
-        'amber-light': '#E8B48A',
-        'amber-glow': 'rgba(212,149,106,0.12)',
-        
-        // Error state (muted warm red — SPARINGLY)
-        'error': '#C0675A',
-        'error-glow': 'rgba(192,103,90,0.12)',
+        // Background layers — reference CSS vars so data-theme switches them
+        'bg-void': 'var(--bg-void)',
+        'bg-base': 'var(--bg-base)',
+        'bg-surface': 'var(--bg-surface)',
+        'bg-elevated': 'var(--bg-elevated)',
+
+        // Borders — reference CSS vars
+        'border-subtle': 'var(--border-subtle)',
+        'border-default': 'var(--border-default)',
+        'border-focus': 'var(--border-focus)',
+
+        // Text — reference CSS vars
+        'text-primary': 'var(--text-primary)',
+        'text-secondary': 'var(--text-secondary)',
+        'text-muted': 'var(--text-muted)',
+
+        // Accent — reference CSS vars (amber unchanged between themes)
+        'amber': 'var(--amber)',
+        'amber-light': 'var(--amber-light)',
+        'amber-glow': 'var(--amber-glow)',
+
+        // Error state — reference CSS vars
+        'error': 'var(--error)',
+        'error-glow': 'var(--error-glow)',
         
         // Glass
         glass: {

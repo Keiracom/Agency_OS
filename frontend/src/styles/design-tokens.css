@@ -197,3 +197,46 @@
   letter-spacing: 1.5px;
   text-transform: uppercase;
 }
+
+/* ========================================
+   LIGHT THEME — Bloomberg Terminal Light
+   Applied via data-theme="light" on wrapper
+   Amber #D4956A is UNCHANGED
+   ======================================== */
+[data-theme="light"] {
+  --bg-void:      #F5F5F0;
+  --bg-base:      #EFEFEA;
+  --bg-surface:   #FFFFFF;
+  --bg-elevated:  #F9F9F6;
+
+  --text-primary:   #1A1A14;
+  --text-secondary: #6B6B60;
+  --text-muted:     #9B9B90;
+
+  --amber:          #D4956A;
+  --amber-light:    #E8B48A;
+  --amber-glow:     rgba(212,149,106,0.10);
+  --amber-glow-subtle: rgba(212,149,106,0.05);
+  --amber-glow-strong: rgba(212,149,106,0.18);
+
+  --border-subtle:  #E8E8E2;
+  --border-default: #E2E2DA;
+  --border-focus:   #C8C8C0;
+  --border-amber:   rgba(212,149,106,0.25);
+  --border-amber-strong: rgba(212,149,106,0.35);
+
+  --glass-surface:  rgba(0,0,0,0.02);
+  --glass-border:   rgba(0,0,0,0.06);
+  --glass-border-top: rgba(0,0,0,0.08);
+  --glass-border-left: rgba(0,0,0,0.05);
+
+  --error:          #C0675A;
+  --error-glow:     rgba(192,103,90,0.10);
+
+  --bg-page-gradient:
+    radial-gradient(ellipse at 20% 0%, rgba(212,149,106,0.06) 0%, transparent 50%),
+    var(--bg-void);
+
+  --shadow-glass: 0 4px 24px rgba(0,0,0,0.08), inset 0 1px 0 rgba(0,0,0,0.04);
+  --shadow-glass-lg: 0 12px 40px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06), inset 0 1px 0 rgba(0,0,0,0.04);
+}

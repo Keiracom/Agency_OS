@@ -39,44 +39,16 @@ export function AppShell({ children, pageTitle = 'Agency OS' }: AppShellProps) {
     <div className="min-h-screen relative overflow-hidden">
       {/* Demo Mode Banner */}
       <DemoBanner />
-      
-      {/* Base dark background */}
-      <div className="fixed inset-0 bg-bg-void -z-10" />
-      
-      {/* Ambient Background Orbs - for glassmorphism depth */}
-      <div className="pointer-events-none fixed inset-0 z-0">
-        {/* Purple orb - top right */}
-        <div 
-          className="absolute -top-32 -right-32 w-[600px] h-[600px] rounded-full opacity-30"
-          style={{
-            background: 'radial-gradient(circle, #7C3AED 0%, transparent 60%)',
-            filter: 'blur(80px)',
-          }}
-        />
-        {/* Blue orb - bottom left */}
-        <div 
-          className="absolute -bottom-32 -left-32 w-[550px] h-[550px] rounded-full opacity-25"
-          style={{
-            background: 'radial-gradient(circle, #3B82F6 0%, transparent 60%)',
-            filter: 'blur(70px)',
-          }}
-        />
-        {/* Cyan orb - center area */}
-        <div 
-          className="absolute top-1/3 right-1/4 w-[400px] h-[400px] rounded-full opacity-20"
-          style={{
-            background: 'radial-gradient(circle, #06B6D4 0%, transparent 60%)',
-            filter: 'blur(60px)',
-          }}
-        />
-      </div>
+
+      {/* Base background — uses CSS var so it responds to data-theme */}
+      <div className="fixed inset-0 -z-10" style={{ backgroundColor: "var(--bg-void)" }} />
 
       {/* Fixed Left Sidebar - 72px */}
-      <aside className={`fixed left-0 h-full w-[72px] bg-bg-surface border-r border-border-subtle flex flex-col items-center py-4 z-50 ${isDemo ? 'top-10' : 'top-0'}`}>
+      <aside className={`fixed left-0 h-full w-[72px] bg-bg-surface border-r border-[var(--border-default)] flex flex-col items-center py-4 z-50 ${isDemo ? 'top-10' : 'top-0'}`}>
         {/* Logo */}
         <div className="mb-8">
-          <div className="w-[42px] h-[42px] bg-gradient-to-br from-accent-primary to-accent-blue rounded-xl flex items-center justify-center shadow-glow-sm">
-            <Check className="w-5 h-5 text-text-primary" strokeWidth={3} />
+          <div className="w-[42px] h-[42px] bg-amber-glow border border-[var(--border-amber)] rounded-xl flex items-center justify-center shadow-glow-sm">
+            <Check className="w-5 h-5 text-amber" strokeWidth={3} />
           </div>
         </div>
 
@@ -94,8 +66,8 @@ export function AppShell({ children, pageTitle = 'Agency OS' }: AppShellProps) {
                   transition-all duration-200
                   ${
                     isActive
-                      ? "bg-accent-primary/15 text-accent-primary"
-                      : "text-text-muted hover:bg-bg-surface-hover hover:text-text-secondary"
+                      ? "bg-amber-glow text-amber"
+                      : "text-text-muted hover:bg-bg-elevated hover:text-text-primary"
                   }
                 `}
                 title={item.label}
@@ -133,15 +105,15 @@ export function AppShell({ children, pageTitle = 'Agency OS' }: AppShellProps) {
       {/* Maya AI Bubble - Fixed Bottom Right */}
       <div className="fixed bottom-6 right-6 z-50">
         <button
-          className="relative w-14 h-14 rounded-full bg-gradient-to-br from-accent-primary to-accent-blue 
+          className="relative w-14 h-14 rounded-full bg-amber
             flex items-center justify-center shadow-glow-md hover:shadow-glow-lg transition-shadow"
           title="Maya AI Assistant"
         >
           {/* Avatar placeholder - using "M" for Maya */}
-          <span className="text-text-primary font-bold text-lg">M</span>
+          <span className="text-bg-void font-bold text-lg">M</span>
           {/* Online indicator */}
-          <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-status-success rounded-full border-2 border-bg-void">
-            <span className="absolute inset-0 bg-status-success rounded-full animate-ping opacity-75" />
+          <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-[#10B981] rounded-full border-2 border-bg-void">
+            <span className="absolute inset-0 bg-[#10B981] rounded-full animate-ping opacity-75" />
           </span>
         </button>
       </div>

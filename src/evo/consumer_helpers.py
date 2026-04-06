@@ -44,19 +44,26 @@ def fail_task(task_id: str, reason: str = "") -> None:
 
 
 def invoke_agent_local(agent_id: str, description: str, timeout: int = 300) -> dict:
-    """Run openclaw agent locally; JSON is in stderr after log lines."""
+    """Run claude -p with appropriate model per agent_id."""
     import subprocess, json
-    cmd = ["openclaw", "agent", "--agent", agent_id, "--local",
-           "--message", description, "--json", "--timeout", str(timeout)]
+    model_map = {
+        "architect-0": "claude-opus-4-6",
+        "build-2": "claude-sonnet-4-6",
+        "build-3": "claude-sonnet-4-6",
+        "review-5": "claude-sonnet-4-6",
+        "research-1": "claude-haiku-4-5",
+        "test-4": "claude-haiku-4-5",
+        "devops-6": "claude-haiku-4-5",
+    }
+    model = model_map.get(agent_id, "claude-sonnet-4-6")
+    cmd = ["claude", "-p", description, "--model", model, "--output-format", "json"]
     proc = None
     try:
         proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout + 10)
-        combined = proc.stderr + proc.stdout
-        json_start = combined.find("{")
         if proc.returncode != 0:
-            return {"text": "", "exit_code": proc.returncode, "error": combined.strip()}
-        data = json.loads(combined[json_start:])
-        text = (data.get("payloads") or [{}])[0].get("text") or data.get("text", "")
+            return {"text": "", "exit_code": proc.returncode, "error": (proc.stderr + proc.stdout).strip()}
+        data = json.loads(proc.stdout)
+        text = data.get("result") or data.get("text", "")
         return {"text": text, "exit_code": 0}
     except Exception as e:
         exit_code = proc.returncode if proc is not None else 1

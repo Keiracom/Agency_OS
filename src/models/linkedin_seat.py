@@ -56,9 +56,10 @@ class LinkedInSeat(Base, UUIDMixin, TimestampMixin):
     Supports multi-seat per client (4/7/14 per tier).
 
     Tier allocations:
+    - Spark: 1 seat (20/day capacity)
     - Ignition: 4 seats (80/day capacity)
     - Velocity: 7 seats (140/day capacity)
-    - Dominance: 14 seats (280/day capacity)
+    # Dominance: REMOVED from launch (TIERS-002)
     """
 
     __tablename__ = "linkedin_seats"

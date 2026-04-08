@@ -111,15 +111,16 @@ class Settings(BaseSettings):
     sdk_min_propensity_score: int = Field(
         default=85, description="Minimum ALS score for SDK enrichment (Hot tier threshold)"
     )
+    sdk_daily_limit_spark: float = Field(
+        default=25.0, description="Daily SDK budget for Spark tier (AUD)"
+    )
     sdk_daily_limit_ignition: float = Field(
         default=50.0, description="Daily SDK budget for Ignition tier (AUD)"
     )
     sdk_daily_limit_velocity: float = Field(
         default=100.0, description="Daily SDK budget for Velocity tier (AUD)"
     )
-    sdk_daily_limit_dominance: float = Field(
-        default=200.0, description="Daily SDK budget for Dominance tier (AUD)"
-    )
+    # sdk_daily_limit_dominance — DEPRECATED. Dominance removed from launch (TIERS-002).
 
     # === ABN Lookup (Tier 1 Siege Waterfall - FREE) ===
     # Australian Business Register lookup. Register for free at:
@@ -237,11 +238,10 @@ class Settings(BaseSettings):
     stripe_api_key: str = Field(default="", description="Stripe secret key")
     stripe_publishable_key: str = Field(default="", description="Stripe publishable key")
     stripe_webhook_secret: str = Field(default="", description="Stripe webhook signing secret")
+    stripe_price_spark: str = Field(default="", description="Stripe Price ID for Spark tier")
     stripe_price_ignition: str = Field(default="", description="Stripe Price ID for Ignition tier")
     stripe_price_velocity: str = Field(default="", description="Stripe Price ID for Velocity tier")
-    stripe_price_dominance: str = Field(
-        default="", description="Stripe Price ID for Dominance tier"
-    )
+    # stripe_price_dominance — DEPRECATED. Dominance removed from launch (TIERS-002).
 
     # === Social Media Scheduling ===
     buffer_api_key: str = Field(default="", description="Buffer API access token")

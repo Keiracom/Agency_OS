@@ -36,9 +36,10 @@ class ClientPersona(Base, UUIDMixin, TimestampMixin):
     - SMS: Sender name in message
 
     Per-tier allocation:
+    - Spark: 1 persona
     - Ignition: 2 personas
     - Velocity: 3 personas
-    - Dominance: 4 personas
+    # Dominance: REMOVED from launch (TIERS-002)
     """
 
     __tablename__ = "client_personas"
@@ -190,9 +191,10 @@ class ClientPersona(Base, UUIDMixin, TimestampMixin):
 # ============================================
 
 PERSONA_ALLOCATIONS = {
+    "spark": 1,
     "ignition": 2,
     "velocity": 3,
-    "dominance": 4,
+    # "dominance": REMOVED from launch (TIERS-002)
 }
 
 

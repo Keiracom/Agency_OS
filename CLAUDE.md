@@ -31,6 +31,10 @@ On every new session, your FIRST action before any directive, query, or build wo
 
 This overrides all other startup steps. The Manual is ground truth.
 
+## Clean Working Tree (LAW XVI — HARD BLOCK)
+
+Before any new directive work, run `git status`. If the working tree has uncommitted modifications from a previous session, STOP and report them to Dave. Do not include them in new commits via `git add -A`. Either commit them as their own atomic change (after Dave confirms what they are) or stash them. Never sweep unknown changes into unrelated PRs.
+
 ## Architecture First (LAW I-A — HARD BLOCK)
 
 Before ANY architectural decision, code change, or sub-agent task brief:

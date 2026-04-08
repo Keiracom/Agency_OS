@@ -147,6 +147,19 @@ class Settings(BaseSettings):
     resend_api_key: str = Field(default="", description="Resend API key")
     postmark_server_token: str = Field(default="", description="Postmark server token")
 
+    # === Telnyx (Voice + SMS) ===
+    # Replaces Twilio SMS (Directive #167). Voice + SMS on single provider.
+    telnyx_api_key: str = Field(default="", description="Telnyx API key")
+    telnyx_connection_id: str = Field(
+        default="", description="Telnyx voice connection ID for outbound calls"
+    )
+    telnyx_messaging_profile_id: str = Field(
+        default="", description="Telnyx messaging profile ID for SMS"
+    )
+    telnyx_phone_number: str = Field(
+        default="", description="Telnyx phone number (E.164, AU: +61...)"
+    )
+
     # === Twilio (Voice Calls ONLY via Vapi) ===
     # NOT used for SMS. SMS provider to be wired per Directive #167 (P3 post-launch).
     twilio_account_sid: str = Field(default="", description="Twilio account SID (voice only)")

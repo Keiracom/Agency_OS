@@ -65,27 +65,27 @@ export default function PricingClient() {
           <div className="grid md:grid-cols-3 gap-8">
             {[
               {
+                name: "Spark",
+                originalPrice: 750,
+                expectedMeetings: "All 4 outreach channels",
+                desc: "Launch your outbound engine",
+                limits: ["150 records/month", "All 4 outreach channels • Full AI intelligence • Haiku personalisation"],
+                popular: false,
+              },
+              {
                 name: "Ignition",
                 originalPrice: 2500,
-                expectedMeetings: "8-9 meetings/month expected",
-                desc: "Perfect for getting started",
-                limits: ["1,250 leads/month", "5 campaigns", "1 LinkedIn seat"],
-                popular: false,
+                expectedMeetings: "All 4 outreach channels",
+                desc: "Perfect for growing agencies",
+                limits: ["600 records/month", "All 4 outreach channels • Full AI intelligence • Haiku personalisation"],
+                popular: true,
               },
               {
                 name: "Velocity",
                 originalPrice: 5000,
-                expectedMeetings: "15-16 meetings/month expected",
-                desc: "Most popular for growing agencies",
-                limits: ["2,250 leads/month", "10 campaigns", "3 LinkedIn seats"],
-                popular: true,
-              },
-              {
-                name: "Dominance",
-                originalPrice: 7500,
-                expectedMeetings: "31-32 meetings/month expected",
+                expectedMeetings: "All 4 outreach channels",
                 desc: "Maximum pipeline capacity",
-                limits: ["4,500 leads/month", "20 campaigns", "5 LinkedIn seats"],
+                limits: ["1,500 records/month", "All 4 outreach channels • Full AI intelligence • Haiku personalisation"],
                 popular: false,
               },
             ].map((tier, i) => (
@@ -253,7 +253,7 @@ export default function PricingClient() {
               },
               {
                 q: "Is there a setup fee?",
-                a: "No setup fees. Dominance tier includes white-glove onboarding at no extra cost. All other tiers include self-serve onboarding with documentation and support.",
+                a: "No setup fees. Velocity tier includes white-glove onboarding at no extra cost. All other tiers include self-serve onboarding with documentation and support.",
               },
               {
                 q: "What if I don't use all my credits?",

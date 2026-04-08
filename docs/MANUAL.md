@@ -1,6 +1,6 @@
 # Agency OS Manual
 
-Last updated: 2026-04-03 UTC
+Last updated: 2026-04-08 UTC
 Directive #306: Marketing Vulnerability Report (PR #269)
 Next scheduled update: Next architecture change or milestone
 
@@ -23,10 +23,41 @@ Revenue model for BU: API subscriptions, Salesforce/HubSpot marketplace, bulk an
 
 ## SECTION 2 — CURRENT STATE
 
-**Last directive:** #301 (SMTP email verifier — port 25 blocked on all managed cloud)
-**Next directive:** #302 (this Manual rewrite)
-**Test baseline:** 1289 passed, 0 failed, 28 skipped
-**Last merged PR:** #264 (14 #300-FIX issues)
+**Last directive:** #306 (Marketing Vulnerability Report — PR #269)
+**Next directive:** TBD
+**Test baseline:** 1396 passed, 0 failed, 28 skipped
+**Last merged PR:** #269 (Directive #306)
+
+### EVO Track (Autonomous Loop — all complete)
+
+| Stage | Title | Status |
+|-------|-------|--------|
+| EVO-001 | Foundation | Complete |
+| EVO-002 | Foundation | Complete |
+| EVO-003 | Prefect→Elliottbot callback bridge | Complete |
+| EVO-004 | Dynamic Prefect flow generator | Complete |
+| EVO-005 | Task queue consumer + API guardrails | Complete |
+| EVO-006 | Live fire test + MCP servers | Complete |
+| EVO-007 | Execution path fix (Railway orchestrates, VPS executes) | Complete |
+| EVO-008 | Claude Code migration — OpenClaw retired 2026-04-07 | Complete |
+
+Full autonomous loop verified: Prefect → evo_task_queue → VPS consumer → result written → Telegram alert. Loop latency: 1212s.
+
+### Infrastructure State (as of 2026-04-08)
+
+- **Harness:** Claude Code (EVO-008). OpenClaw retired permanently 2026-04-07.
+- **MCP status:** 12/13 custom MCP servers active. keiramail (work email) + keiradrive (Google Drive) confirmed loaded.
+- **Telegram bot:** Live. Alerts on flow completions/failures to chat_id 7267788033.
+- **crm-sync-flow:** Killed permanently 2026-04-08 (column `cc.ghl_location_id` does not exist — schema mismatch, flow removed from Prefect).
+- **Prefect pool:** agency-os-pool, concurrency 10.
+
+### Governance Updates (2026-04-08)
+
+- LAW XII (Skills-First Integration) restored
+- LAW XIII (Skill Currency Enforcement) restored
+- LAW XV-D: Step 0 RESTATE HARD BLOCK added to both CLAUDE.md files
+- Session startup HARD BLOCK: Read Drive Manual via keiradrive_read_manual before any directive
+- File-based memory (MEMORY.md, HANDOFF.md) deprecated — Supabase elliot_internal.memories is SOLE persistent memory
 
 ### Pipeline Status
 
@@ -46,22 +77,11 @@ Integration test #300 passed all 11 stages. 730 AU domains (Dental, Construction
 | 10 LinkedIn DM Profile | BLOCKED | — | BD batch takes 30+ min — SLA issue |
 | 11 Haiku Evidence + Draft Emails | 260 | 260 | $0.42 Haiku, full prospect cards |
 
-**Total cost: ~$26 USD. Cost per qualified DM card: ~$0.10**
-
-Post-test quality fixes applied (#300-FIX-1 through #300-FIX-8, PR #264 + commits):
-- AU country filter wired
-- httpx persistent client, contact registry at scrape time
-- DM company profile filter, name-match gate on email waterfall
-- Email pattern name-matching (_parse_name rebuilt)
-- Placeholder email filter (card assembly + email waterfall Layer 0)
-- Business name chain: lico desc → dm_title "at X" → lidm headline → HTML title tag → domain stem
-- Location chain: AU-filtered lidm.location → lico desc → comp signals → HTML title
-- Draft emails address DM by first name, reference business + location
-- BD snapshot sd_mnfd94hgsyllcqjlx: 257 LinkedIn DM profiles downloaded and merged
+**Total cost: ~$26 USD (~$40 AUD). Cost per qualified DM card: ~$0.10 USD (~$0.155 AUD)**
 
 ### Build Phase
 
-Sprints 0–6 complete (#279–#301). All core pipeline modules built:
+Sprints 0–6 complete (#279–#306). All core pipeline modules built:
 - Discovery engine (DFS domain_metrics_by_categories, multi-category rotation)
 - Free intelligence sweep (httpx scrape, DNS/MX, ABN registry)
 - Paid enrichment (DFS GMB, DFS SERP, Google Ads)
@@ -73,6 +93,7 @@ Sprints 0–6 complete (#279–#301). All core pipeline modules built:
 - Intelligence layer (5-stage Sonnet/Haiku, prompt caching)
 - Stage-parallel orchestrator (9 semaphore-controlled concurrent stages)
 - Haiku evidence refinement + draft email generation (Stage 11)
+- Marketing Vulnerability Report (Stage 7c — Directive #306)
 
 ### Current Phase
 

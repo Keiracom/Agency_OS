@@ -31,6 +31,7 @@ from prefect import task
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.config.tiers import get_available_channels_enum
 from src.engines.content import ContentEngine
 from src.engines.email import EmailEngine
 from src.engines.linkedin import LinkedInEngine
@@ -148,6 +149,24 @@ async def _validate_outreach_jit(
         logger.warning(
             f"Campaign {campaign.id} is in {permission_mode} mode. "
             f"Ensure message is approved before sending."
+        )
+
+    # === ALS CHANNEL ELIGIBILITY (re-verified at send time) ===
+    # A lead's score may have dropped since the outreach was scheduled.
+    # Re-check that the current propensity_score still qualifies for this channel.
+    if lead.propensity_score is not None:
+        allowed_channels = get_available_channels_enum(lead.propensity_score)
+        if channel not in allowed_channels:
+            raise ValidationError(
+                message=(
+                    f"Lead {lead.id} ALS {lead.propensity_score} no longer qualifies "
+                    f"for {channel} outreach"
+                ),
+                field="als_channel_eligibility",
+            )
+    else:
+        logger.warning(
+            f"Lead {lead.id} has no propensity_score; skipping ALS channel gate for {channel}"
         )
 
     return lead, client, campaign

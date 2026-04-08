@@ -12,7 +12,7 @@ export interface ClientProfile {
   companyLogoUrl: string | null;
   contactEmail: string;
   timezone: string;
-  tier: "ignition" | "velocity" | "dominance";
+  tier: "spark" | "ignition" | "velocity";
   subscriptionStatus: "active" | "trialing" | "past_due" | "cancelled";
   nextBillingDate: string | null;
 }
@@ -32,11 +32,11 @@ export interface ProfileSettingsFormProps {
  */
 function getTierBadge(tier: string) {
   const styles: Record<string, { bg: string; text: string }> = {
+    spark: { bg: "bg-[#DCFCE7]", text: "text-[#166534]" },
     ignition: { bg: "bg-[#DBEAFE]", text: "text-[#1D4ED8]" },
     velocity: { bg: "bg-[#FEF3C7]", text: "text-[#B45309]" },
-    dominance: { bg: "bg-[#F3E8FF]", text: "text-[#7C3AED]" },
   };
-  return styles[tier] || styles.ignition;
+  return styles[tier] || styles.spark;
 }
 
 /**

@@ -16,7 +16,7 @@ export type Database = {
         Row: {
           id: string;
           name: string;
-          tier: "ignition" | "velocity" | "dominance";
+          tier: "spark" | "ignition" | "velocity";
           subscription_status: "trialing" | "active" | "past_due" | "cancelled" | "paused";
           credits_remaining: number;
           default_permission_mode: "autopilot" | "co_pilot" | "manual";

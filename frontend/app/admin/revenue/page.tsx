@@ -37,7 +37,7 @@ const mockRevenue = {
 };
 
 const mockTierBreakdown = [
-  { tier: "Dominance", clients: 8, mrr: 7992, percentage: 16.8 },
+  { tier: "Spark", clients: 8, mrr: 792, percentage: 16.8 },
   { tier: "Velocity", clients: 7, mrr: 3493, percentage: 7.4 },
   { tier: "Ignition", clients: 4, mrr: 796, percentage: 1.7 },
 ];
@@ -52,7 +52,7 @@ const mockRecentTransactions = [
 const mockUpcomingRenewals = [
   { client: "ScaleUp Co", tier: "velocity", renewalDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 5), amount: 499 },
   { client: "StartupXYZ", tier: "ignition", renewalDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 12), amount: 199 },
-  { client: "TechVentures", tier: "dominance", renewalDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 18), amount: 999 },
+  { client: "TechVentures", tier: "spark", renewalDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 18), amount: 99 },
 ];
 
 const mockAtRisk = [

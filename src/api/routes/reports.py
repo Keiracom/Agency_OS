@@ -1459,9 +1459,10 @@ class DashboardMetricsResponse(BaseModel):
 
 # Tier meeting targets based on pricing/documentation
 TIER_MEETING_TARGETS: dict[str, tuple[int, int]] = {
-    "ignition": (5, 15),  # Range: 5-15, target: 10
+    "spark": (2, 5),       # Range: 2-5, target: 3
+    "ignition": (5, 15),   # Range: 5-15, target: 10
     "velocity": (15, 35),  # Range: 15-35, target: 25
-    "dominance": (40, 80),  # Range: 40-80, target: 60
+    # dominance REMOVED from launch (TIERS-002)
 }
 
 

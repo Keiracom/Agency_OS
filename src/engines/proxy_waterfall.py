@@ -17,7 +17,7 @@ RULES APPLIED:
   - Cost tracking in $AUD only
 
 GOVERNANCE EVENT: FIXED_COST_OPTIMIZATION_PHASE_1
-DESCRIPTION: Proxy waterfall saves ~$11 AUD/month at Ignition tier (1,250 leads)
+DESCRIPTION: Proxy waterfall saves ~$11 AUD/month at Ignition tier (tier-dependent volume)
 """
 
 import logging

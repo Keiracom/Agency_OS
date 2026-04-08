@@ -169,8 +169,8 @@ class CampaignSuggesterEngine(BaseEngine):
         try:
             ai_slots, custom_slots = get_campaign_slots(tier_name)
         except ValueError:
-            ai_slots = 3  # Default to Ignition
-            custom_slots = 2
+            ai_slots = 2  # Default to Spark
+            custom_slots = 1
 
         # Build prompt
         prompt = self._build_prompt(client, ai_slots)

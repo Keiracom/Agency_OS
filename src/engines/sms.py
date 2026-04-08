@@ -1,18 +1,18 @@
 """
 Contract: src/engines/sms.py
-Purpose: SMS engine with DNCR compliance (SMS provider removed per Directive #167 — rewire to Telnyx P3)
+Purpose: SMS engine with DNCR compliance — wired to Telnyx (Directive #167 P3 complete)
 Layer: 3 - engines
 Imports: models, integrations
 Consumers: orchestration only
 
 FILE: src/engines/sms.py
-PURPOSE: SMS engine with DNCR compliance (SMS provider removed per Directive #167 — rewire to Telnyx P3)
+PURPOSE: SMS engine with DNCR compliance — wired to TelnyxClient (Directive #167 P3 complete)
 PHASE: 4 (Engines), modified Phase 16/24B for Conversion Intelligence, E2E Testing
 TASK: ENG-006, 16E-003, CONTENT-003
 DEPENDENCIES:
   - src/engines/base.py
   - src/engines/content_utils.py (Phase 16)
-  - TODO: wire to Telnyx for SMS (Directive #167 removed the SMS provider)
+  - src/integrations/telnyx_client.py (wired per Directive #167 P3)
   - src/integrations/redis.py
   - src/models/lead.py
   - src/models/activity.py
@@ -24,7 +24,7 @@ RULES APPLIED:
   - Rule 17: Resource-level rate limits (100/day/number)
   - DNCR compliance for Australian numbers
 
-NOTE: SMS provider removed (Directive #167). Rewire to Telnyx (P3 post-launch).
+NOTE: SMS provider wired to Telnyx (Directive #167 P3 complete).
       Twilio is used for VOICE CALLS only (via Vapi).
 
 PHASE 16 CHANGES:
@@ -52,10 +52,9 @@ from src.engines.base import EngineResult, OutreachEngine
 
 logger = logging.getLogger(__name__)
 from src.engines.content_utils import build_sms_snapshot
-from src.exceptions import DNCRError, ResourceRateLimitError
+from src.exceptions import APIError, DNCRError, ResourceRateLimitError
 
-# SMS provider removed per Directive #167. SMS to be rewired to Telnyx (P3).
-# SMS provider removed per Directive #167. Rewire to Telnyx (P3).
+# SMS wired to TelnyxClient per Directive #167 (P3 complete).
 from src.integrations.redis import rate_limiter
 from src.models.activity import Activity
 from src.models.base import ChannelType
@@ -67,24 +66,22 @@ SMS_DAILY_LIMIT_PER_NUMBER = 100
 
 class SMSEngine(OutreachEngine):
     """
-    SMS engine stub — SMS provider removed per Directive #167.
-
-    TODO (P3 post-launch): rewire to Telnyx for SMS sending.
-    DNCR checks remain available via dncr.py directly.
+    SMS engine — wired to TelnyxClient (Directive #167 P3 complete).
 
     Features:
-    - DNCR compliance check for Australian numbers
+    - DNCR compliance check for Australian numbers (engine-level, cached)
     - Resource-level rate limiting (100/day/number - Rule 17)
-    - Activity logging
+    - Activity logging with Conversion Intelligence snapshot (Phase 16/24B)
     - ALS >= 60 requirement (Hot + Warm tiers, enforced by allocator)
+    - Provider: Telnyx (single provider for Voice + SMS)
     """
 
-    def __init__(self, sms_client: None = None):
+    def __init__(self, sms_client: Any = None):
         """
         Initialize SMS engine.
 
         Args:
-            sms_client: Reserved for future Telnyx client
+            sms_client: Optional TelnyxClient override (defaults to shared singleton)
         """
         self._sms_client = sms_client
 
@@ -199,13 +196,26 @@ class SMSEngine(OutreachEngine):
                 logger.debug(f"Lead {lead_id} DNCR already checked (clean), skipping API call")
 
         try:
-            # TODO (P3): replace stub with Telnyx SMS send once wired
-            raise NotImplementedError(
-                "SMS provider not configured. SMS provider removed per Directive #167. "
-                "Rewire to Telnyx (P3)."
+            # Get Telnyx client (singleton unless overridden in constructor)
+            from src.integrations.telnyx_client import get_telnyx_client
+
+            telnyx = self._sms_client or get_telnyx_client()
+
+            result: dict[str, Any] = await telnyx.send_sms(
+                to=lead.phone,
+                from_number=from_number,
+                body=content,
+                check_dncr=False,  # DNCR already handled above in the engine
             )
-            result: dict[str, Any] = {}  # unreachable; satisfies type checker
-            message_sid = result.get("message_sid")
+
+            if not result.get("success"):
+                raise APIError(
+                    service="telnyx",
+                    status_code=0,
+                    message=result.get("error", "Unknown Telnyx SMS error"),
+                )
+
+            message_sid = result.get("message_id")
 
             # Log activity with content snapshot (Phase 16) and template tracking (Phase 24B)
             await self._log_activity(
@@ -559,4 +569,4 @@ def get_sms_engine() -> SMSEngine:
 # [x] Phase 24B: links_included extracted from SMS
 # [x] Phase 24B: personalization_fields_used tracked
 # [x] Phase 24B: ai_model_used and prompt_version stored
-# [x] Directive #167: SMS provider removed. Stub pending Telnyx wiring (P3).
+# [x] Directive #167: SMS provider wired to TelnyxClient (P3 complete). NotImplementedError removed.

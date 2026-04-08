@@ -297,7 +297,7 @@ async def run_campaign_orchestrator(
     # Client Context
     prompt_parts.append("\n## Client Context\n")
     prompt_parts.append(f"- Tier: {client_context.get('tier', 'ignition')}\n")
-    prompt_parts.append(f"- Monthly Lead Budget: {client_context.get('monthly_leads', 1250)}\n")
+    prompt_parts.append(f"- Monthly Lead Budget: {client_context.get('monthly_leads', 150)}\n")
     prompt_parts.append(f"- Active Months: {client_context.get('active_months', 1)}\n")
     if client_context.get("preferences"):
         prompt_parts.append(f"- Preferences: {client_context['preferences']}\n")

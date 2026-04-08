@@ -26,6 +26,7 @@ from src.api.dependencies import (
     get_admin_context,
     get_db_session,
 )
+from src.config.tiers import TIER_CONFIG
 from src.exceptions import ResourceNotFoundError
 from src.models.activity import Activity
 from src.models.campaign import Campaign
@@ -211,12 +212,8 @@ async def get_admin_stats(
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     (month_start - timedelta(days=1)).replace(day=1)
 
-    # MRR calculation (tier-based pricing)
-    tier_pricing = {
-        "ignition": Decimal("199"),
-        "velocity": Decimal("499"),
-        "dominance": Decimal("999"),
-    }
+    # MRR calculation (tier-based pricing — source: src/config/tiers.py TIER_CONFIG)
+    tier_pricing = {name: Decimal(str(cfg.price_aud)) for name, cfg in TIER_CONFIG.items()}
 
     # Active clients with MRR
     stmt = (
@@ -487,11 +484,7 @@ async def list_all_clients(
     search: str | None = None,
 ):
     """Get all clients with health scores and metrics."""
-    tier_pricing = {
-        "ignition": Decimal("199"),
-        "velocity": Decimal("499"),
-        "dominance": Decimal("999"),
-    }
+    tier_pricing = {name: Decimal(str(cfg.price_aud)) for name, cfg in TIER_CONFIG.items()}
 
     # Base query
     conditions = [Client.deleted_at.is_(None)]
@@ -944,11 +937,7 @@ async def get_revenue_metrics(
     db: AsyncSession = Depends(get_db_session),
 ):
     """Get revenue dashboard metrics."""
-    tier_pricing = {
-        "ignition": Decimal("199"),
-        "velocity": Decimal("499"),
-        "dominance": Decimal("999"),
-    }
+    tier_pricing = {name: Decimal(str(cfg.price_aud)) for name, cfg in TIER_CONFIG.items()}
 
     # Get tier distribution
     stmt = (

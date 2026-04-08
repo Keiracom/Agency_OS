@@ -8,6 +8,29 @@ Keiracom's outbound sales automation platform. Discovers Australian SMBs via Goo
 **Stack:** Python (FastAPI), Next.js (frontend), Supabase (Postgres + auth), Railway (compute), Prefect (orchestration), Redis (queue)
 **Env:** /home/elliotbot/.config/agency-os/.env
 
+## MANDATORY STEP 0 RESTATE ON EVERY DIRECTIVE (LAW XV-D — HARD BLOCK)
+
+Before any tool call, before any planning, before any execution, output Step 0 RESTATE in this format:
+
+- **Objective:** [one line — what we're doing]
+- **Scope:** [what's in, what's out]
+- **Success criteria:** [how we know it worked]
+- **Assumptions:** [what you are assuming]
+
+Wait for Dave to confirm. Then proceed with Decompose → Present → Execute → Verify → Report.
+
+Skipping Step 0 is a governance violation. No exceptions, no shortcuts, no jumping ahead because the task seems simple. Every directive, every time.
+
+## Session Start — Read the Manual First (HARD BLOCK)
+
+On every new session, your FIRST action before any directive, query, or build work:
+
+1. Read the Agency OS Manual from Google Drive (Doc ID: `1p9FAQGowy9SgwglIxtkGsMuvLsR70MJBQrCSY6Ie9ho`). This is the CEO SSOT — current state, active directives, blockers, and system status.
+2. Do not work from memory. Do not work from stale docs. Read the Manual before any directive.
+3. If the Manual is unreachable, alert Dave and STOP. Do not proceed from cached knowledge.
+
+This overrides all other startup steps. The Manual is ground truth.
+
 ## Architecture First (LAW I-A — HARD BLOCK)
 
 Before ANY architectural decision, code change, or sub-agent task brief:
@@ -66,11 +89,14 @@ VALUES (gen_random_uuid(), 'daily_log', '<summary: what was done, PRs, decisions
 | LAW VIII | GitHub Visibility — all work pushed before reporting complete |
 | LAW IX | Session Memory — Supabase is SOLE persistent memory |
 | LAW XI | Orchestrate — Elliottbot delegates, never executes task work directly |
+| LAW XII | Skills-First Integration — direct calls to src/integrations/ outside skill execution are forbidden |
+| LAW XIII | Skill Currency Enforcement — skill files must be updated in the same PR as any service call change; update noted in Manual |
 | LAW XIV | Raw Output Mandate — paste verbatim terminal output, never summarise |
 | LAW XV | Three-Store Completion — docs/MANUAL.md + ceo_memory + cis_directive_metrics |
 | LAW XV-A | Skills Are Mandatory — cat skill file before any matching task |
 | LAW XV-B | DoD Is Mandatory — cat DEFINITION_OF_DONE.md before reporting complete |
 | LAW XV-C | Governance Docs Immutable — never recreate/modify without explicit CEO directive |
+| LAW XV-D | Step 0 RESTATE — mandatory restate before any directive execution, no exceptions |
 
 ## Dead References (Do Not Use)
 

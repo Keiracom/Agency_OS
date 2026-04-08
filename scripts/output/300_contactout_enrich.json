@@ -1,0 +1,162 @@
+[
+  {
+    "linkedin_url": "https://au.linkedin.com/in/amy-turner-1375135a",
+    "dm_name": "Amy Turner",
+    "category": "Dental",
+    "http_status": 200,
+    "is_sample_data": true,
+    "email": [
+      "email1@example.com",
+      "email2@gmail.com"
+    ],
+    "phone": [
+      "+1234567891"
+    ],
+    "full_name": "Example Person",
+    "message": "This is a sample response. To unlock full access, please book a call with our sales team: https://co"
+  },
+  {
+    "linkedin_url": "https://au.linkedin.com/in/colm-galvin-a8264a142",
+    "dm_name": "Colm Galvin",
+    "category": "Dental",
+    "http_status": 200,
+    "is_sample_data": true,
+    "email": [
+      "email1@example.com",
+      "email2@gmail.com"
+    ],
+    "phone": [
+      "+1234567891"
+    ],
+    "full_name": "Example Person",
+    "message": "This is a sample response. To unlock full access, please book a call with our sales team: https://co"
+  },
+  {
+    "linkedin_url": "https://au.linkedin.com/in/tammy-stevenson-75609b254",
+    "dm_name": "Tammy Stevenson",
+    "category": "Dental",
+    "http_status": 200,
+    "is_sample_data": true,
+    "email": [
+      "email1@example.com",
+      "email2@gmail.com"
+    ],
+    "phone": [
+      "+1234567891"
+    ],
+    "full_name": "Example Person",
+    "message": "This is a sample response. To unlock full access, please book a call with our sales team: https://co"
+  },
+  {
+    "linkedin_url": "https://au.linkedin.com/in/gus-jones-41a75855",
+    "dm_name": "Gus Jones",
+    "category": "Dental",
+    "http_status": 200,
+    "is_sample_data": true,
+    "email": [
+      "email1@example.com",
+      "email2@gmail.com"
+    ],
+    "phone": [
+      "+1234567891"
+    ],
+    "full_name": "Example Person",
+    "message": "This is a sample response. To unlock full access, please book a call with our sales team: https://co"
+  },
+  {
+    "linkedin_url": "https://uk.linkedin.com/in/hiten-joshi-63811128",
+    "dm_name": "Hiten Joshi",
+    "category": "Dental",
+    "http_status": 200,
+    "is_sample_data": true,
+    "email": [
+      "email1@example.com",
+      "email2@gmail.com"
+    ],
+    "phone": [
+      "+1234567891"
+    ],
+    "full_name": "Example Person",
+    "message": "This is a sample response. To unlock full access, please book a call with our sales team: https://co"
+  },
+  {
+    "linkedin_url": "https://in.linkedin.com/in/sridevi-t-303b9b25",
+    "dm_name": "Sridevi T",
+    "category": "Dental",
+    "http_status": 200,
+    "is_sample_data": true,
+    "email": [
+      "email1@example.com",
+      "email2@gmail.com"
+    ],
+    "phone": [
+      "+1234567891"
+    ],
+    "full_name": "Example Person",
+    "message": "This is a sample response. To unlock full access, please book a call with our sales team: https://co"
+  },
+  {
+    "linkedin_url": "https://au.linkedin.com/in/rose-ruiz-70759159",
+    "dm_name": "Rose Ruiz",
+    "category": "Dental",
+    "http_status": 200,
+    "is_sample_data": true,
+    "email": [
+      "email1@example.com",
+      "email2@gmail.com"
+    ],
+    "phone": [
+      "+1234567891"
+    ],
+    "full_name": "Example Person",
+    "message": "This is a sample response. To unlock full access, please book a call with our sales team: https://co"
+  },
+  {
+    "linkedin_url": "https://www.linkedin.com/in/chad-williamson-76096810a",
+    "dm_name": "Chad Williamson",
+    "category": "Dental",
+    "http_status": 200,
+    "is_sample_data": true,
+    "email": [
+      "email1@example.com",
+      "email2@gmail.com"
+    ],
+    "phone": [
+      "+1234567891"
+    ],
+    "full_name": "Example Person",
+    "message": "This is a sample response. To unlock full access, please book a call with our sales team: https://co"
+  },
+  {
+    "linkedin_url": "https://au.linkedin.com/in/david-nguyen-424a24354",
+    "dm_name": "David Nguyen",
+    "category": "Dental",
+    "http_status": 200,
+    "is_sample_data": true,
+    "email": [
+      "email1@example.com",
+      "email2@gmail.com"
+    ],
+    "phone": [
+      "+1234567891"
+    ],
+    "full_name": "Example Person",
+    "message": "This is a sample response. To unlock full access, please book a call with our sales team: https://co"
+  },
+  {
+    "linkedin_url": "https://au.linkedin.com/in/laurie-henbest-3ab92163",
+    "dm_name": "Laurie Henbest",
+    "category": "Dental",
+    "http_status": 200,
+    "is_sample_data": true,
+    "email": [
+      "email1@example.com",
+      "email2@gmail.com"
+    ],
+    "phone": [
+      "+1234567891"
+    ],
+    "full_name": "Example Person",
+    "message": "This is a sample response. To unlock full access, please book a call with our sales team: https://co"
+  }
+]

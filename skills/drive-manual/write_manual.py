@@ -24,46 +24,11 @@ SCOPES = [
 
 FULL_MANUAL = """Agency OS Manual
 
-Last updated: {date}
-Maintained by: Elliottbot (CTO)
-Read by: Claude CEO via Google Drive search
+This content is dynamically loaded from docs/MANUAL.md.
+For the --full flag, the script reads docs/MANUAL.md from the repo root and writes it to the Google Doc.
 
-CURRENT STATE
-- OpenClaw 2026.3.8, systemd managed, Vultr Sydney
-- Test baseline: 719 passed, 0 failed, 22 skipped
-- Last directive: #168
-- Zero open PRs
-
-ARCHITECTURE
-- Backend: FastAPI + Supabase + Railway
-- Frontend: Next.js dashboard
-- Enrichment: T1 ABN, T1.5 BD LinkedIn, T2 BD GMB, T3+T5 Leadmagic
-- Outreach: Salesforge (email), Unipile (LinkedIn), ElevenAgents (voice), Telnyx (SMS, hold)
-
-MEMORY ARCHITECTURE
-- CEO SSOT: This Google Doc (read via Drive search)
-- CTO SSOT: Supabase elliot_internal.memories
-- Both updated in same directive cycle
-- Save triggers: architecture decisions, stack changes, strategic decisions, infra changes, test baseline changes, milestones
-- No save needed: bug fixes, lint, routine PRs
-
-ACTIVE DECISIONS
-- ALS: Dual scoring (Reachability + Propensity), floor 35
-- Waterfall v3: GMB-first, complete
-- Business Universe: 4 thresholds, not actionable yet
-- House seed: 10% campaign volume, must be disclosed
-
-BLOCKERS (Dave action required)
-- P1: Legal review of T&Cs (Australian privacy lawyer)
-- P2: Kaspr API key (Tier 5 mobile enrichment)
-- P3: HeyGen test (~30 min, Maya demo)
-- P4: Unipile subscription ($80/mo, when ready)
-- P4: Telnyx evaluation (closer to launch)
-
-SERVICE ACCOUNT
-- Email: elliottbot@gen-lang-client-0442027069.iam.gserviceaccount.com
-- Credentials: /home/elliotbot/google-service-account.json
-- Limitation: Cannot create Drive files (quota=0). Can write to shared docs only.
+Service account: elliottbot@gen-lang-client-0442027069.iam.gserviceaccount.com
+Limitation: Cannot create Drive files (quota=0). Can only write to shared docs.
 """
 
 
@@ -143,9 +108,14 @@ def main():
     docs_service, drive_service = get_services()
 
     if args.full:
-        from datetime import date
-        d = args.date or str(date.today())
-        content = FULL_MANUAL.format(date=d)
+        manual_path = args.date or "docs/MANUAL.md"  # --date repurposed as --file path fallback
+        import os
+        repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        file_path = os.path.join(repo_root, "docs", "MANUAL.md")
+        if not os.path.exists(file_path):
+            print(f"ERROR: docs/MANUAL.md not found at {file_path}")
+            sys.exit(1)
+        content = open(file_path).read()
         clear_and_write(docs_service, args.doc_id, content)
     elif args.section and args.content:
         update_section(docs_service, args.doc_id, args.section, args.content)

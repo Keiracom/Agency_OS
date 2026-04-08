@@ -1,0 +1,106 @@
+{
+  "mcpServers": {
+    "supabase": {
+      "command": "npx",
+      "args": ["-y", "@supabase/mcp-server-supabase", "--access-token", "${SUPABASE_ACCESS_TOKEN}"],
+      "env": {
+        "SUPABASE_URL": "${SUPABASE_URL}"
+      }
+    },
+    "redis": {
+      "command": "npx",
+      "args": ["-y", "@upstash/mcp-server"],
+      "env": {
+        "UPSTASH_EMAIL": "${UPSTASH_EMAIL}",
+        "UPSTASH_API_KEY": "${UPSTASH_API_KEY}"
+      }
+    },
+    "prefect": {
+      "command": "node",
+      "args": ["/home/elliotbot/clawd/mcp-servers/prefect-mcp/dist/index.js"],
+      "env": {
+        "PREFECT_API_URL": "${PREFECT_API_URL}"
+      }
+    },
+    "railway": {
+      "command": "node",
+      "args": ["/home/elliotbot/clawd/mcp-servers/railway-mcp/dist/index.js"],
+      "env": {
+        "RAILWAY_TOKEN": "${Railway_Token}"
+      }
+    },
+    "prospeo": {
+      "command": "node",
+      "args": ["/home/elliotbot/clawd/mcp-servers/prospeo-mcp/dist/index.js"],
+      "env": {
+        "PROSPEO_API_KEY": "${PROSPEO_API_KEY}"
+      }
+    },
+    "dataforseo": {
+      "command": "node",
+      "args": ["/home/elliotbot/clawd/mcp-servers/dataforseo-mcp/dist/index.js"],
+      "env": {
+        "DATAFORSEO_LOGIN": "${DATAFORSEO_LOGIN}",
+        "DATAFORSEO_PASSWORD": "${DATAFORSEO_PASSWORD}"
+      }
+    },
+    "vercel": {
+      "command": "node",
+      "args": ["/home/elliotbot/clawd/mcp-servers/vercel-mcp/dist/index.js"],
+      "env": {
+        "VERCEL_TOKEN": "${VERCEL_TOKEN}"
+      }
+    },
+    "salesforge": {
+      "command": "node",
+      "args": ["/home/elliotbot/clawd/mcp-servers/salesforge-mcp/dist/index.js"],
+      "env": {
+        "SALESFORGE_API_KEY": "${SALESFORGE_API_KEY}"
+      }
+    },
+    "vapi": {
+      "command": "node",
+      "args": ["/home/elliotbot/clawd/mcp-servers/vapi-mcp/dist/index.js"],
+      "env": {
+        "VAPI_API_KEY": "${VAPI_API_KEY}"
+      }
+    },
+    "telnyx": {
+      "command": "node",
+      "args": ["/home/elliotbot/clawd/mcp-servers/telnyx-mcp/dist/index.js"],
+      "env": {
+        "TELNYX_API_KEY": "${TELNYX_API_KEY}"
+      }
+    },
+    "unipile": {
+      "command": "node",
+      "args": ["/home/elliotbot/clawd/mcp-servers/unipile-mcp/dist/index.js"],
+      "env": {
+        "UNIPILE_API_KEY": "${UNIPILE_API_KEY}"
+      }
+    },
+    "resend": {
+      "command": "node",
+      "args": ["/home/elliotbot/clawd/mcp-servers/resend-mcp/dist/index.js"],
+      "env": {
+        "RESEND_API_KEY": "${RESEND_API_KEY}"
+      }
+    },
+    "memory": {
+      "command": "node",
+      "args": ["/home/elliotbot/clawd/mcp-servers/memory-mcp/dist/index.js"],
+      "env": {
+        "SUPABASE_URL": "${SUPABASE_URL}",
+        "SUPABASE_SERVICE_KEY": "${SUPABASE_SERVICE_KEY}"
+      }
+    },
+    "keiramail": {
+      "command": "/home/elliotbot/clawd/venv/bin/python3",
+      "args": ["/home/elliotbot/clawd/mcp-servers/gmail-mcp/server.py"]
+    },
+    "keiradrive": {
+      "command": "/home/elliotbot/clawd/venv/bin/python3",
+      "args": ["/home/elliotbot/clawd/mcp-servers/keiradrive-mcp/server.py"]
+    }
+  }
+}

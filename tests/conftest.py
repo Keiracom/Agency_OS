@@ -150,7 +150,7 @@ def mock_client() -> dict:
         "name": "Test Agency",
         "tier": "velocity",
         "subscription_status": "active",
-        "credits_remaining": 5000,
+        "credits_remaining": 1500,
         "credits_reset_at": (datetime.now(UTC) + timedelta(days=30)).isoformat(),
         "default_permission_mode": "co_pilot",
         "created_at": datetime.now(UTC).isoformat(),
@@ -169,6 +169,23 @@ def mock_membership(mock_user: dict, mock_client: dict) -> dict:
         "role": "admin",
         "accepted_at": datetime.now(UTC).isoformat(),
         "created_at": datetime.now(UTC).isoformat(),
+    }
+
+
+@pytest.fixture
+def mock_spark_client() -> dict:
+    """Mock Spark tier client (lowest)."""
+    return {
+        "id": str(uuid.uuid4()),
+        "name": "Spark Agency",
+        "tier": "spark",
+        "subscription_status": "active",
+        "credits_remaining": 150,
+        "credits_reset_at": (datetime.now(UTC) + timedelta(days=30)).isoformat(),
+        "default_permission_mode": "co_pilot",
+        "created_at": datetime.now(UTC).isoformat(),
+        "updated_at": datetime.now(UTC).isoformat(),
+        "deleted_at": None,
     }
 
 

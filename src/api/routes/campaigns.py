@@ -828,19 +828,26 @@ async def activate_campaign(
 
     # Trigger Prefect campaign-flow
     logger = logging.getLogger(__name__)
-    try:
-        await run_deployment(
-            name="campaign_activation/campaign-flow",
-            parameters={
-                "client_id": str(client_id),
-                "campaign_id": str(campaign_id),
-            },
-            timeout=0,
+    from src.config.settings import get_settings as _get_settings
+    _settings = _get_settings()
+    if not _settings.campaign_activation_enabled:
+        logger.warning(
+            f"Campaign activation blocked — campaign_activation_enabled=False (campaign {campaign_id})"
         )
-        logger.info(f"Campaign flow triggered for {campaign_id}")
-    except Exception as e:
-        logger.error(f"Failed to trigger campaign flow: {e}")
-        # Don't re-raise — activation still succeeded
+    else:
+        try:
+            await run_deployment(
+                name="campaign_activation/campaign-flow",
+                parameters={
+                    "client_id": str(client_id),
+                    "campaign_id": str(campaign_id),
+                },
+                timeout=0,
+            )
+            logger.info(f"Campaign flow triggered for {campaign_id}")
+        except Exception as e:
+            logger.error(f"Failed to trigger campaign flow: {e}")
+            # Don't re-raise — activation still succeeded
 
     response = CampaignResponse.model_validate(campaign)
     response.reply_rate = campaign.reply_rate

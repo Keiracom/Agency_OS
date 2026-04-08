@@ -320,6 +320,12 @@ class Settings(BaseSettings):
     salesforge_webhook_secret: str = Field(default="", description="Salesforge webhook HMAC secret")
     resend_webhook_secret: str = Field(default="", description="Resend/Svix webhook secret")
 
+    # === Campaign Activation Guard ===
+    campaign_activation_enabled: bool = Field(
+        default=False,
+        description="Enable campaign activation flow triggers. Set False to block all activation.",
+    )
+
     # === TEST_MODE Configuration (Phase 21) ===
     # When enabled, all outbound messages redirect to test recipients
     TEST_MODE: bool = Field(default=False, description="Enable TEST_MODE for safe E2E testing")

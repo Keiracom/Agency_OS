@@ -5,7 +5,7 @@
  * Ported from billing-v2.html
  * Features:
  * - Current plan display with metrics
- * - Three pricing tiers (Ignition, Velocity, Dominance)
+ * - Three pricing tiers (Spark, Ignition, Velocity)
  * - Usage meters (leads contacted, meetings booked, clients won)
  * - Upgrade/downgrade buttons
  * - Invoice history table
@@ -40,7 +40,7 @@ import {
 // Types
 // ============================================
 
-type PlanTier = "ignition" | "velocity" | "dominance";
+type PlanTier = "spark" | "ignition" | "velocity";
 
 interface PlanDetails {
   id: PlanTier;
@@ -83,60 +83,55 @@ interface PaymentMethod {
 
 const PLANS: PlanDetails[] = [
   {
+    id: "spark",
+    name: "Spark",
+    tagline: "Launch your outbound engine",
+    price: 750,
+    leads: 150,
+    meetingsRange: "N/A",
+    clientsRange: "N/A",
+    features: [
+      "150 records per month",
+      "All 4 outreach channels",
+      "Full AI intelligence",
+      "Haiku personalisation",
+    ],
+  },
+  {
     id: "ignition",
     name: "Ignition",
-    tagline: "Launch your outbound engine",
+    tagline: "Grow your pipeline",
     price: 2500,
-    leads: 1250,
+    leads: 600,
     meetingsRange: "8-9",
     clientsRange: "1-2",
     features: [
-      "1,250 leads per month",
-      "5-channel outreach (Email, LinkedIn, SMS, Voice, Mail)",
-      "AI-powered personalization",
-      "Basic reporting dashboard",
-      "Email support",
+      "600 records per month",
+      "All 4 outreach channels",
+      "Full AI intelligence",
+      "Haiku personalisation",
     ],
   },
   {
     id: "velocity",
     name: "Velocity",
-    tagline: "Accelerate your growth",
+    tagline: "Maximum pipeline capacity",
     price: 5000,
-    leads: 2500,
+    leads: 1500,
     meetingsRange: "15-16",
     clientsRange: "3-4",
     features: [
-      "2,500 leads per month",
-      "Everything in Ignition",
-      "Priority lead scoring",
-      "Advanced analytics",
-      "Dedicated success manager",
-      "Weekly strategy calls",
-    ],
-  },
-  {
-    id: "dominance",
-    name: "Dominance",
-    tagline: "Own your market",
-    price: 7500,
-    leads: 5000,
-    meetingsRange: "31-32",
-    clientsRange: "9-10",
-    features: [
-      "5,000 leads per month",
-      "Everything in Velocity",
-      "Custom integrations",
-      "White-glove onboarding",
-      "Direct Slack channel",
-      "Quarterly business reviews",
+      "1,500 records per month",
+      "All 4 outreach channels",
+      "Full AI intelligence",
+      "Haiku personalisation",
     ],
   },
 ];
 
 const MOCK_USAGE: UsageData = {
   leadsContacted: 1847,
-  leadsLimit: 2500,
+  leadsLimit: 1500,
   meetingsBooked: 12,
   meetingsTarget: "15-16",
   clientsWon: 3,
@@ -714,7 +709,7 @@ export default function BillingPage() {
                   key={plan.id}
                   plan={plan}
                   currentPlan={currentPlan}
-                  isRecommended={plan.id === "dominance"}
+                  isRecommended={plan.id === "velocity"}
                   onSelect={handlePlanSelect}
                 />
               ))}
@@ -730,8 +725,8 @@ export default function BillingPage() {
               Ready to dominate your market?
             </h3>
             <p className="text-sm text-text-secondary max-w-lg">
-              Upgrade to Dominance and get 2x the meetings, dedicated Slack support, and custom
-              integrations built for your workflow.
+              Upgrade to Velocity and get more records per month with all 4 outreach channels running
+              at full capacity.
             </p>
           </div>
           <button className="flex items-center gap-2 px-7 py-3.5 bg-gradient-to-r from-amber-500 to-amber-400 text-[#0A0A12] font-semibold rounded-lg hover:shadow-lg hover:shadow-amber-500/30 transition-all">

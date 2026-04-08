@@ -386,6 +386,7 @@ async def root() -> dict[str, Any]:
 # ============================================
 
 from src.api.routes.admin import router as admin_router
+from src.api.routes.tiers import router as tiers_router
 from src.api.routes.billing import router as billing_router
 from src.api.routes.campaign_generation import router as campaign_generation_router
 from src.api.routes.campaigns import router as campaigns_router
@@ -436,6 +437,8 @@ app.include_router(unipile_router, prefix="/api/v1")
 app.include_router(billing_router, prefix="/api/v1")
 # E2E Test Infrastructure (only active when MOCK_CRM=true)
 app.include_router(internal_router, prefix="/api/v1")
+# TIERS-002: Tier configuration endpoint
+app.include_router(tiers_router, prefix="/api/v1")
 
 
 # ============================================

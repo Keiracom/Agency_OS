@@ -186,7 +186,7 @@ The experiment worked:
 What's next:
 → Early access waitlist is open
 → 25% off first year for waitlist
-→ Velocity + Dominance tiers coming Q2
+→ Velocity tier coming Q2
 
 Thank you to everyone who took a chance on us.
 

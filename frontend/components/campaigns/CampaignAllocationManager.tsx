@@ -39,9 +39,9 @@ import { Skeleton } from "@/components/ui/skeleton";
  * Based on docs/architecture/frontend/CAMPAIGNS.md
  */
 const TIER_MAX_CAMPAIGNS: Record<TierType, number> = {
+  spark: 3,      // Entry tier
   ignition: 2,   // Starter tier
   velocity: 3,   // Growth tier
-  dominance: 5,  // Scale tier
 };
 
 /**

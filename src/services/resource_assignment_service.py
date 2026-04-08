@@ -52,7 +52,7 @@ async def assign_resources_to_client(
     Args:
         db: Database session
         client_id: New client's UUID
-        tier: Pricing tier ('ignition', 'velocity', 'dominance')
+        tier: Pricing tier ('spark', 'ignition', 'velocity')
 
     Returns:
         Dict mapping resource_type to list of assigned resource_pool IDs

@@ -170,7 +170,7 @@ class CampaignDiscoveryTrigger:
                 self.id = data.get("id")
                 self.industry_slug = data.get("industry_slug")
                 self.state = data.get("state")
-                self.lead_volume = data.get("lead_volume") or 1250
+                self.lead_volume = data.get("lead_volume") or 150
                 self.target_industries = data.get("target_industries") or []
                 self.target_locations = data.get("target_locations") or []
                 self.target_titles = data.get("target_titles") or []

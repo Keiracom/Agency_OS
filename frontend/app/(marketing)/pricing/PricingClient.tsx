@@ -253,7 +253,7 @@ export default function PricingClient() {
               },
               {
                 q: "Is there a setup fee?",
-                a: "No setup fees. Dominance tier includes white-glove onboarding at no extra cost. All other tiers include self-serve onboarding with documentation and support.",
+                a: "No setup fees. Velocity tier includes white-glove onboarding at no extra cost. All other tiers include self-serve onboarding with documentation and support.",
               },
               {
                 q: "What if I don't use all my credits?",

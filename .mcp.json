@@ -94,9 +94,13 @@
         "SUPABASE_SERVICE_KEY": "${SUPABASE_SERVICE_KEY}"
       }
     },
-    "gmail": {
-      "command": "python3",
+    "keiramail": {
+      "command": "/home/elliotbot/clawd/venv/bin/python3",
       "args": ["/home/elliotbot/clawd/mcp-servers/gmail-mcp/server.py"]
+    },
+    "keiradrive": {
+      "command": "/home/elliotbot/clawd/venv/bin/python3",
+      "args": ["/home/elliotbot/clawd/mcp-servers/keiradrive-mcp/server.py"]
     }
   }
 }

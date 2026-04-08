@@ -4,7 +4,7 @@ Purpose: Persona pool model for AI-generated sender identities
 Layer: 1 - models
 Imports: base only
 Consumers: services, orchestration
-Spec: Persona pool allocation by tier (ignition: 2, velocity: 3, dominance: 4)
+Spec: Persona pool allocation by tier (spark: 1, ignition: 2, velocity: 3)
 """
 
 from enum import StrEnum

@@ -1,11 +1,13 @@
 """
-Contract: src/enrichment/email_verifier.py
-Purpose: SMTP-based email discovery and verification. Zero cost. No external API.
-         Discovers DM emails via RCPT TO probing across 13 pattern variants.
-         Groups by domain to reuse SMTP connections and MX lookups.
-Layer: 2 - integrations
-Directive: #301
+#301 — SMTP Email Discovery + Verification
+Zero cost. No external API. Pure SMTP RCPT TO probing.
+
+Functions:
+  discover_email(first_name, last_name, domain) -> dict
+  verify_emails(emails: list[str]) -> list[dict]
+  discover_and_verify_batch(prospects: list[dict]) -> list[dict]
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -16,318 +18,283 @@ import smtplib
 import socket
 import string
 import time
-from dataclasses import dataclass, field
-from typing import Any
+from typing import Optional
 
 import dns.resolver
 
 logger = logging.getLogger(__name__)
 
-# ── Pattern generation ────────────────────────────────────────────────────────
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
 
-def _clean(name: str) -> str:
-    """Lowercase, strip non-alpha except spaces, collapse spaces."""
-    return re.sub(r"[^a-z\s]", "", name.lower()).strip()
+_SMTP_TIMEOUT = 10          # seconds per connection
+_SMTP_FROM = "verify@agency-os.io"
+_HELO_DOMAIN = "agency-os.io"
+_FAKE_LOCAL = "xq7z9fake"   # accept-all probe prefix
+_BATCH_SEM = 20             # max concurrent asyncio tasks
 
+
+# ---------------------------------------------------------------------------
+# Pattern generation
+# ---------------------------------------------------------------------------
 
 def generate_patterns(first_name: str, last_name: str, domain: str) -> list[str]:
     """
-    Generate 13 email pattern variants for a person at a domain.
-    Returns deduplicated list of candidate email addresses.
+    Generate 13 email variants for a person.
+    Names are lowercased and stripped of non-alpha chars (handles hyphens, apostrophes).
     """
-    f = _clean(first_name)
-    l = _clean(last_name)
-    fi = f[0] if f else ""
-    li = l[0] if l else ""
+    def clean(s: str) -> str:
+        return re.sub(r"[^a-z]", "", s.lower())
 
-    domain = domain[4:] if domain.startswith("www.") else domain
+    first = clean(first_name)
+    last = clean(last_name)
+    f = first[:1] if first else ""
+    l = last[:1] if last else ""
 
-    candidates: list[str] = []
-    templates = []
+    if not first or not last:
+        return []
 
-    if f:
-        templates.append(f"{f}@{domain}")                 # first@
-    if l:
-        templates.append(f"{l}@{domain}")                 # last@
-    if f and l:
-        templates.append(f"{f}.{l}@{domain}")             # first.last@
-        templates.append(f"{l}.{f}@{domain}")             # last.first@
-        templates.append(f"{f}{l}@{domain}")              # firstlast@
-        templates.append(f"{l}{f}@{domain}")              # lastfirst@
-    if fi and l:
-        templates.append(f"{fi}.{l}@{domain}")            # f.last@
-        templates.append(f"{fi}{l}@{domain}")             # flast@
-    if f and li:
-        templates.append(f"{f}.{li}@{domain}")            # first.l@
-    if f and l:
-        templates.append(f"{f}_{l}@{domain}")             # first_last@
-    if fi and l:
-        templates.append(f"{fi}_{l}@{domain}")            # f_last@
-    if f and l:
-        templates.append(f"{f}-{l}@{domain}")             # first-last@
-    if fi and l:
-        templates.append(f"{fi}-{l}@{domain}")            # f-last@
-
-    # Deduplicate while preserving order
-    seen: set[str] = set()
-    for t in templates:
-        if t not in seen:
-            seen.add(t)
-            candidates.append(t)
-
-    return candidates
+    locals_list = [
+        first,                       # {first}
+        last,                        # {last}
+        f"{first}.{last}",           # {first}.{last}
+        f"{last}.{first}",           # {last}.{first}
+        f"{first}{last}",            # {first}{last}
+        f"{last}{first}",            # {last}{first}
+        f"{f}.{last}",               # {f}.{last}
+        f"{f}{last}",                # {f}{last}
+        f"{first}.{l}",              # {first}.{l}
+        f"{first}_{last}",           # {first}_{last}
+        f"{f}_{last}",               # {f}_{last}
+        f"{first}-{last}",           # {first}-{last}
+        f"{f}-{last}",               # {f}-{last}
+    ]
+    return [f"{local}@{domain}" for local in locals_list]
 
 
-# ── MX resolution ─────────────────────────────────────────────────────────────
+# ---------------------------------------------------------------------------
+# MX resolution
+# ---------------------------------------------------------------------------
 
-def resolve_mx(domain: str, timeout: float = 5.0) -> str | None:
-    """Resolve MX record for domain. Returns highest-priority MX host or None."""
-    resolver = dns.resolver.Resolver()
-    resolver.lifetime = timeout
+def resolve_mx(domain: str) -> Optional[str]:
+    """Return the highest-priority MX hostname for domain, or None."""
     try:
-        answers = resolver.resolve(domain, "MX")
-        # Lowest preference = highest priority
-        best = sorted(answers, key=lambda r: r.preference)[0]
+        records = dns.resolver.resolve(domain, "MX", lifetime=8.0)
+        best = sorted(records, key=lambda r: r.preference)[0]
         return str(best.exchange).rstrip(".")
-    except Exception:
+    except Exception as exc:
+        logger.debug("MX lookup failed for %s: %s", domain, exc)
         return None
 
 
-# ── SMTP probing ──────────────────────────────────────────────────────────────
-
-@dataclass
-class SmtpProbeResult:
-    domain: str
-    mx_host: str | None
-    accept_all: bool
-    verified_emails: list[str] = field(default_factory=list)
-    invalid_emails: list[str] = field(default_factory=list)
-    patterns_tested: int = 0
-    error: str | None = None
-    time_seconds: float = 0.0
-
+# ---------------------------------------------------------------------------
+# Core SMTP probe
+# ---------------------------------------------------------------------------
 
 def _smtp_probe(
-    candidates: list[str],
     mx_host: str,
     domain: str,
-    sender: str = "verify@example-check.com",
-    timeout: float = 10.0,
-) -> tuple[list[str], list[str], bool]:
+    candidates: list[str],
+    fake_addr: str,
+) -> dict:
     """
-    Open one SMTP connection, send one EHLO + MAIL FROM, then RCPT TO each candidate.
-    Returns (verified, invalid, accept_all).
-    Accept-all check: probe one random garbage address first.
+    Open one SMTP connection, probe all candidates + accept-all check.
+    Returns dict with verified, invalid, accept_all, error.
     """
     verified: list[str] = []
-    invalid:  list[str] = []
-
-    # Random garbage address for accept-all detection
-    rand_local = "".join(random.choices(string.ascii_lowercase + string.digits, k=12))
-    canary = f"{rand_local}@{domain}"
+    invalid: list[str] = []
+    accept_all = False
+    error: Optional[str] = None
 
     try:
-        smtp = smtplib.SMTP(timeout=timeout)
-        smtp.connect(mx_host, 25)
-        smtp.ehlo_or_helo_if_needed()
-        smtp.mail(sender)
+        with smtplib.SMTP(timeout=_SMTP_TIMEOUT) as smtp:
+            smtp.connect(mx_host, 25)
+            smtp.helo(_HELO_DOMAIN)
+            smtp.mail(_SMTP_FROM)
 
-        # Canary check
-        code, _ = smtp.rcpt(canary)
-        accept_all = (code == 250)
+            # Accept-all check first
+            code, _ = smtp.rcpt(fake_addr)
+            if code == 250:
+                accept_all = True
+                smtp.quit()
+                return {
+                    "verified": [],
+                    "invalid": [],
+                    "accept_all": True,
+                    "error": None,
+                }
 
-        if accept_all:
-            smtp.quit()
-            return [], [], True
+            # Probe all candidates
+            for addr in candidates:
+                try:
+                    code, _ = smtp.rcpt(addr)
+                    if code == 250:
+                        verified.append(addr)
+                    else:
+                        invalid.append(addr)
+                except smtplib.SMTPServerDisconnected:
+                    # Server dropped us — reconnect
+                    error = "server_disconnected_mid_probe"
+                    break
+                except Exception as e:
+                    invalid.append(addr)
+                    logger.debug("RCPT TO %s failed: %s", addr, e)
 
-        # Probe each candidate
-        for email in candidates:
             try:
-                code, _ = smtp.rcpt(email)
-                if code == 250:
-                    verified.append(email)
-                else:
-                    invalid.append(email)
-            except smtplib.SMTPServerDisconnected:
-                # Server dropped connection — stop probing this domain
-                break
+                smtp.quit()
             except Exception:
-                invalid.append(email)
+                pass
 
-        smtp.quit()
-    except smtplib.SMTPConnectError:
-        return [], [], False
-    except smtplib.SMTPException as exc:
-        raise
-    except (socket.timeout, OSError) as exc:
-        raise
+    except smtplib.SMTPConnectError as e:
+        error = f"connect_error: {e}"
+    except smtplib.SMTPServerDisconnected as e:
+        error = f"server_disconnected: {e}"
+    except socket.timeout:
+        error = "timeout"
+    except ConnectionRefusedError:
+        error = "connection_refused"
+    except OSError as e:
+        error = f"os_error: {e}"
+    except Exception as e:
+        error = f"unexpected: {e}"
 
-    return verified, invalid, False
-
-
-def probe_domain(
-    candidates: list[str],
-    domain: str,
-    mx_host: str,
-    timeout: float = 10.0,
-) -> SmtpProbeResult:
-    """Synchronous SMTP probe of all candidate emails for a single domain."""
-    t0 = time.monotonic()
-    result = SmtpProbeResult(domain=domain, mx_host=mx_host, accept_all=False)
-    try:
-        verified, invalid, accept_all = _smtp_probe(candidates, mx_host, domain, timeout=timeout)
-        result.verified_emails = verified
-        result.invalid_emails  = invalid
-        result.accept_all      = accept_all
-        result.patterns_tested = len(candidates)
-    except Exception as exc:
-        result.error = str(exc)
-    result.time_seconds = round(time.monotonic() - t0, 2)
-    return result
+    return {
+        "verified": verified,
+        "invalid": invalid,
+        "accept_all": accept_all,
+        "error": error,
+    }
 
 
-# ── Public API ────────────────────────────────────────────────────────────────
+# ---------------------------------------------------------------------------
+# FUNCTION 1: discover_email
+# ---------------------------------------------------------------------------
 
-SMTP_SEM = asyncio.Semaphore(20)
-
-
-async def discover_email(
-    first_name: str,
-    last_name: str,
-    domain: str,
-    timeout: float = 10.0,
-) -> dict[str, Any]:
+def discover_email(first_name: str, last_name: str, domain: str) -> dict:
     """
-    FUNCTION 1: Discover DM email via SMTP RCPT TO probing.
+    Discover and verify email addresses for a person via SMTP probing.
 
-    1. Generate 13 pattern variants.
-    2. Resolve MX record once.
-    3. Open ONE SMTP connection.
-    4. HELO + MAIL FROM once.
-    5. RCPT TO each variant.
-    6. Accept-all check via canary address.
-    7. QUIT.
-
-    Returns dict with domain, mx_host, accept_all, verified_emails,
-    invalid_emails, patterns_tested, time_seconds.
+    Returns:
+      {
+        "domain": str,
+        "mx_host": str | None,
+        "accept_all": bool,
+        "verified_emails": list[str],
+        "invalid_emails": list[str],
+        "patterns_tested": int,
+        "time_seconds": float,
+        "error": str | None,
+      }
     """
-    async with SMTP_SEM:
-        candidates = generate_patterns(first_name, last_name, domain)
-        if not candidates:
-            return {
-                "domain": domain, "mx_host": None, "accept_all": False,
-                "verified_emails": [], "invalid_emails": [],
-                "patterns_tested": 0, "time_seconds": 0.0, "error": "no_patterns",
-            }
+    t0 = time.time()
 
-        loop = asyncio.get_event_loop()
+    patterns = generate_patterns(first_name, last_name, domain)
+    fake_addr = f"{_FAKE_LOCAL}@{domain}"
 
-        mx_host = await loop.run_in_executor(None, lambda: resolve_mx(domain))
-        if not mx_host:
-            return {
-                "domain": domain, "mx_host": None, "accept_all": False,
-                "verified_emails": [], "invalid_emails": [],
-                "patterns_tested": 0, "time_seconds": 0.0, "error": "no_mx",
-            }
-
-        result = await loop.run_in_executor(
-            None,
-            lambda: probe_domain(candidates, domain, mx_host, timeout=timeout),
-        )
+    # Resolve MX
+    mx_host = resolve_mx(domain)
+    if not mx_host:
         return {
-            "domain":           result.domain,
-            "mx_host":          result.mx_host,
-            "accept_all":       result.accept_all,
-            "verified_emails":  result.verified_emails,
-            "invalid_emails":   result.invalid_emails,
-            "patterns_tested":  result.patterns_tested,
-            "time_seconds":     result.time_seconds,
-            "error":            result.error,
+            "domain": domain,
+            "mx_host": None,
+            "accept_all": False,
+            "verified_emails": [],
+            "invalid_emails": [],
+            "patterns_tested": len(patterns),
+            "time_seconds": round(time.time() - t0, 2),
+            "error": "no_mx_record",
         }
 
+    # SMTP probe
+    result = _smtp_probe(mx_host, domain, patterns, fake_addr)
 
-async def verify_emails(emails: list[str]) -> list[dict[str, Any]]:
+    return {
+        "domain": domain,
+        "mx_host": mx_host,
+        "accept_all": result["accept_all"],
+        "verified_emails": result["verified"],
+        "invalid_emails": result["invalid"],
+        "patterns_tested": len(patterns),
+        "time_seconds": round(time.time() - t0, 2),
+        "error": result["error"],
+    }
+
+
+# ---------------------------------------------------------------------------
+# FUNCTION 2: verify_emails
+# ---------------------------------------------------------------------------
+
+def verify_emails(emails: list[str]) -> list[dict]:
     """
-    FUNCTION 2: Bulk verify existing emails. Groups by domain to reuse connections.
-    Returns list of {email, domain, verified, error}.
+    Bulk verify existing email addresses.
+    Groups by domain — one SMTP connection per domain.
+
+    Returns list of:
+      {"email": str, "verified": bool, "accept_all": bool, "error": str|None}
     """
     # Group by domain
     by_domain: dict[str, list[str]] = {}
     for email in emails:
-        parts = email.split("@")
-        if len(parts) != 2:
+        if "@" not in email:
             continue
-        domain = parts[1].lower()
+        _, domain = email.rsplit("@", 1)
         by_domain.setdefault(domain, []).append(email)
 
-    results: list[dict[str, Any]] = []
+    results: list[dict] = []
 
-    async def _verify_domain_group(domain: str, email_list: list[str]) -> None:
-        async with SMTP_SEM:
-            loop = asyncio.get_event_loop()
-            mx_host = await loop.run_in_executor(None, lambda: resolve_mx(domain))
-            if not mx_host:
-                for e in email_list:
-                    results.append({"email": e, "domain": domain, "verified": False, "error": "no_mx"})
-                return
-            probe = await loop.run_in_executor(
-                None,
-                lambda: probe_domain(email_list, domain, mx_host),
-            )
-            for e in probe.verified_emails:
-                results.append({"email": e, "domain": domain, "verified": True,
-                                 "accept_all": probe.accept_all, "error": probe.error})
-            for e in probe.invalid_emails:
-                results.append({"email": e, "domain": domain, "verified": False,
-                                 "accept_all": probe.accept_all, "error": probe.error})
-            if probe.accept_all:
-                for e in email_list:
-                    results.append({"email": e, "domain": domain, "verified": False,
-                                    "accept_all": True, "error": None})
+    for domain, domain_emails in by_domain.items():
+        fake_addr = f"{_FAKE_LOCAL}@{domain}"
+        mx_host = resolve_mx(domain)
+        if not mx_host:
+            for email in domain_emails:
+                results.append({
+                    "email": email,
+                    "verified": False,
+                    "accept_all": False,
+                    "error": "no_mx_record",
+                })
+            continue
 
-    await asyncio.gather(*[_verify_domain_group(d, el) for d, el in by_domain.items()])
+        probe = _smtp_probe(mx_host, domain, domain_emails, fake_addr)
+        for email in domain_emails:
+            results.append({
+                "email": email,
+                "verified": email in probe["verified"],
+                "accept_all": probe["accept_all"],
+                "error": probe["error"],
+            })
+
     return results
 
 
-async def discover_and_verify_batch(
-    prospects: list[dict[str, Any]],
-) -> list[dict[str, Any]]:
-    """
-    FUNCTION 3: Batch discover + verify for list of prospects.
-    Each prospect dict: {first_name, last_name, domain, dm_email (optional)}.
-    Runs discover_email concurrently (sem=20).
+# ---------------------------------------------------------------------------
+# FUNCTION 3: discover_and_verify_batch (async)
+# ---------------------------------------------------------------------------
 
-    Returns enriched list with smtp_verified_email, smtp_result.
-    """
-    async def _process(p: dict[str, Any]) -> dict[str, Any]:
-        domain      = p.get("domain", "")
-        first_name  = p.get("first_name", "")
-        last_name   = p.get("last_name", "")
-        existing    = p.get("dm_email")
-
-        # Clean domain
-        d = domain[4:] if domain.startswith("www.") else domain
-
-        result = await discover_email(first_name, last_name, d)
-
-        # If existing email, also verify it
-        verified_existing = False
-        if existing and not result.get("accept_all"):
-            # Check if it appeared in verified list
-            if existing in result.get("verified_emails", []):
-                verified_existing = True
-
-        smtp_email = (
-            result["verified_emails"][0]
-            if result.get("verified_emails")
-            else None
+async def _discover_one(
+    prospect: dict,
+    sem: asyncio.Semaphore,
+) -> dict:
+    """Run discover_email in a thread pool (SMTP is blocking)."""
+    async with sem:
+        loop = asyncio.get_event_loop()
+        first = prospect.get("first_name", "")
+        last = prospect.get("last_name", "")
+        domain = prospect.get("domain", "")
+        result = await loop.run_in_executor(
+            None, discover_email, first, last, domain
         )
+        return {**prospect, "smtp_result": result}
 
-        return {
-            **p,
-            "smtp_verified_email": smtp_email,
-            "smtp_existing_verified": verified_existing,
-            "smtp_result": result,
-        }
 
-    return await asyncio.gather(*[_process(p) for p in prospects])
+async def discover_and_verify_batch(prospects: list[dict]) -> list[dict]:
+    """
+    Concurrently discover emails for a list of prospects.
+    Input: list of {first_name, last_name, domain, ...any other fields}
+    Output: same list with smtp_result added.
+    Semaphore: _BATCH_SEM concurrent tasks (default 20).
+    """
+    sem = asyncio.Semaphore(_BATCH_SEM)
+    tasks = [_discover_one(p, sem) for p in prospects]
+    return await asyncio.gather(*tasks)

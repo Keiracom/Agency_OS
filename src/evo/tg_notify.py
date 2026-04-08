@@ -2,7 +2,7 @@
 import os
 import httpx
 
-TG_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "8381203809:AAFiTOe680BCs_X7WdbQYmKl1rSVs9GFycw")
+TG_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 TG_CHAT = os.environ.get("TELEGRAM_CHAT_ID", "7267788033")
 
 

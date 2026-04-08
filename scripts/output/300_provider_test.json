@@ -1,0 +1,212 @@
+[
+  {
+    "linkedin_url": "https://au.linkedin.com/in/amy-turner-1375135a",
+    "category": "Dental",
+    "dm_name": "Amy Turner",
+    "contactout": {
+      "email_found": false,
+      "email": null,
+      "mobile_found": false,
+      "mobile": null,
+      "response_time_ms": 789,
+      "error": "HTTP 401: {\"message\":\"Failed to authenticate because of bad credentials or an invalid header.\",\"status_code\":401}"
+    },
+    "forager": {
+      "email_found": false,
+      "email": null,
+      "mobile_found": false,
+      "mobile": null,
+      "response_time_ms": 966,
+      "error": "HTTP 401: <html>\r\n<head><title>401 Authorization Required</title></head>\r\n<body>\r\n<center><h1>401 Authorization Required</h1></center>\r\n<hr><center>nginx</center>\r\n</body>\r\n</html>\r\n"
+    }
+  },
+  {
+    "linkedin_url": "https://au.linkedin.com/in/colm-galvin-a8264a142",
+    "category": "Dental",
+    "dm_name": "Colm Galvin",
+    "contactout": {
+      "email_found": false,
+      "email": null,
+      "mobile_found": false,
+      "mobile": null,
+      "response_time_ms": 288,
+      "error": "HTTP 401: {\"message\":\"Failed to authenticate because of bad credentials or an invalid header.\",\"status_code\":401}"
+    },
+    "forager": {
+      "email_found": false,
+      "email": null,
+      "mobile_found": false,
+      "mobile": null,
+      "response_time_ms": 951,
+      "error": "HTTP 401: <html>\r\n<head><title>401 Authorization Required</title></head>\r\n<body>\r\n<center><h1>401 Authorization Required</h1></center>\r\n<hr><center>nginx</center>\r\n</body>\r\n</html>\r\n"
+    }
+  },
+  {
+    "linkedin_url": "https://au.linkedin.com/in/tammy-stevenson-75609b254",
+    "category": "Dental",
+    "dm_name": "Tammy Stevenson",
+    "contactout": {
+      "email_found": false,
+      "email": null,
+      "mobile_found": false,
+      "mobile": null,
+      "response_time_ms": 769,
+      "error": "HTTP 401: {\"message\":\"Failed to authenticate because of bad credentials or an invalid header.\",\"status_code\":401}"
+    },
+    "forager": {
+      "email_found": false,
+      "email": null,
+      "mobile_found": false,
+      "mobile": null,
+      "response_time_ms": 933,
+      "error": "HTTP 401: <html>\r\n<head><title>401 Authorization Required</title></head>\r\n<body>\r\n<center><h1>401 Authorization Required</h1></center>\r\n<hr><center>nginx</center>\r\n</body>\r\n</html>\r\n"
+    }
+  },
+  {
+    "linkedin_url": "https://au.linkedin.com/in/gus-jones-41a75855",
+    "category": "Dental",
+    "dm_name": "Gus Jones",
+    "contactout": {
+      "email_found": false,
+      "email": null,
+      "mobile_found": false,
+      "mobile": null,
+      "response_time_ms": 781,
+      "error": "HTTP 401: {\"message\":\"Failed to authenticate because of bad credentials or an invalid header.\",\"status_code\":401}"
+    },
+    "forager": {
+      "email_found": false,
+      "email": null,
+      "mobile_found": false,
+      "mobile": null,
+      "response_time_ms": 981,
+      "error": "HTTP 401: <html>\r\n<head><title>401 Authorization Required</title></head>\r\n<body>\r\n<center><h1>401 Authorization Required</h1></center>\r\n<hr><center>nginx</center>\r\n</body>\r\n</html>\r\n"
+    }
+  },
+  {
+    "linkedin_url": "https://au.linkedin.com/in/crossray-infrared-bbq-australia-5728b6112",
+    "category": "Construction",
+    "dm_name": "CROSSRAY INFRARED BBQ AUSTRALIA",
+    "contactout": {
+      "email_found": false,
+      "email": null,
+      "mobile_found": false,
+      "mobile": null,
+      "response_time_ms": 268,
+      "error": "HTTP 401: {\"message\":\"Failed to authenticate because of bad credentials or an invalid header.\",\"status_code\":401}"
+    },
+    "forager": {
+      "email_found": false,
+      "email": null,
+      "mobile_found": false,
+      "mobile": null,
+      "response_time_ms": 974,
+      "error": "HTTP 401: <html>\r\n<head><title>401 Authorization Required</title></head>\r\n<body>\r\n<center><h1>401 Authorization Required</h1></center>\r\n<hr><center>nginx</center>\r\n</body>\r\n</html>\r\n"
+    }
+  },
+  {
+    "linkedin_url": "https://au.linkedin.com/in/jozsef-berta-a31210a6",
+    "category": "Construction",
+    "dm_name": "Jozsef Berta",
+    "contactout": {
+      "email_found": false,
+      "email": null,
+      "mobile_found": false,
+      "mobile": null,
+      "response_time_ms": 272,
+      "error": "HTTP 401: {\"message\":\"Failed to authenticate because of bad credentials or an invalid header.\",\"status_code\":401}"
+    },
+    "forager": {
+      "email_found": false,
+      "email": null,
+      "mobile_found": false,
+      "mobile": null,
+      "response_time_ms": 982,
+      "error": "HTTP 401: <html>\r\n<head><title>401 Authorization Required</title></head>\r\n<body>\r\n<center><h1>401 Authorization Required</h1></center>\r\n<hr><center>nginx</center>\r\n</body>\r\n</html>\r\n"
+    }
+  },
+  {
+    "linkedin_url": "https://au.linkedin.com/in/daniel-dunn-591a1221",
+    "category": "Construction",
+    "dm_name": "Daniel Dunn",
+    "contactout": {
+      "email_found": false,
+      "email": null,
+      "mobile_found": false,
+      "mobile": null,
+      "response_time_ms": 273,
+      "error": "HTTP 401: {\"message\":\"Failed to authenticate because of bad credentials or an invalid header.\",\"status_code\":401}"
+    },
+    "forager": {
+      "email_found": false,
+      "email": null,
+      "mobile_found": false,
+      "mobile": null,
+      "response_time_ms": 979,
+      "error": "HTTP 401: <html>\r\n<head><title>401 Authorization Required</title></head>\r\n<body>\r\n<center><h1>401 Authorization Required</h1></center>\r\n<hr><center>nginx</center>\r\n</body>\r\n</html>\r\n"
+    }
+  },
+  {
+    "linkedin_url": "https://au.linkedin.com/in/dane-cowley312",
+    "category": "Legal",
+    "dm_name": "Dane Cowley",
+    "contactout": {
+      "email_found": false,
+      "email": null,
+      "mobile_found": false,
+      "mobile": null,
+      "response_time_ms": 753,
+      "error": "HTTP 401: {\"message\":\"Failed to authenticate because of bad credentials or an invalid header.\",\"status_code\":401}"
+    },
+    "forager": {
+      "email_found": false,
+      "email": null,
+      "mobile_found": false,
+      "mobile": null,
+      "response_time_ms": 973,
+      "error": "HTTP 401: <html>\r\n<head><title>401 Authorization Required</title></head>\r\n<body>\r\n<center><h1>401 Authorization Required</h1></center>\r\n<hr><center>nginx</center>\r\n</body>\r\n</html>\r\n"
+    }
+  },
+  {
+    "linkedin_url": "https://au.linkedin.com/in/nick-stone-10153626",
+    "category": "Legal",
+    "dm_name": "Nick Stone",
+    "contactout": {
+      "email_found": false,
+      "email": null,
+      "mobile_found": false,
+      "mobile": null,
+      "response_time_ms": 269,
+      "error": "HTTP 401: {\"message\":\"Failed to authenticate because of bad credentials or an invalid header.\",\"status_code\":401}"
+    },
+    "forager": {
+      "email_found": false,
+      "email": null,
+      "mobile_found": false,
+      "mobile": null,
+      "response_time_ms": 994,
+      "error": "HTTP 401: <html>\r\n<head><title>401 Authorization Required</title></head>\r\n<body>\r\n<center><h1>401 Authorization Required</h1></center>\r\n<hr><center>nginx</center>\r\n</body>\r\n</html>\r\n"
+    }
+  },
+  {
+    "linkedin_url": "https://au.linkedin.com/in/rohandoyle",
+    "category": "Legal",
+    "dm_name": "Rohan Doyle",
+    "contactout": {
+      "email_found": false,
+      "email": null,
+      "mobile_found": false,
+      "mobile": null,
+      "response_time_ms": 287,
+      "error": "HTTP 401: {\"message\":\"Failed to authenticate because of bad credentials or an invalid header.\",\"status_code\":401}"
+    },
+    "forager": {
+      "email_found": false,
+      "email": null,
+      "mobile_found": false,
+      "mobile": null,
+      "response_time_ms": 977,
+      "error": "HTTP 401: <html>\r\n<head><title>401 Authorization Required</title></head>\r\n<body>\r\n<center><h1>401 Authorization Required</h1></center>\r\n<hr><center>nginx</center>\r\n</body>\r\n</html>\r\n"
+    }
+  }
+]

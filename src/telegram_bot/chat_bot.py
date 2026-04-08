@@ -48,6 +48,21 @@ SUPABASE_HEADERS: dict[str, str] = {
 running_processes: dict[int, asyncio.subprocess.Process] = {}
 
 # ---------------------------------------------------------------------------
+# Relay state
+# ---------------------------------------------------------------------------
+
+RELAY_DIR = "/tmp/telegram-relay"
+INBOX_DIR = f"{RELAY_DIR}/inbox"    # messages FROM Telegram TO tmux session
+OUTBOX_DIR = f"{RELAY_DIR}/outbox"  # messages FROM tmux session TO Telegram
+
+os.makedirs(INBOX_DIR, exist_ok=True)
+os.makedirs(OUTBOX_DIR, exist_ok=True)
+
+relay_mode: dict[int, bool] = {}  # chat_id -> relay on/off
+# When relay is ON, messages continue the tmux session directly
+RELAY_SESSION_ID: str | None = None  # set by /relay on, read from latest JSONL
+
+# ---------------------------------------------------------------------------
 # Logging
 # ---------------------------------------------------------------------------
 
@@ -151,22 +166,29 @@ async def supabase_update_session(session_id: str, **kwargs) -> None:
 # ---------------------------------------------------------------------------
 
 
+import json as _json
+import time as _time  # noqa: F401 (used by relay helpers)
+
+
 async def run_claude(
-    session_id: str,
+    session_id: str | None,
     model: str,
     message: str,
     chat_id: int,
-) -> str:
-    """Spawn claude -p --resume <session_id> and return text output."""
-    cmd = [
-        CLAUDE_BIN,
-        "-p",
-        "--resume", session_id,
-        "--model", model,
-        "--output-format", "text",
-        message,
-    ]
-    logger.info(f"[chat={chat_id}] spawning claude session={session_id[:8]} model={model}")
+) -> tuple[str, str | None]:
+    """Spawn claude -p and return (text_response, real_session_id).
+
+    If session_id is None or doesn't exist yet in Claude's history,
+    runs without --resume to create a new session.  Always uses
+    --output-format json so we can capture the real session_id.
+    """
+    cmd = [CLAUDE_BIN, "-p", "--model", model, "--output-format", "json"]
+    if session_id:
+        cmd.extend(["--resume", session_id])
+    cmd.append(message)
+
+    label = session_id[:8] if session_id else "new"
+    logger.info(f"[chat={chat_id}] spawning claude session={label} model={model}")
 
     proc = await asyncio.create_subprocess_exec(
         *cmd,
@@ -179,13 +201,51 @@ async def run_claude(
 
     try:
         stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=600)
-        if stderr:
-            logger.debug(f"[chat={chat_id}] claude stderr: {stderr.decode('utf-8', errors='replace')[:500]}")
-        return stdout.decode("utf-8", errors="replace")
+        raw = stdout.decode("utf-8", errors="replace").strip()
+        err = stderr.decode("utf-8", errors="replace").strip()
+
+        if err:
+            logger.debug(f"[chat={chat_id}] claude stderr: {err[:500]}")
+
+        # If --resume failed (session not found), retry without it
+        if proc.returncode != 0 and session_id and "No conversation found" in err:
+            logger.info(f"[chat={chat_id}] session {label} not found, creating new")
+            cmd2 = [CLAUDE_BIN, "-p", "--model", model, "--output-format", "json", message]
+            proc2 = await asyncio.create_subprocess_exec(
+                *cmd2,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                cwd=WORK_DIR,
+                env={**os.environ},
+            )
+            running_processes[chat_id] = proc2
+            stdout2, _ = await asyncio.wait_for(proc2.communicate(), timeout=600)
+            raw = stdout2.decode("utf-8", errors="replace").strip()
+
+        # Parse JSON output — last line should be the result object
+        real_session_id = None
+        text_result = ""
+        for line in raw.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                obj = _json.loads(line)
+                if obj.get("type") == "result":
+                    text_result = obj.get("result", "")
+                    real_session_id = obj.get("session_id")
+            except _json.JSONDecodeError:
+                continue
+
+        if not text_result and raw:
+            text_result = raw  # fallback to raw output
+
+        return text_result, real_session_id
+
     except asyncio.TimeoutError:
         proc.kill()
         logger.warning(f"[chat={chat_id}] claude timed out")
-        return "Response timed out after 10 minutes. Process killed."
+        return "Response timed out after 10 minutes. Process killed.", None
     finally:
         running_processes.pop(chat_id, None)
 
@@ -252,11 +312,8 @@ async def cmd_new(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
     chat_id = update.effective_chat.id
     await supabase_deactivate_sessions(chat_id)
-    session_id = str(uuid.uuid4())
-    await supabase_create_session(chat_id, session_id)
-    short = session_id[:8]
-    await update.message.reply_text(f"New session started: {short}")
-    logger.info(f"[chat={chat_id}] new session {short}")
+    await update.message.reply_text("Session reset. Next message starts a fresh conversation.")
+    logger.info(f"[chat={chat_id}] sessions deactivated, next msg creates new")
 
 
 async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -289,7 +346,7 @@ async def cmd_compact(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
     await update.message.reply_text("Compacting session...")
 
-    summary = await run_claude(
+    summary, _ = await run_claude(
         session["claude_session_id"],
         session["current_model"],
         (
@@ -300,16 +357,16 @@ async def cmd_compact(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     )
 
     await supabase_deactivate_sessions(chat_id)
-    new_session_id = str(uuid.uuid4())
-    await supabase_create_session(chat_id, new_session_id, session["current_model"])
 
-    # Seed new session with summary
-    await run_claude(
-        new_session_id,
+    # Seed new session — let Claude create the real session_id
+    seed_resp, new_real_id = await run_claude(
+        None,
         session["current_model"],
         f"Context from previous session:\n\n{summary}",
         chat_id,
     )
+    new_session_id = new_real_id or str(uuid.uuid4())
+    await supabase_create_session(chat_id, new_session_id, session["current_model"])
 
     old_short = session["claude_session_id"][:8]
     new_short = new_session_id[:8]
@@ -380,6 +437,7 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "/model <opus|sonnet|haiku> — Switch model\n"
         "/kill — Stop running process\n"
         "/history — Recent session history\n"
+        "/relay on|off — Toggle relay to tmux session\n"
         "/help — This message"
     )
     await update.message.reply_text(text)
@@ -395,6 +453,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return
     chat_id = update.effective_chat.id
 
+    # Relay mode: forward to tmux inbox instead of Claude
+    if relay_mode.get(chat_id):
+        # Relay mode: write to inbox, watcher injects into tmux via send-keys
+        await _relay_text_to_inbox(chat_id, update.message.text or "")
+        await update.message.reply_text("Relayed to tmux session")
+        return
+
     # Guard: already processing
     proc = running_processes.get(chat_id)
     if proc and proc.returncode is None:
@@ -405,27 +470,37 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     # Get or create session
     session = await supabase_get_active_session(chat_id)
-    if not session:
-        session_id = str(uuid.uuid4())
-        session = await supabase_create_session(chat_id, session_id)
-        logger.info(f"[chat={chat_id}] auto-created session {session_id[:8]}")
+    model = session["current_model"] if session else "claude-sonnet-4-6"
+    resume_id = session["claude_session_id"] if session else None
 
     typing_task = asyncio.create_task(send_typing_loop(update))
     try:
-        response = await run_claude(
-            session["claude_session_id"],
-            session["current_model"],
+        response, real_session_id = await run_claude(
+            resume_id,
+            model,
             update.message.text or "",
             chat_id,
         )
+
+        # If we got a real session_id back, store/update it
+        if real_session_id:
+            if not session:
+                session = await supabase_create_session(chat_id, real_session_id, model)
+                logger.info(f"[chat={chat_id}] created session {real_session_id[:8]}")
+            elif session["claude_session_id"] != real_session_id:
+                await supabase_update_session(
+                    session["id"], claude_session_id=real_session_id
+                )
+                session["claude_session_id"] = real_session_id
+                logger.info(f"[chat={chat_id}] updated session to {real_session_id[:8]}")
 
         if not response or not response.strip():
             await update.message.reply_text("(empty response from Claude)")
             return
 
+        sid_label = (session or {}).get("claude_session_id", real_session_id or "?")
         if len(response) > 15000:
-            # Upload as file
-            fname = f"/tmp/response-{session['claude_session_id'][:8]}.md"
+            fname = f"/tmp/response-{sid_label[:8]}.md"
             with open(fname, "w") as fh:
                 fh.write(response)
             summary = response[:500] + "\n\n(Full response attached as file)"
@@ -437,17 +512,219 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 await update.message.reply_text(chunk)
 
         # Update session stats
-        await supabase_update_session(
-            session["id"],
-            message_count=session["message_count"] + 1,
-            last_message_at=datetime.now(timezone.utc).isoformat(),
-        )
+        if session:
+            await supabase_update_session(
+                session["id"],
+                message_count=session["message_count"] + 1,
+                last_message_at=datetime.now(timezone.utc).isoformat(),
+            )
 
     except Exception as exc:
         logger.exception(f"[chat={chat_id}] error handling message: {exc}")
         await update.message.reply_text(f"Error: {exc}")
     finally:
         typing_task.cancel()
+
+
+# ---------------------------------------------------------------------------
+# Relay helpers
+# ---------------------------------------------------------------------------
+
+
+async def _relay_text_to_inbox(chat_id: int, text: str) -> None:
+    """Write a text message to the inbox dir for the tmux session to pick up."""
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    msg_id = f"{ts}_{uuid.uuid4().hex[:8]}"
+    payload = {
+        "id": msg_id,
+        "type": "text",
+        "chat_id": chat_id,
+        "text": text,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+    path = os.path.join(INBOX_DIR, f"{msg_id}.json")
+    with open(path, "w") as f:
+        _json.dump(payload, f)
+    logger.info(f"[relay] text message written to {path}")
+
+
+async def _outbox_watcher(app: Application) -> None:
+    """Watch outbox dir and send messages to Telegram."""
+    bot = app.bot
+    logger.info("[relay] outbox watcher started")
+    while True:
+        try:
+            for fname in sorted(os.listdir(OUTBOX_DIR)):
+                if not fname.endswith(".json"):
+                    continue
+                fpath = os.path.join(OUTBOX_DIR, fname)
+                try:
+                    with open(fpath) as f:
+                        msg = _json.load(f)
+
+                    chat_id = msg.get("chat_id", ALLOWED_CHAT_IDS[0])
+
+                    if msg.get("type") == "text":
+                        text = msg.get("text", "")
+                        if len(text) > 4000:
+                            tmp = f"/tmp/relay-out-{fname}.md"
+                            with open(tmp, "w") as tf:
+                                tf.write(text)
+                            with open(tmp, "rb") as tf:
+                                await bot.send_document(chat_id=chat_id, document=tf, filename="message.md")
+                            os.unlink(tmp)
+                        else:
+                            for chunk in chunk_response(text):
+                                await bot.send_message(chat_id=chat_id, text=chunk)
+
+                    elif msg.get("type") == "file":
+                        file_path = msg.get("file_path", "")
+                        caption = msg.get("caption", "")
+                        if os.path.exists(file_path):
+                            with open(file_path, "rb") as fh:
+                                await bot.send_document(
+                                    chat_id=chat_id,
+                                    document=fh,
+                                    filename=os.path.basename(file_path),
+                                    caption=caption[:1024] if caption else None,
+                                )
+
+                    os.unlink(fpath)
+                    logger.info(f"[relay] outbox sent: {fname}")
+
+                except Exception as e:
+                    logger.error(f"[relay] outbox error processing {fname}: {e}")
+                    os.makedirs(f"{RELAY_DIR}/errors", exist_ok=True)
+                    os.rename(fpath, os.path.join(f"{RELAY_DIR}/errors", fname))
+
+        except Exception as e:
+            logger.error(f"[relay] outbox watcher error: {e}")
+
+        await asyncio.sleep(1)
+
+
+# ---------------------------------------------------------------------------
+# Relay command handler
+# ---------------------------------------------------------------------------
+
+
+def _find_tmux_session_id() -> str | None:
+    """Find the most recently active Claude session JSONL in the project."""
+    import glob
+    pattern = os.path.expanduser(
+        "~/.claude/projects/-home-elliotbot-clawd-Agency-OS/*.jsonl"
+    )
+    files = sorted(glob.glob(pattern), key=os.path.getmtime, reverse=True)
+    if files:
+        return os.path.basename(files[0]).replace(".jsonl", "")
+    return None
+
+
+async def cmd_relay(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    global RELAY_SESSION_ID
+    if not await auth_check(update):
+        return
+    chat_id = update.effective_chat.id
+    args = context.args
+
+    if not args:
+        status = "ON" if relay_mode.get(chat_id) else "OFF"
+        sid = RELAY_SESSION_ID[:8] if RELAY_SESSION_ID else "none"
+        await update.message.reply_text(
+            f"Relay: {status}\nSession: {sid}\n/relay on — continue tmux session\n/relay off — bot Claude"
+        )
+        return
+
+    if args[0].lower() == "on":
+        RELAY_SESSION_ID = _find_tmux_session_id()
+        if not RELAY_SESSION_ID:
+            await update.message.reply_text("No tmux session found.")
+            return
+        relay_mode[chat_id] = True
+        await update.message.reply_text(f"Relay ON ({RELAY_SESSION_ID[:8]})")
+        logger.info(f"[relay] ON — session {RELAY_SESSION_ID[:8]}")
+    elif args[0].lower() == "off":
+        relay_mode[chat_id] = False
+        await update.message.reply_text("Relay OFF")
+        logger.info("[relay] OFF")
+    else:
+        await update.message.reply_text("Usage: /relay on|off")
+
+
+# ---------------------------------------------------------------------------
+# Photo and document handlers (relay mode only)
+# ---------------------------------------------------------------------------
+
+
+async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not await auth_check(update):
+        return
+    chat_id = update.effective_chat.id
+
+    if not relay_mode.get(chat_id):
+        await update.message.reply_text("Photos only supported in relay mode. Use /relay on first.")
+        return
+
+    photo = update.message.photo[-1]  # largest size
+    file = await photo.get_file()
+
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    msg_id = f"{ts}_{uuid.uuid4().hex[:8]}"
+
+    file_path = os.path.join(INBOX_DIR, f"{msg_id}.jpg")
+    await file.download_to_drive(file_path)
+
+    payload = {
+        "id": msg_id,
+        "type": "photo",
+        "chat_id": chat_id,
+        "file_path": file_path,
+        "caption": update.message.caption or "",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+    meta_path = os.path.join(INBOX_DIR, f"{msg_id}.json")
+    with open(meta_path, "w") as f:
+        _json.dump(payload, f)
+
+    # Silent — no confirmation message
+    logger.info(f"[relay] photo saved to {file_path}")
+
+
+async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not await auth_check(update):
+        return
+    chat_id = update.effective_chat.id
+
+    if not relay_mode.get(chat_id):
+        await update.message.reply_text("Files only supported in relay mode. Use /relay on first.")
+        return
+
+    doc = update.message.document
+    file = await doc.get_file()
+
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    msg_id = f"{ts}_{uuid.uuid4().hex[:8]}"
+
+    ext = os.path.splitext(doc.file_name or "file")[1] or ""
+    file_path = os.path.join(INBOX_DIR, f"{msg_id}{ext}")
+    await file.download_to_drive(file_path)
+
+    payload = {
+        "id": msg_id,
+        "type": "document",
+        "chat_id": chat_id,
+        "file_path": file_path,
+        "file_name": doc.file_name or "unknown",
+        "mime_type": doc.mime_type or "",
+        "caption": update.message.caption or "",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+    meta_path = os.path.join(INBOX_DIR, f"{msg_id}.json")
+    with open(meta_path, "w") as f:
+        _json.dump(payload, f)
+
+    # Silent — no confirmation message
+    logger.info(f"[relay] document saved to {file_path}")
 
 
 # ---------------------------------------------------------------------------
@@ -463,8 +740,12 @@ def main() -> None:
 
     logger.info(f"Starting Telegram chat bot (allowed_chat_ids={ALLOWED_CHAT_IDS})")
 
-    app = Application.builder().token(BOT_TOKEN).build()
+    async def post_init(application: Application) -> None:
+        asyncio.create_task(_outbox_watcher(application))
 
+    app = Application.builder().token(BOT_TOKEN).post_init(post_init).build()
+
+    # Command handlers first
     app.add_handler(CommandHandler("new", cmd_new))
     app.add_handler(CommandHandler("reset", cmd_new))
     app.add_handler(CommandHandler("status", cmd_status))
@@ -472,7 +753,12 @@ def main() -> None:
     app.add_handler(CommandHandler("model", cmd_model))
     app.add_handler(CommandHandler("kill", cmd_kill))
     app.add_handler(CommandHandler("history", cmd_history))
+    app.add_handler(CommandHandler("relay", cmd_relay))
     app.add_handler(CommandHandler("help", cmd_help))
+    # Media handlers before text fallback
+    app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
+    app.add_handler(MessageHandler(filters.Document.ALL, handle_document))
+    # Text fallback last
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
     app.run_polling(drop_pending_updates=True)

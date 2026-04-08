@@ -284,13 +284,15 @@ class DNCRClient:
             # Re-raise API errors
             raise
         except Exception as e:
-            # Log but don't block on unexpected errors
-            logger.error(f"DNCR check failed for {phone[:6]}...: {e}")
+            logger.warning(
+                f"DNCR check failed for {phone[:6]}... — blocking contact (fail-closed): {e}"
+            )
             sentry_sdk.capture_exception(e)
 
-            # Fail open - allow contact if check fails
-            # This is a business decision - could also fail closed
-            return False
+            # Fail closed — block contact when DNCR status cannot be verified.
+            # Calling a registered number is a compliance violation; unknown status
+            # must be treated as registered until the API recovers.
+            return True
 
     async def check_numbers_batch(
         self,
@@ -366,13 +368,16 @@ class DNCRClient:
             return results
 
         except Exception as e:
-            logger.error(f"DNCR batch check failed: {e}")
+            logger.warning(
+                f"DNCR batch check failed — blocking {len(uncached_phones)} unchecked number(s) "
+                f"(fail-closed): {e}"
+            )
             sentry_sdk.capture_exception(e)
 
-            # Fail open for unchecked numbers
+            # Fail closed — block all unchecked numbers when batch API call fails.
             for phone in uncached_phones:
                 if phone not in results:
-                    results[phone] = False
+                    results[phone] = True
 
             return results
 
@@ -407,7 +412,7 @@ def get_dncr_client() -> DNCRClient:
 # [x] Phone number normalization (AU formats)
 # [x] Privacy-preserving cache keys (hashed)
 # [x] Sentry error tracking
-# [x] Fail-open behavior (allows contact on API failure)
+# [x] Fail-closed behavior (blocks contact on API failure — compliance safe)
 # [x] Proper logging for audit trail
 # [x] All functions have type hints
 # [x] All functions have docstrings

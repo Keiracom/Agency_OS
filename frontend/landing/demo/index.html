@@ -8,6 +8,15 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700&family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 :root {
   --cream: #F7F3EE;
   --surface: #EDE8E0;
@@ -994,7 +1003,7 @@ const bizSuffixes = ['Construction','Dental','Legal','Physio','Accounting','Plum
 const suburbs = ['Newtown','Surry Hills','Glebe','Marrickville','Ultimo','Chippendale','Leichhardt','Rozelle','Balmain','Pyrmont','Darlinghurst','Redfern','Alexandria','Waterloo','Zetland','Erskineville','Annandale','Stanmore','Petersham','Enmore'];
 const states = ['NSW','VIC','QLD','NSW','NSW','VIC','NSW','QLD'];
 const intents = ['struggling','trying','dabbling'];
-const outreachStatuses = ['contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','replied','replied','replied','replied','replied','meeting_booked','meeting_booked','meeting_booked','suppressed','suppressed'];
+const outreachStatuses = ['contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','replied','replied','replied','replied','replied','replied','replied','replied','suppressed','suppressed'];
 
 function seededRand(seed) {
   let s = seed;

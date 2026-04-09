@@ -121,6 +121,11 @@ body {
 .letter-o {
   font-style: italic;
   color: var(--amber);
+  /* The O will be stretched into the rubber band bar via GSAP transforms.
+     will-change hints the GPU to composite this element separately. */
+  will-change: transform;
+  transform-origin: center center;
+  display: inline-block;  /* Required for independent transform */
 }
 .letter-s {
   font-style: italic;
@@ -517,84 +522,85 @@ function buildTimeline(cal) {
     ease: 'power4.inOut'
   }, 0.70);
 
-  // PHASE 4 — O follows to centre, scales 3.6x
-  // Starts 0.3s before A finishes (overlaps at t=1.2s)
+  // PHASE 4 — O follows to centre, approaches the A
+  // The O moves toward the A like it's being drawn toward it
   tl.to(lO, {
     x: cal.oDx,
     y: cal.oDy,
-    scale: 3.6,
-    duration: 0.6,
-    ease: 'power4.inOut'
+    scale: 2.8,
+    duration: 0.5,
+    ease: 'power3.inOut'
   }, 0.85);
 
-  // PHASE 5 — Swap text O for SVG O glyph (invisible swap)
-  // At t=1.38s the text O is at full scale and centred. We:
-  //   1. Show the SVG O on top (pre-positioned to match)
-  //   2. Hide the text O
-  //   3. Morph SVG O → bar
-  tl.call(() => {
-    // Recalculate SVG O position at the O's current (animated) screen position
-    const lORect = lO.getBoundingClientRect();
-    const svg = document.getElementById('morph-svg');
-    const svgRect = svg.getBoundingClientRect();
+  // PHASE 5 — THE RUBBER BAND SNAP
+  // The O stretches horizontally as it wraps around the A,
+  // then snaps into place as the bar with an elastic overshoot.
+  //
+  // Sequence: O arrives → stretches wide (scaleX up, scaleY down)
+  // → snaps into bar position with elastic bounce
+  //
+  // This uses CSS transforms on the text O itself — no SVG swap needed.
+  // The visual: the amber O elongates horizontally, flattens vertically,
+  // and settles at the bar position with a satisfying snap.
 
-    const screenCx = lORect.left + lORect.width / 2;
-    const screenCy = lORect.top + lORect.height / 2;
+  // Step 1: O stretches horizontally while compressing vertically
+  // Like a rubber band being pulled sideways
+  tl.to(lO, {
+    scaleX: 5.5,
+    scaleY: 0.35,
+    duration: 0.35,
+    ease: 'power2.in',
+    color: '#D4956A',
+    borderRadius: '2px',
+  }, 1.25);
 
-    const svgCx = ((screenCx - svgRect.left) / svgRect.width) * 200;
-    const svgCy = ((screenCy - svgRect.top) / svgRect.height) * 200;
+  // Step 2: Stretch further and flatten — becoming the bar shape
+  tl.to(lO, {
+    scaleX: 7.2,
+    scaleY: 0.12,
+    y: cal.aDy + 28,  // Drop to bar position (54% of scaled A height)
+    duration: 0.25,
+    ease: 'power3.in',
+  }, 1.55);
 
-    // Text O at scale 3.6 — actual rendered width ≈ original * 3.6
-    const renderedW = lO.offsetWidth * 3.6;
-    const renderedH = lO.offsetHeight * 3.6;
+  // Step 3: SNAP — elastic overshoot as the rubber band settles
+  // The bar overshoots slightly wider, then bounces back to final width
+  tl.to(lO, {
+    scaleX: 8.0,
+    scaleY: 0.09,
+    duration: 0.08,
+    ease: 'none',
+  }, 1.78);
 
-    const pathSpanX = 80;
-    const pathSpanY = 80;
-    const scaleX = renderedW / pathSpanX;
-    const scaleY = renderedH / pathSpanY;
-
-    const tx = svgCx - 106 * scaleX;
-    const ty = svgCy - 102 * scaleY;
-
-    gsap.set(oGlyph, {
-      attr: { transform: `translate(${tx}, ${ty}) scale(${scaleX}, ${scaleY})` },
-      opacity: 1
-    });
-    // Hide text O — SVG O is now visually identical
-    gsap.set(lO, { opacity: 0 });
-  }, [], 1.38);
-
-  // PHASE 5b — Morph O glyph → bar
-  // The bar path is in raw SVG coords (no transform applied to morph target)
-  // We morph the UNTRANSFORMED path, then the transform on the element does the scaling.
-  // MorphSVG interpolates between the d attributes.
-  tl.to(oGlyph, {
-    duration: 0.55,
-    ease: 'power2.out',
-    morphSVG: {
-      shape: BAR_PATH,
-      type: 'rotational'
-    }
-  }, 1.40);
-
-  // PHASE 6 — Show The Strike final mark, hide SVG O
-  tl.to(oGlyph, {
-    opacity: 0,
+  // Step 4: Elastic settle — the snap recoil
+  tl.to(lO, {
+    scaleX: 6.8,
+    scaleY: 0.11,
     duration: 0.15,
-    ease: 'power1.in'
-  }, 1.80);
+    ease: 'elastic.out(1.2, 0.4)',
+  }, 1.86);
 
-  tl.to(lA, {
+  // Step 5: Final micro-settle
+  tl.to(lO, {
+    scaleX: 7.0,
+    scaleY: 0.10,
+    duration: 0.12,
+    ease: 'power1.out',
+  }, 2.01);
+
+  // PHASE 6 — Cross-fade to The Strike final mark
+  // Quick dissolve from animated letters to the clean final mark
+  tl.to([lA, lO], {
     opacity: 0,
-    duration: 0.15,
+    duration: 0.2,
     ease: 'power1.in'
-  }, 1.80);
+  }, 2.15);
 
   tl.to(finalMark, {
     opacity: 1,
-    duration: 0.25,
+    duration: 0.3,
     ease: 'power2.out'
-  }, 1.88);
+  }, 2.25);
 
   // PHASE 7 — Tagline fades up
   tl.to(tagline, {
@@ -602,7 +608,7 @@ function buildTimeline(cal) {
     y: 0,
     duration: 0.5,
     ease: 'power2.out'
-  }, 2.1);
+  }, 2.45);
 
   return tl;
 }

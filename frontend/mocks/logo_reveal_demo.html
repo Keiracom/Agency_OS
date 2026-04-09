@@ -8,12 +8,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700;1,900&family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-/* ═══════════════════════════════════════════════════════════
-   DESIGN TOKENS — Agency OS Brand System
-   ═══════════════════════════════════════════════════════════ */
 :root {
   --cream:     #F7F3EE;
-  --cream-alt: #FBF8F4;
   --surface:   #EDE8E0;
   --ink:       #0C0A08;
   --ink-2:     #2E2B26;
@@ -24,7 +20,7 @@
 }
 
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-html { height: 100%; scroll-behavior: smooth; }
+html { height: 100%; }
 body {
   background: var(--cream);
   color: var(--ink);
@@ -37,9 +33,6 @@ body {
   flex-direction: column;
 }
 
-/* ═══════════════════════════════════════════════════════════
-   HERO STAGE
-   ═══════════════════════════════════════════════════════════ */
 .hero {
   flex: 1;
   display: flex;
@@ -49,10 +42,8 @@ body {
   min-height: 100vh;
   padding: 80px 40px;
   position: relative;
-  overflow: hidden;
 }
 
-/* Subtle cream radial highlight behind mark */
 .hero::before {
   content: '';
   position: absolute;
@@ -65,7 +56,6 @@ body {
   pointer-events: none;
 }
 
-/* ─── Eyebrow label ─── */
 .hero-eyebrow {
   font-family: 'JetBrains Mono', monospace;
   font-size: 10px;
@@ -81,110 +71,25 @@ body {
 }
 .hero-eyebrow::before { content: ''; width: 24px; height: 1px; background: var(--amber); }
 
-/* ═══════════════════════════════════════════════════════════
-   ANIMATION STAGE — the container GSAP operates on
-   ═══════════════════════════════════════════════════════════ */
-#logo-stage {
+/* The entire animation happens inside this fixed-size container */
+#stage {
   position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  /* Fixed height so GSAP can measure without layout shifts */
-  height: 200px;
   width: 100%;
   max-width: 900px;
+  height: 240px;
 }
 
-/* ─── Wordmark ─── */
-.wordmark {
+/* The final mark — all SVG, no text elements at all.
+   The A is text rendered into the SVG via <text>, the bar is a <rect>.
+   This means there's NOTHING to swap — the SVG IS the final state. */
+#mark-svg {
   position: absolute;
-  font-family: 'Playfair Display', serif;
-  font-weight: 700;
-  font-size: 72px;
-  letter-spacing: -0.022em;
-  line-height: 1;
-  color: var(--ink);
-  display: inline-flex;
-  align-items: center;
-  white-space: nowrap;
-  /* transform-origin at letter baseline for natural feel */
-  transform-origin: left center;
-}
-
-.letter {
-  display: inline-block;
-  will-change: transform, opacity;
-  position: relative;
-}
-
-/* O and S are italic amber */
-.letter-o {
-  font-style: italic;
-  color: var(--amber);
-  /* The O will be stretched into the rubber band bar via GSAP transforms.
-     will-change hints the GPU to composite this element separately. */
-  will-change: transform;
-  transform-origin: center center;
-  display: inline-block;  /* Required for independent transform */
-}
-.letter-s {
-  font-style: italic;
-  color: var(--amber);
-}
-
-/* ─── SVG morph layer ─── */
-#morph-svg {
-  position: absolute;
-  top: 0;
-  left: 0;
+  top: 0; left: 0;
   width: 100%;
   height: 100%;
-  pointer-events: none;
   overflow: visible;
 }
 
-#o-glyph {
-  fill: var(--amber);
-  opacity: 0;
-}
-
-/* ─── Final mark (The Strike) — shown after animation ─── */
-.final-mark {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  opacity: 0;
-  /* Will be positioned by GSAP */
-}
-
-.mark-a {
-  font-family: 'Playfair Display', serif;
-  font-weight: 900;
-  font-style: italic;
-  font-size: 140px;
-  color: var(--ink);
-  line-height: 1;
-  position: relative;
-  display: block;
-}
-
-/* The bar: positioned BELOW the A's natural crossbar, in the lower triangle.
-   63% from top puts it clearly below the stroke-through, reading as a rubber band
-   holding the two legs of the A together. */
-.mark-a::after {
-  content: '';
-  position: absolute;
-  left: -14%;
-  right: -14%;
-  top: 63%;
-  height: 11%;
-  background: var(--amber);
-  transform: translateY(-50%);
-  z-index: -1;
-}
-
-/* ─── Tagline appears after animation ─── */
 .hero-tagline {
   margin-top: 80px;
   text-align: center;
@@ -207,9 +112,6 @@ body {
   line-height: 1.72;
 }
 
-/* ═══════════════════════════════════════════════════════════
-   CONTROLS BAR
-   ═══════════════════════════════════════════════════════════ */
 .controls {
   padding: 32px 40px;
   border-top: 1px solid var(--rule);
@@ -219,13 +121,7 @@ body {
   gap: 20px;
   flex-wrap: wrap;
 }
-
-.controls-left {
-  display: flex;
-  align-items: center;
-  gap: 24px;
-}
-
+.controls-left { display: flex; align-items: center; gap: 24px; }
 .spec-item {
   font-family: 'JetBrains Mono', monospace;
   font-size: 9px;
@@ -233,13 +129,7 @@ body {
   text-transform: uppercase;
   color: var(--ink-4);
 }
-.spec-item b {
-  display: block;
-  color: var(--ink-2);
-  font-weight: 500;
-  margin-bottom: 2px;
-}
-
+.spec-item b { display: block; color: var(--ink-2); font-weight: 500; margin-bottom: 2px; }
 .replay-btn {
   background: var(--ink);
   color: var(--cream);
@@ -258,14 +148,9 @@ body {
 .replay-btn:hover { background: var(--amber); color: var(--ink); }
 .replay-btn svg { width: 11px; height: 11px; flex-shrink: 0; }
 
-/* ═══════════════════════════════════════════════════════════
-   REDUCED MOTION FALLBACK
-   ═══════════════════════════════════════════════════════════ */
 @media (prefers-reduced-motion: reduce) {
   .hero-eyebrow { animation: none; opacity: 1; }
 }
-
-/* ─── Shared fade-in utility ─── */
 @keyframes fade-in-up {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -274,90 +159,58 @@ body {
 </head>
 <body>
 
-<!-- ═══════════════════════════════════════════════════════════
-     HERO
-     ═══════════════════════════════════════════════════════════ -->
 <section class="hero">
   <div class="hero-eyebrow">Agency OS · Brand identity · The Fold</div>
 
-  <!-- Animation stage -->
-  <div id="logo-stage">
+  <div id="stage">
+    <!-- Everything is SVG. No HTML text elements. No swap needed.
+         The wordmark letters are <text> elements inside SVG.
+         The O is a <path> (the oval shape) that MorphSVG will morph to a <rect> path.
+         The A is a <text> that GSAP translates/scales.
+         Final state = the A text + the morphed bar. Same elements, no swap. -->
+    <svg id="mark-svg" viewBox="0 0 900 240" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <!-- The O as an oval path — Playfair italic O approximation.
+             Thick, clearly an O shape. This is what MorphSVG will morph. -->
+        <path id="o-shape-def"
+          d="M0,-38 C21,-38 38,-21 38,0 C38,21 21,38 0,38 C-21,38 -38,21 -38,0 C-38,-21 -21,-38 0,-38 Z
+             M0,-26 C-14,-26 -26,-14 -26,0 C-26,14 -14,26 0,26 C14,26 26,14 26,0 C26,-14 14,-26 0,-26 Z" />
+        <!-- The bar target — wide horizontal rectangle, same coordinate origin -->
+        <path id="bar-shape-def"
+          d="M-80,-7 L80,-7 L80,7 L-80,7 Z" />
+      </defs>
 
-    <!-- Layer 1: Wordmark (starting state) -->
-    <div class="wordmark" id="wordmark">
-      <span class="letter letter-a" id="l-a">A</span>
-      <span class="letter letter-fade" id="l-g">g</span>
-      <span class="letter letter-fade" id="l-e">e</span>
-      <span class="letter letter-fade" id="l-n">n</span>
-      <span class="letter letter-fade" id="l-c">c</span>
-      <span class="letter letter-fade" id="l-y">y</span>
-      <span class="letter letter-o" id="l-o">O</span>
-      <span class="letter letter-s letter-fade" id="l-s">S</span>
-    </div>
+      <!-- Wordmark letters as individual <text> elements -->
+      <text id="lt-A" x="280" y="140" font-family="Playfair Display, serif" font-weight="700" font-size="72" fill="#0C0A08" text-anchor="middle" dominant-baseline="central">A</text>
+      <text id="lt-g" x="320" y="140" font-family="Playfair Display, serif" font-weight="700" font-size="72" fill="#0C0A08" text-anchor="middle" dominant-baseline="central" class="fade-letter">g</text>
+      <text id="lt-e" x="355" y="140" font-family="Playfair Display, serif" font-weight="700" font-size="72" fill="#0C0A08" text-anchor="middle" dominant-baseline="central" class="fade-letter">e</text>
+      <text id="lt-n" x="388" y="140" font-family="Playfair Display, serif" font-weight="700" font-size="72" fill="#0C0A08" text-anchor="middle" dominant-baseline="central" class="fade-letter">n</text>
+      <text id="lt-c" x="425" y="140" font-family="Playfair Display, serif" font-weight="700" font-size="72" fill="#0C0A08" text-anchor="middle" dominant-baseline="central" class="fade-letter">c</text>
+      <text id="lt-y" x="457" y="140" font-family="Playfair Display, serif" font-weight="700" font-size="72" fill="#0C0A08" text-anchor="middle" dominant-baseline="central" class="fade-letter">y</text>
+      <!-- O as SVG <text> for the initial wordmark display — hidden when SVG shape takes over -->
+      <text id="lt-O-text" x="505" y="140" font-family="Playfair Display, serif" font-weight="700" font-style="italic" font-size="72" fill="#D4956A" text-anchor="middle" dominant-baseline="central">O</text>
+      <text id="lt-S" x="545" y="140" font-family="Playfair Display, serif" font-weight="700" font-style="italic" font-size="72" fill="#D4956A" text-anchor="middle" dominant-baseline="central" class="fade-letter">S</text>
 
-    <!-- Layer 2: SVG morph plane (O glyph → bar) -->
-    <!--
-      The O glyph path below is the Playfair Display 900 italic "O" approximated
-      as an ellipse at 72px scale. For production, replace with the exact glyph
-      path extracted via: node frontend/src/lib/logo-reveal/extract-glyph.js
-
-      The ellipse center (rx=22, ry=30) matches the approximate proportions of
-      Playfair Display italic O at 72px. The slight tilt (transform rotate)
-      approximates the italic slant (~8°).
-
-      The BAR target path matches The Strike specification:
-      - Positioned at 54% height of the A letterform
-      - Height = 11% of A height
-      - Extends 14% beyond letterform on each side
-      At 140px font-size (3.2x scale), A height ≈ 140px, so bar height ≈ 15px,
-      width extends ~40px each side beyond ~80px letterform = ~160px total.
-    -->
-    <svg id="morph-svg" viewBox="0 0 200 200" preserveAspectRatio="none">
-      <!--
-        O glyph: approximate ellipse for Playfair Display italic O
-        Will be positioned/scaled by GSAP to match the text O position
-      -->
-      <path id="o-glyph"
-        d="M100,65
-           C118,65 133,80 133,100
-           C133,120 118,135 100,135
-           C82,135 67,120 67,100
-           C67,80 82,65 100,65 Z
-           M100,75
-           C87,75 77,86 77,100
-           C77,114 87,125 100,125
-           C113,125 123,114 123,100
-           C123,86 113,75 100,75 Z"
-        fill="#D4956A"
-        opacity="0"
-      />
+      <!-- The O shape path — starts hidden, positioned over the text O.
+           MorphSVG morphs THIS into the bar. ONE tween. ONE element. No swap. -->
+      <path id="o-shape" d="M0,-38 C21,-38 38,-21 38,0 C38,21 21,38 0,38 C-21,38 -38,21 -38,0 C-38,-21 -21,-38 0,-38 Z M0,-26 C-14,-26 -26,-14 -26,0 C-26,14 -14,26 0,26 C14,26 26,14 26,0 C26,-14 14,-26 0,-26 Z"
+        fill="#D4956A" opacity="0" transform="translate(505, 140)"/>
     </svg>
+  </div>
 
-    <!-- Layer 3: Final mark — The Strike (hidden until animation completes) -->
-    <div class="final-mark" id="final-mark">
-      <span class="mark-a">A</span>
-    </div>
-
-  </div><!-- /logo-stage -->
-
-  <!-- Tagline (revealed after animation) -->
   <div class="hero-tagline" id="hero-tagline">
     <h1>Outbound sales,<br><em>automated.</em></h1>
     <p>From discovery to signed deal — Agency OS runs your entire pipeline while you focus on closing.</p>
   </div>
 </section>
 
-<!-- ═══════════════════════════════════════════════════════════
-     CONTROLS
-     ═══════════════════════════════════════════════════════════ -->
 <div class="controls">
   <div class="controls-left">
-    <div class="spec-item"><b>Animation</b>The Fold · Variation 02</div>
-    <div class="spec-item"><b>Duration</b>~1.9s total</div>
-    <div class="spec-item"><b>Engine</b>GSAP 3 + MorphSVGPlugin</div>
-    <div class="spec-item"><b>Font</b>Playfair Display 900 Italic</div>
+    <div class="spec-item"><b>Animation</b>The Fold v5</div>
+    <div class="spec-item"><b>Engine</b>GSAP 3 + MorphSVG</div>
+    <div class="spec-item"><b>Approach</b>SVG-native, single tween morph</div>
   </div>
-  <button class="replay-btn" id="replay-btn" onclick="replay()">
+  <button class="replay-btn" onclick="replay()">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
       <path d="M3 12a9 9 0 1 0 3-6.7"/>
       <path d="M3 4v5h5"/>
@@ -366,359 +219,159 @@ body {
   </button>
 </div>
 
-<!-- ═══════════════════════════════════════════════════════════
-     GSAP + MorphSVGPlugin
-     ═══════════════════════════════════════════════════════════ -->
 <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/MorphSVGPlugin.min.js"></script>
 
 <script>
-// ═══════════════════════════════════════════════════════════
-// AGENCY OS — LOGO REVEAL: THE FOLD
-// GSAP 3 + MorphSVGPlugin implementation
-//
-// Sequence:
-//   0.00s  Hold wordmark
-//   0.35s  "gency" + "S" fade-drop (0.55s)
-//   0.70s  A glides to centre, scales 3.2x (0.8s, power4.inOut)
-//   0.85s  O follows centre, scales 3.6x (0.6s, power4.inOut)
-//   1.20s  O morphs to bar via MorphSVG (0.55s, power2.out)
-//   1.75s  Final mark fades in (0.2s)
-//   1.95s  Tagline fades in (0.4s)
-// ═══════════════════════════════════════════════════════════
-
-// Register MorphSVGPlugin
 gsap.registerPlugin(MorphSVGPlugin);
 
-// ─── Bar target path ───────────────────────────────────────
-// The Strike bar: horizontal rectangle in SVG viewBox (200x200)
-// Positioned at centre (y=100 = 54% of ~185px visual height),
-// height 22px (~11%), width 280 units (extends 14% past letterform)
-// The bar is defined in the same coordinate space the morph will use
-const BAR_PATH = "M-40,92 L240,92 L240,108 L-40,108 Z";
+// The bar path — wide rectangle. The morph target.
+// Positioned relative to the O's origin (0,0 = centre of the O shape)
+const BAR_PATH = "M-80,-6 L80,-6 L80,6 L-80,6 Z";
 
-// ─── O glyph path ──────────────────────────────────────────
-// Playfair Display italic O approximated as a counter-aperture donut ellipse.
-// The outer ring is slightly tilted to match the italic axis (~8° slant).
-// For production: replace with extracted glyph from extract-glyph.js
-const O_PATH_OUTER = "M106,62 C128,60 146,78 147,100 C148,122 132,140 110,142 C88,144 70,126 69,104 C68,82 84,64 106,62 Z";
-const O_PATH_INNER = "M106,76 C120,75 130,87 131,100 C132,113 122,125 108,126 C94,127 84,115 83,102 C82,89 92,77 106,76 Z";
-const O_GLYPH_PATH = O_PATH_OUTER + " " + O_PATH_INNER;
+let tl = null;
 
-// ─── State ─────────────────────────────────────────────────
-let currentTimeline = null;
-
-// ─── Reduced motion check ──────────────────────────────────
 function prefersReducedMotion() {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
-// ─── Show final state immediately (reduced motion) ─────────
-function showFinalState() {
-  const wordmark = document.getElementById('wordmark');
-  const finalMark = document.getElementById('final-mark');
-  const tagline = document.getElementById('hero-tagline');
+function buildTimeline() {
+  const t = gsap.timeline({ paused: true });
 
-  gsap.set(wordmark, { opacity: 0 });
-  gsap.set(finalMark, { opacity: 1 });
-  gsap.set(tagline, { opacity: 1, y: 0 });
-}
+  const fadeLetters = document.querySelectorAll('.fade-letter');
+  const ltA      = document.getElementById('lt-A');
+  const ltOText  = document.getElementById('lt-O-text');
+  const oShape   = document.getElementById('o-shape');
+  const tagline  = document.getElementById('hero-tagline');
 
-// ─── Calibrate letter positions ────────────────────────────
-// Returns {aDx, aDy, oDx, oDy} — pixel deltas from natural
-// position to the centre of the stage container.
-function calibrate() {
-  const stage = document.getElementById('logo-stage');
-  const wordmark = document.getElementById('wordmark');
-  const lA = document.getElementById('l-a');
-  const lO = document.getElementById('l-o');
+  // Centre of the SVG viewBox
+  const cx = 450;
+  const cy = 120;
 
-  // Ensure wordmark is at natural position
-  gsap.set(wordmark, { clearProps: 'all' });
-  gsap.set([lA, lO], { clearProps: 'all' });
-  // Force reflow
-  void wordmark.offsetWidth;
+  // Current positions (from the SVG attributes)
+  const aX = 280, aY = 140;
+  const oX = 505, oY = 140;
 
-  const stageRect = stage.getBoundingClientRect();
-  const aRect = lA.getBoundingClientRect();
-  const oRect = lO.getBoundingClientRect();
+  // ── PHASE 1: Hold wordmark (0.3s implicit) ──
 
-  const cx = stageRect.left + stageRect.width / 2;
-  const cy = stageRect.top + stageRect.height / 2;
-
-  return {
-    aDx: cx - (aRect.left + aRect.width / 2),
-    aDy: cy - (aRect.top + aRect.height / 2),
-    oDx: cx - (oRect.left + oRect.width / 2),
-    oDy: cy - (oRect.top + oRect.height / 2),
-    // Also capture O position in SVG space for the morph overlay
-    oScreenX: oRect.left + oRect.width / 2,
-    oScreenY: oRect.top + oRect.height / 2,
-    oWidth: oRect.width,
-    oHeight: oRect.height,
-    stageRect
-  };
-}
-
-// ─── Position the SVG O to match the text O ────────────────
-function positionSvgO(cal) {
-  const svg = document.getElementById('morph-svg');
-  const oGlyph = document.getElementById('o-glyph');
-
-  // The SVG viewBox is 200x200 and covers the full stage (position: absolute, 100%x100%)
-  // We need to transform the SVG path so it sits exactly over the text O.
-  // The SVG is 100% of the stage. Map screen coords to SVG coords.
-  const svgRect = svg.getBoundingClientRect();
-
-  // Scale factor: text O is oWidth wide, our path spans ~80 units (106±40)
-  // so scale = oWidth / 80
-  const pathSpanX = 80; // approximate width of glyph in SVG units
-  const pathSpanY = 80; // approximate height
-  const scaleX = cal.oWidth / pathSpanX;
-  const scaleY = cal.oHeight / pathSpanY;
-
-  // Centre of O in SVG coordinate space
-  const svgCx = ((cal.oScreenX - svgRect.left) / svgRect.width) * 200;
-  const svgCy = ((cal.oScreenY - svgRect.top) / svgRect.height) * 200;
-
-  // The glyph is centred at (106, 102) in its own path coords
-  const tx = svgCx - 106 * scaleX;
-  const ty = svgCy - 102 * scaleY;
-
-  gsap.set(oGlyph, {
-    attr: { transform: `translate(${tx}, ${ty}) scale(${scaleX}, ${scaleY})` }
-  });
-}
-
-// ─── Build and return GSAP timeline ────────────────────────
-function buildTimeline(cal) {
-  const tl = gsap.timeline({
-    paused: true,
-    defaults: { ease: 'power4.inOut' }
-  });
-
-  const lA    = document.getElementById('l-a');
-  const lO    = document.getElementById('l-o');
-  const fadeLetters = document.querySelectorAll('.letter-fade');
-  const oGlyph    = document.getElementById('o-glyph');
-  const finalMark = document.getElementById('final-mark');
-  const tagline   = document.getElementById('hero-tagline');
-
-  // PHASE 1 — Hold (implicit 0.35s gap before first tween)
-
-  // PHASE 2 — Fade-drop "gency" + "S"
-  tl.to(fadeLetters, {
-    opacity: 0,
-    y: 6,
+  // ── PHASE 2: "gency" + "S" fade and drop ──
+  t.to(fadeLetters, {
+    attr: { opacity: 0, y: '+=6' },
     duration: 0.55,
-    stagger: 0.018,
+    stagger: 0.02,
     ease: 'power2.inOut'
-  }, 0.35);
+  }, 0.3);
 
-  // PHASE 3 — A glides to centre, scales 3.2x
-  tl.to(lA, {
-    x: cal.aDx,
-    y: cal.aDy,
-    scale: 3.2,
-    duration: 0.8,
-    ease: 'power4.inOut'
-  }, 0.70);
-
-  // PHASE 4 — O follows to centre, approaches the A
-  // The O moves toward the A like it's being drawn toward it
-  tl.to(lO, {
-    x: cal.oDx,
-    y: cal.oDy,
-    scale: 2.8,
-    duration: 0.5,
+  // ── PHASE 3: A glides to centre, scales up ──
+  t.to(ltA, {
+    attr: { x: cx, y: cy, 'font-size': 160 },
+    duration: 0.9,
     ease: 'power3.inOut'
-  }, 0.85);
+  }, 0.65);
 
-  // PHASE 5 — THE RUBBER BAND SNAP
-  // The O stretches horizontally as it wraps around the A,
-  // then snaps into place as the bar with an elastic overshoot.
-  //
-  // Sequence: O arrives → stretches wide (scaleX up, scaleY down)
-  // → snaps into bar position with elastic bounce
-  //
-  // This uses CSS transforms on the text O itself — no SVG swap needed.
-  // The visual: the amber O elongates horizontally, flattens vertically,
-  // and settles at the bar position with a satisfying snap.
+  // Also change A to italic 900 weight as it arrives at final state
+  t.to(ltA, {
+    attr: { 'font-style': 'italic', 'font-weight': 900 },
+    duration: 0.01
+  }, 0.65);
 
-  // Step 1: O starts to tilt/rotate — the front face turns sideways
-  // The band is THICK here. scaleY stays high (0.7) so the O has visible depth
-  // as it transitions from face-on to edge-on. Like watching a coin turn.
-  tl.to(lO, {
-    scaleX: 3.2,
-    scaleY: 0.7,
-    duration: 0.25,
-    ease: 'power1.in',
-    color: '#D4956A',
-  }, 1.25);
+  // ── PHASE 4: Swap text O for SVG shape O ──
+  // Show the SVG O shape exactly where the text O is, then hide text O.
+  // This swap is instant and invisible — same position, same size, same colour.
+  t.call(() => {
+    gsap.set(oShape, { opacity: 1 });
+    gsap.set(ltOText, { attr: { opacity: 0 } });
+  }, [], 0.75);
 
-  // Step 2: The turn continues — O is now at ~45° angle conceptually
-  // Width grows, height shrinks but SLOWLY. Band has real physical thickness.
-  // scaleY 0.48 still reads as a thick band, not a line.
-  tl.to(lO, {
-    scaleX: 4.5,
-    scaleY: 0.48,
-    duration: 0.2,
-    ease: 'power1.inOut',
-  }, 1.47);
+  // ── PHASE 5: O shape moves toward the A, scaling up ──
+  // One smooth tween — the O travels to just below the A's centre
+  // and grows. This is the "approaching" beat.
+  t.to(oShape, {
+    attr: { transform: `translate(${cx}, ${cy + 30}) scale(2.2)` },
+    duration: 0.7,
+    ease: 'power3.inOut'
+  }, 0.80);
 
-  // Step 3: O is now mostly edge-on — a thick band stretching sideways
-  // Start moving down toward bar position in the lower A triangle
-  tl.to(lO, {
-    scaleX: 5.5,
-    scaleY: 0.35,
-    y: cal.aDy + 20,
-    duration: 0.2,
-    ease: 'power2.inOut',
-  }, 1.64);
+  // ── PHASE 6: THE MORPH — O shape → bar ──
+  // ONE single MorphSVG tween. No steps. No scaleY hack.
+  // MorphSVG interpolates every point of the oval into the rectangle.
+  // The oval stretches wide, flattens, and resolves as the bar.
+  // The transform simultaneously scales the bar to final width.
+  t.to(oShape, {
+    morphSVG: {
+      shape: BAR_PATH,
+      type: 'rotational',
+      origin: '50% 50%'
+    },
+    attr: { transform: `translate(${cx}, ${cy + 30}) scale(1.8, 1.0)` },
+    duration: 0.65,
+    ease: 'power2.inOut'
+  }, 1.35);
 
-  // Step 4: Band pulls taut — stretching to wrap around the A's legs
-  // Now thinning noticeably as the rubber tension increases
-  tl.to(lO, {
-    scaleX: 6.5,
-    scaleY: 0.24,
-    y: cal.aDy + 38,
-    duration: 0.18,
-    ease: 'power2.in',
-  }, 1.82);
-
-  // Step 5: SNAP — band reaches full stretch, slight overshoot
-  tl.to(lO, {
-    scaleX: 7.6,
-    scaleY: 0.18,
+  // ── PHASE 7: Elastic settle ──
+  // After the morph completes, a subtle elastic bounce on the bar width
+  // to give it the "snap" feeling of a rubber band settling.
+  t.to(oShape, {
+    attr: { transform: `translate(${cx}, ${cy + 30}) scale(2.0, 1.0)` },
     duration: 0.06,
-    ease: 'none',
-  }, 1.98);
+    ease: 'none'
+  }, 2.00);
 
-  // Step 6: Elastic recoil — the snap bounce
-  tl.to(lO, {
-    scaleX: 6.4,
-    scaleY: 0.20,
-    duration: 0.14,
-    ease: 'elastic.out(1.3, 0.35)',
-  }, 2.04);
+  t.to(oShape, {
+    attr: { transform: `translate(${cx}, ${cy + 30}) scale(1.75, 1.0)` },
+    duration: 0.3,
+    ease: 'elastic.out(1.2, 0.3)'
+  }, 2.06);
 
-  // Step 7: Settle to final bar dimensions — this IS the final state.
-  // No cross-dissolve needed. The O text element stays visible as the bar.
-  // The A text element at 3.2x scale IS the final A.
-  // We just need to add the ::after bar appearance on the A.
-  tl.to(lO, {
-    scaleX: 7.0,
-    scaleY: 0.17,
-    duration: 0.15,
-    ease: 'power1.out',
-  }, 2.18);
-
-  // PHASE 6 — NO CROSS-DISSOLVE. The animated state IS the final state.
-  // The stretched O IS the amber bar. The scaled A IS the final A.
-  // We hide the animated elements and show the final mark in ONE FRAME
-  // to avoid any visible transition. The positions must match exactly.
-
-  // At this point:
-  // - lA is centred at 3.2x scale = 140px Playfair 900 italic A
-  // - lO is the amber bar: scaleX 7.0, scaleY 0.17, positioned at aDy+38
-  // - final-mark is: 140px Playfair 900 italic A with ::after bar at 63%
-
-  // Align final mark EXACTLY to the animated A's current position
-  tl.call(() => {
-    const lARect = lA.getBoundingClientRect();
-    const stageRect = document.getElementById('logo-stage').getBoundingClientRect();
-
-    // Final mark is position:absolute centered in stage.
-    // Calculate offset needed to align with animated A.
-    const targetCx = lARect.left + lARect.width / 2;
-    const targetCy = lARect.top + lARect.height / 2;
-    const stageCx = stageRect.left + stageRect.width / 2;
-    const stageCy = stageRect.top + stageRect.height / 2;
-
-    gsap.set(finalMark, {
-      x: targetCx - stageCx,
-      y: targetCy - stageCy,
-    });
-
-    // Instant swap — single frame, no dissolve
-    gsap.set(finalMark, { opacity: 1 });
-    gsap.set(lA, { opacity: 0 });
-    gsap.set(lO, { opacity: 0 });
-  }, [], 2.40);
-
-  // Hold the resolved mark for 0.4s before tagline — let it breathe
-  // PHASE 7 — Tagline fades up
-  tl.to(tagline, {
+  // ── PHASE 8: Tagline ──
+  t.to(tagline, {
     opacity: 1,
     y: 0,
     duration: 0.5,
     ease: 'power2.out'
-  }, 2.85);
+  }, 2.5);
 
-  return tl;
+  return t;
 }
 
-// ─── Init ──────────────────────────────────────────────────
 function init() {
-  // Reset state
-  if (currentTimeline) {
-    currentTimeline.kill();
-    currentTimeline = null;
-  }
+  if (tl) { tl.kill(); tl = null; }
 
-  const wordmark    = document.getElementById('wordmark');
-  const lA          = document.getElementById('l-a');
-  const lO          = document.getElementById('l-o');
-  const fadeLetters = document.querySelectorAll('.letter-fade');
-  const oGlyph      = document.getElementById('o-glyph');
-  const finalMark   = document.getElementById('final-mark');
-  const tagline     = document.getElementById('hero-tagline');
+  const fadeLetters = document.querySelectorAll('.fade-letter');
+  const ltA      = document.getElementById('lt-A');
+  const ltOText  = document.getElementById('lt-O-text');
+  const oShape   = document.getElementById('o-shape');
+  const tagline  = document.getElementById('hero-tagline');
 
-  // Hard reset all elements
-  gsap.set([lA, lO], { clearProps: 'all' });
-  gsap.set(fadeLetters, { clearProps: 'all' });
-  gsap.set(oGlyph, { opacity: 0 });
-  gsap.set(finalMark, { opacity: 0 });
+  // Reset everything to initial state
+  gsap.set(fadeLetters, { attr: { opacity: 1 }, clearProps: 'y' });
+  gsap.set(ltA, { attr: { x: 280, y: 140, 'font-size': 72, 'font-weight': 700, 'font-style': 'normal', opacity: 1 } });
+  gsap.set(ltOText, { attr: { opacity: 1 } });
+  gsap.set(oShape, {
+    opacity: 0,
+    attr: {
+      d: "M0,-38 C21,-38 38,-21 38,0 C38,21 21,38 0,38 C-21,38 -38,21 -38,0 C-38,-21 -21,-38 0,-38 Z M0,-26 C-14,-26 -26,-14 -26,0 C-26,14 -14,26 0,26 C14,26 26,14 26,0 C26,-14 14,-26 0,-26 Z",
+      transform: 'translate(505, 140) scale(1)'
+    }
+  });
   gsap.set(tagline, { opacity: 0, y: 10 });
 
-  // Handle reduced motion
   if (prefersReducedMotion()) {
-    showFinalState();
+    gsap.set(fadeLetters, { attr: { opacity: 0 } });
+    gsap.set(ltOText, { attr: { opacity: 0 } });
+    gsap.set(ltA, { attr: { x: 450, y: 120, 'font-size': 160, 'font-weight': 900, 'font-style': 'italic' } });
+    gsap.set(oShape, { opacity: 1, attr: { d: BAR_PATH, transform: 'translate(450, 150) scale(1.8, 1.0)' } });
+    gsap.set(tagline, { opacity: 1, y: 0 });
     return;
   }
 
-  // Calibrate positions
-  const cal = calibrate();
-
-  // Build timeline
-  currentTimeline = buildTimeline(cal);
-
-  // Play with initial delay
-  setTimeout(() => {
-    if (currentTimeline) currentTimeline.play();
-  }, 400);
+  tl = buildTimeline();
+  setTimeout(() => { if (tl) tl.play(); }, 300);
 }
 
-// ─── Replay ────────────────────────────────────────────────
-function replay() {
-  init();
-}
+function replay() { init(); }
 
-// ─── Resize handler ────────────────────────────────────────
-let resizeTimer;
-window.addEventListener('resize', () => {
-  clearTimeout(resizeTimer);
-  resizeTimer = setTimeout(() => {
-    // On resize: kill timeline and restart from beginning
-    init();
-  }, 200);
-});
-
-// ─── Start on page load ────────────────────────────────────
-window.addEventListener('load', () => {
-  // Small delay to ensure fonts are rendered
-  setTimeout(init, 100);
-});
+window.addEventListener('load', () => setTimeout(init, 100));
 </script>
 
 </body>

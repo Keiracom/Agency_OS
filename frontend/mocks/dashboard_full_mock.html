@@ -1,0 +1,2846 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AgencyOS — Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700&family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ─── DESIGN TOKENS ─────────────────────────────────────────────── */
+:root {
+  --cream: #F7F3EE;
+  --surface: #EDE8E0;
+  --ink: #0C0A08;
+  --ink-2: #2E2B26;
+  --ink-3: #7A756D;
+  --amber: #D4956A;
+  --amber-soft: rgba(212,149,106,0.12);
+  --copper: #C46A3E;
+  --tan: #C4A878;
+  --green: #6B8E5A;
+  --red: #B55A4C;
+  --rule: rgba(12,10,8,0.08);
+  --sidebar-w: 232px;
+  --topbar-h: 56px;
+}
+
+/* ─── RESET ─────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; background: var(--cream); color: var(--ink); }
+body { font-family: 'DM Sans', sans-serif; font-size: 14px; line-height: 1.5; display: flex; }
+a { color: inherit; text-decoration: none; }
+button { cursor: pointer; font-family: 'DM Sans', sans-serif; }
+input, select, textarea { font-family: 'DM Sans', sans-serif; }
+ul { list-style: none; }
+
+/* ─── SCROLLBAR ─────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 2px; }
+
+/* ─── TYPOGRAPHY ─────────────────────────────────────────────────── */
+.playfair { font-family: 'Playfair Display', serif; font-weight: 700; }
+.mono { font-family: 'JetBrains Mono', monospace; }
+.eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); }
+
+/* ─── SIDEBAR ────────────────────────────────────────────────────── */
+#sidebar {
+  width: var(--sidebar-w);
+  min-width: var(--sidebar-w);
+  height: 100vh;
+  background: var(--ink);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  left: 0; top: 0; bottom: 0;
+  z-index: 100;
+  overflow-y: auto;
+}
+
+.sidebar-logo {
+  padding: 24px 20px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.sidebar-logo .logo-text {
+  font-family: 'Playfair Display', serif;
+  font-weight: 700;
+  font-size: 20px;
+  color: #fff;
+  letter-spacing: -0.02em;
+}
+.sidebar-logo .logo-text em {
+  color: var(--amber);
+  font-style: italic;
+}
+
+.sidebar-section {
+  padding: 16px 0 4px;
+}
+.sidebar-section-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.28);
+  padding: 0 20px 8px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 20px;
+  color: rgba(255,255,255,0.52);
+  font-size: 13.5px;
+  font-weight: 400;
+  cursor: pointer;
+  position: relative;
+  transition: color 0.15s, background 0.15s;
+  border-left: 2px solid transparent;
+  user-select: none;
+}
+.nav-item:hover { color: rgba(255,255,255,0.82); background: rgba(255,255,255,0.04); }
+.nav-item.active {
+  color: #fff;
+  background: var(--amber-soft);
+  border-left-color: var(--amber);
+  font-weight: 500;
+}
+.nav-icon { width: 16px; height: 16px; opacity: 0.7; flex-shrink: 0; }
+.nav-item.active .nav-icon { opacity: 1; }
+.nav-badge {
+  margin-left: auto;
+  background: var(--copper);
+  color: #fff;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  padding: 1px 6px;
+  border-radius: 10px;
+  min-width: 20px;
+  text-align: center;
+}
+
+.sidebar-footer {
+  margin-top: auto;
+  padding: 16px 20px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.avatar-circle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--amber);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Playfair Display', serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+}
+.sidebar-user-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: #fff;
+  line-height: 1.2;
+}
+.sidebar-user-sub {
+  font-size: 11px;
+  color: rgba(255,255,255,0.4);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ─── MAIN LAYOUT ────────────────────────────────────────────────── */
+#app {
+  margin-left: var(--sidebar-w);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* ─── TOPBAR ─────────────────────────────────────────────────────── */
+#topbar {
+  height: var(--topbar-h);
+  background: var(--cream);
+  border-bottom: 1px solid var(--rule);
+  display: flex;
+  align-items: center;
+  padding: 0 40px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  gap: 16px;
+}
+.breadcrumb {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.breadcrumb .crumb-sep { color: var(--rule); }
+.breadcrumb .crumb-current { color: var(--ink-2); font-weight: 500; }
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.pulse-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  color: var(--ink-3);
+  font-family: 'JetBrains Mono', monospace;
+}
+.pulse-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--green);
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.kill-btn {
+  background: transparent;
+  border: 1px solid var(--red);
+  color: var(--red);
+  font-size: 11px;
+  font-weight: 500;
+  font-family: 'JetBrains Mono', monospace;
+  padding: 5px 12px;
+  border-radius: 4px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: background 0.15s;
+}
+.kill-btn:hover { background: rgba(181,90,76,0.08); }
+
+/* ─── PAGE CONTENT ───────────────────────────────────────────────── */
+#page {
+  flex: 1;
+  overflow-y: auto;
+  padding: 36px 40px 60px;
+  max-width: 1480px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* ─── SHARED COMPONENTS ──────────────────────────────────────────── */
+.page-headline {
+  font-family: 'Playfair Display', serif;
+  font-weight: 700;
+  font-size: 36px;
+  color: var(--ink);
+  line-height: 1.18;
+  letter-spacing: -0.02em;
+  margin-bottom: 28px;
+}
+.page-headline em { color: var(--amber); font-style: italic; }
+
+.card {
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 22px 24px;
+}
+.card-sm { padding: 16px 18px; }
+
+.section-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: 14px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.04em;
+}
+.badge-amber { background: var(--amber-soft); color: var(--copper); }
+.badge-green { background: rgba(107,142,90,0.12); color: var(--green); }
+.badge-red { background: rgba(181,90,76,0.12); color: var(--red); }
+.badge-tan { background: rgba(196,168,120,0.15); color: #8A7350; }
+.badge-ink { background: rgba(12,10,8,0.06); color: var(--ink-2); }
+
+/* intent badge */
+.intent-struggling { background: rgba(181,90,76,0.10); color: var(--red); }
+.intent-trying { background: var(--amber-soft); color: var(--copper); }
+.intent-dabbling { background: rgba(12,10,8,0.06); color: var(--ink-3); }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 18px;
+  border-radius: 6px;
+  font-size: 13.5px;
+  font-weight: 500;
+  border: none;
+  transition: opacity 0.15s, background 0.15s;
+}
+.btn:hover { opacity: 0.85; }
+.btn-primary { background: var(--ink); color: #fff; }
+.btn-amber { background: var(--amber); color: #fff; }
+.btn-outline { background: transparent; border: 1px solid var(--rule); color: var(--ink-2); }
+.btn-ghost { background: transparent; color: var(--ink-3); }
+.btn:disabled { opacity: 0.38; cursor: not-allowed; }
+
+.divider { border: none; border-top: 1px solid var(--rule); margin: 20px 0; }
+
+/* heat dot */
+.heat-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.heat-hot { background: var(--copper); }
+.heat-warm { background: var(--amber); }
+.heat-cool { background: var(--tan); }
+
+/* score badge */
+.score-badge {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 500;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+.score-hot { background: rgba(196,106,62,0.12); color: var(--copper); border: 1.5px solid var(--copper); }
+.score-warm { background: var(--amber-soft); color: var(--amber); border: 1.5px solid var(--amber); }
+.score-cool { background: rgba(196,168,120,0.12); color: var(--tan); border: 1.5px solid var(--tan); }
+.score-cold { background: rgba(12,10,8,0.06); color: var(--ink-3); border: 1.5px solid rgba(12,10,8,0.1); }
+
+/* progress bar */
+.progress-wrap { background: var(--rule); border-radius: 99px; overflow: hidden; }
+.progress-bar { height: 100%; border-radius: 99px; transition: width 0.6s ease; }
+
+/* grid helpers */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+.grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 16px; }
+
+/* ─── HOME PAGE ──────────────────────────────────────────────────── */
+.schedule-hero {
+  background: var(--ink);
+  border-radius: 12px;
+  padding: 28px 32px;
+  color: #fff;
+  margin-bottom: 28px;
+  display: flex;
+  align-items: flex-start;
+  gap: 40px;
+}
+.schedule-hero-left { flex: 1; }
+.schedule-campaign-name {
+  font-family: 'Playfair Display', serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 4px;
+}
+.schedule-area {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: rgba(255,255,255,0.45);
+  margin-bottom: 20px;
+}
+.schedule-progress-track {
+  background: rgba(255,255,255,0.1);
+  border-radius: 99px;
+  height: 6px;
+  margin-bottom: 8px;
+}
+.schedule-progress-fill {
+  height: 6px;
+  border-radius: 99px;
+  background: var(--amber);
+}
+.schedule-days {
+  display: flex;
+  justify-content: space-between;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: rgba(255,255,255,0.35);
+}
+.schedule-stats {
+  display: flex;
+  gap: 32px;
+}
+.schedule-stat-val {
+  font-family: 'Playfair Display', serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.schedule-stat-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: rgba(255,255,255,0.4);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.metric-card { text-align: left; }
+.metric-val {
+  font-family: 'Playfair Display', serif;
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.metric-label { font-size: 12px; color: var(--ink-3); margin-bottom: 6px; }
+.metric-delta {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.delta-up { color: var(--green); }
+.delta-down { color: var(--red); }
+
+.reply-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--rule);
+  cursor: pointer;
+  transition: background 0.1s;
+  margin: 0 -4px;
+  padding-left: 4px;
+  border-radius: 6px;
+}
+.reply-item:last-child { border-bottom: none; }
+.reply-item:hover { background: var(--surface); }
+.reply-meta { flex: 1; min-width: 0; }
+.reply-name {
+  font-family: 'Playfair Display', serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 2px;
+}
+.reply-snippet {
+  font-size: 13px;
+  color: var(--ink-3);
+  font-style: italic;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.reply-biz { font-size: 11px; color: var(--ink-3); font-family: 'JetBrains Mono', monospace; margin-bottom: 3px; }
+.reply-time { font-size: 11px; color: var(--ink-3); white-space: nowrap; font-family: 'JetBrains Mono', monospace; }
+
+.meeting-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--rule);
+}
+.meeting-item:last-child { border-bottom: none; }
+.meeting-date-pill {
+  background: var(--amber-soft);
+  color: var(--copper);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: 4px;
+  text-align: center;
+  min-width: 52px;
+  line-height: 1.4;
+}
+.meeting-name { font-size: 14px; font-weight: 500; color: var(--ink); }
+.meeting-biz { font-size: 12px; color: var(--ink-3); }
+
+.outreach-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+}
+.outreach-channel {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--ink-2);
+  width: 72px;
+  flex-shrink: 0;
+}
+.outreach-bar-wrap { flex: 1; }
+.outreach-count {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+.health-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--rule);
+}
+.health-item:last-child { border-bottom: none; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.status-green { background: var(--green); }
+.status-amber { background: var(--amber); }
+.status-red { background: var(--red); }
+.health-name { flex: 1; font-size: 13px; color: var(--ink-2); }
+.health-status { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-3); }
+
+/* ─── PIPELINE ───────────────────────────────────────────────────── */
+.review-banner {
+  background: var(--amber-soft);
+  border: 1px solid rgba(212,149,106,0.3);
+  border-radius: 8px;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.review-banner-text { flex: 1; font-size: 13.5px; color: var(--ink-2); }
+.review-banner-text strong { color: var(--copper); }
+
+.filter-chips {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+.chip {
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 12.5px;
+  font-weight: 500;
+  border: 1px solid var(--rule);
+  background: #fff;
+  color: var(--ink-3);
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: 'JetBrains Mono', monospace;
+}
+.chip:hover { border-color: var(--amber); color: var(--copper); }
+.chip.active { background: var(--ink); border-color: var(--ink); color: #fff; }
+
+/* pipeline row */
+.pipeline-row {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: box-shadow 0.15s, border-color 0.15s;
+  overflow: hidden;
+}
+.pipeline-row:hover { border-color: var(--amber); box-shadow: 0 2px 12px rgba(212,149,106,0.1); }
+
+.intent-bar {
+  width: 3px;
+  align-self: stretch;
+  flex-shrink: 0;
+}
+.intent-bar-struggling { background: var(--red); }
+.intent-bar-trying { background: var(--amber); }
+.intent-bar-dabbling { background: var(--tan); }
+
+.pipeline-rank {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--ink-3);
+  width: 36px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.pipeline-main { flex: 1; padding: 14px 12px; min-width: 0; }
+.pipeline-biz-name {
+  font-family: 'Playfair Display', serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 3px;
+}
+.pipeline-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pipeline-suburb { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-3); }
+.pipeline-dm { font-size: 12.5px; color: var(--ink-3); width: 160px; flex-shrink: 0; padding: 14px 0; }
+.pipeline-channels { display: flex; gap: 6px; align-items: center; padding: 14px 16px; flex-shrink: 0; }
+.channel-dot {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  background: var(--surface);
+  color: var(--ink-3);
+  font-family: 'JetBrains Mono', monospace;
+}
+.pipeline-score-wrap { padding: 14px 16px; flex-shrink: 0; }
+.pipeline-caret {
+  padding: 14px 16px;
+  color: var(--ink-3);
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+/* ─── PIPELINE DETAIL ───────────────────────────────────────────── */
+.detail-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-3);
+  font-size: 13px;
+  margin-bottom: 20px;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.detail-back:hover { color: var(--ink); }
+
+.detail-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 28px;
+}
+.detail-nav-btn {
+  background: #fff;
+  border: 1px solid var(--rule);
+  color: var(--ink-2);
+  font-size: 12.5px;
+  font-weight: 500;
+  padding: 6px 14px;
+  border-radius: 5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.detail-nav-btn:hover { border-color: var(--amber); }
+.detail-nav-sep { color: var(--ink-3); font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+
+.detail-headline {
+  font-family: 'Playfair Display', serif;
+  font-size: 44px;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  margin-bottom: 10px;
+}
+.detail-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.detail-meta-item { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--ink-3); }
+.detail-meta-dot { color: var(--rule); }
+.detail-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 32px;
+}
+
+.score-card {
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 20px;
+  text-align: center;
+}
+.score-card-val {
+  font-family: 'Playfair Display', serif;
+  font-size: 36px;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.score-card-label { font-size: 12px; color: var(--ink-3); margin-bottom: 2px; }
+.score-card-sub { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-3); }
+
+.signal-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--rule);
+}
+.signal-item:last-child { border-bottom: none; }
+.signal-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--amber); margin-top: 5px; flex-shrink: 0; }
+.signal-text { flex: 1; font-size: 13.5px; color: var(--ink-2); }
+.signal-time { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-3); white-space: nowrap; }
+
+.vuln-para {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--ink-2);
+  padding: 18px;
+  background: var(--amber-soft);
+  border-left: 3px solid var(--amber);
+  margin-bottom: 20px;
+}
+
+.grade-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.grade-cell {
+  background: var(--surface);
+  border-radius: 8px;
+  padding: 14px;
+  text-align: center;
+}
+.grade-letter {
+  font-family: 'Playfair Display', serif;
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  line-height: 1;
+}
+.grade-A { color: var(--green); }
+.grade-B { color: #5A8A74; }
+.grade-C { color: var(--amber); }
+.grade-D { color: var(--copper); }
+.grade-F { color: var(--red); }
+.grade-name { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.1em; }
+
+/* outreach tabs */
+.tab-bar {
+  display: flex;
+  border-bottom: 1px solid var(--rule);
+  margin-bottom: 20px;
+}
+.tab-btn {
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-3);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.tab-btn:hover { color: var(--ink); }
+.tab-btn.active { color: var(--amber); border-bottom-color: var(--amber); }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+.draft-content {
+  background: var(--surface);
+  border-radius: 8px;
+  padding: 18px;
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: var(--ink-2);
+  white-space: pre-wrap;
+}
+.draft-label { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-3); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.1em; }
+
+/* DM card */
+.dm-card { margin-bottom: 16px; }
+.dm-name {
+  font-family: 'Playfair Display', serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 2px;
+}
+.dm-title { font-size: 12px; color: var(--ink-3); margin-bottom: 14px; font-family: 'JetBrains Mono', monospace; }
+.dm-field { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--rule); }
+.dm-field:last-child { border-bottom: none; }
+.dm-field-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-3); width: 56px; text-transform: uppercase; letter-spacing: 0.1em; flex-shrink: 0; }
+.dm-field-val { font-size: 13px; color: var(--ink-2); flex: 1; }
+.dm-verified { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--green); background: rgba(107,142,90,0.1); padding: 2px 7px; border-radius: 3px; }
+
+.timeline-item { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--rule); }
+.timeline-item:last-child { border-bottom: none; }
+.timeline-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--amber); margin-top: 5px; flex-shrink: 0; }
+.timeline-text { font-size: 13px; color: var(--ink-2); }
+.timeline-time { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-3); }
+
+/* ─── CAMPAIGNS ──────────────────────────────────────────────────── */
+.campaign-card {
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 22px 24px;
+  margin-bottom: 14px;
+}
+.campaign-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.campaign-card-main { flex: 1; }
+.campaign-name {
+  font-family: 'Playfair Display', serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 3px;
+}
+.campaign-area { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-3); }
+.campaign-metrics { display: flex; gap: 28px; margin-top: 16px; }
+.campaign-metric-val { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 700; color: var(--ink); margin-bottom: 1px; }
+.campaign-metric-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.08em; }
+
+/* modal */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(12,10,8,0.45);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 200;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.2s;
+}
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal {
+  background: #fff;
+  border-radius: 12px;
+  padding: 32px;
+  width: 100%;
+  max-width: 480px;
+  margin: 20px;
+  transform: translateY(12px);
+  transition: transform 0.2s;
+}
+.modal-overlay.open .modal { transform: translateY(0); }
+.modal-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 20px;
+}
+.form-field { margin-bottom: 18px; }
+.form-label { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px; }
+.form-select, .form-input {
+  width: 100%;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 9px 12px;
+  font-size: 14px;
+  color: var(--ink);
+  background: #fff;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.form-select:focus, .form-input:focus { border-color: var(--amber); }
+.radio-group { display: flex; gap: 12px; flex-wrap: wrap; }
+.radio-item { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.radio-item input[type="radio"] { accent-color: var(--amber); }
+.form-helper { font-size: 12px; color: var(--ink-3); margin-top: 5px; line-height: 1.5; }
+.modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; }
+
+/* ─── INBOX ──────────────────────────────────────────────────────── */
+.inbox-layout { display: flex; gap: 0; height: calc(100vh - var(--topbar-h) - 80px); min-height: 500px; }
+.inbox-list {
+  width: 400px;
+  min-width: 400px;
+  border-right: 1px solid var(--rule);
+  overflow-y: auto;
+  background: #fff;
+  border-radius: 10px 0 0 10px;
+  border: 1px solid var(--rule);
+}
+.inbox-thread {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-left: none;
+  border-radius: 0 10px 10px 0;
+}
+.inbox-list-header { padding: 16px 18px; border-bottom: 1px solid var(--rule); }
+.inbox-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--rule);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.inbox-item:hover { background: var(--surface); }
+.inbox-item.active { background: var(--amber-soft); }
+.inbox-item-meta { flex: 1; min-width: 0; }
+.inbox-item-name { font-weight: 500; font-size: 14px; color: var(--ink); margin-bottom: 1px; }
+.inbox-item-biz { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-3); margin-bottom: 3px; }
+.inbox-item-snippet { font-size: 12.5px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.inbox-item-time { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-3); white-space: nowrap; }
+
+.thread-header {
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--rule);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.thread-name { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 700; color: var(--ink); }
+.thread-biz { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-3); }
+.thread-body { flex: 1; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 14px; }
+.bubble { max-width: 75%; padding: 12px 16px; border-radius: 12px; line-height: 1.6; font-size: 13.5px; }
+.bubble-theirs { background: var(--ink); color: #fff; border-radius: 12px 12px 12px 2px; align-self: flex-start; }
+.bubble-ours { background: var(--surface); color: var(--ink-2); border-radius: 12px 12px 2px 12px; align-self: flex-end; }
+.bubble-time { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-3); margin-top: 4px; }
+.bubble-time-left { text-align: left; }
+.bubble-time-right { text-align: right; }
+.thread-actions {
+  padding: 14px 24px;
+  border-top: 1px solid var(--rule);
+  display: flex;
+  gap: 8px;
+}
+
+/* ─── SEQUENCES ──────────────────────────────────────────────────── */
+.channel-rate-card {
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 20px;
+}
+.channel-rate-name { font-size: 15px; font-weight: 500; color: var(--ink); margin-bottom: 4px; }
+.channel-rate-val {
+  font-family: 'Playfair Display', serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+.channel-rate-detail { font-size: 12px; color: var(--ink-3); margin-bottom: 12px; }
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-top: 16px;
+}
+.cal-header-cell {
+  text-align: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--ink-3);
+  padding: 6px 0;
+  letter-spacing: 0.08em;
+}
+.cal-cell {
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 5px;
+  padding: 6px;
+  min-height: 68px;
+  position: relative;
+}
+.cal-date-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--ink-3);
+  margin-bottom: 4px;
+}
+.cal-today { background: var(--amber-soft); border-color: var(--amber); }
+.cal-today .cal-date-num { color: var(--copper); font-weight: 500; }
+.cal-pill {
+  font-size: 9px;
+  font-family: 'JetBrains Mono', monospace;
+  padding: 2px 5px;
+  border-radius: 3px;
+  margin-bottom: 2px;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cal-email { background: rgba(107,142,90,0.15); color: var(--green); }
+.cal-linkedin { background: rgba(59,130,246,0.1); color: #3B82F6; }
+.cal-voice { background: var(--amber-soft); color: var(--copper); }
+.cal-sms { background: rgba(139,92,246,0.1); color: #8B5CF6; }
+
+.legend-row { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 12px; }
+.legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-3); }
+.legend-dot { width: 10px; height: 10px; border-radius: 2px; }
+
+/* ─── SIGNALS ────────────────────────────────────────────────────── */
+.signal-card {
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 22px 24px;
+}
+.signal-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.signal-card-name {
+  font-family: 'Playfair Display', serif;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--ink);
+  flex: 1;
+}
+.signal-toggle {
+  width: 36px;
+  height: 20px;
+  border-radius: 10px;
+  background: var(--green);
+  position: relative;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.signal-toggle.off { background: var(--rule); }
+.signal-toggle::after {
+  content: '';
+  position: absolute;
+  width: 14px; height: 14px;
+  background: #fff;
+  border-radius: 50%;
+  top: 3px; left: 3px;
+  transition: left 0.15s;
+}
+.signal-toggle.off::after { left: 19px; }
+.signal-card-desc { font-size: 13px; color: var(--ink-3); line-height: 1.6; margin-bottom: 12px; }
+.signal-card-stat { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--copper); }
+
+/* ─── REPORTS ────────────────────────────────────────────────────── */
+.kpi-card {
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 22px;
+}
+.kpi-val {
+  font-family: 'Playfair Display', serif;
+  font-size: 34px;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.kpi-label { font-size: 12px; color: var(--ink-3); margin-bottom: 6px; }
+
+.funnel-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--rule);
+}
+.funnel-row:last-child { border-bottom: none; }
+.funnel-label { font-size: 13px; color: var(--ink-2); width: 120px; flex-shrink: 0; }
+.funnel-bar-wrap { flex: 1; background: var(--rule); border-radius: 99px; height: 10px; overflow: hidden; }
+.funnel-bar { height: 10px; border-radius: 99px; background: var(--amber); }
+.funnel-pct { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--ink-3); width: 48px; text-align: right; }
+.funnel-count { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--ink-2); width: 52px; text-align: right; }
+
+.report-table { width: 100%; border-collapse: collapse; }
+.report-table th {
+  text-align: left;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--ink-3);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--rule);
+}
+.report-table td { padding: 12px 12px; border-bottom: 1px solid var(--rule); font-size: 13.5px; color: var(--ink-2); }
+.report-table tr:last-child td { border-bottom: none; }
+.report-table tr:hover td { background: var(--surface); }
+
+/* ─── SETTINGS ───────────────────────────────────────────────────── */
+.settings-layout { display: flex; gap: 0; }
+.settings-nav {
+  width: 192px;
+  min-width: 192px;
+  padding: 0 0 20px;
+}
+.settings-nav-item {
+  padding: 9px 14px;
+  font-size: 13.5px;
+  color: var(--ink-3);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.1s, color 0.1s;
+  font-weight: 400;
+  margin-bottom: 2px;
+}
+.settings-nav-item:hover { background: var(--surface); color: var(--ink); }
+.settings-nav-item.active { background: var(--amber-soft); color: var(--copper); font-weight: 500; }
+.settings-content { flex: 1; padding-left: 28px; }
+.settings-section { display: none; }
+.settings-section.active { display: block; }
+.settings-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--rule);
+}
+.settings-row:last-child { border-bottom: none; }
+.settings-row-label { width: 180px; flex-shrink: 0; }
+.settings-row-key { font-size: 13.5px; font-weight: 500; color: var(--ink); margin-bottom: 2px; }
+.settings-row-sub { font-size: 12px; color: var(--ink-3); }
+.settings-row-val { flex: 1; font-size: 13.5px; color: var(--ink-2); }
+.settings-row-action { flex-shrink: 0; }
+
+.integration-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--rule);
+}
+.integration-row:last-child { border-bottom: none; }
+.integration-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  flex-shrink: 0;
+}
+.integration-name { flex: 1; font-weight: 500; font-size: 14px; color: var(--ink); }
+.integration-desc { font-size: 12px; color: var(--ink-3); }
+.badge-connected { background: rgba(107,142,90,0.12); color: var(--green); }
+
+.danger-zone { border: 1px solid rgba(181,90,76,0.2); border-radius: 10px; padding: 24px; }
+.danger-zone-title { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 700; color: var(--red); margin-bottom: 16px; }
+.danger-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--rule); }
+.danger-row:last-child { border-bottom: none; }
+.danger-row-info { flex: 1; }
+.danger-row-title { font-size: 14px; font-weight: 500; color: var(--ink); }
+.danger-row-sub { font-size: 12px; color: var(--ink-3); }
+.btn-danger { background: transparent; border: 1px solid var(--red); color: var(--red); font-size: 13px; padding: 7px 16px; border-radius: 5px; font-weight: 500; transition: background 0.15s; }
+.btn-danger:hover { background: rgba(181,90,76,0.08); }
+
+/* ─── MOBILE ─────────────────────────────────────────────────────── */
+#mobile-topbar {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 52px;
+  background: var(--ink);
+  z-index: 120;
+  align-items: center;
+  padding: 0 16px;
+  gap: 12px;
+}
+.hamburger-btn {
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 20px;
+  line-height: 1;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+}
+.mobile-logo { font-family: 'Playfair Display', serif; font-size: 18px; color: #fff; }
+.mobile-logo em { color: var(--amber); font-style: italic; }
+
+#bottom-nav {
+  display: none;
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: 56px;
+  background: var(--ink);
+  border-top: 1px solid rgba(255,255,255,0.08);
+  z-index: 120;
+  align-items: stretch;
+}
+.bottom-nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  color: rgba(255,255,255,0.4);
+  font-size: 9px;
+  font-family: 'JetBrains Mono', monospace;
+  cursor: pointer;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: color 0.15s;
+}
+.bottom-nav-item.active { color: var(--amber); }
+.bottom-nav-icon { font-size: 16px; line-height: 1; }
+
+@media (max-width: 768px) {
+  #sidebar { transform: translateX(-100%); transition: transform 0.25s; }
+  #sidebar.mobile-open { transform: translateX(0); }
+  #mobile-topbar { display: flex; }
+  #bottom-nav { display: flex; }
+  #app { margin-left: 0; padding-top: 52px; padding-bottom: 56px; }
+  #topbar { display: none; }
+  #page { padding: 20px 16px 40px; }
+  .grid-4 { grid-template-columns: 1fr 1fr; }
+  .grid-3 { grid-template-columns: 1fr 1fr; }
+  .grid-2 { grid-template-columns: 1fr; }
+  .schedule-hero { flex-direction: column; gap: 20px; }
+  .schedule-stats { flex-wrap: wrap; gap: 16px; }
+  .detail-headline { font-size: 28px; }
+  .page-headline { font-size: 28px; }
+  .inbox-layout { flex-direction: column; height: auto; }
+  .inbox-list { width: 100%; min-width: unset; border-radius: 10px 10px 0 0; }
+  .inbox-thread { border-left: 1px solid var(--rule); border-radius: 0 0 10px 10px; }
+  .settings-layout { flex-direction: column; }
+  .settings-nav { width: 100%; display: flex; flex-wrap: wrap; gap: 6px; padding-bottom: 12px; border-bottom: 1px solid var(--rule); margin-bottom: 16px; }
+  .settings-content { padding-left: 0; }
+  .grade-grid { grid-template-columns: repeat(2, 1fr); }
+  .pipeline-dm { display: none; }
+  .pipeline-channels { display: none; }
+  .calendar-grid { gap: 2px; }
+  .cal-cell { min-height: 44px; }
+}
+
+/* ─── DETAIL TWO-COL LAYOUT ──────────────────────────────────────── */
+.detail-layout { display: grid; grid-template-columns: 1fr 320px; gap: 24px; }
+@media (max-width: 960px) { .detail-layout { grid-template-columns: 1fr; } }
+
+/* ─── SIDEBAR OVERLAY ────────────────────────────────────────────── */
+#sidebar-overlay {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 99;
+}
+#sidebar-overlay.show { display: block; }
+</style>
+</head>
+<body>
+
+<!-- ─── SIDEBAR ─── -->
+<nav id="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-text">Agency<em>OS</em></div>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">Workspace</div>
+    <div class="nav-item" data-route="#home" onclick="navigate('#home')">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1L1 7v8h5v-5h4v5h5V7L8 1z"/></svg>
+      Dashboard
+    </div>
+    <div class="nav-item" data-route="#pipeline" onclick="navigate('#pipeline')">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+      Pipeline
+      <span class="nav-badge">10</span>
+    </div>
+    <div class="nav-item" data-route="#inbox" onclick="navigate('#inbox')">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M2 4a2 2 0 012-2h8a2 2 0 012 2v6a2 2 0 01-2 2H2.5L1 14V4z"/></svg>
+      Inbox
+      <span class="nav-badge">23</span>
+    </div>
+    <div class="nav-item" data-route="#cycles" onclick="navigate('#cycles')">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M14 2L2 7l4 2 2 4 3-4 3 2z"/></svg>
+      Cycles
+    </div>
+    <div class="nav-item" data-route="#sequences" onclick="navigate('#sequences')">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><circle cx="3" cy="3" r="2"/><circle cx="3" cy="8" r="2"/><circle cx="3" cy="13" r="2"/><line x1="5" y1="3" x2="14" y2="3" stroke="currentColor" stroke-width="1.5"/><line x1="5" y1="8" x2="14" y2="8" stroke="currentColor" stroke-width="1.5"/><line x1="5" y1="13" x2="14" y2="13" stroke="currentColor" stroke-width="1.5"/></svg>
+      Sequences
+    </div>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">Intelligence</div>
+    <div class="nav-item" data-route="#signals" onclick="navigate('#signals')">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a1 1 0 00-1 1v2.5a1 1 0 002 0V2a1 1 0 00-1-1zm4.24 2.76a1 1 0 00-1.41 1.41A4 4 0 0112 8a4 4 0 01-1.17 2.83 1 1 0 001.41 1.41A6 6 0 0014 8a6 6 0 00-1.76-4.24zM3.76 3.76A6 6 0 002 8a6 6 0 001.76 4.24 1 1 0 001.41-1.41A4 4 0 014 8a4 4 0 011.17-2.83 1 1 0 00-1.41-1.41z"/></svg>
+      Signals
+    </div>
+    <div class="nav-item" data-route="#reports" onclick="navigate('#reports')">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="10" width="3" height="5" rx="1"/><rect x="6" y="6" width="3" height="9" rx="1"/><rect x="11" y="3" width="3" height="12" rx="1"/></svg>
+      Reports
+    </div>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">Account</div>
+    <div class="nav-item" data-route="#settings" onclick="navigate('#settings')">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 5a3 3 0 100 6A3 3 0 008 5zm0 1.5a1.5 1.5 0 110 3 1.5 1.5 0 010-3zm6.5 1l-1.2-.4a5.5 5.5 0 00-.3-.7l.6-1.1-1.4-1.4-1.1.6a5.5 5.5 0 00-.7-.3L10 2.5H6l-.4 1.2a5.5 5.5 0 00-.7.3l-1.1-.6L2.4 4.8l.6 1.1a5.5 5.5 0 00-.3.7L1.5 7v2l1.2.4c.1.2.2.5.3.7l-.6 1.1 1.4 1.4 1.1-.6c.2.1.5.2.7.3L6 13.5h4l.4-1.2c.2-.1.5-.2.7-.3l1.1.6 1.4-1.4-.6-1.1c.1-.2.2-.5.3-.7l1.2-.4V7z"/></svg>
+      Settings
+    </div>
+  </div>
+
+  <div class="sidebar-footer">
+    <div class="avatar-circle">DS</div>
+    <div>
+      <div class="sidebar-user-name">David Stephens</div>
+      <div class="sidebar-user-sub">Ignition · Sydney</div>
+    </div>
+  </div>
+</nav>
+
+<div id="sidebar-overlay" onclick="closeMobileSidebar()"></div>
+
+<!-- ─── MOBILE TOPBAR ─── -->
+<div id="mobile-topbar">
+  <button class="hamburger-btn" onclick="toggleMobileSidebar()">☰</button>
+  <div class="mobile-logo">Agency<em>OS</em></div>
+  <div style="margin-left:auto;display:flex;align-items:center;gap:10px;">
+    <span class="pulse-dot"></span>
+    <button class="kill-btn" style="font-size:10px;padding:4px 10px;" onclick="alert('Pause all outreach — confirm? All active sequences will be suspended until manually resumed.')">Pause all</button>
+  </div>
+</div>
+
+<!-- ─── MAIN APP ─── -->
+<div id="app">
+
+  <!-- TOPBAR -->
+  <div id="topbar">
+    <div class="breadcrumb" id="breadcrumb">
+      <span>AgencyOS</span>
+      <span class="crumb-sep">›</span>
+      <span class="crumb-current">Dashboard</span>
+    </div>
+    <div class="topbar-right">
+      <div class="pulse-row">
+        <div class="pulse-dot"></div>
+        <span>Day 14 of 30</span>
+      </div>
+      <button class="kill-btn" onclick="alert('Pause all outreach — confirm? All active sequences will be suspended until manually resumed.')">Pause all</button>
+    </div>
+  </div>
+
+  <!-- PAGE CONTENT -->
+  <div id="page"></div>
+
+</div>
+
+<!-- ─── BOTTOM NAV (mobile) ─── -->
+<div id="bottom-nav">
+  <div class="bottom-nav-item" onclick="navigate('#home')">
+    <div class="bottom-nav-icon">⌂</div>
+    <span>Home</span>
+  </div>
+  <div class="bottom-nav-item" onclick="navigate('#pipeline')">
+    <div class="bottom-nav-icon">⊞</div>
+    <span>Pipeline</span>
+  </div>
+  <div class="bottom-nav-item" onclick="navigate('#inbox')">
+    <div class="bottom-nav-icon">✉</div>
+    <span>Inbox</span>
+  </div>
+  <div class="bottom-nav-item" onclick="navigate('#cycles')">
+    <div class="bottom-nav-icon">⊡</div>
+    <span>Cycles</span>
+  </div>
+  <div class="bottom-nav-item" onclick="navigate('#signals')">
+    <div class="bottom-nav-icon">◉</div>
+    <span>Signals</span>
+  </div>
+</div>
+
+<!-- ─── CAMPAIGN MODAL ─── -->
+<div class="modal-overlay" id="campaignModal" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <div class="modal-title">Configure Cycle</div>
+    <div class="form-field">
+      <div class="form-label">Services</div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px;">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13.5px;cursor:pointer;"><input type="checkbox" checked style="accent-color:var(--amber);"> SEO Services</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13.5px;cursor:pointer;"><input type="checkbox" checked style="accent-color:var(--amber);"> Google Ads Management</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13.5px;cursor:pointer;"><input type="checkbox" checked style="accent-color:var(--amber);"> Web Design &amp; Development</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13.5px;cursor:pointer;"><input type="checkbox" checked style="accent-color:var(--amber);"> Content Marketing</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13.5px;cursor:pointer;"><input type="checkbox" checked style="accent-color:var(--amber);"> Social Media Management</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13.5px;cursor:pointer;"><input type="checkbox" checked style="accent-color:var(--amber);"> Email Marketing</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13.5px;cursor:pointer;color:var(--ink-3);"><input type="checkbox" disabled style="accent-color:var(--amber);"> Branding &amp; Identity</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13.5px;cursor:pointer;color:var(--ink-3);"><input type="checkbox" disabled style="accent-color:var(--amber);"> Video Production</label>
+      </div>
+    </div>
+    <div class="form-field">
+      <div class="form-label">Geographic Scope</div>
+      <div class="radio-group">
+        <label class="radio-item"><input type="radio" name="area" value="metro" checked> Metro</label>
+        <label class="radio-item"><input type="radio" name="area" value="state"> State</label>
+        <label class="radio-item"><input type="radio" name="area" value="national"> National</label>
+      </div>
+      <div class="form-helper">Metro targets businesses within 50km of a capital city CBD. State covers all businesses in a single state. National runs across all Australian states.</div>
+    </div>
+    <div class="form-helper" style="margin-bottom:0;">Settings apply from the next cycle start. Industries and outreach style are configured in Settings.</div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-amber">Save Settings</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── SCRIPT ─── -->
+<script>
+/* ═══════════════════════════════════════════════════════════════════
+   MOCK DATA
+═══════════════════════════════════════════════════════════════════ */
+const prospects = [
+  {
+    id: 'p1', name: 'Momentum Constructions', suburb: 'Brunswick', state: 'VIC',
+    industry: 'Construction', intent: 'struggling', score: 91, staff: '28',
+    est: '2008', revenue: '$8.2M', dm: { name: 'James Whitford', title: 'Founder & MD',
+    email: 'j.whitford@momentumconstructions.com.au', phone: '+61 412 XXX XXX', linkedin: 'Verified' },
+    signals: [
+      { text: 'Active Google Ads spend detected ($2,400/mo)', time: '2 days ago' },
+      { text: 'GMB rating dropped from 4.6 to 4.1 in 90 days', time: '5 days ago' },
+      { text: 'Website last updated 2019 — no SSL, not mobile responsive', time: '1 week ago' },
+      { text: 'Competitor bidding on their brand terms', time: '3 days ago' },
+    ],
+    affordability: 8, intentScore: 16, composite: 91,
+    vulnerability: 'Momentum Constructions is spending $2,400/month on Google Ads but their website converts poorly — no SSL, not mobile responsive, last updated 2019. GMB rating dropped from 4.6 to 4.1 with negative reviews in 90 days. A competitor is bidding on their brand terms. Budget and intent present but leaking value at every touchpoint.',
+    vulnGrades: { website: 'F', seo: 'D', reviews: 'D', ads: 'C', social: 'B', content: 'F' },
+  },
+  {
+    id: 'p2', name: 'Harbour Physiotherapy', suburb: 'Manly', state: 'NSW',
+    industry: 'Health', intent: 'struggling', score: 88, staff: '11',
+    est: '2015', revenue: '$1.8M', dm: { name: 'Sarah Kemp', title: 'Clinical Director & Owner',
+    email: 's.kemp@harbourphysio.com.au', phone: '+61 438 XXX XXX', linkedin: 'Verified' },
+    signals: [
+      { text: 'Google Ads paused after 6 months continuous spend', time: '1 week ago' },
+      { text: '3 staff LinkedIn profiles updated to "Open to work"', time: '4 days ago' },
+      { text: 'Competitor opened 200m away with aggressive launch', time: '2 weeks ago' },
+    ],
+    affordability: 6, intentScore: 15, composite: 88,
+    vulnerability: 'Harbour Physiotherapy paused Google Ads after 6 months — budget pressure or poor ROI. Three staff updated LinkedIn to "Open to work" signalling instability. New competitor 200m away with aggressive launch. Need to defend local market urgently.',
+    vulnGrades: { website: 'C', seo: 'D', reviews: 'B', ads: 'F', social: 'D', content: 'D' },
+  },
+  {
+    id: 'p3', name: 'Cascade Dental Group', suburb: 'Paddington', state: 'NSW',
+    industry: 'Dental', intent: 'trying', score: 74, staff: '14',
+    est: '2012', revenue: '$4.1M', dm: { name: 'Dr Priya Narayan', title: 'Principal Dentist & Owner',
+    email: 'p.narayan@cascadedental.com.au', phone: '+61 402 XXX XXX', linkedin: 'Verified' },
+    signals: [
+      { text: 'Recently hired a marketing coordinator', time: '1 week ago' },
+      { text: 'Website redesign detected — new template but thin content', time: '3 days ago' },
+      { text: 'Increased GMB post frequency from 0 to 3/week', time: '2 weeks ago' },
+    ],
+    affordability: 7, intentScore: 12, composite: 74,
+    vulnerability: 'Cascade Dental is actively trying — hired a marketing coordinator and redesigned their website. But new site has thin content and GMB strategy is basic. Intent and budget present but lack expertise.',
+    vulnGrades: { website: 'C', seo: 'C', reviews: 'A', ads: 'D', social: 'C', content: 'D' },
+  },
+  {
+    id: 'p4', name: 'Coastal Veterinary', suburb: 'Byron Bay', state: 'NSW',
+    industry: 'Veterinary', intent: 'trying', score: 76, staff: '16',
+    est: '2010', revenue: '$2.9M', dm: { name: 'Dr Rebecca Ashford', title: 'Practice Owner',
+    email: 'r.ashford@coastalvet.com.au', phone: '+61 421 XXX XXX', linkedin: 'Verified' },
+    signals: [
+      { text: 'New Facebook ad campaign targeting pet owners', time: '5 days ago' },
+      { text: 'Blog section added but only 2 posts', time: '1 week ago' },
+      { text: 'Sponsoring local surf competition', time: '2 weeks ago' },
+    ],
+    affordability: 7, intentScore: 13, composite: 76,
+    vulnerability: 'Coastal Veterinary investing in marketing but spreading thin — Facebook ads, blog, community sponsorship without cohesive strategy. Efforts show intent but lack focus for ROI.',
+    vulnGrades: { website: 'B', seo: 'D', reviews: 'A', ads: 'C', social: 'B', content: 'D' },
+  },
+  {
+    id: 'p5', name: 'Southbank Legal Advisory', suburb: 'Southbank', state: 'VIC',
+    industry: 'Legal', intent: 'trying', score: 71, staff: '18',
+    est: '2014', revenue: '$3.6M', dm: { name: 'Andrew Volkov', title: 'Managing Partner',
+    email: 'a.volkov@southbanklegal.com.au', phone: '+61 403 XXX XXX', linkedin: 'Verified' },
+    signals: [
+      { text: 'Published 4 thought leadership articles in 30 days', time: '1 week ago' },
+      { text: 'Google Ads spend increased 40% month-on-month', time: '3 days ago' },
+      { text: 'New practice area page added (family law)', time: '2 weeks ago' },
+    ],
+    affordability: 7, intentScore: 11, composite: 71,
+    vulnerability: 'Southbank Legal is investing in content and ads but execution is unfocused — thought leadership articles lack SEO, new practice page has thin content, ad spend increasing without conversion tracking.',
+    vulnGrades: { website: 'C', seo: 'D', reviews: 'B', ads: 'C', social: 'C', content: 'C' },
+  },
+  {
+    id: 'p6', name: 'Riverside Accounting', suburb: 'North Sydney', state: 'NSW',
+    industry: 'Accounting', intent: 'dabbling', score: 52, staff: '9',
+    est: '2018', revenue: '$1.2M', dm: { name: 'Michael Chen', title: 'Managing Partner',
+    email: 'm.chen@riversideaccounting.com.au', phone: '+61 415 XXX XXX', linkedin: 'Verified' },
+    signals: [
+      { text: 'LinkedIn company page created but no posts', time: '3 weeks ago' },
+      { text: 'Google Business Profile claimed but incomplete', time: '2 weeks ago' },
+    ],
+    affordability: 5, intentScore: 8, composite: 52,
+    vulnerability: "Riverside Accounting just starting digital presence — LinkedIn page with no content, incomplete Google Business Profile. Know they need marketing but haven't committed resources.",
+    vulnGrades: { website: 'D', seo: 'F', reviews: 'C', ads: 'F', social: 'F', content: 'F' },
+  },
+  {
+    id: 'p7', name: 'Parramatta Motor Group', suburb: 'Parramatta', state: 'NSW',
+    industry: 'Automotive', intent: 'dabbling', score: 47, staff: '34',
+    est: '2005', revenue: '$12.4M', dm: { name: 'Wei Zhang', title: 'Dealer Principal',
+    email: 'w.zhang@parramattamotors.com.au', phone: '+61 410 XXX XXX', linkedin: 'Verified' },
+    signals: [
+      { text: "Website hasn't been updated since 2020", time: '2 weeks ago' },
+      { text: 'Zero social media activity in 12 months', time: '1 month ago' },
+    ],
+    affordability: 8, intentScore: 5, composite: 47,
+    vulnerability: "Parramatta Motor Group has revenue and staff but zero digital marketing investment. Website from 2020, no social presence. High affordability but very low intent — classic 'don't know they need it' prospect.",
+    vulnGrades: { website: 'F', seo: 'F', reviews: 'B', ads: 'F', social: 'F', content: 'F' },
+  },
+  {
+    id: 'p8', name: 'Bondi Creative Studio', suburb: 'Bondi', state: 'NSW',
+    industry: 'Design', intent: 'trying', score: 68, staff: '8',
+    est: '2019', revenue: '$980K', dm: { name: 'Aria Martinelli', title: 'Creative Director',
+    email: 'a.martinelli@bondicreative.com.au', phone: '+61 422 XXX XXX', linkedin: 'Verified' },
+    signals: [
+      { text: 'Portfolio website recently launched with case studies', time: '1 week ago' },
+      { text: 'Instagram following grew 300% in 3 months', time: '2 weeks ago' },
+      { text: 'Started running LinkedIn thought leadership', time: '3 weeks ago' },
+    ],
+    affordability: 4, intentScore: 11, composite: 68,
+    vulnerability: 'Bondi Creative understands marketing (they do it for clients) but struggles with their own pipeline. Strong social growth but no paid acquisition, thin SEO, no lead capture on portfolio site.',
+    vulnGrades: { website: 'B', seo: 'D', reviews: 'A', ads: 'F', social: 'A', content: 'B' },
+  },
+  {
+    id: 'p9', name: 'Fitzroy Cafe Group', suburb: 'Fitzroy', state: 'VIC',
+    industry: 'Hospitality', intent: 'struggling', score: 84, staff: '22',
+    est: '2016', revenue: '$2.1M', dm: { name: 'Tom Abernathy', title: 'Owner',
+    email: 't.abernathy@fitzroycafe.com.au', phone: '+61 418 XXX XXX', linkedin: 'Verified' },
+    signals: [
+      { text: 'Uber Eats commission complaints on social media', time: '3 days ago' },
+      { text: 'Staff hiring posts every 2 weeks (high turnover)', time: 'ongoing' },
+      { text: 'GMB photos last updated 18 months ago', time: '1 month ago' },
+      { text: 'Competitor cafe won "Best of Fitzroy" award', time: '1 week ago' },
+    ],
+    affordability: 6, intentScore: 14, composite: 84,
+    vulnerability: 'Fitzroy Cafe Group is bleeding margin to delivery platforms and struggling with staff retention. Stale GMB presence while a competitor won local awards. High urgency to build direct customer acquisition and reduce platform dependency.',
+    vulnGrades: { website: 'D', seo: 'F', reviews: 'C', ads: 'F', social: 'D', content: 'F' },
+  },
+  {
+    id: 'p10', name: 'Gold Coast Mortgage Co', suburb: 'Surfers Paradise', state: 'QLD',
+    industry: 'Finance', intent: 'dabbling', score: 55, staff: '12',
+    est: '2017', revenue: '$1.8M', dm: { name: 'Priya Sharma', title: 'Principal Broker',
+    email: 'p.sharma@gcmortgage.com.au', phone: '+61 407 XXX XXX', linkedin: 'Verified' },
+    signals: [
+      { text: 'Recently registered new ABN for financial planning arm', time: '2 weeks ago' },
+      { text: 'Sponsored local business networking event', time: '1 week ago' },
+    ],
+    affordability: 6, intentScore: 8, composite: 55,
+    vulnerability: 'Gold Coast Mortgage Co expanding into financial planning (new ABN) and doing community networking. Growth intent present but no digital strategy to capture it. Classic referral-dependent business ready for systematic acquisition.',
+    vulnGrades: { website: 'D', seo: 'F', reviews: 'B', ads: 'F', social: 'D', content: 'F' },
+  },
+];
+
+const replies = [
+  { id: 'r1', prospectId: 'p1', heat: 'hot', name: 'James Whitford', business: 'Momentum Constructions', snippet: "This is exactly what we need. Can we set up a call this week?", time: '2h ago', channel: 'email' },
+  { id: 'r2', prospectId: 'p2', heat: 'hot', name: 'Sarah Kemp', business: 'Harbour Physiotherapy', snippet: "Very interested. We've been struggling with our online presence.", time: '4h ago', channel: 'linkedin' },
+  { id: 'r3', prospectId: 'p3', heat: 'hot', name: 'Dr Priya Narayan', business: 'Cascade Dental Group', snippet: "We just hired someone for this but would love a second opinion.", time: '1d ago', channel: 'email' },
+  { id: 'r4', prospectId: 'p4', heat: 'warm', name: 'Dr Rebecca Ashford', business: 'Coastal Veterinary', snippet: "Interesting. Can you send more details about pricing?", time: '2d ago', channel: 'sms' },
+  { id: 'r5', prospectId: 'p6', heat: 'warm', name: 'Michael Chen', business: 'Riverside Accounting', snippet: "Not sure if this is for us right now. Maybe next quarter?", time: '3d ago', channel: 'email' },
+  { id: 'r6', prospectId: 'p1', heat: 'cool', name: 'Reception', business: 'Momentum Constructions', snippet: "James is away until Thursday. I'll pass this along.", time: '5d ago', channel: 'voice' },
+];
+
+const campaigns = [
+  { id: 'c1', name: 'SEO Services', area: 'Sydney Metro', status: 'active', day: 14, total: 30, contacted: 280, totalRecords: 600, replies: 23, meetings: 4 },
+  { id: 'c2', name: 'Google Ads Management', area: 'Melbourne Metro', status: 'active', day: 8, total: 30, contacted: 120, totalRecords: 600, replies: 9, meetings: 1 },
+  { id: 'c3', name: 'Web Design', area: 'Brisbane Metro', status: 'paused', day: 5, total: 30, contacted: 60, totalRecords: 600, replies: 4, meetings: 0 },
+  { id: 'c4', name: 'Content Marketing', area: 'National', status: 'draft', day: 0, total: 30, contacted: 0, totalRecords: 600, replies: 0, meetings: 0 },
+];
+
+/* ═══════════════════════════════════════════════════════════════════
+   ROUTING
+═══════════════════════════════════════════════════════════════════ */
+let activeInboxReply = 'r1';
+let activePipelineFilter = 'top10';
+let activeSettingsTab = 'account';
+let activeOutreachTab = 'email';
+
+const routes = {
+  '#home': renderHome,
+  '#pipeline': renderPipeline,
+  '#pipeline/p1': () => renderDetail('p1'),
+  '#pipeline/p2': () => renderDetail('p2'),
+  '#pipeline/p3': () => renderDetail('p3'),
+  '#pipeline/p4': () => renderDetail('p4'),
+  '#pipeline/p5': () => renderDetail('p5'),
+  '#pipeline/p6': () => renderDetail('p6'),
+  '#pipeline/p7': () => renderDetail('p7'),
+  '#pipeline/p8': () => renderDetail('p8'),
+  '#pipeline/p9': () => renderDetail('p9'),
+  '#pipeline/p10': () => renderDetail('p10'),
+  '#cycles': renderCycles,
+  '#inbox': renderInbox,
+  '#sequences': renderSequences,
+  '#signals': renderInsights,
+  '#reports': renderReports,
+  '#settings': renderSettings,
+};
+
+function navigate(hash) {
+  if (hash.startsWith('#pipeline/')) {
+    const id = hash.split('/')[1];
+    const visited = JSON.parse(sessionStorage.getItem('reviewedProspects') || '[]');
+    if (!visited.includes(id)) {
+      visited.push(id);
+      sessionStorage.setItem('reviewedProspects', JSON.stringify(visited));
+    }
+  }
+  window.location.hash = hash;
+}
+
+function getReviewedCount() {
+  return JSON.parse(sessionStorage.getItem('reviewedProspects') || '[]').length;
+}
+
+function router() {
+  const hash = window.location.hash || '#home';
+  const render = routes[hash];
+  if (render) {
+    render();
+  } else if (hash.startsWith('#pipeline/')) {
+    const id = hash.split('/')[1];
+    renderDetail(id);
+  } else {
+    renderHome();
+  }
+  updateSidebarActive(hash);
+  updateBreadcrumb(hash);
+  updateBottomNav(hash);
+  window.scrollTo(0, 0);
+}
+
+function updateSidebarActive(hash) {
+  document.querySelectorAll('.nav-item').forEach(el => {
+    el.classList.remove('active');
+    const route = el.getAttribute('data-route');
+    if (route === hash || (hash.startsWith('#pipeline/') && route === '#pipeline')) {
+      el.classList.add('active');
+    }
+  });
+}
+
+function updateBreadcrumb(hash) {
+  const labels = {
+    '#home': 'Dashboard',
+    '#pipeline': 'Pipeline',
+    '#cycles': 'Cycles',
+    '#inbox': 'Inbox',
+    '#sequences': 'Sequences',
+    '#signals': 'Signals',
+    '#reports': 'Reports',
+    '#settings': 'Settings',
+  };
+  const crumb = document.getElementById('breadcrumb');
+  let current = labels[hash] || 'Pipeline';
+  if (hash.startsWith('#pipeline/')) {
+    const id = hash.split('/')[1];
+    const p = prospects.find(x => x.id === id);
+    crumb.innerHTML = `<span>AgencyOS</span><span class="crumb-sep">›</span><span onclick="navigate('#pipeline')" style="cursor:pointer;color:var(--ink-3)">Pipeline</span><span class="crumb-sep">›</span><span class="crumb-current">${p ? p.name : 'Detail'}</span>`;
+    return;
+  }
+  crumb.innerHTML = `<span>AgencyOS</span><span class="crumb-sep">›</span><span class="crumb-current">${current}</span>`;
+}
+
+function updateBottomNav(hash) {
+  const map = { '#home': 0, '#pipeline': 1, '#inbox': 2, '#cycles': 3, '#signals': 4 };
+  const base = hash.startsWith('#pipeline/') ? '#pipeline' : hash;
+  document.querySelectorAll('.bottom-nav-item').forEach((el, i) => {
+    el.classList.toggle('active', map[base] === i);
+  });
+}
+
+window.addEventListener('hashchange', router);
+
+/* ═══════════════════════════════════════════════════════════════════
+   PAGE 1 — HOME
+═══════════════════════════════════════════════════════════════════ */
+function renderHome() {
+  const html = `
+    <h1 class="page-headline">Your acquisition engine,<br><em>running on schedule.</em></h1>
+
+    <!-- Schedule Hero -->
+    <div class="schedule-hero">
+      <div class="schedule-hero-left">
+        <div class="schedule-campaign-name">Cycle 3 · Day 14 of 30</div>
+        <div class="schedule-area">SEO Services — Sydney Metro · Started 1 May 2026</div>
+        <div class="schedule-progress-track" style="margin-bottom:8px;">
+          <div class="schedule-progress-fill" style="width:${(14/30*100).toFixed(0)}%"></div>
+        </div>
+        <div class="schedule-days">
+          <span>Day 1</span>
+          <span>Day 14 of 30</span>
+          <span>Day 30</span>
+        </div>
+      </div>
+      <div class="schedule-stats">
+        <div>
+          <div class="schedule-stat-val">280</div>
+          <div class="schedule-stat-label">Contacted</div>
+        </div>
+        <div>
+          <div class="schedule-stat-val">23</div>
+          <div class="schedule-stat-label">Replies</div>
+        </div>
+        <div>
+          <div class="schedule-stat-val">4</div>
+          <div class="schedule-stat-label">Meetings</div>
+        </div>
+        <div>
+          <div class="schedule-stat-val">600</div>
+          <div class="schedule-stat-label">Total Records</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Performance Metrics -->
+    <div class="section-label">Performance this cycle</div>
+    <div class="grid-4" style="margin-bottom:32px;">
+      <div class="card metric-card">
+        <div class="metric-label">Open Rate</div>
+        <div class="metric-val">47%</div>
+        <div class="metric-delta" style="color:var(--ink-3);font-family:'JetBrains Mono',monospace;font-size:11px;">AU B2B benchmark: 21%</div>
+      </div>
+      <div class="card metric-card">
+        <div class="metric-label">Reply Rate</div>
+        <div class="metric-val">8.2%</div>
+        <div class="metric-delta" style="color:var(--ink-3);font-family:'JetBrains Mono',monospace;font-size:11px;">AU B2B benchmark: 3.1%</div>
+      </div>
+      <div class="card metric-card">
+        <div class="metric-label">Meeting Rate</div>
+        <div class="metric-val">1.4%</div>
+        <div class="metric-delta" style="color:var(--ink-3);font-family:'JetBrains Mono',monospace;font-size:11px;">AU B2B benchmark: 0.8%</div>
+      </div>
+      <div class="card metric-card">
+        <div class="metric-label">Avg Reply Time</div>
+        <div class="metric-val">23h</div>
+        <div class="metric-delta" style="color:var(--ink-3);font-family:'JetBrains Mono',monospace;font-size:11px;">from contacted to first reply</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;margin-bottom:32px;" class="home-grid">
+      <!-- Hot Replies -->
+      <div class="card" style="grid-column:span 1;">
+        <div class="section-label">Hot replies</div>
+        ${replies.filter(r => r.heat === 'hot').slice(0,4).map(r => `
+          <div class="reply-item" onclick="navigate('#inbox')">
+            <div class="heat-dot heat-${r.heat}" style="margin-top:5px;"></div>
+            <div class="reply-meta">
+              <div class="reply-biz">${r.business}</div>
+              <div class="reply-name">${r.name}</div>
+              <div class="reply-snippet">"${r.snippet}"</div>
+            </div>
+            <div class="reply-time">${r.time}</div>
+          </div>
+        `).join('')}
+      </div>
+
+      <!-- Meetings Booked -->
+      <div class="card">
+        <div class="section-label">Meetings booked</div>
+        <div class="meeting-item">
+          <div class="meeting-date-pill">APR<br>14</div>
+          <div>
+            <div class="meeting-name">James Whitford</div>
+            <div class="meeting-biz">Momentum Constructions</div>
+          </div>
+        </div>
+        <div class="meeting-item">
+          <div class="meeting-date-pill">APR<br>15</div>
+          <div>
+            <div class="meeting-name">Sarah Kemp</div>
+            <div class="meeting-biz">Harbour Physiotherapy</div>
+          </div>
+        </div>
+        <div class="meeting-item">
+          <div class="meeting-date-pill">APR<br>17</div>
+          <div>
+            <div class="meeting-name">Dr Priya Narayan</div>
+            <div class="meeting-biz">Cascade Dental Group</div>
+          </div>
+        </div>
+        <div class="meeting-item">
+          <div class="meeting-date-pill">APR<br>21</div>
+          <div>
+            <div class="meeting-name">Dr Rebecca Ashford</div>
+            <div class="meeting-biz">Coastal Veterinary</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- System Health -->
+      <div class="card">
+        <div class="section-label">System health</div>
+        ${[
+          { name: 'Email Delivery', status: 'Operational', dot: 'green' },
+          { name: 'LinkedIn Queue', status: 'Operational', dot: 'green' },
+          { name: 'Voice AI', status: 'Operational', dot: 'green' },
+          { name: 'SMS Gateway', status: 'Degraded', dot: 'amber' },
+          { name: 'Data Enrichment', status: 'Operational', dot: 'green' },
+          { name: 'Prospect Pipeline', status: 'Operational', dot: 'green' },
+        ].map(h => `
+          <div class="health-item">
+            <div class="status-dot status-${h.dot}"></div>
+            <div class="health-name">${h.name}</div>
+            <div class="health-status">${h.status}</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+
+    <!-- Today's Outreach -->
+    <div class="card">
+      <div class="section-label">Today's outreach — 43 of 105 completed</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 40px;">
+        ${[
+          { ch: 'Email', done: 18, total: 50, color: '#6B8E5A' },
+          { ch: 'LinkedIn', done: 12, total: 20, color: '#3B82F6' },
+          { ch: 'Voice AI', done: 5, total: 10, color: '#D4956A' },
+          { ch: 'SMS', done: 8, total: 25, color: '#8B5CF6' },
+        ].map(o => `
+          <div class="outreach-row">
+            <div class="outreach-channel">${o.ch}</div>
+            <div class="outreach-bar-wrap">
+              <div class="progress-wrap" style="height:6px;">
+                <div class="progress-bar" style="width:${(o.done/o.total*100).toFixed(0)}%;background:${o.color};"></div>
+              </div>
+            </div>
+            <div class="outreach-count">${o.done}/${o.total}</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+  document.getElementById('page').innerHTML = html;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   PAGE 2 — PIPELINE
+═══════════════════════════════════════════════════════════════════ */
+function renderPipeline() {
+  const intentColor = { struggling: 'var(--red)', trying: 'var(--amber)', dabbling: 'var(--tan)' };
+  const scoreClass = s => s >= 85 ? 'score-hot' : s >= 60 ? 'score-warm' : s >= 35 ? 'score-cool' : 'score-cold';
+
+  const filtered = activePipelineFilter === 'struggling' ? prospects.filter(p => p.intent === 'struggling')
+    : activePipelineFilter === 'trying' ? prospects.filter(p => p.intent === 'trying')
+    : activePipelineFilter === 'dabbling' ? prospects.filter(p => p.intent === 'dabbling')
+    : prospects;
+
+  const html = `
+    <h1 class="page-headline">Your prospects,<br><em>ranked by intent.</em></h1>
+
+    <div class="review-banner">
+      <div class="review-banner-text">
+        You've reviewed <strong>${getReviewedCount()} of 10</strong> prospects. Release all 600 to outreach after quality check.
+      </div>
+      <button class="btn btn-amber" ${getReviewedCount() < 10 ? 'disabled style="opacity:0.45;font-size:13px;padding:7px 16px;"' : 'style="font-size:13px;padding:7px 16px;"'}>Release All 600</button>
+    </div>
+
+    <div class="filter-chips">
+      ${[
+        { key: 'top10', label: 'Top 10' },
+        { key: 'all', label: 'All 600' },
+        { key: 'struggling', label: 'Struggling' },
+        { key: 'trying', label: 'Trying' },
+        { key: 'dabbling', label: 'Dabbling' },
+      ].map(f => `
+        <div class="chip ${activePipelineFilter === f.key ? 'active' : ''}" onclick="setPipelineFilter('${f.key}')">${f.label}</div>
+      `).join('')}
+    </div>
+
+    ${filtered.map((p, i) => `
+      <div class="pipeline-row" onclick="navigate('#pipeline/${p.id}')">
+        <div class="intent-bar intent-bar-${p.intent}"></div>
+        <div class="pipeline-rank">${i+1}</div>
+        <div class="pipeline-main">
+          <div class="pipeline-biz-name">${p.name}</div>
+          <div class="pipeline-meta">
+            <span class="badge badge-ink badge ${p.intent === 'struggling' ? 'intent-struggling' : p.intent === 'trying' ? 'intent-trying' : 'intent-dabbling'}">${p.intent.charAt(0).toUpperCase()+p.intent.slice(1)}</span>
+            <span class="pipeline-suburb">${p.suburb}, ${p.state}</span>
+            <span class="pipeline-suburb">·</span>
+            <span class="pipeline-suburb">${p.industry}</span>
+          </div>
+        </div>
+        <div class="pipeline-dm" style="font-size:12.5px;color:var(--ink-3);">
+          <div style="font-weight:500;color:var(--ink-2);">${p.dm.name}</div>
+          <div style="font-size:11px;font-family:'JetBrains Mono',monospace;">${p.dm.title}</div>
+        </div>
+        <div class="pipeline-channels">
+          <div class="channel-dot" title="Email">✉</div>
+          <div class="channel-dot" title="LinkedIn">in</div>
+          <div class="channel-dot" title="Voice">☎</div>
+          <div class="channel-dot" title="SMS">📱</div>
+        </div>
+        <div class="pipeline-score-wrap">
+          <div class="score-badge ${scoreClass(p.score)}">${p.score}</div>
+        </div>
+        <div class="pipeline-caret">›</div>
+      </div>
+    `).join('')}
+  `;
+  document.getElementById('page').innerHTML = html;
+}
+
+function setPipelineFilter(key) {
+  activePipelineFilter = key;
+  renderPipeline();
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   PAGE 3 — PIPELINE DETAIL
+═══════════════════════════════════════════════════════════════════ */
+function renderDetail(id) {
+  const p = prospects.find(x => x.id === id);
+  if (!p) { renderPipeline(); return; }
+  const idx = prospects.indexOf(p);
+  const prev = idx > 0 ? prospects[idx - 1] : null;
+  const next = idx < prospects.length - 1 ? prospects[idx + 1] : null;
+  const scoreClass = s => s >= 85 ? 'score-hot' : s >= 60 ? 'score-warm' : s >= 35 ? 'score-cool' : 'score-cold';
+
+  const firstName = p.dm.name.replace(/^Dr\s+/i, '').split(' ')[0];
+  const draftEmail = `Subject: Your competitors are stealing your customers, ${firstName}
+
+Hi ${firstName},
+
+I've been researching ${p.industry.toLowerCase()} businesses in ${p.suburb} and noticed something that's costing ${p.name} new business every month.
+
+${p.signals[0] ? p.signals[0].text : 'Your digital presence has gaps a competitor can exploit.'}
+
+I specialise in fixing exactly this for ${p.industry.toLowerCase()} businesses in ${p.state}. I've helped 3 similar businesses recover their local presence in under 90 days.
+
+Worth a 15-minute call this week?
+
+David Stephens
+Ignition Digital — Sydney`;
+
+  const draftLinkedin = `Hi ${firstName}, I noticed some signals that suggest ${p.name} could be getting more from their digital presence. Quick 15 minutes to walk through what we found?`;
+
+  const draftSms = `Hi ${firstName}, David from Ignition. ${p.signals[0] ? p.signals[0].text : 'Noticed some gaps in your digital presence.'} Worth 15 mins? Happy to call whenever suits.`;
+
+  const draftVoice = `Opening: "Hi, is that ${firstName}? I'm David from Ignition Digital in Sydney. I've been doing some research on ${p.industry.toLowerCase()} businesses in ${p.suburb} and I've found something that's costing ${p.name} new customers — do you have 2 minutes?"
+
+Pain point: "${p.signals[0] ? p.signals[0].text : 'Your digital presence has gaps that competitors can exploit.'}"
+
+CTA: "I've fixed this exact problem for 3 similar businesses this year. Could we book 15 minutes this week so I can show you what's happening and what we'd do to fix it?"`;
+
+  const gradeItems = [
+    { key: 'website', label: 'Website' },
+    { key: 'seo', label: 'SEO' },
+    { key: 'reviews', label: 'Reviews' },
+    { key: 'ads', label: 'Paid Ads' },
+    { key: 'social', label: 'Social' },
+    { key: 'content', label: 'Content' },
+  ];
+
+  const html = `
+    <div class="detail-back" onclick="navigate('#pipeline')">← Back to Pipeline</div>
+
+    <div class="detail-nav">
+      ${prev ? `<button class="detail-nav-btn" onclick="navigate('#pipeline/${prev.id}')">← ${prev.name}</button>` : ''}
+      <span class="detail-nav-sep" style="flex:1;text-align:center;font-size:12px;color:var(--ink-3);">${idx+1} of ${prospects.length}</span>
+      ${next ? `<button class="detail-nav-btn" onclick="navigate('#pipeline/${next.id}')">${next.name} →</button>` : ''}
+    </div>
+
+    <div class="detail-headline">${p.name}</div>
+    <div class="detail-meta-row">
+      <span class="detail-meta-item">${p.suburb}, ${p.state}</span>
+      <span class="detail-meta-dot">·</span>
+      <span class="detail-meta-item">${p.staff} staff</span>
+      <span class="detail-meta-dot">·</span>
+      <span class="detail-meta-item">Est. ${p.est}</span>
+      <span class="detail-meta-dot">·</span>
+      <span class="detail-meta-item">${p.revenue} revenue</span>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap;">
+      <span class="badge ${p.intent === 'struggling' ? 'intent-struggling' : p.intent === 'trying' ? 'intent-trying' : 'intent-dabbling'}">${p.intent.charAt(0).toUpperCase()+p.intent.slice(1)}</span>
+      <span class="badge badge-ink">CIS ${p.composite}</span>
+      <span class="badge badge-green">Active in pipeline</span>
+    </div>
+    <div class="detail-actions">
+      <button class="btn btn-outline">Skip</button>
+      <button class="btn btn-outline" style="color:var(--amber);border-color:var(--amber);">Flag</button>
+      <button class="btn btn-amber">Approve for Outreach</button>
+    </div>
+
+    <div class="detail-layout">
+      <!-- LEFT COLUMN -->
+      <div>
+        <!-- Score cards -->
+        <div class="grid-3" style="margin-bottom:24px;">
+          <div class="score-card">
+            <div class="score-card-val">${p.affordability}<span style="font-size:18px;color:var(--ink-3);">/10</span></div>
+            <div class="score-card-label">Affordability</div>
+            <div class="score-card-sub">Revenue signal</div>
+          </div>
+          <div class="score-card">
+            <div class="score-card-val">${p.intentScore}<span style="font-size:18px;color:var(--ink-3);">/18</span></div>
+            <div class="score-card-label">Intent Score</div>
+            <div class="score-card-sub">Buying signals</div>
+          </div>
+          <div class="score-card" style="border-color:var(--amber);">
+            <div class="score-card-val" style="color:var(--copper);">${p.composite}</div>
+            <div class="score-card-label">Composite CIS</div>
+            <div class="score-card-sub">Agency Lead Score</div>
+          </div>
+        </div>
+
+        <!-- Buying signals -->
+        <div class="card" style="margin-bottom:20px;">
+          <div class="section-label">Buying signals</div>
+          ${p.signals.map(s => `
+            <div class="signal-item">
+              <div class="signal-dot"></div>
+              <div class="signal-text">${s.text}</div>
+              <div class="signal-time">${s.time}</div>
+            </div>
+          `).join('')}
+        </div>
+
+        <!-- Vulnerability report -->
+        <div class="card" style="margin-bottom:20px;">
+          <div class="section-label">Vulnerability report</div>
+          <div class="vuln-para">${p.vulnerability}</div>
+          <div class="section-label" style="margin-bottom:12px;">Digital health scorecard</div>
+          <div class="grade-grid">
+            ${gradeItems.map(g => `
+              <div class="grade-cell">
+                <div class="grade-letter grade-${p.vulnGrades[g.key]}">${p.vulnGrades[g.key]}</div>
+                <div class="grade-name">${g.label}</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+        <!-- Draft outreach -->
+        <div class="card">
+          <div class="section-label">Draft outreach</div>
+          <div class="tab-bar" id="outreachTabBar">
+            ${['email','linkedin','sms','voice'].map(t => `
+              <button class="tab-btn ${activeOutreachTab === t ? 'active' : ''}" onclick="switchOutreachTab('${t}')">${t.charAt(0).toUpperCase()+t.slice(1)}${t === 'voice' ? ' AI' : ''}</button>
+            `).join('')}
+          </div>
+          <div id="outreachTabEmail" class="tab-content ${activeOutreachTab === 'email' ? 'active' : ''}">
+            <div class="draft-label">Email draft</div>
+            <div class="draft-content">${draftEmail}</div>
+          </div>
+          <div id="outreachTabLinkedin" class="tab-content ${activeOutreachTab === 'linkedin' ? 'active' : ''}">
+            <div class="draft-label">LinkedIn message</div>
+            <div class="draft-content">${draftLinkedin}</div>
+          </div>
+          <div id="outreachTabSms" class="tab-content ${activeOutreachTab === 'sms' ? 'active' : ''}">
+            <div class="draft-label">SMS draft</div>
+            <div class="draft-content">${draftSms}</div>
+          </div>
+          <div id="outreachTabVoice" class="tab-content ${activeOutreachTab === 'voice' ? 'active' : ''}">
+            <div class="draft-label">Voice AI script</div>
+            <div class="draft-content">${draftVoice}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT COLUMN -->
+      <div>
+        <!-- DM card -->
+        <div class="card dm-card">
+          <div class="section-label">Decision-maker</div>
+          <div class="dm-name">${p.dm.name}</div>
+          <div class="dm-title">${p.dm.title}</div>
+          <div class="dm-field">
+            <div class="dm-field-label">Email</div>
+            <div class="dm-field-val" style="font-size:12px;word-break:break-all;">${p.dm.email}</div>
+            <span class="dm-verified">Verified</span>
+          </div>
+          <div class="dm-field">
+            <div class="dm-field-label">Phone</div>
+            <div class="dm-field-val">${p.dm.phone}</div>
+            <span class="dm-verified">Verified</span>
+          </div>
+          <div class="dm-field">
+            <div class="dm-field-label">LinkedIn</div>
+            <div class="dm-field-val">Profile found</div>
+            <span class="dm-verified">2 days ago</span>
+          </div>
+        </div>
+
+        <!-- Cycle card -->
+        <div class="card" style="margin-bottom:16px;">
+          <div class="section-label">Cycle</div>
+          <div style="font-size:14px;font-weight:500;color:var(--ink);margin-bottom:4px;">Cycle 3 · Day 14 of 30 · Released May 1</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-3);margin-bottom:12px;">SEO Services — Sydney Metro</div>
+          <div class="progress-wrap" style="height:5px;margin-bottom:6px;">
+            <div class="progress-bar" style="width:47%;background:var(--amber);"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-3);">
+            <span>Day 1</span><span>Day 30</span>
+          </div>
+        </div>
+
+        <!-- Activity timeline -->
+        <div class="card">
+          <div class="section-label">Activity</div>
+          ${[
+            { text: 'Email opened (3x)', time: '2h ago' },
+            { text: 'LinkedIn profile viewed', time: '1d ago' },
+            { text: 'Initial email sent', time: '3d ago' },
+            { text: 'Prospect added to pipeline', time: '5d ago' },
+            { text: 'Enrichment completed', time: '5d ago' },
+          ].map(t => `
+            <div class="timeline-item">
+              <div class="timeline-dot"></div>
+              <div style="flex:1;">
+                <div class="timeline-text">${t.text}</div>
+              </div>
+              <div class="timeline-time">${t.time}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById('page').innerHTML = html;
+}
+
+function switchOutreachTab(tab) {
+  activeOutreachTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    b.classList.toggle('active', b.textContent.toLowerCase().startsWith(tab));
+  });
+  ['email','linkedin','sms','voice'].forEach(t => {
+    const el = document.getElementById('outreachTab' + t.charAt(0).toUpperCase() + t.slice(1));
+    if (el) el.classList.toggle('active', t === tab);
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   PAGE 4 — CYCLES
+═══════════════════════════════════════════════════════════════════ */
+function renderCycles() {
+  const html = `
+    <div class="eyebrow" style="margin-bottom:8px;">Cycles · Campaign history</div>
+    <h1 class="page-headline" style="margin-bottom:8px;">Your cycles,<br><em>one every 30 days.</em></h1>
+    <p style="font-size:14px;color:var(--ink-3);margin-bottom:32px;max-width:560px;">One cycle per subscription. 600 records per cycle. Automatic rollover. Configure everything in Settings.</p>
+
+    <!-- Current cycle -->
+    <div style="background:var(--ink-2);border-radius:12px;padding:28px 32px;margin-bottom:20px;color:#fff;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+        <div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(255,255,255,0.4);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:6px;">Current</div>
+          <div style="font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:#fff;margin-bottom:2px;">Cycle 3 · May 2026</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.45);">Day 14 of 30</div>
+        </div>
+        <button class="btn btn-outline" style="color:rgba(255,255,255,0.7);border-color:rgba(255,255,255,0.2);font-size:13px;" onclick="navigate('#pipeline')">View current cycle →</button>
+      </div>
+      <div style="background:rgba(255,255,255,0.1);border-radius:99px;height:6px;margin-bottom:8px;">
+        <div style="width:47%;height:6px;border-radius:99px;background:var(--amber);"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(255,255,255,0.35);margin-bottom:24px;">
+        <span>Day 1</span><span>Day 14 of 30</span><span>Day 30</span>
+      </div>
+      <div style="display:flex;gap:32px;flex-wrap:wrap;">
+        <div>
+          <div style="font-family:'Playfair Display',serif;font-size:26px;font-weight:700;color:#fff;line-height:1;">280</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.1em;margin-top:4px;">Contacted</div>
+        </div>
+        <div>
+          <div style="font-family:'Playfair Display',serif;font-size:26px;font-weight:700;color:#fff;line-height:1;">23</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.1em;margin-top:4px;">Replies</div>
+        </div>
+        <div>
+          <div style="font-family:'Playfair Display',serif;font-size:26px;font-weight:700;color:#fff;line-height:1;">4</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.1em;margin-top:4px;">Meetings</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Past cycles -->
+    <div class="section-label" style="margin-bottom:12px;">Past cycles</div>
+    ${[
+      { num: 2, month: 'April 2026', records: 600, contacted: 487, replies: 31, meetings: 7, closes: 2 },
+      { num: 1, month: 'March 2026', records: 600, contacted: 502, replies: 18, meetings: 3, closes: 1 },
+    ].map(c => `
+      <div class="campaign-card" style="margin-bottom:12px;">
+        <div class="campaign-card-header" style="margin-bottom:12px;">
+          <div class="campaign-card-main">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
+              <span class="badge badge-ink">Completed</span>
+            </div>
+            <div class="campaign-name">Cycle ${c.num}</div>
+            <div class="campaign-area">${c.month}</div>
+          </div>
+        </div>
+        <div class="campaign-metrics">
+          <div>
+            <div class="campaign-metric-val">${c.records.toLocaleString()}</div>
+            <div class="campaign-metric-label">Records</div>
+          </div>
+          <div>
+            <div class="campaign-metric-val">${c.contacted}</div>
+            <div class="campaign-metric-label">Contacted</div>
+          </div>
+          <div>
+            <div class="campaign-metric-val">${c.replies}</div>
+            <div class="campaign-metric-label">Replies</div>
+          </div>
+          <div>
+            <div class="campaign-metric-val">${c.meetings}</div>
+            <div class="campaign-metric-label">Meetings</div>
+          </div>
+          <div>
+            <div class="campaign-metric-val">${c.closes}</div>
+            <div class="campaign-metric-label">Closes</div>
+          </div>
+        </div>
+      </div>
+    `).join('')}
+  `;
+  document.getElementById('page').innerHTML = html;
+}
+
+function openModal() {
+  document.getElementById('campaignModal').classList.add('open');
+}
+function closeModal() {
+  document.getElementById('campaignModal').classList.remove('open');
+}
+function closeModalOutside(e) {
+  if (e.target.id === 'campaignModal') closeModal();
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   PAGE 5 — INBOX
+═══════════════════════════════════════════════════════════════════ */
+function renderInbox() {
+  const channelIcon = ch => ({ email: '✉', linkedin: 'in', sms: '📱', voice: '☎' }[ch] || '·');
+  const activeReply = replies.find(r => r.id === activeInboxReply) || replies[0];
+  const p = prospects.find(x => x.id === activeReply.prospectId) || prospects[0];
+
+  const html = `
+    <h1 class="page-headline" style="margin-bottom:20px;">Inbox<br><em>replies &amp; conversations.</em></h1>
+    <div class="inbox-layout">
+      <!-- List -->
+      <div class="inbox-list">
+        <div class="inbox-list-header">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-3);">${replies.length} conversations · 3 unread</div>
+        </div>
+        ${replies.map(r => `
+          <div class="inbox-item ${r.id === activeInboxReply ? 'active' : ''}" onclick="setActiveReply('${r.id}')">
+            <div class="heat-dot heat-${r.heat}" style="margin-top:4px;"></div>
+            <div class="inbox-item-meta">
+              <div class="inbox-item-name">${r.name}</div>
+              <div class="inbox-item-biz">${r.business}</div>
+              <div class="inbox-item-snippet">${r.snippet}</div>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;">
+              <div class="inbox-item-time">${r.time}</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:10px;background:var(--surface);padding:2px 5px;border-radius:3px;color:var(--ink-3);">${channelIcon(r.channel)}</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+
+      <!-- Thread -->
+      <div class="inbox-thread">
+        <div class="thread-header">
+          <div class="heat-dot heat-${activeReply.heat}"></div>
+          <div>
+            <div class="thread-name">${activeReply.name}</div>
+            <div class="thread-biz">${activeReply.business} · via ${activeReply.channel}</div>
+          </div>
+          <div style="margin-left:auto;display:flex;gap:8px;">
+            <button class="btn btn-outline" style="font-size:12px;padding:6px 12px;">View Prospect</button>
+            <button class="btn btn-amber" style="font-size:12px;padding:6px 12px;">Book Meeting</button>
+          </div>
+        </div>
+        <div class="thread-body">
+          <div>
+            <div class="bubble bubble-ours">
+              Hi ${activeReply.name.split(' ')[0]}, I've been analysing ${activeReply.business}'s digital presence and noticed a few things that are costing you customers. Worth a 15-minute call this week to walk through what we found?
+            </div>
+            <div class="bubble-time bubble-time-right">You · 3 days ago</div>
+          </div>
+          <div>
+            <div class="bubble bubble-theirs">${activeReply.snippet}</div>
+            <div class="bubble-time bubble-time-left">${activeReply.name} · ${activeReply.time}</div>
+          </div>
+          <div>
+            <div class="bubble bubble-ours">
+              Great — I'll send a calendar link. We'll cover exactly what we found and what the fix looks like. Should take no more than 15 minutes.
+            </div>
+            <div class="bubble-time bubble-time-right">You · 1h ago</div>
+          </div>
+        </div>
+        <div class="thread-actions">
+          <input type="text" placeholder="Reply to ${activeReply.name.split(' ')[0]}…" style="flex:1;border:1px solid var(--rule);border-radius:6px;padding:9px 12px;font-size:13.5px;outline:none;">
+          <button class="btn btn-amber">Send</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById('page').innerHTML = html;
+}
+
+function setActiveReply(id) {
+  activeInboxReply = id;
+  renderInbox();
+}
+
+function openModal() {
+  document.getElementById('campaignModal').classList.add('open');
+}
+function closeModal() {
+  document.getElementById('campaignModal').classList.remove('open');
+}
+function closeModalOutside(e) {
+  if (e.target.id === 'campaignModal') closeModal();
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   PAGE 6 — SEQUENCES
+═══════════════════════════════════════════════════════════════════ */
+function renderSequences() {
+  const days = Array.from({length: 35}, (_, i) => i + 1);
+  const today = 14;
+
+  const events = {
+    1: [{ type: 'email', label: 'Email 1' }],
+    3: [{ type: 'linkedin', label: 'LI connect' }],
+    5: [{ type: 'email', label: 'Email 2' }],
+    7: [{ type: 'voice', label: 'Voice AI' }],
+    10: [{ type: 'email', label: 'Email 3' }],
+    12: [{ type: 'sms', label: 'SMS' }],
+    14: [{ type: 'email', label: 'Email 4' }, { type: 'linkedin', label: 'LI msg' }],
+    17: [{ type: 'voice', label: 'Voice AI' }],
+    20: [{ type: 'email', label: 'Email 5' }],
+    23: [{ type: 'sms', label: 'SMS 2' }],
+    26: [{ type: 'email', label: 'Email 6' }],
+    30: [{ type: 'voice', label: 'Final call' }],
+  };
+
+  const html = `
+    <h1 class="page-headline" style="margin-bottom:28px;">Your sequences,<br><em>touch by touch.</em></h1>
+
+    <div class="grid-4" style="margin-bottom:32px;">
+      ${[
+        { ch: 'Email', rate: '47%', detail: '18/50 sent today', pct: 36, color: '#6B8E5A' },
+        { ch: 'LinkedIn', rate: '38%', detail: '12/20 sent today', pct: 60, color: '#3B82F6' },
+        { ch: 'Voice AI', rate: '22%', detail: '5/10 completed', pct: 50, color: '#D4956A' },
+        { ch: 'SMS', rate: '61%', detail: '8/25 sent today', pct: 32, color: '#8B5CF6' },
+      ].map(c => `
+        <div class="channel-rate-card">
+          <div class="eyebrow" style="margin-bottom:6px;">${c.ch}</div>
+          <div class="channel-rate-val">${c.rate}</div>
+          <div class="channel-rate-detail">${c.detail}</div>
+          <div class="progress-wrap" style="height:5px;">
+            <div class="progress-bar" style="width:${c.pct}%;background:${c.color};"></div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+
+    <div class="card">
+      <div class="section-label">30-day outreach calendar</div>
+      <div class="calendar-grid">
+        ${['MON','TUE','WED','THU','FRI','SAT','SUN'].map(d => `<div class="cal-header-cell">${d}</div>`).join('')}
+        ${days.map(d => {
+          const evs = events[d] || [];
+          const isToday = d === today;
+          return `
+            <div class="cal-cell ${isToday ? 'cal-today' : ''}">
+              <div class="cal-date-num">${d}</div>
+              ${evs.map(e => `<span class="cal-pill cal-${e.type}">${e.label}</span>`).join('')}
+            </div>
+          `;
+        }).join('')}
+      </div>
+      <div class="legend-row">
+        <div class="legend-item"><div class="legend-dot" style="background:rgba(107,142,90,0.4);"></div>Email</div>
+        <div class="legend-item"><div class="legend-dot" style="background:rgba(59,130,246,0.4);"></div>LinkedIn</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--amber-soft);border:1px solid var(--amber);"></div>Voice AI</div>
+        <div class="legend-item"><div class="legend-dot" style="background:rgba(139,92,246,0.2);"></div>SMS</div>
+      </div>
+    </div>
+  `;
+  document.getElementById('page').innerHTML = html;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   PAGE 7 — SIGNALS
+═══════════════════════════════════════════════════════════════════ */
+function renderInsights() {
+  const signalPerformance = [
+    { name: 'Active ad spend detected', category: 'Timing', desc: 'Google or Meta ad spend confirmed via transparency APIs and pixel detection.', detections: 187, replyRate: '12.3%', meetingRate: '2.1%' },
+    { name: 'Rapid hiring activity', category: 'Growth', desc: 'Multiple job postings or new hires detected on LinkedIn within 30 days.', detections: 142, replyRate: '9.8%', meetingRate: '1.8%' },
+    { name: 'GMB rating in decline', category: 'Pain', desc: 'Google Business rating dropped 0.3+ stars in 90 days with negative review velocity.', detections: 98, replyRate: '17.4%', meetingRate: '3.2%' },
+    { name: 'Outdated site or zero SEO', category: 'Presence', desc: 'Website technology stack older than 3 years, no SSL, or zero organic rankings.', detections: 87, replyRate: '8.1%', meetingRate: '1.1%' },
+    { name: 'Founder posts about pipeline', category: 'Intent', desc: 'Decision-maker posting about growth, leads, or marketing challenges on LinkedIn.', detections: 54, replyRate: '22.1%', meetingRate: '4.7%' },
+    { name: 'New ABN registration', category: 'Velocity', desc: 'Business registered within the last 12 months — early growth phase, actively building.', detections: 32, replyRate: '6.2%', meetingRate: '0.9%' },
+  ];
+
+  const maxDetections = Math.max(...signalPerformance.map(s => s.detections));
+
+  const html = `
+    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:var(--ink-3);margin-bottom:12px;">Signal intelligence</div>
+    <h1 class="page-headline" style="margin-bottom:16px;">What the system sees<br><em>on your behalf.</em></h1>
+    <div style="font-size:14px;color:var(--ink-3);margin-bottom:36px;max-width:620px;">
+      Every signal tracked across your 600 records this cycle. Ranked by what actually converts to meetings.
+    </div>
+
+    <!-- Section 1: Signal performance cards -->
+    <div class="grid-2" style="margin-bottom:40px;">
+      ${signalPerformance.map(s => `
+        <div class="card" style="padding:20px;">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:var(--ink-3);margin-bottom:6px;">${s.category}</div>
+          <div style="font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:var(--ink);margin-bottom:10px;">${s.name}</div>
+          <div style="font-size:14px;color:var(--ink-3);margin-bottom:16px;line-height:1.55;">${s.desc}</div>
+          <div style="display:flex;gap:24px;">
+            <div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;color:var(--ink);">${s.detections}</div>
+              <div style="font-size:11px;color:var(--ink-3);margin-top:2px;">detections</div>
+            </div>
+            <div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;color:var(--ink);">${s.replyRate}</div>
+              <div style="font-size:11px;color:var(--ink-3);margin-top:2px;">reply rate</div>
+            </div>
+            <div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;color:var(--amber);">${s.meetingRate}</div>
+              <div style="font-size:11px;color:var(--ink-3);margin-top:2px;">meeting rate</div>
+            </div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+
+    <!-- Section 2: Signal distribution bar chart -->
+    <div class="card" style="margin-bottom:32px;">
+      <div class="section-label" style="margin-bottom:4px;">Signal distribution this cycle</div>
+      <div style="font-size:13px;color:var(--ink-3);margin-bottom:20px;">Of your 600 prospects, which signal type is strongest?</div>
+      ${signalPerformance.map(s => `
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
+          <div style="width:200px;font-size:13px;color:var(--ink-2);flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${s.name}</div>
+          <div style="flex:1;background:var(--surface);border-radius:2px;height:10px;overflow:hidden;">
+            <div style="width:${Math.round((s.detections / maxDetections) * 100)}%;background:var(--amber);height:100%;border-radius:2px;"></div>
+          </div>
+          <div style="width:100px;display:flex;gap:8px;justify-content:flex-end;flex-shrink:0;">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink-2);">${s.detections}</span>
+            <span style="font-size:11px;color:var(--ink-3);">${s.replyRate}</span>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+
+    <!-- Section 3: Signal correlation table -->
+    <div class="card">
+      <div class="section-label" style="margin-bottom:16px;">Signal correlation with meetings</div>
+      <table class="report-table">
+        <thead>
+          <tr>
+            <th>Signal</th>
+            <th>Prospects</th>
+            <th>Meetings booked</th>
+            <th>Conversion rate</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${[...signalPerformance].sort((a, b) => parseFloat(b.meetingRate) - parseFloat(a.meetingRate)).map(s => {
+            const meetings = Math.round(s.detections * parseFloat(s.meetingRate) / 100);
+            return \`
+            <tr>
+              <td>\${s.name}</td>
+              <td><span class="mono" style="font-size:12px;">\${s.detections}</span></td>
+              <td><span class="mono" style="font-size:12px;">\${meetings}</span></td>
+              <td><span class="badge badge-green" style="font-size:11px;">\${s.meetingRate}</span></td>
+            </tr>\`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+  document.getElementById('page').innerHTML = html;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   PAGE 8 — REPORTS
+═══════════════════════════════════════════════════════════════════ */
+function renderReports() {
+  const systemSteps = [
+    { label: 'Discovered', count: 47832 },
+    { label: 'Industry filter', count: 8204 },
+    { label: 'Affordability gate', count: 3421 },
+    { label: 'Intent filter', count: 1188 },
+    { label: 'Top 600 scored', count: 600 },
+  ];
+  const decisionSteps = [
+    { label: 'Delivered to you', count: 600 },
+    { label: 'Released to outreach', count: 600 },
+    { label: 'Contacted', count: 280 },
+    { label: 'Opened', count: 131 },
+    { label: 'Replied', count: 23 },
+    { label: 'Meetings booked', count: 4 },
+  ];
+  const maxCount = systemSteps[0].count;
+
+  function funnelRow(step, prevCount, isSystem) {
+    const barWidth = Math.max(2, Math.round((step.count / maxCount) * 100));
+    const pctOfPrev = prevCount ? Math.round((step.count / prevCount) * 100) + '%' : '—';
+    const barColor = isSystem ? 'var(--amber)' : 'var(--ink-2)';
+    return \`
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+        <div style="width:160px;font-size:13px;color:var(--ink-2);flex-shrink:0;">\${step.label}</div>
+        <div style="flex:1;background:var(--surface);border-radius:2px;height:10px;overflow:hidden;">
+          <div style="width:\${barWidth}%;background:\${barColor};height:100%;border-radius:2px;"></div>
+        </div>
+        <div style="width:58px;text-align:right;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink-2);flex-shrink:0;">\${step.count.toLocaleString()}</div>
+        <div style="width:42px;text-align:right;font-size:11px;color:var(--ink-3);flex-shrink:0;">\${pctOfPrev}</div>
+      </div>\`;
+  }
+
+  const html = `
+    <h1 class="page-headline" style="margin-bottom:28px;">Campaign performance,<br><em>by the numbers.</em></h1>
+
+    <!-- KPIs -->
+    <div class="grid-4" style="margin-bottom:32px;">
+      ${[
+        { label: 'Total Contacted', val: '280', delta: '+80 this week', up: true },
+        { label: 'Total Replies', val: '23', delta: '8.2% reply rate', up: true },
+        { label: 'Meetings Booked', val: '4', delta: '1.4% meeting rate', up: null },
+        { label: 'Pipeline Value', val: '$47K', delta: 'Est. AUD', up: null },
+      ].map(k => `
+        <div class="kpi-card">
+          <div class="kpi-label">${k.label}</div>
+          <div class="kpi-val">${k.val}</div>
+          <div class="metric-delta ${k.up === true ? 'delta-up' : k.up === false ? 'delta-down' : ''}" style="${k.up === null ? 'color:var(--ink-3)' : ''}">${k.delta}</div>
+        </div>
+      `).join('')}
+    </div>
+
+    <!-- Extended Funnel -->
+    <div class="card" style="margin-bottom:24px;">
+      <div class="section-label" style="margin-bottom:4px;">Cycle 3 conversion funnel</div>
+      <div style="font-size:13px;color:var(--ink-3);margin-bottom:24px;">From 47,832 discovered to 4 meetings booked. This is what $2,500/mo buys you.</div>
+
+      <!-- System work header -->
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:var(--amber);margin-bottom:14px;">System work</div>
+      ${systemSteps.map((step, i) => funnelRow(step, i > 0 ? systemSteps[i - 1].count : null, true)).join('')}
+
+      <!-- Handoff divider -->
+      <div style="display:flex;align-items:center;gap:12px;margin:20px 0;">
+        <div style="flex:1;height:1px;background:var(--rule);"></div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-3);white-space:nowrap;">handoff — your cycle begins</div>
+        <div style="flex:1;height:1px;background:var(--rule);"></div>
+      </div>
+
+      <!-- Decision steps header -->
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:var(--ink-2);margin-bottom:14px;">Your decisions</div>
+      ${decisionSteps.map((step, i) => funnelRow(step, i > 0 ? decisionSteps[i - 1].count : systemSteps[systemSteps.length - 1].count, false)).join('')}
+    </div>
+
+    <div class="grid-2" style="margin-bottom:24px;">
+      <!-- Top Signals -->
+      <div class="card">
+        <div class="section-label">Top performing signals</div>
+        <table class="report-table">
+          <thead>
+            <tr>
+              <th>Signal</th>
+              <th>Triggered</th>
+              <th>Reply Rate</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${[
+              { name: 'Brand Term Bidding', count: 14, rate: '21.4%' },
+              { name: 'GMB Rating Decline', count: 8, rate: '18.8%' },
+              { name: 'Ad Pause Detected', count: 6, rate: '16.7%' },
+              { name: 'Outdated Website', count: 31, rate: '9.7%' },
+              { name: 'Staff Churn Signal', count: 3, rate: '33.3%' },
+            ].map(s => `
+              <tr>
+                <td>${s.name}</td>
+                <td><span class="mono" style="font-size:12px;">${s.count}</span></td>
+                <td><span class="badge badge-green" style="font-size:11px;">${s.rate}</span></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Channel Performance -->
+      <div class="card">
+        <div class="section-label">Channel performance</div>
+        <table class="report-table">
+          <thead>
+            <tr>
+              <th>Channel</th>
+              <th>Sent</th>
+              <th>Reply Rate</th>
+              <th>Meetings</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${[
+              { ch: 'Email', sent: 180, reply: '8.4%', meet: 2 },
+              { ch: 'LinkedIn', sent: 60, reply: '11.3%', meet: 1 },
+              { ch: 'Voice AI', sent: 25, reply: '5.0%', meet: 1 },
+              { ch: 'SMS', sent: 15, reply: '15.0%', meet: 0 },
+            ].map(c => `
+              <tr>
+                <td><strong>${c.ch}</strong></td>
+                <td><span class="mono" style="font-size:12px;">${c.sent}</span></td>
+                <td><span class="badge badge-green" style="font-size:11px;">${c.reply}</span></td>
+                <td>${c.meet}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+  document.getElementById('page').innerHTML = html;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   PAGE 9 — SETTINGS
+═══════════════════════════════════════════════════════════════════ */
+function renderSettings() {
+  const tabs = ['account', 'integrations', 'team', 'billing', 'danger'];
+  const tabLabels = { account: 'Account', integrations: 'Integrations', team: 'Team', billing: 'Billing', danger: 'Danger Zone' };
+
+  const accountSection = `
+    <!-- Services section -->
+    <div style="margin-bottom:32px;">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:var(--ink-3);margin-bottom:8px;">Services you sell</div>
+      <div style="font-size:13px;color:var(--ink-3);margin-bottom:16px;">Extracted from your website and case studies during onboarding. Toggle off services you don't want prospects for. Changes apply from your next cycle.</div>
+      <label style="display:flex;align-items:center;gap:8px;padding:8px 0;cursor:pointer;"><input type="checkbox" checked> <span>SEO Services</span></label>
+      <label style="display:flex;align-items:center;gap:8px;padding:8px 0;cursor:pointer;"><input type="checkbox" checked> <span>Google Ads Management</span></label>
+      <label style="display:flex;align-items:center;gap:8px;padding:8px 0;cursor:pointer;"><input type="checkbox" checked> <span>Web Design &amp; Development</span></label>
+      <label style="display:flex;align-items:center;gap:8px;padding:8px 0;cursor:pointer;"><input type="checkbox" checked> <span>Content Marketing</span></label>
+      <label style="display:flex;align-items:center;gap:8px;padding:8px 0;cursor:pointer;"><input type="checkbox" checked> <span>Social Media Management</span></label>
+      <label style="display:flex;align-items:center;gap:8px;padding:8px 0;cursor:pointer;"><input type="checkbox" checked> <span>Email Marketing</span></label>
+      <label style="display:flex;align-items:center;gap:8px;padding:8px 0;opacity:0.4;cursor:not-allowed;"><input type="checkbox" disabled> <span>Branding &amp; Identity</span> <span style="font-size:11px;color:var(--ink-3);">(not in your profile)</span></label>
+      <label style="display:flex;align-items:center;gap:8px;padding:8px 0;opacity:0.4;cursor:not-allowed;"><input type="checkbox" disabled> <span>Video Production</span> <span style="font-size:11px;color:var(--ink-3);">(not in your profile)</span></label>
+      <a href="#" style="font-size:13px;color:var(--amber);margin-top:8px;display:inline-block;">+ Add a service we don't see</a>
+    </div>
+
+    <!-- Industries section -->
+    <div id="industriesSection" style="margin-bottom:32px;">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:var(--ink-3);margin-bottom:8px;">Industries you serve</div>
+      <div style="font-size:13px;color:var(--ink-3);margin-bottom:16px;">Default is all industries. Specialist agencies can narrow to their focus verticals. Changes apply from your next cycle.</div>
+      <label style="display:flex;align-items:center;gap:8px;padding:8px 0;cursor:pointer;"><input type="checkbox" checked class="industry-cb" onchange="checkIndustryWarning()"> <span>Health &amp; Medical</span> <span style="font-size:11px;color:var(--ink-3);">(dental, physio, GP, vet, specialist, aged care)</span></label>
+      <label style="display:flex;align-items:center;gap:8px;padding:8px 0;cursor:pointer;"><input type="checkbox" checked class="industry-cb" onchange="checkIndustryWarning()"> <span>Trades &amp; Construction</span> <span style="font-size:11px;color:var(--ink-3);">(builders, electricians, plumbers, HVAC)</span></label>
+      <label style="display:flex;align-items:center;gap:8px;padding:8px 0;cursor:pointer;"><input type="checkbox" checked class="industry-cb" onchange="checkIndustryWarning()"> <span>Professional Services</span> <span style="font-size:11px;color:var(--ink-3);">(accounting, legal, consulting, HR)</span></label>
+      <label style="display:flex;align-items:center;gap:8px;padding:8px 0;cursor:pointer;"><input type="checkbox" checked class="industry-cb" onchange="checkIndustryWarning()"> <span>Hospitality</span> <span style="font-size:11px;color:var(--ink-3);">(cafes, restaurants, venues, catering)</span></label>
+      <label style="display:flex;align-items:center;gap:8px;padding:8px 0;cursor:pointer;"><input type="checkbox" checked class="industry-cb" onchange="checkIndustryWarning()"> <span>Retail</span> <span style="font-size:11px;color:var(--ink-3);">(bricks-and-mortar, e-commerce, specialty)</span></label>
+      <label style="display:flex;align-items:center;gap:8px;padding:8px 0;cursor:pointer;"><input type="checkbox" checked class="industry-cb" onchange="checkIndustryWarning()"> <span>Automotive</span> <span style="font-size:11px;color:var(--ink-3);">(dealers, mechanics, panel beaters)</span></label>
+      <label style="display:flex;align-items:center;gap:8px;padding:8px 0;cursor:pointer;"><input type="checkbox" checked class="industry-cb" onchange="checkIndustryWarning()"> <span>Home &amp; Lifestyle</span> <span style="font-size:11px;color:var(--ink-3);">(interior design, landscaping, cleaning)</span></label>
+      <label style="display:flex;align-items:center;gap:8px;padding:8px 0;cursor:pointer;"><input type="checkbox" checked class="industry-cb" onchange="checkIndustryWarning()"> <span>Finance &amp; Insurance</span> <span style="font-size:11px;color:var(--ink-3);">(mortgage, insurance, financial planning)</span></label>
+      <div style="margin-top:8px;">
+        <a href="#" onclick="document.querySelectorAll('.industry-cb').forEach(cb=>{cb.checked=false;});checkIndustryWarning();return false;" style="font-size:13px;color:var(--ink-3);margin-right:16px;">[Toggle all off]</a>
+        <a href="#" onclick="document.querySelectorAll('.industry-cb').forEach(cb=>{cb.checked=true;});checkIndustryWarning();return false;" style="font-size:13px;color:var(--ink-3);">[Toggle all on]</a>
+      </div>
+      <div id="industryWarning" style="display:none;background:var(--amber-soft);border-left:3px solid var(--amber);padding:16px;margin:16px 0;font-size:13px;">
+        Health in Sydney Metro typically produces ~420 qualified records per cycle. Your Ignition tier is 600. Options:<br>
+        &rarr; Expand geography to NSW (~680 qualified)<br>
+        &rarr; Add Health + Wellness category (~590 qualified)<br>
+        &rarr; Accept 420 records this cycle (no tier change)
+      </div>
+    </div>
+
+    <div class="section-label">Agency profile</div>
+    ${[
+      { key: 'Agency Name', sub: 'Displayed across all outreach', val: 'Ignition Digital' },
+      { key: 'Primary Service', sub: 'Used to qualify prospects', val: 'SEO Services, Google Ads, Web Design' },
+      { key: 'Target Areas', sub: 'Geographic targeting', val: 'Sydney, Melbourne, Brisbane' },
+      { key: 'Outreach Style', sub: 'Tone used in all drafts', val: 'Direct · Professional · Data-led' },
+    ].map(r => `
+      <div class="settings-row">
+        <div class="settings-row-label">
+          <div class="settings-row-key">${r.key}</div>
+          <div class="settings-row-sub">${r.sub}</div>
+        </div>
+        <div class="settings-row-val">${r.val}</div>
+        <div class="settings-row-action"><button class="btn btn-outline" style="font-size:12px;padding:5px 12px;">Edit</button></div>
+      </div>
+    `).join('')}
+  `;
+
+  const integrationsSection = `
+    <div class="section-label">Connected services</div>
+    ${[
+      { icon: '🔗', name: 'HubSpot CRM', desc: 'Sync prospects and deals', status: 'Connected' },
+      { icon: 'in', name: 'LinkedIn', desc: 'Automated connection requests and messages', status: 'Connected' },
+      { icon: '✉', name: 'Email Domains', desc: 'ignition.com.au · 3 mailboxes active', status: 'Connected' },
+      { icon: '☎', name: 'Voice AI', desc: 'Automated outbound calling', status: 'Connected' },
+      { icon: '📱', name: 'SMS Gateway', desc: 'Automated SMS outreach', status: 'Degraded' },
+      { icon: '📅', name: 'Calendar', desc: 'Google Calendar · Meeting booking', status: 'Connected' },
+    ].map(i => `
+      <div class="integration-row">
+        <div class="integration-icon">${i.icon}</div>
+        <div style="flex:1;">
+          <div class="integration-name">${i.name}</div>
+          <div class="integration-desc">${i.desc}</div>
+        </div>
+        <span class="badge ${i.status === 'Connected' ? 'badge-connected' : 'badge-amber'}">${i.status}</span>
+      </div>
+    `).join('')}
+  `;
+
+  const teamSection = `
+    <div class="section-label">Team members</div>
+    ${[
+      { name: 'David Stephens', role: 'Owner', email: 'david@ignition.com.au', avatar: 'DS' },
+      { name: 'Priya Nair', role: 'Account Manager', email: 'priya@ignition.com.au', avatar: 'PN' },
+    ].map(m => `
+      <div class="settings-row">
+        <div class="settings-row-label" style="display:flex;align-items:center;gap:10px;width:auto;margin-right:16px;">
+          <div class="avatar-circle" style="background:var(--ink-2);width:36px;height:36px;font-size:12px;">${m.avatar}</div>
+          <div>
+            <div class="settings-row-key">${m.name}</div>
+            <div class="settings-row-sub">${m.email}</div>
+          </div>
+        </div>
+        <div class="settings-row-val"><span class="badge badge-ink">${m.role}</span></div>
+        <div class="settings-row-action"><button class="btn btn-outline" style="font-size:12px;padding:5px 12px;">Edit</button></div>
+      </div>
+    `).join('')}
+    <div style="margin-top:16px;"><button class="btn btn-outline">+ Invite team member</button></div>
+  `;
+
+  const billingSection = `
+    <div class="section-label">Current plan</div>
+    <div class="card" style="margin-bottom:20px;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+        <div>
+          <div style="font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--ink);">Growth Plan</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink-3);">$497 AUD / month · Renews 7 May 2026</div>
+        </div>
+        <span class="badge badge-green" style="margin-left:auto;">Active</span>
+      </div>
+      ${[
+        { feature: 'Prospects per month', val: '600' },
+        { feature: 'Campaigns', val: '4 active' },
+        { feature: 'Outreach channels', val: 'Email + LinkedIn + Voice + SMS' },
+        { feature: 'Seats', val: '3 users' },
+      ].map(f => `
+        <div style="display:flex;padding:8px 0;border-bottom:1px solid var(--rule);">
+          <div style="flex:1;font-size:13px;color:var(--ink-3);">${f.feature}</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--ink-2);">${f.val}</div>
+        </div>
+      `).join('')}
+    </div>
+    <button class="btn btn-outline">Manage billing →</button>
+  `;
+
+  const dangerSection = `
+    <div class="danger-zone">
+      <div class="danger-zone-title">Danger Zone</div>
+      ${[
+        { title: 'Pause all campaigns', sub: 'Stop all active outreach immediately. Can be resumed.', btn: 'Pause All', red: false },
+        { title: 'Export all data', sub: 'Download all prospects, campaigns, and reply data as CSV.', btn: 'Export Data', red: false },
+        { title: 'Delete account', sub: 'Permanently delete your account and all data. This cannot be undone.', btn: 'Delete Account', red: true },
+      ].map(d => `
+        <div class="danger-row">
+          <div class="danger-row-info">
+            <div class="danger-row-title">${d.title}</div>
+            <div class="danger-row-sub">${d.sub}</div>
+          </div>
+          <button class="${d.red ? 'btn-danger' : 'btn btn-outline'}" style="${!d.red ? 'font-size:12px;padding:6px 12px;' : ''}">${d.btn}</button>
+        </div>
+      `).join('')}
+    </div>
+  `;
+
+  const sectionContent = {
+    account: accountSection,
+    integrations: integrationsSection,
+    team: teamSection,
+    billing: billingSection,
+    danger: dangerSection,
+  };
+
+  const html = `
+    <h1 class="page-headline" style="margin-bottom:28px;">Settings</h1>
+    <div class="settings-layout">
+      <div class="settings-nav">
+        ${tabs.map(t => `
+          <div class="settings-nav-item ${activeSettingsTab === t ? 'active' : ''}" onclick="switchSettingsTab('${t}')">${tabLabels[t]}</div>
+        `).join('')}
+      </div>
+      <div class="settings-content">
+        ${tabs.map(t => `
+          <div class="settings-section ${activeSettingsTab === t ? 'active' : ''}" id="stab-${t}">
+            ${sectionContent[t]}
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+  document.getElementById('page').innerHTML = html;
+}
+
+function switchSettingsTab(tab) {
+  activeSettingsTab = tab;
+  document.querySelectorAll('.settings-nav-item').forEach((el, i) => {
+    const tabs = ['account', 'integrations', 'team', 'billing', 'danger'];
+    el.classList.toggle('active', tabs[i] === tab);
+  });
+  document.querySelectorAll('.settings-section').forEach(el => {
+    el.classList.toggle('active', el.id === 'stab-' + tab);
+  });
+}
+
+function checkIndustryWarning() {
+  const cbs = document.querySelectorAll('.industry-cb');
+  const allChecked = Array.from(cbs).every(cb => cb.checked);
+  const warning = document.getElementById('industryWarning');
+  if (warning) warning.style.display = allChecked ? 'none' : 'block';
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   MOBILE SIDEBAR
+═══════════════════════════════════════════════════════════════════ */
+function toggleMobileSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebar-overlay');
+  sidebar.classList.toggle('mobile-open');
+  overlay.classList.toggle('show');
+}
+function closeMobileSidebar() {
+  document.getElementById('sidebar').classList.remove('mobile-open');
+  document.getElementById('sidebar-overlay').classList.remove('show');
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════════════════════════ */
+router();
+</script>
+</body>
+</html>

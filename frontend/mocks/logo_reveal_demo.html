@@ -169,13 +169,15 @@ body {
   display: block;
 }
 
-/* The bar: 54% from top, 11% height, extends 14% beyond letterform, behind A */
+/* The bar: positioned BELOW the A's natural crossbar, in the lower triangle.
+   63% from top puts it clearly below the stroke-through, reading as a rubber band
+   holding the two legs of the A together. */
 .mark-a::after {
   content: '';
   position: absolute;
   left: -14%;
   right: -14%;
-  top: 54%;
+  top: 63%;
   height: 11%;
   background: var(--amber);
   transform: translateY(-50%);
@@ -543,64 +545,105 @@ function buildTimeline(cal) {
   // The visual: the amber O elongates horizontally, flattens vertically,
   // and settles at the bar position with a satisfying snap.
 
-  // Step 1: O stretches horizontally while compressing vertically
-  // Like a rubber band being pulled sideways
+  // Step 1: O begins to stretch — still recognisably an O but pulling wider
+  // Thicker than before (scaleY: 0.55) so the amber reads as substantial
   tl.to(lO, {
-    scaleX: 5.5,
-    scaleY: 0.35,
-    duration: 0.35,
+    scaleX: 4.0,
+    scaleY: 0.55,
+    duration: 0.3,
     ease: 'power2.in',
     color: '#D4956A',
-    borderRadius: '2px',
   }, 1.25);
 
-  // Step 2: Stretch further and flatten — becoming the bar shape
+  // Step 2: O stretches into a thick band, starts dropping to bar position
+  // Bar sits at 63% of A height (lower triangle, below crossbar)
+  // At 3.2x scale, A is ~140px tall, so 63% = ~88px from top = aDy + 38px offset
   tl.to(lO, {
-    scaleX: 7.2,
-    scaleY: 0.12,
-    y: cal.aDy + 28,  // Drop to bar position (54% of scaled A height)
+    scaleX: 5.8,
+    scaleY: 0.32,
+    y: cal.aDy + 38,
     duration: 0.25,
-    ease: 'power3.in',
-  }, 1.55);
+    ease: 'power2.inOut',
+  }, 1.50);
 
-  // Step 3: SNAP — elastic overshoot as the rubber band settles
-  // The bar overshoots slightly wider, then bounces back to final width
-  tl.to(lO, {
-    scaleX: 8.0,
-    scaleY: 0.09,
-    duration: 0.08,
-    ease: 'none',
-  }, 1.78);
-
-  // Step 4: Elastic settle — the snap recoil
-  tl.to(lO, {
-    scaleX: 6.8,
-    scaleY: 0.11,
-    duration: 0.15,
-    ease: 'elastic.out(1.2, 0.4)',
-  }, 1.86);
-
-  // Step 5: Final micro-settle
+  // Step 3: Band wraps tight — final stretch, getting thinner as it pulls taut
   tl.to(lO, {
     scaleX: 7.0,
-    scaleY: 0.10,
+    scaleY: 0.18,
+    duration: 0.18,
+    ease: 'power3.in',
+  }, 1.72);
+
+  // Step 4: SNAP — elastic overshoot. Band goes slightly too wide then rebounds.
+  tl.to(lO, {
+    scaleX: 7.8,
+    scaleY: 0.14,
+    duration: 0.06,
+    ease: 'none',
+  }, 1.88);
+
+  // Step 5: Elastic recoil — the satisfying bounce
+  tl.to(lO, {
+    scaleX: 6.6,
+    scaleY: 0.16,
     duration: 0.12,
+    ease: 'elastic.out(1.3, 0.35)',
+  }, 1.94);
+
+  // Step 6: Settle to final bar dimensions
+  tl.to(lO, {
+    scaleX: 7.0,
+    scaleY: 0.15,
+    duration: 0.15,
     ease: 'power1.out',
-  }, 2.01);
+  }, 2.06);
 
-  // PHASE 6 — Cross-fade to The Strike final mark
-  // Quick dissolve from animated letters to the clean final mark
-  tl.to([lA, lO], {
+  // PHASE 6 — SEAMLESS CROSS-DISSOLVE to The Strike final mark
+  // The key to avoiding a "jump": the animated O bar and the final mark's
+  // ::after bar must be in the EXACT same position. We match them by:
+  // 1. Positioning the final mark so its ::after bar overlaps the animated bar
+  // 2. Using a longer dissolve with the O bar fading out AS the final mark fades in
+  // 3. The A letter also dissolves seamlessly into the final mark A (same font/size)
+
+  // First: ensure final mark is perfectly aligned with animated A position
+  tl.call(() => {
+    // The animated A is at cal.aDy offset, scale 3.2x
+    // The final mark is centred in the stage — it should already align
+    // But we can fine-tune the final mark's position to match pixel-perfect
+    const lARect = lA.getBoundingClientRect();
+    const stageRect = document.getElementById('logo-stage').getBoundingClientRect();
+    const fmRect = finalMark.getBoundingClientRect();
+
+    // Nudge final mark to align with animated A if needed
+    const dxFix = (lARect.left + lARect.width/2) - (stageRect.left + stageRect.width/2);
+    const dyFix = (lARect.top + lARect.height/2) - (stageRect.top + stageRect.height/2);
+    if (Math.abs(dxFix) > 2 || Math.abs(dyFix) > 2) {
+      gsap.set(finalMark, { x: dxFix, y: dyFix });
+    }
+  }, [], 2.15);
+
+  // Slow cross-dissolve: animated elements fade out over 0.4s
+  tl.to(lA, {
     opacity: 0,
-    duration: 0.2,
-    ease: 'power1.in'
-  }, 2.15);
+    duration: 0.4,
+    ease: 'power1.inOut'
+  }, 2.18);
 
+  tl.to(lO, {
+    opacity: 0,
+    duration: 0.4,
+    ease: 'power1.inOut'
+  }, 2.18);
+
+  // Final mark fades in, overlapping the fade-out by 0.15s
   tl.to(finalMark, {
     opacity: 1,
-    duration: 0.3,
-    ease: 'power2.out'
-  }, 2.25);
+    duration: 0.5,
+    ease: 'power1.inOut'
+  }, 2.30);
+
+  // Hold the final mark for a beat before tagline
+  // (0.3s gap between mark resolved and tagline start)
 
   // PHASE 7 — Tagline fades up
   tl.to(tagline, {
@@ -608,7 +651,7 @@ function buildTimeline(cal) {
     y: 0,
     duration: 0.5,
     ease: 'power2.out'
-  }, 2.45);
+  }, 2.90);
 
   return tl;
 }

@@ -34,10 +34,12 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from decimal import Decimal
 from enum import StrEnum
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
+import httpx
 import sentry_sdk
+from sqlalchemy import select
 from tenacity import (
     retry,
     stop_after_attempt,
@@ -46,8 +48,11 @@ from tenacity import (
 
 import httpx
 
-from src.config.settings import settings
+from src.config.settings import get_settings, settings
 from src.exceptions import IntegrationError
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
@@ -793,19 +798,37 @@ class StripeClient:
             logger.error(f"[Stripe] Failed to parse webhook: {e}")
             raise WebhookVerificationError(f"Failed to parse webhook: {e}")
 
-    async def handle_webhook_event(self, event: WebhookEvent) -> dict[str, Any]:
+    async def handle_webhook_event(
+        self,
+        event: WebhookEvent,
+        db: "AsyncSession | None" = None,
+    ) -> dict[str, Any]:
         """
         Handle a verified webhook event.
 
         Dispatches to appropriate handlers based on event type.
+        When db is provided, handlers perform real database updates and
+        log the event for idempotency.
 
         Args:
             event: Verified WebhookEvent
+            db: Optional async database session for DB-aware handlers
 
         Returns:
             Handler result
         """
         logger.info(f"[Stripe] Handling webhook event: {event.type}")
+
+        if db is not None:
+            # Idempotency check — skip if already processed
+            from src.models.webhook_event_log import WebhookEventLog
+
+            existing = await db.execute(
+                select(WebhookEventLog).where(WebhookEventLog.event_id == event.id)
+            )
+            if existing.scalar_one_or_none():
+                logger.info(f"[Stripe] Webhook {event.id} already processed, skipping")
+                return {"status": "duplicate", "event_type": event.type}
 
         handlers = {
             "customer.subscription.created": self._handle_subscription_created,
@@ -817,40 +840,293 @@ class StripeClient:
 
         handler = handlers.get(event.type)
         if handler:
-            return await handler(event)
+            result = await handler(event, db)
+        else:
+            logger.debug(f"[Stripe] No handler for event type: {event.type}")
+            result = {"status": "ignored", "event_type": event.type}
 
-        logger.debug(f"[Stripe] No handler for event type: {event.type}")
-        return {"status": "ignored", "event_type": event.type}
+        # Log event for idempotency
+        if db is not None:
+            from src.models.webhook_event_log import WebhookEventLog
 
-    async def _handle_subscription_created(self, event: WebhookEvent) -> dict[str, Any]:
-        """Handle subscription.created event."""
-        # TODO: Update client record in database
-        logger.info(f"[Stripe] Subscription created: {event.data.get('id')}")
+            log_entry = WebhookEventLog(
+                provider="stripe",
+                event_type=event.type,
+                event_id=event.id,
+                payload=event.data,
+                status=result.get("status", "processed"),
+            )
+            db.add(log_entry)
+            await db.flush()
+
+        return result
+
+    async def _handle_subscription_created(
+        self,
+        event: WebhookEvent,
+        db: "AsyncSession | None" = None,
+    ) -> dict[str, Any]:
+        """customer.subscription.created — activate the client."""
+        from src.models.client import Client
+
+        subscription = event.data
+        customer_id = subscription.get("customer")
+        subscription_id = subscription.get("id")
+
+        if not db or not customer_id:
+            logger.info(f"[Stripe] Subscription created (no-db): {subscription_id}")
+            return {"status": "processed", "action": "subscription_created"}
+
+        result = await db.execute(
+            select(Client).where(Client.stripe_customer_id == customer_id)
+        )
+        client = result.scalar_one_or_none()
+        if not client:
+            logger.warning(f"[Stripe] No client found for Stripe customer {customer_id}")
+            return {"status": "skipped", "reason": "client_not_found"}
+
+        # Extract tier from price metadata
+        items = subscription.get("items", {}).get("data", [])
+        price_id = items[0]["price"]["id"] if items else None
+        tier = self._price_id_to_tier(price_id) if price_id else None
+
+        client.stripe_subscription_id = subscription_id
+        client.subscription_status = "active"
+        if tier:
+            client.tier = tier
+        client.subscription_started_at = datetime.now(UTC)
+
+        await db.flush()
+        await self._send_activation_email(client, db)
+
+        logger.info(f"[Stripe] Subscription created for client {client.id}, tier={tier}")
         return {"status": "processed", "action": "subscription_created"}
 
-    async def _handle_subscription_updated(self, event: WebhookEvent) -> dict[str, Any]:
-        """Handle subscription.updated event."""
-        # TODO: Update client subscription status
-        logger.info(f"[Stripe] Subscription updated: {event.data.get('id')}")
+    async def _handle_subscription_updated(
+        self,
+        event: WebhookEvent,
+        db: "AsyncSession | None" = None,
+    ) -> dict[str, Any]:
+        """customer.subscription.updated — tier change, pause, status change."""
+        from src.models.client import Client
+
+        subscription = event.data
+        customer_id = subscription.get("customer")
+
+        if not db or not customer_id:
+            logger.info(f"[Stripe] Subscription updated (no-db): {subscription.get('id')}")
+            return {"status": "processed", "action": "subscription_updated"}
+
+        result = await db.execute(
+            select(Client).where(Client.stripe_customer_id == customer_id)
+        )
+        client = result.scalar_one_or_none()
+        if not client:
+            return {"status": "skipped", "reason": "client_not_found"}
+
+        # Check for tier change
+        items = subscription.get("items", {}).get("data", [])
+        price_id = items[0]["price"]["id"] if items else None
+        if price_id:
+            new_tier = self._price_id_to_tier(price_id)
+            if new_tier and new_tier != client.tier:
+                client.tier = new_tier
+
+        # Check for status change
+        new_status = subscription.get("status", "active")
+        if new_status != str(client.subscription_status):
+            client.subscription_status = new_status
+
+        # Check for pause
+        if subscription.get("pause_collection"):
+            client.paused_at = datetime.now(UTC)
+
+        await db.flush()
+        logger.info(f"[Stripe] Subscription updated for client {client.id}")
         return {"status": "processed", "action": "subscription_updated"}
 
-    async def _handle_subscription_deleted(self, event: WebhookEvent) -> dict[str, Any]:
-        """Handle subscription.deleted event."""
-        # TODO: Mark client as churned
-        logger.info(f"[Stripe] Subscription deleted: {event.data.get('id')}")
+    async def _handle_subscription_deleted(
+        self,
+        event: WebhookEvent,
+        db: "AsyncSession | None" = None,
+    ) -> dict[str, Any]:
+        """customer.subscription.deleted — cancel but preserve data."""
+        from src.models.client import Client
+
+        subscription = event.data
+        customer_id = subscription.get("customer")
+
+        if not db or not customer_id:
+            logger.info(f"[Stripe] Subscription deleted (no-db): {subscription.get('id')}")
+            return {"status": "processed", "action": "subscription_deleted"}
+
+        result = await db.execute(
+            select(Client).where(Client.stripe_customer_id == customer_id)
+        )
+        client = result.scalar_one_or_none()
+        if not client:
+            return {"status": "skipped", "reason": "client_not_found"}
+
+        client.subscription_status = "cancelled"
+        client.cancelled_at = datetime.now(UTC)
+        # Do NOT delete client or data — 30 day retention
+
+        await db.flush()
+        logger.info(f"[Stripe] Subscription cancelled for client {client.id}")
         return {"status": "processed", "action": "subscription_deleted"}
 
-    async def _handle_invoice_paid(self, event: WebhookEvent) -> dict[str, Any]:
-        """Handle invoice.paid event."""
-        # TODO: Update payment record
-        logger.info(f"[Stripe] Invoice paid: {event.data.get('id')}")
+    async def _handle_invoice_paid(
+        self,
+        event: WebhookEvent,
+        db: "AsyncSession | None" = None,
+    ) -> dict[str, Any]:
+        """invoice.paid — record payment."""
+        from src.models.client import Client
+
+        invoice = event.data
+        customer_id = invoice.get("customer")
+
+        if not db or not customer_id:
+            logger.info(f"[Stripe] Invoice paid (no-db): {invoice.get('id')}")
+            return {"status": "processed", "action": "invoice_paid"}
+
+        result = await db.execute(
+            select(Client).where(Client.stripe_customer_id == customer_id)
+        )
+        client = result.scalar_one_or_none()
+        if not client:
+            return {"status": "skipped", "reason": "client_not_found"}
+
+        client.last_payment_at = datetime.now(UTC)
+        if invoice.get("next_payment_attempt"):
+            client.next_billing_at = datetime.fromtimestamp(
+                invoice["next_payment_attempt"], tz=UTC
+            )
+
+        await db.flush()
+        logger.info(f"[Stripe] Invoice paid for client {client.id}")
         return {"status": "processed", "action": "invoice_paid"}
 
-    async def _handle_payment_failed(self, event: WebhookEvent) -> dict[str, Any]:
-        """Handle invoice.payment_failed event."""
-        # TODO: Alert and retry handling
-        logger.warning(f"[Stripe] Payment failed: {event.data.get('id')}")
+    async def _handle_payment_failed(
+        self,
+        event: WebhookEvent,
+        db: "AsyncSession | None" = None,
+    ) -> dict[str, Any]:
+        """invoice.payment_failed — mark past_due."""
+        from src.models.client import Client
+
+        invoice = event.data
+        customer_id = invoice.get("customer")
+
+        if not db or not customer_id:
+            logger.warning(f"[Stripe] Payment failed (no-db): {invoice.get('id')}")
+            return {"status": "processed", "action": "payment_failed"}
+
+        result = await db.execute(
+            select(Client).where(Client.stripe_customer_id == customer_id)
+        )
+        client = result.scalar_one_or_none()
+        if not client:
+            return {"status": "skipped", "reason": "client_not_found"}
+
+        client.subscription_status = "past_due"
+
+        await db.flush()
+        logger.warning(f"[Stripe] Payment failed for client {client.id}")
         return {"status": "processed", "action": "payment_failed"}
+
+    # ============================================
+    # HELPERS
+    # ============================================
+
+    def _price_id_to_tier(self, price_id: str) -> str | None:
+        """Map a Stripe Price ID to an Agency OS tier name."""
+        s = get_settings()
+        mapping: dict[str, str] = {}
+        if s.stripe_price_spark:
+            mapping[s.stripe_price_spark] = "spark"
+        if s.stripe_price_ignition:
+            mapping[s.stripe_price_ignition] = "ignition"
+        if s.stripe_price_velocity:
+            mapping[s.stripe_price_velocity] = "velocity"
+        return mapping.get(price_id)
+
+    async def _send_activation_email(
+        self,
+        client: Any,
+        db: "AsyncSession | None" = None,
+    ) -> None:
+        """Send subscription activation email via Resend."""
+        s = get_settings()
+        resend_key = s.resend_api_key
+        if not resend_key:
+            logger.warning("[Stripe] No Resend API key — skipping activation email")
+            return
+
+        # Resolve recipient email via memberships → user
+        recipient_email: str | None = None
+        if db is not None and hasattr(client, "memberships") and client.memberships:
+            for membership in client.memberships:
+                if hasattr(membership, "user") and membership.user and membership.user.email:
+                    recipient_email = membership.user.email
+                    break
+
+        if not recipient_email:
+            logger.warning(f"[Stripe] No recipient email found for client {client.id}")
+            return
+
+        tier_names = {"spark": "Spark", "ignition": "Ignition", "velocity": "Velocity"}
+        tier_label = tier_names.get(str(client.tier), str(client.tier))
+
+        html = f"""
+        <div style="font-family: 'DM Sans', sans-serif; max-width: 600px; margin: 0 auto; background: #F7F3EE; padding: 48px 32px;">
+            <div style="font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 700; color: #0C0A08; margin-bottom: 24px;">
+                Your Agency OS cycle is ready to begin.
+            </div>
+            <p style="color: #2E2B26; font-size: 15px; line-height: 1.7;">
+                Your <strong>{tier_label}</strong> subscription is now active at the founding rate.
+                Here's what happens next:
+            </p>
+            <ol style="color: #2E2B26; font-size: 15px; line-height: 2; padding-left: 20px;">
+                <li>Connect your HubSpot CRM</li>
+                <li>Connect your LinkedIn</li>
+                <li>Confirm your agency services</li>
+                <li>Select your service area</li>
+                <li>Your first cycle starts automatically</li>
+            </ol>
+            <div style="margin-top: 32px;">
+                <a href="https://agencyxos.ai/onboarding/crm"
+                   style="display: inline-block; background: #D4956A; color: #0C0A08; padding: 14px 28px; text-decoration: none; font-weight: 500; font-size: 14px;">
+                    Start onboarding &rarr;
+                </a>
+            </div>
+            <p style="color: #7A756D; font-size: 13px; margin-top: 40px;">
+                Agency OS &middot; The first autonomous acquisition engine for Australian agencies
+            </p>
+        </div>
+        """
+
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as http:
+                resp = await http.post(
+                    "https://api.resend.com/emails",
+                    headers={"Authorization": f"Bearer {resend_key}"},
+                    json={
+                        "from": "Agency OS <hello@agencyxos.ai>",
+                        "to": [recipient_email],
+                        "subject": "Your Agency OS cycle is ready to begin",
+                        "html": html,
+                        "reply_to": "dave@agencyxos.ai",
+                    },
+                )
+                if resp.status_code == 200:
+                    logger.info(f"[Stripe] Activation email sent to client {client.id}")
+                else:
+                    logger.error(
+                        f"[Stripe] Activation email failed: {resp.status_code} {resp.text}"
+                    )
+        except Exception as e:
+            logger.error(f"[Stripe] Activation email exception: {e}")
 
     # ============================================
     # CHECKOUT SESSION (For hosted checkout)

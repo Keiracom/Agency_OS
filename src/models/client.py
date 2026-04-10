@@ -172,6 +172,24 @@ class Client(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
         nullable=True,
     )
 
+    # Billing lifecycle fields (migration 100)
+    subscription_started_at: Mapped[datetime | None] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=True,
+    )
+    cancelled_at: Mapped[datetime | None] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=True,
+    )
+    last_payment_at: Mapped[datetime | None] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=True,
+    )
+    next_billing_at: Mapped[datetime | None] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=True,
+    )
+
     # Company info (from onboarding)
     website_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     company_description: Mapped[str | None] = mapped_column(Text, nullable=True)

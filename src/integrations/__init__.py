@@ -23,8 +23,8 @@ from src.integrations.leadmagic import LeadmagicClient, get_leadmagic_client
 from src.integrations.serper import SerperClient, get_serper_client
 from src.integrations.siege_waterfall import SiegeWaterfall, get_siege_waterfall
 
-# Billing & Booking
-from src.integrations.stripe_billing import router as stripe_billing_router
+# Billing & Booking (stripe_billing.py removed — canonical file is stripe.py)
+# The active billing router lives in src/api/routes/billing.py
 from src.integrations.vapi import VapiClient, get_vapi_client
 
 __all__ = [
@@ -43,6 +43,5 @@ __all__ = [
     "SiegeWaterfall",
     "get_siege_waterfall",
     # Routers for FastAPI
-    "stripe_billing_router",
     "calendar_booking_router",
 ]

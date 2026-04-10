@@ -44,6 +44,8 @@ from tenacity import (
     wait_exponential,
 )
 
+import httpx
+
 from src.config.settings import settings
 from src.exceptions import IntegrationError
 
@@ -910,6 +912,256 @@ class StripeClient:
         except Exception as e:
             logger.error(f"[Stripe] Failed to create checkout session: {e}")
             raise StripeError(f"Failed to create checkout session: {e}")
+
+
+# ============================================
+# ACTIVATION EMAIL (Directive #314 — Task C)
+# ============================================
+
+_ACTIVATION_EMAIL_HTML = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>You&apos;re in &mdash; Agency OS</title>
+</head>
+<body style="margin:0;padding:0;background:#F7F3EE;font-family:'DM Sans',system-ui,sans-serif;font-weight:300;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#F7F3EE;padding:40px 0;">
+  <tr><td align="center">
+    <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
+
+      <!-- Header -->
+      <tr>
+        <td style="padding:0 0 32px 0;border-bottom:1px solid rgba(12,10,8,0.08);">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:13px;letter-spacing:0.18em;text-transform:uppercase;color:#0C0A08;">
+            Agency<span style="color:#D4956A;">OS</span>
+          </span>
+        </td>
+      </tr>
+
+      <!-- Badge -->
+      <tr>
+        <td style="padding:32px 0 0 0;">
+          <div style="display:inline-block;padding:8px 18px 8px 12px;background:rgba(212,149,106,0.1);border:1px solid rgba(212,149,106,0.28);">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#D4956A;font-weight:500;">
+              Deposit confirmed &middot; $500 AUD
+            </span>
+          </div>
+        </td>
+      </tr>
+
+      <!-- Headline -->
+      <tr>
+        <td style="padding:24px 0 16px 0;">
+          <h1 style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:36px;font-weight:700;line-height:1.1;letter-spacing:-0.02em;color:#0C0A08;">
+            You&rsquo;re in, {first_name}.
+          </h1>
+          <h1 style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:36px;font-style:italic;font-weight:400;line-height:1.1;letter-spacing:-0.02em;color:#D4956A;">
+            Founding #{position} of 20.
+          </h1>
+        </td>
+      </tr>
+
+      <!-- Subtext -->
+      <tr>
+        <td style="padding:0 0 32px 0;">
+          <p style="margin:0;font-size:16px;font-weight:300;color:#2E2B26;line-height:1.7;max-width:520px;">
+            Your position is reserved and your 50% lifetime discount is locked in.
+            Setup takes about 15 minutes and I&rsquo;ll walk you through every step.
+          </p>
+        </td>
+      </tr>
+
+      <!-- Receipt block -->
+      <tr>
+        <td style="background:#0C0A08;padding:32px 36px;position:relative;">
+          <div style="height:2px;background:#D4956A;margin:-32px -36px 28px -36px;"></div>
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:rgba(247,243,238,0.55);padding-bottom:4px;">
+                Your plan
+              </td>
+            </tr>
+            <tr>
+              <td style="font-family:Georgia,serif;font-size:20px;font-weight:700;color:#F7F3EE;padding-bottom:4px;">
+                Agency OS &mdash; {tier}
+              </td>
+            </tr>
+            <tr>
+              <td style="font-family:Georgia,serif;font-size:13px;font-style:italic;color:#D4956A;padding-bottom:24px;">
+                Founding rate &middot; Locked for life
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <table width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid rgba(255,255,255,0.08);">
+                  <tr style="border-bottom:1px solid rgba(255,255,255,0.08);">
+                    <td style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:rgba(247,243,238,0.52);padding:10px 0;">Monthly rate</td>
+                    <td align="right" style="font-size:13px;color:#F7F3EE;padding:10px 0;">${monthly_rate} AUD / mo</td>
+                  </tr>
+                  <tr style="border-bottom:1px solid rgba(255,255,255,0.08);">
+                    <td style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:rgba(247,243,238,0.52);padding:10px 0;">Standard rate</td>
+                    <td align="right" style="font-size:13px;color:#F7F3EE;opacity:0.5;text-decoration:line-through;padding:10px 0;">${standard_rate} AUD / mo</td>
+                  </tr>
+                  <tr>
+                    <td style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:rgba(247,243,238,0.52);padding:10px 0;">Your savings</td>
+                    <td align="right" style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#D4956A;font-weight:500;padding:10px 0;">50% &middot; Forever</td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+
+      <!-- Reassurance points -->
+      <tr>
+        <td style="padding:36px 0 8px 0;">
+          <p style="margin:0 0 8px 0;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:#7A756D;">
+            Four things to know
+          </p>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="padding:12px 0;border-bottom:1px solid rgba(12,10,8,0.08);">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#D4956A;margin-right:12px;">01</span>
+                <span style="font-size:14px;color:#2E2B26;font-weight:300;">Setup takes 15 minutes. I&rsquo;ll walk you through it.</span>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:12px 0;border-bottom:1px solid rgba(12,10,8,0.08);">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#D4956A;margin-right:12px;">02</span>
+                <span style="font-size:14px;color:#2E2B26;font-weight:300;">Every message is visible before anything sends.</span>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:12px 0;border-bottom:1px solid rgba(12,10,8,0.08);">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#D4956A;margin-right:12px;">03</span>
+                <span style="font-size:14px;color:#2E2B26;font-weight:300;">Pause Cycle is one click away at any time.</span>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:12px 0;">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#D4956A;margin-right:12px;">04</span>
+                <span style="font-size:14px;color:#2E2B26;font-weight:300;">Your $500 deposit is fully refundable before your first cycle goes live.</span>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+
+      <!-- CTA -->
+      <tr>
+        <td style="padding:36px 0;">
+          <a href="{onboarding_url}"
+             style="display:inline-block;padding:18px 40px;background:#0C0A08;color:#F7F3EE;text-decoration:none;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:500;letter-spacing:0.02em;">
+            Continue to your dashboard &rarr;
+          </a>
+        </td>
+      </tr>
+
+      <!-- Sign off -->
+      <tr>
+        <td style="padding:0 0 40px 0;border-top:1px solid rgba(12,10,8,0.08);padding-top:32px;">
+          <p style="margin:0 0 4px 0;font-size:14px;color:#0C0A08;font-weight:500;">Dave Stephens</p>
+          <p style="margin:0 0 4px 0;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.1em;color:#D4956A;">Founder, Agency OS &middot; Sydney</p>
+          <p style="margin:8px 0 0 0;font-size:13px;color:#7A756D;font-weight:300;line-height:1.6;">
+            Questions? Reply to this email directly &mdash; it comes straight to me.
+          </p>
+        </td>
+      </tr>
+
+      <!-- Footer -->
+      <tr>
+        <td style="border-top:1px solid rgba(12,10,8,0.08);padding-top:20px;">
+          <p style="margin:0;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.1em;color:#A8A298;line-height:1.8;">
+            Agency OS &middot; Sydney, Australia &middot; Founding cohort April 2026<br>
+            <a href="{unsubscribe_url}" style="color:#A8A298;text-decoration:underline;">Unsubscribe</a>
+            &nbsp;&middot;&nbsp;
+            <a href="mailto:dave@agencyxos.ai?subject=Refund request" style="color:#A8A298;text-decoration:underline;">Request refund</a>
+          </p>
+        </td>
+      </tr>
+
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>
+"""
+
+
+async def _send_activation_email(
+    email: str,
+    first_name: str,
+    position: int,
+    tier: str,
+    monthly_rate: int,
+    standard_rate: int,
+    frontend_url: str | None = None,
+) -> None:
+    """
+    Send founding member activation email via Resend.
+
+    Variant B (shorter) — Dave's voice, amber/cream design.
+    Called after checkout.session.completed confirms deposit.
+
+    Args:
+        email: Recipient email address
+        first_name: Recipient first name
+        position: Founding position number (e.g. 4)
+        tier: Tier name (e.g. "Ignition")
+        monthly_rate: Monthly rate in AUD (e.g. 1250)
+        standard_rate: Standard (full) rate in AUD (e.g. 2500)
+        frontend_url: Base URL for CTA link (defaults to settings.frontend_url)
+    """
+    if not settings.resend_api_key:
+        logger.warning("[ActivationEmail] Resend API key not configured — skipping")
+        return
+
+    base_url = (frontend_url or settings.frontend_url or "https://agency-os-liart.vercel.app").rstrip("/")
+    onboarding_url = f"{base_url}/onboarding/crm"
+    unsubscribe_url = f"{base_url}/unsubscribe"
+
+    html = _ACTIVATION_EMAIL_HTML.format(
+        first_name=first_name,
+        position=position,
+        tier=tier,
+        monthly_rate=f"{monthly_rate:,}",
+        standard_rate=f"{standard_rate:,}",
+        onboarding_url=onboarding_url,
+        unsubscribe_url=unsubscribe_url,
+    )
+
+    subject = f"You're in — founding #{position} of 20"
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                "https://api.resend.com/emails",
+                headers={
+                    "Authorization": f"Bearer {settings.resend_api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "from": "Dave Stephens <dave@agencyxos.ai>",
+                    "to": [email],
+                    "subject": subject,
+                    "html": html,
+                },
+            )
+            if response.status_code in (200, 201):
+                logger.info(f"[ActivationEmail] Sent to {email} (position #{position})")
+            else:
+                logger.error(
+                    f"[ActivationEmail] Resend error {response.status_code}: {response.text}"
+                )
+    except Exception as exc:
+        logger.error(f"[ActivationEmail] Failed to send to {email}: {exc}")
 
 
 # ============================================

@@ -12,7 +12,7 @@ from datetime import date, datetime
 from typing import TYPE_CHECKING, Optional
 from uuid import UUID
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, Text  # noqa: F401
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as UUID_DB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -34,6 +34,8 @@ class Cycle(Base, TimestampMixin):
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default="now()")
     target_prospects: Mapped[int] = mapped_column(Integer, nullable=False)
     cycle_day_1_date: Mapped[date] = mapped_column(Date, nullable=False, server_default="CURRENT_DATE")
+    # Valid status values: 'active', 'paused', 'ready_for_reveal', 'completed'
+    # Directive #314 added 'ready_for_reveal' and 'paused' statuses
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="active")
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     warmup_mode: Mapped[str] = mapped_column(String(30), nullable=False, default="full")
@@ -41,6 +43,7 @@ class Cycle(Base, TimestampMixin):
     # Relationships
     prospects: Mapped[list["CycleProspect"]] = relationship("CycleProspect", back_populates="cycle", cascade="all, delete-orphan")
     actions: Mapped[list["OutreachAction"]] = relationship("OutreachAction", back_populates="cycle", cascade="all, delete-orphan")
+    events: Mapped[list["CycleEvent"]] = relationship("CycleEvent", back_populates="cycle", cascade="all, delete-orphan")
 
 
 class CycleProspect(Base, TimestampMixin):
@@ -85,6 +88,23 @@ class OutreachAction(Base):
     # Relationships
     cycle: Mapped["Cycle"] = relationship("Cycle", back_populates="actions")
     cycle_prospect: Mapped["CycleProspect"] = relationship("CycleProspect", back_populates="actions")
+
+
+class CycleEvent(Base):
+    """Audit log for cycle state transitions. Directive #314."""
+
+    __tablename__ = "cycle_events"
+
+    id: Mapped[UUID] = mapped_column(UUID_DB(as_uuid=True), primary_key=True, server_default="gen_random_uuid()")
+    cycle_id: Mapped[UUID] = mapped_column(UUID_DB(as_uuid=True), ForeignKey("cycles.id", ondelete="CASCADE"), nullable=False)
+    # event_type: 'started', 'paused', 'resumed', 'reveal_ready', 'revealed', 'completed'
+    event_type: Mapped[str] = mapped_column(Text, nullable=False)
+    # triggered_by: 'customer', 'system', 'admin', 'timeout'
+    triggered_by: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    metadata: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default="now()")
+
+    cycle: Mapped["Cycle"] = relationship("Cycle", back_populates="events")
 
 
 class SequenceTemplate(Base, TimestampMixin):

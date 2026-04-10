@@ -3,27 +3,13 @@
  * PURPOSE: Dashboard layout with sidebar and header
  * PHASE: 8 (Frontend)
  * TASK: FE-007
- * 
- * NOTE: Auth logic DISABLED for visual review (PR #25)
- * TODO: Re-enable auth before production deploy
+ *
+ * Directive #309 — Auth re-enabled. Middleware handles the auth gate;
+ * this layout handles session-based data fetch and DashboardLayout wrapper.
  */
 
-export default function DashboardRootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  // TEMPORARILY DISABLED: All auth checks bypassed for visual review
-  // Just render children directly - no layout wrapper needed for preview
-  return <>{children}</>;
-}
-
-/*
- * ORIGINAL AUTH LAYOUT - PRESERVED FOR LATER
- * ==========================================
-
 // Force dynamic for entire dashboard segment
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 import { redirect } from "next/navigation";
 import { getCurrentUser, getUserMemberships } from "@/lib/supabase-server";
@@ -43,12 +29,18 @@ export default async function DashboardRootLayout({
 
   // Check onboarding status
   const supabase = await createServerClient();
-  const { data: onboardingStatus } = await supabase.rpc('get_onboarding_status') as {
-    data: Array<{ client_id: string; needs_onboarding: boolean }> | null
+  const { data: onboardingStatus } = (await supabase.rpc(
+    "get_onboarding_status"
+  )) as {
+    data: Array<{ client_id: string; needs_onboarding: boolean }> | null;
   };
 
   // If user needs onboarding, redirect
-  if (onboardingStatus && onboardingStatus.length > 0 && onboardingStatus[0].needs_onboarding) {
+  if (
+    onboardingStatus &&
+    onboardingStatus.length > 0 &&
+    onboardingStatus[0].needs_onboarding
+  ) {
     redirect("/onboarding");
   }
 
@@ -70,25 +62,33 @@ export default async function DashboardRootLayout({
   let pauseReason: string | null = null;
 
   if (activeMembership?.client?.id) {
-    const { data: clientData } = await supabase
+    const { data: clientData } = (await supabase
       .from("clients")
       .select("credits_remaining, paused_at, pause_reason")
       .eq("id", activeMembership.client.id)
-      .single() as { data: { credits_remaining: number; paused_at: string | null; pause_reason: string | null } | null };
+      .single()) as {
+      data: {
+        credits_remaining: number;
+        paused_at: string | null;
+        pause_reason: string | null;
+      } | null;
+    };
 
     creditsRemaining = clientData?.credits_remaining ?? 0;
     pausedAt = clientData?.paused_at ?? null;
     pauseReason = clientData?.pause_reason ?? null;
   }
 
-  const clientDataForLayout = activeMembership?.client ? {
-    id: activeMembership.client.id,
-    name: activeMembership.client.name,
-    tier: activeMembership.client.tier,
-    creditsRemaining: creditsRemaining,
-    pausedAt: pausedAt,
-    pauseReason: pauseReason,
-  } : undefined;
+  const clientDataForLayout = activeMembership?.client
+    ? {
+        id: activeMembership.client.id,
+        name: activeMembership.client.name,
+        tier: activeMembership.client.tier,
+        creditsRemaining: creditsRemaining,
+        pausedAt: pausedAt,
+        pauseReason: pauseReason,
+      }
+    : undefined;
 
   return (
     <DashboardLayout user={userData} client={clientDataForLayout}>
@@ -96,4 +96,3 @@ export default async function DashboardRootLayout({
     </DashboardLayout>
   );
 }
-*/

@@ -264,6 +264,57 @@ class LinkedInWarmupService:
         }
 
 
+def get_linkedin_volume_cap(
+    cycle_number: int,
+    account_status: str,
+    week_of_cycle: int,
+) -> float:
+    """Return the volume multiplier (0.0–1.0) for LinkedIn outreach.
+
+    Standard warmup (account_status='ready'):
+    - Cycle 1, Week 1: 50%
+    - Cycle 1, Week 2: 75%
+    - Cycle 1, Week 3+: 100%
+    - Cycle 2+: 100%
+
+    Warming account (account_status='warming'):
+    - Cycle 1: 30% entire cycle
+    - Cycle 2, Week 1: 50%
+    - Cycle 2, Week 2: 75%
+    - Cycle 2, Week 3+: 100%
+    - Cycle 3+: 100%
+
+    Args:
+        cycle_number: 1-based campaign cycle number
+        account_status: 'ready' or 'warming'
+        week_of_cycle: 1-based week within the current cycle
+
+    Returns:
+        float multiplier between 0.0 and 1.0 — apply to daily connection cap
+    """
+    if account_status == "warming":
+        if cycle_number == 1:
+            return 0.30
+        if cycle_number == 2:
+            if week_of_cycle == 1:
+                return 0.50
+            if week_of_cycle == 2:
+                return 0.75
+            return 1.0
+        # cycle 3+
+        return 1.0
+
+    # account_status == 'ready' (default)
+    if cycle_number == 1:
+        if week_of_cycle == 1:
+            return 0.50
+        if week_of_cycle == 2:
+            return 0.75
+        return 1.0
+    # cycle 2+
+    return 1.0
+
+
 # Singleton instance
 linkedin_warmup_service = LinkedInWarmupService()
 

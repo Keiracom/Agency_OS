@@ -9,12 +9,15 @@ Estimated cost: see COST_ESTIMATE below.
 Usage (after approval):
     python scripts/317_live_validation.py --domains 10 --dry-run
     python scripts/317_live_validation.py --domains 10
+    python scripts/317_live_validation.py --domains 600
 
 Flags:
     --dry-run       Skip paid API layers (ContactOut, Leadmagic) — free layers only
-    --domains N     Number of domains to process (default: 10, max: 50 for validation)
-    --category STR  GMB category (default: "dentist")
-    --location STR  Location slug (default: "sydney-nsw")
+    --domains N     Number of domains to process (default: 10)
+
+Multi-category: rotates 5 of 15 active AU categories (deterministic seed=42)
+Location: national (Australia) — no geographic filter
+Matches production v7 cycle behaviour for a generalist agency profile.
     --output PATH   JSON output file (default: scripts/output/317_validation.json)
 """
 from __future__ import annotations
@@ -58,14 +61,17 @@ COST_ESTIMATE_PER_250 = {"usd": 22.50, "aud": 34.90}
 async def run_validation(
     domains: int = 10,
     dry_run: bool = False,
-    category: str = "dentist",
-    location: str = "sydney-nsw",
     output_path: str = "scripts/output/317_validation.json",
 ) -> dict:
-    """Run the live v7 pipeline validation and return results."""
+    """Run the live v7 pipeline validation with multi-category national sweep.
+
+    Multi-category rotation: 5 of 15 active AU categories per run.
+    National location: no geographic filter (matches production v7 cycle).
+    """
+    location = "Australia"  # National — no geographic filter
 
     logger.info("=== Directive #317 — Live v7 Validation Run ===")
-    logger.info("domains=%d dry_run=%s category=%s location=%s", domains, dry_run, category, location)
+    logger.info("domains=%d dry_run=%s location=%s multi_category=True", domains, dry_run, location)
 
     if not dry_run:
         approx_aud = (domains / 10) * COST_ESTIMATE_PER_10["aud"]
@@ -123,10 +129,15 @@ async def run_validation(
             from src.utils.asyncpg_connection import get_asyncpg_pool
             from src.config.settings import settings
             from src.pipeline import intelligence as _intelligence_module
-            from src.config.category_registry import SERVICE_CATEGORY_MAP
+            from src.config.category_registry import ALL_DISCOVERY_CATEGORIES
+            import random
 
-            # Map human category name → DFS category code(s)
-            category_codes = SERVICE_CATEGORY_MAP.get(category) or [10514]
+            # Multi-category rotation: pick 5 of 15 active AU categories (matches v7 production)
+            all_cats = list(ALL_DISCOVERY_CATEGORIES)
+            random.seed(42)  # Deterministic for reproducibility
+            rotation_size = min(5, len(all_cats))
+            category_codes = random.sample(all_cats, rotation_size)
+            logger.info("Multi-category rotation: %d of %d categories selected: %s", rotation_size, len(all_cats), category_codes)
 
             # Build injectable dependencies
             db_url = settings.database_url
@@ -210,7 +221,7 @@ async def run_validation(
     summary = {
         "run_at": datetime.utcnow().isoformat(),
         "dry_run": dry_run,
-        "category": category,
+        "category": "multi_category_rotation",
         "location": location,
         "target_domains": domains,
         "prospects_built": len(results),
@@ -251,11 +262,9 @@ async def run_validation(
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Directive #317 live v7 validation run")
+    parser = argparse.ArgumentParser(description="Directive #317 live v7 validation run (multi-category, national)")
     parser.add_argument("--domains", type=int, default=10, help="Number of domains to process")
     parser.add_argument("--dry-run", action="store_true", help="Skip paid API calls (import check only)")
-    parser.add_argument("--category", default="dentist", help="GMB category")
-    parser.add_argument("--location", default="sydney-nsw", help="Location slug")
     parser.add_argument(
         "--output",
         default="scripts/output/317_validation.json",
@@ -267,8 +276,6 @@ def main():
         run_validation(
             domains=args.domains,
             dry_run=args.dry_run,
-            category=args.category,
-            location=args.location,
             output_path=args.output,
         )
     )

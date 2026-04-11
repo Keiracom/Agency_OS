@@ -24,9 +24,9 @@ SUSPECT_PATTERNS = [
     r"\betv_max\b",
 ]
 
-# Wide safe defaults introduced in #328.1 — not violations.
-# Any numeric default that is 0.0 or >= 999000 is considered a passthrough.
-SAFE_DEFAULTS = re.compile(r"=\s*(0\.0|0|999999\.0|999999)\s*,?\s*$")
+# None defaults are safe (they raise ValueError at runtime).
+# Only numeric defaults are violations.
+NONE_DEFAULT = re.compile(r"=\s*None\s*,?\s*$")
 
 
 def _is_exempt(filepath: str) -> bool:
@@ -63,8 +63,8 @@ def test_no_hardcoded_etv_windows():
                 # Must be a default parameter assignment with a numeric literal
                 if not re.search(rf'{pattern}\s*(?::\s*float\s*)?=\s*\d', stripped):
                     continue
-                # Skip safe wide-passthrough defaults (0.0 and 999999.0)
-                if SAFE_DEFAULTS.search(stripped):
+                # Skip None defaults (they raise ValueError at runtime — safe)
+                if NONE_DEFAULT.search(stripped):
                     continue
                 violations.append(f"{rel_path}:{i}: {stripped.strip()}")
 

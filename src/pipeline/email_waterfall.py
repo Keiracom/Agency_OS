@@ -7,14 +7,17 @@ Layer: 3 - pipeline
 Directive: #299, #300-FIX-4, #317
 
 Waterfall layers (short-circuit — returns on first hit):
-  Layer 0: Contact registry (free) — company_email from contact_data, unverified
-  Layer 1: Website HTML scrape (free) — mailto: links, email regex on cached HTML, unverified
-  Layer 1.5: ContactOut (1 credit, ~$0.03 USD) — LinkedIn → email, current_match = high confidence
-             Only runs if contactout_result pre-fetched by caller (no duplicate calls).
-             Freshness gate: current_match uses email directly; stale falls through to Leadmagic.
-  Layer 2: Leadmagic email finder ($0.015 USD) — API lookup by name + domain, verified
-           (fallback only — skipped if ContactOut returned current_match)
-  Layer 3: Bright Data LinkedIn enrichment ($0.00075 USD) — profile → email, unverified
+  Layer 0: Contact registry (free) — company_email from contact_data, name-match gated
+  Layer 1: ContactOut (DM-specific, verified) — PROMOTED above website HTML (#317.3)
+           current_match = email domain matches current employer → high confidence
+           stale = domain mismatch → falls through to Leadmagic
+  Layer 2: Website HTML scrape (free) — DEMOTED below ContactOut
+           Generic inbox penalty: sales@/info@/contact@ etc. do NOT short-circuit
+           — fall through to paid layers. Accepted as last-resort fallback only.
+  Layer 3: Leadmagic email finder ($0.015 USD) — API lookup by name + domain, verified
+  Layer 4: ContactOut stale fallback — stale email accepted after Leadmagic miss
+  Layer 4.5: Website generic fallback — generic inbox accepted after all paid miss
+  Layer 5: Bright Data LinkedIn enrichment ($0.00075 USD) — profile → email, unverified
 
 Semaphore: GLOBAL_SEM_LEADMAGIC (10 concurrent) added to global pool.
 """
@@ -90,6 +93,24 @@ _PLACEHOLDER_EMAIL_PATTERN = re.compile(
 
 _ALL_SAME_DIGIT_RE = re.compile(r"^(\d)\1{7,}$")  # 8+ same digits
 _SEQUENTIAL_PHONE_RE = re.compile(r"^(0?1234567|01234567|12345678|23456789|34567890)[\d]*$")
+
+# ── Generic shared inbox detection (#317.3) ───────────────────────────────────
+# These local parts indicate shared company inboxes, not personal DM emails.
+# When found, do NOT short-circuit — fall through to paid providers that can
+# find the actual DM-specific email.
+GENERIC_INBOX_PREFIXES: frozenset[str] = frozenset({
+    "sales", "info", "contact", "admin", "hello", "office",
+    "enquiries", "reception", "team", "mail", "general", "accounts",
+    "support", "help", "billing", "enquiry", "feedback", "marketing",
+})
+
+
+def _is_generic_inbox(email: str) -> bool:
+    """Return True if email local part is a known shared inbox prefix."""
+    if not email or "@" not in email:
+        return False
+    local = email.split("@")[0].lower().strip()
+    return local in GENERIC_INBOX_PREFIXES
 
 
 def is_placeholder_email(email: str) -> bool:
@@ -508,30 +529,19 @@ async def discover_email(
                     domain, email_val, dm_name, local,
                 )
 
-    # Layer 1: Website HTML (free, unverified)
-    if 1 not in skip:
-        result = _extract_emails_from_html(html or "", clean_domain, dm_name)
-        if result and result.email:
-            if is_placeholder_email(result.email):
-                logger.debug(
-                    "email_waterfall L1 placeholder rejected domain=%s email=%s",
-                    domain, result.email,
-                )
-                result = None  # fall through to next layer
-            else:
-                logger.info("email_waterfall L1 website domain=%s email=%s", domain, result.email)
-                return result
-
-    # Layer 1.5: ContactOut (pre-fetched by caller — no API call here)
+    # Layer 1: ContactOut (DM-specific, verified — PROMOTED above website HTML)
+    # Directive #317.3: ContactOut returns DM-specific emails that match the
+    # current employer domain. This is higher quality than any website scrape
+    # which may return generic shared inboxes (sales@, info@, contact@).
     # current_match = email domain == current employer domain → use directly
-    # stale = domain mismatch → include but fall through to Leadmagic for verification
+    # stale = domain mismatch → fall through to Leadmagic for verification
     if contactout_result:
         co_email = contactout_result.get("email")
         co_conf = contactout_result.get("email_confidence", "none")
         if co_email and co_conf == "current_match":
             if not is_placeholder_email(co_email):
                 logger.info(
-                    "email_waterfall L1.5 contactout current_match domain=%s email=%s",
+                    "email_waterfall L1 contactout current_match domain=%s email=%s",
                     domain, co_email,
                 )
                 return EmailResult(
@@ -542,13 +552,40 @@ async def discover_email(
                     cost_usd=0.0,    # cost charged at orchestrator level, not per layer
                 )
         elif co_email and co_conf == "stale":
-            # Stale email: ContactOut found something but domain doesn't match current
-            # employer. Fall through to Leadmagic to cross-verify. Keep stale as
-            # last-resort fallback below Layer 2.
             logger.debug(
-                "email_waterfall L1.5 contactout stale domain=%s email=%s — falling through to Leadmagic",
+                "email_waterfall L1 contactout stale domain=%s email=%s — falling through",
                 domain, co_email,
             )
+
+    # Layer 2: Website HTML (free, unverified — DEMOTED below ContactOut)
+    # Generic email penalty: if local part is a shared inbox name, flag as generic
+    # and fall through to Leadmagic rather than short-circuiting.
+    if 1 not in skip:
+        result = _extract_emails_from_html(html or "", clean_domain, dm_name)
+        if result and result.email:
+            if is_placeholder_email(result.email):
+                logger.debug(
+                    "email_waterfall L2 placeholder rejected domain=%s email=%s",
+                    domain, result.email,
+                )
+                result = None  # fall through to next layer
+            elif _is_generic_inbox(result.email):
+                # Generic shared inbox (sales@, info@, contact@, etc.)
+                # Do NOT short-circuit — fall through to paid layers that can
+                # find the actual DM-specific email. Keep as last-resort fallback.
+                logger.info(
+                    "email_waterfall L2 generic_inbox domain=%s email=%s — falling through to paid layers",
+                    domain, result.email,
+                )
+                # Store for potential fallback after paid layers miss
+                _generic_fallback = result
+            else:
+                logger.info("email_waterfall L2 website domain=%s email=%s", domain, result.email)
+                return result
+        else:
+            _generic_fallback = None
+    else:
+        _generic_fallback = None
 
     # Layer 2: Leadmagic find_email (verified — Leadmagic finds real address)
     if 2 not in skip and first and last:
@@ -575,7 +612,18 @@ async def discover_email(
                 cost_usd=0.0,
             )
 
-    # Layer 3: Bright Data (unverified)
+    # Generic fallback: if website HTML found a generic inbox (sales@, info@)
+    # and all paid layers missed, accept the generic as last resort before BD.
+    if _generic_fallback and _generic_fallback.email:
+        logger.info(
+            "email_waterfall generic_fallback domain=%s email=%s (paid layers missed, accepting generic)",
+            domain, _generic_fallback.email,
+        )
+        _generic_fallback.confidence = "low"
+        _generic_fallback.source = "website_generic"
+        return _generic_fallback
+
+    # Layer 5: Bright Data (unverified)
     if 3 not in skip:
         result = await _brightdata_lookup(dm_linkedin, clean_domain, company_name)
         if result and result.email:

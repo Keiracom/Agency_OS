@@ -1,15 +1,19 @@
 """
 Contract: src/pipeline/email_waterfall.py
-Purpose: 4-layer email discovery waterfall for pipeline v7.
+Purpose: 5-layer email discovery waterfall for pipeline v7.
          Runs after DM identification. Finds and verifies deliverable email
          addresses for decision makers before reachability scoring.
 Layer: 3 - pipeline
-Directive: #299, #300-FIX-4
+Directive: #299, #300-FIX-4, #317
 
 Waterfall layers (short-circuit — returns on first hit):
   Layer 0: Contact registry (free) — company_email from contact_data, unverified
   Layer 1: Website HTML scrape (free) — mailto: links, email regex on cached HTML, unverified
+  Layer 1.5: ContactOut (1 credit, ~$0.03 USD) — LinkedIn → email, current_match = high confidence
+             Only runs if contactout_result pre-fetched by caller (no duplicate calls).
+             Freshness gate: current_match uses email directly; stale falls through to Leadmagic.
   Layer 2: Leadmagic email finder ($0.015 USD) — API lookup by name + domain, verified
+           (fallback only — skipped if ContactOut returned current_match)
   Layer 3: Bright Data LinkedIn enrichment ($0.00075 USD) — profile → email, unverified
 
 Semaphore: GLOBAL_SEM_LEADMAGIC (10 concurrent) added to global pool.
@@ -437,11 +441,13 @@ async def discover_email(
     company_name: str | None = None,
     contact_data: dict | None = None,
     skip_layers: list[int] | None = None,
+    contactout_result: dict | None = None,
 ) -> EmailResult:
     """
     Email discovery waterfall.
     Layers 0-1 return unverified emails.
-    Layer 2 (Leadmagic) returns verified.
+    Layer 1.5 (ContactOut) returns high-confidence verified email when domain matches.
+    Layer 2 (Leadmagic) returns verified — fallback if ContactOut stale or missing.
     Layer 3 (Bright Data) returns unverified.
 
     Args:
@@ -452,6 +458,9 @@ async def discover_email(
         company_name: Company name for API lookup context
         contact_data: Pre-scraped contact data dict (may contain company_email)
         skip_layers: List of layer numbers to skip (e.g. [2,3] to skip paid)
+        contactout_result: Pre-fetched ContactOut enrichment dict (from
+            enrich_dm_via_contactout). Caller fetches once and passes to both
+            email and mobile waterfalls — no duplicate API calls.
 
     Returns:
         EmailResult with email, verified flag, source, confidence, cost_usd.
@@ -513,11 +522,58 @@ async def discover_email(
                 logger.info("email_waterfall L1 website domain=%s email=%s", domain, result.email)
                 return result
 
+    # Layer 1.5: ContactOut (pre-fetched by caller — no API call here)
+    # current_match = email domain == current employer domain → use directly
+    # stale = domain mismatch → include but fall through to Leadmagic for verification
+    if contactout_result:
+        co_email = contactout_result.get("email")
+        co_conf = contactout_result.get("email_confidence", "none")
+        if co_email and co_conf == "current_match":
+            if not is_placeholder_email(co_email):
+                logger.info(
+                    "email_waterfall L1.5 contactout current_match domain=%s email=%s",
+                    domain, co_email,
+                )
+                return EmailResult(
+                    email=co_email,
+                    verified=True,   # ContactOut verifies against current employer
+                    source="contactout",
+                    confidence="high",
+                    cost_usd=0.0,    # cost charged at orchestrator level, not per layer
+                )
+        elif co_email and co_conf == "stale":
+            # Stale email: ContactOut found something but domain doesn't match current
+            # employer. Fall through to Leadmagic to cross-verify. Keep stale as
+            # last-resort fallback below Layer 2.
+            logger.debug(
+                "email_waterfall L1.5 contactout stale domain=%s email=%s — falling through to Leadmagic",
+                domain, co_email,
+            )
+
     # Layer 2: Leadmagic find_email (verified — Leadmagic finds real address)
     if 2 not in skip and first and last:
         result = await _leadmagic_lookup(first, last, clean_domain, company_name)
         if result and result.email:
             return result
+
+    # Layer 2 fallback: ContactOut stale email (after Leadmagic miss)
+    # If Leadmagic found nothing, accept the stale ContactOut email rather than
+    # discarding it — stale is better than nothing.
+    if contactout_result:
+        co_email = contactout_result.get("email")
+        co_conf = contactout_result.get("email_confidence", "none")
+        if co_email and co_conf == "stale" and not is_placeholder_email(co_email):
+            logger.info(
+                "email_waterfall L2-fallback contactout stale domain=%s email=%s",
+                domain, co_email,
+            )
+            return EmailResult(
+                email=co_email,
+                verified=False,
+                source="contactout_stale",
+                confidence="medium",
+                cost_usd=0.0,
+            )
 
     # Layer 3: Bright Data (unverified)
     if 3 not in skip:

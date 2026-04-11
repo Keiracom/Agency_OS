@@ -237,27 +237,9 @@ def get_dncr_rewash_schedule() -> CronSchedule:
     )
 
 
-# ============================================
-# Item 20: CRM Sync Schedule
-# ============================================
-
-
-def get_crm_sync_schedule() -> IntervalSchedule:
-    """
-    CRM sync every 6 hours.
-
-    This is a safety net for missed CRM webhooks.
-    Polls HubSpot, Pipedrive, and Close for recent deal updates
-    to ensure complete data capture for blind conversions.
-
-    Returns:
-        IntervalSchedule: Every 6 hours
-    """
-    return IntervalSchedule(
-        interval=21600,  # 6 hours in seconds
-        timezone="Australia/Sydney",
-    )
-
+# PERMANENTLY REMOVED: crm_sync_flow (Directive #315, 2026-04-07)
+# Reason: Referenced dead GHL (GoHighLevel) schema. HubSpot is canonical CRM.
+# Do NOT recreate. If CRM sync is needed, build a new HubSpot-specific flow.
 
 # ============================================
 # Warmup Monitor Schedule (Domain Warmup Completion)
@@ -453,16 +435,6 @@ SCHEDULE_REGISTRY: dict[str, Any] = {
         "tags": ["campaigns", "evolution", "cis", "suggestions"],
         "parameters": {
             "force": False,  # Default: check eligibility
-        },
-    },
-    # Item 20: Two-way CRM Sync
-    "crm_sync": {
-        "schedule": get_crm_sync_schedule(),
-        "description": "CRM sync every 6 hours - safety net for missed webhooks (blind conversions)",
-        "work_queue": "agency-os-queue",
-        "tags": ["crm", "sync", "safety-net", "blind-conversions"],
-        "parameters": {
-            "since_hours": 24,  # Look back 24 hours for safety
         },
     },
     # Phase H, Item 44: Daily Digest Email

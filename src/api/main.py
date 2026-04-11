@@ -116,6 +116,17 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Redis connection failed: {e}")
 
+    # Verify Stripe configuration (fail loud, not silent)
+    try:
+        from src.integrations.stripe import StripeClient
+        StripeClient.validate_config()
+        logger.info("Stripe configuration verified")
+    except RuntimeError as e:
+        logger.error(str(e))
+        # In production, this is fatal — billing cannot silently fail
+        if settings.ENV == "production":
+            raise
+
     logger.info("Agency OS API started successfully")
 
     yield

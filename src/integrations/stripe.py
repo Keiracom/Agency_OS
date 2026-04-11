@@ -299,12 +299,25 @@ class StripeClient:
             api_key: Stripe secret key (uses settings if not provided)
             webhook_secret: Webhook endpoint secret for signature verification
         """
-        self._api_key = api_key or getattr(settings, "stripe_secret_key", None)
+        self._api_key = api_key or getattr(settings, "stripe_api_key", None)
         self._webhook_secret = webhook_secret or getattr(settings, "stripe_webhook_secret", None)
         self._stripe = None
 
         if not self._api_key:
             logger.warning("[Stripe] No API key configured - client will operate in stub mode")
+
+    @staticmethod
+    def validate_config() -> None:
+        """Raise at startup if Stripe keys are missing. Call from app lifespan."""
+        key = getattr(settings, "stripe_api_key", None)
+        if not key:
+            raise RuntimeError(
+                "[Stripe] STRIPE_API_KEY not set — billing will silently fail. "
+                "Set stripe_api_key in environment before starting."
+            )
+        webhook = getattr(settings, "stripe_webhook_secret", None)
+        if not webhook:
+            logger.warning("[Stripe] STRIPE_WEBHOOK_SECRET not set — webhooks will reject all events")
 
     def _get_stripe(self):
         """Lazy-load stripe module and configure API key."""

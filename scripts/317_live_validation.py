@@ -113,13 +113,32 @@ async def run_validation(
     else:
         # Full live run via PipelineOrchestrator
         try:
-            from src.pipeline.pipeline_orchestrator import PipelineOrchestrator, PipelineConfig
+            from src.pipeline.pipeline_orchestrator import PipelineOrchestrator
+            from src.pipeline.layer_2_discovery import Layer2Discovery
+            from src.pipeline.free_enrichment import FreeEnrichment
+            from src.pipeline.prospect_scorer import ProspectScorer
+            from src.pipeline.dm_identification import DMIdentification
+            from src.clients.dfs_labs_client import DFSLabsClient
+            from src.integrations.brightdata_client import BrightDataLinkedInClient
+            from src.utils.asyncpg_connection import get_asyncpg_pool
+            from src.config.settings import settings
+            from src.pipeline import intelligence as _intelligence_module
+            from src.config.category_registry import SERVICE_CATEGORY_MAP
 
-            config = PipelineConfig(
-                category=category,
-                location=location,
-                target_count=domains,
-            )
+            # Map human category name → DFS category code(s)
+            category_codes = SERVICE_CATEGORY_MAP.get(category) or [10514]
+
+            # Build injectable dependencies
+            db_url = settings.database_url
+            pool = await get_asyncpg_pool(db_url, min_size=1, max_size=10)
+
+            dfs_client = DFSLabsClient()
+            bd_client = BrightDataLinkedInClient()
+
+            discovery = Layer2Discovery(conn=pool, dfs=dfs_client)
+            free_enrichment = FreeEnrichment(conn=pool)
+            scorer = ProspectScorer()
+            dm_identification = DMIdentification(bd_client=bd_client, dfs_client=dfs_client)
 
             cards_received: list = []
 
@@ -134,8 +153,22 @@ async def run_validation(
                     card.dm_mobile,
                 )
 
-            orchestrator = PipelineOrchestrator(config=config, on_prospect_found=on_card)
-            pipeline_result = await orchestrator.run()
+            orchestrator = PipelineOrchestrator(
+                discovery=discovery,
+                free_enrichment=free_enrichment,
+                scorer=scorer,
+                dm_identification=dm_identification,
+                gmb_client=dfs_client,
+                intelligence=_intelligence_module,
+                on_card=on_card,
+            )
+            pipeline_result = await orchestrator.run(
+                category_codes=category_codes,
+                location=location,
+                target_count=domains,
+            )
+
+            await pool.close()
 
             for card in pipeline_result.prospects:
                 results.append({

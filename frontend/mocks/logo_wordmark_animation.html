@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agency OS — Wordmark to Mark Animation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700;1,900&family=DM+Sans:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --cream:      #F7F3EE;
+  --cream-alt:  #FBF8F4;
+  --surface:    #EDE8E0;
+  --ink:        #0C0A08;
+  --ink-2:      #2E2B26;
+  --ink-3:      #7A756D;
+  --ink-4:      #A8A298;
+  --amber:      #D4956A;
+  --rule:       rgba(12,10,8,0.08);
+  --rule-dark:  rgba(247,243,238,0.08);
+}
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--cream);
+  color: var(--ink);
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 300;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+}
+
+.page { max-width: 1240px; margin: 0 auto; padding: 72px 56px 120px; }
+
+/* ═══════════════════════════════════════════════════════════
+   WORDMARK ANIMATION
+   ═══════════════════════════════════════════════════════════ */
+
+.wordmark-anim {
+  font-family: 'Playfair Display', serif;
+  font-weight: 700;
+  font-size: 72px;
+  letter-spacing: -0.022em;
+  line-height: 1;
+  color: var(--ink);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  /* CSS custom props for calibrated positions */
+  --a-dx: 0px;
+  --a-dy: 0px;
+  --o-dx: 0px;
+  --o-dy: 0px;
+}
+
+.wordmark-anim.on-dark { color: var(--cream); }
+
+.letter {
+  display: inline-block;
+  will-change: transform, opacity;
+  position: relative;
+}
+
+.letter-o, .letter-s {
+  font-style: italic;
+  color: var(--amber);
+}
+
+/* ─── SHARED: "gency" and "S" fade during animation ─── */
+
+.wordmark-anim.animate .letter-fade {
+  animation: fade-out 0.55s cubic-bezier(0.4, 0, 0.2, 1) 0.35s forwards;
+}
+
+@keyframes fade-out {
+  0%   { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(6px); }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   VARIATION 01 — THE WRAP
+   A moves to center, grows. O follows, grows larger, wraps 
+   around the A. Final state: A inside a giant italic O.
+   ═══════════════════════════════════════════════════════════ */
+
+.wordmark-anim.var-wrap.animate .letter-a {
+  animation: a-to-center-wrap 1.6s cubic-bezier(0.65, 0, 0.35, 1) 0.4s forwards;
+  z-index: 3;
+}
+
+.wordmark-anim.var-wrap.animate .letter-o {
+  animation: o-wrap 1.7s cubic-bezier(0.65, 0, 0.35, 1) 0.55s forwards;
+  z-index: 2;
+}
+
+@keyframes a-to-center-wrap {
+  0%   { transform: translate(0, 0) scale(1); }
+  40%  { transform: translate(calc(var(--a-dx) * 0.5), calc(var(--a-dy) * 0.5)) scale(1.6); }
+  100% { transform: translate(var(--a-dx), var(--a-dy)) scale(2.6); }
+}
+
+@keyframes o-wrap {
+  0%   { transform: translate(0, 0) scale(1); }
+  30%  { transform: translate(calc(var(--o-dx) * 0.4), calc(var(--o-dy) * 0.4)) scale(1.4); }
+  70%  { transform: translate(calc(var(--o-dx) * 0.85), calc(var(--o-dy) * 0.85)) scale(3.8); }
+  100% { transform: translate(var(--o-dx), var(--o-dy)) scale(5.6); }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   VARIATION 02 — THE FOLD
+   A moves to center, grows. O follows, grows, then collapses 
+   vertically into the rubber band bar at the base of the A.
+   Final state: the committed rubber band A logo.
+   ═══════════════════════════════════════════════════════════ */
+
+.wordmark-anim.var-fold.animate .letter-a {
+  animation: a-to-center-fold 1.6s cubic-bezier(0.65, 0, 0.35, 1) 0.4s forwards;
+  z-index: 2;
+}
+
+.wordmark-anim.var-fold.animate .letter-o {
+  animation: o-to-rubber 2.1s cubic-bezier(0.65, 0, 0.35, 1) 0.55s forwards;
+  transform-origin: center center;
+  z-index: 3;
+}
+
+@keyframes a-to-center-fold {
+  0%   { transform: translate(0, 0) scale(1); }
+  40%  { transform: translate(calc(var(--a-dx) * 0.5), calc(var(--a-dy) * 0.5)) scale(1.6); }
+  100% { transform: translate(var(--a-dx), var(--a-dy)) scale(3.2); }
+}
+
+@keyframes o-to-rubber {
+  0% { 
+    transform: translate(0, 0) scale(1, 1);
+    color: var(--amber);
+  }
+  35% { 
+    transform: translate(calc(var(--o-dx) * 0.5), calc(var(--o-dy) * 0.5)) scale(1.8, 1.8);
+    color: var(--amber);
+  }
+  60% { 
+    transform: translate(var(--o-dx), calc(var(--o-dy) + 0.45em)) scale(3.6, 3.4);
+    color: var(--amber);
+  }
+  /* At 75%, the O starts collapsing vertically into a horizontal bar */
+  75% { 
+    transform: translate(var(--o-dx), calc(var(--o-dy) + 0.68em)) scale(3.9, 0.6);
+  }
+  85% { 
+    transform: translate(var(--o-dx), calc(var(--o-dy) + 0.68em)) scale(3.9, 0.18);
+  }
+  100% { 
+    transform: translate(var(--o-dx), calc(var(--o-dy) + 0.68em)) scale(3.9, 0.14);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PAGE STYLES
+   ═══════════════════════════════════════════════════════════ */
+
+.intro {
+  padding-bottom: 56px;
+  margin-bottom: 72px;
+  border-bottom: 1px solid var(--rule);
+}
+.intro-eyebrow {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--amber);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+.intro-eyebrow::before { content: ''; width: 24px; height: 1px; background: var(--amber); }
+.intro h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(44px, 5.6vw, 76px);
+  line-height: 1.03;
+  font-weight: 700;
+  letter-spacing: -.025em;
+  color: var(--ink);
+  margin-bottom: 28px;
+}
+.intro h1 em { font-style: italic; color: var(--amber); }
+.intro-sub {
+  font-size: 16px;
+  line-height: 1.78;
+  color: var(--ink-2);
+  max-width: 680px;
+}
+.intro-sub b { font-weight: 500; color: var(--ink); }
+
+/* ─── VARIATION CARD ─── */
+.var-card { margin-bottom: 96px; }
+
+.var-head {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 32px;
+  align-items: baseline;
+  padding-bottom: 22px;
+  margin-bottom: 32px;
+  border-bottom: 1px solid var(--rule);
+}
+.var-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--amber);
+}
+.var-name {
+  font-family: 'Playfair Display', serif;
+  font-size: 34px;
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -.018em;
+  color: var(--ink);
+}
+.var-name em { font-style: italic; color: var(--amber); }
+.var-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .06em;
+  color: var(--ink-3);
+}
+
+/* ─── STAGE ─── */
+.stage-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+.stage {
+  border: 1px solid var(--rule);
+  padding: 80px 40px;
+  min-height: 360px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+.stage.light { background: var(--cream-alt); }
+.stage.dark { background: var(--ink); border-color: var(--rule-dark); }
+
+.stage-label {
+  position: absolute;
+  top: 16px;
+  left: 22px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+}
+.stage.dark .stage-label { color: rgba(247,243,238,0.3); }
+
+.replay-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: var(--ink);
+  color: var(--cream);
+  border: none;
+  padding: 9px 16px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background .15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 10;
+}
+.replay-btn:hover { background: var(--amber); color: var(--ink); }
+.replay-btn svg { width: 11px; height: 11px; }
+.stage.dark .replay-btn { background: var(--amber); color: var(--ink); }
+.stage.dark .replay-btn:hover { background: var(--cream); color: var(--ink); }
+
+/* ─── RATIONALE ─── */
+.rationale {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+  padding-top: 20px;
+}
+.rat-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 10px;
+}
+.rat-text {
+  font-size: 14px;
+  line-height: 1.72;
+  color: var(--ink-2);
+}
+.rat-text b { font-weight: 500; color: var(--ink); }
+
+/* ─── QUESTION ─── */
+.question-box {
+  background: var(--ink);
+  color: var(--cream);
+  padding: 72px 64px;
+  margin-top: 64px;
+  position: relative;
+  overflow: hidden;
+}
+.question-box::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 520px;
+  height: 520px;
+  background: radial-gradient(circle, rgba(212,149,106,0.12) 0%, transparent 60%);
+  pointer-events: none;
+}
+.q-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 22px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+  z-index: 1;
+}
+.q-label::before { content: ''; width: 24px; height: 1px; background: var(--amber); }
+.q-title {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(34px, 4.4vw, 52px);
+  line-height: 1.05;
+  font-weight: 700;
+  letter-spacing: -.022em;
+  color: var(--cream);
+  margin-bottom: 32px;
+  position: relative;
+  z-index: 1;
+}
+.q-title em { font-style: italic; color: var(--amber); }
+.q-body {
+  font-size: 15px;
+  line-height: 1.82;
+  color: rgba(247,243,238,0.75);
+  max-width: 720px;
+  position: relative;
+  z-index: 1;
+}
+.q-body p { margin-bottom: 14px; }
+.q-body b { color: var(--cream); font-weight: 400; }
+
+/* ─── RESPONSIVE ─── */
+@media(max-width: 900px) {
+  .page { padding: 40px 24px 80px; }
+  .stage-row { grid-template-columns: 1fr; }
+  .stage { padding: 60px 24px; min-height: 280px; }
+  .rationale { grid-template-columns: 1fr; gap: 24px; }
+  .var-head { grid-template-columns: 1fr; gap: 10px; }
+  .wordmark-anim { font-size: 48px !important; }
+  .question-box { padding: 48px 28px; }
+}
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <!-- INTRO -->
+  <section class="intro">
+    <div class="intro-eyebrow">Your vision · Wordmark to mark</div>
+    <h1>The <em>reveal.</em></h1>
+    <p class="intro-sub">
+      You described an animation sequence I hadn't considered and it's much better than anything I showed you. <b>Start with the wordmark. The A moves. The O wraps around the A.</b> The logo isn't dropped on the viewer — it's <b>assembled</b> in front of them from the wordmark they already know how to read.<br><br>
+      There's a question inside your description though: does the O wrap around the A as a <b>new logo</b> (A inside a circle — we'd be abandoning the rubber band), or does the O <b>transform into</b> the rubber band bar we already committed to? Both versions below. <b>You decide.</b>
+    </p>
+  </section>
+
+  <!-- ═══ VARIATION 01 — THE WRAP ═══ -->
+  <section class="var-card">
+    <div class="var-head">
+      <div class="var-num">Variation 01</div>
+      <h2 class="var-name">The <em>Wrap.</em></h2>
+      <div class="var-tag">O becomes a ring · A inside O · New logo direction</div>
+    </div>
+
+    <div class="stage-row">
+      <div class="stage light">
+        <div class="stage-label">LIGHT</div>
+        <button class="replay-btn" onclick="replayAnim('wrap-1')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+          Replay
+        </button>
+        <div class="wordmark-anim var-wrap" id="wrap-1">
+          <span class="letter letter-a">A</span>
+          <span class="letter letter-fade">g</span>
+          <span class="letter letter-fade">e</span>
+          <span class="letter letter-fade">n</span>
+          <span class="letter letter-fade">c</span>
+          <span class="letter letter-fade">y</span>
+          <span class="letter letter-o">O</span>
+          <span class="letter letter-s letter-fade">S</span>
+        </div>
+      </div>
+      <div class="stage dark">
+        <div class="stage-label">DARK</div>
+        <button class="replay-btn" onclick="replayAnim('wrap-2')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+          Replay
+        </button>
+        <div class="wordmark-anim var-wrap on-dark" id="wrap-2">
+          <span class="letter letter-a">A</span>
+          <span class="letter letter-fade">g</span>
+          <span class="letter letter-fade">e</span>
+          <span class="letter letter-fade">n</span>
+          <span class="letter letter-fade">c</span>
+          <span class="letter letter-fade">y</span>
+          <span class="letter letter-o">O</span>
+          <span class="letter letter-s letter-fade">S</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="rationale">
+      <div>
+        <div class="rat-label">What happens</div>
+        <div class="rat-text">
+          The wordmark holds for a beat. Then "gency" and "S" fade and drop. The <b>A glides to the center and grows</b>. The <b>O follows, grows larger, and wraps around the A</b> — the italic O's counter becomes the frame, the A nests inside it. Final mark: <b>A enclosed in a giant italic amber O</b>.
+        </div>
+      </div>
+      <div>
+        <div class="rat-label">What this means</div>
+        <div class="rat-text">
+          This is a <b>new logo direction</b>. Not the rubber band A. The metaphor is <b>containment</b> — the OS (ring) encircles and supports the Agency (A). It's literal, it's narrative, and it gives you a completely different mark to live with. If this speaks louder than the rubber band, we abandon the rubber band and commit to the Wrap.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ VARIATION 02 — THE FOLD ═══ -->
+  <section class="var-card">
+    <div class="var-head">
+      <div class="var-num">Variation 02</div>
+      <h2 class="var-name">The <em>Fold.</em></h2>
+      <div class="var-tag">O collapses into the rubber band · Lands at the committed logo</div>
+    </div>
+
+    <div class="stage-row">
+      <div class="stage light">
+        <div class="stage-label">LIGHT</div>
+        <button class="replay-btn" onclick="replayAnim('fold-1')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+          Replay
+        </button>
+        <div class="wordmark-anim var-fold" id="fold-1">
+          <span class="letter letter-a">A</span>
+          <span class="letter letter-fade">g</span>
+          <span class="letter letter-fade">e</span>
+          <span class="letter letter-fade">n</span>
+          <span class="letter letter-fade">c</span>
+          <span class="letter letter-fade">y</span>
+          <span class="letter letter-o">O</span>
+          <span class="letter letter-s letter-fade">S</span>
+        </div>
+      </div>
+      <div class="stage dark">
+        <div class="stage-label">DARK</div>
+        <button class="replay-btn" onclick="replayAnim('fold-2')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+          Replay
+        </button>
+        <div class="wordmark-anim var-fold on-dark" id="fold-2">
+          <span class="letter letter-a">A</span>
+          <span class="letter letter-fade">g</span>
+          <span class="letter letter-fade">e</span>
+          <span class="letter letter-fade">n</span>
+          <span class="letter letter-fade">c</span>
+          <span class="letter letter-fade">y</span>
+          <span class="letter letter-o">O</span>
+          <span class="letter letter-s letter-fade">S</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="rationale">
+      <div>
+        <div class="rat-label">What happens</div>
+        <div class="rat-text">
+          Same opening beat. "gency" and "S" fade. The A moves to center and grows. But instead of wrapping around, the <b>O travels down and collapses vertically</b> — crushing its round shape into a horizontal bar that lands at the base of the A. <b>The O literally becomes the rubber band.</b>
+        </div>
+      </div>
+      <div>
+        <div class="rat-label">What this means</div>
+        <div class="rat-text">
+          This is the <b>origin story</b> of the committed logo. The animation doesn't give you a new mark — it shows you where the rubber band <b>came from</b>. The O from "OS" folds itself into the bar that binds the A. Wordmark → mark. The animation is the creation myth, playing every time a new prospect lands on the site.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ QUESTION ═══ -->
+  <section class="question-box">
+    <div class="q-label">The question</div>
+    <h2 class="q-title">Wrap or fold?<br><em>Your call.</em></h2>
+    <div class="q-body">
+      <p><b>Variation 01 · The Wrap</b> is a new logo. If this speaks louder than the rubber band, we abandon the rubber band and the Wrap becomes the Agency OS mark. The animation isn't decoration — it's the <b>logo reveal</b>.</p>
+      <p><b>Variation 02 · The Fold</b> keeps the rubber band as the final mark and uses the animation as its <b>origin story</b>. Every time the page loads, the wordmark folds itself into the mark the viewer is about to live with. This is my pick because it ties everything together — the wordmark and the mark aren't separate assets, they're <b>two states of the same identity</b>.</p>
+      <p>Watch both. Replay them a few times. Both light and dark. Tell me which one speaks to you — and I'll tune the timing, the easing, and the final positions until it's exact. If neither is right, tell me what's wrong and we iterate one more time.</p>
+    </div>
+  </section>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// CALIBRATION — calculates pixel deltas for each letter to 
+// move from its natural position to the center of the container
+// ═══════════════════════════════════════════════════════════
+
+function calibrate(wordmarkEl) {
+  // Remove animate class to get natural positions
+  const wasAnimating = wordmarkEl.classList.contains('animate');
+  wordmarkEl.classList.remove('animate');
+  // Force reflow
+  void wordmarkEl.offsetWidth;
+  
+  const letterA = wordmarkEl.querySelector('.letter-a');
+  const letterO = wordmarkEl.querySelector('.letter-o');
+  
+  if (!letterA || !letterO) return;
+  
+  // Reset transforms before measuring
+  letterA.style.transform = '';
+  letterO.style.transform = '';
+  void wordmarkEl.offsetWidth;
+  
+  const containerRect = wordmarkEl.getBoundingClientRect();
+  const aRect = letterA.getBoundingClientRect();
+  const oRect = letterO.getBoundingClientRect();
+  
+  const cx = containerRect.left + containerRect.width / 2;
+  const cy = containerRect.top + containerRect.height / 2;
+  
+  const aDx = cx - (aRect.left + aRect.width / 2);
+  const aDy = cy - (aRect.top + aRect.height / 2);
+  const oDx = cx - (oRect.left + oRect.width / 2);
+  const oDy = cy - (oRect.top + oRect.height / 2);
+  
+  wordmarkEl.style.setProperty('--a-dx', `${aDx}px`);
+  wordmarkEl.style.setProperty('--a-dy', `${aDy}px`);
+  wordmarkEl.style.setProperty('--o-dx', `${oDx}px`);
+  wordmarkEl.style.setProperty('--o-dy', `${oDy}px`);
+  
+  if (wasAnimating) {
+    void wordmarkEl.offsetWidth;
+    wordmarkEl.classList.add('animate');
+  }
+}
+
+function replayAnim(id) {
+  const el = document.getElementById(id);
+  el.classList.remove('animate');
+  // Force reflow
+  void el.offsetWidth;
+  // Re-calibrate in case window was resized
+  calibrate(el);
+  // Small delay to ensure reset, then animate
+  setTimeout(() => {
+    el.classList.add('animate');
+  }, 20);
+}
+
+// On page load: calibrate all and auto-play
+window.addEventListener('load', () => {
+  const allAnims = document.querySelectorAll('.wordmark-anim');
+  allAnims.forEach(el => calibrate(el));
+  
+  // Stagger the auto-play so you can see each one
+  setTimeout(() => {
+    allAnims.forEach((el, i) => {
+      setTimeout(() => {
+        el.classList.add('animate');
+      }, i * 400);
+    });
+  }, 400);
+});
+
+// Recalibrate on resize
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    document.querySelectorAll('.wordmark-anim').forEach(el => calibrate(el));
+  }, 150);
+});
+</script>
+
+</body>
+</html>

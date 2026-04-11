@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agency OS — Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400;1,700&family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --cream:   #F7F3EE;
+  --surface: #EDE8E0;
+  --surface-2: #E4DED3;
+  --ink:     #0C0A08;
+  --ink-2:   #2E2B26;
+  --ink-3:   #7A756D;
+  --ink-4:   #A8A298;
+  --amber:   #D4956A;
+  --amber-b: rgba(212,149,106,0.28);
+  --amber-d: rgba(212,149,106,0.10);
+  --rule:    rgba(12,10,8,0.08);
+  --rule-2:  rgba(12,10,8,0.14);
+  --rule-i:  rgba(255,255,255,0.08);
+  --green:   #7FA688;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--cream);
+  color: var(--ink);
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 300;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ═══════════════ TOP BAR ═══════════════ */
+.topbar {
+  position: fixed; top: 0; left: 0; right: 0;
+  background: rgba(247,243,238,.92);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--rule);
+  z-index: 100;
+  padding: 18px 48px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.topbar-l { display: flex; align-items: center; gap: 40px; }
+.logo {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px; letter-spacing: .18em; text-transform: uppercase; color: var(--ink);
+}
+.logo em { font-style: normal; color: var(--amber); }
+.nav-links { display: flex; gap: 28px; }
+.nav-link {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--ink-3); text-decoration: none; transition: color .2s;
+  padding: 4px 0; border-bottom: 1px solid transparent;
+}
+.nav-link:hover { color: var(--amber); }
+.nav-link.on { color: var(--ink); border-bottom-color: var(--amber); }
+.topbar-r { display: flex; align-items: center; gap: 18px; }
+.pause-btn {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 18px; background: transparent;
+  border: 1px solid var(--rule-2);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--ink-2); cursor: pointer; transition: all .25s;
+}
+.pause-btn:hover { border-color: var(--amber); color: var(--amber); }
+.pause-btn::before {
+  content: ''; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--amber);
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: .5; transform: scale(1.3); }
+}
+.user-chip {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: .06em; color: var(--ink-3);
+}
+
+/* ═══════════════ MAIN STAGE ═══════════════ */
+.stage { padding: 100px 48px 80px; max-width: 1360px; margin: 0 auto; }
+
+/* ─── CYCLE HEADER ─── */
+.cycle-header {
+  display: grid; grid-template-columns: 1fr auto;
+  gap: 40px; align-items: start;
+  margin-bottom: 44px; padding-bottom: 32px;
+  border-bottom: 1px solid var(--rule);
+}
+.cycle-eyebrow {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: .18em; text-transform: uppercase;
+  color: var(--amber); margin-bottom: 14px;
+  display: flex; align-items: center; gap: 12px;
+}
+.cycle-eyebrow::before { content: ''; width: 26px; height: 1px; background: var(--amber); }
+.cycle-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 38px; font-weight: 700; line-height: 1.1;
+  letter-spacing: -.02em; margin-bottom: 10px;
+}
+.cycle-title em { font-style: italic; color: var(--amber); }
+.cycle-sub { font-size: 15px; color: var(--ink-3); line-height: 1.6; max-width: 540px; }
+.cycle-timer { text-align: right; padding-left: 40px; border-left: 1px solid var(--rule); }
+.cycle-timer-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--ink-3); margin-bottom: 12px;
+}
+.cycle-timer-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 34px; font-weight: 500; color: var(--ink);
+  letter-spacing: -.02em; line-height: 1; margin-bottom: 8px;
+}
+.cycle-timer-value em { font-style: normal; color: var(--amber); }
+.cycle-timer-detail {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; letter-spacing: .1em; color: var(--ink-3);
+}
+
+/* ─── PIPELINE STAGES (4-cell strip) ─── */
+.pipeline-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; letter-spacing: .18em; text-transform: uppercase;
+  color: var(--ink-3); margin-bottom: 18px;
+  display: flex; align-items: center; gap: 12px;
+}
+.pipeline-label::after { content: ''; flex: 1; height: 1px; background: var(--rule); }
+
+.pipeline {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 1px; background: var(--rule); border: 1px solid var(--rule);
+  margin-bottom: 44px;
+}
+.pipe-cell {
+  background: var(--cream); padding: 26px 26px 28px;
+  transition: background .3s; position: relative; overflow: hidden;
+}
+.pipe-cell.active { background: var(--surface); }
+.pipe-cell.active::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0;
+  height: 2px; background: var(--amber);
+  animation: barPulse 2s ease-in-out infinite;
+}
+@keyframes barPulse { 0%,100%{ opacity:.3; } 50%{ opacity:1; } }
+.pipe-cell .num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--ink-3); margin-bottom: 12px;
+}
+.pipe-cell.active .num { color: var(--amber); }
+.pipe-cell .name { font-size: 14px; font-weight: 500; color: var(--ink); margin-bottom: 18px; }
+.pipe-cell .count {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 28px; font-weight: 500; color: var(--ink);
+  line-height: 1; margin-bottom: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.pipe-cell.active .count { color: var(--amber); }
+.pipe-cell .detail {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; letter-spacing: .08em; color: var(--ink-3);
+}
+.pipe-cell .detail.live {
+  color: var(--amber); display: flex; align-items: center; gap: 6px;
+}
+.pipe-cell .detail.live::before {
+  content: ''; width: 5px; height: 5px; border-radius: 50%;
+  background: var(--amber); animation: blink 1.4s ease-in-out infinite;
+}
+@keyframes blink { 0%,100%{ opacity:1; } 50%{ opacity:.25; } }
+
+/* ─── LEADERBOARD TABLE ─── */
+.leaderboard-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; letter-spacing: .18em; text-transform: uppercase;
+  color: var(--ink-3); margin-bottom: 18px;
+  display: flex; align-items: center; gap: 12px;
+}
+.leaderboard-label::after { content: ''; flex: 1; height: 1px; background: var(--rule); }
+.leaderboard-label .tag {
+  font-size: 9px; letter-spacing: .1em;
+  padding: 3px 10px; margin-left: 8px;
+}
+.leaderboard-label .tag.demo {
+  background: var(--amber-d); color: var(--amber);
+}
+.leaderboard-label .tag.live {
+  background: rgba(127,166,136,.12); color: var(--green);
+}
+
+.leaderboard {
+  border: 1px solid var(--rule);
+  margin-bottom: 44px;
+}
+.lb-head {
+  display: grid;
+  grid-template-columns: 48px 1.4fr 1fr .7fr .7fr .7fr 120px;
+  gap: 0;
+  padding: 14px 24px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--rule);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--ink-3);
+}
+.lb-row {
+  display: grid;
+  grid-template-columns: 48px 1.4fr 1fr .7fr .7fr .7fr 120px;
+  gap: 0;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--rule);
+  align-items: center;
+  font-size: 13px;
+  color: var(--ink-2);
+  transition: all .5s cubic-bezier(.2,.8,.2,1);
+  background: var(--cream);
+}
+.lb-row:last-child { border-bottom: none; }
+.lb-row:hover { background: var(--surface); }
+
+.lb-row .rank {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; font-weight: 500;
+  color: var(--ink-3);
+}
+.lb-row .rank.top3 { color: var(--amber); }
+
+.lb-row .company { font-weight: 500; color: var(--ink); }
+.lb-row .company .sub {
+  font-size: 11px; color: var(--ink-3); font-weight: 300;
+  display: block; margin-top: 2px;
+}
+
+.lb-row .industry { font-size: 12px; color: var(--ink-3); }
+
+.lb-row .score {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 15px; font-weight: 500;
+}
+.lb-row .score.high { color: var(--amber); }
+.lb-row .score.med { color: var(--ink); }
+.lb-row .score.low { color: var(--ink-3); }
+
+.lb-row .signals {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; color: var(--ink-3);
+}
+
+.lb-row .status-pill {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; letter-spacing: .08em; text-transform: uppercase;
+  padding: 5px 12px; text-align: center;
+}
+.status-pill.drafted { background: var(--amber-d); color: var(--amber); }
+.status-pill.scoring { background: rgba(12,10,8,.06); color: var(--ink-3); }
+.status-pill.enriching { background: rgba(12,10,8,.04); color: var(--ink-4); }
+
+/* Row reveal animation */
+.lb-row.reveal {
+  animation: rowReveal .6s cubic-bezier(.2,.8,.2,1) backwards;
+}
+@keyframes rowReveal {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+/* Row shuffle animation */
+.lb-row.shuffle {
+  transition: transform .8s cubic-bezier(.2,.8,.2,1), opacity .4s;
+}
+
+/* ─── EMPTY STATE (shown when tour ends but data not ready) ─── */
+.empty-state {
+  display: none;
+  padding: 80px 0;
+  text-align: center;
+}
+.empty-state.on { display: block; animation: fadeIn .6s; }
+
+.empty-pipeline-visual {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  margin-bottom: 48px;
+}
+.empty-node {
+  width: 64px; height: 64px;
+  border: 1px solid var(--rule-2);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--ink-3);
+  position: relative;
+}
+.empty-node.working {
+  border-color: var(--amber);
+  color: var(--amber);
+}
+.empty-node.working::before {
+  content: ''; position: absolute; top: -1px; left: 0; right: 0;
+  height: 2px; background: var(--amber);
+  animation: barPulse 2s ease-in-out infinite;
+}
+.empty-connector {
+  width: 40px; height: 1px;
+  background: var(--rule-2);
+}
+.empty-connector.active { background: var(--amber); }
+
+.empty-h {
+  font-family: 'Playfair Display', serif;
+  font-size: 28px; font-weight: 700;
+  line-height: 1.15; margin-bottom: 14px;
+}
+.empty-h em { font-style: italic; color: var(--amber); }
+.empty-p {
+  font-size: 15px; color: var(--ink-3);
+  line-height: 1.7; max-width: 460px;
+  margin: 0 auto 28px;
+}
+.empty-timer {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; letter-spacing: .08em;
+  color: var(--amber);
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.empty-timer::before {
+  content: ''; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--amber); animation: blink 1.4s ease-in-out infinite;
+}
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* ═══════════════ MAYA OVERLAY ═══════════════ */
+.maya-overlay {
+  position: fixed;
+  bottom: 32px; right: 32px;
+  z-index: 200;
+  display: none;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 16px;
+  max-width: 420px;
+}
+.maya-overlay.on { display: flex; animation: mayaIn .6s cubic-bezier(.2,.8,.2,1); }
+@keyframes mayaIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.maya-bubble {
+  background: var(--ink);
+  color: var(--cream);
+  padding: 28px 32px 24px;
+  position: relative;
+  box-shadow: 0 16px 48px rgba(12,10,8,.18);
+  max-width: 400px;
+  width: 100%;
+}
+.maya-bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -8px; right: 48px;
+  width: 16px; height: 16px;
+  background: var(--ink);
+  transform: rotate(45deg);
+}
+
+.maya-name-row {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 16px;
+}
+.maya-avatar {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: var(--amber);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.maya-avatar span {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px; font-weight: 500; color: var(--ink);
+}
+.maya-name {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--amber);
+}
+.maya-role {
+  font-size: 10px; color: rgba(247,243,238,.5);
+}
+
+.maya-text {
+  font-size: 14px;
+  color: rgba(247,243,238,.85);
+  line-height: 1.7;
+  margin-bottom: 20px;
+  min-height: 80px;
+}
+.maya-text b { color: #F7F3EE; font-weight: 500; }
+.maya-text em { color: var(--amber); font-style: normal; }
+
+.maya-highlight-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 10px;
+  display: none;
+}
+.maya-highlight-label.on { display: block; }
+
+.maya-controls {
+  display: flex; align-items: center; justify-content: space-between;
+}
+.maya-progress {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; letter-spacing: .1em;
+  color: rgba(247,243,238,.45);
+}
+.maya-btns { display: flex; gap: 10px; }
+.maya-btn {
+  padding: 8px 18px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px; font-weight: 500;
+  border: none; cursor: pointer;
+  transition: all .2s;
+}
+.maya-btn-skip {
+  background: transparent;
+  color: rgba(247,243,238,.5);
+  border: 1px solid rgba(255,255,255,.12);
+}
+.maya-btn-skip:hover { color: var(--amber); border-color: var(--amber); }
+.maya-btn-next {
+  background: var(--amber);
+  color: var(--ink);
+}
+.maya-btn-next:hover { opacity: .88; }
+
+/* Highlight ring for dashboard sections Maya is talking about */
+.highlight-ring {
+  position: relative;
+}
+.highlight-ring.active {
+  outline: 2px solid var(--amber);
+  outline-offset: 6px;
+  box-shadow: 0 0 0 8px rgba(212,149,106,.08);
+  transition: all .4s cubic-bezier(.2,.8,.2,1);
+}
+
+/* ═══════════════ HELPER BAR ═══════════════ */
+.helper-bar {
+  margin-top: 44px;
+  padding: 32px 40px;
+  background: var(--surface);
+  display: grid; grid-template-columns: auto 1fr auto;
+  gap: 28px; align-items: center;
+}
+.helper-avatar {
+  width: 52px; height: 52px; border-radius: 50%;
+  background: var(--ink);
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--amber-b); flex-shrink: 0;
+}
+.helper-avatar span {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px; font-weight: 500; color: var(--amber);
+}
+.helper-text {
+  font-family: 'Playfair Display', serif;
+  font-style: italic; font-size: 16px;
+  color: var(--ink); line-height: 1.4;
+}
+.helper-sub {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: .08em; color: var(--ink-3);
+  margin-top: 4px;
+}
+.helper-cta {
+  padding: 11px 20px; background: transparent;
+  border: 1px solid var(--ink);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px; font-weight: 500;
+  color: var(--ink); cursor: pointer;
+  transition: all .25s; text-decoration: none;
+  white-space: nowrap;
+}
+.helper-cta:hover { background: var(--ink); color: var(--cream); }
+
+/* ═══════════════ DEV CONTROLS ═══════════════ */
+.dev-controls {
+  position: fixed; bottom: 24px; left: 24px;
+  background: var(--ink); color: var(--cream);
+  padding: 14px 18px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: .08em;
+  z-index: 300; display: flex; align-items: center; gap: 10px;
+  box-shadow: 0 12px 32px rgba(12,10,8,.2);
+}
+.dev-controls span { color: rgba(247,243,238,.5); }
+.dev-btn {
+  background: transparent; border: 1px solid rgba(255,255,255,.2);
+  color: #F7F3EE; padding: 5px 10px;
+  font-family: inherit; font-size: 10px; letter-spacing: .06em;
+  cursor: pointer; transition: all .2s;
+}
+.dev-btn:hover { background: var(--amber); color: var(--ink); border-color: var(--amber); }
+
+/* ═══════════════ RESPONSIVE ═══════════════ */
+@media (max-width: 1000px) {
+  .topbar { padding: 16px 24px; }
+  .nav-links { display: none; }
+  .user-chip { display: none; }
+  .stage { padding: 90px 24px 60px; }
+  .cycle-header { grid-template-columns: 1fr; gap: 24px; }
+  .cycle-timer { text-align: left; padding-left: 0; border-left: none; padding-top: 20px; border-top: 1px solid var(--rule); }
+  .cycle-title { font-size: 28px; }
+  .pipeline { grid-template-columns: 1fr 1fr; }
+  .lb-head, .lb-row { grid-template-columns: 40px 1.2fr .8fr .6fr 90px; }
+  .lb-head > :nth-child(5), .lb-head > :nth-child(6),
+  .lb-row > :nth-child(5), .lb-row > :nth-child(6) { display: none; }
+  .maya-overlay { bottom: 20px; right: 20px; max-width: 340px; }
+  .maya-bubble { padding: 22px 24px 20px; }
+  .helper-bar { grid-template-columns: 1fr; gap: 16px; padding: 24px; text-align: center; }
+  .helper-avatar { margin: 0 auto; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ TOP BAR ═══════════════ -->
+<div class="topbar">
+  <div class="topbar-l">
+    <div class="logo">Agency<em>OS</em></div>
+    <div class="nav-links">
+      <a href="#" class="nav-link on">Overview</a>
+      <a href="#" class="nav-link">Pipeline</a>
+      <a href="#" class="nav-link">Outreach</a>
+      <a href="#" class="nav-link">Meetings</a>
+      <a href="#" class="nav-link">Account</a>
+    </div>
+  </div>
+  <div class="topbar-r">
+    <button class="pause-btn" id="highlightPause">Pause Cycle</button>
+    <span class="user-chip">dave@agencyxos.ai</span>
+  </div>
+</div>
+
+<!-- ═══════════════ MAIN STAGE ═══════════════ -->
+<div class="stage">
+
+  <!-- Cycle header -->
+  <div class="cycle-header" id="highlightHeader">
+    <div>
+      <div class="cycle-eyebrow">Cycle 01 · Ignition · Founding rate</div>
+      <h1 class="cycle-title" id="cycleTitle">Your prospects are <em>on their way.</em></h1>
+      <p class="cycle-sub" id="cycleSub">Discovery is running across NSW and VIC right now. While we work, let me show you what everything means.</p>
+    </div>
+    <div class="cycle-timer">
+      <div class="cycle-timer-label">Cycle day</div>
+      <div class="cycle-timer-value"><em>01</em>/30</div>
+      <div class="cycle-timer-detail">Started 14:47 · Sydney</div>
+    </div>
+  </div>
+
+  <!-- Pipeline strip -->
+  <div class="pipeline-label" id="highlightPipeline">Pipeline status</div>
+  <div class="pipeline" id="pipelineStrip">
+    <div class="pipe-cell active" id="pipe1">
+      <div class="num">01 · Discovering</div>
+      <div class="name">Finding prospects</div>
+      <div class="count" id="cnt1">847</div>
+      <div class="detail live">Scanning categories</div>
+    </div>
+    <div class="pipe-cell" id="pipe2">
+      <div class="num">02 · Queued</div>
+      <div class="name">Enriching signals</div>
+      <div class="count" id="cnt2">0</div>
+      <div class="detail">Waiting for discovery</div>
+    </div>
+    <div class="pipe-cell" id="pipe3">
+      <div class="num">03 · Queued</div>
+      <div class="name">Scoring intent</div>
+      <div class="count" id="cnt3">0</div>
+      <div class="detail">Waiting for enrichment</div>
+    </div>
+    <div class="pipe-cell" id="pipe4">
+      <div class="num">04 · Queued</div>
+      <div class="name">Drafting outreach</div>
+      <div class="count" id="cnt4">0</div>
+      <div class="detail">Your review queue</div>
+    </div>
+  </div>
+
+  <!-- LEADERBOARD (fake data during tour, replaced with real data on reveal) -->
+  <div id="leaderboardSection">
+    <div class="leaderboard-label" id="highlightLeaderboard">
+      Prospect leaderboard <span class="tag demo" id="lbTag">Demo data</span>
+    </div>
+    <div class="leaderboard" id="leaderboard">
+      <div class="lb-head">
+        <div>#</div><div>Prospect</div><div>Industry</div><div>Intent</div><div>Afford.</div><div>Signals</div><div>Status</div>
+      </div>
+      <div id="lbBody">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- EMPTY STATE (shown when tour ends + data not ready) -->
+  <div class="empty-state" id="emptyState">
+    <div class="empty-pipeline-visual">
+      <div class="empty-node working">01</div>
+      <div class="empty-connector active"></div>
+      <div class="empty-node working">02</div>
+      <div class="empty-connector"></div>
+      <div class="empty-node">03</div>
+      <div class="empty-connector"></div>
+      <div class="empty-node">04</div>
+    </div>
+    <h2 class="empty-h">Your prospects are being <em>discovered and scored.</em></h2>
+    <p class="empty-p">The enrichment pipeline is running right now. Once scoring is complete, your prospect leaderboard will appear here — highest intent first, outreach drafts ready for review.</p>
+    <div class="empty-timer" id="emptyTimer">Processing · Estimated 4 minutes remaining</div>
+  </div>
+
+  <!-- Helper bar -->
+  <div class="helper-bar" id="highlightHelper">
+    <div class="helper-avatar"><span>DS</span></div>
+    <div>
+      <div class="helper-text">"Your cycle is running. First results usually appear within 30 minutes."</div>
+      <div class="helper-sub">Dave Stephens · Founder · Reply to any email, I'll get back to you</div>
+    </div>
+    <a href="mailto:dave@agencyxos.ai" class="helper-cta">Message Dave</a>
+  </div>
+
+</div>
+
+<!-- ═══════════════ MAYA OVERLAY ═══════════════ -->
+<div class="maya-overlay on" id="mayaOverlay">
+  <div class="maya-bubble">
+    <div class="maya-name-row">
+      <div class="maya-avatar"><span>M</span></div>
+      <div>
+        <div class="maya-name">Maya</div>
+        <div class="maya-role">Your Agency OS guide</div>
+      </div>
+    </div>
+    <div class="maya-highlight-label" id="mayaHighlight"></div>
+    <div class="maya-text" id="mayaText"></div>
+    <div class="maya-controls">
+      <div class="maya-progress" id="mayaProgress">1 of 8</div>
+      <div class="maya-btns">
+        <button class="maya-btn maya-btn-skip" onclick="skipTour()">Skip tour</button>
+        <button class="maya-btn maya-btn-next" id="mayaNextBtn" onclick="nextTourStep()">Next →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ DEV CONTROLS ═══════════════ -->
+<div class="dev-controls">
+  <span>States:</span>
+  <button class="dev-btn" onclick="resetToTour()">Tour</button>
+  <button class="dev-btn" onclick="showEmptyState()">Empty</button>
+  <button class="dev-btn" onclick="triggerReveal()">Reveal</button>
+  <button class="dev-btn" onclick="showLiveDashboard()">Live</button>
+</div>
+
+<script>
+/* ════════════════════════════════════════
+   MAYA TOUR SCRIPT — 8 sections
+   ════════════════════════════════════════ */
+const tourSteps = [
+  {
+    text: `Welcome to your dashboard. While we're talking, the system is already running — discovering prospects across your target area, enriching their data, and scoring their intent. <b>By the time we finish this tour, your real prospects will be ready.</b>`,
+    highlight: null,
+    highlightLabel: ''
+  },
+  {
+    text: `This is your <em>cycle header</em>. It tells you where you are — which cycle, which day, how long it's been running. You're on Ignition at your founding rate. <b>Each cycle runs for 30 days</b>, then a new one starts automatically with fresh prospects.`,
+    highlight: 'highlightHeader',
+    highlightLabel: 'Cycle header'
+  },
+  {
+    text: `This is the <em>pipeline</em>. Four stages: Discover finds businesses. Enrich reads their website, ads, reviews, hiring activity. Score rates their intent and affordability. Draft generates personalised outreach across email, LinkedIn, and voice. <b>Every prospect passes through all four stages before you see them.</b>`,
+    highlight: 'highlightPipeline',
+    highlightLabel: 'Pipeline stages'
+  },
+  {
+    text: `This is the <em>prospect leaderboard</em>. Right now it's showing example data so you can see the layout. When your real prospects arrive, they'll appear here ranked by intent score — highest first. <b>The prospects most likely to need your services are always at the top.</b>`,
+    highlight: 'highlightLeaderboard',
+    highlightLabel: 'Prospect leaderboard'
+  },
+  {
+    text: `Each prospect has two scores. <em>Intent</em> measures buying signals — are they actively looking for what you sell? Ad spend, hiring, declining reviews, founder posts about lead generation. <em>Affordability</em> checks whether they can pay — GST registration, entity type, business size. <b>Both have to pass before a prospect enters your outreach.</b>`,
+    highlight: 'highlightLeaderboard',
+    highlightLabel: 'Scoring explained'
+  },
+  {
+    text: `Every message across every channel is <b>visible in your dashboard before it sends</b>. Email, LinkedIn connection requests, voice call scripts — all drafted, all editable. You can release everything in one click, or pause, edit, or cancel anything individually. <b>You see all of it, always.</b>`,
+    highlight: null,
+    highlightLabel: 'Outreach control'
+  },
+  {
+    text: `See that button in the top right? <em>Pause Cycle</em>. One click halts everything — all outreach, all channels, immediately. No support ticket, no waiting. You pause, you decide, you resume when you're ready. <b>It's always there, always one click.</b>`,
+    highlight: 'highlightPause',
+    highlightLabel: 'Pause Cycle'
+  },
+  {
+    text: `That's everything you need to know to start. When I close, your real prospect data will appear — ranked by intent, with outreach drafts ready for your review. <b>Welcome to Agency OS.</b>`,
+    highlight: null,
+    highlightLabel: '',
+    isFinal: true
+  }
+];
+
+let tourIdx = 0;
+let currentHighlight = null;
+let backendReady = false;
+let tourComplete = false;
+
+/* Simulate backend completing after ~20 seconds */
+setTimeout(() => {
+  backendReady = true;
+  /* If tour already done or skipped and empty state is showing, trigger reveal */
+  if (tourComplete && document.getElementById('emptyState').classList.contains('on')) {
+    setTimeout(() => triggerReveal(), 1500);
+  }
+}, 20000);
+
+function renderTourStep() {
+  const step = tourSteps[tourIdx];
+  document.getElementById('mayaText').innerHTML = step.text;
+  document.getElementById('mayaProgress').textContent = `${tourIdx + 1} of ${tourSteps.length}`;
+
+  const hl = document.getElementById('mayaHighlight');
+  if (step.highlightLabel) {
+    hl.textContent = step.highlightLabel;
+    hl.classList.add('on');
+  } else {
+    hl.classList.remove('on');
+  }
+
+  /* Clear old highlight */
+  if (currentHighlight) {
+    document.getElementById(currentHighlight).classList.remove('highlight-ring', 'active');
+  }
+  /* Apply new highlight */
+  if (step.highlight) {
+    const el = document.getElementById(step.highlight);
+    el.classList.add('highlight-ring', 'active');
+    currentHighlight = step.highlight;
+  } else {
+    currentHighlight = null;
+  }
+
+  /* Final step changes button */
+  const btn = document.getElementById('mayaNextBtn');
+  if (step.isFinal) {
+    btn.textContent = 'Show my prospects →';
+    btn.onclick = finishTour;
+  } else {
+    btn.textContent = 'Next →';
+    btn.onclick = nextTourStep;
+  }
+}
+
+function nextTourStep() {
+  if (tourIdx < tourSteps.length - 1) {
+    tourIdx++;
+    renderTourStep();
+  }
+}
+
+function finishTour() {
+  tourComplete = true;
+  hideMaya();
+  hideLeaderboard();
+  if (backendReady) {
+    setTimeout(() => triggerReveal(), 800);
+  } else {
+    showEmptyState();
+  }
+}
+
+function skipTour() {
+  tourComplete = true;
+  hideMaya();
+  hideLeaderboard();
+  if (backendReady) {
+    setTimeout(() => triggerReveal(), 800);
+  } else {
+    showEmptyState();
+  }
+}
+
+function hideMaya() {
+  const m = document.getElementById('mayaOverlay');
+  m.style.transition = 'opacity .4s, transform .4s';
+  m.style.opacity = '0';
+  m.style.transform = 'translateY(20px)';
+  setTimeout(() => m.classList.remove('on'), 400);
+
+  if (currentHighlight) {
+    document.getElementById(currentHighlight).classList.remove('highlight-ring', 'active');
+    currentHighlight = null;
+  }
+}
+
+/* ════════════════════════════════════════
+   FAKE DATA (only shown during tour)
+   ════════════════════════════════════════ */
+const fakeProspects = [
+  { company: 'Northbeach Consulting', loc: 'Sydney CBD · 12 staff', industry: 'Construction', intent: 84, afford: 78, signals: '4 signals', status: 'drafted' },
+  { company: 'Elevate Growth Partners', loc: 'Parramatta · 8 staff', industry: 'Professional Services', intent: 79, afford: 82, signals: '3 signals', status: 'drafted' },
+  { company: 'Harbour Digital', loc: 'St Kilda · 6 staff', industry: 'Technology', intent: 74, afford: 70, signals: '5 signals', status: 'scoring' },
+  { company: 'Ridgepoint Studio', loc: 'Fitzroy · 4 staff', industry: 'Design', intent: 68, afford: 65, signals: '3 signals', status: 'scoring' },
+  { company: 'Meridian Brief Advisory', loc: 'Southbank · 15 staff', industry: 'Finance', intent: 62, afford: 88, signals: '2 signals', status: 'enriching' },
+  { company: 'Clarion Strategy Group', loc: 'Carlton · 6 staff', industry: 'Consulting', intent: 57, afford: 72, signals: '2 signals', status: 'enriching' },
+];
+
+const realProspects = [
+  { company: 'BrightPath Construction', loc: 'Surry Hills · 22 staff', industry: 'Construction', intent: 91, afford: 85, signals: '6 signals', status: 'drafted' },
+  { company: 'Vanguard Health Co', loc: 'Richmond · 14 staff', industry: 'Healthcare', intent: 87, afford: 79, signals: '5 signals', status: 'drafted' },
+  { company: 'Summit Legal Partners', loc: 'CBD Melbourne · 18 staff', industry: 'Legal', intent: 83, afford: 90, signals: '4 signals', status: 'drafted' },
+  { company: 'Coastal Property Group', loc: 'Bondi · 9 staff', industry: 'Real Estate', intent: 81, afford: 76, signals: '5 signals', status: 'drafted' },
+  { company: 'Iron Arc Engineering', loc: 'Parramatta · 31 staff', industry: 'Engineering', intent: 78, afford: 88, signals: '4 signals', status: 'drafted' },
+  { company: 'Greenline Dental', loc: 'Chatswood · 7 staff', industry: 'Dental', intent: 74, afford: 82, signals: '3 signals', status: 'drafted' },
+  { company: 'Atlas Finance Advisory', loc: 'Docklands · 11 staff', industry: 'Finance', intent: 72, afford: 85, signals: '4 signals', status: 'drafted' },
+  { company: 'Ridgewood Accounting', loc: 'North Sydney · 5 staff', industry: 'Accounting', intent: 69, afford: 71, signals: '3 signals', status: 'drafted' },
+];
+
+function renderLeaderboard(prospects, showRank) {
+  const body = document.getElementById('lbBody');
+  body.innerHTML = '';
+  prospects.forEach((p, i) => {
+    const scoreClass = p.intent >= 80 ? 'high' : p.intent >= 65 ? 'med' : 'low';
+    const affordClass = p.afford >= 80 ? 'high' : p.afford >= 65 ? 'med' : 'low';
+    const rankClass = i < 3 ? 'top3' : '';
+    const row = document.createElement('div');
+    row.className = 'lb-row';
+    row.innerHTML = `
+      <div class="rank ${rankClass}">${showRank ? '#' + (i+1) : '—'}</div>
+      <div class="company">${p.company}<span class="sub">${p.loc}</span></div>
+      <div class="industry">${p.industry}</div>
+      <div class="score ${scoreClass}">${p.intent}</div>
+      <div class="score ${affordClass}">${p.afford}</div>
+      <div class="signals">${p.signals}</div>
+      <div><span class="status-pill ${p.status}">${p.status}</span></div>
+    `;
+    body.appendChild(row);
+  });
+}
+
+/* ════════════════════════════════════════
+   REVEAL ANIMATION — the leaderboard wow moment
+   ════════════════════════════════════════ */
+function triggerReveal() {
+  /* Hide empty state if showing */
+  document.getElementById('emptyState').classList.remove('on');
+
+  /* Show leaderboard section */
+  document.getElementById('leaderboardSection').style.display = 'block';
+  const tag = document.getElementById('lbTag');
+  tag.textContent = 'Live data';
+  tag.className = 'tag live';
+
+  /* Update header */
+  document.getElementById('cycleTitle').innerHTML = 'Your first prospects <em>are here.</em>';
+  document.getElementById('cycleSub').textContent = 'Ranked by intent score. Outreach drafts ready for review. Release all in one click, or inspect individual messages first.';
+
+  /* Update pipeline counts */
+  document.getElementById('cnt1').textContent = '2,847';
+  document.getElementById('cnt2').textContent = '600';
+  document.getElementById('cnt3').textContent = '27';
+  document.getElementById('cnt4').textContent = '27';
+  document.querySelectorAll('.pipe-cell').forEach(c => {
+    c.classList.remove('active');
+    c.querySelector('.num').textContent = c.querySelector('.num').textContent.replace(/Queued|Discovering/, 'Complete');
+  });
+  document.getElementById('pipe4').classList.add('active');
+  document.getElementById('pipe4').querySelector('.num').textContent = '04 · Ready';
+  document.getElementById('pipe4').querySelector('.detail').innerHTML = 'Awaiting your release';
+  document.getElementById('pipe4').querySelector('.detail').className = 'detail live';
+
+  /* Clear leaderboard body */
+  const body = document.getElementById('lbBody');
+  body.innerHTML = '';
+
+  /* Reveal prospects one at a time, starting with lowest score, shuffling up */
+  const sorted = [...realProspects].sort((a, b) => a.intent - b.intent);
+  let revealIdx = 0;
+
+  function revealNext() {
+    if (revealIdx >= sorted.length) {
+      /* Final sort animation after all revealed */
+      setTimeout(sortLeaderboard, 600);
+      return;
+    }
+    const p = sorted[revealIdx];
+    const scoreClass = p.intent >= 80 ? 'high' : p.intent >= 65 ? 'med' : 'low';
+    const affordClass = p.afford >= 80 ? 'high' : p.afford >= 65 ? 'med' : 'low';
+    const row = document.createElement('div');
+    row.className = 'lb-row reveal';
+    row.style.animationDelay = '0s';
+    row.dataset.intent = p.intent;
+    row.innerHTML = `
+      <div class="rank">—</div>
+      <div class="company">${p.company}<span class="sub">${p.loc}</span></div>
+      <div class="industry">${p.industry}</div>
+      <div class="score ${scoreClass}">${p.intent}</div>
+      <div class="score ${affordClass}">${p.afford}</div>
+      <div class="signals">${p.signals}</div>
+      <div><span class="status-pill ${p.status}">${p.status}</span></div>
+    `;
+    body.appendChild(row);
+    revealIdx++;
+    setTimeout(revealNext, 350);
+  }
+
+  setTimeout(revealNext, 300);
+}
+
+function sortLeaderboard() {
+  const body = document.getElementById('lbBody');
+  const rows = Array.from(body.querySelectorAll('.lb-row'));
+
+  /* Get current positions */
+  const positions = rows.map(r => r.getBoundingClientRect());
+
+  /* Sort by intent descending */
+  rows.sort((a, b) => parseInt(b.dataset.intent) - parseInt(a.dataset.intent));
+
+  /* Re-append in new order */
+  rows.forEach(r => body.appendChild(r));
+
+  /* Get new positions */
+  const newPositions = rows.map(r => r.getBoundingClientRect());
+
+  /* Animate from old to new using FLIP */
+  rows.forEach((r, i) => {
+    const oldRow = positions.find((_, j) => rows[j] === r);
+    /* Find this row's old index */
+    const oldIdx = Array.from(body.querySelectorAll('.lb-row')).indexOf(r);
+    r.classList.add('shuffle');
+  });
+
+  /* Update ranks */
+  setTimeout(() => {
+    rows.forEach((r, i) => {
+      const rankEl = r.querySelector('.rank');
+      rankEl.textContent = '#' + (i + 1);
+      if (i < 3) rankEl.classList.add('top3');
+      else rankEl.classList.remove('top3');
+    });
+  }, 400);
+}
+
+/* ════════════════════════════════════════
+   STATE TRANSITIONS
+   ════════════════════════════════════════ */
+function hideLeaderboard() {
+  document.getElementById('leaderboardSection').style.display = 'none';
+}
+
+function showEmptyState() {
+  document.getElementById('leaderboardSection').style.display = 'none';
+  document.getElementById('emptyState').classList.add('on');
+  document.getElementById('cycleTitle').innerHTML = 'Your prospects are being <em>scored.</em>';
+  document.getElementById('cycleSub').textContent = 'The enrichment pipeline is finishing up. Your leaderboard will appear here shortly.';
+}
+
+function showLiveDashboard() {
+  document.getElementById('emptyState').classList.remove('on');
+  document.getElementById('leaderboardSection').style.display = 'block';
+  document.getElementById('lbTag').textContent = 'Live data';
+  document.getElementById('lbTag').className = 'tag live';
+  renderLeaderboard(realProspects, true);
+  document.getElementById('cycleTitle').innerHTML = 'Your first prospects <em>are here.</em>';
+  document.getElementById('cycleSub').textContent = 'Ranked by intent score. Outreach drafts ready for review. Release all in one click, or inspect individual messages first.';
+}
+
+function resetToTour() {
+  tourIdx = 0;
+  tourComplete = false;
+  backendReady = false;
+
+  const m = document.getElementById('mayaOverlay');
+  m.style.opacity = '1';
+  m.style.transform = 'translateY(0)';
+  m.classList.add('on');
+
+  document.getElementById('emptyState').classList.remove('on');
+  document.getElementById('leaderboardSection').style.display = 'block';
+  document.getElementById('lbTag').textContent = 'Demo data';
+  document.getElementById('lbTag').className = 'tag demo';
+  renderLeaderboard(fakeProspects, false);
+  renderTourStep();
+
+  document.getElementById('cycleTitle').innerHTML = 'Your prospects are <em>on their way.</em>';
+  document.getElementById('cycleSub').textContent = 'Discovery is running across NSW and VIC right now. While we work, let me show you what everything means.';
+
+  /* Re-arm backend timer */
+  setTimeout(() => {
+    backendReady = true;
+    if (tourComplete && document.getElementById('emptyState').classList.contains('on')) {
+      setTimeout(() => triggerReveal(), 1500);
+    }
+  }, 20000);
+}
+
+/* ════════════════════════════════════════
+   INIT — start in tour state
+   ════════════════════════════════════════ */
+renderLeaderboard(fakeProspects, false);
+renderTourStep();
+</script>
+
+</body>
+</html>

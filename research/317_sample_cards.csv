@@ -1,0 +1,4 @@
+domain,company_name,dm_name,dm_email,dm_email_source,dm_email_confidence,dm_email_verified,dm_mobile,dm_mobile_source,dm_mobile_tier,intent_score,affordability_score
+kwiknkleen.com.au,PERTH CAR WASH,Tracey Curran,sales@kwiknkleen.com.au,website_generic,low,False,+61 416 114 573,contactout,0,8,5
+www.brydens.com.au,SYDNEY SOLICITORS PTY LTD,Melanie Tonazzi,melanie@thedivorcestudio.com,contactout,high,True,+61288194399,contactout,0,8,8
+www.hallpayne.com.au,Hall Payne Lawyers,Luke Tiley,luket@hallpayne.com.au,contactout,high,True,+61 7 3017 2400,contactout,0,8,9

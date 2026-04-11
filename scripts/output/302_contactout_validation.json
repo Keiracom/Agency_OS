@@ -1,0 +1,432 @@
+[
+  {
+    "idx": 1,
+    "slug": "joealphonse",
+    "full_name": "Joseph Alphonse",
+    "found": true,
+    "http_status": 200,
+    "work_emails": [
+      "joe@oatlandsdental.com.au"
+    ],
+    "all_emails": [
+      "joe@oatlandsdental.com.au"
+    ],
+    "phones": [
+      "+61426005099"
+    ],
+    "company_name": "Oatlands Dental",
+    "company_domain": "oatlandsdental.com.au",
+    "best_email": "joe@oatlandsdental.com.au",
+    "confidence": "current_match",
+    "best_phone": "+61426005099",
+    "is_au_mobile": true
+  },
+  {
+    "idx": 2,
+    "slug": "duncancopp",
+    "full_name": "Duncan Copp",
+    "found": true,
+    "http_status": 200,
+    "work_emails": [
+      "duncan@thepaddingtondentalsurgery.com.au"
+    ],
+    "all_emails": [
+      "duncan@thepaddingtondentalsurgery.com.au",
+      "drduncancopp@gmail.com"
+    ],
+    "phones": [
+      "+61293312555"
+    ],
+    "company_name": "The Paddington Dental Surgery",
+    "company_domain": "thepaddingtondentalsurgery.com.au",
+    "best_email": "duncan@thepaddingtondentalsurgery.com.au",
+    "confidence": "current_match",
+    "best_phone": "+61293312555",
+    "is_au_mobile": false
+  },
+  {
+    "idx": 3,
+    "slug": "stephen-wilson-39a96b41",
+    "full_name": "Stephen Wilson",
+    "found": true,
+    "http_status": 200,
+    "work_emails": [
+      "steve@allaboutplumbing.net.au"
+    ],
+    "all_emails": [
+      "steve@allaboutplumbing.net.au",
+      "allaboutplumbing@bigpond.com"
+    ],
+    "phones": [
+      "+61418530266"
+    ],
+    "company_name": "Allabout Plumbing",
+    "company_domain": "allaboutplumbing.net.au",
+    "best_email": "steve@allaboutplumbing.net.au",
+    "confidence": "current_match",
+    "best_phone": "+61418530266",
+    "is_au_mobile": true
+  },
+  {
+    "idx": 4,
+    "slug": "karl-abel-b50b494a",
+    "full_name": "Karl Abel",
+    "found": true,
+    "http_status": 200,
+    "work_emails": [
+      "karl@melbourneplumbinggroup.com.au"
+    ],
+    "all_emails": [
+      "karl@melbourneplumbinggroup.com.au"
+    ],
+    "phones": [
+      "+61 422 669 179"
+    ],
+    "company_name": "Melbourne Plumbing Group",
+    "company_domain": "melbourneplumbinggroup.com.au",
+    "best_email": "karl@melbourneplumbinggroup.com.au",
+    "confidence": "current_match",
+    "best_phone": "+61 422 669 179",
+    "is_au_mobile": true
+  },
+  {
+    "idx": 5,
+    "slug": "andrew-scott-55635612",
+    "full_name": "Andrew Scott",
+    "found": true,
+    "http_status": 200,
+    "work_emails": [
+      "andrew@highburyplumbing.com.au"
+    ],
+    "all_emails": [
+      "andrew@highburyplumbing.com.au"
+    ],
+    "phones": [],
+    "company_name": "Highbury Plumbing",
+    "company_domain": "highburyplumbing.com.au",
+    "best_email": "andrew@highburyplumbing.com.au",
+    "confidence": "current_match",
+    "best_phone": "",
+    "is_au_mobile": false
+  },
+  {
+    "idx": 6,
+    "slug": "sam-bell-b7aa12b6",
+    "full_name": "Sam Bell",
+    "found": true,
+    "http_status": 200,
+    "work_emails": [
+      "sam@evansplumbing.com.au"
+    ],
+    "all_emails": [
+      "sam@evansplumbing.com.au"
+    ],
+    "phones": [],
+    "company_name": "Evans Plumbing",
+    "company_domain": "evansplumbing.com.au",
+    "best_email": "sam@evansplumbing.com.au",
+    "confidence": "current_match",
+    "best_phone": "",
+    "is_au_mobile": false
+  },
+  {
+    "idx": 7,
+    "slug": "sean-parsonage-b3899422",
+    "full_name": "Sean Parsonage",
+    "found": true,
+    "http_status": 200,
+    "work_emails": [
+      "sean@spadental.com.au"
+    ],
+    "all_emails": [
+      "sean@spadental.com.au"
+    ],
+    "phones": [
+      "+61298092900"
+    ],
+    "company_name": "",
+    "company_domain": "",
+    "best_email": "sean@spadental.com.au",
+    "confidence": "current_match",
+    "best_phone": "+61298092900",
+    "is_au_mobile": false
+  },
+  {
+    "idx": 8,
+    "slug": "david-jones-16112b116",
+    "full_name": "David Jones",
+    "found": true,
+    "http_status": 200,
+    "work_emails": [
+      "david@northsydneydental.com.au"
+    ],
+    "all_emails": [
+      "david@northsydneydental.com.au"
+    ],
+    "phones": [],
+    "company_name": "",
+    "company_domain": "",
+    "best_email": "david@northsydneydental.com.au",
+    "confidence": "current_match",
+    "best_phone": "",
+    "is_au_mobile": false
+  },
+  {
+    "idx": 9,
+    "slug": "josh-wilkinson-7978ab282",
+    "full_name": "Josh Wilkinson",
+    "found": true,
+    "http_status": 200,
+    "work_emails": [
+      "josh@mcgp.com.au"
+    ],
+    "all_emails": [
+      "josh@mcgp.com.au"
+    ],
+    "phones": [
+      "+61422024456"
+    ],
+    "company_name": "McGrath Plumbing",
+    "company_domain": "mcgrathplumbing.com.au",
+    "best_email": "josh@mcgp.com.au",
+    "confidence": "current_match",
+    "best_phone": "+61422024456",
+    "is_au_mobile": true
+  },
+  {
+    "idx": 10,
+    "slug": "michael-garbett-2b2108aa",
+    "full_name": "Michael Garbett",
+    "found": true,
+    "http_status": 200,
+    "work_emails": [
+      "michael.garbett@moray.com.au"
+    ],
+    "all_emails": [
+      "michael.garbett@moray.com.au"
+    ],
+    "phones": [],
+    "company_name": "Moray & Agnew",
+    "company_domain": "moray.com.au",
+    "best_email": "michael.garbett@moray.com.au",
+    "confidence": "current_match",
+    "best_phone": "",
+    "is_au_mobile": false
+  },
+  {
+    "idx": 11,
+    "slug": "andrew-johnson-aa7aa431",
+    "full_name": "Andrew Johnson",
+    "found": true,
+    "http_status": 200,
+    "work_emails": [
+      "andrew@ajandco.com.au"
+    ],
+    "all_emails": [
+      "andrew@ajandco.com.au",
+      "ajohnson@bluewaterholdings.com.au"
+    ],
+    "phones": [
+      "+61413378235"
+    ],
+    "company_name": "AJ & Co Lawyers",
+    "company_domain": "ajandco.com.au",
+    "best_email": "andrew@ajandco.com.au",
+    "confidence": "current_match",
+    "best_phone": "+61413378235",
+    "is_au_mobile": true
+  },
+  {
+    "idx": 12,
+    "slug": "travisschultz1",
+    "full_name": "Travis Schultz",
+    "found": true,
+    "http_status": 200,
+    "work_emails": [
+      "travis@schultzlaw.com.au"
+    ],
+    "all_emails": [
+      "travis@schultzlaw.com.au",
+      "travis.schultz@outlook.com.au"
+    ],
+    "phones": [
+      "+61754067405"
+    ],
+    "company_name": "Travis Schultz & Partners",
+    "company_domain": "schultzlaw.com.au",
+    "best_email": "travis@schultzlaw.com.au",
+    "confidence": "current_match",
+    "best_phone": "+61754067405",
+    "is_au_mobile": false
+  },
+  {
+    "idx": 13,
+    "slug": "catherine-anne-walsh-5b635b35",
+    "full_name": "Catherineanne Walsh",
+    "found": true,
+    "http_status": 200,
+    "work_emails": [
+      "drwalsh@thedentist.net.au"
+    ],
+    "all_emails": [
+      "drwalsh@thedentist.net.au",
+      "cawalsh_nz@hotmail.com"
+    ],
+    "phones": [
+      "+61406986909"
+    ],
+    "company_name": "Sydney Doctors",
+    "company_domain": "sydneydoctors.com.au",
+    "best_email": "drwalsh@thedentist.net.au",
+    "confidence": "current_match",
+    "best_phone": "+61406986909",
+    "is_au_mobile": true
+  },
+  {
+    "idx": 14,
+    "slug": "mark-nieh-7174958",
+    "full_name": "Mark Nieh",
+    "found": true,
+    "http_status": 200,
+    "work_emails": [],
+    "all_emails": [
+      "niema389@gmail.com"
+    ],
+    "phones": [
+      "+61280901105"
+    ],
+    "company_name": "",
+    "company_domain": "",
+    "best_email": "niema389@gmail.com",
+    "confidence": "stale",
+    "best_phone": "+61280901105",
+    "is_au_mobile": false
+  },
+  {
+    "idx": 15,
+    "slug": "fadi-shawy-8a44946a",
+    "full_name": "Fadi Shawy",
+    "found": true,
+    "http_status": 200,
+    "work_emails": [],
+    "all_emails": [
+      "fadi_shawy@hotmail.com"
+    ],
+    "phones": [
+      "+61469872402"
+    ],
+    "company_name": "",
+    "company_domain": "",
+    "best_email": "fadi_shawy@hotmail.com",
+    "confidence": "personal_only",
+    "best_phone": "+61469872402",
+    "is_au_mobile": true
+  },
+  {
+    "idx": 16,
+    "slug": "peter-bakouris-0a8964113",
+    "full_name": "Peter Bakouris",
+    "found": true,
+    "http_status": 200,
+    "work_emails": [],
+    "all_emails": [
+      "ptr_b@hotmail.com"
+    ],
+    "phones": [
+      "+61296655000"
+    ],
+    "company_name": "Kalo Dental",
+    "company_domain": "kalodental.com",
+    "best_email": "ptr_b@hotmail.com",
+    "confidence": "stale",
+    "best_phone": "+61296655000",
+    "is_au_mobile": false
+  },
+  {
+    "idx": 17,
+    "slug": "grant-lawler-59271b192",
+    "full_name": "Grant Lawler",
+    "found": true,
+    "http_status": 200,
+    "work_emails": [],
+    "all_emails": [
+      "grantlawler34@gmail.com"
+    ],
+    "phones": [
+      "+61 402 686 925"
+    ],
+    "company_name": "",
+    "company_domain": "",
+    "best_email": "grantlawler34@gmail.com",
+    "confidence": "stale",
+    "best_phone": "+61 402 686 925",
+    "is_au_mobile": true
+  },
+  {
+    "idx": 18,
+    "slug": "preetikennedy",
+    "full_name": "Preeti Kennedy",
+    "found": true,
+    "http_status": 200,
+    "work_emails": [
+      "pkennedy@shopamarketing.com.au"
+    ],
+    "all_emails": [
+      "pkennedy@shopamarketing.com.au"
+    ],
+    "phones": [
+      "+91 77609 61787"
+    ],
+    "company_name": "",
+    "company_domain": "",
+    "best_email": "pkennedy@shopamarketing.com.au",
+    "confidence": "current_match",
+    "best_phone": "+91 77609 61787",
+    "is_au_mobile": false
+  },
+  {
+    "idx": 19,
+    "slug": "markkreuzer1",
+    "full_name": "Mark Kreuzer",
+    "found": true,
+    "http_status": 200,
+    "work_emails": [
+      "mark@ssrv.org.au"
+    ],
+    "all_emails": [
+      "mark@ssrv.org.au"
+    ],
+    "phones": [
+      "+61 404 207 046"
+    ],
+    "company_name": "Social Security Rights Victoria Inc",
+    "company_domain": "ssrv.org.au",
+    "best_email": "mark@ssrv.org.au",
+    "confidence": "stale",
+    "best_phone": "+61 404 207 046",
+    "is_au_mobile": true
+  },
+  {
+    "idx": 20,
+    "slug": "stuart-edwards-3b334a42",
+    "full_name": "Stuart Edwards",
+    "found": true,
+    "http_status": 200,
+    "work_emails": [
+      "stuart@digitalmovement.com.au"
+    ],
+    "all_emails": [
+      "stuart@digitalmovement.com.au",
+      "eddes_39@hotmail.com"
+    ],
+    "phones": [
+      "+61 431 482 733"
+    ],
+    "company_name": "Digital Movement",
+    "company_domain": "digitalmovement.com.au",
+    "best_email": "stuart@digitalmovement.com.au",
+    "confidence": "current_match",
+    "best_phone": "+61 431 482 733",
+    "is_au_mobile": true
+  }
+]

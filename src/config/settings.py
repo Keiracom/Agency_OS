@@ -140,6 +140,13 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("LEADMAGIC_API_KEY"),
     )
 
+    # === ContactOut (LinkedIn Contact Enrichment) ===
+    contactout_api_key: str = Field(
+        default="",
+        description="ContactOut API key for LinkedIn profile enrichment",
+        validation_alias=AliasChoices("CONTACTOUT_API_KEY"),
+    )
+
     # === Prospeo (Email Finding/Verification) ===
     prospeo_api_key: str = Field(
         default="", description="Prospeo API key for email finding and verification"

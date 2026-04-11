@@ -310,3 +310,63 @@ def test_parse_name_linkedin_noise():
     from src.pipeline.email_waterfall import _parse_name
     first, last = _parse_name("Owner at VC Dental")
     assert first == "" and last == ""
+
+
+# ── ContactOut vs generic inbox regression tests (#317.3) ────────────────────
+
+GENERIC_HTML = """
+<html><body>
+<a href="mailto:sales@dentist.com.au">Contact us</a>
+</body></html>
+"""
+
+
+@pytest.mark.asyncio
+async def test_contactout_beats_generic_inbox():
+    """
+    Regression #317.3 Test 1: ContactOut current_match email takes priority
+    over a generic inbox (sales@) found in website HTML.
+    """
+    from src.pipeline.email_waterfall import discover_email
+
+    contactout = {
+        "email": "michael.chen@dentist.com.au",
+        "email_confidence": "current_match",
+        "phone": None,
+    }
+
+    result = await discover_email(
+        domain="dentist.com.au",
+        dm_name="Michael Chen",
+        html=GENERIC_HTML,
+        contactout_result=contactout,
+        skip_layers=[2, 3],  # skip paid layers
+    )
+
+    assert result.email == "michael.chen@dentist.com.au"
+    assert result.source == "contactout"
+    assert result.confidence == "high"
+
+
+@pytest.mark.asyncio
+async def test_generic_inbox_falls_through_without_contactout():
+    """
+    Regression #317.3 Test 2: Without ContactOut, a website-only generic
+    inbox (sales@) is flagged as low-confidence generic fallback, not
+    returned as a high-confidence DM email.
+    """
+    from src.pipeline.email_waterfall import discover_email
+
+    result = await discover_email(
+        domain="dentist.com.au",
+        dm_name="Michael Chen",
+        html=GENERIC_HTML,
+        contactout_result=None,
+        skip_layers=[2, 3],  # skip paid layers
+    )
+
+    # Generic inbox should fall through to generic fallback (not short-circuit)
+    assert result.source in ("website_generic", "none")
+    if result.email:
+        assert result.confidence == "low"
+        assert result.source == "website_generic"

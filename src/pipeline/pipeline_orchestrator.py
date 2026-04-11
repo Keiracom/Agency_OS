@@ -903,6 +903,27 @@ class PipelineOrchestrator:
                     else:
                         await asyncio.sleep(0.1)
 
+            # Pre-fill the queue with one batch BEFORE starting workers.
+            # Fixes producer-consumer race: without this, workers start,
+            # find empty queue, and exit before the refill loop makes its
+            # first DFS call. Directive #317.3 — Option B.
+            async with GLOBAL_SEM_DFS:
+                initial_batch = await self._discovery.next_batch(
+                    category_codes=category_ints,
+                    location=location,
+                    batch_size=100,
+                    exclude_domains=set(exclude_domains or []),
+                )
+            if initial_batch:
+                for item in initial_batch:
+                    await pre_fetched_queue.put(item)
+                logger.info(
+                    "run_parallel: pre-filled queue with %d domains",
+                    len(initial_batch),
+                )
+            else:
+                logger.warning("run_parallel: initial discovery batch empty — no domains found")
+
             discovery_refill_task = asyncio.create_task(_refill_loop())
 
         # ── Shared state ─────────────────────────────────────────────────

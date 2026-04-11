@@ -2,6 +2,14 @@
 Canonical domain blocklist for discovery pipeline.
 Categorised by reason for auditability.
 Directives: #267 (original), #328 Stage 1 (expansion)
+
+TRADEOFF (ratified by CEO, #328 Stage 1):
+  Strict AU-only enforcement. Domains must have a commercial AU TLD
+  (.com.au, .net.au, .id.au, .asn.au, .sydney, .melbourne, .perth, .brisbane).
+  This rejects legitimate AU businesses using .com, .co, .io, .ai TLDs
+  (~5% false negative rate). Accepted tradeoff: cleaner discovery inputs
+  outweigh the loss. A future directive can add ABN-validated non-.au
+  recovery as a secondary path.
 """
 from __future__ import annotations
 import re
@@ -183,11 +191,11 @@ def is_au_domain(domain: str) -> bool:
 def is_blocked(domain: str | None) -> bool:
     """Return True if domain should be excluded from discovery.
 
-    Checks (in order):
+    Checks (in order — cheapest/broadest first):
     1. Empty / None
-    2. Government TLD regex (all countries)
-    3. Non-AU domain (AU enforcement — must have commercial AU TLD)
-    4. Exact match in BLOCKED_DOMAINS
+    2. AU enforcement — must have commercial AU TLD (cheapest regex, kills largest chunk)
+    3. Government TLD regex (all countries — catches .gov.au that passed AU check)
+    4. Exact match in BLOCKED_DOMAINS (retailer/chain/media/aggregator)
     5. Subdomain of a blocked domain
     """
     if not domain:
@@ -196,12 +204,12 @@ def is_blocked(domain: str | None) -> bool:
     if not d:
         return True
 
-    # Government TLD check (all countries)
-    if _GOVERNMENT_RE.search(d):
+    # Pass 1: AU enforcement — must have commercial AU TLD (cheapest, biggest kill)
+    if not is_au_domain(d):
         return True
 
-    # AU enforcement — must have commercial AU TLD
-    if not is_au_domain(d):
+    # Pass 2: Government TLD (catches .gov.au that passed AU whitelist)
+    if _GOVERNMENT_RE.search(d):
         return True
 
     # Exact match (with and without www.)

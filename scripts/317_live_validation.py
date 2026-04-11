@@ -140,10 +140,14 @@ async def run_validation(
             logger.info("Multi-category rotation: %d of %d categories selected: %s", rotation_size, len(all_cats), category_codes)
 
             # Build injectable dependencies
-            db_url = settings.database_url
+            # Strip SQLAlchemy dialect prefix — asyncpg needs plain postgresql://
+            db_url = settings.database_url.replace("postgresql+asyncpg://", "postgresql://")
             pool = await get_asyncpg_pool(db_url, min_size=1, max_size=10)
 
-            dfs_client = DFSLabsClient()
+            dfs_client = DFSLabsClient(
+                login=os.getenv("DATAFORSEO_LOGIN", ""),
+                password=os.getenv("DATAFORSEO_PASSWORD", ""),
+            )
             bd_client = BrightDataLinkedInClient()
 
             discovery = Layer2Discovery(conn=pool, dfs=dfs_client)

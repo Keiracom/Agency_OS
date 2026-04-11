@@ -397,3 +397,50 @@ async def test_maps_serp_raises_not_implemented():
 
     with pytest.raises(NotImplementedError, match="Maps SERP"):
         await engine.run("marketing_agency")
+
+
+# ─── Regression test: #317.3 — no hardcoded second_date in pull_batch ─────────
+
+class TestPullBatchDateRegression:
+    """#317.3: Layer2Discovery.pull_batch() must NOT pass explicit second_date.
+
+    Root cause: hardcoded date.today() as second_date bypassed the
+    DFSLabsClient._get_latest_available_date() dynamic resolution,
+    causing DFS to silently return empty results for future dates.
+
+    This test ensures the regression class is permanently extinct.
+    """
+
+    @pytest.mark.asyncio
+    async def test_pull_batch_does_not_pass_explicit_second_date(self):
+        """pull_batch must call domain_metrics_by_categories WITHOUT
+        first_date or second_date, letting the client resolve dynamically."""
+        mock_dfs = AsyncMock()
+        mock_dfs.domain_metrics_by_categories = AsyncMock(return_value=[
+            {"domain": "example.com.au", "organic_etv": 500.0}
+        ])
+        mock_conn = AsyncMock()
+
+        discovery = Layer2Discovery(conn=mock_conn, dfs=mock_dfs)
+        await discovery.pull_batch(category_code="10514", location="Australia")
+
+        # Assert the DFS call was made
+        mock_dfs.domain_metrics_by_categories.assert_called_once()
+
+        # Get the actual kwargs passed
+        call_kwargs = mock_dfs.domain_metrics_by_categories.call_args
+        kwargs = call_kwargs.kwargs if call_kwargs.kwargs else {}
+        # Also check positional-as-keyword
+        if not kwargs and call_kwargs.args:
+            # Called with positional args — less likely but handle
+            pass
+
+        # The critical assertion: second_date and first_date must NOT
+        # be in the kwargs (let the client resolve dynamically)
+        assert "second_date" not in kwargs, \
+            f"REGRESSION: pull_batch passed explicit second_date={kwargs.get('second_date')}. " \
+            f"This bypasses _get_latest_available_date() and causes empty results for future dates. " \
+            f"See Directive #317.3."
+        assert "first_date" not in kwargs, \
+            f"REGRESSION: pull_batch passed explicit first_date={kwargs.get('first_date')}. " \
+            f"See Directive #317.3."

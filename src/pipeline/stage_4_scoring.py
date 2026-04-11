@@ -367,6 +367,8 @@ def _calc_budget_score(
     paid_kw: int, paid_etv: float, organic_etv: float, gmb_rating: float = 0.0
 ) -> int:
     """Budget score from paid keyword activity and traffic value signals."""
+    # Scoring thresholds only — not discovery filters.
+    # Discovery windows come from src.config.category_etv_windows.
     score = 0
     if paid_kw > 0:
         score += 50

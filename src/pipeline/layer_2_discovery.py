@@ -403,8 +403,8 @@ class Layer2Discovery:
         location: str = "Australia",
         limit: int = 50,
         offset: int = 0,
-        etv_min: float = 200.0,
-        etv_max: float = 5000.0,
+        etv_min: float = 0.0,
+        etv_max: float = 999999.0,
     ) -> list[dict]:
         """
         Stateless batch pull for pipeline orchestration.
@@ -412,6 +412,8 @@ class Layer2Discovery:
         Returns list of {"domain": str, "organic_etv": float}.
         Used by PipelineOrchestrator.run(). Distinct from run() which reads
         signal_configurations and writes to BU.
+        Callers should pass calibrated windows from get_etv_window() in
+        src.config.category_etv_windows rather than relying on these defaults.
         """
         # DO NOT pass explicit first_date/second_date here.
         # DFSLabsClient._get_latest_available_date() resolves the correct

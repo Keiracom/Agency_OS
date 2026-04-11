@@ -1,9 +1,9 @@
 "use client";
 
 /**
- * FILE: frontend/app/onboarding/linkedin/page.tsx
- * PURPOSE: LinkedIn connection onboarding step — Unipile OAuth
- * DIRECTIVE: #309 — Onboarding rebuild (full content replacement)
+ * FILE: frontend/app/onboarding/crm/page.tsx
+ * PURPOSE: CRM connection onboarding step — HubSpot OAuth
+ * DIRECTIVE: #309 — Onboarding rebuild
  * DESIGN: Cream #F7F3EE, Ink #0C0A08, Amber #D4956A
  */
 
@@ -13,32 +13,33 @@ import { AlertCircle, ExternalLink, Loader2, ShieldCheck } from "lucide-react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
 
-export default function LinkedInOnboardingPage() {
+export default function CRMOnboardingPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleLinkedInConnect = async () => {
+  const handleHubspotConnect = async () => {
     setError(null);
     setIsLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/v1/linkedin/connect`, {
-        method: "GET",
+      const res = await fetch(`${API_BASE}/api/v1/crm/connect/hubspot`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(
-          data.detail || data.message || `LinkedIn connect failed (${res.status})`
+          data.detail || data.message || `HubSpot connect failed (${res.status})`
         );
       }
       const data = await res.json();
-      const authUrl =
-        data.auth_url || data.oauth_url || data.redirect_url || data.url;
-      if (authUrl) {
-        window.location.href = authUrl;
+      const oauthUrl =
+        data.oauth_url || data.redirect_url || data.auth_url || data.url;
+      if (oauthUrl) {
+        window.location.href = oauthUrl;
       } else {
-        router.push("/onboarding/agency");
+        router.push("/onboarding/linkedin");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Connection failed");
@@ -63,7 +64,7 @@ export default function LinkedInOnboardingPage() {
             marginBottom: "24px",
           }}
         >
-          Step 2 of 4 — LinkedIn
+          Step 1 of 4 — CRM
         </p>
 
         {/* Headline */}
@@ -77,7 +78,9 @@ export default function LinkedInOnboardingPage() {
             marginBottom: "12px",
           }}
         >
-          Connect your <em>LinkedIn</em>
+          Connect your CRM so we know
+          <br />
+          <em>who your existing clients are</em>
         </h1>
 
         {/* Subhead */}
@@ -91,9 +94,9 @@ export default function LinkedInOnboardingPage() {
             marginBottom: "32px",
           }}
         >
-          Agency OS reads your recent posts to match your agency&apos;s voice when
-          writing outreach. Your existing connections become an exclusion list
-          so we never cold-message someone you already know.
+          Agency OS uses your HubSpot contact and deal history as an exclusion
+          list. We will never prospect someone already in your pipeline or
+          client base. Meeting bookings flow back into HubSpot automatically.
         </p>
 
         {/* Disclosure panel */}
@@ -121,44 +124,27 @@ export default function LinkedInOnboardingPage() {
                   letterSpacing: "0.1em",
                   color: "#D4956A",
                   textTransform: "uppercase",
-                  marginBottom: "12px",
+                  marginBottom: "10px",
                 }}
               >
-                What Agency OS does with your LinkedIn account
+                Write access disclosure
               </p>
-              <div
+              <p
                 style={{
                   fontFamily: "'DM Sans', sans-serif",
                   fontWeight: 400,
                   fontSize: "14px",
-                  lineHeight: 1.75,
+                  lineHeight: 1.7,
                   color: "#3A3530",
                 }}
               >
-                <p style={{ marginBottom: "10px" }}>
-                  <strong style={{ fontWeight: 500 }}>READS</strong> your
-                  profile and recent posts to match your agency&apos;s voice when
-                  writing outreach.
-                </p>
-                <p style={{ marginBottom: "10px" }}>
-                  <strong style={{ fontWeight: 500 }}>READS</strong> your
-                  connections as an exclusion list — we never cold-message
-                  someone you already know.
-                </p>
-                <p style={{ marginBottom: "10px" }}>
-                  <strong style={{ fontWeight: 500 }}>SENDS</strong>{" "}
-                  connection requests and follow-up messages from your account
-                  to prospects Agency OS identifies. Personalised, timed
-                  naturally, within conservative limits below LinkedIn&apos;s own
-                  guidelines. Randomised delays, business hours only, gradual
-                  warmup on new cycles.
-                </p>
-                <p>
-                  Connection requests and messages always come from you, not
-                  from Agency OS. You can pause LinkedIn outreach at any time
-                  and revoke access instantly.
-                </p>
-              </div>
+                When you book a meeting through Agency OS, the new contact,
+                deal, and calendar event will be written to your HubSpot so
+                meetings land in your existing workflow. We never modify or
+                delete records that didn&apos;t come from Agency OS. Every write is
+                traceable in your HubSpot activity log. You can revoke access
+                at any time from Settings.
+              </p>
             </div>
           </div>
         </div>
@@ -191,7 +177,7 @@ export default function LinkedInOnboardingPage() {
 
         {/* Primary CTA */}
         <button
-          onClick={handleLinkedInConnect}
+          onClick={handleHubspotConnect}
           disabled={isLoading}
           style={{
             width: "100%",
@@ -221,7 +207,7 @@ export default function LinkedInOnboardingPage() {
           ) : (
             <>
               <ExternalLink size={16} />
-              Connect LinkedIn via Unipile
+              Connect HubSpot
             </>
           )}
         </button>
@@ -229,7 +215,7 @@ export default function LinkedInOnboardingPage() {
         {/* Skip link */}
         <div className="text-center">
           <button
-            onClick={() => router.push("/onboarding/agency")}
+            onClick={() => router.push("/onboarding/linkedin")}
             style={{
               background: "none",
               border: "none",
@@ -242,7 +228,7 @@ export default function LinkedInOnboardingPage() {
               textUnderlineOffset: "3px",
             }}
           >
-            Skip — email and voice only for now
+            I&apos;ll connect this later
           </button>
         </div>
       </div>

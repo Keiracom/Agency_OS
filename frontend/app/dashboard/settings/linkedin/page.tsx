@@ -1,13 +1,22 @@
 /**
  * FILE: frontend/app/dashboard/settings/linkedin/page.tsx
  * PURPOSE: LinkedIn connection settings page
- * PHASE: 24H - LinkedIn Credential Connection
+ * PHASE: 309 - Onboarding Rebuild
+ *
+ * Credential-based LinkedIn (email/password + 2FA) is deprecated.
+ * Connection is now via Unipile OAuth — GET /api/v1/linkedin/connect.
  */
 
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -21,69 +30,17 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { LinkedInCredentialForm } from "@/components/onboarding/LinkedInCredentialForm";
-import { LinkedInTwoFactor } from "@/components/onboarding/LinkedInTwoFactor";
-import { LinkedInConnecting } from "@/components/onboarding/LinkedInConnecting";
-import {
-  useLinkedInStatus,
-  useLinkedInConnect,
-  useLinkedInVerify2FA,
-  useLinkedInDisconnect,
-} from "@/hooks/use-linkedin";
-
-type ConnectionState = "idle" | "form" | "connecting" | "2fa";
+import { useLinkedInStatus, useLinkedInDisconnect } from "@/hooks/use-linkedin";
 
 export default function LinkedInSettingsPage() {
-  const [state, setState] = useState<ConnectionState>("idle");
   const [error, setError] = useState<string | null>(null);
-  const [twoFactorMethod, setTwoFactorMethod] = useState<string | null>(null);
 
   const { data: status, isLoading: statusLoading, refetch } = useLinkedInStatus();
-  const connectMutation = useLinkedInConnect();
-  const verify2FAMutation = useLinkedInVerify2FA();
   const disconnectMutation = useLinkedInDisconnect();
 
-  const handleConnect = async (email: string, password: string) => {
-    setError(null);
-    setState("connecting");
-
-    try {
-      const result = await connectMutation.mutateAsync({ linkedin_email: email, linkedin_password: password });
-
-      if (result.status === "connected") {
-        setState("idle");
-        refetch();
-      } else if (result.status === "awaiting_2fa") {
-        setTwoFactorMethod(result.method || null);
-        setState("2fa");
-      } else if (result.status === "failed") {
-        setError(result.error || "Connection failed");
-        setState("form");
-      } else {
-        // Poll for completion
-        pollForCompletion();
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Connection failed");
-      setState("form");
-    }
-  };
-
-  const handleSubmit2FA = async (code: string) => {
-    setError(null);
-
-    try {
-      const result = await verify2FAMutation.mutateAsync({ code });
-
-      if (result.status === "connected") {
-        setState("idle");
-        refetch();
-      } else if (result.status === "failed") {
-        setError(result.error || "Verification failed");
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Verification failed");
-    }
+  const handleConnect = () => {
+    // Redirect to Unipile OAuth via backend — backend returns the hosted auth URL
+    window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/linkedin/connect`;
   };
 
   const handleDisconnect = async () => {
@@ -95,42 +52,6 @@ export default function LinkedInSettingsPage() {
     }
   };
 
-  const pollForCompletion = async () => {
-    const maxAttempts = 30;
-    let attempts = 0;
-
-    const poll = async () => {
-      attempts++;
-      const { data } = await refetch();
-
-      if (data?.status === "connected") {
-        setState("idle");
-        return;
-      }
-
-      if (data?.status === "awaiting_2fa") {
-        setTwoFactorMethod(data.two_fa_method || null);
-        setState("2fa");
-        return;
-      }
-
-      if (data?.status === "failed") {
-        setError(data.error || "Connection failed");
-        setState("form");
-        return;
-      }
-
-      if (attempts < maxAttempts) {
-        setTimeout(poll, 2000);
-      } else {
-        setError("Connection timed out");
-        setState("form");
-      }
-    };
-
-    setTimeout(poll, 2000);
-  };
-
   const getStatusBadge = () => {
     if (statusLoading) {
       return <Badge variant="outline">Loading...</Badge>;
@@ -138,10 +59,6 @@ export default function LinkedInSettingsPage() {
 
     if (status?.status === "connected") {
       return <Badge className="bg-amber">Connected</Badge>;
-    }
-
-    if (status?.status === "awaiting_2fa") {
-      return <Badge variant="secondary">2FA Required</Badge>;
     }
 
     if (status?.status === "connecting") {
@@ -153,7 +70,7 @@ export default function LinkedInSettingsPage() {
 
   const formatDate = (dateStr?: string | null) => {
     if (!dateStr) return "Never";
-    return new Date(dateStr).toLocaleDateString("en-US", {
+    return new Date(dateStr).toLocaleDateString("en-AU", {
       month: "short",
       day: "numeric",
       year: "numeric",
@@ -171,6 +88,12 @@ export default function LinkedInSettingsPage() {
         </p>
       </div>
 
+      {error && (
+        <div className="mb-4 p-3 bg-destructive/10 text-destructive rounded-lg text-sm">
+          {error}
+        </div>
+      )}
+
       {/* Connection Status Card */}
       <Card className="mb-6">
         <CardHeader>
@@ -178,6 +101,9 @@ export default function LinkedInSettingsPage() {
             <CardTitle className="text-lg">Connection Status</CardTitle>
             {getStatusBadge()}
           </div>
+          <CardDescription>
+            Connect via secure OAuth — no password stored
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {status?.status === "connected" ? (
@@ -215,8 +141,8 @@ export default function LinkedInSettingsPage() {
                     <AlertDialogHeader>
                       <AlertDialogTitle>Disconnect LinkedIn?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        This will remove your LinkedIn credentials and stop all automated
-                        outreach. You can reconnect at any time.
+                        This will remove your LinkedIn connection and stop all
+                        automated outreach. You can reconnect at any time.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -231,7 +157,7 @@ export default function LinkedInSettingsPage() {
                   </AlertDialogContent>
                 </AlertDialog>
 
-                <Button variant="outline" onClick={() => setState("form")}>
+                <Button variant="outline" onClick={handleConnect}>
                   Reconnect
                 </Button>
               </div>
@@ -239,69 +165,14 @@ export default function LinkedInSettingsPage() {
           ) : (
             <div className="text-center py-4">
               <p className="text-muted-foreground mb-4">
-                Connect your LinkedIn account to enable automated outreach to prospects.
+                Connect your LinkedIn account to enable automated outreach to
+                prospects. Uses secure OAuth — no password required.
               </p>
-              <Button onClick={() => setState("form")}>
-                Connect LinkedIn
-              </Button>
+              <Button onClick={handleConnect}>Connect LinkedIn</Button>
             </div>
           )}
         </CardContent>
       </Card>
-
-      {/* Connection Form Modal */}
-      {state !== "idle" && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">
-              {state === "form" && "Connect LinkedIn"}
-              {state === "connecting" && "Connecting..."}
-              {state === "2fa" && "Verification Required"}
-            </CardTitle>
-            <CardDescription>
-              {state === "form" && "Enter your LinkedIn credentials to connect"}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {state === "form" && (
-              <div className="space-y-4">
-                <LinkedInCredentialForm
-                  onSubmit={handleConnect}
-                  error={error}
-                  isLoading={connectMutation.isPending}
-                />
-                <Button
-                  variant="ghost"
-                  className="w-full"
-                  onClick={() => {
-                    setState("idle");
-                    setError(null);
-                  }}
-                >
-                  Cancel
-                </Button>
-              </div>
-            )}
-
-            {state === "connecting" && (
-              <LinkedInConnecting />
-            )}
-
-            {state === "2fa" && (
-              <LinkedInTwoFactor
-                method={twoFactorMethod}
-                onSubmit={handleSubmit2FA}
-                onBack={() => {
-                  setState("form");
-                  setError(null);
-                }}
-                error={error}
-                isLoading={verify2FAMutation.isPending}
-              />
-            )}
-          </CardContent>
-        </Card>
-      )}
 
       {/* Security Info */}
       <Card className="mt-6">
@@ -312,19 +183,19 @@ export default function LinkedInSettingsPage() {
           <ul className="space-y-2 text-sm text-muted-foreground">
             <li className="flex items-center gap-2">
               <ShieldIcon className="h-4 w-4 text-amber" />
-              Credentials are encrypted using AES-256 encryption
+              Secure OAuth connection — your password is never stored
             </li>
             <li className="flex items-center gap-2">
               <ShieldIcon className="h-4 w-4 text-amber" />
-              Your password is never stored in plain text
-            </li>
-            <li className="flex items-center gap-2">
-              <ShieldIcon className="h-4 w-4 text-amber" />
-              Credentials are only used for automated outreach
+              Connection is only used for automated outreach
             </li>
             <li className="flex items-center gap-2">
               <ShieldIcon className="h-4 w-4 text-amber" />
               We never post to your LinkedIn feed
+            </li>
+            <li className="flex items-center gap-2">
+              <ShieldIcon className="h-4 w-4 text-amber" />
+              Disconnect anytime from this page
             </li>
           </ul>
         </CardContent>

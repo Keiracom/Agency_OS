@@ -2,114 +2,134 @@
  * FILE: frontend/middleware.ts
  * PURPOSE: Next.js middleware for route protection + demo mode
  * MIGRATION: Updated to use @supabase/ssr (replaces auth-helpers-nextjs)
- * 
+ *
  * CEO Directive #028 — Public Demo Dashboard
  * - Detect ?demo=true query parameter
  * - Bypass auth for demo mode
  * - Persist demo flag via cookies
- * 
- * NOTE: Full auth logic DISABLED for visual review (PR #25)
- * TODO: Re-enable auth before production deploy
+ *
+ * Directive #309 — Auth re-enabled
+ * - Protected routes: /dashboard/*, /onboarding/*, /settings/*, /inbox/*,
+ *   /pipeline/*, /cycles/*, /reports/*, /sequences/*
+ * - Public routes: /, /login, /signup, /demo, /api/*, marketing pages
  */
 
+import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 const DEMO_COOKIE_NAME = "agency_os_demo";
 
+const PROTECTED_PREFIXES = [
+  "/dashboard",
+  "/onboarding",
+  "/settings",
+  "/inbox",
+  "/pipeline",
+  "/cycles",
+  "/reports",
+  "/sequences",
+];
+
+const PUBLIC_PREFIXES = [
+  "/",
+  "/login",
+  "/signup",
+  "/demo",
+  "/api",
+  "/about",
+  "/pricing",
+  "/how-it-works",
+  "/privacy",
+  "/showroom",
+  "/gallery",
+];
+
+function isPublicRoute(pathname: string): boolean {
+  // Exact match on "/" or prefix match on everything else
+  if (pathname === "/") return true;
+  return PUBLIC_PREFIXES.slice(1).some(
+    (prefix) => pathname === prefix || pathname.startsWith(prefix + "/")
+  );
+}
+
+function isProtectedRoute(pathname: string): boolean {
+  return PROTECTED_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(prefix + "/")
+  );
+}
+
 export async function middleware(req: NextRequest) {
   const { pathname, searchParams } = req.nextUrl;
-  const response = NextResponse.next();
 
-  // Check for demo mode via query parameter
+  // ---- Demo mode handling ----
   const demoParam = searchParams.get("demo");
-  
-  // Check existing demo cookie
   const demoCookie = req.cookies.get(DEMO_COOKIE_NAME)?.value;
-  
-  // Determine if we're in demo mode
   let isDemo = false;
-  
+
+  let baseResponse = NextResponse.next({ request: req });
+
   if (demoParam === "true") {
-    // Enable demo mode
     isDemo = true;
-    response.cookies.set(DEMO_COOKIE_NAME, "true", {
-      httpOnly: false, // Allow client-side access
+    baseResponse.cookies.set(DEMO_COOKIE_NAME, "true", {
+      httpOnly: false,
       sameSite: "lax",
-      maxAge: 60 * 60 * 24, // 24 hours
+      maxAge: 60 * 60 * 24,
       path: "/",
     });
   } else if (demoParam === "false") {
-    // Explicitly disable demo mode
     isDemo = false;
-    response.cookies.delete(DEMO_COOKIE_NAME);
+    baseResponse.cookies.delete(DEMO_COOKIE_NAME);
   } else if (demoCookie === "true") {
-    // Continue demo mode from cookie
     isDemo = true;
   }
 
-  // If in demo mode, bypass all auth checks
+  // Demo mode bypasses all auth
   if (isDemo) {
-    // Set demo header for server components to detect
-    response.headers.set("x-demo-mode", "true");
-    return response;
+    baseResponse.headers.set("x-demo-mode", "true");
+    return baseResponse;
   }
 
-  // TEMPORARILY DISABLED: All auth checks bypassed for visual review
-  // Re-enable the full auth logic before merging to main
-  return response;
-}
-
-/*
- * ORIGINAL AUTH LOGIC - PRESERVED FOR LATER
- * ==========================================
- 
-import { createServerClient } from "@supabase/ssr";
-
-const protectedRoutes = ["/dashboard", "/admin", "/onboarding", "/prototype"];
-const publicRoutes = ["/", "/login", "/signup", "/about", "/pricing", "/how-it-works", "/api", "/dashboard-v2", "/showroom", "/gallery"];
-
-export async function middleware(req: NextRequest) {
-  const pathname = req.nextUrl.pathname;
-
-  if (publicRoutes.some(route => pathname === route || pathname.startsWith(route + "/"))) {
-    return NextResponse.next();
+  // ---- Auth gate for protected routes ----
+  if (!isProtectedRoute(pathname) || isPublicRoute(pathname)) {
+    return baseResponse;
   }
 
-  if (protectedRoutes.some(route => pathname.startsWith(route))) {
-    let supabaseResponse = NextResponse.next({ request: req });
+  let supabaseResponse = NextResponse.next({ request: req });
 
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() { return req.cookies.getAll(); },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value }) => req.cookies.set(name, value));
-            supabaseResponse = NextResponse.next({ request: req });
-            cookiesToSet.forEach(({ name, value, options }) =>
-              supabaseResponse.cookies.set(name, value, options)
-            );
-          },
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return req.cookies.getAll();
         },
-      }
-    );
-
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) {
-      const loginUrl = new URL("/login", req.url);
-      loginUrl.searchParams.set("redirect", pathname);
-      return NextResponse.redirect(loginUrl);
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) =>
+            req.cookies.set(name, value)
+          );
+          supabaseResponse = NextResponse.next({ request: req });
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          );
+        },
+      },
     }
+  );
 
-    return supabaseResponse;
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    const loginUrl = new URL("/login", req.url);
+    loginUrl.searchParams.set("returnTo", pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
-  return NextResponse.next();
+  return supabaseResponse;
 }
-*/
 
 export const config = {
   matcher: [

@@ -784,6 +784,7 @@ class DFSLabsClient:
                             "domain": domain,
                             "paid_etv": paid_etv,
                             "organic_etv": organic_etv,
+                            "organic_count": item.get("organic_count") or 0,
                             "_total_count": total_count,  # propagate for pagination
                         }
                     )

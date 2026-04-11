@@ -403,8 +403,8 @@ class Layer2Discovery:
         location: str = "Australia",
         limit: int = 50,
         offset: int = 0,
-        etv_min: float = 200.0,
-        etv_max: float = 5000.0,
+        etv_min: float | None = None,
+        etv_max: float | None = None,
     ) -> list[dict]:
         """
         Stateless batch pull for pipeline orchestration.
@@ -412,7 +412,14 @@ class Layer2Discovery:
         Returns list of {"domain": str, "organic_etv": float}.
         Used by PipelineOrchestrator.run(). Distinct from run() which reads
         signal_configurations and writes to BU.
+        etv_min/etv_max required — use get_etv_window() from
+        src.config.category_etv_windows.
         """
+        if etv_min is None or etv_max is None:
+            raise ValueError(
+                "ETV window required. Use get_etv_window(category_code) from "
+                "src.config.category_etv_windows to look up the canonical window."
+            )
         # DO NOT pass explicit first_date/second_date here.
         # DFSLabsClient._get_latest_available_date() resolves the correct
         # date window dynamically. Hardcoding date.today() caused a regression

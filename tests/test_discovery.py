@@ -84,6 +84,7 @@ async def test_discover_prospects_returns_domains():
     results = await disc.discover_prospects(
         category_codes=[10514, 13462],
         location="Australia",
+        etv_min=0.0, etv_max=999999.0,
     )
     assert len(results) > 0
     assert all("domain" in r for r in results)
@@ -103,6 +104,7 @@ async def test_discover_prospects_deduplicates_against_exclude():
     results = await disc.discover_prospects(
         category_codes=[10514],
         exclude_domains={"claimed.com.au"},
+        etv_min=0.0, etv_max=999999.0,
     )
     domains = [r["domain"] for r in results]
     assert "claimed.com.au" not in domains
@@ -115,7 +117,7 @@ async def test_discover_prospects_empty_category_list():
     from src.pipeline.discovery import MultiCategoryDiscovery
     dfs = _make_dfs()
     disc = MultiCategoryDiscovery(dfs)
-    results = await disc.discover_prospects(category_codes=[])
+    results = await disc.discover_prospects(category_codes=[], etv_min=0.0, etv_max=999999.0)
     assert results == []
     dfs.domain_metrics_by_categories.assert_not_called()
 
@@ -131,6 +133,7 @@ async def test_discover_prospects_batch_callback_fires():
     await disc.discover_prospects(
         category_codes=[10514, 13462, 11295],
         batch_callback=lambda b: callback_calls.append(b),
+        etv_min=0.0, etv_max=999999.0,
     )
     # 3 codes → 3 DFS calls (one per code) → up to 3 callbacks
     # Each returns 2 domains with etv=500 (in range) → callback fires per batch
@@ -145,7 +148,7 @@ async def test_discover_prospects_batches_at_max_codes():
     disc = MultiCategoryDiscovery(dfs)
     # 5 codes → at least 5 DFS calls (one per code, possibly more if paginating)
     codes = list(range(10000, 10005))
-    await disc.discover_prospects(category_codes=codes)
+    await disc.discover_prospects(category_codes=codes, etv_min=0.0, etv_max=999999.0)
     # Each code gets at least 1 call; since mock returns only 1 item (< batch_size=100),
     # pagination stops after 1 call per code → exactly 5 calls
     assert dfs.domain_metrics_by_categories.call_count == len(codes)
@@ -171,7 +174,7 @@ async def test_discover_prospects_deduplicates_across_batches():
 
     # 25 codes → 2 batches
     codes = list(range(10000, 10025))
-    results = await disc.discover_prospects(category_codes=codes)
+    results = await disc.discover_prospects(category_codes=codes, etv_min=0.0, etv_max=999999.0)
     domains = [r["domain"] for r in results]
     assert domains.count("shared.com.au") == 1  # not duplicated
 

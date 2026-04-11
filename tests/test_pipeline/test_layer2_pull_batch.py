@@ -14,7 +14,7 @@ def _make_l2(results=None):
 @pytest.mark.asyncio
 async def test_returns_list():
     l2 = _make_l2([{"domain": "d1.com.au", "organic_etv": 500.0}])
-    r = await l2.pull_batch("10514")
+    r = await l2.pull_batch("10514", etv_min=0.0, etv_max=999999.0)
     assert isinstance(r, list)
     assert r[0]["domain"] == "d1.com.au"
 
@@ -36,8 +36,8 @@ async def test_etv_range_filter():
 @pytest.mark.asyncio
 async def test_pagination():
     l2 = _make_l2([{"domain": f"d{i}.com.au", "organic_etv": 500.0} for i in range(10)])
-    p1 = await l2.pull_batch("10514", limit=3, offset=0)
-    p2 = await l2.pull_batch("10514", limit=3, offset=3)
+    p1 = await l2.pull_batch("10514", limit=3, offset=0, etv_min=0.0, etv_max=999999.0)
+    p2 = await l2.pull_batch("10514", limit=3, offset=3, etv_min=0.0, etv_max=999999.0)
     assert len(p1) == 3 and len(p2) == 3
     assert p1[0]["domain"] != p2[0]["domain"]
 
@@ -45,7 +45,7 @@ async def test_pagination():
 @pytest.mark.asyncio
 async def test_invalid_category_returns_empty():
     l2 = _make_l2()
-    assert await l2.pull_batch("notanumber") == []
+    assert await l2.pull_batch("notanumber", etv_min=0.0, etv_max=999999.0) == []
 
 
 @pytest.mark.asyncio
@@ -54,4 +54,12 @@ async def test_dfs_error_returns_empty():
     dfs = MagicMock()
     dfs.domain_metrics_by_categories = AsyncMock(side_effect=Exception("DFS down"))
     l2 = Layer2Discovery(conn=conn, dfs=dfs)
-    assert await l2.pull_batch("10514") == []
+    assert await l2.pull_batch("10514", etv_min=0.0, etv_max=999999.0) == []
+
+
+@pytest.mark.asyncio
+async def test_missing_etv_window_raises():
+    """Calling pull_batch without ETV window raises ValueError."""
+    l2 = _make_l2()
+    with pytest.raises(ValueError, match="ETV window required"):
+        await l2.pull_batch("10514")

@@ -422,7 +422,7 @@ class TestPullBatchDateRegression:
         mock_conn = AsyncMock()
 
         discovery = Layer2Discovery(conn=mock_conn, dfs=mock_dfs)
-        await discovery.pull_batch(category_code="10514", location="Australia")
+        await discovery.pull_batch(category_code="10514", location="Australia", etv_min=0.0, etv_max=999999.0)
 
         # Assert the DFS call was made
         mock_dfs.domain_metrics_by_categories.assert_called_once()

@@ -1,0 +1,64 @@
+{
+  "run_at": "2026-04-11T12:30:57.231510",
+  "dry_run": false,
+  "category": "multi_category_rotation",
+  "location": "Australia",
+  "target_domains": 600,
+  "prospects_built": 3,
+  "errors": 0,
+  "elapsed_secs": 456.2,
+  "contactout_email_hits": 2,
+  "contactout_mobile_hits": 3,
+  "email_source_breakdown": {
+    "website_generic": 1,
+    "contactout": 2
+  },
+  "mobile_source_breakdown": {
+    "contactout": 3
+  },
+  "results": [
+    {
+      "domain": "kwiknkleen.com.au",
+      "company_name": "PERTH CAR WASH",
+      "dm_name": "Tracey Curran",
+      "dm_email": "sales@kwiknkleen.com.au",
+      "dm_email_source": "website_generic",
+      "dm_email_confidence": "low",
+      "dm_email_verified": false,
+      "dm_mobile": "+61 416 114 573",
+      "dm_mobile_source": "contactout",
+      "dm_mobile_tier": 0,
+      "intent_score": 8,
+      "affordability_score": 5
+    },
+    {
+      "domain": "www.brydens.com.au",
+      "company_name": "SYDNEY SOLICITORS PTY LTD",
+      "dm_name": "Melanie Tonazzi",
+      "dm_email": "melanie@thedivorcestudio.com",
+      "dm_email_source": "contactout",
+      "dm_email_confidence": "high",
+      "dm_email_verified": true,
+      "dm_mobile": "+61288194399",
+      "dm_mobile_source": "contactout",
+      "dm_mobile_tier": 0,
+      "intent_score": 8,
+      "affordability_score": 8
+    },
+    {
+      "domain": "www.hallpayne.com.au",
+      "company_name": "Hall Payne Lawyers",
+      "dm_name": "Luke Tiley",
+      "dm_email": "luket@hallpayne.com.au",
+      "dm_email_source": "contactout",
+      "dm_email_confidence": "high",
+      "dm_email_verified": true,
+      "dm_mobile": "+61 7 3017 2400",
+      "dm_mobile_source": "contactout",
+      "dm_mobile_tier": 0,
+      "intent_score": 8,
+      "affordability_score": 9
+    }
+  ],
+  "errors_detail": []
+}

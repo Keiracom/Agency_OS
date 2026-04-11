@@ -413,10 +413,11 @@ class Layer2Discovery:
         Used by PipelineOrchestrator.run(). Distinct from run() which reads
         signal_configurations and writes to BU.
         """
-        from datetime import date as _date, timedelta as _td
-        today = _date.today()
-        first_date = (today - _td(days=180)).strftime("%Y-%m-%d")
-        second_date = today.strftime("%Y-%m-%d")
+        # DO NOT pass explicit first_date/second_date here.
+        # DFSLabsClient._get_latest_available_date() resolves the correct
+        # date window dynamically. Hardcoding date.today() caused a regression
+        # (#304 / #317.3) — DFS silently returns empty results for future dates.
+        # Directive #317.3: deleted hardcoded dates, added regression test.
 
         try:
             code_int = int(category_code)
@@ -429,8 +430,6 @@ class Layer2Discovery:
                 category_codes=[code_int],
                 location_name=location,
                 paid_etv_min=0.0,
-                first_date=first_date,
-                second_date=second_date,
             )
         except Exception as exc:
             logger.error("pull_batch: DFS error category=%s offset=%d: %s", category_code, offset, exc)

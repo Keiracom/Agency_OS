@@ -1,13 +1,16 @@
 """
 Contract: src/pipeline/mobile_waterfall.py
-Purpose: 3-tier mobile number discovery waterfall for DM prospects.
+Purpose: 4-tier mobile number discovery waterfall for DM prospects.
          Short-circuits on first find. Tracks source and cost.
 Layer: 4 - orchestration
-Directive: #300-FIX Issue 11
+Directive: #300-FIX Issue 11, #317
 
 TIERS:
+  Layer 0: ContactOut (1 credit, pre-fetched) — AU mobile from LinkedIn profile.
+           Preferred over all other sources. Only used if contactout_result passed in.
+           Note: Leadmagic mobile had 0% AU coverage — ContactOut is now primary.
   Layer 1: Website regex on cached HTML (free) — result in contact_data.
-  Layer 2: Leadmagic mobile ($0.077/lookup)
+  Layer 2: Leadmagic mobile ($0.077/lookup) — demoted to fallback (was primary).
   Layer 3: Bright Data LinkedIn profile ($0.00075/lookup)
 
 Mobile runs on ALL DM-found prospects, not just STRUGGLING.
@@ -66,9 +69,10 @@ async def run_mobile_waterfall(
     leadmagic_client: Any | None = None,
     brightdata_client: Any | None = None,
     sem_paid: asyncio.Semaphore | None = None,
+    contactout_result: dict | None = None,
 ) -> MobileResult:
     """
-    Run the 3-tier mobile discovery waterfall for a single domain.
+    Run the 4-tier mobile discovery waterfall for a single domain.
 
     Args:
         domain: The business domain.
@@ -77,11 +81,31 @@ async def run_mobile_waterfall(
         leadmagic_client: Optional LeadmagicClient for Layer 2 ($0.077).
         brightdata_client: Optional BrightDataLinkedInClient for Layer 3 ($0.00075).
         sem_paid: Optional semaphore to gate paid calls.
+        contactout_result: Pre-fetched ContactOut enrichment dict (from
+            enrich_dm_via_contactout). Used as Layer 0 primary — no additional
+            API calls. AU mobile (+614) preferred.
 
     Returns:
         MobileResult with mobile number, source, cost, and tier used.
     """
     _sem = sem_paid if sem_paid is not None else contextlib.nullcontext()
+
+    # ── Layer 0: ContactOut (pre-fetched — no API call here) ──────────────────
+    # ContactOut is primary mobile source: 0-cost at this layer (billed by caller),
+    # and has meaningful AU mobile coverage vs Leadmagic (0% AU).
+    if contactout_result:
+        co_phone = contactout_result.get("phone")
+        if co_phone:
+            logger.info(
+                "mobile_waterfall L0 contactout domain=%s phone=%s",
+                domain, co_phone,
+            )
+            return MobileResult(
+                mobile=co_phone,
+                source="contactout",
+                cost_usd=Decimal("0"),  # cost charged at orchestrator level
+                tier_used=0,
+            )
 
     # ── Layer 1: HTML regex (already extracted — check contact_data) ──────────
     # company_mobile: new schema key; mobile: legacy fallback

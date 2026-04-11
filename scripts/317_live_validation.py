@@ -120,7 +120,7 @@ async def run_validation(
         # Full live run via PipelineOrchestrator
         try:
             from src.pipeline.pipeline_orchestrator import PipelineOrchestrator
-            from src.pipeline.layer_2_discovery import Layer2Discovery
+            from src.pipeline.discovery import MultiCategoryDiscovery  # Paginated, ETV-aware
             from src.pipeline.free_enrichment import FreeEnrichment
             from src.pipeline.prospect_scorer import ProspectScorer
             from src.pipeline.dm_identification import DMIdentification
@@ -150,7 +150,12 @@ async def run_validation(
             )
             bd_client = BrightDataLinkedInClient()
 
-            discovery = Layer2Discovery(conn=pool, dfs=dfs_client)
+            # Use MultiCategoryDiscovery (NOT Layer2Discovery) — it has next_batch()
+            # with paginated offset walking to reach the SMB ETV band.
+            # Layer2Discovery.pull_batch() is broken (no offset forwarding, no pagination).
+            # See #317.3 diagnosis for details.
+            discovery = MultiCategoryDiscovery(dfs_client)
+            logger.info("Discovery class: %s (has next_batch: %s)", type(discovery).__name__, hasattr(discovery, 'next_batch'))
             free_enrichment = FreeEnrichment(conn=pool)
             scorer = ProspectScorer()
             dm_identification = DMIdentification(bd_client=bd_client, dfs_client=dfs_client)
@@ -177,10 +182,13 @@ async def run_validation(
                 intelligence=_intelligence_module,
                 on_card=on_card,
             )
-            pipeline_result = await orchestrator.run(
-                category_codes=category_codes,
+            # Use run_parallel with discover_all=True to activate next_batch()
+            # paginated walking. This is the production v7 code path.
+            pipeline_result = await orchestrator.run_parallel(
+                category_codes=[str(c) for c in category_codes],
                 location=location,
                 target_count=domains,
+                discover_all=True,
             )
 
             await pool.close()

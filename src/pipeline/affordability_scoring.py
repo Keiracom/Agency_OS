@@ -66,11 +66,14 @@ class AffordabilityScorer:
                 gaps=[GAP_MESSAGES["sole_trader"]], passed_gate=False
             )
 
-        if gst is False:
+        # GST gate: only reject when explicitly NOT registered.
+        # GST unknown (None) is a soft flag, not a hard reject. (#328.6)
+        if gst is False:  # explicitly False = known not registered
             return AffordabilityResult(
                 raw_score=0, band="LOW", signals={"hard_gate": "no_gst"},
                 gaps=[GAP_MESSAGES["no_gst"]], passed_gate=False
             )
+        # gst is None = unknown, continue to scoring (soft flag below)
 
         if not reachable:
             return AffordabilityResult(
@@ -89,8 +92,13 @@ class AffordabilityScorer:
         else:
             signals["entity_type"] = 0
 
-        # --- GST registered ---
-        signals["gst_registered"] = 1 if gst else 0
+        # --- GST registered — three-state scoring (#328.6) ---
+        if gst is True:
+            signals["gst_registered"] = 1
+        elif gst is None:
+            signals["gst_registered"] = 0.5  # unknown — partial credit
+        else:
+            signals["gst_registered"] = 0
 
         # --- Google Ads active ---
         ads_active = enrichment.get("is_running_ads") or False

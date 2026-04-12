@@ -112,3 +112,41 @@ def test_professional_email_adds_point(scorer):
     r_pro = scorer.score(professional)
     r_none = scorer.score(none_email)
     assert r_pro.raw_score == r_none.raw_score + 1
+
+
+# --- Three-state GST model tests (#328.6) ---
+
+def test_affordability_gst_unknown_not_hard_reject(scorer):
+    """GST unknown (None) should NOT hard-reject at affordability gate."""
+    enrichment = {
+        "gst_registered": None,  # unknown
+        "entity_type": "Australian Private Company",
+        "website_cms": "wordpress",
+        "abn_matched": True,
+    }
+    result = scorer.score(enrichment)
+    assert result.passed_gate is True  # should NOT be rejected
+
+
+def test_affordability_gst_false_hard_reject(scorer):
+    """GST explicitly False = known not registered = hard reject."""
+    enrichment = {
+        "gst_registered": False,
+        "entity_type": "Australian Private Company",
+        "website_cms": "wordpress",
+        "abn_matched": True,
+    }
+    result = scorer.score(enrichment)
+    assert result.passed_gate is False
+
+
+def test_affordability_gst_unknown_partial_signal(scorer):
+    """GST unknown (None) should contribute 0.5 to signal, not 1 or 0."""
+    enrichment = {
+        "gst_registered": None,
+        "entity_type": "Australian Private Company",
+        "website_cms": "wordpress",
+        "abn_matched": True,
+    }
+    result = scorer.score(enrichment)
+    assert result.signals.get("gst_registered") == 0.5

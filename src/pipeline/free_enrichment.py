@@ -45,10 +45,46 @@ META_PIXEL_RE = re.compile(
 )
 
 # ── ABN multi-strategy matching constants ────────────────────────────────────
-_ABN_STOPWORDS: frozenset[str] = frozenset({
-    "at", "and", "the", "of", "in", "for", "by", "to", "a", "an",
-    "my", "your", "our", "its", "with", "from", "on", "is", "as", "or",
-})
+# _ABN_STOPWORDS removed in #328.3b — replaced by DOMAIN_STOPWORDS from au_lexicon
+
+
+def _semantic_split(text: str, known_terms: frozenset[str]) -> list[str]:
+    """Recursively split a compound string on known term boundaries.
+
+    Finds the longest known term in the text, splits around it,
+    and recurses on the remaining segments.
+    """
+    if len(text) < 3:
+        return [text] if len(text) >= 3 else []
+
+    # Find all known terms that appear as substrings, longest first
+    matches = []
+    for term in sorted(known_terms, key=len, reverse=True):
+        idx = text.find(term)
+        if idx >= 0:
+            matches.append((idx, term))
+
+    if not matches:
+        return [text]
+
+    # Use the longest match (sorted by term length descending, take first)
+    idx, term = matches[0]
+
+    before = text[:idx]
+    after = text[idx + len(term):]
+
+    result = []
+    if before and len(before) >= 3:
+        result.extend(_semantic_split(before, known_terms))
+    # Drop fragments shorter than 3 chars silently
+
+    result.append(term)
+
+    if after and len(after) >= 3:
+        result.extend(_semantic_split(after, known_terms))
+    # Drop short trailing fragments silently
+
+    return result
 _RE_ABN_ENTITY_SUFFIXES = re.compile(
     r"\s*(PTY\.?\s*LTD\.?|PROPRIETARY\s+LIMITED|PTY\s+LIMITED|LIMITED"
     r"|LTD\.?|TRUST|TRADING\s+AS|T/A|ABN)\s*$",
@@ -212,42 +248,69 @@ class FreeEnrichment:
 
     @staticmethod
     def _extract_domain_keywords(domain: str) -> list[str]:
-        """Extract meaningful keywords from a domain name.
+        """Extract meaningful keywords from a domain name using semantic word-boundary detection.
 
-        Strips TLD, splits on hyphens/underscores, and splits concatenated
-        words by removing stopwords.  Only splits on a stopword when both
-        neighbouring sides have ≥ 5 non-space characters, preventing false
-        splits on embedded stopword fragments (e.g. "is" inside "dentists").
+        Uses BUSINESS_TERMS and AU_SUBURBS from src.config.au_lexicon to find
+        word boundaries in compound domain names.
 
         Examples:
+            "theavenuedental.com.au" → ["avenue", "dental"]
+            "meltondentalhouse.com.au" → ["melton", "dental", "house"]
+            "www.sydneycriminallawyers.com.au" → ["sydney", "criminal", "lawyers"]
+            "glenferriedental.com.au" → ["glenferrie", "dental"]
             "dentistsatpymble.com.au" → ["dentists", "pymble"]
-            "bright-smile-dental.com" → ["bright", "smile", "dental"]
-            "brunswick-east-dental.com.au" → ["brunswick", "east", "dental"]
+            "happy-dentistry.com.au" → ["happy", "dentistry"]
         """
-        stem = domain.split(".")[0].lower()
-        # Split on explicit separators first
-        parts = re.split(r"[-_]", stem)
-        if len(parts) == 1:
-            # Concatenated word: inject spaces around stopwords only when both
-            # neighbouring sides have ≥ 5 non-space characters.
-            word = stem
-            for sw in sorted(_ABN_STOPWORDS, key=len, reverse=True):
-                buf: list[str] = []
-                i = 0
-                while i < len(word):
-                    if word[i : i + len(sw)] == sw:
-                        left_len = len("".join(buf).replace(" ", ""))
-                        right_len = len(word[i + len(sw) :].replace(" ", ""))
-                        if left_len >= 5 and right_len >= 5:
-                            buf.append(" ")
-                            i += len(sw)
-                            buf.append(" ")
-                            continue
-                    buf.append(word[i])
-                    i += 1
-                word = "".join(buf)
-            parts = word.split()
-        return [w for w in parts if len(w) > 2 and w not in _ABN_STOPWORDS]
+        from src.config.au_lexicon import BUSINESS_TERMS, AU_SUBURBS, DOMAIN_STOPWORDS
+
+        # Step 1: Strip protocol, www, TLD
+        d = domain.lower().strip()
+        for prefix in ("https://", "http://", "www."):
+            d = d.removeprefix(prefix)
+        # Strip AU TLDs
+        for suffix in (".com.au", ".net.au", ".org.au", ".id.au", ".asn.au",
+                       ".sydney", ".melbourne", ".perth", ".brisbane",
+                       ".com", ".net", ".org", ".au"):
+            if d.endswith(suffix):
+                d = d[:-len(suffix)]
+                break
+
+        # Strip any remaining subdomain dots (take last segment)
+        if "." in d:
+            d = d.split(".")[-1]
+
+        # Step 2: Split on explicit separators (hyphens, underscores)
+        parts = re.split(r"[-_]", d)
+
+        # Step 3: For each part, apply semantic splitting
+        all_words: list[str] = []
+        known_terms = BUSINESS_TERMS | AU_SUBURBS
+
+        for part in parts:
+            if len(part) <= 3:
+                if part not in DOMAIN_STOPWORDS and len(part) >= 3:
+                    all_words.append(part)
+                continue
+
+            found_splits = _semantic_split(part, known_terms)
+            if found_splits and len(found_splits) > 1:
+                all_words.extend(found_splits)
+            else:
+                # No known terms found — keep as-is
+                all_words.append(part)
+
+        # Step 4: Filter stopwords and short fragments
+        result = [w for w in all_words if len(w) >= 3 and w not in DOMAIN_STOPWORDS]
+
+        # Deduplicate while preserving order
+        seen: set[str] = set()
+        deduped: list[str] = []
+        for w in result:
+            if w not in seen:
+                seen.add(w)
+                deduped.append(w)
+
+        return deduped
 
     async def _local_abn_match(
         self,
@@ -802,9 +865,10 @@ class FreeEnrichment:
 
         # ── Strategy 2: Title keyword intersection (local DB) ─────────────
         if title_cleaned:
+            from src.config.au_lexicon import DOMAIN_STOPWORDS as _DS
             title_kw = [
                 w for w in re.split(r"\s+", title_cleaned.lower())
-                if len(w) > 2 and w not in _ABN_STOPWORDS
+                if len(w) > 2 and w not in _DS
             ]
             if len(title_kw) >= 1:
                 try:

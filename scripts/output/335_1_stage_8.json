@@ -1,0 +1,3657 @@
+{
+  "directive": "#335.1 Stage 8",
+  "l1_hunter_success": 17,
+  "l1_linkedin_url_found": 11,
+  "l2_serp_attempted": 46,
+  "l2_serp_recovered": 40,
+  "l3_apify_input": 47,
+  "l3_apify_success": 37,
+  "combined_enriched": 46,
+  "cost": {
+    "hunter_usd": 0.0,
+    "serp_usd": 0.092,
+    "apify_usd": "billed_separately",
+    "total_usd": 0.092,
+    "total_aud": 0.1426
+  },
+  "wall_time_s": 331.9,
+  "domains": {
+    "dentalboutique.com.au": {
+      "hunter": {
+        "id": "cba1a0c2-36cb-5697-a88e-c5768fdd07ba",
+        "name": "Dental Boutique",
+        "legalName": "Dental Boutique",
+        "domain": "dentalboutique.com.au",
+        "domainAliases": [],
+        "site": {
+          "phoneNumbers": [],
+          "emailAddresses": [
+            "feedback@dentalboutique.com.au",
+            "compliance@dentalboutique.com.au"
+          ]
+        },
+        "category": {
+          "sector": "Health Care",
+          "industryGroup": "Health Care Equipment & Services",
+          "industry": "Health Care Providers & Services",
+          "subIndustry": "Health Care",
+          "gicsCode": "35102020",
+          "sicCode": "80",
+          "sic4Codes": [
+            "80"
+          ],
+          "naicsCode": "62",
+          "naics6Codes": [
+            "621111"
+          ],
+          "naics6Codes2022": [
+            "622110"
+          ]
+        },
+        "tags": [
+          "dentistry",
+          "dental care",
+          "dental treatments",
+          "cosmetic dentistry"
+        ],
+        "description": "Dental Boutique is a dentistry practice that offers comprehensive dental treatments including cosmetic dentistry services.",
+        "foundedYear": 2012,
+        "location": "Australia",
+        "timeZone": null,
+        "utcOffset": null,
+        "geo": {
+          "streetNumber": null,
+          "streetName": null,
+          "subPremise": null,
+          "streetAddress": null,
+          "city": null,
+          "postalCode": null,
+          "state": null,
+          "stateCode": null,
+          "country": "Australia",
+          "countryCode": "AU",
+          "lat": null,
+          "lng": null
+        },
+        "logo": "https://logos.hunter.io/dentalboutique.com.au",
+        "facebook": {
+          "handle": "dentalboutiquegroup",
+          "likes": null
+        },
+        "linkedin": {
+          "handle": "company/dental-boutique-melbourne"
+        },
+        "twitter": {
+          "handle": "dentalboutique2",
+          "id": null,
+          "bio": null,
+          "followers": null,
+          "following": null,
+          "location": null,
+          "site": null,
+          "avatar": null
+        },
+        "crunchbase": {
+          "handle": null
+        },
+        "youtube": {
+          "handle": null
+        },
+        "instagram": {
+          "handle": "dentalboutique"
+        },
+        "emailProvider": "google.com",
+        "type": "private",
+        "companyType": "privately held",
+        "ticker": null,
+        "identifiers": {
+          "usEIN": null
+        },
+        "phone": null,
+        "metrics": {
+          "alexaUsRank": null,
+          "alexaGlobalRank": null,
+          "trafficRank": "medium_low",
+          "employees": "11-50",
+          "marketCap": null,
+          "raised": null,
+          "annualRevenue": null,
+          "estimatedAnnualRevenue": null,
+          "fiscalYearEnd": null
+        },
+        "indexedAt": "2026-01-04",
+        "tech": [
+          "google-tag-manager",
+          "gravity-forms",
+          "http-3",
+          "litespeed",
+          "litespeed-cache",
+          "mysql",
+          "nitropack",
+          "php",
+          "wordpress"
+        ],
+        "techCategories": [
+          "content_management_system",
+          "database",
+          "form_builder",
+          "programming_language",
+          "tag_management",
+          "web_servers",
+          "website_optimization"
+        ],
+        "fundingRounds": [],
+        "parent": {
+          "domain": null
+        },
+        "ultimateParent": {
+          "domain": null
+        }
+      },
+      "apify": {},
+      "linkedin_url": "https://www.linkedin.com/company/dental-boutique-melbourne/",
+      "url_source": "hunter"
+    },
+    "lsj.com.au": {
+      "hunter": {
+        "id": "9108bf63-3ccc-56ad-a368-5c3dda4e234a",
+        "name": "Law Society Journal",
+        "legalName": "Law Society Journal",
+        "domain": "lsj.com.au",
+        "domainAliases": [],
+        "site": {
+          "phoneNumbers": [],
+          "emailAddresses": []
+        },
+        "category": {
+          "sector": null,
+          "industryGroup": null,
+          "industry": null,
+          "subIndustry": null,
+          "gicsCode": null,
+          "sicCode": null,
+          "sic4Codes": [],
+          "naicsCode": null,
+          "naics6Codes": [],
+          "naics6Codes2022": []
+        },
+        "tags": null,
+        "description": "LSJ is Australia\u2019s leading publication for legal professionals, covering news, features, legal updates, health and wellbeing, and much more. Brought to you by the Law Society of NSW.",
+        "foundedYear": null,
+        "location": null,
+        "timeZone": null,
+        "utcOffset": null,
+        "geo": {
+          "streetNumber": null,
+          "streetName": null,
+          "subPremise": null,
+          "streetAddress": null,
+          "city": null,
+          "postalCode": null,
+          "state": null,
+          "stateCode": null,
+          "country": null,
+          "countryCode": null,
+          "lat": null,
+          "lng": null
+        },
+        "logo": "https://logos.hunter.io/lsj.com.au",
+        "facebook": {
+          "handle": null,
+          "likes": null
+        },
+        "linkedin": {
+          "handle": null
+        },
+        "twitter": {
+          "handle": null,
+          "id": null,
+          "bio": null,
+          "followers": null,
+          "following": null,
+          "location": null,
+          "site": null,
+          "avatar": null
+        },
+        "crunchbase": {
+          "handle": null
+        },
+        "youtube": {
+          "handle": null
+        },
+        "instagram": {
+          "handle": null
+        },
+        "emailProvider": "mimecast.com",
+        "type": null,
+        "companyType": null,
+        "ticker": null,
+        "identifiers": {
+          "usEIN": null
+        },
+        "phone": null,
+        "metrics": {
+          "alexaUsRank": null,
+          "alexaGlobalRank": null,
+          "trafficRank": "medium_low",
+          "employees": null,
+          "marketCap": null,
+          "raised": null,
+          "annualRevenue": null,
+          "estimatedAnnualRevenue": null,
+          "fiscalYearEnd": null
+        },
+        "indexedAt": "2026-01-03",
+        "tech": [
+          "google-tag-manager",
+          "gsap",
+          "hsts",
+          "jquery",
+          "jquery-migrate",
+          "mysql",
+          "php",
+          "recaptcha",
+          "slick",
+          "wordpress",
+          "yoast-seo"
+        ],
+        "techCategories": [
+          "authentication_services",
+          "content_management_system",
+          "database",
+          "programming_framework",
+          "programming_language",
+          "security",
+          "tag_management",
+          "website_optimization"
+        ],
+        "fundingRounds": [],
+        "parent": {
+          "domain": null
+        },
+        "ultimateParent": {
+          "domain": null
+        }
+      },
+      "apify": {},
+      "linkedin_url": "https://www.linkedin.com/company/lsj-collection/",
+      "url_source": "serp"
+    },
+    "myimplantdentist.com.au": {
+      "hunter": {
+        "id": "7e798f8c-89eb-552d-affc-daf3513e3a39",
+        "name": "My Implant Dentist",
+        "legalName": "My Implant Dentist",
+        "domain": "myimplantdentist.com.au",
+        "domainAliases": [],
+        "site": {
+          "phoneNumbers": [
+            "+61 8 9361 5544"
+          ],
+          "emailAddresses": [
+            "enquiries@myimplantdentist.com.au",
+            "recruitment@myimplantdentist.com.au",
+            "info@myimplantdentist.com.au",
+            "admin@myimplantdentist.com.au",
+            "brisbane@myimplantdentist.com.au",
+            "hr@myimplantdentist.com.au"
+          ]
+        },
+        "category": {
+          "sector": null,
+          "industryGroup": null,
+          "industry": null,
+          "subIndustry": null,
+          "gicsCode": null,
+          "sicCode": null,
+          "sic4Codes": [],
+          "naicsCode": null,
+          "naics6Codes": [],
+          "naics6Codes2022": []
+        },
+        "tags": [
+          "dental",
+          "dentistry",
+          "implants",
+          "healthcare",
+          "medical"
+        ],
+        "description": "My Implant Dentist is a dental practice that specializes in providing affordable Dental Implants in Perth & Brisbane.",
+        "foundedYear": null,
+        "location": null,
+        "timeZone": null,
+        "utcOffset": null,
+        "geo": {
+          "streetNumber": null,
+          "streetName": null,
+          "subPremise": null,
+          "streetAddress": null,
+          "city": null,
+          "postalCode": null,
+          "state": null,
+          "stateCode": null,
+          "country": null,
+          "countryCode": null,
+          "lat": null,
+          "lng": null
+        },
+        "logo": "https://logos.hunter.io/myimplantdentist.com.au",
+        "facebook": {
+          "handle": "myimplantdentistaus",
+          "likes": null
+        },
+        "linkedin": {
+          "handle": null
+        },
+        "twitter": {
+          "handle": null,
+          "id": null,
+          "bio": null,
+          "followers": null,
+          "following": null,
+          "location": null,
+          "site": null,
+          "avatar": null
+        },
+        "crunchbase": {
+          "handle": null
+        },
+        "youtube": {
+          "handle": null
+        },
+        "instagram": {
+          "handle": "myimplantdentist"
+        },
+        "emailProvider": "outlook.com",
+        "type": null,
+        "companyType": null,
+        "ticker": null,
+        "identifiers": {
+          "usEIN": null
+        },
+        "phone": "+61 8 9361 5544",
+        "metrics": {
+          "alexaUsRank": null,
+          "alexaGlobalRank": null,
+          "trafficRank": "very_low",
+          "employees": null,
+          "marketCap": null,
+          "raised": null,
+          "annualRevenue": null,
+          "estimatedAnnualRevenue": null,
+          "fiscalYearEnd": null
+        },
+        "indexedAt": "2026-01-07",
+        "tech": [
+          "cloudflare",
+          "cloudflare-bot-management",
+          "google-tag-manager",
+          "gravity-forms",
+          "hsts",
+          "http-3",
+          "jquery",
+          "jquery-migrate",
+          "mysql",
+          "php",
+          "recaptcha",
+          "wordpress",
+          "wp-rocket"
+        ],
+        "techCategories": [
+          "authentication_services",
+          "content_management_system",
+          "database",
+          "dns",
+          "form_builder",
+          "programming_framework",
+          "programming_language",
+          "security",
+          "tag_management",
+          "web_servers",
+          "website_optimization"
+        ],
+        "fundingRounds": [],
+        "parent": {
+          "domain": null
+        },
+        "ultimateParent": {
+          "domain": null
+        }
+      },
+      "apify": {
+        "name": "My Implant Dentist",
+        "linkedinUrl": "https://www.linkedin.com/company/my-implant-dentist",
+        "website": "www.myimplantdentist.com.au",
+        "description": "My Implant Dentist (MID) is one of Australia\u2019s fastest-growing dental implant and full-arch rehabilitation providers. We are known for our honest advice, transparent pricing and commitment to affordable clinical excellence.\n\nFrom one Perth clinic in 2019, we\u2019ve grown to 10+ locations across WA, QLD and VIC, supported by our own in-house digital dental lab and a national team dedicated to exceptional patient care. \n\nOur Mission\nTo make world-class implant dentistry accessible through a model built on transparency, affordability, advanced digital workflows and a consistently high-quality patient experience. Every patient deserves honest and clear options, predictable outcomes and genuine care.\n\nWhat Sets Us Apart\n\u2022 Honest, pressure-free treatment planning and upfront pricing\n\u2022 State and National recognition and award-winning patient experience year after year. \n\nOur Team & Reach\nWe now have 200+ team members. Our clinics span metro, regional and remote communities across Western Australia, Brisbane and Melbourne.\n\nJoin Us\nMID is expanding nationally and we\u2019re always seeking talented clinicians and professionals who want to grow in a high-performance, supportive environment. Opportunities exist for implant and restorative dentists, surgical clinicians, general and cosmetic dentists, OHTs, nurses, treatment coordinators, dental technicians and operational specialists including practice managers, treatment coordinators, sales consultants, marketing. \n\nIf you\u2019re passionate about delivering exceptional patient care and want to be part of a team shaping the future of implant dentistry in Australia, connect with us to explore career opportunities.\n",
+        "industry": "Dentists",
+        "companyType": "Privately Held",
+        "companySize": "51-200 employees",
+        "employeeCount": 23,
+        "followerCount": 479,
+        "foundedYear": 2019,
+        "headquarters": "South Perth, Western Australia",
+        "street": "65 Angelo St",
+        "city": "South Perth",
+        "state": "Western Australia",
+        "country": "AU",
+        "postalCode": "6151",
+        "specialties": [],
+        "logoUrl": "https://media.licdn.com/dms/image/v2/C560BAQE5a6ikdAiKVA/company-logo_200_200/company-logo_200_200/0/1658237826729?e=2147483647&v=beta&t=Wo1jWlxyyI1PHYOG2Ci_VJvCRGMUH9XIzdDMsDCANlk",
+        "scrapedAt": "2026-04-12T12:43:07.283Z"
+      },
+      "linkedin_url": "https://www.linkedin.com/company/my-implant-dentist/",
+      "url_source": "serp"
+    },
+    "www.chelseadentalgroup.net.au": {
+      "hunter": {},
+      "apify": {
+        "name": "Imperial Health Charity",
+        "linkedinUrl": "https://www.linkedin.com/company/imperial-health-charity",
+        "website": "http://www.imperialcharity.org.uk",
+        "description": "Imperial Health Charity supports the five hospitals of the Imperial College Healthcare NHS Trust: Charing Cross, Hammersmith, Queen Charlotte's & Chelsea, St Mary's and the Western Eye. Every year we award millions of pounds in grants to fund major redevelopments, clinical research and medical equipment, as well as helping patients and families at times of real hardship.  We run the volunteer service across the hospitals, manage a museum-accredited collection of more than 2,000 artworks and fundraise through appeals so that we can continue our vital work.",
+        "industry": "Hospitals and Health Care",
+        "companyType": "Nonprofit",
+        "companySize": "11-50 employees",
+        "employeeCount": 100,
+        "followerCount": 2403,
+        "foundedYear": 2009,
+        "headquarters": "London, England",
+        "street": "5 Merchant Square",
+        "city": "London",
+        "state": "England",
+        "country": "GB",
+        "postalCode": "W2 1AN",
+        "specialties": [
+          "Fundraising",
+          "Public healthcare",
+          "NHS",
+          "Arts",
+          "Volunteering"
+        ],
+        "logoUrl": "https://media.licdn.com/dms/image/v2/C510BAQF436XVx_Wr3w/company-logo_200_200/company-logo_200_200/0/1631368724933?e=2147483647&v=beta&t=ZCfHev9VQH9B3X6ShBrzDv3CvLtcnaHsL592x4qfHXQ",
+        "scrapedAt": "2026-04-12T12:43:51.406Z"
+      },
+      "linkedin_url": "https://www.linkedin.com/company/imperial-health-charity/",
+      "url_source": "serp"
+    },
+    "www.puredentistry.com.au": {
+      "hunter": {},
+      "apify": {
+        "name": "Bergen Volunteer Medical Initiative (BVMI)",
+        "linkedinUrl": "https://www.linkedin.com/company/bergen-volunteer-medical-initiative-bvmi-",
+        "website": "http://www.bvmi.org",
+        "description": "The BVMI Healthcare Center works to improve the overall health of working, low-income, uninsured residents of Bergen County by providing free primary and preventive health care, promoting patient education, and reducing the need for emergency care.  BVMI utilizes the services of volunteer physicians, nurse practitioners, nurses and others wherever possible. By creating A Culture of Caring, staff and volunteers at BVMI respect the dignity and individuality of patients. On an annual basis, over 75 volunteer medical providers at this nonprofit organization treat 1,200 patients in 8,000 patient visits.",
+        "industry": "Hospitals and Health Care",
+        "companyType": "Nonprofit",
+        "companySize": "11-50 employees",
+        "employeeCount": 61,
+        "followerCount": 800,
+        "foundedYear": 2009,
+        "headquarters": "Hackensack, New Jersey",
+        "street": "75 Essex St",
+        "city": "Hackensack",
+        "state": "New Jersey",
+        "country": "US",
+        "postalCode": "07601",
+        "specialties": [
+          "Diabetes Care",
+          "Women's Health",
+          "Primary Care",
+          "Patient Education",
+          "Chronic Disease Managment",
+          "Preventative Care"
+        ],
+        "logoUrl": "https://media.licdn.com/dms/image/v2/C4E0BAQGvMvocwScynA/company-logo_200_200/company-logo_200_200/0/1630589562199/bergen_volunteer_medical_initiative_bvmi__logo?e=2147483647&v=beta&t=OS-mKpdM091rcBQhyrn-_MGow_Lwz0XPkssh1cCdYxM",
+        "scrapedAt": "2026-04-12T12:46:46.082Z"
+      },
+      "linkedin_url": "https://www.linkedin.com/company/bergen-volunteer-medical-initiative-bvmi-/",
+      "url_source": "serp"
+    },
+    "jamesonlaw.com.au": {
+      "hunter": {
+        "id": "0e650b66-6193-5a08-bbae-3cf3f682b811",
+        "name": "Jameson Law\u00ae",
+        "legalName": "Jameson Law\u00ae",
+        "domain": "jamesonlaw.com.au",
+        "domainAliases": [],
+        "site": {
+          "phoneNumbers": [
+            "+61 2 8806 0866"
+          ],
+          "emailAddresses": [
+            "info@jamesonlaw.com.au"
+          ]
+        },
+        "category": {
+          "sector": null,
+          "industryGroup": null,
+          "industry": null,
+          "subIndustry": null,
+          "gicsCode": "40203020",
+          "sicCode": "81",
+          "sic4Codes": [
+            "81"
+          ],
+          "naicsCode": "54",
+          "naics6Codes": [
+            "541110"
+          ],
+          "naics6Codes2022": [
+            "541110"
+          ]
+        },
+        "tags": null,
+        "description": "Award-winning Sydney Lawyer specialising in Commercial, Personal Injury, Criminal, Family, Traffic, Conveyancing, Wills, Estate Law. 02 8806 0866",
+        "foundedYear": null,
+        "location": "Sydney, AU-NSW, Australia",
+        "timeZone": "Australia/Sydney",
+        "utcOffset": 11,
+        "geo": {
+          "streetNumber": null,
+          "streetName": null,
+          "subPremise": null,
+          "streetAddress": null,
+          "city": "Sydney",
+          "postalCode": null,
+          "state": "AU-NSW",
+          "stateCode": "AU-NSW",
+          "country": "Australia",
+          "countryCode": "AU",
+          "lat": -33.86785,
+          "lng": 151.20732
+        },
+        "logo": "https://logos.hunter.io/jamesonlaw.com.au",
+        "facebook": {
+          "handle": "jamesonlaw.com.au",
+          "likes": null
+        },
+        "linkedin": {
+          "handle": "company/jameson-law"
+        },
+        "twitter": {
+          "handle": "jamesonlawfirm",
+          "id": null,
+          "bio": null,
+          "followers": null,
+          "following": null,
+          "location": null,
+          "site": null,
+          "avatar": null
+        },
+        "crunchbase": {
+          "handle": null
+        },
+        "youtube": {
+          "handle": null
+        },
+        "instagram": {
+          "handle": "jamesonlaw"
+        },
+        "emailProvider": "trendmicro.com",
+        "type": "private",
+        "companyType": "privately held",
+        "ticker": null,
+        "identifiers": {
+          "usEIN": null
+        },
+        "phone": "+61 2 8806 0866",
+        "metrics": {
+          "alexaUsRank": null,
+          "alexaGlobalRank": null,
+          "trafficRank": "very_low",
+          "employees": "11-50",
+          "marketCap": null,
+          "raised": null,
+          "annualRevenue": null,
+          "estimatedAnnualRevenue": null,
+          "fiscalYearEnd": null
+        },
+        "indexedAt": "2026-04-30",
+        "tech": [
+          "cloudflare",
+          "cloudflare-bot-management",
+          "elementor",
+          "elfsight",
+          "google-maps",
+          "google-tag-manager",
+          "hsts",
+          "http-3",
+          "imagesloaded",
+          "jquery",
+          "jquery-migrate",
+          "kinsta",
+          "mysql",
+          "php",
+          "slick",
+          "swiper",
+          "wordpress",
+          "youtube"
+        ],
+        "techCategories": [
+          "content_management_system",
+          "database",
+          "dns",
+          "geolocation",
+          "image_video_services",
+          "programming_framework",
+          "programming_language",
+          "security",
+          "tag_management",
+          "user_engagement",
+          "web_hosting",
+          "web_servers",
+          "website_optimization"
+        ],
+        "fundingRounds": [],
+        "parent": {
+          "domain": null
+        },
+        "ultimateParent": {
+          "domain": null
+        }
+      },
+      "apify": {},
+      "linkedin_url": "https://www.linkedin.com/company/jameson-law/",
+      "url_source": "hunter"
+    },
+    "mydentistwestryde.com.au": {
+      "hunter": {
+        "id": "1417f506-0604-507c-b484-f970b133796c",
+        "name": "My Dentist West Ryde",
+        "legalName": "My Dentist West Ryde",
+        "domain": "mydentistwestryde.com.au",
+        "domainAliases": [],
+        "site": {
+          "phoneNumbers": [
+            "+61 2 8073 9338"
+          ],
+          "emailAddresses": [
+            "info@mydentistwestryde.com.au"
+          ]
+        },
+        "category": {
+          "sector": "Health Care",
+          "industryGroup": "Health Care Equipment & Services",
+          "industry": "Health Care Equipment & Supplies",
+          "subIndustry": "Eyewear",
+          "gicsCode": "35102020",
+          "sicCode": "80",
+          "sic4Codes": [
+            "80"
+          ],
+          "naicsCode": "62",
+          "naics6Codes": [
+            "621210"
+          ],
+          "naics6Codes2022": [
+            "621111"
+          ]
+        },
+        "tags": null,
+        "description": "Your dentist in West Ryde combines quality dentistry with the latest digital technology enabling patients to receive effective care suited to their needs.",
+        "foundedYear": null,
+        "location": "West Ryde, AU-NSW, Australia",
+        "timeZone": "Australia/Sydney",
+        "utcOffset": 11,
+        "geo": {
+          "streetNumber": null,
+          "streetName": null,
+          "subPremise": null,
+          "streetAddress": null,
+          "city": "West Ryde",
+          "postalCode": null,
+          "state": "AU-NSW",
+          "stateCode": "AU-NSW",
+          "country": "Australia",
+          "countryCode": "AU",
+          "lat": -33.80543,
+          "lng": 151.07385
+        },
+        "logo": "https://logos.hunter.io/mydentistwestryde.com.au",
+        "facebook": {
+          "handle": "mydentistwestryde",
+          "likes": null
+        },
+        "linkedin": {
+          "handle": "company/mydentist-west-ryde---dr-isaac-suh"
+        },
+        "twitter": {
+          "handle": null,
+          "id": null,
+          "bio": null,
+          "followers": null,
+          "following": null,
+          "location": null,
+          "site": null,
+          "avatar": null
+        },
+        "crunchbase": {
+          "handle": null
+        },
+        "youtube": {
+          "handle": null
+        },
+        "instagram": {
+          "handle": null
+        },
+        "emailProvider": "stableserver.net",
+        "type": null,
+        "companyType": null,
+        "ticker": null,
+        "identifiers": {
+          "usEIN": null
+        },
+        "phone": "+61 2 8073 9338",
+        "metrics": {
+          "alexaUsRank": null,
+          "alexaGlobalRank": null,
+          "trafficRank": "low",
+          "employees": null,
+          "marketCap": null,
+          "raised": null,
+          "annualRevenue": null,
+          "estimatedAnnualRevenue": null,
+          "fiscalYearEnd": null
+        },
+        "indexedAt": "2026-01-05",
+        "tech": [
+          "birdeye",
+          "divi",
+          "easy-pie-chart",
+          "fitvids.js",
+          "google-analytics",
+          "google-tag-manager",
+          "hsts",
+          "http-3",
+          "jquery",
+          "jquery-migrate",
+          "litespeed",
+          "mysql",
+          "php",
+          "wordpress",
+          "yoast-seo"
+        ],
+        "techCategories": [
+          "analytics",
+          "content_management_system",
+          "customer_support",
+          "data_visualization",
+          "database",
+          "image_video_services",
+          "programming_framework",
+          "programming_language",
+          "security",
+          "tag_management",
+          "web_servers",
+          "website_optimization"
+        ],
+        "fundingRounds": [],
+        "parent": {
+          "domain": null
+        },
+        "ultimateParent": {
+          "domain": null
+        }
+      },
+      "apify": {},
+      "linkedin_url": "https://www.linkedin.com/company/mydentist-west-ryde---dr-isaac-suh/",
+      "url_source": "hunter"
+    },
+    "www.australianmigrationlawyers.com.au": {
+      "hunter": {},
+      "apify": {
+        "name": "Australian Migration Law Pty Ltd",
+        "linkedinUrl": "https://www.linkedin.com/company/australian-migration-law-pty-ltd",
+        "website": "https://australianmigrationlaw.com.au/",
+        "description": "Immigration Lawyers in Sydney, Australia \u2013 Trusted Since 2008. \n\nAustralian Migration Law Pty Ltd is a Sydney-based immigration law firm led by Principal Solicitor Linda Morrison, who has been practising law since 1992. Admitted to the Supreme Court and High Court of Australia, Linda brings over three decades of legal experience across Australia and internationally, particularly in the retail, trade, and international employment sectors.\n\nBefore founding the firm, Linda developed a strong foundation in criminal and commercial law, and went on to operate her own businesses focused on international trade and the placement of specialised staff in more than 30 countries. This background has shaped her in-depth knowledge of working visa requirements, especially for trade-based applicants and local employers.\n\nLinda also has significant experience assisting with inter-country adoptions through her community volunteer work, and provides compassionate, effective support for family visa applications. Her dedication and efficiency have earned recognition from the Department of Immigration and Border Protection in Washington, D.C., for expediting a complex visa application on behalf of a client.\n\nAt Australian Migration Law, we are committed to helping individuals, families, and businesses navigate Australia\u2019s immigration system with experience, care, and results.",
+        "industry": "Law Practice",
+        "companyType": "Privately Held",
+        "companySize": "2-10 employees",
+        "employeeCount": 2,
+        "followerCount": 6,
+        "foundedYear": 2008,
+        "headquarters": "Sydney, New South Wales",
+        "street": "185 Elizabeth St",
+        "city": "Sydney",
+        "state": "New South Wales",
+        "country": "AU",
+        "postalCode": "2000",
+        "specialties": [
+          "Australian Migration Law",
+          "Immigration Law",
+          "Employer-Sponsored Visas",
+          "Business Visas",
+          "Skilled Visas",
+          "Partner & Family Visas",
+          "Australian Citizenship",
+          "Resident Return Visa",
+          "Australian Bridging Visas",
+          "Tribunal Hearings",
+          "Ministerial Intervention"
+        ],
+        "logoUrl": "https://media.licdn.com/dms/image/v2/D560BAQEZIwOp-djPSQ/img-crop_100/B56Zi2uXIFG4AQ-/0/1755412264071?e=2147483647&v=beta&t=KEu_ELHotaisSZJpHh8G2UisbJB1MOxy7GlIRDDDhjo",
+        "scrapedAt": "2026-04-12T12:43:41.281Z"
+      },
+      "linkedin_url": "https://www.linkedin.com/company/australian-migration-law-pty-ltd/",
+      "url_source": "serp"
+    },
+    "www.criminal-lawyers.com.au": {
+      "hunter": {
+        "id": "cc361af9-4a91-5813-91ad-d8e41bd2cef9",
+        "name": null,
+        "legalName": null,
+        "domain": "www.criminal-lawyers.com.au",
+        "domainAliases": [
+          "criminal-lawyers.com.au"
+        ],
+        "site": {
+          "phoneNumbers": [],
+          "emailAddresses": []
+        },
+        "category": {
+          "sector": null,
+          "industryGroup": null,
+          "industry": null,
+          "subIndustry": null,
+          "gicsCode": null,
+          "sicCode": null,
+          "sic4Codes": [],
+          "naicsCode": null,
+          "naics6Codes": [],
+          "naics6Codes2022": []
+        },
+        "tags": null,
+        "description": null,
+        "foundedYear": null,
+        "location": null,
+        "timeZone": null,
+        "utcOffset": null,
+        "geo": {
+          "streetNumber": null,
+          "streetName": null,
+          "subPremise": null,
+          "streetAddress": null,
+          "city": null,
+          "postalCode": null,
+          "state": null,
+          "stateCode": null,
+          "country": null,
+          "countryCode": null,
+          "lat": null,
+          "lng": null
+        },
+        "logo": "https://logos.hunter.io/www.criminal-lawyers.com.au",
+        "facebook": {
+          "handle": null,
+          "likes": null
+        },
+        "linkedin": {
+          "handle": null
+        },
+        "twitter": {
+          "handle": null,
+          "id": null,
+          "bio": null,
+          "followers": null,
+          "following": null,
+          "location": null,
+          "site": null,
+          "avatar": null
+        },
+        "crunchbase": {
+          "handle": null
+        },
+        "youtube": {
+          "handle": null
+        },
+        "instagram": {
+          "handle": null
+        },
+        "emailProvider": "outlook.com",
+        "type": null,
+        "companyType": null,
+        "ticker": null,
+        "identifiers": {
+          "usEIN": null
+        },
+        "phone": null,
+        "metrics": {
+          "alexaUsRank": null,
+          "alexaGlobalRank": null,
+          "trafficRank": null,
+          "employees": null,
+          "marketCap": null,
+          "raised": null,
+          "annualRevenue": null,
+          "estimatedAnnualRevenue": null,
+          "fiscalYearEnd": null
+        },
+        "indexedAt": "2026-01-02",
+        "tech": [
+          "google-tag-manager",
+          "mysql",
+          "nginx",
+          "php",
+          "siteground",
+          "wordpress",
+          "wp-rocket",
+          "yoast-seo"
+        ],
+        "techCategories": [
+          "content_management_system",
+          "database",
+          "programming_language",
+          "tag_management",
+          "web_hosting",
+          "web_servers",
+          "website_optimization"
+        ],
+        "fundingRounds": [],
+        "parent": {
+          "domain": null
+        },
+        "ultimateParent": {
+          "domain": null
+        }
+      },
+      "apify": {},
+      "linkedin_url": "https://www.linkedin.com/company/doogue-george/",
+      "url_source": "serp"
+    },
+    "dalyellupdental.com.au": {
+      "hunter": {
+        "id": "5d09bd69-7d83-5f4c-bbdc-29c2e87562bc",
+        "name": "Dalyellup Dental",
+        "legalName": "Dalyellup Dental",
+        "domain": "dalyellupdental.com.au",
+        "domainAliases": [],
+        "site": {
+          "phoneNumbers": [
+            "+61 8 9795 5511"
+          ],
+          "emailAddresses": []
+        },
+        "category": {
+          "sector": "Health Care",
+          "industryGroup": "Health Care Equipment & Services",
+          "industry": "Health Care Equipment & Supplies",
+          "subIndustry": "Eyewear",
+          "gicsCode": "35102020",
+          "sicCode": "80",
+          "sic4Codes": [
+            "80"
+          ],
+          "naicsCode": "62",
+          "naics6Codes": [
+            "621210"
+          ],
+          "naics6Codes2022": [
+            "621111"
+          ]
+        },
+        "tags": [
+          "dental care",
+          "dentistry",
+          "oral health",
+          "dental services",
+          "patient care"
+        ],
+        "description": "Dalyellup Dental is a dental care provider that specializes in locally-based, sensitive dentistry, prioritizing patient comfort and excellent customer service.",
+        "foundedYear": null,
+        "location": "Dalyellup, AU-WA, Australia",
+        "timeZone": "Australia/Perth",
+        "utcOffset": 8,
+        "geo": {
+          "streetNumber": null,
+          "streetName": null,
+          "subPremise": null,
+          "streetAddress": null,
+          "city": "Dalyellup",
+          "postalCode": null,
+          "state": "AU-WA",
+          "stateCode": "AU-WA",
+          "country": "Australia",
+          "countryCode": "AU",
+          "lat": -33.40844,
+          "lng": 115.61506
+        },
+        "logo": "https://logos.hunter.io/dalyellupdental.com.au",
+        "facebook": {
+          "handle": "dalyellup-dental-100324581700268",
+          "likes": null
+        },
+        "linkedin": {
+          "handle": "company/dalyellup-dental"
+        },
+        "twitter": {
+          "handle": null,
+          "id": null,
+          "bio": null,
+          "followers": null,
+          "following": null,
+          "location": null,
+          "site": null,
+          "avatar": null
+        },
+        "crunchbase": {
+          "handle": null
+        },
+        "youtube": {
+          "handle": null
+        },
+        "instagram": {
+          "handle": null
+        },
+        "emailProvider": "outlook.com",
+        "type": null,
+        "companyType": null,
+        "ticker": null,
+        "identifiers": {
+          "usEIN": null
+        },
+        "phone": "+61 8 9795 5511",
+        "metrics": {
+          "alexaUsRank": null,
+          "alexaGlobalRank": null,
+          "trafficRank": null,
+          "employees": "1-10",
+          "marketCap": null,
+          "raised": null,
+          "annualRevenue": null,
+          "estimatedAnnualRevenue": null,
+          "fiscalYearEnd": null
+        },
+        "indexedAt": "2026-02-12",
+        "tech": [
+          "all-in-one-seo-pack",
+          "fitvids.js",
+          "google-analytics",
+          "hsts",
+          "jquery",
+          "jquery-migrate",
+          "mysql",
+          "nginx",
+          "php",
+          "site-kit",
+          "siteground",
+          "wordpress"
+        ],
+        "techCategories": [
+          "analytics",
+          "content_management_system",
+          "database",
+          "image_video_services",
+          "programming_framework",
+          "programming_language",
+          "security",
+          "web_hosting",
+          "web_servers",
+          "website_optimization"
+        ],
+        "fundingRounds": [],
+        "parent": {
+          "domain": null
+        },
+        "ultimateParent": {
+          "domain": null
+        }
+      },
+      "apify": {},
+      "linkedin_url": "https://www.linkedin.com/company/dalyellup-dental/",
+      "url_source": "hunter"
+    },
+    "www.mountlawleydental.com.au": {
+      "hunter": {},
+      "apify": {},
+      "linkedin_url": "https://www.linkedin.com/company/dental-corp/",
+      "url_source": "serp"
+    },
+    "www.brydens.com.au": {
+      "hunter": {},
+      "apify": {
+        "name": "Ages Build Pty Ltd",
+        "linkedinUrl": "https://www.linkedin.com/company/ages-build-pty-ltd",
+        "website": "http://www.agesbuild.com.au",
+        "description": "Ages Build was established in 2010 and is a company developed upon the experience, knowledge and principles of three generations of master tradesmen combined to eliminate all impossibilities.\r\n\r\nAnthony Agius, our Director recognised the need for a company to service Sydney and all surrounding regions with work of integrity, precision and high quality efficiently to any facet of construction.\r\n\r\nWith a plethora of qualifications and experience dealing with small to large Government projects, Insurance claims, design and construction of the many aspects within the building industry and expertise in visual building and pest inspections, Ages Build is undoubtedly your best choice for all your construction, maintenance, repair, design and inspection needs. \r\n\r\nOur past and current Clients include:\r\n\r\nCentury 21 Seven Hills.\r\nCentury 21 Carlingford.\r\nNRMA.\r\nJohns Lyng Group.\r\nBrydens Lawyers Pty Limited.\r\nThe Romanian Consulate of Sydney.\r\nLow Doherty and Stratford Lawyers.\r\nMarc Real Estate\r\nZhang partners\r\nA number of other small businesses and organisations.\r\nA number of satisfied Individuals, Couples,Families\r\n\r\nAnthony Agius has Expertise in the following services:\r\n\r\nConstruction management\r\nGranny flat construction\r\nPre-sale building and pest inspections\r\nNew homes\r\nBathrooms\r\nExtensions and renovations\r\nCivil and infrastructure \r\nCommercial fit outs",
+        "industry": "Construction",
+        "companyType": "Privately Held",
+        "companySize": "1 employee",
+        "employeeCount": 4,
+        "followerCount": 82,
+        "foundedYear": 2010,
+        "headquarters": "Sydney",
+        "city": "Sydney",
+        "country": "AU",
+        "specialties": [
+          "Pre-sale building & pest inspections",
+          "Granny flats",
+          "New homes",
+          "Bathroom renovations",
+          "Extensions and renovations",
+          "Civil & infrastructure",
+          "Project management"
+        ],
+        "logoUrl": "https://media.licdn.com/dms/image/v2/C4E0BAQGQpRzNgbVMRw/company-logo_200_200/company-logo_200_200/0/1631342757479?e=2147483647&v=beta&t=HQOdH8NK7JHvVCZIKXYZM-xcmMsljP7sg112qNscMGI",
+        "scrapedAt": "2026-04-12T12:46:27.283Z"
+      },
+      "linkedin_url": "https://www.linkedin.com/company/ages-build-pty-ltd/",
+      "url_source": "serp"
+    },
+    "dentistportmelbourne.com.au": {
+      "hunter": {
+        "id": "f3543f5e-8d00-537f-88f0-ac2d1be79dee",
+        "name": "Dentist Port Melbourne",
+        "legalName": "Dentist Port Melbourne",
+        "domain": "dentistportmelbourne.com.au",
+        "domainAliases": [],
+        "site": {
+          "phoneNumbers": [],
+          "emailAddresses": []
+        },
+        "category": {
+          "sector": null,
+          "industryGroup": null,
+          "industry": null,
+          "subIndustry": null,
+          "gicsCode": null,
+          "sicCode": null,
+          "sic4Codes": [],
+          "naicsCode": null,
+          "naics6Codes": [],
+          "naics6Codes2022": []
+        },
+        "tags": null,
+        "description": "Bay Street Dental Group Port Melbourne is your local dentist conveniently located in the heart of Port Melbourne. Book now by calling 03 9646 2577 today.",
+        "foundedYear": null,
+        "location": "Port Melbourne, AU-VIC, Australia",
+        "timeZone": "Australia/Melbourne",
+        "utcOffset": 11,
+        "geo": {
+          "streetNumber": null,
+          "streetName": null,
+          "subPremise": null,
+          "streetAddress": null,
+          "city": "Port Melbourne",
+          "postalCode": null,
+          "state": "AU-VIC",
+          "stateCode": "AU-VIC",
+          "country": "Australia",
+          "countryCode": "AU",
+          "lat": -37.83961,
+          "lng": 144.94228
+        },
+        "logo": "https://logos.hunter.io/dentistportmelbourne.com.au",
+        "facebook": {
+          "handle": null,
+          "likes": null
+        },
+        "linkedin": {
+          "handle": "company/bay-street-dental-group"
+        },
+        "twitter": {
+          "handle": null,
+          "id": null,
+          "bio": null,
+          "followers": null,
+          "following": null,
+          "location": null,
+          "site": null,
+          "avatar": null
+        },
+        "crunchbase": {
+          "handle": null
+        },
+        "youtube": {
+          "handle": null
+        },
+        "instagram": {
+          "handle": null
+        },
+        "emailProvider": "dentistportmelbourne.com.au",
+        "type": null,
+        "companyType": null,
+        "ticker": null,
+        "identifiers": {
+          "usEIN": null
+        },
+        "phone": null,
+        "metrics": {
+          "alexaUsRank": null,
+          "alexaGlobalRank": null,
+          "trafficRank": "medium_low",
+          "employees": "1-10",
+          "marketCap": null,
+          "raised": null,
+          "annualRevenue": null,
+          "estimatedAnnualRevenue": null,
+          "fiscalYearEnd": null
+        },
+        "indexedAt": "2026-01-06",
+        "tech": [
+          "bootstrap",
+          "cloudflare",
+          "elementor",
+          "google-tag-manager",
+          "http-3",
+          "jquery",
+          "litespeed",
+          "litespeed-cache",
+          "mysql",
+          "owl-carousel",
+          "php",
+          "wordpress",
+          "wp-rocket",
+          "youtube"
+        ],
+        "techCategories": [
+          "content_management_system",
+          "database",
+          "dns",
+          "image_video_services",
+          "programming_framework",
+          "programming_language",
+          "tag_management",
+          "web_servers",
+          "website_optimization"
+        ],
+        "fundingRounds": [],
+        "parent": {
+          "domain": null
+        },
+        "ultimateParent": {
+          "domain": null
+        }
+      },
+      "apify": {
+        "name": "Bay Street Dental Group",
+        "linkedinUrl": "https://www.linkedin.com/company/bay-street-dental-group",
+        "website": "http://dentistportmelbourne.com.au",
+        "description": "Bay Street Dental Group | ",
+        "employeeCount": 3,
+        "headquarters": "Port Melbourne, Victoria",
+        "street": "136 Bay St",
+        "city": "Port Melbourne",
+        "state": "Victoria",
+        "country": "AU",
+        "postalCode": "3207",
+        "specialties": [],
+        "logoUrl": "https://static.licdn.com/aero-v1/sc/h/cs8pjfgyw96g44ln9r7tct85f",
+        "scrapedAt": "2026-04-12T12:42:54.197Z"
+      },
+      "linkedin_url": "https://www.linkedin.com/company/bay-street-dental-group/",
+      "url_source": "hunter"
+    },
+    "www.criminaldefencelawyers.com.au": {
+      "hunter": {},
+      "apify": {},
+      "linkedin_url": "https://www.linkedin.com/company/criminaldefencelawyersaustralia/",
+      "url_source": "serp"
+    },
+    "www.oasisdentalstudio.com.au": {
+      "hunter": {},
+      "apify": {},
+      "linkedin_url": "https://www.linkedin.com/company/idental-surgery/",
+      "url_source": "serp"
+    },
+    "www.turnerfreeman.com.au": {
+      "hunter": {},
+      "apify": {},
+      "linkedin_url": null,
+      "url_source": "none"
+    },
+    "www.sydneycriminallawyers.com.au": {
+      "hunter": {},
+      "apify": {},
+      "linkedin_url": "https://www.linkedin.com/company/sydney-criminal-defence-lawyers/",
+      "url_source": "serp"
+    },
+    "www.australianfamilylawyers.com.au": {
+      "hunter": {},
+      "apify": {
+        "name": "AF Legal Group Limited",
+        "linkedinUrl": "https://www.linkedin.com/company/af-legal-pty-ltd",
+        "website": "http://aflegal.com.au/",
+        "description": "AF Legal Pty Ltd is the parent company and controlling entity of two private client law firms, Estate Lawyers & Australian Family Lawyers. \r\n\r\nBased in Melbourne and Sydney, Estate Lawyers provides legal advice in relation with Wills, Will Disputes, Estate Planning, Estate Challenges, Probate and Letters of Administration.\r\n\r\nBased In Melbourne and Sydney Australian Family Lawyers provides legal advice in relation to Divorce and Separation, Property Settlement, and Children's Matters.",
+        "industry": "Law Practice",
+        "companyType": "Privately Held",
+        "companySize": "11-50 employees",
+        "employeeCount": 17,
+        "followerCount": 226,
+        "foundedYear": 2015,
+        "headquarters": "Melbourne, Victoria",
+        "street": "Ground Floor, 411 Collins Street",
+        "city": "Melbourne",
+        "state": "Victoria",
+        "country": "AU",
+        "postalCode": "3000",
+        "specialties": [
+          "Estate Challenges",
+          "Will Disputes",
+          "Estate Planning",
+          "Wills",
+          "Probate",
+          "Divorce and Separation",
+          "Children's matters",
+          "Property settlement",
+          "Letters of Administration"
+        ],
+        "logoUrl": "https://media.licdn.com/dms/image/v2/D560BAQEiR8sqIhAxZg/company-logo_200_200/company-logo_200_200/0/1709855008587/af_legal_pty_ltd_logo?e=2147483647&v=beta&t=QgqHE8BioVLiB4XbJPgsT_AywmsWVMdTm56w_vYjFXc",
+        "scrapedAt": "2026-04-12T12:44:09.285Z"
+      },
+      "linkedin_url": "https://www.linkedin.com/company/af-legal-pty-ltd/",
+      "url_source": "serp"
+    },
+    "astorlegal.com.au": {
+      "hunter": {},
+      "apify": {
+        "name": "MediaTek",
+        "linkedinUrl": "https://www.linkedin.com/company/mediatek",
+        "website": "http://www.mediatek.com",
+        "description": "MediaTek Incorporated (TWSE: 2454) is a global fabless semiconductor company that enables nearly 2 billion connected devices a year. We are a market leader in developing innovative systems-on-chip (SoC) for mobile, home entertainment, connectivity and IoT products. Our dedication to innovation has positioned us as a driving market force in several key technology areas, including highly power-efficient mobile technologies, automotive solutions and a broad range of advanced multimedia products such as smartphones, tablets, digital televisions, 5G, Voice Assistant Devices (VAD) and wearables. MediaTek empowers and inspires people to expand their horizons and achieve their goals through smart technology, more easily and efficiently than ever before. We work with the brands you love to make great technology accessible to everyone, and it drives everything we do. Visit www.mediatek.com for more information.\n\nALERT: MediaTek, along with other companies, have been the victim of unscrupulous individuals fraudulently purporting to be recruiters by fabricating job descriptions and extending spurious offers of employment in an effort to obtain sensitive personal information. We are currently working with authorities to investigate all wrong doings. If you believe you have been a victim, please contact careers.usa@mediatek.com.\n\nAny interested candidates for worldwide positions at MediaTek are asked to apply only through mediatek.com, or via the applicable posting directly on LinkedIn.",
+        "industry": "Semiconductor Manufacturing",
+        "companyType": "Public Company",
+        "companySize": "10,001+ employees",
+        "employeeCount": 14341,
+        "followerCount": 524174,
+        "foundedYear": 1997,
+        "headquarters": "Hsin-Chu",
+        "street": "No.1, Dusing Rd. 1",
+        "city": "Hsin-Chu",
+        "country": "TW",
+        "postalCode": "30078",
+        "specialties": [
+          "Home Entertainment",
+          "IC Development",
+          "AI",
+          "IoT",
+          "ASIC",
+          "Auto",
+          "Wireless Communications",
+          "Semiconductors",
+          "Smart Home",
+          "Smartphones",
+          "Tablets",
+          "Chromebooks"
+        ],
+        "logoUrl": "https://media.licdn.com/dms/image/v2/D4E0BAQGSguzo7nhEgA/company-logo_200_200/B4EZaIRb7oGYAM-/0/1746042994770/mediatek_logo?e=2147483647&v=beta&t=oSGIaTPW1aB3d9rOTcgZJVgDJc8FJdQqWu4qQkp-hNs",
+        "scrapedAt": "2026-04-12T12:46:10.083Z"
+      },
+      "linkedin_url": "https://www.linkedin.com/company/mediatek/",
+      "url_source": "serp"
+    },
+    "hwlebsworth.com.au": {
+      "hunter": {},
+      "apify": {},
+      "linkedin_url": null,
+      "url_source": "none"
+    },
+    "familydentalclinic.com.au": {
+      "hunter": {},
+      "apify": {
+        "name": "Family Doctor",
+        "linkedinUrl": "https://www.linkedin.com/company/family-doctor-pty-ltd",
+        "website": "https://familydoctor.com.au",
+        "description": "Welcome to the Family Doctor group of medical and dental practices across Australia.\n\nWe are a network of 100% GP owned and operated medical and dental practices committed to comprehensive patient care. Our practices provide high quality medical care for our patients, and we pride ourselves in our services to the community.\n\nThe group was founded in 2008 and is seeking to grow further and is looking for like minded practice owners who are interested in succession planning, or to relieve themselves of the day to day administrative burdens of owning and operate a general practice. We offer a great package tailored to your needs with the added incentive of your practice then being owned and managed by an experienced GP. Message me now for a confidential discussion. \n\nFamily Doctor is always looking for experienced General Practitioners (VR and non VR) to join our centres, and offer the following advantages:\n- Family Doctor is 100% owned by a General Practitioner - no Investors and no Board. So the focus is always on delivering better patient outcomes (not shareholder outcomes!).\n- Access to fantastic clinic resources such as MyCubiko and Up-To-Date at every practice.\n- Complete billing and clinical autonomy.\n- Fully flexible arrangement - work whenever and however you wish - no lock in agreements, no restraints.\n- Special interests supported including skin cancer, IUD insertion, travel medicine, allergy skin testing and more.\n- Expect billings of >$400 per hour due to exceptional support and systems.\n- Friendly, supportive and modern environments and facilities.\nSee available opportunities here: https://familydoctor.com.au/gp_opportunities/",
+        "industry": "Medical Practices",
+        "companyType": "Privately Held",
+        "companySize": "1,001-5,000 employees",
+        "employeeCount": 223,
+        "followerCount": 3938,
+        "foundedYear": 2008,
+        "headquarters": "Hawthorn, Victoria",
+        "street": "347 Riversdale Rd",
+        "city": "Hawthorn",
+        "state": "Victoria",
+        "country": "AU",
+        "postalCode": "3122",
+        "specialties": [
+          "Healthcare",
+          "Medical Practices",
+          "Dental Practices",
+          "general practice",
+          "doctors",
+          "General practitioners",
+          "clinics"
+        ],
+        "logoUrl": "https://media.licdn.com/dms/image/v2/D560BAQFcf8g68HD5aQ/company-logo_200_200/company-logo_200_200/0/1710507397167?e=2147483647&v=beta&t=spyhVtLW7up5RMV1MUEuEvH0TBUXM0M5XPOpJgx_01s",
+        "scrapedAt": "2026-04-12T12:46:50.883Z"
+      },
+      "linkedin_url": "https://www.linkedin.com/company/family-doctor-pty-ltd/",
+      "url_source": "serp"
+    },
+    "completesmilesbv.com.au": {
+      "hunter": {},
+      "apify": {
+        "name": "Global Student Startup Competition",
+        "linkedinUrl": "https://www.linkedin.com/company/globalstudentstartup",
+        "website": "https://globalstudentstartup.org",
+        "description": "The Global Student Startup Competition (GSSC) is an in-person, international undergraduate entrepreneurship program held annually in Seoul alongside the Asian Leadership Conference (ALC).\n\nGSSC convenes top undergraduate founders from leading universities and emerging innovation regions to collaborate in person, build human-centered ventures, and engage directly with global leaders from industry, government, academia, and civil society. The program emphasizes cross-cultural collaboration, ethical leadership, and real-world problem solving through a fully in-person global experience.\n\nEach year, approximately 100 undergraduate students (up to 20 teams) are selected through university invitations and competitive regional qualifiers to participate in GSSC Worlds, the global convening in Seoul. All teams compete on the same stage under identical standards, ensuring parity of access regardless of how participation is funded.\n\nGSSC was born out of the Asian Leadership Conference, Korea\u2019s premier international leadership forum, through a founding collaboration connecting ALC with undergraduate entrepreneurship leaders in the United States and Asia. The competition is operated by the Global Student Startup Foundation (GSSF), a U.S.-based nonprofit public benefit organization dedicated to expanding equitable access to in-person global opportunities for undergraduate students.\n\nBeyond the competition, GSSC is supported by a growing multigenerational community of students, mentors, organizers, and partners\u2014often referred to as GSSC Friends & Family\u2014who remain engaged across years to support the next generation of student founders.\n\nBy connecting regional student ecosystems through an annual global convening, GSSC serves as a leadership pipeline that helps students build lasting relationships, broaden perspective, and carry global insight back to their local communities.",
+        "industry": "Higher Education",
+        "companyType": "Nonprofit",
+        "companySize": "11-50 employees",
+        "employeeCount": 20,
+        "followerCount": 441,
+        "foundedYear": 2024,
+        "specialties": [],
+        "logoUrl": "https://media.licdn.com/dms/image/v2/D560BAQGZ7IcD16ymwA/company-logo_200_200/company-logo_200_200/0/1731938982102?e=2147483647&v=beta&t=T6iad2FlK-q7nz5_xGp_fMK4m4u3ogxFGAxfhWgYsxU",
+        "scrapedAt": "2026-04-12T12:46:02.680Z"
+      },
+      "linkedin_url": "https://www.linkedin.com/company/globalstudentstartup/",
+      "url_source": "serp"
+    },
+    "www.landers.com.au": {
+      "hunter": {},
+      "apify": {
+        "name": "Metcash",
+        "linkedinUrl": "https://www.linkedin.com/company/metcash",
+        "website": "http://www.metcashcareers.com",
+        "description": "At Metcash, we\u2019re the power behind an independent Australia & New Zealand. From the humble origins of our first family-owned corner store in 1927, we\u2019ve been backing independents and strengthening the communities they operate in for almost 100 years. With a national network of more than 10,000 independent retailers and a further 90,000 wholesalers, we\u2019re the driving force behind local, family-owned businesses \u2013 sticking up for the little guys and helping them become the best stores in town.  And while we may be large in size, we\u2019ll always be locals at heart.\n\nToday we\u2019re Australia and New Zealand\u2019s leading independent retail partner and wholesaler in food, liquor and hardware. We have over 80 years of experience supporting and championing the interests of independent grocery, liquor and hardware sectors. Headquartered in Sydney, our world class distribution facilities across the country allow us to operate on a huge scale to unite Australia's independent grocers, delivering products to more than 10,000 retail premises and a further 90,000 wholesale customers across the food, grocery, liquor and hardware markets. Our network of Successful Independents includes a large portfolio of brands such as IGA, Foodland, Mitre 10, Home Timber & Hardware, Cellarbrations and the Bottle-O. \n\nAt Metcash we have a single purpose - Successful Independents - it is at the heart of everything we do. Success starts with our people. Employing over 6,000 people, Metcash champions the interests of the independent retail industry. We are a team of people who are resilient and empowered, who take initiative and pride in their work and above all operate with integrity. Our core operations are key to providing our customers and retailers with merchandising, operations and marketing support through our strong retail brands.  \n\nWhilst we operate on a huge scale, we think big but we act local. We believe that independence is worth fighting for and this is at the core of our business divisions. ",
+        "industry": "Wholesale",
+        "companyType": "Public Company",
+        "companySize": "10,001+ employees",
+        "employeeCount": 4935,
+        "followerCount": 57935,
+        "foundedYear": 1927,
+        "headquarters": "Macquarie Park, NSW",
+        "street": "1 Thomas Holt Drive",
+        "city": "Macquarie Park",
+        "state": "NSW",
+        "country": "AU",
+        "postalCode": "2113",
+        "specialties": [
+          "Retail",
+          "Liquor",
+          "Grocery",
+          "Hardware",
+          "Wholesale",
+          "Marketing",
+          "Food & Drinks",
+          "Logistics",
+          "Support Services",
+          "Distribution",
+          "Fresh Food"
+        ],
+        "logoUrl": "https://media.licdn.com/dms/image/v2/C560BAQGEY0vg2e7YpQ/company-logo_200_200/company-logo_200_200/0/1678054102562/metcash_logo?e=2147483647&v=beta&t=EQz3fRZrXiJDJ81NLuf1zxYqr_GL1rD-0z8pKvJUGV0",
+        "scrapedAt": "2026-04-12T12:43:38.684Z"
+      },
+      "linkedin_url": "https://www.linkedin.com/company/metcash/",
+      "url_source": "serp"
+    },
+    "www.smiledoctor.com.au": {
+      "hunter": {},
+      "apify": {
+        "name": "MediaTek",
+        "linkedinUrl": "https://www.linkedin.com/company/mediatek",
+        "website": "http://www.mediatek.com",
+        "description": "MediaTek Incorporated (TWSE: 2454) is a global fabless semiconductor company that enables nearly 2 billion connected devices a year. We are a market leader in developing innovative systems-on-chip (SoC) for mobile, home entertainment, connectivity and IoT products. Our dedication to innovation has positioned us as a driving market force in several key technology areas, including highly power-efficient mobile technologies, automotive solutions and a broad range of advanced multimedia products such as smartphones, tablets, digital televisions, 5G, Voice Assistant Devices (VAD) and wearables. MediaTek empowers and inspires people to expand their horizons and achieve their goals through smart technology, more easily and efficiently than ever before. We work with the brands you love to make great technology accessible to everyone, and it drives everything we do. Visit www.mediatek.com for more information.\n\nALERT: MediaTek, along with other companies, have been the victim of unscrupulous individuals fraudulently purporting to be recruiters by fabricating job descriptions and extending spurious offers of employment in an effort to obtain sensitive personal information. We are currently working with authorities to investigate all wrong doings. If you believe you have been a victim, please contact careers.usa@mediatek.com.\n\nAny interested candidates for worldwide positions at MediaTek are asked to apply only through mediatek.com, or via the applicable posting directly on LinkedIn.",
+        "industry": "Semiconductor Manufacturing",
+        "companyType": "Public Company",
+        "companySize": "10,001+ employees",
+        "employeeCount": 14341,
+        "followerCount": 524174,
+        "foundedYear": 1997,
+        "headquarters": "Hsin-Chu",
+        "street": "No.1, Dusing Rd. 1",
+        "city": "Hsin-Chu",
+        "country": "TW",
+        "postalCode": "30078",
+        "specialties": [
+          "Home Entertainment",
+          "IC Development",
+          "AI",
+          "IoT",
+          "ASIC",
+          "Auto",
+          "Wireless Communications",
+          "Semiconductors",
+          "Smart Home",
+          "Smartphones",
+          "Tablets",
+          "Chromebooks"
+        ],
+        "logoUrl": "https://media.licdn.com/dms/image/v2/D4E0BAQGSguzo7nhEgA/company-logo_200_200/B4EZaIRb7oGYAM-/0/1746042994770/mediatek_logo?e=2147483647&v=beta&t=oSGIaTPW1aB3d9rOTcgZJVgDJc8FJdQqWu4qQkp-hNs",
+        "scrapedAt": "2026-04-12T12:46:10.083Z"
+      },
+      "linkedin_url": "https://www.linkedin.com/company/mediatek/",
+      "url_source": "serp"
+    },
+    "www.marsdens.net.au": {
+      "hunter": {},
+      "apify": {},
+      "linkedin_url": null,
+      "url_source": "none"
+    },
+    "ethosmigration.com.au": {
+      "hunter": {},
+      "apify": {
+        "name": "ALC Lawyers",
+        "linkedinUrl": "https://www.linkedin.com/company/alclawyers",
+        "website": "alclawyers.com.au",
+        "description": "ALC Lawyers is a boutique law firm based in Sydney with a focus on Australian immigration law. Our clients have the confidence that their Australian immigration needs are fully met in the complex and ever-changing Australian migration environment. Our lawyers and Registered Migration Agents have over 15 years of experience in the industry, specialising in:\n\n- Global Talent Independent (GTI) visa programme\n- Corporate migration, including Employer Nomination Scheme and Temporary Skills Shortage visa programmes;\n- Business Innovation and Investment Programme, including 2 year reviews for Subclass 132 visas holders;\n- General Skilled Migration, including skills assessment and points test; \n- Family migration, including Partner and Parent migration;\n- Complex matters including LGBTQIA+ clients, as well as health, character, and integrity waivers; and\n- Administrative Appeals Tribunal process and proceedings.\n\nWe provide our clients with EXPERT advice, based on years of valuable EXPERIENCE, with fast and reliable service EXCELLENCE. \n\nPlease get in contact with us, by emailing info@alclawyers.com.au, if you\u2019re looking to migrate to, or extend your stay in, Australia.",
+        "industry": "Law Practice",
+        "companyType": "Privately Held",
+        "companySize": "2-10 employees",
+        "employeeCount": 11,
+        "followerCount": 106,
+        "foundedYear": 2023,
+        "headquarters": "Haymarket, New South Wales",
+        "street": "727 George St",
+        "city": "Haymarket",
+        "state": "New South Wales",
+        "country": "AU",
+        "postalCode": "2000",
+        "specialties": [
+          "CORPORATE IMMIGRATION SERVICE",
+          "INDIVIDUAL IMMIGRATION SERVICE",
+          "Global Talent Visa",
+          "Employer Nominated Visas",
+          "General Skilled Migration",
+          "Family Migration",
+          "Complex Cases"
+        ],
+        "logoUrl": "https://media.licdn.com/dms/image/v2/D4E0BAQHLiUYK_mo5CA/company-logo_200_200/company-logo_200_200/0/1695903775201/alclawyers_logo?e=2147483647&v=beta&t=EI7bLrvNOT_E9cNqSx4zbq7tE08Oe0NmMzIQ8Hu_Qac",
+        "scrapedAt": "2026-04-12T12:43:22.583Z"
+      },
+      "linkedin_url": "https://www.linkedin.com/company/alclawyers/",
+      "url_source": "serp"
+    },
+    "emigratelawyers.com.au": {
+      "hunter": {},
+      "apify": {
+        "name": "University Education Network",
+        "linkedinUrl": "https://www.linkedin.com/company/universityeducationnetwork",
+        "website": "www.uenglobal.com",
+        "description": "\ud83c\udf93 Leading education consultancy in Nepal for higher education in Australia, UK, USA, Canada, and Ireland.\n\n\ud83d\ude80 Expert guidance from personalized consultations to visa assistance.\n\n\ud83c\udf1f Proven success with a focus on ethical practices and ongoing support.\n\nConnect with us for a seamless international education journey!\n\n#GlobalEducation #StudyAbroad #trustcareerguidance #UENGLOBAL #univeristyeducationnetwork",
+        "industry": "Education Administration Programs",
+        "companyType": "Self-Owned",
+        "companySize": "2-10 employees",
+        "employeeCount": 4,
+        "followerCount": 42,
+        "foundedYear": 2022,
+        "headquarters": "Putalisadak - 28, Kathmandu, Nepal, +9779865365306, Bagmati",
+        "city": "Putalisadak - 28, Kathmandu, Nepal, +9779865365306",
+        "state": "Bagmati",
+        "country": "NP",
+        "specialties": [],
+        "logoUrl": "https://media.licdn.com/dms/image/v2/D4D0BAQGdG7y7ScwB0w/company-logo_200_200/company-logo_200_200/0/1735895318476/universityeducationnetwork_logo?e=2147483647&v=beta&t=Aph7c7b1cOy8LpkYgahsO3Vmw6eJXH3gRYXVqq7R--I",
+        "scrapedAt": "2026-04-12T12:46:37.084Z"
+      },
+      "linkedin_url": "https://www.linkedin.com/company/universityeducationnetwork/",
+      "url_source": "serp"
+    },
+    "dental1.com.au": {
+      "hunter": {},
+      "apify": {
+        "name": "Dental Protection Limited Australia",
+        "linkedinUrl": "https://www.linkedin.com/company/dental-protection-limited",
+        "website": "https://www.dentalprotection.org/australia/home",
+        "description": "DPL Australia Pty Ltd (\u201cDPLA\u201d) is registered in Australia with ABN 24 092 695 933. Dental Protection Limited (\u201cDPL\u201d) is registered in England (No. 2374160) and along with DPLA is part of the Medical Protection Society Limited (\u201cMPS\u201d) group of companies.",
+        "industry": "Insurance",
+        "companyType": "Privately Held",
+        "companySize": "51-200 employees",
+        "employeeCount": 16,
+        "followerCount": 122,
+        "headquarters": "Milton, Queensland",
+        "street": "65 Park Rd",
+        "city": "Milton",
+        "state": "Queensland",
+        "country": "AU",
+        "postalCode": "4064",
+        "specialties": [],
+        "logoUrl": "https://media.licdn.com/dms/image/v2/C560BAQH93UR4mbOJHw/company-logo_200_200/company-logo_200_200/0/1630656988972/dental_protection_limited_logo?e=2147483647&v=beta&t=gaUpjudhe74lVmn9Qrl1JnKuJUfG_V-USTzYsLarRe4",
+        "scrapedAt": "2026-04-12T12:46:31.482Z"
+      },
+      "linkedin_url": "https://www.linkedin.com/company/dental-protection-limited/",
+      "url_source": "serp"
+    },
+    "torquaydental.com.au": {
+      "hunter": {},
+      "apify": {},
+      "linkedin_url": null,
+      "url_source": "none"
+    },
+    "lawpartners.com.au": {
+      "hunter": {},
+      "apify": {
+        "name": "Auslaw Partners | \u6fb3\u548c\u5f8b\u4e1a",
+        "linkedinUrl": "https://www.linkedin.com/company/auslawpartners",
+        "website": "https://www.auslaw.com.au",
+        "description": "We are an leading multicultural law firm in Australia, with a multicultural background (English/Chinese/Cantonese/Korean/Malaysian/Vietnamese/Thai) and practical experience in cases involving various jurisdictions. With good legal professional ethics and a sense of responsibility, we bring our clients the best legal support experience.\n\nBy providing high-quality professional legal services, Auslaw Partners is committed to becoming Australia's leading Asian cross-border legal service provider with an attitude of acknowledging truth-seeking, comprehensive and timely, and abiding by law and morality. Share professional knowledge among peers, provide collaborative assistance as much as possible, and strive for the best interests of clients' legal rights. While deeply understanding the needs and purpose of customers, we sincerely provide our professional guidance and suggestions to continuously improve the service process, improve customer satisfaction and obtain a sense of service experience.",
+        "industry": "Law Practice",
+        "companyType": "Privately Held",
+        "companySize": "11-50 employees",
+        "employeeCount": 16,
+        "followerCount": 207,
+        "foundedYear": 2020,
+        "headquarters": "South Brisbane, Queensland",
+        "street": "14 Browning St",
+        "city": "South Brisbane",
+        "state": "Queensland",
+        "country": "AU",
+        "postalCode": "4101",
+        "specialties": [
+          "\u751f\u610f\u4e70\u5356 Buying and Selling",
+          "\u5546\u4e1a\u79df\u8d41 Commercial Leasing",
+          "\u5546\u4e1a\u5408\u540c/\u67b6\u6784\u5efa\u8bae Contract and Structural Adjustment",
+          "\u4f01\u4e1a\u91cd\u7ec4/\u6e05\u7b97 Restructuring and Liquidation",
+          "\u6cd5\u5f8b\u98ce\u9669\u7ba1\u7406/\u7ecf\u8425\u5408\u89c4\u7279\u8bb8 Risk Management and Compliance",
+          "\u96c7\u4f63\u6cd5 Labour Law",
+          "Property Law \u4ea7\u6743\u6cd5",
+          "Family Law \u5bb6\u5ead\u6cd5",
+          "Commercial Law \u5546\u6cd5",
+          "Immigration Law \u79fb\u6c11\u6cd5",
+          "Litigation \u5211\u6cd5"
+        ],
+        "logoUrl": "https://media.licdn.com/dms/image/v2/D560BAQG8e7MhfWz1cg/company-logo_200_200/company-logo_200_200/0/1712021404649/auslawpartners_logo?e=2147483647&v=beta&t=honuMQsENgeL_yEz_c0ecso2KQn4JXJqZKPSCeJlT7Q",
+        "scrapedAt": "2026-04-12T12:43:02.881Z"
+      },
+      "linkedin_url": "https://www.linkedin.com/company/auslawpartners/",
+      "url_source": "serp"
+    },
+    "www.australianskilledmigration.com.au": {
+      "hunter": {},
+      "apify": {},
+      "linkedin_url": "https://www.linkedin.com/company/employment-innovations-ei/",
+      "url_source": "serp"
+    },
+    "www.tldental.com.au": {
+      "hunter": {},
+      "apify": {
+        "name": "Colgate-Palmolive",
+        "linkedinUrl": "https://www.linkedin.com/company/colgate-palmolive",
+        "website": "http://www.colgatepalmolive.com",
+        "description": "Make More Smiles. We are Colgate-Palmolive, a caring, innovative growth company that is reimagining a healthier future for all people, their pets and our planet. For over 200 years, we've poured our care into creating a future where everyone has more reasons to smile. CP People develop, produce, distribute and sell essential health & hygiene products and pet nutrition offerings through brands such as Colgate, Palmolive, elmex, Tom\u2019s of Maine, hello, Sorriso, Speed Stick, Softsoap, Irish Spring, Protex, Sanex, Filorga, eltaMD, PCA Skin, Ajax, Axion, Fabuloso, Soupline and Suavitel, as well as Hill\u2019s Science Diet and Hill\u2019s Prescription Diet.\n\nThe Company is recognized for its leadership and innovation in\npromoting sustainability and community wellbeing, including its achievements in decreasing\nplastic waste and promoting recyclability, saving water, conserving natural resources and\nimproving children\u2019s oral health through the Colgate Bright Smiles, Bright Futures program,\nwhich has reached approximately 1.8 billion children and their families since 1991.",
+        "industry": "Manufacturing",
+        "companyType": "Public Company",
+        "companySize": "10,001+ employees",
+        "employeeCount": 30569,
+        "followerCount": 2790156,
+        "headquarters": "New York, New York",
+        "street": "300 Park Ave",
+        "city": "New York",
+        "state": "New York",
+        "country": "US",
+        "postalCode": "10022",
+        "specialties": [
+          "Oral Care",
+          "Personal Care",
+          "Pet Nutrition",
+          "Home Care",
+          "Skin Care",
+          "Manufacturing",
+          "Sales",
+          "Marketing",
+          "Brand Management",
+          "Supply Chain"
+        ],
+        "logoUrl": "https://media.licdn.com/dms/image/v2/D4E0BAQHi5k01BnLvsQ/company-logo_200_200/B4EZpLGtpqHMAM-/0/1762196642732/colgate_palmolive_logo?e=2147483647&v=beta&t=7sjfpiW79AqjuCZycA-J7ZF7TurHa8p9CpUFSsO9bPg",
+        "scrapedAt": "2026-04-12T12:44:00.683Z"
+      },
+      "linkedin_url": "https://www.linkedin.com/company/colgate-palmolive/",
+      "url_source": "serp"
+    },
+    "www.megt.com.au": {
+      "hunter": {
+        "id": "a432fe15-4b08-5585-94a6-bc7c2c18f065",
+        "name": null,
+        "legalName": null,
+        "domain": "www.megt.com.au",
+        "domainAliases": [
+          "megt.com.au"
+        ],
+        "site": {
+          "phoneNumbers": [],
+          "emailAddresses": []
+        },
+        "category": {
+          "sector": null,
+          "industryGroup": null,
+          "industry": null,
+          "subIndustry": null,
+          "gicsCode": null,
+          "sicCode": null,
+          "sic4Codes": [],
+          "naicsCode": null,
+          "naics6Codes": [],
+          "naics6Codes2022": []
+        },
+        "tags": null,
+        "description": null,
+        "foundedYear": null,
+        "location": null,
+        "timeZone": null,
+        "utcOffset": null,
+        "geo": {
+          "streetNumber": null,
+          "streetName": null,
+          "subPremise": null,
+          "streetAddress": null,
+          "city": null,
+          "postalCode": null,
+          "state": null,
+          "stateCode": null,
+          "country": null,
+          "countryCode": null,
+          "lat": null,
+          "lng": null
+        },
+        "logo": "https://logos.hunter.io/www.megt.com.au",
+        "facebook": {
+          "handle": null,
+          "likes": null
+        },
+        "linkedin": {
+          "handle": null
+        },
+        "twitter": {
+          "handle": null,
+          "id": null,
+          "bio": null,
+          "followers": null,
+          "following": null,
+          "location": null,
+          "site": null,
+          "avatar": null
+        },
+        "crunchbase": {
+          "handle": null
+        },
+        "youtube": {
+          "handle": null
+        },
+        "instagram": {
+          "handle": null
+        },
+        "emailProvider": null,
+        "type": null,
+        "companyType": null,
+        "ticker": null,
+        "identifiers": {
+          "usEIN": null
+        },
+        "phone": null,
+        "metrics": {
+          "alexaUsRank": null,
+          "alexaGlobalRank": null,
+          "trafficRank": null,
+          "employees": null,
+          "marketCap": null,
+          "raised": null,
+          "annualRevenue": null,
+          "estimatedAnnualRevenue": null,
+          "fiscalYearEnd": null
+        },
+        "indexedAt": "2026-01-05",
+        "tech": [
+          "drupal",
+          "google-tag-manager",
+          "hsts",
+          "jquery",
+          "nginx",
+          "php",
+          "select2"
+        ],
+        "techCategories": [
+          "content_management_system",
+          "programming_framework",
+          "programming_language",
+          "security",
+          "tag_management",
+          "web_servers"
+        ],
+        "fundingRounds": [],
+        "parent": {
+          "domain": null
+        },
+        "ultimateParent": {
+          "domain": null
+        }
+      },
+      "apify": {
+        "name": "MEGT (Australia) Ltd",
+        "linkedinUrl": "https://www.linkedin.com/company/megt-australia",
+        "website": "http://www.megt.com.au",
+        "description": "MEGT (Australia) Ltd is a not-for profit business established in 1982 which is a steadfast advocate of employment and training for all, playing an integral role in building the Australian workforce for in demand jobs and skills of the future.\n\nMEGT has supported more than 700,000 Australians to complete their qualifications, and partnered with over 250,000 businesses to create sustainable employment solutions.\n\nWith more than 40 years experience in the Vocational Education & Training (VET) sector, MEGT successfully delivers federal and state government services, including the Australian Apprenticeship Support Services and Workforce Australia contracts. We are:\n\n\u2022 The largest single Australian Apprenticeship Support Services provider servicing more than 100,000 active apprentices and trainees per year\n\u2022 A registered Group Training Organisation (GTO) which employs apprentices and trainees who are placed within our host employer network\n\u2022 Supporting 4,000 participants across both our generalist and youth specific (Transition to Work) Workforce Australia programs into employment and further training in the Western Melbourne and Gold Coast employment regions\n\u2022 Delivering state-based employment programs, including empowering First Nations people, with training and employment opportunities\n\u2022 National Disability Insurance Scheme (NDIS) providers via the School Leavers Employment Services (SLES) and employment support for school leavers with disabilities\n\u2022 Able to offer flexible workforce solutions via the labour hire arm of our business",
+        "industry": "Human Resources",
+        "companyType": "Nonprofit",
+        "companySize": "1,001-5,000 employees",
+        "employeeCount": 855,
+        "followerCount": 18572,
+        "foundedYear": 1982,
+        "headquarters": "Ringwood, Victoria",
+        "street": "5 Bond St",
+        "city": "Ringwood",
+        "state": "Victoria",
+        "country": "AU",
+        "postalCode": "3134",
+        "specialties": [
+          "Australian Apprenticeships Support Network",
+          "Workforce Planning",
+          "Indigenous apprenticeships and traineeships",
+          "English language education",
+          "Recruitment",
+          "mentoring",
+          "management and payroll"
+        ],
+        "logoUrl": "https://media.licdn.com/dms/image/v2/D4D0BAQFDJGvQ0Jzf7Q/company-logo_200_200/B4DZh4ygRMH4AI-/0/1754373162656/megt_australia_logo?e=2147483647&v=beta&t=zDx_LI22kp-h8E8EzTNGZ7FcZb7EgeTtOwJRovCGc_I",
+        "scrapedAt": "2026-04-12T12:44:20.280Z"
+      },
+      "linkedin_url": "https://www.linkedin.com/company/megt-australia/",
+      "url_source": "serp"
+    },
+    "www.vcdental.com.au": {
+      "hunter": {},
+      "apify": {
+        "name": "MediaTek",
+        "linkedinUrl": "https://www.linkedin.com/company/mediatek",
+        "website": "http://www.mediatek.com",
+        "description": "MediaTek Incorporated (TWSE: 2454) is a global fabless semiconductor company that enables nearly 2 billion connected devices a year. We are a market leader in developing innovative systems-on-chip (SoC) for mobile, home entertainment, connectivity and IoT products. Our dedication to innovation has positioned us as a driving market force in several key technology areas, including highly power-efficient mobile technologies, automotive solutions and a broad range of advanced multimedia products such as smartphones, tablets, digital televisions, 5G, Voice Assistant Devices (VAD) and wearables. MediaTek empowers and inspires people to expand their horizons and achieve their goals through smart technology, more easily and efficiently than ever before. We work with the brands you love to make great technology accessible to everyone, and it drives everything we do. Visit www.mediatek.com for more information.\n\nALERT: MediaTek, along with other companies, have been the victim of unscrupulous individuals fraudulently purporting to be recruiters by fabricating job descriptions and extending spurious offers of employment in an effort to obtain sensitive personal information. We are currently working with authorities to investigate all wrong doings. If you believe you have been a victim, please contact careers.usa@mediatek.com.\n\nAny interested candidates for worldwide positions at MediaTek are asked to apply only through mediatek.com, or via the applicable posting directly on LinkedIn.",
+        "industry": "Semiconductor Manufacturing",
+        "companyType": "Public Company",
+        "companySize": "10,001+ employees",
+        "employeeCount": 14341,
+        "followerCount": 524174,
+        "foundedYear": 1997,
+        "headquarters": "Hsin-Chu",
+        "street": "No.1, Dusing Rd. 1",
+        "city": "Hsin-Chu",
+        "country": "TW",
+        "postalCode": "30078",
+        "specialties": [
+          "Home Entertainment",
+          "IC Development",
+          "AI",
+          "IoT",
+          "ASIC",
+          "Auto",
+          "Wireless Communications",
+          "Semiconductors",
+          "Smart Home",
+          "Smartphones",
+          "Tablets",
+          "Chromebooks"
+        ],
+        "logoUrl": "https://media.licdn.com/dms/image/v2/D4E0BAQGSguzo7nhEgA/company-logo_200_200/B4EZaIRb7oGYAM-/0/1746042994770/mediatek_logo?e=2147483647&v=beta&t=oSGIaTPW1aB3d9rOTcgZJVgDJc8FJdQqWu4qQkp-hNs",
+        "scrapedAt": "2026-04-12T12:46:10.083Z"
+      },
+      "linkedin_url": "https://www.linkedin.com/company/mediatek/",
+      "url_source": "serp"
+    },
+    "meltondentalhouse.com.au": {
+      "hunter": {
+        "id": "e9e18cca-2a56-5545-be49-061fbdf4c84e",
+        "name": "Melton Dental House",
+        "legalName": "Melton Dental House",
+        "domain": "meltondentalhouse.com.au",
+        "domainAliases": [],
+        "site": {
+          "phoneNumbers": [],
+          "emailAddresses": []
+        },
+        "category": {
+          "sector": "Health Care",
+          "industryGroup": "Health Care Equipment & Services",
+          "industry": "Health Care Equipment & Supplies",
+          "subIndustry": "Eyewear",
+          "gicsCode": "35102020",
+          "sicCode": "80",
+          "sic4Codes": [
+            "80"
+          ],
+          "naicsCode": "62",
+          "naics6Codes": [
+            "621210"
+          ],
+          "naics6Codes2022": [
+            "621111"
+          ]
+        },
+        "tags": null,
+        "description": null,
+        "foundedYear": null,
+        "location": "United Kingdom",
+        "timeZone": "Australia/Melbourne",
+        "utcOffset": 11,
+        "geo": {
+          "streetNumber": null,
+          "streetName": null,
+          "subPremise": null,
+          "streetAddress": null,
+          "city": null,
+          "postalCode": null,
+          "state": null,
+          "stateCode": null,
+          "country": "United Kingdom",
+          "countryCode": "GB",
+          "lat": -37.68339,
+          "lng": 144.58543
+        },
+        "logo": "https://logos.hunter.io/meltondentalhouse.com.au",
+        "facebook": {
+          "handle": null,
+          "likes": null
+        },
+        "linkedin": {
+          "handle": "company/melton-dental-house"
+        },
+        "twitter": {
+          "handle": null,
+          "id": null,
+          "bio": null,
+          "followers": null,
+          "following": null,
+          "location": null,
+          "site": null,
+          "avatar": null
+        },
+        "crunchbase": {
+          "handle": null
+        },
+        "youtube": {
+          "handle": null
+        },
+        "instagram": {
+          "handle": null
+        },
+        "emailProvider": "meltondentalhouse.com.au",
+        "type": null,
+        "companyType": null,
+        "ticker": null,
+        "identifiers": {
+          "usEIN": null
+        },
+        "phone": null,
+        "metrics": {
+          "alexaUsRank": null,
+          "alexaGlobalRank": null,
+          "trafficRank": "very_low",
+          "employees": "1-10",
+          "marketCap": null,
+          "raised": null,
+          "annualRevenue": null,
+          "estimatedAnnualRevenue": null,
+          "fiscalYearEnd": null
+        },
+        "indexedAt": "2026-01-09",
+        "tech": [
+          "cloudflare"
+        ],
+        "techCategories": [
+          "dns"
+        ],
+        "fundingRounds": [],
+        "parent": {
+          "domain": null
+        },
+        "ultimateParent": {
+          "domain": null
+        }
+      },
+      "apify": {
+        "name": "Melton Dental House",
+        "linkedinUrl": "https://www.linkedin.com/company/melton-dental-house",
+        "website": "http://meltondentalhouse.com.au",
+        "description": "Melton Dental House | 2 followers on LinkedIn. ",
+        "industry": "Medical Practices",
+        "employeeCount": 9,
+        "followerCount": 2,
+        "headquarters": "Melton",
+        "specialties": [],
+        "logoUrl": "https://static.licdn.com/aero-v1/sc/h/cs8pjfgyw96g44ln9r7tct85f",
+        "scrapedAt": "2026-04-12T12:44:25.683Z"
+      },
+      "linkedin_url": "https://www.linkedin.com/company/melton-dental-house/",
+      "url_source": "hunter"
+    },
+    "dental.mthc.com.au": {
+      "hunter": {
+        "id": "9f3f3cd3-5e67-5c6d-9fc5-102cb88d5ace",
+        "name": null,
+        "legalName": null,
+        "domain": "dental.mthc.com.au",
+        "domainAliases": [
+          "mthc.com.au"
+        ],
+        "site": {
+          "phoneNumbers": [],
+          "emailAddresses": []
+        },
+        "category": {
+          "sector": null,
+          "industryGroup": null,
+          "industry": null,
+          "subIndustry": null,
+          "gicsCode": null,
+          "sicCode": null,
+          "sic4Codes": [],
+          "naicsCode": null,
+          "naics6Codes": [],
+          "naics6Codes2022": []
+        },
+        "tags": null,
+        "description": null,
+        "foundedYear": null,
+        "location": null,
+        "timeZone": null,
+        "utcOffset": null,
+        "geo": {
+          "streetNumber": null,
+          "streetName": null,
+          "subPremise": null,
+          "streetAddress": null,
+          "city": null,
+          "postalCode": null,
+          "state": null,
+          "stateCode": null,
+          "country": null,
+          "countryCode": null,
+          "lat": null,
+          "lng": null
+        },
+        "logo": "https://logos.hunter.io/dental.mthc.com.au",
+        "facebook": {
+          "handle": null,
+          "likes": null
+        },
+        "linkedin": {
+          "handle": null
+        },
+        "twitter": {
+          "handle": null,
+          "id": null,
+          "bio": null,
+          "followers": null,
+          "following": null,
+          "location": null,
+          "site": null,
+          "avatar": null
+        },
+        "crunchbase": {
+          "handle": null
+        },
+        "youtube": {
+          "handle": null
+        },
+        "instagram": {
+          "handle": null
+        },
+        "emailProvider": null,
+        "type": null,
+        "companyType": null,
+        "ticker": null,
+        "identifiers": {
+          "usEIN": null
+        },
+        "phone": null,
+        "metrics": {
+          "alexaUsRank": null,
+          "alexaGlobalRank": null,
+          "trafficRank": "very_low",
+          "employees": null,
+          "marketCap": null,
+          "raised": null,
+          "annualRevenue": null,
+          "estimatedAnnualRevenue": null,
+          "fiscalYearEnd": null
+        },
+        "indexedAt": "2026-01-05",
+        "tech": [
+          "cookieyes",
+          "fitvids.js",
+          "flickity",
+          "google-tag-manager",
+          "jquery",
+          "jquery-migrate",
+          "litespeed",
+          "litespeed-cache",
+          "mysql",
+          "php",
+          "recaptcha",
+          "site-kit",
+          "unpkg",
+          "wordpress",
+          "yoast-seo"
+        ],
+        "techCategories": [
+          "analytics",
+          "authentication_services",
+          "content_management_system",
+          "database",
+          "image_video_services",
+          "programming_framework",
+          "programming_language",
+          "tag_management",
+          "web_servers",
+          "website_optimization"
+        ],
+        "fundingRounds": [],
+        "parent": {
+          "domain": null
+        },
+        "ultimateParent": {
+          "domain": null
+        }
+      },
+      "apify": {
+        "name": "Melbourne Teaching Health Clinics",
+        "linkedinUrl": "https://www.linkedin.com/company/melbourneteachinghealthclinics",
+        "website": "https://mthc.com.au/",
+        "description": "MTHC is a wholly-owned, non-for-profit subsidiary of the University of Melbourne providing world class clinical education for the Faculty of Medicine, Dentistry & Health Sciences\u2019 students.\n\nWe also provide patient access to high-quality healthcare, within both private practice and clinical education settings.\n\nMTHC cares about its people and places great importance on the values it espouses through its vision and mission. As a values driven organisation our people strive to be accountable, be compassionate, be collaborative and be ethical. We aim to be a truly great place to work.",
+        "industry": "Health and Human Services",
+        "companyType": "Public Company",
+        "companySize": "201-500 employees",
+        "employeeCount": 52,
+        "followerCount": 546,
+        "foundedYear": 2018,
+        "headquarters": "Carlton, Victoria",
+        "street": "723 Swanston St",
+        "city": "Carlton",
+        "state": "Victoria",
+        "country": "AU",
+        "postalCode": "3053",
+        "specialties": [
+          "Healthcare",
+          "Dentistry",
+          "Optometry",
+          "Speech Pathology",
+          "Psychology",
+          "Audiology",
+          "General Medicine",
+          "Student Clinical Supervision",
+          "Collaborative Practice",
+          "Healthcare Education",
+          "Medicare Urgent Care Clinic"
+        ],
+        "logoUrl": "https://media.licdn.com/dms/image/v2/D560BAQEq1fkus-H_dg/company-logo_200_200/company-logo_200_200/0/1726724943594?e=2147483647&v=beta&t=aWYeNujjgmpd3npo3CMpKJdLImIWGSZOl-dqTC0qCzc",
+        "scrapedAt": "2026-04-12T12:43:32.484Z"
+      },
+      "linkedin_url": "https://www.linkedin.com/company/melbourneteachinghealthclinics/",
+      "url_source": "serp"
+    },
+    "www.elizabethmedicalcentre.com.au": {
+      "hunter": {},
+      "apify": {},
+      "linkedin_url": null,
+      "url_source": "none"
+    },
+    "radiantsmiles.com.au": {
+      "hunter": {
+        "id": "77d66ebc-f585-5699-9a99-7220603cf21d",
+        "name": "Radiant Smiles Dental Care",
+        "legalName": "Radiant Smiles Dental Care",
+        "domain": "radiantsmiles.com.au",
+        "domainAliases": [],
+        "site": {
+          "phoneNumbers": [],
+          "emailAddresses": [
+            "admin@radiantsmiles.com.au"
+          ]
+        },
+        "category": {
+          "sector": "Health Care",
+          "industryGroup": "Health Care Equipment & Services",
+          "industry": "Health Care Equipment & Supplies",
+          "subIndustry": "Eyewear",
+          "gicsCode": "35102020",
+          "sicCode": "80",
+          "sic4Codes": [
+            "80"
+          ],
+          "naicsCode": "62",
+          "naics6Codes": [
+            "621210"
+          ],
+          "naics6Codes2022": [
+            "621111"
+          ]
+        },
+        "tags": [
+          "dentistry",
+          "dental care",
+          "dental services",
+          "healthcare",
+          "dental implants",
+          "crowns"
+        ],
+        "description": "Radiant Smiles Dental Care is a dental care provider that offers a range of services including regular check-ups, emergency dentistry, crowns, dental implants, at affordable rates.",
+        "foundedYear": 2017,
+        "location": "Yokine, AU-WA, Australia",
+        "timeZone": "Australia/Perth",
+        "utcOffset": 8,
+        "geo": {
+          "streetNumber": null,
+          "streetName": null,
+          "subPremise": null,
+          "streetAddress": null,
+          "city": "Yokine",
+          "postalCode": null,
+          "state": "AU-WA",
+          "stateCode": "AU-WA",
+          "country": "Australia",
+          "countryCode": "AU",
+          "lat": -31.90113,
+          "lng": 115.85319
+        },
+        "logo": "https://logos.hunter.io/radiantsmiles.com.au",
+        "facebook": {
+          "handle": null,
+          "likes": null
+        },
+        "linkedin": {
+          "handle": "company/radiant-smiles-dental-care"
+        },
+        "twitter": {
+          "handle": null,
+          "id": null,
+          "bio": null,
+          "followers": null,
+          "following": null,
+          "location": null,
+          "site": null,
+          "avatar": null
+        },
+        "crunchbase": {
+          "handle": null
+        },
+        "youtube": {
+          "handle": null
+        },
+        "instagram": {
+          "handle": null
+        },
+        "emailProvider": "google.com",
+        "type": "personal",
+        "companyType": "self owned",
+        "ticker": null,
+        "identifiers": {
+          "usEIN": null
+        },
+        "phone": null,
+        "metrics": {
+          "alexaUsRank": null,
+          "alexaGlobalRank": null,
+          "trafficRank": "low",
+          "employees": "1-10",
+          "marketCap": null,
+          "raised": null,
+          "annualRevenue": null,
+          "estimatedAnnualRevenue": null,
+          "fiscalYearEnd": null
+        },
+        "indexedAt": "2026-01-06",
+        "tech": [
+          "cloudflare",
+          "google-analytics",
+          "google-maps",
+          "google-tag-manager",
+          "hsts",
+          "http-3",
+          "jquery",
+          "jquery-migrate",
+          "jquery-ui",
+          "modernizr",
+          "mysql",
+          "owl-carousel",
+          "php",
+          "slick",
+          "wordpress",
+          "wpbakery",
+          "youtube"
+        ],
+        "techCategories": [
+          "analytics",
+          "content_management_system",
+          "database",
+          "dns",
+          "geolocation",
+          "image_video_services",
+          "programming_framework",
+          "programming_language",
+          "security",
+          "tag_management",
+          "web_servers",
+          "website_optimization"
+        ],
+        "fundingRounds": [],
+        "parent": {
+          "domain": null
+        },
+        "ultimateParent": {
+          "domain": null
+        }
+      },
+      "apify": {
+        "name": "Radiant Smiles Dental Care",
+        "linkedinUrl": "https://www.linkedin.com/company/radiant-smiles-dental-care",
+        "website": "http://radiantsmiles.com.au",
+        "description": "Your Affordable Dentist In Yokine and Nedlands. We Provide Dentistry Services, Including Regular Check & Clean, Emergency Dentistry, Crowns, Dental Implants and More. Providing affordable rates, you won't have to spend a fortune to ensure you are receiving the high quality dental care you need.",
+        "industry": "Medical Practices",
+        "companyType": "Self-Owned",
+        "companySize": "11-50 employees",
+        "employeeCount": 6,
+        "followerCount": 59,
+        "foundedYear": 2017,
+        "headquarters": "Yokine, Western Australia",
+        "street": "201 Flinders St",
+        "city": "Yokine",
+        "state": "Western Australia",
+        "country": "AU",
+        "postalCode": "6060",
+        "specialties": [
+          "Implant Placement",
+          "Orthodontics",
+          "All-On-4",
+          "Invisalign",
+          "Root Canal Treatment",
+          "Fillings",
+          "Extractions",
+          "Treatment Plans",
+          "Scale & Clean",
+          "Crowns",
+          "Bridges",
+          "Dentures",
+          "Teeth Whitening",
+          "Veneers"
+        ],
+        "logoUrl": "https://media.licdn.com/dms/image/v2/C4D0BAQH-x6mzYKL9BA/company-logo_200_200/company-logo_200_200/0/1636505286255/radiant_smiles_dental_care_logo?e=2147483647&v=beta&t=88e44Wa4KPoQGQcADg4xkt-hVLOfQDjC6lhk0Zf5nsg",
+        "scrapedAt": "2026-04-12T12:44:22.783Z"
+      },
+      "linkedin_url": "https://www.linkedin.com/company/radiant-smiles-dental-care/",
+      "url_source": "hunter"
+    },
+    "glenferriedental.com.au": {
+      "hunter": {
+        "id": "7240ec0b-cb47-5a72-a42f-18a24adbc98d",
+        "name": "Glenferrie Dental",
+        "legalName": "Glenferrie Dental",
+        "domain": "glenferriedental.com.au",
+        "domainAliases": [],
+        "site": {
+          "phoneNumbers": [
+            "+61 3 9818 1930"
+          ],
+          "emailAddresses": [
+            "info@glenferriedental.com.au"
+          ]
+        },
+        "category": {
+          "sector": "Health Care",
+          "industryGroup": "Health Care Equipment & Services",
+          "industry": "Health Care Equipment & Supplies",
+          "subIndustry": "Eyewear",
+          "gicsCode": "35102020",
+          "sicCode": "80",
+          "sic4Codes": [
+            "80"
+          ],
+          "naicsCode": "62",
+          "naics6Codes": [
+            "621210"
+          ],
+          "naics6Codes2022": [
+            "621111"
+          ]
+        },
+        "tags": [
+          "dental care",
+          "dentistry",
+          "healthcare",
+          "medical services"
+        ],
+        "description": "Glenferrie Dental is a dental care provider that offers modern and comprehensive dental services in a comfortable and relaxed environment.",
+        "foundedYear": 1990,
+        "location": "Hawthorn, AU-VIC, Australia",
+        "timeZone": "Australia/Melbourne",
+        "utcOffset": 11,
+        "geo": {
+          "streetNumber": null,
+          "streetName": null,
+          "subPremise": null,
+          "streetAddress": null,
+          "city": "Hawthorn",
+          "postalCode": null,
+          "state": "AU-VIC",
+          "stateCode": "AU-VIC",
+          "country": "Australia",
+          "countryCode": "AU",
+          "lat": -37.81992,
+          "lng": 145.0358
+        },
+        "logo": "https://logos.hunter.io/glenferriedental.com.au",
+        "facebook": {
+          "handle": "glenferriedental",
+          "likes": null
+        },
+        "linkedin": {
+          "handle": "company/glenferrie-dental-hawthorn-dental-implants-all-on-4-cosmetic-dentist"
+        },
+        "twitter": {
+          "handle": null,
+          "id": null,
+          "bio": null,
+          "followers": null,
+          "following": null,
+          "location": null,
+          "site": null,
+          "avatar": null
+        },
+        "crunchbase": {
+          "handle": null
+        },
+        "youtube": {
+          "handle": null
+        },
+        "instagram": {
+          "handle": "glenferrie.dental"
+        },
+        "emailProvider": "outlook.com",
+        "type": "public",
+        "companyType": "public company",
+        "ticker": null,
+        "identifiers": {
+          "usEIN": null
+        },
+        "phone": "+61 3 9818 1930",
+        "metrics": {
+          "alexaUsRank": null,
+          "alexaGlobalRank": null,
+          "trafficRank": "medium_low",
+          "employees": "1-10",
+          "marketCap": null,
+          "raised": null,
+          "annualRevenue": null,
+          "estimatedAnnualRevenue": null,
+          "fiscalYearEnd": null
+        },
+        "indexedAt": "2026-05-10",
+        "tech": [
+          "cloudflare",
+          "elementor",
+          "google-tag-manager",
+          "http-3",
+          "mysql",
+          "php",
+          "wordpress",
+          "wp-rocket"
+        ],
+        "techCategories": [
+          "content_management_system",
+          "database",
+          "dns",
+          "programming_language",
+          "tag_management",
+          "web_servers",
+          "website_optimization"
+        ],
+        "fundingRounds": [],
+        "parent": {
+          "domain": null
+        },
+        "ultimateParent": {
+          "domain": null
+        }
+      },
+      "apify": {
+        "name": "Glenferrie Dental Hawthorn - Dental Implants, All on 4, Cosmetic Dentist",
+        "linkedinUrl": "https://www.linkedin.com/company/glenferrie-dental-hawthorn-dental-implants-all-on-4-cosmetic-dentist",
+        "website": "https://glenferriedental.com.au/",
+        "description": "Welcome To Glenferrie Dental\n\n>Dental Implants\n>All on 4\n>Cosmetic Dentist\n\nAt Glenferrie Dental, we are committed to providing more than just dental care\u2014we aim to create a comfortable, personalised experience for every patient. Your health and well-being are at the heart of everything we do. Whether you're here for routine care, cosmetic enhancements, or more advanced procedures, our focus is always on exceeding your expectations with service tailored to your needs.\n\n\nWith access to state-of-the-art equipment and the latest innovations in dental technology, we ensure that you receive the highest standard of care. From general dentistry to complex treatments, we offer a comprehensive range of services designed to meet the needs of every patient.\n\nOur Team: Trusted Expertise and Compassion Combined\n\nOur team is more than just experienced\u2014we are trusted and passionate about what we do. With over 75 years of combined clinical expertise, each member brings exceptional skill and dedication to the practice. As active members of the Australian Dental Association, we stay at the forefront of industry advancements, ensuring that our patients always receive the most up-to-date care available.\n\nWe take pride in fostering a warm, supportive environment where your smile is our top priority. Every visit is an opportunity to build lasting relationships and provide care with professionalism, compassion, and integrity. Whether you need preventive care, restorative work, or cosmetic treatments, we are committed to helping you achieve optimal oral health and a smile that truly reflects your confidence.\n\nWe welcome you to experience dental care that puts your comfort, health, and happiness first. \n\nAt Glenferrie Dental, your smile is in the best hands.\n",
+        "industry": "Medical Practices",
+        "companyType": "Public Company",
+        "companySize": "11-50 employees",
+        "employeeCount": 10,
+        "followerCount": 58,
+        "foundedYear": 1990,
+        "headquarters": "Hawthorn, Victoria",
+        "street": "765 Glenferrie Rd",
+        "city": "Hawthorn",
+        "state": "Victoria",
+        "country": "AU",
+        "postalCode": "3122",
+        "specialties": [
+          "Dental Implants",
+          "Cosmetic Dentistry",
+          "Family Dental"
+        ],
+        "logoUrl": "https://media.licdn.com/dms/image/v2/D560BAQGPV3SYGjmiEQ/company-logo_200_200/company-logo_200_200/0/1730271925646/glenferrie_dental_hawthorn_dental_implants_all_on_4_cosmetic_dentist_logo?e=2147483647&v=beta&t=PVOWIJdDRDhEj2MduJXVYSQfAxH6DIoNOvsyaKhKkGg",
+        "scrapedAt": "2026-04-12T12:44:28.984Z"
+      },
+      "linkedin_url": "https://www.linkedin.com/company/glenferrie-dental-hawthorn-dental-implants-all-on-4-cosmetic-dentist/",
+      "url_source": "hunter"
+    },
+    "www.theorthodontists.com.au": {
+      "hunter": {},
+      "apify": {
+        "name": "MediaTek",
+        "linkedinUrl": "https://www.linkedin.com/company/mediatek",
+        "website": "http://www.mediatek.com",
+        "description": "MediaTek Incorporated (TWSE: 2454) is a global fabless semiconductor company that enables nearly 2 billion connected devices a year. We are a market leader in developing innovative systems-on-chip (SoC) for mobile, home entertainment, connectivity and IoT products. Our dedication to innovation has positioned us as a driving market force in several key technology areas, including highly power-efficient mobile technologies, automotive solutions and a broad range of advanced multimedia products such as smartphones, tablets, digital televisions, 5G, Voice Assistant Devices (VAD) and wearables. MediaTek empowers and inspires people to expand their horizons and achieve their goals through smart technology, more easily and efficiently than ever before. We work with the brands you love to make great technology accessible to everyone, and it drives everything we do. Visit www.mediatek.com for more information.\n\nALERT: MediaTek, along with other companies, have been the victim of unscrupulous individuals fraudulently purporting to be recruiters by fabricating job descriptions and extending spurious offers of employment in an effort to obtain sensitive personal information. We are currently working with authorities to investigate all wrong doings. If you believe you have been a victim, please contact careers.usa@mediatek.com.\n\nAny interested candidates for worldwide positions at MediaTek are asked to apply only through mediatek.com, or via the applicable posting directly on LinkedIn.",
+        "industry": "Semiconductor Manufacturing",
+        "companyType": "Public Company",
+        "companySize": "10,001+ employees",
+        "employeeCount": 14341,
+        "followerCount": 524174,
+        "foundedYear": 1997,
+        "headquarters": "Hsin-Chu",
+        "street": "No.1, Dusing Rd. 1",
+        "city": "Hsin-Chu",
+        "country": "TW",
+        "postalCode": "30078",
+        "specialties": [
+          "Home Entertainment",
+          "IC Development",
+          "AI",
+          "IoT",
+          "ASIC",
+          "Auto",
+          "Wireless Communications",
+          "Semiconductors",
+          "Smart Home",
+          "Smartphones",
+          "Tablets",
+          "Chromebooks"
+        ],
+        "logoUrl": "https://media.licdn.com/dms/image/v2/D4E0BAQGSguzo7nhEgA/company-logo_200_200/B4EZaIRb7oGYAM-/0/1746042994770/mediatek_logo?e=2147483647&v=beta&t=oSGIaTPW1aB3d9rOTcgZJVgDJc8FJdQqWu4qQkp-hNs",
+        "scrapedAt": "2026-04-12T12:46:10.083Z"
+      },
+      "linkedin_url": "https://www.linkedin.com/company/mediatek/",
+      "url_source": "serp"
+    },
+    "ngm.com.au": {
+      "hunter": {
+        "id": "c962e07a-e6a1-5a4f-ab4e-f4fbda2fda56",
+        "name": "NGM Lawyers",
+        "legalName": "NGM Lawyers",
+        "domain": "ngm.com.au",
+        "domainAliases": [],
+        "site": {
+          "phoneNumbers": [],
+          "emailAddresses": [
+            "contact@ngm.com.au",
+            "dl@ngm.com.au"
+          ]
+        },
+        "category": {
+          "sector": null,
+          "industryGroup": null,
+          "industry": null,
+          "subIndustry": null,
+          "gicsCode": "40203020",
+          "sicCode": "81",
+          "sic4Codes": [
+            "81"
+          ],
+          "naicsCode": "54",
+          "naics6Codes": [
+            "541110"
+          ],
+          "naics6Codes2022": [
+            "541110"
+          ]
+        },
+        "tags": [
+          "law firm",
+          "criminal defence",
+          "legal services",
+          "international law",
+          "criminal law"
+        ],
+        "description": "Nyman Gibson Miralis Defence Lawyers is a law firm that specializes in criminal defence law, with expertise in general, complex, and international criminal law.",
+        "foundedYear": 1966,
+        "location": "Sydney, AU-NSW, Australia",
+        "timeZone": "Australia/Sydney",
+        "utcOffset": 11,
+        "geo": {
+          "streetNumber": null,
+          "streetName": null,
+          "subPremise": null,
+          "streetAddress": null,
+          "city": "Sydney",
+          "postalCode": null,
+          "state": "AU-NSW",
+          "stateCode": "AU-NSW",
+          "country": "Australia",
+          "countryCode": "AU",
+          "lat": -33.86785,
+          "lng": 151.20732
+        },
+        "logo": "https://logos.hunter.io/ngm.com.au",
+        "facebook": {
+          "handle": "criminaldefencelawyerssydney",
+          "likes": null
+        },
+        "linkedin": {
+          "handle": "company/nyman-gibson-miralis"
+        },
+        "twitter": {
+          "handle": "ngmlawyers",
+          "id": null,
+          "bio": null,
+          "followers": null,
+          "following": null,
+          "location": null,
+          "site": null,
+          "avatar": null
+        },
+        "crunchbase": {
+          "handle": null
+        },
+        "youtube": {
+          "handle": null
+        },
+        "instagram": {
+          "handle": "ngmlawyers"
+        },
+        "emailProvider": "barracudanetworks.com",
+        "type": "partnership",
+        "companyType": "partnership",
+        "ticker": null,
+        "identifiers": {
+          "usEIN": null
+        },
+        "phone": null,
+        "metrics": {
+          "alexaUsRank": null,
+          "alexaGlobalRank": null,
+          "trafficRank": "low",
+          "employees": "11-50",
+          "marketCap": null,
+          "raised": null,
+          "annualRevenue": null,
+          "estimatedAnnualRevenue": null,
+          "fiscalYearEnd": null
+        },
+        "indexedAt": "2026-01-07",
+        "tech": [
+          "google-analytics",
+          "google-tag-manager",
+          "gravity-forms",
+          "http-3",
+          "jquery",
+          "jquery-migrate",
+          "litespeed",
+          "litespeed-cache",
+          "mysql",
+          "owl-carousel",
+          "php",
+          "recaptcha",
+          "sucuri",
+          "swiper",
+          "wordpress",
+          "wpbakery",
+          "wpml",
+          "yoast-seo"
+        ],
+        "techCategories": [
+          "analytics",
+          "authentication_services",
+          "content_management_system",
+          "database",
+          "form_builder",
+          "programming_framework",
+          "programming_language",
+          "security",
+          "tag_management",
+          "user_engagement",
+          "web_servers",
+          "website_optimization"
+        ],
+        "fundingRounds": [],
+        "parent": {
+          "domain": null
+        },
+        "ultimateParent": {
+          "domain": null
+        }
+      },
+      "apify": {},
+      "linkedin_url": "https://www.linkedin.com/company/nyman-gibson-miralis/",
+      "url_source": "hunter"
+    },
+    "www.australianmigrationagents.com.au": {
+      "hunter": {},
+      "apify": {
+        "name": "Australian Migration Agents Pty Ltd",
+        "linkedinUrl": "https://www.linkedin.com/company/australianmigrationagents",
+        "website": "http://austmigration.com.au",
+        "description": "Australian Migration Agents Pty Ltd (AMA) was established in 1994 by Registered Migration Agent, Robert K Chelliah (MARN 9254011). AMA has the core business  of relocation of families and businessmen to Australia. It has operational offices in Australia, Malaysia, and Singapore.\n\nAt AMA, we uphold an exceedingly high standard of service and have been consistent in delivering the excellence for the past 27 years,  making us one of  the leading  migration agents and Australian travel  tour management and planner. With vast experience in handling complex cases, AMA has  assisted numerous investors, highly skilled professionals, families and other individuals obtain the Australian settlement visas.\n\nAMA. We do only one thing and we do it best.\n\n\n\n\n\n",
+        "industry": "Legal Services",
+        "companyType": "Public Company",
+        "companySize": "2-10 employees",
+        "employeeCount": 2,
+        "followerCount": 202,
+        "foundedYear": 1994,
+        "headquarters": "Joondalup, Western Australia",
+        "street": "143, Coolibah Drive, Greenwood",
+        "city": "Joondalup",
+        "state": "Western Australia",
+        "country": "MY",
+        "postalCode": "6024",
+        "specialties": [
+          "visa",
+          "migration specialist",
+          "migration agent",
+          "australian migration",
+          "parent visa",
+          "business visa",
+          "skills visa",
+          "Resident Return Visa",
+          "Migration Review Tribunal",
+          "Parent Visa"
+        ],
+        "logoUrl": "https://media.licdn.com/dms/image/v2/C560BAQEb8FjECnQygw/company-logo_200_200/company-logo_200_200/0/1631368413541?e=2147483647&v=beta&t=K2UoxJ9CirmwbOaZTFxGAHDIo3Tg4YMLHqtJlV307v4",
+        "scrapedAt": "2026-04-12T12:43:26.584Z"
+      },
+      "linkedin_url": "https://www.linkedin.com/company/australianmigrationagents/",
+      "url_source": "serp"
+    },
+    "www.hillsirrigation.com.au": {
+      "hunter": {
+        "id": "1e2830c3-0086-5fe8-9d55-63277eab902f",
+        "name": null,
+        "legalName": null,
+        "domain": "www.hillsirrigation.com.au",
+        "domainAliases": [
+          "hillsirrigation.com.au"
+        ],
+        "site": {
+          "phoneNumbers": [],
+          "emailAddresses": []
+        },
+        "category": {
+          "sector": null,
+          "industryGroup": null,
+          "industry": null,
+          "subIndustry": null,
+          "gicsCode": null,
+          "sicCode": null,
+          "sic4Codes": [],
+          "naicsCode": null,
+          "naics6Codes": [],
+          "naics6Codes2022": []
+        },
+        "tags": null,
+        "description": null,
+        "foundedYear": null,
+        "location": null,
+        "timeZone": null,
+        "utcOffset": null,
+        "geo": {
+          "streetNumber": null,
+          "streetName": null,
+          "subPremise": null,
+          "streetAddress": null,
+          "city": null,
+          "postalCode": null,
+          "state": null,
+          "stateCode": null,
+          "country": null,
+          "countryCode": null,
+          "lat": null,
+          "lng": null
+        },
+        "logo": "https://logos.hunter.io/www.hillsirrigation.com.au",
+        "facebook": {
+          "handle": null,
+          "likes": null
+        },
+        "linkedin": {
+          "handle": null
+        },
+        "twitter": {
+          "handle": null,
+          "id": null,
+          "bio": null,
+          "followers": null,
+          "following": null,
+          "location": null,
+          "site": null,
+          "avatar": null
+        },
+        "crunchbase": {
+          "handle": null
+        },
+        "youtube": {
+          "handle": null
+        },
+        "instagram": {
+          "handle": null
+        },
+        "emailProvider": "outlook.com",
+        "type": null,
+        "companyType": null,
+        "ticker": null,
+        "identifiers": {
+          "usEIN": null
+        },
+        "phone": null,
+        "metrics": {
+          "alexaUsRank": null,
+          "alexaGlobalRank": null,
+          "trafficRank": null,
+          "employees": null,
+          "marketCap": null,
+          "raised": null,
+          "annualRevenue": null,
+          "estimatedAnnualRevenue": null,
+          "fiscalYearEnd": null
+        },
+        "indexedAt": "2026-01-04",
+        "tech": [
+          "google-tag-manager",
+          "http-3",
+          "jquery",
+          "klaviyo",
+          "litespeed",
+          "mysql",
+          "php",
+          "recaptcha",
+          "wordpress",
+          "wp-rocket",
+          "yoast-seo",
+          "zendesk"
+        ],
+        "techCategories": [
+          "authentication_services",
+          "content_management_system",
+          "customer_support",
+          "database",
+          "marketing_automation",
+          "programming_framework",
+          "programming_language",
+          "tag_management",
+          "web_servers",
+          "website_optimization"
+        ],
+        "fundingRounds": [],
+        "parent": {
+          "domain": null
+        },
+        "ultimateParent": {
+          "domain": null
+        }
+      },
+      "apify": {},
+      "linkedin_url": null,
+      "url_source": "none"
+    },
+    "dental99.com.au": {
+      "hunter": {
+        "id": "9caec624-7aac-531f-aeb0-9bcce5e24a41",
+        "name": "Dental 99",
+        "legalName": "Dental 99",
+        "domain": "dental99.com.au",
+        "domainAliases": [],
+        "site": {
+          "phoneNumbers": [],
+          "emailAddresses": [
+            "patientservices@dental99.com.au",
+            "implantinstitute@dental99.com.au"
+          ]
+        },
+        "category": {
+          "sector": "Health Care",
+          "industryGroup": "Health Care Equipment & Services",
+          "industry": "Health Care Providers & Services",
+          "subIndustry": "Health Care",
+          "gicsCode": "35102020",
+          "sicCode": "80",
+          "sic4Codes": [
+            "80"
+          ],
+          "naicsCode": "62",
+          "naics6Codes": [
+            "621111"
+          ],
+          "naics6Codes2022": [
+            "622110"
+          ]
+        },
+        "tags": [
+          "dentistry",
+          "healthcare services",
+          "dental clinics",
+          "affordable dentistry"
+        ],
+        "description": "Dental 99 is a dentistry provider that offers fixed price dental treatments starting at $99, including check-ups, cleanings, fillings, extractions, and x-rays.",
+        "foundedYear": null,
+        "location": "Sydney Central Business District, AU-NSW, Australia",
+        "timeZone": "Australia/Sydney",
+        "utcOffset": 11,
+        "geo": {
+          "streetNumber": null,
+          "streetName": null,
+          "subPremise": null,
+          "streetAddress": null,
+          "city": "Sydney Central Business District",
+          "postalCode": null,
+          "state": "AU-NSW",
+          "stateCode": "AU-NSW",
+          "country": "Australia",
+          "countryCode": "AU",
+          "lat": -33.86482,
+          "lng": 151.20773
+        },
+        "logo": "https://logos.hunter.io/dental99.com.au",
+        "facebook": {
+          "handle": "dental99aus",
+          "likes": null
+        },
+        "linkedin": {
+          "handle": "company/dental-99"
+        },
+        "twitter": {
+          "handle": null,
+          "id": null,
+          "bio": null,
+          "followers": null,
+          "following": null,
+          "location": null,
+          "site": null,
+          "avatar": null
+        },
+        "crunchbase": {
+          "handle": null
+        },
+        "youtube": {
+          "handle": null
+        },
+        "instagram": {
+          "handle": "dental99aus"
+        },
+        "emailProvider": "outlook.com",
+        "type": "private",
+        "companyType": "privately held",
+        "ticker": null,
+        "identifiers": {
+          "usEIN": null
+        },
+        "phone": null,
+        "metrics": {
+          "alexaUsRank": null,
+          "alexaGlobalRank": null,
+          "trafficRank": "very_low",
+          "employees": "11-50",
+          "marketCap": null,
+          "raised": null,
+          "annualRevenue": null,
+          "estimatedAnnualRevenue": null,
+          "fiscalYearEnd": null
+        },
+        "indexedAt": "2026-01-05",
+        "tech": [
+          "all-in-one-seo-pack",
+          "amazon-s3",
+          "amazon-web-services",
+          "cloudflare",
+          "cloudflare-browser-insights",
+          "complianz",
+          "elementor",
+          "font-awesome",
+          "google-font-api",
+          "hsts",
+          "http-3",
+          "imagesloaded",
+          "jquery",
+          "jquery-cdn",
+          "jquery-migrate",
+          "mysql",
+          "php",
+          "prettyphoto",
+          "site-kit",
+          "siteground",
+          "swiper",
+          "woocommerce",
+          "wordpress",
+          "wp-optimize",
+          "zendesk"
+        ],
+        "techCategories": [
+          "analytics",
+          "cloud_computing_services",
+          "content_management_system",
+          "customer_support",
+          "database",
+          "dns",
+          "ecommerce",
+          "image_video_services",
+          "programming_framework",
+          "programming_language",
+          "security",
+          "tag_management",
+          "user_engagement",
+          "web_hosting",
+          "web_servers",
+          "website_optimization"
+        ],
+        "fundingRounds": [],
+        "parent": {
+          "domain": null
+        },
+        "ultimateParent": {
+          "domain": null
+        }
+      },
+      "apify": {
+        "name": "Dental 99",
+        "linkedinUrl": "https://www.linkedin.com/company/dental-99",
+        "website": "https://dental99.com.au/",
+        "description": "We offer fixed price dentistry to Australians for $99 per dental treatment. Treatments include a check-up and clean, a filling, a simple tooth extraction or a toothache management treatment. The price includes any X-rays relevant to the treatment. \n\nWe currently have clinics all across Sydney and plan to expand nation-wide, s that all Australians can have access to affordable dental care.  \n\nOur services are provided through an app that is free and available on the Google play store and the Apple app store. All bookings can be made through the app, which also doubles as a personal patient file which securely stores the patient's dental information for easy access. ",
+        "industry": "Hospitals and Health Care",
+        "companyType": "Privately Held",
+        "companySize": "51-200 employees",
+        "employeeCount": 30,
+        "followerCount": 319,
+        "headquarters": "Sydney CBD, New South Wales",
+        "street": "149 Macquarie St",
+        "city": "Sydney CBD",
+        "state": "New South Wales",
+        "country": "AU",
+        "postalCode": "2000",
+        "specialties": [
+          "dentistry",
+          "healthcare",
+          "app",
+          "healthcare tech",
+          "affordable dentistry"
+        ],
+        "logoUrl": "https://media.licdn.com/dms/image/v2/C560BAQFTiBkRBt9pIw/company-logo_200_200/company-logo_200_200/0/1630643775829?e=2147483647&v=beta&t=awEm2NpztZqya00DzuSLZFJUMDibsUCV-Z1DhSfUc9k",
+        "scrapedAt": "2026-04-12T12:43:54.985Z"
+      },
+      "linkedin_url": "https://www.linkedin.com/company/dental-99/",
+      "url_source": "hunter"
+    },
+    "fallonsolutions.com.au": {
+      "hunter": {
+        "id": "c2f6610b-6a9f-5598-8130-268cfce1c5d0",
+        "name": "Fallon Solutions",
+        "legalName": "Fallon Solutions",
+        "domain": "fallonsolutions.com.au",
+        "domainAliases": [],
+        "site": {
+          "phoneNumbers": [
+            "+61 485 857 016"
+          ],
+          "emailAddresses": [
+            "enquiries@fallonsolutions.com.au",
+            "marketing@fallonsolutions.com.au",
+            "resolutions@fallonsolutions.com.au"
+          ]
+        },
+        "category": {
+          "sector": "Consumer Discretionary",
+          "industryGroup": "Consumer Services",
+          "industry": "Consumer Services",
+          "subIndustry": "Consumer Services",
+          "gicsCode": "25302020",
+          "sicCode": "72",
+          "sic4Codes": [
+            "72"
+          ],
+          "naicsCode": "81",
+          "naics6Codes": [
+            "812990"
+          ],
+          "naics6Codes2022": [
+            "812990"
+          ]
+        },
+        "tags": [
+          "home services",
+          "plumbing",
+          "electrical services",
+          "air conditioning",
+          "maintenance and repair",
+          "residential services",
+          "emergency services"
+        ],
+        "description": "Fallon Solutions is a home services company that provides plumbing, electrical, and air conditioning solutions with a focus on customer satisfaction and timely service.",
+        "foundedYear": 1962,
+        "location": "Brisbane, AU-QLD, Australia",
+        "timeZone": "Australia/Brisbane",
+        "utcOffset": 10,
+        "geo": {
+          "streetNumber": null,
+          "streetName": null,
+          "subPremise": null,
+          "streetAddress": null,
+          "city": "Brisbane",
+          "postalCode": null,
+          "state": "AU-QLD",
+          "stateCode": "AU-QLD",
+          "country": "Australia",
+          "countryCode": "AU",
+          "lat": -27.46794,
+          "lng": 153.02809
+        },
+        "logo": "https://logos.hunter.io/fallonsolutions.com.au",
+        "facebook": {
+          "handle": "fallonsolutionsau",
+          "likes": null
+        },
+        "linkedin": {
+          "handle": "company/neil-t-fallon-services-pty-ltd"
+        },
+        "twitter": {
+          "handle": "fallonservices",
+          "id": null,
+          "bio": null,
+          "followers": null,
+          "following": null,
+          "location": null,
+          "site": null,
+          "avatar": null
+        },
+        "crunchbase": {
+          "handle": null
+        },
+        "youtube": {
+          "handle": "fallonservices"
+        },
+        "instagram": {
+          "handle": null
+        },
+        "emailProvider": "mailmarshal.cloud",
+        "type": "private",
+        "companyType": "privately held",
+        "ticker": null,
+        "identifiers": {
+          "usEIN": null
+        },
+        "phone": "+61 485 857 016",
+        "metrics": {
+          "alexaUsRank": null,
+          "alexaGlobalRank": null,
+          "trafficRank": "high",
+          "employees": "51-250",
+          "marketCap": null,
+          "raised": null,
+          "annualRevenue": null,
+          "estimatedAnnualRevenue": null,
+          "fiscalYearEnd": null
+        },
+        "indexedAt": "2026-01-09",
+        "tech": [
+          "cloudflare",
+          "cloudflare-bot-management",
+          "google-tag-manager",
+          "gravity-forms",
+          "http-3",
+          "jquery",
+          "jquery-migrate",
+          "jsdelivr",
+          "mysql",
+          "php",
+          "recaptcha",
+          "woocommerce",
+          "wordpress",
+          "wp-engine",
+          "yoast-seo",
+          "zurb-foundation"
+        ],
+        "techCategories": [
+          "authentication_services",
+          "content_management_system",
+          "database",
+          "dns",
+          "ecommerce",
+          "form_builder",
+          "programming_framework",
+          "programming_language",
+          "security",
+          "tag_management",
+          "web_hosting",
+          "web_servers",
+          "website_optimization"
+        ],
+        "fundingRounds": [],
+        "parent": {
+          "domain": null
+        },
+        "ultimateParent": {
+          "domain": null
+        }
+      },
+      "apify": {},
+      "linkedin_url": "https://www.linkedin.com/company/neil-t-fallon-services-pty-ltd/",
+      "url_source": "hunter"
+    },
+    "www.ipchealth.com.au": {
+      "hunter": {},
+      "apify": {
+        "name": "IPC Health",
+        "linkedinUrl": "https://www.linkedin.com/company/ipc-health",
+        "website": "http://ipchealth.com.au",
+        "description": "IPC Health is one of the largest providers of community health services in Victoria.\n\nIndividuals through a single point of contact can connect to a full spectrum of care and support using consistent approaches including those of our partners.\n\nWe operate from six sites in Melbourne\u2019s West and employ over 500 staff. We are committed to working with the rapidly growing areas of Melbourne\u2019s middle and outer West, where population will grow by 400,000 in the coming 15 years. By year 2035, we anticipate that the total population served will be approximately 1.2 million.",
+        "industry": "Hospitals and Health Care",
+        "companyType": "Nonprofit",
+        "companySize": "501-1,000 employees",
+        "employeeCount": 304,
+        "followerCount": 4293,
+        "foundedYear": 1974,
+        "headquarters": "Deer Park, VIC",
+        "street": "106 Station Road",
+        "city": "Deer Park",
+        "state": "VIC",
+        "country": "AU",
+        "postalCode": "3023",
+        "specialties": [
+          "Alcohol and Other Drugs",
+          "Cardiac Rehabilitation Programs",
+          "Community Health",
+          "Aboriginal and Torres Strait Islander Services",
+          "Oral Health",
+          "Family Services",
+          "Nutrition and Dietetics",
+          "Allied Health",
+          "Refugee and Youth Health",
+          "Women\u2019s Health Services",
+          "Counselling",
+          "Aged Care",
+          "Family Services",
+          "Diabetes Education",
+          "Health Coaching",
+          "Peadiatricians",
+          "Child Health",
+          "Health Promotion",
+          "Podiatry",
+          "Physiotherapy",
+          "Dental",
+          "Doctors",
+          "Nurses",
+          "Audiology",
+          "Speech Pathology",
+          "Occupational Therapy",
+          "Young People's Health",
+          "GP"
+        ],
+        "logoUrl": "https://media.licdn.com/dms/image/v2/C4E0BAQF48bkNC1fSOA/company-logo_200_200/company-logo_200_200/0/1631354977203?e=2147483647&v=beta&t=Bv0Esgl0Tesw2e8TkjDoQBlLqS5B0o8g5LU6Fvpe24w",
+        "scrapedAt": "2026-04-12T12:43:18.083Z"
+      },
+      "linkedin_url": "https://www.linkedin.com/company/ipc-health/",
+      "url_source": "serp"
+    },
+    "progressivelegal.com.au": {
+      "hunter": {},
+      "apify": {},
+      "linkedin_url": "https://www.linkedin.com/company/progressive-legal-australia/",
+      "url_source": "serp"
+    },
+    "affordabledental.com.au": {
+      "hunter": {},
+      "apify": {
+        "name": "1300SMILES Dentists",
+        "linkedinUrl": "https://www.linkedin.com/company/1300smiles",
+        "website": "https://www.1300SMILES.com.au",
+        "description": "With full-service dental facilities across Queensland and New South Wales, it is easy to find affordable quality dental care near to home or work with 1300SMILES. \n\n1300SMILES Dentists is part of Abano Healthcare Group, Australasia\u2019s largest dental support organisation with a network of more than 270 dental clinics operating under the Maven Dental, Lumino the Dentists and 1300SMILES brands. We provide facilities, services and support to the dental practitioners that engage us, so they can focus on delivering outstanding care to their patients.",
+        "industry": "Wellness and Fitness Services",
+        "companyType": "Public Company",
+        "companySize": "51-200 employees",
+        "employeeCount": 128,
+        "followerCount": 2780,
+        "foundedYear": 2005,
+        "headquarters": "Townsville, QLD",
+        "street": "105 Denham Street",
+        "city": "Townsville",
+        "state": "QLD",
+        "country": "AU",
+        "postalCode": "4810",
+        "specialties": [
+          "General Dentistry",
+          "Bridges",
+          "Cosmetic Dentistry",
+          "Crowns",
+          "Dental Exams",
+          "Dental Implants",
+          "Sports Mouthguards",
+          "Root Canal Treatments",
+          "Extractions",
+          "Whitening",
+          "Invisalign",
+          "Child Dental",
+          "Dentures",
+          "Endodontics",
+          "Oral Health",
+          "Oral Hygiene",
+          "Braces",
+          "CDBS",
+          "Hygienist",
+          "Veneers",
+          "Surgical Extractions",
+          "Sleep Dentistry",
+          "Sedation Dentistry",
+          "Twilight Dentistry"
+        ],
+        "logoUrl": "https://media.licdn.com/dms/image/v2/C560BAQEhUeegAKw4vA/company-logo_200_200/company-logo_200_200/0/1630646887229/1300smiles_logo?e=2147483647&v=beta&t=BU8Vv8AQX2H4UuXNgay9U1bODQuyLitYjCico3FQ_SM",
+        "scrapedAt": "2026-04-12T12:42:57.665Z"
+      },
+      "linkedin_url": "https://www.linkedin.com/company/1300smiles/",
+      "url_source": "serp"
+    },
+    "www.fixdental.com.au": {
+      "hunter": {},
+      "apify": {
+        "name": "Fixed Group",
+        "linkedinUrl": "https://www.linkedin.com/company/fixed-group",
+        "website": "https://www.fixed.com.au",
+        "description": "Fixed Group comprises Fixed and Fixed Medical, providing refurbishment, fit-out, strip out and maintenance services across a range of property and building types.  From resort renovations to your local cafe fit-out or shopping centre pop-up, we are the experts in designing solutions to meet any budget and any timeframe. We welcome\u00a0clients of any size for any type of problem. From fitting door handles and patching a wall to delivering highly-specialised medical installation services and complete hotel refurbishments.  \n\nFrom the outset, the Fixed Group has focused on developing a service delivery method that minimises customer disruption, and therefore reduces operational risk and potential loss of earnings for the client.  With our proven methodology, we have established ourselves as the industry specialist for the delivery of installation, construction and maintenance projects to live building and commercial environments. Our unique process enables us to carry out installation and maintenance works to hospitals, labs, medical facilities, aged care facilities, hotels, resorts, and childcare facilities, all whilst our client continues full operation of its regular commercial activities.\n\nOur success has been built on our philosophy of listening to our clients and delivering on their needs, every time. Our continued focus on providing exceptional customer service and quality workmanship has resulted in the development of strong long-term relationships with many satisfied clients.  Put simply, your problems are solved with Fixed.",
+        "industry": "Construction",
+        "companyType": "Privately Held",
+        "companySize": "11-50 employees",
+        "employeeCount": 10,
+        "followerCount": 166,
+        "foundedYear": 2010,
+        "headquarters": "Murrarie, Queensland",
+        "street": "21/197 Murrarie Road",
+        "city": "Murrarie",
+        "state": "Queensland",
+        "country": "AU",
+        "postalCode": "4172",
+        "specialties": [
+          "Refurbishments",
+          "Commercial fit-outs",
+          "Maintenance",
+          "Medical installation services",
+          "Medical maintenance services",
+          "Strip-outs",
+          "Facility renovations",
+          "Emergency on-call works",
+          "Government",
+          "Hospitality & retail",
+          "Childcare & Education",
+          "Aged-care & retirement living",
+          "Hotels & resorts",
+          "Office & commercial"
+        ],
+        "logoUrl": "https://media.licdn.com/dms/image/v2/C560BAQEGuor7mQc0Ww/company-logo_200_200/company-logo_200_200/0/1630569652695?e=2147483647&v=beta&t=vT1Di79rqihlhkEPetvsFDEoD6pzSu9NmAPg6chD7_M",
+        "scrapedAt": "2026-04-12T12:42:59.853Z"
+      },
+      "linkedin_url": "https://www.linkedin.com/company/fixed-group/",
+      "url_source": "serp"
+    },
+    "www.samedayhotwaterservice.com.au": {
+      "hunter": {},
+      "apify": {
+        "name": "Commercial Hot Water and Maintenance",
+        "linkedinUrl": "https://www.linkedin.com/company/chwam",
+        "website": "http://www.chwam.com.au",
+        "description": "Commercial Hot Water and Maintenance, incorporating Thermal Energy Solutions and Energy Smart Water, specialises in the design, supply and installation of commercial hot water systems built for innovation, efficiency and long\u2011term sustainability. Our capabilities include delivering fully integrated hot water packages featuring advanced technologies such as our ENERMAX Heat Pump Range.\nBeyond installation, we provide comprehensive programmed preventative and reactive maintenance services for commercial hot water plants. Our team works closely with clients to develop tailored environmental and energy\u2011efficient solutions that meet the unique needs of each building and its owners.\n\nRecognised as a trusted leader in the industry, we take pride in delivering high\u2011quality service through a dedicated team of skilled tradespeople who are committed to exceptional workmanship and complete customer satisfaction.",
+        "industry": "Construction",
+        "companyType": "Privately Held",
+        "companySize": "11-50 employees",
+        "employeeCount": 6,
+        "followerCount": 222,
+        "headquarters": "Dromana, VIC",
+        "street": "2 / 11 Dalkeith Drive",
+        "city": "Dromana",
+        "state": "VIC",
+        "country": "AU",
+        "postalCode": "3936",
+        "specialties": [
+          "Commercial Hot Water",
+          "Hot Water Service/Maintenance",
+          "Hot Water Plant Audits",
+          "Commercial Hot Water Plant Installations"
+        ],
+        "logoUrl": "https://media.licdn.com/dms/image/v2/D560BAQGk6jpsN7vvPA/company-logo_200_200/B56Zu_SZqUH4AI-/0/1768440831087/chwam_logo?e=2147483647&v=beta&t=Igi2D-x6Gu0Vy0mH6TuZrWMOF1chf-n88UROVpNbCj8",
+        "scrapedAt": "2026-04-12T12:43:44.783Z"
+      },
+      "linkedin_url": "https://www.linkedin.com/company/chwam/",
+      "url_source": "serp"
+    },
+    "www.shine.com.au": {
+      "hunter": {},
+      "apify": {
+        "name": "Shine Lawyers",
+        "linkedinUrl": "https://www.linkedin.com/company/shine-lawyers-ltd",
+        "website": "https://www.shine.com.au/careers",
+        "description": "At Shine, we don't judge you or where you came from.\n\nWhat we do care about is where you\u2019re going and how we can help get you there. We are here to empower you to support our clients as they stand up in the face of injustice.\n\nWe\u2019ve built a place for you to...\n\nConnect and be you\nJoin a team of authentic people who care as much as you do about standing up for the little guy, doggedly seeking justice, and advancing the law. You\u2019ll work with supportive experienced leaders who are invested in you. And you\u2019ll be visible and valued for who you are and what you bring.\n\nChallenge and be challenged\nAt Shine, you\u2019ll dare to be different, questioning and challenging the status quo. That\u2019s how we stay ahead of the pack \u2013 for our clients, for better justice and for your remarkable career.\n\nAchieve and grow\nHere, you\u2019ll find a powerful platform for success, from our proven operating models to our award-winning Centre of Learning. You\u2019ll discover the One Shine Way framework \u2013 your path to a career that means so much more. And you\u2019ll be backed to seize opportunities, and trusted to deliver.\n",
+        "industry": "Law Practice",
+        "companyType": "Public Company",
+        "companySize": "501-1,000 employees",
+        "employeeCount": 751,
+        "followerCount": 16938,
+        "foundedYear": 1976,
+        "headquarters": "Brisbane, QLD",
+        "street": "Level 13",
+        "city": "Brisbane",
+        "state": "QLD",
+        "country": "AU",
+        "postalCode": "4000",
+        "specialties": [
+          "Legal Advice",
+          "TPD Claims",
+          "Professional Negligence",
+          "Disaster Insurance Recovery",
+          "Environmental Law",
+          "Disability Insurance and Superannuation Claims",
+          "Human Rights",
+          "Class Actions",
+          "Employment Law",
+          "Travel and Transport Law",
+          "Workers Compensation",
+          "Abuse Law",
+          "Public Liability",
+          "Estate Litigation"
+        ],
+        "logoUrl": "https://media.licdn.com/dms/image/v2/C4D0BAQH9DrLNUl_cMA/company-logo_200_200/company-logo_200_200/0/1631338589321?e=2147483647&v=beta&t=AH33906HQwRQW3D1-J3SPLTJwKmx_r76Q_JdGInjRzE",
+        "scrapedAt": "2026-04-12T12:46:41.684Z"
+      },
+      "linkedin_url": "https://www.linkedin.com/company/shine-lawyers-ltd/",
+      "url_source": "serp"
+    },
+    "www.forhealthbrownsplains.com.au": {
+      "hunter": {},
+      "apify": {
+        "name": "Get Better Physiotherapy",
+        "linkedinUrl": "https://www.linkedin.com/company/get-better-physiotherapy",
+        "website": "https://www.getbetterphysiotherapy.com.au/",
+        "description": "We get you back to life..pain free. Services we offer you are Physiotherapy, Remedial Massage and Exercise Physiology",
+        "industry": "Wellness and Fitness Services",
+        "companyType": "Privately Held",
+        "companySize": "2-10 employees",
+        "employeeCount": 3,
+        "followerCount": 89,
+        "foundedYear": 2012,
+        "headquarters": "Browns Plains, Queensland",
+        "street": "123 Browns Plains Rd",
+        "city": "Browns Plains",
+        "state": "Queensland",
+        "country": "AU",
+        "postalCode": "4118",
+        "specialties": [
+          "Musculoskeletal and sports injuries",
+          "Orthopedic rehabilititation",
+          "Chronic pain management",
+          "Physiotherapy",
+          "Remedial Massage Therapy",
+          "Exercise Physiology"
+        ],
+        "logoUrl": "https://media.licdn.com/dms/image/v2/C560BAQFpSlm0JwfHgw/company-logo_200_200/company-logo_200_200/0/1630662963673/get_better_physiotherapy_logo?e=2147483647&v=beta&t=umX1_vSwm48E0tNaZHlJLnooKgFXJvtUXlHZB27lUc4",
+        "scrapedAt": "2026-04-12T12:46:14.585Z"
+      },
+      "linkedin_url": "https://www.linkedin.com/company/get-better-physiotherapy/",
+      "url_source": "serp"
+    },
+    "www.completehomefiltration.com.au": {
+      "hunter": {},
+      "apify": {
+        "name": "Environmental Water Solutions t/a Complete Home Filtration",
+        "linkedinUrl": "https://www.linkedin.com/company/environmental-water-solutions",
+        "website": "http://www.completehomefiltration.com.au",
+        "description": "Environmental Water Solutions Pty Ltd. is the registered owner and founder of Complete Home Filtration since 2018\n\nComplete Home Filtration specialises in the installation of whole of home water filtration systems ensuring clean, delicious water from every tap that is not only better for your health and pocket but better for your home and the environment too. Never pay for bottled water again and enjoy water that is kinder to your skin and hair and everything in the home that uses water, including your water using fixtures and appliances. \n\nHere at Complete Home Filtration, we love nice water.  Our friends call us water snobs! We can sniff out a glass of unfiltered tap water at 50 yards and so can our kids! We live and breathe good water and believe passionately that everyone should be drinking, showering and bathing in clean, freshly filtered, softened and chlorine free water, especially if you are a bottle fed baby, child or have specific health concerns like sensitive skin or asthma.",
+        "industry": "Renewable Energy Semiconductor Manufacturing",
+        "companyType": "Privately Held",
+        "companySize": "51-200 employees",
+        "employeeCount": 5,
+        "followerCount": 235,
+        "foundedYear": 2018,
+        "headquarters": "Osborne Park, Western Australia",
+        "street": "67 Howe St",
+        "city": "Osborne Park",
+        "state": "Western Australia",
+        "country": "AU",
+        "postalCode": "6017",
+        "specialties": [
+          "Whole Home Water Filtration solutions",
+          "Clean Water",
+          "Water Filtration",
+          "Water Softening",
+          "Home Protection"
+        ],
+        "logoUrl": "https://media.licdn.com/dms/image/v2/C560BAQEQKr-PI8T5xQ/company-logo_200_200/company-logo_200_200/0/1630577528667/environmental_water_solutions_logo?e=2147483647&v=beta&t=hv3npZRDLE-Qs8fN8hD1l98LVgU5l43BlfJp82YgTfg",
+        "scrapedAt": "2026-04-12T12:44:32.283Z"
+      },
+      "linkedin_url": "https://www.linkedin.com/company/environmental-water-solutions/",
+      "url_source": "serp"
+    },
+    "www.fixeddental.com.au": {
+      "hunter": {},
+      "apify": {
+        "name": "Fixed Group",
+        "linkedinUrl": "https://www.linkedin.com/company/fixed-group",
+        "website": "https://www.fixed.com.au",
+        "description": "Fixed Group comprises Fixed and Fixed Medical, providing refurbishment, fit-out, strip out and maintenance services across a range of property and building types.  From resort renovations to your local cafe fit-out or shopping centre pop-up, we are the experts in designing solutions to meet any budget and any timeframe. We welcome\u00a0clients of any size for any type of problem. From fitting door handles and patching a wall to delivering highly-specialised medical installation services and complete hotel refurbishments.  \n\nFrom the outset, the Fixed Group has focused on developing a service delivery method that minimises customer disruption, and therefore reduces operational risk and potential loss of earnings for the client.  With our proven methodology, we have established ourselves as the industry specialist for the delivery of installation, construction and maintenance projects to live building and commercial environments. Our unique process enables us to carry out installation and maintenance works to hospitals, labs, medical facilities, aged care facilities, hotels, resorts, and childcare facilities, all whilst our client continues full operation of its regular commercial activities.\n\nOur success has been built on our philosophy of listening to our clients and delivering on their needs, every time. Our continued focus on providing exceptional customer service and quality workmanship has resulted in the development of strong long-term relationships with many satisfied clients.  Put simply, your problems are solved with Fixed.",
+        "industry": "Construction",
+        "companyType": "Privately Held",
+        "companySize": "11-50 employees",
+        "employeeCount": 10,
+        "followerCount": 166,
+        "foundedYear": 2010,
+        "headquarters": "Murrarie, Queensland",
+        "street": "21/197 Murrarie Road",
+        "city": "Murrarie",
+        "state": "Queensland",
+        "country": "AU",
+        "postalCode": "4172",
+        "specialties": [
+          "Refurbishments",
+          "Commercial fit-outs",
+          "Maintenance",
+          "Medical installation services",
+          "Medical maintenance services",
+          "Strip-outs",
+          "Facility renovations",
+          "Emergency on-call works",
+          "Government",
+          "Hospitality & retail",
+          "Childcare & Education",
+          "Aged-care & retirement living",
+          "Hotels & resorts",
+          "Office & commercial"
+        ],
+        "logoUrl": "https://media.licdn.com/dms/image/v2/C560BAQEGuor7mQc0Ww/company-logo_200_200/company-logo_200_200/0/1630569652695?e=2147483647&v=beta&t=vT1Di79rqihlhkEPetvsFDEoD6pzSu9NmAPg6chD7_M",
+        "scrapedAt": "2026-04-12T12:42:59.853Z"
+      },
+      "linkedin_url": "https://www.linkedin.com/company/fixed-group/",
+      "url_source": "serp"
+    },
+    "hotwaterprofessionals.com.au": {
+      "hunter": {},
+      "apify": {
+        "name": "Ballentine Partners, LLC",
+        "linkedinUrl": "https://www.linkedin.com/company/ballentinepartners",
+        "website": "https://ballentinepartners.com",
+        "description": "As an independent multi-family office, Ballentine Partners\u2019 mission is to help \nfamilies achieve their aspirations, build their legacy, and live the life they want to live. We measure success not just as a financial outcome, but also as a human outcome.\n\nServing a broad range of clients, from individual professionals and entrepreneurs with $4 million in liquid assets to multigenerational families with over $1 billion, we build customized investment solutions integrated with deep planning expertise.\n\nWe have delivered client-centric planning and sophisticated investment advice for the past four decades. We are dedicated to serving client families worldwide and providing objective advice focused on our client's best interests.",
+        "industry": "Financial Services",
+        "companyType": "Privately Held",
+        "companySize": "51-200 employees",
+        "employeeCount": 129,
+        "followerCount": 5925,
+        "foundedYear": 1984,
+        "headquarters": "Waltham, MA",
+        "street": "230 3rd Ave Fl 6",
+        "city": "Waltham",
+        "state": "MA",
+        "country": "US",
+        "postalCode": "02451",
+        "specialties": [
+          "Wealth Planning",
+          "Investment Management",
+          "Family Education and Financial Counsel",
+          "Intergenerational Wealth Transfer Strategies",
+          "Financial Planning",
+          "Wealth Management",
+          "Family Well-being",
+          "Family Office"
+        ],
+        "logoUrl": "https://media.licdn.com/dms/image/v2/D4D0BAQHXBy9VEmOveA/company-logo_200_200/company-logo_200_200/0/1696551023108/ballentine_partners_llc_logo?e=2147483647&v=beta&t=aW3kac4QDAH6TwlK-DwhHeuX0VtLoUdgLV-PTdw0vjQ",
+        "scrapedAt": "2026-04-12T12:44:15.084Z"
+      },
+      "linkedin_url": "https://www.linkedin.com/company/ballentinepartners/",
+      "url_source": "serp"
+    },
+    "dentistsclinic.com.au": {
+      "hunter": {},
+      "apify": {
+        "name": "Community Health Commission of Missouri",
+        "linkedinUrl": "https://www.linkedin.com/company/chcmissouri",
+        "website": "https://chcmissouri.org/",
+        "description": "The Community Health Commission of Missouri is a collaborative effort to achieve zero health disparities across Missouri through equity-centered trauma-informed care. Previously the St. Louis Regional Health Commission.",
+        "industry": "Hospitals and Health Care",
+        "companyType": "Nonprofit",
+        "companySize": "2-10 employees",
+        "employeeCount": 19,
+        "followerCount": 1086,
+        "headquarters": "St Louis, Missouri",
+        "street": "1 Campbell Plaza",
+        "city": "St Louis",
+        "state": "Missouri",
+        "country": "US",
+        "postalCode": "63139",
+        "specialties": [],
+        "logoUrl": "https://media.licdn.com/dms/image/v2/D560BAQGcm9srLoSIfw/company-logo_200_200/company-logo_200_200/0/1724959658938/chcmissouri_logo?e=2147483647&v=beta&t=lWs1IdaBRuT_DcT1eNjcaPEbxu4Ke08ZMIdzetjefAw",
+        "scrapedAt": "2026-04-12T12:46:21.781Z"
+      },
+      "linkedin_url": "https://www.linkedin.com/company/chcmissouri/",
+      "url_source": "serp"
+    },
+    "allon4.com.au": {
+      "hunter": {},
+      "apify": {
+        "name": "All Four x 4 Spares",
+        "linkedinUrl": "https://www.linkedin.com/company/all-four-x-4-spares",
+        "website": "http://www.allfourx4.com.au",
+        "description": "All Four x 4 Spares are proud to provide an environment where employees can grow their skills and be equipped with the training and tools to produce their best.\n\nSpecialists in Land Rover, Toyota and Nissan 4WD parts. We aim to provide customers with new genuine and quality aftermarket 4WD parts at a competitive price. Whether we are purchasing parts domestically or overseas, procuring quality components is paramount to ensuring the customer\u2019s confidence in the products we supply. \n\nWe also are a Dismantler (All Four x 4 Dismantling) processing over 100 vehicles at any one time in state of art modern facilities.\n\nOur Workshop ( All Four x 4 Service Centre) employs a skilled team of 4wd specialist technicians with access to training and tooling to allow the ability to carry out their servicing and repairs efficiently. Although they work on all 4wds, they specialise on Land Rover, Range Rover, Toyota Landcruiser & Hilux, Nissan Patrol and Navara.\n\nAll Four x 4 Offroad is our Accessories outlet offering Bull Bars, Winches, Suspension and camping gear plus much more including Roo Systems ECU Remaps.\n\n",
+        "industry": "Motor Vehicle Manufacturing",
+        "companyType": "Partnership",
+        "companySize": "51-200 employees",
+        "employeeCount": 19,
+        "followerCount": 193,
+        "foundedYear": 1985,
+        "headquarters": "Kotara, New South Wales",
+        "street": "6 McDougall Street",
+        "city": "Kotara",
+        "state": "New South Wales",
+        "country": "AU",
+        "postalCode": "2289",
+        "specialties": [
+          "4wd Spare Parts",
+          "4wd Servicing & Repairs",
+          "4x4 Accessories",
+          "Used 4wd Spares",
+          "Reconditioned 4wd Parts",
+          "4x4 Specialists",
+          "Performance Upgrades",
+          "Suspension Upgrades",
+          "GVM Upgrades",
+          "Gearbox Overhauls",
+          "Diff Overhauls",
+          "Professional Staff",
+          "Winning Culture",
+          "Ongoing Training",
+          "Strong Management Team",
+          "Well respected in Automotive Industry",
+          "Established 1985",
+          "Fun working environment",
+          "Specialist knowledge",
+          "Modern Facilities"
+        ],
+        "logoUrl": "https://media.licdn.com/dms/image/v2/D4E0BAQE9tNrXo_5nIQ/company-logo_200_200/company-logo_200_200/0/1727308247966/all_four_x_4_spares_logo?e=2147483647&v=beta&t=_clds7NRboawMi7IDMngomRJYbvJJDXiVIORq87FT2U",
+        "scrapedAt": "2026-04-12T12:44:03.090Z"
+      },
+      "linkedin_url": "https://www.linkedin.com/company/all-four-x-4-spares/",
+      "url_source": "serp"
+    }
+  }
+}

@@ -20,8 +20,8 @@ import pytest
 from src.pipeline.free_enrichment import (
     ABNMatchConfidence,
     FreeEnrichment,
-    _ABN_STOPWORDS,
 )
+from src.config.au_lexicon import DOMAIN_STOPWORDS as _ABN_STOPWORDS  # #328.3b: renamed
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

@@ -65,6 +65,12 @@ WITH deduped AS (
       AND bdm.linkedin_url IS NOT NULL
       AND bdm.name IS NOT NULL AND bdm.name != 'Unknown'
       AND bu.pipeline_stage = 9
+      AND (bu.domain LIKE '%.com.au' OR bu.domain LIKE '%.net.au'
+           OR bu.domain LIKE '%.id.au' OR bu.domain LIKE '%.asn.au'
+           OR bu.domain LIKE '%.sydney' OR bu.domain LIKE '%.melbourne'
+           OR bu.domain LIKE '%.perth' OR bu.domain LIKE '%.brisbane')
+      AND bu.domain NOT LIKE '%.gov.au'
+      AND bu.domain NOT LIKE '%.gov'
     ORDER BY bdm.linkedin_url, bu.propensity_score DESC
 )
 SELECT bdm_id FROM deduped LIMIT $1

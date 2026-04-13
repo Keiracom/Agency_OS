@@ -47,6 +47,14 @@ STAGE_PARALLELISM: dict[str, StageConfig] = {
         "safety_margin": 0.50,
         "notes": "Free, no rate limit, CPU/network bound. Primary scraper for business_name + footer ABN + contacts + tech stack.",
     },
+    "stage_2_sonnet_comprehend": {
+        "stage_name": "Stage 2b — Sonnet Comprehension (business intelligence extraction)",
+        "concurrency": 15,
+        "provider": "anthropic_sonnet",
+        "provider_ceiling": 60,
+        "safety_margin": 0.25,
+        "notes": "Sonnet TPM constraint. Extracts canonical_business_name, services, location, business_type from scraped HTML. Prompt caching on system prompt.",
+    },
     "stage_2_scrape_spider": {
         "stage_name": "Stage 2 — Website Scrape (Spider.cloud fallback)",
         "concurrency": 5,

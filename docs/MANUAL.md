@@ -125,12 +125,15 @@ Core principle: Agency sells services. Prospects have problems. Industry is irre
 ### DISCOVERY
 
 **Single source:** DFS `domain_metrics_by_categories`
-- $0.10 per 100 domains ($0.001 amortised per domain)
-- On-demand batching: 100/batch, sequential per category
+- $0.10 per 100 domains ($0.012 amortised per domain after AU TLD filtering)
+- Categories run in parallel via `asyncio.gather`, DFS calls within category sequential
+- `GLOBAL_SEM_DFS=28` ceiling (peak observed: 10 for 10 categories)
+- Sampling: AU-TLD + ETV window filter FIRST, then take middle 10 of AU SMB pool (~30% position)
 - 22,592 AU dental domains confirmed, 31,445 AU plumbing — pool never exhausts
 - Monthly rotation across categories — refill loop at threshold=20, stops on target_reached
 - `claimed_by` exclusion applied at discovery — never returns already-claimed domains
 - 15 AU categories active across 14 verticals (dental, trades, legal, construction, hospitality, automotive, real estate, accounting, medical, fitness, hair & beauty, veterinary, HVAC, marketing)
+- **RATIFIED 2026-04-13:** 100 domains across 10 categories in 41.2s, $1.20. Ignition (60 cats) projected 4.1 min.
 
 ### Category ETV Windows (Calibrated #328.1, Apr 11 2026)
 
@@ -667,6 +670,9 @@ v6 era (#271–#277): Layer 2 (discovery), Layer 3 (bulk filter), signal config 
 | Phase 1 | P4 | Prefect flow for automated Stage 9→10 pipeline | COMPLETE — PR #308 merged |
 | Phase 1 | P5 | E2E automated live-fire: 25 BDMs, 97/100 dm_messages | COMPLETE — $1.56 USD |
 | Process | M-PROCESS-01 | Directive contract discipline ratified — see AGENTS.md. CTO must STOP and report when directive constraint is infeasible, not autonomously alter methodology. | RATIFIED 2026-04-13 |
+| Process | STYLE | Directive style: CEO specifies outcome + constraints + gates; CTO engineers fastest compliant path. | RATIFIED 2026-04-13 |
+| Stage 1 | S1 | Stage 1 ratified. 41.2s for 100 domains across 10 categories via parallel asyncio.gather. Middle-of-AU-SMB-pool sampling. Baseline locked for Stage 2 input. | RATIFIED 2026-04-13 |
+| Config | stage_2_abn_gst | stage_2_abn_gst added to stage_parallelism.py (50 concurrent, local JOIN). Audit flagged legacy key stage_2_scrape may be obsolete — preserved pending Pipeline E full ratification. | 2026-04-13 |
 
 ### Post-Test Build Queue (next priorities after provider resolution)
 

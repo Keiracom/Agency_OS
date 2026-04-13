@@ -39,13 +39,21 @@ STAGE_PARALLELISM: dict[str, StageConfig] = {
         "safety_margin": 0.67,
         "notes": "Sequential per category (1 call/category). 10 = max parallel categories. DFS ceiling 30 shared across all stages.",
     },
+    "stage_2_abn_gst": {
+        "stage_name": "Stage 2 — ABN + GST Enrichment (local Postgres JOIN)",
+        "concurrency": 50,
+        "provider": "asyncpg_local",
+        "provider_ceiling": 50,
+        "safety_margin": 1.0,
+        "notes": "Trigram fuzzy match against 2.4M ABN rows, CPU+DB bound, 50 concurrent stays under connection pool ceiling. Zero API cost.",
+    },
     "stage_2_scrape": {
-        "stage_name": "Stage 2 — Website Scrape (httpx + Spider)",
+        "stage_name": "Stage 2 — Website Scrape (httpx + Spider) [LEGACY — may be obsolete in Pipeline E]",
         "concurrency": 80,
         "provider": "httpx",
         "provider_ceiling": 100,
         "safety_margin": 0.80,
-        "notes": "httpx sem=80, Spider fallback sem=15. No external rate limit on httpx.",
+        "notes": "httpx sem=80, Spider fallback sem=15. No external rate limit on httpx. AUDIT: may be obsolete if Pipeline E renumbers stages.",
     },
     "stage_3_comprehension": {
         "stage_name": "Stage 3 — Website Comprehension (Sonnet)",

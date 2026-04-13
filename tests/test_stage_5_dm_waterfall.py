@@ -43,10 +43,12 @@ def make_row(**overrides):
     return row
 
 
-def make_conn(rows=None):
+def make_conn(rows=None, existing_bdm_id=None):
     conn = MagicMock()
     conn.fetch = AsyncMock(return_value=[make_row()] if rows is None else rows)
     conn.execute = AsyncMock(return_value=None)
+    # fetchval used by P1.6a dedup check — default None (no duplicate)
+    conn.fetchval = AsyncMock(return_value=existing_bdm_id)
     return conn
 
 

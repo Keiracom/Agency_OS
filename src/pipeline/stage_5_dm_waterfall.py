@@ -345,6 +345,36 @@ class Stage5DMWaterfall:
 
         # Write DM to business_decision_makers (principle #2: canonical record shape)
         if dm and (dm.name or dm.linkedin_url):
+            # P1.6a: dedup — skip INSERT if another is_current BDM already has this linkedin_url
+            if dm.linkedin_url:
+                existing = await self.conn.fetchval(
+                    "SELECT id FROM business_decision_makers WHERE linkedin_url = $1 AND is_current = TRUE",
+                    dm.linkedin_url,
+                )
+                if existing:
+                    logger.info(
+                        "stage5_dedup_skip domain=%s linkedin_url=%s existing_bdm=%s",
+                        business.get("domain"), dm.linkedin_url, existing,
+                    )
+                    # Advance pipeline stage without creating a duplicate BDM
+                    await self.conn.execute(
+                        """
+                        UPDATE business_universe SET
+                            reachability_score = $1,
+                            pipeline_stage = $2,
+                            pipeline_updated_at = $3
+                        WHERE id = $4
+                        """,
+                        reachability,
+                        PIPELINE_STAGE_S5,
+                        now,
+                        row_id,
+                    )
+                    return
+
+            # P1.6d: name hygiene — strip emoji/non-letter leading/trailing chars
+            clean_name = re.sub(r'^[^a-zA-Z]+|[^a-zA-Z.]+$', '', dm.name).strip() if dm.name else None
+
             # Mark any existing current DM as not-current first
             await self.conn.execute(
                 """
@@ -364,7 +394,7 @@ class Stage5DMWaterfall:
                 ) VALUES ($1, $2, $3, $4, $5, $6, TRUE, $7, $7)
                 """,
                 row_id,
-                dm.name,
+                clean_name,
                 dm.title,
                 dm.linkedin_url,
                 dm.email,
@@ -372,7 +402,7 @@ class Stage5DMWaterfall:
                 now,
             )
             logger.info("stage5_dm_write domain=%s dm=%s → business_decision_makers",
-                        business.get("domain"), dm.name)
+                        business.get("domain"), clean_name)
 
         # Update BU pipeline state only (no dm_* fields)
         await self.conn.execute(

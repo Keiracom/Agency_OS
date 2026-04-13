@@ -164,6 +164,10 @@ Total: 21 categories, 22,387 calibration samples. Methodology: 20 DFS Labs pages
 
 PR: #295 (merged Apr 11 2026). Directive: #328.1.
 
+### Per-Stage Parallelism (Canonical Config)
+
+Canonical source: `src/config/stage_parallelism.py`. Helpers: `get_parallelism(stage_key)` returns concurrency int, `get_stage_config(stage_key)` returns full dict. Same pattern as `category_etv_windows.py`. Provider ceilings from Directive #337 concurrency audit. Created 2026-04-13.
+
 ### SCRAPING
 
 **Primary:** httpx (`src/integrations/httpx_scraper.py`)

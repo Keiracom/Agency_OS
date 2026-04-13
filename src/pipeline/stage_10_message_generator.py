@@ -19,6 +19,7 @@ from typing import Any
 import asyncpg
 
 from src.enrichment.signal_config import SignalConfigRepository
+from src.utils.domain_blocklist import BLOCKED_DOMAINS
 
 logger = logging.getLogger(__name__)
 
@@ -139,11 +140,13 @@ class Stage10MessageGenerator:
                 ON bdm.business_universe_id = bu.id AND bdm.is_current = TRUE
             WHERE bu.pipeline_stage = 9
               AND bu.propensity_score >= $1
+              AND bu.domain NOT IN (SELECT unnest($3::text[]))
             ORDER BY bu.propensity_score DESC
             LIMIT $2
             """,
             outreach_gate,
             batch_size,
+            list(BLOCKED_DOMAINS),
         )
 
         messages_generated = 0

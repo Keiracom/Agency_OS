@@ -14,7 +14,6 @@ Stores messages in outreach_messages JSONB on BU.
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 from datetime import UTC, datetime
 from typing import Any
@@ -114,14 +113,22 @@ class Stage7Haiku:
 
         rows = await self.conn.fetch(
             """
-            SELECT id, domain, display_name, gmb_category, state, suburb,
-                   dm_name, dm_title, best_match_service, score_reason,
-                   tech_stack, tech_gaps, dfs_paid_keywords, gmb_rating,
-                   gmb_review_count, outreach_channels
-            FROM business_universe
-            WHERE pipeline_stage = 6
-              AND propensity_score >= $1
-            ORDER BY propensity_score DESC
+            SELECT bu.id, bu.domain, bu.display_name, bu.gmb_category, bu.state, bu.suburb,
+                   bu.best_match_service, bu.score_reason,
+                   bu.tech_stack, bu.tech_gaps, bu.dfs_paid_keywords, bu.gmb_rating,
+                   bu.gmb_review_count, bu.outreach_channels, bu.vulnerability_report,
+                   bdm.id AS bdm_id, bdm.name AS dm_name, bdm.title AS dm_title,
+                   bdm.linkedin_url AS dm_linkedin_url, bdm.email AS dm_email,
+                   bdm.headline AS dm_headline,
+                   bdm.experience_json AS dm_experience,
+                   bdm.skills AS dm_skills,
+                   bdm.education AS dm_education
+            FROM business_universe bu
+            LEFT JOIN business_decision_makers bdm
+                ON bdm.business_universe_id = bu.id AND bdm.is_current = TRUE
+            WHERE bu.pipeline_stage = 6
+              AND bu.propensity_score >= $1
+            ORDER BY bu.propensity_score DESC
             LIMIT $2
             """,
             outreach_gate,
@@ -132,12 +139,16 @@ class Stage7Haiku:
 
         for row in rows:
             business = dict(row)
+            bdm_id = business.get("bdm_id")
+            if not bdm_id:
+                logger.warning("stage7_skip domain=%s reason=no_bdm", business.get("domain"))
+                continue
             channels = list(business.get("outreach_channels") or [])
             if not channels:
                 continue
 
-            messages = await self._generate_messages(business, agency_profile, channels)
-            await self._write_messages(business["id"], messages)
+            messages, channel_costs = await self._generate_messages(business, agency_profile, channels)
+            await self._write_messages(business["id"], bdm_id, messages, channel_costs)
             messages_generated += len(messages)
 
         return {
@@ -151,11 +162,12 @@ class Stage7Haiku:
         business: dict[str, Any],
         agency_profile: dict[str, Any],
         channels: list[str],
-    ) -> dict[str, str]:
+    ) -> tuple[dict[str, str], dict[str, dict]]:
         """Generate messages for each confirmed channel."""
         prospect_brief = self._build_prospect_brief(business)
         agency_brief = self._build_agency_brief(agency_profile)
         messages: dict[str, str] = {}
+        channel_costs: dict[str, dict] = {}
 
         for channel in channels:
             if channel == "physical":
@@ -181,12 +193,11 @@ class Stage7Haiku:
                 content = (
                     response.get("content", "") if isinstance(response, dict) else str(response)
                 )
-                self._total_input_tokens += (
-                    response.get("input_tokens", 0) if isinstance(response, dict) else 0
-                )
-                self._total_output_tokens += (
-                    response.get("output_tokens", 0) if isinstance(response, dict) else 0
-                )
+                input_toks = response.get("input_tokens", 0) if isinstance(response, dict) else 0
+                output_toks = response.get("output_tokens", 0) if isinstance(response, dict) else 0
+                self._total_input_tokens += input_toks
+                self._total_output_tokens += output_toks
+                channel_costs[channel] = {"input_tokens": input_toks, "output_tokens": output_toks}
                 messages[channel] = content.strip()
                 await asyncio.sleep(0.5)  # Rate limiting
             except Exception as e:
@@ -194,7 +205,7 @@ class Stage7Haiku:
                     f"Haiku call failed for {business.get('domain')} channel={channel}: {e}"
                 )
 
-        return messages
+        return (messages, channel_costs)
 
     def _build_prospect_brief(self, business: dict[str, Any]) -> str:
         tech_stack = list(business.get("tech_stack") or [])[:5]
@@ -215,6 +226,33 @@ class Stage7Haiku:
             f"Active paid keywords: {paid_kw}",
             f"GMB rating: {business.get('gmb_rating') or 'N/A'} ({business.get('gmb_review_count') or 0} reviews)",
         ]
+
+        # BDM context (from business_decision_makers JOIN)
+        if business.get("dm_headline"):
+            lines.append(f"DM headline: {business['dm_headline']}")
+
+        experience = business.get("dm_experience")
+        if experience and isinstance(experience, list):
+            recent = experience[:2]
+            exp_lines = [f"  - {r.get('title', '?')} at {r.get('company', '?')}" for r in recent]
+            lines.append("DM recent experience:\n" + "\n".join(exp_lines))
+
+        skills = business.get("dm_skills")
+        if skills and isinstance(skills, list):
+            lines.append(f"DM skills: {', '.join(skills[:5])}")
+
+        education = business.get("dm_education")
+        if education and isinstance(education, list) and education:
+            edu = education[0]
+            lines.append(f"DM education: {edu.get('degree', '')} — {edu.get('institution', '')}")
+
+        vr = business.get("vulnerability_report")
+        if vr and isinstance(vr, dict):
+            vulns = vr.get("vulnerabilities", [])
+            if vulns:
+                top_vulns = [v.get("title", "?") for v in vulns[:3]]
+                lines.append(f"Key vulnerabilities: {', '.join(top_vulns)}")
+
         return "\n".join(lines)
 
     def _build_agency_brief(self, agency_profile: dict[str, Any]) -> str:
@@ -228,19 +266,33 @@ class Stage7Haiku:
             lines.append(f"Relevant case study: {agency_profile['case_study']}")
         return "\n".join(lines)
 
-    async def _write_messages(self, row_id: str, messages: dict[str, str]) -> None:
-        """Store messages in outreach_messages JSONB and advance pipeline."""
+    async def _write_messages(
+        self, row_id: str, bdm_id: str, messages: dict[str, str],
+        channel_costs: dict[str, dict],
+    ) -> None:
+        """Insert messages into dm_messages and advance pipeline stage."""
         now = datetime.now(UTC)
+        for channel, body in messages.items():
+            costs = channel_costs.get(channel, {})
+            cost_usd = (
+                costs.get("input_tokens", 0) * HAIKU_INPUT_COST_PER_TOKEN
+                + costs.get("output_tokens", 0) * HAIKU_OUTPUT_COST_PER_TOKEN
+            )
+            await self.conn.execute(
+                """
+                INSERT INTO dm_messages (
+                    business_universe_id, business_decision_makers_id,
+                    channel, body, model, cost_usd, status, generated_at
+                ) VALUES ($1, $2, $3, $4, $5, $6, 'draft', $7)
+                """,
+                row_id, bdm_id, channel, body, HAIKU_MODEL,
+                round(cost_usd, 6), now,
+            )
         await self.conn.execute(
             """
             UPDATE business_universe SET
-                outreach_messages = $1,
-                pipeline_stage = $2,
-                pipeline_updated_at = $3
-            WHERE id = $4
+                pipeline_stage = $1, pipeline_updated_at = $2
+            WHERE id = $3
             """,
-            json.dumps(messages),
-            PIPELINE_STAGE_S7,
-            now,
-            row_id,
+            PIPELINE_STAGE_S7, now, row_id,
         )

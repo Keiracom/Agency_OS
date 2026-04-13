@@ -20,6 +20,7 @@ from typing import Any
 
 import asyncpg
 from prefect import flow, task
+from prefect.cache_policies import NO_CACHE
 
 try:
     from prefect import get_run_logger as _get_run_logger
@@ -70,7 +71,7 @@ SELECT bdm_id FROM deduped LIMIT $1
 """
 
 
-@task(name="select-bdms", retries=1)
+@task(name="select-bdms", retries=1, cache_policy=NO_CACHE)
 async def select_bdms(
     pool: asyncpg.Pool,
     bdm_ids: list[str] | None,
@@ -84,14 +85,14 @@ async def select_bdms(
     return [str(r["bdm_id"]) for r in rows]
 
 
-@task(name="run-stage-9", retries=0)
+@task(name="run-stage-9", retries=0, cache_policy=NO_CACHE)
 async def run_stage_9(pool: asyncpg.Pool, bdm_ids: list[str]) -> dict:
     """Run Stage 9 VR + ContactOut enrichment."""
     stage = Stage9VulnerabilityEnrichment(pool)
     return await stage.run(bdm_ids=bdm_ids)
 
 
-@task(name="verify-stage-9", retries=1)
+@task(name="verify-stage-9", retries=1, cache_policy=NO_CACHE)
 async def verify_stage_9(pool: asyncpg.Pool, bdm_ids: list[str]) -> int:
     """Verify all BDMs have VRs. Return count."""
     async with pool.acquire() as conn:
@@ -110,7 +111,7 @@ async def verify_stage_9(pool: asyncpg.Pool, bdm_ids: list[str]) -> int:
     return int(count)
 
 
-@task(name="run-stage-10", retries=0)
+@task(name="run-stage-10", retries=0, cache_policy=NO_CACHE)
 async def run_stage_10(
     pool: asyncpg.Pool,
     bdm_ids: list[str],
@@ -125,7 +126,7 @@ async def run_stage_10(
     return await gen.run(vertical_slug, agency_profile, batch_size=len(bdm_ids))
 
 
-@task(name="verify-stage-10")
+@task(name="verify-stage-10", cache_policy=NO_CACHE)
 async def verify_stage_10(pool: asyncpg.Pool, bdm_ids: list[str]) -> dict:
     """Verify dm_messages counts by channel."""
     async with pool.acquire() as conn:
@@ -182,7 +183,30 @@ async def stage_9_10_pipeline(
 
         if dry_run:
             flow_logger.info("DRY RUN — skipping execution")
-            return {"dry_run": True, "bdm_count": len(selected)}
+            # Resolve dependencies and estimate costs without API calls
+            s9_vr_cost = len(selected) * 0.025  # Sonnet VR per domain
+            s9_co_cost = len(selected) * 0.033  # ContactOut per profile
+            s10_cost = len(selected) * 0.007    # 4 channels per DM
+            total_est = s9_vr_cost + s9_co_cost + s10_cost
+            return {
+                "dry_run": True,
+                "bdm_ids": selected,
+                "bdm_count": len(selected),
+                "cost_estimate": {
+                    "stage_9_vr_usd": round(s9_vr_cost, 4),
+                    "stage_9_contactout_usd": round(s9_co_cost, 4),
+                    "stage_10_messages_usd": round(s10_cost, 4),
+                    "total_usd": round(total_est, 4),
+                    "total_aud": round(total_est * 1.55, 4),
+                },
+                "expected_writes": {
+                    "business_universe.vulnerability_report": len(selected),
+                    "business_decision_makers (ContactOut fields)": len(selected),
+                    "dm_messages": len(selected) * 4,
+                },
+                "budget_cap_usd": budget_cap_usd,
+                "within_budget": total_est <= budget_cap_usd,
+            }
 
         if not selected:
             flow_logger.warning("No BDMs selected — nothing to process")

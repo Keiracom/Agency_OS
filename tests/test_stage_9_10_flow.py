@@ -57,7 +57,14 @@ async def test_flow_dry_run():
             dry_run=True,
         )
 
-    assert result == {"dry_run": True, "bdm_count": 1}
+    assert result["dry_run"] is True
+    assert result["bdm_count"] == 1
+    assert result["bdm_ids"] == ["fake-id"]
+    assert "cost_estimate" in result
+    assert result["cost_estimate"]["total_usd"] > 0
+    assert "expected_writes" in result
+    assert result["expected_writes"]["dm_messages"] == 4  # 1 BDM × 4 channels
+    assert result["within_budget"] is True
     mock_s9_cls.assert_not_called()
     mock_s10_cls.assert_not_called()
 
@@ -117,3 +124,47 @@ async def test_stage_9_verification_gate():
             )
 
     mock_s10_cls.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# test_post_s9_budget_exhaustion
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_post_s9_budget_exhaustion():
+    """Budget exhausted after Stage 9 halts before Stage 10."""
+    with (
+        patch("asyncpg.create_pool", new_callable=AsyncMock) as mock_create_pool,
+        patch(
+            "src.orchestration.flows.stage_9_10_flow.Stage9VulnerabilityEnrichment"
+        ) as mock_s9_cls,
+        patch(
+            "src.orchestration.flows.stage_9_10_flow.Stage10MessageGenerator"
+        ) as mock_s10_cls,
+    ):
+        pool, conn = _make_pool(fetchval_return=1)  # VR verification passes
+        mock_create_pool.return_value = pool
+
+        mock_s9_instance = AsyncMock()
+        mock_s9_instance.run = AsyncMock(return_value={"cost_total_usd": 10.0})
+        mock_s9_cls.return_value = mock_s9_instance
+
+        with pytest.raises(ValueError, match="Budget exhausted after Stage 9"):
+            await stage_9_10_pipeline.fn(
+                bdm_ids=["id1"],
+                budget_cap_usd=5.0,
+                dry_run=False,
+            )
+
+    mock_s10_cls.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# test_on_failure_hook_wired
+# ---------------------------------------------------------------------------
+
+def test_on_failure_hook_wired():
+    """Flow has on_failure hook configured for TG alerting."""
+    from src.orchestration.flows.stage_9_10_flow import stage_9_10_pipeline as flow_obj
+    from src.prefect_utils.hooks import on_failure_hook
+    assert on_failure_hook in flow_obj.on_failure_hooks

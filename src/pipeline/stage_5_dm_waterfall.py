@@ -345,6 +345,26 @@ class Stage5DMWaterfall:
 
         # Write DM to business_decision_makers (principle #2: canonical record shape)
         if dm and (dm.name or dm.linkedin_url):
+            # P1.7b: NULL-URL guard — skip INSERT unless at least one contact method present
+            if dm and not (dm.linkedin_url or dm.email):
+                logger.info("stage5_skip_no_contact domain=%s name=%s reason=no_linkedin_no_email",
+                            business.get("domain"), dm.name)
+                # Still advance pipeline stage but don't create non-actionable BDM
+                await self.conn.execute(
+                    """
+                    UPDATE business_universe SET
+                        reachability_score = $1,
+                        pipeline_stage = $2,
+                        pipeline_updated_at = $3
+                    WHERE id = $4
+                    """,
+                    reachability,
+                    PIPELINE_STAGE_S5,
+                    now,
+                    row_id,
+                )
+                return
+
             # P1.6a: dedup — skip INSERT if another is_current BDM already has this linkedin_url
             if dm.linkedin_url:
                 existing = await self.conn.fetchval(
@@ -374,6 +394,9 @@ class Stage5DMWaterfall:
 
             # P1.6d: name hygiene — strip emoji/non-letter leading/trailing chars
             clean_name = re.sub(r'^[^a-zA-Z]+|[^a-zA-Z.]+$', '', dm.name).strip() if dm.name else None
+            # P1.7d: title-case normalization — "sian mcconnell" → "Sian Mcconnell"
+            if clean_name:
+                clean_name = clean_name.title()
 
             # Mark any existing current DM as not-current first
             await self.conn.execute(

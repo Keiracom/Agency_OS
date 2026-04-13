@@ -134,17 +134,17 @@ async def test_stops_at_first_successful_source():
 
 @pytest.mark.asyncio
 async def test_handles_no_dm_found():
-    """All sources fail → row still progresses to stage 5 with dm_source='none'."""
+    """All sources fail → row still progresses to stage 5 (BU pipeline state updated)."""
     source = MagicMock(source_name="gmb")
     source.find = AsyncMock(return_value=None)
     stage, conn, _ = make_stage()
     stage.sources = [source]
     result = await stage.run("marketing_agency")
     assert result["not_found"] == 1
+    # #338-PART-B: BU update only sets pipeline_stage + reachability, no dm_* fields
     conn.execute.assert_called_once()
     args = conn.execute.call_args[0]
     assert PIPELINE_STAGE_S5 in args
-    assert DM_SOURCE_NONE in args
 
 
 @pytest.mark.asyncio

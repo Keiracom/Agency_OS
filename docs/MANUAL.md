@@ -132,6 +132,38 @@ Core principle: Agency sells services. Prospects have problems. Industry is irre
 - `claimed_by` exclusion applied at discovery — never returns already-claimed domains
 - 15 AU categories active across 14 verticals (dental, trades, legal, construction, hospitality, automotive, real estate, accounting, medical, fitness, hair & beauty, veterinary, HVAC, marketing)
 
+### Category ETV Windows (Calibrated #328.1, Apr 11 2026)
+
+Per-category organic traffic value windows measured empirically across 21 DFS categories. Replaces the prior universal 100-5000 window which was only correct for ~2/21 categories. Canonical source: `src/config/category_etv_windows.py`. CI guard: `tests/ci_guards/test_no_hardcoded_etv.py` rejects hardcoded ranges.
+
+| Code | Category | ETV Min | ETV Max | $/KW | Sample |
+|------|----------|---------|---------|------|--------|
+| 10020 | Dining & Nightlife | 7,605 | 1,503,904 | 21.58 | 897 |
+| 10123 | Fitness | 1,171 | 262,498 | 5.50 | 1,434 |
+| 10163 | Legal | 1,128 | 153,118 | 3.25 | 1,208 |
+| 10193 | Vehicle Repair & Maintenance | 864 | 102,580 | 4.64 | 1,493 |
+| 10282 | Building Construction & Maintenance | 6,578 | 641,326 | 6.83 | 1,478 |
+| 10333 | Hair Salons & Styling Services | 1,645 | 187,963 | 7.83 | 1,043 |
+| 10418 | Home Heating & Cooling | 32 | 19,484 | 1.42 | 743 |
+| 10514 | Dentists & Dental Services | 813 | 39,684 | 6.21 | 1,449 |
+| 10520 | Hospitals & Health Clinics | 886 | 72,618 | 8.46 | 1,323 |
+| 10531 | Real Estate Investments | 140 | 13,454 | 2.08 | 372 |
+| 11093 | Accounting & Auditing | 365 | 176,701 | 2.35 | 1,425 |
+| 11138 | Building Painting Services | 116 | 26,609 | 2.23 | 812 |
+| 11147 | HVAC Service & Repair | 59 | 25,433 | 2.79 | 898 |
+| 11284 | HVAC & Climate Control | 305 | 65,747 | 3.23 | 1,490 |
+| 11295 | Electrical Wiring | 158 | 19,777 | 2.58 | 808 |
+| 11979 | Veterinary | 379 | 68,772 | 5.05 | 1,457 |
+| 12049 | Fitness Instruction Training | 4 | 10,638 | 0.88 | 263 |
+| 12391 | Bookkeeping | 964 | 130,487 | 2.75 | 217 |
+| 12975 | Restaurant Reviews & Listings | 765 | 144,863 | 17.36 | 973 |
+| 13462 | Plumbing | 826 | 175,251 | 4.10 | 1,460 |
+| 13686 | Attorneys & Law Firms | 426 | 67,159 | 2.68 | 1,144 |
+
+Total: 21 categories, 22,387 calibration samples. Methodology: 20 DFS Labs pages/category (100 domains/page), junk floor applied, SMB band = p20-p95, window = (p20*0.8, p95*5.5). Universal 100-5000 was only approximately correct for Real Estate Investments and Electrical Wiring.
+
+PR: #295 (merged Apr 11 2026). Directive: #328.1.
+
 ### SCRAPING
 
 **Primary:** httpx (`src/integrations/httpx_scraper.py`)
@@ -621,6 +653,16 @@ v6 era (#271–#277): Layer 2 (discovery), Layer 3 (bulk filter), signal config 
 | Testing | #304-FIX | Fix domain_metrics_by_categories: second_date exceeded available_history window. Dynamic _get_latest_available_date() with session cache. Discovery restored. | COMPLETE — PR #267 merged |
 | Testing | #305 | Card quality: business name waterfall, location waterfall (suburb+state+display), placeholder email/phone filter. 13 new tests. | COMPLETE — PR #268 merged |
 | Testing | #306 | Marketing Vulnerability Report: generate_vulnerability_report() Sonnet Stage 7c, 6 sections, grades + roadmap, wired in both run() and run_parallel(). vulnerability_report on ProspectCard. 8 tests. | PR #269 open |
+
+| Calibration | #328.1 | Canonical category ETV windows: 21 categories calibrated empirically (22,387 samples). CI guard added. Universal 100-5000 retired. | COMPLETE — PR #295 merged Apr 11 |
+| Phase 0 | F2.1-F7 | Foundation sprint: RLS, dm_messages, vulnerability_report column, evo_flow_callbacks, agent_comms | COMPLETE — PRs #300-#302 merged |
+| Phase 1 | P1/P1.5 | Stage 10 message gen (Sonnet email + Haiku others) + Stage 9 VR enrichment | COMPLETE — PRs #304, #305 merged |
+| Phase 1 | P1.6 | BDM dedup + blocklist enforcement + name hygiene | COMPLETE — PR #307 merged |
+| Phase 1 | P1.7 | NULL-URL BDM cleanup + write-path guards + AU TLD enforcement | COMPLETE — PR #309 |
+| Phase 1 | HOTFIX-01 | Decimal serialization + pgbouncer pool compatibility | COMPLETE — PR #306 merged |
+| Phase 1 | P4 | Prefect flow for automated Stage 9→10 pipeline | COMPLETE — PR #308 merged |
+| Phase 1 | P5 | E2E automated live-fire: 25 BDMs, 97/100 dm_messages | COMPLETE — $1.56 USD |
+| Process | M-PROCESS-01 | Directive contract discipline ratified — see AGENTS.md. CTO must STOP and report when directive constraint is infeasible, not autonomously alter methodology. | RATIFIED 2026-04-13 |
 
 ### Post-Test Build Queue (next priorities after provider resolution)
 

@@ -39,13 +39,21 @@ STAGE_PARALLELISM: dict[str, StageConfig] = {
         "safety_margin": 0.67,
         "notes": "Sequential per category (1 call/category). 10 = max parallel categories. DFS ceiling 30 shared across all stages.",
     },
-    "stage_2_abn_gst": {
-        "stage_name": "Stage 2 — ABN + GST Enrichment (local Postgres JOIN)",
+    "stage_2_serp": {
+        "stage_name": "Stage 2a — ABN Resolution via DFS SERP",
+        "concurrency": 20,
+        "provider": "dataforseo",
+        "provider_ceiling": 30,
+        "safety_margin": 0.67,
+        "notes": "DFS SERP rate ceiling. Shares DFS quota with Stage 1 + other SERP stages. ABN resolution via Google '{business_name} ABN' query.",
+    },
+    "stage_2_abn_join": {
+        "stage_name": "Stage 2b — ABN Local JOIN (exact ABN lookup)",
         "concurrency": 50,
         "provider": "asyncpg_local",
         "provider_ceiling": 50,
         "safety_margin": 1.0,
-        "notes": "Trigram fuzzy match against 2.4M ABN rows, CPU+DB bound, 50 concurrent stays under connection pool ceiling. Zero API cost.",
+        "notes": "Exact ABN lookup in 2.4M registry. Returns entity_type + GST. Microsecond per row. Zero API cost.",
     },
     "stage_2_scrape": {
         "stage_name": "Stage 2 — Website Scrape (httpx + Spider) [LEGACY — may be obsolete in Pipeline E]",

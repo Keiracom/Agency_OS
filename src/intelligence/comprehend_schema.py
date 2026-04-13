@@ -18,6 +18,9 @@ class IntelligencePayload(BaseModel):
     canonical_business_name: str = Field(
         ..., description="The actual business name as a customer would know it. Strip 'Home |', 'Welcome to', 'Pty Ltd'. E.g. 'Affordable Dental' not 'Your Trusted Dental Care Provider - Affordable Dental'."
     )
+    trading_name: str | None = Field(
+        None, description="Trading name if different from canonical. E.g. if website says 'Trading as XYZ' or footer shows 'XYZ Pty Ltd trading as ABC'."
+    )
     services_offered: list[str] = Field(
         default_factory=list, description="Services the business provides. E.g. ['general dentistry', 'cosmetic dentistry', 'dental implants']."
     )
@@ -45,6 +48,9 @@ class IntelligencePayload(BaseModel):
     has_ecommerce: bool = Field(
         False, description="Does the site sell products online?"
     )
+    team_members_detected: list[str] = Field(
+        default_factory=list, description="Names of team members found on /team or /about pages. E.g. ['Dr Sarah Smith', 'John Parker']. Empty if no team page found."
+    )
     pain_indicators: list[str] = Field(
         default_factory=list, description="Marketing pain signals. E.g. ['no Google Ads', 'outdated design', 'no social media links']."
     )
@@ -59,6 +65,7 @@ Analyse the website content provided and extract structured signals about the bu
 Return ONLY valid JSON matching this exact schema:
 {
   "canonical_business_name": "The actual business name (strip website title noise)",
+  "trading_name": "trading name if different, else null",
   "services_offered": ["service 1", "service 2"],
   "target_audience": "who they serve",
   "primary_location": "suburb, state",
@@ -68,6 +75,7 @@ Return ONLY valid JSON matching this exact schema:
   "team_size_indicator": "solo|small(2-5)|medium(6-20)|large(20+)|unknown",
   "has_booking_system": true/false,
   "has_ecommerce": true/false,
+  "team_members_detected": ["Dr Sarah Smith", "John Parker"],
   "pain_indicators": ["signal 1", "signal 2"],
   "confidence": 0.0-1.0
 }

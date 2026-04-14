@@ -177,28 +177,36 @@ STAGE_PARALLELISM: dict[str, StageConfig] = {
     },
     # ── PIPELINE F STAGES ─────────────────────────────────────────────────
     "stage_f2_signal_bundle": {
-        "stage_name": "F2 — DFS Signal Bundle (competitors, keywords, ads, backlinks, tech)",
+        "stage_name": "F2 — DFS Signal Bundle (rank_overview, competitors, keywords, tech)",
         "concurrency": 15,
         "provider": "dataforseo",
         "provider_ceiling": 30,
         "safety_margin": 0.50,
-        "notes": "Shares DFS ceiling with F1. 7 DFS endpoints per domain, sequential within domain, parallel across domains.",
+        "notes": "Shares DFS ceiling with F1. 4 DFS endpoints per domain, concurrent within domain, parallel across domains.",
     },
-    "stage_f3_gemini_comprehend": {
-        "stage_name": "F3 — Gemini 2.5 Flash Unified Comprehension",
+    "stage_f3a_comprehend": {
+        "stage_name": "F3a — Gemini identity + scoring (grounding ON)",
         "concurrency": 10,
         "provider": "gemini",
         "provider_ceiling": 30,
         "safety_margin": 0.33,
-        "notes": "Conservative on Gemini rate limits. URL context + search grounding + signal bundle input. Context caching on system prompt.",
+        "notes": "Grounding enabled. Small schema: identity, affordability, intent_preliminary. No ABN — ABN comes from F4.",
     },
-    "stage_f4_verify": {
-        "stage_name": "F4 — Verification Gap Fills (DFS Maps, SERP LinkedIn)",
-        "concurrency": 15,
+    "stage_f3b_compile": {
+        "stage_name": "F3b — Gemini generation (grounding OFF, cached F3a context)",
+        "concurrency": 10,
+        "provider": "gemini",
+        "provider_ceiling": 30,
+        "safety_margin": 0.33,
+        "notes": "Grounding disabled. Receives F3a identity + DFS signal bundle. Generates vulnerability report + outreach drafts.",
+    },
+    "stage_f4_verify_serp": {
+        "stage_name": "F4 — Verification Gap Fills (ABN SERP primary, LinkedIn SERP)",
+        "concurrency": 20,
         "provider": "dataforseo",
         "provider_ceiling": 30,
-        "safety_margin": 0.50,
-        "notes": "Fills Gemini nulls: GMB rating/reviews via Maps, DM LinkedIn URL via SERP.",
+        "safety_margin": 0.67,
+        "notes": "ABN via SERP is now PRIMARY (Gemini ABN discarded). Also fills DM LinkedIn URL via SERP.",
     },
     "stage_f5_contact_waterfall": {
         "stage_name": "F5 — Contact Waterfall (ContactOut primary)",

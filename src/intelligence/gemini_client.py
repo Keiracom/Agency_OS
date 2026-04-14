@@ -61,73 +61,80 @@ class GeminiClient:
         enable_grounding: bool = True,
         enable_url_context: bool = True,
         response_schema: dict | None = None,
-        max_retries: int = 3,
+        max_retries: int = 4,
     ) -> dict[str, Any]:
         """
-        Call Gemini 2.5 Flash with optional grounding + URL context.
+        Call Gemini 2.5 Flash with optional grounding.
+
+        Retry with exponential backoff + jitter on:
+        - HTTP 429 (rate limit)
+        - JSON parse failure (non-deterministic prose response)
+        - Malformed JSON (truncation)
 
         Returns dict with: content (parsed JSON or raw), input_tokens,
-        output_tokens, cost_usd, grounding_used, url_context_used.
+        output_tokens, cost_usd, grounding_used, attempt, f3_status,
+        f3_failure_reason.
         """
+        import asyncio as _asyncio
+        import random as _random
+
         url = f"{GEMINI_BASE}/models/{GEMINI_MODEL}:generateContent?key={self.api_key}"
 
-        # Build request
-        contents = [{"parts": [{"text": user_prompt}]}]
-
-        # System instruction
-        system_instruction = {"parts": [{"text": system_prompt}]}
-
-        # Tools (grounding + URL context)
         tools = []
         if enable_grounding:
             tools.append({"google_search": {}})
-        # URL context — try Gemini's URL fetching via grounding
-        # Note: url_context tool may not be available in all API versions
-        # Grounding search already fetches the domain via Google
 
-        payload: dict[str, Any] = {
-            "contents": contents,
-            "systemInstruction": system_instruction,
-            "generationConfig": {
-                "temperature": 0.3,
-                "maxOutputTokens": 8192,
-            },
-        }
-
-        if tools:
-            payload["tools"] = tools
-
-        if response_schema:
-            payload["generationConfig"]["responseMimeType"] = "application/json"
-            payload["generationConfig"]["responseSchema"] = response_schema
-
-        # Retry loop
+        total_in = total_out = 0
+        total_cost = 0.0
         last_error = None
-        for attempt in range(max_retries):
+        last_raw = ""
+
+        for attempt in range(1, max_retries + 1):
+            # On retry: reinforce JSON-only instruction
+            effective_prompt = user_prompt
+            if attempt > 1:
+                effective_prompt += "\n\nIMPORTANT: Return ONLY valid JSON. No prose, no markdown, no preamble."
+
+            payload: dict[str, Any] = {
+                "contents": [{"parts": [{"text": effective_prompt}]}],
+                "systemInstruction": {"parts": [{"text": system_prompt}]},
+                "generationConfig": {"temperature": 0.3, "maxOutputTokens": 16384},
+            }
+            if tools:
+                payload["tools"] = tools
+            if response_schema:
+                payload["generationConfig"]["responseMimeType"] = "application/json"
+                payload["generationConfig"]["responseSchema"] = response_schema
+
             try:
-                async with httpx.AsyncClient(timeout=60) as client:
+                async with httpx.AsyncClient(timeout=90) as client:
                     resp = await client.post(url, json=payload)
 
                 if resp.status_code == 429:
-                    wait = 2 ** (attempt + 1)
-                    logger.warning("Gemini 429, retrying in %ds", wait)
-                    import asyncio
-                    await asyncio.sleep(wait)
+                    wait = 2 ** attempt + _random.random()
+                    logger.warning("Gemini 429 attempt %d, backoff %.1fs", attempt, wait)
+                    await _asyncio.sleep(wait)
                     continue
 
                 if resp.status_code != 200:
                     last_error = f"HTTP {resp.status_code}: {resp.text[:200]}"
-                    logger.warning("Gemini error: %s", last_error)
-                    if attempt < max_retries - 1:
-                        import asyncio
-                        await asyncio.sleep(1)
-                        continue
-                    break
+                    wait = 2 ** attempt + _random.random()
+                    logger.warning("Gemini error attempt %d: %s, backoff %.1fs", attempt, last_error, wait)
+                    await _asyncio.sleep(wait)
+                    continue
 
                 data = resp.json()
                 candidates = data.get("candidates", [])
                 if not candidates:
-                    return {"content": None, "error": "no candidates", "cost_usd": 0}
+                    last_error = "no candidates"
+                    continue
+
+                # Track usage across retries
+                usage = data.get("usageMetadata", {})
+                in_tok = usage.get("promptTokenCount", 0)
+                out_tok = usage.get("candidatesTokenCount", 0)
+                cost = in_tok * INPUT_COST_PER_TOKEN + out_tok * OUTPUT_COST_PER_TOKEN
+                total_in += in_tok; total_out += out_tok; total_cost += cost
 
                 # Extract text
                 parts = candidates[0].get("content", {}).get("parts", [])
@@ -135,17 +142,7 @@ class GeminiClient:
                 for part in parts:
                     if "text" in part:
                         text += part["text"]
-
-                # Usage
-                usage = data.get("usageMetadata", {})
-                in_tok = usage.get("promptTokenCount", 0)
-                out_tok = usage.get("candidatesTokenCount", 0)
-                cost = in_tok * INPUT_COST_PER_TOKEN + out_tok * OUTPUT_COST_PER_TOKEN
-
-                self._total_input_tokens += in_tok
-                self._total_output_tokens += out_tok
-                self._total_cost_usd += cost
-                self._call_count += 1
+                last_raw = text
 
                 # Try to parse JSON
                 parsed = None
@@ -156,28 +153,73 @@ class GeminiClient:
                     elif clean.startswith("```"):
                         clean = clean.split("```")[1].split("```")[0]
                     parsed = json.loads(clean.strip())
-                except (json.JSONDecodeError, IndexError):
+                except (json.JSONDecodeError, IndexError) as je:
                     parsed = None
+                    last_error = f"json_parse: {je}"
 
-                # Check grounding metadata
                 grounding_meta = candidates[0].get("groundingMetadata", {})
 
-                return {
-                    "content": parsed or text,
-                    "raw_text": text,
-                    "input_tokens": in_tok,
-                    "output_tokens": out_tok,
-                    "cost_usd": round(cost, 6),
-                    "grounding_used": bool(grounding_meta),
-                    "grounding_queries": len(grounding_meta.get("webSearchQueries", [])),
-                    "url_context_used": enable_url_context and domain is not None,
-                    "model": GEMINI_MODEL,
-                }
+                if parsed and isinstance(parsed, dict) and parsed.get("s2_identity"):
+                    # SUCCESS — update totals and return
+                    self._total_input_tokens += total_in
+                    self._total_output_tokens += total_out
+                    self._total_cost_usd += total_cost
+                    self._call_count += 1
+                    return {
+                        "content": parsed,
+                        "raw_text": text,
+                        "input_tokens": total_in,
+                        "output_tokens": total_out,
+                        "cost_usd": round(total_cost, 6),
+                        "grounding_used": bool(grounding_meta),
+                        "grounding_queries": len(grounding_meta.get("webSearchQueries", [])),
+                        "url_context_used": False,
+                        "model": GEMINI_MODEL,
+                        "attempt": attempt,
+                        "f3_status": "success",
+                    }
+
+                # JSON parse failed or missing s2_identity — retry with backoff
+                if attempt < max_retries:
+                    reason = "prose_response" if not text.strip().startswith("{") and "```" not in text else "json_parse_failure"
+                    wait = 2 ** attempt + _random.random()
+                    logger.warning("F3 %s attempt %d for %s, backoff %.1fs", reason, attempt, domain, wait)
+                    await _asyncio.sleep(wait)
+                    continue
 
             except httpx.TimeoutException:
                 last_error = "timeout"
-                if attempt < max_retries - 1:
-                    import asyncio
-                    await asyncio.sleep(2 ** attempt)
+                wait = 2 ** attempt + _random.random()
+                await _asyncio.sleep(wait)
 
-        return {"content": None, "error": last_error or "max retries", "cost_usd": 0}
+        # All retries exhausted — classify failure
+        self._total_input_tokens += total_in
+        self._total_output_tokens += total_out
+        self._total_cost_usd += total_cost
+        self._call_count += 1
+
+        # Classify failure reason
+        if "429" in (last_error or ""):
+            reason = "rate_limit"
+        elif last_raw and not last_raw.strip().startswith("{") and "```" not in last_raw:
+            reason = "prose_response"
+        elif "json_parse" in (last_error or ""):
+            reason = "json_truncation"
+        else:
+            reason = "unknown"
+
+        return {
+            "content": None,
+            "raw_text": last_raw,
+            "input_tokens": total_in,
+            "output_tokens": total_out,
+            "cost_usd": round(total_cost, 6),
+            "grounding_used": False,
+            "grounding_queries": 0,
+            "url_context_used": False,
+            "model": GEMINI_MODEL,
+            "attempt": max_retries,
+            "f3_status": "failed",
+            "f3_failure_reason": reason,
+            "error": last_error,
+        }

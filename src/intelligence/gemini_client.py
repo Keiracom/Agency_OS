@@ -6,29 +6,29 @@ Features:
 - Google Search grounding
 - Context caching on system prompt
 - response_schema JSON mode
-- Retry with backoff
+- Retry with backoff (delegated to gemini_retry.py)
 - Cost tracking
 
-Ratified: 2026-04-14. Pipeline F architecture.
+Ratified: 2026-04-14. Pipeline F architecture refactor.
 """
 from __future__ import annotations
 
 import json
 import logging
 import os
-import time
 from typing import Any
 
 import httpx
+
+from src.intelligence.gemini_retry import gemini_call_with_retry
+from src.intelligence.comprehend_schema_f3a import F3A_SYSTEM_PROMPT
+from src.intelligence.comprehend_schema_f3b import F3B_SYSTEM_PROMPT
 
 logger = logging.getLogger(__name__)
 
 GEMINI_MODEL = "gemini-2.5-flash"
 GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta"
 
-# Pricing (USD per token, Gemini 2.5 Flash)
-# Under 200K context: $0.15/1M input, $0.60/1M output (text)
-# With thinking: $0.70/1M thinking output
 INPUT_COST_PER_TOKEN = 0.00000015
 OUTPUT_COST_PER_TOKEN = 0.0000006
 
@@ -53,6 +53,74 @@ class GeminiClient:
     def call_count(self) -> int:
         return self._call_count
 
+    def _accumulate(self, result: dict) -> None:
+        """Add token/cost tallies from a gemini_retry result to instance totals."""
+        self._total_input_tokens += result.get("input_tokens", 0)
+        self._total_output_tokens += result.get("output_tokens", 0)
+        self._total_cost_usd += result.get("cost_usd", 0.0)
+        self._call_count += 1
+
+    async def call_f3a(
+        self,
+        domain: str,
+        dfs_base_metrics: dict,
+        max_retries: int = 4,
+    ) -> dict[str, Any]:
+        """F3a — identity + scoring with grounding ON.
+
+        Args:
+            domain: Prospect domain (used in user prompt for URL context hint).
+            dfs_base_metrics: Base DFS metrics dict (domain_rank_overview output).
+
+        Returns:
+            gemini_retry result dict with content = F3a JSON or None on failure.
+        """
+        user_prompt = (
+            f"Analyse the Australian SMB at domain: {domain}\n\n"
+            f"DFS base metrics:\n{json.dumps(dfs_base_metrics, indent=2)}\n\n"
+            "Return the JSON schema exactly as specified."
+        )
+        result = await gemini_call_with_retry(
+            api_key=self.api_key,
+            system_prompt=F3A_SYSTEM_PROMPT,
+            user_prompt=user_prompt,
+            enable_grounding=True,
+            max_retries=max_retries,
+        )
+        self._accumulate(result)
+        return result
+
+    async def call_f3b(
+        self,
+        f3a_output: dict,
+        signal_bundle: dict,
+        max_retries: int = 4,
+    ) -> dict[str, Any]:
+        """F3b — generation with grounding OFF (uses cached F3a context).
+
+        Args:
+            f3a_output: Parsed F3a JSON dict (identity + scoring).
+            signal_bundle: Full DFS signal bundle dict.
+
+        Returns:
+            gemini_retry result dict with content = F3b JSON or None on failure.
+        """
+        user_prompt = (
+            f"Prospect identity (from F3a, do not modify):\n"
+            f"{json.dumps(f3a_output, indent=2)}\n\n"
+            f"DFS signal bundle:\n{json.dumps(signal_bundle, indent=2)}\n\n"
+            "Generate the vulnerability report and outreach drafts as specified."
+        )
+        result = await gemini_call_with_retry(
+            api_key=self.api_key,
+            system_prompt=F3B_SYSTEM_PROMPT,
+            user_prompt=user_prompt,
+            enable_grounding=False,
+            max_retries=max_retries,
+        )
+        self._accumulate(result)
+        return result
+
     async def comprehend(
         self,
         system_prompt: str,
@@ -63,163 +131,25 @@ class GeminiClient:
         response_schema: dict | None = None,
         max_retries: int = 4,
     ) -> dict[str, Any]:
+        """Legacy unified comprehend — delegates to gemini_call_with_retry.
+
+        Kept for backward compatibility with callers that have not yet
+        migrated to call_f3a / call_f3b.
         """
-        Call Gemini 2.5 Flash with optional grounding.
-
-        Retry with exponential backoff + jitter on:
-        - HTTP 429 (rate limit)
-        - JSON parse failure (non-deterministic prose response)
-        - Malformed JSON (truncation)
-
-        Returns dict with: content (parsed JSON or raw), input_tokens,
-        output_tokens, cost_usd, grounding_used, attempt, f3_status,
-        f3_failure_reason.
-        """
-        import asyncio as _asyncio
-        import random as _random
-
-        url = f"{GEMINI_BASE}/models/{GEMINI_MODEL}:generateContent?key={self.api_key}"
-
-        tools = []
-        if enable_grounding:
-            tools.append({"google_search": {}})
-
-        total_in = total_out = 0
-        total_cost = 0.0
-        last_error = None
-        last_raw = ""
-
-        for attempt in range(1, max_retries + 1):
-            # On retry: reinforce JSON-only instruction
-            effective_prompt = user_prompt
-            if attempt > 1:
-                effective_prompt += "\n\nIMPORTANT: Return ONLY valid JSON. No prose, no markdown, no preamble."
-
-            payload: dict[str, Any] = {
-                "contents": [{"parts": [{"text": effective_prompt}]}],
-                "systemInstruction": {"parts": [{"text": system_prompt}]},
-                "generationConfig": {"temperature": 0.3, "maxOutputTokens": 16384},
-            }
-            if tools:
-                payload["tools"] = tools
-            if response_schema:
-                payload["generationConfig"]["responseMimeType"] = "application/json"
-                payload["generationConfig"]["responseSchema"] = response_schema
-
-            try:
-                async with httpx.AsyncClient(timeout=90) as client:
-                    resp = await client.post(url, json=payload)
-
-                if resp.status_code == 429:
-                    wait = 2 ** attempt + _random.random()
-                    logger.warning("Gemini 429 attempt %d, backoff %.1fs", attempt, wait)
-                    await _asyncio.sleep(wait)
-                    continue
-
-                if resp.status_code != 200:
-                    last_error = f"HTTP {resp.status_code}: {resp.text[:200]}"
-                    wait = 2 ** attempt + _random.random()
-                    logger.warning("Gemini error attempt %d: %s, backoff %.1fs", attempt, last_error, wait)
-                    await _asyncio.sleep(wait)
-                    continue
-
-                data = resp.json()
-                candidates = data.get("candidates", [])
-                if not candidates:
-                    last_error = "no candidates"
-                    continue
-
-                # Track usage across retries
-                usage = data.get("usageMetadata", {})
-                in_tok = usage.get("promptTokenCount", 0)
-                out_tok = usage.get("candidatesTokenCount", 0)
-                cost = in_tok * INPUT_COST_PER_TOKEN + out_tok * OUTPUT_COST_PER_TOKEN
-                total_in += in_tok; total_out += out_tok; total_cost += cost
-
-                # Extract text
-                parts = candidates[0].get("content", {}).get("parts", [])
-                text = ""
-                for part in parts:
-                    if "text" in part:
-                        text += part["text"]
-                last_raw = text
-
-                # Try to parse JSON
-                parsed = None
-                try:
-                    clean = text.strip()
-                    if clean.startswith("```json"):
-                        clean = clean.split("```json")[1].split("```")[0]
-                    elif clean.startswith("```"):
-                        clean = clean.split("```")[1].split("```")[0]
-                    parsed = json.loads(clean.strip())
-                except (json.JSONDecodeError, IndexError) as je:
-                    parsed = None
-                    last_error = f"json_parse: {je}"
-
-                grounding_meta = candidates[0].get("groundingMetadata", {})
-
-                if parsed and isinstance(parsed, dict) and parsed.get("s2_identity"):
-                    # SUCCESS — update totals and return
-                    self._total_input_tokens += total_in
-                    self._total_output_tokens += total_out
-                    self._total_cost_usd += total_cost
-                    self._call_count += 1
-                    return {
-                        "content": parsed,
-                        "raw_text": text,
-                        "input_tokens": total_in,
-                        "output_tokens": total_out,
-                        "cost_usd": round(total_cost, 6),
-                        "grounding_used": bool(grounding_meta),
-                        "grounding_queries": len(grounding_meta.get("webSearchQueries", [])),
-                        "url_context_used": False,
-                        "model": GEMINI_MODEL,
-                        "attempt": attempt,
-                        "f3_status": "success",
-                    }
-
-                # JSON parse failed or missing s2_identity — retry with backoff
-                if attempt < max_retries:
-                    reason = "prose_response" if not text.strip().startswith("{") and "```" not in text else "json_parse_failure"
-                    wait = 2 ** attempt + _random.random()
-                    logger.warning("F3 %s attempt %d for %s, backoff %.1fs", reason, attempt, domain, wait)
-                    await _asyncio.sleep(wait)
-                    continue
-
-            except httpx.TimeoutException:
-                last_error = "timeout"
-                wait = 2 ** attempt + _random.random()
-                await _asyncio.sleep(wait)
-
-        # All retries exhausted — classify failure
-        self._total_input_tokens += total_in
-        self._total_output_tokens += total_out
-        self._total_cost_usd += total_cost
-        self._call_count += 1
-
-        # Classify failure reason
-        if "429" in (last_error or ""):
-            reason = "rate_limit"
-        elif last_raw and not last_raw.strip().startswith("{") and "```" not in last_raw:
-            reason = "prose_response"
-        elif "json_parse" in (last_error or ""):
-            reason = "json_truncation"
-        else:
-            reason = "unknown"
-
-        return {
-            "content": None,
-            "raw_text": last_raw,
-            "input_tokens": total_in,
-            "output_tokens": total_out,
-            "cost_usd": round(total_cost, 6),
-            "grounding_used": False,
-            "grounding_queries": 0,
-            "url_context_used": False,
-            "model": GEMINI_MODEL,
-            "attempt": max_retries,
-            "f3_status": "failed",
-            "f3_failure_reason": reason,
-            "error": last_error,
-        }
+        result = await gemini_call_with_retry(
+            api_key=self.api_key,
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+            enable_grounding=enable_grounding,
+            max_retries=max_retries,
+        )
+        self._accumulate(result)
+        # Remap f_status -> f3_status for backward compat
+        out = dict(result)
+        out["f3_status"] = out.pop("f_status", "failed")
+        if "f_failure_reason" in out:
+            out["f3_failure_reason"] = out.pop("f_failure_reason")
+        out["grounding_used"] = out.get("grounding_queries", 0) > 0
+        out["url_context_used"] = False
+        out["model"] = GEMINI_MODEL
+        return out

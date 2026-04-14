@@ -18,7 +18,10 @@ logger = logging.getLogger(__name__)
 
 ABN_RE = re.compile(r"\b(\d{2}\s?\d{3}\s?\d{3}\s?\d{3})\b")
 LINKEDIN_PERSON_RE = re.compile(
-    r"https?://(?:www\.)?linkedin\.com/in/[a-zA-Z0-9\-_%]+/?", re.IGNORECASE
+    r"https?://(?:[a-z]{2,3}\.)?linkedin\.com/in/[a-zA-Z0-9\-_%]+/?", re.IGNORECASE
+)
+LINKEDIN_COMPANY_RE = re.compile(
+    r"https?://(?:[a-z]{2,3}\.)?linkedin\.com/company/[a-zA-Z0-9\-_%]+/?", re.IGNORECASE
 )
 
 
@@ -45,6 +48,26 @@ def _parse_abn_from_snippets(serp_result: dict) -> str | None:
         m = ABN_RE.search(snippet)
         if m:
             return m.group(1).replace(" ", "")
+    return None
+
+
+def _parse_linkedin_company_from_snippets(serp_result: dict) -> str | None:
+    """Extract a LinkedIn /company/ URL from DFS SERP result."""
+    items = []
+    if isinstance(serp_result, dict):
+        items = serp_result.get("items") or []
+    if not isinstance(items, list):
+        return None
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        url = item.get("url") or ""
+        if LINKEDIN_COMPANY_RE.match(url):
+            return url.rstrip("/") + "/"
+        snippet = item.get("description") or item.get("snippet") or ""
+        m = LINKEDIN_COMPANY_RE.search(url + " " + snippet)
+        if m:
+            return m.group(0).rstrip("/") + "/"
     return None
 
 
@@ -148,6 +171,34 @@ async def fill_linkedin_via_serp(
         return None
 
 
+async def fill_company_linkedin_via_serp(
+    dfs: DFSLabsClient,
+    business_name: str,
+) -> str | None:
+    """F4: resolve company LinkedIn URL via DFS SERP.
+
+    Returns: LinkedIn /company/ URL string or None.
+    """
+    if not business_name:
+        return None
+    query = f'site:linkedin.com/company "{business_name}"'
+    try:
+        from decimal import Decimal
+        result = await dfs._post(
+            endpoint="/v3/serp/google/organic/live/advanced",
+            payload=[{"keyword": query, "location_name": "Australia", "language_name": "English", "depth": 5}],
+            cost_per_call=Decimal("0.002"), cost_attr="_cost_serp", swallow_no_data=True)
+        url = _parse_linkedin_company_from_snippets(result)
+        if url:
+            logger.info("Company LinkedIn found via SERP for '%s': %s", business_name, url)
+        else:
+            logger.info("Company LinkedIn not found via SERP for '%s'", business_name)
+        return url
+    except Exception as exc:
+        logger.warning("fill_company_linkedin_via_serp failed for '%s': %s", business_name, exc)
+        return None
+
+
 async def run_verify_fills(
     dfs: DFSLabsClient,
     f3a_output: dict,
@@ -171,17 +222,18 @@ async def run_verify_fills(
     location = f3a_output.get("location") or {}
     suburb = location.get("suburb")
     state = location.get("state")
-    abn, dm_linkedin = await _gather_fills(dfs, business_name, dm_name, suburb, state)
+    abn, dm_linkedin, company_linkedin = await _gather_fills(dfs, business_name, dm_name, suburb, state)
 
     return {
         "abn": abn,
         "abn_status": "verified_serp" if abn else "unresolved",
         "abn_source": "dfs_serp_abr" if abn else "unresolved",
         "dm_linkedin_url": dm_linkedin,
-        "gmb_rating": None,  # TODO: DFS Maps fill
+        "company_linkedin_url": company_linkedin,
+        "gmb_rating": None,
         "gmb_reviews": None,
         "gmb_category": None,
-        "_cost": 0.004,  # 2 SERP calls
+        "_cost": 0.006,  # 3 SERP calls now (was 2)
     }
 
 
@@ -191,14 +243,14 @@ async def _gather_fills(
     dm_name: str,
     suburb: str | None = None,
     state: str | None = None,
-) -> tuple[str | None, str | None]:
-    """Run ABN and LinkedIn fills concurrently."""
+) -> tuple[str | None, str | None, str | None]:
+    """Run ABN, DM LinkedIn, and Company LinkedIn fills concurrently."""
     import asyncio
 
     abn_task = asyncio.create_task(fill_abn_via_serp(dfs, business_name, suburb, state))
-    li_task = asyncio.create_task(
-        fill_linkedin_via_serp(dfs, dm_name, business_name)
-    )
+    li_task = asyncio.create_task(fill_linkedin_via_serp(dfs, dm_name, business_name))
+    company_li_task = asyncio.create_task(fill_company_linkedin_via_serp(dfs, business_name))
     abn = await abn_task
     li = await li_task
-    return abn, li
+    company_li = await company_li_task
+    return abn, li, company_li

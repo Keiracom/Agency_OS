@@ -122,8 +122,11 @@ async def main(domain: str = "taxopia.com.au") -> None:
     print(f"cost_usd:            {f3b_result.get('cost_usd', 0.0)}")
     if f3b_content:
         print(f"intent_band_final:   {f3b_content.get('intent_band_final')}")
-        vr = f3b_content.get("vulnerability_report") or []
-        print(f"vulnerability top 3: {[v.get('vulnerability') if isinstance(v, dict) else v for v in vr[:3]]}")
+        vr = f3b_content.get("vulnerability_report") or {}
+        if isinstance(vr, dict):
+            print(f"vulnerability top 3: {vr.get('top_vulnerabilities', [])[:3]}")
+        else:
+            print(f"vulnerability top 3: {vr[:3]}")
         de = f3b_content.get("draft_email") or {}
         print(f"draft_email subject: {de.get('subject') if isinstance(de, dict) else de}")
     print("raw content JSON:")
@@ -151,7 +154,7 @@ async def main(domain: str = "taxopia.com.au") -> None:
     dm_candidate = f3a_content.get("dm_candidate") or {}
     f5_result = await run_contact_waterfall(
         dm_name=dm_candidate.get("name"),
-        dm_title=dm_candidate.get("title"),
+        dm_title=dm_candidate.get("role"),
         business_name=f3a_content.get("business_name", ""),
         domain=domain,
         f3a_linkedin_url=dm_candidate.get("linkedin_url"),

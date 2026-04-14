@@ -76,12 +76,23 @@ async def _linkedin_cascade(
         return {"linkedin_url": f4_linkedin, "source": "f4_serp", "tier": "L1"}
 
     # L2: harvestapi/linkedin-profile-search-by-name (no cookies)
+    # Schema update 2026-04: requires profileScraperMode + firstName/lastName split
     if apify_token and dm_name:
+        parts = dm_name.strip().split()
+        first_name = parts[0] if parts else ""
+        last_name = " ".join(parts[1:]) if len(parts) > 1 else ""
         try:
             async with httpx.AsyncClient(timeout=90) as client:
                 r = await client.post(
                     f"{APIFY_BASE}/acts/harvestapi~linkedin-profile-search-by-name/runs?token={apify_token}",
-                    json={"name": dm_name, "company": business_name, "maxResults": 3})
+                    json={
+                        "firstName": first_name,
+                        "lastName": last_name,
+                        "currentCompany": business_name,
+                        "location": "Australia",
+                        "maxResults": 3,
+                        "profileScraperMode": "Short",
+                    })
                 if r.status_code in (200, 201):
                     run_id = r.json().get("data", {}).get("id")
                     if run_id:
@@ -94,10 +105,12 @@ async def _linkedin_cascade(
                                     ds_id = sd.get("defaultDatasetId")
                                     items = (await client.get(f"{APIFY_BASE}/datasets/{ds_id}/items?token={apify_token}")).json()
                                     for item in items[:3]:
-                                        url = item.get("profileUrl") or item.get("profile_url") or item.get("url")
+                                        url = item.get("linkedinUrl") or item.get("profileUrl") or item.get("url")
                                         if url and "linkedin.com/in/" in url:
                                             return {"linkedin_url": url, "source": "apify_harvestapi", "tier": "L2"}
                                 break
+                else:
+                    logger.warning("F5 LinkedIn L2 harvestapi HTTP %s: %s", r.status_code, r.text[:200])
         except Exception as e:
             logger.warning("F5 LinkedIn L2 harvestapi failed: %s", e)
 

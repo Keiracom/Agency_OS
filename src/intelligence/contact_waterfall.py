@@ -232,7 +232,9 @@ async def _email_waterfall(
                 r = await client.post(CONTACTOUT_ENRICH_URL,
                     headers={"authorization": "basic", "token": co_key},
                     json={"linkedin_url": linkedin_url})
-                if r.status_code == 200:
+                if r.status_code in (401, 403):
+                    logger.error("F5 Email L1 ContactOut AUTH/CREDIT FAILURE: HTTP %s — %s", r.status_code, r.text[:200])
+                elif r.status_code == 200:
                     profile = r.json().get("profile") or r.json().get("person") or r.json()
                     emails = profile.get("emails") or profile.get("work_emails") or []
                     if emails:
@@ -248,10 +250,12 @@ async def _email_waterfall(
             async with httpx.AsyncClient(timeout=15) as client:
                 r = await client.get(HUNTER_EMAIL_FINDER_URL,
                     params={"domain": domain, "first_name": first, "last_name": last, "api_key": hunter_key})
-                if r.status_code == 200:
+                if r.status_code in (401, 403):
+                    logger.error("F5 Email L2 Hunter AUTH FAILURE: HTTP %s — %s", r.status_code, r.text[:200])
+                elif r.status_code == 200:
                     data = r.json().get("data", {})
                     email = data.get("email")
-                    conf = data.get("confidence", 0)
+                    conf = data.get("score", 0) or data.get("confidence", 0)
                     if email and conf >= 70:
                         return {"email": email, "source": "hunter", "tier": "L2", "confidence": conf}
         except Exception as e:
@@ -305,7 +309,9 @@ async def _mobile_waterfall(
                 r = await client.post(CONTACTOUT_ENRICH_URL,
                     headers={"authorization": "basic", "token": co_key},
                     json={"linkedin_url": linkedin_url, "include": ["phone"]})
-                if r.status_code == 200:
+                if r.status_code in (401, 403):
+                    logger.error("F5 Mobile L1 ContactOut AUTH/CREDIT FAILURE: HTTP %s — %s", r.status_code, r.text[:200])
+                elif r.status_code == 200:
                     profile = r.json().get("profile") or r.json()
                     phones = profile.get("phones") or profile.get("phone_numbers") or []
                     for phone in phones:

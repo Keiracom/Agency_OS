@@ -174,9 +174,13 @@ async def main(domain: str = "taxopia.com.au") -> None:
     li = f5_result.get("linkedin", {})
     em = f5_result.get("email", {})
     mo = f5_result.get("mobile", {})
-    print(f"linkedin:            url={li.get('linkedin_url')}, source={li.get('source')}, tier={li.get('tier')}, "
-          f"match_type={li.get('match_type')}, match_company={li.get('match_company')}, "
-          f"match_confidence={li.get('match_confidence')}")
+    print(f"linkedin:            url={li.get('linkedin_url')}, source={li.get('source')}, "
+          f"tier={li.get('tier')}, match_type={li.get('match_type')}, "
+          f"match_company={li.get('match_company')}, match_confidence={li.get('match_confidence')}")
+    if li.get("l1_candidate_url"):
+        print(f"  l1_candidate:      {li.get('l1_candidate_url')} (from {li.get('l1_candidate_source')})")
+    if li.get("l2_profile_headline"):
+        print(f"  l2_rejected:       headline='{li.get('l2_profile_headline')}', companies={li.get('l2_profile_companies')}")
     print(f"email:               email={em.get('email')}, source={em.get('source')}, "
           f"tier={em.get('tier')}, verified={em.get('verified') or em.get('confidence')}")
     print(f"mobile:              mobile={mo.get('mobile')}, source={mo.get('source')}, tier={mo.get('tier')}")
@@ -323,13 +327,11 @@ async def main(domain: str = "taxopia.com.au") -> None:
             "business_identity": "gemini_2.5_flash_grounded",
             "abn": f4_result.get("abn_source"),
             "dm_linkedin": (
-                f"f5_l2_harvestapi (verified direct match at {li.get('match_company', '')})"
+                f"l2_verified (direct match at {li.get('match_company', '')})"
                 if li.get("match_type") == "direct_match"
-                else f"f5_l2_harvestapi (related match at {li.get('match_company', '')})"
+                else f"l2_verified (related match at {li.get('match_company', '')})"
                 if li.get("match_type") == "past_or_related_match"
-                else f"{li['source']} (unverified)"
-                if li.get("source") in ("f3a_gemini", "f4_serp")
-                else "unresolved"
+                else f"unresolved (l1={li.get('l1_candidate_source', 'none')}, l2={li.get('l2_status', '')})"
             ),
             "email": f5_result["email"]["source"],
             "mobile": f5_result["mobile"]["source"],

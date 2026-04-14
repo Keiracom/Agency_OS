@@ -1,7 +1,7 @@
 """F5 — Contact Waterfall.
 
 Three cascading waterfalls per directive F-REFACTOR-01:
-  LinkedIn URL: L1 F3a/F4 → L2 harvestapi → L3 BD Web Unlocker → L4 unresolved
+  LinkedIn URL: L1 SERP discovery (candidate URL) → L2 profile scraper verification → L3 unresolved
   Email: L1 ContactOut → L2 Hunter → L3 pattern+ZeroBounce → L4 harvestapi → L5 unresolved
   Mobile: L0 sole-trader inference → L1 ContactOut → L2 harvestapi → L3 BD → L4 unresolved
 
@@ -113,78 +113,100 @@ async def _linkedin_cascade(
     f4_linkedin: str | None,
     company_linkedin_url: str | None = None,
 ) -> dict:
-    """L1 F3a/F4 → L2 harvestapi (with company cross-validation) → L3 BD → L4 unresolved."""
+    """L1 SERP discovery → L2 profile scraper verification → L3 unresolved.
+
+    L1: SERP provides candidate URL (F3a Gemini or F4 DFS SERP). NOT auto-trusted.
+    L2: harvestapi/linkedin-profile-scraper scrapes the candidate URL, returns full
+        profile. Post-filter verifies currentCompany/experience against business_name.
+    L3: unresolved if no candidate URL or L2 rejects.
+    """
     apify_token = os.environ.get("APIFY_API_TOKEN", "")
 
-    # L1: from F3a or F4 (these are pre-validated by Gemini/SERP)
-    if f3a_linkedin:
-        return {"linkedin_url": f3a_linkedin, "source": "f3a_gemini", "tier": "L1",
-                "match_type": "direct_match", "match_company": business_name, "match_confidence": 1.0}
-    if f4_linkedin:
-        return {"linkedin_url": f4_linkedin, "source": "f4_serp", "tier": "L1",
-                "match_type": "direct_match", "match_company": business_name, "match_confidence": 1.0}
+    # L1: Collect candidate URL from F3a or F4 SERP (discovery only, NOT verified)
+    candidate_url = f3a_linkedin or f4_linkedin
+    candidate_source = "f3a_gemini" if f3a_linkedin else ("f4_serp" if f4_linkedin else None)
 
-    # L2: harvestapi with company cross-validation (Policy 2)
-    if apify_token and dm_name:
-        parts = dm_name.strip().split()
-        first_name = parts[0] if parts else ""
-        last_name = " ".join(parts[1:]) if len(parts) > 1 else ""
+    if not candidate_url or not apify_token:
+        return {"linkedin_url": None, "source": "unresolved", "tier": "L3",
+                "match_type": "no_match", "match_company": "", "match_confidence": 0.0,
+                "l2_status": "no_candidate_url"}
 
-        payload: dict = {
-            "firstName": first_name,
-            "lastName": last_name,
-            "locations": ["Australia"],
-            "maxItems": 5,
-            "profileScraperMode": "Full",
-            "strictSearch": True,
-        }
-        # Use company LinkedIn URL as filter if available
-        if company_linkedin_url:
-            payload["currentCompanies"] = [company_linkedin_url]
+    # L2: Verify candidate via harvestapi/linkedin-profile-scraper
+    try:
+        async with httpx.AsyncClient(timeout=120) as client:
+            r = await client.post(
+                f"{APIFY_BASE}/acts/harvestapi~linkedin-profile-scraper/runs?token={apify_token}",
+                json={
+                    "queries": [candidate_url],
+                    "profileScraperMode": "Profile details no email ($4 per 1k)",
+                })
+            if r.status_code not in (200, 201):
+                logger.warning("F5 LinkedIn L2 scraper HTTP %s: %s", r.status_code, r.text[:200])
+                return {"linkedin_url": None, "source": "unresolved", "tier": "L2",
+                        "match_type": "no_match", "match_company": "", "match_confidence": 0.0,
+                        "l2_status": "scraper_http_error"}
 
-        try:
-            async with httpx.AsyncClient(timeout=120) as client:
-                r = await client.post(
-                    f"{APIFY_BASE}/acts/harvestapi~linkedin-profile-search-by-name/runs?token={apify_token}",
-                    json=payload)
-                if r.status_code in (200, 201):
-                    run_id = r.json().get("data", {}).get("id")
-                    if run_id:
-                        for _ in range(20):
-                            await asyncio.sleep(3)
-                            sr = await client.get(f"{APIFY_BASE}/actor-runs/{run_id}?token={apify_token}")
-                            sd = sr.json().get("data", {})
-                            if sd.get("status") in ("SUCCEEDED", "FAILED", "ABORTED", "TIMED-OUT"):
-                                if sd["status"] == "SUCCEEDED":
-                                    ds_id = sd.get("defaultDatasetId")
-                                    items = (await client.get(f"{APIFY_BASE}/datasets/{ds_id}/items?token={apify_token}")).json()
-                                    # Post-filter: match experience against business_name
-                                    for item in items:
-                                        url = item.get("linkedinUrl") or item.get("profileUrl") or item.get("url")
-                                        if not url or "linkedin.com/in/" not in url:
-                                            continue
-                                        match = _fuzzy_match_company(item, business_name)
-                                        if match["match_type"] != "no_match":
-                                            logger.info(
-                                                "F5 LinkedIn L2: ACCEPTED %s (%s, confidence=%.3f, company=%s)",
-                                                url, match["match_type"], match["match_confidence"], match["match_company"])
-                                            return {"linkedin_url": url, "source": "apify_harvestapi", "tier": "L2", **match}
-                                    # All profiles failed post-filter
-                                    logger.info(
-                                        "F5 LinkedIn L2: %d profiles returned, all rejected (no company match for '%s')",
-                                        len(items), business_name)
-                                    return {"linkedin_url": None, "source": "unresolved", "tier": "L2",
-                                            "match_type": "no_match", "match_company": "", "match_confidence": 0.0,
-                                            "l2_status": "rejected_no_company_match", "l2_profiles_checked": len(items)}
-                                break
-                else:
-                    logger.warning("F5 LinkedIn L2 harvestapi HTTP %s: %s", r.status_code, r.text[:200])
-        except Exception as e:
-            logger.warning("F5 LinkedIn L2 harvestapi failed: %s", e)
+            run_id = r.json().get("data", {}).get("id")
+            if not run_id:
+                return {"linkedin_url": None, "source": "unresolved", "tier": "L2",
+                        "match_type": "no_match", "match_company": "", "match_confidence": 0.0,
+                        "l2_status": "no_run_id"}
 
-    # L3: BD Web Unlocker — skip
-    # L4: unresolved
-    return {"linkedin_url": None, "source": "unresolved", "tier": "L4",
+            for _ in range(20):
+                await asyncio.sleep(3)
+                sr = await client.get(f"{APIFY_BASE}/actor-runs/{run_id}?token={apify_token}")
+                sd = sr.json().get("data", {})
+                if sd.get("status") in ("SUCCEEDED", "FAILED", "ABORTED", "TIMED-OUT"):
+                    if sd["status"] != "SUCCEEDED":
+                        logger.warning("F5 LinkedIn L2 scraper run %s: %s", run_id, sd["status"])
+                        break
+
+                    ds_id = sd.get("defaultDatasetId")
+                    items = (await client.get(
+                        f"{APIFY_BASE}/datasets/{ds_id}/items?token={apify_token}"
+                    )).json()
+
+                    if not items:
+                        logger.info("F5 LinkedIn L2: scraper returned 0 profiles for %s", candidate_url)
+                        return {"linkedin_url": None, "source": "unresolved", "tier": "L2",
+                                "match_type": "no_match", "match_company": "", "match_confidence": 0.0,
+                                "l2_status": "scraper_empty_response",
+                                "l1_candidate_url": candidate_url, "l1_candidate_source": candidate_source}
+
+                    profile = items[0]
+                    scraped_url = profile.get("linkedinUrl") or candidate_url
+                    match = _fuzzy_match_company(profile, business_name)
+
+                    if match["match_type"] != "no_match":
+                        logger.info(
+                            "F5 LinkedIn L2: VERIFIED %s (%s, confidence=%.3f, company=%s)",
+                            scraped_url, match["match_type"], match["match_confidence"], match["match_company"])
+                        return {"linkedin_url": scraped_url, "source": f"l2_verified_{candidate_source}",
+                                "tier": "L2", **match,
+                                "l1_candidate_url": candidate_url, "l1_candidate_source": candidate_source}
+
+                    # Profile scraped but company doesn't match
+                    profile_headline = profile.get("headline", "")
+                    profile_exp = profile.get("experience") or profile.get("experiences") or []
+                    exp_companies = [
+                        (e.get("company") or e.get("companyName") or e.get("subtitle") or "")
+                        for e in profile_exp if isinstance(e, dict)
+                    ]
+                    logger.info(
+                        "F5 LinkedIn L2: REJECTED %s (headline='%s', companies=%s, wanted='%s')",
+                        scraped_url, profile_headline[:60], exp_companies[:3], business_name)
+                    return {"linkedin_url": None, "source": "unresolved", "tier": "L2",
+                            "match_type": "no_match", "match_company": match["match_company"],
+                            "match_confidence": match["match_confidence"],
+                            "l2_status": "rejected_no_company_match",
+                            "l2_profile_headline": profile_headline[:100],
+                            "l2_profile_companies": exp_companies[:5],
+                            "l1_candidate_url": candidate_url, "l1_candidate_source": candidate_source}
+
+    except Exception as e:
+        logger.warning("F5 LinkedIn L2 scraper failed: %s", e)
+
+    return {"linkedin_url": None, "source": "unresolved", "tier": "L3",
             "match_type": "no_match", "match_company": "", "match_confidence": 0.0}
 
 

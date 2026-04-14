@@ -43,7 +43,8 @@ def classify_prospect(
     # Contact resolution
     has_email = bool(contacts.get("email", {}).get("email"))
     has_mobile = bool(contacts.get("mobile", {}).get("mobile"))
-    has_linkedin = bool(contacts.get("linkedin", {}).get("linkedin_url"))
+    li_data = contacts.get("linkedin", {})
+    has_linkedin = bool(li_data.get("linkedin_url")) and li_data.get("match_type") != "no_match"
     has_any_contact = has_email or has_mobile or has_linkedin
 
     base = {

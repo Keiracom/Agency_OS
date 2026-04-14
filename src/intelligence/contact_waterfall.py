@@ -17,6 +17,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+from difflib import SequenceMatcher
 
 import httpx
 
@@ -58,43 +59,98 @@ def filter_dm_posts(posts: list[dict], dm_name: str | None, dm_linkedin_url: str
 
 # ── LinkedIn URL cascade ───────────────────────────────────────────────────
 
+def _fuzzy_match_company(
+    profile: dict,
+    business_name: str,
+) -> dict:
+    """Match harvestapi profile experience against business_name.
+
+    Returns: {match_type, match_company, match_confidence}
+    """
+    biz_lower = business_name.lower().strip()
+    best_ratio = 0.0
+    best_company = ""
+    best_type = "no_match"
+
+    # Check headline first
+    headline = (profile.get("headline") or "").lower()
+    if biz_lower in headline:
+        return {"match_type": "direct_match", "match_company": business_name, "match_confidence": 1.0}
+
+    # Check current position
+    current_position = profile.get("currentPosition") or profile.get("position") or ""
+    if isinstance(current_position, str) and biz_lower in current_position.lower():
+        return {"match_type": "direct_match", "match_company": business_name, "match_confidence": 1.0}
+
+    # Check experience entries
+    experience = profile.get("experience") or profile.get("experiences") or []
+    for exp in experience:
+        company = ""
+        if isinstance(exp, dict):
+            company = exp.get("company") or exp.get("companyName") or exp.get("subtitle") or ""
+        elif isinstance(exp, str):
+            company = exp
+        if not company:
+            continue
+
+        ratio = SequenceMatcher(None, biz_lower, company.lower().strip()).ratio()
+        if ratio > best_ratio:
+            best_ratio = ratio
+            best_company = company
+
+    if best_ratio >= 0.85:
+        best_type = "direct_match"
+    elif best_ratio >= 0.75:
+        best_type = "past_or_related_match"
+
+    return {"match_type": best_type, "match_company": best_company, "match_confidence": round(best_ratio, 3)}
+
+
 async def _linkedin_cascade(
     dm_name: str | None,
     business_name: str,
     f3a_linkedin: str | None,
     f4_linkedin: str | None,
+    company_linkedin_url: str | None = None,
 ) -> dict:
-    """L1 F3a/F4 → L2 harvestapi → L3 BD Web Unlocker → L4 unresolved."""
+    """L1 F3a/F4 → L2 harvestapi (with company cross-validation) → L3 BD → L4 unresolved."""
     apify_token = os.environ.get("APIFY_API_TOKEN", "")
 
-    # L1: from F3a or F4
+    # L1: from F3a or F4 (these are pre-validated by Gemini/SERP)
     if f3a_linkedin:
-        return {"linkedin_url": f3a_linkedin, "source": "f3a_gemini", "tier": "L1"}
+        return {"linkedin_url": f3a_linkedin, "source": "f3a_gemini", "tier": "L1",
+                "match_type": "direct_match", "match_company": business_name, "match_confidence": 1.0}
     if f4_linkedin:
-        return {"linkedin_url": f4_linkedin, "source": "f4_serp", "tier": "L1"}
+        return {"linkedin_url": f4_linkedin, "source": "f4_serp", "tier": "L1",
+                "match_type": "direct_match", "match_company": business_name, "match_confidence": 1.0}
 
-    # L2: harvestapi/linkedin-profile-search-by-name (no cookies)
-    # Schema update 2026-04: requires profileScraperMode + firstName/lastName split
+    # L2: harvestapi with company cross-validation (Policy 2)
     if apify_token and dm_name:
         parts = dm_name.strip().split()
         first_name = parts[0] if parts else ""
         last_name = " ".join(parts[1:]) if len(parts) > 1 else ""
+
+        payload: dict = {
+            "firstName": first_name,
+            "lastName": last_name,
+            "locations": ["Australia"],
+            "maxItems": 5,
+            "profileScraperMode": "Full",
+            "strictSearch": True,
+        }
+        # Use company LinkedIn URL as filter if available
+        if company_linkedin_url:
+            payload["currentCompanies"] = [company_linkedin_url]
+
         try:
-            async with httpx.AsyncClient(timeout=90) as client:
+            async with httpx.AsyncClient(timeout=120) as client:
                 r = await client.post(
                     f"{APIFY_BASE}/acts/harvestapi~linkedin-profile-search-by-name/runs?token={apify_token}",
-                    json={
-                        "firstName": first_name,
-                        "lastName": last_name,
-                        "currentCompany": business_name,
-                        "location": "Australia",
-                        "maxResults": 3,
-                        "profileScraperMode": "Short",
-                    })
+                    json=payload)
                 if r.status_code in (200, 201):
                     run_id = r.json().get("data", {}).get("id")
                     if run_id:
-                        for _ in range(15):
+                        for _ in range(20):
                             await asyncio.sleep(3)
                             sr = await client.get(f"{APIFY_BASE}/actor-runs/{run_id}?token={apify_token}")
                             sd = sr.json().get("data", {})
@@ -102,19 +158,34 @@ async def _linkedin_cascade(
                                 if sd["status"] == "SUCCEEDED":
                                     ds_id = sd.get("defaultDatasetId")
                                     items = (await client.get(f"{APIFY_BASE}/datasets/{ds_id}/items?token={apify_token}")).json()
-                                    for item in items[:3]:
+                                    # Post-filter: match experience against business_name
+                                    for item in items:
                                         url = item.get("linkedinUrl") or item.get("profileUrl") or item.get("url")
-                                        if url and "linkedin.com/in/" in url:
-                                            return {"linkedin_url": url, "source": "apify_harvestapi", "tier": "L2"}
+                                        if not url or "linkedin.com/in/" not in url:
+                                            continue
+                                        match = _fuzzy_match_company(item, business_name)
+                                        if match["match_type"] != "no_match":
+                                            logger.info(
+                                                "F5 LinkedIn L2: ACCEPTED %s (%s, confidence=%.3f, company=%s)",
+                                                url, match["match_type"], match["match_confidence"], match["match_company"])
+                                            return {"linkedin_url": url, "source": "apify_harvestapi", "tier": "L2", **match}
+                                    # All profiles failed post-filter
+                                    logger.info(
+                                        "F5 LinkedIn L2: %d profiles returned, all rejected (no company match for '%s')",
+                                        len(items), business_name)
+                                    return {"linkedin_url": None, "source": "unresolved", "tier": "L2",
+                                            "match_type": "no_match", "match_company": "", "match_confidence": 0.0,
+                                            "l2_status": "rejected_no_company_match", "l2_profiles_checked": len(items)}
                                 break
                 else:
                     logger.warning("F5 LinkedIn L2 harvestapi HTTP %s: %s", r.status_code, r.text[:200])
         except Exception as e:
             logger.warning("F5 LinkedIn L2 harvestapi failed: %s", e)
 
-    # L3: BD Web Unlocker — skip for now (complex, L2 covers most cases)
+    # L3: BD Web Unlocker — skip
     # L4: unresolved
-    return {"linkedin_url": None, "source": "unresolved", "tier": "L4"}
+    return {"linkedin_url": None, "source": "unresolved", "tier": "L4",
+            "match_type": "no_match", "match_company": "", "match_confidence": 0.0}
 
 
 # ── Email waterfall ────────────────────────────────────────────────────────
@@ -276,6 +347,7 @@ async def run_contact_waterfall(
     domain: str,
     f3a_linkedin_url: str | None = None,
     f4_linkedin_url: str | None = None,
+    company_linkedin_url: str | None = None,
     entity_type: str | None = None,
     business_phone: str | None = None,
 ) -> dict:
@@ -288,7 +360,7 @@ async def run_contact_waterfall(
     }
     """
     # LinkedIn first (email/mobile may need the URL)
-    linkedin = await _linkedin_cascade(dm_name, business_name, f3a_linkedin_url, f4_linkedin_url)
+    linkedin = await _linkedin_cascade(dm_name, business_name, f3a_linkedin_url, f4_linkedin_url, company_linkedin_url)
     resolved_li = linkedin.get("linkedin_url")
 
     # Email and mobile can run in parallel

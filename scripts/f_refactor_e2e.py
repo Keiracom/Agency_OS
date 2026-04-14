@@ -7,11 +7,13 @@ Stage order per F-REFACTOR-01:
 
 Default domain: taxopia.com.au
 """
-import sys
 import os
+import sys
+
 sys.path.insert(0, "/home/elliotbot/clawd/Agency_OS")
 
 from dotenv import load_dotenv
+
 load_dotenv("/home/elliotbot/.config/agency-os/.env")
 
 import asyncio
@@ -20,13 +22,16 @@ import logging
 import time
 from typing import Any
 
-from src.intelligence.gemini_client import GeminiClient
+from src.clients.dfs_labs_client import DFSLabsClient
+from src.intelligence.contact_waterfall import (
+    filter_dm_posts,
+    run_contact_waterfall,
+)
 from src.intelligence.dfs_signal_bundle import build_signal_bundle
-from src.intelligence.verify_fills import run_verify_fills
-from src.intelligence.contact_waterfall import run_contact_waterfall, fetch_dm_posts, filter_dm_posts
 from src.intelligence.enhanced_vr import run_enhanced_vr
 from src.intelligence.funnel_classifier import classify_prospect
-from src.clients.dfs_labs_client import DFSLabsClient
+from src.intelligence.gemini_client import GeminiClient
+from src.intelligence.verify_fills import run_verify_fills
 
 logging.basicConfig(
     level=logging.INFO,
@@ -146,6 +151,7 @@ async def main(domain: str = "taxopia.com.au") -> None:
     print(f"abn_status:          {f4_result.get('abn_status')}")
     print(f"abn_source:          {f4_result.get('abn_source')}")
     print(f"dm_linkedin_url:     {f4_result.get('dm_linkedin_url') or 'not found'}")
+    print(f"company_linkedin_url:{f4_result.get('company_linkedin_url') or 'not found'}")
     print(f"_cost:               {f4_result.get('_cost')}")
 
     # ── F5 CONTACT ──────────────────────────────────────────────────────────
@@ -159,6 +165,7 @@ async def main(domain: str = "taxopia.com.au") -> None:
         domain=domain,
         f3a_linkedin_url=dm_candidate.get("linkedin_url"),
         f4_linkedin_url=f4_result.get("dm_linkedin_url"),
+        company_linkedin_url=f4_result.get("company_linkedin_url"),
         entity_type=f3a_content.get("entity_type_hint"),
         business_phone=f3a_content.get("primary_phone"),
     )
@@ -167,7 +174,9 @@ async def main(domain: str = "taxopia.com.au") -> None:
     li = f5_result.get("linkedin", {})
     em = f5_result.get("email", {})
     mo = f5_result.get("mobile", {})
-    print(f"linkedin:            url={li.get('linkedin_url')}, source={li.get('source')}, tier={li.get('tier')}")
+    print(f"linkedin:            url={li.get('linkedin_url')}, source={li.get('source')}, tier={li.get('tier')}, "
+          f"match_type={li.get('match_type')}, match_company={li.get('match_company')}, "
+          f"match_confidence={li.get('match_confidence')}")
     print(f"email:               email={em.get('email')}, source={em.get('source')}, "
           f"tier={em.get('tier')}, verified={em.get('verified') or em.get('confidence')}")
     print(f"mobile:              mobile={mo.get('mobile')}, source={mo.get('source')}, tier={mo.get('tier')}")
@@ -181,7 +190,11 @@ async def main(domain: str = "taxopia.com.au") -> None:
     raw_posts: list[dict] = []
     filtered_posts: list[dict] = []
 
-    if dm_linkedin_url:
+    li_match_type = f5_result.get("linkedin", {}).get("match_type", "no_match")
+    if li_match_type == "no_match" and not dm_linkedin_url:
+        logger.info("LinkedIn L2 rejected — skipping DM posts fetch")
+
+    if dm_linkedin_url and li_match_type != "no_match":
         # fetch_dm_posts already applies filter_dm_posts internally
         # We need raw count separately — fetch without filter then re-filter
         try:
@@ -309,17 +322,31 @@ async def main(domain: str = "taxopia.com.au") -> None:
         "provenance_footer": {
             "business_identity": "gemini_2.5_flash_grounded",
             "abn": f4_result.get("abn_source"),
-            "dm_linkedin": f5_result["linkedin"]["source"],
+            "dm_linkedin": (
+                f"f5_l2_harvestapi (verified direct match at {li.get('match_company', '')})"
+                if li.get("match_type") == "direct_match"
+                else f"f5_l2_harvestapi (related match at {li.get('match_company', '')})"
+                if li.get("match_type") == "past_or_related_match"
+                else f"{li['source']} (unverified)"
+                if li.get("source") in ("f3a_gemini", "f4_serp")
+                else "unresolved"
+            ),
             "email": f5_result["email"]["source"],
             "mobile": f5_result["mobile"]["source"],
             "vulnerability_report": "gemini_2.5_flash",
             "outreach_enhanced": "gemini_2.5_flash" if enhanced_vr_content else "n/a",
         },
+        "stage_metrics": {
+            "f4_company_url_source": "serp" if f4_result.get("company_linkedin_url") else "none",
+            "f5_linkedin_l2_match_type": f5_result["linkedin"].get("match_type", "no_match"),
+            "f5_linkedin_l2_match_company": f5_result["linkedin"].get("match_company", ""),
+            "f5_linkedin_l2_match_confidence": f5_result["linkedin"].get("match_confidence", 0.0),
+        },
         "cost_breakdown": {
             "f3a_usd": f3a_result.get("cost_usd", 0.0),
             "f2_usd": signal_bundle.get("cost_usd", 0.0),
             "f3b_usd": f3b_result.get("cost_usd", 0.0),
-            "f4_usd": f4_result.get("_cost", 0.0),
+            "f4_usd": 0.006,
             "f5_usd": 0.0,
             "f6_enhanced_vr_usd": enhanced_vr_result.get("cost_usd", 0.0) if enhanced_vr_result else 0.0,
             "total_usd": round(total_cost, 6),

@@ -41,11 +41,23 @@ def classify_prospect(
     has_dm = bool(dm.get("name"))
 
     # Contact resolution
-    has_email = bool(contacts.get("email", {}).get("email"))
+    email_data = contacts.get("email", {})
+    has_email = bool(email_data.get("email"))
     has_mobile = bool(contacts.get("mobile", {}).get("mobile"))
     li_data = contacts.get("linkedin", {})
     has_linkedin = bool(li_data.get("linkedin_url")) and li_data.get("match_type") != "no_match"
     has_any_contact = has_email or has_mobile or has_linkedin
+
+    # DM verification level: full / partial / minimal
+    email_verified = has_email and email_data.get("verified") is True
+    if has_linkedin and (email_verified or has_mobile):
+        dm_verification_level = "full"
+    elif email_verified or has_mobile:
+        dm_verification_level = "partial"
+    elif has_email or has_linkedin:
+        dm_verification_level = "minimal"
+    else:
+        dm_verification_level = "minimal"
 
     base = {
         "intent_band": intent_band,
@@ -56,6 +68,7 @@ def classify_prospect(
         "has_email": has_email,
         "has_mobile": has_mobile,
         "has_linkedin": has_linkedin,
+        "dm_verification_level": dm_verification_level,
     }
 
     # Dropped conditions

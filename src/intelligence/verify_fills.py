@@ -18,10 +18,10 @@ logger = logging.getLogger(__name__)
 
 ABN_RE = re.compile(r"\b(\d{2}\s?\d{3}\s?\d{3}\s?\d{3})\b")
 LINKEDIN_PERSON_RE = re.compile(
-    r"https?://(?:www\.)?linkedin\.com/in/[a-zA-Z0-9\-_%]+/?", re.IGNORECASE
+    r"https?://(?:[a-z]{2,3}\.)?linkedin\.com/in/[a-zA-Z0-9\-_%]+/?", re.IGNORECASE
 )
 LINKEDIN_COMPANY_RE = re.compile(
-    r"https?://(?:www\.)?linkedin\.com/company/[a-zA-Z0-9\-_%]+/?", re.IGNORECASE
+    r"https?://(?:[a-z]{2,3}\.)?linkedin\.com/company/[a-zA-Z0-9\-_%]+/?", re.IGNORECASE
 )
 
 

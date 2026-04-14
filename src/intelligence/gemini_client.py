@@ -18,11 +18,9 @@ import logging
 import os
 from typing import Any
 
-import httpx
-
-from src.intelligence.gemini_retry import gemini_call_with_retry
 from src.intelligence.comprehend_schema_f3a import F3A_SYSTEM_PROMPT
 from src.intelligence.comprehend_schema_f3b import F3B_SYSTEM_PROMPT
+from src.intelligence.gemini_retry import gemini_call_with_retry
 
 logger = logging.getLogger(__name__)
 

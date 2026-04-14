@@ -69,7 +69,7 @@ def _parse_linkedin_from_snippets(serp_result: dict) -> str | None:
 
 
 async def fill_abn_via_serp(
-    dfs: "DFSLabsClient",
+    dfs: DFSLabsClient,
     business_name: str,
     suburb: str | None = None,
     state: str | None = None,
@@ -112,7 +112,7 @@ async def fill_abn_via_serp(
 
 
 async def fill_linkedin_via_serp(
-    dfs: "DFSLabsClient",
+    dfs: DFSLabsClient,
     dm_name: str,
     business_name: str,
 ) -> str | None:
@@ -149,7 +149,7 @@ async def fill_linkedin_via_serp(
 
 
 async def run_verify_fills(
-    dfs: "DFSLabsClient",
+    dfs: DFSLabsClient,
     f3a_output: dict,
 ) -> dict:
     """Run all F4 gap fills and return a fills dict.
@@ -186,7 +186,7 @@ async def run_verify_fills(
 
 
 async def _gather_fills(
-    dfs: "DFSLabsClient",
+    dfs: DFSLabsClient,
     business_name: str,
     dm_name: str,
     suburb: str | None = None,

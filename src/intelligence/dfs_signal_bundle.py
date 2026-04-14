@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 async def build_signal_bundle(
-    dfs: "DFSLabsClient",
+    dfs: DFSLabsClient,
     domain: str,
     max_competitors: int = 10,
     max_keywords: int = 50,

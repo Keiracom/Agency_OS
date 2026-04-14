@@ -234,8 +234,14 @@ async def run_pipeline_f(
     }
 
     try:
+        # Snapshot DFS cumulative cost before this domain (for delta computation)
+        dfs_cost_before = dfs.total_cost_usd
+        stage_times: dict[str, float] = {}
+
         # ── F3a COMPREHEND ───────────────────────────────────────────────────
+        t0 = time.monotonic()
         f3a_result = await gemini.call_f3a(domain=domain, dfs_base_metrics={})
+        stage_times["f3a"] = round(time.monotonic() - t0, 2)
         f3a_status = f3a_result.get("f_status", "failed")
         f3a_content: dict = f3a_result.get("content") or {}
         result["f3a_status"] = f3a_status
@@ -249,20 +255,27 @@ async def run_pipeline_f(
             result["f3a_drop_reason"] = f3a_result.get("f_failure_reason", "f3a_failed")
             result["cost_usd"] = cost
             result["wall_clock_s"] = time.monotonic() - wall_start
+            result["stage_times"] = stage_times
             return result
 
         if afford_gate == "cannot_afford" or intent_prelim.upper() in NOT_TRYING:
             result["f3a_drop_reason"] = f"gate={afford_gate} intent={intent_prelim}"
             result["cost_usd"] = cost
             result["wall_clock_s"] = time.monotonic() - wall_start
+            result["stage_times"] = stage_times
             return result
 
         # ── F2 SIGNAL ────────────────────────────────────────────────────────
+        t0 = time.monotonic()
+        dfs_pre_f2 = dfs.total_cost_usd
         signal_bundle = await build_signal_bundle(dfs, domain)
-        cost += signal_bundle.get("cost_usd", 0.0)
+        stage_times["f2"] = round(time.monotonic() - t0, 2)
+        cost += dfs.total_cost_usd - dfs_pre_f2  # delta, not cumulative
 
         # ── F3b COMPILE ──────────────────────────────────────────────────────
+        t0 = time.monotonic()
         f3b_result = await gemini.call_f3b(f3a_output=f3a_content, signal_bundle=signal_bundle)
+        stage_times["f3b"] = round(time.monotonic() - t0, 2)
         f3b_status = f3b_result.get("f_status", "failed")
         f3b_content: dict | None = f3b_result.get("content")
         result["f3b_status"] = f3b_status
@@ -273,13 +286,17 @@ async def run_pipeline_f(
             f3b_content = None
 
         # ── F4 VERIFY ────────────────────────────────────────────────────────
+        t0 = time.monotonic()
+        dfs_pre_f4 = dfs.total_cost_usd
         f4_result = await run_verify_fills(dfs=dfs, f3a_output=f3a_content)
-        cost += f4_result.get("_cost") or 0.0
+        stage_times["f4"] = round(time.monotonic() - t0, 2)
+        cost += dfs.total_cost_usd - dfs_pre_f4  # delta, not hardcoded _cost
         result["f4_abn"] = f4_result.get("abn")
         result["f4_abn_status"] = f4_result.get("abn_status")
         result["f4_company_linkedin"] = f4_result.get("company_linkedin_url")
 
         # ── F5 CONTACT ───────────────────────────────────────────────────────
+        t0 = time.monotonic()
         dm_candidate = f3a_content.get("dm_candidate") or {}
         result["dm_name"] = dm_candidate.get("name")
         f5_result = await run_contact_waterfall(
@@ -293,6 +310,7 @@ async def run_pipeline_f(
             entity_type=f3a_content.get("entity_type_hint"),
             business_phone=f3a_content.get("primary_phone"),
         )
+        stage_times["f5_contact"] = round(time.monotonic() - t0, 2)
         li = f5_result.get("linkedin", {})
         em = f5_result.get("email", {})
         mo = f5_result.get("mobile", {})
@@ -305,6 +323,7 @@ async def run_pipeline_f(
         result["f5_mobile_tier"] = mo.get("tier")
 
         # ── F5 DM POSTS ──────────────────────────────────────────────────────
+        t0 = time.monotonic()
         dm_linkedin_url = (
             f4_result.get("dm_linkedin_url")
             or dm_candidate.get("linkedin_url")
@@ -319,8 +338,8 @@ async def run_pipeline_f(
                 dm_linkedin_url=dm_linkedin_url,
                 dm_name=dm_candidate.get("name"),
             )
-            # fetch_dm_posts returns already-filtered posts; raw count not available
-            raw_posts = filtered_posts  # treat as authored posts for count
+            raw_posts = filtered_posts
+        stage_times["f5_posts"] = round(time.monotonic() - t0, 2)
 
         result["f5_posts_fetched"] = len(raw_posts)
         result["f5_posts_authored"] = len(filtered_posts)
@@ -335,6 +354,7 @@ async def run_pipeline_f(
         result["verification_level"] = classification.get("dm_verification_level", "minimal")
 
         # ── F6 ENHANCED VR ───────────────────────────────────────────────────
+        t0 = time.monotonic()
         enhanced_vr_result: dict | None = None
         if classification.get("classification") in ("ready", "near_ready") and f3b_content:
             enhanced_vr_result = await run_enhanced_vr(
@@ -344,6 +364,7 @@ async def run_pipeline_f(
             )
             cost += enhanced_vr_result.get("cost_usd", 0.0) if enhanced_vr_result else 0.0
             result["f6_enhanced_vr_triggered"] = True
+        stage_times["f6_evr"] = round(time.monotonic() - t0, 2)
 
         # ── Build card ───────────────────────────────────────────────────────
         result["card"] = _sub_placeholders(_build_card(
@@ -355,6 +376,8 @@ async def run_pipeline_f(
             f3b_result=f3b_result, cost=cost,
         ))
         result["cost_usd"] = cost
+        result["dfs_cost_delta"] = dfs.total_cost_usd - dfs_cost_before
+        result["stage_times"] = stage_times
 
     except Exception as exc:
         logger.error("[pipeline] %s error: %s", domain, exc, exc_info=True)

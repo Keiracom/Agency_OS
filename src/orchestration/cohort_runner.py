@@ -200,9 +200,12 @@ async def _run_stage5(domain_data: dict) -> dict:
     """Stage 5 SCORE — prospect viability scoring (pure logic)."""
     t0 = time.monotonic()
     try:
+        # FIX C1: inject Stage 2 ABN into stage3 bundle so scorer sees it
+        stage3_with_abn = dict(domain_data.get("stage3", {}))
+        stage3_with_abn["serp_abn"] = domain_data.get("stage2", {}).get("serp_abn")
         scores = score_prospect(
             signal_bundle=domain_data.get("stage4", {}),
-            f3a_output=domain_data.get("stage3", {}),
+            f3a_output=stage3_with_abn,
             category_name=domain_data.get("category"),
         )
         domain_data["stage5"] = scores
@@ -268,7 +271,7 @@ async def _run_stage8(domain_data: dict, dfs: DFSLabsClient) -> dict:
     try:
         fills = await run_verify_fills(dfs=dfs, f3a_output=identity)
         domain_data["stage8_verify"] = fills
-        # Fixed cost: 3 SERP calls = $0.006 + scraper $0.004 + ContactOut ~$0.013 = $0.023/domain
+        # Fixed cost: up to 4 SERP calls = $0.008 + scraper $0.004 + ContactOut ~$0.013 = $0.025/domain
         domain_data["cost_usd"] += 0.023
     except Exception as exc:
         domain_data["errors"].append(f"stage8a: {exc}")
@@ -302,7 +305,10 @@ async def _run_stage8(domain_data: dict, dfs: DFSLabsClient) -> dict:
 async def _run_stage9(domain_data: dict, bd: BrightDataClient) -> dict:
     """Stage 9 SOCIAL — scrape DM + company LinkedIn posts (gated: verified LinkedIn)."""
     fills = domain_data.get("stage8_verify") or {}
-    dm_li = fills.get("dm_linkedin_url")
+    # FIX H2: use verified URL from stage8_contacts (waterfall result), not fills (unverified SERP)
+    contacts = domain_data.get("stage8_contacts") or {}
+    li_data = contacts.get("linkedin", {})
+    dm_li = li_data.get("linkedin_url") if li_data.get("match_type") != "no_match" else None
     company_li = fills.get("company_linkedin_url") or (
         (domain_data.get("stage2") or {}).get("serp_company_linkedin")
     )
@@ -355,9 +361,16 @@ async def _run_stage11(domain_data: dict) -> dict:
     """Stage 11 CARD — assemble final lead card."""
     t0 = time.monotonic()
     try:
+        # FIX M1+M2: merge stage8_verify ABN and LinkedIn into stage2 so card sees them
+        stage2_merged = dict(domain_data.get("stage2") or {})
+        verify = domain_data.get("stage8_verify") or {}
+        if verify.get("abn"):
+            stage2_merged["serp_abn"] = verify["abn"]
+        if verify.get("company_linkedin_url"):
+            stage2_merged["serp_company_linkedin"] = verify["company_linkedin_url"]
         card = assemble_card(
             domain=domain_data["domain"],
-            stage2_verify=domain_data.get("stage2") or {},
+            stage2_verify=stage2_merged,
             stage3_identity=domain_data.get("stage3") or {},
             stage4_signals=domain_data.get("stage4") or {},
             stage5_scores=domain_data.get("stage5") or {},

@@ -225,16 +225,15 @@ async def run_verify_fills(
     state = location.get("state")
     abn, dm_linkedin, company_linkedin = await _gather_fills(dfs, business_name, dm_name, suburb, state)
 
+    # FIX L4: _cost updated to 0.008 (4 SERP call variants now possible)
+    # FIX M3: gmb_rating/gmb_reviews/gmb_category removed — always None, deferred by design
     return {
         "abn": abn,
         "abn_status": "verified_serp" if abn else "unresolved",
         "abn_source": "dfs_serp_abr" if abn else "unresolved",
         "dm_linkedin_url": dm_linkedin,
         "company_linkedin_url": company_linkedin,
-        "gmb_rating": None,
-        "gmb_reviews": None,
-        "gmb_category": None,
-        "_cost": 0.006,  # 3 SERP calls now (was 2)
+        "_cost": 0.008,
     }
 
 

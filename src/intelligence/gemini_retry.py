@@ -17,6 +17,7 @@ import httpx
 logger = logging.getLogger(__name__)
 
 GEMINI_MODEL = "gemini-2.5-flash"
+GEMINI_MODEL_DM = "gemini-3.1-pro-preview"
 GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta"
 
 INPUT_COST = 0.00000015   # per token
@@ -31,6 +32,7 @@ async def gemini_call_with_retry(
     max_retries: int = 4,
     max_output_tokens: int = 16384,
     temperature: float = 0.3,
+    model: str | None = None,
 ) -> dict:
     """Call Gemini with exponential backoff retry.
 
@@ -47,7 +49,8 @@ async def gemini_call_with_retry(
             f_failure_reason (str|None): reason string on failure,
         }
     """
-    url = f"{GEMINI_BASE}/models/{GEMINI_MODEL}:generateContent?key={api_key}"
+    effective_model = model or GEMINI_MODEL
+    url = f"{GEMINI_BASE}/models/{effective_model}:generateContent?key={api_key}"
 
     tools = []
     if enable_grounding:

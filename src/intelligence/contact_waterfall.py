@@ -25,7 +25,7 @@ from src.common.phone_classifier import classify_au_phone
 
 logger = logging.getLogger(__name__)
 
-CONTACTOUT_ENRICH_URL = "https://api.contactout.com/v1/people/enrich"
+CONTACTOUT_REVEAL_URL = "https://api.contactout.com/v1/people/linkedin"
 HUNTER_EMAIL_FINDER_URL = "https://api.hunter.io/v2/email-finder"
 ZEROBOUNCE_VALIDATE_URL = "https://api.zerobounce.net/v2/validate"
 APIFY_BASE = "https://api.apify.com/v2"
@@ -82,6 +82,10 @@ def _fuzzy_match_company(
     if isinstance(current_position, str) and biz_lower in current_position.lower():
         return {"match_type": "direct_match", "match_company": business_name, "match_confidence": 1.0}
 
+    # Extract core business name words (drop Pty, Ltd, Australia, Group, etc.)
+    noise = {"pty", "ltd", "limited", "australia", "australian", "group", "inc", "co", "the", "of"}
+    biz_words = [w for w in biz_lower.split() if w not in noise and len(w) >= 3]
+
     # Check experience entries
     experience = profile.get("experience") or profile.get("experiences") or []
     for exp in experience:
@@ -93,7 +97,17 @@ def _fuzzy_match_company(
         if not company:
             continue
 
-        ratio = SequenceMatcher(None, biz_lower, company.lower().strip()).ratio()
+        company_lower = company.lower().strip()
+
+        # Substring containment: core business name in company or vice versa
+        # Catches "Sheen Group" vs "Sheen Panel Service", "TONI&GUY Australia" vs "Toni&Guy Brighton"
+        if biz_words and any(w in company_lower for w in biz_words):
+            return {"match_type": "direct_match", "match_company": company, "match_confidence": 0.9}
+        company_words = [w for w in company_lower.split() if w not in noise and len(w) >= 3]
+        if company_words and any(w in biz_lower for w in company_words):
+            return {"match_type": "direct_match", "match_company": company, "match_confidence": 0.9}
+
+        ratio = SequenceMatcher(None, biz_lower, company_lower).ratio()
         if ratio > best_ratio:
             best_ratio = ratio
             best_company = company
@@ -225,22 +239,25 @@ async def _email_waterfall(
     first = (dm_name or "").split()[0] if dm_name else ""
     last = " ".join((dm_name or "").split()[1:]) if dm_name and len((dm_name or "").split()) > 1 else ""
 
-    # L1: ContactOut /v1/people/enrich (by LinkedIn URL)
+    # L1: ContactOut /v1/people/linkedin (GET — returns email + phone in one call)
     if linkedin_url and co_key:
         try:
             async with httpx.AsyncClient(timeout=30) as client:
-                r = await client.post(CONTACTOUT_ENRICH_URL,
+                r = await client.get(CONTACTOUT_REVEAL_URL,
                     headers={"authorization": "basic", "token": co_key},
-                    json={"linkedin_url": linkedin_url})
+                    params={"profile": linkedin_url, "include_phone": "true"})
                 if r.status_code in (401, 403):
                     logger.error("F5 Email L1 ContactOut AUTH/CREDIT FAILURE: HTTP %s — %s", r.status_code, r.text[:200])
                 elif r.status_code == 200:
-                    profile = r.json().get("profile") or r.json().get("person") or r.json()
-                    emails = profile.get("emails") or profile.get("work_emails") or []
+                    profile = r.json().get("profile") or r.json()
+                    emails = profile.get("work_email") or profile.get("email") or profile.get("emails") or []
+                    if isinstance(emails, str):
+                        emails = [emails]
                     if emails:
                         email = emails[0] if isinstance(emails[0], str) else emails[0].get("email", "")
                         if email:
-                            return {"email": email, "source": "contactout", "tier": "L1", "verified": True}
+                            return {"email": email, "source": "contactout", "tier": "L1", "verified": True,
+                                    "_co_phones": profile.get("phone") or []}
         except Exception as e:
             logger.warning("F5 Email L1 ContactOut failed: %s", e)
 
@@ -292,8 +309,7 @@ async def _mobile_waterfall(
     entity_type: str | None,
     business_phone: str | None,
 ) -> dict:
-    """L0 sole-trader inference → L1 ContactOut → L2 harvestapi → L3 BD → L4 unresolved."""
-    co_key = os.environ.get("CONTACTOUT_API_KEY", "")
+    """L0 sole-trader inference → L4 unresolved. ContactOut phone handled in run_contact_waterfall."""
 
     # L0: Sole-trader business-phone inference
     if business_phone and entity_type and "sole trader" in entity_type.lower():
@@ -302,27 +318,9 @@ async def _mobile_waterfall(
             return {"mobile": classified["normalized_e164"], "source": "sole_trader_inference",
                     "tier": "L0", **classified}
 
-    # L1: ContactOut (bundled with enrich — check for phone)
-    if linkedin_url and co_key:
-        try:
-            async with httpx.AsyncClient(timeout=30) as client:
-                r = await client.post(CONTACTOUT_ENRICH_URL,
-                    headers={"authorization": "basic", "token": co_key},
-                    json={"linkedin_url": linkedin_url, "include": ["phone"]})
-                if r.status_code in (401, 403):
-                    logger.error("F5 Mobile L1 ContactOut AUTH/CREDIT FAILURE: HTTP %s — %s", r.status_code, r.text[:200])
-                elif r.status_code == 200:
-                    profile = r.json().get("profile") or r.json()
-                    phones = profile.get("phones") or profile.get("phone_numbers") or []
-                    for phone in phones:
-                        p = phone if isinstance(phone, str) else phone.get("number", "")
-                        if p:
-                            classified = classify_au_phone(p)
-                            if classified["phone_type"] == "mobile":
-                                return {"mobile": classified["normalized_e164"], "source": "contactout",
-                                        "tier": "L1", **classified}
-        except Exception as e:
-            logger.warning("F5 Mobile L1 ContactOut failed: %s", e)
+    # L1: ContactOut phone — extracted from email L1 response (same /v1/people/linkedin call)
+    # The phone data is passed via _co_phones from the email waterfall result to avoid double API call.
+    # If not available, fall through to L4 unresolved.
 
     # L2-L3: harvestapi / BD Web Unlocker — skip (complex, low AU mobile rate)
     # L4: unresolved
@@ -391,9 +389,22 @@ async def run_contact_waterfall(
     linkedin = await _linkedin_cascade(dm_name, business_name, f3a_linkedin_url, f4_linkedin_url, company_linkedin_url)
     resolved_li = linkedin.get("linkedin_url")
 
-    # Email and mobile can run in parallel
-    email_task = _email_waterfall(dm_name, domain, resolved_li)
-    mobile_task = _mobile_waterfall(dm_name, domain, resolved_li, entity_type, business_phone)
-    email, mobile = await asyncio.gather(email_task, mobile_task)
+    # Email first (ContactOut /v1/people/linkedin returns phone data too)
+    email = await _email_waterfall(dm_name, domain, resolved_li)
+
+    # Mobile: use phone data from ContactOut email response if available
+    co_phones = email.pop("_co_phones", None)
+    if co_phones:
+        for phone in co_phones:
+            p = phone if isinstance(phone, str) else phone.get("number", "")
+            if p:
+                classified = classify_au_phone(p)
+                if classified["phone_type"] == "mobile":
+                    mobile = {"mobile": classified["normalized_e164"], "source": "contactout",
+                              "tier": "L1", **classified}
+                    return {"linkedin": linkedin, "email": email, "mobile": mobile}
+
+    # Fallback mobile waterfall (sole-trader inference only, ContactOut already called)
+    mobile = await _mobile_waterfall(dm_name, domain, resolved_li, entity_type, business_phone)
 
     return {"linkedin": linkedin, "email": email, "mobile": mobile}

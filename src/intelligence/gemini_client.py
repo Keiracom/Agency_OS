@@ -20,7 +20,7 @@ from typing import Any
 
 from src.intelligence.comprehend_schema_f3a import F3A_SYSTEM_PROMPT
 from src.intelligence.comprehend_schema_f3b import F3B_SYSTEM_PROMPT
-from src.intelligence.gemini_retry import gemini_call_with_retry
+from src.intelligence.gemini_retry import GEMINI_MODEL_DM, gemini_call_with_retry
 
 logger = logging.getLogger(__name__)
 
@@ -63,18 +63,31 @@ class GeminiClient:
         domain: str,
         dfs_base_metrics: dict,
         max_retries: int = 4,
+        serp_data: dict | None = None,
     ) -> dict[str, Any]:
-        """F3a — identity + scoring with grounding ON.
+        """F3a — identity + DM identification with grounding ON.
 
         Args:
             domain: Prospect domain (used in user prompt for URL context hint).
             dfs_base_metrics: Base DFS metrics dict (domain_rank_overview output).
+            serp_data: Optional Stage 2 SERP candidates to seed Gemini.
 
         Returns:
             gemini_retry result dict with content = F3a JSON or None on failure.
         """
-        user_prompt = (
-            f"Analyse the Australian SMB at domain: {domain}\n\n"
+        user_prompt = f"Analyse the Australian SMB at domain: {domain}\n\n"
+        if serp_data:
+            user_prompt += "Candidate data from prior search results:\n"
+            if serp_data.get("serp_business_name"):
+                user_prompt += f"  Business name: {serp_data['serp_business_name']}\n"
+            if serp_data.get("serp_abn"):
+                user_prompt += f"  ABN: {serp_data['serp_abn']}\n"
+            if serp_data.get("serp_company_linkedin"):
+                user_prompt += f"  Company LinkedIn: {serp_data['serp_company_linkedin']}\n"
+            if serp_data.get("serp_dm_candidate"):
+                user_prompt += f"  DM candidate: {serp_data['serp_dm_candidate']}\n"
+            user_prompt += "\nUse these as starting points. Verify against all public sources.\n\n"
+        user_prompt += (
             f"DFS base metrics:\n{json.dumps(dfs_base_metrics, indent=2)}\n\n"
             "Return the JSON schema exactly as specified."
         )
@@ -84,9 +97,88 @@ class GeminiClient:
             user_prompt=user_prompt,
             enable_grounding=True,
             max_retries=max_retries,
+            model=GEMINI_MODEL_DM,
         )
         self._accumulate(result)
+
+        # Step 2: Verify DM is the correct LOCAL AU decision-maker
+        content = result.get("content")
+        if result.get("f_status") == "success" and content:
+            dm = (content.get("dm_candidate") or {}).get("name")
+            if dm and dm.lower() not in ("null", "none", ""):
+                result = await self._verify_dm(domain, content, result, max_retries)
+
         return result
+
+    async def _verify_dm(
+        self,
+        domain: str,
+        f3a_content: dict,
+        f3a_result: dict,
+        max_retries: int = 4,
+    ) -> dict[str, Any]:
+        """Step 2: Verify DM is the correct LOCAL Australian decision-maker."""
+        biz = f3a_content.get("business_name", "unknown")
+        dm = (f3a_content.get("dm_candidate") or {}).get("name", "")
+        role = (f3a_content.get("dm_candidate") or {}).get("role", "")
+
+        verify_system = (
+            "You are verifying a decision-maker identification for an Australian SMB. "
+            "Return ONLY valid JSON.\n\n"
+            "Check: Is this person the LOCAL Australian decision-maker for this specific business? "
+            "If this is an international brand with a local Australian operation (distributor, licensee, "
+            "franchisee), identify the LOCAL director instead. Check ABN registry for the entity behind "
+            "this domain.\n\n"
+            '{"dm_verified": true, "dm_candidate": {"name": "verified or corrected name", '
+            '"role": "title"}, "entity_name": "registered AU company", '
+            '"verification_note": "why verified or changed"}\n\n'
+            "If the original DM is correct for the Australian operation, return dm_verified: true "
+            "with the same name. If wrong, return dm_verified: false with the corrected local DM."
+        )
+        verify_prompt = (
+            f"Domain: {domain}\n"
+            f"Business: {biz}\n"
+            f"DM candidate: {dm} ({role})\n\n"
+            "Verify this is the correct LOCAL Australian decision-maker."
+        )
+
+        v_result = await gemini_call_with_retry(
+            api_key=self.api_key,
+            system_prompt=verify_system,
+            user_prompt=verify_prompt,
+            enable_grounding=True,
+            max_retries=max_retries,
+            model=GEMINI_MODEL_DM,
+        )
+        self._accumulate(v_result)
+
+        v_content = v_result.get("content")
+        if not v_content or v_result.get("f_status") != "success":
+            return f3a_result  # verification failed, trust step 1
+
+        verified = v_content.get("dm_verified")
+        corrected_dm = (v_content.get("dm_candidate") or {}).get("name")
+        corrected_role = (v_content.get("dm_candidate") or {}).get("role")
+
+        if str(verified).lower() == "true":
+            # Confirmed — keep original
+            f3a_result["content"]["_dm_verified"] = True
+            f3a_result["content"]["_dm_verification_note"] = v_content.get("verification_note", "")
+            return f3a_result
+
+        if corrected_dm and corrected_dm != dm:
+            # Corrected — update DM in f3a content
+            logger.info("DM CORRECTED for %s: %s → %s (%s)", domain, dm, corrected_dm, v_content.get("verification_note", ""))
+            f3a_result["content"]["dm_candidate"]["name"] = corrected_dm
+            if corrected_role:
+                f3a_result["content"]["dm_candidate"]["role"] = corrected_role
+            f3a_result["content"]["_dm_verified"] = True
+            f3a_result["content"]["_dm_corrected_from"] = dm
+            f3a_result["content"]["_dm_verification_note"] = v_content.get("verification_note", "")
+            if v_content.get("entity_name"):
+                f3a_result["content"]["_entity_name"] = v_content["entity_name"]
+
+        return f3a_result
 
     async def call_f3b(
         self,

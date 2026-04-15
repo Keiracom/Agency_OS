@@ -102,6 +102,11 @@ VALUES (gen_random_uuid(), 'daily_log', '<summary: what was done, PRs, decisions
 | LAW XV-C | Governance Docs Immutable — never recreate/modify without explicit CEO directive |
 | LAW XV-D | Step 0 RESTATE — mandatory restate before any directive execution, no exceptions |
 | GOV-8 | Maximum Extraction Per Call — every API response captured in full, written to BU regardless of card eligibility, never re-fetched if prior stage received it |
+| GOV-9 | Two-Layer Directive Scrutiny — every directive triggers Layer 2 CTO scrutiny before Step 0. Report DIRECTIVE SCRUTINY — N GAPS FOUND or CLEAR before any execution |
+
+## Directive Scrutiny (GOV-9 — MANDATORY)
+
+Every directive received triggers Layer 2 scrutiny pass before Step 0. Scrutinise for: missing capabilities, missing config, missing instrumentation, contradicted assumptions, recently-merged code that changes the path. Report gaps as `DIRECTIVE SCRUTINY — N GAPS FOUND` with gap list, or `DIRECTIVE SCRUTINY — CLEAR` before proceeding to Step 0 RESTATE. This is mandatory regardless of how thorough the CEO's Layer 1 drafting was.
 
 ## Dead References (Do Not Use)
 

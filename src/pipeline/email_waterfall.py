@@ -8,16 +8,18 @@ Directive: #299, #300-FIX-4, #317
 
 Waterfall layers (short-circuit — returns on first hit):
   Layer 0: Contact registry (free) — company_email from contact_data, name-match gated
-  Layer 1: ContactOut (DM-specific, verified) — PROMOTED above website HTML (#317.3)
+  Layer 1: ContactOut (DM-specific, verified) — /v1/people/enrich (SEARCH credits)
            current_match = email domain matches current employer → high confidence
-           stale = domain mismatch → falls through to Leadmagic
-  Layer 2: Website HTML scrape (free) — DEMOTED below ContactOut
+           stale = domain mismatch → falls through to Hunter
+  Layer 2: Hunter email-finder (free, included in plan) — name + domain lookup
+           Score >= 70 required. 2000 calls/mo.
+  Layer 3: Website HTML scrape (free) — DEMOTED below ContactOut + Hunter
            Generic inbox penalty: sales@/info@/contact@ etc. do NOT short-circuit
            — fall through to paid layers. Accepted as last-resort fallback only.
-  Layer 3: Leadmagic email finder ($0.015 USD) — API lookup by name + domain, verified
-  Layer 4: ContactOut stale fallback — stale email accepted after Leadmagic miss
-  Layer 4.5: Website generic fallback — generic inbox accepted after all paid miss
-  Layer 5: Bright Data LinkedIn enrichment ($0.00075 USD) — profile → email, unverified
+  Layer 4: Leadmagic email finder ($0.015 USD) — API lookup by name + domain, verified
+  Layer 4.5: ContactOut stale fallback — stale email accepted after Leadmagic miss
+  Layer 5: Website generic fallback — generic inbox accepted after all paid miss
+  Layer 6: Bright Data LinkedIn enrichment ($0.00075 USD) — profile → email, unverified
 
 Semaphore: GLOBAL_SEM_LEADMAGIC (10 concurrent) added to global pool.
 """
@@ -557,7 +559,44 @@ async def discover_email(
                 domain, co_email,
             )
 
-    # Layer 2: Website HTML (free, unverified — DEMOTED below ContactOut)
+    # Layer 2: Hunter email-finder (free — included in plan, 2000 calls/mo)
+    # Returns email by name + domain. No mobile. Gated on dm_verified=true
+    # to avoid confident email on unconfirmed DM (buildmat-style risk).
+    if first and last and clean_domain:
+        try:
+            import os, httpx
+            hunter_key = os.environ.get("HUNTER_API_KEY", "")
+            if hunter_key:
+                async with httpx.AsyncClient(timeout=15) as client:
+                    r = await client.get(
+                        "https://api.hunter.io/v2/email-finder",
+                        params={
+                            "domain": clean_domain,
+                            "first_name": first.capitalize(),
+                            "last_name": last.capitalize(),
+                            "api_key": hunter_key,
+                        },
+                    )
+                    if r.status_code == 200:
+                        data = r.json().get("data", {})
+                        hunter_email = data.get("email")
+                        hunter_score = data.get("score", 0)
+                        if hunter_email and hunter_score >= 70:
+                            logger.info(
+                                "email_waterfall L2 hunter domain=%s email=%s score=%s",
+                                domain, hunter_email, hunter_score,
+                            )
+                            return EmailResult(
+                                email=hunter_email,
+                                verified=False,
+                                source="hunter",
+                                confidence="high" if hunter_score >= 90 else "medium",
+                                cost_usd=0.0,  # included in plan
+                            )
+        except Exception as exc:
+            logger.warning("email_waterfall L2 hunter failed domain=%s: %s", domain, exc)
+
+    # Layer 3: Website HTML (free, unverified — DEMOTED below ContactOut + Hunter)
     # Generic email penalty: if local part is a shared inbox name, flag as generic
     # and fall through to Leadmagic rather than short-circuiting.
     if 1 not in skip:

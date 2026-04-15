@@ -101,7 +101,7 @@ class CycleEvent(Base):
     event_type: Mapped[str] = mapped_column(Text, nullable=False)
     # triggered_by: 'customer', 'system', 'admin', 'timeout'
     triggered_by: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    metadata: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    event_metadata: Mapped[Optional[dict]] = mapped_column("metadata", JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default="now()")
 
     cycle: Mapped["Cycle"] = relationship("Cycle", back_populates="events")

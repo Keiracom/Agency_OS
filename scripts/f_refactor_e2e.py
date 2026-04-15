@@ -1,6 +1,6 @@
-"""
-Pipeline F — single-domain E2E runner.
+"""DEPRECATED — v1 pipeline. Do not run. Replaced by Directive D1 cohort runner for Pipeline F v2.1.
 
+Original: Pipeline F v1 — single-domain E2E runner.
 Stage order per F-REFACTOR-01:
   F3a COMPREHEND → F2 SIGNAL → F3b COMPILE → F4 VERIFY → F5 CONTACT
   → F5 DM POSTS → F6 CLASSIFY → F6 ENHANCED VR

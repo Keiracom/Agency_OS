@@ -1,4 +1,4 @@
-"""F4 — Verification Gap Fills.
+"""Stage 2 — VERIFY (Gap Fills).
 
 ABN is now PRIMARY via DFS SERP (not Gemini). Gemini ABN is discarded entirely.
 LinkedIn DM URL fill also uses DFS SERP with safe error handling.
@@ -97,7 +97,7 @@ async def fill_abn_via_serp(
     suburb: str | None = None,
     state: str | None = None,
 ) -> str | None:
-    """F4: resolve ABN via DFS SERP query '{business_name} ABN'.
+    """Stage 2 VERIFY: resolve ABN via DFS SERP query '{business_name} ABN'.
 
     This is now the PRIMARY (and only) ABN source. Gemini ABN is discarded.
 
@@ -108,7 +108,7 @@ async def fill_abn_via_serp(
     from decimal import Decimal
 
     # Compound SERP strategy: try 3 query variants in priority order
-    # Suburb/state come from F3a location output (passed via business_name enrichment)
+    # Suburb/state come from Stage 3 IDENTIFY location output (passed via business_name enrichment)
     queries = []
     if suburb:
         queries.append(f'"{business_name}" "{suburb}" ABN')
@@ -139,7 +139,7 @@ async def fill_linkedin_via_serp(
     dm_name: str,
     business_name: str,
 ) -> str | None:
-    """F4: resolve DM LinkedIn URL via DFS SERP query '{dm_name} {business_name} LinkedIn'.
+    """Stage 2 VERIFY: resolve DM LinkedIn URL via DFS SERP query '{dm_name} {business_name} LinkedIn'.
 
     Returns: LinkedIn /in/ URL string or None.
     """
@@ -175,7 +175,7 @@ async def fill_company_linkedin_via_serp(
     dfs: DFSLabsClient,
     business_name: str,
 ) -> str | None:
-    """F4: resolve company LinkedIn URL via DFS SERP.
+    """Stage 2 VERIFY: resolve company LinkedIn URL via DFS SERP.
 
     Returns: LinkedIn /company/ URL string or None.
     """
@@ -203,11 +203,12 @@ async def run_verify_fills(
     dfs: DFSLabsClient,
     f3a_output: dict,
 ) -> dict:
-    """Run all F4 gap fills and return a fills dict.
+    """Stage 2 VERIFY: run all gap fills and return a fills dict.
 
     Args:
         dfs: Authenticated DFSLabsClient.
-        f3a_output: Parsed F3a output dict.
+        f3a_output: Parsed Stage 3 IDENTIFY output dict.
+            NOTE: param name retained for caller compatibility (scripts use f3a_output= kwarg).
 
     Returns:
         {

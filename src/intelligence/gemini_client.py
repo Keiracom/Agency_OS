@@ -18,8 +18,8 @@ import logging
 import os
 from typing import Any
 
-from src.intelligence.comprehend_schema_f3a import F3A_SYSTEM_PROMPT
-from src.intelligence.comprehend_schema_f3b import F3B_SYSTEM_PROMPT
+from src.intelligence.comprehend_schema_f3a import STAGE3_IDENTIFY_PROMPT
+from src.intelligence.comprehend_schema_f3b import STAGE7_ANALYSE_PROMPT
 from src.intelligence.gemini_retry import GEMINI_MODEL_DM, gemini_call_with_retry
 
 logger = logging.getLogger(__name__)
@@ -65,15 +65,15 @@ class GeminiClient:
         max_retries: int = 4,
         serp_data: dict | None = None,
     ) -> dict[str, Any]:
-        """F3a — identity + DM identification with grounding ON.
+        """Stage 3 IDENTIFY — identity + DM identification with grounding ON.
 
         Args:
             domain: Prospect domain (used in user prompt for URL context hint).
             dfs_base_metrics: Base DFS metrics dict (domain_rank_overview output).
-            serp_data: Optional Stage 2 SERP candidates to seed Gemini.
+            serp_data: Optional Stage 2 VERIFY SERP candidates to seed Gemini.
 
         Returns:
-            gemini_retry result dict with content = F3a JSON or None on failure.
+            gemini_retry result dict with content = Stage 3 IDENTIFY JSON or None on failure.
         """
         user_prompt = f"Analyse the Australian SMB at domain: {domain}\n\n"
         if serp_data:
@@ -93,7 +93,7 @@ class GeminiClient:
         )
         result = await gemini_call_with_retry(
             api_key=self.api_key,
-            system_prompt=F3A_SYSTEM_PROMPT,
+            system_prompt=STAGE3_IDENTIFY_PROMPT,
             user_prompt=user_prompt,
             enable_grounding=True,
             max_retries=max_retries,
@@ -106,21 +106,23 @@ class GeminiClient:
         if result.get("f_status") == "success" and content:
             dm = (content.get("dm_candidate") or {}).get("name")
             if dm and dm.lower() not in ("null", "none", ""):
-                result = await self._verify_dm(domain, content, result, max_retries)
+                result = await self._verify_dm(
+                    domain, stage3_content=content, stage3_result=result, max_retries=max_retries
+                )
 
         return result
 
     async def _verify_dm(
         self,
         domain: str,
-        f3a_content: dict,
-        f3a_result: dict,
+        stage3_content: dict,
+        stage3_result: dict,
         max_retries: int = 4,
     ) -> dict[str, Any]:
         """Step 2: Verify DM is the correct LOCAL Australian decision-maker."""
-        biz = f3a_content.get("business_name", "unknown")
-        dm = (f3a_content.get("dm_candidate") or {}).get("name", "")
-        role = (f3a_content.get("dm_candidate") or {}).get("role", "")
+        biz = stage3_content.get("business_name", "unknown")
+        dm = (stage3_content.get("dm_candidate") or {}).get("name", "")
+        role = (stage3_content.get("dm_candidate") or {}).get("role", "")
 
         verify_system = (
             "You are verifying a decision-maker identification for an Australian SMB. "
@@ -154,31 +156,31 @@ class GeminiClient:
 
         v_content = v_result.get("content")
         if not v_content or v_result.get("f_status") != "success":
-            return f3a_result  # verification failed, trust step 1
+            return stage3_result  # verification failed, trust step 1
 
         verified = v_content.get("dm_verified")
         corrected_dm = (v_content.get("dm_candidate") or {}).get("name")
         corrected_role = (v_content.get("dm_candidate") or {}).get("role")
 
         if str(verified).lower() == "true":
-            # Confirmed — keep original
-            f3a_result["content"]["_dm_verified"] = True
-            f3a_result["content"]["_dm_verification_note"] = v_content.get("verification_note", "")
-            return f3a_result
+            # Confirmed — keep original Stage 3 IDENTIFY result
+            stage3_result["content"]["_dm_verified"] = True
+            stage3_result["content"]["_dm_verification_note"] = v_content.get("verification_note", "")
+            return stage3_result
 
         if corrected_dm and corrected_dm != dm:
-            # Corrected — update DM in f3a content
+            # Corrected — update DM in Stage 3 IDENTIFY content
             logger.info("DM CORRECTED for %s: %s → %s (%s)", domain, dm, corrected_dm, v_content.get("verification_note", ""))
-            f3a_result["content"]["dm_candidate"]["name"] = corrected_dm
+            stage3_result["content"]["dm_candidate"]["name"] = corrected_dm
             if corrected_role:
-                f3a_result["content"]["dm_candidate"]["role"] = corrected_role
-            f3a_result["content"]["_dm_verified"] = True
-            f3a_result["content"]["_dm_corrected_from"] = dm
-            f3a_result["content"]["_dm_verification_note"] = v_content.get("verification_note", "")
+                stage3_result["content"]["dm_candidate"]["role"] = corrected_role
+            stage3_result["content"]["_dm_verified"] = True
+            stage3_result["content"]["_dm_corrected_from"] = dm
+            stage3_result["content"]["_dm_verification_note"] = v_content.get("verification_note", "")
             if v_content.get("entity_name"):
-                f3a_result["content"]["_entity_name"] = v_content["entity_name"]
+                stage3_result["content"]["_entity_name"] = v_content["entity_name"]
 
-        return f3a_result
+        return stage3_result
 
     async def call_f3b(
         self,
@@ -186,24 +188,25 @@ class GeminiClient:
         signal_bundle: dict,
         max_retries: int = 4,
     ) -> dict[str, Any]:
-        """F3b — generation with grounding OFF (uses cached F3a context).
+        """Stage 7 ANALYSE — generation with grounding OFF (uses Stage 3 IDENTIFY context).
 
         Args:
-            f3a_output: Parsed F3a JSON dict (identity + scoring).
+            f3a_output: Parsed Stage 3 IDENTIFY JSON dict (identity + scoring).
+                NOTE: param name retained for caller compatibility (scripts use f3a_output= kwarg).
             signal_bundle: Full DFS signal bundle dict.
 
         Returns:
-            gemini_retry result dict with content = F3b JSON or None on failure.
+            gemini_retry result dict with content = Stage 7 ANALYSE JSON or None on failure.
         """
         user_prompt = (
-            f"Prospect identity (from F3a, do not modify):\n"
+            f"Prospect identity (from Stage 3 IDENTIFY — do not modify):\n"
             f"{json.dumps(f3a_output, indent=2)}\n\n"
             f"DFS signal bundle:\n{json.dumps(signal_bundle, indent=2)}\n\n"
             "Generate the vulnerability report and outreach drafts as specified."
         )
         result = await gemini_call_with_retry(
             api_key=self.api_key,
-            system_prompt=F3B_SYSTEM_PROMPT,
+            system_prompt=STAGE7_ANALYSE_PROMPT,
             user_prompt=user_prompt,
             enable_grounding=False,
             max_retries=max_retries,
@@ -224,7 +227,7 @@ class GeminiClient:
         """Legacy unified comprehend — delegates to gemini_call_with_retry.
 
         Kept for backward compatibility with callers that have not yet
-        migrated to call_f3a / call_f3b.
+        migrated to call_f3a (Stage 3 IDENTIFY) / call_f3b (Stage 7 ANALYSE).
         """
         result = await gemini_call_with_retry(
             api_key=self.api_key,

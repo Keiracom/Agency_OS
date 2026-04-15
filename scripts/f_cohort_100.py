@@ -1,5 +1,6 @@
-"""
-Pipeline F — 100-domain cohort runner.
+"""DEPRECATED — v1 pipeline. Do not run. Replaced by Directive D1 cohort runner for Pipeline F v2.1.
+
+Original: Pipeline F v1 — 100-domain cohort runner.
 F-TASK-B-100: 10 categories × 10 domains → F3a→F6 pipeline.
 """
 import os

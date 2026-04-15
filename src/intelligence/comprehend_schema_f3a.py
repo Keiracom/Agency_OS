@@ -1,14 +1,14 @@
-"""F3a comprehension schema — identity and DM identification only.
+"""Stage 3 — IDENTIFY: comprehension schema — identity and DM identification only.
 
-F3a fires WITH grounding. Produces identity + DM candidate.
-Scoring (affordability, intent, buyer_match) moved to F3b (Stage 5 ANALYSE).
-ABN is NOT in this schema — ABN comes from Stage 2 SERP only.
+Stage 3 IDENTIFY fires WITH grounding. Produces identity + DM candidate.
+Scoring (affordability, intent, buyer_match) moved to Stage 7 ANALYSE.
+ABN is NOT in this schema — ABN comes from Stage 2 VERIFY SERP only.
 
 Pipeline F v2. Ratified: 2026-04-15.
 """
 from __future__ import annotations
 
-F3A_SYSTEM_PROMPT = """You are identifying the decision-maker at an Australian SMB who would approve purchasing marketing services. Return ONLY valid JSON.
+STAGE3_IDENTIFY_PROMPT = """You are identifying the decision-maker at an Australian SMB who would approve purchasing marketing services. Return ONLY valid JSON.
 
 Your primary objective is finding the PERSON who makes buying decisions at this business — the owner, founder, managing director, CEO, or principal. Every Australian SMB has someone running it. Find them.
 

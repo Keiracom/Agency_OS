@@ -62,7 +62,8 @@ def score_prospect(
 
     Args:
         signal_bundle: Stage 4 SIGNAL output (rank_overview, gmb, backlinks, ads, etc.)
-        f3a_output: Stage 3 IDENTIFY output (business identity, DM, enterprise flag)
+        f3a_output: Stage 3 IDENTIFY output (business identity, DM, enterprise flag).
+            NOTE: param name retained for caller compatibility. Rename deferred to Directive C when filenames change.
         category_name: Discovery category for ETV window lookup.
 
     Returns:

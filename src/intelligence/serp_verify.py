@@ -1,9 +1,9 @@
 """Stage 2 — VERIFY: SERP-based candidate discovery.
 
-4 parallel DFS SERP calls per domain to gather candidate data before Gemini.
+5 parallel DFS SERP calls per domain to gather candidate data before Gemini.
 Gemini uses these as starting points, not restrictions.
 
-Pipeline F v2. Ratified: 2026-04-15.
+Pipeline F v2.1. Ratified: 2026-04-15.
 """
 from __future__ import annotations
 
@@ -21,6 +21,9 @@ logger = logging.getLogger(__name__)
 ABN_RE = re.compile(r"\b(\d{2}\s?\d{3}\s?\d{3}\s?\d{3})\b")
 LINKEDIN_COMPANY_RE = re.compile(
     r"https?://(?:[a-z]{2,3}\.)?linkedin\.com/company/[a-zA-Z0-9\-_%]+/?", re.IGNORECASE
+)
+FACEBOOK_PAGE_RE = re.compile(
+    r"https?://(?:www\.)?facebook\.com/[a-zA-Z0-9.\-_]+/?", re.IGNORECASE
 )
 
 
@@ -76,6 +79,18 @@ def _extract_company_linkedin(serp_result: dict) -> str | None:
     return None
 
 
+def _extract_facebook_url(serp_result: dict) -> str | None:
+    """Extract Facebook page URL from SERP results."""
+    items = serp_result.get("items") or []
+    for item in items[:3]:
+        if not isinstance(item, dict):
+            continue
+        url = item.get("url") or ""
+        if FACEBOOK_PAGE_RE.match(url) and "facebook.com/share" not in url:
+            return url.rstrip("/") + "/"
+    return None
+
+
 def _extract_dm_candidate(serp_result: dict) -> str | None:
     """Extract owner/director/founder name from SERP snippets."""
     items = serp_result.get("items") or []
@@ -97,7 +112,7 @@ async def run_serp_verify(
     dfs: "DFSLabsClient",  # noqa: UP037
     domain: str,
 ) -> dict:
-    """Run 4 SERP queries in parallel to gather candidate data for a domain.
+    """Run 5 SERP queries in parallel to gather candidate data for a domain.
 
     Returns:
         {
@@ -105,6 +120,7 @@ async def run_serp_verify(
             "serp_abn": str | None,
             "serp_company_linkedin": str | None,
             "serp_dm_candidate": str | None,
+            "serp_facebook_url": str | None,
             "_cost": float,
         }
     """
@@ -131,26 +147,32 @@ async def run_serp_verify(
             logger.warning("SERP query '%s' failed: %s", keyword[:40], exc)
             return {}
 
-    q_biz, q_abn, q_li, q_dm = await asyncio.gather(
-        _serp(f'"{clean_domain}"'),
+    # Extract business name first for Facebook query
+    q_biz = await _serp(f'"{clean_domain}"')
+    biz_name = _extract_business_name(q_biz)
+
+    q_abn, q_li, q_dm, q_fb = await asyncio.gather(
         _serp(f'"{clean_domain}" ABN'),
         _serp(f'"{clean_domain}" site:linkedin.com/company'),
         _serp(f'"{clean_domain}" owner OR director OR founder'),
+        _serp(f'"{biz_name}" site:facebook.com' if biz_name else f'"{clean_domain}" site:facebook.com'),
     )
 
     result = {
-        "serp_business_name": _extract_business_name(q_biz),
+        "serp_business_name": biz_name,
         "serp_abn": _extract_abn(q_abn),
         "serp_company_linkedin": _extract_company_linkedin(q_li),
         "serp_dm_candidate": _extract_dm_candidate(q_dm),
+        "serp_facebook_url": _extract_facebook_url(q_fb),
         "_cost": dfs.total_cost_usd - cost_before,
     }
     logger.info(
-        "Stage 2 VERIFY %s: biz=%s abn=%s li=%s dm=%s",
+        "Stage 2 VERIFY %s: biz=%s abn=%s li=%s dm=%s fb=%s",
         domain,
         result["serp_business_name"][:30] if result["serp_business_name"] else "null",
         result["serp_abn"] or "null",
         bool(result["serp_company_linkedin"]),
         result["serp_dm_candidate"] or "null",
+        bool(result["serp_facebook_url"]),
     )
     return result

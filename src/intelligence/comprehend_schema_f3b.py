@@ -1,10 +1,11 @@
-"""Stage 7 — ANALYSE: comprehension schema.
+"""Stage 7 — ANALYSE: vulnerability report + outreach drafts.
 
 Stage 7 ANALYSE fires WITHOUT grounding. Receives Stage 3 IDENTIFY output + DFS signal bundle.
-Generates scoring (affordability, intent, buyer_match), vulnerability analysis,
+Generates vulnerability report (structured, data-driven), intent band classification,
 and personalised outreach drafts.
 
-Scoring fields moved here from Stage 3 IDENTIFY in Pipeline F v2.
+Scoring is handled by Stage 5 prospect_scorer.py (deterministic formula).
+Stage 7 does NOT score — it writes narrative and outreach only.
 
 Sender fields MUST use {{agency_contact_name}} and {{agency_name}} placeholders.
 Do NOT hardcode any agency or contact names.
@@ -15,37 +16,42 @@ Pipeline F v2. Ratified: 2026-04-15.
 """
 from __future__ import annotations
 
-STAGE7_ANALYSE_PROMPT = """You are scoring and generating outreach materials for an Australian SMB prospect.
-You receive the prospect's identity data from Stage 3 IDENTIFY plus a DFS signal bundle with organic/paid metrics.
+STAGE7_ANALYSE_PROMPT = """You are a senior marketing analyst producing a vulnerability report and outreach drafts for an Australian SMB prospect. You receive identity data from Stage 3 IDENTIFY plus a DFS signal bundle with organic/paid/GMB/backlink/tech metrics.
 
-CRITICAL: Do NOT modify identity facts from Stage 3 IDENTIFY. Use them as-is.
+CRITICAL: Do NOT modify identity facts from Stage 3. Use them as-is.
 Sender fields MUST use {{agency_contact_name}} and {{agency_name}} placeholders — never hardcode names.
+Do NOT invent numbers. Only cite data present in the signal bundle. If a metric is missing, omit it.
 
 Return ONLY valid JSON:
 
 {
-  "affordability_score": 0,
-  "affordability_gate": "can_afford | cannot_afford",
   "intent_band_final": "DORMANT | DABBLING | TRYING | STRUGGLING | NOT_TRYING",
   "intent_evidence_final": [
     "evidence citing specific DFS numbers",
     "evidence citing specific DFS numbers",
     "evidence citing specific DFS numbers"
   ],
-  "buyer_match_score": 0,
   "vulnerability_report": {
-    "top_vulnerabilities": [
-      "specific gap 1 with quantified detail",
-      "specific gap 2 with quantified detail",
-      "specific gap 3 with quantified detail"
+    "summary": "2-3 sentence executive summary of their marketing position",
+    "strengths": [
+      "specific thing they do well, with data from the signal bundle"
     ],
-    "quantified_opportunities": [
-      "X keywords on page 2",
-      "Y competitors outranking on Z keyword"
+    "vulnerabilities": [
+      {
+        "area": "SEO | Paid Ads | Social | Reviews | Content | Technical",
+        "finding": "specific gap with quantified data from signals",
+        "impact": "what this costs them in plain English",
+        "recommendation": "what the agency should propose"
+      }
     ],
-    "what_marketing_agency_could_fix": "one paragraph — specific, actionable, referencing their actual gaps"
+    "gmb_health": {
+      "rating": 0,
+      "reviews": 0,
+      "assessment": "Strong | Moderate | Weak — with context"
+    },
+    "recommended_services": ["SEO", "Google Ads", "Social Media Management"],
+    "urgency": "high | medium | low — based on declining metrics or competitive pressure"
   },
-  "buyer_reasoning_summary": "one paragraph — best angle for outreach based on their specific situation",
   "draft_email": {
     "subject": "under 60 chars, specific to their business",
     "body": "3-5 sentences referencing a specific vulnerability, sounds human not AI, signs off as {{agency_contact_name}} from {{agency_name}}"
@@ -55,11 +61,10 @@ Return ONLY valid JSON:
 }
 
 Rules:
-- affordability_score: 0-10, based on business size, online presence, DFS traffic signals, and pricing signals.
-- affordability_gate: "can_afford" if score >= 5, else "cannot_afford".
 - intent_band_final: based on DFS organic signals, paid activity, and website quality. TRYING = active SEO effort. STRUGGLING = effort but poor results. DABBLING = minimal online presence. DORMANT = no activity. NOT_TRYING = deliberately offline.
-- buyer_match_score: 0-10, how well this prospect matches a B2B digital marketing agency ICP.
 - Reference SPECIFIC numbers from the DFS signal bundle (e.g. "you rank for 94 keywords in positions 4-10").
+- Strengths: acknowledge what the business does well FIRST. Builds trust.
+- Vulnerabilities: each must have area + finding + impact + recommendation. Quantify with actual signal data.
 - Sound like a direct, curious Australian professional — not an American corporate salesperson.
 - All monetary amounts in AUD.
-- Vulnerability statements must be quantified where DFS data supports it."""
+- Do NOT generate affordability_score, buyer_match_score, or any scoring fields. Scoring is handled separately."""

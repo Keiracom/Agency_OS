@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 D1.8.2 — Session History Extraction
-Extracts 8 categories of structured data from 5 JSONL session files (Apr 8-15).
+Extracts 9 categories of structured data from 5 JSONL session files (Apr 8-15).
 Deterministic: running twice produces identical output.
 """
 
@@ -176,6 +176,28 @@ CODE_CONTEXT_KW = re.compile(
 )
 
 
+CEO_VERIFY_KW = re.compile(
+    r"\b(before merge|paste verbatim|confirm|show me|evidence|verify)\b",
+    re.IGNORECASE,
+)
+CEO_VERIFY_CONTEXT = re.compile(
+    r"\b(prove|check|output|result|paste|did you|have you|run|grep|test)\b",
+    re.IGNORECASE,
+)
+
+
+def is_ceo_verification_ask(role: str, text: str) -> bool:
+    if role != "user":
+        return False
+    if not CEO_VERIFY_KW.search(text):
+        return False
+    if not CEO_VERIFY_CONTEXT.search(text):
+        return False
+    if len(text.strip()) < 15:
+        return False
+    return True
+
+
 def is_bug_discovery(role: str, text: str) -> bool:
     m = BUG_KW.search(text)
     if not m:
@@ -255,6 +277,7 @@ CATEGORIES = {
     "governance_language": is_governance_language,
     "cost_reports": is_cost_report,
     "bug_discoveries": is_bug_discovery,
+    "ceo_verification_asks": is_ceo_verification_ask,
 }
 
 
@@ -279,6 +302,7 @@ CATEGORY_TITLES = {
     "governance_language": "Governance Language",
     "cost_reports": "Cost Reports",
     "bug_discoveries": "Bug Discoveries",
+    "ceo_verification_asks": "CEO Verification Asks",
 }
 
 CATEGORY_FILES = {
@@ -290,6 +314,7 @@ CATEGORY_FILES = {
     "governance_language": "06_governance_language.md",
     "cost_reports": "07_cost_reports.md",
     "bug_discoveries": "08_bug_discoveries.md",
+    "ceo_verification_asks": "09_ceo_verification_asks.md",
 }
 
 

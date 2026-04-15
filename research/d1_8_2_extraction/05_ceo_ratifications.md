@@ -10168,3 +10168,11 @@ All 19 backfills complete. Pushed to GitHub on branch `directive-d1-8-save-mecha
 ```
 
 ---
+
+## Entry 241 — 2026-04-15T14:10:02.216Z — 1561a09a-23af-48c1-9f26-f45c134f2750.jsonl
+
+```
+[TG] ADD-ON TO D1.8.2 — 9th EXTRACTION CATEGORY  Add before completing extraction:  09_ceo_verification_asks.md — every Dave message containing "before merge," "paste verbatim," "confirm," "show me," "evidence," "verify" in the context of asking Elliottbot to prove something. Verbatim with 1-line prior context (what's being verified).  Same format as other categories. Chronological.  This captures the verify-before-claim discipline as a behavioral pattern even when the rule wasn't named explicitly. Important for synthesis.  If extraction is already complete, run extraction script in --append-category mode to add only this 9th file.
+```
+
+---

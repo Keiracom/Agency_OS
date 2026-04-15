@@ -1,3 +1,10 @@
+# DEPRECATED — replaced by unified waterfall in D2.1B (2026-04-15)
+# cohort_runner now calls:
+#   src/pipeline/contactout_enricher.py (ContactOut /v1/people/enrich)
+#   src/pipeline/email_waterfall.py (5-layer email discovery)
+#   src/pipeline/mobile_waterfall.py (4-tier mobile discovery)
+# Kept for rollback reference until D2.2 validates new path.
+
 """Stage 8 — CONTACT: Contact Waterfall.
 
 Three cascading waterfalls per directive F-REFACTOR-01:

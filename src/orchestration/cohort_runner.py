@@ -35,7 +35,9 @@ for _k, _v in env.items():
 from src.clients.dfs_labs_client import DFSLabsClient
 from src.config.category_etv_windows import CATEGORY_ETV_WINDOWS, get_etv_window
 from src.integrations.bright_data_client import BrightDataClient
-from src.intelligence.contact_waterfall import run_contact_waterfall
+from src.pipeline.contactout_enricher import enrich_dm_via_contactout
+from src.pipeline.email_waterfall import discover_email
+from src.pipeline.mobile_waterfall import run_mobile_waterfall
 from src.intelligence.dfs_signal_bundle import build_signal_bundle
 from src.intelligence.enhanced_vr import run_stage10_vr_and_messaging
 from src.intelligence.funnel_classifier import assemble_card
@@ -273,44 +275,86 @@ async def _run_stage7(domain_data: dict, gemini: GeminiClient) -> dict:
 
 
 async def _run_stage8(domain_data: dict, dfs: DFSLabsClient) -> dict:
-    """Stage 8 CONTACT — verify fills (8a) + contact waterfall (8b)."""
+    """Stage 8 CONTACT — verify fills (8a) + unified contact waterfall (8b-d)."""
     t0 = time.monotonic()
     identity = domain_data.get("stage3") or {}
     dm = identity.get("dm_candidate") or {}
-    serp = domain_data.get("stage2") or {}
 
-    # 8a: verify fills
+    # 8a: verify fills (unchanged)
     try:
         fills = await run_verify_fills(dfs=dfs, f3a_output=identity)
         domain_data["stage8_verify"] = fills
-        # Dynamic SERP cost from verify_fills (up to 4 queries), plus fixed waterfall cost.
-        # If verify_fills._cost is absent, fall back to STAGE8_SERP_FALLBACK ($0.008).
         serp_cost = fills.get("_cost", STAGE8_SERP_FALLBACK)
-        domain_data["cost_usd"] += serp_cost + STAGE8_WATERFALL_COST
+        domain_data["cost_usd"] += serp_cost
     except Exception as exc:
         domain_data["errors"].append(f"stage8a: {exc}")
         fills = {}
         domain_data["stage8_verify"] = {}
 
-    # 8b: contact waterfall
+    # 8b: ContactOut enrichment (one call, captures email + mobile)
+    dm_linkedin = (
+        (domain_data.get("stage8_contacts") or {}).get("linkedin", {}).get("linkedin_url")
+        or fills.get("dm_linkedin_url")
+        or dm.get("linkedin_url")
+    )
+    contactout_result = None
     try:
-        contacts = await run_contact_waterfall(
-            dm_name=dm.get("name"),
-            dm_title=dm.get("role"),
-            business_name=identity.get("business_name", ""),
-            domain=domain_data["domain"],
-            f3a_linkedin_url=dm.get("linkedin_url"),
-            f4_linkedin_url=fills.get("dm_linkedin_url"),
-            company_linkedin_url=(
-                fills.get("company_linkedin_url") or serp.get("serp_company_linkedin")
-            ),
-            entity_type=identity.get("entity_type_hint"),
-            business_phone=identity.get("primary_phone"),
-        )
-        domain_data["stage8_contacts"] = contacts
+        contactout_result = await enrich_dm_via_contactout(dm_linkedin)
+        if contactout_result:
+            domain_data["cost_usd"] += STAGE8_WATERFALL_COST  # ContactOut credit
     except Exception as exc:
-        domain_data["errors"].append(f"stage8b: {exc}")
-        domain_data["stage8_contacts"] = {}
+        domain_data["errors"].append(f"stage8b_contactout: {exc}")
+
+    # 8c: Email waterfall (uses contactout_result, falls through to Hunter/Leadmagic/BD)
+    email_result = None
+    try:
+        email_result = await discover_email(
+            domain=domain_data["domain"],
+            dm_name=dm.get("name", ""),
+            dm_linkedin=dm_linkedin,
+            html=None,  # HTML not cached in cohort_runner
+            company_name=identity.get("business_name"),
+            contactout_result=contactout_result,
+        )
+    except Exception as exc:
+        domain_data["errors"].append(f"stage8c_email: {exc}")
+
+    # 8d: Mobile waterfall (uses contactout_result, no duplicate API call)
+    mobile_result = None
+    try:
+        mobile_result = await run_mobile_waterfall(
+            domain=domain_data["domain"],
+            dm_linkedin_url=dm_linkedin,
+            contact_data=None,
+            contactout_result=contactout_result,
+        )
+    except Exception as exc:
+        domain_data["errors"].append(f"stage8d_mobile: {exc}")
+
+    # Combine into stage8_contacts — preserving nested dict format for assemble_card
+    contacts = {}
+    if email_result:
+        contacts["email"] = {
+            "email": email_result.email,
+            "verified": email_result.verified,
+            "source": email_result.source,
+            "confidence": email_result.confidence,
+            "cost_usd": email_result.cost_usd,
+        }
+        domain_data["cost_usd"] += email_result.cost_usd
+    if mobile_result and mobile_result.mobile:
+        contacts["mobile"] = {
+            "mobile": mobile_result.mobile,
+            "source": mobile_result.source,
+            "cost_usd": float(mobile_result.cost_usd),
+        }
+        domain_data["cost_usd"] += float(mobile_result.cost_usd)
+    # Preserve LinkedIn data from verify_fills
+    contacts["linkedin"] = {
+        "linkedin_url": dm_linkedin,
+        "match_type": "direct_match" if dm_linkedin else "no_match",
+    }
+    domain_data["stage8_contacts"] = contacts
 
     domain_data["timings"]["stage8"] = round(time.monotonic() - t0, 2)
     return domain_data
@@ -350,7 +394,8 @@ async def _run_stage9(domain_data: dict, bd: BrightDataClient) -> dict:
 async def _run_stage10(domain_data: dict) -> dict:
     """Stage 10 VR+MSG — value report and outreach (gated: email found)."""
     contacts = domain_data.get("stage8_contacts") or {}
-    if not contacts.get("email"):
+    email_data = contacts.get("email", {})
+    if not email_data.get("email"):
         return domain_data
     t0 = time.monotonic()
     try:

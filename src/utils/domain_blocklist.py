@@ -94,9 +94,12 @@ AGGREGATORS = frozenset({
     # Construction
     "masterbuilders.com.au", "buildsearch.com.au",
     "architectslist.com.au",
-    # Industry bodies
+    # Industry bodies / bar associations
     "ada.org.au", "ada.org", "finder.orthodonticsaustralia.org.au",
     "hia.com.au", "aibs.com.au", "lawcouncil.asn.au",
+    "qls.com.au", "vicbar.com.au", "austbar.asn.au",
+    # Legal / industry media
+    "lsj.com.au", "lawyersweekly.com.au", "lawfoundation.net.au",
 })
 
 # ── CONSTRUCTION RETAILERS / DISTRIBUTORS ────────────────────────────────────
@@ -150,7 +153,7 @@ CONSTRUCTION_CHAINS = frozenset({
 # Legal chains
 LEGAL_CHAINS = frozenset({
     "slatergordon.com.au", "mauriceblackburn.com.au", "shineapp.com.au",
-    "shinelawyers.com.au", "gordonlegal.com.au", "holdingredlich.com",
+    "shinelawyers.com.au", "shine.com.au", "gordonlegal.com.au", "holdingredlich.com",
     "hallandwilcox.com.au", "minterellison.com", "allens.com.au",
     "claytonutz.com", "corrs.com.au", "herbertsmithfreehills.com",
     "ashurst.com", "kingwood.com.au", "gilberttobin.com",
@@ -170,12 +173,45 @@ FOREIGN_CLINICS = frozenset({
     "bangkokdentalcenter.com", "adalyadentalclinic.com",
 })
 
+# Fitness chains
+FITNESS_CHAINS = frozenset({
+    "fernwoodfitness.com.au", "anytimefitness.com.au", "f45training.com.au",
+    "snapfitness.com.au", "fitnessfirst.com.au", "planetfitness.com.au",
+    "planetfitnessaustralia.com.au", "orangetheory.com.au", "goodlifehealthclubs.com.au",
+    "plus.com.au", "vaboretum.com.au", "goldsgym.com.au",
+    "worldgym.com.au", "worldgymaustralia.com.au", "24hourfitness.com.au",
+    "curves.com.au", "jettsfitness.com.au", "zap.fitness", "clubfitness.com.au",
+})
+
+# Food/restaurant chains
+FOOD_CHAINS = frozenset({
+    "pizzahut.com.au", "dominos.com.au", "mcdonalds.com.au", "kfc.com.au",
+    "hungryjacks.com.au", "guzmanygomez.com.au", "subway.com.au",
+    "redrooster.com.au", "oporto.com.au", "nandos.com.au",
+    "zambrero.com.au", "madmex.com.au", "grilld.com.au",
+    "bettys.com.au", "sanschurro.com.au", "theboathousergroup.com.au",
+    "stellarestaurants.com.au", "merivale.com.au", "nrg.com.au",
+})
+
+# Media companies / publishing / directories
+MEDIA_COMPANIES = frozenset({
+    "news.com.au", "abc.net.au", "sbs.com.au",
+    "gourmettraveller.com.au", "delicious.com.au", "broadsheet.com.au",
+    "timeout.com", "urbanlist.com", "concreteplayground.com",
+    "bestrestaurants.com.au", "goodfood.com.au", "theguardian.com",
+    "stylemagazines.com.au", "frankie.com.au", "monocle.com",
+    "yellowpages.com.au", "truelocal.com.au", "localsearch.com.au",
+    "whitecoat.com.au", "hotdoc.com.au", "healthengine.com.au",
+    "quandoo.com.au", "dimmi.com.au", "opentable.com.au",
+})
+
 # ── COMBINED SET (for exact/subdomain match) ─────────────────────────────────
 BLOCKED_DOMAINS: frozenset[str] = (
     SOCIAL_PLATFORMS | TECH_GIANTS | WEBSITE_BUILDERS | HOSTING_INFRA |
     AU_GOVERNMENT | AU_MEDIA | AGGREGATORS | CONSTRUCTION_RETAILERS |
     BRANDS | HEALTH_FUNDS | DENTAL_CHAINS | CONSTRUCTION_CHAINS |
-    LEGAL_CHAINS | AUTO_CHAINS | FOREIGN_CLINICS
+    LEGAL_CHAINS | AUTO_CHAINS | FOREIGN_CLINICS | FITNESS_CHAINS |
+    FOOD_CHAINS | MEDIA_COMPANIES
 )
 
 

@@ -83,7 +83,7 @@ async def pause_cycle(
             cycle_id=cycle.id,
             event_type="paused",
             triggered_by="customer",
-            metadata={"user_id": str(ctx.user_id)},
+            event_metadata={"user_id": str(ctx.user_id)},
         )
     )
     await db.flush()
@@ -128,7 +128,7 @@ async def resume_cycle(
             cycle_id=cycle.id,
             event_type="resumed",
             triggered_by="customer",
-            metadata={"user_id": str(ctx.user_id)},
+            event_metadata={"user_id": str(ctx.user_id)},
         )
     )
     await db.flush()

@@ -306,14 +306,24 @@ async def _run_stage8(domain_data: dict, dfs: DFSLabsClient) -> dict:
         domain_data["errors"].append(f"stage8b_contactout: {exc}")
 
     # 8c: Email waterfall (uses contactout_result, falls through to Hunter/Leadmagic/BD)
+    # GOV-8: Stage 3 Gemini already extracted dm_email + primary_email from website.
+    # Pass as contact_data so L0 contact_registry can use it without re-fetching.
+    stage3_contact_data = {}
+    if dm.get("email"):
+        stage3_contact_data["company_email"] = dm["email"]
+    elif identity.get("dm_email"):
+        stage3_contact_data["company_email"] = identity["dm_email"]
+    elif identity.get("primary_email"):
+        stage3_contact_data["company_email"] = identity["primary_email"]
+
     email_result = None
     try:
         email_result = await discover_email(
             domain=domain_data["domain"],
             dm_name=dm.get("name", ""),
             dm_linkedin=dm_linkedin,
-            html=None,  # HTML not cached in cohort_runner
             company_name=identity.get("business_name"),
+            contact_data=stage3_contact_data or None,
             contactout_result=contactout_result,
         )
     except Exception as exc:

@@ -101,6 +101,7 @@ VALUES (gen_random_uuid(), 'daily_log', '<summary: what was done, PRs, decisions
 | LAW XV-B | DoD Is Mandatory — cat DEFINITION_OF_DONE.md before reporting complete |
 | LAW XV-C | Governance Docs Immutable — never recreate/modify without explicit CEO directive |
 | LAW XV-D | Step 0 RESTATE — mandatory restate before any directive execution, no exceptions |
+| GOV-8 | Maximum Extraction Per Call — every API response captured in full, written to BU regardless of card eligibility, never re-fetched if prior stage received it |
 
 ## Dead References (Do Not Use)
 

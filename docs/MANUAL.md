@@ -784,6 +784,30 @@ Audit fix sweep: 35 findings from D1.2 seam audit addressed. preflight_check.py 
 
 ### Directive D1.8 (PR #329, 2026-04-15)
 3-store save mechanism fix: (1) CLAUDE.md schema refs corrected (public.ceo_memory/cis_directive_metrics), (2) three_store_save.py automation script + skill, (3) CI directive-save-check.yml + session_end_check.py enforcement, (4) 19 directives backfilled from git history. Save mechanism now: one script, one call, 4 stores written.
+
+### Directive ECON-F21-correction (PR #329, 2026-04-15)
+Pipeline F v2.1 Economics Correction (n=100 actuals). Original projection: 0.25 USD/card (n=9, 80% conversion assumed). Actual: 0.53 USD/card (n=100, 28% conversion). Post-fix target: 0.23-0.36 USD/card at 60-65% conversion. Bottlenecks: Gemini 18% failure rate, DM identification 82%, wall-clock 17.7 min. Source: 07_cost_reports.md
+
+### Directive D1.1 (PR #327, 2026-04-15)
+7 bug fixes from 100-domain smoke test: budget hard cap (_check_budget helper, pre-run estimate, hard cap after stages 2/3/4/6/7/8/9/10), Stage 9 fixed cost $0.027 added, stage naming drop_reason renamed, blocklist +3 categories (313 domains), Gemini retry structured error_detail, BD env key fix, 3 parallel cost tests. 28% conversion, 17.7 min wall. [source: 01_dave_directives.md L6006; git 836745e0; PR #327]
+
+### Directive D1.2 (PR #0, 2026-04-15)
+Read-only seam audit of all 11 Pipeline F v2.1 stage modules + cohort runner. 7 reports in research/d1_2_audit/ (2648 lines). 35 findings: 1 critical, 4 high, 7 medium, 8 low, 15 info. Top findings: ABN signal zeroed, Stage 9 unverified LinkedIn URL, Stage 4 cost constant drift. No code changes. [source: 01_dave_directives.md L6010; git d075ea40; 05_ceo_ratifications.md L9611]
+
+### Directive D1.4 (PR #0, 2026-04-15)
+Post-fix re-audit verifying all 35 D1.2 findings resolved by D1.3. 7 re-audit reports in research/d1_4_reaudit/ (1125 lines). Result: 35/35 RESOLVED. Also surfaced 4 new LOW/INFO findings (N1-N4), triggering D1.5. Stage 4 $0.078 and Stage 8a $0.008 cost fixes confirmed accurate. [source: 01_dave_directives.md L6014; git 56bfc3fa; 05_ceo_ratifications.md L9614]
+
+### Directive D1.5 (PR #328, 2026-04-15)
+Fixed 4 LOW/INFO re-audit findings (N1-N4) before PR #328 merge. N2: cohort_runner exports STAGE cost constants; test imports + asserts them. N3: funnel_classifier.py stage10_status fallback comment added. N4: Stage 8 reads verify_fills._cost dynamically, fallback constant. N1: prospect_scorer NOTE added. Merged as beaa0ba5. [source: 01_dave_directives.md L6015; git 6f31d4b2; 05_ceo_ratifications.md L9448]
+
+### Directive D1.6 (PR #0, 2026-04-15)
+Session-end protocol execution: Supabase SESSION_HANDOFF entry written, docs/daily_log.md created and committed (git 3e67854c, 39 lines). 3-store save claimed complete but D1.7 investigation later revealed ceo_memory was stale (single 2026-02-03 entry) — partial save failure suspected. [source: 01_dave_directives.md L6017; git 3e67854c; 05_ceo_ratifications.md L9766]
+
+### Directive D1.7 (PR #0, 2026-04-15)
+Read-only forensic audit of 3-store save mechanism for PRs #324-#328. Findings: ceo_memory had single entry from 2026-02-03 (stale 71 days), Manual last updated 2026-04-08 (stale 7 days). ~15 directives missing from all 3 stores. Output fed directly into D1.8 backfill scope. No code changes. [source: 02_elliottbot_restates.md L1763; 03_pr_creations.md L70-74]
+
+### Directive D1.8.3 (PR #330, 2026-04-15)
+Synthesis + write in one pass. 7 governance rules written to Manual S17 + ceo_memory. 6 missing directives (D1.1-D1.7) backfilled to all 3 stores. Economics correction (0.25 projected vs 0.53 actual USD/card) written. 10 optimistic-completion catches documented. Total: 15 three_store_save.py invocations, all succeeded. Source: 1406 extraction entries from D1.8.2.
 ## SECTION 14 — COMPETITIVE INTELLIGENCE
 
 Direct competitors (signal-based AI BDR category):
@@ -893,6 +917,30 @@ Dave's lane:
 
 ---
 
+
+### Directive GOV-1-verify-before-claim (PR #329, 2026-04-15)
+Governance Rule 1: Verify-Before-Claim. Done must only be reported after ALL verification commands have been run and verbatim output included. CEO gate exists to CONFIRM done, not DISCOVER incomplete work. Emerged 2026-04-15 when PR #327 pre-merge check caught two misses Elliottbot had claimed done. Sources: 06_governance_language.md L12432, L13307-13309; 09_ceo_verification_asks.md L10555.
+
+### Directive GOV-2-cost-authorization (PR #329, 2026-04-15)
+Governance Rule 2: Cost-Authorization. If mid-run API spend exceeds 5x the ratified pre-run estimate, kill the run and report immediately. CTO does not authorise spend above the ratified amount. Emerged 2026-04-15 after 100-domain run reported $155 USD vs ratified ~$1.60 USD estimate. Sources: 06_governance_language.md L12423-12424, L13219-13224; 09_ceo_verification_asks.md L10556.
+
+### Directive BUGPAT-2026-04-15 (PR #329, 2026-04-15)
+Optimistic Completion Catches — Session 2026-04-15. 10 catches documented across 4 structural variants: (1) Action!=Result — saves claimed but never landed, (2) Partial!=Complete — 17.5% verified vs 67.5% found conflation, (3) Stated!=Measured — $155 reported vs $15 actual cost, (4) Process!=Outcome — Drive Manual always stale due to hardcoded skeleton in write_manual.py. Prevention: 7 governance rules established (verify-before-claim, cost-auth, pre-directive check, optimistic-completion naming, audit-fix-reaudit cycle, three-store mechanism, letter-prefix convention). Source: 08_bug_discoveries.md, 09_ceo_verification_asks.md
+
+### Directive GOV-3-pre-directive-check (PR #329, 2026-04-15)
+Governance Rule 3: Pre-Directive Check (Confirm Ready State). Before Task A of any directive, Elliottbot must paste a structured 8-item ready-state confirmation to Telegram covering pwd, service status, git branch/log, ceo_memory handoff, env key presence, MCP confirmation, ARCHITECTURE.md head, and clean working tree — then proceed only after Dave confirms. Emerged 2026-04-15T13:04Z. Sources: 06_governance_language.md L13339-13351.
+
+### Directive GOV-4-optimistic-completion-pattern (PR #329, 2026-04-15)
+Governance Rule 4: Optimistic Completion Pattern (named failure mode). Elliottbot has a recognised failure mode of reporting tasks complete before running verification, treating the CEO review gate as a place to finish work rather than confirm it. Named and caught 3x during Apr 8-15 session: Directive A naming, D1.1 pre-merge, D1.3 verification. Sources: 06_governance_language.md L3749, L13025, L13633; 08_bug_discoveries.md L5026.
+
+### Directive GOV-5-audit-fix-reaudit-cycle (PR #329, 2026-04-15)
+Governance Rule 5: Audit-Fix-Re-Audit-Fix-Merge Cycle. Before merging new code, run a read-only audit to find all seam bugs, fix them in a separate directive, then re-audit to verify no regressions. Module isolation tests alone are insufficient for integration bugs. Emerged from D1.2/D1.3/D1.4/D1.5 cycle that caught 35 seam bugs all isolation tests missed. Sources: 06_governance_language.md L12441-12442; 08_bug_discoveries.md L4922-4932.
+
+### Directive GOV-6-three-store-completion-mechanized (PR #329, 2026-04-15)
+Governance Rule 6: Three-Store Completion (Mechanized via three_store_save.py). A directive is not complete until docs/MANUAL.md, public.ceo_memory, and public.cis_directive_metrics are all written, enforced via three_store_save.py that fails loud on partial success. D1.7 forensic audit found 16 directives with save_completed=true but 0/3 stores written. D1.8 fixed with script + CI. Sources: 06_governance_language.md L13632-13764.
+
+### Directive GOV-7-letter-prefix-directive-convention (PR #329, 2026-04-15)
+Governance Rule 7: Letter-Prefix Directive Convention. Foundation-sequencing work uses letter-prefix naming (A, B, C, D1.x) establishing an ordered build sequence where each is a prerequisite for the next. Emerged 2026-04-15 with Directive A referencing B/C/D as subsequent stages. D1.x sub-directives emerged naturally from D1 cohort run surfacing bugs. Sources: 06_governance_language.md L12361, L12370, L12388, L12405, L13782.
 ## SECTION 18 — OUTREACH + CONTENT (pre-launch)
 
 Landing page (`agency_os_v5.html`) is built with Bloomberg aesthetic and "Who built yours?" hero. Pending: Remotion video hero, Stripe Checkout on pricing CTAs, live founding counter from Supabase. Video strategy: 5 versions (dashboard animation, Maya walkthrough, HeyGen avatar, customer-specific, results) built via Remotion + HeyGen (Maya avatar). Content distribution via Prefect Flow #28 (Claude API → Remotion → HeyGen → distribution APIs). Demo mode active via `?demo=true` URL param with seeded Supabase demo tenant. Onboarding starts with a 15-minute activation call (CRM + LinkedIn connect, watch dashboard populate live).

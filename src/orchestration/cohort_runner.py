@@ -463,7 +463,7 @@ async def run_cohort(
         page = await dfs.domain_metrics_by_categories(
             category_codes=[code],
             location_name="Australia",
-            paid_etv_min=etv_min,
+            paid_etv_min=0.0,
             limit=100,
             offset=offset_start,
         )

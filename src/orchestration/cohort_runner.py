@@ -167,7 +167,7 @@ async def _run_stage3(domain_data: dict, gemini: GeminiClient) -> dict:
 
     if result.get("f_status") != "success":
         domain_data["dropped_at"] = "stage3"
-        domain_data["drop_reason"] = f"f3a_failed: {result.get('f_failure_reason')}"
+        domain_data["drop_reason"] = f"stage3_failed: {result.get('f_failure_reason')}"
         return domain_data
     if content.get("is_enterprise_or_chain"):
         domain_data["dropped_at"] = "stage3"
@@ -319,6 +319,8 @@ async def _run_stage9(domain_data: dict, bd: BrightDataClient) -> dict:
             dm_name=dm.get("name"),
         )
         domain_data["stage9"] = result
+        # Fixed cost: ~$0.002 DM + $0.025 company = $0.027/domain (parallel-safe)
+        domain_data["cost_usd"] += 0.027
     except Exception as exc:
         domain_data["errors"].append(f"stage9: {exc}")
     domain_data["timings"]["stage9"] = round(time.monotonic() - t0, 2)
@@ -431,6 +433,11 @@ def _build_summary(pipeline: list[dict], wall_s: float) -> dict:
 # ---------------------------------------------------------------------------
 
 
+def _check_budget(pipeline: list[dict], cap: float) -> bool:
+    """Return True if cumulative cost_usd across pipeline exceeds cap."""
+    return sum(d.get("cost_usd", 0) for d in pipeline) > cap
+
+
 async def run_cohort(
     categories: list[str],
     domains_per_category: int = 4,
@@ -446,7 +453,21 @@ async def run_cohort(
         password=env.get("DATAFORSEO_PASSWORD", ""),
     )
     gemini = GeminiClient(api_key=env.get("GEMINI_API_KEY"))
-    bd = BrightDataClient(api_key=env.get("BRIGHT_DATA_API_KEY", ""))
+    bd = BrightDataClient(api_key=env.get("BRIGHTDATA_API_KEY", ""))
+
+    # Pre-run cost estimate and hard cap
+    total_requested = domains_per_category * len(categories)
+    estimated_cost_per_domain = 0.25  # USD, from Pipeline F v2.1 economics doc
+    estimated_total = total_requested * estimated_cost_per_domain
+    budget_hard_cap = estimated_total * 5
+    logger.info(
+        "PRE-RUN ESTIMATE: %d domains × $%.2f = $%.2f USD. Hard cap: $%.2f",
+        total_requested, estimated_cost_per_domain, estimated_total, budget_hard_cap,
+    )
+    _tg(
+        f"Pre-run estimate: {total_requested} domains × $0.25 = ${estimated_total:.2f}. "
+        f"Hard cap: ${budget_hard_cap:.2f}"
+    )
 
     # ---------------------------------------------------------------------------
     # Stage 1: DISCOVER
@@ -505,18 +526,51 @@ async def run_cohort(
     updated = await run_parallel(pipeline, lambda d: _run_stage2(d, dfs), concurrency=30, label="Stage 2 VERIFY")
     pipeline = updated
     _tg_progress("Stage 2 VERIFY", pipeline, _total_cost())
+    if _check_budget(pipeline, budget_hard_cap):
+        cost_now = _total_cost()
+        logger.error("BUDGET HARD CAP EXCEEDED: $%.2f > $%.2f. Saving partial results.", cost_now, budget_hard_cap)
+        _tg(f"BUDGET KILL: ${cost_now:.2f} exceeds cap ${budget_hard_cap:.2f}. Partial results saved.")
+        await dfs.close()
+        wall_s = time.monotonic() - wall_start
+        summary = _build_summary(pipeline, wall_s)
+        out_path.mkdir(parents=True, exist_ok=True)
+        (out_path / "summary.json").write_text(json.dumps(summary, indent=2, default=str))
+        _write_outputs(pipeline, out_path)
+        return summary
 
     # Stage 3
     active3 = _active(pipeline)
     updated3 = await run_parallel(active3, lambda d: _run_stage3(d, gemini), concurrency=20, label="Stage 3 IDENTIFY")
     _merge(pipeline, updated3)
     _tg_progress("Stage 3 IDENTIFY", pipeline, _total_cost())
+    if _check_budget(pipeline, budget_hard_cap):
+        cost_now = _total_cost()
+        logger.error("BUDGET HARD CAP EXCEEDED: $%.2f > $%.2f. Saving partial results.", cost_now, budget_hard_cap)
+        _tg(f"BUDGET KILL: ${cost_now:.2f} exceeds cap ${budget_hard_cap:.2f}. Partial results saved.")
+        await dfs.close()
+        wall_s = time.monotonic() - wall_start
+        summary = _build_summary(pipeline, wall_s)
+        out_path.mkdir(parents=True, exist_ok=True)
+        (out_path / "summary.json").write_text(json.dumps(summary, indent=2, default=str))
+        _write_outputs(pipeline, out_path)
+        return summary
 
     # Stage 4
     active4 = _active(pipeline)
     updated4 = await run_parallel(active4, lambda d: _run_stage4(d, dfs), concurrency=20, label="Stage 4 SIGNAL")
     _merge(pipeline, updated4)
     _tg_progress("Stage 4 SIGNAL", pipeline, _total_cost())
+    if _check_budget(pipeline, budget_hard_cap):
+        cost_now = _total_cost()
+        logger.error("BUDGET HARD CAP EXCEEDED: $%.2f > $%.2f. Saving partial results.", cost_now, budget_hard_cap)
+        _tg(f"BUDGET KILL: ${cost_now:.2f} exceeds cap ${budget_hard_cap:.2f}. Partial results saved.")
+        await dfs.close()
+        wall_s = time.monotonic() - wall_start
+        summary = _build_summary(pipeline, wall_s)
+        out_path.mkdir(parents=True, exist_ok=True)
+        (out_path / "summary.json").write_text(json.dumps(summary, indent=2, default=str))
+        _write_outputs(pipeline, out_path)
+        return summary
 
     # Stage 5
     active5 = _active(pipeline)
@@ -529,30 +583,85 @@ async def run_cohort(
     updated6 = await run_parallel(active6, lambda d: _run_stage6(d, dfs), concurrency=10, label="Stage 6 ENRICH")
     _merge(pipeline, updated6)
     _tg_progress("Stage 6 ENRICH", pipeline, _total_cost())
+    if _check_budget(pipeline, budget_hard_cap):
+        cost_now = _total_cost()
+        logger.error("BUDGET HARD CAP EXCEEDED: $%.2f > $%.2f. Saving partial results.", cost_now, budget_hard_cap)
+        _tg(f"BUDGET KILL: ${cost_now:.2f} exceeds cap ${budget_hard_cap:.2f}. Partial results saved.")
+        await dfs.close()
+        wall_s = time.monotonic() - wall_start
+        summary = _build_summary(pipeline, wall_s)
+        out_path.mkdir(parents=True, exist_ok=True)
+        (out_path / "summary.json").write_text(json.dumps(summary, indent=2, default=str))
+        _write_outputs(pipeline, out_path)
+        return summary
 
     # Stage 7
     active7 = _active(pipeline)
     updated7 = await run_parallel(active7, lambda d: _run_stage7(d, gemini), concurrency=20, label="Stage 7 ANALYSE")
     _merge(pipeline, updated7)
     _tg_progress("Stage 7 ANALYSE", pipeline, _total_cost())
+    if _check_budget(pipeline, budget_hard_cap):
+        cost_now = _total_cost()
+        logger.error("BUDGET HARD CAP EXCEEDED: $%.2f > $%.2f. Saving partial results.", cost_now, budget_hard_cap)
+        _tg(f"BUDGET KILL: ${cost_now:.2f} exceeds cap ${budget_hard_cap:.2f}. Partial results saved.")
+        await dfs.close()
+        wall_s = time.monotonic() - wall_start
+        summary = _build_summary(pipeline, wall_s)
+        out_path.mkdir(parents=True, exist_ok=True)
+        (out_path / "summary.json").write_text(json.dumps(summary, indent=2, default=str))
+        _write_outputs(pipeline, out_path)
+        return summary
 
     # Stage 8
     active8 = _active(pipeline)
     updated8 = await run_parallel(active8, lambda d: _run_stage8(d, dfs), concurrency=15, label="Stage 8 CONTACT")
     _merge(pipeline, updated8)
     _tg_progress("Stage 8 CONTACT", pipeline, _total_cost())
+    if _check_budget(pipeline, budget_hard_cap):
+        cost_now = _total_cost()
+        logger.error("BUDGET HARD CAP EXCEEDED: $%.2f > $%.2f. Saving partial results.", cost_now, budget_hard_cap)
+        _tg(f"BUDGET KILL: ${cost_now:.2f} exceeds cap ${budget_hard_cap:.2f}. Partial results saved.")
+        await dfs.close()
+        wall_s = time.monotonic() - wall_start
+        summary = _build_summary(pipeline, wall_s)
+        out_path.mkdir(parents=True, exist_ok=True)
+        (out_path / "summary.json").write_text(json.dumps(summary, indent=2, default=str))
+        _write_outputs(pipeline, out_path)
+        return summary
 
     # Stage 9 (gated inside wrapper)
     active9 = _active(pipeline)
     updated9 = await run_parallel(active9, lambda d: _run_stage9(d, bd), concurrency=10, label="Stage 9 SOCIAL")
     _merge(pipeline, updated9)
     _tg_progress("Stage 9 SOCIAL", pipeline, _total_cost())
+    if _check_budget(pipeline, budget_hard_cap):
+        cost_now = _total_cost()
+        logger.error("BUDGET HARD CAP EXCEEDED: $%.2f > $%.2f. Saving partial results.", cost_now, budget_hard_cap)
+        _tg(f"BUDGET KILL: ${cost_now:.2f} exceeds cap ${budget_hard_cap:.2f}. Partial results saved.")
+        await dfs.close()
+        wall_s = time.monotonic() - wall_start
+        summary = _build_summary(pipeline, wall_s)
+        out_path.mkdir(parents=True, exist_ok=True)
+        (out_path / "summary.json").write_text(json.dumps(summary, indent=2, default=str))
+        _write_outputs(pipeline, out_path)
+        return summary
 
     # Stage 10 (gated inside wrapper)
     active10 = _active(pipeline)
     updated10 = await run_parallel(active10, lambda d: _run_stage10(d), concurrency=10, label="Stage 10 VR+MSG")
     _merge(pipeline, updated10)
     _tg_progress("Stage 10 VR+MSG", pipeline, _total_cost())
+    if _check_budget(pipeline, budget_hard_cap):
+        cost_now = _total_cost()
+        logger.error("BUDGET HARD CAP EXCEEDED: $%.2f > $%.2f. Saving partial results.", cost_now, budget_hard_cap)
+        _tg(f"BUDGET KILL: ${cost_now:.2f} exceeds cap ${budget_hard_cap:.2f}. Partial results saved.")
+        await dfs.close()
+        wall_s = time.monotonic() - wall_start
+        summary = _build_summary(pipeline, wall_s)
+        out_path.mkdir(parents=True, exist_ok=True)
+        (out_path / "summary.json").write_text(json.dumps(summary, indent=2, default=str))
+        _write_outputs(pipeline, out_path)
+        return summary
 
     # Stage 11 — all active get a card attempt
     active11 = _active(pipeline)
@@ -614,4 +723,7 @@ if __name__ == "__main__":
     args = _parse_args()
     cats = [c.strip() for c in args.categories.split(",") if c.strip()]
     per_cat = max(1, args.size // len(cats))
+    if per_cat * len(cats) > 2 * args.size:
+        print(f"ERROR: Computed {per_cat * len(cats)} domains exceeds 2× requested {args.size}")
+        sys.exit(1)
     asyncio.run(run_cohort(categories=cats, domains_per_category=per_cat, output_dir=args.output_dir))

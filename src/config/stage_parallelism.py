@@ -232,7 +232,7 @@ STAGE_PARALLELISM: dict[str, StageConfig] = {
         "provider": "gemini",
         "provider_ceiling": 30,
         "safety_margin": 0.33,
-        "notes": "LEGACY key. Migrate callers to stage_3_identify.",
+        "notes": "DEPRECATED: use stage_3_identify / stage_5_analyse. Retained for backward compat only.",
     },
     "stage_f3b_compile": {
         "stage_name": "F3b — Gemini ANALYSE (grounding OFF) [LEGACY: use stage_5_analyse]",
@@ -240,7 +240,7 @@ STAGE_PARALLELISM: dict[str, StageConfig] = {
         "provider": "gemini",
         "provider_ceiling": 30,
         "safety_margin": 0.33,
-        "notes": "LEGACY key. Migrate callers to stage_5_analyse.",
+        "notes": "DEPRECATED: use stage_3_identify / stage_5_analyse. Retained for backward compat only.",
     },
     "stage_f4_verify_serp": {
         "stage_name": "F4 — Verification Gap Fills (SERP) [LEGACY: use stage_2_verify_serp]",

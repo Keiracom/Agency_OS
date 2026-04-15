@@ -165,15 +165,23 @@ async def gemini_call_with_retry(
             wait = 2 ** attempt + random.random()
             await asyncio.sleep(wait)
 
-    # All retries exhausted
+    # All retries exhausted — classify the error
     if "429" in (last_error or ""):
-        reason = "rate_limit"
+        error_class = "rate_limit"
+    elif "content" in (last_error or "").lower() and "filter" in (last_error or "").lower():
+        error_class = "content_filter"
+    elif "token" in (last_error or "").lower():
+        error_class = "token_exceeded"
+    elif "grounding" in (last_error or "").lower():
+        error_class = "grounding_failure"
+    elif last_error and any(str(c) in last_error for c in [500, 502, 503]):
+        error_class = "unknown_5xx"
     elif last_raw and not last_raw.strip().startswith("{") and "```" not in last_raw:
-        reason = "prose_response"
+        error_class = "prose_response"
     elif "json_parse" in (last_error or ""):
-        reason = "json_truncation"
+        error_class = "json_truncation"
     else:
-        reason = "unknown"
+        error_class = "other"
 
     return {
         "content": None,
@@ -184,5 +192,10 @@ async def gemini_call_with_retry(
         "grounding_queries": 0,
         "attempt": max_retries,
         "f_status": "failed",
-        "f_failure_reason": reason,
+        "f_failure_reason": error_class,
+        "error_detail": {
+            "attempt_count": max_retries,
+            "final_error": last_error,
+            "error_class": error_class,
+        },
     }

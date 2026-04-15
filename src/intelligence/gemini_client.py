@@ -20,7 +20,7 @@ from typing import Any
 
 from src.intelligence.comprehend_schema_f3a import F3A_SYSTEM_PROMPT
 from src.intelligence.comprehend_schema_f3b import F3B_SYSTEM_PROMPT
-from src.intelligence.gemini_retry import gemini_call_with_retry
+from src.intelligence.gemini_retry import GEMINI_MODEL_DM, gemini_call_with_retry
 
 logger = logging.getLogger(__name__)
 
@@ -84,6 +84,7 @@ class GeminiClient:
             user_prompt=user_prompt,
             enable_grounding=True,
             max_retries=max_retries,
+            model=GEMINI_MODEL_DM,
         )
         self._accumulate(result)
         return result

@@ -82,6 +82,10 @@ def _fuzzy_match_company(
     if isinstance(current_position, str) and biz_lower in current_position.lower():
         return {"match_type": "direct_match", "match_company": business_name, "match_confidence": 1.0}
 
+    # Extract core business name words (drop Pty, Ltd, Australia, Group, etc.)
+    noise = {"pty", "ltd", "limited", "australia", "australian", "group", "inc", "co", "the", "of"}
+    biz_words = [w for w in biz_lower.split() if w not in noise and len(w) >= 3]
+
     # Check experience entries
     experience = profile.get("experience") or profile.get("experiences") or []
     for exp in experience:
@@ -93,7 +97,17 @@ def _fuzzy_match_company(
         if not company:
             continue
 
-        ratio = SequenceMatcher(None, biz_lower, company.lower().strip()).ratio()
+        company_lower = company.lower().strip()
+
+        # Substring containment: core business name in company or vice versa
+        # Catches "Sheen Group" vs "Sheen Panel Service", "TONI&GUY Australia" vs "Toni&Guy Brighton"
+        if biz_words and any(w in company_lower for w in biz_words):
+            return {"match_type": "direct_match", "match_company": company, "match_confidence": 0.9}
+        company_words = [w for w in company_lower.split() if w not in noise and len(w) >= 3]
+        if company_words and any(w in biz_lower for w in company_words):
+            return {"match_type": "direct_match", "match_company": company, "match_confidence": 0.9}
+
+        ratio = SequenceMatcher(None, biz_lower, company_lower).ratio()
         if ratio > best_ratio:
             best_ratio = ratio
             best_company = company

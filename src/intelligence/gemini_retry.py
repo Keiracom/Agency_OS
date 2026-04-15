@@ -1,4 +1,4 @@
-"""Shared Gemini retry helper. Used by F3a, F3b, F6.
+"""Shared Gemini retry helper. Used by Stage 3 IDENTIFY, Stage 7 ANALYSE, Stage 10 VR+MSG.
 
 Extracted from gemini_client.py to allow reuse across multiple callers
 without class state. Standalone async function with exponential backoff.

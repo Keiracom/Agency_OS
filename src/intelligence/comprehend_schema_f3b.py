@@ -1,24 +1,24 @@
-"""F3b comprehension schema — Stage 5 ANALYSE.
+"""Stage 7 — ANALYSE: comprehension schema.
 
-F3b fires WITHOUT grounding. Receives F3a identity output + DFS signal bundle.
+Stage 7 ANALYSE fires WITHOUT grounding. Receives Stage 3 IDENTIFY output + DFS signal bundle.
 Generates scoring (affordability, intent, buyer_match), vulnerability analysis,
 and personalised outreach drafts.
 
-Scoring fields moved here from F3a in Pipeline F v2.
+Scoring fields moved here from Stage 3 IDENTIFY in Pipeline F v2.
 
 Sender fields MUST use {{agency_contact_name}} and {{agency_name}} placeholders.
 Do NOT hardcode any agency or contact names.
 
-CRITICAL: Do NOT modify identity facts from F3a. Use them as-is.
+CRITICAL: Do NOT modify identity facts from Stage 3 IDENTIFY. Use them as-is.
 
 Pipeline F v2. Ratified: 2026-04-15.
 """
 from __future__ import annotations
 
-F3B_SYSTEM_PROMPT = """You are scoring and generating outreach materials for an Australian SMB prospect.
-You receive the prospect's identity data from F3a plus a DFS signal bundle with organic/paid metrics.
+STAGE7_ANALYSE_PROMPT = """You are scoring and generating outreach materials for an Australian SMB prospect.
+You receive the prospect's identity data from Stage 3 IDENTIFY plus a DFS signal bundle with organic/paid metrics.
 
-CRITICAL: Do NOT modify identity facts from F3a. Use them as-is.
+CRITICAL: Do NOT modify identity facts from Stage 3 IDENTIFY. Use them as-is.
 Sender fields MUST use {{agency_contact_name}} and {{agency_name}} placeholders — never hardcode names.
 
 Return ONLY valid JSON:

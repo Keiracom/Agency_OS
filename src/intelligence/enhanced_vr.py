@@ -1,4 +1,4 @@
-"""F6 — Enhanced Vulnerability Report.
+"""Stage 10 — VR+MSG (ENHANCED_VR): Enhanced Vulnerability Report.
 
 Second Gemini call for prospects that pass the candidacy gate.
 Regenerates vulnerability report and outreach messages with DM post context.
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 ENHANCED_VR_SYSTEM_PROMPT = """You are generating an enhanced vulnerability report and outreach
 for a high-propensity Australian SMB prospect. You have:
-1. The F3b output (vulnerability report + initial outreach drafts)
+1. The Stage 7 ANALYSE output (vulnerability report + initial outreach drafts)
 2. Recent LinkedIn posts by the decision-maker
 3. Contact details (email, mobile if found)
 
@@ -51,10 +51,11 @@ async def run_enhanced_vr(
     api_key: str | None = None,
     max_retries: int = 4,
 ) -> dict:
-    """F6: enhanced VR + outreach using DM post context.
+    """Stage 10 VR+MSG: enhanced VR + outreach using DM post context.
 
     Args:
-        f3b_output: Parsed F3b JSON dict.
+        f3b_output: Parsed Stage 7 ANALYSE JSON dict.
+            NOTE: param name retained for caller compatibility.
         dm_posts: Filtered list of DM LinkedIn posts (may be empty).
         contact_details: Contact waterfall result (email, mobile).
         api_key: Gemini API key (falls back to GEMINI_API_KEY env var).
@@ -74,7 +75,7 @@ async def run_enhanced_vr(
         }
 
     user_prompt = (
-        f"F3b output:\n{json.dumps(f3b_output, indent=2)}\n\n"
+        f"Stage 7 ANALYSE output:\n{json.dumps(f3b_output, indent=2)}\n\n"
         f"DM recent posts ({len(dm_posts)} posts):\n"
         f"{json.dumps(dm_posts, indent=2)}\n\n"
         f"Contact details:\n{json.dumps(contact_details, indent=2)}\n\n"

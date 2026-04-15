@@ -1,4 +1,4 @@
-"""F5 — Contact Waterfall.
+"""Stage 8 — CONTACT: Contact Waterfall.
 
 Three cascading waterfalls per directive F-REFACTOR-01:
   LinkedIn URL: L1 SERP discovery (candidate URL) → L2 profile scraper verification → L3 unresolved
@@ -123,22 +123,23 @@ def _fuzzy_match_company(
 async def _linkedin_cascade(
     dm_name: str | None,
     business_name: str,
-    f3a_linkedin: str | None,
-    f4_linkedin: str | None,
+    stage3_linkedin: str | None,
+    stage2_serp_linkedin: str | None,
     company_linkedin_url: str | None = None,
 ) -> dict:
     """L1 SERP discovery → L2 profile scraper verification → L3 unresolved.
 
-    L1: SERP provides candidate URL (F3a Gemini or F4 DFS SERP). NOT auto-trusted.
+    L1: SERP provides candidate URL (Stage 3 IDENTIFY Gemini or Stage 2 VERIFY DFS SERP). NOT auto-trusted.
     L2: harvestapi/linkedin-profile-scraper scrapes the candidate URL, returns full
         profile. Post-filter verifies currentCompany/experience against business_name.
     L3: unresolved if no candidate URL or L2 rejects.
     """
     apify_token = os.environ.get("APIFY_API_TOKEN", "")
 
-    # L1: Collect candidate URL from F3a or F4 SERP (discovery only, NOT verified)
-    candidate_url = f3a_linkedin or f4_linkedin
-    candidate_source = "f3a_gemini" if f3a_linkedin else ("f4_serp" if f4_linkedin else None)
+    # L1: Collect candidate URL from Stage 3 IDENTIFY or Stage 2 VERIFY SERP (discovery only, NOT verified)
+    candidate_url = stage3_linkedin or stage2_serp_linkedin
+    # NOTE: candidate_source string values retained for output dict compatibility with callers
+    candidate_source = "f3a_gemini" if stage3_linkedin else ("f4_serp" if stage2_serp_linkedin else None)
 
     if not candidate_url or not apify_token:
         return {"linkedin_url": None, "source": "unresolved", "tier": "L3",
@@ -377,7 +378,13 @@ async def run_contact_waterfall(
     entity_type: str | None = None,
     business_phone: str | None = None,
 ) -> dict:
-    """Run all three contact waterfalls.
+    """Stage 8 CONTACT — run all three contact waterfalls.
+
+    Args:
+        f3a_linkedin_url: LinkedIn URL candidate from Stage 3 IDENTIFY Gemini.
+            NOTE: param name retained for caller compatibility (scripts use f3a_linkedin_url= kwarg).
+        f4_linkedin_url: LinkedIn URL candidate from Stage 2 VERIFY DFS SERP.
+            NOTE: param name retained for caller compatibility (scripts use f4_linkedin_url= kwarg).
 
     Returns: {
         "linkedin": {linkedin_url, source, tier},

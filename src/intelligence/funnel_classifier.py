@@ -19,23 +19,25 @@ def classify_prospect(
     """Classify prospect into Ready / Near-ready / Watchlist / Dropped.
 
     Args:
-        f3a_output: Parsed F3a JSON dict.
-        f3b_output: Parsed F3b JSON dict (optional).
-        contacts: F5 waterfall results {linkedin, email, mobile} (optional).
+        f3a_output: Parsed Stage 3 IDENTIFY JSON dict.
+            NOTE: param name retained for caller compatibility.
+        f3b_output: Parsed Stage 7 ANALYSE JSON dict (optional).
+            NOTE: param name retained for caller compatibility.
+        contacts: Stage 8 CONTACT waterfall results {linkedin, email, mobile} (optional).
 
     Returns:
         {classification, reason, intent_band, affordability_gate, buyer_match_score}
     """
     contacts = contacts or {}
 
-    # Intent band (F3b final takes precedence)
+    # Intent band (Stage 7 ANALYSE final takes precedence)
     if f3b_output and f3b_output.get("intent_band_final"):
         intent_band = f3b_output["intent_band_final"]
     else:
         intent_band = f3a_output.get("intent_band_preliminary") or "DORMANT"
 
-    # Scoring fields live in f3b (Stage 5 ANALYSE) in Pipeline F v2.
-    # Fall back to f3a for backward compatibility with older pipeline runs.
+    # Scoring fields live in Stage 7 ANALYSE in Pipeline F v2.
+    # Fall back to Stage 3 IDENTIFY for backward compatibility with older pipeline runs.
     afford_score = (
         (f3b_output.get("affordability_score") if f3b_output else None)
         or f3a_output.get("affordability_score", 0)

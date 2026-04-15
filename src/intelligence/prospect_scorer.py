@@ -87,7 +87,6 @@ def score_prospect(
     organic_etv = ro.get("dfs_organic_etv") or 0
     organic_kw = ro.get("dfs_organic_keywords") or 0
     paid_kw = ro.get("dfs_paid_keywords") or 0
-    paid_etv = ro.get("dfs_paid_etv") or 0
     gmb_rating = gmb.get("gmb_rating") or 0
     gmb_reviews = gmb.get("gmb_review_count") or 0
     is_running_ads = ads_domain.get("is_running_ads") or False
@@ -96,31 +95,72 @@ def score_prospect(
 
     breakdown = {}
 
-    # ── BUDGET SCORE (0-25) ─────────────────────────────────────────
+    # ── BUDGET SCORE (0-25) — real affordability signals ───────────
     budget = 0
-    # Category-relative ETV — sweet spot scores highest
-    if 0.25 <= etv_pct <= 0.75:
-        budget += 5
-        breakdown["etv_sweet_spot"] = 5
-    elif etv_pct > 0.75:
-        budget += 2
-        breakdown["etv_top_quarter"] = 2
-    elif etv_pct > 0:
-        budget += 3
-        breakdown["etv_bottom_quarter"] = 3
+    tech = signal_bundle.get("technologies") or []
+    tech_lower = {t.lower() for t in tech}
+    staff = f3a_output.get("staff_estimate_band") or ""
+    entity_type = (f3a_output.get("entity_type_hint") or "").lower()
 
-    if paid_kw > 0:
-        budget += 10
-        breakdown["paid_keywords"] = 10
-    if paid_etv > 0:
-        budget += 5
-        breakdown["paid_etv"] = 5
-    if gmb_reviews > 50:
-        budget += 5
-        breakdown["established_reviews"] = 5
-    elif gmb_reviews > 10:
+    # GST registered (from ABN → ABR, proves >$75K annual revenue)
+    serp_abn = f3a_output.get("abn") or f3a_output.get("serp_abn")
+    # If ABN was found, business is registered = minimum viability signal
+    if serp_abn:
         budget += 3
-        breakdown["moderate_reviews"] = 3
+        breakdown["abn_registered"] = 3
+
+    # Entity type — structured business = more likely to have budget
+    if any(t in entity_type for t in ("company", "trust", "pty", "ltd")):
+        budget += 3
+        breakdown["structured_entity"] = 3
+
+    # Professional CMS (investing in web presence)
+    pro_cms = {"shopify", "wordpress", "webflow", "squarespace", "wix", "magento", "bigcommerce"}
+    if pro_cms & tech_lower:
+        budget += 2
+        breakdown["professional_cms"] = 2
+
+    # Tracking installed (investing in measurement = marketing-aware)
+    tracking = {"google analytics", "google tag manager", "facebook pixel", "hotjar", "crazy egg"}
+    if tracking & tech_lower:
+        budget += 2
+        breakdown["tracking_installed"] = 2
+
+    # Booking/scheduling system (structured revenue flow)
+    booking = {"calendly", "acuity", "mindbody", "timely", "fresha", "bookeo", "cliniko"}
+    if booking & tech_lower:
+        budget += 2
+        breakdown["booking_system"] = 2
+
+    # Customer volume (GMB reviews as revenue proxy)
+    if gmb_reviews > 100:
+        budget += 3
+        breakdown["high_review_volume"] = 3
+    elif gmb_reviews > 30:
+        budget += 2
+        breakdown["moderate_review_volume"] = 2
+
+    # Staff band (paying wages = has revenue)
+    if staff in ("medium(6-20)", "large(20+)"):
+        budget += 2
+        breakdown["employs_staff"] = 2
+
+    # Already spending on marketing (strongest affordability signal)
+    if paid_kw > 0 or is_running_ads:
+        budget += 5
+        breakdown["active_ad_spend"] = 5
+
+    # ETV percentile — category-relative online presence (weak signal, low weight)
+    if 0.25 <= etv_pct <= 0.75:
+        budget += 3
+        breakdown["etv_sweet_spot"] = 3
+    elif etv_pct > 0.75:
+        budget += 1
+        breakdown["etv_top_quarter"] = 1
+    elif etv_pct > 0:
+        budget += 2
+        breakdown["etv_present"] = 2
+
     budget = min(budget, 25)
 
     # ── PAIN SCORE (0-25) ───────────────────────────────────────────
@@ -171,14 +211,14 @@ def score_prospect(
         breakdown["has_social"] = 5
     reach = min(reach, 25)
 
-    # ── FIT SCORE (0-25) ────────────────────────────────────────────
+    # ── FIT SCORE (0-25) — ICP alignment ──────────────────────────
     fit = 0
     is_enterprise = f3a_output.get("is_enterprise_or_chain", False)
     if not is_enterprise:
         fit += 10
         breakdown["not_enterprise"] = 10
 
-    staff = f3a_output.get("staff_estimate_band") or ""
+    # SMB sweet spot — small/medium is ideal ICP
     if staff in ("small(2-5)", "medium(6-20)"):
         fit += 5
         breakdown["smb_staff_band"] = 5
@@ -186,10 +226,13 @@ def score_prospect(
         fit += 3
         breakdown["solo_operator"] = 3
 
-    tech = signal_bundle.get("technologies") or []
-    if any(t.lower() in ("google analytics", "google tag manager", "facebook pixel") for t in tech):
+    # Has meaningful organic presence (potential for agency to improve)
+    if organic_kw > 500:
         fit += 5
-        breakdown["has_tracking"] = 5
+        breakdown["strong_organic_base"] = 5
+    elif organic_kw > 100:
+        fit += 3
+        breakdown["moderate_organic_base"] = 3
 
     if organic_kw > 100:
         fit += 5

@@ -121,11 +121,14 @@ async def run_serp_verify(
             "serp_company_linkedin": str | None,
             "serp_dm_candidate": str | None,
             "serp_facebook_url": str | None,
+            "f_status": "success" | "partial",
+            "_errors": list[str],
             "_cost": float,
         }
     """
     clean_domain = domain.removeprefix("www.")
     cost_before = dfs.total_cost_usd
+    errors: list[str] = []
 
     async def _serp(keyword: str) -> dict:
         try:
@@ -144,7 +147,9 @@ async def run_serp_verify(
                 swallow_no_data=True,
             )
         except Exception as exc:
-            logger.warning("SERP query '%s' failed: %s", keyword[:40], exc)
+            error_msg = str(exc)[:80]
+            errors.append(error_msg)
+            logger.warning("SERP query '%s' failed: %s", keyword[:40], error_msg)
             return {}
 
     # Extract business name first for Facebook query
@@ -158,21 +163,28 @@ async def run_serp_verify(
         _serp(f'"{biz_name}" site:facebook.com' if biz_name else f'"{clean_domain}" site:facebook.com'),
     )
 
+    # Determine if any queries failed (non-empty results vs errors)
+    any_errors = bool(errors)
+    f_status = "partial" if any_errors else "success"
+
     result = {
         "serp_business_name": biz_name,
         "serp_abn": _extract_abn(q_abn),
         "serp_company_linkedin": _extract_company_linkedin(q_li),
         "serp_dm_candidate": _extract_dm_candidate(q_dm),
         "serp_facebook_url": _extract_facebook_url(q_fb),
+        "f_status": f_status,
+        "_errors": errors,
         "_cost": dfs.total_cost_usd - cost_before,
     }
     logger.info(
-        "Stage 2 VERIFY %s: biz=%s abn=%s li=%s dm=%s fb=%s",
+        "Stage 2 VERIFY %s: biz=%s abn=%s li=%s dm=%s fb=%s (f_status=%s)",
         domain,
         result["serp_business_name"][:30] if result["serp_business_name"] else "null",
         result["serp_abn"] or "null",
         bool(result["serp_company_linkedin"]),
         result["serp_dm_candidate"] or "null",
         bool(result["serp_facebook_url"]),
+        f_status,
     )
     return result

@@ -1,7 +1,7 @@
 # Agency OS Manual
 
-Last updated: 2026-04-08 UTC
-Directive #306: Marketing Vulnerability Report (PR #269)
+Last updated: 2026-04-15 UTC
+Directive D1.8.3: Governance synthesis + 3-store backfill (PR #329)
 Next scheduled update: Next architecture change or milestone
 
 > **Primary store.** This file is the CEO SSOT. Google Doc is an auto-generated mirror.
@@ -23,10 +23,10 @@ Revenue model for BU: API subscriptions, Salesforce/HubSpot marketplace, bulk an
 
 ## SECTION 2 — CURRENT STATE
 
-**Last directive:** #306 (Marketing Vulnerability Report — PR #269)
-**Next directive:** TBD
-**Test baseline:** 1396 passed, 0 failed, 28 skipped
-**Last merged PR:** #269 (Directive #306)
+**Last directive:** D1.8.3 (Governance synthesis + 3-store backfill — PR #329)
+**Next directive:** 20-domain rerun on full-context Pipeline F v2.1
+**Test baseline:** 1505 passed, 1 failed (pre-existing campaign_flow), 28 skipped
+**Last merged PR:** #329 (D1.8 save mechanism + D1.8.2 extraction + D1.8.3 synthesis)
 
 ### EVO Track (Autonomous Loop — all complete)
 
@@ -43,21 +43,26 @@ Revenue model for BU: API subscriptions, Salesforce/HubSpot marketplace, bulk an
 
 Full autonomous loop verified: Prefect → evo_task_queue → VPS consumer → result written → Telegram alert. Loop latency: 1212s.
 
-### Infrastructure State (as of 2026-04-08)
+### Infrastructure State (as of 2026-04-15)
 
 - **Harness:** Claude Code (EVO-008). OpenClaw retired permanently 2026-04-07.
 - **MCP status:** 12/13 custom MCP servers active. keiramail (work email) + keiradrive (Google Drive) confirmed loaded.
-- **Telegram bot:** Live. Alerts on flow completions/failures to chat_id 7267788033.
-- **crm-sync-flow:** Killed permanently 2026-04-08 (column `cc.ghl_location_id` does not exist — schema mismatch, flow removed from Prefect).
+- **Telegram bot:** Live. All CTO communication via Telegram (chat_id 7267788033). Terminal output not monitored.
+- **crm-sync-flow:** Killed permanently 2026-04-08 (schema mismatch, flow removed from Prefect).
 - **Prefect pool:** agency-os-pool, concurrency 10.
+- **3-store save:** Automated via scripts/three_store_save.py. CI enforcement: .github/workflows/directive-save-check.yml. Session-end check: scripts/session_end_check.py.
 
-### Governance Updates (2026-04-08)
+### Governance Updates (2026-04-15)
 
 - LAW XII (Skills-First Integration) restored
 - LAW XIII (Skill Currency Enforcement) restored
 - LAW XV-D: Step 0 RESTATE HARD BLOCK added to both CLAUDE.md files
+- LAW XV: Three-Store Completion now mechanized via three_store_save.py (D1.8)
+- LAW XVI: Clean Working Tree — report dirty tree before new directive work
 - Session startup HARD BLOCK: Read Drive Manual via keiradrive_read_manual before any directive
 - File-based memory (MEMORY.md, HANDOFF.md) deprecated — Supabase elliot_internal.memories is SOLE persistent memory
+- 7 governance rules established (see Section 17): verify-before-claim, cost-authorization, pre-directive check, optimistic completion, audit-fix-reaudit cycle, three-store mechanism, letter-prefix convention
+- Schema correction: ceo_memory and cis_directive_metrics are in PUBLIC schema (not elliot_internal)
 
 ### Pipeline Status
 
@@ -927,8 +932,11 @@ Governance Rule 2: Cost-Authorization. If mid-run API spend exceeds 5x the ratif
 ### Directive BUGPAT-2026-04-15 (PR #329, 2026-04-15)
 Optimistic Completion Catches — Session 2026-04-15. 10 catches documented across 4 structural variants: (1) Action!=Result — saves claimed but never landed, (2) Partial!=Complete — 17.5% verified vs 67.5% found conflation, (3) Stated!=Measured — $155 reported vs $15 actual cost, (4) Process!=Outcome — Drive Manual always stale due to hardcoded skeleton in write_manual.py. Prevention: 7 governance rules established (verify-before-claim, cost-auth, pre-directive check, optimistic-completion naming, audit-fix-reaudit cycle, three-store mechanism, letter-prefix convention). Source: 08_bug_discoveries.md, 09_ceo_verification_asks.md
 
-### Directive GOV-3-pre-directive-check (PR #329, 2026-04-15)
-Governance Rule 3: Pre-Directive Check (Confirm Ready State). Before Task A of any directive, Elliottbot must paste a structured 8-item ready-state confirmation to Telegram covering pwd, service status, git branch/log, ceo_memory handoff, env key presence, MCP confirmation, ARCHITECTURE.md head, and clean working tree — then proceed only after Dave confirms. Emerged 2026-04-15T13:04Z. Sources: 06_governance_language.md L13339-13351.
+### Directive GOV-3a-cto-ready-state (PR #329, 2026-04-15)
+Governance Rule 3a: CTO Ready-State Check. Before Task A of any directive, Elliottbot must paste a structured 8-item ready-state confirmation to Telegram: (1) pwd, (2) service status, (3) git branch + log, (4) ceo_memory handoff content verbatim, (5) .env key presence, (6) MCP server confirmation, (7) ARCHITECTURE.md head, (8) clean working tree (git status). This is a CTO self-check — Elliottbot verifies its own environment before starting work. Sources: 06_governance_language.md L13339-13351.
+
+### Directive GOV-3b-ceo-pre-directive-gate (PR #329, 2026-04-15)
+Governance Rule 3b: CEO Pre-Directive Gate. After Step 0 RESTATE and before any execution, CEO reviews the restatement and confirms "go." CEO may revise scope, add constraints, or reject. This is a CEO decision gate — Dave confirms the directive is correctly understood before work begins. Distinct from GOV-3a (CTO self-check) which verifies environment readiness. Sources: 06_governance_language.md L13339-13351.
 
 ### Directive GOV-4-optimistic-completion-pattern (PR #329, 2026-04-15)
 Governance Rule 4: Optimistic Completion Pattern (named failure mode). Elliottbot has a recognised failure mode of reporting tasks complete before running verification, treating the CEO review gate as a place to finish work rather than confirm it. Named and caught 3x during Apr 8-15 session: Directive A naming, D1.1 pre-merge, D1.3 verification. Sources: 06_governance_language.md L3749, L13025, L13633; 08_bug_discoveries.md L5026.

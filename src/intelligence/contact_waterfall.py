@@ -138,8 +138,7 @@ async def _linkedin_cascade(
 
     # L1: Collect candidate URL from Stage 3 IDENTIFY or Stage 2 VERIFY SERP (discovery only, NOT verified)
     candidate_url = stage3_linkedin or stage2_serp_linkedin
-    # NOTE: candidate_source string values retained for output dict compatibility with callers
-    candidate_source = "f3a_gemini" if stage3_linkedin else ("f4_serp" if stage2_serp_linkedin else None)
+    candidate_source = "stage3_gemini" if stage3_linkedin else ("stage2_serp" if stage2_serp_linkedin else None)
 
     if not candidate_url or not apify_token:
         return {"linkedin_url": None, "source": "unresolved", "tier": "L3",

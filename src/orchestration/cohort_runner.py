@@ -144,7 +144,7 @@ async def _run_stage2(domain_data: dict, dfs: DFSLabsClient) -> dict:
 
 
 async def _run_stage3(domain_data: dict, gemini: GeminiClient) -> dict:
-    """Stage 3 IDENTIFY — Gemini F3a identity extraction."""
+    """Stage 3 IDENTIFY — Gemini identity + DM extraction."""
     t0 = time.monotonic()
     serp = domain_data.get("stage2") or {}
     try:
@@ -242,7 +242,7 @@ async def _run_stage6(domain_data: dict, dfs: DFSLabsClient) -> dict:
 
 
 async def _run_stage7(domain_data: dict, gemini: GeminiClient) -> dict:
-    """Stage 7 ANALYSE — Gemini F3b deep analysis."""
+    """Stage 7 ANALYSE — Gemini VR + outreach generation."""
     t0 = time.monotonic()
     identity = domain_data.get("stage3") or {}
     signals = domain_data.get("stage4") or {}

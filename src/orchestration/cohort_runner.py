@@ -69,6 +69,18 @@ CATEGORY_MAP: dict[str, int] = {
 }
 
 # ---------------------------------------------------------------------------
+# Stage cost constants — module-level so tests can import and assert against
+# these values rather than duplicating literals.
+# ---------------------------------------------------------------------------
+
+STAGE2_COST_PER_DOMAIN = 0.010  # 5 SERP queries × $0.002
+STAGE4_COST_PER_DOMAIN = 0.078  # 10 DFS endpoints sum = $0.0775, rounded up
+STAGE6_COST_PER_DOMAIN = 0.106  # historical_rank_overview
+STAGE8_SERP_FALLBACK = 0.008    # verify_fills SERP cost if _cost field missing
+STAGE8_WATERFALL_COST = 0.015   # scraper ($0.004) + ContactOut (~$0.011)
+STAGE9_COST_PER_DOMAIN = 0.027  # BD LinkedIn DM ($0.002) + company ($0.025)
+
+# ---------------------------------------------------------------------------
 # Telegram helper
 # ---------------------------------------------------------------------------
 
@@ -191,7 +203,7 @@ async def _run_stage4(domain_data: dict, dfs: DFSLabsClient) -> dict:
         domain_data["errors"].append(f"stage4: {exc}")
         domain_data["stage4"] = {}
     # Fixed cost: 10 DFS endpoints sum = $0.0775, rounded up to $0.078/domain (parallel-safe)
-    domain_data["cost_usd"] += 0.078
+    domain_data["cost_usd"] += STAGE4_COST_PER_DOMAIN
     domain_data["timings"]["stage4"] = round(time.monotonic() - t0, 2)
     return domain_data
 
@@ -237,7 +249,7 @@ async def _run_stage6(domain_data: dict, dfs: DFSLabsClient) -> dict:
         result = await run_stage6_enrich(dfs, domain_data["domain"], composite)
         domain_data["stage6"] = result
         # Fixed cost: historical_rank_overview = $0.106/domain (parallel-safe)
-        domain_data["cost_usd"] += 0.106
+        domain_data["cost_usd"] += STAGE6_COST_PER_DOMAIN
     except Exception as exc:
         domain_data["errors"].append(f"stage6: {exc}")
     domain_data["timings"]["stage6"] = round(time.monotonic() - t0, 2)
@@ -271,8 +283,10 @@ async def _run_stage8(domain_data: dict, dfs: DFSLabsClient) -> dict:
     try:
         fills = await run_verify_fills(dfs=dfs, f3a_output=identity)
         domain_data["stage8_verify"] = fills
-        # Fixed cost: up to 4 SERP calls = $0.008 + scraper $0.004 + ContactOut ~$0.013 = $0.025/domain
-        domain_data["cost_usd"] += 0.023
+        # Dynamic SERP cost from verify_fills (up to 4 queries), plus fixed waterfall cost.
+        # If verify_fills._cost is absent, fall back to STAGE8_SERP_FALLBACK ($0.008).
+        serp_cost = fills.get("_cost", STAGE8_SERP_FALLBACK)
+        domain_data["cost_usd"] += serp_cost + STAGE8_WATERFALL_COST
     except Exception as exc:
         domain_data["errors"].append(f"stage8a: {exc}")
         fills = {}
@@ -326,7 +340,7 @@ async def _run_stage9(domain_data: dict, bd: BrightDataClient) -> dict:
         )
         domain_data["stage9"] = result
         # Fixed cost: ~$0.002 DM + $0.025 company = $0.027/domain (parallel-safe)
-        domain_data["cost_usd"] += 0.027
+        domain_data["cost_usd"] += STAGE9_COST_PER_DOMAIN
     except Exception as exc:
         domain_data["errors"].append(f"stage9: {exc}")
     domain_data["timings"]["stage9"] = round(time.monotonic() - t0, 2)

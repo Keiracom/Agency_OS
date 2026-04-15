@@ -76,6 +76,8 @@ def assemble_card(
         "vulnerability_report": (stage10_vr_msg or {}).get("vr_report")
         or stage7_analyse.get("vulnerability_report"),
         # FIX L2: surface f_status from Stage 10
+        # stage10_status: if "partial" or "failed", outreach is from Stage 7 fallback (less personalised).
+        # This is informational — card remains eligible. Dashboard can highlight non-enhanced cards.
         "stage10_status": (stage10_vr_msg or {}).get("f_status"),
         # FIX L3: fall back to Stage 7 draft outreach if Stage 10 outreach absent
         "outreach": (stage10_vr_msg or {}).get("outreach") or {

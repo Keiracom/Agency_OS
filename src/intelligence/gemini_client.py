@@ -63,18 +63,31 @@ class GeminiClient:
         domain: str,
         dfs_base_metrics: dict,
         max_retries: int = 4,
+        serp_data: dict | None = None,
     ) -> dict[str, Any]:
-        """F3a — identity + scoring with grounding ON.
+        """F3a — identity + DM identification with grounding ON.
 
         Args:
             domain: Prospect domain (used in user prompt for URL context hint).
             dfs_base_metrics: Base DFS metrics dict (domain_rank_overview output).
+            serp_data: Optional Stage 2 SERP candidates to seed Gemini.
 
         Returns:
             gemini_retry result dict with content = F3a JSON or None on failure.
         """
-        user_prompt = (
-            f"Analyse the Australian SMB at domain: {domain}\n\n"
+        user_prompt = f"Analyse the Australian SMB at domain: {domain}\n\n"
+        if serp_data:
+            user_prompt += "Candidate data from prior search results:\n"
+            if serp_data.get("serp_business_name"):
+                user_prompt += f"  Business name: {serp_data['serp_business_name']}\n"
+            if serp_data.get("serp_abn"):
+                user_prompt += f"  ABN: {serp_data['serp_abn']}\n"
+            if serp_data.get("serp_company_linkedin"):
+                user_prompt += f"  Company LinkedIn: {serp_data['serp_company_linkedin']}\n"
+            if serp_data.get("serp_dm_candidate"):
+                user_prompt += f"  DM candidate: {serp_data['serp_dm_candidate']}\n"
+            user_prompt += "\nUse these as starting points. Verify against all public sources.\n\n"
+        user_prompt += (
             f"DFS base metrics:\n{json.dumps(dfs_base_metrics, indent=2)}\n\n"
             "Return the JSON schema exactly as specified."
         )

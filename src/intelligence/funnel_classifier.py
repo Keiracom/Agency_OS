@@ -34,8 +34,17 @@ def classify_prospect(
     else:
         intent_band = f3a_output.get("intent_band_preliminary") or "DORMANT"
 
-    afford_score = f3a_output.get("affordability_score", 0) or 0
-    afford_gate = f3a_output.get("affordability_gate", "unknown")
+    # Scoring fields live in f3b (Stage 5 ANALYSE) in Pipeline F v2.
+    # Fall back to f3a for backward compatibility with older pipeline runs.
+    afford_score = (
+        (f3b_output.get("affordability_score") if f3b_output else None)
+        or f3a_output.get("affordability_score", 0)
+        or 0
+    )
+    afford_gate = (
+        (f3b_output.get("affordability_gate") if f3b_output else None)
+        or f3a_output.get("affordability_gate", "unknown")
+    )
     has_name = bool(f3a_output.get("business_name"))
     dm = f3a_output.get("dm_candidate", {}) or {}
     has_dm = bool(dm.get("name"))
@@ -63,7 +72,10 @@ def classify_prospect(
         "intent_band": intent_band,
         "affordability_gate": afford_gate,
         "affordability_score": afford_score,
-        "buyer_match_score": f3a_output.get("buyer_match_score"),
+        "buyer_match_score": (
+            (f3b_output.get("buyer_match_score") if f3b_output else None)
+            or f3a_output.get("buyer_match_score")
+        ),
         "has_dm": has_dm,
         "has_email": has_email,
         "has_mobile": has_mobile,

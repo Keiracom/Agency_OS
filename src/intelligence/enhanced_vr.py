@@ -55,7 +55,7 @@ async def run_enhanced_vr(
 
     Args:
         f3b_output: Parsed Stage 7 ANALYSE JSON dict.
-            NOTE: param name retained for caller compatibility.
+            NOTE: param name retained for caller compatibility. Rename deferred to Directive C when filenames change.
         dm_posts: Filtered list of DM LinkedIn posts (may be empty).
         contact_details: Contact waterfall result (email, mobile).
         api_key: Gemini API key (falls back to GEMINI_API_KEY env var).

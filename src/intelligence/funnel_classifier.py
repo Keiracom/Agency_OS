@@ -20,9 +20,9 @@ def classify_prospect(
 
     Args:
         f3a_output: Parsed Stage 3 IDENTIFY JSON dict.
-            NOTE: param name retained for caller compatibility.
+            NOTE: param name retained for caller compatibility. Rename deferred to Directive C when filenames change.
         f3b_output: Parsed Stage 7 ANALYSE JSON dict (optional).
-            NOTE: param name retained for caller compatibility.
+            NOTE: param name retained for caller compatibility. Rename deferred to Directive C when filenames change.
         contacts: Stage 8 CONTACT waterfall results {linkedin, email, mobile} (optional).
 
     Returns:

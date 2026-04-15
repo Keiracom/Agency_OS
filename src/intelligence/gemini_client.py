@@ -74,6 +74,10 @@ class GeminiClient:
 
         Returns:
             gemini_retry result dict with content = Stage 3 IDENTIFY JSON or None on failure.
+
+        .. deprecated::
+            Method name retained for compatibility. Use call_stage3_identify() when available
+            (Directive C filename rename). Active callers: cohort_runner.py:151.
         """
         user_prompt = f"Analyse the Australian SMB at domain: {domain}\n\n"
         if serp_data:
@@ -197,6 +201,10 @@ class GeminiClient:
 
         Returns:
             gemini_retry result dict with content = Stage 7 ANALYSE JSON or None on failure.
+
+        .. deprecated::
+            Method name retained for compatibility. Use call_stage7_analyse() when available
+            (Directive C filename rename). Active callers: cohort_runner.py:250.
         """
         user_prompt = (
             f"Prospect identity (from Stage 3 IDENTIFY — do not modify):\n"
@@ -227,7 +235,8 @@ class GeminiClient:
         """Legacy unified comprehend — delegates to gemini_call_with_retry.
 
         Kept for backward compatibility with callers that have not yet
-        migrated to call_f3a (Stage 3 IDENTIFY) / call_f3b (Stage 7 ANALYSE).
+        migrated to call_f3a / call_f3b (themselves legacy — see their deprecation notes)
+        or the eventual call_stage3_identify / call_stage7_analyse (Directive C).
         """
         result = await gemini_call_with_retry(
             api_key=self.api_key,

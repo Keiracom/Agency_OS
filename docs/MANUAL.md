@@ -724,6 +724,63 @@ v6 era (#271–#277): Layer 2 (discovery), Layer 3 (bulk filter), signal config 
 
 ---
 
+
+### Directive 3002 (PR #277, 2026-04-15)
+TIERS-002: Code-Manual tier alignment. 30 files. Spark added, Ignition/Velocity fixed, Dominance removed. PR #277 merged.
+
+### Directive 3003 (PR #279, 2026-04-15)
+DASH-002: 17 fixes + Cycles model + Industries filter + Insights rebuild + funnel extension. PR #279.
+
+### Directive 3004 (PR #281, 2026-04-15)
+DASH-004: Ship-ready dashboard. 13 items, 50 prospects, briefing page, three-state pipeline, pagination. PR #281.
+
+### Directive 3005 (PR #282, 2026-04-15)
+DASH-005: Marketing site live on Vercel. Landing + demo. DNS handoff pending. PR #282.
+
+### Directive 309 (PR #283, 2026-04-15)
+Onboarding rebuild. 4 pages, auth fixed, OAuth redirect fixed, deprecated deleted, schema migration, LinkedIn warmup. PR #283.
+
+### Directive 310 (PR #284, 2026-04-15)
+Billing lifecycle wired. Stripe consolidated, 5 webhook handlers, activation email. Blocked on Stripe keys. PR #284.
+
+### Directive 311 (PR #285, 2026-04-15)
+Outreach scheduler. 4 tables, 5 services, firing engine. 801 LOC. Dry-run default. PR #285.
+
+### Directive 312 (PR #286, 2026-04-15)
+Domain pool. 3 tables, naming generator, pool manager, replenishment flow. 842 LOC. Dry-run. PR #286.
+
+### Directive 314 (PR #288, 2026-04-15)
+Customer-facing flow. Welcome page, activation email, 4-state dashboard, Maya tour, reveal animation, Pause Cycle. 2393 LOC. PR #288.
+
+### Directive 315 (PR #289, 2026-04-15)
+crm-sync-flow PERMANENTLY DELETED. 883 lines removed. Deployment deleted. CI guard added. PR #289.
+
+### Directive 317 (PR #317, 2026-04-15)
+ContactOut validated (74% email match, 100% AU mobile). Waterfall reordered. 5 sub-directives. 5 pilot runs. 3.88 AUD total spend.
+
+### Directive 3001 (PR #320, 2026-04-15)
+V3: Stage 9 build + Stage 10 live-fire. 25/25 VRs, 100/100 dm_messages. Cost 1.574 USD (2.440 AUD). verification_first_pass=false due to Decimal serialization + pgbouncer bugs.
+
+### Directive 4001 (PR #312, 2026-04-15)
+M-S1-PREP: Category ETV windows surfaced. Manual Section 3 backfilled with 21-category table. Section 13 build log updated.
+
+### Directive 5001 (PR #312, 2026-04-15)
+S1: Stage 1 Discovery. 100/100 domains (10 cats x 10). Cost 1.10 USD. 137.9s wall.
+
+### Directive A (PR #324, 2026-04-15)
+Foundation: tests fixed, naming standardised (F3a/F3b to Stage naming), blocklist +62 domains (total 274), parallel.py utility (4 tests). pytest: 1498 passed.
+
+### Directive B (PR #325, 2026-04-15)
+Module fixes: Facebook SERP query added to Stage 2, scoring separation (Stage 7 no longer scores), structured vulnerability report format. pytest: 1498 passed.
+
+### Directive C (PR #326, 2026-04-15)
+4 missing modules built: Stage 6 ENRICH (historical_rank_overview, 0.106/domain), Stage 9 SOCIAL (BD LinkedIn DM+company posts), Stage 10 VR+MSG (Gemini structured VR + personalised outreach), Stage 11 CARD (binary lead_pool_eligible). pytest: 1498 passed.
+
+### Directive D1 (PR #327, 2026-04-15)
+Cohort runner (cohort_runner.py) + 7 bug fixes (D1.1): budget hard cap, cost tracking constants, stage naming, blocklist +39 (total 313), Gemini error capture, BD env key fix, parallel cost tests. 100-domain smoke: 28% conversion, 17.7 min wall. pytest: 1498+ passed.
+
+### Directive D1.3 (PR #328, 2026-04-15)
+Audit fix sweep: 35 findings from D1.2 seam audit addressed. preflight_check.py created. Cost constant Stage 4 0.073 to 0.078. ABN signal fix (C1), Stage 9 verified URL (H2), data contract fixes (M1-M3, L1-L4). +6 new tests. pytest: 1504 passed.
 ## SECTION 14 — COMPETITIVE INTELLIGENCE
 
 Direct competitors (signal-based AI BDR category):

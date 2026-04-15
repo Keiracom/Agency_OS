@@ -29,17 +29,23 @@ For dm_candidate: you must identify the individual with authority to approve a m
   "staff_estimate_band": "solo | small(2-5) | medium(6-20) | large(20+) | unknown",
   "is_enterprise_or_chain": false,
   "website_reachable": true,
-  "primary_phone": "...",
-  "primary_email": "general contact email",
+  "primary_phone": "main business phone from website or directory",
+  "primary_email": "general contact email from website (info@, contact@, etc.)",
+  "dm_email": "decision-maker personal email if found on website, LinkedIn, or directory (null if not found — do NOT guess)",
+  "dm_phone": "decision-maker direct/mobile phone if found (null if not found — do NOT guess)",
+  "office_address": "full street address if visible on website or Google",
+  "services_offered": ["list of services this business provides"],
   "social_urls": {
     "linkedin": null,
     "facebook": null,
-    "instagram": null
+    "instagram": null,
+    "twitter": null
   },
   "dm_candidate": {
     "name": "REQUIRED — the person who runs this business",
     "role": "their title or position",
-    "linkedin_url": null
+    "linkedin_url": null,
+    "email": "their personal work email if found (null if not found — do NOT fabricate)"
   }
 }
 

@@ -190,8 +190,8 @@ async def _run_stage4(domain_data: dict, dfs: DFSLabsClient) -> dict:
     except Exception as exc:
         domain_data["errors"].append(f"stage4: {exc}")
         domain_data["stage4"] = {}
-    # Fixed cost: 10 DFS endpoints × avg $0.0073 = $0.073/domain (parallel-safe)
-    domain_data["cost_usd"] += 0.073
+    # Fixed cost: 10 DFS endpoints sum = $0.0775, rounded up to $0.078/domain (parallel-safe)
+    domain_data["cost_usd"] += 0.078
     domain_data["timings"]["stage4"] = round(time.monotonic() - t0, 2)
     return domain_data
 

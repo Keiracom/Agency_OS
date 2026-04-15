@@ -12,6 +12,7 @@ TRADEOFF (ratified by CEO, #328 Stage 1):
   recovery as a secondary path.
 """
 from __future__ import annotations
+
 import re
 
 # ── GOVERNMENT TLDs (all countries) ──────────────────────────────────────────
@@ -138,6 +139,7 @@ DENTAL_CHAINS = frozenset({
     "dentalone.com.au", "marchorthodontics.com.au", "totalortho.com.au",
     "rsdentalgroup.com.au", "smilesolutions.com.au", "mcdental.com.au",
     "odontologie.com.au", "smileteam.com.au",
+    "dentalboutique.com.au", "allon4.com.au", "myimplantdentist.com.au",
 })
 
 # Construction chains
@@ -158,6 +160,7 @@ LEGAL_CHAINS = frozenset({
     "claytonutz.com", "corrs.com.au", "herbertsmithfreehills.com",
     "ashurst.com", "kingwood.com.au", "gilberttobin.com",
     "nortonrosefulbright.com",
+    "hwlebsworth.com.au", "lawpartners.com.au", "www.queenslandjudgments.com.au",
 })
 
 # Auto franchise chains
@@ -181,6 +184,8 @@ FITNESS_CHAINS = frozenset({
     "plus.com.au", "vaboretum.com.au", "goldsgym.com.au",
     "worldgym.com.au", "worldgymaustralia.com.au", "24hourfitness.com.au",
     "curves.com.au", "jettsfitness.com.au", "zap.fitness", "clubfitness.com.au",
+    "dynamofitness.com.au", "gymdirect.com.au", "www.genesisfitness.com.au",
+    "www.virginactive.com.au",
 })
 
 # Food/restaurant chains
@@ -205,13 +210,40 @@ MEDIA_COMPANIES = frozenset({
     "quandoo.com.au", "dimmi.com.au", "opentable.com.au",
 })
 
+# ── ACCOUNTING CHAINS ────────────────────────────────────────────────────────
+ACCOUNTING_CHAINS = frozenset({
+    "pwc.com.au", "www.pwc.com.au", "bdo.com.au", "www.bdo.com.au",
+    "cpaaustralia.com.au", "www.cpaaustralia.com.au",
+    "grantthornton.com.au", "www.grantthornton.com.au",
+    "bentleys.com.au", "www.bentleys.com.au",
+    "taxstore.com.au", "mlc.com.au", "www.mlc.com.au",
+    "www.smart.com.au", "oneclicklife.com.au",
+    "www.maxxia.com.au", "iorder.com.au",
+    "deloitte.com.au", "kpmg.com.au", "ey.com",
+})
+
+# ── GOVERNMENT HEALTH ─────────────────────────────────────────────────────────
+GOVERNMENT_HEALTH = frozenset({
+    "www.ipchealth.com.au", "dental.mthc.com.au",
+    "www.elizabethmedicalcentre.com.au",
+    "www.sawater.com.au",
+})
+
+# ── INDUSTRIAL WHOLESALE ─────────────────────────────────────────────────────
+INDUSTRIAL_WHOLESALE = frozenset({
+    "www.holmanindustries.com.au", "store.brita.com.au",
+    "www.megt.com.au", "www.actrol.com.au",
+    "www.completehomefiltration.com.au",
+})
+
 # ── COMBINED SET (for exact/subdomain match) ─────────────────────────────────
 BLOCKED_DOMAINS: frozenset[str] = (
     SOCIAL_PLATFORMS | TECH_GIANTS | WEBSITE_BUILDERS | HOSTING_INFRA |
     AU_GOVERNMENT | AU_MEDIA | AGGREGATORS | CONSTRUCTION_RETAILERS |
     BRANDS | HEALTH_FUNDS | DENTAL_CHAINS | CONSTRUCTION_CHAINS |
     LEGAL_CHAINS | AUTO_CHAINS | FOREIGN_CLINICS | FITNESS_CHAINS |
-    FOOD_CHAINS | MEDIA_COMPANIES
+    FOOD_CHAINS | MEDIA_COMPANIES | ACCOUNTING_CHAINS | GOVERNMENT_HEALTH |
+    INDUSTRIAL_WHOLESALE
 )
 
 
@@ -254,7 +286,4 @@ def is_blocked(domain: str | None) -> bool:
         return True
 
     # Subdomain of blocked domain
-    if any(d.endswith("." + blocked) for blocked in BLOCKED_DOMAINS):
-        return True
-
-    return False
+    return any(d.endswith("." + blocked) for blocked in BLOCKED_DOMAINS)

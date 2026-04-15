@@ -183,7 +183,6 @@ async def _run_stage3(domain_data: dict, gemini: GeminiClient) -> dict:
 async def _run_stage4(domain_data: dict, dfs: DFSLabsClient) -> dict:
     """Stage 4 SIGNAL — DFS signal bundle."""
     t0 = time.monotonic()
-    dfs_before = dfs.total_cost_usd
     biz = domain_data.get("stage3", {}).get("business_name")
     try:
         bundle = await build_signal_bundle(dfs, domain_data["domain"], business_name=biz)
@@ -191,7 +190,8 @@ async def _run_stage4(domain_data: dict, dfs: DFSLabsClient) -> dict:
     except Exception as exc:
         domain_data["errors"].append(f"stage4: {exc}")
         domain_data["stage4"] = {}
-    domain_data["cost_usd"] += dfs.total_cost_usd - dfs_before
+    # Fixed cost: 10 DFS endpoints × avg $0.0073 = $0.073/domain (parallel-safe)
+    domain_data["cost_usd"] += 0.073
     domain_data["timings"]["stage4"] = round(time.monotonic() - t0, 2)
     return domain_data
 
@@ -229,12 +229,12 @@ async def _run_stage6(domain_data: dict, dfs: DFSLabsClient) -> dict:
     if (domain_data.get("stage5") or {}).get("composite_score", 0) < 60:
         return domain_data
     t0 = time.monotonic()
-    dfs_before = dfs.total_cost_usd
     composite = domain_data["stage5"]["composite_score"]
     try:
         result = await run_stage6_enrich(dfs, domain_data["domain"], composite)
         domain_data["stage6"] = result
-        domain_data["cost_usd"] += dfs.total_cost_usd - dfs_before
+        # Fixed cost: historical_rank_overview = $0.106/domain (parallel-safe)
+        domain_data["cost_usd"] += 0.106
     except Exception as exc:
         domain_data["errors"].append(f"stage6: {exc}")
     domain_data["timings"]["stage6"] = round(time.monotonic() - t0, 2)
@@ -265,11 +265,11 @@ async def _run_stage8(domain_data: dict, dfs: DFSLabsClient) -> dict:
     serp = domain_data.get("stage2") or {}
 
     # 8a: verify fills
-    dfs_before = dfs.total_cost_usd
     try:
         fills = await run_verify_fills(dfs=dfs, f3a_output=identity)
         domain_data["stage8_verify"] = fills
-        domain_data["cost_usd"] += dfs.total_cost_usd - dfs_before
+        # Fixed cost: 3 SERP calls = $0.006 + scraper $0.004 + ContactOut ~$0.013 = $0.023/domain
+        domain_data["cost_usd"] += 0.023
     except Exception as exc:
         domain_data["errors"].append(f"stage8a: {exc}")
         fills = {}
@@ -604,7 +604,7 @@ def _parse_args() -> argparse.Namespace:
         default="dental,plumbing,legal,accounting,fitness",
         help="Comma-separated category names (default: dental,plumbing,legal,accounting,fitness)",
     )
-    p.add_argument("--size", type=int, default=4, help="Domains per category (default: 4)")
+    p.add_argument("--size", type=int, default=20, help="Total cohort size (split across categories)")
     p.add_argument("--output-dir", default=None, help="Output directory (default: auto-timestamped)")
     return p.parse_args()
 
@@ -613,4 +613,5 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     args = _parse_args()
     cats = [c.strip() for c in args.categories.split(",") if c.strip()]
-    asyncio.run(run_cohort(categories=cats, domains_per_category=args.size, output_dir=args.output_dir))
+    per_cat = max(1, args.size // len(cats))
+    asyncio.run(run_cohort(categories=cats, domains_per_category=per_cat, output_dir=args.output_dir))

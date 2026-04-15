@@ -781,6 +781,9 @@ Cohort runner (cohort_runner.py) + 7 bug fixes (D1.1): budget hard cap, cost tra
 
 ### Directive D1.3 (PR #328, 2026-04-15)
 Audit fix sweep: 35 findings from D1.2 seam audit addressed. preflight_check.py created. Cost constant Stage 4 0.073 to 0.078. ABN signal fix (C1), Stage 9 verified URL (H2), data contract fixes (M1-M3, L1-L4). +6 new tests. pytest: 1504 passed.
+
+### Directive D1.8 (PR #329, 2026-04-15)
+3-store save mechanism fix: (1) CLAUDE.md schema refs corrected (public.ceo_memory/cis_directive_metrics), (2) three_store_save.py automation script + skill, (3) CI directive-save-check.yml + session_end_check.py enforcement, (4) 19 directives backfilled from git history. Save mechanism now: one script, one call, 4 stores written.
 ## SECTION 14 — COMPETITIVE INTELLIGENCE
 
 Direct competitors (signal-based AI BDR category):

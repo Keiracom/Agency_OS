@@ -990,6 +990,10 @@ GOV-11: Structural Audit Before Validation-Scale Run. Stage audit within 7 days 
 
 ### Directive GOV-12-gates-as-code-not-comments (PR #335, 2026-04-16)
 GOV-12: Gates As Code Not Comments. Runtime enforcement required for all gates. Comment-only gates create false confidence. Emerged 2026-04-16 when Hunter dm_verified gate found as comment only. CEO authorizes systematic gate audit.
+
+### LAW XVII — Callsign Discipline (AIDEN-SCAFFOLD, 2026-04-16)
+Every Step 0 RESTATE, Telegram outbound message, PR title, commit trailer, and three-store write MUST prefix or tag the session callsign ([ELLIOT] or [AIDEN]). Ambiguous identity in multi-session operation is a governance violation. Callsign is read from `./IDENTITY.md` at session start and must match `CALLSIGN` env var when set. Empty `CALLSIGN` is a hard fail — three_store_save.py raises SystemExit. Each session occupies its own git worktree (Elliot: /home/elliotbot/clawd/Agency_OS, Aiden: /home/elliotbot/clawd/Agency_OS-aiden). Workspace isolation via worktree + per-worktree CLAUDE.md + IDENTITY.md + --setting-sources=project (no CLAUDE_CONFIG_DIR required).
+
 ## SECTION 18 — OUTREACH + CONTENT (pre-launch)
 
 Landing page (`agency_os_v5.html`) is built with Bloomberg aesthetic and "Who built yours?" hero. Pending: Remotion video hero, Stripe Checkout on pricing CTAs, live founding counter from Supabase. Video strategy: 5 versions (dashboard animation, Maya walkthrough, HeyGen avatar, customer-specific, results) built via Remotion + HeyGen (Maya avatar). Content distribution via Prefect Flow #28 (Claude API → Remotion → HeyGen → distribution APIs). Demo mode active via `?demo=true` URL param with seeded Supabase demo tenant. Onboarding starts with a 15-minute activation call (CRM + LinkedIn connect, watch dashboard populate live).

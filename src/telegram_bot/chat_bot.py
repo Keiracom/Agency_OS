@@ -85,7 +85,7 @@ OUTBOX_DIR = f"{RELAY_DIR}/outbox"  # messages FROM tmux session TO Telegram
 os.makedirs(INBOX_DIR, exist_ok=True)
 os.makedirs(OUTBOX_DIR, exist_ok=True)
 
-relay_mode: dict[int, bool] = {}  # chat_id -> relay on/off
+relay_mode: dict[int, bool] = {cid: True for cid in ALLOWED_CHAT_IDS}  # default ON for all allowed chats
 # When relay is ON, messages continue the tmux session directly
 RELAY_SESSION_ID: str | None = None  # set by /relay on, read from latest JSONL
 

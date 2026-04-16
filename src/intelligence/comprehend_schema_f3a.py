@@ -28,10 +28,11 @@ Execution Protocol:
    - PRIORITY 1 (The Face): Identify the person featured on the website 'About/Team' page OR the primary author of the blog/insights. This is your Operational DM.
    - PRIORITY 2 (Social Active): Cross-reference the Priority 1 candidate with LinkedIn. If they are 'Owner' or 'Director' at a brand that claims the target domain, they are the DM.
    - PRIORITY 3 (The Parent): ONLY if Priority 1 & 2 fail, use the ASIC-registered director.
+   - PRIORITY 4 (Association Inference): If Priorities 1-3 all fail AND the domain is brand-faceless (no named people on site, legacy ASIC directors only), search for associated brands. If a secondary brand is frequently mentioned alongside the target (shared office, shared phone, partnership snippets, co-mention in news), you MAY return the operational leader of that secondary brand. Set dm_verified=false and dm_source='inferred_association'. Cite the association evidence in dm_verified_evidence (e.g. 'shared office at X, shared phone Y, partnership announced Z').
 
-   CONFLICT RESOLUTION: If ASIC shows a legacy director but the website/LinkedIn shows an operational leader (e.g. Williams), you MUST select the operational leader. Citing the brand relationship in dm_verified_evidence.
+   CONFLICT RESOLUTION: If ASIC shows a legacy director but the website/LinkedIn shows an operational leader (e.g. Williams), you MUST select the operational leader. Cite the brand relationship in dm_verified_evidence.
 
-   If no name can be verified via hierarchy, return dm_candidate.name as null.
+   If no name can be verified OR reasonably inferred via hierarchy, return dm_candidate.name as null.
 
 3. MAXIMUM EXTRACTION (GOV-8): Extract every available field to feed the Business Universe intelligence engine.
 
@@ -72,7 +73,7 @@ Return ONLY valid JSON:
     "email": "their personal work email if found (null if not found)",
     "dm_verified": false,
     "dm_verified_evidence": "Explain the link between the legal entity and the operational brand. E.g., 'Rick Williams verified as MD via Platform 24/MSP Corp website and LinkedIn activity, despite Gallagher family listed as ASIC directors.'",
-    "dm_source": "operational_leader | asic_director | linkedin_profile | website_team_page | null"
+    "dm_source": "operational_leader | asic_director | linkedin_profile | website_team_page | inferred_association | null"
   }
 }
 

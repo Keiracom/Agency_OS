@@ -85,7 +85,11 @@ OUTBOX_DIR = f"{RELAY_DIR}/outbox"  # messages FROM tmux session TO Telegram
 os.makedirs(INBOX_DIR, exist_ok=True)
 os.makedirs(OUTBOX_DIR, exist_ok=True)
 
-relay_mode: dict[int, bool] = {cid: True for cid in ALLOWED_CHAT_IDS}  # default ON for all allowed chats
+# Relay defaults ON only if tmux target exists (no tmux = use subprocess path)
+_TMUX_TARGETS = {"elliot": "elliottbot", "aiden": "aidenbot"}
+_tmux_session = _TMUX_TARGETS.get(CALLSIGN, f"{CALLSIGN}bot")
+_tmux_exists = os.system(f"tmux has-session -t {_tmux_session} 2>/dev/null") == 0
+relay_mode: dict[int, bool] = {cid: True for cid in ALLOWED_CHAT_IDS} if _tmux_exists else {}
 # When relay is ON, messages continue the tmux session directly
 RELAY_SESSION_ID: str | None = None  # set by /relay on, read from latest JSONL
 

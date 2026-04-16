@@ -103,10 +103,23 @@ VALUES (gen_random_uuid(), 'daily_log', '<summary: what was done, PRs, decisions
 | LAW XV-D | Step 0 RESTATE — mandatory restate before any directive execution, no exceptions |
 | GOV-8 | Maximum Extraction Per Call — every API response captured in full, written to BU regardless of card eligibility, never re-fetched if prior stage received it |
 | GOV-9 | Two-Layer Directive Scrutiny — every directive triggers Layer 2 CTO scrutiny before Step 0. Report DIRECTIVE SCRUTINY — N GAPS FOUND or CLEAR before any execution |
+| GOV-10 | Resolve-Now-Not-Later — fix bounded gaps in current PR, not follow-up directives |
+| GOV-11 | Structural Audit Before Validation — stage audit within 7 days before any N>=20 validation run |
+| GOV-12 | Gates As Code Not Comments — runtime enforcement required, not documentation-only |
 
-## Directive Scrutiny (GOV-9 — MANDATORY)
+## Directive + Validation Governance
+
+### GOV-9 — Directive Scrutiny (MANDATORY)
 
 Every directive received triggers Layer 2 scrutiny pass before Step 0. Scrutinise for: missing capabilities, missing config, missing instrumentation, contradicted assumptions, recently-merged code that changes the path. Report gaps as `DIRECTIVE SCRUTINY — N GAPS FOUND` with gap list, or `DIRECTIVE SCRUTINY — CLEAR` before proceeding to Step 0 RESTATE. This is mandatory regardless of how thorough the CEO's Layer 1 drafting was.
+
+### GOV-11 — Structural Audit Before Validation (MANDATORY)
+
+Before any cohort run intended to validate pipeline behavior at scale (N>=20 domains, intended to inform ship/no-ship decision), a structural stage audit must complete in the prior 7 days. Audit covers: data flow gaps, GOV-8 violations, dead code paths, gate enforcement vs documentation, unfilled template tokens, cascade failure risk per stage. No validation run without recent audit on file.
+
+### GOV-12 — Gates As Code (MANDATORY)
+
+Any gate specified in a directive must be runtime enforcement. Reports of "gate added" require evidence of executable conditional, not comment block. Gates as comments create false confidence.
 
 ## Dead References (Do Not Use)
 

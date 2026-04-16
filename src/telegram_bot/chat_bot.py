@@ -78,7 +78,7 @@ running_processes: dict[int, asyncio.subprocess.Process] = {}
 # Relay state
 # ---------------------------------------------------------------------------
 
-RELAY_DIR = "/tmp/telegram-relay"
+RELAY_DIR = f"/tmp/telegram-relay-{CALLSIGN}"  # per-callsign isolation (LAW XVII)
 INBOX_DIR = f"{RELAY_DIR}/inbox"    # messages FROM Telegram TO tmux session
 OUTBOX_DIR = f"{RELAY_DIR}/outbox"  # messages FROM tmux session TO Telegram
 

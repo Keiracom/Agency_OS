@@ -1,16 +1,25 @@
 #!/bin/bash
 # Relay Watcher — bridges Telegram inbox to Claude's tmux pane
-# Watches /tmp/telegram-relay/inbox/ for new messages
-# Uses tmux send-keys to inject them into the Claude session
-# This wakes Claude up as if Dave typed the message
+# Per-callsign isolation (LAW XVII): each callsign has its own relay dir + tmux target
+# Usage: relay_watcher.sh [callsign]  (default: elliot)
 
-INBOX="/tmp/telegram-relay/inbox"
-TMUX_TARGET="elliottbot:0.0"
-PROCESSED="/tmp/telegram-relay/processed"
+CALLSIGN="${1:-elliot}"
+RELAY_DIR="/tmp/telegram-relay-${CALLSIGN}"
+INBOX="${RELAY_DIR}/inbox"
+PROCESSED="${RELAY_DIR}/processed"
+
+# Map callsign to tmux session name
+if [ "$CALLSIGN" = "elliot" ]; then
+    TMUX_TARGET="elliottbot:0.0"
+elif [ "$CALLSIGN" = "aiden" ]; then
+    TMUX_TARGET="aidenbot:0.0"
+else
+    TMUX_TARGET="${CALLSIGN}bot:0.0"
+fi
 
 mkdir -p "$INBOX" "$PROCESSED"
 
-echo "[relay-watcher] Started. Watching $INBOX → tmux $TMUX_TARGET"
+echo "[relay-watcher-${CALLSIGN}] Started. Watching $INBOX → tmux $TMUX_TARGET"
 
 inotifywait -m -q -e create "$INBOX" --format '%f' 2>/dev/null | while read fname; do
     # Only process JSON metadata files
@@ -37,7 +46,7 @@ print(t)
 " 2>/dev/null)
 
         if [ -n "$text" ]; then
-            echo "[relay-watcher] Text from Telegram: ${text:0:80}..."
+            echo "[relay-watcher-${CALLSIGN}] Text from Telegram: ${text:0:80}..."
             sender=$(python3 -c "import json; print(json.load(open('$fpath')).get('sender','unknown'))" 2>/dev/null)
             # Inject into Claude's tmux pane — prefix with [TG-SENDER] so Claude knows the source
             tmux send-keys -t "$TMUX_TARGET" "[TG-${sender^^}] $text" Enter
@@ -48,7 +57,7 @@ print(t)
         caption=$(python3 -c "import json; print(json.load(open('$fpath')).get('caption',''))" 2>/dev/null)
         sender=$(python3 -c "import json; print(json.load(open('$fpath')).get('sender','unknown'))" 2>/dev/null)
 
-        echo "[relay-watcher] Photo from Telegram: $photo_path"
+        echo "[relay-watcher-${CALLSIGN}] Photo from Telegram: $photo_path"
         tmux send-keys -t "$TMUX_TARGET" "[TG-${sender^^}] Dave sent a screenshot: $photo_path ${caption:+— $caption}" Enter
 
     elif [ "$msg_type" = "document" ]; then
@@ -56,7 +65,7 @@ print(t)
         file_name=$(python3 -c "import json; print(json.load(open('$fpath')).get('file_name',''))" 2>/dev/null)
         sender=$(python3 -c "import json; print(json.load(open('$fpath')).get('sender','unknown'))" 2>/dev/null)
 
-        echo "[relay-watcher] Document from Telegram: $file_name"
+        echo "[relay-watcher-${CALLSIGN}] Document from Telegram: $file_name"
         tmux send-keys -t "$TMUX_TARGET" "[TG-${sender^^}] Dave sent a file: $file_path ($file_name)" Enter
     fi
 

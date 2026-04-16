@@ -13,7 +13,7 @@ STATE_FILE="${RELAY_DIR}/last_chat_id"
 if [ "$CALLSIGN" = "elliot" ]; then
     TMUX_TARGET="elliottbot:0.0"
 elif [ "$CALLSIGN" = "aiden" ]; then
-    TMUX_TARGET="aidenbot:0.0"
+    TMUX_TARGET="aiden:0.0"
 else
     TMUX_TARGET="${CALLSIGN}bot:0.0"
 fi

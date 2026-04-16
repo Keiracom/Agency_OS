@@ -86,7 +86,7 @@ os.makedirs(INBOX_DIR, exist_ok=True)
 os.makedirs(OUTBOX_DIR, exist_ok=True)
 
 # Relay defaults ON only if tmux target exists (no tmux = use subprocess path)
-_TMUX_TARGETS = {"elliot": "elliottbot", "aiden": "aidenbot"}
+_TMUX_TARGETS = {"elliot": "elliottbot", "aiden": "aiden"}
 _tmux_session = _TMUX_TARGETS.get(CALLSIGN, f"{CALLSIGN}bot")
 _tmux_exists = os.system(f"tmux has-session -t {_tmux_session} 2>/dev/null") == 0
 relay_mode: dict[int, bool] = {cid: True for cid in ALLOWED_CHAT_IDS} if _tmux_exists else {}

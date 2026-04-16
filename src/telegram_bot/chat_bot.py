@@ -529,10 +529,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 return  # stay quiet, max turns hit
             _bot_turns_without_dave[chat_id] = turns + 1
 
-    # Group mention filter and text enrichment
+    # Group mention filter and text enrichment (Message.text is immutable — use local var)
+    message_text = update.message.text or ""
     if is_group and sender == Sender.DAVE:
-        text = update.message.text or ""
-        bot_mentioned = f"@{BOT_USERNAME}".lower() in text.lower() if BOT_USERNAME else False
+        bot_mentioned = f"@{BOT_USERNAME}".lower() in message_text.lower() if BOT_USERNAME else False
         is_reply_to_us = (
             update.message.reply_to_message
             and update.message.reply_to_message.from_user
@@ -543,21 +543,20 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             pass  # allow through — brainstorm mode
         # Strip the @mention so Claude gets clean text; add group context prefix
         if BOT_USERNAME:
-            clean = text.replace(f"@{BOT_USERNAME}", "").strip()
-            update.message.text = f"[GROUP — from Dave (CEO)]: {clean}" if clean else text
+            clean = message_text.replace(f"@{BOT_USERNAME}", "").strip()
+            message_text = f"[GROUP — from Dave (CEO)]: {clean}" if clean else message_text
         else:
-            update.message.text = f"[GROUP — from Dave (CEO)]: {text}"
+            message_text = f"[GROUP — from Dave (CEO)]: {message_text}"
 
     # Peer bot message — add context prefix before routing to Claude
     if sender == Sender.PEER_BOT:
         peer_name = update.effective_user.first_name or "peer"
-        original_text = update.message.text or ""
-        update.message.text = f"[GROUP — from {peer_name} (peer bot, NOT your boss Dave)]: {original_text}"
+        message_text = f"[GROUP — from {peer_name} (peer bot, NOT your boss Dave)]: {message_text}"
 
     # Relay mode: forward to tmux inbox instead of Claude
     if relay_mode.get(chat_id):
         # Relay mode: write to inbox, watcher injects into tmux via send-keys
-        await _relay_text_to_inbox(chat_id, update.message.text or "", sender=sender)
+        await _relay_text_to_inbox(chat_id, message_text, sender=sender)
         await reply_tagged(update.message, "Relayed to tmux session")
         return
 
@@ -580,7 +579,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         response, real_session_id = await run_claude(
             resume_id,
             model,
-            update.message.text or "",
+            message_text,
             chat_id,
         )
 

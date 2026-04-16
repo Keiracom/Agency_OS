@@ -39,7 +39,7 @@ WORK_DIR: str = os.getenv("WORK_DIR_OVERRIDE", "/home/elliotbot/clawd/Agency_OS"
 BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN") or os.getenv("TELEGRAM_TOKEN") or ""
 # Empty TELEGRAM_CHAT_ID = no allowed chats yet (Aiden first-/start populates it)
 _chat_id_raw = os.getenv("TELEGRAM_CHAT_ID", "7267788033")
-ALLOWED_CHAT_IDS: list[int] = [int(_chat_id_raw)] if _chat_id_raw.strip() else []
+ALLOWED_CHAT_IDS: list[int] = [int(x.strip()) for x in _chat_id_raw.split(",") if x.strip()]
 SUPABASE_URL: str = os.getenv("SUPABASE_URL", "")
 SUPABASE_KEY: str = os.getenv("SUPABASE_SERVICE_KEY", "")
 CLAUDE_BIN: str = "/home/elliotbot/.local/bin/claude"
@@ -54,6 +54,22 @@ SUPABASE_HEADERS: dict[str, str] = {
 
 # LAW XVII: callsign tag for outbound messages
 CALLSIGN_TAG: str = f"[{CALLSIGN.upper()}]"
+
+# Sender classification for group chats (LAW XVII)
+BOT_USERNAME: str = ""  # populated at startup from getMe
+KNOWN_PEER_BOTS: set[str] = {"eeeeelllliiiioooottt_bot", "aaaaidenbot"}  # lowercase
+
+
+class Sender:
+    DAVE = "dave"       # human boss — follow instructions
+    PEER_BOT = "peer"   # other bot — discuss only, no directives
+    SELF = "self"       # own message — ignore
+    UNKNOWN = "unknown"  # unknown sender — reject in group, allow in private
+
+
+# Group chat: bot-to-bot turn counter (resets when Dave speaks)
+_bot_turns_without_dave: dict[int, int] = {}  # chat_id -> count
+MAX_BOT_TURNS = 2  # max back-and-forth without Dave before going quiet
 
 # In-memory process tracking: chat_id -> subprocess handle
 running_processes: dict[int, asyncio.subprocess.Process] = {}
@@ -103,6 +119,35 @@ async def auth_check(update: Update) -> bool:
         logger.warning(f"Rejected message from chat_id={chat_id}")
         return False
     return True
+
+
+def classify_sender(update: Update) -> str:
+    """Classify who sent this message: dave, peer bot, self, or unknown."""
+    user = update.effective_user
+    if not user:
+        return Sender.UNKNOWN
+    # Self detection
+    if user.is_bot and user.username and user.username.lower() == BOT_USERNAME.lower():
+        return Sender.SELF
+    # Peer bot detection
+    if user.is_bot and user.username and user.username.lower() in KNOWN_PEER_BOTS:
+        return Sender.PEER_BOT
+    # Human in allowed list
+    if not user.is_bot:
+        return Sender.DAVE
+    return Sender.UNKNOWN
+
+
+async def reply_tagged(message, text: str, **kwargs) -> None:
+    """Reply with CALLSIGN_TAG prefix (LAW XVII compliance)."""
+    tagged = f"{CALLSIGN_TAG} {text}"
+    if len(tagged) <= 4096:
+        await message.reply_text(tagged, **kwargs)
+    else:
+        # Split long messages, tag only the first chunk
+        chunks = [tagged[i:i + 4096] for i in range(0, len(tagged), 4096)]
+        for chunk in chunks:
+            await message.reply_text(chunk, **kwargs)
 
 
 # ---------------------------------------------------------------------------
@@ -463,19 +508,65 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     if not await auth_check(update):
         return
     chat_id = update.effective_chat.id
+    sender = classify_sender(update)
+    is_group = update.effective_chat.type in ("group", "supergroup")
+
+    # Self messages — always ignore
+    if sender == Sender.SELF:
+        return
+
+    # Unknown sender in group — ignore silently
+    if sender == Sender.UNKNOWN and is_group:
+        return
+
+    # Track bot-to-bot turns in groups
+    if is_group:
+        if sender == Sender.DAVE:
+            _bot_turns_without_dave[chat_id] = 0  # reset counter
+        elif sender == Sender.PEER_BOT:
+            turns = _bot_turns_without_dave.get(chat_id, 0)
+            if turns >= MAX_BOT_TURNS:
+                return  # stay quiet, max turns hit
+            _bot_turns_without_dave[chat_id] = turns + 1
+
+    # Group mention filter and text enrichment
+    if is_group and sender == Sender.DAVE:
+        text = update.message.text or ""
+        bot_mentioned = f"@{BOT_USERNAME}".lower() in text.lower() if BOT_USERNAME else False
+        is_reply_to_us = (
+            update.message.reply_to_message
+            and update.message.reply_to_message.from_user
+            and update.message.reply_to_message.from_user.username
+            and update.message.reply_to_message.from_user.username.lower() == BOT_USERNAME.lower()
+        )
+        if not bot_mentioned and not is_reply_to_us:
+            pass  # allow through — brainstorm mode
+        # Strip the @mention so Claude gets clean text; add group context prefix
+        if BOT_USERNAME:
+            clean = text.replace(f"@{BOT_USERNAME}", "").strip()
+            update.message.text = f"[GROUP — from Dave (CEO)]: {clean}" if clean else text
+        else:
+            update.message.text = f"[GROUP — from Dave (CEO)]: {text}"
+
+    # Peer bot message — add context prefix before routing to Claude
+    if sender == Sender.PEER_BOT:
+        peer_name = update.effective_user.first_name or "peer"
+        original_text = update.message.text or ""
+        update.message.text = f"[GROUP — from {peer_name} (peer bot, NOT your boss Dave)]: {original_text}"
 
     # Relay mode: forward to tmux inbox instead of Claude
     if relay_mode.get(chat_id):
         # Relay mode: write to inbox, watcher injects into tmux via send-keys
-        await _relay_text_to_inbox(chat_id, update.message.text or "")
-        await update.message.reply_text("Relayed to tmux session")
+        await _relay_text_to_inbox(chat_id, update.message.text or "", sender=sender)
+        await reply_tagged(update.message, "Relayed to tmux session")
         return
 
     # Guard: already processing
     proc = running_processes.get(chat_id)
     if proc and proc.returncode is None:
-        await update.message.reply_text(
-            "Still processing previous message. Use /kill to abort or wait."
+        await reply_tagged(
+            update.message,
+            "Still processing previous message. Use /kill to abort or wait.",
         )
         return
 
@@ -506,7 +597,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 logger.info(f"[chat={chat_id}] updated session to {real_session_id[:8]}")
 
         if not response or not response.strip():
-            await update.message.reply_text("(empty response from Claude)")
+            await reply_tagged(update.message, "(empty response from Claude)")
             return
 
         sid_label = (session or {}).get("claude_session_id", real_session_id or "?")
@@ -514,13 +605,18 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             fname = f"/tmp/response-{sid_label[:8]}.md"
             with open(fname, "w") as fh:
                 fh.write(response)
-            summary = response[:500] + "\n\n(Full response attached as file)"
+            summary = f"{CALLSIGN_TAG} {response[:500]}\n\n(Full response attached as file)"
             await update.message.reply_text(summary)
             with open(fname, "rb") as fh:
                 await update.message.reply_document(document=fh, filename="response.md")
         else:
+            first = True
             for chunk in chunk_response(response):
-                await update.message.reply_text(chunk)
+                if first:
+                    await reply_tagged(update.message, chunk)
+                    first = False
+                else:
+                    await update.message.reply_text(chunk)
 
         # Update session stats
         if session:
@@ -532,7 +628,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     except Exception as exc:
         logger.exception(f"[chat={chat_id}] error handling message: {exc}")
-        await update.message.reply_text(f"Error: {exc}")
+        await reply_tagged(update.message, f"Error: {exc}")
     finally:
         typing_task.cancel()
 
@@ -542,7 +638,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 # ---------------------------------------------------------------------------
 
 
-async def _relay_text_to_inbox(chat_id: int, text: str) -> None:
+async def _relay_text_to_inbox(chat_id: int, text: str, sender: str = Sender.DAVE) -> None:
     """Write a text message to the inbox dir for the tmux session to pick up."""
     ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     msg_id = f"{ts}_{uuid.uuid4().hex[:8]}"
@@ -551,6 +647,7 @@ async def _relay_text_to_inbox(chat_id: int, text: str) -> None:
         "type": "text",
         "chat_id": chat_id,
         "text": text,
+        "sender": sender,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
     path = os.path.join(INBOX_DIR, f"{msg_id}.json")
@@ -757,6 +854,10 @@ def main() -> None:
         logger.warning(f"{CALLSIGN_TAG} TELEGRAM_CHAT_ID empty — bot will accept first /start to capture chat_id (one-shot)")
 
     async def post_init(application: Application) -> None:
+        global BOT_USERNAME
+        bot_info = await application.bot.get_me()
+        BOT_USERNAME = bot_info.username or ""
+        logger.info(f"Bot username resolved: @{BOT_USERNAME}")
         asyncio.create_task(_outbox_watcher(application))
 
     app = Application.builder().token(BOT_TOKEN).post_init(post_init).build()

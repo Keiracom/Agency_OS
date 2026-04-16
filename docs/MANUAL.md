@@ -827,6 +827,9 @@ Unified contact waterfall fix. Swapped cohort_runner Stage 8 from legacy contact
 
 ### Directive D2.2-PREP (PR #333, 2026-04-15)
 Validation run enablement. --domains CLI flag (bypass Stage 1, replay specific domains). 4 new verticals: recruitment (12371), itmsp (12202), webdev (11493), coaching (11098). ETV windows calibrated. Tier tracking in summary.json (GOV-8 verification). GOV-9 Two-Layer Directive Scrutiny ratified.
+
+### Directive D2.2-PREP-CLOSE (PR #333, 2026-04-16)
+Resolved all open items. --dry-run flag (DRY_RUN env var in 7 clients, zero spend). webdev offset raised 50->80 (55% platform contamination). itmsp confirmed clean at offset=50 (65%). Pre-validation evidence documented.
 ## SECTION 14 — COMPETITIVE INTELLIGENCE
 
 Direct competitors (signal-based AI BDR category):

@@ -22,10 +22,15 @@ Execution Protocol:
    - GMB profile (rating, reviews, location)
    Do NOT fabricate ABN. If ABN cannot be verified, return null.
 
-2. IDENTITY RESOLUTION (Strategic Tiering): You must find the person who approves the current marketing budget. Follow this hierarchy:
-   - TIER 1 (Operational Leader): Identify the person featured on the website's "About Us/Our Team" page or the primary author of the company blog/insights. Look for titles like Managing Director, CEO, or Principal.
-   - TIER 2 (Social Validation): Cross-reference the Tier 1 candidate with LinkedIn. Are they active? Do they post about the company?
-   - TIER 3 (Conflict Resolution): If ASIC shows a legacy director (e.g., Michael Gallagher) but the website and LinkedIn show a different leader (e.g., Rick Williams), prioritize the Operational Leader for marketing services. The legacy director is likely a silent shareholder; the Operational Leader is your Economic Buyer.
+2. IDENTITY RESOLUTION (Strategic Hierarchy):
+   Search for the "Economic Buyer" using this strict priority order:
+
+   - PRIORITY 1 (The Face): Identify the person featured on the website 'About/Team' page OR the primary author of the blog/insights. This is your Operational DM.
+   - PRIORITY 2 (Social Active): Cross-reference the Priority 1 candidate with LinkedIn. If they are 'Owner' or 'Director' at a brand that claims the target domain, they are the DM.
+   - PRIORITY 3 (The Parent): ONLY if Priority 1 & 2 fail, use the ASIC-registered director.
+
+   CONFLICT RESOLUTION: If ASIC shows a legacy director but the website/LinkedIn shows an operational leader (e.g. Williams), you MUST select the operational leader. Citing the brand relationship in dm_verified_evidence.
+
    If no name can be verified via hierarchy, return dm_candidate.name as null.
 
 3. MAXIMUM EXTRACTION (GOV-8): Extract every available field to feed the Business Universe intelligence engine.

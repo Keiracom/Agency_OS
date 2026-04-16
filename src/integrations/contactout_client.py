@@ -202,6 +202,100 @@ class ContactOutClient:
             result.best_phone = result.all_phones[0]
 
 
+    async def search_by_name(
+        self,
+        dm_name: str,
+        company_name: str,
+        title: str = "Owner",
+        location: str = "Australia",
+    ) -> ContactOutResult:
+        """Search for a person by name/title + company (personal search, no LinkedIn URL needed).
+
+        Uses POST /v1/people/search with SEARCH credits.
+        Returns the best matching profile with LinkedIn URL for subsequent enrich call.
+
+        Two-step pattern:
+          1. search_by_name(name, company) → get LinkedIn URL
+          2. enrich_by_linkedin(linkedin_url) → get email + mobile + full profile
+        """
+        import os
+        result = ContactOutResult(linkedin_url="")
+
+        if os.environ.get("DRY_RUN"):
+            logger.info("[DRY-RUN] Would call ContactOut search: %s at %s", dm_name, company_name)
+            result.found = False
+            return result
+
+        if not self.is_configured:
+            return result
+
+        headers = {"authorization": "basic", "token": self.api_key}
+
+        try:
+            async with httpx.AsyncClient(timeout=30) as client:
+                resp = await client.post(
+                    "https://api.contactout.com/v1/people/search",
+                    headers=headers,
+                    json={
+                        "title": title,
+                        "company": [company_name],
+                        "location": [location],
+                        "page_size": 5,
+                    },
+                )
+
+            if resp.status_code != 200:
+                logger.warning("ContactOut search: HTTP %s — %s", resp.status_code, resp.text[:200])
+                return result
+
+            data = resp.json()
+            profiles = data.get("profiles") or {}
+
+            if not profiles:
+                logger.info("ContactOut search: 0 results for %s at %s", dm_name, company_name)
+                return result
+
+            # Find best match by name similarity
+            dm_parts = dm_name.lower().split() if dm_name else []
+            best_url = None
+            best_score = -1
+
+            for li_url, profile in profiles.items():
+                full_name = (profile.get("full_name") or "").lower()
+                score = sum(1 for p in dm_parts if p in full_name)
+                if score > best_score:
+                    best_score = score
+                    best_url = li_url
+                    result.full_name = profile.get("full_name", "")
+                    result.headline = profile.get("headline", "")
+                    result.company_name = (profile.get("company") or {}).get("name", "")
+                    result.company_domain = (profile.get("company") or {}).get("domain", "")
+                    result.raw_response = profile
+
+            if best_url and best_score > 0:
+                result.linkedin_url = best_url
+                result.found = True
+                logger.info(
+                    "ContactOut search: matched %s → %s (score=%d)",
+                    dm_name, result.full_name, best_score,
+                )
+            elif best_url:
+                # No name match but profiles found — take first as fallback
+                result.linkedin_url = best_url
+                result.found = True
+                logger.info(
+                    "ContactOut search: no name match for %s, using first result %s",
+                    dm_name, result.full_name,
+                )
+            else:
+                result.found = False
+
+        except Exception as exc:
+            logger.warning("ContactOut search failed for %s at %s: %s", dm_name, company_name, exc)
+
+        return result
+
+
 def get_contactout_client() -> ContactOutClient:
     """Factory function for ContactOutClient."""
     return ContactOutClient()

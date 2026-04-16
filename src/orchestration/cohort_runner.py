@@ -317,7 +317,12 @@ async def _run_stage8(domain_data: dict, dfs: DFSLabsClient, bd: BrightDataClien
     )
     contactout_result = None
     try:
-        contactout_result = await enrich_dm_via_contactout(dm_linkedin)
+        contactout_result = await enrich_dm_via_contactout(
+            linkedin_url=dm_linkedin,
+            dm_name=dm.get("name"),
+            company_name=identity.get("business_name"),
+            dm_title=dm.get("role"),
+        )
         if contactout_result:
             domain_data["cost_usd"] += STAGE8_WATERFALL_COST  # ContactOut credit
     except Exception as exc:

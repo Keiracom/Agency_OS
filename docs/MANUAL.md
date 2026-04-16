@@ -972,6 +972,15 @@ GOV-8: Maximum Extraction Per Call. Every API call captures all fields. Write to
 
 ### Directive GOV-9-two-layer-directive-scrutiny (PR #333, 2026-04-15)
 GOV-9: Two-Layer Directive Scrutiny. Every directive passes two scrutiny layers before Step 0. Layer 1 (CEO): query ceo_memory for ratified state, trace call path, flag uncertainties. Layer 2 (CTO): scrutinise for gaps (missing capabilities, config, instrumentation, contradicted assumptions). Report DIRECTIVE SCRUTINY — N GAPS FOUND or CLEAR before executing. Both layers mandatory. Emergence: 5 consecutive D2 directives had drafting gaps caught only by manual scrutiny prompt.
+
+### Directive GOV-10-resolve-now-not-later (PR #335, 2026-04-16)
+GOV-10: Resolve-Now-Not-Later. Fix bounded gaps in current PR cycle. Deferred fixes accumulate. Exceptions: policy decisions, deprecated code, external deps. Emerged 2026-04-15 from D2.2-PREP --dry-run deferral corrected by CEO.
+
+### Directive GOV-11-structural-audit-before-validation (PR #335, 2026-04-16)
+GOV-11: Structural Audit Before Validation-Scale Run. Stage audit within 7 days before any N>=20 validation run. Covers data flow gaps, GOV-8 violations, dead code, gate enforcement, template tokens, cascade risk. Emerged 2026-04-16 when pipeline audit found 3 CRITICAL bugs 1 directive before validation.
+
+### Directive GOV-12-gates-as-code-not-comments (PR #335, 2026-04-16)
+GOV-12: Gates As Code Not Comments. Runtime enforcement required for all gates. Comment-only gates create false confidence. Emerged 2026-04-16 when Hunter dm_verified gate found as comment only. CEO authorizes systematic gate audit.
 ## SECTION 18 — OUTREACH + CONTENT (pre-launch)
 
 Landing page (`agency_os_v5.html`) is built with Bloomberg aesthetic and "Who built yours?" hero. Pending: Remotion video hero, Stripe Checkout on pricing CTAs, live founding counter from Supabase. Video strategy: 5 versions (dashboard animation, Maya walkthrough, HeyGen avatar, customer-specific, results) built via Remotion + HeyGen (Maya avatar). Content distribution via Prefect Flow #28 (Claude API → Remotion → HeyGen → distribution APIs). Demo mode active via `?demo=true` URL param with seeded Supabase demo tenant. Onboarding starts with a 15-minute activation call (CRM + LinkedIn connect, watch dashboard populate live).

@@ -593,7 +593,8 @@ async def run_cohort(
     bd = BrightDataClient(api_key=env.get("BRIGHTDATA_API_KEY", ""))
 
     # Pre-run cost estimate and hard cap
-    total_requested = domains_per_category * len(categories)
+    # When --domains is used, domains_per_category=0 and categories=[], so use len(domains) directly
+    total_requested = len(domains) if domains else (domains_per_category * len(categories))
     estimated_cost_per_domain = 0.25  # USD, from Pipeline F v2.1 economics doc
     estimated_total = total_requested * estimated_cost_per_domain
     budget_hard_cap = estimated_total * 5

@@ -5,16 +5,38 @@ Scoring (affordability, intent, buyer_match) moved to Stage 7 ANALYSE.
 ABN is NOT in this schema — ABN comes from Stage 2 VERIFY SERP only.
 
 Pipeline F v2. Ratified: 2026-04-15.
+Rewritten 2026-04-16 (D2.2 post-audit): Strategic Lead framing, Operational Leader
+tiering (Tier 1 website > Tier 2 LinkedIn > Tier 3 ASIC conflict resolution favouring
+Operational Leader). Fixes mspcorp-style drops where ASIC shows legacy director but
+Operational Leader exists on website/LinkedIn.
 """
 from __future__ import annotations
 
-STAGE3_IDENTIFY_PROMPT = """You are identifying the decision-maker at an Australian SMB who would approve purchasing marketing services. Return ONLY valid JSON.
+STAGE3_IDENTIFY_PROMPT = """Role: You are the Strategic Lead for Agency OS, a premium B2B marketing agency serving Australian SMBs. Your goal is to generate a high-fidelity identity and decision-maker profile for a prospect domain.
 
-Your primary objective is finding the PERSON who makes buying decisions at this business — the owner, founder, managing director, CEO, or principal. Every Australian SMB has someone running it. Find them.
+Execution Protocol:
 
-You have candidate data from prior search results. Use it as a starting point but DO NOT trust it blindly — verify everything against all publicly available information. Search the business website, LinkedIn, ASIC records, ABN registry, business directories, news articles, and any other public source.
+1. GOVERNANCE TRACE (mandatory): Use Google Search grounding to verify the legal infrastructure:
+   - ABN via ABR (abr.business.gov.au)
+   - ASIC entity status and registered directors. Crucial: Note if the directors have been in place for >10 years (signal for legacy ownership)
+   - GMB profile (rating, reviews, location)
+   Do NOT fabricate ABN. If ABN cannot be verified, return null.
 
-For dm_candidate: you must identify the individual with authority to approve a marketing engagement. This is typically the business owner, founder, managing director, principal, or senior partner. Search thoroughly — their name appears somewhere publicly associated with this business. If you find multiple candidates, select the most senior person with decision-making authority.
+2. IDENTITY RESOLUTION (Strategic Hierarchy):
+   Search for the "Economic Buyer" using this strict priority order:
+
+   - PRIORITY 1 (The Face): Identify the person featured on the website 'About/Team' page OR the primary author of the blog/insights. This is your Operational DM.
+   - PRIORITY 2 (Social Active): Cross-reference the Priority 1 candidate with LinkedIn. If they are 'Owner' or 'Director' at a brand that claims the target domain, they are the DM.
+   - PRIORITY 3 (The Parent): ONLY if Priority 1 & 2 fail, use the ASIC-registered director.
+   - PRIORITY 4 (Association Inference): If Priorities 1-3 all fail AND the domain is brand-faceless (no named people on site, legacy ASIC directors only), search for associated brands. If a secondary brand is frequently mentioned alongside the target (shared office, shared phone, partnership snippets, co-mention in news), you MAY return the operational leader of that secondary brand. Set dm_verified=false and dm_source='inferred_association'. Cite the association evidence in dm_verified_evidence (e.g. 'shared office at X, shared phone Y, partnership announced Z').
+
+   CONFLICT RESOLUTION: If ASIC shows a legacy director but the website/LinkedIn shows an operational leader (e.g. Williams), you MUST select the operational leader. Cite the brand relationship in dm_verified_evidence.
+
+   If no name can be verified OR reasonably inferred via hierarchy, return dm_candidate.name as null.
+
+3. MAXIMUM EXTRACTION (GOV-8): Extract every available field to feed the Business Universe intelligence engine.
+
+Return ONLY valid JSON:
 
 {
   "business_name": "customer-facing trading name",
@@ -26,15 +48,18 @@ For dm_candidate: you must identify the individual with authority to approve a m
   },
   "industry_category": "...",
   "entity_type_hint": "Australian Private Company | Individual Sole Trader | Other | null",
-  "staff_estimate_band": "solo | small(2-5) | medium(6-20) | large(20+) | unknown",
+  "staff_estimate_band": "solo | small(2-5) | medium(6-20) | large(20-200) | enterprise(200+)",
   "is_enterprise_or_chain": false,
   "website_reachable": true,
   "primary_phone": "main business phone from website or directory",
   "primary_email": "general contact email from website (info@, contact@, etc.)",
   "dm_email": "decision-maker personal email if found on website, LinkedIn, or directory (null if not found — do NOT guess)",
-  "dm_phone": "decision-maker direct/mobile phone if found (null if not found — do NOT guess)",
+  "dm_phone": "direct/mobile for the Operational DM (null if not found — do NOT guess)",
   "office_address": "full street address if visible on website or Google",
   "services_offered": ["list of services this business provides"],
+  "google_rating": null,
+  "google_review_count": null,
+  "years_established": null,
   "social_urls": {
     "linkedin": null,
     "facebook": null,
@@ -42,17 +67,21 @@ For dm_candidate: you must identify the individual with authority to approve a m
     "twitter": null
   },
   "dm_candidate": {
-    "name": "REQUIRED — the person who runs this business",
-    "role": "their title or position",
-    "linkedin_url": null,
-    "email": "their personal work email if found (null if not found — do NOT fabricate)"
+    "name": "The Operational Leader/Economic Buyer",
+    "role": "exact title from website or LinkedIn",
+    "linkedin_url": "full LinkedIn profile URL if confirmed via grounding (null if not found)",
+    "email": "their personal work email if found (null if not found)",
+    "dm_verified": false,
+    "dm_verified_evidence": "Explain the link between the legal entity and the operational brand. E.g., 'Rick Williams verified as MD via Platform 24/MSP Corp website and LinkedIn activity, despite Gallagher family listed as ASIC directors.'",
+    "dm_source": "operational_leader | asic_director | linkedin_profile | website_team_page | inferred_association | null"
   }
 }
 
 Rules:
-- dm_candidate.name is the most important field. Do not return null unless you have exhausted all publicly available information about who runs this business.
-- dm_candidate.name must be a real person's full name or null. Never return descriptions like "Owner" or "Director" as the name.
-- is_enterprise_or_chain: set to true if this is a franchise, national chain, government body, publicly listed company, or enterprise with more than 200 employees.
-- NEVER fabricate ABN. ABN is resolved separately.
-- NEVER fabricate a LinkedIn URL. Return null if not confirmed via grounding.
-- If cannot determine a field, use null. But for dm_candidate.name, try harder before returning null."""
+- dm_candidate.name must be a real person full name or null. Never return descriptions like "Owner" or "Director" as the name.
+- dm_verified: set to true ONLY if you confirmed identity via at least TWO independent sources (e.g. website Team page + LinkedIn, or ASIC + LinkedIn). Cite evidence in dm_verified_evidence.
+- dm_source: cite the PRIMARY tier where the name was found (operational_leader is preferred over asic_director per Tier 3 conflict resolution).
+- is_enterprise_or_chain: set to true if this is a franchise, national chain, government body, publicly listed company, or enterprise(200+) staff.
+- If staff_estimate_band is enterprise(200+), is_enterprise_or_chain MUST also be true.
+- NEVER fabricate ABN, LinkedIn URL, email, or phone number. Return null if not confirmed via grounding.
+"""

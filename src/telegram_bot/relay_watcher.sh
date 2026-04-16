@@ -38,23 +38,26 @@ print(t)
 
         if [ -n "$text" ]; then
             echo "[relay-watcher] Text from Telegram: ${text:0:80}..."
-            # Inject into Claude's tmux pane — prefix with [TG] so Claude knows the source
-            tmux send-keys -t "$TMUX_TARGET" "[TG] $text" Enter
+            sender=$(python3 -c "import json; print(json.load(open('$fpath')).get('sender','unknown'))" 2>/dev/null)
+            # Inject into Claude's tmux pane — prefix with [TG-SENDER] so Claude knows the source
+            tmux send-keys -t "$TMUX_TARGET" "[TG-${sender^^}] $text" Enter
         fi
 
     elif [ "$msg_type" = "photo" ]; then
         photo_path=$(python3 -c "import json; print(json.load(open('$fpath')).get('file_path',''))" 2>/dev/null)
         caption=$(python3 -c "import json; print(json.load(open('$fpath')).get('caption',''))" 2>/dev/null)
+        sender=$(python3 -c "import json; print(json.load(open('$fpath')).get('sender','unknown'))" 2>/dev/null)
 
         echo "[relay-watcher] Photo from Telegram: $photo_path"
-        tmux send-keys -t "$TMUX_TARGET" "[TG] Dave sent a screenshot: $photo_path ${caption:+— $caption}" Enter
+        tmux send-keys -t "$TMUX_TARGET" "[TG-${sender^^}] Dave sent a screenshot: $photo_path ${caption:+— $caption}" Enter
 
     elif [ "$msg_type" = "document" ]; then
         file_path=$(python3 -c "import json; print(json.load(open('$fpath')).get('file_path',''))" 2>/dev/null)
         file_name=$(python3 -c "import json; print(json.load(open('$fpath')).get('file_name',''))" 2>/dev/null)
+        sender=$(python3 -c "import json; print(json.load(open('$fpath')).get('sender','unknown'))" 2>/dev/null)
 
         echo "[relay-watcher] Document from Telegram: $file_name"
-        tmux send-keys -t "$TMUX_TARGET" "[TG] Dave sent a file: $file_path ($file_name)" Enter
+        tmux send-keys -t "$TMUX_TARGET" "[TG-${sender^^}] Dave sent a file: $file_path ($file_name)" Enter
     fi
 
     # Move to processed (don't delete — audit trail)

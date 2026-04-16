@@ -563,34 +563,37 @@ async def discover_email(
     if first and last and clean_domain:
         try:
             import os, httpx
-            hunter_key = os.environ.get("HUNTER_API_KEY", "")
-            if hunter_key:
-                async with httpx.AsyncClient(timeout=15) as client:
-                    r = await client.get(
-                        "https://api.hunter.io/v2/email-finder",
-                        params={
-                            "domain": clean_domain,
-                            "first_name": first.capitalize(),
-                            "last_name": last.capitalize(),
-                            "api_key": hunter_key,
-                        },
-                    )
-                    if r.status_code == 200:
-                        data = r.json().get("data", {})
-                        hunter_email = data.get("email")
-                        hunter_score = data.get("score", 0)
-                        if hunter_email and hunter_score >= 70:
-                            logger.info(
-                                "email_waterfall L2 hunter domain=%s email=%s score=%s",
-                                domain, hunter_email, hunter_score,
-                            )
-                            return EmailResult(
-                                email=hunter_email,
-                                verified=False,
-                                source="hunter",
-                                confidence="high" if hunter_score >= 90 else "medium",
-                                cost_usd=0.0,  # included in plan
-                            )
+            if os.environ.get("DRY_RUN"):
+                logger.info("[DRY-RUN] Would call Hunter: %s %s @ %s", first, last, clean_domain)
+            else:
+                hunter_key = os.environ.get("HUNTER_API_KEY", "")
+                if hunter_key:
+                    async with httpx.AsyncClient(timeout=15) as client:
+                        r = await client.get(
+                            "https://api.hunter.io/v2/email-finder",
+                            params={
+                                "domain": clean_domain,
+                                "first_name": first.capitalize(),
+                                "last_name": last.capitalize(),
+                                "api_key": hunter_key,
+                            },
+                        )
+                        if r.status_code == 200:
+                            data = r.json().get("data", {})
+                            hunter_email = data.get("email")
+                            hunter_score = data.get("score", 0)
+                            if hunter_email and hunter_score >= 70:
+                                logger.info(
+                                    "email_waterfall L2 hunter domain=%s email=%s score=%s",
+                                    domain, hunter_email, hunter_score,
+                                )
+                                return EmailResult(
+                                    email=hunter_email,
+                                    verified=False,
+                                    source="hunter",
+                                    confidence="high" if hunter_score >= 90 else "medium",
+                                    cost_usd=0.0,  # included in plan
+                                )
         except Exception as exc:
             logger.warning("email_waterfall L2 hunter failed domain=%s: %s", domain, exc)
 

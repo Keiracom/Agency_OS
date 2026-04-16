@@ -1,36 +1,39 @@
 {
-  "domain": "taxopia.com.au",
-  "business_name": "Taxopia",
+  "domain": "affordabledental.com.au",
+  "business_name": "Affordable Dental",
   "location": {
-    "street": "Suite 46-47, Level 3, Building 2 1 Ricketts Rd",
-    "suburb": "Mount Waverley",
-    "state": "VIC",
-    "postcode": "3149"
+    "street": "23-27 Macquarie St",
+    "suburb": "Parramatta",
+    "state": "NSW",
+    "postcode": "2150"
   },
-  "industry_category": "Accounting & Tax Services",
+  "industry_category": "Dental Clinic",
   "entity_type_hint": "Australian Private Company",
   "staff_estimate_band": "medium(6-20)",
-  "primary_phone": "1300 829 674",
-  "primary_email": "info@taxopia.com.au",
-  "abn": "32637424134",
+  "primary_phone": "(02) 7252 9622",
+  "primary_email": "info@affordabledental.com.au",
+  "abn": "39654505067",
   "abn_status": "verified_serp",
   "dm_candidate": {
-    "name": "David Fitzgerald",
-    "role": "CEO & Executive Director",
+    "name": null,
+    "role": null,
     "linkedin_url": null
   },
   "dm_linkedin_url": null,
   "contacts": {
     "linkedin": {
-      "linkedin_url": "https://www.linkedin.com/in/david-fitzgerald-5bb015a3",
-      "source": "apify_harvestapi",
-      "tier": "L2"
+      "linkedin_url": null,
+      "source": "unresolved",
+      "tier": "L3",
+      "match_type": "no_match",
+      "match_company": "",
+      "match_confidence": 0.0,
+      "l2_status": "no_candidate_url"
     },
     "email": {
-      "email": "david@taxopia.com.au",
-      "source": "pattern_zerobounce",
-      "tier": "L3",
-      "verified": true
+      "email": null,
+      "source": "unresolved",
+      "tier": "L5"
     },
     "mobile": {
       "mobile": null,
@@ -44,78 +47,77 @@
   "buyer_match_score": 9,
   "vulnerability_report": {
     "top_vulnerabilities": [
-      "Zero paid advertising presence, missing out on immediate, high-intent traffic for keywords like 'online company tax return australia' (10 SV, $16.60 CPC) and 'trust tax return' (320 SV, $10.39 CPC).",
-      "Significant organic keyword visibility is on page 2 or lower, with 704 keywords in positions 11-20 and an average organic position of 36.58, meaning they're not capturing top-tier search traffic.",
-      "Competitors like Lawpath.com.au and Sprintlaw.com.au, while in related services, have better average organic positions (28.41 and 24.53 respectively) and some paid ad presence, indicating a competitive gap."
+      "Affordable Dental has no paid advertising presence (0 paid keywords, $0 paid ETV), missing out on immediate, high-intent patient acquisition opportunities.",
+      "A significant portion of their organic keywords (292 in positions 4-10 and 123 in positions 11-20) are not reaching the top 3 results, limiting their visibility and traffic.",
+      "They have lost 533 organic keywords, indicating a decline in search visibility for certain valuable terms."
     ],
     "quantified_opportunities": [
-      "704 keywords on page 2 (positions 11-20) are prime candidates for optimisation to push them onto page 1.",
-      "Opportunity to capture immediate, high-intent traffic by initiating paid advertising, especially considering their current organic traffic would cost an estimated $227,271.65 AUD to acquire via paid ads.",
-      "Improve rankings for 389 keywords currently in positions 4-10 to move them into the top 3, significantly increasing click-through rates."
+      "123 organic keywords are currently ranking on page 2 (positions 11-20), representing immediate opportunities to push to page 1 for increased traffic.",
+      "Significant search volume exists for relevant keywords like 'dentist clinic' (9,900 monthly searches) and 'dentistry teeth whitening' (2,400 monthly searches), which Affordable Dental could target with paid ads or improved SEO.",
+      "Competitors like `smile.com.au` are achieving an estimated organic traffic value of over $185,000 AUD, significantly outperforming Affordable Dental's $13,350 AUD, highlighting substantial market share to gain."
     ],
-    "what_marketing_agency_could_fix": "A marketing agency could significantly boost Taxopia's online presence by implementing a targeted paid advertising strategy to capture high-intent search traffic, given their current zero spend. Simultaneously, we could optimise the 704 keywords currently sitting on page 2 to push them onto the first page of search results, dramatically increasing organic traffic. This would involve a comprehensive SEO audit, content refresh, and strategic backlink building, focusing on converting their existing strong organic foundation into tangible leads and clients, especially for services like 'trust tax return' and 'company tax return'."
+    "what_marketing_agency_could_fix": "A marketing agency could significantly boost Affordable Dental's patient acquisition by implementing a targeted Google Ads strategy to capture high-intent searches for services like 'dentist clinic' (9,900 monthly searches) and 'dentistry teeth whitening' (2,400 monthly searches), where they currently have no paid presence. Simultaneously, optimising the 123 organic keywords currently on page 2 (positions 11-20) could push them to page 1, increasing organic traffic and reducing the estimated $84,200 AUD cost of acquiring that traffic organically. Addressing the loss of 533 organic keywords would also help stabilise and grow their overall search visibility."
   },
   "classification": {
     "intent_band": "TRYING",
     "affordability_gate": "can_afford",
     "affordability_score": 8,
     "buyer_match_score": 9,
-    "has_dm": true,
-    "has_email": true,
+    "has_dm": false,
+    "has_email": false,
     "has_mobile": false,
-    "has_linkedin": true,
-    "classification": "ready",
-    "reason": "DM identified + contact verified + afford 8/10"
+    "has_linkedin": false,
+    "dm_verification_level": "minimal",
+    "classification": "watchlist",
+    "reason": "DM not identified"
   },
   "outreach": {
     "draft_email": {
-      "subject": "Quick thought on Taxopia's online growth",
-      "body": "Hi David,\n\nHope you're having a good week.\n\nI was looking at Taxopia's online presence and noticed you've got a solid organic foundation, ranking for over 4,000 keywords. However, a significant 704 of those are sitting on page 2, just shy of the top results. We also saw you're not currently running any paid ads, which is a huge opportunity to capture immediate, high-intent traffic for services like 'trust tax return' or 'company tax return'.\n\nWe specialise in helping Australian businesses like yours convert that 'almost there' organic visibility into actual clients and tap into new growth channels. Would you be open to a quick chat to explore how we could get those page 2 keywords onto page 1 and potentially add a powerful paid strategy to your mix?\n\nCheers,\n\nTest Contact\nTest Agency"
+      "subject": "Affordable Dental: Quick wins for new patients?",
+      "body": "G'day,\n\nI was looking at Affordable Dental's online presence and noticed you've got a solid organic footprint, ranking for over 1,100 keywords. What really stood out though is that you're not running any paid ads, which means you're missing out on a stack of high-intent patient searches, especially when competitors like Dental Boutique are actively using them. We could help you quickly capture those valuable searches, like the 9,900 monthly searches for 'dentist clinic', and get your 123 page-2 keywords onto the first page. Fancy a quick yarn about how Test Agency could help fill those chairs?\n\nCheers,\nTest Contact\nTest Agency"
     },
-    "draft_linkedin_note": "Hi David, came across Taxopia and was impressed by your organic reach (4170 keywords!). Noticed 704 keywords are on page 2 and no paid ads are running. That's a big opportunity to boost client acquisition. Would love to share some quick thoughts on getting those keywords to page 1 and exploring paid strategies. Cheers, Test Contact",
-    "draft_voice_script": "Hi David, this is Test Contact from Test Agency. We noticed Taxopia has a fantastic organic presence, but there's a real opportunity to get your 704 page-2 keywords onto page 1 and explore immediate growth with paid advertising. Would you be free for a quick chat to discuss?",
-    "enhanced": {
-      "enhanced_email": {
-        "subject": "Quick thought on Taxopia's online growth",
-        "body": "Hi David,\n\nHope you're having a productive week. I was looking at Taxopia's online presence and was really impressed by your strong organic foundation, ranking for over 4,000 keywords. It's clear you've built something substantial.\n\nHowever, I noticed a significant number of those valuable keywords (704) are sitting just off page one, and there's a missed opportunity with zero paid advertising. We often see Australian businesses like yours unlock significant growth by getting those 'almost there' keywords to page one and strategically adding paid ads to capture immediate, high-intent traffic for services like 'trust tax return'.\n\nWould you be open to a quick 10-minute chat to explore how Test Agency could help convert that existing potential into more clients and revenue?\n\nCheers,\n\nTest Contact\nTest Agency"
-      },
-      "enhanced_linkedin_note": "Hi David, came across Taxopia and was impressed by your organic reach (4170 keywords!). Noticed 704 keywords are on page 2 and no paid ads are running. That's a big opportunity to boost client acquisition. Would love to share some quick thoughts on getting those keywords to page 1 and exploring paid strategies. Cheers, Test Contact",
-      "enhanced_voice_script": "Hi David, this is Test Contact from Test Agency. We noticed Taxopia has a fantastic organic presence, but there's a real opportunity to get your 704 page-2 keywords onto page 1 and explore immediate growth with paid advertising. Would you be free for a quick chat to discuss?",
-      "dm_post_reference": null
-    }
+    "draft_linkedin_note": "G'day! Noticed Affordable Dental has a strong organic presence, but no paid ads. That's a huge opportunity to grab high-intent patient searches, like the 9,900 for 'dentist clinic', and boost your 123 page-2 keywords. Keen for a quick chat about how to get more patients through the door? Cheers, Test Contact",
+    "draft_voice_script": "G'day, this is Test Contact from Test Agency. We've spotted that Affordable Dental has a great organic presence but isn't tapping into paid ads, missing out on immediate patient leads. We reckon we can help you capture those high-intent searches and get more patients through the door.",
+    "enhanced": null
   },
   "dm_posts": {
-    "total_fetched": 50,
+    "total_fetched": 0,
     "after_author_filter": 0,
     "posts": []
   },
   "provenance_footer": {
     "business_identity": "gemini_2.5_flash_grounded",
     "abn": "dfs_serp_abr",
-    "dm_linkedin": "apify_harvestapi",
-    "email": "pattern_zerobounce",
+    "dm_linkedin": "unresolved (l1=none, l2=no_candidate_url)",
+    "email": "unresolved",
     "mobile": "unresolved",
     "vulnerability_report": "gemini_2.5_flash",
-    "outreach_enhanced": "gemini_2.5_flash"
+    "outreach_enhanced": "n/a"
+  },
+  "stage_metrics": {
+    "f4_company_url_source": "serp",
+    "f5_linkedin_l2_match_type": "no_match",
+    "f5_linkedin_l2_match_company": "",
+    "f5_linkedin_l2_match_confidence": 0.0
   },
   "cost_breakdown": {
-    "f3a_usd": 0.000544,
+    "f3a_usd": 0.000423,
     "f2_usd": 0.042,
-    "f3b_usd": 0.002462,
-    "f4_usd": 0.004,
+    "f3b_usd": 0.002373,
+    "f4_usd": 0.006,
     "f5_usd": 0.0,
-    "f6_enhanced_vr_usd": 0.000504,
-    "total_usd": 0.04951,
-    "total_aud": 0.0767
+    "f6_enhanced_vr_usd": 0.0,
+    "total_usd": 0.050796,
+    "total_aud": 0.0787
   },
   "wall_clock_s": {
-    "f3a": 37.01781546045095,
-    "f2": 2.1583759263157845,
-    "f3b": 19.386107120662928,
-    "f4": 3.430585308931768,
-    "f5": 6.4685720186680555,
-    "f5_dm_posts": 8.203010944649577,
-    "f6_classify": 2.3264437913894653e-05,
-    "f6_enhanced_vr": 5.59601476136595
+    "f3a": 20.20369787979871,
+    "f2": 9.181723422370851,
+    "f3b": 25.799757109954953,
+    "f4": 2.4590531596913934,
+    "f5": 0.00014722347259521484,
+    "f5_dm_posts": 0.00012270361185073853,
+    "f6_classify": 1.7237849533557892e-05,
+    "f6_enhanced_vr": 0.0
   }
 }

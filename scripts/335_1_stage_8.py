@@ -66,11 +66,13 @@ print(f"Loaded {len(domain_list)} domains from Stage 6")
 async def hunter_company(client: httpx.AsyncClient, sem: asyncio.Semaphore,
                           domain: str) -> dict | None:
     """GET Hunter company-find for a domain. Returns data dict or None."""
+    # Fix 1: Strip www. prefix — Hunter 403s on www. domains
+    clean_domain = domain.removeprefix("www.")
     async with sem:
         try:
             resp = await client.get(
                 "https://api.hunter.io/v2/companies/find",
-                params={"domain": domain, "api_key": HUNTER_API_KEY},
+                params={"domain": clean_domain, "api_key": HUNTER_API_KEY},
                 timeout=30.0,
             )
             if resp.status_code == 200:
@@ -107,19 +109,32 @@ def _dfs_auth_header() -> str:
     return "Basic " + base64.b64encode(creds.encode()).decode()
 
 
-def _extract_linkedin_company_url(items: list) -> str | None:
-    """Parse SERP items for first /company/ URL."""
+def _extract_linkedin_company_url(items: list, business_name: str = "") -> str | None:
+    """Parse SERP items for first /company/ URL with cross-validation."""
+    biz_words = [w.lower() for w in business_name.split() if len(w) >= 4
+                 and w.lower() not in ("pty", "ltd", "limited", "the", "trustee", "trust", "for")]
     for item in items:
         url = item.get("url", "")
+        title = item.get("title", "")
+        snippet = item.get("description", "")
+        full_text = f"{title} {snippet}".lower()
         if "/company/" in url and "linkedin.com" in url:
-            # normalise to https://www.linkedin.com/company/SLUG/
             m = re.search(r"linkedin\.com/company/([^/?#]+)", url)
             if m:
                 slug = m.group(1)
-                return f"https://www.linkedin.com/company/{slug}/"
-        # recurse into sub-items if present
+                # Fix 2: Cross-validate — slug or snippet must contain business name word
+                slug_lower = slug.lower().replace("-", " ")
+                has_match = False
+                if biz_words:
+                    has_match = any(w in slug_lower or w in full_text for w in biz_words)
+                else:
+                    has_match = True  # no business name to validate against
+                if has_match:
+                    return f"https://www.linkedin.com/company/{slug}/"
+                else:
+                    print(f"    [L2] REJECTED slug={slug} (no match to business: {biz_words})")
         sub_items = item.get("items") or []
-        found = _extract_linkedin_company_url(sub_items)
+        found = _extract_linkedin_company_url(sub_items, business_name)
         if found:
             return found
     return None
@@ -152,7 +167,7 @@ async def dfs_linkedin_serp(client: httpx.AsyncClient, sem: asyncio.Semaphore,
                 return None
             result = (tasks[0].get("result") or [{}])[0]
             items  = result.get("items") or []
-            url = _extract_linkedin_company_url(items)
+            url = _extract_linkedin_company_url(items, legal_name)
             if url:
                 print(f"  [L2] {domain}: RECOVERED {url}")
             else:
@@ -183,65 +198,77 @@ async def run_l2(domains_needing_recovery: list[str],
 # L3: Apify batch scrape
 # ══════════════════════════════════════════════════════════════════════════════
 
+async def _apify_batch(client: httpx.AsyncClient, urls: list[str], batch_label: str) -> list[dict]:
+    """Run one Apify batch of <=20 URLs. Returns list of records."""
+    print(f"  [L3-{batch_label}] Triggering {len(urls)} URLs ...")
+    resp = await client.post(
+        f"{APIFY_BASE}/v2/acts/{APIFY_ACTOR}/runs",
+        params={"token": APIFY_API_TOKEN},
+        json={"companyUrls": urls},
+    )
+    resp.raise_for_status()
+    run_data = resp.json()["data"]
+    run_id = run_data["id"]
+    dataset_id = run_data["defaultDatasetId"]
+    print(f"  [L3-{batch_label}] Run ID: {run_id}")
+
+    deadline = time.monotonic() + 300  # 5 min per batch
+    while time.monotonic() < deadline:
+        await asyncio.sleep(10)
+        poll = await client.get(
+            f"{APIFY_BASE}/v2/actor-runs/{run_id}",
+            params={"token": APIFY_API_TOKEN},
+        )
+        poll.raise_for_status()
+        status = poll.json()["data"]["status"]
+        print(f"  [L3-{batch_label}] Poll: {status}")
+        if status == "SUCCEEDED":
+            break
+        if status in ("FAILED", "ABORTED", "TIMED-OUT"):
+            print(f"  [L3-{batch_label}] {status} — fetching partial data")
+            break
+
+    items_resp = await client.get(
+        f"{APIFY_BASE}/v2/datasets/{dataset_id}/items",
+        params={"token": APIFY_API_TOKEN, "format": "json"},
+    )
+    items_resp.raise_for_status()
+    records = items_resp.json() if isinstance(items_resp.json(), list) else []
+    print(f"  [L3-{batch_label}] Got {len(records)} records")
+    return records
+
+
 async def run_l3(linkedin_urls: list[str]) -> dict[str, dict]:
     """
-    Trigger Apify actor for all URLs, poll to SUCCEEDED, fetch dataset.
+    Fix 3: Batch Apify in groups of 20 to avoid timeout.
     Returns a dict keyed by the normalised LinkedIn URL.
     """
     if not linkedin_urls:
         print("  [L3] No URLs to scrape")
         return {}
 
+    BATCH_SIZE = 20
+    batches = [linkedin_urls[i:i+BATCH_SIZE] for i in range(0, len(linkedin_urls), BATCH_SIZE)]
+    print(f"  [L3] {len(linkedin_urls)} URLs split into {len(batches)} batches of ≤{BATCH_SIZE}")
+
+    all_records = []
     async with httpx.AsyncClient(timeout=60.0) as client:
-        # Trigger run
-        print(f"  [L3] Triggering Apify run for {len(linkedin_urls)} URLs ...")
-        resp = await client.post(
-            f"{APIFY_BASE}/v2/acts/{APIFY_ACTOR}/runs",
-            params={"token": APIFY_API_TOKEN},
-            json={"companyUrls": linkedin_urls},
-        )
-        resp.raise_for_status()
-        run_data  = resp.json()["data"]
-        run_id    = run_data["id"]
-        dataset_id = run_data["defaultDatasetId"]
-        print(f"  [L3] Run ID: {run_id} | Dataset: {dataset_id}")
+        for i, batch in enumerate(batches):
+            records = await _apify_batch(client, batch, f"b{i+1}")
+            all_records.extend(records)
 
-        # Poll every 10s
-        deadline = time.monotonic() + 600  # 10 min cap
-        while time.monotonic() < deadline:
-            await asyncio.sleep(10)
-            poll = await client.get(
-                f"{APIFY_BASE}/v2/actor-runs/{run_id}",
-                params={"token": APIFY_API_TOKEN},
-            )
-            poll.raise_for_status()
-            status = poll.json()["data"]["status"]
-            print(f"  [L3] Poll: {status}")
-            if status == "SUCCEEDED":
-                break
-            if status in ("FAILED", "ABORTED", "TIMED-OUT"):
-                print(f"  [L3] Run {status} — partial data may be available")
-                break
-
-        # Fetch dataset items
-        items_resp = await client.get(
-            f"{APIFY_BASE}/v2/datasets/{dataset_id}/items",
-            params={"token": APIFY_API_TOKEN, "format": "json"},
-        )
-        items_resp.raise_for_status()
-        items = items_resp.json()
-        print(f"  [L3] Fetched {len(items)} items from dataset")
-
-    # Key by normalised slug (no trailing slash) for robust matching
-    result_map: dict[str, dict] = {}
-    for item in items:
-        url = item.get("linkedinUrl") or item.get("linkedInUrl") or item.get("url") or item.get("companyUrl") or ""
+    # Key by URL
+    result = {}
+    for rec in all_records:
+        url = rec.get("linkedinUrl") or rec.get("url") or ""
         if url:
-            m = re.search(r"linkedin\.com/company/([^/?#]+)", url)
-            if m:
-                slug = m.group(1).lower()
-                result_map[slug] = item
-    return result_map
+            norm = url.rstrip("/") + "/"
+            result[norm] = rec
+    print(f"  [L3] Total: {len(all_records)} records, {len(result)} unique URLs")
+    return result
+
+
+# Old compat function removed — replaced by batched run_l3 above
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -321,9 +348,20 @@ async def main() -> None:
         li_url      = linkedin_urls.get(domain)
         apify_data  = {}
         if li_url:
-            # Try exact match first, then slug-normalised
-            m_slug = re.search(r"linkedin\.com/company/([^/?#]+)", li_url or "")
-            apify_data = apify_map.get(m_slug.group(1).lower(), {}) if m_slug else {}
+            # Try exact URL match first, then normalized, then slug-only
+            norm_url = li_url.rstrip("/") + "/"
+            apify_data = apify_map.get(norm_url, {})
+            if not apify_data:
+                apify_data = apify_map.get(li_url, {})
+            if not apify_data:
+                # Slug-only fallback: try matching by slug in all apify keys
+                m_slug = re.search(r"linkedin\.com/company/([^/?#]+)", li_url or "")
+                if m_slug:
+                    slug = m_slug.group(1).lower()
+                    for akey, aval in apify_map.items():
+                        if slug in akey.lower():
+                            apify_data = aval
+                            break
 
         if hunter_data or apify_data:
             combined_enriched += 1

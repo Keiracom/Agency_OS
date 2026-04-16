@@ -386,6 +386,10 @@ class LeadmagicClient:
             LeadmagicNoPlanError: Plan not purchased
             APIError: Other API errors
         """
+        import os
+        if os.environ.get("DRY_RUN"):
+            logger.info("[DRY-RUN] Would call Leadmagic: %s %s", method, endpoint)
+            return {}
         await self._rate_limit_delay()
 
         client = await self._get_client()

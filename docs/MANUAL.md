@@ -824,6 +824,12 @@ Blocklist expansion 313 to 1515 entries. 13 new categories (banks, retail, telco
 
 ### Directive D2.1B (PR #332, 2026-04-15)
 Unified contact waterfall fix. Swapped cohort_runner Stage 8 from legacy contact_waterfall.py (/v1/people/linkedin, 0 email credits) to Directive #317 modules: contactout_enricher.py (/v1/people/enrich, 2765 search credits) + email_waterfall.py + mobile_waterfall.py. One ContactOut call captures email + mobile + full profile. No field discarded. Stage 10 gate updated. pytest 1505/1/28.
+
+### Directive D2.2-PREP (PR #333, 2026-04-15)
+Validation run enablement. --domains CLI flag (bypass Stage 1, replay specific domains). 4 new verticals: recruitment (12371), itmsp (12202), webdev (11493), coaching (11098). ETV windows calibrated. Tier tracking in summary.json (GOV-8 verification). GOV-9 Two-Layer Directive Scrutiny ratified.
+
+### Directive D2.2-PREP-CLOSE (PR #333, 2026-04-16)
+Resolved all open items. --dry-run flag (DRY_RUN env var in 7 clients, zero spend). webdev offset raised 50->80 (55% platform contamination). itmsp confirmed clean at offset=50 (65%). Pre-validation evidence documented.
 ## SECTION 14 — COMPETITIVE INTELLIGENCE
 
 Direct competitors (signal-based AI BDR category):

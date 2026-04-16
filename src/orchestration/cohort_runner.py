@@ -68,6 +68,11 @@ CATEGORY_MAP: dict[str, int] = {
     "automotive": 10193,
     "fitness": 10123,
     "veterinary": 11979,
+    # D2.2-PREP: 4 new verticals (verified via DFS API, offset_start=50 recommended)
+    "recruitment": 12371,    # Recruiting & Retention — HIGH confidence
+    "itmsp": 12202,          # Computer Tech Support — MEDIUM confidence (narrow ETV)
+    "webdev": 11493,         # Web Design & Development — MEDIUM-HIGH confidence
+    "coaching": 11098,       # Management Consulting (proxy for business coaching) — HIGH confidence
 }
 
 # ---------------------------------------------------------------------------
@@ -274,6 +279,19 @@ async def _run_stage7(domain_data: dict, gemini: GeminiClient) -> dict:
     return domain_data
 
 
+def _source_to_tier(source: str) -> str:
+    """Map waterfall source name to tier label."""
+    return {
+        "contact_registry": "L0",  # Stage 3 Gemini extracted
+        "contactout": "L1",
+        "hunter": "L2",
+        "leadmagic": "L3",
+        "contactout_stale": "L4",
+        "brightdata": "L5",
+        "none": "NONE",
+    }.get(source, f"UNKNOWN:{source}")
+
+
 async def _run_stage8(domain_data: dict, dfs: DFSLabsClient) -> dict:
     """Stage 8 CONTACT — verify fills (8a) + unified contact waterfall (8b-d)."""
     t0 = time.monotonic()
@@ -364,6 +382,12 @@ async def _run_stage8(domain_data: dict, dfs: DFSLabsClient) -> dict:
         "linkedin_url": dm_linkedin,
         "match_type": "direct_match" if dm_linkedin else "no_match",
     }
+    # Tier tracking for GOV-8 verification
+    contacts["email_resolved_at_tier"] = _source_to_tier(email_result.source if email_result else "none")
+    contacts["email_resolved_by_provider"] = email_result.source if email_result and email_result.email else None
+    contacts["mobile_resolved_at_tier"] = _source_to_tier(mobile_result.source if mobile_result else "none")
+    contacts["mobile_resolved_by_provider"] = mobile_result.source if mobile_result and mobile_result.mobile else None
+
     domain_data["stage8_contacts"] = contacts
 
     domain_data["timings"]["stage8"] = round(time.monotonic() - t0, 2)
@@ -491,6 +515,14 @@ def _build_summary(pipeline: list[dict], wall_s: float) -> dict:
         if timings:
             per_stage_timing[stage_key] = round(sorted(timings)[len(timings) // 2], 2)
 
+    # Tier tracking aggregates
+    tier_counts_email: Counter = Counter()
+    tier_counts_mobile: Counter = Counter()
+    for d in pipeline:
+        contacts = d.get("stage8_contacts") or {}
+        tier_counts_email[contacts.get("email_resolved_at_tier", "NONE")] += 1
+        tier_counts_mobile[contacts.get("mobile_resolved_at_tier", "NONE")] += 1
+
     return {
         "directive": "D1",
         "timestamp": datetime.now(UTC).isoformat(),
@@ -507,6 +539,9 @@ def _build_summary(pipeline: list[dict], wall_s: float) -> dict:
         "cost_per_card": round(total_cost / cards, 4) if cards else None,
         "wall_clock_s": round(wall_s, 1),
         "per_stage_timing": per_stage_timing,
+        "per_tier_hit_rate_email": dict(tier_counts_email),
+        "per_tier_hit_rate_mobile": dict(tier_counts_mobile),
+        "l0_hit_rate_email": tier_counts_email.get("L0", 0) / max(len(pipeline), 1),
     }
 
 
@@ -524,7 +559,14 @@ async def run_cohort(
     categories: list[str],
     domains_per_category: int = 4,
     output_dir: str | None = None,
+    domains: list[str] | None = None,
+    force_replay: bool = False,
+    dry_run: bool = False,
 ) -> dict:
+    if dry_run:
+        os.environ["DRY_RUN"] = "1"
+        logger.info("[DRY-RUN] All API calls will return empty responses. No spend.")
+        _tg("[DRY-RUN] Trace mode — no API calls, no spend")
     run_ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     out_path = Path(output_dir) if output_dir else Path("scripts/output") / f"cohort_run_{run_ts}"
     wall_start = time.monotonic()
@@ -552,42 +594,61 @@ async def run_cohort(
     )
 
     # ---------------------------------------------------------------------------
-    # Stage 1: DISCOVER
+    # Stage 1: DISCOVER (or direct domain injection via --domains)
     # ---------------------------------------------------------------------------
-    logger.info("Stage 1 DISCOVER — categories=%s, n=%d", categories, domains_per_category)
     all_domain_items: list[dict] = []
 
-    for cat_name in categories:
-        code = CATEGORY_MAP[cat_name]
-        etv_min, etv_max = get_etv_window(code)
-        win = CATEGORY_ETV_WINDOWS[code]
-        offset_start = win.get("offset_start", 0)
-
-        page = await dfs.domain_metrics_by_categories(
-            category_codes=[code],
-            location_name="Australia",
-            paid_etv_min=0.0,
-            limit=100,
-            offset=offset_start,
-        )
-
-        added = 0
-        for row in page:
-            domain = row.get("domain", "")
-            etv = row.get("organic_etv", 0)
-            if is_blocked(domain):
+    if domains:
+        # Bypass Stage 1 — direct domain injection
+        for d in domains:
+            if not d or "." not in d:
+                logger.warning("Domain %s has no TLD — skipping", d)
                 continue
-            if not (etv_min <= etv <= etv_max):
+            if is_blocked(d) and not force_replay:
+                logger.warning("Domain %s is in blocklist — skipping (use --force-replay to override)", d)
                 continue
-            all_domain_items.append({"domain": domain, "category": cat_name})
-            added += 1
-            if added >= domains_per_category:
-                break
+            all_domain_items.append(_new_domain(d, "replay"))
+        logger.info("Direct injection: %d domains (bypassed Stage 1)", len(all_domain_items))
+        _tg(f"Direct injection: {len(all_domain_items)} domains (bypassed Stage 1)")
+    else:
+        logger.info("Stage 1 DISCOVER — categories=%s, n=%d", categories, domains_per_category)
 
-        logger.info("  %s: %d domains discovered", cat_name, added)
+        for cat_name in categories:
+            code = CATEGORY_MAP[cat_name]
+            etv_min, etv_max = get_etv_window(code)
+            win = CATEGORY_ETV_WINDOWS[code]
+            offset_start = win.get("offset_start", 0)
 
-    pipeline: list[dict] = [_new_domain(d["domain"], d["category"]) for d in all_domain_items]
-    _tg(f"Stage 1 DISCOVER complete: {len(pipeline)} domains across {len(categories)} categories")
+            page = await dfs.domain_metrics_by_categories(
+                category_codes=[code],
+                location_name="Australia",
+                paid_etv_min=0.0,
+                limit=100,
+                offset=offset_start,
+            )
+
+            added = 0
+            for row in page:
+                domain = row.get("domain", "")
+                etv = row.get("organic_etv", 0)
+                if is_blocked(domain):
+                    continue
+                if not (etv_min <= etv <= etv_max):
+                    continue
+                all_domain_items.append({"domain": domain, "category": cat_name})
+                added += 1
+                if added >= domains_per_category:
+                    break
+
+            logger.info("  %s: %d domains discovered", cat_name, added)
+
+        _tg(f"Stage 1 DISCOVER complete: {len(all_domain_items)} domains across {len(categories)} categories")
+
+    if domains:
+        # all_domain_items already contains _new_domain() dicts (injected above)
+        pipeline: list[dict] = all_domain_items
+    else:
+        pipeline = [_new_domain(d["domain"], d["category"]) for d in all_domain_items]
 
     if not pipeline:
         logger.warning("No domains discovered — aborting")
@@ -766,6 +827,8 @@ async def run_cohort(
         f"{round(wall_s)}s wall-clock. Output: {out_path}"
     )
     logger.info("Done. %s", summary)
+    if dry_run:
+        os.environ.pop("DRY_RUN", None)
     return summary
 
 
@@ -797,15 +860,36 @@ def _parse_args() -> argparse.Namespace:
     )
     p.add_argument("--size", type=int, default=20, help="Total cohort size (split across categories)")
     p.add_argument("--output-dir", default=None, help="Output directory (default: auto-timestamped)")
+    p.add_argument("--domains", default=None, help="Comma-separated domain list (bypasses Stage 1 discovery)")
+    p.add_argument("--force-replay", action="store_true", help="Allow blocked domains through for diagnostic replay")
+    p.add_argument("--dry-run", action="store_true", help="Trace decision logic without API calls (no spend)")
     return p.parse_args()
 
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     args = _parse_args()
-    cats = [c.strip() for c in args.categories.split(",") if c.strip()]
-    per_cat = max(1, args.size // len(cats))
-    if per_cat * len(cats) > 2 * args.size:
-        print(f"ERROR: Computed {per_cat * len(cats)} domains exceeds 2× requested {args.size}")
-        sys.exit(1)
-    asyncio.run(run_cohort(categories=cats, domains_per_category=per_cat, output_dir=args.output_dir))
+
+    if args.domains:
+        domain_list = [d.strip() for d in args.domains.split(",") if d.strip()]
+        asyncio.run(run_cohort(
+            categories=[],
+            domains_per_category=0,
+            output_dir=args.output_dir,
+            domains=domain_list,
+            force_replay=args.force_replay,
+            dry_run=args.dry_run,
+        ))
+    else:
+        cats = [c.strip() for c in args.categories.split(",") if c.strip()]
+        per_cat = max(1, args.size // len(cats))
+        if per_cat * len(cats) > 2 * args.size:
+            print(f"ERROR: Computed {per_cat * len(cats)} domains exceeds 2× requested {args.size}")
+            sys.exit(1)
+        asyncio.run(run_cohort(
+            categories=cats,
+            domains_per_category=per_cat,
+            output_dir=args.output_dir,
+            force_replay=args.force_replay,
+            dry_run=args.dry_run,
+        ))

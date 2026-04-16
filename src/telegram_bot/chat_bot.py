@@ -9,6 +9,7 @@ Consumers: Dave via Telegram
 import asyncio
 import logging
 import os
+import sys
 import uuid
 from datetime import datetime, timezone
 
@@ -27,15 +28,22 @@ from telegram.ext import (
 # Config
 # ---------------------------------------------------------------------------
 
+# load_dotenv default override=False — systemd-injected CALLSIGN/WORK_DIR_OVERRIDE
+# from EnvironmentFile=.env.aiden survive this load (LAW XVII)
 load_dotenv("/home/elliotbot/.config/agency-os/.env")
 
+# LAW XVII: callsign + per-callsign workspace override
+CALLSIGN: str = os.getenv("CALLSIGN", "elliot")
+WORK_DIR: str = os.getenv("WORK_DIR_OVERRIDE", "/home/elliotbot/clawd/Agency_OS")
+
 BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN") or os.getenv("TELEGRAM_TOKEN") or ""
-ALLOWED_CHAT_IDS: list[int] = [int(os.getenv("TELEGRAM_CHAT_ID", "7267788033"))]
+# Empty TELEGRAM_CHAT_ID = no allowed chats yet (Aiden first-/start populates it)
+_chat_id_raw = os.getenv("TELEGRAM_CHAT_ID", "7267788033")
+ALLOWED_CHAT_IDS: list[int] = [int(_chat_id_raw)] if _chat_id_raw.strip() else []
 SUPABASE_URL: str = os.getenv("SUPABASE_URL", "")
 SUPABASE_KEY: str = os.getenv("SUPABASE_SERVICE_KEY", "")
 CLAUDE_BIN: str = "/home/elliotbot/.local/bin/claude"
-WORK_DIR: str = "/home/elliotbot/clawd/Agency_OS"
-LOG_FILE: str = "/home/elliotbot/clawd/logs/telegram-chat-bot.log"
+LOG_FILE: str = f"/home/elliotbot/clawd/logs/telegram-chat-bot-{CALLSIGN}.log"
 
 SUPABASE_HEADERS: dict[str, str] = {
     "apikey": SUPABASE_KEY,
@@ -43,6 +51,9 @@ SUPABASE_HEADERS: dict[str, str] = {
     "Content-Type": "application/json",
     "Prefer": "return=representation",
 }
+
+# LAW XVII: callsign tag for outbound messages
+CALLSIGN_TAG: str = f"[{CALLSIGN.upper()}]"
 
 # In-memory process tracking: chat_id -> subprocess handle
 running_processes: dict[int, asyncio.subprocess.Process] = {}
@@ -738,7 +749,12 @@ def main() -> None:
             "No bot token found. Set TELEGRAM_BOT_TOKEN or TELEGRAM_TOKEN in env."
         )
 
-    logger.info(f"Starting Telegram chat bot (allowed_chat_ids={ALLOWED_CHAT_IDS})")
+    logger.info(f"Starting Telegram chat bot {CALLSIGN_TAG} callsign={CALLSIGN!r} work_dir={WORK_DIR!r} allowed_chat_ids={ALLOWED_CHAT_IDS}")
+    if not BOT_TOKEN:
+        logger.error(f"{CALLSIGN_TAG} TELEGRAM_BOT_TOKEN not set — refusing to start")
+        sys.exit(1)
+    if not ALLOWED_CHAT_IDS:
+        logger.warning(f"{CALLSIGN_TAG} TELEGRAM_CHAT_ID empty — bot will accept first /start to capture chat_id (one-shot)")
 
     async def post_init(application: Application) -> None:
         asyncio.create_task(_outbox_watcher(application))

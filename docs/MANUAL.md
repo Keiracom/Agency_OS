@@ -127,6 +127,15 @@ Sprints 0–6 complete (#279–#306). All core pipeline modules built:
 
 ## SECTION 3 — PIPELINE ARCHITECTURE (v7, proven Apr 2026)
 
+### Team Roster (Multi-Instance Operation, LAW XVII)
+
+| Callsign | Workspace | Branch | Telegram Bot | Service | Created |
+|----------|-----------|--------|--------------|---------|---------|
+| **ELLIOT** | `/home/elliotbot/clawd/Agency_OS/` | main + feature branches | existing | `telegram-chat-bot.service` (active) | 2026-04 (origin) |
+| **AIDEN** | `/home/elliotbot/clawd/Agency_OS-aiden/` | `aiden/scaffold` (does not merge to main) | `@Aaaaidenbot` | `aiden-telegram.service` (registered, awaiting Dave enable) | 2026-04-16 |
+
+Each callsign reads its own `./IDENTITY.md` at session start. Workspace isolation via git worktree + per-worktree CLAUDE.md + `--setting-sources=project`.
+
 Core principle: Agency sells services. Prospects have problems. Industry is irrelevant to the match. Geography is a delivery constraint. Signals are the discovery engine.
 
 ### DISCOVERY
@@ -990,6 +999,13 @@ GOV-11: Structural Audit Before Validation-Scale Run. Stage audit within 7 days 
 
 ### Directive GOV-12-gates-as-code-not-comments (PR #335, 2026-04-16)
 GOV-12: Gates As Code Not Comments. Runtime enforcement required for all gates. Comment-only gates create false confidence. Emerged 2026-04-16 when Hunter dm_verified gate found as comment only. CEO authorizes systematic gate audit.
+
+### LAW XVII — Callsign Discipline (AIDEN-SCAFFOLD, 2026-04-16)
+Every Step 0 RESTATE, Telegram outbound message, PR title, commit trailer, and three-store write MUST prefix or tag the session callsign ([ELLIOT] or [AIDEN]). Ambiguous identity in multi-session operation is a governance violation. Callsign is read from `./IDENTITY.md` at session start and must match `CALLSIGN` env var when set. Empty `CALLSIGN` is a hard fail — three_store_save.py raises SystemExit. Each session occupies its own git worktree (Elliot: /home/elliotbot/clawd/Agency_OS, Aiden: /home/elliotbot/clawd/Agency_OS-aiden). Workspace isolation via worktree + per-worktree CLAUDE.md + IDENTITY.md + --setting-sources=project (no CLAUDE_CONFIG_DIR required).
+
+
+### [ELLIOT] Directive AIDEN-SCAFFOLD (PR #340, 2026-04-16)
+Second Claude Code instance scaffold (callsign aiden). Worktree at /home/elliotbot/clawd/Agency_OS-aiden on branch aiden/scaffold. IDENTITY.md per worktree. LAW XVII Callsign Discipline ratified. three_store_save.py callsign-aware (default elliot, empty fails loud per GOV-12). chat_bot.py parameterised by CALLSIGN + WORK_DIR_OVERRIDE. systemd unit aiden-telegram.service registered (not enabled — Dave enables after token verification). Migration: cis_directive_metrics.callsign TEXT NOT NULL DEFAULT elliot. .env.aiden created (gitignored, chmod 600). pytest 1510/1/28 (+5 callsign tests).
 ## SECTION 18 — OUTREACH + CONTENT (pre-launch)
 
 Landing page (`agency_os_v5.html`) is built with Bloomberg aesthetic and "Who built yours?" hero. Pending: Remotion video hero, Stripe Checkout on pricing CTAs, live founding counter from Supabase. Video strategy: 5 versions (dashboard animation, Maya walkthrough, HeyGen avatar, customer-specific, results) built via Remotion + HeyGen (Maya avatar). Content distribution via Prefect Flow #28 (Claude API → Remotion → HeyGen → distribution APIs). Demo mode active via `?demo=true` URL param with seeded Supabase demo tenant. Onboarding starts with a 15-minute activation call (CRM + LinkedIn connect, watch dashboard populate live).

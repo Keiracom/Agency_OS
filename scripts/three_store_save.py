@@ -39,6 +39,22 @@ def load_env():
 
 
 # ---------------------------------------------------------------------------
+# CALLSIGN — LAW XVII enforcement (GOV-12: gate as code, not comment)
+# ---------------------------------------------------------------------------
+
+def get_callsign() -> str:
+    """Return CALLSIGN env var (default 'elliot'). Raise SystemExit if empty string.
+
+    LAW XVII: every save tagged with the session callsign. Empty CALLSIGN is a
+    governance violation — refuse to save rather than write ambiguous identity.
+    """
+    callsign = os.environ.get("CALLSIGN", "elliot")
+    if callsign == "":
+        raise SystemExit("LAW XVII: CALLSIGN is empty string — refusing to save")
+    return callsign
+
+
+# ---------------------------------------------------------------------------
 # Args
 # ---------------------------------------------------------------------------
 
@@ -66,15 +82,16 @@ def parse_args():
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
-def manual_entry(directive: str, pr_number: int, summary: str) -> str:
+def manual_entry(directive: str, pr_number: int, summary: str, callsign: str) -> str:
     date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    tag = f"[{callsign.upper()}] " if callsign else ""
     return (
-        f"\n### Directive {directive} (PR #{pr_number}, {date_str})\n"
+        f"\n### {tag}Directive {directive} (PR #{pr_number}, {date_str})\n"
         f"{summary}\n"
     )
 
 
-def save_manual(directive: str, pr_number: int, summary: str, section: int, dry_run: bool) -> bool:
+def save_manual(directive: str, pr_number: int, summary: str, section: int, dry_run: bool, callsign: str = "elliot") -> bool:
     manual_path = REPO_ROOT / "docs" / "MANUAL.md"
     if not manual_path.exists():
         print(f"[STORE 1/4] Manual: FAILED — docs/MANUAL.md not found at {manual_path}")
@@ -98,7 +115,7 @@ def save_manual(directive: str, pr_number: int, summary: str, section: int, dry_
         print(f"[STORE 1/4] Manual: FAILED — marker '{target_marker}' not found in docs/MANUAL.md")
         return False
 
-    entry = manual_entry(directive, pr_number, summary)
+    entry = manual_entry(directive, pr_number, summary, callsign)
 
     if dry_run:
         insert_before = next_idx if next_idx is not None else len(lines)
@@ -123,7 +140,7 @@ def save_manual(directive: str, pr_number: int, summary: str, section: int, dry_
 # STORE 2 — ceo_memory
 # ---------------------------------------------------------------------------
 
-def save_ceo_memory(directive: str, pr_number: int, summary: str, dry_run: bool) -> bool:
+def save_ceo_memory(directive: str, pr_number: int, summary: str, dry_run: bool, callsign: str = "elliot") -> bool:
     supabase_url = os.environ.get("SUPABASE_URL", "").rstrip("/")
     service_key = os.environ.get("SUPABASE_SERVICE_KEY", "")
 
@@ -137,6 +154,7 @@ def save_ceo_memory(directive: str, pr_number: int, summary: str, dry_run: bool)
         "pr": pr_number,
         "summary": summary,
         "completed_at": datetime.now(timezone.utc).isoformat(),
+        "source": callsign,  # LAW XVII: tag write with callsign
     }
 
     if dry_run:
@@ -170,7 +188,7 @@ def save_ceo_memory(directive: str, pr_number: int, summary: str, dry_run: bool)
 # STORE 3 — cis_directive_metrics
 # ---------------------------------------------------------------------------
 
-def save_metrics(directive: str, pr_number: int, summary: str, dry_run: bool) -> bool:
+def save_metrics(directive: str, pr_number: int, summary: str, dry_run: bool, callsign: str = "elliot") -> bool:
     supabase_url = os.environ.get("SUPABASE_URL", "").rstrip("/")
     service_key = os.environ.get("SUPABASE_SERVICE_KEY", "")
 
@@ -198,6 +216,7 @@ def save_metrics(directive: str, pr_number: int, summary: str, dry_run: bool) ->
         "save_completed": True,
         "agents_used": ["build-2", "build-3"],
         "notes": summary,
+        "callsign": callsign,  # LAW XVII: tag row with callsign
         "created_at": now_iso,
     }
 
@@ -264,15 +283,16 @@ def main():
     pr_number = args.pr_number
     section = args.manual_section
     dry_run = args.dry_run
+    callsign = get_callsign()  # LAW XVII: fail loud on empty CALLSIGN
 
     if dry_run:
-        print(f"[DRY-RUN] directive={directive!r} pr={pr_number} section={section}")
+        print(f"[DRY-RUN] directive={directive!r} pr={pr_number} section={section} callsign={callsign!r}")
         print()
 
     succeeded = []
 
     # Store 1
-    ok1 = save_manual(directive, pr_number, summary, section, dry_run)
+    ok1 = save_manual(directive, pr_number, summary, section, dry_run, callsign)
     if ok1:
         succeeded.append("Manual")
     else:
@@ -280,7 +300,7 @@ def main():
         sys.exit(1)
 
     # Store 2
-    ok2 = save_ceo_memory(directive, pr_number, summary, dry_run)
+    ok2 = save_ceo_memory(directive, pr_number, summary, dry_run, callsign)
     if ok2:
         succeeded.append("ceo_memory")
     else:
@@ -288,7 +308,7 @@ def main():
         sys.exit(1)
 
     # Store 3
-    ok3 = save_metrics(directive, pr_number, summary, dry_run)
+    ok3 = save_metrics(directive, pr_number, summary, dry_run, callsign)
     if ok3:
         succeeded.append("cis_directive_metrics")
     else:

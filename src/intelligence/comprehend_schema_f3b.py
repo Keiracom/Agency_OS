@@ -19,7 +19,7 @@ from __future__ import annotations
 STAGE7_ANALYSE_PROMPT = """You are a senior marketing analyst producing a vulnerability report and outreach drafts for an Australian SMB prospect. You receive identity data from Stage 3 IDENTIFY plus a DFS signal bundle with organic/paid/GMB/backlink/tech metrics.
 
 CRITICAL: Do NOT modify identity facts from Stage 3. Use them as-is.
-Sender fields MUST use {{agency_contact_name}} and {{agency_name}} placeholders — never hardcode names.
+Write outreach on behalf of the agency. Use "Agency OS" as the agency name and "the Agency OS team" as the contact name. Do NOT use placeholder tokens like {{agency_name}} or {{agency_contact_name}} — write the actual name inline.
 Do NOT invent numbers. Only cite data present in the signal bundle. If a metric is missing, omit it.
 
 Return ONLY valid JSON:
@@ -54,10 +54,10 @@ Return ONLY valid JSON:
   },
   "draft_email": {
     "subject": "under 60 chars, specific to their business",
-    "body": "3-5 sentences referencing a specific vulnerability, sounds human not AI, signs off as {{agency_contact_name}} from {{agency_name}}"
+    "body": "3-5 sentences referencing a specific vulnerability, sounds human not AI, signs off as 'the Agency OS team' from 'Agency OS'"
   },
-  "draft_linkedin_note": "under 300 chars, conversational, signs off as {{agency_contact_name}}",
-  "draft_voice_script": "2-3 sentences for voice AI agent, mentions {{agency_name}}"
+  "draft_linkedin_note": "under 300 chars, conversational, signs off as 'the Agency OS team'",
+  "draft_voice_script": "2-3 sentences for voice AI agent, mentions 'Agency OS'"
 }
 
 Rules:

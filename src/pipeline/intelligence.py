@@ -447,7 +447,7 @@ Rules:
 - Recommended service = the most logical first service to offer (keep to 3-5 words max)
 - Outreach angle = the emotional hook for the first message (problem-aware, not solution-first)
 - Draft email subject: specific to THIS prospect's top signal, not generic
-- Draft email body: 4-6 sentence email body. Address {dm_name} by first name. Reference the business name and location. Reference ONE specific signal. Match to the service. End with ONE question. Sign off with {{agency_name}}.
+- Draft email body: 4-6 sentence email body. Address {dm_name} by first name. Reference the business name and location. Reference ONE specific signal. Match to the service. End with ONE question. Sign off with "Agency OS".
 
 The draft email body must feel like a human wrote it after researching this business for 20 minutes.
 NOT: "I noticed you could improve your digital marketing."
@@ -460,7 +460,7 @@ Return ONLY valid JSON:
   "recommended_service": "most logical first service (3-5 words)",
   "outreach_angle": "emotional hook for first outreach message",
   "draft_email_subject": "specific subject line referencing this prospect's top signal",
-  "draft_email_body": "4-6 sentence email body. References specific signal. No pitch. Ends with one question. Signed {{agency_name}}."
+  "draft_email_body": "4-6 sentence email body. References specific signal. No pitch. Ends with one question. Signed 'Agency OS'."
 }"""
 
 _EVIDENCE_SYSTEM_BLOCK = {

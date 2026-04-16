@@ -6,7 +6,7 @@ Two Gemini calls:
   2. Outreach Messaging: email (timeline hook first), LinkedIn note, phone knowledge
      base, SMS — all personalised to DM posts and signals.
 
-Sender fields use {{agency_contact_name}} and {{agency_name}} placeholders.
+Write outreach on behalf of "Agency OS". Use "Agency OS" as the agency name and "the Agency OS team" as the contact name. Do NOT use placeholder tokens like {{agency_name}} or {{agency_contact_name}} — write the actual name inline.
 Do NOT invent numbers — only cite data from signals.
 Facebook deferred to post-launch.
 
@@ -72,14 +72,14 @@ BANNED WORDS/PHRASES (instant fail if used):
 FORMAT RULES:
 - Email: 50-100 words. Lead with a TIMELINE HOOK (something the DM did/said/posted recently).
   Then credibility + insight (acknowledge a strength, then name a specific gap with numbers).
-  Close with a low-pressure personal question. Sign off as {{agency_contact_name}} from {{agency_name}}.
-- LinkedIn note: <300 chars. Reference something from their posts or company news. Sign off as {{agency_contact_name}}.
+  Close with a low-pressure personal question. Sign off as "the Agency OS team" from "Agency OS".
+- LinkedIn note: <300 chars. Reference something from their posts or company news. Sign off as "the Agency OS team".
 - Phone knowledge base: NOT a script to read verbatim. Provide:
     pattern_interrupt (first 5 seconds — something specific to THEM),
     key_insight (the one number or finding that will make them lean in),
     permission_question (soft ask to continue),
     objection_handle (for "not interested" or "happy with current provider").
-- SMS: <160 chars. Specific to the vulnerability. Include {{agency_contact_name}}.
+- SMS: <160 chars. Specific to the vulnerability. Include "the Agency OS team" as the sender name.
 
 TONE:
 - Match the DM's apparent tone from their posts (formal vs casual, technical vs plain).

@@ -7,6 +7,7 @@ CALLSIGN="${1:-elliot}"
 RELAY_DIR="/tmp/telegram-relay-${CALLSIGN}"
 INBOX="${RELAY_DIR}/inbox"
 PROCESSED="${RELAY_DIR}/processed"
+STATE_FILE="${RELAY_DIR}/last_chat_id"
 
 # Map callsign to tmux session name
 if [ "$CALLSIGN" = "elliot" ]; then
@@ -33,6 +34,10 @@ inotifywait -m -q -e create "$INBOX" --format '%f' 2>/dev/null | while read fnam
 
     # Parse the message
     msg_type=$(python3 -c "import json; print(json.load(open('$fpath')).get('type',''))" 2>/dev/null)
+    chat_id=$(python3 -c "import json; print(json.load(open('$fpath')).get('chat_id',''))" 2>/dev/null)
+
+    # Save last chat_id for tg reply script
+    [ -n "$chat_id" ] && echo "$chat_id" > "$STATE_FILE"
 
     if [ "$msg_type" = "text" ]; then
         text=$(python3 -c "

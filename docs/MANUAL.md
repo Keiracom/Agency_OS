@@ -347,6 +347,9 @@ Month 1 all-in (pipeline + infra + outreach): **~$464 AUD per customer**
 
 ---
 
+
+### Directive BU-DISCOVERY-RULE (PR #0, 2026-04-16)
+BU Discovery Rule (ratified 2026-04-16): Once a domain is in business_universe, it is NEVER re-discovered via Stage 1. Stage 1 always excludes all BU entries and returns only virgin domains. Updates to existing BU rows happen via a separate refresh flow (re-runs Stages 4/6/9 in place). No exceptions for temporal staleness at discovery level. Customer-level ownership via claimed_by prevents cross-customer duplicates. Strategic vision post-capital: always-on inventory pipeline — discovers continuously in background, customer arrives and claims from pre-built BU inventory (instant delivery, no processing wait). BU moat compounds monotonically. Eventually BU becomes sellable product per Manual vision.
 ## SECTION 4 — TIERS + PRICING (ratified Mar 26 2026)
 
 | Tier | Price AUD/mo | Records/mo | Founding (50% off) |
@@ -830,6 +833,12 @@ Validation run enablement. --domains CLI flag (bypass Stage 1, replay specific d
 
 ### Directive D2.2-PREP-CLOSE (PR #333, 2026-04-16)
 Resolved all open items. --dry-run flag (DRY_RUN env var in 7 clients, zero spend). webdev offset raised 50->80 (55% platform contamination). itmsp confirmed clean at offset=50 (65%). Pre-validation evidence documented.
+
+### Directive CASCADE-DESIGN-V2 (PR #338, 2026-04-16)
+ARCHITECTURE.md v2 ratified. Fork concurrency fix (per-track sub-dict isolation), state-in-queues, Gemini multi-project pool (sem=30), per-stage timeouts + per-provider circuit breakers, tenant context on domain_state, GOV-8 extended to raw responses on success path, Q4 pause-on-cancel override, build 9 days. PR #338.
+
+### Directive D2.2-RUN (PR #0, 2026-04-16)
+Pipeline F v2.1 validation rerun complete 2026-04-16. 17 domains (5 replay + 12 fresh), 7 cards shipped (41% overall, 83% post-Stage-3 SMB-clean). Cost 2.52 USD / 0.36 per card. Wall 13m 40s combined. REPLAY (5 D2-lost domains): 2/5 resolved (was 0/5 in D2), mobile 5/5, email 2/5 via L0 Gemini extract. FRESH (12 discovered): 5 cards (5/5 Hunter email, 4/5 ContactOut mobile). Enterprise filter caught 5/6 drops correctly. Provider coverage findings: ContactOut email credits = 0 (emails BLOCKED by credit type, not wiring), ContactOut phone credits work (returns mobile reliably via /v1/people/enrich). Leadmagic 0/4 email on dentals (has_mx=false — domains have no email infrastructure). Bright Data returns profile data only, never contact info. Stage 11 drops (4 domains): all had verified DM + mobile + score + signals but NO email, dropped at gate. Classification: YELLOW overall.
 ## SECTION 14 — COMPETITIVE INTELLIGENCE
 
 Direct competitors (signal-based AI BDR category):

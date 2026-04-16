@@ -127,3 +127,7 @@ Agency_OS/
 projects/elliot-mobile/
 projects/elliot-status/
 screenshot-to-code/
+
+# AIDEN-SCAFFOLD: per-callsign env files (never commit)
+.env.aiden
+.env.elliot

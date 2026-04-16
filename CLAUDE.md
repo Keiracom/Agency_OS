@@ -25,6 +25,7 @@ Skipping Step 0 is a governance violation. No exceptions, no shortcuts, no jumpi
 
 On every new session, your FIRST action before any directive, query, or build work:
 
+0. Read `./IDENTITY.md` first — your callsign is the single source of truth for this session (LAW XVII). Verify CALLSIGN env var matches if set.
 1. Read the Agency OS Manual from Google Drive (Doc ID: `1p9FAQGowy9SgwglIxtkGsMuvLsR70MJBQrCSY6Ie9ho`). This is the CEO SSOT — current state, active directives, blockers, and system status.
 2. Do not work from memory. Do not work from stale docs. Read the Manual before any directive.
 3. If the Manual is unreachable, alert Dave and STOP. Do not proceed from cached knowledge.

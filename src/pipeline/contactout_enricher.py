@@ -25,23 +25,25 @@ logger = logging.getLogger(__name__)
 
 async def enrich_dm_via_contactout(
     linkedin_url: str | None,
+    dm_name: str | None = None,
+    company_name: str | None = None,
+    dm_title: str | None = None,
 ) -> dict[str, Any] | None:
     """
     Call ContactOut for email + mobile in one shot.
 
+    Two paths (GOV-8: maximum extraction per call):
+      1. If linkedin_url provided: enrich directly via /v1/people/enrich
+      2. If no linkedin_url but dm_name + company_name: search first via
+         /v1/people/search (personal search, uses SEARCH credits), get LinkedIn
+         URL, then enrich. Two-step pattern captures full profile.
+
     Returns a dict with canonical keys consumed by email_waterfall and
-    mobile_waterfall, or None if ContactOut is not configured, the URL is
-    missing, or the profile was not found.
+    mobile_waterfall, or None if ContactOut is not configured or profile not found.
 
-    Cost: 1 ContactOut credit per call (only billed on found=True).
-
-    Freshness logic (applied inside ContactOutClient):
-      - best_email_confidence == "current_match": email domain matches current company
-      - "stale": email found but domain mismatch (e.g. ex-employer) — still included,
-        flagged so downstream can decide whether to use it or fall through
-      - "none": no email at all
+    Cost: 1 SEARCH credit per search + 1 SEARCH credit per enrich (only billed on found=True).
     """
-    if not linkedin_url:
+    if not linkedin_url and not (dm_name and company_name):
         return None
 
     try:
@@ -55,9 +57,46 @@ async def enrich_dm_via_contactout(
         logger.debug("contactout_enricher: not configured — skipping")
         return None
 
-    result = await client.enrich_by_linkedin(linkedin_url)
+    # Step 1: If no LinkedIn URL, search by name + company first
+    resolved_url = linkedin_url
+    search_result = None
+    if not resolved_url and dm_name and company_name:
+        search_result = await client.search_by_name(
+            dm_name=dm_name,
+            company_name=company_name,
+            title=dm_title or "Owner",
+        )
+        if search_result and search_result.found and search_result.linkedin_url:
+            resolved_url = search_result.linkedin_url
+            logger.info(
+                "contactout_enricher: search found LinkedIn for %s → %s",
+                dm_name, resolved_url,
+            )
+        else:
+            logger.debug("contactout_enricher: search found no match for %s at %s", dm_name, company_name)
+            return None
+
+    if not resolved_url:
+        return None
+
+    # Step 2: Enrich by LinkedIn URL
+    result = await client.enrich_by_linkedin(resolved_url)
     if not result.found:
-        logger.debug("contactout_enricher: profile not found for %s", linkedin_url)
+        logger.debug("contactout_enricher: profile not found for %s", resolved_url)
+        # Even if enrich fails, return search data if available (GOV-8: don't discard)
+        if search_result and search_result.found:
+            return {
+                "email": None, "email_confidence": "none",
+                "all_emails": [], "work_emails": [], "personal_emails": [],
+                "phone": None, "all_phones": [],
+                "full_name": search_result.full_name,
+                "headline": search_result.headline,
+                "company_name": search_result.company_name,
+                "company_domain": search_result.company_domain,
+                "company_linkedin_url": "",
+                "linkedin_url_from_search": resolved_url,
+                "raw": search_result.raw_response,
+            }
         return None
 
     return {

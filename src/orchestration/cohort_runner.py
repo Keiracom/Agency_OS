@@ -292,7 +292,7 @@ def _source_to_tier(source: str) -> str:
     }.get(source, f"UNKNOWN:{source}")
 
 
-async def _run_stage8(domain_data: dict, dfs: DFSLabsClient) -> dict:
+async def _run_stage8(domain_data: dict, dfs: DFSLabsClient, bd: BrightDataClient | None = None) -> dict:
     """Stage 8 CONTACT — verify fills (8a) + unified contact waterfall (8b-d)."""
     t0 = time.monotonic()
     identity = domain_data.get("stage3") or {}
@@ -317,7 +317,12 @@ async def _run_stage8(domain_data: dict, dfs: DFSLabsClient) -> dict:
     )
     contactout_result = None
     try:
-        contactout_result = await enrich_dm_via_contactout(dm_linkedin)
+        contactout_result = await enrich_dm_via_contactout(
+            linkedin_url=dm_linkedin,
+            dm_name=dm.get("name"),
+            company_name=identity.get("business_name"),
+            dm_title=dm.get("role"),
+        )
         if contactout_result:
             domain_data["cost_usd"] += STAGE8_WATERFALL_COST  # ContactOut credit
     except Exception as exc:
@@ -336,6 +341,7 @@ async def _run_stage8(domain_data: dict, dfs: DFSLabsClient) -> dict:
 
     email_result = None
     try:
+        dm_verified = bool((identity.get("dm_candidate") or {}).get("_dm_verified") or identity.get("_dm_verified"))
         email_result = await discover_email(
             domain=domain_data["domain"],
             dm_name=dm.get("name", ""),
@@ -343,18 +349,25 @@ async def _run_stage8(domain_data: dict, dfs: DFSLabsClient) -> dict:
             company_name=identity.get("business_name"),
             contact_data=stage3_contact_data or None,
             contactout_result=contactout_result,
+            dm_verified=dm_verified,
         )
     except Exception as exc:
         domain_data["errors"].append(f"stage8c_email: {exc}")
 
     # 8d: Mobile waterfall (uses contactout_result, no duplicate API call)
+    # Pass brightdata_client (bd) and contact_data from Stage 3 identity (Fix D2.2-1)
     mobile_result = None
     try:
+        contact_data_mobile: dict = {}
+        dm_phone = dm.get("dm_phone") or dm.get("primary_phone") or identity.get("primary_phone")
+        if dm_phone:
+            contact_data_mobile["company_mobile"] = dm_phone
         mobile_result = await run_mobile_waterfall(
             domain=domain_data["domain"],
             dm_linkedin_url=dm_linkedin,
-            contact_data=None,
+            contact_data=contact_data_mobile or None,
             contactout_result=contactout_result,
+            brightdata_client=bd,
         )
     except Exception as exc:
         domain_data["errors"].append(f"stage8d_mobile: {exc}")
@@ -757,7 +770,7 @@ async def run_cohort(
 
     # Stage 8
     active8 = _active(pipeline)
-    updated8 = await run_parallel(active8, lambda d: _run_stage8(d, dfs), concurrency=15, label="Stage 8 CONTACT")
+    updated8 = await run_parallel(active8, lambda d: _run_stage8(d, dfs, bd), concurrency=15, label="Stage 8 CONTACT")
     _merge(pipeline, updated8)
     _tg_progress("Stage 8 CONTACT", pipeline, _total_cost())
     if _check_budget(pipeline, budget_hard_cap):

@@ -463,6 +463,7 @@ async def discover_email(
     contact_data: dict | None = None,
     skip_layers: list[int] | None = None,
     contactout_result: dict | None = None,
+    dm_verified: bool = False,
 ) -> EmailResult:
     """
     Email discovery waterfall.
@@ -482,6 +483,8 @@ async def discover_email(
         contactout_result: Pre-fetched ContactOut enrichment dict (from
             enrich_dm_via_contactout). Caller fetches once and passes to both
             email and mobile waterfalls — no duplicate API calls.
+        dm_verified: True if the DM candidate has been confirmed (GOV-12). Hunter
+            L2 is gated on this flag to avoid confident email on unconfirmed DMs.
 
     Returns:
         EmailResult with email, verified flag, source, confidence, cost_usd.
@@ -558,9 +561,8 @@ async def discover_email(
             )
 
     # Layer 2: Hunter email-finder (free — included in plan, 2000 calls/mo)
-    # Returns email by name + domain. No mobile. Gated on dm_verified=true
-    # to avoid confident email on unconfirmed DM (buildmat-style risk).
-    if first and last and clean_domain:
+    # GOV-12: Gated on dm_verified=True to avoid confident email on unconfirmed DM.
+    if first and last and clean_domain and dm_verified:
         try:
             import os, httpx
             if os.environ.get("DRY_RUN"):
@@ -596,6 +598,11 @@ async def discover_email(
                                 )
         except Exception as exc:
             logger.warning("email_waterfall L2 hunter failed domain=%s: %s", domain, exc)
+    elif first and last and clean_domain:
+        logger.info(
+            "email_waterfall L2 hunter SKIPPED — dm_verified=%s (GOV-12) domain=%s",
+            dm_verified, domain,
+        )
 
     # Layer 3: Leadmagic find_email (verified — Leadmagic finds real address)
     # Website HTML layer REMOVED (D2.1B GOV-8) — Stage 3 Gemini already reads the

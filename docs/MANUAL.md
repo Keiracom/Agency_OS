@@ -23,10 +23,12 @@ Revenue model for BU: API subscriptions, Salesforce/HubSpot marketplace, bulk an
 
 ## SECTION 2 — CURRENT STATE
 
-**Last directive:** D1.8.3 (Governance synthesis + 3-store backfill — PR #329)
-**Next directive:** 20-domain rerun on full-context Pipeline F v2.1
+**Last directive:** D2 (Pipeline F v2.1 validation rerun, n=20)
+**Pipeline F v2.1 status:** Validated with caveat — discovery filter tuning required before customer cohorts
+**D2 result:** GREEN-on-clean (54% conversion, $0.37/card) / YELLOW-on-headline (35%, $0.42/card) / RED-discovery (30% enterprise contamination)
+**Next directive:** D2.1 (discovery filter tuning)
 **Test baseline:** 1505 passed, 1 failed (pre-existing campaign_flow), 28 skipped
-**Last merged PR:** #329 (D1.8 save mechanism + D1.8.2 extraction + D1.8.3 synthesis)
+**Last merged PR:** #330 (D1.9 Manual housekeeping)
 
 ### EVO Track (Autonomous Loop — all complete)
 
@@ -813,6 +815,18 @@ Read-only forensic audit of 3-store save mechanism for PRs #324-#328. Findings: 
 
 ### Directive D1.8.3 (PR #330, 2026-04-15)
 Synthesis + write in one pass. 7 governance rules written to Manual S17 + ceo_memory. 6 missing directives (D1.1-D1.7) backfilled to all 3 stores. Economics correction (0.25 projected vs 0.53 actual USD/card) written. 10 optimistic-completion catches documented. Total: 15 three_store_save.py invocations, all succeeded. Source: 1406 extraction entries from D1.8.2.
+
+### Directive D2 (PR #0, 2026-04-15)
+20-domain validation rerun. Headline 35% conversion ($0.42/card USD). Pipeline mechanically validated — 0 Gemini failures, 100% DM identification on cards. On 13-domain SMB-clean cohort (excluding 6 enterprise + 1 directory drops at Stage 3): 54% conversion, ~$0.37/card USD adjusted. Pipeline F v2.1 PASSES validation. Contamination upstream: DFS domain_metrics_by_categories returns head-of-distribution domains by default. Triggers D2.1 discovery filter tuning.
+
+### Directive D2.1A (PR #331, 2026-04-15)
+Blocklist expansion 313 to 1515 entries. 13 new categories (banks, retail, telco, education, hospitals, franchises, transport, real estate, allied health, charities, childcare, gambling, sporting). All 6 D2 enterprise drops now caught at Stage 1 gate. is_blocked() logic unchanged. pytest 1505/1/28.
+
+### Directive D2.1B (PR #332, 2026-04-15)
+Unified contact waterfall fix. Swapped cohort_runner Stage 8 from legacy contact_waterfall.py (/v1/people/linkedin, 0 email credits) to Directive #317 modules: contactout_enricher.py (/v1/people/enrich, 2765 search credits) + email_waterfall.py + mobile_waterfall.py. One ContactOut call captures email + mobile + full profile. No field discarded. Stage 10 gate updated. pytest 1505/1/28.
+
+### Directive D2.2-PREP (PR #333, 2026-04-15)
+Validation run enablement. --domains CLI flag (bypass Stage 1, replay specific domains). 4 new verticals: recruitment (12371), itmsp (12202), webdev (11493), coaching (11098). ETV windows calibrated. Tier tracking in summary.json (GOV-8 verification). GOV-9 Two-Layer Directive Scrutiny ratified.
 ## SECTION 14 — COMPETITIVE INTELLIGENCE
 
 Direct competitors (signal-based AI BDR category):
@@ -949,6 +963,12 @@ Governance Rule 6: Three-Store Completion (Mechanized via three_store_save.py). 
 
 ### Directive GOV-7-letter-prefix-directive-convention (PR #329, 2026-04-15)
 Governance Rule 7: Letter-Prefix Directive Convention. Foundation-sequencing work uses letter-prefix naming (A, B, C, D1.x) establishing an ordered build sequence where each is a prerequisite for the next. Emerged 2026-04-15 with Directive A referencing B/C/D as subsequent stages. D1.x sub-directives emerged naturally from D1 cohort run surfacing bugs. Sources: 06_governance_language.md L12361, L12370, L12388, L12405, L13782.
+
+### Directive GOV-8-maximum-extraction (PR #332, 2026-04-15)
+GOV-8: Maximum Extraction Per Call. Every API call captures all fields. Write to BU regardless of card eligibility. Never re-fetch. Emerged from D2.1B: Stage 3 Gemini already reads website but discarded data. Fixed: Stage 3 now extracts dm_email, dm_phone, office_address, services_offered. Website HTML layer removed from waterfall. CEO ratified 2026-04-15.
+
+### Directive GOV-9-two-layer-directive-scrutiny (PR #333, 2026-04-15)
+GOV-9: Two-Layer Directive Scrutiny. Every directive passes two scrutiny layers before Step 0. Layer 1 (CEO): query ceo_memory for ratified state, trace call path, flag uncertainties. Layer 2 (CTO): scrutinise for gaps (missing capabilities, config, instrumentation, contradicted assumptions). Report DIRECTIVE SCRUTINY — N GAPS FOUND or CLEAR before executing. Both layers mandatory. Emergence: 5 consecutive D2 directives had drafting gaps caught only by manual scrutiny prompt.
 ## SECTION 18 — OUTREACH + CONTENT (pre-launch)
 
 Landing page (`agency_os_v5.html`) is built with Bloomberg aesthetic and "Who built yours?" hero. Pending: Remotion video hero, Stripe Checkout on pricing CTAs, live founding counter from Supabase. Video strategy: 5 versions (dashboard animation, Maya walkthrough, HeyGen avatar, customer-specific, results) built via Remotion + HeyGen (Maya avatar). Content distribution via Prefect Flow #28 (Claude API → Remotion → HeyGen → distribution APIs). Demo mode active via `?demo=true` URL param with seeded Supabase demo tenant. Onboarding starts with a 15-minute activation call (CRM + LinkedIn connect, watch dashboard populate live).

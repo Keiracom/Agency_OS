@@ -65,7 +65,13 @@ class ContactOutClient:
 
     async def enrich_by_linkedin(self, linkedin_url: str) -> ContactOutResult:
         """Enrich a prospect by LinkedIn URL. Returns full result with freshness logic applied."""
+        import os
         result = ContactOutResult(linkedin_url=linkedin_url)
+
+        if os.environ.get("DRY_RUN"):
+            logger.info("[DRY-RUN] Would call ContactOut: %s", linkedin_url)
+            result.found = False
+            return result
 
         if not self.is_configured:
             logger.warning("ContactOut not configured — skipping")

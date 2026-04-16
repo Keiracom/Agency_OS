@@ -366,7 +366,7 @@ CATEGORY_ETV_WINDOWS: dict[int, ETVWindow] = {
         "etv_max": 20000.0,
         "keyword_count_min": 50,
         "keyword_count_max": 1200,
-        "offset_start": 50,
+        "offset_start": 80,  # raised from 50 — 55% platform contamination at offset=50 (D2.2-PREP-CLOSE Step 3)
         "offset_end": 500,
         "median_etv_per_keyword": 12.0,
         "sample_size": 100,

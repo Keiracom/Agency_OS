@@ -95,6 +95,9 @@ class GeminiClient:
             f"DFS base metrics:\n{json.dumps(dfs_base_metrics, indent=2)}\n\n"
             "Return the JSON schema exactly as specified."
         )
+        if os.environ.get("DRY_RUN"):
+            logger.info("[DRY-RUN] Would call Gemini call_f3a: %d chars prompt", len(user_prompt))
+            return {"content": {}, "f_status": "dry_run", "cost_usd": 0}
         result = await gemini_call_with_retry(
             api_key=self.api_key,
             system_prompt=STAGE3_IDENTIFY_PROMPT,
@@ -212,6 +215,9 @@ class GeminiClient:
             f"DFS signal bundle:\n{json.dumps(signal_bundle, indent=2)}\n\n"
             "Generate the vulnerability report and outreach drafts as specified."
         )
+        if os.environ.get("DRY_RUN"):
+            logger.info("[DRY-RUN] Would call Gemini call_f3b: %d chars prompt", len(user_prompt))
+            return {"content": {}, "f_status": "dry_run", "cost_usd": 0}
         result = await gemini_call_with_retry(
             api_key=self.api_key,
             system_prompt=STAGE7_ANALYSE_PROMPT,
@@ -238,6 +244,9 @@ class GeminiClient:
         migrated to call_f3a / call_f3b (themselves legacy — see their deprecation notes)
         or the eventual call_stage3_identify / call_stage7_analyse (Directive C).
         """
+        if os.environ.get("DRY_RUN"):
+            logger.info("[DRY-RUN] Would call Gemini comprehend: %d chars prompt", len(user_prompt))
+            return {"content": {}, "f3_status": "dry_run", "cost_usd": 0, "grounding_used": False, "url_context_used": False, "model": GEMINI_MODEL}
         result = await gemini_call_with_retry(
             api_key=self.api_key,
             system_prompt=system_prompt,

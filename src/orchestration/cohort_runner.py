@@ -561,7 +561,12 @@ async def run_cohort(
     output_dir: str | None = None,
     domains: list[str] | None = None,
     force_replay: bool = False,
+    dry_run: bool = False,
 ) -> dict:
+    if dry_run:
+        os.environ["DRY_RUN"] = "1"
+        logger.info("[DRY-RUN] All API calls will return empty responses. No spend.")
+        _tg("[DRY-RUN] Trace mode — no API calls, no spend")
     run_ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     out_path = Path(output_dir) if output_dir else Path("scripts/output") / f"cohort_run_{run_ts}"
     wall_start = time.monotonic()
@@ -822,6 +827,8 @@ async def run_cohort(
         f"{round(wall_s)}s wall-clock. Output: {out_path}"
     )
     logger.info("Done. %s", summary)
+    if dry_run:
+        os.environ.pop("DRY_RUN", None)
     return summary
 
 
@@ -855,6 +862,7 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument("--output-dir", default=None, help="Output directory (default: auto-timestamped)")
     p.add_argument("--domains", default=None, help="Comma-separated domain list (bypasses Stage 1 discovery)")
     p.add_argument("--force-replay", action="store_true", help="Allow blocked domains through for diagnostic replay")
+    p.add_argument("--dry-run", action="store_true", help="Trace decision logic without API calls (no spend)")
     return p.parse_args()
 
 
@@ -870,6 +878,7 @@ if __name__ == "__main__":
             output_dir=args.output_dir,
             domains=domain_list,
             force_replay=args.force_replay,
+            dry_run=args.dry_run,
         ))
     else:
         cats = [c.strip() for c in args.categories.split(",") if c.strip()]
@@ -882,4 +891,5 @@ if __name__ == "__main__":
             domains_per_category=per_cat,
             output_dir=args.output_dir,
             force_replay=args.force_replay,
+            dry_run=args.dry_run,
         ))

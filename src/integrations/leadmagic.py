@@ -57,6 +57,7 @@ from tenacity import (
 
 from src.config.settings import settings
 from src.exceptions import APIError, IntegrationError, ValidationError
+from src.integrations.circuit_breaker import circuit_breaker
 
 logger = logging.getLogger(__name__)
 
@@ -356,6 +357,7 @@ class LeadmagicClient:
 
         self._last_request_time = datetime.now(UTC)
 
+    @circuit_breaker("leadmagic", failure_threshold=5, recovery_timeout=60)
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=10),

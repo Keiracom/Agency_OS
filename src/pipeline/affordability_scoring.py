@@ -68,8 +68,10 @@ class AffordabilityScorer:
             )
 
         # Public companies and government entities — never Agency OS clients
-        _NON_SMB_TYPES = {"public company", "state government entity", "commonwealth government entity", "local government entity"}
-        if entity_type in _NON_SMB_TYPES:
+        # Substring match (consistent with sole_trader gate above) — ABN returns
+        # title-case like "Australian Public Company" which .lower() → "australian public company"
+        _NON_SMB_TYPES = ("public company", "state government", "commonwealth government", "local government")
+        if any(t in entity_type for t in _NON_SMB_TYPES):
             return AffordabilityResult(
                 raw_score=0, band="LOW", signals={"hard_gate": "public_or_govt"},
                 gaps=[GAP_MESSAGES["public_or_govt"]], passed_gate=False

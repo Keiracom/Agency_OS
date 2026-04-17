@@ -6,11 +6,15 @@ Consumers: chat_bot.py CommandHandler('save', cmd_save)
 
 Delegates all Supabase writes to src.memory.store() — enforces rate limiting,
 type validation, and the agreed interface contract.
+
+store() is SYNC (returns uuid.UUID). cmd_save is async (Telegram handler) —
+sync functions may be called from async context.
 """
 
 import logging
 import os
 import sys
+import uuid
 
 from telegram import Update
 from telegram.ext import ContextTypes
@@ -20,7 +24,7 @@ _src_root = os.path.join(os.path.dirname(__file__), "..", "..")
 if _src_root not in sys.path:
     sys.path.insert(0, _src_root)
 
-from src.memory import store  # noqa: E402
+from src.memory.store import store  # noqa: E402
 from src.memory.types import VALID_SOURCE_TYPES  # noqa: E402
 
 logger = logging.getLogger(__name__)
@@ -79,18 +83,17 @@ async def cmd_save(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
 
     try:
-        row = await store(
+        memory_id: uuid.UUID = store(
             callsign=CALLSIGN,
             source_type=source_type,
             content=content,
             tags=[source_type],
         )
         preview = content[:50] + ("..." if len(content) > 50 else "")
-        row_id = row.get("id", "?")
         await update.message.reply_text(
-            f"Saved [{source_type}]: {preview}\nid={row_id}"
+            f"Saved [{source_type}]: {preview}\nid={memory_id}"
         )
-        logger.info(f"[save] callsign={CALLSIGN} type={source_type} id={row_id}")
+        logger.info(f"[save] callsign={CALLSIGN} type={source_type} id={memory_id}")
     except ValueError as exc:
         logger.error(f"[save] validation error: {exc}")
         await update.message.reply_text(f"Invalid type: {exc}")

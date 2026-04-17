@@ -118,7 +118,7 @@ TRUST_WEIGHTS: dict[str, float] = {
 # tentative eventually flips to confirmed at PROMOTION_ACCESS_THRESHOLD).
 STATE_WEIGHTS: dict[str, float] = {
     "confirmed":  1.00,
-    "tentative":  0.75,
+    "tentative":  0.50,  # heavy discount — bulk-extracted tentative rows only surface on very strong match
     # superseded / contradicted / archived excluded at the RPC layer
 }
 

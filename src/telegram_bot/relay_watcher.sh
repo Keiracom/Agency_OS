@@ -14,6 +14,8 @@ if [ "$CALLSIGN" = "elliot" ]; then
     TMUX_TARGET="elliottbot:0.0"
 elif [ "$CALLSIGN" = "aiden" ]; then
     TMUX_TARGET="aiden:0.0"
+elif [ "$CALLSIGN" = "scout" ]; then
+    TMUX_TARGET="scout:0.0"
 else
     TMUX_TARGET="${CALLSIGN}bot:0.0"
 fi

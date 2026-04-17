@@ -34,6 +34,7 @@ from telegram.ext import (
 
 from src.telegram_bot.tag_handler import handle_tag, handle_tag_confirmation
 from src.telegram_bot.recall_handler import handle_recall
+from src.telegram_bot.save_handler import cmd_save
 
 # ---------------------------------------------------------------------------
 # Config
@@ -68,10 +69,10 @@ CALLSIGN_TAG: str = f"[{CALLSIGN.upper()}]"
 
 # Sender classification for group chats (LAW XVII)
 BOT_USERNAME: str = ""  # populated at startup from getMe
-KNOWN_PEER_BOTS: set[str] = {"eeeeelllliiiioooottt_bot", "aaaaidenbot"}  # lowercase
+KNOWN_PEER_BOTS: set[str] = {"eeeeelllliiiioooottt_bot", "aaaaidenbot", "scoutbotstephensbot"}  # lowercase
 DAVE_USER_ID: int = 7267788033  # hardcoded CEO user_id — only this human gets Sender.DAVE
 # Peer cross-post: bot-to-bot visibility bypass (Telegram doesn't deliver bot-to-bot)
-_PEER_MAP = {"elliot": "aiden", "aiden": "elliot"}
+_PEER_MAP = {"elliot": "aiden", "aiden": "elliot", "scout": "elliot"}
 PEER_INBOX: str | None = f"/tmp/telegram-relay-{_PEER_MAP[CALLSIGN]}/inbox" if CALLSIGN in _PEER_MAP else None
 GROUP_CHAT_ID = -1003926592540
 
@@ -106,7 +107,7 @@ os.makedirs(INBOX_DIR, exist_ok=True)
 os.makedirs(OUTBOX_DIR, exist_ok=True)
 
 # Relay defaults ON only if tmux target exists (no tmux = use subprocess path)
-_TMUX_TARGETS = {"elliot": "elliottbot", "aiden": "aiden"}
+_TMUX_TARGETS = {"elliot": "elliottbot", "aiden": "aiden", "scout": "scout"}
 _tmux_session = _TMUX_TARGETS.get(CALLSIGN, f"{CALLSIGN}bot")
 _tmux_exists = os.system(f"tmux has-session -t {_tmux_session} 2>/dev/null") == 0
 relay_mode: dict[int, bool] = {cid: True for cid in ALLOWED_CHAT_IDS} if _tmux_exists else {}
@@ -526,6 +527,7 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "/kill — Stop running process\n"
         "/history — Recent session history\n"
         "/relay on|off — Toggle relay to tmux session\n"
+        "/save [type] <text> — Save typed memory (pattern/decision/skill/reasoning/test_result/general)\n"
         "/help — This message"
     )
     await update.message.reply_text(text)
@@ -938,6 +940,7 @@ def main() -> None:
     app.add_handler(CommandHandler("kill", cmd_kill))
     app.add_handler(CommandHandler("history", cmd_history))
     app.add_handler(CommandHandler("relay", cmd_relay))
+    app.add_handler(CommandHandler("save", cmd_save))
     app.add_handler(CommandHandler("help", cmd_help))
     app.add_handler(CommandHandler("tag", handle_tag))
     app.add_handler(CommandHandler("recall", handle_recall))

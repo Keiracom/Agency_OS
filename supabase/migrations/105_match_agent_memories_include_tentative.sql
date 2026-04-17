@@ -10,7 +10,11 @@
 -- Change: drop the state='confirmed' filter; return state column; keep
 -- embedding IS NOT NULL + similarity threshold filters.
 
-CREATE OR REPLACE FUNCTION match_agent_memories(
+-- DROP first: PostgreSQL won't allow CREATE OR REPLACE when the RETURNS TABLE
+-- signature changes (we added the `state` column).
+DROP FUNCTION IF EXISTS match_agent_memories(vector, int, float);
+
+CREATE FUNCTION match_agent_memories(
   query_embedding vector(1536),
   match_count int DEFAULT 5,
   match_threshold float DEFAULT 0.3

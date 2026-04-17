@@ -97,7 +97,7 @@ VALUES (gen_random_uuid(), 'daily_log', '<summary: what was done, PRs, decisions
 | LAW XII | Skills-First Integration — direct calls to src/integrations/ outside skill execution are forbidden |
 | LAW XIII | Skill Currency Enforcement — skill files must be updated in the same PR as any service call change; update noted in Manual |
 | LAW XIV | Raw Output Mandate — paste verbatim terminal output, never summarise |
-| LAW XV | Three-Store Completion — docs/MANUAL.md + public.ceo_memory + public.cis_directive_metrics |
+| LAW XV | Four-Store Completion — docs/MANUAL.md + public.ceo_memory + public.cis_directive_metrics + Google Drive mirror |
 | LAW XV-A | Skills Are Mandatory — cat skill file before any matching task |
 | LAW XV-B | DoD Is Mandatory — cat DEFINITION_OF_DONE.md before reporting complete |
 | LAW XV-C | Governance Docs Immutable — never recreate/modify without explicit CEO directive |
@@ -193,7 +193,7 @@ Agent: [which agent]
 ## Session End Protocol
 
 Before context exhaustion or /reset:
-1. Run session-end 3-store check: `python scripts/session_end_check.py` — fix any gaps before proceeding
+1. Run session-end 4-store check: `python scripts/session_end_check.py` — fix any gaps before proceeding
 2. Write CEO Memory Update to public.ceo_memory (key: ceo:session_end_YYYY-MM-DD)
 3. Update directive counter in public.ceo_memory (ceo:directives.last_number)
 4. Write daily_log to elliot_internal.memories

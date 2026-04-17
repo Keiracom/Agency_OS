@@ -66,7 +66,7 @@ Not a summary. Not a tick. Verbatim output.
 
 ---
 
-## THREE-STORE COMPLETION
+## FOUR-STORE COMPLETION
 (mandatory for save-trigger directives only)
 
 [ ] S1. Google Drive Manual updated (LAW XV)

@@ -52,18 +52,18 @@ Full autonomous loop verified: Prefect → evo_task_queue → VPS consumer → r
 - **Telegram bot:** Live. All CTO communication via Telegram (chat_id 7267788033). Terminal output not monitored.
 - **crm-sync-flow:** Killed permanently 2026-04-08 (schema mismatch, flow removed from Prefect).
 - **Prefect pool:** agency-os-pool, concurrency 10.
-- **3-store save:** Automated via scripts/three_store_save.py. CI enforcement: .github/workflows/directive-save-check.yml. Session-end check: scripts/session_end_check.py.
+- **4-store save:** Automated via scripts/three_store_save.py. CI enforcement: .github/workflows/directive-save-check.yml. Session-end check: scripts/session_end_check.py.
 
 ### Governance Updates (2026-04-15)
 
 - LAW XII (Skills-First Integration) restored
 - LAW XIII (Skill Currency Enforcement) restored
 - LAW XV-D: Step 0 RESTATE HARD BLOCK added to both CLAUDE.md files
-- LAW XV: Three-Store Completion now mechanized via three_store_save.py (D1.8)
+- LAW XV: Four-Store Completion now mechanized via three_store_save.py (D1.8)
 - LAW XVI: Clean Working Tree — report dirty tree before new directive work
 - Session startup HARD BLOCK: Read Drive Manual via keiradrive_read_manual before any directive
 - File-based memory (MEMORY.md, HANDOFF.md) deprecated — Supabase elliot_internal.memories is SOLE persistent memory
-- 7 governance rules established (see Section 17): verify-before-claim, cost-authorization, pre-directive check, optimistic completion, audit-fix-reaudit cycle, three-store mechanism, letter-prefix convention
+- 7 governance rules established (see Section 17): verify-before-claim, cost-authorization, pre-directive check, optimistic completion, audit-fix-reaudit cycle, four-store mechanism, letter-prefix convention
 - Schema correction: ceo_memory and cis_directive_metrics are in PUBLIC schema (not elliot_internal)
 
 ### Pipeline Status
@@ -942,7 +942,7 @@ PR merge authority: Dave merges all PRs. Elliottbot may merge only when explicit
 
 Mirror: After writing `docs/MANUAL.md`, copy content to Google Doc (best effort). If Drive write fails, log error but do not block completion.
 
-**Verification:** Every save-trigger directive must include `cat docs/MANUAL.md | grep "SECTION"` output proving the write landed. "All three stores written" without this output is rejected.
+**Verification:** Every save-trigger directive must include `cat docs/MANUAL.md | grep "SECTION"` output proving the write landed. "All four stores written" without this output is rejected.
 
 Directive format: Context / Constraint / Action / Output / Save / Governance
 - Mobile-friendly: triple backticks, single continuous blocks, no nested code

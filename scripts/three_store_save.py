@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-three_store_save.py — Canonical 3-store save for directive completion (LAW XV).
+three_store_save.py — Canonical 4-store save for directive completion (LAW XV).
 
 Stores:
   1. docs/MANUAL.md  — append entry under target SECTION
@@ -60,7 +60,7 @@ def get_callsign() -> str:
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Canonical 3-store save for directive completion (LAW XV)."
+        description="Canonical 4-store save for directive completion (LAW XV)."
     )
     parser.add_argument("--directive", required=True,
                         help='Directive label, e.g. "D1.8", "309", "A"')
@@ -319,7 +319,7 @@ def main():
     run_drive_mirror(dry_run)
 
     print()
-    print(f"All 3 stores saved. Directive {directive!r} PR #{pr_number} complete.")
+    print(f"All 4 stores saved. Directive {directive!r} PR #{pr_number} complete.")
 
 
 if __name__ == "__main__":

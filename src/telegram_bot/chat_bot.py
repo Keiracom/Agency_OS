@@ -780,15 +780,28 @@ async def _outbox_watcher(app: Application) -> None:
                     logger.info(f"[relay] outbox sent: {fname}")
 
                     # Cross-post group messages to peer bot's inbox (Telegram bot-to-bot blind spot)
+                    # Sender-side listener hook: enrich cross-post with memory context
+                    # so the receiving peer gets context they'd miss (their listener doesn't fire on cross-posts)
                     if chat_id == GROUP_CHAT_ID and PEER_INBOX and msg.get("type") == "text":
                         os.makedirs(PEER_INBOX, exist_ok=True)
                         peer_ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
                         peer_fname = f"{peer_ts}_{uuid.uuid4().hex[:8]}.json"
+
+                        # Enrich with memory context for the peer
+                        outgoing_text = msg.get("text", "")
+                        try:
+                            peer_memories = await find_relevant_memories(outgoing_text)
+                            if peer_memories:
+                                mem_block = format_memory_context(peer_memories)
+                                outgoing_text = f"{mem_block}\n\n{outgoing_text}"
+                        except Exception:
+                            pass  # best-effort — cross-post still works without enrichment
+
                         peer_payload = {
                             "id": peer_fname.replace(".json", ""),
                             "type": "text",
                             "chat_id": chat_id,
-                            "text": f"[GROUP — from {CALLSIGN.upper()} (peer bot, NOT your boss Dave)]: {msg.get('text', '')}",
+                            "text": f"[GROUP — from {CALLSIGN.upper()} (peer bot, NOT your boss Dave)]: {outgoing_text}",
                             "sender": "peer",
                             "timestamp": datetime.now(timezone.utc).isoformat(),
                         }

@@ -58,6 +58,11 @@ CALLSIGN_TAG: str = f"[{CALLSIGN.upper()}]"
 # Sender classification for group chats (LAW XVII)
 BOT_USERNAME: str = ""  # populated at startup from getMe
 KNOWN_PEER_BOTS: set[str] = {"eeeeelllliiiioooottt_bot", "aaaaidenbot"}  # lowercase
+DAVE_USER_ID: int = 7267788033  # hardcoded CEO user_id — only this human gets Sender.DAVE
+# Peer cross-post: bot-to-bot visibility bypass (Telegram doesn't deliver bot-to-bot)
+_PEER_MAP = {"elliot": "aiden", "aiden": "elliot"}
+PEER_INBOX: str | None = f"/tmp/telegram-relay-{_PEER_MAP[CALLSIGN]}/inbox" if CALLSIGN in _PEER_MAP else None
+GROUP_CHAT_ID = -1003926592540
 
 
 class Sender:
@@ -71,6 +76,10 @@ class Sender:
 _bot_turns_without_dave: dict[int, int] = {}  # chat_id -> count
 MAX_BOT_TURNS = 2  # max back-and-forth without Dave before going quiet
 
+# Security alert rate limiter: (user_id, chat_id) -> last alert timestamp
+_security_alert_cache: dict[tuple[int, int], float] = {}
+SECURITY_ALERT_COOLDOWN = 300  # 5 min dedup window
+
 # In-memory process tracking: chat_id -> subprocess handle
 running_processes: dict[int, asyncio.subprocess.Process] = {}
 
@@ -78,14 +87,18 @@ running_processes: dict[int, asyncio.subprocess.Process] = {}
 # Relay state
 # ---------------------------------------------------------------------------
 
-RELAY_DIR = "/tmp/telegram-relay"
+RELAY_DIR = f"/tmp/telegram-relay-{CALLSIGN}"  # per-callsign isolation (LAW XVII)
 INBOX_DIR = f"{RELAY_DIR}/inbox"    # messages FROM Telegram TO tmux session
 OUTBOX_DIR = f"{RELAY_DIR}/outbox"  # messages FROM tmux session TO Telegram
 
 os.makedirs(INBOX_DIR, exist_ok=True)
 os.makedirs(OUTBOX_DIR, exist_ok=True)
 
-relay_mode: dict[int, bool] = {}  # chat_id -> relay on/off
+# Relay defaults ON only if tmux target exists (no tmux = use subprocess path)
+_TMUX_TARGETS = {"elliot": "elliottbot", "aiden": "aiden"}
+_tmux_session = _TMUX_TARGETS.get(CALLSIGN, f"{CALLSIGN}bot")
+_tmux_exists = os.system(f"tmux has-session -t {_tmux_session} 2>/dev/null") == 0
+relay_mode: dict[int, bool] = {cid: True for cid in ALLOWED_CHAT_IDS} if _tmux_exists else {}
 # When relay is ON, messages continue the tmux session directly
 RELAY_SESSION_ID: str | None = None  # set by /relay on, read from latest JSONL
 
@@ -122,19 +135,27 @@ async def auth_check(update: Update) -> bool:
 
 
 def classify_sender(update: Update) -> str:
-    """Classify who sent this message: dave, peer bot, self, or unknown."""
+    """Four-axis sender classification (security-hardened).
+
+    1. is_bot + username == self     → SELF (ignore)
+    2. is_bot + username in peers    → PEER_BOT (discuss, no directives)
+    3. not is_bot + user.id == Dave  → DAVE (boss, follow instructions)
+    4. else                          → UNKNOWN (reject in group, log)
+    """
     user = update.effective_user
     if not user:
         return Sender.UNKNOWN
-    # Self detection
+    # Axis 1: Self detection
     if user.is_bot and user.username and user.username.lower() == BOT_USERNAME.lower():
         return Sender.SELF
-    # Peer bot detection
+    # Axis 2: Peer bot detection
     if user.is_bot and user.username and user.username.lower() in KNOWN_PEER_BOTS:
         return Sender.PEER_BOT
-    # Human in allowed list
-    if not user.is_bot:
+    # Axis 3: Dave — verified by user_id, not just is_bot=False
+    if not user.is_bot and user.id == DAVE_USER_ID:
         return Sender.DAVE
+    # Axis 4: Unknown — any other human or unrecognized bot
+    logger.warning(f"[classify] UNKNOWN sender: user_id={user.id} username={user.username} is_bot={user.is_bot}")
     return Sender.UNKNOWN
 
 
@@ -510,13 +531,32 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     chat_id = update.effective_chat.id
     sender = classify_sender(update)
     is_group = update.effective_chat.type in ("group", "supergroup")
+    user = update.effective_user
+    logger.info(f"[msg] chat={chat_id} sender={sender} is_group={is_group} from={user.username if user else '?'} is_bot={user.is_bot if user else '?'} text={(update.message.text or '')[:60]}")
 
     # Self messages — always ignore
     if sender == Sender.SELF:
         return
 
-    # Unknown sender in group — ignore silently
+    # Unknown sender in group — reject, log, and alert Dave (rate-limited)
     if sender == Sender.UNKNOWN and is_group:
+        user = update.effective_user
+        uid = user.id if user else 0
+        uname = user.username if user else "?"
+        logger.warning(f"[security] Rejected UNKNOWN sender in group: user_id={uid} username={uname}")
+        # Rate-limited DM alert to Dave (silent rejection — unknown user doesn't see it)
+        import time as _t
+        cache_key = (uid, chat_id)
+        last_alert = _security_alert_cache.get(cache_key, 0)
+        if _t.time() - last_alert > SECURITY_ALERT_COOLDOWN:
+            _security_alert_cache[cache_key] = _t.time()
+            try:
+                await context.bot.send_message(
+                    chat_id=DAVE_USER_ID,
+                    text=f"{CALLSIGN_TAG} [SECURITY] Unknown user @{uname} (id={uid}) attempted message in group {chat_id}. Rejected.",
+                )
+            except Exception as exc:
+                logger.error(f"[security] Failed to alert Dave: {exc}")
         return
 
     # Track bot-to-bot turns in groups
@@ -529,10 +569,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 return  # stay quiet, max turns hit
             _bot_turns_without_dave[chat_id] = turns + 1
 
-    # Group mention filter and text enrichment
+    # Group mention filter and text enrichment (Message.text is immutable — use local var)
+    message_text = update.message.text or ""
     if is_group and sender == Sender.DAVE:
-        text = update.message.text or ""
-        bot_mentioned = f"@{BOT_USERNAME}".lower() in text.lower() if BOT_USERNAME else False
+        bot_mentioned = f"@{BOT_USERNAME}".lower() in message_text.lower() if BOT_USERNAME else False
         is_reply_to_us = (
             update.message.reply_to_message
             and update.message.reply_to_message.from_user
@@ -543,21 +583,20 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             pass  # allow through — brainstorm mode
         # Strip the @mention so Claude gets clean text; add group context prefix
         if BOT_USERNAME:
-            clean = text.replace(f"@{BOT_USERNAME}", "").strip()
-            update.message.text = f"[GROUP — from Dave (CEO)]: {clean}" if clean else text
+            clean = message_text.replace(f"@{BOT_USERNAME}", "").strip()
+            message_text = f"[GROUP — from Dave (CEO)]: {clean}" if clean else message_text
         else:
-            update.message.text = f"[GROUP — from Dave (CEO)]: {text}"
+            message_text = f"[GROUP — from Dave (CEO)]: {message_text}"
 
     # Peer bot message — add context prefix before routing to Claude
     if sender == Sender.PEER_BOT:
         peer_name = update.effective_user.first_name or "peer"
-        original_text = update.message.text or ""
-        update.message.text = f"[GROUP — from {peer_name} (peer bot, NOT your boss Dave)]: {original_text}"
+        message_text = f"[GROUP — from {peer_name} (peer bot, NOT your boss Dave)]: {message_text}"
 
     # Relay mode: forward to tmux inbox instead of Claude
     if relay_mode.get(chat_id):
         # Relay mode: write to inbox, watcher injects into tmux via send-keys
-        await _relay_text_to_inbox(chat_id, update.message.text or "", sender=sender)
+        await _relay_text_to_inbox(chat_id, message_text, sender=sender)
         await reply_tagged(update.message, "Relayed to tmux session")
         return
 
@@ -580,7 +619,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         response, real_session_id = await run_claude(
             resume_id,
             model,
-            update.message.text or "",
+            message_text,
             chat_id,
         )
 
@@ -699,6 +738,23 @@ async def _outbox_watcher(app: Application) -> None:
 
                     os.unlink(fpath)
                     logger.info(f"[relay] outbox sent: {fname}")
+
+                    # Cross-post group messages to peer bot's inbox (Telegram bot-to-bot blind spot)
+                    if chat_id == GROUP_CHAT_ID and PEER_INBOX and msg.get("type") == "text":
+                        os.makedirs(PEER_INBOX, exist_ok=True)
+                        peer_ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+                        peer_fname = f"{peer_ts}_{uuid.uuid4().hex[:8]}.json"
+                        peer_payload = {
+                            "id": peer_fname.replace(".json", ""),
+                            "type": "text",
+                            "chat_id": chat_id,
+                            "text": f"[GROUP — from {CALLSIGN.upper()} (peer bot, NOT your boss Dave)]: {msg.get('text', '')}",
+                            "sender": "peer",
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
+                        }
+                        with open(os.path.join(PEER_INBOX, peer_fname), "w") as pf:
+                            _json.dump(peer_payload, pf)
+                        logger.info(f"[relay] cross-posted to peer inbox: {peer_fname}")
 
                 except Exception as e:
                     logger.error(f"[relay] outbox error processing {fname}: {e}")

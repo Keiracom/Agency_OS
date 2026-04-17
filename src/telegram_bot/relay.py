@@ -1,14 +1,44 @@
 """
 Relay utilities for tmux session ↔ Telegram communication.
-Used by Elliottbot in the tmux Claude session to send/receive messages from Dave.
+Used by both Elliot and Aiden in their respective tmux Claude sessions.
+Callsign is auto-detected from the tmux session name so each session writes
+to its own per-callsign inbox/outbox — this is what keeps Aiden's traffic
+out of Elliot's pane and vice versa.
 """
 import json
 import os
+import subprocess
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-RELAY_DIR = "/tmp/telegram-relay"
+
+def _detect_callsign() -> str:
+    """Detect callsign from tmux session name first, env var second.
+    tmux session "aiden" -> "aiden"; "elliottbot" -> "elliot"; else env
+    CALLSIGN, else "elliot". tmux wins over env because the shell env may
+    have a stale CALLSIGN inherited from a profile (observed: shell env
+    defaults to CALLSIGN=elliot even in the aiden pane)."""
+    try:
+        s = subprocess.check_output(
+            ["tmux", "display-message", "-p", "#{session_name}"],
+            text=True, stderr=subprocess.DEVNULL, timeout=2,
+        ).strip()
+        if s == "aiden":
+            return "aiden"
+        if s == "elliottbot":
+            return "elliot"
+    except Exception:
+        pass
+    return os.environ.get("CALLSIGN", "elliot")
+
+
+CALLSIGN = _detect_callsign()
+# Path convention matches chat_bot.py: parent dir is per-callsign, inbox/outbox
+# are subdirs. Previously this file used /tmp/telegram-relay/{inbox,outbox}-{callsign}
+# which diverged from chat_bot.py and meant relay.py and chat_bot.py never saw
+# each other's files. Aligned 2026-04-17 per PR #343 review.
+RELAY_DIR = f"/tmp/telegram-relay-{CALLSIGN}"
 INBOX_DIR = f"{RELAY_DIR}/inbox"
 OUTBOX_DIR = f"{RELAY_DIR}/outbox"
 CHAT_ID = 7267788033

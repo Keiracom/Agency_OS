@@ -1,0 +1,84 @@
+#!/usr/bin/env python3
+"""tg — send a message to Telegram via the outbox relay (auto-routes to last incoming chat).
+
+Usage:
+    tg "message"                    → reply to last incoming chat
+    tg -g "message"                 → force send to group
+    tg -d "message"                 → force send to DM (private)
+    tg -c <chat_id> "message"       → send to specific chat_id
+    echo "message" | tg             → read from stdin
+"""
+import json
+import os
+import sys
+import uuid
+from datetime import datetime, timezone
+
+CALLSIGN = os.environ.get("CALLSIGN", "elliot")
+RELAY_DIR = f"/tmp/telegram-relay-{CALLSIGN}"
+OUTBOX = f"{RELAY_DIR}/outbox"
+STATE_FILE = f"{RELAY_DIR}/last_chat_id"
+CALLSIGN_TAG = f"[{CALLSIGN.upper()}]"
+
+DM_CHAT_ID = 7267788033
+GROUP_CHAT_ID = -1003926592540
+
+# Peer bot cross-post: map callsign → other bot's inbox for bot-to-bot visibility
+PEER_CALLSIGNS = {"elliot": "aiden", "aiden": "elliot"}
+PEER_INBOX = f"/tmp/telegram-relay-{PEER_CALLSIGNS.get(CALLSIGN, '')}/inbox" if CALLSIGN in PEER_CALLSIGNS else None
+
+os.makedirs(OUTBOX, exist_ok=True)
+
+# Parse args
+args = sys.argv[1:]
+chat_id = None
+message_parts = []
+
+i = 0
+while i < len(args):
+    if args[i] in ("-g", "--group"):
+        chat_id = GROUP_CHAT_ID
+    elif args[i] in ("-d", "--dm"):
+        chat_id = DM_CHAT_ID
+    elif args[i] in ("-c", "--chat") and i + 1 < len(args):
+        chat_id = int(args[i + 1])
+        i += 1
+    else:
+        message_parts.append(args[i])
+    i += 1
+
+message = " ".join(message_parts)
+
+# Read from stdin if no message arg
+if not message and not sys.stdin.isatty():
+    message = sys.stdin.read().strip()
+
+if not message:
+    print("Usage: tg [-g|-d|-c <chat_id>] \"message\"")
+    sys.exit(1)
+
+# Auto-detect chat_id from last incoming if not specified
+if chat_id is None:
+    if os.path.exists(STATE_FILE):
+        with open(STATE_FILE) as f:
+            chat_id = int(f.read().strip())
+    else:
+        chat_id = DM_CHAT_ID
+
+# Prefix with callsign tag (LAW XVII)
+tagged = f"{CALLSIGN_TAG} {message}"
+
+# Write to outbox
+ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+rand = uuid.uuid4().hex[:8]
+fname = f"{ts}_{rand}.json"
+
+payload = {"type": "text", "chat_id": chat_id, "text": tagged}
+path = os.path.join(OUTBOX, fname)
+with open(path, "w") as f:
+    json.dump(payload, f)
+
+# Cross-post handled by outbox watcher in chat_bot.py — not duplicated here
+
+dest = "DM" if chat_id == DM_CHAT_ID else "group" if chat_id == GROUP_CHAT_ID else str(chat_id)
+print(f"→ {CALLSIGN_TAG} sent to {dest} (chat {chat_id})")

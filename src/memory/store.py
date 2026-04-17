@@ -1,9 +1,11 @@
 """
 FILE: src/memory/store.py
 PURPOSE: Write a memory row to agent_memories via PostgREST.
-         No embedding — v1 is text+tag+type only.
+         Auto-generates embedding via OpenAI text-embedding-3-small on every write.
 """
 
+import logging
+import os
 import uuid
 from datetime import datetime
 
@@ -12,6 +14,28 @@ import httpx
 from . import ratelimit
 from .client import MEMORIES_ENDPOINT, _supabase_headers, _supabase_url
 from .types import VALID_SOURCE_TYPES
+
+logger = logging.getLogger(__name__)
+
+OPENAI_API_KEY: str = os.environ.get("OPENAI_API_KEY", "")
+
+
+def _generate_embedding(text: str) -> list[float] | None:
+    """Generate embedding via OpenAI text-embedding-3-small. Best-effort."""
+    if not OPENAI_API_KEY:
+        return None
+    try:
+        resp = httpx.post(
+            "https://api.openai.com/v1/embeddings",
+            headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
+            json={"model": "text-embedding-3-small", "input": text[:8000]},
+            timeout=10,
+        )
+        if resp.status_code == 200:
+            return resp.json()["data"][0]["embedding"]
+    except Exception as exc:
+        logger.warning(f"[store] embedding generation failed: {exc}")
+    return None
 
 
 def store(
@@ -22,8 +46,11 @@ def store(
     tags: list[str] | None = None,
     valid_from: datetime | None = None,
     valid_to: datetime | None = None,
+    state: str = "tentative",
+    trust: str = "agent_extracted",
+    confidence: float = 0.8,
 ) -> uuid.UUID:
-    """Persist a memory row. Returns the UUID of the inserted row.
+    """Persist a memory row with auto-generated embedding. Returns UUID.
 
     Raises:
         ValueError: source_type not in VALID_SOURCE_TYPES.
@@ -38,15 +65,21 @@ def store(
 
     ratelimit.check_and_increment()
 
+    # Auto-generate embedding for immediate semantic searchability
+    embedding = _generate_embedding(content)
+
     payload: dict = {
         "callsign": callsign,
         "source_type": source_type,
         "content": content,
         "typed_metadata": typed_metadata or {},
         "tags": tags or [],
+        "state": state,
+        "trust": trust,
+        "confidence": confidence,
     }
-    # Only include valid_from/valid_to if explicitly provided;
-    # DB DEFAULT now() fires when omitted.
+    if embedding:
+        payload["embedding"] = embedding
     if valid_from is not None:
         payload["valid_from"] = valid_from.isoformat()
     if valid_to is not None:

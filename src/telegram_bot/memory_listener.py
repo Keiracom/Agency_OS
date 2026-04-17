@@ -225,7 +225,9 @@ def format_memory_context(memories: list[dict], commits: list[str] | None = None
             source = m.get("source_type", "?")
             content = (m.get("content") or "")[:500]
             date = (m.get("created_at") or "")[:10]
-            lines.append(f"  [{source}] ({date}) {content}")
+            sim = m.get("similarity", "?")
+            sim_str = f" sim={sim:.2f}" if isinstance(sim, (int, float)) else ""
+            lines.append(f"  [{source}] ({date}){sim_str} {content}")
         lines.append("[END MEMORY CONTEXT]")
 
     if commits:

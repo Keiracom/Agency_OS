@@ -702,8 +702,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     finally:
         typing_task.cancel()
 
-    # Bidirectional write side — auto-capture Dave's messages as tentative memories
-    if sender == Sender.DAVE:
+    # Bidirectional write side — auto-capture Dave + peer messages as tentative memories
+    if sender in (Sender.DAVE, Sender.PEER_BOT):
         try:
             await auto_capture_message(raw_text, sender, chat_id, CALLSIGN)
         except Exception:

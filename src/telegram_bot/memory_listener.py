@@ -311,7 +311,7 @@ async def auto_capture_message(
     - Generates embedding at write time (immediate searchability)
     - state='tentative' — doesn't surface in default retrieval until promoted
     """
-    if sender != "dave":
+    if sender not in ("dave", "peer"):
         return
     if not message_text or len(message_text) < 20:
         return

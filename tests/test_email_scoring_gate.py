@@ -5,7 +5,7 @@ Directive #339
 
 import pytest
 
-from src.pipeline.email_scoring_gate import score_email, PASS_THRESHOLD
+from src.pipeline.email_scoring_gate import score_email, score_and_suggest, PASS_THRESHOLD
 
 
 # ---------------------------------------------------------------------------
@@ -436,3 +436,111 @@ class TestPassFailThreshold:
             total_sequence_length=5,
         )
         assert result["recommendations"] == []
+
+
+# ---------------------------------------------------------------------------
+# score_and_suggest
+# ---------------------------------------------------------------------------
+
+class TestScoreAndSuggest:
+    def test_passing_email_returns_passed_true_and_no_suggestions(self):
+        result = score_and_suggest(
+            subject=GOOD_SUBJECT,
+            body=GOOD_BODY,
+            recipient_name="Sarah",
+            recipient_company="Acme Plumbing",
+            sequence_position=1,
+            total_sequence_length=5,
+        )
+        assert result["passed"] is True
+        assert result["score"] == 100
+        assert result["suggestions"] == []
+
+    def test_weak_subject_suggestion(self):
+        # weak_subject (-30) + insufficient_follow_up (-10) => score 60 => fails
+        result = score_and_suggest(
+            subject="Hi",
+            body=GOOD_BODY,
+            recipient_company="Acme Plumbing",
+            total_sequence_length=1,
+        )
+        assert result["passed"] is False
+        assert any("specific" in s.lower() for s in result["suggestions"])
+
+    def test_mail_merge_failure_suggestion_lists_tokens(self):
+        body = "Hi {first_name}, reach out to {{company}} now. " + GOOD_BODY[20:]
+        result = score_and_suggest(
+            subject=GOOD_SUBJECT,
+            body=body,
+            recipient_company="Acme Plumbing",
+            total_sequence_length=5,
+        )
+        suggestion_text = " ".join(result["suggestions"])
+        assert "first_name" in suggestion_text or "company" in suggestion_text
+
+    def test_zero_buyer_knowledge_suggestion_names_company(self):
+        generic_body = "Your business is interesting. Would you be open to a chat?"
+        result = score_and_suggest(
+            subject=GOOD_SUBJECT,
+            body=generic_body,
+            recipient_company="Acme Plumbing",
+            total_sequence_length=5,
+        )
+        assert any("Acme Plumbing" in s for s in result["suggestions"])
+
+    def test_self_focused_suggestion(self):
+        self_body = (
+            "I am reaching out because I think we can help. My company has worked "
+            "with lots of businesses. I want to share our approach. I know best. "
+            "Would you like a call about Acme Plumbing?"
+        )
+        result = score_and_suggest(
+            subject=GOOD_SUBJECT,
+            body=self_body,
+            recipient_company="Acme Plumbing",
+            total_sequence_length=5,
+        )
+        assert any("recipient" in s.lower() or "opening" in s.lower() for s in result["suggestions"])
+
+    def test_no_cta_suggestion(self):
+        no_cta_body = "Hi Sarah, your Acme Plumbing ads need work. I can help. Let me know."
+        result = score_and_suggest(
+            subject=GOOD_SUBJECT,
+            body=no_cta_body,
+            recipient_company="Acme Plumbing",
+            total_sequence_length=5,
+        )
+        assert any("question" in s.lower() or "15-min" in s.lower() for s in result["suggestions"])
+
+    def test_too_long_suggestion(self):
+        long_body = (GOOD_BODY + " Also, ") * 20
+        result = score_and_suggest(
+            subject=GOOD_SUBJECT,
+            body=long_body,
+            recipient_company="Acme Plumbing",
+            total_sequence_length=5,
+        )
+        assert any("300" in s or "cut" in s.lower() for s in result["suggestions"])
+
+    def test_result_includes_score_flags_and_recommendations(self):
+        result = score_and_suggest(
+            subject="Hi",
+            body=GOOD_BODY,
+            recipient_company="Acme Plumbing",
+            total_sequence_length=5,
+        )
+        assert "score" in result
+        assert "flags" in result
+        assert "recommendations" in result
+        assert "suggestions" in result
+
+    def test_one_suggestion_per_flag(self):
+        # weak_subject + single touch => 2 flags => 2 suggestions
+        result = score_and_suggest(
+            subject="Hi",
+            body=GOOD_BODY,
+            recipient_company="Acme Plumbing",
+            total_sequence_length=1,
+        )
+        flag_count = len(result["flags"])
+        assert len(result["suggestions"]) == flag_count

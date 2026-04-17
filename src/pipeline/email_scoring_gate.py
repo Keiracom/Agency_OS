@@ -293,6 +293,89 @@ def score_email(
     }
 
 
+def score_and_suggest(
+    subject: str,
+    body: str,
+    recipient_name: str | None = None,
+    recipient_company: str | None = None,
+    sequence_position: int = 1,
+    total_sequence_length: int = 1,
+) -> dict[str, Any]:
+    """Single-pass evaluator: score the email and generate actionable suggestions.
+
+    Wraps score_email() and maps each flag to a concrete revision suggestion.
+    The caller decides whether to revise and re-call.
+
+    Returns:
+        {
+            "score": int,
+            "passed": bool,
+            "flags": [...],          # same as score_email()
+            "suggestions": [str],    # one suggestion per failing flag
+            "recommendations": [...] # existing general recs (unchanged)
+        }
+    """
+    result = score_email(
+        subject=subject,
+        body=body,
+        recipient_name=recipient_name,
+        recipient_company=recipient_company,
+        sequence_position=sequence_position,
+        total_sequence_length=total_sequence_length,
+    )
+
+    suggestions = _build_suggestions(result["flags"], body, recipient_company)
+
+    return {
+        "score": result["score"],
+        "passed": result["pass"],
+        "flags": result["flags"],
+        "suggestions": suggestions,
+        "recommendations": result["recommendations"],
+    }
+
+
+_SUGGESTION_MAP: dict[str, str] = {
+    "weak_subject": "Make subject specific to recipient's industry or pain point",
+    "spammy_subject": "Remove all-caps and reduce punctuation to 1 ! or ? maximum",
+    "fake_threading": "Remove RE:/FW: prefix unless this is a genuine reply",
+    "generic_subject": "Replace the generic phrase with something specific to this prospect",
+    "zero_buyer_knowledge": "Add reference to the recipient's company industry or recent activity",
+    "self_focused": "Rewrite opening to lead with recipient's challenge, not your offering",
+    "no_call_to_action": "End with a specific question (e.g., 'Would a 15-min call this week work?')",
+    "too_long": "Cut to under 300 words — remove the least buyer-relevant paragraph",
+    "missing_unsubscribe_link": "Add a real unsubscribe URL if referencing opt-out",
+    "insufficient_follow_up": "Plan at least 5 touches — 80% of deals close after follow-up #5",
+    "spam_fatigue_risk": "Consider retiring this contact or changing the channel after 5 touches",
+    "name_unused": "Use the recipient's first name at least once to increase open-to-reply conversion",
+    "company_unused": "Reference the recipient's company name to show you know who you're writing to",
+}
+
+
+def _build_suggestions(
+    flags: list[dict],
+    body: str,
+    recipient_company: str | None,
+) -> list[str]:
+    """Map flags to actionable suggestions. mail_merge_failure lists the tokens found."""
+    suggestions: list[str] = []
+    for flag in flags:
+        pattern = flag["pattern"]
+        if pattern == "mail_merge_failure":
+            tokens = _TEMPLATE_TOKEN_RE.findall(body)
+            flat_tokens = [t for group in tokens for t in group if t]
+            token_str = ", ".join(flat_tokens) if flat_tokens else "see body"
+            suggestions.append(f"Fix unmerged template tokens: {token_str}")
+        elif pattern == "zero_buyer_knowledge":
+            company_hint = recipient_company or "the recipient's company"
+            suggestions.append(
+                f"Add reference to {company_hint}'s industry or recent activity"
+            )
+        elif pattern in _SUGGESTION_MAP:
+            suggestions.append(_SUGGESTION_MAP[pattern])
+    return suggestions
+
+
 def _build_recommendations(flags: list[dict]) -> list[str]:
     _MAP = {
         "weak_subject": "Write a specific subject line referencing the prospect's business or pain point.",

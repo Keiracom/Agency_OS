@@ -35,6 +35,7 @@ from telegram.ext import (
 from src.telegram_bot.tag_handler import handle_tag, handle_tag_confirmation
 from src.telegram_bot.recall_handler import handle_recall
 from src.telegram_bot.save_handler import cmd_save
+from src.telegram_bot.memory_listener import find_relevant_memories, format_memory_context
 
 # ---------------------------------------------------------------------------
 # Config
@@ -606,10 +607,22 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         peer_name = update.effective_user.first_name or "peer"
         message_text = f"[GROUP — from {peer_name} (peer bot, NOT your boss Dave)]: {message_text}"
 
+    # Memory listener — surface relevant past context for ALL messages (not just Dave)
+    memory_context = ""
+    if sender != Sender.SELF:
+        try:
+            memories = await find_relevant_memories(message_text)
+            if memories:
+                memory_context = format_memory_context(memories)
+                logger.info(f"[memory-listener] surfaced {len(memories)} relevant memories")
+        except Exception as _mem_exc:
+            logger.warning(f"[memory-listener] non-fatal error: {_mem_exc}")
+
     # Relay mode: forward to tmux inbox instead of Claude
     if relay_mode.get(chat_id):
         # Relay mode: write to inbox, watcher injects into tmux via send-keys
-        await _relay_text_to_inbox(chat_id, message_text, sender=sender)
+        relay_text = f"{memory_context}\n\n{message_text}" if memory_context else message_text
+        await _relay_text_to_inbox(chat_id, relay_text, sender=sender)
         await reply_tagged(update.message, "Relayed to tmux session")
         return
 
@@ -629,10 +642,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     typing_task = asyncio.create_task(send_typing_loop(update))
     try:
+        claude_input = f"{memory_context}\n\n{message_text}" if memory_context else message_text
         response, real_session_id = await run_claude(
             resume_id,
             model,
-            message_text,
+            claude_input,
             chat_id,
         )
 

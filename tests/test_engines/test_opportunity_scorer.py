@@ -218,3 +218,38 @@ def test_abr_age_4_9_does_not_trigger():
         "dfs_organic_traffic": 1000,
     }
     assert score_business_opportunity(signals) == 0
+
+
+# --- Wave 1 signal verification tests (Directive #wave1-scoring-signals) ---
+
+def test_no_paid_traffic_scores_higher_than_paid():
+    """20. Lead with zero paid ad spend scores higher than same lead with active spend.
+    Rationale: zero spend = untapped gap = higher agency opportunity value.
+    Note: confidence_scorer.py uses the inverse (spend > 0 = budget signal for health).
+    """
+    base = {
+        "gmb_review_count": 20,
+        "abr_age_years": 3,
+        "dfs_organic_traffic": 1000,
+    }
+    score_no_spend = score_business_opportunity({**base, "dfs_paid_traffic_cost": 0})
+    score_with_spend = score_business_opportunity({**base, "dfs_paid_traffic_cost": 500})
+    assert score_no_spend > score_with_spend, (
+        f"Expected no-spend score ({score_no_spend}) > with-spend score ({score_with_spend})"
+    )
+
+
+def test_abr_age_5_scores_higher_than_age_below_5():
+    """21. Lead with abr_age_years >= 5 scores higher than identical lead with age < 5.
+    Rationale: established businesses (5+ years) are proven operations worth pursuing.
+    """
+    base = {
+        "gmb_review_count": 20,
+        "dfs_paid_traffic_cost": 1,
+        "dfs_organic_traffic": 1000,
+    }
+    score_established = score_business_opportunity({**base, "abr_age_years": 5})
+    score_young = score_business_opportunity({**base, "abr_age_years": 4})
+    assert score_established > score_young, (
+        f"Expected established score ({score_established}) > young score ({score_young})"
+    )

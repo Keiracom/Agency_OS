@@ -63,7 +63,7 @@ print(t)
             done
             tmux send-keys -t "$TMUX_TARGET" "[TG-${sender^^}] $text"
             sleep 0.5
-            tmux send-keys -t "$TMUX_TARGET" Enter
+            tmux send-keys -t "$TMUX_TARGET" C-m
         fi
 
     elif [ "$msg_type" = "photo" ]; then
@@ -76,7 +76,8 @@ print(t)
             last_line=$(tmux capture-pane -t "$TMUX_TARGET" -p 2>/dev/null | grep -c '❯' || true)
             [ "$last_line" -gt 0 ] && break; sleep 1
         done
-        tmux send-keys -t "$TMUX_TARGET" "[TG-${sender^^}] Dave sent a screenshot: $photo_path ${caption:+— $caption}" Enter
+        tmux send-keys -t "$TMUX_TARGET" "[TG-${sender^^}] Dave sent a screenshot: $photo_path ${caption:+— $caption}"
+        sleep 0.5; tmux send-keys -t "$TMUX_TARGET" C-m
 
     elif [ "$msg_type" = "document" ]; then
         file_path=$(python3 -c "import json; print(json.load(open('$fpath')).get('file_path',''))" 2>/dev/null)
@@ -88,7 +89,8 @@ print(t)
             last_line=$(tmux capture-pane -t "$TMUX_TARGET" -p 2>/dev/null | grep -c '❯' || true)
             [ "$last_line" -gt 0 ] && break; sleep 1
         done
-        tmux send-keys -t "$TMUX_TARGET" "[TG-${sender^^}] Dave sent a file: $file_path ($file_name)" Enter
+        tmux send-keys -t "$TMUX_TARGET" "[TG-${sender^^}] Dave sent a file: $file_path ($file_name)"
+        sleep 0.5; tmux send-keys -t "$TMUX_TARGET" C-m
     fi
 
     # Move to processed (don't delete — audit trail)

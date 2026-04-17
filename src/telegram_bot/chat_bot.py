@@ -76,6 +76,10 @@ class Sender:
 _bot_turns_without_dave: dict[int, int] = {}  # chat_id -> count
 MAX_BOT_TURNS = 2  # max back-and-forth without Dave before going quiet
 
+# Security alert rate limiter: (user_id, chat_id) -> last alert timestamp
+_security_alert_cache: dict[tuple[int, int], float] = {}
+SECURITY_ALERT_COOLDOWN = 300  # 5 min dedup window
+
 # In-memory process tracking: chat_id -> subprocess handle
 running_processes: dict[int, asyncio.subprocess.Process] = {}
 
@@ -534,10 +538,25 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     if sender == Sender.SELF:
         return
 
-    # Unknown sender in group — reject and log (security: only Dave gets CEO authority)
+    # Unknown sender in group — reject, log, and alert Dave (rate-limited)
     if sender == Sender.UNKNOWN and is_group:
         user = update.effective_user
-        logger.warning(f"[security] Rejected UNKNOWN sender in group: user_id={user.id if user else '?'} username={user.username if user else '?'}")
+        uid = user.id if user else 0
+        uname = user.username if user else "?"
+        logger.warning(f"[security] Rejected UNKNOWN sender in group: user_id={uid} username={uname}")
+        # Rate-limited DM alert to Dave (silent rejection — unknown user doesn't see it)
+        import time as _t
+        cache_key = (uid, chat_id)
+        last_alert = _security_alert_cache.get(cache_key, 0)
+        if _t.time() - last_alert > SECURITY_ALERT_COOLDOWN:
+            _security_alert_cache[cache_key] = _t.time()
+            try:
+                await context.bot.send_message(
+                    chat_id=DAVE_USER_ID,
+                    text=f"{CALLSIGN_TAG} [SECURITY] Unknown user @{uname} (id={uid}) attempted message in group {chat_id}. Rejected.",
+                )
+            except Exception as exc:
+                logger.error(f"[security] Failed to alert Dave: {exc}")
         return
 
     # Track bot-to-bot turns in groups

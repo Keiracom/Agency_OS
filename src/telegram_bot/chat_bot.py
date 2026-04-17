@@ -37,7 +37,7 @@ from telegram.ext import (
 from src.telegram_bot.tag_handler import handle_tag, handle_tag_confirmation
 from src.telegram_bot.recall_handler import handle_recall
 from src.telegram_bot.save_handler import cmd_save
-from src.telegram_bot.memory_listener import find_relevant_memories, find_matching_commits, format_memory_context
+from src.telegram_bot.memory_listener import find_relevant_memories, find_matching_commits, format_memory_context, auto_capture_message
 
 # ---------------------------------------------------------------------------
 # Config
@@ -703,6 +703,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         await reply_tagged(update.message, f"Error: {exc}")
     finally:
         typing_task.cancel()
+
+    # Bidirectional write side — auto-capture Dave + peer messages as tentative memories
+    if sender in (Sender.DAVE, Sender.PEER_BOT):
+        try:
+            await auto_capture_message(raw_text, sender, chat_id, CALLSIGN)
+        except Exception:
+            pass  # never block on capture failure
 
 
 # ---------------------------------------------------------------------------

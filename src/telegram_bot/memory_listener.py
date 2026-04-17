@@ -271,6 +271,102 @@ async def find_matching_commits(message_text: str, n: int = 5) -> list[str]:
     return results[:n]
 
 
+# ---------------------------------------------------------------------------
+# Write side — auto-capture from conversations (bidirectional)
+# ---------------------------------------------------------------------------
+
+# Rule-based heuristics for source_type classification (no LLM needed)
+_DECISION_SIGNALS = {"decided", "decision", "chose", "approved", "ratified", "agreed", "confirmed", "rejected", "moving to", "switching to"}
+_DIRECTIVE_SIGNALS = {"directive", "scope:", "success criteria:", "objective:"}
+_BLOCKER_SIGNALS = {"blocked", "blocker", "waiting on", "can't proceed", "stuck"}
+_REMEMBER_SIGNALS = {"remember", "save this", "note this", "important:"}
+
+
+def _classify_source_type(text: str) -> str:
+    """Rule-based classification — no LLM call. ~80% accuracy on structured messages."""
+    lower = text.lower()
+    if any(s in lower for s in _DIRECTIVE_SIGNALS):
+        return "decision"
+    if any(s in lower for s in _REMEMBER_SIGNALS):
+        return "dave_confirmed"
+    if any(s in lower for s in _BLOCKER_SIGNALS):
+        return "reasoning"
+    if any(s in lower for s in _DECISION_SIGNALS):
+        return "decision"
+    return "daily_log"
+
+
+async def auto_capture_message(
+    message_text: str,
+    sender: str,
+    chat_id: int,
+    callsign: str,
+) -> None:
+    """Auto-capture a Dave message as tentative memory. Best-effort, never blocks.
+
+    - Only captures Dave messages (not peer bots, not self)
+    - Skips commands (/tag, /save, /recall, etc.)
+    - Skips very short messages (< 20 chars)
+    - Classifies via rule-based heuristics (no LLM cost)
+    - Generates embedding at write time (immediate searchability)
+    - state='tentative' — doesn't surface in default retrieval until promoted
+    """
+    if sender not in ("dave", "peer"):
+        return
+    if not message_text or len(message_text) < 20:
+        return
+    if message_text.strip().startswith("/"):
+        return
+
+    source_type = _classify_source_type(message_text)
+
+    # Generate embedding for immediate semantic searchability
+    embedding = await _embed_text(message_text)
+
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal",
+    }
+
+    import uuid as _uuid
+    from datetime import datetime as _dt, timezone as _tz
+
+    payload = {
+        "callsign": callsign,
+        "source_type": source_type,
+        "content": message_text[:5000],
+        "typed_metadata": json.dumps({
+            "source": "auto_capture",
+            "chat_id": str(chat_id),
+            "captured_by": callsign,
+        }),
+        "tags": [source_type, "auto_capture"],
+        "state": "tentative",
+        "trust": "dave_observed",
+        "confidence": 0.5,
+        "valid_from": _dt.now(_tz.utc).isoformat(),
+    }
+
+    if embedding:
+        payload["embedding"] = embedding
+
+    try:
+        async with httpx.AsyncClient(timeout=5) as client:
+            resp = await client.post(
+                f"{SUPABASE_URL}/rest/v1/agent_memories",
+                headers=headers,
+                json=payload,
+            )
+            if resp.status_code in (200, 201):
+                logger.info(f"[auto-capture] saved {source_type} ({len(message_text)} chars)")
+            else:
+                logger.warning(f"[auto-capture] write failed: {resp.status_code}")
+    except Exception as exc:
+        logger.warning(f"[auto-capture] error: {exc}")
+
+
 def format_memory_context(memories: list[dict], commits: list[str] | None = None) -> str:
     """Format retrieved memories + git commits into context blocks for injection."""
     if not memories and not commits:

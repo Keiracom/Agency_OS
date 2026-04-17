@@ -233,6 +233,27 @@ async def send_email_task(
             logger.error(f"Email rate limit exceeded for domain {domain}: {e}")
             raise
 
+        # === EMAIL SCORING GATE (GOV-12: runtime enforcement) ===
+        try:
+            from src.pipeline.email_scoring_gate import score_email
+            email_score = score_email(
+                subject=subject,
+                body=content,
+                recipient_name=getattr(lead, "dm_name", None),
+                recipient_company=getattr(lead, "company_name", None),
+                sequence_position=sequence_step,
+            )
+            if not email_score["pass"]:
+                flags = ", ".join(f["pattern"] for f in email_score["flags"])
+                logger.warning(
+                    f"Email scoring gate FAILED for lead {lead_id}: "
+                    f"score={email_score['score']}, flags=[{flags}]"
+                )
+                # Log but don't block in v1 — switch to raise after calibration
+                # raise ValidationError(f"Email score {email_score['score']}/100 below threshold. Flags: {flags}")
+        except ImportError:
+            pass  # graceful if gate module not available
+
         # === SEND EMAIL ===
         logger.info(f"Sending email to lead {lead_id} (campaign {campaign.id})")
 

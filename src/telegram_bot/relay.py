@@ -34,9 +34,13 @@ def _detect_callsign() -> str:
 
 
 CALLSIGN = _detect_callsign()
-RELAY_DIR = "/tmp/telegram-relay"
-INBOX_DIR = f"{RELAY_DIR}/inbox-{CALLSIGN}"
-OUTBOX_DIR = f"{RELAY_DIR}/outbox-{CALLSIGN}"
+# Path convention matches chat_bot.py: parent dir is per-callsign, inbox/outbox
+# are subdirs. Previously this file used /tmp/telegram-relay/{inbox,outbox}-{callsign}
+# which diverged from chat_bot.py and meant relay.py and chat_bot.py never saw
+# each other's files. Aligned 2026-04-17 per PR #343 review.
+RELAY_DIR = f"/tmp/telegram-relay-{CALLSIGN}"
+INBOX_DIR = f"{RELAY_DIR}/inbox"
+OUTBOX_DIR = f"{RELAY_DIR}/outbox"
 CHAT_ID = 7267788033
 
 

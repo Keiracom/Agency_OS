@@ -1,11 +1,15 @@
 """
 Tests for src/telegram_bot/save_handler.py
 Covers: parse_save_command, cmd_save (store() mocked)
-No real API calls — src.memory.store patched throughout.
+No real API calls — src.memory.store.store patched throughout.
+
+store() is SYNC (returns uuid.UUID) — mocked with MagicMock, not AsyncMock.
+cmd_save is async (Telegram handler) — sync store() called from async context.
 """
 
 import sys
 import os
+import uuid
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -109,6 +113,7 @@ class TestParseSaveCommand:
 
 # ---------------------------------------------------------------------------
 # cmd_save — Telegram handler (fully mocked update/context + store mocked)
+# store() is SYNC — use MagicMock (not AsyncMock) for the store patch.
 # ---------------------------------------------------------------------------
 
 
@@ -127,11 +132,11 @@ async def test_cmd_save_pattern_calls_store():
     """cmd_save calls store() with correct args for pattern type."""
     update, context = _make_update(["pattern", "use", "gather"])
 
-    fake_row = {"id": "row-1", "source_type": "pattern", "content": "use gather"}
-    with patch("src.telegram_bot.save_handler.store", new=AsyncMock(return_value=fake_row)) as mock_store:
+    fake_uuid = uuid.UUID("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
+    with patch("src.telegram_bot.save_handler.store", return_value=fake_uuid) as mock_store:
         await cmd_save(update, context)
 
-    assert mock_store.await_count == 1
+    assert mock_store.call_count == 1
     call_kwargs = mock_store.call_args.kwargs
     assert call_kwargs["source_type"] == "pattern"
     assert call_kwargs["content"] == "use gather"
@@ -148,8 +153,8 @@ async def test_cmd_save_unknown_type_falls_back_to_daily_log():
     """cmd_save saves as daily_log when first word is not a valid type."""
     update, context = _make_update(["remember", "this"])
 
-    fake_row = {"id": "row-2", "source_type": "daily_log", "content": "remember this"}
-    with patch("src.telegram_bot.save_handler.store", new=AsyncMock(return_value=fake_row)) as mock_store:
+    fake_uuid = uuid.UUID("11111111-2222-3333-4444-555555555555")
+    with patch("src.telegram_bot.save_handler.store", return_value=fake_uuid) as mock_store:
         await cmd_save(update, context)
 
     call_kwargs = mock_store.call_args.kwargs
@@ -189,7 +194,7 @@ async def test_cmd_save_store_error_replies_gracefully():
     """cmd_save catches errors from store() and replies with failure message."""
     update, context = _make_update(["decision", "ship it"])
 
-    with patch("src.telegram_bot.save_handler.store", new=AsyncMock(side_effect=Exception("Supabase 500"))):
+    with patch("src.telegram_bot.save_handler.store", side_effect=Exception("Supabase 500")):
         await cmd_save(update, context)
 
     reply_text = update.message.reply_text.call_args[0][0]
@@ -201,7 +206,20 @@ async def test_cmd_save_uses_valid_source_types_for_validation():
     """store() is called only when source_type is in VALID_SOURCE_TYPES."""
     for vtype in sorted(VALID_SOURCE_TYPES)[:3]:  # spot-check first 3
         update, context = _make_update([vtype, "content"])
-        fake_row = {"id": "x", "source_type": vtype, "content": "content"}
-        with patch("src.telegram_bot.save_handler.store", new=AsyncMock(return_value=fake_row)) as mock_store:
+        fake_uuid = uuid.uuid4()
+        with patch("src.telegram_bot.save_handler.store", return_value=fake_uuid) as mock_store:
             await cmd_save(update, context)
         assert mock_store.call_args.kwargs["source_type"] == vtype
+
+
+@pytest.mark.asyncio
+async def test_cmd_save_reply_contains_uuid():
+    """Reply text includes the UUID returned by store()."""
+    update, context = _make_update(["skill", "use leadmagic for email"])
+
+    fake_uuid = uuid.UUID("cafebabe-dead-beef-0000-123456789abc")
+    with patch("src.telegram_bot.save_handler.store", return_value=fake_uuid):
+        await cmd_save(update, context)
+
+    reply_text = update.message.reply_text.call_args[0][0]
+    assert str(fake_uuid) in reply_text

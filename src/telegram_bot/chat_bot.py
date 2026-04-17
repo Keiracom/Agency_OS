@@ -24,6 +24,8 @@ from telegram.ext import (
     filters,
 )
 
+from save_handler import cmd_save
+
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
@@ -515,6 +517,7 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "/kill — Stop running process\n"
         "/history — Recent session history\n"
         "/relay on|off — Toggle relay to tmux session\n"
+        "/save [type] <text> — Save typed memory (pattern/decision/skill/reasoning/test_result/general)\n"
         "/help — This message"
     )
     await update.message.reply_text(text)
@@ -927,6 +930,7 @@ def main() -> None:
     app.add_handler(CommandHandler("kill", cmd_kill))
     app.add_handler(CommandHandler("history", cmd_history))
     app.add_handler(CommandHandler("relay", cmd_relay))
+    app.add_handler(CommandHandler("save", cmd_save))
     app.add_handler(CommandHandler("help", cmd_help))
     # Media handlers before text fallback
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))

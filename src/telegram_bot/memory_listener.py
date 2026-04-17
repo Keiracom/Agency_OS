@@ -89,12 +89,38 @@ async def find_relevant_memories(
         # If embedding call succeeded (even with zero matches), don't fall through
         # to text search — zero semantic matches means nothing is relevant
         if results:
+            # Post-filter: require at least one non-stopword token overlap between
+            # query and row content. Embedding catches semantic vibes (produces
+            # false positives on our pipeline-heavy corpus, e.g. 'check status
+            # crashing' matching ContactOut schema debugging at 0.38-0.42 cosine).
+            # Requiring an actual shared subject-word prunes those while keeping
+            # genuinely on-topic rows.
+            results = _filter_by_word_overlap(results, message_text)
             results = _apply_trust_weighting(results)
             await _increment_access_counts(results, headers)
         return results  # may be empty — that's fine
 
     # Fallback: ILIKE text search only when embedding generation FAILED
     return await _search_by_text(message_text, n, headers)
+
+
+def _filter_by_word_overlap(results: list[dict], query_text: str) -> list[dict]:
+    """Require each row to share at least one >4-char non-stopword token with
+    the query. Prunes embedding false-positives on topically-unrelated content."""
+    query_words = {
+        w.strip(".,!?()[]\"'").lower()
+        for w in query_text.split()
+        if len(w.strip(".,!?()[]\"'")) > 4
+    }
+    query_words -= STOPWORDS
+    if not query_words:
+        return results  # no content words to filter on — keep embedding result as-is
+    filtered: list[dict] = []
+    for row in results:
+        content = (row.get("content") or "").lower()
+        if any(qw in content for qw in query_words):
+            filtered.append(row)
+    return filtered
 
 
 # Source-type trust weights — multiply similarity to reorder results.

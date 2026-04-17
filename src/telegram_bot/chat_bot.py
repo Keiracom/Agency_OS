@@ -13,6 +13,16 @@ import sys
 import uuid
 from datetime import datetime, timezone
 
+# Add repo root to sys.path so `from src.*` imports resolve when this script
+# is launched directly by systemd (sys.path[0] is src/telegram_bot/ by default,
+# which doesn't expose the `src` package). Tests work because pytest injects
+# rootdir; production didn't. Fixes #351 regression — reintroduced when
+# save_handler import was changed to src.telegram_bot.* style without porting
+# this block from aiden/scaffold.
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
+
 import httpx
 from dotenv import load_dotenv
 from telegram import Update

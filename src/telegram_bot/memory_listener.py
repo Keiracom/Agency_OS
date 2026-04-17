@@ -172,16 +172,58 @@ async def _increment_access_counts(rows: list[dict], headers: dict) -> None:
         pass
 
 
-def format_memory_context(memories: list[dict]) -> str:
-    """Format retrieved memories into a context block for injection."""
-    if not memories:
+async def find_matching_commits(message_text: str, n: int = 5) -> list[str]:
+    """Search git commit messages for terms from the message. Local, no cost."""
+    import asyncio
+
+    words = [w.strip(".,!?()[]\"'").lower() for w in message_text.split()]
+    terms = [w for w in words if len(w) > 4 and w not in STOPWORDS][:3]
+    if not terms:
+        return []
+
+    results: list[str] = []
+    seen: set[str] = set()
+    repo_dir = os.environ.get("WORK_DIR_OVERRIDE", "/home/elliotbot/clawd/Agency_OS")
+
+    for term in terms:
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                "git", "log", "--all", "--oneline", f"--grep={term}", "-i",
+                "--max-count=5",
+                cwd=repo_dir,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.DEVNULL,
+            )
+            stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=3)
+            for line in stdout.decode().strip().splitlines():
+                if line and line not in seen:
+                    seen.add(line)
+                    results.append(line)
+        except Exception:
+            pass
+
+    return results[:n]
+
+
+def format_memory_context(memories: list[dict], commits: list[str] | None = None) -> str:
+    """Format retrieved memories + git commits into context blocks for injection."""
+    if not memories and not commits:
         return ""
 
-    lines = ["[MEMORY CONTEXT — relevant past knowledge:]"]
-    for m in memories:
-        source = m.get("source_type", "?")
-        content = (m.get("content") or "")[:500]
-        date = (m.get("created_at") or "")[:10]
-        lines.append(f"  [{source}] ({date}) {content}")
-    lines.append("[END MEMORY CONTEXT]")
+    lines = []
+    if memories:
+        lines.append("[MEMORY CONTEXT — relevant past knowledge:]")
+        for m in memories:
+            source = m.get("source_type", "?")
+            content = (m.get("content") or "")[:500]
+            date = (m.get("created_at") or "")[:10]
+            lines.append(f"  [{source}] ({date}) {content}")
+        lines.append("[END MEMORY CONTEXT]")
+
+    if commits:
+        lines.append("[GIT CONTEXT — matching commits:]")
+        for c in commits:
+            lines.append(f"  {c}")
+        lines.append("[END GIT CONTEXT]")
+
     return "\n".join(lines)

@@ -85,23 +85,72 @@ async def find_relevant_memories(
     # Try embedding-based semantic search first
     embedding = await _embed_text(message_text)
     if embedding is not None:
-        results = await _search_by_embedding(embedding, n, headers)
+        raw_results = await _search_by_embedding(embedding, n, headers)
         # If embedding call succeeded (even with zero matches), don't fall through
         # to text search — zero semantic matches means nothing is relevant
-        if results:
+        if raw_results:
             # Post-filter: require at least one non-stopword token overlap between
             # query and row content. Embedding catches semantic vibes (produces
             # false positives on our pipeline-heavy corpus, e.g. 'check status
             # crashing' matching ContactOut schema debugging at 0.38-0.42 cosine).
             # Requiring an actual shared subject-word prunes those while keeping
             # genuinely on-topic rows.
-            results = _filter_by_word_overlap(results, message_text)
+            results = _filter_by_word_overlap(raw_results, message_text)
             results = _apply_trust_weighting(results)
             await _increment_access_counts(results, headers)
+        else:
+            results = []
+        _log_retrieval_event(message_text, raw_results, results, source="embedding")
         return results  # may be empty — that's fine
 
     # Fallback: ILIKE text search only when embedding generation FAILED
-    return await _search_by_text(message_text, n, headers)
+    fallback = await _search_by_text(message_text, n, headers)
+    _log_retrieval_event(message_text, fallback, fallback, source="text_fallback")
+    return fallback
+
+
+# ---------------------------------------------------------------------------
+# Telemetry — log every retrieval to a JSONL file so we can review listener
+# quality offline instead of tuning blind on one-message observations.
+# ---------------------------------------------------------------------------
+
+import datetime as _dt
+import json as _json
+
+TELEMETRY_LOG = "/home/elliotbot/clawd/logs/listener-telemetry.jsonl"
+
+
+def _log_retrieval_event(
+    query_text: str,
+    raw_results: list[dict],
+    final_results: list[dict],
+    source: str,
+) -> None:
+    """Append one retrieval event to the telemetry log. Best-effort, never raises."""
+    try:
+        callsign = os.environ.get("CALLSIGN", "unknown")
+        raw_ids = [r.get("id") for r in (raw_results or [])]
+        raw_sims = [
+            round(float(r.get("similarity", 0) or 0), 4) for r in (raw_results or [])
+        ]
+        final_ids = [r.get("id") for r in (final_results or [])]
+        event = {
+            "ts": _dt.datetime.now(_dt.timezone.utc).isoformat(),
+            "callsign": callsign,
+            "source": source,  # "embedding" | "text_fallback"
+            "query_preview": (query_text or "")[:160],
+            "query_len": len(query_text or ""),
+            "raw_count": len(raw_ids),
+            "raw_ids": raw_ids,
+            "raw_similarities": raw_sims,
+            "final_count": len(final_ids),
+            "final_ids": final_ids,
+            "dropped_by_overlap_filter": len(raw_ids) - len(final_ids),
+        }
+        with open(TELEMETRY_LOG, "a", encoding="utf-8") as fh:
+            fh.write(_json.dumps(event) + "\n")
+    except Exception as exc:
+        logger.warning(f"[memory-listener] telemetry log failed: {exc}")
 
 
 def _filter_by_word_overlap(results: list[dict], query_text: str) -> list[dict]:

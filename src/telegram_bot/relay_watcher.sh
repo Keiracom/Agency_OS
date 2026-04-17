@@ -53,13 +53,15 @@ print(t)
         if [ -n "$text" ]; then
             echo "[relay-watcher-${CALLSIGN}] Text from Telegram: ${text:0:80}..."
             sender=$(python3 -c "import json; print(json.load(open('$fpath')).get('sender','unknown'))" 2>/dev/null)
-            # Inject into Claude's tmux pane — prefix with [TG-SENDER] so Claude knows the source
-            # Clear any partial input first, then send text + Enter with small delay
-            tmux send-keys -t "$TMUX_TARGET" C-c 2>/dev/null  # clear any partial input
-            sleep 0.3
-            tmux send-keys -t "$TMUX_TARGET" "[TG-${sender^^}] $text"
-            sleep 0.2
-            tmux send-keys -t "$TMUX_TARGET" Enter
+            # Wait for Claude prompt (❯) before injecting — avoids stuck input
+            for attempt in $(seq 1 30); do
+                last_line=$(tmux capture-pane -t "$TMUX_TARGET" -p 2>/dev/null | grep -c '❯' || true)
+                if [ "$last_line" -gt 0 ]; then
+                    break
+                fi
+                sleep 1
+            done
+            tmux send-keys -t "$TMUX_TARGET" "[TG-${sender^^}] $text" Enter
         fi
 
     elif [ "$msg_type" = "photo" ]; then
@@ -68,9 +70,11 @@ print(t)
         sender=$(python3 -c "import json; print(json.load(open('$fpath')).get('sender','unknown'))" 2>/dev/null)
 
         echo "[relay-watcher-${CALLSIGN}] Photo from Telegram: $photo_path"
-        tmux send-keys -t "$TMUX_TARGET" C-c 2>/dev/null; sleep 0.3
-        tmux send-keys -t "$TMUX_TARGET" "[TG-${sender^^}] Dave sent a screenshot: $photo_path ${caption:+— $caption}"
-        sleep 0.2; tmux send-keys -t "$TMUX_TARGET" Enter
+        for attempt in $(seq 1 30); do
+            last_line=$(tmux capture-pane -t "$TMUX_TARGET" -p 2>/dev/null | grep -c '❯' || true)
+            [ "$last_line" -gt 0 ] && break; sleep 1
+        done
+        tmux send-keys -t "$TMUX_TARGET" "[TG-${sender^^}] Dave sent a screenshot: $photo_path ${caption:+— $caption}" Enter
 
     elif [ "$msg_type" = "document" ]; then
         file_path=$(python3 -c "import json; print(json.load(open('$fpath')).get('file_path',''))" 2>/dev/null)
@@ -78,9 +82,11 @@ print(t)
         sender=$(python3 -c "import json; print(json.load(open('$fpath')).get('sender','unknown'))" 2>/dev/null)
 
         echo "[relay-watcher-${CALLSIGN}] Document from Telegram: $file_name"
-        tmux send-keys -t "$TMUX_TARGET" C-c 2>/dev/null; sleep 0.3
-        tmux send-keys -t "$TMUX_TARGET" "[TG-${sender^^}] Dave sent a file: $file_path ($file_name)"
-        sleep 0.2; tmux send-keys -t "$TMUX_TARGET" Enter
+        for attempt in $(seq 1 30); do
+            last_line=$(tmux capture-pane -t "$TMUX_TARGET" -p 2>/dev/null | grep -c '❯' || true)
+            [ "$last_line" -gt 0 ] && break; sleep 1
+        done
+        tmux send-keys -t "$TMUX_TARGET" "[TG-${sender^^}] Dave sent a file: $file_path ($file_name)" Enter
     fi
 
     # Move to processed (don't delete — audit trail)

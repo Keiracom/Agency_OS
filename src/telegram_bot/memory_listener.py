@@ -106,13 +106,18 @@ async def find_relevant_memories(
 
 def _filter_by_word_overlap(results: list[dict], query_text: str) -> list[dict]:
     """Require each row to share at least one >4-char non-stopword token with
-    the query. Prunes embedding false-positives on topically-unrelated content."""
+    the query. Prunes embedding false-positives on topically-unrelated content.
+
+    Uses GIT_STOPWORDS (superset of STOPWORDS + callsigns + commit-msg verbs)
+    because our callsigns ('elliot', 'aiden', 'dave', 'scout', 'claude') appear
+    in nearly every memory row — if they're allowed as query terms they'll
+    match everything and the filter does nothing."""
     query_words = {
         w.strip(".,!?()[]\"'").lower()
         for w in query_text.split()
         if len(w.strip(".,!?()[]\"'")) > 4
     }
-    query_words -= STOPWORDS
+    query_words -= GIT_STOPWORDS
     if not query_words:
         return results  # no content words to filter on — keep embedding result as-is
     filtered: list[dict] = []

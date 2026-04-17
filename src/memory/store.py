@@ -183,6 +183,13 @@ def store(
             logger.info(
                 f"[store] connective write: new {source_type} supersedes {supersede_id}"
             )
+        # Trigger organisation check (every N writes)
+        try:
+            from .organise import increment_write_counter
+            increment_write_counter()
+        except Exception:
+            pass  # never block store on organisation failure
+
         return uuid.UUID(row["id"])
     except httpx.HTTPError as exc:
         raise RuntimeError(f"HTTP error storing memory: {exc}") from exc

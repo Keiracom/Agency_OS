@@ -3,7 +3,7 @@ Tests for cohort_runner drop_reason → rejection_reason persistence.
 
 Verifies:
 1. DROP_REASON_TO_REJECTION mapping covers all drop_reason strings used in cohort_runner
-2. _persist_drop_reason writes to Supabase (mocked) with correct ENUM value
+2. _persist_drop_reason writes to Supabase (mocked) with correct ENUM value and rejection_phase
 3. _persist_drop_reason is best-effort — Supabase failure does not raise
 4. Domains without a lead row are handled gracefully (no exception)
 """
@@ -28,8 +28,9 @@ KNOWN_DROP_REASON_PREFIXES = [
     "score_below_gate",
 ]
 
-# Valid rejection_reason ENUM values from migration 027 / src/models/lead.py
+# Valid rejection_reason ENUM values from migrations 027 + 028
 VALID_REJECTION_REASONS = {
+    # Sales/outreach rejections (migration 027)
     "timing_not_now",
     "budget_constraints",
     "using_competitor",
@@ -42,6 +43,12 @@ VALID_REJECTION_REASONS = {
     "wrong_contact",
     "company_policy",
     "other",
+    # Pipeline quality drops (migration 028)
+    "enterprise_or_chain",
+    "no_dm_found",
+    "score_below_gate",
+    "stage_failed",
+    "viability",
 }
 
 
@@ -84,8 +91,9 @@ class TestPersistDropReason:
 
     @pytest.mark.asyncio
     async def test_writes_correct_rejection_reason(self):
-        """enterprise_or_chain drop → rejection_reason='other' written to leads."""
+        """enterprise_or_chain drop → rejection_reason='enterprise_or_chain', rejection_phase='pipeline' written to leads."""
         sb, execute_mock = self._make_mock_sb()
+        update_mock = sb.table.return_value.update
         domain_data = {
             "domain": "example.com.au",
             "drop_reason": "enterprise_or_chain",
@@ -97,12 +105,16 @@ class TestPersistDropReason:
             await _persist_drop_reason(domain_data)
 
         sb.table.assert_called_once_with("leads")
+        update_mock.assert_called_once_with(
+            {"rejection_reason": "enterprise_or_chain", "rejection_phase": "pipeline"}
+        )
         execute_mock.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_prefixed_drop_reason_mapped_correctly(self):
-        """stage3_exception: <detail> → key extraction works, maps to 'other'."""
+        """stage3_exception: <detail> → key extraction works, maps to 'stage_failed'."""
         sb, execute_mock = self._make_mock_sb()
+        update_mock = sb.table.return_value.update
         domain_data = {
             "domain": "example.com.au",
             "drop_reason": "stage3_exception: TimeoutError('foo')",
@@ -113,6 +125,9 @@ class TestPersistDropReason:
         ):
             await _persist_drop_reason(domain_data)
 
+        update_mock.assert_called_once_with(
+            {"rejection_reason": "stage_failed", "rejection_phase": "pipeline"}
+        )
         execute_mock.assert_awaited_once()
 
     @pytest.mark.asyncio

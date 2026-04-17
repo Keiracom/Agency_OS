@@ -55,18 +55,17 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Drop-reason → rejection_reason ENUM mapping
 # ---------------------------------------------------------------------------
-# Pipeline drop reasons are internal (stage failures, viability, scoring).
-# The leads.rejection_reason ENUM is for sales-context rejections.
-# All pipeline drops map to "other" — the correct semantic bucket.
+# Pipeline drop reasons map to specific ENUM values added in migration 028.
+# rejection_phase='pipeline' is also written to distinguish from outreach rejections.
 
 DROP_REASON_TO_REJECTION: dict[str, str] = {
-    "stage3_exception": "other",
-    "stage3_failed": "other",
-    "enterprise_or_chain": "other",
-    "no_dm_found": "other",
-    "score_exception": "other",
-    "viability": "other",
-    "score_below_gate": "other",
+    "stage3_exception": "stage_failed",
+    "stage3_failed": "stage_failed",
+    "enterprise_or_chain": "enterprise_or_chain",
+    "no_dm_found": "no_dm_found",
+    "score_exception": "score_below_gate",
+    "viability": "viability",
+    "score_below_gate": "score_below_gate",
 }
 
 _DEFAULT_REJECTION = "other"
@@ -96,7 +95,7 @@ async def _persist_drop_reason(domain_data: dict) -> None:
         sb = await _get_supabase()
         await (
             sb.table("leads")
-            .update({"rejection_reason": rejection_reason})
+            .update({"rejection_reason": rejection_reason, "rejection_phase": "pipeline"})
             .eq("domain", domain)
             .is_("rejection_reason", "null")
             .execute()

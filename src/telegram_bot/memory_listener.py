@@ -87,14 +87,22 @@ async def find_relevant_memories(
     clean_text = re.sub(r'^\[(?:ELLIOT|AIDEN|SCOUT|DAVE)\]\s*', '', message_text.strip())
     clean_text = re.sub(r'^\[(?:ELLIOT|AIDEN|SCOUT|DAVE)\]\s*', '', clean_text)  # double prefix
 
-    # Hybrid search: BM25 keyword + semantic embedding via Reciprocal Rank Fusion
-    # Documents ranked high in BOTH keyword AND semantic lists bubble up.
-    # Fixes same-domain corpus noise where embeddings alone match everything.
+    # L2 Discernment: retrieve 20 via hybrid search, GPT-4o-mini picks best 5 + summarises
     embedding = await _embed_text(clean_text or message_text)
     if embedding is not None:
-        raw_results = await _hybrid_search(clean_text or message_text, embedding, n, headers)
+        # Retrieve wide (20 candidates)
+        raw_results = await _hybrid_search(clean_text or message_text, embedding, 20, headers)
         if raw_results:
             results = _apply_trust_weighting(raw_results)
+            # L2: LLM discernment — pick best N and summarise
+            from src.telegram_bot.listener_discernment import discern_and_summarise
+            discerned = await discern_and_summarise(clean_text or message_text, results)
+            if discerned is not None:
+                await _increment_access_counts(discerned["selected_rows"], headers)
+                _log_retrieval_event(message_text, raw_results, discerned["selected_rows"], source="hybrid+discern")
+                return discerned  # dict with 'selected_rows' + 'summary'
+            # Fallback if discernment fails: return top-N from trust weighting
+            results = results[:n]
             await _increment_access_counts(results, headers)
         else:
             results = []
@@ -533,8 +541,32 @@ async def auto_capture_message(
         logger.warning(f"[auto-capture] error: {exc}")
 
 
-def format_memory_context(memories: list[dict], commits: list[str] | None = None) -> str:
-    """Format retrieved memories + git commits into context blocks for injection."""
+def format_memory_context(memories, commits: list[str] | None = None) -> str:
+    """Format retrieved memories + git commits into context blocks for injection.
+
+    memories can be:
+    - list[dict]: raw memory rows (L1 mode)
+    - dict with 'summary' + 'selected_rows': L2 discernment result
+    """
+    # Handle L2 discernment result
+    if isinstance(memories, dict) and "summary" in memories:
+        summary = memories.get("summary", "")
+        rows = memories.get("selected_rows", [])
+        if not summary and not rows:
+            return ""
+        lines = []
+        if summary:
+            lines.append(f"[MEMORY BRIEF — AI-synthesised from {len(rows)} relevant memories:]")
+            lines.append(f"  {summary}")
+            lines.append("[END MEMORY BRIEF]")
+        if commits:
+            lines.append("[GIT CONTEXT — matching commits:]")
+            for c in commits:
+                lines.append(f"  {c}")
+            lines.append("[END GIT CONTEXT]")
+        return "\n".join(lines)
+
+    # Handle L1 raw rows (list of dicts)
     if not memories and not commits:
         return ""
 

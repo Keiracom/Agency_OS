@@ -104,7 +104,7 @@ async def _search_by_embedding(
                 json={
                     "query_embedding": embedding,
                     "match_count": n,
-                    "match_threshold": 0.3,
+                    "match_threshold": 0.5,
                 },
             )
             if resp.status_code == 200:

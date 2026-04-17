@@ -33,6 +33,7 @@ GAP_MESSAGES = {
     "no_website":   "No website found",
     "sole_trader":  "Sole trader — too small",
     "no_gst":       "Not GST registered",
+    "public_or_govt": "Public company or government entity",
 }
 
 
@@ -64,6 +65,14 @@ class AffordabilityScorer:
             return AffordabilityResult(
                 raw_score=0, band="LOW", signals={"hard_gate": "sole_trader"},
                 gaps=[GAP_MESSAGES["sole_trader"]], passed_gate=False
+            )
+
+        # Public companies and government entities — never Agency OS clients
+        _NON_SMB_TYPES = {"public company", "state government entity", "commonwealth government entity", "local government entity"}
+        if entity_type in _NON_SMB_TYPES:
+            return AffordabilityResult(
+                raw_score=0, band="LOW", signals={"hard_gate": "public_or_govt"},
+                gaps=[GAP_MESSAGES["public_or_govt"]], passed_gate=False
             )
 
         # GST gate: only reject when explicitly NOT registered.

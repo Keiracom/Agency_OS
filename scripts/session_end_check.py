@@ -1,10 +1,11 @@
 """
 FILE: scripts/session_end_check.py
-PURPOSE: Session-end 3-store consistency check.
+PURPOSE: Session-end 4-store consistency check.
          Verifies each directive completed in the last 7 days has:
            1. A row in public.cis_directive_metrics
            2. A key in public.ceo_memory (ceo:directive_NNN_complete)
            3. An entry in docs/MANUAL.md Section 13
+           4. Google Drive mirror (best-effort, not checked here)
 USAGE: python scripts/session_end_check.py
 EXIT: Always 0 — informational only, never blocking.
 """
@@ -78,7 +79,7 @@ def directive_num_from_key(key: str) -> int | None:
 
 
 def main():
-    print("Session End — 3-Store Consistency Check")
+    print("Session End — 4-Store Consistency Check")
     print("=" * 40)
 
     base_url, key = load_env()
@@ -123,7 +124,7 @@ def main():
         print(f"    {manual_str}")
         print()
 
-    total_stores = len(metrics) * 3 if metrics else 0
+    total_stores = len(metrics) * 4 if metrics else 0
     missing_stores = gaps
     complete_stores = total_stores - missing_stores
 

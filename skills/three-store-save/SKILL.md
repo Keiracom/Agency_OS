@@ -1,10 +1,10 @@
-# Three-Store Save Skill
+# Four-Store Save Skill
 
 Canonical save mechanism for directive completion (LAW XV).
 
 ## Purpose
 
-Ensures every completed directive is recorded in all three mandatory stores:
+Ensures every completed directive is recorded in all four mandatory stores:
 1. `docs/MANUAL.md` — human-readable repo SSOT
 2. `public.ceo_memory` — Supabase CEO key-value store
 3. `public.cis_directive_metrics` — execution metrics row
@@ -58,9 +58,9 @@ Loaded from `/home/elliotbot/.config/agency-os/.env`:
 
 ## Exit codes
 
-- `0` — all 3 stores saved (Drive mirror failure is non-fatal)
+- `0` — all 4 stores saved (Drive mirror failure is non-fatal)
 - `1` — at least one of stores 1-3 failed (output shows which succeeded before failure)
 
 ## Governance
 
-This script satisfies LAW XV (Three-Store Completion Rule). Run it as the final step of every directive before reporting complete to Dave.
+This script satisfies LAW XV (Four-Store Completion Rule). Run it as the final step of every directive before reporting complete to Dave.

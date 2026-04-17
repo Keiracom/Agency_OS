@@ -608,11 +608,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         message_text = f"[GROUP — from {peer_name} (peer bot, NOT your boss Dave)]: {message_text}"
 
     # Memory listener — surface relevant past context for ALL messages (not just Dave)
+    # Use ORIGINAL message text, not the enriched version (which has [GROUP — from Dave (CEO)] prefix
+    # that causes "group" to match every group-chat commit)
+    raw_text = update.message.text or ""
     memory_context = ""
     if sender != Sender.SELF:
         try:
-            memories = await find_relevant_memories(message_text)
-            commits = await find_matching_commits(message_text)
+            memories = await find_relevant_memories(raw_text)
+            commits = await find_matching_commits(raw_text)
             if memories or commits:
                 memory_context = format_memory_context(memories, commits)
                 logger.info(f"[memory-listener] surfaced {len(memories)} memories + {len(commits)} commits")

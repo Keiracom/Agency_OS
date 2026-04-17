@@ -61,7 +61,9 @@ print(t)
                 fi
                 sleep 1
             done
-            tmux send-keys -t "$TMUX_TARGET" "[TG-${sender^^}] $text" Enter
+            tmux send-keys -t "$TMUX_TARGET" "[TG-${sender^^}] $text"
+            sleep 0.5
+            tmux send-keys -t "$TMUX_TARGET" Enter
         fi
 
     elif [ "$msg_type" = "photo" ]; then

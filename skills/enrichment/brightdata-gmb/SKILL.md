@@ -1,11 +1,56 @@
 # SKILL: Bright Data Google Maps (GMB Enrichment)
 
-**Tier:** 1.5a  
-**Cost:** ~$0.0015 AUD per record  
-**Source:** Bright Data Web Scraper API (Google Maps Full Information)  
-**Dataset ID:** `gd_m8ebnr0q2qlklc02fz`  
-**Credentials Required:** `BRIGHTDATA_API_KEY`  
+**Tier:** 1.5a
+**Cost:** ~$0.0015 AUD per record
+**Source:** Bright Data Web Scraper API (Google Maps Full Information)
+**Dataset ID:** `gd_m8ebnr0q2qlklc02fz`
+**Credentials Required:** `BRIGHTDATA_API_KEY`
 **Status:** ✅ Working (Web Scraper API)
+
+---
+
+## At-a-Glance
+
+**What:** Pull full Google My Business record for an AU SMB — name, address, phone, website, rating, review count, opening hours, photos. T1.5a in the enrichment waterfall.
+
+**When to use:**
+- Validating a discovered AU business has live GMB presence (strong signal of "real, operating SMB")
+- Capturing phone/website/rating for CIS scoring and outreach routing
+- Detecting red flags: 0 reviews, rating <3.0, or "Permanently closed"
+
+**When NOT to use:**
+- NOT Apify's GMB scraper (deprecated per CEO Directive #035 — use this skill, Dataset `gd_m8ebnr0q2qlklc02fz`)
+- NOT the SERP API for GMB data (different dataset, stale results)
+- NOT real-time API during user-facing flows (async dataset fetch, 10-60s)
+
+**Caveats:**
+- Dataset runs async — poll with `snapshot_id` until status=ready
+- Reviews array can be huge (50-200 items); trim before persistence
+- AU-specific: filter for `country == "Australia"` defensively — occasional bleed from `.au` domains that aren't actually AU
+- ratings of `null` are legitimately rare-but-real (new listings), distinguish from API error
+
+**Returns:** `{name, address, phone, website, rating: float|null, review_count: int, hours, category, status: enum['Operational','Permanently closed','Temporarily closed'], place_id, lat, lng}`.
+
+## Input Parameter Constraints (poka-yoke)
+
+- `query: str` — required. Business name + locality (e.g. `"Acme Plumbing Sydney NSW"`). Must be ≤200 chars.
+- `place_id: str` — optional alternative. Must match Google place_id format `^ChIJ[A-Za-z0-9_\-]+$`. Prefer over `query` when available (deterministic).
+- Never pass both `query` and `place_id` — prefer `place_id`.
+
+## Response Trimming
+
+PERSIST: `name, address, phone, website, rating, review_count, category, status, place_id, lat, lng, hours_summary`. DROP: full reviews array (use sentiment-extract skill for that), photos URLs (use only for card render, fetch on-demand), popular_times grid (rarely used).
+
+## Error Handling
+
+| Error | Signal | Category | Action |
+|-------|--------|----------|--------|
+| Invalid query (too short) | client-side reject | caller_error | Require ≥5 chars including locality. |
+| Auth failure | 401 | config_error | Route to devops-6 — `BRIGHTDATA_API_KEY`. |
+| Dataset run failed | async status=failed | transient | Retry once. If still failing, escalate. |
+| No match | async status=ready, empty result | miss | Persist `{found: false, reason: no_gmb_listing}`. |
+| Quota exceeded | 402 | budget | Escalate to Dave. |
+| Stuck "running" >120s | timeout | transient | Cancel + retry once; escalate on second failure. |
 
 ---
 

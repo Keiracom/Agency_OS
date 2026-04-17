@@ -1,10 +1,63 @@
 # SKILL.md — LinkedIn Credential Connection
 
-**Skill:** LinkedIn Credential-Based Connection for HeyReach  
-**Author:** Dave + Claude  
-**Version:** 1.0  
-**Created:** January 7, 2026  
+**Skill:** LinkedIn Credential-Based Connection for HeyReach
+**Author:** Dave + Claude
+**Version:** 1.0
+**Created:** January 7, 2026
 **Phase:** 24H
+
+---
+
+## At-a-Glance
+
+**What:** Customer onboarding flow for securely collecting LinkedIn credentials, storing them encrypted, and connecting them to HeyReach for outreach automation. This is a CUSTOMER-FACING credential intake skill, not a data-enrichment skill — different governance rules apply.
+
+**When to use:**
+- Customer onboarding when they've reached the LinkedIn-outreach-consent step
+- Re-connection flow when an existing customer's LinkedIn session expires
+- Credential rotation prompts (90-day refresh cycle)
+
+**When NOT to use:**
+- NOT for LinkedIn data enrichment (use skills/enrichment/brightdata-linkedin for that)
+- NOT for ad-hoc credential collection outside the documented onboarding flow — audit/compliance risk
+- NOT by any non-customer-facing agent (build-2, research-1, etc.) — this skill handles PII
+
+**Caveats:**
+- CRITICAL: handles PII (LinkedIn credentials). Encryption at rest required. Decryption only in-memory for HeyReach handoff, never logged.
+- HeyReach session timeout ≈ 14 days — customer must re-connect periodically
+- Australian Privacy Act 1988 applies — consent must be explicit, storage purpose-limited, deletion available on request
+- Never log the password field in any form (even hashed) — we store only the encrypted credential blob
+
+**Returns:** `{connection_id: uuid, heyreach_session_id: str, expires_at: timestamp, customer_id: uuid}`. Never returns the credentials themselves to any caller.
+
+## Input Parameter Constraints (poka-yoke)
+
+- `email: str` — must be valid email format per `^[^@\s]+@[^@\s]+\.[^@\s]+$`
+- `password: str` — ≥6 chars, ≤128 chars, non-null. NEVER log, never persist unencrypted.
+- `customer_id: uuid` — must exist in customers table; reject if not.
+
+## Response Trimming
+
+PERSIST (in `linkedin_connections` table, encrypted columns): `connection_id, customer_id, encrypted_credential_blob, heyreach_session_id, expires_at, last_used_at`.
+
+DROP / never store: raw `email`, raw `password`, HeyReach response bodies containing session tokens beyond the single `session_id` field.
+
+## Error Handling
+
+| Error | Signal | Category | Action |
+|-------|--------|----------|--------|
+| Invalid email format | client-side reject | caller_error | Regex-check before submission. |
+| LinkedIn auth failed | HeyReach 401 | caller_error | Prompt customer to re-enter; do NOT retry automatically (security). |
+| 2FA required | HeyReach 403 + challenge | caller_error | Surface challenge prompt to customer; don't auto-bypass. |
+| HeyReach API down | 5xx | transient | Retry once with backoff; if persistent, alert customer + route to devops-6. |
+| Encryption key missing | config | config_error | Route to devops-6 — critical config failure. DO NOT proceed. |
+| Duplicate connection | 409 | miss | Return existing `connection_id` + refreshed `expires_at`. |
+
+## Governance
+
+- **LAW XII:** this skill is the canonical interface for any LinkedIn credential handling. Direct calls into HeyReach credential endpoints outside this skill are forbidden.
+- **Australian Privacy Act 1988:** customer consent must be recorded with timestamp + version of consent text shown.
+- **Security:** encryption at rest (AES-256), decryption only in memory, no logs contain credentials at any level.
 
 ---
 

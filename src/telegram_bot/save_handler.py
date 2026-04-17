@@ -145,6 +145,7 @@ async def cmd_save(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             source_type=source_type,
             content=content,
             tags=tags,
+            state="confirmed",  # /save is Dave-driven explicit capture → confirmed
         )
         preview = content[:50] + ("..." if len(content) > 50 else "")
         await update.message.reply_text(

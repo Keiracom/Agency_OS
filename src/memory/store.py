@@ -14,6 +14,9 @@ from .client import MEMORIES_ENDPOINT, _supabase_headers, _supabase_url
 from .types import VALID_SOURCE_TYPES
 
 
+VALID_STATES = {"tentative", "confirmed", "superseded", "contradicted", "archived"}
+
+
 def store(
     callsign: str,
     source_type: str,
@@ -22,11 +25,19 @@ def store(
     tags: list[str] | None = None,
     valid_from: datetime | None = None,
     valid_to: datetime | None = None,
+    state: str = "tentative",
 ) -> uuid.UUID:
     """Persist a memory row. Returns the UUID of the inserted row.
 
+    `state` defaults to 'tentative' (ingest gate — LAW of the diagnostic FM-2).
+    Promotion to 'confirmed' happens via retrieval reinforcement, explicit
+    Dave confirmation, or peer-check verification. Callers can override by
+    passing state='confirmed' explicitly when the write is known-high-trust
+    (e.g. dave_confirmed extraction from Dave's TG, verified_fact from a
+    completed verify cycle).
+
     Raises:
-        ValueError: source_type not in VALID_SOURCE_TYPES.
+        ValueError: source_type not in VALID_SOURCE_TYPES, or state not in VALID_STATES.
         RateLimitExceeded: daily write cap hit.
         RuntimeError: Supabase HTTP error or connection failure.
     """
@@ -34,6 +45,10 @@ def store(
         raise ValueError(
             f"Invalid source_type {source_type!r}. "
             f"Must be one of: {sorted(VALID_SOURCE_TYPES)}"
+        )
+    if state not in VALID_STATES:
+        raise ValueError(
+            f"Invalid state {state!r}. Must be one of: {sorted(VALID_STATES)}"
         )
 
     ratelimit.check_and_increment()
@@ -44,6 +59,7 @@ def store(
         "content": content,
         "typed_metadata": typed_metadata or {},
         "tags": tags or [],
+        "state": state,
     }
     # Only include valid_from/valid_to if explicitly provided;
     # DB DEFAULT now() fires when omitted.

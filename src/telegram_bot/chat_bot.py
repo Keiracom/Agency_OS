@@ -58,6 +58,10 @@ CALLSIGN_TAG: str = f"[{CALLSIGN.upper()}]"
 # Sender classification for group chats (LAW XVII)
 BOT_USERNAME: str = ""  # populated at startup from getMe
 KNOWN_PEER_BOTS: set[str] = {"eeeeelllliiiioooottt_bot", "aaaaidenbot"}  # lowercase
+# Peer cross-post: bot-to-bot visibility bypass (Telegram doesn't deliver bot-to-bot)
+_PEER_MAP = {"elliot": "aiden", "aiden": "elliot"}
+PEER_INBOX: str | None = f"/tmp/telegram-relay-{_PEER_MAP[CALLSIGN]}/inbox" if CALLSIGN in _PEER_MAP else None
+GROUP_CHAT_ID = -1003926592540
 
 
 class Sender:
@@ -514,6 +518,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     chat_id = update.effective_chat.id
     sender = classify_sender(update)
     is_group = update.effective_chat.type in ("group", "supergroup")
+    user = update.effective_user
+    logger.info(f"[msg] chat={chat_id} sender={sender} is_group={is_group} from={user.username if user else '?'} is_bot={user.is_bot if user else '?'} text={(update.message.text or '')[:60]}")
 
     # Self messages — always ignore
     if sender == Sender.SELF:
@@ -702,6 +708,23 @@ async def _outbox_watcher(app: Application) -> None:
 
                     os.unlink(fpath)
                     logger.info(f"[relay] outbox sent: {fname}")
+
+                    # Cross-post group messages to peer bot's inbox (Telegram bot-to-bot blind spot)
+                    if chat_id == GROUP_CHAT_ID and PEER_INBOX and msg.get("type") == "text":
+                        os.makedirs(PEER_INBOX, exist_ok=True)
+                        peer_ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+                        peer_fname = f"{peer_ts}_{uuid.uuid4().hex[:8]}.json"
+                        peer_payload = {
+                            "id": peer_fname.replace(".json", ""),
+                            "type": "text",
+                            "chat_id": chat_id,
+                            "text": f"[GROUP — from {CALLSIGN.upper()} (peer bot, NOT your boss Dave)]: {msg.get('text', '')}",
+                            "sender": "peer",
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
+                        }
+                        with open(os.path.join(PEER_INBOX, peer_fname), "w") as pf:
+                            _json.dump(peer_payload, pf)
+                        logger.info(f"[relay] cross-posted to peer inbox: {peer_fname}")
 
                 except Exception as e:
                     logger.error(f"[relay] outbox error processing {fname}: {e}")

@@ -23,6 +23,10 @@ CALLSIGN_TAG = f"[{CALLSIGN.upper()}]"
 DM_CHAT_ID = 7267788033
 GROUP_CHAT_ID = -1003926592540
 
+# Peer bot cross-post: map callsign → other bot's inbox for bot-to-bot visibility
+PEER_CALLSIGNS = {"elliot": "aiden", "aiden": "elliot"}
+PEER_INBOX = f"/tmp/telegram-relay-{PEER_CALLSIGNS.get(CALLSIGN, '')}/inbox" if CALLSIGN in PEER_CALLSIGNS else None
+
 os.makedirs(OUTBOX, exist_ok=True)
 
 # Parse args
@@ -73,6 +77,23 @@ payload = {"type": "text", "chat_id": chat_id, "text": tagged}
 path = os.path.join(OUTBOX, fname)
 with open(path, "w") as f:
     json.dump(payload, f)
+
+# Cross-post to peer bot's inbox for group messages (Telegram doesn't deliver bot-to-bot)
+if chat_id == GROUP_CHAT_ID and PEER_INBOX:
+    os.makedirs(PEER_INBOX, exist_ok=True)
+    peer_fname = f"{ts}_{uuid.uuid4().hex[:8]}.json"
+    peer_payload = {
+        "id": peer_fname.replace(".json", ""),
+        "type": "text",
+        "chat_id": chat_id,
+        "text": f"[GROUP — from {CALLSIGN.upper()} (peer bot, NOT your boss Dave)]: {tagged}",
+        "sender": "peer",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+    peer_path = os.path.join(PEER_INBOX, peer_fname)
+    with open(peer_path, "w") as f:
+        json.dump(peer_payload, f)
+    print(f"  ↳ cross-posted to {PEER_CALLSIGNS[CALLSIGN]}'s inbox")
 
 dest = "DM" if chat_id == DM_CHAT_ID else "group" if chat_id == GROUP_CHAT_ID else str(chat_id)
 print(f"→ {CALLSIGN_TAG} sent to {dest} (chat {chat_id})")

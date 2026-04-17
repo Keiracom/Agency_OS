@@ -29,7 +29,7 @@ SYSTEM_COMPONENTS = [
     {"component": "Supabase DB", "health_endpoint": "/api/v1/health/db", "critical": True},
     {"component": "Prefect Worker", "health_endpoint": "/api/v1/health/prefect", "critical": True},
     {"component": "Redis Cache", "health_endpoint": "/api/v1/health/redis", "critical": False},
-    {"component": "Apollo API", "health_endpoint": None, "critical": False},
+    {"component": "BrightData API", "health_endpoint": None, "critical": False},
     {"component": "Salesforge API", "health_endpoint": None, "critical": False},
     {"component": "Unipile API", "health_endpoint": None, "critical": False}
 ]
@@ -112,7 +112,7 @@ CHECKS = [
     {
         "id": "J10.4.4",
         "part_a": "Verify integration status indicators",
-        "part_b": "Check Apollo, Salesforge, etc. show connection status",
+        "part_b": "Check BrightData, Salesforge, etc. show connection status",
         "key_files": ["frontend/app/admin/system/page.tsx", "src/api/routes/admin.py"],
         "live_test": {
             "type": "api",
@@ -121,14 +121,14 @@ CHECKS = [
             "auth": True,
             "expect": {
                 "status": 200,
-                "body_has_fields": ["apollo", "salesforge", "unipile"]
+                "body_has_fields": ["brightdata", "salesforge", "unipile"]
             },
             "curl_command": """curl '{api_url}/api/v1/admin/integrations/status' \\
   -H 'Authorization: Bearer {token}'
 # Returns status of each integration: healthy, error, or not_configured""",
             "manual_steps": [
                 "1. On /admin/system page, locate Integration Status section",
-                "2. Verify Apollo shows status (green = connected, gray = not configured)",
+                "2. Verify BrightData shows status (green = connected, gray = not configured)",
                 "3. Verify Salesforge shows status",
                 "4. Verify Unipile shows status",
                 "5. Click any integration for more details"

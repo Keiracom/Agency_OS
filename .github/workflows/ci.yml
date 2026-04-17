@@ -82,7 +82,6 @@ jobs:
       SUPABASE_KEY: test-key
       SUPABASE_SERVICE_KEY: test-service-key
       ANTHROPIC_API_KEY: test-key
-      APOLLO_API_KEY: test-key
       RESEND_API_KEY: test-key
 
     services:

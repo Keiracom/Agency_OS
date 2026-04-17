@@ -26,7 +26,7 @@ LIVE_CONFIG = {
 # =============================================================================
 
 RATE_LIMITS = [
-    {"api": "Apollo", "limit": "10,000/month", "reset": "Monthly", "current_usage_field": "apollo_credits_used"},
+    {"api": "BrightData", "limit": "Varies by dataset", "reset": "Monthly", "current_usage_field": "brightdata_credits_used"},
     {"api": "Salesforge", "limit": "Based on mailboxes", "reset": "Daily", "current_usage_field": "emails_sent_today"},
     {"api": "Unipile", "limit": "Varies by plan", "reset": "Daily", "current_usage_field": "linkedin_actions_today"},
     {"api": "Anthropic", "limit": "Based on tier", "reset": "Per minute/day", "current_usage_field": "claude_tokens_used"},
@@ -75,7 +75,7 @@ CHECKS = [
     {
         "id": "J10.13.2",
         "part_a": "Verify rate limit status for each API",
-        "part_b": "Check Apollo, Salesforge, Unipile limits display",
+        "part_b": "Check BrightData, Salesforge, Unipile limits display",
         "key_files": ["frontend/app/admin/system/rate-limits/page.tsx", "src/api/routes/admin.py"],
         "live_test": {
             "type": "api",
@@ -91,7 +91,7 @@ CHECKS = [
   -H 'Authorization: Bearer {token}'""",
             "manual_steps": [
                 "1. On /admin/system/rate-limits page, review each API row",
-                "2. Verify Apollo shows: credits used / total credits",
+                "2. Verify BrightData shows: credits used / total credits",
                 "3. Verify Salesforge shows: emails sent today / daily limit",
                 "4. Verify Unipile shows: LinkedIn actions / daily limit",
                 "5. Check progress bars match usage percentages"

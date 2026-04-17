@@ -2,6 +2,8 @@
 FILE: src/memory/store.py
 PURPOSE: Write a memory row to agent_memories via PostgREST.
          Auto-generates embedding via OpenAI text-embedding-3-small on every write.
+         Auto-populates supersedes_id when a new decision/verified_fact closely
+         matches an existing row (connective writes — diagnostic FM-6).
 """
 
 import logging
@@ -18,6 +20,13 @@ from .types import VALID_SOURCE_TYPES
 logger = logging.getLogger(__name__)
 
 OPENAI_API_KEY: str = os.environ.get("OPENAI_API_KEY", "")
+
+# Connective-write tuning (diagnostic FM-6 — no connective structure).
+# When a new claim-like memory closely matches an existing one, auto-link them
+# so the memory graph becomes navigable (instead of flat, with the Pipeline-E-
+# style contradictions piling up unresolved).
+SUPERSEDE_THRESHOLD = 0.88  # cosine similarity required to treat new as supersession
+SUPERSEDE_SOURCE_TYPES: set[str] = {"decision", "verified_fact", "dave_confirmed"}
 
 
 def _generate_embedding(text: str) -> list[float] | None:
@@ -36,6 +45,68 @@ def _generate_embedding(text: str) -> list[float] | None:
     except Exception as exc:
         logger.warning(f"[store] embedding generation failed: {exc}")
     return None
+
+
+def _find_supersede_candidate(
+    embedding: list[float],
+    source_type: str,
+    callsign: str,
+    new_state: str,
+) -> str | None:
+    """Look up an existing row this new write would supersede.
+
+    Rules:
+    - Same source_type, same callsign
+    - Cosine similarity >= SUPERSEDE_THRESHOLD
+    - Existing row must be in ('tentative', 'confirmed') — not already superseded
+    - A tentative new row cannot supersede a confirmed existing row
+      (protects curated memory from uncurated writes)
+
+    Returns the candidate's id if found, else None. Best-effort — returns None on error.
+    """
+    if source_type not in SUPERSEDE_SOURCE_TYPES:
+        return None
+    try:
+        rpc_url = _supabase_url() + "/rest/v1/rpc/match_agent_memories"
+        headers = _supabase_headers()
+        resp = httpx.post(
+            rpc_url,
+            headers=headers,
+            json={
+                "query_embedding": embedding,
+                "match_count": 3,
+                "match_threshold": SUPERSEDE_THRESHOLD,
+            },
+            timeout=5,
+        )
+        if resp.status_code != 200:
+            return None
+        rows = resp.json() or []
+        for row in rows:
+            if row.get("source_type") != source_type:
+                continue
+            if row.get("callsign") != callsign:
+                continue
+            existing_state = row.get("state", "confirmed")
+            if existing_state not in ("tentative", "confirmed"):
+                continue
+            # Guard: don't let tentative writes supersede confirmed rows
+            if new_state == "tentative" and existing_state == "confirmed":
+                continue
+            return row.get("id")
+    except Exception as exc:
+        logger.warning(f"[store] supersede-candidate lookup failed: {exc}")
+    return None
+
+
+def _mark_superseded(row_id: str) -> None:
+    """UPDATE the older row's state to 'superseded'. Best-effort, no-raise."""
+    try:
+        url = _supabase_url() + f"/rest/v1/agent_memories?id=eq.{row_id}"
+        headers = {**_supabase_headers(), "Prefer": "return=minimal"}
+        httpx.patch(url, headers=headers, json={"state": "superseded"}, timeout=5)
+    except Exception as exc:
+        logger.warning(f"[store] mark-superseded failed for {row_id}: {exc}")
 
 
 def store(
@@ -68,6 +139,12 @@ def store(
     # Auto-generate embedding for immediate semantic searchability
     embedding = _generate_embedding(content)
 
+    # Connective write (FM-6): if this write is a claim-type and closely matches
+    # an existing row, link them via supersedes_id and mark the older superseded.
+    supersede_id: str | None = None
+    if embedding is not None:
+        supersede_id = _find_supersede_candidate(embedding, source_type, callsign, state)
+
     payload: dict = {
         "callsign": callsign,
         "source_type": source_type,
@@ -80,6 +157,8 @@ def store(
     }
     if embedding:
         payload["embedding"] = embedding
+    if supersede_id:
+        payload["supersedes_id"] = supersede_id
     if valid_from is not None:
         payload["valid_from"] = valid_from.isoformat()
     if valid_to is not None:
@@ -98,6 +177,12 @@ def store(
         # PostgREST returns a list when Prefer: return=representation
         if isinstance(row, list):
             row = row[0]
+        # Now that the new row landed cleanly, retire the old one
+        if supersede_id:
+            _mark_superseded(supersede_id)
+            logger.info(
+                f"[store] connective write: new {source_type} supersedes {supersede_id}"
+            )
         return uuid.UUID(row["id"])
     except httpx.HTTPError as exc:
         raise RuntimeError(f"HTTP error storing memory: {exc}") from exc

@@ -30,6 +30,14 @@ STOPWORDS: set[str] = {
     "would", "already", "really", "still",
 }
 
+# Git commit message prefixes that match too broadly
+GIT_STOPWORDS: set[str] = STOPWORDS | {
+    "feat", "feature", "merge", "request", "branch",
+    "docs", "chore", "refactor", "style", "build",
+    "elliot", "aiden", "scout", "claude",
+    "pull", "commit", "pushed", "merged",
+}
+
 
 async def _embed_text(text: str) -> list[float] | None:
     """Generate embedding via OpenAI text-embedding-3-small. Returns None on failure."""
@@ -104,7 +112,7 @@ async def _search_by_embedding(
                 json={
                     "query_embedding": embedding,
                     "match_count": n,
-                    "match_threshold": 0.5,
+                    "match_threshold": 0.45,
                 },
             )
             if resp.status_code == 200:
@@ -177,7 +185,7 @@ async def find_matching_commits(message_text: str, n: int = 5) -> list[str]:
     import asyncio
 
     words = [w.strip(".,!?()[]\"'").lower() for w in message_text.split()]
-    terms = [w for w in words if len(w) > 4 and w not in STOPWORDS][:3]
+    terms = [w for w in words if len(w) > 4 and w not in GIT_STOPWORDS][:3]
     if not terms:
         return []
 
@@ -217,7 +225,9 @@ def format_memory_context(memories: list[dict], commits: list[str] | None = None
             source = m.get("source_type", "?")
             content = (m.get("content") or "")[:500]
             date = (m.get("created_at") or "")[:10]
-            lines.append(f"  [{source}] ({date}) {content}")
+            sim = m.get("similarity", "?")
+            sim_str = f" sim={sim:.2f}" if isinstance(sim, (int, float)) else ""
+            lines.append(f"  [{source}] ({date}){sim_str} {content}")
         lines.append("[END MEMORY CONTEXT]")
 
     if commits:

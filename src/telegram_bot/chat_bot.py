@@ -16,7 +16,9 @@ from datetime import datetime, timezone
 # Add repo root to sys.path so `from src.*` imports resolve when this script
 # is launched directly by systemd (sys.path[0] is src/telegram_bot/ by default,
 # which doesn't expose the `src` package). Tests work because pytest injects
-# rootdir; production didn't. Fixes #351 regression caught at service restart.
+# rootdir; production didn't. Fixes #351 regression — reintroduced when
+# save_handler import was changed to src.telegram_bot.* style without porting
+# this block from aiden/scaffold.
 _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
@@ -608,11 +610,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         message_text = f"[GROUP — from {peer_name} (peer bot, NOT your boss Dave)]: {message_text}"
 
     # Memory listener — surface relevant past context for ALL messages (not just Dave)
+    # Use ORIGINAL message text, not the enriched version (which has [GROUP — from Dave (CEO)] prefix
+    # that causes "group" to match every group-chat commit)
+    raw_text = update.message.text or ""
     memory_context = ""
     if sender != Sender.SELF:
         try:
-            memories = await find_relevant_memories(message_text)
-            commits = await find_matching_commits(message_text)
+            memories = await find_relevant_memories(raw_text)
+            commits = await find_matching_commits(raw_text)
             if memories or commits:
                 memory_context = format_memory_context(memories, commits)
                 logger.info(f"[memory-listener] surfaced {len(memories)} memories + {len(commits)} commits")

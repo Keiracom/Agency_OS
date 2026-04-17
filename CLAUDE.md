@@ -145,6 +145,60 @@ Script lives at `/home/elliotbot/clawd/Agency_OS/scripts/tg` (symlinked in `~/.l
 
 **Telegram bot-to-bot blind spot:** each bot's Telegram API receives every group message natively, but the tmux terminal only sees it if the cross-post fires. Hence `tg` over curl.
 
+## Dave Tagging — /tag Command
+
+Dave manually analyses rejected leads. `/tag` captures his reasoning into `lead_tags` so it's never lost.
+
+**What it does:** Dave sends `/tag <free text>`; Haiku (claude-haiku-4-5) parses the text into structured fields; bot confirms; Dave replies yes/no; on yes, a row is persisted to `public.lead_tags`.
+
+**Command syntax:**
+```
+/tag <free text>
+```
+**Example:**
+```
+/tag plumbermate.com.au dropped from stage 2 enterprise 200+ employees
+```
+
+**Stages** (`stage` field):
+```
+stage1_discovery | stage2_abn | stage3_comprehension | stage4_affordability
+stage5_scoring | stage6_seo | stage7_contact | stage8_email
+stage9_social | stage10_dm | stage11_card | manual
+```
+
+**Reason categories** (`reason_category` field):
+```
+enterprise | chain | franchise | wrong_industry | sole_trader | government
+not_au_based | duplicate | bad_data | not_a_business | already_customer
+not_reachable | other
+```
+
+**Append-only semantics:** Multiple rows per domain are allowed. Latest tag wins via `ORDER BY tagged_at DESC LIMIT 1`. Tag again any time to update reasoning — old rows are retained for audit.
+
+**Query examples:**
+```sql
+-- Latest tag per domain
+SELECT domain, reason_category, detail, tagged_at
+FROM lead_tags
+WHERE domain = 'plumbermate.com.au'
+ORDER BY tagged_at DESC LIMIT 1;
+
+-- All enterprise rejections
+SELECT domain, reason_category, detail FROM lead_tags
+WHERE reason_category = 'enterprise'
+ORDER BY tagged_at DESC;
+
+-- All tags from a stage
+SELECT domain, reason_category, detail FROM lead_tags
+WHERE stage = 'stage2_abn'
+ORDER BY tagged_at DESC;
+```
+
+**Retention:** Permanent — rows are never deleted.
+
+**Implementation:** `src/telegram_bot/tag_handler.py` (handler) + `src/pipeline/lead_tag_categories.py` (enums) + `supabase/migrations/101_lead_tags.sql` (schema).
+
 ## Directive + Validation Governance
 
 ### GOV-9 — Directive Scrutiny (MANDATORY)

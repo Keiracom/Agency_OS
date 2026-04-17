@@ -132,6 +132,19 @@ def _log_retrieval_event(
             round(float(r.get("similarity", 0) or 0), 4) for r in (raw_results or [])
         ]
         final_ids = [r.get("id") for r in (final_results or [])]
+        # Capture content previews of final rows — needed for retrospective
+        # relevance scoring (Dave pushback 2026-04-17: 'stable enough' was
+        # a hedge because we never measured utility of surfaced rows).
+        # Previews let us score events offline against the query_preview.
+        final_previews = [
+            {
+                "id": r.get("id"),
+                "source_type": r.get("source_type"),
+                "state": r.get("state"),
+                "content_100": (r.get("content") or "")[:100],
+            }
+            for r in (final_results or [])
+        ]
         event = {
             "ts": _dt.datetime.now(_dt.timezone.utc).isoformat(),
             "callsign": callsign,
@@ -143,7 +156,9 @@ def _log_retrieval_event(
             "raw_similarities": raw_sims,
             "final_count": len(final_ids),
             "final_ids": final_ids,
+            "final_previews": final_previews,  # for offline relevance scoring
             "dropped_by_overlap_filter": len(raw_ids) - len(final_ids),
+            "relevance_ratings": None,  # populated later by scoring pass (null = unscored)
         }
         with open(TELEMETRY_LOG, "a", encoding="utf-8") as fh:
             fh.write(_json.dumps(event) + "\n")

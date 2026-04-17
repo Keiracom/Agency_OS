@@ -87,26 +87,19 @@ async def find_relevant_memories(
     clean_text = re.sub(r'^\[(?:ELLIOT|AIDEN|SCOUT|DAVE)\]\s*', '', message_text.strip())
     clean_text = re.sub(r'^\[(?:ELLIOT|AIDEN|SCOUT|DAVE)\]\s*', '', clean_text)  # double prefix
 
-    # Try embedding-based semantic search first
+    # Hybrid search: BM25 keyword + semantic embedding via Reciprocal Rank Fusion
+    # Documents ranked high in BOTH keyword AND semantic lists bubble up.
+    # Fixes same-domain corpus noise where embeddings alone match everything.
     embedding = await _embed_text(clean_text or message_text)
     if embedding is not None:
-        raw_results = await _search_by_embedding(embedding, n, headers)
-        # If embedding call succeeded (even with zero matches), don't fall through
-        # to text search — zero semantic matches means nothing is relevant
+        raw_results = await _hybrid_search(clean_text or message_text, embedding, n, headers)
         if raw_results:
-            # Post-filter: require at least one non-stopword token overlap between
-            # query and row content. Embedding catches semantic vibes (produces
-            # false positives on our pipeline-heavy corpus, e.g. 'check status
-            # crashing' matching ContactOut schema debugging at 0.38-0.42 cosine).
-            # Requiring an actual shared subject-word prunes those while keeping
-            # genuinely on-topic rows.
-            results = _filter_by_word_overlap(raw_results, message_text)
-            results = _apply_trust_weighting(results)
+            results = _apply_trust_weighting(raw_results)
             await _increment_access_counts(results, headers)
         else:
             results = []
-        _log_retrieval_event(message_text, raw_results, results, source="embedding")
-        return results  # may be empty — that's fine
+        _log_retrieval_event(message_text, raw_results, results, source="hybrid")
+        return results
 
     # Fallback: ILIKE text search only when embedding generation FAILED
     fallback = await _search_by_text(message_text, n, headers)
@@ -260,14 +253,39 @@ def _apply_trust_weighting(results: list[dict]) -> list[dict]:
     return results
 
 
+async def _hybrid_search(
+    query_text: str, embedding: list[float], n: int, headers: dict
+) -> list[dict]:
+    """Hybrid BM25 + semantic search via Supabase RPC (Reciprocal Rank Fusion)."""
+    try:
+        rpc_url = f"{SUPABASE_URL}/rest/v1/rpc/hybrid_search_agent_memories"
+        async with httpx.AsyncClient(timeout=5) as client:
+            resp = await client.post(
+                rpc_url,
+                headers=headers,
+                json={
+                    "query_text": query_text,
+                    "query_embedding": embedding,
+                    "match_count": n,
+                    "match_threshold": 0.35,
+                },
+            )
+            if resp.status_code == 200:
+                return resp.json()
+            # Fallback to embedding-only if hybrid RPC doesn't exist yet
+            logger.warning(f"[memory-listener] hybrid search returned {resp.status_code}, falling back to embedding-only")
+    except Exception as exc:
+        logger.warning(f"[memory-listener] hybrid search failed: {exc}")
+
+    # Fallback to embedding-only search
+    return await _search_by_embedding(embedding, n, headers)
+
+
 async def _search_by_embedding(
     embedding: list[float], n: int, headers: dict
 ) -> list[dict]:
-    """Cosine similarity search via Supabase RPC (pgvector)."""
+    """Fallback: cosine similarity only via Supabase RPC (pgvector)."""
     try:
-        # Use Supabase RPC to call a similarity search function
-        # Since we may not have an RPC function, use PostgREST with order by embedding
-        # pgvector supports ordering by <=> (cosine distance) via PostgREST
         rpc_url = f"{SUPABASE_URL}/rest/v1/rpc/match_agent_memories"
         async with httpx.AsyncClient(timeout=5) as client:
             resp = await client.post(

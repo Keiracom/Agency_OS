@@ -58,6 +58,7 @@ CALLSIGN_TAG: str = f"[{CALLSIGN.upper()}]"
 # Sender classification for group chats (LAW XVII)
 BOT_USERNAME: str = ""  # populated at startup from getMe
 KNOWN_PEER_BOTS: set[str] = {"eeeeelllliiiioooottt_bot", "aaaaidenbot"}  # lowercase
+DAVE_USER_ID: int = 7267788033  # hardcoded CEO user_id — only this human gets Sender.DAVE
 # Peer cross-post: bot-to-bot visibility bypass (Telegram doesn't deliver bot-to-bot)
 _PEER_MAP = {"elliot": "aiden", "aiden": "elliot"}
 PEER_INBOX: str | None = f"/tmp/telegram-relay-{_PEER_MAP[CALLSIGN]}/inbox" if CALLSIGN in _PEER_MAP else None
@@ -130,19 +131,27 @@ async def auth_check(update: Update) -> bool:
 
 
 def classify_sender(update: Update) -> str:
-    """Classify who sent this message: dave, peer bot, self, or unknown."""
+    """Four-axis sender classification (security-hardened).
+
+    1. is_bot + username == self     → SELF (ignore)
+    2. is_bot + username in peers    → PEER_BOT (discuss, no directives)
+    3. not is_bot + user.id == Dave  → DAVE (boss, follow instructions)
+    4. else                          → UNKNOWN (reject in group, log)
+    """
     user = update.effective_user
     if not user:
         return Sender.UNKNOWN
-    # Self detection
+    # Axis 1: Self detection
     if user.is_bot and user.username and user.username.lower() == BOT_USERNAME.lower():
         return Sender.SELF
-    # Peer bot detection
+    # Axis 2: Peer bot detection
     if user.is_bot and user.username and user.username.lower() in KNOWN_PEER_BOTS:
         return Sender.PEER_BOT
-    # Human in allowed list
-    if not user.is_bot:
+    # Axis 3: Dave — verified by user_id, not just is_bot=False
+    if not user.is_bot and user.id == DAVE_USER_ID:
         return Sender.DAVE
+    # Axis 4: Unknown — any other human or unrecognized bot
+    logger.warning(f"[classify] UNKNOWN sender: user_id={user.id} username={user.username} is_bot={user.is_bot}")
     return Sender.UNKNOWN
 
 
@@ -525,8 +534,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     if sender == Sender.SELF:
         return
 
-    # Unknown sender in group — ignore silently
+    # Unknown sender in group — reject and log (security: only Dave gets CEO authority)
     if sender == Sender.UNKNOWN and is_group:
+        user = update.effective_user
+        logger.warning(f"[security] Rejected UNKNOWN sender in group: user_id={user.id if user else '?'} username={user.username if user else '?'}")
         return
 
     # Track bot-to-bot turns in groups

@@ -24,6 +24,8 @@ from telegram.ext import (
     filters,
 )
 
+from src.telegram_bot.tag_handler import handle_tag, handle_tag_confirmation
+
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
@@ -928,11 +930,19 @@ def main() -> None:
     app.add_handler(CommandHandler("history", cmd_history))
     app.add_handler(CommandHandler("relay", cmd_relay))
     app.add_handler(CommandHandler("help", cmd_help))
+    app.add_handler(CommandHandler("tag", handle_tag))
+
+    # Tag confirmation observer — must run BEFORE the main text fallback
+    async def _tag_confirm_observer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        consumed = await handle_tag_confirmation(update, context)
+        if not consumed:
+            await handle_message(update, context)
+
     # Media handlers before text fallback
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     app.add_handler(MessageHandler(filters.Document.ALL, handle_document))
-    # Text fallback last
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    # Text fallback: tag confirmation intercept, then normal message handler
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, _tag_confirm_observer))
 
     app.run_polling(drop_pending_updates=True)
 

@@ -53,6 +53,59 @@ from src.utils.domain_blocklist import is_blocked
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
+# Drop-reason → rejection_reason ENUM mapping
+# ---------------------------------------------------------------------------
+# Pipeline drop reasons are internal (stage failures, viability, scoring).
+# The leads.rejection_reason ENUM is for sales-context rejections.
+# All pipeline drops map to "other" — the correct semantic bucket.
+
+DROP_REASON_TO_REJECTION: dict[str, str] = {
+    "stage3_exception": "other",
+    "stage3_failed": "other",
+    "enterprise_or_chain": "other",
+    "no_dm_found": "other",
+    "score_exception": "other",
+    "viability": "other",
+    "score_below_gate": "other",
+}
+
+_DEFAULT_REJECTION = "other"
+
+
+try:
+    from src.integrations.supabase import get_async_supabase_service_client as _get_supabase
+except ImportError:
+    _get_supabase = None  # type: ignore[assignment]
+
+
+async def _persist_drop_reason(domain_data: dict) -> None:
+    """Write rejection_reason to leads table for a dropped domain. Best-effort."""
+    domain = domain_data.get("domain")
+    drop_reason = domain_data.get("drop_reason", "")
+    if not domain or not drop_reason:
+        return
+
+    # Derive the enum-safe key (strip trailing detail after ": ")
+    reason_key = drop_reason.split(":")[0].strip()
+    rejection_reason = DROP_REASON_TO_REJECTION.get(reason_key, _DEFAULT_REJECTION)
+
+    try:
+        if _get_supabase is None:
+            logger.warning("Supabase integration unavailable — skipping rejection_reason persist for %s", domain)
+            return
+        sb = await _get_supabase()
+        await (
+            sb.table("leads")
+            .update({"rejection_reason": rejection_reason})
+            .eq("domain", domain)
+            .is_("rejection_reason", "null")
+            .execute()
+        )
+        logger.debug("Persisted rejection_reason=%s for domain=%s", rejection_reason, domain)
+    except Exception as exc:
+        logger.warning("Could not persist rejection_reason for %s: %s", domain, exc)
+
+# ---------------------------------------------------------------------------
 # Category map (name -> DFS category code)
 # ---------------------------------------------------------------------------
 
@@ -177,6 +230,7 @@ async def _run_stage3(domain_data: dict, gemini: GeminiClient) -> dict:
         domain_data["dropped_at"] = "stage3"
         domain_data["drop_reason"] = f"stage3_exception: {exc}"
         domain_data["timings"]["stage3"] = round(time.monotonic() - t0, 2)
+        await _persist_drop_reason(domain_data)
         return domain_data
 
     domain_data["cost_usd"] += result.get("cost_usd", 0)
@@ -187,14 +241,17 @@ async def _run_stage3(domain_data: dict, gemini: GeminiClient) -> dict:
     if result.get("f_status") != "success":
         domain_data["dropped_at"] = "stage3"
         domain_data["drop_reason"] = f"stage3_failed: {result.get('f_failure_reason')}"
+        await _persist_drop_reason(domain_data)
         return domain_data
     if content.get("is_enterprise_or_chain"):
         domain_data["dropped_at"] = "stage3"
         domain_data["drop_reason"] = "enterprise_or_chain"
+        await _persist_drop_reason(domain_data)
         return domain_data
     if not (content.get("dm_candidate") or {}).get("name"):
         domain_data["dropped_at"] = "stage3"
         domain_data["drop_reason"] = "no_dm_found"
+        await _persist_drop_reason(domain_data)
         return domain_data
     return domain_data
 
@@ -234,15 +291,18 @@ async def _run_stage5(domain_data: dict) -> dict:
         domain_data["dropped_at"] = "stage5"
         domain_data["drop_reason"] = f"score_exception: {exc}"
         domain_data["timings"]["stage5"] = round(time.monotonic() - t0, 4)
+        await _persist_drop_reason(domain_data)
         return domain_data
 
     domain_data["timings"]["stage5"] = round(time.monotonic() - t0, 4)
     if not scores.get("is_viable_prospect"):
         domain_data["dropped_at"] = "stage5"
         domain_data["drop_reason"] = f"viability: {scores.get('viability_reason')}"
+        await _persist_drop_reason(domain_data)
     elif scores.get("composite_score", 0) < 30:
         domain_data["dropped_at"] = "stage5"
         domain_data["drop_reason"] = f"score_below_gate: {scores.get('composite_score')}"
+        await _persist_drop_reason(domain_data)
     return domain_data
 
 

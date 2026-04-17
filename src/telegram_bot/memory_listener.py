@@ -89,11 +89,50 @@ async def find_relevant_memories(
         # If embedding call succeeded (even with zero matches), don't fall through
         # to text search — zero semantic matches means nothing is relevant
         if results:
+            results = _apply_trust_weighting(results)
             await _increment_access_counts(results, headers)
         return results  # may be empty — that's fine
 
     # Fallback: ILIKE text search only when embedding generation FAILED
     return await _search_by_text(message_text, n, headers)
+
+
+# Source-type trust weights — multiply similarity to reorder results.
+# Higher weight = preferred at same similarity band.
+# Addresses diagnostic FM-3 (no salience/trust weighting).
+TRUST_WEIGHTS: dict[str, float] = {
+    "dave_confirmed": 1.30,
+    "verified_fact": 1.20,
+    "test_result":   1.10,
+    "reasoning":     1.05,
+    "decision":      1.00,  # baseline
+    "pattern":       0.95,
+    "research":      0.90,
+    "skill":         0.90,
+    "daily_log":     0.85,
+}
+
+# State weights — tentative rows (auto-captured, unverified) get discounted so
+# they only surface when similarity is strong enough to overcome the discount.
+# Surfacing-despite-discount IS the promotion signal (access_count ticks up →
+# tentative eventually flips to confirmed at PROMOTION_ACCESS_THRESHOLD).
+STATE_WEIGHTS: dict[str, float] = {
+    "confirmed":  1.00,
+    "tentative":  0.75,
+    # superseded / contradicted / archived excluded at the RPC layer
+}
+
+
+def _apply_trust_weighting(results: list[dict]) -> list[dict]:
+    """Re-rank results by (similarity * source_trust_weight * state_weight).
+    Preserves original similarity in the row for display — adds sort-only effect."""
+    for r in results:
+        base_sim = r.get("similarity", 0.0) or 0.0
+        source_w = TRUST_WEIGHTS.get(r.get("source_type", ""), 1.0)
+        state_w = STATE_WEIGHTS.get(r.get("state", "confirmed"), 1.0)
+        r["_weighted_similarity"] = base_sim * source_w * state_w
+    results.sort(key=lambda r: r.get("_weighted_similarity", 0.0), reverse=True)
+    return results
 
 
 async def _search_by_embedding(
@@ -162,17 +201,36 @@ async def _search_by_text(
         return []
 
 
+# Promotion threshold — tentative rows promote to confirmed after this many retrievals.
+# Addresses diagnostic FM-2: everything starts tentative (ingest gate); retrieval
+# reinforcement is the natural promotion signal (memory that's actually useful gets
+# surfaced, which means it's true/relevant enough to confirm).
+PROMOTION_ACCESS_THRESHOLD = 3
+
+
 async def _increment_access_counts(rows: list[dict], headers: dict) -> None:
-    """Best-effort access_count bump — never raises."""
+    """Best-effort access_count bump + tentative→confirmed promotion. Never raises."""
     try:
         async with httpx.AsyncClient(timeout=3) as client:
             for row in rows:
                 update_url = f"{SUPABASE_URL}/rest/v1/agent_memories?id=eq.{row['id']}"
+                new_count = row.get("access_count", 0) + 1
+                # Promote tentative → confirmed once the row has been retrieved
+                # enough times to demonstrate real signal value. Doesn't demote
+                # anything — only upgrades.
+                payload: dict = {"access_count": new_count}
+                current_state = row.get("state", "tentative")
+                if current_state == "tentative" and new_count >= PROMOTION_ACCESS_THRESHOLD:
+                    payload["state"] = "confirmed"
+                    logger.info(
+                        f"[memory-listener] promoting id={row['id']} tentative→confirmed "
+                        f"(access_count={new_count})"
+                    )
                 try:
                     await client.patch(
                         update_url,
                         headers={**headers, "Prefer": "return=minimal"},
-                        json={"access_count": row.get("access_count", 0) + 1},
+                        json=payload,
                     )
                 except Exception:
                     pass

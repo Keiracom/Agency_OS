@@ -9,13 +9,19 @@ type validation, and the agreed interface contract.
 
 store() is SYNC (returns uuid.UUID). cmd_save is async (Telegram handler) —
 sync functions may be called from async context.
+
+Dual-path extraction:
+- /save <valid_type> <text>  → structured path (no OpenAI call)
+- /save <free text>          → OpenAI GPT-4o-mini extraction path
 """
 
+import json
 import logging
 import os
 import sys
 import uuid
 
+import openai
 from telegram import Update
 from telegram.ext import ContextTypes
 
@@ -31,31 +37,67 @@ logger = logging.getLogger(__name__)
 
 CALLSIGN: str = os.getenv("CALLSIGN", "elliot")
 
+# ---------------------------------------------------------------------------
+# OpenAI extraction
+# ---------------------------------------------------------------------------
+
+_VALID_TYPES_LIST = ", ".join(sorted(VALID_SOURCE_TYPES))
+
+EXTRACTION_PROMPT = f"""You extract structured memory fields from free-form text.
+
+Return ONLY a JSON object with these exact keys:
+- "source_type": one of [{_VALID_TYPES_LIST}]
+- "content": cleaned, concise version of the core fact or decision (max 200 chars)
+- "tags": list of 1-5 relevant lowercase single-word or hyphenated tags
+
+Rules:
+- source_type must be exactly one of the listed values
+- If unsure of type, use "daily_log"
+- content must be a standalone sentence, not a command or question
+- tags must be lowercase strings, no spaces"""
+
+
+def extract_memory_fields(raw_text: str) -> dict:
+    """Use GPT-4o-mini to extract structured memory fields from free text."""
+    client = openai.OpenAI()  # reads OPENAI_API_KEY from env
+
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": EXTRACTION_PROMPT},
+            {"role": "user", "content": raw_text},
+        ],
+        response_format={"type": "json_object"},
+        temperature=0,
+        max_tokens=500,
+    )
+    return json.loads(response.choices[0].message.content)
+
 
 # ---------------------------------------------------------------------------
 # Parser
 # ---------------------------------------------------------------------------
 
 
-def parse_save_command(args: list[str]) -> tuple[str, str]:
-    """Return (source_type, content) from the args list after /save.
+def parse_save_command(args: list[str]) -> tuple[str, str, bool]:
+    """Return (source_type, content, needs_extraction) from the args list.
 
     Rules:
-    - /save pattern <text>  -> ('pattern', '<text>')
-    - /save <text>          -> ('daily_log', '<text>')  if first word not a valid type
-    - /save                 -> ('daily_log', '')         empty (handler rejects)
+    - /save <valid_type> <text>  -> (type, text, False)  structured, skip OpenAI
+    - /save <free text>          -> ('daily_log', full_text, True)  send to OpenAI
+    - /save                      -> ('daily_log', '', False)  empty, handler rejects
     """
     if not args:
-        return ("daily_log", "")
+        return ("daily_log", "", False)
 
     first = args[0].lower()
     if first in VALID_SOURCE_TYPES:
         content = " ".join(args[1:]).strip()
-        return (first, content)
+        return (first, content, False)
 
-    # First word is not a valid type — treat entire text as daily_log content
+    # First word is not a valid type — send full text to OpenAI
     content = " ".join(args).strip()
-    return ("daily_log", content)
+    return ("daily_log", content, True)
 
 
 # ---------------------------------------------------------------------------
@@ -66,7 +108,7 @@ def parse_save_command(args: list[str]) -> tuple[str, str]:
 async def cmd_save(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """/save [type] <content> — save typed memory via src.memory.store()."""
     args: list[str] = context.args or []
-    source_type, content = parse_save_command(args)
+    source_type, content, needs_extraction = parse_save_command(args)
 
     if not content:
         await update.message.reply_text(
@@ -77,17 +119,32 @@ async def cmd_save(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             "/save reasoning <text>\n"
             "/save test_result <text>\n"
             "/save daily_log <text>\n"
-            "/save <text>  (saves as daily_log)\n\n"
+            "/save <text>  (smart extraction via GPT-4o-mini)\n\n"
             f"Valid types: {', '.join(sorted(VALID_SOURCE_TYPES))}"
         )
         return
+
+    tags = [source_type]
+
+    if needs_extraction:
+        try:
+            extracted = extract_memory_fields(content)
+            source_type = extracted.get("source_type", "daily_log")
+            if source_type not in VALID_SOURCE_TYPES:
+                source_type = "daily_log"
+            content = extracted.get("content", content)
+            tags = extracted.get("tags", [source_type])
+        except Exception as exc:
+            logger.error(f"[save] OpenAI extraction failed, falling back to daily_log: {exc}")
+            source_type = "daily_log"
+            tags = ["daily_log"]
 
     try:
         memory_id: uuid.UUID = store(
             callsign=CALLSIGN,
             source_type=source_type,
             content=content,
-            tags=[source_type],
+            tags=tags,
         )
         preview = content[:50] + ("..." if len(content) > 50 else "")
         await update.message.reply_text(

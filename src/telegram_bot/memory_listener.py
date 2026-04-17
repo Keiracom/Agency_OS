@@ -82,8 +82,13 @@ async def find_relevant_memories(
         "Content-Type": "application/json",
     }
 
+    # Strip callsign prefixes before embedding — [AIDEN]/[ELLIOT] tags add noise to cosine
+    import re
+    clean_text = re.sub(r'^\[(?:ELLIOT|AIDEN|SCOUT|DAVE)\]\s*', '', message_text.strip())
+    clean_text = re.sub(r'^\[(?:ELLIOT|AIDEN|SCOUT|DAVE)\]\s*', '', clean_text)  # double prefix
+
     # Try embedding-based semantic search first
-    embedding = await _embed_text(message_text)
+    embedding = await _embed_text(clean_text or message_text)
     if embedding is not None:
         raw_results = await _search_by_embedding(embedding, n, headers)
         # If embedding call succeeded (even with zero matches), don't fall through
@@ -169,10 +174,13 @@ def _filter_by_word_overlap(results: list[dict], query_text: str) -> list[dict]:
     query_words -= GIT_STOPWORDS
     if not query_words:
         return results  # no content words to filter on — keep embedding result as-is
+    # Require at least 2 matching words (or 1 if query has fewer than 3 content words)
+    min_overlap = 2 if len(query_words) >= 3 else 1
     filtered: list[dict] = []
     for row in results:
         content = (row.get("content") or "").lower()
-        if any(qw in content for qw in query_words):
+        overlap_count = sum(1 for qw in query_words if qw in content)
+        if overlap_count >= min_overlap:
             filtered.append(row)
     return filtered
 

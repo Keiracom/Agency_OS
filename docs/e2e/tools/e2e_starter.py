@@ -112,8 +112,8 @@ ALS_FORMULA = {
 BUDGET = {
     "total": "$65 AUD",
     "breakdown": {
-        "Apollo": "$50 (50 credits for leads)",
-        "Apify": "$2 (LinkedIn scraping)",
+        "BrightData": "$5 (GMB + LinkedIn enrichment)",
+        "Apify": "$2 (harvestapi LinkedIn profile + DM posts)",
         "Anthropic": "$9 (ICP + content gen)",
         "Twilio": "$0.60 (SMS + Voice tests)",
         "Salesforge": "Included"
@@ -132,7 +132,7 @@ CRITICAL_RULES = [
 APPROVAL_GATES = {
     "GATE-1": {"trigger": "Start J0", "cost": "$0", "action": "Approve plan"},
     "GATE-2": {"trigger": "ICP extraction (J1.10)", "cost": "~$3", "action": "Approve Anthropic call"},
-    "GATE-3": {"trigger": "Lead sourcing (J2.3)", "cost": "~$50", "action": "Approve Apollo credits"},
+    "GATE-3": {"trigger": "Lead sourcing (J2.3)", "cost": "~$10", "action": "Approve BrightData/Leadmagic enrichment credits"},
     "GATE-4": {"trigger": "Any outreach (J3+)", "cost": "~$1", "action": "Confirm TEST_MODE verified"}
 }
 
@@ -140,8 +140,8 @@ APPROVAL_GATES = {
 JOURNEY_KEY_FILES = {
     "J0": ["Railway services", "config/", "src/integrations/"],
     "J1": ["frontend/app/auth/", "frontend/app/onboarding/", "src/api/routes/onboarding.py", "src/engines/icp_scraper.py"],
-    "J2": ["frontend/app/campaigns/", "src/api/routes/campaigns.py", "src/integrations/apollo.py", "src/engines/scorer.py"],
-    "J2B": ["src/engines/scout.py", "src/integrations/apify.py", "src/engines/scorer.py", "src/orchestration/flows/enrichment_flow.py"],
+    "J2": ["frontend/app/campaigns/", "src/api/routes/campaigns.py", "src/integrations/bright_data_client.py", "src/engines/scorer.py"],
+    "J2B": ["src/engines/scout.py", "src/intelligence/contact_waterfall.py", "src/engines/scorer.py", "src/orchestration/flows/enrichment_flow.py"],
     "J3": ["src/engines/email.py", "src/integrations/salesforge.py", "src/orchestration/flows/outreach_flow.py"],
     "J4": ["src/engines/sms.py", "src/integrations/twilio.py", "src/integrations/clicksend.py", "src/integrations/dncr.py"],
     "J5": ["src/engines/voice.py", "src/integrations/vapi.py", "src/integrations/elevenlabs.py"],
@@ -321,7 +321,7 @@ def cmd_start():
         if phase == "J1" and "10" in next_task['id']:
             print("\n  !! GATE-2: ICP extraction requires CEO approval for Anthropic (~$3)")
         elif phase == "J2" and "3" in next_task['id']:
-            print("\n  !! GATE-3: Lead sourcing requires CEO approval for Apollo (~$50)")
+            print("\n  !! GATE-3: Lead sourcing requires CEO approval for BrightData/Leadmagic enrichment (~$10)")
         elif phase in ["J3", "J4", "J5", "J6"]:
             print("\n  !! GATE-4: Outreach requires TEST_MODE verification first")
 

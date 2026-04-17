@@ -22,8 +22,8 @@ LIVE_CONFIG = {
 
 COST_TRACKING = {
     "claude_analysis": {"table": "ai_costs", "operation": "lead_analysis"},
-    "apify_scraping": {"table": "external_api_costs", "provider": "apify"},
-    "apollo_enrichment": {"table": "external_api_costs", "provider": "apollo"}
+    "apify_scraping": {"table": "external_api_costs", "provider": "apify"},  # harvestapi + DM posts (keep)
+    "brightdata_enrichment": {"table": "external_api_costs", "provider": "brightdata"}
 }
 
 # =============================================================================

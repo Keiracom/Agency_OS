@@ -21,9 +21,9 @@ CHECKS = [
     },
     {
         "id": "J0.5.3",
-        "part_a": "Read src/integrations/apollo.py — verify httpx client",
-        "part_b": "Call Apollo health/status (if available)",
-        "key_files": ["src/integrations/apollo.py"]
+        "part_a": "Verify Bright Data / Leadmagic enrichment keys are set (replaced Apollo)",
+        "part_b": "Check BRIGHTDATA_API_KEY, LEADMAGIC_API_KEY in env",
+        "key_files": ["src/integrations/bright_data_client.py", "src/integrations/leadmagic.py"]
     },
     {
         "id": "J0.5.4",
@@ -72,7 +72,8 @@ PASS_CRITERIA = [
 
 KEY_FILES = [
     "src/integrations/anthropic.py",
-    "src/integrations/apollo.py",
+    "src/integrations/bright_data_client.py",
+    "src/integrations/leadmagic.py",
     "src/integrations/resend.py",
     "src/integrations/twilio.py",
     "src/integrations/heyreach.py",
@@ -84,8 +85,8 @@ KEY_FILES = [
 # Integration Status Matrix
 INTEGRATIONS = [
     {"name": "Anthropic", "file": "anthropic.py", "client": "AsyncAnthropic", "async": True, "spend_limit": True},
-    {"name": "Apollo", "file": "apollo.py", "client": "httpx.AsyncClient", "async": True, "spend_limit": False},
-    {"name": "Apify", "file": "apify.py", "client": "ApifyClient", "async": True, "spend_limit": False},
+    {"name": "BrightData", "file": "bright_data_client.py", "client": "httpx.AsyncClient", "async": True, "spend_limit": False},
+    {"name": "Leadmagic", "file": "leadmagic.py", "client": "httpx.AsyncClient", "async": True, "spend_limit": False},
     {"name": "Clay", "file": "clay.py", "client": "httpx.AsyncClient", "async": True, "spend_limit": False},
     {"name": "Resend", "file": "resend.py", "client": "resend SDK", "async": True, "spend_limit": False},
     {"name": "Postmark", "file": "postmark.py", "client": "httpx.AsyncClient", "async": True, "spend_limit": False},

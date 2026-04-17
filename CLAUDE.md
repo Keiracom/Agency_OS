@@ -254,3 +254,44 @@ Before context exhaustion or /reset:
 5. Report completion with directive number and PR links
 
 **Context thresholds:** 40% -> self-alert | 50% -> alert Dave | 60% -> execute session end protocol
+
+## Memory Layer (v1 typed, no embeddings)
+
+Agent memory is persisted to `public.agent_memories` via PostgREST. v1 is text + tag + source_type filtering only — no embeddings, no pgvector, no OpenAI.
+
+### Quick API
+
+```python
+from src.memory import store, retrieve, retrieve_by_tags, recall, Memory, VALID_SOURCE_TYPES
+
+# Write
+mem_id = store("aiden", "decision", "content", tags=["tag1"], typed_metadata={})
+
+# Read — any combination of filters
+mems = retrieve(types=["pattern", "decision"], tags=["tag1"], content_contains="topic", n=20)
+mems = retrieve_by_tags(["tag1", "tag2"], mode="any")  # or mode="all"
+
+# High-level recall grouped by source_type
+grouped = recall(topic="rate limiting")   # content + tag search
+grouped = recall()                        # recent high-value types
+```
+
+### Valid source_type values
+
+`pattern`, `decision`, `test_result`, `reasoning`, `skill`, `daily_log`, `dave_confirmed`, `verified_fact`, `research`
+
+### Rate limit
+
+Daily cap: `MEMORY_WRITE_CAP` env var (default 5000). File-backed at `/tmp/agent-memory-writes-YYYYMMDD.count`. Raises `RateLimitExceeded` at cap.
+
+### Telegram command
+
+`/recall` and `/recall <topic>` — calls `recall()`, formats output by source_type, replies inline or writes to `/tmp/recall-<uuid>.md` if too long.
+
+### Full contract
+
+`docs/memory_interface.md` — schema, operators, error table, v2 roadmap.
+
+### Schema
+
+Migration: `supabase/migrations/102_agent_memories.sql` — NOT yet applied to live Supabase. Dave applies post-merge.

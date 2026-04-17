@@ -615,10 +615,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     if sender != Sender.SELF:
         try:
             memories = await find_relevant_memories(raw_text)
-            commits = await find_matching_commits(raw_text)
-            if memories or commits:
+            # Git context disabled — too noisy, surfacing random commits on every message.
+            # Re-enable after git search quality improves (embedding-based or phrase match).
+            # commits = await find_matching_commits(raw_text)
+            commits = []
+            if memories:
                 memory_context = format_memory_context(memories, commits)
-                logger.info(f"[memory-listener] surfaced {len(memories)} memories + {len(commits)} commits")
+                logger.info(f"[memory-listener] surfaced {len(memories)} memories")
         except Exception as _mem_exc:
             logger.warning(f"[memory-listener] non-fatal error: {_mem_exc}")
 

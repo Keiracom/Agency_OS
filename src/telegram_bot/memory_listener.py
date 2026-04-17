@@ -211,14 +211,51 @@ STATE_WEIGHTS: dict[str, float] = {
 }
 
 
+# Time decay constants — exponential decay based on row age.
+# Recent memories rank higher than old ones at same similarity.
+# λ values per source_type (higher = faster decay):
+TIME_DECAY_LAMBDA: dict[str, float] = {
+    "daily_log":     0.05,   # 14-day half-life — ephemeral
+    "reasoning":     0.03,   # 23-day half-life
+    "test_result":   0.02,   # 35-day half-life
+    "research":      0.02,   # 35-day half-life
+    "decision":      0.01,   # 69-day half-life — durable
+    "pattern":       0.01,   # 69-day half-life — durable
+    "skill":         0.005,  # 139-day half-life — very durable
+    "dave_confirmed": 0.003, # 231-day half-life — near-permanent
+    "verified_fact": 0.003,  # 231-day half-life — near-permanent
+}
+
+import math
+
+
 def _apply_trust_weighting(results: list[dict]) -> list[dict]:
-    """Re-rank results by (similarity * source_trust_weight * state_weight).
-    Preserves original similarity in the row for display — adds sort-only effect."""
+    """Re-rank by (similarity × source_trust × state_weight × time_decay).
+    Preserves original similarity for display — adds sort-only effect.
+
+    Time decay: e^(-λ × days_old). Old debugging notes get buried;
+    recent context rises. λ varies by source_type — daily_logs decay
+    fast, dave_confirmed decays very slowly."""
+    now = _dt.datetime.now(_dt.timezone.utc)
     for r in results:
         base_sim = r.get("similarity", 0.0) or 0.0
         source_w = TRUST_WEIGHTS.get(r.get("source_type", ""), 1.0)
         state_w = STATE_WEIGHTS.get(r.get("state", "confirmed"), 1.0)
-        r["_weighted_similarity"] = base_sim * source_w * state_w
+
+        # Time decay
+        created = r.get("created_at", "")
+        try:
+            if isinstance(created, str) and created:
+                row_dt = _dt.datetime.fromisoformat(created.replace("Z", "+00:00"))
+                days_old = max((now - row_dt).total_seconds() / 86400, 0)
+            else:
+                days_old = 0
+        except Exception:
+            days_old = 0
+        lam = TIME_DECAY_LAMBDA.get(r.get("source_type", ""), 0.01)
+        decay = math.exp(-lam * days_old)
+
+        r["_weighted_similarity"] = base_sim * source_w * state_w * decay
     results.sort(key=lambda r: r.get("_weighted_similarity", 0.0), reverse=True)
     return results
 

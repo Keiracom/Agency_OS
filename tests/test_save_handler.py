@@ -1,30 +1,31 @@
 """
 Tests for src/telegram_bot/save_handler.py
-Covers: parse_save_command, write_agent_memory (mocked), cmd_save flow
-No real API calls — httpx patched throughout.
+Covers: parse_save_command, cmd_save (store() mocked)
+No real API calls — src.memory.store patched throughout.
 """
 
 import sys
 import os
 import pytest
-import httpx
 from unittest.mock import AsyncMock, MagicMock, patch
 
 # ---------------------------------------------------------------------------
-# sys.path injection — telegram_bot src + system site-packages (LAW V pattern)
+# sys.path injection — resolve src root so save_handler imports work
 # ---------------------------------------------------------------------------
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src", "telegram_bot"))
+_repo_root = os.path.join(os.path.dirname(__file__), "..")
+if _repo_root not in sys.path:
+    sys.path.insert(0, _repo_root)
+
 # python-telegram-bot lives in system python, not project venv
 _system_site = "/home/elliotbot/.local/lib/python3.12/site-packages"
 if _system_site not in sys.path:
     sys.path.insert(0, _system_site)
 
-from save_handler import (  # noqa: E402
+from src.telegram_bot.save_handler import (  # noqa: E402
     parse_save_command,
-    write_agent_memory,
     cmd_save,
-    VALID_TYPES,
 )
+from src.memory.types import VALID_SOURCE_TYPES  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -63,14 +64,19 @@ class TestParseSaveCommand:
         assert source_type == "dave_confirmed"
         assert content == "ship it"
 
-    def test_unknown_first_word_falls_back_to_general(self):
+    def test_valid_type_daily_log(self):
+        source_type, content = parse_save_command(["daily_log", "wrapped up stage 8"])
+        assert source_type == "daily_log"
+        assert content == "wrapped up stage 8"
+
+    def test_unknown_first_word_falls_back_to_daily_log(self):
         source_type, content = parse_save_command(["remember", "this", "thing"])
-        assert source_type == "general"
+        assert source_type == "daily_log"
         assert content == "remember this thing"
 
-    def test_bare_save_returns_general_empty(self):
+    def test_bare_save_returns_daily_log_empty(self):
         source_type, content = parse_save_command([])
-        assert source_type == "general"
+        assert source_type == "daily_log"
         assert content == ""
 
     def test_type_only_no_content(self):
@@ -83,74 +89,26 @@ class TestParseSaveCommand:
         assert source_type == "pattern"
         assert content == "text"
 
-    def test_general_bare_text(self):
+    def test_general_bare_text_becomes_daily_log(self):
         source_type, content = parse_save_command(["some", "raw", "note"])
-        assert source_type == "general"
+        assert source_type == "daily_log"
         assert content == "some raw note"
 
+    def test_valid_source_types_used_for_validation(self):
+        """parse_save_command uses VALID_SOURCE_TYPES — all members are accepted."""
+        for vtype in VALID_SOURCE_TYPES:
+            st, _ = parse_save_command([vtype, "content"])
+            assert st == vtype
 
-# ---------------------------------------------------------------------------
-# write_agent_memory — Supabase POST mocked
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.asyncio
-async def test_write_agent_memory_success():
-    """write_agent_memory POSTs correct payload and returns row."""
-    fake_row = {
-        "id": "abc-123",
-        "callsign": "elliot",
-        "source_type": "pattern",
-        "content": "use semaphore",
-    }
-    mock_resp = MagicMock()
-    mock_resp.raise_for_status = MagicMock()
-    mock_resp.json.return_value = [fake_row]
-
-    with patch("httpx.AsyncClient") as mock_client_cls:
-        mock_client = AsyncMock()
-        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-        mock_client.__aexit__ = AsyncMock(return_value=False)
-        mock_client.post = AsyncMock(return_value=mock_resp)
-        mock_client_cls.return_value = mock_client
-
-        result = await write_agent_memory(
-            source_type="pattern",
-            content="use semaphore",
-            callsign="elliot",
-        )
-
-    assert result["id"] == "abc-123"
-    assert result["source_type"] == "pattern"
-    mock_client.post.assert_awaited_once()
-    call_kwargs = mock_client.post.call_args
-    posted_payload = call_kwargs.kwargs["json"]
-    assert posted_payload["source_type"] == "pattern"
-    assert posted_payload["content"] == "use semaphore"
-    assert posted_payload["callsign"] == "elliot"
-
-
-@pytest.mark.asyncio
-async def test_write_agent_memory_supabase_error_raises():
-    """write_agent_memory propagates HTTP error."""
-    mock_resp = MagicMock()
-    mock_resp.raise_for_status.side_effect = httpx.HTTPStatusError(
-        "500", request=MagicMock(), response=MagicMock(status_code=500, text="internal error")
-    )
-
-    with patch("httpx.AsyncClient") as mock_client_cls:
-        mock_client = AsyncMock()
-        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-        mock_client.__aexit__ = AsyncMock(return_value=False)
-        mock_client.post = AsyncMock(return_value=mock_resp)
-        mock_client_cls.return_value = mock_client
-
-        with pytest.raises(httpx.HTTPStatusError):
-            await write_agent_memory(source_type="pattern", content="test")
+    def test_general_is_not_a_valid_type(self):
+        """'general' was removed — falls back to daily_log."""
+        source_type, content = parse_save_command(["general", "some note"])
+        assert source_type == "daily_log"
+        assert content == "general some note"
 
 
 # ---------------------------------------------------------------------------
-# cmd_save — Telegram handler (fully mocked update/context)
+# cmd_save — Telegram handler (fully mocked update/context + store mocked)
 # ---------------------------------------------------------------------------
 
 
@@ -165,13 +123,19 @@ def _make_update(args: list[str]) -> tuple[MagicMock, MagicMock]:
 
 
 @pytest.mark.asyncio
-async def test_cmd_save_pattern_success():
-    """cmd_save writes pattern memory and confirms."""
+async def test_cmd_save_pattern_calls_store():
+    """cmd_save calls store() with correct args for pattern type."""
     update, context = _make_update(["pattern", "use", "gather"])
 
     fake_row = {"id": "row-1", "source_type": "pattern", "content": "use gather"}
-    with patch("save_handler.write_agent_memory", new=AsyncMock(return_value=fake_row)):
+    with patch("src.telegram_bot.save_handler.store", new=AsyncMock(return_value=fake_row)) as mock_store:
         await cmd_save(update, context)
+
+    assert mock_store.await_count == 1
+    call_kwargs = mock_store.call_args.kwargs
+    assert call_kwargs["source_type"] == "pattern"
+    assert call_kwargs["content"] == "use gather"
+    assert call_kwargs["tags"] == ["pattern"]
 
     update.message.reply_text.assert_awaited_once()
     reply_text = update.message.reply_text.call_args[0][0]
@@ -180,17 +144,20 @@ async def test_cmd_save_pattern_success():
 
 
 @pytest.mark.asyncio
-async def test_cmd_save_general_fallback():
-    """cmd_save saves as general when first word is not a valid type."""
+async def test_cmd_save_unknown_type_falls_back_to_daily_log():
+    """cmd_save saves as daily_log when first word is not a valid type."""
     update, context = _make_update(["remember", "this"])
 
-    fake_row = {"id": "row-2", "source_type": "general", "content": "remember this"}
-    with patch("save_handler.write_agent_memory", new=AsyncMock(return_value=fake_row)):
+    fake_row = {"id": "row-2", "source_type": "daily_log", "content": "remember this"}
+    with patch("src.telegram_bot.save_handler.store", new=AsyncMock(return_value=fake_row)) as mock_store:
         await cmd_save(update, context)
 
-    update.message.reply_text.assert_awaited_once()
+    call_kwargs = mock_store.call_args.kwargs
+    assert call_kwargs["source_type"] == "daily_log"
+    assert call_kwargs["content"] == "remember this"
+
     reply_text = update.message.reply_text.call_args[0][0]
-    assert "general" in reply_text
+    assert "daily_log" in reply_text
 
 
 @pytest.mark.asyncio
@@ -218,17 +185,23 @@ async def test_cmd_save_type_only_no_content_shows_usage():
 
 
 @pytest.mark.asyncio
-async def test_cmd_save_supabase_error_replies_gracefully():
-    """cmd_save catches HTTP errors and replies with failure message."""
+async def test_cmd_save_store_error_replies_gracefully():
+    """cmd_save catches errors from store() and replies with failure message."""
     update, context = _make_update(["decision", "ship it"])
 
-    err = httpx.HTTPStatusError(
-        "500",
-        request=MagicMock(),
-        response=MagicMock(status_code=500, text="error"),
-    )
-    with patch("save_handler.write_agent_memory", new=AsyncMock(side_effect=err)):
+    with patch("src.telegram_bot.save_handler.store", new=AsyncMock(side_effect=Exception("Supabase 500"))):
         await cmd_save(update, context)
 
     reply_text = update.message.reply_text.call_args[0][0]
-    assert "Failed" in reply_text or "500" in reply_text
+    assert "Failed" in reply_text or "Supabase" in reply_text
+
+
+@pytest.mark.asyncio
+async def test_cmd_save_uses_valid_source_types_for_validation():
+    """store() is called only when source_type is in VALID_SOURCE_TYPES."""
+    for vtype in sorted(VALID_SOURCE_TYPES)[:3]:  # spot-check first 3
+        update, context = _make_update([vtype, "content"])
+        fake_row = {"id": "x", "source_type": vtype, "content": "content"}
+        with patch("src.telegram_bot.save_handler.store", new=AsyncMock(return_value=fake_row)) as mock_store:
+            await cmd_save(update, context)
+        assert mock_store.call_args.kwargs["source_type"] == vtype

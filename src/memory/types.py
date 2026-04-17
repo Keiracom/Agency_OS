@@ -1,13 +1,10 @@
 """
-FILE: src/memory/types.py
-PURPOSE: Shared types for the agent memory layer (v1 — no embeddings).
+src/memory/types.py
+Canonical source-type constants for agent_memories writes.
+Import VALID_SOURCE_TYPES wherever type validation is needed.
 """
 
-import uuid
-from dataclasses import dataclass
-from datetime import datetime
-
-VALID_SOURCE_TYPES: set[str] = {
+VALID_SOURCE_TYPES: frozenset[str] = frozenset({
     "pattern",
     "decision",
     "test_result",
@@ -17,21 +14,4 @@ VALID_SOURCE_TYPES: set[str] = {
     "dave_confirmed",
     "verified_fact",
     "research",
-}
-
-
-@dataclass(frozen=True)
-class Memory:
-    id: uuid.UUID
-    callsign: str
-    source_type: str
-    content: str
-    typed_metadata: dict
-    tags: list[str]
-    valid_from: datetime
-    valid_to: datetime | None
-    created_at: datetime
-
-
-class RateLimitExceeded(Exception):
-    pass
+})

@@ -73,7 +73,7 @@ async def find_relevant_memories(
     """
     if not SUPABASE_URL or not SUPABASE_KEY:
         return []
-    if not message_text or len(message_text) < 30:
+    if not message_text or len(message_text) < 10:
         return []
 
     headers = {

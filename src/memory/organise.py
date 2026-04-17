@@ -1,18 +1,17 @@
 """
 Event-triggered memory organisation.
 
-Runs when total row count exceeds thresholds (not on a schedule).
-Three operations:
-1. Dedup — find near-duplicate pairs (cosine >= 0.92), supersede older
-2. Stale check — flag confirmed rows with access_count=0 after N total rows
-3. Embed backfill — embed any rows missing embeddings
+Runs when write count exceeds thresholds (not on a schedule).
+Operations:
+1. Embed backfill — rows missing embeddings (capped at 50 per run)
+2. Stale archive — confirmed rows with access_count=0 after 200+ total → archived
+3. Write counter — store() calls increment_write_counter() on every write
 
-Trigger: call check_and_organise() after any batch of writes.
+Trigger: store() calls increment_write_counter() after every write.
+Every 25 writes, run_organisation() fires automatically.
 """
 import logging
 import os
-import uuid
-from datetime import datetime, timezone
 
 import httpx
 
@@ -22,12 +21,11 @@ SUPABASE_URL: str = os.environ.get("SUPABASE_URL", "")
 SUPABASE_KEY: str = os.environ.get("SUPABASE_SERVICE_KEY", "") or os.environ.get("SUPABASE_KEY", "")
 OPENAI_API_KEY: str = os.environ.get("OPENAI_API_KEY", "")
 
-# Thresholds for triggering organisation
-DEDUP_THRESHOLD = 50  # run dedup every N new rows
-STALE_CHECK_THRESHOLD = 100  # flag stale rows every N new rows
+ORGANISE_EVERY_N_WRITES = 25
+EMBED_BATCH_LIMIT = 50
+STALE_MIN_ROWS = 200
 
-_last_dedup_count: int = 0
-_last_stale_count: int = 0
+_write_counter: int = 0
 
 
 def _headers() -> dict:
@@ -38,27 +36,28 @@ def _headers() -> dict:
     }
 
 
-def get_total_count() -> int:
-    """Get total row count from agent_memories."""
-    try:
-        resp = httpx.get(
-            f"{SUPABASE_URL}/rest/v1/agent_memories?select=id",
-            headers={**_headers(), "Prefer": "count=exact"},
-            timeout=5,
-        )
-        return int(resp.headers.get("content-range", "0/0").split("/")[-1])
-    except Exception:
-        return 0
+def increment_write_counter() -> None:
+    """Call after every store(). Triggers organisation at threshold."""
+    global _write_counter
+    _write_counter += 1
+    if _write_counter >= ORGANISE_EVERY_N_WRITES:
+        _write_counter = 0
+        try:
+            result = run_organisation()
+            if any(v > 0 for v in result.values()):
+                logger.info(f"[organise] auto-triggered: {result}")
+        except Exception as exc:
+            logger.warning(f"[organise] auto-trigger failed: {exc}")
 
 
-def backfill_embeddings() -> int:
-    """Embed any rows missing embeddings. Returns count embedded."""
+def backfill_embeddings(limit: int = EMBED_BATCH_LIMIT) -> int:
+    """Embed rows missing embeddings. Capped at `limit` per call."""
     if not OPENAI_API_KEY:
         return 0
 
     headers = _headers()
     resp = httpx.get(
-        f"{SUPABASE_URL}/rest/v1/agent_memories?embedding=is.null&select=id,content",
+        f"{SUPABASE_URL}/rest/v1/agent_memories?embedding=is.null&select=id,content&limit={limit}",
         headers=headers, timeout=10,
     )
     if resp.status_code != 200:
@@ -90,24 +89,56 @@ def backfill_embeddings() -> int:
     return count
 
 
-def check_and_organise() -> dict:
-    """Event-triggered organisation. Call after batch writes.
+def archive_stale(limit: int = 20) -> int:
+    """Archive confirmed rows with access_count=0. Returns count archived."""
+    headers = _headers()
 
-    Returns summary of actions taken.
-    """
-    global _last_dedup_count, _last_stale_count
+    # Only run if we have enough rows
+    try:
+        count_resp = httpx.get(
+            f"{SUPABASE_URL}/rest/v1/agent_memories?select=id",
+            headers={**headers, "Prefer": "count=exact"}, timeout=5,
+        )
+        total = int(count_resp.headers.get("content-range", "0/0").split("/")[-1])
+        if total < STALE_MIN_ROWS:
+            return 0
+    except Exception:
+        return 0
 
-    total = get_total_count()
-    actions = {"total": total, "embedded": 0, "deduped": 0, "stale_flagged": 0}
+    # Find stale: confirmed + never accessed
+    try:
+        resp = httpx.get(
+            f"{SUPABASE_URL}/rest/v1/agent_memories"
+            f"?state=eq.confirmed&access_count=eq.0"
+            f"&select=id&limit={limit}",
+            headers=headers, timeout=10,
+        )
+        if resp.status_code != 200:
+            return 0
 
-    # Always backfill missing embeddings
-    actions["embedded"] = backfill_embeddings()
+        stale_ids = [r["id"] for r in resp.json()]
+        count = 0
+        for sid in stale_ids:
+            try:
+                httpx.patch(
+                    f"{SUPABASE_URL}/rest/v1/agent_memories?id=eq.{sid}",
+                    headers={**headers, "Prefer": "return=minimal"},
+                    json={"state": "archived"},
+                    timeout=5,
+                )
+                count += 1
+            except Exception:
+                pass
+        if count:
+            logger.info(f"[organise] archived {count} stale rows")
+        return count
+    except Exception:
+        return 0
 
-    # Dedup when threshold crossed
-    if total - _last_dedup_count >= DEDUP_THRESHOLD:
-        _last_dedup_count = total
-        logger.info(f"[organise] dedup threshold crossed at {total} rows")
-        # Dedup is expensive (cross-join) — leave for manual trigger via Aiden's SQL
-        # Just log the trigger, actual dedup runs separately
 
-    return actions
+def run_organisation() -> dict:
+    """Run all organisation operations. Returns summary."""
+    return {
+        "embedded": backfill_embeddings(),
+        "stale_archived": archive_stale(),
+    }

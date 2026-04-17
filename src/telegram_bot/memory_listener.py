@@ -85,16 +85,96 @@ async def find_relevant_memories(
     # Try embedding-based semantic search first
     embedding = await _embed_text(message_text)
     if embedding is not None:
-        results = await _search_by_embedding(embedding, n, headers)
+        raw_results = await _search_by_embedding(embedding, n, headers)
         # If embedding call succeeded (even with zero matches), don't fall through
         # to text search — zero semantic matches means nothing is relevant
-        if results:
+        if raw_results:
+            # Post-filter: require at least one non-stopword token overlap between
+            # query and row content. Embedding catches semantic vibes (produces
+            # false positives on our pipeline-heavy corpus, e.g. 'check status
+            # crashing' matching ContactOut schema debugging at 0.38-0.42 cosine).
+            # Requiring an actual shared subject-word prunes those while keeping
+            # genuinely on-topic rows.
+            results = _filter_by_word_overlap(raw_results, message_text)
             results = _apply_trust_weighting(results)
             await _increment_access_counts(results, headers)
+        else:
+            results = []
+        _log_retrieval_event(message_text, raw_results, results, source="embedding")
         return results  # may be empty — that's fine
 
     # Fallback: ILIKE text search only when embedding generation FAILED
-    return await _search_by_text(message_text, n, headers)
+    fallback = await _search_by_text(message_text, n, headers)
+    _log_retrieval_event(message_text, fallback, fallback, source="text_fallback")
+    return fallback
+
+
+# ---------------------------------------------------------------------------
+# Telemetry — log every retrieval to a JSONL file so we can review listener
+# quality offline instead of tuning blind on one-message observations.
+# ---------------------------------------------------------------------------
+
+import datetime as _dt
+import json as _json
+
+TELEMETRY_LOG = "/home/elliotbot/clawd/logs/listener-telemetry.jsonl"
+
+
+def _log_retrieval_event(
+    query_text: str,
+    raw_results: list[dict],
+    final_results: list[dict],
+    source: str,
+) -> None:
+    """Append one retrieval event to the telemetry log. Best-effort, never raises."""
+    try:
+        callsign = os.environ.get("CALLSIGN", "unknown")
+        raw_ids = [r.get("id") for r in (raw_results or [])]
+        raw_sims = [
+            round(float(r.get("similarity", 0) or 0), 4) for r in (raw_results or [])
+        ]
+        final_ids = [r.get("id") for r in (final_results or [])]
+        event = {
+            "ts": _dt.datetime.now(_dt.timezone.utc).isoformat(),
+            "callsign": callsign,
+            "source": source,  # "embedding" | "text_fallback"
+            "query_preview": (query_text or "")[:160],
+            "query_len": len(query_text or ""),
+            "raw_count": len(raw_ids),
+            "raw_ids": raw_ids,
+            "raw_similarities": raw_sims,
+            "final_count": len(final_ids),
+            "final_ids": final_ids,
+            "dropped_by_overlap_filter": len(raw_ids) - len(final_ids),
+        }
+        with open(TELEMETRY_LOG, "a", encoding="utf-8") as fh:
+            fh.write(_json.dumps(event) + "\n")
+    except Exception as exc:
+        logger.warning(f"[memory-listener] telemetry log failed: {exc}")
+
+
+def _filter_by_word_overlap(results: list[dict], query_text: str) -> list[dict]:
+    """Require each row to share at least one >4-char non-stopword token with
+    the query. Prunes embedding false-positives on topically-unrelated content.
+
+    Uses GIT_STOPWORDS (superset of STOPWORDS + callsigns + commit-msg verbs)
+    because our callsigns ('elliot', 'aiden', 'dave', 'scout', 'claude') appear
+    in nearly every memory row — if they're allowed as query terms they'll
+    match everything and the filter does nothing."""
+    query_words = {
+        w.strip(".,!?()[]\"'").lower()
+        for w in query_text.split()
+        if len(w.strip(".,!?()[]\"'")) > 4
+    }
+    query_words -= GIT_STOPWORDS
+    if not query_words:
+        return results  # no content words to filter on — keep embedding result as-is
+    filtered: list[dict] = []
+    for row in results:
+        content = (row.get("content") or "").lower()
+        if any(qw in content for qw in query_words):
+            filtered.append(row)
+    return filtered
 
 
 # Source-type trust weights — multiply similarity to reorder results.
@@ -118,7 +198,7 @@ TRUST_WEIGHTS: dict[str, float] = {
 # tentative eventually flips to confirmed at PROMOTION_ACCESS_THRESHOLD).
 STATE_WEIGHTS: dict[str, float] = {
     "confirmed":  1.00,
-    "tentative":  0.75,
+    "tentative":  0.50,  # heavy discount — bulk-extracted tentative rows only surface on very strong match
     # superseded / contradicted / archived excluded at the RPC layer
 }
 
@@ -239,7 +319,7 @@ async def _increment_access_counts(rows: list[dict], headers: dict) -> None:
 
 
 async def find_matching_commits(message_text: str, n: int = 5) -> list[str]:
-    """Search git commit messages for terms from the message. Local, no cost."""
+    """Search git commit messages — AND match (all terms must appear). Local, no cost."""
     import asyncio
 
     words = [w.strip(".,!?()[]\"'").lower() for w in message_text.split()]
@@ -247,26 +327,34 @@ async def find_matching_commits(message_text: str, n: int = 5) -> list[str]:
     if not terms:
         return []
 
-    results: list[str] = []
-    seen: set[str] = set()
     repo_dir = os.environ.get("WORK_DIR_OVERRIDE", "/home/elliotbot/clawd/Agency_OS")
 
-    for term in terms:
-        try:
-            proc = await asyncio.create_subprocess_exec(
-                "git", "log", "--all", "--oneline", f"--grep={term}", "-i",
-                "--max-count=5",
-                cwd=repo_dir,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.DEVNULL,
-            )
-            stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=3)
-            for line in stdout.decode().strip().splitlines():
-                if line and line not in seen:
-                    seen.add(line)
-                    results.append(line)
-        except Exception:
-            pass
+    # AND-match: search for first term, then filter results that contain ALL other terms
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "git", "log", "--all", "--oneline", f"--grep={terms[0]}", "-i",
+            "--max-count=50",
+            cwd=repo_dir,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.DEVNULL,
+        )
+        stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=3)
+        candidates = stdout.decode().strip().splitlines()
+
+        # Filter: commit must contain ALL query terms (AND, not OR)
+        results = []
+        for line in candidates:
+            lower_line = line.lower()
+            if all(t in lower_line for t in terms):
+                results.append(line)
+
+        # If AND-match is too strict (0 results), fall back to first term only but cap at 3
+        if not results and candidates:
+            results = candidates[:3]
+
+        return results[:n]
+    except Exception:
+        return []
 
     return results[:n]
 

@@ -21,3 +21,24 @@ Cron: registered via OpenClaw cron, fires every 60 seconds
 ## Environment
 Requires: SUPABASE_URL, SUPABASE_SERVICE_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
 All sourced from /home/elliotbot/.config/agency-os/.env
+
+---
+
+## At-a-Glance
+
+| | |
+|---|---|
+| **When to use** | See above — follow LAW XII skill-first hierarchy |
+| **When NOT to use** | Do not bypass this skill to call integrations directly |
+| **Caveats** | Verify credentials are set before calling |
+| **LAW XII** | This skill is the canonical interface. Direct calls to src/integrations/ outside skill execution are forbidden. |
+
+## Error Handling
+
+| Code | Category | Action |
+|------|----------|--------|
+| 401/403 | Auth | Check credentials in .env — escalate to Dave |
+| 429 | Rate limit | Back off, retry with exponential delay |
+| 500+ | Server | Log, retry once, then escalate to devops-6 |
+| Timeout | Network | Retry with increased timeout, then escalate |
+

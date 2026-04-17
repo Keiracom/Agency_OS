@@ -270,7 +270,7 @@ async def _increment_access_counts(rows: list[dict], headers: dict) -> None:
 
 
 async def find_matching_commits(message_text: str, n: int = 5) -> list[str]:
-    """Search git commit messages for terms from the message. Local, no cost."""
+    """Search git commit messages — AND match (all terms must appear). Local, no cost."""
     import asyncio
 
     words = [w.strip(".,!?()[]\"'").lower() for w in message_text.split()]
@@ -278,26 +278,34 @@ async def find_matching_commits(message_text: str, n: int = 5) -> list[str]:
     if not terms:
         return []
 
-    results: list[str] = []
-    seen: set[str] = set()
     repo_dir = os.environ.get("WORK_DIR_OVERRIDE", "/home/elliotbot/clawd/Agency_OS")
 
-    for term in terms:
-        try:
-            proc = await asyncio.create_subprocess_exec(
-                "git", "log", "--all", "--oneline", f"--grep={term}", "-i",
-                "--max-count=5",
-                cwd=repo_dir,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.DEVNULL,
-            )
-            stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=3)
-            for line in stdout.decode().strip().splitlines():
-                if line and line not in seen:
-                    seen.add(line)
-                    results.append(line)
-        except Exception:
-            pass
+    # AND-match: search for first term, then filter results that contain ALL other terms
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "git", "log", "--all", "--oneline", f"--grep={terms[0]}", "-i",
+            "--max-count=50",
+            cwd=repo_dir,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.DEVNULL,
+        )
+        stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=3)
+        candidates = stdout.decode().strip().splitlines()
+
+        # Filter: commit must contain ALL query terms (AND, not OR)
+        results = []
+        for line in candidates:
+            lower_line = line.lower()
+            if all(t in lower_line for t in terms):
+                results.append(line)
+
+        # If AND-match is too strict (0 results), fall back to first term only but cap at 3
+        if not results and candidates:
+            results = candidates[:3]
+
+        return results[:n]
+    except Exception:
+        return []
 
     return results[:n]
 

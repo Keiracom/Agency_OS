@@ -33,6 +33,7 @@ from telegram.ext import (
 )
 
 from src.telegram_bot.tag_handler import handle_tag, handle_tag_confirmation
+from src.telegram_bot.recall_handler import handle_recall
 
 # ---------------------------------------------------------------------------
 # Config
@@ -939,6 +940,7 @@ def main() -> None:
     app.add_handler(CommandHandler("relay", cmd_relay))
     app.add_handler(CommandHandler("help", cmd_help))
     app.add_handler(CommandHandler("tag", handle_tag))
+    app.add_handler(CommandHandler("recall", handle_recall))
 
     # Tag confirmation observer — must run BEFORE the main text fallback
     async def _tag_confirm_observer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

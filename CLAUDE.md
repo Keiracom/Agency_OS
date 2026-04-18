@@ -106,6 +106,8 @@ VALUES (gen_random_uuid(), 'daily_log', '<summary: what was done, PRs, decisions
 | GOV-9 | Two-Layer Directive Scrutiny — every directive triggers Layer 2 CTO scrutiny before Step 0. Report DIRECTIVE SCRUTINY — N GAPS FOUND or CLEAR before any execution |
 | GOV-10 | Resolve-Now-Not-Later — fix bounded gaps in current PR, not follow-up directives |
 | GOV-11 | Structural Audit Before Validation — stage audit within 7 days before any N>=20 validation run |
+
+> **Shared governance:** laws that apply to every callsign (e.g. LAW XVII — Callsign Discipline, Directive Acknowledgement, Claim-Before-Touch on Shared Files) live in `~/.claude/CLAUDE.md §Shared Governance Laws`. Treat that as authoritative for all-callsign rules; worktree laws above are Agency_OS-main specific.
 | GOV-12 | Gates As Code Not Comments — runtime enforcement required, not documentation-only |
 
 ## Directive + Validation Governance

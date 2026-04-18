@@ -475,9 +475,7 @@ async def _increment_access_counts(rows: list[dict], headers: dict) -> None:
                     current_meta = row.get("typed_metadata") or {}
                     payload["typed_metadata"] = {
                         **current_meta,
-                        "promoted_at": __import__("datetime").datetime.now(
-                            __import__("datetime").timezone.utc
-                        ).isoformat(),
+                        "promoted_at": _dt.datetime.now(_dt.timezone.utc).isoformat(),
                         "promoted_from_state": "tentative",
                     }
                     logger.info(

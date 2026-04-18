@@ -7,6 +7,8 @@ AU Spam Act 2003 key obligations:
 - s.18: Once opted out, the sender must not send further commercial electronic
         messages to that address on the relevant channel.
 - Maintaining a suppression list and audit trail is standard compliance practice.
+
+Suppression store: delegates to SuppressionManager (Supabase PostgREST + cache).
 """
 
 from __future__ import annotations
@@ -15,13 +17,16 @@ import logging
 from datetime import datetime, timezone
 from typing import Any
 
+from src.pipeline.suppression_manager import SuppressionManager, _store, _lock
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Suppression store — in-memory fallback; Supabase writes are best-effort
+# _SUPPRESSION is an alias to SuppressionManager's cache dict.
+# Tests that reference ch._SUPPRESSION directly continue to work.
 # ---------------------------------------------------------------------------
 
-_SUPPRESSION: dict[str, dict[str, Any]] = {}
+_SUPPRESSION = _store  # single source of truth — same dict object
 
 REASON_UNSUBSCRIBE = "unsubscribe"
 REASON_OPT_OUT = "opt_out"
@@ -41,6 +46,32 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+async def _write_supabase(record: dict) -> bool:
+    """Write to suppression_list via PostgREST. Parameterised — no SQL injection."""
+    try:
+        import httpx
+        import os
+        url = os.environ.get("SUPABASE_URL", "")
+        key = os.environ.get("SUPABASE_SERVICE_KEY", "")
+        if not url or not key:
+            return False
+        async with httpx.AsyncClient(timeout=5) as client:
+            resp = await client.post(
+                f"{url}/rest/v1/suppression_list",
+                headers={
+                    "apikey": key,
+                    "Authorization": f"Bearer {key}",
+                    "Content-Type": "application/json",
+                    "Prefer": "resolution=merge-duplicates,return=minimal",
+                },
+                json=record,
+            )
+        return resp.status_code in (200, 201)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("compliance_handler: Supabase write failed (non-fatal): %s", exc)
+        return False
+
+
 def _upsert_suppression(
     email: str,
     reason: str,
@@ -48,10 +79,41 @@ def _upsert_suppression(
     source: str,
     extra: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Write suppression record to in-memory store and attempt Supabase write."""
+    """Delegate suppression write to SuppressionManager (cache + async DB upsert).
+
+    The `reason` values used here (e.g. 'hard_bounce', 'opt_out') are compliance
+    handler specific; SuppressionManager maps them to its own VALID_REASONS set
+    where needed.  We pass through and let the manager normalise.
+    """
+    # Map compliance reasons to SuppressionManager's VALID_REASONS
+    _reason_map = {
+        REASON_UNSUBSCRIBE: "unsubscribe",
+        REASON_OPT_OUT: "unsubscribe",
+        REASON_HARD_BOUNCE: "bounce",
+        REASON_COMPLAINT: "complaint",
+    }
+    sm_reason = _reason_map.get(reason, "manual")
+
+    result = SuppressionManager.add_to_suppression(
+        email=email,
+        reason=sm_reason,
+        channel=channel,
+        source=source,
+    )
+
+    now = result.get("suppressed_at", _now_iso())
+
+    # Overwrite _store entry with original compliance reason so that
+    # generate_compliance_report sees the correct label (e.g. "hard_bounce").
+    key = email.lower().strip()
+    with _lock:
+        if key in _store:
+            _store[key]["reason"] = reason
+
+    # Build the canonical record dict for callers (preserves original reason label)
     record: dict[str, Any] = {
         "email": email,
-        "suppressed_at": _now_iso(),
+        "suppressed_at": now,
         "reason": reason,
         "channel": channel,
         "source": source,
@@ -59,61 +121,11 @@ def _upsert_suppression(
     if extra:
         record.update(extra)
 
-    # In-memory store (keyed by email; channel=all overwrites any per-channel entry)
-    key = email.lower()
-    existing = _SUPPRESSION.get(key)
-    if existing is None or channel == CHANNEL_ALL or existing.get("channel") != CHANNEL_ALL:
-        _SUPPRESSION[key] = record
-
-    # Best-effort Supabase write via MCP bridge (non-fatal if unavailable)
-    try:
-        _write_supabase(record)
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("compliance_handler: Supabase write failed (non-fatal): %s", exc)
-
     logger.info(
         "compliance_handler: suppressed email=%s reason=%s channel=%s source=%s",
         email, reason, channel, source,
     )
     return record
-
-
-def _write_supabase(record: dict[str, Any]) -> None:
-    """Attempt to upsert suppression record to public.suppression_list via MCP bridge.
-
-    Mirrors the pattern used in agent_memories: fire-and-forget, non-fatal.
-    Table DDL (run once):
-        CREATE TABLE IF NOT EXISTS public.suppression_list (
-            email        TEXT PRIMARY KEY,
-            suppressed_at TIMESTAMPTZ NOT NULL,
-            reason       TEXT NOT NULL,
-            channel      TEXT NOT NULL DEFAULT 'all',
-            source       TEXT NOT NULL DEFAULT 'manual'
-        );
-    """
-    import json
-    import subprocess
-
-    sql = (
-        "INSERT INTO public.suppression_list "
-        "(email, suppressed_at, reason, channel, source) "
-        "VALUES ('{email}', '{suppressed_at}', '{reason}', '{channel}', '{source}') "
-        "ON CONFLICT (email) DO UPDATE SET "
-        "suppressed_at = EXCLUDED.suppressed_at, "
-        "reason = EXCLUDED.reason, "
-        "channel = EXCLUDED.channel, "
-        "source = EXCLUDED.source;"
-    ).format(**{k: str(v).replace("'", "''") for k, v in record.items()})
-
-    bridge = (
-        "/home/elliotbot/clawd/skills/mcp-bridge/scripts/mcp-bridge.js"
-    )
-    args = json.dumps({"query": sql})
-    subprocess.run(
-        ["node", bridge, "call", "supabase", "execute_sql", args],
-        capture_output=True,
-        timeout=10,
-    )
 
 
 # ---------------------------------------------------------------------------

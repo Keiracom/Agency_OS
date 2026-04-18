@@ -94,7 +94,7 @@ def check_similarity_via_rpc(
     Use match_agent_memories RPC to get similarity score for a candidate.
     Returns float similarity or None if not found / error.
     """
-    rpc_url = supabase_url() + "/rest/v1/rpc/match_agent_memories_include_tentative"
+    rpc_url = supabase_url() + "/rest/v1/rpc/match_agent_memories"
     payload = {
         "query_embedding": embedding,
         "match_count": 10,

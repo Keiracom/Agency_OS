@@ -1010,6 +1010,9 @@ Second Claude Code instance scaffold (callsign aiden). Worktree at /home/elliotb
 ### [ELLIOT] Directive LISTENER-GOV-F2 (PR #0, 2026-04-18)
 v1→v1.5 ratified post-hoc. Migration 103 committed to repo (supabase/migrations/103_cognitive_columns.sql). ceo_memory key ceo:listener_architecture_v1_5 written with full scope delta. 17 columns beyond v1 spec formally ratified by Dave 2026-04-18.
 
+### [ELLIOT] Directive LISTENER-GOV-F4-PART1 (2026-04-18)
+OpenAI ratified as permanent LLM provider for the listener subsystem. Rationale: Dave stays on Anthropic Max plan (no API billing); OpenAI keeps listener spend in separate credit pool; Anthropic has no embeddings API. Models ratified: text-embedding-3-small (embeddings in memory_listener.py), gpt-4o-mini (discernment in listener_discernment.py, save extraction in save_handler.py, query expansion MultiQueryRetriever in memory_listener.py). Budget trigger DEFERRED to F4-PART2 (scheduled 2026-04-25, requires 7 days cost tracking data). Migration triggers: if Anthropic releases embedding API on Max plan, or if monthly OpenAI spend exceeds Part 2 threshold.
+
 ### [ELLIOT+AIDEN] Directive LISTENER-MEASURE-V1 (2026-04-18)
 Retrieval quality metrics for listener. Elliot side: src/telegram_bot/retrieval_metrics.py — tokenize(), compute_cited_flags() (2-token overlap threshold), compute_hit_rate() (Hit Rate@5), compute_mrr() (MRR@5), compute_source_type_breakdown(), generate_summary(). Stopwords: English common + callsigns + AU-biz domain terms. Commit 9606475d. Aiden side: outbox-watcher annotation hook in chat_bot.py — _annotate_last_retrieval_with_cited_terms() fires before each outbox send, appends mv_annotation JSONL event with per-item bot_cited flags. 60s window, same-callsign scoping, no-recursion guard. Commit c373956b. Both on main.
 

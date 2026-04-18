@@ -71,14 +71,15 @@ def fetch_candidate_superseders(
     client: httpx.Client, callsign: str, source_type: str, after_ts: str
 ) -> list[dict]:
     """Fetch rows with same callsign + source_type created after the superseded row."""
+    from urllib.parse import quote
     url = (
         supabase_url()
         + "/rest/v1/agent_memories"
         f"?callsign=eq.{callsign}"
         f"&source_type=eq.{source_type}"
-        f"&created_at=gt.{after_ts}"
+        f"&created_at=gt.{quote(after_ts)}"
         "&state=neq.superseded"
-        "&select=id,created_at,embedding"
+        "&select=id,created_at"
         "&order=created_at.asc"
         "&limit=10"
     )

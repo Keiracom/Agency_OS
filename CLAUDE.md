@@ -108,7 +108,7 @@ VALUES (gen_random_uuid(), 'daily_log', '<summary: what was done, PRs, decisions
 | GOV-11 | Structural Audit Before Validation — stage audit within 7 days before any N>=20 validation run |
 | GOV-12 | Gates As Code Not Comments — runtime enforcement required, not documentation-only |
 
-> **Shared governance:** laws that apply to every callsign (e.g. LAW XVII — Callsign Discipline, Directive Acknowledgement) live in `~/.claude/CLAUDE.md §Shared Governance Laws`. Treat that as authoritative for all-callsign rules; worktree laws below are Aiden-worktree specific.
+> **Shared governance:** laws that apply to every callsign (e.g. LAW XVII — Callsign Discipline, Directive Acknowledgement, Claim-Before-Touch on Shared Files) live in `~/.claude/CLAUDE.md §Shared Governance Laws`. Treat that as authoritative for all-callsign rules; worktree laws below are Aiden-worktree specific.
 
 ## Group Chat Plumbing
 

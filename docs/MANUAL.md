@@ -1009,6 +1009,10 @@ Second Claude Code instance scaffold (callsign aiden). Worktree at /home/elliotb
 
 ### [ELLIOT] Directive LISTENER-GOV-F2 (PR #0, 2026-04-18)
 v1→v1.5 ratified post-hoc. Migration 103 committed to repo (supabase/migrations/103_cognitive_columns.sql). ceo_memory key ceo:listener_architecture_v1_5 written with full scope delta. 17 columns beyond v1 spec formally ratified by Dave 2026-04-18.
+
+### [ELLIOT+AIDEN] Directive LISTENER-MEASURE-V1 (2026-04-18)
+Retrieval quality metrics for listener. Elliot side: src/telegram_bot/retrieval_metrics.py — tokenize(), compute_cited_flags() (2-token overlap threshold), compute_hit_rate() (Hit Rate@5), compute_mrr() (MRR@5), compute_source_type_breakdown(), generate_summary(). Stopwords: English common + callsigns + AU-biz domain terms. Commit 9606475d. Aiden side: outbox-watcher annotation hook in chat_bot.py — _annotate_last_retrieval_with_cited_terms() fires before each outbox send, appends mv_annotation JSONL event with per-item bot_cited flags. 60s window, same-callsign scoping, no-recursion guard. Commit c373956b. Both on main.
+
 ## SECTION 18 — OUTREACH + CONTENT (pre-launch)
 
 Landing page (`agency_os_v5.html`) is built with Bloomberg aesthetic and "Who built yours?" hero. Pending: Remotion video hero, Stripe Checkout on pricing CTAs, live founding counter from Supabase. Video strategy: 5 versions (dashboard animation, Maya walkthrough, HeyGen avatar, customer-specific, results) built via Remotion + HeyGen (Maya avatar). Content distribution via Prefect Flow #28 (Claude API → Remotion → HeyGen → distribution APIs). Demo mode active via `?demo=true` URL param with seeded Supabase demo tenant. Onboarding starts with a 15-minute activation call (CRM + LinkedIn connect, watch dashboard populate live).

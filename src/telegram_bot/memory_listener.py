@@ -39,6 +39,89 @@ GIT_STOPWORDS: set[str] = STOPWORDS | {
 }
 
 
+async def _expand_query(query_text: str) -> list[str]:
+    """Generate 3 alternative phrasings via GPT-4o-mini for MultiQueryRetriever.
+
+    Returns [original_query, variation_1, variation_2, variation_3].
+    Best-effort: returns [query_text] on any failure — caller falls back to original.
+    Adds ~500ms latency (one GPT-4o-mini call). Temperature 0.3 for mild diversity.
+    """
+    if not OPENAI_API_KEY:
+        return [query_text]
+    prompt = (
+        f"Generate 3 alternative search queries for finding relevant memories about: '{query_text}'. "
+        'Return JSON: {"variations": ["query1", "query2", "query3"]}'
+    )
+    try:
+        async with httpx.AsyncClient(timeout=8) as client:
+            resp = await client.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {OPENAI_API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": "gpt-4o-mini",
+                    "temperature": 0.3,
+                    "messages": [
+                        {"role": "user", "content": prompt}
+                    ],
+                    "response_format": {"type": "json_object"},
+                },
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                content = data["choices"][0]["message"]["content"]
+                parsed = json.loads(content)
+                variations = parsed.get("variations", [])
+                if isinstance(variations, list) and variations:
+                    return [query_text] + [v for v in variations if isinstance(v, str)][:3]
+    except Exception as exc:
+        logger.warning(f"[memory-listener] query expansion failed: {exc}")
+    return [query_text]
+
+
+def _merge_variation_results(variation_results: list[list[dict]]) -> list[dict]:
+    """Merge results from multiple query variations.
+
+    Dedup by row ID. Rows found by 2+ variations get similarity * 1.2.
+    Rows found by 3+ variations get similarity * 1.5.
+    Returns merged list sorted by (boosted) similarity descending.
+    """
+    hit_counts: dict[str, int] = {}
+    rows_by_id: dict[str, dict] = {}
+
+    for result_set in variation_results:
+        seen_in_this_variation: set[str] = set()
+        for row in result_set:
+            row_id = row.get("id")
+            if not row_id:
+                continue
+            if row_id not in seen_in_this_variation:
+                seen_in_this_variation.add(row_id)
+                hit_counts[row_id] = hit_counts.get(row_id, 0) + 1
+                if row_id not in rows_by_id:
+                    rows_by_id[row_id] = dict(row)
+
+    merged: list[dict] = []
+    for row_id, row in rows_by_id.items():
+        count = hit_counts.get(row_id, 1)
+        if count >= 3:
+            boost = 1.5
+        elif count >= 2:
+            boost = 1.2
+        else:
+            boost = 1.0
+        row = dict(row)
+        base_sim = float(row.get("similarity", 0.0) or 0.0)
+        row["similarity"] = base_sim * boost
+        row["_variation_hits"] = count
+        merged.append(row)
+
+    merged.sort(key=lambda r: r.get("similarity", 0.0), reverse=True)
+    return merged
+
+
 async def _embed_text(text: str) -> list[float] | None:
     """Generate embedding via OpenAI text-embedding-3-small. Returns None on failure."""
     if not OPENAI_API_KEY:
@@ -84,29 +167,49 @@ async def find_relevant_memories(
 
     # Strip callsign prefixes before embedding — [AIDEN]/[ELLIOT] tags add noise to cosine
     import re
+    import asyncio as _asyncio
     clean_text = re.sub(r'^\[(?:ELLIOT|AIDEN|SCOUT|DAVE)\]\s*', '', message_text.strip())
     clean_text = re.sub(r'^\[(?:ELLIOT|AIDEN|SCOUT|DAVE)\]\s*', '', clean_text)  # double prefix
+    query = clean_text or message_text
 
-    # L2 Discernment: retrieve 20 via hybrid search, GPT-4o-mini picks best 5 + summarises
-    embedding = await _embed_text(clean_text or message_text)
-    if embedding is not None:
-        # Retrieve wide (20 candidates)
-        raw_results = await _hybrid_search(clean_text or message_text, embedding, 20, headers)
+    # MultiQueryRetriever: expand query into variations, search each in parallel
+    variations = await _expand_query(query)
+    logger.info(f"[memory-listener] query expanded to {len(variations)} variations")
+
+    # Embed all variations in parallel
+    embeddings: list[list[float] | None] = await _asyncio.gather(
+        *[_embed_text(v) for v in variations]
+    )
+
+    # Only proceed with variations that have valid embeddings
+    valid_pairs = [(v, emb) for v, emb in zip(variations, embeddings) if emb is not None]
+
+    if valid_pairs:
+        # Search hybrid for every variation in parallel (20 candidates each)
+        variation_results: list[list[dict]] = await _asyncio.gather(
+            *[_hybrid_search(v, emb, 20, headers) for v, emb in valid_pairs]
+        )
+
+        # Merge: dedup + boost rows found by multiple variations
+        raw_results = _merge_variation_results(list(variation_results))
+
         if raw_results:
             results = _apply_trust_weighting(raw_results)
             # L2: LLM discernment — pick best N and summarise
             from src.telegram_bot.listener_discernment import discern_and_summarise
-            discerned = await discern_and_summarise(clean_text or message_text, results)
+            discerned = await discern_and_summarise(query, results)
             if discerned is not None:
                 await _increment_access_counts(discerned["selected_rows"], headers)
-                _log_retrieval_event(message_text, raw_results, discerned["selected_rows"], source="hybrid+discern")
+                source_tag = "multiquery+hybrid+discern" if len(valid_pairs) > 1 else "hybrid+discern"
+                _log_retrieval_event(message_text, raw_results, discerned["selected_rows"], source=source_tag)
                 return discerned  # dict with 'selected_rows' + 'summary'
             # Fallback if discernment fails: return top-N from trust weighting
             results = results[:n]
             await _increment_access_counts(results, headers)
         else:
             results = []
-        _log_retrieval_event(message_text, raw_results, results, source="hybrid")
+        source_tag = "multiquery+hybrid" if len(valid_pairs) > 1 else "hybrid"
+        _log_retrieval_event(message_text, raw_results, results, source=source_tag)
         return results
 
     # Fallback: ILIKE text search only when embedding generation FAILED

@@ -67,10 +67,12 @@ VALUES (gen_random_uuid(), 'daily_log', '<summary: what was done, PRs, decisions
 | LAW IX | Session Memory — Supabase is SOLE persistent memory |
 | LAW XI | Orchestrate — Elliottbot delegates, never executes task work directly |
 | LAW XIV | Raw Output Mandate — paste verbatim terminal output, never summarise |
-| LAW XV | Three-Store Completion — docs/MANUAL.md + ceo_memory + cis_directive_metrics |
+| LAW XV | Four-Store Completion — docs/MANUAL.md + ceo_memory + cis_directive_metrics + Google Drive mirror |
 | LAW XV-A | Skills Are Mandatory — cat skill file before any matching task |
 | LAW XV-B | DoD Is Mandatory — cat DEFINITION_OF_DONE.md before reporting complete |
 | LAW XV-C | Governance Docs Immutable — never recreate/modify without explicit CEO directive |
+
+> **Shared governance:** laws that apply to every callsign (e.g. LAW XVII — Callsign Discipline, Directive Acknowledgement, Claim-Before-Touch on Shared Files) live in `~/.claude/CLAUDE.md §Shared Governance Laws`. Treat that as authoritative for all-callsign rules.
 
 ## Dead References (Do Not Use)
 
@@ -78,11 +80,11 @@ VALUES (gen_random_uuid(), 'daily_log', '<summary: what was done, PRs, decisions
 |------|-------------|
 | Proxycurl | Bright Data LinkedIn Profile (gd_l1viktl72bvl7bjuj0) |
 | Apollo (enrichment) | Waterfall Tiers 1-5 |
-| Apify | Bright Data GMB Web Scraper (gd_m8ebnr0q2qlklc02fz) |
+| Apify (GMB scraping) | Bright Data GMB Web Scraper (gd_m8ebnr0q2qlklc02fz). EXCEPTION: Apify harvestapi/linkedin-profile-scraper active in Pipeline F v2.1 for L2 LinkedIn verification. Apify facebook-posts-scraper active for Stage 9 social. |
 | SDK agents (enrichment/email/voice_kb) | Smart Prompts + sdk_brain.py |
 | MEMORY.md (new writes) | Supabase elliot_internal.memories |
 | HANDOFF.md (new writes) | Supabase elliot_internal.memories |
-| HunterIO (email verify) | Leadmagic ($0.015/email) |
+| HunterIO (email verify) | Leadmagic ($0.015/email). EXCEPTION: Hunter email-finder active in Pipeline F v2.1 as L2 email fallback (score >= 70). |
 | Kaspr | Leadmagic mobile ($0.077) |
 | ABNFirstDiscovery | MapsFirstDiscovery (Waterfall v3) |
 

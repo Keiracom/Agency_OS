@@ -445,6 +445,52 @@ async def find_matching_commits(message_text: str, n: int = 5) -> list[str]:
     return results[:n]
 
 
+async def find_repo_mentions(message_text: str, n: int = 5) -> list[str]:
+    """Search repo file contents for terms (git grep). Catches codebase facts
+    invisible to agent_memories — deploy names, constants, file paths, config."""
+    import asyncio
+
+    words = [w.strip(".,!?()[]\"'").lower() for w in message_text.split()]
+    terms = [w for w in words if len(w) > 2 and w not in GIT_STOPWORDS][:3]
+    if not terms:
+        return []
+
+    repo_dir = os.environ.get("WORK_DIR_OVERRIDE", "/home/elliotbot/clawd/Agency_OS")
+    results: list[str] = []
+    seen: set[str] = set()
+
+    for term in terms:
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                "git", "grep", "-i", "-l", term,
+                cwd=repo_dir,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.DEVNULL,
+            )
+            stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=3)
+            files = stdout.decode().strip().splitlines()
+            for f in files[:3]:
+                if f and f not in seen and not f.startswith("node_modules") and not f.startswith("frontend/node_modules"):
+                    seen.add(f)
+                    # Get matching line for context
+                    try:
+                        proc2 = await asyncio.create_subprocess_exec(
+                            "git", "grep", "-i", "-m", "1", term, "--", f,
+                            cwd=repo_dir,
+                            stdout=asyncio.subprocess.PIPE,
+                            stderr=asyncio.subprocess.DEVNULL,
+                        )
+                        stdout2, _ = await asyncio.wait_for(proc2.communicate(), timeout=2)
+                        line = stdout2.decode().strip()[:120]
+                        results.append(line)
+                    except Exception:
+                        results.append(f)
+        except Exception:
+            pass
+
+    return results[:n]
+
+
 # ---------------------------------------------------------------------------
 # Write side — auto-capture from conversations (bidirectional)
 # ---------------------------------------------------------------------------
@@ -541,7 +587,7 @@ async def auto_capture_message(
         logger.warning(f"[auto-capture] error: {exc}")
 
 
-def format_memory_context(memories, commits: list[str] | None = None) -> str:
+def format_memory_context(memories, commits: list[str] | None = None, repo_hits: list[str] | None = None) -> str:
     """Format retrieved memories + git commits into context blocks for injection.
 
     memories can be:
@@ -587,5 +633,11 @@ def format_memory_context(memories, commits: list[str] | None = None) -> str:
         for c in commits:
             lines.append(f"  {c}")
         lines.append("[END GIT CONTEXT]")
+
+    if repo_hits:
+        lines.append("[REPO CONTEXT — matching code/docs:]")
+        for r in repo_hits:
+            lines.append(f"  {r}")
+        lines.append("[END REPO CONTEXT]")
 
     return "\n".join(lines)

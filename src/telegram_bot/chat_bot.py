@@ -35,7 +35,7 @@ from telegram.ext import (
 )
 
 from src.telegram_bot.save_handler import cmd_save
-from src.telegram_bot.memory_listener import find_relevant_memories, find_matching_commits, format_memory_context, auto_capture_message
+from src.telegram_bot.memory_listener import find_relevant_memories, find_matching_commits, find_repo_mentions, format_memory_context, auto_capture_message
 
 # ---------------------------------------------------------------------------
 # Config
@@ -616,9 +616,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         try:
             memories = await find_relevant_memories(raw_text)
             commits = await find_matching_commits(raw_text)
-            if memories or commits:
-                memory_context = format_memory_context(memories, commits)
-                logger.info(f"[memory-listener] surfaced {len(memories)} memories + {len(commits)} commits")
+            repo_hits = await find_repo_mentions(raw_text)
+            if memories or commits or repo_hits:
+                memory_context = format_memory_context(memories, commits, repo_hits)
+                logger.info(f"[memory-listener] surfaced memories + {len(commits)} commits + {len(repo_hits)} repo hits")
         except Exception as _mem_exc:
             logger.warning(f"[memory-listener] non-fatal error: {_mem_exc}")
 

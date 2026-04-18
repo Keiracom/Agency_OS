@@ -1006,6 +1006,9 @@ Every Step 0 RESTATE, Telegram outbound message, PR title, commit trailer, and t
 
 ### [ELLIOT] Directive AIDEN-SCAFFOLD (PR #340, 2026-04-16)
 Second Claude Code instance scaffold (callsign aiden). Worktree at /home/elliotbot/clawd/Agency_OS-aiden on branch aiden/scaffold. IDENTITY.md per worktree. LAW XVII Callsign Discipline ratified. three_store_save.py callsign-aware (default elliot, empty fails loud per GOV-12). chat_bot.py parameterised by CALLSIGN + WORK_DIR_OVERRIDE. systemd unit aiden-telegram.service registered (not enabled — Dave enables after token verification). Migration: cis_directive_metrics.callsign TEXT NOT NULL DEFAULT elliot. .env.aiden created (gitignored, chmod 600). pytest 1510/1/28 (+5 callsign tests).
+
+### [ELLIOT] Directive LISTENER-GOV-F2 (PR #0, 2026-04-18)
+v1→v1.5 ratified post-hoc. Migration 103 committed to repo (supabase/migrations/103_cognitive_columns.sql). ceo_memory key ceo:listener_architecture_v1_5 written with full scope delta. 17 columns beyond v1 spec formally ratified by Dave 2026-04-18.
 ## SECTION 18 — OUTREACH + CONTENT (pre-launch)
 
 Landing page (`agency_os_v5.html`) is built with Bloomberg aesthetic and "Who built yours?" hero. Pending: Remotion video hero, Stripe Checkout on pricing CTAs, live founding counter from Supabase. Video strategy: 5 versions (dashboard animation, Maya walkthrough, HeyGen avatar, customer-specific, results) built via Remotion + HeyGen (Maya avatar). Content distribution via Prefect Flow #28 (Claude API → Remotion → HeyGen → distribution APIs). Demo mode active via `?demo=true` URL param with seeded Supabase demo tenant. Onboarding starts with a 15-minute activation call (CRM + LinkedIn connect, watch dashboard populate live).

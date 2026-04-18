@@ -174,31 +174,11 @@ def _log_retrieval_event(
         logger.warning(f"[memory-listener] telemetry log failed: {exc}")
 
 
-def _filter_by_word_overlap(results: list[dict], query_text: str) -> list[dict]:
-    """Require each row to share at least one >4-char non-stopword token with
-    the query. Prunes embedding false-positives on topically-unrelated content.
-
-    Uses GIT_STOPWORDS (superset of STOPWORDS + callsigns + commit-msg verbs)
-    because our callsigns ('elliot', 'aiden', 'dave', 'scout', 'claude') appear
-    in nearly every memory row — if they're allowed as query terms they'll
-    match everything and the filter does nothing."""
-    query_words = {
-        w.strip(".,!?()[]\"'").lower()
-        for w in query_text.split()
-        if len(w.strip(".,!?()[]\"'")) > 4
-    }
-    query_words -= GIT_STOPWORDS
-    if not query_words:
-        return results  # no content words to filter on — keep embedding result as-is
-    # Require at least 2 matching words (or 1 if query has fewer than 3 content words)
-    min_overlap = 2 if len(query_words) >= 3 else 1
-    filtered: list[dict] = []
-    for row in results:
-        content = (row.get("content") or "").lower()
-        overlap_count = sum(1 for qw in query_words if qw in content)
-        if overlap_count >= min_overlap:
-            filtered.append(row)
-    return filtered
+# _filter_by_word_overlap REMOVED — L2 discernment replaces it as the sole
+# intelligent filter. Word-overlap was a cheap heuristic that pre-empted L2
+# on typo/synonym queries (e.g. 'repi' killed all 5 embedding matches).
+# L2 handles both precision AND typo tolerance. Removed per architectural
+# decision during listener tuning session.
 
 
 # Source-type trust weights — multiply similarity to reorder results.

@@ -1010,6 +1010,9 @@ Second Claude Code instance scaffold (callsign aiden). Worktree at /home/elliotb
 ### [ELLIOT] Directive LISTENER-GOV-F2 (PR #0, 2026-04-18)
 v1→v1.5 ratified post-hoc. Migration 103 committed to repo (supabase/migrations/103_cognitive_columns.sql). ceo_memory key ceo:listener_architecture_v1_5 written with full scope delta. 17 columns beyond v1 spec formally ratified by Dave 2026-04-18.
 
+### [ELLIOT] Directive LISTENER-SCHEMA-F1 (PR #361, 2026-04-18)
+Schema cleanup per F1 audit finding. Dropped 5 dead columns (provenance, signoff_status, category, business_score, learning_score) via migration 106. Wired promoted_from_id on tentative→confirmed promotion (self-referencing FK + typed_metadata.promoted_at breadcrumb — Dave-approved pattern). PROMOTION FIRED log line added. Backfill script run: 2/17 superseded rows matched (backfill_inferred: true), 15 failed (below 0.85 threshold, backfill_failed: true), 0 ambiguous. contradicted_by_id deferred with SQL COMMENT. Technical debt documented in ceo:technical_debt.promoted_from_id_semantics (FK asymmetry: supersedes_id→other row, promoted_from_id→self). Aiden peer-reviewed: caught RPC name mismatch + ambiguity handler gap, both fixed pre-merge.
+
 ### [ELLIOT] Directive LISTENER-GOV-F4-PART1 (2026-04-18)
 OpenAI ratified as permanent LLM provider for the listener subsystem. Rationale: Dave stays on Anthropic Max plan (no API billing); OpenAI keeps listener spend in separate credit pool; Anthropic has no embeddings API. Models ratified: text-embedding-3-small (embeddings in memory_listener.py), gpt-4o-mini (discernment in listener_discernment.py, save extraction in save_handler.py, query expansion MultiQueryRetriever in memory_listener.py). Budget trigger DEFERRED to F4-PART2 (scheduled 2026-04-25, requires 7 days cost tracking data). Migration triggers: if Anthropic releases embedding API on Max plan, or if monthly OpenAI spend exceeds Part 2 threshold.
 

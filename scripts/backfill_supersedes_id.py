@@ -164,19 +164,16 @@ def main() -> None:
                 failed += 1
                 continue
 
-            # Check similarity for each candidate (nearest in time = first)
-            best_id = None
-            best_similarity = 0.0
+            # Check similarity for ALL candidates — reject ambiguous matches
+            above_threshold: list[tuple[str, float]] = []
             for cand in candidates:
                 cand_id = cand["id"]
                 sim = check_similarity_via_rpc(client, embedding, cand_id)
-                if sim is not None and sim > best_similarity:
-                    best_similarity = sim
-                    best_id = cand_id
-                if best_similarity >= SIMILARITY_THRESHOLD:
-                    break
+                if sim is not None and sim >= SIMILARITY_THRESHOLD:
+                    above_threshold.append((cand_id, sim))
 
-            if best_id and best_similarity >= SIMILARITY_THRESHOLD:
+            if len(above_threshold) == 1:
+                best_id, best_similarity = above_threshold[0]
                 print(
                     f"  MATCH found: superseder={best_id} similarity={best_similarity:.4f}"
                 )
@@ -199,15 +196,31 @@ def main() -> None:
                 else:
                     print(f"  PATCH FAILED — manual review needed")
                     failed += 1
-            else:
+            elif len(above_threshold) > 1:
+                ambiguous_ids = [cid for cid, _ in above_threshold]
                 print(
-                    f"  NO MATCH (best_similarity={best_similarity:.4f}) — marking backfill_failed"
+                    f"  AMBIGUOUS — {len(above_threshold)} candidates above threshold: "
+                    f"{ambiguous_ids} — marking backfill_failed + backfill_ambiguous"
                 )
                 meta = merge_typed_metadata(
                     current_meta,
                     {
                         "backfill_failed": True,
-                        "backfill_best_similarity": round(best_similarity, 4),
+                        "backfill_ambiguous": True,
+                        "backfill_ambiguous_candidates": ambiguous_ids,
+                        "backfill_ts": datetime.now(timezone.utc).isoformat(),
+                    },
+                )
+                patch_row(client, row_id, {"typed_metadata": meta})
+                failed += 1
+            else:
+                print(
+                    f"  NO MATCH — 0 of {len(candidates)} candidates above threshold — marking backfill_failed"
+                )
+                meta = merge_typed_metadata(
+                    current_meta,
+                    {
+                        "backfill_failed": True,
                         "backfill_ts": datetime.now(timezone.utc).isoformat(),
                     },
                 )

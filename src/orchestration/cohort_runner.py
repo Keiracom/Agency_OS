@@ -49,6 +49,7 @@ from src.intelligence.stage6_enrich import run_stage6_enrich
 from src.intelligence.stage9_social import run_stage9_social
 from src.intelligence.verify_fills import run_verify_fills
 from src.utils.domain_blocklist import is_blocked
+from src.pipeline.latency_tracker import LatencyTracker
 
 logger = logging.getLogger(__name__)
 
@@ -191,8 +192,19 @@ def _new_domain(domain: str, category: str) -> dict:
         "drop_reason": None,
         "cost_usd": 0.0,
         "timings": {},
+        "latency_report": None,
         "errors": [],
+        "_latency_tracker": LatencyTracker(domain),
     }
+
+
+def _tracker(domain_data: dict) -> LatencyTracker:
+    """Return the domain's LatencyTracker, creating a fallback if absent."""
+    t = domain_data.get("_latency_tracker")
+    if t is None:
+        t = LatencyTracker(domain_data.get("domain", "unknown"))
+        domain_data["_latency_tracker"] = t
+    return t
 
 
 # ---------------------------------------------------------------------------
@@ -202,6 +214,7 @@ def _new_domain(domain: str, category: str) -> dict:
 
 async def _run_stage2(domain_data: dict, dfs: DFSLabsClient) -> dict:
     """Stage 2 VERIFY — 5 SERP queries per domain."""
+    _tracker(domain_data).start_stage("stage2")
     t0 = time.monotonic()
     try:
         result = await run_serp_verify(dfs, domain_data["domain"])
@@ -211,11 +224,13 @@ async def _run_stage2(domain_data: dict, dfs: DFSLabsClient) -> dict:
         domain_data["errors"].append(f"stage2: {exc}")
         domain_data["stage2"] = {}
     domain_data["timings"]["stage2"] = round(time.monotonic() - t0, 2)
+    _tracker(domain_data).end_stage("stage2")
     return domain_data
 
 
 async def _run_stage3(domain_data: dict, gemini: GeminiClient) -> dict:
     """Stage 3 IDENTIFY — Gemini identity + DM extraction."""
+    _tracker(domain_data).start_stage("stage3")
     t0 = time.monotonic()
     serp = domain_data.get("stage2") or {}
     try:
@@ -229,6 +244,7 @@ async def _run_stage3(domain_data: dict, gemini: GeminiClient) -> dict:
         domain_data["dropped_at"] = "stage3"
         domain_data["drop_reason"] = f"stage3_exception: {exc}"
         domain_data["timings"]["stage3"] = round(time.monotonic() - t0, 2)
+        _tracker(domain_data).end_stage("stage3")
         await _persist_drop_reason(domain_data)
         return domain_data
 
@@ -240,23 +256,28 @@ async def _run_stage3(domain_data: dict, gemini: GeminiClient) -> dict:
     if result.get("f_status") != "success":
         domain_data["dropped_at"] = "stage3"
         domain_data["drop_reason"] = f"stage3_failed: {result.get('f_failure_reason')}"
+        _tracker(domain_data).end_stage("stage3")
         await _persist_drop_reason(domain_data)
         return domain_data
     if content.get("is_enterprise_or_chain"):
         domain_data["dropped_at"] = "stage3"
         domain_data["drop_reason"] = "enterprise_or_chain"
+        _tracker(domain_data).end_stage("stage3")
         await _persist_drop_reason(domain_data)
         return domain_data
     if not (content.get("dm_candidate") or {}).get("name"):
         domain_data["dropped_at"] = "stage3"
         domain_data["drop_reason"] = "no_dm_found"
+        _tracker(domain_data).end_stage("stage3")
         await _persist_drop_reason(domain_data)
         return domain_data
+    _tracker(domain_data).end_stage("stage3")
     return domain_data
 
 
 async def _run_stage4(domain_data: dict, dfs: DFSLabsClient) -> dict:
     """Stage 4 SIGNAL — DFS signal bundle."""
+    _tracker(domain_data).start_stage("stage4")
     t0 = time.monotonic()
     biz = domain_data.get("stage3", {}).get("business_name")
     try:
@@ -268,11 +289,13 @@ async def _run_stage4(domain_data: dict, dfs: DFSLabsClient) -> dict:
     # Fixed cost: 10 DFS endpoints sum = $0.0775, rounded up to $0.078/domain (parallel-safe)
     domain_data["cost_usd"] += STAGE4_COST_PER_DOMAIN
     domain_data["timings"]["stage4"] = round(time.monotonic() - t0, 2)
+    _tracker(domain_data).end_stage("stage4")
     return domain_data
 
 
 async def _run_stage5(domain_data: dict) -> dict:
     """Stage 5 SCORE — prospect viability scoring (pure logic)."""
+    _tracker(domain_data).start_stage("stage5")
     t0 = time.monotonic()
     try:
         # FIX C1: inject Stage 2 ABN into stage3 bundle so scorer sees it
@@ -290,6 +313,7 @@ async def _run_stage5(domain_data: dict) -> dict:
         domain_data["dropped_at"] = "stage5"
         domain_data["drop_reason"] = f"score_exception: {exc}"
         domain_data["timings"]["stage5"] = round(time.monotonic() - t0, 4)
+        _tracker(domain_data).end_stage("stage5")
         await _persist_drop_reason(domain_data)
         return domain_data
 
@@ -302,6 +326,7 @@ async def _run_stage5(domain_data: dict) -> dict:
         domain_data["dropped_at"] = "stage5"
         domain_data["drop_reason"] = f"score_below_gate: {scores.get('composite_score')}"
         await _persist_drop_reason(domain_data)
+    _tracker(domain_data).end_stage("stage5")
     return domain_data
 
 
@@ -309,6 +334,7 @@ async def _run_stage6(domain_data: dict, dfs: DFSLabsClient) -> dict:
     """Stage 6 ENRICH — historical rank (gated: composite_score >= 60)."""
     if (domain_data.get("stage5") or {}).get("composite_score", 0) < 60:
         return domain_data
+    _tracker(domain_data).start_stage("stage6")
     t0 = time.monotonic()
     composite = domain_data["stage5"]["composite_score"]
     try:
@@ -319,11 +345,13 @@ async def _run_stage6(domain_data: dict, dfs: DFSLabsClient) -> dict:
     except Exception as exc:
         domain_data["errors"].append(f"stage6: {exc}")
     domain_data["timings"]["stage6"] = round(time.monotonic() - t0, 2)
+    _tracker(domain_data).end_stage("stage6")
     return domain_data
 
 
 async def _run_stage7(domain_data: dict, gemini: GeminiClient) -> dict:
     """Stage 7 ANALYSE — Gemini VR + outreach generation."""
+    _tracker(domain_data).start_stage("stage7")
     t0 = time.monotonic()
     identity = domain_data.get("stage3") or {}
     signals = domain_data.get("stage4") or {}
@@ -335,6 +363,7 @@ async def _run_stage7(domain_data: dict, gemini: GeminiClient) -> dict:
         domain_data["errors"].append(f"stage7: {exc}")
         domain_data["stage7"] = {}
     domain_data["timings"]["stage7"] = round(time.monotonic() - t0, 2)
+    _tracker(domain_data).end_stage("stage7")
     return domain_data
 
 
@@ -353,6 +382,7 @@ def _source_to_tier(source: str) -> str:
 
 async def _run_stage8(domain_data: dict, dfs: DFSLabsClient, bd: BrightDataClient | None = None) -> dict:
     """Stage 8 CONTACT — verify fills (8a) + unified contact waterfall (8b-d)."""
+    _tracker(domain_data).start_stage("stage8")
     t0 = time.monotonic()
     identity = domain_data.get("stage3") or {}
     dm = identity.get("dm_candidate") or {}
@@ -463,6 +493,7 @@ async def _run_stage8(domain_data: dict, dfs: DFSLabsClient, bd: BrightDataClien
     domain_data["stage8_contacts"] = contacts
 
     domain_data["timings"]["stage8"] = round(time.monotonic() - t0, 2)
+    _tracker(domain_data).end_stage("stage8")
     return domain_data
 
 
@@ -478,6 +509,7 @@ async def _run_stage9(domain_data: dict, bd: BrightDataClient) -> dict:
     )
     if not dm_li and not company_li:
         return domain_data
+    _tracker(domain_data).start_stage("stage9")
     t0 = time.monotonic()
     identity = domain_data.get("stage3") or {}
     dm = identity.get("dm_candidate") or {}
@@ -494,6 +526,7 @@ async def _run_stage9(domain_data: dict, bd: BrightDataClient) -> dict:
     except Exception as exc:
         domain_data["errors"].append(f"stage9: {exc}")
     domain_data["timings"]["stage9"] = round(time.monotonic() - t0, 2)
+    _tracker(domain_data).end_stage("stage9")
     return domain_data
 
 
@@ -503,6 +536,7 @@ async def _run_stage10(domain_data: dict) -> dict:
     email_data = contacts.get("email", {})
     if not email_data.get("email"):
         return domain_data
+    _tracker(domain_data).start_stage("stage10")
     t0 = time.monotonic()
     try:
         result = await run_stage10_vr_and_messaging(
@@ -519,11 +553,13 @@ async def _run_stage10(domain_data: dict) -> dict:
     except Exception as exc:
         domain_data["errors"].append(f"stage10: {exc}")
     domain_data["timings"]["stage10"] = round(time.monotonic() - t0, 2)
+    _tracker(domain_data).end_stage("stage10")
     return domain_data
 
 
 async def _run_stage11(domain_data: dict) -> dict:
     """Stage 11 CARD — assemble final lead card."""
+    _tracker(domain_data).start_stage("stage11")
     t0 = time.monotonic()
     try:
         # FIX M1+M2: merge stage8_verify ABN and LinkedIn into stage2 so card sees them
@@ -549,6 +585,8 @@ async def _run_stage11(domain_data: dict) -> dict:
     except Exception as exc:
         domain_data["errors"].append(f"stage11: {exc}")
     domain_data["timings"]["stage11"] = round(time.monotonic() - t0, 2)
+    _tracker(domain_data).end_stage("stage11")
+    domain_data["latency_report"] = _tracker(domain_data).report()
     return domain_data
 
 

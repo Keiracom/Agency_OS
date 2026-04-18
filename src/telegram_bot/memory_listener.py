@@ -471,8 +471,15 @@ async def _increment_access_counts(rows: list[dict], headers: dict) -> None:
                 current_state = row.get("state", "tentative")
                 if current_state == "tentative" and new_count >= PROMOTION_ACCESS_THRESHOLD:
                     payload["state"] = "confirmed"
+                    payload["promoted_from_id"] = row["id"]
+                    current_meta = row.get("typed_metadata") or {}
+                    payload["typed_metadata"] = {
+                        **current_meta,
+                        "promoted_at": _dt.datetime.now(_dt.timezone.utc).isoformat(),
+                        "promoted_from_state": "tentative",
+                    }
                     logger.info(
-                        f"[memory-listener] promoting id={row['id']} tentative→confirmed "
+                        f"[memory-listener] PROMOTION FIRED id={row['id']} tentative→confirmed "
                         f"(access_count={new_count})"
                     )
                 try:

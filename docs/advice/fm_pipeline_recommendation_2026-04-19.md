@@ -82,7 +82,7 @@ ContactOut search-first pipeline. No GMB discovery (FMs don't own businesses on 
 - Prospeo: ~$0.03/lookup as last resort
 - Blended estimate: $2.50 AUD total
 
-**Yield:** Hunter + Leadmagic combined email hit rate: ~65-75% based on D2.2 evidence (Pipeline F saw 74% ContactOut email match). Enterprise domains have better coverage. Expect: 100-115 emails from 150 attempts.
+**Yield:** Estimate with wide confidence interval: 40-85%. D2.2 showed 74% ContactOut email match but on 12 SMBs, not enterprise FMs. Enterprise FM email footprint is untested — could be better (corporate domains well-indexed) or worse (FMs less publicly listed than CEOs/owners). Will re-baseline after first 20 processed. Conservative planning: 60% = 90 emails from 150 attempts; expand company list if short.
 
 ---
 
@@ -131,7 +131,7 @@ ContactOut search-first pipeline. No GMB discovery (FMs don't own businesses on 
 
 **Cost per complete FM record: ~$0.06 AUD**
 
-**Wall-clock time:** ~2-3 hours for script execution (ContactOut search is rate-limited). Manual curation of company list: 30 min if Dave provides sector anchors, 2 hours if bot researches from scratch. Total: 3-5 hours end to end.
+**Wall-clock time:** Realistic: 5-10 hours day-spread. Manual curation of company list: 30 min if Dave provides sector anchors, 4-6 hours if bot researches from scratch (verified AU presence + active facilities across 8 sectors). ContactOut search at 1000 calls × 5-10s = 1.5-3 hours. Email + phone enrichment: 1-2 hours. Dave should plan day-spread, not half-day.
 
 ---
 
@@ -211,3 +211,5 @@ ContactOut search-first pipeline. No GMB discovery (FMs don't own businesses on 
 5. **Dedup against existing BU:** Should we exclude companies already in `business_universe`? Or is this job completely separate from Pipeline F prospects?
 
 6. **Timeline:** When does the client need the CSV? If same-day, I start immediately. If 2-3 days, I can run broader title variants and cherry-pick.
+
+7. **Output schema (Aiden flag):** CSV columns currently: Name, Title, Company, LinkedIn URL, Email, Phone, Sector. Does the test-and-tag client also need: site count, primary facility address, FM seniority/reporting level? Cheap to add if known at search time.

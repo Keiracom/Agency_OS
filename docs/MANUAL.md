@@ -1010,6 +1010,9 @@ Second Claude Code instance scaffold (callsign aiden). Worktree at /home/elliotb
 ### [ELLIOT] Directive LISTENER-GOV-F2 (PR #0, 2026-04-18)
 v1→v1.5 ratified post-hoc. Migration 103 committed to repo (supabase/migrations/103_cognitive_columns.sql). ceo_memory key ceo:listener_architecture_v1_5 written with full scope delta. 17 columns beyond v1 spec formally ratified by Dave 2026-04-18.
 
+### [ELLIOT+AIDEN] Directive LISTENER-KNOWLEDGE-SEED-V1 (2026-04-19)
+Curated fact ingest into agent_memories for listener whisper capability. 178 rows seeded: 39 from CLAUDE.md (Elliot — enrichment path, ALS gates, dead refs, governance laws, stack info) + 139 from Manual + ARCHITECTURE.md (Aiden — pricing, competitors, vendors, directive history, scoring, compliance). All source_type='verified_fact', state='confirmed', trust='dave_confirmed'. Hit Rate@5: 9/10. Meta-prose leakage: 0/20. Total agent_memories corpus: 567 rows. Chunking rules documented in docs/governance_chunking.md. Follow-up: V2 auto-ingest-on-commit deferred as separate directive.
+
 ### [ELLIOT] Directive LISTENER-COST-F4-PART2-SETUP (PR #362, 2026-04-19)
 OpenAI cost tracking at all 6 call sites: memory_listener.py (query expansion + embeddings), listener_discernment.py (L2 discernment), save_handler.py (save extraction), store.py (write embeddings), organise.py (backfill embeddings). New module openai_cost_logger.py writes append-only JSONL to /home/elliotbot/clawd/logs/openai-cost.jsonl. Daily rollup at 23:55 AEST (systemd timer enabled) posts TG summary. Weekly rollup Friday 18:00 AEST writes to ceo:openai_weekly_cost. 7-day collection window started — F4-PART2-RATIFY scheduled 2026-04-25.
 

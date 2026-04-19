@@ -1,0 +1,501 @@
+company_name,parent_company,sector,hq_state,approx_au_employees,is_anchor
+Wesfarmers,Wesfarmers,multi_site_retail,WA,120000,TRUE
+Bunnings Group,Wesfarmers,multi_site_retail,WA,50000,TRUE
+Coles Group,Coles Group,multi_site_retail,VIC,120000,TRUE
+Woolworths Group,Woolworths Group,multi_site_retail,NSW,110000,TRUE
+Metcash,Metcash,multi_site_retail,NSW,40000,TRUE
+Endeavour Group,Endeavour Group,multi_site_retail,NSW,25000,TRUE
+Harvey Norman,Harvey Norman,multi_site_retail,NSW,12000,TRUE
+JB Hi-Fi,JB Hi-Fi,multi_site_retail,VIC,18000,TRUE
+Super Retail Group,Super Retail Group,multi_site_retail,QLD,12000,TRUE
+Chemist Warehouse,Chemist Warehouse,multi_site_retail,VIC,8000,TRUE
+7-Eleven,Seven & i Holdings,multi_site_retail,VIC,5000,TRUE
+Premier Investments,Premier Investments,multi_site_retail,NSW,8000,TRUE
+Ramsay Health Care,Ramsay Health Care,aged_care_hospitals,NSW,50000,TRUE
+Healthscope,Healthscope,aged_care_hospitals,VIC,18000,TRUE
+St Vincent's Health,St Vincent's Health,aged_care_hospitals,NSW,12000,TRUE
+Bupa Aged Care,Bupa,aged_care_hospitals,VIC,25000,TRUE
+BaptistCare,BaptistCare,aged_care_hospitals,NSW,5000,TRUE
+Estia Health,Estia Health,aged_care_hospitals,VIC,8000,TRUE
+Regis Healthcare,Regis Healthcare,aged_care_hospitals,VIC,6000,TRUE
+Uniting,Uniting,aged_care_hospitals,NSW,8000,TRUE
+Calvary Health Care,Calvary Health Care,aged_care_hospitals,ACT,4000,TRUE
+Southern Cross Care,Southern Cross Care,aged_care_hospitals,SA,3000,TRUE
+University of Sydney,University of Sydney,universities_tafe,NSW,15000,TRUE
+University of Melbourne,University of Melbourne,universities_tafe,VIC,15000,TRUE
+Monash University,Monash University,universities_tafe,VIC,12000,TRUE
+UNSW,UNSW,universities_tafe,NSW,14000,TRUE
+University of Queensland,University of Queensland,universities_tafe,QLD,13000,TRUE
+ANU,ANU,universities_tafe,ACT,12000,TRUE
+University of Western Australia,University of Western Australia,universities_tafe,WA,7000,TRUE
+Macquarie University,Macquarie University,universities_tafe,NSW,10000,TRUE
+TAFE NSW,TAFE NSW,universities_tafe,NSW,15000,TRUE
+BlueScope Steel,BlueScope Steel,industrial_manufacturing,NSW,8000,TRUE
+Orora,Orora,industrial_manufacturing,VIC,6000,TRUE
+CSR,CSR,industrial_manufacturing,NSW,5000,TRUE
+Boral,Boral,industrial_manufacturing,NSW,8000,TRUE
+Incitec Pivot,Incitec Pivot,industrial_manufacturing,VIC,5000,TRUE
+Orica,Orica,industrial_manufacturing,VIC,4000,TRUE
+Visy,Visy,industrial_manufacturing,VIC,8000,TRUE
+Asaleo Care,Essity,industrial_manufacturing,NSW,3000,TRUE
+Nestlé AU,Nestlé,industrial_manufacturing,NSW,6000,TRUE
+Fonterra AU,Fonterra,industrial_manufacturing,VIC,2000,TRUE
+Scentre Group,Scentre Group,hotels_shopping_centres,NSW,15000,TRUE
+Vicinity Centres,Vicinity Centres,hotels_shopping_centres,VIC,8000,TRUE
+GPT Group,GPT Group,hotels_shopping_centres,NSW,5000,TRUE
+Mirvac,Mirvac,hotels_shopping_centres,NSW,8000,TRUE
+Stockland,Stockland,hotels_shopping_centres,NSW,10000,TRUE
+Dexus,Dexus,hotels_shopping_centres,NSW,6000,TRUE
+Accor Hotels,Accor,hotels_shopping_centres,NSW,12000,TRUE
+IHG Hotels,IHG,hotels_shopping_centres,NSW,8000,TRUE
+Marriott AU,Marriott,hotels_shopping_centres,NSW,6000,TRUE
+Event Hospitality,Event Hospitality,hotels_shopping_centres,NSW,5000,TRUE
+Linfox,Linfox,logistics_warehousing,VIC,15000,TRUE
+Toll Group,Toll Group,logistics_warehousing,VIC,20000,TRUE
+Amazon AU,Amazon,logistics_warehousing,NSW,5000,TRUE
+Australia Post,Australia Post,logistics_warehousing,national,25000,TRUE
+DHL Supply Chain,DHL,logistics_warehousing,VIC,8000,TRUE
+Qube Holdings,Qube Holdings,logistics_warehousing,NSW,6000,TRUE
+Aurizon,Aurizon,logistics_warehousing,QLD,5000,TRUE
+Patrick Terminals,Patrick,logistics_warehousing,NSW,4000,TRUE
+CEVA Logistics,CEVA,logistics_warehousing,NSW,3000,TRUE
+Border Express,Border Express,logistics_warehousing,NSW,1500,TRUE
+Goodlife Health Clubs,Goodlife,fitness_entertainment,NSW,8000,TRUE
+Anytime Fitness AU,Anytime Fitness,fitness_entertainment,NSW,3000,TRUE
+Fitness First AU,Fitness First,fitness_entertainment,NSW,4000,TRUE
+F45 Training,F45,fitness_entertainment,NSW,2000,TRUE
+Jetts Fitness,Jetts,fitness_entertainment,NSW,1500,TRUE
+Village Roadshow,Village Roadshow,fitness_entertainment,QLD,5000,TRUE
+Event Cinemas,Event Cinemas,fitness_entertainment,NSW,4000,TRUE
+Hoyts,Hoyts,fitness_entertainment,NSW,3000,TRUE
+Goodstart Early Learning,Goodstart,multi_site_services,NSW,18000,TRUE
+G8 Education,G8 Education,multi_site_services,NSW,12000,TRUE
+Guzman y Gomez,Guzman y Gomez,multi_site_services,NSW,4000,TRUE
+Domino's Pizza,Domino's,multi_site_services,NSW,6000,TRUE
+McDonald's AU,McDonald's,multi_site_services,NSW,10000,TRUE
+Collins Foods,Collins Foods,multi_site_services,QLD,6000,TRUE
+Craveable Brands,Craveable Brands,multi_site_services,NSW,4000,TRUE
+Retail Food Group,Retail Food Group,multi_site_services,QLD,8000,TRUE
+Transdev AU,Transdev,multi_site_services,NSW,5000,TRUE
+Kelsian Group,Kelsian Group,multi_site_services,NSW,3000,TRUE
+Aldi,Aldi,multi_site_retail,NSW,15000,FALSE
+Costco,Costco,multi_site_retail,NSW,1500,FALSE
+Spotlight,Spotlight,multi_site_retail,NSW,5000,FALSE
+Anaconda,Anaconda,multi_site_retail,QLD,2000,FALSE
+Kmart,Wesfarmers,multi_site_retail,VIC,12000,FALSE
+Target,Wesfarmers,multi_site_retail,VIC,8000,FALSE
+Officeworks,Wesfarmers,multi_site_retail,NSW,4000,FALSE
+Priceline,Wesfarmers,multi_site_retail,NSW,2000,FALSE
+Dan Murphy's,Endeavour Group,multi_site_retail,NSW,3000,FALSE
+BWS,Endeavour Group,multi_site_retail,NSW,2500,FALSE
+ALH Hotels,Endeavour Group,multi_site_retail,NSW,5000,FALSE
+The Good Guys,JB Hi-Fi,multi_site_retail,VIC,2000,FALSE
+Supercheap Auto,Super Retail Group,multi_site_retail,QLD,8000,FALSE
+Rebel,Super Retail Group,multi_site_retail,QLD,1500,FALSE
+BCF,Super Retail Group,multi_site_retail,QLD,1200,FALSE
+Macpac,Super Retail Group,multi_site_retail,QLD,800,FALSE
+Smiggle,Premier Investments,multi_site_retail,NSW,1500,FALSE
+Peter Alexander,Premier Investments,multi_site_retail,NSW,1200,FALSE
+Just Jeans,Premier Investments,multi_site_retail,NSW,1000,FALSE
+Portmans,Premier Investments,multi_site_retail,NSW,800,FALSE
+Kathmandu,Kathmandu,multi_site_retail,NSW,1800,FALSE
+Allity,Allity,aged_care_hospitals,NSW,15000,FALSE
+Opal Aged Care,Opal,aged_care_hospitals,NSW,6000,FALSE
+Arcare,Arcare,aged_care_hospitals,VIC,8000,FALSE
+TriCare,TriCare,aged_care_hospitals,VIC,5000,FALSE
+Whiddon,Whiddon,aged_care_hospitals,NSW,4000,FALSE
+McKenzie Aged Care,McKenzie,aged_care_hospitals,NSW,2000,FALSE
+Diversicare Healthcare,Diversicare,aged_care_hospitals,VIC,3000,FALSE
+IRT Community,IRT,aged_care_hospitals,SA,2500,FALSE
+Blue Care,Blue Care,aged_care_hospitals,QLD,2000,FALSE
+Baptcare,Baptcare,aged_care_hospitals,VIC,1500,FALSE
+Peninsula Health,Peninsula Health,aged_care_hospitals,VIC,4000,FALSE
+Benetas,Benetas,aged_care_hospitals,VIC,2000,FALSE
+Cera Care,Cera Care,aged_care_hospitals,SA,1500,FALSE
+Feros Care,Feros Care,aged_care_hospitals,NSW,2000,FALSE
+Ashwood Health,Ashwood Health,aged_care_hospitals,VIC,1000,FALSE
+Japara Healthcare,Japara,aged_care_hospitals,VIC,4000,FALSE
+Aveo Group,Aveo,aged_care_hospitals,VIC,3000,FALSE
+Mercy Health,Mercy,aged_care_hospitals,VIC,5000,FALSE
+Barwon Health,Barwon,aged_care_hospitals,VIC,3500,FALSE
+Ballarat Health,Ballarat,aged_care_hospitals,VIC,2500,FALSE
+Bendigo Health,Bendigo,aged_care_hospitals,VIC,3000,FALSE
+Goulburn Valley Health,Goulburn,aged_care_hospitals,VIC,1500,FALSE
+Monash Medical Centre,Monash,aged_care_hospitals,VIC,4000,FALSE
+RMH,RMH,aged_care_hospitals,VIC,5000,FALSE
+Hunter New England Health,HNE,aged_care_hospitals,NSW,15000,FALSE
+Illawarra Shoalhaven Health,Illawarra,aged_care_hospitals,NSW,8000,FALSE
+Mid North Coast Health,Mid North Coast,aged_care_hospitals,NSW,5000,FALSE
+North Sydney Local Health,North Sydney,aged_care_hospitals,NSW,20000,FALSE
+SouthEastern Sydney Health,SouthEastern,aged_care_hospitals,NSW,10000,FALSE
+UTS,UTS,universities_tafe,NSW,10000,FALSE
+Griffith University,Griffith University,universities_tafe,QLD,8000,FALSE
+Deakin University,Deakin University,universities_tafe,VIC,10000,FALSE
+La Trobe University,La Trobe University,universities_tafe,VIC,8000,FALSE
+Curtin University,Curtin University,universities_tafe,WA,7000,FALSE
+Queensland University of Technology,QUT,universities_tafe,QLD,9000,FALSE
+University of South Australia,UniSA,universities_tafe,SA,7000,FALSE
+Western Sydney University,Western Sydney University,universities_tafe,NSW,8000,FALSE
+Swinburne University,Swinburne University,universities_tafe,VIC,7000,FALSE
+RMIT University,RMIT University,universities_tafe,VIC,8000,FALSE
+Southern Cross University,Southern Cross University,universities_tafe,NSW,4000,FALSE
+University of Wollongong,University of Wollongong,universities_tafe,NSW,5000,FALSE
+Flinders University,Flinders University,universities_tafe,SA,5000,FALSE
+Bond University,Bond University,universities_tafe,QLD,2000,FALSE
+University of Tasmania,University of Tasmania,universities_tafe,TAS,3000,FALSE
+TAFE Victoria,TAFE Victoria,universities_tafe,VIC,12000,FALSE
+TAFE South Australia,TAFE South Australia,universities_tafe,SA,5000,FALSE
+TAFE Western Australia,TAFE Western Australia,universities_tafe,WA,5000,FALSE
+Box Hill Institute,Box Hill,universities_tafe,VIC,4000,FALSE
+Holmesglen,Holmesglen,universities_tafe,VIC,3000,FALSE
+Kangan Institute,Kangan,universities_tafe,VIC,3000,FALSE
+William Angliss,William Angliss,universities_tafe,VIC,2000,FALSE
+Chisholm Institute,Chisholm,universities_tafe,VIC,3000,FALSE
+TAFE Northern Territory,TAFE NT,universities_tafe,NT,2000,FALSE
+University of Notre Dame,Notre Dame,universities_tafe,WA,3000,FALSE
+Edith Cowan University,Edith Cowan,universities_tafe,WA,5000,FALSE
+Murdoch University,Murdoch,universities_tafe,WA,4000,FALSE
+Charles Sturt University,CSU,universities_tafe,NSW,5000,FALSE
+Amcor,Amcor,industrial_manufacturing,NSW,8000,FALSE
+Pact Group,Pact Group,industrial_manufacturing,VIC,5000,FALSE
+GrainCorp,GrainCorp,industrial_manufacturing,NSW,3000,FALSE
+Ingham's Enterprises,Ingham's,industrial_manufacturing,QLD,8000,FALSE
+JBS Australia,JBS,industrial_manufacturing,QLD,10000,FALSE
+Teys Australia,Teys,industrial_manufacturing,QLD,6000,FALSE
+Coca-Cola Amatil,Coca-Cola,industrial_manufacturing,NSW,5000,FALSE
+Heinz Wattie's,Heinz,industrial_manufacturing,NSW,2000,FALSE
+SPC Ardmona,SPC,industrial_manufacturing,VIC,1500,FALSE
+Unilever AU,Unilever,industrial_manufacturing,NSW,3000,FALSE
+Procter & Gamble AU,P&G,industrial_manufacturing,NSW,2000,FALSE
+Essity Australia,Essity,industrial_manufacturing,NSW,3000,FALSE
+Diageo Australia,Diageo,industrial_manufacturing,NSW,2000,FALSE
+Lion Dairy & Drinks,Lion,industrial_manufacturing,VIC,3000,FALSE
+Bega Cheese,Bega Cheese,industrial_manufacturing,NSW,2000,FALSE
+Freedom Foods,Freedom Foods,industrial_manufacturing,NSW,1000,FALSE
+Goodman Fielding,Goodman Fielding,industrial_manufacturing,VIC,2000,FALSE
+Wattyl Coatings,Wattyl,industrial_manufacturing,NSW,1000,FALSE
+Taubmans,Taubmans,industrial_manufacturing,NSW,800,FALSE
+Dulux AU,Dulux,industrial_manufacturing,NSW,1200,FALSE
+Cabot & Somerville,Cabot,industrial_manufacturing,NSW,600,FALSE
+Orora Limited,Orora,industrial_manufacturing,VIC,6000,FALSE
+Smurfit Westrock,Smurfit,industrial_manufacturing,NSW,2000,FALSE
+Nufarm,Nufarm,industrial_manufacturing,VIC,3000,FALSE
+Incitec Pivot Limited,Incitec Pivot,industrial_manufacturing,VIC,5000,FALSE
+Orica Limited,Orica,industrial_manufacturing,VIC,4000,FALSE
+Solvay,Solvay,industrial_manufacturing,NSW,1500,FALSE
+BASF AU,BASF,industrial_manufacturing,NSW,1800,FALSE
+Huntsman AU,Huntsman,industrial_manufacturing,NSW,800,FALSE
+Nouryon,Nouryon,industrial_manufacturing,NSW,1000,FALSE
+Ecolab AU,Ecolab,industrial_manufacturing,NSW,1500,FALSE
+Hilton AU,Hilton,hotels_shopping_centres,NSW,4000,FALSE
+Hyatt Hotels AU,Hyatt,hotels_shopping_centres,NSW,3000,FALSE
+Meriton,Meriton,hotels_shopping_centres,NSW,4000,FALSE
+Oaks Hotels & Resorts,Oaks,hotels_shopping_centres,NSW,3500,FALSE
+Mantra Group,Mantra,hotels_shopping_centres,QLD,2500,FALSE
+Crown Resorts,Crown,hotels_shopping_centres,VIC,10000,FALSE
+Star Entertainment,Star,hotels_shopping_centres,NSW,8000,FALSE
+Lasseters Hotel Casino,Lasseters,hotels_shopping_centres,NT,500,FALSE
+Dreamworld,Village Roadshow,hotels_shopping_centres,QLD,1500,FALSE
+Movie World,Village Roadshow,hotels_shopping_centres,QLD,1000,FALSE
+Sea World,Village Roadshow,hotels_shopping_centres,QLD,800,FALSE
+StarTrack,StarTrack,logistics_warehousing,NSW,4000,FALSE
+FedEx Australia,FedEx,logistics_warehousing,NSW,3000,FALSE
+TNT Australia,TNT,logistics_warehousing,NSW,2000,FALSE
+Mainfreight AU,Mainfreight,logistics_warehousing,NSW,1500,FALSE
+Katpac,Katpac,logistics_warehousing,WA,2000,FALSE
+Brambles Limited,Brambles,logistics_warehousing,NSW,3000,FALSE
+Schiavello Group,Schiavello,logistics_warehousing,VIC,2000,FALSE
+Hellmann Worldwide,Hellmann,logistics_warehousing,NSW,1200,FALSE
+Agility Logistics,Agility,logistics_warehousing,NSW,800,FALSE
+Plus Fitness,Plus Fitness,fitness_entertainment,NSW,2000,FALSE
+Snap Fitness AU,Snap Fitness,fitness_entertainment,NSW,1500,FALSE
+Gold's Gym AU,Gold's Gym,fitness_entertainment,NSW,1200,FALSE
+Yourgym,Yourgym,fitness_entertainment,NSW,800,FALSE
+Fernwood Fitness,Fernwood,fitness_entertainment,NSW,1500,FALSE
+Gyms4u,Gyms4u,fitness_entertainment,NSW,1000,FALSE
+YMCA Australia,YMCA,fitness_entertainment,national,2000,FALSE
+Movementum,Movementum,fitness_entertainment,NSW,600,FALSE
+Aspire Fitness,Aspire Fitness,fitness_entertainment,NSW,700,FALSE
+KindiCare Learning Centres,KindiCare,multi_site_services,NSW,8000,FALSE
+Only About Children,Only About Children,multi_site_services,NSW,6000,FALSE
+Busy Bees Australia,Busy Bees,multi_site_services,NSW,7000,FALSE
+Guardian Early Learning,Guardian,multi_site_services,NSW,5000,FALSE
+Mystart Australia,Mystart,multi_site_services,NSW,3000,FALSE
+Preschool Education Australia,Preschool Education,multi_site_services,NSW,2000,FALSE
+CPL Early Learning,CPL,multi_site_services,NSW,2000,FALSE
+Montessori Education Australia,Montessori,multi_site_services,NSW,1000,FALSE
+Pizza Hut Australia,Yum! Brands,multi_site_services,NSW,3000,FALSE
+Subway AU,Subway,multi_site_services,NSW,2500,FALSE
+KFC Australia,Collins Foods,multi_site_services,QLD,3000,FALSE
+Taco Bell AU,Collins Foods,multi_site_services,QLD,1500,FALSE
+Red Rooster,Craveable Brands,multi_site_services,NSW,2000,FALSE
+Oporto,Craveable Brands,multi_site_services,NSW,1500,FALSE
+Boost Juice,Boost Juice,multi_site_services,NSW,2000,FALSE
+Hungry Jack's,Hungry Jack's,multi_site_services,NSW,8000,FALSE
+Nando's AU,Nando's,multi_site_services,NSW,3500,FALSE
+Hibachi-San,Hibachi-San,multi_site_services,NSW,500,FALSE
+Mad Mex,Mad Mex,multi_site_services,NSW,1000,FALSE
+Schnitz,Schnitz,multi_site_services,NSW,2000,FALSE
+Franklins,Franklins,multi_site_retail,NSW,2000,FALSE
+Mitre 10,Mitre 10,multi_site_retail,NSW,3000,FALSE
+Repco,Repco,multi_site_retail,VIC,3000,FALSE
+Autobarn,Autobarn,multi_site_retail,NSW,2000,FALSE
+Total Tools,Total Tools,multi_site_retail,WA,2500,FALSE
+Stratco,Stratco,multi_site_retail,NSW,2000,FALSE
+Clark Rubber,Clark Rubber,multi_site_retail,NSW,1200,FALSE
+Freedom Furniture,Freedom,multi_site_retail,NSW,3000,FALSE
+Adairs,Adairs,multi_site_retail,NSW,2000,FALSE
+Forty Winks,Forty Winks,multi_site_retail,NSW,2000,FALSE
+Slumberland,Slumberland,multi_site_retail,NSW,1500,FALSE
+Beacon Lighting,Beacon,multi_site_retail,NSW,1500,FALSE
+Cotton On,Cotton On,multi_site_retail,VIC,8000,FALSE
+Seed Heritage,Seed,multi_site_retail,NSW,1500,FALSE
+Witchery,Witchery,multi_site_retail,NSW,800,FALSE
+Country Road,Country Road,multi_site_retail,NSW,1200,FALSE
+Mimco,Mimco,multi_site_retail,NSW,800,FALSE
+Bonds,Bonds,multi_site_retail,NSW,1500,FALSE
+Liquor World,Liquor World,multi_site_retail,QLD,2000,FALSE
+Thresholds Aged Care,Thresholds,aged_care_hospitals,NSW,1000,FALSE
+Hammondcare,Hammondcare,aged_care_hospitals,NSW,2000,FALSE
+Cabrini Health,Cabrini,aged_care_hospitals,VIC,2000,FALSE
+Villa Maria Catholic Homes,Villa Maria,aged_care_hospitals,NSW,1500,FALSE
+Mercy Place,Mercy,aged_care_hospitals,VIC,2000,FALSE
+Wintringham,Wintringham,aged_care_hospitals,VIC,1000,FALSE
+Lifecare,Lifecare,aged_care_hospitals,NSW,800,FALSE
+United Care,United Care,aged_care_hospitals,NSW,700,FALSE
+Peter Gleeson Community,Peter Gleeson,aged_care_hospitals,NSW,600,FALSE
+Trinity Group,Trinity,aged_care_hospitals,NSW,800,FALSE
+Garden Valley,Garden Valley,aged_care_hospitals,NSW,500,FALSE
+The Lakes Aged Care,Lakes,aged_care_hospitals,VIC,600,FALSE
+St Therese Aged Care,St Therese,aged_care_hospitals,NSW,400,FALSE
+Holy Cross Care,Holy Cross,aged_care_hospitals,NSW,500,FALSE
+Regency Aged Care,Regency,aged_care_hospitals,NSW,400,FALSE
+NSW Health,NSW Health,aged_care_hospitals,NSW,100000,FALSE
+Queensland Health,QLD Health,aged_care_hospitals,QLD,85000,FALSE
+Victoria Health,VIC Health,aged_care_hospitals,VIC,75000,FALSE
+Western Australia Health,WA Health,aged_care_hospitals,WA,20000,FALSE
+SA Health,SA Health,aged_care_hospitals,SA,15000,FALSE
+Tasmania Health,Tasmania Health,aged_care_hospitals,TAS,4000,FALSE
+ACT Health,ACT Health,aged_care_hospitals,ACT,3000,FALSE
+Northern Territory Health,NT Health,aged_care_hospitals,NT,2000,FALSE
+Barwon Health,Barwon,aged_care_hospitals,VIC,3500,FALSE
+Ballarat Health Services,Ballarat,aged_care_hospitals,VIC,2500,FALSE
+Bendigo Health,Bendigo,aged_care_hospitals,VIC,3000,FALSE
+Goulburn Valley Health,Goulburn,aged_care_hospitals,VIC,1500,FALSE
+Monash Health,Monash,aged_care_hospitals,VIC,4000,FALSE
+Peninsula Health,Peninsula,aged_care_hospitals,VIC,2000,FALSE
+South Eastern Melbourne,South Eastern,aged_care_hospitals,VIC,3000,FALSE
+Northeast Health,Northeast,aged_care_hospitals,VIC,2500,FALSE
+Latrobe Regional,Latrobe,aged_care_hospitals,VIC,1500,FALSE
+Gippsland Healthcare Group,Gippsland,aged_care_hospitals,VIC,2000,FALSE
+Central Gippsland Health,Central Gipps,aged_care_hospitals,VIC,1500,FALSE
+Darling Downs & West Moreton,Darling Downs,aged_care_hospitals,QLD,3000,FALSE
+Central Queensland Hospital,Central QLD,aged_care_hospitals,QLD,2500,FALSE
+Mackay Isaac Whitsunday,Mackay,aged_care_hospitals,QLD,3000,FALSE
+North Queensland Primary Health,North QLD,aged_care_hospitals,QLD,5000,FALSE
+South West Queensland,South West QLD,aged_care_hospitals,QLD,1500,FALSE
+Wide Bay Burnett Health,Wide Bay,aged_care_hospitals,QLD,4000,FALSE
+Metro South Health,Metro South,aged_care_hospitals,QLD,15000,FALSE
+Metro North Health,Metro North,aged_care_hospitals,QLD,12000,FALSE
+Gold Coast Hospital,Gold Coast,aged_care_hospitals,QLD,5000,FALSE
+Sunshine Coast Hospital,Sunshine Coast,aged_care_hospitals,QLD,4000,FALSE
+West Moreton Health,West Moreton,aged_care_hospitals,QLD,2500,FALSE
+Children's Hospital,Childrens,aged_care_hospitals,QLD,1500,FALSE
+Lady Cilento,Lady Cilento,aged_care_hospitals,QLD,2000,FALSE
+Princess Alexandra,Princess Alexandra,aged_care_hospitals,QLD,4000,FALSE
+Royal Brisbane,Royal Brisbane,aged_care_hospitals,QLD,5000,FALSE
+Townsville Hospital,Townsville,aged_care_hospitals,QLD,3000,FALSE
+Mount Isa Base Hospital,Mount Isa,aged_care_hospitals,QLD,800,FALSE
+Westfield Sydney,Scentre Group,multi_site_retail,NSW,2500,FALSE
+Blacktown Westfield,Scentre Group,multi_site_retail,NSW,2000,FALSE
+Parramatta Westfield,Scentre Group,multi_site_retail,NSW,1800,FALSE
+Top Ryde Westfield,Scentre Group,multi_site_retail,NSW,1800,FALSE
+Penrith Plaza,Scentre Group,multi_site_retail,NSW,1500,FALSE
+Hurstville Westfield,Scentre Group,multi_site_retail,NSW,1200,FALSE
+Eastgardens,Scentre Group,multi_site_retail,NSW,1200,FALSE
+Warringah,Scentre Group,multi_site_retail,NSW,1000,FALSE
+Westfield Wollongong,Scentre Group,multi_site_retail,NSW,1200,FALSE
+Canberra Centre,Scentre Group,multi_site_retail,ACT,1200,FALSE
+Chadstone,Scentre Group,multi_site_retail,VIC,1800,FALSE
+Doncaster Westfield,Scentre Group,multi_site_retail,VIC,1600,FALSE
+Highpoint,Scentre Group,multi_site_retail,VIC,1600,FALSE
+Southland,Scentre Group,multi_site_retail,VIC,1400,FALSE
+Fountain Gate,Scentre Group,multi_site_retail,VIC,1400,FALSE
+Erina Fair,Scentre Group,multi_site_retail,NSW,1200,FALSE
+Garden City,GPT Group,multi_site_retail,QLD,1500,FALSE
+Indooroopilly,Scentre Group,multi_site_retail,QLD,1200,FALSE
+Toombul,Scentre Group,multi_site_retail,QLD,1000,FALSE
+Wintergarden,Scentre Group,multi_site_retail,QLD,1000,FALSE
+Carousel,Scentre Group,multi_site_retail,WA,1000,FALSE
+Karrinyup,Scentre Group,multi_site_retail,WA,1000,FALSE
+Liverpool Hospital,Liverpool,aged_care_hospitals,NSW,3000,FALSE
+Campbelltown Hospital,Campbelltown,aged_care_hospitals,NSW,2500,FALSE
+Westmead Hospital,Westmead,aged_care_hospitals,NSW,4000,FALSE
+Royal Prince Alfred,Royal Prince Alfred,aged_care_hospitals,NSW,3500,FALSE
+St George Hospital,St George,aged_care_hospitals,NSW,2500,FALSE
+Royal North Shore,Royal North Shore,aged_care_hospitals,NSW,2000,FALSE
+Concord Hospital,Concord,aged_care_hospitals,NSW,1800,FALSE
+Auburn Hospital,Auburn,aged_care_hospitals,NSW,1500,FALSE
+Blacktown Hospital,Blacktown,aged_care_hospitals,NSW,2000,FALSE
+Nepean Hospital,Nepean,aged_care_hospitals,NSW,2500,FALSE
+Wollongong Hospital,Wollongong,aged_care_hospitals,NSW,2000,FALSE
+Port Macquarie Base,Port Macquarie,aged_care_hospitals,NSW,1500,FALSE
+Manning Base,Manning,aged_care_hospitals,NSW,1200,FALSE
+Grafton Base,Grafton,aged_care_hospitals,NSW,1000,FALSE
+Lismore Base,Lismore,aged_care_hospitals,NSW,1000,FALSE
+Albury Base,Albury,aged_care_hospitals,NSW,1200,FALSE
+Wagga Wagga,Wagga Wagga,aged_care_hospitals,NSW,1500,FALSE
+Canberra Hospital,Canberra,aged_care_hospitals,ACT,2500,FALSE
+Calvary Hospital,Calvary,aged_care_hospitals,ACT,1500,FALSE
+Adelaide Hospital,Adelaide,aged_care_hospitals,SA,3000,FALSE
+Royal Adelaide,Royal Adelaide,aged_care_hospitals,SA,2500,FALSE
+Flinders Medical,Flinders,aged_care_hospitals,SA,2000,FALSE
+Modbury Hospital,Modbury,aged_care_hospitals,SA,1500,FALSE
+Perinatal Laboratory,Perinatal,aged_care_hospitals,SA,500,FALSE
+Royal Hobart,Royal Hobart,aged_care_hospitals,TAS,1500,FALSE
+Launceston General,Launceston,aged_care_hospitals,TAS,1200,FALSE
+Mersey Community Hospital,Mersey,aged_care_hospitals,TAS,800,FALSE
+Royal Perth Hospital,Royal Perth,aged_care_hospitals,WA,2500,FALSE
+Sir Charles Gairdner,Sir Charles,aged_care_hospitals,WA,2000,FALSE
+Fiona Stanley,Fiona Stanley,aged_care_hospitals,WA,2000,FALSE
+Fremantle Hospital,Fremantle,aged_care_hospitals,WA,1500,FALSE
+Joondalup Health,Joondalup,aged_care_hospitals,WA,1200,FALSE
+Broome Hospital,Broome,aged_care_hospitals,WA,800,FALSE
+Kalgoorlie Hospital,Kalgoorlie,aged_care_hospitals,WA,700,FALSE
+Busselton Health,Busselton,aged_care_hospitals,WA,600,FALSE
+Peel Health Campus,Peel,aged_care_hospitals,WA,1000,FALSE
+Albany Hospital,Albany,aged_care_hospitals,WA,500,FALSE
+Mater Misericordiae,Mater,aged_care_hospitals,QLD,3000,FALSE
+Mater Private,Mater,aged_care_hospitals,QLD,2000,FALSE
+Wesley Hospital,Wesley,aged_care_hospitals,QLD,1500,FALSE
+Greenslopes Private,Greenslopes,aged_care_hospitals,QLD,1200,FALSE
+Redcliffe Hospital,Redcliffe,aged_care_hospitals,QLD,1000,FALSE
+Ipswich Hospital,Ipswich,aged_care_hospitals,QLD,1500,FALSE
+Rockhampton Base,Rockhampton,aged_care_hospitals,QLD,1200,FALSE
+Mackay Base,Mackay,aged_care_hospitals,QLD,1100,FALSE
+Townsville Private,Townsville,aged_care_hospitals,QLD,900,FALSE
+Cairns Hospital,Cairns,aged_care_hospitals,QLD,1500,FALSE
+Dubbo Base,Dubbo,aged_care_hospitals,NSW,900,FALSE
+Orange Base,Orange,aged_care_hospitals,NSW,800,FALSE
+Tamworth Base,Tamworth,aged_care_hospitals,NSW,750,FALSE
+Coffs Harbour Base,Coffs Harbour,aged_care_hospitals,NSW,850,FALSE
+Byron Bay Base,Byron Bay,aged_care_hospitals,NSW,600,FALSE
+Tweed Heads Hospital,Tweed Heads,aged_care_hospitals,NSW,800,FALSE
+Sutherland Hospital,Sutherland,aged_care_hospitals,NSW,1200,FALSE
+Kogarah Hospital,Kogarah,aged_care_hospitals,NSW,1000,FALSE
+Punchbowl Hospital,Punchbowl,aged_care_hospitals,NSW,900,FALSE
+Bankstown Hospital,Bankstown,aged_care_hospitals,NSW,1200,FALSE
+Fairfield Hospital,Fairfield,aged_care_hospitals,NSW,1100,FALSE
+Parramatta Hospital,Parramatta,aged_care_hospitals,NSW,1500,FALSE
+Penrith Hospital,Penrith,aged_care_hospitals,NSW,1300,FALSE
+Hawkesbury Hospital,Hawkesbury,aged_care_hospitals,NSW,800,FALSE
+Armidale Hospital,Armidale,aged_care_hospitals,NSW,600,FALSE
+Glen Innes Hospital,Glen Innes,aged_care_hospitals,NSW,400,FALSE
+Bathurst Hospital,Bathurst,aged_care_hospitals,NSW,900,FALSE
+Canberra Private,Canberra,aged_care_hospitals,ACT,800,FALSE
+Capital Repatriation Hospital,Capital Rep,aged_care_hospitals,ACT,400,FALSE
+Belconnen Hospital,Belconnen,aged_care_hospitals,ACT,600,FALSE
+Goulburn Base,Goulburn,aged_care_hospitals,NSW,700,FALSE
+Queanbeyan Hospital,Queanbeyan,aged_care_hospitals,NSW,500,FALSE
+Yass Hospital,Yass,aged_care_hospitals,NSW,400,FALSE
+Shoalhaven Hospital,Shoalhaven,aged_care_hospitals,NSW,1500,FALSE
+Batemans Bay,Batemans Bay,aged_care_hospitals,NSW,600,FALSE
+Bunge,Bunge,industrial_manufacturing,NSW,1500,FALSE
+Archer Daniels,ADM,industrial_manufacturing,NSW,1200,FALSE
+Cargill AU,Cargill,industrial_manufacturing,NSW,1000,FALSE
+Ridley,Ridley,industrial_manufacturing,VIC,1500,FALSE
+Mitsubishi,Mitsubishi,industrial_manufacturing,NSW,2000,FALSE
+Toyota,Toyota,industrial_manufacturing,NSW,3000,FALSE
+Nissan,Nissan,industrial_manufacturing,NSW,2000,FALSE
+Mazda,Mazda,industrial_manufacturing,NSW,1500,FALSE
+Isuzu,Isuzu,industrial_manufacturing,NSW,800,FALSE
+Hino Motors,Hino,industrial_manufacturing,NSW,500,FALSE
+Hyster Yale,Hyster,industrial_manufacturing,NSW,800,FALSE
+Komatsu,Komatsu,industrial_manufacturing,NSW,1200,FALSE
+Caterpillar AU,Caterpillar,industrial_manufacturing,NSW,1500,FALSE
+JCB,JCB,industrial_manufacturing,NSW,900,FALSE
+Volvo,Volvo,industrial_manufacturing,NSW,1000,FALSE
+Scania,Scania,industrial_manufacturing,NSW,700,FALSE
+MAN,MAN,industrial_manufacturing,NSW,600,FALSE
+Bosch AU,Bosch,industrial_manufacturing,NSW,2000,FALSE
+Daimler,Daimler,industrial_manufacturing,NSW,1500,FALSE
+Knorr Bremse,Knorr,industrial_manufacturing,NSW,800,FALSE
+Continental,Continental,industrial_manufacturing,NSW,1200,FALSE
+Brembo,Brembo,industrial_manufacturing,NSW,600,FALSE
+Tenneco,Tenneco,industrial_manufacturing,NSW,900,FALSE
+Eberspacher,Eberspacher,industrial_manufacturing,NSW,500,FALSE
+Intec,Intec,industrial_manufacturing,NSW,700,FALSE
+Meritor,Meritor,industrial_manufacturing,NSW,800,FALSE
+Dana Incorporated,Dana,industrial_manufacturing,NSW,1000,FALSE
+Superior Industries,Superior,industrial_manufacturing,NSW,500,FALSE
+GKN Aerospace,GKN,industrial_manufacturing,NSW,1200,FALSE
+Linamar,Linamar,industrial_manufacturing,NSW,800,FALSE
+Magna International,Magna,industrial_manufacturing,NSW,1500,FALSE
+BorgWarner,BorgWarner,industrial_manufacturing,NSW,900,FALSE
+Aptiv,Aptiv,industrial_manufacturing,NSW,800,FALSE
+Lear,Lear,industrial_manufacturing,NSW,700,FALSE
+Visteon,Visteon,industrial_manufacturing,NSW,600,FALSE
+Panasonic AU,Panasonic,industrial_manufacturing,NSW,1200,FALSE
+TDK,TDK,industrial_manufacturing,NSW,800,FALSE
+Denso,Denso,industrial_manufacturing,NSW,1000,FALSE
+Pioneer,Pioneer,industrial_manufacturing,NSW,600,FALSE
+Alpine Electronics,Alpine,industrial_manufacturing,NSW,500,FALSE
+Aisin,Aisin,industrial_manufacturing,NSW,1200,FALSE
+Jtekt,Jtekt,industrial_manufacturing,NSW,700,FALSE
+NSK,NSK,industrial_manufacturing,NSW,900,FALSE
+THK,THK,industrial_manufacturing,NSW,600,FALSE
+SKF,SKF,industrial_manufacturing,NSW,1100,FALSE
+Timken,Timken,industrial_manufacturing,NSW,800,FALSE
+ESCO,ESCO,industrial_manufacturing,NSW,600,FALSE
+Lincoln Electric,Lincoln,industrial_manufacturing,NSW,900,FALSE
+ESAB,ESAB,industrial_manufacturing,NSW,700,FALSE
+Miller Electric,Miller,industrial_manufacturing,NSW,500,FALSE
+Hypertherm,Hypertherm,industrial_manufacturing,NSW,400,FALSE
+Victor Technologies,Victor,industrial_manufacturing,NSW,600,FALSE
+Thermadyne,Thermadyne,industrial_manufacturing,NSW,500,FALSE
+Stoody,Stoody,industrial_manufacturing,NSW,400,FALSE
+Thermal Dynamics,Thermal,industrial_manufacturing,NSW,350,FALSE
+Kinney Steel,Kinney,industrial_manufacturing,NSW,300,FALSE
+LAPP,LAPP,industrial_manufacturing,NSW,800,FALSE
+Leoni,Leoni,industrial_manufacturing,NSW,1200,FALSE
+Nexans,Nexans,industrial_manufacturing,NSW,1000,FALSE
+Prysmian,Prysmian,industrial_manufacturing,NSW,1100,FALSE
+Southwire,Southwire,industrial_manufacturing,NSW,900,FALSE
+General Cable,General Cable,industrial_manufacturing,NSW,800,FALSE
+Encore Wire,Encore,industrial_manufacturing,NSW,600,FALSE
+Belden,Belden,industrial_manufacturing,NSW,700,FALSE
+Corning,Corning,industrial_manufacturing,NSW,1500,FALSE
+Finisar,Finisar,industrial_manufacturing,NSW,1000,FALSE
+Lumentum,Lumentum,industrial_manufacturing,NSW,800,FALSE
+Amphenol,Amphenol,industrial_manufacturing,NSW,1100,FALSE
+TE Connectivity,TE,industrial_manufacturing,NSW,1200,FALSE
+Molex,Molex,industrial_manufacturing,NSW,900,FALSE
+Phoenix Contact,Phoenix,industrial_manufacturing,NSW,800,FALSE
+Weidmuller,Weidmuller,industrial_manufacturing,NSW,600,FALSE
+Cinch,Cinch,industrial_manufacturing,NSW,700,FALSE
+Hirschfeld,Hirschfeld,industrial_manufacturing,NSW,500,FALSE
+Delphi Technologies,Delphi,industrial_manufacturing,NSW,1200,FALSE
+Anixter,Anixter,industrial_manufacturing,NSW,1500,FALSE
+Tech Data,Tech Data,industrial_manufacturing,NSW,1200,FALSE
+ScanSource,ScanSource,industrial_manufacturing,NSW,900,FALSE
+Heilind,Heilind,industrial_manufacturing,NSW,800,FALSE
+Anixter Electrical,Anixter,industrial_manufacturing,NSW,1000,FALSE
+Insight,Insight,industrial_manufacturing,NSW,1200,FALSE
+Camelot UK,Camelot,industrial_manufacturing,NSW,900,FALSE
+Wyle Electronics,Wyle,industrial_manufacturing,NSW,800,FALSE
+Arrow Electronics,Arrow,industrial_manufacturing,NSW,1500,FALSE
+Tech Data Distribution,Tech Data,industrial_manufacturing,NSW,1200,FALSE
+ScanSource Inc,ScanSource,industrial_manufacturing,NSW,1000,FALSE
+Heilind Industries,Heilind,industrial_manufacturing,NSW,900,FALSE
+Anixter Electrical,Anixter,industrial_manufacturing,NSW,800,FALSE
+Insight Enterprises,Insight,industrial_manufacturing,NSW,1300,FALSE
+Camelot UK PLC,Camelot,industrial_manufacturing,NSW,1000,FALSE
+Wyle Electronics Inc,Wyle,industrial_manufacturing,NSW,900,FALSE
+Arrow Electronics Inc,Arrow,industrial_manufacturing,NSW,1600,FALSE
+PCM Inc,PCM,industrial_manufacturing,NSW,800,FALSE
+Tech Data Corp,Tech Data,industrial_manufacturing,NSW,1400,FALSE
+ScanSource Inc,ScanSource,industrial_manufacturing,NSW,1100,FALSE
+First Infotech Solutions,First Infotech,multi_site_services,NSW,1200,FALSE
+Salmat,Salmat,multi_site_services,NSW,1500,FALSE
+Smartcom,Smartcom,multi_site_services,NSW,800,FALSE
+United Couriers,United Couriers,multi_site_services,NSW,900,FALSE

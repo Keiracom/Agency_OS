@@ -1010,6 +1010,9 @@ Second Claude Code instance scaffold (callsign aiden). Worktree at /home/elliotb
 ### [ELLIOT] Directive LISTENER-GOV-F2 (PR #0, 2026-04-18)
 v1→v1.5 ratified post-hoc. Migration 103 committed to repo (supabase/migrations/103_cognitive_columns.sql). ceo_memory key ceo:listener_architecture_v1_5 written with full scope delta. 17 columns beyond v1 spec formally ratified by Dave 2026-04-18.
 
+### [ELLIOT] Directive LISTENER-COST-F4-PART2-SETUP (PR #362, 2026-04-19)
+OpenAI cost tracking at all 6 call sites: memory_listener.py (query expansion + embeddings), listener_discernment.py (L2 discernment), save_handler.py (save extraction), store.py (write embeddings), organise.py (backfill embeddings). New module openai_cost_logger.py writes append-only JSONL to /home/elliotbot/clawd/logs/openai-cost.jsonl. Daily rollup at 23:55 AEST (systemd timer enabled) posts TG summary. Weekly rollup Friday 18:00 AEST writes to ceo:openai_weekly_cost. 7-day collection window started — F4-PART2-RATIFY scheduled 2026-04-25.
+
 ### [ELLIOT] Directive LISTENER-SCHEMA-F1 (PR #361, 2026-04-18)
 Schema cleanup per F1 audit finding. Dropped 5 dead columns (provenance, signoff_status, category, business_score, learning_score) via migration 106. Wired promoted_from_id on tentative→confirmed promotion (self-referencing FK + typed_metadata.promoted_at breadcrumb — Dave-approved pattern). PROMOTION FIRED log line added. Backfill script run: 2/17 superseded rows matched (backfill_inferred: true), 15 failed (below 0.85 threshold, backfill_failed: true), 0 ambiguous. contradicted_by_id deferred with SQL COMMENT. Technical debt documented in ceo:technical_debt.promoted_from_id_semantics (FK asymmetry: supersedes_id→other row, promoted_from_id→self). Aiden peer-reviewed: caught RPC name mismatch + ambiguity handler gap, both fixed pre-merge.
 

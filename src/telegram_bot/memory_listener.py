@@ -74,6 +74,18 @@ async def _expand_query(query_text: str) -> list[str]:
                 content = data["choices"][0]["message"]["content"]
                 parsed = json.loads(content)
                 variations = parsed.get("variations", [])
+                try:
+                    from src.telegram_bot.openai_cost_logger import log_openai_call
+                    usage = data.get("usage", {})
+                    log_openai_call(
+                        callsign=os.environ.get("CALLSIGN", "unknown"),
+                        use_case="query_expansion",
+                        model="gpt-4o-mini",
+                        input_tokens=usage.get("prompt_tokens", 0),
+                        output_tokens=usage.get("completion_tokens", 0),
+                    )
+                except Exception:
+                    pass
                 if isinstance(variations, list) and variations:
                     return [query_text] + [v for v in variations if isinstance(v, str)][:3]
     except Exception as exc:
@@ -137,7 +149,19 @@ async def _embed_text(text: str) -> list[float] | None:
                 json={"model": "text-embedding-3-small", "input": text[:8000]},
             )
             if resp.status_code == 200:
-                return resp.json()["data"][0]["embedding"]
+                emb_data = resp.json()
+                try:
+                    from src.telegram_bot.openai_cost_logger import log_openai_call
+                    usage = emb_data.get("usage", {})
+                    log_openai_call(
+                        callsign=os.environ.get("CALLSIGN", "unknown"),
+                        use_case="embedding",
+                        model="text-embedding-3-small",
+                        input_tokens=usage.get("total_tokens", 0),
+                    )
+                except Exception:
+                    pass
+                return emb_data["data"][0]["embedding"]
     except Exception as exc:
         logger.warning(f"[memory-listener] embedding failed: {exc}")
     return None

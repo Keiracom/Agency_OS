@@ -71,6 +71,17 @@ def extract_memory_fields(raw_text: str) -> dict:
         temperature=0,
         max_tokens=500,
     )
+    try:
+        from src.telegram_bot.openai_cost_logger import log_openai_call
+        log_openai_call(
+            callsign=os.getenv("CALLSIGN", "unknown"),
+            use_case="save_extraction",
+            model="gpt-4o-mini",
+            input_tokens=response.usage.prompt_tokens if response.usage else 0,
+            output_tokens=response.usage.completion_tokens if response.usage else 0,
+        )
+    except Exception:
+        pass
     return json.loads(response.choices[0].message.content)
 
 

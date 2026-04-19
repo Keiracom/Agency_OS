@@ -21,7 +21,7 @@ synthesised brief block.
 """
 import json
 import logging
-import os
+import os  # noqa: F401 — used in cost logging block
 import re
 from typing import Any
 
@@ -115,7 +115,20 @@ async def discern_and_summarise(
                     f"[discernment] OpenAI returned {resp.status_code}: {resp.text[:200]}"
                 )
                 return _empty_result("openai_http_error")
-            raw = resp.json()["choices"][0]["message"]["content"]
+            resp_json = resp.json()
+            raw = resp_json["choices"][0]["message"]["content"]
+            try:
+                from src.telegram_bot.openai_cost_logger import log_openai_call
+                usage = resp_json.get("usage", {})
+                log_openai_call(
+                    callsign=os.environ.get("CALLSIGN", "unknown"),
+                    use_case="discernment",
+                    model="gpt-4o-mini",
+                    input_tokens=usage.get("prompt_tokens", 0),
+                    output_tokens=usage.get("completion_tokens", 0),
+                )
+            except Exception:
+                pass
     except Exception as exc:
         logger.warning(f"[discernment] call failed: {exc}")
         return _empty_result("call_exception")

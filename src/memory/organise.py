@@ -74,7 +74,19 @@ def backfill_embeddings(limit: int = EMBED_BATCH_LIMIT) -> int:
                 timeout=10,
             )
             if emb_resp.status_code == 200:
-                embedding = emb_resp.json()["data"][0]["embedding"]
+                emb_data = emb_resp.json()
+                try:
+                    from src.telegram_bot.openai_cost_logger import log_openai_call
+                    usage = emb_data.get("usage", {})
+                    log_openai_call(
+                        callsign=os.environ.get("CALLSIGN", "unknown"),
+                        use_case="backfill_embedding",
+                        model="text-embedding-3-small",
+                        input_tokens=usage.get("total_tokens", 0),
+                    )
+                except Exception:
+                    pass
+                embedding = emb_data["data"][0]["embedding"]
                 httpx.patch(
                     f"{SUPABASE_URL}/rest/v1/agent_memories?id=eq.{row['id']}",
                     headers={**headers, "Prefer": "return=minimal"},

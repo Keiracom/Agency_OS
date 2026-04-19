@@ -117,11 +117,15 @@ def archive_stale(limit: int = 20) -> int:
     except Exception:
         return 0
 
-    # Find stale: confirmed + never accessed
+    # Find stale: confirmed + never accessed + older than 7 days + not system reference facts
+    from datetime import datetime, timezone, timedelta
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
     try:
         resp = httpx.get(
             f"{SUPABASE_URL}/rest/v1/agent_memories"
             f"?state=eq.confirmed&access_count=eq.0"
+            f"&callsign=neq.system"
+            f"&created_at=lt.{cutoff}"
             f"&select=id&limit={limit}",
             headers=headers, timeout=10,
         )

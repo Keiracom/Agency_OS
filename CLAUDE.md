@@ -29,6 +29,7 @@ On every new session, your FIRST action before any directive, query, or build wo
 1. Read the Agency OS Manual from Google Drive (Doc ID: `1p9FAQGowy9SgwglIxtkGsMuvLsR70MJBQrCSY6Ie9ho`). This is the CEO SSOT — current state, active directives, blockers, and system status.
 2. Do not work from memory. Do not work from stale docs. Read the Manual before any directive.
 3. If the Manual is unreachable, alert Dave and STOP. Do not proceed from cached knowledge.
+4. **Telegram verification (HARD BLOCK):** Read the §Group Chat Plumbing section below. Verify `tg -g "test"` works. Your FIRST outbound message to Dave MUST go via `tg -g`, not terminal output. If `tg` fails, fix it before proceeding — Dave reads Telegram, not your terminal. All communication with Dave and peers happens via the Telegram group (chat_id `-1003926592540`), never terminal-only.
 
 This overrides all other startup steps. The Manual is ground truth.
 

@@ -37,7 +37,7 @@ from telegram.ext import (
 from src.telegram_bot.tag_handler import handle_tag, handle_tag_confirmation
 from src.telegram_bot.recall_handler import handle_recall
 from src.telegram_bot.save_handler import cmd_save
-from src.telegram_bot.memory_listener import find_relevant_memories, find_matching_commits, format_memory_context, auto_capture_message
+from src.telegram_bot.memory_listener import find_relevant_memories, find_matching_commits, find_repo_mentions, format_memory_context, auto_capture_message
 
 # ---------------------------------------------------------------------------
 # Config
@@ -618,9 +618,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         try:
             memories = await find_relevant_memories(raw_text)
             commits = await find_matching_commits(raw_text)
-            if memories or commits:
-                memory_context = format_memory_context(memories, commits)
-                logger.info(f"[memory-listener] surfaced {len(memories)} memories + {len(commits)} commits")
+            repo_hits = await find_repo_mentions(raw_text)
+            if memories or commits or repo_hits:
+                memory_context = format_memory_context(memories, commits, repo_hits)
+                logger.info(f"[memory-listener] surfaced memories + {len(commits)} commits + {len(repo_hits)} repo hits")
         except Exception as _mem_exc:
             logger.warning(f"[memory-listener] non-fatal error: {_mem_exc}")
 
@@ -735,6 +736,119 @@ async def _relay_text_to_inbox(chat_id: int, text: str, sender: str = Sender.DAV
     logger.info(f"[relay] text message written to {path}")
 
 
+# ---------------------------------------------------------------------------
+# MEASURE-V1 — cited-term annotation on listener telemetry (Aiden side)
+# ---------------------------------------------------------------------------
+
+TELEMETRY_LOG_PATH = "/home/elliotbot/clawd/logs/listener-telemetry.jsonl"
+
+# Minimal inline tokenizer — swap for Elliot's richer module when it lands.
+# English + callsign + AU-business stopwords per MEASURE-V1 spec.
+_MV_STOPWORDS = {
+    "about", "after", "again", "because", "before", "being", "between",
+    "could", "doing", "during", "every", "going", "having", "maybe",
+    "other", "should", "something", "their", "there", "these", "thing",
+    "things", "think", "those", "through", "where", "which", "while",
+    "would", "already", "really", "still",
+    # callsigns
+    "dave", "elliot", "aiden", "scout", "claude",
+    # AU business / project terms that match too broadly in our corpus
+    "agency", "client", "domain", "pipeline", "directive", "memory",
+    "save", "recall", "session", "aidenbot", "elliotbot",
+}
+
+
+def _mv_tokenize(text: str) -> set[str]:
+    """Minimal cited-term tokenizer. Returns lowercase 4+ char non-stopword tokens."""
+    import re as _re
+    tokens = _re.findall(r"[a-zA-Z][a-zA-Z0-9_]{3,}", (text or "").lower())
+    return {t for t in tokens if t not in _MV_STOPWORDS}
+
+
+def _annotate_last_retrieval_with_cited_terms(outgoing_text: str) -> None:
+    """Find the most recent same-callsign listener retrieval event with
+    final_count>0 within the last 60s and annotate it with per-item cited flags
+    based on shared-token overlap with outgoing_text.
+
+    Appends an annotation event to the telemetry log rather than rewriting the
+    original line (JSONL-safe). The annotation references the original ts.
+    """
+    if not outgoing_text or not outgoing_text.strip():
+        return
+    try:
+        with open(TELEMETRY_LOG_PATH, "r") as fh:
+            lines = fh.readlines()
+    except Exception:
+        return
+    if not lines:
+        return
+
+    # Find most recent matching event (scan backward)
+    from datetime import datetime, timedelta, timezone as _tz
+    now = datetime.now(_tz.utc)
+    cutoff = now - timedelta(seconds=60)
+    target_event = None
+    for line in reversed(lines[-50:]):  # scan last 50 events max
+        try:
+            ev = _json.loads(line)
+        except Exception:
+            continue
+        if ev.get("callsign") != CALLSIGN:
+            continue
+        if (ev.get("final_count") or 0) <= 0:
+            continue
+        ts_str = ev.get("ts", "")
+        try:
+            ts = datetime.fromisoformat(ts_str)
+        except Exception:
+            continue
+        if ts < cutoff:
+            break  # older than window; list is chronological so stop scanning
+        # skip events that are themselves annotations
+        if ev.get("source") == "mv_annotation":
+            continue
+        target_event = ev
+        break
+
+    if target_event is None:
+        return  # no recent retrieval to annotate
+
+    # Compute per-item cited flags
+    outgoing_tokens = _mv_tokenize(outgoing_text)
+    if not outgoing_tokens:
+        return
+    final_previews = target_event.get("final_previews") or []
+    per_item_ratings: list[dict] = []
+    for prev in final_previews:
+        content_tokens = _mv_tokenize(prev.get("content_100") or "")
+        overlap = outgoing_tokens & content_tokens
+        cited = len(overlap) >= 2
+        per_item_ratings.append({
+            "id": prev.get("id"),
+            "bot_cited": cited,
+            "overlap_count": len(overlap),
+            "shared_tokens": sorted(overlap)[:8],
+        })
+
+    # Append annotation event (doesn't mutate the original line — JSONL-safe)
+    annotation = {
+        "ts": now.isoformat(),
+        "source": "mv_annotation",
+        "callsign": CALLSIGN,
+        "annotates_ts": target_event.get("ts"),
+        "annotates_query_preview": (target_event.get("query_preview") or "")[:80],
+        "outgoing_text_preview": outgoing_text[:200],
+        "per_item_ratings": per_item_ratings,
+        "any_cited": any(r["bot_cited"] for r in per_item_ratings),
+        "cited_count": sum(1 for r in per_item_ratings if r["bot_cited"]),
+    }
+    try:
+        with open(TELEMETRY_LOG_PATH, "a") as fh:
+            fh.write(_json.dumps(annotation) + "\n")
+    except Exception:
+        pass  # best-effort
+
+
 async def _outbox_watcher(app: Application) -> None:
     """Watch outbox dir and send messages to Telegram."""
     bot = app.bot
@@ -753,6 +867,13 @@ async def _outbox_watcher(app: Application) -> None:
 
                     if msg.get("type") == "text":
                         text = msg.get("text", "")
+                        # MEASURE-V1: annotate last listener retrieval with
+                        # cited-term heuristic before send (per-item, 2+ shared
+                        # tokens = bot_cited). Best-effort, never blocks send.
+                        try:
+                            _annotate_last_retrieval_with_cited_terms(text)
+                        except Exception as _mv_exc:
+                            logger.warning(f"[measure-v1] annotate failed: {_mv_exc}")
                         if len(text) > 4000:
                             tmp = f"/tmp/relay-out-{fname}.md"
                             with open(tmp, "w") as tf:

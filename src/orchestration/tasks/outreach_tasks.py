@@ -54,6 +54,7 @@ from src.models.base import (
 from src.models.campaign import Campaign
 from src.models.client import Client
 from src.models.lead import Lead
+from src.pipeline.email_scoring_gate import score_and_suggest
 
 logger = logging.getLogger(__name__)
 
@@ -233,26 +234,39 @@ async def send_email_task(
             logger.error(f"Email rate limit exceeded for domain {domain}: {e}")
             raise
 
-        # === EMAIL SCORING GATE (GOV-12: runtime enforcement) ===
-        try:
-            from src.pipeline.email_scoring_gate import score_email
-            email_score = score_email(
-                subject=subject,
-                body=content,
-                recipient_name=getattr(lead, "dm_name", None),
-                recipient_company=getattr(lead, "company_name", None),
-                sequence_position=sequence_step,
+        # === EMAIL SCORING GATE v2 — evaluate-revise loop (GOV-12: runtime enforcement) ===
+        # v1: log-only. Blocking deferred until score/performance correlation is calibrated.
+        scoring_result = score_and_suggest(
+            subject=subject,
+            body=content,
+            recipient_name=getattr(lead, "dm_name", None),
+            recipient_company=getattr(lead, "company_name", None),
+            sequence_position=sequence_step,
+        )
+        _email_score = scoring_result["score"]
+        _email_passed = scoring_result["passed"]
+        _flag_names = [f["pattern"] for f in scoring_result["flags"]]
+        _suggestions = scoring_result["suggestions"]
+
+        # Structured log for quality analysis pipeline
+        logger.info(
+            "EMAIL_SCORE_GATE lead_id=%s score=%d passed=%s flags=%s suggestions=%s",
+            lead_id,
+            _email_score,
+            _email_passed,
+            _flag_names,
+            _suggestions,
+        )
+
+        if not _email_passed:
+            logger.warning(
+                "Email scoring gate BELOW THRESHOLD for lead %s: score=%d, flags=%s — "
+                "sending anyway (v1 log-only). Suggestions: %s",
+                lead_id,
+                _email_score,
+                _flag_names,
+                _suggestions,
             )
-            if not email_score["pass"]:
-                flags = ", ".join(f["pattern"] for f in email_score["flags"])
-                logger.warning(
-                    f"Email scoring gate FAILED for lead {lead_id}: "
-                    f"score={email_score['score']}, flags=[{flags}]"
-                )
-                # Log but don't block in v1 — switch to raise after calibration
-                # raise ValidationError(f"Email score {email_score['score']}/100 below threshold. Flags: {flags}")
-        except ImportError:
-            pass  # graceful if gate module not available
 
         # === SEND EMAIL ===
         logger.info(f"Sending email to lead {lead_id} (campaign {campaign.id})")
@@ -287,6 +301,10 @@ async def send_email_task(
             "channel": "email",
             "message_id": send_result.data.get("message_id"),
             "sequence_step": sequence_step,
+            "email_score": _email_score,
+            "email_score_passed": _email_passed,
+            "email_score_flags": _flag_names,
+            "email_score_suggestions": _suggestions,
         }
 
 

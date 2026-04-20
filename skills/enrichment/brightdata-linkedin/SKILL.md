@@ -1,10 +1,58 @@
 # SKILL: Bright Data LinkedIn Enrichment
 
-**Tier:** 1.5 - 2  
-**Cost:** ~$0.0015 AUD per record  
-**Source:** Bright Data Web Scraper API (LinkedIn Datasets)  
-**Credentials Required:** `BRIGHTDATA_API_KEY`  
+**Tier:** 1.5 - 2
+**Cost:** ~$0.0015 AUD per record
+**Source:** Bright Data Web Scraper API (LinkedIn Datasets)
+**Credentials Required:** `BRIGHTDATA_API_KEY`
 **Status:** ✅ Working (verified 2026-02-17)
+
+---
+
+## At-a-Glance
+
+**What:** Pull LinkedIn company or profile data via Bright Data's async dataset API. Replaces Proxycurl (dead reference per CLAUDE.md).
+
+**When to use:**
+- T2 Company enrichment: employee count, industry, headquarters, founded-year, follower count (CIS scoring signals)
+- T2.5 People enrichment: decision-maker title, tenure, profile URL verification (F5 DM identification support)
+- Profile validation: confirm a DM candidate's LinkedIn URL actually exists and matches the expected person
+
+**When NOT to use:**
+- NOT Proxycurl (dead per CLAUDE.md dead-references table)
+- NOT for real-time scraping during user-facing requests (async dataset fetch, 10-60s typical)
+- NOT for bulk >1000 profile sweeps without explicit budget approval
+- NOT when a cheaper tier has already produced sufficient signal (GOV-8 maximum extraction — reuse upstream if available)
+
+**Caveats:**
+- Async dataset runs — poll `snapshot_id` until status=ready
+- Rate-limit headroom unclear; assume 100 req/min soft
+- AU-specific: profile data is global; filter downstream for AU relevance
+- Profile URLs occasionally carry regional prefixes (`au.linkedin.com/in/...`) — normalise before dedup
+
+**Returns:** dataset-specific. Company: `{name, industry, size, headquarters, founded, followers, linkedin_url}`. Profile: `{name, title, current_company, location, tenure, url}`.
+
+## Input Parameter Constraints (poka-yoke)
+
+- `dataset_id: enum` — must be one of the documented Dataset IDs below; reject free-text.
+- `url: str` — must match LinkedIn URL regex: `^https://(www\.|au\.|)linkedin\.com/(company|in)/[a-zA-Z0-9\-_%]+/?$`. Strip query strings before submission.
+- `timeout_s: int` — default 60. Do not exceed 120 (dataset stalls beyond are almost always failures).
+
+## Response Trimming
+
+Company: PERSIST `name, industry, size, headquarters_country, founded_year, followers_count, linkedin_url`. DROP: `description, specialties, affiliated_companies, similar_companies` (rarely used).
+
+Profile: PERSIST `name, current_title, current_company, current_tenure_months, location, profile_url`. DROP: `skills, endorsements, recommendations, connections_count, about_section` (context bloat; fetch on demand if needed).
+
+## Error Handling
+
+| Error | Signal | Category | Action |
+|-------|--------|----------|--------|
+| Malformed URL | client-side reject | caller_error | Regex-check before API call. |
+| Dataset run failed | async status=failed | transient | Retry once with same URL. |
+| No match | async status=ready, empty | miss | Persist `{found: false}`. Not an error. |
+| Auth failure | 401 | config_error | Route to devops-6 — `BRIGHTDATA_API_KEY`. |
+| Quota exceeded | 402 | budget | Escalate to Dave. |
+| Stuck ≥120s | timeout | transient | Cancel + retry once; escalate on second. |
 
 ---
 

@@ -39,6 +39,101 @@ GIT_STOPWORDS: set[str] = STOPWORDS | {
 }
 
 
+async def _expand_query(query_text: str) -> list[str]:
+    """Generate 3 alternative phrasings via GPT-4o-mini for MultiQueryRetriever.
+
+    Returns [original_query, variation_1, variation_2, variation_3].
+    Best-effort: returns [query_text] on any failure — caller falls back to original.
+    Adds ~500ms latency (one GPT-4o-mini call). Temperature 0.3 for mild diversity.
+    """
+    if not OPENAI_API_KEY:
+        return [query_text]
+    prompt = (
+        f"Generate 3 alternative search queries for finding relevant memories about: '{query_text}'. "
+        'Return JSON: {"variations": ["query1", "query2", "query3"]}'
+    )
+    try:
+        async with httpx.AsyncClient(timeout=8) as client:
+            resp = await client.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {OPENAI_API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": "gpt-4o-mini",
+                    "temperature": 0.3,
+                    "messages": [
+                        {"role": "user", "content": prompt}
+                    ],
+                    "response_format": {"type": "json_object"},
+                },
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                content = data["choices"][0]["message"]["content"]
+                parsed = json.loads(content)
+                variations = parsed.get("variations", [])
+                try:
+                    from src.telegram_bot.openai_cost_logger import log_openai_call
+                    usage = data.get("usage", {})
+                    log_openai_call(
+                        callsign=os.environ.get("CALLSIGN", "unknown"),
+                        use_case="query_expansion",
+                        model="gpt-4o-mini",
+                        input_tokens=usage.get("prompt_tokens", 0),
+                        output_tokens=usage.get("completion_tokens", 0),
+                    )
+                except Exception:
+                    pass
+                if isinstance(variations, list) and variations:
+                    return [query_text] + [v for v in variations if isinstance(v, str)][:3]
+    except Exception as exc:
+        logger.warning(f"[memory-listener] query expansion failed: {exc}")
+    return [query_text]
+
+
+def _merge_variation_results(variation_results: list[list[dict]]) -> list[dict]:
+    """Merge results from multiple query variations.
+
+    Dedup by row ID. Rows found by 2+ variations get similarity * 1.2.
+    Rows found by 3+ variations get similarity * 1.5.
+    Returns merged list sorted by (boosted) similarity descending.
+    """
+    hit_counts: dict[str, int] = {}
+    rows_by_id: dict[str, dict] = {}
+
+    for result_set in variation_results:
+        seen_in_this_variation: set[str] = set()
+        for row in result_set:
+            row_id = row.get("id")
+            if not row_id:
+                continue
+            if row_id not in seen_in_this_variation:
+                seen_in_this_variation.add(row_id)
+                hit_counts[row_id] = hit_counts.get(row_id, 0) + 1
+                if row_id not in rows_by_id:
+                    rows_by_id[row_id] = dict(row)
+
+    merged: list[dict] = []
+    for row_id, row in rows_by_id.items():
+        count = hit_counts.get(row_id, 1)
+        if count >= 3:
+            boost = 1.5
+        elif count >= 2:
+            boost = 1.2
+        else:
+            boost = 1.0
+        row = dict(row)
+        base_sim = float(row.get("similarity", 0.0) or 0.0)
+        row["similarity"] = base_sim * boost
+        row["_variation_hits"] = count
+        merged.append(row)
+
+    merged.sort(key=lambda r: r.get("similarity", 0.0), reverse=True)
+    return merged
+
+
 async def _embed_text(text: str) -> list[float] | None:
     """Generate embedding via OpenAI text-embedding-3-small. Returns None on failure."""
     if not OPENAI_API_KEY:
@@ -54,7 +149,19 @@ async def _embed_text(text: str) -> list[float] | None:
                 json={"model": "text-embedding-3-small", "input": text[:8000]},
             )
             if resp.status_code == 200:
-                return resp.json()["data"][0]["embedding"]
+                emb_data = resp.json()
+                try:
+                    from src.telegram_bot.openai_cost_logger import log_openai_call
+                    usage = emb_data.get("usage", {})
+                    log_openai_call(
+                        callsign=os.environ.get("CALLSIGN", "unknown"),
+                        use_case="embedding",
+                        model="text-embedding-3-small",
+                        input_tokens=usage.get("total_tokens", 0),
+                    )
+                except Exception:
+                    pass
+                return emb_data["data"][0]["embedding"]
     except Exception as exc:
         logger.warning(f"[memory-listener] embedding failed: {exc}")
     return None
@@ -84,29 +191,50 @@ async def find_relevant_memories(
 
     # Strip callsign prefixes before embedding — [AIDEN]/[ELLIOT] tags add noise to cosine
     import re
+    import asyncio as _asyncio
     clean_text = re.sub(r'^\[(?:ELLIOT|AIDEN|SCOUT|DAVE)\]\s*', '', message_text.strip())
     clean_text = re.sub(r'^\[(?:ELLIOT|AIDEN|SCOUT|DAVE)\]\s*', '', clean_text)  # double prefix
+    query = clean_text or message_text
 
-    # Try embedding-based semantic search first
-    embedding = await _embed_text(clean_text or message_text)
-    if embedding is not None:
-        raw_results = await _search_by_embedding(embedding, n, headers)
-        # If embedding call succeeded (even with zero matches), don't fall through
-        # to text search — zero semantic matches means nothing is relevant
+    # MultiQueryRetriever: expand query into variations, search each in parallel
+    variations = await _expand_query(query)
+    logger.info(f"[memory-listener] query expanded to {len(variations)} variations")
+
+    # Embed all variations in parallel
+    embeddings: list[list[float] | None] = await _asyncio.gather(
+        *[_embed_text(v) for v in variations]
+    )
+
+    # Only proceed with variations that have valid embeddings
+    valid_pairs = [(v, emb) for v, emb in zip(variations, embeddings) if emb is not None]
+
+    if valid_pairs:
+        # Search hybrid for every variation in parallel (20 candidates each)
+        variation_results: list[list[dict]] = await _asyncio.gather(
+            *[_hybrid_search(v, emb, 20, headers) for v, emb in valid_pairs]
+        )
+
+        # Merge: dedup + boost rows found by multiple variations
+        raw_results = _merge_variation_results(list(variation_results))
+
         if raw_results:
-            # Post-filter: require at least one non-stopword token overlap between
-            # query and row content. Embedding catches semantic vibes (produces
-            # false positives on our pipeline-heavy corpus, e.g. 'check status
-            # crashing' matching ContactOut schema debugging at 0.38-0.42 cosine).
-            # Requiring an actual shared subject-word prunes those while keeping
-            # genuinely on-topic rows.
-            results = _filter_by_word_overlap(raw_results, message_text)
-            results = _apply_trust_weighting(results)
+            results = _apply_trust_weighting(raw_results)
+            # L2: LLM discernment — pick best N and summarise
+            from src.telegram_bot.listener_discernment import discern_and_summarise
+            discerned = await discern_and_summarise(query, results)
+            if discerned is not None:
+                await _increment_access_counts(discerned["selected_rows"], headers)
+                source_tag = "multiquery+hybrid+discern" if len(valid_pairs) > 1 else "hybrid+discern"
+                _log_retrieval_event(message_text, raw_results, discerned["selected_rows"], source=source_tag)
+                return discerned  # dict with 'selected_rows' + 'summary'
+            # Fallback if discernment fails: return top-N from trust weighting
+            results = results[:n]
             await _increment_access_counts(results, headers)
         else:
             results = []
-        _log_retrieval_event(message_text, raw_results, results, source="embedding")
-        return results  # may be empty — that's fine
+        source_tag = "multiquery+hybrid" if len(valid_pairs) > 1 else "hybrid"
+        _log_retrieval_event(message_text, raw_results, results, source=source_tag)
+        return results
 
     # Fallback: ILIKE text search only when embedding generation FAILED
     fallback = await _search_by_text(message_text, n, headers)
@@ -139,6 +267,19 @@ def _log_retrieval_event(
             round(float(r.get("similarity", 0) or 0), 4) for r in (raw_results or [])
         ]
         final_ids = [r.get("id") for r in (final_results or [])]
+        # Capture content previews of final rows — needed for retrospective
+        # relevance scoring (Dave pushback 2026-04-17: 'stable enough' was
+        # a hedge because we never measured utility of surfaced rows).
+        # Previews let us score events offline against the query_preview.
+        final_previews = [
+            {
+                "id": r.get("id"),
+                "source_type": r.get("source_type"),
+                "state": r.get("state"),
+                "content_100": (r.get("content") or "")[:100],
+            }
+            for r in (final_results or [])
+        ]
         event = {
             "ts": _dt.datetime.now(_dt.timezone.utc).isoformat(),
             "callsign": callsign,
@@ -150,7 +291,9 @@ def _log_retrieval_event(
             "raw_similarities": raw_sims,
             "final_count": len(final_ids),
             "final_ids": final_ids,
+            "final_previews": final_previews,  # for offline relevance scoring
             "dropped_by_overlap_filter": len(raw_ids) - len(final_ids),
+            "relevance_ratings": None,  # populated later by scoring pass (null = unscored)
         }
         with open(TELEMETRY_LOG, "a", encoding="utf-8") as fh:
             fh.write(_json.dumps(event) + "\n")
@@ -158,31 +301,11 @@ def _log_retrieval_event(
         logger.warning(f"[memory-listener] telemetry log failed: {exc}")
 
 
-def _filter_by_word_overlap(results: list[dict], query_text: str) -> list[dict]:
-    """Require each row to share at least one >4-char non-stopword token with
-    the query. Prunes embedding false-positives on topically-unrelated content.
-
-    Uses GIT_STOPWORDS (superset of STOPWORDS + callsigns + commit-msg verbs)
-    because our callsigns ('elliot', 'aiden', 'dave', 'scout', 'claude') appear
-    in nearly every memory row — if they're allowed as query terms they'll
-    match everything and the filter does nothing."""
-    query_words = {
-        w.strip(".,!?()[]\"'").lower()
-        for w in query_text.split()
-        if len(w.strip(".,!?()[]\"'")) > 4
-    }
-    query_words -= GIT_STOPWORDS
-    if not query_words:
-        return results  # no content words to filter on — keep embedding result as-is
-    # Require at least 2 matching words (or 1 if query has fewer than 3 content words)
-    min_overlap = 2 if len(query_words) >= 3 else 1
-    filtered: list[dict] = []
-    for row in results:
-        content = (row.get("content") or "").lower()
-        overlap_count = sum(1 for qw in query_words if qw in content)
-        if overlap_count >= min_overlap:
-            filtered.append(row)
-    return filtered
+# _filter_by_word_overlap REMOVED — L2 discernment replaces it as the sole
+# intelligent filter. Word-overlap was a cheap heuristic that pre-empted L2
+# on typo/synonym queries (e.g. 'repi' killed all 5 embedding matches).
+# L2 handles both precision AND typo tolerance. Removed per architectural
+# decision during listener tuning session.
 
 
 # Source-type trust weights — multiply similarity to reorder results.
@@ -260,14 +383,39 @@ def _apply_trust_weighting(results: list[dict]) -> list[dict]:
     return results
 
 
+async def _hybrid_search(
+    query_text: str, embedding: list[float], n: int, headers: dict
+) -> list[dict]:
+    """Hybrid BM25 + semantic search via Supabase RPC (Reciprocal Rank Fusion)."""
+    try:
+        rpc_url = f"{SUPABASE_URL}/rest/v1/rpc/hybrid_search_agent_memories"
+        async with httpx.AsyncClient(timeout=5) as client:
+            resp = await client.post(
+                rpc_url,
+                headers=headers,
+                json={
+                    "query_text": query_text,
+                    "query_embedding": embedding,
+                    "match_count": n,
+                    "match_threshold": 0.35,
+                },
+            )
+            if resp.status_code == 200:
+                return resp.json()
+            # Fallback to embedding-only if hybrid RPC doesn't exist yet
+            logger.warning(f"[memory-listener] hybrid search returned {resp.status_code}, falling back to embedding-only")
+    except Exception as exc:
+        logger.warning(f"[memory-listener] hybrid search failed: {exc}")
+
+    # Fallback to embedding-only search
+    return await _search_by_embedding(embedding, n, headers)
+
+
 async def _search_by_embedding(
     embedding: list[float], n: int, headers: dict
 ) -> list[dict]:
-    """Cosine similarity search via Supabase RPC (pgvector)."""
+    """Fallback: cosine similarity only via Supabase RPC (pgvector)."""
     try:
-        # Use Supabase RPC to call a similarity search function
-        # Since we may not have an RPC function, use PostgREST with order by embedding
-        # pgvector supports ordering by <=> (cosine distance) via PostgREST
         rpc_url = f"{SUPABASE_URL}/rest/v1/rpc/match_agent_memories"
         async with httpx.AsyncClient(timeout=5) as client:
             resp = await client.post(
@@ -347,8 +495,15 @@ async def _increment_access_counts(rows: list[dict], headers: dict) -> None:
                 current_state = row.get("state", "tentative")
                 if current_state == "tentative" and new_count >= PROMOTION_ACCESS_THRESHOLD:
                     payload["state"] = "confirmed"
+                    payload["promoted_from_id"] = row["id"]
+                    current_meta = row.get("typed_metadata") or {}
+                    payload["typed_metadata"] = {
+                        **current_meta,
+                        "promoted_at": _dt.datetime.now(_dt.timezone.utc).isoformat(),
+                        "promoted_from_state": "tentative",
+                    }
                     logger.info(
-                        f"[memory-listener] promoting id={row['id']} tentative→confirmed "
+                        f"[memory-listener] PROMOTION FIRED id={row['id']} tentative→confirmed "
                         f"(access_count={new_count})"
                     )
                 try:
@@ -400,6 +555,52 @@ async def find_matching_commits(message_text: str, n: int = 5) -> list[str]:
         return results[:n]
     except Exception:
         return []
+
+    return results[:n]
+
+
+async def find_repo_mentions(message_text: str, n: int = 5) -> list[str]:
+    """Search repo file contents for terms (git grep). Catches codebase facts
+    invisible to agent_memories — deploy names, constants, file paths, config."""
+    import asyncio
+
+    words = [w.strip(".,!?()[]\"'").lower() for w in message_text.split()]
+    terms = [w for w in words if len(w) > 2 and w not in GIT_STOPWORDS][:3]
+    if not terms:
+        return []
+
+    repo_dir = os.environ.get("WORK_DIR_OVERRIDE", "/home/elliotbot/clawd/Agency_OS")
+    results: list[str] = []
+    seen: set[str] = set()
+
+    for term in terms:
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                "git", "grep", "-i", "-l", term,
+                cwd=repo_dir,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.DEVNULL,
+            )
+            stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=3)
+            files = stdout.decode().strip().splitlines()
+            for f in files[:3]:
+                if f and f not in seen and not f.startswith("node_modules") and not f.startswith("frontend/node_modules"):
+                    seen.add(f)
+                    # Get matching line for context
+                    try:
+                        proc2 = await asyncio.create_subprocess_exec(
+                            "git", "grep", "-i", "-m", "1", term, "--", f,
+                            cwd=repo_dir,
+                            stdout=asyncio.subprocess.PIPE,
+                            stderr=asyncio.subprocess.DEVNULL,
+                        )
+                        stdout2, _ = await asyncio.wait_for(proc2.communicate(), timeout=2)
+                        line = stdout2.decode().strip()[:120]
+                        results.append(line)
+                    except Exception:
+                        results.append(f)
+        except Exception:
+            pass
 
     return results[:n]
 
@@ -500,8 +701,32 @@ async def auto_capture_message(
         logger.warning(f"[auto-capture] error: {exc}")
 
 
-def format_memory_context(memories: list[dict], commits: list[str] | None = None) -> str:
-    """Format retrieved memories + git commits into context blocks for injection."""
+def format_memory_context(memories, commits: list[str] | None = None, repo_hits: list[str] | None = None) -> str:
+    """Format retrieved memories + git commits into context blocks for injection.
+
+    memories can be:
+    - list[dict]: raw memory rows (L1 mode)
+    - dict with 'summary' + 'selected_rows': L2 discernment result
+    """
+    # Handle L2 discernment result
+    if isinstance(memories, dict) and "summary" in memories:
+        summary = memories.get("summary", "")
+        rows = memories.get("selected_rows", [])
+        if not summary and not rows:
+            return ""
+        lines = []
+        if summary:
+            lines.append(f"[MEMORY BRIEF — AI-synthesised from {len(rows)} relevant memories:]")
+            lines.append(f"  {summary}")
+            lines.append("[END MEMORY BRIEF]")
+        if commits:
+            lines.append("[GIT CONTEXT — matching commits:]")
+            for c in commits:
+                lines.append(f"  {c}")
+            lines.append("[END GIT CONTEXT]")
+        return "\n".join(lines)
+
+    # Handle L1 raw rows (list of dicts)
     if not memories and not commits:
         return ""
 
@@ -522,5 +747,11 @@ def format_memory_context(memories: list[dict], commits: list[str] | None = None
         for c in commits:
             lines.append(f"  {c}")
         lines.append("[END GIT CONTEXT]")
+
+    if repo_hits:
+        lines.append("[REPO CONTEXT — matching code/docs:]")
+        for r in repo_hits:
+            lines.append(f"  {r}")
+        lines.append("[END REPO CONTEXT]")
 
     return "\n".join(lines)

@@ -41,7 +41,19 @@ def _generate_embedding(text: str) -> list[float] | None:
             timeout=10,
         )
         if resp.status_code == 200:
-            return resp.json()["data"][0]["embedding"]
+            emb_data = resp.json()
+            try:
+                from src.telegram_bot.openai_cost_logger import log_openai_call
+                usage = emb_data.get("usage", {})
+                log_openai_call(
+                    callsign=os.environ.get("CALLSIGN", "unknown"),
+                    use_case="store_embedding",
+                    model="text-embedding-3-small",
+                    input_tokens=usage.get("total_tokens", 0),
+                )
+            except Exception:
+                pass
+            return emb_data["data"][0]["embedding"]
     except Exception as exc:
         logger.warning(f"[store] embedding generation failed: {exc}")
     return None

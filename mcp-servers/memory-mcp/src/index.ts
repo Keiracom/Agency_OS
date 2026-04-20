@@ -23,7 +23,7 @@ const DEFAULT_MATCH_THRESHOLD = 0.25;
 const DEFAULT_LIMIT = 10;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
-  db: { schema: "elliot_internal" },
+  db: { schema: "public" },
 });
 
 async function getEmbedding(text: string): Promise<number[]> {
@@ -51,7 +51,7 @@ async function getEmbedding(text: string): Promise<number[]> {
 async function searchMemories(query: string, limit = DEFAULT_LIMIT, minScore = DEFAULT_MATCH_THRESHOLD) {
   const embedding = await getEmbedding(query);
   
-  const { data, error } = await supabase.rpc("match_memories", {
+  const { data, error } = await supabase.rpc("match_agent_memories", {
     query_embedding: embedding,
     match_threshold: minScore,
     match_count: limit,
@@ -60,9 +60,9 @@ async function searchMemories(query: string, limit = DEFAULT_LIMIT, minScore = D
   if (error) {
     // Fallback: direct query without vector search
     const { data: fallbackData, error: fallbackError } = await supabase
-      .from("memories")
-      .select("id, content, type, metadata, created_at")
-      .is("deleted_at", null)
+      .from("agent_memories")
+      .select("id, content, source_type, typed_metadata, tags, created_at, callsign, state, access_count")
+      .in("state", ["confirmed", "tentative"])
       .limit(limit);
     
     if (fallbackError) throw fallbackError;
@@ -77,13 +77,17 @@ async function saveMemory(content: string, type?: string, metadata?: Record<stri
   const id = randomUUID();
 
   const { data, error } = await supabase
-    .from("memories")
+    .from("agent_memories")
     .insert({
       id,
       content,
-      type: type || "conversation",
+      source_type: type || "conversation",
       embedding,
-      metadata: metadata || {},
+      typed_metadata: metadata || {},
+      callsign: process.env.CALLSIGN || "elliot",
+      tags: [],
+      state: "tentative",
+      valid_from: new Date().toISOString(),
     })
     .select("id, created_at")
     .single();
@@ -103,9 +107,9 @@ async function listRecentMemories(hours = 24, limit = DEFAULT_LIMIT) {
   const cutoff = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
 
   const { data, error } = await supabase
-    .from("memories")
-    .select("id, content, type, metadata, created_at")
-    .is("deleted_at", null)
+    .from("agent_memories")
+    .select("id, content, source_type, typed_metadata, tags, created_at, callsign, state, access_count")
+    .in("state", ["confirmed", "tentative"])
     .gte("created_at", cutoff)
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -116,10 +120,10 @@ async function listRecentMemories(hours = 24, limit = DEFAULT_LIMIT) {
 
 async function getMemoryById(memoryId: string) {
   const { data, error } = await supabase
-    .from("memories")
-    .select("id, content, type, metadata, created_at")
+    .from("agent_memories")
+    .select("id, content, source_type, typed_metadata, tags, created_at, callsign, state, access_count")
     .eq("id", memoryId)
-    .is("deleted_at", null)
+    .in("state", ["confirmed", "tentative"])
     .single();
 
   if (error) return null;
@@ -129,8 +133,8 @@ async function getMemoryById(memoryId: string) {
 async function deleteMemory(memoryId: string) {
   // Soft delete
   const { data, error } = await supabase
-    .from("memories")
-    .update({ deleted_at: new Date().toISOString() })
+    .from("agent_memories")
+    .update({ state: "archived" })
     .eq("id", memoryId)
     .select("id")
     .single();
@@ -141,34 +145,34 @@ async function deleteMemory(memoryId: string) {
 
 async function getMemoryStats() {
   const { count: total } = await supabase
-    .from("memories")
+    .from("agent_memories")
     .select("*", { count: "exact", head: true })
-    .is("deleted_at", null);
+    .in("state", ["confirmed", "tentative"]);
 
   const { data: byType } = await supabase
-    .from("memories")
-    .select("type")
-    .is("deleted_at", null)
-    .not("type", "is", null);
+    .from("agent_memories")
+    .select("source_type")
+    .in("state", ["confirmed", "tentative"])
+    .not("source_type", "is", null);
 
   const typeCounts: Record<string, number> = {};
   (byType || []).forEach((row) => {
-    const t = row.type || "unknown";
+    const t = row.source_type || "unknown";
     typeCounts[t] = (typeCounts[t] || 0) + 1;
   });
 
   const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   const { count: recent24h } = await supabase
-    .from("memories")
+    .from("agent_memories")
     .select("*", { count: "exact", head: true })
-    .is("deleted_at", null)
+    .in("state", ["confirmed", "tentative"])
     .gte("created_at", last24h);
 
   const last7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
   const { count: recent7d } = await supabase
-    .from("memories")
+    .from("agent_memories")
     .select("*", { count: "exact", head: true })
-    .is("deleted_at", null)
+    .in("state", ["confirmed", "tentative"])
     .gte("created_at", last7d);
 
   return {
@@ -181,10 +185,10 @@ async function getMemoryStats() {
 
 async function searchByType(type: string, limit = DEFAULT_LIMIT) {
   const { data, error } = await supabase
-    .from("memories")
-    .select("id, content, type, metadata, created_at")
-    .eq("type", type)
-    .is("deleted_at", null)
+    .from("agent_memories")
+    .select("id, content, source_type, typed_metadata, tags, created_at, callsign, state, access_count")
+    .eq("source_type", type)
+    .in("state", ["confirmed", "tentative"])
     .order("created_at", { ascending: false })
     .limit(limit);
 

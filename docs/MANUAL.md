@@ -1010,6 +1010,9 @@ Second Claude Code instance scaffold (callsign aiden). Worktree at /home/elliotb
 ### [ELLIOT] Directive LISTENER-GOV-F2 (PR #0, 2026-04-18)
 v1→v1.5 ratified post-hoc. Migration 103 committed to repo (supabase/migrations/103_cognitive_columns.sql). ceo_memory key ceo:listener_architecture_v1_5 written with full scope delta. 17 columns beyond v1 spec formally ratified by Dave 2026-04-18.
 
+### [ELLIOT+AIDEN] Directive FM-BUILD-V1 (2026-04-19/20)
+One-shot FM sourcing job for electrical test-and-tag client. 81/100 FM records delivered (email-only, no phone). Cost: $2.18 AUD. 549 target companies across 9 sectors (incl. fm_providers). ContactOut search yielded 771 profiles from 74 companies before credits exhausted. Leadmagic email enriched 81 (47% hit rate). Phone blocked: ContactOut locked (email credits 0 gates enrich endpoint), Leadmagic mobile 0% AU. 14 failures documented in post-mortem (docs/postmortems/FM_BUILD_V1_POSTMORTEM_2026-04-20.md). Key lessons: pilot before production, no silent try/except, scout for research not build agents, real-time credit checks, fix at discovery not defer.
+
 ### [ELLIOT+AIDEN] Directive LISTENER-KNOWLEDGE-SEED-V1 (2026-04-19)
 Curated fact ingest into agent_memories for listener whisper capability. 178 rows seeded: 39 from CLAUDE.md (Elliot — enrichment path, ALS gates, dead refs, governance laws, stack info) + 139 from Manual + ARCHITECTURE.md (Aiden — pricing, competitors, vendors, directive history, scoring, compliance). All source_type='verified_fact', state='confirmed', trust='dave_confirmed'. Hit Rate@5: 9/10. Meta-prose leakage: 0/20. Total agent_memories corpus: 567 rows. Chunking rules documented in docs/governance_chunking.md. Follow-up: V2 auto-ingest-on-commit deferred as separate directive.
 

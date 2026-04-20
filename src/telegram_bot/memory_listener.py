@@ -49,8 +49,14 @@ async def _expand_query(query_text: str) -> list[str]:
     if not OPENAI_API_KEY:
         return [query_text]
     prompt = (
-        f"Generate 3 alternative search queries for finding relevant memories about: '{query_text}'. "
-        'Return JSON: {"variations": ["query1", "query2", "query3"]}'
+        f"Rewrite this search query 3 ways to maximize retrieval from a knowledge base: '{query_text}'. "
+        "Rules: "
+        "(1) PARENT: ask about the broader product/system/business — not just the feature mentioned. "
+        "(2) SIBLING: ask about related or adjacent concepts. "
+        "(3) INVERSE: flip the framing (e.g. 'what remains' → 'what exists'). "
+        "CRITICAL: Output SHORT keyword phrases (3-6 words), NOT full sentences. "
+        "Short phrases retrieve better than long sentences. "
+        'Return JSON: {"variations": ["short phrase 1", "short phrase 2", "short phrase 3"]}'
     )
     try:
         async with httpx.AsyncClient(timeout=8) as client:
@@ -222,11 +228,19 @@ async def find_relevant_memories(
             # L2: LLM discernment — pick best N and summarise
             from src.telegram_bot.listener_discernment import discern_and_summarise
             discerned = await discern_and_summarise(query, results)
-            if discerned is not None:
-                await _increment_access_counts(discerned["selected_rows"], headers)
+            if discerned is not None and discerned.get("selected_ids"):
+                # Map discernment's selected_ids → actual row dicts for callers
+                rows_by_id = {r.get("id"): r for r in results}
+                selected_rows = [rows_by_id[sid] for sid in discerned["selected_ids"] if sid in rows_by_id]
+                await _increment_access_counts(selected_rows, headers)
                 source_tag = "multiquery+hybrid+discern" if len(valid_pairs) > 1 else "hybrid+discern"
-                _log_retrieval_event(message_text, raw_results, discerned["selected_rows"], source=source_tag)
-                return discerned  # dict with 'selected_rows' + 'summary'
+                _log_retrieval_event(message_text, raw_results, selected_rows, source=source_tag)
+                return {
+                    "summary": discerned.get("brief", ""),
+                    "selected_rows": selected_rows,
+                    "citations": discerned.get("citations", {}),
+                    "provenance_ok": discerned.get("provenance_ok", True),
+                }
             # Fallback if discernment fails: return top-N from trust weighting
             results = results[:n]
             await _increment_access_counts(results, headers)

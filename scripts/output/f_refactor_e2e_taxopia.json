@@ -1,0 +1,123 @@
+{
+  "domain": "affordabledental.com.au",
+  "business_name": "Affordable Dental",
+  "location": {
+    "street": "23-27 Macquarie St",
+    "suburb": "Parramatta",
+    "state": "NSW",
+    "postcode": "2150"
+  },
+  "industry_category": "Dental Clinic",
+  "entity_type_hint": "Australian Private Company",
+  "staff_estimate_band": "medium(6-20)",
+  "primary_phone": "(02) 7252 9622",
+  "primary_email": "info@affordabledental.com.au",
+  "abn": "39654505067",
+  "abn_status": "verified_serp",
+  "dm_candidate": {
+    "name": null,
+    "role": null,
+    "linkedin_url": null
+  },
+  "dm_linkedin_url": null,
+  "contacts": {
+    "linkedin": {
+      "linkedin_url": null,
+      "source": "unresolved",
+      "tier": "L3",
+      "match_type": "no_match",
+      "match_company": "",
+      "match_confidence": 0.0,
+      "l2_status": "no_candidate_url"
+    },
+    "email": {
+      "email": null,
+      "source": "unresolved",
+      "tier": "L5"
+    },
+    "mobile": {
+      "mobile": null,
+      "source": "unresolved",
+      "tier": "L4"
+    }
+  },
+  "intent_band": "TRYING",
+  "affordability_score": 8,
+  "affordability_gate": "can_afford",
+  "buyer_match_score": 9,
+  "vulnerability_report": {
+    "top_vulnerabilities": [
+      "Affordable Dental has no paid advertising presence (0 paid keywords, $0 paid ETV), missing out on immediate, high-intent patient acquisition opportunities.",
+      "A significant portion of their organic keywords (292 in positions 4-10 and 123 in positions 11-20) are not reaching the top 3 results, limiting their visibility and traffic.",
+      "They have lost 533 organic keywords, indicating a decline in search visibility for certain valuable terms."
+    ],
+    "quantified_opportunities": [
+      "123 organic keywords are currently ranking on page 2 (positions 11-20), representing immediate opportunities to push to page 1 for increased traffic.",
+      "Significant search volume exists for relevant keywords like 'dentist clinic' (9,900 monthly searches) and 'dentistry teeth whitening' (2,400 monthly searches), which Affordable Dental could target with paid ads or improved SEO.",
+      "Competitors like `smile.com.au` are achieving an estimated organic traffic value of over $185,000 AUD, significantly outperforming Affordable Dental's $13,350 AUD, highlighting substantial market share to gain."
+    ],
+    "what_marketing_agency_could_fix": "A marketing agency could significantly boost Affordable Dental's patient acquisition by implementing a targeted Google Ads strategy to capture high-intent searches for services like 'dentist clinic' (9,900 monthly searches) and 'dentistry teeth whitening' (2,400 monthly searches), where they currently have no paid presence. Simultaneously, optimising the 123 organic keywords currently on page 2 (positions 11-20) could push them to page 1, increasing organic traffic and reducing the estimated $84,200 AUD cost of acquiring that traffic organically. Addressing the loss of 533 organic keywords would also help stabilise and grow their overall search visibility."
+  },
+  "classification": {
+    "intent_band": "TRYING",
+    "affordability_gate": "can_afford",
+    "affordability_score": 8,
+    "buyer_match_score": 9,
+    "has_dm": false,
+    "has_email": false,
+    "has_mobile": false,
+    "has_linkedin": false,
+    "dm_verification_level": "minimal",
+    "classification": "watchlist",
+    "reason": "DM not identified"
+  },
+  "outreach": {
+    "draft_email": {
+      "subject": "Affordable Dental: Quick wins for new patients?",
+      "body": "G'day,\n\nI was looking at Affordable Dental's online presence and noticed you've got a solid organic footprint, ranking for over 1,100 keywords. What really stood out though is that you're not running any paid ads, which means you're missing out on a stack of high-intent patient searches, especially when competitors like Dental Boutique are actively using them. We could help you quickly capture those valuable searches, like the 9,900 monthly searches for 'dentist clinic', and get your 123 page-2 keywords onto the first page. Fancy a quick yarn about how Test Agency could help fill those chairs?\n\nCheers,\nTest Contact\nTest Agency"
+    },
+    "draft_linkedin_note": "G'day! Noticed Affordable Dental has a strong organic presence, but no paid ads. That's a huge opportunity to grab high-intent patient searches, like the 9,900 for 'dentist clinic', and boost your 123 page-2 keywords. Keen for a quick chat about how to get more patients through the door? Cheers, Test Contact",
+    "draft_voice_script": "G'day, this is Test Contact from Test Agency. We've spotted that Affordable Dental has a great organic presence but isn't tapping into paid ads, missing out on immediate patient leads. We reckon we can help you capture those high-intent searches and get more patients through the door.",
+    "enhanced": null
+  },
+  "dm_posts": {
+    "total_fetched": 0,
+    "after_author_filter": 0,
+    "posts": []
+  },
+  "provenance_footer": {
+    "business_identity": "gemini_2.5_flash_grounded",
+    "abn": "dfs_serp_abr",
+    "dm_linkedin": "unresolved (l1=none, l2=no_candidate_url)",
+    "email": "unresolved",
+    "mobile": "unresolved",
+    "vulnerability_report": "gemini_2.5_flash",
+    "outreach_enhanced": "n/a"
+  },
+  "stage_metrics": {
+    "f4_company_url_source": "serp",
+    "f5_linkedin_l2_match_type": "no_match",
+    "f5_linkedin_l2_match_company": "",
+    "f5_linkedin_l2_match_confidence": 0.0
+  },
+  "cost_breakdown": {
+    "f3a_usd": 0.000423,
+    "f2_usd": 0.042,
+    "f3b_usd": 0.002373,
+    "f4_usd": 0.006,
+    "f5_usd": 0.0,
+    "f6_enhanced_vr_usd": 0.0,
+    "total_usd": 0.050796,
+    "total_aud": 0.0787
+  },
+  "wall_clock_s": {
+    "f3a": 20.20369787979871,
+    "f2": 9.181723422370851,
+    "f3b": 25.799757109954953,
+    "f4": 2.4590531596913934,
+    "f5": 0.00014722347259521484,
+    "f5_dm_posts": 0.00012270361185073853,
+    "f6_classify": 1.7237849533557892e-05,
+    "f6_enhanced_vr": 0.0
+  }
+}

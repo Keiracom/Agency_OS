@@ -315,29 +315,58 @@ async def _get_and_delete_oauth_state(state: str) -> dict | None:
     return None
 
 
+HUBSPOT_SCOPES = [
+    "crm.objects.contacts.read",
+    "crm.objects.contacts.write",
+    "crm.objects.companies.read",
+    "crm.objects.companies.write",
+    "crm.objects.deals.read",
+    "crm.objects.deals.write",
+    "crm.schemas.contacts.read",
+    "crm.schemas.deals.read",
+    "sales-email-read",
+    "engagement.activities.read",
+    "engagement.activities.write",
+]
+# Note: meetings.write is not a valid HubSpot scope — omitted per #309 directive.
+
+
 @router.post("/connect/hubspot", response_model=HubSpotOAuthResponse)
 async def start_hubspot_oauth(
     user: CurrentUser = Depends(get_current_user_from_token),
     db: AsyncSession = Depends(get_db_session),
+    origin: str = Query("settings", description="Where OAuth was initiated: 'onboarding' or 'settings'"),
 ):
-    """Start HubSpot OAuth flow. Returns URL to redirect user."""
+    """Start HubSpot OAuth flow. Returns URL to redirect user.
+
+    Pass ?origin=onboarding when initiating from the onboarding flow so the
+    callback redirects back to /onboarding/linkedin instead of settings.
+    """
     client_id = await get_user_client_id(user, db)
 
-    # Generate state for CSRF protection
+    # Generate state for CSRF protection — include origin so callback can redirect correctly
     state = secrets.token_urlsafe(32)
     await _store_oauth_state(
         state,
         {
             "client_id": str(client_id),
             "user_id": str(user.id),
+            "origin": origin,
             "created_at": datetime.now(UTC).isoformat(),
         },
     )
 
-    # Build OAuth URL
-    crm_service = CRMPushService(db)
-    oauth_url = crm_service.get_hubspot_oauth_url(state)
-    await crm_service.close()
+    # Build OAuth URL with expanded scope list
+    import urllib.parse
+    scope_str = " ".join(HUBSPOT_SCOPES)
+    base_url = "https://app.hubspot.com/oauth/authorize"
+    params = {
+        "client_id": settings.hubspot_client_id,
+        "redirect_uri": settings.hubspot_redirect_uri,
+        "scope": scope_str,
+        "state": state,
+    }
+    oauth_url = f"{base_url}?{urllib.parse.urlencode(params)}"
 
     return HubSpotOAuthResponse(oauth_url=oauth_url, state=state)
 
@@ -362,6 +391,7 @@ async def hubspot_oauth_callback(
 
     client_id = UUID(state_data["client_id"])
     UUID(state_data["user_id"])
+    origin = state_data.get("origin", "settings")
 
     # Exchange code for tokens
     crm_service = CRMPushService(db)
@@ -373,10 +403,9 @@ async def hubspot_oauth_callback(
 
         # Calculate token expiration
         expires_in = tokens.get("expires_in", 1800)  # Default 30 min
-        expires_at = datetime.now(UTC)
         from datetime import timedelta
 
-        expires_at = expires_at + timedelta(seconds=expires_in)
+        expires_at = datetime.now(UTC) + timedelta(seconds=expires_in)
 
         # Save config
         config = CRMConfig(
@@ -395,9 +424,14 @@ async def hubspot_oauth_callback(
     finally:
         await crm_service.close()
 
-    # Redirect to frontend settings page
+    # Redirect based on where OAuth was initiated
+    if origin == "onboarding":
+        redirect_url = f"{settings.frontend_url}/onboarding/linkedin?hubspot=connected"
+    else:
+        redirect_url = f"{settings.frontend_url}/settings/integrations?crm=hubspot&status=connected"
+
     return RedirectResponse(
-        url=f"{settings.frontend_url}/settings/integrations?crm=hubspot&status=connected",
+        url=redirect_url,
         status_code=status.HTTP_302_FOUND,
     )
 

@@ -4,7 +4,7 @@ Purpose: Persona pool model for AI-generated sender identities
 Layer: 1 - models
 Imports: base only
 Consumers: services, orchestration
-Spec: Persona pool allocation by tier (ignition: 2, velocity: 3, dominance: 4)
+Spec: Persona pool allocation by tier (spark: 1, ignition: 2, velocity: 3)
 """
 
 from enum import StrEnum
@@ -35,9 +35,10 @@ class PersonaStatus(StrEnum):
 
 # Persona allocations per tier
 PERSONA_TIER_ALLOCATIONS = {
+    "spark": 1,
     "ignition": 2,
     "velocity": 3,
-    "dominance": 4,
+    # "dominance": REMOVED from launch (TIERS-002)
 }
 
 
@@ -49,9 +50,10 @@ class Persona(Base, UUIDMixin, TimestampMixin):
     for use across outreach channels (email, LinkedIn, voice).
 
     Per-tier allocation:
+    - Spark: 1 persona
     - Ignition: 2 personas
     - Velocity: 3 personas
-    - Dominance: 4 personas
+    # Dominance: REMOVED from launch (TIERS-002)
     """
 
     __tablename__ = "personas"

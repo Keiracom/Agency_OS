@@ -23,30 +23,31 @@ NO_EMAIL_HTML = "<html><body><p>Welcome to our dental practice in Sydney.</p></b
 
 @pytest.mark.asyncio
 async def test_layer1_mailto_returns_email():
-    """Layer 1 extracts email from mailto: link in HTML."""
+    """L0 contact_data returns email when name matches (simulates Stage 3 Gemini extraction)."""
     from src.pipeline.email_waterfall import discover_email
     result = await discover_email(
         domain="pymbledental.com.au",
         dm_name="Michael Chen",
-        html=DENTAL_HTML,
+        contact_data={"company_email": "michael.chen@pymbledental.com.au"},
         skip_layers=[2, 3],
     )
     assert result.email == "michael.chen@pymbledental.com.au"
-    assert result.source == "website"
+    assert result.source == "contact_registry"
     assert result.cost_usd == 0.0
 
 
 @pytest.mark.asyncio
 async def test_layer1_name_match_gives_high_confidence():
-    """Email matching DM name parts gets high confidence."""
+    """Email matching DM name via contact_data gets low confidence (unverified source)."""
     from src.pipeline.email_waterfall import discover_email
     result = await discover_email(
         domain="pymbledental.com.au",
         dm_name="Michael Chen",
-        html=DENTAL_HTML,
+        contact_data={"company_email": "michael.chen@pymbledental.com.au"},
         skip_layers=[2, 3],
     )
-    assert result.confidence == "high"
+    # contact_registry source is unverified, confidence is low
+    assert result.confidence == "low"
 
 
 @pytest.mark.asyncio
@@ -196,20 +197,19 @@ async def test_layer4_skipped_without_linkedin():
 # ── Short-circuit logic ───────────────────────────────────────────────────────
 
 @pytest.mark.asyncio
-async def test_short_circuit_on_layer1_hit():
-    """Layer 2/3/4 not called when Layer 1 finds email."""
+async def test_short_circuit_on_layer0_hit():
+    """Paid layers not called when L0 contact_data finds name-matched email."""
     from src.pipeline.email_waterfall import discover_email
 
-    with patch("src.pipeline.email_waterfall._check_mx", AsyncMock(side_effect=AssertionError("Layer 2 called"))) as mx, \
-         patch("src.pipeline.email_waterfall.LeadmagicClient", side_effect=AssertionError("Layer 3 called")):
+    with patch("src.pipeline.email_waterfall.LeadmagicClient", side_effect=AssertionError("Leadmagic called")):
         result = await discover_email(
             domain="pymbledental.com.au",
             dm_name="Michael Chen",
-            html=DENTAL_HTML,
+            contact_data={"company_email": "michael.chen@pymbledental.com.au"},
         )
 
     assert result.email == "michael.chen@pymbledental.com.au"
-    assert result.source == "website"
+    assert result.source == "contact_registry"
 
 
 # ── No result ─────────────────────────────────────────────────────────────────
@@ -310,3 +310,63 @@ def test_parse_name_linkedin_noise():
     from src.pipeline.email_waterfall import _parse_name
     first, last = _parse_name("Owner at VC Dental")
     assert first == "" and last == ""
+
+
+# ── ContactOut vs generic inbox regression tests (#317.3) ────────────────────
+
+GENERIC_HTML = """
+<html><body>
+<a href="mailto:sales@dentist.com.au">Contact us</a>
+</body></html>
+"""
+
+
+@pytest.mark.asyncio
+async def test_contactout_beats_generic_inbox():
+    """
+    Regression #317.3 Test 1: ContactOut current_match email takes priority
+    over a generic inbox (sales@) found in website HTML.
+    """
+    from src.pipeline.email_waterfall import discover_email
+
+    contactout = {
+        "email": "michael.chen@dentist.com.au",
+        "email_confidence": "current_match",
+        "phone": None,
+    }
+
+    result = await discover_email(
+        domain="dentist.com.au",
+        dm_name="Michael Chen",
+        html=GENERIC_HTML,
+        contactout_result=contactout,
+        skip_layers=[2, 3],  # skip paid layers
+    )
+
+    assert result.email == "michael.chen@dentist.com.au"
+    assert result.source == "contactout"
+    assert result.confidence == "high"
+
+
+@pytest.mark.asyncio
+async def test_generic_inbox_falls_through_without_contactout():
+    """
+    Regression #317.3 Test 2: Without ContactOut, a website-only generic
+    inbox (sales@) is flagged as low-confidence generic fallback, not
+    returned as a high-confidence DM email.
+    """
+    from src.pipeline.email_waterfall import discover_email
+
+    result = await discover_email(
+        domain="dentist.com.au",
+        dm_name="Michael Chen",
+        html=GENERIC_HTML,
+        contactout_result=None,
+        skip_layers=[2, 3],  # skip paid layers
+    )
+
+    # Generic inbox should fall through to generic fallback (not short-circuit)
+    assert result.source in ("website_generic", "none")
+    if result.email:
+        assert result.confidence == "low"
+        assert result.source == "website_generic"

@@ -1,0 +1,1547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agency OS — Logo Exploration</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700;1,900&family=DM+Sans:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --cream:      #F7F3EE;
+  --cream-alt:  #FBF8F4;
+  --surface:    #EDE8E0;
+  --surface-2:  #E4DED3;
+  --ink:        #0C0A08;
+  --ink-2:      #2E2B26;
+  --ink-3:      #7A756D;
+  --ink-4:      #A8A298;
+  --amber:      #D4956A;
+  --amber-b:    #E8AA7C;
+  --amber-soft: rgba(212,149,106,0.12);
+  --amber-hard: rgba(212,149,106,0.28);
+  --copper:     #C46A3E;
+  --rule:       rgba(12,10,8,0.08);
+  --rule-2:     rgba(12,10,8,0.04);
+  --rule-dark:  rgba(247,243,238,0.08);
+}
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--cream);
+  color: var(--ink);
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 300;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+}
+
+.mono { font-family: 'JetBrains Mono', monospace; }
+
+/* ─── PAGE SHELL ─── */
+.page {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 80px 64px 120px;
+}
+
+/* ─── INTRO ─── */
+.intro {
+  padding-bottom: 80px;
+  margin-bottom: 100px;
+  border-bottom: 1px solid var(--rule);
+}
+.intro-eyebrow {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--amber);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 36px;
+}
+.intro-eyebrow::before {
+  content: '';
+  width: 28px;
+  height: 1px;
+  background: var(--amber);
+}
+.intro h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(48px, 6vw, 84px);
+  line-height: 1.02;
+  font-weight: 700;
+  letter-spacing: -.028em;
+  color: var(--ink);
+  margin-bottom: 32px;
+}
+.intro h1 em { font-style: italic; color: var(--amber); }
+.intro-sub {
+  font-size: 17px;
+  line-height: 1.75;
+  color: var(--ink-2);
+  max-width: 680px;
+  margin-bottom: 48px;
+}
+.intro-sub b { font-weight: 500; color: var(--ink); }
+
+.research {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 40px;
+  margin-top: 48px;
+  padding-top: 48px;
+  border-top: 1px solid var(--rule);
+}
+.research-item {}
+.research-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 12px;
+}
+.research-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.3;
+  margin-bottom: 8px;
+}
+.research-body {
+  font-size: 13px;
+  color: var(--ink-3);
+  line-height: 1.7;
+}
+
+/* ─── DIRECTION CARD ─── */
+.direction {
+  margin-bottom: 120px;
+  scroll-margin-top: 40px;
+}
+
+.dir-header {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 48px;
+  align-items: flex-start;
+  margin-bottom: 56px;
+  padding-bottom: 32px;
+  border-bottom: 1px solid var(--rule);
+}
+.dir-number {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.dir-number::before {
+  content: '';
+  width: 24px;
+  height: 1px;
+  background: var(--amber);
+}
+.dir-name {
+  font-family: 'Playfair Display', serif;
+  font-size: 44px;
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -.022em;
+  color: var(--ink);
+}
+.dir-name em { font-style: italic; color: var(--amber); }
+.dir-tagline {
+  font-size: 15px;
+  color: var(--ink-3);
+  max-width: 500px;
+  margin-top: 14px;
+  line-height: 1.65;
+}
+
+.dir-meta {
+  text-align: right;
+  padding-top: 32px;
+}
+.dir-meta-row {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .06em;
+  color: var(--ink-3);
+  margin-bottom: 6px;
+}
+.dir-meta-row b {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+/* ─── HERO DISPLAY ─── */
+.hero-stage {
+  background: var(--cream-alt);
+  border: 1px solid var(--rule);
+  padding: 120px 64px;
+  margin-bottom: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 320px;
+  position: relative;
+  overflow: hidden;
+}
+.hero-stage::before {
+  content: 'HERO';
+  position: absolute;
+  top: 18px;
+  left: 22px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: .16em;
+  color: var(--ink-4);
+}
+
+/* ─── CONTEXT ROW ─── */
+.ctx-row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 24px;
+  margin-bottom: 32px;
+}
+.ctx-card {
+  background: var(--cream-alt);
+  border: 1px solid var(--rule);
+  padding: 0;
+  position: relative;
+  overflow: hidden;
+}
+.ctx-card.dark {
+  background: var(--ink);
+  border-color: var(--rule-dark);
+}
+.ctx-label {
+  position: absolute;
+  top: 18px;
+  left: 22px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: .16em;
+  color: var(--ink-4);
+  z-index: 2;
+}
+.ctx-card.dark .ctx-label {
+  color: rgba(247,243,238,0.3);
+}
+.ctx-body {
+  padding: 60px 40px;
+  min-height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ─── MINI ROW ─── */
+.mini-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 48px;
+}
+.mini-card {
+  background: var(--cream-alt);
+  border: 1px solid var(--rule);
+  padding: 28px 22px;
+  position: relative;
+  min-height: 140px;
+}
+.mini-card.dark {
+  background: var(--ink);
+  border-color: var(--rule-dark);
+}
+.mini-label {
+  position: absolute;
+  top: 14px;
+  left: 18px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8px;
+  letter-spacing: .16em;
+  color: var(--ink-4);
+}
+.mini-card.dark .mini-label {
+  color: rgba(247,243,238,0.3);
+}
+.mini-body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding-top: 20px;
+}
+
+/* ─── RATIONALE ─── */
+.rationale {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 60px;
+  padding: 48px 0;
+}
+.rat-section {}
+.rat-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 16px;
+}
+.rat-text {
+  font-size: 15px;
+  line-height: 1.75;
+  color: var(--ink-2);
+}
+.rat-text p { margin-bottom: 14px; }
+.rat-text p:last-child { margin-bottom: 0; }
+.rat-text b { font-weight: 500; color: var(--ink); }
+
+.edgy-box {
+  background: var(--ink);
+  color: var(--cream);
+  padding: 36px 40px;
+  position: relative;
+  overflow: hidden;
+}
+.edgy-box::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 280px;
+  height: 280px;
+  background: radial-gradient(circle, rgba(212,149,106,0.1) 0%, transparent 60%);
+  pointer-events: none;
+}
+.edgy-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 18px;
+  position: relative;
+  z-index: 1;
+}
+.edgy-text {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 22px;
+  line-height: 1.4;
+  color: var(--cream);
+  margin-bottom: 20px;
+  position: relative;
+  z-index: 1;
+}
+.edgy-sub {
+  font-size: 13px;
+  color: rgba(247,243,238,0.65);
+  line-height: 1.7;
+  position: relative;
+  z-index: 1;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   LOGO: DIRECTION 1 — THE SERIF MARK
+   ═══════════════════════════════════════════════════════════ */
+
+.logo-d1-hero {
+  font-family: 'Playfair Display', serif;
+  font-weight: 700;
+  font-size: 140px;
+  line-height: 0.95;
+  letter-spacing: -0.04em;
+  color: var(--ink);
+}
+.logo-d1-hero em {
+  font-style: italic;
+  color: var(--amber);
+}
+
+.logo-d1-nav {
+  font-family: 'Playfair Display', serif;
+  font-weight: 700;
+  font-size: 28px;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+.logo-d1-nav em {
+  font-style: italic;
+  color: var(--amber);
+}
+.dark .logo-d1-nav { color: var(--cream); }
+
+.logo-d1-small {
+  font-family: 'Playfair Display', serif;
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 1;
+  letter-spacing: -0.015em;
+  color: var(--ink);
+}
+.logo-d1-small em {
+  font-style: italic;
+  color: var(--amber);
+}
+.dark .logo-d1-small { color: var(--cream); }
+
+.logo-d1-fav {
+  width: 48px;
+  height: 48px;
+  background: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-weight: 700;
+  font-size: 24px;
+  color: var(--amber);
+  letter-spacing: -0.02em;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   LOGO: DIRECTION 2 — THE TERMINAL PROMPT
+   ═══════════════════════════════════════════════════════════ */
+
+.logo-d2-hero {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 500;
+  font-size: 92px;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+.logo-d2-hero .prompt {
+  color: var(--amber);
+  font-weight: 700;
+}
+.logo-d2-hero .cursor {
+  display: inline-block;
+  width: 42px;
+  height: 80px;
+  background: var(--amber);
+  animation: blink 1s infinite steps(1);
+  margin-left: 4px;
+}
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+.logo-d2-nav {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 500;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.logo-d2-nav .prompt { color: var(--amber); font-weight: 700; }
+.logo-d2-nav .cursor {
+  display: inline-block;
+  width: 8px;
+  height: 16px;
+  background: var(--amber);
+  margin-left: 2px;
+}
+.dark .logo-d2-nav { color: var(--cream); }
+
+.logo-d2-small {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 500;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.logo-d2-small .prompt { color: var(--amber); font-weight: 700; }
+.dark .logo-d2-small { color: var(--cream); }
+
+.logo-d2-fav {
+  width: 48px;
+  height: 48px;
+  background: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 24px;
+  color: var(--amber);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   LOGO: DIRECTION 3 — THE BRACKETED MARK
+   ═══════════════════════════════════════════════════════════ */
+
+.logo-d3-hero {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 500;
+  font-size: 96px;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+}
+.logo-d3-hero .bracket {
+  color: var(--amber);
+  font-weight: 700;
+  font-size: 120px;
+  line-height: 0.9;
+}
+.logo-d3-hero .word {
+  padding: 0 8px;
+}
+
+.logo-d3-nav {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 500;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+}
+.logo-d3-nav .bracket {
+  color: var(--amber);
+  font-weight: 700;
+  font-size: 26px;
+}
+.logo-d3-nav .word { padding: 0 4px; }
+.dark .logo-d3-nav { color: var(--cream); }
+
+.logo-d3-small {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 500;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+}
+.logo-d3-small .bracket { color: var(--amber); font-weight: 700; font-size: 15px; }
+.logo-d3-small .word { padding: 0 2px; }
+.dark .logo-d3-small { color: var(--cream); }
+
+.logo-d3-fav {
+  width: 48px;
+  height: 48px;
+  background: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 26px;
+  color: var(--amber);
+  letter-spacing: -0.04em;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   LOGO: DIRECTION 4 — SPLIT SERIF + MONO LOCKUP
+   ═══════════════════════════════════════════════════════════ */
+
+.logo-d4-hero {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+}
+.logo-d4-hero .serif-part {
+  font-family: 'Playfair Display', serif;
+  font-weight: 700;
+  font-size: 110px;
+  line-height: 0.92;
+  letter-spacing: -0.035em;
+  color: var(--ink);
+  font-style: italic;
+}
+.logo-d4-hero .divider {
+  width: 2px;
+  height: 78px;
+  background: var(--amber);
+}
+.logo-d4-hero .mono-part {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 72px;
+  line-height: 0.92;
+  letter-spacing: -0.03em;
+  color: var(--amber);
+  background: var(--ink);
+  padding: 8px 16px 12px;
+}
+
+.logo-d4-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.logo-d4-nav .serif-part {
+  font-family: 'Playfair Display', serif;
+  font-weight: 700;
+  font-style: italic;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+.logo-d4-nav .divider {
+  width: 1px;
+  height: 18px;
+  background: var(--amber);
+}
+.logo-d4-nav .mono-part {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--amber);
+  background: var(--ink);
+  padding: 2px 6px 3px;
+}
+.dark .logo-d4-nav .serif-part { color: var(--cream); }
+.dark .logo-d4-nav .mono-part { background: var(--amber); color: var(--ink); }
+.dark .logo-d4-nav .divider { background: var(--amber); }
+
+.logo-d4-small {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.logo-d4-small .serif-part {
+  font-family: 'Playfair Display', serif;
+  font-weight: 700;
+  font-style: italic;
+  font-size: 14px;
+  color: var(--ink);
+}
+.logo-d4-small .divider { width: 1px; height: 11px; background: var(--amber); }
+.logo-d4-small .mono-part {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 9px;
+  color: var(--amber);
+  background: var(--ink);
+  padding: 1px 4px 2px;
+}
+.dark .logo-d4-small .serif-part { color: var(--cream); }
+
+.logo-d4-fav {
+  width: 48px;
+  height: 48px;
+  background: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 22px;
+  color: var(--amber);
+  letter-spacing: -0.03em;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   LOGO: DIRECTION 5 — SERIF MONOGRAM
+   ═══════════════════════════════════════════════════════════ */
+
+.logo-d5-hero {
+  display: flex;
+  align-items: center;
+  gap: 36px;
+}
+.logo-d5-hero .mark {
+  font-family: 'Playfair Display', serif;
+  font-weight: 900;
+  font-style: italic;
+  font-size: 180px;
+  line-height: 0.8;
+  letter-spacing: -0.05em;
+  color: var(--ink);
+  position: relative;
+  padding: 0 8px;
+}
+.logo-d5-hero .mark::after {
+  content: '';
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 14px;
+  height: 8px;
+  background: var(--amber);
+}
+.logo-d5-hero .wordmark {
+  font-family: 'Playfair Display', serif;
+  font-weight: 700;
+  font-size: 48px;
+  line-height: 1.05;
+  letter-spacing: -0.025em;
+  color: var(--ink);
+}
+.logo-d5-hero .wordmark em {
+  font-style: italic;
+  color: var(--amber);
+}
+.logo-d5-hero .wordmark .sub {
+  display: block;
+  font-family: 'JetBrains Mono', monospace;
+  font-style: normal;
+  font-weight: 500;
+  font-size: 10px;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-top: 10px;
+}
+
+.logo-d5-nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.logo-d5-nav .mark {
+  font-family: 'Playfair Display', serif;
+  font-weight: 900;
+  font-style: italic;
+  font-size: 36px;
+  line-height: 0.8;
+  color: var(--ink);
+  position: relative;
+  padding: 0 3px;
+}
+.logo-d5-nav .mark::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  bottom: 4px;
+  height: 2px;
+  background: var(--amber);
+}
+.logo-d5-nav .wordmark {
+  font-family: 'Playfair Display', serif;
+  font-weight: 700;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--ink);
+}
+.logo-d5-nav .wordmark em { font-style: italic; color: var(--amber); }
+.dark .logo-d5-nav .mark { color: var(--cream); }
+.dark .logo-d5-nav .wordmark { color: var(--cream); }
+
+.logo-d5-small {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.logo-d5-small .mark {
+  font-family: 'Playfair Display', serif;
+  font-weight: 900;
+  font-style: italic;
+  font-size: 20px;
+  line-height: 0.8;
+  color: var(--ink);
+  position: relative;
+  padding: 0 2px;
+}
+.logo-d5-small .mark::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  bottom: 2px;
+  height: 1.5px;
+  background: var(--amber);
+}
+.logo-d5-small .wordmark {
+  font-family: 'Playfair Display', serif;
+  font-weight: 700;
+  font-size: 11px;
+  color: var(--ink);
+}
+.logo-d5-small .wordmark em { font-style: italic; color: var(--amber); }
+.dark .logo-d5-small .mark { color: var(--cream); }
+.dark .logo-d5-small .wordmark { color: var(--cream); }
+
+.logo-d5-fav {
+  width: 48px;
+  height: 48px;
+  background: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Playfair Display', serif;
+  font-weight: 900;
+  font-style: italic;
+  font-size: 36px;
+  line-height: 0.8;
+  color: var(--cream);
+  position: relative;
+  padding: 0 2px;
+}
+.logo-d5-fav::after {
+  content: '';
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+  height: 3px;
+  background: var(--amber);
+}
+
+/* ─── NAV MOCKUP ─── */
+.navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 40px;
+  border-bottom: 1px solid var(--rule);
+  width: 100%;
+  min-height: 84px;
+}
+.dark .navbar { border-bottom-color: var(--rule-dark); }
+.navbar-right {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+.nav-link {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.dark .nav-link { color: rgba(247,243,238,0.6); }
+.nav-btn {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  padding: 9px 18px;
+  border: 1px solid rgba(12,10,8,0.2);
+  background: transparent;
+  color: var(--ink);
+}
+.dark .nav-btn {
+  border-color: rgba(247,243,238,0.2);
+  color: var(--cream);
+}
+
+/* ─── COMPARISON GRID ─── */
+.comparison {
+  padding-top: 80px;
+  border-top: 1px solid var(--rule);
+  margin-top: 80px;
+}
+.comp-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 44px;
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -.02em;
+  color: var(--ink);
+  margin-bottom: 12px;
+}
+.comp-title em { font-style: italic; color: var(--amber); }
+.comp-sub {
+  font-size: 15px;
+  color: var(--ink-3);
+  margin-bottom: 48px;
+  max-width: 600px;
+}
+.comp-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--rule);
+  border: 1px solid var(--rule);
+}
+.comp-cell {
+  background: var(--cream-alt);
+  padding: 60px 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  min-height: 200px;
+  transition: background .2s;
+  cursor: pointer;
+}
+.comp-cell:hover { background: var(--surface); }
+.comp-cell-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-top: 12px;
+}
+
+/* ─── RECOMMENDATION ─── */
+.recommend {
+  background: var(--ink);
+  color: var(--cream);
+  padding: 80px 72px;
+  margin-top: 100px;
+  position: relative;
+  overflow: hidden;
+}
+.recommend::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(212,149,106,0.12) 0%, transparent 60%);
+  pointer-events: none;
+}
+.rec-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+  z-index: 1;
+}
+.rec-label::before {
+  content: '';
+  width: 24px;
+  height: 1px;
+  background: var(--amber);
+}
+.rec-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 52px;
+  line-height: 1.05;
+  font-weight: 700;
+  letter-spacing: -.022em;
+  color: var(--cream);
+  margin-bottom: 32px;
+  position: relative;
+  z-index: 1;
+}
+.rec-title em { font-style: italic; color: var(--amber); }
+.rec-body {
+  font-size: 16px;
+  line-height: 1.85;
+  color: rgba(247,243,238,0.75);
+  max-width: 680px;
+  margin-bottom: 40px;
+  position: relative;
+  z-index: 1;
+}
+.rec-body b { color: var(--cream); font-weight: 400; }
+.rec-body p { margin-bottom: 18px; }
+.rec-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-width: 680px;
+  position: relative;
+  z-index: 1;
+}
+.rec-list li {
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(247,243,238,0.08);
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  gap: 14px;
+  font-size: 14px;
+  color: rgba(247,243,238,0.8);
+  line-height: 1.6;
+}
+.rec-list li:last-child { border-bottom: none; }
+.rec-list li::before {
+  content: '→';
+  color: var(--amber);
+  font-weight: 500;
+}
+.rec-list li b { color: var(--cream); font-weight: 500; }
+
+/* ─── FOOTER ─── */
+.footer {
+  padding-top: 60px;
+  margin-top: 60px;
+  border-top: 1px solid var(--rule);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .1em;
+  color: var(--ink-3);
+  display: flex;
+  justify-content: space-between;
+}
+.footer em { font-style: normal; color: var(--amber); }
+
+/* ─── RESPONSIVE ─── */
+@media(max-width: 900px) {
+  .page { padding: 48px 28px 80px; }
+  .research { grid-template-columns: 1fr; gap: 28px; }
+  .dir-header { grid-template-columns: 1fr; gap: 24px; }
+  .dir-meta { text-align: left; padding-top: 0; }
+  .ctx-row { grid-template-columns: 1fr; }
+  .mini-row { grid-template-columns: 1fr; }
+  .rationale { grid-template-columns: 1fr; gap: 32px; padding: 32px 0; }
+  .hero-stage { padding: 60px 24px; }
+  .logo-d1-hero { font-size: 64px !important; }
+  .logo-d2-hero { font-size: 40px !important; gap: 14px; }
+  .logo-d2-hero .cursor { width: 18px !important; height: 36px !important; }
+  .logo-d3-hero { font-size: 48px !important; }
+  .logo-d3-hero .bracket { font-size: 58px !important; }
+  .logo-d4-hero .serif-part { font-size: 52px !important; }
+  .logo-d4-hero .mono-part { font-size: 34px !important; }
+  .logo-d4-hero .divider { height: 40px !important; }
+  .logo-d5-hero { flex-direction: column; gap: 20px; }
+  .logo-d5-hero .mark { font-size: 90px !important; }
+  .logo-d5-hero .wordmark { font-size: 32px !important; }
+  .comp-grid { grid-template-columns: 1fr; }
+  .recommend { padding: 48px 28px; }
+  .rec-title { font-size: 34px; }
+}
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <!-- ═══ INTRO ═══ -->
+  <section class="intro">
+    <div class="intro-eyebrow">Logo exploration · Internal review</div>
+    <h1>Five directions<br>for the<br><em>Agency OS mark.</em></h1>
+    <p class="intro-sub">
+      Every direction below is rendered in pure CSS using the typography system already locked for the product (Playfair Display, DM Sans, JetBrains Mono) and the cream + amber palette we've been iterating on all session. No third-party design software, no templates, no generic SaaS moves. <b>Each direction is evaluated at hero scale, navigation scale, dark mode, and favicon size — because a real logo has to work at all of them.</b>
+    </p>
+
+    <div class="research">
+      <div class="research-item">
+        <div class="research-label">Research · 01</div>
+        <div class="research-title">Serifs are the 2026 move</div>
+        <div class="research-body">Bold serif wordmarks with "thick strokes, sharp details, and a whole lot of attitude" are dominating editorial and fintech. 80% of B2B SaaS is still using geometric sans-serifs. The gap is obvious.</div>
+      </div>
+      <div class="research-item">
+        <div class="research-label">Research · 02</div>
+        <div class="research-title">Typographic tricks punch above weight</div>
+        <div class="research-body">Accenture's greater-than symbol. Stripe's lowercase wordmark in non-conservative purple. Monocle's tight serif. Small typographic moves out-perform complex logomarks at scale.</div>
+      </div>
+      <div class="research-item">
+        <div class="research-label">Research · 03</div>
+        <div class="research-title">Mixed type families are distinctive</div>
+        <div class="research-body">Pairing a classical serif with a geometric sans or monospace "creates a refined, editorial aesthetic" — an explicit 2026 trend. Agency OS already has the type system; we just need to use it in the lockup.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ DIRECTION 1 ═══ -->
+  <section class="direction" id="d1">
+    <div class="dir-header">
+      <div>
+        <div class="dir-number">Direction 01</div>
+        <h2 class="dir-name">The Serif <em>Mark.</em></h2>
+        <p class="dir-tagline">Playfair Display wordmark with italic amber "OS." A direct extension of the landing page typography — maximum coherence between brand, product, and logo.</p>
+      </div>
+      <div class="dir-meta">
+        <div class="dir-meta-row">Type · <b>Wordmark</b></div>
+        <div class="dir-meta-row">Family · <b>Playfair Display</b></div>
+        <div class="dir-meta-row">Feel · <b>Editorial, literary</b></div>
+      </div>
+    </div>
+
+    <div class="hero-stage">
+      <div class="logo-d1-hero">Agency<em>OS</em></div>
+    </div>
+
+    <div class="ctx-row">
+      <div class="ctx-card">
+        <div class="ctx-label">IN CONTEXT · LIGHT NAV</div>
+        <div class="ctx-body">
+          <div class="navbar">
+            <div class="logo-d1-nav">Agency<em>OS</em></div>
+            <div class="navbar-right">
+              <span class="nav-link">How it works</span>
+              <span class="nav-link">Founding</span>
+              <button class="nav-btn">Book a call</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="ctx-card dark">
+        <div class="ctx-label">DARK MODE</div>
+        <div class="ctx-body">
+          <div class="logo-d1-nav" style="font-size:44px;">Agency<em>OS</em></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mini-row">
+      <div class="mini-card">
+        <div class="mini-label">FOOTER · 16PX</div>
+        <div class="mini-body"><div class="logo-d1-small">Agency<em>OS</em></div></div>
+      </div>
+      <div class="mini-card dark">
+        <div class="mini-label">FOOTER DARK</div>
+        <div class="mini-body"><div class="logo-d1-small">Agency<em>OS</em></div></div>
+      </div>
+      <div class="mini-card">
+        <div class="mini-label">FAVICON · 48PX</div>
+        <div class="mini-body"><div class="logo-d1-fav">Ao</div></div>
+      </div>
+    </div>
+
+    <div class="rationale">
+      <div class="rat-section">
+        <div class="rat-label">Rationale</div>
+        <div class="rat-text">
+          <p>Every pixel of the landing page and dashboard already uses Playfair Display with italic amber emphasis on the second word of every headline. This logo is literally the same typographic gesture, extracted and compressed.</p>
+          <p>The serif signals <b>editorial sophistication</b> — the same quality that makes Wallpaper*, Knoll, and Monocle's wordmarks feel permanent. The italic "OS" tells you the system is the active element — the part that moves, that does the work.</p>
+          <p>At small sizes, "Ao" becomes the favicon — a tight italic monogram that survives compression. At large sizes, it owns a full-screen hero. Same mark, same DNA, every size.</p>
+        </div>
+      </div>
+      <div class="edgy-box">
+        <div class="edgy-label">Why this is edgy</div>
+        <div class="edgy-text">"80% of B2B SaaS logos are geometric sans-serifs."</div>
+        <div class="edgy-sub">A serif wordmark in the B2B category is the visual equivalent of walking into a room of suits wearing a well-cut linen jacket. It signals you're playing a different game — and the sophisticated buyer notices.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ DIRECTION 2 ═══ -->
+  <section class="direction" id="d2">
+    <div class="dir-header">
+      <div>
+        <div class="dir-number">Direction 02</div>
+        <h2 class="dir-name">The Terminal <em>Prompt.</em></h2>
+        <p class="dir-tagline">JetBrains Mono with a blinking amber cursor. The literal execution of "The Bloomberg Terminal for Client Acquisition" — rendered as the thing itself.</p>
+      </div>
+      <div class="dir-meta">
+        <div class="dir-meta-row">Type · <b>Wordmark + mark</b></div>
+        <div class="dir-meta-row">Family · <b>JetBrains Mono</b></div>
+        <div class="dir-meta-row">Feel · <b>CLI, precision, data</b></div>
+      </div>
+    </div>
+
+    <div class="hero-stage">
+      <div class="logo-d2-hero">
+        <span class="prompt">&gt;</span>
+        <span>agency_os</span>
+        <span class="cursor"></span>
+      </div>
+    </div>
+
+    <div class="ctx-row">
+      <div class="ctx-card">
+        <div class="ctx-label">IN CONTEXT · LIGHT NAV</div>
+        <div class="ctx-body">
+          <div class="navbar">
+            <div class="logo-d2-nav">
+              <span class="prompt">&gt;</span>
+              <span>agency_os</span>
+              <span class="cursor"></span>
+            </div>
+            <div class="navbar-right">
+              <span class="nav-link">How it works</span>
+              <span class="nav-link">Founding</span>
+              <button class="nav-btn">Book a call</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="ctx-card dark">
+        <div class="ctx-label">DARK MODE</div>
+        <div class="ctx-body">
+          <div class="logo-d2-nav" style="font-size:32px;">
+            <span class="prompt">&gt;</span>
+            <span>agency_os</span>
+            <span class="cursor" style="width:14px;height:28px;"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mini-row">
+      <div class="mini-card">
+        <div class="mini-label">FOOTER · 11PX</div>
+        <div class="mini-body"><div class="logo-d2-small"><span class="prompt">&gt;</span><span>agency_os</span></div></div>
+      </div>
+      <div class="mini-card dark">
+        <div class="mini-label">FOOTER DARK</div>
+        <div class="mini-body"><div class="logo-d2-small"><span class="prompt">&gt;</span><span>agency_os</span></div></div>
+      </div>
+      <div class="mini-card">
+        <div class="mini-label">FAVICON · 48PX</div>
+        <div class="mini-body"><div class="logo-d2-fav">&gt;_</div></div>
+      </div>
+    </div>
+
+    <div class="rationale">
+      <div class="rat-section">
+        <div class="rat-label">Rationale</div>
+        <div class="rat-text">
+          <p>Our positioning is "The Bloomberg Terminal for Client Acquisition." Bloomberg terminals are orange text on a black screen. A blinking amber cursor on warm charcoal <b>literally is what we said we were.</b> No metaphor. No abstraction. The thing itself.</p>
+          <p>The underscore instead of a space is a code convention that signals "this is a system, not a product name." Lowercase reinforces humility — the system doesn't shout, it just runs.</p>
+          <p>The favicon becomes "&gt;_" — a prompt waiting for a command. That single glyph in amber on charcoal is one of the most distinctive favicons possible in a sea of rounded-square gradient marks.</p>
+        </div>
+      </div>
+      <div class="edgy-box">
+        <div class="edgy-label">Why this is edgy</div>
+        <div class="edgy-text">"It's a developer aesthetic in a non-developer category."</div>
+        <div class="edgy-sub">Marketing agency owners aren't developers. Using CLI typography for a product aimed at them is a deliberate category-crossing move — the same way Stripe used purple to stand out in blue-dominated fintech.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ DIRECTION 3 ═══ -->
+  <section class="direction" id="d3">
+    <div class="dir-header">
+      <div>
+        <div class="dir-number">Direction 03</div>
+        <h2 class="dir-name">The Bracketed <em>Mark.</em></h2>
+        <p class="dir-tagline">Amber brackets wrapping a lowercase monospace wordmark. Compact, distinctive, works at any size — the most compressed expression of identity.</p>
+      </div>
+      <div class="dir-meta">
+        <div class="dir-meta-row">Type · <b>Contained wordmark</b></div>
+        <div class="dir-meta-row">Family · <b>JetBrains Mono</b></div>
+        <div class="dir-meta-row">Feel · <b>Precise, editorial-aside</b></div>
+      </div>
+    </div>
+
+    <div class="hero-stage">
+      <div class="logo-d3-hero">
+        <span class="bracket">[</span>
+        <span class="word">agencyos</span>
+        <span class="bracket">]</span>
+      </div>
+    </div>
+
+    <div class="ctx-row">
+      <div class="ctx-card">
+        <div class="ctx-label">IN CONTEXT · LIGHT NAV</div>
+        <div class="ctx-body">
+          <div class="navbar">
+            <div class="logo-d3-nav">
+              <span class="bracket">[</span>
+              <span class="word">agencyos</span>
+              <span class="bracket">]</span>
+            </div>
+            <div class="navbar-right">
+              <span class="nav-link">How it works</span>
+              <span class="nav-link">Founding</span>
+              <button class="nav-btn">Book a call</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="ctx-card dark">
+        <div class="ctx-label">DARK MODE</div>
+        <div class="ctx-body">
+          <div class="logo-d3-nav" style="font-size:38px;">
+            <span class="bracket" style="font-size:46px;">[</span>
+            <span class="word">agencyos</span>
+            <span class="bracket" style="font-size:46px;">]</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mini-row">
+      <div class="mini-card">
+        <div class="mini-label">FOOTER · 13PX</div>
+        <div class="mini-body"><div class="logo-d3-small"><span class="bracket">[</span><span class="word">agencyos</span><span class="bracket">]</span></div></div>
+      </div>
+      <div class="mini-card dark">
+        <div class="mini-label">FOOTER DARK</div>
+        <div class="mini-body"><div class="logo-d3-small"><span class="bracket">[</span><span class="word">agencyos</span><span class="bracket">]</span></div></div>
+      </div>
+      <div class="mini-card">
+        <div class="mini-label">FAVICON · 48PX</div>
+        <div class="mini-body"><div class="logo-d3-fav">[a]</div></div>
+      </div>
+    </div>
+
+    <div class="rationale">
+      <div class="rat-section">
+        <div class="rat-label">Rationale</div>
+        <div class="rat-text">
+          <p>Brackets do double duty. In code, they denote arrays, lists, collections — the 600 records per cycle, contained and managed. In editorial typography, they signal an <b>aside</b> — something set apart from the main text, a considered addition. Both meanings reinforce what Agency OS is.</p>
+          <p>The amber brackets become the distinctive visual element that survives compression. Even at 13px the brackets still punch. Even without the word they still read as "Agency OS" once the brand is known.</p>
+          <p>The favicon becomes "[a]" — a single letter in brackets. Tight, memorable, impossible to confuse with any other brand.</p>
+        </div>
+      </div>
+      <div class="edgy-box">
+        <div class="edgy-label">Why this is edgy</div>
+        <div class="edgy-text">"Nobody in B2B SaaS wraps their wordmark in brackets."</div>
+        <div class="edgy-sub">It's a typographic move that reads as confident eccentricity — the same quality that made Wallpaper* Magazine's asterisk iconic. One small unexpected detail carries the entire identity.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ DIRECTION 4 ═══ -->
+  <section class="direction" id="d4">
+    <div class="dir-header">
+      <div>
+        <div class="dir-number">Direction 04</div>
+        <h2 class="dir-name">The Split <em>Lockup.</em></h2>
+        <p class="dir-tagline">Italic Playfair "Agency" beside a solid amber mono "OS" block. Two typefaces telling the story of craft meeting system in a single glance.</p>
+      </div>
+      <div class="dir-meta">
+        <div class="dir-meta-row">Type · <b>Two-piece lockup</b></div>
+        <div class="dir-meta-row">Family · <b>Playfair + JetBrains Mono</b></div>
+        <div class="dir-meta-row">Feel · <b>Craft × system</b></div>
+      </div>
+    </div>
+
+    <div class="hero-stage">
+      <div class="logo-d4-hero">
+        <span class="serif-part">Agency</span>
+        <span class="divider"></span>
+        <span class="mono-part">OS</span>
+      </div>
+    </div>
+
+    <div class="ctx-row">
+      <div class="ctx-card">
+        <div class="ctx-label">IN CONTEXT · LIGHT NAV</div>
+        <div class="ctx-body">
+          <div class="navbar">
+            <div class="logo-d4-nav">
+              <span class="serif-part">Agency</span>
+              <span class="divider"></span>
+              <span class="mono-part">OS</span>
+            </div>
+            <div class="navbar-right">
+              <span class="nav-link">How it works</span>
+              <span class="nav-link">Founding</span>
+              <button class="nav-btn">Book a call</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="ctx-card dark">
+        <div class="ctx-label">DARK MODE</div>
+        <div class="ctx-body">
+          <div class="logo-d4-nav" style="gap:14px;">
+            <span class="serif-part" style="font-size:42px;">Agency</span>
+            <span class="divider" style="height:34px;"></span>
+            <span class="mono-part" style="font-size:26px;padding:4px 12px 6px;">OS</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mini-row">
+      <div class="mini-card">
+        <div class="mini-label">FOOTER · 14PX</div>
+        <div class="mini-body"><div class="logo-d4-small"><span class="serif-part">Agency</span><span class="divider"></span><span class="mono-part">OS</span></div></div>
+      </div>
+      <div class="mini-card dark">
+        <div class="mini-label">FOOTER DARK</div>
+        <div class="mini-body"><div class="logo-d4-small"><span class="serif-part">Agency</span><span class="divider"></span><span class="mono-part">OS</span></div></div>
+      </div>
+      <div class="mini-card">
+        <div class="mini-label">FAVICON · 48PX</div>
+        <div class="mini-body"><div class="logo-d4-fav">OS</div></div>
+      </div>
+    </div>
+
+    <div class="rationale">
+      <div class="rat-section">
+        <div class="rat-label">Rationale</div>
+        <div class="rat-text">
+          <p>Two typefaces, one idea. The italic Playfair "Agency" represents the human craft of the agency owner — taste, judgement, relationships, the stuff you can't automate. The mono amber block "OS" represents the system that handles everything else — the acquisition engine, the signal detection, the cycles.</p>
+          <p>The vertical amber divider is both the seam between them and the thing that joins them. <b>Craft and system together, with a visible line showing where one ends and the other begins.</b> That's the entire Agency OS pitch rendered as typography.</p>
+          <p>The favicon collapses to just "OS" — the system is what scales. The agency owner is what doesn't.</p>
+        </div>
+      </div>
+      <div class="edgy-box">
+        <div class="edgy-label">Why this is edgy</div>
+        <div class="edgy-text">"Mixed type families in one lockup — a 2026 trend, almost nobody does it well."</div>
+        <div class="edgy-sub">Combining serif with monospace is the explicit editorial trend the research identified, but 99% of attempts fail because the contrast feels arbitrary. Here the contrast is meaning — each typeface is doing semantic work, not decoration.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ DIRECTION 5 ═══ -->
+  <section class="direction" id="d5">
+    <div class="dir-header">
+      <div>
+        <div class="dir-number">Direction 05</div>
+        <h2 class="dir-name">The Monogram <em>A.</em></h2>
+        <p class="dir-tagline">A heavy italic serif "A" with an amber underline, paired with a full wordmark. The only direction with a true standalone symbol that works without the wordmark.</p>
+      </div>
+      <div class="dir-meta">
+        <div class="dir-meta-row">Type · <b>Monogram + wordmark</b></div>
+        <div class="dir-meta-row">Family · <b>Playfair Display Black</b></div>
+        <div class="dir-meta-row">Feel · <b>Literary, authoritative</b></div>
+      </div>
+    </div>
+
+    <div class="hero-stage">
+      <div class="logo-d5-hero">
+        <span class="mark">A</span>
+        <span class="wordmark">
+          Agency<em>OS</em>
+          <span class="sub">Autonomous acquisition</span>
+        </span>
+      </div>
+    </div>
+
+    <div class="ctx-row">
+      <div class="ctx-card">
+        <div class="ctx-label">IN CONTEXT · LIGHT NAV</div>
+        <div class="ctx-body">
+          <div class="navbar">
+            <div class="logo-d5-nav">
+              <span class="mark">A</span>
+              <span class="wordmark">Agency<em>OS</em></span>
+            </div>
+            <div class="navbar-right">
+              <span class="nav-link">How it works</span>
+              <span class="nav-link">Founding</span>
+              <button class="nav-btn">Book a call</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="ctx-card dark">
+        <div class="ctx-label">DARK MODE</div>
+        <div class="ctx-body">
+          <div class="logo-d5-nav" style="gap:18px;">
+            <span class="mark" style="font-size:60px;">A</span>
+            <span class="wordmark" style="font-size:28px;">Agency<em>OS</em></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mini-row">
+      <div class="mini-card">
+        <div class="mini-label">FOOTER · 11PX</div>
+        <div class="mini-body"><div class="logo-d5-small"><span class="mark">A</span><span class="wordmark">Agency<em>OS</em></span></div></div>
+      </div>
+      <div class="mini-card dark">
+        <div class="mini-label">FOOTER DARK</div>
+        <div class="mini-body"><div class="logo-d5-small"><span class="mark">A</span><span class="wordmark">Agency<em>OS</em></span></div></div>
+      </div>
+      <div class="mini-card">
+        <div class="mini-label">FAVICON · STANDALONE A</div>
+        <div class="mini-body"><div class="logo-d5-fav">A</div></div>
+      </div>
+    </div>
+
+    <div class="rationale">
+      <div class="rat-section">
+        <div class="rat-label">Rationale</div>
+        <div class="rat-text">
+          <p>This is the only direction with a <b>true standalone mark</b>. The "A" with its amber underline works alone, without the wordmark, as a symbol in its own right. That's critical for app icons, social avatars, podcast cover art, merchandise — anywhere the full wordmark is too wide or too small.</p>
+          <p>The italic serif "A" signals literature, editorial, and the old sense of "A" as the first of a list — first letter, first choice, the ordinal that precedes everything. The amber underline is a cursor, a highlight, a signal that says <b>here, look at this.</b> It's also the same visual gesture we use for italic emphasis in every headline across the product.</p>
+          <p>The wordmark beside it provides the full identity where space allows. The two elements together form a complete identity system — symbol + wordmark + tagline — rather than a single one-size-fits-all mark.</p>
+        </div>
+      </div>
+      <div class="edgy-box">
+        <div class="edgy-label">Why this is edgy</div>
+        <div class="edgy-text">"A heavyweight italic serif monogram with an amber highlight beneath — this is a literary magazine move, not a SaaS move."</div>
+        <div class="edgy-sub">The closest visual reference is The New Yorker's Irvin typeface or a vintage Penguin Classics spine. Zero B2B SaaS products look like this. That's precisely why it would be remembered.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ COMPARISON ═══ -->
+  <section class="comparison">
+    <h2 class="comp-title">Side by <em>side.</em></h2>
+    <p class="comp-sub">All five directions at the same scale, same background, same context — so the decision is about the design, not the presentation.</p>
+
+    <div class="comp-grid">
+      <div class="comp-cell">
+        <div class="logo-d1-nav" style="font-size:34px;">Agency<em>OS</em></div>
+        <div class="comp-cell-label">01 · The Serif Mark</div>
+      </div>
+      <div class="comp-cell">
+        <div class="logo-d2-nav" style="font-size:26px;">
+          <span class="prompt">&gt;</span>
+          <span>agency_os</span>
+          <span class="cursor" style="width:11px;height:22px;"></span>
+        </div>
+        <div class="comp-cell-label">02 · The Terminal Prompt</div>
+      </div>
+      <div class="comp-cell">
+        <div class="logo-d3-nav" style="font-size:30px;">
+          <span class="bracket" style="font-size:36px;">[</span>
+          <span class="word">agencyos</span>
+          <span class="bracket" style="font-size:36px;">]</span>
+        </div>
+        <div class="comp-cell-label">03 · The Bracketed Mark</div>
+      </div>
+      <div class="comp-cell">
+        <div class="logo-d4-nav" style="gap:12px;">
+          <span class="serif-part" style="font-size:36px;">Agency</span>
+          <span class="divider" style="height:28px;"></span>
+          <span class="mono-part" style="font-size:22px;padding:4px 10px 5px;">OS</span>
+        </div>
+        <div class="comp-cell-label">04 · The Split Lockup</div>
+      </div>
+      <div class="comp-cell" style="grid-column: span 2;">
+        <div class="logo-d5-nav" style="gap:16px;">
+          <span class="mark" style="font-size:54px;">A</span>
+          <span class="wordmark" style="font-size:28px;">Agency<em>OS</em></span>
+        </div>
+        <div class="comp-cell-label">05 · The Monogram A</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ RECOMMENDATION ═══ -->
+  <section class="recommend">
+    <div class="rec-label">My recommendation</div>
+    <h2 class="rec-title">Direction 04 —<br>The Split <em>Lockup.</em></h2>
+    <div class="rec-body">
+      <p>You asked for edgy, and four of these directions qualify. But only one of them <b>tells the actual Agency OS story in a single glance</b> — and that's the split lockup.</p>
+      <p>Every other direction is an elegant typographic gesture. Direction 04 is the only one where the <b>form carries the meaning</b>. The italic serif "Agency" is the human craft — the agency owner, their taste, their voice, their relationships. The amber mono "OS" block is the system that runs acquisition for them. The vertical amber divider is the seam where craft meets automation. You see the logo and you understand what Agency OS is before you read a word of copy.</p>
+      <p>This is exactly how The Economist uses its red masthead block, how Monocle uses its wordmark, how Wallpaper* uses its asterisk. One visual element that <b>encodes the positioning</b> rather than decorating it.</p>
+    </div>
+    <ul class="rec-list">
+      <li><b>It matches the landing page and dashboard type system</b> — Playfair and JetBrains Mono are already locked into the product. The logo reuses both.</li>
+      <li><b>It works at every scale</b> — hero, nav, footer, and the "OS" block stands alone as a favicon/app icon.</li>
+      <li><b>It's category-crossing</b> — serif + mono is a 2026 editorial trend that almost nobody in B2B SaaS executes.</li>
+      <li><b>It tells the story without copy</b> — craft × system, visualised typographically.</li>
+      <li><b>It survives black-and-white rendering</b> — remove the amber, it still reads. That's the real test.</li>
+    </ul>
+    <div class="rec-body" style="margin-top:40px;margin-bottom:0;">
+      <p><b>My second pick:</b> Direction 01 — The Serif Mark. It's the safer version of the same idea — brand-coherent, editorial, works everywhere, but without the typographic storytelling. If Direction 04 feels too complex for your gut, 01 is the fallback that still beats 95% of B2B SaaS logos.</p>
+      <p><b>What I'd avoid:</b> Direction 02 (Terminal Prompt) is the most visually striking but it's also the most polarising. A 30-year agency veteran reading "&gt; agency_os" might respond "that's for developers, not me." It's edgy in the wrong direction for our audience.</p>
+    </div>
+  </section>
+
+  <!-- ═══ FOOTER ═══ -->
+  <div class="footer">
+    <div>Agency<em>OS</em> · Logo Exploration · Internal review</div>
+    <div>Five directions · One recommendation · Your call</div>
+  </div>
+
+</div>
+
+</body>
+</html>

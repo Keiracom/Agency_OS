@@ -4,7 +4,7 @@ Purpose: Generate AI personas, allocate to clients, manage lifecycle
 Layer: 3 - services (uses models, integrations)
 Imports: models, integrations
 Consumers: orchestration flows, API routes
-Spec: Persona pool allocation by tier (ignition: 2, velocity: 3, dominance: 4)
+Spec: Persona pool allocation by tier (spark: 1, ignition: 2, velocity: 3)
 """
 
 import logging
@@ -272,16 +272,16 @@ async def allocate_personas_to_client(
     Allocate available personas to new client based on tier.
 
     Tier allocations:
+    - Spark: 1 persona
     - Ignition: 2 personas
     - Velocity: 3 personas
-    - Dominance: 4 personas
 
     Updates persona.status = 'allocated', persona.allocated_to_client_id = client_id
 
     Args:
         db: Database session
         client_id: New client's UUID
-        tier: Pricing tier ('ignition', 'velocity', 'dominance')
+        tier: Pricing tier ('spark', 'ignition', 'velocity')
 
     Returns:
         List of allocated Persona objects

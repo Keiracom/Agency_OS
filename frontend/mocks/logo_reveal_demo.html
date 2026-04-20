@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agency OS — Logo Reveal: The Fold</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700;1,900&family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --cream:     #F7F3EE;
+  --surface:   #EDE8E0;
+  --ink:       #0C0A08;
+  --ink-2:     #2E2B26;
+  --ink-3:     #7A756D;
+  --ink-4:     #A8A298;
+  --amber:     #D4956A;
+  --rule:      rgba(12,10,8,0.08);
+}
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html { height: 100%; }
+body {
+  background: var(--cream);
+  color: var(--ink);
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 300;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.hero {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 80px 40px;
+  position: relative;
+}
+
+.hero::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(212,149,106,0.06) 0%, transparent 65%);
+  pointer-events: none;
+}
+
+.hero-eyebrow {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--amber);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 72px;
+  opacity: 0;
+  animation: fade-in-up 0.6s ease 0.1s forwards;
+}
+.hero-eyebrow::before { content: ''; width: 24px; height: 1px; background: var(--amber); }
+
+/* The entire animation happens inside this fixed-size container */
+#stage {
+  position: relative;
+  width: 100%;
+  max-width: 900px;
+  height: 240px;
+}
+
+/* The final mark — all SVG, no text elements at all.
+   The A is text rendered into the SVG via <text>, the bar is a <rect>.
+   This means there's NOTHING to swap — the SVG IS the final state. */
+#mark-svg {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.hero-tagline {
+  margin-top: 80px;
+  text-align: center;
+  opacity: 0;
+}
+.hero-tagline h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(22px, 3vw, 32px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  line-height: 1.2;
+  margin-bottom: 16px;
+}
+.hero-tagline h1 em { font-style: italic; color: var(--amber); }
+.hero-tagline p {
+  font-size: 15px;
+  color: var(--ink-3);
+  max-width: 420px;
+  line-height: 1.72;
+}
+
+.controls {
+  padding: 32px 40px;
+  border-top: 1px solid var(--rule);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.controls-left { display: flex; align-items: center; gap: 24px; }
+.spec-item {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+}
+.spec-item b { display: block; color: var(--ink-2); font-weight: 500; margin-bottom: 2px; }
+.replay-btn {
+  background: var(--ink);
+  color: var(--cream);
+  border: none;
+  padding: 11px 22px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background .15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.replay-btn:hover { background: var(--amber); color: var(--ink); }
+.replay-btn svg { width: 11px; height: 11px; flex-shrink: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-eyebrow { animation: none; opacity: 1; }
+}
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+</style>
+</head>
+<body>
+
+<section class="hero">
+  <div class="hero-eyebrow">Agency OS · Brand identity · The Fold</div>
+
+  <div id="stage">
+    <!-- Everything is SVG. No HTML text elements. No swap needed.
+         The wordmark letters are <text> elements inside SVG.
+         The O is a <path> (the oval shape) that MorphSVG will morph to a <rect> path.
+         The A is a <text> that GSAP translates/scales.
+         Final state = the A text + the morphed bar. Same elements, no swap. -->
+    <svg id="mark-svg" viewBox="0 0 900 240" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <!-- The O as an oval path — Playfair italic O approximation.
+             Thick, clearly an O shape. This is what MorphSVG will morph. -->
+        <path id="o-shape-def"
+          d="M0,-38 C21,-38 38,-21 38,0 C38,21 21,38 0,38 C-21,38 -38,21 -38,0 C-38,-21 -21,-38 0,-38 Z
+             M0,-26 C-14,-26 -26,-14 -26,0 C-26,14 -14,26 0,26 C14,26 26,14 26,0 C26,-14 14,-26 0,-26 Z" />
+        <!-- The bar target — wide horizontal rectangle, same coordinate origin -->
+        <path id="bar-shape-def"
+          d="M-80,-7 L80,-7 L80,7 L-80,7 Z" />
+      </defs>
+
+      <!-- Wordmark letters as individual <text> elements -->
+      <text id="lt-A" x="280" y="140" font-family="Playfair Display, serif" font-weight="700" font-size="72" fill="#0C0A08" text-anchor="middle" dominant-baseline="central">A</text>
+      <text id="lt-g" x="320" y="140" font-family="Playfair Display, serif" font-weight="700" font-size="72" fill="#0C0A08" text-anchor="middle" dominant-baseline="central" class="fade-letter">g</text>
+      <text id="lt-e" x="355" y="140" font-family="Playfair Display, serif" font-weight="700" font-size="72" fill="#0C0A08" text-anchor="middle" dominant-baseline="central" class="fade-letter">e</text>
+      <text id="lt-n" x="388" y="140" font-family="Playfair Display, serif" font-weight="700" font-size="72" fill="#0C0A08" text-anchor="middle" dominant-baseline="central" class="fade-letter">n</text>
+      <text id="lt-c" x="425" y="140" font-family="Playfair Display, serif" font-weight="700" font-size="72" fill="#0C0A08" text-anchor="middle" dominant-baseline="central" class="fade-letter">c</text>
+      <text id="lt-y" x="457" y="140" font-family="Playfair Display, serif" font-weight="700" font-size="72" fill="#0C0A08" text-anchor="middle" dominant-baseline="central" class="fade-letter">y</text>
+      <!-- O as SVG <text> for the initial wordmark display — hidden when SVG shape takes over -->
+      <text id="lt-O-text" x="505" y="140" font-family="Playfair Display, serif" font-weight="700" font-style="italic" font-size="72" fill="#D4956A" text-anchor="middle" dominant-baseline="central">O</text>
+      <text id="lt-S" x="545" y="140" font-family="Playfair Display, serif" font-weight="700" font-style="italic" font-size="72" fill="#D4956A" text-anchor="middle" dominant-baseline="central" class="fade-letter">S</text>
+
+      <!-- The O shape path — starts hidden, positioned over the text O.
+           MorphSVG morphs THIS into the bar. ONE tween. ONE element. No swap. -->
+      <path id="o-shape" d="M0,-38 C21,-38 38,-21 38,0 C38,21 21,38 0,38 C-21,38 -38,21 -38,0 C-38,-21 -21,-38 0,-38 Z M0,-26 C-14,-26 -26,-14 -26,0 C-26,14 -14,26 0,26 C14,26 26,14 26,0 C26,-14 14,-26 0,-26 Z"
+        fill="#D4956A" opacity="0" transform="translate(505, 140)"/>
+    </svg>
+  </div>
+
+  <div class="hero-tagline" id="hero-tagline">
+    <h1>Outbound sales,<br><em>automated.</em></h1>
+    <p>From discovery to signed deal — Agency OS runs your entire pipeline while you focus on closing.</p>
+  </div>
+</section>
+
+<div class="controls">
+  <div class="controls-left">
+    <div class="spec-item"><b>Animation</b>The Fold v5</div>
+    <div class="spec-item"><b>Engine</b>GSAP 3 + MorphSVG</div>
+    <div class="spec-item"><b>Approach</b>SVG-native, single tween morph</div>
+  </div>
+  <button class="replay-btn" onclick="replay()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <path d="M3 12a9 9 0 1 0 3-6.7"/>
+      <path d="M3 4v5h5"/>
+    </svg>
+    Replay
+  </button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/MorphSVGPlugin.min.js"></script>
+
+<script>
+gsap.registerPlugin(MorphSVGPlugin);
+
+// The bar path — wide rectangle. The morph target.
+// Positioned relative to the O's origin (0,0 = centre of the O shape)
+const BAR_PATH = "M-80,-6 L80,-6 L80,6 L-80,6 Z";
+
+let tl = null;
+
+function prefersReducedMotion() {
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+function buildTimeline() {
+  const t = gsap.timeline({ paused: true });
+
+  const fadeLetters = document.querySelectorAll('.fade-letter');
+  const ltA      = document.getElementById('lt-A');
+  const ltOText  = document.getElementById('lt-O-text');
+  const oShape   = document.getElementById('o-shape');
+  const tagline  = document.getElementById('hero-tagline');
+
+  // Centre of the SVG viewBox
+  const cx = 450;
+  const cy = 120;
+
+  // Current positions (from the SVG attributes)
+  const aX = 280, aY = 140;
+  const oX = 505, oY = 140;
+
+  // ── PHASE 1: Hold wordmark (0.3s implicit) ──
+
+  // ── PHASE 2: "gency" + "S" fade and drop ──
+  t.to(fadeLetters, {
+    attr: { opacity: 0, y: '+=6' },
+    duration: 0.55,
+    stagger: 0.02,
+    ease: 'power2.inOut'
+  }, 0.3);
+
+  // ── PHASE 3: A glides to centre, scales up ──
+  t.to(ltA, {
+    attr: { x: cx, y: cy, 'font-size': 160 },
+    duration: 0.9,
+    ease: 'power3.inOut'
+  }, 0.65);
+
+  // Also change A to italic 900 weight as it arrives at final state
+  t.to(ltA, {
+    attr: { 'font-style': 'italic', 'font-weight': 900 },
+    duration: 0.01
+  }, 0.65);
+
+  // ── PHASE 4: Swap text O for SVG shape O ──
+  // Show the SVG O shape exactly where the text O is, then hide text O.
+  // This swap is instant and invisible — same position, same size, same colour.
+  t.call(() => {
+    gsap.set(oShape, { opacity: 1 });
+    gsap.set(ltOText, { attr: { opacity: 0 } });
+  }, [], 0.75);
+
+  // ── PHASE 5: O shape moves toward the A, scaling up ──
+  // One smooth tween — the O travels to just below the A's centre
+  // and grows. This is the "approaching" beat.
+  t.to(oShape, {
+    attr: { transform: `translate(${cx}, ${cy + 30}) scale(2.2)` },
+    duration: 0.7,
+    ease: 'power3.inOut'
+  }, 0.80);
+
+  // ── PHASE 6: THE MORPH — O shape → bar ──
+  // ONE single MorphSVG tween. No steps. No scaleY hack.
+  // MorphSVG interpolates every point of the oval into the rectangle.
+  // The oval stretches wide, flattens, and resolves as the bar.
+  // The transform simultaneously scales the bar to final width.
+  t.to(oShape, {
+    morphSVG: {
+      shape: BAR_PATH,
+      type: 'rotational',
+      origin: '50% 50%'
+    },
+    attr: { transform: `translate(${cx}, ${cy + 30}) scale(1.8, 1.0)` },
+    duration: 0.65,
+    ease: 'power2.inOut'
+  }, 1.35);
+
+  // ── PHASE 7: Elastic settle ──
+  // After the morph completes, a subtle elastic bounce on the bar width
+  // to give it the "snap" feeling of a rubber band settling.
+  t.to(oShape, {
+    attr: { transform: `translate(${cx}, ${cy + 30}) scale(2.0, 1.0)` },
+    duration: 0.06,
+    ease: 'none'
+  }, 2.00);
+
+  t.to(oShape, {
+    attr: { transform: `translate(${cx}, ${cy + 30}) scale(1.75, 1.0)` },
+    duration: 0.3,
+    ease: 'elastic.out(1.2, 0.3)'
+  }, 2.06);
+
+  // ── PHASE 8: Tagline ──
+  t.to(tagline, {
+    opacity: 1,
+    y: 0,
+    duration: 0.5,
+    ease: 'power2.out'
+  }, 2.5);
+
+  return t;
+}
+
+function init() {
+  if (tl) { tl.kill(); tl = null; }
+
+  const fadeLetters = document.querySelectorAll('.fade-letter');
+  const ltA      = document.getElementById('lt-A');
+  const ltOText  = document.getElementById('lt-O-text');
+  const oShape   = document.getElementById('o-shape');
+  const tagline  = document.getElementById('hero-tagline');
+
+  // Reset everything to initial state
+  gsap.set(fadeLetters, { attr: { opacity: 1 }, clearProps: 'y' });
+  gsap.set(ltA, { attr: { x: 280, y: 140, 'font-size': 72, 'font-weight': 700, 'font-style': 'normal', opacity: 1 } });
+  gsap.set(ltOText, { attr: { opacity: 1 } });
+  gsap.set(oShape, {
+    opacity: 0,
+    attr: {
+      d: "M0,-38 C21,-38 38,-21 38,0 C38,21 21,38 0,38 C-21,38 -38,21 -38,0 C-38,-21 -21,-38 0,-38 Z M0,-26 C-14,-26 -26,-14 -26,0 C-26,14 -14,26 0,26 C14,26 26,14 26,0 C26,-14 14,-26 0,-26 Z",
+      transform: 'translate(505, 140) scale(1)'
+    }
+  });
+  gsap.set(tagline, { opacity: 0, y: 10 });
+
+  if (prefersReducedMotion()) {
+    gsap.set(fadeLetters, { attr: { opacity: 0 } });
+    gsap.set(ltOText, { attr: { opacity: 0 } });
+    gsap.set(ltA, { attr: { x: 450, y: 120, 'font-size': 160, 'font-weight': 900, 'font-style': 'italic' } });
+    gsap.set(oShape, { opacity: 1, attr: { d: BAR_PATH, transform: 'translate(450, 150) scale(1.8, 1.0)' } });
+    gsap.set(tagline, { opacity: 1, y: 0 });
+    return;
+  }
+
+  tl = buildTimeline();
+  setTimeout(() => { if (tl) tl.play(); }, 300);
+}
+
+function replay() { init(); }
+
+window.addEventListener('load', () => setTimeout(init, 100));
+</script>
+
+</body>
+</html>

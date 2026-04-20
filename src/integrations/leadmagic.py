@@ -57,6 +57,7 @@ from tenacity import (
 
 from src.config.settings import settings
 from src.exceptions import APIError, IntegrationError, ValidationError
+from src.integrations.circuit_breaker import circuit_breaker
 
 logger = logging.getLogger(__name__)
 
@@ -356,6 +357,7 @@ class LeadmagicClient:
 
         self._last_request_time = datetime.now(UTC)
 
+    @circuit_breaker("leadmagic", failure_threshold=5, recovery_timeout=60)
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=10),
@@ -386,6 +388,10 @@ class LeadmagicClient:
             LeadmagicNoPlanError: Plan not purchased
             APIError: Other API errors
         """
+        import os
+        if os.environ.get("DRY_RUN"):
+            logger.info("[DRY-RUN] Would call Leadmagic: %s %s", method, endpoint)
+            return {}
         await self._rate_limit_delay()
 
         client = await self._get_client()

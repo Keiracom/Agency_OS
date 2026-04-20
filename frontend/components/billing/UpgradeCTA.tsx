@@ -11,7 +11,7 @@ export function UpgradeCTA() {
           Ready to dominate your market?
         </h3>
         <p className="text-sm text-text-secondary max-w-[500px]">
-          Upgrade to Dominance and get 2x the meetings, dedicated Slack support, and custom
+          Upgrade to Velocity and get 2x the meetings, dedicated Slack support, and custom
           integrations built for your workflow.
         </p>
       </div>

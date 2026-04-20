@@ -11,6 +11,7 @@ Wraps 7 DataForSEO endpoints for pipeline v4 discovery and intelligence.
 
 import base64
 import logging
+import os
 import time
 from datetime import date, timedelta
 from decimal import Decimal
@@ -207,6 +208,9 @@ class DFSLabsClient:
             DFSAuthError: If DFS returns auth failure status
             httpx.HTTPStatusError: On 429/500/502/503 (triggers tenacity retry)
         """
+        if os.environ.get("DRY_RUN"):
+            logger.info("[DRY-RUN] Would call DFS: %s", endpoint)
+            return {"items": [], "total_count": 0}
         client = await self._get_client()
         t0 = time.monotonic()
         response = await client.post(endpoint, json=payload)
@@ -784,6 +788,7 @@ class DFSLabsClient:
                             "domain": domain,
                             "paid_etv": paid_etv,
                             "organic_etv": organic_etv,
+                            "organic_count": item.get("organic_count") or 0,
                             "_total_count": total_count,  # propagate for pagination
                         }
                     )

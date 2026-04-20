@@ -1,10 +1,12 @@
 import logging
+import os
+
 import httpx
 
 logger = logging.getLogger(__name__)
 
-TELEGRAM_BOT_TOKEN = "8381203809:AAFiTOe680BCs_X7WdbQYmKl1rSVs9GFycw"
-TELEGRAM_CHAT_ID = "7267788033"
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_TOKEN")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "7267788033")
 
 
 def send_failure_alert(

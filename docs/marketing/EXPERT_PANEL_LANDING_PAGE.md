@@ -266,10 +266,10 @@ When we have 500 agencies, you'll be known as an original. Early adopters get re
 
 ## Founding Tiers
 
-### 🚀 IGNITION — $1,250/month
-*Was $2,500/month — Locked at 50% off forever*
+### 🔥 SPARK — $375/month
+*Was $750/month — Locked at 50% off forever*
 
-- 2,000 AI-qualified prospects/month
+- 150 AI-qualified prospects/month
 - Email + LinkedIn automation
 - Basic Conversion Intelligence
 - Standard support (24hr response)
@@ -278,32 +278,30 @@ When we have 500 agencies, you'll be known as an original. Early adopters get re
 
 ---
 
+### 🚀 IGNITION — $1,250/month
+*Was $2,500/month — Locked at 50% off forever*
+
+- 600 AI-qualified prospects/month
+- Email + LinkedIn automation
+- Basic Conversion Intelligence
+- Standard support (24hr response)
+
+**Best for:** Agencies scaling beyond testing phase
+
+---
+
 ### ⚡ VELOCITY — $2,500/month  
 *Was $5,000/month — Locked at 50% off forever*
 
 **MOST POPULAR**
 
-- 5,000 AI-qualified prospects/month  
+- 1,500 AI-qualified prospects/month  
 - Full 5-channel outreach (Email + SMS + LinkedIn + Voice + Mail)
 - Advanced Conversion Intelligence + weekly insights
 - Priority support + Slack channel
 - Dedicated success manager
 
 **Best for:** Growth-focused agencies ready to scale pipeline
-
----
-
-### 🏆 DOMINANCE — $3,750/month
-*Was $7,500/month — Locked at 50% off forever*
-
-- Unlimited prospects
-- All channels + white-label options
-- Custom AI model training on YOUR brand voice
-- API access for custom integrations
-- Quarterly strategy sessions with leadership
-- Dedicated account team
-
-**Best for:** Agencies building a client acquisition machine
 
 ---
 

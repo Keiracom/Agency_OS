@@ -480,6 +480,8 @@ class DataForSEOClient:
         - 5,001-20,000: 4 points (strong)
         - 20,001+: 5 points (dominant)
         """
+        # Display buckets only — discovery uses category_etv_windows.py
+        # Do not use these thresholds for discovery filtering.
         if organic_etv is None or organic_etv <= 50:
             return 0
         elif organic_etv <= 200:

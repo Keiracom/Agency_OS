@@ -43,7 +43,7 @@ import { useAdminClients } from "@/hooks/use-admin";
 const tierColors: Record<string, string> = {
   ignition: "bg-bg-elevated/10 text-amber border-default/20",
   velocity: "bg-amber/10 text-amber border-amber/20",
-  dominance: "bg-amber-500/10 text-amber-700 border-amber-500/20",
+  spark: "bg-sky-500/10 text-sky-700 border-sky-500/20",
 };
 
 const statusColors: Record<string, string> = {
@@ -156,7 +156,7 @@ export default function AdminClientsPage() {
                 <SelectItem value="all">All Tiers</SelectItem>
                 <SelectItem value="ignition">Ignition</SelectItem>
                 <SelectItem value="velocity">Velocity</SelectItem>
-                <SelectItem value="dominance">Dominance</SelectItem>
+                <SelectItem value="spark">Spark</SelectItem>
               </SelectContent>
             </Select>
           </div>

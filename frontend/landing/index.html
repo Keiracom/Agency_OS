@@ -1,0 +1,1591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agency OS — The first autonomous acquisition engine for Australian agencies</title>
+<meta name="description" content="Agency OS finds, scores, and books your ideal prospects across four channels — automatically. The first autonomous acquisition engine for Australian agencies.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700;1,900&family=DM+Sans:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<!-- 
+  ╔══════════════════════════════════════════════════════════════╗
+  ║  AGENCY OS — LANDING PAGE                                    ║
+  ║  Build date: April 2026                                      ║
+  ║  Ships: Vercel — agencyxos.ai                                ║
+  ║                                                              ║
+  ║  CTAs currently wired as mailto: placeholders.               ║
+  ║  Search "CTA_PLACEHOLDER" to find and swap when ready:       ║
+  ║    1. Primary reserve CTA → Stripe Checkout URL              ║
+  ║    2. Book a call CTA     → Cal.com booking link             ║
+  ║    3. Contact email        → confirm hello@agencyxos.ai       ║
+  ╚══════════════════════════════════════════════════════════════╝
+-->
+
+<style>
+:root {
+  /* Design tokens — ratified */
+  --cream:      #F7F3EE;
+  --cream-alt:  #FBF8F4;
+  --surface:    #EDE8E0;
+  --ink:        #0C0A08;
+  --ink-2:      #2E2B26;
+  --ink-3:      #7A756D;
+  --ink-4:      #A8A298;
+  --amber:      #D4956A;
+  --amber-2:    #C46A3E;
+  --rule:       rgba(12,10,8,0.08);
+  --rule-i:     rgba(247,243,238,0.08);
+  --rule-mid:   rgba(12,10,8,0.14);
+}
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--cream);
+  color: var(--ink);
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 300;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   LOGO — rubber band A mark (from logo_final.html)
+   ═══════════════════════════════════════════════════════════════ */
+
+.a-mark {
+  font-family: 'Playfair Display', serif;
+  font-weight: 900;
+  font-style: italic;
+  color: var(--ink);
+  line-height: 0.82;
+  letter-spacing: -0.05em;
+  position: relative;
+  display: inline-block;
+  padding: 0 0.05em;
+}
+.a-mark::after {
+  content: '';
+  position: absolute;
+  left: 0.08em;
+  right: 0.08em;
+  bottom: 0.08em;
+  height: 0.048em;
+  background: var(--amber);
+  z-index: 2;
+}
+.a-mark.on-dark { color: var(--cream); }
+
+.wordmark-lockup {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.12em;
+  font-family: 'Playfair Display', serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  text-decoration: none;
+}
+.wordmark-lockup .mark { font-size: 1.15em; line-height: 0.82; }
+.wordmark-lockup .wm { font-size: 1em; line-height: 1; }
+.wordmark-lockup .wm em { font-style: italic; color: var(--amber); }
+.wordmark-lockup.on-dark { color: var(--cream); }
+
+/* ═══════════════════════════════════════════════════════════════
+   NAV
+   ═══════════════════════════════════════════════════════════════ */
+
+nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(247, 243, 238, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--rule);
+  padding: 18px 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+nav .wordmark-lockup { font-size: 18px; }
+.nav-right { display: flex; align-items: center; gap: 32px; }
+.nav-link {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--ink-3);
+  text-decoration: none;
+  text-transform: uppercase;
+  transition: color 0.18s;
+}
+.nav-link:hover { color: var(--amber); }
+.btn {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  padding: 11px 22px;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  transition: all 0.18s ease;
+}
+.btn-outline {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid rgba(12, 10, 8, 0.22);
+}
+.btn-outline:hover {
+  border-color: var(--amber);
+  color: var(--amber);
+}
+.btn-solid {
+  background: var(--ink);
+  color: var(--cream);
+}
+.btn-solid:hover { background: var(--amber); color: var(--ink); }
+.btn-amber { background: var(--amber); color: var(--ink); }
+.btn-amber:hover { background: var(--amber-2); color: var(--cream); }
+.btn-arrow { font-size: 14px; transform: translateX(0); transition: transform 0.18s; }
+.btn:hover .btn-arrow { transform: translateX(3px); }
+
+/* ═══════════════════════════════════════════════════════════════
+   STATUS STRIP — Bloomberg signal, runs above hero
+   ═══════════════════════════════════════════════════════════════ */
+
+.status-strip {
+  background: var(--ink);
+  color: rgba(247, 243, 238, 0.65);
+  padding: 10px 56px;
+  display: flex;
+  justify-content: center;
+  gap: 48px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--rule-i);
+}
+.status-strip .dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--amber);
+  margin-right: 8px;
+  vertical-align: middle;
+  animation: pulse 2.2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+.status-item { display: flex; align-items: center; }
+
+/* ═══════════════════════════════════════════════════════════════
+   HERO — split layout, copy left, live prospect card right
+   ═══════════════════════════════════════════════════════════════ */
+
+.hero {
+  max-width: 1260px;
+  margin: 0 auto;
+  padding: 100px 56px 80px;
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 72px;
+  align-items: start;
+}
+
+.hero-eyebrow {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--amber);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 32px;
+}
+.hero-eyebrow::before {
+  content: '';
+  width: 32px;
+  height: 1px;
+  background: var(--amber);
+}
+
+.hero h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(44px, 5.2vw, 76px);
+  line-height: 1.02;
+  letter-spacing: -0.028em;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 32px;
+}
+.hero h1 em {
+  font-style: italic;
+  color: var(--amber);
+}
+
+.hero-sub {
+  font-size: 18px;
+  line-height: 1.65;
+  color: var(--ink-2);
+  max-width: 480px;
+  margin-bottom: 40px;
+  font-weight: 300;
+}
+.hero-sub b { font-weight: 500; color: var(--ink); }
+
+.hero-cta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+}
+.hero-cta .btn { font-size: 14px; padding: 15px 28px; }
+
+.hero-fine {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--ink-3);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.hero-fine::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--amber);
+  display: inline-block;
+}
+
+/* ─── DASHBOARD CROP — hero right side ─── */
+
+.dashboard-crop {
+  background: var(--cream-alt);
+  border: 1px solid var(--rule-mid);
+  box-shadow: 0 40px 80px rgba(12, 10, 8, 0.14),
+              0 20px 40px rgba(12, 10, 8, 0.07);
+  display: grid;
+  grid-template-columns: 132px 1fr;
+  overflow: hidden;
+  min-height: 520px;
+}
+
+/* Sidebar */
+.dc-sidebar {
+  background: var(--surface);
+  border-right: 1px solid var(--rule);
+  padding: 14px 0 10px;
+  display: flex;
+  flex-direction: column;
+}
+.dc-logo {
+  padding: 2px 14px 14px;
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+  font-family: 'Playfair Display', serif;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--ink);
+  letter-spacing: -0.015em;
+  border-bottom: 1px solid var(--rule);
+  margin-bottom: 8px;
+}
+.dc-logo-a {
+  font-family: 'Playfair Display', serif;
+  font-weight: 900;
+  font-style: italic;
+  font-size: 15px;
+  color: var(--ink);
+  position: relative;
+  display: inline-block;
+  padding: 0 0.04em;
+  line-height: 0.82;
+}
+.dc-logo-a::after {
+  content: '';
+  position: absolute;
+  left: 0.08em;
+  right: 0.08em;
+  bottom: 0.08em;
+  height: 0.048em;
+  background: var(--amber);
+}
+.dc-logo-wm { color: var(--ink); }
+.dc-logo-wm em { font-style: italic; color: var(--amber); }
+.dc-nav {
+  display: flex;
+  flex-direction: column;
+}
+.dc-nav-item {
+  padding: 7px 14px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--ink-3);
+  text-decoration: none;
+  border-left: 2px solid transparent;
+  transition: color 0.15s;
+}
+.dc-nav-item:hover { color: var(--ink-2); }
+.dc-nav-item.active {
+  color: var(--ink);
+  border-left-color: var(--amber);
+  background: rgba(212, 149, 106, 0.07);
+  font-weight: 500;
+}
+.dc-sidebar-foot {
+  margin-top: auto;
+  padding: 10px 14px;
+  border-top: 1px solid var(--rule);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dc-user {
+  width: 22px;
+  height: 22px;
+  background: var(--ink);
+  color: var(--amber);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+.dc-user-name {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--ink-3);
+}
+
+/* Main area */
+.dc-main {
+  background: var(--cream-alt);
+  padding: 18px 22px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.dc-main-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--rule);
+}
+.dc-path {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.dc-live {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: var(--amber);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.dc-live-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--amber);
+  animation: pulse 2.2s ease-in-out infinite;
+}
+.dc-prospect { margin-bottom: 2px; }
+.dc-name {
+  font-family: 'Playfair Display', serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.015em;
+  line-height: 1.1;
+  margin-bottom: 4px;
+}
+.dc-meta {
+  font-size: 11px;
+  color: var(--ink-3);
+  letter-spacing: 0.01em;
+}
+.dc-scores-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  border: 1px solid var(--rule);
+  background: var(--cream);
+}
+.dc-score {
+  text-align: center;
+  padding: 13px 4px;
+}
+.dc-score + .dc-score {
+  border-left: 1px solid var(--rule);
+}
+.dc-score-n {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--amber);
+  line-height: 1;
+}
+.dc-score-l {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 7px;
+  letter-spacing: 0.14em;
+  color: var(--ink-3);
+  margin-top: 5px;
+}
+.dc-section {
+  display: flex;
+  flex-direction: column;
+}
+.dc-sec-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8px;
+  letter-spacing: 0.16em;
+  color: var(--amber);
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--rule);
+  margin-bottom: 6px;
+}
+.dc-data-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 3px 0;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.dc-data-row span { color: var(--ink-3); }
+.dc-data-row b {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 500;
+  color: var(--ink);
+}
+.dc-data-row b.dc-alert { color: var(--amber-2); }
+.dc-signal-row {
+  font-size: 11px;
+  color: var(--ink-2);
+  padding: 3px 0 3px 10px;
+  line-height: 1.4;
+  position: relative;
+}
+.dc-signal-row::before {
+  content: '•';
+  position: absolute;
+  left: 0;
+  color: var(--amber);
+}
+
+/* Caption under the dashboard crop */
+.pc-caption {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.pc-caption::before {
+  content: '';
+  width: 14px;
+  height: 1px;
+  background: var(--amber);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   FAINT DIVIDER
+   ═══════════════════════════════════════════════════════════════ */
+
+.rule { max-width: 1260px; margin: 0 auto; padding: 0 56px; }
+.rule hr { border: none; border-top: 1px solid var(--rule); }
+
+/* ═══════════════════════════════════════════════════════════════
+   SECTION WRAPPER
+   ═══════════════════════════════════════════════════════════════ */
+
+.wrap {
+  max-width: 1260px;
+  margin: 0 auto;
+  padding: 110px 56px;
+}
+.wrap.tight { padding: 80px 56px; }
+
+.eyebrow {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 40px;
+}
+.eyebrow::after {
+  content: '';
+  width: 44px;
+  height: 1px;
+  background: var(--rule);
+}
+.eyebrow.on-dark { color: rgba(247, 243, 238, 0.55); }
+.eyebrow.on-dark::after { background: var(--rule-i); }
+
+h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(34px, 3.6vw, 56px);
+  line-height: 1.08;
+  letter-spacing: -0.022em;
+  font-weight: 700;
+  color: var(--ink);
+}
+h2 em { font-style: italic; color: var(--amber); }
+h2.on-dark { color: var(--cream); }
+
+.lede {
+  font-size: 17px;
+  line-height: 1.72;
+  color: var(--ink-2);
+  max-width: 580px;
+  margin-top: 24px;
+  font-weight: 300;
+}
+.lede.on-dark { color: rgba(247, 243, 238, 0.75); }
+.lede b { font-weight: 500; color: var(--ink); }
+.lede.on-dark b { color: var(--cream); font-weight: 400; }
+
+/* ═══════════════════════════════════════════════════════════════
+   HOW IT WORKS — three-column product story
+   ═══════════════════════════════════════════════════════════════ */
+
+.how-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: var(--rule);
+  border: 1px solid var(--rule);
+  margin-top: 64px;
+}
+.how-cell {
+  background: var(--cream);
+  padding: 44px 34px 48px;
+  transition: background 0.2s;
+}
+.how-cell:hover { background: var(--cream-alt); }
+.how-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--amber);
+  margin-bottom: 20px;
+}
+.how-h {
+  font-family: 'Playfair Display', serif;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.014em;
+  color: var(--ink);
+  margin-bottom: 12px;
+  line-height: 1.18;
+}
+.how-h em { font-style: italic; color: var(--amber); }
+.how-p {
+  font-size: 14px;
+  color: var(--ink-3);
+  line-height: 1.72;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PROOF SECTION — dark, "you're already the case study"
+   ═══════════════════════════════════════════════════════════════ */
+
+.proof {
+  background: var(--ink);
+  position: relative;
+  overflow: hidden;
+}
+.proof::before {
+  content: '';
+  position: absolute;
+  top: -100px;
+  right: -100px;
+  width: 580px;
+  height: 580px;
+  background: radial-gradient(circle, rgba(212, 149, 106, 0.1) 0%, transparent 60%);
+  pointer-events: none;
+}
+.proof-inner {
+  max-width: 1260px;
+  margin: 0 auto;
+  padding: 110px 56px;
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: 80px;
+  align-items: center;
+  position: relative;
+  z-index: 1;
+}
+.proof .lede { margin-bottom: 40px; }
+
+.proof-cta-group {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.proof-fine {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: rgba(247, 243, 238, 0.5);
+  margin-top: 16px;
+  display: block;
+}
+
+/* SEQUENCE VISUAL on the right of proof */
+.sequence {
+  border: 1px solid var(--rule-i);
+  padding: 32px 30px 12px;
+  background: rgba(247, 243, 238, 0.015);
+}
+.seq-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(247, 243, 238, 0.52);
+  margin-bottom: 24px;
+}
+.seq-step {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--rule-i);
+}
+.seq-step:last-child { border-bottom: none; }
+.seq-icon {
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(212, 149, 106, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--amber);
+  font-weight: 500;
+}
+.seq-body { flex: 1; }
+.seq-ch {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--cream);
+  margin-bottom: 3px;
+}
+.seq-detail {
+  font-size: 12px;
+  color: rgba(247, 243, 238, 0.58);
+  line-height: 1.5;
+}
+.seq-status {
+  margin-left: auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+  padding-top: 4px;
+}
+.seq-status.sent { color: var(--amber); }
+.seq-status.pending { color: rgba(247, 243, 238, 0.45); }
+.seq-status.queued {
+  color: rgba(247, 243, 238, 0.72);
+  border: 1px solid rgba(247, 243, 238, 0.22);
+  padding: 3px 9px;
+  font-size: 8px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SIGNALS — 4-card grid (was 6)
+   ═══════════════════════════════════════════════════════════════ */
+
+.signal-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--rule);
+  border: 1px solid var(--rule);
+  margin-top: 64px;
+}
+.sig-card {
+  background: var(--cream);
+  padding: 38px 30px 42px;
+  transition: background 0.2s;
+}
+.sig-card:hover { background: var(--cream-alt); }
+.sig-l {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 16px;
+}
+.sig-h {
+  font-family: 'Playfair Display', serif;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  margin-bottom: 10px;
+  line-height: 1.22;
+}
+.sig-p {
+  font-size: 13px;
+  color: var(--ink-3);
+  line-height: 1.7;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   OBJECTIONS — 3 Q&A (was 4)
+   ═══════════════════════════════════════════════════════════════ */
+
+.obj-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1px;
+  background: var(--rule);
+  border: 1px solid var(--rule);
+  margin-top: 64px;
+}
+.obj {
+  background: var(--cream);
+  padding: 40px 32px 44px;
+}
+.obj-q {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink-2);
+  margin-bottom: 16px;
+  line-height: 1.3;
+}
+.obj-a {
+  font-size: 14px;
+  color: var(--ink-3);
+  line-height: 1.72;
+}
+.obj-a b { font-weight: 500; color: var(--ink); }
+
+/* ═══════════════════════════════════════════════════════════════
+   FOUNDING — focused, single block
+   ═══════════════════════════════════════════════════════════════ */
+
+.founding {
+  background: var(--surface);
+}
+.founding-inner {
+  max-width: 1260px;
+  margin: 0 auto;
+  padding: 110px 56px;
+}
+.founding-top {
+  max-width: 780px;
+  margin-bottom: 72px;
+}
+.founding-top .lede { margin-top: 24px; }
+
+/* Pricing carousel */
+.pricing-carousel {
+  display: grid;
+  grid-template-columns: 1fr 1.08fr 1fr;
+  gap: 22px;
+  margin-bottom: 76px;
+  align-items: stretch;
+}
+.tier-card {
+  background: var(--cream);
+  border: 1px solid var(--rule-mid);
+  padding: 36px 30px 30px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  transition: border-color 0.2s, transform 0.2s;
+}
+.tier-card:hover { border-color: var(--ink-4); }
+.tier-featured {
+  background: var(--ink);
+  color: var(--cream);
+  border-color: var(--amber);
+  transform: translateY(-14px);
+  box-shadow: 0 30px 60px rgba(12, 10, 8, 0.18);
+}
+.tier-badge {
+  position: absolute;
+  top: -13px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--amber);
+  color: var(--ink);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 7px 16px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.tier-head { margin-bottom: 26px; }
+.tier-name {
+  font-family: 'Playfair Display', serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.015em;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+.tier-featured .tier-name { color: var(--cream); }
+.tier-volume {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.tier-featured .tier-volume { color: rgba(247, 243, 238, 0.6); }
+.tier-prices {
+  padding-bottom: 22px;
+  margin-bottom: 22px;
+  border-bottom: 1px solid var(--rule);
+}
+.tier-featured .tier-prices { border-bottom-color: rgba(247, 243, 238, 0.1); }
+.tier-strike {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--ink-3);
+  text-decoration: line-through;
+  margin-bottom: 8px;
+}
+.tier-featured .tier-strike { color: rgba(247, 243, 238, 0.42); }
+.tier-price {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.tier-price .amt {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 36px;
+  font-weight: 500;
+  color: var(--amber);
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+.tier-price .per {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.tier-featured .tier-price .per { color: rgba(247, 243, 238, 0.6); }
+.tier-note {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: var(--ink-3);
+}
+.tier-featured .tier-note { color: rgba(247, 243, 238, 0.52); }
+.tier-features {
+  list-style: none;
+  margin-bottom: 28px;
+  flex: 1;
+}
+.tier-features li {
+  font-size: 13px;
+  color: var(--ink-2);
+  padding: 9px 0;
+  display: flex;
+  gap: 10px;
+  line-height: 1.5;
+  border-bottom: 1px solid var(--rule);
+}
+.tier-features li:last-child { border-bottom: none; }
+.tier-features li::before {
+  content: '→';
+  color: var(--amber);
+  font-family: 'JetBrains Mono', monospace;
+  flex-shrink: 0;
+}
+.tier-featured .tier-features li {
+  color: rgba(247, 243, 238, 0.78);
+  border-bottom-color: rgba(247, 243, 238, 0.06);
+}
+.btn-tier {
+  display: block;
+  text-align: center;
+  padding: 15px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.18s;
+  border: 1px solid var(--ink);
+  color: var(--ink);
+  background: transparent;
+}
+.btn-tier:hover { background: var(--ink); color: var(--cream); }
+.tier-featured .btn-tier {
+  border-color: rgba(247, 243, 238, 0.22);
+  color: var(--cream);
+}
+.btn-tier-featured {
+  background: var(--amber) !important;
+  color: var(--ink) !important;
+  border-color: var(--amber) !important;
+}
+.btn-tier-featured:hover {
+  background: var(--amber-2) !important;
+  color: var(--cream) !important;
+  border-color: var(--amber-2) !important;
+}
+
+/* Benefits strip */
+.found-benefits {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0;
+  margin-bottom: 56px;
+  border-top: 1px solid var(--rule-mid);
+  padding-top: 44px;
+}
+.benefit {
+  padding: 0 22px;
+  border-left: 1px solid var(--rule);
+}
+.benefit:first-child { border-left: none; padding-left: 0; }
+.benefit:last-child { padding-right: 0; }
+.benefit-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.008em;
+  margin-bottom: 8px;
+  line-height: 1.2;
+}
+.benefit-desc {
+  font-size: 13px;
+  color: var(--ink-3);
+  line-height: 1.58;
+}
+
+/* Spots remaining */
+.founding-foot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding-top: 36px;
+  border-top: 1px solid var(--rule);
+}
+.spots-dots {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.spot-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 1px solid var(--ink-4);
+  background: transparent;
+}
+.spot-dot.taken {
+  background: var(--amber);
+  border-color: var(--amber);
+}
+.spots-caption-row {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--ink-3);
+}
+.spots-caption-row b {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   FINAL CTA
+   ═══════════════════════════════════════════════════════════════ */
+
+.final {
+  background: var(--ink);
+  padding: 130px 56px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.final::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 900px;
+  height: 900px;
+  background: radial-gradient(circle, rgba(212, 149, 106, 0.08) 0%, transparent 60%);
+  pointer-events: none;
+}
+.final-inner {
+  max-width: 620px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+}
+.final h2 {
+  color: var(--cream);
+  margin-bottom: 28px;
+}
+.final-p {
+  font-size: 17px;
+  color: rgba(247, 243, 238, 0.72);
+  line-height: 1.78;
+  margin-bottom: 48px;
+}
+.final-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.final-sub {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: rgba(247, 243, 238, 0.5);
+  margin-top: 6px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   FOOTER
+   ═══════════════════════════════════════════════════════════════ */
+
+footer {
+  background: var(--ink);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 32px 56px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+footer .wordmark-lockup { font-size: 14px; }
+.foot-legal {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: rgba(247, 243, 238, 0.45);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SCROLL REVEAL
+   ═══════════════════════════════════════════════════════════════ */
+
+.r {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+.r.d1 { transition-delay: 0.08s; }
+.r.d2 { transition-delay: 0.16s; }
+.r.d3 { transition-delay: 0.24s; }
+.r.in {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════════ */
+
+@media (max-width: 1100px) {
+  nav { padding: 16px 28px; }
+  .status-strip { padding: 10px 28px; gap: 24px; font-size: 9px; flex-wrap: wrap; justify-content: flex-start; }
+  .hero { grid-template-columns: 1fr; padding: 64px 28px 56px; gap: 56px; }
+  .wrap { padding: 82px 28px; }
+  .wrap.tight { padding: 60px 28px; }
+  .how-grid { grid-template-columns: 1fr; }
+  .proof-inner { grid-template-columns: 1fr; padding: 82px 28px; gap: 56px; }
+  .signal-grid { grid-template-columns: 1fr 1fr; }
+  .obj-grid { grid-template-columns: 1fr; }
+  .founding-inner { padding: 82px 28px; }
+  .founding-top { margin-bottom: 56px; }
+  .pricing-carousel { 
+    grid-template-columns: 1fr; 
+    gap: 28px;
+    margin-bottom: 64px;
+  }
+  .tier-featured { transform: translateY(0); }
+  .found-benefits {
+    grid-template-columns: 1fr 1fr;
+    gap: 36px 28px;
+    padding-top: 36px;
+    margin-bottom: 48px;
+  }
+  .benefit {
+    padding: 0;
+    border-left: none;
+  }
+  .dashboard-crop { 
+    min-height: 0; 
+    max-width: 540px;
+    margin: 0 auto;
+  }
+  .final { padding: 80px 28px; }
+  footer { flex-direction: column; text-align: center; gap: 14px; padding: 32px 28px; }
+}
+@media (max-width: 640px) {
+  .signal-grid { grid-template-columns: 1fr; }
+  .hero-eyebrow { font-size: 9px; }
+  .nav-right .nav-link { display: none; }
+  .status-strip .status-item:nth-child(3) { display: none; }
+  .dashboard-crop { grid-template-columns: 110px 1fr; }
+  .dc-logo { font-size: 12px; padding: 2px 10px 12px; }
+  .dc-nav-item { font-size: 9px; padding: 6px 10px; }
+  .dc-main { padding: 16px 18px; }
+  .dc-name { font-size: 20px; }
+  .dc-score-n { font-size: 19px; }
+  .found-benefits { grid-template-columns: 1fr; gap: 28px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ NAV ═══ -->
+<nav>
+  <a href="#" class="wordmark-lockup" aria-label="Agency OS home">
+    <span class="a-mark mark">A</span><span class="wm">gency<em>OS</em></span>
+  </a>
+  <div class="nav-right">
+    <a href="#how" class="nav-link">How it works</a>
+    <a href="#founding" class="nav-link">Founding</a>
+    <!-- CTA_PLACEHOLDER: swap to Cal.com link when booking is live -->
+    <a href="mailto:hello@agencyxos.ai?subject=Agency%20OS%20demo%20call" class="btn btn-outline">Book a call</a>
+  </div>
+</nav>
+
+<!-- ═══ STATUS STRIP ═══ -->
+<div class="status-strip">
+  <div class="status-item"><span class="dot"></span>LIVE · 2.4M AU businesses indexed</div>
+  <div class="status-item">Founding cohort · April 2026</div>
+  <div class="status-item">Sydney · Melbourne · Brisbane</div>
+</div>
+
+<!-- ═══ HERO ═══ -->
+<section class="hero">
+  <div class="hero-l r">
+    <div class="hero-eyebrow">The first autonomous acquisition engine</div>
+    <h1>
+      You built pipelines<br>
+      for fifty clients.<br>
+      <em>Who built yours?</em>
+    </h1>
+    <p class="hero-sub">
+      An <b>AI acquisition engine</b> for Australian agencies. Finds, scores, and <b>books</b> your ideal prospects across four channels — while you run your client work.
+    </p>
+    <div class="hero-cta">
+      <!-- CTA_PLACEHOLDER: swap to Stripe Checkout URL when Stripe AU account is live -->
+      <a href="#founding" class="btn btn-solid">
+        Reserve Founding Spot <span class="btn-arrow">→</span>
+      </a>
+      <!-- CTA_PLACEHOLDER: swap to Cal.com link when booking is live -->
+      <a href="mailto:hello@agencyxos.ai?subject=Agency%20OS%20demo%20call" class="btn btn-outline">
+        Book a call
+      </a>
+    </div>
+    <span class="hero-fine">3 of 20 founding spots taken · $500 refundable deposit</span>
+  </div>
+
+  <!-- Dashboard crop — actual product interface -->
+  <div class="hero-r r d1">
+    <div class="dashboard-crop">
+      <aside class="dc-sidebar">
+        <div class="dc-logo">
+          <span class="a-mark dc-logo-a">A</span><span class="dc-logo-wm">gency<em>OS</em></span>
+        </div>
+        <nav class="dc-nav">
+          <a class="dc-nav-item">Home</a>
+          <a class="dc-nav-item active">Pipeline</a>
+          <a class="dc-nav-item">Cycles</a>
+          <a class="dc-nav-item">Inbox</a>
+          <a class="dc-nav-item">Sequences</a>
+          <a class="dc-nav-item">Insights</a>
+          <a class="dc-nav-item">Reports</a>
+          <a class="dc-nav-item">Settings</a>
+        </nav>
+        <div class="dc-sidebar-foot">
+          <div class="dc-user">D</div>
+          <span class="dc-user-name">Dave</span>
+        </div>
+      </aside>
+      <main class="dc-main">
+        <div class="dc-main-head">
+          <span class="dc-path">Pipeline · Priority #1</span>
+          <span class="dc-live"><span class="dc-live-dot"></span>LIVE</span>
+        </div>
+        <div class="dc-prospect">
+          <div class="dc-name">Whitford Family Dental</div>
+          <div class="dc-meta">Neutral Bay, NSW · 14 staff · Est. 2011</div>
+        </div>
+        <div class="dc-scores-row">
+          <div class="dc-score">
+            <div class="dc-score-n">89</div>
+            <div class="dc-score-l">PROPENSITY</div>
+          </div>
+          <div class="dc-score">
+            <div class="dc-score-n">76</div>
+            <div class="dc-score-l">REACHABLE</div>
+          </div>
+          <div class="dc-score">
+            <div class="dc-score-n">#1</div>
+            <div class="dc-score-l">PRIORITY</div>
+          </div>
+        </div>
+        <div class="dc-section">
+          <div class="dc-sec-label">SEO / ORGANIC</div>
+          <div class="dc-data-row"><span>Monthly organic traffic</span><b>412</b></div>
+          <div class="dc-data-row"><span>Keywords ranking</span><b>87</b></div>
+          <div class="dc-data-row"><span>Domain authority</span><b>24</b></div>
+        </div>
+        <div class="dc-section">
+          <div class="dc-sec-label">GOOGLE ADS</div>
+          <div class="dc-data-row"><span>Status</span><b class="dc-alert">NOT RUNNING</b></div>
+          <div class="dc-data-row"><span>Last active campaign</span><b>94 days ago</b></div>
+          <div class="dc-data-row"><span>Competitor ad spend</span><b>$8.2k/mo</b></div>
+        </div>
+        <div class="dc-section">
+          <div class="dc-sec-label">SIGNALS · 4 DETECTED</div>
+          <div class="dc-signal-row">New fit-out contractor activity</div>
+          <div class="dc-signal-row">Two clinical roles posted on SEEK</div>
+          <div class="dc-signal-row">Rating 4.6 → 4.1 this quarter</div>
+        </div>
+      </main>
+    </div>
+    <div class="pc-caption">Live view from the Agency OS dashboard</div>
+  </div>
+</section>
+
+<!-- ═══ HOW IT WORKS ═══ -->
+<section class="wrap" id="how">
+  <div class="r">
+    <div class="eyebrow">How it works</div>
+    <h2>Not a tool you operate.<br><em>An operator that runs your agency.</em></h2>
+    <p class="lede">The data sources are public infrastructure — ABN registry, Google Maps, LinkedIn. The intelligence is the algorithm: knowing which signals mean buying intent, for which prospect, at which moment. <b>Our agents work from that algorithm continuously — surfacing the best-fit prospects for your agency at the exact moment they need you.</b></p>
+  </div>
+
+  <div class="how-grid r d1">
+    <div class="how-cell">
+      <div class="how-num">01 · FIND</div>
+      <h3 class="how-h">Builds your prospect pool <em>continuously.</em></h3>
+      <p class="how-p">Sweeps Google Maps, the ABN registry, and LinkedIn across your target industries and locations — 2.4 million AU businesses in the index, with every signal pulled fresh from the source at discovery. No list-building. No cached databases. No manual research.</p>
+    </div>
+    <div class="how-cell">
+      <div class="how-num">02 · READ</div>
+      <h3 class="how-h">Reads 15+ <em>buying signals</em> per prospect.</h3>
+      <p class="how-p">Ad spend, hiring activity, review trends, founder posts, website health, expansion markers. Every signal weighted. Every prospect scored for propensity and reachability in real time.</p>
+    </div>
+    <div class="how-cell">
+      <div class="how-num">03 · RUN</div>
+      <h3 class="how-h">Sequences across <em>four channels.</em></h3>
+      <p class="how-p">Email, LinkedIn, SMS, and voice AI — timed, personalised, coordinated. Every message reviewed and approved by you before it sends. Manual control first, autopilot only when you trust it.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ PROOF SECTION ═══ -->
+<section class="proof">
+  <div class="proof-inner">
+    <div class="r">
+      <div class="eyebrow on-dark">The proof</div>
+      <h2 class="on-dark">You're already<br><em>the case study.</em></h2>
+      <p class="lede on-dark">The email that reached you knew specific things about your agency. The call held your attention. Now you're here. <b>That sequence was Agency OS running its own acquisition.</b> Same engine. Same signals. Same intelligence. We didn't hire anyone to find you — the system did.</p>
+      <div class="proof-cta-group">
+        <!-- CTA_PLACEHOLDER: swap to Cal.com link when booking is live -->
+        <a href="mailto:hello@agencyxos.ai?subject=Agency%20OS%20demo%20call" class="btn btn-amber">
+          Book a call · See the numbers <span class="btn-arrow">→</span>
+        </a>
+      </div>
+      <span class="proof-fine">No deck. Raw campaign data from our own outreach.</span>
+    </div>
+
+    <div class="sequence r d2">
+      <div class="seq-label">Your sequence · Awaiting approval</div>
+      <div class="seq-step">
+        <div class="seq-icon">01</div>
+        <div class="seq-body">
+          <div class="seq-ch">Email — Personalised first contact</div>
+          <div class="seq-detail">References expansion signal. One question. No pitch.</div>
+        </div>
+        <span class="seq-status sent">Sent</span>
+      </div>
+      <div class="seq-step">
+        <div class="seq-icon">02</div>
+        <div class="seq-body">
+          <div class="seq-ch">LinkedIn — Connection request</div>
+          <div class="seq-detail">Sent alongside email. Short note, shared context.</div>
+        </div>
+        <span class="seq-status sent">Sent</span>
+      </div>
+      <div class="seq-step">
+        <div class="seq-icon">03</div>
+        <div class="seq-body">
+          <div class="seq-ch">Voice AI — Follow-up call</div>
+          <div class="seq-detail">Calls if no reply in 72h. References previous email.</div>
+        </div>
+        <span class="seq-status queued">Your approval</span>
+      </div>
+      <div class="seq-step">
+        <div class="seq-icon">04</div>
+        <div class="seq-body">
+          <div class="seq-ch">SMS — Last touch</div>
+          <div class="seq-detail">Brief. Direct. Links to 60-sec Loom.</div>
+        </div>
+        <span class="seq-status pending">Pending</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ SIGNALS ═══ -->
+<section class="wrap">
+  <div class="r">
+    <div class="eyebrow">Signal intelligence</div>
+    <h2>Not a database.<br><em>A live picture of who needs you now.</em></h2>
+  </div>
+  <div class="signal-grid r d1">
+    <div class="sig-card">
+      <div class="sig-l">Timing</div>
+      <div class="sig-h">Active ad spend detected</div>
+      <p class="sig-p">A business that just started running Google Ads is investing in marketing infrastructure. They need someone who knows what to do with it.</p>
+    </div>
+    <div class="sig-card">
+      <div class="sig-l">Pain</div>
+      <div class="sig-h">Review rating declining</div>
+      <p class="sig-p">A falling score is a visible crisis. A direct opening for agencies offering reputation, content, or customer experience work.</p>
+    </div>
+    <div class="sig-card">
+      <div class="sig-l">Growth</div>
+      <div class="sig-h">Rapid hiring activity</div>
+      <p class="sig-p">Multiple open roles means a scaling business — with budget, urgency, and no time to build marketing capability from scratch.</p>
+    </div>
+    <div class="sig-card">
+      <div class="sig-l">Intent</div>
+      <div class="sig-h">Founder posts about pipeline</div>
+      <p class="sig-p">When a decision-maker publicly asks about lead generation, that's a real-time buying signal. The agent catches it the same day.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ OBJECTIONS ═══ -->
+<section class="wrap tight">
+  <div class="r">
+    <div class="eyebrow">The hard questions</div>
+    <h2>Straight answers.</h2>
+  </div>
+  <div class="obj-grid r d1">
+    <div class="obj">
+      <div class="obj-q">"Am I buying an operator or a part-time job?"</div>
+      <div class="obj-a">You review your top ten messages — each one <b>unique, hyper-personalised, and written in your voice</b>. When you're ready, release the batch. Review more first if you want. Month two onward: <b>one button per cycle</b>. You're approving, not writing.</div>
+    </div>
+    <div class="obj">
+      <div class="obj-q">"What if this gets my primary domain blacklisted?"</div>
+      <div class="obj-a">It can't. Outreach never sends from your primary domain. Every customer gets <b>dedicated burner domains</b> with automated warm-up, rotation, and Australian sending infrastructure. Your reputation is yours. <b>Ours is on the line.</b></div>
+    </div>
+    <div class="obj">
+      <div class="obj-q">"Is this actually live — or scraped from a stale database?"</div>
+      <div class="obj-a">The ABN registry is a local join for instant filtering. Every other signal — Google Maps, LinkedIn, ad activity, review trends, website health — is pulled <b>fresh from the source</b> the moment a prospect enters your cycle. Nothing cached. Nothing stale.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FOUNDING ═══ -->
+<section class="founding" id="founding">
+  <div class="founding-inner">
+    <div class="founding-top r">
+      <div class="eyebrow">Founding programme</div>
+      <h2>20 spots. Half price.<br><em>For as long as you stay.</em></h2>
+      <p class="lede">Pick your volume. Every tier locks at <b>50% off for life</b> — with a $500 refundable deposit, protected leads, and a direct line to the founding team.</p>
+    </div>
+
+    <!-- Pricing carousel -->
+    <div class="pricing-carousel r d1">
+      <div class="tier-card">
+        <div class="tier-head">
+          <div class="tier-name">Spark</div>
+          <div class="tier-volume">150 records / month</div>
+        </div>
+        <div class="tier-prices">
+          <div class="tier-strike">$750/mo</div>
+          <div class="tier-price"><span class="amt">$375</span><span class="per">/mo</span></div>
+          <div class="tier-note">Founding rate · locked for life</div>
+        </div>
+        <ul class="tier-features">
+          <li>Full 4-channel orchestration</li>
+          <li>All signal intelligence</li>
+          <li>Manual approval workflow</li>
+        </ul>
+        <!-- CTA_PLACEHOLDER: swap to Stripe Checkout URL when live -->
+        <a href="mailto:hello@agencyxos.ai?subject=Spark%20Founding%20Reservation" class="btn-tier">Reserve Spark</a>
+      </div>
+
+      <div class="tier-card tier-featured">
+        <div class="tier-badge">Flagship</div>
+        <div class="tier-head">
+          <div class="tier-name">Ignition</div>
+          <div class="tier-volume">600 records / month</div>
+        </div>
+        <div class="tier-prices">
+          <div class="tier-strike">$2,500/mo</div>
+          <div class="tier-price"><span class="amt">$1,250</span><span class="per">/mo</span></div>
+          <div class="tier-note">Founding rate · locked for life</div>
+        </div>
+        <ul class="tier-features">
+          <li>Everything in Spark</li>
+          <li>4× the prospect volume</li>
+          <li>Priority founding support</li>
+        </ul>
+        <!-- CTA_PLACEHOLDER: swap to Stripe Checkout URL when live -->
+        <a href="mailto:hello@agencyxos.ai?subject=Ignition%20Founding%20Reservation" class="btn-tier btn-tier-featured">Reserve Ignition</a>
+      </div>
+
+      <div class="tier-card">
+        <div class="tier-head">
+          <div class="tier-name">Velocity</div>
+          <div class="tier-volume">1,500 records / month</div>
+        </div>
+        <div class="tier-prices">
+          <div class="tier-strike">$5,000/mo</div>
+          <div class="tier-price"><span class="amt">$2,500</span><span class="per">/mo</span></div>
+          <div class="tier-note">Founding rate · locked for life</div>
+        </div>
+        <ul class="tier-features">
+          <li>Everything in Ignition</li>
+          <li>2.5× the prospect volume</li>
+          <li>Dedicated onboarding</li>
+        </ul>
+        <!-- CTA_PLACEHOLDER: swap to Stripe Checkout URL when live -->
+        <a href="mailto:hello@agencyxos.ai?subject=Velocity%20Founding%20Reservation" class="btn-tier">Reserve Velocity</a>
+      </div>
+    </div>
+
+    <!-- Benefits strip -->
+    <div class="found-benefits r d2">
+      <div class="benefit">
+        <div class="benefit-title">Locked for life</div>
+        <div class="benefit-desc">Your founding rate never goes up, never expires.</div>
+      </div>
+      <div class="benefit">
+        <div class="benefit-title">Refundable deposit</div>
+        <div class="benefit-desc">$500 applied to month one, returned on request.</div>
+      </div>
+      <div class="benefit">
+        <div class="benefit-title">Protected leads</div>
+        <div class="benefit-desc">No two customers ever contact the same prospect.</div>
+      </div>
+      <div class="benefit">
+        <div class="benefit-title">Direct founder line</div>
+        <div class="benefit-desc">Not a support ticket. A real conversation.</div>
+      </div>
+      <div class="benefit">
+        <div class="benefit-title">Shape the roadmap</div>
+        <div class="benefit-desc">Founding customers drive what gets built next.</div>
+      </div>
+    </div>
+
+    <!-- Spots remaining -->
+    <div class="founding-foot r d2">
+      <div class="spots-dots" id="spotDots"></div>
+      <div class="spots-caption-row"><b>3 of 20</b> founding spots reserved</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FINAL CTA ═══ -->
+<section class="final">
+  <div class="final-inner r">
+    <h2>Referrals have<br>a ceiling.<br><em>You know that.</em></h2>
+    <p class="final-p">A <b>refundable seat</b> at the founding table. Keep it if the product works. Pull the deposit if it doesn't.</p>
+    <div class="final-actions">
+      <!-- CTA_PLACEHOLDER: swap to Stripe Checkout URL when live -->
+      <a href="#founding" class="btn btn-amber" style="font-size:15px; padding:17px 56px;">
+        Reserve a Founding Spot <span class="btn-arrow">→</span>
+      </a>
+      <!-- CTA_PLACEHOLDER: swap to Cal.com link when live -->
+      <a href="mailto:hello@agencyxos.ai?subject=Agency%20OS%20demo%20call" class="btn btn-outline" style="background:transparent; color:rgba(247,243,238,0.75); border-color:rgba(247,243,238,0.2); font-size:13px;">
+        Book a call first
+      </a>
+      <span class="final-sub">$500 refundable · 50% off for life · 17 spots remaining</span>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FOOTER ═══ -->
+<footer>
+  <a href="#" class="wordmark-lockup on-dark" aria-label="Agency OS home">
+    <span class="a-mark mark on-dark">A</span><span class="wm">gency<em>OS</em></span>
+  </a>
+  <div class="foot-legal">ABN compliant &nbsp;·&nbsp; SPAM Act 2003 &nbsp;·&nbsp; Australian-built</div>
+</footer>
+
+<script>
+  // Build spots dots — 3 taken
+  const dots = document.getElementById('spotDots');
+  for (let i = 0; i < 20; i++) {
+    const d = document.createElement('span');
+    d.className = 'spot-dot' + (i < 3 ? ' taken' : '');
+    dots.appendChild(d);
+  }
+
+  // Scroll reveal
+  const obs = new IntersectionObserver(
+    entries => entries.forEach(e => {
+      if (e.isIntersecting) { e.target.classList.add('in'); obs.unobserve(e.target); }
+    }),
+    { threshold: 0.08, rootMargin: '0px 0px -32px 0px' }
+  );
+  document.querySelectorAll('.r').forEach(el => obs.observe(el));
+</script>
+
+</body>
+</html>

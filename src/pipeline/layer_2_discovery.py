@@ -403,8 +403,8 @@ class Layer2Discovery:
         location: str = "Australia",
         limit: int = 50,
         offset: int = 0,
-        etv_min: float = 200.0,
-        etv_max: float = 5000.0,
+        etv_min: float | None = None,
+        etv_max: float | None = None,
     ) -> list[dict]:
         """
         Stateless batch pull for pipeline orchestration.
@@ -412,11 +412,19 @@ class Layer2Discovery:
         Returns list of {"domain": str, "organic_etv": float}.
         Used by PipelineOrchestrator.run(). Distinct from run() which reads
         signal_configurations and writes to BU.
+        etv_min/etv_max required — use get_etv_window() from
+        src.config.category_etv_windows.
         """
-        from datetime import date as _date, timedelta as _td
-        today = _date.today()
-        first_date = (today - _td(days=180)).strftime("%Y-%m-%d")
-        second_date = today.strftime("%Y-%m-%d")
+        if etv_min is None or etv_max is None:
+            raise ValueError(
+                "ETV window required. Use get_etv_window(category_code) from "
+                "src.config.category_etv_windows to look up the canonical window."
+            )
+        # DO NOT pass explicit first_date/second_date here.
+        # DFSLabsClient._get_latest_available_date() resolves the correct
+        # date window dynamically. Hardcoding date.today() caused a regression
+        # (#304 / #317.3) — DFS silently returns empty results for future dates.
+        # Directive #317.3: deleted hardcoded dates, added regression test.
 
         try:
             code_int = int(category_code)
@@ -429,8 +437,6 @@ class Layer2Discovery:
                 category_codes=[code_int],
                 location_name=location,
                 paid_etv_min=0.0,
-                first_date=first_date,
-                second_date=second_date,
             )
         except Exception as exc:
             logger.error("pull_batch: DFS error category=%s offset=%d: %s", category_code, offset, exc)

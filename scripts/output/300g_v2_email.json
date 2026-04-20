@@ -1,0 +1,2608 @@
+{
+  "meta": {
+    "total": 260,
+    "errors": 0
+  },
+  "domains": [
+    {
+      "domain": "www.smilesolutions.com.au",
+      "dm_name": "Amy Turner",
+      "email_found": true,
+      "email": "example@mail.com",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "example@mail.com"
+    },
+    {
+      "domain": "www.dentalcare.com",
+      "dm_name": "Colm Galvin",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "aesthetik.com.au",
+      "dm_name": "Tammy Stevenson",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.narrabeendental.com.au",
+      "dm_name": "Gus Jones",
+      "email_found": true,
+      "email": "you@mail.com",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "you@mail.com"
+    },
+    {
+      "domain": "smilelounge.com.au",
+      "dm_name": "Hiten Joshi",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.focusdental.com.au",
+      "dm_name": "Sridevi T",
+      "email_found": true,
+      "email": "reception@focusdental.com.au",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "reception@focusdental.com.au"
+    },
+    {
+      "domain": "www.riverlinkmedicalcentre.com.au",
+      "dm_name": "Rose Ruiz",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.primarydental.com.au",
+      "dm_name": "Chad Williamson",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.springvaledentalsmiles.com.au",
+      "dm_name": "David Nguyen",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "perfectsmile.com.au",
+      "dm_name": "Laurie Henbest",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "radiantsmiles.com.au",
+      "dm_name": "Amit Bhakta",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.jcudental.com",
+      "dm_name": "Garret Robles",
+      "email_found": true,
+      "email": "jcudentalreception@jcu.edu.au",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "jcudentalreception@jcu.edu.au"
+    },
+    {
+      "domain": "eversmile.com.au",
+      "dm_name": "Daniel Tham",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "dental1.com.au",
+      "dm_name": "Sid Fletcher",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.affordablebraces.com.au",
+      "dm_name": "Paul Ouellette, DDS, MS, ABO, AFAAID",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "karrinyupdental.com.au",
+      "dm_name": "James Ntoumenopoulos",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.dentaldepartures.com",
+      "dm_name": "Norman Lester C.",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.invisalign.com.au",
+      "dm_name": "Deb Felker",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.hellodental.com.au",
+      "dm_name": "Shrijeet K.",
+      "email_found": true,
+      "email": "reception@hellodental.com.au",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "reception@hellodental.com.au"
+    },
+    {
+      "domain": "www.theorthopractice.com.au",
+      "dm_name": "Theodor Baisi",
+      "email_found": true,
+      "email": "test@gmail.com",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "test@gmail.com"
+    },
+    {
+      "domain": "www.cranbournenorthdental.com.au",
+      "dm_name": "Ammu R.",
+      "email_found": true,
+      "email": "logo-login@2x.webp",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "logo-login@2x.webp"
+    },
+    {
+      "domain": "www.genesisdental.com.au",
+      "dm_name": "John Richard Skelton",
+      "email_found": true,
+      "email": "reception@genesisdental.com.au",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "reception@genesisdental.com.au"
+    },
+    {
+      "domain": "www.thantakit.com",
+      "dm_name": "Piyakul Oparkcharoen",
+      "email_found": true,
+      "email": "john@doe.com",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "john@doe.com"
+    },
+    {
+      "domain": "pymbledental.com.au",
+      "dm_name": "David Farrington",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "sdgdental.com.au",
+      "dm_name": "Michael Kotsifakis",
+      "email_found": true,
+      "email": "reception@sdgdental.com.au",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "reception@sdgdental.com.au"
+    },
+    {
+      "domain": "dentalboutique.com.au",
+      "dm_name": "Colin Sar",
+      "email_found": true,
+      "email": "flags@2x.webp",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "flags@2x.webp"
+    },
+    {
+      "domain": "firstbite.com.au",
+      "dm_name": "Agim Hymer",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.gvdental.com.au",
+      "dm_name": "Geoffrey Woodhouse",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "dental99.com.au",
+      "dm_name": "Gamer Verdian",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.teeth.org.au",
+      "dm_name": "Louise Fulford",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.allon4plus.com.au",
+      "dm_name": "Destanie Crispo",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "suncoastdental.com.au",
+      "dm_name": "UWE HINRICHSEN",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.incrediblesmiles.com.au",
+      "dm_name": "Dr Anisha Sanghavi",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "sunburydentalhouse.com.au",
+      "dm_name": "Bethany Hardy",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "bridgedental.com.au",
+      "dm_name": "Anne Jenkins",
+      "email_found": true,
+      "email": "bridge.dental@outlook.com",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "bridge.dental@outlook.com"
+    },
+    {
+      "domain": "www.innovadental.com.au",
+      "dm_name": "Marcela Valenzuela",
+      "email_found": true,
+      "email": "launceston@innovadental.com.au",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "launceston@innovadental.com.au"
+    },
+    {
+      "domain": "allon4.com.au",
+      "dm_name": "Darren Dear",
+      "email_found": true,
+      "email": "hq@allon4.com.au",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "hq@allon4.com.au"
+    },
+    {
+      "domain": "bellevuehilldental.com.au",
+      "dm_name": "Ryan O'Halloran",
+      "email_found": true,
+      "email": "reception@bellevuehilldental.com.au",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "reception@bellevuehilldental.com.au"
+    },
+    {
+      "domain": "bitesoftco.com",
+      "dm_name": "Alexis Withers",
+      "email_found": true,
+      "email": "alexis@bitesoftco.com",
+      "email_verified": true,
+      "email_source": "leadmagic",
+      "email_cost_usd": 0.015,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "dentalandfacialclinic.com.au",
+      "dm_name": "Dr. Teresa Sung",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "healthability.org.au",
+      "dm_name": "May Hassan",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "caseydentists.com.au",
+      "dm_name": "Matthew Casey",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "onesmile.com.au",
+      "dm_name": "Josh Rich",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.vcdental.com.au",
+      "dm_name": "Owner at VC Dental by Vasilis Charalampidis",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.melbournedentistry.com",
+      "dm_name": "Maria Petricevic",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "signaturedentistry.com.au",
+      "dm_name": "Dr Kasen Somana",
+      "email_found": true,
+      "email": "kasen@signaturedentistry.com.au",
+      "email_verified": true,
+      "email_source": "leadmagic",
+      "email_cost_usd": 0.015,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "dentalfocus.com.au",
+      "dm_name": "Jim Merritt",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.affordabledentist.sydney",
+      "dm_name": "Herman Van Den Bergh",
+      "email_found": true,
+      "email": "pinhodental@icloud.com",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "pinhodental@icloud.com"
+    },
+    {
+      "domain": "narrewarrendentalcare.com.au",
+      "dm_name": "Vrushal Raut",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "chicdental.com.au",
+      "dm_name": "Ashley Marino",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.adc.org.au",
+      "dm_name": "steve clayton",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "teeth.org.au",
+      "dm_name": "Louise Fulford",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.paddingtondentistry.com.au",
+      "dm_name": "NICK NABAVI",
+      "email_found": true,
+      "email": "paddingtondentistry@gmail.com",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "paddingtondentistry@gmail.com"
+    },
+    {
+      "domain": "www.onedental.com.au",
+      "dm_name": "Dr Liza Pretorius PhD",
+      "email_found": true,
+      "email": "sales@onedental.com.au",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "sales@onedental.com.au"
+    },
+    {
+      "domain": "thedentalpractice.com.au",
+      "dm_name": "Dental Practice Dr. P. Griffiths & associates",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.absolutelydental.com.au",
+      "dm_name": "Dinesh Singham",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.ebdg.com.au",
+      "dm_name": "Dr. Harry Marget East Bentleigh Dental Group",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "rsdentalgroup.com.au",
+      "dm_name": "Phuoc Thien Truong",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.gorgeoussmiles.com.au",
+      "dm_name": "Gorgeous Smiles Dentistry Melbourne",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.coredental.com.au",
+      "dm_name": "Denise Vytopil",
+      "email_found": true,
+      "email": "denise.vytopil@coredental.com.au",
+      "email_verified": true,
+      "email_source": "leadmagic",
+      "email_cost_usd": 0.015,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.orthomax.com.au",
+      "dm_name": "Somita Madadi",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.1300smiles.com.au",
+      "dm_name": "Dr Daryl Holmes",
+      "email_found": true,
+      "email": "md@1300smiles.com.au",
+      "email_verified": true,
+      "email_source": "leadmagic",
+      "email_cost_usd": 0.015,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.clearlydental.com.au",
+      "dm_name": "Barry Smith",
+      "email_found": true,
+      "email": "barry.smith@clearlydental.com.au",
+      "email_verified": true,
+      "email_source": "leadmagic",
+      "email_cost_usd": 0.015,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "avantdental.com.au",
+      "dm_name": "Richard Salter",
+      "email_found": true,
+      "email": "richard@avantdental.com.au",
+      "email_verified": true,
+      "email_source": "leadmagic",
+      "email_cost_usd": 0.015,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.caseydentists.com.au",
+      "dm_name": "Matthew Casey",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "orthoboutique.com.au",
+      "dm_name": "Mike J Green",
+      "email_found": true,
+      "email": "flags@2x.webp",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "flags@2x.webp"
+    },
+    {
+      "domain": "www.islanddentalhobart.com.au",
+      "dm_name": "Girish Sasidharan",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "dentatur.com",
+      "dm_name": "Sevil Kaderli",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "lifestylesmiles.com.au",
+      "dm_name": "Warren Antonoff",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.dpvhealth.org.au",
+      "dm_name": "Lisa D.",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "dentistsatpymble.com.au",
+      "dm_name": "Mena Gill",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "dentalaspects.com.au",
+      "dm_name": "Asmita Premsagar",
+      "email_found": true,
+      "email": "apexseoandppcservices@gmail.com",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "apexseoandppcservices@gmail.com"
+    },
+    {
+      "domain": "nextsmile.com.au",
+      "dm_name": "Peter Kerfoot",
+      "email_found": true,
+      "email": "peter@nextsmile.com.au",
+      "email_verified": true,
+      "email_source": "leadmagic",
+      "email_cost_usd": 0.015,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.fineorthodontics.com.au",
+      "dm_name": "Sharon Eder",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.erahealth.com.au",
+      "dm_name": "Ginny Murnen",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.smileteam.com.au",
+      "dm_name": "Guy Farland",
+      "email_found": true,
+      "email": "fairymeadow@smileteam.com.au",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "fairymeadow@smileteam.com.au"
+    },
+    {
+      "domain": "beaconsfielddental.com.au",
+      "dm_name": "Dr Bob Cvetkovic",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.gawlerdentalclinic.com.au",
+      "dm_name": "Nella Dellamalva",
+      "email_found": true,
+      "email": "reception@gawlerdental.com.au",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "reception@gawlerdental.com.au"
+    },
+    {
+      "domain": "affordabledental.com.au",
+      "dm_name": "Arcy Cisneros",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.ahpdentalmedical.com.au",
+      "dm_name": "Pankaj Singh",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.thepaddingtondentalsurgery.com.au",
+      "dm_name": "Dr. Duncan Copp",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.fullfaceorthodontics.com.au",
+      "dm_name": "Derek Mahony",
+      "email_found": true,
+      "email": "605a7baede844d278b89dc95ae0a9123@sentry-next.wixpress.com",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "605a7baede844d278b89dc95ae0a9123@sentry-next.wixpress.com"
+    },
+    {
+      "domain": "www.monavaledental.com.au",
+      "dm_name": "Alistair Graham",
+      "email_found": true,
+      "email": "alistair@monavaledental.com.au",
+      "email_verified": true,
+      "email_source": "leadmagic",
+      "email_cost_usd": 0.015,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "glenferriedental.com.au",
+      "dm_name": "Peter Laird",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "coastaldentalcare.com.au",
+      "dm_name": "Stacey Slater",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.dentalsquare.com.au",
+      "dm_name": "Karim Habib",
+      "email_found": true,
+      "email": "karim@dentalsquare.com.au",
+      "email_verified": true,
+      "email_source": "leadmagic",
+      "email_cost_usd": 0.015,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.allieddental.com.au",
+      "dm_name": "Lisa Lombarde",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "nibdental.com.au",
+      "dm_name": "Shaina Janif",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.carolinespringsdental.com.au",
+      "dm_name": "Ashu Bansal",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.adelaidesmileandimplantcentre.com.au",
+      "dm_name": "Daniel Horne",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.identitydentistry.com.au",
+      "dm_name": "Company Owner at Identity Dentistry",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "macquariedental.com.au",
+      "dm_name": "Briana Fang",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "smileonperth.com.au",
+      "dm_name": "Pearl Lara Slotar",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.ipchealth.com.au",
+      "dm_name": "Sue Jaraba",
+      "email_found": true,
+      "email": "fvissrequests@ipchealth.com.au",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "fvissrequests@ipchealth.com.au"
+    },
+    {
+      "domain": "heatstrip.com.au",
+      "dm_name": "CROSSRAY INFRARED BBQ AUSTRALIA",
+      "email_found": true,
+      "email": "sales@thermofilm.com.au",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "sales@thermofilm.com.au"
+    },
+    {
+      "domain": "soudal.com.au",
+      "dm_name": "Jozsef Berta",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.thetford.com.au",
+      "dm_name": "Daniel Dunn",
+      "email_found": true,
+      "email": "ddunn@thetford.com.au",
+      "email_verified": true,
+      "email_source": "leadmagic",
+      "email_cost_usd": 0.015,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.kewdentistry.com.au",
+      "dm_name": "Kew Dentistry",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "stratagreen.com.au",
+      "dm_name": "Seymour Green",
+      "email_found": true,
+      "email": "gavin.fawkes@stratagreen.com.au",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "gavin.fawkes@stratagreen.com.au"
+    },
+    {
+      "domain": "alltradealuminium.com.au",
+      "dm_name": "Cara Sharp",
+      "email_found": true,
+      "email": "sales@alltradealuminium.com.au",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "sales@alltradealuminium.com.au"
+    },
+    {
+      "domain": "lightco.com.au",
+      "dm_name": "Roy D.",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "cheaptilesonline.com.au",
+      "dm_name": "Benjamin Fowles",
+      "email_found": true,
+      "email": "matthewl@thetilecollective.com",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "matthewl@thetilecollective.com"
+    },
+    {
+      "domain": "skyciv.com",
+      "dm_name": "Sam Carigliano",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "glassguard.com.au",
+      "dm_name": "Sam Findlay",
+      "email_found": true,
+      "email": "email@example.com",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "email@example.com"
+    },
+    {
+      "domain": "pierlite.com.au",
+      "dm_name": "Ben Mills",
+      "email_found": true,
+      "email": "shutterstock_721924594%20%282%29@2x.avif",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "shutterstock_721924594%20%282%29@2x.avif"
+    },
+    {
+      "domain": "www.smarterair.com.au",
+      "dm_name": "Phill C.",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "hebel.com.au",
+      "dm_name": "Tony Chin",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.efisolutions.com.au",
+      "dm_name": "Laura Yaneth G\u00f3mez Rivera",
+      "email_found": true,
+      "email": "sales@efisolutions.com.au",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "sales@efisolutions.com.au"
+    },
+    {
+      "domain": "www.huset.com.au",
+      "dm_name": "Beth Kent",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.rosemountkitchens.com.au",
+      "dm_name": "Mark Tonkin",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "shop.samios.net.au",
+      "dm_name": "Luke Martin",
+      "email_found": true,
+      "email": "lmartin@samios.net.au",
+      "email_verified": true,
+      "email_source": "leadmagic",
+      "email_cost_usd": 0.015,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "lenoxx.com.au",
+      "dm_name": "eli marcus",
+      "email_found": true,
+      "email": "vendors@layout.theme.css",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "vendors@layout.theme.css"
+    },
+    {
+      "domain": "aussieenvironmental.com.au",
+      "dm_name": "Luke Hamilton",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.inspectmyhome.com.au",
+      "dm_name": "Donald Jury",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.metroll.com.au",
+      "dm_name": "Jason Matthews",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.refreshrenovations.com.au",
+      "dm_name": "Paul Shelley",
+      "email_found": true,
+      "email": "yourfriend@email.com",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "yourfriend@email.com"
+    },
+    {
+      "domain": "www.stiebel-eltron.com.au",
+      "dm_name": "Nick Shepherd",
+      "email_found": true,
+      "email": "nick.shepherd@stiebel-eltron.com.au",
+      "email_verified": true,
+      "email_source": "leadmagic",
+      "email_cost_usd": 0.015,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.currentforce.com.au",
+      "dm_name": "Natalie Mayhew",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "ramset.com.au",
+      "dm_name": "Kate Storer",
+      "email_found": true,
+      "email": "kstorer@ramset.com.au",
+      "email_verified": true,
+      "email_source": "leadmagic",
+      "email_cost_usd": 0.015,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "mtcopeland.com",
+      "dm_name": "Malsha Perera, MBA,PQS",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.stramit.com.au",
+      "dm_name": "Jason Chan",
+      "email_found": true,
+      "email": "jason.chan@stramit.com.au",
+      "email_verified": true,
+      "email_source": "leadmagic",
+      "email_cost_usd": 0.015,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "ventair.com.au",
+      "dm_name": "Gary Purcell",
+      "email_found": true,
+      "email": "gary@ventair.com.au",
+      "email_verified": true,
+      "email_source": "leadmagic",
+      "email_cost_usd": 0.015,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "festoonhouse.com.au",
+      "dm_name": "Matt Little",
+      "email_found": true,
+      "email": "matt@festoonhouse.com.au",
+      "email_verified": true,
+      "email_source": "leadmagic",
+      "email_cost_usd": 0.015,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.megahire.com.au",
+      "dm_name": "Jade Hennrie",
+      "email_found": true,
+      "email": "feedback@megahire.com.au",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "feedback@megahire.com.au"
+    },
+    {
+      "domain": "www.amae.net.au",
+      "dm_name": "Chris Hunter BSc(Hons), MSc, MCIArb, AMAE",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.nulon.com.au",
+      "dm_name": "John Simons",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.hitachiaircon.com",
+      "dm_name": "Ryan Wijayasekera",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.dymark.com.au",
+      "dm_name": "Ben Gillespie",
+      "email_found": true,
+      "email": "orkans@gmail.com",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "orkans@gmail.com"
+    },
+    {
+      "domain": "www.baumr-ag.com.au",
+      "dm_name": "Wade Qian",
+      "email_found": true,
+      "email": "baumr-white_100x@2x.svg",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "baumr-white_100x@2x.svg"
+    },
+    {
+      "domain": "www.dorsetaustralia.com.au",
+      "dm_name": "Jeff Perryman",
+      "email_found": true,
+      "email": "daniel.r.arenas@gmail.com",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "daniel.r.arenas@gmail.com"
+    },
+    {
+      "domain": "www.couplemate.com.au",
+      "dm_name": "Steve Wotherspoon",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.kelvinator.com.au",
+      "dm_name": "Geoff Walsh",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.holcim.com.au",
+      "dm_name": "George Agriogiannis",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.mintkitchengroup.com.au",
+      "dm_name": "Frank Iaria",
+      "email_found": true,
+      "email": "name@example.com",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "name@example.com"
+    },
+    {
+      "domain": "www.design10.com.au",
+      "dm_name": "Caitlin Dennis",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "exceliteplas.com.au",
+      "dm_name": "Angela Yang",
+      "email_found": true,
+      "email": "angela@exceliteplas.com.au",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "angela@exceliteplas.com.au"
+    },
+    {
+      "domain": "embeltonflooring.com",
+      "dm_name": "Julia Hall",
+      "email_found": true,
+      "email": "shop@embelton-flooring.myshopify.com",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "shop@embelton-flooring.myshopify.com"
+    },
+    {
+      "domain": "www.discounttrader.com.au",
+      "dm_name": "Gary Kozhushnik",
+      "email_found": true,
+      "email": "gary@discounttrader.com.au",
+      "email_verified": true,
+      "email_source": "leadmagic",
+      "email_cost_usd": 0.015,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.mrfilter.com.au",
+      "dm_name": "Hayley McN",
+      "email_found": true,
+      "email": "promos@mrfilter.com.au",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "promos@mrfilter.com.au"
+    },
+    {
+      "domain": "steel.com.au",
+      "dm_name": "Adam Steel",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.mbansw.asn.au",
+      "dm_name": "Elizabeth R.",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "mercator.com.au",
+      "dm_name": "Robert Brian",
+      "email_found": true,
+      "email": "dklair@arlec.com.au",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "dklair@arlec.com.au"
+    },
+    {
+      "domain": "www.4wh.com.au",
+      "dm_name": "Olami Laykan GEORGE",
+      "email_found": true,
+      "email": "sales@4wh.com.au",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "sales@4wh.com.au"
+    },
+    {
+      "domain": "www.arlec.com.au",
+      "dm_name": "Balu Jega",
+      "email_found": true,
+      "email": "techenquiries@arlec.com.au",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "techenquiries@arlec.com.au"
+    },
+    {
+      "domain": "pryda.com.au",
+      "dm_name": "Chris D.",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.bianco.com.au",
+      "dm_name": "anthony bianco",
+      "email_found": true,
+      "email": "sales@bianco.com.au",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "sales@bianco.com.au"
+    },
+    {
+      "domain": "www.carrierair.com.au",
+      "dm_name": "irfan ahmed",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "heritagebuilding.com.au",
+      "dm_name": "Donna Wilde",
+      "email_found": true,
+      "email": "sales@heritagebuilding.com.au",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "sales@heritagebuilding.com.au"
+    },
+    {
+      "domain": "sastairs.com.au",
+      "dm_name": "Tom Acquroff",
+      "email_found": true,
+      "email": "tom.a@sastairs.com.au",
+      "email_verified": true,
+      "email_source": "leadmagic",
+      "email_cost_usd": 0.015,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.verdex.com.au",
+      "dm_name": "James Williams",
+      "email_found": true,
+      "email": "contoso@example.com",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "contoso@example.com"
+    },
+    {
+      "domain": "timberline.com.au",
+      "dm_name": "Pierre Scott",
+      "email_found": true,
+      "email": "pierre@timberline.com.au",
+      "email_verified": true,
+      "email_source": "leadmagic",
+      "email_cost_usd": 0.015,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.castella.com.au",
+      "dm_name": "Mathilde Castella",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.theartofdoingstuff.com",
+      "dm_name": "Bertelsen Karen",
+      "email_found": true,
+      "email": "karen@theartofdoingstuff.com",
+      "email_verified": true,
+      "email_source": "leadmagic",
+      "email_cost_usd": 0.015,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "studcosystems.com.au",
+      "dm_name": "Phil Rose",
+      "email_found": true,
+      "email": "phil.rose@studcosystems.com.au",
+      "email_verified": true,
+      "email_source": "leadmagic",
+      "email_cost_usd": 0.015,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.easyturf.com.au",
+      "dm_name": "Joe Bagala",
+      "email_found": true,
+      "email": "sales@easyturf.com.au",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "sales@easyturf.com.au"
+    },
+    {
+      "domain": "ezydecking.com.au",
+      "dm_name": "Ezy Decking Sydney",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "shop.ausreo.com.au",
+      "dm_name": "Luke Martin",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.greenworksaustralia.com",
+      "dm_name": "Lewis Dowling",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.wignells.com.au",
+      "dm_name": "Bj\u00f6rn IGNELL",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.namly.com.au",
+      "dm_name": "Melvin Shaju",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.artshedbrisbane.com.au",
+      "dm_name": "Manuel Petavrakis",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "raven.com.au",
+      "dm_name": "Amanda Raven",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.creative-cables.com.au",
+      "dm_name": "stephen trupp",
+      "email_found": true,
+      "email": "info.au@creative-cables.com",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "info.au@creative-cables.com"
+    },
+    {
+      "domain": "sydneyindustrialcoatings.com.au",
+      "dm_name": "Leva Rasouli",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.cookandbathe.com.au",
+      "dm_name": "Jan Tomka",
+      "email_found": true,
+      "email": "online@cookandbathe.com.au",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "online@cookandbathe.com.au"
+    },
+    {
+      "domain": "www.smallenginewarehouse.com.au",
+      "dm_name": "Roy Padgett",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.vinidex.com.au",
+      "dm_name": "Ty Morris",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.ekodeck.com.au",
+      "dm_name": "Elton King",
+      "email_found": true,
+      "email": "elton.king@ekodeck.com.au",
+      "email_verified": true,
+      "email_source": "leadmagic",
+      "email_cost_usd": 0.015,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.cubcadet.com.au",
+      "dm_name": "cubcadet parts",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "premiumfloors.com.au",
+      "dm_name": "Vanessa Quintero",
+      "email_found": true,
+      "email": "vanessa.quintero@premiumfloors.com.au",
+      "email_verified": true,
+      "email_source": "leadmagic",
+      "email_cost_usd": 0.015,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.mmem.com.au",
+      "dm_name": "Scott Marshall",
+      "email_found": true,
+      "email": "scott.marshall@mmem.com.au",
+      "email_verified": true,
+      "email_source": "leadmagic",
+      "email_cost_usd": 0.015,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.glassoutlet.com.au",
+      "dm_name": "Simon Garnaut",
+      "email_found": true,
+      "email": "user@domain.com",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "user@domain.com"
+    },
+    {
+      "domain": "stylecurator.com.au",
+      "dm_name": "Gina Beschorner",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "jimytools.com.au",
+      "dm_name": "Alex Poucki",
+      "email_found": true,
+      "email": "contactus@jimytools.com.au",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "contactus@jimytools.com.au"
+    },
+    {
+      "domain": "www.heatleys.com.au",
+      "dm_name": "Rod Ward",
+      "email_found": true,
+      "email": "sales@heatleys.com.au",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "sales@heatleys.com.au"
+    },
+    {
+      "domain": "www.tilersonline.com.au",
+      "dm_name": "Troy Lubben",
+      "email_found": true,
+      "email": "sales@tilersonline.com.au",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "sales@tilersonline.com.au"
+    },
+    {
+      "domain": "forum.homeone.com.au",
+      "dm_name": "Emma Roborgh",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.sitehq.com.au",
+      "dm_name": "Timothy Peter Nuttall",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.bona.com.au",
+      "dm_name": "Michael Bona",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "schmicko.com.au",
+      "dm_name": "Chester Hill",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "stonemart.com.au",
+      "dm_name": "Anthony Corsetti.",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "insulationeasy.com.au",
+      "dm_name": "Ram InsulationEasy",
+      "email_found": true,
+      "email": "sales@insulationeasy.com.au",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "sales@insulationeasy.com.au"
+    },
+    {
+      "domain": "www.porta.com.au",
+      "dm_name": "Jim Snelson",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "loandcointeriors.com.au",
+      "dm_name": "Tess Kapiris",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.simonsseconds.com.au",
+      "dm_name": "Simon's Seconds",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "ruglove.com.au",
+      "dm_name": "Mary Liao",
+      "email_found": true,
+      "email": "sales@ruglove.com.au",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "sales@ruglove.com.au"
+    },
+    {
+      "domain": "herabathware.com.au",
+      "dm_name": "Hera Bathware",
+      "email_found": true,
+      "email": "xxx@xxx.xxx",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "xxx@xxx.xxx"
+    },
+    {
+      "domain": "www.tradiecart.com.au",
+      "dm_name": "Corneliu Pop",
+      "email_found": true,
+      "email": "orders@tradiecart.com.au",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "orders@tradiecart.com.au"
+    },
+    {
+      "domain": "apolloblinds.com.au",
+      "dm_name": "Apollo B.",
+      "email_found": true,
+      "email": "sales@apolloblinds.com.au",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "sales@apolloblinds.com.au"
+    },
+    {
+      "domain": "www.paalkithomes.com.au",
+      "dm_name": "Jamie Thomson",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.rustoleum.com.au",
+      "dm_name": "David Lawrence",
+      "email_found": true,
+      "email": "david.lawrence@rustoleum.com.au",
+      "email_verified": true,
+      "email_source": "leadmagic",
+      "email_cost_usd": 0.015,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.gamart.com.au",
+      "dm_name": "GAMART",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.freedomscreens.com.au",
+      "dm_name": "Daniel Ballaam",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "sunnybunny.com.au",
+      "dm_name": "Meghan Moran",
+      "email_found": true,
+      "email": "solarpower@sunnybunny.com.au",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "solarpower@sunnybunny.com.au"
+    },
+    {
+      "domain": "www.1800gotjunk.com.au",
+      "dm_name": "Justin King",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.swanstreet.com.au",
+      "dm_name": "Glen Lee",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.turnerhastings.com.au",
+      "dm_name": "Stewart Wallace",
+      "email_found": true,
+      "email": "service@turnerhastings.com.au",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "service@turnerhastings.com.au"
+    },
+    {
+      "domain": "australianscaffolds.com.au",
+      "dm_name": "Scott Butlin",
+      "email_found": true,
+      "email": "scott.butlin@australianscaffolds.com.au",
+      "email_verified": true,
+      "email_source": "leadmagic",
+      "email_cost_usd": 0.015,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "stoddart.com.au",
+      "dm_name": "Mat Stoddart",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.carpetone.com.au",
+      "dm_name": "Hayden Shrive",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "lappaustralia.com.au",
+      "dm_name": "Sue Soumpholphakdy",
+      "email_found": true,
+      "email": "sue@lappaustralia.com.au",
+      "email_verified": true,
+      "email_source": "leadmagic",
+      "email_cost_usd": 0.015,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.ddbs.com.au",
+      "dm_name": "Auckland Francis",
+      "email_found": true,
+      "email": "kim@ddbs.com.au",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "kim@ddbs.com.au"
+    },
+    {
+      "domain": "www.schnap.com.au",
+      "dm_name": "Osman Sabsabi",
+      "email_found": true,
+      "email": "service@schnap.com.au",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "service@schnap.com.au"
+    },
+    {
+      "domain": "www.jamessaid.com.au",
+      "dm_name": "Bethany James Said",
+      "email_found": true,
+      "email": "bethany@jamessaid.com.au",
+      "email_verified": true,
+      "email_source": "leadmagic",
+      "email_cost_usd": 0.015,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.velux.com.au",
+      "dm_name": "Kristy Ryan",
+      "email_found": true,
+      "email": "kristy.ryan@velux.com.au",
+      "email_verified": true,
+      "email_source": "leadmagic",
+      "email_cost_usd": 0.015,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "mouritz.com.au",
+      "dm_name": "Rhiannon Mouritz",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.bathroomspace.com.au",
+      "dm_name": "Hristo Katanski",
+      "email_found": true,
+      "email": "help@bathroomspace.com.au",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "help@bathroomspace.com.au"
+    },
+    {
+      "domain": "vulcan.co",
+      "dm_name": "Dhilukshan Ramalingam",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "tactilesystems.com.au",
+      "dm_name": "Adam Wilde",
+      "email_found": true,
+      "email": "sales@tactilesystems.com.au",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "sales@tactilesystems.com.au"
+    },
+    {
+      "domain": "salandscape.com.au",
+      "dm_name": "Estela Garcia",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.detailstore.com.au",
+      "dm_name": "Aaron Ang",
+      "email_found": true,
+      "email": "email@example.com",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "email@example.com"
+    },
+    {
+      "domain": "www.bluescopedistribution.com.au",
+      "dm_name": "Sarah Thomas",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.motion.com.au",
+      "dm_name": "Heath Fitzpatrick",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "mouldcleaningaustralia.com.au",
+      "dm_name": "mould cleaning",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.7pandas.com.au",
+      "dm_name": "CHENG PENG",
+      "email_found": true,
+      "email": "customercare@7pandas.com.au",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "customercare@7pandas.com.au"
+    },
+    {
+      "domain": "www.mytopia.com.au",
+      "dm_name": "Shaun Gilchrist",
+      "email_found": true,
+      "email": "sales@mytopia.com.au",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "sales@mytopia.com.au"
+    },
+    {
+      "domain": "www.lawsonair.com.au",
+      "dm_name": "Adam Douglas",
+      "email_found": true,
+      "email": "sales@lawsonair.com.au",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "sales@lawsonair.com.au"
+    },
+    {
+      "domain": "www.jetmaster.com.au",
+      "dm_name": "James Kearsley",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.servicetoday.com.au",
+      "dm_name": "Zak Saboune",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.tridon.com.au",
+      "dm_name": "Luke Rhodes",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "finchly.com.au",
+      "dm_name": "Dane Cowley",
+      "email_found": true,
+      "email": "dane@finchly.com.au",
+      "email_verified": true,
+      "email_source": "leadmagic",
+      "email_cost_usd": 0.015,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "sunriseint.com.au",
+      "dm_name": "Jo Ann Atherton",
+      "email_found": true,
+      "email": "sales@sunriseint.com.au",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "sales@sunriseint.com.au"
+    },
+    {
+      "domain": "ardexaustralia.com",
+      "dm_name": "Andrew Neal",
+      "email_found": true,
+      "email": "sales@ardexaustralia.com",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "sales@ardexaustralia.com"
+    },
+    {
+      "domain": "www.stonegroup.com.au",
+      "dm_name": "Nick Stone",
+      "email_found": true,
+      "email": "flags@2x.webp",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "flags@2x.webp"
+    },
+    {
+      "domain": "rockcote.com.au",
+      "dm_name": "ROCKCOTE Render, Texture, Paint",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "doylesguide.com",
+      "dm_name": "Rohan Doyle",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.fisherdore.com.au",
+      "dm_name": "Michael Finch",
+      "email_found": true,
+      "email": "mail@fisherdore.com.au",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "mail@fisherdore.com.au"
+    },
+    {
+      "domain": "www.future-you.com.au",
+      "dm_name": "Emma McGuigan",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "rafton.com.au",
+      "dm_name": "Kate Rafton",
+      "email_found": true,
+      "email": "reception@rafton.com.au",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "reception@rafton.com.au"
+    },
+    {
+      "domain": "www.bartier.com.au",
+      "dm_name": "Riana Steyn",
+      "email_found": true,
+      "email": "rsteyn@bartier.com.au",
+      "email_verified": true,
+      "email_source": "leadmagic",
+      "email_cost_usd": 0.015,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "court-data-australia.elevio.help",
+      "dm_name": "Joe Fuller",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "familylawyers.com.au",
+      "dm_name": "Lila Morris",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.bestlawfirms.com",
+      "dm_name": "Phillip Greer",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "ramsdenfamilylaw.com.au",
+      "dm_name": "Reece Ramsden",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "connorhunter.com",
+      "dm_name": "Connor Hunter",
+      "email_found": true,
+      "email": "info.wyn@connorhunter.com",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "info.wyn@connorhunter.com"
+    },
+    {
+      "domain": "foleys.com.au",
+      "dm_name": "Dave Foley",
+      "email_found": true,
+      "email": "marketing@foleys.com.au",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "marketing@foleys.com.au"
+    },
+    {
+      "domain": "www.leocussen.edu.au",
+      "dm_name": "Linda Baxter",
+      "email_found": true,
+      "email": "enrolment@leocussen.edu.au",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "enrolment@leocussen.edu.au"
+    },
+    {
+      "domain": "www.rmblawyers.com.au",
+      "dm_name": "Chris Sheppard",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "truebluemigration.com",
+      "dm_name": "Joy Hay",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.turnbullhill.com.au",
+      "dm_name": "Gavin Hanrahan",
+      "email_found": true,
+      "email": "ghanrahan@turnbullhill.com.au",
+      "email_verified": true,
+      "email_source": "leadmagic",
+      "email_cost_usd": 0.015,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "businesschamberqld.com.au",
+      "dm_name": "Stuart Field",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "astorlegal.com.au",
+      "dm_name": "Avinash Singh",
+      "email_found": true,
+      "email": "avinash@astorlegal.com.au",
+      "email_verified": true,
+      "email_source": "leadmagic",
+      "email_cost_usd": 0.015,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "hhg.com.au",
+      "dm_name": "Matthew Lilly",
+      "email_found": true,
+      "email": "matthew.lilly@hhg.com.au",
+      "email_verified": true,
+      "email_source": "leadmagic",
+      "email_cost_usd": 0.015,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "brookewintersolicitors.com.au",
+      "dm_name": "Brooke Winter Solicitors",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "jamesonlaw.com.au",
+      "dm_name": "James B. Jameson",
+      "email_found": true,
+      "email": "local-court-burwood@justice.nsw.gov.au",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "local-court-burwood@justice.nsw.gov.au"
+    },
+    {
+      "domain": "sklaw.au",
+      "dm_name": "Ben Sewell",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.russellkennedy.com.au",
+      "dm_name": "Ben Lloyd",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "jenza.com",
+      "dm_name": "Georgina May Birch",
+      "email_found": true,
+      "email": "youremail@email.com",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "youremail@email.com"
+    },
+    {
+      "domain": "eforms.com",
+      "dm_name": "Tegan Smith",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "form.net.au",
+      "dm_name": "Jonathan Cai",
+      "email_found": true,
+      "email": "consulting@form.net.au",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "consulting@form.net.au"
+    },
+    {
+      "domain": "migrationalliance.com.au",
+      "dm_name": "Liana Allan",
+      "email_found": true,
+      "email": "help@migrationalliance.com.au",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "help@migrationalliance.com.au"
+    },
+    {
+      "domain": "www.codea.com.au",
+      "dm_name": "Selwyn Black",
+      "email_found": true,
+      "email": "cod@codea.com.au",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "cod@codea.com.au"
+    },
+    {
+      "domain": "giecglobal.com.au",
+      "dm_name": "Oshadi Gamage",
+      "email_found": true,
+      "email": "flags@2x.webp",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "flags@2x.webp"
+    },
+    {
+      "domain": "visaguide.world",
+      "dm_name": "Shkurta Januzi",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "circlegreen.org.au",
+      "dm_name": "Thilini K.",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.kennedyslaw.com",
+      "dm_name": "Nicole Wearne",
+      "email_found": true,
+      "email": "contactus@kennedyslaw.com",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "contactus@kennedyslaw.com"
+    },
+    {
+      "domain": "www.criminal-lawyers.com.au",
+      "dm_name": "Andrew George",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "www.salaw.com.au",
+      "dm_name": "Nick Stevens",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    },
+    {
+      "domain": "scammell.com.au",
+      "dm_name": "Dave Scammell",
+      "email_found": true,
+      "email": "mail@example.com",
+      "email_verified": false,
+      "email_source": "contact_registry",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": "mail@example.com"
+    },
+    {
+      "domain": "ngm.com.au",
+      "dm_name": "Andrew Cresp",
+      "email_found": false,
+      "email": null,
+      "email_verified": false,
+      "email_source": "none",
+      "email_cost_usd": 0.0,
+      "contact_prefill_email": null
+    }
+  ]
+}

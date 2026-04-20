@@ -395,7 +395,7 @@ def stripe_subscription_created(
                 },
                 "metadata": {
                     "tier": "velocity",
-                    "credits": "5000",
+                    "credits": "1500",
                 },
             }
         },

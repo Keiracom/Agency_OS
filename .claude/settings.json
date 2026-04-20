@@ -1,4 +1,7 @@
 {
+  "permissions": {
+    "defaultMode": "bypassPermissions"
+  },
   "mcpServers": {
     "supabase": {
       "command": "npx",
@@ -11,8 +14,8 @@
       "command": "npx",
       "args": ["-y", "@upstash/mcp-server"],
       "env": {
-        "UPSTASH_REDIS_REST_URL": "${UPSTASH_REDIS_REST_URL}",
-        "UPSTASH_REDIS_REST_TOKEN": "${UPSTASH_REDIS_REST_TOKEN}"
+        "UPSTASH_EMAIL": "${UPSTASH_EMAIL}",
+        "UPSTASH_API_KEY": "${UPSTASH_API_KEY}"
       }
     },
     "prefect": {
@@ -93,6 +96,14 @@
         "SUPABASE_URL": "${SUPABASE_URL}",
         "SUPABASE_SERVICE_KEY": "${SUPABASE_SERVICE_KEY}"
       }
+    },
+    "keiramail": {
+      "command": "/home/elliotbot/clawd/venv/bin/python3",
+      "args": ["/home/elliotbot/clawd/mcp-servers/gmail-mcp/server.py"]
+    },
+    "keiradrive": {
+      "command": "/home/elliotbot/clawd/venv/bin/python3",
+      "args": ["/home/elliotbot/clawd/mcp-servers/keiradrive-mcp/server.py"]
     }
   }
 }

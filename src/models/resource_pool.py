@@ -91,6 +91,11 @@ HEALTH_DAILY_LIMITS = {
 # ============================================
 
 TIER_ALLOCATIONS = {
+    "spark": {
+        ResourceType.EMAIL_DOMAIN: 1,
+        ResourceType.PHONE_NUMBER: 1,
+        ResourceType.LINKEDIN_SEAT: 1,
+    },
     "ignition": {
         ResourceType.EMAIL_DOMAIN: 3,
         ResourceType.PHONE_NUMBER: 1,
@@ -101,11 +106,7 @@ TIER_ALLOCATIONS = {
         ResourceType.PHONE_NUMBER: 2,
         ResourceType.LINKEDIN_SEAT: 7,
     },
-    "dominance": {
-        ResourceType.EMAIL_DOMAIN: 9,
-        ResourceType.PHONE_NUMBER: 3,
-        ResourceType.LINKEDIN_SEAT: 14,
-    },
+    # dominance: REMOVED from launch (TIERS-002)
 }
 
 # Mailboxes per domain (2 per domain)

@@ -16,6 +16,8 @@ from typing import Optional
 
 import httpx
 
+from src.integrations.circuit_breaker import circuit_breaker
+
 logger = logging.getLogger(__name__)
 
 BRIGHTDATA_SCRAPER_KEY = "636a81d7-4f89-4fb5-904b-f1e195ec20d2"  # updated 2026-03-31 (Directive #300g+h)
@@ -144,6 +146,7 @@ class BrightDataLinkedInClient:
             "confidence": confidence,
         }
 
+    @circuit_breaker("brightdata", failure_threshold=5, recovery_timeout=60)
     async def _scraper_request(
         self,
         dataset_id: str,

@@ -378,7 +378,7 @@ export default function LandingPage() {
                 <div>
                   <h3 className="font-bold gradient-text uppercase text-sm tracking-wider mb-4">Agency OS</h3>
                   <ul className="space-y-3">
-                    {["Built around your actual client portfolio", "Australian market, AEST, local compliance", "True 5-channel: Email, SMS, LinkedIn, Voice, Mail", "Conversion Intelligence shows WHY it works", "Founding tier: $1,250-3,750/month"].map((item, i) => (
+                    {["Built around your actual client portfolio", "Australian market, AEST, local compliance", "True 5-channel: Email, SMS, LinkedIn, Voice, Mail", "Conversion Intelligence shows WHY it works", "Founding tier: $375-2,500/month"].map((item, i) => (
                       <li key={i} className="flex items-start gap-3 text-text-primary">
                         <span className="text-amber mt-0.5">✓</span>
                         <span>{item}</span>
@@ -542,9 +542,9 @@ export default function LandingPage() {
 
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
             {[
-              { name: "Ignition", originalPrice: "$2,500", foundingPrice: "$1,250", savings: "Save $15K/year", expectedMeetings: "13-14 meetings/month guaranteed", desc: "Perfect for getting started", limits: ["1,250 leads/month", "5 campaigns", "1 LinkedIn seat"], cta: "Get Started", popular: false },
-              { name: "Velocity", originalPrice: "$5,000", foundingPrice: "$2,500", savings: "Save $30K/year", expectedMeetings: "25-27 meetings/month guaranteed", desc: "Most popular for growing agencies", limits: ["2,500 leads/month", "10 campaigns", "3 LinkedIn seats"], cta: "Claim Your Spot", popular: true },
-              { name: "Dominance", originalPrice: "$7,500", foundingPrice: "$3,750", savings: "Save $45K/year", expectedMeetings: "48-52 meetings/month guaranteed", desc: "Maximum pipeline capacity", limits: ["5,000 leads/month", "20 campaigns", "5 LinkedIn seats"], cta: "Get Started", popular: false },
+              { name: "Spark", originalPrice: "$750", foundingPrice: "$375", savings: "Save $4.5K/year", expectedMeetings: "All 4 outreach channels", desc: "Launch your outbound engine", limits: ["150 records/month", "All 4 outreach channels • Full AI intelligence • Haiku personalisation"], cta: "Get Started", popular: false },
+              { name: "Ignition", originalPrice: "$2,500", foundingPrice: "$1,250", savings: "Save $15K/year", expectedMeetings: "All 4 outreach channels", desc: "Perfect for growing agencies", limits: ["600 records/month", "All 4 outreach channels • Full AI intelligence • Haiku personalisation"], cta: "Claim Your Spot", popular: true },
+              { name: "Velocity", originalPrice: "$5,000", foundingPrice: "$2,500", savings: "Save $30K/year", expectedMeetings: "All 4 outreach channels", desc: "Maximum pipeline capacity", limits: ["1,500 records/month", "All 4 outreach channels • Full AI intelligence • Haiku personalisation"], cta: "Get Started", popular: false },
             ].map((tier, i) => (
               <ScrollReveal key={i} delay={i * 100}>
                 <div className={`rounded-2xl p-8 card-hover flex flex-col h-full relative ${tier.popular ? "bg-bg-surface border-2 border-amber shadow-xl shadow-amber/10 scale-105" : "bg-bg-surface border border-white/10"}`}>

@@ -242,6 +242,19 @@ Full protocol detail: skills/decomposer/SKILL.md
 
 ---
 
+## Directive Contract Discipline
+
+Every directive is a contract. When a directive constraint is empirically infeasible:
+
+1. **STOP** execution immediately.
+2. **Report:** "Directive specifies X. X yields <empirical result>. Recommended alternatives: Y, Z. Awaiting CEO direction."
+3. **Do NOT proceed** with an alternative until CEO ratifies it.
+4. **Cost-cheap probes** to characterise the problem are fine and encouraged. Shipping altered methodology is not.
+
+Ratified: 2026-04-13. Origin: M-PROCESS-01 — CTO autonomously changed S1 sampling method from middle-of-window (OFFSET 25%) to top-of-pool (offset 0) without CEO approval. The substance was directionally reasonable; the process was wrong.
+
+---
+
 ## Make It Yours
 
 This is a starting point. Add your own conventions, style, and rules as you figure out what works.

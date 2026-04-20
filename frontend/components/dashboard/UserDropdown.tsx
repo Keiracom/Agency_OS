@@ -34,7 +34,7 @@ export interface UserData {
   name: string;
   email?: string;
   avatarUrl?: string;
-  tier?: "ignition" | "velocity" | "dominance";
+  tier?: "spark" | "ignition" | "velocity";
 }
 
 export interface UserDropdownProps {
@@ -76,10 +76,10 @@ function TierIndicator({ tier }: { tier?: UserData["tier"] }) {
       gradient: "from-amber to-amber",
       glow: "shadow-amber/20",
     },
-    dominance: {
-      label: "Dominance",
-      gradient: "from-amber to-amber-light",
-      glow: "shadow-amber/20",
+    spark: {
+      label: "Spark",
+      gradient: "from-sky-400 to-sky-500",
+      glow: "shadow-sky-500/20",
     },
   };
 

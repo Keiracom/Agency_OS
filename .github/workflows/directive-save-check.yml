@@ -1,0 +1,42 @@
+name: Directive Save Check
+on:
+  pull_request:
+    types: [opened, synchronize, edited]
+
+jobs:
+  check-save:
+    if: startsWith(github.head_ref, 'directive-')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check save trigger compliance
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          # Check if save is claimed in PR body or commits
+          SAVE_CLAIMED=false
+          if echo "$PR_BODY" | grep -qiE "save.trigger.*yes|save_completed.*true"; then
+            SAVE_CLAIMED=true
+          fi
+
+          # Also check commit messages
+          COMMITS=$(git log --format="%s %b" origin/${{ github.base_ref }}..HEAD 2>/dev/null || true)
+          if echo "$COMMITS" | grep -qiE "save.trigger.*yes|save_completed.*true"; then
+            SAVE_CLAIMED=true
+          fi
+
+          if [ "$SAVE_CLAIMED" = "true" ]; then
+            # Check if MANUAL.md was modified
+            MANUAL_CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -c "docs/MANUAL.md" || true)
+            if [ "$MANUAL_CHANGED" -eq 0 ]; then
+              echo "::error::Save trigger claimed but docs/MANUAL.md not updated in this PR."
+              echo "Run: python scripts/three_store_save.py --directive <ID> --pr-number <N> --summary '...'"
+              exit 1
+            else
+              echo "Save trigger claimed AND docs/MANUAL.md updated."
+            fi
+          else
+            echo "No save trigger claimed — skipping check."
+          fi

@@ -71,8 +71,8 @@ class MultiCategoryDiscovery:
         location: str = "Australia",
         batch_size: int = 100,
         exclude_domains: set[str] | None = None,
-        etv_min: float = 100.0,
-        etv_max: float = 50000.0,
+        etv_min: float | None = None,
+        etv_max: float | None = None,
     ) -> list[dict]:
         """
         Pull the next batch of domains across category codes (on-demand model).
@@ -86,9 +86,16 @@ class MultiCategoryDiscovery:
             location: DFS location_name string.
             batch_size: Domains per DFS API call (max 100).
             exclude_domains: Domains to skip.
-            etv_min: Minimum organic ETV to include.
-            etv_max: Maximum organic ETV to include.
+            etv_min: Required. Use get_etv_window() from
+                src.config.category_etv_windows for calibrated per-category values.
+            etv_max: Required. Use get_etv_window() from
+                src.config.category_etv_windows for calibrated per-category values.
         """
+        if etv_min is None or etv_max is None:
+            raise ValueError(
+                "ETV window required. Use get_etv_window(category_code) from "
+                "src.config.category_etv_windows to look up the canonical window."
+            )
         exclude: set[str] = set(exclude_domains or [])
 
         # Initialise offsets on first call
@@ -181,8 +188,8 @@ class MultiCategoryDiscovery:
         location: str = "Australia",
         service_area: str = "national",
         exclude_domains: set[str] | None = None,
-        etv_min: float = 200.0,
-        etv_max: float = 5000.0,
+        etv_min: float | None = None,
+        etv_max: float | None = None,
         batch_callback: Callable[[list[dict]], None] | None = None,
     ) -> list[dict]:
         """
@@ -197,8 +204,8 @@ class MultiCategoryDiscovery:
             location: DFS location_name string (e.g. "Australia", "New South Wales").
             service_area: "national" | "state:<state>" | "metro:<city>" (future use).
             exclude_domains: Set of domains to skip (already claimed/in BU).
-            etv_min: Minimum organic ETV filter (SMB sweet spot lower bound).
-            etv_max: Maximum organic ETV filter (SMB sweet spot upper bound).
+            etv_min: Required. Use get_etv_window() from src.config.category_etv_windows.
+            etv_max: Required. Use get_etv_window() from src.config.category_etv_windows.
             batch_callback: Optional callable fired after each category batch.
                             Receives list[dict] of that batch's results.
 
@@ -206,6 +213,11 @@ class MultiCategoryDiscovery:
             Deduplicated list of {"domain": str, "organic_etv": float,
             "category_codes": list[int]} dicts.
         """
+        if etv_min is None or etv_max is None:
+            raise ValueError(
+                "ETV window required. Use get_etv_window(category_code) from "
+                "src.config.category_etv_windows to look up the canonical window."
+            )
         if not category_codes:
             logger.warning("discover_prospects: empty category_codes, returning empty list")
             return []
@@ -305,13 +317,20 @@ class MultiCategoryDiscovery:
         location_name: str = "Australia",
         limit: int = 50,
         offset: int = 0,
-        etv_min: float = 200.0,
-        etv_max: float = 5000.0,
+        etv_min: float | None = None,
+        etv_max: float | None = None,
     ) -> list[dict]:
         """
         Stateless single-category batch pull.
         Compatible with PipelineOrchestrator.run_parallel() worker interface.
+        etv_min/etv_max required — use get_etv_window() from
+        src.config.category_etv_windows.
         """
+        if etv_min is None or etv_max is None:
+            raise ValueError(
+                "ETV window required. Use get_etv_window(category_code) from "
+                "src.config.category_etv_windows to look up the canonical window."
+            )
         try:
             code_int = int(category_code)
         except (ValueError, TypeError):

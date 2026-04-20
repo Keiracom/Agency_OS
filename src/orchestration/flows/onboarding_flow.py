@@ -344,7 +344,7 @@ async def assign_client_resources_task(
 
     Args:
         client_id: Client UUID
-        tier: Pricing tier ('ignition', 'velocity', 'dominance')
+        tier: Pricing tier ('spark', 'ignition', 'velocity')
 
     Returns:
         Dict with assignment result including resource IDs
@@ -665,7 +665,7 @@ async def resource_assignment_flow(
 
     Args:
         client_id: Client UUID (string or UUID)
-        tier: Pricing tier ('ignition', 'velocity', 'dominance')
+        tier: Pricing tier ('spark', 'ignition', 'velocity')
 
     Returns:
         Dict with assignment result

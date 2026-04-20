@@ -12,6 +12,23 @@ env:
 
 jobs:
   # ============================================
+  # Guard: Dead Reference Check (Directive #315)
+  # ============================================
+  dead-reference-guard:
+    name: Dead Reference Guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for dead references (crm_sync_flow)
+        run: |
+          if grep -rn "crm_sync_flow" src/ --include="*.py" | grep -v __pycache__ | grep -v "# PERMANENTLY REMOVED" | grep -v "# DEAD:"; then
+            echo "ERROR: Dead reference to crm_sync_flow found. Permanently removed in Directive #315. Do NOT recreate — build a new HubSpot-specific flow instead."
+            exit 1
+          fi
+          echo "OK: crm_sync_flow not present."
+
+  # ============================================
   # Backend: Lint, Type Check, Test
   # ============================================
   backend-lint:
@@ -164,7 +181,7 @@ jobs:
   # ============================================
   deploy-backend:
     name: Deploy Backend to Railway
-    needs: [backend-lint, backend-test, frontend-check]
+    needs: [dead-reference-guard, backend-lint, backend-test, frontend-check]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
@@ -184,7 +201,7 @@ jobs:
   # ============================================
   notify-failure:
     name: Notify on Failure
-    needs: [backend-lint, backend-typecheck, backend-test, frontend-check]
+    needs: [dead-reference-guard, backend-lint, backend-typecheck, backend-test, frontend-check]
     runs-on: ubuntu-latest
     if: failure()
 

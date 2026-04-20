@@ -1,0 +1,4007 @@
+{
+  "stage": "300i_linkedin_co",
+  "summary": {
+    "processed_with_url": 118,
+    "no_url": 252,
+    "with_data": 65,
+    "errors": 0,
+    "total_cost_usd": 0.0488,
+    "elapsed_seconds": 601.6,
+    "per_category": {
+      "Dental": {
+        "processed": 33,
+        "with_data": 15
+      },
+      "Construction": {
+        "processed": 52,
+        "with_data": 32
+      },
+      "Legal": {
+        "processed": 33,
+        "with_data": 18
+      }
+    }
+  },
+  "domains": [
+    {
+      "domain": "www.focusdental.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/focus-dental-group",
+      "scraped": true,
+      "data": {
+        "employee_count": "2-10 employees",
+        "follower_count": 6,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": [],
+        "description": "FOCUS DENTAL GROUP | 6 followers on LinkedIn. ",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "www.riverlinkmedicalcentre.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/forhealthgroup",
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.primarydental.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/primarydental",
+      "scraped": true,
+      "data": {
+        "employee_count": "501-1,000 employees",
+        "follower_count": 1876,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": [],
+        "description": "Primary Dental | 1,876 followers on LinkedIn. Our mission is to empower independent dental practitioners to provide quality, accessible healthcare for all Australians | We passionately believe every Australian has a right to affordable, high quality healthcare, wherever they are, and no matter their financial circumstances.\n\nAt Primary Dental, we are committed to being our community\u2019s first choice for affordable, quality dental care through all stages of life, while supporting dental practitione",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "www.springvaledentalsmiles.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/springvaledentalsmiles",
+      "scraped": true,
+      "data": {
+        "employee_count": null,
+        "follower_count": null,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": [],
+        "description": "",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "www.foresthillmedicalcentre.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/forhealthgroup",
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.cranbournenorthdental.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": "https://www.linkedin.com/company/cranbourne-north-dental",
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "dentalboutique.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": "https://www.linkedin.com/company/dentalboutiquegroup",
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "firstbite.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": "https://www.linkedin.com/company/firstbite",
+      "scraped": true,
+      "data": {
+        "employee_count": "11-50 employees",
+        "follower_count": 59,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": [],
+        "description": "FirstBite | 59 followers on LinkedIn. First Bite dental offers complete oral care for the health and beauty of your smile.\n\nWe believe that we are the premier cosmetic dentist Essendon has to offer. We love clean, healthy teeth and offer all the dental services you need to achieve and maintain your perfect smile.",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "dentalandfacialclinic.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": "https://www.linkedin.com/company/dental-facial-clinic",
+      "scraped": true,
+      "data": {
+        "employee_count": "11-50 employees",
+        "follower_count": 177,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": "Cosmetic Dentistry, Implants, General Dentistry, Facial Rejuvenation, Orthodontics, Clear Aligners, Braces, Extractions, Dermal Fillers, Restorative Treatments, Full Mouth Reconstruction, Preventive Dental Care, Oral Health, Dental Crowns, Dentures, Microneedling, and Skin Treatments",
+        "description": "Dental &amp; Facial Clinic | 177 followers on LinkedIn. Where Modern Dentistry Meets Exceptional Care | Established in 1992, Dental and Facial Clinic has a long history of delivering exceptional patient care, building lasting relationships with thousands of satisfied patients. As a leading clinic in both dental and facial aesthetics, we specialize in a comprehensive range of services, including preventive dental care, restorative treatments, cosmetic dentistry, and orthodontics. Our clinic also ",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "healthability.org.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": "https://www.linkedin.com/company/healthability",
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.spadentalsydneycbd.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/spa-dental-sydney-cbd",
+      "scraped": true,
+      "data": {
+        "employee_count": null,
+        "follower_count": 22,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": [],
+        "description": "Spa Dental Sydney CBD | 22 followers on LinkedIn. ",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "www.toowoombadental.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/toowoomba-dental",
+      "scraped": true,
+      "data": {
+        "employee_count": "2-10 employees",
+        "follower_count": 35,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": [],
+        "description": "Toowoomba Dental | 35 followers on LinkedIn. \ud83e\uddb7\ud83c\udf38 Where your dental health blossoms \ud83c\udf38\ud83e\uddb7 | At Toowoomba Dental, we are guided by one word. \n\nFamily\n\nWhat does family mean to us, and how has it shaped our practice? For us, its the feeling of belonging.",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "www.dentalatkeys.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/dental-at-keys",
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.edentalperth.net.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/edental-perth",
+      "scraped": true,
+      "data": {
+        "employee_count": "11-50 employees",
+        "follower_count": 38,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": [],
+        "description": "EDental Perth | 38 followers on LinkedIn. ",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "signaturedentistry.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/4011637",
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.forhealthbrownsplains.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/forhealthgroup",
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.meltonmedicalcentre.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/forhealthgroup",
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.sunrisedentalchatswood.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/sunrise-dental-chatswood-au",
+      "scraped": true,
+      "data": {
+        "employee_count": "2-10 employees",
+        "follower_count": 28,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": [],
+        "description": "Sunrise dental chatswood | 28 followers on LinkedIn. People-oriented, striving for excellence | Sunrise Dental Chatswood is one of the longest-established dental clinics in the area, proudly serving the community since 1960. With four generations of Australian ownership, we combine tradition and trust with the latest in dental technology, including cutting-edge CBCT imaging.\n\nWe are people-oriented and committed to excellence, providing professional, friendly, and personal care tailored to every",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "www.gorgeoussmiles.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": "https://www.linkedin.com/company/gorgeous-smiles-dentistry",
+      "scraped": true,
+      "data": {
+        "employee_count": "2-10 employees",
+        "follower_count": 99,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": [],
+        "description": "Gorgeous Smiles Dentistry | 99 followers on LinkedIn. Gorgeous Smiles is a dental clinic based in the Melbourne Central Business District.  | Gorgeous Smiles is an established dental clinic conveniently located in the heart of Melbourne\u2019s bustling central business district. We are proud to have a team of talented dental surgeons with many years working in general, paediatric, and cosmetic dentistry. At our clinic, we focus on providing our clients with a comprehensive range of affordable dental ",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "www.1300smiles.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/1300smiles-ltd",
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.dpvhealth.org.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/dpv-health",
+      "scraped": true,
+      "data": {
+        "employee_count": "201-500 employees",
+        "follower_count": 5284,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": "medical, dental, women's health, physiotherapy, podiatry, counselling, nutrition, speech pathology, early childhood development, Early Childhood Intervention Services, psychology, diabetes education, NDIS, Family Planning, occupational therapy, Refugee Asylum Seeker Health, Aboriginal health, social support programs, health, exercise physiology, mental health, disability services, and community health",
+        "description": "DPV Health | 5,284 followers on LinkedIn. Your Healthcare, Your Way | DPV Health is a not-for-profit organisation that offers exceptional health care services to people of all ages.\n\nDPV Health is an inclusive organisation that celebrates the diversity of all people within our communities. We are passionate about helping to support people to lead happy healthy lives.",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "nextsmile.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": "https://www.linkedin.com/company/42765130",
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.erahealth.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/era-health",
+      "scraped": true,
+      "data": {
+        "employee_count": "11-50 employees",
+        "follower_count": 165,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": "Dentist Clinic, Physiotherapist, Podiatrist, Psychologist, Doctor, Dentist, Occupational Health, and Pre Employment Medicals",
+        "description": "Era Health Doctor Melbourne CBD | 165 followers on LinkedIn. All your health needs in one Health Center | Era Health is a one stop health clinic fully owned and operated by Southern Medical Services Pty Ltd, a private, Australian medical company.Our mission is to provide high quality, comprehensive treatment to our patients. To achieve this, we work with the best medical and allied health practitioners that provides services for\r\n\r\nINDIVIDUALS &amp; FAMILIES                   \r\n\r\nGP\r\nDental\r\nPhy",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "www.wodendentalcentre.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/woden-dental-centre",
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "glenferriedental.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": "https://www.linkedin.com/company/glenferrie-dental-hawthorn-dental-implants-all-on-4-cosmetic-dentist",
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "coastaldentalcare.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": "https://www.linkedin.com/company/coastaldentalcare",
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.cranbournewestdental.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/cranbourne-west-dental",
+      "scraped": true,
+      "data": {
+        "employee_count": null,
+        "follower_count": 4,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": [],
+        "description": "Cranbourne West Dental | 4 followers on LinkedIn. ",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "www.carolinespringsdental.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/caroline-springs-dental",
+      "scraped": true,
+      "data": {
+        "employee_count": null,
+        "follower_count": 11,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": [],
+        "description": "Caroline Springs Dental | 11 followers on LinkedIn. ",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "valuedentalcentres.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": "https://www.linkedin.com/company/value-dental-centres",
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "smileonperth.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": "https://www.linkedin.com/company/smileonperth",
+      "scraped": true,
+      "data": {
+        "employee_count": "2-10 employees",
+        "follower_count": 5,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": [],
+        "description": "SmileOnPerth | 5 followers on LinkedIn. We are passionate to create your best smile possible and to regain the joy and confidence that comes from a smile. | We are the leader in Veneers in Perth",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "www.ipchealth.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/4816914",
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.murrumbadownsmedicalcentre.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/forhealthgroup",
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "soudal.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/soudis-australia",
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "stratagreen.com.au",
+      "category": "Construction",
+      "intent_band": "TRYING",
+      "linkedin_company_url": "https://www.linkedin.com/company/stratagreen",
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "lightco.com.au",
+      "category": "Construction",
+      "intent_band": "TRYING",
+      "linkedin_company_url": "https://www.linkedin.com/company/lightco",
+      "scraped": true,
+      "data": {
+        "employee_count": "11-50 employees",
+        "follower_count": 901,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": "Luxury Lighting, Lighting Distribution, Lighting Design, Lighting Wholesaler, Lighting Importer, and Lighting Shop",
+        "description": "LightCo | 901 followers on LinkedIn. Discover the transformative effect of decorative lighting. We sell authentic designer lights in AU &amp; NZ. | LightCo is Australia and New Zealand\u2019s home for authentic decorative lights. Our passion is quality design, and we represent some of the finest lighting brands from across the world. Established in 2006, we are a trusted supplier for interior designers, architects, and design aficionados, looking to beautifully illuminate spaces.",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "skyciv.com",
+      "category": "Construction",
+      "intent_band": "TRYING",
+      "linkedin_company_url": "https://www.linkedin.com/company/skyciv-engineering",
+      "scraped": true,
+      "data": {
+        "employee_count": "11-50 employees",
+        "follower_count": 6569,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": "Structural Analysis Software, Mechanical Engineering, Structural Engineering, Cloud Engineering, Civil Engineering, Beam, Frame Analysis, Structural 3D, Enterprise Software Solutions, Structural Design, Structural Design Software, AISC, and Civil Engineering Software",
+        "description": "SkyCiv | 6,569 followers on LinkedIn. Structural engineering software that brings your whole workflow together | SkyCiv is a cloud-based structural engineering platform that brings your full workflow into one place.\n\nTrusted by engineers in over 160 countries, our software helps teams work faster, collaborate more easily, and deliver accurate results. With a comprehensive suite of tools, SkyCiv makes it easy to model structures, check designs against global standards, and produce detailed, profe",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "www.smarterair.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/smarter-air",
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "hebel.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/csr-hebel",
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.huset.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/89899887",
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "shop.samios.net.au",
+      "category": "Construction",
+      "intent_band": "TRYING",
+      "linkedin_company_url": "https://www.linkedin.com/company/samios-plumbing-supplies",
+      "scraped": true,
+      "data": {
+        "employee_count": "201-500 employees",
+        "follower_count": 3728,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": "Secure e-commerce capabilities, Modern trade and retail showrooms, Highly trained staff, National branch network, dedicated delivery fleet, Sophisticated supply chain and warehousing solutions, and trade fittings and tools, bathroom, kitchen and laundry fixtures and appliances",
+        "description": "Samios Plumbing Supplies | 3,728 followers on LinkedIn. Trust Your Local Plumber | Samios Plumbing Supplies is an Australian owned and operated business that provides exceptional service and quality products to trade and retail customers throughout Australia.\n\nOur highly trained staff have the expertise and experience to manage projects of any size across a range of sectors such as commercial, residential, construction, oil and gas, industrial, mining, civil, health, education, and government.\n\n",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "www.metroll.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/metroll-au",
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.refreshrenovations.com.au",
+      "category": "Construction",
+      "intent_band": "TRYING",
+      "linkedin_company_url": "https://www.linkedin.com/company/refresh-renovations-global",
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.stiebel-eltron.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/stiebel-eltron-aust-ltd",
+      "scraped": true,
+      "data": {
+        "employee_count": "11-50 employees",
+        "follower_count": 2638,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": "Hot Water, Renewables, Home Comfort, Electric Instantaneous Water Heaters, Ventilation HRV, Hydronic Heating Heat Pumps, Space Heaters, Water Filters, and Under Floor Heating",
+        "description": "STIEBEL ELTRON Australia | 2,638 followers on LinkedIn. STIEBEL ELTRON is a leading company dedicated to providing exceptional home comfort products to help customers create their ideal homes of the future. With 100 years of experience in manufacturing innovative home appliances, STIEBEL ELTRON has become synonymous with eco-friendly, energy-efficient heating, ventilation, and hot water.\n\nOur success is based on a set of principles that include high quality, innovation, technical efficiency, rel",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "www.highstreetmedicalanddental.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/forhealthgroup",
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "ramset.com.au",
+      "category": "Construction",
+      "intent_band": "STRUGGLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/ramsetanz",
+      "scraped": true,
+      "data": {
+        "employee_count": "201-500 employees",
+        "follower_count": 4059,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": "Powder and Gas Actuated Fastening Systems, Power Tools, Chemical Anchoring, Construction Chemicals, Fire Protection Systems, Mechanical Anchoring, Expansion Joint Solutions, Concrete Lifting solutions, Threaded Reinforcing, and Insulated Concrete Panel System",
+        "description": "Ramset ANZ | 4,059 followers on LinkedIn. Ramset\u2122 proudly develops, manufactures &amp; supplies leading-edge drilling, anchoring &amp; fixing solutions.  | Established in Australia &amp; New Zealand nearly 70 years ago, Ramset\u2122 has built a strong and enviable reputation for developing, manufacturing, and supplying the building and construction industry with leading-edge drilling, anchoring and fixing products.\n\n The Ramset\u2122 range includes:\n\u2022 Powder and Gas Actuated Fastening Systems\n\u2022 Power Tool",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "ventair.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/ventair-pty-ltd",
+      "scraped": true,
+      "data": {
+        "employee_count": "11-50 employees",
+        "follower_count": 645,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": "Air movement, Ceiling Fans, Exhaust Fans, New Generation Cooling, Bathroom Heaters, wholesale, home, bathroom, renovations, fans, airconditioning, air movement, builders, electricians, interior design, projects, room, outdoor living, homedesign, homeinspo, building, construction, and trade",
+        "description": "Ventair Pty Ltd | 645 followers on LinkedIn. Creating air movement solutions with contemporary design, high performance and innovative technology | Ventair Pty Ltd commenced operation in 2006, Ventair is a leading specialist supplier of high quality air movement products in the Australian market.\n\nHead office in Melbourne and warehouses in both Melbourne, Brisbane, Perth and Hobart with distribution throughout all states of Australia.\n\nThrough our various trading partners, Ventair has become a t",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "www.megahire.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/mega-hire-australia",
+      "scraped": true,
+      "data": {
+        "employee_count": "11-50 employees",
+        "follower_count": 390,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": "Access machine hire, Earth moving plant hire, Concreting equipment hire, Generator hire, Cleaning equipment hire, Lighting hire, Compaction hire, Site equipment hire, Builders tools hire, and Pump hire",
+        "description": "Mega Hire Australia | 390 followers on LinkedIn. MEGA Range\nUnbeatable Service | Mega Hire is Brisbane&#39;s premiere hire and rental company focused on a simple online hiring process with affordable delivery and collection service. Australian owned and operated, we understand that having a huge range of equipment and the customer service to match are the most important ingredients to a successful project. Whether it&#39;s small DIY, a house renovation or major construction works, Mega Hire is h",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "www.colliermiller.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/colliermiller",
+      "scraped": true,
+      "data": {
+        "employee_count": "51-200 employees",
+        "follower_count": 764,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": [],
+        "description": "Collier &amp; Miller | 764 followers on LinkedIn. Agricultural engineering + industrial and trade supplies | Collier &amp; Miller is an Australian-owned family business offering quality products and services across a spectrum of agricultural, engineering, industrial and trade sectors. \n\nOur mission is to support customers to achieve great outcomes through quality products, outstanding service and specialist advice. \n\nWe source only the highest quality products for our retail division and our eng",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "www.dymark.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/dy-mark",
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.couplemate.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/couplemate-trailer-parts",
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.holcim.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/holcim-australia",
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.mintkitchengroup.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/mint-kitchen-group",
+      "scraped": true,
+      "data": {
+        "employee_count": "11-50 employees",
+        "follower_count": 227,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": "Kitchen Renovations, Laundry Renovations, Bathroom Renvoations, and Customised Cabinetry",
+        "description": "Mint Kitchen Group | 227 followers on LinkedIn. Mint KG have been designing and building award winning kitchens, bathrooms and laundries in Melbourne for over 30 years. As an Australian owned and operated business. We pride ourselves on designing and building beautiful, Australian made kitchens, bathrooms and laundries, wardrobes and customised cabinetry for your home.",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "www.mbansw.asn.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/master-builders-association-new-south-wales",
+      "scraped": true,
+      "data": {
+        "employee_count": "51-200 employees",
+        "follower_count": 22314,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": [],
+        "description": "Master Builders Association of New South Wales | 22,314 followers on LinkedIn. The Master Builders Association of NSW is the leading building and construction industry association across the state. | The Master Builders Association of NSW (Master Builders) is the leading building and construction industry association across the state. A not-for-profit organisation, it is chartered with representing and furthering the interests of the building and construction industry.\n\nMaster Builders provides ",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "mercator.com.au",
+      "category": "Construction",
+      "intent_band": "STRUGGLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/mercator-lighting-pty-ltd-",
+      "scraped": true,
+      "data": {
+        "employee_count": "11-50 employees",
+        "follower_count": 1041,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": "lighting and fans",
+        "description": "MERCATOR PTY. LTD. | 1,041 followers on LinkedIn. Inspired lighting design\n\nFor over 55 years, Mercator has been inspiring Australians with affordable lighting and fan designs that bring comfort, style and function to homes and offices across the country.\n\nAs a market leader, we take the time to understand how integrating emerging technology with current fashion trends matches your needs for reliable, fashionable and economical lighting, fan and exhaust solutions.\n\nA family owned company with sh",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "www.arlec.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/arlec-australia-pty-ltd",
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "pryda.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/pryda-australia-and-new-zealand",
+      "scraped": true,
+      "data": {
+        "employee_count": "51-200 employees",
+        "follower_count": 2509,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": "Frame and Truss Manufacture, Floor Systems, and Timber Connectors",
+        "description": "Pryda Australia and New Zealand | 2,509 followers on LinkedIn. Safer, faster, smarter and easier solutions to common construction challenges. | When you work with Pryda you get a wealth of patented technologies delivered by a proven player who has been an integral part of the building industry in Australia and New Zealand for over 55 years.\n \nOur parent, USA-based Illinois Tool Works Inc. (ITW), a Fortune 200 diversified manufacturing company, has a foundation based on a decentralized entreprene",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "sastairs.com.au",
+      "category": "Construction",
+      "intent_band": "TRYING",
+      "linkedin_company_url": "https://www.linkedin.com/company/sastairs",
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.verdex.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/verdexau",
+      "scraped": true,
+      "data": {
+        "employee_count": "51-200 employees",
+        "follower_count": 1571,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": "Materials Handling Equipment, Workplace Equipment , Trolleys & Hand Trucks , Lifting and Handling Equipment , Conveyor Equipment , Ladders & Access Equipment , Drum Handling Equipment , Waste Handling Equipment , Dangerous Goods Storage and Spillage , Shelving and Storage Equipment , Safety Equipment, Cleaning and Site Supplies, Construction Equipment , Electric Workbenches , Packing Stations , Stillage , and Custom Solutions",
+        "description": "Verdex Equipment | 1,571 followers on LinkedIn. Equipping Workplaces Since 1985! Verdex offers Australia&#39;s largest range of materials handling and workplace equipment. | Formerly MHA Products also known as Manual Handling Australia. \n\nEquipping Workplaces Since 1985, Verdex is a family-owned business with over 40 years of expertise. We deliver high-quality products at the best prices by sourcing globally and selling directly, eliminating middleman costs for faster service and greater value.",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "timberline.com.au",
+      "category": "Construction",
+      "intent_band": "STRUGGLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/timberline-bathroom-products",
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.easyturf.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/easy-turf",
+      "scraped": true,
+      "data": {
+        "employee_count": "11-50 employees",
+        "follower_count": 108,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": [],
+        "description": "Easy Turf | 108 followers on LinkedIn. Easy Turf offers realistic synthetic grass and turf to a range of clients throughout Australia, including installation services to Melbourne, Sydney, Adelaide, Brisbane and Perth. Our company has redefined traditional grass products, mowing and installation methods, creating cutting edge artificial grass and lawn suited to Australia&#39;s harsh climate conditions. \n\nEasy Turf has a range different types of synthetic grass to ensure you find the right type f",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "www.cookandbathe.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/cook-bathe",
+      "scraped": true,
+      "data": {
+        "employee_count": "11-50 employees",
+        "follower_count": 367,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": [],
+        "description": "Cook &amp; Bathe | 367 followers on LinkedIn. An innovative leader in the renovation and building supply industry with strong presence in trade and retail | Cook &amp; Bathe is a member of the Bourne Buying Group, a family-run business with over 30 years of experience providing Kitchen and Bathroom  products in Melbourne.\n\nIn 2005 the family refocused on the kitchen and bathroom as central points of the home, which has led to the creation of Cook &amp; Bathe. Find products online or visit the ba",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "www.vinidex.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/vinidex",
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "premiumfloors.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/premium-floors-australia",
+      "scraped": true,
+      "data": {
+        "employee_count": "51-200 employees",
+        "follower_count": 576,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": [],
+        "description": "Premium Floors Australia | 576 followers on LinkedIn. Hard flooring wholesaler, specialising in Timber, Laminate &amp; Hybrid Vinyl floors for residential &amp; commercial projects. | With a leading brand portfolio Premium Floors is Australia\u2019s largest wholesale distributor of timber, laminate bamboo, and cork flooring. With warehouses in all states our enviable range of quality floors has been selected to cater for all styles and budget. Available through all good flooring specialists across Au",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "www.heatleys.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/heatleys-safety-",
+      "scraped": true,
+      "data": {
+        "employee_count": null,
+        "follower_count": null,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": [],
+        "description": "",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "www.sitehq.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/site-hq",
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.bona.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/bonaaust",
+      "scraped": true,
+      "data": {
+        "employee_count": null,
+        "follower_count": null,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": [],
+        "description": "",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "schmicko.com.au",
+      "category": "Construction",
+      "intent_band": "TRYING",
+      "linkedin_company_url": "https://www.linkedin.com/company/schmicko",
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.tradiecart.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/tradiecart",
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "apolloblinds.com.au",
+      "category": "Construction",
+      "intent_band": "STRUGGLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/2301182",
+      "scraped": true,
+      "data": {
+        "employee_count": "11-50 employees",
+        "follower_count": 562,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": "Blinds, Awnings, Shutters, Roller Blinds, Vertical Blinds, Venetian Blinds, Viewline Shades, Cellular Blinds, Panel Glide Blinds, Roman Blinds, Louvre Shutters, Roller Shutters, Fixed Awnings, Pivot Arm Awnings, Folding Arm Awnings, Spring Operated Awnings, Straight Drop, Curtains, Security Screens, Plantation Shutters, Veri-Shades Curtains, Screen Doors, and Ziptrak Outdoor Blinds",
+        "description": "Apollo Blinds | 562 followers on LinkedIn. Australia&#39;s largest provider of Blinds, Awnings, Shutters, Screens and Curtains \nBook your FREE Measure &amp; Quote. | Apollo Blinds is the Specialist in Window Blinds, Awnings, Shutters, Screens and Curtains\n\nSince 1988, we specialise in custom made, affordable quality blinds, awnings, shutters, curtains and screens for commercial and residential applications.\n\nWe are an Australian manufacturer and retailer of internal and external window coverings",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "sunnybunny.com.au",
+      "category": "Construction",
+      "intent_band": "TRYING",
+      "linkedin_company_url": "https://www.linkedin.com/company/sunny-bunny-solar",
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.1800gotjunk.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/1-800-got-junk",
+      "scraped": true,
+      "data": {
+        "employee_count": "1,001-5,000 employees",
+        "follower_count": 14976,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": "Junk Removal, Tire Recycling, Donating, Creating Space, Computer Recycling, TV Recycling, Trash Removal, Appliance Removal, Carpet Recyling, Rubish Removal, Leaf Removal, Furniture Removal, Franchising, Franchise Opportunities, and Office Cleanout",
+        "description": "1-800-GOT-JUNK? | 14,976 followers on LinkedIn. We make junk disappear. All you have to do is point! | 1-800-GOT-JUNK? is a franchise-based, full-service junk removal company dedicated to helping people reclaim the space in their homes and businesses. A pioneer of professional junk removal, 1-800-GOT-JUNK?",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "www.turnerhastings.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/turner-hastings",
+      "scraped": true,
+      "data": {
+        "employee_count": "11-50 employees",
+        "follower_count": 1137,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": "European Bathware, European Fine Fireclay Kitchen Sinks, TitanCast Solid Surface Freestanding Baths & Basins, and Hampton's, Coastal and Traditional Style Specialists",
+        "description": "Turner Hastings | 1,137 followers on LinkedIn. Manufacturers of Fine Fittings | Hampton&#39;s, Coastal and Traditional Style Specialists\n | Turner Hastings creates elegance by providing globally sourced European quality and European-designed Kitchen, Laundry, and Bathroom products, complimented by excellent service.\n\nWe represent the balance between form and function whilst maintaining the elegance of carefully selected European-designed products.\n\nAfter starting out in the plumbing industry in ",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "australianscaffolds.com.au",
+      "category": "Construction",
+      "intent_band": "TRYING",
+      "linkedin_company_url": "https://www.linkedin.com/company/australian-scaffold-pty-ltd",
+      "scraped": true,
+      "data": {
+        "employee_count": "11-50 employees",
+        "follower_count": 1026,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": "scaffolding construction, Scaffolding Contracting, Scaffolding Hire, manufacturing, safety handrail, edge protection, and railway",
+        "description": "Australian Scaffold | 1,026 followers on LinkedIn. WORK SAFER - FASTER - SMARTER | KEEPING AUSTRALIA SAFE SINCE 1997\n\nWhether big, small, tall, straightforward or complex, we don&#39;t discriminate. Day, night, weekday or weekend, we are there to provide you with access on time every time. \n\nWhen it&#39;s critical and you need the best, call the team at Australian Scaffold.",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "stoddart.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/stoddart",
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.carpetone.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/carpet-one-australia",
+      "scraped": true,
+      "data": {
+        "employee_count": null,
+        "follower_count": null,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": [],
+        "description": "",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "www.schnap.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/schnap-electric-products",
+      "scraped": true,
+      "data": {
+        "employee_count": "11-50 employees",
+        "follower_count": 2328,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": "Electrical Wholesaler, Solar Power Systems (Panels & Inverters) , Battery Energy Storage Systems, High Voltage Switchgear & Grid Infrastructure , Industrial Automation & Control Systems, HVAC Systems & Controls (Energy-Efficient Climate Control), Smart Home Automation & IoT Devices , Instrumentation & Process Control Devices, Fire Detection & Safety Systems, Data & Telecommunications Cabling and Equipment, LED Lighting & Smart Lighting Solutions, Backup Generators & UPS (Uninterruptible Power Supplies) , Building Management Systems (BMS), Hazardous Area Electrical Equipment, Medical-Grade Power Outlets & Isolation Transformers, Explosion-Proof LED Lights (Ex-rated), Emergency and Exit Lighting, Flameproof (Ex d / Ex e) Sockets, 3-Phase Heavy-Duty Industrial Sockets (415V), and Stainless Steel or Poly Socket Outlets (IP66/IP69K)",
+        "description": "SCHNAP  &quot;Making Trade Life Easy&quot; | 2,328 followers on LinkedIn. Empowering Australia\u2019s electrical industry with trusted supply, real support, and solutions built for long\u2011term performa | SCHNAP is one of Australia\u2019s leading electrical wholesalers, trusted by electricians, contractors, and project managers across residential, commercial, and industrial sectors. We supply certified, high-performance electrical products from the industry\u2019s most trusted brands\u2014backed by technical accuracy,",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "vulcan.co",
+      "category": "Construction",
+      "intent_band": "STRUGGLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/vulcan",
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "tactilesystems.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/tactile-systems-australia",
+      "scraped": true,
+      "data": {
+        "employee_count": "11-50 employees",
+        "follower_count": 172,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": "Tactile ground surface indicators, Braille signs, Stair nosing, Anti-slip tapes, Wheel stops & speed humps, Supply only or supply & install, Estimating and mark-up, Bollards, and Line marking",
+        "description": "Tactile Systems Australia | 172 followers on LinkedIn. Tactile Indicators, Stair Nosings,  Bollards,  Car park fixtures,  skate deterrents, bike racks and Braille signs | Tactile Systems Australia in one of the longest established tactile ground surface indicator specialists in Australia,  with over 20 years experience.\n\nTactile Systems Australia services the building and construction industries,  providing products that support vision impaired members of our community.\n\nOur products and service",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "www.detailstore.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/the-detail-store",
+      "scraped": true,
+      "data": {
+        "employee_count": "11-50 employees",
+        "follower_count": 141,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": [],
+        "description": "The Detail Store | 141 followers on LinkedIn. Your one stop detail stop | The Detail Store, founded in early 2020 in Melbourne, is dedicated to offering premium car care products paired with exceptional service.\n\nOur mission is to meet our customers&#39; needs with understanding and care, ensuring a seamless experience from product selection to purchase, after-sales support, and ongoing guidance.\n\nWe strive to empower our customers to make informed decisions as we journey together to pursue thei",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "www.bluescopedistribution.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/bluescope-distribution",
+      "scraped": true,
+      "data": {
+        "employee_count": "501-1,000 employees",
+        "follower_count": 4378,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": [],
+        "description": "BlueScope Distribution | 4,378 followers on LinkedIn. Steel. Aluminium. Knowhow. | We are BlueScope Distribution.\n\nWe\u2019re your convenient single-source supplier and processor of everything from BlueScope\u2019s massive range of premium products, plus custom grades and Aluminium from our carefully selected partner brands.\n\nWe\u2019re an integrated processor too \u2013 and valued for our knowledge and experience, technical knowhow, project management skills and supply chain certainty.",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "mouldcleaningaustralia.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/mould-cleaning-australia1",
+      "scraped": true,
+      "data": {
+        "employee_count": "11-50 employees",
+        "follower_count": 95,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": "Real Estate, Commercial, Home Owners, Construction, Contents, Building, Property Management, and Facilities",
+        "description": "Mould Cleaning Australia | 95 followers on LinkedIn. Mould Removal and Mould Remediation Specialists. \nWe offer FREE quotes in and around Sydney, Brisbane &amp; Melbourne. | Mould Cleaning Australia specialise in mould removal and remediation across Sydney NSW, Brisbane QLD and Melbourne VIC.\n\nOur mould removal process focuses on identifying the cause of the problem and providing recommendations to find a permanent solution for our valued customers.\n\nMould Cleaning Australia offers a free no obl",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "www.servicetoday.com.au",
+      "category": "Construction",
+      "intent_band": "STRUGGLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/service-today-plumbing-electrical-heating-amp-cooling",
+      "scraped": true,
+      "data": {
+        "employee_count": null,
+        "follower_count": null,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": [],
+        "description": "",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "finchly.com.au",
+      "category": "Legal",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/finchly-hq",
+      "scraped": true,
+      "data": {
+        "employee_count": "2-10 employees",
+        "follower_count": 272,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": [],
+        "description": "Finchly | 272 followers on LinkedIn. Founded in 2024, Finchly set out to help lawyers showcase their reputation online and connect clients with the right legal expert. \n\nBuilt on deep marketplace expertise, Finchly transforms how people find trusted legal support, delivering better-matched, high-quality enquiries to law firms. \n\nIn 2026, Finchly became part of LawConnect, bringing its proven client-matching capabilities into a broader legal ecosystem.",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "sunriseint.com.au",
+      "category": "Construction",
+      "intent_band": "STRUGGLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/sunrisetrailerparts",
+      "scraped": true,
+      "data": {
+        "employee_count": "11-50 employees",
+        "follower_count": 87,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": [],
+        "description": "Sunrise International | 87 followers on LinkedIn. We&#39;ve got your spare parts covered. | We take great pride here at Sunrise Trailer Parts in being on of the leading specialists in Australia to manufacture and supply quality trailer and truck body parts. Founded in 2004 we have achieved over 15 years of success, driven by our commitment to provide Australia with excellence in service, extensive knowledge and trailer expertise. Quality is integral to our products and we have the ability to ove",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "ardexaustralia.com",
+      "category": "Construction",
+      "intent_band": "TRYING",
+      "linkedin_company_url": "https://www.linkedin.com/company/ardex-australia-pty-ltd",
+      "scraped": true,
+      "data": {
+        "employee_count": "51-200 employees",
+        "follower_count": 4514,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": "Construction material, building chemicals, tiling adhesives, tiling grouts, renders, screeds, decorative surface finishes, floor levellers, epoxy, adhesives, sealers, crack repair, construction, waterproofing, building, renovation, restoration, and grout",
+        "description": "ARDEX Australia Pty Ltd | 4,514 followers on LinkedIn. Building Tomorrow | ARDEX specialises in high-quality construction materials for substrate preparation, leveling floors, the fixing of natural stones &amp; ceramic tiles and other surfacing materials. ARDEX offers innovative products of outstanding quality and optimal environmental friendliness, as well as providing training and support services for their application.",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "www.stonegroup.com.au",
+      "category": "Legal",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/stone-group-lawyers",
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "rockcote.com.au",
+      "category": "Construction",
+      "intent_band": "TRYING",
+      "linkedin_company_url": "https://www.linkedin.com/company/rockcote",
+      "scraped": true,
+      "data": {
+        "employee_count": "51-200 employees",
+        "follower_count": 1381,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": "Coating and Walling Systems, Renders (Cement, Polymer, Coloured), Primers, Patching Compounds, Natural Building Materials, Clay and Lime-based products, High Performance Protective Membranes, GECA Certified EcoStyle Paints, Texture Coatings, and Natural Materials",
+        "description": "Rockcote | 1,381 followers on LinkedIn. Australian owned, operated since 1979. Premixed cement renders, coloured renders, non-toxic paints and natural finishes | Rockcote exists to help people create naturally beautiful buildings that don\u2019t cost the earth.\n\nRockote is a multi-award winning Australian company, respected for its GECA Certified EcoStyle paints, high performance cement renders, coloured renders and textures, complete render systems, and our pioneering work in creating natural buildi",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "www.criminallawgroup.com.au",
+      "category": "Legal",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/criminal-law-group",
+      "scraped": true,
+      "data": {
+        "employee_count": "2-10 employees",
+        "follower_count": 611,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": [],
+        "description": "Criminal Law Group | 611 followers on LinkedIn. Criminal Law Group is a premier law firm practising exclusively in Criminal and Traffic Law.  | Criminal Law Group is a premier law firm practising exclusively in Criminal and Traffic Law. Backed by over 30 years of combined courtroom experience, our lawyers appear daily in Local and District Courts across Sydney and regional NSW, delivering strategic, high-level defence in complex and high-stakes matters. \n\nWe represent clients across the full spe",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "doylesguide.com",
+      "category": "Legal",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/doyles-guide",
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.fisherdore.com.au",
+      "category": "Legal",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/3127558",
+      "scraped": true,
+      "data": {
+        "employee_count": "11-50 employees",
+        "follower_count": 1722,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": "Criminal Defence, Appeals, Regulatory Prosecutions, Traffic & Licensing Issues, Compensation and Personal Injury, Complex Migration Cases, Visa Cancellations and Refusals, Drug Offences, Property Offences, Cyber and Computer Crime, Fraud and Business Crime, Workplace Injuries, Motor Vehicle Accidents, Institutional Abuse, Income Protection and Disability Insurance, Professional Negligence, Human Rights and Discrimination, Professional Misconduct, Product Liability and Consumer Protection, and Industrial Relations",
+        "description": "Fisher Dore Lawyers | 1,722 followers on LinkedIn. Beyond. Above. | Fisher Dore Lawyers are a leading Queensland law firm, specialising in criminal defence, compensation and migration. The firm is led by Managing Principal Nick Dore, a widely recognised and well respected member of the legal community. Our team\u2019s philosophy is to go above and beyond and this is clear in everything we do.",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "www.future-you.com.au",
+      "category": "Legal",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/futureyou-executive-recruitment",
+      "scraped": true,
+      "data": {
+        "employee_count": "51-200 employees",
+        "follower_count": 27897,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": "Specialist Recruitment, Executive Search, Talent Advisory, Accounting & Finance, Business Support, Human Resources, Legal, Risk & Compliance, Manufacturing & Operations, Marketing & Sales, Supply Chain & Logistics, Technology & Project Services, Executive Coaching, Career Transition, Learning & Development, Onboarding, HR Services, and Interim Solutions",
+        "description": "FutureYou | 27,897 followers on LinkedIn. The power to connect | At FutureYou we are a recruitment consultancy who partner with organisations to develop an end-to-end approach to talent, focusing on; attraction, sourcing &amp; hiring, development and retention strategies. We are a super boutique agency assisting people with their career journey and whether you are an employer or jobseeker our team of highly skilled consultants who have deep subject matter expertise that will ensure that you have",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "rafton.com.au",
+      "category": "Legal",
+      "intent_band": "STRUGGLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/rafton-family-lawyers",
+      "scraped": true,
+      "data": {
+        "employee_count": null,
+        "follower_count": null,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": [],
+        "description": "",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "www.bartier.com.au",
+      "category": "Legal",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/bartier-perry-pty-limited",
+      "scraped": true,
+      "data": {
+        "employee_count": "201-500 employees",
+        "follower_count": 9248,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": "Business Succession, Commercial Disputes, Corporate & Commercial, Deceased Estates, Environment & Planning, Finance & Capital, IP & IT, PPSA, Property, Super & Tax, Trusts, Wills & Estate Planning, Workers Compensation, Workplace Law and Culture, Building & Construction, Organisational Fraud, and Defamation",
+        "description": "Bartier Perry Pty Limited | 9,248 followers on LinkedIn. Bartier Perry has been providing legal services for over 80 years. Our impressive client base is hard won and fiercely defended by a continuing commitment to highly personalised expert services delivered without the requirement for big firm overheads. \n\nAt the heart of our organisational culture are our core values which underpin our interactions with each other and our clients and reflect what we value about Bartier Perry.",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "www.bestlawfirms.com",
+      "category": "Legal",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/best-law-firms",
+      "scraped": true,
+      "data": {
+        "employee_count": "11-50 employees",
+        "follower_count": 1466,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": [],
+        "description": "Best Law Firms | 1,466 followers on LinkedIn. Best Law Firms\u00ae presents the most credible rankings of exceptional law firms from around the world. | Debuted in 2010, Best Law Firms\u00ae is the most credible rankings of exceptional law firms, rooted in a rigorous, peer-to-peer, industry-driven evaluation. Achieving a tiered ranking in Best Law Firms signals a unique combination of quality law practice and breadth of legal expertise. Ranked \ufb01rms, presented in three tiers, are recognized on a national a",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "ramsdenfamilylaw.com.au",
+      "category": "Legal",
+      "intent_band": "TRYING",
+      "linkedin_company_url": "https://www.linkedin.com/company/ramsden-family-law",
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "foleys.com.au",
+      "category": "Legal",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/foleys-list",
+      "scraped": true,
+      "data": {
+        "employee_count": "11-50 employees",
+        "follower_count": 5599,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": "Barristers available in all areas of law, 36 silks supported by over 240 juniors, Commercial Law, Criminal Law, Family Law, and Personal Injury/Common Law",
+        "description": "Foley&#39;s List Pty Ltd | 5,599 followers on LinkedIn. THINK FOLEY&#39;S FIRST - EXPERIENCE &amp; EXPERTISE | Foley\u2019s List Pty Ltd is an independent, innovative barristers\u2019 group with global reach, located in Melbourne, Australia. Members of the List include some of the finest legal minds in Australia. The breadth of knowledge within the List extends to all areas of the law with experience in advice-work, litigation, arbitration and mediation.",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "www.leocussen.edu.au",
+      "category": "Legal",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/leo-cussen-centre-for-law",
+      "scraped": true,
+      "data": {
+        "employee_count": "51-200 employees",
+        "follower_count": 16183,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": "Practical Training for Law Graduates seeking admission to the legal profession, Lawyer Professional Development, Legal Seminars, Conferences, Workshops, VIC Traineeships and W.A. Articles, Customised Legal Training, Legal Publications, Venue Hire, and Practice Management Course",
+        "description": "Leo Cussen Centre for Law | 16,183 followers on LinkedIn. Obtain your Graduate Diploma in Legal Practice &amp; stay inspired with Continuing Professional Development (PLT &amp; CPD) | As Australia\u2019s most experienced legal education provider, we have grown and evolved to ensure we remain relevant in changing social and economic environments without compromising our standards of excellence. Now more than ever, our national presence and the range of programs available demonstrates our commitment, a",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "www.rmblawyers.com.au",
+      "category": "Legal",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/rmb-lawyers",
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "truebluemigration.com",
+      "category": "Legal",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/true-blue-migration",
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.turnbullhill.com.au",
+      "category": "Legal",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/turnbull-hill-lawyers",
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "businesschamberqld.com.au",
+      "category": "Legal",
+      "intent_band": "TRYING",
+      "linkedin_company_url": "https://www.linkedin.com/company/businesschamberqld",
+      "scraped": true,
+      "data": {
+        "employee_count": "11-50 employees",
+        "follower_count": 10473,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": "Advocacy, Access to new customers & markets, Employment law advice, and International trade support",
+        "description": "Business Chamber Queensland | 10,473 followers on LinkedIn. We know business matters.\nBusiness Chamber Queensland puts business first.\nFor 155 years we have represented businesses of every industry, every size and in every part of the state.",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "astorlegal.com.au",
+      "category": "Legal",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/astorlegal",
+      "scraped": true,
+      "data": {
+        "employee_count": "1 employee",
+        "follower_count": 510,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": "criminal law and traffic law",
+        "description": "Astor Legal | 510 followers on LinkedIn. Experts in criminal and traffic law. | Astor Legal experts in criminal and traffic law. Our lawyers appear in courts all over New South Wales.",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "hhg.com.au",
+      "category": "Legal",
+      "intent_band": "STRUGGLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/hhg-legal-group",
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "jamesonlaw.com.au",
+      "category": "Legal",
+      "intent_band": "STRUGGLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/jameson-law",
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "sklaw.au",
+      "category": "Legal",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/sewell-",
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "kindramigration.com.au",
+      "category": "Legal",
+      "intent_band": "TRYING",
+      "linkedin_company_url": "https://www.linkedin.com/company/kindra-migration",
+      "scraped": true,
+      "data": {
+        "employee_count": "11-50 employees",
+        "follower_count": 1175,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": "Migration law, Judicial review, Administrative law, Family visas, Student visas, Skilled visas, Refugee visas, and Immigration law",
+        "description": "Kindra Migration Lawyers | 1,175 followers on LinkedIn. An Australian migration law specialist firm (formerly WLW Migration Lawyers). | Kindra Migration Lawyers (formerly WLW Migration Lawyers) specialises in migration law in Australia. Our team of experienced lawyers are committed to providing ethical and cost effective migration advice and assistance to our clients. Understanding Australia\u2019s complex migration system and the rapid legal changes, we are dedicated to ensuring our clients receive ",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "www.russellkennedy.com.au",
+      "category": "Legal",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/russell-kennedy",
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "jenza.com",
+      "category": "Legal",
+      "intent_band": "TRYING",
+      "linkedin_company_url": "https://www.linkedin.com/company/88455166",
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "pentanastanton.com.au",
+      "category": "Legal",
+      "intent_band": "TRYING",
+      "linkedin_company_url": "https://www.linkedin.com/company/pentana-stanton-lawyers",
+      "scraped": true,
+      "data": {
+        "employee_count": "11-50 employees",
+        "follower_count": 1073,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": "Family Law, Criminal Law, Commercial Litigation, Insurance Law, Contested Wills, Property Disputes, Parenting Matters, Litigation, and Personal Injury",
+        "description": "Pentana Stanton Lawyers | 1,073 followers on LinkedIn. Pentana Stanton Lawyers provide legal services including: \n\n\u2022\tWills &amp; Estate Planning \n\u2022\tFamily Law\n\u2022\tCriminal Law\n\u2022\tEmployment\n\u2022\tProperty &amp; Conveyancing\n\u2022\tCommercial Litigation\n\u2022\tDebt Recovery\n\u2022\tPersonal Injury and Compensation",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "www.codea.com.au",
+      "category": "Legal",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/carroll-",
+      "scraped": true,
+      "data": {
+        "employee_count": null,
+        "follower_count": null,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": [],
+        "description": "",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "giecglobal.com.au",
+      "category": "Legal",
+      "intent_band": "STRUGGLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/giecglobal",
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "circlegreen.org.au",
+      "category": "Legal",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/circlegreen",
+      "scraped": true,
+      "data": {
+        "employee_count": "51-200 employees",
+        "follower_count": 2548,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": "Employment law, Residential tenancy law, Family and domestic violence , and Migration law",
+        "description": "Circle Green Community Legal | 2,548 followers on LinkedIn. Circle Green Community Legal is an independent, not-for-profit community legal centre providing state-wide specialist legal services in humanitarian, family and domestic violence, tenancy, and workplace law.\nOur services are aimed at assisting people who are otherwise disadvantaged in their access to legal services.",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "www.andrewbyrneslawgroup.com.au",
+      "category": "Legal",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/andrew-byrnes-law-group",
+      "scraped": true,
+      "data": {
+        "employee_count": "11-50 employees",
+        "follower_count": 176,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": "Criminal Law, Criminal Defence, Civil Law, Litigation, Family Violence, ACT Magistrates Court, ACT Supreme Court, ACT Children Courts, Sentencing, Legal Advice, Trial , and Hearing",
+        "description": "Andrew Byrnes Law Group | 176 followers on LinkedIn. Deliberately Different | At Andrew Byrnes Law Group, we know the life-altering impact of criminal charges. Our criminal lawyers are here to stand by your side, offering unwavering support, expert guidance, and formidable representation across a wide spectrum of criminal law matters.\n\nWhether you&#39;re confronting drug charges, accusations of causing grievous bodily harm, public nuisance offences, murder charges, domestic violence orders, sex ",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "hickmanfamilylawyers.com.au",
+      "category": "Legal",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/hickman-family-lawyers",
+      "scraped": true,
+      "data": {
+        "employee_count": null,
+        "follower_count": 9,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": [],
+        "description": "Hickman Family Lawyers | 9 followers on LinkedIn. ",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "www.kennedyslaw.com",
+      "category": "Legal",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/kennedys",
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.salaw.com.au",
+      "category": "Legal",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/stevens-",
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "scammell.com.au",
+      "category": "Legal",
+      "intent_band": "STRUGGLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/scammell-co",
+      "scraped": true,
+      "data": {
+        "employee_count": "11-50 employees",
+        "follower_count": 299,
+        "recent_posts": [],
+        "last_post_date": null,
+        "job_postings": 0,
+        "specialties": "Family Law, Police Matters, Personal Injury, Public Liability, Commercial Law, Commercial Litigation, Conveyancing, Powers of Attorney, Advance Care Directives, Compulsory Acquisitions, Estate Disputes, Deceased Estate Adminstration, Wills & Estates Planning, Motor Vehicle Accident Claims, Business Law, Civil Litigation, Criminal Law, Traffic Offences, and Notary Public Service",
+        "description": "Scammell &amp; Co. | 299 followers on LinkedIn. Est. 1887  |  More experience  |  Better outcomes | Scammell &amp; Co. has been providing South Australians with quality legal services since 1887 and has built a reputation based on trust, integrity and professional excellence. Our team of knowledgeable, experienced and dedicated legal practitioners and conveyancers are committed to achieving the best outcomes for our clients.\n\nPort Adelaide: (08) 8447 4466\nAdelaide: (08) 8212 6875\nWalkerville: (0",
+        "activity_level": "lurker",
+        "cost_usd": "0.00075"
+      },
+      "bd_cost_usd": 0.00075
+    },
+    {
+      "domain": "ngm.com.au",
+      "category": "Legal",
+      "intent_band": "STRUGGLING",
+      "linkedin_company_url": "https://www.linkedin.com/company/nyman-gibson-miralis",
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.smilesolutions.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.dentalcare.com",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.centaurportal.com",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "berwickdcas.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "aesthetik.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.theorthodontists.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.narrabeendental.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.scottsmithorthodontics.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "smilelounge.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "perfectsmile.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "radiantsmiles.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.jcudental.com",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "eversmile.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "dental1.com.au",
+      "category": "Dental",
+      "intent_band": "STRUGGLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.myfamilydentalqld.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.affordablebraces.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.smileondubbo.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "karrinyupdental.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.dentaldepartures.com",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.invisalign.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.hbfdental.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.paramountdentalsydney.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "parkmorefamilydental.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.hellodental.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.theorthopractice.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.keppeldental.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.ashtonavenuedental.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.genesisdental.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.herveybaydentists.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.rootyhillmed.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "sunsetdentalbali.com",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.thantakit.com",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "pymbledental.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "sdgdental.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "carindalefamilydentist.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.adelaidetoothremovals.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.gvdental.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "adelaidecosmeticdentistry.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "dental99.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.teeth.org.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.allon4plus.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.parramattadentist.sydney",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "suncoastdental.com.au",
+      "category": "Dental",
+      "intent_band": "STRUGGLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.incrediblesmiles.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "aestheticlaserdentistry.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "sunburydentalhouse.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "bridgedental.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.wollongongdentist4u.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.innovadental.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "allon4.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "bellevuehilldental.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "bitesoftco.com",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "darchdental.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.sydneycbddentistry.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "caseydentists.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "onesmile.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "granitebeltdental.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.vcdental.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "skygatedental.com.au",
+      "category": "Dental",
+      "intent_band": "STRUGGLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.westpointdental.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.melbournedentistry.com",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.geelongdentalgroup.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.baysidefamilydental.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.casuarinasquaredentalcare.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "smithfielddental.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "dentalfocus.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "bayswaterdentist.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.affordabledentist.sydney",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "jettyroaddentalclinic.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "hillsfamilydentalcentre.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "narrewarrendentalcare.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "encounterbaydental.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.siadental.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "campbelltowndentalcare.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "chicdental.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.adc.org.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "teeth.org.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.paddingtondentistry.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "dentistnearmemerrylands.clinic",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.onedental.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "thedentalpractice.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.thedentalroom.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.absolutelydental.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "dentalatjoondalup.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.ddtadental.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.ebdg.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.sydneyparkdental.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "rsdentalgroup.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.tamworthdentalcare.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.coredental.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.springvaledental.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "molonglodental.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.moonahdc.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.thehappytooth.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.kawanadental.com",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "goodchoicedental.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.parkridgedental.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.orthomax.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.collinsstreetdental.net.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "southportdental.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.clearlydental.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.gracedentalgroup.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "avantdental.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "swanseadental.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.moorookadentalcare.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.caseydentists.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "orthoboutique.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.islanddentalhobart.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "australiadental.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.brisbanedental.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "dentatur.com",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "lifestylesmiles.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "beachsidedental.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "dentistsatpymble.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "dentalaspects.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.fineorthodontics.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.swishdental.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "smilestudioballarat.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "manninghamdentist.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.smileteam.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "beaconsfielddental.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.kiddiesdentalcare.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.southmelbournedentalsmiles.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.gawlerdentalclinic.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "affordabledental.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.puredentaltoowoomba.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "southportparkdental.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.ahpdentalmedical.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.randwickdentalclinic.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.thepaddingtondentalsurgery.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.fullfaceorthodontics.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.monavaledental.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.liverpooldentalcentre.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "dentalsanctuary.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.cosmedismile.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.dentalsquare.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.allieddental.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "nibdental.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.adelaidesmileandimplantcentre.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.identitydentistry.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "macquariedental.com.au",
+      "category": "Dental",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "heatstrip.com.au",
+      "category": "Construction",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "smilesearch.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.nogapdentistsmelbourne.com",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "animaldental.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.thetford.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.kewdentistry.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.adelaidedentist.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "alltradealuminium.com.au",
+      "category": "Construction",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "cheaptilesonline.com.au",
+      "category": "Construction",
+      "intent_band": "STRUGGLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "glassguard.com.au",
+      "category": "Construction",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "pierlite.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.efisolutions.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.rosemountkitchens.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.smiledentalstudios.com.au",
+      "category": "Dental",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.justwaterproofing.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "lenoxx.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "aussieenvironmental.com.au",
+      "category": "Construction",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.inspectmyhome.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.currentforce.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "mtcopeland.com",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.stramit.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "festoonhouse.com.au",
+      "category": "Construction",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.amae.net.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.nulon.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.hitachiaircon.com",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "bathroominternational.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.baumr-ag.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.dorsetaustralia.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.kelvinator.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.design10.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "exceliteplas.com.au",
+      "category": "Construction",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.asaproadworthys.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "embeltonflooring.com",
+      "category": "Construction",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.torocatalogue.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.discounttrader.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.mrfilter.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "steel.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.4wh.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "wallceiling.com.au",
+      "category": "Construction",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "singhroofingsupplies.com.au",
+      "category": "Construction",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.bianco.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.carrierair.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "heritagebuilding.com.au",
+      "category": "Construction",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.castella.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.theartofdoingstuff.com",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "studcosystems.com.au",
+      "category": "Construction",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "ezydecking.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "shop.ausreo.com.au",
+      "category": "Construction",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "dlgelectrical.com.au",
+      "category": "Construction",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.greenworksaustralia.com",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.wignells.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.namly.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.artshedbrisbane.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "raven.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.creative-cables.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "sydneyindustrialcoatings.com.au",
+      "category": "Construction",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.smallenginewarehouse.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.ekodeck.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.cubcadet.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.mmem.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.glassoutlet.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "stylecurator.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "jimytools.com.au",
+      "category": "Construction",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.brisbanefireplaceandheating.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.tilersonline.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "forum.homeone.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "plasticwarehouse.com.au",
+      "category": "Construction",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "stonemart.com.au",
+      "category": "Construction",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "insulationeasy.com.au",
+      "category": "Construction",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.porta.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "loandcointeriors.com.au",
+      "category": "Construction",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.fluidplumbingservices.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.simonsseconds.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "ruglove.com.au",
+      "category": "Construction",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.thevinylloft.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "herabathware.com.au",
+      "category": "Construction",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.paalkithomes.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.rustoleum.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.gamart.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.chainsawspares.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.freedomscreens.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.swanstreet.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "oceansideservices.com.au",
+      "category": "Construction",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "lappaustralia.com.au",
+      "category": "Construction",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.ddbs.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.jamessaid.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.velux.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "mouritz.com.au",
+      "category": "Construction",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.bathroomspace.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "discountlandscapesupplies.com.au",
+      "category": "Construction",
+      "intent_band": "STRUGGLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "salandscape.com.au",
+      "category": "Construction",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "airconditioninggoldcoast.com",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.motion.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "hammerroo.com.au",
+      "category": "Construction",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.7pandas.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.mytopia.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.lawsonair.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.jetmaster.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.tridon.com.au",
+      "category": "Construction",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "mediationsaustralia.com.au",
+      "category": "Legal",
+      "intent_band": "STRUGGLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "ezyscreens.com.au",
+      "category": "Construction",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "court-data-australia.elevio.help",
+      "category": "Legal",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "familylawyers.com.au",
+      "category": "Legal",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "smartvisaguide.com",
+      "category": "Legal",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "connorhunter.com",
+      "category": "Legal",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "brookewintersolicitors.com.au",
+      "category": "Legal",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "eforms.com",
+      "category": "Legal",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "form.net.au",
+      "category": "Legal",
+      "intent_band": "TRYING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "migrationalliance.com.au",
+      "category": "Legal",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "visaguide.world",
+      "category": "Legal",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    },
+    {
+      "domain": "www.criminal-lawyers.com.au",
+      "category": "Legal",
+      "intent_band": "DABBLING",
+      "linkedin_company_url": null,
+      "scraped": false,
+      "data": null,
+      "bd_cost_usd": 0.0
+    }
+  ]
+}

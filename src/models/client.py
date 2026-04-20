@@ -22,7 +22,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 from uuid import UUID
 
-from sqlalchemy import JSON, TIMESTAMP, Boolean, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, TIMESTAMP, Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import ARRAY, ENUM, JSONB
 from sqlalchemy.dialects.postgresql import UUID as UUID_DB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -172,6 +172,24 @@ class Client(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
         nullable=True,
     )
 
+    # Billing lifecycle fields (migration 100)
+    subscription_started_at: Mapped[datetime | None] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=True,
+    )
+    cancelled_at: Mapped[datetime | None] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=True,
+    )
+    last_payment_at: Mapped[datetime | None] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=True,
+    )
+    next_billing_at: Mapped[datetime | None] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=True,
+    )
+
     # Company info (from onboarding)
     website_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     company_description: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -203,6 +221,16 @@ class Client(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
     icp_extraction_source: Mapped[str | None] = mapped_column(Text, nullable=True)
     icp_confirmed_at: Mapped[datetime | None] = mapped_column(nullable=True)
     icp_extraction_job_id: Mapped[UUID | None] = mapped_column(nullable=True)
+
+    # Service-first onboarding fields (Directive #309)
+    service_area: Mapped[str | None] = mapped_column(
+        ENUM("metro", "state", "national", name="service_area_type", create_type=False),
+        nullable=True,
+    )
+    services: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    onboarding_completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # Relationships
     memberships: Mapped[list["Membership"]] = relationship(

@@ -34,18 +34,25 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from decimal import Decimal
 from enum import StrEnum
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
+import httpx
 import sentry_sdk
+from sqlalchemy import select
 from tenacity import (
     retry,
     stop_after_attempt,
     wait_exponential,
 )
 
-from src.config.settings import settings
+import httpx
+
+from src.config.settings import get_settings, settings
 from src.exceptions import IntegrationError
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
@@ -292,12 +299,25 @@ class StripeClient:
             api_key: Stripe secret key (uses settings if not provided)
             webhook_secret: Webhook endpoint secret for signature verification
         """
-        self._api_key = api_key or getattr(settings, "stripe_secret_key", None)
+        self._api_key = api_key or getattr(settings, "stripe_api_key", None)
         self._webhook_secret = webhook_secret or getattr(settings, "stripe_webhook_secret", None)
         self._stripe = None
 
         if not self._api_key:
             logger.warning("[Stripe] No API key configured - client will operate in stub mode")
+
+    @staticmethod
+    def validate_config() -> None:
+        """Raise at startup if Stripe keys are missing. Call from app lifespan."""
+        key = getattr(settings, "stripe_api_key", None)
+        if not key:
+            raise RuntimeError(
+                "[Stripe] STRIPE_API_KEY not set — billing will silently fail. "
+                "Set stripe_api_key in environment before starting."
+            )
+        webhook = getattr(settings, "stripe_webhook_secret", None)
+        if not webhook:
+            logger.warning("[Stripe] STRIPE_WEBHOOK_SECRET not set — webhooks will reject all events")
 
     def _get_stripe(self):
         """Lazy-load stripe module and configure API key."""
@@ -791,19 +811,37 @@ class StripeClient:
             logger.error(f"[Stripe] Failed to parse webhook: {e}")
             raise WebhookVerificationError(f"Failed to parse webhook: {e}")
 
-    async def handle_webhook_event(self, event: WebhookEvent) -> dict[str, Any]:
+    async def handle_webhook_event(
+        self,
+        event: WebhookEvent,
+        db: "AsyncSession | None" = None,
+    ) -> dict[str, Any]:
         """
         Handle a verified webhook event.
 
         Dispatches to appropriate handlers based on event type.
+        When db is provided, handlers perform real database updates and
+        log the event for idempotency.
 
         Args:
             event: Verified WebhookEvent
+            db: Optional async database session for DB-aware handlers
 
         Returns:
             Handler result
         """
         logger.info(f"[Stripe] Handling webhook event: {event.type}")
+
+        if db is not None:
+            # Idempotency check — skip if already processed
+            from src.models.webhook_event_log import WebhookEventLog
+
+            existing = await db.execute(
+                select(WebhookEventLog).where(WebhookEventLog.event_id == event.id)
+            )
+            if existing.scalar_one_or_none():
+                logger.info(f"[Stripe] Webhook {event.id} already processed, skipping")
+                return {"status": "duplicate", "event_type": event.type}
 
         handlers = {
             "customer.subscription.created": self._handle_subscription_created,
@@ -815,40 +853,293 @@ class StripeClient:
 
         handler = handlers.get(event.type)
         if handler:
-            return await handler(event)
+            result = await handler(event, db)
+        else:
+            logger.debug(f"[Stripe] No handler for event type: {event.type}")
+            result = {"status": "ignored", "event_type": event.type}
 
-        logger.debug(f"[Stripe] No handler for event type: {event.type}")
-        return {"status": "ignored", "event_type": event.type}
+        # Log event for idempotency
+        if db is not None:
+            from src.models.webhook_event_log import WebhookEventLog
 
-    async def _handle_subscription_created(self, event: WebhookEvent) -> dict[str, Any]:
-        """Handle subscription.created event."""
-        # TODO: Update client record in database
-        logger.info(f"[Stripe] Subscription created: {event.data.get('id')}")
+            log_entry = WebhookEventLog(
+                provider="stripe",
+                event_type=event.type,
+                event_id=event.id,
+                payload=event.data,
+                status=result.get("status", "processed"),
+            )
+            db.add(log_entry)
+            await db.flush()
+
+        return result
+
+    async def _handle_subscription_created(
+        self,
+        event: WebhookEvent,
+        db: "AsyncSession | None" = None,
+    ) -> dict[str, Any]:
+        """customer.subscription.created — activate the client."""
+        from src.models.client import Client
+
+        subscription = event.data
+        customer_id = subscription.get("customer")
+        subscription_id = subscription.get("id")
+
+        if not db or not customer_id:
+            logger.info(f"[Stripe] Subscription created (no-db): {subscription_id}")
+            return {"status": "processed", "action": "subscription_created"}
+
+        result = await db.execute(
+            select(Client).where(Client.stripe_customer_id == customer_id)
+        )
+        client = result.scalar_one_or_none()
+        if not client:
+            logger.warning(f"[Stripe] No client found for Stripe customer {customer_id}")
+            return {"status": "skipped", "reason": "client_not_found"}
+
+        # Extract tier from price metadata
+        items = subscription.get("items", {}).get("data", [])
+        price_id = items[0]["price"]["id"] if items else None
+        tier = self._price_id_to_tier(price_id) if price_id else None
+
+        client.stripe_subscription_id = subscription_id
+        client.subscription_status = "active"
+        if tier:
+            client.tier = tier
+        client.subscription_started_at = datetime.now(UTC)
+
+        await db.flush()
+        await self._send_activation_email(client, db)
+
+        logger.info(f"[Stripe] Subscription created for client {client.id}, tier={tier}")
         return {"status": "processed", "action": "subscription_created"}
 
-    async def _handle_subscription_updated(self, event: WebhookEvent) -> dict[str, Any]:
-        """Handle subscription.updated event."""
-        # TODO: Update client subscription status
-        logger.info(f"[Stripe] Subscription updated: {event.data.get('id')}")
+    async def _handle_subscription_updated(
+        self,
+        event: WebhookEvent,
+        db: "AsyncSession | None" = None,
+    ) -> dict[str, Any]:
+        """customer.subscription.updated — tier change, pause, status change."""
+        from src.models.client import Client
+
+        subscription = event.data
+        customer_id = subscription.get("customer")
+
+        if not db or not customer_id:
+            logger.info(f"[Stripe] Subscription updated (no-db): {subscription.get('id')}")
+            return {"status": "processed", "action": "subscription_updated"}
+
+        result = await db.execute(
+            select(Client).where(Client.stripe_customer_id == customer_id)
+        )
+        client = result.scalar_one_or_none()
+        if not client:
+            return {"status": "skipped", "reason": "client_not_found"}
+
+        # Check for tier change
+        items = subscription.get("items", {}).get("data", [])
+        price_id = items[0]["price"]["id"] if items else None
+        if price_id:
+            new_tier = self._price_id_to_tier(price_id)
+            if new_tier and new_tier != client.tier:
+                client.tier = new_tier
+
+        # Check for status change
+        new_status = subscription.get("status", "active")
+        if new_status != str(client.subscription_status):
+            client.subscription_status = new_status
+
+        # Check for pause
+        if subscription.get("pause_collection"):
+            client.paused_at = datetime.now(UTC)
+
+        await db.flush()
+        logger.info(f"[Stripe] Subscription updated for client {client.id}")
         return {"status": "processed", "action": "subscription_updated"}
 
-    async def _handle_subscription_deleted(self, event: WebhookEvent) -> dict[str, Any]:
-        """Handle subscription.deleted event."""
-        # TODO: Mark client as churned
-        logger.info(f"[Stripe] Subscription deleted: {event.data.get('id')}")
+    async def _handle_subscription_deleted(
+        self,
+        event: WebhookEvent,
+        db: "AsyncSession | None" = None,
+    ) -> dict[str, Any]:
+        """customer.subscription.deleted — cancel but preserve data."""
+        from src.models.client import Client
+
+        subscription = event.data
+        customer_id = subscription.get("customer")
+
+        if not db or not customer_id:
+            logger.info(f"[Stripe] Subscription deleted (no-db): {subscription.get('id')}")
+            return {"status": "processed", "action": "subscription_deleted"}
+
+        result = await db.execute(
+            select(Client).where(Client.stripe_customer_id == customer_id)
+        )
+        client = result.scalar_one_or_none()
+        if not client:
+            return {"status": "skipped", "reason": "client_not_found"}
+
+        client.subscription_status = "cancelled"
+        client.cancelled_at = datetime.now(UTC)
+        # Do NOT delete client or data — 30 day retention
+
+        await db.flush()
+        logger.info(f"[Stripe] Subscription cancelled for client {client.id}")
         return {"status": "processed", "action": "subscription_deleted"}
 
-    async def _handle_invoice_paid(self, event: WebhookEvent) -> dict[str, Any]:
-        """Handle invoice.paid event."""
-        # TODO: Update payment record
-        logger.info(f"[Stripe] Invoice paid: {event.data.get('id')}")
+    async def _handle_invoice_paid(
+        self,
+        event: WebhookEvent,
+        db: "AsyncSession | None" = None,
+    ) -> dict[str, Any]:
+        """invoice.paid — record payment."""
+        from src.models.client import Client
+
+        invoice = event.data
+        customer_id = invoice.get("customer")
+
+        if not db or not customer_id:
+            logger.info(f"[Stripe] Invoice paid (no-db): {invoice.get('id')}")
+            return {"status": "processed", "action": "invoice_paid"}
+
+        result = await db.execute(
+            select(Client).where(Client.stripe_customer_id == customer_id)
+        )
+        client = result.scalar_one_or_none()
+        if not client:
+            return {"status": "skipped", "reason": "client_not_found"}
+
+        client.last_payment_at = datetime.now(UTC)
+        if invoice.get("next_payment_attempt"):
+            client.next_billing_at = datetime.fromtimestamp(
+                invoice["next_payment_attempt"], tz=UTC
+            )
+
+        await db.flush()
+        logger.info(f"[Stripe] Invoice paid for client {client.id}")
         return {"status": "processed", "action": "invoice_paid"}
 
-    async def _handle_payment_failed(self, event: WebhookEvent) -> dict[str, Any]:
-        """Handle invoice.payment_failed event."""
-        # TODO: Alert and retry handling
-        logger.warning(f"[Stripe] Payment failed: {event.data.get('id')}")
+    async def _handle_payment_failed(
+        self,
+        event: WebhookEvent,
+        db: "AsyncSession | None" = None,
+    ) -> dict[str, Any]:
+        """invoice.payment_failed — mark past_due."""
+        from src.models.client import Client
+
+        invoice = event.data
+        customer_id = invoice.get("customer")
+
+        if not db or not customer_id:
+            logger.warning(f"[Stripe] Payment failed (no-db): {invoice.get('id')}")
+            return {"status": "processed", "action": "payment_failed"}
+
+        result = await db.execute(
+            select(Client).where(Client.stripe_customer_id == customer_id)
+        )
+        client = result.scalar_one_or_none()
+        if not client:
+            return {"status": "skipped", "reason": "client_not_found"}
+
+        client.subscription_status = "past_due"
+
+        await db.flush()
+        logger.warning(f"[Stripe] Payment failed for client {client.id}")
         return {"status": "processed", "action": "payment_failed"}
+
+    # ============================================
+    # HELPERS
+    # ============================================
+
+    def _price_id_to_tier(self, price_id: str) -> str | None:
+        """Map a Stripe Price ID to an Agency OS tier name."""
+        s = get_settings()
+        mapping: dict[str, str] = {}
+        if s.stripe_price_spark:
+            mapping[s.stripe_price_spark] = "spark"
+        if s.stripe_price_ignition:
+            mapping[s.stripe_price_ignition] = "ignition"
+        if s.stripe_price_velocity:
+            mapping[s.stripe_price_velocity] = "velocity"
+        return mapping.get(price_id)
+
+    async def _send_activation_email(
+        self,
+        client: Any,
+        db: "AsyncSession | None" = None,
+    ) -> None:
+        """Send subscription activation email via Resend."""
+        s = get_settings()
+        resend_key = s.resend_api_key
+        if not resend_key:
+            logger.warning("[Stripe] No Resend API key — skipping activation email")
+            return
+
+        # Resolve recipient email via memberships → user
+        recipient_email: str | None = None
+        if db is not None and hasattr(client, "memberships") and client.memberships:
+            for membership in client.memberships:
+                if hasattr(membership, "user") and membership.user and membership.user.email:
+                    recipient_email = membership.user.email
+                    break
+
+        if not recipient_email:
+            logger.warning(f"[Stripe] No recipient email found for client {client.id}")
+            return
+
+        tier_names = {"spark": "Spark", "ignition": "Ignition", "velocity": "Velocity"}
+        tier_label = tier_names.get(str(client.tier), str(client.tier))
+
+        html = f"""
+        <div style="font-family: 'DM Sans', sans-serif; max-width: 600px; margin: 0 auto; background: #F7F3EE; padding: 48px 32px;">
+            <div style="font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 700; color: #0C0A08; margin-bottom: 24px;">
+                Your Agency OS cycle is ready to begin.
+            </div>
+            <p style="color: #2E2B26; font-size: 15px; line-height: 1.7;">
+                Your <strong>{tier_label}</strong> subscription is now active at the founding rate.
+                Here's what happens next:
+            </p>
+            <ol style="color: #2E2B26; font-size: 15px; line-height: 2; padding-left: 20px;">
+                <li>Connect your HubSpot CRM</li>
+                <li>Connect your LinkedIn</li>
+                <li>Confirm your agency services</li>
+                <li>Select your service area</li>
+                <li>Your first cycle starts automatically</li>
+            </ol>
+            <div style="margin-top: 32px;">
+                <a href="https://agencyxos.ai/onboarding/crm"
+                   style="display: inline-block; background: #D4956A; color: #0C0A08; padding: 14px 28px; text-decoration: none; font-weight: 500; font-size: 14px;">
+                    Start onboarding &rarr;
+                </a>
+            </div>
+            <p style="color: #7A756D; font-size: 13px; margin-top: 40px;">
+                Agency OS &middot; The first autonomous acquisition engine for Australian agencies
+            </p>
+        </div>
+        """
+
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as http:
+                resp = await http.post(
+                    "https://api.resend.com/emails",
+                    headers={"Authorization": f"Bearer {resend_key}"},
+                    json={
+                        "from": "Agency OS <hello@agencyxos.ai>",
+                        "to": [recipient_email],
+                        "subject": "Your Agency OS cycle is ready to begin",
+                        "html": html,
+                        "reply_to": "dave@agencyxos.ai",
+                    },
+                )
+                if resp.status_code == 200:
+                    logger.info(f"[Stripe] Activation email sent to client {client.id}")
+                else:
+                    logger.error(
+                        f"[Stripe] Activation email failed: {resp.status_code} {resp.text}"
+                    )
+        except Exception as e:
+            logger.error(f"[Stripe] Activation email exception: {e}")
 
     # ============================================
     # CHECKOUT SESSION (For hosted checkout)
@@ -910,6 +1201,256 @@ class StripeClient:
         except Exception as e:
             logger.error(f"[Stripe] Failed to create checkout session: {e}")
             raise StripeError(f"Failed to create checkout session: {e}")
+
+
+# ============================================
+# ACTIVATION EMAIL (Directive #314 — Task C)
+# ============================================
+
+_ACTIVATION_EMAIL_HTML = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>You&apos;re in &mdash; Agency OS</title>
+</head>
+<body style="margin:0;padding:0;background:#F7F3EE;font-family:'DM Sans',system-ui,sans-serif;font-weight:300;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#F7F3EE;padding:40px 0;">
+  <tr><td align="center">
+    <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
+
+      <!-- Header -->
+      <tr>
+        <td style="padding:0 0 32px 0;border-bottom:1px solid rgba(12,10,8,0.08);">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:13px;letter-spacing:0.18em;text-transform:uppercase;color:#0C0A08;">
+            Agency<span style="color:#D4956A;">OS</span>
+          </span>
+        </td>
+      </tr>
+
+      <!-- Badge -->
+      <tr>
+        <td style="padding:32px 0 0 0;">
+          <div style="display:inline-block;padding:8px 18px 8px 12px;background:rgba(212,149,106,0.1);border:1px solid rgba(212,149,106,0.28);">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#D4956A;font-weight:500;">
+              Deposit confirmed &middot; $500 AUD
+            </span>
+          </div>
+        </td>
+      </tr>
+
+      <!-- Headline -->
+      <tr>
+        <td style="padding:24px 0 16px 0;">
+          <h1 style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:36px;font-weight:700;line-height:1.1;letter-spacing:-0.02em;color:#0C0A08;">
+            You&rsquo;re in, {first_name}.
+          </h1>
+          <h1 style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:36px;font-style:italic;font-weight:400;line-height:1.1;letter-spacing:-0.02em;color:#D4956A;">
+            Founding #{position} of 20.
+          </h1>
+        </td>
+      </tr>
+
+      <!-- Subtext -->
+      <tr>
+        <td style="padding:0 0 32px 0;">
+          <p style="margin:0;font-size:16px;font-weight:300;color:#2E2B26;line-height:1.7;max-width:520px;">
+            Your position is reserved and your 50% lifetime discount is locked in.
+            Setup takes about 15 minutes and I&rsquo;ll walk you through every step.
+          </p>
+        </td>
+      </tr>
+
+      <!-- Receipt block -->
+      <tr>
+        <td style="background:#0C0A08;padding:32px 36px;position:relative;">
+          <div style="height:2px;background:#D4956A;margin:-32px -36px 28px -36px;"></div>
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:rgba(247,243,238,0.55);padding-bottom:4px;">
+                Your plan
+              </td>
+            </tr>
+            <tr>
+              <td style="font-family:Georgia,serif;font-size:20px;font-weight:700;color:#F7F3EE;padding-bottom:4px;">
+                Agency OS &mdash; {tier}
+              </td>
+            </tr>
+            <tr>
+              <td style="font-family:Georgia,serif;font-size:13px;font-style:italic;color:#D4956A;padding-bottom:24px;">
+                Founding rate &middot; Locked for life
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <table width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid rgba(255,255,255,0.08);">
+                  <tr style="border-bottom:1px solid rgba(255,255,255,0.08);">
+                    <td style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:rgba(247,243,238,0.52);padding:10px 0;">Monthly rate</td>
+                    <td align="right" style="font-size:13px;color:#F7F3EE;padding:10px 0;">${monthly_rate} AUD / mo</td>
+                  </tr>
+                  <tr style="border-bottom:1px solid rgba(255,255,255,0.08);">
+                    <td style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:rgba(247,243,238,0.52);padding:10px 0;">Standard rate</td>
+                    <td align="right" style="font-size:13px;color:#F7F3EE;opacity:0.5;text-decoration:line-through;padding:10px 0;">${standard_rate} AUD / mo</td>
+                  </tr>
+                  <tr>
+                    <td style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:rgba(247,243,238,0.52);padding:10px 0;">Your savings</td>
+                    <td align="right" style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#D4956A;font-weight:500;padding:10px 0;">50% &middot; Forever</td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+
+      <!-- Reassurance points -->
+      <tr>
+        <td style="padding:36px 0 8px 0;">
+          <p style="margin:0 0 8px 0;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:#7A756D;">
+            Four things to know
+          </p>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="padding:12px 0;border-bottom:1px solid rgba(12,10,8,0.08);">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#D4956A;margin-right:12px;">01</span>
+                <span style="font-size:14px;color:#2E2B26;font-weight:300;">Setup takes 15 minutes. I&rsquo;ll walk you through it.</span>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:12px 0;border-bottom:1px solid rgba(12,10,8,0.08);">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#D4956A;margin-right:12px;">02</span>
+                <span style="font-size:14px;color:#2E2B26;font-weight:300;">Every message is visible before anything sends.</span>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:12px 0;border-bottom:1px solid rgba(12,10,8,0.08);">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#D4956A;margin-right:12px;">03</span>
+                <span style="font-size:14px;color:#2E2B26;font-weight:300;">Pause Cycle is one click away at any time.</span>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:12px 0;">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#D4956A;margin-right:12px;">04</span>
+                <span style="font-size:14px;color:#2E2B26;font-weight:300;">Your $500 deposit is fully refundable before your first cycle goes live.</span>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+
+      <!-- CTA -->
+      <tr>
+        <td style="padding:36px 0;">
+          <a href="{onboarding_url}"
+             style="display:inline-block;padding:18px 40px;background:#0C0A08;color:#F7F3EE;text-decoration:none;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:500;letter-spacing:0.02em;">
+            Continue to your dashboard &rarr;
+          </a>
+        </td>
+      </tr>
+
+      <!-- Sign off -->
+      <tr>
+        <td style="padding:0 0 40px 0;border-top:1px solid rgba(12,10,8,0.08);padding-top:32px;">
+          <p style="margin:0 0 4px 0;font-size:14px;color:#0C0A08;font-weight:500;">Dave Stephens</p>
+          <p style="margin:0 0 4px 0;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.1em;color:#D4956A;">Founder, Agency OS &middot; Sydney</p>
+          <p style="margin:8px 0 0 0;font-size:13px;color:#7A756D;font-weight:300;line-height:1.6;">
+            Questions? Reply to this email directly &mdash; it comes straight to me.
+          </p>
+        </td>
+      </tr>
+
+      <!-- Footer -->
+      <tr>
+        <td style="border-top:1px solid rgba(12,10,8,0.08);padding-top:20px;">
+          <p style="margin:0;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.1em;color:#A8A298;line-height:1.8;">
+            Agency OS &middot; Sydney, Australia &middot; Founding cohort April 2026<br>
+            <a href="{unsubscribe_url}" style="color:#A8A298;text-decoration:underline;">Unsubscribe</a>
+            &nbsp;&middot;&nbsp;
+            <a href="mailto:dave@agencyxos.ai?subject=Refund request" style="color:#A8A298;text-decoration:underline;">Request refund</a>
+          </p>
+        </td>
+      </tr>
+
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>
+"""
+
+
+async def _send_activation_email(
+    email: str,
+    first_name: str,
+    position: int,
+    tier: str,
+    monthly_rate: int,
+    standard_rate: int,
+    frontend_url: str | None = None,
+) -> None:
+    """
+    Send founding member activation email via Resend.
+
+    Variant B (shorter) — Dave's voice, amber/cream design.
+    Called after checkout.session.completed confirms deposit.
+
+    Args:
+        email: Recipient email address
+        first_name: Recipient first name
+        position: Founding position number (e.g. 4)
+        tier: Tier name (e.g. "Ignition")
+        monthly_rate: Monthly rate in AUD (e.g. 1250)
+        standard_rate: Standard (full) rate in AUD (e.g. 2500)
+        frontend_url: Base URL for CTA link (defaults to settings.frontend_url)
+    """
+    if not settings.resend_api_key:
+        logger.warning("[ActivationEmail] Resend API key not configured — skipping")
+        return
+
+    base_url = (frontend_url or settings.frontend_url or "https://agency-os-liart.vercel.app").rstrip("/")
+    onboarding_url = f"{base_url}/onboarding/crm"
+    unsubscribe_url = f"{base_url}/unsubscribe"
+
+    html = _ACTIVATION_EMAIL_HTML.format(
+        first_name=first_name,
+        position=position,
+        tier=tier,
+        monthly_rate=f"{monthly_rate:,}",
+        standard_rate=f"{standard_rate:,}",
+        onboarding_url=onboarding_url,
+        unsubscribe_url=unsubscribe_url,
+    )
+
+    subject = f"You're in — founding #{position} of 20"
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                "https://api.resend.com/emails",
+                headers={
+                    "Authorization": f"Bearer {settings.resend_api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "from": "Dave Stephens <dave@agencyxos.ai>",
+                    "to": [email],
+                    "subject": subject,
+                    "html": html,
+                },
+            )
+            if response.status_code in (200, 201):
+                logger.info(f"[ActivationEmail] Sent to {email} (position #{position})")
+            else:
+                logger.error(
+                    f"[ActivationEmail] Resend error {response.status_code}: {response.text}"
+                )
+    except Exception as exc:
+        logger.error(f"[ActivationEmail] Failed to send to {email}: {exc}")
 
 
 # ============================================

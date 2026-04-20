@@ -1,7 +1,7 @@
 # Agency OS Manual
 
-Last updated: 2026-04-03 UTC
-Directive #306: Marketing Vulnerability Report (PR #269)
+Last updated: 2026-04-15 UTC
+Directive D1.8.3: Governance synthesis + 3-store backfill (PR #329)
 Next scheduled update: Next architecture change or milestone
 
 > **Primary store.** This file is the CEO SSOT. Google Doc is an auto-generated mirror.
@@ -23,10 +23,48 @@ Revenue model for BU: API subscriptions, Salesforce/HubSpot marketplace, bulk an
 
 ## SECTION 2 — CURRENT STATE
 
-**Last directive:** #301 (SMTP email verifier — port 25 blocked on all managed cloud)
-**Next directive:** #302 (this Manual rewrite)
-**Test baseline:** 1289 passed, 0 failed, 28 skipped
-**Last merged PR:** #264 (14 #300-FIX issues)
+**Last directive:** D2 (Pipeline F v2.1 validation rerun, n=20)
+**Pipeline F v2.1 status:** Validated with caveat — discovery filter tuning required before customer cohorts
+**D2 result:** GREEN-on-clean (54% conversion, $0.37/card) / YELLOW-on-headline (35%, $0.42/card) / RED-discovery (30% enterprise contamination)
+**Next directive:** D2.1 (discovery filter tuning)
+**Test baseline:** 1505 passed, 1 failed (pre-existing campaign_flow), 28 skipped
+**Last merged PR:** #330 (D1.9 Manual housekeeping)
+
+### EVO Track (Autonomous Loop — all complete)
+
+| Stage | Title | Status |
+|-------|-------|--------|
+| EVO-001 | Foundation | Complete |
+| EVO-002 | Foundation | Complete |
+| EVO-003 | Prefect→Elliottbot callback bridge | Complete |
+| EVO-004 | Dynamic Prefect flow generator | Complete |
+| EVO-005 | Task queue consumer + API guardrails | Complete |
+| EVO-006 | Live fire test + MCP servers | Complete |
+| EVO-007 | Execution path fix (Railway orchestrates, VPS executes) | Complete |
+| EVO-008 | Claude Code migration — OpenClaw retired 2026-04-07 | Complete |
+
+Full autonomous loop verified: Prefect → evo_task_queue → VPS consumer → result written → Telegram alert. Loop latency: 1212s.
+
+### Infrastructure State (as of 2026-04-15)
+
+- **Harness:** Claude Code (EVO-008). OpenClaw retired permanently 2026-04-07.
+- **MCP status:** 12/13 custom MCP servers active. keiramail (work email) + keiradrive (Google Drive) confirmed loaded.
+- **Telegram bot:** Live. All CTO communication via Telegram (chat_id 7267788033). Terminal output not monitored.
+- **crm-sync-flow:** Killed permanently 2026-04-08 (schema mismatch, flow removed from Prefect).
+- **Prefect pool:** agency-os-pool, concurrency 10.
+- **3-store save:** Automated via scripts/three_store_save.py. CI enforcement: .github/workflows/directive-save-check.yml. Session-end check: scripts/session_end_check.py.
+
+### Governance Updates (2026-04-15)
+
+- LAW XII (Skills-First Integration) restored
+- LAW XIII (Skill Currency Enforcement) restored
+- LAW XV-D: Step 0 RESTATE HARD BLOCK added to both CLAUDE.md files
+- LAW XV: Three-Store Completion now mechanized via three_store_save.py (D1.8)
+- LAW XVI: Clean Working Tree — report dirty tree before new directive work
+- Session startup HARD BLOCK: Read Drive Manual via keiradrive_read_manual before any directive
+- File-based memory (MEMORY.md, HANDOFF.md) deprecated — Supabase elliot_internal.memories is SOLE persistent memory
+- 7 governance rules established (see Section 17): verify-before-claim, cost-authorization, pre-directive check, optimistic completion, audit-fix-reaudit cycle, three-store mechanism, letter-prefix convention
+- Schema correction: ceo_memory and cis_directive_metrics are in PUBLIC schema (not elliot_internal)
 
 ### Pipeline Status
 
@@ -46,22 +84,11 @@ Integration test #300 passed all 11 stages. 730 AU domains (Dental, Construction
 | 10 LinkedIn DM Profile | BLOCKED | — | BD batch takes 30+ min — SLA issue |
 | 11 Haiku Evidence + Draft Emails | 260 | 260 | $0.42 Haiku, full prospect cards |
 
-**Total cost: ~$26 USD. Cost per qualified DM card: ~$0.10**
-
-Post-test quality fixes applied (#300-FIX-1 through #300-FIX-8, PR #264 + commits):
-- AU country filter wired
-- httpx persistent client, contact registry at scrape time
-- DM company profile filter, name-match gate on email waterfall
-- Email pattern name-matching (_parse_name rebuilt)
-- Placeholder email filter (card assembly + email waterfall Layer 0)
-- Business name chain: lico desc → dm_title "at X" → lidm headline → HTML title tag → domain stem
-- Location chain: AU-filtered lidm.location → lico desc → comp signals → HTML title
-- Draft emails address DM by first name, reference business + location
-- BD snapshot sd_mnfd94hgsyllcqjlx: 257 LinkedIn DM profiles downloaded and merged
+**Total cost: ~$26 USD (~$40 AUD). Cost per qualified DM card: ~$0.10 USD (~$0.155 AUD)**
 
 ### Build Phase
 
-Sprints 0–6 complete (#279–#301). All core pipeline modules built:
+Sprints 0–6 complete (#279–#306). All core pipeline modules built:
 - Discovery engine (DFS domain_metrics_by_categories, multi-category rotation)
 - Free intelligence sweep (httpx scrape, DNS/MX, ABN registry)
 - Paid enrichment (DFS GMB, DFS SERP, Google Ads)
@@ -73,6 +100,7 @@ Sprints 0–6 complete (#279–#301). All core pipeline modules built:
 - Intelligence layer (5-stage Sonnet/Haiku, prompt caching)
 - Stage-parallel orchestrator (9 semaphore-controlled concurrent stages)
 - Haiku evidence refinement + draft email generation (Stage 11)
+- Marketing Vulnerability Report (Stage 7c — Directive #306)
 
 ### Current Phase
 
@@ -99,17 +127,65 @@ Sprints 0–6 complete (#279–#301). All core pipeline modules built:
 
 ## SECTION 3 — PIPELINE ARCHITECTURE (v7, proven Apr 2026)
 
+### Team Roster (Multi-Instance Operation, LAW XVII)
+
+| Callsign | Workspace | Branch | Telegram Bot | Service | Created |
+|----------|-----------|--------|--------------|---------|---------|
+| **ELLIOT** | `/home/elliotbot/clawd/Agency_OS/` | main + feature branches | existing | `telegram-chat-bot.service` (active) | 2026-04 (origin) |
+| **AIDEN** | `/home/elliotbot/clawd/Agency_OS-aiden/` | `aiden/scaffold` (does not merge to main) | `@Aaaaidenbot` | `aiden-telegram.service` (registered, awaiting Dave enable) | 2026-04-16 |
+
+Each callsign reads its own `./IDENTITY.md` at session start. Workspace isolation via git worktree + per-worktree CLAUDE.md + `--setting-sources=project`.
+
 Core principle: Agency sells services. Prospects have problems. Industry is irrelevant to the match. Geography is a delivery constraint. Signals are the discovery engine.
 
 ### DISCOVERY
 
 **Single source:** DFS `domain_metrics_by_categories`
-- $0.10 per 100 domains ($0.001 amortised per domain)
-- On-demand batching: 100/batch, sequential per category
+- $0.10 per 100 domains ($0.012 amortised per domain after AU TLD filtering)
+- Categories run in parallel via `asyncio.gather`, DFS calls within category sequential
+- `GLOBAL_SEM_DFS=28` ceiling (peak observed: 10 for 10 categories)
+- Sampling: AU-TLD + ETV window filter FIRST, then take middle 10 of AU SMB pool (~30% position)
 - 22,592 AU dental domains confirmed, 31,445 AU plumbing — pool never exhausts
 - Monthly rotation across categories — refill loop at threshold=20, stops on target_reached
 - `claimed_by` exclusion applied at discovery — never returns already-claimed domains
 - 15 AU categories active across 14 verticals (dental, trades, legal, construction, hospitality, automotive, real estate, accounting, medical, fitness, hair & beauty, veterinary, HVAC, marketing)
+- **RATIFIED 2026-04-13:** 100 domains across 10 categories in 41.2s, $1.20. Ignition (60 cats) projected 4.1 min.
+
+### Category ETV Windows (Calibrated #328.1, Apr 11 2026)
+
+Per-category organic traffic value windows measured empirically across 21 DFS categories. Replaces the prior universal 100-5000 window which was only correct for ~2/21 categories. Canonical source: `src/config/category_etv_windows.py`. CI guard: `tests/ci_guards/test_no_hardcoded_etv.py` rejects hardcoded ranges.
+
+| Code | Category | ETV Min | ETV Max | $/KW | Sample |
+|------|----------|---------|---------|------|--------|
+| 10020 | Dining & Nightlife | 7,605 | 1,503,904 | 21.58 | 897 |
+| 10123 | Fitness | 1,171 | 262,498 | 5.50 | 1,434 |
+| 10163 | Legal | 1,128 | 153,118 | 3.25 | 1,208 |
+| 10193 | Vehicle Repair & Maintenance | 864 | 102,580 | 4.64 | 1,493 |
+| 10282 | Building Construction & Maintenance | 6,578 | 641,326 | 6.83 | 1,478 |
+| 10333 | Hair Salons & Styling Services | 1,645 | 187,963 | 7.83 | 1,043 |
+| 10418 | Home Heating & Cooling | 32 | 19,484 | 1.42 | 743 |
+| 10514 | Dentists & Dental Services | 813 | 39,684 | 6.21 | 1,449 |
+| 10520 | Hospitals & Health Clinics | 886 | 72,618 | 8.46 | 1,323 |
+| 10531 | Real Estate Investments | 140 | 13,454 | 2.08 | 372 |
+| 11093 | Accounting & Auditing | 365 | 176,701 | 2.35 | 1,425 |
+| 11138 | Building Painting Services | 116 | 26,609 | 2.23 | 812 |
+| 11147 | HVAC Service & Repair | 59 | 25,433 | 2.79 | 898 |
+| 11284 | HVAC & Climate Control | 305 | 65,747 | 3.23 | 1,490 |
+| 11295 | Electrical Wiring | 158 | 19,777 | 2.58 | 808 |
+| 11979 | Veterinary | 379 | 68,772 | 5.05 | 1,457 |
+| 12049 | Fitness Instruction Training | 4 | 10,638 | 0.88 | 263 |
+| 12391 | Bookkeeping | 964 | 130,487 | 2.75 | 217 |
+| 12975 | Restaurant Reviews & Listings | 765 | 144,863 | 17.36 | 973 |
+| 13462 | Plumbing | 826 | 175,251 | 4.10 | 1,460 |
+| 13686 | Attorneys & Law Firms | 426 | 67,159 | 2.68 | 1,144 |
+
+Total: 21 categories, 22,387 calibration samples. Methodology: 20 DFS Labs pages/category (100 domains/page), junk floor applied, SMB band = p20-p95, window = (p20*0.8, p95*5.5). Universal 100-5000 was only approximately correct for Real Estate Investments and Electrical Wiring.
+
+PR: #295 (merged Apr 11 2026). Directive: #328.1.
+
+### Per-Stage Parallelism (Canonical Config)
+
+Canonical source: `src/config/stage_parallelism.py`. Helpers: `get_parallelism(stage_key)` returns concurrency int, `get_stage_config(stage_key)` returns full dict. Same pattern as `category_etv_windows.py`. Provider ceilings from Directive #337 concurrency audit. Created 2026-04-13.
 
 ### SCRAPING
 
@@ -280,6 +356,9 @@ Month 1 all-in (pipeline + infra + outreach): **~$464 AUD per customer**
 
 ---
 
+
+### Directive BU-DISCOVERY-RULE (PR #0, 2026-04-16)
+BU Discovery Rule (ratified 2026-04-16): Once a domain is in business_universe, it is NEVER re-discovered via Stage 1. Stage 1 always excludes all BU entries and returns only virgin domains. Updates to existing BU rows happen via a separate refresh flow (re-runs Stages 4/6/9 in place). No exceptions for temporal staleness at discovery level. Customer-level ownership via claimed_by prevents cross-customer duplicates. Strategic vision post-capital: always-on inventory pipeline — discovers continuously in background, customer arrives and claims from pre-built BU inventory (instant delivery, no processing wait). BU moat compounds monotonically. Eventually BU becomes sellable product per Manual vision.
 ## SECTION 4 — TIERS + PRICING (ratified Mar 26 2026)
 
 | Tier | Price AUD/mo | Records/mo | Founding (50% off) |
@@ -601,6 +680,19 @@ v6 era (#271–#277): Layer 2 (discovery), Layer 3 (bulk filter), signal config 
 | Testing | #305 | Card quality: business name waterfall, location waterfall (suburb+state+display), placeholder email/phone filter. 13 new tests. | COMPLETE — PR #268 merged |
 | Testing | #306 | Marketing Vulnerability Report: generate_vulnerability_report() Sonnet Stage 7c, 6 sections, grades + roadmap, wired in both run() and run_parallel(). vulnerability_report on ProspectCard. 8 tests. | PR #269 open |
 
+| Calibration | #328.1 | Canonical category ETV windows: 21 categories calibrated empirically (22,387 samples). CI guard added. Universal 100-5000 retired. | COMPLETE — PR #295 merged Apr 11 |
+| Phase 0 | F2.1-F7 | Foundation sprint: RLS, dm_messages, vulnerability_report column, evo_flow_callbacks, agent_comms | COMPLETE — PRs #300-#302 merged |
+| Phase 1 | P1/P1.5 | Stage 10 message gen (Sonnet email + Haiku others) + Stage 9 VR enrichment | COMPLETE — PRs #304, #305 merged |
+| Phase 1 | P1.6 | BDM dedup + blocklist enforcement + name hygiene | COMPLETE — PR #307 merged |
+| Phase 1 | P1.7 | NULL-URL BDM cleanup + write-path guards + AU TLD enforcement | COMPLETE — PR #309 |
+| Phase 1 | HOTFIX-01 | Decimal serialization + pgbouncer pool compatibility | COMPLETE — PR #306 merged |
+| Phase 1 | P4 | Prefect flow for automated Stage 9→10 pipeline | COMPLETE — PR #308 merged |
+| Phase 1 | P5 | E2E automated live-fire: 25 BDMs, 97/100 dm_messages | COMPLETE — $1.56 USD |
+| Process | M-PROCESS-01 | Directive contract discipline ratified — see AGENTS.md. CTO must STOP and report when directive constraint is infeasible, not autonomously alter methodology. | RATIFIED 2026-04-13 |
+| Process | STYLE | Directive style: CEO specifies outcome + constraints + gates; CTO engineers fastest compliant path. | RATIFIED 2026-04-13 |
+| Stage 1 | S1 | Stage 1 ratified. 41.2s for 100 domains across 10 categories via parallel asyncio.gather. Middle-of-AU-SMB-pool sampling. Baseline locked for Stage 2 input. | RATIFIED 2026-04-13 |
+| Config | stage_2_abn_gst | stage_2_abn_gst added to stage_parallelism.py (50 concurrent, local JOIN). Audit flagged legacy key stage_2_scrape may be obsolete — preserved pending Pipeline E full ratification. | 2026-04-13 |
+
 ### Post-Test Build Queue (next priorities after provider resolution)
 
 1. Expanded signals: GMB deep review scrape, Sonnet prompt expansion for comprehension
@@ -651,6 +743,111 @@ v6 era (#271–#277): Layer 2 (discovery), Layer 3 (bulk filter), signal config 
 
 ---
 
+
+### Directive 3002 (PR #277, 2026-04-15)
+TIERS-002: Code-Manual tier alignment. 30 files. Spark added, Ignition/Velocity fixed, Dominance removed. PR #277 merged.
+
+### Directive 3003 (PR #279, 2026-04-15)
+DASH-002: 17 fixes + Cycles model + Industries filter + Insights rebuild + funnel extension. PR #279.
+
+### Directive 3004 (PR #281, 2026-04-15)
+DASH-004: Ship-ready dashboard. 13 items, 50 prospects, briefing page, three-state pipeline, pagination. PR #281.
+
+### Directive 3005 (PR #282, 2026-04-15)
+DASH-005: Marketing site live on Vercel. Landing + demo. DNS handoff pending. PR #282.
+
+### Directive 309 (PR #283, 2026-04-15)
+Onboarding rebuild. 4 pages, auth fixed, OAuth redirect fixed, deprecated deleted, schema migration, LinkedIn warmup. PR #283.
+
+### Directive 310 (PR #284, 2026-04-15)
+Billing lifecycle wired. Stripe consolidated, 5 webhook handlers, activation email. Blocked on Stripe keys. PR #284.
+
+### Directive 311 (PR #285, 2026-04-15)
+Outreach scheduler. 4 tables, 5 services, firing engine. 801 LOC. Dry-run default. PR #285.
+
+### Directive 312 (PR #286, 2026-04-15)
+Domain pool. 3 tables, naming generator, pool manager, replenishment flow. 842 LOC. Dry-run. PR #286.
+
+### Directive 314 (PR #288, 2026-04-15)
+Customer-facing flow. Welcome page, activation email, 4-state dashboard, Maya tour, reveal animation, Pause Cycle. 2393 LOC. PR #288.
+
+### Directive 315 (PR #289, 2026-04-15)
+crm-sync-flow PERMANENTLY DELETED. 883 lines removed. Deployment deleted. CI guard added. PR #289.
+
+### Directive 317 (PR #317, 2026-04-15)
+ContactOut validated (74% email match, 100% AU mobile). Waterfall reordered. 5 sub-directives. 5 pilot runs. 3.88 AUD total spend.
+
+### Directive 3001 (PR #320, 2026-04-15)
+V3: Stage 9 build + Stage 10 live-fire. 25/25 VRs, 100/100 dm_messages. Cost 1.574 USD (2.440 AUD). verification_first_pass=false due to Decimal serialization + pgbouncer bugs.
+
+### Directive 4001 (PR #312, 2026-04-15)
+M-S1-PREP: Category ETV windows surfaced. Manual Section 3 backfilled with 21-category table. Section 13 build log updated.
+
+### Directive 5001 (PR #312, 2026-04-15)
+S1: Stage 1 Discovery. 100/100 domains (10 cats x 10). Cost 1.10 USD. 137.9s wall.
+
+### Directive A (PR #324, 2026-04-15)
+Foundation: tests fixed, naming standardised (F3a/F3b to Stage naming), blocklist +62 domains (total 274), parallel.py utility (4 tests). pytest: 1498 passed.
+
+### Directive B (PR #325, 2026-04-15)
+Module fixes: Facebook SERP query added to Stage 2, scoring separation (Stage 7 no longer scores), structured vulnerability report format. pytest: 1498 passed.
+
+### Directive C (PR #326, 2026-04-15)
+4 missing modules built: Stage 6 ENRICH (historical_rank_overview, 0.106/domain), Stage 9 SOCIAL (BD LinkedIn DM+company posts), Stage 10 VR+MSG (Gemini structured VR + personalised outreach), Stage 11 CARD (binary lead_pool_eligible). pytest: 1498 passed.
+
+### Directive D1 (PR #327, 2026-04-15)
+Cohort runner (cohort_runner.py) + 7 bug fixes (D1.1): budget hard cap, cost tracking constants, stage naming, blocklist +39 (total 313), Gemini error capture, BD env key fix, parallel cost tests. 100-domain smoke: 28% conversion, 17.7 min wall. pytest: 1498+ passed.
+
+### Directive D1.3 (PR #328, 2026-04-15)
+Audit fix sweep: 35 findings from D1.2 seam audit addressed. preflight_check.py created. Cost constant Stage 4 0.073 to 0.078. ABN signal fix (C1), Stage 9 verified URL (H2), data contract fixes (M1-M3, L1-L4). +6 new tests. pytest: 1504 passed.
+
+### Directive D1.8 (PR #329, 2026-04-15)
+3-store save mechanism fix: (1) CLAUDE.md schema refs corrected (public.ceo_memory/cis_directive_metrics), (2) three_store_save.py automation script + skill, (3) CI directive-save-check.yml + session_end_check.py enforcement, (4) 19 directives backfilled from git history. Save mechanism now: one script, one call, 4 stores written.
+
+### Directive ECON-F21-correction (PR #329, 2026-04-15)
+Pipeline F v2.1 Economics Correction (n=100 actuals). Original projection: 0.25 USD/card (n=9, 80% conversion assumed). Actual: 0.53 USD/card (n=100, 28% conversion). Post-fix target: 0.23-0.36 USD/card at 60-65% conversion. Bottlenecks: Gemini 18% failure rate, DM identification 82%, wall-clock 17.7 min. Source: 07_cost_reports.md
+
+### Directive D1.1 (PR #327, 2026-04-15)
+7 bug fixes from 100-domain smoke test: budget hard cap (_check_budget helper, pre-run estimate, hard cap after stages 2/3/4/6/7/8/9/10), Stage 9 fixed cost $0.027 added, stage naming drop_reason renamed, blocklist +3 categories (313 domains), Gemini retry structured error_detail, BD env key fix, 3 parallel cost tests. 28% conversion, 17.7 min wall. [source: 01_dave_directives.md L6006; git 836745e0; PR #327]
+
+### Directive D1.2 (PR #0, 2026-04-15)
+Read-only seam audit of all 11 Pipeline F v2.1 stage modules + cohort runner. 7 reports in research/d1_2_audit/ (2648 lines). 35 findings: 1 critical, 4 high, 7 medium, 8 low, 15 info. Top findings: ABN signal zeroed, Stage 9 unverified LinkedIn URL, Stage 4 cost constant drift. No code changes. [source: 01_dave_directives.md L6010; git d075ea40; 05_ceo_ratifications.md L9611]
+
+### Directive D1.4 (PR #0, 2026-04-15)
+Post-fix re-audit verifying all 35 D1.2 findings resolved by D1.3. 7 re-audit reports in research/d1_4_reaudit/ (1125 lines). Result: 35/35 RESOLVED. Also surfaced 4 new LOW/INFO findings (N1-N4), triggering D1.5. Stage 4 $0.078 and Stage 8a $0.008 cost fixes confirmed accurate. [source: 01_dave_directives.md L6014; git 56bfc3fa; 05_ceo_ratifications.md L9614]
+
+### Directive D1.5 (PR #328, 2026-04-15)
+Fixed 4 LOW/INFO re-audit findings (N1-N4) before PR #328 merge. N2: cohort_runner exports STAGE cost constants; test imports + asserts them. N3: funnel_classifier.py stage10_status fallback comment added. N4: Stage 8 reads verify_fills._cost dynamically, fallback constant. N1: prospect_scorer NOTE added. Merged as beaa0ba5. [source: 01_dave_directives.md L6015; git 6f31d4b2; 05_ceo_ratifications.md L9448]
+
+### Directive D1.6 (PR #0, 2026-04-15)
+Session-end protocol execution: Supabase SESSION_HANDOFF entry written, docs/daily_log.md created and committed (git 3e67854c, 39 lines). 3-store save claimed complete but D1.7 investigation later revealed ceo_memory was stale (single 2026-02-03 entry) — partial save failure suspected. [source: 01_dave_directives.md L6017; git 3e67854c; 05_ceo_ratifications.md L9766]
+
+### Directive D1.7 (PR #0, 2026-04-15)
+Read-only forensic audit of 3-store save mechanism for PRs #324-#328. Findings: ceo_memory had single entry from 2026-02-03 (stale 71 days), Manual last updated 2026-04-08 (stale 7 days). ~15 directives missing from all 3 stores. Output fed directly into D1.8 backfill scope. No code changes. [source: 02_elliottbot_restates.md L1763; 03_pr_creations.md L70-74]
+
+### Directive D1.8.3 (PR #330, 2026-04-15)
+Synthesis + write in one pass. 7 governance rules written to Manual S17 + ceo_memory. 6 missing directives (D1.1-D1.7) backfilled to all 3 stores. Economics correction (0.25 projected vs 0.53 actual USD/card) written. 10 optimistic-completion catches documented. Total: 15 three_store_save.py invocations, all succeeded. Source: 1406 extraction entries from D1.8.2.
+
+### Directive D2 (PR #0, 2026-04-15)
+20-domain validation rerun. Headline 35% conversion ($0.42/card USD). Pipeline mechanically validated — 0 Gemini failures, 100% DM identification on cards. On 13-domain SMB-clean cohort (excluding 6 enterprise + 1 directory drops at Stage 3): 54% conversion, ~$0.37/card USD adjusted. Pipeline F v2.1 PASSES validation. Contamination upstream: DFS domain_metrics_by_categories returns head-of-distribution domains by default. Triggers D2.1 discovery filter tuning.
+
+### Directive D2.1A (PR #331, 2026-04-15)
+Blocklist expansion 313 to 1515 entries. 13 new categories (banks, retail, telco, education, hospitals, franchises, transport, real estate, allied health, charities, childcare, gambling, sporting). All 6 D2 enterprise drops now caught at Stage 1 gate. is_blocked() logic unchanged. pytest 1505/1/28.
+
+### Directive D2.1B (PR #332, 2026-04-15)
+Unified contact waterfall fix. Swapped cohort_runner Stage 8 from legacy contact_waterfall.py (/v1/people/linkedin, 0 email credits) to Directive #317 modules: contactout_enricher.py (/v1/people/enrich, 2765 search credits) + email_waterfall.py + mobile_waterfall.py. One ContactOut call captures email + mobile + full profile. No field discarded. Stage 10 gate updated. pytest 1505/1/28.
+
+### Directive D2.2-PREP (PR #333, 2026-04-15)
+Validation run enablement. --domains CLI flag (bypass Stage 1, replay specific domains). 4 new verticals: recruitment (12371), itmsp (12202), webdev (11493), coaching (11098). ETV windows calibrated. Tier tracking in summary.json (GOV-8 verification). GOV-9 Two-Layer Directive Scrutiny ratified.
+
+### Directive D2.2-PREP-CLOSE (PR #333, 2026-04-16)
+Resolved all open items. --dry-run flag (DRY_RUN env var in 7 clients, zero spend). webdev offset raised 50->80 (55% platform contamination). itmsp confirmed clean at offset=50 (65%). Pre-validation evidence documented.
+
+### Directive CASCADE-DESIGN-V2 (PR #338, 2026-04-16)
+ARCHITECTURE.md v2 ratified. Fork concurrency fix (per-track sub-dict isolation), state-in-queues, Gemini multi-project pool (sem=30), per-stage timeouts + per-provider circuit breakers, tenant context on domain_state, GOV-8 extended to raw responses on success path, Q4 pause-on-cancel override, build 9 days. PR #338.
+
+### Directive D2.2-RUN (PR #0, 2026-04-16)
+Pipeline F v2.1 validation rerun complete 2026-04-16. 17 domains (5 replay + 12 fresh), 7 cards shipped (41% overall, 83% post-Stage-3 SMB-clean). Cost 2.52 USD / 0.36 per card. Wall 13m 40s combined. REPLAY (5 D2-lost domains): 2/5 resolved (was 0/5 in D2), mobile 5/5, email 2/5 via L0 Gemini extract. FRESH (12 discovered): 5 cards (5/5 Hunter email, 4/5 ContactOut mobile). Enterprise filter caught 5/6 drops correctly. Provider coverage findings: ContactOut email credits = 0 (emails BLOCKED by credit type, not wiring), ContactOut phone credits work (returns mobile reliably via /v1/people/enrich). Leadmagic 0/4 email on dentals (has_mx=false — domains have no email infrastructure). Bright Data returns profile data only, never contact info. Stage 11 drops (4 domains): all had verified DM + mobile + score + signals but NO email, dropped at gate. Classification: YELLOW overall.
 ## SECTION 14 — COMPETITIVE INTELLIGENCE
 
 Direct competitors (signal-based AI BDR category):
@@ -759,6 +956,77 @@ Dave's lane:
 - Founder credibility decisions
 
 ---
+
+
+### Directive GOV-1-verify-before-claim (PR #329, 2026-04-15)
+Governance Rule 1: Verify-Before-Claim. Done must only be reported after ALL verification commands have been run and verbatim output included. CEO gate exists to CONFIRM done, not DISCOVER incomplete work. Emerged 2026-04-15 when PR #327 pre-merge check caught two misses Elliottbot had claimed done. Sources: 06_governance_language.md L12432, L13307-13309; 09_ceo_verification_asks.md L10555.
+
+### Directive GOV-2-cost-authorization (PR #329, 2026-04-15)
+Governance Rule 2: Cost-Authorization. If mid-run API spend exceeds 5x the ratified pre-run estimate, kill the run and report immediately. CTO does not authorise spend above the ratified amount. Emerged 2026-04-15 after 100-domain run reported $155 USD vs ratified ~$1.60 USD estimate. Sources: 06_governance_language.md L12423-12424, L13219-13224; 09_ceo_verification_asks.md L10556.
+
+### Directive BUGPAT-2026-04-15 (PR #329, 2026-04-15)
+Optimistic Completion Catches — Session 2026-04-15. 10 catches documented across 4 structural variants: (1) Action!=Result — saves claimed but never landed, (2) Partial!=Complete — 17.5% verified vs 67.5% found conflation, (3) Stated!=Measured — $155 reported vs $15 actual cost, (4) Process!=Outcome — Drive Manual always stale due to hardcoded skeleton in write_manual.py. Prevention: 7 governance rules established (verify-before-claim, cost-auth, pre-directive check, optimistic-completion naming, audit-fix-reaudit cycle, three-store mechanism, letter-prefix convention). Source: 08_bug_discoveries.md, 09_ceo_verification_asks.md
+
+### Directive GOV-3a-cto-ready-state (PR #329, 2026-04-15)
+Governance Rule 3a: CTO Ready-State Check. Before Task A of any directive, Elliottbot must paste a structured 8-item ready-state confirmation to Telegram: (1) pwd, (2) service status, (3) git branch + log, (4) ceo_memory handoff content verbatim, (5) .env key presence, (6) MCP server confirmation, (7) ARCHITECTURE.md head, (8) clean working tree (git status). This is a CTO self-check — Elliottbot verifies its own environment before starting work. Sources: 06_governance_language.md L13339-13351.
+
+### Directive GOV-3b-ceo-pre-directive-gate (PR #329, 2026-04-15)
+Governance Rule 3b: CEO Pre-Directive Gate. After Step 0 RESTATE and before any execution, CEO reviews the restatement and confirms "go." CEO may revise scope, add constraints, or reject. This is a CEO decision gate — Dave confirms the directive is correctly understood before work begins. Distinct from GOV-3a (CTO self-check) which verifies environment readiness. Sources: 06_governance_language.md L13339-13351.
+
+### Directive GOV-4-optimistic-completion-pattern (PR #329, 2026-04-15)
+Governance Rule 4: Optimistic Completion Pattern (named failure mode). Elliottbot has a recognised failure mode of reporting tasks complete before running verification, treating the CEO review gate as a place to finish work rather than confirm it. Named and caught 3x during Apr 8-15 session: Directive A naming, D1.1 pre-merge, D1.3 verification. Sources: 06_governance_language.md L3749, L13025, L13633; 08_bug_discoveries.md L5026.
+
+### Directive GOV-5-audit-fix-reaudit-cycle (PR #329, 2026-04-15)
+Governance Rule 5: Audit-Fix-Re-Audit-Fix-Merge Cycle. Before merging new code, run a read-only audit to find all seam bugs, fix them in a separate directive, then re-audit to verify no regressions. Module isolation tests alone are insufficient for integration bugs. Emerged from D1.2/D1.3/D1.4/D1.5 cycle that caught 35 seam bugs all isolation tests missed. Sources: 06_governance_language.md L12441-12442; 08_bug_discoveries.md L4922-4932.
+
+### Directive GOV-6-three-store-completion-mechanized (PR #329, 2026-04-15)
+Governance Rule 6: Three-Store Completion (Mechanized via three_store_save.py). A directive is not complete until docs/MANUAL.md, public.ceo_memory, and public.cis_directive_metrics are all written, enforced via three_store_save.py that fails loud on partial success. D1.7 forensic audit found 16 directives with save_completed=true but 0/3 stores written. D1.8 fixed with script + CI. Sources: 06_governance_language.md L13632-13764.
+
+### Directive GOV-7-letter-prefix-directive-convention (PR #329, 2026-04-15)
+Governance Rule 7: Letter-Prefix Directive Convention. Foundation-sequencing work uses letter-prefix naming (A, B, C, D1.x) establishing an ordered build sequence where each is a prerequisite for the next. Emerged 2026-04-15 with Directive A referencing B/C/D as subsequent stages. D1.x sub-directives emerged naturally from D1 cohort run surfacing bugs. Sources: 06_governance_language.md L12361, L12370, L12388, L12405, L13782.
+
+### Directive GOV-8-maximum-extraction (PR #332, 2026-04-15)
+GOV-8: Maximum Extraction Per Call. Every API call captures all fields. Write to BU regardless of card eligibility. Never re-fetch. Emerged from D2.1B: Stage 3 Gemini already reads website but discarded data. Fixed: Stage 3 now extracts dm_email, dm_phone, office_address, services_offered. Website HTML layer removed from waterfall. CEO ratified 2026-04-15.
+
+### Directive GOV-9-two-layer-directive-scrutiny (PR #333, 2026-04-15)
+GOV-9: Two-Layer Directive Scrutiny. Every directive passes two scrutiny layers before Step 0. Layer 1 (CEO): query ceo_memory for ratified state, trace call path, flag uncertainties. Layer 2 (CTO): scrutinise for gaps (missing capabilities, config, instrumentation, contradicted assumptions). Report DIRECTIVE SCRUTINY — N GAPS FOUND or CLEAR before executing. Both layers mandatory. Emergence: 5 consecutive D2 directives had drafting gaps caught only by manual scrutiny prompt.
+
+### Directive GOV-10-resolve-now-not-later (PR #335, 2026-04-16)
+GOV-10: Resolve-Now-Not-Later. Fix bounded gaps in current PR cycle. Deferred fixes accumulate. Exceptions: policy decisions, deprecated code, external deps. Emerged 2026-04-15 from D2.2-PREP --dry-run deferral corrected by CEO.
+
+### Directive GOV-11-structural-audit-before-validation (PR #335, 2026-04-16)
+GOV-11: Structural Audit Before Validation-Scale Run. Stage audit within 7 days before any N>=20 validation run. Covers data flow gaps, GOV-8 violations, dead code, gate enforcement, template tokens, cascade risk. Emerged 2026-04-16 when pipeline audit found 3 CRITICAL bugs 1 directive before validation.
+
+### Directive GOV-12-gates-as-code-not-comments (PR #335, 2026-04-16)
+GOV-12: Gates As Code Not Comments. Runtime enforcement required for all gates. Comment-only gates create false confidence. Emerged 2026-04-16 when Hunter dm_verified gate found as comment only. CEO authorizes systematic gate audit.
+
+### LAW XVII — Callsign Discipline (AIDEN-SCAFFOLD, 2026-04-16)
+Every Step 0 RESTATE, Telegram outbound message, PR title, commit trailer, and three-store write MUST prefix or tag the session callsign ([ELLIOT] or [AIDEN]). Ambiguous identity in multi-session operation is a governance violation. Callsign is read from `./IDENTITY.md` at session start and must match `CALLSIGN` env var when set. Empty `CALLSIGN` is a hard fail — three_store_save.py raises SystemExit. Each session occupies its own git worktree (Elliot: /home/elliotbot/clawd/Agency_OS, Aiden: /home/elliotbot/clawd/Agency_OS-aiden). Workspace isolation via worktree + per-worktree CLAUDE.md + IDENTITY.md + --setting-sources=project (no CLAUDE_CONFIG_DIR required).
+
+
+### [ELLIOT] Directive AIDEN-SCAFFOLD (PR #340, 2026-04-16)
+Second Claude Code instance scaffold (callsign aiden). Worktree at /home/elliotbot/clawd/Agency_OS-aiden on branch aiden/scaffold. IDENTITY.md per worktree. LAW XVII Callsign Discipline ratified. three_store_save.py callsign-aware (default elliot, empty fails loud per GOV-12). chat_bot.py parameterised by CALLSIGN + WORK_DIR_OVERRIDE. systemd unit aiden-telegram.service registered (not enabled — Dave enables after token verification). Migration: cis_directive_metrics.callsign TEXT NOT NULL DEFAULT elliot. .env.aiden created (gitignored, chmod 600). pytest 1510/1/28 (+5 callsign tests).
+
+### [ELLIOT] Directive LISTENER-GOV-F2 (PR #0, 2026-04-18)
+v1→v1.5 ratified post-hoc. Migration 103 committed to repo (supabase/migrations/103_cognitive_columns.sql). ceo_memory key ceo:listener_architecture_v1_5 written with full scope delta. 17 columns beyond v1 spec formally ratified by Dave 2026-04-18.
+
+### [ELLIOT+AIDEN] Directive FM-BUILD-V1 (2026-04-19/20)
+One-shot FM sourcing job for electrical test-and-tag client. 81/100 FM records delivered (email-only, no phone). Cost: $2.18 AUD. 549 target companies across 9 sectors (incl. fm_providers). ContactOut search yielded 771 profiles from 74 companies before credits exhausted. Leadmagic email enriched 81 (47% hit rate). Phone blocked: ContactOut locked (email credits 0 gates enrich endpoint), Leadmagic mobile 0% AU. 14 failures documented in post-mortem (docs/postmortems/FM_BUILD_V1_POSTMORTEM_2026-04-20.md). Key lessons: pilot before production, no silent try/except, scout for research not build agents, real-time credit checks, fix at discovery not defer.
+
+### [ELLIOT+AIDEN] Directive LISTENER-KNOWLEDGE-SEED-V1 (2026-04-19)
+Curated fact ingest into agent_memories for listener whisper capability. 178 rows seeded: 39 from CLAUDE.md (Elliot — enrichment path, ALS gates, dead refs, governance laws, stack info) + 139 from Manual + ARCHITECTURE.md (Aiden — pricing, competitors, vendors, directive history, scoring, compliance). All source_type='verified_fact', state='confirmed', trust='dave_confirmed'. Hit Rate@5: 9/10. Meta-prose leakage: 0/20. Total agent_memories corpus: 567 rows. Chunking rules documented in docs/governance_chunking.md. Follow-up: V2 auto-ingest-on-commit deferred as separate directive.
+
+### [ELLIOT] Directive LISTENER-COST-F4-PART2-SETUP (PR #362, 2026-04-19)
+OpenAI cost tracking at all 6 call sites: memory_listener.py (query expansion + embeddings), listener_discernment.py (L2 discernment), save_handler.py (save extraction), store.py (write embeddings), organise.py (backfill embeddings). New module openai_cost_logger.py writes append-only JSONL to /home/elliotbot/clawd/logs/openai-cost.jsonl. Daily rollup at 23:55 AEST (systemd timer enabled) posts TG summary. Weekly rollup Friday 18:00 AEST writes to ceo:openai_weekly_cost. 7-day collection window started — F4-PART2-RATIFY scheduled 2026-04-25.
+
+### [ELLIOT] Directive LISTENER-SCHEMA-F1 (PR #361, 2026-04-18)
+Schema cleanup per F1 audit finding. Dropped 5 dead columns (provenance, signoff_status, category, business_score, learning_score) via migration 106. Wired promoted_from_id on tentative→confirmed promotion (self-referencing FK + typed_metadata.promoted_at breadcrumb — Dave-approved pattern). PROMOTION FIRED log line added. Backfill script run: 2/17 superseded rows matched (backfill_inferred: true), 15 failed (below 0.85 threshold, backfill_failed: true), 0 ambiguous. contradicted_by_id deferred with SQL COMMENT. Technical debt documented in ceo:technical_debt.promoted_from_id_semantics (FK asymmetry: supersedes_id→other row, promoted_from_id→self). Aiden peer-reviewed: caught RPC name mismatch + ambiguity handler gap, both fixed pre-merge.
+
+### [ELLIOT] Directive LISTENER-GOV-F4-PART1 (2026-04-18)
+OpenAI ratified as permanent LLM provider for the listener subsystem. Rationale: Dave stays on Anthropic Max plan (no API billing); OpenAI keeps listener spend in separate credit pool; Anthropic has no embeddings API. Models ratified: text-embedding-3-small (embeddings in memory_listener.py), gpt-4o-mini (discernment in listener_discernment.py, save extraction in save_handler.py, query expansion MultiQueryRetriever in memory_listener.py). Budget trigger DEFERRED to F4-PART2 (scheduled 2026-04-25, requires 7 days cost tracking data). Migration triggers: if Anthropic releases embedding API on Max plan, or if monthly OpenAI spend exceeds Part 2 threshold.
+
+### [ELLIOT+AIDEN] Directive LISTENER-MEASURE-V1 (2026-04-18)
+Retrieval quality metrics for listener. Elliot side: src/telegram_bot/retrieval_metrics.py — tokenize(), compute_cited_flags() (2-token overlap threshold), compute_hit_rate() (Hit Rate@5), compute_mrr() (MRR@5), compute_source_type_breakdown(), generate_summary(). Stopwords: English common + callsigns + AU-biz domain terms. Commit 9606475d. Aiden side: outbox-watcher annotation hook in chat_bot.py — _annotate_last_retrieval_with_cited_terms() fires before each outbox send, appends mv_annotation JSONL event with per-item bot_cited flags. 60s window, same-callsign scoping, no-recursion guard. Commit c373956b. Both on main.
 
 ## SECTION 18 — OUTREACH + CONTENT (pre-launch)
 

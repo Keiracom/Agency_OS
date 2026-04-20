@@ -122,9 +122,10 @@ from enum import StrEnum
 class TierType(StrEnum):
     """Subscription tier types."""
 
+    SPARK = "spark"
     IGNITION = "ignition"
     VELOCITY = "velocity"
-    DOMINANCE = "dominance"
+    DOMINANCE = "dominance"  # DEPRECATED — kept for DB migration safety. Do not assign to new clients.
 
 
 class SubscriptionStatus(StrEnum):

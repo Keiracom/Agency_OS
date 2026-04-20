@@ -24,8 +24,5 @@ export {
   type ChecklistItem,
 } from "./OnboardingChecklist";
 
-// Re-export existing LinkedIn components for convenience
-export { LinkedInCredentialForm } from "./LinkedInCredentialForm";
-export { LinkedInTwoFactor } from "./LinkedInTwoFactor";
-export { LinkedInConnecting } from "./LinkedInConnecting";
+// LinkedIn OAuth success state (credential-based components removed in #309)
 export { LinkedInSuccess } from "./LinkedInSuccess";

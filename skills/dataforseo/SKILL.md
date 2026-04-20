@@ -2,6 +2,55 @@
 
 SEO metrics enrichment for lead scoring (ALS).
 
+## At-a-Glance (Anthropic tool-doc template)
+
+**What:** Pull SEO metrics (domain overview, backlinks, SERP, keywords) for a target domain, used as lead-scoring signals in ALS (Agency Lead Score). Each call costs ~$0.0101 USD (~$0.015 AUD).
+
+**When to use:**
+- Enriching a domain for ALS scoring when no cached record exists within 30 days
+- Detecting red flags (high spam score, zero organic presence) before outreach
+- Competitive teardown of a prospect's SEO posture
+
+**When NOT to use:**
+- NOT if lead already has enrichment within 30 days (re-use cached result — GOV-8 maximum extraction)
+- NOT for bulk SERP scraping when DataForSEO SERP API is >10x cheaper alternative available
+- NOT on non-.au domains during AU-first enforcement unless `location_code` is explicitly overridden
+- NOT as a real-time API during a customer-facing request — 2-10s latency
+
+**Caveats:**
+- Location code defaults to 2036 (Australia). Changing to non-AU violates LAW II unless the lead itself is non-AU.
+- Cost compounds quickly on batches — always check `len(domains) * $0.015 AUD` against daily budget before firing.
+- Response blobs include many fields; trim aggressively (see Response Trimming below).
+- Labs API counts differ from Live API counts — do not mix sources in the same ALS calculation.
+
+**Returns:** Python dicts per function (see each endpoint below). All functions return a `{"error": str}` dict on API failure; never raise.
+
+## Input Parameter Constraints (poka-yoke)
+
+- `domain: str` — required. Must match `^([a-z0-9-]+\.)+[a-z]{2,}$` (bare domain, lowercase, no scheme, no path). Reject if TLD is not in {.com.au, .net.au, .org.au, .edu.au, .gov.au} unless `location_code != 2036`.
+- `location_code: int` — integer enum. Accept {2036 (AU), 2840 (US), 2826 (UK), 2124 (CA), 2554 (NZ)}. Reject others.
+- `language_code: str` — enum ["en", "en-AU"]. Default "en".
+- `include_subdomains: bool` — default `True`. False is rarely right for AU SMBs (most have www.* and store.* subdomains).
+
+## Response Trimming (PERSIST vs DROP per endpoint)
+
+- `domain_overview`: PERSIST `organic_etv, organic_count, organic_pos_1, organic_pos_2_3, organic_pos_4_10, estimated_paid_traffic_cost, enriched_at`. DROP other pos buckets, language-split metrics, and metadata fields.
+- `backlinks_summary`: PERSIST `backlinks_total, referring_domains, referring_main_domains, spam_score, enriched_at`. DROP per-link arrays (too large for context).
+- `serp_results`: PERSIST `rank_group, rank_absolute, domain, title, url`. DROP `description, breadcrumbs, highlighted` (context bloat).
+
+## Error Handling
+
+| Error | HTTP / Signal | Category | Action |
+|-------|--------------|----------|--------|
+| Invalid domain format | client-side reject | caller_error | Validate per Input Constraints before API call. |
+| Auth failure | 401 | config_error | Route to devops-6 — API credentials missing/rotated. |
+| Quota exceeded | 402 | budget | Escalate to Dave. Pause batch. |
+| Rate limit | 429 | transient | Exponential backoff (1s, 2s, 4s), max 3 retries. |
+| No data for domain | 200 + empty payload | miss | Persist `{found: false, reason: no_seo_signal}`. Not an error. |
+| Server error | 5xx | transient | Retry once after 5s, then escalate to devops-6. |
+
+---
+
 ## When to Use DataForSEO
 
 - **Enrich lead data with SEO metrics** — Domain rank, backlinks, organic traffic

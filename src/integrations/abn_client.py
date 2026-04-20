@@ -71,6 +71,11 @@ ABN_LOOKUP_BASE_URL = "https://abr.business.gov.au/abrxmlsearch/AbrXmlSearch.asm
 # Cost per lookup in $AUD (LAW II compliance)
 COST_PER_LOOKUP_AUD = 0.00  # FREE
 
+# Three-state GST model — never collapse unknown to false (#328.6)
+GST_REGISTERED = "registered"
+GST_NOT_REGISTERED = "not_registered"
+GST_UNKNOWN = "unknown"
+
 # State code mapping for name search
 STATE_CODES = {
     "nsw": "NSW",
@@ -784,16 +789,34 @@ class ABNClient:
             entity_type_info.get("entityDescription", entity_type_code),
         )
 
-        # Extract GST status
+        # Extract GST status — three-state model (#328.6)
         gst_info = record.get("goodsAndServicesTax", {})
         if isinstance(gst_info, list):
+            # Multiple GST records — find current (effectiveTo is sentinel 0001-01-01)
             gst_info = next(
-                (g for g in gst_info if g.get("effectiveTo") is None),
+                (g for g in gst_info
+                 if g.get("effectiveTo") in (None, "0001-01-01")),
                 gst_info[0] if gst_info else {},
             )
 
-        gst_registered = gst_info.get("effectiveFrom") is not None
         gst_from = gst_info.get("effectiveFrom")
+        gst_to = gst_info.get("effectiveTo")
+
+        if gst_from and gst_to in (None, "0001-01-01"):
+            gst_status = GST_REGISTERED
+            gst_registered = True
+        elif gst_from and gst_to and gst_to != "0001-01-01":
+            gst_status = GST_NOT_REGISTERED  # was registered, now cancelled
+            gst_registered = False
+        elif not gst_info or not gst_from:
+            gst_status = GST_UNKNOWN
+            gst_registered = None  # None, not False — distinct from "known not registered"
+        else:
+            gst_status = GST_UNKNOWN
+            gst_registered = None
+
+        logger.info("ABR GST parsed abn=%s raw_from=%s raw_to=%s parsed_state=%s",
+                    abn, gst_from, gst_to, gst_status)
 
         # Extract names
         business_name = ""
@@ -883,6 +906,7 @@ class ABNClient:
             "entity_type_code": entity_type_code,
             # GST
             "gst_registered": gst_registered,
+            "gst_status": gst_status,
             "gst_from": gst_from,
             # Metadata
             "retrieved_at": datetime.now(UTC).isoformat(),

@@ -1,0 +1,2360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AgencyOS — Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700&family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+:root {
+  --cream: #F7F3EE;
+  --surface: #EDE8E0;
+  --ink: #0C0A08;
+  --ink-2: #2E2B26;
+  --ink-3: #7A756D;
+  --amber: #D4956A;
+  --amber-soft: rgba(212,149,106,0.12);
+  --copper: #C46A3E;
+  --tan: #C4A878;
+  --green: #6B8E5A;
+  --red: #B55A4C;
+  --rule: rgba(12,10,8,0.08);
+  --sidebar-w: 232px;
+  --topbar-h: 56px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; background: var(--cream); color: var(--ink); }
+body { font-family: 'DM Sans', sans-serif; font-size: 14px; line-height: 1.5; display: flex; }
+a { color: inherit; text-decoration: none; }
+button { cursor: pointer; font-family: 'DM Sans', sans-serif; }
+input, select, textarea { font-family: 'DM Sans', sans-serif; }
+ul { list-style: none; }
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 2px; }
+.playfair { font-family: 'Playfair Display', serif; font-weight: 700; }
+.mono { font-family: 'JetBrains Mono', monospace; }
+.eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); }
+#sidebar {
+  width: var(--sidebar-w); min-width: var(--sidebar-w); height: 100vh;
+  background: var(--ink); display: flex; flex-direction: column;
+  position: fixed; left: 0; top: 0; bottom: 0; z-index: 100; overflow-y: auto;
+}
+.sidebar-logo { padding: 24px 20px 20px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.sidebar-logo .logo-text { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 20px; color: #fff; letter-spacing: -0.02em; }
+.sidebar-logo .logo-text em { color: var(--amber); font-style: italic; }
+.sidebar-section { padding: 16px 0 4px; }
+.sidebar-section-label { font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,255,255,0.28); padding: 0 20px 8px; }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 20px; color: rgba(255,255,255,0.52); font-size: 13.5px; font-weight: 400; cursor: pointer; position: relative; transition: color 0.15s, background 0.15s; border-left: 2px solid transparent; user-select: none; }
+.nav-item:hover { color: rgba(255,255,255,0.82); background: rgba(255,255,255,0.04); }
+.nav-item.active { color: #fff; background: var(--amber-soft); border-left-color: var(--amber); font-weight: 500; }
+.nav-icon { width: 16px; height: 16px; opacity: 0.7; flex-shrink: 0; }
+.nav-item.active .nav-icon { opacity: 1; }
+.nav-badge { margin-left: auto; background: var(--copper); color: #fff; font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 500; padding: 1px 6px; border-radius: 10px; min-width: 20px; text-align: center; }
+.sidebar-footer { margin-top: auto; padding: 16px 20px; border-top: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; gap: 10px; }
+.avatar-circle { width: 32px; height: 32px; border-radius: 50%; background: var(--amber); display: flex; align-items: center; justify-content: center; font-family: 'Playfair Display', serif; font-size: 13px; font-weight: 700; color: #fff; flex-shrink: 0; }
+.sidebar-user-name { font-size: 13px; font-weight: 500; color: #fff; line-height: 1.2; }
+.sidebar-user-sub { font-size: 11px; color: rgba(255,255,255,0.4); font-family: 'JetBrains Mono', monospace; }
+#app { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+#topbar { height: var(--topbar-h); background: var(--cream); border-bottom: 1px solid var(--rule); display: flex; align-items: center; padding: 0 40px; position: sticky; top: 0; z-index: 50; gap: 16px; }
+.breadcrumb { flex: 1; display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-3); }
+.breadcrumb .crumb-sep { color: var(--rule); }
+.breadcrumb .crumb-current { color: var(--ink-2); font-weight: 500; }
+.topbar-right { display: flex; align-items: center; gap: 16px; }
+.pulse-row { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--ink-3); font-family: 'JetBrains Mono', monospace; }
+.pulse-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+.kill-btn { background: transparent; border: 1px solid var(--red); color: var(--red); font-size: 11px; font-weight: 500; font-family: 'JetBrains Mono', monospace; padding: 5px 12px; border-radius: 4px; letter-spacing: 0.06em; text-transform: uppercase; transition: background 0.15s; }
+.kill-btn:hover { background: rgba(181,90,76,0.08); }
+#page { flex: 1; overflow-y: auto; padding: 36px 40px 60px; max-width: 1480px; width: 100%; margin: 0 auto; }
+.page-headline { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 36px; color: var(--ink); line-height: 1.18; letter-spacing: -0.02em; margin-bottom: 28px; }
+.page-headline em { color: var(--amber); font-style: italic; }
+.card { background: #fff; border: 1px solid var(--rule); border-radius: 10px; padding: 22px 24px; }
+.card-sm { padding: 16px 18px; }
+.section-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 14px; }
+.badge { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 500; font-family: 'JetBrains Mono', monospace; letter-spacing: 0.04em; }
+.badge-amber { background: var(--amber-soft); color: var(--copper); }
+.badge-green { background: rgba(107,142,90,0.12); color: var(--green); }
+.badge-red { background: rgba(181,90,76,0.12); color: var(--red); }
+.badge-tan { background: rgba(196,168,120,0.15); color: #8A7350; }
+.badge-ink { background: rgba(12,10,8,0.06); color: var(--ink-2); }
+.badge-muted-red { background: rgba(181,90,76,0.08); color: rgba(181,90,76,0.6); }
+.intent-struggling { background: rgba(181,90,76,0.10); color: var(--red); }
+.intent-trying { background: var(--amber-soft); color: var(--copper); }
+.intent-dabbling { background: rgba(12,10,8,0.06); color: var(--ink-3); }
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px; border-radius: 6px; font-size: 13.5px; font-weight: 500; border: none; transition: opacity 0.15s, background 0.15s; }
+.btn:hover { opacity: 0.85; }
+.btn-primary { background: var(--ink); color: #fff; }
+.btn-amber { background: var(--amber); color: #fff; }
+.btn-outline { background: transparent; border: 1px solid var(--rule); color: var(--ink-2); }
+.btn-ghost { background: transparent; color: var(--ink-3); }
+.btn:disabled { opacity: 0.38; cursor: not-allowed; }
+.divider { border: none; border-top: 1px solid var(--rule); margin: 20px 0; }
+.heat-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.heat-hot { background: var(--copper); }
+.heat-warm { background: var(--amber); }
+.heat-cool { background: var(--tan); }
+.score-badge { width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'JetBrains Mono', monospace; font-weight: 500; font-size: 14px; flex-shrink: 0; }
+.score-hot { background: rgba(196,106,62,0.12); color: var(--copper); border: 1.5px solid var(--copper); }
+.score-warm { background: var(--amber-soft); color: var(--amber); border: 1.5px solid var(--amber); }
+.score-cool { background: rgba(196,168,120,0.12); color: var(--tan); border: 1.5px solid var(--tan); }
+.score-cold { background: rgba(12,10,8,0.06); color: var(--ink-3); border: 1.5px solid rgba(12,10,8,0.1); }
+.progress-wrap { background: var(--rule); border-radius: 99px; overflow: hidden; }
+.progress-bar { height: 100%; border-radius: 99px; transition: width 0.6s ease; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+.grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 16px; }
+.schedule-hero { background: var(--ink); border-radius: 12px; padding: 28px 32px; color: #fff; margin-bottom: 28px; display: flex; align-items: flex-start; gap: 40px; }
+.schedule-hero-left { flex: 1; }
+.schedule-campaign-name { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+.schedule-area { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: rgba(255,255,255,0.45); margin-bottom: 20px; }
+.schedule-progress-track { background: rgba(255,255,255,0.1); border-radius: 99px; height: 6px; margin-bottom: 8px; }
+.schedule-progress-fill { height: 6px; border-radius: 99px; background: var(--amber); }
+.schedule-days { display: flex; justify-content: space-between; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: rgba(255,255,255,0.35); }
+.schedule-stats { display: flex; gap: 32px; }
+.schedule-stat-val { font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 700; color: #fff; line-height: 1; margin-bottom: 4px; }
+.schedule-stat-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: rgba(255,255,255,0.4); letter-spacing: 0.1em; text-transform: uppercase; }
+.metric-card { text-align: left; }
+.metric-val { font-family: 'Playfair Display', serif; font-size: 30px; font-weight: 700; color: var(--ink); line-height: 1; margin-bottom: 4px; }
+.metric-label { font-size: 12px; color: var(--ink-3); margin-bottom: 6px; }
+.metric-delta { font-family: 'JetBrains Mono', monospace; font-size: 11px; display: inline-flex; align-items: center; gap: 3px; }
+.delta-up { color: var(--green); }
+.delta-down { color: var(--red); }
+.reply-item { display: flex; align-items: flex-start; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--rule); cursor: pointer; transition: background 0.1s; margin: 0 -4px; padding-left: 4px; border-radius: 6px; }
+.reply-item:last-child { border-bottom: none; }
+.reply-item:hover { background: var(--surface); }
+.reply-meta { flex: 1; min-width: 0; }
+.reply-name { font-family: 'Playfair Display', serif; font-size: 15px; font-weight: 700; color: var(--ink); margin-bottom: 2px; }
+.reply-snippet { font-size: 13px; color: var(--ink-3); font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.reply-biz { font-size: 11px; color: var(--ink-3); font-family: 'JetBrains Mono', monospace; margin-bottom: 3px; }
+.reply-time { font-size: 11px; color: var(--ink-3); white-space: nowrap; font-family: 'JetBrains Mono', monospace; }
+.meeting-item { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--rule); }
+.meeting-item:last-child { border-bottom: none; }
+.meeting-date-pill { background: var(--amber-soft); color: var(--copper); font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 500; padding: 4px 8px; border-radius: 4px; text-align: center; min-width: 52px; line-height: 1.4; }
+.meeting-name { font-size: 14px; font-weight: 500; color: var(--ink); }
+.meeting-biz { font-size: 12px; color: var(--ink-3); }
+.outreach-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; }
+.outreach-channel { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-2); width: 72px; flex-shrink: 0; }
+.outreach-bar-wrap { flex: 1; }
+.outreach-count { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-3); white-space: nowrap; }
+.health-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--rule); }
+.health-item:last-child { border-bottom: none; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.status-green { background: var(--green); }
+.status-amber { background: var(--amber); }
+.status-red { background: var(--red); }
+.health-name { flex: 1; font-size: 13px; color: var(--ink-2); }
+.health-status { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-3); }
+.review-banner { background: var(--amber-soft); border: 1px solid rgba(212,149,106,0.3); border-radius: 8px; padding: 14px 18px; display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
+.review-banner-text { flex: 1; font-size: 13.5px; color: var(--ink-2); }
+.review-banner-text strong { color: var(--copper); }
+.status-strip { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 12px 18px; display: flex; align-items: center; gap: 16px; margin-bottom: 20px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--ink-3); flex-wrap: wrap; }
+.filter-chips { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+.chip { padding: 6px 14px; border-radius: 20px; font-size: 12.5px; font-weight: 500; border: 1px solid var(--rule); background: #fff; color: var(--ink-3); cursor: pointer; transition: all 0.15s; font-family: 'JetBrains Mono', monospace; }
+.chip:hover { border-color: var(--amber); color: var(--copper); }
+.chip.active { background: var(--amber-soft); border-color: var(--amber); color: var(--copper); }
+.pipeline-row { display: flex; align-items: center; gap: 0; background: #fff; border: 1px solid var(--rule); border-radius: 8px; margin-bottom: 8px; cursor: pointer; transition: box-shadow 0.15s, border-color 0.15s; overflow: hidden; position: relative; }
+.pipeline-row:hover { border-color: var(--amber); box-shadow: 0 2px 12px rgba(212,149,106,0.1); }
+.pipeline-row.visited { border-left: 3px solid rgba(212,149,106,0.35); }
+.intent-bar { width: 3px; align-self: stretch; flex-shrink: 0; }
+.intent-bar-struggling { background: var(--red); }
+.intent-bar-trying { background: var(--amber); }
+.intent-bar-dabbling { background: var(--tan); }
+.pipeline-rank { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--ink-3); width: 36px; text-align: center; flex-shrink: 0; }
+.pipeline-main { flex: 1; padding: 14px 12px; min-width: 0; }
+.pipeline-biz-name { font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 700; color: var(--ink); margin-bottom: 3px; }
+.pipeline-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pipeline-suburb { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-3); }
+.pipeline-dm { font-size: 12.5px; color: var(--ink-3); width: 160px; flex-shrink: 0; padding: 14px 0; }
+.pipeline-channels { display: flex; gap: 6px; align-items: center; padding: 14px 16px; flex-shrink: 0; }
+.channel-dot { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; background: var(--surface); color: var(--ink-3); font-family: 'JetBrains Mono', monospace; }
+.pipeline-score-wrap { padding: 14px 16px; flex-shrink: 0; }
+.pipeline-status-wrap { padding: 14px 16px; flex-shrink: 0; }
+.pipeline-caret { padding: 14px 16px; color: var(--ink-3); font-size: 16px; flex-shrink: 0; }
+.status-badge-row { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 500; padding: 3px 8px; border-radius: 3px; letter-spacing: 0.04em; white-space: nowrap; }
+.status-not-started { background: rgba(12,10,8,0.06); color: var(--ink-3); }
+.status-contacted { background: rgba(12,10,8,0.08); color: var(--ink-2); }
+.status-replied { background: var(--amber-soft); color: var(--copper); }
+.status-meeting-booked { background: rgba(196,106,62,0.12); color: var(--copper); }
+.status-suppressed { background: rgba(181,90,76,0.08); color: rgba(181,90,76,0.6); }
+.pagination-bar { display: flex; align-items: center; gap: 12px; padding: 16px 0; justify-content: center; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--ink-3); }
+.pagination-btn { background: #fff; border: 1px solid var(--rule); color: var(--ink-2); font-size: 12px; padding: 5px 12px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; cursor: pointer; transition: border-color 0.15s; }
+.pagination-btn:hover:not(:disabled) { border-color: var(--amber); color: var(--copper); }
+.pagination-btn:disabled { opacity: 0.38; cursor: not-allowed; }
+.page-size-select { border: 1px solid var(--rule); background: #fff; color: var(--ink-2); font-size: 12px; padding: 5px 8px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; cursor: pointer; }
+.detail-back { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-3); font-size: 13px; margin-bottom: 20px; cursor: pointer; transition: color 0.15s; }
+.detail-back:hover { color: var(--ink); }
+.detail-nav { display: flex; align-items: center; gap: 10px; margin-bottom: 28px; }
+.detail-nav-btn { background: #fff; border: 1px solid var(--rule); color: var(--ink-2); font-size: 12.5px; font-weight: 500; padding: 6px 14px; border-radius: 5px; display: inline-flex; align-items: center; gap: 5px; cursor: pointer; transition: border-color 0.15s; }
+.detail-nav-btn:hover { border-color: var(--amber); }
+.detail-nav-sep { color: var(--ink-3); font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+.detail-headline { font-family: 'Playfair Display', serif; font-size: 44px; font-weight: 700; color: var(--ink); line-height: 1.1; letter-spacing: -0.02em; margin-bottom: 10px; }
+.detail-meta-row { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
+.detail-meta-item { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--ink-3); }
+.detail-meta-dot { color: var(--rule); }
+.detail-actions { display: flex; gap: 8px; margin-bottom: 32px; flex-wrap: wrap; }
+.score-card { background: #fff; border: 1px solid var(--rule); border-radius: 10px; padding: 20px; text-align: center; }
+.score-card-val { font-family: 'Playfair Display', serif; font-size: 36px; font-weight: 700; color: var(--ink); line-height: 1; margin-bottom: 4px; }
+.score-card-label { font-size: 12px; color: var(--ink-3); margin-bottom: 2px; }
+.score-card-sub { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-3); }
+.signal-item { display: flex; align-items: flex-start; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--rule); }
+.signal-item:last-child { border-bottom: none; }
+.signal-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--amber); margin-top: 5px; flex-shrink: 0; }
+.signal-text { flex: 1; font-size: 13.5px; color: var(--ink-2); }
+.signal-time { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-3); white-space: nowrap; }
+.vuln-para { font-size: 14px; line-height: 1.7; color: var(--ink-2); padding: 18px; background: var(--amber-soft); border-left: 3px solid var(--amber); margin-bottom: 20px; }
+.grade-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.grade-cell { background: var(--surface); border-radius: 8px; padding: 14px; text-align: center; }
+.grade-letter { font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 700; margin-bottom: 4px; line-height: 1; }
+.grade-A { color: var(--green); }
+.grade-B { color: #5A8A74; }
+.grade-C { color: var(--amber); }
+.grade-D { color: var(--copper); }
+.grade-F { color: var(--red); }
+.grade-name { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.1em; }
+.tab-bar { display: flex; border-bottom: 1px solid var(--rule); margin-bottom: 20px; }
+.tab-btn { padding: 10px 18px; font-size: 13px; font-weight: 500; color: var(--ink-3); background: transparent; border: none; border-bottom: 2px solid transparent; margin-bottom: -1px; cursor: pointer; transition: color 0.15s; }
+.tab-btn:hover { color: var(--ink); }
+.tab-btn.active { color: var(--amber); border-bottom-color: var(--amber); }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+.draft-content { background: var(--surface); border-radius: 8px; padding: 18px; font-size: 13.5px; line-height: 1.7; color: var(--ink-2); white-space: pre-wrap; }
+.draft-label { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-3); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.1em; }
+.dm-card { margin-bottom: 16px; }
+.dm-name { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 700; color: var(--ink); margin-bottom: 2px; }
+.dm-title { font-size: 12px; color: var(--ink-3); margin-bottom: 14px; font-family: 'JetBrains Mono', monospace; }
+.dm-field { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--rule); }
+.dm-field:last-child { border-bottom: none; }
+.dm-field-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-3); width: 56px; text-transform: uppercase; letter-spacing: 0.1em; flex-shrink: 0; }
+.dm-field-val { font-size: 13px; color: var(--ink-2); flex: 1; }
+.dm-verified { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--green); background: rgba(107,142,90,0.1); padding: 2px 7px; border-radius: 3px; }
+.timeline-item { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--rule); }
+.timeline-item:last-child { border-bottom: none; }
+.timeline-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--amber); margin-top: 5px; flex-shrink: 0; }
+.timeline-text { font-size: 13px; color: var(--ink-2); }
+.timeline-time { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-3); }
+.outreach-timeline { position: relative; padding-left: 24px; }
+.outreach-timeline::before { content: ''; position: absolute; left: 7px; top: 8px; bottom: 8px; width: 2px; background: var(--amber); opacity: 0.3; }
+.ot-item { position: relative; margin-bottom: 16px; }
+.ot-dot { position: absolute; left: -20px; top: 4px; width: 10px; height: 10px; border-radius: 50%; background: var(--amber); border: 2px solid #fff; }
+.ot-dot-reply { background: var(--copper); }
+.ot-dot-system { background: var(--ink-3); }
+.ot-dot-fail { background: var(--red); }
+.ot-dot-meeting { background: var(--green); }
+.ot-time { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-3); margin-bottom: 2px; }
+.ot-label { font-size: 13px; color: var(--ink-2); line-height: 1.4; }
+.ot-content { background: var(--amber-soft); border-radius: 6px; padding: 10px 12px; margin-top: 6px; font-size: 12.5px; color: var(--ink-2); font-style: italic; line-height: 1.5; }
+.campaign-card { background: #fff; border: 1px solid var(--rule); border-radius: 10px; padding: 22px 24px; margin-bottom: 14px; }
+.campaign-card-header { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
+.campaign-card-main { flex: 1; }
+.campaign-name { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; color: var(--ink); margin-bottom: 3px; }
+.campaign-area { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-3); }
+.campaign-metrics { display: flex; gap: 28px; margin-top: 16px; }
+.campaign-metric-val { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 700; color: var(--ink); margin-bottom: 1px; }
+.campaign-metric-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.08em; }
+.modal-overlay { position: fixed; inset: 0; background: rgba(12,10,8,0.45); display: flex; align-items: center; justify-content: center; z-index: 200; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal { background: #fff; border-radius: 12px; padding: 32px; width: 100%; max-width: 480px; margin: 20px; transform: translateY(12px); transition: transform 0.2s; }
+.modal-overlay.open .modal { transform: translateY(0); }
+.modal-title { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 700; color: var(--ink); margin-bottom: 20px; }
+.modal-body { font-size: 14px; color: var(--ink-2); line-height: 1.6; margin-bottom: 24px; }
+.form-field { margin-bottom: 18px; }
+.form-label { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px; }
+.form-select, .form-input { width: 100%; border: 1px solid var(--rule); border-radius: 6px; padding: 9px 12px; font-size: 14px; color: var(--ink); background: #fff; outline: none; transition: border-color 0.15s; }
+.form-select:focus, .form-input:focus { border-color: var(--amber); }
+.form-textarea { width: 100%; border: 1px solid var(--rule); border-radius: 6px; padding: 9px 12px; font-size: 13.5px; color: var(--ink); background: #fff; outline: none; transition: border-color 0.15s; resize: vertical; min-height: 80px; line-height: 1.5; }
+.form-textarea:focus { border-color: var(--amber); }
+.radio-group { display: flex; gap: 12px; flex-wrap: wrap; }
+.radio-item { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.radio-item input[type="radio"] { accent-color: var(--amber); }
+.form-helper { font-size: 12px; color: var(--ink-3); margin-top: 5px; line-height: 1.5; }
+.modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; }
+.inbox-layout { display: flex; gap: 0; height: calc(100vh - var(--topbar-h) - 80px); min-height: 500px; }
+.inbox-list { width: 400px; min-width: 400px; border-right: 1px solid var(--rule); overflow-y: auto; background: #fff; border-radius: 10px 0 0 10px; border: 1px solid var(--rule); }
+.inbox-thread { flex: 1; display: flex; flex-direction: column; background: #fff; border: 1px solid var(--rule); border-left: none; border-radius: 0 10px 10px 0; }
+.inbox-list-header { padding: 16px 18px; border-bottom: 1px solid var(--rule); }
+.inbox-item { display: flex; align-items: flex-start; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--rule); cursor: pointer; transition: background 0.1s; }
+.inbox-item:hover { background: var(--surface); }
+.inbox-item.active { background: var(--amber-soft); }
+.inbox-item-meta { flex: 1; min-width: 0; }
+.inbox-item-name { font-weight: 500; font-size: 14px; color: var(--ink); margin-bottom: 1px; }
+.inbox-item-biz { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-3); margin-bottom: 3px; }
+.inbox-item-snippet { font-size: 12.5px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.inbox-item-time { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-3); white-space: nowrap; }
+.thread-header { padding: 18px 24px; border-bottom: 1px solid var(--rule); display: flex; align-items: center; gap: 12px; }
+.thread-name { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 700; color: var(--ink); }
+.thread-biz { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-3); }
+.thread-body { flex: 1; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 14px; }
+.bubble { max-width: 75%; padding: 12px 16px; border-radius: 12px; line-height: 1.6; font-size: 13.5px; }
+.bubble-theirs { background: var(--ink); color: #fff; border-radius: 12px 12px 12px 2px; align-self: flex-start; }
+.bubble-ours { background: var(--surface); color: var(--ink-2); border-radius: 12px 12px 2px 12px; align-self: flex-end; }
+.bubble-time { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-3); margin-top: 4px; }
+.bubble-time-left { text-align: left; }
+.bubble-time-right { text-align: right; }
+.thread-actions { padding: 14px 24px; border-top: 1px solid var(--rule); display: flex; gap: 8px; }
+.channel-rate-card { background: #fff; border: 1px solid var(--rule); border-radius: 10px; padding: 20px; }
+.channel-rate-name { font-size: 15px; font-weight: 500; color: var(--ink); margin-bottom: 4px; }
+.channel-rate-val { font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 700; color: var(--ink); margin-bottom: 8px; }
+.channel-rate-detail { font-size: 12px; color: var(--ink-3); margin-bottom: 12px; }
+.calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-top: 16px; }
+.cal-header-cell { text-align: center; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-3); padding: 6px 0; letter-spacing: 0.08em; }
+.cal-cell { background: #fff; border: 1px solid var(--rule); border-radius: 5px; padding: 6px; min-height: 68px; position: relative; }
+.cal-date-num { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-3); margin-bottom: 4px; }
+.cal-today { background: var(--amber-soft); border-color: var(--amber); }
+.cal-today .cal-date-num { color: var(--copper); font-weight: 500; }
+.cal-pill { font-size: 9px; font-family: 'JetBrains Mono', monospace; padding: 2px 5px; border-radius: 3px; margin-bottom: 2px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cal-email { background: rgba(107,142,90,0.15); color: var(--green); }
+.cal-linkedin { background: rgba(59,130,246,0.1); color: #3B82F6; }
+.cal-voice { background: var(--amber-soft); color: var(--copper); }
+.cal-sms { background: rgba(139,92,246,0.1); color: #8B5CF6; }
+.legend-row { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 12px; }
+.legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-3); }
+.legend-dot { width: 10px; height: 10px; border-radius: 2px; }
+.signal-card { background: #fff; border: 1px solid var(--rule); border-radius: 10px; padding: 22px 24px; }
+.signal-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.signal-card-name { font-family: 'Playfair Display', serif; font-size: 17px; font-weight: 700; color: var(--ink); flex: 1; }
+.signal-toggle { width: 36px; height: 20px; border-radius: 10px; background: var(--green); position: relative; cursor: pointer; flex-shrink: 0; transition: background 0.15s; }
+.signal-toggle.off { background: var(--rule); }
+.signal-toggle::after { content: ''; position: absolute; width: 14px; height: 14px; background: #fff; border-radius: 50%; top: 3px; left: 3px; transition: left 0.15s; }
+.signal-toggle.off::after { left: 19px; }
+.signal-card-desc { font-size: 13px; color: var(--ink-3); line-height: 1.6; margin-bottom: 12px; }
+.signal-card-stat { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--copper); }
+.kpi-card { background: #fff; border: 1px solid var(--rule); border-radius: 10px; padding: 22px; }
+.kpi-val { font-family: 'Playfair Display', serif; font-size: 34px; font-weight: 700; color: var(--ink); line-height: 1; margin-bottom: 4px; }
+.kpi-label { font-size: 12px; color: var(--ink-3); margin-bottom: 6px; }
+.funnel-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--rule); }
+.funnel-row:last-child { border-bottom: none; }
+.funnel-label { font-size: 13px; color: var(--ink-2); width: 120px; flex-shrink: 0; }
+.funnel-bar-wrap { flex: 1; background: var(--rule); border-radius: 99px; height: 10px; overflow: hidden; }
+.funnel-bar { height: 10px; border-radius: 99px; background: var(--amber); }
+.funnel-pct { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--ink-3); width: 48px; text-align: right; }
+.funnel-count { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--ink-2); width: 52px; text-align: right; }
+.report-table { width: 100%; border-collapse: collapse; }
+.report-table th { text-align: left; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.1em; padding: 8px 12px; border-bottom: 1px solid var(--rule); }
+.report-table td { padding: 12px 12px; border-bottom: 1px solid var(--rule); font-size: 13.5px; color: var(--ink-2); }
+.report-table tr:last-child td { border-bottom: none; }
+.report-table tr:hover td { background: var(--surface); }
+.settings-layout { display: flex; gap: 0; }
+.settings-nav { width: 192px; min-width: 192px; padding: 0 0 20px; }
+.settings-nav-item { padding: 9px 14px; font-size: 13.5px; color: var(--ink-3); cursor: pointer; border-radius: 6px; transition: background 0.1s, color 0.1s; font-weight: 400; margin-bottom: 2px; }
+.settings-nav-item:hover { background: var(--surface); color: var(--ink); }
+.settings-nav-item.active { background: var(--amber-soft); color: var(--copper); font-weight: 500; }
+.settings-content { flex: 1; padding-left: 28px; }
+.settings-section { display: none; }
+.settings-section.active { display: block; }
+.settings-row { display: flex; align-items: flex-start; gap: 12px; padding: 18px 0; border-bottom: 1px solid var(--rule); }
+.settings-row:last-child { border-bottom: none; }
+.settings-row-label { width: 180px; flex-shrink: 0; }
+.settings-row-key { font-size: 13.5px; font-weight: 500; color: var(--ink); margin-bottom: 2px; }
+.settings-row-sub { font-size: 12px; color: var(--ink-3); }
+.settings-row-val { flex: 1; font-size: 13.5px; color: var(--ink-2); }
+.settings-row-action { flex-shrink: 0; }
+.integration-row { display: flex; align-items: center; gap: 14px; padding: 16px 0; border-bottom: 1px solid var(--rule); }
+.integration-row:last-child { border-bottom: none; }
+.integration-icon-text { width: 36px; height: 36px; border-radius: 8px; background: var(--surface); display: flex; align-items: center; justify-content: center; font-size: 10px; font-family: 'JetBrains Mono', monospace; font-weight: 500; color: var(--ink-3); flex-shrink: 0; }
+.integration-name { flex: 1; font-weight: 500; font-size: 14px; color: var(--ink); }
+.integration-desc { font-size: 12px; color: var(--ink-3); }
+.badge-connected { background: rgba(107,142,90,0.12); color: var(--green); }
+.danger-zone { border: 1px solid rgba(181,90,76,0.2); border-radius: 10px; padding: 24px; }
+.danger-zone-title { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 700; color: var(--red); margin-bottom: 16px; }
+.danger-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--rule); }
+.danger-row:last-child { border-bottom: none; }
+.danger-row-info { flex: 1; }
+.danger-row-title { font-size: 14px; font-weight: 500; color: var(--ink); }
+.danger-row-sub { font-size: 12px; color: var(--ink-3); }
+.btn-danger { background: transparent; border: 1px solid var(--red); color: var(--red); font-size: 13px; padding: 7px 16px; border-radius: 5px; font-weight: 500; transition: background 0.15s; cursor: pointer; }
+.btn-danger:hover { background: rgba(181,90,76,0.08); }
+.briefing-meeting-header { background: var(--ink); color: #fff; border-radius: 10px; padding: 24px 28px; margin-bottom: 24px; display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
+.briefing-countdown { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: rgba(255,255,255,0.5); }
+.briefing-section { margin-bottom: 28px; }
+.briefing-section-title { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--rule); }
+.briefing-ai-summary { font-family: 'Playfair Display', serif; font-style: italic; font-size: 15px; color: var(--ink-2); line-height: 1.7; padding: 16px; background: var(--amber-soft); border-left: 3px solid var(--amber); }
+.reply-quote { background: var(--amber-soft); border-left: 3px solid var(--amber); padding: 14px 18px; font-size: 14px; color: var(--ink-2); font-style: italic; line-height: 1.6; margin: 12px 0; }
+.talking-point { padding: 10px 0; border-bottom: 1px solid var(--rule); font-size: 13.5px; color: var(--ink-2); }
+.talking-point:last-child { border-bottom: none; }
+.talking-point strong { color: var(--ink); }
+.case-study-card { background: var(--surface); border-radius: 8px; padding: 16px; }
+.case-study-name { font-family: 'Playfair Display', serif; font-size: 15px; font-weight: 700; color: var(--ink); margin-bottom: 4px; }
+.dev-controls { position: fixed; bottom: 20px; right: 20px; display: flex; gap: 6px; z-index: 300; background: rgba(12,10,8,0.85); border-radius: 8px; padding: 8px 10px; }
+.dev-btn { background: transparent; border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.6); font-family: 'JetBrains Mono', monospace; font-size: 10px; padding: 4px 10px; border-radius: 4px; cursor: pointer; transition: all 0.15s; letter-spacing: 0.06em; }
+.dev-btn:hover { border-color: var(--amber); color: var(--amber); }
+.dev-btn.active { border-color: var(--amber); color: var(--amber); background: var(--amber-soft); }
+.dev-label { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: rgba(255,255,255,0.3); display: flex; align-items: center; padding-right: 6px; letter-spacing: 0.1em; text-transform: uppercase; }
+#mobile-topbar { display: none; position: fixed; top: 0; left: 0; right: 0; height: 52px; background: var(--ink); z-index: 120; align-items: center; padding: 0 16px; gap: 12px; }
+.hamburger-btn { background: transparent; border: none; color: #fff; font-size: 20px; line-height: 1; padding: 4px; display: flex; align-items: center; }
+.mobile-logo { font-family: 'Playfair Display', serif; font-size: 18px; color: #fff; }
+.mobile-logo em { color: var(--amber); font-style: italic; }
+#bottom-nav { display: none; position: fixed; bottom: 0; left: 0; right: 0; height: 56px; background: var(--ink); border-top: 1px solid rgba(255,255,255,0.08); z-index: 120; align-items: stretch; }
+.bottom-nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: rgba(255,255,255,0.4); font-size: 9px; font-family: 'JetBrains Mono', monospace; cursor: pointer; letter-spacing: 0.06em; text-transform: uppercase; transition: color 0.15s; }
+.bottom-nav-item.active { color: var(--amber); }
+.bottom-nav-icon { font-size: 16px; line-height: 1; }
+@media (max-width: 768px) {
+  #sidebar { transform: translateX(-100%); transition: transform 0.25s; }
+  #sidebar.mobile-open { transform: translateX(0); }
+  #mobile-topbar { display: flex; }
+  #bottom-nav { display: flex; }
+  #app { margin-left: 0; padding-top: 52px; padding-bottom: 56px; }
+  #topbar { display: none; }
+  #page { padding: 20px 16px 40px; }
+  .grid-4 { grid-template-columns: 1fr 1fr; }
+  .grid-3 { grid-template-columns: 1fr 1fr; }
+  .grid-2 { grid-template-columns: 1fr; }
+  .schedule-hero { flex-direction: column; gap: 20px; }
+  .schedule-stats { flex-wrap: wrap; gap: 16px; }
+  .detail-headline { font-size: 28px; }
+  .page-headline { font-size: 28px; }
+  .inbox-layout { flex-direction: column; height: auto; }
+  .inbox-list { width: 100%; min-width: unset; border-radius: 10px 10px 0 0; }
+  .inbox-thread { border-left: 1px solid var(--rule); border-radius: 0 0 10px 10px; }
+  .settings-layout { flex-direction: column; }
+  .settings-nav { width: 100%; display: flex; flex-wrap: wrap; gap: 6px; padding-bottom: 12px; border-bottom: 1px solid var(--rule); margin-bottom: 16px; }
+  .settings-content { padding-left: 0; }
+  .grade-grid { grid-template-columns: repeat(2, 1fr); }
+  .pipeline-dm { display: none; }
+  .pipeline-channels { display: none; }
+  .calendar-grid { gap: 2px; }
+  .cal-cell { min-height: 44px; }
+  .dev-controls { bottom: 70px; }
+}
+.detail-layout { display: grid; grid-template-columns: 1fr 320px; gap: 24px; }
+@media (max-width: 960px) { .detail-layout { grid-template-columns: 1fr; } }
+#sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 99; }
+#sidebar-overlay.show { display: block; }
+@media print {
+  #sidebar, #topbar, #bottom-nav, #mobile-topbar, .dev-controls, .detail-back, .detail-nav, .detail-actions { display: none !important; }
+  #app { margin-left: 0; }
+  #page { padding: 20px; }
+  .briefing-meeting-header { background: var(--ink) !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+</style>
+</head>
+<body>
+
+<nav id="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-text">Agency<em>OS</em></div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">Workspace</div>
+    <div class="nav-item" data-route="#home" onclick="navigate('#home')">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1L1 7v8h5v-5h4v5h5V7L8 1z"/></svg>
+      Dashboard
+    </div>
+    <div class="nav-item" data-route="#pipeline" onclick="navigate('#pipeline')">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+      Pipeline
+      <span class="nav-badge">50</span>
+    </div>
+    <div class="nav-item" data-route="#inbox" onclick="navigate('#inbox')">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M2 4a2 2 0 012-2h8a2 2 0 012 2v6a2 2 0 01-2 2H2.5L1 14V4z"/></svg>
+      Inbox
+      <span class="nav-badge">23</span>
+    </div>
+    <div class="nav-item" data-route="#cycles" onclick="navigate('#cycles')">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M14 2L2 7l4 2 2 4 3-4 3 2z"/></svg>
+      Cycles
+    </div>
+    <div class="nav-item" data-route="#sequences" onclick="navigate('#sequences')">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><circle cx="3" cy="3" r="2"/><circle cx="3" cy="8" r="2"/><circle cx="3" cy="13" r="2"/><line x1="5" y1="3" x2="14" y2="3" stroke="currentColor" stroke-width="1.5"/><line x1="5" y1="8" x2="14" y2="8" stroke="currentColor" stroke-width="1.5"/><line x1="5" y1="13" x2="14" y2="13" stroke="currentColor" stroke-width="1.5"/></svg>
+      Sequences
+    </div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">Intelligence</div>
+    <div class="nav-item" data-route="#signals" onclick="navigate('#signals')">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a1 1 0 00-1 1v2.5a1 1 0 002 0V2a1 1 0 00-1-1zm4.24 2.76a1 1 0 00-1.41 1.41A4 4 0 0112 8a4 4 0 01-1.17 2.83 1 1 0 001.41 1.41A6 6 0 0014 8a6 6 0 00-1.76-4.24zM3.76 3.76A6 6 0 002 8a6 6 0 001.76 4.24 1 1 0 001.41-1.41A4 4 0 014 8a4 4 0 011.17-2.83 1 1 0 00-1.41-1.41z"/></svg>
+      Signals
+    </div>
+    <div class="nav-item" data-route="#reports" onclick="navigate('#reports')">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="10" width="3" height="5" rx="1"/><rect x="6" y="6" width="3" height="9" rx="1"/><rect x="11" y="3" width="3" height="12" rx="1"/></svg>
+      Reports
+    </div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">Account</div>
+    <div class="nav-item" data-route="#settings" onclick="navigate('#settings')">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 5a3 3 0 100 6A3 3 0 008 5zm0 1.5a1.5 1.5 0 110 3 1.5 1.5 0 010-3zm6.5 1l-1.2-.4a5.5 5.5 0 00-.3-.7l.6-1.1-1.4-1.4-1.1.6a5.5 5.5 0 00-.7-.3L10 2.5H6l-.4 1.2a5.5 5.5 0 00-.7.3l-1.1-.6L2.4 4.8l.6 1.1a5.5 5.5 0 00-.3.7L1.5 7v2l1.2.4c.1.2.2.5.3.7l-.6 1.1 1.4 1.4 1.1-.6c.2.1.5.2.7.3L6 13.5h4l.4-1.2c.2-.1.5-.2.7-.3l1.1.6 1.4-1.4-.6-1.1c.1-.2.2-.5.3-.7l1.2-.4V7z"/></svg>
+      Settings
+    </div>
+  </div>
+  <div class="sidebar-footer">
+    <div class="avatar-circle">DS</div>
+    <div>
+      <div class="sidebar-user-name">David Stephens</div>
+      <div class="sidebar-user-sub">Ignition · Sydney</div>
+    </div>
+  </div>
+</nav>
+
+<div id="sidebar-overlay" onclick="closeMobileSidebar()"></div>
+
+<div id="mobile-topbar">
+  <button class="hamburger-btn" onclick="toggleMobileSidebar()">&#9776;</button>
+  <div class="mobile-logo">Agency<em>OS</em></div>
+  <div style="margin-left:auto;display:flex;align-items:center;gap:10px;">
+    <span class="pulse-dot"></span>
+    <button class="kill-btn" style="font-size:10px;padding:4px 10px;" onclick="alert('Pause all outreach — confirm?')">Pause all</button>
+  </div>
+</div>
+
+<div id="app">
+  <div id="topbar">
+    <div class="breadcrumb" id="breadcrumb">
+      <span>AgencyOS</span>
+      <span class="crumb-sep">›</span>
+      <span class="crumb-current">Dashboard</span>
+    </div>
+    <div class="topbar-right">
+      <div class="pulse-row">
+        <div class="pulse-dot"></div>
+        <span>Day 14 of 30</span>
+      </div>
+      <button class="kill-btn" onclick="alert('Pause all outreach — confirm?')">Pause all</button>
+    </div>
+  </div>
+  <div id="page"></div>
+</div>
+
+<div id="bottom-nav">
+  <div class="bottom-nav-item" onclick="navigate('#home')">
+    <div class="bottom-nav-icon">&#8962;</div>
+    <span>Home</span>
+  </div>
+  <div class="bottom-nav-item" onclick="navigate('#pipeline')">
+    <div class="bottom-nav-icon">&#10764;</div>
+    <span>Pipeline</span>
+  </div>
+  <div class="bottom-nav-item" onclick="navigate('#inbox')">
+    <div class="bottom-nav-icon">&#9993;</div>
+    <span>Inbox</span>
+  </div>
+  <div class="bottom-nav-item" onclick="navigate('#cycles')">
+    <div class="bottom-nav-icon">&#9711;</div>
+    <span>Cycles</span>
+  </div>
+  <div class="bottom-nav-item" onclick="navigate('#signals')">
+    <div class="bottom-nav-icon">&#9685;</div>
+    <span>Signals</span>
+  </div>
+</div>
+
+<!-- Modals -->
+<div class="modal-overlay" id="configModal" onclick="closeModalOutside(event,'configModal')">
+  <div class="modal">
+    <div class="modal-title">Configure Cycle</div>
+    <div class="form-field">
+      <div class="form-label">Services</div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px;">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13.5px;cursor:pointer;"><input type="checkbox" checked style="accent-color:var(--amber)"> SEO Services</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13.5px;cursor:pointer;"><input type="checkbox" checked style="accent-color:var(--amber)"> Google Ads Management</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13.5px;cursor:pointer;"><input type="checkbox" checked style="accent-color:var(--amber)"> Web Design &amp; Development</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13.5px;cursor:pointer;"><input type="checkbox" checked style="accent-color:var(--amber)"> Content Marketing</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13.5px;cursor:pointer;"><input type="checkbox" checked style="accent-color:var(--amber)"> Social Media Management</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13.5px;cursor:pointer;"><input type="checkbox" checked style="accent-color:var(--amber)"> Email Marketing</label>
+      </div>
+    </div>
+    <div class="form-field">
+      <div class="form-label">Geographic Scope</div>
+      <div class="radio-group">
+        <label class="radio-item"><input type="radio" name="area" value="metro" checked> Metro</label>
+        <label class="radio-item"><input type="radio" name="area" value="state"> State</label>
+        <label class="radio-item"><input type="radio" name="area" value="national"> National</label>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('configModal')">Cancel</button>
+      <button class="btn btn-amber" onclick="closeModal('configModal')">Save Settings</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="releaseConfirmModal" onclick="closeModalOutside(event,'releaseConfirmModal')">
+  <div class="modal">
+    <div class="modal-title">Release without a full review?</div>
+    <div class="modal-body">
+      We recommend reviewing at least 10 prospects before releasing to outreach. This ensures you're comfortable with the quality and tone before your first messages go out.<br><br>
+      You've reviewed <strong id="reviewedCountInModal">0</strong> so far. Releasing now means the system will contact all 600 prospects with current draft messaging.
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('releaseConfirmModal')">Keep reviewing</button>
+      <button class="btn btn-amber" onclick="confirmRelease()">Release anyway</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="noteModal" onclick="closeModalOutside(event,'noteModal')">
+  <div class="modal">
+    <div class="modal-title">Add note</div>
+    <div class="form-field">
+      <div class="form-label">Note for <span id="noteProspectName"></span></div>
+      <textarea class="form-textarea" id="noteTextarea" placeholder="Add a note about this prospect..." style="min-height:120px;"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('noteModal')">Cancel</button>
+      <button class="btn btn-amber" onclick="saveNote()">Save note</button>
+    </div>
+  </div>
+</div>
+
+<!-- Dev controls -->
+<div class="dev-controls">
+  <div class="dev-label">Cycle state</div>
+  <button class="dev-btn" id="devBtnReview" onclick="setCycleState('review')">Review</button>
+  <button class="dev-btn" id="devBtnOutreach" onclick="setCycleState('outreach')">Outreach</button>
+  <button class="dev-btn" id="devBtnComplete" onclick="setCycleState('complete')">Complete</button>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════
+   MOCK DATA — 10 HERO PROSPECTS
+═══════════════════════════════════════════════════════════════════ */
+const heroProspects = [
+  {
+    id: 'p1', name: 'Momentum Constructions', suburb: 'Brunswick', state: 'VIC',
+    industry: 'Construction', intent: 'struggling', score: 91, staff: '28',
+    est: '2008', revenue: '$8.2M',
+    dm: { name: 'James Whitford', title: 'Founder & MD', email: 'j.whitford@momentumconstructions.com.au', phone: '+61 412 XXX XXX', linkedin: 'Verified', tenure: '16 years', prevRoles: 'Site Manager at Lendlease (2001–2008)', style: 'Direct and numbers-focused. Responds well to ROI data. Dislikes jargon.', linkedinActivity: 'Posts about project wins 2x/month. Engages with industry news.' },
+    signals: [
+      { text: 'Active Google Ads spend detected ($2,400/mo)', time: '2 days ago' },
+      { text: 'GMB rating dropped from 4.6 to 4.1 in 90 days', time: '5 days ago' },
+      { text: 'Website last updated 2019 — no SSL, not mobile responsive', time: '1 week ago' },
+      { text: 'Competitor bidding on their brand terms', time: '3 days ago' },
+    ],
+    affordability: 8, intentScore: 16, composite: 91,
+    vulnerability: 'Momentum Constructions is spending $2,400/month on Google Ads but their website converts poorly — no SSL, not mobile responsive, last updated 2019. GMB rating dropped from 4.6 to 4.1 with negative reviews in 90 days. A competitor is bidding on their brand terms. Budget and intent present but leaking value at every touchpoint.',
+    vulnGrades: { website: 'F', seo: 'D', reviews: 'D', ads: 'C', social: 'B', content: 'F' },
+    aiSummary: 'Momentum Constructions is a 28-person construction firm in Brunswick spending $2,400/month on paid ads without the digital infrastructure to convert that traffic. Their declining GMB rating and outdated website create urgency — a competitor has already moved in on their brand terms.',
+    timeline: [
+      { type: 'email_sent', label: 'Email 1 sent', time: 'Day 1 · 9:02am', dotClass: '' },
+      { type: 'email_opened', label: 'Email 1 opened (3x)', time: 'Day 1 · 11:34am', dotClass: '' },
+      { type: 'linkedin_sent', label: 'LinkedIn connection request sent', time: 'Day 3 · 9:05am', dotClass: '' },
+      { type: 'linkedin_accepted', label: 'LinkedIn connection accepted', time: 'Day 3 · 2:17pm', dotClass: '' },
+      { type: 'email_sent', label: 'Email 2 sent', time: 'Day 5 · 9:01am', dotClass: '' },
+      { type: 'email_opened', label: 'Email 2 opened (1x)', time: 'Day 5 · 4:52pm', dotClass: '' },
+      { type: 'voice_sent', label: 'Voice AI call placed', time: 'Day 7 · 10:00am', dotClass: '' },
+      { type: 'voice_voicemail', label: 'Voicemail left', time: 'Day 7 · 10:01am', dotClass: '' },
+      { type: 'email_sent', label: 'Email 3 sent', time: 'Day 10 · 9:03am', dotClass: '' },
+      { type: 'email_replied', label: 'Reply received: "This is exactly what we need. Can we set up a call this week?"', time: 'Day 10 · 3:41pm', dotClass: 'ot-dot-reply' },
+      { type: 'meeting_booked', label: 'Meeting booked — 14 April 2026, 10:00am', time: 'Day 10 · 4:05pm', dotClass: 'ot-dot-meeting' },
+    ],
+    triggerSignal: 'GMB rating dropped 0.5 stars + competitor bidding on brand terms',
+    triggerMessage: 'Email 3 — Subject: "Your competitors are stealing your brand traffic, James"',
+    prospectReply: '"This is exactly what we need. Can we set up a call this week?"',
+    sentiment: 'High intent — immediate action requested',
+    timeToMeeting: '37 minutes from reply to booking',
+    meeting: { date: 'Monday 14 April 2026', time: '10:00am AEST', platform: 'Zoom', countdown: 'In 7 days' },
+    competitors: ['Lendlease Digital', 'Built Digital', 'Construct Media'],
+    recommendedAngle: 'Lead with the GMB decline data and the brand term bidding. Show the revenue impact. Propose a 90-day recovery plan starting with site rebuild + GMB management.',
+    pricingRange: '$2,800–$4,200/month AUD',
+    openingHook: '"James, your competitor is currently spending $800/month bidding on the exact phrase people search when looking for Momentum Constructions. I can show you that in the first 2 minutes."',
+    discoveryQuestions: ['What does a qualified lead look like for you?', 'How are you currently tracking ROI on your Google Ads spend?', 'What happened with the GMB reviews — did you notice the drop?'],
+    objections: [{ obj: '"We already have someone handling this."', response: 'Great — let me show you what they\'re missing on the technical side. This isn\'t about effort, it\'s about infrastructure.' }, { obj: '"Not in the budget right now."', response: 'You\'re already spending $2,400/month on ads. We\'re talking about making that spend work properly.' }],
+    closeOptions: ['90-day pilot at $2,800/month — website + GMB + ad landing pages', 'Full-service retainer at $4,200/month including content and ongoing optimisation'],
+  },
+  {
+    id: 'p2', name: 'Harbour Physiotherapy', suburb: 'Manly', state: 'NSW',
+    industry: 'Health', intent: 'struggling', score: 88, staff: '11',
+    est: '2015', revenue: '$1.8M',
+    dm: { name: 'Sarah Kemp', title: 'Clinical Director & Owner', email: 's.kemp@harbourphysio.com.au', phone: '+61 438 XXX XXX', linkedin: 'Verified', tenure: '9 years', prevRoles: 'Senior Physio at Prince of Wales Hospital (2010–2015)', style: 'Evidence-based thinker. Appreciates data. Skeptical of marketing claims.', linkedinActivity: 'Shares clinical research articles. Occasional posts about the practice.' },
+    signals: [
+      { text: 'Google Ads paused after 6 months continuous spend', time: '1 week ago' },
+      { text: '3 staff LinkedIn profiles updated to "Open to work"', time: '4 days ago' },
+      { text: 'Competitor opened 200m away with aggressive launch', time: '2 weeks ago' },
+    ],
+    affordability: 6, intentScore: 15, composite: 88,
+    vulnerability: 'Harbour Physiotherapy paused Google Ads after 6 months — budget pressure or poor ROI. Three staff updated LinkedIn to "Open to work" signalling instability. New competitor 200m away with aggressive launch. Need to defend local market urgently.',
+    vulnGrades: { website: 'C', seo: 'D', reviews: 'B', ads: 'F', social: 'D', content: 'D' },
+    aiSummary: 'Harbour Physiotherapy faces a classic squeeze: a new competitor 200m away has launched with aggressive digital presence while Harbour has pulled back from paid ads due to cost concerns. Staff instability signals internal pressure. The window to defend their local dominance is narrow.',
+    timeline: [
+      { type: 'email_sent', label: 'Email 1 sent', time: 'Day 1 · 8:58am', dotClass: '' },
+      { type: 'email_delivered', label: 'Email 1 delivered', time: 'Day 1 · 8:59am', dotClass: '' },
+      { type: 'email_opened', label: 'Email 1 opened (2x)', time: 'Day 1 · 12:05pm', dotClass: '' },
+      { type: 'linkedin_sent', label: 'LinkedIn connection request sent', time: 'Day 3 · 9:00am', dotClass: '' },
+      { type: 'email_sent', label: 'Email 2 sent', time: 'Day 5 · 9:02am', dotClass: '' },
+      { type: 'email_clicked', label: 'Email 2 link clicked', time: 'Day 5 · 2:33pm', dotClass: '' },
+      { type: 'email_sent', label: 'Email 3 sent', time: 'Day 10 · 9:00am', dotClass: '' },
+      { type: 'email_replied', label: 'Reply: "Very interested. We\'ve been struggling with our online presence."', time: 'Day 10 · 5:12pm', dotClass: 'ot-dot-reply' },
+      { type: 'meeting_booked', label: 'Meeting booked — 15 April 2026, 2:00pm', time: 'Day 11 · 9:30am', dotClass: 'ot-dot-meeting' },
+    ],
+    triggerSignal: 'Competitor launch 200m away + Google Ads paused',
+    triggerMessage: 'Email 3 — Subject: "The new physio on Sydney Road is ranking above you, Sarah"',
+    prospectReply: '"Very interested. We\'ve been struggling with our online presence."',
+    sentiment: 'Acknowledged pain point — warm to conversation',
+    timeToMeeting: '16 hours from reply to booking',
+    meeting: { date: 'Tuesday 15 April 2026', time: '2:00pm AEST', platform: 'Zoom', countdown: 'In 8 days' },
+    competitors: ['Manly Allied Health', 'Sydney Road Physio', 'Northern Beaches Physiotherapy'],
+    recommendedAngle: 'Lead with local competitive threat data. Show their organic ranking vs the new competitor. Propose a local SEO + GMB strategy to defend the territory.',
+    pricingRange: '$1,800–$2,800/month AUD',
+    openingHook: '"Sarah, the new practice that opened on Sydney Road 3 months ago is now outranking Harbour Physiotherapy for 14 of your top search terms. I can show you that in the first 60 seconds."',
+    discoveryQuestions: ['Why did you pause Google Ads — was it the cost or the results?', 'Have you seen patient numbers affected by the new competitor?', 'What does your current patient acquisition look like — mostly referrals?'],
+    objections: [{ obj: '"We can\'t afford it right now."', response: 'Every month you don\'t act is another month the competitor gains ground. What\'s the value of one new patient per week?' }],
+    closeOptions: ['Local defence package at $1,800/month — SEO + GMB + review management', 'Full digital at $2,800/month adding content and ads'],
+  },
+  {
+    id: 'p3', name: 'Cascade Dental Group', suburb: 'Paddington', state: 'NSW',
+    industry: 'Dental', intent: 'trying', score: 74, staff: '14',
+    est: '2012', revenue: '$4.1M',
+    dm: { name: 'Dr Priya Narayan', title: 'Principal Dentist & Owner', email: 'p.narayan@cascadedental.com.au', phone: '+61 402 XXX XXX', linkedin: 'Verified', tenure: '12 years', prevRoles: 'Associate Dentist at Smile Sydney (2008–2012)', style: 'Analytical. Values credentials and case studies from similar practices.', linkedinActivity: 'Active — posts about dental health awareness 3x/month.' },
+    signals: [
+      { text: 'Recently hired a marketing coordinator', time: '1 week ago' },
+      { text: 'Website redesign detected — new template but thin content', time: '3 days ago' },
+      { text: 'Increased GMB post frequency from 0 to 3/week', time: '2 weeks ago' },
+    ],
+    affordability: 7, intentScore: 12, composite: 74,
+    vulnerability: 'Cascade Dental is actively trying — hired a marketing coordinator and redesigned their website. But new site has thin content and GMB strategy is basic. Intent and budget present but lack expertise.',
+    vulnGrades: { website: 'C', seo: 'C', reviews: 'A', ads: 'D', social: 'C', content: 'D' },
+    aiSummary: 'Cascade Dental has the intent and is making moves — new hire, new website, increased GMB activity. The gap is expertise: they\'re investing without a strategic framework. The new marketing coordinator is likely overwhelmed and will welcome specialist support.',
+    timeline: [
+      { type: 'email_sent', label: 'Email 1 sent', time: 'Day 1 · 9:00am', dotClass: '' },
+      { type: 'email_opened', label: 'Email 1 opened (4x)', time: 'Day 2 · 9:22am', dotClass: '' },
+      { type: 'linkedin_sent', label: 'LinkedIn connection request sent', time: 'Day 3 · 9:00am', dotClass: '' },
+      { type: 'linkedin_accepted', label: 'LinkedIn connection accepted', time: 'Day 4 · 11:40am', dotClass: '' },
+      { type: 'email_sent', label: 'Email 2 sent', time: 'Day 5 · 9:00am', dotClass: '' },
+      { type: 'email_sent', label: 'Email 3 sent', time: 'Day 10 · 9:00am', dotClass: '' },
+      { type: 'email_replied', label: 'Reply: "We just hired someone for this but would love a second opinion."', time: 'Day 10 · 1:18pm', dotClass: 'ot-dot-reply' },
+      { type: 'meeting_booked', label: 'Meeting booked — 17 April 2026, 11:00am', time: 'Day 10 · 3:00pm', dotClass: 'ot-dot-meeting' },
+    ],
+    triggerSignal: 'New marketing hire + website rebuild detected',
+    triggerMessage: 'Email 3 — Subject: "Your new website has one gap that\'ll cost you patients, Priya"',
+    prospectReply: '"We just hired someone for this but would love a second opinion."',
+    sentiment: 'Open but cautious — existing internal effort acknowledged',
+    timeToMeeting: '1 hour 42 minutes from reply to booking',
+    meeting: { date: 'Thursday 17 April 2026', time: '11:00am AEST', platform: 'Zoom', countdown: 'In 10 days' },
+    competitors: ['Paddington Dental', 'Oxford Street Smile Clinic', 'Bondi Dental'],
+    recommendedAngle: 'Position as expert support for their new coordinator, not replacement. Show the SEO gap in the new website. Dental-specific case studies.',
+    pricingRange: '$2,200–$3,400/month AUD',
+    openingHook: '"Priya, your new website looks great — but there\'s a technical SEO issue that means Google can\'t properly index 60% of your treatment pages. I can show you exactly what I mean."',
+    discoveryQuestions: ['What role do you see the new coordinator playing vs an agency?', 'What\'s the most important service you want more patients for?', 'Are you tracking where your current new patients come from?'],
+    objections: [{ obj: '"We have someone in-house now."', response: 'We work alongside in-house teams constantly. We handle the technical and strategic layer; they handle execution.' }],
+    closeOptions: ['Strategy and technical layer at $2,200/month alongside their coordinator', 'Full-service at $3,400/month if coordinator focus shifts to patient comms'],
+  },
+  {
+    id: 'p4', name: 'Coastal Veterinary', suburb: 'Byron Bay', state: 'NSW',
+    industry: 'Veterinary', intent: 'trying', score: 76, staff: '16',
+    est: '2010', revenue: '$2.9M',
+    dm: { name: 'Dr Rebecca Ashford', title: 'Practice Owner', email: 'r.ashford@coastalvet.com.au', phone: '+61 421 XXX XXX', linkedin: 'Verified', tenure: '14 years', prevRoles: 'Veterinarian at RSPCA NSW (2006–2010)', style: 'Community-oriented. Warm communicator. Values relationship over hard sell.', linkedinActivity: 'Posts about animal welfare and local events occasionally.' },
+    signals: [
+      { text: 'New Facebook ad campaign targeting pet owners', time: '5 days ago' },
+      { text: 'Blog section added but only 2 posts', time: '1 week ago' },
+      { text: 'Sponsoring local surf competition', time: '2 weeks ago' },
+    ],
+    affordability: 7, intentScore: 13, composite: 76,
+    vulnerability: 'Coastal Veterinary investing in marketing but spreading thin — Facebook ads, blog, community sponsorship without cohesive strategy. Efforts show intent but lack focus for ROI.',
+    vulnGrades: { website: 'B', seo: 'D', reviews: 'A', ads: 'C', social: 'B', content: 'D' },
+    aiSummary: 'Coastal Veterinary is a well-regarded Byron Bay practice with genuine community presence. They\'re investing in marketing but without a connecting strategy — Facebook ads, a nascent blog, and local sponsorship are uncoordinated. A cohesive local digital strategy would amplify what\'s already working.',
+    timeline: [
+      { type: 'email_sent', label: 'Email 1 sent', time: 'Day 1 · 9:00am', dotClass: '' },
+      { type: 'email_opened', label: 'Email 1 opened (1x)', time: 'Day 3 · 8:45am', dotClass: '' },
+      { type: 'sms_sent', label: 'SMS sent', time: 'Day 7 · 10:00am', dotClass: '' },
+      { type: 'sms_delivered', label: 'SMS delivered', time: 'Day 7 · 10:01am', dotClass: '' },
+      { type: 'sms_replied', label: 'SMS reply: "Interesting. Can you send more details about pricing?"', time: 'Day 7 · 2:33pm', dotClass: 'ot-dot-reply' },
+      { type: 'meeting_booked', label: 'Meeting booked — 21 April 2026, 9:30am', time: 'Day 8 · 10:00am', dotClass: 'ot-dot-meeting' },
+    ],
+    triggerSignal: 'Facebook ad activity + blog launch detected',
+    triggerMessage: 'SMS — "Hi Rebecca, David from Ignition. Your new Facebook ads are reaching pet owners but not converting. Worth 15 minutes?"',
+    prospectReply: '"Interesting. Can you send more details about pricing?"',
+    sentiment: 'Price-sensitive but interested — needs specifics before committing',
+    timeToMeeting: '20 hours from reply to booking',
+    meeting: { date: 'Monday 21 April 2026', time: '9:30am AEST', platform: 'Zoom', countdown: 'In 14 days' },
+    competitors: ['Bangalow Veterinary Hospital', 'Byron Vet Centre'],
+    recommendedAngle: 'Connect their community investment to digital strategy. Show how sponsorship + GMB + content creates a flywheel. Warm approach — lead with what they\'re already doing well.',
+    pricingRange: '$1,600–$2,400/month AUD',
+    openingHook: '"Rebecca, I can see you\'ve already done the hard part — you have community trust and good reviews. We just need to make sure that when someone in Byron searches for a vet at 11pm, Coastal comes up first."',
+    discoveryQuestions: ['How are new clients finding you at the moment?', 'What does the Facebook ad spend look like — is it producing bookings?', 'Is the blog something you want to grow or was it experimental?'],
+    objections: [{ obj: '"Can you send pricing first?"', response: 'I can send a range — but the right package depends on your goals. Two questions first...' }],
+    closeOptions: ['Local presence package at $1,600/month — GMB + content + Facebook', 'Full digital at $2,400/month adding SEO and ad management'],
+  },
+  {
+    id: 'p5', name: 'Southbank Legal Advisory', suburb: 'Southbank', state: 'VIC',
+    industry: 'Legal', intent: 'trying', score: 71, staff: '18',
+    est: '2014', revenue: '$3.6M',
+    dm: { name: 'Andrew Volkov', title: 'Managing Partner', email: 'a.volkov@southbanklegal.com.au', phone: '+61 403 XXX XXX', linkedin: 'Verified', tenure: '10 years', prevRoles: 'Senior Associate at Herbert Smith Freehills (2008–2014)', style: 'Precise and logic-driven. Responds to structured arguments. Dislikes vagueness.', linkedinActivity: 'Active — thought leadership articles and firm news 4x/month.' },
+    signals: [
+      { text: 'Published 4 thought leadership articles in 30 days', time: '1 week ago' },
+      { text: 'Google Ads spend increased 40% month-on-month', time: '3 days ago' },
+      { text: 'New practice area page added (family law)', time: '2 weeks ago' },
+    ],
+    affordability: 7, intentScore: 11, composite: 71,
+    vulnerability: 'Southbank Legal is investing in content and ads but execution is unfocused — thought leadership articles lack SEO, new practice page has thin content, ad spend increasing without conversion tracking.',
+    vulnGrades: { website: 'C', seo: 'D', reviews: 'B', ads: 'C', social: 'C', content: 'C' },
+    aiSummary: 'Southbank Legal is a 10-year-old firm with clear growth ambition — adding practice areas, publishing content, increasing ad spend. The problem is execution quality: their content lacks SEO, their new family law page won\'t rank, and their ad spend increase is blind.',
+    timeline: [
+      { type: 'email_sent', label: 'Email 1 sent', time: 'Day 1 · 9:00am', dotClass: '' },
+      { type: 'email_opened', label: 'Email 1 opened (2x)', time: 'Day 2 · 8:11am', dotClass: '' },
+      { type: 'linkedin_sent', label: 'LinkedIn connection request sent', time: 'Day 3 · 9:00am', dotClass: '' },
+      { type: 'email_sent', label: 'Email 2 sent', time: 'Day 5 · 9:00am', dotClass: '' },
+      { type: 'voice_sent', label: 'Voice AI call placed', time: 'Day 7 · 10:00am', dotClass: '' },
+      { type: 'voice_completed', label: 'Voice call connected — 2 min 14 sec conversation', time: 'Day 7 · 10:04am', dotClass: '' },
+      { type: 'email_sent', label: 'Email 3 sent', time: 'Day 10 · 9:00am', dotClass: '' },
+      { type: 'email_opened', label: 'Email 3 opened (3x)', time: 'Day 10 · 11:30am', dotClass: '' },
+    ],
+    triggerSignal: 'Ad spend increase + content output detected',
+    triggerMessage: 'Email 1 — Subject: "Your thought leadership content isn\'t ranking, Andrew — here\'s why"',
+    prospectReply: null,
+    sentiment: 'Engaged (opened 3x) but no reply yet',
+    timeToMeeting: 'Not yet booked',
+    meeting: null,
+    competitors: ['Holding Redlich', 'Macpherson Kelley', 'Lander & Rogers'],
+    recommendedAngle: 'Lead with the SEO audit of their content. Show exactly why their 4 articles aren\'t ranking. Legal-specific content strategy proposal.',
+    pricingRange: '$2,400–$3,800/month AUD',
+    openingHook: '"Andrew, you\'ve published 4 articles this month — I\'ve analysed all of them. Not one is ranking on page 1 for any commercial legal term. I can explain exactly why in under 3 minutes."',
+    discoveryQuestions: ['What\'s the primary driver for adding family law?', 'Who\'s writing the articles — internal or external?', 'Do you have visibility into what\'s driving your ad clicks?'],
+    objections: [{ obj: '"We manage this internally."', response: 'The volume of content is impressive. The gap is technical SEO — that\'s not about effort, it\'s about configuration.' }],
+    closeOptions: ['SEO-first at $2,400/month — technical + content optimisation', 'Full digital at $3,800/month including ad management and monthly reporting'],
+  },
+  {
+    id: 'p6', name: 'Riverside Accounting', suburb: 'North Sydney', state: 'NSW',
+    industry: 'Accounting', intent: 'dabbling', score: 52, staff: '9',
+    est: '2018', revenue: '$1.2M',
+    dm: { name: 'Michael Chen', title: 'Managing Partner', email: 'm.chen@riversideaccounting.com.au', phone: '+61 415 XXX XXX', linkedin: 'Verified', tenure: '6 years', prevRoles: 'Senior Accountant at Deloitte (2012–2018)', style: 'Analytical. Spreadsheet thinker. Needs to see the numbers before any commitment.', linkedinActivity: 'LinkedIn page exists but minimal personal activity.' },
+    signals: [
+      { text: 'LinkedIn company page created but no posts', time: '3 weeks ago' },
+      { text: 'Google Business Profile claimed but incomplete', time: '2 weeks ago' },
+    ],
+    affordability: 5, intentScore: 8, composite: 52,
+    vulnerability: "Riverside Accounting just starting digital presence — LinkedIn page with no content, incomplete Google Business Profile. Know they need marketing but haven't committed resources.",
+    vulnGrades: { website: 'D', seo: 'F', reviews: 'C', ads: 'F', social: 'F', content: 'F' },
+    aiSummary: 'Riverside Accounting is in the earliest stage of digital intent — they\'ve claimed their GMB and created a LinkedIn page but haven\'t acted further. Michael is analytical and will need to see a clear business case before committing.',
+    timeline: [
+      { type: 'email_sent', label: 'Email 1 sent', time: 'Day 1 · 9:00am', dotClass: '' },
+      { type: 'email_delivered', label: 'Email 1 delivered', time: 'Day 1 · 9:01am', dotClass: '' },
+      { type: 'email_opened', label: 'Email 1 opened (1x)', time: 'Day 4 · 3:15pm', dotClass: '' },
+      { type: 'email_sent', label: 'Email 2 sent', time: 'Day 5 · 9:00am', dotClass: '' },
+      { type: 'email_replied', label: 'Reply: "Not sure if this is for us right now. Maybe next quarter?"', time: 'Day 6 · 9:44am', dotClass: 'ot-dot-reply' },
+    ],
+    triggerSignal: 'GMB claim + LinkedIn page creation',
+    triggerMessage: 'Email 2 — Subject: "Your incomplete Google profile is costing you referrals, Michael"',
+    prospectReply: '"Not sure if this is for us right now. Maybe next quarter?"',
+    sentiment: 'Soft objection — not a hard no, timing concern',
+    timeToMeeting: 'Not booked — nurture sequence',
+    meeting: null,
+    competitors: ['Carbon Group', 'NumberWorks Sydney', 'Chan & Naylor North Sydney'],
+    recommendedAngle: 'Low-commitment entry point. Lead with GMB completion (quick win). Show revenue per new client to justify cost.',
+    pricingRange: '$800–$1,400/month AUD',
+    openingHook: '"Michael, I\'m not going to pitch a big retainer. Let me spend 20 minutes showing you what fixing your Google profile alone would do for referrals."',
+    discoveryQuestions: ['What does a new client typically mean in annual revenue for the firm?', 'How do most of your clients find you currently?', 'What\'s making next quarter a better time than now?'],
+    objections: [{ obj: '"Maybe next quarter."', response: 'What changes next quarter? If it\'s budget, I have an entry-level option at $800/month that\'s designed for where you are now.' }],
+    closeOptions: ['Foundation package $800/month — GMB + basic SEO', 'Growth package $1,400/month adding content and review management'],
+  },
+  {
+    id: 'p7', name: 'Parramatta Motor Group', suburb: 'Parramatta', state: 'NSW',
+    industry: 'Automotive', intent: 'dabbling', score: 47, staff: '34',
+    est: '2005', revenue: '$12.4M',
+    dm: { name: 'Wei Zhang', title: 'Dealer Principal', email: 'w.zhang@parramattamotors.com.au', phone: '+61 410 XXX XXX', linkedin: 'Verified', tenure: '19 years', prevRoles: 'Sales Manager at Parramatta Toyota (2001–2005)', style: 'Revenue-focused. Needs to see a clear return. Skeptical of digital — prefers traditional channels.', linkedinActivity: 'Inactive.' },
+    signals: [
+      { text: "Website hasn't been updated since 2020", time: '2 weeks ago' },
+      { text: 'Zero social media activity in 12 months', time: '1 month ago' },
+    ],
+    affordability: 8, intentScore: 5, composite: 47,
+    vulnerability: "Parramatta Motor Group has revenue and staff but zero digital marketing investment. Website from 2020, no social presence. High affordability but very low intent — classic 'don't know they need it' prospect.",
+    vulnGrades: { website: 'F', seo: 'F', reviews: 'B', ads: 'F', social: 'F', content: 'F' },
+    aiSummary: 'Parramatta Motor Group is a high-revenue dealership that has actively ignored digital for 5+ years. Wei is skeptical of digital marketing but the website and search presence are objectively weak. The play is ROI-first — show them what customers they\'re missing.',
+    timeline: [
+      { type: 'email_sent', label: 'Email 1 sent', time: 'Day 1 · 9:00am', dotClass: '' },
+      { type: 'email_opened', label: 'Email 1 opened (1x)', time: 'Day 6 · 5:02pm', dotClass: '' },
+      { type: 'email_sent', label: 'Email 2 sent', time: 'Day 5 · 9:00am', dotClass: '' },
+      { type: 'voice_sent', label: 'Voice AI call placed', time: 'Day 7 · 10:00am', dotClass: '' },
+      { type: 'voice_voicemail', label: 'Voicemail left', time: 'Day 7 · 10:02am', dotClass: '' },
+      { type: 'email_sent', label: 'Email 3 sent', time: 'Day 10 · 9:00am', dotClass: '' },
+      { type: 'system', label: 'Sequence completed — no reply', time: 'Day 14 · 9:00am', dotClass: 'ot-dot-system' },
+    ],
+    triggerSignal: 'Zero digital activity + high affordability score',
+    triggerMessage: 'Email 1 — Subject: "How many car buyers are you losing to Google every month, Wei?"',
+    prospectReply: null,
+    sentiment: 'No engagement — low-intent prospect',
+    timeToMeeting: 'Not booked',
+    meeting: null,
+    competitors: ['Parramatta Nissan', 'Westfield Honda', 'Motorpoint Parramatta'],
+    recommendedAngle: 'Revenue impact framing. Show the number of searches for their category in Parramatta. High-value but long cycle.',
+    pricingRange: '$3,200–$5,000/month AUD',
+    openingHook: '"Wei, there are 840 people searching for used cars in Parramatta every month. Parramatta Motor Group doesn\'t appear on the first page for any of them."',
+    discoveryQuestions: ['Where does most of your foot traffic come from today?', 'Have you ever tried digital advertising?', 'What would one extra car sale per week mean in margin?'],
+    objections: [{ obj: '"We do fine without digital."', response: 'You\'re doing well despite it — imagine doing well because of it.' }],
+    closeOptions: ['Visibility package $3,200/month — SEO + GMB + website', 'Full digital at $5,000/month including Google Ads'],
+  },
+  {
+    id: 'p8', name: 'Bondi Creative Studio', suburb: 'Bondi', state: 'NSW',
+    industry: 'Design', intent: 'trying', score: 68, staff: '8',
+    est: '2019', revenue: '$980K',
+    dm: { name: 'Aria Martinelli', title: 'Creative Director', email: 'a.martinelli@bondicreative.com.au', phone: '+61 422 XXX XXX', linkedin: 'Verified', tenure: '5 years', prevRoles: 'Senior Designer at Clemenger BBDO (2015–2019)', style: 'Creative-first. Responds to aesthetics and story. Dislikes corporate-speak.', linkedinActivity: 'Active — portfolio posts and design commentary weekly.' },
+    signals: [
+      { text: 'Portfolio website recently launched with case studies', time: '1 week ago' },
+      { text: 'Instagram following grew 300% in 3 months', time: '2 weeks ago' },
+      { text: 'Started running LinkedIn thought leadership', time: '3 weeks ago' },
+    ],
+    affordability: 4, intentScore: 11, composite: 68,
+    vulnerability: 'Bondi Creative understands marketing (they do it for clients) but struggles with their own pipeline. Strong social growth but no paid acquisition, thin SEO, no lead capture on portfolio site.',
+    vulnGrades: { website: 'B', seo: 'D', reviews: 'A', ads: 'F', social: 'A', content: 'B' },
+    aiSummary: 'Bondi Creative is the classic "cobbler\'s children" scenario — they produce excellent marketing for clients but their own digital acquisition is almost nonexistent beyond social. A referral-heavy agency with genuine creative talent needing a systematic new business channel.',
+    timeline: [
+      { type: 'email_sent', label: 'Email 1 sent', time: 'Day 1 · 9:00am', dotClass: '' },
+      { type: 'email_opened', label: 'Email 1 opened (5x)', time: 'Day 1 · 10:48am', dotClass: '' },
+      { type: 'linkedin_sent', label: 'LinkedIn connection request sent', time: 'Day 3 · 9:00am', dotClass: '' },
+      { type: 'linkedin_accepted', label: 'LinkedIn connection accepted', time: 'Day 3 · 3:22pm', dotClass: '' },
+      { type: 'linkedin_messaged', label: 'LinkedIn message sent', time: 'Day 4 · 9:00am', dotClass: '' },
+      { type: 'email_sent', label: 'Email 2 sent', time: 'Day 5 · 9:00am', dotClass: '' },
+      { type: 'email_opened', label: 'Email 2 opened (2x)', time: 'Day 6 · 2:10pm', dotClass: '' },
+      { type: 'email_sent', label: 'Email 3 sent', time: 'Day 10 · 9:00am', dotClass: '' },
+    ],
+    triggerSignal: 'New portfolio site launch + Instagram growth',
+    triggerMessage: 'Email 1 — Subject: "Your work is excellent, Aria — but no one can find you on Google"',
+    prospectReply: null,
+    sentiment: 'Highly engaged (opened 5x) — no reply yet',
+    timeToMeeting: 'Not booked',
+    meeting: null,
+    competitors: ['Manual Sydney', 'Vert Design', 'Frost Collective'],
+    recommendedAngle: 'Peer-to-peer framing. Acknowledge their creative quality. Focus on new business channel, not design critique.',
+    pricingRange: '$1,200–$2,000/month AUD',
+    openingHook: '"Aria, I\'ve spent time on your portfolio — the work is genuinely excellent. The problem is that when a business in Sydney searches for a brand design studio, you don\'t appear anywhere in the top 20 results."',
+    discoveryQuestions: ['How do you win new clients today — mostly referrals?', 'Have you explored paid channels or is it purely organic?', 'What type of client are you trying to attract more of?'],
+    objections: [{ obj: '"We do marketing for others — we can do it ourselves."', response: 'Most of your competitors say the same. It\'s about bandwidth, not capability.' }],
+    closeOptions: ['New business channel at $1,200/month — SEO + lead capture', 'Full growth at $2,000/month adding content strategy'],
+  },
+  {
+    id: 'p9', name: 'Fitzroy Cafe Group', suburb: 'Fitzroy', state: 'VIC',
+    industry: 'Hospitality', intent: 'struggling', score: 84, staff: '22',
+    est: '2016', revenue: '$2.1M',
+    dm: { name: 'Tom Abernathy', title: 'Owner', email: 't.abernathy@fitzroycafe.com.au', phone: '+61 418 XXX XXX', linkedin: 'Verified', tenure: '8 years', prevRoles: 'Head Chef at Cumulus Inc (2012–2016)', style: 'Pragmatic. Busy. Responds to brevity. Dislikes anything that sounds like overhead.', linkedinActivity: 'Minimal.' },
+    signals: [
+      { text: 'Uber Eats commission complaints on social media', time: '3 days ago' },
+      { text: 'Staff hiring posts every 2 weeks (high turnover)', time: 'ongoing' },
+      { text: 'GMB photos last updated 18 months ago', time: '1 month ago' },
+      { text: 'Competitor cafe won "Best of Fitzroy" award', time: '1 week ago' },
+    ],
+    affordability: 6, intentScore: 14, composite: 84,
+    vulnerability: 'Fitzroy Cafe Group is bleeding margin to delivery platforms and struggling with staff retention. Stale GMB presence while a competitor won local awards. High urgency to build direct customer acquisition and reduce platform dependency.',
+    vulnGrades: { website: 'D', seo: 'F', reviews: 'C', ads: 'F', social: 'D', content: 'F' },
+    aiSummary: 'Fitzroy Cafe Group is caught in the delivery platform trap — high volume, thin margin, and growing frustration publicly visible. Tom is cash-conscious but the pain is real. The pitch is margin recovery: replace platform revenue with direct bookings.',
+    timeline: [
+      { type: 'email_sent', label: 'Email 1 sent', time: 'Day 1 · 9:00am', dotClass: '' },
+      { type: 'email_opened', label: 'Email 1 opened (2x)', time: 'Day 2 · 7:33am', dotClass: '' },
+      { type: 'sms_sent', label: 'SMS sent', time: 'Day 5 · 10:00am', dotClass: '' },
+      { type: 'sms_delivered', label: 'SMS delivered', time: 'Day 5 · 10:01am', dotClass: '' },
+      { type: 'email_sent', label: 'Email 2 sent', time: 'Day 5 · 9:00am', dotClass: '' },
+      { type: 'email_sent', label: 'Email 3 sent', time: 'Day 10 · 9:00am', dotClass: '' },
+      { type: 'email_opened', label: 'Email 3 opened (3x)', time: 'Day 10 · 6:15am', dotClass: '' },
+    ],
+    triggerSignal: 'Public Uber Eats complaints + competitor award win',
+    triggerMessage: 'Email 3 — Subject: "Sundays Fitzroy just won Best of Fitzroy. Here\'s how they did it, Tom."',
+    prospectReply: null,
+    sentiment: 'Engaged but no reply — follow-up needed',
+    timeToMeeting: 'Not booked',
+    meeting: null,
+    competitors: ['Sundays Fitzroy', 'Deadman Espresso', 'The Commoner'],
+    recommendedAngle: 'Margin recovery framing. Calculate how much Uber Eats is costing per month. Show what direct booking would look like.',
+    pricingRange: '$1,400–$2,200/month AUD',
+    openingHook: '"Tom, if you\'re paying Uber Eats 30% commission on $18,000/month in delivery, that\'s $5,400/month in platform fees. Our full package is $1,400/month and builds you a direct channel."',
+    discoveryQuestions: ['What percentage of revenue is delivery vs dine-in?', 'Have you tried promoting direct orders?', 'What did Sundays Fitzroy do differently that you\'ve noticed?'],
+    objections: [{ obj: '"I\'m too busy to deal with marketing."', response: 'That\'s exactly why you use us. It runs in the background. You do the coffee.' }],
+    closeOptions: ['Direct acquisition at $1,400/month — GMB + local SEO + Google Ads', 'Full platform at $2,200/month adding social and email marketing'],
+  },
+  {
+    id: 'p10', name: 'Gold Coast Mortgage Co', suburb: 'Surfers Paradise', state: 'QLD',
+    industry: 'Finance', intent: 'dabbling', score: 55, staff: '12',
+    est: '2017', revenue: '$1.8M',
+    dm: { name: 'Priya Sharma', title: 'Principal Broker', email: 'p.sharma@gcmortgage.com.au', phone: '+61 407 XXX XXX', linkedin: 'Verified', tenure: '7 years', prevRoles: 'Mortgage Broker at NAB (2013–2017)', style: 'Relationship-first. Referral network is core to her business. Open to new ideas.', linkedinActivity: 'Posts about property market commentary monthly.' },
+    signals: [
+      { text: 'Recently registered new ABN for financial planning arm', time: '2 weeks ago' },
+      { text: 'Sponsored local business networking event', time: '1 week ago' },
+    ],
+    affordability: 6, intentScore: 8, composite: 55,
+    vulnerability: 'Gold Coast Mortgage Co expanding into financial planning (new ABN) and doing community networking. Growth intent present but no digital strategy to capture it. Classic referral-dependent business ready for systematic acquisition.',
+    vulnGrades: { website: 'D', seo: 'F', reviews: 'B', ads: 'F', social: 'D', content: 'F' },
+    aiSummary: 'Gold Coast Mortgage Co is a referral-driven firm entering a growth phase — new ABN, new service line, community investment. Priya is relationship-oriented and the pitch should reflect that. The digital channel will feel like a natural extension of her networking.',
+    timeline: [
+      { type: 'email_sent', label: 'Email 1 sent', time: 'Day 1 · 9:00am', dotClass: '' },
+      { type: 'email_opened', label: 'Email 1 opened (1x)', time: 'Day 3 · 1:22pm', dotClass: '' },
+      { type: 'linkedin_sent', label: 'LinkedIn connection request sent', time: 'Day 3 · 9:00am', dotClass: '' },
+      { type: 'email_sent', label: 'Email 2 sent', time: 'Day 5 · 9:00am', dotClass: '' },
+      { type: 'email_sent', label: 'Email 3 sent', time: 'Day 10 · 9:00am', dotClass: '' },
+    ],
+    triggerSignal: 'New ABN + networking sponsorship',
+    triggerMessage: 'Email 1 — Subject: "Your new financial planning arm needs a digital foundation, Priya"',
+    prospectReply: null,
+    sentiment: 'Opened once — low engagement so far',
+    timeToMeeting: 'Not booked',
+    meeting: null,
+    competitors: ['GC Home Loans', 'Aussie Surfers Paradise', 'Mortgage Choice GC'],
+    recommendedAngle: 'New venture framing. Digital as the infrastructure for the financial planning arm expansion.',
+    pricingRange: '$1,200–$2,000/month AUD',
+    openingHook: '"Priya, the financial planning ABN is a smart move. But right now when someone searches for financial planners in Surfers Paradise, there\'s no digital presence for that service at all."',
+    discoveryQuestions: ['How are you planning to get clients for the financial planning arm?', 'Is your referral network aware of the new service yet?', 'Have you set a target for new planning clients this year?'],
+    objections: [{ obj: '"We\'re still setting it up."', response: 'The best time to build a digital foundation is before you launch — so it\'s ready when you are.' }],
+    closeOptions: ['Foundation at $1,200/month for the new arm', 'Combined at $2,000/month covering both mortgage and planning'],
+  },
+];
+
+/* filler prospects */
+const firstNames = ['Nathan','Sophie','Marcus','Olivia','Liam','Emma','Jack','Charlotte','Ethan','Isabella','Noah','Mia','William','Ava','James','Grace','Benjamin','Chloe','Lucas','Zoe','Henry','Amelia','Alexander','Harper','Sebastian','Ella','Thomas','Lily','Michael','Hannah'];
+const lastNames = ['Morrison','Clarke','Nguyen','Williams','Johnson','Brown','Smith','Wilson','Taylor','Anderson','Thompson','White','Martin','Garcia','Davies','Evans','Lewis','Walker','Hall','Young'];
+const bizPrefixes = ['Momentum','Precision','Meridian','Apex','Bridge','North Star','Summit','Atlas','Keystone','Harbour','Ridgeline','Coastal','Pinnacle','Vantage','Sterling','Clearwater'];
+const bizSuffixes = ['Construction','Dental','Legal','Physio','Accounting','Plumbing','Electrical','Hospitality','Automotive','Retail','Landscaping','Architecture'];
+const suburbs = ['Newtown','Surry Hills','Glebe','Marrickville','Ultimo','Chippendale','Leichhardt','Rozelle','Balmain','Pyrmont','Darlinghurst','Redfern','Alexandria','Waterloo','Zetland','Erskineville','Annandale','Stanmore','Petersham','Enmore'];
+const states = ['NSW','VIC','QLD','NSW','NSW','VIC','NSW','QLD'];
+const intents = ['struggling','trying','dabbling'];
+const outreachStatuses = ['contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','contacted','replied','replied','replied','replied','replied','replied','replied','replied','suppressed','suppressed'];
+
+function seededRand(seed) {
+  let s = seed;
+  return function() { s = (s * 9301 + 49297) % 233280; return s / 233280; };
+}
+
+const fillerProspects = Array.from({length: 40}, (_, i) => {
+  const rng = seededRand(i * 1337 + 42);
+  const fn = firstNames[Math.floor(rng() * firstNames.length)];
+  const ln = lastNames[Math.floor(rng() * lastNames.length)];
+  const bpx = bizPrefixes[Math.floor(rng() * bizPrefixes.length)];
+  const bsx = bizSuffixes[Math.floor(rng() * bizSuffixes.length)];
+  const sub = suburbs[Math.floor(rng() * suburbs.length)];
+  const st = states[Math.floor(rng() * states.length)];
+  const score = Math.floor(rng() * 52) + 40;
+  const intentIdx = Math.floor(rng() * intents.length);
+  const outreachStatus = outreachStatuses[i] || 'contacted';
+  return {
+    id: 'pf' + (i + 1),
+    name: bpx + ' ' + bsx,
+    suburb: sub, state: st,
+    industry: bsx, intent: intents[intentIdx],
+    score, staff: String(Math.floor(rng() * 30) + 5),
+    est: String(2008 + Math.floor(rng() * 14)),
+    revenue: '$' + (Math.floor(rng() * 90) + 10) / 10 + 'M',
+    dm: { name: fn + ' ' + ln, title: 'Owner', email: fn.toLowerCase() + '@' + bpx.toLowerCase().replace(' ','') + bsx.toLowerCase() + '.com.au', phone: '+61 4XX XXX XXX', linkedin: 'Verified' },
+    signals: [{ text: 'Business signal detected', time: '1 week ago' }],
+    affordability: Math.floor(rng() * 6) + 3,
+    intentScore: Math.floor(rng() * 10) + 4,
+    composite: score,
+    vulnerability: 'Digital presence gaps detected. Priority outreach candidate.',
+    vulnGrades: { website: ['A','B','C','D','F'][Math.floor(rng()*5)], seo: ['C','D','F'][Math.floor(rng()*3)], reviews: ['A','B','C'][Math.floor(rng()*3)], ads: ['C','D','F'][Math.floor(rng()*3)], social: ['B','C','D','F'][Math.floor(rng()*4)], content: ['C','D','F'][Math.floor(rng()*3)] },
+    aiSummary: bpx + ' ' + bsx + ' is a local business with identifiable digital gaps and outreach potential.',
+    timeline: [],
+    triggerSignal: 'Digital gap detected',
+    triggerMessage: 'Initial outreach email',
+    prospectReply: null,
+    sentiment: 'Not yet contacted',
+    timeToMeeting: 'Not booked',
+    meeting: null,
+    competitors: [],
+    recommendedAngle: 'Standard digital presence improvement pitch.',
+    pricingRange: '$1,200–$2,400/month AUD',
+    openingHook: 'Standard opening.',
+    discoveryQuestions: [], objections: [], closeOptions: [],
+    outreachStatus,
+  };
+});
+
+const prospects = [...heroProspects, ...fillerProspects];
+
+const replies = [
+  { id: 'r1', prospectId: 'p1', heat: 'hot', name: 'James Whitford', business: 'Momentum Constructions', snippet: "This is exactly what we need. Can we set up a call this week?", time: '2h ago', channel: 'email' },
+  { id: 'r2', prospectId: 'p2', heat: 'hot', name: 'Sarah Kemp', business: 'Harbour Physiotherapy', snippet: "Very interested. We've been struggling with our online presence.", time: '4h ago', channel: 'linkedin' },
+  { id: 'r3', prospectId: 'p3', heat: 'hot', name: 'Dr Priya Narayan', business: 'Cascade Dental Group', snippet: "We just hired someone for this but would love a second opinion.", time: '1d ago', channel: 'email' },
+  { id: 'r4', prospectId: 'p4', heat: 'warm', name: 'Dr Rebecca Ashford', business: 'Coastal Veterinary', snippet: "Interesting. Can you send more details about pricing?", time: '2d ago', channel: 'sms' },
+  { id: 'r5', prospectId: 'p6', heat: 'warm', name: 'Michael Chen', business: 'Riverside Accounting', snippet: "Not sure if this is for us right now. Maybe next quarter?", time: '3d ago', channel: 'email' },
+  { id: 'r6', prospectId: 'p1', heat: 'cool', name: 'Reception', business: 'Momentum Constructions', snippet: "James is away until Thursday. I'll pass this along.", time: '5d ago', channel: 'voice' },
+];
+
+/* ═══════════════════════════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════════════════════════ */
+let activeInboxReply = 'r1';
+let activeSettingsTab = 'account';
+let activeOutreachTab = 'email';
+let activePipelineFilter = 'top10';
+let pipelinePage = 1;
+let pipelinePageSize = 20;
+let noteTargetId = null;
+
+function getCycleState() {
+  return localStorage.getItem('agencyos_cycle_state') || 'review';
+}
+function setCycleState(state) {
+  localStorage.setItem('agencyos_cycle_state', state);
+  updateDevControls();
+  const hash = window.location.hash || '#home';
+  if (hash === '#pipeline' || hash.startsWith('#pipeline/')) renderPipeline();
+}
+function updateDevControls() {
+  const state = getCycleState();
+  ['review','outreach','complete'].forEach(s => {
+    const el = document.getElementById('devBtn' + s.charAt(0).toUpperCase() + s.slice(1));
+    if (el) el.classList.toggle('active', state === s);
+  });
+}
+
+function getReviewedIds() {
+  try { return JSON.parse(localStorage.getItem('agencyos_reviewed_prospects') || '[]'); } catch(e) { return []; }
+}
+function markReviewed(id) {
+  const visited = getReviewedIds();
+  if (!visited.includes(id)) { visited.push(id); localStorage.setItem('agencyos_reviewed_prospects', JSON.stringify(visited)); }
+}
+function getReviewedCount() { return getReviewedIds().length; }
+
+function getProspectNote(id) {
+  try { const n = JSON.parse(localStorage.getItem('agencyos_notes') || '{}'); return n[id] || ''; } catch(e) { return ''; }
+}
+function saveProspectNote(id, text) {
+  try { const n = JSON.parse(localStorage.getItem('agencyos_notes') || '{}'); n[id] = text; localStorage.setItem('agencyos_notes', JSON.stringify(n)); } catch(e) {}
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   ROUTING
+═══════════════════════════════════════════════════════════════════ */
+function navigate(hash) {
+  if (hash.startsWith('#pipeline/')) {
+    const id = hash.split('/')[1];
+    markReviewed(id);
+  }
+  window.location.hash = hash;
+}
+
+function router() {
+  const hash = window.location.hash || '#home';
+  if (hash === '#home') renderHome();
+  else if (hash === '#pipeline') renderPipeline();
+  else if (hash.startsWith('#pipeline/')) { const id = hash.split('/')[1]; renderDetail(id); }
+  else if (hash === '#cycles') renderCycles();
+  else if (hash === '#inbox') renderInbox();
+  else if (hash === '#sequences') renderSequences();
+  else if (hash === '#signals') renderInsights();
+  else if (hash === '#reports') renderReports();
+  else if (hash === '#settings') renderSettings();
+  else renderHome();
+  updateSidebarActive(hash);
+  updateBreadcrumb(hash);
+  updateBottomNav(hash);
+  updateDevControls();
+  window.scrollTo(0, 0);
+}
+
+function updateSidebarActive(hash) {
+  document.querySelectorAll('.nav-item').forEach(el => {
+    el.classList.remove('active');
+    const route = el.getAttribute('data-route');
+    if (route === hash || (hash.startsWith('#pipeline/') && route === '#pipeline')) el.classList.add('active');
+  });
+}
+
+function updateBreadcrumb(hash) {
+  const labels = { '#home': 'Dashboard', '#pipeline': 'Pipeline', '#cycles': 'Cycles', '#inbox': 'Inbox', '#sequences': 'Sequences', '#signals': 'Signals', '#reports': 'Reports', '#settings': 'Settings' };
+  const crumb = document.getElementById('breadcrumb');
+  if (hash.startsWith('#pipeline/')) {
+    const id = hash.split('/')[1];
+    const p = prospects.find(x => x.id === id);
+    crumb.innerHTML = `<span>AgencyOS</span><span class="crumb-sep">›</span><span onclick="navigate('#pipeline')" style="cursor:pointer;color:var(--ink-3)">Pipeline</span><span class="crumb-sep">›</span><span class="crumb-current">${p ? p.name : 'Detail'}</span>`;
+    return;
+  }
+  crumb.innerHTML = `<span>AgencyOS</span><span class="crumb-sep">›</span><span class="crumb-current">${labels[hash] || 'Dashboard'}</span>`;
+}
+
+function updateBottomNav(hash) {
+  const map = { '#home': 0, '#pipeline': 1, '#inbox': 2, '#cycles': 3, '#signals': 4 };
+  const base = hash.startsWith('#pipeline/') ? '#pipeline' : hash;
+  document.querySelectorAll('.bottom-nav-item').forEach((el, i) => { el.classList.toggle('active', map[base] === i); });
+}
+
+window.addEventListener('hashchange', router);
+
+/* ═══════════════════════════════════════════════════════════════════
+   MODAL HELPERS
+═══════════════════════════════════════════════════════════════════ */
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function closeModalOutside(e, id) { if (e.target.id === id) closeModal(id); }
+
+function openNoteModal(prospectId) {
+  noteTargetId = prospectId;
+  const p = prospects.find(x => x.id === prospectId);
+  document.getElementById('noteProspectName').textContent = p ? p.name : '';
+  document.getElementById('noteTextarea').value = getProspectNote(prospectId);
+  openModal('noteModal');
+}
+function saveNote() {
+  if (noteTargetId) saveProspectNote(noteTargetId, document.getElementById('noteTextarea').value);
+  closeModal('noteModal');
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   RELEASE LOGIC
+═══════════════════════════════════════════════════════════════════ */
+function handleRelease() {
+  const count = getReviewedCount();
+  if (count < 10) {
+    document.getElementById('reviewedCountInModal').textContent = count;
+    openModal('releaseConfirmModal');
+  } else {
+    confirmRelease();
+  }
+}
+function confirmRelease() {
+  closeModal('releaseConfirmModal');
+  setCycleState('outreach');
+  renderPipeline();
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   PAGE 1 — HOME
+═══════════════════════════════════════════════════════════════════ */
+function renderHome() {
+  const html = `
+    <h1 class="page-headline">Your acquisition engine,<br><em>running on schedule.</em></h1>
+    <div class="schedule-hero">
+      <div class="schedule-hero-left">
+        <div class="schedule-campaign-name">Cycle 3 · Day 14 of 30</div>
+        <div class="schedule-area">SEO Services — Sydney Metro · Started 1 May 2026</div>
+        <div class="schedule-progress-track" style="margin-bottom:8px;">
+          <div class="schedule-progress-fill" style="width:${(14/30*100).toFixed(0)}%"></div>
+        </div>
+        <div class="schedule-days"><span>Day 1</span><span>Day 14 of 30</span><span>Day 30</span></div>
+      </div>
+      <div class="schedule-stats">
+        <div><div class="schedule-stat-val">247</div><div class="schedule-stat-label">Contacted</div></div>
+        <div><div class="schedule-stat-val">31</div><div class="schedule-stat-label">Replies</div></div>
+        <div><div class="schedule-stat-val">8</div><div class="schedule-stat-label">Meetings</div></div>
+        <div><div class="schedule-stat-val">600</div><div class="schedule-stat-label">Total Records</div></div>
+      </div>
+    </div>
+    <div class="section-label">Performance this cycle</div>
+    <div class="grid-4" style="margin-bottom:32px;">
+      <div class="card metric-card"><div class="metric-label">Open Rate</div><div class="metric-val">47%</div><div class="metric-delta" style="color:var(--ink-3);font-family:'JetBrains Mono',monospace;font-size:11px;">AU B2B benchmark: 21%</div></div>
+      <div class="card metric-card"><div class="metric-label">Reply Rate</div><div class="metric-val">8.2%</div><div class="metric-delta" style="color:var(--ink-3);font-family:'JetBrains Mono',monospace;font-size:11px;">AU B2B benchmark: 3.1%</div></div>
+      <div class="card metric-card"><div class="metric-label">Meeting Rate</div><div class="metric-val">1.4%</div><div class="metric-delta" style="color:var(--ink-3);font-family:'JetBrains Mono',monospace;font-size:11px;">AU B2B benchmark: 0.8%</div></div>
+      <div class="card metric-card"><div class="metric-label">Avg Reply Time</div><div class="metric-val">23h</div><div class="metric-delta" style="color:var(--ink-3);font-family:'JetBrains Mono',monospace;font-size:11px;">from contacted to first reply</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;margin-bottom:32px;" class="home-grid">
+      <div class="card" style="grid-column:span 1;">
+        <div class="section-label">Hot replies</div>
+        ${replies.filter(r => r.heat === 'hot').slice(0,4).map(r => `
+          <div class="reply-item" onclick="navigate('#inbox')">
+            <div class="heat-dot heat-${r.heat}" style="margin-top:5px;"></div>
+            <div class="reply-meta">
+              <div class="reply-biz">${r.business}</div>
+              <div class="reply-name">${r.name}</div>
+              <div class="reply-snippet">"${r.snippet}"</div>
+            </div>
+            <div class="reply-time">${r.time}</div>
+          </div>
+        `).join('')}
+      </div>
+      <div class="card">
+        <div class="section-label">Meetings booked</div>
+        <div class="meeting-item"><div class="meeting-date-pill">APR<br>14</div><div><div class="meeting-name">James Whitford</div><div class="meeting-biz">Momentum Constructions</div></div></div>
+        <div class="meeting-item"><div class="meeting-date-pill">APR<br>15</div><div><div class="meeting-name">Sarah Kemp</div><div class="meeting-biz">Harbour Physiotherapy</div></div></div>
+        <div class="meeting-item"><div class="meeting-date-pill">APR<br>17</div><div><div class="meeting-name">Dr Priya Narayan</div><div class="meeting-biz">Cascade Dental Group</div></div></div>
+        <div class="meeting-item"><div class="meeting-date-pill">APR<br>21</div><div><div class="meeting-name">Dr Rebecca Ashford</div><div class="meeting-biz">Coastal Veterinary</div></div></div>
+      </div>
+      <div class="card">
+        <div class="section-label">System health</div>
+        ${[
+          { name: 'Email Delivery', status: 'Operational', dot: 'green' },
+          { name: 'LinkedIn Queue', status: 'Operational', dot: 'green' },
+          { name: 'Voice AI', status: 'Operational', dot: 'green' },
+          { name: 'SMS Gateway', status: 'Degraded', dot: 'amber' },
+          { name: 'Data Enrichment', status: 'Operational', dot: 'green' },
+          { name: 'Prospect Pipeline', status: 'Operational', dot: 'green' },
+        ].map(h => `<div class="health-item"><div class="status-dot status-${h.dot}"></div><div class="health-name">${h.name}</div><div class="health-status">${h.status}</div></div>`).join('')}
+      </div>
+    </div>
+    <div class="card">
+      <div class="section-label">Today's outreach — 43 of 105 completed</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 40px;">
+        ${[
+          { ch: 'Email', done: 18, total: 50, color: '#6B8E5A' },
+          { ch: 'LinkedIn', done: 12, total: 20, color: '#3B82F6' },
+          { ch: 'Voice AI', done: 5, total: 10, color: '#D4956A' },
+          { ch: 'SMS', done: 8, total: 25, color: '#8B5CF6' },
+        ].map(o => `
+          <div class="outreach-row">
+            <div class="outreach-channel">${o.ch}</div>
+            <div class="outreach-bar-wrap"><div class="progress-wrap" style="height:6px;"><div class="progress-bar" style="width:${(o.done/o.total*100).toFixed(0)}%;background:${o.color};"></div></div></div>
+            <div class="outreach-count">${o.done}/${o.total}</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+  document.getElementById('page').innerHTML = html;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   PAGE 2 — PIPELINE (THREE STATE)
+═══════════════════════════════════════════════════════════════════ */
+function scoreClass(s) { return s >= 85 ? 'score-hot' : s >= 60 ? 'score-warm' : s >= 35 ? 'score-cool' : 'score-cold'; }
+
+function getFilteredProspects() {
+  const state = getCycleState();
+  let pool = [...prospects];
+
+  if (state === 'review') {
+    const filterMap = {
+      top10: () => pool.slice(0, 10),
+      top50: () => pool.slice(0, 50),
+      all: () => pool,
+      struggling: () => pool.filter(p => p.intent === 'struggling'),
+      trying: () => pool.filter(p => p.intent === 'trying'),
+      dabbling: () => pool.filter(p => p.intent === 'dabbling'),
+    };
+    return (filterMap[activePipelineFilter] || filterMap.top10)();
+  } else {
+    const filterMap = {
+      all: () => pool,
+      in_outreach: () => pool.filter(p => (p.outreachStatus || 'not_started') !== 'not_started' && (p.outreachStatus || 'not_started') !== 'suppressed'),
+      replied: () => pool.filter(p => p.outreachStatus === 'replied'),
+      meeting_booked: () => pool.filter(p => p.outreachStatus === 'meeting_booked'),
+      suppressed: () => pool.filter(p => p.outreachStatus === 'suppressed'),
+      not_started: () => pool.filter(p => (p.outreachStatus || 'not_started') === 'not_started'),
+    };
+    return (filterMap[activePipelineFilter] || filterMap.all)();
+  }
+}
+
+function getOutreachStatus(p) {
+  if (p.outreachStatus) return p.outreachStatus;
+  if (p.id === 'p1' || p.id === 'p2' || p.id === 'p3' || p.id === 'p4') return 'meeting_booked';
+  if (p.id === 'p6') return 'replied';
+  if (['p5','p7','p8','p9','p10'].includes(p.id)) return 'contacted';
+  return 'not_started';
+}
+
+function statusBadgeHtml(status) {
+  const map = {
+    not_started: ['status-not-started','Not started'],
+    contacted: ['status-contacted','Contacted'],
+    replied: ['status-replied','Replied'],
+    meeting_booked: ['status-meeting-booked','Meeting booked'],
+    suppressed: ['status-suppressed','Suppressed'],
+  };
+  const [cls, label] = map[status] || map.not_started;
+  return `<span class="status-badge-row ${cls}">${label}</span>`;
+}
+
+function renderPipeline() {
+  const state = getCycleState();
+  const reviewedIds = getReviewedIds();
+  const filtered = getFilteredProspects();
+  const total = filtered.length;
+  const totalPages = Math.ceil(total / pipelinePageSize);
+  if (pipelinePage > totalPages) pipelinePage = 1;
+  const start = (pipelinePage - 1) * pipelinePageSize;
+  const pageItems = filtered.slice(start, start + pipelinePageSize);
+
+  let headerHtml = '';
+  let chipsHtml = '';
+
+  if (state === 'review') {
+    const reviewedCount = getReviewedCount();
+    headerHtml = `
+      <h1 class="page-headline">Your prospects,<br><em>ranked by intent.</em></h1>
+      <div class="review-banner">
+        <div class="review-banner-text">
+          You've reviewed <strong>${reviewedCount} of ${prospects.length}</strong>. We recommend at least 10 before your first release.
+        </div>
+        <button class="btn btn-amber" style="font-size:13px;padding:7px 16px;" onclick="handleRelease()">Release All 600</button>
+      </div>
+    `;
+    const reviewChips = [
+      {key:'top10',label:'Top 10'},{key:'top50',label:'Top 50'},{key:'all',label:'All'},{key:'struggling',label:'Struggling'},{key:'trying',label:'Trying'},{key:'dabbling',label:'Dabbling'},
+    ];
+    chipsHtml = `<div class="filter-chips">${reviewChips.map(f => `<div class="chip ${activePipelineFilter===f.key?'active':''}" onclick="setPipelineFilter('${f.key}')">${f.label}</div>`).join('')}</div>`;
+  } else if (state === 'outreach') {
+    headerHtml = `
+      <h1 class="page-headline">Cycle 3 —<br><em>in outreach.</em></h1>
+      <div class="status-strip">600 prospects in outreach &nbsp;·&nbsp; 247 contacted &nbsp;·&nbsp; 31 replied &nbsp;·&nbsp; 8 meetings booked</div>
+    `;
+    const outChips = [
+      {key:'all',label:'All'},{key:'in_outreach',label:'In outreach'},{key:'replied',label:'Replied'},{key:'meeting_booked',label:'Meeting booked'},{key:'suppressed',label:'Suppressed'},{key:'not_started',label:'Not started'},
+    ];
+    chipsHtml = `<div class="filter-chips">${outChips.map(f => `<div class="chip ${activePipelineFilter===f.key?'active':''}" onclick="setPipelineFilter('${f.key}')">${f.label}</div>`).join('')}</div>`;
+  } else {
+    headerHtml = `
+      <h1 class="page-headline">Cycle 3 —<br><em>14 meetings booked.</em></h1>
+      <div class="status-strip">Cycle complete &nbsp;·&nbsp; 14 meetings booked &nbsp;·&nbsp; 4 closes &nbsp;·&nbsp; Cycle 4 generates in 3 days</div>
+    `;
+    const outChips = [
+      {key:'all',label:'All'},{key:'in_outreach',label:'In outreach'},{key:'replied',label:'Replied'},{key:'meeting_booked',label:'Meeting booked'},{key:'suppressed',label:'Suppressed'},{key:'not_started',label:'Not started'},
+    ];
+    chipsHtml = `<div class="filter-chips">${outChips.map(f => `<div class="chip ${activePipelineFilter===f.key?'active':''}" onclick="setPipelineFilter('${f.key}')">${f.label}</div>`).join('')}</div>`;
+  }
+
+  const pageSizeHtml = `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;justify-content:space-between;">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-3);">${total} prospects</div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-3);">Show</span>
+        <select class="page-size-select" onchange="setPageSize(parseInt(this.value))">
+          ${[10,20,50,100].map(n => `<option value="${n}" ${pipelinePageSize===n?'selected':''}>${n}</option>`).join('')}
+        </select>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-3);">per page</span>
+      </div>
+    </div>
+  `;
+
+  const rowsHtml = pageItems.map((p, i) => {
+    const rank = start + i + 1;
+    const isVisited = reviewedIds.includes(p.id);
+    const pStatus = (state !== 'review') ? getOutreachStatus(p) : null;
+    return `
+      <div class="pipeline-row ${isVisited?'visited':''}" onclick="navigate('#pipeline/${p.id}')">
+        <div class="intent-bar intent-bar-${p.intent}"></div>
+        <div class="pipeline-rank">${rank}</div>
+        <div class="pipeline-main">
+          <div class="pipeline-biz-name">${p.name}</div>
+          <div class="pipeline-meta">
+            <span class="badge ${p.intent==='struggling'?'intent-struggling':p.intent==='trying'?'intent-trying':'intent-dabbling'}">${p.intent.charAt(0).toUpperCase()+p.intent.slice(1)}</span>
+            <span class="pipeline-suburb">${p.suburb}, ${p.state}</span>
+            <span class="pipeline-suburb">·</span>
+            <span class="pipeline-suburb">${p.industry}</span>
+          </div>
+        </div>
+        <div class="pipeline-dm">
+          <div style="font-weight:500;color:var(--ink-2);">${p.dm.name}</div>
+          <div style="font-size:11px;font-family:'JetBrains Mono',monospace;">${p.dm.title}</div>
+        </div>
+        ${state !== 'review' ? `<div class="pipeline-status-wrap">${statusBadgeHtml(pStatus)}</div>` : `
+        <div class="pipeline-channels">
+          <div class="channel-dot" title="Email" style="font-size:9px;">E</div>
+          <div class="channel-dot" title="LinkedIn" style="font-size:9px;">in</div>
+          <div class="channel-dot" title="Voice" style="font-size:9px;">VC</div>
+          <div class="channel-dot" title="SMS" style="font-size:9px;">S</div>
+        </div>`}
+        <div class="pipeline-score-wrap"><div class="score-badge ${scoreClass(p.score)}">${p.score}</div></div>
+        <div class="pipeline-caret">›</div>
+      </div>
+    `;
+  }).join('');
+
+  const paginationHtml = total > pipelinePageSize ? `
+    <div class="pagination-bar">
+      <button class="pagination-btn" onclick="setPipelinePage(${pipelinePage-1})" ${pipelinePage<=1?'disabled':''}>Prev</button>
+      <span>Page ${pipelinePage} of ${totalPages}</span>
+      <button class="pagination-btn" onclick="setPipelinePage(${pipelinePage+1})" ${pipelinePage>=totalPages?'disabled':''}>Next</button>
+    </div>
+  ` : '';
+
+  document.getElementById('page').innerHTML = headerHtml + chipsHtml + pageSizeHtml + rowsHtml + paginationHtml;
+}
+
+function setPipelineFilter(key) {
+  activePipelineFilter = key;
+  pipelinePage = 1;
+  renderPipeline();
+}
+function setPipelinePage(p) {
+  pipelinePage = p;
+  renderPipeline();
+  window.scrollTo(0,0);
+}
+function setPageSize(n) {
+  pipelinePageSize = n;
+  pipelinePage = 1;
+  renderPipeline();
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   PAGE 3 — PIPELINE DETAIL
+═══════════════════════════════════════════════════════════════════ */
+let activeDetailTab = 'overview';
+let activeTimelineFilter = 'all';
+
+function renderDetail(id) {
+  const p = prospects.find(x => x.id === id);
+  if (!p) { renderPipeline(); return; }
+  const state = getCycleState();
+  const idx = prospects.indexOf(p);
+  const prev = idx > 0 ? prospects[idx - 1] : null;
+  const next = idx < prospects.length - 1 ? prospects[idx + 1] : null;
+  const pStatus = getOutreachStatus(p);
+  const isMeetingBooked = pStatus === 'meeting_booked';
+  const isOutreachMode = (state === 'outreach' || state === 'complete');
+
+  const tabs = [];
+  if (isMeetingBooked && isOutreachMode) {
+    tabs.push({ key: 'briefing', label: 'Briefing' });
+    if (activeDetailTab === 'overview' && !tabs.find(t => t.key === activeDetailTab)) activeDetailTab = 'briefing';
+  }
+  tabs.push({ key: 'overview', label: 'Overview' });
+  if (isOutreachMode) tabs.push({ key: 'timeline', label: 'Timeline' });
+
+  if (!tabs.find(t => t.key === activeDetailTab)) activeDetailTab = tabs[0].key;
+
+  const firstName = p.dm.name.replace(/^Dr\s+/i,'').split(' ')[0];
+  const draftEmail = `Subject: Your competitors are stealing your customers, ${firstName}
+
+Hi ${firstName},
+
+I've been researching ${p.industry.toLowerCase()} businesses in ${p.suburb} and noticed something that's costing ${p.name} new business every month.
+
+${p.signals[0] ? p.signals[0].text : 'Your digital presence has gaps a competitor can exploit.'}
+
+I specialise in fixing exactly this for ${p.industry.toLowerCase()} businesses in ${p.state}. I've helped 3 similar businesses recover their local presence in under 90 days.
+
+Worth a 15-minute call this week?
+
+David Stephens
+Ignition Digital — Sydney`;
+
+  const draftLinkedin = `Hi ${firstName}, I noticed some signals that suggest ${p.name} could be getting more from their digital presence. Quick 15 minutes to walk through what we found?`;
+  const draftSms = `Hi ${firstName}, David from Ignition. ${p.signals[0] ? p.signals[0].text : 'Noticed some gaps in your digital presence.'} Worth 15 mins? Happy to call whenever suits.`;
+  const draftVoice = `Opening: "Hi, is that ${firstName}? I'm David from Ignition Digital in Sydney. I've been doing some research on ${p.industry.toLowerCase()} businesses in ${p.suburb} and I've found something that's costing ${p.name} new customers — do you have 2 minutes?"
+
+Pain point: "${p.signals[0] ? p.signals[0].text : 'Your digital presence has gaps that competitors can exploit.'}"
+
+CTA: "I've fixed this exact problem for 3 similar businesses this year. Could we book 15 minutes this week so I can show you what's happening and what we'd do to fix it?"`;
+
+  const gradeItems = [
+    {key:'website',label:'Website'},{key:'seo',label:'SEO'},{key:'reviews',label:'Reviews'},{key:'ads',label:'Paid Ads'},{key:'social',label:'Social'},{key:'content',label:'Content'},
+  ];
+
+  const note = getProspectNote(id);
+
+  function buildOverviewTab() {
+    return `
+      <div class="detail-layout">
+        <div>
+          <div class="grid-3" style="margin-bottom:24px;">
+            <div class="score-card"><div class="score-card-val">${p.affordability}<span style="font-size:18px;color:var(--ink-3);">/10</span></div><div class="score-card-label">Affordability</div><div class="score-card-sub">Revenue signal</div></div>
+            <div class="score-card"><div class="score-card-val">${p.intentScore}<span style="font-size:18px;color:var(--ink-3);">/18</span></div><div class="score-card-label">Intent Score</div><div class="score-card-sub">Buying signals</div></div>
+            <div class="score-card" style="border-color:var(--amber);"><div class="score-card-val" style="color:var(--copper);">${p.composite}</div><div class="score-card-label">Composite CIS</div><div class="score-card-sub">Agency Lead Score</div></div>
+          </div>
+          <div class="card" style="margin-bottom:20px;">
+            <div class="section-label">Buying signals</div>
+            ${p.signals.map(s => `<div class="signal-item"><div class="signal-dot"></div><div class="signal-text">${s.text}</div><div class="signal-time">${s.time}</div></div>`).join('')}
+          </div>
+          <div class="card" style="margin-bottom:20px;">
+            <div class="section-label">Vulnerability report</div>
+            <div class="vuln-para">${p.vulnerability}</div>
+            <div class="section-label" style="margin-bottom:12px;">Digital health scorecard</div>
+            <div class="grade-grid">
+              ${gradeItems.map(g => `<div class="grade-cell"><div class="grade-letter grade-${p.vulnGrades[g.key]}">${p.vulnGrades[g.key]}</div><div class="grade-name">${g.label}</div></div>`).join('')}
+            </div>
+          </div>
+          <div class="card" id="draftSection">
+            <div class="section-label">Draft outreach</div>
+            <div class="tab-bar" id="outreachTabBar">
+              ${['email','linkedin','sms','voice'].map(t => `<button class="tab-btn ${activeOutreachTab===t?'active':''}" onclick="switchOutreachTab('${t}')">${t.charAt(0).toUpperCase()+t.slice(1)}${t==='voice'?' AI':''}</button>`).join('')}
+            </div>
+            <div id="outreachTabEmail" class="tab-content ${activeOutreachTab==='email'?'active':''}"><div class="draft-label">Email draft</div><div class="draft-content">${draftEmail}</div></div>
+            <div id="outreachTabLinkedin" class="tab-content ${activeOutreachTab==='linkedin'?'active':''}"><div class="draft-label">LinkedIn message</div><div class="draft-content">${draftLinkedin}</div></div>
+            <div id="outreachTabSms" class="tab-content ${activeOutreachTab==='sms'?'active':''}"><div class="draft-label">SMS draft</div><div class="draft-content">${draftSms}</div></div>
+            <div id="outreachTabVoice" class="tab-content ${activeOutreachTab==='voice'?'active':''}"><div class="draft-label">Voice AI script</div><div class="draft-content">${draftVoice}</div></div>
+          </div>
+          ${note ? `<div class="card" style="margin-top:16px;"><div class="section-label">Notes</div><div style="font-size:13.5px;color:var(--ink-2);line-height:1.6;white-space:pre-wrap;">${note}</div></div>` : ''}
+        </div>
+        <div>
+          <div class="card dm-card">
+            <div class="section-label">Decision-maker</div>
+            <div class="dm-name">${p.dm.name}</div>
+            <div class="dm-title">${p.dm.title}</div>
+            <div class="dm-field"><div class="dm-field-label">Email</div><div class="dm-field-val" style="font-size:12px;word-break:break-all;">${p.dm.email}</div><span class="dm-verified">Verified</span></div>
+            <div class="dm-field"><div class="dm-field-label">Phone</div><div class="dm-field-val">${p.dm.phone}</div><span class="dm-verified">Verified</span></div>
+            <div class="dm-field"><div class="dm-field-label">LinkedIn</div><div class="dm-field-val">Profile found</div><span class="dm-verified">2 days ago</span></div>
+          </div>
+          <div class="card" style="margin-bottom:16px;">
+            <div class="section-label">Cycle</div>
+            <div style="font-size:14px;font-weight:500;color:var(--ink);margin-bottom:4px;">Cycle 3 · Day 14 of 30 · Released May 1</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-3);margin-bottom:12px;">SEO Services — Sydney Metro</div>
+            <div class="progress-wrap" style="height:5px;margin-bottom:6px;"><div class="progress-bar" style="width:47%;background:var(--amber);"></div></div>
+            <div style="display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-3);"><span>Day 1</span><span>Day 30</span></div>
+          </div>
+          <div class="card">
+            <div class="section-label">Activity</div>
+            ${[
+              {text:'Email opened (3x)',time:'2h ago'},{text:'LinkedIn profile viewed',time:'1d ago'},{text:'Initial email sent',time:'3d ago'},{text:'Prospect added to pipeline',time:'5d ago'},{text:'Enrichment completed',time:'5d ago'},
+            ].map(t => `<div class="timeline-item"><div class="timeline-dot"></div><div style="flex:1;"><div class="timeline-text">${t.text}</div></div><div class="timeline-time">${t.time}</div></div>`).join('')}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function buildTimelineTab() {
+    const timeline = p.timeline && p.timeline.length > 0 ? p.timeline : [
+      {type:'email_sent',label:'Email 1 sent',time:'Day 1 · 9:00am',dotClass:''},
+      {type:'email_opened',label:'Email 1 opened',time:'Day 2 · 11:00am',dotClass:''},
+      {type:'system',label:'In sequence',time:'Day 3',dotClass:'ot-dot-system'},
+    ];
+    const filterChips = [
+      {key:'all',label:'All'},{key:'replies',label:'Replies only'},{key:'system',label:'System'},{key:'failures',label:'Failures'},
+    ];
+    const filtered = timeline.filter(e => {
+      if (activeTimelineFilter === 'all') return true;
+      if (activeTimelineFilter === 'replies') return e.type && (e.type.includes('replied') || e.type.includes('reply'));
+      if (activeTimelineFilter === 'system') return e.dotClass === 'ot-dot-system';
+      if (activeTimelineFilter === 'failures') return e.type && (e.type.includes('bounce') || e.type.includes('fail') || e.type.includes('voicemail'));
+      return true;
+    });
+    return `
+      <div class="card">
+        <div class="section-label">Outreach timeline</div>
+        <div class="filter-chips" style="margin-bottom:16px;">
+          ${filterChips.map(f => `<div class="chip ${activeTimelineFilter===f.key?'active':''}" onclick="setTimelineFilter('${f.key}')">${f.label}</div>`).join('')}
+        </div>
+        <div class="outreach-timeline">
+          ${filtered.map(e => `
+            <div class="ot-item">
+              <div class="ot-dot ${e.dotClass || ''}"></div>
+              <div class="ot-time">${e.time}</div>
+              <div class="ot-label">${e.label}</div>
+              ${e.type && e.type.includes('replied') && e.label.includes('"') ? `<div class="ot-content">${e.label.match(/"([^"]+)"/)?.[1] || ''}</div>` : ''}
+            </div>
+          `).join('')}
+          ${filtered.length === 0 ? '<div style="color:var(--ink-3);font-size:13px;padding:12px 0;">No events match this filter.</div>' : ''}
+        </div>
+      </div>
+    `;
+  }
+
+  function buildBriefingTab() {
+    const m = p.meeting || { date: 'TBC', time: 'TBC', platform: 'Zoom', countdown: 'TBC' };
+    return `
+      <div>
+        <!-- 1. Meeting header -->
+        <div class="briefing-meeting-header" style="position:sticky;top:56px;z-index:40;">
+          <div style="flex:1;">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.12em;margin-bottom:6px;">Upcoming meeting</div>
+            <div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#fff;margin-bottom:2px;">${m.date} · ${m.time}</div>
+            <div class="briefing-countdown">${m.countdown} · via ${m.platform}</div>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn" style="background:rgba(255,255,255,0.1);color:#fff;font-size:13px;padding:8px 16px;" onclick="window.print()">Print briefing</button>
+            <button class="btn btn-amber" style="font-size:13px;padding:8px 16px;">Join Zoom</button>
+          </div>
+        </div>
+
+        <!-- 2. Prospect snapshot -->
+        <div class="briefing-section">
+          <div class="briefing-section-title">Prospect snapshot</div>
+          <div class="card" style="margin-bottom:0;">
+            <div style="display:flex;align-items:flex-start;gap:20px;flex-wrap:wrap;">
+              <div style="flex:1;min-width:200px;">
+                <div style="font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--ink);margin-bottom:4px;">${p.name}</div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-3);margin-bottom:12px;">${p.suburb}, ${p.state} · ${p.industry} · Est. ${p.est} · ${p.staff} staff · ${p.revenue}</div>
+                <div class="briefing-ai-summary">${p.aiSummary || p.vulnerability}</div>
+              </div>
+              <div>
+                <div class="grade-grid" style="width:220px;">
+                  ${gradeItems.map(g => `<div class="grade-cell"><div class="grade-letter grade-${p.vulnGrades[g.key]}">${p.vulnGrades[g.key]}</div><div class="grade-name">${g.label}</div></div>`).join('')}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. Decision maker profile -->
+        <div class="briefing-section">
+          <div class="briefing-section-title">Decision maker profile</div>
+          <div class="card">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+              <div>
+                <div class="dm-name">${p.dm.name}</div>
+                <div class="dm-title">${p.dm.title}</div>
+                <div class="dm-field"><div class="dm-field-label">Tenure</div><div class="dm-field-val">${p.dm.tenure || 'Unknown'}</div></div>
+                <div class="dm-field"><div class="dm-field-label">Prev</div><div class="dm-field-val" style="font-size:12px;">${p.dm.prevRoles || 'Unknown'}</div></div>
+                <div class="dm-field"><div class="dm-field-label">LinkedIn</div><div class="dm-field-val">${p.dm.linkedinActivity || 'Unknown'}</div></div>
+              </div>
+              <div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;">Communication style</div>
+                <div style="font-size:13.5px;color:var(--ink-2);line-height:1.6;background:var(--surface);padding:14px;border-radius:6px;">${p.dm.style || 'No style data available.'}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. Why they said yes -->
+        <div class="briefing-section">
+          <div class="briefing-section-title">Why they said yes</div>
+          <div class="card">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+              <div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">Triggering signal</div><div style="font-size:13.5px;color:var(--ink-2);">${p.triggerSignal || 'N/A'}</div></div>
+              <div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">Message that converted</div><div style="font-size:13.5px;color:var(--ink-2);">${p.triggerMessage || 'N/A'}</div></div>
+            </div>
+            ${p.prospectReply ? `<div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;">Their exact reply</div><div class="reply-quote">"${p.prospectReply}"</div>` : ''}
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px;">
+              <div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">Sentiment</div><div style="font-size:13px;color:var(--ink-2);">${p.sentiment || 'N/A'}</div></div>
+              <div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">Time to meeting</div><div style="font-size:13px;color:var(--ink-2);">${p.timeToMeeting || 'N/A'}</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 5. Full communication transcript -->
+        <div class="briefing-section">
+          <div class="briefing-section-title">Communication transcript</div>
+          <div class="card">
+            ${(p.timeline && p.timeline.length > 0 ? p.timeline : [{type:'email_sent',label:'No transcript available',time:'',dotClass:'ot-dot-system'}]).map(e => `
+              <div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--rule);">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-3);min-width:140px;flex-shrink:0;">${e.time}</div>
+                <div style="font-size:13px;color:var(--ink-2);">${e.label}</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+        <!-- 6. Current state diagnosis -->
+        <div class="briefing-section">
+          <div class="briefing-section-title">Current state diagnosis</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+            <div class="card">
+              <div class="section-label">Digital health</div>
+              <div class="vuln-para" style="font-size:13px;margin-bottom:0;">${p.vulnerability}</div>
+            </div>
+            <div class="card">
+              <div class="section-label">Competitor landscape</div>
+              ${(p.competitors && p.competitors.length > 0 ? p.competitors : ['No data']).map((c,i) => `
+                <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--rule);">
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-3);width:20px;">${i+1}</div>
+                  <div style="font-size:13.5px;color:var(--ink-2);">${c}</div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+
+        <!-- 7. Recommended angle -->
+        <div class="briefing-section">
+          <div class="briefing-section-title">Recommended angle</div>
+          <div class="card">
+            <div style="margin-bottom:20px;">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;">Opening hook</div>
+              <div style="font-size:14px;color:var(--ink-2);line-height:1.6;font-style:italic;background:var(--surface);padding:14px;border-radius:6px;">${p.openingHook || 'N/A'}</div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+              <div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">Core pitch</div>
+                <div style="font-size:13.5px;color:var(--ink-2);line-height:1.6;">${p.recommendedAngle || 'N/A'}</div>
+              </div>
+              <div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">Pricing range</div>
+                <div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--ink);">${p.pricingRange || 'N/A'}</div>
+                <div style="font-size:12px;color:var(--ink-3);margin-top:4px;">AUD · dependent on scope</div>
+              </div>
+            </div>
+            <div class="section-label">Case studies (similar clients)</div>
+            <div class="grid-3">
+              ${[
+                {name:'Sydney Dental Co',result:'GMB rating 3.8→4.7 in 60 days',industry:'Dental'},
+                {name:'Lakeview Legal',result:'Organic leads +340% in 90 days',industry:'Legal'},
+                {name:'Metro Physio',result:'New patient enquiries +28/month',industry:'Health'},
+              ].map(cs => `<div class="case-study-card"><div class="eyebrow" style="margin-bottom:4px;">${cs.industry}</div><div class="case-study-name">${cs.name}</div><div style="font-size:12.5px;color:var(--green);font-family:'JetBrains Mono',monospace;margin-top:6px;">${cs.result}</div></div>`).join('')}
+            </div>
+          </div>
+        </div>
+
+        <!-- 8. Talking points -->
+        <div class="briefing-section">
+          <div class="briefing-section-title">Talking points</div>
+          <div class="card">
+            ${p.discoveryQuestions && p.discoveryQuestions.length > 0 ? `
+              <div style="margin-bottom:20px;">
+                <div class="section-label">Discovery questions</div>
+                ${p.discoveryQuestions.map((q,i) => `<div class="talking-point"><strong>${i+1}.</strong> ${q}</div>`).join('')}
+              </div>
+            ` : ''}
+            ${p.objections && p.objections.length > 0 ? `
+              <div style="margin-bottom:20px;">
+                <div class="section-label">Common objections</div>
+                ${p.objections.map(o => `<div class="talking-point"><strong>${o.obj}</strong><br><span style="color:var(--ink-3);font-size:13px;">→ ${o.response}</span></div>`).join('')}
+              </div>
+            ` : ''}
+            ${p.closeOptions && p.closeOptions.length > 0 ? `
+              <div>
+                <div class="section-label">Close options</div>
+                ${p.closeOptions.map((c,i) => `<div class="talking-point"><strong>Option ${i+1}:</strong> ${c}</div>`).join('')}
+              </div>
+            ` : ''}
+          </div>
+        </div>
+
+        <!-- 9. Post-meeting actions -->
+        <div class="briefing-section">
+          <div class="briefing-section-title">Post-meeting actions</div>
+          <div class="card">
+            <div style="margin-bottom:20px;">
+              <div class="section-label">Meeting outcome</div>
+              <div style="display:flex;gap:12px;flex-wrap:wrap;">
+                ${['Proposal sent','Follow-up booked','Not a fit','No show','Closed'].map(o => `<label style="display:flex;align-items:center;gap:6px;font-size:13.5px;cursor:pointer;"><input type="radio" name="outcome_${p.id}" style="accent-color:var(--amber);"> ${o}</label>`).join('')}
+              </div>
+            </div>
+            <div style="margin-bottom:20px;">
+              <div class="section-label">Follow-up email draft</div>
+              <textarea class="form-textarea" style="min-height:100px;">Hi ${firstName},
+
+Great speaking today. As discussed, I'll send through a proposal covering [key points from meeting].
+
+Looking forward to working together.
+
+David Stephens
+Ignition Digital</textarea>
+            </div>
+            <div>
+              <div class="section-label">Notes</div>
+              <textarea class="form-textarea" id="postMeetingNotes_${p.id}" style="min-height:80px;" placeholder="Notes from the meeting...">${getProspectNote(p.id)}</textarea>
+              <button class="btn btn-outline" style="margin-top:8px;font-size:12px;" onclick="savePostMeetingNote('${p.id}')">Save notes</button>
+            </div>
+            <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--rule);">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-3);margin-bottom:6px;">BRIEFING DELIVERY NOTE</div>
+              <div style="font-size:13px;color:var(--ink-2);">Briefing sent to your inbox the moment the meeting confirms. Not 1 hour before — immediately on booking.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  const tabBarHtml = `
+    <div class="tab-bar" style="margin-bottom:24px;">
+      ${tabs.map(t => `<button class="tab-btn ${activeDetailTab===t.key?'active':''}" onclick="switchDetailTab('${t.key}','${id}')">${t.label}</button>`).join('')}
+    </div>
+  `;
+
+  let tabContentHtml = '';
+  if (activeDetailTab === 'overview') tabContentHtml = buildOverviewTab();
+  else if (activeDetailTab === 'timeline') tabContentHtml = buildTimelineTab();
+  else if (activeDetailTab === 'briefing') tabContentHtml = buildBriefingTab();
+
+  const actionButtons = [];
+  if (state === 'review') {
+    actionButtons.push(`<button class="btn btn-outline" onclick="suppressProspect('${id}')">Suppress</button>`);
+    actionButtons.push(`<button class="btn btn-outline" style="color:var(--amber);border-color:var(--amber);" onclick="scrollToDrafts()">Edit drafts</button>`);
+    actionButtons.push(`<button class="btn btn-outline" onclick="openNoteModal('${id}')">Add note</button>`);
+  } else {
+    actionButtons.push(`<button class="btn btn-outline" onclick="suppressProspect('${id}')">Suppress</button>`);
+    actionButtons.push(`<button class="btn btn-outline" onclick="openNoteModal('${id}')">Add note</button>`);
+  }
+
+  const statusBadgesHtml = state !== 'review' ? `<span class="badge badge-ink">${statusBadgeHtml(getOutreachStatus(p))}</span>` : `<span class="badge badge-green">Active in pipeline</span>`;
+
+  const html = `
+    <div class="detail-back" onclick="navigate('#pipeline')">← Back to Pipeline</div>
+    <div class="detail-nav">
+      ${prev ? `<button class="detail-nav-btn" onclick="navigate('#pipeline/${prev.id}')">← ${prev.name}</button>` : ''}
+      <span class="detail-nav-sep" style="flex:1;text-align:center;font-size:12px;color:var(--ink-3);">${idx+1} of ${prospects.length}</span>
+      ${next ? `<button class="detail-nav-btn" onclick="navigate('#pipeline/${next.id}')">${next.name} →</button>` : ''}
+    </div>
+    <div class="detail-headline">${p.name}</div>
+    <div class="detail-meta-row">
+      <span class="detail-meta-item">${p.suburb}, ${p.state}</span>
+      <span class="detail-meta-dot">·</span>
+      <span class="detail-meta-item">${p.staff} staff</span>
+      <span class="detail-meta-dot">·</span>
+      <span class="detail-meta-item">Est. ${p.est}</span>
+      <span class="detail-meta-dot">·</span>
+      <span class="detail-meta-item">${p.revenue} revenue</span>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap;">
+      <span class="badge ${p.intent==='struggling'?'intent-struggling':p.intent==='trying'?'intent-trying':'intent-dabbling'}">${p.intent.charAt(0).toUpperCase()+p.intent.slice(1)}</span>
+      <span class="badge badge-ink">CIS ${p.composite}</span>
+      ${statusBadgesHtml}
+    </div>
+    <div class="detail-actions">${actionButtons.join('')}</div>
+    ${tabs.length > 1 ? tabBarHtml : ''}
+    ${tabContentHtml}
+  `;
+  document.getElementById('page').innerHTML = html;
+}
+
+function switchDetailTab(tab, id) {
+  activeDetailTab = tab;
+  renderDetail(id);
+}
+function setTimelineFilter(f) {
+  activeTimelineFilter = f;
+  const hash = window.location.hash || '';
+  const id = hash.split('/')[1];
+  if (id) renderDetail(id);
+}
+function switchOutreachTab(tab) {
+  activeOutreachTab = tab;
+  document.querySelectorAll('#outreachTabBar .tab-btn').forEach(b => b.classList.toggle('active', b.textContent.toLowerCase().startsWith(tab)));
+  ['email','linkedin','sms','voice'].forEach(t => {
+    const el = document.getElementById('outreachTab' + t.charAt(0).toUpperCase() + t.slice(1));
+    if (el) el.classList.toggle('active', t === tab);
+  });
+}
+function suppressProspect(id) {
+  const p = prospects.find(x => x.id === id);
+  if (p) p.outreachStatus = 'suppressed';
+  navigate('#pipeline');
+}
+function scrollToDrafts() {
+  const el = document.getElementById('draftSection');
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function savePostMeetingNote(id) {
+  const el = document.getElementById('postMeetingNotes_' + id);
+  if (el) saveProspectNote(id, el.value);
+  const btn = el ? el.nextElementSibling : null;
+  if (btn) { btn.textContent = 'Saved'; setTimeout(() => { btn.textContent = 'Save notes'; }, 1500); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   PAGE 4 — CYCLES
+═══════════════════════════════════════════════════════════════════ */
+function renderCycles() {
+  const html = `
+    <div class="eyebrow" style="margin-bottom:8px;">Cycles · Previous cycles</div>
+    <h1 class="page-headline" style="margin-bottom:8px;">Your cycles,<br><em>one every 30 days.</em></h1>
+    <p style="font-size:14px;color:var(--ink-3);margin-bottom:32px;max-width:560px;">One cycle per subscription. 600 records per cycle. Automatic rollover. Configure everything in Settings.</p>
+    <div style="background:var(--ink-2);border-radius:12px;padding:28px 32px;margin-bottom:20px;color:#fff;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+        <div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(255,255,255,0.4);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:6px;">Current</div>
+          <div style="font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:#fff;margin-bottom:2px;">Cycle 3 · May 2026</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.45);">Day 14 of 30</div>
+        </div>
+        <button class="btn btn-outline" style="color:rgba(255,255,255,0.7);border-color:rgba(255,255,255,0.2);font-size:13px;" onclick="navigate('#pipeline')">View current cycle →</button>
+      </div>
+      <div style="background:rgba(255,255,255,0.1);border-radius:99px;height:6px;margin-bottom:8px;">
+        <div style="width:47%;height:6px;border-radius:99px;background:var(--amber);"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(255,255,255,0.35);margin-bottom:24px;">
+        <span>Day 1</span><span>Day 14 of 30</span><span>Day 30</span>
+      </div>
+      <div style="display:flex;gap:32px;flex-wrap:wrap;">
+        <div><div style="font-family:'Playfair Display',serif;font-size:26px;font-weight:700;color:#fff;line-height:1;">247</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.1em;margin-top:4px;">Contacted</div></div>
+        <div><div style="font-family:'Playfair Display',serif;font-size:26px;font-weight:700;color:#fff;line-height:1;">31</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.1em;margin-top:4px;">Replies</div></div>
+        <div><div style="font-family:'Playfair Display',serif;font-size:26px;font-weight:700;color:#fff;line-height:1;">8</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.1em;margin-top:4px;">Meetings</div></div>
+      </div>
+    </div>
+    <div class="section-label" style="margin-bottom:12px;">Previous cycles</div>
+    ${[
+      { num: 2, month: 'April 2026', records: 600, contacted: 487, replies: 31, meetings: 7, closes: 2 },
+      { num: 1, month: 'March 2026', records: 600, contacted: 502, replies: 18, meetings: 3, closes: 1 },
+    ].map(c => `
+      <div class="campaign-card" style="margin-bottom:12px;">
+        <div class="campaign-card-header" style="margin-bottom:12px;">
+          <div class="campaign-card-main">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
+              <span class="badge badge-ink">Completed</span>
+            </div>
+            <div class="campaign-name">Cycle ${c.num}</div>
+            <div class="campaign-area">${c.month}</div>
+          </div>
+        </div>
+        <div class="campaign-metrics">
+          <div><div class="campaign-metric-val">${c.records.toLocaleString()}</div><div class="campaign-metric-label">Records</div></div>
+          <div><div class="campaign-metric-val">${c.contacted}</div><div class="campaign-metric-label">Contacted</div></div>
+          <div><div class="campaign-metric-val">${c.replies}</div><div class="campaign-metric-label">Replies</div></div>
+          <div><div class="campaign-metric-val">${c.meetings}</div><div class="campaign-metric-label">Meetings</div></div>
+          <div><div class="campaign-metric-val">${c.closes}</div><div class="campaign-metric-label">Closes</div></div>
+        </div>
+      </div>
+    `).join('')}
+  `;
+  document.getElementById('page').innerHTML = html;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   PAGE 5 — INBOX
+═══════════════════════════════════════════════════════════════════ */
+function renderInbox() {
+  const channelLabel = ch => ({ email: 'E', linkedin: 'in', sms: 'S', voice: 'VC' }[ch] || '?');
+  const activeReply = replies.find(r => r.id === activeInboxReply) || replies[0];
+  const html = `
+    <h1 class="page-headline" style="margin-bottom:20px;">Inbox<br><em>replies &amp; conversations.</em></h1>
+    <div class="inbox-layout">
+      <div class="inbox-list">
+        <div class="inbox-list-header">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-3);">${replies.length} conversations · 3 unread</div>
+        </div>
+        ${replies.map(r => `
+          <div class="inbox-item ${r.id === activeInboxReply ? 'active' : ''}" onclick="setActiveReply('${r.id}')">
+            <div class="heat-dot heat-${r.heat}" style="margin-top:4px;"></div>
+            <div class="inbox-item-meta">
+              <div class="inbox-item-name">${r.name}</div>
+              <div class="inbox-item-biz">${r.business}</div>
+              <div class="inbox-item-snippet">${r.snippet}</div>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;">
+              <div class="inbox-item-time">${r.time}</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:10px;background:var(--surface);padding:2px 5px;border-radius:3px;color:var(--ink-3);">${channelLabel(r.channel)}</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+      <div class="inbox-thread">
+        <div class="thread-header">
+          <div class="heat-dot heat-${activeReply.heat}"></div>
+          <div>
+            <div class="thread-name">${activeReply.name}</div>
+            <div class="thread-biz">${activeReply.business} · via ${activeReply.channel}</div>
+          </div>
+          <div style="margin-left:auto;display:flex;gap:8px;">
+            <button class="btn btn-outline" style="font-size:12px;padding:6px 12px;" onclick="navigate('#pipeline/${activeReply.prospectId}')">View Prospect</button>
+            <button class="btn btn-amber" style="font-size:12px;padding:6px 12px;">Book Meeting</button>
+          </div>
+        </div>
+        <div class="thread-body">
+          <div>
+            <div class="bubble bubble-ours">Hi ${activeReply.name.split(' ')[0]}, I've been analysing ${activeReply.business}'s digital presence and noticed a few things that are costing you customers. Worth a 15-minute call this week to walk through what we found?</div>
+            <div class="bubble-time bubble-time-right">You · 3 days ago</div>
+          </div>
+          <div>
+            <div class="bubble bubble-theirs">${activeReply.snippet}</div>
+            <div class="bubble-time bubble-time-left">${activeReply.name} · ${activeReply.time}</div>
+          </div>
+          <div>
+            <div class="bubble bubble-ours">Great — I'll send a calendar link. We'll cover exactly what we found and what the fix looks like. Should take no more than 15 minutes.</div>
+            <div class="bubble-time bubble-time-right">You · 1h ago</div>
+          </div>
+        </div>
+        <div class="thread-actions">
+          <input type="text" placeholder="Reply to ${activeReply.name.split(' ')[0]}…" style="flex:1;border:1px solid var(--rule);border-radius:6px;padding:9px 12px;font-size:13.5px;outline:none;">
+          <button class="btn btn-amber">Send</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById('page').innerHTML = html;
+}
+function setActiveReply(id) { activeInboxReply = id; renderInbox(); }
+
+/* ═══════════════════════════════════════════════════════════════════
+   PAGE 6 — SEQUENCES
+═══════════════════════════════════════════════════════════════════ */
+function renderSequences() {
+  const days = Array.from({length: 35}, (_, i) => i + 1);
+  const today = 14;
+  const events = { 1:[{type:'email',label:'Email 1'}],3:[{type:'linkedin',label:'LI connect'}],5:[{type:'email',label:'Email 2'}],7:[{type:'voice',label:'Voice AI'}],10:[{type:'email',label:'Email 3'}],12:[{type:'sms',label:'SMS'}],14:[{type:'email',label:'Email 4'},{type:'linkedin',label:'LI msg'}],17:[{type:'voice',label:'Voice AI'}],20:[{type:'email',label:'Email 5'}],23:[{type:'sms',label:'SMS 2'}],26:[{type:'email',label:'Email 6'}],30:[{type:'voice',label:'Final call'}] };
+  const html = `
+    <h1 class="page-headline" style="margin-bottom:28px;">Your sequences,<br><em>touch by touch.</em></h1>
+    <div class="grid-4" style="margin-bottom:32px;">
+      ${[
+        {ch:'Email',rate:'47%',detail:'18/50 sent today',pct:36,color:'#6B8E5A'},
+        {ch:'LinkedIn',rate:'38%',detail:'12/20 sent today',pct:60,color:'#3B82F6'},
+        {ch:'Voice AI',rate:'22%',detail:'5/10 completed',pct:50,color:'#D4956A'},
+        {ch:'SMS',rate:'61%',detail:'8/25 sent today',pct:32,color:'#8B5CF6'},
+      ].map(c => `
+        <div class="channel-rate-card">
+          <div class="eyebrow" style="margin-bottom:6px;">${c.ch}</div>
+          <div class="channel-rate-val">${c.rate}</div>
+          <div class="channel-rate-detail">${c.detail}</div>
+          <div class="progress-wrap" style="height:5px;"><div class="progress-bar" style="width:${c.pct}%;background:${c.color};"></div></div>
+        </div>
+      `).join('')}
+    </div>
+    <div class="card">
+      <div class="section-label">30-day outreach calendar</div>
+      <div class="calendar-grid">
+        ${['MON','TUE','WED','THU','FRI','SAT','SUN'].map(d => `<div class="cal-header-cell">${d}</div>`).join('')}
+        ${days.map(d => {
+          const evs = events[d] || [];
+          const isToday = d === today;
+          return `<div class="cal-cell ${isToday?'cal-today':''}"><div class="cal-date-num">${d}</div>${evs.map(e => `<span class="cal-pill cal-${e.type}">${e.label}</span>`).join('')}</div>`;
+        }).join('')}
+      </div>
+      <div class="legend-row">
+        <div class="legend-item"><div class="legend-dot" style="background:rgba(107,142,90,0.4);"></div>Email</div>
+        <div class="legend-item"><div class="legend-dot" style="background:rgba(59,130,246,0.4);"></div>LinkedIn</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--amber-soft);border:1px solid var(--amber);"></div>Voice AI</div>
+        <div class="legend-item"><div class="legend-dot" style="background:rgba(139,92,246,0.2);"></div>SMS</div>
+      </div>
+    </div>
+  `;
+  document.getElementById('page').innerHTML = html;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   PAGE 7 — SIGNALS
+═══════════════════════════════════════════════════════════════════ */
+function renderInsights() {
+  const signalPerformance = [
+    {name:'Active ad spend detected',category:'Timing',desc:'Google or Meta ad spend confirmed via transparency APIs and pixel detection.',detections:187,replyRate:'12.3%',meetingRate:'2.1%'},
+    {name:'Rapid hiring activity',category:'Growth',desc:'Multiple job postings or new hires detected on LinkedIn within 30 days.',detections:142,replyRate:'9.8%',meetingRate:'1.8%'},
+    {name:'GMB rating in decline',category:'Pain',desc:'Google Business rating dropped 0.3+ stars in 90 days with negative review velocity.',detections:98,replyRate:'17.4%',meetingRate:'3.2%'},
+    {name:'Outdated site or zero SEO',category:'Presence',desc:'Website technology stack older than 3 years, no SSL, or zero organic rankings.',detections:87,replyRate:'8.1%',meetingRate:'1.1%'},
+    {name:'Founder posts about pipeline',category:'Intent',desc:'Decision-maker posting about growth, leads, or marketing challenges on LinkedIn.',detections:54,replyRate:'22.1%',meetingRate:'4.7%'},
+    {name:'New ABN registration',category:'Velocity',desc:'Business registered within the last 12 months — early growth phase, actively building.',detections:32,replyRate:'6.2%',meetingRate:'0.9%'},
+  ];
+  const maxDetections = Math.max(...signalPerformance.map(s => s.detections));
+  const html = `
+    <div class="eyebrow" style="margin-bottom:12px;">Signal intelligence</div>
+    <h1 class="page-headline" style="margin-bottom:16px;">What the system sees<br><em>on your behalf.</em></h1>
+    <div style="font-size:14px;color:var(--ink-3);margin-bottom:36px;max-width:620px;">Every signal tracked across your 600 records this cycle. Ranked by what actually converts to meetings.</div>
+    <div class="grid-2" style="margin-bottom:40px;">
+      ${signalPerformance.map(s => `
+        <div class="card" style="padding:20px;">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:var(--ink-3);margin-bottom:6px;">${s.category}</div>
+          <div style="font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:var(--ink);margin-bottom:10px;">${s.name}</div>
+          <div style="font-size:14px;color:var(--ink-3);margin-bottom:16px;line-height:1.55;">${s.desc}</div>
+          <div style="display:flex;gap:24px;">
+            <div><div style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;color:var(--ink);">${s.detections}</div><div style="font-size:11px;color:var(--ink-3);margin-top:2px;">detections</div></div>
+            <div><div style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;color:var(--ink);">${s.replyRate}</div><div style="font-size:11px;color:var(--ink-3);margin-top:2px;">reply rate</div></div>
+            <div><div style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;color:var(--amber);">${s.meetingRate}</div><div style="font-size:11px;color:var(--ink-3);margin-top:2px;">meeting rate</div></div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+    <div class="card" style="margin-bottom:32px;">
+      <div class="section-label" style="margin-bottom:4px;">Signal distribution this cycle</div>
+      <div style="font-size:13px;color:var(--ink-3);margin-bottom:20px;">Of your 600 prospects, which signal type is strongest?</div>
+      ${signalPerformance.map(s => `
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
+          <div style="width:200px;font-size:13px;color:var(--ink-2);flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${s.name}</div>
+          <div style="flex:1;background:var(--surface);border-radius:2px;height:10px;overflow:hidden;">
+            <div style="width:${Math.round((s.detections/maxDetections)*100)}%;background:var(--amber);height:100%;border-radius:2px;"></div>
+          </div>
+          <div style="width:100px;display:flex;gap:8px;justify-content:flex-end;flex-shrink:0;">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink-2);">${s.detections}</span>
+            <span style="font-size:11px;color:var(--ink-3);">${s.replyRate}</span>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+    <div class="card">
+      <div class="section-label" style="margin-bottom:16px;">Signal correlation with meetings</div>
+      <table class="report-table">
+        <thead><tr><th>Signal</th><th>Prospects</th><th>Meetings booked</th><th>Conversion rate</th></tr></thead>
+        <tbody>
+          ${[...signalPerformance].sort((a,b) => parseFloat(b.meetingRate)-parseFloat(a.meetingRate)).map(s => {
+            const meetings = Math.round(s.detections * parseFloat(s.meetingRate) / 100);
+            return `<tr><td>${s.name}</td><td><span class="mono" style="font-size:12px;">${s.detections}</span></td><td><span class="mono" style="font-size:12px;">${meetings}</span></td><td><span class="badge badge-green" style="font-size:11px;">${s.meetingRate}</span></td></tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+  document.getElementById('page').innerHTML = html;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   PAGE 8 — REPORTS
+═══════════════════════════════════════════════════════════════════ */
+function renderReports() {
+  const systemSteps = [
+    {label:'Discovered',count:47832},{label:'Industry filter',count:8204},{label:'Affordability gate',count:3421},{label:'Intent filter',count:1188},{label:'Top 600 scored',count:600},
+  ];
+  const decisionSteps = [
+    {label:'Delivered to you',count:600},{label:'Released to outreach',count:600},{label:'Contacted',count:247},{label:'Opened',count:116},{label:'Replied',count:31},{label:'Meetings booked',count:8},
+  ];
+  const maxCount = systemSteps[0].count;
+  function funnelRow(step, prevCount, isSystem) {
+    const barWidth = Math.max(2, Math.round((step.count / maxCount) * 100));
+    const pctOfPrev = prevCount ? Math.round((step.count / prevCount) * 100) + '%' : '—';
+    const barColor = isSystem ? 'var(--amber)' : 'var(--ink-2)';
+    return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+      <div style="width:160px;font-size:13px;color:var(--ink-2);flex-shrink:0;">${step.label}</div>
+      <div style="flex:1;background:var(--surface);border-radius:2px;height:10px;overflow:hidden;"><div style="width:${barWidth}%;background:${barColor};height:100%;border-radius:2px;"></div></div>
+      <div style="width:58px;text-align:right;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink-2);flex-shrink:0;">${step.count.toLocaleString()}</div>
+      <div style="width:42px;text-align:right;font-size:11px;color:var(--ink-3);flex-shrink:0;">${pctOfPrev}</div>
+    </div>`;
+  }
+  const html = `
+    <h1 class="page-headline" style="margin-bottom:28px;">Cycle performance,<br><em>by the numbers.</em></h1>
+    <div class="grid-4" style="margin-bottom:32px;">
+      ${[
+        {label:'Total Contacted',val:'247',delta:'+80 this week',up:true},
+        {label:'Total Replies',val:'31',delta:'8.2% reply rate',up:true},
+        {label:'Meetings Booked',val:'8',delta:'1.4% meeting rate',up:null},
+        {label:'Pipeline Value',val:'$94K',delta:'Est. AUD',up:null},
+      ].map(k => `<div class="kpi-card"><div class="kpi-label">${k.label}</div><div class="kpi-val">${k.val}</div><div class="metric-delta ${k.up===true?'delta-up':k.up===false?'delta-down':''}" style="${k.up===null?'color:var(--ink-3)':''}">${k.delta}</div></div>`).join('')}
+    </div>
+    <div class="card" style="margin-bottom:24px;">
+      <div class="section-label" style="margin-bottom:4px;">Cycle 3 conversion funnel</div>
+      <div style="font-size:13px;color:var(--ink-3);margin-bottom:24px;">From 47,832 discovered to 8 meetings booked. This is what $2,500/mo buys you.</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:var(--amber);margin-bottom:14px;">System work</div>
+      ${systemSteps.map((step, i) => funnelRow(step, i > 0 ? systemSteps[i-1].count : null, true)).join('')}
+      <div style="display:flex;align-items:center;gap:12px;margin:20px 0;">
+        <div style="flex:1;height:1px;background:var(--rule);"></div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-3);white-space:nowrap;">handoff — your cycle begins</div>
+        <div style="flex:1;height:1px;background:var(--rule);"></div>
+      </div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:var(--ink-2);margin-bottom:14px;">Your decisions</div>
+      ${decisionSteps.map((step, i) => funnelRow(step, i > 0 ? decisionSteps[i-1].count : systemSteps[systemSteps.length-1].count, false)).join('')}
+    </div>
+    <div class="grid-2" style="margin-bottom:24px;">
+      <div class="card">
+        <div class="section-label">Top performing signals</div>
+        <table class="report-table">
+          <thead><tr><th>Signal</th><th>Triggered</th><th>Reply Rate</th></tr></thead>
+          <tbody>
+            ${[
+              {name:'Brand Term Bidding',count:14,rate:'21.4%'},
+              {name:'GMB Rating Decline',count:8,rate:'18.8%'},
+              {name:'Ad Pause Detected',count:6,rate:'16.7%'},
+              {name:'Outdated Website',count:31,rate:'9.7%'},
+              {name:'Staff Churn Signal',count:3,rate:'33.3%'},
+            ].map(s => `<tr><td>${s.name}</td><td><span class="mono" style="font-size:12px;">${s.count}</span></td><td><span class="badge badge-green" style="font-size:11px;">${s.rate}</span></td></tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+      <div class="card">
+        <div class="section-label">Channel performance</div>
+        <table class="report-table">
+          <thead><tr><th>Channel</th><th>Sent</th><th>Reply Rate</th><th>Meetings</th></tr></thead>
+          <tbody>
+            ${[
+              {ch:'Email',sent:180,reply:'8.4%',meet:2},
+              {ch:'LinkedIn',sent:60,reply:'11.3%',meet:1},
+              {ch:'Voice AI',sent:25,reply:'5.0%',meet:1},
+              {ch:'SMS',sent:15,reply:'15.0%',meet:0},
+            ].map(c => `<tr><td><strong>${c.ch}</strong></td><td><span class="mono" style="font-size:12px;">${c.sent}</span></td><td><span class="badge badge-green" style="font-size:11px;">${c.reply}</span></td><td>${c.meet}</td></tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+  document.getElementById('page').innerHTML = html;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   PAGE 9 — SETTINGS
+═══════════════════════════════════════════════════════════════════ */
+function renderSettings() {
+  const tabs = ['account','integrations','team','billing','danger'];
+  const tabLabels = {account:'Account',integrations:'Integrations',team:'Team',billing:'Billing',danger:'Danger Zone'};
+
+  const integrationsSection = `
+    <div class="section-label">Connected services</div>
+    ${[
+      {abbr:'CRM', name:'HubSpot CRM',desc:'Sync prospects and deals',status:'Connected'},
+      {abbr:'LI', name:'LinkedIn',desc:'Automated connection requests and messages',status:'Connected'},
+      {abbr:'EMAIL', name:'Email Domains',desc:'ignition.com.au · 3 mailboxes active',status:'Connected'},
+      {abbr:'VOICE', name:'Voice AI',desc:'Automated outbound calling',status:'Connected'},
+      {abbr:'SMS', name:'SMS Gateway',desc:'Automated SMS outreach',status:'Degraded'},
+      {abbr:'CAL', name:'Calendar',desc:'Google Calendar · Meeting booking',status:'Connected'},
+    ].map(i => `
+      <div class="integration-row">
+        <div class="integration-icon-text">${i.abbr}</div>
+        <div style="flex:1;">
+          <div class="integration-name">${i.name}</div>
+          <div class="integration-desc">${i.desc}</div>
+        </div>
+        <span class="badge ${i.status==='Connected'?'badge-connected':'badge-amber'}">${i.status}</span>
+      </div>
+    `).join('')}
+  `;
+
+  const accountSection = `
+    <div style="margin-bottom:32px;">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:var(--ink-3);margin-bottom:8px;">Services you sell</div>
+      <div style="font-size:13px;color:var(--ink-3);margin-bottom:16px;">Extracted from your website and case studies during onboarding. Toggle off services you don't want prospects for.</div>
+      ${['SEO Services','Google Ads Management','Web Design & Development','Content Marketing','Social Media Management','Email Marketing'].map(s => `<label style="display:flex;align-items:center;gap:8px;padding:8px 0;cursor:pointer;"><input type="checkbox" checked style="accent-color:var(--amber);"> <span>${s}</span></label>`).join('')}
+    </div>
+    <div id="industriesSection" style="margin-bottom:32px;">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:var(--ink-3);margin-bottom:8px;">Industries you serve</div>
+      <div style="font-size:13px;color:var(--ink-3);margin-bottom:16px;">Default is all industries. Specialist agencies can narrow to their focus verticals.</div>
+      ${[
+        ['Health & Medical','dental, physio, GP, vet, specialist, aged care'],
+        ['Trades & Construction','builders, electricians, plumbers, HVAC'],
+        ['Professional Services','accounting, legal, consulting, HR'],
+        ['Hospitality','cafes, restaurants, venues, catering'],
+        ['Retail','bricks-and-mortar, e-commerce, specialty'],
+        ['Automotive','dealers, mechanics, panel beaters'],
+        ['Home & Lifestyle','interior design, landscaping, cleaning'],
+        ['Finance & Insurance','mortgage, insurance, financial planning'],
+      ].map(([name,sub]) => `<label style="display:flex;align-items:center;gap:8px;padding:8px 0;cursor:pointer;"><input type="checkbox" checked class="industry-cb" onchange="checkIndustryWarning()"> <span>${name}</span> <span style="font-size:11px;color:var(--ink-3);">(${sub})</span></label>`).join('')}
+      <div id="industryWarning" style="display:none;background:var(--amber-soft);border-left:3px solid var(--amber);padding:16px;margin:16px 0;font-size:13px;">
+        Health in Sydney Metro typically produces ~420 qualified records per cycle. Your Ignition tier is 600. Options:<br>
+        &rarr; Expand geography to NSW (~680 qualified)<br>
+        &rarr; Add Health + Wellness category (~590 qualified)<br>
+        &rarr; Accept 420 records this cycle (no tier change)
+      </div>
+    </div>
+    <div class="section-label">Agency profile</div>
+    ${[
+      {key:'Agency Name',sub:'Displayed across all outreach',val:'Ignition Digital'},
+      {key:'Primary Service',sub:'Used to qualify prospects',val:'SEO Services, Google Ads, Web Design'},
+      {key:'Target Areas',sub:'Geographic targeting',val:'Sydney, Melbourne, Brisbane'},
+      {key:'Outreach Style',sub:'Tone used in all drafts',val:'Direct · Professional · Data-led'},
+    ].map(r => `<div class="settings-row"><div class="settings-row-label"><div class="settings-row-key">${r.key}</div><div class="settings-row-sub">${r.sub}</div></div><div class="settings-row-val">${r.val}</div><div class="settings-row-action"><button class="btn btn-outline" style="font-size:12px;padding:5px 12px;">Edit</button></div></div>`).join('')}
+  `;
+
+  const teamSection = `
+    <div class="section-label">Team members</div>
+    ${[
+      {name:'David Stephens',role:'Owner',email:'david@ignition.com.au',avatar:'DS'},
+      {name:'Priya Nair',role:'Account Manager',email:'priya@ignition.com.au',avatar:'PN'},
+    ].map(m => `<div class="settings-row"><div class="settings-row-label" style="display:flex;align-items:center;gap:10px;width:auto;margin-right:16px;"><div class="avatar-circle" style="background:var(--ink-2);width:36px;height:36px;font-size:12px;">${m.avatar}</div><div><div class="settings-row-key">${m.name}</div><div class="settings-row-sub">${m.email}</div></div></div><div class="settings-row-val"><span class="badge badge-ink">${m.role}</span></div><div class="settings-row-action"><button class="btn btn-outline" style="font-size:12px;padding:5px 12px;">Edit</button></div></div>`).join('')}
+    <div style="margin-top:16px;"><button class="btn btn-outline">+ Invite team member</button></div>
+  `;
+
+  const billingSection = `
+    <div class="section-label">Current plan</div>
+    <div class="card" style="margin-bottom:20px;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+        <div>
+          <div style="font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--ink);">Growth Plan</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink-3);">$497 AUD / month · Renews 7 May 2026</div>
+        </div>
+        <span class="badge badge-green" style="margin-left:auto;">Active</span>
+      </div>
+      ${[
+        {feature:'Prospects per month',val:'600'},
+        {feature:'Campaigns',val:'4 active'},
+        {feature:'Outreach channels',val:'Email + LinkedIn + Voice + SMS'},
+        {feature:'Seats',val:'3 users'},
+      ].map(f => `<div style="display:flex;padding:8px 0;border-bottom:1px solid var(--rule);"><div style="flex:1;font-size:13px;color:var(--ink-3);">${f.feature}</div><div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--ink-2);">${f.val}</div></div>`).join('')}
+    </div>
+    <button class="btn btn-outline">Manage billing →</button>
+  `;
+
+  const dangerSection = `
+    <div class="danger-zone">
+      <div class="danger-zone-title">Danger Zone</div>
+      ${[
+        {title:'Pause all campaigns',sub:'Stop all active outreach immediately. Can be resumed.',btn:'Pause All',red:false},
+        {title:'Export all data',sub:'Download all prospects, campaigns, and reply data as CSV.',btn:'Export Data',red:false},
+        {title:'Delete account',sub:'Permanently delete your account and all data. This cannot be undone.',btn:'Delete Account',red:true},
+      ].map(d => `<div class="danger-row"><div class="danger-row-info"><div class="danger-row-title">${d.title}</div><div class="danger-row-sub">${d.sub}</div></div><button class="${d.red?'btn-danger':'btn btn-outline'}" style="${!d.red?'font-size:12px;padding:6px 12px;':''}">${d.btn}</button></div>`).join('')}
+    </div>
+  `;
+
+  const sectionContent = {account:accountSection,integrations:integrationsSection,team:teamSection,billing:billingSection,danger:dangerSection};
+
+  const html = `
+    <h1 class="page-headline" style="margin-bottom:28px;">Settings</h1>
+    <div class="settings-layout">
+      <div class="settings-nav">
+        ${tabs.map(t => `<div class="settings-nav-item ${activeSettingsTab===t?'active':''}" onclick="switchSettingsTab('${t}')">${tabLabels[t]}</div>`).join('')}
+      </div>
+      <div class="settings-content">
+        ${tabs.map(t => `<div class="settings-section ${activeSettingsTab===t?'active':''}" id="stab-${t}">${sectionContent[t]}</div>`).join('')}
+      </div>
+    </div>
+  `;
+  document.getElementById('page').innerHTML = html;
+}
+
+function switchSettingsTab(tab) {
+  activeSettingsTab = tab;
+  document.querySelectorAll('.settings-nav-item').forEach((el,i) => { const tabs = ['account','integrations','team','billing','danger']; el.classList.toggle('active', tabs[i]===tab); });
+  document.querySelectorAll('.settings-section').forEach(el => { el.classList.toggle('active', el.id==='stab-'+tab); });
+}
+
+function checkIndustryWarning() {
+  const cbs = document.querySelectorAll('.industry-cb');
+  const allChecked = Array.from(cbs).every(cb => cb.checked);
+  const warning = document.getElementById('industryWarning');
+  if (warning) warning.style.display = allChecked ? 'none' : 'block';
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   MOBILE SIDEBAR
+═══════════════════════════════════════════════════════════════════ */
+function toggleMobileSidebar() {
+  document.getElementById('sidebar').classList.toggle('mobile-open');
+  document.getElementById('sidebar-overlay').classList.toggle('show');
+}
+function closeMobileSidebar() {
+  document.getElementById('sidebar').classList.remove('mobile-open');
+  document.getElementById('sidebar-overlay').classList.remove('show');
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════════════════════════ */
+router();
+</script>
+</body>
+</html>

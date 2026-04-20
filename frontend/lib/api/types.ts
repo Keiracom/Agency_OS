@@ -11,7 +11,7 @@
 
 export type UUID = string;
 
-export type TierType = "ignition" | "velocity" | "dominance";
+export type TierType = "spark" | "ignition" | "velocity";
 export type SubscriptionStatus = "trialing" | "active" | "past_due" | "cancelled" | "paused";
 export type MembershipRole = "owner" | "admin" | "member" | "viewer";
 export type PermissionMode = "autopilot" | "co_pilot" | "manual";

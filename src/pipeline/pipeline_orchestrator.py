@@ -32,6 +32,8 @@ from src.pipeline.intelligence import GLOBAL_SEM_SONNET, GLOBAL_SEM_HAIKU  # sha
 from src.pipeline import intelligence as _intel_module  # optional: used when self._intelligence is set
 from src.config.category_registry import get_discovery_categories, SERVICE_CATEGORY_MAP  # noqa: F401
 from src.pipeline.email_waterfall import discover_email, GLOBAL_SEM_LEADMAGIC  # noqa: F401
+from src.pipeline.mobile_waterfall import run_mobile_waterfall
+from src.pipeline.contactout_enricher import enrich_dm_via_contactout
 
 logger = logging.getLogger(__name__)
 
@@ -256,6 +258,10 @@ class ProspectCard:
     dm_email_source: Optional[str] = None
     dm_email_confidence: Optional[str] = None
     email_cost_usd: float = 0.0
+    # Mobile waterfall fields (Directive #317)
+    dm_mobile: Optional[str] = None
+    dm_mobile_source: Optional[str] = None  # "contactout" | "html_regex" | "leadmagic" | "brightdata"
+    dm_mobile_tier: Optional[int] = None
     # Location fields (Directive #305 — supplements single "location" string)
     location_suburb: str = ""
     location_state: str = ""
@@ -897,6 +903,27 @@ class PipelineOrchestrator:
                     else:
                         await asyncio.sleep(0.1)
 
+            # Pre-fill the queue with one batch BEFORE starting workers.
+            # Fixes producer-consumer race: without this, workers start,
+            # find empty queue, and exit before the refill loop makes its
+            # first DFS call. Directive #317.3 — Option B.
+            async with GLOBAL_SEM_DFS:
+                initial_batch = await self._discovery.next_batch(
+                    category_codes=category_ints,
+                    location=location,
+                    batch_size=100,
+                    exclude_domains=set(exclude_domains or []),
+                )
+            if initial_batch:
+                for item in initial_batch:
+                    await pre_fetched_queue.put(item)
+                logger.info(
+                    "run_parallel: pre-filled queue with %d domains",
+                    len(initial_batch),
+                )
+            else:
+                logger.warning("run_parallel: initial discovery batch empty — no domains found")
+
             discovery_refill_task = asyncio.create_task(_refill_loop())
 
         # ── Shared state ─────────────────────────────────────────────────
@@ -1120,18 +1147,34 @@ class PipelineOrchestrator:
                     async with stats_lock:
                         stats.dm_found += 1
 
-                    # ── STAGE 9: Email waterfall (after DM identification) ────
+                    # ── STAGE 9: ContactOut (once per DM — email + mobile) ────
+                    # Called ONCE; result passed to both email and mobile waterfalls.
+                    # Cost: 1 ContactOut credit if profile found, 0 if not.
+                    dm_linkedin_url = getattr(dm, "linkedin_url", None)
+                    contactout_result = await enrich_dm_via_contactout(dm_linkedin_url)
+
+                    # ── STAGE 9a: Email waterfall ─────────────────────────────
                     email_result = await discover_email(
                         domain=domain,
                         dm_name=dm.name or "",
-                        dm_linkedin=getattr(dm, "linkedin_url", None),
+                        dm_linkedin=dm_linkedin_url,
                         html=enrichment.get("html") or enrichment.get("_raw_html") or "",
                         company_name=company_name,
+                        contactout_result=contactout_result,
+                    )
+
+                    # ── STAGE 9b: Mobile waterfall ────────────────────────────
+                    contact_data_for_mobile = enrichment.get("contact_data") or {}
+                    mobile_result = await run_mobile_waterfall(
+                        domain=domain,
+                        dm_linkedin_url=dm_linkedin_url,
+                        contact_data=contact_data_for_mobile,
+                        contactout_result=contactout_result,
                     )
 
                     # GATE: Reachability — email OR LinkedIn required
                     has_email = bool(email_result.email) or bool(enrichment.get("website_contact_emails"))
-                    has_linkedin = bool(getattr(dm, "linkedin_url", None))
+                    has_linkedin = bool(dm_linkedin_url)
                     if not (has_email or has_linkedin):
                         async with stats_lock:
                             stats.unreachable += 1
@@ -1157,13 +1200,16 @@ class PipelineOrchestrator:
                         gmb_review_count=enrichment.get("gmb_review_count", 0),
                         dm_name=dm.name,
                         dm_title=getattr(dm, "title", None),
-                        dm_linkedin_url=getattr(dm, "linkedin_url", None),
+                        dm_linkedin_url=dm_linkedin_url,
                         dm_confidence=getattr(dm, "confidence", None),
                         dm_email=email_result.email,
                         dm_email_verified=email_result.verified,
                         dm_email_source=email_result.source,
                         dm_email_confidence=email_result.confidence,
                         email_cost_usd=email_result.cost_usd,
+                        dm_mobile=mobile_result.mobile,
+                        dm_mobile_source=mobile_result.source,
+                        dm_mobile_tier=mobile_result.tier_used,
                         vulnerability_report=vuln_report,
                     )
 

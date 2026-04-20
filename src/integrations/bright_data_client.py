@@ -184,6 +184,10 @@ class BrightDataClient:
 
     async def _serp_request(self, url: str, max_retries: int = 2) -> Any:
         """Execute SERP API request via Direct API with Bearer token auth."""
+        import os
+        if os.environ.get("DRY_RUN"):
+            logger.info("[DRY-RUN] Would call Bright Data SERP: %s", url[:100])
+            return {}
         # Use Direct API endpoint with Bearer token (not proxy format)
         # serp_api1 zone uses: Authorization: Bearer {api_key}
         api_endpoint = "https://api.brightdata.com/request"
@@ -339,6 +343,10 @@ class BrightDataClient:
         self, dataset_id: str, inputs: list[dict], discover_by: str = None
     ) -> list[dict]:
         """Single attempt of Scraper API: trigger → poll → download."""
+        import os
+        if os.environ.get("DRY_RUN"):
+            logger.info("[DRY-RUN] Would call Bright Data Scraper: dataset_id=%s inputs=%d", dataset_id, len(inputs))
+            return []
         base_url = "https://api.brightdata.com/datasets/v3"
         headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
 

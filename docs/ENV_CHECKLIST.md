@@ -74,9 +74,9 @@ These are needed for channels to function. Add to `config/.env` as you obtain th
 | `STRIPE_API_KEY` | Billing - secret key (sk_live_...) | [dashboard.stripe.com/apikeys](https://dashboard.stripe.com/apikeys) |
 | `STRIPE_PUBLISHABLE_KEY` | Frontend Stripe.js (pk_live_...) | Same as above |
 | `STRIPE_WEBHOOK_SECRET` | Webhook signature verification (whsec_...) | Stripe Dashboard → Webhooks |
-| `STRIPE_PRICE_IGNITION` | Price ID for $2,500/mo tier | Create product in Stripe Dashboard |
+| `STRIPE_PRICE_SPARK` | Price ID for $750/mo tier (or $375 founding) | Create product in Stripe Dashboard |
+| `STRIPE_PRICE_IGNITION` | Price ID for $2,500/mo tier (or $1,250 founding) | Create product in Stripe Dashboard |
 | `STRIPE_PRICE_VELOCITY` | Price ID for $5,000/mo tier (or $2,500 founding) | Create product in Stripe Dashboard |
-| `STRIPE_PRICE_DOMINANCE` | Price ID for $7,500/mo tier | Create product in Stripe Dashboard |
 
 ---
 

@@ -16,7 +16,7 @@ class CampaignConfigBuilder:
     - industry_slug: falls back to target_industries[0] or "general"
     - location: falls back to target_locations[0] or "Melbourne"
     - state: falls back to "VIC"
-    - lead_volume: uses campaign.lead_volume (default 1250)
+    - lead_volume: uses campaign.lead_volume (tier-dependent volume from tiers.py)
     """
 
     @staticmethod
@@ -45,7 +45,7 @@ class CampaignConfigBuilder:
         # State: prefer campaign.state, default VIC
         state = campaign.state or "VIC"
 
-        # Lead volume: use campaign field (has default 1250)
+        # Lead volume: use campaign field (tier-dependent volume from tiers.py)
         lead_volume = campaign.lead_volume
 
         # Filters: build from target fields

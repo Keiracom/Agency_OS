@@ -334,32 +334,108 @@ class Stage5DMWaterfall:
         dm: DMResult | None,
         business: dict[str, Any],
     ) -> None:
-        """Write DM result and recalculate reachability."""
+        """Write DM to business_decision_makers + update BU pipeline state.
+
+        #338-PART-B: DM data writes to business_decision_makers (canonical).
+        business_universe gets pipeline_stage + reachability only.
+        Legacy BU.dm_* columns preserved for backward compat but NOT written.
+        """
         now = datetime.now(UTC)
         reachability = self._recalculate_reachability(business, dm)
 
+        # Write DM to business_decision_makers (principle #2: canonical record shape)
+        if dm and (dm.name or dm.linkedin_url):
+            # P1.7b: NULL-URL guard — skip INSERT unless at least one contact method present
+            if dm and not (dm.linkedin_url or dm.email):
+                logger.info("stage5_skip_no_contact domain=%s name=%s reason=no_linkedin_no_email",
+                            business.get("domain"), dm.name)
+                # Still advance pipeline stage but don't create non-actionable BDM
+                await self.conn.execute(
+                    """
+                    UPDATE business_universe SET
+                        reachability_score = $1,
+                        pipeline_stage = $2,
+                        pipeline_updated_at = $3
+                    WHERE id = $4
+                    """,
+                    reachability,
+                    PIPELINE_STAGE_S5,
+                    now,
+                    row_id,
+                )
+                return
+
+            # P1.6a: dedup — skip INSERT if another is_current BDM already has this linkedin_url
+            if dm.linkedin_url:
+                existing = await self.conn.fetchval(
+                    "SELECT id FROM business_decision_makers WHERE linkedin_url = $1 AND is_current = TRUE",
+                    dm.linkedin_url,
+                )
+                if existing:
+                    logger.info(
+                        "stage5_dedup_skip domain=%s linkedin_url=%s existing_bdm=%s",
+                        business.get("domain"), dm.linkedin_url, existing,
+                    )
+                    # Advance pipeline stage without creating a duplicate BDM
+                    await self.conn.execute(
+                        """
+                        UPDATE business_universe SET
+                            reachability_score = $1,
+                            pipeline_stage = $2,
+                            pipeline_updated_at = $3
+                        WHERE id = $4
+                        """,
+                        reachability,
+                        PIPELINE_STAGE_S5,
+                        now,
+                        row_id,
+                    )
+                    return
+
+            # P1.6d: name hygiene — strip emoji/non-letter leading/trailing chars
+            clean_name = re.sub(r'^[^a-zA-Z]+|[^a-zA-Z.]+$', '', dm.name).strip() if dm.name else None
+            # P1.7d: title-case normalization — "sian mcconnell" → "Sian Mcconnell"
+            if clean_name:
+                clean_name = clean_name.title()
+
+            # Mark any existing current DM as not-current first
+            await self.conn.execute(
+                """
+                UPDATE business_decision_makers
+                SET is_current = FALSE, updated_at = $2
+                WHERE business_universe_id = $1 AND is_current = TRUE
+                """,
+                row_id,
+                now,
+            )
+            # Insert new current DM
+            await self.conn.execute(
+                """
+                INSERT INTO business_decision_makers (
+                    business_universe_id, name, title, linkedin_url,
+                    email, mobile, is_current, created_at, updated_at
+                ) VALUES ($1, $2, $3, $4, $5, $6, TRUE, $7, $7)
+                """,
+                row_id,
+                clean_name,
+                dm.title,
+                dm.linkedin_url,
+                dm.email,
+                dm.phone,
+                now,
+            )
+            logger.info("stage5_dm_write domain=%s dm=%s → business_decision_makers",
+                        business.get("domain"), clean_name)
+
+        # Update BU pipeline state only (no dm_* fields)
         await self.conn.execute(
             """
             UPDATE business_universe SET
-                dm_name = $1,
-                dm_title = $2,
-                dm_email = $3,
-                dm_phone = $4,
-                dm_linkedin_url = $5,
-                dm_source = $6,
-                dm_found_at = $7,
-                reachability_score = $8,
-                pipeline_stage = $9,
-                pipeline_updated_at = $10
-            WHERE id = $11
+                reachability_score = $1,
+                pipeline_stage = $2,
+                pipeline_updated_at = $3
+            WHERE id = $4
             """,
-            dm.name if dm else None,
-            dm.title if dm else None,
-            dm.email if dm else None,
-            dm.phone if dm else None,
-            dm.linkedin_url if dm else None,
-            dm.source if dm else DM_SOURCE_NONE,
-            now if dm else None,
             reachability,
             PIPELINE_STAGE_S5,
             now,
@@ -373,6 +449,8 @@ class Stage5DMWaterfall:
     ) -> int:
         """Recalculate reachability score with confirmed DM channels."""
         score = 0
+        # #338-PART-B: read from DM result, fall back to BDM via BU join if needed
+        # Legacy BU.dm_email/dm_phone fallback kept temporarily for backward compat
         email = (dm.email if dm else None) or business.get("dm_email")
         phone = (dm.phone if dm else None) or business.get("dm_phone") or business.get("phone")
         linkedin = dm.linkedin_url if dm else None

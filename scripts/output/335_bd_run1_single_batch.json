@@ -1,0 +1,1002 @@
+{
+  "snapshot_id": "sd_mnvpgklu1gu2cqgxue",
+  "wall_time_seconds": 32.44100213050842,
+  "records_returned": 20,
+  "results": [
+    {
+      "id": "brydens",
+      "name": "Brydens",
+      "country_code": "AU",
+      "locations": [
+        "Suite 1, Level 1 The AK Centre, 90 John St Cabramatta, NSW 2166, AU"
+      ],
+      "followers": 16,
+      "employees_in_linkedin": 3,
+      "company_size": "2-10 employees",
+      "industries": "Law Practice",
+      "website": "https://brydens.com.au/",
+      "company_id": "9865735",
+      "employees": [
+        {
+          "img": "https://media.licdn.com/dms/image/v2/C4E03AQEwINy6pU7HoQ/profile-displayphoto-shrink_100_100/profile-displayphoto-shrink_100_100/0/1517231453525?e=2147483647&v=beta&t=r9G8w9E11qISBv_OV9zxwkhLCqyCPHVLRHf0Aku7nq0",
+          "link": "https://tt.linkedin.com/in/sherrille-felix-5a62b589?trk=org-employees",
+          "title": "Sherrille Felix"
+        }
+      ],
+      "headquarters": "Cabramatta, NSW",
+      "image": "https://static.licdn.com/aero-v1/sc/h/5q92mjc5c51bjlwaj3rs9aa82",
+      "logo": "https://static.licdn.com/aero-v1/sc/h/cs8pjfgyw96g44ln9r7tct85f",
+      "similar": [
+        {
+          "Links": "https://tt.linkedin.com/company/brydenpi?trk=similar-pages",
+          "subtitle": "Retail Health and Personal Care Products",
+          "title": "Bryden pi"
+        }
+      ],
+      "url": "https://www.linkedin.com/company/brydens",
+      "formatted_locations": [
+        "Suite 1, Level 1 The AK Centre, 90 John St, Cabramatta, NSW 2166, AU"
+      ],
+      "get_directions_url": [
+        {
+          "directions_url": "https://www.bing.com/maps?where=Suite+1%2C+Level+1+The+AK+Centre%2C+90+John+St+Cabramatta+2166+NSW+AU&trk=org-locations_url"
+        }
+      ],
+      "description": "Brydens | 16 followers on LinkedIn. ",
+      "additional_information": null,
+      "country_codes_array": [
+        "AU"
+      ],
+      "alumni": null,
+      "alumni_information": null,
+      "website_simplified": "brydens.com.au",
+      "unformatted_about": null,
+      "timestamp": "2026-04-12T11:53:40.576Z",
+      "input": {
+        "url": "https://www.linkedin.com/company/brydens"
+      }
+    },
+    {
+      "id": "astorlegal",
+      "name": "Astor Legal",
+      "country_code": "AU",
+      "locations": [
+        "4/52 George Street Parramatta, NSW 2150, AU"
+      ],
+      "followers": 509,
+      "employees_in_linkedin": 5,
+      "about": "Astor Legal experts in criminal and traffic law. Our lawyers appear in courts all over New South Wales.",
+      "specialties": "criminal law and traffic law",
+      "company_size": "1 employee",
+      "organization_type": "Privately Held",
+      "industries": "Law Practice",
+      "website": "https://www.astorlegal.com.au/",
+      "founded": 2017,
+      "company_id": "18130337",
+      "employees": [
+        {
+          "img": "https://media.licdn.com/dms/image/v2/D4D03AQFUT7CkePVPRQ/profile-displayphoto-shrink_100_100/profile-displayphoto-shrink_100_100/0/1719284905328?e=2147483647&v=beta&t=Ioe_h928mrPxaTpiP_mcjBRZ98dH6W63F29F5ZQ07w4",
+          "link": "https://au.linkedin.com/in/avinash-singh-5949b036?trk=org-employees",
+          "title": "Avinash Singh"
+        },
+        {
+          "img": "https://media.licdn.com/dms/image/v2/D5603AQE0s9Z-SfjmfA/profile-displayphoto-shrink_100_100/profile-displayphoto-shrink_100_100/0/1686174097631?e=2147483647&v=beta&t=Xwr45dO36NKcha-ZgMH7Fxo-0IFrYnshWoU7xOnT3LQ",
+          "link": "https://au.linkedin.com/in/isaac-hoballah-ab61591b7?trk=org-employees",
+          "title": "Isaac Hoballah"
+        },
+        {
+          "img": "https://media.licdn.com/dms/image/v2/D5603AQFt3QWDYJ5_EA/profile-displayphoto-scale_100_100/B56ZmNlLFhJkAg-/0/1759016956861?e=2147483647&v=beta&t=7biyK23FXl7fSp-Yikzaiv4lO3unXgfV9UddA0q2ZN8",
+          "link": "https://au.linkedin.com/in/kate-kim2908?trk=org-employees",
+          "title": "Kate Kim"
+        }
+      ],
+      "headquarters": "Parramatta, NSW",
+      "image": "https://media.licdn.com/dms/image/v2/C561BAQFWa--uOeiFfw/company-background_10000/company-background_10000/0/1584307419065/marsh_blom_lawyers_cover?e=2147483647&v=beta&t=5qM5Nj2BbynpA-OBNvw95gIcvriTuY1-kfxLm4Mz0sE",
+      "logo": "https://media.licdn.com/dms/image/v2/C560BAQH_8FG7Ivt4vQ/company-logo_200_200/company-logo_200_200/0/1630604058832/marsh_blom_lawyers_logo?e=2147483647&v=beta&t=17aWelmP_4vrBZloe3sm0A2HnY_fFO6WkYjn1SW5tQI",
+      "similar": [
+        {
+          "Links": "https://au.linkedin.com/company/sydneycriminallawyers?trk=similar-pages",
+          "subtitle": "Legal Services",
+          "title": "Sydney Criminal Lawyers\u00ae",
+          "location": "Sydney, New South Wales"
+        },
+        {
+          "Links": "https://au.linkedin.com/company/lyons-law-group?trk=similar-pages",
+          "subtitle": "Law Practice",
+          "title": "Lyons Law Group",
+          "location": "Sydney, NSW"
+        },
+        {
+          "Links": "https://au.linkedin.com/company/justice-support-centre?trk=similar-pages",
+          "subtitle": "Law Practice",
+          "title": "Justice Support Centre",
+          "location": "Bankstown, New South Wales"
+        },
+        {
+          "Links": "https://au.linkedin.com/company/sarah-bevan-family-lawyers?trk=similar-pages",
+          "subtitle": "Legal Services",
+          "title": "Sarah Bevan Family Lawyers",
+          "location": "Sydney, NSW"
+        },
+        {
+          "Links": "https://au.linkedin.com/company/oxford-lawyers1?trk=similar-pages",
+          "subtitle": "Law Practice",
+          "title": "Oxford Lawyers"
+        },
+        {
+          "Links": "https://au.linkedin.com/company/longton-legal?trk=similar-pages",
+          "subtitle": "Law Practice",
+          "title": "Longton Blackwell",
+          "location": "Sydney, New South Wales"
+        },
+        {
+          "Links": "https://au.linkedin.com/company/aboriginal-legal-service?trk=similar-pages",
+          "subtitle": "Legal Services",
+          "title": "Aboriginal Legal Service",
+          "location": "Redfern, New South Wales"
+        },
+        {
+          "Links": "https://au.linkedin.com/company/joshua-blom-lawyers?trk=similar-pages",
+          "subtitle": "Law Practice",
+          "title": "Joshua Blom Lawyers",
+          "location": "BOWRAL, NSW"
+        },
+        {
+          "Links": "https://au.linkedin.com/company/minter-ellison?trk=similar-pages",
+          "subtitle": "Law Practice",
+          "title": "MinterEllison"
+        },
+        {
+          "Links": "https://au.linkedin.com/company/toongabbielegalcentre?trk=similar-pages",
+          "subtitle": "Legal Services",
+          "title": "Toongabbie Legal Centre",
+          "location": "Toongabbie, NSW"
+        }
+      ],
+      "url": "https://www.linkedin.com/company/astorlegal",
+      "updates": [
+        {
+          "likes_count": 3,
+          "text": "A complete guide to challenging AI-detected traffic Camera Fines https://lnkd.in/gkj2EW_T",
+          "time": "2w",
+          "title": "Astor Legal",
+          "images": [
+            "https://media.licdn.com/dms/image/v2/D5610AQFTi653C6eNBA/image-shrink_800/B56Z0nA1G2J8Ag-/0/1774476022998?e=2147483647&v=beta&t=EZRlPR3mU4GD__GXNTN5igkOpn_8ycyJscqulLfef7Q"
+          ],
+          "post_url": "https://www.linkedin.com/posts/astorlegal_how-to-challenge-an-ai-traffic-camera-fine-activity-7442691974048067584-k6LR",
+          "post_id": "7442691974048067584",
+          "date": "2026-03-25T22:00:45.143Z",
+          "tagged_companies": null,
+          "tagged_people": null,
+          "repost": {
+            "tagged_companies": null,
+            "tagged_users": null,
+            "images": null,
+            "videos": null,
+            "external_links": null,
+            "repost_hangtags": null
+          },
+          "text_html": "A complete guide to challenging AI-detected traffic Camera Fines \n\n<a class=\"link\" href=\"https://lnkd.in/gkj2EW_T?trk=organization_guest_main-feed-card-text\" target=\"_self\" rel=\"nofollow\" data-tracking-control-name=\"organization_guest_main-feed-card-text\" data-tracking-will-navigate>https://lnkd.in/gkj2EW_T</a>"
+        },
+        {
+          "likes_count": 6,
+          "text": "A reminder to ensure you only rely on trusted sources for legal advice. There has been a recent spate of ostensibly AI generated articles claiming that various new criminal and traffic laws came into effect in November. These articles claim that the new laws require people to keep their headlights on at all times while driving, as well as a number of other patently fabricated laws. You can read more about it below: https://lnkd.in/gJtNtCT3",
+          "time": "4mo",
+          "title": "Astor Legal",
+          "post_url": "https://www.linkedin.com/posts/astorlegal_no-cookies-daily-telegraph-activity-7397067039074508800-L9vW",
+          "post_id": "7397067039074508800",
+          "date": "2025-11-20T00:23:32.975Z",
+          "tagged_companies": null,
+          "tagged_people": null,
+          "repost": {
+            "tagged_companies": null,
+            "tagged_users": null,
+            "images": null,
+            "videos": null,
+            "external_links": null,
+            "repost_hangtags": null
+          },
+          "text_html": "A reminder to ensure you only rely on trusted sources for legal advice. There has been a recent spate of ostensibly AI generated articles claiming that various new criminal and traffic laws came into effect in November. \n\nThese articles claim that the new laws require people to keep their headlights on at all times while driving, as well as a number of other patently fabricated laws. \n\nYou can read more about it below:\n\n<a class=\"link\" href=\"https://lnkd.in/gJtNtCT3?trk=organization_guest_main-feed-card-text\" target=\"_self\" rel=\"nofollow\" data-tracking-control-name=\"organization_guest_main-feed-card-text\" data-tracking-will-navigate>https://lnkd.in/gJtNtCT3</a>"
+        },
+        {
+          "likes_count": 18,
+          "text": "Thanks to The Mirabel Foundation for allowing us to attend the Ashes Lunch today. Thanks to Trivian Capital for the invite and the important work they are doing for disadvantaged youth. Unbelievable to meet former Australian captain Mark Taylor and former England captain Michael Vaughan. Mirabell is a charity that Astor Legal are very proud to support. Please support them at their website www.mirabel.org.au",
+          "time": "5mo",
+          "title": "Avinash Singh",
+          "comments_count": 3,
+          "images": [
+            "https://media.licdn.com/dms/image/v2/D4D22AQGZxQRL3Frr1A/feedshare-shrink_2048_1536/B4DZpcZTtNIkAw-/0/1762486731149?e=2147483647&v=beta&t=B0eygCHa_CJct-5KxUpPrfMX47KhuNzcqWGBSxZbjy4"
+          ],
+          "post_url": "https://www.linkedin.com/posts/activity-7392405151166271488-8fDc",
+          "post_id": "7392773916777385984",
+          "date": "2025-11-08T04:04:12.857Z",
+          "tagged_companies": null,
+          "tagged_people": null,
+          "repost": {
+            "tagged_companies": null,
+            "tagged_users": null,
+            "images": null,
+            "videos": null,
+            "external_links": null,
+            "repost_hangtags": null
+          },
+          "text_html": "Thanks to <a class=\"link\" href=\"https://au.linkedin.com/company/the-mirabel-foundation?trk=organization_guest_main-feed-card-text\" target=\"_self\" data-tracking-control-name=\"organization_guest_main-feed-card-text\" data-tracking-will-navigate>The Mirabel Foundation</a> for allowing us to attend the Ashes Lunch today. Thanks to <a class=\"link\" href=\"https://au.linkedin.com/company/triviancapital?trk=organization_guest_main-feed-card-text\" target=\"_self\" data-tracking-control-name=\"organization_guest_main-feed-card-text\" data-tracking-will-navigate>Trivian Capital</a> for the invite and the important work they are doing for disadvantaged youth. Unbelievable to meet former Australian captain Mark Taylor and former England captain Michael Vaughan. Mirabell is a charity that Astor Legal are  very proud to support. Please support them at their website <a class=\"link\" href=\"http://www.mirabel.org.au?trk=organization_guest_main-feed-card-text\" target=\"_self\" rel=\"nofollow\" data-tracking-control-name=\"organization_guest_main-feed-card-text\" data-tracking-will-navigate>www.mirabel.org.au</a>"
+        },
+        {
+          "likes_count": 1,
+          "text": "A breakdown of why Two-Up can be played on ANZAC day as well as the rules of the game https://lnkd.in/gjnu5HG5",
+          "time": "11mo",
+          "title": "Astor Legal",
+          "images": [
+            "https://media.licdn.com/dms/image/v2/D5610AQH7AevzsBGwOA/image-shrink_1280/B56ZZlRrQpHUAM-/0/1745455856754?e=2147483647&v=beta&t=5v70Yawl72J-rc6xb2jgj4hQctrCDrVj0hXqi0nLFYc"
+          ],
+          "post_url": "https://www.linkedin.com/posts/astorlegal_why-is-two-up-illegal-except-on-anzac-day-activity-7320972587419713536-4thm",
+          "post_id": "7320972587419713536",
+          "date": "2025-04-24T00:51:21.934Z",
+          "tagged_companies": null,
+          "tagged_people": null,
+          "repost": {
+            "tagged_companies": null,
+            "tagged_users": null,
+            "images": null,
+            "videos": null,
+            "external_links": null,
+            "repost_hangtags": null
+          },
+          "text_html": "A breakdown of why Two-Up can be played on ANZAC day as well as the rules of the game\n\n<a class=\"link\" href=\"https://lnkd.in/gjnu5HG5?trk=organization_guest_main-feed-card-text\" target=\"_self\" rel=\"nofollow\" data-tracking-control-name=\"organization_guest_main-feed-card-text\" data-tracking-will-navigate>https://lnkd.in/gjnu5HG5</a>"
+        },
+        {
+          "likes_count": 1,
+          "text": "A list of all possible AVO condtions as well a brief explanation of each https://lnkd.in/gq2XThKA",
+          "time": "11mo",
+          "title": "Astor Legal",
+          "images": [
+            "https://media.licdn.com/dms/image/v2/D5610AQFpgLAWXnFcJg/image-shrink_800/B56ZZTlDO4HoAc-/0/1745158946723?e=2147483647&v=beta&t=AcU7n5iez4MM6IgUtX1MNYh4aY6bd-9b7OYYJNfB5I8"
+          ],
+          "post_url": "https://www.linkedin.com/posts/astorlegal_avo-conditions-list-activity-7319727256342274048-PH0T",
+          "post_id": "7319727256342274048",
+          "date": "2025-04-20T14:22:51.868Z",
+          "tagged_companies": null,
+          "tagged_people": null,
+          "repost": {
+            "tagged_companies": null,
+            "tagged_users": null,
+            "images": null,
+            "videos": null,
+            "external_links": null,
+            "repost_hangtags": null
+          },
+          "text_html": "A list of all possible AVO condtions as well a brief explanation of each\n\n<a class=\"link\" href=\"https://lnkd.in/gq2XThKA?trk=organization_guest_main-feed-card-text\" target=\"_self\" rel=\"nofollow\" data-tracking-control-name=\"organization_guest_main-feed-card-text\" data-tracking-will-navigate>https://lnkd.in/gq2XThKA</a>"
+        }
+      ],
+      "slogan": "Experts in criminal and traffic law.",
+      "formatted_locations": [
+        "4/52 George Street, Parramatta, NSW 2150, AU"
+      ],
+      "get_directions_url": [
+        {
+          "directions_url": "https://www.bing.com/maps?where=4%2F52+George+Street++Parramatta+2150+NSW+AU&trk=org-locations_url"
+        }
+      ],
+      "description": "Astor Legal | 509 followers on LinkedIn. Experts in criminal and traffic law. | Astor Legal experts in criminal and traffic law. Our lawyers appear in courts all over New South Wales.",
+      "additional_information": "Additional jobs info: Paralegal (33,712 open jobs). Law Clerk (13,244 open jobs). Legal Secretary (51,334 open jobs). Legal Assistant (23,617 open jobs). Law Student (7,374 open jobs). Law Specialist (14,480 open jobs). Legal Intern (3,779 open jobs). Workforce Management Analyst (1,632 open jobs). Data Entry Operator (41,996 open jobs). Lawyer (24,273 open jobs). Receptionist (64,579 open jobs). Medical Doctor (66,473 open jobs). Employee Relations Specialist (15,658 open jobs). Junior Accountant (47,377 open jobs). Legal Counsel (33,584 open jobs). Pharmacist (48,798 open jobs). Nurse (683,200 open jobs). Sales Specialist (129,703 open jobs). Marketing Manager (106,879 open jobs). Litigation Specialist (8,830 open jobs)",
+      "country_codes_array": [
+        "AU"
+      ],
+      "alumni": null,
+      "alumni_information": null,
+      "website_simplified": "astorlegal.com.au",
+      "unformatted_about": "\n              Astor Legal experts in criminal and traffic law. Our lawyers appear in courts all over New South Wales.\n          ",
+      "timestamp": "2026-04-12T11:53:41.407Z",
+      "input": {
+        "url": "https://www.linkedin.com/company/astorlegal"
+      }
+    },
+    {
+      "id": "lsj",
+      "name": "LSJ",
+      "country_code": "BE",
+      "locations": [
+        "43 Rochusstraat Rotselaar, 3118, BE"
+      ],
+      "followers": 14,
+      "employees_in_linkedin": 6,
+      "industries": "Restaurants",
+      "company_id": "23581362",
+      "employees": [
+        {
+          "img": "https://media.licdn.com/dms/image/v2/C5603AQHoFWRbtIiOew/profile-displayphoto-shrink_100_100/profile-displayphoto-shrink_100_100/0/1517229681852?e=2147483647&v=beta&t=FQb-YqHMctvlARzjsiDhU8jmANfZ8i_5N87vz3luNbc",
+          "link": "https://cn.linkedin.com/in/carrie-huang-b9750a157?trk=org-employees",
+          "subtitle": "LSJ",
+          "title": "Carrie Huang"
+        },
+        {
+          "img": "https://media.licdn.com/dms/image/v2/C5603AQGSr4GEfF3sUQ/profile-displayphoto-shrink_100_100/profile-displayphoto-shrink_100_100/0/1572355842885?e=2147483647&v=beta&t=AOsD9EWuPS-kSBR81MAlSqxVCFa0a4kgIMrFPqNz1lw",
+          "link": "https://in.linkedin.com/in/rajan-sunaina-442173196?trk=org-employees",
+          "subtitle": "LSJ",
+          "title": "Rajan Sunaina"
+        },
+        {
+          "img": "https://media.licdn.com/dms/image/v2/D5603AQEqHzJa_p24hg/profile-displayphoto-shrink_100_100/B56ZYRZiibHEAg-/0/1744048632899?e=2147483647&v=beta&t=s7_6fQHN26DnChUd__baNL9z7tRD6Fnu_zM_mQUFkqc",
+          "link": "https://ao.linkedin.com/in/alice-ngila-007b4b35a?trk=org-employees",
+          "subtitle": "LSJ \u2022 2 followers",
+          "title": "Alice Ngila"
+        }
+      ],
+      "headquarters": "Rotselaar",
+      "image": "https://static.licdn.com/aero-v1/sc/h/5q92mjc5c51bjlwaj3rs9aa82",
+      "logo": "https://static.licdn.com/aero-v1/sc/h/cs8pjfgyw96g44ln9r7tct85f",
+      "url": "https://www.linkedin.com/company/lsj",
+      "formatted_locations": [
+        "43 Rochusstraat, Rotselaar, 3118, BE"
+      ],
+      "get_directions_url": [
+        {
+          "directions_url": "https://www.bing.com/maps?where=43+Rochusstraat+Rotselaar+3118+BE&trk=org-locations_url"
+        }
+      ],
+      "description": "LSJ | 14 followers on LinkedIn. ",
+      "additional_information": null,
+      "country_codes_array": [
+        "BE"
+      ],
+      "alumni": null,
+      "alumni_information": null,
+      "website_simplified": null,
+      "unformatted_about": null,
+      "timestamp": "2026-04-12T11:53:41.673Z",
+      "input": {
+        "url": "https://www.linkedin.com/company/lsj"
+      }
+    },
+    {
+      "id": "sydneycriminallawyers",
+      "name": "Sydney Criminal Lawyers\u00ae",
+      "country_code": "AU",
+      "locations": [
+        "267 Castlereagh Street Museum Towers, Suite 503 Sydney, New South Wales 2000, AU",
+        "215-219 George St Regus Offices Level 2 Liverpool, New South Wales 2170, AU",
+        "27 Hunter St Suite 3 Parramatta, New South Wales 2150, AU",
+        "23 Daisy Street Chatswood, NSW 2067, AU",
+        "17 Bolton Street Level 1, Suite 107 Newcastle, NSW 2300, AU",
+        "95B Station Street Penrith, NSW 2750, AU",
+        "1 Burelli Street Level 1 Wollongong, NSW 2500, AU",
+        "L2, 47 Rickard Road Bankstown, NSW 2200, AU",
+        "120 Vincent St Cessnock, New South Wales 2325, AU",
+        "40-44 Belmont St 40 Sutherland, New South Wales 2232, AU"
+      ],
+      "followers": 3250,
+      "employees_in_linkedin": 33,
+      "about": "Sydney Criminal Lawyers\u00ae is a multi-award winning, Sydney City law firm practising exclusively in criminal and traffic cases. Our outstanding team of experienced lawyers works closely with our support staff to consistently deliver exceptional results for our clients. Our team has a proven track record of: \u2022 Getting criminal cases dropped at an early stage, \u2022 Winning Local Court hearings, \u2022 Winning complex District and Supreme Court trials, \u2022 Winning Appeals in all jurisdictions, and \u2022 Helping clients avoid criminal convictions if they plead guilty. We were the first firm to publish 'fixed-fees' in criminal cases (2004) and have introduced many other innovations to the profession. We believe our innovations have helped the community by: \u2022 Promoting transparency in legal costs; \u2022 Increasing access to legal information,and \u2022 Setting quality standards. We have won dozens of awards over the years, including Criminal Defence Firm of the Year in Australia from several reputable professional and business organisations.",
+      "specialties": "Serious Crime, Traffic Offences, Drug Offences, Drink Driving Offences, Fraud, Drug Driving, Assault, Negligent Driving, AVO, Drive while Suspended / Disqualified, Bail Applications, Habitual Traffic Offender, Section 10 Dismissals, and Driver Licence Appeals",
+      "company_size": "11-50 employees",
+      "organization_type": "Privately Held",
+      "industries": "Legal Services",
+      "website": "https://www.sydneycriminallawyers.com.au/",
+      "founded": 2001,
+      "company_id": "3032706",
+      "employees": [
+        {
+          "img": "https://media.licdn.com/dms/image/v2/D5603AQE_ggC0hfS5WA/profile-displayphoto-shrink_100_100/B56ZOPNbalHYAY-/0/1733274483901?e=2147483647&v=beta&t=4YCWdxAmyMLO4L63NII9KFHrlz6FPgTT4B1T21wLl88",
+          "link": "https://au.linkedin.com/in/vladimir-kundrat?trk=org-employees",
+          "subtitle": "healthslips.com.au \u2022 192 followers",
+          "title": "Vladimir Kundrat"
+        },
+        {
+          "img": "https://media.licdn.com/dms/image/v2/C4D03AQE1loKwQ52sSA/profile-displayphoto-shrink_100_100/profile-displayphoto-shrink_100_100/0/1517545055578?e=2147483647&v=beta&t=2303I-rdMLVMIj7HxtpvnNBT27BmR4SijPgFWvq_Pnk",
+          "link": "https://au.linkedin.com/in/robert-daoud-b2732629?trk=org-employees",
+          "subtitle": "Sydney Criminal Defence\u2026 \u2022 508 followers",
+          "title": "Robert Daoud"
+        },
+        {
+          "img": "https://media.licdn.com/dms/image/v2/C5603AQHGq7t9JpqxpQ/profile-displayphoto-shrink_100_100/profile-displayphoto-shrink_100_100/0/1516795722549?e=2147483647&v=beta&t=-zh-62jG4OXnWIYbba5VSfPMZJNavhvBLowYlHE-q_E",
+          "link": "https://au.linkedin.com/in/david-roth-17870338?trk=org-employees",
+          "subtitle": "Sydney Criminal and Family\u2026 \u2022 64 followers",
+          "title": "David Roth"
+        },
+        {
+          "img": "https://media.licdn.com/dms/image/v2/D5603AQG7GXPlijWJHQ/profile-displayphoto-shrink_100_100/profile-displayphoto-shrink_100_100/0/1727174118919?e=2147483647&v=beta&t=qjd5Xh2qyedTqXhz79XQw_vz4SWngnGyKbzJLWfqVQA",
+          "link": "https://au.linkedin.com/in/david-harradine-27985940?trk=org-employees",
+          "subtitle": "Sydney Criminal Lawyers\u00ae \u2022 717 followers",
+          "title": "David Harradine"
+        }
+      ],
+      "headquarters": "Sydney, New South Wales",
+      "image": "https://media.licdn.com/dms/image/v2/D563DAQFRC8nqo9Phig/image-scale_191_1128/image-scale_191_1128/0/1736387155447/sydneycriminallawyers_cover?e=2147483647&v=beta&t=CoioN48bSnkHnb8HHtY3pX4ba6XNGSahsz8XTMsIAAU",
+      "logo": "https://media.licdn.com/dms/image/v2/C4D0BAQHBwKc8A0BA9A/company-logo_200_200/company-logo_200_200/0/1630529581452/sydneycriminallawyers_logo?e=2147483647&v=beta&t=2GJ2SQewo0qK9Dm5td5HLP7VBK_f0XlZMVXX4EpQ-1s",
+      "similar": [
+        {
+          "Links": "https://au.linkedin.com/company/criminaldefencelawyersaustralia?trk=similar-pages",
+          "subtitle": "Law Practice",
+          "title": "Criminal Defence Lawyers Australia\u00ae",
+          "location": "Sydney, NSW"
+        },
+        {
+          "Links": "https://au.linkedin.com/company/nyman-gibson-miralis?trk=similar-pages",
+          "subtitle": "Law Practice",
+          "title": "Nyman Gibson Miralis Defence Lawyers",
+          "location": "Sydney, NSW"
+        },
+        {
+          "Links": "https://au.linkedin.com/company/streeton-lawyers?trk=similar-pages",
+          "subtitle": "Law Practice",
+          "title": "Streeton Lawyers",
+          "location": "Sydney, New South Wales"
+        },
+        {
+          "Links": "https://au.linkedin.com/company/kpt-defence-lawyers?trk=similar-pages",
+          "subtitle": "Law Practice",
+          "title": "KPT Defence Lawyers",
+          "location": "Sydney, New South Wales"
+        },
+        {
+          "Links": "https://au.linkedin.com/company/longton-legal?trk=similar-pages",
+          "subtitle": "Law Practice",
+          "title": "Longton Blackwell",
+          "location": "Sydney, New South Wales"
+        },
+        {
+          "Links": "https://au.linkedin.com/company/just-defence-lawyers?trk=similar-pages",
+          "subtitle": "Law Practice",
+          "title": "Just Defence Lawyers",
+          "location": "Sydney, New South Wales"
+        },
+        {
+          "Links": "https://au.linkedin.com/company/hugo-law-group?trk=similar-pages",
+          "subtitle": "Law Practice",
+          "title": "Hugo Law Group",
+          "location": "Sydney, NSW"
+        },
+        {
+          "Links": "https://au.linkedin.com/company/astorlegal?trk=similar-pages",
+          "subtitle": "Law Practice",
+          "title": "Astor Legal",
+          "location": "Parramatta, NSW"
+        },
+        {
+          "Links": "https://au.linkedin.com/company/legalaidnsw?trk=similar-pages",
+          "subtitle": "Legal Services",
+          "title": "Legal Aid NSW",
+          "location": "Haymarket, NSW"
+        },
+        {
+          "Links": "https://au.linkedin.com/company/o'brien-solicitors?trk=similar-pages",
+          "subtitle": "Law Practice",
+          "title": "O'Brien Criminal and Civil Solicitors",
+          "location": "Sydney, New South Wales"
+        }
+      ],
+      "url": "https://www.linkedin.com/company/sydneycriminallawyers",
+      "updates": [
+        {
+          "text": "Groups of Indonesian police officers have gone on a murderous rampage in a West Papuan village, indiscriminately shooting civilians.",
+          "time": "10h",
+          "title": "Sydney Criminal Lawyers\u00ae",
+          "images": [
+            "https://media.licdn.com/dms/image/v2/D5610AQEu22AblyVn7g/image-shrink_1280/B56Z1_NBvsHAAc-/0/1775955615319?e=2147483647&v=beta&t=MIIaRsNTczvuQB2lyG1al_FqBBwwTNLLDGBptVGuB94"
+          ],
+          "post_url": "https://www.linkedin.com/posts/sydneycriminallawyers_indonesian-police-go-on-killing-spree-as-activity-7448897739767087105-hvvk",
+          "post_id": "7448897739767087105",
+          "date": "2026-04-12T01:00:14.988Z",
+          "tagged_companies": null,
+          "tagged_people": null,
+          "repost": {
+            "tagged_companies": null,
+            "tagged_users": null,
+            "images": null,
+            "videos": null,
+            "external_links": null,
+            "repost_hangtags": null
+          },
+          "text_html": "Groups of Indonesian police officers have gone on a murderous rampage in a West Papuan village, indiscriminately shooting civilians."
+        },
+        {
+          "likes_count": 4,
+          "text": "As Trump gloats about a ceasefire despite not achieving his stated objectives in Iran, Israel is bombing and attempting to take southern Lebanon by force.",
+          "time": "1d",
+          "title": "Sydney Criminal Lawyers\u00ae",
+          "images": [
+            "https://media.licdn.com/dms/image/v2/D5610AQEfpN3YKCvzzg/image-shrink_1280/B56Z16Dd3DGoAc-/0/1775869222568?e=2147483647&v=beta&t=Nyido6JtKJ1RLZMnd4Yte_TBH_HHrfGDgkJaZY9Y3EU"
+          ],
+          "post_url": "https://www.linkedin.com/posts/sydneycriminallawyers_apartheid-israel-is-invading-and-colonising-activity-7448535383803367424-5m2R",
+          "post_id": "7448535383803367424",
+          "date": "2026-04-11T01:00:22.594Z",
+          "tagged_companies": null,
+          "tagged_people": null,
+          "repost": {
+            "tagged_companies": null,
+            "tagged_users": null,
+            "images": null,
+            "videos": null,
+            "external_links": null,
+            "repost_hangtags": null
+          },
+          "text_html": "As Trump gloats about a ceasefire despite not achieving his stated objectives in Iran, Israel is bombing and attempting to take southern Lebanon by force."
+        },
+        {
+          "text": "Australian politicians are to receive greater security protections in response to a reported increase in the threat of politically motivated violent crime.",
+          "time": "2d",
+          "title": "Sydney Criminal Lawyers\u00ae",
+          "images": [
+            "https://media.licdn.com/dms/image/v2/D5610AQG9vymSFa2WVA/image-shrink_800/B56Z12n3YiKgAg-/0/1775811655447?e=2147483647&v=beta&t=ecOHvtdQ-X6Af8Ov9SXZPHNLwLA4x3v_e9d9VP6UPZo"
+          ],
+          "post_url": "https://www.linkedin.com/posts/sydneycriminallawyers_protections-for-politicians-enhanced-due-activity-7448293929839509504-tteW",
+          "post_id": "7448293929839509504",
+          "date": "2026-04-10T09:00:55.483Z",
+          "tagged_companies": null,
+          "tagged_people": null,
+          "repost": {
+            "tagged_companies": null,
+            "tagged_users": null,
+            "images": null,
+            "videos": null,
+            "external_links": null,
+            "repost_hangtags": null
+          },
+          "text_html": "Australian politicians are to receive greater security protections in response to a reported increase in the threat of politically motivated violent crime."
+        },
+        {
+          "text": "Ben Roberts-Smith is alleged to have personally murdered as well as ordered the murder of unarmed Afghans from 2009 to 2012.",
+          "time": "3d",
+          "title": "Sydney Criminal Lawyers\u00ae",
+          "images": [
+            "https://media.licdn.com/dms/image/v2/D5610AQFEQbmKcsS-qg/image-shrink_1280/B56Z1xeRZ9GgAc-/0/1775725254585?e=2147483647&v=beta&t=HuBsGWFZThlQyP6VLtwj2eWASQbrWhzFOWeI2ja1HQ8"
+          ],
+          "post_url": "https://www.linkedin.com/posts/sydneycriminallawyers_australias-most-decorated-soldier-faces-activity-7447931538014478336-2eBG",
+          "post_id": "7447931538014478336",
+          "date": "2026-04-09T09:00:54.539Z",
+          "tagged_companies": null,
+          "tagged_people": null,
+          "repost": {
+            "tagged_companies": null,
+            "tagged_users": null,
+            "images": null,
+            "videos": null,
+            "external_links": null,
+            "repost_hangtags": null
+          },
+          "text_html": "Ben Roberts-Smith is alleged to have personally murdered as well as ordered the murder of unarmed Afghans from 2009 to 2012."
+        },
+        {
+          "text": "The Trump administration says it\u2019s monitoring and seeking to suppress information that is critical of the US and proactively disseminating pro-US propaganda.",
+          "time": "4d",
+          "title": "Sydney Criminal Lawyers\u00ae",
+          "comments_count": 1,
+          "images": [
+            "https://media.licdn.com/dms/image/v2/D5610AQHia7udxoRgig/image-shrink_800/B56Z1sUsZvIYAg-/0/1775638857540?e=2147483647&v=beta&t=d4z0UIsmdmpkK3PKqx8sE88iPrzczOf3pnXk_umNwnQ"
+          ],
+          "post_url": "https://www.linkedin.com/posts/sydneycriminallawyers_the-us-is-covertly-propagandising-australians-activity-7447569163721662464-Rg_m",
+          "post_id": "7447569163721662464",
+          "date": "2026-04-08T09:00:57.775Z",
+          "tagged_companies": null,
+          "tagged_people": null,
+          "repost": {
+            "tagged_companies": null,
+            "tagged_users": null,
+            "images": null,
+            "videos": null,
+            "external_links": null,
+            "repost_hangtags": null
+          },
+          "text_html": "The Trump administration says it&#x2019;s monitoring and seeking to suppress information that is critical of the US and proactively disseminating pro-US propaganda."
+        },
+        {
+          "text": "The new law only applies to Palestinians and \u201cIsraeli Arabs\u201d.",
+          "time": "5d",
+          "title": "Sydney Criminal Lawyers\u00ae",
+          "images": [
+            "https://media.licdn.com/dms/image/v2/D5610AQF-19Y0rHEDHg/image-shrink_1280/B56Z1nLJMkKAAg-/0/1775552467977?e=2147483647&v=beta&t=lNuiGjOSLg-tBWmNqDz4teb7qimh0-9jiUVDMpsoCXo"
+          ],
+          "post_url": "https://www.linkedin.com/posts/sydneycriminallawyers_israel-prescribes-death-by-hanging-for-palestinians-activity-7447206819145449472-Y7Cv",
+          "post_id": "7447206819145449472",
+          "date": "2026-04-07T09:01:08.096Z",
+          "tagged_companies": null,
+          "tagged_people": null,
+          "repost": {
+            "tagged_companies": null,
+            "tagged_users": null,
+            "images": null,
+            "videos": null,
+            "external_links": null,
+            "repost_hangtags": null
+          },
+          "text_html": "The new law only applies to Palestinians and &#x201C;Israeli Arabs&#x201D;."
+        },
+        {
+          "text": "The retrial was ordered as the judge incorrectly explained the applicable legal direction to the jury.",
+          "time": "6d",
+          "title": "Sydney Criminal Lawyers\u00ae",
+          "images": [
+            "https://media.licdn.com/dms/image/v2/D5610AQF9ZuI4swo4zg/image-shrink_800/B56Z1iBfjRK0Ag-/0/1775466053283?e=2147483647&v=beta&t=SzJ5WcDH5E43zU5vvWJ7qs9E6JAZHpN_7pmTqBj4COg"
+          ],
+          "post_url": "https://www.linkedin.com/posts/sydneycriminallawyers_retrial-ordered-for-drug-importation-case-activity-7446844364825243648-EexC",
+          "post_id": "7446844364825243648",
+          "date": "2026-04-06T09:00:52.252Z",
+          "tagged_companies": null,
+          "tagged_people": null,
+          "repost": {
+            "tagged_companies": null,
+            "tagged_users": null,
+            "images": null,
+            "videos": null,
+            "external_links": null,
+            "repost_hangtags": null
+          },
+          "text_html": "The retrial was ordered as the judge incorrectly explained the applicable legal direction to the jury."
+        },
+        {
+          "text": "Catch up on our past week\u2019s articles, covering legal and political developments that affect us all.",
+          "time": "6d",
+          "title": "Sydney Criminal Lawyers\u00ae",
+          "images": [
+            "https://media.licdn.com/dms/image/v2/D5610AQEAeAhGJEhz3w/image-shrink_800/B56Z1gTiRXHoAg-/0/1775437227410?e=2147483647&v=beta&t=UQV5jy1ZNTMmbR7S6pJCstIDJYRsF53EZ0EhltwIai0"
+          ],
+          "post_url": "https://www.linkedin.com/posts/sydneycriminallawyers_sydney-criminal-lawyers-weekly-rundown-activity-7446723464587124736-advr",
+          "post_id": "7446723464587124736",
+          "date": "2026-04-06T01:00:27.389Z",
+          "tagged_companies": null,
+          "tagged_people": null,
+          "repost": {
+            "tagged_companies": null,
+            "tagged_users": null,
+            "images": null,
+            "videos": null,
+            "external_links": null,
+            "repost_hangtags": null
+          },
+          "text_html": "Catch up on our past week&#x2019;s articles, covering legal and political developments that affect us all."
+        },
+        {
+          "text": "The National Press Club cancelled an address by a Pulitzer Prize winning journalist which was to be critical of Israel, before enabling the Israeli ambassador to broadcast lies.",
+          "time": "1w",
+          "title": "Sydney Criminal Lawyers\u00ae",
+          "images": [
+            "https://media.licdn.com/dms/image/v2/D5610AQHPajNoroQxaA/image-shrink_800/B56Z1c35bYH8Ag-/0/1775379650528?e=2147483647&v=beta&t=3P3HOBtOTPxHC-Ahg8ofR4AocYU4j9l75L1tjgnSbqc"
+          ],
+          "post_url": "https://www.linkedin.com/posts/sydneycriminallawyers_the-rot-setting-in-at-the-national-press-activity-7446481969976193024-8n1d",
+          "post_id": "7446481969976193024",
+          "date": "2026-04-05T09:00:50.587Z",
+          "tagged_companies": null,
+          "tagged_people": null,
+          "repost": {
+            "tagged_companies": null,
+            "tagged_users": null,
+            "images": null,
+            "videos": null,
+            "external_links": null,
+            "repost_hangtags": null
+          },
+          "text_html": "The National Press Club cancelled an address by a Pulitzer Prize winning journalist which was to be critical of Israel, before enabling the Israeli ambassador to broadcast lies."
+        },
+        {
+          "text": "The continued refusal of the NSW government to condemn the multiple acts of clear police brutality against protesters suggests our leaders tacitly support it.",
+          "time": "1w",
+          "title": "Sydney Criminal Lawyers\u00ae",
+          "images": [
+            "https://media.licdn.com/dms/image/v2/D5610AQGyXoBDsc7aIg/image-shrink_800/B56Z1bJ6k7KkAg-/0/1775350819486?e=2147483647&v=beta&t=hd0XQ-rDs0rRT5tlp8vjewgQPjU_64bydpfziBrp67E"
+          ],
+          "post_url": "https://www.linkedin.com/posts/sydneycriminallawyers_the-ongoing-affirmation-of-the-police-brutalisation-activity-7446361043376963584-KUFU",
+          "post_id": "7446361043376963584",
+          "date": "2026-04-05T01:00:19.439Z",
+          "tagged_companies": null,
+          "tagged_people": null,
+          "repost": {
+            "tagged_companies": null,
+            "tagged_users": null,
+            "images": null,
+            "videos": null,
+            "external_links": null,
+            "repost_hangtags": null
+          },
+          "text_html": "The continued refusal of the NSW government to condemn the multiple acts of clear police brutality against protesters suggests our leaders tacitly support it."
+        }
+      ],
+      "slogan": "Australia's Most Awarded Criminal Law Firm",
+      "formatted_locations": [
+        "267 Castlereagh Street, Museum Towers, Suite 503, Sydney, New South Wales 2000, AU",
+        "215-219 George St, Regus Offices Level 2, Liverpool, New South Wales 2170, AU",
+        "27 Hunter St, Suite 3, Parramatta, New South Wales 2150, AU",
+        "23 Daisy Street, Chatswood, NSW 2067, AU",
+        "17 Bolton Street, Level 1, Suite 107, Newcastle, NSW 2300, AU",
+        "95B Station Street, Penrith, NSW 2750, AU",
+        "1 Burelli Street, Level 1, Wollongong, NSW 2500, AU",
+        "L2, 47 Rickard Road, Bankstown, NSW 2200, AU",
+        "120 Vincent St, Cessnock, New South Wales 2325, AU",
+        "40-44 Belmont St, 40, Sutherland, New South Wales 2232, AU"
+      ],
+      "get_directions_url": [
+        {
+          "directions_url": "https://www.bing.com/maps?where=267+Castlereagh+Street+Museum+Towers%2C+Suite+503+Sydney+2000+New+South+Wales+AU&trk=org-locations_url"
+        },
+        {
+          "directions_url": "https://www.bing.com/maps?where=215-219+George+St+Regus+Offices+Level+2++Liverpool+2170+New+South+Wales+AU&trk=org-locations_url"
+        },
+        {
+          "directions_url": "https://www.bing.com/maps?where=27+Hunter+St+Suite+3+Parramatta+2150+New+South+Wales+AU&trk=org-locations_url"
+        },
+        {
+          "directions_url": "https://www.bing.com/maps?where=23+Daisy+Street+Chatswood+2067+NSW+AU&trk=org-locations_url"
+        },
+        {
+          "directions_url": "https://www.bing.com/maps?where=17+Bolton+Street+Level+1%2C+Suite+107+Newcastle+2300+NSW+AU&trk=org-locations_url"
+        },
+        {
+          "directions_url": "https://www.bing.com/maps?where=95B+Station+Street+Penrith+2750+NSW+AU&trk=org-locations_url"
+        },
+        {
+          "directions_url": "https://www.bing.com/maps?where=1+Burelli+Street+Level+1+Wollongong+2500+NSW+AU&trk=org-locations_url"
+        },
+        {
+          "directions_url": "https://www.bing.com/maps?where=L2%2C+47+Rickard+Road+Bankstown+2200+NSW+AU&trk=org-locations_url"
+        },
+        {
+          "directions_url": "https://www.bing.com/maps?where=120+Vincent+St+Cessnock+2325+New+South+Wales+AU&trk=org-locations_url"
+        },
+        {
+          "directions_url": "https://www.bing.com/maps?where=40-44+Belmont+St+40+Sutherland+2232+New+South+Wales+AU&trk=org-locations_url"
+        }
+      ],
+      "description": "Sydney Criminal Lawyers\u00ae | 3,250 followers on LinkedIn. Australia&#39;s Most Awarded Criminal Law Firm | Sydney Criminal Lawyers\u00ae is a multi-award winning, Sydney City law firm practising exclusively in criminal and traffic cases.\n\nOur outstanding team of experienced lawyers works closely with our support staff to consistently deliver exceptional results for our clients.\n\nOur team has a proven track record of:\n\n\u2022 Getting criminal cases dropped at an early stage,\n\u2022 Winning Local Court hearings,\n\u2022 Winning complex District and Supreme Court trials, \n\u2022 Winning Appeals in all jurisdictions, and\n\u2022 Helping clients avoid criminal convictions if they plead guilty.",
+      "additional_information": null,
+      "country_codes_array": [
+        "AU"
+      ],
+      "alumni": null,
+      "alumni_information": null,
+      "website_simplified": "sydneycriminallawyers.com.au",
+      "unformatted_about": "\n              Sydney Criminal Lawyers\u00ae is a multi-award winning, Sydney City law firm practising exclusively in criminal and traffic cases.\n\nOur outstanding team of experienced lawyers works closely with our support staff to consistently deliver exceptional results for our clients.\n\nOur team has a proven track record of:\n\n\u2022 Getting criminal cases dropped at an early stage,\n\u2022 Winning Local Court hearings,\n\u2022 Winning complex District and Supreme Court trials, \n\u2022 Winning Appeals in all jurisdictions, and\n\u2022 Helping clients avoid criminal convictions if they plead guilty.\n\nWe were the first firm to publish 'fixed-fees' in criminal cases (2004) and have introduced many other innovations to the profession.\n\nWe believe our innovations have helped the community by: \n\n\u2022 Promoting transparency in legal costs;\n\u2022 Increasing access to legal information,and\n\u2022 Setting quality standards.\n\nWe have won dozens of awards over the years, including Criminal Defence Firm of the Year in Australia from several reputable professional and business organisations.\n          ",
+      "timestamp": "2026-04-12T11:53:41.692Z",
+      "input": {
+        "url": "https://www.linkedin.com/company/sydneycriminallawyers"
+      }
+    },
+    {
+      "id": "criminal-lawyers",
+      "name": "Criminal Lawyers",
+      "country_code": "IN",
+      "locations": [
+        "Mahabahu Enclave, Opposite Madhusudan Dev College, Patia, Odisha 751024 Bhubaneswar, Odisha 751024, IN"
+      ],
+      "followers": 580,
+      "employees_in_linkedin": 51,
+      "about": "Our expertise lies in securing a \"Quick Bail/Anticipatory Bail\" as we always did. Relax..! We are here to help you. The firm is operating through an integrated network throughout Odisha, representing its clients before various courts, which includes, Odisha High Court, Tribunals, including Civil Courts, Special Courts, and various Quasi Judicial Authorities. Criminal Lawyers in Odisha has well Experienced, Skilled and Dedicated Lawyers, who are well experienced in Criminal Law. With a team of best criminal lawyers in Odisha & PAN India, we also provide related criminal law services. We have specialized lawyers to deal with criminal related cases.",
+      "company_size": "2-10 employees",
+      "organization_type": "Privately Held",
+      "industries": "Legal Services",
+      "website": "https://www.criminallawyersinodisha.com/",
+      "founded": 1998,
+      "company_id": "14447779",
+      "employees": [
+        {
+          "img": "https://media.licdn.com/dms/image/v2/C5103AQFUqO9ARCvxGA/profile-displayphoto-shrink_100_100/profile-displayphoto-shrink_100_100/0/1517381777097?e=2147483647&v=beta&t=2ArzZyjwAszd-KNUZk53qrt-99xdb8Eaho70nPa7NfU",
+          "link": "https://pk.linkedin.com/in/imran-qureshi-7145655a?trk=org-employees",
+          "subtitle": "Pfizer \u2022 67 followers",
+          "title": "Imran Qureshi"
+        },
+        {
+          "img": "https://media.licdn.com/dms/image/v2/D5603AQG25Stk9LsPmg/profile-displayphoto-scale_100_100/B56Zu20UzIHQAg-/0/1768298731018?e=2147483647&v=beta&t=Grux9sARX7Zz8vht3Ty29KffxMRYa6XauCATJBTtHIE",
+          "link": "https://in.linkedin.com/in/adv-sahil-gandhi-83021997?trk=org-employees",
+          "subtitle": "Criminal Lawyers \u2022 32 followers",
+          "title": "Adv Sahil Gandhi"
+        },
+        {
+          "img": "https://media.licdn.com/dms/image/v2/C5103AQFtmcI1wE-X6Q/profile-displayphoto-shrink_100_100/profile-displayphoto-shrink_100_100/0/1517575498838?e=2147483647&v=beta&t=GwUpGQoTaEZy1Q0uHHMf-nxLrv3lPFwsdDzuAGWryRA",
+          "link": "https://in.linkedin.com/in/inderjeet-sharma-a76579ab?trk=org-employees",
+          "subtitle": "Criminal lawyers in chandigarh",
+          "title": "Inderjeet sharma"
+        },
+        {
+          "img": "https://media.licdn.com/dms/image/v2/C5603AQGq3krvEcKvpA/profile-displayphoto-shrink_100_100/profile-displayphoto-shrink_100_100/0/1662275446189?e=2147483647&v=beta&t=ckpRrXVSlrwRfwlTfIknESYy8GxhmN5o720obAXJ450",
+          "link": "https://in.linkedin.com/in/kishan-sheliya-899763168?trk=org-employees",
+          "subtitle": "Criminal Lawyers",
+          "title": "kishan sheliya"
+        }
+      ],
+      "headquarters": "Bhubaneswar, Odisha",
+      "image": "https://media.licdn.com/dms/image/v2/C511BAQFkQCYKPOCjLA/company-background_10000/company-background_10000/0/1584254154592/criminal_lawyers_cover?e=2147483647&v=beta&t=zR5g120yijNQOS4Ow-vmoKvN_JeInK0K9j7K_lW1Ru4",
+      "logo": "https://media.licdn.com/dms/image/v2/C510BAQFVZ3ueyYWi_g/company-logo_200_200/company-logo_200_200/0/1630564963915/criminal_lawyers_logo?e=2147483647&v=beta&t=L4iykrA07DfVlIvUqjXPlnMIgneY9wzpRtozdfZ_I1w",
+      "similar": [
+        {
+          "Links": "https://in.linkedin.com/company/varma-&-associates?trk=similar-pages",
+          "subtitle": "Legal Services",
+          "title": "VARMA & ASSOCIATES"
+        },
+        {
+          "Links": "https://in.linkedin.com/company/lexdmca?trk=similar-pages",
+          "subtitle": "Legal Services",
+          "title": "LexDMCA",
+          "location": "Bhubaneswar, Odisha"
+        },
+        {
+          "Links": "https://in.linkedin.com/company/gavel-india-law-firm?trk=similar-pages",
+          "subtitle": "Legal Services",
+          "title": "Gavel India Law Firm",
+          "location": "Bhubaneswar, Odisha"
+        },
+        {
+          "Links": "https://in.linkedin.com/company/sanghamitra-associates?trk=similar-pages",
+          "subtitle": "Law Enforcement",
+          "title": "Sanghamitra & Associates",
+          "location": "bhubaneswar, Odisha"
+        },
+        {
+          "Links": "https://www.linkedin.com/company/criminallawyergroup?trk=similar-pages",
+          "subtitle": "Legal Services",
+          "title": "Criminal Lawyer Group"
+        },
+        {
+          "Links": "https://in.linkedin.com/company/crl-review?trk=similar-pages",
+          "subtitle": "Research Services",
+          "title": "Criminal Law Research & Review (CrLRR)",
+          "location": "Gandhinagar, Gujarat"
+        },
+        {
+          "Links": "https://in.linkedin.com/company/quick-lex?trk=similar-pages",
+          "subtitle": "Legal Services",
+          "title": "Quick Lex - Legal Freelancing in India",
+          "location": "Bhubaneswar, Odisha"
+        },
+        {
+          "Links": "https://in.linkedin.com/company/eminencelegal?trk=similar-pages",
+          "subtitle": "Law Practice",
+          "title": "Eminence Legal",
+          "location": "Bhubaneswar, Odisha"
+        },
+        {
+          "Links": "https://in.linkedin.com/company/lexmantra?trk=similar-pages",
+          "subtitle": "Legal Services",
+          "title": "LexMantra",
+          "location": "Bhubaneswar, Odisha"
+        },
+        {
+          "Links": "https://in.linkedin.com/company/kar-and-associates?trk=similar-pages",
+          "subtitle": "Legal Services",
+          "title": "Kar and Associates",
+          "location": "Bhubaneswar, Odisha"
+        }
+      ],
+      "url": "https://www.linkedin.com/company/criminal-lawyers",
+      "formatted_locations": [
+        "Mahabahu Enclave, Opposite Madhusudan Dev College, Patia, Odisha 751024, Bhubaneswar, Odisha 751024, IN"
+      ],
+      "get_directions_url": [
+        {
+          "directions_url": "https://www.bing.com/maps?where=Mahabahu+Enclave%2C++Opposite+Madhusudan+Dev+College%2C++Patia%2C+Odisha+751024+Bhubaneswar+751024+Odisha+IN&trk=org-locations_url"
+        }
+      ],
+      "description": "Criminal Lawyers | 580 followers on LinkedIn. Our expertise lies in securing a &quot;Quick Bail/Anticipatory Bail&quot;\u200b as we always did. Relax..! We are here to help you.",
+      "additional_information": null,
+      "country_codes_array": [
+        "IN"
+      ],
+      "alumni": null,
+      "alumni_information": null,
+      "website_simplified": "criminallawyersinodisha.com",
+      "unformatted_about": "\n              Our expertise lies in securing a \"Quick Bail/Anticipatory Bail\" as we always did. Relax..! We are here to help you.\nThe firm is operating through an integrated network throughout Odisha, representing its clients before various courts, which includes, Odisha High Court, Tribunals, including Civil Courts, Special Courts, and various Quasi Judicial Authorities.\nCriminal Lawyers in Odisha has well Experienced, Skilled and Dedicated Lawyers, who are well experienced in Criminal Law.\nWith a team of best criminal lawyers in Odisha & PAN India, we also provide related criminal law services. We have specialized lawyers to deal with criminal related cases.\n\n          ",
+      "timestamp": "2026-04-12T11:53:41.736Z",
+      "input": {
+        "url": "https://www.linkedin.com/company/criminal-lawyers"
+      }
+    },
+    {
+      "timestamp": "2026-04-12T11:53:40.699Z",
+      "input": {
+        "url": "https://www.linkedin.com/company/australianfamilylawyers"
+      },
+      "error": "4XX page - dead page",
+      "error_code": "dead_page"
+    },
+    {
+      "timestamp": "2026-04-12T11:53:40.853Z",
+      "input": {
+        "url": "https://www.linkedin.com/company/dalyellupdental"
+      },
+      "error": "4XX page - dead page",
+      "error_code": "dead_page"
+    },
+    {
+      "timestamp": "2026-04-12T11:53:41.117Z",
+      "input": {
+        "url": "https://www.linkedin.com/company/puredentistry"
+      },
+      "error": "4XX page - dead page",
+      "error_code": "dead_page"
+    },
+    {
+      "timestamp": "2026-04-12T11:53:41.141Z",
+      "input": {
+        "url": "https://www.linkedin.com/company/mountlawleydental"
+      },
+      "error": "4XX page - dead page",
+      "error_code": "dead_page"
+    },
+    {
+      "timestamp": "2026-04-12T11:53:41.263Z",
+      "input": {
+        "url": "https://www.linkedin.com/company/dentalboutique"
+      },
+      "error": "4XX page - dead page",
+      "error_code": "dead_page"
+    },
+    {
+      "timestamp": "2026-04-12T11:53:41.427Z",
+      "input": {
+        "url": "https://www.linkedin.com/company/jamesonlaw"
+      },
+      "error": "4XX page - dead page",
+      "error_code": "dead_page"
+    },
+    {
+      "timestamp": "2026-04-12T11:53:41.454Z",
+      "input": {
+        "url": "https://www.linkedin.com/company/oasisdentalstudio"
+      },
+      "error": "4XX page - dead page",
+      "error_code": "dead_page"
+    },
+    {
+      "timestamp": "2026-04-12T11:53:41.749Z",
+      "input": {
+        "url": "https://www.linkedin.com/company/myimplantdentist"
+      },
+      "error": "4XX page - dead page",
+      "error_code": "dead_page"
+    },
+    {
+      "timestamp": "2026-04-12T11:53:41.778Z",
+      "input": {
+        "url": "https://www.linkedin.com/company/turnerfreeman"
+      },
+      "error": "4XX page - dead page",
+      "error_code": "dead_page"
+    },
+    {
+      "timestamp": "2026-04-12T11:53:42.422Z",
+      "input": {
+        "url": "https://www.linkedin.com/company/chelseadentalgroup"
+      },
+      "error": "4XX page - dead page",
+      "error_code": "dead_page"
+    },
+    {
+      "timestamp": "2026-04-12T11:53:42.693Z",
+      "input": {
+        "url": "https://www.linkedin.com/company/dentistportmelbourne"
+      },
+      "error": "4XX page - dead page",
+      "error_code": "dead_page"
+    },
+    {
+      "timestamp": "2026-04-12T11:53:43.286Z",
+      "input": {
+        "url": "https://www.linkedin.com/company/hwlebsworth"
+      },
+      "error": "4XX page - dead page",
+      "error_code": "dead_page"
+    },
+    {
+      "timestamp": "2026-04-12T11:53:43.320Z",
+      "input": {
+        "url": "https://www.linkedin.com/company/mydentistwestryde"
+      },
+      "error": "4XX page - dead page",
+      "error_code": "dead_page"
+    },
+    {
+      "timestamp": "2026-04-12T11:53:43.574Z",
+      "input": {
+        "url": "https://www.linkedin.com/company/criminaldefencelawyers"
+      },
+      "error": "4XX page - dead page",
+      "error_code": "dead_page"
+    },
+    {
+      "timestamp": "2026-04-12T11:53:43.746Z",
+      "input": {
+        "url": "https://www.linkedin.com/company/australianmigrationlawyers"
+      },
+      "error": "4XX page - dead page",
+      "error_code": "dead_page"
+    }
+  ]
+}

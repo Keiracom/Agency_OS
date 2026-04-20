@@ -35,6 +35,7 @@ from src.models.client import Client
 from src.models.lead import Lead
 from src.prefect_utils.completion_hook import on_completion_hook
 from src.prefect_utils.hooks import on_failure_hook
+from src.services.domain_pool_manager import DomainPoolManager
 
 
 logger = logging.getLogger(__name__)
@@ -43,6 +44,33 @@ logger = logging.getLogger(__name__)
 # ============================================
 # TASKS
 # ============================================
+
+
+@task(name="assign_burner_domain", retries=1)
+async def assign_burner_domain_task(client_id: UUID) -> dict[str, Any]:
+    """
+    Assign an available ready burner domain to the client on campaign activation.
+
+    Returns a dict with the assigned domain name, or a warning if pool is empty.
+    Pool being empty is non-fatal — campaign proceeds without a new domain assignment.
+    """
+    async with get_db_session() as db:
+        manager = DomainPoolManager(db)
+        domain = await manager.assign_to_client(client_id)
+        if domain:
+            await db.commit()
+            logger.info(f"Burner domain assigned to client {client_id}: {domain.domain_name}")
+            return {
+                "assigned": True,
+                "domain_name": domain.domain_name,
+                "domain_id": str(domain.id),
+            }
+        else:
+            logger.warning(
+                f"Domain pool empty — no burner domain assigned for client {client_id}. "
+                "Run domain_pool_maintenance_flow to replenish."
+            )
+            return {"assigned": False, "domain_name": None, "domain_id": None}
 
 
 @task(name="validate_client_status", retries=2, retry_delay_seconds=5)
@@ -381,6 +409,13 @@ async def campaign_activation_flow(
     activation_result = await activate_campaign_task(campaign_id)
     logger.info(f"Campaign activated: {activation_result['status']}")
 
+    # Step 3.3: Assign burner domain from pool (Directive #312)
+    domain_assignment = await assign_burner_domain_task(client_id)
+    if domain_assignment["assigned"]:
+        logger.info(f"Burner domain assigned: {domain_assignment['domain_name']}")
+    else:
+        logger.warning("No burner domain available from pool — pool needs replenishment")
+
     # Step 3.5: Trigger discovery pipeline (CEO Directive #059)
     discovery_result = await trigger_discovery_task(campaign_id=str(campaign_id))
     logger.info(
@@ -417,6 +452,7 @@ async def campaign_activation_flow(
         "leads_queued_for_enrichment": enrichment_result["queued_count"],
         "client_credits_remaining": client_data["credits_remaining"],
         "activated_at": activation_result["activated_at"],
+        "burner_domain": domain_assignment,
     }
 
     logger.info(f"Campaign activation flow completed: {summary}")

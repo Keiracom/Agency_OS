@@ -19,6 +19,7 @@ from typing import Any
 import asyncpg
 
 from src.enrichment.signal_config import SignalConfigRepository
+from src.pipeline.stage_10_critic import critique_and_revise, CRITIC_PASS_THRESHOLD  # noqa: F401
 from src.utils.domain_blocklist import BLOCKED_DOMAINS
 
 logger = logging.getLogger(__name__)
@@ -94,10 +95,14 @@ class Stage10MessageGenerator:
         anthropic_client: Any,
         signal_repo: SignalConfigRepository,
         conn: asyncpg.Connection,
+        gemini_client: Any | None = None,
+        agency_profile: dict[str, Any] | None = None,
     ) -> None:
         self.ai = anthropic_client
         self.signal_repo = signal_repo
         self.conn = conn
+        self._gemini = gemini_client
+        self._agency_profile = agency_profile
         self._sonnet_sem = asyncio.Semaphore(SONNET_CONCURRENCY)
         self._haiku_sem = asyncio.Semaphore(HAIKU_CONCURRENCY)
         self._stats: dict[str, Any] = {
@@ -159,7 +164,7 @@ class Stage10MessageGenerator:
                 skipped_no_bdm += 1
                 continue
 
-            channels = list(business.get("outreach_channels") or [])
+            channels = list(business.get("outreach_channels") or list(_CHANNEL_PROMPTS.keys()))
             active_channels = [c for c in channels if c in _CHANNEL_PROMPTS]
             if not active_channels:
                 skipped_no_bdm += 1
@@ -189,9 +194,48 @@ class Stage10MessageGenerator:
                 channel_messages.append(res)  # type: ignore[arg-type]
 
             if channel_messages:
-                await self._write_messages(
-                    business["id"], business["bdm_id"], channel_messages
-                )
+                if self._gemini is not None:
+                    # Critique and revise each channel message
+                    critic_results: dict[str, dict] = {}
+                    final_messages: list[tuple[str, str, str | None, dict[str, Any]]] = []
+                    for channel, body, subject, cost_info in channel_messages:
+                        async def _revise(
+                            feedback: str,
+                            ch: str = channel,
+                            biz: dict = business,
+                            pb: str = prospect_brief,
+                            ab: str = agency_brief,
+                        ) -> dict[str, Any]:
+                            revised_tuple = await self._generate_for_channel(
+                                ch, biz, pb,
+                                ab + "\n\nCRITIC FEEDBACK (fix this):\n" + feedback,
+                            )
+                            return {"body": revised_tuple[1], "subject": revised_tuple[2]}
+
+                        result = await critique_and_revise(
+                            gemini=self._gemini,
+                            writer_fn=_revise,
+                            channel=channel,
+                            prospect_brief=prospect_brief,
+                            initial_body=body,
+                            initial_subject=subject,
+                            agency_profile=self._agency_profile,
+                        )
+                        final_messages.append(
+                            (channel, result["body"], result["subject"], cost_info)
+                        )
+                        critic_results[channel] = {
+                            "score": result["critic_score"],
+                            "feedback": result["critic_feedback"],
+                            "needs_review": result["needs_review"],
+                        }
+                    await self._write_messages(
+                        business["id"], business["bdm_id"], final_messages, critic_results
+                    )
+                else:
+                    await self._write_messages(
+                        business["id"], business["bdm_id"], channel_messages
+                    )
                 messages_generated += len(channel_messages)
                 dms_processed += 1
 
@@ -273,21 +317,38 @@ class Stage10MessageGenerator:
         bu_id: str,
         bdm_id: str,
         channel_messages: list[tuple[str, str, str | None, dict[str, Any]]],
+        critic_results: dict[str, dict] | None = None,
     ) -> None:
-        """Insert dm_messages rows and advance pipeline_stage to 10."""
+        """Insert dm_messages rows and advance pipeline_stage to 10.
+
+        Args:
+            bu_id: Business universe ID.
+            bdm_id: Business decision-maker ID.
+            channel_messages: List of (channel, body, subject, cost_info) tuples.
+            critic_results: Optional dict keyed by channel name containing
+                {"score": int, "feedback": str, "needs_review": bool}.
+                When None, critic columns default to NULL/FALSE.
+        """
         now = datetime.now(UTC)
         for channel, body, subject, cost_info in channel_messages:
             model_name = SONNET_MODEL if channel == "email" else HAIKU_MODEL
+            critic = (critic_results or {}).get(channel, {})
+            critic_score = critic.get("score")
+            critic_feedback = critic.get("feedback")
+            needs_review = critic.get("needs_review", False)
             await self.conn.execute(
                 """
                 INSERT INTO dm_messages
                     (business_universe_id, business_decision_makers_id, channel,
-                     subject, body, model, cost_usd, status, generated_at)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, 'draft', $8)
+                     subject, body, model, cost_usd, status, generated_at,
+                     critic_score, critic_feedback, needs_review)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, 'draft', $8,
+                        $9, $10, $11)
                 """,
                 bu_id, bdm_id, channel,
                 subject, body, model_name,
                 cost_info["cost_usd"], now,
+                critic_score, critic_feedback, needs_review,
             )
 
         await self.conn.execute(

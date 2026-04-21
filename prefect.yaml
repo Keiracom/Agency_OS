@@ -247,25 +247,6 @@ deployments:
     schedules: []
 
   # ============================================
-  # CRM SYNC FLOWS (Item 20)
-  # ============================================
-
-  # CRM sync flow (4-hourly safety net for missed webhooks)
-  - name: crm-sync-flow
-    version: 1.0.0
-    paused: false  # Active - polls CRMs every 4 hours
-    tags: [crm, sync, safety-net, blind-conversions]
-    description: "CRM sync every 4 hours - safety net for missed webhooks (blind conversions)"
-    entrypoint: src/orchestration/flows/crm_sync_flow.py:crm_sync_flow
-    work_pool:
-      name: agency-os-pool
-      work_queue_name: agency-os-queue
-    parameters:
-      since_hours: 24
-    schedules:
-      - interval: 14400  # 4 hours in seconds
-        timezone: Australia/Sydney
-        active: true
 
   # ============================================
   # INTELLIGENCE FLOWS
@@ -379,6 +360,27 @@ deployments:
     work_pool:
       name: agency-os-pool
       work_queue_name: agency-os-queue
+    schedules: []
+
+  # ============================================
+  # PIPELINE F MASTER FLOW (P4-BUILD)
+  # ============================================
+
+  # Pipeline F v2.1 master flow — automated Stages 1-11
+  - name: pipeline-f-master-flow
+    version: 1.0.0
+    paused: false  # Active for P5 validation
+    tags: [p4, pipeline-f, master-flow, stages-1-11]
+    description: "Pipeline F v2.1 master flow — automated Stages 1-11 via Prefect. Manual trigger for P5 validation."
+    entrypoint: src/orchestration/flows/pipeline_f_master_flow.py:pipeline_f_master_flow
+    work_pool:
+      name: agency-os-pool
+      work_queue_name: agency-os-queue
+    parameters:
+      categories: ["dental"]
+      domains_per_category: 2
+      dry_run: false
+      budget_cap_aud: 25.0
     schedules: []
 
 # Environment variables reference

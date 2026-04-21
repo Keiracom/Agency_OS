@@ -237,9 +237,6 @@ def get_dncr_rewash_schedule() -> CronSchedule:
     )
 
 
-# PERMANENTLY REMOVED: crm_sync_flow (Directive #315, 2026-04-07)
-# Reason: Referenced dead GHL (GoHighLevel) schema. HubSpot is canonical CRM.
-# Do NOT recreate. If CRM sync is needed, build a new HubSpot-specific flow.
 
 # ============================================
 # Warmup Monitor Schedule (Domain Warmup Completion)

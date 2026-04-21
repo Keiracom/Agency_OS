@@ -35,6 +35,7 @@ for _k, _v in env.items():
 from src.clients.dfs_labs_client import DFSLabsClient
 from src.config.category_etv_windows import CATEGORY_ETV_WINDOWS, get_etv_window
 from src.integrations.bright_data_client import BrightDataClient
+from src.integrations.leadmagic import LeadmagicClient
 from src.pipeline.contactout_enricher import enrich_dm_via_contactout
 from src.pipeline.email_waterfall import discover_email
 from src.pipeline.mobile_waterfall import run_mobile_waterfall
@@ -380,7 +381,7 @@ def _source_to_tier(source: str) -> str:
     }.get(source, f"UNKNOWN:{source}")
 
 
-async def _run_stage8(domain_data: dict, dfs: DFSLabsClient, bd: BrightDataClient | None = None) -> dict:
+async def _run_stage8(domain_data: dict, dfs: DFSLabsClient, bd: BrightDataClient | None = None, lm: LeadmagicClient | None = None) -> dict:
     """Stage 8 CONTACT — verify fills (8a) + unified contact waterfall (8b-d)."""
     _tracker(domain_data).start_stage("stage8")
     t0 = time.monotonic()
@@ -457,6 +458,7 @@ async def _run_stage8(domain_data: dict, dfs: DFSLabsClient, bd: BrightDataClien
             contact_data=contact_data_mobile or None,
             contactout_result=contactout_result,
             brightdata_client=bd,
+            leadmagic_client=lm,
         )
     except Exception as exc:
         domain_data["errors"].append(f"stage8d_mobile: {exc}")
@@ -688,6 +690,7 @@ async def run_cohort(
     )
     gemini = GeminiClient(api_key=env.get("GEMINI_API_KEY"))
     bd = BrightDataClient(api_key=env.get("BRIGHTDATA_API_KEY", ""))
+    lm = LeadmagicClient()
 
     # Pre-run cost estimate and hard cap
     # When --domains is used, domains_per_category=0 and categories=[], so use len(domains) directly
@@ -868,7 +871,7 @@ async def run_cohort(
 
     # Stage 8
     active8 = _active(pipeline)
-    updated8 = await run_parallel(active8, lambda d: _run_stage8(d, dfs, bd), concurrency=15, label="Stage 8 CONTACT")
+    updated8 = await run_parallel(active8, lambda d: _run_stage8(d, dfs, bd, lm), concurrency=15, label="Stage 8 CONTACT")
     _merge(pipeline, updated8)
     _tg_progress("Stage 8 CONTACT", pipeline, _total_cost())
     if _check_budget(pipeline, budget_hard_cap):

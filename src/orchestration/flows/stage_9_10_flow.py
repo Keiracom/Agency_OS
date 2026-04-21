@@ -14,6 +14,7 @@ Alerting: Telegram on failure
 """
 from __future__ import annotations
 
+import json
 import logging
 import os
 from typing import Any
@@ -41,19 +42,22 @@ from src.pipeline.stage_9_vulnerability_enrichment import Stage9VulnerabilityEnr
 from src.pipeline.stage_10_message_generator import Stage10MessageGenerator
 from src.enrichment.signal_config import SignalConfigRepository
 from src.prefect_utils.hooks import on_failure_hook
+from src.exceptions import AgencyProfileMissingError
+
+_REQUIRED_AGENCY_FIELDS = {"name", "services", "tone", "founder_name"}
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_AGENCY = {
-    "name": "Keiracom",
-    "services": ["SEO", "Google Ads", "Facebook Ads", "Website Development"],
-    "tone": "professional, direct, results-focused. Australian casual — not American corporate.",
-    "founder_name": "Dave",
-    "case_study": (
-        "Helped a Bondi dental practice increase new patient bookings by 40% in 3 months "
-        "through local SEO and Google Ads."
-    ),
-}
+
+async def _init_jsonb_codec(conn):
+    """Register JSONB codec for connections behind pgbouncer (statement_cache_size=0)."""
+    await conn.set_type_codec(
+        'jsonb',
+        encoder=json.dumps,
+        decoder=json.loads,
+        schema='pg_catalog',
+    )
+
 
 _DEDUP_SQL = """
 WITH deduped AS (
@@ -125,10 +129,12 @@ async def run_stage_10(
     agency_profile: dict,
 ) -> dict:
     """Run Stage 10 message generation."""
-    import anthropic as _anthropic
-    ai = _anthropic.AsyncAnthropic()
+    from src.integrations.anthropic import AnthropicClient
+    from src.intelligence.gemini_client import GeminiClient
+    ai = AnthropicClient()
     signal_repo = SignalConfigRepository(pool)
-    gen = Stage10MessageGenerator(ai, signal_repo, pool)
+    gemini = GeminiClient(api_key=os.environ.get("GEMINI_API_KEY"))
+    gen = Stage10MessageGenerator(ai, signal_repo, pool, gemini_client=gemini, agency_profile=agency_profile)
     return await gen.run(vertical_slug, agency_profile, batch_size=len(bdm_ids))
 
 
@@ -169,9 +175,15 @@ async def stage_9_10_pipeline(
     batch_size:     Max BDMs to pull when auto-selecting (ignored when bdm_ids provided).
     budget_cap_usd: Hard spend ceiling for the run.
     vertical_slug:  Signal config vertical passed to Stage 10.
-    agency_profile: Agency context for message generation (defaults to Keiracom).
+    agency_profile: Agency context for message generation. Required — no default fallback.
     dry_run:        If True, select BDMs then stop — no enrichment or generation.
     """
+    if not agency_profile or not isinstance(agency_profile, dict):
+        raise AgencyProfileMissingError("agency_profile is required for outreach generation")
+    missing = _REQUIRED_AGENCY_FIELDS - set(agency_profile.keys())
+    if missing:
+        raise AgencyProfileMissingError(f"agency_profile missing required fields: {missing}")
+
     flow_logger = _logger()
 
     db_url = os.environ["DATABASE_URL"].replace("postgresql+asyncpg://", "postgresql://")
@@ -180,6 +192,7 @@ async def stage_9_10_pipeline(
         min_size=5,
         max_size=15,
         statement_cache_size=0,
+        init=_init_jsonb_codec,
     )
 
     try:
@@ -245,8 +258,7 @@ async def stage_9_10_pipeline(
             )
 
         # 6. Stage 10
-        effective_agency = agency_profile or DEFAULT_AGENCY
-        s10_result = await run_stage_10(pool, selected, vertical_slug, effective_agency)
+        s10_result = await run_stage_10(pool, selected, vertical_slug, agency_profile)
         flow_logger.info("Stage 10 complete: %s", s10_result)
 
         # 7. Verify Stage 10

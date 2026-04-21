@@ -175,23 +175,26 @@ async def persist_stage8_to_db(pipeline: list[dict]) -> list[str]:
                 propensity = scores.get("composite_score", 0)
                 domain = d["domain"]
 
-                # Upsert business_universe
+                # Insert or find existing business_universe row
+                # No unique constraint on domain — check existence first
                 bu_id = await conn.fetchval(
-                    """
-                    INSERT INTO business_universe (domain, pipeline_stage, propensity_score, dfs_discovery_category)
-                    VALUES ($1, $2, $3, $4)
-                    ON CONFLICT (domain) DO UPDATE
-                        SET pipeline_stage = EXCLUDED.pipeline_stage,
-                            propensity_score = EXCLUDED.propensity_score,
-                            dfs_discovery_category = EXCLUDED.dfs_discovery_category,
-                            updated_at = NOW()
-                    RETURNING id
-                    """,
+                    "SELECT id FROM business_universe WHERE domain = $1 LIMIT 1",
                     domain,
-                    8,
-                    float(propensity),
-                    d.get("category", ""),
                 )
+                if bu_id:
+                    await conn.execute(
+                        """UPDATE business_universe
+                           SET pipeline_stage = $2, propensity_score = $3,
+                               dfs_discovery_category = $4, updated_at = NOW()
+                           WHERE id = $1""",
+                        bu_id, 8, float(propensity), d.get("category", ""),
+                    )
+                else:
+                    bu_id = await conn.fetchval(
+                        """INSERT INTO business_universe (domain, pipeline_stage, propensity_score, dfs_discovery_category)
+                           VALUES ($1, $2, $3, $4) RETURNING id""",
+                        domain, 8, float(propensity), d.get("category", ""),
+                    )
 
                 dm_name = dm.get("name")
                 dm_linkedin = (
@@ -202,22 +205,22 @@ async def persist_stage8_to_db(pipeline: list[dict]) -> list[str]:
                 if not dm_name or not dm_linkedin:
                     continue
 
-                # Upsert BDM row
+                # Insert or find existing BDM row
                 bdm_id = await conn.fetchval(
-                    """
-                    INSERT INTO business_decision_makers
-                        (business_universe_id, name, linkedin_url, is_current)
-                    VALUES ($1, $2, $3, TRUE)
-                    ON CONFLICT (business_universe_id, linkedin_url) DO UPDATE
-                        SET name = EXCLUDED.name,
-                            is_current = TRUE,
-                            updated_at = NOW()
-                    RETURNING id
-                    """,
-                    bu_id,
-                    dm_name,
-                    dm_linkedin,
+                    "SELECT id FROM business_decision_makers WHERE business_universe_id = $1 AND linkedin_url = $2 LIMIT 1",
+                    bu_id, dm_linkedin,
                 )
+                if bdm_id:
+                    await conn.execute(
+                        "UPDATE business_decision_makers SET name = $2, is_current = TRUE, updated_at = NOW() WHERE id = $1",
+                        bdm_id, dm_name,
+                    )
+                else:
+                    bdm_id = await conn.fetchval(
+                        """INSERT INTO business_decision_makers (business_universe_id, name, linkedin_url, is_current)
+                           VALUES ($1, $2, $3, TRUE) RETURNING id""",
+                        bu_id, dm_name, dm_linkedin,
+                    )
                 if bdm_id:
                     bdm_ids.append(str(bdm_id))
 

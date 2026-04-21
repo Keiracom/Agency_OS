@@ -14,12 +14,15 @@ def on_completion_hook(flow, flow_run, state) -> None:
     import json
     try:
         raw = state.result(raise_on_failure=False)
-        # Prefect 3.x: state.result() returns a coroutine for async flows — resolve it
+        # Prefect 3.x: state.result() returns a coroutine for async flows.
+        # asyncio.run() and get_event_loop().run_until_complete() both raise
+        # RuntimeError when called from inside Prefect's already-running loop.
+        # Run the coroutine in a fresh thread with its own event loop instead.
         if inspect.isawaitable(raw):
-            try:
-                raw = asyncio.get_event_loop().run_until_complete(raw)
-            except RuntimeError:
-                raw = asyncio.run(raw)
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(asyncio.run, raw)
+                raw = future.result(timeout=30)
         # Recursively stringify anything not JSON-serializable
         def _safe(v):
             if isinstance(v, dict):

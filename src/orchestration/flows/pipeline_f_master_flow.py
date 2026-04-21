@@ -190,10 +190,16 @@ async def persist_stage8_to_db(pipeline: list[dict]) -> list[str]:
                         bu_id, 8, float(propensity), d.get("category", ""),
                     )
                 else:
+                    # display_name is NOT NULL — derive from identity or domain stem
+                    display_name = (
+                        identity.get("business_name")
+                        or identity.get("company_name")
+                        or domain.split(".")[0].replace("-", " ").title()
+                    )
                     bu_id = await conn.fetchval(
-                        """INSERT INTO business_universe (domain, pipeline_stage, propensity_score, dfs_discovery_category)
-                           VALUES ($1, $2, $3, $4) RETURNING id""",
-                        domain, 8, float(propensity), d.get("category", ""),
+                        """INSERT INTO business_universe (domain, display_name, pipeline_stage, propensity_score, dfs_discovery_category)
+                           VALUES ($1, $2, $3, $4, $5) RETURNING id""",
+                        domain, display_name, 8, float(propensity), d.get("category", ""),
                     )
 
                 dm_name = dm.get("name")

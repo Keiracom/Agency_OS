@@ -247,8 +247,6 @@ deployments:
     schedules: []
 
   # ============================================
-  # CRM SYNC FLOWS (Item 20) — REMOVED: crm_sync_flow.py does not exist in repo.
-  # Killed permanently 2026-04-08 per ceo_memory. Dead reference removed 2026-04-21.
 
   # ============================================
   # INTELLIGENCE FLOWS

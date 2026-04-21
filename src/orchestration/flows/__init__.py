@@ -16,9 +16,6 @@ RULES APPLIED:
   - Rule 20: Webhook-first architecture
 """
 
-# PERMANENTLY REMOVED: crm_sync_flow (Directive #315, 2026-04-07)
-# Reason: Referenced dead GHL (GoHighLevel) schema. HubSpot is canonical CRM.
-# Do NOT recreate. If CRM sync is needed, build a new HubSpot-specific flow from scratch.
 
 from src.orchestration.flows.campaign_flow import campaign_activation_flow
 from src.orchestration.flows.cis_learning_flow import cis_learning_flow

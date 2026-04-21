@@ -110,6 +110,8 @@ Elliot's authoritative audit traced the Prefect call chain (`pipeline_f_master_f
 
 **Revised recommendation:** renew HUNTER_API_KEY. Do NOT remove the wiring. Severity downgraded HIGH→MEDIUM because the architectural state is correct and only a credential refresh is needed.
 
+**RESOLVED 2026-04-21 12:27 UTC.** Key was never dead — it lived in `~/.config/agency-os/.env` but had never been propagated to Railway. Empty env var on Railway → empty auth header → 401 response → ledger misrecorded as `dead_401`. Elliot pushed the key to Railway `prefect-worker` via GraphQL `variableUpsert`, ledger updated (`status=live`, `storage_locations.railway_prefect_worker=true`, `last_verified=2026-04-21T12:27:11Z`). Verified via `SELECT FROM elliot_internal.api_keys_ledger` after update. Hunter L2 is active on the next pipeline run. Severity further downgraded MEDIUM→INFO (resolved).
+
 ### 6b. Ledger entries no longer referenced in source code (candidates for ledger cleanup)
 
 `APOLLO_API_KEY` (deprecated, zero src/ matches), `PROSPEO_API_KEY` (deprecated, zero src/ matches). Delete from ledger or mark retired to keep the ledger honest.

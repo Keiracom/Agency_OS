@@ -310,6 +310,14 @@ class APIError(IntegrationError):
         self.code = "API_ERROR"
 
 
+class AgencyProfileMissingError(IntegrationError):
+    """Raised when agency_profile is missing or incomplete for outreach generation."""
+
+    def __init__(self, message: str = "agency_profile is required for outreach generation"):
+        super().__init__("agency_profile", message)
+        self.code = "AGENCY_PROFILE_MISSING"
+
+
 class WebhookError(IntegrationError):
     """Webhook delivery failed."""
 

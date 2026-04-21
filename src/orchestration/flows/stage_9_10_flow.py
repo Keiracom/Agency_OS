@@ -42,6 +42,9 @@ from src.pipeline.stage_9_vulnerability_enrichment import Stage9VulnerabilityEnr
 from src.pipeline.stage_10_message_generator import Stage10MessageGenerator
 from src.enrichment.signal_config import SignalConfigRepository
 from src.prefect_utils.hooks import on_failure_hook
+from src.exceptions import AgencyProfileMissingError
+
+_REQUIRED_AGENCY_FIELDS = {"name", "services", "tone", "founder_name"}
 
 logger = logging.getLogger(__name__)
 
@@ -131,7 +134,7 @@ async def run_stage_10(
     ai = AnthropicClient()
     signal_repo = SignalConfigRepository(pool)
     gemini = GeminiClient(api_key=os.environ.get("GEMINI_API_KEY"))
-    gen = Stage10MessageGenerator(ai, signal_repo, pool, gemini_client=gemini)
+    gen = Stage10MessageGenerator(ai, signal_repo, pool, gemini_client=gemini, agency_profile=agency_profile)
     return await gen.run(vertical_slug, agency_profile, batch_size=len(bdm_ids))
 
 
@@ -160,7 +163,7 @@ async def stage_9_10_pipeline(
     batch_size: int = 25,
     budget_cap_usd: float = 5.0,
     vertical_slug: str = "marketing_agency",
-    agency_profile: dict | None = None,
+    agency_profile: dict,
     dry_run: bool = False,
 ) -> dict[str, Any]:
     """
@@ -172,9 +175,15 @@ async def stage_9_10_pipeline(
     batch_size:     Max BDMs to pull when auto-selecting (ignored when bdm_ids provided).
     budget_cap_usd: Hard spend ceiling for the run.
     vertical_slug:  Signal config vertical passed to Stage 10.
-    agency_profile: Agency context for message generation (defaults to Keiracom).
+    agency_profile: Agency context for message generation. Required — no default fallback.
     dry_run:        If True, select BDMs then stop — no enrichment or generation.
     """
+    if not agency_profile or not isinstance(agency_profile, dict):
+        raise AgencyProfileMissingError("agency_profile is required for outreach generation")
+    missing = _REQUIRED_AGENCY_FIELDS - set(agency_profile.keys())
+    if missing:
+        raise AgencyProfileMissingError(f"agency_profile missing required fields: {missing}")
+
     flow_logger = _logger()
 
     db_url = os.environ["DATABASE_URL"].replace("postgresql+asyncpg://", "postgresql://")
@@ -249,8 +258,7 @@ async def stage_9_10_pipeline(
             )
 
         # 6. Stage 10
-        effective_agency = agency_profile or DEFAULT_AGENCY
-        s10_result = await run_stage_10(pool, selected, vertical_slug, effective_agency)
+        s10_result = await run_stage_10(pool, selected, vertical_slug, agency_profile)
         flow_logger.info("Stage 10 complete: %s", s10_result)
 
         # 7. Verify Stage 10

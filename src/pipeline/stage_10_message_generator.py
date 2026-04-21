@@ -96,11 +96,13 @@ class Stage10MessageGenerator:
         signal_repo: SignalConfigRepository,
         conn: asyncpg.Connection,
         gemini_client: Any | None = None,
+        agency_profile: dict[str, Any] | None = None,
     ) -> None:
         self.ai = anthropic_client
         self.signal_repo = signal_repo
         self.conn = conn
         self._gemini = gemini_client
+        self._agency_profile = agency_profile
         self._sonnet_sem = asyncio.Semaphore(SONNET_CONCURRENCY)
         self._haiku_sem = asyncio.Semaphore(HAIKU_CONCURRENCY)
         self._stats: dict[str, Any] = {

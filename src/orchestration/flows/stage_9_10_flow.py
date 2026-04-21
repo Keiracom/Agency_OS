@@ -163,7 +163,7 @@ async def stage_9_10_pipeline(
     batch_size: int = 25,
     budget_cap_usd: float = 5.0,
     vertical_slug: str = "marketing_agency",
-    agency_profile: dict,
+    agency_profile: dict | None = None,
     dry_run: bool = False,
 ) -> dict[str, Any]:
     """

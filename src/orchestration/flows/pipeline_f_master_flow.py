@@ -35,6 +35,16 @@ async def _init_jsonb_codec(conn):
     )
 
 
+# ── Keiracom agency profile — ground truth, no fabricated claims ─────────────
+# Temporary until CRM/onboarding path reads from agency_service_profile table.
+# case_study intentionally omitted — Dave is pre-revenue, no clients yet.
+_KEIRACOM_PROFILE = {
+    "name": "Keiracom",
+    "services": ["SEO", "Google Ads", "Facebook Ads", "Website Development"],
+    "tone": "professional, direct, results-focused. Australian casual — not American corporate.",
+    "founder_name": "Dave",
+}
+
 # ── Budget / gate constants ──────────────────────────────────────────────────
 _USD_TO_AUD = 1.55
 _PASS_THRESHOLD = 70  # dm_messages quality gate (email_scoring_gate.PASS_THRESHOLD)
@@ -528,6 +538,7 @@ async def pipeline_f_master_flow(
                 bdm_ids=bdm_ids,
                 batch_size=len(bdm_ids),
                 budget_cap_usd=min(5.0, budget_cap_usd * 0.3),
+                agency_profile=_KEIRACOM_PROFILE,
                 dry_run=False,
             )
         except Exception as _s910_exc:

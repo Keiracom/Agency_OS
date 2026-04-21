@@ -185,7 +185,10 @@ async def persist_stage8_to_db(pipeline: list[dict]) -> list[str]:
                     )
 
                     # Negative stage convention: -N means dropped at stage N
-                    neg_stage = -abs(int(dropped_stage)) if dropped_stage is not None else None
+                    try:
+                        neg_stage = -abs(int(dropped_stage)) if dropped_stage is not None else None
+                    except (ValueError, TypeError):
+                        neg_stage = None
 
                     bu_id = await conn.fetchval(
                         "SELECT id FROM business_universe WHERE domain = $1 LIMIT 1",
@@ -209,7 +212,7 @@ async def persist_stage8_to_db(pipeline: list[dict]) -> list[str]:
                                     filter_reason, dfs_discovery_category)
                                VALUES ($1, $2, $3, 'dropped', $4, $5)""",
                             domain, display_name, neg_stage,
-                            drop_reason, d.get("category", ""),
+                            drop_reason, d.get("category") or None,
                         )
                     dropped_count += 1
                     continue

@@ -7,6 +7,7 @@ Posture: PARALLEL to existing flows — does NOT replace pool_population_flow,
 """
 from __future__ import annotations
 
+import json
 import logging
 import os
 import random
@@ -22,6 +23,17 @@ from src.prefect_utils.completion_hook import on_completion_hook
 from src.prefect_utils.hooks import on_failure_hook
 
 logger = logging.getLogger(__name__)
+
+
+async def _init_jsonb_codec(conn):
+    """Register JSONB codec for connections behind pgbouncer (statement_cache_size=0)."""
+    await conn.set_type_codec(
+        'jsonb',
+        encoder=json.dumps,
+        decoder=json.loads,
+        schema='pg_catalog',
+    )
+
 
 # ── Budget / gate constants ──────────────────────────────────────────────────
 _USD_TO_AUD = 1.55
@@ -160,7 +172,7 @@ async def persist_stage8_to_db(pipeline: list[dict]) -> list[str]:
     - business_decision_makers: business_universe_id, name, linkedin_url, is_current=True
     """
     db_url = os.environ["DATABASE_URL"].replace("postgresql+asyncpg://", "postgresql://")
-    pool = await asyncpg.create_pool(db_url, min_size=2, max_size=8, statement_cache_size=0)
+    pool = await asyncpg.create_pool(db_url, min_size=2, max_size=8, statement_cache_size=0, init=_init_jsonb_codec)
     bdm_ids: list[str] = []
 
     active_count = 0
@@ -312,7 +324,7 @@ async def dm_messages_gate(run_start_ts: str, sample_size: int = 3) -> dict:
         run_start_dt = run_start_ts
 
     db_url = os.environ["DATABASE_URL"].replace("postgresql+asyncpg://", "postgresql://")
-    pool = await asyncpg.create_pool(db_url, min_size=2, max_size=4, statement_cache_size=0)
+    pool = await asyncpg.create_pool(db_url, min_size=2, max_size=4, statement_cache_size=0, init=_init_jsonb_codec)
 
     try:
         async with pool.acquire() as conn:

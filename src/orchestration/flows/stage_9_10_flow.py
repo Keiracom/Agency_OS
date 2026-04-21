@@ -14,6 +14,7 @@ Alerting: Telegram on failure
 """
 from __future__ import annotations
 
+import json
 import logging
 import os
 from typing import Any
@@ -43,6 +44,17 @@ from src.enrichment.signal_config import SignalConfigRepository
 from src.prefect_utils.hooks import on_failure_hook
 
 logger = logging.getLogger(__name__)
+
+
+async def _init_jsonb_codec(conn):
+    """Register JSONB codec for connections behind pgbouncer (statement_cache_size=0)."""
+    await conn.set_type_codec(
+        'jsonb',
+        encoder=json.dumps,
+        decoder=json.loads,
+        schema='pg_catalog',
+    )
+
 
 DEFAULT_AGENCY = {
     "name": "Keiracom",
@@ -125,8 +137,8 @@ async def run_stage_10(
     agency_profile: dict,
 ) -> dict:
     """Run Stage 10 message generation."""
-    import anthropic as _anthropic
-    ai = _anthropic.AsyncAnthropic()
+    from src.integrations.anthropic import AnthropicClient
+    ai = AnthropicClient()
     signal_repo = SignalConfigRepository(pool)
     gen = Stage10MessageGenerator(ai, signal_repo, pool)
     return await gen.run(vertical_slug, agency_profile, batch_size=len(bdm_ids))
@@ -180,6 +192,7 @@ async def stage_9_10_pipeline(
         min_size=5,
         max_size=15,
         statement_cache_size=0,
+        init=_init_jsonb_codec,
     )
 
     try:

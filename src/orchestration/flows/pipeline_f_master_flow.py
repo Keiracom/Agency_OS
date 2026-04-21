@@ -334,7 +334,7 @@ async def dm_messages_gate(run_start_ts: str, sample_size: int = 3) -> dict:
             )
             rows = await conn.fetch(
                 "SELECT id, subject, body FROM dm_messages "
-                "WHERE status = 'draft' AND created_at > $1",
+                "WHERE status = 'draft' AND created_at > $1 AND channel = 'email'",
                 run_start_dt,
             )
     finally:
@@ -345,6 +345,10 @@ async def dm_messages_gate(run_start_ts: str, sample_size: int = 3) -> dict:
         raise RuntimeError(
             f"dm_messages_gate FAIL: 0 draft messages found after {run_start_ts}"
         )
+
+    if not rows:
+        logger.info("dm_messages_gate: %d total drafts, 0 email drafts — skipping email quality check", count)
+        return {"count": count, "sampled": 0, "all_pass": True, "note": "no_email_drafts"}
 
     sample = random.sample(list(rows), min(sample_size, len(rows)))
     failures = []

@@ -247,25 +247,8 @@ deployments:
     schedules: []
 
   # ============================================
-  # CRM SYNC FLOWS (Item 20)
-  # ============================================
-
-  # CRM sync flow (4-hourly safety net for missed webhooks)
-  - name: crm-sync-flow
-    version: 1.0.0
-    paused: false  # Active - polls CRMs every 4 hours
-    tags: [crm, sync, safety-net, blind-conversions]
-    description: "CRM sync every 4 hours - safety net for missed webhooks (blind conversions)"
-    entrypoint: src/orchestration/flows/crm_sync_flow.py:crm_sync_flow
-    work_pool:
-      name: agency-os-pool
-      work_queue_name: agency-os-queue
-    parameters:
-      since_hours: 24
-    schedules:
-      - interval: 14400  # 4 hours in seconds
-        timezone: Australia/Sydney
-        active: true
+  # CRM SYNC FLOWS (Item 20) — REMOVED: crm_sync_flow.py does not exist in repo.
+  # Killed permanently 2026-04-08 per ceo_memory. Dead reference removed 2026-04-21.
 
   # ============================================
   # INTELLIGENCE FLOWS

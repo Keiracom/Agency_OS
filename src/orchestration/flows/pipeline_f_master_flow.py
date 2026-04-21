@@ -249,6 +249,13 @@ async def dm_messages_gate(run_start_ts: str, sample_size: int = 3) -> dict:
     4. Raises RuntimeError on fail — GOV-12 compliant (not a comment, not a soft warn)
     """
     from src.pipeline.email_scoring_gate import score_and_suggest, PASS_THRESHOLD
+    from datetime import datetime as _dt_cls, timezone as _tz_cls
+
+    # asyncpg needs a datetime object, not an ISO string
+    if isinstance(run_start_ts, str):
+        run_start_dt = _dt_cls.fromisoformat(run_start_ts.replace("Z", "+00:00"))
+    else:
+        run_start_dt = run_start_ts
 
     db_url = os.environ["DATABASE_URL"].replace("postgresql+asyncpg://", "postgresql://")
     pool = await asyncpg.create_pool(db_url, min_size=2, max_size=4, statement_cache_size=0)
@@ -257,12 +264,12 @@ async def dm_messages_gate(run_start_ts: str, sample_size: int = 3) -> dict:
         async with pool.acquire() as conn:
             count = await conn.fetchval(
                 "SELECT COUNT(*) FROM dm_messages WHERE status = 'draft' AND created_at > $1",
-                run_start_ts,
+                run_start_dt,
             )
             rows = await conn.fetch(
                 "SELECT id, subject, body FROM dm_messages "
                 "WHERE status = 'draft' AND created_at > $1",
-                run_start_ts,
+                run_start_dt,
             )
     finally:
         await pool.close()

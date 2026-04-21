@@ -1049,10 +1049,31 @@ Retrieval quality metrics for listener. Elliot side: src/telegram_bot/retrieval_
 2. Pre-revenue reality check — DEFAULT_AGENCY contained fabricated Bondi dental case study that passed through spec build, P4 build, and multiple reviews undetected.
 3. Production fallback antipattern — hardcoded defaults that silently populate real outputs are architectural flaws.
 
-**Open / ship decisions PENDING:**
-- Dental Aspects email (critic 100): send-ready, awaiting Dave
-- Dental Aspects voice (critic 96): Dave review on industry assertion edge case
-- Glenferrie email: clean body but critic timed out, hold for re-run or Dave visual-ship
+**P1 Exit Gate:** MET. Flow 1176392a COMPLETED 2026-04-21T11:08:03Z. 8 dm_messages written, 2 cards produced. P1 closure pending Dave card acceptance.
+
+**Open / ship decisions PENDING (verbatim card bodies for next session):**
+
+CARD 1 — DENTAL ASPECTS (dentalaspects.com.au):
+
+Email (critic 100, SEND-READY):
+Subject: Your GMB listing - quick question
+Body: Hi there, I noticed Dental Aspects doesn't have any Google reviews yet, which means you're missing out on that local search visibility that's crucial for dental practices. Are you actively working on building your online presence, or is it something that's been on the back burner? If you're open to a quick chat about strategies for building online reputation, I'd be happy to share some general insights. Cheers, Dave
+
+Voice (critic 96, DAVE REVIEW — industry assertion 'Most dental practices in Australia are investing in local search visibility right now' is unsourced):
+Trigger: No Google Business Profile reviews despite having a GMB listing. Talking point: Most dental practices in Australia are investing in local search visibility right now, and you're not running any paid keywords. Objective: 15-min discovery call. Fallback: Send short email with local dental marketing observations.
+
+CARD 2 — GLENFERRIE DENTAL (glenferriedental.com.au):
+
+Email (critic timed out, body CLEAN on manual read):
+Subject: Your GMB setup
+Body: G'day, I noticed Glenferrie Dental doesn't have any Google My Business reviews yet, which is pretty unusual for a dental practice in your area. Are you finding it challenging to get patients to leave reviews, or is this something that's just not been a priority? Happy to jump on a quick call if you'd like to chat about some simple ways to build that social proof up. Cheers, Dave
+
+Voice: REJECTED ('Most dental practices we work with' = pre-revenue violation).
+LinkedIn x2: Writer refused (insufficient signals).
+SMS x2: Writer refused (insufficient signals).
+
+**Railway worker:** HEALTHY. Deployed ca197dad at 2026-04-21T10:54:25Z. Last flow 1176392a completed 11:08 UTC. Pro plan.
+**Stripe AU:** DAVE ACTION PENDING (8th mention). 2-3 week lead time. 15-20 min Dave time. Blocks P5 Commercial / P1.5 close. Highest leverage non-code action.
 
 **Followups (next session):**
 - Critic timeout tuning 15s → 25s (25% timeout rate)

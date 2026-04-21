@@ -192,41 +192,63 @@ async def process_message(message: dict) -> None:
         await send_interjection(interjection)
 
 
-def main():
-    """Entry point using python-telegram-bot (handles forum supergroups)."""
-    from telegram import Update
-    from telegram.ext import Application, MessageHandler, filters
+ENFORCER_INBOX = "/tmp/telegram-relay-enforcer/inbox"
 
+
+async def watch_inbox() -> None:
+    """Watch the enforcer inbox for cross-posted messages from chat_bot.py."""
+    os.makedirs(ENFORCER_INBOX, exist_ok=True)
+    logger.info("Enforcer watching inbox: %s", ENFORCER_INBOX)
+
+    while True:
+        try:
+            files = sorted(
+                f for f in os.listdir(ENFORCER_INBOX)
+                if f.endswith(".json")
+            )
+            for fname in files:
+                fpath = os.path.join(ENFORCER_INBOX, fname)
+                try:
+                    with open(fpath) as f:
+                        msg = json.load(f)
+                    os.unlink(fpath)
+
+                    text = msg.get("text", "")
+                    callsign = msg.get("sender_callsign", "unknown")
+                    is_bot = msg.get("sender_is_bot", False)
+
+                    message_dict = {
+                        "text": text,
+                        "from": {
+                            "first_name": callsign,
+                            "username": callsign,
+                            "is_bot": is_bot,
+                        },
+                    }
+                    await process_message(message_dict)
+                except Exception as exc:
+                    logger.error("Error processing %s: %s", fname, exc)
+                    try:
+                        os.unlink(fpath)
+                    except OSError:
+                        pass
+
+        except Exception as exc:
+            logger.error("Inbox watch error: %s", exc)
+
+        await asyncio.sleep(1)  # check inbox every second
+
+
+def main():
+    """Entry point — watches inbox for cross-posted messages, sends interjections via Bot API."""
     if not BOT_TOKEN:
         logger.error("ENFORCER_BOT_TOKEN not set")
         return
     if not OPENAI_API_KEY:
         logger.warning("OPENAI_API_KEY not set — enforcement checks disabled")
 
-    async def handle_message(update: Update, context) -> None:
-        """Handler for all group messages."""
-        msg = update.effective_message
-        if not msg or not msg.text:
-            return
-        chat_id = str(msg.chat_id)
-        if chat_id != GROUP_CHAT_ID:
-            return
-        # Convert to dict format for process_message
-        message_dict = {
-            "text": msg.text,
-            "from": {
-                "first_name": msg.from_user.first_name if msg.from_user else "Unknown",
-                "username": msg.from_user.username or "" if msg.from_user else "",
-                "is_bot": msg.from_user.is_bot if msg.from_user else False,
-            },
-            "chat": {"id": msg.chat_id},
-        }
-        await process_message(message_dict)
-
-    logger.info("Enforcer bot starting (python-telegram-bot) — group %s", GROUP_CHAT_ID)
-    app = Application.builder().token(BOT_TOKEN).build()
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    app.run_polling(allowed_updates=Update.ALL_TYPES)
+    logger.info("Enforcer bot starting — inbox mode, group %s", GROUP_CHAT_ID)
+    asyncio.run(watch_inbox())
 
 
 if __name__ == "__main__":

@@ -75,6 +75,7 @@ DAVE_USER_ID: int = 7267788033  # hardcoded CEO user_id — only this human gets
 # Peer cross-post: bot-to-bot visibility bypass (Telegram doesn't deliver bot-to-bot)
 _PEER_MAP = {"elliot": "aiden", "aiden": "elliot", "scout": "elliot"}
 PEER_INBOX: str | None = f"/tmp/telegram-relay-{_PEER_MAP[CALLSIGN]}/inbox" if CALLSIGN in _PEER_MAP else None
+ENFORCER_INBOX = "/tmp/telegram-relay-enforcer/inbox"
 GROUP_CHAT_ID = -1003926592540
 
 
@@ -710,6 +711,24 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         except Exception:
             pass  # never block on capture failure
 
+    # Cross-post incoming group messages to enforcer inbox
+    if is_group:
+        try:
+            os.makedirs(ENFORCER_INBOX, exist_ok=True)
+            enf_ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+            enf_fname = f"{enf_ts}_{uuid.uuid4().hex[:8]}.json"
+            enf_payload = {
+                "type": "text",
+                "text": raw_text,
+                "sender_callsign": sender if sender == Sender.DAVE else (update.effective_user.first_name or "unknown").lower(),
+                "sender_is_bot": sender == Sender.PEER_BOT,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+            with open(os.path.join(ENFORCER_INBOX, enf_fname), "w") as ef:
+                _json.dump(enf_payload, ef)
+        except Exception:
+            pass  # best-effort — don't break message handling for enforcer
+
 
 # ---------------------------------------------------------------------------
 # Relay helpers
@@ -927,6 +946,22 @@ async def _outbox_watcher(app: Application) -> None:
                         with open(os.path.join(PEER_INBOX, peer_fname), "w") as pf:
                             _json.dump(peer_payload, pf)
                         logger.info(f"[relay] cross-posted to peer inbox: {peer_fname}")
+
+                    # Cross-post to enforcer inbox (governance enforcement daemon)
+                    if chat_id == GROUP_CHAT_ID and msg.get("type") == "text":
+                        os.makedirs(ENFORCER_INBOX, exist_ok=True)
+                        enf_ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+                        enf_fname = f"{enf_ts}_{uuid.uuid4().hex[:8]}.json"
+                        enf_payload = {
+                            "type": "text",
+                            "text": msg.get("text", ""),
+                            "sender_callsign": CALLSIGN,
+                            "sender_is_bot": True,
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
+                        }
+                        with open(os.path.join(ENFORCER_INBOX, enf_fname), "w") as ef:
+                            _json.dump(enf_payload, ef)
+                        logger.info(f"[relay] cross-posted to enforcer inbox: {enf_fname}")
 
                 except Exception as e:
                     logger.error(f"[relay] outbox error processing {fname}: {e}")

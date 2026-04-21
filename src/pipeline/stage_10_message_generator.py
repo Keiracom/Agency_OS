@@ -273,21 +273,38 @@ class Stage10MessageGenerator:
         bu_id: str,
         bdm_id: str,
         channel_messages: list[tuple[str, str, str | None, dict[str, Any]]],
+        critic_results: dict[str, dict] | None = None,
     ) -> None:
-        """Insert dm_messages rows and advance pipeline_stage to 10."""
+        """Insert dm_messages rows and advance pipeline_stage to 10.
+
+        Args:
+            bu_id: Business universe ID.
+            bdm_id: Business decision-maker ID.
+            channel_messages: List of (channel, body, subject, cost_info) tuples.
+            critic_results: Optional dict keyed by channel name containing
+                {"score": int, "feedback": str, "needs_review": bool}.
+                When None, critic columns default to NULL/FALSE.
+        """
         now = datetime.now(UTC)
         for channel, body, subject, cost_info in channel_messages:
             model_name = SONNET_MODEL if channel == "email" else HAIKU_MODEL
+            critic = (critic_results or {}).get(channel, {})
+            critic_score = critic.get("score")
+            critic_feedback = critic.get("feedback")
+            needs_review = critic.get("needs_review", False)
             await self.conn.execute(
                 """
                 INSERT INTO dm_messages
                     (business_universe_id, business_decision_makers_id, channel,
-                     subject, body, model, cost_usd, status, generated_at)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, 'draft', $8)
+                     subject, body, model, cost_usd, status, generated_at,
+                     critic_score, critic_feedback, needs_review)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, 'draft', $8,
+                        $9, $10, $11)
                 """,
                 bu_id, bdm_id, channel,
                 subject, body, model_name,
                 cost_info["cost_usd"], now,
+                critic_score, critic_feedback, needs_review,
             )
 
         await self.conn.execute(

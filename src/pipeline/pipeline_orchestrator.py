@@ -336,6 +336,8 @@ class PipelineOrchestrator:
         prospect_scorer=None,
         intelligence=None,
         on_card=None,
+        leadmagic_client=None,  # ADD: for mobile waterfall L2
+        brightdata_client=None,  # ADD: for mobile waterfall L3
     ):
         self._discovery = discovery
         self._fe = free_enrichment
@@ -345,6 +347,8 @@ class PipelineOrchestrator:
         self._ads_client = ads_client
         self._intelligence = intelligence  # optional: IntelligenceLayer instance or module
         self._on_card = on_card  # optional: callable(ProspectCard) — fires as each card completes
+        self._leadmagic_client = leadmagic_client
+        self._brightdata_client = brightdata_client
 
     # ── Stage helpers ─────────────────────────────────────────────────────
 
@@ -1170,6 +1174,8 @@ class PipelineOrchestrator:
                         dm_linkedin_url=dm_linkedin_url,
                         contact_data=contact_data_for_mobile,
                         contactout_result=contactout_result,
+                        leadmagic_client=self._leadmagic_client,  # ADD
+                        brightdata_client=self._brightdata_client,  # ADD
                     )
 
                     # GATE: Reachability — email OR LinkedIn required

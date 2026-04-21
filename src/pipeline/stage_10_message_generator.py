@@ -19,6 +19,7 @@ from typing import Any
 import asyncpg
 
 from src.enrichment.signal_config import SignalConfigRepository
+from src.pipeline.stage_10_critic import critique_and_revise, CRITIC_PASS_THRESHOLD  # noqa: F401
 from src.utils.domain_blocklist import BLOCKED_DOMAINS
 
 logger = logging.getLogger(__name__)
@@ -94,10 +95,12 @@ class Stage10MessageGenerator:
         anthropic_client: Any,
         signal_repo: SignalConfigRepository,
         conn: asyncpg.Connection,
+        gemini_client: Any | None = None,
     ) -> None:
         self.ai = anthropic_client
         self.signal_repo = signal_repo
         self.conn = conn
+        self._gemini = gemini_client
         self._sonnet_sem = asyncio.Semaphore(SONNET_CONCURRENCY)
         self._haiku_sem = asyncio.Semaphore(HAIKU_CONCURRENCY)
         self._stats: dict[str, Any] = {
@@ -189,9 +192,47 @@ class Stage10MessageGenerator:
                 channel_messages.append(res)  # type: ignore[arg-type]
 
             if channel_messages:
-                await self._write_messages(
-                    business["id"], business["bdm_id"], channel_messages
-                )
+                if self._gemini is not None:
+                    # Critique and revise each channel message
+                    critic_results: dict[str, dict] = {}
+                    final_messages: list[tuple[str, str, str | None, dict[str, Any]]] = []
+                    for channel, body, subject, cost_info in channel_messages:
+                        async def _revise(
+                            feedback: str,
+                            ch: str = channel,
+                            biz: dict = business,
+                            pb: str = prospect_brief,
+                            ab: str = agency_brief,
+                        ) -> dict[str, Any]:
+                            revised_tuple = await self._generate_for_channel(
+                                ch, biz, pb,
+                                ab + "\n\nCRITIC FEEDBACK (fix this):\n" + feedback,
+                            )
+                            return {"body": revised_tuple[1], "subject": revised_tuple[2]}
+
+                        result = await critique_and_revise(
+                            gemini=self._gemini,
+                            writer_fn=_revise,
+                            channel=channel,
+                            prospect_brief=prospect_brief,
+                            initial_body=body,
+                            initial_subject=subject,
+                        )
+                        final_messages.append(
+                            (channel, result["body"], result["subject"], cost_info)
+                        )
+                        critic_results[channel] = {
+                            "score": result["critic_score"],
+                            "feedback": result["critic_feedback"],
+                            "needs_review": result["needs_review"],
+                        }
+                    await self._write_messages(
+                        business["id"], business["bdm_id"], final_messages, critic_results
+                    )
+                else:
+                    await self._write_messages(
+                        business["id"], business["bdm_id"], channel_messages
+                    )
                 messages_generated += len(channel_messages)
                 dms_processed += 1
 

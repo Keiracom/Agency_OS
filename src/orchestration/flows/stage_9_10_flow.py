@@ -138,9 +138,11 @@ async def run_stage_10(
 ) -> dict:
     """Run Stage 10 message generation."""
     from src.integrations.anthropic import AnthropicClient
+    from src.intelligence.gemini_client import GeminiClient
     ai = AnthropicClient()
     signal_repo = SignalConfigRepository(pool)
-    gen = Stage10MessageGenerator(ai, signal_repo, pool)
+    gemini = GeminiClient(api_key=os.environ.get("GEMINI_API_KEY"))
+    gen = Stage10MessageGenerator(ai, signal_repo, pool, gemini_client=gemini)
     return await gen.run(vertical_slug, agency_profile, batch_size=len(bdm_ids))
 
 

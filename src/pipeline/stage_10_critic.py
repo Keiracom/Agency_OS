@@ -16,10 +16,10 @@ CRITIC_PASS_THRESHOLD = 70
 MAX_REVISIONS = 2
 
 _CRITIC_SYSTEM_PROMPT = """You are a quality reviewer for B2B outreach messages targeting Australian SMBs.
-Score the draft on 5 criteria. Return ONLY valid JSON, no markdown."""
+Score the draft on 6 criteria. Return ONLY valid JSON, no markdown."""
 
 _CRITERIA_RUBRIC = """
-Score the message on these 5 criteria:
+Score the message on these 6 criteria:
 
 1. prospect_data (0-25): Does the message reference specific data about THIS prospect
    (tech stack, GMB rating, paid keywords, VR findings)? Generic messages score 0.
@@ -37,8 +37,12 @@ Score the message on these 5 criteria:
    Any fabricated statistics, made-up service offerings, or invented competitor
    references = 0 on this criterion.
 
-5. australian_voice (0-15): Natural, casual, peer-to-peer. Not American corporate
+5. australian_voice (0-10): Natural, casual, peer-to-peer. Not American corporate
    ("I hope this finds you well", "synergy", "leverage"). Not too informal either.
+
+6. hook_relevance (0-5): Does the opening hook connect to a specific signal from
+   the prospect brief (a real data point, not a generic observation)? If the hook
+   could apply to any business, score 0.
 
 Return ONLY this JSON structure, no markdown:
 {
@@ -48,9 +52,10 @@ Return ONLY this JSON structure, no markdown:
     "channel_format": <0-20>,
     "cta_quality": <0-20>,
     "no_hallucination": <0-20>,
-    "australian_voice": <0-15>
+    "australian_voice": <0-10>,
+    "hook_relevance": <0-5>
   },
-  "feedback": "<one sentence: the most important thing to fix>"
+  "feedback": "<quote the specific problematic line from the draft> — <reason it fails> — <suggested replacement>"
 }
 """
 
@@ -156,6 +161,11 @@ async def critique_draft(
     score = int(content.get("score", 0))
     feedback = content.get("feedback", "")
     criteria = content.get("criteria", {})
+
+    # HARD-FAIL: hallucinated claims detected — zero the entire score
+    if criteria.get("no_hallucination", 1) == 0:
+        feedback = f"HARD-FAIL: hallucinated claims detected — {feedback}"
+        score = 0
 
     return {
         "score": score,

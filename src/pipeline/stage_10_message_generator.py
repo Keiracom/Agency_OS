@@ -219,6 +219,7 @@ class Stage10MessageGenerator:
                             prospect_brief=prospect_brief,
                             initial_body=body,
                             initial_subject=subject,
+                            agency_profile=self._agency_profile,
                         )
                         final_messages.append(
                             (channel, result["body"], result["subject"], cost_info)

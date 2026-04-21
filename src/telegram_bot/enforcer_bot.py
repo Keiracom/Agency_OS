@@ -192,53 +192,41 @@ async def process_message(message: dict) -> None:
         await send_interjection(interjection)
 
 
-async def poll_updates() -> None:
-    """Long-poll Telegram for new messages."""
-    offset = 0
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/getUpdates"
-
-    logger.info("Enforcer bot starting — polling group %s", GROUP_CHAT_ID)
-
-    while True:
-        try:
-            async with httpx.AsyncClient(timeout=35) as client:
-                resp = await client.get(url, params={
-                    "offset": offset,
-                    "timeout": 30,
-                    "allowed_updates": json.dumps(["message"]),
-                })
-                data = resp.json()
-
-            if not data.get("ok"):
-                logger.warning("Telegram API error: %s", data)
-                await asyncio.sleep(5)
-                continue
-
-            for update in data.get("result", []):
-                offset = update["update_id"] + 1
-                msg = update.get("message")
-                if msg:
-                    chat_id = str(msg.get("chat", {}).get("id", ""))
-                    logger.info("Update: chat_id=%s expected=%s match=%s", chat_id, GROUP_CHAT_ID, chat_id == GROUP_CHAT_ID)
-                    if chat_id == GROUP_CHAT_ID:
-                        await process_message(msg)
-                    else:
-                        logger.info("Skipping chat_id=%s", chat_id)
-
-        except Exception as exc:
-            logger.error("Poll error: %s", exc)
-            await asyncio.sleep(5)
-
-
 def main():
-    """Entry point."""
+    """Entry point using python-telegram-bot (handles forum supergroups)."""
+    from telegram import Update
+    from telegram.ext import Application, MessageHandler, filters
+
     if not BOT_TOKEN:
         logger.error("ENFORCER_BOT_TOKEN not set")
         return
     if not OPENAI_API_KEY:
         logger.warning("OPENAI_API_KEY not set — enforcement checks disabled")
 
-    asyncio.run(poll_updates())
+    async def handle_message(update: Update, context) -> None:
+        """Handler for all group messages."""
+        msg = update.effective_message
+        if not msg or not msg.text:
+            return
+        chat_id = str(msg.chat_id)
+        if chat_id != GROUP_CHAT_ID:
+            return
+        # Convert to dict format for process_message
+        message_dict = {
+            "text": msg.text,
+            "from": {
+                "first_name": msg.from_user.first_name if msg.from_user else "Unknown",
+                "username": msg.from_user.username or "" if msg.from_user else "",
+                "is_bot": msg.from_user.is_bot if msg.from_user else False,
+            },
+            "chat": {"id": msg.chat_id},
+        }
+        await process_message(message_dict)
+
+    logger.info("Enforcer bot starting (python-telegram-bot) — group %s", GROUP_CHAT_ID)
+    app = Application.builder().token(BOT_TOKEN).build()
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    app.run_polling(allowed_updates=Update.ALL_TYPES)
 
 
 if __name__ == "__main__":

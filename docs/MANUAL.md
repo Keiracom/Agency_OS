@@ -1,7 +1,7 @@
 # Agency OS Manual
 
-Last updated: 2026-04-15 UTC
-Directive D1.8.3: Governance synthesis + 3-store backfill (PR #329)
+Last updated: 2026-04-21 UTC
+Directive AGENCY-PROFILE-TRUTH-AUDIT: Agency profile truth audit + writer/critic architecture (PRs #371-#373)
 Next scheduled update: Next architecture change or milestone
 
 > **Primary store.** This file is the CEO SSOT. Google Doc is an auto-generated mirror.
@@ -23,12 +23,12 @@ Revenue model for BU: API subscriptions, Salesforce/HubSpot marketplace, bulk an
 
 ## SECTION 2 — CURRENT STATE
 
-**Last directive:** D2 (Pipeline F v2.1 validation rerun, n=20)
-**Pipeline F v2.1 status:** Validated with caveat — discovery filter tuning required before customer cohorts
-**D2 result:** GREEN-on-clean (54% conversion, $0.37/card) / YELLOW-on-headline (35%, $0.42/card) / RED-discovery (30% enterprise contamination)
-**Next directive:** D2.1 (discovery filter tuning)
+**Last directive:** AGENCY-PROFILE-TRUTH-AUDIT (agency profile truth audit — DEFAULT_AGENCY eliminated, pre-revenue discipline enforced)
+**Pipeline F status:** P5 COMPLETE, AGENCY-PROFILE-TRUTH-AUDIT COMPLETE
+**P5 result:** 5 dental domains → 2 cards (glenferriedental, dentalaspects). 8 messages across 4 channels. Exit gate MET.
+**Next directive:** TBD (critic timeout tuning, BDM enrichment bottleneck, P1.5-OUTBOUND-READINESS)
 **Test baseline:** 1505 passed, 1 failed (pre-existing campaign_flow), 28 skipped
-**Last merged PR:** #330 (D1.9 Manual housekeeping)
+**Last merged PR:** #373 (agency profile truth audit)
 
 ### EVO Track (Autonomous Loop — all complete)
 
@@ -1027,6 +1027,46 @@ OpenAI ratified as permanent LLM provider for the listener subsystem. Rationale:
 
 ### [ELLIOT+AIDEN] Directive LISTENER-MEASURE-V1 (2026-04-18)
 Retrieval quality metrics for listener. Elliot side: src/telegram_bot/retrieval_metrics.py — tokenize(), compute_cited_flags() (2-token overlap threshold), compute_hit_rate() (Hit Rate@5), compute_mrr() (MRR@5), compute_source_type_breakdown(), generate_summary(). Stopwords: English common + callsigns + AU-biz domain terms. Commit 9606475d. Aiden side: outbox-watcher annotation hook in chat_bot.py — _annotate_last_retrieval_with_cited_terms() fires before each outbox send, appends mv_annotation JSONL event with per-item bot_cited flags. 60s window, same-callsign scoping, no-recursion guard. Commit c373956b. Both on main.
+
+### Session 2026-04-21 (Elliot + Aiden)
+
+**Directives completed:**
+- P5-STEP-3: Pipeline F master flow end-to-end. 5 dental domains → 2 cards (glenferriedental, dentalaspects). 8 messages across 4 channels. Exit gate MET.
+- WRITER-CRITIC-ARCHITECTURE: Anthropic writes (Sonnet email, Haiku others), Gemini Flash critiques (6-criteria fit-based rubric). HARD-FAIL on hallucination + social proof. Max 2 revisions per draft. PR #371.
+- AGENCY-PROFILE-TRUTH-AUDIT: DEFAULT_AGENCY eliminated from production (architectural antipattern). Moved to test fixture. AgencyProfileMissingError hard-fail. _KEIRACOM_PROFILE truthful (no case_study — pre-revenue). social_proof_sourced HARD-FAIL gate in critic. PRs #372, #373.
+
+**PRs merged:** #368 (GOV-8 drop-reason), #369 (completion_hook asyncio), #370 (JSONB codec), #371 (writer/critic), #372 (critic social proof gate, Aiden), #373 (agency profile truth audit)
+
+**Bugs fixed (9):** GOV-8 drop-reason logging, completion_hook asyncio.run, asyncpg JSONB codec for pgbouncer, AnthropicClient wrapper, outreach_channels NULL default, dropped_at key parse, dm_messages_gate channel filter, rule-gate downgrade to WARN, agency_profile signature threading.
+
+**Architecture decisions:**
+- Writer/critic: Anthropic primary writer, Gemini Flash critic. Critic is sole runtime quality gate (rule-based email_scoring_gate downgraded to WARN).
+- Agency profile: production code requires agency_profile param, hard-fails if missing. No hardcoded fallbacks. CRM/onboarding path pending.
+- Pre-revenue discipline: zero clients. All social proof claims REJECTED unless Dave confirms. Applies through first paying customer.
+
+**Learnings:**
+1. "Check data location not just content" — when data bug found, ask "should this data exist here?" not just "is it correct?"
+2. Pre-revenue reality check — DEFAULT_AGENCY contained fabricated Bondi dental case study that passed through spec build, P4 build, and multiple reviews undetected.
+3. Production fallback antipattern — hardcoded defaults that silently populate real outputs are architectural flaws.
+
+**Open / ship decisions PENDING:**
+- Dental Aspects email (critic 100): send-ready, awaiting Dave
+- Dental Aspects voice (critic 96): Dave review on industry assertion edge case
+- Glenferrie email: clean body but critic timed out, hold for re-run or Dave visual-ship
+
+**Followups (next session):**
+- Critic timeout tuning 15s → 25s (25% timeout rate)
+- Regex guard on critic timeout for social proof phrases
+- Writer refusal detection before critic (prevent scoring refusal essays)
+- BDM enrichment bottleneck (2/5 domains had no BDM at Stage 8)
+- P1.5-OUTBOUND-READINESS halted until truth audit ships
+- Resend domain verification (agencyxos.ai failed, no keiracom.com)
+
+**Infrastructure:**
+- Railway: Pro plan, worker healthy, auto-deploys from main
+- Prefect: deployment 752d8120, worker polling, 5 flow runs this session
+- Anthropic: topped up (was zero credits earlier in session)
+- Gemini: working (Stage 9 VR + critic)
 
 ## SECTION 18 — OUTREACH + CONTENT (pre-launch)
 

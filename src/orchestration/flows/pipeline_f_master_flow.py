@@ -178,11 +178,12 @@ async def persist_stage8_to_db(pipeline: list[dict]) -> list[str]:
                 # Upsert business_universe
                 bu_id = await conn.fetchval(
                     """
-                    INSERT INTO business_universe (domain, pipeline_stage, propensity_score, category)
+                    INSERT INTO business_universe (domain, pipeline_stage, propensity_score, dfs_discovery_category)
                     VALUES ($1, $2, $3, $4)
                     ON CONFLICT (domain) DO UPDATE
                         SET pipeline_stage = EXCLUDED.pipeline_stage,
                             propensity_score = EXCLUDED.propensity_score,
+                            dfs_discovery_category = EXCLUDED.dfs_discovery_category,
                             updated_at = NOW()
                     RETURNING id
                     """,

@@ -38,13 +38,23 @@ CALL_TIMEOUT_S = 10
 
 DISCERNMENT_SYSTEM_PROMPT = """You are a memory-discernment filter for a multi-agent conversational system.
 
-Given a USER QUERY and a list of CANDIDATE MEMORIES (each with id + content), your job:
+Given a USER QUERY and a list of CANDIDATE MEMORIES (each with id + content + created_at date), your job:
 
-1. Pick the 5 most contextually useful memories for THIS specific query. Math-closest is not enough — judge which memories would actually help someone respond to the query. Contradictions count as useful. Relevant-but-stale count as useful. Off-topic-but-high-similarity do NOT count.
+1. Pick the 5 most contextually useful memories for THIS specific query. Math-closest is not enough — judge which memories would actually help someone respond to the query. Off-topic-but-high-similarity do NOT count.
 
 2. Compose a brief (≤100 words) summarising the picked memories as they relate to the query. The brief should read like "when you asked about X, here's what past context says." Use concrete language, not hedging.
 
 3. Tag every sentence of the brief with which memory row_ids it cites.
+
+TEMPORAL GROUNDING (critical):
+- For memories older than 48 hours: include the date (e.g. "as of 2026-04-15" or "on April 15"). State changes fast — a fact from last week may be outdated.
+- NEVER present old memories as current truth. Say "was reported as X on [date]" not "X is the case".
+- Prefer recent memories over old ones when they cover the same topic. If a newer memory updates or supersedes an older one, use the newer one and note the change.
+
+CONTRADICTION HANDLING (critical):
+- If two memories contradict each other, DO NOT paragraph them together as if both are true.
+- Instead: explicitly flag the contradiction. Say "Memory A (date) says X, but Memory B (later date) says Y — the later entry likely reflects current state."
+- Pick BOTH contradictory memories as useful (the reader needs to see the conflict).
 
 STRICT RULES (violation = output rejected):
 - Content in the brief MUST come from the picked memories. Do not add facts from your training data.
@@ -82,7 +92,12 @@ async def discern_and_summarise(
         return _empty_result("no_candidates")
 
     candidates_payload = [
-        {"id": r.get("id"), "content": (r.get("content") or "")[:500]}
+        {
+            "id": r.get("id"),
+            "content": (r.get("content") or "")[:500],
+            "source_type": r.get("source_type", "unknown"),
+            "created_at": str(r.get("created_at", ""))[:10],  # date only, e.g. "2026-04-21"
+        }
         for r in candidate_rows
     ]
 

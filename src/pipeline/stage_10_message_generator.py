@@ -159,7 +159,7 @@ class Stage10MessageGenerator:
                 skipped_no_bdm += 1
                 continue
 
-            channels = list(business.get("outreach_channels") or [])
+            channels = list(business.get("outreach_channels") or list(_CHANNEL_PROMPTS.keys()))
             active_channels = [c for c in channels if c in _CHANNEL_PROMPTS]
             if not active_channels:
                 skipped_no_bdm += 1

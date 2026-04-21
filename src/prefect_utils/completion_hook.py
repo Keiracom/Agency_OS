@@ -9,9 +9,17 @@ def on_completion_hook(flow, flow_run, state) -> None:
     flow_run_id = str(getattr(flow_run, "id", "unknown"))
     deployment_id = str(getattr(flow_run, "deployment_id", None) or "") or None
 
+    import asyncio
+    import inspect
     import json
     try:
         raw = state.result(raise_on_failure=False)
+        # Prefect 3.x: state.result() returns a coroutine for async flows — resolve it
+        if inspect.isawaitable(raw):
+            try:
+                raw = asyncio.get_event_loop().run_until_complete(raw)
+            except RuntimeError:
+                raw = asyncio.run(raw)
         # Recursively stringify anything not JSON-serializable
         def _safe(v):
             if isinstance(v, dict):

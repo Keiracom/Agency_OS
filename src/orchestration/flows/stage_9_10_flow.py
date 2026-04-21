@@ -56,17 +56,6 @@ async def _init_jsonb_codec(conn):
     )
 
 
-DEFAULT_AGENCY = {
-    "name": "Keiracom",
-    "services": ["SEO", "Google Ads", "Facebook Ads", "Website Development"],
-    "tone": "professional, direct, results-focused. Australian casual — not American corporate.",
-    "founder_name": "Dave",
-    "case_study": (
-        "Helped a Bondi dental practice increase new patient bookings by 40% in 3 months "
-        "through local SEO and Google Ads."
-    ),
-}
-
 _DEDUP_SQL = """
 WITH deduped AS (
     SELECT DISTINCT ON (bdm.linkedin_url)

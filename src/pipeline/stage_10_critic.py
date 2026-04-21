@@ -16,10 +16,10 @@ CRITIC_PASS_THRESHOLD = 70
 MAX_REVISIONS = 2
 
 _CRITIC_SYSTEM_PROMPT = """You are a quality reviewer for B2B outreach messages targeting Australian SMBs.
-Score the draft on 6 criteria. Return ONLY valid JSON, no markdown."""
+Score the draft on 6 scored criteria plus 1 binary gate criterion. Return ONLY valid JSON, no markdown."""
 
 _CRITERIA_RUBRIC = """
-Score the message on these 6 criteria:
+Score the message on these 6 criteria (sum = 0-100 total):
 
 1. prospect_data (0-25): Does the message reference specific data about THIS prospect
    (tech stack, GMB rating, paid keywords, VR findings)? Generic messages score 0.
@@ -44,20 +44,84 @@ Score the message on these 6 criteria:
    the prospect brief (a real data point, not a generic observation)? If the hook
    could apply to any business, score 0.
 
+Then evaluate this SEVENTH binary gate (NOT added to the 0-100 total — hard-fail only):
+
+7. social_proof_sourced (0 or 1): Does the message make any claim of past client
+   work, past results, track record, customer references, or social proof? If YES,
+   does EVERY such claim trace to a non-null field in the Agency Profile block?
+   - 0 = message contains at least one unsourced past-work claim → HARD-FAIL
+   - 1 = message makes no past-work claims, OR every such claim maps to a present
+         agency_profile field
+
+   PARAPHRASE WATCHLIST — any of these phrasings triggers the source check:
+   • "we helped", "we've worked with", "we've delivered", "we've built"
+   • "our clients", "past clients", "existing customers", "customer base"
+   • "past results", "track record", "history of", "results speak for"
+   • "similar businesses", "other companies like yours", "businesses in your space"
+   • "in our experience", "we typically see", "we've seen"
+   • case-study references ("helped X achieve Y%", "grew N by M%")
+   • industry-specialisation claims ("we specialise in <vertical>",
+     "experience in <industry>", "dental/legal/trades expertise")
+   • specific past-work statistics ("40% uplift", "3x ROI", "saved $X")
+
+   HARD-FAIL EXAMPLES (score 0):
+   • "We've helped dental practices increase bookings" — when agency_profile
+     has no case_study or clients field → UNSOURCED
+   • "Our clients in the legal space saw 30% growth" — no clients field → UNSOURCED
+   • "Similar businesses to yours achieved X" — comparative claim with no
+     supporting agency_profile data → UNSOURCED
+   • "We typically see 40% uplift for dental practices" — unsourced stat → UNSOURCED
+
+   PASS EXAMPLES (score 1):
+   • Message references only prospect data, no past-work claims at all → pass 1
+   • "We help Australian dental practices with local SEO" where
+     agency_profile.case_study contains a real dental engagement → pass 1
+   • "Our services include SEO and Google Ads" where agency_profile.services
+     lists those (offering ≠ past result) → pass 1
+   • "We're an Australian agency" where agency_profile.name is present and
+     the claim is factual → pass 1
+
 Return ONLY this JSON structure, no markdown:
 {
-  "score": <total 0-100>,
+  "score": <total 0-100 from criteria 1-6 only>,
   "criteria": {
     "prospect_data": <0-25>,
     "channel_format": <0-20>,
     "cta_quality": <0-20>,
     "no_hallucination": <0-20>,
     "australian_voice": <0-10>,
-    "hook_relevance": <0-5>
+    "hook_relevance": <0-5>,
+    "social_proof_sourced": <0 or 1>
   },
   "feedback": "<quote the specific problematic line from the draft> — <reason it fails> — <suggested replacement>"
 }
 """
+
+_AGENCY_PROFILE_FIELDS = ("name", "services", "tone", "founder_name", "case_study")
+
+
+def _format_agency_profile_block(agency_profile: dict[str, Any]) -> str:
+    """Render agency_profile as a structured 'present / missing' listing so the
+    critic can tell which fields are available to source past-work claims from."""
+    present_lines = []
+    missing_lines = []
+    for field in _AGENCY_PROFILE_FIELDS:
+        value = agency_profile.get(field)
+        if value:
+            present_lines.append(f"  {field}: {value!r}")
+        else:
+            missing_lines.append(
+                f"  {field}: MISSING — any claim relying on this field is UNSOURCED"
+            )
+    # Also surface any extra fields the caller supplied that aren't in our
+    # canonical list, so a future schema addition doesn't go invisible.
+    for field, value in agency_profile.items():
+        if field in _AGENCY_PROFILE_FIELDS:
+            continue
+        if value:
+            present_lines.append(f"  {field}: {value!r}")
+    body = "\n".join(present_lines + missing_lines)
+    return body or "  (empty — no agency profile fields supplied)"
 
 
 def _build_critic_prompt(
@@ -65,8 +129,9 @@ def _build_critic_prompt(
     body: str,
     subject: str | None,
     prospect_brief: str,
+    agency_profile: dict[str, Any],
 ) -> str:
-    """Build the scoring prompt with the 6 criteria rubric."""
+    """Build the scoring prompt with the 6 scored + 1 gate criteria rubric."""
     lines = [
         f"Channel: {channel}",
     ]
@@ -75,8 +140,12 @@ def _build_critic_prompt(
     lines += [
         f"Message body:\n{body}",
         "",
-        "Prospect brief (source of truth — only facts in here are valid to cite):",
+        "Prospect brief (source of truth for prospect-specific facts):",
         prospect_brief,
+        "",
+        "Agency profile (source of truth for ALL past-work / social-proof / "
+        "track-record claims — fields marked MISSING below cannot be referenced):",
+        _format_agency_profile_block(agency_profile),
         "",
         _CRITERIA_RUBRIC,
     ]
@@ -89,8 +158,13 @@ async def critique_draft(
     body: str,
     subject: str | None,
     prospect_brief: str,
+    agency_profile: dict[str, Any],
 ) -> dict[str, Any]:
-    """Score a draft message.
+    """Score a draft message against prospect brief + agency profile.
+
+    agency_profile is REQUIRED so the critic can gate social-proof claims —
+    past-work / track-record references must trace to a non-null agency_profile
+    field. Unsourced claims HARD-FAIL via criterion 7 (social_proof_sourced).
 
     Returns:
         {
@@ -101,7 +175,12 @@ async def critique_draft(
         }
     On timeout or error returns needs_review=True with critic_feedback="critic_timeout".
     """
-    user_prompt = _build_critic_prompt(channel, body, subject, prospect_brief)
+    if agency_profile is None:
+        raise ValueError(
+            "critique_draft requires agency_profile (dict). Pass the customer's "
+            "profile from onboarding/CRM. For tests use TEST_AGENCY_PROFILE fixture."
+        )
+    user_prompt = _build_critic_prompt(channel, body, subject, prospect_brief, agency_profile)
 
     try:
         result = await asyncio.wait_for(
@@ -162,9 +241,19 @@ async def critique_draft(
     feedback = content.get("feedback", "")
     criteria = content.get("criteria", {})
 
-    # HARD-FAIL: hallucinated claims detected — zero the entire score
+    # HARD-FAIL (prospect hallucination): fabricated prospect-specific claims
     if criteria.get("no_hallucination", 1) == 0:
-        feedback = f"HARD-FAIL: hallucinated claims detected — {feedback}"
+        feedback = f"HARD-FAIL: hallucinated prospect claims detected — {feedback}"
+        score = 0
+
+    # HARD-FAIL (unsourced social proof): past-work / track-record claims that
+    # don't trace to a non-null agency_profile field. Added 2026-04-21 via
+    # AGENCY-PROFILE-TRUTH-AUDIT T4 — a pre-revenue agency with zero clients
+    # cannot ship outreach claiming past-work unless Dave has populated the
+    # relevant field. Criterion defaults to 1 (pass) when absent from the
+    # critic response, so legacy responses remain backward compatible.
+    if criteria.get("social_proof_sourced", 1) == 0:
+        feedback = f"HARD-FAIL: unsourced social proof (claim not in agency_profile) — {feedback}"
         score = 0
 
     return {
@@ -183,8 +272,12 @@ async def critique_and_revise(
     prospect_brief: str,
     initial_body: str,
     initial_subject: str | None,
+    agency_profile: dict[str, Any],
 ) -> dict[str, Any]:
     """Run the critic loop: score → revise if needed (max 2 retries) → return best draft.
+
+    agency_profile is threaded through to the critic so past-work / social-proof
+    claims can be gated against populated agency fields (criterion 7 HARD-FAIL).
 
     Returns:
         {
@@ -196,13 +289,18 @@ async def critique_and_revise(
             "revision_count": int,
         }
     """
+    if agency_profile is None:
+        raise ValueError(
+            "critique_and_revise requires agency_profile (dict). Production flow "
+            "must supply the customer's profile; missing = hard-fail at entry."
+        )
     body = initial_body
     subject = initial_subject
     best: dict[str, Any] = {}
     revision_count = 0
 
     for attempt in range(MAX_REVISIONS + 1):
-        result = await critique_draft(gemini, channel, body, subject, prospect_brief)
+        result = await critique_draft(gemini, channel, body, subject, prospect_brief, agency_profile)
 
         # On critic failure (timeout/parse error) ship immediately — any attempt
         if result.get("needs_review") and result["feedback"] in ("critic_timeout", "critic_parse_error"):

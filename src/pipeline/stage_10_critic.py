@@ -66,7 +66,7 @@ def _build_critic_prompt(
     subject: str | None,
     prospect_brief: str,
 ) -> str:
-    """Build the scoring prompt with the 5 criteria rubric."""
+    """Build the scoring prompt with the 6 criteria rubric."""
     lines = [
         f"Channel: {channel}",
     ]
@@ -204,8 +204,8 @@ async def critique_and_revise(
     for attempt in range(MAX_REVISIONS + 1):
         result = await critique_draft(gemini, channel, body, subject, prospect_brief)
 
-        # On critic failure (timeout/parse error) ship immediately
-        if result.get("needs_review") and result["score"] == 0 and attempt == 0:
+        # On critic failure (timeout/parse error) ship immediately — any attempt
+        if result.get("needs_review") and result["feedback"] in ("critic_timeout", "critic_parse_error"):
             return {
                 "body": body,
                 "subject": subject,

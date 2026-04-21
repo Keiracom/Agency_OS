@@ -16,7 +16,7 @@ Pipeline core is GREEN on a clean SMB cohort with the 2026-04-16-era provider st
 
 **Ship-gating conditions (must resolve before any live customer send):**
 
-1. Three D2-CRITICAL audit findings unresolved on HEAD: mobile waterfall wiring, `{{agency_name}}` token substitution, Hunter dm_verified gate is a comment not code.
+1. ~~Three D2-CRITICAL audit findings unresolved on HEAD~~ **CORRECTED 2026-04-21 via PR #363 (merge 6c39458a):** only the mobile waterfall client pass-through (Fix 1) required new code — shipped in PR #363. Felt-sufficiency check during directive F21-CRITICAL-3-FIX prep revealed the other two findings were already resolved in PR #336 (merged 2026-04-16): `{{agency_name}}` token substitution and Hunter dm_verified runtime conditional. PR #363 added six lock-in tests (3 per finding) to prevent silent regression. B7 is now CLOSED.
 2. Provider collapse: ContactOut exhausted (email + phone + search all dead), Hunter 401 auth failure. Effective email waterfall reduced from six layers to two; effective mobile waterfall to one partial layer.
 3. Channel cooldown is a stub (`jit_validator.py:413–418` is `pass`). GOV-12 violation — gate not enforced at runtime.
 4. 5-day same-channel rule conflicts with day-3 email cadence step. Specification conflict unresolved.
@@ -107,7 +107,7 @@ Operational structure: 9-stage sequence per `src/pipeline/pipeline_orchestrator.
 - **Evidence:** ALS values used in Stage 8 gating (`ALS gate >=20 / HOT_THRESHOLD = 85` confirmed active). D2.2 enterprise filter directionally correct on 5/6 domains. Timing: 20–26s per cohort.
 - **Open issues:**
   - `google_ads` misuse from Stage 6 propagates here — intent scores may be inflated or deflated.
-  - D2 audit #2 CRITICAL: `{{agency_name}}` tokens unfilled in outreach drafts. 30-min fix, claimed in PR #328 scope but no re-test at N>1 in evidence. Every outreach draft generated today ships with broken tokens.
+  - D2 audit #2 CRITICAL: `{{agency_name}}` tokens unfilled in outreach drafts. **RESOLVED in PR #336 (2026-04-16) — `enhanced_vr.py` prompts rewritten to literal "Agency OS".** Test coverage added in PR #363 commit 7d77ad39 (3 lock-in tests).
   - No score distribution shown across any run — cannot validate threshold calibration for AU SMB population.
 
 ### Stage 8 — DM Identification / Contact Waterfall (sem=20)
@@ -122,7 +122,7 @@ Operational structure: 9-stage sequence per `src/pipeline/pipeline_orchestrator.
 - **Mobile waterfall status — correction of Aiden's "DEAD" claim:** Aiden's draft stated mobile waterfall is "DEAD per D2 CRITICAL finding #1" (mobile waterfall wiring: `leadmagic_client` + `brightdata_client` not passed to `run_mobile_waterfall`). This finding is PARTIALLY FIXED, not DEAD. PR #328 applied the fix to `cohort_runner.py` (passes brightdata_client). However, `pipeline_orchestrator.py` does NOT pass either client. D2.2 mobile 5/5 was via L1 Gemini dm_phone, not via L2 Leadmagic or L3 Bright Data. The wiring gap persists in the orchestrator path. Aiden's "DEAD" overstated the regression; status is PARTIALLY FIXED — orchestrator path is the remaining wiring gap.
 - **Open issues:**
   - Mobile waterfall wiring: `pipeline_orchestrator.py` passes neither `leadmagic_client` nor `brightdata_client`. L2 and L3 layers silently dead in production path. 15-min fix, unresolved on HEAD.
-  - D2 audit #3 CRITICAL: Hunter dm_verified gate is a comment, not a runtime conditional. 15-min fix, unresolved on HEAD.
+  - D2 audit #3 CRITICAL: Hunter dm_verified gate is a comment, not a runtime conditional. **RESOLVED in PR #336 (2026-04-16) — runtime conditional enforced at `email_waterfall.py:565`.** GOV-12 compliant. Test coverage added in PR #363 commit e3ee5edb (3 lock-in tests).
   - Gemini SPOF: 18% failure rate at N=100 scale, no fallback DM identification path.
   - DM hallucination pressure (D2 audit HIGH): Gemini may confabulate DM names on thin-content sites. No adversarial test in evidence.
 
@@ -141,7 +141,7 @@ Operational structure: 9-stage sequence per `src/pipeline/pipeline_orchestrator.
 - **Status:** COMPONENT TESTED with broken output
 - **Evidence:** F-REFACTOR-01 confirmed message generation executed on single domain. D2.2 produced cards with personalised fields. Timing: 22–26s per cohort.
 - **Open issues:**
-  - D2 audit #2 CRITICAL: `{{agency_name}}` token unfilled. Every message generated today ships broken. Fix claimed in PR #328 scope but no multi-domain re-test in evidence.
+  - D2 audit #2 CRITICAL: `{{agency_name}}` token unfilled. **RESOLVED in PR #336 (2026-04-16); test-locked in PR #363.** See §7.1 for detail.
   - No evidence of VR synthesis failure fallback — unknown card state when Stage 10 VR fails.
 
 ### Stage 11 — Cards / Funnel Classification
@@ -251,17 +251,21 @@ Zero E2E test coverage. Three GOV-12 violations. The outreach stack is built but
 
 All items are bounded and addressable pre-ship without architecture redesign.
 
-### 7.1 — Fix the 3 D2-CRITICAL Audit Findings (effort: ~1 hour total)
+### 7.1 — Fix the 3 D2-CRITICAL Audit Findings — **CLOSED 2026-04-21** (effort: ~15 min new code + 6 lock-in tests)
 
 Source: `research/d2_audit/PIPELINE_AUDIT_MASTER.md`
 
-| Gap | Effort | Detail |
-|-----|--------|--------|
-| Mobile waterfall client pass-through | 15 min | Pass `leadmagic_client` + `brightdata_client` to `run_mobile_waterfall` in `pipeline_orchestrator.py`. `cohort_runner.py` partially fixed (brightdata_client only) in PR #328; orchestrator path untouched. |
-| `{{agency_name}}` token substitution | 30 min | Every outreach message generated today ships with unfilled template token. Fix token substitution in Stage 10 message builder. Claimed fixed in PR #328 but no N>1 re-test in evidence. |
-| Hunter dm_verified gate — comment to conditional | 15 min | Convert comment to runtime executable conditional. GOV-12 violation. |
+Status resolved under directive F21-CRITICAL-3-FIX (PR #363, merge 6c39458a). Felt-sufficiency check during directive prep revealed 2 of 3 findings were already resolved in PR #336 (merged 2026-04-16). Only Fix 1 required new code; Fix 2 and Fix 3 received lock-in test coverage to prevent silent regression.
 
-Post-fix requirement: re-run D2.2-level cohort (N=12–20) to verify mobile non-zero and tokens resolve.
+| Gap | Status | Resolution |
+|-----|--------|-----------|
+| Mobile waterfall client pass-through | RESOLVED in PR #363 | `leadmagic_client` + `brightdata_client` passed to `run_mobile_waterfall` in both `pipeline_orchestrator.py` and `cohort_runner.py`. Commit a1251081. |
+| `{{agency_name}}` token substitution | ALREADY RESOLVED in PR #336; test-locked in PR #363 | `enhanced_vr.py` prompts rewritten to the literal "Agency OS" in PR #336 (2026-04-16). PR #363 commit 7d77ad39 added 3 lock-in tests asserting no `{{agency_name}}` / no `{{...}}` tokens in `*_PROMPT` constants + "Agency OS" literal presence. |
+| Hunter dm_verified gate — comment to conditional | ALREADY RESOLVED in PR #336; test-locked in PR #363 | Runtime conditional enforced at `email_waterfall.py:565`. PR #363 commit e3ee5edb added 3 lock-in tests verifying Hunter GET is not called when `dm_verified=False`, IS called when `dm_verified=True + name + domain`, and skipped when `HUNTER_API_KEY` absent. |
+
+Post-fix requirement (original): re-run D2.2-level cohort (N=12–20) to verify mobile non-zero and tokens resolve. Status: deferred to the separate N≥50 clean cohort directive (see §7.3).
+
+Process note (felt-sufficiency): this audit initially claimed 3 findings unresolved based on reading `PIPELINE_AUDIT_MASTER.md` without per-finding HEAD verification. Elliot's directive-scrutiny step during F21-CRITICAL-3-FIX prep applied the felt-sufficiency rule ratified 2026-04-20 (`feedback_felt_sufficiency_signal.md`) and caught the staleness. This is the pattern working as designed.
 
 ### 7.2 — Reconcile Ratified-vs-Operational Waterfall (effort: scope-dependent on provider decisions)
 
@@ -339,7 +343,7 @@ Source: Aiden's gap analysis.
 
 | Item | Effort |
 |------|--------|
-| 7.1 — Fix 3 D2-CRITICAL findings | ~1h |
+| 7.1 — Fix 3 D2-CRITICAL findings | **CLOSED — PR #363 merged 6c39458a (2026-04-21). 2 of 3 were pre-resolved in PR #336.** |
 | 7.2 — Waterfall reconciliation | Scope-dependent on provider decisions |
 | 7.3 — N≥50 clean cohort after 7.1+7.2 | ~1h wall + $5–10 AUD |
 | 7.4 — OUTREACH-GATES-AUDIT (GOV-12 compliance) | ~1 session |

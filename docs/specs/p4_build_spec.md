@@ -50,7 +50,7 @@ pipeline_f_master_flow(@flow)
 |----------|------|-------------------|-----------|-------|
 | `pipeline_f_master_flow` | `src/orchestration/flows/pipeline_f_master_flow.py` | NEW | `@flow` | Master entry point. `on_completion=[on_completion_hook]`, `on_failure=[on_failure_hook]` |
 | `run_cohort` | `src/orchestration/cohort_runner.py` line 670 | `async def run_cohort(categories, domains_per_category, output_dir, domains, force_replay, dry_run) -> dict` | **None** | CLI entrypoint — must stay undecorated. Master flow calls it as a plain coroutine. |
-| `stage_1_discover` | `pipeline_f_master_flow.py` | NEW thin wrapper | `@task` | Calls `run_cohort` with stages 2-11 disabled (or wraps the Stage 1 block directly). |
+| `stage_1_discover` | `pipeline_f_master_flow.py` | NEW thin wrapper | `@task` | Extracts `cohort_runner.py` lines 728-759 (DFS category discovery + ETV + blocklist) into a standalone callable. Does NOT call `run_cohort` — `run_cohort` has no stage-disable flag, and calling it would run all 11 stages. The extraction is a ~20-line function that calls `dfs.domain_metrics_by_categories()` with category codes + ETV windows + blocklist filter, returning `list[dict]` of domain items. |
 | `stage_2_verify` | `pipeline_f_master_flow.py` | NEW thin wrapper | `@task` | Calls `_run_stage2` via `run_parallel`. Input: `pipeline: list[dict]`, `dfs: DFSLabsClient`. |
 | `stage_3_identify` | `pipeline_f_master_flow.py` | NEW thin wrapper | `@task` | Calls `_run_stage3` via `run_parallel`. |
 | `stage_4_signal` | `pipeline_f_master_flow.py` | NEW thin wrapper | `@task` | Calls `_run_stage4` via `run_parallel`. |
@@ -258,6 +258,8 @@ result = score_and_suggest(
 | `PREFECT_API_URL` | Prefect agent | Deployment registration | VERIFY — Railway service running the worker must have this set. |
 | `PREFECT_API_KEY` | Prefect agent | Deployment registration | VERIFY — same as above. |
 
+**Explicitly excluded:** `HUNTER_API_KEY` — Hunter is L2 of email waterfall but currently 401-dead (FM-PRE-FLIGHT 2026-04-20). The waterfall skips L2 gracefully when `dm_verified=False` or key is absent (email_waterfall.py:565 runtime gate). Re-add to this table if Hunter is renewed (F21 §7.2 holdover).
+
 **Dave-lane items from this table:** `DATABASE_URL`, `ANTHROPIC_API_KEY`, `CONTACTOUT_API_KEY`, `PREFECT_API_URL`, `PREFECT_API_KEY` — all need Railway confirmation before P5 run (see Section 12).
 
 ---
@@ -346,6 +348,7 @@ P4 is deployed in **PARALLEL** posture (ratified design decision D3). The existi
 3. `dm_messages_gate` prevents bad data reaching outreach — if gate fails, `on_failure_hook` fires Telegram alert and writes a failed `evo_flow_callbacks` row; no `dm_messages` rows with `status='ready'` are created from this run
 4. Investigate via Prefect run logs and `evo_flow_callbacks` table
 5. No DB migrations are required for P4, so no DB rollback needed
+6. **Orphan-row note:** `persist_stage8_to_db` writes BU + BDM rows before subsequent stages can fail. On flow failure, those rows persist in the database. At P5 scale (10 domains) this is trivial — one cleanup query (`DELETE FROM business_decision_makers WHERE run_id = '<failed_run>'`). At production scale, add a `cleanup_failed_run` task that fires in the `on_failure_hook` path. Tracked as post-P5 cleanup item, not ship-blocking.
 
 **Nothing to cut over:** the master flow is additive. P5 validation determines whether the production cron deployment replaces manual CLI runs. Until P5 passes, the production cron schedule is `None` (manual deployment only).
 

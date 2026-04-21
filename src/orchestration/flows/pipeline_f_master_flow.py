@@ -315,12 +315,16 @@ async def pipeline_f_master_flow(
     from src.intelligence.gemini_client import GeminiClient
     from src.integrations.bright_data_client import BrightDataClient
     from src.integrations.leadmagic import LeadmagicClient
-    from dotenv import dotenv_values
+    # Load .env on Vultr (local dev); on Railway, env vars are injected by the platform.
+    _env_path = "/home/elliotbot/.config/agency-os/.env"
+    if os.path.exists(_env_path):
+        from dotenv import dotenv_values
+        for _k, _v in dotenv_values(_env_path).items():
+            if _v is not None:
+                os.environ.setdefault(_k, _v)
 
-    env = dotenv_values("/home/elliotbot/.config/agency-os/.env")
-    for _k, _v in env.items():
-        if _v is not None:
-            os.environ.setdefault(_k, _v)
+    # Read from os.environ (works on both Vultr and Railway)
+    env = os.environ
 
     if categories is None:
         categories = ["dental", "plumbing", "legal", "accounting", "fitness"]

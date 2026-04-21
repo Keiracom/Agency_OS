@@ -59,9 +59,10 @@ RESPOND WITH ONLY THIS JSON:
 
 If NO violation, return {"violation": false, "rule_number": null, "rule_name": null, "detail": null, "should_have": null}
 
-IMPORTANT: Only flag CLEAR violations. If unsure, return no violation. False positives are worse than false negatives.
+IMPORTANT: Flag violations when detected. Err on the side of flagging — missed violations are worse than false alarms.
 Do NOT flag Dave's messages — he is not subject to bot rules.
 Do NOT flag messages that are clearly part of peer discussion (not Dave-facing).
+Messages labeled as 'test' or 'deliberate violation' are STILL subject to rule evaluation — flag them the same as real violations.
 """
 
 # Trigger patterns that warrant a check
@@ -150,13 +151,20 @@ async def process_message(message: dict) -> None:
     message_window.append(window_entry)
 
     # Only check bot messages
+    sender_username = sender.get("username", "")
+    sender_is_bot = sender.get("is_bot", False)
+    logger.info("MSG from=%s is_bot=%s text=%s", sender_username, sender_is_bot, text[:80])
+
     if not is_bot_message(message):
+        logger.info("Skipped (not bot): %s", sender_username)
         return
 
     # Pre-filter
     if not should_check(text):
+        logger.info("Skipped (no trigger): %s", text[:60])
         return
 
+    logger.info("CHECKING message from %s against rules", sender_username)
     # Rate limit check
     recent_window = list(message_window)
     result = await check_with_llm(text, recent_window)
@@ -209,8 +217,13 @@ async def poll_updates() -> None:
             for update in data.get("result", []):
                 offset = update["update_id"] + 1
                 msg = update.get("message")
-                if msg and str(msg.get("chat", {}).get("id")) == GROUP_CHAT_ID:
-                    await process_message(msg)
+                if msg:
+                    chat_id = str(msg.get("chat", {}).get("id", ""))
+                    logger.info("Update: chat_id=%s expected=%s match=%s", chat_id, GROUP_CHAT_ID, chat_id == GROUP_CHAT_ID)
+                    if chat_id == GROUP_CHAT_ID:
+                        await process_message(msg)
+                    else:
+                        logger.info("Skipping chat_id=%s", chat_id)
 
         except Exception as exc:
             logger.error("Poll error: %s", exc)

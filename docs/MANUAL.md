@@ -1075,19 +1075,68 @@ SMS x2: Writer refused (insufficient signals).
 **Railway worker:** HEALTHY. Deployed ca197dad at 2026-04-21T10:54:25Z. Last flow 1176392a completed 11:08 UTC. Pro plan.
 **Stripe AU:** DAVE ACTION PENDING (8th mention). 2-3 week lead time. 15-20 min Dave time. Blocks P5 Commercial / P1.5 close. Highest leverage non-code action.
 
+### Session 2026-04-21 continued — P1.5 Wave 1+2 + Policy + Enforcement
+
+**P1.5 Wave 1 (closed):**
+- B1 VERIFY-EVO: COMPLETE — EVO-001 (Telegram alerting) LIVE, EVO-003 (callback bridge) LIVE, agent_comms DEGRADED (no polling but TG group solved the need)
+- B2 AGENT-COMMS-POLLING: DEFERRED — TG supergroup made polling unnecessary. Table kept for future bot-fleet scaling.
+- C1 SYSTEM-AUDIT (Aiden): COMPLETE — 0 CRITICAL, 2 HIGH, 6 MEDIUM. Committed: docs/audits/p1_5_system_audit_2026-04-21.md (aiden/scaffold, multiple amendments)
+
+**P1.5 Wave 2 (closed):**
+- B3 SELF-HEALING SPEC: COMPLETE — 3-tier design (T1 autonomous, T2 CEO-assisted, T3 Dave-only). Committed: docs/specs/b3_self_healing_spec.md. Includes hybrid enforcement (infrastructure + enforcer bot), 7-rule dead code policy, decision tree, example scenarios, B4 dependencies.
+- C2 PREFECT AUDIT: COMPLETE — 23 deployments healthy, 0 orphans, worker healthy. Committed: docs/audits/p1_5_c2_prefect_audit_2026-04-21.md.
+- C3 DEAD CODE SWEEP (Aiden): COMPLETE — ~8,500 lines dead/superseded code found. 4 CRITICAL Prefect deployments wired to dead scout.py chain. Committed: docs/audits/p1_5_c3_dead_code_sweep_2026-04-21.md (aiden/scaffold)
+
+**WATERFALL-ALIGNMENT-AUDIT:** COMPLETE — email waterfall ALIGNED with F2.1 architecture. Hunter L2 is ratified, active, GOV-12 gated. contact_waterfall.py is legacy (not in Prefect path).
+
+**Hunter API key resolution:** Key found alive in local .env (was marked dead_401 in ledger — never pushed to Railway). Pushed to Railway prefect-worker via GraphQL. Ledger corrected: status=live, 816/1000 searches remaining.
+
+**Listener tune iteration 1:** L2 discernment synth prompt updated (commit 332796ab) — temporal grounding (date-qualify memories >48h) + contradiction flagging. Listener restarted. Measuring over 50+ samples. Iteration 2 (RPC zero-sim filter) queued for next session.
+
+**7-rule dead code policy (ratified by Dave 2026-04-21):**
+- R1: Extract intent + delete in same PR (threshold-based depth)
+- R2: Deployment hygiene cron (weekly scan for orphaned jobs)
+- R3: Supersedes checklist on architecture PRs
+- R4: CLAUDE.md dead-ref table = machine-readable manifest, CI lint greps imports
+- R5: Audit at phase boundary (extends GOV-11)
+- R6: prefect.yaml = single source of truth, auto-deregister on deploy
+- R7: Salvage-before-delete review (problem-domain tags, triggers_on field, inline pointer comments, phase-boundary surfacing)
+
+**Hybrid enforcement architecture (ratified by Dave 2026-04-21):**
+- Infrastructure (Category A): GitHub branch protection + pre-commit hooks + auto-deregister for code/deploy. Preventive — locked doors.
+- Enforcer bot (Category B+C): @Enforcerr_bot — lightweight Python daemon (NOT Claude clone), reads TG via Bot API, gpt-4o-mini per-check, ~50 checks/day, ~$1.50/mo. Pilots on 5 rules (concur-then-summarise, Step 0, completion claims, peer-review substantiveness, shared-file claim). Token stored .env.enforcer on Vultr.
+- Daily sweep (Category C backstop): reactive post-hoc scan for session-boundary violations.
+
+**4 Prefect landmines paused (ratified by Dave 2026-04-21):**
+- intelligence-flow (d3ecb417) — was ACTIVE, wired to dead scout.py
+- pool-population-flow (f7644ba0) — was ACTIVE, wired to dead scout.py
+- icp-reextract-flow (f986e8ac) — was ACTIVE, wired to dead scout.py
+- trigger-lead-research (80dcb263) — was ACTIVE, wired to dead scout.py
+Salvage reviews pending before deletion (R7 policy).
+
+**Concur-then-plain-English rule (ratified by Dave 2026-04-21):**
+Both agents discuss and concur first. Elliot is last voice to Dave. Dave gets plain English, no jargon. Peer gaps must be explicitly closed before Dave-facing summary fires.
+
 **Followups (next session):**
+- **Wave 3 B4 BUILD** — self-healing + enforcement pipeline + enforcer bot daemon (primary next directive)
 - Critic timeout tuning 15s → 25s (25% timeout rate)
 - Regex guard on critic timeout for social proof phrases
 - Writer refusal detection before critic (prevent scoring refusal essays)
+- Listener iteration 2: RPC caller-side zero-sim filter (Aiden lane)
 - BDM enrichment bottleneck (2/5 domains had no BDM at Stage 8)
-- P1.5-OUTBOUND-READINESS halted until truth audit ships
+- P1.5-OUTBOUND-READINESS halted until card ship decisions
 - Resend domain verification (agencyxos.ai failed, no keiracom.com)
+- Salvage reviews for 4 paused flows before deletion
+- CLAUDE.md governance addendum (7 rules + enforcement — draft PR for Dave ratification)
+- Stripe AU (9th mention, blocks P5 Commercial)
 
 **Infrastructure:**
-- Railway: Pro plan, worker healthy, auto-deploys from main
-- Prefect: deployment 752d8120, worker polling, 5 flow runs this session
+- Railway: Pro plan, worker healthy (last deploy ca197dad at 10:54 UTC), auto-deploys from main
+- Prefect: deployment 752d8120 READY, worker polling, ~7 flow runs this session
 - Anthropic: topped up (was zero credits earlier in session)
 - Gemini: working (Stage 9 VR + critic)
+- Hunter: LIVE on Railway (816/1000 searches, pushed this session)
+- Enforcer bot: @Enforcerr_bot token stored .env.enforcer, daemon not yet built
 
 ## SECTION 18 — OUTREACH + CONTENT (pre-launch)
 

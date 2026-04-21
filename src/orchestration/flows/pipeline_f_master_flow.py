@@ -163,17 +163,61 @@ async def persist_stage8_to_db(pipeline: list[dict]) -> list[str]:
     pool = await asyncpg.create_pool(db_url, min_size=2, max_size=8, statement_cache_size=0)
     bdm_ids: list[str] = []
 
+    active_count = 0
+    dropped_count = 0
+
     try:
         async with pool.acquire() as conn:
             for d in pipeline:
+                domain = d["domain"]
+
                 if d.get("dropped_at"):
+                    # GOV-8: persist dropped domains for audit trail instead of silently skipping
+                    drop_reason = d.get("drop_reason", "unknown")
+                    dropped_stage = d.get("dropped_stage")
+
+                    # Derive display_name from whatever stage data exists
+                    identity = d.get("stage3") or {}
+                    display_name = (
+                        identity.get("business_name")
+                        or identity.get("company_name")
+                        or domain.split(".")[0].replace("-", " ").title()
+                    )
+
+                    # Negative stage convention: -N means dropped at stage N
+                    neg_stage = -abs(int(dropped_stage)) if dropped_stage is not None else None
+
+                    bu_id = await conn.fetchval(
+                        "SELECT id FROM business_universe WHERE domain = $1 LIMIT 1",
+                        domain,
+                    )
+                    if bu_id:
+                        await conn.execute(
+                            """UPDATE business_universe
+                               SET pipeline_stage = COALESCE($2, pipeline_stage),
+                                   pipeline_status = 'dropped',
+                                   filter_reason = $3,
+                                   dfs_discovery_category = COALESCE($4, dfs_discovery_category),
+                                   updated_at = NOW()
+                               WHERE id = $1""",
+                            bu_id, neg_stage, drop_reason, d.get("category") or None,
+                        )
+                    else:
+                        await conn.execute(
+                            """INSERT INTO business_universe
+                                   (domain, display_name, pipeline_stage, pipeline_status,
+                                    filter_reason, dfs_discovery_category)
+                               VALUES ($1, $2, $3, 'dropped', $4, $5)""",
+                            domain, display_name, neg_stage,
+                            drop_reason, d.get("category", ""),
+                        )
+                    dropped_count += 1
                     continue
 
                 identity = d.get("stage3") or {}
                 dm = identity.get("dm_candidate") or {}
                 scores = d.get("stage5") or {}
                 propensity = scores.get("composite_score", 0)
-                domain = d["domain"]
 
                 # Insert or find existing business_universe row
                 # No unique constraint on domain — check existence first
@@ -209,6 +253,7 @@ async def persist_stage8_to_db(pipeline: list[dict]) -> list[str]:
                 )
 
                 if not dm_name or not dm_linkedin:
+                    active_count += 1
                     continue
 
                 # Insert or find existing BDM row
@@ -229,11 +274,15 @@ async def persist_stage8_to_db(pipeline: list[dict]) -> list[str]:
                     )
                 if bdm_id:
                     bdm_ids.append(str(bdm_id))
+                active_count += 1
 
     finally:
         await pool.close()
 
-    logger.info("persist_stage8_to_db: wrote %d BDM rows", len(bdm_ids))
+    logger.info(
+        "persist_stage8_to_db: wrote %d active BDM rows, %d dropped domains logged",
+        len(bdm_ids), dropped_count,
+    )
     return bdm_ids
 
 

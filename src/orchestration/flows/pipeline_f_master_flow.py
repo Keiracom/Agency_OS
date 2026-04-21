@@ -370,12 +370,15 @@ async def pipeline_f_master_flow(
         return sum(d.get("cost_usd", 0) for d in pipeline)
 
     def _active() -> list[dict]:
-        return [d for d in pipeline if not d.get("dropped_at")]
+        return [d for d in pipeline if isinstance(d, dict) and not d.get("dropped_at")]
 
-    def _merge(updated: list[dict]) -> None:
+    def _merge(updated: list) -> None:
         idx = {d["domain"]: i for i, d in enumerate(pipeline)}
         for d in updated:
-            if d["domain"] in idx:
+            if not isinstance(d, dict):
+                logger.warning("_merge: skipping non-dict result: %s", type(d))
+                continue
+            if d.get("domain") in idx:
                 pipeline[idx[d["domain"]]] = d
 
     # ── Stages 2-8: Sequential per domain, domains run in parallel via gather ─

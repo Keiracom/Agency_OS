@@ -174,7 +174,7 @@ async def persist_stage8_to_db(pipeline: list[dict]) -> list[str]:
                 if d.get("dropped_at"):
                     # GOV-8: persist dropped domains for audit trail instead of silently skipping
                     drop_reason = d.get("drop_reason", "unknown")
-                    dropped_stage = d.get("dropped_stage")
+                    dropped_at_str = str(d.get("dropped_at", ""))
 
                     # Derive display_name from whatever stage data exists
                     identity = d.get("stage3") or {}
@@ -185,8 +185,10 @@ async def persist_stage8_to_db(pipeline: list[dict]) -> list[str]:
                     )
 
                     # Negative stage convention: -N means dropped at stage N
+                    # cohort_runner sets dropped_at="stage3", "stage5", etc.
                     try:
-                        neg_stage = -abs(int(dropped_stage)) if dropped_stage is not None else None
+                        stage_num = int(dropped_at_str.replace("stage", "")) if dropped_at_str else None
+                        neg_stage = -abs(stage_num) if stage_num is not None else None
                     except (ValueError, TypeError):
                         neg_stage = None
 

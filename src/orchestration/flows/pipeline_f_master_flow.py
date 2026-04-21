@@ -442,12 +442,17 @@ async def pipeline_f_master_flow(
     # ── Stage 9+10 sub-flow (VR generation + message gen) ────────────────────
     s9_10_result: dict = {}
     if bdm_ids and not dry_run:
-        s9_10_result = await stage_9_10_pipeline(
-            bdm_ids=bdm_ids,
-            batch_size=len(bdm_ids),
-            budget_cap_usd=min(5.0, budget_cap_usd * 0.3),
-            dry_run=False,
-        )
+        import traceback as _tb
+        try:
+            s9_10_result = await stage_9_10_pipeline(
+                bdm_ids=bdm_ids,
+                batch_size=len(bdm_ids),
+                budget_cap_usd=min(5.0, budget_cap_usd * 0.3),
+                dry_run=False,
+            )
+        except Exception as _s910_exc:
+            logger.error("stage_9_10_pipeline FAILED:\n%s", _tb.format_exc())
+            s9_10_result = {"error": str(_s910_exc), "traceback": _tb.format_exc()}
 
     # ── Stage 10 (in-memory VR+MSG for in-pipeline domains) ──────────────────
     active10 = _active()
@@ -476,10 +481,11 @@ async def pipeline_f_master_flow(
 
 # ── Summary helper ────────────────────────────────────────────────────────────
 
-def _summary(pipeline: list[dict], run_start_ts: str, status: str) -> dict:
-    total_cost_usd = sum(d.get("cost_usd", 0) for d in pipeline)
-    cards = sum(1 for d in pipeline if (d.get("stage11") or {}).get("lead_pool_eligible"))
-    dropped = sum(1 for d in pipeline if d.get("dropped_at"))
+def _summary(pipeline: list, run_start_ts: str, status: str) -> dict:
+    dicts = [d for d in pipeline if isinstance(d, dict)]
+    total_cost_usd = sum(d.get("cost_usd", 0) for d in dicts)
+    cards = sum(1 for d in dicts if (d.get("stage11") or {}).get("lead_pool_eligible"))
+    dropped = sum(1 for d in dicts if d.get("dropped_at"))
     return {
         "status": status,
         "run_start_ts": run_start_ts,

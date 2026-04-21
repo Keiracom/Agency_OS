@@ -93,9 +93,22 @@ Ledger (`elliot_internal.api_keys_ledger`) contains 42 rows. Code-level `os.envi
 
 | Var | Ledger status | Still referenced in | Severity |
 |-----|---------------|---------------------|----------|
-| `HUNTER_API_KEY` | dead_401 | `src/intelligence/contact_waterfall.py:243`, `src/pipeline/email_waterfall.py:571` | **HIGH** — L2 email fallback will hit a 401 on any call |
+| `HUNTER_API_KEY` | dead_401 | `src/pipeline/email_waterfall.py:563-605` (LIVE L2, ratified), `src/intelligence/contact_waterfall.py:243` (legacy path, not in Prefect chain) | **MEDIUM** (downgraded from HIGH) — see correction note below |
 | `ZEROBOUNCE_API_KEY` | deprecated | `src/intelligence/contact_waterfall.py:244,298`; `src/engines/waterfall_verification_worker.py:59,85,715,749,750` | **MEDIUM** — Tier 4 escalation path references a deprecated provider |
 | `CONTACTOUT_API_KEY` | locked_403 | referenced in the email-waterfall integration | **MEDIUM** — credit-exhausted provider still wired; will 403 under load |
+
+**Correction note on HUNTER_API_KEY (added 2026-04-21 per P1.5-WATERFALL-ALIGNMENT-AUDIT, Elliot's companion directive).** The original audit wording implied the Hunter wiring should be removed. That was a misframe. Per `CLAUDE.md`:
+
+> EXCEPTION: Hunter email-finder active in Pipeline F v2.1 as L2 email fallback (score >= 70).
+
+Elliot's authoritative audit traced the Prefect call chain (`pipeline_f_master_flow` → `cohort_runner._run_stage8` → `discover_email` → `email_waterfall.py`) and confirmed:
+
+- `src/pipeline/email_waterfall.py:563-605` is the **live** Hunter integration. Layer 2 of the 6-layer waterfall. Gated correctly (GOV-12: `dm_verified=True` + `score >= 70`). Ratified by directive history; D2.2-RUN validation showed Hunter at 5/5 on fresh domains (the only provider that delivered).
+- `src/intelligence/contact_waterfall.py:243` is a **legacy** path from pre-v2.1 flows, not reached by the Prefect master flow.
+- Key status `dead_401` means the HUNTER_API_KEY **needs renewal** — Dave-lane credential action. Code path is correct and should stay.
+- Until renewal: line 572's empty-string check silently skips the Hunter block, L3 (Leadmagic, $0.015/email) picks up the slack.
+
+**Revised recommendation:** renew HUNTER_API_KEY. Do NOT remove the wiring. Severity downgraded HIGH→MEDIUM because the architectural state is correct and only a credential refresh is needed.
 
 ### 6b. Ledger entries no longer referenced in source code (candidates for ledger cleanup)
 
@@ -118,7 +131,7 @@ Config-only vars (e.g. `CAL_BOOKING_URL`, `HEYGEN_AVATAR_ID`, `ENRICHMENT_CONCUR
 *(none)* — nothing in the audit blocks Phase 2 Dashboard outright.
 
 ### HIGH
-1. **`HUNTER_API_KEY` dead but still wired into email waterfall (L2 fallback).** Any call path that reaches Hunter will 401. Remove from `contact_waterfall.py:243` and `email_waterfall.py:571` or flag-gate the code behind `if HUNTER_STATUS == 'live'`.
+1. ~~`HUNTER_API_KEY` dead but still wired into email waterfall.~~ **CORRECTED 2026-04-21 — downgraded to MEDIUM.** See §6a correction note: Hunter wiring at `email_waterfall.py:563-605` is ratified L2 integration, correct and should remain. Only the credential is dead. Fix is `HUNTER_API_KEY` renewal (Dave-lane), not code removal. Companion audit P1.5-WATERFALL-ALIGNMENT-AUDIT (Elliot) provides the authoritative provider-order + verdict: ALIGNED with F2.1 architecture.
 2. **16 flows in `src/orchestration/flows/` have no declaration in `prefect.yaml`.** Mixture of legitimate internal sub-flows (e.g. `stage_9_10_flow`) and likely-dead code. Triage list needed; unused ones should be deleted.
 3. **Test baseline is three different numbers from three sources.** 2206 collected vs 1505 Manual vs 986 fresh-session. Cannot make a credible "tests are green" claim until one authoritative run reconciles these.
 

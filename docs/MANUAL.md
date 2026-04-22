@@ -1,7 +1,7 @@
 # Agency OS Manual
 
 Last updated: 2026-04-22 UTC
-Directive P1.5-FIX-SWEEP: C1/C2 audit fix sweep — 13 findings resolved, test suite green (PR #374)
+Directive CLONE-ARCHITECTURE: Clone architecture ratified — ATLAS + ORION live, 6 rules (C1-C6), tier registry (PRs #374-#375)
 Next scheduled update: Next architecture change or milestone
 
 > **Primary store.** This file is the CEO SSOT. Google Doc is an auto-generated mirror.
@@ -23,12 +23,13 @@ Revenue model for BU: API subscriptions, Salesforce/HubSpot marketplace, bulk an
 
 ## SECTION 2 — CURRENT STATE
 
-**Last directive:** P1.5-FIX-SWEEP (C1/C2 audit fix sweep — 13 findings resolved, GOV-8 persistence, pipeline resilience, test pollution)
-**Pipeline F status:** P5 COMPLETE, P1.5-FIX-SWEEP COMPLETE
+**Last directive:** CLONE-ARCHITECTURE (clone architecture ratified — ATLAS + ORION live, 6 rules C1-C6, tier registry)
+**Pipeline F status:** P5 COMPLETE, P1.5-FIX-SWEEP COMPLETE, CLONE-ARCHITECTURE COMPLETE
 **P5 result:** 5 dental domains → 2 cards (glenferriedental, dentalaspects). 8 messages across 4 channels. Exit gate MET.
-**Next directive:** Phase 1.5 remaining: B3 tier autonomy spec → B4 Part 2 build → exit gate. Then clone architecture discussion.
+**Next directive:** Phase 1.5 remaining: B3 tier autonomy spec → B4 Part 2 build → exit gate.
 **Test baseline:** 2152 passed, 0 failed, 28 skipped
-**Last merged PR:** #374 (P1.5 fix sweep — 16 files, +507 -73)
+**Last merged PR:** #375 (clone infra — Rule 7 enforcer, CLONE_LEARNINGS template, round-trip test)
+**Team roster:** ELLIOT + AIDEN + ATLAS + ORION + SCOUT (5 sessions)
 
 ### EVO Track (Autonomous Loop — all complete)
 

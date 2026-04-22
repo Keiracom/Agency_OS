@@ -7,6 +7,7 @@ TASK: TST-001
 
 import asyncio
 import os
+import sys
 import uuid
 from collections.abc import AsyncGenerator, Generator
 from datetime import datetime, timedelta, UTC
@@ -32,6 +33,37 @@ os.environ["TWILIO_ACCOUNT_SID"] = "test-twilio-sid"
 os.environ["TWILIO_AUTH_TOKEN"] = "test-twilio-token"
 os.environ["HEYREACH_API_KEY"] = "test-heyreach-key"
 os.environ["SYNTHFLOW_API_KEY"] = "test-synthflow-key"
+
+
+# ============================================================================
+# LAW IX — Test Pollution Prevention (sys.modules cleanup)
+# ============================================================================
+
+@pytest.fixture(scope="session", autouse=True)
+def _cleanup_polluted_modules():
+    """Cleanup sys.modules pollution from test_seed_facts.py module initialization.
+
+    test_seed_facts.py injects a lambda into src.memory.store.store at module load time.
+    This fixture runs FIRST (autouse, session scope) to clean it up BEFORE memory tests
+    are collected, preventing test pollution where store becomes unusable.
+
+    Reference: LAW IX - Session Memory. https://github.com/keiracom/Agency_OS/issues/XXX
+    """
+    # Clean up BEFORE yielding (runs at session start, before test collection completes)
+    if "src.memory.store" in sys.modules:
+        # Check if it's the polluted mock from test_seed_facts
+        store_module = sys.modules["src.memory.store"]
+        if hasattr(store_module, "store") and callable(store_module.store):
+            # Try to detect if this is the lambda by checking if it accepts positional args
+            try:
+                # The polluted lambda accepts **kw only, so it will fail on positional args
+                store_module.store("aiden", "test", "test")
+            except TypeError as e:
+                if "takes 0 positional arguments" in str(e):
+                    # This IS the polluted lambda — delete it so fresh import happens
+                    del sys.modules["src.memory.store"]
+    yield
+    # Cleanup after all tests (optional, for hygiene)
 
 
 # ============================================================================

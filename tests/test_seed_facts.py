@@ -30,6 +30,8 @@ seed_module = importlib.util.module_from_spec(spec)
 
 # Patch sys.modules so the import-time env/path setup doesn't blow up in CI
 # (store import may fail without env — we only need the FACTS constant)
+_store_was_loaded = "src.memory.store" in sys.modules
+_store_backup = sys.modules.get("src.memory.store")
 sys.modules.setdefault("src.memory.store", type(sys)("src.memory.store"))
 sys.modules["src.memory.store"].store = lambda **kw: None  # type: ignore[attr-defined]
 
@@ -55,6 +57,13 @@ except Exception:
     FACTS = ast.literal_eval(facts_node)
 else:
     FACTS = seed_module.FACTS  # type: ignore[attr-defined]
+
+# Cleanup: restore or remove the polluted sys.modules entry so memory tests
+# get a fresh import of src.memory.store (prevents test pollution)
+if _store_was_loaded and _store_backup is not None:
+    sys.modules["src.memory.store"] = _store_backup
+elif not _store_was_loaded and "src.memory.store" in sys.modules:
+    del sys.modules["src.memory.store"]
 
 
 # ---------------------------------------------------------------------------

@@ -13,6 +13,7 @@ Ratified: 2026-04-14. Pipeline F architecture refactor.
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
@@ -98,15 +99,27 @@ class GeminiClient:
         if os.environ.get("DRY_RUN"):
             logger.info("[DRY-RUN] Would call Gemini call_f3a: %d chars prompt", len(user_prompt))
             return {"content": {}, "f_status": "dry_run", "cost_usd": 0}
-        result = await gemini_call_with_retry(
-            api_key=self.api_key,
-            system_prompt=STAGE3_IDENTIFY_PROMPT,
-            user_prompt=user_prompt,
-            enable_grounding=True,
-            max_retries=max_retries,
-            model=GEMINI_MODEL_DM,
-        )
+        try:
+            result = await asyncio.wait_for(
+                gemini_call_with_retry(
+                    api_key=self.api_key,
+                    system_prompt=STAGE3_IDENTIFY_PROMPT,
+                    user_prompt=user_prompt,
+                    enable_grounding=True,
+                    max_retries=max_retries,
+                    model=GEMINI_MODEL_DM,
+                ),
+                timeout=60.0,
+            )
+        except asyncio.TimeoutError:
+            logger.warning("call_f3a timed out after 60s for domain %s — returning comprehension_timeout", domain)
+            return {"content": {"comprehension_timeout": True}, "f_status": "comprehension_timeout", "cost_usd": 0}
         self._accumulate(result)
+
+        if result.get("f_status") == "failed":
+            result["content"] = result.get("content") or {}
+            result["content"]["comprehension_timeout"] = True
+            return result
 
         # Step 2: Verify DM is the correct LOCAL AU decision-maker
         content = result.get("content")

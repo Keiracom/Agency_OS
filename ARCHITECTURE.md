@@ -101,6 +101,7 @@ Report to CEO before continuing.
 |-------------|---------------------|------------------------|
 | Clay        | Person enrichment   | Removed — not needed   |
 | Hunter.io   | Email finding       | Leadmagic (T3)         |
+|             |                     | EXCEPTION: Hunter email-finder active in Pipeline F v2.1 as L2 email fallback (score >= 70). See Section 5 T3. |
 | Kaspr       | Mobile finding      | Leadmagic (T5)         |
 | Proxycurl   | LinkedIn data       | Bright Data            |
 | Apollo      | Contact database    | Bright Data + BU JOIN  |
@@ -196,7 +197,9 @@ T3: Leadmagic email
   Env var: LEADMAGIC_API_KEY
   Cost: $0.015 per record
   Returns: verified work email + confidence score
-  Replaces: Hunter.io (DEPRECATED — never reference)
+  L2 fallback: Hunter.io email-finder (free, included in plan)
+               Returns email if score >= 70 before Leadmagic call
+  Replaces: Hunter.io primary role (now L2 fallback only)
 
 T-DM0: DataForSEO
   Env var: DATAFORSEO_LOGIN, DATAFORSEO_PASSWORD

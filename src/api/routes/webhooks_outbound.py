@@ -31,7 +31,7 @@ from uuid import UUID
 
 import httpx
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -93,6 +93,8 @@ class WebhookConfigUpdate(BaseModel):
 class WebhookConfigResponse(BaseModel):
     """Schema for webhook configuration response."""
 
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
     client_id: UUID
     name: str
@@ -112,9 +114,6 @@ class WebhookConfigResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
-
 
 class WebhookDispatchRequest(BaseModel):
     """Schema for dispatching a webhook (internal use)."""
@@ -127,6 +126,8 @@ class WebhookDispatchRequest(BaseModel):
 class WebhookDeliveryResponse(BaseModel):
     """Schema for webhook delivery log response."""
 
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
     webhook_config_id: UUID
     event_type: str
@@ -137,9 +138,6 @@ class WebhookDeliveryResponse(BaseModel):
     error_message: str | None
     created_at: datetime
     delivered_at: datetime | None
-
-    class Config:
-        from_attributes = True
 
 
 # ============================================

@@ -321,6 +321,18 @@ async def test_campaign_activation_flow_success(mock_campaign, mock_client):
         "queued_count": 5,
         "message": "Queued 5 leads",
     })
+    mock_assign_domain = AsyncMock(return_value={
+        "assigned": True,
+        "domain_name": "outreach-001.example.com",
+        "domain_id": str(uuid4()),
+    })
+
+    # Mock get_db_session context manager to prevent real database connections
+    mock_db_session = AsyncMock()
+
+    @asynccontextmanager
+    async def mock_get_db_session():
+        yield mock_db_session
 
     with patch(
         "src.orchestration.flows.campaign_flow.validate_campaign_task",
@@ -340,6 +352,12 @@ async def test_campaign_activation_flow_success(mock_campaign, mock_client):
     ), patch(
         "src.orchestration.flows.campaign_flow.trigger_enrichment_task",
         mock_trigger
+    ), patch(
+        "src.orchestration.flows.campaign_flow.assign_burner_domain_task",
+        mock_assign_domain
+    ), patch(
+        "src.orchestration.flows.campaign_flow.get_db_session",
+        mock_get_db_session
     ):
         result = await campaign_activation_flow.fn(campaign_id)
 

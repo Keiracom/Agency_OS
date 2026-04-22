@@ -125,6 +125,7 @@ class Stage10MessageGenerator:
         batch_size: int = 10,
     ) -> dict[str, Any]:
         """Generate messages for S9-completed businesses with a confirmed BDM."""
+        self._agency_profile = agency_profile
         config = await self.signal_repo.get_config(vertical_slug)
         outreach_gate = config.enrichment_gates.get("min_score_to_outreach", 65)
 
@@ -135,6 +136,7 @@ class Stage10MessageGenerator:
                 bu.dm_name, bu.dm_title, bu.best_match_service, bu.score_reason,
                 bu.tech_stack, bu.tech_gaps, bu.dfs_paid_keywords, bu.gmb_rating,
                 bu.gmb_review_count, bu.outreach_channels, bu.vulnerability_report,
+                bu.propensity_score,
                 bdm.id           AS bdm_id,
                 bdm.headline     AS bdm_headline,
                 bdm.experience_json AS bdm_experience,
@@ -164,7 +166,15 @@ class Stage10MessageGenerator:
                 skipped_no_bdm += 1
                 continue
 
-            channels = list(business.get("outreach_channels") or list(_CHANNEL_PROMPTS.keys()))
+            outreach_channels = business.get("outreach_channels")
+            if outreach_channels is None:
+                propensity = business.get("propensity_score") or 0
+                if propensity >= 75:
+                    channels = list(_CHANNEL_PROMPTS.keys())
+                else:
+                    channels = ["email", "linkedin"]
+            else:
+                channels = list(outreach_channels)
             active_channels = [c for c in channels if c in _CHANNEL_PROMPTS]
             if not active_channels:
                 skipped_no_bdm += 1
@@ -336,6 +346,12 @@ class Stage10MessageGenerator:
             critic_score = critic.get("score")
             critic_feedback = critic.get("feedback")
             needs_review = critic.get("needs_review", False)
+            if channel == "email" and needs_review and critic_feedback in ("critic_timeout", "critic_parse_error"):
+                logger.warning(
+                    "Skipping email write for bu_id=%s — critic did not review (%s). Queued for manual review.",
+                    bu_id, critic_feedback,
+                )
+                continue
             await self.conn.execute(
                 """
                 INSERT INTO dm_messages

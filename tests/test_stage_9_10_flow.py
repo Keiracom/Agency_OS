@@ -16,6 +16,18 @@ from src.orchestration.flows.stage_9_10_flow import (
 
 
 # ---------------------------------------------------------------------------
+# Fixtures
+# ---------------------------------------------------------------------------
+
+AGENCY_PROFILE = {
+    "name": "Test Agency",
+    "services": ["SEO", "Paid Ads"],
+    "tone": "professional",
+    "founder_name": "Alex",
+}
+
+
+# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
@@ -54,6 +66,7 @@ async def test_flow_dry_run():
 
         result = await stage_9_10_pipeline.fn(
             bdm_ids=["fake-id"],
+            agency_profile=AGENCY_PROFILE,
             dry_run=True,
         )
 
@@ -86,6 +99,7 @@ async def test_budget_cap_enforcement():
         with pytest.raises(ValueError, match="Estimated cost"):
             await stage_9_10_pipeline.fn(
                 bdm_ids=["id1", "id2", "id3"],
+                agency_profile=AGENCY_PROFILE,
                 budget_cap_usd=0.001,
                 dry_run=False,
             )
@@ -119,6 +133,7 @@ async def test_stage_9_verification_gate():
         with pytest.raises(RuntimeError, match="Stage 9 incomplete"):
             await stage_9_10_pipeline.fn(
                 bdm_ids=["id1"],
+                agency_profile=AGENCY_PROFILE,
                 budget_cap_usd=5.0,
                 dry_run=False,
             )
@@ -152,6 +167,7 @@ async def test_post_s9_budget_exhaustion():
         with pytest.raises(ValueError, match="Budget exhausted after Stage 9"):
             await stage_9_10_pipeline.fn(
                 bdm_ids=["id1"],
+                agency_profile=AGENCY_PROFILE,
                 budget_cap_usd=5.0,
                 dry_run=False,
             )

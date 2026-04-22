@@ -158,8 +158,8 @@ def _tg(msg: str) -> None:
             json={"chat_id": "7267788033", "text": f"[EVO] {msg}"},
             timeout=10,
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("TG progress notif failed: %s", exc)
 
 
 def _tg_progress(stage_label: str, pipeline: list[dict], cost_so_far: float) -> None:
@@ -276,6 +276,79 @@ async def _run_stage3(domain_data: dict, gemini: GeminiClient) -> dict:
     return domain_data
 
 
+async def _persist_stage4_to_bu(domain: str, bundle: dict) -> None:
+    """H3: Write DFS bundle to BU immediately after Stage 4, before Stage 5 gate.
+
+    Best-effort — failure does not block pipeline. Uses asyncpg directly to avoid
+    ORM overhead in a hot parallel path. Writes raw bundle + scalar extracts so
+    data survives even if domain drops at Stage 5.
+    """
+    import asyncpg as _asyncpg
+
+    db_url_raw = os.environ.get("DATABASE_URL", "")
+    if not db_url_raw:
+        logger.warning("H3 BU write skipped: DATABASE_URL not set for domain=%s", domain)
+        return
+    db_url = db_url_raw.replace("postgresql+asyncpg://", "postgresql://")
+    rank = bundle.get("rank_overview") or {}
+    backlinks = bundle.get("backlinks") or {}
+    try:
+        conn = await _asyncpg.connect(db_url, statement_cache_size=0)
+        try:
+            await conn.execute(
+                """INSERT INTO business_universe (domain, display_name,
+                       dfs_organic_etv, dfs_organic_keywords, backlinks_count, domain_rank,
+                       stage_metrics)
+                   VALUES ($1, $2, $3, $4, $5, $6, $7)
+                   ON CONFLICT (domain) WHERE domain IS NOT NULL AND domain != '' DO UPDATE SET
+                       dfs_organic_etv = COALESCE(EXCLUDED.dfs_organic_etv, business_universe.dfs_organic_etv),
+                       dfs_organic_keywords = COALESCE(EXCLUDED.dfs_organic_keywords, business_universe.dfs_organic_keywords),
+                       backlinks_count = COALESCE(EXCLUDED.backlinks_count, business_universe.backlinks_count),
+                       domain_rank = COALESCE(EXCLUDED.domain_rank, business_universe.domain_rank),
+                       stage_metrics = business_universe.stage_metrics || $7::jsonb,
+                       updated_at = NOW()""",
+                domain,
+                domain.split(".")[0].replace("-", " ").title(),
+                rank.get("organic_etv"),
+                rank.get("organic_keywords"),
+                backlinks.get("backlinks_num"),
+                rank.get("rank"),
+                json.dumps({"stage4": bundle}),
+            )
+        finally:
+            await conn.close()
+    except Exception as exc:
+        logger.warning("H3 stage4 BU write attempt 1 failed for %s: %s — retrying", domain, exc)
+        try:
+            await asyncio.sleep(1)
+            conn = await _asyncpg.connect(db_url, statement_cache_size=0)
+            try:
+                await conn.execute(
+                    """INSERT INTO business_universe (domain, display_name,
+                           dfs_organic_etv, dfs_organic_keywords, backlinks_count, domain_rank,
+                           stage_metrics)
+                       VALUES ($1, $2, $3, $4, $5, $6, $7)
+                       ON CONFLICT (domain) WHERE domain IS NOT NULL AND domain != '' DO UPDATE SET
+                           dfs_organic_etv = COALESCE(EXCLUDED.dfs_organic_etv, business_universe.dfs_organic_etv),
+                           dfs_organic_keywords = COALESCE(EXCLUDED.dfs_organic_keywords, business_universe.dfs_organic_keywords),
+                           backlinks_count = COALESCE(EXCLUDED.backlinks_count, business_universe.backlinks_count),
+                           domain_rank = COALESCE(EXCLUDED.domain_rank, business_universe.domain_rank),
+                           stage_metrics = COALESCE(business_universe.stage_metrics, '{}'::jsonb) || $7::jsonb,
+                           updated_at = NOW()""",
+                    domain,
+                    domain.split(".")[0].replace("-", " ").title(),
+                    rank.get("organic_etv"),
+                    rank.get("organic_keywords"),
+                    backlinks.get("backlinks_num"),
+                    rank.get("rank"),
+                    json.dumps({"stage4": bundle}),
+                )
+            finally:
+                await conn.close()
+        except Exception as exc2:
+            logger.error("H3 stage4 BU write FAILED permanently for %s: %s (GOV-8 data loss)", domain, exc2)
+
+
 async def _run_stage4(domain_data: dict, dfs: DFSLabsClient) -> dict:
     """Stage 4 SIGNAL — DFS signal bundle."""
     _tracker(domain_data).start_stage("stage4")
@@ -284,6 +357,8 @@ async def _run_stage4(domain_data: dict, dfs: DFSLabsClient) -> dict:
     try:
         bundle = await build_signal_bundle(dfs, domain_data["domain"], business_name=biz)
         domain_data["stage4"] = bundle
+        # H3: persist DFS bundle to BU immediately — survives Stage 5 drop
+        await _persist_stage4_to_bu(domain_data["domain"], bundle)
     except Exception as exc:
         domain_data["errors"].append(f"stage4: {exc}")
         domain_data["stage4"] = {}
@@ -525,11 +600,66 @@ async def _run_stage9(domain_data: dict, bd: BrightDataClient) -> dict:
         domain_data["stage9"] = result
         # Fixed cost: ~$0.002 DM + $0.025 company = $0.027/domain (parallel-safe)
         domain_data["cost_usd"] += STAGE9_COST_PER_DOMAIN
+        # H2: persist social posts to BU immediately after scrape.
+        # dm_social_posts / company_social_posts columns not yet in schema —
+        # written to stage_metrics JSONB until migration adds dedicated columns.
+        await _persist_stage9_social_to_bu(domain_data["domain"], result)
     except Exception as exc:
         domain_data["errors"].append(f"stage9: {exc}")
     domain_data["timings"]["stage9"] = round(time.monotonic() - t0, 2)
     _tracker(domain_data).end_stage("stage9")
     return domain_data
+
+
+async def _persist_stage9_social_to_bu(domain: str, social_result: dict) -> None:
+    """H2: Write Stage 9 social posts to BU immediately after scrape.
+
+    MIGRATION NEEDED: Add dm_social_posts (jsonb) and company_social_posts (jsonb)
+    columns to business_universe. Until then, data is stored under stage_metrics->stage9.
+    """
+    import asyncpg as _asyncpg
+
+    db_url_raw = os.environ.get("DATABASE_URL", "")
+    if not db_url_raw:
+        logger.warning("H2 BU write skipped: DATABASE_URL not set for domain=%s", domain)
+        return
+    db_url = db_url_raw.replace("postgresql+asyncpg://", "postgresql://")
+    stage9_json = json.dumps({"stage9": social_result})
+    try:
+        conn = await _asyncpg.connect(db_url, statement_cache_size=0)
+        try:
+            await conn.execute(
+                """INSERT INTO business_universe (domain, display_name, stage_metrics)
+                   VALUES ($1, $2, $3::jsonb)
+                   ON CONFLICT (domain) WHERE domain IS NOT NULL AND domain != '' DO UPDATE SET
+                       stage_metrics = COALESCE(business_universe.stage_metrics, '{}'::jsonb) || $3::jsonb,
+                       updated_at = NOW()""",
+                domain,
+                domain.split(".")[0].replace("-", " ").title(),
+                stage9_json,
+            )
+        finally:
+            await conn.close()
+    except Exception as exc:
+        logger.warning("H2 stage9 social BU write attempt 1 failed for %s: %s — retrying", domain, exc)
+        try:
+            await asyncio.sleep(1)
+            conn = await _asyncpg.connect(db_url, statement_cache_size=0)
+            try:
+                await conn.execute(
+                    """INSERT INTO business_universe (domain, display_name, stage_metrics)
+                       VALUES ($1, $2, $3::jsonb)
+                       ON CONFLICT (domain) WHERE domain IS NOT NULL AND domain != '' DO UPDATE SET
+                           stage_metrics = COALESCE(business_universe.stage_metrics, '{}'::jsonb) || $3::jsonb,
+                           updated_at = NOW()""",
+                    domain,
+                    domain.split(".")[0].replace("-", " ").title(),
+                    stage9_json,
+                )
+            finally:
+                await conn.close()
+        except Exception as exc2:
+            logger.error("H2 stage9 social BU write FAILED permanently for %s: %s (GOV-8 data loss)", domain, exc2)
 
 
 async def _run_stage10(domain_data: dict) -> dict:

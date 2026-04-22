@@ -383,6 +383,20 @@ deployments:
       budget_cap_aud: 25.0
     schedules: []
 
+  # ============================================
+  # MONITORING FLOWS
+  # ============================================
+
+  - name: health-check-flow
+    version: "1.0.0"
+    description: "5-minute health probe — detection always ON, response gated by feature flags"
+    tags: [health, monitoring, b4]
+    paused: false
+    schedule:
+      cron: "*/5 * * * *"
+      timezone: "Australia/Sydney"
+    entrypoint: src/orchestration/flows/health_check_flow.py:health_check_flow
+
 # Environment variables reference
 # These should be set in Railway/environment, not hardcoded here
 # Required environment variables:

@@ -1137,6 +1137,33 @@ Both agents discuss and concur first. Elliot is last voice to Dave. Dave gets pl
 - Gemini: working (Stage 9 VR + critic)
 - Hunter: LIVE on Railway (816/1000 searches, pushed this session)
 - Enforcer bot: @Enforcerr_bot LIVE — systemd service enforcer-bot.service, inbox-based architecture (cross-post from chat_bot.py), 6 rules active (concur-before-summary, step0-before-execution, completion-requires-verification, no-unreviewed-main-push, shared-file-claim, save-claim-requires-proof), posts violations to TG group + both bot inboxes. Commits: df558801 (MVP), 7d2edf8e (prompt fix), 8558efa3 (python-telegram-bot), 00ccebbe (inbox cross-post), 68af3b57 (Rule 6), b4d37b19 (bot inbox write-back). Dave directive: enforcement role removed from Aiden, bots proactively follow rules + reactively follow enforcer.
+- Enforcer iter-2 QUEUED: (a) event-state table for concur tracking beyond 20-msg window — 3 false positives tonight from this gap. (b) /stage0 gate — Dave's trigger suffix controls when concur rule applies. LLM not reliably parsing it from sliding window yet.
+
+**Self-healing architecture (RATIFIED by Dave 2026-04-22):**
+Design: detect-always + gate-response. Full system built, T1 auto-fix paused via feature flag.
+- Detection: 5-min health_check_flow, always ON, logs to health_checks table (Railway services, Prefect worker, API keys, test suite, flow failures)
+- T1 auto-fix: code built, SELF_HEAL_T1_ACTIVE=false. Dave flips when ready. Known-fix registry, trusted-fix-class auto-merge (Dave-whitelisted), 1 fix/hour, max 3 files, PR-for-review, 24h symptom watch, lock table for concurrency
+- T2 agent session: ON from day 1 (current mode)
+- T3 Dave alerts: ON from day 1 — daily digest (6 AM AEST) + CRITICAL real-time. Severity: CRITICAL/HIGH/MEDIUM/LOW per schema
+- Learning loop: batch review after 50 data points (not per-incident)
+- Band-aid detection: provisional 7-day tag, auto-revert if same class recurs
+- Anti-rot: quarterly smoke test + CI coverage on paused code
+- Pause registry: docs/PAUSED.md
+- Dave merge authority preserved — T1 opens PRs, Dave merges (or trusted-class auto-merge for whitelisted patterns)
+- Spec: docs/specs/b3_self_healing_spec.md (needs update with ratified changes)
+- Enforcer integration: enforcer handles governance enforcement, self-healing handles operational failures — separate domains, same infrastructure pattern
+
+**Concur-then-plain-English rule (RATIFIED 2026-04-21):**
+Both agents discuss and concur first. Elliot is last voice to Dave. Dave gets plain English, no jargon. /stage0 at end of Dave's message activates concur requirement; without it, Elliot can respond directly. Enforcement: Rule 1 in enforcer bot (pending /stage0 calibration fix).
+
+**7-rule dead code policy (RATIFIED 2026-04-21):**
+R1: Extract intent + delete in same PR (threshold-based depth). R2: Deployment hygiene cron. R3: Supersedes checklist on architecture PRs. R4: CLAUDE.md dead-ref table = machine-readable manifest, CI lint. R5: Audit at phase boundary. R6: prefect.yaml = SSOT, auto-deregister on deploy. R7: Salvage-before-delete review (problem-domain tags, triggers_on field, inline pointer comments).
+
+**Hybrid enforcement architecture (RATIFIED 2026-04-21):**
+Infrastructure (Category A): GitHub branch protection + pre-commit hooks + auto-deregister for code/deploy. Enforcer bot (Category B+C): @Enforcerr_bot for conversation/process rules. Daily sweep (Category C backstop). Dave's two-layer discipline: proactive rule-following + reactive enforcer response.
+
+**Pre-revenue reality check (RATIFIED 2026-04-21):**
+Zero clients. All social proof claims REJECTED unless Dave confirms. Applies through first paying customer. DEFAULT_AGENCY eliminated from production (architectural antipattern — hardcoded fallbacks for customer data). _KEIRACOM_PROFILE truthful (no case_study). social_proof_sourced HARD-FAIL gate in writer/critic.
 
 ## SECTION 18 — OUTREACH + CONTENT (pre-launch)
 

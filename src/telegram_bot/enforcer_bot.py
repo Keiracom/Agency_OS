@@ -32,13 +32,18 @@ message_window: deque = deque(maxlen=MAX_WINDOW)
 last_flag_times: dict[str, float] = {}
 FLAG_COOLDOWN_SECONDS = 300
 
+# Event-state tracker — persists across messages, resets on restart
+# Keys: "last_concur_elliot", "last_concur_aiden", "last_step0", "last_stage0_request"
+# Values: {"timestamp": ISO, "text_snippet": first 100 chars, "topic_hint": str}
+enforce_events: dict[str, dict] = {}
+
 RULES_PROMPT = """You are a governance enforcement bot for a multi-agent development team.
 
 You monitor group chat messages between two AI agents (Elliot and Aiden) and their human manager (Dave).
 
 CHECK these 6 rules against the CURRENT MESSAGE in context of the RECENT MESSAGES:
 
-Rule 1 — CONCUR-BEFORE-SUMMARY: If the current message is a bot addressing Dave with a summary, recommendation, or decision (look for "Dave —", "Dave,", "your call", "here's the plan", "here's what"), check if the OTHER bot posted explicit concurrence ("concur", "concur confirmed", "CONCUR") in recent messages for the same topic. Missing concurrence = VIOLATION. EXCEPTION: if Dave's most recent message that prompted this response did NOT end with "/stage0", then Rule 1 does NOT apply — the bot can respond directly without peer concurrence. Only enforce Rule 1 when Dave's triggering message ends with "/stage0".
+Rule 1 — CONCUR-BEFORE-SUMMARY: If the current message is a bot addressing Dave with a summary, recommendation, or decision (look for "Dave —", "Dave,", "your call", "here's the plan", "here's what"), check if the OTHER bot posted explicit concurrence ("concur", "concur confirmed", "CONCUR") in recent messages OR in GOVERNANCE_EVENTS (last_concur_elliot / last_concur_aiden) for the same topic. Missing concurrence = VIOLATION. NOTE: /stage0 gating is handled externally in code — evaluate Rule 1 on its merits and report if concurrence is missing.
 
 Rule 2 — STEP-0-BEFORE-EXECUTION: If the current message shows execution starting (mentions committing, pushing, deploying, triggering flows, creating PRs), check if "Step 0" or "RESTATE" was posted earlier for this directive. Missing Step 0 = VIOLATION.
 
@@ -60,6 +65,8 @@ RESPOND WITH ONLY THIS JSON:
 }
 
 If NO violation, return {"violation": false, "rule_number": null, "rule_name": null, "detail": null, "should_have": null}
+
+You also have access to GOVERNANCE_EVENTS — a state tracker of the most recent concur, Step 0, and /stage0 events. Use these to check rules even when the events fall outside the recent_messages window.
 
 IMPORTANT: Flag violations when detected. Err on the side of flagging — missed violations are worse than false alarms.
 Do NOT flag Dave's messages — he is not subject to bot rules.
@@ -100,6 +107,7 @@ async def check_with_llm(current_msg: str, recent_msgs: list[str]) -> dict | Non
     user_content = json.dumps({
         "current_message": current_msg,
         "recent_messages": recent_msgs[-MAX_WINDOW:],
+        "governance_events": enforce_events,
     }, ensure_ascii=False)
 
     try:
@@ -177,12 +185,52 @@ async def process_message(message: dict) -> None:
     # Add to sliding window
     sender = message.get("from", {})
     sender_name = sender.get("first_name", "Unknown")
+    sender_username = sender.get("username", "")
+    sender_is_bot = sender.get("is_bot", False)
     window_entry = f"[{sender_name}]: {text[:500]}"
     message_window.append(window_entry)
 
+    # --- Update event-state tracker ---
+    now_iso = datetime.now(timezone.utc).isoformat()
+    text_lower = text.lower()
+
+    # Track Dave's /stage0 requests (Dave = not a bot)
+    if not sender_is_bot and (text.strip().endswith("/stage0") or text.strip().endswith("/stage 0")):
+        enforce_events["last_stage0_request"] = {
+            "timestamp": now_iso,
+            "text_snippet": text[:100],
+            "topic_hint": text[:60],
+        }
+        logger.info("EVENT: last_stage0_request updated")
+
+    # Track bot concurrence
+    if sender_is_bot and ("concur" in text_lower):
+        callsign = sender_name.lower()
+        if "elliot" in callsign:
+            enforce_events["last_concur_elliot"] = {
+                "timestamp": now_iso,
+                "text_snippet": text[:100],
+                "topic_hint": text[:60],
+            }
+            logger.info("EVENT: last_concur_elliot updated")
+        elif "aiden" in callsign:
+            enforce_events["last_concur_aiden"] = {
+                "timestamp": now_iso,
+                "text_snippet": text[:100],
+                "topic_hint": text[:60],
+            }
+            logger.info("EVENT: last_concur_aiden updated")
+
+    # Track Step 0 / RESTATE posts
+    if "step 0" in text_lower or "restate" in text_lower:
+        enforce_events["last_step0"] = {
+            "timestamp": now_iso,
+            "text_snippet": text[:100],
+            "topic_hint": text[:60],
+        }
+        logger.info("EVENT: last_step0 updated")
+
     # Only check bot messages
-    sender_username = sender.get("username", "")
-    sender_is_bot = sender.get("is_bot", False)
     logger.info("MSG from=%s is_bot=%s text=%s", sender_username, sender_is_bot, text[:80])
 
     if not is_bot_message(message):
@@ -195,7 +243,21 @@ async def process_message(message: dict) -> None:
         return
 
     logger.info("CHECKING message from %s against rules", sender_username)
-    # Rate limit check
+
+    # --- /stage0 gate: deterministic Python check (not LLM) ---
+    stage0_active = False
+    last_stage0 = enforce_events.get("last_stage0_request", {})
+    if last_stage0:
+        stage0_ts = last_stage0.get("timestamp", "")
+        if stage0_ts:
+            try:
+                ts = datetime.fromisoformat(stage0_ts)
+                age_minutes = (datetime.now(timezone.utc) - ts).total_seconds() / 60
+                stage0_active = age_minutes < 30
+            except Exception:
+                pass
+    logger.info("/stage0 gate: active=%s", stage0_active)
+
     recent_window = list(message_window)
     result = await check_with_llm(text, recent_window)
 
@@ -204,6 +266,11 @@ async def process_message(message: dict) -> None:
         rule_name = result.get("rule_name", "unknown")
         detail = result.get("detail", "")
         should_have = result.get("should_have", "")
+
+        # Rule 1 requires /stage0 to be active — suppress if not
+        if rule_num == 1 and not stage0_active:
+            logger.info("Rule 1 violation suppressed — /stage0 not active")
+            return
 
         # Rate limit: don't re-flag same rule within cooldown
         flag_key = f"rule_{rule_num}"
@@ -215,7 +282,7 @@ async def process_message(message: dict) -> None:
         last_flag_times[flag_key] = now
 
         interjection = (
-            f"\u26a0\ufe0f [ENFORCER] Rule {rule_num} \u2014 {rule_name}: "
+            f"[ENFORCER] Rule {rule_num} -- {rule_name}: "
             f"{detail}. {should_have}."
         )
         logger.info("VIOLATION: %s", interjection)

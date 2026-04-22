@@ -50,10 +50,10 @@ async def query_ceo_memory():
         last_dir_ts = row2["updated_at"] if row2 else None
 
         row3 = await conn.fetchrow(
-            "SELECT LEFT(value::text, 200) as preview, updated_at FROM public.ceo_memory "
+            "SELECT value::jsonb->>'active_phase' AS active_phase FROM public.ceo_memory "
             "WHERE key = 'ceo:roadmap_master'"
         )
-        roadmap = dict(row3) if row3 else {}
+        roadmap = {"active_phase": row3["active_phase"] if row3 else "unknown"}
 
         return session_end, last_directive, last_dir_ts, roadmap
     finally:
@@ -108,11 +108,7 @@ async def build_brief(target_callsign: str) -> str:
     manual_commit = query_manual_commit()
     drive_info = query_drive_mirror()
 
-    try:
-        roadmap_data = json.loads(roadmap.get("preview", "{}").strip('"'))
-        active_phase = roadmap_data.get("active_phase", "unknown")
-    except Exception:
-        active_phase = "unknown"
+    active_phase = roadmap.get("active_phase", "unknown")
 
     session_preview = session_end.get("preview", "{}")
 

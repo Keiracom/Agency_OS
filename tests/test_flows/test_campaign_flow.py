@@ -288,14 +288,8 @@ async def test_trigger_enrichment_empty_list():
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(reason="Integration test requires full Prefect context and database fixtures (PRE-EXISTING)")
 async def test_campaign_activation_flow_success(mock_campaign, mock_client):
-    """Test full campaign activation flow.
-
-    PRE-EXISTING FAILURE: This is an integration test that requires a running
-    Prefect server and database. It's marked xfail to prevent test suite pollution.
-    When the task execution fails, it leaves Prefect state that contaminates subsequent tests.
-    """
+    """Test full campaign activation flow."""
     campaign_id = uuid4()
 
     # Use AsyncMock for all patched tasks since they're awaited
@@ -327,6 +321,11 @@ async def test_campaign_activation_flow_success(mock_campaign, mock_client):
         "queued_count": 5,
         "message": "Queued 5 leads",
     })
+    mock_assign_domain = AsyncMock(return_value={
+        "assigned": True,
+        "domain_name": "outreach-001.example.com",
+        "domain_id": str(uuid4()),
+    })
 
     # Mock get_db_session context manager to prevent real database connections
     mock_db_session = AsyncMock()
@@ -353,6 +352,9 @@ async def test_campaign_activation_flow_success(mock_campaign, mock_client):
     ), patch(
         "src.orchestration.flows.campaign_flow.trigger_enrichment_task",
         mock_trigger
+    ), patch(
+        "src.orchestration.flows.campaign_flow.assign_burner_domain_task",
+        mock_assign_domain
     ), patch(
         "src.orchestration.flows.campaign_flow.get_db_session",
         mock_get_db_session

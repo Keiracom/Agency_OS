@@ -300,7 +300,7 @@ async def _persist_stage4_to_bu(domain: str, bundle: dict) -> None:
                        dfs_organic_etv, dfs_organic_keywords, backlinks_count, domain_rank,
                        stage_metrics)
                    VALUES ($1, $2, $3, $4, $5, $6, $7)
-                   ON CONFLICT (domain) DO UPDATE SET
+                   ON CONFLICT (domain) WHERE domain IS NOT NULL AND domain != '' DO UPDATE SET
                        dfs_organic_etv = COALESCE(EXCLUDED.dfs_organic_etv, business_universe.dfs_organic_etv),
                        dfs_organic_keywords = COALESCE(EXCLUDED.dfs_organic_keywords, business_universe.dfs_organic_keywords),
                        backlinks_count = COALESCE(EXCLUDED.backlinks_count, business_universe.backlinks_count),
@@ -328,7 +328,7 @@ async def _persist_stage4_to_bu(domain: str, bundle: dict) -> None:
                            dfs_organic_etv, dfs_organic_keywords, backlinks_count, domain_rank,
                            stage_metrics)
                        VALUES ($1, $2, $3, $4, $5, $6, $7)
-                       ON CONFLICT (domain) DO UPDATE SET
+                       ON CONFLICT (domain) WHERE domain IS NOT NULL AND domain != '' DO UPDATE SET
                            dfs_organic_etv = COALESCE(EXCLUDED.dfs_organic_etv, business_universe.dfs_organic_etv),
                            dfs_organic_keywords = COALESCE(EXCLUDED.dfs_organic_keywords, business_universe.dfs_organic_keywords),
                            backlinks_count = COALESCE(EXCLUDED.backlinks_count, business_universe.backlinks_count),
@@ -631,7 +631,7 @@ async def _persist_stage9_social_to_bu(domain: str, social_result: dict) -> None
             await conn.execute(
                 """INSERT INTO business_universe (domain, display_name, stage_metrics)
                    VALUES ($1, $2, $3::jsonb)
-                   ON CONFLICT (domain) DO UPDATE SET
+                   ON CONFLICT (domain) WHERE domain IS NOT NULL AND domain != '' DO UPDATE SET
                        stage_metrics = COALESCE(business_universe.stage_metrics, '{}'::jsonb) || $3::jsonb,
                        updated_at = NOW()""",
                 domain,
@@ -649,7 +649,7 @@ async def _persist_stage9_social_to_bu(domain: str, social_result: dict) -> None
                 await conn.execute(
                     """INSERT INTO business_universe (domain, display_name, stage_metrics)
                        VALUES ($1, $2, $3::jsonb)
-                       ON CONFLICT (domain) DO UPDATE SET
+                       ON CONFLICT (domain) WHERE domain IS NOT NULL AND domain != '' DO UPDATE SET
                            stage_metrics = COALESCE(business_universe.stage_metrics, '{}'::jsonb) || $3::jsonb,
                            updated_at = NOW()""",
                     domain,

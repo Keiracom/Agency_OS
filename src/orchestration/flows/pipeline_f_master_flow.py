@@ -228,7 +228,7 @@ async def persist_stage8_to_db(pipeline: list[dict]) -> list[str]:
                                 dfs_organic_etv, dfs_organic_keywords, backlinks_count, domain_rank,
                                 stage_metrics)
                            VALUES ($1, $2, $3, 'dropped', $4, $5, $6, $7, $8, $9, $10)
-                           ON CONFLICT (domain) DO UPDATE SET
+                           ON CONFLICT (domain) WHERE domain IS NOT NULL AND domain != '' DO UPDATE SET
                                pipeline_stage = COALESCE(EXCLUDED.pipeline_stage, business_universe.pipeline_stage),
                                pipeline_status = 'dropped',
                                filter_reason = COALESCE(EXCLUDED.filter_reason, business_universe.filter_reason),
@@ -273,7 +273,7 @@ async def persist_stage8_to_db(pipeline: list[dict]) -> list[str]:
                 bu_id = await conn.fetchval(
                     """INSERT INTO business_universe (domain, display_name, pipeline_stage, propensity_score, dfs_discovery_category)
                        VALUES ($1, $2, $3, $4, $5)
-                       ON CONFLICT (domain) DO UPDATE SET
+                       ON CONFLICT (domain) WHERE domain IS NOT NULL AND domain != '' DO UPDATE SET
                            pipeline_stage = EXCLUDED.pipeline_stage,
                            propensity_score = EXCLUDED.propensity_score,
                            dfs_discovery_category = COALESCE(EXCLUDED.dfs_discovery_category, business_universe.dfs_discovery_category),

@@ -41,7 +41,7 @@ RULES_PROMPT = """You are a governance enforcement bot for a multi-agent develop
 
 You monitor group chat messages between two AI agents (Elliot and Aiden) and their human manager (Dave).
 
-CHECK these 6 rules against the CURRENT MESSAGE in context of the RECENT MESSAGES:
+CHECK these 7 rules against the CURRENT MESSAGE in context of the RECENT MESSAGES:
 
 Rule 1 — CONCUR-BEFORE-SUMMARY: If the current message is a bot addressing Dave with a summary, recommendation, or decision (look for "Dave —", "Dave,", "your call", "here's the plan", "here's what"), check if the OTHER bot posted explicit concurrence ("concur", "concur confirmed", "CONCUR") in recent messages OR in GOVERNANCE_EVENTS (last_concur_elliot / last_concur_aiden) for the same topic. Missing concurrence = VIOLATION. NOTE: /stage0 gating is handled externally in code — evaluate Rule 1 on its merits and report if concurrence is missing.
 
@@ -54,6 +54,8 @@ Rule 4 — NO-UNREVIEWED-MAIN-PUSH: If the current message mentions pushing dire
 Rule 5 — SHARED-FILE-CLAIM: If the current message mentions editing memory_listener.py, chat_bot.py, store.py, listener_discernment.py, or any CLAUDE.md file, check if "[CLAIM:" was posted. Missing claim = VIOLATION.
 
 Rule 6 — SAVE-CLAIM-REQUIRES-PROOF: If the current message claims a save was completed ("state saved", "4-store save complete", "ceo_memory updated", "MANUAL updated", "Drive mirrored", "daily_log written", "stores written"), check that the message includes SPECIFIC EVIDENCE for EACH store claimed. Evidence means: commit hashes for MANUAL, SQL confirmation for ceo_memory, byte count or success message for Drive mirror, query result for daily_log. A bot saying "all stores written ✓" without showing the actual outputs for each store = VIOLATION. The claim must be backed by verifiable proof in recent messages, not just checkmarks.
+
+Rule 7 — CLONE-DIRECT-GROUP-POST: If the current message's bot/sender prefix is a CLONE callsign (ATLAS, ORION, or any `[<callsign>]` tag other than ELLIOT, AIDEN, DAVE, SCOUT, ENFORCER), flag as VIOLATION — clones are prohibited from posting to group per C3 Prime-Only Clone Channel. Clone output must go only to parent inbox via relay-watcher push. Parent surfaces clone artefacts to group via `[CONSUMED:<parent>] <path> + verbatim excerpt` post. Seeing a clone callsign in group means either (a) the clone violated C3 directly, or (b) a parent wrote under the wrong prefix — either way, flag.
 
 RESPOND WITH ONLY THIS JSON:
 {
@@ -83,6 +85,7 @@ TRIGGER_PATTERNS = [
     "memory_listener.py", "chat_bot.py", "store.py", "listener_discernment.py", "claude.md",
     "state saved", "ceo_memory updated", "manual updated", "drive mirror", "daily_log written",
     "stores written", "store save complete", "session closed",
+    "[atlas]", "[orion]",
 ]
 
 

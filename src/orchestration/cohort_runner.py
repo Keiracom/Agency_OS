@@ -324,11 +324,23 @@ async def _persist_stage4_to_bu(domain: str, bundle: dict) -> None:
             conn = await _asyncpg.connect(db_url, statement_cache_size=0)
             try:
                 await conn.execute(
-                    """UPDATE business_universe
-                       SET stage_metrics = COALESCE(stage_metrics, '{}'::jsonb) || $2::jsonb,
-                           updated_at = NOW()
-                       WHERE domain = $1""",
+                    """INSERT INTO business_universe (domain, display_name,
+                           dfs_organic_etv, dfs_organic_keywords, backlinks_count, domain_rank,
+                           stage_metrics)
+                       VALUES ($1, $2, $3, $4, $5, $6, $7)
+                       ON CONFLICT (domain) DO UPDATE SET
+                           dfs_organic_etv = COALESCE(EXCLUDED.dfs_organic_etv, business_universe.dfs_organic_etv),
+                           dfs_organic_keywords = COALESCE(EXCLUDED.dfs_organic_keywords, business_universe.dfs_organic_keywords),
+                           backlinks_count = COALESCE(EXCLUDED.backlinks_count, business_universe.backlinks_count),
+                           domain_rank = COALESCE(EXCLUDED.domain_rank, business_universe.domain_rank),
+                           stage_metrics = COALESCE(business_universe.stage_metrics, '{}'::jsonb) || $7::jsonb,
+                           updated_at = NOW()""",
                     domain,
+                    domain.split(".")[0].replace("-", " ").title(),
+                    rank.get("organic_etv"),
+                    rank.get("organic_keywords"),
+                    backlinks.get("backlinks_num"),
+                    rank.get("rank"),
                     json.dumps({"stage4": bundle}),
                 )
             finally:
@@ -612,16 +624,19 @@ async def _persist_stage9_social_to_bu(domain: str, social_result: dict) -> None
         logger.warning("H2 BU write skipped: DATABASE_URL not set for domain=%s", domain)
         return
     db_url = db_url_raw.replace("postgresql+asyncpg://", "postgresql://")
+    stage9_json = json.dumps({"stage9": social_result})
     try:
         conn = await _asyncpg.connect(db_url, statement_cache_size=0)
         try:
             await conn.execute(
-                """UPDATE business_universe
-                   SET stage_metrics = COALESCE(stage_metrics, '{}'::jsonb) || $2::jsonb,
-                       updated_at = NOW()
-                   WHERE domain = $1""",
+                """INSERT INTO business_universe (domain, display_name, stage_metrics)
+                   VALUES ($1, $2, $3::jsonb)
+                   ON CONFLICT (domain) DO UPDATE SET
+                       stage_metrics = COALESCE(business_universe.stage_metrics, '{}'::jsonb) || $3::jsonb,
+                       updated_at = NOW()""",
                 domain,
-                json.dumps({"stage9": social_result}),
+                domain.split(".")[0].replace("-", " ").title(),
+                stage9_json,
             )
         finally:
             await conn.close()
@@ -632,12 +647,14 @@ async def _persist_stage9_social_to_bu(domain: str, social_result: dict) -> None
             conn = await _asyncpg.connect(db_url, statement_cache_size=0)
             try:
                 await conn.execute(
-                    """UPDATE business_universe
-                       SET stage_metrics = COALESCE(stage_metrics, '{}'::jsonb) || $2::jsonb,
-                           updated_at = NOW()
-                       WHERE domain = $1""",
+                    """INSERT INTO business_universe (domain, display_name, stage_metrics)
+                       VALUES ($1, $2, $3::jsonb)
+                       ON CONFLICT (domain) DO UPDATE SET
+                           stage_metrics = COALESCE(business_universe.stage_metrics, '{}'::jsonb) || $3::jsonb,
+                           updated_at = NOW()""",
                     domain,
-                    json.dumps({"stage9": social_result}),
+                    domain.split(".")[0].replace("-", " ").title(),
+                    stage9_json,
                 )
             finally:
                 await conn.close()

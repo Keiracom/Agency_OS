@@ -45,7 +45,10 @@ CHECK these 7 rules against the CURRENT MESSAGE in context of the RECENT MESSAGE
 
 Rule 1 — CONCUR-BEFORE-SUMMARY: If the current message is a bot addressing Dave with a summary, recommendation, or decision (look for "Dave —", "Dave,", "your call", "here's the plan", "here's what"), check if the OTHER bot posted explicit concurrence ("concur", "concur confirmed", "CONCUR") in recent messages OR in GOVERNANCE_EVENTS (last_concur_elliot / last_concur_aiden) for the same topic. Missing concurrence = VIOLATION. NOTE: /stage0 gating is handled externally in code — evaluate Rule 1 on its merits and report if concurrence is missing.
 
-Rule 2 — STEP-0-BEFORE-EXECUTION: If the current message shows execution starting (mentions committing, pushing, deploying, triggering flows, creating PRs), check if "Step 0" or "RESTATE" was posted earlier for this directive. Missing Step 0 = VIOLATION.
+Rule 2 — STEP-0-BEFORE-EXECUTION: If the current message shows execution starting (mentions committing, pushing, deploying, triggering flows, creating PRs), check whether EITHER of the following governance signals exists in recent_messages or governance_events for the same topic:
+  (a) a Dave-directed Step 0 / RESTATE post, OR
+  (b) a dual peer-Step-0 pair — BOTH `[FINAL CONCUR:ELLIOT]` AND `[FINAL CONCUR:AIDEN]` tags present in recent_messages on the same topic (dual-concur governance ratified 2026-04-22).
+Having EITHER signal = PASS. Missing BOTH = VIOLATION.
 
 Rule 3 — COMPLETION-REQUIRES-VERIFICATION: If the current message claims task completion ("complete", "done", "all stores written", "4-store save complete"), check if verification evidence was posted (terminal output, SQL results, test output, commit hashes). Claim without evidence = VIOLATION.
 
@@ -77,6 +80,7 @@ Messages labeled as 'test' or 'deliberate violation' are STILL subject to rule e
 """
 
 # Trigger patterns that warrant a check
+# NOTE: named TRIGGER_PATTERNS here (not QUICK_CHECK_KEYWORDS as some docs call it).
 TRIGGER_PATTERNS = [
     "dave —", "dave,", "your call", "here's the plan", "here's what",
     "commit", "pushed", "pr #", "merged", "deployed", "triggered",
@@ -86,6 +90,8 @@ TRIGGER_PATTERNS = [
     "state saved", "ceo_memory updated", "manual updated", "drive mirror", "daily_log written",
     "stores written", "store save complete", "session closed",
     "[atlas]", "[orion]",
+    # Dual-concur governance (2026-04-22): [FINAL CONCUR:*] is peer-Step-0 signal for Rule 2
+    "[final concur", "final concur:elliot", "final concur:aiden",
 ]
 
 

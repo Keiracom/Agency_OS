@@ -439,11 +439,6 @@ html.dark .theme-toggle .t-moon { display: inline; }
 .talking-point strong { color: var(--ink); }
 .case-study-card { background: var(--surface); border-radius: 8px; padding: 16px; }
 .case-study-name { font-family: 'Playfair Display', serif; font-size: 15px; font-weight: 700; color: var(--ink); margin-bottom: 4px; }
-.dev-controls { position: fixed; bottom: 20px; right: 20px; display: flex; gap: 6px; z-index: 300; background: rgba(12,10,8,0.85); border-radius: 8px; padding: 8px 10px; }
-.dev-btn { background: transparent; border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.6); font-family: 'JetBrains Mono', monospace; font-size: 10px; padding: 4px 10px; border-radius: 4px; cursor: pointer; transition: all 0.15s; letter-spacing: 0.06em; }
-.dev-btn:hover { border-color: var(--amber); color: var(--amber); }
-.dev-btn.active { border-color: var(--amber); color: var(--amber); background: var(--amber-soft); }
-.dev-label { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: rgba(255,255,255,0.3); display: flex; align-items: center; padding-right: 6px; letter-spacing: 0.1em; text-transform: uppercase; }
 #mobile-topbar { display: none; position: fixed; top: 0; left: 0; right: 0; height: 52px; background: var(--ink); z-index: 120; align-items: center; padding: 0 16px; gap: 12px; }
 .hamburger-btn { background: transparent; border: none; color: #fff; font-size: 20px; line-height: 1; padding: 4px; display: flex; align-items: center; }
 .mobile-logo { font-family: 'Playfair Display', serif; font-size: 18px; color: #fff; }
@@ -478,7 +473,6 @@ html.dark .theme-toggle .t-moon { display: inline; }
   .pipeline-channels { display: none; }
   .calendar-grid { gap: 2px; }
   .cal-cell { min-height: 44px; }
-  .dev-controls { bottom: 70px; }
   /* briefing sticky header: topbar hidden → offset for 52px mobile-topbar */
   .briefing-meeting-header[style*="sticky"] { top: 52px !important; padding: 18px 20px !important; gap: 14px !important; }
   .briefing-section { margin-bottom: 20px; }
@@ -544,7 +538,7 @@ html.dark .theme-toggle .t-moon { display: inline; }
 #sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 99; }
 #sidebar-overlay.show { display: block; }
 @media print {
-  #sidebar, #topbar, #bottom-nav, #mobile-topbar, .dev-controls, .detail-back, .detail-nav, .detail-actions { display: none !important; }
+  #sidebar, #topbar, #bottom-nav, #mobile-topbar, .detail-back, .detail-nav, .detail-actions { display: none !important; }
   #app { margin-left: 0; }
   #page { padding: 20px; }
   .briefing-meeting-header { background: var(--ink) !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -725,13 +719,8 @@ html.dark .theme-toggle .t-moon { display: inline; }
   </div>
 </div>
 
-<!-- Dev controls -->
-<div class="dev-controls">
-  <div class="dev-label">Cycle state</div>
-  <button class="dev-btn" id="devBtnReview" onclick="setCycleState('review')">Review</button>
-  <button class="dev-btn" id="devBtnOutreach" onclick="setCycleState('outreach')">Outreach</button>
-  <button class="dev-btn" id="devBtnComplete" onclick="setCycleState('complete')">Complete</button>
-</div>
+<!-- Dev controls (injected only when URL has ?dev) -->
+<!-- kept entirely in JS so normal product view ships zero dev CSS/HTML -->
 
 <script>
 /* ═══════════════════════════════════════════════════════════════════
@@ -2507,6 +2496,31 @@ function toggleMobileSidebar() {
 function closeMobileSidebar() {
   document.getElementById('sidebar').classList.remove('mobile-open');
   document.getElementById('sidebar-overlay').classList.remove('show');
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   DEV MODE (gated cycle-state switcher — URL ?dev only)
+═══════════════════════════════════════════════════════════════════ */
+const DEV_MODE = new URLSearchParams(window.location.search).has('dev');
+if (DEV_MODE) {
+  const css = document.createElement('style');
+  css.textContent =
+    '.dev-controls{position:fixed;bottom:20px;right:20px;display:flex;gap:6px;z-index:300;background:rgba(12,10,8,0.85);border-radius:8px;padding:8px 10px;}' +
+    '.dev-btn{background:transparent;border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.6);font-family:"JetBrains Mono",monospace;font-size:10px;padding:4px 10px;border-radius:4px;cursor:pointer;transition:all 0.15s;letter-spacing:0.06em;}' +
+    '.dev-btn:hover{border-color:var(--amber);color:var(--amber);}' +
+    '.dev-btn.active{border-color:var(--amber);color:var(--amber);background:var(--amber-soft);}' +
+    '.dev-label{font-family:"JetBrains Mono",monospace;font-size:9px;color:rgba(255,255,255,0.3);display:flex;align-items:center;padding-right:6px;letter-spacing:0.1em;text-transform:uppercase;}' +
+    '@media (max-width: 768px){.dev-controls{bottom:70px;}}' +
+    '@media print{.dev-controls{display:none !important;}}';
+  document.head.appendChild(css);
+  const el = document.createElement('div');
+  el.className = 'dev-controls';
+  el.innerHTML =
+    '<div class="dev-label">Cycle state</div>' +
+    '<button class="dev-btn" id="devBtnReview" onclick="setCycleState(\'review\')">Review</button>' +
+    '<button class="dev-btn" id="devBtnOutreach" onclick="setCycleState(\'outreach\')">Outreach</button>' +
+    '<button class="dev-btn" id="devBtnComplete" onclick="setCycleState(\'complete\')">Complete</button>';
+  document.body.appendChild(el);
 }
 
 /* ═══════════════════════════════════════════════════════════════════

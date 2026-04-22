@@ -10,6 +10,40 @@
 #   - Rule 20: Webhook-first architecture - cron jobs are safety nets
 #   - Prefect 3.x deployment patterns
 
+# ============================================
+# PAUSE GOVERNANCE POLICY (GOV-12: Gates As Code)
+# ============================================
+# Scheduled flows (cron-based) are PAUSED by default for safety.
+# Rationale: Webhook-first architecture means on-demand triggers are primary.
+# Scheduled flows (cron) act as safety nets only and remain paused until
+# explicitly unpaused for a specific directive.
+#
+# Paused categories and unpause criteria:
+#
+# 1. SAFETY NETS (scheduled, paused):
+#    - enrichment-flow: Daily 2 AM catch-all. Unpause when: dedicated test window established.
+#    - outreach-flow: Hourly 8-6 PM business hours. Unpause when: campaign approval framework live.
+#    - reply-recovery-flow: 6-hourly recovery. Unpause when: reply tracking table populated.
+#    - pattern-learning-flow: Weekly 3 AM Sunday. Unpause when: CIS learning model ready.
+#    - pool-daily-allocation-flow: Daily 6 AM allocation. Unpause when: quota loop tested at scale.
+#
+# 2. PENDING EXTERNAL DEPS (webhook, paused):
+#    - voice-outreach-flow: Paused — Vapi/Telnyx integration not deployed.
+#                          Unpause when: voice provider configured + TCP Code compliance verified.
+#    - warmup-monitor-flow: Paused — WarmForge domain provisioning not funded.
+#                          Unpause when: Salesforge subscription active + budget approved.
+#    - persona-buffer-flow: Paused — depends on warmup-monitor.
+#                          Unpause when: domain pool seeded (warmup-monitor running).
+#
+# 3. ACTIVE (not paused):
+#    - Webhook-triggered flows: campaign-flow, onboarding-flow, pool-population-flow,
+#      pool-assignment-flow, intelligence-flow, pattern backfill flows.
+#    - Critical flows: credit-reset-flow (hourly billing integrity), health-check-flow (5-min probe).
+#    - Post-event flows: campaign-evolution-flow, monthly-replenishment-flow (triggered by events).
+#
+# To unpause a flow: update paused: false + set schedule active: true, then document
+# the unpause in the directive that triggered it (e.g., Directive #NNN unpause).
+
 # Prefect project configuration
 name: agency-os
 prefect-version: 3.0.0

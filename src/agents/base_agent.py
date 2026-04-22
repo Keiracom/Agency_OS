@@ -27,7 +27,7 @@ from datetime import datetime
 from typing import Any, Generic, TypeVar
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from pydantic_ai import Agent
 from pydantic_ai.models.anthropic import AnthropicModel
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -46,15 +46,14 @@ class AgentContext(BaseModel):
     Contains database session, client info, and other shared data.
     """
 
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     client_id: UUID | None = None
     campaign_id: UUID | None = None
     lead_id: UUID | None = None
     user_id: UUID | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
     timestamp: datetime = Field(default_factory=datetime.utcnow)
-
-    class Config:
-        arbitrary_types_allowed = True
 
 
 @dataclass
@@ -273,12 +272,11 @@ class AgentDependencies(BaseModel):
     Contains database session and context for agent execution.
     """
 
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     db: Any  # AsyncSession - using Any to avoid serialization issues
     context: AgentContext
     anthropic_client: Any = None  # Optional Anthropic client override
-
-    class Config:
-        arbitrary_types_allowed = True
 
 
 # ============================================

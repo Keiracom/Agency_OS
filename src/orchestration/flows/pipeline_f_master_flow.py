@@ -214,30 +214,48 @@ async def persist_stage8_to_db(pipeline: list[dict]) -> list[str]:
                     except (ValueError, TypeError):
                         neg_stage = None
 
-                    bu_id = await conn.fetchval(
-                        "SELECT id FROM business_universe WHERE domain = $1 LIMIT 1",
+                    # H1: collect all available stage data for full BU audit trail
+                    stage2 = d.get("stage2") or {}
+                    stage3_data = d.get("stage3") or {}
+                    stage4 = d.get("stage4") or {}
+                    stage5 = d.get("stage5") or {}
+
+                    # H7: ON CONFLICT upsert — eliminates TOCTOU race + silent data loss
+                    await conn.execute(
+                        """INSERT INTO business_universe
+                               (domain, display_name, pipeline_stage, pipeline_status,
+                                filter_reason, dfs_discovery_category,
+                                dfs_organic_etv, dfs_organic_keywords, backlinks_count, domain_rank,
+                                stage_metrics)
+                           VALUES ($1, $2, $3, 'dropped', $4, $5, $6, $7, $8, $9, $10)
+                           ON CONFLICT (domain) DO UPDATE SET
+                               pipeline_stage = COALESCE(EXCLUDED.pipeline_stage, business_universe.pipeline_stage),
+                               pipeline_status = 'dropped',
+                               filter_reason = COALESCE(EXCLUDED.filter_reason, business_universe.filter_reason),
+                               dfs_discovery_category = COALESCE(EXCLUDED.dfs_discovery_category, business_universe.dfs_discovery_category),
+                               dfs_organic_etv = COALESCE(EXCLUDED.dfs_organic_etv, business_universe.dfs_organic_etv),
+                               dfs_organic_keywords = COALESCE(EXCLUDED.dfs_organic_keywords, business_universe.dfs_organic_keywords),
+                               backlinks_count = COALESCE(EXCLUDED.backlinks_count, business_universe.backlinks_count),
+                               domain_rank = COALESCE(EXCLUDED.domain_rank, business_universe.domain_rank),
+                               stage_metrics = COALESCE(EXCLUDED.stage_metrics, business_universe.stage_metrics),
+                               updated_at = NOW()""",
                         domain,
+                        display_name,
+                        neg_stage,
+                        drop_reason,
+                        d.get("category") or None,
+                        stage2.get("organic_etv") or (stage4.get("rank_overview") or {}).get("organic_etv"),
+                        (stage4.get("rank_overview") or {}).get("organic_keywords"),
+                        (stage4.get("backlinks") or {}).get("backlinks_num"),
+                        (stage4.get("rank_overview") or {}).get("rank"),
+                        json.dumps({
+                            "stage2": stage2,
+                            "stage3": stage3_data,
+                            "stage4": stage4,
+                            "stage5": stage5,
+                            "dropped_at": dropped_at_str,
+                        }),
                     )
-                    if bu_id:
-                        await conn.execute(
-                            """UPDATE business_universe
-                               SET pipeline_stage = COALESCE($2, pipeline_stage),
-                                   pipeline_status = 'dropped',
-                                   filter_reason = $3,
-                                   dfs_discovery_category = COALESCE($4, dfs_discovery_category),
-                                   updated_at = NOW()
-                               WHERE id = $1""",
-                            bu_id, neg_stage, drop_reason, d.get("category") or None,
-                        )
-                    else:
-                        await conn.execute(
-                            """INSERT INTO business_universe
-                                   (domain, display_name, pipeline_stage, pipeline_status,
-                                    filter_reason, dfs_discovery_category)
-                               VALUES ($1, $2, $3, 'dropped', $4, $5)""",
-                            domain, display_name, neg_stage,
-                            drop_reason, d.get("category") or None,
-                        )
                     dropped_count += 1
                     continue
 
@@ -245,33 +263,24 @@ async def persist_stage8_to_db(pipeline: list[dict]) -> list[str]:
                 dm = identity.get("dm_candidate") or {}
                 scores = d.get("stage5") or {}
                 propensity = scores.get("composite_score", 0)
-
-                # Insert or find existing business_universe row
-                # No unique constraint on domain — check existence first
-                bu_id = await conn.fetchval(
-                    "SELECT id FROM business_universe WHERE domain = $1 LIMIT 1",
-                    domain,
+                active_display_name = (
+                    identity.get("business_name")
+                    or identity.get("company_name")
+                    or domain.split(".")[0].replace("-", " ").title()
                 )
-                if bu_id:
-                    await conn.execute(
-                        """UPDATE business_universe
-                           SET pipeline_stage = $2, propensity_score = $3,
-                               dfs_discovery_category = $4, updated_at = NOW()
-                           WHERE id = $1""",
-                        bu_id, 8, float(propensity), d.get("category", ""),
-                    )
-                else:
-                    # display_name is NOT NULL — derive from identity or domain stem
-                    display_name = (
-                        identity.get("business_name")
-                        or identity.get("company_name")
-                        or domain.split(".")[0].replace("-", " ").title()
-                    )
-                    bu_id = await conn.fetchval(
-                        """INSERT INTO business_universe (domain, display_name, pipeline_stage, propensity_score, dfs_discovery_category)
-                           VALUES ($1, $2, $3, $4, $5) RETURNING id""",
-                        domain, display_name, 8, float(propensity), d.get("category", ""),
-                    )
+
+                # H7: ON CONFLICT upsert — eliminates TOCTOU race between SELECT and INSERT
+                bu_id = await conn.fetchval(
+                    """INSERT INTO business_universe (domain, display_name, pipeline_stage, propensity_score, dfs_discovery_category)
+                       VALUES ($1, $2, $3, $4, $5)
+                       ON CONFLICT (domain) DO UPDATE SET
+                           pipeline_stage = EXCLUDED.pipeline_stage,
+                           propensity_score = EXCLUDED.propensity_score,
+                           dfs_discovery_category = COALESCE(EXCLUDED.dfs_discovery_category, business_universe.dfs_discovery_category),
+                           updated_at = NOW()
+                       RETURNING id""",
+                    domain, active_display_name, 8, float(propensity), d.get("category", "") or None,
+                )
 
                 dm_name = dm.get("name")
                 dm_linkedin = (

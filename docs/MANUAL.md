@@ -1,7 +1,7 @@
 # Agency OS Manual
 
-Last updated: 2026-04-21 UTC
-Directive AGENCY-PROFILE-TRUTH-AUDIT: Agency profile truth audit + writer/critic architecture (PRs #371-#373)
+Last updated: 2026-04-22 UTC
+Directive P1.5-FIX-SWEEP: C1/C2 audit fix sweep — 13 findings resolved, test suite green (PR #374)
 Next scheduled update: Next architecture change or milestone
 
 > **Primary store.** This file is the CEO SSOT. Google Doc is an auto-generated mirror.
@@ -23,12 +23,12 @@ Revenue model for BU: API subscriptions, Salesforce/HubSpot marketplace, bulk an
 
 ## SECTION 2 — CURRENT STATE
 
-**Last directive:** AGENCY-PROFILE-TRUTH-AUDIT (agency profile truth audit — DEFAULT_AGENCY eliminated, pre-revenue discipline enforced)
-**Pipeline F status:** P5 COMPLETE, AGENCY-PROFILE-TRUTH-AUDIT COMPLETE
+**Last directive:** P1.5-FIX-SWEEP (C1/C2 audit fix sweep — 13 findings resolved, GOV-8 persistence, pipeline resilience, test pollution)
+**Pipeline F status:** P5 COMPLETE, P1.5-FIX-SWEEP COMPLETE
 **P5 result:** 5 dental domains → 2 cards (glenferriedental, dentalaspects). 8 messages across 4 channels. Exit gate MET.
-**Next directive:** TBD (critic timeout tuning, BDM enrichment bottleneck, P1.5-OUTBOUND-READINESS)
-**Test baseline:** 1505 passed, 1 failed (pre-existing campaign_flow), 28 skipped
-**Last merged PR:** #373 (agency profile truth audit)
+**Next directive:** Phase 1.5 remaining: B3 tier autonomy spec → B4 Part 2 build → exit gate. Then clone architecture discussion.
+**Test baseline:** 2152 passed, 0 failed, 28 skipped
+**Last merged PR:** #374 (P1.5 fix sweep — 16 files, +507 -73)
 
 ### EVO Track (Autonomous Loop — all complete)
 

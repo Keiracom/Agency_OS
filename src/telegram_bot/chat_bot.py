@@ -9,6 +9,7 @@ Consumers: Dave via Telegram
 import asyncio
 import logging
 import os
+import subprocess
 import sys
 import uuid
 from datetime import datetime, timezone
@@ -623,6 +624,39 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 logger.info(f"[memory-listener] surfaced memories + {len(commits)} commits + {len(repo_hits)} repo hits")
         except Exception as _mem_exc:
             logger.warning(f"[memory-listener] non-fatal error: {_mem_exc}")
+
+    # /update <callsign> — post-reset peer catchup brief (Dave only)
+    if sender == Sender.DAVE and raw_text.strip().startswith("/update "):
+        parts = raw_text.strip().split()
+        if len(parts) >= 2:
+            target_callsign = parts[1].lower()
+            result = subprocess.run(
+                [sys.executable, "scripts/update_peer.py", target_callsign],
+                capture_output=True, text=True, cwd=WORK_DIR,
+                timeout=30,
+            )
+            if result.returncode == 0:
+                brief = result.stdout.strip()
+                await context.bot.send_message(chat_id=GROUP_CHAT_ID, text=brief[:4096])
+                target_inbox = f"/tmp/telegram-relay-{target_callsign}/inbox"
+                os.makedirs(target_inbox, exist_ok=True)
+                ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+                fname = f"{ts}_{uuid.uuid4().hex[:8]}.json"
+                payload = {
+                    "id": fname.replace(".json", ""),
+                    "type": "text",
+                    "chat_id": GROUP_CHAT_ID,
+                    "text": f"[UPDATE FROM {CALLSIGN.upper()}]: {brief}",
+                    "sender": "peer",
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                }
+                with open(os.path.join(target_inbox, fname), "w") as f:
+                    _json.dump(payload, f)
+                logger.info(f"[/update] brief sent to group + {target_callsign} inbox")
+            else:
+                error_msg = f"{CALLSIGN_TAG} [/update] failed: {result.stderr[:200]}"
+                await context.bot.send_message(chat_id=chat_id, text=error_msg)
+        return  # Don't relay /update to Claude
 
     # Relay mode: forward to tmux inbox instead of Claude
     if relay_mode.get(chat_id):

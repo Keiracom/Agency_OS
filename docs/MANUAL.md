@@ -23,12 +23,13 @@ Revenue model for BU: API subscriptions, Salesforce/HubSpot marketplace, bulk an
 
 ## SECTION 2 — CURRENT STATE
 
-**Last directive:** CLONE-ARCHITECTURE (clone architecture ratified — ATLAS + ORION live, 6 rules C1-C6, tier registry)
-**Pipeline F status:** P5 COMPLETE, P1.5-FIX-SWEEP COMPLETE, CLONE-ARCHITECTURE COMPLETE
+**Last directive:** PHASE-1.5-CLOSE (exit gate MET — T1 closed-loop demonstrated E2E by ATLAS, no CEO copy-paste)
+**Pipeline F status:** P5 COMPLETE, PHASE 1.5 COMPLETE
 **P5 result:** 5 dental domains → 2 cards (glenferriedental, dentalaspects). 8 messages across 4 channels. Exit gate MET.
-**Next directive:** Phase 1.5 remaining: B3 tier autonomy spec → B4 Part 2 build → exit gate.
+**Phase 1.5 result:** Operational autonomy achieved. C1/C2 audits clean, B3 spec ratified, B4 self-healing built (T1 flag OFF), clone architecture live (ATLAS+ORION), dual-concur governance ratified, exit gate demonstrated.
+**Next phase:** Phase 2 Dashboard (user dashboard gap audit in-flight via Scout)
 **Test baseline:** 2152 passed, 0 failed, 28 skipped
-**Last merged PR:** #375 (clone infra — Rule 7 enforcer, CLONE_LEARNINGS template, round-trip test)
+**Last merged PR:** #376 (HMAC signing + stale callback cleanup)
 **Team roster:** ELLIOT + AIDEN + ATLAS + ORION + SCOUT (5 sessions)
 
 ### EVO Track (Autonomous Loop — all complete)

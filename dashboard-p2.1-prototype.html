@@ -494,6 +494,19 @@ html.dark .theme-toggle .t-moon { display: inline; }
   .section-label { font-size: 10px; }
   /* long domain strings wrap */
   .mono, .pipeline-suburb, .pipeline-meta .mono, [class*="email"], [class*="domain"] { word-break: break-word; overflow-wrap: anywhere; }
+  /* ========== INLINE-GRID STACKING OVERRIDE ==========
+     Inline style="grid-template-columns:..." beats class rules, so force
+     !important for all inline multi-col grids + the .home-grid class.
+     Tightens gaps too so stacked cells don't waste vertical space. */
+  .home-grid,
+  [style*="grid-template-columns"] { grid-template-columns: 1fr !important; gap: 14px !important; }
+  /* schedule-stats row can still push scroll on very narrow phones — force 2-col grid */
+  .schedule-stats { display: grid !important; grid-template-columns: repeat(2, 1fr) !important; gap: 14px !important; }
+  /* campaign-metrics is a flex row; prevent horizontal scroll at 768px */
+  .campaign-metrics { flex-wrap: wrap; gap: 16px !important; }
+  /* briefing-meeting-header children can overflow — wrap and shrink */
+  .briefing-meeting-header { flex-wrap: wrap !important; }
+  .briefing-meeting-header > * { min-width: 0; }
 }
 
 /* Ultra-narrow phones (iPhone SE / Android small) */
@@ -520,6 +533,10 @@ html.dark .theme-toggle .t-moon { display: inline; }
   /* bottom-nav items breathing room */
   .bottom-nav-item span { font-size: 10px; }
   .theme-toggle { width: 30px; height: 30px; font-size: 12px; }
+  /* ultra-narrow: schedule-stats can't fit two cells side-by-side reliably */
+  .schedule-stats { grid-template-columns: 1fr 1fr !important; gap: 10px !important; }
+  /* belt-and-braces re-assert single-col on any inline grid */
+  [style*="grid-template-columns"] { grid-template-columns: 1fr !important; gap: 12px !important; }
 }
 
 .detail-layout { display: grid; grid-template-columns: 1fr 320px; gap: 24px; min-width: 0; }

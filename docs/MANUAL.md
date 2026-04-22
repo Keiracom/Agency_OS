@@ -1136,7 +1136,7 @@ Both agents discuss and concur first. Elliot is last voice to Dave. Dave gets pl
 - Anthropic: topped up (was zero credits earlier in session)
 - Gemini: working (Stage 9 VR + critic)
 - Hunter: LIVE on Railway (816/1000 searches, pushed this session)
-- Enforcer bot: @Enforcerr_bot token stored .env.enforcer, daemon not yet built
+- Enforcer bot: @Enforcerr_bot LIVE — systemd service enforcer-bot.service, inbox-based architecture (cross-post from chat_bot.py), 6 rules active (concur-before-summary, step0-before-execution, completion-requires-verification, no-unreviewed-main-push, shared-file-claim, save-claim-requires-proof), posts violations to TG group + both bot inboxes. Commits: df558801 (MVP), 7d2edf8e (prompt fix), 8558efa3 (python-telegram-bot), 00ccebbe (inbox cross-post), 68af3b57 (Rule 6), b4d37b19 (bot inbox write-back). Dave directive: enforcement role removed from Aiden, bots proactively follow rules + reactively follow enforcer.
 
 ## SECTION 18 — OUTREACH + CONTENT (pre-launch)
 

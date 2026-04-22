@@ -128,18 +128,44 @@ async def check_with_llm(current_msg: str, recent_msgs: list[str]) -> dict | Non
         return None
 
 
+BOT_INBOXES = [
+    "/tmp/telegram-relay-elliot/inbox",
+    "/tmp/telegram-relay-aiden/inbox",
+]
+
+
 async def send_interjection(text: str) -> None:
-    """Post enforcement interjection to the group."""
+    """Post enforcement interjection to the group AND to bot inboxes."""
+    # 1. Post to Telegram group (Dave sees it)
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             await client.post(url, json={
                 "chat_id": GROUP_CHAT_ID,
                 "text": text,
-                "parse_mode": "HTML",
             })
     except Exception as exc:
-        logger.error("Failed to send interjection: %s", exc)
+        logger.error("Failed to send TG interjection: %s", exc)
+
+    # 2. Write to bot inboxes (bots see it in their tmux sessions)
+    import uuid
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    for inbox in BOT_INBOXES:
+        try:
+            os.makedirs(inbox, exist_ok=True)
+            fname = f"{ts}_{uuid.uuid4().hex[:8]}.json"
+            payload = {
+                "id": fname.replace(".json", ""),
+                "type": "text",
+                "chat_id": int(GROUP_CHAT_ID),
+                "text": f"[ENFORCER]: {text}",
+                "sender": "enforcer",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+            with open(os.path.join(inbox, fname), "w") as f:
+                json.dump(payload, f)
+        except Exception as exc:
+            logger.error("Failed to write to %s: %s", inbox, exc)
 
 
 async def process_message(message: dict) -> None:

@@ -270,9 +270,9 @@ async def process_message(message: dict) -> None:
         detail = result.get("detail", "")
         should_have = result.get("should_have", "")
 
-        # Rule 1 requires /stage0 to be active — suppress if not
-        if rule_num == 1 and not stage0_active:
-            logger.info("Rule 1 violation suppressed — /stage0 not active")
+        # Rules 1+2 require /stage0 to be active — suppress if not
+        if rule_num in (1, 2) and not stage0_active:
+            logger.info("Rule %s violation suppressed — /stage0 not active", rule_num)
             return
 
         # Rate limit: don't re-flag same rule within cooldown

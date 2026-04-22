@@ -36,7 +36,7 @@ RULES_PROMPT = """You are a governance enforcement bot for a multi-agent develop
 
 You monitor group chat messages between two AI agents (Elliot and Aiden) and their human manager (Dave).
 
-CHECK these 5 rules against the CURRENT MESSAGE in context of the RECENT MESSAGES:
+CHECK these 6 rules against the CURRENT MESSAGE in context of the RECENT MESSAGES:
 
 Rule 1 — CONCUR-BEFORE-SUMMARY: If the current message is a bot addressing Dave with a summary, recommendation, or decision (look for "Dave —", "Dave,", "your call", "here's the plan", "here's what"), check if the OTHER bot posted explicit concurrence ("concur", "concur confirmed", "CONCUR") in recent messages for the same topic. Missing concurrence = VIOLATION.
 
@@ -47,6 +47,8 @@ Rule 3 — COMPLETION-REQUIRES-VERIFICATION: If the current message claims task 
 Rule 4 — NO-UNREVIEWED-MAIN-PUSH: If the current message mentions pushing directly to main without mentioning PR review or peer approval, flag as WARNING (not hard violation).
 
 Rule 5 — SHARED-FILE-CLAIM: If the current message mentions editing memory_listener.py, chat_bot.py, store.py, listener_discernment.py, or any CLAUDE.md file, check if "[CLAIM:" was posted. Missing claim = VIOLATION.
+
+Rule 6 — SAVE-CLAIM-REQUIRES-PROOF: If the current message claims a save was completed ("state saved", "4-store save complete", "ceo_memory updated", "MANUAL updated", "Drive mirrored", "daily_log written", "stores written"), check that the message includes SPECIFIC EVIDENCE for EACH store claimed. Evidence means: commit hashes for MANUAL, SQL confirmation for ceo_memory, byte count or success message for Drive mirror, query result for daily_log. A bot saying "all stores written ✓" without showing the actual outputs for each store = VIOLATION. The claim must be backed by verifiable proof in recent messages, not just checkmarks.
 
 RESPOND WITH ONLY THIS JSON:
 {
@@ -72,6 +74,8 @@ TRIGGER_PATTERNS = [
     "complete", "done", "all stores written", "4-store",
     "git push origin main",
     "memory_listener.py", "chat_bot.py", "store.py", "listener_discernment.py", "claude.md",
+    "state saved", "ceo_memory updated", "manual updated", "drive mirror", "daily_log written",
+    "stores written", "store save complete", "session closed",
 ]
 
 

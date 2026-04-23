@@ -37,6 +37,13 @@ try:  # send_pacer may not be merged yet in parallel branches
 except ImportError:  # pragma: no cover
     SendPacer = None  # type: ignore[assignment,misc]
 
+try:  # LinkedIn FSM from slice 5
+    from src.outreach.safety.linkedin_account_state import (  # type: ignore
+        LinkedInAccountState,
+    )
+except ImportError:  # pragma: no cover
+    LinkedInAccountState = None  # type: ignore[assignment,misc]
+
 logger = logging.getLogger(__name__)
 
 _UNSET = object()  # sentinel — distinguishes "not provided" from explicit None
@@ -74,6 +81,7 @@ class OutreachDispatcher:
         compliance_guard: ComplianceGuard | None = None,
         rate_limiter: Any = _UNSET,
         send_pacer: Any = _UNSET,
+        linkedin_state: Any = _UNSET,
         db_conn: Any | None = None,
     ) -> None:
         self.salesforge = salesforge_client
@@ -88,6 +96,10 @@ class OutreachDispatcher:
         )
         # send_pacer is opt-in: None (or _UNSET) => disabled; explicit instance => active
         self.send_pacer = send_pacer if send_pacer is not _UNSET else None
+        # linkedin_state is opt-in: when provided, gates DM sends through FSM
+        self.linkedin_state = (
+            linkedin_state if linkedin_state is not _UNSET else None
+        )
         self.db = db_conn
 
     # -- public entrypoint ---------------------------------------------------
@@ -234,6 +246,23 @@ class OutreachDispatcher:
                 reason="unipile_client not configured",
             )
         content = touch.get("content") or {}
+        # LinkedIn connect-state gate — DM sends require accepted connection.
+        # event_type='connect' bypasses the gate (connects reach 'accepted').
+        if self.linkedin_state is not None:
+            event_type = (content.get("event_type") or "message").lower()
+            if event_type in {"message", "dm"}:
+                account_id = content.get("unipile_account_id") or ""
+                prospect_id = str(touch.get("prospect_id") or touch.get("lead_id") or "")
+                if not self.linkedin_state.allows_dm(account_id, prospect_id):
+                    return DispatchResult(
+                        status="skipped", channel="linkedin",
+                        reason="linkedin_gate:connect_not_accepted",
+                        extra={
+                            "account_id": account_id,
+                            "prospect_id": prospect_id,
+                            "event_type": event_type,
+                        },
+                    )
         try:
             resp = await self.unipile.send_message(
                 account_id=content.get("unipile_account_id", ""),

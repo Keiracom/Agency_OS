@@ -39,7 +39,9 @@ import { HeroStrip } from "@/components/dashboard/HeroStrip";
 import { TodayStrip } from "@/components/dashboard/TodayStrip";
 import { FunnelBar } from "@/components/dashboard/FunnelBar";
 import { AttentionCards } from "@/components/dashboard/AttentionCards";
+import { ProspectDrawer } from "@/components/dashboard/ProspectDrawer";
 import Link from "next/link";
+import { useState } from "react";
 
 // Channel icon component
 const ChannelIcon = ({ type }: { type: string }) => {
@@ -57,6 +59,7 @@ export default function DashboardPage() {
   // Fetch real dashboard data (meetings goal, stats, hot prospects, week ahead, warm replies)
   const { data: dashboardData, isLoading: dashboardLoading } = useDashboardV4();
   const { activities: activityFeed, isLoading: activityLoading } = useLiveActivityFeed({ limit: 8 });
+  const [drawerLeadId, setDrawerLeadId] = useState<string | null>(null);
 
   const meetingsBooked = dashboardData?.meetingsGoal.current ?? 0;
   const meetingsTarget = dashboardData?.meetingsGoal.target ?? 10;
@@ -103,7 +106,7 @@ export default function DashboardPage() {
               <div className="text-[11px] font-mono uppercase tracking-[0.16em] text-gray-500 mb-3">
                 Needs your attention
               </div>
-              <AttentionCards />
+              <AttentionCards onLeadClick={(id) => setDrawerLeadId(id)} />
             </div>
           </section>
 
@@ -498,6 +501,7 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+      <ProspectDrawer leadId={drawerLeadId} onClose={() => setDrawerLeadId(null)} />
     </AppShell>
   );
 }

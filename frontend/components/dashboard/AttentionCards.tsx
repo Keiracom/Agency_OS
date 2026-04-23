@@ -34,7 +34,12 @@ const TYPE_STYLES: Record<AttentionType, { card: string; icon: string }> = {
   },
 };
 
-export function AttentionCards() {
+export interface AttentionCardsProps {
+  /** Optional — intercept leads-detail clicks and open a drawer instead of navigating. */
+  onLeadClick?: (leadId: string) => void;
+}
+
+export function AttentionCards({ onLeadClick }: AttentionCardsProps = {}) {
   const { items, isLoading, error } = useAttentionItems();
 
   if (isLoading) {
@@ -58,17 +63,35 @@ export function AttentionCards() {
   return (
     <div className="space-y-2.5">
       {items.map((item) => (
-        <AttentionRow key={item.id} item={item} />
+        <AttentionRow key={item.id} item={item} onLeadClick={onLeadClick} />
       ))}
     </div>
   );
 }
 
-function AttentionRow({ item }: { item: AttentionItem }) {
+function leadIdFromHref(href: string): string | null {
+  const m = /^\/dashboard\/leads\/([^/?#]+)/.exec(href);
+  return m ? m[1] : null;
+}
+
+function AttentionRow({
+  item, onLeadClick,
+}: { item: AttentionItem; onLeadClick?: (leadId: string) => void }) {
   const style = TYPE_STYLES[item.type];
+  const leadId = leadIdFromHref(item.href);
+  const interceptable = !!(onLeadClick && leadId);
+
+  const handleClick: React.MouseEventHandler<HTMLAnchorElement> = (e) => {
+    if (interceptable) {
+      e.preventDefault();
+      onLeadClick!(leadId!);
+    }
+  };
+
   return (
     <Link
       href={item.href}
+      onClick={handleClick}
       className={`grid grid-cols-[28px_1fr_auto] gap-3 items-center rounded-lg border border-l-4 px-4 py-3.5 transition-colors hover:brightness-110 ${style.card}`}
     >
       <div

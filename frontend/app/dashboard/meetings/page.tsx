@@ -11,16 +11,28 @@ import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { MeetingsCalendar } from "@/components/dashboard/MeetingsCalendar";
 import { MeetingBriefing } from "@/components/dashboard/MeetingBriefing";
+import { ProspectDrawer } from "@/components/dashboard/ProspectDrawer";
 import { useMeetingsData, MeetingRow } from "@/lib/hooks/useMeetingsData";
+
+type Surface = "briefing" | "drawer";
 
 export default function MeetingsPage() {
   const { meetings, isLoading } = useMeetingsData();
-  const [activeId, setActiveId] = useState<string | null>(null);
+  const [activeMeetingId, setActiveMeetingId] = useState<string | null>(null);
+  const [activeLeadId, setActiveLeadId] = useState<string | null>(null);
+  const [surface, setSurface] = useState<Surface>("drawer");
 
   const active = useMemo<MeetingRow | null>(
-    () => meetings.find((m) => m.id === activeId) ?? null,
-    [meetings, activeId],
+    () => meetings.find((m) => m.id === activeMeetingId) ?? null,
+    [meetings, activeMeetingId],
   );
+
+  const openMeeting = (id: string) => {
+    const m = meetings.find((x) => x.id === id);
+    if (!m) return;
+    if (surface === "briefing") setActiveMeetingId(id);
+    else setActiveLeadId(m.leadId);
+  };
 
   const upcomingThisWeek = useMemo(() => {
     const now = Date.now();
@@ -42,14 +54,31 @@ export default function MeetingsPage() {
               {upcomingThisWeek.length === 1 ? "meeting" : "meetings"}.
             </em>
           </h1>
-          <p className="text-sm text-gray-400">
-            Click any slot to open the full briefing.
-          </p>
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-gray-400">
+              Click any slot to open the prospect drawer.
+            </p>
+            <div className="inline-flex rounded-lg border border-gray-800 bg-gray-900 p-0.5">
+              {(["drawer", "briefing"] as Surface[]).map((v) => (
+                <button
+                  key={v}
+                  onClick={() => setSurface(v)}
+                  className={`px-3 py-1 text-[10px] font-mono uppercase tracking-widest rounded-md ${
+                    surface === v
+                      ? "bg-amber-500/10 text-amber-300 border border-amber-500/40"
+                      : "text-gray-400 hover:text-gray-200"
+                  }`}
+                >
+                  {v}
+                </button>
+              ))}
+            </div>
+          </div>
         </header>
 
         <MeetingsCalendar
           meetings={meetings}
-          onOpen={(id) => setActiveId(id)}
+          onOpen={openMeeting}
           isLoading={isLoading}
         />
 
@@ -67,7 +96,7 @@ export default function MeetingsPage() {
               {upcomingThisWeek.map((m) => (
                 <li
                   key={m.id}
-                  onClick={() => setActiveId(m.id)}
+                  onClick={() => openMeeting(m.id)}
                   className="px-4 py-3 flex items-center gap-3 cursor-pointer hover:bg-gray-800/60"
                 >
                   {m.vrGrade && (
@@ -106,7 +135,8 @@ export default function MeetingsPage() {
         </nav>
       </div>
 
-      {active && <MeetingBriefing meeting={active} onClose={() => setActiveId(null)} />}
+      {active && <MeetingBriefing meeting={active} onClose={() => setActiveMeetingId(null)} />}
+      <ProspectDrawer leadId={activeLeadId} onClose={() => setActiveLeadId(null)} />
     </AppShell>
   );
 }

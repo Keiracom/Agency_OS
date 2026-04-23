@@ -229,7 +229,17 @@ class DailyDecider:
 async def apply_actions(
     db_conn: Any, client_id: str, actions: list[DeciderAction],
 ) -> dict[str, int]:
-    """Write schedule_next + nurture actions to scheduled_touches. Never raises."""
+    """Write schedule_next + nurture actions to scheduled_touches. Never raises.
+
+    Also updates business_universe lifecycle columns alongside each touch
+    insert / suppression:
+      - schedule_next | nurture  -> outreach_status pending->active (idempotent),
+                                    last_outreach_at[channel] = scheduled_at,
+                                    signal_snapshot_at = NOW()
+      - suppress                 -> outreach_status = 'suppressed'
+    BU UPDATEs are best-effort — failures are logged but do not abort the
+    touch insert or bump the errors counter beyond the insert path.
+    """
     counts = {"scheduled": 0, "nurture": 0, "skipped": 0,
               "suppressed": 0, "escalated": 0, "errors": 0}
     for a in actions:
@@ -246,16 +256,61 @@ async def apply_actions(
                     a.scheduled_at,
                 )
                 counts["scheduled" if a.action == "schedule_next" else "nurture"] += 1
+                await _bu_mark_active(db_conn, a.lead_id, a.channel, a.scheduled_at)
             elif a.action == "skip":
                 counts["skipped"] += 1
             elif a.action == "suppress":
                 counts["suppressed"] += 1
+                await _bu_mark_suppressed(db_conn, a.lead_id)
             elif a.action == "escalate":
                 counts["escalated"] += 1
         except Exception as exc:
             counts["errors"] += 1
             logger.exception("apply_actions insert failed for lead=%s: %s", a.lead_id, exc)
     return counts
+
+
+async def _bu_mark_active(
+    db_conn: Any, lead_id: str, channel: str, scheduled_at: datetime,
+) -> None:
+    """Transition BU row to 'active' (from 'pending' only) and record last-touch
+    timestamp per channel. Idempotent: repeated calls for an already-active row
+    update last_outreach_at without regressing the enum."""
+    try:
+        await db_conn.execute(
+            """
+            UPDATE business_universe
+            SET outreach_status = CASE
+                    WHEN outreach_status = 'pending' THEN 'active'::bu_outreach_status
+                    ELSE outreach_status
+                END,
+                last_outreach_at = COALESCE(last_outreach_at, '{}'::jsonb)
+                    || jsonb_build_object($2::text, $3::timestamptz::text),
+                signal_snapshot_at = NOW(),
+                updated_at = NOW()
+            WHERE id = $1
+            """,
+            lead_id, channel, scheduled_at,
+        )
+    except Exception as exc:
+        logger.warning("bu_mark_active failed for lead=%s: %s", lead_id, exc)
+
+
+async def _bu_mark_suppressed(db_conn: Any, lead_id: str) -> None:
+    """Flip BU row to 'suppressed'. Terminal; does not regress from 'converted'."""
+    try:
+        await db_conn.execute(
+            """
+            UPDATE business_universe
+            SET outreach_status = 'suppressed'::bu_outreach_status,
+                signal_snapshot_at = NOW(),
+                updated_at = NOW()
+            WHERE id = $1 AND outreach_status != 'converted'
+            """,
+            lead_id,
+        )
+    except Exception as exc:
+        logger.warning("bu_mark_suppressed failed for lead=%s: %s", lead_id, exc)
 
 
 # ---------------------------------------------------------------------------

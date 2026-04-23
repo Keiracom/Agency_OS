@@ -35,6 +35,10 @@ import { mockInsights } from "@/data/mock-dashboard";
 import { useLiveActivityFeed } from "@/lib/useLiveActivityFeed";
 import { providerLabel } from "@/lib/provider-labels";
 import { useDashboardV4 } from "@/hooks/use-dashboard-v4";
+import { HeroStrip } from "@/components/dashboard/HeroStrip";
+import { TodayStrip } from "@/components/dashboard/TodayStrip";
+import { FunnelBar } from "@/components/dashboard/FunnelBar";
+import { AttentionCards } from "@/components/dashboard/AttentionCards";
 import Link from "next/link";
 
 // Channel icon component
@@ -85,6 +89,24 @@ export default function DashboardPage() {
         }}
       >
         <div className="relative z-10">
+          {/* v10 HOME SURFACES — BDR hero + today + funnel + attention */}
+          <section className="mb-8 space-y-6">
+            <HeroStrip />
+            <TodayStrip />
+            <div>
+              <div className="text-[11px] font-mono uppercase tracking-[0.16em] text-gray-500 mb-2">
+                Cycle funnel
+              </div>
+              <FunnelBar />
+            </div>
+            <div>
+              <div className="text-[11px] font-mono uppercase tracking-[0.16em] text-gray-500 mb-3">
+                Needs your attention
+              </div>
+              <AttentionCards />
+            </div>
+          </section>
+
           {/* ROW 1: Hero Section - 2 column grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             {/* Meetings Booked Hero - Accent Glass Card */}

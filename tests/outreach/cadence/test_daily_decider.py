@@ -189,7 +189,9 @@ async def test_apply_actions_writes_scheduled_rows_and_counts():
     assert counts["skipped"] == 1
     assert counts["suppressed"] == 1
     assert counts["escalated"] == 1
-    assert db.execute.await_count == 2  # only schedule_next + nurture insert
+    # insert + bu_mark_active (schedule_next) + insert + bu_mark_active (nurture)
+    # + bu_mark_suppressed (suppress) = 5 execute calls
+    assert db.execute.await_count == 5
 
 
 @pytest.mark.asyncio

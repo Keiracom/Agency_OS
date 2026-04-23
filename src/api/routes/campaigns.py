@@ -2144,6 +2144,132 @@ def _trigger_pool_population_if_needed(
 
 
 # ============================================
+# Kill + State Endpoints (orion/phase-2-slice-7)
+# ============================================
+
+
+class KillCampaignBody(BaseModel):
+    """Body for killing a campaign."""
+
+    campaign_id: UUID = Field(..., description="Campaign UUID to kill")
+    reason: str = Field(..., min_length=1, max_length=500, description="Reason for killing campaign")
+
+
+@router.post(
+    "/clients/{client_id}/campaigns/kill",
+    status_code=status.HTTP_200_OK,
+)
+async def kill_campaign(
+    client_id: UUID,
+    body: KillCampaignBody,
+    ctx: Annotated[ClientContext, Depends(get_current_client)],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+) -> dict:
+    """
+    Kill a campaign and cancel all pending scheduled touches.
+
+    Sets campaign status='killed' and cancels all pending scheduled_touches
+    for the campaign. Multi-tenant: only the owning client may kill.
+    """
+    # Verify campaign exists and belongs to this client
+    check = await db.execute(
+        text(
+            "SELECT id, status FROM campaigns"
+            " WHERE id = :cid AND client_id = :client_id AND deleted_at IS NULL"
+        ),
+        {"cid": body.campaign_id, "client_id": ctx.client_id},
+    )
+    row = check.fetchone()
+    if row is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="campaign not found")
+
+    now = datetime.now(UTC)
+
+    # Mark campaign killed
+    await db.execute(
+        text(
+            "UPDATE campaigns SET status='killed', updated_at=:now WHERE id=:cid"
+        ),
+        {"now": now, "cid": body.campaign_id},
+    )
+
+    # Cancel pending touches; capture count
+    cancel_result = await db.execute(
+        text(
+            "UPDATE scheduled_touches SET status='cancelled', updated_at=:now"
+            " WHERE campaign_id=:cid AND status='pending'"
+        ),
+        {"now": now, "cid": body.campaign_id},
+    )
+    killed_touches = cancel_result.rowcount
+
+    await db.commit()
+
+    return {
+        "campaign_id": str(body.campaign_id),
+        "killed_touches": killed_touches,
+        "killed_at": now.isoformat(),
+    }
+
+
+@router.get(
+    "/clients/{client_id}/campaigns/{campaign_id}/state",
+    status_code=status.HTTP_200_OK,
+)
+async def get_campaign_state(
+    client_id: UUID,
+    campaign_id: UUID,
+    ctx: Annotated[ClientContext, Depends(get_current_client)],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+) -> dict:
+    """
+    Return aggregated state for a campaign from scheduled_touches.
+
+    Multi-tenant: only the owning client may view state.
+    """
+    # Verify campaign belongs to this client
+    check = await db.execute(
+        text(
+            "SELECT id, status FROM campaigns"
+            " WHERE id = :cid AND client_id = :client_id AND deleted_at IS NULL"
+        ),
+        {"cid": campaign_id, "client_id": ctx.client_id},
+    )
+    row = check.fetchone()
+    if row is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="campaign not found")
+
+    campaign_status = dict(row._mapping)["status"]
+
+    # Aggregate touch counts
+    agg = await db.execute(
+        text("""
+            SELECT
+                COUNT(*) as total_touches,
+                COUNT(*) FILTER (WHERE status='pending') as pending_touches,
+                COUNT(*) FILTER (WHERE status='sent') as sent_touches,
+                COUNT(*) FILTER (WHERE status='failed') as failed_touches,
+                MAX(sent_at) as last_touch_at
+            FROM scheduled_touches
+            WHERE campaign_id = :cid
+        """),
+        {"cid": campaign_id},
+    )
+    agg_row = agg.fetchone()
+    agg_dict = dict(agg_row._mapping) if agg_row else {}
+
+    return {
+        "campaign_id": str(campaign_id),
+        "status": campaign_status,
+        "total_touches": agg_dict.get("total_touches") or 0,
+        "pending_touches": agg_dict.get("pending_touches") or 0,
+        "sent_touches": agg_dict.get("sent_touches") or 0,
+        "failed_touches": agg_dict.get("failed_touches") or 0,
+        "last_touch_at": agg_dict.get("last_touch_at"),
+    }
+
+
+# ============================================
 # VERIFICATION CHECKLIST
 # ============================================
 # [x] Contract comment at top

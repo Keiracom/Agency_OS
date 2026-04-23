@@ -57,12 +57,21 @@ export interface ReplyEvent {
   preview: string | null;
 }
 
+export interface VRBreakdown {
+  intent: number | null;
+  affordability: number | null;
+  authority: number | null;
+  timing: number | null;
+  vulnerabilityReport: Record<string, unknown> | null;
+}
+
 export interface ProspectDetail {
   leadId: string;
   name: string;
   company: string;
   vrGrade: string | null;
   score: number | null;
+  vr: VRBreakdown;
   contact: ProspectContact;
   enrichment: ProspectEnrichment;
   touches: TouchEvent[];
@@ -84,15 +93,33 @@ async function fetchDetail(leadId: string): Promise<ProspectDetail | null> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const client = sb as any;
 
-  const buRes = await client
-    .from("business_universe")
-    .select(
-      "id, display_name, dm_name, dm_title, dm_email, dm_phone, dm_mobile, dm_linkedin_url, " +
-      "abn, gmb_category, company_employee_count_exact, website, suburb, state, propensity_score",
-    )
-    .eq("id", leadId)
-    .maybeSingle();
-  const bu = buRes?.data as Record<string, unknown> | null;
+  // Column coverage: VR sub-scores (vr_intent_score etc.) may not exist in every
+  // deployment. Select them defensively and silently drop on error.
+  let bu: Record<string, unknown> | null = null;
+  try {
+    const full = await client
+      .from("business_universe")
+      .select(
+        "id, display_name, dm_name, dm_title, dm_email, dm_phone, dm_mobile, dm_linkedin_url, " +
+        "abn, gmb_category, company_employee_count_exact, website, suburb, state, " +
+        "propensity_score, vr_grade, vr_intent_score, vr_affordability_score, " +
+        "vr_authority_score, vr_timing_score, vulnerability_report",
+      )
+      .eq("id", leadId)
+      .maybeSingle();
+    bu = (full?.data as Record<string, unknown> | null) ?? null;
+    if (full?.error) throw full.error;
+  } catch {
+    const fallback = await client
+      .from("business_universe")
+      .select(
+        "id, display_name, dm_name, dm_title, dm_email, dm_phone, dm_mobile, dm_linkedin_url, " +
+        "abn, gmb_category, company_employee_count_exact, website, suburb, state, propensity_score",
+      )
+      .eq("id", leadId)
+      .maybeSingle();
+    bu = (fallback?.data as Record<string, unknown> | null) ?? null;
+  }
   if (!bu) return null;
 
   let touches: TouchEvent[] = [];
@@ -160,12 +187,26 @@ async function fetchDetail(leadId: string): Promise<ProspectDetail | null> {
   const emp = bu.company_employee_count_exact;
   const locParts = [bu.suburb as string | null, bu.state as string | null].filter(Boolean);
 
+  const vrGradeFromRow = (bu.vr_grade as string | null) ?? null;
+  const subNum = (k: string) =>
+    typeof bu[k] === "number" ? (bu[k] as number) : null;
+  const vulnReport = bu.vulnerability_report && typeof bu.vulnerability_report === "object"
+    ? (bu.vulnerability_report as Record<string, unknown>)
+    : null;
+
   return {
     leadId: String(bu.id),
     name: (bu.dm_name as string | null) ?? "Unknown",
     company: (bu.display_name as string | null) ?? "—",
-    vrGrade: gradeFromScore(score),
+    vrGrade: vrGradeFromRow ?? gradeFromScore(score),
     score,
+    vr: {
+      intent:        subNum("vr_intent_score"),
+      affordability: subNum("vr_affordability_score"),
+      authority:     subNum("vr_authority_score"),
+      timing:        subNum("vr_timing_score"),
+      vulnerabilityReport: vulnReport,
+    },
     contact: {
       email: (bu.dm_email as string | null) ?? null,
       phone: ((bu.dm_phone as string | null) ?? (bu.dm_mobile as string | null)) ?? null,

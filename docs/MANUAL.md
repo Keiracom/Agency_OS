@@ -1,8 +1,8 @@
 # Agency OS Manual
 
-Last updated: 2026-04-22 UTC
-Directive CLONE-ARCHITECTURE: Clone architecture ratified — ATLAS + ORION live, 6 rules (C1-C6), tier registry (PRs #374-#375)
-Next scheduled update: Next architecture change or milestone
+Last updated: 2026-04-23 UTC
+Directive DASHBOARD-DESIGN-COMPLETE: Master Agency Desk v10 shipped, Phase 2.1/2.2 split approved
+Next scheduled update: Phase 2.1 dashboard wiring milestone
 
 > **Primary store.** This file is the CEO SSOT. Google Doc is an auto-generated mirror.
 > After every save-trigger write, verify with: `cat docs/MANUAL.md | grep "SECTION"`
@@ -23,13 +23,14 @@ Revenue model for BU: API subscriptions, Salesforce/HubSpot marketplace, bulk an
 
 ## SECTION 2 — CURRENT STATE
 
-**Last directive:** PHASE-1.5-CLOSE (exit gate MET — T1 closed-loop demonstrated E2E by ATLAS, no CEO copy-paste)
-**Pipeline F status:** P5 COMPLETE, PHASE 1.5 COMPLETE
-**P5 result:** 5 dental domains → 2 cards (glenferriedental, dentalaspects). 8 messages across 4 channels. Exit gate MET.
-**Phase 1.5 result:** Operational autonomy achieved. C1/C2 audits clean, B3 spec ratified, B4 self-healing built (T1 flag OFF), clone architecture live (ATLAS+ORION), dual-concur governance ratified, exit gate demonstrated.
-**Next phase:** Phase 2 Dashboard (user dashboard gap audit in-flight via Scout)
+**Last directive:** DASHBOARD-DESIGN-COMPLETE (Master Agency Desk v10 — 10 iterations, Junior BDR reframe, demo archaeology)
+**Pipeline F status:** P5 COMPLETE, PHASE 1.5 COMPLETE, DASHBOARD DESIGN COMPLETE
+**Phase 1.5 result:** Operational autonomy achieved. Clone architecture live. Dual-concur governance ratified.
+**Dashboard result:** Master Agency Desk v10 shipped (2344 lines). 5 concepts explored (Supervisor/Terminal/Feed/Kanban/Briefing Room). Demo archaeology revealed product is a Sales Intelligence Briefing System. Junior BDR mental model ratified. Data backfill recovered 262 businesses + 244 emails + 92 mobiles.
+**Next phase:** Phase 2.1 (wire dashboard to real data, ATLAS) + Phase 2.2 (outreach safety layer, ORION) — parallel tracks
 **Test baseline:** 2152 passed, 0 failed, 28 skipped
-**Last merged PR:** #376 (HMAC signing + stale callback cleanup)
+**BU status:** 5,970 businesses, 258 emails, 92 mobiles, 103 BDMs
+**Last merged PR:** #378 (clone architecture docs)
 **Team roster:** ELLIOT + AIDEN + ATLAS + ORION + SCOUT (5 sessions)
 
 ### EVO Track (Autonomous Loop — all complete)

@@ -8,9 +8,10 @@
 
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useClient } from "@/hooks/use-client";
 import { createBrowserClient } from "@/lib/supabase";
+import { useRealtimeSubscription } from "@/lib/hooks/useRealtimeSubscription";
 
 export interface DashboardStats {
   prospectsContacted: number;
@@ -159,13 +160,36 @@ async function fetchStats(clientId: string): Promise<Omit<DashboardStats, "isLoa
 
 export function useDashboardStats(): DashboardStats {
   const { clientId } = useClient();
+  const qc = useQueryClient();
+  const queryKey = ["dashboard-stats-v10", clientId];
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ["dashboard-stats-v10", clientId],
+    queryKey,
     queryFn: () => fetchStats(clientId!),
     enabled: !!clientId,
     staleTime: 60_000,
+    // Longer backstop — realtime is primary refresh mechanism.
     refetchInterval: 300_000,
+  });
+
+  const invalidate = () => qc.invalidateQueries({ queryKey });
+
+  // Realtime: any new outcome or scheduled-touch state change refreshes stats.
+  useRealtimeSubscription({
+    table: "cis_outreach_outcomes",
+    filter: clientId ? `client_id=eq.${clientId}` : undefined,
+    enabled: !!clientId,
+    onInsert: invalidate,
+    onUpdate: invalidate,
+    onPoll:   invalidate,
+  });
+  useRealtimeSubscription({
+    table: "scheduled_touches",
+    filter: clientId ? `client_id=eq.${clientId}` : undefined,
+    enabled: !!clientId,
+    onInsert: invalidate,
+    onUpdate: invalidate,
+    onPoll:   invalidate,
   });
 
   return {

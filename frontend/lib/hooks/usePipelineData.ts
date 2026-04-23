@@ -13,9 +13,10 @@
 
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useClient } from "@/hooks/use-client";
 import { createBrowserClient } from "@/lib/supabase";
+import { useRealtimeSubscription } from "@/lib/hooks/useRealtimeSubscription";
 
 export type PipelineStage =
   | "discovered"
@@ -160,12 +161,34 @@ async function fetchPipeline(clientId: string): Promise<Omit<PipelineData, "isLo
 
 export function usePipelineData(): PipelineData {
   const { clientId } = useClient();
+  const qc = useQueryClient();
+  const queryKey = ["pipeline-v10", clientId];
+
   const { data, isLoading, error } = useQuery({
-    queryKey: ["pipeline-v10", clientId],
+    queryKey,
     queryFn: () => fetchPipeline(clientId!),
     enabled: !!clientId,
     staleTime: 30_000,
-    refetchInterval: 120_000,
+    // Long backstop — realtime drives refresh.
+    refetchInterval: 300_000,
+  });
+
+  const invalidate = () => qc.invalidateQueries({ queryKey });
+
+  useRealtimeSubscription({
+    table: "business_universe",
+    filter: clientId ? `client_id=eq.${clientId}` : undefined,
+    enabled: !!clientId,
+    onInsert: invalidate,
+    onUpdate: invalidate,
+    onPoll:   invalidate,
+  });
+  useRealtimeSubscription({
+    table: "cis_outreach_outcomes",
+    filter: clientId ? `client_id=eq.${clientId}` : undefined,
+    enabled: !!clientId,
+    onInsert: invalidate,
+    onPoll:   invalidate,
   });
   return {
     prospects: data?.prospects ?? [],

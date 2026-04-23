@@ -548,9 +548,8 @@ async def cmd_update(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         f"3. Your peer is {CALLSIGN.upper()}. Prefix messages [{target.upper()}].\n"
         f"4. Your clone is {peer_clone}. Dispatch via /tmp/telegram-relay-{peer_clone.lower()}/inbox/.\n"
         f"5. Dispatch Coordination: [DISPATCH-PROPOSAL] + 20s peer [CONCUR] before inject (Rule 8).\n"
-        f"6. DIRECTIVE INITIATIVE RULE (ratified 2026-04-23): after any completed work unit, do NOT send 'what next?' / 'standing by for directive'. PROPOSE the next specific item using [PROPOSE:{target.upper()}] <item> / Scope / Evidence / Estimate / Spend / Approve-Redirect-Defer. Dave's role is yes/no/redirect, not agenda-setting from scratch. Only exemption: genuine [SESSION-WRAP:{target.upper()}] marker.\n"
-        f"7. Read last 50 group messages before acting on any directive.\n"
-        f"8. ACKNOWLEDGE: reply via tg -g with [{target.upper()}] UPDATE-ACK."
+        f"6. Read last 50 group messages before acting on any directive.\n"
+        f"7. ACKNOWLEDGE: reply via tg -g with [{target.upper()}] UPDATE-ACK."
     )
 
     # 2. ceo_memory state

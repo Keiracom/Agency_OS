@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AgencyOS — Concept A · The Supervisor</title>
+<script>
+  try { if (localStorage.getItem('agencyos_theme') === 'dark') document.documentElement.classList.add('dark'); } catch (e) {}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+
+/* ---------- design tokens ---------- */
+:root {
+  --cream: #F7F3EE;
+  --surface: #EDE8E0;
+  --ink: #0C0A08;
+  --ink-2: #2E2B26;
+  --ink-3: #7A756D;
+  --amber: #D4956A;
+  --amber-soft: rgba(212,149,106,0.12);
+  --amber-glow: rgba(212,149,106,0.08);
+  --copper: #C46A3E;
+  --green: #6B8E5A;
+  --red: #B55A4C;
+  --rule: rgba(12,10,8,0.08);
+  --brand-sidebar: #0C0A08;
+  --on-amber: #1a1207;
+  --sidebar-w: 232px;
+  --topbar-h: 56px;
+}
+html.dark {
+  --cream: #0C0A08;
+  --surface: #16130F;
+  --ink: #F5F2EC;
+  --ink-2: #C9C3B8;
+  --ink-3: #807A6E;
+  --rule: rgba(255,255,255,0.08);
+  --copper: #E6A87D;
+  --amber-soft: rgba(212,149,106,0.16);
+}
+html.dark #sidebar { background: #000; }
+html.dark .card, html.dark .meeting-card, html.dark .prospect-row, html.dark .summary-card, html.dark .qc-card, html.dark .attention-item { background: var(--surface); border-color: var(--rule); }
+html.dark .btn-outline { border-color: rgba(255,255,255,0.14); color: var(--ink-2); }
+html.dark .btn-outline:hover { border-color: var(--amber); color: var(--amber); }
+html.dark .kill-btn { background: #1F1B16; color: var(--ink-2); border-color: var(--rule); }
+html.dark .chip { background: #1F1B16; border-color: var(--rule); color: var(--ink-2); }
+
+/* ---------- reset + base ---------- */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; background: var(--cream); color: var(--ink); overflow-x: hidden; }
+body { font-family: 'DM Sans', system-ui, sans-serif; font-size: 14px; line-height: 1.5; display: flex; max-width: 100vw; }
+img, svg { max-width: 100%; }
+a { color: inherit; text-decoration: none; }
+button { cursor: pointer; font-family: inherit; border: 0; background: none; color: inherit; }
+input, select, textarea { font-family: inherit; }
+ul { list-style: none; }
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 2px; }
+.mono { font-family: 'JetBrains Mono', monospace; }
+.eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); }
+
+/* ---------- sidebar ---------- */
+#sidebar {
+  width: var(--sidebar-w); min-width: var(--sidebar-w); height: 100vh;
+  background: var(--brand-sidebar);
+  color: #fff;
+  display: flex; flex-direction: column;
+  position: fixed; left: 0; top: 0; bottom: 0; z-index: 100; overflow-y: auto;
+  transition: transform .25s;
+}
+.sidebar-logo { padding: 22px 20px 18px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.sidebar-logo .logo-text { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 20px; letter-spacing: -0.02em; }
+.sidebar-logo .logo-text em { color: var(--amber); font-style: italic; }
+.sidebar-logo .logo-sub { font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,255,255,0.32); margin-top: 3px; }
+.sidebar-section { padding: 16px 0 4px; }
+.sidebar-section-label { font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,255,255,0.3); padding: 0 20px 8px; }
+.nav-item { display: flex; align-items: center; gap: 12px; padding: 9px 20px; font-size: 13px; color: rgba(255,255,255,0.72); cursor: pointer; border-left: 2px solid transparent; transition: color .12s, background .12s, border-color .12s; white-space: nowrap; }
+.nav-item:hover { color: #fff; background: rgba(255,255,255,0.03); }
+.nav-item.active { color: #fff; background: var(--amber-soft); border-left-color: var(--amber); font-weight: 500; }
+.nav-icon { width: 16px; height: 16px; flex-shrink: 0; opacity: 0.75; }
+.nav-item.active .nav-icon { opacity: 1; color: var(--amber); }
+.nav-badge { margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 500; background: var(--amber); color: var(--on-amber); padding: 1px 6px; border-radius: 10px; min-width: 20px; text-align: center; }
+.sidebar-footer { margin-top: auto; padding: 18px 20px; border-top: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; gap: 10px; }
+.avatar-circle { width: 30px; height: 30px; border-radius: 50%; background: var(--amber); color: var(--on-amber); display: grid; place-items: center; font-family: 'Playfair Display', serif; font-weight: 700; font-size: 12px; flex-shrink: 0; }
+.sidebar-foot-name { font-size: 13px; color: #fff; }
+.sidebar-foot-role { font-size: 11px; color: rgba(255,255,255,0.4); font-family: 'JetBrains Mono', monospace; }
+
+/* ---------- app + topbar ---------- */
+#app { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; min-height: 100vh; min-width: 0; }
+#topbar { height: var(--topbar-h); background: var(--cream); border-bottom: 1px solid var(--rule); display: flex; align-items: center; padding: 0 36px; position: sticky; top: 0; z-index: 50; gap: 16px; }
+.breadcrumb { flex: 1; display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-3); min-width: 0; }
+.crumb-current { color: var(--ink-2); font-weight: 500; }
+.crumb-sep { color: var(--ink-3); }
+.topbar-right { display: flex; align-items: center; gap: 12px; }
+.pulse-row { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--ink-3); font-family: 'JetBrains Mono', monospace; }
+.pulse-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+.kill-btn { background: var(--ink); color: #fff; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.06em; padding: 6px 14px; border-radius: 6px; }
+.kill-btn:hover { background: var(--red); }
+.theme-toggle { width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--rule); color: var(--ink-2); display: grid; place-items: center; font-size: 12px; transition: border-color .12s, color .12s; }
+.theme-toggle:hover { border-color: var(--amber); color: var(--amber); }
+.theme-toggle .t-sun { display: inline; }
+.theme-toggle .t-moon { display: none; }
+html.dark .theme-toggle .t-sun { display: none; }
+html.dark .theme-toggle .t-moon { display: inline; }
+
+#mobile-topbar { display: none; position: fixed; top: 0; left: 0; right: 0; height: 52px; background: var(--brand-sidebar); color: #fff; z-index: 120; align-items: center; padding: 0 14px; gap: 12px; }
+.hamburger-btn { color: #fff; font-size: 20px; padding: 4px; }
+.mobile-logo { font-family: 'Playfair Display', serif; font-size: 17px; }
+.mobile-logo em { color: var(--amber); font-style: italic; }
+#bottom-nav { display: none; position: fixed; bottom: 0; left: 0; right: 0; height: 58px; background: var(--brand-sidebar); border-top: 1px solid rgba(255,255,255,0.08); z-index: 120; align-items: stretch; }
+.bottom-nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: rgba(255,255,255,0.56); font-size: 10.5px; cursor: pointer; transition: color .12s; }
+.bottom-nav-item .bn-ico { font-size: 15px; }
+.bottom-nav-item.active { color: var(--amber); }
+#sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 99; }
+#sidebar-overlay.show { display: block; }
+
+/* ---------- page + common cards ---------- */
+#page { flex: 1; overflow-y: auto; padding: 36px 40px 60px; max-width: 1360px; width: 100%; margin: 0 auto; }
+.page-headline { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 34px; color: var(--ink); line-height: 1.2; letter-spacing: -0.02em; margin-bottom: 6px; }
+.page-headline em { color: var(--amber); font-style: italic; }
+.page-sub { font-size: 13.5px; color: var(--ink-3); margin-bottom: 30px; }
+.section-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); margin: 24px 0 12px; }
+.card { background: #fff; border: 1px solid var(--rule); border-radius: 10px; padding: 22px 24px; max-width: 100%; min-width: 0; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.card > * { min-width: 0; }
+.btn { padding: 7px 16px; border-radius: 6px; font-size: 13px; font-weight: 500; border: 1px solid transparent; transition: filter .12s; }
+.btn-primary { background: var(--ink); color: #fff; }
+html.dark .btn-primary { background: var(--amber); color: var(--on-amber); }
+.btn-amber { background: var(--amber); color: var(--on-amber); }
+.btn-outline { background: transparent; border: 1px solid var(--rule); color: var(--ink-2); }
+.btn-outline:hover { border-color: var(--amber); color: var(--copper); }
+.btn-ghost { color: var(--ink-3); }
+.btn:active { filter: brightness(0.92); }
+.pill { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; padding: 3px 8px; border-radius: 12px; display: inline-block; }
+.pill.amber { background: var(--amber-soft); color: var(--copper); }
+.pill.green { background: rgba(107,142,90,0.14); color: var(--green); }
+.pill.red { background: rgba(181,90,76,0.14); color: var(--red); }
+.pill.gray { background: rgba(12,10,8,0.06); color: var(--ink-3); }
+html.dark .pill.gray { background: rgba(255,255,255,0.08); }
+
+/* ---------- HOME — BDR Report ---------- */
+.bdr-hero {
+  background: var(--ink); color: #fff;
+  border-radius: 12px; padding: 28px 32px; margin-bottom: 28px;
+  display: grid; grid-template-columns: auto 1fr; gap: 24px; align-items: center;
+}
+.bdr-avatar {
+  width: 64px; height: 64px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--amber), #a87044);
+  display: grid; place-items: center;
+  font-family: 'Playfair Display', serif; font-weight: 700; font-size: 26px;
+  color: var(--on-amber); flex-shrink: 0;
+}
+.bdr-hero .eyebrow { color: rgba(255,255,255,0.5); margin-bottom: 4px; }
+.bdr-hero h2 { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 24px; line-height: 1.3; letter-spacing: -0.01em; }
+.bdr-hero h2 em { color: var(--amber); font-style: italic; }
+.bdr-hero .hero-sub { font-size: 13px; color: rgba(255,255,255,0.6); margin-top: 8px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.bdr-hero .hero-dot { color: rgba(255,255,255,0.3); }
+
+.summary-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 32px; }
+.summary-card { background: #fff; border: 1px solid var(--rule); border-radius: 10px; padding: 20px 22px; }
+.summary-val { font-family: 'Playfair Display', serif; font-size: 30px; font-weight: 700; color: var(--ink); line-height: 1; }
+.summary-val em { color: var(--amber); font-style: normal; }
+.summary-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-3); letter-spacing: 0.12em; text-transform: uppercase; margin-top: 8px; }
+.summary-delta { font-size: 12px; margin-top: 4px; font-family: 'JetBrains Mono', monospace; }
+.summary-delta.up { color: var(--green); }
+
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 32px; }
+
+.activity-row { display: flex; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--rule); align-items: flex-start; }
+.activity-row:last-child { border-bottom: 0; }
+.activity-ico { width: 30px; height: 30px; border-radius: 8px; background: var(--amber-soft); color: var(--copper); display: grid; place-items: center; flex-shrink: 0; font-size: 13px; }
+.activity-text { font-size: 13px; color: var(--ink); line-height: 1.55; }
+.activity-text b { font-weight: 600; }
+.activity-time { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--ink-3); margin-top: 2px; letter-spacing: 0.04em; }
+
+.attention-item { background: var(--amber-soft); border: 1px solid var(--amber); border-radius: 10px; padding: 14px 16px; margin-bottom: 10px; display: flex; gap: 12px; align-items: flex-start; }
+.attention-item.meeting { background: rgba(107,142,90,0.08); border-color: var(--green); }
+.att-ic { width: 28px; height: 28px; border-radius: 8px; background: var(--amber); color: var(--on-amber); display: grid; place-items: center; flex-shrink: 0; font-size: 14px; }
+.attention-item.meeting .att-ic { background: var(--green); color: #fff; }
+.att-text { flex: 1; font-size: 13px; color: var(--ink-2); line-height: 1.5; }
+.att-text b { color: var(--ink); font-weight: 600; }
+.att-cta { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--copper); cursor: pointer; white-space: nowrap; }
+.attention-item.meeting .att-cta { color: var(--green); }
+
+.qc-row { display: grid; grid-template-columns: auto 1fr auto; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--rule); align-items: center; }
+.qc-row:last-child { border-bottom: 0; }
+.qc-check { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+.qc-check.pass { background: var(--green); }
+.qc-check.fail { background: var(--red); }
+.qc-main { min-width: 0; }
+.qc-label { font-size: 12.5px; color: var(--ink); }
+.qc-label b { font-weight: 600; }
+.qc-note { font-size: 11.5px; color: var(--ink-3); font-style: italic; margin-top: 2px; }
+.qc-outcome { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; }
+.qc-outcome.pass { color: var(--green); }
+.qc-outcome.fail { color: var(--red); }
+
+/* ---------- PROSPECTS ---------- */
+.filter-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 22px; }
+.chip { padding: 7px 16px; border-radius: 20px; font-size: 13px; border: 1px solid var(--rule); background: #fff; color: var(--ink-3); cursor: pointer; font-family: 'JetBrains Mono', monospace; letter-spacing: 0.04em; transition: all .12s; }
+.chip.active { background: var(--amber-soft); border-color: var(--amber); color: var(--copper); }
+.chip:hover { border-color: var(--amber); color: var(--copper); }
+
+.prospect-row { background: #fff; border: 1px solid var(--rule); border-radius: 10px; margin-bottom: 10px; display: grid; grid-template-columns: 48px 1fr auto auto auto; gap: 16px; align-items: center; padding: 14px 18px; cursor: pointer; transition: border-color .12s, box-shadow .12s; }
+.prospect-row:hover { border-color: var(--amber); box-shadow: 0 2px 12px rgba(212,149,106,0.08); }
+.vr-grade { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; color: #fff; font-family: 'Playfair Display', serif; font-weight: 700; font-size: 18px; }
+.vr-grade[data-g="A"], .vr-grade[data-g="B"] { background: var(--green); }
+.vr-grade[data-g="C"] { background: var(--amber); color: var(--on-amber); }
+.vr-grade[data-g="D"] { background: var(--copper); }
+.vr-grade[data-g="F"] { background: var(--red); }
+.p-main { min-width: 0; }
+.p-name { font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 700; color: var(--ink); margin-bottom: 2px; }
+.p-sub { font-size: 12.5px; color: var(--ink-3); font-family: 'JetBrains Mono', monospace; }
+.p-dm { text-align: right; font-size: 12.5px; color: var(--ink-2); min-width: 140px; }
+.p-dm-title { font-size: 11px; color: var(--ink-3); font-family: 'JetBrains Mono', monospace; margin-top: 2px; }
+.p-score { font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 600; color: var(--copper); text-align: center; }
+.p-score small { display: block; font-size: 9px; color: var(--ink-3); letter-spacing: 0.1em; text-transform: uppercase; }
+.p-status { min-width: 120px; text-align: right; }
+
+/* ---------- MEETINGS ---------- */
+.meeting-card { background: #fff; border: 1px solid var(--rule); border-radius: 10px; padding: 20px 22px; margin-bottom: 12px; display: grid; grid-template-columns: 48px 1fr auto auto; gap: 16px; align-items: center; min-width: 0; max-width: 100%; transition: border-color .12s, box-shadow .12s; }
+.meeting-card:hover { border-color: var(--amber); box-shadow: 0 2px 12px rgba(212,149,106,0.08); }
+.m-when { text-align: right; min-width: 120px; }
+.m-when-main { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--ink); font-weight: 500; }
+.m-when-sub { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--copper); margin-top: 2px; }
+.m-empty { background: var(--surface); border: 1px dashed var(--rule); border-radius: 10px; padding: 30px 20px; text-align: center; color: var(--ink-3); font-style: italic; }
+
+/* ---------- PROGRESS ---------- */
+.kpi-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 26px; }
+.kpi-cell { background: #fff; border: 1px solid var(--rule); border-radius: 10px; padding: 18px 20px; }
+.kpi-val { font-family: 'Playfair Display', serif; font-size: 32px; font-weight: 700; color: var(--ink); line-height: 1; }
+.kpi-val small { font-size: 14px; color: var(--ink-3); }
+.kpi-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); margin-top: 6px; }
+.kpi-bench { font-size: 11px; color: var(--green); margin-top: 4px; font-family: 'JetBrains Mono', monospace; }
+
+.funnel { display: flex; flex-direction: column; gap: 8px; padding: 8px 0; }
+.f-row { display: flex; align-items: center; gap: 14px; font-size: 13px; }
+.f-label { width: 130px; color: var(--ink-2); font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.04em; flex-shrink: 0; }
+.f-bar { flex: 1; height: 26px; background: rgba(12,10,8,0.04); border-radius: 4px; overflow: hidden; }
+html.dark .f-bar { background: rgba(255,255,255,0.04); }
+.f-fill { height: 100%; background: linear-gradient(90deg, var(--amber), #a87044); display: flex; align-items: center; padding: 0 12px; color: var(--on-amber); font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 12px; }
+.f-pct { min-width: 52px; text-align: right; color: var(--copper); font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; }
+
+.roi-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.roi-cell { background: var(--surface); border-radius: 10px; padding: 16px 18px; }
+html.dark .roi-cell { background: rgba(255,255,255,0.04); }
+.roi-val { font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 700; color: var(--copper); line-height: 1; }
+.roi-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-3); letter-spacing: 0.1em; text-transform: uppercase; margin-top: 6px; }
+.roi-delta { font-family: 'JetBrains Mono', monospace; font-size: 11px; margin-top: 6px; color: var(--green); }
+
+/* ---------- BRIEFING DRAWER ---------- */
+.drawer-backdrop { position: fixed; inset: 0; background: rgba(12,10,8,0.45); z-index: 150; display: none; backdrop-filter: blur(2px); }
+.drawer-backdrop.on { display: block; }
+.drawer { position: fixed; right: 0; top: 0; bottom: 0; width: min(620px, 100%); background: var(--cream); border-left: 1px solid var(--rule); z-index: 160; transform: translateX(100%); transition: transform .3s cubic-bezier(.2,.7,.3,1); overflow-y: auto; }
+.drawer.on { transform: translateX(0); }
+.drawer-head { padding: 20px 24px; border-bottom: 1px solid var(--rule); display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; position: sticky; top: 0; background: var(--cream); z-index: 3; }
+.drawer-close { font-size: 22px; color: var(--ink-3); padding: 4px 8px; }
+.drawer-close:hover { color: var(--copper); }
+.drawer-body { padding: 20px 24px 40px; }
+.bf-section { margin-bottom: 22px; }
+.bf-section h4 { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid var(--rule); }
+.bf-ai-tag { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--copper); margin-bottom: 14px; }
+.bf-hook { font-family: 'Playfair Display', serif; font-style: italic; font-size: 15px; color: var(--ink-2); line-height: 1.7; padding: 14px 16px; background: var(--surface); border-left: 3px solid var(--amber); border-radius: 0 6px 6px 0; }
+html.dark .bf-hook { background: rgba(255,255,255,0.04); }
+.bf-list { padding-left: 22px; }
+.bf-list li { margin-bottom: 8px; font-size: 13px; color: var(--ink-2); line-height: 1.55; }
+.bf-obj { padding: 12px 14px; background: var(--surface); border-radius: 8px; margin-bottom: 10px; }
+html.dark .bf-obj { background: rgba(255,255,255,0.04); }
+.bf-obj .obj-q { font-size: 13px; font-weight: 600; color: var(--ink); margin-bottom: 6px; }
+.bf-obj .obj-a { font-size: 12.5px; color: var(--ink-2); line-height: 1.55; }
+.pma-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+.pma-btn { padding: 8px 14px; border-radius: 6px; font-size: 12.5px; font-weight: 500; color: #fff; }
+.pma-won { background: var(--green); }
+.pma-follow { background: var(--amber); color: var(--on-amber); }
+.pma-noshow { background: var(--red); }
+.pma-resched { background: transparent; color: var(--ink-2); border: 1px solid var(--rule); }
+
+/* ---------- settings ---------- */
+.setting-row { display: grid; grid-template-columns: 180px 1fr; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--rule); align-items: center; }
+.setting-row:last-child { border-bottom: 0; }
+.setting-key { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-3); letter-spacing: 0.06em; }
+.setting-val input, .setting-val select, .setting-val textarea { background: var(--cream); border: 1px solid var(--rule); border-radius: 6px; padding: 8px 12px; font-size: 13px; color: var(--ink); width: 100%; max-width: 380px; }
+.setting-val textarea { min-height: 68px; resize: vertical; }
+
+/* ---------- media queries ---------- */
+@media (max-width: 960px) {
+  .summary-row, .kpi-strip { grid-template-columns: repeat(2, 1fr); }
+  .two-col { grid-template-columns: 1fr; gap: 20px; }
+}
+@media (max-width: 768px) {
+  #sidebar { transform: translateX(-100%); }
+  #sidebar.mobile-open { transform: translateX(0); }
+  #mobile-topbar { display: flex; }
+  #bottom-nav { display: flex; }
+  #topbar { display: none; }
+  #app { margin-left: 0; padding-top: 52px; padding-bottom: 64px; }
+  #page { padding: 22px 14px 40px; }
+  .page-headline { font-size: 28px; line-height: 1.15; }
+  .bdr-hero { grid-template-columns: 1fr; padding: 22px 20px; gap: 16px; }
+  .bdr-avatar { width: 52px; height: 52px; font-size: 22px; }
+  .bdr-hero h2 { font-size: 20px; }
+  .summary-row, .kpi-strip { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .summary-card, .kpi-cell { padding: 14px 16px; }
+  .summary-val, .kpi-val { font-size: 22px; }
+  .prospect-row { grid-template-columns: 40px 1fr auto; gap: 10px; padding: 12px 14px; }
+  .prospect-row .p-dm, .prospect-row .p-status { display: none; }
+  .p-score { font-size: 18px; }
+  .meeting-card { grid-template-columns: 40px 1fr; padding: 14px 16px; gap: 10px; }
+  .meeting-card .m-when, .meeting-card > button { grid-column: 1 / -1; }
+  .m-when { text-align: left; }
+  .meeting-card > button { justify-self: start; }
+  .f-label { width: 96px; font-size: 10.5px; }
+  .f-pct { min-width: 44px; }
+  .roi-grid { grid-template-columns: 1fr; }
+  .setting-row { grid-template-columns: 1fr; gap: 6px; }
+}
+@media (max-width: 480px) {
+  .page-headline { font-size: 24px; }
+  .summary-row, .kpi-strip { grid-template-columns: 1fr; }
+  .card { padding: 16px 18px; }
+  .att-cta { font-size: 10px; }
+  .chip { padding: 6px 12px; font-size: 12px; }
+}
+</style>
+</head>
+<body>
+
+<aside id="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-text">Agency<em>OS</em></div>
+    <div class="logo-sub">CONCEPT A · SUPERVISOR</div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">Workspace</div>
+    <div class="nav-item" data-route="#home" onclick="navigate('#home')">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1L1 7v8h5v-5h4v5h5V7L8 1z"/></svg>
+      Home
+    </div>
+    <div class="nav-item" data-route="#prospects" onclick="navigate('#prospects')">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><circle cx="5" cy="5" r="2.5"/><path d="M1 14c0-2.5 2-4 4-4s4 1.5 4 4H1z"/><circle cx="12" cy="6" r="2" opacity=".6"/><path d="M9 14c0-1.6 1.3-3 3-3s3 1.4 3 3H9z" opacity=".6"/></svg>
+      Prospects
+      <span class="nav-badge">31</span>
+    </div>
+    <div class="nav-item" data-route="#meetings" onclick="navigate('#meetings')">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2" y="3" width="12" height="11" rx="1.5"/><line x1="2" y1="6" x2="14" y2="6"/><line x1="5" y1="1.5" x2="5" y2="4" stroke-linecap="round"/><line x1="11" y1="1.5" x2="11" y2="4" stroke-linecap="round"/></svg>
+      Meetings
+      <span class="nav-badge">8</span>
+    </div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">Report</div>
+    <div class="nav-item" data-route="#progress" onclick="navigate('#progress')">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="10" width="3" height="5" rx="1"/><rect x="6" y="6" width="3" height="9" rx="1"/><rect x="11" y="3" width="3" height="12" rx="1"/></svg>
+      Progress
+    </div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">Account</div>
+    <div class="nav-item" data-route="#settings" onclick="navigate('#settings')">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 5a3 3 0 100 6 3 3 0 000-6zm6.5 2l-1.2-.4a5 5 0 00-.3-.7l.6-1.1-1.4-1.4-1.1.6a5 5 0 00-.7-.3L10 2.5H6l-.4 1.2a5 5 0 00-.7.3l-1.1-.6L2.4 4.8l.6 1.1a5 5 0 00-.3.7L1.5 7v2l1.2.4c.1.2.2.5.3.7l-.6 1.1 1.4 1.4 1.1-.6c.2.1.5.2.7.3L6 13.5h4l.4-1.2c.2-.1.5-.2.7-.3l1.1.6 1.4-1.4-.6-1.1c.1-.2.2-.5.3-.7l1.2-.4V7z"/></svg>
+      Settings
+    </div>
+  </div>
+  <div class="sidebar-footer">
+    <div class="avatar-circle">DS</div>
+    <div>
+      <div class="sidebar-foot-name">Dave Stephens</div>
+      <div class="sidebar-foot-role">Operator</div>
+    </div>
+  </div>
+</aside>
+
+<div id="mobile-topbar">
+  <button class="hamburger-btn" onclick="toggleMobileSidebar()">&#9776;</button>
+  <div class="mobile-logo">Agency<em>OS</em></div>
+  <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
+    <span class="pulse-dot"></span>
+    <button class="theme-toggle" aria-label="Toggle theme" style="width:28px;height:28px;color:rgba(255,255,255,0.7);border-color:rgba(255,255,255,0.16);font-size:12px;"><span class="t-sun">☀</span><span class="t-moon">🌙</span></button>
+    <button class="kill-btn" style="font-size:10px;padding:4px 10px;" onclick="alert('Pause all outreach — confirm?')">Pause all</button>
+  </div>
+</div>
+
+<div id="sidebar-overlay" onclick="toggleMobileSidebar()"></div>
+
+<div id="app">
+  <div id="topbar">
+    <div class="breadcrumb" id="breadcrumb"><span>AgencyOS</span><span class="crumb-sep">›</span><span class="crumb-current">Home</span></div>
+    <div class="topbar-right">
+      <div class="pulse-row"><div class="pulse-dot"></div><span>Maya · active · day 14 of 30</span></div>
+      <button class="theme-toggle" aria-label="Toggle theme"><span class="t-sun">☀</span><span class="t-moon">🌙</span></button>
+      <button class="kill-btn" onclick="alert('Pause all outreach — confirm?')">Pause all</button>
+    </div>
+  </div>
+  <div id="page"></div>
+</div>
+
+<div id="bottom-nav">
+  <div class="bottom-nav-item" onclick="navigate('#home')"><div class="bn-ico">⌂</div><span>Home</span></div>
+  <div class="bottom-nav-item" onclick="navigate('#prospects')"><div class="bn-ico">☰</div><span>Prospects</span></div>
+  <div class="bottom-nav-item" onclick="navigate('#meetings')"><div class="bn-ico">◫</div><span>Meetings</span></div>
+  <div class="bottom-nav-item" onclick="navigate('#progress')"><div class="bn-ico">▌</div><span>Progress</span></div>
+</div>
+
+<div class="drawer-backdrop" id="drawerBackdrop" onclick="closeBriefing()"></div>
+<aside class="drawer" id="briefingDrawer">
+  <div class="drawer-head">
+    <div>
+      <div class="eyebrow">Briefing</div>
+      <div id="bfTitle" style="font-family:'Playfair Display',serif;font-weight:700;font-size:22px;color:var(--ink);margin-top:3px;">—</div>
+      <div id="bfSub" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-3);margin-top:2px;">—</div>
+    </div>
+    <button class="drawer-close" onclick="closeBriefing()" aria-label="Close">×</button>
+  </div>
+  <div class="drawer-body" id="bfBody"></div>
+</aside>
+
+<script>
+/* ======================================================================
+   Prospect data (copied from v4 honest-data branch — 10 hero prospects)
+====================================================================== */
+const heroProspects = [
+  {
+    id: 'p1', name: 'Momentum Constructions', suburb: 'Brunswick', state: 'VIC',
+    industry: 'Construction', intent: 'struggling', score: 91, staff: '28',
+    est: '2008',
+    domain: 'momentumconstructions.com.au', display_name: 'Momentum Constructions',
+    gmb_category: 'General contractor', abn_status: 'active', abn_age_years: 18,
+    dfs_organic_etv: 180, dfs_organic_keywords: 42, backlinks_count: 67, domain_rank: 28,
+    propensity_score: 91,
+    dm: { name: 'James Whitford', title: 'Founder & MD', email: 'j.whitford@momentumconstructions.com.au', phone: '+61 412 XXX XXX', linkedin: 'Verified', tenure: '16 years', prevRoles: 'Site Manager at Lendlease (2001–2008)', style: 'Direct and numbers-focused. Responds well to ROI data. Dislikes jargon.', linkedinActivity: 'Posts about project wins 2x/month. Engages with industry news.' },
+    signals: [
+      { text: 'Google Ads spend detected (estimated high)', time: '2 days ago' },
+      { text: 'GMB rating dropped from 4.6 to 4.1 in 90 days', time: '5 days ago' },
+      { text: 'Website last updated 2019 — no SSL, not mobile responsive', time: '1 week ago' },
+      { text: 'Competitor bidding on their brand terms', time: '3 days ago' },
+    ],
+    affordability: 8, intentScore: 16, composite: 91,
+    vulnerability: 'Momentum Constructions is spending on Google Ads but their website converts poorly — no SSL, not mobile responsive, last updated 2019. GMB rating dropped from 4.6 to 4.1 with negative reviews in 90 days. A competitor is bidding on their brand terms. Budget and intent present but leaking value at every touchpoint.',
+    vulnGrades: { website: 'F', seo: 'D', reviews: 'D', ads: 'C', social: 'B', content: 'F' },
+    status: 'Meeting Booked',
+    meeting: { date: 'Monday 14 April 2026', time: '10:00am AEST', platform: 'Zoom', countdown: 'In 7 days' },
+    pricingRange: '$2,800–$4,200/month AUD',
+    openingHook: '"James, your competitor is currently bidding on the exact phrase people search when looking for Momentum Constructions. I can show you that in the first 2 minutes."',
+    discoveryQuestions: ['What does a qualified lead look like for you?', 'How are you currently tracking ROI on your Google Ads spend?', 'What happened with the GMB reviews — did you notice the drop?'],
+    objections: [{ obj: '"We already have someone handling this."', response: 'Great — let me show you what they\'re missing on the technical side. This isn\'t about effort, it\'s about infrastructure.' }, { obj: '"Not in the budget right now."', response: 'You\'re already spending on ads. We\'re talking about making that spend work properly.' }],
+    closeOptions: ['90-day pilot at $2,800/month — website + GMB + ad landing pages', 'Full-service retainer at $4,200/month including content and ongoing optimisation'],
+  },
+  {
+    id: 'p2', name: 'Harbour Physiotherapy', suburb: 'Manly', state: 'NSW',
+    industry: 'Health', intent: 'struggling', score: 88, staff: '11', est: '2015',
+    domain: 'harbourphysio.com.au', display_name: 'Harbour Physiotherapy',
+    gmb_category: 'Physiotherapist', abn_status: 'active', abn_age_years: 11,
+    propensity_score: 88,
+    dm: { name: 'Sarah Kemp', title: 'Clinical Director & Owner', email: 's.kemp@harbourphysio.com.au', tenure: '9 years', style: 'Evidence-based thinker. Appreciates data. Skeptical of marketing claims.', linkedinActivity: 'Shares clinical research articles. Occasional posts about the practice.' },
+    signals: [{ text: 'Google Ads paused after 6 months continuous spend', time: '1 week ago' }],
+    composite: 88,
+    vulnerability: 'Harbour Physiotherapy paused Google Ads after 6 months. Competitor launched 200m away with aggressive presence. Defence-mode opportunity.',
+    vulnGrades: { website: 'C', seo: 'D', reviews: 'B', ads: 'F', social: 'D', content: 'D' },
+    status: 'Meeting Booked',
+    meeting: { date: 'Tuesday 15 April 2026', time: '2:00pm AEST', platform: 'Zoom', countdown: 'In 8 days' },
+    pricingRange: '$1,800–$2,800/month AUD',
+    openingHook: '"Sarah, the new practice that opened on Sydney Road 3 months ago is now outranking Harbour Physiotherapy for 14 of your top search terms."',
+    discoveryQuestions: ['Why did you pause Google Ads — was it the cost or the results?', 'Have you seen patient numbers affected by the new competitor?', 'What does your current patient acquisition look like — mostly referrals?'],
+    objections: [{ obj: '"We can\'t afford it right now."', response: 'Every month you don\'t act is another month the competitor gains ground.' }],
+    closeOptions: ['Local defence at $1,800/month — SEO + GMB + review management', 'Full digital at $2,800/month adding content and ads'],
+  },
+  {
+    id: 'p3', name: 'Cascade Dental Group', suburb: 'Paddington', state: 'NSW',
+    industry: 'Dental', intent: 'trying', score: 74, staff: '14', est: '2012',
+    domain: 'cascadedental.com.au', gmb_category: 'Dental clinic', abn_status: 'active', abn_age_years: 14,
+    propensity_score: 85,
+    dm: { name: 'Dr Priya Narayan', title: 'Principal Dentist & Owner', tenure: '12 years', style: 'Analytical. Values credentials and case studies.', linkedinActivity: 'Active — posts about dental health awareness 3x/month.' },
+    composite: 74,
+    vulnerability: 'Cascade Dental is actively trying — hired a marketing coordinator and redesigned their website. New site has thin content and GMB strategy is basic.',
+    vulnGrades: { website: 'C', seo: 'C', reviews: 'A', ads: 'D', social: 'C', content: 'D' },
+    status: 'Meeting Booked',
+    meeting: { date: 'Thursday 17 April 2026', time: '11:00am AEST', platform: 'Zoom', countdown: 'In 10 days' },
+    pricingRange: '$2,200–$3,400/month AUD',
+    openingHook: '"Priya, your new website looks great — but there\'s a technical SEO issue that means Google can\'t properly index 60% of your treatment pages."',
+    discoveryQuestions: ['What role do you see the new coordinator playing vs an agency?', 'What\'s the most important service you want more patients for?', 'Are you tracking where your current new patients come from?'],
+    objections: [{ obj: '"We have someone in-house now."', response: 'We work alongside in-house teams constantly. We handle the technical and strategic layer.' }],
+    closeOptions: ['Strategy layer at $2,200/month alongside their coordinator', 'Full-service at $3,400/month'],
+  },
+  {
+    id: 'p4', name: 'Coastal Veterinary', suburb: 'Byron Bay', state: 'NSW',
+    industry: 'Veterinary', intent: 'trying', score: 76, staff: '16', est: '2010',
+    domain: 'coastalvet.com.au', gmb_category: 'Veterinarian', abn_status: 'active', abn_age_years: 9,
+    propensity_score: 82,
+    dm: { name: 'Dr Rebecca Ashford', title: 'Practice Owner', tenure: '14 years', style: 'Community-oriented. Warm communicator. Values relationship over hard sell.', linkedinActivity: 'Posts about animal welfare and local events occasionally.' },
+    composite: 76,
+    vulnerability: 'Coastal Vet investing in marketing but spreading thin — Facebook ads, blog, community sponsorship without cohesive strategy.',
+    vulnGrades: { website: 'B', seo: 'D', reviews: 'A', ads: 'C', social: 'B', content: 'D' },
+    status: 'Meeting Booked',
+    meeting: { date: 'Monday 21 April 2026', time: '9:30am AEST', platform: 'Zoom', countdown: 'In 14 days' },
+    pricingRange: '$1,600–$2,400/month AUD',
+    openingHook: '"Rebecca, I can see you\'ve already done the hard part — you have community trust and good reviews."',
+    discoveryQuestions: ['How are new clients finding you at the moment?', 'What does the Facebook ad spend look like — is it producing bookings?', 'Is the blog something you want to grow or was it experimental?'],
+    objections: [{ obj: '"Can you send pricing first?"', response: 'I can send a range — but the right package depends on your goals. Two questions first...' }],
+    closeOptions: ['Local presence at $1,600/month', 'Full digital at $2,400/month'],
+  },
+  {
+    id: 'p5', name: 'Southbank Legal Advisory', suburb: 'Southbank', state: 'VIC',
+    industry: 'Legal', intent: 'trying', score: 71, staff: '18', est: '2014',
+    domain: 'southbanklegal.com.au', gmb_category: 'Law firm', abn_status: 'active', abn_age_years: 13,
+    propensity_score: 79,
+    dm: { name: 'Andrew Volkov', title: 'Managing Partner', tenure: '10 years', style: 'Precise and logic-driven. Responds to structured arguments.' },
+    composite: 71,
+    vulnerability: 'Southbank Legal investing in content and ads but execution is unfocused — thought leadership lacks SEO, ad spend increasing without conversion tracking.',
+    vulnGrades: { website: 'C', seo: 'D', reviews: 'B', ads: 'C', social: 'C', content: 'C' },
+    status: 'Replied',
+    meeting: null,
+    pricingRange: '$2,400–$3,800/month AUD',
+    openingHook: '"Andrew, you\'ve published 4 articles this month — not one is ranking on page 1 for any commercial legal term. I can explain exactly why in under 3 minutes."',
+    discoveryQuestions: ['What\'s the primary driver for adding family law?', 'Who\'s writing the articles — internal or external?', 'Do you have visibility into what\'s driving your ad clicks?'],
+    objections: [{ obj: '"We manage this internally."', response: 'The volume of content is impressive. The gap is technical SEO — not effort, configuration.' }],
+    closeOptions: ['SEO-first at $2,400/month', 'Full digital at $3,800/month'],
+  },
+  {
+    id: 'p6', name: 'Riverside Accounting', suburb: 'North Sydney', state: 'NSW',
+    industry: 'Accounting', intent: 'dabbling', score: 52, staff: '9', est: '2018',
+    domain: 'riversideaccounting.com.au', gmb_category: 'Accountant', abn_status: 'active', abn_age_years: 21,
+    propensity_score: 76,
+    dm: { name: 'Michael Chen', title: 'Managing Partner', tenure: '6 years', style: 'Analytical. Spreadsheet thinker. Needs to see the numbers before any commitment.' },
+    composite: 52,
+    vulnerability: 'Riverside Accounting just starting digital presence — LinkedIn page with no content, incomplete Google Business Profile.',
+    vulnGrades: { website: 'D', seo: 'F', reviews: 'C', ads: 'F', social: 'F', content: 'F' },
+    status: 'Replied',
+    meeting: null,
+    pricingRange: '$800–$1,400/month AUD',
+    openingHook: '"Michael, I\'m not going to pitch a big retainer. Let me spend 20 minutes showing you what fixing your Google profile alone would do for referrals."',
+    discoveryQuestions: ['What does a new client typically mean in annual revenue for the firm?', 'How do most of your clients find you currently?', 'What\'s making next quarter a better time than now?'],
+    objections: [{ obj: '"Maybe next quarter."', response: 'What changes next quarter? If it\'s budget, I have an entry-level option at $800/month.' }],
+    closeOptions: ['Foundation $800/month — GMB + basic SEO', 'Growth $1,400/month'],
+  },
+  {
+    id: 'p7', name: 'Parramatta Motor Group', suburb: 'Parramatta', state: 'NSW',
+    industry: 'Automotive', intent: 'dabbling', score: 47, staff: '34', est: '2005',
+    domain: 'parramattamotor.com.au', gmb_category: 'Car dealer', abn_status: 'active', abn_age_years: 27,
+    propensity_score: 73,
+    dm: { name: 'Wei Zhang', title: 'Dealer Principal', tenure: '19 years', style: 'Revenue-focused. Needs a clear return.' },
+    composite: 47,
+    vulnerability: 'Parramatta Motor Group has high affordability but zero digital marketing investment. Website from 2020, no social presence.',
+    vulnGrades: { website: 'F', seo: 'F', reviews: 'B', ads: 'F', social: 'F', content: 'F' },
+    status: 'Contacted',
+    meeting: null,
+    pricingRange: '$3,200–$5,000/month AUD',
+    openingHook: '"Wei, there are 840 people searching for used cars in Parramatta every month. Parramatta Motor Group doesn\'t appear on the first page for any of them."',
+    discoveryQuestions: ['Where does most of your foot traffic come from today?', 'Have you ever tried digital advertising?', 'What would one extra car sale per week mean in margin?'],
+    objections: [{ obj: '"We do fine without digital."', response: 'You\'re doing well despite it — imagine doing well because of it.' }],
+    closeOptions: ['Visibility $3,200/month', 'Full digital $5,000/month'],
+  },
+  {
+    id: 'p8', name: 'Bondi Creative Studio', suburb: 'Bondi', state: 'NSW',
+    industry: 'Design', intent: 'trying', score: 68, staff: '8', est: '2019',
+    domain: 'bondicreative.com.au', gmb_category: 'Graphic designer', abn_status: 'active', abn_age_years: 7,
+    propensity_score: 70,
+    dm: { name: 'Aria Martinelli', title: 'Creative Director', tenure: '5 years', style: 'Creative-first. Responds to aesthetics and story.' },
+    composite: 68,
+    vulnerability: 'Bondi Creative understands marketing but struggles with their own pipeline. Strong social growth but no paid acquisition.',
+    vulnGrades: { website: 'B', seo: 'D', reviews: 'A', ads: 'F', social: 'A', content: 'B' },
+    status: 'Contacted',
+    meeting: null,
+    pricingRange: '$1,200–$2,000/month AUD',
+    openingHook: '"Aria, I\'ve spent time on your portfolio — the work is genuinely excellent. The problem is that when a business in Sydney searches for a brand design studio, you don\'t appear anywhere in the top 20 results."',
+    discoveryQuestions: ['How do you win new clients today — mostly referrals?', 'Have you explored paid channels or is it purely organic?', 'What type of client are you trying to attract more of?'],
+    objections: [{ obj: '"We do marketing for others — we can do it ourselves."', response: 'Most of your competitors say the same. It\'s about bandwidth, not capability.' }],
+    closeOptions: ['New business channel $1,200/month', 'Full growth $2,000/month'],
+  },
+  {
+    id: 'p9', name: 'Fitzroy Cafe Group', suburb: 'Fitzroy', state: 'VIC',
+    industry: 'Hospitality', intent: 'struggling', score: 84, staff: '22', est: '2016',
+    domain: 'fitzroycafegroup.com.au', gmb_category: 'Cafe', abn_status: 'active', abn_age_years: 6,
+    propensity_score: 67,
+    dm: { name: 'Tom Abernathy', title: 'Owner', tenure: '8 years', style: 'Pragmatic. Busy. Responds to brevity.' },
+    composite: 84,
+    vulnerability: 'Fitzroy Cafe Group bleeding margin to delivery platforms and struggling with staff retention. Stale GMB while competitor won local awards.',
+    vulnGrades: { website: 'D', seo: 'F', reviews: 'C', ads: 'F', social: 'D', content: 'F' },
+    status: 'Contacted',
+    meeting: null,
+    pricingRange: '$1,400–$2,200/month AUD',
+    openingHook: '"Tom, our full package is $1,400/month and builds you a direct channel to replace the platform fees you\'re paying."',
+    discoveryQuestions: ['What percentage of revenue is delivery vs dine-in?', 'Have you tried promoting direct orders?', 'What did Sundays Fitzroy do differently that you\'ve noticed?'],
+    objections: [{ obj: '"I\'m too busy to deal with marketing."', response: 'That\'s exactly why you use us. It runs in the background.' }],
+    closeOptions: ['Direct acquisition $1,400/month', 'Full platform $2,200/month'],
+  },
+  {
+    id: 'p10', name: 'Gold Coast Mortgage Co', suburb: 'Surfers Paradise', state: 'QLD',
+    industry: 'Finance', intent: 'dabbling', score: 55, staff: '12', est: '2017',
+    domain: 'goldcoastmortgage.com.au', gmb_category: 'Mortgage broker', abn_status: 'recent', abn_age_years: 2,
+    propensity_score: 64,
+    dm: { name: 'Priya Sharma', title: 'Principal Broker', tenure: '7 years', style: 'Relationship-first. Open to new ideas.' },
+    composite: 55,
+    vulnerability: 'Gold Coast Mortgage Co expanding into financial planning (new ABN) and doing community networking. Growth intent present but no digital strategy.',
+    vulnGrades: { website: 'D', seo: 'F', reviews: 'B', ads: 'F', social: 'D', content: 'F' },
+    status: 'Contacted',
+    meeting: null,
+    pricingRange: '$1,200–$2,000/month AUD',
+    openingHook: '"Priya, the financial planning ABN is a smart move. But right now when someone searches for financial planners in Surfers Paradise, there\'s no digital presence for that service at all."',
+    discoveryQuestions: ['How are you planning to get clients for the financial planning arm?', 'Is your referral network aware of the new service yet?', 'Have you set a target for new planning clients this year?'],
+    objections: [{ obj: '"We\'re still setting it up."', response: 'The best time to build a digital foundation is before you launch.' }],
+    closeOptions: ['Foundation $1,200/month', 'Combined $2,000/month'],
+  },
+];
+
+/* ======================================================================
+   Helpers
+====================================================================== */
+function overallVulnGrade(vg) {
+  if (!vg) return 'C';
+  const map = { A:5, B:4, C:3, D:2, F:1 };
+  const inv = { 5:'A', 4:'B', 3:'C', 2:'D', 1:'F' };
+  const vals = Object.values(vg).map(l => map[l] || 3);
+  return inv[Math.round(vals.reduce((a,b)=>a+b,0)/vals.length)] || 'C';
+}
+function staffRange(s) {
+  const n = parseInt(s, 10);
+  if (!n) return '—';
+  if (n <= 10) return '1-10';
+  if (n <= 50) return '11-50';
+  if (n <= 200) return '51-200';
+  return '200+';
+}
+function statusPill(s) {
+  const c = s === 'Meeting Booked' ? 'green' : s === 'Replied' ? 'amber' : 'gray';
+  return `<span class="pill ${c}">${s}</span>`;
+}
+function findP(id) { return heroProspects.find(p => p.id === id); }
+
+/* What Maya did today — log */
+const MAYA_TODAY = [
+  { ic: '✉', t: 'Sent follow-up email to <b>James Whitford</b> (Momentum Constructions) — Email 3 in sequence', at: '2m ago' },
+  { ic: '✓', t: 'Booked meeting with <b>Sarah Kemp</b> (Harbour Physio) via email reply', at: '14m ago' },
+  { ic: 'in', t: 'LinkedIn connect accepted by <b>Aria Martinelli</b> (Bondi Creative)', at: '1h ago' },
+  { ic: '✉', t: 'SMS sent to <b>Dr Rebecca Ashford</b> (Coastal Vet) after LinkedIn message', at: '2h ago' },
+  { ic: '☎', t: 'Scheduled Voice AI call for <b>Wei Zhang</b> (Parramatta Motor Group) — tomorrow 10:30am', at: '3h ago' },
+  { ic: '✉', t: 'Email 3 sent to <b>Priya Sharma</b> (Gold Coast Mortgage Co)', at: '4h ago' },
+];
+
+/* Needs supervisor attention */
+const ATTENTION = [
+  { type: 'review', ic: '⚠', text: '<b>2 draft messages flagged by Maya</b> for your review — LinkedIn to James Whitford (too long), SMS to Tom Abernathy (too transactional)', cta: 'Review →' },
+  { type: 'review', ic: '⚠', text: '<b>1 meeting needs prep briefing</b> — James Whitford · Monday 10am · VR grade D (website + content weak, tread carefully)', cta: 'Open briefing →' },
+];
+
+/* Quality check sample (3 messages) */
+const QC_SAMPLE = [
+  { pass: true, ch: 'Email', to: 'Dr Priya Narayan · Cascade Dental', note: 'Strong personalisation, competitor data used well, on-tone.', out: 'PASS' },
+  { pass: false, ch: 'LinkedIn', to: 'James Whitford · Momentum Constructions', note: 'Too long for DM format — 4 paragraphs, generic opener.', out: 'FAIL' },
+  { pass: true, ch: 'Voice AI', to: 'Dr Rebecca Ashford · Coastal Vet', note: 'Natural opener, good pain point hook, appropriate pacing.', out: 'PASS' },
+];
+
+/* ======================================================================
+   Renderers
+====================================================================== */
+function renderHome() {
+  const met = 8, rep = 31, ctd = 247, win = '3.2%';
+  document.getElementById('page').innerHTML = `
+    <div class="bdr-hero">
+      <div class="bdr-avatar">M</div>
+      <div>
+        <div class="eyebrow">Your BDR report this week</div>
+        <h2>Maya found <em>${rep} replies</em> and booked <em>${met} meetings</em> this week.</h2>
+        <div class="hero-sub">
+          <span>${ctd} prospects contacted</span>
+          <span class="hero-dot">·</span>
+          <span>Win rate ${win}</span>
+          <span class="hero-dot">·</span>
+          <span>Cycle 3 · day 14 of 30</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-card"><div class="summary-val">${ctd}</div><div class="summary-label">Prospects Contacted</div><div class="summary-delta up">+38 this week</div></div>
+      <div class="summary-card"><div class="summary-val">${rep}</div><div class="summary-label">Replies Received</div><div class="summary-delta up">+9 this week</div></div>
+      <div class="summary-card"><div class="summary-val">${met}<span style="font-size:14px;color:var(--ink-3);">/10 target</span></div><div class="summary-label">Meetings Booked</div><div class="summary-delta up">+3 this week</div></div>
+      <div class="summary-card"><div class="summary-val">${win}</div><div class="summary-label">Win Rate</div><div class="summary-delta up">vs AU benchmark 0.8%</div></div>
+    </div>
+
+    <div class="two-col">
+      <div>
+        <div class="section-label" style="margin-top:0;">What Maya did today</div>
+        <div class="card">
+          ${MAYA_TODAY.map(a => `
+            <div class="activity-row">
+              <div class="activity-ico">${a.ic}</div>
+              <div style="flex:1;min-width:0;">
+                <div class="activity-text">${a.t}</div>
+                <div class="activity-time">${a.at}</div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+      <div>
+        <div class="section-label" style="margin-top:0;">Needs your attention</div>
+        ${ATTENTION.map(a => `
+          <div class="attention-item ${a.type==='meeting' ? 'meeting':''}">
+            <div class="att-ic">${a.ic}</div>
+            <div class="att-text">${a.text}</div>
+            <div class="att-cta" onclick="navigate('#prospects')">${a.cta}</div>
+          </div>
+        `).join('')}
+        <div class="section-label">Quality check <span style="color:var(--ink-3);font-family:'DM Sans',sans-serif;text-transform:none;letter-spacing:0;font-size:11px;margin-left:8px;">· 3 of 247 spot-checked</span></div>
+        <div class="card">
+          ${QC_SAMPLE.map(q => `
+            <div class="qc-row">
+              <div class="qc-check ${q.pass?'pass':'fail'}">${q.pass?'✓':'✗'}</div>
+              <div class="qc-main">
+                <div class="qc-label"><b>${q.ch}</b> → ${q.to}</div>
+                <div class="qc-note">${q.note}</div>
+              </div>
+              <div class="qc-outcome ${q.pass?'pass':'fail'}">${q.out}</div>
+            </div>
+          `).join('')}
+          <div style="margin-top:14px;"><button class="btn btn-outline" onclick="alert('Request a fresh QA sample from Maya')">Request fresh sample</button></div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+let activeFilter = 'all';
+function renderProspects() {
+  const filters = [
+    { k: 'all', l: 'All' },
+    { k: 'hot', l: 'Hot (score > 80)' },
+    { k: 'replied', l: 'Replied' },
+    { k: 'booked', l: 'Meeting Booked' },
+    { k: 'needs', l: 'Needs Attention' },
+  ];
+  const list = heroProspects.filter(p => {
+    if (activeFilter === 'hot') return p.score > 80;
+    if (activeFilter === 'replied') return p.status === 'Replied';
+    if (activeFilter === 'booked') return p.status === 'Meeting Booked';
+    if (activeFilter === 'needs') return p.id === 'p1' || p.id === 'p9'; /* prototype: flagged */
+    return true;
+  }).slice().sort((a,b) => b.score - a.score);
+
+  document.getElementById('page').innerHTML = `
+    <h1 class="page-headline">Your prospects,<br><em>ranked by opportunity.</em></h1>
+    <p class="page-sub">Click any row to open the briefing. Maya handles the outreach — you decide who to close.</p>
+    <div class="filter-chips">
+      ${filters.map(f => `<div class="chip ${activeFilter===f.k?'active':''}" onclick="setFilter('${f.k}')">${f.l}</div>`).join('')}
+    </div>
+    ${list.map(p => {
+      const vr = overallVulnGrade(p.vulnGrades);
+      return `
+        <div class="prospect-row" onclick="openBriefing('${p.id}')">
+          <div class="vr-grade" data-g="${vr}" title="Vulnerability grade: ${vr}">${vr}</div>
+          <div class="p-main">
+            <div class="p-name">${p.name}</div>
+            <div class="p-sub">${p.industry} · ${p.suburb}, ${p.state} · ${staffRange(p.staff)} employees (LinkedIn)</div>
+          </div>
+          <div class="p-dm">${p.dm.name}<div class="p-dm-title">${p.dm.title}</div></div>
+          <div class="p-score">${p.score}<small>Score</small></div>
+          <div class="p-status">${statusPill(p.status)}</div>
+        </div>
+      `;
+    }).join('')}
+    ${list.length === 0 ? '<div class="m-empty">No prospects match this filter.</div>' : ''}
+  `;
+}
+function setFilter(k) { activeFilter = k; renderProspects(); }
+
+function renderMeetings() {
+  const upcoming = heroProspects.filter(p => p.meeting && p.meeting.date);
+  document.getElementById('page').innerHTML = `
+    <h1 class="page-headline">Meetings,<br><em>${upcoming.length} booked.</em></h1>
+    <p class="page-sub">Each briefing is Maya's research. Open before the meeting. Close after.</p>
+    <div class="section-label" style="margin-top:0;">Upcoming</div>
+    ${upcoming.length > 0 ? upcoming.map(p => {
+      const vr = overallVulnGrade(p.vulnGrades);
+      return `
+        <div class="meeting-card">
+          <div class="vr-grade" data-g="${vr}">${vr}</div>
+          <div class="p-main">
+            <div class="p-name">${p.dm.name} · ${p.name}</div>
+            <div class="p-sub">${p.dm.title} · ${p.suburb}, ${p.state}</div>
+          </div>
+          <div class="m-when">
+            <div class="m-when-main">${p.meeting.date.split(' ').slice(0,3).join(' ')} · ${p.meeting.time}</div>
+            <div class="m-when-sub">${p.meeting.countdown} · ${p.meeting.platform}</div>
+          </div>
+          <button class="btn btn-primary" onclick="openBriefing('${p.id}')">Open briefing</button>
+        </div>
+      `;
+    }).join('') : '<div class="m-empty">No meetings booked yet.</div>'}
+    <div class="section-label">Completed</div>
+    <div class="m-empty">No completed meetings yet</div>
+  `;
+}
+
+function renderProgress() {
+  const funnel = [
+    { l: 'Discovered', v: 600, max: 600 },
+    { l: 'Contacted', v: 247, max: 600 },
+    { l: 'Replied', v: 31, max: 600 },
+    { l: 'Meetings', v: 8, max: 600 },
+    { l: 'Won', v: 3, max: 600 },
+  ];
+  document.getElementById('page').innerHTML = `
+    <h1 class="page-headline">Cycle performance,<br><em>this report to your partners.</em></h1>
+    <p class="page-sub">Cycle 3 · day 14 of 30 · last updated 4 min ago
+      <button class="btn btn-outline" style="margin-left:10px;" onclick="alert('Export PDF report')">Export report</button>
+    </p>
+
+    <div class="kpi-strip">
+      <div class="kpi-cell"><div class="kpi-val">47<small>%</small></div><div class="kpi-label">Open Rate</div><div class="kpi-bench">AU B2B benchmark: 21%</div></div>
+      <div class="kpi-cell"><div class="kpi-val">8.2<small>%</small></div><div class="kpi-label">Reply Rate</div><div class="kpi-bench">AU B2B benchmark: 3.1%</div></div>
+      <div class="kpi-cell"><div class="kpi-val">1.4<small>%</small></div><div class="kpi-label">Meeting Rate</div><div class="kpi-bench">AU B2B benchmark: 0.8%</div></div>
+      <div class="kpi-cell"><div class="kpi-val">23<small>h</small></div><div class="kpi-label">Avg Reply Time</div><div class="kpi-bench" style="color:var(--ink-3);">contacted → first reply</div></div>
+    </div>
+
+    <div class="section-label">Funnel</div>
+    <div class="card">
+      <div class="funnel">
+        ${funnel.map(f => `
+          <div class="f-row">
+            <div class="f-label">${f.l}</div>
+            <div class="f-bar"><div class="f-fill" style="width:${Math.max(6, f.v/f.max*100)}%;">${f.v.toLocaleString()}</div></div>
+            <div class="f-pct">${(f.v/f.max*100).toFixed(f.v/f.max<0.05?1:0)}%</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+
+    <div class="section-label">Cost efficiency · AUD · cycle-to-date</div>
+    <div class="card">
+      <div class="roi-grid">
+        <div class="roi-cell"><div class="roi-val">$186</div><div class="roi-label">Cost / Meeting</div><div class="roi-delta">−14% vs last cycle</div></div>
+        <div class="roi-cell"><div class="roi-val">$47</div><div class="roi-label">Cost / Reply</div><div class="roi-delta">−9% vs last cycle</div></div>
+        <div class="roi-cell"><div class="roi-val">$6.20</div><div class="roi-label">Cost / Contact</div><div class="roi-delta" style="color:var(--red);">+3% vs last cycle</div></div>
+        <div class="roi-cell"><div class="roi-val">12.4×</div><div class="roi-label">Pipeline / Spend</div><div class="roi-delta">+2.1× vs last cycle</div></div>
+      </div>
+      <div style="margin-top:14px;font-size:12px;color:var(--ink-3);font-family:'JetBrains Mono',monospace;">Cycle spend $3,720 · Pipeline created $46,200 · Meetings 8 · Qualified 3</div>
+    </div>
+  `;
+}
+
+function renderSettings() {
+  document.getElementById('page').innerHTML = `
+    <h1 class="page-headline">Settings</h1>
+    <p class="page-sub">Configure Maya, your BDR agent.</p>
+    <div class="card">
+      <div class="setting-row">
+        <div class="setting-key">BDR name</div>
+        <div class="setting-val"><input type="text" value="Maya"></div>
+      </div>
+      <div class="setting-row">
+        <div class="setting-key">Agency name</div>
+        <div class="setting-val"><input type="text" value="Keiracom Growth"></div>
+      </div>
+      <div class="setting-row">
+        <div class="setting-key">Founder</div>
+        <div class="setting-val"><input type="text" value="Dave Stephens · dave@keiracom.com.au"></div>
+      </div>
+      <div class="setting-row">
+        <div class="setting-key">Quality check cadence</div>
+        <div class="setting-val"><select><option>3 random / day (current)</option><option>5 random / day</option><option>10 random / day</option><option>Review-all</option></select></div>
+      </div>
+      <div class="setting-row">
+        <div class="setting-key">Needs-review threshold</div>
+        <div class="setting-val"><select><option>Critic score &lt; 70 (current)</option><option>Critic score &lt; 80</option><option>Critic score &lt; 60</option></select></div>
+      </div>
+      <div class="setting-row">
+        <div class="setting-key">Agency voice / tone</div>
+        <div class="setting-val"><textarea>Direct. Australian. Evidence-led. No corporate fluff. Every message references a specific vulnerability on the prospect's site — never generic.</textarea></div>
+      </div>
+    </div>
+    <div style="margin-top:18px;"><button class="btn btn-amber">Save changes</button></div>
+  `;
+}
+
+/* ======================================================================
+   Briefing drawer
+====================================================================== */
+function openBriefing(id) {
+  const p = findP(id);
+  if (!p) return;
+  document.getElementById('bfTitle').textContent = p.name;
+  document.getElementById('bfSub').textContent = `${p.dm.name} · ${p.dm.title} · ${p.suburb}, ${p.state}`;
+  const vr = overallVulnGrade(p.vulnGrades);
+  document.getElementById('bfBody').innerHTML = `
+    <div class="bf-section" style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;">
+      <div class="vr-grade" data-g="${vr}" style="width:52px;height:52px;font-size:22px;">${vr}</div>
+      <div>
+        <div class="eyebrow">Vulnerability grade</div>
+        <div style="font-size:14px;color:var(--ink-2);line-height:1.55;margin-top:4px;max-width:400px;">${p.vulnerability}</div>
+      </div>
+    </div>
+
+    ${p.meeting ? `
+      <div class="pma-row">
+        <button class="pma-btn pma-won" onclick="alert('Marked as: Closed won')">Closed won</button>
+        <button class="pma-btn pma-follow" onclick="alert('Marked as: Follow up')">Follow up</button>
+        <button class="pma-btn pma-noshow" onclick="alert('Marked as: No show')">No show</button>
+        <button class="pma-btn pma-resched" onclick="alert('Marked as: Reschedule')">Reschedule</button>
+      </div>
+    ` : ''}
+
+    <div class="bf-ai-tag">✨ AI-generated briefing · verify before use</div>
+
+    <div class="bf-section">
+      <h4>Opening hook</h4>
+      <div class="bf-hook">${p.openingHook}</div>
+    </div>
+
+    <div class="bf-section">
+      <h4>Discovery questions</h4>
+      <ul class="bf-list">
+        ${p.discoveryQuestions.map(q => `<li>${q}</li>`).join('')}
+      </ul>
+    </div>
+
+    <div class="bf-section">
+      <h4>Common objections</h4>
+      ${p.objections.map(o => `
+        <div class="bf-obj">
+          <div class="obj-q">${o.obj}</div>
+          <div class="obj-a">${o.response}</div>
+        </div>
+      `).join('')}
+    </div>
+
+    <div class="bf-section">
+      <h4>Close options</h4>
+      <ul class="bf-list">
+        ${p.closeOptions.map(c => `<li>${c}</li>`).join('')}
+      </ul>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-3);margin-top:10px;letter-spacing:0.1em;text-transform:uppercase;">Your service pricing — from your agency rate card</div>
+      <div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--ink);">${p.pricingRange}</div>
+    </div>
+  `;
+  document.getElementById('drawerBackdrop').classList.add('on');
+  document.getElementById('briefingDrawer').classList.add('on');
+}
+function closeBriefing() {
+  document.getElementById('drawerBackdrop').classList.remove('on');
+  document.getElementById('briefingDrawer').classList.remove('on');
+}
+
+/* ======================================================================
+   Router, navigation, theme
+====================================================================== */
+function navigate(hash) {
+  window.location.hash = hash;
+  if (window.matchMedia('(max-width: 768px)').matches) {
+    document.getElementById('sidebar').classList.remove('mobile-open');
+    document.getElementById('sidebar-overlay').classList.remove('show');
+  }
+}
+function router() {
+  const hash = window.location.hash || '#home';
+  if (hash === '#home') renderHome();
+  else if (hash === '#prospects') renderProspects();
+  else if (hash === '#meetings') renderMeetings();
+  else if (hash === '#progress') renderProgress();
+  else if (hash === '#settings') renderSettings();
+  else renderHome();
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.route === hash));
+  const labels = { '#home':'Home', '#prospects':'Prospects', '#meetings':'Meetings', '#progress':'Progress', '#settings':'Settings' };
+  document.getElementById('breadcrumb').innerHTML = `<span>AgencyOS</span><span class="crumb-sep">›</span><span class="crumb-current">${labels[hash] || 'Home'}</span>`;
+  const bnMap = { '#home':0, '#prospects':1, '#meetings':2, '#progress':3 };
+  document.querySelectorAll('.bottom-nav-item').forEach((el, i) => el.classList.toggle('active', bnMap[hash] === i));
+  window.scrollTo(0, 0);
+  closeBriefing();
+}
+window.addEventListener('hashchange', router);
+
+function toggleMobileSidebar() {
+  const sb = document.getElementById('sidebar');
+  const ov = document.getElementById('sidebar-overlay');
+  sb.classList.toggle('mobile-open');
+  ov.classList.toggle('show');
+}
+
+/* theme */
+const THEME_KEY = 'agencyos_theme';
+document.addEventListener('click', e => {
+  if (e.target.closest('.theme-toggle')) {
+    const next = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
+    document.documentElement.classList.toggle('dark', next === 'dark');
+    localStorage.setItem(THEME_KEY, next);
+  }
+});
+
+/* boot */
+router();
+</script>
+</body>
+</html>

@@ -29,7 +29,10 @@ interface KillState {
 
 async function fetchState(): Promise<KillState> {
   try {
-    const res = await fetch("/api/v1/outreach/kill-switch", { method: "GET" });
+    const res = await fetch("/api/v1/outreach/kill-switch", {
+      method: "GET",
+      credentials: "include",
+    });
     if (!res.ok) return { paused: false };
     return await res.json();
   } catch {
@@ -38,10 +41,12 @@ async function fetchState(): Promise<KillState> {
 }
 
 async function postToggle(next: boolean): Promise<KillState> {
+  // Session cookie authenticates the operator — no client-side HMAC.
   const res = await fetch("/api/v1/outreach/kill-switch", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ paused: next }),
+    credentials: "include",
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return await res.json().catch(() => ({ paused: next }));

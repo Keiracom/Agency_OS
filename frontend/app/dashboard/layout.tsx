@@ -16,6 +16,7 @@ import { getCurrentUser, getUserMemberships } from "@/lib/supabase-server";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { createServerClient } from "@/lib/supabase-server";
 import { KillSwitch } from "@/components/dashboard/KillSwitch";
+import { DashboardNav } from "@/components/dashboard/DashboardNav";
 
 export default async function DashboardRootLayout({
   children,
@@ -94,7 +95,10 @@ export default async function DashboardRootLayout({
   return (
     <DashboardLayout user={userData} client={clientDataForLayout}>
       <KillSwitch />
-      {children}
+      <div className="flex min-h-screen">
+        <DashboardNav />
+        <div className="flex-1 min-w-0 pt-14 md:pt-0">{children}</div>
+      </div>
     </DashboardLayout>
   );
 }

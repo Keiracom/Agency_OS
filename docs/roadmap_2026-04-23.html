@@ -1,0 +1,1181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agency OS — Product Roadmap 2026</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0f172a;
+      --surface:   #1e293b;
+      --surface2:  #263248;
+      --border:    #334155;
+      --text:      #f1f5f9;
+      --muted:     #94a3b8;
+      --green:     #22c55e;
+      --green-bg:  #052e16;
+      --amber:     #f59e0b;
+      --amber-bg:  #1c1003;
+      --gray:      #64748b;
+      --gray-bg:   #1e293b;
+      --blue:      #3b82f6;
+      --purple:    #a855f7;
+      --indigo:    #6366f1;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 0 0 80px 0;
+    }
+
+    /* ── HEADER ── */
+    .hero {
+      background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 60px 40px 50px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(99,102,241,0.12) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-badge {
+      display: inline-block;
+      background: rgba(99,102,241,0.15);
+      border: 1px solid rgba(99,102,241,0.4);
+      color: #a5b4fc;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 4px 14px;
+      border-radius: 99px;
+      margin-bottom: 20px;
+    }
+    .hero h1 {
+      font-size: clamp(28px, 5vw, 52px);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      background: linear-gradient(135deg, #f1f5f9 0%, #a5b4fc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 12px;
+    }
+    .hero-sub {
+      font-size: 18px;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .hero-date {
+      font-size: 13px;
+      color: var(--gray);
+    }
+
+    /* ── LAYOUT ── */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 32px;
+    }
+
+    section { margin-top: 60px; }
+
+    .section-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--indigo);
+      margin-bottom: 8px;
+    }
+    .section-title {
+      font-size: clamp(20px, 3vw, 28px);
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+    .section-desc {
+      font-size: 14px;
+      color: var(--muted);
+      margin-bottom: 28px;
+    }
+
+    /* ── CURRENT STATE CARDS ── */
+    .state-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+    .state-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .state-card .sc-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    .state-card .sc-value {
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--text);
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+    .state-card .sc-sub {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .wire-bar-wrap { margin-top: 24px; }
+    .wire-bar-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .wire-bar {
+      height: 10px;
+      border-radius: 99px;
+      background: var(--border);
+      overflow: hidden;
+      display: flex;
+    }
+    .wire-bar .seg {
+      height: 100%;
+      transition: width 0.4s;
+    }
+    .seg-prod  { background: var(--green); }
+    .seg-part  { background: var(--amber); }
+    .seg-mock  { background: #6366f1; }
+    .seg-fe    { background: var(--gray); }
+    .wire-legend {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+    .wire-legend span {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .wire-legend .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* ── PHASE CARDS ── */
+    .phases { display: flex; flex-direction: column; gap: 20px; }
+
+    .phase-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+    }
+    .phase-card.status-complete { border-color: rgba(34,197,94,0.35); }
+    .phase-card.status-progress { border-color: rgba(245,158,11,0.35); }
+    .phase-card.status-planned  { border-color: var(--border); }
+
+    .phase-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 22px 24px 18px;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+    .phase-header-left { flex: 1; min-width: 200px; }
+    .phase-tag {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--indigo);
+      margin-bottom: 4px;
+    }
+    .phase-name {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    .phase-desc {
+      font-size: 13px;
+      color: var(--muted);
+      max-width: 600px;
+      line-height: 1.5;
+    }
+    .phase-badge {
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      border-radius: 99px;
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .badge-complete { background: var(--green-bg); color: var(--green); border: 1px solid rgba(34,197,94,0.3); }
+    .badge-progress { background: var(--amber-bg); color: var(--amber); border: 1px solid rgba(245,158,11,0.3); }
+    .badge-planned  { background: rgba(100,116,139,0.1); color: var(--gray); border: 1px solid rgba(100,116,139,0.3); }
+
+    .phase-body { padding: 20px 24px; }
+
+    .items-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 10px;
+    }
+    .item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 13px;
+      color: var(--text);
+      line-height: 1.4;
+    }
+    .item-num {
+      flex-shrink: 0;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: rgba(99,102,241,0.2);
+      color: #a5b4fc;
+      font-size: 10px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 1px;
+    }
+    .item-dot {
+      flex-shrink: 0;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      margin-top: 5px;
+    }
+    .item-dot.amber { background: var(--amber); }
+    .item-dot.gray  { background: var(--gray); }
+
+    /* ── WORK TABLE ── */
+    .table-wrap {
+      overflow-x: auto;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    thead tr {
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+    }
+    th {
+      padding: 12px 16px;
+      text-align: left;
+      font-weight: 600;
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--surface2); }
+    td { padding: 12px 16px; vertical-align: top; color: var(--text); line-height: 1.5; }
+    td:first-child { font-weight: 600; color: #a5b4fc; white-space: nowrap; }
+    td ul { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+    td ul li::before { content: '→ '; color: var(--muted); }
+
+    /* ── MERMAID DIAGRAM ── */
+    .diagram-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 32px 24px;
+      overflow-x: auto;
+    }
+    .mermaid { min-width: 900px; }
+
+    /* ── FOOTER ── */
+    .footer {
+      margin-top: 80px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--gray);
+      padding: 0 32px;
+    }
+    .footer span { color: var(--muted); }
+
+    /* ── DIVIDER ── */
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 48px 0 0;
+    }
+
+    @media (max-width: 640px) {
+      .container { padding: 0 16px; }
+      .hero { padding: 40px 20px 36px; }
+      .phase-header { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════
+     HEADER
+════════════════════════════════════════════════ -->
+<div class="hero">
+  <div class="hero-badge">Keiracom — Internal</div>
+  <h1>Agency OS — Product Roadmap 2026</h1>
+  <p class="hero-sub">From Pipeline to Launch: The Complete Path</p>
+  <p class="hero-date">Last updated: 2026-04-23</p>
+</div>
+
+<div class="container">
+
+<!-- ══════════════════════════════════════════════
+     CURRENT STATE
+════════════════════════════════════════════════ -->
+<section>
+  <p class="section-label">Platform Status</p>
+  <h2 class="section-title">Current State</h2>
+  <p class="section-desc">Where we stand today — what's shipped, what's wired, what's next.</p>
+
+  <div class="state-grid">
+    <div class="state-card">
+      <div class="sc-label">Frontend Routes</div>
+      <div class="sc-value">65</div>
+      <div class="sc-sub">Next.js pages + layouts</div>
+    </div>
+    <div class="state-card">
+      <div class="sc-label">Backend Endpoints</div>
+      <div class="sc-value">186</div>
+      <div class="sc-sub">FastAPI routes</div>
+    </div>
+    <div class="state-card">
+      <div class="sc-label">Integrations</div>
+      <div class="sc-value">38</div>
+      <div class="sc-sub">External service connections</div>
+    </div>
+    <div class="state-card">
+      <div class="sc-label">DB Migrations</div>
+      <div class="sc-value">115</div>
+      <div class="sc-sub">Supabase schema versions</div>
+    </div>
+    <div class="state-card">
+      <div class="sc-label">Business Universe</div>
+      <div class="sc-value">5,970</div>
+      <div class="sc-sub">Enriched prospect BUs</div>
+    </div>
+    <div class="state-card">
+      <div class="sc-label">PRs Merged Today</div>
+      <div class="sc-value">17</div>
+      <div class="sc-sub">Outreach safety + dashboard</div>
+    </div>
+  </div>
+
+  <div class="wire-bar-wrap">
+    <div class="wire-bar-label">
+      <span>Platform Wire State</span>
+      <span>71% prod-wired</span>
+    </div>
+    <div class="wire-bar">
+      <div class="seg seg-prod"  style="width:71%"></div>
+      <div class="seg seg-part"  style="width:11%"></div>
+      <div class="seg seg-mock"  style="width:16%"></div>
+      <div class="seg seg-fe"    style="width:2%"></div>
+    </div>
+    <div class="wire-legend">
+      <span><div class="dot" style="background:var(--green)"></div>Prod-wired 71%</span>
+      <span><div class="dot" style="background:var(--amber)"></div>Partial 11%</span>
+      <span><div class="dot" style="background:#6366f1"></div>Mock 16%</span>
+      <span><div class="dot" style="background:var(--gray)"></div>Frontend-only 2%</span>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════
+     ROADMAP PHASES
+════════════════════════════════════════════════ -->
+<section>
+  <p class="section-label">Roadmap</p>
+  <h2 class="section-title">Phases</h2>
+  <p class="section-desc">Every phase is one session unless noted. Sessions are bounded by clear deliverables, not time estimates.</p>
+
+  <div class="phases">
+
+    <!-- PHASE 1 -->
+    <div class="phase-card status-complete">
+      <div class="phase-header">
+        <div class="phase-header-left">
+          <div class="phase-tag">Phase 1</div>
+          <div class="phase-name">Pipeline F — Enrichment Engine</div>
+          <div class="phase-desc">11-stage enrichment pipeline: Discovery → ABN → SERP → LinkedIn → CIS scoring → Intent → Affordability → Authority → DM Contact → Outreach dispatch. Validated against 5,970 Business Units.</div>
+        </div>
+        <span class="phase-badge badge-complete">&#10003; Complete</span>
+      </div>
+      <div class="phase-body">
+        <div class="items-grid">
+          <div class="item"><div class="item-dot"></div>Stage 1 — Google Maps discovery (Bright Data GMB)</div>
+          <div class="item"><div class="item-dot"></div>Stage 2 — ABN Registry enrichment (2.4M records)</div>
+          <div class="item"><div class="item-dot"></div>Stage 3 — Comprehension + category calibration</div>
+          <div class="item"><div class="item-dot"></div>Stage 4 — Affordability scoring</div>
+          <div class="item"><div class="item-dot"></div>Stage 5 — Intent scoring + VR generation</div>
+          <div class="item"><div class="item-dot"></div>Stage 6 — Decision-maker identification</div>
+          <div class="item"><div class="item-dot"></div>Stage 7 — Contact enrichment waterfall (email + mobile)</div>
+          <div class="item"><div class="item-dot"></div>Stage 8 — CIS composite scoring</div>
+          <div class="item"><div class="item-dot"></div>Stage 9 — Social signal collection</div>
+          <div class="item"><div class="item-dot"></div>Stage 10 — Outreach message generation (LLM)</div>
+          <div class="item"><div class="item-dot"></div>Stage 11 — Dispatch to channels</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PHASE 1.5 -->
+    <div class="phase-card status-complete">
+      <div class="phase-header">
+        <div class="phase-header-left">
+          <div class="phase-tag">Phase 1.5</div>
+          <div class="phase-name">Operational Autonomy — Clone Architecture + Governance</div>
+          <div class="phase-desc">ATLAS (Elliot — frontend clone) + ORION (Aiden — backend clone) operating under dual-concur governance. Parallel agents, worktree isolation, LAW XVII callsign discipline, claim-before-touch on shared files.</div>
+        </div>
+        <span class="phase-badge badge-complete">&#10003; Complete</span>
+      </div>
+      <div class="phase-body">
+        <div class="items-grid">
+          <div class="item"><div class="item-dot"></div>ATLAS + ORION clone architecture live</div>
+          <div class="item"><div class="item-dot"></div>Dual-concur approval protocol</div>
+          <div class="item"><div class="item-dot"></div>Worktree isolation (main + aiden branches)</div>
+          <div class="item"><div class="item-dot"></div>LAW XVII callsign discipline enforced</div>
+          <div class="item"><div class="item-dot"></div>Claim-before-touch on shared files</div>
+          <div class="item"><div class="item-dot"></div>tier_registry table in Supabase</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PHASE 2 -->
+    <div class="phase-card status-progress">
+      <div class="phase-header">
+        <div class="phase-header-left">
+          <div class="phase-tag">Phase 2</div>
+          <div class="phase-name">Dashboard + Safety Layer</div>
+          <div class="phase-desc">17 PRs merged today. Outreach safety infrastructure (compliance guard, timing engine, rate limiter, deliverability monitor) and dashboard wired to live data. 95% complete.</div>
+        </div>
+        <span class="phase-badge badge-progress">95% Complete</span>
+      </div>
+      <div class="phase-body">
+        <div class="items-grid">
+          <div class="item"><div class="item-dot"></div>Compliance Guard (DNCR + TCP + SPAM Act)</div>
+          <div class="item"><div class="item-dot"></div>Timing Engine (timezone-aware, AU holidays)</div>
+          <div class="item"><div class="item-dot"></div>Rate Limiter + Send Pacer</div>
+          <div class="item"><div class="item-dot"></div>Deliverability Monitor (auto-pause)</div>
+          <div class="item"><div class="item-dot"></div>LinkedIn Account State FSM</div>
+          <div class="item"><div class="item-dot"></div>Mailbox Rotation Pool</div>
+          <div class="item"><div class="item-dot"></div>Dashboard Home v10 (unified timeline)</div>
+          <div class="item"><div class="item-dot"></div>Prospect Drawer (cross-surface)</div>
+          <div class="item"><div class="item-dot"></div>Kill Switch (global pause)</div>
+          <div class="item"><div class="item-dot amber"></div>Kill Switch real endpoint (pending)</div>
+          <div class="item"><div class="item-dot amber"></div>Approval URL mismatch fix (pending)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PHASE 2.5a -->
+    <div class="phase-card status-planned">
+      <div class="phase-header">
+        <div class="phase-header-left">
+          <div class="phase-tag">Phase 2.5a — 1 Session</div>
+          <div class="phase-name">"Dave Uses the Product"</div>
+          <div class="phase-desc">The operator configuration layer. Dave (first user) can configure his agency's outreach settings and start sending. All messaging is LLM-generated per prospect — no templates. The operator tunes the AI's voice, not writes messages.</div>
+        </div>
+        <span class="phase-badge badge-planned">Planned — Next</span>
+      </div>
+      <div class="phase-body">
+        <div class="items-grid">
+          <div class="item"><div class="item-num">1</div>Agency Voice Profile editor — services, value props, tone, differentiators, forbidden topics, language samples</div>
+          <div class="item"><div class="item-num">2</div>Channel style config — per-channel tone modifier (email formal, LinkedIn casual, voice conversational)</div>
+          <div class="item"><div class="item-num">3</div>Campaign sequence builder — structure only (Day 1 Email → Day 3 LinkedIn → Day 5 Email → Day 7 Voice). LLM generates content per prospect.</div>
+          <div class="item"><div class="item-num">4</div>Channel enablement toggles — Email / LinkedIn / Voice / SMS on/off per campaign</div>
+          <div class="item"><div class="item-num">5</div>Approval mode live-wired — Manual (review before send) vs Autopilot. Actually gates the dispatcher.</div>
+          <div class="item"><div class="item-num">6</div>Backend fixes — Kill Switch real endpoint, Approval URL mismatch, Pause/Skip/Accelerate endpoints</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PHASE 2.5b -->
+    <div class="phase-card status-planned">
+      <div class="phase-header">
+        <div class="phase-header-left">
+          <div class="phase-tag">Phase 2.5b — 1 Session</div>
+          <div class="phase-name">"Dave Refines His Rig"</div>
+          <div class="phase-desc">Fine-tuning controls for the operator. Sender identity, exclusion lists, timing overrides, and service catalog management.</div>
+        </div>
+        <span class="phase-badge badge-planned">Planned</span>
+      </div>
+      <div class="phase-body">
+        <div class="items-grid">
+          <div class="item"><div class="item-num">7</div>Sender identity config — Salesforge mailbox, LinkedIn account, voice persona selection</div>
+          <div class="item"><div class="item-num">8</div>Exclusion list manager — competitor domains, friendly firms, past clients. Never-contact list.</div>
+          <div class="item"><div class="item-num">9</div>Schedule overrides — operator-editable work hours per prospect timezone</div>
+          <div class="item"><div class="item-num">10</div>Service catalog editor — structured services list, CRM import, operator confirms/edits</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PHASE 2.6 -->
+    <div class="phase-card status-planned">
+      <div class="phase-header">
+        <div class="phase-header-left">
+          <div class="phase-tag">Phase 2.6 — 1 Session</div>
+          <div class="phase-name">"Internal Operations Dashboard"</div>
+          <div class="phase-desc">Keira team's internal tooling. See all customers, monitor health, track margins. 16 admin surfaces currently using mock data where backends already exist — wire them to real data.</div>
+        </div>
+        <span class="phase-badge badge-planned">Planned</span>
+      </div>
+      <div class="phase-body">
+        <div class="items-grid">
+          <div class="item"><div class="item-dot gray"></div>Admin Revenue — 17 mock refs → real billing data (new MRR, churned MRR, churn rate currently hardcoded placeholders)</div>
+          <div class="item"><div class="item-dot gray"></div>Admin Compliance — 14 mock refs → real DNCR + compliance_guard data</div>
+          <div class="item"><div class="item-dot gray"></div>Admin System Overview — 14 mock refs → real Prefect + provider health (Redis/Prefect checks currently hardcoded "healthy")</div>
+          <div class="item"><div class="item-dot gray"></div>Admin Costs — 10 mock refs → real provider spend tracking (currently returns static 42/33/25 percentages)</div>
+          <div class="item"><div class="item-dot gray"></div>Admin Leads — 7 mock refs → real BU data</div>
+          <div class="item"><div class="item-dot gray"></div>Admin Replies — 6 mock refs → real reply_intent data</div>
+          <div class="item"><div class="item-dot gray"></div>Admin Suppression — wire handler to global_suppression_list (currently returns hardcoded dummy data per 2026-04-23 audit)</div>
+          <div class="item"><div class="item-dot gray"></div>Dashboard Home legacy v3 mock cleanup — 12 mock imports → v10 hooks</div>
+          <div class="item"><div class="item-dot gray"></div>WAVE 0 INFRA — cost-logging table + integration-layer spend emission (provider_spend_log schema, asyncpg instrumentation of Anthropic/Gemini/DataForSEO/BrightData/Leadmagic/Salesforge/Unipile/ElevenAgents). Unlocks Admin Costs panel + P0 cost-breaker automation + P2 pattern-driven channel rebalance.</div>
+          <div class="item"><div class="item-dot gray"></div>Endpoint liveness monitoring — scheduled probe (Prefect, 5-15 min) hits every external provider's health/work endpoint, persists to public.health_checks, emits Telegram alerts on state flip</div>
+          <div class="item"><div class="item-dot gray"></div>Pattern Intelligence panel — surface /patterns/recommendations/channels + /patterns/recommendations/timing + /patterns/weights (endpoints exist, currently unused by UI)</div>
+          <div class="item"><div class="item-dot gray"></div>Buyer Signals panel — surface /customers/buyer-signals/* (stats, top-industries, check, boost). Built backend, no UI today.</div>
+          <div class="item"><div class="item-dot gray"></div>CRM Sync Health panel — surface /crm/logs push success/failure per CRM provider</div>
+          <div class="item"><div class="item-dot gray"></div>Emergency Controls — wire /clients/{id}/pause-all + /resume-all + /campaigns/kill as dashboard big-red-button UI</div>
+        </div>
+        <div style="color: #94a3b8; font-size: 0.8rem; margin-top: 8px; border-left: 2px solid #475569; padding-left: 8px;">Session 2026-04-23 findings: endpoint audit against 168 deployed paths found 4 admin endpoints returning hardcoded mock data (Revenue / System Overview / Costs / Suppression) — textbook "hardcoded production fallbacks for customer data" antipattern violations. Delete mocks + wire real data, do not parallel-build.</div>
+      </div>
+    </div>
+
+    <!-- PHASE 2.7 -->
+    <div class="phase-card status-planned">
+      <div class="phase-header">
+        <div class="phase-header-left">
+          <div class="phase-tag">Phase 2.7 — 1 Session</div>
+          <div class="phase-name">"Automated Onboarding"</div>
+          <div class="phase-desc">CRM OAuth integration so customers beyond Dave can self-onboard. Onboarding frontend + backend exist — CRM OAuth handlers are the missing piece.</div>
+        </div>
+        <span class="phase-badge badge-planned">Planned</span>
+      </div>
+      <div class="phase-body">
+        <div class="items-grid">
+          <div class="item"><div class="item-dot gray"></div>HubSpot OAuth + deal extraction + contact sync</div>
+          <div class="item"><div class="item-dot gray"></div>GoHighLevel (GHL) OAuth</div>
+          <div class="item"><div class="item-dot gray"></div>Pipedrive OAuth</div>
+          <div class="item"><div class="item-dot gray"></div>Close CRM OAuth</div>
+          <div class="item"><div class="item-dot gray"></div>Wire OAuth tokens to existing onboarding service</div>
+          <div class="item"><div class="item-dot gray"></div>CRM OAuth auto-refresh (detect 401 on push → auto-refresh token → resume queue)</div>
+        </div>
+        <div style="color: #94a3b8; font-size: 0.8rem; margin-top: 8px; border-left: 2px solid #475569; padding-left: 8px;">Session 2026-04-23 research: /api/v1/crm/callback/{hubspot,gohighlevel} + /crm/connect/{pipedrive,close} + /crm/config + /crm/pipelines + /crm/stages + /crm/logs + /crm/users + /crm/test + /crm/disconnect ALREADY EXIST (13 routes). Remaining work is Dave-action OAuth app registrations in HubSpot/GHL/Pipedrive/Close developer portals + client ID/secret setup, plus auto-refresh wiring. Original "greenfield" estimate is inflated.</div>
+      </div>
+    </div>
+
+    <!-- PHASE 2.8 -->
+    <div class="phase-card status-planned">
+      <div class="phase-header">
+        <div class="phase-header-left">
+          <div class="phase-tag">Phase 2.8 — 1 Session</div>
+          <div class="phase-name">"DevOps Hardening"</div>
+          <div class="phase-desc">Production readiness. Error monitoring, rate limiting, API documentation, and testing infrastructure before external users touch the product.</div>
+        </div>
+        <span class="phase-badge badge-planned">Planned</span>
+      </div>
+      <div class="phase-body">
+        <div class="items-grid">
+          <div class="item"><div class="item-dot gray"></div>Sentry error monitoring wired</div>
+          <div class="item"><div class="item-dot gray"></div>API rate limiting middleware</div>
+          <div class="item"><div class="item-dot gray"></div>OpenAPI / Swagger auto-docs</div>
+          <div class="item"><div class="item-dot gray"></div>Database backup verification</div>
+          <div class="item"><div class="item-dot gray"></div>Playwright E2E smoke tests — login, dispatch cycle, approval click</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PHASE 2.9 -->
+    <div class="phase-card status-planned">
+      <div class="phase-header">
+        <div class="phase-header-left">
+          <div class="phase-tag">Phase 2.9 — 1 Session</div>
+          <div class="phase-name">"Notifications"</div>
+          <div class="phase-desc">Push notifications so operators don't have to poll the dashboard. Transactional emails, daily digests, and critical alerts via Resend.</div>
+        </div>
+        <span class="phase-badge badge-planned">Planned</span>
+      </div>
+      <div class="phase-body">
+        <div class="items-grid">
+          <div class="item"><div class="item-dot amber"></div>PREREQ: Resend domain agencyxos.ai re-verification — status=failed as of 2026-04-23 probe. No delivery path works until this clears. Dave-action or DNS fix.</div>
+          <div class="item"><div class="item-dot gray"></div>Resend email integration for transactional notifications</div>
+          <div class="item"><div class="item-dot gray"></div>Daily digest email — meetings booked, replies, outreach stats (backend /digest/preview + /digest/history + /digest/settings ALREADY EXISTS)</div>
+          <div class="item"><div class="item-dot gray"></div>Meeting confirmation notifications</div>
+          <div class="item"><div class="item-dot gray"></div>Critical alerts — deliverability tank, suppression spike</div>
+          <div class="item"><div class="item-dot gray"></div>Notification preferences UI persistence</div>
+        </div>
+        <div style="color: #94a3b8; font-size: 0.8rem; margin-top: 8px; border-left: 2px solid #475569; padding-left: 8px;">Session 2026-04-23 finding: digest endpoints exist (backend foundation ~40% built). Scope clarification — Resend domain fix blocks delivery; digest business logic needs wiring to real meetings/replies/stats data sources.</div>
+      </div>
+    </div>
+
+    <!-- PHASE 2.10 — P0 Automations (added 2026-04-23) -->
+    <div class="phase-card status-planned">
+      <div class="phase-header">
+        <div class="phase-header-left">
+          <div class="phase-tag">Phase 2.10 — 1-2 Sessions</div>
+          <div class="phase-name">"P0 Automations (wiring, not greenfield)"</div>
+          <div class="phase-desc">Six automations the platform should have for day-1 production. Evidence-based sizing: all 6 items have 40-95% of code already written. Work is WIRING modules that exist but don't talk. #3 TouchStore shipped in PR #402 on 2026-04-23; 5 items remain.</div>
+        </div>
+        <span class="phase-badge badge-planned">Planned</span>
+      </div>
+      <div class="phase-body">
+        <div class="items-grid">
+          <div class="item"><div class="item-dot green"></div>#3 Reply-intent auto-route — SHIPPED PR #402. TouchStore.apply() now persists mutations to scheduled_touches. Unlocks the 15-PR reply-automation pipeline from 2026-04-17/18.</div>
+          <div class="item"><div class="item-dot gray"></div>#1 Mailbox prewarm + tier-sized buffer pool (80% exists via Mailforge Pivot) — add auto-trigger on onboard + auto-replenishment scheduler + warmup→ready promotion callback. ~10-15 hrs. Shares ~60% infra with #6.</div>
+          <div class="item"><div class="item-dot gray"></div>#6 Domain health auto-replace (60% exists) — glue deliverability_monitor pause event → infra_provisioning_flow replacement + in-flight campaign migration. ~6-10 hrs combined with #1.</div>
+          <div class="item"><div class="item-dot gray"></div>#5 Auto-adaptive waterfall (60% exists) — add circuit-breaker state + api_keys_ledger status awareness to mobile_waterfall + email_waterfall so dead providers are SKIPPED, not attempted. ~4-6 hrs.</div>
+          <div class="item"><div class="item-dot gray"></div>#2 Auto-campaign on onboard (85% exists) — wire auto-enrichment after lead assignment + tier-rate cadence tuning. auto_activate=False safety gate is intentional. ~7-10 hrs.</div>
+          <div class="item"><div class="item-dot gray"></div>#4 Provider cost circuit breaker (40% — structural) — extend AISpendTracker pattern (currently Anthropic-only single bucket) to per-provider multi-bucket + DB-backed provider_spend_log + threshold alerts. Depends on Wave 0 cost-logging from Phase 2.6. ~10-14 hrs.</div>
+          <div class="item"><div class="item-dot gray"></div>TouchStore follow-ups (from PR #402 peer review) — (a) return (applied, failed) tuple for partial-failure visibility, (b) split applied-DB-writes from handled-mutations metric, (c) transaction-wrap multi-mutation batches. ~2-3 hrs.</div>
+        </div>
+        <div style="color: #94a3b8; font-size: 0.8rem; margin-top: 8px; border-left: 2px solid #475569; padding-left: 8px;">Build order by unlock-per-hour: TouchStore follow-ups → #5 waterfall → #6+#1 combined → #2 auto-campaign → #4 cost breaker. Total ~35-50 hrs (combined estimate, #1+#6 share 60% infra).</div>
+      </div>
+    </div>
+
+    <!-- PHASE 2.11 — Infra Hygiene (added 2026-04-23) -->
+    <div class="phase-card status-planned">
+      <div class="phase-header">
+        <div class="phase-header-left">
+          <div class="phase-tag">Phase 2.11 — 1 Session</div>
+          <div class="phase-name">"Infra Hygiene + Self-Checks"</div>
+          <div class="phase-desc">Prevent today's failure classes from recurring. Five clone-activation root causes were diagnosed this session; underlying theme is "assumed-coherent not verified-coherent" — same pattern as admin mock endpoints and the webhook HMAC bypass.</div>
+        </div>
+        <span class="phase-badge badge-planned">Planned</span>
+      </div>
+      <div class="phase-body">
+        <div class="items-grid">
+          <div class="item"><div class="item-dot gray"></div>scripts/scaffold_clone.sh — atomic worktree + IDENTITY.md + .env + service creation (eliminates manual-step drift)</div>
+          <div class="item"><div class="item-dot gray"></div>Boot-time CALLSIGN assertion in chat_bot.py — CALLSIGN env ≠ IDENTITY.md → SystemExit (hard fail on mismatch)</div>
+          <div class="item"><div class="item-dot gray"></div>scripts/clone_boot_selftest.sh — ExecStartPost verifies tmux pane running Claude + IDENTITY valid + env coherent + inbox reachable</div>
+          <div class="item"><div class="item-dot gray"></div>Clone watchdog Prefect flow (hourly) — ping each clone, expect outbox ack within 60s, Telegram alert on non-ack</div>
+          <div class="item"><div class="item-dot gray"></div>GitHub Action — IDENTITY.md CALLSIGN line must match worktree directory suffix (CI fail on drift)</div>
+          <div class="item"><div class="item-dot gray"></div>Schema drift detector — nightly diff of supabase/migrations/ vs applied migrations in live DB, alert on pending</div>
+          <div class="item"><div class="item-dot gray"></div>Mock-data CI gate — static scan for DEFAULT_X dicts + hardcoded-percentage returns in /admin endpoints, fail PRs that introduce new antipattern violations</div>
+          <div class="item"><div class="item-dot gray"></div>Route-mount CI check — openapi.json expected-vs-served diff on deploy, alert on missing routes (ElevenAgents were 404 in prod for weeks, invisible until today)</div>
+          <div class="item"><div class="item-dot gray"></div>LAW XIII skill-currency CI check — diff skills/*.md + api_keys_ledger against integration code on every PR</div>
+          <div class="item"><div class="item-dot gray"></div>Auto-ledger probe — nightly re-verify api_keys_ledger UNKNOWN + DEPRECATED rows; update status on state flip (ContactOut sat stale LOCKED_403 for weeks; ElevenAgents routes unmounted for unknown duration)</div>
+        </div>
+        <div style="color: #94a3b8; font-size: 0.8rem; margin-top: 8px; border-left: 2px solid #475569; padding-left: 8px;">Session 2026-04-23 root causes behind items: IDENTITY drift, context exhaustion (ORION at 403k), missing ACK protocol, systemctl user-vs-system confusion, no boot self-test. Common theme: infrastructure assumed-working rather than verified-working.</div>
+      </div>
+    </div>
+
+    <!-- PHASE 3 -->
+    <div class="phase-card status-planned">
+      <div class="phase-header">
+        <div class="phase-header-left">
+          <div class="phase-tag">Phase 3</div>
+          <div class="phase-name">Soft Launch</div>
+          <div class="phase-desc">Dave + 2-3 friendly marketing agencies use the product for real. Weekly feedback loop. Iterate based on actual usage — not assumptions.</div>
+        </div>
+        <span class="phase-badge badge-planned">Launch</span>
+      </div>
+      <div class="phase-body">
+        <div class="items-grid">
+          <div class="item"><div class="item-dot gray"></div>Dave as first internal user — non-paying, seeded via script</div>
+          <div class="item"><div class="item-dot gray"></div>2-3 founding agencies at $2,500/mo AUD (50% lifetime discount)</div>
+          <div class="item"><div class="item-dot gray"></div>Weekly feedback sessions</div>
+          <div class="item"><div class="item-dot gray"></div>Iterate from real usage data</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /phases -->
+</section>
+
+<!-- ══════════════════════════════════════════════
+     WORK DISTRIBUTION TABLE
+════════════════════════════════════════════════ -->
+<section>
+  <p class="section-label">Agent Assignment</p>
+  <h2 class="section-title">Work Distribution</h2>
+  <p class="section-desc">ATLAS = Elliot's clone (frontend focus). ORION = Aiden's clone (backend focus). Dual-concur required on every PR before Dave merges.</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Phase</th>
+          <th>ATLAS — Elliot (Frontend)</th>
+          <th>ORION — Aiden (Backend)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>2.5a</td>
+          <td><ul>
+            <li>Agency Voice Profile editor UI</li>
+            <li>Channel style config UI</li>
+            <li>Campaign sequence builder UI</li>
+            <li>Channel enablement toggles</li>
+            <li>Approval mode UI</li>
+          </ul></td>
+          <td><ul>
+            <li>Agency Voice Profile table + migration</li>
+            <li>Kill Switch real endpoint</li>
+            <li>Approval URL mismatch fix</li>
+            <li>Pause / Skip / Accelerate endpoints</li>
+            <li>Stage 10 prompt injection from profile</li>
+          </ul></td>
+        </tr>
+        <tr>
+          <td>2.5b</td>
+          <td><ul>
+            <li>Sender identity config UI</li>
+            <li>Exclusion list manager UI</li>
+            <li>Schedule overrides UI</li>
+            <li>Service catalog editor UI</li>
+          </ul></td>
+          <td><ul>
+            <li>Sender identity persistence + validation</li>
+            <li>Exclusion list backend (extend suppression_manager)</li>
+            <li>Schedule config table + API</li>
+            <li>Service catalog CRUD endpoints</li>
+          </ul></td>
+        </tr>
+        <tr>
+          <td>2.6</td>
+          <td><ul>
+            <li>Admin Revenue mock → real hooks</li>
+            <li>Admin Compliance mock → real hooks</li>
+            <li>Admin System / Costs / Leads / Replies wire</li>
+            <li>Dashboard Home v3 mock cleanup</li>
+          </ul></td>
+          <td><ul>
+            <li>Revenue rollup query</li>
+            <li>Compliance aggregate view</li>
+            <li>System health API</li>
+            <li>Cost tracking API</li>
+          </ul></td>
+        </tr>
+        <tr>
+          <td>2.7</td>
+          <td><ul>
+            <li>Onboarding OAuth button UX</li>
+            <li>OAuth callback page handlers</li>
+            <li>CRM connection status indicators</li>
+          </ul></td>
+          <td><ul>
+            <li>HubSpot / GHL / Pipedrive / Close OAuth clients</li>
+            <li>OAuth token storage</li>
+            <li>Deal sync + contact import</li>
+          </ul></td>
+        </tr>
+        <tr>
+          <td>2.8</td>
+          <td><ul>
+            <li>Playwright E2E smoke tests</li>
+          </ul></td>
+          <td><ul>
+            <li>Sentry error monitoring wired</li>
+            <li>Rate limiting middleware</li>
+            <li>OpenAPI / Swagger auto-docs</li>
+            <li>DB backup verification</li>
+          </ul></td>
+        </tr>
+        <tr>
+          <td>2.9</td>
+          <td><ul>
+            <li>Notification preferences UI persistence</li>
+          </ul></td>
+          <td><ul>
+            <li>Resend integration</li>
+            <li>Digest email generator</li>
+            <li>Alert emitter extension</li>
+          </ul></td>
+        </tr>
+        <tr>
+          <td>Phase 3</td>
+          <td><ul>
+            <li>Dashboard polish from beta feedback</li>
+          </ul></td>
+          <td><ul>
+            <li>Backend fixes from beta feedback</li>
+          </ul></td>
+        </tr>
+      </tbody>
+    </table>
+    <div style="margin-top: 16px; padding: 12px 16px; background: #1e293b; border-radius: 8px; border-left: 3px solid #8b5cf6;">
+      <span style="font-weight: 600; color: #c4b5fd;">SCOUT</span>
+      <span style="color: #94a3b8;"> — Research clone. Competitive intel, external-source research, gap audits, prior-art checks. Available across all phases for read-only investigation tasks.</span>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════
+     ARCHITECTURE DIAGRAM
+════════════════════════════════════════════════ -->
+<section>
+  <p class="section-label">Architecture</p>
+  <h2 class="section-title">System Architecture</h2>
+  <p class="section-desc">Complete Agency OS data flow — from raw Google Maps discovery through enrichment, scoring, safety, dispatch, and reaction.</p>
+
+  <div class="diagram-wrap">
+    <div class="mermaid">
+flowchart TB
+
+  %% ── DISCOVERY ──────────────────────────────
+  subgraph DISCOVERY["Discovery Layer"]
+    direction TB
+    GMB["Google Maps\n(Bright Data GMB Scraper)"]
+    ABN["ABN Registry\n(2.4M records — Supabase local)"]
+    SERP["SERP Enrichment\n(DataForSEO)"]
+    LIC["LinkedIn Company\n(Bright Data)"]
+    LIP["LinkedIn People\n(Bright Data)"]
+  end
+
+  %% ── ENRICHMENT ─────────────────────────────
+  subgraph ENRICH["Enrichment Layer"]
+    direction TB
+    LM["Leadmagic\n(Email + Mobile)"]
+    CO["ContactOut\n(Email fallback)"]
+    HN["Hunter\n(Email fallback L2)"]
+    AP["Apify\n(LinkedIn Profile + Facebook)"]
+  end
+
+  %% ── INTELLIGENCE ────────────────────────────
+  subgraph INTEL["Intelligence Layer"]
+    direction TB
+    CIS["CIS Scoring Engine"]
+    VR["VR Generator\n(Vulnerability Report)"]
+    SIG["Signal Detection\n(DataForSEO)"]
+    INT["Intent Scoring"]
+    AFF["Affordability Scoring"]
+    AUTH["Authority Scoring"]
+  end
+
+  %% ── OUTREACH SAFETY ─────────────────────────
+  subgraph SAFETY["Outreach Safety Layer"]
+    direction TB
+    TE["Timing Engine\n(timezone-aware, AU holidays)"]
+    CG["Compliance Guard\n(DNCR, TCP, SPAM Act)"]
+    RL["Rate Limiter\n(warming ladder)"]
+    SP["Send Pacer\n(anti-bot jitter)"]
+    DM["Deliverability Monitor\n(bounce/spam auto-pause)"]
+    LAS["LinkedIn Account FSM"]
+    MBR["Mailbox Rotation Pool"]
+  end
+
+  %% ── DISPATCH ────────────────────────────────
+  subgraph DISPATCH["Outreach Dispatch"]
+    direction TB
+    DISP["Dispatcher\n(unified pipeline)"]
+    DD["Daily Decider\n(9am AEST cron)"]
+    HCF["Hourly Cadence Flow\n(fires due touches)"]
+    DT["Decision Tree\n(reply → mutation)"]
+  end
+
+  %% ── CHANNELS ────────────────────────────────
+  subgraph CHANNELS["Channels"]
+    direction LR
+    SF["Salesforge\n(Email)"]
+    UN["Unipile\n(LinkedIn DM + Connect)"]
+    EA["ElevenAgents\n(Voice AI — Alex)"]
+    TX["Telnyx\n(SMS — on hold)"]
+  end
+
+  %% ── REACTION ────────────────────────────────
+  subgraph REACTION["Reaction Layer"]
+    direction TB
+    RR["Reply Router\n(keyword fast-path)"]
+    RIC["Reply Intent Classifier\n(GPT-4o-mini)"]
+    RA["Reply Analyzer\n(sentiment + objections)"]
+    BH["Booking Handler\n(Calendly / Cal.com)"]
+    SM["Suppression Manager"]
+    RRF["Reply Recovery Flow\n(6hr safety net)"]
+  end
+
+  %% ── ORCHESTRATION ───────────────────────────
+  subgraph ORCH["Orchestration"]
+    direction LR
+    PF["Prefect\n(hourly/daily/weekly/monthly)"]
+    ST["Scheduled Touches\ntable"]
+    CL["Campaign Lifecycle\n(draft→active→paused→complete)"]
+  end
+
+  %% ── DATA STORES ─────────────────────────────
+  subgraph DATA["Data Stores"]
+    direction LR
+    SB["Supabase\n(Postgres + Auth + RLS + Realtime)"]
+    RD["Redis\n(queue + rate state)"]
+    BU["Business Universe\n(5,970+ rows)"]
+    ABNDB["ABN Registry\n(2.4M rows)"]
+  end
+
+  %% ── FRONTEND ────────────────────────────────
+  subgraph FRONTEND["Frontend — Next.js"]
+    direction TB
+    DASH["Dashboard Home\n(Pipeline, Meetings, Activity)"]
+    DRAWER["Prospect Drawer\n(cross-surface detail)"]
+    KS["Kill Switch\n(global pause)"]
+    ADMIN["Admin Dashboard\n(KPIs, Costs, Revenue, Compliance)"]
+    OB["Onboarding Flow"]
+    BILL["Billing\n(Stripe)"]
+    APPR["Approval Queue"]
+  end
+
+  %% ── INFRA ───────────────────────────────────
+  subgraph INFRA["Infrastructure"]
+    direction LR
+    RW["Railway\n(compute)"]
+    VC["Vercel\n(frontend)"]
+    PCL["Prefect Cloud\n(orchestration)"]
+  end
+
+  %% ── COMPLIANCE ──────────────────────────────
+  subgraph COMP["Compliance"]
+    direction LR
+    TCP2["TCP Code\n(voice hours)"]
+    SPAM["SPAM Act\n(unsubscribe)"]
+    DNCR["DNCR\n(Do-Not-Call Register)"]
+    AL["Audit Logging"]
+    RLS["RLS\n(tenant isolation)"]
+  end
+
+  %% ── FLOWS ───────────────────────────────────
+  GMB --> ABN --> SERP --> LIC --> LIP
+  LIP --> LM & CO & HN & AP
+  LM & AP --> CIS & VR & SIG
+  SIG --> INT & AFF & AUTH
+  INT & AFF & AUTH --> CIS
+
+  CIS --> BU
+  BU --> DISP
+
+  DISP --> TE --> CG --> RL --> SP
+  SP --> SF & UN & EA & TX
+  TE --> DM --> MBR
+  CG --> LAS
+
+  DD --> DISP
+  HCF --> DISP
+  DISP --> DT --> REACTION
+
+  SF & UN & EA --> RR --> RIC --> RA
+  RA --> BH & SM & RRF
+
+  PF --> DD & HCF
+  PF --> ST & CL
+
+  DISPATCH --> SB & RD
+  REACTION --> SB
+  DATA --> DISP
+
+  FRONTEND --> SB
+  APPR --> DISP
+
+  RW --> DISPATCH & REACTION & INTEL
+  VC --> FRONTEND
+  PCL --> PF
+
+  COMP --> CG & AL & RLS
+
+  classDef layerNode fill:#1e293b,stroke:#334155,color:#f1f5f9,font-size:12px
+  class GMB,ABN,SERP,LIC,LIP,LM,CO,HN,AP layerNode
+  class CIS,VR,SIG,INT,AFF,AUTH layerNode
+  class TE,CG,RL,SP,DM,LAS,MBR layerNode
+  class DISP,DD,HCF,DT layerNode
+  class SF,UN,EA,TX layerNode
+  class RR,RIC,RA,BH,SM,RRF layerNode
+  class PF,ST,CL layerNode
+  class SB,RD,BU,ABNDB layerNode
+  class DASH,DRAWER,KS,ADMIN,OB,BILL,APPR layerNode
+  class RW,VC,PCL layerNode
+  class TCP2,SPAM,DNCR,AL,RLS layerNode
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<div class="footer">
+  <p><span>Agency OS</span> — Keiracom Internal Document — 2026-04-23</p>
+  <p style="margin-top:6px">Build agents: ATLAS (Elliot) + ORION (Aiden) &nbsp;|&nbsp; Governance: dual-concur, LAW XVII callsign discipline</p>
+</div>
+
+<!-- SECTION 7 — DESIGN PRINCIPLE -->
+<div class="section">
+  <h2 class="section-title">Core Design Principle</h2>
+  <div style="background: linear-gradient(135deg, #1e1b4b, #312e81); border: 1px solid #4338ca; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
+    <div style="font-size: 1.25rem; font-weight: 700; color: #a5b4fc; margin-bottom: 8px;">NO TEMPLATES — ALL LLM-GENERATED</div>
+    <p style="color: #cbd5e1; line-height: 1.7;">Every outreach message — email, LinkedIn, voice script — is uniquely generated by LLM per prospect. The operator never writes messages. They configure an Agency Voice Profile (tone, services, differentiators) and the AI generates personalised content using prospect signals, VR grades, and enrichment data. This is Agency OS's core differentiator vs template-based competitors (Instantly, Smartlead, AiSDR). Three-way matching: prospect signals &times; agency capabilities &times; channel format.</p>
+  </div>
+</div>
+
+<!-- SECTION 8 — GOVERNANCE -->
+<div class="section">
+  <h2 class="section-title">Active Governance Rules</h2>
+  <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;">
+    <div style="background: #1e293b; border-radius: 8px; padding: 16px; border-left: 3px solid #6366f1;">
+      <div style="font-weight: 600; color: #e2e8f0;">LAW XV — Four-Store Completion</div>
+      <div style="color: #94a3b8; font-size: 0.875rem; margin-top: 4px;">Every directive writes to: MANUAL.md + ceo_memory + cis_directive_metrics + Drive mirror</div>
+    </div>
+    <div style="background: #1e293b; border-radius: 8px; padding: 16px; border-left: 3px solid #6366f1;">
+      <div style="font-weight: 600; color: #e2e8f0;">LAW XVII — Callsign Discipline</div>
+      <div style="color: #94a3b8; font-size: 0.875rem; margin-top: 4px;">Every message, PR, commit tagged [ELLIOT] or [AIDEN]. No ambiguous identity.</div>
+    </div>
+    <div style="background: #1e293b; border-radius: 8px; padding: 16px; border-left: 3px solid #10b981;">
+      <div style="font-weight: 600; color: #e2e8f0;">Dispatch Coordination (Rule 8)</div>
+      <div style="color: #94a3b8; font-size: 0.875rem; margin-top: 4px;">Ratified today. [DISPATCH-PROPOSAL] + 20s peer [CONCUR] before any clone dispatch. Enforcer-monitored.</div>
+    </div>
+    <div style="background: #1e293b; border-radius: 8px; padding: 16px; border-left: 3px solid #10b981;">
+      <div style="font-weight: 600; color: #e2e8f0;">Rule 2 Amended — Merge Exceptions</div>
+      <div style="color: #94a3b8; font-size: 0.875rem; margin-top: 4px;">CEO-directed merges, peer-review rebases, and orchestrator acks exempt from Step 0. Ratified today.</div>
+    </div>
+    <div style="background: #1e293b; border-radius: 8px; padding: 16px; border-left: 3px solid #f59e0b;">
+      <div style="font-weight: 600; color: #e2e8f0;">Be Safe With Deletions</div>
+      <div style="color: #94a3b8; font-size: 0.875rem; margin-top: 4px;">File-level AND line-level deletions flagged in every PR review. Dave aware before merge.</div>
+    </div>
+    <div style="background: #1e293b; border-radius: 8px; padding: 16px; border-left: 3px solid #f59e0b;">
+      <div style="font-weight: 600; color: #e2e8f0;">Pre-PR Rebase Gate</div>
+      <div style="color: #94a3b8; font-size: 0.875rem; margin-top: 4px;">Rebase on origin/main before opening PR if any PR merged since branch start. Prevents stale-base merges.</div>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 9 — DEPENDENCIES -->
+<div class="section">
+  <h2 class="section-title">Dependencies &amp; Blockers</h2>
+  <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px;">
+    <div style="background: #1e293b; border-radius: 8px; padding: 16px; border-left: 3px solid #ef4444;">
+      <div style="font-weight: 600; color: #fca5a5;">DNCR API Env Vars</div>
+      <div style="color: #94a3b8; font-size: 0.875rem; margin-top: 4px;">Dave approved access. DNCR_API_KEY + DNCR_API_BASE_URL not yet configured. Blocks voice/SMS compliance.</div>
+    </div>
+    <div style="background: #1e293b; border-radius: 8px; padding: 16px; border-left: 3px solid #f59e0b;">
+      <div style="font-weight: 600; color: #fcd34d;">Stripe Configuration</div>
+      <div style="color: #94a3b8; font-size: 0.875rem; margin-top: 4px;">Integration code exists (1489 lines). Dave needs to configure Stripe product/price IDs for founding tier ($2,500/mo AUD).</div>
+    </div>
+    <div style="background: #1e293b; border-radius: 8px; padding: 16px; border-left: 3px solid #f59e0b;">
+      <div style="font-weight: 600; color: #fcd34d;">Vercel Deploy</div>
+      <div style="color: #94a3b8; font-size: 0.875rem; margin-top: 4px;">vercel.json configured. Dave needs to trigger first deploy + configure custom domain.</div>
+    </div>
+    <div style="background: #1e293b; border-radius: 8px; padding: 16px; border-left: 3px solid #f59e0b;">
+      <div style="font-weight: 600; color: #fcd34d;">CRM OAuth Credentials</div>
+      <div style="color: #94a3b8; font-size: 0.875rem; margin-top: 4px;">HubSpot/GHL/Pipedrive/Close OAuth app registrations needed. Dave action for Phase 2.7.</div>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 10 — TIMELINE -->
+<div class="section">
+  <h2 class="section-title">Timeline Estimate</h2>
+  <div style="display: flex; gap: 24px; flex-wrap: wrap;">
+    <div style="background: #1e293b; border-radius: 12px; padding: 24px; flex: 1; min-width: 200px; text-align: center;">
+      <div style="font-size: 2.5rem; font-weight: 800; color: #10b981;">5</div>
+      <div style="color: #94a3b8; font-size: 0.875rem;">sessions (optimistic)</div>
+    </div>
+    <div style="background: #1e293b; border-radius: 12px; padding: 24px; flex: 1; min-width: 200px; text-align: center;">
+      <div style="font-size: 2.5rem; font-weight: 800; color: #f59e0b;">8</div>
+      <div style="color: #94a3b8; font-size: 0.875rem;">sessions (pessimistic)</div>
+    </div>
+    <div style="background: #1e293b; border-radius: 12px; padding: 24px; flex: 1; min-width: 200px; text-align: center;">
+      <div style="font-size: 2.5rem; font-weight: 800; color: #6366f1;">17</div>
+      <div style="color: #94a3b8; font-size: 0.875rem;">PRs merged this session (velocity proof)</div>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 11 — SESSION LEDGER -->
+<div class="section">
+  <h2 class="section-title">Session Ledger — 2026-04-23 (17 PRs)</h2>
+  <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 8px;">
+    <div style="background: #1e293b; padding: 8px 12px; border-radius: 6px; font-size: 0.8rem; color: #94a3b8;"><span style="color: #10b981; font-weight: 600;">#379</span> Timing engine + compliance guard + activity feed</div>
+    <div style="background: #1e293b; padding: 8px 12px; border-radius: 6px; font-size: 0.8rem; color: #94a3b8;"><span style="color: #10b981; font-weight: 600;">#380</span> Realtime ActivityFeed + rate limiter + warming ladder</div>
+    <div style="background: #1e293b; padding: 8px 12px; border-radius: 6px; font-size: 0.8rem; color: #94a3b8;"><span style="color: #10b981; font-weight: 600;">#381</span> Dispatcher + hourly cadence flow</div>
+    <div style="background: #1e293b; padding: 8px 12px; border-radius: 6px; font-size: 0.8rem; color: #94a3b8;"><span style="color: #10b981; font-weight: 600;">#382</span> Decision tree + webhooks + scheduled_touches</div>
+    <div style="background: #1e293b; padding: 8px 12px; border-radius: 6px; font-size: 0.8rem; color: #94a3b8;"><span style="color: #10b981; font-weight: 600;">#383</span> Daily decider flow (9am AEST)</div>
+    <div style="background: #1e293b; padding: 8px 12px; border-radius: 6px; font-size: 0.8rem; color: #94a3b8;"><span style="color: #10b981; font-weight: 600;">#384</span> Home v10 dashboard port</div>
+    <div style="background: #1e293b; padding: 8px 12px; border-radius: 6px; font-size: 0.8rem; color: #94a3b8;"><span style="color: #10b981; font-weight: 600;">#385</span> Pipeline Kanban + Meetings routes</div>
+    <div style="background: #1e293b; padding: 8px 12px; border-radius: 6px; font-size: 0.8rem; color: #94a3b8;"><span style="color: #10b981; font-weight: 600;">#386</span> Send pacer + BU lifecycle + referral</div>
+    <div style="background: #1e293b; padding: 8px 12px; border-radius: 6px; font-size: 0.8rem; color: #94a3b8;"><span style="color: #10b981; font-weight: 600;">#387</span> Mailbox rotation + deliverability + LinkedIn state</div>
+    <div style="background: #1e293b; padding: 8px 12px; border-radius: 6px; font-size: 0.8rem; color: #94a3b8;"><span style="color: #10b981; font-weight: 600;">#388</span> Prospect Drawer + Activity Feed route</div>
+    <div style="background: #1e293b; padding: 8px 12px; border-radius: 6px; font-size: 0.8rem; color: #94a3b8;"><span style="color: #10b981; font-weight: 600;">#389</span> Approval Queue + Kill Switch</div>
+    <div style="background: #1e293b; padding: 8px 12px; border-radius: 6px; font-size: 0.8rem; color: #94a3b8;"><span style="color: #10b981; font-weight: 600;">#390</span> Prefect daily/weekly/monthly flows</div>
+    <div style="background: #1e293b; padding: 8px 12px; border-radius: 6px; font-size: 0.8rem; color: #94a3b8;"><span style="color: #10b981; font-weight: 600;">#391</span> Unified outreach timeline + VR popovers</div>
+    <div style="background: #1e293b; padding: 8px 12px; border-radius: 6px; font-size: 0.8rem; color: #94a3b8;"><span style="color: #10b981; font-weight: 600;">#392</span> Backend endpoints + alert wiring + LinkedIn gate</div>
+    <div style="background: #1e293b; padding: 8px 12px; border-radius: 6px; font-size: 0.8rem; color: #94a3b8;"><span style="color: #10b981; font-weight: 600;">#393</span> Realtime subscriptions + Vitest setup</div>
+    <div style="background: #1e293b; padding: 8px 12px; border-radius: 6px; font-size: 0.8rem; color: #94a3b8;"><span style="color: #10b981; font-weight: 600;">#394</span> SQLAlchemy model + DNCR client + HMAC validation</div>
+    <div style="background: #1e293b; padding: 8px 12px; border-radius: 6px; font-size: 0.8rem; color: #94a3b8;"><span style="color: #10b981; font-weight: 600;">#395</span> Dashboard nav + session-auth operator actions</div>
+  </div>
+</div>
+
+</div><!-- /container -->
+
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      background:       '#1e293b',
+      primaryColor:     '#263248',
+      primaryBorderColor: '#334155',
+      primaryTextColor: '#f1f5f9',
+      lineColor:        '#6366f1',
+      edgeLabelBackground: '#1e293b',
+      clusterBkg:       '#0f172a',
+      clusterBorder:    '#334155',
+      titleColor:       '#a5b4fc',
+      fontFamily:       'Inter, system-ui, sans-serif',
+      fontSize:         '12px',
+    },
+    flowchart: {
+      htmlLabels: true,
+      curve: 'basis',
+      padding: 20,
+    }
+  });
+</script>
+
+</body>
+</html>

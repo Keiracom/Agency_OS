@@ -5,6 +5,12 @@
  *          with 30s polling as automatic fallback on websocket failure.
  *
  * PHASE: PHASE-2.1-2.2 Slice 2 (Track 2.1-next — Realtime subscriptions)
+ * UPDATED: PHASE-2.1-REALTIME-VITEST — reviewed as part of the realtime
+ * upgrade sweep. This hook is already subscription-based with 30s polling
+ * as fallback, so no logic change was required. The generic
+ * `useRealtimeSubscription` hook introduced in the same sweep is the
+ * recommended implementation for *new* per-table subscriptions; this hook
+ * subscribes to four tables simultaneously and remains bespoke for now.
  *
  * Subscribes per-client-id to four tables:
  *   - cis_outreach_outcomes   (outreach events)

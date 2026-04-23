@@ -516,8 +516,11 @@ html.dark .snap-chip { background: rgba(255,255,255,0.04); }
 .sched-head .sched-title .sched-sub { color: var(--ink-4); font-weight: 500; margin-left: 6px; letter-spacing: 0.08em; }
 .sched-chev { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-3); transition: transform .2s, color .15s; }
 .sched-wrap[data-open="true"] .sched-chev { transform: rotate(180deg); color: var(--copper); }
-.sched-body { max-height: 0; overflow: hidden; transition: max-height .3s ease; }
-.sched-wrap[data-open="true"] .sched-body { max-height: 640px; }
+/* v7: use display toggle (bulletproof across browsers) + opacity fade.
+   The previous max-height:0 → 640px transition was unreliable in some
+   layout contexts (flex parent, nested margins). */
+.sched-body { display: none; opacity: 0; transition: opacity .2s ease; }
+.sched-wrap[data-open="true"] .sched-body { display: block; opacity: 1; }
 .sched-inner { padding-top: 14px; border-top: 1px solid var(--rule); margin-top: 12px; }
 .sched-state { font-size: 13px; color: var(--ink-2); padding: 10px 14px; border-radius: 8px; background: var(--surface); line-height: 1.55; display: flex; gap: 10px; align-items: flex-start; }
 html.dark .sched-state { background: rgba(255,255,255,0.04); }
@@ -1234,7 +1237,9 @@ function scheduleForProspect(p) {
 function toggleSched() {
   const wrap = document.getElementById('schedWrap');
   if (!wrap) return;
-  wrap.dataset.open = wrap.dataset.open === 'true' ? 'false' : 'true';
+  const next = wrap.dataset.open === 'true' ? 'false' : 'true';
+  wrap.setAttribute('data-open', next);  /* explicit attribute flip — matches CSS selector reliably */
+  wrap.dataset.open = next;               /* keep dataset in sync */
 }
 /* Snapshot signal-row derivations — derive friendly summaries from vulnGrades */
 function gmbRating(g) { return ({A:'4.7',B:'4.2',C:'3.8',D:'3.3',F:'2.8'})[g] || '—'; }
@@ -1276,10 +1281,10 @@ function openDrawer(pid) {
     ${(() => {
       const s = scheduleForProspect(p);
       return `
-        <div class="bf-section sched-wrap" id="schedWrap" data-open="false">
+        <div class="bf-section sched-wrap" id="schedWrap" data-open="true">
           <div class="sched-head" onclick="toggleSched()">
             <div class="sched-title">Scheduled touchpoints<span class="sched-sub">· next 14 days</span></div>
-            <div class="sched-chev">▾ click to ${s.state === 'active' ? 'show' : 'see state'}</div>
+            <div class="sched-chev">▾ toggle</div>
           </div>
           <div class="sched-body">
             <div class="sched-inner">

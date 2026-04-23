@@ -626,6 +626,9 @@ html.dark .ct-expand { background: rgba(255,255,255,0.04); }
 .ct-expand h6:first-child { margin-top: 0; }
 .ct-expand p { margin: 0 0 4px; font-size: 12.5px; color: var(--ink); line-height: 1.55; }
 .ct-expand p:last-child { margin-bottom: 0; }
+/* v9: empty state for Discovered prospects with no outreach yet */
+.ct-empty { padding: 14px 16px; background: var(--surface); border: 1px dashed var(--rule); border-radius: 8px; font-size: 13px; color: var(--ink-3); font-style: italic; line-height: 1.55; }
+html.dark .ct-empty { background: rgba(255,255,255,0.03); }
 
 /* ========== AUTOPILOT (Settings) ========== */
 .autopilot-opt { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; border: 1px solid var(--rule); border-radius: 8px; margin-bottom: 8px; cursor: pointer; transition: border-color .12s, background .12s; }
@@ -1332,6 +1335,28 @@ function openDrawer(pid) {
         </div>
       `;
     })()}
+
+    <div class="bf-section">
+      <h4>Communication history</h4>
+      ${p.status === 'Discovered'
+        ? `<div class="ct-empty">No outreach activity yet — Maya will begin when cycle releases.</div>`
+        : `<div class="ct-wrap">
+            ${synthTimeline(p).map((e, i) => {
+              const rowId = `ctd-${p.id}-${i}`;  /* d-prefix avoids ID collision with briefing-page rows */
+              return `
+              <div class="ct-row ${e.ch}" id="${rowId}" onclick="toggleCT('${rowId}')">
+                <div class="ct-time">${e.t}</div>
+                <div class="ct-head">
+                  <span class="ct-ch ${e.ch}">${e.ch === 'meeting' ? 'meeting' : e.ch === 'reply' ? 'reply' : e.ch}</span>
+                  <span class="ct-label">${e.label}</span>
+                  <span class="ct-chev">▸ details</span>
+                </div>
+                <div class="ct-detail">${e.detail}</div>
+                ${e.expand ? `<div class="ct-expand">${e.expand}</div>` : ''}
+              </div>
+            `;}).join('')}
+          </div>`}
+    </div>
 
     <div class="bf-section">
       <h4>Recommended angle</h4>

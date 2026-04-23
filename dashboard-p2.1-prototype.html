@@ -238,6 +238,15 @@ html.dark .theme-toggle .t-moon { display: inline; }
 .channel-dot { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; background: var(--surface); color: var(--ink-3); font-family: 'JetBrains Mono', monospace; }
 .pipeline-score-wrap { padding: 14px 16px; flex-shrink: 0; }
 .pipeline-status-wrap { padding: 14px 16px; flex-shrink: 0; }
+/* VR (vulnerability report) surface — pipeline row */
+.pipeline-vr-wrap { padding: 14px 10px; flex-shrink: 0; display: flex; align-items: center; }
+.vr-grade { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-family: 'Playfair Display', serif; font-weight: 700; font-size: 16px; color: #fff; flex-shrink: 0; letter-spacing: 0; }
+.vr-grade[data-grade="A"] { background: #6B8E5A; }
+.vr-grade[data-grade="B"] { background: #6B8E5A; }
+.vr-grade[data-grade="C"] { background: #D4956A; }
+.vr-grade[data-grade="D"] { background: #C46A3E; }
+.vr-grade[data-grade="F"] { background: #B55A4C; }
+.pipeline-vr-finding { font-size: 12px; color: var(--ink-3); margin-top: 4px; font-style: italic; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
 .pipeline-caret { padding: 14px 16px; color: var(--ink-3); font-size: 16px; flex-shrink: 0; }
 .status-badge-row { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 500; padding: 3px 8px; border-radius: 3px; letter-spacing: 0.04em; white-space: nowrap; }
 .status-not-started { background: rgba(12,10,8,0.06); color: var(--ink-3); }
@@ -1455,6 +1464,35 @@ function renderHome() {
    PAGE 2 — PIPELINE (THREE STATE)
 ═══════════════════════════════════════════════════════════════════ */
 function scoreClass(s) { return s >= 85 ? 'score-hot' : s >= 60 ? 'score-warm' : s >= 35 ? 'score-cool' : 'score-cold'; }
+function overallVulnGrade(vg) {
+  if (!vg) return 'C';
+  const map = { A: 5, B: 4, C: 3, D: 2, F: 1 };
+  const inv = { 5: 'A', 4: 'B', 3: 'C', 2: 'D', 1: 'F' };
+  const vals = Object.values(vg).map(l => map[l] || 3);
+  const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+  return inv[Math.round(avg)] || 'C';
+}
+function criticClass(s) { return s >= 85 ? 'score-hot' : s >= 70 ? 'score-warm' : s >= 50 ? 'score-cool' : 'score-cold'; }
+function criticScores(p) {
+  /* Sample critic feedback per channel (prototype — would come from critic_service).
+     Score + feedback + needs_review flag. */
+  return [
+    { ch: 'Email',    score: 82, needs_review: false, feedback: 'Strong personalisation, competitor data used well. Subject line A/B — consider shortening to 7 words.' },
+    { ch: 'LinkedIn', score: 71, needs_review: true,  feedback: 'Too long for DM format — trim to 2 paragraphs. Opener is generic, lead with vulnerability finding instead.' },
+    { ch: 'Voice AI', score: 88, needs_review: false, feedback: 'Natural opener, good pain point hook. Mid-call pivot to value question could be tighter.' },
+    { ch: 'SMS',      score: 64, needs_review: true,  feedback: 'Feels transactional — add first-name token and reference the thread context so it reads as continuation, not cold.' }
+  ];
+}
+function socialPosts(p) {
+  /* Sample DM LinkedIn activity feed — prototype data */
+  const fn = (p && p.dm && p.dm.name ? p.dm.name.split(' ')[0] : 'They');
+  return [
+    { d: '4 days ago',  t: 'Shared:', b: 'AFR article — "Why Australian SMBs are cutting agency retainers in 2026". Wrote: "Interesting read. Results > retainers." (38 reactions · 6 comments)' },
+    { d: '11 days ago', t: 'Posted:', b: fn + ' celebrated a project win — "Delighted to hand over the Hawthorn build today. 18 months in the making." (124 reactions · 31 comments)' },
+    { d: '3 weeks ago', t: 'Commented on:', b: '"The case for owned SEO over paid search" by Rand Fishkin — "This mirrors what we\'ve seen in the construction vertical."' },
+    { d: '5 weeks ago', t: 'Shared:', b: 'Industry award announcement (Master Builders VIC). Wrote: "Thanks to the team. Worth every late night."' }
+  ];
+}
 
 function getFilteredProspects() {
   const state = getCycleState();
@@ -1568,6 +1606,8 @@ function renderPipeline() {
     const rank = start + i + 1;
     const isVisited = reviewedIds.includes(p.id);
     const pStatus = (state !== 'review') ? getOutreachStatus(p) : null;
+    const vrGrade = overallVulnGrade(p.vulnGrades);
+    const vrFinding = (p.vulnerability || '').split(/\.(?:\s|$)/)[0] + '.';
     return `
       <div class="pipeline-row ${isVisited?'visited':''}" onclick="navigate('#pipeline/${p.id}')">
         <div class="intent-bar intent-bar-${p.intent}"></div>
@@ -1580,6 +1620,7 @@ function renderPipeline() {
             <span class="pipeline-suburb">·</span>
             <span class="pipeline-suburb">${p.industry}</span>
           </div>
+          <div class="pipeline-vr-finding">${vrFinding}</div>
         </div>
         <div class="pipeline-dm">
           <div style="font-weight:500;color:var(--ink-2);">${p.dm.name}</div>
@@ -1592,6 +1633,7 @@ function renderPipeline() {
           <div class="channel-dot" title="Voice" style="font-size:9px;">VC</div>
           <div class="channel-dot" title="SMS" style="font-size:9px;">S</div>
         </div>`}
+        <div class="pipeline-vr-wrap" title="Vulnerability grade: ${vrGrade}"><div class="vr-grade" data-grade="${vrGrade}">${vrGrade}</div></div>
         <div class="pipeline-score-wrap"><div class="score-badge ${scoreClass(p.score)}">${p.score}</div></div>
         <div class="pipeline-caret">›</div>
       </div>
@@ -1881,6 +1923,99 @@ CTA: "I've fixed this exact problem for 3 similar businesses this year. Could we
                 </div>
               `).join('')}
             </div>
+          </div>
+        </div>
+
+        <!-- 6A. Critic scores per channel -->
+        <div class="briefing-section">
+          <div class="briefing-section-title">Critic scores — message drafts</div>
+          <div class="card">
+            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;">
+              ${criticScores(p).map(c => `
+                <div style="background:var(--surface);border-radius:8px;padding:14px;${c.needs_review ? 'border-left:3px solid var(--amber);' : ''}">
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:10px;">
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;color:var(--ink-2);letter-spacing:0.06em;text-transform:uppercase;">${c.ch}</div>
+                    <div class="score-badge ${criticClass(c.score)}" style="width:34px;height:34px;font-size:12px;">${c.score}</div>
+                  </div>
+                  <div style="font-size:12.5px;color:var(--ink-2);line-height:1.55;margin-bottom:${c.needs_review ? '8' : '0'}px;">${c.feedback}</div>
+                  ${c.needs_review ? '<span class="badge" style="background:var(--amber-soft);color:var(--copper);font-size:10px;">⚠ Needs review</span>' : ''}
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+
+        <!-- 6B. Social intelligence -->
+        <div class="briefing-section">
+          <div class="briefing-section-title">Social intelligence — ${p.dm.name}</div>
+          <div class="card">
+            <div style="padding:14px;background:var(--amber-soft);border-radius:8px;margin-bottom:14px;font-size:13px;color:var(--ink-2);font-style:italic;line-height:1.55;">
+              <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--copper);letter-spacing:0.1em;text-transform:uppercase;font-style:normal;display:block;margin-bottom:4px;">Activity pattern</span>
+              ${p.dm.linkedinActivity || 'No activity data available.'}
+            </div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:10px;">Recent posts &amp; shares</div>
+            ${socialPosts(p).map(post => `
+              <div style="display:flex;gap:14px;padding:10px 0;border-bottom:1px solid var(--rule);">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-3);min-width:90px;flex-shrink:0;">${post.d}</div>
+                <div style="font-size:12.5px;color:var(--ink-2);line-height:1.55;"><b style="color:var(--ink);font-weight:600;">${post.t}</b> ${post.b}</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+        <!-- 6C. DFS signal breakdown -->
+        <div class="briefing-section">
+          <div class="briefing-section-title">DataForSEO signal breakdown</div>
+          <div class="card">
+            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px 24px;">
+              <div class="kv-row" style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed var(--rule);">
+                <span style="color:var(--ink-3);font-size:12.5px;">Organic ETV</span>
+                <span style="font-family:'JetBrains Mono',monospace;color:var(--ink);font-weight:600;">$${(p.dfs_organic_etv || 0).toLocaleString()} / mo</span>
+              </div>
+              <div class="kv-row" style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed var(--rule);">
+                <span style="color:var(--ink-3);font-size:12.5px;">Organic keywords</span>
+                <span style="font-family:'JetBrains Mono',monospace;color:var(--ink);font-weight:600;">${p.dfs_organic_keywords || 0} ranking</span>
+              </div>
+              <div class="kv-row" style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed var(--rule);">
+                <span style="color:var(--ink-3);font-size:12.5px;">Backlinks</span>
+                <span style="font-family:'JetBrains Mono',monospace;color:var(--ink);font-weight:600;">${p.backlinks_count || 0} from ${Math.max(1, Math.round((p.backlinks_count || 0) * 0.4))} domains</span>
+              </div>
+              <div class="kv-row" style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed var(--rule);">
+                <span style="color:var(--ink-3);font-size:12.5px;">Domain rank</span>
+                <span style="font-family:'JetBrains Mono',monospace;color:var(--ink);font-weight:600;">${p.domain_rank || 0} / 100</span>
+              </div>
+              <div class="kv-row" style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed var(--rule);">
+                <span style="color:var(--ink-3);font-size:12.5px;">Ad spend detected</span>
+                <span style="font-family:'JetBrains Mono',monospace;color:var(--ink);font-weight:600;">${(p.signals || []).find(s => /ads?\s+spend|google ads/i.test(s.text)) ? ((p.signals.find(s => /\$[\d,]+/.test(s.text)) || {}).text || '').match(/\$[\d,]+[^\s]*/)?.[0] + ' / mo' || 'Detected' : 'Not detected'}</span>
+              </div>
+              <div class="kv-row" style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed var(--rule);">
+                <span style="color:var(--ink-3);font-size:12.5px;">GMB category</span>
+                <span style="font-family:'JetBrains Mono',monospace;color:var(--ink);font-weight:600;">${p.gmb_category || '—'}</span>
+              </div>
+              <div class="kv-row" style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed var(--rule);">
+                <span style="color:var(--ink-3);font-size:12.5px;">ABN status</span>
+                <span style="font-family:'JetBrains Mono',monospace;color:var(--ink);font-weight:600;">${p.abn_status || '—'}${p.abn_age_years ? ' · ' + p.abn_age_years + 'y' : ''}</span>
+              </div>
+              <div class="kv-row" style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed var(--rule);">
+                <span style="color:var(--ink-3);font-size:12.5px;">Tech stack gaps</span>
+                <span style="font-family:'JetBrains Mono',monospace;color:var(--ink);font-weight:600;">${p.vulnGrades && (p.vulnGrades.website === 'F' || p.vulnGrades.website === 'D') ? 'Outdated CMS · no SSL' : 'None critical'}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 6D. Website scan summary -->
+        <div class="briefing-section">
+          <div class="briefing-section-title">Website scan — Stage 3 comprehension</div>
+          <div class="card">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">What the business does (Gemini summary)</div>
+            <div style="font-family:'Playfair Display',serif;font-style:italic;font-size:14.5px;color:var(--ink-2);line-height:1.7;padding:14px;background:var(--surface);border-radius:6px;margin-bottom:16px;">${p.aiSummary || p.vulnerability}</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">Key website issues found</div>
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+              <div class="grade-letter grade-${(p.vulnGrades && p.vulnGrades.website) || 'C'}" style="width:38px;height:38px;font-size:16px;">${(p.vulnGrades && p.vulnGrades.website) || 'C'}</div>
+              <div style="font-size:12.5px;color:var(--ink-2);">Website technical grade — drives the headline finding shown on pipeline cards.</div>
+            </div>
+            <div style="font-size:13px;color:var(--ink-2);line-height:1.6;">${p.vulnerability}</div>
           </div>
         </div>
 

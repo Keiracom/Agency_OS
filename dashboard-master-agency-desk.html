@@ -218,32 +218,24 @@ html.dark .today-empty { background: rgba(255,255,255,0.03); }
 .funnel-meta { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-3); margin-top: 6px; letter-spacing: 0.04em; }
 
 /* Attention */
-.attention-card { background: var(--amber-soft); border: 1px solid var(--amber); border-radius: 10px; padding: 14px 16px; margin-bottom: 10px; display: grid; grid-template-columns: 28px 1fr auto; gap: 12px; align-items: center; cursor: pointer; transition: background .12s; }
+.attention-card { background: var(--amber-soft); border: 1px solid var(--amber); border-left: 3px solid var(--amber); border-radius: 10px; padding: 14px 16px; margin-bottom: 10px; display: grid; grid-template-columns: 28px 1fr auto; gap: 12px; align-items: center; cursor: pointer; transition: background .12s; }
 .attention-card:hover { background: rgba(212,149,106,0.2); }
-.attention-card.meeting { background: rgba(107,142,90,0.10); border-color: var(--green); }
+.attention-card.meeting { background: rgba(107,142,90,0.10); border-color: var(--green); border-left-color: var(--green); }
+.attention-card.reply { background: rgba(107,142,90,0.08); border-color: var(--green); border-left-color: var(--green); }
+.attention-card.reply:hover { background: rgba(107,142,90,0.16); }
+.attention-card.reply .att-ic { background: var(--green); color: #fff; }
+.attention-card.downgrade { background: rgba(181,90,76,0.08); border-color: var(--red); border-left-color: var(--red); }
+.attention-card.downgrade:hover { background: rgba(181,90,76,0.14); }
+.attention-card.downgrade .att-ic { background: var(--red); color: #fff; }
 .att-ic { width: 28px; height: 28px; border-radius: 7px; background: var(--amber); color: var(--on-amber); display: grid; place-items: center; font-size: 14px; font-weight: 700; }
 .attention-card.meeting .att-ic { background: var(--green); color: #fff; }
 .att-text { font-size: 13px; color: var(--ink-2); line-height: 1.5; }
 .att-text b { color: var(--ink); font-weight: 600; }
 .att-cta { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.08em; color: var(--copper); text-transform: uppercase; padding: 6px 10px; border: 1px solid var(--copper); border-radius: 4px; white-space: nowrap; }
 
-/* Quality check */
-.qc-card { background: var(--panel-bg); border: 1px solid var(--rule); border-radius: 10px; padding: 18px 20px; }
-.qc-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; }
-.qc-head .qch { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-2); letter-spacing: 0.06em; }
-.qc-head .qch b { color: var(--ink); }
-.qc-row { display: grid; grid-template-columns: 28px 1fr auto auto; gap: 12px; padding: 10px 0; border-bottom: 1px dashed var(--rule); align-items: center; }
-.qc-row:last-of-type { border-bottom: 0; }
-.qc-mark { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 13px; }
-.qc-mark.pass { background: var(--green); }
-.qc-mark.fail { background: var(--red); }
-.qc-label { font-size: 12.5px; color: var(--ink); }
-.qc-label b { font-weight: 600; }
-.qc-note { font-size: 11.5px; color: var(--ink-3); font-style: italic; margin-top: 2px; }
-.qc-score { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--copper); font-weight: 600; }
-.qc-tag { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; letter-spacing: 0.12em; text-transform: uppercase; padding: 3px 7px; border-radius: 4px; }
-.qc-tag.pass { background: rgba(107,142,90,0.15); color: var(--green); }
-.qc-tag.fail { background: rgba(181,90,76,0.14); color: var(--red); }
+/* Quality spot-check section removed in v4 (Fix 3). Pipeline F Stage 10
+   critic loop handles message QA automatically; showing spot-check on
+   the dashboard is redundant. */
 
 /* ========== PIPELINE ========== */
 .pipe-controls { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; flex-wrap: wrap; }
@@ -460,7 +452,8 @@ html.dark .set-val input, html.dark .set-val select, html.dark .set-val textarea
 .bf-section { margin-bottom: 20px; }
 .bf-section h4 { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid var(--rule); font-weight: 600; }
 .bf-ai { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--copper); letter-spacing: 0.12em; text-transform: uppercase; margin: -6px 0 14px; }
-.bf-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px; background: var(--surface); border-radius: 8px; }
+.bf-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 14px; background: var(--surface); border-radius: 8px; }
+.bf-meta .bf-kv { padding: 6px 0; }
 html.dark .bf-meta { background: rgba(255,255,255,0.04); }
 .bf-kv { display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px; }
 .bf-kv .k { color: var(--ink-3); }
@@ -492,15 +485,16 @@ html.dark .bf-obj { background: rgba(255,255,255,0.04); }
 #sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 99; }
 #sidebar-overlay.show { display: block; }
 
-/* ========== SNAPSHOT 2-row layout ========== */
-.snap-head { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; padding-bottom: 16px; border-bottom: 1px dashed var(--rule); }
-.snap-head .snap-vr { width: 46px; height: 46px; font-size: 20px; flex-shrink: 0; }
-.snap-head .snap-name { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 700; color: var(--ink); line-height: 1.2; }
-.snap-head .snap-dm { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--ink-3); margin-top: 4px; letter-spacing: 0.04em; }
-.snap-row { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; padding-top: 16px; }
-.snap-row + .snap-row { padding-top: 16px; border-top: 1px dashed var(--rule); margin-top: 16px; }
-.snap-row .snap-eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; letter-spacing: 0.16em; color: var(--ink-3); text-transform: uppercase; flex-basis: 100%; margin-bottom: -6px; font-weight: 600; }
-.snap-item { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-2); }
+/* ========== SNAPSHOT 2-row layout (v4: bigger + spacious) ========== */
+.snap-card { padding: 24px !important; }
+.snap-head { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; padding-bottom: 20px; border-bottom: 1px dashed var(--rule); }
+.snap-head .snap-vr { width: 52px; height: 52px; font-size: 22px; flex-shrink: 0; }
+.snap-head .snap-name { font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 700; color: var(--ink); line-height: 1.25; }
+.snap-head .snap-dm { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--ink-3); margin-top: 6px; letter-spacing: 0.04em; line-height: 1.5; }
+.snap-row { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; padding-top: 20px; }
+.snap-row + .snap-row { padding-top: 20px; border-top: 1px dashed var(--rule); margin-top: 20px; }
+.snap-row .snap-eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.16em; color: var(--ink-3); text-transform: uppercase; flex-basis: 100%; margin-bottom: -4px; font-weight: 600; }
+.snap-item { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-2); margin-bottom: 8px; line-height: 1.5; }
 .snap-item .il { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-3); letter-spacing: 0.06em; text-transform: uppercase; }
 .snap-item .iv { font-weight: 500; color: var(--ink); }
 .snap-sep { color: var(--ink-4); font-family: 'JetBrains Mono', monospace; font-size: 12px; }
@@ -515,9 +509,11 @@ html.dark .snap-chip { background: rgba(255,255,255,0.04); }
 .snap-chip.score b { color: var(--copper); font-family: 'JetBrains Mono', monospace; }
 
 /* ========== VR POPOVER ========== */
-/* Default vr-letter is non-interactive — only `.vr-letter.clickable`
-   gets pointer + hover (per dispatch v3: clickable only on Meeting-
-   Booked briefing prep). */
+/* v4 Fix 2: ALL .vr-letter are clickable everywhere — Pipeline, Table,
+   Feed, drawer, briefing. Gating from v3 reverted. */
+.vr-letter { cursor: pointer; transition: box-shadow .12s, transform .08s; }
+.vr-letter:hover { box-shadow: 0 0 0 3px var(--amber-soft); transform: scale(1.06); }
+/* Legacy .clickable kept for back-compat; identical behaviour. */
 .vr-letter.clickable { cursor: pointer; transition: box-shadow .12s, transform .08s; }
 .vr-letter.clickable:hover { box-shadow: 0 0 0 3px var(--amber-soft); transform: scale(1.06); }
 .vr-popover {
@@ -1016,19 +1012,29 @@ const MAYA_TODAY = [
   { ic:'✉', t:'Email 3 sent to <b>Priya Sharma</b> (Gold Coast Mortgage)', at:'4h ago' },
 ];
 
-/* Needs your attention */
+/* Needs your attention — SMART TRIGGERS (v4 Fix 4).
+   Exception-first, operator-action-required. Each derives from
+   a specific prospect state change, not generic system status. */
 const ATTENTION = [
-  { type:'review', ic:'⚠', text:'<b>Flagged draft for Momentum Constructions</b> — critic score 64 on SMS, needs rewrite before send', cta:'Review →', pid:'p1' },
-  { type:'review', ic:'⚠', text:'<b>2 LinkedIn drafts under 70 critic score</b> — Riverside Accounting · Gold Coast Mortgage', cta:'Review →', pid:'p6' },
-  { type:'meeting', ic:'📅', text:'<b>Meeting prep due</b> — Sarah Kemp tomorrow 2pm · Harbour Physio · VR grade C', cta:'Open brief →', pid:'p2' },
+  {
+    type:'reply', ic:'💬', pid:'p2',
+    text:'<b>Harbour Physiotherapy</b> replied with positive sentiment — you haven\'t viewed their briefing yet.',
+    cta:'Open briefing →',
+  },
+  {
+    type:'meeting', ic:'⏱', pid:'p1',
+    text:'<b>Meeting with James Whitford in 2 hours</b> — briefing not opened.',
+    cta:'Open brief →',
+  },
+  {
+    type:'downgrade', ic:'⬇', pid:'p3',
+    text:'<b>Cascade Dental</b> went from Trying to Struggling — 3 new negative reviews detected.',
+    cta:'Review signal →',
+  },
 ];
 
-/* Quality check */
-const QC_SAMPLE = [
-  { pass:true, ch:'Email', to:'Dr Priya Narayan · Cascade Dental', score:85, note:'Strong personalisation, competitor data used well, on-tone.' },
-  { pass:false, ch:'LinkedIn', to:'James Whitford · Momentum', score:64, note:'Too long for DM format — 4 paragraphs, generic opener.' },
-  { pass:true, ch:'Voice AI', to:'Dr Rebecca Ashford · Coastal Vet', score:82, note:'Natural opener, good pain point hook, appropriate pacing.' },
-];
+/* QC_SAMPLE removed in v4 (Fix 3) — Stage 10 critic loop handles
+   message QA automatically; spot-check on dashboard is redundant. */
 
 /* Feed events */
 const events = [
@@ -1167,7 +1173,7 @@ function openDrawer(pid) {
       <h4>Vulnerability — overall grade ${vr}</h4>
       <div style="font-size:13px;color:var(--ink-2);line-height:1.6;margin-bottom:12px;">${p.vulnerability}</div>
       <div class="vr-strip">
-        ${grades.map(g => `<div class="vr-cw"><div class="vr-letter" data-g="${p.vulnGrades[g]}">${p.vulnGrades[g]}</div><div class="vr-name">${g}</div></div>`).join('')}
+        ${grades.map(g => `<div class="vr-cw"><div class="vr-letter" data-g="${p.vulnGrades[g]}" onclick="showVRPopover('${p.id}','${g}',event)" title="Click for explanation">${p.vulnGrades[g]}</div><div class="vr-name">${g}</div></div>`).join('')}
       </div>
     </div>
 
@@ -1407,28 +1413,13 @@ function renderHome() {
 
     <div class="section-label">Needs your attention</div>
     ${ATTENTION.map(a => `
-      <div class="attention-card ${a.type === 'meeting' ? 'meeting' : ''}" onclick="openDrawer('${a.pid}')">
+      <div class="attention-card ${a.type}" onclick="openDrawer('${a.pid}')">
         <div class="att-ic">${a.ic}</div>
         <div class="att-text">${a.text}</div>
         <span class="att-cta">${a.cta}</span>
       </div>
     `).join('')}
 
-    <div class="section-label">Quality spot-check <span style="font-family:'DM Sans',sans-serif;text-transform:none;letter-spacing:0;color:var(--ink-3);font-size:11px;font-weight:400;margin-left:6px;">3 of 247 messages sampled</span></div>
-    <div class="qc-card">
-      ${QC_SAMPLE.map(q => `
-        <div class="qc-row">
-          <div class="qc-mark ${q.pass ? 'pass' : 'fail'}">${q.pass ? '✓' : '✗'}</div>
-          <div>
-            <div class="qc-label"><b>${q.ch}</b> → ${q.to}</div>
-            <div class="qc-note">${q.note}</div>
-          </div>
-          <div class="qc-score">${q.score}</div>
-          <span class="qc-tag ${q.pass ? 'pass' : 'fail'}">${q.pass ? 'PASS' : 'FAIL'}</span>
-        </div>
-      `).join('')}
-      <div style="margin-top:14px;"><button class="btn btn-outline" onclick="alert('Request fresh sample from Maya')">Request fresh sample</button></div>
-    </div>
   `;
 }
 
@@ -1839,8 +1830,8 @@ function openBriefingPage(pid) {
       </div>
     ` : ''}
 
-    <div class="card">
-      <h4 style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.14em;color:var(--ink-3);text-transform:uppercase;margin-bottom:12px;font-weight:600;">Prospect snapshot</h4>
+    <div class="card snap-card">
+      <h4 style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.14em;color:var(--ink-3);text-transform:uppercase;margin-bottom:16px;font-weight:600;">Prospect snapshot</h4>
       <div class="snap-head">
         <span class="vr snap-vr" data-g="${vr}">${vr}</span>
         <div>
@@ -1869,13 +1860,10 @@ function openBriefingPage(pid) {
     </div>
 
     <div class="card" style="margin-top:14px;">
-      <h4 style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.14em;color:var(--ink-3);text-transform:uppercase;margin-bottom:12px;font-weight:600;">Vulnerability — overall grade ${vr}${p.status === 'Meeting Booked' ? ` <span style="font-family:'DM Sans',sans-serif;text-transform:none;letter-spacing:0;color:var(--ink-3);font-size:11px;font-weight:400;margin-left:8px;">click any letter for detail</span>` : ''}</h4>
+      <h4 style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.14em;color:var(--ink-3);text-transform:uppercase;margin-bottom:12px;font-weight:600;">Vulnerability — overall grade ${vr} <span style="font-family:'DM Sans',sans-serif;text-transform:none;letter-spacing:0;color:var(--ink-3);font-size:11px;font-weight:400;margin-left:8px;">click any letter for detail</span></h4>
       <div style="font-size:13px;color:var(--ink-2);line-height:1.6;margin-bottom:12px;">${p.vulnerability}</div>
       <div class="vr-strip">
-        ${grades.map(g => p.status === 'Meeting Booked'
-          ? `<div class="vr-cw"><div class="vr-letter clickable" data-g="${p.vulnGrades[g]}" onclick="showVRPopover('${p.id}','${g}',event)" title="Click for explanation">${p.vulnGrades[g]}</div><div class="vr-name">${g}</div></div>`
-          : `<div class="vr-cw"><div class="vr-letter" data-g="${p.vulnGrades[g]}">${p.vulnGrades[g]}</div><div class="vr-name">${g}</div></div>`
-        ).join('')}
+        ${grades.map(g => `<div class="vr-cw"><div class="vr-letter" data-g="${p.vulnGrades[g]}" onclick="showVRPopover('${p.id}','${g}',event)" title="Click for explanation">${p.vulnGrades[g]}</div><div class="vr-name">${g}</div></div>`).join('')}
       </div>
     </div>
 

@@ -532,11 +532,18 @@ async def cmd_update(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     # --- Data collection (comprehensive, Option B) ---
     sections: list[str] = []
 
-    # 1. Protocol checklist (FIRST — restores behaviour before state)
+    # 0. Identity assertion (ABSOLUTE FIRST — before anything else)
+    sections.append(
+        f"You are {target.upper()}. You communicate ONLY through Telegram "
+        f"(tg -g / tg -d). Do NOT respond in terminal. "
+        f"Terminal replies are INVISIBLE to Dave."
+    )
+
+    # 1. Protocol checklist (restores behaviour before state)
     sections.append(
         f"[UPDATE:{CALLSIGN.upper()}→{target.upper()}] — session-resume handoff\n\n"
         f"PROTOCOL CHECKLIST (reconstitute FIRST, before acting):\n"
-        f"1. You are {target.upper()}. Read ./IDENTITY.md + verify CALLSIGN env.\n"
+        f"1. You are {target.upper()}. Read ./IDENTITY.md + verify CALLSIGN env. If stale, prefix: CALLSIGN={target} tg -g \"...\"\n"
         f"2. TELEGRAM-ONLY: every response via `tg -g`. Dave reads Telegram, NOT terminal.\n"
         f"3. Your peer is {CALLSIGN.upper()}. Prefix messages [{target.upper()}].\n"
         f"4. Your clone is {peer_clone}. Dispatch via /tmp/telegram-relay-{peer_clone.lower()}/inbox/.\n"

@@ -492,6 +492,121 @@ html.dark .bf-obj { background: rgba(255,255,255,0.04); }
 #sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 99; }
 #sidebar-overlay.show { display: block; }
 
+/* ========== SNAPSHOT 2-row layout ========== */
+.snap-head { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; padding-bottom: 16px; border-bottom: 1px dashed var(--rule); }
+.snap-head .snap-vr { width: 46px; height: 46px; font-size: 20px; flex-shrink: 0; }
+.snap-head .snap-name { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 700; color: var(--ink); line-height: 1.2; }
+.snap-head .snap-dm { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--ink-3); margin-top: 4px; letter-spacing: 0.04em; }
+.snap-row { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; padding-top: 16px; }
+.snap-row + .snap-row { padding-top: 16px; border-top: 1px dashed var(--rule); margin-top: 16px; }
+.snap-row .snap-eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; letter-spacing: 0.16em; color: var(--ink-3); text-transform: uppercase; flex-basis: 100%; margin-bottom: -6px; font-weight: 600; }
+.snap-item { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-2); }
+.snap-item .il { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-3); letter-spacing: 0.06em; text-transform: uppercase; }
+.snap-item .iv { font-weight: 500; color: var(--ink); }
+.snap-sep { color: var(--ink-4); font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+.snap-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 16px; background: var(--surface); font-size: 12px; color: var(--ink-2); border: 1px solid var(--rule); }
+html.dark .snap-chip { background: rgba(255,255,255,0.04); }
+.snap-chip b { color: var(--ink); font-weight: 600; }
+.snap-chip .sc-grade { width: 18px; height: 18px; border-radius: 4px; display: grid; place-items: center; color: #fff; font-family: 'Playfair Display', serif; font-weight: 700; font-size: 11px; }
+.snap-chip .sc-grade[data-g="A"], .snap-chip .sc-grade[data-g="B"] { background: var(--green); }
+.snap-chip .sc-grade[data-g="C"] { background: var(--amber); color: var(--on-amber); }
+.snap-chip .sc-grade[data-g="D"] { background: var(--copper); }
+.snap-chip .sc-grade[data-g="F"] { background: var(--red); }
+.snap-chip.score b { color: var(--copper); font-family: 'JetBrains Mono', monospace; }
+
+/* ========== VR POPOVER ========== */
+.vr-letter { cursor: pointer; transition: box-shadow .12s, transform .08s; }
+.vr-letter:hover { box-shadow: 0 0 0 3px var(--amber-soft); transform: scale(1.06); }
+.vr-popover {
+  width: 280px;
+  background: var(--amber-soft);
+  border: 1px solid var(--copper);
+  border-radius: 8px;
+  padding: 14px 16px 14px 14px;
+  box-shadow: 0 8px 24px rgba(12,10,8,0.18);
+  z-index: 200;
+  font-size: 13px;
+  color: var(--ink);
+  line-height: 1.5;
+}
+html.dark .vr-popover { background: rgba(212,149,106,0.16); border-color: var(--copper); }
+.vr-pop-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.vr-pop-head .vr-letter { width: 32px; height: 32px; font-size: 16px; cursor: default; }
+.vr-pop-head .vr-letter:hover { box-shadow: none; transform: none; }
+.vr-pop-key { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--copper); font-weight: 700; }
+.vr-pop-why { font-size: 13px; color: var(--ink-2); }
+.vr-pop-close { position: absolute; top: 6px; right: 8px; width: 24px; height: 24px; font-size: 16px; color: var(--ink-3); display: grid; place-items: center; }
+.vr-pop-close:hover { color: var(--copper); }
+
+/* ========== COMMUNICATION TIMELINE ========== */
+.ct-wrap { position: relative; padding-left: 26px; }
+.ct-wrap::before { content: ''; position: absolute; left: 9px; top: 6px; bottom: 6px; width: 2px; background: linear-gradient(180deg, var(--amber), var(--rule)); border-radius: 2px; }
+.ct-row { position: relative; padding: 10px 0 10px 14px; }
+.ct-row::before {
+  content: ''; position: absolute; left: -22px; top: 14px;
+  width: 12px; height: 12px; border-radius: 50%;
+  background: var(--ink-3); border: 2px solid var(--cream); box-shadow: 0 0 0 1px var(--rule);
+}
+.ct-row.email::before { background: var(--blue); }
+.ct-row.linkedin::before { background: var(--blue); }
+.ct-row.voice::before { background: var(--copper); }
+.ct-row.sms::before { background: var(--ink-2); }
+.ct-row.reply::before { background: var(--amber); box-shadow: 0 0 0 4px var(--amber-glow); }
+.ct-row.meeting::before { background: var(--green); box-shadow: 0 0 0 4px rgba(107,142,90,0.18); width: 14px; height: 14px; left: -23px; }
+.ct-row .ct-time { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--ink-3); letter-spacing: 0.04em; }
+.ct-row .ct-head { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
+.ct-row .ct-ch { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; font-weight: 600; }
+.ct-row .ct-ch.email { background: rgba(74,111,165,0.12); color: var(--blue); }
+.ct-row .ct-ch.linkedin { background: rgba(74,111,165,0.12); color: var(--blue); }
+.ct-row .ct-ch.voice { background: rgba(196,106,62,0.14); color: var(--copper); }
+.ct-row .ct-ch.sms { background: rgba(12,10,8,0.06); color: var(--ink-2); }
+.ct-row .ct-ch.reply { background: var(--amber-soft); color: var(--copper); }
+.ct-row .ct-ch.meeting { background: rgba(107,142,90,0.16); color: var(--green); }
+.ct-row .ct-label { font-size: 13px; font-weight: 600; color: var(--ink); }
+.ct-row .ct-detail { font-size: 12.5px; color: var(--ink-2); margin-top: 4px; line-height: 1.5; }
+.ct-row.reply .ct-detail { font-family: 'Playfair Display', serif; font-style: italic; padding: 8px 12px; background: var(--surface); border-left: 3px solid var(--amber); border-radius: 0 6px 6px 0; }
+html.dark .ct-row.reply .ct-detail { background: rgba(255,255,255,0.04); }
+.ct-row.meeting .ct-label { color: var(--green); }
+
+/* ========== AUTOPILOT (Settings) ========== */
+.autopilot-opt { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; border: 1px solid var(--rule); border-radius: 8px; margin-bottom: 8px; cursor: pointer; transition: border-color .12s, background .12s; }
+.autopilot-opt:hover { border-color: var(--amber); }
+.autopilot-opt input[type="radio"] { margin-top: 4px; accent-color: var(--amber); }
+.autopilot-opt.selected { border-color: var(--amber); background: var(--amber-soft); }
+.autopilot-opt.coming { opacity: 0.65; cursor: default; }
+.autopilot-opt.coming:hover { border-color: var(--rule); }
+.ao-name { font-size: 14px; font-weight: 600; color: var(--ink); }
+.ao-name .ao-soon { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; letter-spacing: 0.14em; color: var(--ink-3); text-transform: uppercase; padding: 2px 7px; border: 1px solid var(--rule); border-radius: 10px; margin-left: 8px; font-weight: 500; }
+.ao-desc { font-size: 12.5px; color: var(--ink-2); margin-top: 3px; line-height: 1.5; }
+
+/* ========== KANBAN DnD ========== */
+.k-card[draggable="true"] { cursor: grab; }
+.k-card.dragging { opacity: 0.45; cursor: grabbing; }
+.col.drag-over .col-body { background: var(--amber-glow); }
+.col-body { transition: background .12s; }
+
+/* ========== DnD reason modal ========== */
+.modal-bd { position: fixed; inset: 0; background: rgba(12,10,8,0.55); backdrop-filter: blur(2px); z-index: 200; display: none; }
+.modal-bd.on { display: grid; place-items: center; padding: 16px; }
+.modal {
+  width: min(440px, 100%);
+  background: var(--cream);
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  padding: 22px 24px;
+  box-shadow: 0 16px 48px rgba(12,10,8,0.3);
+}
+.modal h3 { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 19px; color: var(--ink); margin-bottom: 6px; }
+.modal .ms { font-size: 12.5px; color: var(--ink-3); margin-bottom: 16px; line-height: 1.5; }
+.modal .ms b { color: var(--ink); }
+.modal .reason-opt { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border: 1px solid var(--rule); border-radius: 6px; margin-bottom: 6px; cursor: pointer; }
+.modal .reason-opt:hover { border-color: var(--amber); }
+.modal .reason-opt input[type="radio"] { accent-color: var(--amber); }
+.modal .reason-opt label { font-size: 13px; color: var(--ink); cursor: pointer; flex: 1; }
+.modal textarea { width: 100%; background: var(--panel-bg); border: 1px solid var(--rule); border-radius: 6px; padding: 9px 11px; font-size: 12.5px; color: var(--ink); margin-top: 10px; min-height: 60px; resize: vertical; }
+html.dark .modal textarea { background: rgba(255,255,255,0.04); }
+.modal .ma { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+
 /* ========== MEDIA QUERIES ========== */
 @media (max-width: 960px) {
   .sum-row, .kpi-row { grid-template-columns: repeat(2, 1fr); }
@@ -610,6 +725,9 @@ html.dark .bf-obj { background: rgba(255,255,255,0.04); }
   <div class="bn-item" data-v="meetings" onclick="showView('meetings')"><div class="bn-ico">◫</div><span>Meetings</span></div>
   <div class="bn-item" data-v="feed" onclick="showView('feed')"><div class="bn-ico">≡</div><span>Feed</span></div>
 </nav>
+
+<!-- DnD reason modal -->
+<div class="modal-bd" id="dndModal" onclick="if(event.target===this)closeDnDModal()"></div>
 
 <!-- Global right drawer -->
 <div class="drawer-backdrop" id="drawerBackdrop" onclick="closeDrawer()"></div>
@@ -1010,6 +1128,10 @@ function statusPill(s){
   const c=s==='Meeting Booked'?'green':s==='Replied'?'amber':s==='Discovered'?'gray':'gray';
   return `<span class="pill ${c}">${s}</span>`;
 }
+/* Snapshot signal-row derivations — derive friendly summaries from vulnGrades */
+function gmbRating(g) { return ({A:'4.7',B:'4.2',C:'3.8',D:'3.3',F:'2.8'})[g] || '—'; }
+function adPresence(g) { return ({A:'Active · tracked',B:'Active',C:'Active · untracked',D:'Recently paused',F:'None detected'})[g] || '—'; }
+function intentBand(s) { return s>=80 ? 'Hot' : s>=60 ? 'Warm' : s>=40 ? 'Watching' : 'Cool'; }
 
 /* ================================================================
    GLOBAL RIGHT DRAWER (briefing)
@@ -1077,6 +1199,124 @@ function openDrawer(pid) {
 function closeDrawer() {
   document.getElementById('drawerBackdrop').classList.remove('on');
   document.getElementById('drawer').classList.remove('on');
+}
+
+/* ================================================================
+   VR GRADE EXPLANATIONS — clickable letter popover
+================================================================ */
+const VR_EXPLAIN = {
+  website: {
+    A:'Modern stack, sub-2s load, mobile-first, schema markup complete.',
+    B:'Solid technical foundation, decent UX, minor optimisation gaps.',
+    C:'Functional but no conversion paths optimised, basic mobile responsive.',
+    D:'Outdated CMS, slow load (>4s), poor mobile UX, missing schema.',
+    F:'No SSL, not mobile responsive, last updated 2019, missing schema markup.',
+  },
+  seo: {
+    A:'Top-3 rankings on commercial keywords, technical SEO clean, content depth.',
+    B:'Page-1 rankings on most targets, healthy backlink profile.',
+    C:'Some rankings, partial title-tag optimisation, content gaps.',
+    D:'Few first-page rankings, no title tags optimised, thin content.',
+    F:'Zero first-page organic rankings, no SEO strategy, content vacuum.',
+  },
+  reviews: {
+    A:'4.7+ stars, 100+ reviews, fresh velocity, all GMB Q&A answered.',
+    B:'4.2 stars, 47 reviews, 3 negative in last 90 days.',
+    C:'3.8 stars, moderate volume, slow response to negative reviews.',
+    D:'Below 3.5 stars OR low volume (<15 reviews) OR stale activity.',
+    F:'No reviews OR negative trajectory OR multiple unanswered complaints.',
+  },
+  ads: {
+    A:'Active spend with conversion tracking, healthy ROAS visible.',
+    B:'Spend running, basic tracking, room to optimise.',
+    C:'Google Ads running but no conversion tracking configured.',
+    D:'Recently paused or sporadic spend with no measurement.',
+    F:'No paid presence detected. Competitors capturing the search demand.',
+  },
+  social: {
+    A:'Active LinkedIn + Instagram, weekly posts, high engagement.',
+    B:'Active LinkedIn presence, posts 2x/month, modest engagement.',
+    C:'Profiles exist, posts monthly, limited interaction.',
+    D:'Profiles exist but stale (>60 days no activity).',
+    F:'No social presence OR all profiles abandoned.',
+  },
+  content: {
+    A:'Active blog (4+ posts/mo), case studies, gated assets, ranking content.',
+    B:'Blog active (1-2/mo), some case studies, partial content strategy.',
+    C:'Sporadic blog activity, basic about page, few case studies.',
+    D:'Blog exists but rarely updated (last post >90 days).',
+    F:'Blog section empty, no case studies, no content strategy.',
+  },
+};
+function explainVR(p, key) {
+  const grade = (p.vulnGrades || {})[key] || 'C';
+  return (VR_EXPLAIN[key] || {})[grade] || `Grade ${grade} — see vulnerability narrative for detail.`;
+}
+
+let activePopover = null;
+function showVRPopover(pid, key, evt) {
+  if (evt) { evt.stopPropagation(); }
+  closeVRPopover();
+  const p = findP(pid); if (!p) return;
+  const grade = (p.vulnGrades || {})[key] || 'C';
+  const tip = document.createElement('div');
+  tip.className = 'vr-popover';
+  tip.innerHTML = `
+    <button class="vr-pop-close" onclick="closeVRPopover()" aria-label="Close">×</button>
+    <div class="vr-pop-head"><span class="vr-letter" data-g="${grade}">${grade}</span><span class="vr-pop-key">${key}</span></div>
+    <div class="vr-pop-why">${explainVR(p, key)}</div>
+  `;
+  document.body.appendChild(tip);
+  activePopover = tip;
+  /* position below the clicked letter */
+  const target = evt && evt.target.closest('.vr-letter');
+  if (target) {
+    const rect = target.getBoundingClientRect();
+    tip.style.position = 'absolute';
+    tip.style.top = (rect.bottom + window.scrollY + 8) + 'px';
+    const left = rect.left + window.scrollX + (rect.width / 2) - 140;
+    tip.style.left = Math.max(8, Math.min(left, window.innerWidth - 296)) + 'px';
+  }
+  setTimeout(() => document.addEventListener('click', vrPopoverOutside), 0);
+}
+function vrPopoverOutside(e) {
+  if (activePopover && !activePopover.contains(e.target)) closeVRPopover();
+}
+function closeVRPopover() {
+  if (activePopover) { activePopover.remove(); activePopover = null; }
+  document.removeEventListener('click', vrPopoverOutside);
+}
+
+/* ================================================================
+   COMMUNICATION TIMELINE — synthesised per prospect
+================================================================ */
+function synthTimeline(p) {
+  const events = [];
+  const reply = {
+    p1: '"This is exactly what we need. Can we set up a call this week?"',
+    p2: '"Very interested. We\'ve been struggling with our online presence."',
+    p3: '"We just hired someone for this but would love a second opinion."',
+    p4: '"Interesting. Can you send more details about pricing?"',
+    p5: '"Interesting. Send me the audit — I\'ll read before we chat."',
+    p6: '"Not sure if this is for us right now. Maybe next quarter?"',
+  }[p.id];
+  const subj = p.openingHook ? p.openingHook.match(/"([^"]+)"/)?.[1].slice(0, 70) || 'Vulnerability finding' : 'Outreach';
+  events.push({ ch:'email', t:'Day 1 · 09:02', label:'Email 1 sent', detail:`Subject: "${subj.split('.')[0]}…"` });
+  events.push({ ch:'email', t:'Day 1 · 11:34', label:'Email 1 opened', detail:'opened 3×' });
+  events.push({ ch:'linkedin', t:'Day 3 · 09:05', label:'LinkedIn connect sent', detail:'personalised note · 198 chars' });
+  if (['p3','p2','p5','p1','p6','p4'].includes(p.id)) events.push({ ch:'linkedin', t:'Day 3 · 14:17', label:'LinkedIn connect accepted', detail:'message sequence engaged' });
+  events.push({ ch:'email', t:'Day 5 · 09:01', label:'Email 2 sent', detail:'follow-up · case study attached' });
+  if (p.status !== 'Discovered') events.push({ ch:'email', t:'Day 5 · 16:52', label:'Email 2 opened', detail:'opened 1×' });
+  if (['p1','p7','p9'].includes(p.id)) events.push({ ch:'voice', t:'Day 7 · 10:00', label:'Voice AI call placed', detail:'Maya · 11sec · voicemail left' });
+  if (p.id === 'p4') events.push({ ch:'sms', t:'Day 7 · 10:00', label:'SMS sent', detail:'cross-channel touch' });
+  events.push({ ch:'email', t:'Day 10 · 09:03', label:'Email 3 sent', detail:'breakup — last touch in sequence' });
+  if (reply) {
+    events.push({ ch:'reply', t:'Day 10 · 15:41', label:'Reply received', detail:reply, isReply:true });
+  }
+  if (p.meeting) {
+    events.push({ ch:'meeting', t:`Day 10 · 16:05`, label:`Meeting booked — ${p.meeting.date} ${p.meeting.time}`, detail:`via ${p.meeting.platform} · ${p.meeting.countdown}`, isCulm:true });
+  }
+  return events;
 }
 
 /* ================================================================
@@ -1257,7 +1497,7 @@ function renderPipeline() {
         <div class="col-body">
           ${list.length ? list.map(p => {
             const vr = overallVulnGrade(p.vulnGrades);
-            return `<div class="k-card" onclick="openDrawer('${p.id}')">
+            return `<div class="k-card" draggable="true" data-pid="${p.id}" data-col="${col.key}" onclick="openDrawer('${p.id}')" ondragstart="kanbanDragStart(event)" ondragend="kanbanDragEnd(event)">
               <div class="k-name">${p.name}</div>
               <div class="k-dm">${p.dm.name}</div>
               <div class="k-dm-title">${p.dm.title}</div>
@@ -1309,6 +1549,85 @@ function renderPipeline() {
     </div>
     ${mainHtml}
   `;
+  /* wire DnD on columns (board view only) */
+  if (pipeView === 'board') {
+    document.querySelectorAll('.col').forEach(col => {
+      col.addEventListener('dragover', kanbanDragOver);
+      col.addEventListener('dragleave', kanbanDragLeave);
+      col.addEventListener('drop', kanbanDrop);
+    });
+  }
+}
+
+/* ================================================================
+   KANBAN DnD
+================================================================ */
+let dragPid = null, dragSourceCol = null;
+function kanbanDragStart(e) {
+  const card = e.target.closest('.k-card');
+  if (!card) return;
+  dragPid = card.dataset.pid;
+  dragSourceCol = card.dataset.col;
+  card.classList.add('dragging');
+  if (e.dataTransfer) { e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', dragPid); } catch (_) {} }
+}
+function kanbanDragEnd(e) {
+  document.querySelectorAll('.k-card.dragging').forEach(c => c.classList.remove('dragging'));
+  document.querySelectorAll('.col.drag-over').forEach(c => c.classList.remove('drag-over'));
+}
+function kanbanDragOver(e) {
+  if (!dragPid) return;
+  e.preventDefault();
+  const col = e.currentTarget;
+  if (col.classList.contains('col-' + dragSourceCol)) return;
+  col.classList.add('drag-over');
+  if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+}
+function kanbanDragLeave(e) {
+  e.currentTarget.classList.remove('drag-over');
+}
+function kanbanDrop(e) {
+  e.preventDefault();
+  const col = e.currentTarget;
+  col.classList.remove('drag-over');
+  if (!dragPid) return;
+  const targetKey = col.classList.contains('col-discovered') ? 'discovered'
+                  : col.classList.contains('col-contacted') ? 'contacted'
+                  : col.classList.contains('col-replied') ? 'replied'
+                  : col.classList.contains('col-meeting') ? 'meeting'
+                  : col.classList.contains('col-wonlost') ? 'wonlost' : null;
+  if (!targetKey || targetKey === dragSourceCol) { dragPid = null; return; }
+  openDnDReasonModal(dragPid, dragSourceCol, targetKey);
+  dragPid = null; dragSourceCol = null;
+}
+
+const COL_LABEL = { discovered:'Discovered', contacted:'Contacted', replied:'Replied', meeting:'Meeting Booked', wonlost:'Won / Lost' };
+function openDnDReasonModal(pid, fromKey, toKey) {
+  const p = findP(pid); if (!p) return;
+  const m = document.getElementById('dndModal');
+  m.innerHTML = `
+    <div class="modal">
+      <h3>Move ${p.name}?</h3>
+      <div class="ms"><b>${p.name}</b> from <b>${COL_LABEL[fromKey]}</b> → <b>${COL_LABEL[toKey]}</b>. Why are you moving them?</div>
+      <label class="reason-opt"><input type="radio" name="dnd-reason" value="Stale"><label>Stale — no response in sequence</label></label>
+      <label class="reason-opt"><input type="radio" name="dnd-reason" value="Wrong fit"><label>Wrong fit — disqualify and remove</label></label>
+      <label class="reason-opt"><input type="radio" name="dnd-reason" value="Escalate"><label>Escalate — needs your direct attention</label></label>
+      <textarea placeholder="Free-text note (optional)…" id="dndNote"></textarea>
+      <div class="ma">
+        <button class="btn btn-outline" onclick="closeDnDModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="confirmDnDMove('${pid}','${fromKey}','${toKey}')">OK</button>
+      </div>
+    </div>
+  `;
+  m.classList.add('on');
+}
+function closeDnDModal() { document.getElementById('dndModal').classList.remove('on'); }
+function confirmDnDMove(pid, fromKey, toKey) {
+  const reason = (document.querySelector('input[name="dnd-reason"]:checked') || {}).value || '(no reason selected)';
+  const note = (document.getElementById('dndNote') || {}).value || '';
+  const p = findP(pid);
+  alert(`${p ? p.name : pid} moved ${COL_LABEL[fromKey]} → ${COL_LABEL[toKey]}\nReason: ${reason}${note ? '\nNote: ' + note : ''}\n\n(prototype — no persistence)`);
+  closeDnDModal();
 }
 
 /* ================================================================
@@ -1509,30 +1828,54 @@ function openBriefingPage(pid) {
 
     <div class="card">
       <h4 style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.14em;color:var(--ink-3);text-transform:uppercase;margin-bottom:12px;font-weight:600;">Prospect snapshot</h4>
-      <div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin-bottom:14px;">
-        <span class="vr" data-g="${vr}" style="width:46px;height:46px;font-size:20px;">${vr}</span>
+      <div class="snap-head">
+        <span class="vr snap-vr" data-g="${vr}">${vr}</span>
         <div>
-          <div style="font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--ink);">${p.name}</div>
-          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-3);margin-top:3px;">${p.dm.name} · ${p.dm.title} · ${p.dm.tenure}</div>
+          <div class="snap-name">${p.name}</div>
+          <div class="snap-dm">${p.dm.name} · ${p.dm.title} · ${p.dm.tenure}</div>
         </div>
       </div>
-      <div class="bf-meta">
-        <div class="bf-kv"><span class="k">Domain</span><span class="v">${p.domain}</span></div>
-        <div class="bf-kv"><span class="k">GMB category</span><span class="v">${p.gmb_category}</span></div>
-        <div class="bf-kv"><span class="k">Employees</span><span class="v" title="Source: LinkedIn company page">${staffRange(p.staff)} (LinkedIn)</span></div>
-        <div class="bf-kv"><span class="k">Established</span><span class="v" title="Source: ABN registry">ABN registered ${p.est}</span></div>
-        <div class="bf-kv"><span class="k">Location</span><span class="v">${p.suburb}, ${p.state}</span></div>
-        <div class="bf-kv"><span class="k">Industry</span><span class="v">${p.industry}</span></div>
-        <div class="bf-kv"><span class="k">DFS organic ETV</span><span class="v">$${p.dfs_organic_etv}/mo</span></div>
-        <div class="bf-kv"><span class="k">Domain rank</span><span class="v">${p.domain_rank}/100</span></div>
+      <div class="snap-row">
+        <span class="snap-eyebrow">Identity</span>
+        <span class="snap-item"><span class="iv mono" style="font-family:'JetBrains Mono',monospace;font-size:12px;">${p.domain}</span></span>
+        <span class="snap-sep">·</span>
+        <span class="snap-item"><span class="iv">${p.suburb}, ${p.state}</span></span>
+        <span class="snap-sep">·</span>
+        <span class="snap-item"><span class="iv">${p.industry}</span></span>
+        <span class="snap-sep">·</span>
+        <span class="snap-item" title="Source: ABN registry"><span class="il">ABN registered</span><span class="iv">${p.est}</span></span>
+      </div>
+      <div class="snap-row">
+        <span class="snap-eyebrow">Signals</span>
+        <span class="snap-chip"><span class="il" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-3);letter-spacing:0.06em;text-transform:uppercase;">GMB rating</span><b>${gmbRating(p.vulnGrades.reviews)}★</b></span>
+        <span class="snap-chip"><span class="il" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-3);letter-spacing:0.06em;text-transform:uppercase;">Website</span><span class="sc-grade" data-g="${p.vulnGrades.website}">${p.vulnGrades.website}</span></span>
+        <span class="snap-chip"><span class="il" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-3);letter-spacing:0.06em;text-transform:uppercase;">Ad presence</span><b>${adPresence(p.vulnGrades.ads)}</b></span>
+        <span class="snap-chip"><span class="il" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-3);letter-spacing:0.06em;text-transform:uppercase;">Intent</span><b>${intentBand(p.score)}</b></span>
+        <span class="snap-chip score"><span class="il" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-3);letter-spacing:0.06em;text-transform:uppercase;">Propensity</span><b>${p.score}<span style="color:var(--ink-3);font-weight:400;">/100</span></b></span>
       </div>
     </div>
 
     <div class="card" style="margin-top:14px;">
-      <h4 style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.14em;color:var(--ink-3);text-transform:uppercase;margin-bottom:12px;font-weight:600;">Vulnerability — overall grade ${vr}</h4>
+      <h4 style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.14em;color:var(--ink-3);text-transform:uppercase;margin-bottom:12px;font-weight:600;">Vulnerability — overall grade ${vr} <span style="font-family:'DM Sans',sans-serif;text-transform:none;letter-spacing:0;color:var(--ink-3);font-size:11px;font-weight:400;margin-left:8px;">click any letter for detail</span></h4>
       <div style="font-size:13px;color:var(--ink-2);line-height:1.6;margin-bottom:12px;">${p.vulnerability}</div>
       <div class="vr-strip">
-        ${grades.map(g => `<div class="vr-cw"><div class="vr-letter" data-g="${p.vulnGrades[g]}">${p.vulnGrades[g]}</div><div class="vr-name">${g}</div></div>`).join('')}
+        ${grades.map(g => `<div class="vr-cw"><div class="vr-letter" data-g="${p.vulnGrades[g]}" onclick="showVRPopover('${p.id}','${g}',event)" title="Click for explanation">${p.vulnGrades[g]}</div><div class="vr-name">${g}</div></div>`).join('')}
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:14px;">
+      <h4 style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.14em;color:var(--ink-3);text-transform:uppercase;margin-bottom:12px;font-weight:600;">Communication history</h4>
+      <div class="ct-wrap">
+        ${synthTimeline(p).map(e => `
+          <div class="ct-row ${e.ch}">
+            <div class="ct-time">${e.t}</div>
+            <div class="ct-head">
+              <span class="ct-ch ${e.ch}">${e.ch === 'meeting' ? 'meeting' : e.ch === 'reply' ? 'reply' : e.ch}</span>
+              <span class="ct-label">${e.label}</span>
+            </div>
+            <div class="ct-detail">${e.detail}</div>
+          </div>
+        `).join('')}
       </div>
     </div>
 
@@ -1601,14 +1944,15 @@ function renderProgress() {
     </div>
 
     <div class="card" style="margin-top:14px;">
-      <h4 style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.14em;color:var(--ink-3);text-transform:uppercase;margin-bottom:14px;font-weight:600;">Cost efficiency · AUD · cycle to date</h4>
+      <h4 style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.14em;color:var(--ink-3);text-transform:uppercase;margin-bottom:6px;font-weight:600;">Your subscription efficiency · AUD</h4>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--copper);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:14px;">Based on your $2,500/month subscription</div>
       <div class="roi-grid">
-        <div class="roi-cell"><div class="roi-val">$186</div><div class="roi-l">Cost / Meeting</div></div>
-        <div class="roi-cell"><div class="roi-val">$47</div><div class="roi-l">Cost / Reply</div></div>
-        <div class="roi-cell"><div class="roi-val">$6.20</div><div class="roi-l">Cost / Contact</div></div>
-        <div class="roi-cell"><div class="roi-val">12.4×</div><div class="roi-l">Pipeline / Spend</div></div>
+        <div class="roi-cell"><div class="roi-val">$312</div><div class="roi-l">Cost / Meeting</div><div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--ink-3);margin-top:4px;">$2,500 ÷ 8 meetings</div></div>
+        <div class="roi-cell"><div class="roi-val">$81</div><div class="roi-l">Cost / Reply</div><div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--ink-3);margin-top:4px;">$2,500 ÷ 31 replies</div></div>
+        <div class="roi-cell"><div class="roi-val">$10</div><div class="roi-l">Cost / Contact</div><div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--ink-3);margin-top:4px;">$2,500 ÷ 247 contacts</div></div>
+        <div class="roi-cell"><div class="roi-val">3.0×</div><div class="roi-l">Pipeline ROI</div><div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--ink-3);margin-top:4px;">3 closed × $2,500 deal ÷ subscription</div></div>
       </div>
-      <div style="margin-top:14px;font-size:12px;color:var(--ink-3);font-family:'JetBrains Mono',monospace;">Cycle spend $3,720 · Pipeline created $46,200 · Meetings 8 · Qualified 3</div>
+      <div style="margin-top:14px;font-size:12px;color:var(--ink-3);font-family:'JetBrains Mono',monospace;">Subscription $2,500/mo · Meetings 8 · Replies 31 · Contacts 247 · Closed 3 (avg deal $2,500)</div>
     </div>
 
     <div style="text-align:center;margin-top:22px;"><button class="btn btn-primary" onclick="alert('Export PDF report for partners')">Export report</button></div>
@@ -1622,6 +1966,8 @@ function renderSettings() {
   document.getElementById('main').innerHTML = `
     <h1 class="page-h">Settings</h1>
     <p class="page-sub">Configure Maya, your BDR agent.</p>
+
+    <div class="section-label" style="margin-top:0;">Agent</div>
     <div class="card">
       <div class="set-row"><div class="set-key">BDR name</div><div class="set-val"><input type="text" value="Maya"></div></div>
       <div class="set-row"><div class="set-key">Agency name</div><div class="set-val"><input type="text" value="Keiracom Growth"></div></div>
@@ -1630,8 +1976,41 @@ function renderSettings() {
       <div class="set-row"><div class="set-key">Needs-review threshold</div><div class="set-val"><select><option>Critic score &lt; 70 (current)</option><option>Critic score &lt; 80</option><option>Critic score &lt; 60</option></select></div></div>
       <div class="set-row"><div class="set-key">Agency voice / tone</div><div class="set-val"><textarea>Direct. Australian. Evidence-led. No corporate fluff. Every message references a specific vulnerability on the prospect's site — never generic.</textarea></div></div>
     </div>
+
+    <div class="section-label">Notification mode</div>
+    <p class="page-sub" style="margin-bottom:14px;">As you build trust with Maya, you can step back from daily dashboard checks and receive meeting alerts only.</p>
+    <div class="card">
+      <label class="autopilot-opt selected">
+        <input type="radio" name="notify" value="dashboard" checked>
+        <div>
+          <div class="ao-name">Dashboard-first <span class="ao-soon" style="background:var(--amber-soft);color:var(--copper);border-color:var(--amber-dim);">Recommended for months 1-3</span></div>
+          <div class="ao-desc">Open the desk daily. Spot-check messages. Review every meeting brief. Build trust with Maya.</div>
+        </div>
+      </label>
+      <label class="autopilot-opt coming" onclick="event.preventDefault();">
+        <input type="radio" name="notify" value="alerts" disabled>
+        <div>
+          <div class="ao-name">Alerts-only <span class="ao-soon">coming soon</span></div>
+          <div class="ao-desc">Get pinged for booked meetings + flagged exceptions only. Maya runs hands-off in between.</div>
+        </div>
+      </label>
+      <label class="autopilot-opt coming" onclick="event.preventDefault();">
+        <input type="radio" name="notify" value="reports" disabled>
+        <div>
+          <div class="ao-name">Reports-only <span class="ao-soon">coming soon</span></div>
+          <div class="ao-desc">Weekly digest by email Mondays 7am AEST. No daily touchpoints. Pure background mode.</div>
+        </div>
+      </label>
+    </div>
+
     <div style="margin-top:18px;text-align:right;"><button class="btn btn-primary">Save changes</button></div>
   `;
+  /* visual select-state for the active radio */
+  document.querySelectorAll('.autopilot-opt input[type="radio"]').forEach(r => {
+    r.addEventListener('change', () => {
+      document.querySelectorAll('.autopilot-opt').forEach(o => o.classList.toggle('selected', o.querySelector('input[type="radio"]').checked));
+    });
+  });
 }
 
 /* ================================================================

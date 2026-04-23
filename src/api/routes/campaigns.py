@@ -20,7 +20,27 @@ from datetime import UTC, date, datetime, time
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
+import os
+
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query, status
+
+from src.security.webhook_sigs import verify_signature as _verify_sig
+
+
+_CAMPAIGN_KILL_SECRET_ENV = "OPERATOR_WEBHOOK_SECRET"
+
+
+def _require_kill_signature(
+    x_signature: str | None, client_id: UUID, campaign_id: UUID,
+) -> None:
+    """HMAC gate for campaign kill. When OPERATOR_WEBHOOK_SECRET is set
+    (production), X-Signature is MANDATORY — missing or invalid raises 401.
+    Signed payload: f'{client_id}\\n{campaign_id}\\nkill'."""
+    if not os.environ.get(_CAMPAIGN_KILL_SECRET_ENV):
+        return
+    payload = f"{client_id}\n{campaign_id}\nkill".encode()
+    if not _verify_sig(_CAMPAIGN_KILL_SECRET_ENV, payload, x_signature):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "invalid signature")
 from prefect.deployments import run_deployment
 from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import and_, desc, func, select, text
@@ -2164,13 +2184,18 @@ async def kill_campaign(
     body: KillCampaignBody,
     ctx: Annotated[ClientContext, Depends(get_current_client)],
     db: Annotated[AsyncSession, Depends(get_db_session)],
+    x_signature: Annotated[str | None, Header()] = None,
 ) -> dict:
     """
     Kill a campaign and cancel all pending scheduled touches.
 
     Sets campaign status='killed' and cancels all pending scheduled_touches
     for the campaign. Multi-tenant: only the owning client may kill.
+
+    Signature gate: when OPERATOR_WEBHOOK_SECRET is set, X-Signature must
+    be an HMAC-SHA256 of `{client_id}\n{campaign_id}\nkill` using the secret.
     """
+    _require_kill_signature(x_signature, ctx.client_id, body.campaign_id)
     # Verify campaign exists and belongs to this client
     check = await db.execute(
         text(

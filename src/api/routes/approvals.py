@@ -19,6 +19,7 @@ RULES APPLIED:
 """
 
 import logging
+import os
 from datetime import UTC, datetime
 from typing import Annotated, Any
 from uuid import UUID
@@ -30,12 +31,31 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies import ClientContext, get_current_client, get_db_session
 from src.models.approval import Approval, ApprovalStatus
+from src.security.webhook_sigs import verify_signature
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/approvals", tags=["approvals"])
 
-# TODO slice 8: implement HMAC verification for X-Signature header
+OPERATOR_SECRET_ENV = "OPERATOR_WEBHOOK_SECRET"
+
+
+def _require_operator_signature(
+    x_signature: str | None, client_id: UUID, approval_id: UUID, action: str,
+) -> None:
+    """HMAC gate for operator actions. When OPERATOR_WEBHOOK_SECRET is set
+    (production), the X-Signature header is MANDATORY — missing or invalid
+    signature raises 401. When the env var is unset (dev/test), the check is
+    skipped to avoid blocking internal callers.
+
+    Signed payload is a canonical `\n`-joined tuple:
+        f"{client_id}\n{approval_id}\n{action}"
+    """
+    if not os.environ.get(OPERATOR_SECRET_ENV):
+        return  # dev mode: secret unset means no gate
+    payload = f"{client_id}\n{approval_id}\n{action}".encode()
+    if not verify_signature(OPERATOR_SECRET_ENV, payload, x_signature):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "invalid signature")
 
 
 # ============================================
@@ -115,9 +135,10 @@ async def approve_approval(
     approval_id: UUID,
     ctx: Annotated[ClientContext, Depends(get_current_client)],
     db: Annotated[AsyncSession, Depends(get_db_session)],
-    x_signature: Annotated[str | None, Header()] = None,  # TODO slice 8: verify HMAC
+    x_signature: Annotated[str | None, Header()] = None,
 ) -> dict:
     """Mark an approval as approved."""
+    _require_operator_signature(x_signature, ctx.client_id, approval_id, "approve")
     approval = await _load_approval(db, approval_id, ctx.client_id)
     _check_not_terminal(approval)
 
@@ -140,9 +161,10 @@ async def reject_approval(
     body: RejectBody,
     ctx: Annotated[ClientContext, Depends(get_current_client)],
     db: Annotated[AsyncSession, Depends(get_db_session)],
-    x_signature: Annotated[str | None, Header()] = None,  # TODO slice 8: verify HMAC
+    x_signature: Annotated[str | None, Header()] = None,
 ) -> dict:
     """Mark an approval as rejected with a reason."""
+    _require_operator_signature(x_signature, ctx.client_id, approval_id, "reject")
     approval = await _load_approval(db, approval_id, ctx.client_id)
     _check_not_terminal(approval)
 
@@ -166,9 +188,10 @@ async def defer_approval(
     body: DeferBody,
     ctx: Annotated[ClientContext, Depends(get_current_client)],
     db: Annotated[AsyncSession, Depends(get_db_session)],
-    x_signature: Annotated[str | None, Header()] = None,  # TODO slice 8: verify HMAC
+    x_signature: Annotated[str | None, Header()] = None,
 ) -> dict:
     """Defer an approval decision by N hours."""
+    _require_operator_signature(x_signature, ctx.client_id, approval_id, "defer")
     approval = await _load_approval(db, approval_id, ctx.client_id)
     _check_not_terminal(approval)
 
@@ -193,9 +216,10 @@ async def edit_approval(
     body: EditBody,
     ctx: Annotated[ClientContext, Depends(get_current_client)],
     db: Annotated[AsyncSession, Depends(get_db_session)],
-    x_signature: Annotated[str | None, Header()] = None,  # TODO slice 8: verify HMAC
+    x_signature: Annotated[str | None, Header()] = None,
 ) -> dict:
     """Apply edits to an approval's payload."""
+    _require_operator_signature(x_signature, ctx.client_id, approval_id, "edit")
     approval = await _load_approval(db, approval_id, ctx.client_id)
     _check_not_terminal(approval)
 

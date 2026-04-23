@@ -57,18 +57,17 @@ _FAST_TO_CANONICAL = {
 
 
 # ---------------------------------------------------------------------------
-# Signature verification
+# Signature verification — delegated to src/security/webhook_sigs.py (slice 8)
 # ---------------------------------------------------------------------------
 
+from src.security.webhook_sigs import verify_signature as _webhook_verify
+
+
 def _verify(secret_env: str, payload: bytes, signature: str | None) -> bool:
-    secret = os.environ.get(secret_env)
-    if not secret:
-        logger.warning("%s not set — rejecting webhook in verify", secret_env)
-        return False
-    if not signature:
-        return False
-    expected = hmac.new(secret.encode(), payload, hashlib.sha256).hexdigest()
-    return hmac.compare_digest(expected, signature)
+    """Thin wrapper preserved for test-layer compatibility — delegates to
+    src.security.webhook_sigs.verify_signature which is the canonical
+    per-provider HMAC entrypoint from slice 8 onward."""
+    return _webhook_verify(secret_env, payload, signature)
 
 
 # ---------------------------------------------------------------------------

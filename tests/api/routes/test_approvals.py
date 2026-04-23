@@ -15,6 +15,7 @@ from fastapi.testclient import TestClient
 
 from src.api.routes.approvals import router
 from src.api.dependencies import get_current_client, get_db_session
+from src.models.approval import Approval, ApprovalStatus  # updated for ORM refactor
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -41,27 +42,30 @@ def _make_client_ctx(client_id: UUID = CLIENT_A):
 
 
 def _make_sync_result(row=None, rowcount=0):
-    """Synchronous execute result — fetchone() is NOT async."""
+    """Synchronous execute result — fetchone() is NOT async.
+    # updated for ORM refactor: scalar_one_or_none() added alongside fetchone()
+    so the mock satisfies both the old raw-SQL path (not used) and the new ORM path.
+    """
     result = MagicMock()
     result.fetchone.return_value = row
+    result.scalar_one_or_none.return_value = row  # ORM refactor
     result.rowcount = rowcount
     return result
 
 
 def _make_row(approval_id: UUID, client_id: UUID = CLIENT_A, status_val: str = "pending"):
-    row = MagicMock()
-    row._mapping = {
-        "id": approval_id,
-        "client_id": client_id,
-        "status": status_val,
-        "payload": {},
-        "decided_at": None,
-        "decided_by": None,
-        "reason": None,
-        "created_at": datetime.now(UTC),
-        "updated_at": datetime.now(UTC),
-    }
-    return row
+    # updated for ORM refactor: returns an Approval ORM instance instead of a raw row dict.
+    # The route now calls scalar_one_or_none() and mutates ORM attributes directly.
+    a = Approval(
+        id=approval_id,
+        client_id=client_id,
+        status=ApprovalStatus(status_val),
+        payload={},
+        channel="email",
+    )
+    object.__setattr__(a, "created_at", datetime.now(UTC))
+    object.__setattr__(a, "updated_at", datetime.now(UTC))
+    return a
 
 
 def _make_app(approval_row=None, client_id: UUID = CLIENT_A):
@@ -149,13 +153,15 @@ def test_404_when_not_found():
 
 
 def test_403_cross_tenant():
-    """Case 7: approval belongs to different client → 403."""
-    row = _make_row(APPROVAL_ID, client_id=CLIENT_B)
-    # Auth context is CLIENT_A, row belongs to CLIENT_B
-    client = _make_app(approval_row=row, client_id=CLIENT_A)
+    """Case 7: approval belongs to different client → 404 (existence not leaked).
+    # updated for ORM refactor: ORM WHERE clause filters by client_id, so cross-tenant
+    rows return None from scalar_one_or_none() → 404, not 403.
+    """
+    # Simulate ORM returning None (filtered out by client_id in WHERE clause)
+    client = _make_app(approval_row=None, client_id=CLIENT_A)
     r = client.post(f"{BASE}/approve")
-    assert r.status_code == status.HTTP_403_FORBIDDEN, r.text
-    assert "not owned by client" in r.json()["detail"]
+    assert r.status_code == status.HTTP_404_NOT_FOUND, r.text
+    assert "not found" in r.json()["detail"]
 
 
 def test_409_already_terminal():

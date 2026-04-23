@@ -514,8 +514,9 @@ html.dark .snap-chip { background: rgba(255,255,255,0.04); }
 .sched-head:hover .sched-chev { color: var(--copper); }
 .sched-head .sched-title { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; }
 .sched-head .sched-title .sched-sub { color: var(--ink-4); font-weight: 500; margin-left: 6px; letter-spacing: 0.08em; }
-.sched-chev { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-3); transition: transform .2s, color .15s; }
-.sched-wrap[data-open="true"] .sched-chev { transform: rotate(180deg); color: var(--copper); }
+.sched-chev { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-3); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; transition: color .15s; }
+.sched-head:hover .sched-chev { color: var(--copper); }
+.sched-wrap[data-open="true"] .sched-chev { color: var(--copper); }
 /* v7: use display toggle (bulletproof across browsers) + opacity fade.
    The previous max-height:0 → 640px transition was unreliable in some
    layout contexts (flex parent, nested margins). */
@@ -612,6 +613,19 @@ html.dark .vr-popover { background: #1F1B16; color: var(--ink); border-color: va
 .ct-row.reply .ct-detail { font-family: 'Playfair Display', serif; font-style: italic; padding: 8px 12px; background: var(--surface); border-left: 3px solid var(--amber); border-radius: 0 6px 6px 0; }
 html.dark .ct-row.reply .ct-detail { background: rgba(255,255,255,0.04); }
 .ct-row.meeting .ct-label { color: var(--green); }
+/* v8 Fix 2: clickable timeline rows + inline expand */
+.ct-row { cursor: pointer; border-radius: 6px; transition: background .12s; }
+.ct-row:hover { background: var(--amber-glow); }
+.ct-row .ct-chev { display: inline-block; margin-left: 8px; font-family: 'JetBrains Mono', monospace; font-size: 9.5px; color: var(--ink-3); letter-spacing: 0.06em; opacity: 0.6; transition: opacity .12s, transform .12s; }
+.ct-row:hover .ct-chev { opacity: 1; color: var(--copper); }
+.ct-row.open .ct-chev { color: var(--copper); opacity: 1; }
+.ct-expand { display: none; margin-top: 10px; padding: 12px 14px; background: var(--surface); border-radius: 6px; font-size: 12.5px; color: var(--ink-2); line-height: 1.6; }
+html.dark .ct-expand { background: rgba(255,255,255,0.04); }
+.ct-row.open .ct-expand { display: block; }
+.ct-expand h6 { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--copper); margin: 10px 0 4px; font-weight: 600; }
+.ct-expand h6:first-child { margin-top: 0; }
+.ct-expand p { margin: 0 0 4px; font-size: 12.5px; color: var(--ink); line-height: 1.55; }
+.ct-expand p:last-child { margin-bottom: 0; }
 
 /* ========== AUTOPILOT (Settings) ========== */
 .autopilot-opt { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; border: 1px solid var(--rule); border-radius: 8px; margin-bottom: 8px; cursor: pointer; transition: border-color .12s, background .12s; }
@@ -1238,8 +1252,11 @@ function toggleSched() {
   const wrap = document.getElementById('schedWrap');
   if (!wrap) return;
   const next = wrap.dataset.open === 'true' ? 'false' : 'true';
-  wrap.setAttribute('data-open', next);  /* explicit attribute flip — matches CSS selector reliably */
-  wrap.dataset.open = next;               /* keep dataset in sync */
+  wrap.setAttribute('data-open', next);
+  wrap.dataset.open = next;
+  /* v8 Fix 1: swap chev label text on toggle (triangle + phrase) */
+  const chev = document.getElementById('schedChev');
+  if (chev) chev.textContent = next === 'true' ? '▾ Collapse schedule' : '▸ Expand schedule';
 }
 /* Snapshot signal-row derivations — derive friendly summaries from vulnGrades */
 function gmbRating(g) { return ({A:'4.7',B:'4.2',C:'3.8',D:'3.3',F:'2.8'})[g] || '—'; }
@@ -1284,7 +1301,7 @@ function openDrawer(pid) {
         <div class="bf-section sched-wrap" id="schedWrap" data-open="true">
           <div class="sched-head" onclick="toggleSched()">
             <div class="sched-title">Scheduled touchpoints<span class="sched-sub">· next 14 days</span></div>
-            <div class="sched-chev">▾ toggle</div>
+            <div class="sched-chev" id="schedChev">▾ Collapse schedule</div>
           </div>
           <div class="sched-body">
             <div class="sched-inner">
@@ -1459,22 +1476,46 @@ function synthTimeline(p) {
     p6: '"Not sure if this is for us right now. Maybe next quarter?"',
   }[p.id];
   const subj = p.openingHook ? p.openingHook.match(/"([^"]+)"/)?.[1].slice(0, 70) || 'Vulnerability finding' : 'Outreach';
-  events.push({ ch:'email', t:'Day 1 · 09:02', label:'Email 1 sent', detail:`Subject: "${subj.split('.')[0]}…"` });
-  events.push({ ch:'email', t:'Day 1 · 11:34', label:'Email 1 opened', detail:'opened 3×' });
-  events.push({ ch:'linkedin', t:'Day 3 · 09:05', label:'LinkedIn connect sent', detail:'personalised note · 198 chars' });
-  if (['p3','p2','p5','p1','p6','p4'].includes(p.id)) events.push({ ch:'linkedin', t:'Day 3 · 14:17', label:'LinkedIn connect accepted', detail:'message sequence engaged' });
-  events.push({ ch:'email', t:'Day 5 · 09:01', label:'Email 2 sent', detail:'follow-up · case study attached' });
-  if (p.status !== 'Discovered') events.push({ ch:'email', t:'Day 5 · 16:52', label:'Email 2 opened', detail:'opened 1×' });
-  if (['p1','p7','p9'].includes(p.id)) events.push({ ch:'voice', t:'Day 7 · 10:00', label:'Voice AI call placed', detail:'Maya · 11sec · voicemail left' });
-  if (p.id === 'p4') events.push({ ch:'sms', t:'Day 7 · 10:00', label:'SMS sent', detail:'cross-channel touch' });
-  events.push({ ch:'email', t:'Day 10 · 09:03', label:'Email 3 sent', detail:'breakup — last touch in sequence' });
+  const fn = p.dm.name.split(' ')[1] || p.dm.name.split(' ')[0];
+  const body1 = `Hi ${fn}, ${p.vulnerability.split('.')[0].toLowerCase()}.\\nWorth 15 minutes this week to walk through what we\\'ve done for similar ${p.industry.toLowerCase()} businesses?`;
+  const body2 = `Hi ${fn} — following on from last week. Attaching a 1-pager from a ${p.industry} client we helped with a similar issue. Happy to jump on a short call.`;
+  const body3 = `Hi ${fn} — last touch from me for now. If the timing\\'s wrong, no stress — happy to check back in Q3. Otherwise reply with a 20-min window and I\\'ll send a calendar invite.`;
+  const liConnect = `Hi ${fn} — noticed ${p.vulnerability.split('.')[0].toLowerCase()}. I work with ${p.industry.toLowerCase()} businesses on exactly this. Open to connecting?`;
+
+  events.push({ ch:'email', t:'Day 1 · 09:02', label:'Email 1 sent', detail:`Subject: "${subj.split('.')[0]}…"`,
+    expand:`<h6>Subject</h6><p>${subj.split('.')[0]}…</p><h6>Body preview (first 2 lines)</h6><p>Hi ${fn}, ${p.vulnerability.split('.')[0].toLowerCase()}.<br>Worth 15 minutes this week to walk through what we've done for similar ${p.industry.toLowerCase()} businesses?</p><h6>Sent from</h6><p>dave@keiracom.com.au · via Maya</p>` });
+  events.push({ ch:'email', t:'Day 1 · 11:34', label:'Email 1 opened', detail:'opened 3×',
+    expand:`<h6>Open activity</h6><p>First open: Day 1 · 11:34am AEST<br>Second open: Day 1 · 2:17pm AEST<br>Third open: Day 2 · 8:09am AEST</p><h6>Engagement signal</h6><p>3× open + 2+ hour gap = warm read pattern. Indicator for prioritised follow-up.</p>` });
+  events.push({ ch:'linkedin', t:'Day 3 · 09:05', label:'LinkedIn connect sent', detail:'personalised note · 198 chars',
+    expand:`<h6>Connect note</h6><p>${liConnect}</p><h6>Delivery</h6><p>Sent via Unipile · DM's LinkedIn weekly cap: 847/1000 used</p>` });
+  if (['p3','p2','p5','p1','p6','p4'].includes(p.id)) events.push({ ch:'linkedin', t:'Day 3 · 14:17', label:'LinkedIn connect accepted', detail:'message sequence engaged',
+    expand:`<h6>Acceptance</h6><p>Accepted ${p.dm.name.split(' ')[0]}'s invite within 5 hours — high engagement signal.</p><h6>Next action</h6><p>Maya will send a value-share message on Day 5 after Email 2 lands, referencing the specific vulnerability noted in Email 1.</p>` });
+  events.push({ ch:'email', t:'Day 5 · 09:01', label:'Email 2 sent', detail:'follow-up · case study attached',
+    expand:`<h6>Subject</h6><p>Re: ${subj.split('.')[0]}… (quick follow-up)</p><h6>Body preview (first 2 lines)</h6><p>${body2.split('\\n')[0]}<br>${body2.split('\\n')[1] || ''}</p><h6>Attachment</h6><p>Case study: "${p.industry} win — 90-day outcome" (1 page PDF)</p>` });
+  if (p.status !== 'Discovered') events.push({ ch:'email', t:'Day 5 · 16:52', label:'Email 2 opened', detail:'opened 1×',
+    expand:`<h6>Open activity</h6><p>Single open: Day 5 · 4:52pm AEST</p><h6>Engagement signal</h6><p>1 open only. Attachment was not clicked. Softer signal than Email 1.</p>` });
+  if (['p1','p7','p9'].includes(p.id)) events.push({ ch:'voice', t:'Day 7 · 10:00', label:'Voice AI call placed', detail:'Maya · 11sec · voicemail left',
+    expand:`<h6>Outcome</h6><p>Voicemail left (11 seconds). Standard Keira opener — name-drops the specific pain point from Email 1.</p><h6>Voicemail transcript</h6><p style="font-style:italic;">"Hi ${fn}, this is Keira calling from Keiracom — just wanted to leave a quick note after my email earlier. If you get a chance to look, happy to have a quick chat this week. No pressure — have a great day."</p><h6>Follow-up</h6><p><a style="color:var(--copper);cursor:pointer;" onclick="event.stopPropagation();alert('Transcript download — prototype')">Transcript available →</a></p>` });
+  if (p.id === 'p4') events.push({ ch:'sms', t:'Day 7 · 10:00', label:'SMS sent', detail:'cross-channel touch',
+    expand:`<h6>SMS body</h6><p>Hi ${fn} — Dave from Keiracom. Sent you an email earlier re: ${p.name}. Quick 2-min read if you've got a sec. Cheers.</p><h6>Delivery status</h6><p>Delivered · Day 7 · 10:01am AEST · 160 chars</p>` });
+  events.push({ ch:'email', t:'Day 10 · 09:03', label:'Email 3 sent', detail:'breakup — last touch in sequence',
+    expand:`<h6>Subject</h6><p>One last thing, ${fn}?</p><h6>Body preview (first 2 lines)</h6><p>${body3.split('.')[0]}.<br>${body3.split('.')[1] || ''}.</p><h6>Tone</h6><p>Breakup / permission-based — designed to re-open the door without pressure.</p>` });
   if (reply) {
-    events.push({ ch:'reply', t:'Day 10 · 15:41', label:'Reply received', detail:reply, isReply:true });
+    events.push({ ch:'reply', t:'Day 10 · 15:41', label:'Reply received', detail:reply, isReply:true,
+      expand:`<h6>Full reply</h6><p style="font-style:italic;">${reply}</p><h6>Intent classification</h6><p>${p.status === 'Meeting Booked' ? 'Positive · meeting intent — auto-booking triggered' : 'Interested · awaiting operator direction'}</p><h6>Response time</h6><p>${reply ? 'From: ' + p.dm.email + '<br>Replied within: 6 hours 38 minutes' : '—'}</p>` });
   }
   if (p.meeting) {
-    events.push({ ch:'meeting', t:`Day 10 · 16:05`, label:`Meeting booked — ${p.meeting.date} ${p.meeting.time}`, detail:`via ${p.meeting.platform} · ${p.meeting.countdown}`, isCulm:true });
+    events.push({ ch:'meeting', t:`Day 10 · 16:05`, label:`Meeting booked — ${p.meeting.date} ${p.meeting.time}`, detail:`via ${p.meeting.platform} · ${p.meeting.countdown}`, isCulm:true,
+      expand:`<h6>Meeting details</h6><p><b>${p.meeting.date} · ${p.meeting.time} AEST</b><br>Platform: ${p.meeting.platform}<br>Countdown: ${p.meeting.countdown}</p><h6>Attendees</h6><p>${p.dm.name} · ${p.dm.title} · ${p.name}<br>Dave Stephens · Founder · Keiracom Growth</p><h6>Pre-meeting brief</h6><p>Briefing auto-generated. Opening hook + discovery questions + objections ready in the briefing page.</p>` });
   }
   return events;
+}
+
+/* v8 Fix 2: per-row click-to-expand in Communication history */
+function toggleCT(rowId) {
+  const row = document.getElementById(rowId);
+  if (!row) return;
+  row.classList.toggle('open');
 }
 
 /* ================================================================
@@ -2010,16 +2051,20 @@ function openBriefingPage(pid) {
     <div class="card" style="margin-top:14px;">
       <h4 style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.14em;color:var(--ink-3);text-transform:uppercase;margin-bottom:12px;font-weight:600;">Communication history</h4>
       <div class="ct-wrap">
-        ${synthTimeline(p).map(e => `
-          <div class="ct-row ${e.ch}">
+        ${synthTimeline(p).map((e, i) => {
+          const rowId = `ct-${p.id}-${i}`;
+          return `
+          <div class="ct-row ${e.ch}" id="${rowId}" onclick="toggleCT('${rowId}')">
             <div class="ct-time">${e.t}</div>
             <div class="ct-head">
               <span class="ct-ch ${e.ch}">${e.ch === 'meeting' ? 'meeting' : e.ch === 'reply' ? 'reply' : e.ch}</span>
               <span class="ct-label">${e.label}</span>
+              <span class="ct-chev">▸ details</span>
             </div>
             <div class="ct-detail">${e.detail}</div>
+            ${e.expand ? `<div class="ct-expand">${e.expand}</div>` : ''}
           </div>
-        `).join('')}
+        `;}).join('')}
       </div>
     </div>
 

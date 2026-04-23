@@ -229,18 +229,18 @@ async def upsert_bu(conn, p, dry_run):
             created_at, updated_at
         ) VALUES (
             $1, $2, $1,
-            $3, $4, $5,
-            $6, $7, $8, $9,
-            CASE WHEN $5 IS NOT NULL OR $6 IS NOT NULL THEN NOW() END, $10,
-            $11, $12, $13::jsonb,
+            $3::text, $4::text, $5::text,
+            $6::text, $7::bool, $8::text, $9::text,
+            CASE WHEN $5 IS NOT NULL OR $6 IS NOT NULL THEN NOW() END, $10::text,
+            $11::int, $12::text, $13::jsonb,
             'test_data_backfill', NOW(), NOW(),
             NOW(), NOW()
         ) RETURNING id""",
         p["domain"], f"https://{p['domain']}",
-        p["dm_name"], p["dm_title"], p["dm_linkedin"],
-        p["email"], p["email_verified"], p["mobile"], p["dm_source"],
-        p["linkedin_company_url"], p["company_followers"],
-        p["company_about"], specialties_json,
+        p["dm_name"] or None, p["dm_title"] or None, p["dm_linkedin"] or None,
+        p["email"] or None, p.get("email_verified") or False, p["mobile"] or None, p["dm_source"] or None,
+        p["linkedin_company_url"] or None, p.get("company_followers") or None,
+        p["company_about"] or None, specialties_json or '[]',
     )
     return "insert", new_id
 

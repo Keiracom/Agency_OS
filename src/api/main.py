@@ -123,9 +123,8 @@ async def lifespan(app: FastAPI):
         logger.info("Stripe configuration verified")
     except RuntimeError as e:
         logger.error(str(e))
-        # In production, this is fatal — billing cannot silently fail
-        if settings.ENV == "production":
-            raise
+        # Billing is non-fatal until Phase 2.5b — log loudly but don't crash the API
+        logger.warning("[Stripe] Continuing without billing — set STRIPE_API_KEY to enable")
 
     logger.info("Agency OS API started successfully")
 

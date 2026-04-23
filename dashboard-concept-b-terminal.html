@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AgencyOS — Concept B · The Terminal</title>
+<script>
+  try { if (localStorage.getItem('agencyos_theme') === 'dark') document.documentElement.classList.add('dark'); } catch (e) {}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+
+/* ========== TOKENS ========== */
+:root {
+  --cream: #F7F3EE;
+  --surface: #EDE8E0;
+  --ink: #0C0A08;
+  --ink-2: #2E2B26;
+  --ink-3: #7A756D;
+  --amber: #D4956A;
+  --amber-soft: rgba(212,149,106,0.14);
+  --amber-glow: rgba(212,149,106,0.08);
+  --copper: #C46A3E;
+  --green: #6B8E5A;
+  --red: #B55A4C;
+  --blue: #4A6FA5;
+  --rule: rgba(12,10,8,0.08);
+  --rule-strong: rgba(12,10,8,0.14);
+  --brand-sidebar: #0C0A08;
+  --on-amber: #1a1207;
+  --panel-bg: #FFFFFF;
+  --nav-w: 56px;
+  --right-w: 320px;
+  --topbar-h: 44px;
+}
+html.dark {
+  --cream: #0C0A08;
+  --surface: #16130F;
+  --ink: #F5F2EC;
+  --ink-2: #C9C3B8;
+  --ink-3: #807A6E;
+  --rule: rgba(255,255,255,0.08);
+  --rule-strong: rgba(255,255,255,0.14);
+  --copper: #E6A87D;
+  --amber-soft: rgba(212,149,106,0.16);
+  --panel-bg: #16130F;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; background: var(--cream); color: var(--ink); overflow: hidden; }
+body { font-family: 'DM Sans', system-ui, sans-serif; font-size: 13px; line-height: 1.45; display: flex; flex-direction: column; max-width: 100vw; }
+button { cursor: pointer; font: inherit; color: inherit; background: none; border: 0; }
+input, select { font: inherit; color: inherit; }
+ul { list-style: none; }
+.mono { font-family: 'JetBrains Mono', monospace; }
+.eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 500; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-3); }
+.serif { font-family: 'Playfair Display', serif; }
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--rule-strong); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--amber); }
+
+/* ========== TOP BAR (thin — terminal style) ========== */
+#topbar {
+  height: var(--topbar-h);
+  flex-shrink: 0;
+  background: var(--brand-sidebar);
+  color: #F5F2EC;
+  display: flex; align-items: center;
+  padding: 0 12px 0 12px;
+  gap: 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  z-index: 50;
+}
+.brand { font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 700; letter-spacing: -0.01em; }
+.brand em { color: var(--amber); font-style: italic; }
+.brand-tag { font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.14em; color: rgba(255,255,255,0.4); padding: 2px 7px; border: 1px solid rgba(255,255,255,0.14); border-radius: 3px; }
+#topbar .tb-spacer { flex: 1; }
+.clock { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: rgba(255,255,255,0.6); }
+.tb-live { display: inline-flex; align-items: center; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: rgba(255,255,255,0.7); }
+.tb-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+.tb-theme { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; color: rgba(255,255,255,0.7); border: 1px solid rgba(255,255,255,0.14); }
+.tb-theme:hover { color: var(--amber); border-color: var(--amber); }
+.tb-theme .t-sun { display: inline; } .tb-theme .t-moon { display: none; }
+html.dark .tb-theme .t-sun { display: none; } html.dark .tb-theme .t-moon { display: inline; }
+.kill-btn { background: transparent; color: rgba(255,255,255,0.85); border: 1px solid rgba(255,255,255,0.2); font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.08em; padding: 4px 11px; border-radius: 3px; text-transform: uppercase; }
+.kill-btn:hover { background: var(--red); color: #fff; border-color: var(--red); }
+
+/* ========== MAIN 3-COLUMN GRID ========== */
+#grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: var(--nav-w) 280px 1fr var(--right-w);
+  grid-template-rows: 1fr;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* --- Icon nav rail (minimal) --- */
+#navrail {
+  background: var(--brand-sidebar);
+  display: flex; flex-direction: column;
+  align-items: center;
+  padding: 8px 0;
+  gap: 4px;
+  border-right: 1px solid rgba(255,255,255,0.06);
+  overflow-y: auto;
+}
+.nav-ico {
+  width: 40px; height: 40px; border-radius: 6px;
+  display: grid; place-items: center;
+  color: rgba(255,255,255,0.5);
+  position: relative;
+  cursor: pointer;
+  transition: color .12s, background .12s;
+}
+.nav-ico:hover { color: var(--amber); background: rgba(255,255,255,0.04); }
+.nav-ico.active { color: var(--amber); background: rgba(212,149,106,0.1); }
+.nav-ico.active::before { content: ''; position: absolute; left: -2px; top: 6px; bottom: 6px; width: 2px; background: var(--amber); border-radius: 2px; }
+.nav-ico svg { width: 18px; height: 18px; }
+.nav-tip {
+  position: absolute; left: 50px; top: 50%;
+  transform: translateY(-50%);
+  background: var(--ink); color: #F5F2EC;
+  padding: 5px 10px; border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+  white-space: nowrap;
+  opacity: 0; pointer-events: none;
+  transition: opacity .12s;
+  z-index: 200;
+}
+.nav-ico:hover .nav-tip { opacity: 1; }
+
+/* --- Left column (signal ticker) --- */
+#leftcol {
+  background: var(--panel-bg);
+  border-right: 1px solid var(--rule);
+  display: flex; flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+.panel-head {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--rule);
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--surface);
+  flex-shrink: 0;
+}
+html.dark .panel-head { background: rgba(255,255,255,0.02); }
+.panel-head .eyebrow { color: var(--ink-2); font-weight: 600; }
+.panel-head .badge { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--copper); background: var(--amber-soft); padding: 1px 7px; border-radius: 10px; font-weight: 600; }
+.panel-body { flex: 1; overflow-y: auto; }
+
+.signal-row {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--rule);
+  cursor: pointer;
+  transition: background .12s;
+  position: relative;
+}
+.signal-row:hover { background: var(--amber-glow); }
+.signal-row .sig-type { font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.12em; color: var(--copper); font-weight: 600; text-transform: uppercase; }
+.signal-row .sig-biz { font-size: 12.5px; font-weight: 600; color: var(--ink); margin-top: 3px; line-height: 1.35; }
+.signal-row .sig-desc { font-size: 11.5px; color: var(--ink-3); margin-top: 3px; line-height: 1.4; }
+.signal-row .sig-time { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; color: var(--ink-3); margin-top: 4px; letter-spacing: 0.05em; }
+.signal-row .sig-strength { position: absolute; top: 10px; right: 14px; width: 30px; height: 3px; background: var(--rule); border-radius: 2px; overflow: hidden; }
+.signal-row .sig-fill { height: 100%; background: var(--amber); }
+
+/* --- Centre column --- */
+#centre {
+  display: flex; flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  border-right: 1px solid var(--rule);
+}
+
+.metrics-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0,1fr)) auto;
+  gap: 0;
+  border-bottom: 1px solid var(--rule);
+  background: var(--panel-bg);
+  flex-shrink: 0;
+}
+.metric-cell {
+  padding: 11px 16px;
+  border-right: 1px solid var(--rule);
+  min-width: 0;
+}
+.metric-cell:last-child { border-right: 0; }
+.metric-cell .m-label { font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.14em; color: var(--ink-3); text-transform: uppercase; }
+.metric-cell .m-val { font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 600; color: var(--ink); line-height: 1.1; margin-top: 3px; }
+.metric-cell .m-val em { font-style: normal; color: var(--amber); }
+.metric-cell .m-delta { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--green); margin-top: 2px; }
+.metric-cell .m-delta.down { color: var(--red); }
+.metric-cell.cycle .m-val { color: var(--amber); }
+
+.tab-bar {
+  display: flex;
+  border-bottom: 1px solid var(--rule);
+  background: var(--panel-bg);
+  flex-shrink: 0;
+  padding: 0 8px;
+}
+.tab-btn {
+  padding: 10px 18px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color .12s, border-color .12s;
+}
+.tab-btn:hover { color: var(--ink-2); }
+.tab-btn.active { color: var(--amber); border-bottom-color: var(--amber); }
+.tab-count { font-family: 'JetBrains Mono', monospace; font-size: 9px; background: var(--amber-soft); color: var(--copper); padding: 1px 5px; border-radius: 8px; margin-left: 6px; font-weight: 600; }
+
+.tab-pane { flex: 1; overflow: auto; min-height: 0; }
+
+/* Pipeline table */
+.pipe-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+}
+.pipe-table thead th {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9.5px; font-weight: 600;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--ink-3);
+  text-align: left;
+  padding: 9px 12px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--rule);
+  position: sticky; top: 0;
+  cursor: pointer;
+  white-space: nowrap;
+}
+html.dark .pipe-table thead th { background: rgba(255,255,255,0.02); }
+.pipe-table thead th:hover { color: var(--amber); }
+.pipe-table thead th.sort-desc::after { content: ' ↓'; color: var(--amber); }
+.pipe-table thead th.sort-asc::after { content: ' ↑'; color: var(--amber); }
+.pipe-table tbody tr {
+  border-bottom: 1px solid var(--rule);
+  cursor: pointer;
+  transition: background .1s;
+}
+.pipe-table tbody tr:hover { background: var(--amber-glow); }
+.pipe-table tbody tr.selected { background: var(--amber-soft); }
+.pipe-table tbody tr.selected td:first-child { position: relative; }
+.pipe-table tbody tr.selected td:first-child::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: var(--amber); }
+.pipe-table td { padding: 9px 12px; color: var(--ink-2); white-space: nowrap; }
+.pipe-table td.name-col { color: var(--ink); font-weight: 600; }
+.pipe-table td.score-col { font-family: 'JetBrains Mono', monospace; color: var(--copper); font-weight: 600; text-align: right; }
+.pipe-table td.mono { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-3); }
+
+.vr-cell {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; border-radius: 5px;
+  color: #fff; font-family: 'Playfair Display', serif; font-weight: 700; font-size: 13px;
+}
+.vr-cell[data-g="A"], .vr-cell[data-g="B"] { background: var(--green); }
+.vr-cell[data-g="C"] { background: var(--amber); color: var(--on-amber); }
+.vr-cell[data-g="D"] { background: var(--copper); }
+.vr-cell[data-g="F"] { background: var(--red); }
+
+.pill { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; padding: 2px 7px; border-radius: 3px; display: inline-block; }
+.pill.green { background: rgba(107,142,90,0.15); color: var(--green); }
+.pill.amber { background: var(--amber-soft); color: var(--copper); }
+.pill.gray { background: rgba(12,10,8,0.06); color: var(--ink-3); }
+html.dark .pill.gray { background: rgba(255,255,255,0.06); }
+
+/* Inbox split */
+.inbox-split { display: grid; grid-template-columns: 300px 1fr; height: 100%; min-height: 0; }
+.inbox-list { border-right: 1px solid var(--rule); overflow-y: auto; }
+.conv {
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--rule);
+  cursor: pointer;
+  transition: background .1s;
+}
+.conv:hover { background: var(--amber-glow); }
+.conv.selected { background: var(--amber-soft); border-left: 2px solid var(--amber); padding-left: 12px; }
+.conv-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.conv-name { font-size: 12.5px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.conv-time { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; color: var(--ink-3); flex-shrink: 0; }
+.conv-prev { font-size: 11.5px; color: var(--ink-3); margin-top: 3px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.4; }
+.conv-meta { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--copper); margin-top: 3px; letter-spacing: 0.06em; }
+
+.thread-pane { display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
+.thread-head { padding: 12px 18px; border-bottom: 1px solid var(--rule); background: var(--surface); }
+html.dark .thread-head { background: rgba(255,255,255,0.02); }
+.thread-head .tn { font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 700; color: var(--ink); }
+.thread-head .ts { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-3); margin-top: 2px; }
+.thread-body { flex: 1; overflow-y: auto; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+.msg { max-width: 82%; padding: 9px 13px; border-radius: 10px; font-size: 12.5px; line-height: 1.5; }
+.msg.in { background: var(--surface); color: var(--ink); border-bottom-left-radius: 3px; align-self: flex-start; }
+html.dark .msg.in { background: rgba(255,255,255,0.04); }
+.msg.out { background: var(--amber); color: var(--on-amber); border-bottom-right-radius: 3px; align-self: flex-end; }
+.msg-ts { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--ink-3); padding: 0 6px; }
+.msg.out + .msg-ts { text-align: right; }
+.ai-suggest { margin: 10px 18px 14px; padding: 10px 12px; background: var(--amber-glow); border: 1px dashed var(--amber); border-radius: 6px; }
+.ai-suggest .eyebrow { color: var(--copper); margin-bottom: 5px; }
+.ai-suggest .body { font-size: 12px; color: var(--ink-2); line-height: 1.55; }
+
+/* Meetings list */
+.meet-row { display: grid; grid-template-columns: 28px 1fr auto auto; gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--rule); cursor: pointer; align-items: center; transition: background .1s; }
+.meet-row:hover { background: var(--amber-glow); }
+.meet-row.selected { background: var(--amber-soft); }
+.meet-name { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 14px; color: var(--ink); }
+.meet-sub { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--ink-3); margin-top: 2px; }
+.meet-when { text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-2); font-weight: 500; }
+.meet-when .cd { color: var(--copper); font-size: 10px; margin-top: 2px; }
+
+/* --- Right column (detail panel) --- */
+#rightcol {
+  background: var(--panel-bg);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+.right-section { border-bottom: 1px solid var(--rule); }
+.right-section:last-child { border-bottom: 0; }
+.right-body { padding: 14px 16px; }
+
+.detail-head { padding: 14px 16px; border-bottom: 1px solid var(--rule); background: var(--surface); }
+html.dark .detail-head { background: rgba(255,255,255,0.02); }
+.detail-head .dt-name { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 700; color: var(--ink); line-height: 1.25; }
+.detail-head .dt-dm { font-size: 12px; color: var(--ink-2); margin-top: 4px; }
+.detail-head .dt-meta { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--ink-3); margin-top: 4px; }
+.detail-head .dt-chips { display: flex; gap: 6px; margin-top: 9px; flex-wrap: wrap; }
+
+.detail-scores { display: grid; grid-template-columns: repeat(2,1fr); gap: 8px; padding: 14px 16px; border-bottom: 1px solid var(--rule); }
+.score-box { background: var(--surface); border-radius: 6px; padding: 10px 12px; }
+html.dark .score-box { background: rgba(255,255,255,0.03); }
+.score-box .sv { font-family: 'JetBrains Mono', monospace; font-size: 20px; font-weight: 600; color: var(--copper); line-height: 1; }
+.score-box .sl { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--ink-3); letter-spacing: 0.12em; text-transform: uppercase; margin-top: 4px; }
+
+.vuln-line { padding: 12px 16px; font-size: 12px; color: var(--ink-2); line-height: 1.55; border-bottom: 1px solid var(--rule); }
+.vuln-line .v-label { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--copper); letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+.vuln-line .v-grade { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 4px; color: #fff; font-family: 'Playfair Display', serif; font-size: 12px; font-weight: 700; }
+.vuln-line .v-grade[data-g="A"], .vuln-line .v-grade[data-g="B"] { background: var(--green); }
+.vuln-line .v-grade[data-g="C"] { background: var(--amber); color: var(--on-amber); }
+.vuln-line .v-grade[data-g="D"] { background: var(--copper); }
+.vuln-line .v-grade[data-g="F"] { background: var(--red); }
+
+.progress-block { padding: 14px 16px; border-bottom: 1px solid var(--rule); }
+.progress-block .pb-label { font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.14em; color: var(--ink-3); text-transform: uppercase; margin-bottom: 10px; }
+.prog-row { display: grid; grid-template-columns: 56px 1fr auto; gap: 10px; align-items: center; margin-bottom: 8px; font-size: 11px; }
+.prog-ch { font-family: 'JetBrains Mono', monospace; color: var(--ink-2); font-size: 10.5px; letter-spacing: 0.04em; }
+.prog-bar { height: 6px; background: rgba(12,10,8,0.06); border-radius: 3px; overflow: hidden; }
+html.dark .prog-bar { background: rgba(255,255,255,0.06); }
+.prog-fill { height: 100%; background: var(--amber); }
+.prog-fill.ch-email { background: var(--green); }
+.prog-fill.ch-linkedin { background: var(--blue); }
+.prog-fill.ch-voice { background: var(--amber); }
+.prog-fill.ch-sms { background: #8B6CA0; }
+.prog-count { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-3); min-width: 40px; text-align: right; }
+
+.health-block { padding: 14px 16px; }
+.health-row { display: flex; align-items: center; justify-content: space-between; padding: 5px 0; font-size: 11.5px; border-bottom: 1px dashed var(--rule); }
+.health-row:last-child { border-bottom: 0; }
+.health-name { color: var(--ink-2); }
+.health-state { display: flex; align-items: center; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-3); }
+.health-dot { width: 6px; height: 6px; border-radius: 50%; }
+.health-dot.ok { background: var(--green); }
+.health-dot.warn { background: var(--amber); }
+.health-dot.err { background: var(--red); }
+
+/* Draft tabs inside right panel */
+.draft-tabs { display: flex; gap: 2px; padding: 0 16px; border-bottom: 1px solid var(--rule); }
+.draft-tab { padding: 8px 10px; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); border-bottom: 2px solid transparent; margin-bottom: -1px; cursor: pointer; }
+.draft-tab.active { color: var(--amber); border-bottom-color: var(--amber); }
+.draft-content { padding: 12px 16px; font-size: 12px; color: var(--ink-2); line-height: 1.55; font-style: italic; background: var(--surface); margin: 10px 12px; border-radius: 6px; border-left: 2px solid var(--amber); }
+html.dark .draft-content { background: rgba(255,255,255,0.03); }
+.critic-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; font-size: 11px; }
+.critic-row .cn { color: var(--ink-2); }
+.critic-row .cs { font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--copper); }
+.critic-row .cs.warn { color: var(--red); }
+
+/* No-selection empty state */
+.right-empty { padding: 40px 20px; text-align: center; color: var(--ink-3); font-size: 12.5px; font-style: italic; }
+.right-empty .hint { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); margin-top: 14px; }
+
+/* ========== MOBILE ========== */
+#right-mobile-close { display: none; }
+
+@media (max-width: 1100px) {
+  :root { --right-w: 280px; }
+  #grid { grid-template-columns: var(--nav-w) 240px 1fr var(--right-w); }
+}
+
+@media (max-width: 900px) {
+  #grid { grid-template-columns: var(--nav-w) 1fr; grid-template-rows: auto 1fr; }
+  #leftcol { grid-column: 1 / -1; grid-row: 1; max-height: 140px; border-right: 0; border-bottom: 1px solid var(--rule); }
+  #leftcol .panel-body { display: flex; gap: 0; overflow-x: auto; overflow-y: hidden; }
+  #leftcol .signal-row { flex: 0 0 280px; border-right: 1px solid var(--rule); border-bottom: 0; }
+  #centre { grid-column: 2 / -1; grid-row: 2; border-right: 0; }
+  #rightcol {
+    position: fixed; top: var(--topbar-h); right: 0; bottom: 0;
+    width: min(380px, 100vw);
+    transform: translateX(100%);
+    transition: transform .25s ease;
+    z-index: 110;
+    border-left: 1px solid var(--rule);
+    box-shadow: -4px 0 16px rgba(12,10,8,0.18);
+  }
+  #rightcol.open { transform: translateX(0); }
+  #right-mobile-close { display: inline; position: absolute; top: 10px; right: 10px; font-size: 18px; color: var(--ink-3); padding: 4px 8px; z-index: 3; }
+  .inbox-split { grid-template-columns: 1fr; }
+  .inbox-split .thread-pane { display: none; }
+  .inbox-split.open .thread-pane { display: flex; position: fixed; inset: var(--topbar-h) 0 0 0; background: var(--cream); z-index: 105; }
+  .inbox-split.open .inbox-list { display: none; }
+}
+
+@media (max-width: 600px) {
+  #topbar { padding: 0 10px; gap: 8px; }
+  .brand-tag { display: none; }
+  .clock { display: none; }
+  .metrics-strip { grid-template-columns: repeat(2, 1fr); }
+  .metric-cell { border-right: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
+  .metric-cell.cycle { grid-column: 1 / -1; }
+  #grid { grid-template-columns: var(--nav-w) 1fr; }
+  #leftcol { max-height: 120px; }
+  .pipe-table thead th:nth-child(n+5), .pipe-table td:nth-child(n+5) { display: none; }
+}
+</style>
+</head>
+<body>
+
+<header id="topbar">
+  <span class="brand">Agency<em>OS</em></span>
+  <span class="brand-tag">CONCEPT B · TERMINAL</span>
+  <span class="tb-live"><span class="tb-dot"></span>MAYA ACTIVE · DAY 14/30</span>
+  <span class="tb-spacer"></span>
+  <span class="clock mono" id="clock">—</span>
+  <button class="tb-theme" aria-label="Toggle theme"><span class="t-sun">☀</span><span class="t-moon">🌙</span></button>
+  <button class="kill-btn" onclick="alert('Pause all outreach — confirm?')">⏸ Pause all</button>
+</header>
+
+<div id="grid">
+
+  <!-- Icon nav rail -->
+  <nav id="navrail">
+    <div class="nav-ico active" data-v="all" onclick="setTab('all')">
+      <svg viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+      <span class="nav-tip">All panels</span>
+    </div>
+    <div class="nav-ico" data-v="pipeline" onclick="setTab('pipeline')">
+      <svg viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="2" width="14" height="2"/><rect x="1" y="7" width="14" height="2"/><rect x="1" y="12" width="14" height="2"/></svg>
+      <span class="nav-tip">Pipeline</span>
+    </div>
+    <div class="nav-ico" data-v="inbox" onclick="setTab('inbox')">
+      <svg viewBox="0 0 16 16" fill="currentColor"><path d="M2 4a2 2 0 012-2h8a2 2 0 012 2v6a2 2 0 01-2 2H2.5L1 14V4z"/></svg>
+      <span class="nav-tip">Inbox</span>
+    </div>
+    <div class="nav-ico" data-v="meetings" onclick="setTab('meetings')">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="3" width="12" height="11" rx="1.5"/><line x1="2" y1="6" x2="14" y2="6"/><line x1="5" y1="1.5" x2="5" y2="4" stroke-linecap="round"/><line x1="11" y1="1.5" x2="11" y2="4" stroke-linecap="round"/></svg>
+      <span class="nav-tip">Meetings</span>
+    </div>
+    <div style="flex:1;"></div>
+    <div class="nav-ico" onclick="alert('Settings — terminal preferences, BDR config')">
+      <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 5a3 3 0 100 6 3 3 0 000-6zm6.5 2l-1.2-.4a5 5 0 00-.3-.7l.6-1.1-1.4-1.4-1.1.6a5 5 0 00-.7-.3L10 2.5H6l-.4 1.2a5 5 0 00-.7.3l-1.1-.6L2.4 4.8l.6 1.1a5 5 0 00-.3.7L1.5 7v2l1.2.4c.1.2.2.5.3.7l-.6 1.1 1.4 1.4 1.1-.6c.2.1.5.2.7.3L6 13.5h4l.4-1.2c.2-.1.5-.2.7-.3l1.1.6 1.4-1.4-.6-1.1c.1-.2.2-.5.3-.7l1.2-.4V7z"/></svg>
+      <span class="nav-tip">Settings</span>
+    </div>
+  </nav>
+
+  <!-- LEFT: signal ticker -->
+  <aside id="leftcol">
+    <div class="panel-head">
+      <span class="eyebrow">Live signals</span>
+      <span class="badge">+28 · 24h</span>
+    </div>
+    <div class="panel-body" id="signalFeed"></div>
+  </aside>
+
+  <!-- CENTRE: metrics + tab panel -->
+  <main id="centre">
+    <div class="metrics-strip">
+      <div class="metric-cell"><div class="m-label">Open rate</div><div class="m-val">47<em>%</em></div><div class="m-delta">vs AU B2B 21%</div></div>
+      <div class="metric-cell"><div class="m-label">Reply rate</div><div class="m-val">8.2<em>%</em></div><div class="m-delta">vs AU 3.1%</div></div>
+      <div class="metric-cell"><div class="m-label">Meeting rate</div><div class="m-val">1.4<em>%</em></div><div class="m-delta">vs AU 0.8%</div></div>
+      <div class="metric-cell cycle"><div class="m-label">Cycle 3</div><div class="m-val">Day 14<em>/30</em></div><div class="m-delta">8 of 10 meetings</div></div>
+    </div>
+
+    <div class="tab-bar" id="tabBar">
+      <button class="tab-btn active" data-tab="pipeline" onclick="setTab('pipeline')">Pipeline<span class="tab-count" id="pipeCount">10</span></button>
+      <button class="tab-btn" data-tab="inbox" onclick="setTab('inbox')">Inbox<span class="tab-count" id="inboxCount">5</span></button>
+      <button class="tab-btn" data-tab="meetings" onclick="setTab('meetings')">Meetings<span class="tab-count" id="mtgCount">4</span></button>
+    </div>
+
+    <div class="tab-pane" id="pipelinePane">
+      <table class="pipe-table" id="pipeTable">
+        <thead>
+          <tr>
+            <th data-s="vr">VR</th>
+            <th data-s="name">Company</th>
+            <th data-s="dm_name">Decision-maker</th>
+            <th data-s="industry">Industry</th>
+            <th data-s="where">Location</th>
+            <th data-s="staff">Size</th>
+            <th data-s="score" class="sort-desc">Score</th>
+            <th data-s="status">Status</th>
+          </tr>
+        </thead>
+        <tbody id="pipeBody"></tbody>
+      </table>
+    </div>
+
+    <div class="tab-pane" id="inboxPane" style="display:none;">
+      <div class="inbox-split" id="inboxSplit">
+        <div class="inbox-list" id="convList"></div>
+        <div class="thread-pane" id="threadPane">
+          <div class="thread-head" id="threadHead"></div>
+          <div class="thread-body" id="threadBody"></div>
+          <div class="ai-suggest" id="aiSuggest"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-pane" id="meetingsPane" style="display:none;">
+      <div id="meetList"></div>
+    </div>
+  </main>
+
+  <!-- RIGHT: selected prospect detail -->
+  <aside id="rightcol">
+    <button id="right-mobile-close" onclick="closeMobileRight()" aria-label="Close">×</button>
+    <div id="rightContent"></div>
+  </aside>
+
+</div>
+
+<script>
+/* ================================================================
+   PROSPECT DATA — 10 hero prospects (copied from v4 honest-data)
+================================================================ */
+const prospects = [
+  {
+    id:'p1', name:'Momentum Constructions', suburb:'Brunswick', state:'VIC',
+    industry:'Construction', intent:'struggling', score:91, staff:'28', est:'2008',
+    domain:'momentumconstructions.com.au', gmb_category:'General contractor',
+    abn_status:'active', abn_age_years:18,
+    dfs_organic_etv:180, dfs_organic_keywords:42, backlinks_count:67, domain_rank:28,
+    propensity_score:91, affordability:8, intentScore:16, composite:91,
+    dm:{ name:'James Whitford', title:'Founder & MD', tenure:'16 years', style:'Direct. Numbers-focused. Dislikes jargon.', linkedinActivity:'Posts about project wins 2x/month.' },
+    signals:[
+      { type:'AD SPEND', text:'Google Ads spend detected (estimated high)', time:'2 days ago', strength:88 },
+      { type:'REVIEWS', text:'GMB rating dropped from 4.6 to 4.1 in 90 days', time:'5 days ago', strength:76 },
+      { type:'TECH GAP', text:'Website last updated 2019 — no SSL, not mobile responsive', time:'1 week ago', strength:82 },
+      { type:'COMPETITOR', text:'Competitor bidding on their brand terms', time:'3 days ago', strength:91 },
+    ],
+    vulnerability:'Momentum Constructions is spending on Google Ads but their website converts poorly — no SSL, not mobile responsive. GMB rating dropped from 4.6 to 4.1. Competitor bidding on brand terms.',
+    vulnGrades:{ website:'F', seo:'D', reviews:'D', ads:'C', social:'B', content:'F' },
+    status:'Meeting Booked',
+    meeting:{ date:'Mon 14 Apr', time:'10:00am', countdown:'In 7 days', platform:'Zoom' },
+    openingHook:'"James, your competitor is bidding on the exact phrase people search when looking for Momentum Constructions. I can show you in 2 minutes."',
+    pricingRange:'$2,800–$4,200/month AUD',
+    thread:[
+      { d:'out', t:'Hi James — saw Momentum is outranked by a competitor on your own brand term. Worth a chat?', ts:'Day 1 · 9:02' },
+      { d:'in',  t:'"This is exactly what we need. Can we set up a call this week?"', ts:'Day 10 · 3:41pm' },
+    ],
+    aiReply:'Booking confirmation sent + calendar hold for Mon 14 Apr 10am. Pre-meeting briefing auto-generated — scan VR grade D, lead with brand-term bidding evidence.',
+    critic:{ email:82, linkedin:71, voice:88, sms:64, flags:['linkedin','sms'] },
+  },
+  {
+    id:'p2', name:'Harbour Physiotherapy', suburb:'Manly', state:'NSW',
+    industry:'Health', intent:'struggling', score:88, staff:'11', est:'2015',
+    domain:'harbourphysio.com.au', gmb_category:'Physiotherapist',
+    abn_status:'active', abn_age_years:11,
+    dfs_organic_etv:210, dfs_organic_keywords:58, backlinks_count:41, domain_rank:22,
+    propensity_score:88, affordability:6, intentScore:15, composite:88,
+    dm:{ name:'Sarah Kemp', title:'Clinical Director & Owner', tenure:'9 years', style:'Evidence-based thinker. Appreciates data. Skeptical of marketing claims.', linkedinActivity:'Shares clinical research articles.' },
+    signals:[
+      { type:'AD SPEND', text:'Google Ads paused after 6 months continuous spend', time:'1 week ago', strength:74 },
+      { type:'HIRING', text:'3 staff LinkedIn profiles updated to "Open to work"', time:'4 days ago', strength:68 },
+      { type:'COMPETITOR', text:'Competitor opened 200m away with aggressive launch', time:'2 weeks ago', strength:92 },
+    ],
+    vulnerability:'Harbour Physiotherapy paused Google Ads. Competitor launched 200m away with aggressive presence. Staff instability signals internal pressure.',
+    vulnGrades:{ website:'C', seo:'D', reviews:'B', ads:'F', social:'D', content:'D' },
+    status:'Meeting Booked',
+    meeting:{ date:'Tue 15 Apr', time:'2:00pm', countdown:'In 8 days', platform:'Zoom' },
+    openingHook:'"Sarah, the new practice on Sydney Road is now outranking Harbour Physiotherapy for 14 of your top search terms."',
+    pricingRange:'$1,800–$2,800/month AUD',
+    thread:[
+      { d:'out', t:'Sarah — the Sydney Road physio is now ranking above you on 14 terms. Quick call this week?', ts:'Day 5 · 9:02' },
+      { d:'in',  t:'"Very interested. We\'ve been struggling with our online presence."', ts:'Day 10 · 5:12pm' },
+    ],
+    aiReply:'Meeting booked. Follow-up briefing queued — lead with competitor SERP comparison data.',
+    critic:{ email:79, linkedin:81, voice:72, sms:68 },
+  },
+  {
+    id:'p3', name:'Cascade Dental Group', suburb:'Paddington', state:'NSW',
+    industry:'Dental', intent:'trying', score:74, staff:'14', est:'2012',
+    domain:'cascadedental.com.au', gmb_category:'Dental clinic',
+    abn_status:'active', abn_age_years:14,
+    dfs_organic_etv:340, dfs_organic_keywords:89, backlinks_count:73, domain_rank:31,
+    propensity_score:85, affordability:7, intentScore:12, composite:74,
+    dm:{ name:'Dr Priya Narayan', title:'Principal Dentist & Owner', tenure:'12 years', style:'Analytical. Values credentials and case studies.', linkedinActivity:'Posts about dental health awareness 3x/month.' },
+    signals:[
+      { type:'HIRING', text:'Recently hired a marketing coordinator', time:'1 week ago', strength:71 },
+      { type:'TECH GAP', text:'Website redesign detected — new template but thin content', time:'3 days ago', strength:64 },
+    ],
+    vulnerability:'Cascade Dental actively trying — hired coordinator, redesigned website. New site has thin content and GMB strategy is basic.',
+    vulnGrades:{ website:'C', seo:'C', reviews:'A', ads:'D', social:'C', content:'D' },
+    status:'Meeting Booked',
+    meeting:{ date:'Thu 17 Apr', time:'11:00am', countdown:'In 10 days', platform:'Zoom' },
+    openingHook:'"Priya, your new website looks great — but a technical SEO issue means Google can\'t index 60% of your treatment pages."',
+    pricingRange:'$2,200–$3,400/month AUD',
+    thread:[
+      { d:'out', t:'Hi Priya — noticed the new website. Quick SEO observation that could help the launch.', ts:'Day 1 · 9:00' },
+      { d:'in',  t:'"We just hired someone for this but would love a second opinion."', ts:'Day 10 · 1:18pm' },
+    ],
+    aiReply:'Meeting secured. Brief to emphasise complementary role alongside new coordinator — not replacement.',
+    critic:{ email:85, linkedin:77, voice:74, sms:70 },
+  },
+  {
+    id:'p4', name:'Coastal Veterinary', suburb:'Byron Bay', state:'NSW',
+    industry:'Veterinary', intent:'trying', score:76, staff:'16', est:'2010',
+    domain:'coastalvet.com.au', gmb_category:'Veterinarian',
+    abn_status:'active', abn_age_years:9,
+    dfs_organic_etv:155, dfs_organic_keywords:46, backlinks_count:38, domain_rank:19,
+    propensity_score:82, affordability:7, intentScore:13, composite:76,
+    dm:{ name:'Dr Rebecca Ashford', title:'Practice Owner', tenure:'14 years', style:'Community-oriented. Warm communicator. Values relationship over hard sell.', linkedinActivity:'Posts about animal welfare occasionally.' },
+    signals:[
+      { type:'AD SPEND', text:'New Facebook ad campaign targeting pet owners', time:'5 days ago', strength:62 },
+      { type:'CONTENT', text:'Blog section added but only 2 posts', time:'1 week ago', strength:48 },
+    ],
+    vulnerability:'Coastal Vet investing in marketing but spreading thin — Facebook ads, blog, community sponsorship without cohesive strategy.',
+    vulnGrades:{ website:'B', seo:'D', reviews:'A', ads:'C', social:'B', content:'D' },
+    status:'Meeting Booked',
+    meeting:{ date:'Mon 21 Apr', time:'9:30am', countdown:'In 14 days', platform:'Zoom' },
+    openingHook:'"Rebecca, you\'ve done the hard part — community trust and good reviews. Just need to make sure you come up first at 11pm in Byron."',
+    pricingRange:'$1,600–$2,400/month AUD',
+    thread:[
+      { d:'out', t:'Rebecca — SMS re: Byron vet search ranking. Your community presence is strong, digital is the gap.', ts:'Day 7 · 10:00' },
+      { d:'in',  t:'"Interesting. Can you send more details about pricing?"', ts:'Day 7 · 2:33pm' },
+    ],
+    aiReply:'Sending ranged pricing next. Discovery questions staged before full quote.',
+    critic:{ email:76, linkedin:69, voice:82, sms:74 },
+  },
+  {
+    id:'p5', name:'Southbank Legal Advisory', suburb:'Southbank', state:'VIC',
+    industry:'Legal', intent:'trying', score:71, staff:'18', est:'2014',
+    domain:'southbanklegal.com.au', gmb_category:'Law firm',
+    abn_status:'active', abn_age_years:13,
+    dfs_organic_etv:420, dfs_organic_keywords:112, backlinks_count:94, domain_rank:34,
+    propensity_score:79, affordability:7, intentScore:11, composite:71,
+    dm:{ name:'Andrew Volkov', title:'Managing Partner', tenure:'10 years', style:'Precise and logic-driven. Responds to structured arguments.', linkedinActivity:'Active — thought leadership 4x/month.' },
+    signals:[
+      { type:'CONTENT', text:'Published 4 thought leadership articles in 30 days', time:'1 week ago', strength:66 },
+      { type:'AD SPEND', text:'Google Ads spend increased 40% month-on-month', time:'3 days ago', strength:73 },
+    ],
+    vulnerability:'Southbank Legal investing in content and ads but execution unfocused — thought leadership lacks SEO, ad spend increasing without conversion tracking.',
+    vulnGrades:{ website:'C', seo:'D', reviews:'B', ads:'C', social:'C', content:'C' },
+    status:'Replied',
+    meeting:null,
+    openingHook:'"Andrew, you\'ve published 4 articles this month — not one is ranking on page 1 for any commercial legal term."',
+    pricingRange:'$2,400–$3,800/month AUD',
+    thread:[
+      { d:'out', t:'Andrew — SEO audit of your 4 recent articles. Strong writing; 0 of 4 ranking. Happy to walk through.', ts:'Day 1 · 9:00' },
+      { d:'in',  t:'"Interesting. Send me the audit — I\'ll read before we chat."', ts:'Day 10 · 11:45am' },
+    ],
+    aiReply:'Audit PDF queued for email 4. Follow-up email draft pending supervisor review.',
+    critic:{ email:80, linkedin:73, voice:66, sms:62, flags:['voice','sms'] },
+  },
+  {
+    id:'p6', name:'Riverside Accounting', suburb:'North Sydney', state:'NSW',
+    industry:'Accounting', intent:'dabbling', score:52, staff:'9', est:'2018',
+    domain:'riversideaccounting.com.au', gmb_category:'Accountant',
+    abn_status:'active', abn_age_years:21,
+    dfs_organic_etv:280, dfs_organic_keywords:67, backlinks_count:52, domain_rank:26,
+    propensity_score:76, affordability:5, intentScore:8, composite:52,
+    dm:{ name:'Michael Chen', title:'Managing Partner', tenure:'6 years', style:'Analytical. Spreadsheet thinker. Needs numbers before commitment.', linkedinActivity:'LinkedIn page exists but minimal personal activity.' },
+    signals:[
+      { type:'TECH GAP', text:'LinkedIn company page created but no posts', time:'3 weeks ago', strength:42 },
+      { type:'TECH GAP', text:'Google Business Profile claimed but incomplete', time:'2 weeks ago', strength:54 },
+    ],
+    vulnerability:'Riverside Accounting just starting digital presence — LinkedIn page with no content, incomplete GMB.',
+    vulnGrades:{ website:'D', seo:'F', reviews:'C', ads:'F', social:'F', content:'F' },
+    status:'Replied',
+    meeting:null,
+    openingHook:'"Michael, I\'m not pitching a retainer. Let me spend 20 minutes on what fixing your Google profile alone would do for referrals."',
+    pricingRange:'$800–$1,400/month AUD',
+    thread:[
+      { d:'out', t:'Michael — quick GMB fix walkthrough, no retainer pitch. 20 min?', ts:'Day 5 · 9:00' },
+      { d:'in',  t:'"Not sure if this is for us right now. Maybe next quarter?"', ts:'Day 6 · 9:44am' },
+    ],
+    aiReply:'Soft-objection reply queued for Q3 nurture sequence. No further action needed this cycle.',
+    critic:{ email:68, linkedin:62, voice:58, sms:55, flags:['voice','sms'] },
+  },
+  {
+    id:'p7', name:'Parramatta Motor Group', suburb:'Parramatta', state:'NSW',
+    industry:'Automotive', intent:'dabbling', score:47, staff:'34', est:'2005',
+    domain:'parramattamotor.com.au', gmb_category:'Car dealer',
+    abn_status:'active', abn_age_years:27,
+    dfs_organic_etv:96, dfs_organic_keywords:29, backlinks_count:48, domain_rank:21,
+    propensity_score:73, affordability:8, intentScore:5, composite:47,
+    dm:{ name:'Wei Zhang', title:'Dealer Principal', tenure:'19 years', style:'Revenue-focused. Needs a clear return. Skeptical of digital.', linkedinActivity:'Inactive.' },
+    signals:[
+      { type:'TECH GAP', text:"Website hasn't been updated since 2020", time:'2 weeks ago', strength:58 },
+      { type:'SOCIAL', text:'Zero social media activity in 12 months', time:'1 month ago', strength:49 },
+    ],
+    vulnerability:'Parramatta Motor Group has high affordability but zero digital investment. Website from 2020, no social presence.',
+    vulnGrades:{ website:'F', seo:'F', reviews:'B', ads:'F', social:'F', content:'F' },
+    status:'Contacted',
+    meeting:null,
+    openingHook:'"Wei, 840 people search for used cars in Parramatta monthly. Parramatta Motor Group doesn\'t appear on page 1 for any of them."',
+    pricingRange:'$3,200–$5,000/month AUD',
+    thread:[],
+    aiReply:'No reply yet — 3 emails + 1 voice AI attempt. Nurture or parked.',
+    critic:{ email:72, linkedin:64, voice:70, sms:60 },
+  },
+  {
+    id:'p8', name:'Bondi Creative Studio', suburb:'Bondi', state:'NSW',
+    industry:'Design', intent:'trying', score:68, staff:'8', est:'2019',
+    domain:'bondicreative.com.au', gmb_category:'Graphic designer',
+    abn_status:'active', abn_age_years:7,
+    dfs_organic_etv:140, dfs_organic_keywords:38, backlinks_count:82, domain_rank:29,
+    propensity_score:70, affordability:4, intentScore:11, composite:68,
+    dm:{ name:'Aria Martinelli', title:'Creative Director', tenure:'5 years', style:'Creative-first. Responds to aesthetics and story.', linkedinActivity:'Active — portfolio posts weekly.' },
+    signals:[
+      { type:'CONTENT', text:'Portfolio website recently launched with case studies', time:'1 week ago', strength:72 },
+      { type:'SOCIAL', text:'Instagram following grew 300% in 3 months', time:'2 weeks ago', strength:85 },
+    ],
+    vulnerability:'Bondi Creative understands marketing but struggles with their own pipeline. Strong social growth but no paid acquisition.',
+    vulnGrades:{ website:'B', seo:'D', reviews:'A', ads:'F', social:'A', content:'B' },
+    status:'Contacted',
+    meeting:null,
+    openingHook:'"Aria, your portfolio is excellent — but when someone searches for a Sydney brand design studio, you don\'t appear in the top 20."',
+    pricingRange:'$1,200–$2,000/month AUD',
+    thread:[],
+    aiReply:'3-touch sequence in flight. Engaged (opened 5x) but no reply — next touch LinkedIn message.',
+    critic:{ email:83, linkedin:79, voice:68, sms:72 },
+  },
+  {
+    id:'p9', name:'Fitzroy Cafe Group', suburb:'Fitzroy', state:'VIC',
+    industry:'Hospitality', intent:'struggling', score:84, staff:'22', est:'2016',
+    domain:'fitzroycafegroup.com.au', gmb_category:'Cafe',
+    abn_status:'active', abn_age_years:6,
+    dfs_organic_etv:78, dfs_organic_keywords:24, backlinks_count:31, domain_rank:17,
+    propensity_score:67, affordability:6, intentScore:14, composite:84,
+    dm:{ name:'Tom Abernathy', title:'Owner', tenure:'8 years', style:'Pragmatic. Busy. Responds to brevity.', linkedinActivity:'Minimal.' },
+    signals:[
+      { type:'SOCIAL', text:'Uber Eats commission complaints on social media', time:'3 days ago', strength:81 },
+      { type:'HIRING', text:'Staff hiring posts every 2 weeks (high turnover)', time:'ongoing', strength:66 },
+      { type:'COMPETITOR', text:'Competitor cafe won "Best of Fitzroy" award', time:'1 week ago', strength:74 },
+    ],
+    vulnerability:'Fitzroy Cafe Group bleeding margin to delivery platforms. Stale GMB while competitor won local awards.',
+    vulnGrades:{ website:'D', seo:'F', reviews:'C', ads:'F', social:'D', content:'F' },
+    status:'Contacted',
+    meeting:null,
+    openingHook:'"Tom, our full package is $1,400/month — less than you pay in one week of delivery commission."',
+    pricingRange:'$1,400–$2,200/month AUD',
+    thread:[],
+    aiReply:'Engaged (opened 3x) — no reply. SMS + voice AI attempt scheduled.',
+    critic:{ email:77, linkedin:68, voice:64, sms:54, flags:['voice','sms'] },
+  },
+  {
+    id:'p10', name:'Gold Coast Mortgage Co', suburb:'Surfers Paradise', state:'QLD',
+    industry:'Finance', intent:'dabbling', score:55, staff:'12', est:'2017',
+    domain:'goldcoastmortgage.com.au', gmb_category:'Mortgage broker',
+    abn_status:'recent', abn_age_years:2,
+    dfs_organic_etv:195, dfs_organic_keywords:51, backlinks_count:44, domain_rank:23,
+    propensity_score:64, affordability:6, intentScore:8, composite:55,
+    dm:{ name:'Priya Sharma', title:'Principal Broker', tenure:'7 years', style:'Relationship-first. Open to new ideas.', linkedinActivity:'Property market commentary monthly.' },
+    signals:[
+      { type:'ABN', text:'Recently registered new ABN for financial planning arm', time:'2 weeks ago', strength:67 },
+    ],
+    vulnerability:'Gold Coast Mortgage Co expanding into financial planning (new ABN). Growth intent present but no digital strategy.',
+    vulnGrades:{ website:'D', seo:'F', reviews:'B', ads:'F', social:'D', content:'F' },
+    status:'Contacted',
+    meeting:null,
+    openingHook:'"Priya, the financial planning ABN is a smart move. But there\'s no digital presence for that service at all."',
+    pricingRange:'$1,200–$2,000/month AUD',
+    thread:[],
+    aiReply:'Opened once — low engagement so far. Email 3 queued.',
+    critic:{ email:70, linkedin:65, voice:60, sms:58 },
+  },
+];
+
+/* ================================================================
+   LIVE SIGNAL TICKER (cross-prospect aggregation)
+================================================================ */
+const liveSignals = [
+  { type:'HIRING', biz:'Cascade Dental Group', desc:'Hired marketing coordinator · intent trigger', time:'3h ago', strength:71, pid:'p3' },
+  { type:'AD SPEND', biz:'Momentum Constructions', desc:'Google Ads spend detected · high', time:'2d ago', strength:88, pid:'p1' },
+  { type:'COMPETITOR', biz:'Harbour Physiotherapy', desc:'Competitor 200m away launched aggressively', time:'2w ago', strength:92, pid:'p2' },
+  { type:'SOCIAL', biz:'Fitzroy Cafe Group', desc:'Public Uber Eats commission complaints', time:'3d ago', strength:81, pid:'p9' },
+  { type:'CONTENT', biz:'Southbank Legal Advisory', desc:'Published 4 thought-leadership articles in 30d', time:'1w ago', strength:66, pid:'p5' },
+  { type:'ABN', biz:'Gold Coast Mortgage Co', desc:'Registered financial planning ABN', time:'2w ago', strength:67, pid:'p10' },
+  { type:'TECH GAP', biz:'Parramatta Motor Group', desc:"Website hasn't been updated since 2020", time:'2w ago', strength:58, pid:'p7' },
+  { type:'REVIEWS', biz:'Momentum Constructions', desc:'GMB rating dropped 4.6 → 4.1 in 90d', time:'5d ago', strength:76, pid:'p1' },
+  { type:'SOCIAL', biz:'Bondi Creative Studio', desc:'Instagram following +300% in 3 months', time:'2w ago', strength:85, pid:'p8' },
+  { type:'COMPETITOR', biz:'Fitzroy Cafe Group', desc:'Competitor won "Best of Fitzroy" award', time:'1w ago', strength:74, pid:'p9' },
+];
+
+const convoThreads = prospects.filter(p => p.thread && p.thread.length > 0);
+
+/* ================================================================
+   HELPERS
+================================================================ */
+function overallVulnGrade(vg) {
+  if (!vg) return 'C';
+  const map={A:5,B:4,C:3,D:2,F:1}, inv={5:'A',4:'B',3:'C',2:'D',1:'F'};
+  const vals=Object.values(vg).map(l=>map[l]||3);
+  return inv[Math.round(vals.reduce((a,b)=>a+b,0)/vals.length)]||'C';
+}
+function staffRange(s) {
+  const n=parseInt(s,10);
+  if(!n) return '—';
+  if(n<=10) return '1-10';
+  if(n<=50) return '11-50';
+  if(n<=200) return '51-200';
+  return '200+';
+}
+function statusPill(s) {
+  const c=s==='Meeting Booked'?'green':s==='Replied'?'amber':'gray';
+  return `<span class="pill ${c}">${s}</span>`;
+}
+function intentPill(i) {
+  const c=i==='struggling'?'amber':i==='trying'?'green':'gray';
+  return `<span class="pill ${c}">${i[0].toUpperCase()+i.slice(1)}</span>`;
+}
+function findP(id){ return prospects.find(p=>p.id===id); }
+
+/* ================================================================
+   SIGNAL FEED
+================================================================ */
+function renderSignals() {
+  document.getElementById('signalFeed').innerHTML = liveSignals.map(s => `
+    <div class="signal-row" onclick="selectProspect('${s.pid}')">
+      <div class="sig-strength"><div class="sig-fill" style="width:${s.strength}%;"></div></div>
+      <div class="sig-type">${s.type}</div>
+      <div class="sig-biz">${s.biz}</div>
+      <div class="sig-desc">${s.desc}</div>
+      <div class="sig-time">${s.time} · strength ${s.strength}</div>
+    </div>
+  `).join('');
+}
+
+/* ================================================================
+   PIPELINE TABLE
+================================================================ */
+let sortKey='score', sortDir=-1;
+function renderPipe() {
+  const rows=[...prospects].sort((a,b)=>{
+    let av, bv;
+    if (sortKey==='vr') { av=overallVulnGrade(a.vulnGrades); bv=overallVulnGrade(b.vulnGrades); }
+    else if (sortKey==='dm_name') { av=a.dm.name; bv=b.dm.name; }
+    else if (sortKey==='where') { av=a.suburb+a.state; bv=b.suburb+b.state; }
+    else { av=a[sortKey]; bv=b[sortKey]; }
+    if (typeof av==='number') return (av-bv)*sortDir;
+    return String(av).localeCompare(String(bv))*sortDir;
+  });
+  document.getElementById('pipeBody').innerHTML = rows.map(p => {
+    const vr=overallVulnGrade(p.vulnGrades);
+    return `<tr data-id="${p.id}" onclick="selectProspect('${p.id}')">
+      <td><span class="vr-cell" data-g="${vr}">${vr}</span></td>
+      <td class="name-col">${p.name}</td>
+      <td>${p.dm.name}<div style="font-size:10px;color:var(--ink-3);font-family:'JetBrains Mono',monospace;margin-top:1px;">${p.dm.title}</div></td>
+      <td class="mono">${p.industry}</td>
+      <td class="mono">${p.suburb}, ${p.state}</td>
+      <td class="mono">${staffRange(p.staff)}</td>
+      <td class="score-col">${p.score}</td>
+      <td>${statusPill(p.status)}</td>
+    </tr>`;
+  }).join('');
+  updateSelected();
+  document.querySelectorAll('#pipeTable th').forEach(th => {
+    th.classList.remove('sort-asc','sort-desc');
+    if (th.dataset.s===sortKey) th.classList.add(sortDir>0?'sort-asc':'sort-desc');
+  });
+}
+document.addEventListener('click', e => {
+  const th = e.target.closest('#pipeTable th');
+  if (!th) return;
+  const k = th.dataset.s;
+  if (k===sortKey) sortDir=-sortDir; else { sortKey=k; sortDir=-1; }
+  renderPipe();
+});
+
+/* ================================================================
+   INBOX SPLIT
+================================================================ */
+let activeConv=convoThreads[0]?.id||null;
+function renderInbox() {
+  document.getElementById('convList').innerHTML = convoThreads.map(p => {
+    const last = p.thread[p.thread.length-1];
+    const intent = p.status==='Meeting Booked'?'Meeting':p.status==='Replied'?'Replied':'Open';
+    return `<div class="conv ${p.id===activeConv?'selected':''}" onclick="setActiveConv('${p.id}')">
+      <div class="conv-top">
+        <div class="conv-name">${p.dm.name}</div>
+        <div class="conv-time">${last.ts.split('·')[0].trim()}</div>
+      </div>
+      <div class="conv-prev">${last.t}</div>
+      <div class="conv-meta">${p.name} · ${intent}</div>
+    </div>`;
+  }).join('');
+  renderThread();
+}
+function setActiveConv(id) {
+  activeConv=id;
+  selectProspect(id);
+  document.getElementById('inboxSplit').classList.add('open');
+  renderInbox();
+}
+function renderThread() {
+  const p = findP(activeConv);
+  if (!p) {
+    document.getElementById('threadHead').innerHTML='';
+    document.getElementById('threadBody').innerHTML='<div style="color:var(--ink-3);font-style:italic;font-size:12px;">Select a conversation</div>';
+    document.getElementById('aiSuggest').innerHTML='';
+    return;
+  }
+  document.getElementById('threadHead').innerHTML=`<div class="tn">${p.dm.name} · ${p.name}</div><div class="ts">${p.dm.title} · ${p.suburb}, ${p.state}</div>`;
+  document.getElementById('threadBody').innerHTML = p.thread.map(m => `
+    <div class="msg ${m.d}">${m.t}</div>
+    <div class="msg-ts">${m.ts}</div>
+  `).join('');
+  document.getElementById('aiSuggest').innerHTML = `
+    <div class="eyebrow">✨ Maya's next action</div>
+    <div class="body">${p.aiReply}</div>`;
+}
+
+/* ================================================================
+   MEETINGS
+================================================================ */
+function renderMeet() {
+  const upcoming = prospects.filter(p => p.meeting);
+  document.getElementById('meetList').innerHTML = upcoming.map(p => {
+    const vr=overallVulnGrade(p.vulnGrades);
+    return `<div class="meet-row" onclick="selectProspect('${p.id}')">
+      <span class="vr-cell" data-g="${vr}">${vr}</span>
+      <div>
+        <div class="meet-name">${p.dm.name}</div>
+        <div class="meet-sub">${p.name} · ${p.suburb}, ${p.state}</div>
+      </div>
+      <div class="meet-when">${p.meeting.date}<br>${p.meeting.time}</div>
+      <div class="meet-when"><span class="cd">${p.meeting.countdown}</span><br><span style="font-size:10px;color:var(--ink-3);">${p.meeting.platform}</span></div>
+    </div>`;
+  }).join('');
+}
+
+/* ================================================================
+   RIGHT PANEL — selected prospect detail
+================================================================ */
+let selectedId = 'p1';
+let activeDraftCh = 'email';
+function selectProspect(id) {
+  if (!findP(id)) return;
+  selectedId = id;
+  renderRight();
+  updateSelected();
+  if (window.matchMedia('(max-width: 900px)').matches) {
+    document.getElementById('rightcol').classList.add('open');
+  }
+}
+function closeMobileRight() { document.getElementById('rightcol').classList.remove('open'); }
+function updateSelected() {
+  document.querySelectorAll('#pipeBody tr').forEach(tr => tr.classList.toggle('selected', tr.dataset.id===selectedId));
+  document.querySelectorAll('.meet-row').forEach(mr => { /* no id here — handled below */ });
+}
+function renderRight() {
+  const p = findP(selectedId);
+  if (!p) {
+    document.getElementById('rightContent').innerHTML = `
+      <div class="right-empty">
+        No prospect selected.
+        <div class="hint">Click any row → detail here</div>
+      </div>`;
+    return;
+  }
+  const vr = overallVulnGrade(p.vulnGrades);
+  const drafts = {
+    email: `Subject: ${p.openingHook.split('"')[1].split('.')[0]}...\n\nHi ${p.dm.name.split(' ')[0]}, ${p.vulnerability.split('.')[0].toLowerCase()}. Worth a 15-min chat this week?\n\n— Dave`,
+    linkedin: `Hi ${p.dm.name.split(' ')[0]} — noticed ${p.vulnerability.split('.')[0].toLowerCase()}. Open to a quick chat on how we'd fix that?`,
+    voice: `"Hi, ${p.dm.name.split(' ')[0]}? Keira from Keiracom — 30 seconds: ${p.vulnerability.split('.')[0].toLowerCase()}. Worth 5 minutes today?"`,
+    sms: `Hi ${p.dm.name.split(' ')[0]} — Dave from Keiracom re: ${p.name}. Quick thought just sent by email. 2 min read.`
+  };
+  const flags = p.critic.flags || [];
+  document.getElementById('rightContent').innerHTML = `
+    <div class="detail-head">
+      <div class="eyebrow">Selected</div>
+      <div class="dt-name">${p.name}</div>
+      <div class="dt-dm">${p.dm.name} · ${p.dm.title}</div>
+      <div class="dt-meta">${p.domain} · ${p.industry} · ${p.suburb}, ${p.state}</div>
+      <div class="dt-chips">
+        ${intentPill(p.intent)}
+        ${statusPill(p.status)}
+        <span class="pill gray">${p.gmb_category}</span>
+      </div>
+    </div>
+
+    <div class="detail-scores">
+      <div class="score-box"><div class="sv">${p.score}</div><div class="sl">CIS score</div></div>
+      <div class="score-box"><div class="sv" style="display:inline-flex;align-items:center;gap:6px;"><span class="v-grade" data-g="${vr}" style="width:26px;height:26px;font-size:15px;">${vr}</span></div><div class="sl">VR grade</div></div>
+      <div class="score-box"><div class="sv">${p.affordability}<span style="font-size:12px;color:var(--ink-3);">/10</span></div><div class="sl">Affordability</div></div>
+      <div class="score-box"><div class="sv">${p.intentScore}<span style="font-size:12px;color:var(--ink-3);">/18</span></div><div class="sl">Intent</div></div>
+    </div>
+
+    <div class="vuln-line">
+      <div class="v-label"><span class="v-grade" data-g="${vr}">${vr}</span> Vulnerability headline</div>
+      ${p.vulnerability}
+    </div>
+
+    <div class="progress-block">
+      <div class="pb-label">Outreach · this cycle</div>
+      <div class="prog-row"><div class="prog-ch">Email</div><div class="prog-bar"><div class="prog-fill ch-email" style="width:80%;"></div></div><div class="prog-count">3/4</div></div>
+      <div class="prog-row"><div class="prog-ch">LinkedIn</div><div class="prog-bar"><div class="prog-fill ch-linkedin" style="width:${p.thread.length>0?67:33}%;"></div></div><div class="prog-count">${p.thread.length>0?2:1}/3</div></div>
+      <div class="prog-row"><div class="prog-ch">Voice</div><div class="prog-bar"><div class="prog-fill ch-voice" style="width:${p.meeting?100:50}%;"></div></div><div class="prog-count">${p.meeting?2:1}/2</div></div>
+      <div class="prog-row"><div class="prog-ch">SMS</div><div class="prog-bar"><div class="prog-fill ch-sms" style="width:50%;"></div></div><div class="prog-count">1/2</div></div>
+    </div>
+
+    <div class="progress-block">
+      <div class="pb-label">Critic scores · drafts</div>
+      <div class="critic-row"><span class="cn">Email</span><span class="cs ${p.critic.email<70?'warn':''}">${p.critic.email}</span></div>
+      <div class="critic-row"><span class="cn">LinkedIn</span><span class="cs ${p.critic.linkedin<70?'warn':''}">${p.critic.linkedin}${flags.includes('linkedin')?' ⚠':''}</span></div>
+      <div class="critic-row"><span class="cn">Voice AI</span><span class="cs ${p.critic.voice<70?'warn':''}">${p.critic.voice}${flags.includes('voice')?' ⚠':''}</span></div>
+      <div class="critic-row"><span class="cn">SMS</span><span class="cs ${p.critic.sms<70?'warn':''}">${p.critic.sms}${flags.includes('sms')?' ⚠':''}</span></div>
+    </div>
+
+    <div class="draft-tabs">
+      <div class="draft-tab ${activeDraftCh==='email'?'active':''}" onclick="setDraft('email')">Email</div>
+      <div class="draft-tab ${activeDraftCh==='linkedin'?'active':''}" onclick="setDraft('linkedin')">LinkedIn</div>
+      <div class="draft-tab ${activeDraftCh==='voice'?'active':''}" onclick="setDraft('voice')">Voice</div>
+      <div class="draft-tab ${activeDraftCh==='sms'?'active':''}" onclick="setDraft('sms')">SMS</div>
+    </div>
+    <div class="draft-content">${(drafts[activeDraftCh]||'').replace(/\n/g,'<br>')}</div>
+
+    <div class="health-block">
+      <div class="pb-label" style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.14em;color:var(--ink-3);text-transform:uppercase;margin-bottom:10px;">System health</div>
+      <div class="health-row"><span class="health-name">Email (Resend)</span><span class="health-state"><span class="health-dot ok"></span>OK · 47ms</span></div>
+      <div class="health-row"><span class="health-name">LinkedIn (Unipile)</span><span class="health-state"><span class="health-dot ok"></span>OK · 847/1000</span></div>
+      <div class="health-row"><span class="health-name">Voice AI (Vapi)</span><span class="health-state"><span class="health-dot ok"></span>OK · 6 booked today</span></div>
+      <div class="health-row"><span class="health-name">SMS (Telnyx)</span><span class="health-state"><span class="health-dot warn"></span>DEG · slow</span></div>
+      <div class="health-row"><span class="health-name">Pipeline F</span><span class="health-state"><span class="health-dot ok"></span>LIVE</span></div>
+    </div>
+  `;
+}
+function setDraft(ch) { activeDraftCh=ch; renderRight(); }
+
+/* ================================================================
+   TABS
+================================================================ */
+function setTab(t) {
+  if (t==='all') t='pipeline'; /* icon nav 'all' defaults to pipeline */
+  document.querySelectorAll('#tabBar .tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab===t));
+  document.querySelectorAll('.nav-ico').forEach(n => n.classList.toggle('active', n.dataset.v===t));
+  document.getElementById('pipelinePane').style.display = t==='pipeline'?'block':'none';
+  document.getElementById('inboxPane').style.display = t==='inbox'?'block':'none';
+  document.getElementById('meetingsPane').style.display = t==='meetings'?'block':'none';
+}
+
+/* ================================================================
+   THEME + CLOCK
+================================================================ */
+document.addEventListener('click', e => {
+  if (e.target.closest('.tb-theme')) {
+    const next = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
+    document.documentElement.classList.toggle('dark', next==='dark');
+    localStorage.setItem('agencyos_theme', next);
+  }
+});
+
+function tickClock() {
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2,'0');
+  const mm = String(now.getMinutes()).padStart(2,'0');
+  const ss = String(now.getSeconds()).padStart(2,'0');
+  const el = document.getElementById('clock');
+  if (el) el.textContent = `${hh}:${mm}:${ss} AEST`;
+}
+setInterval(tickClock, 1000); tickClock();
+
+/* ================================================================
+   BOOT
+================================================================ */
+renderSignals();
+renderPipe();
+renderInbox();
+renderMeet();
+renderRight();
+</script>
+</body>
+</html>

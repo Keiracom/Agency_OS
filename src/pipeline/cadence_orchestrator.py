@@ -168,3 +168,75 @@ def get_next_step(
         "reason": f"No reply — advancing to step {next_step}",
         "converted": False,
     }
+
+
+# ---------------------------------------------------------------------------
+# Referral -> new prospect spawn
+# ---------------------------------------------------------------------------
+
+import re as _re
+from datetime import datetime as _datetime, timedelta as _timedelta, timezone as _tz
+
+_EMAIL_RE = _re.compile(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$")
+
+
+def _valid_email(email: str | None) -> bool:
+    return bool(email and _EMAIL_RE.match(email))
+
+
+def create_prospect_from_referral(
+    extra_payload: dict,
+    *,
+    bu_lookup_by_email,
+    bu_insert,
+    scheduled_touches_insert,
+    now_fn=lambda: _datetime.now(_tz.utc),
+) -> dict:
+    """Spawn a new prospect from a referral mutation payload.
+
+    Stateless: DB side-effects are injected as callables so the orchestrator
+    keeps its 'pure Python, no external dependencies' contract.
+
+    Args:
+      extra_payload: TouchMutation.extra dict from _handle_referral — must
+                     contain referral_email + client_id; referral_name +
+                     referred_by_lead_id optional.
+      bu_lookup_by_email(client_id, email) -> dict | None
+      bu_insert(row) -> prospect_id (str)
+      scheduled_touches_insert(prospect_id, client_id, sequence) -> int
+          (returns number of touches inserted)
+
+    Returns: {status, reason, prospect_id, touches_scheduled}
+      status in {'created', 'exists', 'rejected'}.
+    """
+    client_id = extra_payload.get("client_id")
+    email = extra_payload.get("referral_email")
+    if not client_id:
+        return {"status": "rejected", "reason": "missing client_id",
+                "prospect_id": None, "touches_scheduled": 0}
+    if not _valid_email(email):
+        return {"status": "rejected", "reason": f"invalid email: {email!r}",
+                "prospect_id": None, "touches_scheduled": 0}
+
+    existing = bu_lookup_by_email(client_id, email)
+    if existing is not None:
+        return {"status": "exists",
+                "reason": "prospect already in BU for this client",
+                "prospect_id": existing.get("id"), "touches_scheduled": 0}
+
+    now = now_fn()
+    row = {
+        "client_id": client_id,
+        "email": email,
+        "display_name": extra_payload.get("referral_name"),
+        "source": extra_payload.get("source", "referral"),
+        "referred_by_lead_id": extra_payload.get("referred_by_lead_id"),
+        "outreach_status": "pending",
+        "created_at": now,
+    }
+    prospect_id = bu_insert(row)
+    count = scheduled_touches_insert(
+        prospect_id, client_id, get_default_sequence(),
+    )
+    return {"status": "created", "reason": "new prospect + cadence spawned",
+            "prospect_id": prospect_id, "touches_scheduled": count}

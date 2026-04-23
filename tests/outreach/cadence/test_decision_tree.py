@@ -102,11 +102,15 @@ def test_question_pauses_and_escalates():
 
 
 def test_referral_logs_and_continues_sequence():
+    # With referral_email present, _handle_referral now emits a
+    # create_prospect mutation alongside the noop log. The noop-log and its
+    # extras remain the first mutation — original sequence still untouched.
+    # (See tests/outreach/cadence/test_referral_create_prospect.py for the
+    # create_prospect branch coverage.)
     muts = CadenceDecisionTree().decide(
         "referral", 0.85, _state(3),
         {"referral_name": "Jane", "referral_email": "jane@acme.com.au"},
     )
-    assert len(muts) == 1
     assert muts[0].action == "noop"
     assert muts[0].extra["referral_email"] == "jane@acme.com.au"
 

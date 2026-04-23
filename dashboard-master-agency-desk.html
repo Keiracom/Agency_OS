@@ -629,6 +629,35 @@ html.dark .ct-expand { background: rgba(255,255,255,0.04); }
 /* v9: empty state for Discovered prospects with no outreach yet */
 .ct-empty { padding: 14px 16px; background: var(--surface); border: 1px dashed var(--rule); border-radius: 8px; font-size: 13px; color: var(--ink-3); font-style: italic; line-height: 1.55; }
 html.dark .ct-empty { background: rgba(255,255,255,0.03); }
+/* v10: unified-timeline state variants — completed (default solid dot,
+   per-channel colour) / scheduled (hollow amber) / paused (amber ⏸) /
+   skipped (gray strikethrough). */
+.ct-row .ct-state-ic { display: inline-block; width: 14px; text-align: center; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--ink-3); margin-right: 2px; flex-shrink: 0; }
+.ct-row.state-completed .ct-state-ic { color: var(--green); }
+.ct-row.state-completed.email .ct-state-ic { color: var(--blue); }
+.ct-row.state-completed.linkedin .ct-state-ic { color: var(--blue); }
+.ct-row.state-completed.voice .ct-state-ic { color: var(--copper); }
+.ct-row.state-completed.sms .ct-state-ic { color: #8B6CA0; }
+.ct-row.state-completed.reply .ct-state-ic { color: var(--amber); }
+.ct-row.state-completed.meeting .ct-state-ic { color: var(--green); }
+.ct-row.state-scheduled::before { background: transparent !important; border: 2px solid var(--amber); width: 12px; height: 12px; box-sizing: border-box; }
+.ct-row.state-scheduled .ct-state-ic { color: var(--amber); }
+.ct-row.state-scheduled .ct-label { color: var(--ink-2); font-weight: 500; }
+.ct-row.state-paused::before { background: var(--amber) !important; box-shadow: 0 0 0 4px rgba(212,149,106,0.18); }
+.ct-row.state-paused .ct-state-ic { color: var(--amber); }
+.ct-row.state-paused .ct-label { color: var(--ink-3); }
+.ct-row.state-paused .ct-detail { color: var(--copper); font-style: italic; }
+.ct-row.state-skipped::before { background: var(--ink-3) !important; }
+.ct-row.state-skipped .ct-state-ic { color: var(--ink-3); }
+.ct-row.state-skipped .ct-label, .ct-row.state-skipped .ct-detail { text-decoration: line-through; color: var(--ink-3); }
+.ct-cadence-msg { margin-top: 14px; padding: 12px 14px; border-radius: 8px; font-size: 13px; display: flex; gap: 10px; align-items: center; line-height: 1.55; }
+.ct-cadence-msg .cm-ic { font-size: 16px; flex-shrink: 0; }
+.ct-cadence-msg.complete { background: rgba(107,142,90,0.12); border-left: 3px solid var(--green); color: var(--ink); }
+.ct-cadence-msg.paused { background: var(--amber-soft); border-left: 3px solid var(--amber); color: var(--ink); }
+.ct-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--rule); }
+.ct-actions button { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; letter-spacing: 0.06em; padding: 7px 12px; border-radius: 5px; background: transparent; border: 1px solid var(--rule); color: var(--ink-2); text-transform: uppercase; cursor: pointer; }
+.ct-actions button:hover { border-color: var(--amber); color: var(--copper); background: var(--amber-glow); }
+.ct-actions button.pause:hover { border-color: var(--red); color: var(--red); background: rgba(181,90,76,0.08); }
 
 /* ========== AUTOPILOT (Settings) ========== */
 .autopilot-opt { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; border: 1px solid var(--rule); border-radius: 8px; margin-bottom: 8px; cursor: pointer; transition: border-color .12s, background .12s; }
@@ -1298,64 +1327,9 @@ function openDrawer(pid) {
       </div>
     </div>
 
-    ${(() => {
-      const s = scheduleForProspect(p);
-      return `
-        <div class="bf-section sched-wrap" id="schedWrap" data-open="true">
-          <div class="sched-head" onclick="toggleSched()">
-            <div class="sched-title">Scheduled touchpoints<span class="sched-sub">· next 14 days</span></div>
-            <div class="sched-chev" id="schedChev">▾ Collapse schedule</div>
-          </div>
-          <div class="sched-body">
-            <div class="sched-inner">
-              ${s.state === 'active' ? `
-                ${s.items.map(t => `
-                  <div class="sched-row">
-                    <span class="sched-dot ${t.chKey}"></span>
-                    <span class="sched-date">${t.date}</span>
-                    <div class="sched-detail">
-                      <div class="sched-ch ${t.chKey}">${t.channel}</div>
-                      <div class="sched-template">${t.template}</div>
-                    </div>
-                  </div>
-                `).join('')}
-                <div class="sched-actions">
-                  <button class="pause" onclick="event.stopPropagation();alert('Pause all scheduled touchpoints for ${p.name}')">Pause all</button>
-                  <button onclick="event.stopPropagation();alert('Skip next touchpoint for ${p.name}: ${s.items[0].date} · ${s.items[0].channel}')">Skip next</button>
-                  <button onclick="event.stopPropagation();alert('Accelerate cadence for ${p.name} — compress next 5 touches into next 7 days')">Accelerate</button>
-                </div>
-              ` : `
-                <div class="sched-state ${s.state}">
-                  <span class="sched-state-ic">${s.state === 'complete' ? '✓' : s.state === 'paused' ? '⏸' : '◦'}</span>
-                  <div>${s.message}</div>
-                </div>
-              `}
-            </div>
-          </div>
-        </div>
-      `;
-    })()}
-
     <div class="bf-section">
-      <h4>Communication history</h4>
-      ${p.status === 'Discovered'
-        ? `<div class="ct-empty">No outreach activity yet — Maya will begin when cycle releases.</div>`
-        : `<div class="ct-wrap">
-            ${synthTimeline(p).map((e, i) => {
-              const rowId = `ctd-${p.id}-${i}`;  /* d-prefix avoids ID collision with briefing-page rows */
-              return `
-              <div class="ct-row ${e.ch}" id="${rowId}" onclick="toggleCT('${rowId}')">
-                <div class="ct-time">${e.t}</div>
-                <div class="ct-head">
-                  <span class="ct-ch ${e.ch}">${e.ch === 'meeting' ? 'meeting' : e.ch === 'reply' ? 'reply' : e.ch}</span>
-                  <span class="ct-label">${e.label}</span>
-                  <span class="ct-chev">▸ details</span>
-                </div>
-                <div class="ct-detail">${e.detail}</div>
-                ${e.expand ? `<div class="ct-expand">${e.expand}</div>` : ''}
-              </div>
-            `;}).join('')}
-          </div>`}
+      <h4>Outreach timeline${(() => { const evs = unifiedTimeline(p); return evs.length ? ` <span style="font-family:'DM Sans',sans-serif;text-transform:none;letter-spacing:0;color:var(--ink-3);font-size:11px;font-weight:400;margin-left:6px;">${evs.length} events</span>` : ''; })()}</h4>
+      ${renderUnifiedTimeline(p, 'ctd')}
     </div>
 
     <div class="bf-section">
@@ -1541,6 +1515,126 @@ function toggleCT(rowId) {
   const row = document.getElementById(rowId);
   if (!row) return;
   row.classList.toggle('open');
+}
+
+/* v10: unified Outreach timeline — merges past completed + future
+   scheduled + paused/skipped into one ordered array with per-event
+   .state. Replaces separate Schedule + Communication history. */
+function unifiedTimeline(p) {
+  /* DISCOVERED — only future, no past */
+  if (p.status === 'Discovered') {
+    return DEFAULT_TOUCHES.map(t => ({
+      state:'scheduled', ch:t.chKey, t:t.date,
+      label:`${t.channel} · ${t.template}`,
+      template:t.template,
+      detail:'Scheduled — outreach begins when cycle releases',
+      expand:`<h6>Template</h6><p>${t.template}</p><h6>Channel</h6><p>${t.channel}</p><h6>Scheduled for</h6><p>${t.date}</p><h6>Status</h6><p>No content sent yet — Maya begins outreach when this cycle releases. No fake content shown.</p>`,
+    }));
+  }
+
+  /* CONTACTED / REPLIED / MEETING-BOOKED — start with synthesised past */
+  let past = synthTimeline(p).map(e => ({ ...e, state:'completed' }));
+
+  /* CONTACTED — Email 3 + later are still scheduled (future) */
+  if (p.status === 'Contacted') {
+    const cutIdx = past.findIndex(e => e.label === 'Email 3 sent');
+    if (cutIdx !== -1) past = past.slice(0, cutIdx);
+    return [
+      ...past,
+      { state:'scheduled', ch:'email', t:'Day 10',
+        label:'Email 3 — Social proof case study', template:'Social proof case study',
+        detail:'Scheduled · breakup touch in 3 days',
+        expand:`<h6>Template</h6><p>Social proof case study</p><h6>Channel</h6><p>Email</p><h6>Scheduled for</h6><p>Day 10 of cycle</p><h6>Tone</h6><p>Permission-based "last from me for now" framing — designed to re-open the door without pressure.</p>` },
+      { state:'scheduled', ch:'sms', t:'Day 12',
+        label:'SMS · Quick nudge — meeting CTA', template:'Quick nudge — meeting CTA',
+        detail:'Scheduled · final cross-channel touch',
+        expand:`<h6>Template</h6><p>Quick nudge — meeting CTA</p><h6>Channel</h6><p>SMS</p><h6>Scheduled for</h6><p>Day 12 of cycle</p><h6>Trigger</h6><p>Sent only if Email 3 receives zero engagement.</p>` },
+    ];
+  }
+
+  /* REPLIED — past completed through reply, future remaining touches paused */
+  if (p.status === 'Replied') {
+    return [
+      ...past,
+      ...DEFAULT_TOUCHES.slice(2, 5).map(t => ({
+        state:'paused', ch:t.chKey, t:t.date,
+        label:`${t.channel} — ${t.template}`,
+        detail:'Paused — reply received Day 10',
+        expand:`<h6>Status</h6><p>Paused because prospect replied. Maya won't auto-send unless you explicitly resume cadence.</p><h6>Original template</h6><p>${t.template}</p><h6>Channel</h6><p>${t.channel}</p>`,
+      })),
+    ];
+  }
+
+  /* MEETING BOOKED — past complete, no future (cadence done) */
+  return past;
+}
+
+/* renderUnifiedTimeline — one place that builds the markup; called
+   from drawer + briefing page so both surfaces stay consistent. */
+function renderUnifiedTimeline(p, idPrefix) {
+  if (p.status === 'Discovered') {
+    /* render the scheduled list with empty-state message above */
+    const events = unifiedTimeline(p);
+    return `
+      <div class="ct-empty" style="margin-bottom:12px;">No outreach activity yet — Maya will begin when cycle releases.</div>
+      <div class="ct-wrap">
+        ${events.map((e, i) => unifiedRowHtml(e, i, p, idPrefix)).join('')}
+      </div>
+      <div class="ct-actions">
+        <button class="pause" onclick="event.stopPropagation();alert('Pause all scheduled touchpoints for ${p.name}')">Pause all</button>
+        <button onclick="event.stopPropagation();alert('Skip next scheduled touchpoint for ${p.name}')">Skip next</button>
+        <button onclick="event.stopPropagation();alert('Accelerate cadence for ${p.name} — compress next 5 touches into next 7 days')">Accelerate</button>
+      </div>
+    `;
+  }
+
+  const events = unifiedTimeline(p);
+  const hasScheduled = events.some(e => e.state === 'scheduled');
+  /* state-summary footer for completed cadences */
+  let footer = '';
+  if (p.meeting) {
+    footer = `<div class="ct-cadence-msg complete"><span class="cm-ic">✓</span> Cadence complete — meeting booked ${p.meeting.date} ${p.meeting.time}</div>`;
+  } else if (p.status === 'Replied' && !hasScheduled) {
+    footer = `<div class="ct-cadence-msg paused"><span class="cm-ic">⏸</span> Cadence paused — reply received Day 10</div>`;
+  } else if (p.status === 'Replied') {
+    footer = '';  /* paused rows already shown in timeline */
+  }
+
+  return `
+    <div class="ct-wrap">
+      ${events.map((e, i) => unifiedRowHtml(e, i, p, idPrefix)).join('')}
+    </div>
+    ${footer}
+    ${hasScheduled ? `
+      <div class="ct-actions">
+        <button class="pause" onclick="event.stopPropagation();alert('Pause all scheduled touchpoints for ${p.name}')">Pause all</button>
+        <button onclick="event.stopPropagation();alert('Skip next scheduled touchpoint for ${p.name}')">Skip next</button>
+        <button onclick="event.stopPropagation();alert('Accelerate cadence for ${p.name} — compress next 5 touches into next 7 days')">Accelerate</button>
+      </div>
+    ` : ''}
+  `;
+}
+
+function unifiedRowHtml(e, i, p, idPrefix) {
+  const rowId = `${idPrefix}-${p.id}-${i}`;
+  /* state icon for label area */
+  const stateIcon = e.state === 'scheduled' ? '○'
+                  : e.state === 'paused'    ? '⏸'
+                  : e.state === 'skipped'   ? '⊘'
+                  : '●';
+  return `
+    <div class="ct-row ${e.ch} state-${e.state}" id="${rowId}" onclick="toggleCT('${rowId}')">
+      <div class="ct-time">${e.t}</div>
+      <div class="ct-head">
+        <span class="ct-state-ic">${stateIcon}</span>
+        <span class="ct-ch ${e.ch}">${e.ch === 'meeting' ? 'meeting' : e.ch === 'reply' ? 'reply' : e.ch}</span>
+        <span class="ct-label">${e.label}</span>
+        <span class="ct-chev">▸ details</span>
+      </div>
+      <div class="ct-detail">${e.detail || ''}</div>
+      ${e.expand ? `<div class="ct-expand">${e.expand}</div>` : ''}
+    </div>
+  `;
 }
 
 /* ================================================================
@@ -2074,23 +2168,8 @@ function openBriefingPage(pid) {
     </div>
 
     <div class="card" style="margin-top:14px;">
-      <h4 style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.14em;color:var(--ink-3);text-transform:uppercase;margin-bottom:12px;font-weight:600;">Communication history</h4>
-      <div class="ct-wrap">
-        ${synthTimeline(p).map((e, i) => {
-          const rowId = `ct-${p.id}-${i}`;
-          return `
-          <div class="ct-row ${e.ch}" id="${rowId}" onclick="toggleCT('${rowId}')">
-            <div class="ct-time">${e.t}</div>
-            <div class="ct-head">
-              <span class="ct-ch ${e.ch}">${e.ch === 'meeting' ? 'meeting' : e.ch === 'reply' ? 'reply' : e.ch}</span>
-              <span class="ct-label">${e.label}</span>
-              <span class="ct-chev">▸ details</span>
-            </div>
-            <div class="ct-detail">${e.detail}</div>
-            ${e.expand ? `<div class="ct-expand">${e.expand}</div>` : ''}
-          </div>
-        `;}).join('')}
-      </div>
+      <h4 style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.14em;color:var(--ink-3);text-transform:uppercase;margin-bottom:12px;font-weight:600;">Outreach timeline${(() => { const evs = unifiedTimeline(p); return evs.length ? ` <span style="font-family:'DM Sans',sans-serif;text-transform:none;letter-spacing:0;color:var(--ink-3);font-size:11px;font-weight:400;margin-left:6px;">${evs.length} events</span>` : ''; })()}</h4>
+      ${renderUnifiedTimeline(p, 'ctb')}
     </div>
 
     <div class="card" style="margin-top:14px;">

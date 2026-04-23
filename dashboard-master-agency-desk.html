@@ -509,6 +509,45 @@ html.dark .snap-chip { background: rgba(255,255,255,0.04); }
 .snap-chip .sc-grade[data-g="F"] { background: var(--red); }
 .snap-chip.score b { color: var(--copper); font-family: 'JetBrains Mono', monospace; }
 
+/* ========== SCHEDULE CARD (drawer section — v6) ========== */
+.sched-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; cursor: pointer; user-select: none; }
+.sched-head:hover .sched-chev { color: var(--copper); }
+.sched-head .sched-title { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; }
+.sched-head .sched-title .sched-sub { color: var(--ink-4); font-weight: 500; margin-left: 6px; letter-spacing: 0.08em; }
+.sched-chev { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-3); transition: transform .2s, color .15s; }
+.sched-wrap[data-open="true"] .sched-chev { transform: rotate(180deg); color: var(--copper); }
+.sched-body { max-height: 0; overflow: hidden; transition: max-height .3s ease; }
+.sched-wrap[data-open="true"] .sched-body { max-height: 640px; }
+.sched-inner { padding-top: 14px; border-top: 1px solid var(--rule); margin-top: 12px; }
+.sched-state { font-size: 13px; color: var(--ink-2); padding: 10px 14px; border-radius: 8px; background: var(--surface); line-height: 1.55; display: flex; gap: 10px; align-items: flex-start; }
+html.dark .sched-state { background: rgba(255,255,255,0.04); }
+.sched-state.complete { border-left: 3px solid var(--green); color: var(--ink); }
+.sched-state.paused { border-left: 3px solid var(--amber); color: var(--ink); }
+.sched-state.none { border-left: 3px solid var(--ink-3); color: var(--ink-2); font-style: italic; }
+.sched-state .sched-state-ic { font-size: 15px; flex-shrink: 0; }
+.sched-row { display: grid; grid-template-columns: 12px 82px 1fr; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px dashed var(--rule); }
+.sched-row:last-of-type { border-bottom: 0; }
+.sched-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.sched-dot.email { background: #6B8E5A; }
+.sched-dot.linkedin { background: #3B82F6; }
+.sched-dot.voice { background: #D4956A; }
+.sched-dot.sms { background: #8B5CF6; }
+.sched-date { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-2); font-weight: 500; letter-spacing: 0.04em; }
+.sched-detail { min-width: 0; }
+.sched-ch { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 600; }
+.sched-ch.email { color: #5a7d4b; }
+.sched-ch.linkedin { color: #3262a0; }
+.sched-ch.voice { color: var(--copper); }
+.sched-ch.sms { color: #7256a0; }
+html.dark .sched-ch.email { color: #94b985; }
+html.dark .sched-ch.linkedin { color: #8ab4e8; }
+html.dark .sched-ch.sms { color: #b99bd4; }
+.sched-template { font-size: 12.5px; color: var(--ink); margin-top: 2px; line-height: 1.4; }
+.sched-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--rule); }
+.sched-actions button { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; letter-spacing: 0.06em; padding: 7px 12px; border-radius: 5px; background: transparent; border: 1px solid var(--rule); color: var(--ink-2); text-transform: uppercase; }
+.sched-actions button:hover { border-color: var(--amber); color: var(--copper); background: var(--amber-glow); }
+.sched-actions button.pause:hover { border-color: var(--red); color: var(--red); background: rgba(181,90,76,0.08); }
+
 /* ========== VR POPOVER ========== */
 /* v4 Fix 2: ALL .vr-letter are clickable everywhere — Pipeline, Table,
    Feed, drawer, briefing. Gating from v3 reverted. */
@@ -1173,6 +1212,30 @@ function statusPill(s){
   const c=s==='Meeting Booked'?'green':s==='Replied'?'amber':s==='Discovered'?'gray':'gray';
   return `<span class="pill ${c}">${s}</span>`;
 }
+
+/* Schedule — state-aware scheduled touchpoints for drawer (v6).
+   Default 5-touch sequence used for any Contacted prospect. */
+const DEFAULT_TOUCHES = [
+  { date:'Mon 28 Apr', channel:'Email',       chKey:'email',    template:'Competitor insight follow-up' },
+  { date:'Wed 30 Apr', channel:'LinkedIn DM', chKey:'linkedin', template:'Light-touch value share' },
+  { date:'Fri 2 May',  channel:'Voice AI',    chKey:'voice',    template:'Keira opener — pain-point hook' },
+  { date:'Tue 6 May',  channel:'Email',       chKey:'email',    template:'Social proof case study' },
+  { date:'Thu 8 May',  channel:'SMS',         chKey:'sms',      template:'Quick nudge — meeting CTA' },
+];
+function scheduleForProspect(p) {
+  /* Returns { state, items, message } — state is 'active' | 'complete' | 'paused' | 'none' */
+  if (!p) return { state:'none', items:[], message:'No prospect.' };
+  if (p.meeting) return { state:'complete', items:[], message:'Cadence complete — meeting booked' };
+  if (p.status === 'Replied') return { state:'paused', items:[], message:'Cadence paused — reply received' };
+  if (p.status === 'Discovered') return { state:'none', items:[], message:'Not yet in outreach — no touches scheduled' };
+  /* Contacted = render default 5-touch sequence */
+  return { state:'active', items: DEFAULT_TOUCHES, message:'' };
+}
+function toggleSched() {
+  const wrap = document.getElementById('schedWrap');
+  if (!wrap) return;
+  wrap.dataset.open = wrap.dataset.open === 'true' ? 'false' : 'true';
+}
 /* Snapshot signal-row derivations — derive friendly summaries from vulnGrades */
 function gmbRating(g) { return ({A:'4.7',B:'4.2',C:'3.8',D:'3.3',F:'2.8'})[g] || '—'; }
 function adPresence(g) { return ({A:'Active · tracked',B:'Active',C:'Active · untracked',D:'Recently paused',F:'None detected'})[g] || '—'; }
@@ -1209,6 +1272,44 @@ function openDrawer(pid) {
         ${grades.map(g => `<div class="vr-cw"><div class="vr-letter" data-g="${p.vulnGrades[g]}" onclick="showVRPopover('${p.id}','${g}',event)" title="Click for explanation">${p.vulnGrades[g]}</div><div class="vr-name">${g}</div></div>`).join('')}
       </div>
     </div>
+
+    ${(() => {
+      const s = scheduleForProspect(p);
+      return `
+        <div class="bf-section sched-wrap" id="schedWrap" data-open="false">
+          <div class="sched-head" onclick="toggleSched()">
+            <div class="sched-title">Scheduled touchpoints<span class="sched-sub">· next 14 days</span></div>
+            <div class="sched-chev">▾ click to ${s.state === 'active' ? 'show' : 'see state'}</div>
+          </div>
+          <div class="sched-body">
+            <div class="sched-inner">
+              ${s.state === 'active' ? `
+                ${s.items.map(t => `
+                  <div class="sched-row">
+                    <span class="sched-dot ${t.chKey}"></span>
+                    <span class="sched-date">${t.date}</span>
+                    <div class="sched-detail">
+                      <div class="sched-ch ${t.chKey}">${t.channel}</div>
+                      <div class="sched-template">${t.template}</div>
+                    </div>
+                  </div>
+                `).join('')}
+                <div class="sched-actions">
+                  <button class="pause" onclick="event.stopPropagation();alert('Pause all scheduled touchpoints for ${p.name}')">Pause all</button>
+                  <button onclick="event.stopPropagation();alert('Skip next touchpoint for ${p.name}: ${s.items[0].date} · ${s.items[0].channel}')">Skip next</button>
+                  <button onclick="event.stopPropagation();alert('Accelerate cadence for ${p.name} — compress next 5 touches into next 7 days')">Accelerate</button>
+                </div>
+              ` : `
+                <div class="sched-state ${s.state}">
+                  <span class="sched-state-ic">${s.state === 'complete' ? '✓' : s.state === 'paused' ? '⏸' : '◦'}</span>
+                  <div>${s.message}</div>
+                </div>
+              `}
+            </div>
+          </div>
+        </div>
+      `;
+    })()}
 
     <div class="bf-section">
       <h4>Recommended angle</h4>

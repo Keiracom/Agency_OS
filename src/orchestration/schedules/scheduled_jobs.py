@@ -313,6 +313,37 @@ def get_recording_cleanup_schedule() -> CronSchedule:
     )
 
 
+# ============================================
+# PHASE-2-SLICE-6 flows (registered in slice-7 Track B)
+# Re-exports per-flow schedule helpers so SCHEDULE_REGISTRY has a single
+# canonical source of truth for every Prefect schedule.
+# ============================================
+
+
+def get_daily_warming_schedule() -> CronSchedule:
+    """Daily mailbox warming advance at 2 AM AEST — re-export from flow module."""
+    from src.orchestration.flows.daily_warming_flow import (
+        get_daily_warming_schedule as _flow_schedule,
+    )
+    return _flow_schedule()
+
+
+def get_weekly_linkedin_reset_schedule() -> CronSchedule:
+    """Weekly LinkedIn counter reset — Monday 00:00 AEST — re-export from flow module."""
+    from src.orchestration.flows.weekly_linkedin_reset_flow import (
+        get_weekly_linkedin_reset_schedule as _flow_schedule,
+    )
+    return _flow_schedule()
+
+
+def get_monthly_cycle_close_schedule() -> CronSchedule:
+    """Monthly cycle close — 1st of month 00:30 AEST — re-export from flow module."""
+    from src.orchestration.flows.monthly_cycle_close_flow import (
+        get_monthly_cycle_close_schedule as _flow_schedule,
+    )
+    return _flow_schedule()
+
+
 # Schedule registry for deployment configuration
 SCHEDULE_REGISTRY: dict[str, Any] = {
     "enrichment": {
@@ -462,6 +493,30 @@ SCHEDULE_REGISTRY: dict[str, Any] = {
             "retention_days": 90,
             "batch_size": 100,
         },
+    },
+    # PHASE-2-SLICE-6: Daily mailbox warming advance
+    "daily_warming": {
+        "schedule": get_daily_warming_schedule(),
+        "description": "Daily mailbox warming advance at 2 AM AEST — advances warming_day + resets daily_count + advances cycle days",
+        "work_queue": "agency-os-queue",
+        "tags": ["outreach", "warming", "daily", "mailbox"],
+        "parameters": {},
+    },
+    # PHASE-2-SLICE-6: Weekly LinkedIn counter reset
+    "weekly_linkedin_reset": {
+        "schedule": get_weekly_linkedin_reset_schedule(),
+        "description": "Weekly LinkedIn counter reset — Monday 00:00 AEST — wipes stale outreach_rate_state rows",
+        "work_queue": "agency-os-queue",
+        "tags": ["outreach", "linkedin", "weekly", "rate-limit"],
+        "parameters": {},
+    },
+    # PHASE-2-SLICE-6: Monthly cycle close
+    "monthly_cycle_close": {
+        "schedule": get_monthly_cycle_close_schedule(),
+        "description": "Monthly cycle close — 1st of month 00:30 AEST — closes active cycles reaching Day 30 + state transitions + next-cycle release",
+        "work_queue": "agency-os-queue",
+        "tags": ["outreach", "cycle", "monthly", "lifecycle"],
+        "parameters": {},
     },
 }
 

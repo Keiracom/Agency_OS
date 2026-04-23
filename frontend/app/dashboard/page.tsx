@@ -32,8 +32,8 @@ import { mockChannelOrchestration } from "@/data/mock-dashboard";
 import { mockVoiceStats, mockRecentCalls } from "@/data/mock-dashboard";
 // TODO: wire what's-working insights (who-converts + best-channel-mix) when segment analytics API is available
 import { mockInsights } from "@/data/mock-dashboard";
-// TODO: wire activity-feed when activity stream API is available
-import { mockActivityFeed } from "@/data/mock-dashboard";
+import { useLiveActivityFeed } from "@/hooks/use-activity-feed";
+import { providerLabel } from "@/lib/provider-labels";
 import { useDashboardV4 } from "@/hooks/use-dashboard-v4";
 import Link from "next/link";
 
@@ -52,6 +52,7 @@ const ChannelIcon = ({ type }: { type: string }) => {
 export default function DashboardPage() {
   // Fetch real dashboard data (meetings goal, stats, hot prospects, week ahead, warm replies)
   const { data: dashboardData, isLoading: dashboardLoading } = useDashboardV4();
+  const { activities: activityFeed, isLoading: activityLoading } = useLiveActivityFeed(8);
 
   const meetingsBooked = dashboardData?.meetingsGoal.current ?? 0;
   const meetingsTarget = dashboardData?.meetingsGoal.target ?? 10;
@@ -360,7 +361,7 @@ export default function DashboardPage() {
 
           {/* ROW 4: Bottom Grid - 3 column */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Recent Activity — TODO: wire activity-feed when activity stream API is available */}
+            {/* Recent Activity — wired to useLiveActivityFeed (30s polling) */}
             <GlassCard className="p-0 overflow-hidden">
               <div className="px-6 py-5 border-b border-border-subtle flex items-center justify-between">
                 <div className="flex items-center gap-2.5 text-sm font-semibold text-text-primary">
@@ -372,17 +373,28 @@ export default function DashboardPage() {
                 </Link>
               </div>
               <div className="px-6 py-4 max-h-80 overflow-y-auto">
-                {mockActivityFeed.map((item) => (
+                {activityFeed.map((item) => (
                   <div key={item.id} className="flex items-start gap-3 py-3 border-b border-border-subtle last:border-0">
                     <div className="w-8 h-8 rounded-lg bg-amber-glow flex items-center justify-center text-amber">
-                      <ChannelIcon type={item.type || 'email'} />
+                      <ChannelIcon type={item.channel || 'email'} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm text-text-primary">{item.text}</div>
-                      <div className="text-xs text-text-muted mt-1 font-mono">{item.time}</div>
+                      <div className="text-sm text-text-primary">
+                        <span className="font-medium">{item.leadName}</span>
+                        {item.company ? <span className="text-text-secondary"> · {item.company}</span> : null}
+                      </div>
+                      <div className="text-xs text-text-secondary mt-0.5">{providerLabel(item.action)}</div>
+                      <div className="text-xs text-text-muted mt-1 font-mono">
+                        {new Date(item.createdAt).toLocaleString()}
+                      </div>
                     </div>
                   </div>
                 ))}
+                {!activityLoading && activityFeed.length === 0 && (
+                  <div className="py-8 text-center text-text-muted text-sm">
+                    No recent activity
+                  </div>
+                )}
               </div>
             </GlassCard>
 

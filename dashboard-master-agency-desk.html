@@ -287,7 +287,8 @@ html.dark .col-count .cn { background: var(--amber); color: var(--on-amber); }
 .k-name { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 14px; color: var(--ink); line-height: 1.3; }
 .k-dm { font-size: 12px; color: var(--ink-2); margin-top: 2px; }
 .k-dm-title { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-3); margin-top: 1px; }
-.k-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--rule); gap: 6px; }
+.k-meta { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--ink-3); margin-top: 4px; letter-spacing: 0.03em; }
+.k-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--rule); gap: 6px; flex-wrap: wrap; }
 .k-left { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .k-left .vr { width: 24px; height: 24px; font-size: 12px; border-radius: 5px; }
 .k-score { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 600; color: var(--copper); }
@@ -635,7 +636,33 @@ html.dark .modal textarea { background: rgba(255,255,255,0.04); }
   .maya-strip-list { grid-template-columns: 1fr; }
   .board { grid-template-columns: repeat(5, 86vw); gap: 10px; }
   .col { max-height: none; min-height: 280px; }
-  .pipe-table thead th:nth-child(n+5), .pipe-table td:nth-child(n+5) { display: none; }
+  /* Kanban card mobile layout (v5 Fix 1) — everything stacks vertically,
+     no horizontal cramming */
+  .k-card { padding: 16px 18px; min-width: 0; }
+  .k-name { font-size: 16px; line-height: 1.35; }
+  .k-dm { font-size: 12px; margin-top: 4px; }
+  .k-dm-title { font-size: 11px; margin-top: 2px; }
+  .k-meta { font-size: 11px; margin-top: 6px; }
+  .k-foot { margin-top: 14px; padding-top: 12px; gap: 10px; }
+  .k-time { flex: 1 1 100%; margin-top: 4px; font-size: 10.5px; }
+  /* Table → card-list on mobile (v5 Fix 2) */
+  .pipe-table, .pipe-table tbody { display: block; width: 100%; border: 0; border-radius: 0; }
+  .pipe-table thead { display: none; }
+  .pipe-table tr { display: block; background: var(--panel-bg); border: 1px solid var(--rule); border-radius: 10px; margin-bottom: 10px; padding: 16px 18px; }
+  .pipe-table tr:hover { background: var(--panel-bg); border-color: var(--amber); }
+  .pipe-table td { display: block; padding: 3px 0; border: 0; text-align: left; line-height: 1.55; }
+  .pipe-table td.name-col { font-size: 17px; font-weight: 700; font-family: 'Playfair Display', serif; color: var(--ink); padding-bottom: 4px; }
+  .pipe-table td.mono { font-size: 11px; color: var(--ink-3); font-family: 'JetBrains Mono', monospace; }
+  .pipe-table td.dm-title { font-size: 11.5px; color: var(--ink-3); font-family: 'JetBrains Mono', monospace; padding-bottom: 6px; }
+  /* Score + VR + Status sit together on one footer row */
+  .pipe-table td.score-col { display: inline-block; margin-right: 14px; font-size: 15px; text-align: left; padding-top: 8px; }
+  .pipe-table td:nth-child(6) { display: inline-block; margin-right: 14px; padding-top: 8px; }
+  .pipe-table td:nth-child(7) { display: inline-block; padding-top: 8px; }
+  .pipe-table td:nth-child(8) { font-size: 10.5px; color: var(--ink-3); margin-top: 6px; font-family: 'JetBrains Mono', monospace; }
+  /* Drawer full-width on mobile */
+  .drawer { width: 100vw; border-left: 0; }
+  .drawer-head { padding: 16px 18px; }
+  .drawer-body { padding: 16px 18px 40px; }
   .cal-grid { display: none; }
   .day-view { display: block; }
   .bp-header { padding: 18px 20px; gap: 14px; }
@@ -649,6 +676,12 @@ html.dark .modal textarea { background: rgba(255,255,255,0.04); }
   .event-time { display: none; }
   .event-row { grid-template-columns: 38px 1fr auto; }
   .event-expand { padding-left: 16px; }
+  /* Drawer bf-meta mobile stacking (v5 amendment) — label-over-value
+     pattern, single column, 12px gap between rows. */
+  .bf-meta { grid-template-columns: 1fr; gap: 12px; padding: 12px; }
+  .bf-meta .bf-kv { display: flex; flex-direction: column; gap: 2px; padding: 0; }
+  .bf-meta .bf-kv .k { font-family: 'JetBrains Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-3); font-weight: 600; }
+  .bf-meta .bf-kv .v { font-size: 13.5px; color: var(--ink); font-family: 'DM Sans', sans-serif; font-weight: 500; }
 }
 </style>
 </head>
@@ -1505,6 +1538,7 @@ function renderPipeline() {
               <div class="k-name">${p.name}</div>
               <div class="k-dm">${p.dm.name}</div>
               <div class="k-dm-title">${p.dm.title}</div>
+              <div class="k-meta">${p.suburb}, ${p.state} · ${p.industry}</div>
               <div class="k-foot">
                 <div class="k-left"><span class="vr" data-g="${vr}">${vr}</span><span class="k-score">${p.score}</span></div>
                 <span class="k-time">${p.lastAction || ''}</span>

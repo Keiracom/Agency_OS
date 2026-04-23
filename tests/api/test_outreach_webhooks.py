@@ -103,8 +103,9 @@ def test_salesforge_fast_path_unsubscribe_applies_cancels_and_suppress(client, m
         "intent": "unsubscribe", "confidence": 0.95,
         "evidence_phrase": "unsubscribe", "extracted": {},
     })
-    with patch.object(outreach_webhooks, "apply_suppression") as apply_sup, \
-         patch.object(outreach_webhooks, "llm_classify", fake_llm):
+    # apply_suppression now lives inside TouchStore._suppress (decision_tree).
+    # The webhook no longer calls it directly — only store.apply() fires.
+    with patch.object(outreach_webhooks, "llm_classify", fake_llm):
         code, body = _post(
             client, "/webhooks/salesforge", "shh", "X-Salesforge-Signature",
             {"body": "please unsubscribe me, opt out, remove from list",
@@ -116,7 +117,6 @@ def test_salesforge_fast_path_unsubscribe_applies_cancels_and_suppress(client, m
     assert body["intent"] == "unsubscribe"
     assert body["mutations"] == 3  # two cancels + one suppress
     store.apply.assert_awaited_once()
-    apply_sup.assert_called_once()
 
 
 def test_fast_path_positive_hits_decision_tree(client, monkeypatch, store):

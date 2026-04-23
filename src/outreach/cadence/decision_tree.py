@@ -21,6 +21,7 @@ itself never calls the LLM — that's the webhook's job.
 """
 from __future__ import annotations
 
+import json
 import logging
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
@@ -274,3 +275,155 @@ def apply_suppression(mutation: TouchMutation) -> dict:
         channel=mutation.extra.get("channel", "all"),
         source=mutation.extra.get("source", "decision_tree"),
     )
+
+
+# ---------------------------------------------------------------------------
+# TouchStore — canonical DB-facing executor for TouchMutation lists.
+# Lives here (not in the webhook route) so Prefect flows + API handlers share
+# one implementation. Injectable db_conn so tests can mock the DB entirely.
+# ---------------------------------------------------------------------------
+
+class TouchStore:
+    """
+    Contract: src/outreach/cadence/decision_tree.py — TouchStore
+    Purpose:  Apply a list of TouchMutation to scheduled_touches + side-effects.
+    Layer:    services
+
+    Mutation → DB action map:
+        cancel     → UPDATE status='cancelled'
+        pause      → UPDATE status='paused'
+        reschedule → UPDATE scheduled_at=new_scheduled_at
+        insert     → INSERT status='pending'
+        suppress   → SuppressionManager.add_to_suppression + cancel all pending for lead
+        escalate   → log only (no DB write; queue TBD)
+        noop       → skipped
+
+    Backward compat: TouchStore() with no db_conn returns 0 applied (legacy stub).
+    """
+
+    def __init__(self, db_conn: Any | None = None) -> None:
+        self.db = db_conn
+
+    async def load_pending(self, lead_id: str) -> list[dict]:
+        if self.db is None:
+            return []
+        rows = await self.db.fetch(
+            """
+            SELECT id, channel, sequence_step, scheduled_at, status
+            FROM scheduled_touches
+            WHERE lead_id = $1 AND status IN ('pending', 'paused')
+            ORDER BY scheduled_at
+            """,
+            lead_id,
+        )
+        return [dict(r) for r in rows]
+
+    async def apply(self, mutations: list[TouchMutation]) -> int:
+        """Apply every mutation. Returns number of successfully-applied rows."""
+        if self.db is None:
+            return 0
+
+        applied = 0
+        for m in mutations:
+            try:
+                if await self._apply_one(m):
+                    applied += 1
+            except Exception as exc:
+                logger.exception("TouchStore.apply failed for %s: %s", m.action, exc)
+        return applied
+
+    async def _apply_one(self, m: TouchMutation) -> bool:
+        action = m.action
+        if action == "cancel":
+            return await self._status_update(m, "cancelled")
+        if action == "pause":
+            return await self._status_update(m, "paused")
+        if action == "reschedule":
+            return await self._reschedule(m)
+        if action == "insert":
+            return await self._insert(m)
+        if action == "suppress":
+            return await self._suppress(m)
+        if action == "escalate":
+            logger.info(
+                "TouchStore: escalate mutation — reason=%s extra=%s",
+                m.reason, m.extra,
+            )
+            return True
+        return False
+
+    # -- per-action helpers --------------------------------------------------
+
+    async def _status_update(self, m: TouchMutation, status: str) -> bool:
+        if not m.touch_id:
+            return False
+        await self.db.execute(
+            """
+            UPDATE scheduled_touches
+            SET status = $2,
+                skipped_reason = CASE WHEN $2 = 'paused' THEN $3 ELSE skipped_reason END,
+                failure_reason = CASE WHEN $2 = 'cancelled' THEN $3 ELSE failure_reason END,
+                updated_at = NOW()
+            WHERE id = $1
+            """,
+            m.touch_id, status, m.reason,
+        )
+        return True
+
+    async def _reschedule(self, m: TouchMutation) -> bool:
+        if not m.touch_id or not m.new_scheduled_at:
+            return False
+        await self.db.execute(
+            """
+            UPDATE scheduled_touches
+            SET scheduled_at = $2, updated_at = NOW()
+            WHERE id = $1
+            """,
+            m.touch_id, m.new_scheduled_at,
+        )
+        return True
+
+    async def _insert(self, m: TouchMutation) -> bool:
+        client_id = m.extra.get("client_id")
+        lead_id = m.extra.get("lead_id")
+        if not client_id or not lead_id or not m.channel:
+            logger.warning(
+                "TouchStore: insert missing client_id/lead_id/channel — extra=%s",
+                m.extra,
+            )
+            return False
+        scheduled_at = m.new_scheduled_at or datetime.now(UTC)
+        content = json.dumps(m.content or {})
+        prospect = json.dumps(m.extra.get("prospect") or {})
+        await self.db.execute(
+            """
+            INSERT INTO scheduled_touches (
+                client_id, lead_id, channel, sequence_step,
+                scheduled_at, status, content, prospect,
+                created_at, updated_at
+            ) VALUES (
+                $1, $2, $3, $4, $5, 'pending', $6::jsonb, $7::jsonb, NOW(), NOW()
+            )
+            """,
+            client_id, lead_id, m.channel,
+            m.sequence_step or 0, scheduled_at, content, prospect,
+        )
+        return True
+
+    async def _suppress(self, m: TouchMutation) -> bool:
+        # 1. Write-through to suppression list (best-effort, non-fatal).
+        result = apply_suppression(m)
+        # 2. Cascade: cancel every pending/paused touch for this lead.
+        lead_id = m.extra.get("lead_id")
+        if lead_id:
+            await self.db.execute(
+                """
+                UPDATE scheduled_touches
+                SET status = 'cancelled',
+                    failure_reason = 'suppressed',
+                    updated_at = NOW()
+                WHERE lead_id = $1 AND status IN ('pending', 'paused')
+                """,
+                lead_id,
+            )
+        return bool(result.get("success", True))

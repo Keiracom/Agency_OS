@@ -21,18 +21,14 @@ hmac.compare_digest.
 """
 from __future__ import annotations
 
-import hashlib
-import hmac
 import logging
-import os
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from src.outreach.cadence.decision_tree import (
     CadenceDecisionTree,
-    TouchMutation,
-    apply_suppression,
+    TouchStore,
 )
 from src.outreach.reply_intent import classify_reply as llm_classify
 from src.pipeline.reply_router import classify_reply as keyword_classify
@@ -74,21 +70,35 @@ def _verify(secret_env: str, payload: bytes, signature: str | None) -> bool:
 # DB-facing shim — injectable for tests
 # ---------------------------------------------------------------------------
 
-class TouchStore:
-    """Interface the webhooks use to talk to scheduled_touches. Override in tests."""
+async def _default_db_conn() -> Any:
+    """Lazy asyncpg pool for the default TouchStore.
 
-    async def load_pending(self, lead_id: str) -> list[dict]:
-        return []
+    Returns None if the pool cannot be created (missing DSN / offline dev) —
+    TouchStore with db_conn=None falls back to the legacy-stub behaviour
+    (returns 0 applied), so the webhook still succeeds.
+    """
+    global _POOL
+    if _POOL is not None:
+        return _POOL
+    try:
+        import asyncpg  # local import keeps the route importable without asyncpg
 
-    async def apply(self, mutations: list[TouchMutation]) -> int:
-        return 0
+        from src.config.settings import settings
+        dsn = settings.database_url.replace("postgresql+asyncpg://", "postgresql://")
+        _POOL = await asyncpg.create_pool(dsn, min_size=1, max_size=5, statement_cache_size=0)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("outreach_webhooks: DB pool unavailable — %s", exc)
+        _POOL = None
+    return _POOL
 
 
-_default_store = TouchStore()
+_POOL: Any | None = None
 
 
-def get_touch_store() -> TouchStore:
-    return _default_store
+async def get_touch_store() -> TouchStore:
+    """FastAPI dependency — returns a TouchStore wired to the app's asyncpg pool."""
+    db = await _default_db_conn()
+    return TouchStore(db_conn=db)
 
 
 # ---------------------------------------------------------------------------
@@ -127,10 +137,14 @@ async def _process_reply(
     }
     mutations = CadenceDecisionTree().decide(intent, confidence, prospect_state, extracted)
 
-    # Execute suppression synchronously; other mutations go to the store.
+    # Propagate client_id + lead_id into mutation.extra so TouchStore inserts
+    # + suppression cascades have the tenancy/anchor they need.
     for m in mutations:
-        if m.action == "suppress":
-            apply_suppression(m)
+        m.extra.setdefault("client_id", client_id)
+        m.extra.setdefault("lead_id", lead_id)
+
+    # All mutations (including suppress write-through + cascade) go through
+    # TouchStore — no separate apply_suppression path here.
     applied = await store.apply(mutations)
 
     return {

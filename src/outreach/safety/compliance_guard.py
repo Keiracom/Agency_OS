@@ -13,12 +13,15 @@ blocks the send.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Callable
 from zoneinfo import ZoneInfo
 
 from src.outreach.safety.timing_engine import AU_PUBLIC_HOLIDAYS_2026, Channel
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_TZ = "Australia/Sydney"
 
@@ -42,6 +45,18 @@ def _default_dncr(phone: str) -> bool:  # noqa: ARG001
     return False
 
 
+def _resolve_dncr(lookup: Callable[[str], bool] | None) -> Callable[[str], bool]:
+    """Return the supplied lookup, or build the live adapter, falling back to no-op."""
+    if lookup is not None:
+        return lookup
+    try:
+        from src.outreach.safety.dncr_adapter import build_dncr_lookup as _build_dncr
+        return _build_dncr()
+    except Exception as exc:
+        logger.warning("DNCR adapter init failed, falling back to no-op: %s", exc)
+        return _default_dncr
+
+
 class ComplianceGuard:
     """
     Contract: src/outreach/safety/compliance_guard.py — ComplianceGuard
@@ -61,7 +76,7 @@ class ComplianceGuard:
         dncr_lookup: Callable[[str], bool] | None = None,
     ) -> None:
         self._suppression = suppression_lookup or _default_suppression
-        self._dncr = dncr_lookup or _default_dncr
+        self._dncr = _resolve_dncr(dncr_lookup)
 
     def check(
         self,

@@ -16,50 +16,22 @@
 
 import { useEffect, useState } from "react";
 import {
-  X, Mail, Linkedin, Phone, MessageSquare, ExternalLink,
+  X, Mail, Linkedin, Phone, ExternalLink,
   PauseCircle, SkipForward, Ban,
 } from "lucide-react";
-import {
-  useProspectDetail, type TouchEvent, type ScheduledTouch, type ReplyEvent,
-} from "@/lib/hooks/useProspectDetail";
-import { canonicalChannel, providerLabel } from "@/lib/provider-labels";
+import { useProspectDetail } from "@/lib/hooks/useProspectDetail";
+import { useOutreachTimeline } from "@/lib/hooks/useOutreachTimeline";
+import { OutreachTimeline } from "./OutreachTimeline";
+import { VRGradePopover } from "./VRGradePopover";
 
 interface Props {
   leadId: string | null;
   onClose: () => void;
 }
 
-const GRADE_COLOR: Record<string, string> = {
-  A: "bg-emerald-500/15 text-emerald-300 border-emerald-500/40",
-  B: "bg-amber-500/10 text-amber-300 border-amber-500/40",
-  C: "bg-amber-500/10 text-amber-300 border-amber-500/40",
-  D: "bg-red-500/10 text-red-300 border-red-500/40",
-  F: "bg-red-500/10 text-red-300 border-red-500/40",
-};
-
-function channelIcon(channel: string | null) {
-  const label = canonicalChannel(channel ?? "");
-  const Icon =
-    label === "Email"    ? Mail :
-    label === "LinkedIn" ? Linkedin :
-    label === "SMS"      ? MessageSquare :
-    label === "Voice AI" ? Phone :
-    Mail;
-  return <Icon className="w-3.5 h-3.5" strokeWidth={1.75} />;
-}
-
-function fmtDate(iso: string): string {
-  try {
-    return new Date(iso).toLocaleString(undefined, {
-      month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
-    });
-  } catch {
-    return iso;
-  }
-}
-
 export function ProspectDrawer({ leadId, onClose }: Props) {
   const { prospect, isLoading } = useProspectDetail(leadId);
+  const timeline = useOutreachTimeline(prospect);
   const [actionState, setActionState] = useState<string | null>(null);
 
   // Escape closes drawer
@@ -113,9 +85,12 @@ export function ProspectDrawer({ leadId, onClose }: Props) {
           </div>
           <div className="flex items-center gap-2 shrink-0">
             {prospect?.vrGrade && (
-              <span className={`text-[11px] font-mono font-bold px-2 py-0.5 rounded border ${GRADE_COLOR[prospect.vrGrade] ?? ""}`}>
-                {prospect.vrGrade}
-              </span>
+              <VRGradePopover
+                grade={prospect.vrGrade}
+                score={prospect.score}
+                vr={prospect.vr}
+                evidence={buildEvidence(prospect)}
+              />
             )}
             <button
               onClick={onClose}
@@ -152,37 +127,9 @@ export function ProspectDrawer({ leadId, onClose }: Props) {
               <KV label="Location" value={prospect.enrichment.location} />
             </Section>
 
-            {/* Outreach timeline */}
+            {/* Unified outreach timeline */}
             <Section title="Outreach timeline">
-              {prospect.touches.length === 0 ? (
-                <Empty>No touches sent yet.</Empty>
-              ) : (
-                <ul className="space-y-2">
-                  {prospect.touches.map((t) => <TouchRow key={t.id} t={t} />)}
-                </ul>
-              )}
-            </Section>
-
-            {/* Scheduled */}
-            <Section title="Scheduled touches">
-              {prospect.scheduled.length === 0 ? (
-                <Empty>No upcoming touches.</Empty>
-              ) : (
-                <ul className="space-y-2">
-                  {prospect.scheduled.map((s) => <ScheduledRow key={s.id} s={s} />)}
-                </ul>
-              )}
-            </Section>
-
-            {/* Replies */}
-            <Section title="Reply history">
-              {prospect.replies.length === 0 ? (
-                <Empty>No replies received.</Empty>
-              ) : (
-                <ul className="space-y-2">
-                  {prospect.replies.map((r) => <ReplyRow key={r.id} r={r} />)}
-                </ul>
-              )}
+              <OutreachTimeline events={timeline} isLoading={isLoading} />
             </Section>
 
             {/* Quick actions */}
@@ -271,65 +218,17 @@ function ContactRow({
   );
 }
 
-function TouchRow({ t }: { t: TouchEvent }) {
-  return (
-    <li className="flex items-start gap-2 text-xs text-gray-300 py-1.5 border-b border-gray-800/60">
-      {channelIcon(t.channel)}
-      <div className="flex-1 min-w-0">
-        <div className="flex justify-between gap-2">
-          <span className="text-gray-200">
-            {canonicalChannel(t.channel)}
-            {t.sequenceStep ? <span className="text-gray-500"> · step {t.sequenceStep}</span> : null}
-          </span>
-          <span className="text-gray-500 font-mono">{fmtDate(t.sentAt)}</span>
-        </div>
-        <div className="text-[11px] text-gray-500 mt-0.5 truncate">
-          {t.status ? providerLabel(t.status) : "sent"}
-          {t.replied ? <span className="text-emerald-400 ml-2">· replied</span> : null}
-        </div>
-      </div>
-    </li>
-  );
-}
-
-function ScheduledRow({ s }: { s: ScheduledTouch }) {
-  return (
-    <li className="flex items-center gap-2 text-xs text-gray-300 py-1.5 border-b border-gray-800/60">
-      {channelIcon(s.channel)}
-      <span className="flex-1 text-gray-200">
-        {canonicalChannel(s.channel)}
-        {s.sequenceStep ? <span className="text-gray-500"> · step {s.sequenceStep}</span> : null}
-      </span>
-      <span className="text-gray-500 font-mono">{fmtDate(s.scheduledAt)}</span>
-      <span className={`text-[10px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded ${
-        s.status === "paused" ? "bg-amber-500/10 text-amber-300" : "bg-gray-800 text-gray-400"
-      }`}>
-        {s.status}
-      </span>
-    </li>
-  );
-}
-
-function ReplyRow({ r }: { r: ReplyEvent }) {
-  return (
-    <li className="text-xs py-1.5 border-b border-gray-800/60">
-      <div className="flex items-center gap-2 text-gray-300">
-        {channelIcon(r.channel)}
-        <span className="text-gray-200">{canonicalChannel(r.channel ?? "")}</span>
-        {r.intent && (
-          <span className="text-[10px] font-mono uppercase tracking-wider text-amber-300">
-            · {r.intent}
-          </span>
-        )}
-        <span className="ml-auto text-gray-500 font-mono">{fmtDate(r.receivedAt)}</span>
-      </div>
-      {r.preview && (
-        <div className="text-[11px] text-gray-400 mt-0.5 truncate italic">
-          &ldquo;{providerLabel(r.preview)}&rdquo;
-        </div>
-      )}
-    </li>
-  );
+function buildEvidence(p: {
+  enrichment: { industry: string | null; employeeCount: number | null; location: string | null };
+  touches: Array<{ replied: boolean }>;
+}): string[] {
+  const out: string[] = [];
+  if (p.enrichment.industry) out.push(`Industry: ${p.enrichment.industry}`);
+  if (p.enrichment.employeeCount) out.push(`Staff: ${p.enrichment.employeeCount}`);
+  if (p.enrichment.location) out.push(`Based in ${p.enrichment.location}`);
+  const replies = p.touches.filter((t) => t.replied).length;
+  if (replies > 0) out.push(`${replies} reply${replies > 1 ? "s" : ""} recorded`);
+  return out;
 }
 
 function ActionButton({

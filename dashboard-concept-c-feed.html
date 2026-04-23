@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AgencyOS — Concept C · The Feed</title>
+<script>
+  try { if (localStorage.getItem('agencyos_theme') === 'dark') document.documentElement.classList.add('dark'); } catch (e) {}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+
+/* ========== TOKENS ========== */
+:root {
+  --cream: #F7F3EE;
+  --surface: #EDE8E0;
+  --ink: #0C0A08;
+  --ink-2: #2E2B26;
+  --ink-3: #7A756D;
+  --amber: #D4956A;
+  --amber-soft: rgba(212,149,106,0.14);
+  --amber-glow: rgba(212,149,106,0.08);
+  --copper: #C46A3E;
+  --green: #6B8E5A;
+  --red: #B55A4C;
+  --blue: #4A6FA5;
+  --rule: rgba(12,10,8,0.08);
+  --rule-strong: rgba(12,10,8,0.14);
+  --brand-bar: #0C0A08;
+  --on-amber: #1a1207;
+  --panel-bg: #FFFFFF;
+  --topbar-h: 52px;
+  --bottomnav-h: 60px;
+}
+html.dark {
+  --cream: #0C0A08;
+  --surface: #16130F;
+  --ink: #F5F2EC;
+  --ink-2: #C9C3B8;
+  --ink-3: #807A6E;
+  --rule: rgba(255,255,255,0.08);
+  --rule-strong: rgba(255,255,255,0.14);
+  --copper: #E6A87D;
+  --amber-soft: rgba(212,149,106,0.18);
+  --panel-bg: #16130F;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; background: var(--cream); color: var(--ink); overflow-x: hidden; }
+body { font-family: 'DM Sans', system-ui, sans-serif; font-size: 14px; line-height: 1.5; max-width: 100vw; padding-bottom: var(--bottomnav-h); }
+button { cursor: pointer; font: inherit; color: inherit; background: none; border: 0; }
+input, select, textarea { font: inherit; color: inherit; }
+ul { list-style: none; padding-left: 18px; }
+.mono { font-family: 'JetBrains Mono', monospace; }
+.eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: var(--rule-strong); border-radius: 3px; }
+
+/* ========== TOPBAR ========== */
+#topbar {
+  position: sticky; top: 0; z-index: 50;
+  height: var(--topbar-h);
+  background: var(--brand-bar);
+  color: #F5F2EC;
+  display: flex; align-items: center;
+  padding: 0 16px;
+  gap: 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.brand { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+.brand em { color: var(--amber); font-style: italic; }
+.brand-tag { font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.14em; color: rgba(255,255,255,0.42); padding: 2px 7px; border: 1px solid rgba(255,255,255,0.14); border-radius: 3px; }
+.tb-spacer { flex: 1; }
+.tb-cycle { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: rgba(255,255,255,0.62); display: flex; align-items: center; gap: 6px; }
+.tb-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+.tb-theme { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; color: rgba(255,255,255,0.7); border: 1px solid rgba(255,255,255,0.14); }
+.tb-theme:hover { color: var(--amber); border-color: var(--amber); }
+.tb-theme .t-sun { display: inline; } .tb-theme .t-moon { display: none; }
+html.dark .tb-theme .t-sun { display: none; } html.dark .tb-theme .t-moon { display: inline; }
+.kill-btn { background: transparent; color: rgba(255,255,255,0.85); border: 1px solid rgba(255,255,255,0.2); font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.08em; padding: 5px 12px; border-radius: 4px; text-transform: uppercase; }
+.kill-btn:hover { background: var(--red); color: #fff; border-color: var(--red); }
+
+/* ========== METRICS HEADER (compact strip) ========== */
+.metrics-strip {
+  background: var(--panel-bg);
+  border-bottom: 1px solid var(--rule);
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  max-width: 720px; margin: 0 auto;
+  padding: 14px 18px;
+}
+.metric-cell { padding: 0 12px; border-right: 1px solid var(--rule); min-width: 0; text-align: center; }
+.metric-cell:last-child { border-right: 0; }
+.metric-cell .m-val { font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 700; color: var(--ink); line-height: 1; }
+.metric-cell .m-val em { color: var(--amber); font-style: normal; }
+.metric-cell .m-label { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; letter-spacing: 0.12em; color: var(--ink-3); text-transform: uppercase; margin-top: 5px; }
+
+/* ========== FILTER CHIPS (sticky) ========== */
+#filterBar {
+  position: sticky; top: var(--topbar-h); z-index: 40;
+  background: var(--cream);
+  border-bottom: 1px solid var(--rule);
+  padding: 10px 18px;
+  overflow-x: auto;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+}
+.chip {
+  display: inline-block;
+  padding: 6px 14px;
+  margin-right: 6px;
+  border-radius: 20px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--ink-3);
+  background: var(--panel-bg);
+  border: 1px solid var(--rule);
+  cursor: pointer;
+  transition: color .12s, background .12s, border-color .12s;
+}
+.chip:hover { color: var(--copper); border-color: var(--amber); }
+.chip.active { background: var(--amber); border-color: var(--amber); color: var(--on-amber); font-weight: 600; }
+.chip-count { display: inline-block; margin-left: 5px; font-weight: 600; color: var(--copper); }
+.chip.active .chip-count { color: var(--on-amber); }
+
+/* ========== FEED ========== */
+#feed {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 18px 18px 24px;
+}
+.feed-day {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: var(--ink-3);
+  text-transform: uppercase;
+  padding: 22px 4px 10px;
+  position: sticky;
+  top: calc(var(--topbar-h) + 47px);
+  background: var(--cream);
+  z-index: 30;
+}
+.feed-day:first-child { padding-top: 6px; }
+
+.event-card {
+  background: var(--panel-bg);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  margin-bottom: 10px;
+  overflow: hidden;
+  transition: border-color .12s, box-shadow .12s;
+}
+.event-card.expandable { cursor: pointer; }
+.event-card.expandable:hover { border-color: var(--amber); box-shadow: 0 1px 12px rgba(212,149,106,0.08); }
+.event-card.expanded { border-color: var(--amber); }
+
+.event-row {
+  display: grid;
+  grid-template-columns: 60px 38px 1fr auto;
+  gap: 12px;
+  padding: 14px 16px;
+  align-items: flex-start;
+}
+.event-time {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10.5px;
+  color: var(--ink-3);
+  letter-spacing: 0.04em;
+  padding-top: 6px;
+  white-space: nowrap;
+}
+.event-ico {
+  width: 38px; height: 38px;
+  border-radius: 10px;
+  display: grid; place-items: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+.event-ico.reply { background: rgba(107,142,90,0.16); color: var(--green); }
+.event-ico.meeting { background: rgba(74,111,165,0.14); color: var(--blue); }
+.event-ico.signal { background: var(--amber-soft); color: var(--copper); }
+.event-ico.outreach { background: rgba(12,10,8,0.05); color: var(--ink-3); }
+.event-ico.voice { background: rgba(196,106,62,0.14); color: var(--copper); }
+.event-ico.linkedin { background: rgba(74,111,165,0.14); color: var(--blue); }
+html.dark .event-ico.outreach { background: rgba(255,255,255,0.06); color: var(--ink-2); }
+
+.event-body { min-width: 0; }
+.event-type {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--copper);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.event-headline {
+  font-size: 14px;
+  color: var(--ink);
+  line-height: 1.45;
+  font-weight: 500;
+}
+.event-headline .biz {
+  color: var(--ink);
+  font-weight: 700;
+  cursor: pointer;
+  border-bottom: 1px dotted var(--ink-3);
+  transition: color .12s, border-color .12s;
+}
+.event-headline .biz:hover { color: var(--copper); border-color: var(--copper); }
+.event-quote {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 14px;
+  color: var(--ink-2);
+  line-height: 1.55;
+  margin-top: 6px;
+  padding: 8px 12px;
+  background: var(--surface);
+  border-left: 3px solid var(--amber);
+  border-radius: 0 6px 6px 0;
+}
+html.dark .event-quote { background: rgba(255,255,255,0.04); }
+.event-meta {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10.5px;
+  color: var(--ink-3);
+  margin-top: 5px;
+  letter-spacing: 0.04em;
+}
+
+.event-side {
+  flex-shrink: 0;
+  display: flex; align-items: center; gap: 6px;
+  padding-top: 4px;
+}
+.event-side .vr-grade {
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  display: grid; place-items: center;
+  font-family: 'Playfair Display', serif;
+  font-weight: 700;
+  font-size: 14px;
+  color: #fff;
+}
+.event-side .vr-grade[data-g="A"], .event-side .vr-grade[data-g="B"] { background: var(--green); }
+.event-side .vr-grade[data-g="C"] { background: var(--amber); color: var(--on-amber); }
+.event-side .vr-grade[data-g="D"] { background: var(--copper); }
+.event-side .vr-grade[data-g="F"] { background: var(--red); }
+.event-chev { color: var(--ink-3); font-size: 14px; transition: transform .15s, color .15s; }
+.event-card.expanded .event-chev { transform: rotate(90deg); color: var(--amber); }
+
+.event-expand {
+  display: none;
+  padding: 0 16px 16px 110px;
+  border-top: 1px dashed var(--rule);
+  margin-top: -1px;
+  font-size: 13px;
+  color: var(--ink-2);
+  line-height: 1.55;
+}
+.event-card.expanded .event-expand { display: block; padding-top: 14px; }
+.event-expand h5 {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--ink-3);
+  text-transform: uppercase;
+  margin: 14px 0 8px;
+  font-weight: 600;
+}
+.event-expand h5:first-child { margin-top: 0; }
+.event-expand .ai-tag { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--copper); letter-spacing: 0.12em; margin-bottom: 12px; text-transform: uppercase; }
+.event-expand .actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.btn { padding: 7px 14px; border-radius: 6px; font-size: 12.5px; font-weight: 500; }
+.btn-primary { background: var(--ink); color: #fff; }
+html.dark .btn-primary { background: var(--amber); color: var(--on-amber); }
+.btn-amber { background: var(--amber); color: var(--on-amber); }
+.btn-outline { background: transparent; border: 1px solid var(--rule); color: var(--ink-2); }
+.btn-outline:hover { border-color: var(--amber); color: var(--copper); }
+
+.pill { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase; padding: 2px 8px; border-radius: 10px; display: inline-block; }
+.pill.green { background: rgba(107,142,90,0.15); color: var(--green); }
+.pill.amber { background: var(--amber-soft); color: var(--copper); }
+.pill.gray { background: rgba(12,10,8,0.06); color: var(--ink-3); }
+html.dark .pill.gray { background: rgba(255,255,255,0.06); }
+
+/* ========== BOTTOM NAV (always visible) ========== */
+#bottomnav {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  height: var(--bottomnav-h);
+  background: var(--brand-bar);
+  border-top: 1px solid rgba(255,255,255,0.06);
+  display: flex;
+  z-index: 100;
+}
+.bn-item {
+  flex: 1;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 3px;
+  color: rgba(255,255,255,0.55);
+  font-size: 10.5px;
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: color .12s;
+}
+.bn-item .bn-ico { font-size: 18px; }
+.bn-item.active { color: var(--amber); }
+.bn-item.active .bn-ico { transform: scale(1.05); }
+
+/* ========== BRIEFING DRAWER ========== */
+.drawer-backdrop { position: fixed; inset: 0; background: rgba(12,10,8,0.55); backdrop-filter: blur(2px); z-index: 150; display: none; }
+.drawer-backdrop.on { display: block; }
+.drawer {
+  position: fixed; right: 0; top: 0; bottom: 0;
+  width: min(640px, 100%);
+  background: var(--cream);
+  border-left: 1px solid var(--rule);
+  z-index: 160;
+  transform: translateX(100%);
+  transition: transform .3s cubic-bezier(.2,.7,.3,1);
+  overflow-y: auto;
+}
+.drawer.on { transform: translateX(0); }
+.drawer-head {
+  position: sticky; top: 0; z-index: 3;
+  background: var(--cream);
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--rule);
+  display: flex; justify-content: space-between; align-items: flex-start; gap: 14px;
+}
+.drawer-close { font-size: 22px; color: var(--ink-3); padding: 4px 8px; }
+.drawer-close:hover { color: var(--copper); }
+.dh-name { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 22px; color: var(--ink); margin-top: 3px; }
+.dh-sub { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-3); margin-top: 2px; }
+.drawer-body { padding: 18px 22px 40px; }
+.bf-section { margin-bottom: 20px; }
+.bf-section h4 { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid var(--rule); font-weight: 600; }
+.bf-ai { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--copper); letter-spacing: 0.12em; text-transform: uppercase; margin: -6px 0 14px; }
+.bf-meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px; background: var(--surface); border-radius: 8px; }
+html.dark .bf-meta-grid { background: rgba(255,255,255,0.04); }
+.bf-kv { display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px; }
+.bf-kv .k { color: var(--ink-3); }
+.bf-kv .v { color: var(--ink); font-weight: 500; font-family: 'JetBrains Mono', monospace; }
+.bf-hook { font-family: 'Playfair Display', serif; font-style: italic; font-size: 15px; color: var(--ink-2); line-height: 1.7; padding: 14px 16px; background: var(--surface); border-left: 3px solid var(--amber); border-radius: 0 6px 6px 0; }
+html.dark .bf-hook { background: rgba(255,255,255,0.04); }
+.bf-list li { margin-bottom: 8px; font-size: 13px; color: var(--ink-2); line-height: 1.55; }
+.bf-obj { padding: 12px 14px; background: var(--surface); border-radius: 8px; margin-bottom: 10px; }
+html.dark .bf-obj { background: rgba(255,255,255,0.04); }
+.bf-obj .obj-q { font-size: 13px; font-weight: 600; color: var(--ink); margin-bottom: 6px; }
+.bf-obj .obj-a { font-size: 12.5px; color: var(--ink-2); line-height: 1.55; }
+.vr-strip { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+.vr-strip .vr-letter { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 5px; color: #fff; font-family: 'Playfair Display', serif; font-weight: 700; font-size: 13px; }
+.vr-strip .vr-letter[data-g="A"], .vr-strip .vr-letter[data-g="B"] { background: var(--green); }
+.vr-strip .vr-letter[data-g="C"] { background: var(--amber); color: var(--on-amber); }
+.vr-strip .vr-letter[data-g="D"] { background: var(--copper); }
+.vr-strip .vr-letter[data-g="F"] { background: var(--red); }
+.vr-strip .vr-name { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--ink-3); margin-top: 2px; letter-spacing: 0.04em; text-transform: uppercase; text-align: center; }
+.vr-cell-w { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+
+/* PROGRESS / MEETINGS pages share simple card layout */
+.simple-card {
+  background: var(--panel-bg); border: 1px solid var(--rule); border-radius: 10px;
+  padding: 18px 20px; margin-bottom: 14px;
+  max-width: 720px; margin-left: auto; margin-right: auto;
+}
+.kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; max-width: 720px; margin: 0 auto 18px; }
+.kpi-cell { background: var(--panel-bg); border: 1px solid var(--rule); border-radius: 10px; padding: 14px 16px; }
+.kpi-val { font-family: 'Playfair Display', serif; font-size: 26px; font-weight: 700; color: var(--ink); line-height: 1; }
+.kpi-val small { font-size: 14px; color: var(--ink-3); }
+.kpi-l { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.12em; color: var(--ink-3); text-transform: uppercase; margin-top: 6px; }
+.kpi-bench { font-size: 11px; color: var(--green); margin-top: 4px; font-family: 'JetBrains Mono', monospace; }
+.funnel-row-c { display: flex; align-items: center; gap: 12px; padding: 6px 0; font-size: 13px; }
+.funnel-row-c .fl { width: 100px; color: var(--ink-2); font-family: 'JetBrains Mono', monospace; font-size: 11px; flex-shrink: 0; }
+.funnel-row-c .fb { flex: 1; height: 22px; background: rgba(12,10,8,0.04); border-radius: 4px; overflow: hidden; }
+html.dark .funnel-row-c .fb { background: rgba(255,255,255,0.04); }
+.funnel-row-c .fbf { height: 100%; background: linear-gradient(90deg, var(--amber), #a87044); display: flex; align-items: center; padding: 0 10px; color: var(--on-amber); font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 11px; }
+.funnel-row-c .fp { min-width: 50px; text-align: right; color: var(--copper); font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; }
+.meet-card { background: var(--panel-bg); border: 1px solid var(--rule); border-radius: 10px; padding: 16px 20px; margin-bottom: 10px; max-width: 720px; margin-left: auto; margin-right: auto; display: grid; grid-template-columns: 36px 1fr auto; gap: 14px; align-items: center; cursor: pointer; transition: border-color .12s; }
+.meet-card:hover { border-color: var(--amber); }
+.meet-name { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 16px; color: var(--ink); }
+.meet-sub { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-3); margin-top: 2px; }
+.meet-when { text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--ink); }
+.meet-when .cd { color: var(--copper); font-size: 10.5px; margin-top: 2px; }
+
+/* ========== PAGE HEADLINE for non-feed pages ========== */
+.page-h {
+  max-width: 720px; margin: 22px auto 4px; padding: 0 18px;
+  font-family: 'Playfair Display', serif; font-weight: 700; font-size: 30px;
+  color: var(--ink); letter-spacing: -0.02em; line-height: 1.15;
+}
+.page-h em { color: var(--amber); font-style: italic; }
+.page-sub { max-width: 720px; margin: 0 auto 18px; padding: 0 18px; font-size: 12.5px; color: var(--ink-3); }
+
+/* ========== MOBILE ========== */
+@media (max-width: 600px) {
+  #topbar { padding: 0 12px; }
+  .brand-tag { display: none; }
+  .metrics-strip { padding: 12px 14px; }
+  .metric-cell .m-val { font-size: 18px; }
+  #feed { padding: 14px 12px 18px; }
+  .event-row { grid-template-columns: 38px 1fr auto; gap: 10px; padding: 12px 14px; }
+  .event-time { display: none; }
+  .event-headline { font-size: 13.5px; }
+  .event-expand { padding-left: 12px; padding-right: 12px; }
+  .feed-day { top: calc(var(--topbar-h) + 47px); }
+  .kpi-row { grid-template-columns: repeat(2, 1fr); gap: 10px; padding: 0 14px; }
+  .page-h { font-size: 24px; padding: 0 14px; }
+  .page-sub { padding: 0 14px; }
+  .simple-card, .meet-card { margin-left: 12px; margin-right: 12px; padding: 14px 16px; }
+}
+@media (max-width: 380px) {
+  .metric-cell { padding: 0 4px; }
+  .metric-cell .m-val { font-size: 16px; }
+}
+</style>
+</head>
+<body>
+
+<header id="topbar">
+  <span class="brand">Agency<em>OS</em></span>
+  <span class="brand-tag">CONCEPT C · FEED</span>
+  <span class="tb-spacer"></span>
+  <span class="tb-cycle"><span class="tb-dot"></span>DAY 14/30</span>
+  <button class="tb-theme" aria-label="Toggle theme"><span class="t-sun">☀</span><span class="t-moon">🌙</span></button>
+  <button class="kill-btn" onclick="alert('Pause all outreach — confirm?')">⏸ PAUSE</button>
+</header>
+
+<main id="main">
+  <!-- Feed view (default) -->
+  <div id="feedView">
+    <div class="metrics-strip">
+      <div class="metric-cell"><div class="m-val">247</div><div class="m-label">Contacted</div></div>
+      <div class="metric-cell"><div class="m-val">31</div><div class="m-label">Replied</div></div>
+      <div class="metric-cell"><div class="m-val"><em>8</em>/10</div><div class="m-label">Meetings</div></div>
+      <div class="metric-cell"><div class="m-val">14<em>/30</em></div><div class="m-label">Day</div></div>
+    </div>
+    <div id="filterBar"></div>
+    <div id="feed"></div>
+  </div>
+
+  <!-- Meetings view -->
+  <div id="meetingsView" style="display:none;">
+    <h1 class="page-h">Meetings,<br><em>4 booked.</em></h1>
+    <p class="page-sub">Tap any meeting to open the briefing.</p>
+    <div id="meetList"></div>
+  </div>
+
+  <!-- Progress view -->
+  <div id="progressView" style="display:none;">
+    <h1 class="page-h">Cycle progress,<br><em>day 14 of 30.</em></h1>
+    <p class="page-sub">Cycle 3 · live · last updated 2 min ago.</p>
+    <div class="kpi-row">
+      <div class="kpi-cell"><div class="kpi-val">47<small>%</small></div><div class="kpi-l">Open Rate</div><div class="kpi-bench">vs AU 21%</div></div>
+      <div class="kpi-cell"><div class="kpi-val">8.2<small>%</small></div><div class="kpi-l">Reply Rate</div><div class="kpi-bench">vs AU 3.1%</div></div>
+      <div class="kpi-cell"><div class="kpi-val">1.4<small>%</small></div><div class="kpi-l">Meeting Rate</div><div class="kpi-bench">vs AU 0.8%</div></div>
+      <div class="kpi-cell"><div class="kpi-val">23<small>h</small></div><div class="kpi-l">Avg Reply</div><div class="kpi-bench" style="color:var(--ink-3);">contacted → reply</div></div>
+    </div>
+    <div class="simple-card">
+      <h4 style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-3);margin-bottom:14px;font-weight:600;">Funnel</h4>
+      <div id="funnelBlock"></div>
+    </div>
+    <div class="simple-card">
+      <h4 style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-3);margin-bottom:14px;font-weight:600;">ROI · cycle to date · AUD</h4>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;">
+        <div style="padding:12px;background:var(--surface);border-radius:8px;"><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--copper);">$186</div><div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:0.12em;color:var(--ink-3);text-transform:uppercase;margin-top:4px;">Cost / Meeting</div></div>
+        <div style="padding:12px;background:var(--surface);border-radius:8px;"><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--copper);">$47</div><div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:0.12em;color:var(--ink-3);text-transform:uppercase;margin-top:4px;">Cost / Reply</div></div>
+      </div>
+    </div>
+    <div style="text-align:center;margin: 12px auto 24px;"><button class="btn btn-outline" onclick="alert('Export PDF report')">Export report for partners</button></div>
+  </div>
+</main>
+
+<nav id="bottomnav">
+  <div class="bn-item active" data-v="feed" onclick="showView('feed')"><div class="bn-ico">≡</div><span>Feed</span></div>
+  <div class="bn-item" data-v="meetings" onclick="showView('meetings')"><div class="bn-ico">◫</div><span>Meetings</span></div>
+  <div class="bn-item" data-v="progress" onclick="showView('progress')"><div class="bn-ico">▌</div><span>Progress</span></div>
+</nav>
+
+<div class="drawer-backdrop" id="drawerBackdrop" onclick="closeBriefing()"></div>
+<aside class="drawer" id="briefingDrawer">
+  <div class="drawer-head">
+    <div>
+      <div class="eyebrow">Briefing</div>
+      <div class="dh-name" id="bfName">—</div>
+      <div class="dh-sub" id="bfSub">—</div>
+    </div>
+    <button class="drawer-close" onclick="closeBriefing()" aria-label="Close">×</button>
+  </div>
+  <div class="drawer-body" id="bfBody"></div>
+</aside>
+
+<script>
+/* ================================================================
+   PROSPECT DATA — 10 hero (honest-data shape — no revenue,
+   no dm.style mind-reading rendered)
+================================================================ */
+const prospects = [
+  {
+    id:'p1', name:'Momentum Constructions', suburb:'Brunswick', state:'VIC',
+    industry:'Construction', score:91, staff:'28', est:'2008',
+    domain:'momentumconstructions.com.au', gmb_category:'General contractor',
+    abn_status:'active', abn_age_years:18,
+    dfs_organic_etv:180, dfs_organic_keywords:42, backlinks_count:67, domain_rank:28,
+    dm:{ name:'James Whitford', title:'Founder & MD', tenure:'16 years' },
+    vulnerability:'Spending on Google Ads but website converts poorly. GMB rating dropped 4.6→4.1 in 90 days. Competitor bidding on brand terms.',
+    vulnGrades:{ website:'F', seo:'D', reviews:'D', ads:'C', social:'B', content:'F' },
+    status:'Meeting Booked',
+    meeting:{ date:'Mon 14 Apr 2026', time:'10:00am', countdown:'In 7 days', platform:'Zoom' },
+    openingHook:'"James, your competitor is bidding on the exact phrase people search when looking for Momentum. I can show you in 2 minutes."',
+    pricingRange:'$2,800–$4,200/month AUD',
+    discoveryQuestions:['What does a qualified lead look like for you?', 'How are you tracking ROI on your Google Ads spend?', 'What happened with the GMB reviews — did you notice the drop?'],
+    objections:[{ obj:'"We already have someone handling this."', response:'Great — let me show you what they\'re missing on the technical side. This isn\'t about effort, it\'s about infrastructure.' }],
+    closeOptions:['90-day pilot at $2,800/month', 'Full retainer at $4,200/month'],
+    competitors:['Brunswick Build Co', 'North Melbourne Construct', 'Carlton Trades'],
+    reply:'"This is exactly what we need. Can we set up a call this week?"',
+  },
+  {
+    id:'p2', name:'Harbour Physiotherapy', suburb:'Manly', state:'NSW',
+    industry:'Health', score:88, staff:'11', est:'2015',
+    domain:'harbourphysio.com.au', gmb_category:'Physiotherapist',
+    abn_status:'active', abn_age_years:11,
+    dfs_organic_etv:210, dfs_organic_keywords:58, backlinks_count:41, domain_rank:22,
+    dm:{ name:'Sarah Kemp', title:'Clinical Director & Owner', tenure:'9 years' },
+    vulnerability:'Paused Google Ads after 6 months. Competitor 200m away launched aggressively. Staff instability signals internal pressure.',
+    vulnGrades:{ website:'C', seo:'D', reviews:'B', ads:'F', social:'D', content:'D' },
+    status:'Meeting Booked',
+    meeting:{ date:'Tue 15 Apr 2026', time:'2:00pm', countdown:'In 8 days', platform:'Zoom' },
+    openingHook:'"Sarah, the new practice on Sydney Road is now outranking Harbour Physio for 14 of your top search terms."',
+    pricingRange:'$1,800–$2,800/month AUD',
+    discoveryQuestions:['Why did you pause Google Ads — was it the cost or the results?', 'Have you seen patient numbers affected by the new competitor?', 'What does your current patient acquisition look like — mostly referrals?'],
+    objections:[{ obj:'"We can\'t afford it right now."', response:'Every month you don\'t act is another month the competitor gains ground.' }],
+    closeOptions:['Local defence $1,800/month', 'Full digital $2,800/month'],
+    competitors:['Sydney Road Physio', 'Manly Allied Health', 'Northern Beaches Sports Med'],
+    reply:'"Very interested. We\'ve been struggling with our online presence."',
+  },
+  {
+    id:'p3', name:'Cascade Dental Group', suburb:'Paddington', state:'NSW',
+    industry:'Dental', score:74, staff:'14', est:'2012',
+    domain:'cascadedental.com.au', gmb_category:'Dental clinic',
+    abn_status:'active', abn_age_years:14,
+    dfs_organic_etv:340, dfs_organic_keywords:89, backlinks_count:73, domain_rank:31,
+    dm:{ name:'Dr Priya Narayan', title:'Principal Dentist & Owner', tenure:'12 years' },
+    vulnerability:'Actively trying — hired marketing coordinator, redesigned website. New site has thin content and GMB strategy is basic.',
+    vulnGrades:{ website:'C', seo:'C', reviews:'A', ads:'D', social:'C', content:'D' },
+    status:'Meeting Booked',
+    meeting:{ date:'Thu 17 Apr 2026', time:'11:00am', countdown:'In 10 days', platform:'Zoom' },
+    openingHook:'"Priya, your new website looks great — but a technical SEO issue means Google can\'t index 60% of your treatment pages."',
+    pricingRange:'$2,200–$3,400/month AUD',
+    discoveryQuestions:['What role do you see the new coordinator playing vs an agency?', 'What\'s the most important service you want more patients for?', 'Are you tracking where your current new patients come from?'],
+    objections:[{ obj:'"We have someone in-house now."', response:'We work alongside in-house teams constantly. We handle the technical and strategic layer.' }],
+    closeOptions:['Strategy layer $2,200/month', 'Full-service $3,400/month'],
+    competitors:['Paddington Smiles', 'Oxford St Dental', 'Bondi Junction Orthodontics'],
+    reply:'"We just hired someone for this but would love a second opinion."',
+  },
+  {
+    id:'p4', name:'Coastal Veterinary', suburb:'Byron Bay', state:'NSW',
+    industry:'Veterinary', score:76, staff:'16', est:'2010',
+    domain:'coastalvet.com.au', gmb_category:'Veterinarian',
+    abn_status:'active', abn_age_years:9,
+    dfs_organic_etv:155, dfs_organic_keywords:46, backlinks_count:38, domain_rank:19,
+    dm:{ name:'Dr Rebecca Ashford', title:'Practice Owner', tenure:'14 years' },
+    vulnerability:'Investing in marketing but spreading thin — Facebook ads, blog, community sponsorship without cohesive strategy.',
+    vulnGrades:{ website:'B', seo:'D', reviews:'A', ads:'C', social:'B', content:'D' },
+    status:'Meeting Booked',
+    meeting:{ date:'Mon 21 Apr 2026', time:'9:30am', countdown:'In 14 days', platform:'Zoom' },
+    openingHook:'"Rebecca, you\'ve done the hard part — community trust and good reviews. Just need to come up first when someone searches for a vet at 11pm."',
+    pricingRange:'$1,600–$2,400/month AUD',
+    discoveryQuestions:['How are new clients finding you at the moment?', 'Is the Facebook spend producing bookings?', 'Is the blog something you want to grow?'],
+    objections:[{ obj:'"Can you send pricing first?"', response:'I can send a range — but the right package depends on your goals. Two questions first.' }],
+    closeOptions:['Local presence $1,600/month', 'Full digital $2,400/month'],
+    competitors:['Byron Vet Centre', 'Bangalow Veterinary'],
+    reply:'"Interesting. Can you send more details about pricing?"',
+  },
+  {
+    id:'p5', name:'Southbank Legal Advisory', suburb:'Southbank', state:'VIC',
+    industry:'Legal', score:71, staff:'18', est:'2014',
+    domain:'southbanklegal.com.au', gmb_category:'Law firm',
+    abn_status:'active', abn_age_years:13,
+    dfs_organic_etv:420, dfs_organic_keywords:112, backlinks_count:94, domain_rank:34,
+    dm:{ name:'Andrew Volkov', title:'Managing Partner', tenure:'10 years' },
+    vulnerability:'Investing in content and ads but execution unfocused — thought leadership lacks SEO, ad spend increasing without conversion tracking.',
+    vulnGrades:{ website:'C', seo:'D', reviews:'B', ads:'C', social:'C', content:'C' },
+    status:'Replied',
+    meeting:null,
+    openingHook:'"Andrew, you\'ve published 4 articles this month — not one is ranking on page 1 for any commercial legal term."',
+    pricingRange:'$2,400–$3,800/month AUD',
+    discoveryQuestions:['What\'s the primary driver for adding family law?', 'Who\'s writing the articles — internal or external?', 'Do you have visibility into what\'s driving your ad clicks?'],
+    objections:[{ obj:'"We manage this internally."', response:'The volume of content is impressive. The gap is technical SEO — not effort, configuration.' }],
+    closeOptions:['SEO-first $2,400/month', 'Full digital $3,800/month'],
+    competitors:['Holding Redlich', 'Macpherson Kelley', 'Lander & Rogers'],
+    reply:'"Interesting. Send me the audit — I\'ll read before we chat."',
+  },
+  {
+    id:'p6', name:'Riverside Accounting', suburb:'North Sydney', state:'NSW',
+    industry:'Accounting', score:52, staff:'9', est:'2018',
+    domain:'riversideaccounting.com.au', gmb_category:'Accountant',
+    abn_status:'active', abn_age_years:21,
+    dfs_organic_etv:280, dfs_organic_keywords:67, backlinks_count:52, domain_rank:26,
+    dm:{ name:'Michael Chen', title:'Managing Partner', tenure:'6 years' },
+    vulnerability:'Just starting digital presence — LinkedIn page with no content, incomplete GMB.',
+    vulnGrades:{ website:'D', seo:'F', reviews:'C', ads:'F', social:'F', content:'F' },
+    status:'Replied',
+    meeting:null,
+    openingHook:'"Michael, I\'m not pitching a retainer. Let me spend 20 minutes on what fixing your Google profile alone would do for referrals."',
+    pricingRange:'$800–$1,400/month AUD',
+    discoveryQuestions:['What does a new client typically mean in annual revenue for the firm?', 'How do most of your clients find you currently?', 'What\'s making next quarter a better time than now?'],
+    objections:[{ obj:'"Maybe next quarter."', response:'What changes next quarter? If it\'s budget, I have an entry-level option at $800/month.' }],
+    closeOptions:['Foundation $800/month', 'Growth $1,400/month'],
+    competitors:['Carbon Group', 'Chan & Naylor North Sydney'],
+    reply:'"Not sure if this is for us right now. Maybe next quarter?"',
+  },
+  {
+    id:'p7', name:'Parramatta Motor Group', suburb:'Parramatta', state:'NSW',
+    industry:'Automotive', score:47, staff:'34', est:'2005',
+    domain:'parramattamotor.com.au', gmb_category:'Car dealer',
+    abn_status:'active', abn_age_years:27,
+    dfs_organic_etv:96, dfs_organic_keywords:29, backlinks_count:48, domain_rank:21,
+    dm:{ name:'Wei Zhang', title:'Dealer Principal', tenure:'19 years' },
+    vulnerability:'High affordability but zero digital marketing investment. Website from 2020, no social presence.',
+    vulnGrades:{ website:'F', seo:'F', reviews:'B', ads:'F', social:'F', content:'F' },
+    status:'Contacted',
+    meeting:null,
+    openingHook:'"Wei, 840 people search for used cars in Parramatta monthly. Parramatta Motor doesn\'t appear on page 1 for any of them."',
+    pricingRange:'$3,200–$5,000/month AUD',
+    discoveryQuestions:['Where does most of your foot traffic come from today?', 'Have you ever tried digital advertising?', 'What would one extra car sale per week mean in margin?'],
+    objections:[{ obj:'"We do fine without digital."', response:'You\'re doing well despite it — imagine doing well because of it.' }],
+    closeOptions:['Visibility $3,200/month', 'Full digital $5,000/month'],
+    competitors:['Parramatta Nissan', 'Westfield Honda'],
+    reply:null,
+  },
+  {
+    id:'p8', name:'Bondi Creative Studio', suburb:'Bondi', state:'NSW',
+    industry:'Design', score:68, staff:'8', est:'2019',
+    domain:'bondicreative.com.au', gmb_category:'Graphic designer',
+    abn_status:'active', abn_age_years:7,
+    dfs_organic_etv:140, dfs_organic_keywords:38, backlinks_count:82, domain_rank:29,
+    dm:{ name:'Aria Martinelli', title:'Creative Director', tenure:'5 years' },
+    vulnerability:'Understands marketing but struggles with their own pipeline. Strong social growth but no paid acquisition.',
+    vulnGrades:{ website:'B', seo:'D', reviews:'A', ads:'F', social:'A', content:'B' },
+    status:'Contacted',
+    meeting:null,
+    openingHook:'"Aria, your portfolio is excellent — but when someone searches for a Sydney brand design studio, you don\'t appear in the top 20."',
+    pricingRange:'$1,200–$2,000/month AUD',
+    discoveryQuestions:['How do you win new clients today — mostly referrals?', 'Have you explored paid channels or is it purely organic?', 'What type of client are you trying to attract more of?'],
+    objections:[{ obj:'"We do marketing for others — we can do it ourselves."', response:'Most of your competitors say the same. It\'s about bandwidth, not capability.' }],
+    closeOptions:['New business channel $1,200/month', 'Full growth $2,000/month'],
+    competitors:['Manual Sydney', 'Frost Collective'],
+    reply:null,
+  },
+  {
+    id:'p9', name:'Fitzroy Cafe Group', suburb:'Fitzroy', state:'VIC',
+    industry:'Hospitality', score:84, staff:'22', est:'2016',
+    domain:'fitzroycafegroup.com.au', gmb_category:'Cafe',
+    abn_status:'active', abn_age_years:6,
+    dfs_organic_etv:78, dfs_organic_keywords:24, backlinks_count:31, domain_rank:17,
+    dm:{ name:'Tom Abernathy', title:'Owner', tenure:'8 years' },
+    vulnerability:'Bleeding margin to delivery platforms. Stale GMB while competitor won local awards.',
+    vulnGrades:{ website:'D', seo:'F', reviews:'C', ads:'F', social:'D', content:'F' },
+    status:'Contacted',
+    meeting:null,
+    openingHook:'"Tom, our full package is less than you pay in one week of delivery commission."',
+    pricingRange:'$1,400–$2,200/month AUD',
+    discoveryQuestions:['What percentage of revenue is delivery vs dine-in?', 'Have you tried promoting direct orders?', 'What did Sundays Fitzroy do differently that you\'ve noticed?'],
+    objections:[{ obj:'"I\'m too busy to deal with marketing."', response:'That\'s exactly why you use us. It runs in the background.' }],
+    closeOptions:['Direct acquisition $1,400/month', 'Full platform $2,200/month'],
+    competitors:['Sundays Fitzroy', 'Deadman Espresso', 'The Commoner'],
+    reply:null,
+  },
+  {
+    id:'p10', name:'Gold Coast Mortgage Co', suburb:'Surfers Paradise', state:'QLD',
+    industry:'Finance', score:55, staff:'12', est:'2017',
+    domain:'goldcoastmortgage.com.au', gmb_category:'Mortgage broker',
+    abn_status:'recent', abn_age_years:2,
+    dfs_organic_etv:195, dfs_organic_keywords:51, backlinks_count:44, domain_rank:23,
+    dm:{ name:'Priya Sharma', title:'Principal Broker', tenure:'7 years' },
+    vulnerability:'Expanding into financial planning (new ABN). Growth intent present but no digital strategy.',
+    vulnGrades:{ website:'D', seo:'F', reviews:'B', ads:'F', social:'D', content:'F' },
+    status:'Contacted',
+    meeting:null,
+    openingHook:'"Priya, the financial planning ABN is a smart move. But there\'s no digital presence for that service at all."',
+    pricingRange:'$1,200–$2,000/month AUD',
+    discoveryQuestions:['How are you planning to get clients for the financial planning arm?', 'Is your referral network aware of the new service yet?', 'Have you set a target for new planning clients this year?'],
+    objections:[{ obj:'"We\'re still setting it up."', response:'The best time to build a digital foundation is before you launch.' }],
+    closeOptions:['Foundation $1,200/month', 'Combined $2,000/month'],
+    competitors:['GC Home Loans', 'Mortgage Choice GC'],
+    reply:null,
+  },
+];
+
+/* ================================================================
+   FEED EVENTS — mixed types, reverse chronological
+================================================================ */
+const events = [
+  /* TODAY */
+  { day:'TODAY', t:'12m ago', type:'reply', cat:'replies', pid:'p1', icon:'💬',
+    label:'REPLY · POSITIVE',
+    headline:'<span class="biz" data-pid="p1">Momentum Constructions</span> replied — James Whitford',
+    quote:'"This is exactly what we need. Can we set up a call this week?"',
+    meta:'Maya queued meeting booking · briefing auto-generated' },
+  { day:'TODAY', t:'37m ago', type:'meeting', cat:'meetings', pid:'p1', icon:'📅',
+    label:'MEETING BOOKED',
+    headline:'Meeting booked with <span class="biz" data-pid="p1">Momentum Constructions</span> — James Whitford',
+    meta:'Mon 14 Apr · 10:00am AEST · Zoom · in 7 days' },
+  { day:'TODAY', t:'1h ago', type:'signal', cat:'signals', pid:'p3', icon:'⚡',
+    label:'SIGNAL · HIRING',
+    headline:'<span class="biz" data-pid="p3">Cascade Dental Group</span> hired marketing coordinator',
+    meta:'Strength 71 · LinkedIn job post · intent trigger ↑' },
+  { day:'TODAY', t:'2h ago', type:'voice', cat:'voice', pid:'p7', icon:'☎',
+    label:'VOICE AI · VOICEMAIL',
+    headline:'Voice AI call placed to <span class="biz" data-pid="p7">Parramatta Motor Group</span> — voicemail left',
+    meta:'Wei Zhang · 11sec · callback queued for tomorrow 10:30am' },
+  { day:'TODAY', t:'3h ago', type:'outreach', cat:'outreach', pid:'p4', icon:'✉',
+    label:'EMAIL · SENT',
+    headline:'Email 2 sent to <span class="biz" data-pid="p4">Coastal Veterinary</span> — Dr Rebecca Ashford',
+    meta:'Subject: "Local search and your community presence" · cycle day 5' },
+  { day:'TODAY', t:'4h ago', type:'signal', cat:'signals', pid:'p9', icon:'⚡',
+    label:'SIGNAL · SOCIAL',
+    headline:'<span class="biz" data-pid="p9">Fitzroy Cafe Group</span> — public Uber Eats commission complaints',
+    meta:'Strength 81 · 3 days ago first detected · margin pressure visible' },
+  { day:'TODAY', t:'5h ago', type:'linkedin', cat:'outreach', pid:'p8', icon:'in',
+    label:'LINKEDIN · ACCEPTED',
+    headline:'LinkedIn connection accepted — <span class="biz" data-pid="p8">Bondi Creative Studio</span>',
+    meta:'Aria Martinelli · LinkedIn message scheduled for tomorrow 9am' },
+  { day:'TODAY', t:'6h ago', type:'reply', cat:'replies', pid:'p4', icon:'💬',
+    label:'REPLY · INTERESTED',
+    headline:'<span class="biz" data-pid="p4">Coastal Veterinary</span> replied via SMS — Dr Rebecca Ashford',
+    quote:'"Interesting. Can you send more details about pricing?"',
+    meta:'Maya sending pricing range + 2 discovery questions before full quote' },
+
+  /* YESTERDAY */
+  { day:'YESTERDAY', t:'14:33', type:'meeting', cat:'meetings', pid:'p4', icon:'📅',
+    label:'MEETING BOOKED',
+    headline:'Meeting booked with <span class="biz" data-pid="p4">Coastal Veterinary</span> — Dr Rebecca Ashford',
+    meta:'Mon 21 Apr · 9:30am AEST · Zoom · in 14 days' },
+  { day:'YESTERDAY', t:'13:00', type:'reply', cat:'replies', pid:'p3', icon:'💬',
+    label:'REPLY · CAUTIOUS',
+    headline:'<span class="biz" data-pid="p3">Cascade Dental Group</span> replied — Dr Priya Narayan',
+    quote:'"We just hired someone for this but would love a second opinion."',
+    meta:'Maya sending case studies + complementary-role positioning' },
+  { day:'YESTERDAY', t:'11:42', type:'signal', cat:'signals', pid:'p2', icon:'⚡',
+    label:'SIGNAL · COMPETITOR',
+    headline:'<span class="biz" data-pid="p2">Harbour Physiotherapy</span> — competitor 200m away launched aggressively',
+    meta:'Strength 92 · 2 weeks ago · ad spend tripled in 14 days' },
+  { day:'YESTERDAY', t:'10:18', type:'voice', cat:'voice', pid:'p5', icon:'☎',
+    label:'VOICE AI · CONNECTED',
+    headline:'Voice AI call connected with <span class="biz" data-pid="p5">Southbank Legal Advisory</span>',
+    meta:'Andrew Volkov · 2min 14sec · callback agreed' },
+  { day:'YESTERDAY', t:'09:30', type:'meeting', cat:'meetings', pid:'p2', icon:'📅',
+    label:'MEETING BOOKED',
+    headline:'Meeting booked with <span class="biz" data-pid="p2">Harbour Physiotherapy</span> — Sarah Kemp',
+    meta:'Tue 15 Apr · 2:00pm AEST · Zoom · in 8 days' },
+  { day:'YESTERDAY', t:'08:00', type:'outreach', cat:'outreach', pid:'p10', icon:'✉',
+    label:'EMAIL · SENT',
+    headline:'Email 3 sent to <span class="biz" data-pid="p10">Gold Coast Mortgage Co</span> — Priya Sharma',
+    meta:'Subject: "Your new financial planning arm needs a digital foundation"' },
+
+  /* THIS WEEK */
+  { day:'EARLIER THIS WEEK', t:'Wed 11:30', type:'reply', cat:'replies', pid:'p2', icon:'💬',
+    label:'REPLY · INTERESTED',
+    headline:'<span class="biz" data-pid="p2">Harbour Physiotherapy</span> replied — Sarah Kemp',
+    quote:'"Very interested. We\'ve been struggling with our online presence."',
+    meta:'Maya queued meeting booking · auto-confirmation sent' },
+  { day:'EARLIER THIS WEEK', t:'Wed 10:04', type:'voice', cat:'voice', pid:'p1', icon:'☎',
+    label:'VOICE AI · VOICEMAIL',
+    headline:'Voice AI call to <span class="biz" data-pid="p1">Momentum Constructions</span> — voicemail left',
+    meta:'James Whitford · 9sec · email follow-up sent' },
+  { day:'EARLIER THIS WEEK', t:'Wed 09:00', type:'outreach', cat:'outreach', pid:'p1', icon:'✉',
+    label:'EMAIL · SENT',
+    headline:'Email 3 sent to <span class="biz" data-pid="p1">Momentum Constructions</span> — James Whitford',
+    meta:'Subject: "Your competitors are stealing your brand traffic"' },
+  { day:'EARLIER THIS WEEK', t:'Tue 16:22', type:'reply', cat:'replies', pid:'p6', icon:'💬',
+    label:'REPLY · NOT NOW',
+    headline:'<span class="biz" data-pid="p6">Riverside Accounting</span> replied — Michael Chen',
+    quote:'"Not sure if this is for us right now. Maybe next quarter?"',
+    meta:'Soft-objection · queued for Q3 nurture sequence' },
+  { day:'EARLIER THIS WEEK', t:'Tue 14:17', type:'signal', cat:'signals', pid:'p10', icon:'⚡',
+    label:'SIGNAL · ABN',
+    headline:'<span class="biz" data-pid="p10">Gold Coast Mortgage Co</span> — registered new ABN for financial planning arm',
+    meta:'Strength 67 · 2 weeks ago · expansion signal · new service angle' },
+  { day:'EARLIER THIS WEEK', t:'Tue 09:00', type:'linkedin', cat:'outreach', pid:'p3', icon:'in',
+    label:'LINKEDIN · ACCEPTED',
+    headline:'LinkedIn connection accepted — <span class="biz" data-pid="p3">Cascade Dental Group</span>',
+    meta:'Dr Priya Narayan · message will follow at email day 5' },
+  { day:'EARLIER THIS WEEK', t:'Mon 11:30', type:'reply', cat:'replies', pid:'p5', icon:'💬',
+    label:'REPLY · INTERESTED',
+    headline:'<span class="biz" data-pid="p5">Southbank Legal Advisory</span> replied — Andrew Volkov',
+    quote:'"Interesting. Send me the audit — I\'ll read before we chat."',
+    meta:'Audit PDF queued for email 4 · supervisor review pending' },
+  { day:'EARLIER THIS WEEK', t:'Mon 09:00', type:'outreach', cat:'outreach', pid:'p5', icon:'✉',
+    label:'EMAIL · SENT',
+    headline:'Email 1 sent to <span class="biz" data-pid="p5">Southbank Legal Advisory</span> — Andrew Volkov',
+    meta:'Subject: "Your thought leadership content isn\'t ranking — here\'s why"' },
+  { day:'EARLIER THIS WEEK', t:'Mon 08:30', type:'signal', cat:'signals', pid:'p1', icon:'⚡',
+    label:'SIGNAL · REVIEWS',
+    headline:'<span class="biz" data-pid="p1">Momentum Constructions</span> — GMB rating dropped 4.6→4.1 in 90 days',
+    meta:'Strength 76 · 5 days ago first detected · negative review velocity' },
+];
+
+/* ================================================================
+   HELPERS
+================================================================ */
+function overallVulnGrade(vg) {
+  if (!vg) return 'C';
+  const m={A:5,B:4,C:3,D:2,F:1}, i={5:'A',4:'B',3:'C',2:'D',1:'F'};
+  const v=Object.values(vg).map(x=>m[x]||3);
+  return i[Math.round(v.reduce((a,b)=>a+b,0)/v.length)]||'C';
+}
+function staffRange(s) {
+  const n=parseInt(s,10);
+  if(!n) return '—';
+  if(n<=10) return '1-10';
+  if(n<=50) return '11-50';
+  if(n<=200) return '51-200';
+  return '200+';
+}
+function findP(id){ return prospects.find(p=>p.id===id); }
+function statusPill(s){ const c=s==='Meeting Booked'?'green':s==='Replied'?'amber':'gray'; return `<span class="pill ${c}">${s}</span>`; }
+
+/* ================================================================
+   FILTERS + FEED RENDER
+================================================================ */
+const FILTERS = [
+  { k:'all',      l:'All' },
+  { k:'replies',  l:'Replies' },
+  { k:'meetings', l:'Meetings' },
+  { k:'signals',  l:'Signals' },
+  { k:'outreach', l:'Outreach' },
+  { k:'voice',    l:'Voice' },
+];
+let activeFilter = 'all';
+let expanded = new Set();
+
+function counts() {
+  const out = {};
+  FILTERS.forEach(f => out[f.k] = f.k==='all' ? events.length : events.filter(e => e.cat===f.k).length);
+  return out;
+}
+
+function renderFilterBar() {
+  const c = counts();
+  document.getElementById('filterBar').innerHTML = FILTERS.map(f =>
+    `<span class="chip ${activeFilter===f.k?'active':''}" onclick="setFilter('${f.k}')">${f.l}<span class="chip-count">${c[f.k]}</span></span>`
+  ).join('');
+}
+function setFilter(k) { activeFilter=k; renderFilterBar(); renderFeed(); }
+
+function renderFeed() {
+  const list = activeFilter==='all' ? events : events.filter(e => e.cat===activeFilter);
+  const html = [];
+  let lastDay = null;
+  list.forEach((e, i) => {
+    if (e.day !== lastDay) {
+      html.push(`<div class="feed-day">${e.day}</div>`);
+      lastDay = e.day;
+    }
+    const p = findP(e.pid);
+    const vr = overallVulnGrade(p.vulnGrades);
+    const cardId = `evt-${i}`;
+    const isOpen = expanded.has(cardId);
+    const expandable = ['reply','meeting','signal'].includes(e.type);
+    html.push(`
+      <div class="event-card ${expandable?'expandable':''} ${isOpen?'expanded':''}" id="${cardId}" ${expandable?`onclick="toggleEvent('${cardId}', event)"`:''}>
+        <div class="event-row">
+          <div class="event-time">${e.t}</div>
+          <div class="event-ico ${e.type}">${e.icon}</div>
+          <div class="event-body">
+            <div class="event-type">${e.label}</div>
+            <div class="event-headline">${e.headline}</div>
+            ${e.quote ? `<div class="event-quote">${e.quote}</div>` : ''}
+            ${e.meta ? `<div class="event-meta">${e.meta}</div>` : ''}
+          </div>
+          <div class="event-side">
+            <div class="vr-grade" data-g="${vr}" title="VR grade ${vr}">${vr}</div>
+            ${expandable ? '<span class="event-chev">›</span>' : ''}
+          </div>
+        </div>
+        ${expandable ? `<div class="event-expand">${expandedHtml(e, p)}</div>` : ''}
+      </div>
+    `);
+  });
+  if (list.length === 0) html.push('<div style="text-align:center;color:var(--ink-3);padding:40px 20px;font-style:italic;">No events match this filter yet.</div>');
+  document.getElementById('feed').innerHTML = html.join('');
+  // wire biz spans
+  document.querySelectorAll('.event-headline .biz').forEach(s => {
+    s.addEventListener('click', ev => { ev.stopPropagation(); openBriefing(s.dataset.pid); });
+  });
+}
+
+function expandedHtml(e, p) {
+  if (e.type === 'reply') {
+    return `
+      <h5>What Maya is doing next</h5>
+      <div>${e.meta}</div>
+      <h5>Briefing snapshot</h5>
+      <div>${p.vulnerability}</div>
+      <div class="actions">
+        <button class="btn btn-amber" onclick="event.stopPropagation();openBriefing('${p.id}')">Open full briefing</button>
+        <button class="btn btn-outline" onclick="event.stopPropagation();alert('Marked: handled')">Mark handled</button>
+      </div>`;
+  }
+  if (e.type === 'meeting') {
+    const m = p.meeting || {};
+    return `
+      <h5>Meeting details</h5>
+      <div><b>${m.date} · ${m.time}</b> · ${m.platform} · ${m.countdown}</div>
+      <h5>Briefing preview</h5>
+      <div class="ai-tag">✨ AI-generated briefing · verify before use</div>
+      <div style="font-style:italic;color:var(--ink-2);margin-bottom:12px;">${p.openingHook}</div>
+      <div style="font-size:12.5px;color:var(--ink-3);">${p.vulnerability}</div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="event.stopPropagation();openBriefing('${p.id}')">Open full briefing</button>
+        <button class="btn btn-outline" onclick="event.stopPropagation();alert('Join meeting via ${m.platform}')">Join meeting</button>
+      </div>`;
+  }
+  if (e.type === 'signal') {
+    return `
+      <h5>What this signal means</h5>
+      <div>${p.vulnerability}</div>
+      <h5>Maya's response</h5>
+      <div>${e.meta}</div>
+      <div class="actions">
+        <button class="btn btn-amber" onclick="event.stopPropagation();openBriefing('${p.id}')">Open prospect detail</button>
+      </div>`;
+  }
+  return '';
+}
+
+function toggleEvent(id, ev) {
+  if (ev && ev.target.closest('.biz')) return;
+  if (ev && ev.target.closest('.btn')) return;
+  if (expanded.has(id)) expanded.delete(id); else expanded.add(id);
+  renderFeed();
+}
+
+/* ================================================================
+   BRIEFING DRAWER
+================================================================ */
+function openBriefing(pid) {
+  const p = findP(pid); if (!p) return;
+  const vr = overallVulnGrade(p.vulnGrades);
+  document.getElementById('bfName').textContent = p.name;
+  document.getElementById('bfSub').textContent = `${p.dm.name} · ${p.dm.title} · ${p.suburb}, ${p.state}`;
+  const grades = ['website','seo','reviews','ads','social','content'];
+  document.getElementById('bfBody').innerHTML = `
+    <div class="bf-section">
+      <h4>Business meta</h4>
+      <div class="bf-meta-grid">
+        <div class="bf-kv"><span class="k">Domain</span><span class="v">${p.domain}</span></div>
+        <div class="bf-kv"><span class="k">GMB category</span><span class="v">${p.gmb_category}</span></div>
+        <div class="bf-kv"><span class="k">Employees</span><span class="v" title="Source: LinkedIn company page">${staffRange(p.staff)} (LinkedIn)</span></div>
+        <div class="bf-kv"><span class="k">Established</span><span class="v" title="Source: ABN registry">ABN registered ${p.est}</span></div>
+        <div class="bf-kv"><span class="k">DFS organic ETV</span><span class="v">$${p.dfs_organic_etv}/mo</span></div>
+        <div class="bf-kv"><span class="k">Domain rank</span><span class="v">${p.domain_rank}/100</span></div>
+        <div class="bf-kv"><span class="k">Backlinks</span><span class="v">${p.backlinks_count}</span></div>
+        <div class="bf-kv"><span class="k">Status</span><span class="v">${p.status}</span></div>
+      </div>
+    </div>
+
+    <div class="bf-section">
+      <h4>Vulnerability — overall grade ${vr}</h4>
+      <div style="font-size:13px;color:var(--ink-2);line-height:1.6;margin-bottom:12px;">${p.vulnerability}</div>
+      <div class="vr-strip">
+        ${grades.map(g => `<div class="vr-cell-w"><div class="vr-letter" data-g="${p.vulnGrades[g]}">${p.vulnGrades[g]}</div><div class="vr-name">${g}</div></div>`).join('')}
+      </div>
+    </div>
+
+    <div class="bf-section">
+      <h4>Recommended angle</h4>
+      <div class="bf-ai">✨ AI-generated briefing · verify before use</div>
+      <div class="bf-hook">${p.openingHook}</div>
+    </div>
+
+    <div class="bf-section">
+      <h4>Discovery questions</h4>
+      <ul class="bf-list">${p.discoveryQuestions.map(q => `<li>${q}</li>`).join('')}</ul>
+    </div>
+
+    <div class="bf-section">
+      <h4>Common objections</h4>
+      ${p.objections.map(o => `<div class="bf-obj"><div class="obj-q">${o.obj}</div><div class="obj-a">${o.response}</div></div>`).join('')}
+    </div>
+
+    <div class="bf-section">
+      <h4>Close options</h4>
+      <ul class="bf-list">${p.closeOptions.map(c => `<li>${c}</li>`).join('')}</ul>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-3);margin-top:10px;letter-spacing:0.1em;text-transform:uppercase;">Your service pricing — from your agency rate card</div>
+      <div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--ink);">${p.pricingRange}</div>
+    </div>
+
+    <div class="bf-section">
+      <h4>Also ranking for your keywords</h4>
+      <ul class="bf-list">${p.competitors.map(c => `<li>${c}</li>`).join('')}</ul>
+    </div>
+  `;
+  document.getElementById('drawerBackdrop').classList.add('on');
+  document.getElementById('briefingDrawer').classList.add('on');
+}
+function closeBriefing() {
+  document.getElementById('drawerBackdrop').classList.remove('on');
+  document.getElementById('briefingDrawer').classList.remove('on');
+}
+
+/* ================================================================
+   VIEWS — Feed / Meetings / Progress
+================================================================ */
+function showView(v) {
+  ['feed','meetings','progress'].forEach(x => {
+    document.getElementById(x+'View').style.display = (x===v)?'block':'none';
+  });
+  document.querySelectorAll('.bn-item').forEach(b => b.classList.toggle('active', b.dataset.v===v));
+  if (v==='meetings') renderMeetingsList();
+  if (v==='progress') renderFunnel();
+  window.scrollTo(0, 0);
+  closeBriefing();
+}
+
+function renderMeetingsList() {
+  const upcoming = prospects.filter(p => p.meeting);
+  document.getElementById('meetList').innerHTML = upcoming.map(p => {
+    const vr = overallVulnGrade(p.vulnGrades);
+    return `<div class="meet-card" onclick="openBriefing('${p.id}')">
+      <div class="vr-grade" data-g="${vr}" style="width:36px;height:36px;border-radius:8px;display:grid;place-items:center;color:#fff;font-family:'Playfair Display',serif;font-weight:700;font-size:16px;${vr==='A'||vr==='B'?'background:var(--green);':vr==='C'?'background:var(--amber);color:var(--on-amber);':vr==='D'?'background:var(--copper);':'background:var(--red);'}">${vr}</div>
+      <div>
+        <div class="meet-name">${p.dm.name}</div>
+        <div class="meet-sub">${p.name} · ${p.suburb}, ${p.state}</div>
+      </div>
+      <div class="meet-when">${p.meeting.date.split(' ').slice(0,3).join(' ')} · ${p.meeting.time}<div class="cd">${p.meeting.countdown}</div></div>
+    </div>`;
+  }).join('');
+}
+
+function renderFunnel() {
+  const funnel = [
+    { l:'Discovered', v:600, max:600 },
+    { l:'Contacted', v:247, max:600 },
+    { l:'Replied', v:31, max:600 },
+    { l:'Meetings', v:8, max:600 },
+    { l:'Won', v:3, max:600 },
+  ];
+  document.getElementById('funnelBlock').innerHTML = funnel.map(f =>
+    `<div class="funnel-row-c">
+      <div class="fl">${f.l}</div>
+      <div class="fb"><div class="fbf" style="width:${Math.max(6, f.v/f.max*100)}%;">${f.v}</div></div>
+      <div class="fp">${(f.v/f.max*100).toFixed(f.v/f.max<0.05?1:0)}%</div>
+    </div>`
+  ).join('');
+}
+
+/* ================================================================
+   THEME + BOOT
+================================================================ */
+document.addEventListener('click', e => {
+  if (e.target.closest('.tb-theme')) {
+    const next = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
+    document.documentElement.classList.toggle('dark', next==='dark');
+    localStorage.setItem('agencyos_theme', next);
+  }
+});
+
+renderFilterBar();
+renderFeed();
+</script>
+</body>
+</html>

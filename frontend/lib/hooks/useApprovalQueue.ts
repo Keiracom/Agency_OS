@@ -84,10 +84,14 @@ async function fetchPending(clientId: string): Promise<PendingTouch[]> {
 export type ApprovalAction = "approve" | "reject" | "defer";
 
 async function postAction(body: { touch_id: string; action: ApprovalAction }) {
+  // Operator identity is established by the session cookie / JWT set at login.
+  // No client-side HMAC — the dashboard is same-origin and the session cookie
+  // is the authoritative gate. Backend enforces RLS + session auth.
   const res = await fetch("/api/v1/outreach/approval", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
+    credentials: "include",
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json().catch(() => ({}));

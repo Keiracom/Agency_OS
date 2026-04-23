@@ -171,9 +171,33 @@ def _rowcount(result: Any) -> int:
     return 0
 
 
+async def _enqueue_cold_prospects_for_nurture(
+    db_conn: Any, cycle: dict, transitions: dict, nurture_enqueue_fn,
+) -> None:
+    """Post-close hook: enqueue cold prospects (outreach_status=complete) into nurture drip.
+    Fetches the prospect_ids just transitioned to 'complete' then calls
+    nurture_enqueue_fn(prospect_id, client_id) for each one."""
+    if nurture_enqueue_fn is None or not transitions.get("complete"):
+        return
+    client_id = str(cycle["client_id"])
+    cycle_id = str(cycle["id"])
+    try:
+        rows = await db_conn.fetch(
+            """
+            SELECT prospect_id FROM cycle_prospects
+            WHERE cycle_id = $1 AND outreach_status = 'complete'
+            """,
+            cycle_id,
+        )
+        for row in rows:
+            nurture_enqueue_fn(str(row["prospect_id"]), client_id)
+    except Exception as exc:
+        logger.warning("nurture enqueue hook failed for cycle=%s: %s", cycle_id, exc)
+
+
 @task(name="close-cycles")
 async def close_cycles_task(
-    db_conn: Any, new_cycle_trigger,
+    db_conn: Any, new_cycle_trigger, nurture_enqueue_fn=None,
 ) -> CycleCloseSummary:
     summary = CycleCloseSummary(cycles_closed=0, transitions={
         "meeting_booked": 0, "replied": 0, "complete": 0,
@@ -186,6 +210,7 @@ async def close_cycles_task(
         await mark_cycle_closed(db_conn, cycle["id"])
         await emit_cycle_close_event(db_conn, cycle, transitions)
         summary.events_emitted += 1
+        await _enqueue_cold_prospects_for_nurture(db_conn, cycle, transitions, nurture_enqueue_fn)
         if await trigger_next_cycle_release(db_conn, cycle["client_id"], new_cycle_trigger):
             summary.next_cycles_released += 1
         summary.cycles_closed += 1
@@ -210,8 +235,10 @@ async def _default_new_cycle_trigger(db_conn: Any, client_id: str) -> None:
 async def monthly_cycle_close_flow(
     db_conn: Any,
     new_cycle_trigger=_default_new_cycle_trigger,
+    nurture_enqueue_fn=None,
 ) -> CycleCloseSummary:
-    summary = await close_cycles_task(db_conn, new_cycle_trigger)
+    summary = await close_cycles_task(db_conn, new_cycle_trigger,
+                                      nurture_enqueue_fn=nurture_enqueue_fn)
     logger.info("monthly_cycle_close_flow complete: %s", summary)
     return summary
 

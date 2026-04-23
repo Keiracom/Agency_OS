@@ -7,14 +7,15 @@ Consumers: frontend, automation triggers
 
 FILE: src/api/routes/approvals.py
 PURPOSE: Approval CRUD + state transition endpoints
-PHASE: orion/phase-2-slice-7
+PHASE: orion/phase-2-slice-8  (ORM refactor — raw SQL replaced by SQLAlchemy model)
 DEPENDENCIES:
   - src/api/dependencies.py
-  - src/integrations/supabase.py
+  - src/models/approval.py
 RULES APPLIED:
   - Rule 11: Session passed as argument
   - Rule 14: Soft delete checks (deleted_at IS NULL)
   - Multi-tenancy via client_id enforcement
+  - 404 on cross-tenant (existence must not leak across tenants)
 """
 
 import logging
@@ -24,10 +25,11 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from pydantic import BaseModel, Field
-from sqlalchemy import text
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies import ClientContext, get_current_client, get_db_session
+from src.models.approval import Approval, ApprovalStatus
 
 logger = logging.getLogger(__name__)
 
@@ -54,51 +56,40 @@ class EditBody(BaseModel):
 
 
 # ============================================
-# Helper
+# Helpers
 # ============================================
-
-TERMINAL_STATUSES = {"approved", "rejected"}
 
 
 async def _load_approval(
     db: AsyncSession,
     approval_id: UUID,
     client_id: UUID,
-) -> dict:
+) -> Approval:
     """
-    Load approval row, enforcing 404 (not found) and 403 (cross-tenant).
+    Load Approval ORM object scoped to client_id.
 
-    Returns row as dict or raises HTTPException.
+    Returns Approval or raises 404 (row missing OR client_id mismatch).
+    Using 404 for cross-tenant rather than 403 to avoid leaking existence
+    of approvals that belong to other tenants.
     """
     result = await db.execute(
-        text(
-            "SELECT id, client_id, status, payload, decided_at, decided_by, reason, created_at, updated_at"
-            " FROM approvals WHERE id = :approval_id"
-        ),
-        {"approval_id": approval_id},
-    )
-    row = result.fetchone()
-
-    if row is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="approval not found")
-
-    row_dict = dict(row._mapping)
-
-    if row_dict["client_id"] != client_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="approval not owned by client",
+        select(Approval).where(
+            Approval.id == approval_id,
+            Approval.client_id == client_id,
         )
+    )
+    approval = result.scalar_one_or_none()
+    if approval is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="approval not found")
+    return approval
 
-    return row_dict
 
-
-def _check_not_terminal(row: dict) -> None:
+def _check_not_terminal(approval: Approval) -> None:
     """Raise 409 if the approval is already in a terminal state."""
-    if row["status"] in TERMINAL_STATUSES:
+    if approval.is_terminal():
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"approval already terminal (status={row['status']})",
+            detail=f"approval already terminal (status={approval.status})",
         )
 
 
@@ -111,7 +102,7 @@ def _approval_response(approval_id: UUID, new_status: str, decided_at: datetime)
 
 
 # ============================================
-# Endpoints — note: client_id in path so get_current_client resolves correctly
+# Endpoints — client_id in path so get_current_client resolves correctly
 # ============================================
 
 
@@ -127,17 +118,13 @@ async def approve_approval(
     x_signature: Annotated[str | None, Header()] = None,  # TODO slice 8: verify HMAC
 ) -> dict:
     """Mark an approval as approved."""
-    row = await _load_approval(db, approval_id, ctx.client_id)
-    _check_not_terminal(row)
+    approval = await _load_approval(db, approval_id, ctx.client_id)
+    _check_not_terminal(approval)
 
     now = datetime.now(UTC)
-    await db.execute(
-        text(
-            "UPDATE approvals SET status='approved', decided_at=:now, decided_by=:user_id,"
-            " updated_at=:now WHERE id=:approval_id"
-        ),
-        {"now": now, "user_id": ctx.user_id, "approval_id": approval_id},
-    )
+    approval.status = ApprovalStatus.APPROVED
+    approval.approved_at = now
+    approval.approved_by = ctx.user_id
     await db.commit()
 
     return _approval_response(approval_id, "approved", now)
@@ -156,17 +143,14 @@ async def reject_approval(
     x_signature: Annotated[str | None, Header()] = None,  # TODO slice 8: verify HMAC
 ) -> dict:
     """Mark an approval as rejected with a reason."""
-    row = await _load_approval(db, approval_id, ctx.client_id)
-    _check_not_terminal(row)
+    approval = await _load_approval(db, approval_id, ctx.client_id)
+    _check_not_terminal(approval)
 
     now = datetime.now(UTC)
-    await db.execute(
-        text(
-            "UPDATE approvals SET status='rejected', reason=:reason, decided_at=:now,"
-            " decided_by=:user_id, updated_at=:now WHERE id=:approval_id"
-        ),
-        {"reason": body.reason, "now": now, "user_id": ctx.user_id, "approval_id": approval_id},
-    )
+    approval.status = ApprovalStatus.REJECTED
+    approval.notes = body.reason
+    approval.approved_at = now
+    approval.approved_by = ctx.user_id
     await db.commit()
 
     return _approval_response(approval_id, "rejected", now)
@@ -185,17 +169,13 @@ async def defer_approval(
     x_signature: Annotated[str | None, Header()] = None,  # TODO slice 8: verify HMAC
 ) -> dict:
     """Defer an approval decision by N hours."""
-    row = await _load_approval(db, approval_id, ctx.client_id)
-    _check_not_terminal(row)
+    approval = await _load_approval(db, approval_id, ctx.client_id)
+    _check_not_terminal(approval)
 
     now = datetime.now(UTC)
-    await db.execute(
-        text(
-            "UPDATE approvals SET status='deferred', decided_at=:now,"
-            " decided_by=:user_id, updated_at=:now WHERE id=:approval_id"
-        ),
-        {"now": now, "user_id": ctx.user_id, "approval_id": approval_id},
-    )
+    approval.status = ApprovalStatus.DEFERRED
+    approval.approved_at = now
+    approval.approved_by = ctx.user_id
     await db.commit()
 
     result = _approval_response(approval_id, "deferred", now)
@@ -216,22 +196,16 @@ async def edit_approval(
     x_signature: Annotated[str | None, Header()] = None,  # TODO slice 8: verify HMAC
 ) -> dict:
     """Apply edits to an approval's payload."""
-    row = await _load_approval(db, approval_id, ctx.client_id)
-    _check_not_terminal(row)
+    approval = await _load_approval(db, approval_id, ctx.client_id)
+    _check_not_terminal(approval)
 
     now = datetime.now(UTC)
-    await db.execute(
-        text(
-            "UPDATE approvals SET status='edit_applied', payload=payload || :edits::jsonb,"
-            " decided_at=:now, decided_by=:user_id, updated_at=:now WHERE id=:approval_id"
-        ),
-        {
-            "edits": str(body.edits).replace("'", '"'),
-            "now": now,
-            "user_id": ctx.user_id,
-            "approval_id": approval_id,
-        },
-    )
+    # Merge edits into existing payload (or initialise)
+    existing = approval.payload or {}
+    approval.payload = {**existing, **body.edits}
+    approval.status = ApprovalStatus.EDITED
+    approval.approved_at = now
+    approval.approved_by = ctx.user_id
     await db.commit()
 
     return _approval_response(approval_id, "edit_applied", now)
@@ -243,14 +217,14 @@ async def edit_approval(
 # [x] Contract comment at top
 # [x] Router with prefix and tags
 # [x] All four action endpoints (approve, reject, defer, edit)
-# [x] Multi-tenancy enforcement (client_id path param + ctx.client_id check)
+# [x] Multi-tenancy enforcement (client_id path param + ctx.client_id in ORM where-clause)
 # [x] Authentication via get_current_client (Depends)
 # [x] 401 on missing auth (FastAPI handles automatically)
-# [x] 403 on cross-tenant (_load_approval checks client_id)
+# [x] 404 on cross-tenant — existence not leaked (ORM filter includes client_id)
 # [x] 404 on not-found (_load_approval raises 404)
 # [x] 409 on terminal re-transition (_check_not_terminal)
 # [x] 422 on pydantic validation errors (FastAPI handles automatically)
-# [x] Raw SQL through AsyncSession (no new ORM model)
+# [x] ORM via Approval model (no raw SQL)
 # [x] X-Signature header accepted, HMAC deferred to slice 8
 # [x] Session passed as argument (Rule 11)
 # [x] All functions have type hints and docstrings

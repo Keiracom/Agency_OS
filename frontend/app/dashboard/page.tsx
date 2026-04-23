@@ -32,7 +32,7 @@ import { mockChannelOrchestration } from "@/data/mock-dashboard";
 import { mockVoiceStats, mockRecentCalls } from "@/data/mock-dashboard";
 // TODO: wire what's-working insights (who-converts + best-channel-mix) when segment analytics API is available
 import { mockInsights } from "@/data/mock-dashboard";
-import { useLiveActivityFeed } from "@/hooks/use-activity-feed";
+import { useLiveActivityFeed } from "@/lib/useLiveActivityFeed";
 import { providerLabel } from "@/lib/provider-labels";
 import { useDashboardV4 } from "@/hooks/use-dashboard-v4";
 import Link from "next/link";
@@ -52,7 +52,7 @@ const ChannelIcon = ({ type }: { type: string }) => {
 export default function DashboardPage() {
   // Fetch real dashboard data (meetings goal, stats, hot prospects, week ahead, warm replies)
   const { data: dashboardData, isLoading: dashboardLoading } = useDashboardV4();
-  const { activities: activityFeed, isLoading: activityLoading } = useLiveActivityFeed(8);
+  const { activities: activityFeed, isLoading: activityLoading } = useLiveActivityFeed({ limit: 8 });
 
   const meetingsBooked = dashboardData?.meetingsGoal.current ?? 0;
   const meetingsTarget = dashboardData?.meetingsGoal.target ?? 10;

@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AgencyOS — Concept E · The Briefing Room</title>
+<script>
+  try { if (localStorage.getItem('agencyos_theme') === 'dark') document.documentElement.classList.add('dark'); } catch (e) {}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+
+/* ========== TOKENS ========== */
+:root {
+  --cream: #F7F3EE;
+  --surface: #EDE8E0;
+  --ink: #0C0A08;
+  --ink-2: #2E2B26;
+  --ink-3: #7A756D;
+  --amber: #D4956A;
+  --amber-soft: rgba(212,149,106,0.14);
+  --amber-glow: rgba(212,149,106,0.08);
+  --copper: #C46A3E;
+  --green: #6B8E5A;
+  --red: #B55A4C;
+  --blue: #4A6FA5;
+  --rule: rgba(12,10,8,0.08);
+  --rule-strong: rgba(12,10,8,0.14);
+  --brand-bar: #0C0A08;
+  --on-amber: #1a1207;
+  --panel-bg: #FFFFFF;
+  --nav-w: 56px;
+  --topbar-h: 50px;
+  --bottomnav-h: 60px;
+  --slot-h: 44px;
+}
+html.dark {
+  --cream: #0C0A08;
+  --surface: #16130F;
+  --ink: #F5F2EC;
+  --ink-2: #C9C3B8;
+  --ink-3: #807A6E;
+  --rule: rgba(255,255,255,0.08);
+  --rule-strong: rgba(255,255,255,0.14);
+  --copper: #E6A87D;
+  --amber-soft: rgba(212,149,106,0.18);
+  --panel-bg: #16130F;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; background: var(--cream); color: var(--ink); overflow-x: hidden; }
+body { font-family: 'DM Sans', system-ui, sans-serif; font-size: 13px; line-height: 1.5; max-width: 100vw; }
+button { cursor: pointer; font: inherit; color: inherit; background: none; border: 0; }
+input, select { font: inherit; color: inherit; }
+ul { list-style: none; padding-left: 18px; }
+.mono { font-family: 'JetBrains Mono', monospace; }
+.eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: var(--rule-strong); border-radius: 3px; }
+
+/* ========== TOPBAR ========== */
+#topbar {
+  position: sticky; top: 0; z-index: 50;
+  height: var(--topbar-h);
+  background: var(--brand-bar);
+  color: #F5F2EC;
+  display: flex; align-items: center;
+  padding: 0 14px;
+  gap: 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.brand { font-family: 'Playfair Display', serif; font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
+.brand em { color: var(--amber); font-style: italic; }
+.brand-tag { font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.14em; color: rgba(255,255,255,0.42); padding: 2px 7px; border: 1px solid rgba(255,255,255,0.14); border-radius: 3px; }
+.tb-spacer { flex: 1; }
+.tb-cycle { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: rgba(255,255,255,0.62); display: flex; align-items: center; gap: 6px; }
+.tb-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+.tb-theme { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; color: rgba(255,255,255,0.7); border: 1px solid rgba(255,255,255,0.14); }
+.tb-theme:hover { color: var(--amber); border-color: var(--amber); }
+.tb-theme .t-sun { display: inline; } .tb-theme .t-moon { display: none; }
+html.dark .tb-theme .t-sun { display: none; } html.dark .tb-theme .t-moon { display: inline; }
+.kill-btn { background: transparent; color: rgba(255,255,255,0.85); border: 1px solid rgba(255,255,255,0.2); font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.08em; padding: 5px 12px; border-radius: 4px; text-transform: uppercase; }
+.kill-btn:hover { background: var(--red); color: #fff; border-color: var(--red); }
+
+/* ========== LAYOUT ========== */
+#shell { display: grid; grid-template-columns: var(--nav-w) 1fr; min-height: calc(100vh - var(--topbar-h)); }
+
+#navrail {
+  background: var(--brand-bar);
+  display: flex; flex-direction: column;
+  align-items: center;
+  padding: 8px 0;
+  gap: 4px;
+  border-right: 1px solid rgba(255,255,255,0.06);
+  min-height: calc(100vh - var(--topbar-h));
+}
+.nav-ico {
+  width: 40px; height: 40px; border-radius: 6px;
+  display: grid; place-items: center;
+  color: rgba(255,255,255,0.5);
+  position: relative;
+  cursor: pointer;
+  transition: color .12s, background .12s;
+}
+.nav-ico:hover { color: var(--amber); background: rgba(255,255,255,0.04); }
+.nav-ico.active { color: var(--amber); background: rgba(212,149,106,0.1); }
+.nav-ico.active::before { content: ''; position: absolute; left: -2px; top: 6px; bottom: 6px; width: 2px; background: var(--amber); border-radius: 2px; }
+.nav-ico svg { width: 18px; height: 18px; }
+.nav-tip {
+  position: absolute; left: 48px; top: 50%;
+  transform: translateY(-50%);
+  background: var(--ink); color: #F5F2EC;
+  padding: 5px 10px; border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+  white-space: nowrap;
+  opacity: 0; pointer-events: none;
+  transition: opacity .12s;
+  z-index: 200;
+}
+.nav-ico:hover .nav-tip { opacity: 1; }
+
+#main { padding: 22px 28px 80px; min-width: 0; }
+.page-h { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 30px; color: var(--ink); letter-spacing: -0.02em; line-height: 1.2; margin-bottom: 6px; }
+.page-h em { color: var(--amber); font-style: italic; }
+.page-sub { font-size: 13px; color: var(--ink-3); margin-bottom: 22px; max-width: 720px; }
+
+/* ========== CALENDAR HOME ========== */
+.cal-controls { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; }
+.cal-week { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--ink-2); letter-spacing: 0.06em; }
+.cal-week b { color: var(--ink); }
+.cal-nav { display: flex; gap: 6px; }
+.cal-nav button { background: var(--panel-bg); border: 1px solid var(--rule); padding: 6px 12px; border-radius: 6px; font-size: 12px; color: var(--ink-2); }
+.cal-nav button:hover { border-color: var(--amber); color: var(--copper); }
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: 56px repeat(5, 1fr);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--panel-bg);
+  margin-bottom: 28px;
+}
+.cal-corner { background: var(--surface); border-bottom: 1px solid var(--rule); }
+html.dark .cal-corner { background: rgba(255,255,255,0.02); }
+.cal-day-head {
+  background: var(--surface);
+  border-bottom: 1px solid var(--rule);
+  border-left: 1px solid var(--rule);
+  padding: 10px 12px;
+  text-align: center;
+  font-family: 'JetBrains Mono', monospace;
+}
+html.dark .cal-day-head { background: rgba(255,255,255,0.02); }
+.cal-day-head .ddow { font-size: 10px; letter-spacing: 0.16em; color: var(--ink-3); text-transform: uppercase; }
+.cal-day-head .dnum { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 700; color: var(--ink); margin-top: 2px; }
+.cal-day-head .dmtg { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-3); margin-top: 4px; letter-spacing: 0.06em; }
+.cal-day-head.today { background: var(--amber-soft); border-bottom: 2px solid var(--amber); position: relative; }
+.cal-day-head.today .ddow { color: var(--copper); font-weight: 700; }
+.cal-day-head.today .dmtg { color: var(--copper); font-weight: 600; }
+.cal-day-head.today::after { content: 'TODAY'; position: absolute; top: 4px; right: 6px; font-family: 'JetBrains Mono', monospace; font-size: 8px; letter-spacing: 0.16em; color: var(--copper); font-weight: 700; }
+
+.cal-time-cell {
+  border-bottom: 1px solid var(--rule);
+  padding: 4px 8px 0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9.5px;
+  color: var(--ink-3);
+  text-align: right;
+  letter-spacing: 0.05em;
+  height: var(--slot-h);
+}
+.cal-slot {
+  border-bottom: 1px solid var(--rule);
+  border-left: 1px solid var(--rule);
+  height: var(--slot-h);
+  position: relative;
+  padding: 2px 4px;
+}
+.cal-slot.today-col { background: rgba(212,149,106,0.04); }
+
+.cal-event {
+  position: absolute;
+  left: 4px; right: 4px;
+  background: var(--amber-soft);
+  border: 1px solid var(--amber);
+  border-left: 3px solid var(--amber);
+  border-radius: 5px;
+  padding: 5px 8px 6px;
+  cursor: pointer;
+  z-index: 2;
+  transition: box-shadow .12s, transform .08s;
+  overflow: hidden;
+}
+.cal-event:hover { box-shadow: 0 2px 10px rgba(212,149,106,0.25); transform: translateY(-1px); }
+.cal-event.green { background: rgba(107,142,90,0.14); border-color: var(--green); border-left-color: var(--green); }
+.cal-event.copper { background: rgba(196,106,62,0.12); border-color: var(--copper); border-left-color: var(--copper); }
+.cal-event-time { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; color: var(--copper); letter-spacing: 0.06em; font-weight: 600; line-height: 1.1; }
+.cal-event.green .cal-event-time { color: var(--green); }
+.cal-event-name { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 12px; color: var(--ink); margin-top: 1px; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cal-event-dm { font-size: 11px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.3; margin-top: 1px; }
+.cal-event-vr { position: absolute; top: 4px; right: 4px; width: 18px; height: 18px; border-radius: 4px; display: grid; place-items: center; color: #fff; font-family: 'Playfair Display', serif; font-weight: 700; font-size: 11px; }
+.cal-event-vr[data-g="A"], .cal-event-vr[data-g="B"] { background: var(--green); }
+.cal-event-vr[data-g="C"] { background: var(--amber); color: var(--on-amber); }
+.cal-event-vr[data-g="D"] { background: var(--copper); }
+.cal-event-vr[data-g="F"] { background: var(--red); }
+
+/* ========== TODAY HERO STRIP (above calendar) ========== */
+.today-hero {
+  background: var(--ink); color: #fff;
+  border-radius: 12px;
+  padding: 22px 26px;
+  margin-bottom: 22px;
+  display: grid; grid-template-columns: 1fr auto; gap: 20px; align-items: center;
+}
+.today-hero .h-eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(255,255,255,0.45); margin-bottom: 6px; }
+.today-hero .h-line { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 22px; line-height: 1.3; letter-spacing: -0.01em; }
+.today-hero .h-line em { color: var(--amber); font-style: italic; }
+.today-hero .h-meta { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: rgba(255,255,255,0.55); margin-top: 6px; letter-spacing: 0.04em; }
+.today-hero .h-cta { display: flex; gap: 8px; flex-shrink: 0; flex-wrap: wrap; }
+.today-hero .h-btn { background: var(--amber); color: var(--on-amber); padding: 9px 18px; border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 700; }
+.today-hero .h-btn:hover { filter: brightness(1.08); }
+.today-hero .h-btn-ghost { background: transparent; color: rgba(255,255,255,0.85); border: 1px solid rgba(255,255,255,0.2); }
+.today-hero .h-btn-ghost:hover { color: var(--amber); border-color: var(--amber); background: rgba(212,149,106,0.1); }
+
+/* ========== WEEK SUMMARY LIST (below calendar) ========== */
+.week-summary { background: var(--panel-bg); border: 1px solid var(--rule); border-radius: 10px; padding: 18px 20px; margin-bottom: 22px; }
+.section-title { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 12px; font-weight: 600; }
+.week-row { display: grid; grid-template-columns: 30px 100px 1fr auto auto; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--rule); align-items: center; cursor: pointer; transition: background .1s; }
+.week-row:last-child { border-bottom: 0; }
+.week-row:hover { background: var(--amber-glow); }
+.wr-grade { width: 30px; height: 30px; border-radius: 6px; display: grid; place-items: center; color: #fff; font-family: 'Playfair Display', serif; font-weight: 700; font-size: 14px; }
+.wr-grade[data-g="A"], .wr-grade[data-g="B"] { background: var(--green); }
+.wr-grade[data-g="C"] { background: var(--amber); color: var(--on-amber); }
+.wr-grade[data-g="D"] { background: var(--copper); }
+.wr-grade[data-g="F"] { background: var(--red); }
+.wr-when { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-2); }
+.wr-name { font-family: 'Playfair Display', serif; font-size: 14px; font-weight: 700; color: var(--ink); line-height: 1.3; }
+.wr-dm { font-size: 11.5px; color: var(--ink-3); margin-top: 1px; }
+.wr-cd { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--copper); }
+.wr-cta { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--copper); padding: 6px 10px; border: 1px solid var(--rule); border-radius: 4px; }
+
+/* ========== EMPTY-DAY CTA ========== */
+.empty-day-cta {
+  background: var(--surface);
+  border: 1px dashed var(--rule);
+  border-radius: 10px;
+  padding: 16px 20px;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+html.dark .empty-day-cta { background: rgba(255,255,255,0.03); }
+.empty-day-cta .e-text { font-size: 13px; color: var(--ink-2); }
+.empty-day-cta .e-text b { color: var(--ink); font-weight: 600; }
+.empty-day-cta .e-link { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--copper); text-decoration: none; padding: 7px 14px; border: 1px solid var(--copper); border-radius: 6px; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; }
+.empty-day-cta .e-link:hover { background: var(--amber-soft); }
+
+/* ========== BRIEFING PAGE ========== */
+.briefing-page { max-width: 880px; margin: 0 auto; }
+.bp-back { display: inline-flex; align-items: center; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-3); padding: 6px 10px; border-radius: 4px; margin-bottom: 14px; cursor: pointer; }
+.bp-back:hover { color: var(--copper); background: var(--amber-glow); }
+
+.bp-header {
+  background: var(--ink); color: #fff;
+  border-radius: 12px;
+  padding: 24px 28px;
+  margin-bottom: 18px;
+  position: sticky; top: var(--topbar-h); z-index: 30;
+  display: flex; align-items: center; gap: 22px; flex-wrap: wrap;
+}
+.bp-header .bp-eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.14em; color: rgba(255,255,255,0.45); text-transform: uppercase; }
+.bp-header .bp-when { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 22px; margin-top: 4px; line-height: 1.2; }
+.bp-header .bp-cd { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--amber); margin-top: 4px; letter-spacing: 0.06em; }
+.bp-header .bp-spacer { flex: 1; }
+.bp-header .bp-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.bp-actions .btn { padding: 9px 16px; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.08em; border-radius: 6px; font-weight: 700; text-transform: uppercase; }
+.bp-actions .btn-amber { background: var(--amber); color: var(--on-amber); }
+.bp-actions .btn-ghost { background: rgba(255,255,255,0.1); color: #fff; }
+.bp-actions .btn-ghost:hover { background: rgba(255,255,255,0.2); }
+.bp-pdf-btn .lbl-pdf { display: none; }
+@media (max-width: 600px) {
+  .bp-pdf-btn .lbl-print { display: none; }
+  .bp-pdf-btn .lbl-pdf { display: inline; }
+}
+
+.pma-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+.pma-btn { padding: 10px 16px; border-radius: 6px; font-size: 12.5px; font-weight: 600; color: #fff; font-family: 'JetBrains Mono', monospace; letter-spacing: 0.06em; text-transform: uppercase; }
+.pma-won { background: var(--green); }
+.pma-follow { background: var(--amber); color: var(--on-amber); }
+.pma-noshow { background: var(--red); }
+.pma-resched { background: transparent; color: var(--ink-2); border: 1px solid var(--rule); }
+
+.bp-section { background: var(--panel-bg); border: 1px solid var(--rule); border-radius: 10px; padding: 20px 22px; margin-bottom: 14px; max-width: 100%; min-width: 0; overflow-x: auto; }
+.bp-section h4 { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--rule); font-weight: 600; }
+.bp-ai { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--copper); letter-spacing: 0.12em; text-transform: uppercase; margin: -6px 0 12px; }
+.bp-meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px; background: var(--surface); border-radius: 8px; }
+html.dark .bp-meta-grid { background: rgba(255,255,255,0.04); }
+.bp-kv { display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px; }
+.bp-kv .k { color: var(--ink-3); }
+.bp-kv .v { color: var(--ink); font-weight: 500; font-family: 'JetBrains Mono', monospace; }
+.bp-hook { font-family: 'Playfair Display', serif; font-style: italic; font-size: 15px; color: var(--ink-2); line-height: 1.7; padding: 14px 16px; background: var(--surface); border-left: 3px solid var(--amber); border-radius: 0 6px 6px 0; }
+html.dark .bp-hook { background: rgba(255,255,255,0.04); }
+.bp-list li { margin-bottom: 8px; font-size: 13px; color: var(--ink-2); line-height: 1.55; }
+.bp-obj { padding: 12px 14px; background: var(--surface); border-radius: 8px; margin-bottom: 10px; }
+html.dark .bp-obj { background: rgba(255,255,255,0.04); }
+.bp-obj .obj-q { font-size: 13px; font-weight: 600; color: var(--ink); margin-bottom: 6px; }
+.bp-obj .obj-a { font-size: 12.5px; color: var(--ink-2); line-height: 1.55; }
+.vr-strip { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+.vr-cell-w { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.vr-strip .vr-letter { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 5px; color: #fff; font-family: 'Playfair Display', serif; font-weight: 700; font-size: 13px; }
+.vr-strip .vr-letter[data-g="A"], .vr-strip .vr-letter[data-g="B"] { background: var(--green); }
+.vr-strip .vr-letter[data-g="C"] { background: var(--amber); color: var(--on-amber); }
+.vr-strip .vr-letter[data-g="D"] { background: var(--copper); }
+.vr-strip .vr-letter[data-g="F"] { background: var(--red); }
+.vr-strip .vr-name { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--ink-3); margin-top: 2px; letter-spacing: 0.04em; text-transform: uppercase; text-align: center; }
+
+/* ========== PIPELINE LIST ========== */
+.p-row { display: grid; grid-template-columns: 36px 1fr auto auto; gap: 14px; align-items: center; padding: 12px 16px; background: var(--panel-bg); border: 1px solid var(--rule); border-radius: 8px; margin-bottom: 8px; cursor: pointer; transition: border-color .12s; }
+.p-row:hover { border-color: var(--amber); }
+.p-vr { width: 36px; height: 36px; border-radius: 8px; display: grid; place-items: center; color: #fff; font-family: 'Playfair Display', serif; font-weight: 700; font-size: 16px; }
+.p-vr[data-g="A"], .p-vr[data-g="B"] { background: var(--green); }
+.p-vr[data-g="C"] { background: var(--amber); color: var(--on-amber); }
+.p-vr[data-g="D"] { background: var(--copper); }
+.p-vr[data-g="F"] { background: var(--red); }
+.p-name { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 14.5px; color: var(--ink); }
+.p-sub { font-size: 11.5px; color: var(--ink-3); font-family: 'JetBrains Mono', monospace; margin-top: 2px; }
+.p-status { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; padding: 3px 8px; border-radius: 10px; }
+.p-status.green { background: rgba(107,142,90,0.15); color: var(--green); }
+.p-status.amber { background: var(--amber-soft); color: var(--copper); }
+.p-status.gray { background: rgba(12,10,8,0.06); color: var(--ink-3); }
+html.dark .p-status.gray { background: rgba(255,255,255,0.06); }
+.p-score { font-family: 'JetBrains Mono', monospace; font-size: 16px; font-weight: 600; color: var(--copper); text-align: center; }
+.p-score small { font-size: 9px; color: var(--ink-3); display: block; letter-spacing: 0.1em; }
+
+.p-frame {
+  background: var(--surface);
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin-bottom: 18px;
+  font-size: 13px;
+  color: var(--ink-2);
+  line-height: 1.55;
+  border-left: 3px solid var(--amber);
+}
+html.dark .p-frame { background: rgba(255,255,255,0.03); }
+.p-frame b { color: var(--ink); }
+
+/* ========== OUTCOMES ========== */
+.outcome-row { display: grid; grid-template-columns: 36px 1fr auto auto; gap: 14px; align-items: center; padding: 12px 16px; background: var(--panel-bg); border: 1px solid var(--rule); border-radius: 8px; margin-bottom: 8px; }
+.outcome-row .out-tag { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; padding: 3px 9px; border-radius: 10px; font-weight: 600; }
+.outcome-row .out-tag.won { background: rgba(107,142,90,0.16); color: var(--green); }
+.outcome-row .out-tag.followup { background: var(--amber-soft); color: var(--copper); }
+.outcome-row .out-tag.noshow { background: rgba(181,90,76,0.14); color: var(--red); }
+.outcome-row .out-amount { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--ink-2); font-weight: 500; }
+
+.kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 22px; }
+.kpi-cell { background: var(--panel-bg); border: 1px solid var(--rule); border-radius: 10px; padding: 14px 16px; }
+.kpi-val { font-family: 'Playfair Display', serif; font-size: 26px; font-weight: 700; color: var(--ink); line-height: 1; }
+.kpi-val small { font-size: 14px; color: var(--ink-3); }
+.kpi-l { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.12em; color: var(--ink-3); text-transform: uppercase; margin-top: 6px; }
+.kpi-note { font-size: 10.5px; color: var(--ink-3); margin-top: 4px; font-family: 'JetBrains Mono', monospace; font-style: italic; }
+
+.funnel-row-o { display: flex; align-items: center; gap: 12px; padding: 6px 0; font-size: 13px; }
+.funnel-row-o .fl { width: 110px; color: var(--ink-2); font-family: 'JetBrains Mono', monospace; font-size: 11px; flex-shrink: 0; }
+.funnel-row-o .fb { flex: 1; height: 22px; background: rgba(12,10,8,0.04); border-radius: 4px; overflow: hidden; }
+html.dark .funnel-row-o .fb { background: rgba(255,255,255,0.04); }
+.funnel-row-o .fbf { height: 100%; background: linear-gradient(90deg, var(--amber), #a87044); display: flex; align-items: center; padding: 0 10px; color: var(--on-amber); font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 11px; }
+.funnel-row-o .fp { min-width: 50px; text-align: right; color: var(--copper); font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; }
+
+/* ========== BOTTOM NAV (mobile) ========== */
+#bottomnav { display: none; position: fixed; bottom: 0; left: 0; right: 0; height: var(--bottomnav-h); background: var(--brand-bar); border-top: 1px solid rgba(255,255,255,0.06); z-index: 100; }
+.bn-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: rgba(255,255,255,0.55); font-size: 10.5px; font-family: 'JetBrains Mono', monospace; letter-spacing: 0.06em; cursor: pointer; }
+.bn-item .bn-ico { font-size: 17px; }
+.bn-item.active { color: var(--amber); }
+
+/* ========== MOBILE ========== */
+@media (max-width: 900px) {
+  .kpi-row { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 700px) {
+  #shell { grid-template-columns: 1fr; }
+  #navrail { display: none; }
+  #bottomnav { display: flex; }
+  body { padding-bottom: var(--bottomnav-h); }
+  #main { padding: 18px 14px 24px; }
+  .page-h { font-size: 24px; }
+  .today-hero { grid-template-columns: 1fr; padding: 18px 18px; }
+  .today-hero .h-line { font-size: 18px; }
+  .today-hero .h-cta { width: 100%; }
+  .today-hero .h-btn { flex: 1; text-align: center; }
+
+  /* Calendar collapses to day-view (today) */
+  .cal-grid { display: none; }
+  .day-view { display: block; }
+  .week-row { grid-template-columns: 30px 1fr auto; }
+  .week-row .wr-when { grid-column: 2; font-size: 10.5px; }
+  .week-row .wr-cd { display: none; }
+  .week-row .wr-cta { display: none; }
+  .bp-header { padding: 18px 20px; gap: 14px; position: static; }
+  .bp-header .bp-when { font-size: 18px; }
+  .bp-section { padding: 16px 18px; }
+  .bp-meta-grid { grid-template-columns: 1fr; }
+  .outcome-row { grid-template-columns: 32px 1fr auto; padding: 10px 14px; }
+  .outcome-row .out-amount { display: none; }
+  .empty-day-cta { padding: 14px 16px; }
+}
+
+.day-view { display: none; }
+.day-view-card { background: var(--panel-bg); border: 1px solid var(--rule); border-radius: 10px; margin-bottom: 22px; }
+.day-view-head { padding: 14px 16px; border-bottom: 1px solid var(--rule); background: var(--amber-soft); border-radius: 10px 10px 0 0; }
+.day-view-head .dvh-day { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.16em; color: var(--copper); text-transform: uppercase; font-weight: 700; }
+.day-view-head .dvh-date { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 22px; color: var(--ink); margin-top: 2px; }
+.day-view-head .dvh-meta { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--ink-3); margin-top: 4px; }
+.day-view-body { padding: 12px 14px; }
+.day-meet-card { padding: 12px 14px; border: 1px solid var(--rule); border-left: 3px solid var(--amber); border-radius: 6px; margin-bottom: 8px; cursor: pointer; }
+.day-meet-card:hover { border-color: var(--amber); box-shadow: 0 1px 8px rgba(212,149,106,0.08); }
+.day-meet-card .dmc-time { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--copper); font-weight: 600; }
+.day-meet-card .dmc-name { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 14px; color: var(--ink); margin-top: 2px; }
+.day-meet-card .dmc-dm { font-size: 12px; color: var(--ink-2); margin-top: 1px; }
+
+.day-nav-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; gap: 10px; }
+.day-nav-row button { font-family: 'JetBrains Mono', monospace; font-size: 11px; padding: 6px 12px; border-radius: 4px; border: 1px solid var(--rule); color: var(--ink-2); }
+</style>
+</head>
+<body>
+
+<header id="topbar">
+  <span class="brand">Agency<em>OS</em></span>
+  <span class="brand-tag">CONCEPT E · BRIEFING ROOM</span>
+  <span class="tb-spacer"></span>
+  <span class="tb-cycle"><span class="tb-dot"></span>DAY 14/30</span>
+  <button class="tb-theme" aria-label="Toggle theme"><span class="t-sun">☀</span><span class="t-moon">🌙</span></button>
+  <button class="kill-btn" onclick="alert('Pause all outreach — confirm?')">⏸ PAUSE</button>
+</header>
+
+<div id="shell">
+  <nav id="navrail">
+    <div class="nav-ico active" data-v="calendar" onclick="showView('calendar')">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="3" width="12" height="11" rx="1.5"/><line x1="2" y1="6" x2="14" y2="6"/><line x1="5" y1="1.5" x2="5" y2="4" stroke-linecap="round"/><line x1="11" y1="1.5" x2="11" y2="4" stroke-linecap="round"/></svg>
+      <span class="nav-tip">Calendar</span>
+    </div>
+    <div class="nav-ico" data-v="pipeline" onclick="showView('pipeline')">
+      <svg viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="2" width="14" height="2"/><rect x="1" y="7" width="14" height="2"/><rect x="1" y="12" width="14" height="2"/></svg>
+      <span class="nav-tip">Pipeline</span>
+    </div>
+    <div class="nav-ico" data-v="outcomes" onclick="showView('outcomes')">
+      <svg viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="10" width="3" height="5" rx="1"/><rect x="6" y="6" width="3" height="9" rx="1"/><rect x="11" y="3" width="3" height="12" rx="1"/></svg>
+      <span class="nav-tip">Outcomes</span>
+    </div>
+    <div style="flex:1;"></div>
+    <div class="nav-ico" onclick="alert('Settings — calendar feed config, briefing prefs')">
+      <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 5a3 3 0 100 6 3 3 0 000-6zm6.5 2l-1.2-.4a5 5 0 00-.3-.7l.6-1.1-1.4-1.4-1.1.6a5 5 0 00-.7-.3L10 2.5H6l-.4 1.2a5 5 0 00-.7.3l-1.1-.6L2.4 4.8l.6 1.1a5 5 0 00-.3.7L1.5 7v2l1.2.4c.1.2.2.5.3.7l-.6 1.1 1.4 1.4 1.1-.6c.2.1.5.2.7.3L6 13.5h4l.4-1.2c.2-.1.5-.2.7-.3l1.1.6 1.4-1.4-.6-1.1c.1-.2.2-.5.3-.7l1.2-.4V7z"/></svg>
+      <span class="nav-tip">Settings</span>
+    </div>
+  </nav>
+
+  <main id="main"></main>
+</div>
+
+<nav id="bottomnav">
+  <div class="bn-item active" data-v="calendar" onclick="showView('calendar')"><div class="bn-ico">◫</div><span>Calendar</span></div>
+  <div class="bn-item" data-v="pipeline" onclick="showView('pipeline')"><div class="bn-ico">≡</div><span>Pipeline</span></div>
+  <div class="bn-item" data-v="outcomes" onclick="showView('outcomes')"><div class="bn-ico">▌</div><span>Outcomes</span></div>
+</nav>
+
+<script>
+/* ================================================================
+   PROSPECTS — honest-data shape (no revenue, no dm.style,
+   no dm.linkedinActivity)
+================================================================ */
+const prospects = [
+  {
+    id:'p1', name:'Momentum Constructions', suburb:'Brunswick', state:'VIC',
+    industry:'Construction', score:91, staff:'28', est:'2008',
+    domain:'momentumconstructions.com.au', gmb_category:'General contractor',
+    abn_status:'active', abn_age_years:18,
+    dfs_organic_etv:180, dfs_organic_keywords:42, backlinks_count:67, domain_rank:28,
+    dm:{ name:'James Whitford', title:'Founder & MD', tenure:'16 years' },
+    vulnerability:'Google Ads running but website converts poorly. GMB rating dropped 4.6→4.1 in 90 days. Competitor bidding on brand terms.',
+    vulnGrades:{ website:'F', seo:'D', reviews:'D', ads:'C', social:'B', content:'F' },
+    status:'Meeting Booked',
+    /* Today (Wed Apr 23) — 4:00pm */
+    meeting:{ day:'Wed', date:'Wed 23 Apr', time:'4:00pm', startHour:16, durationHrs:1, countdown:'In 6 hours', platform:'Zoom', isToday:true },
+    openingHook:'"James, your competitor is bidding on the exact phrase people search when looking for Momentum Constructions. I can show you in 2 minutes."',
+    discoveryQuestions:['What does a qualified lead look like for you?','How are you tracking ROI on your Google Ads spend?','What happened with the GMB reviews — did you notice the drop?'],
+    objections:[{obj:'"We already have someone handling this."',response:'Let me show you what they\'re missing on the technical side.'}],
+    closeOptions:['90-day pilot at $2,800/month','Full retainer at $4,200/month'],
+    pricingRange:'$2,800–$4,200/month AUD',
+    competitors:['Brunswick Build Co','North Melbourne Construct','Carlton Trades'],
+  },
+  {
+    id:'p2', name:'Harbour Physiotherapy', suburb:'Manly', state:'NSW',
+    industry:'Health', score:88, staff:'11', est:'2015',
+    domain:'harbourphysio.com.au', gmb_category:'Physiotherapist',
+    abn_status:'active', abn_age_years:11,
+    dfs_organic_etv:210, dfs_organic_keywords:58, backlinks_count:41, domain_rank:22,
+    dm:{ name:'Sarah Kemp', title:'Clinical Director & Owner', tenure:'9 years' },
+    vulnerability:'Paused Google Ads after 6 months. Competitor 200m away launched aggressively. Defensive opportunity.',
+    vulnGrades:{ website:'C', seo:'D', reviews:'B', ads:'F', social:'D', content:'D' },
+    status:'Meeting Booked',
+    /* Today (Wed Apr 23) — 2:00pm */
+    meeting:{ day:'Wed', date:'Wed 23 Apr', time:'2:00pm', startHour:14, durationHrs:1, countdown:'In 4 hours', platform:'Zoom', isToday:true },
+    openingHook:'"Sarah, the new practice on Sydney Road is now outranking Harbour Physio for 14 of your top search terms."',
+    discoveryQuestions:['Why did you pause Google Ads — was it the cost or the results?','Have you seen patient numbers affected by the new competitor?','What does your current patient acquisition look like — mostly referrals?'],
+    objections:[{obj:'"We can\'t afford it right now."',response:'Every month you don\'t act is another month the competitor gains ground.'}],
+    closeOptions:['Local defence at $1,800/month','Full digital at $2,800/month'],
+    pricingRange:'$1,800–$2,800/month AUD',
+    competitors:['Sydney Road Physio','Manly Allied Health','Northern Beaches Sports Med'],
+  },
+  {
+    id:'p3', name:'Cascade Dental Group', suburb:'Paddington', state:'NSW',
+    industry:'Dental', score:74, staff:'14', est:'2012',
+    domain:'cascadedental.com.au', gmb_category:'Dental clinic',
+    abn_status:'active', abn_age_years:14,
+    dfs_organic_etv:340, dfs_organic_keywords:89, backlinks_count:73, domain_rank:31,
+    dm:{ name:'Dr Priya Narayan', title:'Principal Dentist & Owner', tenure:'12 years' },
+    vulnerability:'Hired marketing coordinator and redesigned website. New site has thin content; GMB strategy is basic.',
+    vulnGrades:{ website:'C', seo:'C', reviews:'A', ads:'D', social:'C', content:'D' },
+    status:'Meeting Booked',
+    /* Today (Wed Apr 23) — 10:00am */
+    meeting:{ day:'Wed', date:'Wed 23 Apr', time:'10:00am', startHour:10, durationHrs:1, countdown:'In 30 minutes', platform:'Zoom', isToday:true },
+    openingHook:'"Priya, your new website looks great — but a technical SEO issue means Google can\'t index 60% of your treatment pages."',
+    discoveryQuestions:['What role do you see the new coordinator playing vs an agency?','What\'s the most important service you want more patients for?','Are you tracking where your current new patients come from?'],
+    objections:[{obj:'"We have someone in-house now."',response:'We work alongside in-house teams. Technical and strategic layer.'}],
+    closeOptions:['Strategy layer at $2,200/month','Full-service at $3,400/month'],
+    pricingRange:'$2,200–$3,400/month AUD',
+    competitors:['Paddington Smiles','Oxford St Dental','Bondi Junction Orthodontics'],
+  },
+  {
+    id:'p4', name:'Coastal Veterinary', suburb:'Byron Bay', state:'NSW',
+    industry:'Veterinary', score:76, staff:'16', est:'2010',
+    domain:'coastalvet.com.au', gmb_category:'Veterinarian',
+    abn_status:'active', abn_age_years:9,
+    dfs_organic_etv:155, dfs_organic_keywords:46, backlinks_count:38, domain_rank:19,
+    dm:{ name:'Dr Rebecca Ashford', title:'Practice Owner', tenure:'14 years' },
+    vulnerability:'Investing in marketing but spreading thin — Facebook ads, blog, community sponsorship without cohesive strategy.',
+    vulnGrades:{ website:'B', seo:'D', reviews:'A', ads:'C', social:'B', content:'D' },
+    status:'Meeting Booked',
+    /* Mon Apr 21 — 9:30am (already past — kept for week visibility) */
+    meeting:{ day:'Mon', date:'Mon 21 Apr', time:'9:30am', startHour:9, durationHrs:1, countdown:'2 days ago — completed', platform:'Zoom', isToday:false, isPast:true },
+    openingHook:'"Rebecca, you\'ve done the hard part — community trust and good reviews. Just need to come up first when someone searches for a vet at 11pm in Byron."',
+    discoveryQuestions:['How are new clients finding you at the moment?','Is the Facebook spend producing bookings?','Is the blog something you want to grow?'],
+    objections:[{obj:'"Can you send pricing first?"',response:'I can send a range — the right package depends on your goals.'}],
+    closeOptions:['Local presence at $1,600/month','Full digital at $2,400/month'],
+    pricingRange:'$1,600–$2,400/month AUD',
+    competitors:['Byron Vet Centre','Bangalow Veterinary'],
+  },
+  {
+    id:'p5', name:'Southbank Legal Advisory', suburb:'Southbank', state:'VIC',
+    industry:'Legal', score:71, staff:'18', est:'2014',
+    domain:'southbanklegal.com.au', gmb_category:'Law firm',
+    abn_status:'active', abn_age_years:13,
+    dfs_organic_etv:420, dfs_organic_keywords:112, backlinks_count:94, domain_rank:34,
+    dm:{ name:'Andrew Volkov', title:'Managing Partner', tenure:'10 years' },
+    vulnerability:'Investing in content and ads but execution unfocused — thought leadership lacks SEO, ad spend increasing without conversion tracking.',
+    vulnGrades:{ website:'C', seo:'D', reviews:'B', ads:'C', social:'C', content:'C' },
+    status:'Replied', meeting:null,
+    openingHook:'"Andrew, you\'ve published 4 articles this month — not one is ranking on page 1 for any commercial legal term."',
+    discoveryQuestions:['What\'s the primary driver for adding family law?','Who\'s writing the articles — internal or external?','Do you have visibility into what\'s driving your ad clicks?'],
+    objections:[{obj:'"We manage this internally."',response:'The gap is technical SEO — not effort, configuration.'}],
+    closeOptions:['SEO-first at $2,400/month','Full digital at $3,800/month'],
+    pricingRange:'$2,400–$3,800/month AUD',
+    competitors:['Holding Redlich','Macpherson Kelley','Lander & Rogers'],
+  },
+  {
+    id:'p6', name:'Riverside Accounting', suburb:'North Sydney', state:'NSW',
+    industry:'Accounting', score:52, staff:'9', est:'2018',
+    domain:'riversideaccounting.com.au', gmb_category:'Accountant',
+    abn_status:'active', abn_age_years:21,
+    dfs_organic_etv:280, dfs_organic_keywords:67, backlinks_count:52, domain_rank:26,
+    dm:{ name:'Michael Chen', title:'Managing Partner', tenure:'6 years' },
+    vulnerability:'Just starting digital presence — LinkedIn page with no content, incomplete GMB.',
+    vulnGrades:{ website:'D', seo:'F', reviews:'C', ads:'F', social:'F', content:'F' },
+    status:'Replied', meeting:null,
+    openingHook:'"Michael, I\'m not pitching a retainer. Let me spend 20 minutes on what fixing your Google profile alone would do for referrals."',
+    discoveryQuestions:['What does a new client typically mean in annual fee revenue for the firm?','How do most of your clients find you currently?','What\'s making next quarter a better time than now?'],
+    objections:[{obj:'"Maybe next quarter."',response:'What changes next quarter? If it\'s budget, I have an entry-level option at $800/month.'}],
+    closeOptions:['Foundation $800/month','Growth $1,400/month'],
+    pricingRange:'$800–$1,400/month AUD',
+    competitors:['Carbon Group','Chan & Naylor North Sydney'],
+  },
+  {
+    id:'p7', name:'Parramatta Motor Group', suburb:'Parramatta', state:'NSW',
+    industry:'Automotive', score:47, staff:'34', est:'2005',
+    domain:'parramattamotor.com.au', gmb_category:'Car dealer',
+    abn_status:'active', abn_age_years:27,
+    dfs_organic_etv:96, dfs_organic_keywords:29, backlinks_count:48, domain_rank:21,
+    dm:{ name:'Wei Zhang', title:'Dealer Principal', tenure:'19 years' },
+    vulnerability:'Zero digital marketing investment. Website from 2020, no social presence.',
+    vulnGrades:{ website:'F', seo:'F', reviews:'B', ads:'F', social:'F', content:'F' },
+    status:'Contacted', meeting:null,
+    openingHook:'"Wei, 840 people search for used cars in Parramatta monthly. Parramatta Motor doesn\'t appear on page 1 for any of them."',
+    discoveryQuestions:['Where does most of your foot traffic come from today?','Have you ever tried digital advertising?','What would one extra car sale per week mean in margin?'],
+    objections:[{obj:'"We do fine without digital."',response:'You\'re doing well despite it — imagine doing well because of it.'}],
+    closeOptions:['Visibility $3,200/month','Full digital $5,000/month'],
+    pricingRange:'$3,200–$5,000/month AUD',
+    competitors:['Parramatta Nissan','Westfield Honda'],
+  },
+  {
+    id:'p8', name:'Bondi Creative Studio', suburb:'Bondi', state:'NSW',
+    industry:'Design', score:68, staff:'8', est:'2019',
+    domain:'bondicreative.com.au', gmb_category:'Graphic designer',
+    abn_status:'active', abn_age_years:7,
+    dfs_organic_etv:140, dfs_organic_keywords:38, backlinks_count:82, domain_rank:29,
+    dm:{ name:'Aria Martinelli', title:'Creative Director', tenure:'5 years' },
+    vulnerability:'Strong social growth but no paid acquisition. Struggles with own pipeline.',
+    vulnGrades:{ website:'B', seo:'D', reviews:'A', ads:'F', social:'A', content:'B' },
+    status:'Contacted', meeting:null,
+    openingHook:'"Aria, your portfolio is excellent — but when someone searches for a Sydney brand design studio, you don\'t appear in the top 20."',
+    discoveryQuestions:['How do you win new clients today — mostly referrals?','Have you explored paid channels?','What type of client are you trying to attract more of?'],
+    objections:[{obj:'"We do marketing for others — we can do it ourselves."',response:'Most of your competitors say the same. It\'s about bandwidth, not capability.'}],
+    closeOptions:['New business channel $1,200/month','Full growth $2,000/month'],
+    pricingRange:'$1,200–$2,000/month AUD',
+    competitors:['Manual Sydney','Frost Collective'],
+  },
+  {
+    id:'p9', name:'Fitzroy Cafe Group', suburb:'Fitzroy', state:'VIC',
+    industry:'Hospitality', score:84, staff:'22', est:'2016',
+    domain:'fitzroycafegroup.com.au', gmb_category:'Cafe',
+    abn_status:'active', abn_age_years:6,
+    dfs_organic_etv:78, dfs_organic_keywords:24, backlinks_count:31, domain_rank:17,
+    dm:{ name:'Tom Abernathy', title:'Owner', tenure:'8 years' },
+    vulnerability:'Margin pressure from delivery platforms. Stale GMB while competitor won local awards.',
+    vulnGrades:{ website:'D', seo:'F', reviews:'C', ads:'F', social:'D', content:'F' },
+    status:'Contacted', meeting:null,
+    openingHook:'"Tom, our full package is less than you pay in one week of delivery commission."',
+    discoveryQuestions:['What percentage of revenue is delivery vs dine-in?','Have you tried promoting direct orders?','What did Sundays Fitzroy do differently that you\'ve noticed?'],
+    objections:[{obj:'"I\'m too busy to deal with marketing."',response:'That\'s exactly why you use us. It runs in the background.'}],
+    closeOptions:['Direct acquisition $1,400/month','Full platform $2,200/month'],
+    pricingRange:'$1,400–$2,200/month AUD',
+    competitors:['Sundays Fitzroy','Deadman Espresso','The Commoner'],
+  },
+  {
+    id:'p10', name:'Gold Coast Mortgage Co', suburb:'Surfers Paradise', state:'QLD',
+    industry:'Finance', score:55, staff:'12', est:'2017',
+    domain:'goldcoastmortgage.com.au', gmb_category:'Mortgage broker',
+    abn_status:'recent', abn_age_years:2,
+    dfs_organic_etv:195, dfs_organic_keywords:51, backlinks_count:44, domain_rank:23,
+    dm:{ name:'Priya Sharma', title:'Principal Broker', tenure:'7 years' },
+    vulnerability:'Expanding into financial planning (new ABN). Growth intent present but no digital strategy.',
+    vulnGrades:{ website:'D', seo:'F', reviews:'B', ads:'F', social:'D', content:'F' },
+    status:'Contacted', meeting:null,
+    openingHook:'"Priya, the financial planning ABN is a smart move. But there\'s no digital presence for that service at all."',
+    discoveryQuestions:['How are you planning to get clients for the financial planning arm?','Is your referral network aware of the new service yet?','Have you set a target for new planning clients this year?'],
+    objections:[{obj:'"We\'re still setting it up."',response:'The best time to build a digital foundation is before you launch.'}],
+    closeOptions:['Foundation $1,200/month','Combined $2,000/month'],
+    pricingRange:'$1,200–$2,000/month AUD',
+    competitors:['GC Home Loans','Mortgage Choice GC'],
+  },
+];
+
+const COMPLETED = [
+  { name:'Coastal Veterinary', dm:'Dr Rebecca Ashford', when:'Mon 21 Apr · 9:30am', outcome:'Follow up', tag:'followup', notes:'Asked for tighter scope. Sending proposal.', amount:'Proposal pending' },
+  { name:'Collaroy Dental Suite', dm:'Dr David Yao', when:'Cycle 2 · close', outcome:'Won', tag:'won', notes:'Signed 12-month retainer.', amount:'$3,200/mo · 12mo' },
+  { name:'Mosman Wealth Advisors', dm:'Clara Hennessey', when:'Cycle 2 · close', outcome:'No show', tag:'noshow', notes:'Rescheduled to Q3.', amount:'Q3 retry' },
+];
+
+/* ================================================================
+   HELPERS
+================================================================ */
+function overallVulnGrade(vg) {
+  if (!vg) return 'C';
+  const m={A:5,B:4,C:3,D:2,F:1}, i={5:'A',4:'B',3:'C',2:'D',1:'F'};
+  const v=Object.values(vg).map(x=>m[x]||3);
+  return i[Math.round(v.reduce((a,b)=>a+b,0)/v.length)]||'C';
+}
+function staffRange(s) {
+  const n=parseInt(s,10);
+  if(!n) return '—';
+  if(n<=10) return '1-10';
+  if(n<=50) return '11-50';
+  if(n<=200) return '51-200';
+  return '200+';
+}
+function findP(id){ return prospects.find(p=>p.id===id); }
+function statusPill(s){
+  const c=s==='Meeting Booked'?'green':s==='Replied'?'amber':'gray';
+  return `<span class="p-status ${c}">${s}</span>`;
+}
+
+/* ================================================================
+   CALENDAR HOME
+================================================================ */
+const WEEK_DAYS = [
+  { dow:'MON', date:'21 Apr', isToday:false },
+  { dow:'TUE', date:'22 Apr', isToday:false },
+  { dow:'WED', date:'23 Apr', isToday:true },
+  { dow:'THU', date:'24 Apr', isToday:false },
+  { dow:'FRI', date:'25 Apr', isToday:false },
+];
+const HOUR_SLOTS = [8,9,10,11,12,13,14,15,16,17];
+
+function meetingsForDay(dow) {
+  return prospects.filter(p => p.meeting && p.meeting.day === dow);
+}
+function todayMeetings() {
+  return prospects.filter(p => p.meeting && p.meeting.isToday);
+}
+
+function renderCalendar() {
+  const today = todayMeetings();
+  const weekTotal = prospects.filter(p => p.meeting).length;
+  const heroLine = today.length === 0
+    ? `No meetings today — <em>review the pipeline</em> instead.`
+    : `You have <em>${today.length} ${today.length === 1 ? 'meeting' : 'meetings'} today</em> — here ${today.length === 1 ? 'is your brief' : 'are your briefs'}.`;
+  const heroMeta = today.length === 0
+    ? `Cycle 3 · day 14/30 · ${weekTotal} meetings this week`
+    : `Cycle 3 · day 14/30 · next at ${today[0].meeting.time} · ${today[0].dm.name} · ${today[0].name}`;
+
+  const grid = `
+    <div class="cal-grid">
+      <div class="cal-corner"></div>
+      ${WEEK_DAYS.map(d => {
+        const mtgs = meetingsForDay(d.dow);
+        return `<div class="cal-day-head ${d.isToday ? 'today' : ''}">
+          <div class="ddow">${d.dow}</div>
+          <div class="dnum">${d.date.split(' ')[0]}</div>
+          <div class="dmtg">${mtgs.length} ${mtgs.length === 1 ? 'meeting' : 'meetings'}</div>
+        </div>`;
+      }).join('')}
+      ${HOUR_SLOTS.map(hr => `
+        <div class="cal-time-cell">${hr<12 ? hr+'am' : hr===12 ? '12pm' : (hr-12)+'pm'}</div>
+        ${WEEK_DAYS.map(d => {
+          const m = prospects.find(p => p.meeting && p.meeting.day === d.dow && p.meeting.startHour === hr);
+          let evHtml = '';
+          if (m) {
+            const vr = overallVulnGrade(m.vulnGrades);
+            const cls = m.meeting.isPast ? 'green' : (m.meeting.isToday ? 'copper' : '');
+            const heightPx = (m.meeting.durationHrs || 1) * 44 - 6;
+            evHtml = `<div class="cal-event ${cls}" style="height:${heightPx}px;" onclick="openBriefingPage('${m.id}')">
+              <span class="cal-event-vr" data-g="${vr}">${vr}</span>
+              <div class="cal-event-time">${m.meeting.time}</div>
+              <div class="cal-event-name">${m.name}</div>
+              <div class="cal-event-dm">${m.dm.name}</div>
+            </div>`;
+          }
+          return `<div class="cal-slot ${d.isToday ? 'today-col' : ''}">${evHtml}</div>`;
+        }).join('')}
+      `).join('')}
+    </div>
+  `;
+
+  /* Day-view (mobile only — defaults to today) */
+  const dayView = `
+    <div class="day-view">
+      <div class="day-view-card">
+        <div class="day-view-head">
+          <div class="dvh-day">TODAY · WEDNESDAY</div>
+          <div class="dvh-date">23 April</div>
+          <div class="dvh-meta">${today.length} ${today.length === 1 ? 'meeting' : 'meetings'} · cycle day 14/30</div>
+        </div>
+        <div class="day-view-body">
+          ${today.length ? today.map(p => `
+            <div class="day-meet-card" onclick="openBriefingPage('${p.id}')">
+              <div class="dmc-time">${p.meeting.time} · ${p.meeting.platform} · ${p.meeting.countdown}</div>
+              <div class="dmc-name">${p.name}</div>
+              <div class="dmc-dm">${p.dm.name} · ${p.dm.title}</div>
+            </div>
+          `).join('') : '<div style="color:var(--ink-3);font-size:12px;font-style:italic;padding:14px 4px;">No meetings today</div>'}
+        </div>
+        <div class="day-nav-row">
+          <button onclick="alert('Previous day — Tue 22 Apr (no meetings)')">← Tue</button>
+          <button onclick="alert('Next day — Thu 24 Apr (no meetings)')">Thu →</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  /* This week's meetings list (below calendar — sorted by date) */
+  const weekMeetings = prospects
+    .filter(p => p.meeting)
+    .sort((a, b) => {
+      const order = { Mon:1, Tue:2, Wed:3, Thu:4, Fri:5 };
+      return (order[a.meeting.day] - order[b.meeting.day]) || (a.meeting.startHour - b.meeting.startHour);
+    });
+
+  document.getElementById('main').innerHTML = `
+    <h1 class="page-h">Your week,<br><em>at a glance.</em></h1>
+    <p class="page-sub">Calendar is home. Every meeting carries a briefing. Click any slot to open the brief.</p>
+
+    <div class="today-hero">
+      <div>
+        <div class="h-eyebrow">Wed 23 April · today</div>
+        <div class="h-line">${heroLine}</div>
+        <div class="h-meta">${heroMeta}</div>
+      </div>
+      <div class="h-cta">
+        ${today.length > 0
+          ? `<button class="h-btn" onclick="openBriefingPage('${today[0].id}')">Open next brief</button>
+             <button class="h-btn h-btn-ghost" onclick="document.querySelector('.week-summary').scrollIntoView({behavior:'smooth'})">All this week</button>`
+          : `<button class="h-btn" onclick="showView('pipeline')">Review pipeline</button>`}
+      </div>
+    </div>
+
+    <div class="cal-controls">
+      <div class="cal-week">Week of <b>21 – 25 April 2026</b> · cycle 3 · day 14/30</div>
+      <div class="cal-nav">
+        <button onclick="alert('Previous week')">← Prev</button>
+        <button onclick="alert('Today')">Today</button>
+        <button onclick="alert('Next week')">Next →</button>
+      </div>
+    </div>
+
+    ${grid}
+    ${dayView}
+
+    <div class="week-summary">
+      <div class="section-title">This week · ${weekMeetings.length} meetings</div>
+      ${weekMeetings.length ? weekMeetings.map(p => {
+        const vr = overallVulnGrade(p.vulnGrades);
+        return `<div class="week-row" onclick="openBriefingPage('${p.id}')">
+          <div class="wr-grade" data-g="${vr}">${vr}</div>
+          <div class="wr-when">${p.meeting.date}<br>${p.meeting.time}</div>
+          <div>
+            <div class="wr-name">${p.name}</div>
+            <div class="wr-dm">${p.dm.name} · ${p.dm.title}</div>
+          </div>
+          <div class="wr-cd">${p.meeting.countdown}</div>
+          <div class="wr-cta">Open brief</div>
+        </div>`;
+      }).join('') : '<div style="color:var(--ink-3);font-size:13px;padding:10px 0;">No meetings this week</div>'}
+    </div>
+
+    ${today.length === 0 ? `
+      <div class="empty-day-cta">
+        <div class="e-text"><b>No meetings today?</b> Maya is keeping the pipeline warm. Check in on the prospects she's working.</div>
+        <a class="e-link" onclick="showView('pipeline')">Review pipeline →</a>
+      </div>` : ''}
+  `;
+}
+
+/* ================================================================
+   BRIEFING PAGE
+================================================================ */
+function openBriefingPage(pid) {
+  const p = findP(pid); if (!p) return;
+  const vr = overallVulnGrade(p.vulnGrades);
+  const grades = ['website','seo','reviews','ads','social','content'];
+  const m = p.meeting;
+
+  document.getElementById('main').innerHTML = `
+    <div class="briefing-page">
+      <div class="bp-back" onclick="showView('calendar')">← Back to calendar</div>
+
+      <div class="bp-header">
+        <div>
+          <div class="bp-eyebrow">${m ? (m.isPast ? 'Past meeting · log outcome' : (m.isToday ? 'Today\'s meeting' : 'Upcoming meeting')) : 'Prospect briefing'}</div>
+          <div class="bp-when">${m ? `${m.date} · ${m.time}` : p.name}</div>
+          ${m ? `<div class="bp-cd">${m.countdown} · via ${m.platform}</div>` : ''}
+        </div>
+        <div class="bp-spacer"></div>
+        <div class="bp-actions">
+          ${m && !m.isPast ? `<button class="btn btn-amber" onclick="alert('Open ${m.platform} meeting link')">Join meeting</button>` : ''}
+          <button class="btn btn-ghost bp-pdf-btn" onclick="window.print()"><span class="lbl-print">Save PDF</span><span class="lbl-pdf">PDF</span></button>
+        </div>
+      </div>
+
+      ${m ? `
+        <div class="pma-row">
+          <button class="pma-btn pma-won" onclick="alert('Marked: Closed won')">Closed won</button>
+          <button class="pma-btn pma-follow" onclick="alert('Marked: Follow up')">Follow up</button>
+          <button class="pma-btn pma-noshow" onclick="alert('Marked: No show')">No show</button>
+          <button class="pma-btn pma-resched" onclick="alert('Marked: Reschedule')">Reschedule</button>
+        </div>
+      ` : ''}
+
+      <div class="bp-section">
+        <h4>Prospect snapshot</h4>
+        <div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">
+          <div class="vr-letter" data-g="${vr}" style="width:46px;height:46px;font-size:20px;display:grid;place-items:center;border-radius:8px;color:#fff;font-family:'Playfair Display',serif;font-weight:700;${vr==='A'||vr==='B'?'background:var(--green);':vr==='C'?'background:var(--amber);color:var(--on-amber);':vr==='D'?'background:var(--copper);':'background:var(--red);'}">${vr}</div>
+          <div>
+            <div style="font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--ink);">${p.name}</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-3);margin-top:3px;">${p.dm.name} · ${p.dm.title} · ${p.dm.tenure}</div>
+          </div>
+        </div>
+        <div class="bp-meta-grid">
+          <div class="bp-kv"><span class="k">Domain</span><span class="v">${p.domain}</span></div>
+          <div class="bp-kv"><span class="k">GMB category</span><span class="v">${p.gmb_category}</span></div>
+          <div class="bp-kv"><span class="k">Employees</span><span class="v" title="Source: LinkedIn company page">${staffRange(p.staff)} (LinkedIn)</span></div>
+          <div class="bp-kv"><span class="k">Established</span><span class="v" title="Source: ABN registry">ABN registered ${p.est}</span></div>
+          <div class="bp-kv"><span class="k">Location</span><span class="v">${p.suburb}, ${p.state}</span></div>
+          <div class="bp-kv"><span class="k">Industry</span><span class="v">${p.industry}</span></div>
+          <div class="bp-kv"><span class="k">DFS organic ETV</span><span class="v">$${p.dfs_organic_etv}/mo</span></div>
+          <div class="bp-kv"><span class="k">Domain rank</span><span class="v">${p.domain_rank}/100</span></div>
+        </div>
+      </div>
+
+      <div class="bp-section">
+        <h4>Vulnerability — overall grade ${vr}</h4>
+        <div style="font-size:13px;color:var(--ink-2);line-height:1.6;margin-bottom:12px;">${p.vulnerability}</div>
+        <div class="vr-strip">
+          ${grades.map(g => `<div class="vr-cell-w"><div class="vr-letter" data-g="${p.vulnGrades[g]}">${p.vulnGrades[g]}</div><div class="vr-name">${g}</div></div>`).join('')}
+        </div>
+      </div>
+
+      <div class="bp-section">
+        <h4>Recommended angle</h4>
+        <div class="bp-ai">✨ AI-generated briefing · verify before use</div>
+        <div class="bp-hook">${p.openingHook}</div>
+      </div>
+
+      <div class="bp-section">
+        <h4>Discovery questions</h4>
+        <ul class="bp-list">${p.discoveryQuestions.map(q => `<li>${q}</li>`).join('')}</ul>
+      </div>
+
+      <div class="bp-section">
+        <h4>Common objections</h4>
+        ${p.objections.map(o => `<div class="bp-obj"><div class="obj-q">${o.obj}</div><div class="obj-a">${o.response}</div></div>`).join('')}
+      </div>
+
+      <div class="bp-section">
+        <h4>Close options</h4>
+        <ul class="bp-list">${p.closeOptions.map(c => `<li>${c}</li>`).join('')}</ul>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-3);margin-top:10px;letter-spacing:0.1em;text-transform:uppercase;">Your service pricing — from your agency rate card</div>
+        <div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--ink);">${p.pricingRange}</div>
+      </div>
+
+      <div class="bp-section">
+        <h4>Also ranking for your keywords</h4>
+        <ul class="bp-list">${p.competitors.map(c => `<li>${c}</li>`).join('')}</ul>
+      </div>
+    </div>
+  `;
+  window.scrollTo(0, 0);
+}
+
+/* ================================================================
+   PIPELINE (secondary)
+================================================================ */
+function renderPipeline() {
+  const sorted = [...prospects].sort((a,b) => {
+    if ((a.status==='Meeting Booked') !== (b.status==='Meeting Booked')) {
+      return a.status==='Meeting Booked' ? -1 : 1;
+    }
+    return b.score - a.score;
+  });
+  document.getElementById('main').innerHTML = `
+    <h1 class="page-h">In the pipeline,<br><em>Maya's working these.</em></h1>
+    <p class="page-sub">Background work — prospects in motion behind the calendar. Click any to open the briefing.</p>
+    <div class="p-frame">
+      <b>Maya is currently:</b> running 5-touch sequences across email + LinkedIn + voice + SMS for 7 prospects, awaiting reply on 5, with 1 just-replied and 4 already booked into your calendar.
+    </div>
+    ${sorted.map(p => {
+      const vr = overallVulnGrade(p.vulnGrades);
+      return `<div class="p-row" onclick="openBriefingPage('${p.id}')">
+        <div class="p-vr" data-g="${vr}">${vr}</div>
+        <div>
+          <div class="p-name">${p.name}</div>
+          <div class="p-sub">${p.dm.name} · ${p.industry} · ${p.suburb}, ${p.state}</div>
+        </div>
+        ${statusPill(p.status)}
+        <div class="p-score">${p.score}<small>Score</small></div>
+      </div>`;
+    }).join('')}
+  `;
+}
+
+/* ================================================================
+   OUTCOMES
+================================================================ */
+function renderOutcomes() {
+  const funnel = [
+    { l:'Discovered', v:600, max:600 },
+    { l:'Contacted', v:247, max:600 },
+    { l:'Replied', v:31, max:600 },
+    { l:'Meetings', v:8, max:600 },
+    { l:'Won', v:3, max:600 },
+  ];
+  document.getElementById('main').innerHTML = `
+    <h1 class="page-h">Cycle outcomes,<br><em>capture what happened.</em></h1>
+    <p class="page-sub">Post-meeting outcomes drive next steps. Cycle 3 · day 14/30 · refreshed every 5 minutes.</p>
+
+    <div class="kpi-row">
+      <div class="kpi-cell"><div class="kpi-val">47<small>%</small></div><div class="kpi-l">Open Rate</div><div class="kpi-note">your data only · benchmark TBD</div></div>
+      <div class="kpi-cell"><div class="kpi-val">8.2<small>%</small></div><div class="kpi-l">Reply Rate</div><div class="kpi-note">your data only · benchmark TBD</div></div>
+      <div class="kpi-cell"><div class="kpi-val">1.4<small>%</small></div><div class="kpi-l">Meeting Rate</div><div class="kpi-note">your data only · benchmark TBD</div></div>
+      <div class="kpi-cell"><div class="kpi-val">23<small>h</small></div><div class="kpi-l">Avg Reply</div><div class="kpi-note">contacted → first reply</div></div>
+    </div>
+
+    <div class="bp-section">
+      <h4>Cycle funnel</h4>
+      ${funnel.map(f => `
+        <div class="funnel-row-o">
+          <div class="fl">${f.l}</div>
+          <div class="fb"><div class="fbf" style="width:${Math.max(6, f.v/f.max*100)}%;">${f.v}</div></div>
+          <div class="fp">${(f.v/f.max*100).toFixed(f.v/f.max<0.05?1:0)}%</div>
+        </div>
+      `).join('')}
+    </div>
+
+    <div class="bp-section">
+      <h4>Cost efficiency · AUD · cycle to date</h4>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;">
+        <div style="padding:14px;background:var(--surface);border-radius:8px;"><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--copper);">$186</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.12em;color:var(--ink-3);text-transform:uppercase;margin-top:4px;">Cost / Meeting</div></div>
+        <div style="padding:14px;background:var(--surface);border-radius:8px;"><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--copper);">37<span style="font-size:14px;">%</span></div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.12em;color:var(--ink-3);text-transform:uppercase;margin-top:4px;">Win Rate (this cycle)</div></div>
+      </div>
+    </div>
+
+    <div class="bp-section">
+      <h4>Completed meetings</h4>
+      ${COMPLETED.map(c => `
+        <div class="outcome-row">
+          <div class="p-vr" data-g="${c.tag==='won'?'A':c.tag==='followup'?'C':'D'}">${c.tag==='won'?'A':c.tag==='followup'?'C':'D'}</div>
+          <div>
+            <div class="p-name">${c.name}</div>
+            <div class="p-sub">${c.dm} · ${c.when}</div>
+            <div class="p-sub" style="margin-top:3px;color:var(--ink-2);">${c.notes}</div>
+          </div>
+          <span class="out-tag ${c.tag}">${c.outcome}</span>
+          <span class="out-amount">${c.amount}</span>
+        </div>
+      `).join('')}
+    </div>
+
+    <div style="text-align:center;margin-top:18px;"><button class="btn-ghost" style="background:var(--ink);color:#fff;border:0;padding:12px 24px;border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.1em;font-weight:700;text-transform:uppercase;cursor:pointer;" onclick="alert('Export PDF report')">Export report for partners</button></div>
+  `;
+}
+
+/* ================================================================
+   VIEW SWITCHER
+================================================================ */
+function showView(v) {
+  document.querySelectorAll('.nav-ico').forEach(n => n.classList.toggle('active', n.dataset.v === v));
+  document.querySelectorAll('.bn-item').forEach(b => b.classList.toggle('active', b.dataset.v === v));
+  if (v === 'calendar') renderCalendar();
+  if (v === 'pipeline') renderPipeline();
+  if (v === 'outcomes') renderOutcomes();
+  window.scrollTo(0, 0);
+}
+
+/* ================================================================
+   THEME + BOOT
+================================================================ */
+document.addEventListener('click', e => {
+  if (e.target.closest('.tb-theme')) {
+    const next = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
+    document.documentElement.classList.toggle('dark', next === 'dark');
+    localStorage.setItem('agencyos_theme', next);
+  }
+});
+
+renderCalendar();
+</script>
+</body>
+</html>

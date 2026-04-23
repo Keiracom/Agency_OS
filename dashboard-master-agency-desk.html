@@ -1,0 +1,1672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AgencyOS — The Agency Desk</title>
+<script>
+  try { if (localStorage.getItem('agencyos_theme') === 'dark') document.documentElement.classList.add('dark'); } catch (e) {}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+
+/* ========== TOKENS ========== */
+:root {
+  --cream: #F7F3EE;
+  --surface: #EDE8E0;
+  --ink: #0C0A08;
+  --ink-2: #2E2B26;
+  --ink-3: #7A756D;
+  --ink-4: #B5B0A6;
+  --amber: #D4956A;
+  --amber-soft: rgba(212,149,106,0.14);
+  --amber-glow: rgba(212,149,106,0.08);
+  --copper: #C46A3E;
+  --green: #6B8E5A;
+  --red: #B55A4C;
+  --blue: #4A6FA5;
+  --rule: rgba(12,10,8,0.08);
+  --rule-strong: rgba(12,10,8,0.14);
+  --brand-bar: #0C0A08;
+  --on-amber: #1a1207;
+  --panel-bg: #FFFFFF;
+  --sidebar-w: 232px;
+  --topbar-h: 52px;
+  --bottomnav-h: 60px;
+}
+html.dark {
+  --cream: #0C0A08;
+  --surface: #16130F;
+  --ink: #F5F2EC;
+  --ink-2: #C9C3B8;
+  --ink-3: #807A6E;
+  --ink-4: #4A443A;
+  --rule: rgba(255,255,255,0.08);
+  --rule-strong: rgba(255,255,255,0.14);
+  --copper: #E6A87D;
+  --amber-soft: rgba(212,149,106,0.18);
+  --panel-bg: #16130F;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; background: var(--cream); color: var(--ink); overflow-x: hidden; }
+body { font-family: 'DM Sans', system-ui, sans-serif; font-size: 14px; line-height: 1.5; max-width: 100vw; display: flex; flex-direction: column; }
+button { cursor: pointer; font: inherit; color: inherit; background: none; border: 0; }
+input, select, textarea { font: inherit; color: inherit; }
+ul { list-style: none; padding-left: 18px; }
+.mono { font-family: 'JetBrains Mono', monospace; }
+.eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: var(--rule-strong); border-radius: 3px; }
+img, svg { max-width: 100%; }
+
+/* ========== TOPBAR ========== */
+#topbar {
+  position: sticky; top: 0; z-index: 50;
+  height: var(--topbar-h);
+  background: var(--brand-bar);
+  color: #F5F2EC;
+  display: flex; align-items: center;
+  padding: 0 16px;
+  gap: 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  flex-shrink: 0;
+}
+.brand { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+.brand em { color: var(--amber); font-style: italic; }
+.brand-tag { font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.14em; color: rgba(255,255,255,0.42); padding: 2px 7px; border: 1px solid rgba(255,255,255,0.14); border-radius: 3px; }
+.tb-spacer { flex: 1; }
+.tb-cycle { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: rgba(255,255,255,0.62); display: flex; align-items: center; gap: 6px; }
+.tb-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+.tb-theme { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; color: rgba(255,255,255,0.7); border: 1px solid rgba(255,255,255,0.14); }
+.tb-theme:hover { color: var(--amber); border-color: var(--amber); }
+.tb-theme .t-sun { display: inline; } .tb-theme .t-moon { display: none; }
+html.dark .tb-theme .t-sun { display: none; } html.dark .tb-theme .t-moon { display: inline; }
+.kill-btn { background: transparent; color: rgba(255,255,255,0.85); border: 1px solid rgba(255,255,255,0.2); font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.08em; padding: 5px 12px; border-radius: 4px; text-transform: uppercase; }
+.kill-btn:hover { background: var(--red); color: #fff; border-color: var(--red); }
+.hamburger-btn { display: none; color: #fff; font-size: 22px; padding: 4px 8px; }
+
+/* ========== LAYOUT ========== */
+#shell { flex: 1; display: grid; grid-template-columns: var(--sidebar-w) 1fr; min-height: 0; min-width: 0; }
+
+/* Sidebar */
+#sidebar {
+  background: var(--brand-bar); color: #F5F2EC;
+  display: flex; flex-direction: column;
+  border-right: 1px solid rgba(255,255,255,0.06);
+  overflow-y: auto;
+  transition: transform .25s ease;
+}
+.sb-section { padding: 16px 0 4px; }
+.sb-label { font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.14em; color: rgba(255,255,255,0.32); text-transform: uppercase; padding: 0 20px 8px; }
+.sb-item { display: flex; align-items: center; gap: 12px; padding: 9px 20px; font-size: 13px; color: rgba(255,255,255,0.72); cursor: pointer; border-left: 2px solid transparent; transition: color .12s, background .12s, border-color .12s; }
+.sb-item:hover { color: #fff; background: rgba(255,255,255,0.03); }
+.sb-item.active { color: #fff; background: var(--amber-soft); border-left-color: var(--amber); font-weight: 500; }
+.sb-icon { width: 16px; height: 16px; flex-shrink: 0; opacity: 0.75; }
+.sb-item.active .sb-icon { opacity: 1; color: var(--amber); }
+.sb-badge { margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 10px; background: var(--amber); color: var(--on-amber); padding: 1px 6px; border-radius: 10px; min-width: 20px; text-align: center; font-weight: 600; }
+.sb-foot { margin-top: auto; padding: 16px 20px; border-top: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; gap: 10px; }
+.avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--amber); color: var(--on-amber); display: grid; place-items: center; font-family: 'Playfair Display', serif; font-weight: 700; font-size: 12px; flex-shrink: 0; }
+.sb-foot-n { font-size: 13px; color: #fff; }
+.sb-foot-r { font-size: 10.5px; color: rgba(255,255,255,0.42); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.06em; }
+.sb-logo { padding: 22px 20px 18px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.sb-logo .lt { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 20px; letter-spacing: -0.02em; }
+.sb-logo .lt em { color: var(--amber); font-style: italic; }
+.sb-logo .ls { font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.14em; color: rgba(255,255,255,0.32); margin-top: 3px; text-transform: uppercase; }
+
+/* Main */
+#main { padding: 24px 32px 80px; min-width: 0; overflow-y: auto; max-width: 1280px; width: 100%; margin: 0 auto; }
+
+/* Page common */
+.page-h { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 30px; color: var(--ink); letter-spacing: -0.02em; line-height: 1.2; margin-bottom: 6px; }
+.page-h em { color: var(--amber); font-style: italic; }
+.page-sub { font-size: 13px; color: var(--ink-3); margin-bottom: 22px; max-width: 820px; }
+.section-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; margin: 24px 0 12px; }
+.card { background: var(--panel-bg); border: 1px solid var(--rule); border-radius: 10px; padding: 18px 20px; max-width: 100%; min-width: 0; overflow-x: auto; }
+
+/* Pills + chips */
+.pill { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 500; letter-spacing: 0.1em; padding: 3px 8px; border-radius: 12px; display: inline-block; text-transform: uppercase; }
+.pill.green { background: rgba(107,142,90,0.16); color: var(--green); }
+.pill.amber { background: var(--amber-soft); color: var(--copper); }
+.pill.gray { background: rgba(12,10,8,0.06); color: var(--ink-3); }
+.pill.red { background: rgba(181,90,76,0.14); color: var(--red); }
+html.dark .pill.gray { background: rgba(255,255,255,0.06); }
+.chip { padding: 6px 14px; border-radius: 20px; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.06em; color: var(--ink-3); background: var(--panel-bg); border: 1px solid var(--rule); cursor: pointer; transition: all .12s; }
+.chip:hover { color: var(--copper); border-color: var(--amber); }
+.chip.active { background: var(--amber); color: var(--on-amber); border-color: var(--amber); font-weight: 600; }
+.chip-count { display: inline-block; margin-left: 5px; font-weight: 700; color: var(--copper); }
+.chip.active .chip-count { color: var(--on-amber); }
+
+/* VR grade chip */
+.vr { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 6px; color: #fff; font-family: 'Playfair Display', serif; font-weight: 700; font-size: 14px; flex-shrink: 0; }
+.vr[data-g="A"], .vr[data-g="B"] { background: var(--green); }
+.vr[data-g="C"] { background: var(--amber); color: var(--on-amber); }
+.vr[data-g="D"] { background: var(--copper); }
+.vr[data-g="F"] { background: var(--red); }
+
+/* Buttons */
+.btn { padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 500; transition: filter .12s; }
+.btn-primary { background: var(--ink); color: #fff; }
+html.dark .btn-primary { background: var(--amber); color: var(--on-amber); }
+.btn-amber { background: var(--amber); color: var(--on-amber); }
+.btn-outline { background: transparent; border: 1px solid var(--rule); color: var(--ink-2); }
+.btn-outline:hover { border-color: var(--amber); color: var(--copper); }
+.btn:active { filter: brightness(0.92); }
+
+/* ========== HOME — BDR HERO ========== */
+.bdr-hero { background: var(--ink); color: #fff; border-radius: 12px; padding: 24px 28px; margin-bottom: 22px; display: grid; grid-template-columns: 60px 1fr; gap: 20px; align-items: center; }
+.bdr-avatar { width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, var(--amber), #a87044); display: grid; place-items: center; font-family: 'Playfair Display', serif; font-weight: 700; font-size: 24px; color: var(--on-amber); }
+.bdr-hero .h-eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.16em; color: rgba(255,255,255,0.45); text-transform: uppercase; margin-bottom: 6px; }
+.bdr-hero .h-line { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 22px; line-height: 1.3; letter-spacing: -0.01em; }
+.bdr-hero .h-line em { color: var(--amber); font-style: italic; }
+
+/* Summary stats row */
+.sum-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 26px; }
+.sum-card { background: var(--panel-bg); border: 1px solid var(--rule); border-radius: 10px; padding: 16px 18px; }
+.sum-val { font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 700; color: var(--ink); line-height: 1; }
+.sum-val em { font-style: normal; color: var(--amber); font-size: 18px; }
+.sum-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.12em; color: var(--ink-3); text-transform: uppercase; margin-top: 6px; }
+.sum-delta { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--green); margin-top: 4px; }
+
+/* Today strip */
+.today-strip-head { display: flex; justify-content: space-between; align-items: baseline; margin: 8px 0 12px; }
+.today-strip-head .h { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 700; color: var(--ink); }
+.today-strip-head .h em { color: var(--amber); font-style: italic; }
+.today-strip-head .meta { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-3); }
+.today-strip { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px; margin: 0 -4px 24px; padding-left: 4px; padding-right: 4px; scroll-snap-type: x mandatory; }
+.today-card { flex: 0 0 280px; background: var(--panel-bg); border: 1px solid var(--rule); border-radius: 10px; padding: 14px 16px; cursor: pointer; transition: border-color .12s, box-shadow .12s; scroll-snap-align: start; }
+.today-card:hover { border-color: var(--amber); box-shadow: 0 2px 10px rgba(212,149,106,0.1); }
+.today-card .tc-time { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--copper); font-weight: 600; letter-spacing: 0.06em; }
+.today-card .tc-name { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 16px; color: var(--ink); margin-top: 4px; line-height: 1.3; }
+.today-card .tc-dm { font-size: 12.5px; color: var(--ink-2); margin-top: 2px; }
+.today-card .tc-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--rule); }
+.today-card .tc-foot .vr { width: 24px; height: 24px; font-size: 12px; }
+.today-card .tc-link { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.08em; color: var(--copper); text-transform: uppercase; }
+.today-empty { background: var(--surface); border: 1px dashed var(--rule); border-radius: 10px; padding: 18px 22px; font-size: 13px; color: var(--ink-2); margin-bottom: 24px; }
+.today-empty b { color: var(--ink); }
+html.dark .today-empty { background: rgba(255,255,255,0.03); }
+
+/* Maya working strip */
+.maya-strip { background: var(--amber-soft); border: 1px solid var(--amber-glow); border-left: 3px solid var(--amber); border-radius: 8px; padding: 14px 18px; margin-bottom: 20px; cursor: pointer; transition: background .12s; }
+.maya-strip:hover { background: rgba(212,149,106,0.18); }
+.maya-strip-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.maya-strip-line { font-size: 13px; color: var(--ink); }
+.maya-strip-line b { color: var(--copper); }
+.maya-strip-chev { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--copper); letter-spacing: 0.08em; }
+.maya-strip-detail { display: none; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--amber-glow); font-size: 12.5px; color: var(--ink-2); line-height: 1.6; }
+.maya-strip.open .maya-strip-detail { display: block; }
+.maya-strip-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 8px; }
+.maya-action { background: var(--panel-bg); border-radius: 6px; padding: 10px 12px; }
+.maya-action .ma-cnt { font-family: 'JetBrains Mono', monospace; font-size: 16px; font-weight: 700; color: var(--copper); }
+.maya-action .ma-l { font-size: 11.5px; color: var(--ink-2); margin-top: 2px; }
+
+/* Funnel bar */
+.funnel-bar { display: flex; align-items: stretch; height: 36px; border-radius: 6px; overflow: hidden; border: 1px solid var(--rule); margin-bottom: 6px; }
+.funnel-seg { padding: 0 14px; display: flex; flex-direction: column; justify-content: center; min-width: 0; border-right: 1px solid rgba(255,255,255,0.18); color: #fff; font-family: 'JetBrains Mono', monospace; overflow: hidden; }
+.funnel-seg:last-child { border-right: 0; }
+.funnel-seg .fs-n { font-size: 13px; font-weight: 700; line-height: 1; white-space: nowrap; }
+.funnel-seg .fs-l { font-size: 9px; letter-spacing: 0.1em; opacity: 0.85; margin-top: 2px; white-space: nowrap; }
+.fs-discovered { background: var(--ink-3); }
+.fs-contacted { background: var(--blue); }
+.fs-replied { background: var(--amber); color: var(--on-amber); }
+.fs-meeting { background: var(--green); }
+.fs-won { background: var(--copper); }
+.funnel-meta { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-3); margin-top: 6px; letter-spacing: 0.04em; }
+
+/* Attention */
+.attention-card { background: var(--amber-soft); border: 1px solid var(--amber); border-radius: 10px; padding: 14px 16px; margin-bottom: 10px; display: grid; grid-template-columns: 28px 1fr auto; gap: 12px; align-items: center; cursor: pointer; transition: background .12s; }
+.attention-card:hover { background: rgba(212,149,106,0.2); }
+.attention-card.meeting { background: rgba(107,142,90,0.10); border-color: var(--green); }
+.att-ic { width: 28px; height: 28px; border-radius: 7px; background: var(--amber); color: var(--on-amber); display: grid; place-items: center; font-size: 14px; font-weight: 700; }
+.attention-card.meeting .att-ic { background: var(--green); color: #fff; }
+.att-text { font-size: 13px; color: var(--ink-2); line-height: 1.5; }
+.att-text b { color: var(--ink); font-weight: 600; }
+.att-cta { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.08em; color: var(--copper); text-transform: uppercase; padding: 6px 10px; border: 1px solid var(--copper); border-radius: 4px; white-space: nowrap; }
+
+/* Quality check */
+.qc-card { background: var(--panel-bg); border: 1px solid var(--rule); border-radius: 10px; padding: 18px 20px; }
+.qc-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; }
+.qc-head .qch { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-2); letter-spacing: 0.06em; }
+.qc-head .qch b { color: var(--ink); }
+.qc-row { display: grid; grid-template-columns: 28px 1fr auto auto; gap: 12px; padding: 10px 0; border-bottom: 1px dashed var(--rule); align-items: center; }
+.qc-row:last-of-type { border-bottom: 0; }
+.qc-mark { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 13px; }
+.qc-mark.pass { background: var(--green); }
+.qc-mark.fail { background: var(--red); }
+.qc-label { font-size: 12.5px; color: var(--ink); }
+.qc-label b { font-weight: 600; }
+.qc-note { font-size: 11.5px; color: var(--ink-3); font-style: italic; margin-top: 2px; }
+.qc-score { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--copper); font-weight: 600; }
+.qc-tag { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; letter-spacing: 0.12em; text-transform: uppercase; padding: 3px 7px; border-radius: 4px; }
+.qc-tag.pass { background: rgba(107,142,90,0.15); color: var(--green); }
+.qc-tag.fail { background: rgba(181,90,76,0.14); color: var(--red); }
+
+/* ========== PIPELINE ========== */
+.pipe-controls { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; flex-wrap: wrap; }
+.view-toggle { display: flex; background: var(--surface); border-radius: 6px; padding: 2px; }
+html.dark .view-toggle { background: rgba(255,255,255,0.04); }
+.vt-btn { padding: 6px 14px; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.06em; color: var(--ink-3); border-radius: 4px; }
+.vt-btn.active { background: var(--ink); color: #fff; font-weight: 600; }
+html.dark .vt-btn.active { background: var(--amber); color: var(--on-amber); }
+.filter-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Board */
+.board {
+  display: grid; grid-template-columns: repeat(5, minmax(260px, 1fr));
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 14px;
+  scroll-snap-type: x mandatory;
+  margin-left: -4px; margin-right: -4px; padding-left: 4px; padding-right: 4px;
+}
+.col { min-width: 0; background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; display: flex; flex-direction: column; max-height: calc(100vh - 240px); scroll-snap-align: start; }
+html.dark .col { background: rgba(255,255,255,0.02); }
+.col-head { padding: 12px 14px; border-bottom: 1px solid var(--rule); display: flex; align-items: center; justify-content: space-between; gap: 10px; background: var(--panel-bg); border-radius: 10px 10px 0 0; position: relative; flex-shrink: 0; }
+.col-head::before { content: ''; position: absolute; top: 0; left: 10px; right: 10px; height: 3px; border-radius: 0 0 3px 3px; }
+.col-discovered .col-head::before { background: var(--ink-3); }
+.col-contacted .col-head::before { background: var(--blue); }
+.col-replied .col-head::before { background: var(--amber); }
+.col-meeting .col-head::before { background: var(--green); }
+.col-wonlost .col-head::before { background: linear-gradient(90deg, var(--green) 50%, var(--red) 50%); }
+.col-name { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-2); font-weight: 600; }
+.col-count { display: inline-flex; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 10px; }
+.col-count .cn { background: var(--ink); color: #fff; padding: 1px 7px; border-radius: 10px; font-weight: 600; }
+.col-count .cp { color: var(--ink-3); }
+html.dark .col-count .cn { background: var(--amber); color: var(--on-amber); }
+.col-body { padding: 10px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; min-height: 80px; }
+.col-body-split { padding: 0; }
+.split-section { padding: 10px 10px 6px; display: flex; flex-direction: column; gap: 8px; }
+.split-label { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; letter-spacing: 0.12em; text-transform: uppercase; padding: 6px 0 2px; }
+.split-label.won { color: var(--green); }
+.split-label.lost { color: var(--red); }
+
+.k-card { background: var(--panel-bg); border: 1px solid var(--rule); border-left: 3px solid var(--rule); border-radius: 6px; padding: 12px 13px; cursor: pointer; transition: border-color .12s, box-shadow .12s, transform .08s; }
+.k-card:hover { border-color: var(--amber); box-shadow: 0 2px 10px rgba(212,149,106,0.1); transform: translateY(-1px); }
+.col-discovered .k-card { border-left-color: var(--ink-3); }
+.col-contacted .k-card { border-left-color: var(--blue); }
+.col-replied .k-card { border-left-color: var(--amber); }
+.col-meeting .k-card { border-left-color: var(--green); }
+.col-wonlost .split-section.won .k-card { border-left-color: var(--green); }
+.col-wonlost .split-section.lost .k-card { border-left-color: var(--red); }
+.k-name { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 14px; color: var(--ink); line-height: 1.3; }
+.k-dm { font-size: 12px; color: var(--ink-2); margin-top: 2px; }
+.k-dm-title { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-3); margin-top: 1px; }
+.k-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--rule); gap: 6px; }
+.k-left { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.k-left .vr { width: 24px; height: 24px; font-size: 12px; border-radius: 5px; }
+.k-score { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 600; color: var(--copper); }
+.k-time { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-3); white-space: nowrap; }
+.col-empty { color: var(--ink-3); font-size: 11.5px; font-style: italic; padding: 16px 10px; text-align: center; }
+
+/* Pipeline table */
+.pipe-table { width: 100%; border-collapse: collapse; background: var(--panel-bg); border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; font-size: 13px; }
+.pipe-table thead th { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); text-align: left; padding: 12px 14px; background: var(--surface); border-bottom: 1px solid var(--rule); cursor: pointer; }
+html.dark .pipe-table thead th { background: rgba(255,255,255,0.02); }
+.pipe-table thead th:hover { color: var(--amber); }
+.pipe-table tbody tr { border-bottom: 1px solid var(--rule); cursor: pointer; transition: background .12s; }
+.pipe-table tbody tr:hover { background: var(--amber-glow); }
+.pipe-table td { padding: 11px 14px; color: var(--ink-2); }
+.pipe-table td.name-col { color: var(--ink); font-weight: 600; font-family: 'Playfair Display', serif; font-size: 14px; }
+.pipe-table td.score-col { font-family: 'JetBrains Mono', monospace; color: var(--copper); font-weight: 600; text-align: right; }
+.pipe-table td.dm-title { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-3); }
+.pipe-table td.mono { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--ink-3); }
+
+/* ========== FEED ========== */
+.feed-day { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.18em; color: var(--ink-3); text-transform: uppercase; padding: 22px 4px 10px; }
+.feed-day:first-child { padding-top: 6px; }
+.event-card { background: var(--panel-bg); border: 1px solid var(--rule); border-radius: 10px; margin-bottom: 10px; overflow: hidden; transition: border-color .12s, box-shadow .12s; }
+.event-card.expandable { cursor: pointer; }
+.event-card.expandable:hover { border-color: var(--amber); box-shadow: 0 1px 12px rgba(212,149,106,0.08); }
+.event-card.expanded { border-color: var(--amber); }
+.event-row { display: grid; grid-template-columns: 56px 38px 1fr auto; gap: 12px; padding: 14px 16px; align-items: flex-start; }
+.event-time { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--ink-3); padding-top: 6px; white-space: nowrap; }
+.event-ico { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; font-size: 16px; flex-shrink: 0; }
+.event-ico.reply { background: rgba(107,142,90,0.16); color: var(--green); }
+.event-ico.meeting { background: rgba(74,111,165,0.14); color: var(--blue); }
+.event-ico.signal { background: var(--amber-soft); color: var(--copper); }
+.event-ico.outreach { background: rgba(12,10,8,0.05); color: var(--ink-3); }
+.event-ico.voice { background: rgba(196,106,62,0.14); color: var(--copper); }
+.event-ico.linkedin { background: rgba(74,111,165,0.14); color: var(--blue); }
+html.dark .event-ico.outreach { background: rgba(255,255,255,0.06); color: var(--ink-2); }
+.event-body { min-width: 0; }
+.event-type { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--copper); font-weight: 600; margin-bottom: 4px; }
+.event-headline { font-size: 14px; color: var(--ink); line-height: 1.45; font-weight: 500; }
+.event-headline .biz { color: var(--ink); font-weight: 700; cursor: pointer; border-bottom: 1px dotted var(--ink-3); }
+.event-headline .biz:hover { color: var(--copper); border-color: var(--copper); }
+.event-quote { font-family: 'Playfair Display', serif; font-style: italic; font-size: 14px; color: var(--ink-2); line-height: 1.55; margin-top: 6px; padding: 8px 12px; background: var(--surface); border-left: 3px solid var(--amber); border-radius: 0 6px 6px 0; }
+html.dark .event-quote { background: rgba(255,255,255,0.04); }
+.event-meta { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--ink-3); margin-top: 5px; }
+.event-side { display: flex; align-items: center; gap: 6px; padding-top: 4px; }
+.event-side .vr { width: 28px; height: 28px; font-size: 14px; border-radius: 6px; }
+.event-chev { color: var(--ink-3); font-size: 14px; transition: transform .15s, color .15s; }
+.event-card.expanded .event-chev { transform: rotate(90deg); color: var(--amber); }
+.event-expand { display: none; padding: 0 16px 14px 110px; border-top: 1px dashed var(--rule); font-size: 13px; color: var(--ink-2); line-height: 1.55; }
+.event-card.expanded .event-expand { display: block; padding-top: 12px; }
+.event-expand h5 { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.14em; color: var(--ink-3); text-transform: uppercase; margin: 12px 0 6px; font-weight: 600; }
+.event-expand h5:first-child { margin-top: 0; }
+.event-expand .actions { display: flex; gap: 8px; margin-top: 10px; }
+
+/* ========== MEETINGS — Calendar ========== */
+.cal-grid { display: grid; grid-template-columns: 56px repeat(5, 1fr); border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; background: var(--panel-bg); margin-bottom: 24px; }
+.cal-corner { background: var(--surface); border-bottom: 1px solid var(--rule); }
+html.dark .cal-corner { background: rgba(255,255,255,0.02); }
+.cal-day-head { background: var(--surface); border-bottom: 1px solid var(--rule); border-left: 1px solid var(--rule); padding: 10px 12px; text-align: center; font-family: 'JetBrains Mono', monospace; }
+html.dark .cal-day-head { background: rgba(255,255,255,0.02); }
+.cal-day-head .ddow { font-size: 10px; letter-spacing: 0.16em; color: var(--ink-3); text-transform: uppercase; }
+.cal-day-head .dnum { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 700; color: var(--ink); margin-top: 2px; }
+.cal-day-head.today { background: var(--amber-soft); border-bottom: 2px solid var(--amber); position: relative; }
+.cal-day-head.today .ddow { color: var(--copper); font-weight: 700; }
+.cal-day-head.today::after { content: 'TODAY'; position: absolute; top: 4px; right: 6px; font-family: 'JetBrains Mono', monospace; font-size: 8px; letter-spacing: 0.16em; color: var(--copper); font-weight: 700; }
+.cal-time { border-bottom: 1px solid var(--rule); padding: 4px 8px 0; font-family: 'JetBrains Mono', monospace; font-size: 9.5px; color: var(--ink-3); text-align: right; height: 44px; }
+.cal-slot { border-bottom: 1px solid var(--rule); border-left: 1px solid var(--rule); height: 44px; position: relative; padding: 2px 4px; }
+.cal-slot.today-col { background: rgba(212,149,106,0.04); }
+.cal-event { position: absolute; left: 4px; right: 4px; background: var(--amber-soft); border: 1px solid var(--amber); border-left: 3px solid var(--amber); border-radius: 5px; padding: 5px 8px; cursor: pointer; z-index: 2; transition: box-shadow .12s, transform .08s; overflow: hidden; }
+.cal-event:hover { box-shadow: 0 2px 10px rgba(212,149,106,0.25); transform: translateY(-1px); }
+.cal-event.green { background: rgba(107,142,90,0.14); border-color: var(--green); border-left-color: var(--green); }
+.cal-event-time { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; color: var(--copper); font-weight: 600; line-height: 1.1; }
+.cal-event.green .cal-event-time { color: var(--green); }
+.cal-event-name { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 12px; color: var(--ink); margin-top: 1px; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cal-event-vr { position: absolute; top: 4px; right: 4px; width: 18px; height: 18px; border-radius: 4px; display: grid; place-items: center; color: #fff; font-family: 'Playfair Display', serif; font-weight: 700; font-size: 11px; }
+.cal-event-vr[data-g="A"], .cal-event-vr[data-g="B"] { background: var(--green); }
+.cal-event-vr[data-g="C"] { background: var(--amber); color: var(--on-amber); }
+.cal-event-vr[data-g="D"] { background: var(--copper); }
+.cal-event-vr[data-g="F"] { background: var(--red); }
+
+/* Meetings — day view (mobile) */
+.day-view { display: none; }
+.day-view-card { background: var(--panel-bg); border: 1px solid var(--rule); border-radius: 10px; margin-bottom: 22px; overflow: hidden; }
+.day-view-head { padding: 14px 16px; border-bottom: 1px solid var(--rule); background: var(--amber-soft); }
+.day-view-head .h-day { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.16em; color: var(--copper); text-transform: uppercase; font-weight: 700; }
+.day-view-head .h-date { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 22px; color: var(--ink); margin-top: 2px; }
+.day-view-body { padding: 12px 14px; }
+.day-meet { padding: 12px 14px; border: 1px solid var(--rule); border-left: 3px solid var(--amber); border-radius: 6px; margin-bottom: 8px; cursor: pointer; }
+.day-meet:hover { box-shadow: 0 1px 8px rgba(212,149,106,0.08); }
+.day-meet .dm-time { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--copper); font-weight: 600; }
+.day-meet .dm-name { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 14px; color: var(--ink); margin-top: 2px; }
+.day-meet .dm-dm { font-size: 12px; color: var(--ink-2); margin-top: 1px; }
+
+.upcoming-row { display: grid; grid-template-columns: 30px 1fr auto; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--rule); align-items: center; cursor: pointer; }
+.upcoming-row:last-child { border-bottom: 0; }
+.upcoming-row:hover { background: var(--amber-glow); }
+.upcoming-row .ur-vr { width: 30px; height: 30px; font-size: 14px; border-radius: 6px; }
+.upcoming-row .ur-main .ur-n { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 14px; color: var(--ink); }
+.upcoming-row .ur-main .ur-s { font-size: 11.5px; color: var(--ink-3); margin-top: 1px; }
+.upcoming-row .ur-when { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-2); text-align: right; }
+.upcoming-row .ur-when .cd { color: var(--copper); margin-top: 2px; font-size: 10.5px; }
+
+/* Briefing PAGE (meetings only) */
+.bp-back { display: inline-flex; align-items: center; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-3); padding: 6px 10px; border-radius: 4px; margin-bottom: 14px; cursor: pointer; }
+.bp-back:hover { color: var(--copper); background: var(--amber-glow); }
+.bp-header { background: var(--ink); color: #fff; border-radius: 12px; padding: 24px 28px; margin-bottom: 18px; display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
+.bp-header .bp-eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.14em; color: rgba(255,255,255,0.45); text-transform: uppercase; }
+.bp-header .bp-when { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 22px; margin-top: 4px; line-height: 1.2; }
+.bp-header .bp-cd { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--amber); margin-top: 4px; }
+.bp-header .bp-spacer { flex: 1; }
+.bp-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.bp-actions .btn { padding: 9px 16px; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.08em; font-weight: 700; text-transform: uppercase; border-radius: 6px; }
+.bp-actions .btn-amber { background: var(--amber); color: var(--on-amber); }
+.bp-actions .btn-ghost { background: rgba(255,255,255,0.1); color: #fff; }
+.bp-actions .btn-ghost:hover { background: rgba(255,255,255,0.2); }
+.bp-pdf-btn .lbl-pdf { display: none; }
+.pma-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+.pma-btn { padding: 10px 16px; border-radius: 6px; font-size: 12.5px; font-weight: 600; color: #fff; font-family: 'JetBrains Mono', monospace; letter-spacing: 0.06em; text-transform: uppercase; }
+.pma-won { background: var(--green); }
+.pma-follow { background: var(--amber); color: var(--on-amber); }
+.pma-noshow { background: var(--red); }
+.pma-resched { background: transparent; color: var(--ink-2); border: 1px solid var(--rule); }
+
+/* ========== PROGRESS ========== */
+.kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 22px; }
+.kpi-cell { background: var(--panel-bg); border: 1px solid var(--rule); border-radius: 10px; padding: 14px 16px; }
+.kpi-val { font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 700; color: var(--ink); line-height: 1; }
+.kpi-val small { font-size: 14px; color: var(--ink-3); }
+.kpi-l { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.12em; color: var(--ink-3); text-transform: uppercase; margin-top: 6px; }
+.kpi-note { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--ink-3); margin-top: 4px; font-style: italic; }
+.fr-row { display: flex; align-items: center; gap: 12px; padding: 6px 0; font-size: 13px; }
+.fr-row .l { width: 110px; color: var(--ink-2); font-family: 'JetBrains Mono', monospace; font-size: 11px; flex-shrink: 0; }
+.fr-row .b { flex: 1; height: 22px; background: rgba(12,10,8,0.04); border-radius: 4px; overflow: hidden; }
+html.dark .fr-row .b { background: rgba(255,255,255,0.04); }
+.fr-row .bf { height: 100%; background: linear-gradient(90deg, var(--amber), #a87044); display: flex; align-items: center; padding: 0 10px; color: var(--on-amber); font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 11px; }
+.fr-row .pc { min-width: 50px; text-align: right; color: var(--copper); font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; }
+.roi-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.roi-cell { background: var(--surface); border-radius: 10px; padding: 14px 16px; }
+html.dark .roi-cell { background: rgba(255,255,255,0.04); }
+.roi-val { font-family: 'Playfair Display', serif; font-size: 26px; font-weight: 700; color: var(--copper); line-height: 1; }
+.roi-l { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); margin-top: 6px; }
+
+/* ========== SETTINGS ========== */
+.set-row { display: grid; grid-template-columns: 200px 1fr; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--rule); align-items: center; }
+.set-row:last-child { border-bottom: 0; }
+.set-key { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-3); letter-spacing: 0.06em; }
+.set-val input, .set-val select, .set-val textarea { background: var(--cream); border: 1px solid var(--rule); border-radius: 6px; padding: 9px 12px; font-size: 13px; color: var(--ink); width: 100%; max-width: 380px; }
+html.dark .set-val input, html.dark .set-val select, html.dark .set-val textarea { background: rgba(255,255,255,0.04); }
+.set-val textarea { min-height: 70px; resize: vertical; }
+
+/* ========== GLOBAL RIGHT DRAWER ========== */
+.drawer-backdrop { position: fixed; inset: 0; background: rgba(12,10,8,0.55); backdrop-filter: blur(2px); z-index: 150; display: none; }
+.drawer-backdrop.on { display: block; }
+.drawer { position: fixed; right: 0; top: 0; bottom: 0; width: min(640px, 100%); background: var(--cream); border-left: 1px solid var(--rule); z-index: 160; transform: translateX(100%); transition: transform .3s cubic-bezier(.2,.7,.3,1); overflow-y: auto; }
+.drawer.on { transform: translateX(0); }
+.drawer-head { position: sticky; top: 0; z-index: 3; background: var(--cream); padding: 18px 22px; border-bottom: 1px solid var(--rule); display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; }
+.drawer-close { width: 44px; height: 44px; font-size: 24px; color: var(--ink-3); display: grid; place-items: center; border-radius: 8px; }
+.drawer-close:hover { color: var(--copper); background: var(--amber-glow); }
+.dh-name { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 22px; color: var(--ink); margin-top: 3px; }
+.dh-sub { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-3); margin-top: 2px; }
+.drawer-body { padding: 18px 22px 40px; }
+.bf-section { margin-bottom: 20px; }
+.bf-section h4 { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid var(--rule); font-weight: 600; }
+.bf-ai { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--copper); letter-spacing: 0.12em; text-transform: uppercase; margin: -6px 0 14px; }
+.bf-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px; background: var(--surface); border-radius: 8px; }
+html.dark .bf-meta { background: rgba(255,255,255,0.04); }
+.bf-kv { display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px; }
+.bf-kv .k { color: var(--ink-3); }
+.bf-kv .v { color: var(--ink); font-weight: 500; font-family: 'JetBrains Mono', monospace; }
+.bf-hook { font-family: 'Playfair Display', serif; font-style: italic; font-size: 15px; color: var(--ink-2); line-height: 1.7; padding: 14px 16px; background: var(--surface); border-left: 3px solid var(--amber); border-radius: 0 6px 6px 0; }
+html.dark .bf-hook { background: rgba(255,255,255,0.04); }
+.bf-list li { margin-bottom: 8px; font-size: 13px; color: var(--ink-2); line-height: 1.55; }
+.bf-obj { padding: 12px 14px; background: var(--surface); border-radius: 8px; margin-bottom: 10px; }
+html.dark .bf-obj { background: rgba(255,255,255,0.04); }
+.bf-obj .obj-q { font-size: 13px; font-weight: 600; color: var(--ink); margin-bottom: 6px; }
+.bf-obj .obj-a { font-size: 12.5px; color: var(--ink-2); line-height: 1.55; }
+.vr-strip { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+.vr-cw { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.vr-letter { width: 26px; height: 26px; border-radius: 5px; display: grid; place-items: center; color: #fff; font-family: 'Playfair Display', serif; font-weight: 700; font-size: 13px; }
+.vr-letter[data-g="A"], .vr-letter[data-g="B"] { background: var(--green); }
+.vr-letter[data-g="C"] { background: var(--amber); color: var(--on-amber); }
+.vr-letter[data-g="D"] { background: var(--copper); }
+.vr-letter[data-g="F"] { background: var(--red); }
+.vr-name { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--ink-3); letter-spacing: 0.04em; text-transform: uppercase; }
+
+/* ========== MOBILE-TOPBAR + BOTTOM-NAV ========== */
+#mobile-topbar { display: none; position: fixed; top: 0; left: 0; right: 0; height: 52px; background: var(--brand-bar); color: #fff; z-index: 130; align-items: center; padding: 0 14px; gap: 12px; }
+.mobile-logo { font-family: 'Playfair Display', serif; font-size: 17px; }
+.mobile-logo em { color: var(--amber); font-style: italic; }
+#bottomnav { display: none; position: fixed; bottom: 0; left: 0; right: 0; height: var(--bottomnav-h); background: var(--brand-bar); border-top: 1px solid rgba(255,255,255,0.06); z-index: 100; }
+.bn-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: rgba(255,255,255,0.55); font-size: 10.5px; font-family: 'JetBrains Mono', monospace; letter-spacing: 0.06em; cursor: pointer; }
+.bn-item .bn-ico { font-size: 17px; }
+.bn-item.active { color: var(--amber); }
+#sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 99; }
+#sidebar-overlay.show { display: block; }
+
+/* ========== MEDIA QUERIES ========== */
+@media (max-width: 960px) {
+  .sum-row, .kpi-row { grid-template-columns: repeat(2, 1fr); }
+  .maya-strip-list { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 768px) {
+  #shell { grid-template-columns: 1fr; }
+  #sidebar { position: fixed; top: 0; left: 0; bottom: 0; width: 240px; z-index: 140; transform: translateX(-100%); }
+  #sidebar.mobile-open { transform: translateX(0); }
+  #topbar { display: none; }
+  #mobile-topbar { display: flex; }
+  #bottomnav { display: flex; }
+  .hamburger-btn { display: inline-block; }
+  body { padding-top: 52px; padding-bottom: var(--bottomnav-h); }
+  #main { padding: 18px 14px 24px; max-width: 100%; }
+  .page-h { font-size: 24px; }
+  .bdr-hero { grid-template-columns: 1fr; padding: 18px 18px; gap: 14px; }
+  .bdr-hero .h-line { font-size: 18px; }
+  .bdr-avatar { width: 50px; height: 50px; font-size: 22px; }
+  .sum-row { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .sum-card { padding: 12px 14px; }
+  .sum-val { font-size: 22px; }
+  .today-card { flex: 0 0 240px; }
+  .maya-strip-list { grid-template-columns: 1fr; }
+  .board { grid-template-columns: repeat(5, 86vw); gap: 10px; }
+  .col { max-height: none; min-height: 280px; }
+  .pipe-table thead th:nth-child(n+5), .pipe-table td:nth-child(n+5) { display: none; }
+  .cal-grid { display: none; }
+  .day-view { display: block; }
+  .bp-header { padding: 18px 20px; gap: 14px; }
+  .bp-pdf-btn .lbl-print { display: none; }
+  .bp-pdf-btn .lbl-pdf { display: inline; }
+  .set-row { grid-template-columns: 1fr; gap: 6px; padding: 12px 0; }
+}
+@media (max-width: 600px) {
+  .funnel-seg .fs-n { font-size: 11px; }
+  .funnel-seg .fs-l { font-size: 8px; }
+  .event-time { display: none; }
+  .event-row { grid-template-columns: 38px 1fr auto; }
+  .event-expand { padding-left: 16px; }
+}
+</style>
+</head>
+<body>
+
+<header id="topbar">
+  <span class="brand">Agency<em>OS</em></span>
+  <span class="brand-tag">MASTER · THE AGENCY DESK</span>
+  <span class="tb-spacer"></span>
+  <span class="tb-cycle"><span class="tb-dot"></span>MAYA · DAY 14/30</span>
+  <button class="tb-theme" aria-label="Toggle theme"><span class="t-sun">☀</span><span class="t-moon">🌙</span></button>
+  <button class="kill-btn" onclick="alert('Pause all outreach — confirm?')">⏸ Pause all</button>
+</header>
+
+<div id="mobile-topbar">
+  <button class="hamburger-btn" onclick="toggleMobileSidebar()">&#9776;</button>
+  <span class="mobile-logo">Agency<em>OS</em></span>
+  <span class="tb-spacer"></span>
+  <button class="tb-theme" aria-label="Toggle theme"><span class="t-sun">☀</span><span class="t-moon">🌙</span></button>
+  <button class="kill-btn" style="font-size:10px;padding:4px 10px;" onclick="alert('Pause all outreach — confirm?')">Pause all</button>
+</div>
+
+<div id="sidebar-overlay" onclick="toggleMobileSidebar()"></div>
+
+<div id="shell">
+  <aside id="sidebar">
+    <div class="sb-logo">
+      <div class="lt">Agency<em>OS</em></div>
+      <div class="ls">The Agency Desk</div>
+    </div>
+    <div class="sb-section">
+      <div class="sb-label">Workspace</div>
+      <div class="sb-item active" data-v="home" onclick="showView('home')">
+        <svg class="sb-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1L1 7v8h5v-5h4v5h5V7L8 1z"/></svg> Home
+      </div>
+      <div class="sb-item" data-v="pipeline" onclick="showView('pipeline')">
+        <svg class="sb-icon" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="2" width="3" height="12" rx="1"/><rect x="6" y="2" width="3" height="8" rx="1"/><rect x="11" y="2" width="3" height="10" rx="1"/></svg> Pipeline
+        <span class="sb-badge">13</span>
+      </div>
+      <div class="sb-item" data-v="feed" onclick="showView('feed')">
+        <svg class="sb-icon" viewBox="0 0 16 16" fill="currentColor"><circle cx="3" cy="3" r="1.5"/><rect x="6" y="2.2" width="9" height="1.6" rx="0.5"/><circle cx="3" cy="8" r="1.5"/><rect x="6" y="7.2" width="9" height="1.6" rx="0.5"/><circle cx="3" cy="13" r="1.5"/><rect x="6" y="12.2" width="9" height="1.6" rx="0.5"/></svg> Feed
+        <span class="sb-badge">24</span>
+      </div>
+      <div class="sb-item" data-v="meetings" onclick="showView('meetings')">
+        <svg class="sb-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="3" width="12" height="11" rx="1.5"/><line x1="2" y1="6" x2="14" y2="6"/><line x1="5" y1="1.5" x2="5" y2="4" stroke-linecap="round"/><line x1="11" y1="1.5" x2="11" y2="4" stroke-linecap="round"/></svg> Meetings
+        <span class="sb-badge">4</span>
+      </div>
+    </div>
+    <div class="sb-section">
+      <div class="sb-label">Report</div>
+      <div class="sb-item" data-v="progress" onclick="showView('progress')">
+        <svg class="sb-icon" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="10" width="3" height="5" rx="1"/><rect x="6" y="6" width="3" height="9" rx="1"/><rect x="11" y="3" width="3" height="12" rx="1"/></svg> Progress
+      </div>
+    </div>
+    <div class="sb-section">
+      <div class="sb-label">Account</div>
+      <div class="sb-item" data-v="settings" onclick="showView('settings')">
+        <svg class="sb-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 5a3 3 0 100 6 3 3 0 000-6zm6.5 2l-1.2-.4a5 5 0 00-.3-.7l.6-1.1-1.4-1.4-1.1.6a5 5 0 00-.7-.3L10 2.5H6l-.4 1.2a5 5 0 00-.7.3l-1.1-.6L2.4 4.8l.6 1.1a5 5 0 00-.3.7L1.5 7v2l1.2.4c.1.2.2.5.3.7l-.6 1.1 1.4 1.4 1.1-.6c.2.1.5.2.7.3L6 13.5h4l.4-1.2c.2-.1.5-.2.7-.3l1.1.6 1.4-1.4-.6-1.1c.1-.2.2-.5.3-.7l1.2-.4V7z"/></svg> Settings
+      </div>
+    </div>
+    <div class="sb-foot">
+      <div class="avatar">DS</div>
+      <div>
+        <div class="sb-foot-n">Dave Stephens</div>
+        <div class="sb-foot-r">Operator</div>
+      </div>
+    </div>
+  </aside>
+
+  <main id="main"></main>
+</div>
+
+<nav id="bottomnav">
+  <div class="bn-item active" data-v="home" onclick="showView('home')"><div class="bn-ico">⌂</div><span>Home</span></div>
+  <div class="bn-item" data-v="pipeline" onclick="showView('pipeline')"><div class="bn-ico">▤</div><span>Pipeline</span></div>
+  <div class="bn-item" data-v="meetings" onclick="showView('meetings')"><div class="bn-ico">◫</div><span>Meetings</span></div>
+  <div class="bn-item" data-v="feed" onclick="showView('feed')"><div class="bn-ico">≡</div><span>Feed</span></div>
+</nav>
+
+<!-- Global right drawer -->
+<div class="drawer-backdrop" id="drawerBackdrop" onclick="closeDrawer()"></div>
+<aside class="drawer" id="drawer">
+  <div class="drawer-head">
+    <div>
+      <div class="eyebrow">Briefing</div>
+      <div class="dh-name" id="dhName">—</div>
+      <div class="dh-sub" id="dhSub">—</div>
+    </div>
+    <button class="drawer-close" onclick="closeDrawer()" aria-label="Close">×</button>
+  </div>
+  <div class="drawer-body" id="drawerBody"></div>
+</aside>
+
+<script>
+/* ================================================================
+   PROSPECT DATA — honest-data shape
+   (no revenue, no dm.style, no dm.linkedinActivity)
+================================================================ */
+const prospects = [
+  {
+    id:'p1', name:'Momentum Constructions', suburb:'Brunswick', state:'VIC',
+    industry:'Construction', score:91, staff:'28', est:'2008',
+    domain:'momentumconstructions.com.au', gmb_category:'General contractor',
+    abn_status:'active', abn_age_years:18,
+    dfs_organic_etv:180, dfs_organic_keywords:42, backlinks_count:67, domain_rank:28,
+    dm:{ name:'James Whitford', title:'Founder & MD', tenure:'16 years' },
+    vulnerability:'Google Ads spend detected but website converts poorly. GMB rating dropped 4.6→4.1 in 90 days. Competitor bidding on brand terms.',
+    vulnGrades:{ website:'F', seo:'D', reviews:'D', ads:'C', social:'B', content:'F' },
+    status:'Meeting Booked',
+    meeting:{ day:'Wed', date:'Wed 23 Apr', time:'4:00pm', startHour:16, durationHrs:1, countdown:'Today 4pm', platform:'Zoom', isToday:true },
+    lastAction:'Meeting booked · 37m ago',
+    openingHook:'"James, your competitor is bidding on the exact phrase people search when looking for Momentum Constructions. I can show you in 2 minutes."',
+    discoveryQuestions:['What does a qualified lead look like for you?','How are you tracking ROI on your Google Ads spend?','What happened with the GMB reviews — did you notice the drop?'],
+    objections:[{obj:'"We already have someone handling this."',response:'Let me show you what they\'re missing on the technical side.'}],
+    closeOptions:['90-day pilot at $2,800/month','Full retainer at $4,200/month'],
+    pricingRange:'$2,800–$4,200/month AUD',
+    competitors:['Brunswick Build Co','North Melbourne Construct','Carlton Trades'],
+    critic:{ email:82, linkedin:71, voice:88, sms:64 },
+  },
+  {
+    id:'p2', name:'Harbour Physiotherapy', suburb:'Manly', state:'NSW',
+    industry:'Health', score:88, staff:'11', est:'2015',
+    domain:'harbourphysio.com.au', gmb_category:'Physiotherapist',
+    abn_status:'active', abn_age_years:11,
+    dfs_organic_etv:210, dfs_organic_keywords:58, backlinks_count:41, domain_rank:22,
+    dm:{ name:'Sarah Kemp', title:'Clinical Director & Owner', tenure:'9 years' },
+    vulnerability:'Paused Google Ads after 6 months. Competitor 200m away launched aggressively. Defensive opportunity.',
+    vulnGrades:{ website:'C', seo:'D', reviews:'B', ads:'F', social:'D', content:'D' },
+    status:'Meeting Booked',
+    meeting:{ day:'Wed', date:'Wed 23 Apr', time:'2:00pm', startHour:14, durationHrs:1, countdown:'Today 2pm', platform:'Zoom', isToday:true },
+    lastAction:'Meeting booked · 1d ago',
+    openingHook:'"Sarah, the new practice on Sydney Road is now outranking Harbour Physio for 14 of your top search terms."',
+    discoveryQuestions:['Why did you pause Google Ads — was it the cost or the results?','Have you seen patient numbers affected?','What does your current patient acquisition look like — mostly referrals?'],
+    objections:[{obj:'"We can\'t afford it right now."',response:'Every month you don\'t act the competitor gains ground.'}],
+    closeOptions:['Local defence at $1,800/month','Full digital at $2,800/month'],
+    pricingRange:'$1,800–$2,800/month AUD',
+    competitors:['Sydney Road Physio','Manly Allied Health','Northern Beaches Sports Med'],
+    critic:{ email:79, linkedin:81, voice:72, sms:68 },
+  },
+  {
+    id:'p3', name:'Cascade Dental Group', suburb:'Paddington', state:'NSW',
+    industry:'Dental', score:74, staff:'14', est:'2012',
+    domain:'cascadedental.com.au', gmb_category:'Dental clinic',
+    abn_status:'active', abn_age_years:14,
+    dfs_organic_etv:340, dfs_organic_keywords:89, backlinks_count:73, domain_rank:31,
+    dm:{ name:'Dr Priya Narayan', title:'Principal Dentist & Owner', tenure:'12 years' },
+    vulnerability:'Hired marketing coordinator, redesigned website. New site has thin content; GMB strategy is basic.',
+    vulnGrades:{ website:'C', seo:'C', reviews:'A', ads:'D', social:'C', content:'D' },
+    status:'Meeting Booked',
+    meeting:{ day:'Wed', date:'Wed 23 Apr', time:'10:00am', startHour:10, durationHrs:1, countdown:'Today 10am', platform:'Zoom', isToday:true },
+    lastAction:'Meeting booked · 2d ago',
+    openingHook:'"Priya, your new website looks great — but a technical SEO issue means Google can\'t index 60% of your treatment pages."',
+    discoveryQuestions:['What role do you see the new coordinator playing vs an agency?','What\'s the most important service you want more patients for?','Are you tracking where your current new patients come from?'],
+    objections:[{obj:'"We have someone in-house now."',response:'We work alongside in-house teams. Technical and strategic layer.'}],
+    closeOptions:['Strategy layer $2,200/month','Full-service $3,400/month'],
+    pricingRange:'$2,200–$3,400/month AUD',
+    competitors:['Paddington Smiles','Oxford St Dental','Bondi Junction Orthodontics'],
+    critic:{ email:85, linkedin:77, voice:74, sms:70 },
+  },
+  {
+    id:'p4', name:'Coastal Veterinary', suburb:'Byron Bay', state:'NSW',
+    industry:'Veterinary', score:76, staff:'16', est:'2010',
+    domain:'coastalvet.com.au', gmb_category:'Veterinarian',
+    abn_status:'active', abn_age_years:9,
+    dfs_organic_etv:155, dfs_organic_keywords:46, backlinks_count:38, domain_rank:19,
+    dm:{ name:'Dr Rebecca Ashford', title:'Practice Owner', tenure:'14 years' },
+    vulnerability:'Investing in marketing but spreading thin — Facebook ads, blog, community sponsorship without cohesive strategy.',
+    vulnGrades:{ website:'B', seo:'D', reviews:'A', ads:'C', social:'B', content:'D' },
+    status:'Meeting Booked',
+    meeting:{ day:'Mon', date:'Mon 21 Apr', time:'9:30am', startHour:9, durationHrs:1, countdown:'Completed (logged)', platform:'Zoom', isToday:false, isPast:true },
+    lastAction:'Meeting completed · 2d ago',
+    openingHook:'"Rebecca, you\'ve done the hard part — community trust and good reviews."',
+    discoveryQuestions:['How are new clients finding you at the moment?','Is the Facebook spend producing bookings?','Is the blog something you want to grow?'],
+    objections:[{obj:'"Can you send pricing first?"',response:'I can send a range — the right package depends on your goals.'}],
+    closeOptions:['Local presence $1,600/month','Full digital $2,400/month'],
+    pricingRange:'$1,600–$2,400/month AUD',
+    competitors:['Byron Vet Centre','Bangalow Veterinary'],
+    critic:{ email:76, linkedin:69, voice:82, sms:74 },
+  },
+  {
+    id:'p5', name:'Southbank Legal Advisory', suburb:'Southbank', state:'VIC',
+    industry:'Legal', score:71, staff:'18', est:'2014',
+    domain:'southbanklegal.com.au', gmb_category:'Law firm',
+    abn_status:'active', abn_age_years:13,
+    dfs_organic_etv:420, dfs_organic_keywords:112, backlinks_count:94, domain_rank:34,
+    dm:{ name:'Andrew Volkov', title:'Managing Partner', tenure:'10 years' },
+    vulnerability:'Investing in content and ads but execution unfocused — thought leadership lacks SEO, ad spend increasing without conversion tracking.',
+    vulnGrades:{ website:'C', seo:'D', reviews:'B', ads:'C', social:'C', content:'C' },
+    status:'Replied', meeting:null, lastAction:'Reply received · 1d ago',
+    openingHook:'"Andrew, you\'ve published 4 articles this month — not one is ranking on page 1 for any commercial legal term."',
+    discoveryQuestions:['What\'s the primary driver for adding family law?','Who\'s writing the articles — internal or external?','Do you have visibility into what\'s driving your ad clicks?'],
+    objections:[{obj:'"We manage this internally."',response:'The gap is technical SEO — not effort, configuration.'}],
+    closeOptions:['SEO-first $2,400/month','Full digital $3,800/month'],
+    pricingRange:'$2,400–$3,800/month AUD',
+    competitors:['Holding Redlich','Macpherson Kelley','Lander & Rogers'],
+    critic:{ email:80, linkedin:73, voice:66, sms:62 },
+  },
+  {
+    id:'p6', name:'Riverside Accounting', suburb:'North Sydney', state:'NSW',
+    industry:'Accounting', score:52, staff:'9', est:'2018',
+    domain:'riversideaccounting.com.au', gmb_category:'Accountant',
+    abn_status:'active', abn_age_years:21,
+    dfs_organic_etv:280, dfs_organic_keywords:67, backlinks_count:52, domain_rank:26,
+    dm:{ name:'Michael Chen', title:'Managing Partner', tenure:'6 years' },
+    vulnerability:'Just starting digital presence — LinkedIn page with no content, incomplete GMB.',
+    vulnGrades:{ website:'D', seo:'F', reviews:'C', ads:'F', social:'F', content:'F' },
+    status:'Replied', meeting:null, lastAction:'Soft reply (Q3) · 1d ago',
+    openingHook:'"Michael, I\'m not pitching a retainer. Let me spend 20 minutes on what fixing your Google profile alone would do for referrals."',
+    discoveryQuestions:['What does a new client typically mean in annual fee revenue for the firm?','How do most of your clients find you currently?','What\'s making next quarter a better time than now?'],
+    objections:[{obj:'"Maybe next quarter."',response:'What changes next quarter? If it\'s budget, I have an entry-level option.'}],
+    closeOptions:['Foundation $800/month','Growth $1,400/month'],
+    pricingRange:'$800–$1,400/month AUD',
+    competitors:['Carbon Group','Chan & Naylor North Sydney'],
+    critic:{ email:68, linkedin:62, voice:58, sms:55 },
+  },
+  {
+    id:'p7', name:'Parramatta Motor Group', suburb:'Parramatta', state:'NSW',
+    industry:'Automotive', score:47, staff:'34', est:'2005',
+    domain:'parramattamotor.com.au', gmb_category:'Car dealer',
+    abn_status:'active', abn_age_years:27,
+    dfs_organic_etv:96, dfs_organic_keywords:29, backlinks_count:48, domain_rank:21,
+    dm:{ name:'Wei Zhang', title:'Dealer Principal', tenure:'19 years' },
+    vulnerability:'Zero digital marketing investment. Website from 2020, no social presence.',
+    vulnGrades:{ website:'F', seo:'F', reviews:'B', ads:'F', social:'F', content:'F' },
+    status:'Contacted', meeting:null, lastAction:'Voice AI voicemail · 2h ago',
+    openingHook:'"Wei, 840 people search for used cars in Parramatta monthly. Parramatta Motor doesn\'t appear on page 1 for any of them."',
+    discoveryQuestions:['Where does most of your foot traffic come from today?','Have you ever tried digital advertising?','What would one extra car sale per week mean in margin?'],
+    objections:[{obj:'"We do fine without digital."',response:'You\'re doing well despite it — imagine doing well because of it.'}],
+    closeOptions:['Visibility $3,200/month','Full digital $5,000/month'],
+    pricingRange:'$3,200–$5,000/month AUD',
+    competitors:['Parramatta Nissan','Westfield Honda'],
+    critic:{ email:72, linkedin:64, voice:70, sms:60 },
+  },
+  {
+    id:'p8', name:'Bondi Creative Studio', suburb:'Bondi', state:'NSW',
+    industry:'Design', score:68, staff:'8', est:'2019',
+    domain:'bondicreative.com.au', gmb_category:'Graphic designer',
+    abn_status:'active', abn_age_years:7,
+    dfs_organic_etv:140, dfs_organic_keywords:38, backlinks_count:82, domain_rank:29,
+    dm:{ name:'Aria Martinelli', title:'Creative Director', tenure:'5 years' },
+    vulnerability:'Strong social growth but no paid acquisition. Struggles with own pipeline.',
+    vulnGrades:{ website:'B', seo:'D', reviews:'A', ads:'F', social:'A', content:'B' },
+    status:'Contacted', meeting:null, lastAction:'LinkedIn accepted · 5h ago',
+    openingHook:'"Aria, your portfolio is excellent — but when someone searches for a Sydney brand design studio, you don\'t appear in the top 20."',
+    discoveryQuestions:['How do you win new clients today — mostly referrals?','Have you explored paid channels?','What type of client are you trying to attract more of?'],
+    objections:[{obj:'"We do marketing for others — we can do it ourselves."',response:'Most of your competitors say the same. It\'s about bandwidth, not capability.'}],
+    closeOptions:['New business channel $1,200/month','Full growth $2,000/month'],
+    pricingRange:'$1,200–$2,000/month AUD',
+    competitors:['Manual Sydney','Frost Collective'],
+    critic:{ email:83, linkedin:79, voice:68, sms:72 },
+  },
+  {
+    id:'p9', name:'Fitzroy Cafe Group', suburb:'Fitzroy', state:'VIC',
+    industry:'Hospitality', score:84, staff:'22', est:'2016',
+    domain:'fitzroycafegroup.com.au', gmb_category:'Cafe',
+    abn_status:'active', abn_age_years:6,
+    dfs_organic_etv:78, dfs_organic_keywords:24, backlinks_count:31, domain_rank:17,
+    dm:{ name:'Tom Abernathy', title:'Owner', tenure:'8 years' },
+    vulnerability:'Margin pressure from delivery platforms. Stale GMB while competitor won local awards.',
+    vulnGrades:{ website:'D', seo:'F', reviews:'C', ads:'F', social:'D', content:'F' },
+    status:'Contacted', meeting:null, lastAction:'Email 3 sent · 8h ago',
+    openingHook:'"Tom, our full package is less than you pay in one week of delivery commission."',
+    discoveryQuestions:['What percentage of revenue is delivery vs dine-in?','Have you tried promoting direct orders?','What did Sundays Fitzroy do differently that you\'ve noticed?'],
+    objections:[{obj:'"I\'m too busy to deal with marketing."',response:'That\'s exactly why you use us. It runs in the background.'}],
+    closeOptions:['Direct acquisition $1,400/month','Full platform $2,200/month'],
+    pricingRange:'$1,400–$2,200/month AUD',
+    competitors:['Sundays Fitzroy','Deadman Espresso','The Commoner'],
+    critic:{ email:77, linkedin:68, voice:64, sms:54 },
+  },
+  {
+    id:'p10', name:'Gold Coast Mortgage Co', suburb:'Surfers Paradise', state:'QLD',
+    industry:'Finance', score:55, staff:'12', est:'2017',
+    domain:'goldcoastmortgage.com.au', gmb_category:'Mortgage broker',
+    abn_status:'recent', abn_age_years:2,
+    dfs_organic_etv:195, dfs_organic_keywords:51, backlinks_count:44, domain_rank:23,
+    dm:{ name:'Priya Sharma', title:'Principal Broker', tenure:'7 years' },
+    vulnerability:'Expanding into financial planning (new ABN). Growth intent present but no digital strategy.',
+    vulnGrades:{ website:'D', seo:'F', reviews:'B', ads:'F', social:'D', content:'F' },
+    status:'Contacted', meeting:null, lastAction:'Email 2 sent · 1d ago',
+    openingHook:'"Priya, the financial planning ABN is a smart move. But there\'s no digital presence for that service at all."',
+    discoveryQuestions:['How are you planning to get clients for the financial planning arm?','Is your referral network aware of the new service yet?','Have you set a target for new planning clients this year?'],
+    objections:[{obj:'"We\'re still setting it up."',response:'The best time to build a digital foundation is before you launch.'}],
+    closeOptions:['Foundation $1,200/month','Combined $2,000/month'],
+    pricingRange:'$1,200–$2,000/month AUD',
+    competitors:['GC Home Loans','Mortgage Choice GC'],
+    critic:{ email:70, linkedin:65, voice:60, sms:58 },
+  },
+  /* 3 Discovered filler */
+  {
+    id:'d1', name:'Newtown Chiropractic', suburb:'Newtown', state:'NSW',
+    industry:'Health', score:72, staff:'8', est:'2013',
+    domain:'newtownchiro.com.au', gmb_category:'Chiropractor',
+    abn_status:'active', abn_age_years:12,
+    dfs_organic_etv:132, dfs_organic_keywords:34, backlinks_count:28, domain_rank:18,
+    dm:{ name:'Dr Natalie Osborne', title:'Principal Chiropractor', tenure:'11 years' },
+    vulnerability:'Recently moved premises. No GMB address update in 90 days. Organic presence thin.',
+    vulnGrades:{ website:'C', seo:'D', reviews:'B', ads:'F', social:'D', content:'C' },
+    status:'Discovered', meeting:null, lastAction:'GMB signal · 2h ago',
+    openingHook:'"Natalie, your new premises isn\'t showing on Google Maps yet — patients searching for you are getting the old address."',
+    discoveryQuestions:['When did you move?','How are patients finding the new location?','Any missed appointments attributed to the move?'],
+    objections:[{obj:'"We\'ll update it ourselves."',response:'Happy to do it free as part of a proper audit — takes 20 minutes.'}],
+    closeOptions:['Foundation $1,100/month','Local growth $1,800/month'],
+    pricingRange:'$1,100–$1,800/month AUD',
+    competitors:['Newtown Allied Health','Marrickville Chiropractic'],
+    critic:{ email:74, linkedin:70, voice:72, sms:66 },
+  },
+  {
+    id:'d2', name:'Barossa Cellars & Co', suburb:'Tanunda', state:'SA',
+    industry:'Retail', score:64, staff:'15', est:'2001',
+    domain:'barossacellars.com.au', gmb_category:'Wine store',
+    abn_status:'active', abn_age_years:25,
+    dfs_organic_etv:164, dfs_organic_keywords:48, backlinks_count:61, domain_rank:24,
+    dm:{ name:'Elizabeth Petrowski', title:'Owner', tenure:'24 years' },
+    vulnerability:'Direct-to-consumer website has no online ordering. Instagram active but no conversion path.',
+    vulnGrades:{ website:'D', seo:'C', reviews:'A', ads:'F', social:'B', content:'D' },
+    status:'Discovered', meeting:null, lastAction:'Discovery complete · 4h ago',
+    openingHook:'"Liz, 3,200 people per month are searching for Barossa wine online — and you don\'t sell anything via your site."',
+    discoveryQuestions:['Is DTC a growth goal?','What\'s the average order value at the cellar door?','Any constraints on interstate shipping?'],
+    objections:[{obj:'"Our wholesale is strong."',response:'Great — DTC is accretive, not replacement.'}],
+    closeOptions:['E-com foundation $1,600/month','Growth + Ads $2,400/month'],
+    pricingRange:'$1,600–$2,400/month AUD',
+    competitors:['Seppeltsfield Online','Peter Lehmann Direct'],
+    critic:{ email:76, linkedin:72, voice:68, sms:70 },
+  },
+  {
+    id:'d3', name:'Perth Childcare Collective', suburb:'Subiaco', state:'WA',
+    industry:'Education', score:59, staff:'42', est:'2007',
+    domain:'perthchildcare.com.au', gmb_category:'Child care agency',
+    abn_status:'active', abn_age_years:19,
+    dfs_organic_etv:108, dfs_organic_keywords:31, backlinks_count:19, domain_rank:15,
+    dm:{ name:'Rachel Holloway', title:'General Manager', tenure:'9 years' },
+    vulnerability:'Three centres, one outdated booking portal. Long waitlists but no waitlist management online.',
+    vulnGrades:{ website:'F', seo:'D', reviews:'C', ads:'F', social:'D', content:'F' },
+    status:'Discovered', meeting:null, lastAction:'New entry · 12m ago',
+    openingHook:'"Rachel, your waitlist is clearly working but the booking process loses families at step 3."',
+    discoveryQuestions:['How many waitlist families turn into enrolments?','What\'s the drop-off point in the form?','Any subsidy confusion you hear about repeatedly?'],
+    objections:[{obj:'"We\'re state-subsidised, budget is tight."',response:'We work with the sector. Start with what your enrolment-lift pays for.'}],
+    closeOptions:['Enrolment funnel $1,300/month','Full digital $2,100/month'],
+    pricingRange:'$1,300–$2,100/month AUD',
+    competitors:['Goodstart Subiaco','KU Children\'s Services'],
+    critic:{ email:67, linkedin:64, voice:62, sms:60 },
+  },
+];
+
+const closed = [
+  { id:'w1', name:'Collaroy Dental Suite', dm:'Dr David Yao', grade:'A', score:92, outcome:'WON', time:'Cycle 2', amount:'$3,200/mo · signed' },
+  { id:'w2', name:'Leichhardt Plumbing', dm:'Frank Ciancio', grade:'B', score:84, outcome:'WON', time:'Cycle 2', amount:'$1,800/mo · signed' },
+  { id:'l1', name:'Mosman Wealth Advisors', dm:'Clara Hennessey', grade:'D', score:38, outcome:'LOST', time:'Cycle 2', amount:'No budget · Q3 retry' },
+];
+
+/* Maya activity (today) */
+const MAYA_TODAY = [
+  { ic:'✉', t:'Sent Email 3 to <b>James Whitford</b> (Momentum)', at:'2m ago' },
+  { ic:'✓', t:'Booked meeting with <b>Sarah Kemp</b> (Harbour Physio) via reply', at:'14m ago' },
+  { ic:'in', t:'LinkedIn connect accepted by <b>Aria Martinelli</b> (Bondi Creative)', at:'1h ago' },
+  { ic:'✉', t:'SMS sent to <b>Dr Rebecca Ashford</b> (Coastal Vet)', at:'2h ago' },
+  { ic:'☎', t:'Voice AI scheduled for <b>Wei Zhang</b> (Parramatta Motor) tomorrow', at:'3h ago' },
+  { ic:'✉', t:'Email 3 sent to <b>Priya Sharma</b> (Gold Coast Mortgage)', at:'4h ago' },
+];
+
+/* Needs your attention */
+const ATTENTION = [
+  { type:'review', ic:'⚠', text:'<b>Flagged draft for Momentum Constructions</b> — critic score 64 on SMS, needs rewrite before send', cta:'Review →', pid:'p1' },
+  { type:'review', ic:'⚠', text:'<b>2 LinkedIn drafts under 70 critic score</b> — Riverside Accounting · Gold Coast Mortgage', cta:'Review →', pid:'p6' },
+  { type:'meeting', ic:'📅', text:'<b>Meeting prep due</b> — Sarah Kemp tomorrow 2pm · Harbour Physio · VR grade C', cta:'Open brief →', pid:'p2' },
+];
+
+/* Quality check */
+const QC_SAMPLE = [
+  { pass:true, ch:'Email', to:'Dr Priya Narayan · Cascade Dental', score:85, note:'Strong personalisation, competitor data used well, on-tone.' },
+  { pass:false, ch:'LinkedIn', to:'James Whitford · Momentum', score:64, note:'Too long for DM format — 4 paragraphs, generic opener.' },
+  { pass:true, ch:'Voice AI', to:'Dr Rebecca Ashford · Coastal Vet', score:82, note:'Natural opener, good pain point hook, appropriate pacing.' },
+];
+
+/* Feed events */
+const events = [
+  { day:'TODAY', t:'12m ago', type:'reply', cat:'replies', pid:'p1', icon:'💬',
+    label:'REPLY · POSITIVE', headline:'<span class="biz" data-pid="p1">Momentum Constructions</span> replied — James Whitford',
+    quote:'"This is exactly what we need. Can we set up a call this week?"',
+    meta:'Maya queued meeting booking · briefing auto-generated' },
+  { day:'TODAY', t:'37m ago', type:'meeting', cat:'meetings', pid:'p1', icon:'📅',
+    label:'MEETING BOOKED', headline:'Meeting booked with <span class="biz" data-pid="p1">Momentum Constructions</span>',
+    meta:'Wed 23 Apr · 4:00pm · Zoom · today' },
+  { day:'TODAY', t:'1h ago', type:'signal', cat:'signals', pid:'p3', icon:'⚡',
+    label:'SIGNAL · HIRING', headline:'<span class="biz" data-pid="p3">Cascade Dental</span> hired marketing coordinator',
+    meta:'Strength 71 · LinkedIn job post · intent trigger ↑' },
+  { day:'TODAY', t:'2h ago', type:'voice', cat:'voice', pid:'p7', icon:'☎',
+    label:'VOICE AI · VOICEMAIL', headline:'Voice AI to <span class="biz" data-pid="p7">Parramatta Motor</span> — voicemail left',
+    meta:'Wei Zhang · 11sec · callback queued tomorrow 10:30am' },
+  { day:'TODAY', t:'3h ago', type:'outreach', cat:'outreach', pid:'p4', icon:'✉',
+    label:'EMAIL · SENT', headline:'Email 2 sent to <span class="biz" data-pid="p4">Coastal Veterinary</span>',
+    meta:'Subject: "Local search and your community presence"' },
+  { day:'TODAY', t:'4h ago', type:'signal', cat:'signals', pid:'p9', icon:'⚡',
+    label:'SIGNAL · SOCIAL', headline:'<span class="biz" data-pid="p9">Fitzroy Cafe Group</span> — public delivery-platform complaints',
+    meta:'Strength 81 · margin pressure visible' },
+  { day:'TODAY', t:'5h ago', type:'linkedin', cat:'outreach', pid:'p8', icon:'in',
+    label:'LINKEDIN · ACCEPTED', headline:'LinkedIn connect accepted — <span class="biz" data-pid="p8">Bondi Creative Studio</span>',
+    meta:'Aria Martinelli · message scheduled tomorrow 9am' },
+  { day:'TODAY', t:'6h ago', type:'reply', cat:'replies', pid:'p4', icon:'💬',
+    label:'REPLY · INTERESTED', headline:'<span class="biz" data-pid="p4">Coastal Veterinary</span> replied via SMS',
+    quote:'"Interesting. Can you send more details about pricing?"',
+    meta:'Maya sending pricing range + 2 discovery questions before full quote' },
+  { day:'YESTERDAY', t:'14:33', type:'meeting', cat:'meetings', pid:'p4', icon:'📅',
+    label:'MEETING BOOKED', headline:'Meeting booked with <span class="biz" data-pid="p4">Coastal Veterinary</span>',
+    meta:'Mon 21 Apr · 9:30am · completed' },
+  { day:'YESTERDAY', t:'13:00', type:'reply', cat:'replies', pid:'p3', icon:'💬',
+    label:'REPLY · CAUTIOUS', headline:'<span class="biz" data-pid="p3">Cascade Dental</span> replied — Dr Priya Narayan',
+    quote:'"We just hired someone for this but would love a second opinion."',
+    meta:'Maya sending case studies + complementary-role positioning' },
+  { day:'YESTERDAY', t:'11:42', type:'signal', cat:'signals', pid:'p2', icon:'⚡',
+    label:'SIGNAL · COMPETITOR', headline:'<span class="biz" data-pid="p2">Harbour Physiotherapy</span> — competitor 200m away launched',
+    meta:'Strength 92 · ad spend tripled in 14 days' },
+  { day:'YESTERDAY', t:'09:30', type:'meeting', cat:'meetings', pid:'p2', icon:'📅',
+    label:'MEETING BOOKED', headline:'Meeting booked with <span class="biz" data-pid="p2">Harbour Physiotherapy</span>',
+    meta:'Wed 23 Apr · 2:00pm · today' },
+  { day:'YESTERDAY', t:'08:00', type:'outreach', cat:'outreach', pid:'p10', icon:'✉',
+    label:'EMAIL · SENT', headline:'Email 3 sent to <span class="biz" data-pid="p10">Gold Coast Mortgage</span>',
+    meta:'Subject: "Your new financial planning arm needs a digital foundation"' },
+  { day:'EARLIER THIS WEEK', t:'Wed 11:30', type:'reply', cat:'replies', pid:'p2', icon:'💬',
+    label:'REPLY · INTERESTED', headline:'<span class="biz" data-pid="p2">Harbour Physiotherapy</span> replied — Sarah Kemp',
+    quote:'"Very interested. We\'ve been struggling with our online presence."',
+    meta:'Maya queued meeting booking · auto-confirmation sent' },
+  { day:'EARLIER THIS WEEK', t:'Wed 10:04', type:'voice', cat:'voice', pid:'p1', icon:'☎',
+    label:'VOICE AI · VOICEMAIL', headline:'Voice AI to <span class="biz" data-pid="p1">Momentum Constructions</span> — voicemail left',
+    meta:'James Whitford · 9sec · email follow-up sent' },
+  { day:'EARLIER THIS WEEK', t:'Tue 16:22', type:'reply', cat:'replies', pid:'p6', icon:'💬',
+    label:'REPLY · NOT NOW', headline:'<span class="biz" data-pid="p6">Riverside Accounting</span> replied — Michael Chen',
+    quote:'"Not sure if this is for us right now. Maybe next quarter?"',
+    meta:'Soft-objection · queued for Q3 nurture sequence' },
+  { day:'EARLIER THIS WEEK', t:'Tue 14:17', type:'signal', cat:'signals', pid:'p10', icon:'⚡',
+    label:'SIGNAL · ABN', headline:'<span class="biz" data-pid="p10">Gold Coast Mortgage Co</span> — registered new financial planning ABN',
+    meta:'Strength 67 · expansion signal · new service angle' },
+  { day:'EARLIER THIS WEEK', t:'Tue 09:00', type:'linkedin', cat:'outreach', pid:'p3', icon:'in',
+    label:'LINKEDIN · ACCEPTED', headline:'LinkedIn connect accepted — <span class="biz" data-pid="p3">Cascade Dental Group</span>',
+    meta:'Dr Priya Narayan · message will follow at email day 5' },
+  { day:'EARLIER THIS WEEK', t:'Mon 11:30', type:'reply', cat:'replies', pid:'p5', icon:'💬',
+    label:'REPLY · INTERESTED', headline:'<span class="biz" data-pid="p5">Southbank Legal Advisory</span> replied — Andrew Volkov',
+    quote:'"Interesting. Send me the audit — I\'ll read before we chat."',
+    meta:'Audit PDF queued for email 4 · supervisor review pending' },
+  { day:'EARLIER THIS WEEK', t:'Mon 09:00', type:'outreach', cat:'outreach', pid:'p5', icon:'✉',
+    label:'EMAIL · SENT', headline:'Email 1 sent to <span class="biz" data-pid="p5">Southbank Legal Advisory</span>',
+    meta:'Subject: "Your thought leadership content isn\'t ranking — here\'s why"' },
+  { day:'EARLIER THIS WEEK', t:'Mon 08:30', type:'signal', cat:'signals', pid:'p1', icon:'⚡',
+    label:'SIGNAL · REVIEWS', headline:'<span class="biz" data-pid="p1">Momentum Constructions</span> — GMB rating dropped 4.6→4.1 in 90 days',
+    meta:'Strength 76 · negative review velocity' },
+  { day:'EARLIER THIS WEEK', t:'Mon 08:00', type:'outreach', cat:'outreach', pid:'p9', icon:'✉',
+    label:'EMAIL · SENT', headline:'Email 1 sent to <span class="biz" data-pid="p9">Fitzroy Cafe Group</span>',
+    meta:'Subject: "Replace platform fees with direct bookings"' },
+  { day:'EARLIER THIS WEEK', t:'Mon 07:45', type:'voice', cat:'voice', pid:'p7', icon:'☎',
+    label:'VOICE AI · CALL ATTEMPTED', headline:'Voice AI to <span class="biz" data-pid="p7">Parramatta Motor Group</span> — no answer',
+    meta:'Wei Zhang · queued for retry' },
+  { day:'EARLIER THIS WEEK', t:'Mon 07:00', type:'signal', cat:'signals', pid:'p8', icon:'⚡',
+    label:'SIGNAL · SOCIAL', headline:'<span class="biz" data-pid="p8">Bondi Creative Studio</span> — Instagram following +300% in 3 months',
+    meta:'Strength 85 · momentum signal' },
+];
+
+/* ================================================================
+   HELPERS
+================================================================ */
+function overallVulnGrade(vg) {
+  if (!vg) return 'C';
+  const m={A:5,B:4,C:3,D:2,F:1}, i={5:'A',4:'B',3:'C',2:'D',1:'F'};
+  const v=Object.values(vg).map(x=>m[x]||3);
+  return i[Math.round(v.reduce((a,b)=>a+b,0)/v.length)]||'C';
+}
+function staffRange(s) {
+  const n=parseInt(s,10);
+  if(!n) return '—';
+  if(n<=10) return '1-10 employees';
+  if(n<=50) return '11-50 employees';
+  if(n<=200) return '51-200 employees';
+  return '200+ employees';
+}
+function findP(id){ return prospects.find(p=>p.id===id); }
+function statusPill(s){
+  const c=s==='Meeting Booked'?'green':s==='Replied'?'amber':s==='Discovered'?'gray':'gray';
+  return `<span class="pill ${c}">${s}</span>`;
+}
+
+/* ================================================================
+   GLOBAL RIGHT DRAWER (briefing)
+================================================================ */
+function openDrawer(pid) {
+  const p = findP(pid); if (!p) return;
+  const vr = overallVulnGrade(p.vulnGrades);
+  document.getElementById('dhName').textContent = p.name;
+  document.getElementById('dhSub').textContent = `${p.dm.name} · ${p.dm.title} · ${p.suburb}, ${p.state}`;
+  const grades = ['website','seo','reviews','ads','social','content'];
+  document.getElementById('drawerBody').innerHTML = `
+    <div class="bf-section">
+      <h4>Business meta</h4>
+      <div class="bf-meta">
+        <div class="bf-kv"><span class="k">Domain</span><span class="v">${p.domain}</span></div>
+        <div class="bf-kv"><span class="k">GMB category</span><span class="v">${p.gmb_category}</span></div>
+        <div class="bf-kv"><span class="k">Employees</span><span class="v" title="Source: LinkedIn company page">${staffRange(p.staff)} (LinkedIn)</span></div>
+        <div class="bf-kv"><span class="k">Established</span><span class="v" title="Source: ABN registry">ABN registered ${p.est}</span></div>
+        <div class="bf-kv"><span class="k">DFS organic ETV</span><span class="v">$${p.dfs_organic_etv}/mo</span></div>
+        <div class="bf-kv"><span class="k">Domain rank</span><span class="v">${p.domain_rank}/100</span></div>
+        <div class="bf-kv"><span class="k">Backlinks</span><span class="v">${p.backlinks_count}</span></div>
+        <div class="bf-kv"><span class="k">Status</span><span class="v">${p.status}</span></div>
+      </div>
+    </div>
+
+    <div class="bf-section">
+      <h4>Vulnerability — overall grade ${vr}</h4>
+      <div style="font-size:13px;color:var(--ink-2);line-height:1.6;margin-bottom:12px;">${p.vulnerability}</div>
+      <div class="vr-strip">
+        ${grades.map(g => `<div class="vr-cw"><div class="vr-letter" data-g="${p.vulnGrades[g]}">${p.vulnGrades[g]}</div><div class="vr-name">${g}</div></div>`).join('')}
+      </div>
+    </div>
+
+    <div class="bf-section">
+      <h4>Recommended angle</h4>
+      <div class="bf-ai">✨ AI-generated briefing · verify before use</div>
+      <div class="bf-hook">${p.openingHook}</div>
+    </div>
+
+    <div class="bf-section">
+      <h4>Discovery questions</h4>
+      <ul class="bf-list">${p.discoveryQuestions.map(q => `<li>${q}</li>`).join('')}</ul>
+    </div>
+
+    <div class="bf-section">
+      <h4>Common objections</h4>
+      ${p.objections.map(o => `<div class="bf-obj"><div class="obj-q">${o.obj}</div><div class="obj-a">${o.response}</div></div>`).join('')}
+    </div>
+
+    <div class="bf-section">
+      <h4>Close options</h4>
+      <ul class="bf-list">${p.closeOptions.map(c => `<li>${c}</li>`).join('')}</ul>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-3);margin-top:10px;letter-spacing:0.1em;text-transform:uppercase;">Your service pricing — from your agency rate card</div>
+      <div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--ink);">${p.pricingRange}</div>
+    </div>
+
+    <div class="bf-section">
+      <h4>Also ranking for your keywords</h4>
+      <ul class="bf-list">${p.competitors.map(c => `<li>${c}</li>`).join('')}</ul>
+    </div>
+  `;
+  document.getElementById('drawerBackdrop').classList.add('on');
+  document.getElementById('drawer').classList.add('on');
+}
+function closeDrawer() {
+  document.getElementById('drawerBackdrop').classList.remove('on');
+  document.getElementById('drawer').classList.remove('on');
+}
+
+/* ================================================================
+   HOME — The Desk
+================================================================ */
+function renderHome() {
+  const today = prospects.filter(p => p.meeting && p.meeting.isToday);
+  const totalActive = prospects.length;
+  const todayHtml = today.length === 0
+    ? `<div class="today-empty"><b>No meetings today</b> — Maya is working on ${totalActive} prospects in outreach.</div>`
+    : `<div class="today-strip">
+        ${today.map(p => {
+          const vr = overallVulnGrade(p.vulnGrades);
+          return `<div class="today-card" onclick="openBriefingPage('${p.id}')">
+            <div class="tc-time">${p.meeting.time} · ${p.meeting.platform}</div>
+            <div class="tc-name">${p.name}</div>
+            <div class="tc-dm">${p.dm.name} · ${p.dm.title}</div>
+            <div class="tc-foot"><span class="vr" data-g="${vr}">${vr}</span><span class="tc-link">Open briefing →</span></div>
+          </div>`;
+        }).join('')}
+      </div>`;
+
+  /* funnel totals */
+  const fc = {
+    discovered: prospects.length + closed.length,
+    contacted:  prospects.filter(p => p.status !== 'Discovered').length + closed.length,
+    replied:    prospects.filter(p => p.status === 'Replied' || p.status === 'Meeting Booked').length + closed.length,
+    meeting:    prospects.filter(p => p.status === 'Meeting Booked').length + closed.filter(c => c.outcome === 'WON').length,
+    won:        closed.filter(c => c.outcome === 'WON').length,
+  };
+
+  document.getElementById('main').innerHTML = `
+    <div class="bdr-hero">
+      <div class="bdr-avatar">M</div>
+      <div>
+        <div class="h-eyebrow">Your BDR report this week</div>
+        <div class="h-line">Maya found <em>31 replies</em> and booked <em>8 meetings</em> this week.</div>
+      </div>
+    </div>
+
+    <div class="sum-row">
+      <div class="sum-card"><div class="sum-val">247</div><div class="sum-label">Prospects Contacted</div><div class="sum-delta">+38 this week</div></div>
+      <div class="sum-card"><div class="sum-val">31</div><div class="sum-label">Replies Received</div><div class="sum-delta">+9 this week</div></div>
+      <div class="sum-card"><div class="sum-val">8<em>/10</em></div><div class="sum-label">Meetings Booked</div><div class="sum-delta">+3 this week</div></div>
+      <div class="sum-card"><div class="sum-val">3.2<em>%</em></div><div class="sum-label">Win Rate</div><div class="sum-delta">cycle to date</div></div>
+    </div>
+
+    <div class="today-strip-head"><div class="h">Your meetings <em>today</em></div><div class="meta">${today.length} ${today.length === 1 ? 'meeting' : 'meetings'} · cycle day 14/30</div></div>
+    ${todayHtml}
+
+    <div class="maya-strip" id="mayaStrip" onclick="document.getElementById('mayaStrip').classList.toggle('open')">
+      <div class="maya-strip-head">
+        <div class="maya-strip-line"><b>Maya is working in the background</b> · generating drafts for 12 prospects · critic loop on 3 · enriching 8</div>
+        <div class="maya-strip-chev">EXPAND ▾</div>
+      </div>
+      <div class="maya-strip-detail">
+        <div class="maya-strip-list">
+          <div class="maya-action"><div class="ma-cnt">12</div><div class="ma-l">drafts in flight (Email · LinkedIn · SMS · Voice)</div></div>
+          <div class="maya-action"><div class="ma-cnt">3</div><div class="ma-l">drafts in critic loop (rewriting based on score)</div></div>
+          <div class="maya-action"><div class="ma-cnt">8</div><div class="ma-l">prospects in Stage 9 enrichment (vulnerability scan)</div></div>
+        </div>
+        <div style="margin-top:10px;font-size:12px;color:var(--ink-3);">Recent today: ${MAYA_TODAY.slice(0,3).map(a => a.t).join(' · ')}</div>
+      </div>
+    </div>
+
+    <div class="section-label">Cycle funnel</div>
+    <div class="funnel-bar">
+      <div class="funnel-seg fs-discovered" style="flex:${fc.discovered};"><div class="fs-n">${fc.discovered}</div><div class="fs-l">Discovered</div></div>
+      <div class="funnel-seg fs-contacted" style="flex:${fc.contacted};"><div class="fs-n">${fc.contacted}</div><div class="fs-l">Contacted</div></div>
+      <div class="funnel-seg fs-replied" style="flex:${fc.replied};"><div class="fs-n">${fc.replied}</div><div class="fs-l">Replied</div></div>
+      <div class="funnel-seg fs-meeting" style="flex:${fc.meeting};"><div class="fs-n">${fc.meeting}</div><div class="fs-l">Meeting</div></div>
+      <div class="funnel-seg fs-won" style="flex:${fc.won};"><div class="fs-n">${fc.won}</div><div class="fs-l">Won</div></div>
+    </div>
+    <div class="funnel-meta">${fc.discovered} prospects · ${fc.contacted} contacted (${(fc.contacted/fc.discovered*100).toFixed(0)}%) · ${fc.replied} replied · ${fc.meeting} meetings · ${fc.won} won</div>
+
+    <div class="section-label">Needs your attention</div>
+    ${ATTENTION.map(a => `
+      <div class="attention-card ${a.type === 'meeting' ? 'meeting' : ''}" onclick="openDrawer('${a.pid}')">
+        <div class="att-ic">${a.ic}</div>
+        <div class="att-text">${a.text}</div>
+        <span class="att-cta">${a.cta}</span>
+      </div>
+    `).join('')}
+
+    <div class="section-label">Quality spot-check <span style="font-family:'DM Sans',sans-serif;text-transform:none;letter-spacing:0;color:var(--ink-3);font-size:11px;font-weight:400;margin-left:6px;">3 of 247 messages sampled</span></div>
+    <div class="qc-card">
+      ${QC_SAMPLE.map(q => `
+        <div class="qc-row">
+          <div class="qc-mark ${q.pass ? 'pass' : 'fail'}">${q.pass ? '✓' : '✗'}</div>
+          <div>
+            <div class="qc-label"><b>${q.ch}</b> → ${q.to}</div>
+            <div class="qc-note">${q.note}</div>
+          </div>
+          <div class="qc-score">${q.score}</div>
+          <span class="qc-tag ${q.pass ? 'pass' : 'fail'}">${q.pass ? 'PASS' : 'FAIL'}</span>
+        </div>
+      `).join('')}
+      <div style="margin-top:14px;"><button class="btn btn-outline" onclick="alert('Request fresh sample from Maya')">Request fresh sample</button></div>
+    </div>
+  `;
+}
+
+/* ================================================================
+   PIPELINE — Board + Table toggle
+================================================================ */
+let pipeView = 'board';
+let pipeFilter = 'all';
+
+function setPipeView(v) { pipeView = v; renderPipeline(); }
+function setPipeFilter(k) { pipeFilter = k; renderPipeline(); }
+
+const PIPE_FILTERS = [
+  { k:'all', l:'All' },
+  { k:'hot', l:'Hot (>80)' },
+  { k:'replied', l:'Replied' },
+  { k:'meeting', l:'Meeting Booked' },
+];
+
+function pipeFilterFn(p) {
+  if (pipeFilter === 'all') return true;
+  if (pipeFilter === 'hot') return p.score > 80;
+  if (pipeFilter === 'replied') return p.status === 'Replied';
+  if (pipeFilter === 'meeting') return p.status === 'Meeting Booked';
+  return true;
+}
+
+const PIPE_COLS = [
+  { key:'discovered', label:'Discovered', filter:p => p.status === 'Discovered' },
+  { key:'contacted',  label:'Contacted',  filter:p => p.status === 'Contacted' },
+  { key:'replied',    label:'Replied',    filter:p => p.status === 'Replied' },
+  { key:'meeting',    label:'Meeting Booked', filter:p => p.status === 'Meeting Booked' },
+  { key:'wonlost',    label:'Won / Lost', filter:() => false },
+];
+
+function renderPipeline() {
+  const counts = {};
+  PIPE_FILTERS.forEach(f => {
+    counts[f.k] = f.k === 'all' ? prospects.length : prospects.filter(pipeFilterFn).filter(() => true).length;
+  });
+  /* simpler: compute per filter */
+  const filterCounts = {
+    all: prospects.length,
+    hot: prospects.filter(p => p.score > 80).length,
+    replied: prospects.filter(p => p.status === 'Replied').length,
+    meeting: prospects.filter(p => p.status === 'Meeting Booked').length,
+  };
+
+  const filtered = prospects.filter(pipeFilterFn);
+  const total = prospects.length + closed.length;
+  const filterChipsHtml = PIPE_FILTERS.map(f =>
+    `<div class="chip ${pipeFilter===f.k?'active':''}" onclick="setPipeFilter('${f.k}')">${f.l}<span class="chip-count">${filterCounts[f.k]}</span></div>`
+  ).join('');
+
+  let mainHtml = '';
+  if (pipeView === 'board') {
+    mainHtml = `<div class="board">${PIPE_COLS.map(col => {
+      if (col.key === 'wonlost') {
+        const won = closed.filter(c => c.outcome === 'WON');
+        const lost = closed.filter(c => c.outcome === 'LOST');
+        const cnt = closed.length;
+        return `<div class="col col-${col.key}">
+          <div class="col-head"><span class="col-name">${col.label}</span><span class="col-count"><span class="cn">${cnt}</span><span class="cp">${(cnt/total*100).toFixed(0)}%</span></span></div>
+          <div class="col-body col-body-split">
+            <div class="split-section won">
+              <div class="split-label won">● Won · ${won.length}</div>
+              ${won.map(c => `<div class="k-card" onclick="alert('${c.name} — ${c.amount}')"><div class="k-name">${c.name}</div><div class="k-dm">${c.dm}</div><div class="k-foot"><div class="k-left"><span class="vr" data-g="${c.grade}">${c.grade}</span><span class="k-score">${c.score}</span></div><span class="k-time">${c.amount}</span></div></div>`).join('')}
+            </div>
+            <div class="split-section lost">
+              <div class="split-label lost">● Lost · ${lost.length}</div>
+              ${lost.length ? lost.map(c => `<div class="k-card" onclick="alert('${c.name} — ${c.amount}')"><div class="k-name">${c.name}</div><div class="k-dm">${c.dm}</div><div class="k-foot"><div class="k-left"><span class="vr" data-g="${c.grade}">${c.grade}</span><span class="k-score">${c.score}</span></div><span class="k-time">${c.amount}</span></div></div>`).join('') : '<div class="col-empty">No losses this cycle</div>'}
+            </div>
+          </div>
+        </div>`;
+      }
+      const list = filtered.filter(col.filter);
+      return `<div class="col col-${col.key}">
+        <div class="col-head"><span class="col-name">${col.label}</span><span class="col-count"><span class="cn">${list.length}</span><span class="cp">${(list.length/total*100).toFixed(0)}%</span></span></div>
+        <div class="col-body">
+          ${list.length ? list.map(p => {
+            const vr = overallVulnGrade(p.vulnGrades);
+            return `<div class="k-card" onclick="openDrawer('${p.id}')">
+              <div class="k-name">${p.name}</div>
+              <div class="k-dm">${p.dm.name}</div>
+              <div class="k-dm-title">${p.dm.title}</div>
+              <div class="k-foot">
+                <div class="k-left"><span class="vr" data-g="${vr}">${vr}</span><span class="k-score">${p.score}</span></div>
+                <span class="k-time">${p.lastAction || ''}</span>
+              </div>
+            </div>`;
+          }).join('') : '<div class="col-empty">Empty — awaiting prospects</div>'}
+        </div>
+      </div>`;
+    }).join('')}</div>`;
+  } else {
+    /* TABLE */
+    const rows = [...filtered].sort((a, b) => b.score - a.score);
+    mainHtml = `<table class="pipe-table">
+      <thead>
+        <tr>
+          <th>Domain</th><th>Business</th><th>DM</th><th>Title</th><th>Score</th><th>VR Grade</th><th>Status</th><th>Last Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows.map(p => {
+          const vr = overallVulnGrade(p.vulnGrades);
+          return `<tr onclick="openDrawer('${p.id}')">
+            <td class="mono">${p.domain}</td>
+            <td class="name-col">${p.name}</td>
+            <td>${p.dm.name}</td>
+            <td class="dm-title">${p.dm.title}</td>
+            <td class="score-col">${p.score}</td>
+            <td><span class="vr" data-g="${vr}" style="width:24px;height:24px;font-size:13px;">${vr}</span></td>
+            <td>${statusPill(p.status)}</td>
+            <td class="mono">${p.lastAction || '—'}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+  }
+
+  document.getElementById('main').innerHTML = `
+    <h1 class="page-h">Pipeline,<br><em>${prospects.length} prospects active.</em></h1>
+    <p class="page-sub">Click any card or row to open the briefing drawer. Maya is moving these through.</p>
+    <div class="pipe-controls">
+      <div class="view-toggle">
+        <button class="vt-btn ${pipeView==='board'?'active':''}" onclick="setPipeView('board')">Board</button>
+        <button class="vt-btn ${pipeView==='table'?'active':''}" onclick="setPipeView('table')">Table</button>
+      </div>
+      <div class="filter-chips">${filterChipsHtml}</div>
+    </div>
+    ${mainHtml}
+  `;
+}
+
+/* ================================================================
+   FEED
+================================================================ */
+let feedFilter = 'all';
+const FEED_FILTERS = [
+  { k:'all', l:'All' },
+  { k:'replies', l:'Replies' },
+  { k:'meetings', l:'Meetings' },
+  { k:'signals', l:'Signals' },
+  { k:'outreach', l:'Outreach' },
+  { k:'voice', l:'Voice' },
+];
+const expandedEvents = new Set();
+
+function setFeedFilter(k) { feedFilter = k; renderFeed(); }
+
+function feedCounts() {
+  const out = {};
+  FEED_FILTERS.forEach(f => out[f.k] = f.k==='all' ? events.length : events.filter(e=>e.cat===f.k).length);
+  return out;
+}
+
+function expandedHtml(e, p) {
+  if (e.type === 'reply') return `<h5>What Maya is doing next</h5><div>${e.meta || '—'}</div><h5>Briefing snapshot</h5><div>${p.vulnerability}</div><div class="actions"><button class="btn btn-amber" onclick="event.stopPropagation();openDrawer('${p.id}')">Open full briefing</button></div>`;
+  if (e.type === 'meeting') return `<h5>Briefing preview</h5><div class="bf-ai" style="margin:0 0 8px;">✨ AI-generated briefing · verify before use</div><div style="font-style:italic;color:var(--ink-2);margin-bottom:10px;">${p.openingHook}</div><div style="font-size:12.5px;color:var(--ink-3);">${p.vulnerability}</div><div class="actions"><button class="btn btn-primary" onclick="event.stopPropagation();openBriefingPage('${p.id}')">Open full briefing</button></div>`;
+  if (e.type === 'signal') return `<h5>What this signal means</h5><div>${p.vulnerability}</div><div class="actions"><button class="btn btn-amber" onclick="event.stopPropagation();openDrawer('${p.id}')">Open prospect detail</button></div>`;
+  return '';
+}
+
+function toggleEvent(id, ev) {
+  if (ev && ev.target.closest('.biz')) return;
+  if (ev && ev.target.closest('.btn')) return;
+  if (expandedEvents.has(id)) expandedEvents.delete(id); else expandedEvents.add(id);
+  renderFeed();
+}
+
+function renderFeed() {
+  const list = feedFilter === 'all' ? events : events.filter(e => e.cat === feedFilter);
+  const counts = feedCounts();
+  const chipsHtml = FEED_FILTERS.map(f =>
+    `<div class="chip ${feedFilter===f.k?'active':''}" onclick="setFeedFilter('${f.k}')">${f.l}<span class="chip-count">${counts[f.k]}</span></div>`
+  ).join('');
+
+  const html = [];
+  let lastDay = null;
+  list.forEach((e, i) => {
+    if (e.day !== lastDay) { html.push(`<div class="feed-day">${e.day}</div>`); lastDay = e.day; }
+    const p = findP(e.pid);
+    const vr = overallVulnGrade(p.vulnGrades);
+    const cardId = `evt-${i}`;
+    const isOpen = expandedEvents.has(cardId);
+    const expandable = ['reply','meeting','signal'].includes(e.type);
+    html.push(`
+      <div class="event-card ${expandable?'expandable':''} ${isOpen?'expanded':''}" id="${cardId}" ${expandable?`onclick="toggleEvent('${cardId}', event)"`:''}>
+        <div class="event-row">
+          <div class="event-time">${e.t}</div>
+          <div class="event-ico ${e.type}">${e.icon}</div>
+          <div class="event-body">
+            <div class="event-type">${e.label}</div>
+            <div class="event-headline">${e.headline}</div>
+            ${e.quote ? `<div class="event-quote">${e.quote}</div>` : ''}
+            ${e.meta ? `<div class="event-meta">${e.meta}</div>` : ''}
+          </div>
+          <div class="event-side">
+            <span class="vr" data-g="${vr}">${vr}</span>
+            ${expandable ? '<span class="event-chev">›</span>' : ''}
+          </div>
+        </div>
+        ${expandable ? `<div class="event-expand">${expandedHtml(e, p)}</div>` : ''}
+      </div>
+    `);
+  });
+
+  document.getElementById('main').innerHTML = `
+    <h1 class="page-h">Activity feed,<br><em>everything Maya is doing.</em></h1>
+    <p class="page-sub">Reverse-chronological. Tap any reply / meeting / signal card to expand. Tap any business name → briefing drawer.</p>
+    <div class="filter-chips" style="margin-bottom:18px;">${chipsHtml}</div>
+    ${html.join('')}
+  `;
+  document.querySelectorAll('.event-headline .biz').forEach(s => s.addEventListener('click', ev => { ev.stopPropagation(); openDrawer(s.dataset.pid); }));
+}
+
+/* ================================================================
+   MEETINGS — calendar + briefing PAGE
+================================================================ */
+const WEEK_DAYS = [
+  { dow:'MON', date:'21', isToday:false },
+  { dow:'TUE', date:'22', isToday:false },
+  { dow:'WED', date:'23', isToday:true },
+  { dow:'THU', date:'24', isToday:false },
+  { dow:'FRI', date:'25', isToday:false },
+];
+const HOUR_SLOTS = [8,9,10,11,12,13,14,15,16,17];
+
+function renderMeetings() {
+  const upcoming = prospects.filter(p => p.meeting).sort((a,b) => {
+    const ord = { Mon:1, Tue:2, Wed:3, Thu:4, Fri:5 };
+    return (ord[a.meeting.day] - ord[b.meeting.day]) || (a.meeting.startHour - b.meeting.startHour);
+  });
+  const today = upcoming.filter(p => p.meeting.isToday);
+
+  const grid = `<div class="cal-grid">
+    <div class="cal-corner"></div>
+    ${WEEK_DAYS.map(d => `<div class="cal-day-head ${d.isToday?'today':''}"><div class="ddow">${d.dow}</div><div class="dnum">${d.date}</div></div>`).join('')}
+    ${HOUR_SLOTS.map(hr => `
+      <div class="cal-time">${hr<12?hr+'am':hr===12?'12pm':(hr-12)+'pm'}</div>
+      ${WEEK_DAYS.map(d => {
+        const m = prospects.find(p => p.meeting && p.meeting.day === d.dow && p.meeting.startHour === hr);
+        let evHtml = '';
+        if (m) {
+          const vr = overallVulnGrade(m.vulnGrades);
+          const cls = m.meeting.isPast ? 'green' : '';
+          const h = (m.meeting.durationHrs || 1) * 44 - 6;
+          evHtml = `<div class="cal-event ${cls}" style="height:${h}px;" onclick="openBriefingPage('${m.id}')">
+            <span class="cal-event-vr" data-g="${vr}">${vr}</span>
+            <div class="cal-event-time">${m.meeting.time}</div>
+            <div class="cal-event-name">${m.name}</div>
+          </div>`;
+        }
+        return `<div class="cal-slot ${d.isToday?'today-col':''}">${evHtml}</div>`;
+      }).join('')}
+    `).join('')}
+  </div>`;
+
+  /* Mobile day view */
+  const dayView = `<div class="day-view">
+    <div class="day-view-card">
+      <div class="day-view-head">
+        <div class="h-day">TODAY · WEDNESDAY</div>
+        <div class="h-date">23 April</div>
+      </div>
+      <div class="day-view-body">
+        ${today.length ? today.map(p => `
+          <div class="day-meet" onclick="openBriefingPage('${p.id}')">
+            <div class="dm-time">${p.meeting.time} · ${p.meeting.platform} · ${p.meeting.countdown}</div>
+            <div class="dm-name">${p.name}</div>
+            <div class="dm-dm">${p.dm.name} · ${p.dm.title}</div>
+          </div>
+        `).join('') : '<div style="color:var(--ink-3);font-size:12px;font-style:italic;padding:14px 4px;">No meetings today</div>'}
+      </div>
+    </div>
+  </div>`;
+
+  document.getElementById('main').innerHTML = `
+    <h1 class="page-h">Your week,<br><em>${upcoming.length} ${upcoming.length === 1 ? 'meeting' : 'meetings'}.</em></h1>
+    <p class="page-sub">Click any calendar slot or row to open the full briefing page.</p>
+    ${grid}
+    ${dayView}
+    <div class="section-label">Upcoming this week</div>
+    ${upcoming.length === 0 ? '<div class="today-empty">No meetings booked yet — Maya is working on '+prospects.length+' prospects.</div>'
+      : upcoming.map(p => {
+        const vr = overallVulnGrade(p.vulnGrades);
+        return `<div class="upcoming-row" onclick="openBriefingPage('${p.id}')">
+          <span class="ur-vr vr" data-g="${vr}">${vr}</span>
+          <div class="ur-main">
+            <div class="ur-n">${p.dm.name} · ${p.name}</div>
+            <div class="ur-s">${p.dm.title} · ${p.suburb}, ${p.state}</div>
+          </div>
+          <div class="ur-when">${p.meeting.date} · ${p.meeting.time}<div class="cd">${p.meeting.countdown}</div></div>
+        </div>`;
+      }).join('')}
+  `;
+}
+
+/* Briefing PAGE (meetings only — replaces main) */
+function openBriefingPage(pid) {
+  const p = findP(pid); if (!p) return;
+  const vr = overallVulnGrade(p.vulnGrades);
+  const grades = ['website','seo','reviews','ads','social','content'];
+  const m = p.meeting;
+
+  document.getElementById('main').innerHTML = `
+    <div class="bp-back" onclick="showView('meetings')">← Back to calendar</div>
+
+    <div class="bp-header">
+      <div>
+        <div class="bp-eyebrow">${m ? (m.isPast ? 'Past meeting · log outcome' : (m.isToday ? "Today's meeting" : 'Upcoming meeting')) : 'Prospect briefing'}</div>
+        <div class="bp-when">${m ? `${m.date} · ${m.time}` : p.name}</div>
+        ${m ? `<div class="bp-cd">${m.countdown} · via ${m.platform}</div>` : ''}
+      </div>
+      <div class="bp-spacer"></div>
+      <div class="bp-actions">
+        ${m && !m.isPast ? `<button class="btn btn-amber" onclick="alert('Open ${m.platform} meeting link')">Join meeting</button>` : ''}
+        <button class="btn btn-ghost bp-pdf-btn" onclick="window.print()"><span class="lbl-print">Save PDF</span><span class="lbl-pdf">PDF</span></button>
+      </div>
+    </div>
+
+    ${m ? `
+      <div class="pma-row">
+        <button class="pma-btn pma-won" onclick="alert('Marked: Closed won')">Closed won</button>
+        <button class="pma-btn pma-follow" onclick="alert('Marked: Follow up')">Follow up</button>
+        <button class="pma-btn pma-noshow" onclick="alert('Marked: No show')">No show</button>
+        <button class="pma-btn pma-resched" onclick="alert('Marked: Reschedule')">Reschedule</button>
+      </div>
+    ` : ''}
+
+    <div class="card">
+      <h4 style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.14em;color:var(--ink-3);text-transform:uppercase;margin-bottom:12px;font-weight:600;">Prospect snapshot</h4>
+      <div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin-bottom:14px;">
+        <span class="vr" data-g="${vr}" style="width:46px;height:46px;font-size:20px;">${vr}</span>
+        <div>
+          <div style="font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--ink);">${p.name}</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-3);margin-top:3px;">${p.dm.name} · ${p.dm.title} · ${p.dm.tenure}</div>
+        </div>
+      </div>
+      <div class="bf-meta">
+        <div class="bf-kv"><span class="k">Domain</span><span class="v">${p.domain}</span></div>
+        <div class="bf-kv"><span class="k">GMB category</span><span class="v">${p.gmb_category}</span></div>
+        <div class="bf-kv"><span class="k">Employees</span><span class="v" title="Source: LinkedIn company page">${staffRange(p.staff)} (LinkedIn)</span></div>
+        <div class="bf-kv"><span class="k">Established</span><span class="v" title="Source: ABN registry">ABN registered ${p.est}</span></div>
+        <div class="bf-kv"><span class="k">Location</span><span class="v">${p.suburb}, ${p.state}</span></div>
+        <div class="bf-kv"><span class="k">Industry</span><span class="v">${p.industry}</span></div>
+        <div class="bf-kv"><span class="k">DFS organic ETV</span><span class="v">$${p.dfs_organic_etv}/mo</span></div>
+        <div class="bf-kv"><span class="k">Domain rank</span><span class="v">${p.domain_rank}/100</span></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:14px;">
+      <h4 style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.14em;color:var(--ink-3);text-transform:uppercase;margin-bottom:12px;font-weight:600;">Vulnerability — overall grade ${vr}</h4>
+      <div style="font-size:13px;color:var(--ink-2);line-height:1.6;margin-bottom:12px;">${p.vulnerability}</div>
+      <div class="vr-strip">
+        ${grades.map(g => `<div class="vr-cw"><div class="vr-letter" data-g="${p.vulnGrades[g]}">${p.vulnGrades[g]}</div><div class="vr-name">${g}</div></div>`).join('')}
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:14px;">
+      <h4 style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.14em;color:var(--ink-3);text-transform:uppercase;margin-bottom:12px;font-weight:600;">Recommended angle</h4>
+      <div class="bf-ai">✨ AI-generated briefing · verify before use</div>
+      <div class="bf-hook">${p.openingHook}</div>
+    </div>
+
+    <div class="card" style="margin-top:14px;">
+      <h4 style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.14em;color:var(--ink-3);text-transform:uppercase;margin-bottom:12px;font-weight:600;">Discovery questions</h4>
+      <ul class="bf-list">${p.discoveryQuestions.map(q => `<li>${q}</li>`).join('')}</ul>
+    </div>
+
+    <div class="card" style="margin-top:14px;">
+      <h4 style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.14em;color:var(--ink-3);text-transform:uppercase;margin-bottom:12px;font-weight:600;">Common objections</h4>
+      ${p.objections.map(o => `<div class="bf-obj"><div class="obj-q">${o.obj}</div><div class="obj-a">${o.response}</div></div>`).join('')}
+    </div>
+
+    <div class="card" style="margin-top:14px;">
+      <h4 style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.14em;color:var(--ink-3);text-transform:uppercase;margin-bottom:12px;font-weight:600;">Close options</h4>
+      <ul class="bf-list">${p.closeOptions.map(c => `<li>${c}</li>`).join('')}</ul>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-3);margin-top:10px;letter-spacing:0.1em;text-transform:uppercase;">Your service pricing — from your agency rate card</div>
+      <div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--ink);">${p.pricingRange}</div>
+    </div>
+
+    <div class="card" style="margin-top:14px;">
+      <h4 style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.14em;color:var(--ink-3);text-transform:uppercase;margin-bottom:12px;font-weight:600;">Also ranking for your keywords</h4>
+      <ul class="bf-list">${p.competitors.map(c => `<li>${c}</li>`).join('')}</ul>
+    </div>
+  `;
+  window.scrollTo(0, 0);
+}
+
+/* ================================================================
+   PROGRESS — Partner report
+================================================================ */
+function renderProgress() {
+  const funnel = [
+    { l:'Discovered', v:600, max:600 },
+    { l:'Contacted', v:247, max:600 },
+    { l:'Replied', v:31, max:600 },
+    { l:'Meetings', v:8, max:600 },
+    { l:'Won', v:3, max:600 },
+  ];
+  document.getElementById('main').innerHTML = `
+    <h1 class="page-h">Cycle progress,<br><em>partner-ready report.</em></h1>
+    <p class="page-sub">Cycle 3 · day 14 of 30 · refreshed every 5 minutes. Raw metrics only — no unsourced benchmark comparisons.</p>
+
+    <div class="kpi-row">
+      <div class="kpi-cell"><div class="kpi-val">47<small>%</small></div><div class="kpi-l">Open Rate</div><div class="kpi-note">your data only</div></div>
+      <div class="kpi-cell"><div class="kpi-val">8.2<small>%</small></div><div class="kpi-l">Reply Rate</div><div class="kpi-note">your data only</div></div>
+      <div class="kpi-cell"><div class="kpi-val">1.4<small>%</small></div><div class="kpi-l">Meeting Rate</div><div class="kpi-note">your data only</div></div>
+      <div class="kpi-cell"><div class="kpi-val">23<small>h</small></div><div class="kpi-l">Avg Reply Time</div><div class="kpi-note">contacted → first reply</div></div>
+    </div>
+
+    <div class="card">
+      <h4 style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.14em;color:var(--ink-3);text-transform:uppercase;margin-bottom:14px;font-weight:600;">Funnel</h4>
+      ${funnel.map(f => `
+        <div class="fr-row">
+          <div class="l">${f.l}</div>
+          <div class="b"><div class="bf" style="width:${Math.max(6, f.v/f.max*100)}%;">${f.v}</div></div>
+          <div class="pc">${(f.v/f.max*100).toFixed(f.v/f.max<0.05?1:0)}%</div>
+        </div>
+      `).join('')}
+    </div>
+
+    <div class="card" style="margin-top:14px;">
+      <h4 style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.14em;color:var(--ink-3);text-transform:uppercase;margin-bottom:14px;font-weight:600;">Cost efficiency · AUD · cycle to date</h4>
+      <div class="roi-grid">
+        <div class="roi-cell"><div class="roi-val">$186</div><div class="roi-l">Cost / Meeting</div></div>
+        <div class="roi-cell"><div class="roi-val">$47</div><div class="roi-l">Cost / Reply</div></div>
+        <div class="roi-cell"><div class="roi-val">$6.20</div><div class="roi-l">Cost / Contact</div></div>
+        <div class="roi-cell"><div class="roi-val">12.4×</div><div class="roi-l">Pipeline / Spend</div></div>
+      </div>
+      <div style="margin-top:14px;font-size:12px;color:var(--ink-3);font-family:'JetBrains Mono',monospace;">Cycle spend $3,720 · Pipeline created $46,200 · Meetings 8 · Qualified 3</div>
+    </div>
+
+    <div style="text-align:center;margin-top:22px;"><button class="btn btn-primary" onclick="alert('Export PDF report for partners')">Export report</button></div>
+  `;
+}
+
+/* ================================================================
+   SETTINGS
+================================================================ */
+function renderSettings() {
+  document.getElementById('main').innerHTML = `
+    <h1 class="page-h">Settings</h1>
+    <p class="page-sub">Configure Maya, your BDR agent.</p>
+    <div class="card">
+      <div class="set-row"><div class="set-key">BDR name</div><div class="set-val"><input type="text" value="Maya"></div></div>
+      <div class="set-row"><div class="set-key">Agency name</div><div class="set-val"><input type="text" value="Keiracom Growth"></div></div>
+      <div class="set-row"><div class="set-key">Founder</div><div class="set-val"><input type="text" value="Dave Stephens · dave@keiracom.com.au"></div></div>
+      <div class="set-row"><div class="set-key">Quality-check cadence</div><div class="set-val"><select><option>3 random / day (current)</option><option>5 random / day</option><option>10 random / day</option><option>Review-all</option></select></div></div>
+      <div class="set-row"><div class="set-key">Needs-review threshold</div><div class="set-val"><select><option>Critic score &lt; 70 (current)</option><option>Critic score &lt; 80</option><option>Critic score &lt; 60</option></select></div></div>
+      <div class="set-row"><div class="set-key">Agency voice / tone</div><div class="set-val"><textarea>Direct. Australian. Evidence-led. No corporate fluff. Every message references a specific vulnerability on the prospect's site — never generic.</textarea></div></div>
+    </div>
+    <div style="margin-top:18px;text-align:right;"><button class="btn btn-primary">Save changes</button></div>
+  `;
+}
+
+/* ================================================================
+   ROUTER + theme + mobile sidebar
+================================================================ */
+function showView(v) {
+  document.querySelectorAll('.sb-item').forEach(n => n.classList.toggle('active', n.dataset.v === v));
+  document.querySelectorAll('.bn-item').forEach(b => b.classList.toggle('active', b.dataset.v === v));
+  if (v === 'home') renderHome();
+  else if (v === 'pipeline') renderPipeline();
+  else if (v === 'feed') renderFeed();
+  else if (v === 'meetings') renderMeetings();
+  else if (v === 'progress') renderProgress();
+  else if (v === 'settings') renderSettings();
+  closeDrawer();
+  if (window.matchMedia('(max-width: 768px)').matches) {
+    document.getElementById('sidebar').classList.remove('mobile-open');
+    document.getElementById('sidebar-overlay').classList.remove('show');
+  }
+  window.scrollTo(0, 0);
+}
+function toggleMobileSidebar() {
+  document.getElementById('sidebar').classList.toggle('mobile-open');
+  document.getElementById('sidebar-overlay').classList.toggle('show');
+}
+
+document.addEventListener('click', e => {
+  if (e.target.closest('.tb-theme')) {
+    const next = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
+    document.documentElement.classList.toggle('dark', next === 'dark');
+    localStorage.setItem('agencyos_theme', next);
+  }
+});
+
+renderHome();
+</script>
+</body>
+</html>

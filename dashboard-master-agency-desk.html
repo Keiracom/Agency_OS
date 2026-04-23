@@ -284,7 +284,7 @@ html.dark .col-count .cn { background: var(--amber); color: var(--on-amber); }
 .split-label.won { color: var(--green); }
 .split-label.lost { color: var(--red); }
 
-.k-card { background: var(--panel-bg); border: 1px solid var(--rule); border-left: 3px solid var(--rule); border-radius: 6px; padding: 12px 13px; cursor: pointer; transition: border-color .12s, box-shadow .12s, transform .08s; }
+.k-card { background: var(--panel-bg); border: 1px solid var(--rule); border-left: 3px solid var(--rule); border-radius: 6px; padding: 16px 20px; cursor: pointer; transition: border-color .12s, box-shadow .12s, transform .08s; line-height: 1.6; }
 .k-card:hover { border-color: var(--amber); box-shadow: 0 2px 10px rgba(212,149,106,0.1); transform: translateY(-1px); }
 .col-discovered .k-card { border-left-color: var(--ink-3); }
 .col-contacted .k-card { border-left-color: var(--blue); }
@@ -304,12 +304,12 @@ html.dark .col-count .cn { background: var(--amber); color: var(--on-amber); }
 
 /* Pipeline table */
 .pipe-table { width: 100%; border-collapse: collapse; background: var(--panel-bg); border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; font-size: 13px; }
-.pipe-table thead th { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); text-align: left; padding: 12px 14px; background: var(--surface); border-bottom: 1px solid var(--rule); cursor: pointer; }
+.pipe-table thead th { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); text-align: left; padding: 14px 18px; background: var(--surface); border-bottom: 1px solid var(--rule); cursor: pointer; }
 html.dark .pipe-table thead th { background: rgba(255,255,255,0.02); }
 .pipe-table thead th:hover { color: var(--amber); }
 .pipe-table tbody tr { border-bottom: 1px solid var(--rule); cursor: pointer; transition: background .12s; }
 .pipe-table tbody tr:hover { background: var(--amber-glow); }
-.pipe-table td { padding: 11px 14px; color: var(--ink-2); }
+.pipe-table td { padding: 16px 18px; color: var(--ink-2); line-height: 1.6; }
 .pipe-table td.name-col { color: var(--ink); font-weight: 600; font-family: 'Playfair Display', serif; font-size: 14px; }
 .pipe-table td.score-col { font-family: 'JetBrains Mono', monospace; color: var(--copper); font-weight: 600; text-align: right; }
 .pipe-table td.dm-title { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-3); }
@@ -515,28 +515,34 @@ html.dark .snap-chip { background: rgba(255,255,255,0.04); }
 .snap-chip.score b { color: var(--copper); font-family: 'JetBrains Mono', monospace; }
 
 /* ========== VR POPOVER ========== */
-.vr-letter { cursor: pointer; transition: box-shadow .12s, transform .08s; }
-.vr-letter:hover { box-shadow: 0 0 0 3px var(--amber-soft); transform: scale(1.06); }
+/* Default vr-letter is non-interactive — only `.vr-letter.clickable`
+   gets pointer + hover (per dispatch v3: clickable only on Meeting-
+   Booked briefing prep). */
+.vr-letter.clickable { cursor: pointer; transition: box-shadow .12s, transform .08s; }
+.vr-letter.clickable:hover { box-shadow: 0 0 0 3px var(--amber-soft); transform: scale(1.06); }
 .vr-popover {
-  width: 280px;
-  background: var(--amber-soft);
+  width: 340px;
+  background: #FFF8F0;       /* solid warm cream — opaque (Fix 1) */
   border: 1px solid var(--copper);
-  border-radius: 8px;
-  padding: 14px 16px 14px 14px;
-  box-shadow: 0 8px 24px rgba(12,10,8,0.18);
-  z-index: 200;
+  border-radius: 10px;
+  padding: 16px 18px 18px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15), 0 1px 3px rgba(0,0,0,0.08);
+  z-index: 220;              /* above drawer (160) + modal (200) */
   font-size: 13px;
   color: var(--ink);
-  line-height: 1.5;
+  line-height: 1.55;
+  position: absolute;
 }
-html.dark .vr-popover { background: rgba(212,149,106,0.16); border-color: var(--copper); }
-.vr-pop-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-.vr-pop-head .vr-letter { width: 32px; height: 32px; font-size: 16px; cursor: default; }
+html.dark .vr-popover { background: #1F1B16; color: var(--ink); border-color: var(--copper); box-shadow: 0 4px 20px rgba(0,0,0,0.5), 0 1px 3px rgba(0,0,0,0.3); }
+.vr-pop-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; padding-right: 22px; }
+.vr-pop-head .vr-letter { width: 34px; height: 34px; font-size: 17px; cursor: default; }
 .vr-pop-head .vr-letter:hover { box-shadow: none; transform: none; }
-.vr-pop-key { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--copper); font-weight: 700; }
-.vr-pop-why { font-size: 13px; color: var(--ink-2); }
-.vr-pop-close { position: absolute; top: 6px; right: 8px; width: 24px; height: 24px; font-size: 16px; color: var(--ink-3); display: grid; place-items: center; }
-.vr-pop-close:hover { color: var(--copper); }
+.vr-pop-key { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--copper); font-weight: 700; }
+.vr-pop-section { margin-top: 10px; }
+.vr-pop-section h6 { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--copper); margin-bottom: 4px; }
+.vr-pop-section p { font-size: 12.5px; color: var(--ink-2); line-height: 1.55; margin: 0; }
+.vr-pop-close { position: absolute; top: 6px; right: 8px; width: 28px; height: 28px; font-size: 18px; color: var(--ink-3); display: grid; place-items: center; border-radius: 6px; }
+.vr-pop-close:hover { color: var(--copper); background: rgba(196,106,62,0.1); }
 
 /* ========== COMMUNICATION TIMELINE ========== */
 .ct-wrap { position: relative; padding-left: 26px; }
@@ -1202,55 +1208,57 @@ function closeDrawer() {
 }
 
 /* ================================================================
-   VR GRADE EXPLANATIONS — clickable letter popover
+   VR GRADE EXPLANATIONS — 3-section content (Data / Strengths /
+   Improvements). Clickable popover only on Meeting-Booked briefing
+   prep page (per dispatch v3).
 ================================================================ */
 const VR_EXPLAIN = {
   website: {
-    A:'Modern stack, sub-2s load, mobile-first, schema markup complete.',
-    B:'Solid technical foundation, decent UX, minor optimisation gaps.',
-    C:'Functional but no conversion paths optimised, basic mobile responsive.',
-    D:'Outdated CMS, slow load (>4s), poor mobile UX, missing schema.',
-    F:'No SSL, not mobile responsive, last updated 2019, missing schema markup.',
+    A: { data:'SSL active, mobile responsive, PageSpeed 82/100, structured data present.', strengths:'Fast load time, modern CMS, schema markup implemented, accessibility WCAG-AA.', improvements:'Minor: blog section could be more active. Conversion-rate test on hero CTA.' },
+    B: { data:'SSL active, mobile responsive, PageSpeed 64/100, partial schema.', strengths:'Solid technical foundation, decent UX, modern stack.', improvements:'Lighthouse score under 80, missing FAQ + service schema, image-weight optimisation.' },
+    C: { data:'SSL active, mobile responsive but slow on 3G, PageSpeed 48/100, no structured data.', strengths:'Functional, mobile-friendly, basic conversion paths.', improvements:'Page weight reduction, schema markup needed, hero CTA copy and conversion paths weak.' },
+    D: { data:'SSL active, partially mobile responsive, PageSpeed 32/100, outdated CMS, no schema.', strengths:'Domain has authority and history.', improvements:'Outdated CMS upgrade, mobile UX rebuild, slow load (>4s) needs caching + image strategy, schema markup missing.' },
+    F: { data:'No SSL, not mobile responsive, last updated 2019, no structured data, PageSpeed 23/100.', strengths:'Domain has history and some backlinks.', improvements:'Critical: SSL certificate needed, mobile responsive rebuild required, content refresh, schema markup missing.' },
   },
   seo: {
-    A:'Top-3 rankings on commercial keywords, technical SEO clean, content depth.',
-    B:'Page-1 rankings on most targets, healthy backlink profile.',
-    C:'Some rankings, partial title-tag optimisation, content gaps.',
-    D:'Few first-page rankings, no title tags optimised, thin content.',
-    F:'Zero first-page organic rankings, no SEO strategy, content vacuum.',
+    A: { data:'Top-3 rankings on 12 commercial keywords, 89 ranking total, clean technical SEO.', strengths:'Strong keyword footprint, healthy backlink profile, content depth.', improvements:'Continue topic cluster expansion. Internal-linking audit could lift mid-tier pages.' },
+    B: { data:'Page-1 rankings on 7 of 10 target keywords, 58 ranking total, 41 referring domains.', strengths:'Good page-1 share, healthy domain authority, on-page SEO solid.', improvements:'Push remaining 3 targets to page 1 with content depth + 2-3 quality backlinks each.' },
+    C: { data:'Page-1 rankings on 3 of 10 target keywords, 42 ranking total, 28 referring domains.', strengths:'Some commercial rankings, partial title-tag optimisation.', improvements:'Title tag rewrite for 7 service pages, meta description gaps, content depth on core pages.' },
+    D: { data:'Few first-page rankings (1-2), thin title tags, no meta descriptions, weak local SEO.', strengths:'Domain registered and indexed, some authority via backlinks.', improvements:'Title tag optimisation for 5 core service pages, meta descriptions, local SEO schema, content strategy for target keywords.' },
+    F: { data:'Zero first-page rankings for any target keyword, no title tag strategy, no meta descriptions, no local SEO.', strengths:'Domain registered and crawlable.', improvements:'Full SEO foundation needed — keyword strategy, title tags, meta descriptions, content plan, local schema, GMB optimisation.' },
   },
   reviews: {
-    A:'4.7+ stars, 100+ reviews, fresh velocity, all GMB Q&A answered.',
-    B:'4.2 stars, 47 reviews, 3 negative in last 90 days.',
-    C:'3.8 stars, moderate volume, slow response to negative reviews.',
-    D:'Below 3.5 stars OR low volume (<15 reviews) OR stale activity.',
-    F:'No reviews OR negative trajectory OR multiple unanswered complaints.',
+    A: { data:'4.7 stars, 124 reviews, fresh velocity (8 in last 30 days), all GMB Q&A answered.', strengths:'Excellent reputation, high volume, active response strategy, strong recent velocity.', improvements:'Maintain cadence. Consider video testimonials for top services.' },
+    B: { data:'4.2 stars, 47 reviews, 3 negative in last 90 days.', strengths:'Strong review volume, mostly positive sentiment, active GMB profile.', improvements:'Address 3 recent negative reviews, implement review response strategy, request cadence to lift average.' },
+    C: { data:'3.8 stars, 28 reviews, slow response to negatives, no review velocity.', strengths:'Above-3-star average, established review history.', improvements:'Active review response needed, review request automation, address themed complaints visible in 1-star reviews.' },
+    D: { data:'Below 3.5 stars OR fewer than 15 reviews OR no reviews in 90+ days.', strengths:'Has a GMB listing claimed.', improvements:'Critical reputation work — review response, customer outreach for fresh reviews, address recurring complaints, GMB Q&A activation.' },
+    F: { data:'No reviews OR negative trajectory OR multiple unanswered complaints.', strengths:'GMB listing exists (recoverable foundation).', improvements:'Review-recovery plan: respond to all negatives professionally, customer outreach for fresh reviews, complaint resolution programme, GMB completeness audit.' },
   },
   ads: {
-    A:'Active spend with conversion tracking, healthy ROAS visible.',
-    B:'Spend running, basic tracking, room to optimise.',
-    C:'Google Ads running but no conversion tracking configured.',
-    D:'Recently paused or sporadic spend with no measurement.',
-    F:'No paid presence detected. Competitors capturing the search demand.',
+    A: { data:'Google Ads + Meta Ads spend detected, conversion tracking active, ROAS 4.2× visible.', strengths:'Active multi-channel paid spend, conversion tracking, healthy ROAS.', improvements:'Test new creative variants, expand into Performance Max for branded queries.' },
+    B: { data:'Google Ads spend detected, basic conversion tracking, no Meta presence.', strengths:'Active spend, basic tracking infrastructure in place.', improvements:'Conversion tracking event refinement, expand into Meta Ads for awareness, landing page CRO.' },
+    C: { data:'Google Ads spend detected (estimated moderate), no conversion tracking configured.', strengths:'Spending — willing to invest in growth.', improvements:'Critical: install conversion tracking immediately. Without it, spend efficiency cannot be measured. Add Google Analytics + GTM events.' },
+    D: { data:'Recently paused Google Ads after 6 months OR sporadic spend with no measurement.', strengths:'Has experimented with paid acquisition.', improvements:'Diagnose pause reason (cost vs. results). If results — full account audit + restart strategy. If cost — Performance Max + smart bidding to lift efficiency.' },
+    F: { data:'No paid spend detected. Competitors capturing the search demand.', strengths:'Untapped channel — clean slate for testing.', improvements:'Paid search foundation: keyword research, account structure, conversion tracking, landing pages, budget pacing.' },
   },
   social: {
-    A:'Active LinkedIn + Instagram, weekly posts, high engagement.',
-    B:'Active LinkedIn presence, posts 2x/month, modest engagement.',
-    C:'Profiles exist, posts monthly, limited interaction.',
-    D:'Profiles exist but stale (>60 days no activity).',
-    F:'No social presence OR all profiles abandoned.',
+    A: { data:'Active LinkedIn + Instagram, 4+ posts/week, engagement rate 5.2%, follower growth 12% MoM.', strengths:'High-frequency posting, strong engagement, audience growth trend.', improvements:'Test short-form video. Consider expanding into TikTok for category awareness.' },
+    B: { data:'Active LinkedIn presence, posts 2x/month, modest engagement.', strengths:'Consistent presence, professional tone, moderate engagement.', improvements:'Increase posting cadence to weekly, expand into Instagram for visual storytelling, repurpose content across platforms.' },
+    C: { data:'Profiles exist, posts monthly or less, limited interaction.', strengths:'Profiles claimed and branded.', improvements:'Establish posting cadence (2x/month minimum), content calendar, engagement strategy with industry conversations.' },
+    D: { data:'Profiles exist but stale — last activity 60+ days ago.', strengths:'Profiles claimed (recoverable).', improvements:'Reactivation strategy: post weekly for 90 days to rebuild algorithm signals, profile refresh, engagement plan.' },
+    F: { data:'No social presence OR all profiles abandoned for 6+ months.', strengths:'No reputation to repair — clean start.', improvements:'Social foundation: claim handles, profile build-out (LinkedIn first for B2B), content calendar, posting cadence, engagement strategy.' },
   },
   content: {
-    A:'Active blog (4+ posts/mo), case studies, gated assets, ranking content.',
-    B:'Blog active (1-2/mo), some case studies, partial content strategy.',
-    C:'Sporadic blog activity, basic about page, few case studies.',
-    D:'Blog exists but rarely updated (last post >90 days).',
-    F:'Blog section empty, no case studies, no content strategy.',
+    A: { data:'Active blog (4+ posts/mo), 8 case studies, gated assets, content ranking on 14 long-tail terms.', strengths:'Strong content engine, case-study depth, ranking content.', improvements:'Topical authority play — pillar pages around 2-3 core services. Repurpose top posts into video.' },
+    B: { data:'Blog active (1-2 posts/mo), 3 case studies, partial content strategy.', strengths:'Consistent posting, some case-study proof, on-brand voice.', improvements:'Increase to weekly cadence, expand case studies to top services, add gated lead magnet for capture.' },
+    C: { data:'Sporadic blog activity, basic About page, 1-2 case studies.', strengths:'Foundation content present.', improvements:'Establish content calendar (2x/month minimum), case-study programme, service-page content depth.' },
+    D: { data:'Blog exists but rarely updated (last post >90 days), no case studies.', strengths:'Blog infrastructure ready.', improvements:'Content reactivation — editorial calendar, case-study collection programme, repurpose existing thought-leadership into rankable formats.' },
+    F: { data:'Blog section empty, no case studies, no content strategy.', strengths:'Service pages exist as foundation.', improvements:'Content foundation: blog launch, editorial calendar, case-study programme, gated assets, content-led SEO strategy.' },
   },
 };
 function explainVR(p, key) {
   const grade = (p.vulnGrades || {})[key] || 'C';
-  return (VR_EXPLAIN[key] || {})[grade] || `Grade ${grade} — see vulnerability narrative for detail.`;
+  return (VR_EXPLAIN[key] || {})[grade] || { data:`Grade ${grade}.`, strengths:'—', improvements:'See vulnerability narrative for detail.' };
 }
 
 let activePopover = null;
@@ -1259,23 +1267,28 @@ function showVRPopover(pid, key, evt) {
   closeVRPopover();
   const p = findP(pid); if (!p) return;
   const grade = (p.vulnGrades || {})[key] || 'C';
+  const ex = explainVR(p, key);
   const tip = document.createElement('div');
   tip.className = 'vr-popover';
   tip.innerHTML = `
     <button class="vr-pop-close" onclick="closeVRPopover()" aria-label="Close">×</button>
-    <div class="vr-pop-head"><span class="vr-letter" data-g="${grade}">${grade}</span><span class="vr-pop-key">${key}</span></div>
-    <div class="vr-pop-why">${explainVR(p, key)}</div>
+    <div class="vr-pop-head">
+      <span class="vr-letter" data-g="${grade}">${grade}</span>
+      <span class="vr-pop-key">${key} · grade ${grade}</span>
+    </div>
+    <div class="vr-pop-section"><h6>Data — what we found</h6><p>${ex.data}</p></div>
+    <div class="vr-pop-section"><h6>Strengths</h6><p>${ex.strengths}</p></div>
+    <div class="vr-pop-section"><h6>Improvements</h6><p>${ex.improvements}</p></div>
   `;
   document.body.appendChild(tip);
   activePopover = tip;
-  /* position below the clicked letter */
+  /* position below the clicked letter, clamped to viewport */
   const target = evt && evt.target.closest('.vr-letter');
   if (target) {
     const rect = target.getBoundingClientRect();
-    tip.style.position = 'absolute';
     tip.style.top = (rect.bottom + window.scrollY + 8) + 'px';
-    const left = rect.left + window.scrollX + (rect.width / 2) - 140;
-    tip.style.left = Math.max(8, Math.min(left, window.innerWidth - 296)) + 'px';
+    const left = rect.left + window.scrollX + (rect.width / 2) - 170;
+    tip.style.left = Math.max(8, Math.min(left, window.scrollX + window.innerWidth - 356)) + 'px';
   }
   setTimeout(() => document.addEventListener('click', vrPopoverOutside), 0);
 }
@@ -1856,10 +1869,13 @@ function openBriefingPage(pid) {
     </div>
 
     <div class="card" style="margin-top:14px;">
-      <h4 style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.14em;color:var(--ink-3);text-transform:uppercase;margin-bottom:12px;font-weight:600;">Vulnerability — overall grade ${vr} <span style="font-family:'DM Sans',sans-serif;text-transform:none;letter-spacing:0;color:var(--ink-3);font-size:11px;font-weight:400;margin-left:8px;">click any letter for detail</span></h4>
+      <h4 style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.14em;color:var(--ink-3);text-transform:uppercase;margin-bottom:12px;font-weight:600;">Vulnerability — overall grade ${vr}${p.status === 'Meeting Booked' ? ` <span style="font-family:'DM Sans',sans-serif;text-transform:none;letter-spacing:0;color:var(--ink-3);font-size:11px;font-weight:400;margin-left:8px;">click any letter for detail</span>` : ''}</h4>
       <div style="font-size:13px;color:var(--ink-2);line-height:1.6;margin-bottom:12px;">${p.vulnerability}</div>
       <div class="vr-strip">
-        ${grades.map(g => `<div class="vr-cw"><div class="vr-letter" data-g="${p.vulnGrades[g]}" onclick="showVRPopover('${p.id}','${g}',event)" title="Click for explanation">${p.vulnGrades[g]}</div><div class="vr-name">${g}</div></div>`).join('')}
+        ${grades.map(g => p.status === 'Meeting Booked'
+          ? `<div class="vr-cw"><div class="vr-letter clickable" data-g="${p.vulnGrades[g]}" onclick="showVRPopover('${p.id}','${g}',event)" title="Click for explanation">${p.vulnGrades[g]}</div><div class="vr-name">${g}</div></div>`
+          : `<div class="vr-cw"><div class="vr-letter" data-g="${p.vulnGrades[g]}">${p.vulnGrades[g]}</div><div class="vr-name">${g}</div></div>`
+        ).join('')}
       </div>
     </div>
 

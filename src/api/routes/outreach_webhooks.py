@@ -21,10 +21,8 @@ hmac.compare_digest.
 """
 from __future__ import annotations
 
-import hashlib
-import hmac
+import json
 import logging
-import os
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -75,13 +73,78 @@ def _verify(secret_env: str, payload: bytes, signature: str | None) -> bool:
 # ---------------------------------------------------------------------------
 
 class TouchStore:
-    """Interface the webhooks use to talk to scheduled_touches. Override in tests."""
+    """Persists TouchMutation objects to the scheduled_touches table.
+
+    Pass an asyncpg Connection (or compatible) as db_conn for production.
+    Omit it (or pass None) to get a no-op store suitable for tests that
+    inject their own mock.
+    """
+
+    def __init__(self, db_conn=None) -> None:
+        self.db = db_conn
 
     async def load_pending(self, lead_id: str) -> list[dict]:
-        return []
+        if not self.db:
+            return []
+        rows = await self.db.fetch(
+            "SELECT id, channel, sequence_step, scheduled_at FROM scheduled_touches"
+            " WHERE lead_id=$1 AND status='pending'",
+            lead_id,
+        )
+        return [dict(r) for r in rows]
 
     async def apply(self, mutations: list[TouchMutation]) -> int:
-        return 0
+        if not self.db or not mutations:
+            return 0
+        applied = 0
+        for m in mutations:
+            try:
+                if m.action == "cancel":
+                    await self.db.execute(
+                        "UPDATE scheduled_touches SET status='cancelled', updated_at=now()"
+                        " WHERE id=$1",
+                        m.touch_id,
+                    )
+                elif m.action == "pause":
+                    await self.db.execute(
+                        "UPDATE scheduled_touches SET status='paused', updated_at=now()"
+                        " WHERE id=$1",
+                        m.touch_id,
+                    )
+                elif m.action == "reschedule":
+                    await self.db.execute(
+                        "UPDATE scheduled_touches SET scheduled_at=$1, updated_at=now()"
+                        " WHERE id=$2",
+                        m.new_scheduled_at,
+                        m.touch_id,
+                    )
+                elif m.action == "insert":
+                    await self.db.execute(
+                        """INSERT INTO scheduled_touches
+                           (lead_id, channel, sequence_step, scheduled_at,
+                            status, content, prospect)
+                           VALUES ($1, $2, $3, $4, 'pending', $5, $6)""",
+                        m.extra.get("lead_id"),
+                        m.channel,
+                        m.sequence_step,
+                        m.new_scheduled_at,
+                        json.dumps(m.content) if m.content else "{}",
+                        json.dumps(m.extra.get("prospect", {})),
+                    )
+                elif m.action == "suppress":
+                    lead_id = m.extra.get("lead_id")
+                    if lead_id:
+                        await self.db.execute(
+                            "UPDATE scheduled_touches SET status='cancelled', updated_at=now()"
+                            " WHERE lead_id=$1 AND status='pending'",
+                            lead_id,
+                        )
+                elif m.action in ("escalate", "noop", "create_prospect"):
+                    pass  # No DB action — handled by caller
+                applied += 1
+            except Exception as exc:
+                logger.error("TouchStore.apply failed for action=%s: %s", m.action, exc)
+        return applied
 
 
 _default_store = TouchStore()

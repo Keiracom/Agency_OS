@@ -518,6 +518,133 @@ async def cmd_history(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     )
 
 
+async def cmd_update(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Comprehensive session-resume handoff for a peer bot that just reset.
+    Protocol-first, state-second. Usage: /update <target_callsign>"""
+    if not await auth_check(update):
+        return
+
+    target = (context.args[0].lower() if context.args else
+              ("aiden" if CALLSIGN == "elliot" else "elliot"))
+    peer_clone = "ORION" if target == "aiden" else "ATLAS"
+    my_clone = "ATLAS" if CALLSIGN == "elliot" else "ORION"
+
+    # --- Data collection (comprehensive, Option B) ---
+    sections: list[str] = []
+
+    # 1. Protocol checklist (FIRST — restores behaviour before state)
+    sections.append(
+        f"[UPDATE:{CALLSIGN.upper()}→{target.upper()}] — session-resume handoff\n\n"
+        f"PROTOCOL CHECKLIST (reconstitute FIRST, before acting):\n"
+        f"1. You are {target.upper()}. Read ./IDENTITY.md + verify CALLSIGN env.\n"
+        f"2. TELEGRAM-ONLY: every response via `tg -g`. Dave reads Telegram, NOT terminal.\n"
+        f"3. Your peer is {CALLSIGN.upper()}. Prefix messages [{target.upper()}].\n"
+        f"4. Your clone is {peer_clone}. Dispatch via /tmp/telegram-relay-{peer_clone.lower()}/inbox/.\n"
+        f"5. Dispatch Coordination: [DISPATCH-PROPOSAL] + 20s peer [CONCUR] before inject (Rule 8).\n"
+        f"6. Read last 50 group messages before acting on any directive.\n"
+        f"7. ACKNOWLEDGE: reply via tg -g with [{target.upper()}] UPDATE-ACK."
+    )
+
+    # 2. ceo_memory state
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            keys = ["ceo:directives.last_number", "ceo:roadmap_master.active_phase",
+                    "ceo:session_end_" + datetime.now(timezone.utc).strftime("%Y-%m-%d")]
+            key_filter = ",".join(f'"{k}"' for k in keys)
+            r = await client.get(
+                f"{SUPABASE_URL}/rest/v1/ceo_memory?key=in.({key_filter})&select=key,value,updated_at",
+                headers=SUPABASE_HEADERS,
+            )
+            if r.status_code == 200 and r.json():
+                state_lines = ["CURRENT STATE (from ceo_memory):"]
+                for row in r.json():
+                    val = str(row.get("value", ""))[:200]
+                    state_lines.append(f"  {row['key']}: {val}")
+                sections.append("\n".join(state_lines))
+    except Exception as exc:
+        sections.append(f"ceo_memory: fetch failed ({exc})")
+
+    # 3. Open PRs
+    try:
+        pr_result = subprocess.run(
+            ["gh", "pr", "list", "--state", "open", "--json", "number,title",
+             "--jq", '.[] | "#\\(.number) \\(.title)"'],
+            capture_output=True, text=True, timeout=15, cwd=WORK_DIR,
+        )
+        pr_text = pr_result.stdout.strip() or "None"
+        sections.append(f"OPEN PRs:\n{pr_text}")
+    except Exception:
+        sections.append("OPEN PRs: fetch failed")
+
+    # 4. Recent commits
+    try:
+        log_result = subprocess.run(
+            ["git", "log", "--oneline", "-10"],
+            capture_output=True, text=True, timeout=10, cwd=WORK_DIR,
+        )
+        sections.append(f"RECENT COMMITS (last 10):\n{log_result.stdout.strip()}")
+    except Exception:
+        sections.append("RECENT COMMITS: fetch failed")
+
+    # 5. Clone status
+    try:
+        tmux_result = subprocess.run(
+            ["tmux", "list-sessions"],
+            capture_output=True, text=True, timeout=5,
+        )
+        sessions_text = tmux_result.stdout.strip() or "No tmux sessions"
+        sections.append(f"CLONE SESSIONS:\n{sessions_text}")
+    except Exception:
+        sections.append("CLONE SESSIONS: tmux query failed")
+
+    # 6. Pending dispatches
+    for clone_name in ["atlas", "orion", "scout"]:
+        inbox = f"/tmp/telegram-relay-{clone_name}/inbox"
+        try:
+            files = [f for f in os.listdir(inbox) if f.endswith(".json")] if os.path.isdir(inbox) else []
+            if files:
+                sections.append(f"PENDING DISPATCH ({clone_name}): {len(files)} file(s) — {', '.join(files[-3:])}")
+        except Exception:
+            pass
+
+    # 7. Last 5 group messages (from local chat log)
+    try:
+        log_path = f"/home/elliotbot/clawd/logs/telegram-group-{CALLSIGN}.log"
+        if os.path.exists(log_path):
+            with open(log_path) as f:
+                lines = f.readlines()[-5:]
+            if lines:
+                sections.append("LAST 5 GROUP MESSAGES:\n" + "".join(lines))
+    except Exception:
+        pass
+
+    # 8. Governance reminders
+    sections.append(
+        "ACTIVE GOVERNANCE:\n"
+        "  - Rule 2 (Step-0 exceptions: merges, rebases, acks)\n"
+        "  - Rule 8 (Dispatch coordination: proposal + 20s + concur)\n"
+        "  - Dual-concur on all PRs before Dave merges\n"
+        "  - Claim-before-touch on shared files\n"
+        "  - Be safe with deletions (file + line level)\n"
+        "  - Rebase on main before opening PR"
+    )
+
+    # 9. Next action
+    sections.append(
+        "IMMEDIATE NEXT ACTION: Read last 50 group messages, "
+        f"then reply via tg -g with [{target.upper()}] UPDATE-ACK — state + protocols synced."
+    )
+
+    msg = "\n\n".join(sections)
+
+    # Truncate to Telegram max (4096 chars) — split if needed
+    if len(msg) > 4000:
+        msg = msg[:3990] + "\n\n[TRUNCATED — read group chat for full context]"
+
+    await update.message.reply_text(msg)
+    logger.info(f"[/update] handoff compiled for {target} ({len(msg)} chars)")
+
+
 async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not await auth_check(update):
         return
@@ -1169,6 +1296,7 @@ def main() -> None:
     app.add_handler(CommandHandler("history", cmd_history))
     app.add_handler(CommandHandler("relay", cmd_relay))
     app.add_handler(CommandHandler("save", cmd_save))
+    app.add_handler(CommandHandler("update", cmd_update))
     app.add_handler(CommandHandler("help", cmd_help))
     # Media handlers before text fallback
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))

@@ -444,6 +444,45 @@ html.dark .theme-toggle .t-moon { display: inline; }
 .briefing-meeting-header { background: var(--ink); color: #fff; border-radius: 10px; padding: 24px 28px; margin-bottom: 24px; display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
 .briefing-countdown { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: rgba(255,255,255,0.5); }
 .briefing-section { margin-bottom: 28px; }
+/* Post-meeting action bar (below meeting header) */
+.post-meeting-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
+.pma-btn { font-size: 12.5px; padding: 8px 14px; border-radius: 6px; font-weight: 500; border: 1px solid transparent; transition: filter 0.15s, transform 0.05s; }
+.pma-btn:active { transform: translateY(1px); }
+.pma-won     { background: #6B8E5A; color: #fff; }
+.pma-follow  { background: var(--amber); color: #fff; }
+.pma-noshow  { background: #B55A4C; color: #fff; }
+.pma-resched { background: transparent; color: var(--ink-2); border-color: var(--rule); }
+.pma-won:hover, .pma-follow:hover, .pma-noshow:hover { filter: brightness(1.08); }
+.pma-resched:hover { border-color: var(--amber); color: var(--copper); }
+html.dark .pma-resched { color: var(--ink-2); border-color: rgba(255,255,255,0.14); }
+html.dark .pma-resched:hover { border-color: var(--amber); color: var(--amber); }
+/* Print-briefing button label: full on desktop, 'Save PDF' on mobile */
+.briefing-pdf-btn .lbl-pdf { display: none; }
+@media (max-width: 768px) {
+  .briefing-pdf-btn .lbl-print { display: none; }
+  .briefing-pdf-btn .lbl-pdf   { display: inline; }
+}
+/* Meetings page */
+.meetings-summary { background: var(--amber-soft); border-radius: 10px; padding: 16px 20px; margin-bottom: 24px; display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.meetings-summary .v { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 700; color: var(--copper); }
+.meetings-summary .l { color: var(--ink-2); font-size: 14px; }
+.meeting-card { background: #fff; border: 1px solid var(--rule); border-radius: 10px; padding: 20px 22px; margin-bottom: 12px; display: grid; grid-template-columns: 48px 1fr auto auto; gap: 16px; align-items: center; max-width: 100%; min-width: 0; transition: border-color 0.15s, box-shadow 0.15s; }
+.meeting-card:hover { border-color: var(--amber); box-shadow: 0 2px 12px rgba(212,149,106,0.1); }
+html.dark .meeting-card { background: var(--surface); border-color: var(--rule); }
+.meeting-card .vr-grade { width: 40px; height: 40px; font-size: 18px; border-radius: 10px; }
+.meeting-card-main { min-width: 0; }
+.meeting-card-name { font-family: 'Playfair Display', serif; font-size: 17px; font-weight: 700; color: var(--ink); margin-bottom: 3px; }
+.meeting-card-sub { font-size: 12.5px; color: var(--ink-3); font-family: 'JetBrains Mono', monospace; }
+.meeting-card-when { text-align: right; flex-shrink: 0; }
+.meeting-card-when .when-main { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--ink); font-weight: 500; }
+.meeting-card-when .when-sub { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--copper); margin-top: 2px; }
+.meeting-empty { background: var(--surface); border: 1px dashed var(--rule); border-radius: 10px; padding: 32px 24px; text-align: center; color: var(--ink-3); font-style: italic; }
+@media (max-width: 768px) {
+  .meeting-card { grid-template-columns: 40px 1fr; padding: 16px; }
+  .meeting-card-when, .meeting-card > button { grid-column: 1 / -1; }
+  .meeting-card-when { text-align: left; }
+  .meeting-card > button { justify-self: start; }
+}
 .briefing-section-title { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--rule); }
 .briefing-ai-summary { font-family: 'Playfair Display', serif; font-style: italic; font-size: 15px; color: var(--ink-2); line-height: 1.7; padding: 16px; background: var(--amber-soft); border-left: 3px solid var(--amber); }
 .reply-quote { background: var(--amber-soft); border-left: 3px solid var(--amber); padding: 14px 18px; font-size: 14px; color: var(--ink-2); font-style: italic; line-height: 1.6; margin: 12px 0; }
@@ -592,6 +631,11 @@ html.dark .theme-toggle .t-moon { display: inline; }
       <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M2 4a2 2 0 012-2h8a2 2 0 012 2v6a2 2 0 01-2 2H2.5L1 14V4z"/></svg>
       Inbox
       <span class="nav-badge">23</span>
+    </div>
+    <div class="nav-item" data-route="#meetings" onclick="navigate('#meetings')">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><rect x="2" y="3" width="12" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.3"/><line x1="2" y1="6" x2="14" y2="6" stroke="currentColor" stroke-width="1.3"/><line x1="5" y1="1.5" x2="5" y2="4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="11" y1="1.5" x2="11" y2="4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="8" cy="10" r="1.2"/></svg>
+      Meetings
+      <span class="nav-badge">4</span>
     </div>
     <div class="nav-item" data-route="#cycles" onclick="navigate('#cycles')">
       <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M14 2L2 7l4 2 2 4 3-4 3 2z"/></svg>
@@ -1299,6 +1343,7 @@ function router() {
   else if (hash.startsWith('#pipeline/')) { const id = hash.split('/')[1]; renderDetail(id); }
   else if (hash === '#cycles') renderCycles();
   else if (hash === '#inbox') renderInbox();
+  else if (hash === '#meetings') renderMeetings();
   else if (hash === '#sequences') renderSequences();
   else if (hash === '#signals') renderInsights();
   else if (hash === '#reports') renderReports();
@@ -1320,7 +1365,7 @@ function updateSidebarActive(hash) {
 }
 
 function updateBreadcrumb(hash) {
-  const labels = { '#home': 'Dashboard', '#pipeline': 'Pipeline', '#cycles': 'Cycles', '#inbox': 'Inbox', '#sequences': 'Sequences', '#signals': 'Signals', '#reports': 'Reports', '#settings': 'Settings' };
+  const labels = { '#home': 'Dashboard', '#pipeline': 'Pipeline', '#cycles': 'Cycles', '#inbox': 'Inbox', '#meetings': 'Meetings', '#sequences': 'Sequences', '#signals': 'Signals', '#reports': 'Reports', '#settings': 'Settings' };
   const crumb = document.getElementById('breadcrumb');
   if (hash.startsWith('#pipeline/')) {
     const id = hash.split('/')[1];
@@ -1833,9 +1878,17 @@ CTA: "I've fixed this exact problem for 3 similar businesses this year. Could we
             <div class="briefing-countdown">${m.countdown} · via ${m.platform}</div>
           </div>
           <div style="display:flex;gap:8px;">
-            <button class="btn" style="background:rgba(255,255,255,0.1);color:#fff;font-size:13px;padding:8px 16px;" onclick="window.print()">Print briefing</button>
-            <button class="btn btn-amber" style="font-size:13px;padding:8px 16px;">Join Zoom</button>
+            <button class="btn briefing-pdf-btn" style="background:rgba(255,255,255,0.1);color:#fff;font-size:13px;padding:8px 16px;" onclick="window.print()"><span class="lbl-print">Print briefing</span><span class="lbl-pdf">Save PDF</span></button>
+            <button class="btn btn-amber" style="font-size:13px;padding:8px 16px;" onclick="alert('Open ' + '${m.platform}' + ' meeting link')">Join meeting</button>
           </div>
+        </div>
+
+        <!-- 1b. Post-meeting actions -->
+        <div class="post-meeting-actions">
+          <button class="btn pma-btn pma-won" onclick="alert('Marked as: Closed won')">Closed won</button>
+          <button class="btn pma-btn pma-follow" onclick="alert('Marked as: Follow up')">Follow up</button>
+          <button class="btn pma-btn pma-noshow" onclick="alert('Marked as: No show')">No show</button>
+          <button class="btn pma-btn pma-resched" onclick="alert('Marked as: Reschedule')">Reschedule</button>
         </div>
 
         <!-- 2. Prospect snapshot -->
@@ -2199,6 +2252,47 @@ function savePostMeetingNote(id) {
 /* ═══════════════════════════════════════════════════════════════════
    PAGE 4 — CYCLES
 ═══════════════════════════════════════════════════════════════════ */
+function renderMeetings() {
+  /* Meetings list — pulls all prospects with p.meeting (p1-p4 hero set). */
+  const upcoming = prospects.filter(p => p && p.meeting && p.meeting.date).slice(0, 10);
+  const todayCount = 2;  /* prototype — would derive from date diff */
+  const weekCount = upcoming.length;
+
+  const upcomingHtml = upcoming.map(p => {
+    const m = p.meeting;
+    const vr = overallVulnGrade(p.vulnGrades);
+    return `
+      <div class="meeting-card">
+        <div class="vr-grade" data-grade="${vr}" title="Vulnerability grade: ${vr}">${vr}</div>
+        <div class="meeting-card-main">
+          <div class="meeting-card-name">${p.dm.name} · ${p.name}</div>
+          <div class="meeting-card-sub">${p.dm.title} · ${p.suburb}, ${p.state}</div>
+        </div>
+        <div class="meeting-card-when">
+          <div class="when-main">${m.date} · ${m.time}</div>
+          <div class="when-sub">${m.countdown} · ${m.platform}</div>
+        </div>
+        <button class="btn btn-primary" style="font-size:12.5px;padding:8px 14px;" onclick="navigate('#pipeline/${p.id}')">Open briefing</button>
+      </div>
+    `;
+  }).join('');
+
+  document.getElementById('page').innerHTML = `
+    <h1 class="page-headline">Meetings<br><em>${weekCount} booked.</em></h1>
+    <div class="meetings-summary">
+      <span class="v">${weekCount}</span>
+      <span class="l">meetings this week · <b style="color:var(--copper);">${todayCount} today</b></span>
+    </div>
+
+    <div class="section-label">Upcoming</div>
+    ${upcomingHtml || '<div class="meeting-empty">No meetings booked yet.</div>'}
+
+    <div style="margin-top:32px;"></div>
+    <div class="section-label">Completed</div>
+    <div class="meeting-empty">No completed meetings yet</div>
+  `;
+}
+
 function renderCycles() {
   const html = `
     <div class="eyebrow" style="margin-bottom:8px;">Cycles · Previous cycles</div>

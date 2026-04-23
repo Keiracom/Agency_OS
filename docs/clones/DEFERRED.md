@@ -35,6 +35,7 @@
 | 2.2.4 | Dispatcher wrapper over Salesforge/Unipile/ElevenAgents with webhook → outreach_events | **Deferred** | `PHASE-2.2-DISPATCHER-WRAPPER` ~6 hr. Largest ticket — central choke point, needs architect-0 sign-off |
 | 2.2.5 | Prefect flows (hourly pending-touches pipeline, daily warming/cycle/deliverability, weekly LinkedIn reset + mailbox stats, monthly cycle-close) | **Deferred** | `PHASE-2.2-PREFECT-FLOWS` ~5 hr |
 | 2.2.6 | Deliverability monitor — bounce >5% auto-pause, spam complaint >0.1% quarantine, LinkedIn 402/429 → 7-day cooldown | **Deferred** | `PHASE-2.2-DELIVERABILITY-MONITOR` ~4 hr |
+| 2.2.7 | Send pacer / anti-bot jitter — per-account inter-send delays: LinkedIn 2-8 min, email 30-90 sec, voice serialised 30-60 sec gap, SMS 2-5 sec. Prevents bot-flagging even when daily caps are respected. | **Deferred** | `PHASE-2.2-SEND-PACER` ~2 hr |
 
 ## Integration gaps
 

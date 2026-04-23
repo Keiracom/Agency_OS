@@ -14,12 +14,14 @@ import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { PipelineKanban } from "@/components/dashboard/PipelineKanban";
 import { PipelineTable } from "@/components/dashboard/PipelineTable";
+import { ProspectDrawer } from "@/components/dashboard/ProspectDrawer";
 import { usePipelineData } from "@/lib/hooks/usePipelineData";
 
 type View = "kanban" | "table";
 
 export default function PipelinePage() {
   const [view, setView] = useState<View>("kanban");
+  const [activeLead, setActiveLead] = useState<string | null>(null);
   const { prospects, counts, isLoading } = usePipelineData();
 
   const total = prospects.length;
@@ -57,13 +59,13 @@ export default function PipelinePage() {
           <PipelineKanban
             prospects={prospects}
             counts={counts}
-            onOpen={(id) => { window.location.href = `/dashboard/leads/${id}`; }}
+            onOpen={(id) => setActiveLead(id)}
             isLoading={isLoading}
           />
         ) : (
           <PipelineTable
             prospects={prospects}
-            onOpen={(id) => { window.location.href = `/dashboard/leads/${id}`; }}
+            onOpen={(id) => setActiveLead(id)}
             isLoading={isLoading}
           />
         )}
@@ -73,6 +75,8 @@ export default function PipelinePage() {
           <Link href="/dashboard/meetings" className="hover:text-gray-300">Meetings →</Link>
         </nav>
       </div>
+
+      <ProspectDrawer leadId={activeLead} onClose={() => setActiveLead(null)} />
     </AppShell>
   );
 }

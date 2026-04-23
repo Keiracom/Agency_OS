@@ -37,6 +37,7 @@ OOO_RESUME_OFFSET_DAYS = 2
 
 VALID_ACTIONS = frozenset({
     "cancel", "pause", "reschedule", "insert", "suppress", "escalate", "noop",
+    "create_prospect",
 })
 
 
@@ -175,8 +176,8 @@ def _handle_question(state: dict, _: dict) -> list[TouchMutation]:
 
 
 def _handle_referral(state: dict, extracted: dict) -> list[TouchMutation]:
-    # Log the referral + continue the existing sequence untouched.
-    return [TouchMutation(
+    # Always log the referral against the original prospect's history.
+    muts: list[TouchMutation] = [TouchMutation(
         action="noop",
         reason="referral logged — sequence unchanged",
         extra={
@@ -185,6 +186,23 @@ def _handle_referral(state: dict, extracted: dict) -> list[TouchMutation]:
             "lead_id": state.get("lead_id"),
         },
     )]
+    # When a referral email is present, emit a create_prospect mutation so the
+    # webhook executor can call cadence_orchestrator.create_prospect_from_referral.
+    # The mutation carries the minimum payload the orchestrator needs.
+    referral_email = extracted.get("referral_email")
+    if referral_email:
+        muts.append(TouchMutation(
+            action="create_prospect",
+            reason="referral contains new prospect email — spawn cadence",
+            extra={
+                "source": "referral",
+                "referral_email": referral_email,
+                "referral_name": extracted.get("referral_name"),
+                "referred_by_lead_id": state.get("lead_id"),
+                "client_id": state.get("client_id"),
+            },
+        ))
+    return muts
 
 
 def _handle_unclear(state: dict, _: dict) -> list[TouchMutation]:

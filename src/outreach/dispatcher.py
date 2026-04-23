@@ -18,6 +18,7 @@ returned as a DispatchResult for the caller to record.
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -31,7 +32,14 @@ try:  # rate_limiter is ORION's work and may not be merged yet
 except ImportError:  # pragma: no cover — exercised by test_dispatcher_no_rate_limiter
     RateLimiter = None  # type: ignore[assignment,misc]
 
+try:  # send_pacer may not be merged yet in parallel branches
+    from src.outreach.safety.send_pacer import SendPacer  # type: ignore
+except ImportError:  # pragma: no cover
+    SendPacer = None  # type: ignore[assignment,misc]
+
 logger = logging.getLogger(__name__)
+
+_UNSET = object()  # sentinel — distinguishes "not provided" from explicit None
 
 
 @dataclass
@@ -64,7 +72,8 @@ class OutreachDispatcher:
         elevenagents_client: Any | None = None,
         timing_engine: TimingEngine | None = None,
         compliance_guard: ComplianceGuard | None = None,
-        rate_limiter: Any | None = None,
+        rate_limiter: Any = _UNSET,
+        send_pacer: Any = _UNSET,
         db_conn: Any | None = None,
     ) -> None:
         self.salesforge = salesforge_client
@@ -72,9 +81,13 @@ class OutreachDispatcher:
         self.elevenagents = elevenagents_client
         self.timing = timing_engine or TimingEngine()
         self.compliance = compliance_guard or ComplianceGuard()
-        self.rate_limiter = rate_limiter if rate_limiter is not None else (
-            RateLimiter() if RateLimiter else None
+        # None => disabled; _UNSET => auto-create if class available
+        self.rate_limiter = (
+            rate_limiter if rate_limiter is not _UNSET
+            else (RateLimiter() if RateLimiter else None)
         )
+        # send_pacer is opt-in: None (or _UNSET) => disabled; explicit instance => active
+        self.send_pacer = send_pacer if send_pacer is not _UNSET else None
         self.db = db_conn
 
     # -- public entrypoint ---------------------------------------------------
@@ -143,7 +156,17 @@ class OutreachDispatcher:
             except Exception as exc:
                 logger.warning("rate_limiter.consume raised — allowing send: %s", exc)
 
-        # 4/5. Provider dispatch ---------------------------------------------
+        # 4. Send-pacer jitter -----------------------------------------------
+        if self.send_pacer is not None:
+            delay = self.send_pacer.compute_delay(
+                channel=channel,
+                account_id=touch.get("account_id", "*"),
+                last_send_at=touch.get("last_send_at"),
+            )
+            if delay > 0:
+                await asyncio.sleep(delay)
+
+        # 5/6. Provider dispatch ---------------------------------------------
         sender = {
             "email":    self.send_email,
             "linkedin": self.send_linkedin,
@@ -158,9 +181,15 @@ class OutreachDispatcher:
 
         result = await sender(touch)
 
-        # 6. Record outcome ---------------------------------------------------
+        # 7. Record outcome + pacer tick --------------------------------------
         if result.status == "sent":
             result.recorded = await self._record_outcome(touch, result, now)
+            if self.send_pacer is not None:
+                self.send_pacer.record_send(
+                    channel=channel,
+                    account_id=touch.get("account_id", "*"),
+                    at=now,
+                )
 
         return result
 

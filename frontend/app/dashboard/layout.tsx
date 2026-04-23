@@ -15,6 +15,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser, getUserMemberships } from "@/lib/supabase-server";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { createServerClient } from "@/lib/supabase-server";
+import { KillSwitch } from "@/components/dashboard/KillSwitch";
 
 export default async function DashboardRootLayout({
   children,
@@ -92,6 +93,7 @@ export default async function DashboardRootLayout({
 
   return (
     <DashboardLayout user={userData} client={clientDataForLayout}>
+      <KillSwitch />
       {children}
     </DashboardLayout>
   );

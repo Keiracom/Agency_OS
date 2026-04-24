@@ -510,15 +510,29 @@ class PipelineOrchestrator:
         if domain_data.get("dropped_at"):
             return None
 
-        # Stage 6 — historical rank (SKIP if score < 60, gate inside _run_stage6)
-        async with GLOBAL_SEM_DFS:
-            domain_data = await _run_stage6(domain_data, clients["dfs"])
-        if domain_data.get("dropped_at"):
-            return None
+        # T2 CAPACITY SKIP — Stage 6 is gated on composite_score >= 60.
+        # When the gate passes we fire Stage 6 as a background task so Stage 7
+        # (and beyond) can run in parallel on the same event loop. The task is
+        # awaited before Stage 11 card assembly so no stage 6 data is lost.
+        # When the gate is closed (score < 60) there is nothing to defer —
+        # Stage 6 would be skipped internally anyway, so no task is created.
+        composite_score = (
+            (domain_data.get("scores") or {}).get("composite_score")
+            or domain_data.get("composite_score")
+            or 0
+        )
+        stage6_task: asyncio.Task | None = None
+        if composite_score >= 60:
+            async def _stage6_bg():
+                async with GLOBAL_SEM_DFS:
+                    return await _run_stage6(domain_data, clients["dfs"])
+            stage6_task = asyncio.create_task(_stage6_bg())
 
-        # Stage 7 — Gemini F3B analysis
+        # Stage 7 — Gemini F3B analysis (runs concurrently with stage 6 above)
         domain_data = await _run_stage7(domain_data, clients["gemini"])
         if domain_data.get("dropped_at"):
+            if stage6_task is not None:
+                stage6_task.cancel()
             return None
 
         # Stage 8 — contact waterfall (verify fills + ContactOut + email + mobile)
@@ -540,7 +554,19 @@ class PipelineOrchestrator:
         # Stage 10 — VR + messaging (SKIP if no email, gate inside _run_stage10)
         domain_data = await _run_stage10(domain_data)
         if domain_data.get("dropped_at"):
+            if stage6_task is not None:
+                stage6_task.cancel()
             return None
+
+        # T2 — join the background stage 6 task before card assembly so its
+        # historical-rank output is present on the card.
+        if stage6_task is not None:
+            try:
+                domain_data = await stage6_task
+            except Exception as exc:
+                logger.warning("stage6 background task failed: %s", exc)
+            if domain_data.get("dropped_at"):
+                return None
 
         # Stage 11 — card assembly
         domain_data = await _run_stage11(domain_data)

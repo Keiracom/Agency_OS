@@ -585,6 +585,7 @@ class PipelineOrchestrator:
         batch_size: int = 50,
         location: str = "Australia",
         exclude_domains: set | None = None,
+        refill_pct: float = 0.08,
     ) -> PipelineResult:
         """
         CD Player v1 — primary streaming entry point.
@@ -627,6 +628,16 @@ class PipelineOrchestrator:
         seen_domains: set[str] = set(exclude_domains or [])
         seen_lock = asyncio.Lock()
 
+        # T3 DROP-TRIGGERED REFILL — whenever drops_since_last_refill hits
+        # refill_threshold we fire an extra DFS discovery batch so the worker
+        # pool keeps draining new candidate domains. Each new domain becomes
+        # its own _process_domain task concurrent with the workers.
+        refill_threshold = max(1, int(target_cards * refill_pct))
+        drops_since_last_refill = 0
+        drops_lock = asyncio.Lock()
+        refill_tasks: list[asyncio.Task] = []
+        refill_offsets: dict[str, int] = {}
+
         # Resolve category names to int codes (pass-through if already int strings)
         resolved_codes: list[str] = []
         for cat in categories:
@@ -638,8 +649,125 @@ class PipelineOrchestrator:
         offsets: dict[str, int] = {code: 0 for code in resolved_codes}
         offsets_lock = asyncio.Lock()
 
+        async def _process_one(domain: str, category_label: str) -> None:
+            """Run the full stages 2–11 pipeline for one domain + emit card
+            (or count the drop). Shared by pool workers AND refill tasks."""
+            nonlocal cards_emitted, drops_since_last_refill
+            if target_reached.is_set():
+                return
+
+            domain_data = _new_domain(domain, category_label)
+            try:
+                card = await self._process_domain(domain_data)
+            except Exception as exc:
+                logger.warning("_process_domain failed domain=%s: %s", domain, exc)
+                card = None
+
+            async with stats_lock:
+                stats.total_cost_usd += domain_data.get("cost_usd", 0.0)
+                if domain_data.get("dropped_at"):
+                    stage = domain_data["dropped_at"]
+                    if stage in ("stage3", "stage4"):
+                        stats.enrichment_failed += 1
+                    elif stage == "stage5":
+                        stats.affordability_rejected += 1
+
+            if card is None:
+                async with drops_lock:
+                    drops_since_last_refill += 1
+                    if (
+                        drops_since_last_refill >= refill_threshold
+                        and not target_reached.is_set()
+                    ):
+                        drops_since_last_refill = 0
+                        refill_tasks.append(asyncio.create_task(_trigger_refill()))
+                return
+
+            async with results_lock:
+                if target_reached.is_set():
+                    return
+                results.append(card)
+                cards_emitted += 1
+                stats.viable_prospects += 1
+                if self._on_card is not None:
+                    try:
+                        self._on_card(card)
+                    except Exception as cb_exc:
+                        logger.warning(
+                            "on_card callback error domain=%s: %s", domain, cb_exc,
+                        )
+                logger.info(
+                    "cd_player_card_emitted domain=%s cards=%d/%d cost=$%.3f",
+                    domain, cards_emitted, target_cards, stats.total_cost_usd,
+                )
+                if cards_emitted >= target_cards:
+                    target_reached.set()
+
+        async def _trigger_refill() -> None:
+            """T3 — pull one extra DFS discovery batch + spawn _process_domain
+            tasks per new domain. Stops as soon as target_cards is reached."""
+            if target_reached.is_set():
+                return
+            async with stats_lock:
+                if stats.total_cost_usd >= budget_cap_usd:
+                    return
+            async with offsets_lock:
+                cat_code = resolved_codes[
+                    len(refill_tasks) % len(resolved_codes)
+                ]
+                refill_offsets.setdefault(cat_code, offsets[cat_code])
+                refill_offsets[cat_code] += batch_size
+                offset = refill_offsets[cat_code]
+
+            try:
+                async with GLOBAL_SEM_DFS:
+                    raw_batch = await self._discovery.pull_batch(
+                        category_code=cat_code,
+                        location_name=location,
+                        limit=batch_size,
+                        offset=offset,
+                    )
+            except Exception as exc:
+                logger.warning("refill pull_batch error cat=%s: %s", cat_code, exc)
+                return
+
+            if not raw_batch:
+                return
+
+            category_label = cat_code
+            for name, code in CATEGORY_MAP.items():
+                if str(code) == cat_code:
+                    category_label = name
+                    break
+
+            spawned = 0
+            for domain_row in raw_batch:
+                if target_reached.is_set():
+                    break
+                domain = (
+                    domain_row.get("domain", "")
+                    if isinstance(domain_row, dict)
+                    else str(domain_row)
+                )
+                if not domain:
+                    continue
+                async with seen_lock:
+                    if domain in seen_domains:
+                        continue
+                    seen_domains.add(domain)
+                async with stats_lock:
+                    stats.discovered += 1
+                refill_tasks.append(asyncio.create_task(
+                    _process_one(domain, category_label)
+                ))
+                spawned += 1
+            logger.info(
+                "cd_player_refill triggered cat=%s offset=%d spawned=%d drops_threshold=%d",
+                cat_code, offset, spawned, refill_threshold,
+            )
+
         async def _worker(worker_id: int) -> None:
-            nonlocal cards_emitted
+            nonlocal cards_emitted, drops_since_last_refill
             cat_idx = worker_id
 
             while not target_reached.is_set():
@@ -697,60 +825,25 @@ class PipelineOrchestrator:
                     async with stats_lock:
                         stats.discovered += 1
 
-                    # Build domain_data dict in cohort_runner format
+                    # Resolve category label (first time only per cat_code)
                     category_label = cat_code
                     for name, code in CATEGORY_MAP.items():
                         if str(code) == cat_code:
                             category_label = name
                             break
-                    domain_data = _new_domain(domain, category_label)
 
-                    # Process through all stages
-                    try:
-                        card = await self._process_domain(domain_data)
-                    except Exception as exc:
-                        logger.warning("_process_domain failed domain=%s: %s", domain, exc)
-                        card = None
-
-                    # Track cost regardless of drop
-                    async with stats_lock:
-                        stats.total_cost_usd += domain_data.get("cost_usd", 0.0)
-                        if domain_data.get("dropped_at"):
-                            # Count drops by stage for stats
-                            stage = domain_data["dropped_at"]
-                            if stage in ("stage3", "stage4"):
-                                stats.enrichment_failed += 1
-                            elif stage == "stage5":
-                                stats.affordability_rejected += 1
-
-                    if card is None:
-                        continue
-
-                    # Emit card
-                    async with results_lock:
-                        if target_reached.is_set():
-                            return
-                        results.append(card)
-                        cards_emitted += 1
-                        stats.viable_prospects += 1
-
-                        if self._on_card is not None:
-                            try:
-                                self._on_card(card)
-                            except Exception as cb_exc:
-                                logger.warning("on_card callback error domain=%s: %s", domain, cb_exc)
-
-                        logger.info(
-                            "cd_player_card_emitted worker=%d domain=%s cards=%d/%d cost=$%.3f",
-                            worker_id, domain, cards_emitted, target_cards, stats.total_cost_usd,
-                        )
-
-                        if cards_emitted >= target_cards:
-                            target_reached.set()
-                            return
+                    # Process through all stages (shared with refill tasks)
+                    await _process_one(domain, category_label)
+                    if target_reached.is_set():
+                        return
 
         workers = [_worker(i) for i in range(num_workers)]
         await asyncio.gather(*workers, return_exceptions=True)
+
+        # T3 — drain any refill-spawned tasks still running. New ones cannot
+        # be appended after target_reached is set; the list snapshot is safe.
+        if refill_tasks:
+            await asyncio.gather(*refill_tasks, return_exceptions=True)
 
         stats.elapsed_seconds = time.monotonic() - t0
         logger.info(

@@ -23,6 +23,7 @@ Directive: CD Player v1 (refactor from #293)
 from __future__ import annotations
 
 import asyncio
+import inspect
 import logging
 import re
 import time
@@ -49,6 +50,34 @@ from src.pipeline.intelligence import GLOBAL_SEM_SONNET, GLOBAL_SEM_HAIKU  # sha
 from src.config.category_registry import get_discovery_categories, SERVICE_CATEGORY_MAP  # noqa: F401
 
 logger = logging.getLogger(__name__)
+
+
+# ── FIX 4 — Default on_domain_complete callback ──────────────────────────────
+# Fires after Stage 11 card assembly with the full domain_data dict. Lazy
+# import of persist_stage8_to_db avoids circular-import pain during module
+# load (pipeline_f_master_flow imports from this module).
+
+async def _default_on_domain_complete(domain_data: dict) -> None:
+    """Default persistence hook — writes the completed domain row to BU+BDM.
+
+    Best-effort: any exception is logged and swallowed so streaming does not
+    abort on transient DB errors. Callers who need stricter semantics pass
+    an explicit on_domain_complete to the orchestrator.
+    """
+    try:
+        from src.orchestration.flows.pipeline_f_master_flow import (
+            persist_stage8_to_db,
+        )
+        # persist_stage8_to_db is a Prefect @task; the underlying async fn is
+        # .fn when called outside a flow context.
+        target = getattr(persist_stage8_to_db, "fn", persist_stage8_to_db)
+        await target([domain_data])
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "on_domain_complete persistence failed domain=%s: %s",
+            domain_data.get("domain"), exc,
+        )
+
 
 # ── Business name waterfall helpers (Directive #305) ─────────────────────────
 
@@ -433,6 +462,7 @@ class PipelineOrchestrator:
         lm_client=None,
         discovery=None,
         on_card: Callable[[ProspectCard], None] | None = None,
+        on_domain_complete: Callable[[dict], Any] | None = None,
         # Legacy keyword args — kept for backwards compatibility
         free_enrichment=None,
         scorer=None,
@@ -451,6 +481,9 @@ class PipelineOrchestrator:
         self._lm = lm_client or leadmagic_client
         self._discovery = discovery
         self._on_card = on_card
+        # FIX 4 — persistence hook. Called after Stage 11 card assembly with
+        # the full domain_data dict. Default wraps persist_stage8_to_db([d]).
+        self._on_domain_complete = on_domain_complete or _default_on_domain_complete
 
         # Legacy shims — kept so existing callers don't break
         self._fe = free_enrichment
@@ -570,8 +603,22 @@ class PipelineOrchestrator:
 
         # Stage 11 — card assembly
         domain_data = await _run_stage11(domain_data)
+        card = _card_from_domain_data(domain_data)
 
-        return _card_from_domain_data(domain_data)
+        # FIX 4 — fire on_domain_complete AFTER card assembly so the callback
+        # sees the final enriched state. Callback result awaited if awaitable.
+        if self._on_domain_complete is not None:
+            try:
+                res = self._on_domain_complete(domain_data)
+                if inspect.isawaitable(res):
+                    await res
+            except Exception as exc:
+                logger.warning(
+                    "on_domain_complete callback failed domain=%s: %s",
+                    domain_data.get("domain"), exc,
+                )
+
+        return card
 
     # ── Primary entry point ───────────────────────────────────────────────
 
@@ -635,8 +682,12 @@ class PipelineOrchestrator:
         refill_threshold = max(1, int(target_cards * refill_pct))
         drops_since_last_refill = 0
         drops_lock = asyncio.Lock()
-        refill_tasks: list[asyncio.Task] = []
+        # FIX 1 — set with discard-on-done avoids unbounded list growth.
+        refill_tasks: set[asyncio.Task] = set()
         refill_offsets: dict[str, int] = {}
+        # FIX 2 — dedicated counter for category round-robin (was using
+        # len(refill_tasks) which mixed task types and skewed distribution).
+        refill_counter = 0
 
         # Resolve category names to int codes (pass-through if already int strings)
         resolved_codes: list[str] = []
@@ -680,7 +731,10 @@ class PipelineOrchestrator:
                         and not target_reached.is_set()
                     ):
                         drops_since_last_refill = 0
-                        refill_tasks.append(asyncio.create_task(_trigger_refill()))
+                        # FIX 1 — auto-discard completed refill tasks.
+                        _t = asyncio.create_task(_trigger_refill())
+                        refill_tasks.add(_t)
+                        _t.add_done_callback(refill_tasks.discard)
                 return
 
             async with results_lock:
@@ -706,15 +760,17 @@ class PipelineOrchestrator:
         async def _trigger_refill() -> None:
             """T3 — pull one extra DFS discovery batch + spawn _process_domain
             tasks per new domain. Stops as soon as target_cards is reached."""
+            nonlocal refill_counter
             if target_reached.is_set():
                 return
             async with stats_lock:
                 if stats.total_cost_usd >= budget_cap_usd:
                     return
             async with offsets_lock:
-                cat_code = resolved_codes[
-                    len(refill_tasks) % len(resolved_codes)
-                ]
+                # FIX 2 — dedicated round-robin counter (not len(refill_tasks)
+                # which mixes pending-pull tasks with processing tasks).
+                cat_code = resolved_codes[refill_counter % len(resolved_codes)]
+                refill_counter += 1
                 refill_offsets.setdefault(cat_code, offsets[cat_code])
                 refill_offsets[cat_code] += batch_size
                 offset = refill_offsets[cat_code]
@@ -757,9 +813,10 @@ class PipelineOrchestrator:
                     seen_domains.add(domain)
                 async with stats_lock:
                     stats.discovered += 1
-                refill_tasks.append(asyncio.create_task(
-                    _process_one(domain, category_label)
-                ))
+                # FIX 1 — auto-discard completed refill tasks.
+                _t = asyncio.create_task(_process_one(domain, category_label))
+                refill_tasks.add(_t)
+                _t.add_done_callback(refill_tasks.discard)
                 spawned += 1
             logger.info(
                 "cd_player_refill triggered cat=%s offset=%d spawned=%d drops_threshold=%d",
@@ -840,10 +897,10 @@ class PipelineOrchestrator:
         workers = [_worker(i) for i in range(num_workers)]
         await asyncio.gather(*workers, return_exceptions=True)
 
-        # T3 — drain any refill-spawned tasks still running. New ones cannot
-        # be appended after target_reached is set; the list snapshot is safe.
+        # T3 — drain any refill-spawned tasks still running. Snapshot the set
+        # because add_done_callback mutates it as tasks complete.
         if refill_tasks:
-            await asyncio.gather(*refill_tasks, return_exceptions=True)
+            await asyncio.gather(*list(refill_tasks), return_exceptions=True)
 
         stats.elapsed_seconds = time.monotonic() - t0
         logger.info(

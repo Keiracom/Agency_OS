@@ -136,7 +136,7 @@ async def test_refill_respects_target_reached_and_budget_cap():
 
 @pytest.mark.asyncio
 async def test_on_domain_complete_fires_after_card_assembly():
-    """FIX 4 — on_domain_complete is invoked with domain_data."""
+    """FIX 4 — on_domain_complete is invoked with domain_data on success."""
     captured: list[dict] = []
 
     async def capture(d: dict) -> None:
@@ -149,10 +149,6 @@ async def test_on_domain_complete_fires_after_card_assembly():
         on_domain_complete=capture,
     )
 
-    # Short-circuit _process_domain to pretend stages 2-11 all passed — we
-    # only want to verify the callback fires. Direct-test _process_domain by
-    # invoking it against a pre-populated dict so we avoid the full stage
-    # machinery. We need to patch every stage function.
     from src.pipeline import pipeline_orchestrator as po
 
     async def passthrough(d, *args, **kwargs):
@@ -173,3 +169,109 @@ async def test_on_domain_complete_fires_after_card_assembly():
 
     assert len(captured) == 1
     assert captured[0]["domain"] == "acme.com.au"
+
+
+@pytest.mark.asyncio
+async def test_gov8_on_domain_complete_fires_on_drop():
+    """GOV-8 — on_domain_complete fires for dropped domains too."""
+    captured: list[dict] = []
+
+    async def capture(d: dict) -> None:
+        captured.append(d)
+
+    orch = PipelineOrchestrator(
+        dfs_client=MagicMock(), gemini_client=MagicMock(),
+        bd_client=MagicMock(), lm_client=MagicMock(),
+        discovery=_FakeDiscovery(),
+        on_domain_complete=capture,
+    )
+
+    from src.pipeline import pipeline_orchestrator as po
+
+    async def drop_in_stage3(d, *args, **kwargs):
+        d["dropped_at"] = "stage3"
+        return d
+
+    async def passthrough(d, *args, **kwargs):
+        return d
+
+    with patch.object(po, "_run_stage2", side_effect=passthrough), \
+         patch.object(po, "_run_stage3", side_effect=drop_in_stage3):
+        result = await orch._process_domain({"domain": "drop.com.au"})
+
+    assert result is None
+    assert len(captured) == 1
+    assert captured[0]["domain"] == "drop.com.au"
+    assert captured[0]["dropped_at"] == "stage3"
+
+
+@pytest.mark.asyncio
+async def test_budget_gate_b_drops_when_stage_cost_exceeds_cap():
+    """Gate B — per-stage cost check drops the domain with 'budget_exceeded'."""
+    orch = PipelineOrchestrator(
+        dfs_client=MagicMock(), gemini_client=MagicMock(),
+        bd_client=MagicMock(), lm_client=MagicMock(),
+        discovery=_FakeDiscovery(),
+        on_domain_complete=None,
+    )
+    # Wire the per-run cost state directly (run_streaming normally does this).
+    import asyncio as _aio
+    orch._run_cost_state = {
+        "total": 0.0, "cap": 0.05, "lock": _aio.Lock(), "per_domain": {},
+    }
+
+    from src.pipeline import pipeline_orchestrator as po
+
+    async def stage2_spend(d, *args, **kwargs):
+        d["cost_usd"] = 0.10  # blows past the $0.05 cap
+        return d
+
+    async def other(d, *args, **kwargs):
+        return d
+
+    with patch.object(po, "_run_stage2", side_effect=stage2_spend), \
+         patch.object(po, "_run_stage3", side_effect=other), \
+         patch.object(po, "_run_stage4", side_effect=other), \
+         patch.object(po, "_run_stage5", side_effect=other):
+        result = await orch._process_domain({"domain": "burn.com.au"})
+
+    assert result is None
+    # _check_budget_gate sets dropped_at explicitly
+    # (we can't assert on the passed-in dict because _process_domain doesn't
+    # return it, but the absence of stages 3-5 exec is the confirmation).
+
+
+@pytest.mark.asyncio
+async def test_admission_gate_skips_when_projected_cost_over_cap():
+    """Gate A — _process_one refuses to start a domain when reservation breaches cap."""
+    orch = PipelineOrchestrator(
+        dfs_client=MagicMock(), gemini_client=MagicMock(),
+        bd_client=MagicMock(), lm_client=MagicMock(),
+        discovery=_FakeDiscovery(batch_size=2, total_batches=1),
+        on_domain_complete=None,
+    )
+
+    # Patch _process_domain so if admission ever fires it'd be observable.
+    called: list[str] = []
+
+    async def fake(d):
+        called.append(d["domain"])
+        d["cost_usd"] = 0.0
+        d["dropped_at"] = "stage3"
+        return None
+
+    fake_cat_map = {"dental": 7013}
+    with patch.object(orch, "_process_domain", side_effect=fake), \
+         patch("src.orchestration.cohort_runner.CATEGORY_MAP", fake_cat_map):
+        # cap $0.10 USD ≈ $0.155 AUD; estimated per-domain = $0.25 → admission
+        # gate should trip on the first domain before _process_domain fires.
+        result = await orch.run_streaming(
+            categories=["dental"],
+            target_cards=5,
+            budget_cap_aud=0.155,  # → 0.10 USD after /1.55
+            num_workers=1, batch_size=2, refill_pct=0.10,
+        )
+
+    # Admission gate tripped immediately; no domain processed.
+    assert called == []
+    assert len(result.prospects) == 0

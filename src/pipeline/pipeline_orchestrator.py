@@ -52,6 +52,19 @@ from src.config.category_registry import get_discovery_categories, SERVICE_CATEG
 logger = logging.getLogger(__name__)
 
 
+# ── Budget enforcement constants (P0 fix — CD Player) ────────────────────────
+# Speculative per-domain reservation used by cost-aware admission control.
+# Derived from cohort_runner paid-stage costs:
+#   Stage2=0.01 + Stage4=0.078 + Stage6=0.106 + Stage8=0.015 + Stage9=0.027
+#   + ~0.01 overhead  ≈ 0.25 USD
+ESTIMATED_PER_DOMAIN_COST_USD = 0.25
+
+# Max concurrent in-flight _process_one tasks. Default sized so worst-case
+# in-flight spend (DEFAULT_MAX_IN_FLIGHT × ESTIMATED_PER_DOMAIN_COST_USD)
+# stays below a spark-tier cap of ~$5 USD.
+DEFAULT_MAX_IN_FLIGHT = 20
+
+
 # ── FIX 4 — Default on_domain_complete callback ──────────────────────────────
 # Fires after Stage 11 card assembly with the full domain_data dict. Lazy
 # import of persist_stage8_to_db avoids circular-import pain during module
@@ -506,6 +519,10 @@ class PipelineOrchestrator:
 
         Uses cohort_runner's proven _run_stage functions.
         After each stage, checks domain_data["dropped_at"]; if set, returns None.
+        After each PAID stage (2/4/6/8/9), the shared per-run cost counter
+        (budget gate B) is advanced and compared against the budget cap —
+        any breach sets dropped_at='budget_exceeded' and short-circuits.
+        GOV-8: on_domain_complete fires on EVERY exit path (drop or success).
         On stage 11 completion, builds and returns a ProspectCard.
 
         Args:
@@ -520,105 +537,146 @@ class PipelineOrchestrator:
             "bd": self._bd,
             "lm": self._lm,
         }
-
-        # Stage 2 — SERP verify
-        async with GLOBAL_SEM_DFS:
-            domain_data = await _run_stage2(domain_data, clients["dfs"])
-        if domain_data.get("dropped_at"):
-            return None
-
-        # Stage 3 — Gemini F3A identity + DM extraction (GATE: enterprise/no-DM → DROP)
-        domain_data = await _run_stage3(domain_data, clients["gemini"])
-        if domain_data.get("dropped_at"):
-            return None
-
-        # Stage 4 — DFS signal bundle
-        async with GLOBAL_SEM_DFS:
-            domain_data = await _run_stage4(domain_data, clients["dfs"])
-        if domain_data.get("dropped_at"):
-            return None
-
-        # Stage 5 — composite scoring (GATE: not viable / score < 30 → DROP)
-        domain_data = await _run_stage5(domain_data)
-        if domain_data.get("dropped_at"):
-            return None
-
-        # T2 CAPACITY SKIP — Stage 6 is gated on composite_score >= 60.
-        # When the gate passes we fire Stage 6 as a background task so Stage 7
-        # (and beyond) can run in parallel on the same event loop. The task is
-        # awaited before Stage 11 card assembly so no stage 6 data is lost.
-        # When the gate is closed (score < 60) there is nothing to defer —
-        # Stage 6 would be skipped internally anyway, so no task is created.
-        composite_score = (
-            (domain_data.get("scores") or {}).get("composite_score")
-            or domain_data.get("composite_score")
-            or 0
-        )
+        card: ProspectCard | None = None
         stage6_task: asyncio.Task | None = None
-        if composite_score >= 60:
-            async def _stage6_bg():
-                async with GLOBAL_SEM_DFS:
-                    return await _run_stage6(domain_data, clients["dfs"])
-            stage6_task = asyncio.create_task(_stage6_bg())
 
-        # Stage 7 — Gemini F3B analysis (runs concurrently with stage 6 above)
-        domain_data = await _run_stage7(domain_data, clients["gemini"])
-        if domain_data.get("dropped_at"):
-            if stage6_task is not None:
-                stage6_task.cancel()
-            return None
+        try:
+            # Stage 2 — SERP verify (PAID)
+            async with GLOBAL_SEM_DFS:
+                domain_data = await _run_stage2(domain_data, clients["dfs"])
+            if domain_data.get("dropped_at"):
+                return None
+            if await self._check_budget_gate(domain_data, "stage2"):
+                return None
 
-        # Stage 8 — contact waterfall (verify fills + ContactOut + email + mobile)
-        async with GLOBAL_SEM_DFS:
-            domain_data = await _run_stage8(
-                domain_data,
-                clients["dfs"],
-                bd=clients["bd"],
-                lm=clients["lm"],
-            )
-        if domain_data.get("dropped_at"):
-            return None
-
-        # Stage 9 — LinkedIn social (SKIP if no LinkedIn URLs, gate inside _run_stage9)
-        domain_data = await _run_stage9(domain_data, clients["bd"])
-        if domain_data.get("dropped_at"):
-            return None
-
-        # Stage 10 — VR + messaging (SKIP if no email, gate inside _run_stage10)
-        domain_data = await _run_stage10(domain_data)
-        if domain_data.get("dropped_at"):
-            if stage6_task is not None:
-                stage6_task.cancel()
-            return None
-
-        # T2 — join the background stage 6 task before card assembly so its
-        # historical-rank output is present on the card.
-        if stage6_task is not None:
-            try:
-                domain_data = await stage6_task
-            except Exception as exc:
-                logger.warning("stage6 background task failed: %s", exc)
+            # Stage 3 — Gemini F3A (GATE: enterprise/no-DM → DROP)
+            domain_data = await _run_stage3(domain_data, clients["gemini"])
             if domain_data.get("dropped_at"):
                 return None
 
-        # Stage 11 — card assembly
-        domain_data = await _run_stage11(domain_data)
-        card = _card_from_domain_data(domain_data)
+            # Stage 4 — DFS signal bundle (PAID)
+            async with GLOBAL_SEM_DFS:
+                domain_data = await _run_stage4(domain_data, clients["dfs"])
+            if domain_data.get("dropped_at"):
+                return None
+            if await self._check_budget_gate(domain_data, "stage4"):
+                return None
 
-        # FIX 4 — fire on_domain_complete AFTER card assembly so the callback
-        # sees the final enriched state. Callback result awaited if awaitable.
-        if self._on_domain_complete is not None:
-            try:
-                res = self._on_domain_complete(domain_data)
-                if inspect.isawaitable(res):
-                    await res
-            except Exception as exc:
-                logger.warning(
-                    "on_domain_complete callback failed domain=%s: %s",
-                    domain_data.get("domain"), exc,
+            # Stage 5 — composite scoring (GATE: score < 30 → DROP)
+            domain_data = await _run_stage5(domain_data)
+            if domain_data.get("dropped_at"):
+                return None
+
+            # T2 CAPACITY SKIP — Stage 6 is gated on composite_score >= 60.
+            # When the gate passes we fire Stage 6 as a background task so
+            # Stage 7 can run in parallel. Awaited before Stage 11.
+            composite_score = (
+                (domain_data.get("scores") or {}).get("composite_score")
+                or domain_data.get("composite_score")
+                or 0
+            )
+            if composite_score >= 60:
+                async def _stage6_bg():
+                    async with GLOBAL_SEM_DFS:
+                        return await _run_stage6(domain_data, clients["dfs"])
+                stage6_task = asyncio.create_task(_stage6_bg())
+
+            # Stage 7 — Gemini F3B analysis (concurrent with stage 6)
+            domain_data = await _run_stage7(domain_data, clients["gemini"])
+            if domain_data.get("dropped_at"):
+                return None
+
+            # Stage 8 — contact waterfall (PAID)
+            async with GLOBAL_SEM_DFS:
+                domain_data = await _run_stage8(
+                    domain_data, clients["dfs"],
+                    bd=clients["bd"], lm=clients["lm"],
                 )
+            if domain_data.get("dropped_at"):
+                return None
+            if await self._check_budget_gate(domain_data, "stage8"):
+                return None
 
-        return card
+            # Stage 9 — LinkedIn social (PAID — gate inside _run_stage9)
+            domain_data = await _run_stage9(domain_data, clients["bd"])
+            if domain_data.get("dropped_at"):
+                return None
+            if await self._check_budget_gate(domain_data, "stage9"):
+                return None
+
+            # Stage 10 — VR + messaging (SKIP if no email, gate inside)
+            domain_data = await _run_stage10(domain_data)
+            if domain_data.get("dropped_at"):
+                return None
+
+            # T2 — join the background stage 6 task before card assembly so
+            # its historical-rank output is present on the card (PAID).
+            if stage6_task is not None:
+                try:
+                    domain_data = await stage6_task
+                except Exception as exc:
+                    logger.warning("stage6 background task failed: %s", exc)
+                stage6_task = None
+                if domain_data.get("dropped_at"):
+                    return None
+                if await self._check_budget_gate(domain_data, "stage6"):
+                    return None
+
+            # Stage 11 — card assembly
+            domain_data = await _run_stage11(domain_data)
+            card = _card_from_domain_data(domain_data)
+            return card
+        finally:
+            # Cancel any lingering stage 6 task (e.g. early return via drop)
+            if stage6_task is not None and not stage6_task.done():
+                stage6_task.cancel()
+
+            # GOV-8 — persist EVERY domain (drops included), not just cards.
+            # Exceptions in the hook are logged and swallowed so streaming
+            # cannot abort on transient DB errors.
+            if self._on_domain_complete is not None:
+                try:
+                    res = self._on_domain_complete(domain_data)
+                    if inspect.isawaitable(res):
+                        await res
+                except Exception as exc:
+                    logger.warning(
+                        "on_domain_complete callback failed domain=%s: %s",
+                        domain_data.get("domain"), exc,
+                    )
+
+    async def _check_budget_gate(self, domain_data: dict, stage: str) -> bool:
+        """Budget gate B — update the shared run-cost counter with this
+        domain's latest cost_usd and return True if the run is over budget
+        (in which case caller must set dropped_at and return None).
+
+        Safe to call when no run is active (no cost state wired) — returns
+        False so direct unit tests of _process_domain still execute.
+        """
+        cost_state = getattr(self, "_run_cost_state", None)
+        if cost_state is None:
+            return False
+
+        lock: asyncio.Lock = cost_state["lock"]
+        domain_id = id(domain_data)
+        async with lock:
+            seen_cost = cost_state["per_domain"].get(domain_id, 0.0)
+            current_cost = float(domain_data.get("cost_usd", 0.0) or 0.0)
+            delta = max(0.0, current_cost - seen_cost)
+            cost_state["per_domain"][domain_id] = current_cost
+            cost_state["total"] += delta
+            total = cost_state["total"]
+            cap = cost_state["cap"]
+
+        if total >= cap:
+            logger.warning(
+                "budget_exceeded gate=%s domain=%s total=$%.3f cap=$%.3f",
+                stage, domain_data.get("domain"), total, cap,
+            )
+            domain_data["dropped_at"] = "budget_exceeded"
+            domain_data["drop_reason"] = f"budget_exceeded at {stage}"
+            return True
+        return False
 
     # ── Primary entry point ───────────────────────────────────────────────
 
@@ -633,6 +691,7 @@ class PipelineOrchestrator:
         location: str = "Australia",
         exclude_domains: set | None = None,
         refill_pct: float = 0.08,
+        max_in_flight: int = DEFAULT_MAX_IN_FLIGHT,
     ) -> PipelineResult:
         """
         CD Player v1 — primary streaming entry point.
@@ -675,6 +734,19 @@ class PipelineOrchestrator:
         seen_domains: set[str] = set(exclude_domains or [])
         seen_lock = asyncio.Lock()
 
+        # ── Budget enforcement state (P0 fix) ──────────────────────────────
+        # Gate B (per-stage) reads this via self._run_cost_state. Gates A
+        # (cost-aware admission) and C (max_in_flight semaphore) read
+        # budget_cap_usd + admission_sem directly from run_streaming scope.
+        self._run_cost_state = {
+            "total":      0.0,
+            "cap":        budget_cap_usd,
+            "lock":       asyncio.Lock(),
+            "per_domain": {},                # id(domain_data) -> last cost
+        }
+        admission_sem = asyncio.Semaphore(max(1, max_in_flight))
+        budget_exceeded = asyncio.Event()
+
         # T3 DROP-TRIGGERED REFILL — whenever drops_since_last_refill hits
         # refill_threshold we fire an extra DFS discovery batch so the worker
         # pool keeps draining new candidate domains. Each new domain becomes
@@ -704,15 +776,43 @@ class PipelineOrchestrator:
             """Run the full stages 2–11 pipeline for one domain + emit card
             (or count the drop). Shared by pool workers AND refill tasks."""
             nonlocal cards_emitted, drops_since_last_refill
-            if target_reached.is_set():
+            if target_reached.is_set() or budget_exceeded.is_set():
                 return
 
-            domain_data = _new_domain(domain, category_label)
-            try:
-                card = await self._process_domain(domain_data)
-            except Exception as exc:
-                logger.warning("_process_domain failed domain=%s: %s", domain, exc)
-                card = None
+            # Gate A — cost-aware admission. Reserve ESTIMATED_PER_DOMAIN_COST
+            # against the shared counter BEFORE spending any API call. Skip
+            # the domain if reservation would breach the cap.
+            cost_state = self._run_cost_state
+            async with cost_state["lock"]:
+                projected = cost_state["total"] + ESTIMATED_PER_DOMAIN_COST_USD
+                if projected >= cost_state["cap"]:
+                    logger.warning(
+                        "budget_exceeded admission_gate domain=%s total=$%.3f "
+                        "+est=$%.3f cap=$%.3f",
+                        domain, cost_state["total"],
+                        ESTIMATED_PER_DOMAIN_COST_USD, cost_state["cap"],
+                    )
+                    budget_exceeded.set()
+                    target_reached.set()
+                    return
+
+            # Gate C — bound the worst-case concurrent in-flight spend
+            # (max_in_flight × ESTIMATED_PER_DOMAIN_COST_USD).
+            async with admission_sem:
+                if target_reached.is_set() or budget_exceeded.is_set():
+                    return
+
+                domain_data = _new_domain(domain, category_label)
+                try:
+                    card = await self._process_domain(domain_data)
+                except Exception as exc:
+                    logger.warning("_process_domain failed domain=%s: %s", domain, exc)
+                    card = None
+
+                # If _process_domain dropped for budget, signal the run to stop.
+                if domain_data.get("dropped_at") == "budget_exceeded":
+                    budget_exceeded.set()
+                    target_reached.set()
 
             async with stats_lock:
                 stats.total_cost_usd += domain_data.get("cost_usd", 0.0)
@@ -761,7 +861,7 @@ class PipelineOrchestrator:
             """T3 — pull one extra DFS discovery batch + spawn _process_domain
             tasks per new domain. Stops as soon as target_cards is reached."""
             nonlocal refill_counter
-            if target_reached.is_set():
+            if target_reached.is_set() or budget_exceeded.is_set():
                 return
             async with stats_lock:
                 if stats.total_cost_usd >= budget_cap_usd:
@@ -828,13 +928,17 @@ class PipelineOrchestrator:
             cat_idx = worker_id
 
             while not target_reached.is_set():
-                # Budget check
+                if budget_exceeded.is_set():
+                    return
+                # Budget check (legacy post-completion guard; gates A/B/C
+                # above are the authoritative cost defences).
                 async with stats_lock:
                     if stats.total_cost_usd >= budget_cap_usd:
                         logger.warning(
                             "worker_%d: budget cap reached $%.2f USD ($%.2f AUD) — stopping",
                             worker_id, budget_cap_usd, budget_cap_aud,
                         )
+                        budget_exceeded.set()
                         target_reached.set()
                         return
 
@@ -895,14 +999,23 @@ class PipelineOrchestrator:
                         return
 
         workers = [_worker(i) for i in range(num_workers)]
-        await asyncio.gather(*workers, return_exceptions=True)
+        try:
+            await asyncio.gather(*workers, return_exceptions=True)
 
-        # T3 — drain any refill-spawned tasks still running. Snapshot the set
-        # because add_done_callback mutates it as tasks complete.
-        if refill_tasks:
-            await asyncio.gather(*list(refill_tasks), return_exceptions=True)
+            # T3 — drain any refill-spawned tasks still running. Snapshot the
+            # set because add_done_callback mutates it as tasks complete.
+            if refill_tasks:
+                await asyncio.gather(*list(refill_tasks), return_exceptions=True)
+        finally:
+            # Clear per-run cost state so subsequent runs start fresh.
+            self._run_cost_state = None
 
         stats.elapsed_seconds = time.monotonic() - t0
+        if budget_exceeded.is_set():
+            logger.warning(
+                "run_streaming_budget_exceeded cards=%d discovered=%d cap_usd=$%.3f total_usd=$%.3f",
+                len(results), stats.discovered, budget_cap_usd, stats.total_cost_usd,
+            )
         logger.info(
             "run_streaming_complete cards=%d discovered=%d workers=%d elapsed=%.1fs cost_usd=$%.3f",
             len(results), stats.discovered, num_workers, stats.elapsed_seconds, stats.total_cost_usd,

@@ -122,6 +122,23 @@ def _parse_args() -> argparse.Namespace:
         action="store_true",
         help="Set DRY_RUN=1 — all API clients return empty responses, no spend",
     )
+    # T4 — tier-aware runtime params (forwarded to run_streaming.tier_config)
+    p.add_argument(
+        "--tier",
+        default="ignition",
+        choices=["spark", "ignition", "velocity", "demo"],
+        help="Pricing tier profile (default: ignition)",
+    )
+    p.add_argument(
+        "--demo-mode",
+        action="store_true",
+        help="Force minimal-spend demo profile regardless of tier",
+    )
+    p.add_argument(
+        "--client-id",
+        default=None,
+        help="Logical client identifier carried through tier_config",
+    )
     return p.parse_args()
 
 
@@ -179,6 +196,11 @@ async def main() -> None:
         budget_cap_aud=args.budget,
         num_workers=args.workers,
         batch_size=args.batch_size,
+        tier_config={
+            "tier": args.tier,
+            "demo_mode": args.demo_mode,
+            "client_id": args.client_id,
+        },
     )
     elapsed = time.monotonic() - t0
 

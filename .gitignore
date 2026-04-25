@@ -131,3 +131,6 @@ screenshot-to-code/
 # AIDEN-SCAFFOLD: per-callsign env files (never commit)
 .env.aiden
 .env.elliot
+
+# M11 — write_manual_mirror staleness state (per-clone, never commit)
+scripts/.manual_mirror_state

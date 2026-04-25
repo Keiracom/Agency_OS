@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# M11 — auto-mirror docs/MANUAL.md to Google Drive when the just-made
+# commit touched it.
+#
+# Install (per clone):
+#     git config core.hooksPath .githooks
+#
+# Behaviour:
+#   - If the most recent commit changed docs/MANUAL.md, run
+#     scripts/write_manual_mirror.py in the background.
+#   - Failures are logged to /tmp but never block the commit.
+#   - Exits 0 immediately so commit performance is unaffected.
+
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+LOG="/tmp/manual_mirror_post_commit.log"
+
+# Diff just-completed commit; if MANUAL.md is in the file list, kick mirror.
+if git diff-tree --no-commit-id --name-only -r HEAD | grep -qx "docs/MANUAL.md"; then
+    echo "[$(date -Iseconds)] post-commit: MANUAL.md touched — kicking mirror" >> "$LOG"
+    (
+        cd "$REPO_ROOT"
+        python3 scripts/write_manual_mirror.py >> "$LOG" 2>&1 || \
+            echo "[$(date -Iseconds)] mirror exited non-zero (best-effort, non-blocking)" >> "$LOG"
+    ) &
+fi
+
+exit 0

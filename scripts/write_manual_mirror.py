@@ -2,22 +2,37 @@
 """
 write_manual_mirror.py — Mirror docs/MANUAL.md to Google Drive doc.
 
-Best-effort: logs failure but does NOT raise or block directive completion.
-Primary store is docs/MANUAL.md (repo). Google Doc is a mirror only.
+Best-effort: logs Drive failures but does NOT raise or block directive
+completion. Primary store is docs/MANUAL.md (repo). Google Doc is a mirror.
+
+M11 — staleness check:
+    Before mirroring, the script compares the current MANUAL.md fingerprint
+    (git blob hash, falling back to mtime + size) against the value stored
+    in scripts/.manual_mirror_state. If they match the script EXITS with
+    code 2 — the four-store-save check then surfaces the staleness as a
+    failure rather than silently re-mirroring identical content.
+
+    Use --force to mirror anyway (e.g. after a Drive doc was manually
+    truncated or when re-syncing a known-good copy).
 
 Usage:
-    python scripts/write_manual_mirror.py
+    python scripts/write_manual_mirror.py            # checks staleness
+    python scripts/write_manual_mirror.py --force    # bypass staleness check
+    python scripts/write_manual_mirror.py --check    # check only; no Drive write
 
-Requirements:
-    - /home/elliotbot/google-service-account.json
-    - pip install google-api-python-client google-auth (in clawd venv)
-
-Run from any directory. Uses absolute paths internally.
+Exit codes:
+    0  — mirrored successfully (or Drive failure logged best-effort)
+    2  — refused: MANUAL.md unchanged since last mirror; pass --force to override
+    3  — MANUAL.md missing
 """
 from __future__ import annotations
 
+import argparse
+import hashlib
+import json
 import logging
 import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -29,8 +44,70 @@ GOOGLE_DOC_ID = os.environ.get(
 )
 SERVICE_ACCOUNT_FILE = "/home/elliotbot/google-service-account.json"
 MANUAL_PATH = Path(__file__).parent.parent / "docs" / "MANUAL.md"
+STATE_PATH = Path(__file__).parent / ".manual_mirror_state"
 SCOPES = ["https://www.googleapis.com/auth/documents"]
 
+
+# ─── fingerprinting ────────────────────────────────────────────────────────
+
+def _git_blob_hash(path: Path) -> str | None:
+    """Return the git blob hash of `path`. None if not in a git repo."""
+    try:
+        out = subprocess.check_output(
+            ["git", "hash-object", str(path)],
+            cwd=str(path.parent), stderr=subprocess.DEVNULL,
+        )
+        return out.decode().strip()
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return None
+
+
+def _content_hash(path: Path) -> str:
+    """sha256 of file bytes — fallback when git is unavailable."""
+    h = hashlib.sha256()
+    h.update(path.read_bytes())
+    return h.hexdigest()
+
+
+def fingerprint(path: Path) -> dict:
+    """Return a stable fingerprint dict for the file. Prefers git blob
+    hash so the check is robust against mtime touches that don't change
+    content; falls back to content sha256 + mtime + size."""
+    stat = path.stat()
+    fp: dict = {
+        "path":   str(path),
+        "size":   stat.st_size,
+        "mtime":  stat.st_mtime_ns,
+        "sha256": _content_hash(path),
+    }
+    blob = _git_blob_hash(path)
+    if blob:
+        fp["git_blob"] = blob
+    return fp
+
+
+def load_state() -> dict:
+    if not STATE_PATH.exists():
+        return {}
+    try:
+        return json.loads(STATE_PATH.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+
+def save_state(state: dict) -> None:
+    STATE_PATH.write_text(json.dumps(state, indent=2), encoding="utf-8")
+
+
+def is_unchanged(current: dict, last: dict) -> bool:
+    """Equal when the most-stable available identifier matches.
+    Prefers git blob hash; falls back to sha256."""
+    if "git_blob" in current and "git_blob" in last:
+        return current["git_blob"] == last["git_blob"]
+    return current.get("sha256") == last.get("sha256")
+
+
+# ─── mirror impl ───────────────────────────────────────────────────────────
 
 def read_manual() -> str:
     if not MANUAL_PATH.exists():
@@ -61,39 +138,31 @@ def mirror_to_drive(content: str) -> None:
         )
         service = build("docs", "v1", credentials=creds)
 
-        # Get current doc length
         doc = service.documents().get(documentId=GOOGLE_DOC_ID).execute()
         body_content = doc.get("body", {}).get("content", [])
         end_index = body_content[-1].get("endIndex", 2)
 
         requests = []
-
-        # Clear existing content
         if end_index > 2:
             requests.append({
                 "deleteContentRange": {
                     "range": {"startIndex": 1, "endIndex": end_index - 1}
                 }
             })
-
-        # Get updated end index after clear
         if requests:
             service.documents().batchUpdate(
                 documentId=GOOGLE_DOC_ID, body={"requests": requests}
             ).execute()
 
-        # Re-fetch doc after clear
         doc = service.documents().get(documentId=GOOGLE_DOC_ID).execute()
         body_content = doc.get("body", {}).get("content", [])
         end_index = body_content[-1].get("endIndex", 2)
 
-        # Insert new content
         service.documents().batchUpdate(
             documentId=GOOGLE_DOC_ID,
             body={"requests": [{"insertText": {"location": {"index": end_index - 1}, "text": content}}]},
         ).execute()
 
-        # Verify
         doc = service.documents().get(documentId=GOOGLE_DOC_ID).execute()
         body_content = doc.get("body", {}).get("content", [])
         total_chars = sum(
@@ -111,14 +180,71 @@ def mirror_to_drive(content: str) -> None:
         )
 
 
-def main() -> None:
+# ─── entrypoint ────────────────────────────────────────────────────────────
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(description="Mirror docs/MANUAL.md to Google Drive.")
+    ap.add_argument(
+        "--force", action="store_true",
+        help="Mirror even if MANUAL.md hasn't changed since last mirror.",
+    )
+    ap.add_argument(
+        "--check", action="store_true",
+        help="Print staleness verdict and exit. No Drive write.",
+    )
+    args = ap.parse_args(argv)
+
+    if not MANUAL_PATH.exists():
+        logger.error(f"MANUAL.md not found at {MANUAL_PATH}")
+        return 3
+
+    current_fp = fingerprint(MANUAL_PATH)
+    state = load_state()
+    last_fp = state.get("last_fingerprint", {})
+
+    unchanged = bool(last_fp) and is_unchanged(current_fp, last_fp)
+
+    if args.check:
+        if unchanged:
+            logger.warning(
+                "MANUAL.md UNCHANGED since last mirror "
+                "(git_blob=%s sha=%s) — staleness check would refuse mirror.",
+                current_fp.get("git_blob", "n/a"), current_fp["sha256"][:12],
+            )
+            return 2
+        logger.info("MANUAL.md CHANGED since last mirror — mirror would proceed.")
+        return 0
+
+    if unchanged and not args.force:
+        logger.error(
+            "MANUAL.md unchanged since last mirror "
+            "(git_blob=%s, sha=%s). Refusing to re-mirror identical content. "
+            "Pass --force to override (e.g. recovering from a manual Drive edit).",
+            current_fp.get("git_blob", "n/a"), current_fp["sha256"][:12],
+        )
+        return 2
+
+    if args.force and unchanged:
+        logger.warning("--force: re-mirroring even though MANUAL.md is unchanged.")
+
     logger.info(f"Reading MANUAL.md from {MANUAL_PATH}")
     content = read_manual()
     logger.info(f"MANUAL.md: {len(content)} chars")
     logger.info("Mirroring to Google Drive...")
     mirror_to_drive(content)
+
+    # Persist the new fingerprint regardless of Drive success — Drive failures
+    # are best-effort and we don't want a stuck DRIVE outage to permanently
+    # block the staleness check.
+    state["last_fingerprint"] = current_fp
+    state["last_mirrored_at"] = (
+        subprocess.check_output(["date", "-Iseconds"]).decode().strip()
+    )
+    save_state(state)
+    logger.info(f"State persisted to {STATE_PATH}")
     logger.info("Done.")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

@@ -82,12 +82,14 @@ async def test_get_leads_ready_for_outreach_success():
             uuid4(),  # lead_id
             uuid4(),  # client_id
             uuid4(),  # campaign_id
+            "example.com.au",  # domain (BU-CLOSED-LOOP-C1: lead.domain projected for budget gates)
             "domain.com",  # email_resource
             "seat123",  # linkedin_seat
             "+1234567890",  # phone_resource
             PermissionMode.CO_PILOT,  # permission_mode
             SubscriptionStatus.ACTIVE,  # subscription_status
             1000,  # credits_remaining
+            "ignition",  # tier (BU-CLOSED-LOOP-C1: client.tier projected for per-tier daily AUD cap)
         ),
     ]
     mock_db.execute = AsyncMock(return_value=mock_result)

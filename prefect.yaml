@@ -431,6 +431,33 @@ deployments:
       timezone: "Australia/Sydney"
     entrypoint: src/orchestration/flows/health_check_flow.py:health_check_flow
 
+  # ============================================
+  # BU CLOSED-LOOP ENGINE (Directive: BU Closed-Loop S2)
+  # ============================================
+  # Daily backlog driver — re-enters stuck BU rows at their next stage in
+  # free-mode (zero AUD spend by default). PAUSED by default. Unpause when:
+  # S3 ratifies domain_data reconstruction from BU columns AND live-spend
+  # safety review confirms AUD 0 budget enforcement at scale.
+  - name: bu-closed-loop-flow
+    version: "1.0.0"
+    paused: true  # PAUSED — see unpause criteria above
+    tags: [bu-closed-loop, backlog-driver, free-mode, safety-net]
+    description: "BU Closed-Loop S2 backlog driver — daily 04:00 UTC stuck-row sweep with age-tiered cadence."
+    entrypoint: src/orchestration/flows/bu_closed_loop_flow.py:bu_closed_loop_flow
+    work_pool:
+      name: agency-os-pool
+      work_queue_name: agency-os-queue
+    parameters:
+      max_rows: 500
+      free_mode_only: true
+      cadence_hot_days: 14
+      cadence_warm_days: 60
+      cadence_cold_days: 180
+    schedules:
+      - cron: "0 4 * * *"
+        timezone: UTC
+        active: false  # Inactive until S3 ratification
+
 # Environment variables reference
 # These should be set in Railway/environment, not hardcoded here
 # Required environment variables:

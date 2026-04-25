@@ -34,6 +34,18 @@ class Settings(BaseSettings):
     )
     debug: bool = False
 
+    # === Demo mode ===
+    # Process-wide flag for investor / prospect demos. When true:
+    #   - the outreach dispatcher refuses to fire real provider sends
+    #   - the dashboard renders a persistent amber DEMO MODE banner
+    #   - the onboarding flow uses the seeded demo tenant
+    # Read from the IS_DEMO_MODE env var (case-insensitive 'true'/'1'/'yes').
+    IS_DEMO_MODE: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("IS_DEMO_MODE", "is_demo_mode"),
+        description="Demo mode — disables real outreach sends + shows banner",
+    )
+
     # === CORS ===
     ALLOWED_ORIGINS: list[str] = Field(
         default=["http://localhost:3000", "http://localhost:8000"],

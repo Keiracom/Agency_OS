@@ -89,6 +89,10 @@ export interface DashboardV4Data {
   weekAhead: UpcomingMeeting[];
   insight: InsightData;
   warmReplies: WarmReply[];
+  // Phase-2.1 — wired to live business_universe data.
+  buStats: BUStats | null;
+  funnel: FunnelStage[];
+  activity: BUActivityEvent[];
 }
 
 // Backend response types
@@ -197,15 +201,59 @@ function formatMeetingDate(dateString: string | null): { dayLabel: string; dayNu
 }
 
 /**
- * Fetch hot leads (high ALS score with buying signals)
+ * Phase-2.1 — BU-direct shape returned by /api/v1/dashboard/bu-hot-leads.
+ */
+interface BUHotLeadResponse {
+  id: string;
+  domain: string;
+  company: string;
+  dm_name: string | null;
+  dm_title: string | null;
+  propensity_score: number;
+  pipeline_stage: number;
+  has_email: boolean;
+  has_mobile: boolean;
+}
+
+/**
+ * Fetch hot leads — Phase 2.1 wires this directly to business_universe via
+ * /api/v1/dashboard/bu-hot-leads (pipeline_stage >= 6 AND propensity > 70).
+ * Falls back to the legacy /api/v1/leads tier=hot endpoint if BU has no
+ * matching rows yet (e.g. dev DB where the pipeline hasn't run).
  */
 async function fetchHotLeads(clientId: string): Promise<HotProspect[]> {
+  // Primary: BU-direct
   try {
-    // Get hot tier leads sorted by score
+    const bu = await api.get<{ items: BUHotLeadResponse[] }>(
+      `/api/v1/dashboard/bu-hot-leads?limit=5&min_score=70&min_stage=6`,
+    );
+    if (bu.items.length > 0) {
+      return bu.items.map((row): HotProspect => {
+        const name = row.dm_name || row.company || row.domain || "Unknown";
+        const signals: string[] = [];
+        if (row.has_email) signals.push("Email verified");
+        if (row.has_mobile) signals.push("Mobile verified");
+        return {
+          id: row.id,
+          initials: getInitials(name),
+          name,
+          company: row.company,
+          title: row.dm_title || `Stage ${row.pipeline_stage}`,
+          signal: signals[0] || `Propensity ${row.propensity_score}`,
+          score: row.propensity_score,
+          isVeryHot: row.propensity_score >= 90,
+        };
+      });
+    }
+  } catch (error) {
+    console.warn("[fetchHotLeads] BU-direct failed, falling back to leads endpoint:", error);
+  }
+
+  // Fallback: legacy lead_pool tier=hot
+  try {
     const response = await api.get<{ items: HotLeadResponse[] }>(
       `/api/v1/leads?client_id=${clientId}&tier=hot&page_size=5&sort_by=propensity_score&sort_order=desc`
     );
-    
     return response.items.map((lead): HotProspect => {
       const name = [lead.first_name, lead.last_name].filter(Boolean).join(" ") || "Unknown";
       return {
@@ -221,6 +269,72 @@ async function fetchHotLeads(clientId: string): Promise<HotProspect[]> {
     });
   } catch (error) {
     console.error("[fetchHotLeads] Error:", error);
+    return [];
+  }
+}
+
+/**
+ * Phase-2.1 — BU stats strip (total businesses, with-email, with-mobile,
+ * total BDMs, enriched in last 24h).
+ */
+export interface BUStats {
+  total_businesses: number;
+  businesses_with_email: number;
+  businesses_with_mobile: number;
+  total_bdms: number;
+  enriched_last_24h: number;
+}
+
+async function fetchBUStats(): Promise<BUStats | null> {
+  try {
+    return await api.get<BUStats>(`/api/v1/dashboard/bu-stats`);
+  } catch (error) {
+    console.error("[fetchBUStats] Error:", error);
+    return null;
+  }
+}
+
+/**
+ * Phase-2.1 — Funnel distribution across pipeline_stage 1..11.
+ */
+export interface FunnelStage {
+  stage: number;
+  label: string;
+  count: number;
+}
+
+async function fetchBUFunnel(): Promise<FunnelStage[]> {
+  try {
+    const r = await api.get<{ stages: FunnelStage[]; total: number }>(
+      `/api/v1/dashboard/bu-funnel`,
+    );
+    return r.stages;
+  } catch (error) {
+    console.error("[fetchBUFunnel] Error:", error);
+    return [];
+  }
+}
+
+/**
+ * Phase-2.1 — Recent activity (enrichment + outreach).
+ */
+export interface BUActivityEvent {
+  id: string;
+  timestamp: string;
+  kind: "enrichment" | "outreach";
+  domain: string | null;
+  detail: string;
+  cost_usd: number | null;
+}
+
+async function fetchBUActivity(limit = 20): Promise<BUActivityEvent[]> {
+  try {
+    const r = await api.get<{ items: BUActivityEvent[] }>(
+      `/api/v1/dashboard/bu-activity?limit=${limit}`,
+    );
+    return r.items;
+  } catch (error) {
+    console.error("[fetchBUActivity] Error:", error);
     return [];
   }
 }
@@ -461,12 +575,18 @@ export function useDashboardV4() {
     queryFn: async (): Promise<DashboardV4Data> => {
       if (!clientId) throw new Error("No client ID");
 
-      // Fetch all data in parallel
-      const [metrics, hotLeads, meetings, warmReplies] = await Promise.all([
+      // Fetch all data in parallel — Phase-2.1 adds 3 BU-direct calls.
+      const [
+        metrics, hotLeads, meetings, warmReplies,
+        buStats, funnel, activity,
+      ] = await Promise.all([
         fetchDashboardV4Metrics(clientId),
         fetchHotLeads(clientId),
         fetchUpcomingMeetings(clientId),
         fetchWarmReplies(clientId),
+        fetchBUStats(),
+        fetchBUFunnel(),
+        fetchBUActivity(20),
       ]);
 
       // Calculate derived values
@@ -518,6 +638,10 @@ export function useDashboardV4() {
         weekAhead: meetings,
         insight: buildInsight(metrics),
         warmReplies,
+        // Phase-2.1 — live BU data.
+        buStats,
+        funnel,
+        activity,
       };
     },
     enabled: !!clientId,
@@ -551,5 +675,43 @@ export function useWarmReplies(limit = 5) {
     queryFn: () => fetchWarmReplies(clientId!),
     enabled: !!clientId,
     staleTime: 30 * 1000,
+  });
+}
+
+// ─── Phase-2.1 standalone hooks ────────────────────────────────────────────
+
+/** BU stats strip — total businesses, with-email, with-mobile, BDM, 24h. */
+export function useBUStats() {
+  const { clientId } = useClient();
+  return useQuery({
+    queryKey: ["bu-stats", clientId],
+    queryFn: () => fetchBUStats(),
+    enabled: !!clientId,
+    staleTime: 60 * 1000,
+    refetchInterval: 5 * 60 * 1000,
+  });
+}
+
+/** Funnel — pipeline_stage distribution across business_universe. */
+export function useBUFunnel() {
+  const { clientId } = useClient();
+  return useQuery({
+    queryKey: ["bu-funnel", clientId],
+    queryFn: () => fetchBUFunnel(),
+    enabled: !!clientId,
+    staleTime: 60 * 1000,
+    refetchInterval: 5 * 60 * 1000,
+  });
+}
+
+/** Recent activity — enrichment + outreach events merged & sorted. */
+export function useBUActivity(limit = 20) {
+  const { clientId } = useClient();
+  return useQuery({
+    queryKey: ["bu-activity", clientId, limit],
+    queryFn: () => fetchBUActivity(limit),
+    enabled: !!clientId,
+    staleTime: 30 * 1000,
+    refetchInterval: 60 * 1000,
   });
 }

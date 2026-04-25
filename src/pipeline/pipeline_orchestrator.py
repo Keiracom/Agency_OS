@@ -1,41 +1,96 @@
 """
 Contract: src/pipeline/pipeline_orchestrator.py
-Purpose: Stage-parallel streaming pipeline — processes all domains in a batch
-         concurrently per stage rather than one domain at a time.
+Purpose:  CD Player v1 — per-domain streaming pipeline.
+          Preserves the SSECardStreamer / worker-pool / semaphore architecture
+          from Directive #293 but delegates ALL stage logic to cohort_runner's
+          proven _run_stage2–_run_stage11 functions (tested at 730 domains).
+
+Flow per domain:
+  Stage 2  (SERP verify)        → DFSLabsClient
+  Stage 3  (Gemini F3A)         → GeminiClient  GATE: enterprise/no-DM → DROP
+  Stage 4  (DFS signal bundle)  → DFSLabsClient
+  Stage 5  (composite score)    → pure logic     GATE: not viable / score < 30 → DROP
+  Stage 6  (historical rank)    → DFSLabsClient  SKIP if score < 60
+  Stage 7  (Gemini F3B)         → GeminiClient
+  Stage 8  (contact waterfall)  → DFS + BD + LM + ContactOut
+  Stage 9  (LinkedIn social)    → BrightDataClient  SKIP if no LinkedIn URLs
+  Stage 10 (VR + messaging)     → pure logic     SKIP if no email
+  Stage 11 (card assembly)      → pure logic     → emit via on_card
+
 Layer: 2 - pipeline
-Directive: #293 (stage-parallel refactor)
-
-Stage order:
-  1. Discovery (pull_batch)
-  2. Spider scrape ALL domains concurrently (sem=15)
-  3. DNS + ABN ALL domains concurrently (sem=1 for asyncpg safety)
-  4. Affordability gate (in-memory, instant)
-  5. Intent free gate (in-memory, instant) — NOT_TRYING skips paid enrichment
-  6. Paid enrichment: DFS Ads Search + DFS Maps GMB concurrently (sem=20)
-  7. Intent full score (in-memory)
-  8. DM identification ALL survivors concurrently (sem=20)
-  9. Reachability check + ProspectCard build (in-memory)
-
-Target throughput: 200 domains in under 2 minutes.
+Directive: CD Player v1 (refactor from #293)
 """
 from __future__ import annotations
 
 import asyncio
+import inspect
 import logging
 import re
 import time
+import warnings
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
-from src.pipeline.prospect_scorer import ProspectScorer, ProspectScore
+# ── Import proven stage functions from cohort_runner ─────────────────────────
+from src.orchestration.cohort_runner import (
+    _new_domain,
+    _run_stage2,
+    _run_stage3,
+    _run_stage4,
+    _run_stage5,
+    _run_stage6,
+    _run_stage7,
+    _run_stage8,
+    _run_stage9,
+    _run_stage10,
+    _run_stage11,
+)
+
 from src.pipeline.intelligence import GLOBAL_SEM_SONNET, GLOBAL_SEM_HAIKU  # shared semaphores
-from src.pipeline import intelligence as _intel_module  # optional: used when self._intelligence is set
 from src.config.category_registry import get_discovery_categories, SERVICE_CATEGORY_MAP  # noqa: F401
-from src.pipeline.email_waterfall import discover_email, GLOBAL_SEM_LEADMAGIC  # noqa: F401
-from src.pipeline.mobile_waterfall import run_mobile_waterfall
-from src.pipeline.contactout_enricher import enrich_dm_via_contactout
 
 logger = logging.getLogger(__name__)
+
+
+# ── Budget enforcement constants (P0 fix — CD Player) ────────────────────────
+# Speculative per-domain reservation used by cost-aware admission control.
+# Derived from cohort_runner paid-stage costs:
+#   Stage2=0.01 + Stage4=0.078 + Stage6=0.106 + Stage8=0.015 + Stage9=0.027
+#   + ~0.01 overhead  ≈ 0.25 USD
+ESTIMATED_PER_DOMAIN_COST_USD = 0.25
+
+# Max concurrent in-flight _process_one tasks. Default sized so worst-case
+# in-flight spend (DEFAULT_MAX_IN_FLIGHT × ESTIMATED_PER_DOMAIN_COST_USD)
+# stays below a spark-tier cap of ~$5 USD.
+DEFAULT_MAX_IN_FLIGHT = 20
+
+
+# ── FIX 4 — Default on_domain_complete callback ──────────────────────────────
+# Fires after Stage 11 card assembly with the full domain_data dict. Lazy
+# import of persist_stage8_to_db avoids circular-import pain during module
+# load (pipeline_f_master_flow imports from this module).
+
+async def _default_on_domain_complete(domain_data: dict) -> None:
+    """Default persistence hook — writes the completed domain row to BU+BDM.
+
+    Best-effort: any exception is logged and swallowed so streaming does not
+    abort on transient DB errors. Callers who need stricter semantics pass
+    an explicit on_domain_complete to the orchestrator.
+    """
+    try:
+        from src.orchestration.flows.pipeline_f_master_flow import (
+            persist_stage8_to_db,
+        )
+        # persist_stage8_to_db is a Prefect @task; the underlying async fn is
+        # .fn when called outside a flow context.
+        target = getattr(persist_stage8_to_db, "fn", persist_stage8_to_db)
+        await target([domain_data])
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "on_domain_complete persistence failed domain=%s: %s",
+            domain_data.get("domain"), exc,
+        )
+
 
 # ── Business name waterfall helpers (Directive #305) ─────────────────────────
 
@@ -202,20 +257,23 @@ def resolve_location(
     return suburb, state, display
 
 
-# Semaphore limits — tuned for DFS 30-concurrent + Spider 15-concurrent limits
+# ── Global semaphore pool ─────────────────────────────────────────────────────
+# Tuned for DFS 30-concurrent + Spider 15-concurrent limits.
+# Module-level singletons shared across parallel workers.
+
 SEM_SPIDER = 15    # Spider.cloud concurrent scrapes
 SEM_ABN    = 50    # asyncpg pool connections (Supabase Pro; pool max_size=50)
 SEM_PAID   = 20    # DFS Ads Search + GMB concurrent
 SEM_DM     = 20    # DFS SERP LinkedIn concurrent
-SEM_LLM    = 10    # Anthropic concurrent limit (Haiku: 50 RPM, Sonnet: 10 RPM — conservative)
+SEM_LLM    = 10    # Anthropic concurrent limit
 
-# Global semaphore pool — shared across parallel workers (module-level singletons)
-# GLOBAL_SEM_SONNET and GLOBAL_SEM_HAIKU are defined in intelligence.py and imported above
 GLOBAL_SEM_DFS         = asyncio.Semaphore(28)   # DFS API concurrent calls
 GLOBAL_SEM_SCRAPE      = asyncio.Semaphore(80)   # httpx + Spider concurrent scrapes
 GLOBAL_SEM_ADS_SCRAPER = asyncio.Semaphore(15)   # Ads Transparency concurrent scrapes
-GLOBAL_SEM_ABN         = asyncio.Semaphore(50)   # asyncpg ABN queries (Supabase Pro; pool max_size=50)
+GLOBAL_SEM_ABN         = asyncio.Semaphore(50)   # asyncpg ABN queries
 
+
+# ── Dataclasses ───────────────────────────────────────────────────────────────
 
 @dataclass
 class PipelineStats:
@@ -260,12 +318,12 @@ class ProspectCard:
     email_cost_usd: float = 0.0
     # Mobile waterfall fields (Directive #317)
     dm_mobile: Optional[str] = None
-    dm_mobile_source: Optional[str] = None  # "contactout" | "html_regex" | "leadmagic" | "brightdata"
+    dm_mobile_source: Optional[str] = None
     dm_mobile_tier: Optional[int] = None
-    # Location fields (Directive #305 — supplements single "location" string)
+    # Location fields (Directive #305)
     location_suburb: str = ""
     location_state: str = ""
-    location_display: str = ""  # "Surry Hills, NSW" or "NSW" or "Australia"
+    location_display: str = ""
     # Intelligence endpoints (Directive #303)
     competitors_top3: list = field(default_factory=list)
     competitor_count: int = 0
@@ -278,6 +336,8 @@ class ProspectCard:
     indexed_pages: int = 0
     # Vulnerability Report (Directive #306)
     vulnerability_report: dict = field(default_factory=dict)
+    # Full stage11 card (CD Player v1 — structured output from assemble_card)
+    stage11_card: dict = field(default_factory=dict)
 
 
 @dataclass
@@ -285,6 +345,8 @@ class PipelineResult:
     prospects: list  # list[ProspectCard]
     stats: PipelineStats
 
+
+# ── SSECardStreamer ────────────────────────────────────────────────────────────
 
 class SSECardStreamer:
     """
@@ -305,174 +367,662 @@ class SSECardStreamer:
         self._queue.put_nowait({"event": "prospect_card", "data": json.dumps(data)})
 
 
+# ── Helper: build a ProspectCard from a completed domain_data dict ────────────
+
+def _card_from_domain_data(domain_data: dict) -> ProspectCard | None:
+    """
+    Extract a ProspectCard from a completed domain_data dict (after stage11).
+    Returns None if card assembly was not successful.
+    """
+    stage11 = domain_data.get("stage11") or {}
+    if not stage11:
+        return None
+
+    domain = domain_data["domain"]
+    identity = domain_data.get("stage3") or {}
+    scores = domain_data.get("stage5") or {}
+    contacts = domain_data.get("stage8_contacts") or {}
+    email_data = contacts.get("email") or {}
+    mobile_data = contacts.get("mobile") or {}
+    linkedin_data = contacts.get("linkedin") or {}
+    analyse = domain_data.get("stage7") or {}
+    signals = domain_data.get("stage4") or {}
+
+    company_name = (
+        stage11.get("company_name")
+        or identity.get("business_name")
+        or domain.split(".")[0].title()
+    )
+    location_display = stage11.get("location") or stage11.get("location_display") or "Australia"
+    location_suburb = stage11.get("location_suburb") or ""
+    location_state = stage11.get("location_state") or ""
+
+    dm = identity.get("dm_candidate") or {}
+    dm_name = stage11.get("dm_name") or dm.get("name")
+    dm_title = stage11.get("dm_title") or dm.get("role")
+    dm_linkedin = (
+        stage11.get("dm_linkedin_url")
+        or linkedin_data.get("linkedin_url")
+        or dm.get("linkedin_url")
+    )
+
+    rank_overview = signals.get("rank_overview") or {}
+
+    return ProspectCard(
+        domain=domain,
+        company_name=company_name,
+        location=location_display,
+        location_suburb=location_suburb,
+        location_state=location_state,
+        location_display=location_display,
+        services=stage11.get("services") or [],
+        evidence=stage11.get("evidence") or analyse.get("evidence") or [],
+        affordability_band=scores.get("affordability_band") or "UNKNOWN",
+        affordability_score=int(scores.get("affordability_score") or 0),
+        intent_band=scores.get("intent_band") or "UNKNOWN",
+        intent_score=int(scores.get("intent_score") or scores.get("composite_score") or 0),
+        is_running_ads=bool(stage11.get("is_running_ads")),
+        gmb_review_count=int(stage11.get("gmb_review_count") or 0),
+        gmb_rating=stage11.get("gmb_rating"),
+        dm_name=dm_name,
+        dm_title=dm_title,
+        dm_linkedin_url=dm_linkedin,
+        dm_confidence=stage11.get("dm_confidence") or dm.get("confidence"),
+        dm_email=email_data.get("email"),
+        dm_email_verified=bool(email_data.get("verified")),
+        dm_email_source=email_data.get("source"),
+        dm_email_confidence=email_data.get("confidence"),
+        email_cost_usd=float(email_data.get("cost_usd") or 0),
+        dm_mobile=mobile_data.get("mobile"),
+        dm_mobile_source=mobile_data.get("source"),
+        dm_mobile_tier=mobile_data.get("tier"),
+        referring_domains=int(rank_overview.get("referring_domains") or 0),
+        domain_rank=int(rank_overview.get("rank") or 0),
+        vulnerability_report=stage11.get("vulnerability_report") or {},
+        stage11_card=stage11,
+    )
+
+
+# ── PipelineOrchestrator ──────────────────────────────────────────────────────
+
 class PipelineOrchestrator:
     """
-    Stage-parallel pipeline orchestrator (Directive #293).
+    CD Player v1 — per-domain streaming pipeline orchestrator.
 
-    Processes all domains in a batch concurrently per stage.
-    Each stage fans out with a semaphore, then the next stage
-    receives only the survivors.
+    Uses cohort_runner's proven _run_stage2–_run_stage11 functions for all
+    stage logic. Preserves the per-domain worker-pool streaming architecture
+    from Directive #293 for SSE compatibility.
 
-    Dependencies injected for testability:
-        discovery:          pull_batch(category_code, location, limit, offset) -> list[dict]
-        free_enrichment:    scrape_website(domain) -> dict
-                            enrich_from_spider(domain, spider_data) -> dict | None
-        scorer:             score_affordability(enrichment) -> AffordabilityResult
-                            score_intent_free(enrichment) -> IntentResult (optional)
-                            score_intent_full(enrichment, ads, gmb) -> IntentResult (optional)
-        dm_identification:  identify(domain, company_name, spider_data, abn_data) -> DMResult | None
-        gmb_client:         maps_search_gmb(business_name, location_name) -> dict | None
-        ads_client:         callable async (domain) -> dict | None
+    Primary entry point: run_streaming()
+    Legacy entry point:  run() / run_parallel() — deprecated, kept for
+                         backwards compatibility.
+
+    Clients injected:
+        dfs_client:     DFSLabsClient (stages 2, 4, 6, 8)
+        gemini_client:  GeminiClient  (stages 3, 7)
+        bd_client:      BrightDataClient (stages 8, 9)
+        lm_client:      LeadmagicClient  (stage 8)
+        discovery:      pull_batch(category_code, location, limit, offset) -> list[dict]
+        on_card:        optional callable(ProspectCard) — fires as each card completes
     """
 
     def __init__(
         self,
-        discovery,
-        free_enrichment,
+        # CD Player v1 — real clients (primary constructor)
+        dfs_client=None,
+        gemini_client=None,
+        bd_client=None,
+        lm_client=None,
+        discovery=None,
+        on_card: Callable[[ProspectCard], None] | None = None,
+        on_domain_complete: Callable[[dict], Any] | None = None,
+        # Legacy keyword args — kept for backwards compatibility
+        free_enrichment=None,
         scorer=None,
         dm_identification=None,
         gmb_client=None,
         ads_client=None,
         prospect_scorer=None,
         intelligence=None,
-        on_card=None,
-        leadmagic_client=None,  # ADD: for mobile waterfall L2
-        brightdata_client=None,  # ADD: for mobile waterfall L3
+        leadmagic_client=None,
+        brightdata_client=None,
     ):
+        # CD Player v1 clients
+        self._dfs = dfs_client
+        self._gemini = gemini_client
+        self._bd = bd_client or brightdata_client
+        self._lm = lm_client or leadmagic_client
         self._discovery = discovery
+        self._on_card = on_card
+        # FIX 4 — persistence hook. Called after Stage 11 card assembly with
+        # the full domain_data dict. Default wraps persist_stage8_to_db([d]).
+        self._on_domain_complete = on_domain_complete or _default_on_domain_complete
+
+        # Legacy shims — kept so existing callers don't break
         self._fe = free_enrichment
         self._scorer = scorer if scorer is not None else prospect_scorer
         self._dm = dm_identification
         self._gmb_client = gmb_client
         self._ads_client = ads_client
-        self._intelligence = intelligence  # optional: IntelligenceLayer instance or module
-        self._on_card = on_card  # optional: callable(ProspectCard) — fires as each card completes
-        self._leadmagic_client = leadmagic_client
-        self._brightdata_client = brightdata_client
+        self._intelligence = intelligence
+        self._leadmagic_client = lm_client or leadmagic_client
+        self._brightdata_client = bd_client or brightdata_client
 
-    # ── Stage helpers ─────────────────────────────────────────────────────
+    # ── Core per-domain processor ─────────────────────────────────────────
 
-    async def _stage_spider(self, sem: asyncio.Semaphore, domain: str) -> dict:
-        """STAGE 2: Spider scrape one domain with semaphore."""
-        async with sem:
-            try:
-                result = await self._fe.scrape_website(domain)
-                return result or {}
-            except Exception:
-                logger.debug("stage_spider_failed domain=%s", domain)
-                return {}
-
-    async def _stage_enrich(
+    async def _process_domain(
         self,
-        sem: asyncio.Semaphore,
-        domain: str,
-        spider_data: dict,
-    ) -> dict | None:
-        """STAGE 3: DNS + ABN enrichment from pre-scraped Spider data."""
-        async with sem:
-            try:
-                return await self._fe.enrich_from_spider(domain, spider_data)
-            except Exception:
-                logger.debug("stage_enrich_failed domain=%s", domain)
-                return None
-
-    async def _stage_paid(
-        self,
-        sem: asyncio.Semaphore,
-        domain: str,
-        company_name: str,
-        suburb: str,
-        location: str,
-    ) -> dict:
-        """STAGE 6: DFS Ads Search + DFS Maps GMB concurrently."""
-        async with sem:
-            async def _get_ads():
-                if self._ads_client is None:
-                    return None
-                try:
-                    return await self._ads_client(domain)
-                except Exception:
-                    return None
-
-            async def _get_gmb():
-                if self._gmb_client is None:
-                    return None
-                try:
-                    q = f"{company_name} {suburb}".strip() or domain
-                    return await self._gmb_client.maps_search_gmb(q, location_name=location)
-                except Exception:
-                    return None
-
-            ads_data, gmb_data = await asyncio.gather(_get_ads(), _get_gmb())
-            return {"ads_data": ads_data, "gmb_data": gmb_data}
-
-    async def _stage_dm(
-        self,
-        sem: asyncio.Semaphore,
-        domain: str,
-        company_name: str,
-        enrichment: dict,
-    ) -> Any:
-        """STAGE 8: DM identification for one domain."""
-        async with sem:
-            try:
-                return await self._dm.identify(
-                    domain=domain,
-                    company_name=company_name,
-                    spider_data=enrichment,
-                    abn_data=enrichment,
-                )
-            except Exception:
-                logger.debug("stage_dm_failed domain=%s", domain)
-                return None
-
-    async def _stage_intelligence(
-        self,
-        domain: str,
-        html: str,
-        enrichment: dict,
-        ads_data: dict | None,
-        gmb_data: dict | None,
-    ) -> dict:
+        domain_data: dict,
+    ) -> ProspectCard | None:
         """
-        STAGE 7b: Run intelligence pipeline for one domain.
-        Calls comprehend_website → classify_intent → refine_evidence.
-        Returns merged intel dict with evidence_statements, intent_band, services, etc.
+        Run stages 2–11 sequentially for a single domain.
+
+        Uses cohort_runner's proven _run_stage functions.
+        After each stage, checks domain_data["dropped_at"]; if set, returns None.
+        After each PAID stage (2/4/6/8/9), the shared per-run cost counter
+        (budget gate B) is advanced and compared against the budget cap —
+        any breach sets dropped_at='budget_exceeded' and short-circuits.
+        GOV-8: on_domain_complete fires on EVERY exit path (drop or success).
+        On stage 11 completion, builds and returns a ProspectCard.
+
+        Args:
+            domain_data: dict produced by cohort_runner._new_domain()
+
+        Returns:
+            ProspectCard on success, None if domain was dropped at any stage.
         """
+        clients = {
+            "dfs": self._dfs,
+            "gemini": self._gemini,
+            "bd": self._bd,
+            "lm": self._lm,
+        }
+        card: ProspectCard | None = None
+        stage6_task: asyncio.Task | None = None
+
         try:
-            intel = self._intelligence
-            url = f"https://{domain}"
+            # Stage 2 — SERP verify (PAID)
+            async with GLOBAL_SEM_DFS:
+                domain_data = await _run_stage2(domain_data, clients["dfs"])
+            if domain_data.get("dropped_at"):
+                return None
+            if await self._check_budget_gate(domain_data, "stage2"):
+                return None
 
-            # Comprehend website
-            website_data = await intel.comprehend_website(domain, html or "", url)
+            # Stage 3 — Gemini F3A (GATE: enterprise/no-DM → DROP)
+            domain_data = await _run_stage3(domain_data, clients["gemini"])
+            if domain_data.get("dropped_at"):
+                return None
 
-            # Classify intent
-            intent_data = await intel.classify_intent(domain, website_data, gmb_data, ads_data)
+            # Stage 4 — DFS signal bundle (PAID)
+            async with GLOBAL_SEM_DFS:
+                domain_data = await _run_stage4(domain_data, clients["dfs"])
+            if domain_data.get("dropped_at"):
+                return None
+            if await self._check_budget_gate(domain_data, "stage4"):
+                return None
 
-            # Analyse reviews if available
-            reviews = (gmb_data or {}).get("reviews") or []
-            review_data = await intel.analyse_reviews(domain, reviews)
+            # Stage 5 — composite scoring (GATE: score < 30 → DROP)
+            domain_data = await _run_stage5(domain_data)
+            if domain_data.get("dropped_at"):
+                return None
 
-            # Refine evidence into final card copy
-            refined = await intel.refine_evidence(domain, intent_data, review_data, website_data)
+            # T2 CAPACITY SKIP — Stage 6 is gated on composite_score >= 60.
+            # When the gate passes we fire Stage 6 as a background task so
+            # Stage 7 can run in parallel. Awaited before Stage 11.
+            composite_score = (
+                (domain_data.get("scores") or {}).get("composite_score")
+                or domain_data.get("composite_score")
+                or 0
+            )
+            if composite_score >= 60:
+                async def _stage6_bg():
+                    async with GLOBAL_SEM_DFS:
+                        return await _run_stage6(domain_data, clients["dfs"])
+                stage6_task = asyncio.create_task(_stage6_bg())
 
-            return {
-                "website_data": website_data,
-                "intent_data": intent_data,
-                "review_data": review_data,
-                "evidence_statements": refined.get("evidence_statements", []),
-                "headline_signal": refined.get("headline_signal", ""),
-                "recommended_service": refined.get("recommended_service", ""),
-                "outreach_angle": refined.get("outreach_angle", ""),
-                "intent_band": intent_data.get("band"),
-                "intent_score": intent_data.get("score", 0),
-                "services": website_data.get("services", []),
-            }
-        except Exception as exc:
-            logger.warning("_stage_intelligence failed domain=%s: %s", domain, exc)
-            return {}
+            # Stage 7 — Gemini F3B analysis (concurrent with stage 6)
+            domain_data = await _run_stage7(domain_data, clients["gemini"])
+            if domain_data.get("dropped_at"):
+                return None
 
-    # ── Main run ──────────────────────────────────────────────────────────
+            # Stage 8 — contact waterfall (PAID)
+            async with GLOBAL_SEM_DFS:
+                domain_data = await _run_stage8(
+                    domain_data, clients["dfs"],
+                    bd=clients["bd"], lm=clients["lm"],
+                )
+            if domain_data.get("dropped_at"):
+                return None
+            if await self._check_budget_gate(domain_data, "stage8"):
+                return None
+
+            # Stage 9 — LinkedIn social (PAID — gate inside _run_stage9)
+            domain_data = await _run_stage9(domain_data, clients["bd"])
+            if domain_data.get("dropped_at"):
+                return None
+            if await self._check_budget_gate(domain_data, "stage9"):
+                return None
+
+            # Stage 10 — VR + messaging (SKIP if no email, gate inside)
+            domain_data = await _run_stage10(domain_data)
+            if domain_data.get("dropped_at"):
+                return None
+
+            # T2 — join the background stage 6 task before card assembly so
+            # its historical-rank output is present on the card (PAID).
+            if stage6_task is not None:
+                try:
+                    domain_data = await stage6_task
+                except Exception as exc:
+                    logger.warning("stage6 background task failed: %s", exc)
+                stage6_task = None
+                if domain_data.get("dropped_at"):
+                    return None
+                if await self._check_budget_gate(domain_data, "stage6"):
+                    return None
+
+            # Stage 11 — card assembly
+            domain_data = await _run_stage11(domain_data)
+            card = _card_from_domain_data(domain_data)
+            return card
+        finally:
+            # Cancel any lingering stage 6 task (e.g. early return via drop)
+            if stage6_task is not None and not stage6_task.done():
+                stage6_task.cancel()
+
+            # GOV-8 — persist EVERY domain (drops included), not just cards.
+            # Exceptions in the hook are logged and swallowed so streaming
+            # cannot abort on transient DB errors.
+            if self._on_domain_complete is not None:
+                try:
+                    res = self._on_domain_complete(domain_data)
+                    if inspect.isawaitable(res):
+                        await res
+                except Exception as exc:
+                    logger.warning(
+                        "on_domain_complete callback failed domain=%s: %s",
+                        domain_data.get("domain"), exc,
+                    )
+
+    async def _check_budget_gate(self, domain_data: dict, stage: str) -> bool:
+        """Budget gate B — update the shared run-cost counter with this
+        domain's latest cost_usd and return True if the run is over budget
+        (in which case caller must set dropped_at and return None).
+
+        Safe to call when no run is active (no cost state wired) — returns
+        False so direct unit tests of _process_domain still execute.
+        """
+        cost_state = getattr(self, "_run_cost_state", None)
+        if cost_state is None:
+            return False
+
+        lock: asyncio.Lock = cost_state["lock"]
+        domain_id = id(domain_data)
+        async with lock:
+            seen_cost = cost_state["per_domain"].get(domain_id, 0.0)
+            current_cost = float(domain_data.get("cost_usd", 0.0) or 0.0)
+            delta = max(0.0, current_cost - seen_cost)
+            cost_state["per_domain"][domain_id] = current_cost
+            cost_state["total"] += delta
+            total = cost_state["total"]
+            cap = cost_state["cap"]
+
+        if total >= cap:
+            logger.warning(
+                "budget_exceeded gate=%s domain=%s total=$%.3f cap=$%.3f",
+                stage, domain_data.get("domain"), total, cap,
+            )
+            domain_data["dropped_at"] = "budget_exceeded"
+            domain_data["drop_reason"] = f"budget_exceeded at {stage}"
+            return True
+        return False
+
+    # ── Primary entry point ───────────────────────────────────────────────
+
+    async def run_streaming(
+        self,
+        categories: list[str],
+        target_cards: int = 20,
+        budget_cap_aud: float = 50.0,
+        tier_config: dict | None = None,
+        num_workers: int = 8,
+        batch_size: int = 50,
+        location: str = "Australia",
+        exclude_domains: set | None = None,
+        refill_pct: float = 0.08,
+        max_in_flight: int = DEFAULT_MAX_IN_FLIGHT,
+    ) -> PipelineResult:
+        """
+        CD Player v1 — primary streaming entry point.
+
+        Spawns num_workers coroutines pulling discovery batches from categories.
+        Each worker calls _process_domain per domain — domains stream through
+        stages 2–11 independently. Cards emitted immediately via on_card callback
+        as each domain completes all stages.
+
+        Stops accepting new domains when target_cards is reached OR budget_cap_aud
+        (converted to USD) is exceeded.
+
+        Args:
+            categories:      Category name strings (keys in cohort_runner.CATEGORY_MAP)
+                             OR raw DFS category code strings.
+            target_cards:    Stop after this many cards are emitted.
+            budget_cap_aud:  Hard budget cap in AUD. Pipeline stops when cost exceeds this.
+            tier_config:     Optional tier configuration dict (reserved for future use).
+            num_workers:     Parallel worker coroutines.
+            batch_size:      Domains per discovery pull.
+            location:        Location string for discovery.
+            exclude_domains: Domains to skip (already claimed).
+
+        Returns:
+            PipelineResult with emitted cards and run stats.
+        """
+        from src.orchestration.cohort_runner import CATEGORY_MAP
+
+        budget_cap_usd = budget_cap_aud / 1.55
+
+        t0 = time.monotonic()
+        results: list[ProspectCard] = []
+        results_lock = asyncio.Lock()
+        target_reached = asyncio.Event()
+        cards_emitted = 0  # asyncio-safe counter via results_lock
+
+        stats = PipelineStats()
+        stats_lock = asyncio.Lock()
+
+        seen_domains: set[str] = set(exclude_domains or [])
+        seen_lock = asyncio.Lock()
+
+        # ── Budget enforcement state (P0 fix) ──────────────────────────────
+        # Gate B (per-stage) reads this via self._run_cost_state. Gates A
+        # (cost-aware admission) and C (max_in_flight semaphore) read
+        # budget_cap_usd + admission_sem directly from run_streaming scope.
+        self._run_cost_state = {
+            "total":      0.0,
+            "cap":        budget_cap_usd,
+            "lock":       asyncio.Lock(),
+            "per_domain": {},                # id(domain_data) -> last cost
+        }
+        admission_sem = asyncio.Semaphore(max(1, max_in_flight))
+        budget_exceeded = asyncio.Event()
+
+        # T3 DROP-TRIGGERED REFILL — whenever drops_since_last_refill hits
+        # refill_threshold we fire an extra DFS discovery batch so the worker
+        # pool keeps draining new candidate domains. Each new domain becomes
+        # its own _process_domain task concurrent with the workers.
+        refill_threshold = max(1, int(target_cards * refill_pct))
+        drops_since_last_refill = 0
+        drops_lock = asyncio.Lock()
+        # FIX 1 — set with discard-on-done avoids unbounded list growth.
+        refill_tasks: set[asyncio.Task] = set()
+        refill_offsets: dict[str, int] = {}
+        # FIX 2 — dedicated counter for category round-robin (was using
+        # len(refill_tasks) which mixed task types and skewed distribution).
+        refill_counter = 0
+
+        # Resolve category names to int codes (pass-through if already int strings)
+        resolved_codes: list[str] = []
+        for cat in categories:
+            if cat in CATEGORY_MAP:
+                resolved_codes.append(str(CATEGORY_MAP[cat]))
+            else:
+                resolved_codes.append(str(cat))  # assume already a code
+
+        offsets: dict[str, int] = {code: 0 for code in resolved_codes}
+        offsets_lock = asyncio.Lock()
+
+        async def _process_one(domain: str, category_label: str) -> None:
+            """Run the full stages 2–11 pipeline for one domain + emit card
+            (or count the drop). Shared by pool workers AND refill tasks."""
+            nonlocal cards_emitted, drops_since_last_refill
+            if target_reached.is_set() or budget_exceeded.is_set():
+                return
+
+            # Gate A — cost-aware admission. Reserve ESTIMATED_PER_DOMAIN_COST
+            # against the shared counter BEFORE spending any API call. Skip
+            # the domain if reservation would breach the cap.
+            cost_state = self._run_cost_state
+            async with cost_state["lock"]:
+                projected = cost_state["total"] + ESTIMATED_PER_DOMAIN_COST_USD
+                if projected >= cost_state["cap"]:
+                    logger.warning(
+                        "budget_exceeded admission_gate domain=%s total=$%.3f "
+                        "+est=$%.3f cap=$%.3f",
+                        domain, cost_state["total"],
+                        ESTIMATED_PER_DOMAIN_COST_USD, cost_state["cap"],
+                    )
+                    budget_exceeded.set()
+                    target_reached.set()
+                    return
+
+            # Gate C — bound the worst-case concurrent in-flight spend
+            # (max_in_flight × ESTIMATED_PER_DOMAIN_COST_USD).
+            async with admission_sem:
+                if target_reached.is_set() or budget_exceeded.is_set():
+                    return
+
+                domain_data = _new_domain(domain, category_label)
+                try:
+                    card = await self._process_domain(domain_data)
+                except Exception as exc:
+                    logger.warning("_process_domain failed domain=%s: %s", domain, exc)
+                    card = None
+
+                # If _process_domain dropped for budget, signal the run to stop.
+                if domain_data.get("dropped_at") == "budget_exceeded":
+                    budget_exceeded.set()
+                    target_reached.set()
+
+            async with stats_lock:
+                stats.total_cost_usd += domain_data.get("cost_usd", 0.0)
+                if domain_data.get("dropped_at"):
+                    stage = domain_data["dropped_at"]
+                    if stage in ("stage3", "stage4"):
+                        stats.enrichment_failed += 1
+                    elif stage == "stage5":
+                        stats.affordability_rejected += 1
+
+            if card is None:
+                async with drops_lock:
+                    drops_since_last_refill += 1
+                    if (
+                        drops_since_last_refill >= refill_threshold
+                        and not target_reached.is_set()
+                    ):
+                        drops_since_last_refill = 0
+                        # FIX 1 — auto-discard completed refill tasks.
+                        _t = asyncio.create_task(_trigger_refill())
+                        refill_tasks.add(_t)
+                        _t.add_done_callback(refill_tasks.discard)
+                return
+
+            async with results_lock:
+                if target_reached.is_set():
+                    return
+                results.append(card)
+                cards_emitted += 1
+                stats.viable_prospects += 1
+                if self._on_card is not None:
+                    try:
+                        self._on_card(card)
+                    except Exception as cb_exc:
+                        logger.warning(
+                            "on_card callback error domain=%s: %s", domain, cb_exc,
+                        )
+                logger.info(
+                    "cd_player_card_emitted domain=%s cards=%d/%d cost=$%.3f",
+                    domain, cards_emitted, target_cards, stats.total_cost_usd,
+                )
+                if cards_emitted >= target_cards:
+                    target_reached.set()
+
+        async def _trigger_refill() -> None:
+            """T3 — pull one extra DFS discovery batch + spawn _process_domain
+            tasks per new domain. Stops as soon as target_cards is reached."""
+            nonlocal refill_counter
+            if target_reached.is_set() or budget_exceeded.is_set():
+                return
+            async with stats_lock:
+                if stats.total_cost_usd >= budget_cap_usd:
+                    return
+            async with offsets_lock:
+                # FIX 2 — dedicated round-robin counter (not len(refill_tasks)
+                # which mixes pending-pull tasks with processing tasks).
+                cat_code = resolved_codes[refill_counter % len(resolved_codes)]
+                refill_counter += 1
+                refill_offsets.setdefault(cat_code, offsets[cat_code])
+                refill_offsets[cat_code] += batch_size
+                offset = refill_offsets[cat_code]
+
+            try:
+                async with GLOBAL_SEM_DFS:
+                    raw_batch = await self._discovery.pull_batch(
+                        category_code=cat_code,
+                        location_name=location,
+                        limit=batch_size,
+                        offset=offset,
+                    )
+            except Exception as exc:
+                logger.warning("refill pull_batch error cat=%s: %s", cat_code, exc)
+                return
+
+            if not raw_batch:
+                return
+
+            category_label = cat_code
+            for name, code in CATEGORY_MAP.items():
+                if str(code) == cat_code:
+                    category_label = name
+                    break
+
+            spawned = 0
+            for domain_row in raw_batch:
+                if target_reached.is_set():
+                    break
+                domain = (
+                    domain_row.get("domain", "")
+                    if isinstance(domain_row, dict)
+                    else str(domain_row)
+                )
+                if not domain:
+                    continue
+                async with seen_lock:
+                    if domain in seen_domains:
+                        continue
+                    seen_domains.add(domain)
+                async with stats_lock:
+                    stats.discovered += 1
+                # FIX 1 — auto-discard completed refill tasks.
+                _t = asyncio.create_task(_process_one(domain, category_label))
+                refill_tasks.add(_t)
+                _t.add_done_callback(refill_tasks.discard)
+                spawned += 1
+            logger.info(
+                "cd_player_refill triggered cat=%s offset=%d spawned=%d drops_threshold=%d",
+                cat_code, offset, spawned, refill_threshold,
+            )
+
+        async def _worker(worker_id: int) -> None:
+            nonlocal cards_emitted, drops_since_last_refill
+            cat_idx = worker_id
+
+            while not target_reached.is_set():
+                if budget_exceeded.is_set():
+                    return
+                # Budget check (legacy post-completion guard; gates A/B/C
+                # above are the authoritative cost defences).
+                async with stats_lock:
+                    if stats.total_cost_usd >= budget_cap_usd:
+                        logger.warning(
+                            "worker_%d: budget cap reached $%.2f USD ($%.2f AUD) — stopping",
+                            worker_id, budget_cap_usd, budget_cap_aud,
+                        )
+                        budget_exceeded.set()
+                        target_reached.set()
+                        return
+
+                # Pull discovery batch
+                async with offsets_lock:
+                    cat_code = resolved_codes[cat_idx % len(resolved_codes)]
+                    offset = offsets[cat_code]
+                    offsets[cat_code] += batch_size
+                    cat_idx += 1
+
+                try:
+                    async with GLOBAL_SEM_DFS:
+                        raw_batch = await self._discovery.pull_batch(
+                            category_code=cat_code,
+                            location_name=location,
+                            limit=batch_size,
+                            offset=offset,
+                        )
+                except Exception as exc:
+                    logger.warning("worker_%d pull_batch error: %s", worker_id, exc)
+                    break
+
+                if not raw_batch:
+                    logger.info("worker_%d: category %s exhausted at offset %d", worker_id, cat_code, offset)
+                    break
+
+                for domain_row in raw_batch:
+                    if target_reached.is_set():
+                        return
+
+                    domain = (
+                        domain_row.get("domain", "")
+                        if isinstance(domain_row, dict)
+                        else str(domain_row)
+                    )
+                    if not domain:
+                        continue
+
+                    # Dedup across workers
+                    async with seen_lock:
+                        if domain in seen_domains:
+                            continue
+                        seen_domains.add(domain)
+
+                    async with stats_lock:
+                        stats.discovered += 1
+
+                    # Resolve category label (first time only per cat_code)
+                    category_label = cat_code
+                    for name, code in CATEGORY_MAP.items():
+                        if str(code) == cat_code:
+                            category_label = name
+                            break
+
+                    # Process through all stages (shared with refill tasks)
+                    await _process_one(domain, category_label)
+                    if target_reached.is_set():
+                        return
+
+        workers = [_worker(i) for i in range(num_workers)]
+        try:
+            await asyncio.gather(*workers, return_exceptions=True)
+
+            # T3 — drain any refill-spawned tasks still running. Snapshot the
+            # set because add_done_callback mutates it as tasks complete.
+            if refill_tasks:
+                await asyncio.gather(*list(refill_tasks), return_exceptions=True)
+        finally:
+            # Clear per-run cost state so subsequent runs start fresh.
+            self._run_cost_state = None
+
+        stats.elapsed_seconds = time.monotonic() - t0
+        if budget_exceeded.is_set():
+            logger.warning(
+                "run_streaming_budget_exceeded cards=%d discovered=%d cap_usd=$%.3f total_usd=$%.3f",
+                len(results), stats.discovered, budget_cap_usd, stats.total_cost_usd,
+            )
+        logger.info(
+            "run_streaming_complete cards=%d discovered=%d workers=%d elapsed=%.1fs cost_usd=$%.3f",
+            len(results), stats.discovered, num_workers, stats.elapsed_seconds, stats.total_cost_usd,
+        )
+        return PipelineResult(prospects=results, stats=stats)
+
+    # ── Legacy entry points (deprecated) ─────────────────────────────────
 
     async def run(
         self,
@@ -483,341 +1033,33 @@ class PipelineOrchestrator:
         exclude_domains: set | None = None,
     ) -> PipelineResult:
         """
-        Stage-parallel pipeline run.
+        DEPRECATED — stage-parallel batch pipeline (Directive #293).
 
-        Stages 1–9 process the batch concurrently per stage.
-        Stops when target_count viable prospects are found or all categories exhausted.
-
-        Args:
-            category_codes: One or more DFS category codes to sweep. A single str
-                            is accepted for backwards compatibility.
-            location: Location string passed to discovery layer.
-            target_count: Stop after this many viable prospects are found.
-            batch_size: Discovery batch size per pull_batch call.
-            exclude_domains: Optional set of already-claimed domains to skip.
-                             Caller is responsible for querying campaign_leads to
-                             build this set — the orchestrator is stateless.
-                             (No DB migration needed: campaign_leads handles
-                              multi-agency claiming via business_universe_id + campaign_id.)
+        Use run_streaming() for the CD Player v1 unified flow.
+        This method preserves backwards compatibility for callers that
+        pass legacy discovery/scorer/dm_identification dependencies.
         """
-        results: list[ProspectCard] = []
-        stats = PipelineStats()
-        t0 = time.monotonic()
-
-        # Create semaphores once per run (shared across batches)
-        sem_spider = asyncio.Semaphore(SEM_SPIDER)
-        sem_abn    = asyncio.Semaphore(SEM_ABN)
-        sem_paid   = asyncio.Semaphore(SEM_PAID)
-        sem_dm     = asyncio.Semaphore(SEM_DM)
-
-        # Normalise to list for backwards compatibility
-        if isinstance(category_codes, str):
-            codes = [category_codes]
-        else:
-            codes = list(category_codes)
-
-        for category_code in codes:
-            if len(results) >= target_count:
-                break
-            offset = 0
-
-            while len(results) < target_count:
-
-                # ── STAGE 1: Discovery ────────────────────────────────────────
-                try:
-                    raw_domains = await self._discovery.pull_batch(
-                        category_code=category_code,
-                        location=location,
-                        limit=batch_size,
-                        offset=offset,
-                    )
-                except Exception:
-                    logger.exception("stage1_discovery_failed category=%s offset=%d", category_code, offset)
-                    break
-
-                if not raw_domains:
-                    logger.info("stage1_category_exhausted category=%s offset=%d", category_code, offset)
-                    break
-
-                offset += batch_size
-                domains = [
-                    (d if isinstance(d, str) else d.get("domain", ""))
-                    for d in raw_domains
-                    if (d if isinstance(d, str) else d.get("domain"))
-                ]
-
-                # Filter already-claimed domains (caller provides set)
-                if exclude_domains:
-                    before = len(domains)
-                    domains = [d for d in domains if d not in exclude_domains]
-                    excluded_count = before - len(domains)
-                    if excluded_count:
-                        logger.info(
-                            "stage1_excluded_claimed category=%s excluded=%d",
-                            category_code, excluded_count,
-                        )
-
-                if not domains:
-                    continue
-
-                stats.discovered += len(domains)
-                logger.info(
-                    "stage1_complete category=%s batch=%d domains=%d",
-                    category_code, offset // batch_size, len(domains),
-                )
-
-                # ── STAGE 2: Spider scrape ALL concurrently ───────────────────
-                spider_coros = [self._stage_spider(sem_spider, d) for d in domains]
-                spider_results: list[dict] = list(
-                    await asyncio.gather(*spider_coros, return_exceptions=False)
-                )
-                logger.info(
-                    "stage2_complete scraped=%d non-empty=%d",
-                    len(spider_results),
-                    sum(1 for s in spider_results if s),
-                )
-
-                # ── STAGE 3: DNS + ABN ALL concurrently (sem=1 for asyncpg) ──
-                enrich_coros = [
-                    self._stage_enrich(sem_abn, d, s)
-                    for d, s in zip(domains, spider_results)
-                ]
-                enrich_results: list[dict | None] = list(
-                    await asyncio.gather(*enrich_coros, return_exceptions=False)
-                )
-                enriched_pairs: list[tuple[str, dict]] = []
-                for domain, enrichment in zip(domains, enrich_results):
-                    if enrichment:
-                        stats.enriched += 1
-                        enriched_pairs.append((domain, enrichment))
-                    else:
-                        stats.enrichment_failed += 1
-                logger.info(
-                    "stage3_complete enriched=%d failed=%d",
-                    stats.enriched, stats.enrichment_failed,
-                )
-
-                # ── STAGE 4: Affordability gate (in-memory) ───────────────────
-                afford_passed: list[tuple[str, dict, Any]] = []
-                for domain, enrichment in enriched_pairs:
-                    # Non-AU filter: reject before scoring
-                    if enrichment.get("non_au"):
-                        stats.affordability_rejected += 1
-                        continue
-                    try:
-                        afford = self._scorer.score_affordability(enrichment)
-                    except AttributeError:
-                        # Legacy scorer fallback: score_affordability not available
-                        afford = self._scorer.score(enrichment)
-                    if afford.passed_gate:
-                        afford_passed.append((domain, enrichment, afford))
-                    else:
-                        stats.affordability_rejected += 1
-                logger.info(
-                    "stage4_complete afford_passed=%d rejected=%d",
-                    len(afford_passed), stats.affordability_rejected,
-                )
-
-                # ── STAGE 5: Intent free gate (in-memory) ─────────────────────
-                intent_passed: list[tuple[str, dict, Any, Any]] = []
-                for domain, enrichment, afford in afford_passed:
-                    try:
-                        intent_free = self._scorer.score_intent_free(enrichment)
-                        if intent_free.band == "NOT_TRYING":
-                            stats.intent_rejected += 1
-                            continue
-                    except AttributeError:
-                        # Legacy scorer: no intent scoring — all pass
-                        intent_free = None
-                    intent_passed.append((domain, enrichment, afford, intent_free))
-                logger.info(
-                    "stage5_complete intent_passed=%d intent_rejected=%d",
-                    len(intent_passed), stats.intent_rejected,
-                )
-
-                if not intent_passed:
-                    continue
-
-                # ── STAGE 6: Paid enrichment ALL survivors concurrently ────────
-                paid_coros = []
-                for domain, enrichment, afford, intent_free in intent_passed:
-                    company_name = (
-                        enrichment.get("company_name")
-                        or enrichment.get("abn_entity_name")
-                        or domain
-                    )
-                    suburb = (enrichment.get("website_address") or {}).get("suburb", "")
-                    paid_coros.append(
-                        self._stage_paid(sem_paid, domain, company_name, suburb, location)
-                    )
-                paid_results: list[dict] = list(
-                    await asyncio.gather(*paid_coros, return_exceptions=False)
-                )
-                stats.paid_enrichment_calls += len(intent_passed)
-                logger.info("stage6_complete paid_calls=%d", len(intent_passed))
-
-                # ── STAGE 7: Intent full score (in-memory) ────────────────────
-                dm_candidates: list[tuple[str, dict, Any, Any, dict]] = []
-                for (domain, enrichment, afford, intent_free), paid in zip(
-                    intent_passed, paid_results
-                ):
-                    ads_data = paid.get("ads_data")
-                    gmb_data = paid.get("gmb_data")
-                    # Merge GMB data into enrichment for scoring
-                    if gmb_data:
-                        enrichment = {**enrichment, **gmb_data}
-                        stats.total_cost_usd += 0.0035
-                    if ads_data:
-                        stats.total_cost_usd += 0.002
-                    try:
-                        intent_full = self._scorer.score_intent_full(
-                            enrichment, ads_data, gmb_data
-                        )
-                    except AttributeError:
-                        intent_full = intent_free  # legacy fallback
-                    dm_candidates.append((domain, enrichment, afford, intent_full, paid))
-
-                # ── STAGE 7b: Intelligence layer (optional, Sonnet/Haiku) ─────
-                # Runs comprehend_website → classify_intent → refine_evidence
-                # for each dm_candidate if intelligence module is wired.
-                intel_results: dict[str, dict] = {}
-                if self._intelligence is not None:
-                    intel_coros = []
-                    for domain, enrichment, afford, intent_full, paid in dm_candidates:
-                        spider_html = enrichment.get("html", "")
-                        ads_data = paid.get("ads_data")
-                        gmb_data = paid.get("gmb_data")
-                        intel_coros.append(
-                            self._stage_intelligence(domain, spider_html, enrichment, ads_data, gmb_data)
-                        )
-                    intel_raw = await asyncio.gather(*intel_coros, return_exceptions=True)
-                    for (domain, *_), intel in zip(dm_candidates, intel_raw):
-                        if isinstance(intel, Exception):
-                            logger.warning("intelligence failed domain=%s: %s", domain, intel)
-                            intel_results[domain] = {}
-                        else:
-                            intel_results[domain] = intel or {}
-                    logger.info("stage7b_intelligence_complete domains=%d", len(intel_results))
-
-                # ── STAGE 8: DM identification ALL concurrently ───────────────
-                dm_coros = []
-                for domain, enrichment, afford, intent_full, paid in dm_candidates:
-                    company_name = (
-                        enrichment.get("company_name")
-                        or enrichment.get("abn_entity_name")
-                        or domain
-                    )
-                    dm_coros.append(
-                        self._stage_dm(sem_dm, domain, company_name, enrichment)
-                    )
-                dm_results: list[Any] = list(
-                    await asyncio.gather(*dm_coros, return_exceptions=False)
-                )
-                logger.info("stage8_complete dm_attempted=%d", len(dm_results))
-
-                # ── STAGE 9: Reachability + ProspectCard build ────────────────
-                for (domain, enrichment, afford, intent_full, paid), dm in zip(
-                    dm_candidates, dm_results
-                ):
-                    if len(results) >= target_count:
-                        break
-
-                    if not dm or not dm.name:
-                        stats.dm_not_found += 1
-                        continue
-                    stats.dm_found += 1
-
-                    # Reachability gate
-                    has_email = bool(enrichment.get("website_contact_emails"))
-                    reachable = bool(dm.linkedin_url) or has_email
-                    if not reachable:
-                        stats.unreachable += 1
-                        continue
-
-                    company_name = resolve_business_name(domain, enrichment)
-                    # Use intelligence layer results if available, else fall back to scorer
-                    intel = intel_results.get(domain, {})
-                    if intel.get("evidence_statements"):
-                        evidence = intel["evidence_statements"]
-                        intent_band = intel.get("intent_band") or (getattr(intent_full, "band", "UNKNOWN") if intent_full else "UNKNOWN")
-                        intent_score = intel.get("intent_score") or (getattr(intent_full, "raw_score", 0) if intent_full else 0)
-                    else:
-                        evidence = getattr(intent_full, "evidence", []) if intent_full else []
-                        intent_band = getattr(intent_full, "band", "UNKNOWN") if intent_full else "UNKNOWN"
-                        intent_score = getattr(intent_full, "raw_score", 0) if intent_full else 0
-
-                    _loc_suburb, _loc_state, _loc_display = resolve_location(domain, enrichment, default_location=location)
-
-                    # ── STAGE 7c: Vulnerability Report ───────────────────────────
-                    vuln_report: dict = {}
-                    if self._intelligence is not None:
-                        _comp_data = {
-                            "top3": (paid.get("ads_data") or {}).get("competitors_top3", []),
-                            "count": (paid.get("ads_data") or {}).get("competitor_count", 0),
-                        }
-                        _bl_data = {
-                            "referring_domains": enrichment.get("backlinks_referring_domains", 0),
-                            "domain_rank": enrichment.get("backlinks_domain_rank", 0),
-                            "trend": enrichment.get("backlinks_trend", "unknown"),
-                        }
-                        _brand_data = {
-                            "position": enrichment.get("brand_serp_position"),
-                            "gmb_showing": enrichment.get("brand_serp_gmb_showing", False),
-                            "competitors_bidding": enrichment.get("brand_serp_competitors_bidding", False),
-                        }
-                        _indexed = enrichment.get("indexed_pages_count", 0)
-                        vuln_report = await self._intelligence.generate_vulnerability_report(
-                            domain=domain,
-                            company_name=company_name,
-                            enrichment=enrichment,
-                            intelligence=intel,
-                            competitors_data=_comp_data,
-                            backlinks_data=_bl_data,
-                            brand_serp_data=_brand_data,
-                            indexed_pages=_indexed,
-                        )
-
-                    card = ProspectCard(
-                        domain=domain,
-                        company_name=company_name,
-                        location=_loc_display,
-                        location_suburb=_loc_suburb,
-                        location_state=_loc_state,
-                        location_display=_loc_display,
-                        services=enrichment.get("services") or intel.get("services") or [],
-                        evidence=evidence,
-                        affordability_band=afford.band,
-                        affordability_score=afford.raw_score,
-                        intent_band=intent_band,
-                        intent_score=intent_score,
-                        is_running_ads=(paid.get("ads_data") or {}).get("is_running_ads", False),
-                        gmb_review_count=(paid.get("gmb_data") or {}).get("gmb_review_count", 0),
-                        gmb_rating=(paid.get("gmb_data") or {}).get("gmb_rating"),
-                        dm_name=dm.name,
-                        dm_title=dm.title,
-                        dm_linkedin_url=dm.linkedin_url,
-                        dm_confidence=dm.confidence,
-                        vulnerability_report=vuln_report,
-                    )
-                    results.append(card)
-                    if self._on_card is not None:
-                        try:
-                            self._on_card(card)
-                        except Exception:
-                            pass  # never let streaming break the pipeline
-                    stats.viable_prospects += 1
-                    stats.category_stats[category_code] = stats.category_stats.get(category_code, 0) + 1
-                    logger.info(
-                        "prospect_found domain=%s afford=%s intent=%s dm=%s",
-                        domain, afford.band, intent_band, dm.name,
-                    )
-
-        stats.elapsed_seconds = time.monotonic() - t0
-        logger.info("orchestrator_complete prospects=%d discovered=%d elapsed=%.1fs",
-                    len(results), stats.discovered, stats.elapsed_seconds)
-        return PipelineResult(prospects=results, stats=stats)
-
-    # ── Parallel worker run ───────────────────────────────────────────────
+        warnings.warn(
+            "PipelineOrchestrator.run() is deprecated. Use run_streaming() instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        # Fall back to run_streaming if CD Player clients are wired
+        if self._dfs is not None and self._gemini is not None:
+            codes = [category_codes] if isinstance(category_codes, str) else list(category_codes)
+            return await self.run_streaming(
+                categories=codes,
+                target_cards=target_count,
+                budget_cap_aud=500.0,
+                location=location,
+                exclude_domains=exclude_domains,
+            )
+        # No CD Player clients — return empty result rather than crash
+        logger.error(
+            "run() called without CD Player clients (dfs_client, gemini_client). "
+            "Instantiate PipelineOrchestrator with dfs_client and gemini_client."
+        )
+        return PipelineResult(prospects=[], stats=PipelineStats())
 
     async def run_parallel(
         self,
@@ -831,429 +1073,34 @@ class PipelineOrchestrator:
         discover_all: bool = False,
     ) -> PipelineResult:
         """
-        Multi-worker parallel pipeline (Directive #295 Task E, extended #298).
+        DEPRECATED — multi-worker parallel pipeline (Directive #295/#298).
 
-        Spawns num_workers coroutines, each pulling batches from category_codes
-        in round-robin. Workers share a global semaphore pool and accumulate
-        results into a shared list protected by asyncio.Lock.
-
-        Args:
-            category_codes: DFS category codes to sweep (round-robin across workers).
-            location: Location string passed to discovery layer.
-            target_count: Stop once this many viable prospects are found.
-            num_workers: Number of concurrent worker coroutines.
-            batch_size: Domains per pull_batch call.
-            exclude_domains: Domains already claimed — skipped without processing.
-            on_prospect_found: Optional async callable(card: ProspectCard) called
-                               immediately when each prospect is found (for streaming).
-            discover_all: If True and self._discovery has discover_prospects(),
-                          pre-fetch ALL domains across all category_codes before
-                          workers start. Domains fed into a shared asyncio.Queue.
-                          Workers consume from queue instead of calling pull_batch.
-                          Use for service-first multi-category sweeps (#298).
+        Use run_streaming() for the CD Player v1 unified flow.
+        Delegates to run_streaming() when CD Player clients are wired;
+        otherwise logs an error and returns empty.
         """
-        t0 = time.monotonic()
-
-        # ── On-demand discovery queue (replaces pre-fetch model) ─────────────
-        # When discover_all=True and discovery has next_batch(), use on-demand
-        # batching: pull 100 domains at a time, refill when queue < 20.
-        # Stops pulling as soon as target_reached fires — DFS cost tracks need.
-        pre_fetched_queue: asyncio.Queue | None = None
-        discovery_lock: asyncio.Lock | None = None
-        discovery_refill_task: asyncio.Task | None = None
-
-        if discover_all and hasattr(self._discovery, "next_batch"):
-            logger.info("run_parallel: on-demand discovery mode")
-            category_ints: list[int] = []
-            for code in category_codes:
-                try:
-                    category_ints.append(int(code))
-                except (ValueError, TypeError):
-                    pass
-
-            # Reset discovery pagination state
-            if hasattr(self._discovery, "reset"):
-                self._discovery.reset(category_ints)
-
-            pre_fetched_queue = asyncio.Queue()
-            discovery_lock = asyncio.Lock()
-
-            async def _refill_loop() -> None:
-                """Pull next_batch() whenever queue drops below REFILL_THRESHOLD."""
-                REFILL_THRESHOLD = 20
-                DISCOVERY_BATCH = 100
-                while not target_reached.is_set():
-                    if pre_fetched_queue.qsize() < REFILL_THRESHOLD:
-                        async with GLOBAL_SEM_DFS:
-                            try:
-                                batch = await self._discovery.next_batch(
-                                    category_codes=category_ints,
-                                    location=location,
-                                    batch_size=DISCOVERY_BATCH,
-                                    exclude_domains=set(exclude_domains or []),
-                                )
-                            except Exception as exc:
-                                logger.warning("discovery refill error: %s", exc)
-                                break
-                        if not batch:
-                            logger.info("run_parallel: all discovery categories exhausted")
-                            break
-                        for item in batch:
-                            await pre_fetched_queue.put(item)
-                        logger.info(
-                            "run_parallel: refilled queue with %d domains (qsize=%d)",
-                            len(batch), pre_fetched_queue.qsize(),
-                        )
-                    else:
-                        await asyncio.sleep(0.1)
-
-            # Pre-fill the queue with one batch BEFORE starting workers.
-            # Fixes producer-consumer race: without this, workers start,
-            # find empty queue, and exit before the refill loop makes its
-            # first DFS call. Directive #317.3 — Option B.
-            async with GLOBAL_SEM_DFS:
-                initial_batch = await self._discovery.next_batch(
-                    category_codes=category_ints,
-                    location=location,
-                    batch_size=100,
-                    exclude_domains=set(exclude_domains or []),
-                )
-            if initial_batch:
-                for item in initial_batch:
-                    await pre_fetched_queue.put(item)
-                logger.info(
-                    "run_parallel: pre-filled queue with %d domains",
-                    len(initial_batch),
-                )
-            else:
-                logger.warning("run_parallel: initial discovery batch empty — no domains found")
-
-            discovery_refill_task = asyncio.create_task(_refill_loop())
-
-        # ── Shared state ─────────────────────────────────────────────────
-        results: list[ProspectCard] = []
-        results_lock = asyncio.Lock()
-        target_reached = asyncio.Event()
-
-        stats = PipelineStats()
-        stats_lock = asyncio.Lock()
-
-        seen_domains: set[str] = set(exclude_domains or [])
-        seen_lock = asyncio.Lock()
-
-        # Per-category offset counters (each worker advances its own category slot)
-        offsets: dict[str, int] = {code: 0 for code in category_codes}
-        offsets_lock = asyncio.Lock()
-
-        # Per-worker semaphores (each worker gets its own; global sems still apply)
-        sem_spider = asyncio.Semaphore(SEM_SPIDER)
-        sem_abn    = asyncio.Semaphore(SEM_ABN)
-        sem_paid   = asyncio.Semaphore(SEM_PAID)
-        sem_dm     = asyncio.Semaphore(SEM_DM)
-
-        # ── Worker coroutine ─────────────────────────────────────────────
-        async def _worker(worker_id: int) -> None:
-            cat_idx = worker_id  # each worker starts on a different category
-
-            while not target_reached.is_set():
-
-                # ── STAGE 1: Discovery ────────────────────────────────────
-                if pre_fetched_queue is not None:
-                    # Multi-category pre-fetch mode: consume from shared queue
-                    batch = []
-                    while len(batch) < batch_size:
-                        try:
-                            item = pre_fetched_queue.get_nowait()
-                            batch.append(item)
-                        except asyncio.QueueEmpty:
-                            break
-                    if not batch:
-                        break  # queue exhausted
-                else:
-                    # Legacy per-category pull mode
-                    async with offsets_lock:
-                        cat_code = category_codes[cat_idx % len(category_codes)]
-                        offset = offsets[cat_code]
-                        offsets[cat_code] += batch_size
-                        cat_idx += 1
-
-                    try:
-                        async with GLOBAL_SEM_DFS:
-                            batch = await self._discovery.pull_batch(
-                                category_code=cat_code,
-                                location_name=location,
-                                limit=batch_size,
-                                offset=offset,
-                            )
-                    except Exception as exc:
-                        logger.warning("worker_%d pull_batch error: %s", worker_id, exc)
-                        break
-
-                    if not batch:
-                        break  # category exhausted for this worker
-
-                for domain_row in batch:
-                    if target_reached.is_set():
-                        return
-
-                    domain = domain_row.get("domain", "")
-                    if not domain:
-                        continue
-
-                    # Dedup across workers
-                    async with seen_lock:
-                        if domain in seen_domains:
-                            continue
-                        seen_domains.add(domain)
-
-                    async with stats_lock:
-                        stats.discovered += 1
-
-                    # STAGE 2: Scrape
-                    async with GLOBAL_SEM_SCRAPE:
-                        spider_data = await self._stage_spider(sem_spider, domain)
-
-                    # STAGE 3: Enrich (DNS + ABN)
-                    enrichment = await self._stage_enrich(sem_abn, domain, spider_data)
-                    if enrichment is None:
-                        async with stats_lock:
-                            stats.enrichment_failed += 1
-                        continue
-
-                    async with stats_lock:
-                        stats.enriched += 1
-
-                    # Non-AU filter (Task D)
-                    if enrichment.get("non_au"):
-                        async with stats_lock:
-                            stats.affordability_rejected += 1
-                        continue
-
-                    intel = self._intelligence  # None if not wired
-                    html = enrichment.get("html", "")
-                    company_name = resolve_business_name(domain, enrichment)
-                    addr = enrichment.get("website_address") or {}
-                    suburb = (addr.get("suburb") or addr.get("city") or "") if isinstance(addr, dict) else ""
-
-                    # ── STAGE 3b: Website comprehension (Sonnet, optional) ────
-                    website_data: dict = {}
-                    if intel is not None:
-                        website_data = await intel.comprehend_website(domain, html, f"https://{domain}")
-
-                    # ── GATE 1: Affordability ─────────────────────────────────
-                    if intel is not None:
-                        # Haiku affordability judgment replaces rule-based scorer
-                        afford_intel = await intel.judge_affordability(domain, enrichment, website_data)
-                        if afford_intel.get("hard_gate"):
-                            async with stats_lock:
-                                stats.affordability_rejected += 1
-                            continue
-                        # Build a duck-typed result compatible with ProspectCard fields
-                        class _AffordResult:
-                            band = afford_intel.get("band", "MEDIUM")
-                            raw_score = afford_intel.get("score", 5)
-                            passed_gate = not afford_intel.get("hard_gate", False)
-                            gaps: list = []
-                        afford = _AffordResult()
-                    else:
-                        afford = self._scorer.score_affordability(enrichment)
-                        if not afford.passed_gate:
-                            async with stats_lock:
-                                stats.affordability_rejected += 1
-                            continue
-
-                    # ── STAGE 6: Paid enrichment ──────────────────────────────
-                    async with GLOBAL_SEM_DFS:
-                        paid = await self._stage_paid(sem_paid, domain, company_name, suburb, location)
-
-                    async with stats_lock:
-                        stats.paid_enrichment_calls += 1
-
-                    ads_data = paid.get("ads_data")
-                    gmb_data = paid.get("gmb_data")
-                    if gmb_data:
-                        enrichment = {**enrichment, **gmb_data}
-
-                    # ── STAGE 7: Intent classification ────────────────────────
-                    if intel is not None:
-                        # Sonnet classify_intent replaces point-counting scorer
-                        intent_data = await intel.classify_intent(domain, website_data, gmb_data, ads_data)
-                        intent_band = intent_data.get("band", "NOT_TRYING")
-                        intent_score = intent_data.get("score", 0)
-
-                        # Intent gate: NOT_TRYING rejected
-                        if intent_band == "NOT_TRYING":
-                            async with stats_lock:
-                                stats.intent_rejected += 1
-                            continue
-
-                        # Sonnet analyse_reviews
-                        reviews = (gmb_data or {}).get("reviews") or []
-                        review_data = await intel.analyse_reviews(domain, reviews)
-
-                        # Haiku refine_evidence → final card copy
-                        refined = await intel.refine_evidence(domain, intent_data, review_data, website_data)
-                        evidence = refined.get("evidence_statements", [])
-                    else:
-                        # Fallback: rule-based scorer
-                        intent_free = self._scorer.score_intent_free(enrichment)
-                        if getattr(intent_free, "band", None) == "NOT_TRYING":
-                            async with stats_lock:
-                                stats.intent_rejected += 1
-                            continue
-                        intent = self._scorer.score_intent_full(enrichment, ads_data, gmb_data)
-                        intent_band = getattr(intent, "band", "UNKNOWN")
-                        intent_score = getattr(intent, "raw_score", 0)
-                        evidence = getattr(intent, "evidence", [])
-
-                    # ── STAGE 7c: Vulnerability Report ───────────────────────────
-                    vuln_report: dict = {}
-                    if intel is not None and hasattr(intel, "generate_vulnerability_report"):
-                        try:
-                            _comp_data = {
-                                "top3": paid.get("competitors_top3", []) if isinstance(paid, dict) else [],
-                                "count": paid.get("competitor_count", 0) if isinstance(paid, dict) else 0,
-                            }
-                            _bl_data = {
-                                "referring_domains": paid.get("backlinks_referring_domains", 0) if isinstance(paid, dict) else 0,
-                                "domain_rank": paid.get("backlinks_domain_rank", 0) if isinstance(paid, dict) else 0,
-                                "trend": paid.get("backlinks_trend", "unknown") if isinstance(paid, dict) else "unknown",
-                            }
-                            _brand_data = {
-                                "position": paid.get("brand_serp_position") if isinstance(paid, dict) else None,
-                                "gmb_showing": paid.get("brand_serp_gmb_showing", False) if isinstance(paid, dict) else False,
-                                "competitors_bidding": paid.get("brand_serp_competitors_bidding", False) if isinstance(paid, dict) else False,
-                            }
-                            _indexed = paid.get("indexed_pages_count", 0) if isinstance(paid, dict) else 0
-                            _intel_data = {"intent_band": intent_band, "intent_score": intent_score} if not isinstance(intent_data, dict) else intent_data
-                            vuln_report = await intel.generate_vulnerability_report(
-                                domain=domain,
-                                company_name=company_name,
-                                enrichment=enrichment,
-                                intelligence=_intel_data,
-                                competitors_data=_comp_data,
-                                backlinks_data=_bl_data,
-                                brand_serp_data=_brand_data,
-                                indexed_pages=_indexed,
-                            )
-                        except Exception as _vuln_exc:
-                            logger.warning("vulnerability_report failed domain=%s: %s", domain, _vuln_exc)
-
-                    # ── STAGE 8: DM identification ────────────────────────────
-                    async with GLOBAL_SEM_DFS:
-                        dm = await self._stage_dm(sem_dm, domain, company_name, enrichment)
-
-                    if not dm or not getattr(dm, "name", None):
-                        async with stats_lock:
-                            stats.dm_not_found += 1
-                        continue
-
-                    async with stats_lock:
-                        stats.dm_found += 1
-
-                    # ── STAGE 9: ContactOut (once per DM — email + mobile) ────
-                    # Called ONCE; result passed to both email and mobile waterfalls.
-                    # Cost: 1 ContactOut credit if profile found, 0 if not.
-                    dm_linkedin_url = getattr(dm, "linkedin_url", None)
-                    contactout_result = await enrich_dm_via_contactout(dm_linkedin_url)
-
-                    # ── STAGE 9a: Email waterfall ─────────────────────────────
-                    email_result = await discover_email(
-                        domain=domain,
-                        dm_name=dm.name or "",
-                        dm_linkedin=dm_linkedin_url,
-                        html=enrichment.get("html") or enrichment.get("_raw_html") or "",
-                        company_name=company_name,
-                        contactout_result=contactout_result,
-                    )
-
-                    # ── STAGE 9b: Mobile waterfall ────────────────────────────
-                    contact_data_for_mobile = enrichment.get("contact_data") or {}
-                    mobile_result = await run_mobile_waterfall(
-                        domain=domain,
-                        dm_linkedin_url=dm_linkedin_url,
-                        contact_data=contact_data_for_mobile,
-                        contactout_result=contactout_result,
-                        leadmagic_client=self._leadmagic_client,  # ADD
-                        brightdata_client=self._brightdata_client,  # ADD
-                    )
-
-                    # GATE: Reachability — email OR LinkedIn required
-                    has_email = bool(email_result.email) or bool(enrichment.get("website_contact_emails"))
-                    has_linkedin = bool(dm_linkedin_url)
-                    if not (has_email or has_linkedin):
-                        async with stats_lock:
-                            stats.unreachable += 1
-                        continue
-
-                    # Build ProspectCard
-                    # Re-resolve with GMB data now available (gmb_data merged into enrichment above)
-                    company_name = resolve_business_name(domain, enrichment, gmb_data)
-                    _loc_suburb, _loc_state, _loc_display = resolve_location(domain, enrichment, gmb_data, default_location=location)
-                    card = ProspectCard(
-                        domain=domain,
-                        company_name=company_name,
-                        location=_loc_display,
-                        location_suburb=_loc_suburb,
-                        location_state=_loc_state,
-                        location_display=_loc_display,
-                        evidence=evidence,
-                        affordability_band=afford.band,
-                        affordability_score=afford.raw_score,
-                        intent_band=intent_band,
-                        intent_score=intent_score,
-                        gmb_rating=enrichment.get("gmb_rating"),
-                        gmb_review_count=enrichment.get("gmb_review_count", 0),
-                        dm_name=dm.name,
-                        dm_title=getattr(dm, "title", None),
-                        dm_linkedin_url=dm_linkedin_url,
-                        dm_confidence=getattr(dm, "confidence", None),
-                        dm_email=email_result.email,
-                        dm_email_verified=email_result.verified,
-                        dm_email_source=email_result.source,
-                        dm_email_confidence=email_result.confidence,
-                        email_cost_usd=email_result.cost_usd,
-                        dm_mobile=mobile_result.mobile,
-                        dm_mobile_source=mobile_result.source,
-                        dm_mobile_tier=mobile_result.tier_used,
-                        vulnerability_report=vuln_report,
-                    )
-
-                    async with results_lock:
-                        if target_reached.is_set():
-                            return  # another worker just hit the target
-                        results.append(card)
-                        if on_prospect_found is not None:
-                            try:
-                                await on_prospect_found(card)
-                            except Exception:
-                                pass
-                        if len(results) >= target_count:
-                            target_reached.set()
-
-                    async with stats_lock:
-                        stats.viable_prospects += 1
-                        stats.category_stats[cat_code] = stats.category_stats.get(cat_code, 0) + 1
-                        logger.info(
-                            "parallel_prospect_found worker=%d domain=%s afford=%s intent=%s dm=%s",
-                            worker_id, domain, afford.band, intent_band, dm.name,
-                        )
-
-        # ── Launch workers ────────────────────────────────────────────────
-        workers = [_worker(i) for i in range(num_workers)]
-        await asyncio.gather(*workers, return_exceptions=True)
-
-        # Cancel refill loop once workers are done
-        if discovery_refill_task is not None and not discovery_refill_task.done():
-            discovery_refill_task.cancel()
-            try:
-                await discovery_refill_task
-            except asyncio.CancelledError:
-                pass
-
-        stats.elapsed_seconds = time.monotonic() - t0
-        logger.info(
-            "parallel_orchestrator_complete prospects=%d discovered=%d workers=%d elapsed=%.1fs",
-            len(results), stats.discovered, num_workers, stats.elapsed_seconds,
+        warnings.warn(
+            "PipelineOrchestrator.run_parallel() is deprecated. Use run_streaming() instead.",
+            DeprecationWarning,
+            stacklevel=2,
         )
-        return PipelineResult(prospects=results, stats=stats)
+        if on_prospect_found is not None:
+            # Wrap async on_prospect_found in a sync on_card shim
+            orig_on_card = self._on_card
+
+            def _shim(card: ProspectCard) -> None:
+                asyncio.get_event_loop().create_task(on_prospect_found(card))
+                if orig_on_card is not None:
+                    orig_on_card(card)
+
+            self._on_card = _shim
+
+        return await self.run_streaming(
+            categories=category_codes,
+            target_cards=target_count,
+            budget_cap_aud=500.0,
+            num_workers=num_workers,
+            batch_size=batch_size,
+            location=location,
+            exclude_domains=exclude_domains,
+        )

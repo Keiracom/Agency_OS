@@ -1,9 +1,21 @@
 """Pipeline F Master Flow — Prefect automation of Stages 1-11.
 
-Directive: P4-BUILD
+Directive: P4-BUILD → T4 (CD Player v1 unified entrypoint)
 Spec: docs/specs/p4_build_spec.md (ratified c73e4851)
 Posture: PARALLEL to existing flows — does NOT replace pool_population_flow,
          enrichment_flow, or lead_enrichment_flow.
+
+T4 WIRING (2026-04-24):
+  The flow body now delegates Stages 1-11 to pipeline_orchestrator.run_streaming()
+  for unified CD Player v1 behaviour. The stage_N @task wrappers and
+  persist_stage8_to_db / dm_messages_gate helpers remain at module scope because
+  they are imported directly by other scripts (see scripts/isolate_persist_stage8.py)
+  and must retain their public signatures.
+
+  Tier / demo_mode / client_id flow through the existing `tier_config` kwarg on
+  PipelineOrchestrator.run_streaming() — no orchestrator signature change needed
+  (ATLAS-owned file). Tier-aware num_workers / batch_size / target_cards /
+  budget are selected at the flow layer via _tier_runtime().
 """
 from __future__ import annotations
 
@@ -48,6 +60,30 @@ _KEIRACOM_PROFILE = {
 # ── Budget / gate constants ──────────────────────────────────────────────────
 _USD_TO_AUD = 1.55
 _PASS_THRESHOLD = 70  # dm_messages quality gate (email_scoring_gate.PASS_THRESHOLD)
+
+
+# ── Tier-aware runtime config (T4) ───────────────────────────────────────────
+# Selects pool sizes and discovery batch sizes per tier. Values are flow-layer
+# defaults; the orchestrator honours num_workers / batch_size / target_cards /
+# budget_cap_aud directly. Semaphore pools (GLOBAL_SEM_DFS / GLOBAL_SEM_SONNET)
+# remain process-wide constants defined in src/pipeline/intelligence.py —
+# making those tier-aware is an ATLAS follow-up (see outbox report).
+_TIER_RUNTIME: dict[str, dict[str, Any]] = {
+    "spark":     {"num_workers": 2, "batch_size": 25,  "target_cards": 5,  "budget_cap_aud": 10.0},
+    "ignition":  {"num_workers": 4, "batch_size": 50,  "target_cards": 15, "budget_cap_aud": 25.0},
+    "velocity":  {"num_workers": 8, "batch_size": 100, "target_cards": 40, "budget_cap_aud": 75.0},
+    "demo":      {"num_workers": 1, "batch_size": 10,  "target_cards": 2,  "budget_cap_aud": 1.0},
+}
+
+
+def _tier_runtime(tier: str, demo_mode: bool) -> dict[str, Any]:
+    """Resolve runtime config for tier. demo_mode forces the smallest profile
+    regardless of tier (spend-safety override)."""
+    key = "demo" if demo_mode else (tier or "ignition").lower()
+    if key not in _TIER_RUNTIME:
+        logger.warning("Unknown tier '%s' — defaulting to ignition", tier)
+        key = "ignition"
+    return dict(_TIER_RUNTIME[key])
 
 
 # ── Stage 1: Discovery ───────────────────────────────────────────────────────
@@ -396,6 +432,39 @@ async def dm_messages_gate(run_start_ts: str, sample_size: int = 3) -> dict:
     return {"count": count, "sampled": len(sample), "all_pass": True}
 
 
+# ── Discovery adapter (T4) ───────────────────────────────────────────────────
+
+class _DFSDiscoveryAdapter:
+    """Minimal discovery adapter used by PipelineOrchestrator.run_streaming().
+
+    Mirrors scripts/run_cd_player.py::DFSDiscoveryAdapter so the Prefect flow
+    path and the CLI path share the same discovery contract.
+    """
+
+    def __init__(self, dfs: Any) -> None:
+        self._dfs = dfs
+
+    async def pull_batch(
+        self,
+        category_code: str,
+        location_name: str = "Australia",
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[dict]:
+        try:
+            rows = await self._dfs.domain_metrics_by_categories(
+                category_codes=[int(category_code)],
+                location_name=location_name,
+                paid_etv_min=0.0,
+                limit=limit,
+                offset=offset,
+            )
+            return rows or []
+        except Exception as exc:
+            logger.warning("_DFSDiscoveryAdapter.pull_batch error: %s", exc)
+            return []
+
+
 # ── Master flow ──────────────────────────────────────────────────────────────
 
 @flow(
@@ -404,26 +473,44 @@ async def dm_messages_gate(run_start_ts: str, sample_size: int = 3) -> dict:
     on_failure=[on_failure_hook],
 )
 async def pipeline_f_master_flow(
+    tier: str = "ignition",
+    demo_mode: bool = False,
+    client_id: str | None = None,
     categories: list[str] | None = None,
-    domains_per_category: int = 4,
     dry_run: bool = False,
-    budget_cap_aud: float = 25.0,
+    budget_cap_aud: float | None = None,
+    # Legacy kwarg (no longer consumed — stage_1_discover is not called by the
+    # streaming path; kept so existing schedules/manual triggers with this
+    # parameter do not break).
+    domains_per_category: int = 4,
 ) -> dict:
-    """Pipeline F v2.1 master flow — Stages 1-11 automated via Prefect.
+    """Pipeline F v2.1 master flow — CD Player v1 streaming entrypoint.
+
+    T4 (2026-04-24): Stages 1-11 are now executed inside
+    PipelineOrchestrator.run_streaming() rather than via per-stage @task
+    gathers. Tier / demo_mode / client_id drive runtime sizing
+    (num_workers, batch_size, target_cards, budget_cap_aud) via
+    _tier_runtime(). They are also forwarded to run_streaming() through its
+    existing `tier_config` kwarg so downstream orchestrator logic can branch
+    on them when ATLAS wires tier-aware semaphore pools.
 
     Parameters
     ----------
-    categories:            Category slugs to discover (default: 5 canonical verticals).
-    domains_per_category:  Max domains per category from Stage 1.
-    dry_run:               If True, set DRY_RUN=1 — no API calls, no spend.
-    budget_cap_aud:        Hard AUD spend ceiling. Converted to USD internally.
+    tier:                One of {spark, ignition, velocity, demo}. Selects
+                         worker/batch/target/budget profile.
+    demo_mode:           Force minimal-spend profile regardless of tier.
+    client_id:           Logical client identifier carried through tier_config.
+    categories:          Category slugs to discover (default: 5 canonical verticals).
+    dry_run:             If True, set DRY_RUN=1 — no API calls, no spend.
+    budget_cap_aud:      Explicit AUD budget override. If None, tier default wins.
+    domains_per_category: Legacy parameter, ignored by the streaming path.
     """
-    from src.orchestration.cohort_runner import _new_domain, _check_budget, CATEGORY_MAP
-    from src.orchestration.flows.stage_9_10_flow import stage_9_10_pipeline
     from src.clients.dfs_labs_client import DFSLabsClient
     from src.intelligence.gemini_client import GeminiClient
     from src.integrations.bright_data_client import BrightDataClient
     from src.integrations.leadmagic import LeadmagicClient
+    from src.pipeline.pipeline_orchestrator import PipelineOrchestrator, ProspectCard
+
     # Load .env on Vultr (local dev); on Railway, env vars are injected by the platform.
     _env_path = "/home/elliotbot/.config/agency-os/.env"
     if os.path.exists(_env_path):
@@ -442,8 +529,17 @@ async def pipeline_f_master_flow(
         os.environ["DRY_RUN"] = "1"
         logger.info("[DRY-RUN] Pipeline F master flow — no API calls, no spend")
 
+    runtime = _tier_runtime(tier, demo_mode)
+    effective_budget_aud = budget_cap_aud if budget_cap_aud is not None else runtime["budget_cap_aud"]
     run_start_ts = datetime.now(UTC).isoformat()
-    budget_cap_usd = budget_cap_aud / _USD_TO_AUD
+
+    logger.info(
+        "pipeline_f_master_flow start tier=%s demo_mode=%s client_id=%s "
+        "num_workers=%d batch_size=%d target_cards=%d budget_aud=%.2f categories=%s",
+        tier, demo_mode, client_id,
+        runtime["num_workers"], runtime["batch_size"], runtime["target_cards"],
+        effective_budget_aud, categories,
+    )
 
     # ── Init clients ─────────────────────────────────────────────────────────
     dfs = DFSLabsClient(
@@ -453,146 +549,63 @@ async def pipeline_f_master_flow(
     gemini = GeminiClient(api_key=env.get("GEMINI_API_KEY"))
     bd = BrightDataClient(api_key=env.get("BRIGHTDATA_API_KEY", ""))
     lm = LeadmagicClient()
+    discovery = _DFSDiscoveryAdapter(dfs)
 
-    # ── Stage 1: Discover ────────────────────────────────────────────────────
-    discovered = await stage_1_discover(categories, domains_per_category, dfs)
-    logger.info("Stage 1: %d domains discovered", len(discovered))
+    cards: list[ProspectCard] = []
 
-    if not discovered:
-        logger.warning("Stage 1 returned 0 domains — aborting")
-        return {"stage1_domains": 0, "cards": 0, "cost_usd": 0.0}
+    def _on_card(card: ProspectCard) -> None:
+        cards.append(card)
 
-    # Build in-memory pipeline from discovered items
-    pipeline: list[dict] = [_new_domain(item["domain"], item["category"]) for item in discovered]
+    orchestrator = PipelineOrchestrator(
+        dfs_client=dfs,
+        gemini_client=gemini,
+        bd_client=bd,
+        lm_client=lm,
+        discovery=discovery,
+        on_card=_on_card,
+    )
 
-    def _total_cost() -> float:
-        return sum(d.get("cost_usd", 0) for d in pipeline)
-
-    def _active() -> list[dict]:
-        return [d for d in pipeline if isinstance(d, dict) and not d.get("dropped_at")]
-
-    def _merge(updated: list) -> None:
-        idx = {d["domain"]: i for i, d in enumerate(pipeline)}
-        for d in updated:
-            if not isinstance(d, dict):
-                logger.warning("_merge: skipping non-dict result: %s", type(d))
-                continue
-            if d.get("domain") in idx:
-                pipeline[idx[d["domain"]]] = d
-
-    # ── Stages 2-8: Sequential per domain, domains run in parallel via gather ─
-    import asyncio
-
-    # Stage 2
-    s2_results = await asyncio.gather(*[stage_2_verify(d, dfs) for d in pipeline])
-    _merge(list(s2_results))
-    if _check_budget(pipeline, budget_cap_usd):
-        return _summary(pipeline, run_start_ts, "budget_killed_stage2")
-
-    # Stage 3
-    active3 = _active()
-    s3_results = await asyncio.gather(*[stage_3_identify(d, gemini) for d in active3])
-    _merge(list(s3_results))
-    if _check_budget(pipeline, budget_cap_usd):
-        return _summary(pipeline, run_start_ts, "budget_killed_stage3")
-
-    # Stage 4
-    active4 = _active()
-    s4_results = await asyncio.gather(*[stage_4_signal(d, dfs) for d in active4])
-    _merge(list(s4_results))
-    if _check_budget(pipeline, budget_cap_usd):
-        return _summary(pipeline, run_start_ts, "budget_killed_stage4")
-
-    # Stage 5
-    active5 = _active()
-    s5_results = await asyncio.gather(*[stage_5_score(d) for d in active5])
-    _merge(list(s5_results))
-
-    # Stage 6
-    active6 = _active()
-    s6_results = await asyncio.gather(*[stage_6_enrich(d, dfs) for d in active6])
-    _merge(list(s6_results))
-    if _check_budget(pipeline, budget_cap_usd):
-        return _summary(pipeline, run_start_ts, "budget_killed_stage6")
-
-    # Stage 7
-    active7 = _active()
-    s7_results = await asyncio.gather(*[stage_7_analyse(d, gemini) for d in active7])
-    _merge(list(s7_results))
-    if _check_budget(pipeline, budget_cap_usd):
-        return _summary(pipeline, run_start_ts, "budget_killed_stage7")
-
-    # Stage 8
-    active8 = _active()
-    s8_results = await asyncio.gather(*[stage_8_contact(d, dfs, bd, lm) for d in active8])
-    _merge(list(s8_results))
-    if _check_budget(pipeline, budget_cap_usd):
-        return _summary(pipeline, run_start_ts, "budget_killed_stage8")
-
-    # Stage 9 (social scrape — in-memory, gated inside _run_stage9)
-    active9 = _active()
-    s9_results = await asyncio.gather(*[stage_9_social(d, bd) for d in active9])
-    _merge(list(s9_results))
-
-    # ── Persist to DB (bridge to stage_9_10_pipeline sub-flow) ───────────────
-    bdm_ids = await persist_stage8_to_db(pipeline)
-    logger.info("Persisted %d BDM rows. Triggering stage_9_10_pipeline sub-flow.", len(bdm_ids))
-
-    # ── Stage 9+10 sub-flow (VR generation + message gen) ────────────────────
-    s9_10_result: dict = {}
-    if bdm_ids and not dry_run:
-        import traceback as _tb
+    try:
+        result = await orchestrator.run_streaming(
+            categories=categories,
+            target_cards=runtime["target_cards"],
+            budget_cap_aud=effective_budget_aud,
+            tier_config={
+                "tier": tier,
+                "demo_mode": demo_mode,
+                "client_id": client_id,
+            },
+            num_workers=runtime["num_workers"],
+            batch_size=runtime["batch_size"],
+        )
+    finally:
+        # DFSLabsClient opens aiohttp sessions; close them regardless of outcome.
         try:
-            s9_10_result = await stage_9_10_pipeline(
-                bdm_ids=bdm_ids,
-                batch_size=len(bdm_ids),
-                budget_cap_usd=min(5.0, budget_cap_usd * 0.3),
-                agency_profile=_KEIRACOM_PROFILE,
-                dry_run=False,
-            )
-        except Exception as _s910_exc:
-            logger.error("stage_9_10_pipeline FAILED:\n%s", _tb.format_exc())
-            s9_10_result = {"error": str(_s910_exc), "traceback": _tb.format_exc()}
-
-    # ── Stage 10 (in-memory VR+MSG for in-pipeline domains) ──────────────────
-    active10 = _active()
-    s10_results = await asyncio.gather(*[stage_10_vr_msg(d) for d in active10])
-    _merge(list(s10_results))
-
-    # ── Stage 11: Card assembly ───────────────────────────────────────────────
-    active11 = _active()
-    s11_results = await asyncio.gather(*[stage_11_card(d) for d in active11])
-    _merge(list(s11_results))
-
-    # ── dm_messages gate (GOV-12) ─────────────────────────────────────────────
-    gate_result: dict = {}
-    if not dry_run and bdm_ids:
-        gate_result = await dm_messages_gate(run_start_ts)
+            await dfs.close()
+        except Exception as exc:
+            logger.warning("dfs.close() failed: %s", exc)
 
     if dry_run:
         os.environ.pop("DRY_RUN", None)
 
-    summary = _summary(pipeline, run_start_ts, "complete")
-    summary["stage_9_10"] = s9_10_result
-    summary["dm_gate"] = gate_result
-    summary["bdm_ids_persisted"] = len(bdm_ids)
-    return summary
-
-
-# ── Summary helper ────────────────────────────────────────────────────────────
-
-def _summary(pipeline: list, run_start_ts: str, status: str) -> dict:
-    dicts = [d for d in pipeline if isinstance(d, dict)]
-    total_cost_usd = sum(d.get("cost_usd", 0) for d in dicts)
-    cards = sum(1 for d in dicts if (d.get("stage11") or {}).get("lead_pool_eligible"))
-    dropped = sum(1 for d in dicts if d.get("dropped_at"))
-    return {
-        "status": status,
+    summary = {
+        "status": "complete",
         "run_start_ts": run_start_ts,
-        "total_domains": len(pipeline),
-        "active": len(pipeline) - dropped,
-        "dropped": dropped,
-        "cards": cards,
-        "cost_usd": round(total_cost_usd, 4),
-        "cost_aud": round(total_cost_usd * 1.55, 4),
+        "tier": tier,
+        "demo_mode": demo_mode,
+        "client_id": client_id,
+        "categories": categories,
+        "num_workers": runtime["num_workers"],
+        "batch_size": runtime["batch_size"],
+        "target_cards": runtime["target_cards"],
+        "cards": len(result.prospects),
+        "discovered": result.stats.discovered,
+        "enrichment_failed": result.stats.enrichment_failed,
+        "affordability_rejected": result.stats.affordability_rejected,
+        "cost_usd": round(result.stats.total_cost_usd, 4),
+        "cost_aud": round(result.stats.total_cost_usd * _USD_TO_AUD, 4),
+        "budget_cap_aud": effective_budget_aud,
+        "elapsed_s": round(result.stats.elapsed_seconds, 1),
     }
+    logger.info("pipeline_f_master_flow complete: %s", json.dumps(summary, default=str))
+    return summary

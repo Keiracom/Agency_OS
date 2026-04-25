@@ -127,14 +127,14 @@ async def fetch_backlog(
         SELECT id, domain, category, pipeline_stage, propensity_score,
                stage_metrics, filter_reason, latest_stage_at,
                CASE
-                   WHEN COALESCE(propensity_score, 0) > 70  THEN 'hot'
+                   WHEN COALESCE(propensity_score, 0) >= 70 THEN 'hot'
                    WHEN COALESCE(propensity_score, 0) >= 50 THEN 'warm'
                    ELSE 'cold'
                END AS propensity_tier
           FROM stage_age
          WHERE NOW() - latest_stage_at >= (
                    CASE
-                       WHEN COALESCE(propensity_score, 0) > 70  THEN ($2 || ' days')::interval
+                       WHEN COALESCE(propensity_score, 0) >= 70 THEN ($2 || ' days')::interval
                        WHEN COALESCE(propensity_score, 0) >= 50 THEN ($3 || ' days')::interval
                        ELSE ($4 || ' days')::interval
                    END
@@ -151,9 +151,20 @@ async def fetch_backlog(
 
 # ── Per-row advancement ──────────────────────────────────────────────────────
 
-def _classify_row(row: dict[str, Any], free_mode_only: bool) -> dict[str, Any]:
+def _classify_row(
+    row: dict[str, Any],
+    free_mode_only: bool,
+    clients: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Decide what to do with one BU row. Returns dict with keys
-    {action, next_stage, runner, reason}."""
+    {action, next_stage, runner, reason}.
+
+    `clients` is optional for unit tests but required at runtime for the
+    S2-4 Gemini pre-flight gate: any plan that needs `gemini` is skipped
+    with reason `stuck:gemini_client_unavailable` when clients['gemini']
+    is None. Skipping early avoids an inevitable runner_exception during
+    advance_row.
+    """
     current_stage = row["pipeline_stage"]
     if current_stage is None or current_stage < 2:
         return {
@@ -172,6 +183,16 @@ def _classify_row(row: dict[str, Any], free_mode_only: bool) -> dict[str, Any]:
         return {
             "action": "skip",
             "reason": f"stuck:blocked_by_free_mode (would invoke {plan['runner']} requiring {plan['clients']})",
+        }
+    # S2-4 — pre-flight gate: refuse plans whose required clients are not
+    # actually wired up. Today only Gemini is initialised in the flow body
+    # under free-mode; if it failed to init (missing API key, etc.) we must
+    # not call the runner.
+    needs_gemini = "gemini" in (plan.get("clients") or [])
+    if needs_gemini and (clients is None or clients.get("gemini") is None):
+        return {
+            "action": "skip",
+            "reason": "stuck:gemini_client_unavailable",
         }
     return {
         "action": "advance",
@@ -247,20 +268,30 @@ async def advance_row(
                 "reason": f"runner_exception:{type(exc).__name__}"}
 
     if result.get("dropped_at"):
-        # Runner short-circuited (missing prereqs / explicit drop).
+        # S2-1 — record the attempt in stage_metrics.bu_closed_loop_attempts
+        # (a JSONB array of {ts, reason, runner}). Do NOT touch
+        # stage_metrics.stage_completed_at — that key drives the cursor's
+        # MAX-age computation in fetch_backlog and must reflect successful
+        # stage advancements only.
         outcome_reason = result.get("drop_reason", "unknown")
+        attempt_entry = json.dumps({
+            "ts": datetime.now(UTC).isoformat(),
+            "reason": outcome_reason,
+            "runner": plan["runner"],
+        })
         async with pool.acquire() as conn:
             await conn.execute(
                 """UPDATE business_universe SET
                        stage_metrics = jsonb_set(
                            COALESCE(stage_metrics, '{}'::jsonb),
-                           '{stage_completed_at,bu_closed_loop_attempt}',
-                           to_jsonb(NOW()::text),
+                           '{bu_closed_loop_attempts}',
+                           COALESCE(stage_metrics -> 'bu_closed_loop_attempts', '[]'::jsonb)
+                               || $2::jsonb,
                            true
                        ),
                        updated_at = NOW()
                    WHERE id = $1""",
-                row["id"],
+                row["id"], attempt_entry,
             )
         return {"id": row["id"], "outcome": "runner_early_exit",
                 "reason": outcome_reason}
@@ -268,23 +299,58 @@ async def advance_row(
     # Success — advance pipeline_stage and stamp stage_completed_at marker.
     next_stage = plan["next_stage"]
     stage_key = plan["runner"].replace("_run_stage", "stage_")
+    # S2-2 — when the advancement bypasses a paid stage (4 -> 5 skips paid 4,
+    # 6 -> 7 skips paid 6), append a free_mode_paid_data_skipped marker so
+    # downstream consumers know which paid data is missing on this row.
+    paid_skip_for_current_stage: int | None = None
+    if row["pipeline_stage"] == 4 and next_stage == 5:
+        paid_skip_for_current_stage = 4
+    elif row["pipeline_stage"] == 6 and next_stage == 7:
+        paid_skip_for_current_stage = 6
+
     async with pool.acquire() as conn:
-        await conn.execute(
-            """UPDATE business_universe SET
-                   pipeline_stage = $2,
-                   stage_metrics = jsonb_set(
-                       COALESCE(stage_metrics, '{}'::jsonb),
-                       ARRAY['stage_completed_at', $3::text],
-                       to_jsonb(NOW()::text),
-                       true
-                   ),
-                   updated_at = NOW()
-               WHERE id = $1""",
-            row["id"], next_stage, stage_key,
-        )
+        if paid_skip_for_current_stage is not None:
+            paid_skip_entry = json.dumps({
+                "stage": paid_skip_for_current_stage,
+                "skipped_at": datetime.now(UTC).isoformat(),
+            })
+            await conn.execute(
+                """UPDATE business_universe SET
+                       pipeline_stage = $2,
+                       stage_metrics = jsonb_set(
+                           jsonb_set(
+                               COALESCE(stage_metrics, '{}'::jsonb),
+                               ARRAY['stage_completed_at', $3::text],
+                               to_jsonb(NOW()::text),
+                               true
+                           ),
+                           '{free_mode_paid_data_skipped}',
+                           COALESCE(stage_metrics -> 'free_mode_paid_data_skipped', '[]'::jsonb)
+                               || $4::jsonb,
+                           true
+                       ),
+                       updated_at = NOW()
+                   WHERE id = $1""",
+                row["id"], next_stage, stage_key, paid_skip_entry,
+            )
+        else:
+            await conn.execute(
+                """UPDATE business_universe SET
+                       pipeline_stage = $2,
+                       stage_metrics = jsonb_set(
+                           COALESCE(stage_metrics, '{}'::jsonb),
+                           ARRAY['stage_completed_at', $3::text],
+                           to_jsonb(NOW()::text),
+                           true
+                       ),
+                       updated_at = NOW()
+                   WHERE id = $1""",
+                row["id"], next_stage, stage_key,
+            )
     return {"id": row["id"], "outcome": "advanced",
             "from_stage": row["pipeline_stage"], "to_stage": next_stage,
-            "runner": plan["runner"]}
+            "runner": plan["runner"],
+            "paid_data_skipped_stage": paid_skip_for_current_stage}
 
 
 # ── Master flow ──────────────────────────────────────────────────────────────
@@ -346,7 +412,7 @@ async def bu_closed_loop_flow(
         logger.info("bu_closed_loop_flow: queried=%d rows", len(rows))
 
         for row in rows:
-            decision = _classify_row(row, free_mode_only)
+            decision = _classify_row(row, free_mode_only, clients)
             if decision["action"] == "skip":
                 summary["stuck_per_reason"][decision["reason"]] += 1
                 continue

@@ -231,3 +231,189 @@ def test_flow_skips_pre_enrichment_rows():
     assert summary["queried"] == 1
     assert summary["advanced_per_stage"] == {}
     assert any("pre_enrichment" in k for k in summary["stuck_per_reason"])
+
+
+# ── S2-1 — runner_early_exit must NOT touch stage_completed_at ──────────────
+
+def test_s2_1_runner_early_exit_writes_to_attempts_array_not_stage_completed_at():
+    """Regression for S2-1: an early-exit must record into
+    stage_metrics.bu_closed_loop_attempts (an array of {ts, reason, runner})
+    and must leave stage_metrics.stage_completed_at untouched so the cursor's
+    MAX-age computation only counts real stage completions."""
+    execute_calls: list = []
+    pool = _make_pool(execute_calls)
+
+    row = {"id": "44444444-4444-4444-4444-444444444444",
+           "domain": "earlyexit.com.au", "category": "x", "pipeline_stage": 4}
+    plan = {"next_stage": 5, "runner": "_run_stage5", "clients": [], "is_free": True}
+
+    fake_runner = AsyncMock(return_value={
+        "domain": "earlyexit.com.au",
+        "dropped_at": "stage5",
+        "drop_reason": "missing_prereqs",
+    })
+    with patch("src.orchestration.cohort_runner._run_stage5", fake_runner):
+        result = asyncio.run(
+            flow_mod.advance_row.fn(pool, row, plan, clients={"gemini": None})
+        )
+
+    assert result["outcome"] == "runner_early_exit"
+    # Exactly one UPDATE for the early-exit path.
+    assert len(execute_calls) == 1
+    sql = execute_calls[0][0]
+    # Must write into bu_closed_loop_attempts, not stage_completed_at.
+    assert "bu_closed_loop_attempts" in sql
+    assert "stage_completed_at" not in sql
+    assert "pipeline_stage" not in sql  # pipeline_stage NOT advanced
+    # The appended JSON entry must carry ts + reason + runner.
+    appended = execute_calls[0][2]
+    import json as _json
+    payload = _json.loads(appended)
+    assert set(payload.keys()) == {"ts", "reason", "runner"}
+    assert payload["reason"] == "missing_prereqs"
+    assert payload["runner"] == "_run_stage5"
+
+
+# ── S2-2 — free-mode paid-data-skipped marker on 4->5 / 6->7 ────────────────
+
+def test_s2_2_free_mode_4_to_5_writes_paid_skip_marker():
+    """When advancement bypasses paid stage 4, BU must record
+    stage_metrics.free_mode_paid_data_skipped with stage=4."""
+    execute_calls: list = []
+    pool = _make_pool(execute_calls)
+
+    row = {"id": "55555555-5555-5555-5555-555555555555",
+           "domain": "skip4.com.au", "category": "dental", "pipeline_stage": 4}
+    plan = {"next_stage": 5, "runner": "_run_stage5", "clients": [], "is_free": True}
+
+    fake_runner = AsyncMock(return_value={"domain": "skip4.com.au"})
+    with patch("src.orchestration.cohort_runner._run_stage5", fake_runner):
+        result = asyncio.run(
+            flow_mod.advance_row.fn(pool, row, plan, clients={"gemini": None})
+        )
+
+    assert result["outcome"] == "advanced"
+    assert result["paid_data_skipped_stage"] == 4
+    sql = execute_calls[0][0]
+    assert "free_mode_paid_data_skipped" in sql
+    assert "stage_completed_at" in sql  # still stamps the success marker
+    # The appended JSON entry names the bypassed stage.
+    import json as _json
+    appended = execute_calls[0][4]  # 4-arg form: id, next_stage, stage_key, paid_skip_entry
+    payload = _json.loads(appended)
+    assert payload["stage"] == 4
+    assert "skipped_at" in payload
+
+
+def test_s2_2_free_mode_6_to_7_writes_paid_skip_marker():
+    execute_calls: list = []
+    pool = _make_pool(execute_calls)
+
+    row = {"id": "66666666-6666-6666-6666-666666666666",
+           "domain": "skip6.com.au", "category": "legal", "pipeline_stage": 6}
+    plan = {"next_stage": 7, "runner": "_run_stage7", "clients": ["gemini"], "is_free": True}
+
+    fake_runner = AsyncMock(return_value={"domain": "skip6.com.au"})
+    with patch("src.orchestration.cohort_runner._run_stage7", fake_runner):
+        result = asyncio.run(
+            flow_mod.advance_row.fn(pool, row, plan, clients={"gemini": MagicMock()})
+        )
+
+    assert result["outcome"] == "advanced"
+    assert result["paid_data_skipped_stage"] == 6
+    sql = execute_calls[0][0]
+    assert "free_mode_paid_data_skipped" in sql
+    import json as _json
+    appended = execute_calls[0][4]
+    payload = _json.loads(appended)
+    assert payload["stage"] == 6
+
+
+def test_s2_2_no_paid_skip_marker_on_normal_advancement():
+    """A 5 -> 7 advancement is free-only; no paid stage was bypassed, so the
+    free_mode_paid_data_skipped marker must NOT be written."""
+    execute_calls: list = []
+    pool = _make_pool(execute_calls)
+
+    row = {"id": "77777777-7777-7777-7777-777777777777",
+           "domain": "normal.com.au", "category": "x", "pipeline_stage": 5}
+    plan = {"next_stage": 7, "runner": "_run_stage7", "clients": ["gemini"], "is_free": True}
+
+    fake_runner = AsyncMock(return_value={"domain": "normal.com.au"})
+    with patch("src.orchestration.cohort_runner._run_stage7", fake_runner):
+        result = asyncio.run(
+            flow_mod.advance_row.fn(pool, row, plan, clients={"gemini": MagicMock()})
+        )
+
+    assert result["outcome"] == "advanced"
+    assert result["paid_data_skipped_stage"] is None
+    sql = execute_calls[0][0]
+    assert "free_mode_paid_data_skipped" not in sql
+
+
+# ── S2-3 — propensity tier boundaries inclusive on both ends ────────────────
+
+def test_s2_3_propensity_70_is_hot():
+    """propensity_score == 70 must classify as 'hot' (>=70), not warm.
+    Smoke-tested via the SQL CASE in fetch_backlog by matching the SQL text."""
+    import inspect
+    src = inspect.getsource(flow_mod.fetch_backlog)
+    # Must use >= 70, not > 70.
+    assert "COALESCE(propensity_score, 0) >= 70" in src
+    assert "COALESCE(propensity_score, 0) > 70" not in src
+    # warm boundary stays >= 50.
+    assert "COALESCE(propensity_score, 0) >= 50" in src
+
+
+# ── S2-4 — pre-flight gemini_client_unavailable gate ────────────────────────
+
+def test_s2_4_classify_row_skips_when_gemini_required_but_missing():
+    """Stage 5 -> 7 needs gemini. If clients['gemini'] is None, classify_row
+    must skip with stuck:gemini_client_unavailable BEFORE the runner is
+    invoked."""
+    row = {"pipeline_stage": 5, "domain": "x.com.au", "propensity_score": 80}
+    out = flow_mod._classify_row(row, free_mode_only=True,
+                                 clients={"gemini": None})
+    assert out["action"] == "skip"
+    assert out["reason"] == "stuck:gemini_client_unavailable"
+
+
+def test_s2_4_classify_row_advances_when_gemini_available():
+    """Same row but gemini present — must advance."""
+    row = {"pipeline_stage": 5, "domain": "x.com.au", "propensity_score": 80}
+    out = flow_mod._classify_row(row, free_mode_only=True,
+                                 clients={"gemini": MagicMock()})
+    assert out["action"] == "advance"
+    assert out["runner"] == "_run_stage7"
+
+
+def test_s2_4_classify_row_does_not_block_logic_only_stages_when_gemini_missing():
+    """Stage 4 -> 5 is pure-logic — must advance even if gemini is None."""
+    row = {"pipeline_stage": 4, "domain": "x.com.au", "propensity_score": 80}
+    out = flow_mod._classify_row(row, free_mode_only=True,
+                                 clients={"gemini": None})
+    assert out["action"] == "advance"
+    assert out["runner"] == "_run_stage5"
+
+
+def test_s2_4_flow_records_gemini_unavailable_when_init_fails():
+    """End-to-end: when GeminiClient init raises, the flow continues with
+    clients['gemini']=None and the per-row gate logs the skip reason."""
+    rows = [{"id": "88888888-8888-8888-8888-888888888888",
+             "domain": "needsgem.com.au", "category": "dental",
+             "pipeline_stage": 5, "propensity_score": 80,
+             "stage_metrics": {}, "filter_reason": None,
+             "latest_stage_at": None, "propensity_tier": "hot"}]
+
+    execute_calls: list = []
+    pool = _make_pool(execute_calls)
+
+    with patch.object(flow_mod, "_open_pool", AsyncMock(return_value=pool)), \
+         patch.object(flow_mod.fetch_backlog, "fn", AsyncMock(return_value=rows)), \
+         patch("src.intelligence.gemini_client.GeminiClient",
+               side_effect=RuntimeError("no api key")):
+        summary = asyncio.run(flow_mod.bu_closed_loop_flow.fn(max_rows=10))
+
+    assert summary["queried"] == 1
+    assert summary["advanced_per_stage"] == {}
+    assert summary["stuck_per_reason"].get("stuck:gemini_client_unavailable") == 1

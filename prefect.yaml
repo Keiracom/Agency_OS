@@ -432,6 +432,29 @@ deployments:
     entrypoint: src/orchestration/flows/health_check_flow.py:health_check_flow
 
   # ============================================
+  # FREE ENRICHMENT FLOW (Directive: BU Closed-Loop S3 — Stage 0/1 trigger fix)
+  # ============================================
+  # Hourly safety-net: promotes stage-0/NULL BU rows to stage 1 then runs
+  # FreeEnrichment.run() over the backlog. ACTIVE (AUD 0 — local DNS /
+  # httpx / abn_registry; Spider fallback gated by SPIDER_API_KEY env var).
+  - name: free-enrichment-flow
+    version: "1.0.0"
+    paused: false  # ACTIVE — AUD 0 free-mode flow
+    tags: [bu-closed-loop, free-enrichment, stage-0-trigger, free-mode]
+    description: "BU Closed-Loop S3 — Stage 0/1 trigger fix. Hourly free-mode enrichment of stuck BU rows."
+    entrypoint: src/orchestration/flows/free_enrichment_flow.py:free_enrichment_flow
+    work_pool:
+      name: agency-os-pool
+      work_queue_name: agency-os-queue
+    parameters:
+      limit: 500
+      promote_stage_0: true
+    schedules:
+      - cron: "15 * * * *"
+        timezone: UTC
+        active: true
+
+  # ============================================
   # BU CLOSED-LOOP ENGINE (Directive: BU Closed-Loop S2)
   # ============================================
   # Daily backlog driver — re-enters stuck BU rows at their next stage in

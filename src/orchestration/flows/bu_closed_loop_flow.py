@@ -56,26 +56,30 @@ logger = logging.getLogger(__name__)
 # function consumes. Free-mode refuses any stage where a paid client is
 # required. Gemini is treated as free tier (per dispatch).
 #
-# pipeline_stage 0 / 1 → free_enrichment.run() (Stage 1 in dispatch lingo).
-# That path is OWNED by free_enrichment.py and NOT re-driven here — this flow
-# focuses on stages 2..11 cohort_runner advancement. Rows with stage<2 are
-# logged as `stuck:pre_enrichment_owned_by_free_enrichment`.
+# S3: pipeline_stage 0 (NULL coerced) and 1 advance via the
+# free_enrichment runner. Rows with stage 0 are first promoted to stage 1
+# inside advance_row's _invoke_runner branch, then enriched in the same
+# logical pass.
 _PAID_CLIENT_KEYS: set[str] = {"dfs", "bd", "lm"}
 _FREE_CLIENT_KEYS: set[str] = {"gemini"}
 
 STAGE_ADVANCEMENT: dict[int, dict[str, Any]] = {
-    2:  {"next_stage": 3,  "runner": "_run_stage3",  "clients": ["gemini"], "is_free": True},
-    3:  {"next_stage": 5,  "runner": "_run_stage5",  "clients": [],         "is_free": True},
+    # S3 — Stage 0 / 1 (post-discovery, pre-enrichment) advances via
+    # free_enrichment. Pure local: DNS + httpx + abn_registry. AUD 0.
+    0:  {"next_stage": 1,  "runner": "free_enrichment", "clients": [],         "is_free": True},
+    1:  {"next_stage": 1,  "runner": "free_enrichment", "clients": [],         "is_free": True},
+    2:  {"next_stage": 3,  "runner": "_run_stage3",     "clients": ["gemini"], "is_free": True},
+    3:  {"next_stage": 5,  "runner": "_run_stage5",     "clients": [],         "is_free": True},
     # 4 advances to 5 directly when the paid stage 4 is skipped — pure logic.
-    4:  {"next_stage": 5,  "runner": "_run_stage5",  "clients": [],         "is_free": True},
-    5:  {"next_stage": 7,  "runner": "_run_stage7",  "clients": ["gemini"], "is_free": True},
+    4:  {"next_stage": 5,  "runner": "_run_stage5",     "clients": [],         "is_free": True},
+    5:  {"next_stage": 7,  "runner": "_run_stage7",     "clients": ["gemini"], "is_free": True},
     # Stage 6 is DFS-paid and unreachable in free-mode; rows landing at 6
     # advance via _run_stage7 (Gemini, free) when free-mode is on.
-    6:  {"next_stage": 7,  "runner": "_run_stage7",  "clients": ["gemini"], "is_free": True},
-    7:  {"next_stage": 9,  "runner": "_run_stage9",  "clients": ["bd"],     "is_free": False},
-    8:  {"next_stage": 9,  "runner": "_run_stage9",  "clients": ["bd"],     "is_free": False},
-    9:  {"next_stage": 10, "runner": "_run_stage10", "clients": [],         "is_free": True},
-    10: {"next_stage": 11, "runner": "_run_stage11", "clients": [],         "is_free": True},
+    6:  {"next_stage": 7,  "runner": "_run_stage7",     "clients": ["gemini"], "is_free": True},
+    7:  {"next_stage": 9,  "runner": "_run_stage9",     "clients": ["bd"],     "is_free": False},
+    8:  {"next_stage": 9,  "runner": "_run_stage9",     "clients": ["bd"],     "is_free": False},
+    9:  {"next_stage": 10, "runner": "_run_stage10",    "clients": [],         "is_free": True},
+    10: {"next_stage": 11, "runner": "_run_stage11",    "clients": [],         "is_free": True},
 }
 
 
@@ -166,11 +170,10 @@ def _classify_row(
     advance_row.
     """
     current_stage = row["pipeline_stage"]
-    if current_stage is None or current_stage < 2:
-        return {
-            "action": "skip",
-            "reason": "stuck:pre_enrichment_owned_by_free_enrichment",
-        }
+    # S3 — stage 0 / NULL now route to free_enrichment via STAGE_ADVANCEMENT
+    # rather than being skipped as "owned by another flow". Treat NULL as 0.
+    if current_stage is None:
+        current_stage = 0
     if current_stage == 11:
         return {"action": "skip", "reason": "stuck:already_at_terminal_stage"}
     plan = STAGE_ADVANCEMENT.get(current_stage)
@@ -204,20 +207,187 @@ def _classify_row(
     }
 
 
-def _build_domain_data(row: dict[str, Any]) -> dict[str, Any]:
-    """Build the minimal domain_data dict cohort_runner._run_stageN expects.
+def _coerce_dict(value: Any) -> dict[str, Any]:
+    """Return a dict from value: passthrough dicts, parse JSON strings, else {}."""
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, str) and value.strip():
+        try:
+            parsed = json.loads(value)
+            return parsed if isinstance(parsed, dict) else {}
+        except (ValueError, json.JSONDecodeError):
+            return {}
+    return {}
 
-    NOTE: production-grade reconstruction (carrying stage3 / stage4 / stage5
-    intermediate dicts back from BU columns) is deferred to S3. This minimal
-    dict will trigger early-exit gates inside some _run_stageN functions when
-    prerequisites are missing — that is logged as `runner_early_exit` rather
-    than retried.
+
+def _stage4_from_columns(row: dict[str, Any]) -> dict[str, Any]:
+    """Fall-back reconstruction of the stage4 signal bundle from BU scalars
+    when stage_metrics->'stage4' is missing. _run_stage5 reads this dict via
+    `signal_bundle=...` so the keys must match build_signal_bundle output:
+    rank_overview / backlinks / etc."""
+    rank_overview: dict[str, Any] = {}
+    if row.get("dfs_organic_etv") is not None:
+        rank_overview["organic_etv"] = row["dfs_organic_etv"]
+    if row.get("dfs_organic_keywords") is not None:
+        rank_overview["organic_keywords"] = row["dfs_organic_keywords"]
+    if row.get("domain_rank") is not None:
+        rank_overview["rank"] = row["domain_rank"]
+
+    backlinks: dict[str, Any] = {}
+    if row.get("backlinks_count") is not None:
+        backlinks["backlinks_num"] = row["backlinks_count"]
+
+    bundle: dict[str, Any] = {}
+    if rank_overview:
+        bundle["rank_overview"] = rank_overview
+    if backlinks:
+        bundle["backlinks"] = backlinks
+    return bundle
+
+
+def _stage5_from_columns(row: dict[str, Any]) -> dict[str, Any]:
+    """Fall-back reconstruction of stage5 scores. _run_stage5 normally
+    populates this; on re-entry past stage 5 we want the existing scores
+    visible to stage7/10/11 even if stage_metrics->'stage5' is missing."""
+    scores: dict[str, Any] = {}
+    if row.get("propensity_score") is not None:
+        scores["composite_score"] = row["propensity_score"]
+        scores["is_viable_prospect"] = bool(row["propensity_score"])
+    for col_key, score_key in (
+        ("score_budget", "budget"),
+        ("score_pain", "pain"),
+        ("score_gap", "gap"),
+        ("score_fit", "fit"),
+    ):
+        if row.get(col_key) is not None:
+            scores[score_key] = row[col_key]
+    return scores
+
+
+def _stage3_from_columns(row: dict[str, Any]) -> dict[str, Any]:
+    """Fall-back reconstruction of stage3 identity. _run_stage5 / 7 read
+    business_name + dm_candidate from this dict."""
+    identity: dict[str, Any] = {}
+    name = row.get("trading_name") or row.get("abr_trading_name") or row.get("legal_name")
+    if name:
+        identity["business_name"] = str(name)
+    dm: dict[str, Any] = {}
+    if row.get("dm_phone"):
+        dm["phone"] = row["dm_phone"]
+    if row.get("linkedin_company_url"):
+        dm["linkedin_url"] = row["linkedin_company_url"]
+    if dm:
+        identity["dm_candidate"] = dm
+    if row.get("entity_type"):
+        identity["entity_type"] = row["entity_type"]
+    return identity
+
+
+def _build_domain_data(row: dict[str, Any]) -> dict[str, Any]:
+    """Production-grade reconstruction of the domain_data dict each
+    cohort_runner._run_stageN expects (S3 replacement of the minimal stub).
+
+    Strategy:
+      1. Read stage_metrics jsonb on BU — that JSONB carries stage2, stage3,
+         stage4, stage5 keys when persisted by _persist_stage4_to_bu and
+         pipeline_f_master_flow. High-fidelity path.
+      2. Fall back to BU column scalars for stage3 / stage4 / stage5 when
+         stage_metrics is empty (e.g., row enriched before stage_metrics
+         existed, or partial-state row). Keys match what each runner reads.
+      3. Carry the mutable scaffolding fields (errors, cost_usd, timings,
+         _latency_tracker) so runners do not crash on dict-missing keys.
+
+    Returns:
+        Dict with keys: domain, category, stage2, stage3, stage4, stage5,
+        stage6, stage7, stage8_verify, stage8_contacts, stage9, stage10,
+        stage11, errors, cost_usd, timings, dropped_at, drop_reason, _bu_id.
     """
+    # Late import — avoids a hard dep on cohort_runner at module-load time
+    # (so unit tests that don't exercise advance_row don't pay the cost).
+    from src.orchestration.cohort_runner import LatencyTracker
+
+    sm = _coerce_dict(row.get("stage_metrics"))
+
+    # Stage data — JSONB-preserved first, BU-column fallback second.
+    stage3 = _coerce_dict(sm.get("stage3")) or _stage3_from_columns(row)
+    stage4 = _coerce_dict(sm.get("stage4")) or _stage4_from_columns(row)
+    stage5 = _coerce_dict(sm.get("stage5")) or _stage5_from_columns(row)
+
     return {
         "domain": row["domain"],
         "category": row.get("category") or "",
+        "stage2": _coerce_dict(sm.get("stage2")),
+        "stage3": stage3,
+        "stage4": stage4,
+        "stage5": stage5,
+        "stage6": _coerce_dict(sm.get("stage6")),
+        "stage7": _coerce_dict(sm.get("stage7")),
+        "stage8_verify": _coerce_dict(sm.get("stage8_verify")),
+        "stage8_contacts": _coerce_dict(sm.get("stage8_contacts")),
+        "stage9": _coerce_dict(sm.get("stage9")),
+        "stage10": _coerce_dict(sm.get("stage10")),
+        "stage11": _coerce_dict(sm.get("stage11")),
+        # Mutable scaffolding the runners write into.
+        "errors": [],
+        "cost_usd": 0.0,
+        "timings": {},
+        "dropped_at": None,
+        "drop_reason": None,
+        "_latency_tracker": LatencyTracker(row["domain"]),
         "_bu_id": str(row["id"]),
     }
+
+
+async def _invoke_free_enrichment(domain_data: dict[str, Any]) -> dict[str, Any]:
+    """S3 — single-domain free_enrichment runner. Calls the existing
+    FreeEnrichment.enrich_from_spider() entrypoint (DNS + scrape + ABN
+    match) and folds the result back into domain_data.
+
+    AUD 0: local DNS, httpx scrape, local abn_registry lookups. Spider
+    fallback inside FreeEnrichment is gated by SPIDER_API_KEY env var.
+
+    The result populates domain_data with website_data + dns_data + abn_data
+    fields under stage2-equivalent keys so downstream stages see them. We do
+    NOT write to BU here — the per-row caller (advance_row) is the only DB
+    writer in the closed-loop flow.
+    """
+    from src.pipeline.free_enrichment import FreeEnrichment
+
+    engine = FreeEnrichment()
+    domain = domain_data["domain"]
+    try:
+        spider_data = await engine.scrape_website(domain)
+    except Exception as exc:
+        domain_data["errors"].append(f"free_enrichment_scrape: {exc}")
+        spider_data = {}
+    try:
+        result = await engine.enrich_from_spider(domain, spider_data or {}) or {}
+    except Exception as exc:
+        domain_data["errors"].append(f"free_enrichment: {exc}")
+        domain_data["dropped_at"] = "free_enrichment"
+        domain_data["drop_reason"] = f"free_enrichment_exception: {exc}"
+        return domain_data
+
+    # Fold enrichment result fields into domain_data so downstream stages
+    # see them. The keys mirror what _process_domain would have written
+    # to BU columns; we expose them on stage2 / stage3 surrogates.
+    domain_data["stage2"] = {
+        **(domain_data.get("stage2") or {}),
+        "website_cms": result.get("website_cms"),
+        "website_tech_stack": result.get("website_tech_stack"),
+        "website_contact_emails": result.get("website_contact_emails"),
+        "dns_mx_provider": result.get("dns_mx_provider"),
+        "dns_has_spf": result.get("dns_has_spf"),
+        "dns_has_dkim": result.get("dns_has_dkim"),
+        "non_au": result.get("non_au"),
+        "serp_abn": result.get("abn"),
+    }
+    if result.get("abn_matched") and result.get("company_name"):
+        existing_stage3 = domain_data.get("stage3") or {}
+        if not existing_stage3.get("business_name"):
+            existing_stage3["business_name"] = result["company_name"]
+            domain_data["stage3"] = existing_stage3
+    return domain_data
 
 
 async def _invoke_runner(
@@ -225,8 +395,11 @@ async def _invoke_runner(
     domain_data: dict[str, Any],
     clients: dict[str, Any],
 ) -> dict[str, Any]:
-    """Dispatch to cohort_runner._run_stageN by label. Imported lazily so
-    tests can patch the cohort_runner module surface."""
+    """Dispatch to cohort_runner._run_stageN by label, or the free_enrichment
+    pseudo-runner. Imported lazily so tests can patch module surfaces."""
+    if runner_label == "free_enrichment":
+        return await _invoke_free_enrichment(domain_data)
+
     from src.orchestration import cohort_runner as cr
 
     fn = getattr(cr, runner_label, None)

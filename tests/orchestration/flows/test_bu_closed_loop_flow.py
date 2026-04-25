@@ -28,11 +28,19 @@ from src.orchestration.flows import bu_closed_loop_flow as flow_mod  # noqa: E40
 
 # ── _classify_row unit tests ────────────────────────────────────────────────
 
-def test_classify_row_pre_enrichment_skipped():
+def test_classify_row_pre_enrichment_advances_via_free_enrichment_s3():
+    """S3 — stage 0 / NULL no longer skipped. Routes to the free_enrichment
+    pseudo-runner so the closed-loop driver actually fires Stage 1."""
     row = {"pipeline_stage": 0, "domain": "x.com.au", "propensity_score": 80}
     out = flow_mod._classify_row(row, free_mode_only=True)
-    assert out["action"] == "skip"
-    assert "pre_enrichment" in out["reason"]
+    assert out["action"] == "advance"
+    assert out["runner"] == "free_enrichment"
+    assert out["next_stage"] == 1
+    # Stage NULL should be coerced to 0 and routed identically.
+    row_null = {"pipeline_stage": None, "domain": "y.com.au", "propensity_score": 80}
+    out_null = flow_mod._classify_row(row_null, free_mode_only=True)
+    assert out_null["action"] == "advance"
+    assert out_null["runner"] == "free_enrichment"
 
 
 def test_classify_row_terminal_stage_skipped():
@@ -211,8 +219,10 @@ def test_flow_advances_free_rows_and_blocks_paid_rows():
     assert summary["cadence_days"] == {"hot": 14, "warm": 60, "cold": 180}
 
 
-def test_flow_skips_pre_enrichment_rows():
-    """Rows with pipeline_stage < 2 are owned by free_enrichment, not this flow."""
+def test_flow_advances_pre_enrichment_rows_via_free_enrichment_s3():
+    """S3 — stage 1 row routes to free_enrichment runner and advances on
+    success. Free_enrichment is mocked at module surface so no real DNS /
+    httpx / abn_registry I/O happens."""
     rows = [{"id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
              "domain": "early.com.au", "category": "x",
              "pipeline_stage": 1, "propensity_score": 30,
@@ -222,15 +232,18 @@ def test_flow_skips_pre_enrichment_rows():
     execute_calls: list = []
     pool = _make_pool(execute_calls)
 
+    fake_invoke = AsyncMock(side_effect=lambda d: d)  # no-op; success path
+
     with patch.object(flow_mod, "_open_pool", AsyncMock(return_value=pool)), \
          patch.object(flow_mod.fetch_backlog, "fn", AsyncMock(return_value=rows)), \
+         patch.object(flow_mod, "_invoke_free_enrichment", fake_invoke), \
          patch("src.intelligence.gemini_client.GeminiClient",
                return_value=MagicMock()):
         summary = asyncio.run(flow_mod.bu_closed_loop_flow.fn(max_rows=10))
 
     assert summary["queried"] == 1
-    assert summary["advanced_per_stage"] == {}
-    assert any("pre_enrichment" in k for k in summary["stuck_per_reason"])
+    assert summary["advanced_per_stage"].get("stage_1_to_1") == 1
+    fake_invoke.assert_awaited_once()
 
 
 # ── S2-1 — runner_early_exit must NOT touch stage_completed_at ──────────────
@@ -417,3 +430,155 @@ def test_s2_4_flow_records_gemini_unavailable_when_init_fails():
     assert summary["queried"] == 1
     assert summary["advanced_per_stage"] == {}
     assert summary["stuck_per_reason"].get("stuck:gemini_client_unavailable") == 1
+
+
+# ── S3 — production-grade domain_data reconstruction ─────────────────────────
+
+def test_s3_build_domain_data_pulls_stages_from_stage_metrics_jsonb():
+    """High-fidelity path: stage_metrics jsonb carries stage2/3/4/5 from
+    prior _persist_stage4_to_bu / pipeline_f_master_flow writes. Reconstruction
+    must surface those dicts verbatim."""
+    row = {
+        "id": "11111111-1111-1111-1111-111111111111",
+        "domain": "rich.com.au",
+        "category": "dental",
+        "stage_metrics": {
+            "stage2": {"serp_abn": "12345678901"},
+            "stage3": {"business_name": "Rich Dental",
+                       "dm_candidate": {"name": "Dr X"}},
+            "stage4": {"rank_overview": {"organic_etv": 2500.0,
+                                          "organic_keywords": 120}},
+            "stage5": {"composite_score": 78, "is_viable_prospect": True},
+        },
+    }
+    dd = flow_mod._build_domain_data(row)
+    assert dd["domain"] == "rich.com.au"
+    assert dd["category"] == "dental"
+    assert dd["stage2"] == {"serp_abn": "12345678901"}
+    assert dd["stage3"]["business_name"] == "Rich Dental"
+    assert dd["stage4"]["rank_overview"]["organic_etv"] == 2500.0
+    assert dd["stage5"]["composite_score"] == 78
+    # Mutable scaffolding present for runners to write into.
+    assert dd["errors"] == []
+    assert dd["cost_usd"] == 0.0
+    assert dd["timings"] == {}
+    assert dd["dropped_at"] is None
+
+
+def test_s3_build_domain_data_falls_back_to_bu_columns_when_stage_metrics_empty():
+    """Fall-back path: stage_metrics empty (legacy row), reconstruction
+    uses BU column scalars to seed stage3 / stage4 / stage5."""
+    row = {
+        "id": "22222222-2222-2222-2222-222222222222",
+        "domain": "legacy.com.au",
+        "category": "legal",
+        "stage_metrics": {},  # empty
+        "trading_name": "Legacy Legal",
+        "dm_phone": "+61400000000",
+        "linkedin_company_url": "https://linkedin.com/company/legacy",
+        "entity_type": "Company",
+        "dfs_organic_etv": 1500.0,
+        "dfs_organic_keywords": 80,
+        "domain_rank": 35,
+        "backlinks_count": 50,
+        "propensity_score": 65,
+        "score_budget": 18,
+        "score_pain": 16,
+        "score_gap": 17,
+        "score_fit": 14,
+    }
+    dd = flow_mod._build_domain_data(row)
+    # stage3 reconstruction.
+    assert dd["stage3"]["business_name"] == "Legacy Legal"
+    assert dd["stage3"]["dm_candidate"]["phone"] == "+61400000000"
+    assert dd["stage3"]["dm_candidate"]["linkedin_url"] == \
+        "https://linkedin.com/company/legacy"
+    assert dd["stage3"]["entity_type"] == "Company"
+    # stage4 reconstruction.
+    assert dd["stage4"]["rank_overview"]["organic_etv"] == 1500.0
+    assert dd["stage4"]["rank_overview"]["organic_keywords"] == 80
+    assert dd["stage4"]["rank_overview"]["rank"] == 35
+    assert dd["stage4"]["backlinks"]["backlinks_num"] == 50
+    # stage5 reconstruction.
+    assert dd["stage5"]["composite_score"] == 65
+    assert dd["stage5"]["budget"] == 18
+
+
+def test_s3_build_domain_data_handles_jsonb_stored_as_string():
+    """asyncpg fetch returns JSONB as dict only when the codec is registered.
+    Without it, JSONB arrives as a JSON string — reconstruction must coerce."""
+    row = {
+        "id": "33333333-3333-3333-3333-333333333333",
+        "domain": "stringjson.com.au",
+        "category": "x",
+        "stage_metrics": '{"stage4": {"rank_overview": {"organic_etv": 999.0}}}',
+    }
+    dd = flow_mod._build_domain_data(row)
+    assert dd["stage4"]["rank_overview"]["organic_etv"] == 999.0
+
+
+# ── S3 — STAGE_ADVANCEMENT now covers stage 0 / 1 → free_enrichment ──────────
+
+def test_s3_stage_advancement_map_includes_stage_0_and_1():
+    assert 0 in flow_mod.STAGE_ADVANCEMENT
+    assert 1 in flow_mod.STAGE_ADVANCEMENT
+    assert flow_mod.STAGE_ADVANCEMENT[0]["runner"] == "free_enrichment"
+    assert flow_mod.STAGE_ADVANCEMENT[1]["runner"] == "free_enrichment"
+    assert flow_mod.STAGE_ADVANCEMENT[0]["is_free"] is True
+    assert flow_mod.STAGE_ADVANCEMENT[1]["is_free"] is True
+
+
+def test_s3_advance_row_invokes_free_enrichment_runner():
+    """advance_row dispatches the free_enrichment runner via the dedicated
+    pseudo-runner branch in _invoke_runner."""
+    execute_calls: list = []
+    pool = _make_pool(execute_calls)
+
+    row = {"id": "44444444-4444-4444-4444-444444444444",
+           "domain": "stage0.com.au", "category": "dental",
+           "pipeline_stage": 0,
+           "stage_metrics": {}}
+    plan = {"next_stage": 1, "runner": "free_enrichment",
+            "clients": [], "is_free": True}
+
+    fake_free = AsyncMock(side_effect=lambda d: d)  # success: no dropped_at
+
+    with patch.object(flow_mod, "_invoke_free_enrichment", fake_free):
+        result = asyncio.run(
+            flow_mod.advance_row.fn(pool, row, plan, clients={"gemini": None})
+        )
+
+    assert result["outcome"] == "advanced"
+    assert result["from_stage"] == 0
+    assert result["to_stage"] == 1
+    assert result["runner"] == "free_enrichment"
+    fake_free.assert_awaited_once()
+
+
+def test_s3_advance_row_records_free_enrichment_exception_as_runner_early_exit():
+    """Free enrichment exception path: dropped_at set, attempt array gets
+    an entry, pipeline_stage NOT advanced."""
+    execute_calls: list = []
+    pool = _make_pool(execute_calls)
+
+    row = {"id": "55555555-5555-5555-5555-555555555555",
+           "domain": "stage0fail.com.au", "category": "x",
+           "pipeline_stage": 0, "stage_metrics": {}}
+    plan = {"next_stage": 1, "runner": "free_enrichment",
+            "clients": [], "is_free": True}
+
+    async def _fail(d):
+        d["dropped_at"] = "free_enrichment"
+        d["drop_reason"] = "free_enrichment_exception: dns_timeout"
+        return d
+
+    with patch.object(flow_mod, "_invoke_free_enrichment", AsyncMock(side_effect=_fail)):
+        result = asyncio.run(
+            flow_mod.advance_row.fn(pool, row, plan, clients={"gemini": None})
+        )
+
+    assert result["outcome"] == "runner_early_exit"
+    assert "dns_timeout" in result["reason"]
+    sql = execute_calls[0][0]
+    assert "bu_closed_loop_attempts" in sql
+    assert "pipeline_stage" not in sql  # NOT advanced

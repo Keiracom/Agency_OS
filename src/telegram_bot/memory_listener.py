@@ -21,6 +21,18 @@ OPENAI_API_KEY: str = os.environ.get("OPENAI_API_KEY", "")
 
 MAX_RELEVANCE_RESULTS: int = 5
 
+# Similarity threshold for semantic retrieval.
+# Raised 0.35 → 0.50 (2026-04-24) to suppress low-relevance matches that added
+# 200+ tokens of noise per brief without informing decisions. Override with
+# LISTENER_SIM_THRESHOLD env var if tuning further.
+SIM_THRESHOLD: float = float(os.environ.get("LISTENER_SIM_THRESHOLD", "0.50"))
+
+# Context attachment toggles. Git + repo context averaged ~200 tokens each per
+# inbound message with low cited-rate. Default off 2026-04-24; re-enable via env
+# vars if needed for specific use cases.
+ENABLE_GIT_CONTEXT: bool = os.environ.get("LISTENER_ENABLE_GIT_CONTEXT", "false").lower() == "true"
+ENABLE_REPO_CONTEXT: bool = os.environ.get("LISTENER_ENABLE_REPO_CONTEXT", "false").lower() == "true"
+
 # Stopwords — common words that match too broadly
 STOPWORDS: set[str] = {
     "about", "after", "again", "because", "before", "being", "between",
@@ -411,7 +423,7 @@ async def _hybrid_search(
                     "query_text": query_text,
                     "query_embedding": embedding,
                     "match_count": n,
-                    "match_threshold": 0.35,
+                    "match_threshold": SIM_THRESHOLD,
                 },
             )
             if resp.status_code == 200:
@@ -438,7 +450,7 @@ async def _search_by_embedding(
                 json={
                     "query_embedding": embedding,
                     "match_count": n,
-                    "match_threshold": 0.35,
+                    "match_threshold": SIM_THRESHOLD,
                 },
             )
             if resp.status_code == 200:
@@ -733,7 +745,7 @@ def format_memory_context(memories, commits: list[str] | None = None, repo_hits:
             lines.append(f"[MEMORY BRIEF — AI-synthesised from {len(rows)} relevant memories:]")
             lines.append(f"  {summary}")
             lines.append("[END MEMORY BRIEF]")
-        if commits:
+        if commits and ENABLE_GIT_CONTEXT:
             lines.append("[GIT CONTEXT — matching commits:]")
             for c in commits:
                 lines.append(f"  {c}")
@@ -756,13 +768,13 @@ def format_memory_context(memories, commits: list[str] | None = None, repo_hits:
             lines.append(f"  [{source}] ({date}){sim_str} {content}")
         lines.append("[END MEMORY CONTEXT]")
 
-    if commits:
+    if commits and ENABLE_GIT_CONTEXT:
         lines.append("[GIT CONTEXT — matching commits:]")
         for c in commits:
             lines.append(f"  {c}")
         lines.append("[END GIT CONTEXT]")
 
-    if repo_hits:
+    if repo_hits and ENABLE_REPO_CONTEXT:
         lines.append("[REPO CONTEXT — matching code/docs:]")
         for r in repo_hits:
             lines.append(f"  {r}")

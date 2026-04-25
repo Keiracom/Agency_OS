@@ -77,16 +77,15 @@ logger = logging.getLogger(__name__)
 # control before any paid send, hard caps per-domain and per-customer,
 # structured skip rows (not silent drops) so CIS records the refusal.
 #
+# OB-5: Channel costs are inlined here as the canonical source for the
+# outreach gate. Future updates should align with src/config/settings.py
+# (sdk_daily_budget_aud_*) and the per-engine cost constants in
+# src/engines/voice_agent_telnyx.py (COSTS_AUD["total_per_minute"]).
 # AUD costs sourced from production engine constants:
 #   - Email (Resend):      $0.0006 AUD per send (Resend list price)
 #   - LinkedIn (Unipile):  $0.10   AUD per message
 #   - SMS (Telnyx):        $0.014  AUD per message
 #   - Voice (Telnyx 1min): $0.14   AUD per minute (see voice_agent_telnyx.py L23)
-#
-# Per-tier daily AUD ceilings track the SDK budget envelope from
-# src/config/settings.py (sdk_daily_budget_aud_*). These are hard ceilings
-# at the customer level — they include all paid surfaces, not just outreach.
-# Keeping outreach under these caps preserves head-room for SDK enrichment.
 CHANNEL_COST_AUD: dict[str, float] = {
     "email":    0.0006,
     "linkedin": 0.10,
@@ -94,9 +93,11 @@ CHANNEL_COST_AUD: dict[str, float] = {
     "voice":    0.14,
 }
 
-# Per-domain AUD cap — refuse-to-send when one domain has accumulated this
-# much spend in the rolling 24-hour window. Stops a single domain from
-# eating the customer's daily envelope on its own.
+# OB-4: Per-domain AUD cap — hardcoded at $5/day for launch. Roadmap polish:
+# this should become per-customer-tier configurable post-revenue (e.g., a
+# clients.outreach_domain_cap_aud column or a per-tier multiplier so
+# velocity customers can run multi-touch sequences against high-value
+# domains without artificially low ceilings).
 DEFAULT_DOMAIN_DAILY_AUD_CAP: float = 5.0
 
 # Per-customer per-tier daily AUD cap. Tracks src/config/settings.py SDK
@@ -110,10 +111,42 @@ TIER_DAILY_AUD_CAP: dict[str, float] = {
     "dominance": 100.0,
 }
 
+# OB-2: Module-level constant replaces the previous _today_window_sql() helper.
+# OB-6: Aligned to CURRENT_DATE (calendar-day in DB server timezone, UTC on
+# our infra) — matches the canonical daily-quota pattern used by
+# src/services/jit_validator.py:_check_rate_limits at line 431. Stripe has
+# NO daily rule (only monthly subscription anchor in current_period_start);
+# the cap resets at UTC midnight, consistent with the JIT rate limiter.
+_SPEND_WINDOW_SQL: str = "CURRENT_DATE"
 
-def _today_window_sql() -> str:
-    """ISO snippet — last 24 hours (rolling window matches Stripe day rule)."""
-    return "NOW() - INTERVAL '24 hours'"
+
+def _emit_snapshot_failure_alert(stage: str, exc: Exception) -> None:
+    """OB-1 — loud-but-non-blocking alert when the snapshot SQL silently
+    fails. Without this signal the in-memory gate cannot be trusted: a
+    cleared snapshot lets the flow front-load up to ~41,666 emails (at
+    $0.0006/send) before the in-memory delta hits the $25 spark cap.
+
+    logger.error tags the failure for log-scrape pickup. Best-effort
+    Telegram broadcast via src/prefect_utils/failure_alert.py — failure
+    of the alert itself is swallowed so the flow stays running.
+    """
+    logger.error(
+        "outreach_budget_snapshot_alert stage=%s exc_type=%s: %s "
+        "(in-memory gate untrusted — investigate prospect_telemetry / clients tables)",
+        stage, type(exc).__name__, exc,
+    )
+    try:
+        from src.prefect_utils.failure_alert import send_failure_alert
+        send_failure_alert(
+            flow_name="hourly_outreach",
+            flow_run_id=f"snapshot:{stage}",
+            error_message=f"snapshot_outreach_spend {stage} fetch failed: "
+                          f"{type(exc).__name__}: {exc}",
+            timestamp=datetime.now(UTC).isoformat(),
+        )
+    except Exception as alert_exc:
+        logger.error("outreach_budget_snapshot_alert: telegram emit failed: %s",
+                     alert_exc)
 
 
 @task(name="snapshot_outreach_spend", retries=1, retry_delay_seconds=2)
@@ -121,9 +154,9 @@ async def snapshot_outreach_spend_task(
     client_ids: list[str],
     domains: list[str],
 ) -> dict[str, dict[str, float]]:
-    """Pre-loop snapshot of last-24h outreach spend, grouped per-customer
-    and per-domain. The hourly_outreach_flow consults this snapshot before
-    each send to gate admission.
+    """Pre-loop snapshot of today's outreach spend (calendar-day-UTC),
+    grouped per-customer and per-domain. The hourly_outreach_flow consults
+    this snapshot before each send to gate admission.
 
     Returns:
         {
@@ -137,9 +170,12 @@ async def snapshot_outreach_spend_task(
         - prospect_telemetry (cost_aud column, JOIN leads for client/domain).
         - clients table (credits_remaining + tier).
 
-    All queries are best-effort: a Supabase outage degrades to "no spend
-    today" rather than blocking the flow. Defence-in-depth — the gate fires
-    again per-iteration on the in-memory delta.
+    Failure mode: queries are best-effort — a Supabase outage degrades to
+    "no spend today" rather than blocking the flow. Each failure path
+    emits a loud alert via _emit_snapshot_failure_alert (OB-1) so silent
+    front-loading of cap-bypassing sends is impossible without an audit
+    trail. Defence-in-depth: the per-iteration in-memory delta gate fires
+    independently.
     """
     snapshot: dict[str, dict[str, float]] = {
         "by_client": {cid: 0.0 for cid in client_ids},
@@ -151,8 +187,8 @@ async def snapshot_outreach_spend_task(
         return snapshot
 
     async with get_db_session() as db:
-        # Customer-level cost rollup (last 24h) — JOIN leads to attribute
-        # telemetry rows back to a client_id.
+        # Customer-level cost rollup (today, calendar-day-UTC) — JOIN leads
+        # to attribute telemetry rows back to a client_id.
         try:
             cost_by_client_q = text(f"""
                 SELECT l.client_id::text AS client_id,
@@ -161,7 +197,7 @@ async def snapshot_outreach_spend_task(
                   JOIN leads l ON l.id = t.prospect_id
                  WHERE l.client_id = ANY(:client_ids::uuid[])
                    AND t.event_type = 'touch'
-                   AND t.created_at >= {_today_window_sql()}
+                   AND t.created_at >= {_SPEND_WINDOW_SQL}
                  GROUP BY l.client_id
             """)
             result = await db.execute(
@@ -170,10 +206,9 @@ async def snapshot_outreach_spend_task(
             for row in result:
                 snapshot["by_client"][row.client_id] = float(row.spend_aud or 0.0)
         except Exception as exc:
-            logger.warning("snapshot_outreach_spend: by_client fetch failed (non-fatal): %s",
-                           exc)
+            _emit_snapshot_failure_alert("by_client", exc)
 
-        # Domain-level cost rollup (last 24h).
+        # Domain-level cost rollup (today, calendar-day-UTC).
         if any(d for d in domains):
             try:
                 cost_by_domain_q = text(f"""
@@ -183,7 +218,7 @@ async def snapshot_outreach_spend_task(
                       JOIN leads l ON l.id = t.prospect_id
                      WHERE l.domain = ANY(:domains::text[])
                        AND t.event_type = 'touch'
-                       AND t.created_at >= {_today_window_sql()}
+                       AND t.created_at >= {_SPEND_WINDOW_SQL}
                      GROUP BY l.domain
                 """)
                 result = await db.execute(
@@ -194,8 +229,7 @@ async def snapshot_outreach_spend_task(
                     if row.domain:
                         snapshot["by_domain"][row.domain] = float(row.spend_aud or 0.0)
             except Exception as exc:
-                logger.warning("snapshot_outreach_spend: by_domain fetch failed (non-fatal): %s",
-                               exc)
+                _emit_snapshot_failure_alert("by_domain", exc)
 
         # credits_remaining + tier per client.
         try:
@@ -212,8 +246,7 @@ async def snapshot_outreach_spend_task(
                 snapshot["by_client_credits"][row.id] = int(row.credits_remaining or 0)
                 snapshot["by_client_tier"][row.id] = (row.tier or "ignition").lower()
         except Exception as exc:
-            logger.warning("snapshot_outreach_spend: clients fetch failed (non-fatal): %s",
-                           exc)
+            _emit_snapshot_failure_alert("clients", exc)
 
     return snapshot
 
@@ -771,12 +804,18 @@ async def get_leads_ready_for_outreach_task(limit: int = 50) -> dict[str, Any]:
                 tier,
             ) = row
 
+            # OB-3: Client.tier is a TierType StrEnum mapped column with NOT NULL
+            # in src/models/client.py — the .value branch is the only one that
+            # fires in production. The "ignition" fallback covers the strictly
+            # unreachable None path (defensive against future ORM changes that
+            # could relax the constraint). No str() coercion needed.
+            tier_value = tier.value if tier is not None else "ignition"
             lead_data = {
                 "lead_id": str(lead_id),
                 "client_id": str(client_id),
                 "campaign_id": str(campaign_id),
                 "domain": domain or "",
-                "tier": tier.value if hasattr(tier, "value") else (str(tier) if tier else "ignition"),
+                "tier": tier_value,
                 "permission_mode": permission_mode.value if permission_mode else "co_pilot",
             }
 

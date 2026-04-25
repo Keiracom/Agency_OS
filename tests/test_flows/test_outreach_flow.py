@@ -17,6 +17,7 @@ from src.models.base import (
     LeadStatus,
     PermissionMode,
     SubscriptionStatus,
+    TierType,
 )
 from src.orchestration.flows.outreach_flow import (
     get_leads_ready_for_outreach_task,
@@ -89,7 +90,7 @@ async def test_get_leads_ready_for_outreach_success():
             PermissionMode.CO_PILOT,  # permission_mode
             SubscriptionStatus.ACTIVE,  # subscription_status
             1000,  # credits_remaining
-            "ignition",  # tier (BU-CLOSED-LOOP-C1: client.tier projected for per-tier daily AUD cap)
+            TierType.IGNITION,  # tier (BU-CLOSED-LOOP-C1: client.tier projected for per-tier daily AUD cap; OB-3 enum-pinned)
         ),
     ]
     mock_db.execute = AsyncMock(return_value=mock_result)

@@ -223,6 +223,108 @@ def test_channel_cost_aud_covers_all_required_channels():
         assert flow_mod.CHANNEL_COST_AUD[ch] > 0
 
 
+# ── OB-1..OB-6 review-fix regressions ───────────────────────────────────────
+
+def test_ob1_snapshot_failure_emits_loud_alert(monkeypatch):
+    """OB-1: snapshot SQL silent-fail must call _emit_snapshot_failure_alert
+    (logger.error + best-effort Telegram broadcast) — never logger.warning."""
+    calls: list[tuple[str, str]] = []
+
+    def fake_emit(stage: str, exc: Exception) -> None:
+        calls.append((stage, type(exc).__name__))
+
+    monkeypatch.setattr(flow_mod, "_emit_snapshot_failure_alert", fake_emit)
+
+    # Stub get_db_session so every conn.execute raises — exercises all three
+    # try/except branches inside snapshot_outreach_spend_task.
+    import contextlib
+    from unittest.mock import AsyncMock, MagicMock
+
+    failing_db = MagicMock()
+    failing_db.execute = AsyncMock(side_effect=RuntimeError("supabase down"))
+
+    @contextlib.asynccontextmanager
+    async def fake_session():
+        yield failing_db
+
+    monkeypatch.setattr(flow_mod, "get_db_session", fake_session)
+
+    import asyncio
+    snap = asyncio.run(flow_mod.snapshot_outreach_spend_task.fn(
+        client_ids=["client-1"], domains=["example.com.au"],
+    ))
+
+    # All three failure branches fired the loud alert.
+    stages = sorted(stage for stage, _ in calls)
+    assert stages == ["by_client", "by_domain", "clients"]
+    # Every alert flagged the same RuntimeError.
+    assert all(exc_name == "RuntimeError" for _, exc_name in calls)
+    # Snapshot still returns a usable shape (defence-in-depth — gate runs anyway).
+    assert "by_client" in snap
+    assert "by_domain" in snap
+
+
+def test_ob2_spend_window_is_module_level_constant():
+    """OB-2: _today_window_sql() helper replaced by _SPEND_WINDOW_SQL constant."""
+    assert hasattr(flow_mod, "_SPEND_WINDOW_SQL")
+    assert isinstance(flow_mod._SPEND_WINDOW_SQL, str)
+    # The old function should be gone.
+    assert not hasattr(flow_mod, "_today_window_sql")
+
+
+def test_ob6_spend_window_uses_calendar_day_utc_not_rolling_24h():
+    """OB-6: window aligned to CURRENT_DATE (calendar-day-UTC) matching
+    src/services/jit_validator.py:431 daily-quota convention. NOT a
+    rolling 24h interval — Stripe has no daily rule, so prior comment was
+    misleading and SQL is now consistent with the existing JIT rate
+    limiter (cap resets at UTC midnight)."""
+    assert flow_mod._SPEND_WINDOW_SQL == "CURRENT_DATE"
+    # The snapshot SQL embeds the constant via f-string — verify the
+    # constant reference appears, not the resolved value (inspect.getsource
+    # returns source text with the {var} substitution in place).
+    import inspect
+    src = inspect.getsource(flow_mod.snapshot_outreach_spend_task)
+    assert "{_SPEND_WINDOW_SQL}" in src
+    # Old rolling-24h marker must be gone.
+    assert "INTERVAL '24 hours'" not in src
+    # Module-level docstring should not retain the misleading Stripe phrase.
+    mod_src = inspect.getsource(flow_mod)
+    assert "matches Stripe day rule" not in mod_src
+
+
+def test_ob3_tier_coercion_is_pinned_to_enum_value():
+    """OB-3: source code pins tier_value to tier.value with the only
+    fallback being None -> 'ignition'. The old hasattr() / str() fallback
+    chain is removed."""
+    import inspect
+    src = inspect.getsource(flow_mod.get_leads_ready_for_outreach_task)
+    assert "tier.value if tier is not None else \"ignition\"" in src
+    # The old defensive chain must be gone.
+    assert 'hasattr(tier, "value")' not in src
+
+
+def test_ob4_domain_cap_documented_as_roadmap_marker():
+    """OB-4: DEFAULT_DOMAIN_DAILY_AUD_CAP carries a roadmap-polish marker
+    noting the value should become per-customer-tier configurable
+    post-revenue. Comment-only verification."""
+    import inspect
+    src = inspect.getsource(flow_mod)
+    # The roadmap marker text must appear adjacent to the constant.
+    assert "per-customer-tier configurable post-revenue" in src
+    # Constant value remains 5.0.
+    assert flow_mod.DEFAULT_DOMAIN_DAILY_AUD_CAP == 5.0
+
+
+def test_ob5_channel_cost_aud_documents_canonical_source():
+    """OB-5: CHANNEL_COST_AUD comment block points to canonical settings
+    sources for future updates."""
+    import inspect
+    src = inspect.getsource(flow_mod)
+    # The OB-5 marker text must appear adjacent to the dict.
+    assert "src/config/settings.py" in src
+    assert "voice_agent_telnyx.py" in src
+
+
 def test_tier_daily_aud_cap_covers_active_tiers():
     """spark / ignition / velocity must be present; dominance kept for
     DB-migration tolerance per src/config/tiers.py."""

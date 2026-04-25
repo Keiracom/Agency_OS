@@ -135,7 +135,9 @@ class Layer3BulkFilter:
 
                 # Apply thresholds and update BU
                 for domain in batch:
-                    m = metrics_by_domain.get(domain, {})
+                    m = metrics_by_domain.get(domain)
+                    in_response = m is not None
+                    m = m or {}
                     organic_etv = m.get("organic_etv", 0.0)
                     paid_etv = m.get("paid_etv", 0.0)
                     backlinks = m.get("backlinks_count", 0)
@@ -160,6 +162,12 @@ class Layer3BulkFilter:
                                 dfs_paid_etv = COALESCE($3, dfs_paid_etv),
                                 backlinks_count = $4,
                                 domain_rank = $5,
+                                stage_metrics = jsonb_set(
+                                    COALESCE(stage_metrics, '{}'::jsonb),
+                                    '{stage_completed_at,layer_3_bulk_filter}',
+                                    to_jsonb(NOW()::text),
+                                    true
+                                ),
                                 updated_at = NOW()
                             WHERE id = $1
                             """,
@@ -171,6 +179,18 @@ class Layer3BulkFilter:
                         )
                         stats.passed += 1
                     else:
+                        # Specific drop reasons — covers every drop branch
+                        if not in_response:
+                            reason = "bulk_metrics_missing_from_response"
+                        else:
+                            failed = []
+                            if not (organic_etv > min_organic):
+                                failed.append("organic_etv")
+                            if not (paid_etv > min_paid):
+                                failed.append("paid_etv")
+                            if not (backlinks >= min_backlinks):
+                                failed.append("backlinks")
+                            reason = "bulk_metrics_below_threshold:" + "+".join(failed)
                         await self._conn.execute(
                             """
                             UPDATE business_universe SET
@@ -180,11 +200,17 @@ class Layer3BulkFilter:
                                 dfs_paid_etv = COALESCE($4, dfs_paid_etv),
                                 backlinks_count = $5,
                                 domain_rank = $6,
+                                stage_metrics = jsonb_set(
+                                    COALESCE(stage_metrics, '{}'::jsonb),
+                                    '{stage_completed_at,layer_3_bulk_filter}',
+                                    to_jsonb(NOW()::text),
+                                    true
+                                ),
                                 updated_at = NOW()
                             WHERE id = $1
                             """,
                             domain_id,
-                            "bulk_metrics_below_threshold",
+                            reason,
                             organic_etv if organic_etv > 0 else None,
                             paid_etv if paid_etv > 0 else None,
                             backlinks if backlinks > 0 else None,
@@ -195,6 +221,36 @@ class Layer3BulkFilter:
             except Exception as exc:
                 logger.error(f"Layer3: batch {stats.batches_called + 1} failed: {exc}")
                 stats.errors.append(str(exc))
+                # Mark each domain in the failed batch with a filter_reason so the
+                # gap is visible. Pipeline stage stays at 1 for retry — these are
+                # NOT drops, just instrumentation markers on the failed attempt.
+                exc_marker = f"bulk_metrics_batch_error:{type(exc).__name__}"
+                for domain in batch:
+                    domain_id = id_by_domain.get(domain)
+                    if not domain_id:
+                        continue
+                    try:
+                        await self._conn.execute(
+                            """
+                            UPDATE business_universe SET
+                                filter_reason = $2,
+                                stage_metrics = jsonb_set(
+                                    COALESCE(stage_metrics, '{}'::jsonb),
+                                    '{layer_3_last_error}',
+                                    to_jsonb($3::text),
+                                    true
+                                ),
+                                updated_at = NOW()
+                            WHERE id = $1
+                            """,
+                            domain_id,
+                            exc_marker,
+                            str(exc)[:500],
+                        )
+                    except Exception as mark_exc:
+                        logger.warning(
+                            f"Layer3: failed to write batch-error marker for {domain}: {mark_exc}"
+                        )
 
         logger.info(
             f"Layer3 [{vertical}]: processed={stats.total_processed} "

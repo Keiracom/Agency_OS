@@ -64,7 +64,9 @@ async def test_affordability_gate_passes_gst_registered():
     """Row with abn_matched + gst_registered + Company entity passes all gates."""
     conn = make_conn()
     row = make_row(website_cms="wordpress", abn_matched=True, gst_registered=True, entity_type="Company")
-    conn.fetch = AsyncMock(return_value=[row])
+    # First fetch: BU candidate rows. Second fetch: suppression cross-check
+    # (added in BU Closed-Loop S1) — return [] = no suppression match.
+    conn.fetch = AsyncMock(side_effect=[[row], []])
 
     passing, failing = await affordability_gate(conn, 10)
 
@@ -82,7 +84,9 @@ async def test_affordability_gate_rejects_dead_site():
     conn = make_conn()
     row = make_row(website_cms=None, website_tech_stack=None, website_contact_emails=None,
                    abn_matched=True, gst_registered=True, entity_type="Company")
-    conn.fetch = AsyncMock(return_value=[row])
+    # First fetch: BU candidate rows. Second fetch: suppression cross-check
+    # (added in BU Closed-Loop S1) — return [] = no suppression match.
+    conn.fetch = AsyncMock(side_effect=[[row], []])
 
     passing, failing = await affordability_gate(conn, 10)
 
@@ -100,7 +104,9 @@ async def test_affordability_gate_rejects_sole_trader():
     conn = make_conn()
     row = make_row(website_cms="wordpress", abn_matched=True, gst_registered=True,
                    entity_type="Individual/Sole Trader")
-    conn.fetch = AsyncMock(return_value=[row])
+    # First fetch: BU candidate rows. Second fetch: suppression cross-check
+    # (added in BU Closed-Loop S1) — return [] = no suppression match.
+    conn.fetch = AsyncMock(side_effect=[[row], []])
 
     passing, failing = await affordability_gate(conn, 10)
 
@@ -116,7 +122,9 @@ async def test_affordability_gate_rejects_no_gst():
     """Row with gst_registered=False fails GATE 3."""
     conn = make_conn()
     row = make_row(website_cms="wordpress", abn_matched=True, gst_registered=False, entity_type="Company")
-    conn.fetch = AsyncMock(return_value=[row])
+    # First fetch: BU candidate rows. Second fetch: suppression cross-check
+    # (added in BU Closed-Loop S1) — return [] = no suppression match.
+    conn.fetch = AsyncMock(side_effect=[[row], []])
 
     passing, failing = await affordability_gate(conn, 10)
 
@@ -132,7 +140,9 @@ async def test_affordability_gate_passes_null_entity_type():
     """None entity_type should not be rejected — sole trader check is explicit match only."""
     conn = make_conn()
     row = make_row(website_cms="wordpress", abn_matched=True, gst_registered=True, entity_type=None)
-    conn.fetch = AsyncMock(return_value=[row])
+    # First fetch: BU candidate rows. Second fetch: suppression cross-check
+    # (added in BU Closed-Loop S1) — return [] = no suppression match.
+    conn.fetch = AsyncMock(side_effect=[[row], []])
 
     passing, failing = await affordability_gate(conn, 10)
 
@@ -241,7 +251,9 @@ async def test_skipped_domains_get_timestamp():
     """Rows failing the gate have paid_enrichment_skipped_reason + completed_at written."""
     conn = make_conn()
     row = make_row(website_cms=None, website_tech_stack=None, website_contact_emails=None)
-    conn.fetch = AsyncMock(return_value=[row])
+    # First fetch: BU candidate rows. Second fetch: suppression cross-check
+    # (added in BU Closed-Loop S1) — return [] = no suppression match.
+    conn.fetch = AsyncMock(side_effect=[[row], []])
 
     passing, failing = await affordability_gate(conn)
 

@@ -43,12 +43,41 @@ def _state_coords(state: str | None) -> tuple[float, float]:
     return _DEFAULT_COORDS
 
 
+async def _suppression_cross_check(
+    conn: asyncpg.Connection,
+    bu_ids: list[str],
+) -> set[str]:
+    """Return the subset of BU ids whose website_contact_emails intersect the
+    public.suppression_list (any email match on channel ∈ {'all','email'}).
+
+    Pre-paid-spend SQL guard. Pure SQL — no live API calls. DNCR phone checks
+    live in Redis cache (src/integrations/dncr.py) and have no SQL surface, so
+    they are not joined here; that path is exercised at the live-call site.
+    """
+    if not bu_ids:
+        return set()
+    rows = await conn.fetch(
+        """SELECT DISTINCT bu.id
+             FROM business_universe bu,
+                  jsonb_array_elements_text(
+                      COALESCE(bu.website_contact_emails, '[]'::jsonb)
+                  ) AS contact_email
+             JOIN public.suppression_list s
+               ON LOWER(s.email) = LOWER(contact_email)
+            WHERE bu.id = ANY($1::uuid[])
+              AND s.channel IN ('all', 'email')""",
+        bu_ids,
+    )
+    return {str(r["id"]) for r in rows}
+
+
 async def affordability_gate(
     conn: asyncpg.Connection,
     limit: int = 1000,
 ) -> tuple[list[asyncpg.Record], list[asyncpg.Record]]:
     """
-    Query BU for domains ready for paid enrichment. Apply 4-gate filter.
+    Query BU for domains ready for paid enrichment. Apply 4-gate filter +
+    suppression cross-check.
     Returns (passing_rows, failing_rows).
     Failing rows have paid_enrichment_skipped_reason written to DB before returning.
     """
@@ -64,10 +93,20 @@ async def affordability_gate(
         limit,
     )
 
+    # Suppression cross-check BEFORE any paid-spend SQL. Skip-marker rows
+    # whose contact emails match the suppression list — they never enter the
+    # _check_gates loop and never reach DFS / GMB calls downstream.
+    suppressed_ids = await _suppression_cross_check(
+        conn, [str(r["id"]) for r in rows]
+    )
+
     passing: list[asyncpg.Record] = []
     failing: list[tuple[asyncpg.Record, str]] = []
 
     for row in rows:
+        if str(row["id"]) in suppressed_ids:
+            failing.append((row, "suppression_match"))
+            continue
         reason = _check_gates(row)
         if reason is None:
             passing.append(row)

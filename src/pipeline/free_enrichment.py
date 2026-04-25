@@ -451,10 +451,20 @@ class FreeEnrichment:
 
     async def run(self, limit: int = 500) -> dict:
         async with self._acquire() as conn:
+            # Generalised cursor: catches rows that have never been processed
+            # (legacy NULL marker) AND rows whose JSONB stage_completed_at marker
+            # is missing AND rows previously aborted via free_enrichment_exception.
+            # This closes the gap where partial / errored rows were never retried.
             rows = await conn.fetch(
-                "SELECT id, domain, state FROM business_universe "
-                "WHERE pipeline_stage >= 1 AND free_enrichment_completed_at IS NULL "
-                "AND domain IS NOT NULL LIMIT $1",
+                """SELECT id, domain, state FROM business_universe
+                   WHERE pipeline_stage >= 1
+                     AND domain IS NOT NULL
+                     AND (
+                           free_enrichment_completed_at IS NULL
+                        OR (stage_metrics -> 'stage_completed_at' ->> 'free_enrichment') IS NULL
+                        OR filter_reason = 'free_enrichment_exception'
+                     )
+                   LIMIT $1""",
                 limit,
             )
         stats = {
@@ -567,6 +577,9 @@ class FreeEnrichment:
                 website_data = await self._scrape_website(domain)
             else:
                 stats["dns_skipped"] += 1
+                # Instrumentation: mark the dead-DNS skip path so the gap is visible.
+                # Not a hard drop — _write_results still runs below with empty website_data.
+                await self._write_filter_reason(bu_id, "free_enrichment_dns_unreachable")
             dns_data = self._enrich_dns(domain)
             suburb = (website_data.get("website_address") or {}).get("suburb")
             abn_data = await self._match_abn(
@@ -581,6 +594,25 @@ class FreeEnrichment:
         except Exception as exc:
             self._logger.error("FreeEnrichment error for %s: %s", domain, exc)
             stats["errors"].append({"domain": domain, "error": str(exc)})
+            # Instrumentation: record the exception so the generalised cursor
+            # picks the row up on the next sweep instead of leaving it stuck.
+            try:
+                await self._write_filter_reason(bu_id, "free_enrichment_exception")
+            except Exception as inner:
+                self._logger.warning(
+                    "FreeEnrichment: failed to write exception filter_reason for %s: %s",
+                    domain, inner,
+                )
+
+    async def _write_filter_reason(self, bu_id: str, reason: str) -> None:
+        """Write filter_reason to BU without touching pipeline_stage. Skip-marker only."""
+        async with self._acquire() as conn:
+            await conn.execute(
+                """UPDATE business_universe
+                   SET filter_reason = $2, updated_at = NOW()
+                   WHERE id = $1""",
+                bu_id, reason,
+            )
 
     def _dns_precheck(self, domain: str) -> bool:
         resolver = dns.resolver.Resolver()
@@ -959,7 +991,13 @@ class FreeEnrichment:
                     entity_type                   = COALESCE($12, entity_type),
                     registration_date             = COALESCE($13, registration_date),
                     email_maturity                = $14,
-                    free_enrichment_completed_at  = NOW()
+                    free_enrichment_completed_at  = NOW(),
+                    stage_metrics = jsonb_set(
+                        COALESCE(stage_metrics, '{}'::jsonb),
+                        '{stage_completed_at,free_enrichment}',
+                        to_jsonb(NOW()::text),
+                        true
+                    )
                 WHERE id = $1
                 """,
                 bu_id,

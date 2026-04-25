@@ -800,6 +800,11 @@ async def confirm_icp(
 
     logger = logging.getLogger(__name__)
 
+    # Process-wide IS_DEMO_MODE forces every onboarding into demo regardless
+    # of the per-request flag. Keeps the investor-demo build self-consistent.
+    from src.config.settings import settings as _settings
+    effective_demo_mode = bool(request.demo_mode or getattr(_settings, "IS_DEMO_MODE", False))
+
     await run_deployment(
         name="post_onboarding_setup/post-onboarding-setup",
         parameters={
@@ -808,13 +813,14 @@ async def confirm_icp(
             "auto_source_leads": True,
             "auto_activate_campaigns": False,  # Keep as drafts for review
             "bypass_gates": request.bypass_gates,
-            "demo_mode": request.demo_mode,
+            "demo_mode": effective_demo_mode,
         },
         timeout=0,  # Don't wait for completion
     )
     logger.info(
         f"Triggered Prefect post-onboarding setup flow for client {client.client_id} "
-        f"[bypass_gates={request.bypass_gates}, demo_mode={request.demo_mode}]"
+        f"[bypass_gates={request.bypass_gates}, demo_mode={effective_demo_mode} "
+        f"(req={request.demo_mode}, env={getattr(_settings, 'IS_DEMO_MODE', False)})]"
     )
 
     return {

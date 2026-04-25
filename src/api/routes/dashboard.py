@@ -107,6 +107,28 @@ _STAGE_LABELS: dict[int, str] = {
 # Endpoints
 # ─────────────────────────────────────────────────────────────────────────────
 
+class DemoModeResponse(BaseModel):
+    is_demo_mode: bool
+    message: str | None = None
+
+
+@router.get("/demo-mode", response_model=DemoModeResponse)
+async def demo_mode_state() -> DemoModeResponse:
+    """Read the process-wide IS_DEMO_MODE env flag. Public endpoint —
+    the frontend renders a persistent banner when this is true. No
+    PII surfaced; just the flag + a fixed message."""
+    from src.config.settings import settings as _settings
+    enabled = bool(getattr(_settings, "IS_DEMO_MODE", False))
+    return DemoModeResponse(
+        is_demo_mode=enabled,
+        message=(
+            "DEMO MODE — No outreach will be sent. "
+            "Data is real prospect intelligence."
+            if enabled else None
+        ),
+    )
+
+
 @router.get("/bu-hot-leads", response_model=BUHotLeadsResponse)
 async def bu_hot_leads(
     limit: int = Query(default=10, ge=1, le=50),

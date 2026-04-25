@@ -117,6 +117,17 @@ class OutreachDispatcher:
             campaign_id: UUID (optional)
             content:    dict with channel-specific payload (subject/body/etc.)
         """
+        # Demo-mode gate — when IS_DEMO_MODE is set process-wide we never
+        # touch a real provider. Returns a 'skipped' result so the caller
+        # records the touch as deliberately suppressed (not failed).
+        from src.config.settings import settings as _settings
+        if getattr(_settings, "IS_DEMO_MODE", False):
+            channel_str = (touch.get("channel") or "").lower()
+            return DispatchResult(
+                status="skipped", channel=channel_str,
+                reason="demo_mode:no_real_send",
+            )
+
         channel_str = (touch.get("channel") or "").lower()
         try:
             channel = Channel(channel_str)

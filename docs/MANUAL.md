@@ -1,8 +1,8 @@
 # Agency OS Manual
 
-Last updated: 2026-04-23 UTC
-Directive DASHBOARD-DESIGN-COMPLETE: Master Agency Desk v10 shipped, Phase 2.1/2.2 split approved
-Next scheduled update: Phase 2.1 dashboard wiring milestone
+Last updated: 2026-04-25 UTC
+Directive CD-PLAYER-V1: CD Player streaming pipeline shipped, BU+CIS audit complete, Closed-Loop Engine scoped
+Next scheduled update: BU Closed-Loop Engine (ORION) + Phase 2.1 dashboard (ATLAS)
 
 > **Primary store.** This file is the CEO SSOT. Google Doc is an auto-generated mirror.
 > After every save-trigger write, verify with: `cat docs/MANUAL.md | grep "SECTION"`
@@ -23,15 +23,38 @@ Revenue model for BU: API subscriptions, Salesforce/HubSpot marketplace, bulk an
 
 ## SECTION 2 — CURRENT STATE
 
-**Last directive:** DASHBOARD-DESIGN-COMPLETE (Master Agency Desk v10 — 10 iterations, Junior BDR reframe, demo archaeology)
-**Pipeline F status:** P5 COMPLETE, PHASE 1.5 COMPLETE, DASHBOARD DESIGN COMPLETE
+**Last directive:** CD-PLAYER-V1 (streaming pipeline + budget enforcement + BU/CIS audit + closed-loop scoping)
+**Pipeline F status:** P5 COMPLETE, PHASE 1.5 COMPLETE, DASHBOARD DESIGN COMPLETE, CD PLAYER V1 SHIPPED
 **Phase 1.5 result:** Operational autonomy achieved. Clone architecture live. Dual-concur governance ratified.
-**Dashboard result:** Master Agency Desk v10 shipped (2344 lines). 5 concepts explored (Supervisor/Terminal/Feed/Kanban/Briefing Room). Demo archaeology revealed product is a Sales Intelligence Briefing System. Junior BDR mental model ratified. Data backfill recovered 262 businesses + 244 emails + 92 mobiles.
-**Next phase:** Phase 2.1 (wire dashboard to real data, ATLAS) + Phase 2.2 (outreach safety layer, ORION) — parallel tracks
+**Dashboard result:** Master Agency Desk v10 shipped (2344 lines). 5 concepts explored. Demo archaeology revealed product is a Sales Intelligence Briefing System.
+**CD Player v1 result:** Pipeline_orchestrator unified with cohort_runner proven stages. Per-domain streaming, SSECardStreamer, capacity skip (Stage 6), drop-triggered refill (8% default). Budget P0 fix: 4-layer defence in depth (admission control + per-stage gate + max_in_flight + run-level kill). Budget incident: $73 AUD burned on T5 live test — fixed structurally.
+**Next phase:** BU Closed-Loop Engine (ORION, free-mode) + Phase 2.1 dashboard wiring (ATLAS) — parallel tracks
 **Test baseline:** 2152 passed, 0 failed, 28 skipped
-**BU status:** 5,970 businesses, 258 emails, 92 mobiles, 103 BDMs
-**Last merged PR:** #378 (clone architecture docs)
+**BU status:** 8,593 businesses (2,747 new dental from T5 recovery), 253 emails, 90 mobiles, 508 BDMs. 4 full cards, 162 actionable (email+LinkedIn).
+**Last merged PR:** #408 (listener tuning v1)
 **Team roster:** ELLIOT + AIDEN + ATLAS + ORION + SCOUT (5 sessions)
+
+### BU + CIS Audit (2026-04-25)
+
+14 gaps identified across BU-pipeline-CIS loop:
+1. No backlog driver — stuck rows never re-enter pipeline
+2. filter_reason unwritten (99.97% NULL)
+3. stage_completed_at unwritten
+4. No signal decay — scores treated as permanent
+5. No provider rotation on failure
+6. No dead-domain cleanup
+7. No customer feedback loop (CIS→BU)
+8. discovery_batch_id 0% populated
+9. abn_matched 0.05% (4 of 8,593)
+10. converted_verticals 0% populated
+11. Stage 0 phantom queue (5,022 rows no Stage 1 trigger)
+12. No suppression cross-check before paid enrichment
+13. last_enriched_at broken/unwritten
+14. Two scoring systems (pipeline vs engine) — only engine reads CIS weights
+
+CIS status: 2,500+ lines real code, wired to 8 consumers, 14 tables created, 0 outcome rows. Architecturally complete loop (outcomes → weight adjustment → scorer reads weights). Idle — no outreach = no outcomes. Dual-scorer gap: pipeline scoring (BU pool) doesn't read CIS-learned weights. Fix: rescore_engine reconciliation.
+
+**BU Closed-Loop Engine** — APPROVED (2026-04-25). Owner: ORION (Aiden). Budget: AUD 0 (free-mode only). Cadence: 14d hot / 60d warm / 180d cold. Scope: backlog driver, instrumentation writes, ABN match sweep, Stage 0→1 trigger, suppression cross-check, rescore_engine CIS reconciliation. Success: stuck rows reduced ≥40%, filter_reason 100% on new gates, abn_matched 4→~3,000.
 
 ### EVO Track (Autonomous Loop — all complete)
 

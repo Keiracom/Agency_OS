@@ -67,6 +67,15 @@ STAGE_ADVANCEMENT: dict[int, dict[str, Any]] = {
     # S3 — Stage 0 / 1 (post-discovery, pre-enrichment) advances via
     # free_enrichment. Pure local: DNS + httpx + abn_registry. AUD 0.
     0:  {"next_stage": 1,  "runner": "free_enrichment", "clients": [],         "is_free": True},
+    # S3-2 — Stage 1 -> 1 self-advancement is INTENTIONAL, not a bug.
+    # free_enrichment is the free-mode terminal stage (no paid path forward
+    # without human spend approval). Stamping stage_completed_at on each
+    # cycle is the cadence-backoff that prevents tight re-enrichment loops.
+    # Combined with S3-1's free_enrichment_completed_at short-circuit in
+    # _classify_row, the actual scrape only re-runs after the deliberate
+    # cadence (hot=14d / warm=60d / cold=180d) AND the row has not yet been
+    # enriched. Looks like an S2-1-class self-loop bug at first glance but
+    # is the correct semantics for the free-mode terminal.
     1:  {"next_stage": 1,  "runner": "free_enrichment", "clients": [],         "is_free": True},
     2:  {"next_stage": 3,  "runner": "_run_stage3",     "clients": ["gemini"], "is_free": True},
     3:  {"next_stage": 5,  "runner": "_run_stage5",     "clients": [],         "is_free": True},
@@ -118,6 +127,7 @@ async def fetch_backlog(
             SELECT id, domain, dfs_discovery_category AS category,
                    pipeline_stage, propensity_score,
                    stage_metrics, filter_reason,
+                   free_enrichment_completed_at,
                    COALESCE(
                        (SELECT MAX((value)::timestamptz)
                           FROM jsonb_each_text(stage_metrics -> 'stage_completed_at')),
@@ -129,7 +139,8 @@ async def fetch_backlog(
                AND domain IS NOT NULL
         )
         SELECT id, domain, category, pipeline_stage, propensity_score,
-               stage_metrics, filter_reason, latest_stage_at,
+               stage_metrics, filter_reason, free_enrichment_completed_at,
+               latest_stage_at,
                CASE
                    WHEN COALESCE(propensity_score, 0) >= 70 THEN 'hot'
                    WHEN COALESCE(propensity_score, 0) >= 50 THEN 'warm'
@@ -186,6 +197,17 @@ def _classify_row(
         return {
             "action": "skip",
             "reason": f"stuck:blocked_by_free_mode (would invoke {plan['runner']} requiring {plan['clients']})",
+        }
+    # S3-1 — pre-flight skip when the row has already been free-enriched.
+    # Without this gate, a stage-1 row that completed enrichment in a prior
+    # cycle would re-scrape on every closed-loop pass once the cadence
+    # threshold elapses. The cadence-backoff via stage_completed_at marker
+    # only mutes consecutive cycles, not the eventual re-scrape — this gate
+    # makes the no-op explicit and keeps the AUD 0 invariant tight.
+    if plan["runner"] == "free_enrichment" and row.get("free_enrichment_completed_at"):
+        return {
+            "action": "skip",
+            "reason": "stuck:already_free_enriched",
         }
     # S2-4 — pre-flight gate: refuse plans whose required clients are not
     # actually wired up. Today only Gemini is initialised in the flow body

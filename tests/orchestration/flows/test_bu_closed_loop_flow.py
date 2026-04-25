@@ -555,6 +555,68 @@ def test_s3_advance_row_invokes_free_enrichment_runner():
     fake_free.assert_awaited_once()
 
 
+def test_s3_1_classify_row_skips_already_free_enriched():
+    """S3-1 regression — stage 1 row whose free_enrichment_completed_at is
+    set must short-circuit with stuck:already_free_enriched BEFORE the
+    runner is invoked. Prevents redundant scrapes once bu_closed_loop_flow
+    eventually unpauses."""
+    from datetime import datetime as _dt
+    row = {
+        "pipeline_stage": 1,
+        "domain": "done.com.au",
+        "propensity_score": 80,
+        "free_enrichment_completed_at": _dt(2026, 1, 1),
+    }
+    out = flow_mod._classify_row(row, free_mode_only=True,
+                                 clients={"gemini": MagicMock()})
+    assert out["action"] == "skip"
+    assert out["reason"] == "stuck:already_free_enriched"
+
+
+def test_s3_1_classify_row_advances_when_free_enrichment_completed_at_is_null():
+    """Same row, free_enrichment_completed_at not set → must advance via
+    free_enrichment runner (the gate is opt-in)."""
+    row = {
+        "pipeline_stage": 1,
+        "domain": "fresh.com.au",
+        "propensity_score": 80,
+        "free_enrichment_completed_at": None,
+    }
+    out = flow_mod._classify_row(row, free_mode_only=True,
+                                 clients={"gemini": MagicMock()})
+    assert out["action"] == "advance"
+    assert out["runner"] == "free_enrichment"
+
+
+def test_s3_1_classify_row_does_not_short_circuit_non_free_enrichment_stages():
+    """The S3-1 gate must only trigger for the free_enrichment runner.
+    A stage-4 row with free_enrichment_completed_at set still advances
+    via _run_stage5 (not free_enrichment) — must not be falsely skipped."""
+    from datetime import datetime as _dt
+    row = {
+        "pipeline_stage": 4,
+        "domain": "downstream.com.au",
+        "propensity_score": 80,
+        "free_enrichment_completed_at": _dt(2026, 1, 1),
+    }
+    out = flow_mod._classify_row(row, free_mode_only=True,
+                                 clients={"gemini": MagicMock()})
+    assert out["action"] == "advance"
+    assert out["runner"] == "_run_stage5"
+
+
+def test_s3_1_fetch_backlog_sql_selects_free_enrichment_completed_at():
+    """fetch_backlog must SELECT the column so the row dict carries it
+    through to _classify_row's pre-flight gate."""
+    import inspect
+    src = inspect.getsource(flow_mod.fetch_backlog)
+    # Inside the stage_age CTE we now project the column.
+    assert "free_enrichment_completed_at" in src
+    # Outer SELECT also propagates it onto the result row.
+    # (Two appearances expected: once inside CTE, once in outer select.)
+    assert src.count("free_enrichment_completed_at") >= 2
+
+
 def test_s3_advance_row_records_free_enrichment_exception_as_runner_early_exit():
     """Free enrichment exception path: dropped_at set, attempt array gets
     an entry, pipeline_stage NOT advanced."""

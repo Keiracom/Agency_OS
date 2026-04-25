@@ -24,6 +24,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
+from src.config.settings import settings
 from src.outreach.safety.compliance_guard import ComplianceGuard
 from src.outreach.safety.timing_engine import Channel, TimingEngine
 
@@ -120,8 +121,7 @@ class OutreachDispatcher:
         # Demo-mode gate — when IS_DEMO_MODE is set process-wide we never
         # touch a real provider. Returns a 'skipped' result so the caller
         # records the touch as deliberately suppressed (not failed).
-        from src.config.settings import settings as _settings
-        if getattr(_settings, "IS_DEMO_MODE", False):
+        if getattr(settings, "IS_DEMO_MODE", False):
             channel_str = (touch.get("channel") or "").lower()
             return DispatchResult(
                 status="skipped", channel=channel_str,

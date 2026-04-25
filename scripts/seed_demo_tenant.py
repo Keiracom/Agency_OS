@@ -101,7 +101,7 @@ async def select_prospects(conn) -> list[dict]:
         FROM business_universe
         WHERE pipeline_stage >= $1
           AND dm_email IS NOT NULL
-          AND COALESCE(propensity_score, 0) > $2
+          AND COALESCE(propensity_score, 0) >= $2
           AND display_name IS NOT NULL
         ORDER BY (COALESCE(propensity_score, 0) + COALESCE(reachability_score, 0)) DESC
         LIMIT {TARGET_PROSPECTS * 5}
@@ -205,13 +205,20 @@ async def main():
             print(f"  … and {len(prospects) - 5} more")
 
         if len(prospects) < TARGET_PROSPECTS:
-            print(f"\nWARNING — only {len(prospects)} of {TARGET_PROSPECTS} target "
-                  f"prospects passed all filters. Demo will be smaller. "
-                  f"Refusing to pad with weaker prospects.")
+            # DEM-3 — refuse to ship a sub-target demo. Exit code 2 so the
+            # operator (or CI) can detect the shortfall programmatically.
+            print(
+                f"\nERROR — only {len(prospects)} of {TARGET_PROSPECTS} target "
+                f"prospects passed all filters. Refusing to pad with weaker "
+                f"prospects. Run more enrichment to grow the candidate pool, "
+                f"then re-run this script.",
+                file=sys.stderr,
+            )
+            sys.exit(2)
 
         if not prospects:
-            print("\nno prospects to link — exiting")
-            return
+            print("\nno prospects to link — exiting", file=sys.stderr)
+            sys.exit(2)
 
         if dry_run:
             print(f"\nDRY-RUN — would link {len(prospects)} BU rows to demo client")

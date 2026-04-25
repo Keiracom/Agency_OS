@@ -32,7 +32,7 @@ export function DemoModeBanner() {
   const { data } = useQuery({
     queryKey: ["demo-mode"],
     queryFn: fetchDemoMode,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 60 * 1000,
     refetchOnWindowFocus: false,
   });
 

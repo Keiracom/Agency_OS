@@ -264,3 +264,64 @@ def test_dispatch_result_default_fields():
     assert x.extra == {} and x.recorded is False
     # ensure sent_at timestamp construction works (smoke check datetime still imports)
     assert isinstance(datetime.now(), datetime)
+
+
+# ─── DEM-2 — IS_DEMO_MODE gate ────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_dispatch_returns_skipped_when_demo_mode_on(monkeypatch):
+    """IS_DEMO_MODE=True must short-circuit dispatch BEFORE any provider
+    is touched. Salesforge mock would record an await if it fired."""
+    from src.config.settings import settings as _s
+    monkeypatch.setattr(_s, "IS_DEMO_MODE", True)
+
+    sf = AsyncMock()
+    sf.send_email = AsyncMock(return_value={"message_id": "should-not-fire"})
+    d = OutreachDispatcher(
+        salesforge_client=sf,
+        timing_engine=_always_allow_timing(),
+        compliance_guard=_always_allow_compliance(),
+        rate_limiter=_allow_rate(),
+    )
+    r = await d.dispatch(_touch())
+    assert r.status == "skipped"
+    assert r.channel == "email"
+    sf.send_email.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_dispatch_proceeds_normally_when_demo_mode_off(monkeypatch):
+    """IS_DEMO_MODE=False must NOT short-circuit — the regular happy path
+    runs and Salesforge is called as in test_send_email_success_records_to_db."""
+    from src.config.settings import settings as _s
+    monkeypatch.setattr(_s, "IS_DEMO_MODE", False)
+
+    sf = AsyncMock()
+    sf.send_email = AsyncMock(return_value={"message_id": "m1"})
+    d = OutreachDispatcher(
+        salesforge_client=sf,
+        timing_engine=_always_allow_timing(),
+        compliance_guard=_always_allow_compliance(),
+        rate_limiter=_allow_rate(),
+    )
+    r = await d.dispatch(_touch())
+    assert r.status == "sent"
+    assert r.provider == "salesforge"
+    sf.send_email.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_dispatch_skipped_result_has_demo_mode_reason_string(monkeypatch):
+    """Reason string must be 'demo_mode:no_real_send' so downstream
+    bookkeeping can distinguish a demo skip from timing/compliance skips."""
+    from src.config.settings import settings as _s
+    monkeypatch.setattr(_s, "IS_DEMO_MODE", True)
+
+    d = OutreachDispatcher(
+        salesforge_client=AsyncMock(),
+        timing_engine=_always_allow_timing(),
+        compliance_guard=_always_allow_compliance(),
+        rate_limiter=_allow_rate(),
+    )
+    r = await d.dispatch(_touch())
+    assert r.reason == "demo_mode:no_real_send"

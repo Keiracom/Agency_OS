@@ -2,6 +2,20 @@
   "permissions": {
     "defaultMode": "bypassPermissions"
   },
+  "hooks": {
+    "SessionEnd": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/elliotbot/clawd/venv/bin/python3 scripts/session_end_hook.py",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  },
   "mcpServers": {
     "supabase": {
       "command": "npx",

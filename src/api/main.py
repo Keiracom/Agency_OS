@@ -396,6 +396,7 @@ async def root() -> dict[str, Any]:
 # ============================================
 
 from src.api.routes.admin import router as admin_router
+from src.api.routes.bu_readiness import router as bu_readiness_router
 from src.api.routes.cycles import router as cycles_router
 from src.api.routes.dashboard import router as dashboard_router
 from src.api.routes.tiers import router as tiers_router
@@ -429,6 +430,7 @@ app.include_router(webhooks_outbound_router, prefix="/api/v1/webhooks-outbound")
 app.include_router(reports_router, prefix="/api/v1")
 app.include_router(admin_router, prefix="/api/v1")
 app.include_router(dashboard_router, prefix="/api/v1")
+app.include_router(bu_readiness_router, prefix="/api/v1")
 app.include_router(replies_router, prefix="/api/v1")
 app.include_router(meetings_router, prefix="/api/v1")
 # Phase 11: ICP Discovery / Onboarding

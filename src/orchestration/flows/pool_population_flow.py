@@ -115,6 +115,86 @@ def parse_employee_range(company_sizes: list[str]) -> tuple[int | None, int | No
 # ============================================
 
 
+async def _exclude_existing_bu_domains(
+    bu_gmb_rows: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """BU-CLOSED-LOOP-C5 — drop GMB-discovery candidates whose domain is
+    already in business_universe.
+
+    The candidate batch carries gmb_domain (the website extracted from
+    the GMB record). Two BU columns hold website-domain values:
+      - business_universe.domain    (set by free_enrichment / cohort_runner)
+      - business_universe.gmb_domain (set by this flow on prior runs)
+    A candidate is excluded if EITHER column on any existing BU row matches
+    the candidate's gmb_domain.
+
+    Carve-out — rows that should NOT block re-INSERT:
+      - pipeline_status = 'dropped' AND filter_reason LIKE 'permanent_%'
+        (the future thaw mechanism — these are intentionally
+        re-discoverable so they can be un-suppressed by re-discovery).
+    Rows that DO block re-INSERT:
+      - any row with deleted_at IS NOT NULL (soft-deleted — stay deleted).
+      - any 'dropped' row whose filter_reason lacks the permanent_ prefix.
+      - any active row (pipeline_status NULL or anything other than 'dropped').
+
+    Returns the filtered candidate list. Logs a structured info line so
+    the de-dup ratio is observable in run summaries.
+    """
+    incoming_domains = sorted({
+        r["gmb_domain"] for r in bu_gmb_rows
+        if r.get("gmb_domain")
+    })
+    if not incoming_domains:
+        return bu_gmb_rows
+
+    # SELECT both domain columns from any BU row that matches an incoming
+    # candidate AND does NOT qualify for the permanent-drop carve-out.
+    # Returning both columns (rather than a COALESCE) lets us populate the
+    # blocked set with EVERY value that should suppress re-INSERT —
+    # critical when a row carries different values in domain vs gmb_domain.
+    async with get_db_session() as session:
+        result = await session.execute(
+            text("""
+                SELECT domain, gmb_domain
+                  FROM business_universe
+                 WHERE (
+                         domain     = ANY(:incoming::text[])
+                      OR gmb_domain = ANY(:incoming::text[])
+                       )
+                   AND deleted_at IS NULL
+                   AND NOT (
+                         pipeline_status = 'dropped'
+                     AND filter_reason LIKE 'permanent_%%'
+                   )
+            """),
+            {"incoming": incoming_domains},
+        )
+        blocked: set[str] = set()
+        for row in result.fetchall():
+            if row[0]:
+                blocked.add(row[0])
+            if row[1]:
+                blocked.add(row[1])
+
+    if not blocked:
+        return bu_gmb_rows
+
+    kept = [r for r in bu_gmb_rows if r.get("gmb_domain") not in blocked]
+    skipped_count = len(bu_gmb_rows) - len(kept)
+    if skipped_count:
+        skipped_domains = sorted(
+            {r["gmb_domain"] for r in bu_gmb_rows
+             if r.get("gmb_domain") in blocked}
+        )
+        # Truncate the logged list so a 1000-row dedupe doesn't spam logs.
+        preview = skipped_domains[:20]
+        logger.info(
+            "pool_population_skipped_existing_bus count=%d sample=%r",
+            skipped_count, preview,
+        )
+    return kept
+
+
 async def get_next_unswept_location(
     campaign_id: str,
     candidate_locations: list[str],
@@ -733,6 +813,21 @@ async def populate_pool_from_icp_task(
                     }
                 )
             if bu_gmb_rows:
+                # BU-CLOSED-LOOP-C5 — Stage 1 BU-exclusion query.
+                # Before the INSERT, drop candidates whose domain is already in
+                # business_universe. The existing ON CONFLICT (abn) clause only
+                # dedupes on ABN, so a previously-discovered domain attached to a
+                # different ABN (or no ABN) was being duplicated on every run.
+                #
+                # Carve-out: rows with pipeline_status='dropped' AND
+                # filter_reason LIKE 'permanent_%' are intentionally
+                # re-discoverable (future thaw mechanism — see closed-loop S1).
+                # Soft-deleted rows (deleted_at IS NOT NULL) and ordinary
+                # 'dropped' rows without the permanent_ prefix DO block
+                # re-INSERT to prevent re-suppressed-domain churn.
+                bu_gmb_rows = await _exclude_existing_bu_domains(bu_gmb_rows)
+
+            if bu_gmb_rows:
                 async with get_db_session() as _bu_db:
                     await _bu_db.execute(
                         text("""
@@ -769,6 +864,8 @@ async def populate_pool_from_icp_task(
                     await _bu_db.commit()
                 n = len(bu_gmb_rows)
                 logger.info(f"[BU] GMB write-back: {n} records upserted")
+            else:
+                logger.info("[BU] GMB write-back: 0 records — all candidates already in BU")
         except Exception as _gmb_wb_err:
             logger.warning(f"[BU] GMB write-back failed (non-blocking): {_gmb_wb_err}")
 

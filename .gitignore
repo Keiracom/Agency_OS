@@ -132,5 +132,7 @@ screenshot-to-code/
 .env.aiden
 .env.elliot
 
-# M11 — write_manual_mirror staleness state (per-clone, never commit)
+# M11 — write_manual_mirror staleness state. Active path is now
+# ~/.config/agency-os/.manual_mirror_state (M11-2 — shared across clones).
+# This entry remains so any pre-fix per-worktree file gets ignored too.
 scripts/.manual_mirror_state

@@ -44,8 +44,18 @@ GOOGLE_DOC_ID = os.environ.get(
 )
 SERVICE_ACCOUNT_FILE = "/home/elliotbot/google-service-account.json"
 MANUAL_PATH = Path(__file__).parent.parent / "docs" / "MANUAL.md"
-STATE_PATH = Path(__file__).parent / ".manual_mirror_state"
+
+# M11-2 — state file lives in the shared agency-os config dir, not in any
+# single worktree. All clones (atlas/elliot/main + future) share one source
+# of truth for "when was MANUAL.md last mirrored". Falls back to the legacy
+# per-worktree location during transition for callers who haven't migrated.
+_SHARED_STATE_DIR = Path.home() / ".config" / "agency-os"
+STATE_PATH = _SHARED_STATE_DIR / ".manual_mirror_state"
+_LEGACY_STATE_PATH = Path(__file__).parent / ".manual_mirror_state"
+
 SCOPES = ["https://www.googleapis.com/auth/documents"]
+HOOKS_PATH = ".githooks"
+REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
 # ─── fingerprinting ────────────────────────────────────────────────────────
@@ -87,15 +97,29 @@ def fingerprint(path: Path) -> dict:
 
 
 def load_state() -> dict:
-    if not STATE_PATH.exists():
-        return {}
-    try:
-        return json.loads(STATE_PATH.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
-        return {}
+    """Load state from the shared config dir. One-shot migrate from the
+    legacy per-worktree path if the shared file is missing but the
+    legacy file exists (so the first run after this fix doesn't re-mirror
+    unnecessarily)."""
+    if STATE_PATH.exists():
+        try:
+            return json.loads(STATE_PATH.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            return {}
+    if _LEGACY_STATE_PATH.exists():
+        try:
+            data = json.loads(_LEGACY_STATE_PATH.read_text(encoding="utf-8"))
+            logger.info("M11-2 — migrating legacy state %s → %s",
+                        _LEGACY_STATE_PATH, STATE_PATH)
+            save_state(data)
+            return data
+        except (json.JSONDecodeError, OSError):
+            return {}
+    return {}
 
 
 def save_state(state: dict) -> None:
+    STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
     STATE_PATH.write_text(json.dumps(state, indent=2), encoding="utf-8")
 
 
@@ -105,6 +129,68 @@ def is_unchanged(current: dict, last: dict) -> bool:
     if "git_blob" in current and "git_blob" in last:
         return current["git_blob"] == last["git_blob"]
     return current.get("sha256") == last.get("sha256")
+
+
+# ─── M11-1 — hook installation ─────────────────────────────────────────────
+
+def _current_hooks_path() -> str | None:
+    """Return the value of `git config core.hooksPath` for REPO_ROOT,
+    or None if unset / git unavailable."""
+    try:
+        out = subprocess.check_output(
+            ["git", "config", "--get", "core.hooksPath"],
+            cwd=str(REPO_ROOT), stderr=subprocess.DEVNULL,
+        )
+        return out.decode().strip() or None
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return None
+
+
+def install_hook() -> int:
+    """Run `git config core.hooksPath .githooks` for REPO_ROOT. Verifies
+    that the post-commit hook exists + is executable. Returns 0 on
+    success, non-zero otherwise."""
+    hook = REPO_ROOT / HOOKS_PATH / "post-commit"
+    if not hook.exists():
+        logger.error("post-commit hook missing at %s", hook)
+        return 4
+    if not os.access(str(hook), os.X_OK):
+        logger.warning("post-commit hook not executable — fixing chmod +x")
+        try:
+            hook.chmod(hook.stat().st_mode | 0o111)
+        except OSError as exc:
+            logger.error("chmod failed: %s", exc)
+            return 4
+    try:
+        subprocess.check_call(
+            ["git", "config", "core.hooksPath", HOOKS_PATH],
+            cwd=str(REPO_ROOT),
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError) as exc:
+        logger.error("git config failed: %s", exc)
+        return 4
+    logger.info("post-commit hook installed — core.hooksPath=%s", HOOKS_PATH)
+    logger.info("Future MANUAL.md commits will auto-mirror to Drive.")
+    return 0
+
+
+def warn_if_hook_not_installed() -> None:
+    """Emit a single non-fatal warning when core.hooksPath is not
+    pointing at .githooks — most commits will then bypass the auto-mirror."""
+    current = _current_hooks_path()
+    if current == HOOKS_PATH:
+        return
+    if current is None:
+        logger.warning(
+            "post-commit hook not installed — run `python scripts/write_manual_mirror.py "
+            "--install` (or `git config core.hooksPath .githooks`) so MANUAL.md commits "
+            "auto-mirror.",
+        )
+    else:
+        logger.warning(
+            "core.hooksPath = %s (not .githooks). The M11 auto-mirror hook will "
+            "NOT fire on commits. Run --install to switch.", current,
+        )
 
 
 # ─── mirror impl ───────────────────────────────────────────────────────────
@@ -192,7 +278,18 @@ def main(argv: list[str] | None = None) -> int:
         "--check", action="store_true",
         help="Print staleness verdict and exit. No Drive write.",
     )
+    ap.add_argument(
+        "--install", action="store_true",
+        help="Install the post-commit hook (git config core.hooksPath .githooks) and exit.",
+    )
     args = ap.parse_args(argv)
+
+    # M11-1 — handle install first; it doesn't need MANUAL.md.
+    if args.install:
+        return install_hook()
+
+    # M11-1 — startup advisory if the hook isn't wired (non-fatal).
+    warn_if_hook_not_installed()
 
     if not MANUAL_PATH.exists():
         logger.error(f"MANUAL.md not found at {MANUAL_PATH}")

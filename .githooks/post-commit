@@ -16,12 +16,19 @@ set -euo pipefail
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 LOG="/tmp/manual_mirror_post_commit.log"
 
+# M11-3 — pin the venv interpreter so the hook works regardless of the
+# user's PATH or active virtualenv state when `git commit` runs.
+VENV_PY="/home/elliotbot/clawd/venv/bin/python3"
+if [[ ! -x "$VENV_PY" ]]; then
+    VENV_PY="$(command -v python3 || true)"
+fi
+
 # Diff just-completed commit; if MANUAL.md is in the file list, kick mirror.
 if git diff-tree --no-commit-id --name-only -r HEAD | grep -qx "docs/MANUAL.md"; then
-    echo "[$(date -Iseconds)] post-commit: MANUAL.md touched — kicking mirror" >> "$LOG"
+    echo "[$(date -Iseconds)] post-commit: MANUAL.md touched — kicking mirror ($VENV_PY)" >> "$LOG"
     (
         cd "$REPO_ROOT"
-        python3 scripts/write_manual_mirror.py >> "$LOG" 2>&1 || \
+        "$VENV_PY" scripts/write_manual_mirror.py >> "$LOG" 2>&1 || \
             echo "[$(date -Iseconds)] mirror exited non-zero (best-effort, non-blocking)" >> "$LOG"
     ) &
 fi

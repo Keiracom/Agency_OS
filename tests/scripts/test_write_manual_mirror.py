@@ -163,3 +163,92 @@ def test_post_commit_hook_exists_and_executable():
     body = hook.read_text()
     assert "docs/MANUAL.md" in body
     assert "write_manual_mirror.py" in body
+
+
+# ─── M11-3 — hook uses pinned venv python ──────────────────────────────────
+
+def test_post_commit_hook_uses_venv_python():
+    repo_root = Path(__file__).resolve().parent.parent.parent
+    body = (repo_root / ".githooks" / "post-commit").read_text()
+    assert "/home/elliotbot/clawd/venv/bin/python3" in body, (
+        "hook must pin venv interpreter (M11-3)"
+    )
+
+
+# ─── M11-2 — shared state path ─────────────────────────────────────────────
+
+def test_state_path_lives_under_shared_config_dir():
+    """Default STATE_PATH must point at ~/.config/agency-os, not in scripts/."""
+    expected = Path.home() / ".config" / "agency-os" / ".manual_mirror_state"
+    assert expected == mirror.STATE_PATH
+
+
+def test_load_state_migrates_legacy_path(tmp_path, monkeypatch):
+    """When the shared file is missing but the legacy per-worktree file
+    exists, load_state() copies it forward."""
+    shared = tmp_path / "shared" / ".manual_mirror_state"
+    legacy = tmp_path / "legacy" / ".manual_mirror_state"
+    legacy.parent.mkdir(parents=True, exist_ok=True)
+    legacy.write_text(json.dumps({"last_fingerprint": {"sha256": "legacy-sha"}}))
+    monkeypatch.setattr(mirror, "STATE_PATH", shared)
+    monkeypatch.setattr(mirror, "_LEGACY_STATE_PATH", legacy)
+
+    loaded = mirror.load_state()
+    assert loaded["last_fingerprint"]["sha256"] == "legacy-sha"
+    assert shared.exists()  # migrated forward
+    assert json.loads(shared.read_text())["last_fingerprint"]["sha256"] == "legacy-sha"
+
+
+# ─── M11-1 — hook installation + warning ───────────────────────────────────
+
+def test_install_runs_git_config(monkeypatch):
+    """--install must call `git config core.hooksPath .githooks` and
+    return 0 when the hook file is present + executable."""
+    calls: list[list[str]] = []
+
+    def fake_check_call(args, cwd=None, **_):
+        calls.append(args)
+        return 0
+
+    monkeypatch.setattr("subprocess.check_call", fake_check_call)
+    code = mirror.main(["--install"])
+    assert code == 0
+    assert any(a[:3] == ["git", "config", "core.hooksPath"] for a in calls)
+
+
+def test_install_returns_4_when_hook_missing(monkeypatch, tmp_path):
+    """install_hook should fail loudly if .githooks/post-commit is gone."""
+    monkeypatch.setattr(mirror, "REPO_ROOT", tmp_path)  # no .githooks dir
+    code = mirror.install_hook()
+    assert code == 4
+
+
+def test_warn_when_hook_not_installed(monkeypatch, caplog, tmp_manual):
+    """When core.hooksPath is unset, main() emits a single warning then
+    proceeds (non-fatal)."""
+    monkeypatch.setattr(mirror, "_current_hooks_path", lambda: None)
+    with caplog.at_level("WARNING"), patch.object(mirror, "mirror_to_drive"):
+        mirror.main([])
+    assert any(
+        "post-commit hook not installed" in r.message for r in caplog.records
+    )
+
+
+def test_no_warn_when_hook_correctly_installed(monkeypatch, caplog, tmp_manual):
+    """When core.hooksPath == .githooks, no install warning is emitted."""
+    monkeypatch.setattr(mirror, "_current_hooks_path", lambda: ".githooks")
+    with caplog.at_level("WARNING"), patch.object(mirror, "mirror_to_drive"):
+        mirror.main([])
+    for r in caplog.records:
+        assert "post-commit hook not installed" not in r.message
+        assert "core.hooksPath = " not in r.message
+
+
+def test_warn_when_hook_path_points_elsewhere(monkeypatch, caplog, tmp_manual):
+    """A non-.githooks setting should produce the 'not .githooks' warning."""
+    monkeypatch.setattr(mirror, "_current_hooks_path", lambda: ".husky")
+    with caplog.at_level("WARNING"), patch.object(mirror, "mirror_to_drive"):
+        mirror.main([])
+    assert any(
+        ".husky" in r.message and ".githooks" in r.message for r in caplog.records
+    )

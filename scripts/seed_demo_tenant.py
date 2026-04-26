@@ -30,9 +30,12 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import os
 import re
 import sys
+import urllib.error
+import urllib.request
 
 SCRIPTS_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.dirname(SCRIPTS_DIR)
@@ -51,6 +54,9 @@ DEMO_TIER = "spark"
 TARGET_PROSPECTS = 20
 MIN_STAGE = 6
 MIN_PROPENSITY = 60
+
+DEMO_AUTH_EMAIL = "demo@keiracom.com"
+DEMO_AUTH_PASSWORD_DEFAULT = "demo-investor-2026"
 
 # Placeholder / non-deliverable email locals — treat the address as missing.
 PLACEHOLDER_LOCALS = frozenset({
@@ -90,6 +96,129 @@ async def ensure_demo_client(conn) -> str:
     )
     print(f"demo client created — id={new_id}")
     return str(new_id)
+
+
+def ensure_demo_auth_user(
+    *,
+    supabase_url: str,
+    service_key: str,
+    email: str = DEMO_AUTH_EMAIL,
+    password: str | None = None,
+    dry_run: bool = False,
+) -> dict | None:
+    """Create or fetch the demo Supabase auth user via the GoTrue admin API.
+
+    Idempotent: if a user with the given email already exists, return it
+    unchanged. Returns the auth-user dict (id, email…) on success, or
+    None when credentials are missing / dry-run.
+
+    Uses urllib so the script gains no new third-party dependency. The
+    service key is required — the anon key cannot create users.
+    """
+    if dry_run:
+        print(f"  DRY-RUN — would ensure auth user {email}")
+        return None
+    if not supabase_url or not service_key:
+        print(
+            "  WARNING — SUPABASE_URL or SUPABASE_SERVICE_KEY missing; "
+            "skipping auth-user creation",
+            file=sys.stderr,
+        )
+        return None
+
+    pw = password or os.environ.get("DEMO_PASSWORD") or DEMO_AUTH_PASSWORD_DEFAULT
+    base = supabase_url.rstrip("/")
+    headers = {
+        "apikey":         service_key,
+        "Authorization": f"Bearer {service_key}",
+        "Content-Type":  "application/json",
+    }
+
+    # 1) Idempotent lookup — does the user already exist?
+    list_url = f"{base}/auth/v1/admin/users?email={email}"
+    req = urllib.request.Request(list_url, headers=headers, method="GET")
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            payload = json.loads(resp.read().decode())
+    except urllib.error.HTTPError as exc:
+        print(f"  WARNING — auth user lookup failed: {exc}", file=sys.stderr)
+        payload = {}
+    except (urllib.error.URLError, OSError) as exc:
+        print(f"  WARNING — auth API unreachable: {exc}", file=sys.stderr)
+        return None
+
+    users = payload.get("users") if isinstance(payload, dict) else None
+    if isinstance(users, list):
+        for u in users:
+            if isinstance(u, dict) and (u.get("email") or "").lower() == email.lower():
+                print(f"  demo auth user exists — id={u.get('id')}")
+                return u
+
+    # 2) Create.
+    create_url = f"{base}/auth/v1/admin/users"
+    body = json.dumps({
+        "email":         email,
+        "password":      pw,
+        "email_confirm": True,
+        "user_metadata": {
+            "role":     "demo",
+            "label":    "Demo Investor",
+            "seeded_by": "scripts/seed_demo_tenant.py",
+        },
+    }).encode()
+    req = urllib.request.Request(create_url, data=body, headers=headers, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            user = json.loads(resp.read().decode())
+    except urllib.error.HTTPError as exc:
+        msg = exc.read().decode("utf-8", errors="replace") if exc.fp else str(exc)
+        print(f"  ERROR — auth user create failed: {exc.code} {msg}", file=sys.stderr)
+        return None
+    except (urllib.error.URLError, OSError) as exc:
+        print(f"  ERROR — auth API unreachable on create: {exc}", file=sys.stderr)
+        return None
+
+    print(f"  demo auth user created — id={user.get('id')}")
+    return user
+
+
+async def link_auth_user_to_client(
+    conn, *, auth_user_id: str | None, client_id: str, dry_run: bool,
+) -> bool:
+    """Best-effort link in client_users (if the table exists). Idempotent.
+
+    The exact membership table varies between deploys (client_users /
+    client_members / clients_users). We probe information_schema and
+    insert only if a compatible table is present, so this works on
+    any deploy without crashing fresh ones.
+    """
+    if dry_run or not auth_user_id:
+        return False
+    table = await conn.fetchval(
+        """
+        SELECT table_name FROM information_schema.tables
+        WHERE table_schema = 'public'
+          AND table_name IN ('client_users', 'client_members', 'clients_users')
+        ORDER BY table_name LIMIT 1
+        """,
+    )
+    if not table:
+        print("  (no client membership table found — skipping link)")
+        return False
+    try:
+        await conn.execute(
+            f"""
+            INSERT INTO {table} (id, client_id, user_id, role, created_at, updated_at)
+            VALUES (gen_random_uuid(), $1, $2, 'admin', NOW(), NOW())
+            ON CONFLICT DO NOTHING
+            """,
+            client_id, auth_user_id,
+        )
+        print(f"  linked auth user {auth_user_id[:8]}… → client via {table}")
+        return True
+    except asyncpg.PostgresError as exc:
+        print(f"  WARNING — membership insert failed: {exc}", file=sys.stderr)
+        return False
 
 
 async def select_prospects(conn) -> list[dict]:
@@ -192,6 +321,22 @@ async def main():
 
     try:
         client_id = await ensure_demo_client(conn) if not dry_run else "DRY-RUN-CLIENT"
+
+        print("\nensuring demo Supabase auth user "
+              f"(email={DEMO_AUTH_EMAIL})…")
+        auth_user = ensure_demo_auth_user(
+            supabase_url=settings.supabase_url,
+            service_key=settings.supabase_service_key,
+            dry_run=dry_run,
+        )
+        if not dry_run and auth_user:
+            await link_auth_user_to_client(
+                conn,
+                auth_user_id=str(auth_user.get("id") or ""),
+                client_id=client_id,
+                dry_run=False,
+            )
+
         print(f"\nselecting top {TARGET_PROSPECTS} BU prospects "
               f"(stage >= {MIN_STAGE}, propensity > {MIN_PROPENSITY}, real email)…")
         prospects = await select_prospects(conn)

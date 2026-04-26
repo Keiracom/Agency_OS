@@ -153,3 +153,140 @@ async def test_link_prospects_skips_on_conflict_silently():
     prospects = [_make_prospect(dom=f"x{i}.com.au") for i in range(3)]
     n = await seed.link_prospects(conn, "client-uuid", prospects, dry_run=False)
     assert n == 2
+
+
+# ─── ensure_demo_auth_user (TASK B) ─────────────────────────────────────────
+
+class _FakeResponse:
+    def __init__(self, body: bytes):
+        self._body = body
+    def __enter__(self):
+        return self
+    def __exit__(self, *a):
+        return False
+    def read(self):
+        return self._body
+
+
+def test_ensure_demo_auth_user_dry_run_returns_none():
+    out = seed.ensure_demo_auth_user(
+        supabase_url="https://x.supabase.co", service_key="srv", dry_run=True,
+    )
+    assert out is None
+
+
+def test_ensure_demo_auth_user_no_credentials_skips():
+    out = seed.ensure_demo_auth_user(
+        supabase_url="", service_key="", dry_run=False,
+    )
+    assert out is None
+
+
+def test_ensure_demo_auth_user_idempotent_existing(monkeypatch):
+    payload = b'{"users":[{"id":"abc","email":"demo@keiracom.com"}]}'
+
+    def fake_urlopen(req, timeout=10):
+        # GET on the lookup endpoint — return the existing user
+        assert req.get_method() == "GET"
+        return _FakeResponse(payload)
+
+    monkeypatch.setattr(seed.urllib.request, "urlopen", fake_urlopen)
+    out = seed.ensure_demo_auth_user(
+        supabase_url="https://x.supabase.co",
+        service_key="srv-key",
+        dry_run=False,
+    )
+    assert out and out["id"] == "abc"
+
+
+def test_ensure_demo_auth_user_creates_when_absent(monkeypatch):
+    calls = []
+
+    def fake_urlopen(req, timeout=10):
+        calls.append(req.get_method())
+        if req.get_method() == "GET":
+            return _FakeResponse(b'{"users":[]}')
+        # POST → return a freshly-created user
+        body = req.data or b""
+        assert b"demo@keiracom.com" in body
+        return _FakeResponse(b'{"id":"new-uuid","email":"demo@keiracom.com"}')
+
+    monkeypatch.setattr(seed.urllib.request, "urlopen", fake_urlopen)
+    out = seed.ensure_demo_auth_user(
+        supabase_url="https://x.supabase.co",
+        service_key="srv-key",
+        password="custom-pw",
+        dry_run=False,
+    )
+    assert calls == ["GET", "POST"]
+    assert out and out["id"] == "new-uuid"
+
+
+def test_ensure_demo_auth_user_uses_env_password(monkeypatch):
+    seen_body = {}
+
+    def fake_urlopen(req, timeout=10):
+        if req.get_method() == "GET":
+            return _FakeResponse(b'{"users":[]}')
+        seen_body["data"] = req.data
+        return _FakeResponse(b'{"id":"u","email":"demo@keiracom.com"}')
+
+    monkeypatch.setattr(seed.urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setenv("DEMO_PASSWORD", "env-injected-pw")
+    seed.ensure_demo_auth_user(
+        supabase_url="https://x.supabase.co",
+        service_key="srv",
+        dry_run=False,
+    )
+    assert b"env-injected-pw" in seen_body["data"]
+
+
+def test_ensure_demo_auth_user_handles_network_error(monkeypatch):
+    def boom(req, timeout=10):
+        import urllib.error
+        raise urllib.error.URLError("connection refused")
+    monkeypatch.setattr(seed.urllib.request, "urlopen", boom)
+    out = seed.ensure_demo_auth_user(
+        supabase_url="https://x.supabase.co",
+        service_key="srv",
+        dry_run=False,
+    )
+    assert out is None
+
+
+# ─── link_auth_user_to_client (TASK B) ──────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_link_auth_user_dry_run_noops():
+    conn = MagicMock()
+    conn.fetchval = AsyncMock()
+    conn.execute = AsyncMock()
+    out = await seed.link_auth_user_to_client(
+        conn, auth_user_id="u", client_id="c", dry_run=True,
+    )
+    assert out is False
+    conn.execute.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_link_auth_user_skips_when_no_membership_table():
+    conn = MagicMock()
+    conn.fetchval = AsyncMock(return_value=None)
+    conn.execute = AsyncMock()
+    out = await seed.link_auth_user_to_client(
+        conn, auth_user_id="u", client_id="c", dry_run=False,
+    )
+    assert out is False
+    conn.execute.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_link_auth_user_inserts_when_table_present():
+    conn = MagicMock()
+    conn.fetchval = AsyncMock(return_value="client_users")
+    conn.execute = AsyncMock(return_value="INSERT 0 1")
+    out = await seed.link_auth_user_to_client(
+        conn, auth_user_id="u", client_id="c", dry_run=False,
+    )
+    assert out is True
+    conn.execute.assert_awaited_once()

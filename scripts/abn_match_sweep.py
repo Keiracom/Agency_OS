@@ -109,6 +109,31 @@ async def _set_pg_trgm_threshold(conn: asyncpg.Connection, threshold: float) -> 
     await conn.execute(f"SELECT set_limit({threshold:.2f})")
 
 
+async def _init_session(conn: asyncpg.Connection, min_confidence: float) -> None:
+    """Cat-B fix (2026-04-26): bundle per-connection setup into one helper so
+    the retry-on-drop wrapper can re-init a fresh connection in a single call.
+
+    Sets:
+      - pg_trgm similarity threshold (so % operator aligns with min_confidence)
+      - statement_timeout=30s (caps any single similarity query — common-word
+        names like 'dental' / 'australia' otherwise exceeded the Supabase
+        default 60s timeout and stalled the whole sweep)
+    """
+    await _set_pg_trgm_threshold(conn, min_confidence)
+    await conn.execute("SET statement_timeout = '30s'")
+
+
+# Connection-class exceptions that the retry-on-drop wrapper catches.
+# statement_timeout errors are NOT in this tuple — they surface as
+# QueryCanceledError and the script's existing per-row try/except handles
+# them as benign per-row ERRORs (logged + continue, no retry).
+_CONN_DROP_EXCEPTIONS = (
+    asyncpg.exceptions.ConnectionDoesNotExistError,
+    asyncpg.exceptions.InterfaceError,
+    asyncpg.exceptions.PostgresConnectionError,
+)
+
+
 async def _fuzzy_match_one(
     conn: asyncpg.Connection,
     name: str,
@@ -205,34 +230,51 @@ async def sweep(
     pool = await asyncpg.create_pool(
         db_url, min_size=1, max_size=4, statement_cache_size=0,
     )
+    conn: asyncpg.Connection | None = None
     try:
-        async with pool.acquire() as conn:
-            await _set_pg_trgm_threshold(conn, min_confidence)
-            rows = await _select_unmatched_bus(conn, batch_size, bu_ids)
-            stats["total"] = len(rows)
-            for row in rows:
-                bu_id = str(row["id"])
-                name = _resolve_search_name(row)
-                if not name:
-                    stats["skipped_no_name"] += 1
-                    print(f"SKIP no_name bu_id={bu_id} domain={row.get('domain')}")
-                    continue
-                state = row.get("state")
+        conn = await pool.acquire()
+        await _init_session(conn, min_confidence)
+        rows = await _select_unmatched_bus(conn, batch_size, bu_ids)
+        stats["total"] = len(rows)
+
+        # Retry-on-drop wrapper (Cat-B fix, 2026-04-26): the per-row work is
+        # driven by an explicit row_idx instead of `for row in rows:` so the
+        # outer reconnect handler can rewind to the same row after a connection
+        # drop. UPDATE is idempotent (writes only when abn_matched IS NOT TRUE),
+        # so re-running the same row after a reconnect cannot double-write.
+        row_idx = 0
+        while row_idx < len(rows):
+            row = rows[row_idx]
+            bu_id = str(row["id"])
+            name = _resolve_search_name(row)
+            if not name:
+                stats["skipped_no_name"] += 1
+                print(f"SKIP no_name bu_id={bu_id} domain={row.get('domain')}")
+                row_idx += 1
+                continue
+            state = row.get("state")
+            try:
+                # ── Per-row work (existing logic, unchanged behaviour) ──
                 try:
                     match = await _fuzzy_match_one(conn, name, state, min_confidence)
+                except _CONN_DROP_EXCEPTIONS:
+                    raise  # propagate to outer reconnect handler
                 except Exception as exc:
                     stats["errors"] += 1
                     print(f"ERROR bu_id={bu_id} name={name!r}: {exc}")
+                    row_idx += 1
                     continue
                 if match is None:
                     stats["skipped_low_conf"] += 1
                     print(f"SKIP low_conf bu_id={bu_id} name={name!r} state={state}")
+                    row_idx += 1
                     continue
                 if dry_run:
                     print(
                         f"DRY-RUN match bu_id={bu_id} name={name!r} -> "
                         f"abn={match['abn']} conf={match['confidence']:.3f}"
                     )
+                    row_idx += 1
                 else:
                     try:
                         await _apply_match(conn, bu_id, match)
@@ -241,10 +283,36 @@ async def sweep(
                             f"MATCH bu_id={bu_id} name={name!r} -> "
                             f"abn={match['abn']} conf={match['confidence']:.3f}"
                         )
+                        row_idx += 1
+                    except _CONN_DROP_EXCEPTIONS:
+                        raise  # propagate to outer reconnect handler
                     except Exception as exc:
                         stats["errors"] += 1
                         print(f"ERROR write bu_id={bu_id}: {exc}")
+                        row_idx += 1
+            except _CONN_DROP_EXCEPTIONS as conn_exc:
+                # Cat-B fix: connection dropped mid-row. Sleep + reconnect
+                # + retry SAME row (do NOT increment row_idx).
+                print(
+                    f"CONN-DROP bu_id={bu_id}: {type(conn_exc).__name__}: "
+                    f"{conn_exc} — sleeping 5s, reconnecting, retrying same row"
+                )
+                await asyncio.sleep(5)
+                # Best-effort release of the dead connection back to the pool.
+                try:
+                    await pool.release(conn)
+                except Exception:
+                    pass
+                conn = await pool.acquire()
+                await _init_session(conn, min_confidence)
+                # row_idx unchanged — retry the same row on the new connection.
+                continue
     finally:
+        if conn is not None:
+            try:
+                await pool.release(conn)
+            except Exception:
+                pass
         await pool.close()
     return stats
 

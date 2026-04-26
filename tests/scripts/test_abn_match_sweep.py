@@ -54,8 +54,14 @@ def test_resolve_search_name_returns_none_when_empty():
 # ── sweep() — happy path with mocked pool ──────────────────────────────────
 
 def _make_pool(rows: list[_Row], match_row: dict | None) -> MagicMock:
-    """Build a MagicMock asyncpg pool whose acquire() yields a conn whose
-    fetch() returns `rows` and fetchrow() returns the (row-shaped) match."""
+    """Build a MagicMock asyncpg pool whose acquire() returns a conn whose
+    fetch() returns `rows` and fetchrow() returns the (row-shaped) match.
+
+    2026-04-26: sweep() switched from `async with pool.acquire() as conn`
+    to explicit `await pool.acquire()` + `await pool.release(conn)` so
+    the retry-on-drop wrapper can re-acquire on connection drop. Mock
+    pool now exposes acquire/release as AsyncMocks accordingly.
+    """
     conn = MagicMock()
     conn.fetch = AsyncMock(return_value=rows)
     if match_row is None:
@@ -67,12 +73,9 @@ def _make_pool(rows: list[_Row], match_row: dict | None) -> MagicMock:
         conn.fetchrow = AsyncMock(return_value=rec)
     conn.execute = AsyncMock(return_value="UPDATE 1")
 
-    pool_cm = MagicMock()
-    pool_cm.__aenter__ = AsyncMock(return_value=conn)
-    pool_cm.__aexit__ = AsyncMock(return_value=False)
-
     pool = MagicMock()
-    pool.acquire = MagicMock(return_value=pool_cm)
+    pool.acquire = AsyncMock(return_value=conn)
+    pool.release = AsyncMock(return_value=None)
     pool.close = AsyncMock(return_value=None)
     return pool, conn
 

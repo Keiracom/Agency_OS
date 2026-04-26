@@ -874,6 +874,45 @@ ARCHITECTURE.md v2 ratified. Fork concurrency fix (per-track sub-dict isolation)
 
 ### Directive D2.2-RUN (PR #0, 2026-04-16)
 Pipeline F v2.1 validation rerun complete 2026-04-16. 17 domains (5 replay + 12 fresh), 7 cards shipped (41% overall, 83% post-Stage-3 SMB-clean). Cost 2.52 USD / 0.36 per card. Wall 13m 40s combined. REPLAY (5 D2-lost domains): 2/5 resolved (was 0/5 in D2), mobile 5/5, email 2/5 via L0 Gemini extract. FRESH (12 discovered): 5 cards (5/5 Hunter email, 4/5 ContactOut mobile). Enterprise filter caught 5/6 drops correctly. Provider coverage findings: ContactOut email credits = 0 (emails BLOCKED by credit type, not wiring), ContactOut phone credits work (returns mobile reliably via /v1/people/enrich). Leadmagic 0/4 email on dentals (has_mx=false — domains have no email infrastructure). Bright Data returns profile data only, never contact info. Stage 11 drops (4 domains): all had verified DM + mobile + score + signals but NO email, dropped at gate. Classification: YELLOW overall.
+
+### [AIDEN] Directive AIDEN-SESSION-END-2026-04-26 (PR #433, 2026-04-26)
+[AIDEN] Session 2026-04-26 — marathon multi-bot governance + ATLAS workforce hardening + ABN sweep
+
+PEER REVIEWS COMPLETED (7 PRs):
+- #427 P5 Anthropic Rate Limits — APPROVE-no-findings (23/23 tests)
+- #428 P4 Anthropic Batch API 300K beta — APPROVE-with-minor (26/26 tests; flagged docstring promises typed exceptions but httpx.HTTPError can leak)
+- #429 P9 Context Forking — APPROVE-no-findings (29/29 tests)
+- #430 P10 REM Backfill — APPROVE-no-findings (12/12 tests; verified OC1 idempotency guard via WHERE NOT EXISTS on metadata->>'consolidated_from')
+- #431 P6 Sandbox isolation — APPROVE-WITH-GOV-12-FLAG (61/61 tests; flagged config-without-runtime-caller; ATLAS resolved inline via wire-up commit 86cc027a — 96/97 tests after wire-up, 1 deselected for env-specific settings.json)
+- #432 P11 cgroup memory — APPROVE-WITH-FLAGS (41/41 tests; same GOV-12 pattern flagged; railway.toml [[services]] schema verification + dead-code trap-after-exec nit)
+- #433 Step 1 cleanup (P11 sidecar wire-up + demo auth + smoke baseline) — APPROVE-with-3-notes (26/26 tests; trap-after-exec semantic nit, hardcoded demo password fallback, 53 pre-existing test failures should track separately)
+
+ABN SWEEP DISPATCH + MONITORING:
+- ORION dry-run-v2 partial (5,287/8,639, 61.2%) halted at slow tail; common-word trigram bitmap blowout exceeding Supabase 60s statement timeout
+- AIDEN PROPOSE rank 1 = partial-execute → ORION refined to Option A (full live run on fixed script with GIN-aligned WHERE + set_limit helper)
+- Dave approved Option A; ORION dispatched (PID 1961775) live execute on branch aiden/abn-match-sweep-live-run commit 8ba6b6c
+- Addendum dispatched: tg -g [CLONE-COMPLETE:ORION] announce on completion (push-not-pull)
+- At session-save: 142 BU rows abn_matched + UPDATE'd; sweep alive in slow-tail region (0 new in last 30 min); Elliot+AIDEN dual-concur on let-it-ride per Option A
+- Idempotent UPDATE; safe to leave running overnight
+
+GOVERNANCE ACTIONS:
+- Enforcer Rule 2 flagged my ABN dispatch as missing Step 0 RESTATE; retroactively posted RESTATE in TG (LAW XV-D acknowledgement)
+- evo-consumer.service stop+disable (DSAE: diagnosed dormant-since-OpenClaw-retirement service in restart thrash thanks to Supabase REST timeouts; user-systemd, not Prefect-related as Elliot initially diagnosed; service silenced)
+- DSAE-DELAY discipline observed throughout (Elliot first, AIDEN 10s wait, AGREE/DIFFER)
+
+ARTEFACTS SHIPPED:
+- docs/roadmap_2026-04-26.html (1,319 lines; Phase 1.6 'Engineering Workforce Hardening' added; governance grid expanded 6→18 cards; 22 active rules; uploaded to TG with Elliot dual-concur)
+- KEIRACOM-ARCHITECTURE-DOC (Elliot+research-1 owned; AIDEN spot-check concur on c2a491c7, 1,282 lines, 6 sections + summary, LAW XIV satisfied)
+
+RECALIBRATIONS:
+- Manufactured-friction quota WITHDRAWN per Dave directive ('If its good then it will pass') — standard is THOROUGHNESS not FRICTION-COUNT; APPROVE-no-findings valid when work earned it
+- Two-bot peer-correction WORKING as designed (caught GOV-12 wire-up gaps, fabrication risks, prefect-vs-supabase-vs-anthropic diagnosis errors); no consensus theatre observed
+
+OPEN STATE FOR NEXT SESSION:
+- ORION ABN sweep continues overnight (~13hr ETA from 10:16 UTC); morning review for SWEEP SUMMARY
+- Demo handoff to Dave is the next revenue-pathway item (Dave-action: IS_DEMO_MODE + seed_demo_tenant.py --execute + login as demo@keiracom.com)
+- Step 4: cost forensic on the $47 burn + Salesforge/Unipile key audit via api_keys_ledger (queued for next session)
+- P11 sidecar runtime wire-up DONE in PR #433 (GOV-12 satisfied for full ATLAS chain)
 ## SECTION 14 — COMPETITIVE INTELLIGENCE
 
 Direct competitors (signal-based AI BDR category):

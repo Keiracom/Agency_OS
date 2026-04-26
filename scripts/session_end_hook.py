@@ -127,14 +127,32 @@ def maybe_mirror_manual() -> dict:
 # ── Steps 2 + 3: write to ceo_memory + daily_log ───────────────────────────
 
 def _supabase_dsn() -> str | None:
-    """Pull DATABASE_URL from the agency-os env file. Returns None when
-    the file is missing (e.g. in a sandbox)."""
+    """Resolve a postgres DSN for asyncpg.
+
+    Resolution order so the hook works equally well in dev shells, the
+    Claude Code SessionEnd runtime, and Railway deploys:
+      1. DATABASE_URL  (Railway / generic)
+      2. SUPABASE_DB_URL  (some deploy templates use this name)
+      3. ENV_FILE → src.config.settings.database_url  (local dev)
+
+    Strips the SQLAlchemy 'postgresql+asyncpg://' prefix because
+    asyncpg.connect rejects it.
+    """
+    raw = (
+        os.environ.get("DATABASE_URL")
+        or os.environ.get("SUPABASE_DB_URL")
+        or ""
+    ).strip()
+    if raw:
+        return raw.replace("postgresql+asyncpg://", "postgresql://")
     try:
         sys.path.insert(0, str(REPO_ROOT))
         from dotenv import load_dotenv
         load_dotenv(ENV_FILE)
         from src.config.settings import settings  # type: ignore[import-not-found]
-        return settings.database_url.replace("postgresql+asyncpg://", "postgresql://")
+        return (settings.database_url or "").replace(
+            "postgresql+asyncpg://", "postgresql://"
+        ) or None
     except Exception as exc:  # noqa: BLE001
         logger.warning("DSN unavailable (%s) — skipping memory writes", exc)
         return None

@@ -15,6 +15,7 @@ Usage:
 """
 
 import argparse
+import asyncio
 import json
 import os
 import re
@@ -22,6 +23,35 @@ import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+
+
+# ---------------------------------------------------------------------------
+# DSN resolver — prefer DATABASE_URL, fall back to settings.database_url
+# ---------------------------------------------------------------------------
+
+def _resolve_dsn() -> str | None:
+    """Return a postgres DSN suitable for asyncpg, or None when unconfigured.
+
+    Prefers DATABASE_URL (Railway / generic), then SUPABASE_DB_URL, then
+    src.config.settings.database_url. Strips any 'postgresql+asyncpg://'
+    prefix because asyncpg.connect rejects the SQLAlchemy variant.
+    """
+    raw = (
+        os.environ.get("DATABASE_URL")
+        or os.environ.get("SUPABASE_DB_URL")
+        or ""
+    )
+    if not raw:
+        try:
+            sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+            from src.config.settings import settings  # type: ignore[import-not-found]
+            raw = settings.database_url or ""
+        except Exception:  # noqa: BLE001
+            raw = ""
+    raw = raw.strip()
+    if not raw:
+        return None
+    return raw.replace("postgresql+asyncpg://", "postgresql://")
 
 
 # ---------------------------------------------------------------------------
@@ -141,13 +171,12 @@ def save_manual(directive: str, pr_number: int, summary: str, section: int, dry_
 # ---------------------------------------------------------------------------
 
 def save_ceo_memory(directive: str, pr_number: int, summary: str, dry_run: bool, callsign: str = "elliot") -> bool:
-    supabase_url = os.environ.get("SUPABASE_URL", "").rstrip("/")
-    service_key = os.environ.get("SUPABASE_SERVICE_KEY", "")
+    """Upsert public.ceo_memory via asyncpg (no REST, no PostgREST).
 
-    if not supabase_url or not service_key:
-        print("[STORE 2/4] ceo_memory: FAILED — SUPABASE_URL or SUPABASE_SERVICE_KEY not set")
-        return False
-
+    statement_cache_size=0 so the connection works through Supabase's
+    pgbouncer transaction-mode pooler. Function stays sync — async
+    work is wrapped in asyncio.run so callers don't change.
+    """
     key = f"ceo:directive_{directive}_complete"
     value = {
         "directive": directive,
@@ -162,24 +191,32 @@ def save_ceo_memory(directive: str, pr_number: int, summary: str, dry_run: bool,
         print(f"  value={json.dumps(value)}")
         return True
 
-    import httpx
-    url = f"{supabase_url}/rest/v1/ceo_memory"
-    headers = {
-        "apikey": service_key,
-        "Authorization": f"Bearer {service_key}",
-        "Content-Type": "application/json",
-        "Prefer": "resolution=merge-duplicates",
-    }
-    body = {"key": key, "value": value, "updated_at": datetime.now(timezone.utc).isoformat()}
+    dsn = _resolve_dsn()
+    if not dsn:
+        print("[STORE 2/4] ceo_memory: FAILED — DATABASE_URL / SUPABASE_DB_URL not set")
+        return False
+
+    async def _upsert() -> None:
+        import asyncpg
+        conn = await asyncpg.connect(dsn, statement_cache_size=0)
+        try:
+            await conn.execute(
+                """
+                INSERT INTO ceo_memory (key, value, updated_at)
+                VALUES ($1, $2::jsonb, NOW())
+                ON CONFLICT (key) DO UPDATE
+                  SET value = EXCLUDED.value, updated_at = NOW()
+                """,
+                key, json.dumps(value),
+            )
+        finally:
+            await conn.close()
 
     try:
-        resp = httpx.post(url, headers=headers, json=body, timeout=15)
-        if resp.status_code in (200, 201):
-            print(f"[STORE 2/4] ceo_memory: OK — key={key!r}")
-            return True
-        print(f"[STORE 2/4] ceo_memory: FAILED — HTTP {resp.status_code}: {resp.text[:200]}")
-        return False
-    except Exception as exc:
+        asyncio.run(_upsert())
+        print(f"[STORE 2/4] ceo_memory: OK — key={key!r}")
+        return True
+    except Exception as exc:  # noqa: BLE001
         print(f"[STORE 2/4] ceo_memory: FAILED — {exc}")
         return False
 
@@ -189,13 +226,7 @@ def save_ceo_memory(directive: str, pr_number: int, summary: str, dry_run: bool,
 # ---------------------------------------------------------------------------
 
 def save_metrics(directive: str, pr_number: int, summary: str, dry_run: bool, callsign: str = "elliot") -> bool:
-    supabase_url = os.environ.get("SUPABASE_URL", "").rstrip("/")
-    service_key = os.environ.get("SUPABASE_SERVICE_KEY", "")
-
-    if not supabase_url or not service_key:
-        print("[STORE 3/4] cis_directive_metrics: FAILED — SUPABASE_URL or SUPABASE_SERVICE_KEY not set")
-        return False
-
+    """Insert into public.cis_directive_metrics via asyncpg (no REST)."""
     # Determine directive_id vs directive_ref
     if re.fullmatch(r"\d+", directive):
         directive_id = int(directive)
@@ -204,44 +235,60 @@ def save_metrics(directive: str, pr_number: int, summary: str, dry_run: bool, ca
         directive_id = 0
         directive_ref = directive
 
-    now_iso = datetime.now(timezone.utc).isoformat()
-    row = {
+    now = datetime.now(timezone.utc)
+    row_preview = {
         "directive_id": directive_id,
         "directive_ref": directive_ref,
-        "issued_date": now_iso,
-        "completed_date": now_iso,
+        "issued_date": now.isoformat(),
+        "completed_date": now.isoformat(),
         "execution_rounds": 1,
         "scope_creep": False,
         "verification_first_pass": True,
         "save_completed": True,
         "agents_used": ["build-2", "build-3"],
         "notes": summary,
-        "callsign": callsign,  # LAW XVII: tag row with callsign
-        "created_at": now_iso,
+        "callsign": callsign,
+        "created_at": now.isoformat(),
     }
 
     if dry_run:
-        print(f"[DRY-RUN][STORE 3/4] Would insert cis_directive_metrics row:")
-        print(f"  {json.dumps(row)}")
+        print("[DRY-RUN][STORE 3/4] Would insert cis_directive_metrics row:")
+        print(f"  {json.dumps(row_preview)}")
         return True
 
-    import httpx
-    url = f"{supabase_url}/rest/v1/cis_directive_metrics"
-    headers = {
-        "apikey": service_key,
-        "Authorization": f"Bearer {service_key}",
-        "Content-Type": "application/json",
-        "Prefer": "return=minimal",
-    }
+    dsn = _resolve_dsn()
+    if not dsn:
+        print("[STORE 3/4] cis_directive_metrics: FAILED — DATABASE_URL / SUPABASE_DB_URL not set")
+        return False
+
+    async def _insert() -> None:
+        import asyncpg
+        conn = await asyncpg.connect(dsn, statement_cache_size=0)
+        try:
+            await conn.execute(
+                """
+                INSERT INTO cis_directive_metrics (
+                  directive_id, directive_ref, issued_date, completed_date,
+                  execution_rounds, scope_creep, verification_first_pass,
+                  save_completed, agents_used, notes, callsign, created_at
+                ) VALUES (
+                  $1, $2, $3, $4,
+                  $5, $6, $7,
+                  $8, $9, $10, $11, $12
+                )
+                """,
+                directive_id, directive_ref, now, now,
+                1, False, True,
+                True, ["build-2", "build-3"], summary, callsign, now,
+            )
+        finally:
+            await conn.close()
 
     try:
-        resp = httpx.post(url, headers=headers, json=row, timeout=15)
-        if resp.status_code in (200, 201):
-            print(f"[STORE 3/4] cis_directive_metrics: OK — directive_ref={directive_ref!r}, directive_id={directive_id}")
-            return True
-        print(f"[STORE 3/4] cis_directive_metrics: FAILED — HTTP {resp.status_code}: {resp.text[:200]}")
-        return False
-    except Exception as exc:
+        asyncio.run(_insert())
+        print(f"[STORE 3/4] cis_directive_metrics: OK — directive_ref={directive_ref!r}, directive_id={directive_id}")
+        return True
+    except Exception as exc:  # noqa: BLE001
         print(f"[STORE 3/4] cis_directive_metrics: FAILED — {exc}")
         return False
 

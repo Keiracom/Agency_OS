@@ -50,7 +50,9 @@ import asyncpg  # noqa: E402
 from src.config.settings import settings  # noqa: E402
 
 DEMO_CLIENT_NAME = "Demo Agency"
-DEMO_TIER = "spark"
+# ignition is the entry tier — spark not in tier_type enum (TIERS-002 gap).
+# Demo runs at ignition until tier_type enum migration adds spark.
+DEMO_TIER = "ignition"
 # 7 high-quality dental clinics available at stage>=6 + propensity>60 + real email.
 # Increase when enrichment pipeline grows the pool.
 TARGET_PROSPECTS = 7

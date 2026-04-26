@@ -217,6 +217,58 @@ def test_resolve_db_url_raises_when_missing(monkeypatch):
         abn_match_sweep._resolve_db_url()
 
 
+def test_select_unmatched_bus_applies_W1_filter_on_display_name():
+    """Option W1 regression test (2026-04-26 dual-concur, dispatch dispatched
+    after the v4 pre-launch halt revealed all 8501 unmatched rows have
+    legal_name=NULL): _select_unmatched_bus must include the pre-filter
+    clauses on DISPLAY_NAME (the actual name source for unmatched GMB-sourced
+    rows). Filter skips:
+      - NULL display_name
+      - display_name shorter than 12 trimmed chars
+      - display_name with no Latin letters (e.g., CJK, Cyrillic)
+      - display_name matching common-word stopword set that triggers GIN
+        trigram bitmap blowout (home/store/shop/page/index/services/world/
+        center/online/business/company/group)
+    Eliminates the slow-tail dead-time region observed in v3.
+
+    Catches the v4 ordering/column bug (filter applied to wrong column).
+    """
+    captured_sql: list[str] = []
+
+    conn = MagicMock()
+    async def _capture_fetch(sql, *args, **kwargs):
+        captured_sql.append(sql)
+        return []
+    conn.fetch = AsyncMock(side_effect=_capture_fetch)
+
+    # Default branch — no bu_ids.
+    asyncio.run(abn_match_sweep._select_unmatched_bus(
+        conn, batch_size=10, bu_ids=None,
+    ))
+    # bu_ids branch.
+    asyncio.run(abn_match_sweep._select_unmatched_bus(
+        conn, batch_size=10, bu_ids=["00000000-0000-0000-0000-000000000001"],
+    ))
+
+    assert len(captured_sql) == 2
+    for sql in captured_sql:
+        assert "abn_matched IS NOT TRUE" in sql
+        # W1 filter is on display_name, not legal_name (per v4 pre-launch
+        # finding that all unmatched rows have legal_name=NULL).
+        assert "display_name IS NOT NULL" in sql
+        assert "length(trim(display_name)) >= 12" in sql
+        assert "display_name ~ '[a-zA-Z]'" in sql
+        # Stopword negative-match clause (case-insensitive regex).
+        assert "display_name !~*" in sql
+        # Spot-check a few stopwords from the set.
+        assert "home" in sql
+        assert "company" in sql
+        assert "services" in sql
+        # Defense against accidental regression to legal_name column.
+        assert "legal_name IS NOT NULL" not in sql
+        assert "length(trim(legal_name))" not in sql
+
+
 def test_statement_timeout_is_set_AFTER_initial_bulk_fetch():
     """Cat-B v2 regression test (2026-04-26): SET statement_timeout='30s'
     must NOT fire before the initial _select_unmatched_bus bulk fetch.

@@ -66,11 +66,21 @@ async def _select_unmatched_bus(
     column shape but production has only legal_name + display_name + domain
     + state on the name-resolution path.
     """
+    # Option W1 filter (2026-04-26 dual-concur, dispatch dispatched after v4
+    # pre-launch halt revealed all 8501 unmatched rows have legal_name=NULL):
+    # filter applied to display_name (the actual name source for unmatched
+    # GMB-sourced rows) instead of legal_name. Skip names too short for
+    # confident match, non-Latin scripts (won't match AU ABR), and
+    # common-word stopwords causing GIN trigram bitmap blowout.
     if bu_ids:
         return await conn.fetch(
             """SELECT id, domain, state, legal_name, display_name
                  FROM business_universe
                 WHERE abn_matched IS NOT TRUE
+                  AND display_name IS NOT NULL
+                  AND length(trim(display_name)) >= 12
+                  AND display_name ~ '[a-zA-Z]'
+                  AND display_name !~* '\\m(home|store|shop|page|index|services|world|center|online|business|company|group)\\M'
                   AND id = ANY($1::uuid[])
                 ORDER BY id
                 LIMIT $2""",
@@ -80,6 +90,10 @@ async def _select_unmatched_bus(
         """SELECT id, domain, state, legal_name, display_name
              FROM business_universe
             WHERE abn_matched IS NOT TRUE
+              AND display_name IS NOT NULL
+              AND length(trim(display_name)) >= 12
+              AND display_name ~ '[a-zA-Z]'
+              AND display_name !~* '\\m(home|store|shop|page|index|services|world|center|online|business|company|group)\\M'
             ORDER BY id
             LIMIT $1""",
         batch_size,

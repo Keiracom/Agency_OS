@@ -59,11 +59,16 @@ async def _select_unmatched_bus(
     batch_size: int,
     bu_ids: list[str] | None,
 ) -> list[asyncpg.Record]:
-    """Pull BU rows where abn_matched IS NOT TRUE (covers FALSE and NULL)."""
+    """Pull BU rows where abn_matched IS NOT TRUE (covers FALSE and NULL).
+
+    2026-04-26 production-schema fix: BU does NOT carry trading_name or
+    abr_trading_name columns. The S1 SELECT assumed migration 086 + 090
+    column shape but production has only legal_name + display_name + domain
+    + state on the name-resolution path.
+    """
     if bu_ids:
         return await conn.fetch(
-            """SELECT id, domain, state,
-                      legal_name, trading_name, abr_trading_name, display_name
+            """SELECT id, domain, state, legal_name, display_name
                  FROM business_universe
                 WHERE abn_matched IS NOT TRUE
                   AND id = ANY($1::uuid[])
@@ -72,8 +77,7 @@ async def _select_unmatched_bus(
             bu_ids, batch_size,
         )
     return await conn.fetch(
-        """SELECT id, domain, state,
-                  legal_name, trading_name, abr_trading_name, display_name
+        """SELECT id, domain, state, legal_name, display_name
              FROM business_universe
             WHERE abn_matched IS NOT TRUE
             ORDER BY id
@@ -83,12 +87,26 @@ async def _select_unmatched_bus(
 
 
 def _resolve_search_name(row: asyncpg.Record) -> str | None:
-    """Pick the best available human-readable name for fuzzy matching."""
-    for key in ("trading_name", "abr_trading_name", "legal_name", "display_name"):
+    """Pick the best available human-readable name for fuzzy matching.
+
+    2026-04-26: trading_name + abr_trading_name dropped — neither exists on
+    production BU. Fallback chain narrows to legal_name -> display_name.
+    """
+    for key in ("legal_name", "display_name"):
         v = row.get(key) if hasattr(row, "get") else row[key]
         if v and str(v).strip():
             return str(v).strip()
     return None
+
+
+async def _set_pg_trgm_threshold(conn: asyncpg.Connection, threshold: float) -> None:
+    """2026-04-26 perf fix: align the per-session pg_trgm.similarity_threshold
+    with the script's min_confidence so the `%` operator (driven by the GIN
+    index abn_registry_trgm_gin) only returns rows that already meet our
+    threshold. Without this, the operator's default threshold (0.3) returns
+    tens of thousands of low-similarity candidates per query, defeating the
+    index speedup."""
+    await conn.execute(f"SELECT set_limit({threshold:.2f})")
 
 
 async def _fuzzy_match_one(
@@ -103,6 +121,12 @@ async def _fuzzy_match_one(
     Uses pg_trgm similarity() on the greater of trading_name / legal_name
     similarity. State is an optional exact-match tiebreaker.
     """
+    # 2026-04-26: WHERE uses lower(...) on both sides of `%` so the planner
+    # can use the GIN expression index abn_registry_trgm_gin which is built
+    # on (lower(trading_name) gin_trgm_ops, lower(legal_name) gin_trgm_ops).
+    # Without the LOWER() wrapper the planner falls back to seq scan over
+    # 2.4M rows. similarity() in the projection list runs against the
+    # already-narrowed candidate set so casing doesn't change scores.
     sql = """
         SELECT abn,
                legal_name,
@@ -112,13 +136,13 @@ async def _fuzzy_match_one(
                registration_date,
                state,
                GREATEST(
-                   COALESCE(similarity(trading_name, $1), 0.0),
-                   COALESCE(similarity(legal_name,   $1), 0.0)
+                   COALESCE(similarity(lower(trading_name), lower($1)), 0.0),
+                   COALESCE(similarity(lower(legal_name),   lower($1)), 0.0)
                ) AS confidence
           FROM abn_registry
          WHERE (
-                 trading_name % $1
-              OR legal_name   % $1
+                 lower(trading_name) % lower($1)
+              OR lower(legal_name)   % lower($1)
                )
            AND ($2::text IS NULL OR state IS NULL OR UPPER(state) = UPPER($2))
          ORDER BY confidence DESC
@@ -148,23 +172,25 @@ async def _apply_match(
 ) -> None:
     """Write the match back to business_universe.
 
-    Maps dispatch field names to existing BU columns:
-      abn_status     -> abn_status_code   (text)
-      abr_matched_at -> abr_last_updated  (timestamptz)
+    2026-04-26 production-schema fix: production BU has the dispatch-named
+    columns directly (abn_status, abr_matched_at) — opposite of the S1
+    column mapping that was derived from migration files (abn_status_code,
+    abr_last_updated). Original mapping was speculative; live schema
+    introspection during this run confirmed the dispatch names are real.
     """
-    # Derive an abn_status_code from entity-level signals. abn_registry does
-    # not carry a status column, so we infer 'active' for any matched row;
-    # downstream ABR refresh will overwrite with authoritative status.
-    abn_status_code = "active"
+    # Derive an abn_status from entity-level signals. abn_registry has its
+    # own abn_status_code column but we only ingest 'active' here; downstream
+    # ABR refresh will overwrite with authoritative status.
+    abn_status_value = "active"
     await conn.execute(
         """UPDATE business_universe
-              SET abn               = COALESCE($2, abn),
-                  abn_matched       = TRUE,
-                  abn_status_code   = COALESCE(abn_status_code, $3),
-                  abr_last_updated  = NOW(),
-                  updated_at        = NOW()
+              SET abn             = COALESCE($2, abn),
+                  abn_matched     = TRUE,
+                  abn_status      = COALESCE(abn_status, $3),
+                  abr_matched_at  = NOW(),
+                  updated_at      = NOW()
             WHERE id = $1""",
-        bu_id, match["abn"], abn_status_code,
+        bu_id, match["abn"], abn_status_value,
     )
 
 
@@ -181,6 +207,7 @@ async def sweep(
     )
     try:
         async with pool.acquire() as conn:
+            await _set_pg_trgm_threshold(conn, min_confidence)
             rows = await _select_unmatched_bus(conn, batch_size, bu_ids)
             stats["total"] = len(rows)
             for row in rows:

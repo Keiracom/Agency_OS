@@ -115,11 +115,22 @@ async def _init_session(conn: asyncpg.Connection, min_confidence: float) -> None
 
     Sets:
       - pg_trgm similarity threshold (so % operator aligns with min_confidence)
-      - statement_timeout=30s (caps any single similarity query — common-word
-        names like 'dental' / 'australia' otherwise exceeded the Supabase
-        default 60s timeout and stalled the whole sweep)
+
+    Cat-B v2 fix (2026-04-26): statement_timeout='30s' DELIBERATELY MOVED OUT
+    of this helper. It must NOT fire before the initial _select_unmatched_bus
+    bulk fetch — that fetch is a seq scan over business_universe (no index on
+    abn_matched IS NOT TRUE) and routinely exceeds 30s on production. The
+    timeout is now applied via _enable_per_row_timeout() AFTER the bulk fetch
+    completes, so only per-row similarity queries get capped.
     """
     await _set_pg_trgm_threshold(conn, min_confidence)
+
+
+async def _enable_per_row_timeout(conn: asyncpg.Connection) -> None:
+    """Apply statement_timeout='30s' to cap per-row similarity queries.
+    Must be called AFTER the initial bulk fetch (_select_unmatched_bus) so
+    that fetch is not subject to the cap. The retry-on-drop handler also
+    re-applies this after a fresh-conn acquire."""
     await conn.execute("SET statement_timeout = '30s'")
 
 
@@ -234,8 +245,13 @@ async def sweep(
     try:
         conn = await pool.acquire()
         await _init_session(conn, min_confidence)
+        # Initial bulk fetch runs WITHOUT statement_timeout cap — it is a
+        # seq scan over business_universe (no index on `abn_matched IS NOT TRUE`)
+        # and routinely exceeds 30s. Cap is applied to per-row queries below.
         rows = await _select_unmatched_bus(conn, batch_size, bu_ids)
         stats["total"] = len(rows)
+        # Cap per-row similarity queries at 30s. Must come AFTER the bulk fetch.
+        await _enable_per_row_timeout(conn)
 
         # Retry-on-drop wrapper (Cat-B fix, 2026-04-26): the per-row work is
         # driven by an explicit row_idx instead of `for row in rows:` so the
@@ -305,6 +321,9 @@ async def sweep(
                     pass
                 conn = await pool.acquire()
                 await _init_session(conn, min_confidence)
+                # Reconnect path is for per-row work only (bulk fetch already
+                # done) — re-apply the per-row statement_timeout cap.
+                await _enable_per_row_timeout(conn)
                 # row_idx unchanged — retry the same row on the new connection.
                 continue
     finally:

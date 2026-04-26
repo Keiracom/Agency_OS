@@ -215,3 +215,73 @@ def test_resolve_db_url_raises_when_missing(monkeypatch):
     monkeypatch.delenv("DATABASE_URL", raising=False)
     with pytest.raises(SystemExit):
         abn_match_sweep._resolve_db_url()
+
+
+def test_statement_timeout_is_set_AFTER_initial_bulk_fetch():
+    """Cat-B v2 regression test (2026-04-26): SET statement_timeout='30s'
+    must NOT fire before the initial _select_unmatched_bus bulk fetch.
+
+    Why: the bulk fetch is a seq scan over business_universe (no index
+    on `abn_matched IS NOT TRUE`) and routinely exceeds 30s on production.
+    My v1 fix bundled the SET into _init_session which ran BEFORE the
+    bulk fetch — crashed in 4 minutes with QueryCanceledError, zero
+    rows processed (see outbox task_error_2026-04-26T12-35Z_abn_sweep_v2.json).
+
+    This test enforces the ordering invariant: ANY 'SET statement_timeout'
+    statement issued by sweep() must come AFTER the first conn.fetch() call.
+    """
+    bu_id = "00000000-0000-0000-0000-000000000099"
+    rows = [_Row(id=bu_id, domain="ordering.com.au", state="NSW",
+                 legal_name="Ordering Test", display_name=None)]
+    pool, conn = _make_pool(rows, match_row=None)  # no match → SKIP low_conf
+
+    # Capture the call order across both fetch and execute on the conn mock.
+    call_order: list[str] = []
+    original_fetch = conn.fetch
+    original_execute = conn.execute
+
+    async def _record_fetch(*args, **kwargs):
+        call_order.append(f"fetch:{(args[0] if args else '')[:200]!r}")
+        return await original_fetch(*args, **kwargs)
+
+    async def _record_execute(*args, **kwargs):
+        call_order.append(f"execute:{(args[0] if args else '')[:200]!r}")
+        return await original_execute(*args, **kwargs)
+
+    conn.fetch = AsyncMock(side_effect=_record_fetch)
+    conn.execute = AsyncMock(side_effect=_record_execute)
+
+    async def _fake_create_pool(*_a, **_kw):
+        return pool
+
+    with patch.object(abn_match_sweep.asyncpg, "create_pool", _fake_create_pool):
+        asyncio.run(abn_match_sweep.sweep(
+            db_url="postgresql://stub",
+            batch_size=10,
+            min_confidence=0.7,
+            dry_run=False,
+            bu_ids=None,
+        ))
+
+    # Find indexes of the first bulk fetch and the first statement_timeout SET.
+    bulk_fetch_idx = next(
+        (i for i, c in enumerate(call_order)
+         if c.startswith("fetch:") and "business_universe" in c),
+        None,
+    )
+    timeout_set_idx = next(
+        (i for i, c in enumerate(call_order)
+         if c.startswith("execute:") and "statement_timeout" in c),
+        None,
+    )
+    assert bulk_fetch_idx is not None, (
+        f"Expected a fetch against business_universe; saw {call_order}"
+    )
+    assert timeout_set_idx is not None, (
+        f"Expected a SET statement_timeout call; saw {call_order}"
+    )
+    assert bulk_fetch_idx < timeout_set_idx, (
+        "ORDERING VIOLATION: SET statement_timeout fired BEFORE the initial "
+        f"bulk fetch.\n  bulk_fetch_idx={bulk_fetch_idx}\n  "
+        f"timeout_set_idx={timeout_set_idx}\n  call_order={call_order}"
+    )

@@ -50,6 +50,9 @@ FROM dependencies AS production
 # Copy application code
 COPY src/ ./src/
 COPY config/ ./config/
+COPY scripts/cgroup_memory_guard.py ./scripts/cgroup_memory_guard.py
+COPY scripts/entrypoint.sh ./scripts/entrypoint.sh
+RUN chmod +x ./scripts/entrypoint.sh
 
 # Create non-root user for security
 RUN adduser --disabled-password --gecos '' appuser && \
@@ -70,9 +73,10 @@ ENV AGENT_MEMORY_WARN_PCT=80 \
     AGENT_MEMORY_KILL_PCT=95 \
     AGENT_MEMORY_PID_DIR=/tmp/agency_os/agents
 
-# Default command (API service)
-# Uses shell form to expand $PORT env var (Railway sets this dynamically)
-CMD uvicorn src.api.main:app --host 0.0.0.0 --port ${PORT:-8000}
+# P11 — entrypoint launches the cgroup memory guard as a background
+# sidecar, then exec's uvicorn so signals propagate cleanly.
+ENTRYPOINT ["/app/scripts/entrypoint.sh"]
+CMD ["sh", "-c", "uvicorn src.api.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
 
 # === Camoufox Stage (Optional - Tier 3 Scraper) ===
 # Use this target for Cloudflare bypass capability
@@ -97,6 +101,9 @@ RUN pip install camoufox[geoip] && \
 # Copy application code
 COPY src/ ./src/
 COPY config/ ./config/
+COPY scripts/cgroup_memory_guard.py ./scripts/cgroup_memory_guard.py
+COPY scripts/entrypoint.sh ./scripts/entrypoint.sh
+RUN chmod +x ./scripts/entrypoint.sh
 
 # Create non-root user
 RUN adduser --disabled-password --gecos '' appuser && \
@@ -111,7 +118,8 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:${PORT:-8000}/api/v1/health || exit 1
 
 EXPOSE 8000
-CMD uvicorn src.api.main:app --host 0.0.0.0 --port ${PORT:-8000}
+ENTRYPOINT ["/app/scripts/entrypoint.sh"]
+CMD ["sh", "-c", "uvicorn src.api.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
 
 # === VERIFICATION CHECKLIST ===
 # [x] Contract comment at top

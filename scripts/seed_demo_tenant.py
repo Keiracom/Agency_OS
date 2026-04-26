@@ -4,16 +4,18 @@ Seed the Demo tenant for investor-ready demos.
 What it does
 ------------
 1. Ensures a `clients` row named 'Demo Agency' exists (creates if missing).
-2. Selects up to TARGET_PROSPECTS best BU prospects by:
+2. Ensures a `campaigns` row named 'Demo Campaign' exists for that client
+   (creates if missing). REQUIRED — campaign_leads.campaign_id is NOT NULL.
+3. Selects up to TARGET_PROSPECTS best BU prospects by:
        pipeline_stage >= 6
        AND dm_email IS NOT NULL
        AND propensity_score > 60
    ordered by (propensity_score + COALESCE(reachability_score, 0)) DESC.
-3. Drops any row whose dm_email or domain is in the suppression list, OR
+4. Drops any row whose dm_email or domain is in the suppression list, OR
    whose dm_email is a placeholder (example@, test@, info@, admin@, etc.),
    OR whose display_name is NULL.
-4. Inserts campaign_leads junction rows linking the Demo client to each
-   selected BU id (status='claimed').
+5. Inserts campaign_leads junction rows linking the Demo client +
+   Demo campaign to each selected BU id (status='claimed').
 
 If fewer than TARGET_PROSPECTS prospects survive filtering it REPORTS the shortfall —
 never pads with weaker prospects. The point of the demo is curated quality.
@@ -50,6 +52,7 @@ import asyncpg  # noqa: E402
 from src.config.settings import settings  # noqa: E402
 
 DEMO_CLIENT_NAME = "Demo Agency"
+DEMO_CAMPAIGN_NAME = "Demo Campaign"
 # ignition is the entry tier — spark not in tier_type enum (TIERS-002 gap).
 # Demo runs at ignition until tier_type enum migration adds spark.
 DEMO_TIER = "ignition"
@@ -99,6 +102,39 @@ async def ensure_demo_client(conn) -> str:
         DEMO_CLIENT_NAME, DEMO_TIER,
     )
     print(f"demo client created — id={new_id}")
+    return str(new_id)
+
+
+async def ensure_demo_campaign(conn, client_id: str) -> str:
+    """Lookup-or-create the demo campaign for `client_id`. Returns its UUID.
+
+    Audited against the live `public.campaigns` schema (2026-04-26):
+    only `client_id` and `name` are NOT NULL without defaults — every
+    other column has a sensible default (status='draft', allocation_email
+    =100, campaign_type='custom', icp_config jsonb default, etc.) so we
+    do not need to enumerate them here. Idempotent on (client_id, name).
+    """
+    row = await conn.fetchrow(
+        """
+        SELECT id FROM campaigns
+        WHERE client_id = $1 AND name = $2 AND deleted_at IS NULL
+        ORDER BY created_at DESC LIMIT 1
+        """,
+        client_id, DEMO_CAMPAIGN_NAME,
+    )
+    if row:
+        print(f"demo campaign exists — id={row['id']}")
+        return str(row["id"])
+
+    new_id = await conn.fetchval(
+        """
+        INSERT INTO campaigns (id, client_id, name, status, created_at, updated_at)
+        VALUES (gen_random_uuid(), $1, $2, 'active', NOW(), NOW())
+        RETURNING id
+        """,
+        client_id, DEMO_CAMPAIGN_NAME,
+    )
+    print(f"demo campaign created — id={new_id}")
     return str(new_id)
 
 
@@ -285,9 +321,21 @@ async def select_prospects(conn) -> list[dict]:
 
 async def link_prospects(
     conn, client_id: str, prospects: list[dict], *, dry_run: bool,
+    campaign_id: str | None = None,
 ) -> int:
-    """Insert (or skip-if-exists) one campaign_leads row per prospect."""
+    """Insert (or skip-if-exists) one campaign_leads row per prospect.
+
+    `campaign_id` is REQUIRED at the schema level (NOT NULL, no default
+    in public.campaign_leads). Kept as a keyword-only arg with a default
+    of None so older callers fail loud instead of silently writing rows
+    that get rejected at the DB.
+    """
     inserted = 0
+    if not dry_run and not campaign_id:
+        raise ValueError(
+            "campaign_id is required by public.campaign_leads (NOT NULL); "
+            "pass campaign_id from ensure_demo_campaign() into link_prospects()."
+        )
     for p in prospects:
         if dry_run:
             inserted += 1
@@ -295,13 +343,13 @@ async def link_prospects(
         result = await conn.fetchval(
             """
             INSERT INTO campaign_leads (
-                id, client_id, business_universe_id, status,
+                id, client_id, campaign_id, business_universe_id, status,
                 claimed_at, created_at, updated_at
-            ) VALUES (gen_random_uuid(), $1, $2, 'claimed', NOW(), NOW(), NOW())
+            ) VALUES (gen_random_uuid(), $1, $2, $3, 'claimed', NOW(), NOW(), NOW())
             ON CONFLICT DO NOTHING
             RETURNING id
             """,
-            client_id, p["id"],
+            client_id, campaign_id, p["id"],
         )
         if result:
             inserted += 1
@@ -325,6 +373,10 @@ async def main():
 
     try:
         client_id = await ensure_demo_client(conn) if not dry_run else "DRY-RUN-CLIENT"
+        campaign_id = (
+            await ensure_demo_campaign(conn, client_id)
+            if not dry_run else "DRY-RUN-CAMPAIGN"
+        )
 
         print("\nensuring demo Supabase auth user "
               f"(email={DEMO_AUTH_EMAIL})…")
@@ -373,9 +425,13 @@ async def main():
             print(f"\nDRY-RUN — would link {len(prospects)} BU rows to demo client")
             return
 
-        linked = await link_prospects(conn, client_id, prospects, dry_run=False)
+        linked = await link_prospects(
+            conn, client_id, prospects,
+            dry_run=False, campaign_id=campaign_id,
+        )
         print(f"\nlinked: {linked} new campaign_leads rows")
         print(f"demo_client_id: {client_id}")
+        print(f"demo_campaign_id: {campaign_id}")
     finally:
         await conn.close()
 

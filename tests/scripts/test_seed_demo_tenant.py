@@ -130,9 +130,15 @@ async def test_link_prospects_writes_one_row_per_prospect():
     conn = MagicMock()
     conn.fetchval = AsyncMock(return_value=uuid4())
     prospects = [_make_prospect(dom=f"x{i}.com.au") for i in range(3)]
-    n = await seed.link_prospects(conn, "client-uuid", prospects, dry_run=False)
+    n = await seed.link_prospects(
+        conn, "client-uuid", prospects, dry_run=False, campaign_id="cmp-uuid",
+    )
     assert n == 3
     assert conn.fetchval.await_count == 3
+    # Confirm campaign_id is forwarded to the INSERT positionally.
+    first_args = conn.fetchval.await_args_list[0].args
+    assert first_args[1] == "client-uuid"
+    assert first_args[2] == "cmp-uuid"
 
 
 @pytest.mark.asyncio
@@ -151,8 +157,70 @@ async def test_link_prospects_skips_on_conflict_silently():
     conn = MagicMock()
     conn.fetchval = AsyncMock(side_effect=[uuid4(), None, uuid4()])
     prospects = [_make_prospect(dom=f"x{i}.com.au") for i in range(3)]
-    n = await seed.link_prospects(conn, "client-uuid", prospects, dry_run=False)
+    n = await seed.link_prospects(
+        conn, "client-uuid", prospects, dry_run=False, campaign_id="cmp-uuid",
+    )
     assert n == 2
+
+
+@pytest.mark.asyncio
+async def test_link_prospects_requires_campaign_id_when_executing():
+    """Schema audit gate: campaign_leads.campaign_id is NOT NULL — refuse
+    to issue an INSERT that would be rejected at the DB."""
+    conn = MagicMock()
+    conn.fetchval = AsyncMock()
+    prospects = [_make_prospect(dom="x.com.au")]
+    with pytest.raises(ValueError, match="campaign_id"):
+        await seed.link_prospects(conn, "client-uuid", prospects, dry_run=False)
+    conn.fetchval.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_link_prospects_dry_run_allows_missing_campaign_id():
+    """Dry-run never touches the DB so missing campaign_id is tolerated."""
+    conn = MagicMock()
+    conn.fetchval = AsyncMock()
+    prospects = [_make_prospect(dom="x.com.au")]
+    n = await seed.link_prospects(conn, "client-uuid", prospects, dry_run=True)
+    assert n == 1
+    conn.fetchval.assert_not_awaited()
+
+
+# ─── ensure_demo_campaign (TASK A — schema-audited) ────────────────────────
+
+@pytest.mark.asyncio
+async def test_ensure_demo_campaign_returns_existing():
+    conn = MagicMock()
+    conn.fetchrow = AsyncMock(return_value={"id": "existing-cmp-uuid"})
+    conn.fetchval = AsyncMock()
+    out = await seed.ensure_demo_campaign(conn, "client-uuid")
+    assert out == "existing-cmp-uuid"
+    conn.fetchval.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_ensure_demo_campaign_creates_when_absent():
+    conn = MagicMock()
+    conn.fetchrow = AsyncMock(return_value=None)
+    conn.fetchval = AsyncMock(return_value="new-cmp-uuid")
+    out = await seed.ensure_demo_campaign(conn, "client-uuid")
+    assert out == "new-cmp-uuid"
+    sql, args = conn.fetchval.await_args.args[0], conn.fetchval.await_args.args[1:]
+    assert "INSERT INTO campaigns" in sql
+    assert args[0] == "client-uuid"
+    assert args[1] == seed.DEMO_CAMPAIGN_NAME
+
+
+@pytest.mark.asyncio
+async def test_ensure_demo_campaign_idempotent_lookup_by_name():
+    """Lookup query must match on (client_id, name) to prevent duplicates."""
+    conn = MagicMock()
+    conn.fetchrow = AsyncMock(return_value=None)
+    conn.fetchval = AsyncMock(return_value="x")
+    await seed.ensure_demo_campaign(conn, "client-uuid")
+    lookup_sql = conn.fetchrow.await_args.args[0]
+    assert "WHERE client_id = $1 AND name = $2" in lookup_sql
+    assert "deleted_at IS NULL" in lookup_sql
 
 
 # ─── ensure_demo_auth_user (TASK B) ─────────────────────────────────────────

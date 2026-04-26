@@ -4,7 +4,7 @@ Seed the Demo tenant for investor-ready demos.
 What it does
 ------------
 1. Ensures a `clients` row named 'Demo Agency' exists (creates if missing).
-2. Selects up to 20 best BU prospects by:
+2. Selects up to TARGET_PROSPECTS best BU prospects by:
        pipeline_stage >= 6
        AND dm_email IS NOT NULL
        AND propensity_score > 60
@@ -15,7 +15,7 @@ What it does
 4. Inserts campaign_leads junction rows linking the Demo client to each
    selected BU id (status='claimed').
 
-If fewer than 20 prospects survive filtering it REPORTS the shortfall —
+If fewer than TARGET_PROSPECTS prospects survive filtering it REPORTS the shortfall —
 never pads with weaker prospects. The point of the demo is curated quality.
 
 Usage:
@@ -50,9 +50,12 @@ import asyncpg  # noqa: E402
 from src.config.settings import settings  # noqa: E402
 
 DEMO_CLIENT_NAME = "Demo Agency"
-# ignition is the entry tier — spark not in tier_type enum (TIERS-002 gap)
+# ignition is the entry tier — spark not in tier_type enum (TIERS-002 gap).
+# Demo runs at ignition until tier_type enum migration adds spark.
 DEMO_TIER = "ignition"
-TARGET_PROSPECTS = 20
+# 7 high-quality dental clinics available at stage>=6 + propensity>60 + real email.
+# Increase when enrichment pipeline grows the pool.
+TARGET_PROSPECTS = 7
 MIN_STAGE = 6
 MIN_PROPENSITY = 60
 

@@ -59,23 +59,41 @@ async def _select_unmatched_bus(
     batch_size: int,
     bu_ids: list[str] | None,
 ) -> list[asyncpg.Record]:
-    """Pull BU rows where abn_matched IS NOT TRUE (covers FALSE and NULL)."""
+    """Pull BU rows where abn_matched IS NOT TRUE (covers FALSE and NULL).
+
+    2026-04-26 production-schema fix: BU does NOT carry trading_name or
+    abr_trading_name columns. The S1 SELECT assumed migration 086 + 090
+    column shape but production has only legal_name + display_name + domain
+    + state on the name-resolution path.
+    """
+    # Option W1 filter (2026-04-26 dual-concur, dispatch dispatched after v4
+    # pre-launch halt revealed all 8501 unmatched rows have legal_name=NULL):
+    # filter applied to display_name (the actual name source for unmatched
+    # GMB-sourced rows) instead of legal_name. Skip names too short for
+    # confident match, non-Latin scripts (won't match AU ABR), and
+    # common-word stopwords causing GIN trigram bitmap blowout.
     if bu_ids:
         return await conn.fetch(
-            """SELECT id, domain, state,
-                      legal_name, trading_name, abr_trading_name, display_name
+            """SELECT id, domain, state, legal_name, display_name
                  FROM business_universe
                 WHERE abn_matched IS NOT TRUE
+                  AND display_name IS NOT NULL
+                  AND length(trim(display_name)) >= 12
+                  AND display_name ~ '[a-zA-Z]'
+                  AND display_name !~* '\\m(home|store|shop|page|index|services|world|center|online|business|company|group)\\M'
                   AND id = ANY($1::uuid[])
                 ORDER BY id
                 LIMIT $2""",
             bu_ids, batch_size,
         )
     return await conn.fetch(
-        """SELECT id, domain, state,
-                  legal_name, trading_name, abr_trading_name, display_name
+        """SELECT id, domain, state, legal_name, display_name
              FROM business_universe
             WHERE abn_matched IS NOT TRUE
+              AND display_name IS NOT NULL
+              AND length(trim(display_name)) >= 12
+              AND display_name ~ '[a-zA-Z]'
+              AND display_name !~* '\\m(home|store|shop|page|index|services|world|center|online|business|company|group)\\M'
             ORDER BY id
             LIMIT $1""",
         batch_size,
@@ -83,12 +101,62 @@ async def _select_unmatched_bus(
 
 
 def _resolve_search_name(row: asyncpg.Record) -> str | None:
-    """Pick the best available human-readable name for fuzzy matching."""
-    for key in ("trading_name", "abr_trading_name", "legal_name", "display_name"):
+    """Pick the best available human-readable name for fuzzy matching.
+
+    2026-04-26: trading_name + abr_trading_name dropped — neither exists on
+    production BU. Fallback chain narrows to legal_name -> display_name.
+    """
+    for key in ("legal_name", "display_name"):
         v = row.get(key) if hasattr(row, "get") else row[key]
         if v and str(v).strip():
             return str(v).strip()
     return None
+
+
+async def _set_pg_trgm_threshold(conn: asyncpg.Connection, threshold: float) -> None:
+    """2026-04-26 perf fix: align the per-session pg_trgm.similarity_threshold
+    with the script's min_confidence so the `%` operator (driven by the GIN
+    index abn_registry_trgm_gin) only returns rows that already meet our
+    threshold. Without this, the operator's default threshold (0.3) returns
+    tens of thousands of low-similarity candidates per query, defeating the
+    index speedup."""
+    await conn.execute(f"SELECT set_limit({threshold:.2f})")
+
+
+async def _init_session(conn: asyncpg.Connection, min_confidence: float) -> None:
+    """Cat-B fix (2026-04-26): bundle per-connection setup into one helper so
+    the retry-on-drop wrapper can re-init a fresh connection in a single call.
+
+    Sets:
+      - pg_trgm similarity threshold (so % operator aligns with min_confidence)
+
+    Cat-B v2 fix (2026-04-26): statement_timeout='30s' DELIBERATELY MOVED OUT
+    of this helper. It must NOT fire before the initial _select_unmatched_bus
+    bulk fetch — that fetch is a seq scan over business_universe (no index on
+    abn_matched IS NOT TRUE) and routinely exceeds 30s on production. The
+    timeout is now applied via _enable_per_row_timeout() AFTER the bulk fetch
+    completes, so only per-row similarity queries get capped.
+    """
+    await _set_pg_trgm_threshold(conn, min_confidence)
+
+
+async def _enable_per_row_timeout(conn: asyncpg.Connection) -> None:
+    """Apply statement_timeout='30s' to cap per-row similarity queries.
+    Must be called AFTER the initial bulk fetch (_select_unmatched_bus) so
+    that fetch is not subject to the cap. The retry-on-drop handler also
+    re-applies this after a fresh-conn acquire."""
+    await conn.execute("SET statement_timeout = '30s'")
+
+
+# Connection-class exceptions that the retry-on-drop wrapper catches.
+# statement_timeout errors are NOT in this tuple — they surface as
+# QueryCanceledError and the script's existing per-row try/except handles
+# them as benign per-row ERRORs (logged + continue, no retry).
+_CONN_DROP_EXCEPTIONS = (
+    asyncpg.exceptions.ConnectionDoesNotExistError,
+    asyncpg.exceptions.InterfaceError,
+    asyncpg.exceptions.PostgresConnectionError,
+)
 
 
 async def _fuzzy_match_one(
@@ -103,6 +171,12 @@ async def _fuzzy_match_one(
     Uses pg_trgm similarity() on the greater of trading_name / legal_name
     similarity. State is an optional exact-match tiebreaker.
     """
+    # 2026-04-26: WHERE uses lower(...) on both sides of `%` so the planner
+    # can use the GIN expression index abn_registry_trgm_gin which is built
+    # on (lower(trading_name) gin_trgm_ops, lower(legal_name) gin_trgm_ops).
+    # Without the LOWER() wrapper the planner falls back to seq scan over
+    # 2.4M rows. similarity() in the projection list runs against the
+    # already-narrowed candidate set so casing doesn't change scores.
     sql = """
         SELECT abn,
                legal_name,
@@ -112,13 +186,13 @@ async def _fuzzy_match_one(
                registration_date,
                state,
                GREATEST(
-                   COALESCE(similarity(trading_name, $1), 0.0),
-                   COALESCE(similarity(legal_name,   $1), 0.0)
+                   COALESCE(similarity(lower(trading_name), lower($1)), 0.0),
+                   COALESCE(similarity(lower(legal_name),   lower($1)), 0.0)
                ) AS confidence
           FROM abn_registry
          WHERE (
-                 trading_name % $1
-              OR legal_name   % $1
+                 lower(trading_name) % lower($1)
+              OR lower(legal_name)   % lower($1)
                )
            AND ($2::text IS NULL OR state IS NULL OR UPPER(state) = UPPER($2))
          ORDER BY confidence DESC
@@ -148,23 +222,25 @@ async def _apply_match(
 ) -> None:
     """Write the match back to business_universe.
 
-    Maps dispatch field names to existing BU columns:
-      abn_status     -> abn_status_code   (text)
-      abr_matched_at -> abr_last_updated  (timestamptz)
+    2026-04-26 production-schema fix: production BU has the dispatch-named
+    columns directly (abn_status, abr_matched_at) — opposite of the S1
+    column mapping that was derived from migration files (abn_status_code,
+    abr_last_updated). Original mapping was speculative; live schema
+    introspection during this run confirmed the dispatch names are real.
     """
-    # Derive an abn_status_code from entity-level signals. abn_registry does
-    # not carry a status column, so we infer 'active' for any matched row;
-    # downstream ABR refresh will overwrite with authoritative status.
-    abn_status_code = "active"
+    # Derive an abn_status from entity-level signals. abn_registry has its
+    # own abn_status_code column but we only ingest 'active' here; downstream
+    # ABR refresh will overwrite with authoritative status.
+    abn_status_value = "active"
     await conn.execute(
         """UPDATE business_universe
-              SET abn               = COALESCE($2, abn),
-                  abn_matched       = TRUE,
-                  abn_status_code   = COALESCE(abn_status_code, $3),
-                  abr_last_updated  = NOW(),
-                  updated_at        = NOW()
+              SET abn             = COALESCE($2, abn),
+                  abn_matched     = TRUE,
+                  abn_status      = COALESCE(abn_status, $3),
+                  abr_matched_at  = NOW(),
+                  updated_at      = NOW()
             WHERE id = $1""",
-        bu_id, match["abn"], abn_status_code,
+        bu_id, match["abn"], abn_status_value,
     )
 
 
@@ -179,33 +255,56 @@ async def sweep(
     pool = await asyncpg.create_pool(
         db_url, min_size=1, max_size=4, statement_cache_size=0,
     )
+    conn: asyncpg.Connection | None = None
     try:
-        async with pool.acquire() as conn:
-            rows = await _select_unmatched_bus(conn, batch_size, bu_ids)
-            stats["total"] = len(rows)
-            for row in rows:
-                bu_id = str(row["id"])
-                name = _resolve_search_name(row)
-                if not name:
-                    stats["skipped_no_name"] += 1
-                    print(f"SKIP no_name bu_id={bu_id} domain={row.get('domain')}")
-                    continue
-                state = row.get("state")
+        conn = await pool.acquire()
+        await _init_session(conn, min_confidence)
+        # Initial bulk fetch runs WITHOUT statement_timeout cap — it is a
+        # seq scan over business_universe (no index on `abn_matched IS NOT TRUE`)
+        # and routinely exceeds 30s. Cap is applied to per-row queries below.
+        rows = await _select_unmatched_bus(conn, batch_size, bu_ids)
+        stats["total"] = len(rows)
+        # Cap per-row similarity queries at 30s. Must come AFTER the bulk fetch.
+        await _enable_per_row_timeout(conn)
+
+        # Retry-on-drop wrapper (Cat-B fix, 2026-04-26): the per-row work is
+        # driven by an explicit row_idx instead of `for row in rows:` so the
+        # outer reconnect handler can rewind to the same row after a connection
+        # drop. UPDATE is idempotent (writes only when abn_matched IS NOT TRUE),
+        # so re-running the same row after a reconnect cannot double-write.
+        row_idx = 0
+        while row_idx < len(rows):
+            row = rows[row_idx]
+            bu_id = str(row["id"])
+            name = _resolve_search_name(row)
+            if not name:
+                stats["skipped_no_name"] += 1
+                print(f"SKIP no_name bu_id={bu_id} domain={row.get('domain')}")
+                row_idx += 1
+                continue
+            state = row.get("state")
+            try:
+                # ── Per-row work (existing logic, unchanged behaviour) ──
                 try:
                     match = await _fuzzy_match_one(conn, name, state, min_confidence)
+                except _CONN_DROP_EXCEPTIONS:
+                    raise  # propagate to outer reconnect handler
                 except Exception as exc:
                     stats["errors"] += 1
                     print(f"ERROR bu_id={bu_id} name={name!r}: {exc}")
+                    row_idx += 1
                     continue
                 if match is None:
                     stats["skipped_low_conf"] += 1
                     print(f"SKIP low_conf bu_id={bu_id} name={name!r} state={state}")
+                    row_idx += 1
                     continue
                 if dry_run:
                     print(
                         f"DRY-RUN match bu_id={bu_id} name={name!r} -> "
                         f"abn={match['abn']} conf={match['confidence']:.3f}"
                     )
+                    row_idx += 1
                 else:
                     try:
                         await _apply_match(conn, bu_id, match)
@@ -214,10 +313,39 @@ async def sweep(
                             f"MATCH bu_id={bu_id} name={name!r} -> "
                             f"abn={match['abn']} conf={match['confidence']:.3f}"
                         )
+                        row_idx += 1
+                    except _CONN_DROP_EXCEPTIONS:
+                        raise  # propagate to outer reconnect handler
                     except Exception as exc:
                         stats["errors"] += 1
                         print(f"ERROR write bu_id={bu_id}: {exc}")
+                        row_idx += 1
+            except _CONN_DROP_EXCEPTIONS as conn_exc:
+                # Cat-B fix: connection dropped mid-row. Sleep + reconnect
+                # + retry SAME row (do NOT increment row_idx).
+                print(
+                    f"CONN-DROP bu_id={bu_id}: {type(conn_exc).__name__}: "
+                    f"{conn_exc} — sleeping 5s, reconnecting, retrying same row"
+                )
+                await asyncio.sleep(5)
+                # Best-effort release of the dead connection back to the pool.
+                try:
+                    await pool.release(conn)
+                except Exception:
+                    pass
+                conn = await pool.acquire()
+                await _init_session(conn, min_confidence)
+                # Reconnect path is for per-row work only (bulk fetch already
+                # done) — re-apply the per-row statement_timeout cap.
+                await _enable_per_row_timeout(conn)
+                # row_idx unchanged — retry the same row on the new connection.
+                continue
     finally:
+        if conn is not None:
+            try:
+                await pool.release(conn)
+            except Exception:
+                pass
         await pool.close()
     return stats
 

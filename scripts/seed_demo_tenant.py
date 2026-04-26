@@ -50,7 +50,8 @@ import asyncpg  # noqa: E402
 from src.config.settings import settings  # noqa: E402
 
 DEMO_CLIENT_NAME = "Demo Agency"
-DEMO_TIER = "spark"
+# ignition is the entry tier — spark not in tier_type enum (TIERS-002 gap)
+DEMO_TIER = "ignition"
 TARGET_PROSPECTS = 20
 MIN_STAGE = 6
 MIN_PROPENSITY = 60

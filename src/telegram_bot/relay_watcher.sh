@@ -24,7 +24,9 @@ mkdir -p "$INBOX" "$PROCESSED"
 
 echo "[relay-watcher-${CALLSIGN}] Started. Watching $INBOX → tmux $TMUX_TARGET"
 
-inotifywait -m -q -e create "$INBOX" --format '%f' 2>/dev/null | while read fname; do
+# H10 — also watch -e moved_to so we don't drop dispatches the Write tool
+# delivers via atomic rename (which fires moved_to, not create).
+inotifywait -m -q -e create -e moved_to "$INBOX" --format '%f' 2>/dev/null | while read fname; do
     # Only process JSON metadata files
     [[ "$fname" != *.json ]] && continue
 

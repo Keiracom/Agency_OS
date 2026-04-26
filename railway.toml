@@ -1,0 +1,44 @@
+# P11 — cgroup memory hardening for Railway services.
+#
+# Railway's per-service memory ceiling is what populates the cgroup
+# `memory.max` file the guard at scripts/cgroup_memory_guard.py reads.
+# Set the ceiling here (in MB) so deploys do not silently rely on a
+# host-default that varies by region.
+#
+# The guard process should be started inside each agent container as a
+# sidecar thread (or by the supervisor). It WARNs at 80% utilisation
+# and SIGTERMs sub-agent PIDs at 95% to avoid an uncontrolled OOM
+# cascade that would also take the parent worker with it.
+#
+# Per-agent overrides for richer logging:
+#     AGENT_MEMORY_LIMIT_MB__BUILD_2=2048
+#     AGENT_MEMORY_LIMIT_MB__RESEARCH_1=512
+# (The actual enforcement is the cgroup ceiling — env is only a hint.)
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+healthcheckPath = "/api/v1/health"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+
+# ── Service: API (FastAPI) ────────────────────────────────────────────────
+[[services]]
+name = "api"
+[services.deploy]
+startCommand = "uvicorn src.api.main:app --host 0.0.0.0 --port ${PORT:-8000}"
+[services.resources]
+# 2 GB ceiling. Guard warns at 1.6 GB, kills sub-agents at 1.9 GB.
+memoryMB = 2048
+
+# ── Service: Worker (Prefect / orchestration) ─────────────────────────────
+[[services]]
+name = "worker"
+[services.deploy]
+startCommand = "python -m src.workers.main"
+[services.resources]
+# 4 GB ceiling — workers spawn sub-agents that each need ~512 MB.
+memoryMB = 4096

@@ -63,6 +63,13 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 # Default port (Railway overrides with PORT env var)
 EXPOSE 8000
 
+# P11 — cgroup memory hardening defaults. Container runtime (Railway,
+# Docker `--memory`) sets the actual ceiling; these envs are read by
+# scripts/cgroup_memory_guard.py for richer per-agent logging.
+ENV AGENT_MEMORY_WARN_PCT=80 \
+    AGENT_MEMORY_KILL_PCT=95 \
+    AGENT_MEMORY_PID_DIR=/tmp/agency_os/agents
+
 # Default command (API service)
 # Uses shell form to expand $PORT env var (Railway sets this dynamically)
 CMD uvicorn src.api.main:app --host 0.0.0.0 --port ${PORT:-8000}

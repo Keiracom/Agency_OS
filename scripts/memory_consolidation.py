@@ -40,6 +40,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import hashlib
+import json
 import math
 import os
 import re
@@ -103,17 +104,6 @@ def relevance_score(m: Memory) -> float:
     return min(1.0, hits / 3.0)
 
 
-def frequency_score(m: Memory, all_token_sets: list[set[str]]) -> float:
-    """Count of OTHER memories sharing ≥ 3 distinct content tokens."""
-    me = _tokens(m.content)
-    if not me:
-        return 0.0
-    overlap_count = sum(
-        1 for other in all_token_sets if other is not me and len(me & other) >= 3
-    )
-    return min(1.0, overlap_count / 5.0)
-
-
 def recency_score(m: Memory, max_age_days: float) -> float:
     if max_age_days <= 0:
         return 1.0
@@ -144,7 +134,7 @@ def score(memories: list[Memory]) -> None:
     token_sets = [_tokens(m.content) for m in memories]
     hash_counts: Counter = Counter(m.content_hash for m in memories if m.content_hash)
 
-    for m, toks in zip(memories, token_sets, strict=False):
+    for m, toks in zip(memories, token_sets, strict=True):
         m.factors = {
             "relevance":     relevance_score(m),
             "frequency":     frequency_score_with_tokens(m, toks, token_sets),
@@ -197,7 +187,14 @@ async def fetch_recent(conn, lookback_days: int) -> list[Memory]:
 
 async def promote_to_core_fact(conn, m: Memory, *, dry_run: bool) -> bool:
     """INSERT a new core_fact row mirroring the daily_log content. Returns True
-    if an insert was made (or would be made in dry-run)."""
+    if an insert was made (or would be made in dry-run).
+
+    OC1-1 — idempotency guard. Repeated runs over the same window must
+    not duplicate core_facts. Each promoted row is tagged with
+    metadata.consolidated_from = original daily_log UUID; we use a
+    WHERE NOT EXISTS subquery on that tag to skip rows that already
+    have a core_fact derived from this same daily_log.
+    """
     if dry_run:
         return True
     metadata = dict(m.metadata or {})
@@ -208,16 +205,24 @@ async def promote_to_core_fact(conn, m: Memory, *, dry_run: bool) -> bool:
         "factors":           m.factors,
     })
     new_hash = hashlib.sha256(m.content.encode()).hexdigest()
-    await conn.execute(
+    result = await conn.execute(
         """
         INSERT INTO elliot_internal.memories
           (id, content, content_hash, type, metadata, created_at, updated_at)
-        VALUES (gen_random_uuid(), $1, $2, 'core_fact', $3::jsonb, NOW(), NOW())
+        SELECT
+          gen_random_uuid(), $1, $2, 'core_fact', $3::jsonb, NOW(), NOW()
+        WHERE NOT EXISTS (
+          SELECT 1 FROM elliot_internal.memories
+          WHERE type = 'core_fact'
+            AND deleted_at IS NULL
+            AND metadata->>'consolidated_from' = $4
+        )
         """,
-        m.content, new_hash,
-        __import__("json").dumps(metadata),
+        m.content, new_hash, json.dumps(metadata), m.id,
     )
-    return True
+    # asyncpg returns "INSERT 0 N" — N == 0 means the guard skipped it.
+    inserted = result.endswith(" 1") if isinstance(result, str) else False
+    return inserted
 
 
 async def soft_delete(conn, memory_id: str, *, dry_run: bool) -> bool:

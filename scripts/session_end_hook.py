@@ -37,6 +37,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import subprocess
 import sys
 from datetime import UTC, datetime
@@ -168,7 +169,7 @@ def write_memory(summary: dict) -> dict:
         async def _go():
             conn = await asyncpg.connect(dsn, statement_cache_size=0)
             try:
-                key = f"ceo:session_end_{datetime.now(UTC).date().isoformat()}"
+                key = f"ceo:session_end_{datetime.now(UTC).date().isoformat()}_{os.environ.get('CALLSIGN', 'unknown')}"
                 await conn.execute(
                     """
                     INSERT INTO ceo_memory (key, value, created_at, updated_at)

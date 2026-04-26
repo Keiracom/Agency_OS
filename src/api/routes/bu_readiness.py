@@ -17,8 +17,8 @@ import asyncpg
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field
 
-from scripts.bu_readiness_check import gather_metrics  # type: ignore[import-not-found]
 from src.config.settings import settings
+from src.services.bu_readiness import gather_metrics
 
 logger = logging.getLogger(__name__)
 

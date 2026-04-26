@@ -46,6 +46,16 @@ class Settings(BaseSettings):
         description="Demo mode — disables real outreach sends + shows banner",
     )
 
+    # === BU readiness (M10) ===
+    # Total BU-row target representing 100% Coverage. The Coverage threshold
+    # in the Manual is "≥ 40% of TARGET_BU_SIZE", so changing this knob also
+    # changes the absolute pass bar. Override via TARGET_BU_SIZE env var.
+    TARGET_BU_SIZE: int = Field(
+        default=50_000,
+        validation_alias=AliasChoices("TARGET_BU_SIZE", "target_bu_size"),
+        description="100% BU coverage target — denominator of the Coverage metric",
+    )
+
     # === CORS ===
     ALLOWED_ORIGINS: list[str] = Field(
         default=["http://localhost:3000", "http://localhost:8000"],

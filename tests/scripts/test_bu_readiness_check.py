@@ -1,27 +1,18 @@
 """
-M10 — Tests for scripts/bu_readiness_check.py.
+M10 — Tests for the BU readiness threshold lib.
 
+Now imports the shared lib at src/services/bu_readiness.py (M10-1).
 Pure mocks — no Supabase. Confirms the four metric calculators produce
 the right pass/fail verdict against the documented thresholds.
 """
 from __future__ import annotations
 
-import importlib.util
 import json
-import sys
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-_SCRIPT = Path(__file__).resolve().parent.parent.parent / "scripts" / "bu_readiness_check.py"
-_spec = importlib.util.spec_from_file_location("bu_readiness_check", _SCRIPT)
-mod = importlib.util.module_from_spec(_spec)
-assert _spec.loader is not None
-# Register BEFORE exec_module so dataclass field type resolution can find
-# the module via sys.modules during class body evaluation.
-sys.modules["bu_readiness_check"] = mod
-_spec.loader.exec_module(mod)
+from src.services import bu_readiness as mod
 
 
 def _conn(scalar_returns: list, fetchrow_returns: list):
@@ -54,11 +45,23 @@ async def test_coverage_fails_below_threshold():
     assert m.pass_ is False
 
 
+@pytest.mark.asyncio
+async def test_coverage_uses_settings_target_bu_size(monkeypatch):
+    """M10-2 — Coverage denominator must come from settings.TARGET_BU_SIZE."""
+    from src.config.settings import settings as _s
+    monkeypatch.setattr(_s, "TARGET_BU_SIZE", 10_000)
+    # 4,000 of 10,000 = 40% — passes
+    conn = _conn(scalar_returns=[4_000], fetchrow_returns=[])
+    m = await mod.measure_coverage(conn)
+    assert m.value == 40.0
+    assert m.pass_ is True
+    assert "10,000 BU rows" in m.detail
+
+
 # ─── verified ──────────────────────────────────────────────────────────────
 
 @pytest.mark.asyncio
 async def test_verified_pct_calculation():
-    # 55 of 100 = 55% — at threshold, PASS
     conn = _conn(scalar_returns=[],
                  fetchrow_returns=[{"with_email": 100, "verified": 55}])
     m = await mod.measure_verified(conn)
@@ -86,32 +89,39 @@ async def test_outcomes_passes_at_500():
 
 
 @pytest.mark.asyncio
-async def test_outcomes_handles_missing_table():
-    """If cis_outreach_outcomes doesn't exist (dev), report 0 and FAIL
-    rather than crash."""
+async def test_outcomes_logs_when_table_missing(caplog):
+    """M10-3 — DB error must be logged via logger.error, not silently
+    swallowed. measure_outcomes still returns 0/FAIL so the report is
+    well-formed."""
     conn = MagicMock()
     conn.fetchval = AsyncMock(side_effect=RuntimeError("relation missing"))
-    m = await mod.measure_outcomes(conn)
+    with caplog.at_level("ERROR", logger="src.services.bu_readiness"):
+        m = await mod.measure_outcomes(conn)
     assert m.value == 0
     assert m.pass_ is False
+    assert any("measure_outcomes" in r.message for r in caplog.records)
 
 
 # ─── trajectory ────────────────────────────────────────────────────────────
 
 @pytest.mark.asyncio
-async def test_trajectory_pct():
-    # 30 new / 100 pre = 30% — at threshold, PASS
+async def test_trajectory_uses_standard_mom_window():
+    """M10-4 — numerator = last 30d, denominator = 30-60d-ago window
+    (standard MoM), NOT total pre-window."""
     conn = _conn(scalar_returns=[],
-                 fetchrow_returns=[{"new_rows": 30, "pre_rows": 100}])
+                 fetchrow_returns=[{"new_rows": 30, "prev_rows": 100}])
     m = await mod.measure_trajectory(conn)
     assert m.value == 30.0
     assert m.pass_ is True
+    # The detail string should reference both windows clearly
+    assert "30d" in m.detail
+    assert "30-60d ago" in m.detail
 
 
 @pytest.mark.asyncio
 async def test_trajectory_pre_zero_is_zero_pct_not_div_zero():
     conn = _conn(scalar_returns=[],
-                 fetchrow_returns=[{"new_rows": 0, "pre_rows": 0}])
+                 fetchrow_returns=[{"new_rows": 0, "prev_rows": 0}])
     m = await mod.measure_trajectory(conn)
     assert m.value == 0.0
     assert m.pass_ is False
@@ -121,12 +131,10 @@ async def test_trajectory_pre_zero_is_zero_pct_not_div_zero():
 
 @pytest.mark.asyncio
 async def test_gather_metrics_overall_pass_requires_all_four():
-    """gather_metrics aggregates four measure_* calls. Overall pass only
-    when every metric passes."""
-    fetchval_returns = iter([20_000, 500])  # coverage, outcomes
+    fetchval_returns = iter([20_000, 500])
     fetchrow_returns = iter([
-        {"with_email": 100, "verified": 60},   # verified — PASS
-        {"new_rows": 30, "pre_rows": 100},     # trajectory — PASS (= threshold)
+        {"with_email": 100, "verified": 60},
+        {"new_rows": 30, "prev_rows": 100},
     ])
     conn = MagicMock()
     conn.fetchval = AsyncMock(side_effect=lambda *a, **k: next(fetchval_returns))
@@ -160,7 +168,6 @@ def test_metric_to_dict_renames_pass_field():
 
 
 def test_report_to_dict_serializes_to_json():
-    """JSON serialization of the report must succeed (used by --json)."""
     metrics = [mod.Metric(name="x", value=1, unit="pct", threshold=1,
                           pass_=True, detail="d")]
     report = mod.ReadinessReport(metrics=metrics, overall_pass=True)

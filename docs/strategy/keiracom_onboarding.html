@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Keiracom — Install Your AI Workforce</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #080A0F;
+  --surface: #0F1218;
+  --surface-2: #151921;
+  --surface-3: #1B2029;
+  --border: rgba(255,255,255,0.05);
+  --border-active: rgba(212,168,100,0.3);
+  --text: #E2E4E8;
+  --text-2: #9199A5;
+  --text-3: #505868;
+  --gold: #D4A864;
+  --gold-dim: rgba(212,168,100,0.08);
+  --gold-glow: rgba(212,168,100,0.2);
+  --green: #3DD68C;
+  --green-dim: rgba(61,214,140,0.08);
+  --amber: #E8A838;
+  --amber-dim: rgba(232,168,56,0.08);
+  --red: #E85454;
+  --red-dim: rgba(232,84,84,0.08);
+  --blue: #5494E8;
+  --blue-dim: rgba(84,148,232,0.08);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:13px}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;
+  display:flex;flex-direction:column;align-items:center;overflow-x:hidden}
+.mono{font-family:'JetBrains Mono',monospace}
+
+/* Scanlines */
+body::after{content:'';position:fixed;top:0;left:0;width:100%;height:100%;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.02) 2px,rgba(0,0,0,0.02) 4px);
+  pointer-events:none;z-index:9999}
+
+/* ─── NAV ─── */
+.nav{width:100%;display:flex;align-items:center;justify-content:space-between;padding:14px 32px;
+  border-bottom:1px solid var(--border);background:rgba(8,10,15,0.97);backdrop-filter:blur(12px);position:sticky;top:0;z-index:100}
+.logo{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--text-3)}
+.logo em{font-style:normal;color:var(--gold)}
+.nav-step{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-3);letter-spacing:.06em}
+.nav-step span{color:var(--gold)}
+
+/* ─── CONTAINER ─── */
+.container{width:100%;max-width:720px;padding:0 24px;margin-top:48px;padding-bottom:80px}
+
+/* ─── STEP HEADER ─── */
+.step-eyebrow{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--text-3);display:flex;align-items:center;gap:12px;margin-bottom:20px}
+.step-eyebrow::after{content:'';flex:1;height:1px;background:var(--border)}
+.step-title{font-family:'Instrument Serif',serif;font-size:clamp(28px,4vw,42px);font-weight:400;
+  line-height:1.15;margin-bottom:12px;color:var(--text)}
+.step-title em{font-style:italic;color:var(--gold)}
+.step-sub{font-size:14px;color:var(--text-2);line-height:1.7;max-width:520px;margin-bottom:40px}
+
+/* ─── PROGRESS BAR ─── */
+.progress{display:flex;gap:4px;margin-bottom:48px}
+.progress-seg{flex:1;height:3px;border-radius:1px;background:rgba(255,255,255,0.06);transition:background .4s}
+.progress-seg.done{background:var(--gold)}
+.progress-seg.active{background:var(--gold);animation:progressPulse 2s infinite}
+@keyframes progressPulse{0%,100%{opacity:1}50%{opacity:.5}}
+
+/* ─── TOOL GRID ─── */
+.tool-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);
+  border:1px solid var(--border)}
+.tool-card{background:var(--surface);padding:24px 20px;text-align:center;cursor:pointer;
+  transition:all .25s;position:relative;overflow:hidden}
+.tool-card:hover{background:var(--surface-2)}
+.tool-card.connected{background:var(--surface-2)}
+.tool-card.connecting{pointer-events:none}
+.tool-icon{font-size:28px;margin-bottom:10px;display:block;filter:grayscale(0.3)}
+.tool-card.connected .tool-icon{filter:grayscale(0)}
+.tool-name{font-size:13px;font-weight:500;margin-bottom:4px}
+.tool-desc{font-size:10px;color:var(--text-3);line-height:1.4}
+.tool-status{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.06em;
+  margin-top:10px;text-transform:uppercase;height:16px}
+.tool-status.idle{color:var(--text-3)}
+.tool-status.connecting{color:var(--amber);animation:blink 1s infinite}
+.tool-status.connected{color:var(--green)}
+.tool-status.reading{color:var(--gold);animation:blink 1.2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* Connected checkmark */
+.tool-check{position:absolute;top:10px;right:10px;width:18px;height:18px;border-radius:50%;
+  background:var(--green);display:none;align-items:center;justify-content:center;
+  font-size:10px;color:#080A0F;font-weight:700}
+.tool-card.connected .tool-check{display:flex}
+
+/* Connection progress bar inside card */
+.tool-progress{position:absolute;bottom:0;left:0;height:2px;background:var(--gold);
+  transition:width .8s ease;width:0}
+
+/* ─── ANALYSIS PANEL ─── */
+.analysis{border:1px solid var(--border);background:var(--surface);margin-top:24px;display:none}
+.analysis.show{display:block;animation:fadeIn .4s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.analysis-head{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;
+  justify-content:space-between;align-items:center}
+.analysis-title{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--text-3)}
+.analysis-status{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--gold);
+  letter-spacing:.06em}
+.analysis-body{padding:0}
+.analysis-item{padding:10px 18px;border-bottom:1px solid var(--border);display:flex;
+  align-items:center;gap:10px;font-size:12px;opacity:0;animation:itemIn .3s ease forwards}
+@keyframes itemIn{to{opacity:1}}
+.analysis-dot{width:4px;height:4px;border-radius:50%;flex-shrink:0}
+.analysis-dot.done{background:var(--green)}
+.analysis-dot.working{background:var(--gold);animation:blink 1s infinite}
+.analysis-dot.pending{background:var(--text-3)}
+.analysis-text{color:var(--text-2)}
+.analysis-text strong{color:var(--text);font-weight:500}
+.analysis-value{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--gold)}
+
+/* ─── WORKFORCE PROPOSAL ─── */
+.proposal{display:none;margin-top:32px}
+.proposal.show{display:block;animation:fadeIn .5s ease}
+.proposal-grid{display:flex;flex-direction:column;gap:1px;background:var(--border);
+  border:1px solid var(--border)}
+.agent-proposal{background:var(--surface);padding:18px 20px;display:flex;align-items:flex-start;gap:14px;
+  transition:background .15s}
+.agent-proposal:hover{background:var(--surface-2)}
+.ap-avatar{width:36px;height:36px;display:flex;align-items:center;justify-content:center;
+  font-family:'JetBrains Mono',monospace;font-size:11px;flex-shrink:0;
+  border:1px solid var(--border-active);background:var(--gold-dim);color:var(--gold)}
+.ap-body{flex:1}
+.ap-name{font-size:13px;font-weight:500;margin-bottom:3px}
+.ap-role{font-size:11px;color:var(--text-2);margin-bottom:6px}
+.ap-skills{display:flex;flex-wrap:wrap;gap:4px}
+.ap-skill{font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:.06em;
+  padding:2px 7px;background:rgba(255,255,255,0.03);color:var(--text-3);text-transform:uppercase}
+.ap-trust{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--green);
+  background:var(--green-dim);padding:3px 8px;letter-spacing:.06em;align-self:flex-start;flex-shrink:0}
+.ap-access{display:flex;flex-direction:column;gap:2px;margin-top:6px}
+.ap-access-item{font-size:10px;color:var(--text-3);display:flex;align-items:center;gap:6px}
+.ap-access-dot{width:3px;height:3px;border-radius:50%;background:var(--gold)}
+
+/* ─── GOVERNANCE PREVIEW ─── */
+.gov-preview{border:1px solid var(--border);background:var(--surface);margin-top:16px;display:none}
+.gov-preview.show{display:block;animation:fadeIn .4s ease}
+.gov-item{padding:10px 18px;border-bottom:1px solid var(--border);display:flex;gap:10px;
+  align-items:flex-start;font-size:11px}
+.gov-icon{font-size:12px;flex-shrink:0;margin-top:1px}
+.gov-text{color:var(--text-2);line-height:1.5}
+.gov-text strong{color:var(--text);font-weight:500}
+
+/* ─── BUTTONS ─── */
+.btn-primary{background:var(--gold);color:var(--bg);padding:14px 36px;font-family:'DM Sans',sans-serif;
+  font-size:14px;font-weight:600;border:none;cursor:pointer;letter-spacing:.02em;transition:all .2s;
+  display:none;margin-top:28px;width:100%}
+.btn-primary:hover{opacity:.88}
+.btn-primary.show{display:block;animation:fadeIn .4s ease}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed}
+.btn-secondary{background:transparent;border:1px solid var(--border);color:var(--text-2);
+  padding:10px 24px;font-size:12px;cursor:pointer;transition:all .15s;margin-top:10px;width:100%;
+  display:none}
+.btn-secondary.show{display:block}
+.btn-secondary:hover{border-color:var(--border-active);color:var(--text)}
+
+/* ─── LAUNCH SCREEN ─── */
+.launch-screen{display:none;text-align:center;padding:60px 20px}
+.launch-screen.show{display:block;animation:fadeIn .6s ease}
+.launch-icon{font-size:48px;margin-bottom:24px;display:block}
+.launch-title{font-family:'Instrument Serif',serif;font-size:32px;color:var(--text);margin-bottom:12px}
+.launch-title em{font-style:italic;color:var(--gold)}
+.launch-sub{font-size:14px;color:var(--text-2);line-height:1.7;max-width:460px;margin:0 auto 32px}
+.launch-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);
+  border:1px solid var(--border);margin-bottom:32px}
+.launch-stat{background:var(--surface);padding:18px}
+.launch-stat-value{font-family:'JetBrains Mono',monospace;font-size:20px;color:var(--gold);margin-bottom:4px}
+.launch-stat-label{font-size:10px;color:var(--text-3)}
+.launch-btn{background:var(--gold);color:var(--bg);padding:16px 48px;font-family:'DM Sans',sans-serif;
+  font-size:15px;font-weight:600;border:none;cursor:pointer;transition:all .2s}
+.launch-btn:hover{opacity:.88}
+.launch-fine{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-3);
+  margin-top:14px;letter-spacing:.04em}
+
+/* ─── LIVE INDICATOR ─── */
+.live-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green);
+  margin-right:6px;animation:blink 1.5s infinite;vertical-align:middle}
+
+/* ─── FOOTER ─── */
+.footer{width:100%;padding:20px 32px;border-top:1px solid var(--border);display:flex;
+  justify-content:space-between;margin-top:auto}
+.footer-text{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-3);letter-spacing:.06em}
+
+/* ─── RESPONSIVE ─── */
+@media(max-width:600px){
+  .tool-grid{grid-template-columns:1fr 1fr}
+  .launch-stats{grid-template-columns:1fr}
+  .container{margin-top:32px}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <span class="logo">KEIRA<em>COM</em></span>
+  <span class="nav-step" id="navStep">Step <span>1</span> of 4</span>
+</nav>
+
+<!-- PROGRESS -->
+<div style="width:100%;max-width:720px;padding:24px 24px 0">
+  <div class="progress" id="progressBar">
+    <div class="progress-seg active" data-step="1"></div>
+    <div class="progress-seg" data-step="2"></div>
+    <div class="progress-seg" data-step="3"></div>
+    <div class="progress-seg" data-step="4"></div>
+  </div>
+</div>
+
+<div class="container" id="mainContainer">
+
+  <!-- ═══════ STEP 1: CONNECT ═══════ -->
+  <div id="step1">
+    <div class="step-eyebrow">Connect</div>
+    <h1 class="step-title">Connect your tools.<br><em>We'll do the rest.</em></h1>
+    <p class="step-sub">Each connection installs a skill automatically and reads your business context. The more you connect, the smarter your workforce becomes. No configuration needed.</p>
+
+    <div class="tool-grid" id="toolGrid">
+      <div class="tool-card" data-tool="xero" onclick="connectTool(this)">
+        <div class="tool-check">✓</div>
+        <span class="tool-icon">📊</span>
+        <div class="tool-name">Xero</div>
+        <div class="tool-desc">Accounting & bookkeeping</div>
+        <div class="tool-status idle">Click to connect</div>
+        <div class="tool-progress"></div>
+      </div>
+      <div class="tool-card" data-tool="gmail" onclick="connectTool(this)">
+        <div class="tool-check">✓</div>
+        <span class="tool-icon">✉️</span>
+        <div class="tool-name">Gmail</div>
+        <div class="tool-desc">Email & communication</div>
+        <div class="tool-status idle">Click to connect</div>
+        <div class="tool-progress"></div>
+      </div>
+      <div class="tool-card" data-tool="drive" onclick="connectTool(this)">
+        <div class="tool-check">✓</div>
+        <span class="tool-icon">📁</span>
+        <div class="tool-name">Google Drive</div>
+        <div class="tool-desc">Documents & files</div>
+        <div class="tool-status idle">Click to connect</div>
+        <div class="tool-progress"></div>
+      </div>
+      <div class="tool-card" data-tool="hubspot" onclick="connectTool(this)">
+        <div class="tool-check">✓</div>
+        <span class="tool-icon">🔶</span>
+        <div class="tool-name">HubSpot</div>
+        <div class="tool-desc">CRM & pipeline</div>
+        <div class="tool-status idle">Click to connect</div>
+        <div class="tool-progress"></div>
+      </div>
+      <div class="tool-card" data-tool="slack" onclick="connectTool(this)">
+        <div class="tool-check">✓</div>
+        <span class="tool-icon">💬</span>
+        <div class="tool-name">Slack</div>
+        <div class="tool-desc">Team communication</div>
+        <div class="tool-status idle">Click to connect</div>
+        <div class="tool-progress"></div>
+      </div>
+      <div class="tool-card" data-tool="stripe" onclick="connectTool(this)">
+        <div class="tool-check">✓</div>
+        <span class="tool-icon">💳</span>
+        <div class="tool-name">Stripe</div>
+        <div class="tool-desc">Payments & billing</div>
+        <div class="tool-status idle">Click to connect</div>
+        <div class="tool-progress"></div>
+      </div>
+      <div class="tool-card" data-tool="linkedin" onclick="connectTool(this)">
+        <div class="tool-check">✓</div>
+        <span class="tool-icon">🔗</span>
+        <div class="tool-name">LinkedIn</div>
+        <div class="tool-desc">Professional network</div>
+        <div class="tool-status idle">Click to connect</div>
+        <div class="tool-progress"></div>
+      </div>
+      <div class="tool-card" data-tool="calendar" onclick="connectTool(this)">
+        <div class="tool-check">✓</div>
+        <span class="tool-icon">📅</span>
+        <div class="tool-name">Google Calendar</div>
+        <div class="tool-desc">Scheduling & meetings</div>
+        <div class="tool-status idle">Click to connect</div>
+        <div class="tool-progress"></div>
+      </div>
+      <div class="tool-card" data-tool="shopify" onclick="connectTool(this)">
+        <div class="tool-check">✓</div>
+        <span class="tool-icon">🛍️</span>
+        <div class="tool-name">Shopify</div>
+        <div class="tool-desc">E-commerce & orders</div>
+        <div class="tool-status idle">Click to connect</div>
+        <div class="tool-progress"></div>
+      </div>
+    </div>
+
+    <!-- ANALYSIS PANEL -->
+    <div class="analysis" id="analysisPanel">
+      <div class="analysis-head">
+        <span class="analysis-title">Reading your business</span>
+        <span class="analysis-status" id="analysisStatus">Analysing...</span>
+      </div>
+      <div class="analysis-body" id="analysisBody"></div>
+    </div>
+
+    <button class="btn-primary" id="btnStep1" onclick="goStep2()" disabled>Continue — Build My Workforce</button>
+    <button class="btn-secondary" id="btnSkip" onclick="goStep2()">Skip for now — connect later</button>
+  </div>
+
+  <!-- ═══════ STEP 2: PROPOSAL ═══════ -->
+  <div id="step2" style="display:none">
+    <div class="step-eyebrow">Your Workforce</div>
+    <h1 class="step-title">Here's who we'd<br><em>hire for you.</em></h1>
+    <p class="step-sub">Based on your connected tools, we've designed a workforce tailored to your business. Every agent starts at Level 1 — read only. Nothing happens without your approval.</p>
+
+    <div class="proposal show" id="proposalGrid">
+      <!-- Populated by JS -->
+    </div>
+
+    <button class="btn-primary show" onclick="goStep3()">Approve Workforce — Start at Level 1</button>
+    <button class="btn-secondary show" onclick="goStep3()">Customise before approving</button>
+  </div>
+
+  <!-- ═══════ STEP 3: GOVERNANCE ═══════ -->
+  <div id="step3" style="display:none">
+    <div class="step-eyebrow">Your Safety Net</div>
+    <h1 class="step-title">Every action is<br><em>governed.</em></h1>
+    <p class="step-sub">These rules are active from the moment your workforce starts. They emerged from 12 months of real operational failures. You don't configure them — they just work.</p>
+
+    <div class="gov-preview show">
+      <div class="analysis-head">
+        <span class="analysis-title">Active Governance</span>
+        <span class="analysis-status" style="color:var(--green)">17 laws active</span>
+      </div>
+      <div class="gov-item"><span class="gov-icon">🛑</span><div class="gov-text"><strong>Kill Switch</strong> — one click pauses every agent instantly. Always visible. Always available. No delay.</div></div>
+      <div class="gov-item"><span class="gov-icon">👁️</span><div class="gov-text"><strong>Approval Queue</strong> — every action your agents take appears in your queue first. You approve, reject, or edit before anything executes.</div></div>
+      <div class="gov-item"><span class="gov-icon">💰</span><div class="gov-text"><strong>Budget Controls</strong> — daily spending cap. If agents exceed 5× the estimate, the system kills itself automatically. No runaway costs.</div></div>
+      <div class="gov-item"><span class="gov-icon">🔒</span><div class="gov-text"><strong>Graduated Trust</strong> — every agent starts at Level 1 (read only). You promote them as trust builds. Level 4 (autonomous) is earned, not given.</div></div>
+      <div class="gov-item"><span class="gov-icon">👥</span><div class="gov-text"><strong>Peer Correction</strong> — agents check each other's work. If one agent makes a mistake, another catches it before it reaches you.</div></div>
+      <div class="gov-item"><span class="gov-icon">📋</span><div class="gov-text"><strong>Audit Trail</strong> — every action, every decision, every cost is logged. Fully traceable. Nothing is hidden.</div></div>
+      <div class="gov-item"><span class="gov-icon">🚫</span><div class="gov-text"><strong>Fabrication Protection</strong> — agents cannot claim work they haven't done or reference results that don't exist. Hard-blocked at the system level.</div></div>
+      <div class="gov-item"><span class="gov-icon">🔐</span><div class="gov-text"><strong>Tool Isolation</strong> — each agent can only access the tools assigned to its role. The bookkeeper can't touch your email. The comms agent can't touch your books.</div></div>
+    </div>
+
+    <button class="btn-primary show" onclick="goStep4()">Understood — Launch My Workforce</button>
+  </div>
+
+  <!-- ═══════ STEP 4: LAUNCH ═══════ -->
+  <div id="step4" style="display:none">
+    <div class="launch-screen show" id="launchScreen">
+      <span class="launch-icon">🚀</span>
+      <h2 class="launch-title">Your workforce is <em>live.</em></h2>
+      <p class="launch-sub">All agents are running at Level 1 — read only. They're learning your business right now. Check your dashboard to see what they find.</p>
+
+      <div class="launch-stats">
+        <div class="launch-stat">
+          <div class="launch-stat-value" id="launchAgents">0</div>
+          <div class="launch-stat-label"><span class="live-dot"></span>Agents active</div>
+        </div>
+        <div class="launch-stat">
+          <div class="launch-stat-value" id="launchTrust">L1</div>
+          <div class="launch-stat-label">Trust level — Read Only</div>
+        </div>
+        <div class="launch-stat">
+          <div class="launch-stat-value" id="launchGov">17</div>
+          <div class="launch-stat-label">Governance laws active</div>
+        </div>
+      </div>
+
+      <button class="launch-btn" onclick="window.location.reload()">Open Dashboard →</button>
+      <div class="launch-fine">Kill switch always visible · Every action queued for approval · Budget cap enforced</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+  <span class="footer-text">KEIRA<span style="color:var(--gold)">COM</span> · Graduated Trust Architecture</span>
+  <span class="footer-text">Governance v2.0 · 17 laws · 4 trust levels</span>
+</div>
+
+<script>
+// ─── STATE ───
+let connectedTools = new Set();
+let currentStep = 1;
+let analysisItems = [];
+let proposedAgents = [];
+
+// ─── TOOL ANALYSIS MAP ───
+const toolAnalysis = {
+  xero: [
+    { text: 'Xero MCP skill installed', type: 'skill' },
+    { text: 'Chart of accounts read — <strong>47 accounts</strong>', delay: 800 },
+    { text: 'Client list extracted — <strong>23 active clients</strong>', delay: 1200 },
+    { text: 'BAS history scanned — <strong>quarterly lodger</strong>', delay: 1600 },
+    { text: 'Business type detected: <strong>Accounting firm</strong>', delay: 2000 },
+    { text: 'Revenue pattern: <strong>$38K/mo average, retainer-based</strong>', delay: 2400 },
+  ],
+  gmail: [
+    { text: 'Gmail MCP skill installed', type: 'skill' },
+    { text: 'Email volume analysed — <strong>142/week sent</strong>', delay: 600 },
+    { text: 'Top contacts identified — <strong>23 clients, 8 suppliers</strong>', delay: 1000 },
+    { text: 'Communication tone: <strong>professional, direct</strong>', delay: 1400 },
+    { text: 'Response time pattern: <strong>avg 2.4 hours</strong>', delay: 1800 },
+  ],
+  drive: [
+    { text: 'Google Drive MCP skill installed', type: 'skill' },
+    { text: 'Folder structure mapped — <strong>23 client folders</strong>', delay: 600 },
+    { text: 'Templates found — <strong>12 document templates</strong>', delay: 1000 },
+    { text: 'Recent activity: <strong>47 files modified this week</strong>', delay: 1400 },
+  ],
+  hubspot: [
+    { text: 'HubSpot MCP skill installed', type: 'skill' },
+    { text: 'Pipeline read — <strong>14 deals, $127K value</strong>', delay: 800 },
+    { text: 'Contact database: <strong>340 contacts</strong>', delay: 1200 },
+    { text: 'Win rate calculated: <strong>34% close rate</strong>', delay: 1600 },
+  ],
+  slack: [
+    { text: 'Slack MCP skill installed', type: 'skill' },
+    { text: 'Channels mapped — <strong>8 active channels</strong>', delay: 600 },
+    { text: 'Team size detected: <strong>6 team members</strong>', delay: 1000 },
+  ],
+  stripe: [
+    { text: 'Stripe MCP skill installed', type: 'skill' },
+    { text: 'Revenue read — <strong>$38,200 MRR</strong>', delay: 800 },
+    { text: 'Active subscriptions: <strong>19 recurring</strong>', delay: 1200 },
+    { text: 'Churn rate: <strong>4.2% monthly</strong>', delay: 1600 },
+  ],
+  linkedin: [
+    { text: 'LinkedIn MCP skill installed', type: 'skill' },
+    { text: 'Profile analysed — <strong>850 connections</strong>', delay: 600 },
+    { text: 'Communication style: <strong>conversational, AU English</strong>', delay: 1000 },
+  ],
+  calendar: [
+    { text: 'Google Calendar MCP skill installed', type: 'skill' },
+    { text: 'Meeting patterns: <strong>12 client meetings/week</strong>', delay: 600 },
+    { text: 'Availability mapped for scheduling', delay: 1000 },
+  ],
+  shopify: [
+    { text: 'Shopify MCP skill installed', type: 'skill' },
+    { text: 'Store read — <strong>247 products, 89 orders/mo</strong>', delay: 800 },
+    { text: 'Customer segments: <strong>3 identified</strong>', delay: 1200 },
+  ],
+};
+
+// ─── AGENT PROPOSALS BY BUSINESS TYPE ───
+const agentProposals = {
+  accounting: [
+    { name: 'Ledger', role: 'Bookkeeper', desc: 'Reconciles transactions, manages chart of accounts, prepares BAS workpapers', skills: ['Xero API', 'BAS Rules', 'GST Logic', 'Reconciliation'], access: ['Xero (read + draft)', 'Google Drive (client folders)'] },
+    { name: 'Compliance', role: 'BAS & Tax Prep', desc: 'Prepares quarterly BAS lodgements, checks ATO deadlines, flags discrepancies', skills: ['ATO Rules', 'BAS Calc', 'Deadline Mgmt', 'Audit Trail'], access: ['Xero (read only)', 'Google Calendar (deadlines)'] },
+    { name: 'Herald', role: 'Client Comms', desc: 'Drafts client emails, sends reminders, handles routine queries in your voice', skills: ['Email Draft', 'Tone Match', 'Scheduling', 'Follow-up'], access: ['Gmail (draft + queue)', 'Google Calendar'] },
+    { name: 'Scout', role: 'Client Acquisition', desc: 'Finds prospects who need accounting services, generates personalised outreach', skills: ['Signal Detection', 'ABN Registry', 'Outreach Draft', 'CRM Update'], access: ['HubSpot (read + write)', 'LinkedIn (read)'] },
+    { name: 'Sentinel', role: 'Manager', desc: 'Coordinates all agents, manages approval queue, escalates issues to you', skills: ['Orchestration', 'Budget Control', 'Peer Review', 'Escalation'], access: ['All agent outputs (read)', 'Slack (notifications)'] },
+  ],
+  general: [
+    { name: 'Ops', role: 'Operations', desc: 'Manages files, schedules, and routine administrative tasks', skills: ['File Management', 'Scheduling', 'Task Routing'], access: ['Google Drive', 'Google Calendar'] },
+    { name: 'Comms', role: 'Communications', desc: 'Drafts emails, handles routine queries, manages follow-ups', skills: ['Email Draft', 'Tone Match', 'Follow-up'], access: ['Gmail (draft + queue)'] },
+    { name: 'Sentinel', role: 'Manager', desc: 'Coordinates all agents, manages approval queue, escalates to you', skills: ['Orchestration', 'Budget Control', 'Escalation'], access: ['All agent outputs (read)'] },
+  ]
+};
+
+// ─── CONNECT TOOL ───
+function connectTool(card) {
+  if (card.classList.contains('connected') || card.classList.contains('connecting')) return;
+
+  const tool = card.dataset.tool;
+  card.classList.add('connecting');
+  const status = card.querySelector('.tool-status');
+  const progress = card.querySelector('.tool-progress');
+
+  // Phase 1: Connecting
+  status.textContent = 'Connecting...';
+  status.className = 'tool-status connecting';
+  progress.style.width = '30%';
+
+  setTimeout(() => {
+    // Phase 2: Authenticating
+    status.textContent = 'Authenticated';
+    progress.style.width = '50%';
+
+    setTimeout(() => {
+      // Phase 3: Reading
+      status.textContent = 'Reading data...';
+      status.className = 'tool-status reading';
+      progress.style.width = '80%';
+
+      // Show analysis
+      showAnalysis(tool);
+
+      setTimeout(() => {
+        // Phase 4: Connected
+        status.textContent = 'Connected';
+        status.className = 'tool-status connected';
+        progress.style.width = '100%';
+        card.classList.remove('connecting');
+        card.classList.add('connected');
+        connectedTools.add(tool);
+
+        // Enable continue button after 2+ connections
+        if (connectedTools.size >= 2) {
+          const btn = document.getElementById('btnStep1');
+          btn.disabled = false;
+          btn.classList.add('show');
+          document.getElementById('btnSkip').classList.add('show');
+        }
+
+        // Update analysis status
+        setTimeout(() => {
+          progress.style.background = 'var(--green)';
+        }, 300);
+
+      }, 2000);
+    }, 800);
+  }, 1000);
+}
+
+// ─── SHOW ANALYSIS ───
+function showAnalysis(tool) {
+  const panel = document.getElementById('analysisPanel');
+  const body = document.getElementById('analysisBody');
+  const statusEl = document.getElementById('analysisStatus');
+  panel.classList.add('show');
+  statusEl.textContent = 'Analysing...';
+  statusEl.style.color = 'var(--gold)';
+
+  const items = toolAnalysis[tool] || [];
+
+  items.forEach((item, i) => {
+    const delay = item.delay || (i * 400);
+    setTimeout(() => {
+      const div = document.createElement('div');
+      div.className = 'analysis-item';
+      div.style.animationDelay = '0s';
+
+      const isSkill = item.type === 'skill';
+      div.innerHTML = `
+        <span class="analysis-dot ${isSkill ? 'done' : 'done'}"></span>
+        <span class="analysis-text">${item.text}</span>
+        ${isSkill ? '<span class="analysis-value">Installed</span>' : ''}
+      `;
+      body.appendChild(div);
+      body.scrollTop = body.scrollHeight;
+
+      // Update status on last item
+      if (i === items.length - 1) {
+        setTimeout(() => {
+          statusEl.textContent = connectedTools.size + ' tools connected';
+          statusEl.style.color = 'var(--green)';
+        }, 400);
+      }
+    }, delay);
+  });
+}
+
+// ─── STEP NAVIGATION ───
+function updateProgress(step) {
+  currentStep = step;
+  document.querySelectorAll('.progress-seg').forEach(seg => {
+    const s = parseInt(seg.dataset.step);
+    seg.classList.remove('done', 'active');
+    if (s < step) seg.classList.add('done');
+    if (s === step) seg.classList.add('active');
+  });
+  document.getElementById('navStep').innerHTML = `Step <span>${step}</span> of 4`;
+}
+
+function goStep2() {
+  document.getElementById('step1').style.display = 'none';
+  document.getElementById('step2').style.display = 'block';
+  updateProgress(2);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  renderProposal();
+}
+
+function goStep3() {
+  document.getElementById('step2').style.display = 'none';
+  document.getElementById('step3').style.display = 'block';
+  updateProgress(3);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function goStep4() {
+  document.getElementById('step3').style.display = 'none';
+  document.getElementById('step4').style.display = 'block';
+  updateProgress(4);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  // Animate agent count
+  const el = document.getElementById('launchAgents');
+  const target = connectedTools.has('xero') ? 5 : 3;
+  let count = 0;
+  const interval = setInterval(() => {
+    count++;
+    el.textContent = count;
+    if (count >= target) clearInterval(interval);
+  }, 300);
+}
+
+// ─── RENDER PROPOSAL ───
+function renderProposal() {
+  const grid = document.getElementById('proposalGrid');
+  const isAccounting = connectedTools.has('xero');
+  const agents = isAccounting ? agentProposals.accounting : agentProposals.general;
+  const avatars = ['L', 'C', 'H', 'S', 'M'];
+
+  grid.innerHTML = '<div class="proposal-grid">' + agents.map((a, i) => `
+    <div class="agent-proposal" style="animation:fadeIn .4s ease ${i * .1}s forwards;opacity:0">
+      <div class="ap-avatar">${a.name[0]}${a.name[1]}</div>
+      <div class="ap-body">
+        <div class="ap-name">${a.name}</div>
+        <div class="ap-role">${a.role} — ${a.desc}</div>
+        <div class="ap-skills">${a.skills.map(s => `<span class="ap-skill">${s}</span>`).join('')}</div>
+        <div class="ap-access">
+          ${a.access.map(ac => `<div class="ap-access-item"><span class="ap-access-dot"></span>${ac}</div>`).join('')}
+        </div>
+      </div>
+      <span class="ap-trust">L1 · Read Only</span>
+    </div>
+  `).join('') + '</div>';
+}
+
+// ─── INIT ───
+document.getElementById('btnSkip').classList.add('show');
+</script>
+</body>
+</html>

@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Keiracom — Workforce Command Centre</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #080A0F;
+  --surface: #0F1218;
+  --surface-2: #151921;
+  --surface-3: #1B2029;
+  --border: rgba(255,255,255,0.05);
+  --border-active: rgba(212,168,100,0.25);
+  --text: #E2E4E8;
+  --text-2: #9199A5;
+  --text-3: #505868;
+  --gold: #D4A864;
+  --gold-dim: rgba(212,168,100,0.08);
+  --gold-glow: rgba(212,168,100,0.15);
+  --green: #3DD68C;
+  --green-dim: rgba(61,214,140,0.08);
+  --amber: #E8A838;
+  --amber-dim: rgba(232,168,56,0.08);
+  --red: #E85454;
+  --red-dim: rgba(232,84,84,0.08);
+  --blue: #5494E8;
+  --blue-dim: rgba(84,148,232,0.08);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:13px}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;overflow-x:hidden;min-height:100vh}
+.mono{font-family:'JetBrains Mono',monospace}
+.serif{font-family:'Instrument Serif',serif}
+
+/* ─── SCANLINES OVERLAY ─── */
+body::after{content:'';position:fixed;top:0;left:0;width:100%;height:100%;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px);
+  pointer-events:none;z-index:9999}
+
+/* ─── NAV ─── */
+.nav{display:flex;align-items:center;justify-content:space-between;padding:12px 24px;
+  border-bottom:1px solid var(--border);background:rgba(8,10,15,0.97);
+  backdrop-filter:blur(12px);position:sticky;top:0;z-index:100}
+.nav-l{display:flex;align-items:center;gap:16px}
+.logo{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--text-3)}
+.logo em{font-style:normal;color:var(--gold)}
+.nav-sep{width:1px;height:16px;background:var(--border)}
+.nav-ctx{font-size:11px;color:var(--text-3);display:flex;align-items:center;gap:8px}
+.nav-dot{width:5px;height:5px;border-radius:50%;background:var(--green);box-shadow:0 0 6px rgba(61,214,140,0.4)}
+.nav-r{display:flex;align-items:center;gap:16px}
+.nav-time{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-3);letter-spacing:.06em}
+.kill-btn{background:transparent;border:1px solid rgba(232,84,84,0.25);color:var(--red);
+  padding:7px 18px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;
+  letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:all .2s}
+.kill-btn:hover{background:var(--red-dim);border-color:rgba(232,84,84,0.4)}
+.kill-btn.active{background:var(--red);color:#fff;border-color:var(--red);animation:pulse-kill 2s infinite}
+@keyframes pulse-kill{0%,100%{box-shadow:0 0 0 0 rgba(232,84,84,0.3)}50%{box-shadow:0 0 16px 4px rgba(232,84,84,0.2)}}
+
+/* ─── KILL BANNER ─── */
+.kill-banner{background:var(--red-dim);border-bottom:1px solid rgba(232,84,84,0.2);padding:12px 24px;
+  display:none;align-items:center;gap:12px;animation:slideDown .3s ease}
+.kill-banner.show{display:flex}
+.kill-banner-dot{width:8px;height:8px;border-radius:50%;background:var(--red);animation:blink 1s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes slideDown{from{transform:translateY(-100%);opacity:0}to{transform:translateY(0);opacity:1}}
+.kill-banner-text{font-size:12px;color:var(--red);font-weight:500}
+.kill-banner-sub{font-size:11px;color:var(--text-3);margin-left:auto}
+
+/* ─── STATS ─── */
+.stats{display:grid;grid-template-columns:repeat(6,1fr);gap:1px;background:var(--border);
+  border:1px solid var(--border);margin:20px 24px 0}
+.stat{background:var(--surface);padding:16px 18px;text-align:center;transition:background .2s}
+.stat:hover{background:var(--surface-2)}
+.stat-label{font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--text-3);margin-bottom:8px}
+.stat-value{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:500;color:var(--text)}
+.stat-value.gold{color:var(--gold)}
+.stat-value.warn{color:var(--amber)}
+.stat-value.good{color:var(--green)}
+.stat-sub{font-size:10px;color:var(--text-3);margin-top:4px}
+
+/* ─── MAIN GRID ─── */
+.main{display:grid;grid-template-columns:1fr 1fr 320px;gap:0;margin:0 24px;
+  border:1px solid var(--border);border-top:none;min-height:calc(100vh - 200px)}
+
+/* ─── PANEL ─── */
+.panel{border-right:1px solid var(--border);display:flex;flex-direction:column}
+.panel:last-child{border-right:none}
+.panel-head{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;
+  justify-content:space-between;align-items:center;background:var(--surface)}
+.panel-title{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--text-3)}
+.panel-badge{font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 8px;
+  letter-spacing:.06em}
+.panel-body{flex:1;overflow-y:auto;background:var(--bg)}
+.panel-body::-webkit-scrollbar{width:4px}
+.panel-body::-webkit-scrollbar-track{background:transparent}
+.panel-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+/* ─── APPROVAL QUEUE ─── */
+.approval-item{padding:14px 18px;border-bottom:1px solid var(--border);transition:background .15s;cursor:default}
+.approval-item:hover{background:var(--surface)}
+.approval-action{font-size:12px;color:var(--text);line-height:1.5;margin-bottom:8px}
+.approval-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.approval-agent{font-size:10px;color:var(--text-2)}
+.approval-risk{font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 7px;letter-spacing:.06em;text-transform:uppercase}
+.risk-low{color:var(--text-3);background:rgba(255,255,255,0.03)}
+.risk-medium{color:var(--amber);background:var(--amber-dim)}
+.risk-high{color:var(--red);background:var(--red-dim)}
+.approval-cost{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--gold)}
+.approval-time{font-size:10px;color:var(--text-3)}
+.approval-btns{display:flex;gap:4px;margin-left:auto}
+.btn-approve,.btn-reject{border:none;padding:5px 14px;font-family:'JetBrains Mono',monospace;
+  font-size:10px;cursor:pointer;transition:all .15s;letter-spacing:.04em}
+.btn-approve{background:var(--green-dim);color:var(--green);border:1px solid rgba(61,214,140,0.2)}
+.btn-approve:hover{background:rgba(61,214,140,0.15);border-color:rgba(61,214,140,0.35)}
+.btn-reject{background:var(--red-dim);color:var(--red);border:1px solid rgba(232,84,84,0.15)}
+.btn-reject:hover{background:rgba(232,84,84,0.12);border-color:rgba(232,84,84,0.3)}
+.empty-state{padding:40px 18px;text-align:center;color:var(--text-3);font-size:12px}
+
+/* ─── WORKFORCE ─── */
+.agent-row{padding:12px 18px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s}
+.agent-row:hover{background:var(--surface)}
+.agent-row.selected{background:var(--surface-2)}
+.agent-top{display:flex;align-items:center;justify-content:space-between}
+.agent-info{display:flex;align-items:center;gap:10px}
+.agent-avatar{width:30px;height:30px;display:flex;align-items:center;justify-content:center;
+  font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.06em;
+  border:1px solid var(--border)}
+.agent-avatar.cto{background:var(--gold-dim);border-color:var(--border-active);color:var(--gold)}
+.agent-avatar.builder{background:var(--blue-dim);border-color:rgba(84,148,232,0.15);color:var(--blue)}
+.agent-avatar.clone{background:rgba(255,255,255,0.02);border-color:var(--border);color:var(--text-3)}
+.agent-name-wrap{display:flex;flex-direction:column;gap:2px}
+.agent-name-line{display:flex;align-items:center;gap:8px}
+.status-dot{width:5px;height:5px;border-radius:50%;display:inline-block}
+.status-dot.active{background:var(--green);box-shadow:0 0 4px rgba(61,214,140,0.3)}
+.status-dot.idle{background:var(--text-3)}
+.status-dot.paused{background:var(--red);animation:blink 1.5s infinite}
+.agent-name{font-size:12px;font-weight:500}
+.agent-role{font-size:10px;color:var(--text-3)}
+.agent-manages{font-size:9px;color:var(--text-3);padding-left:13px}
+.agent-right{display:flex;align-items:center;gap:14px}
+.trust-badge{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.06em;
+  text-transform:uppercase;padding:3px 8px}
+.trust-1{color:var(--text-3);background:rgba(255,255,255,0.03)}
+.trust-2{color:var(--amber);background:var(--amber-dim)}
+.trust-3{color:var(--blue);background:var(--blue-dim)}
+.trust-4{color:var(--green);background:var(--green-dim)}
+.agent-cost{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-2);min-width:48px;text-align:right}
+
+/* ─── AGENT DETAIL ─── */
+.agent-detail{margin:0 18px 12px;padding:14px;background:var(--surface);border:1px solid var(--border);
+  animation:fadeIn .2s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+.detail-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.detail-stat{text-align:center}
+.detail-stat-label{font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--text-3);margin-bottom:4px}
+.detail-stat-value{font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:500}
+.trust-slider{margin-bottom:14px}
+.trust-slider-label{font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--text-3);margin-bottom:6px}
+.trust-bar{display:flex;gap:3px}
+.trust-level{flex:1;height:4px;border-radius:1px;cursor:pointer;transition:all .2s}
+.trust-level.filled{background:var(--gold)}
+.trust-level.empty{background:rgba(255,255,255,0.06)}
+.trust-level:hover{opacity:.7}
+.trust-labels{display:flex;justify-content:space-between;margin-top:4px}
+.trust-label-text{font-size:8px;color:var(--text-3);font-family:'JetBrains Mono',monospace;letter-spacing:.04em}
+.detail-btns{display:flex;gap:6px}
+.detail-btn{flex:1;background:transparent;border:1px solid var(--border);color:var(--text-2);
+  padding:7px;font-size:10px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s}
+.detail-btn:hover{background:var(--surface-2);border-color:var(--border-active);color:var(--text)}
+.detail-btn.danger{border-color:rgba(232,84,84,0.15);color:var(--red)}
+.detail-btn.danger:hover{background:var(--red-dim);border-color:rgba(232,84,84,0.3)}
+
+/* ─── RIGHT COLUMN ─── */
+.right-col{display:flex;flex-direction:column}
+
+/* ─── GOVERNANCE ─── */
+.gov-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border-bottom:1px solid var(--border)}
+.gov-card{background:var(--surface);padding:12px;text-align:center}
+.gov-value{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:500}
+.gov-label{font-size:9px;color:var(--text-3);margin-top:3px}
+
+/* ─── BUDGET ─── */
+.budget-section{padding:14px 16px;border-bottom:1px solid var(--border);background:var(--surface)}
+.budget-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+.budget-amount{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text)}
+.budget-amount span{color:var(--text-3)}
+.budget-track{background:rgba(255,255,255,0.04);height:5px;width:100%;overflow:hidden;border-radius:1px}
+.budget-fill{height:100%;transition:width .6s ease;border-radius:1px;
+  background:linear-gradient(90deg,var(--gold),var(--green))}
+.budget-meta{display:flex;justify-content:space-between;margin-top:6px}
+.budget-meta-text{font-size:9px;color:var(--text-3);font-family:'JetBrains Mono',monospace}
+
+/* ─── ACTIVITY FEED ─── */
+.feed-item{padding:8px 16px;border-bottom:1px solid var(--border);display:flex;gap:8px;
+  align-items:flex-start;transition:background .1s}
+.feed-item:hover{background:var(--surface)}
+.feed-time{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-3);
+  min-width:34px;padding-top:2px;flex-shrink:0}
+.feed-dot{width:4px;height:4px;border-radius:50%;flex-shrink:0;margin-top:6px}
+.feed-dot.success{background:var(--green)}
+.feed-dot.governance{background:var(--amber)}
+.feed-dot.warning{background:var(--red)}
+.feed-dot.info{background:var(--text-3)}
+.feed-text{font-size:11px;line-height:1.45;flex:1}
+.feed-agent{color:var(--text-2)}
+.feed-event{color:var(--text)}
+.feed-event.gov{color:var(--amber)}
+.feed-event.warn{color:var(--red)}
+
+/* ─── CHAT BAR ─── */
+.chat-bar{position:fixed;bottom:0;left:0;right:0;background:rgba(8,10,15,0.97);
+  backdrop-filter:blur(12px);border-top:1px solid var(--border);padding:12px 24px;
+  display:flex;align-items:center;gap:12px;z-index:100}
+.chat-prompt{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--gold);
+  letter-spacing:.06em;flex-shrink:0}
+.chat-input{flex:1;background:transparent;border:none;color:var(--text);font-family:'DM Sans',sans-serif;
+  font-size:13px;outline:none}
+.chat-input::placeholder{color:var(--text-3)}
+.chat-send{background:var(--gold-dim);border:1px solid var(--border-active);color:var(--gold);
+  padding:6px 16px;font-family:'JetBrains Mono',monospace;font-size:10px;cursor:pointer;
+  letter-spacing:.06em;transition:all .15s}
+.chat-send:hover{background:var(--gold-glow)}
+.chat-response{position:fixed;bottom:52px;left:24px;right:24px;background:var(--surface-2);
+  border:1px solid var(--border-active);padding:16px 18px;font-size:12px;color:var(--text);
+  line-height:1.6;display:none;animation:slideUp .3s ease;max-height:200px;overflow-y:auto;z-index:99}
+.chat-response.show{display:block}
+@keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+.chat-response-head{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--gold);
+  letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px}
+
+/* ─── ORG CHART MINI ─── */
+.org-section{padding:14px 16px;border-bottom:1px solid var(--border);background:var(--surface)}
+.org-tree{display:flex;flex-direction:column;gap:2px;margin-top:8px}
+.org-node{display:flex;align-items:center;gap:6px;font-size:10px;padding:3px 0}
+.org-connector{color:var(--text-3);font-family:'JetBrains Mono',monospace;font-size:10px;min-width:24px}
+.org-name{color:var(--text)}
+.org-name.primary{color:var(--gold)}
+.org-role-tag{font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--text-3);
+  letter-spacing:.06em;margin-left:auto}
+
+/* ─── NOTIFICATION TOAST ─── */
+.toast{position:fixed;top:60px;right:24px;background:var(--surface-2);border:1px solid var(--border-active);
+  padding:12px 18px;display:none;align-items:center;gap:10px;z-index:200;animation:toastIn .3s ease;
+  box-shadow:0 8px 32px rgba(0,0,0,0.4)}
+.toast.show{display:flex}
+@keyframes toastIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+.toast-dot{width:6px;height:6px;border-radius:50%;background:var(--gold);flex-shrink:0}
+.toast-text{font-size:11px;color:var(--text)}
+.toast-close{background:none;border:none;color:var(--text-3);cursor:pointer;font-size:14px;margin-left:8px}
+
+/* ─── RESPONSIVE ─── */
+@media(max-width:1100px){
+  .main{grid-template-columns:1fr 1fr}
+  .right-col{display:none}
+  .stats{grid-template-columns:repeat(3,1fr)}
+}
+@media(max-width:700px){
+  .main{grid-template-columns:1fr}
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .nav{padding:10px 16px}
+}
+
+/* ─── SCROLLBAR FOR MAIN PANELS ─── */
+.panel-body{scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+
+/* ─── STAGGER ANIMATION ─── */
+.stagger{opacity:0;transform:translateY(8px);animation:staggerIn .4s ease forwards}
+@keyframes staggerIn{to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-l">
+    <span class="logo">KEIRA<em>COM</em></span>
+    <span class="nav-sep"></span>
+    <span class="nav-ctx">
+      <span class="nav-dot" id="systemDot"></span>
+      <span id="systemLabel">All systems nominal</span>
+    </span>
+  </div>
+  <div class="nav-r">
+    <span class="nav-time" id="clock"></span>
+    <button class="kill-btn" id="killBtn" onclick="toggleKill()">⏸ KILL SWITCH</button>
+  </div>
+</nav>
+
+<!-- KILL BANNER -->
+<div class="kill-banner" id="killBanner">
+  <span class="kill-banner-dot"></span>
+  <span class="kill-banner-text">All agents paused. No actions executing. Approval queue frozen.</span>
+  <span class="kill-banner-sub">Click Kill Switch to resume operations</span>
+</div>
+
+<!-- STATS -->
+<div class="stats" id="statsBar">
+  <div class="stat stagger" style="animation-delay:.05s">
+    <div class="stat-label">Agents Online</div>
+    <div class="stat-value good" id="statAgents">5/5</div>
+    <div class="stat-sub">active</div>
+  </div>
+  <div class="stat stagger" style="animation-delay:.1s">
+    <div class="stat-label">Tasks Today</div>
+    <div class="stat-value" id="statTasks">58</div>
+    <div class="stat-sub">completed</div>
+  </div>
+  <div class="stat stagger" style="animation-delay:.15s">
+    <div class="stat-label">Cost Today</div>
+    <div class="stat-value gold" id="statCost">$41.60</div>
+    <div class="stat-sub">AUD</div>
+  </div>
+  <div class="stat stagger" style="animation-delay:.2s">
+    <div class="stat-label">Budget Left</div>
+    <div class="stat-value" id="statBudget">$18.40</div>
+    <div class="stat-sub">of $60 daily cap</div>
+  </div>
+  <div class="stat stagger" style="animation-delay:.25s">
+    <div class="stat-label">Approvals</div>
+    <div class="stat-value warn" id="statApprovals">5</div>
+    <div class="stat-sub">awaiting you</div>
+  </div>
+  <div class="stat stagger" style="animation-delay:.3s">
+    <div class="stat-label">Uptime</div>
+    <div class="stat-value good">99.7%</div>
+    <div class="stat-sub">30-day average</div>
+  </div>
+</div>
+
+<!-- MAIN GRID -->
+<div class="main">
+
+  <!-- LEFT: APPROVAL QUEUE -->
+  <div class="panel">
+    <div class="panel-head">
+      <span class="panel-title">Approval Queue</span>
+      <span class="panel-badge" id="approvalBadge" style="color:var(--amber);background:var(--amber-dim)">5 pending</span>
+    </div>
+    <div class="panel-body" id="approvalQueue">
+      <!-- Populated by JS -->
+    </div>
+  </div>
+
+  <!-- CENTER: WORKFORCE -->
+  <div class="panel">
+    <div class="panel-head">
+      <span class="panel-title">Workforce</span>
+      <span class="panel-badge" style="color:var(--green);background:var(--green-dim)">5 active</span>
+    </div>
+    <div class="panel-body" id="workforce">
+      <!-- Populated by JS -->
+    </div>
+  </div>
+
+  <!-- RIGHT: ACTIVITY -->
+  <div class="panel right-col">
+    <div class="panel-head">
+      <span class="panel-title">Governance</span>
+    </div>
+    <div class="gov-grid">
+      <div class="gov-card">
+        <div class="gov-value" style="color:var(--green)">2</div>
+        <div class="gov-label">Peer corrections</div>
+      </div>
+      <div class="gov-card">
+        <div class="gov-value" style="color:var(--amber)">1</div>
+        <div class="gov-label">Blocked actions</div>
+      </div>
+      <div class="gov-card">
+        <div class="gov-value">0</div>
+        <div class="gov-label">Violations</div>
+      </div>
+    </div>
+
+    <!-- BUDGET -->
+    <div class="budget-section">
+      <div class="budget-head">
+        <span class="panel-title">Daily Budget</span>
+        <span class="budget-amount">$41.60 <span>/ $60.00</span></span>
+      </div>
+      <div class="budget-track"><div class="budget-fill" style="width:69%"></div></div>
+      <div class="budget-meta">
+        <span class="budget-meta-text">GOV-2: Auto-kill at $300</span>
+        <span class="budget-meta-text" style="color:var(--green)">69%</span>
+      </div>
+    </div>
+
+    <!-- ORG CHART MINI -->
+    <div class="org-section">
+      <span class="panel-title">Org Structure</span>
+      <div class="org-tree">
+        <div class="org-node"><span class="org-connector">◆</span><span class="org-name" style="color:var(--text-2)">Dave</span><span class="org-role-tag">FOUNDER</span></div>
+        <div class="org-node"><span class="org-connector">├─</span><span class="org-name primary">Elliot</span><span class="org-role-tag">CTO</span></div>
+        <div class="org-node"><span class="org-connector">│ ├─</span><span class="org-name">ATLAS</span><span class="org-role-tag">CLONE</span></div>
+        <div class="org-node"><span class="org-connector">│ ├─</span><span class="org-name">build-2</span><span class="org-role-tag">BUILDER</span></div>
+        <div class="org-node"><span class="org-connector">│ ├─</span><span class="org-name">build-3</span><span class="org-role-tag">BUILDER</span></div>
+        <div class="org-node"><span class="org-connector">│ ├─</span><span class="org-name">test-4</span><span class="org-role-tag">TESTER</span></div>
+        <div class="org-node"><span class="org-connector">│ └─</span><span class="org-name">review-5</span><span class="org-role-tag">REVIEWER</span></div>
+        <div class="org-node"><span class="org-connector">├─</span><span class="org-name primary">Aiden</span><span class="org-role-tag">CTO</span></div>
+        <div class="org-node"><span class="org-connector">│ ├─</span><span class="org-name">ORION</span><span class="org-role-tag">CLONE</span></div>
+        <div class="org-node"><span class="org-connector">│ └─</span><span class="org-name">research-1</span><span class="org-role-tag">RESEARCH</span></div>
+        <div class="org-node"><span class="org-connector">└─</span><span class="org-name" style="color:var(--amber)">Enforcer</span><span class="org-role-tag">GOV BOT</span></div>
+      </div>
+    </div>
+
+    <!-- ACTIVITY FEED -->
+    <div class="panel-head" style="border-top:1px solid var(--border)">
+      <span class="panel-title">Activity Feed</span>
+      <span class="panel-badge" style="color:var(--text-3);background:rgba(255,255,255,0.03)">Live</span>
+    </div>
+    <div class="panel-body" id="activityFeed" style="flex:1">
+      <!-- Populated by JS -->
+    </div>
+  </div>
+</div>
+
+<!-- CHAT BAR -->
+<div class="chat-bar">
+  <span class="chat-prompt">❯</span>
+  <input class="chat-input" id="chatInput" type="text" placeholder="Talk to your workforce... (e.g. 'prepare the Q3 BAS for all clients')" onkeydown="if(event.key==='Enter')sendChat()">
+  <button class="chat-send" onclick="sendChat()">SEND</button>
+</div>
+
+<!-- CHAT RESPONSE -->
+<div class="chat-response" id="chatResponse">
+  <div class="chat-response-head">Manager Agent</div>
+  <div id="chatResponseText"></div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast">
+  <span class="toast-dot"></span>
+  <span class="toast-text" id="toastText"></span>
+  <button class="toast-close" onclick="hideToast()">✕</button>
+</div>
+
+<div style="height:52px"></div><!-- spacer for chat bar -->
+
+<script>
+// ─── DATA ───
+const agents = [
+  { id:1, name:'Elliot', role:'CTO · Primary Orchestrator', status:'active', trust:4, tasks:14, cost:12.40, avatar:'E', type:'cto', manages:['ATLAS','build-2','build-3','test-4','review-5'] },
+  { id:2, name:'Aiden', role:'CTO · Secondary Orchestrator', status:'active', trust:4, tasks:11, cost:9.80, avatar:'A', type:'cto', manages:['ORION','research-1'] },
+  { id:3, name:'ATLAS', role:'Elliot Clone · Build Executor', status:'active', trust:3, tasks:9, cost:6.20, avatar:'AT', type:'clone', manages:[] },
+  { id:4, name:'ORION', role:'Aiden Clone · Build Executor', status:'active', trust:3, tasks:7, cost:4.90, avatar:'OR', type:'clone', manages:[] },
+  { id:5, name:'SCOUT', role:'Research · Isolated Audits', status:'idle', trust:3, tasks:3, cost:1.80, avatar:'SC', type:'clone', manages:[] },
+];
+
+let approvals = [
+  { id:1, agent:'Elliot', action:'Deploy PR #408 — listener tuning v1', type:'deploy', risk:'medium', cost:null, time:'2m ago' },
+  { id:2, agent:'ATLAS', action:'Install npm package: pipecat-ai v0.4.2', type:'dependency', risk:'low', cost:null, time:'5m ago' },
+  { id:3, agent:'research-1', action:'API call to Bright Data — 2,400 credits ($18 AUD)', type:'spend', risk:'medium', cost:18.00, time:'8m ago' },
+  { id:4, agent:'Aiden', action:'Create sub-agent: compliance-7 (Haiku tier)', type:'hire', risk:'high', cost:null, time:'12m ago' },
+  { id:5, agent:'ATLAS', action:'Refactor prospect_scorer.py — 340 lines across 3 files', type:'code', risk:'low', cost:null, time:'18m ago' },
+];
+
+const feed = [
+  { time:'09:41', agent:'Elliot', event:'Merged PR #407 — BU closed-loop engine foundation', type:'success' },
+  { time:'09:38', agent:'Aiden', event:'Peer correction: caught fabricated case study in draft outreach — BLOCKED', type:'governance' },
+  { time:'09:35', agent:'ATLAS', event:'Pipeline test complete — 100 domains, $2.18 AUD, 28% conversion', type:'success' },
+  { time:'09:31', agent:'research-1', event:'Intelligence feed updated — 3 competitor changes detected', type:'info' },
+  { time:'09:28', agent:'test-4', event:'All 2,152 tests passing, 0 failures, 28 skipped', type:'success' },
+  { time:'09:24', agent:'Enforcer', event:'Rule 1 violation: Aiden posted summary without peer concurrence', type:'governance' },
+  { time:'09:20', agent:'ORION', event:'ABN sweep complete — trigram match 2,747 new dental records', type:'success' },
+  { time:'09:18', agent:'Elliot', event:'Budget alert: API spend at 62% of daily cap ($37.20/$60)', type:'warning' },
+  { time:'09:15', agent:'Aiden', event:'DSAE protocol: proposed ATLAS dispatch for Stage 8 email gate', type:'info' },
+  { time:'09:12', agent:'ATLAS', event:'[CLAIM:atlas] src/pipeline/email_waterfall.py — ~15min', type:'info' },
+  { time:'09:10', agent:'Enforcer', event:'Rule 7 verified: dispatch coordination protocol followed correctly', type:'success' },
+  { time:'09:05', agent:'review-5', event:'Code review complete on PR #406 — 2 issues flagged, 0 critical', type:'success' },
+  { time:'09:01', agent:'Elliot', event:'[QUEUE-BOARD] ATLAS: current=P12-email-gate | next=P13-mobile-fix', type:'info' },
+  { time:'08:55', agent:'Aiden', event:'[CONCUR:aiden] Queue board acknowledged. ORION: current=ABN-sweep | next=VR-backfill', type:'info' },
+];
+
+let killActive = false;
+let selectedAgent = null;
+
+// ─── RENDER ───
+function renderApprovals() {
+  const q = document.getElementById('approvalQueue');
+  if (approvals.length === 0) {
+    q.innerHTML = '<div class="empty-state">All clear. No actions awaiting approval.</div>';
+    document.getElementById('approvalBadge').textContent = '0 pending';
+    document.getElementById('approvalBadge').style.color = 'var(--green)';
+    document.getElementById('approvalBadge').style.background = 'var(--green-dim)';
+    document.getElementById('statApprovals').textContent = '0';
+    document.getElementById('statApprovals').style.color = 'var(--green)';
+    return;
+  }
+  document.getElementById('approvalBadge').textContent = approvals.length + ' pending';
+  document.getElementById('statApprovals').textContent = approvals.length;
+  q.innerHTML = approvals.map((a, i) => `
+    <div class="approval-item stagger" style="animation-delay:${i * .05}s">
+      <div class="approval-action">${a.action}</div>
+      <div class="approval-meta">
+        <span class="approval-agent">${a.agent}</span>
+        <span class="approval-risk ${a.risk === 'high' ? 'risk-high' : a.risk === 'medium' ? 'risk-medium' : 'risk-low'}">${a.risk}</span>
+        ${a.cost ? `<span class="approval-cost">$${a.cost.toFixed(2)}</span>` : ''}
+        <span class="approval-time">${a.time}</span>
+        <div class="approval-btns">
+          <button class="btn-approve" onclick="approveItem(${a.id})">✓ Approve</button>
+          <button class="btn-reject" onclick="rejectItem(${a.id})">✕ Reject</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderWorkforce() {
+  const w = document.getElementById('workforce');
+  w.innerHTML = agents.map((a, i) => {
+    const statusClass = killActive ? 'paused' : a.status;
+    const avatarClass = a.type === 'cto' ? 'cto' : a.type === 'clone' ? 'clone' : 'builder';
+    const trustClass = 'trust-' + a.trust;
+    const trustLabels = ['','L1 · Read Only','L2 · Draft','L3 · Supervised','L4 · Autonomous'];
+    const isSelected = selectedAgent === a.id;
+
+    let html = `
+      <div class="agent-row ${isSelected ? 'selected' : ''} stagger" style="animation-delay:${i * .04}s" onclick="selectAgent(${a.id})">
+        <div class="agent-top">
+          <div class="agent-info">
+            <div class="agent-avatar ${avatarClass}">${a.avatar}</div>
+            <div class="agent-name-wrap">
+              <div class="agent-name-line">
+                <span class="status-dot ${statusClass}"></span>
+                <span class="agent-name">${a.name}</span>
+                <span class="agent-role">${a.role}</span>
+              </div>
+              ${a.manages.length ? `<div class="agent-manages">manages: ${a.manages.join(', ')}</div>` : ''}
+            </div>
+          </div>
+          <div class="agent-right">
+            <span class="trust-badge ${trustClass}">${trustLabels[a.trust]}</span>
+            <span class="agent-cost">$${a.cost.toFixed(2)}</span>
+          </div>
+        </div>
+      </div>`;
+
+    if (isSelected) {
+      html += `
+      <div class="agent-detail">
+        <div class="detail-stats">
+          <div class="detail-stat">
+            <div class="detail-stat-label">Tasks</div>
+            <div class="detail-stat-value">${a.tasks}</div>
+          </div>
+          <div class="detail-stat">
+            <div class="detail-stat-label">Trust</div>
+            <div class="detail-stat-value" style="color:var(--gold)">L${a.trust}</div>
+          </div>
+          <div class="detail-stat">
+            <div class="detail-stat-label">Cost</div>
+            <div class="detail-stat-value">$${a.cost.toFixed(2)}</div>
+          </div>
+          <div class="detail-stat">
+            <div class="detail-stat-label">Errors</div>
+            <div class="detail-stat-value" style="color:var(--green)">0</div>
+          </div>
+        </div>
+        <div class="trust-slider">
+          <div class="trust-slider-label">Trust Level</div>
+          <div class="trust-bar">
+            ${[1,2,3,4].map(l => `<div class="trust-level ${l <= a.trust ? 'filled' : 'empty'}" onclick="setTrust(${a.id},${l})" title="Level ${l}"></div>`).join('')}
+          </div>
+          <div class="trust-labels">
+            <span class="trust-label-text">Read Only</span>
+            <span class="trust-label-text">Draft</span>
+            <span class="trust-label-text">Supervised</span>
+            <span class="trust-label-text">Autonomous</span>
+          </div>
+        </div>
+        <div class="detail-btns">
+          <button class="detail-btn" onclick="showToast('Viewing logs for ${a.name}...')">View Logs</button>
+          <button class="detail-btn" onclick="showToast('Opening config for ${a.name}...')">Edit Config</button>
+          <button class="detail-btn danger" onclick="showToast('${a.name} paused.')">Pause Agent</button>
+        </div>
+      </div>`;
+    }
+    return html;
+  }).join('');
+}
+
+function renderFeed() {
+  const f = document.getElementById('activityFeed');
+  f.innerHTML = feed.map((e, i) => `
+    <div class="feed-item stagger" style="animation-delay:${i * .03}s">
+      <span class="feed-time">${e.time}</span>
+      <span class="feed-dot ${e.type}"></span>
+      <div class="feed-text">
+        <span class="feed-agent">${e.agent}: </span>
+        <span class="feed-event ${e.type === 'governance' ? 'gov' : e.type === 'warning' ? 'warn' : ''}">${e.event}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ─── ACTIONS ───
+function toggleKill() {
+  killActive = !killActive;
+  const btn = document.getElementById('killBtn');
+  const banner = document.getElementById('killBanner');
+  const dot = document.getElementById('systemDot');
+  const label = document.getElementById('systemLabel');
+
+  if (killActive) {
+    btn.textContent = '⬛ ALL PAUSED';
+    btn.classList.add('active');
+    banner.classList.add('show');
+    dot.style.background = 'var(--red)';
+    dot.style.boxShadow = '0 0 6px rgba(232,84,84,0.4)';
+    label.textContent = 'All agents paused';
+    label.style.color = 'var(--red)';
+  } else {
+    btn.textContent = '⏸ KILL SWITCH';
+    btn.classList.remove('active');
+    banner.classList.remove('show');
+    dot.style.background = 'var(--green)';
+    dot.style.boxShadow = '0 0 6px rgba(61,214,140,0.4)';
+    label.textContent = 'All systems nominal';
+    label.style.color = '';
+  }
+  renderWorkforce();
+}
+
+function approveItem(id) {
+  approvals = approvals.filter(a => a.id !== id);
+  renderApprovals();
+  showToast('Action approved and executing.');
+}
+
+function rejectItem(id) {
+  approvals = approvals.filter(a => a.id !== id);
+  renderApprovals();
+  showToast('Action rejected. Agent notified.');
+}
+
+function selectAgent(id) {
+  selectedAgent = selectedAgent === id ? null : id;
+  renderWorkforce();
+}
+
+function setTrust(agentId, level) {
+  const agent = agents.find(a => a.id === agentId);
+  if (agent) {
+    agent.trust = level;
+    renderWorkforce();
+    const labels = ['','Read Only','Draft','Supervised','Autonomous'];
+    showToast(`${agent.name} trust level set to L${level} — ${labels[level]}`);
+  }
+}
+
+function sendChat() {
+  const input = document.getElementById('chatInput');
+  const msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+
+  const resp = document.getElementById('chatResponse');
+  const text = document.getElementById('chatResponseText');
+  resp.classList.add('show');
+
+  // Simulate manager agent response
+  const responses = {
+    'default': `Understood. I'll break that down into tasks and assign to the right agents. You'll see the actions appear in your approval queue shortly.`,
+    'status': `All 5 agents are active. 58 tasks completed today. $41.60 AUD spent of $60 daily cap. 5 items in the approval queue awaiting your review. No governance violations today — 2 peer corrections caught and resolved.`,
+    'pause': `All agents paused. Kill switch activated. No actions will execute until you resume. Your approval queue is frozen.`,
+    'budget': `Daily spend is $41.60 AUD (69% of $60 cap). Largest cost today: Elliot at $12.40 (3 Sonnet comprehension calls + 2 pipeline runs). GOV-2 auto-kill threshold is $300. At current rate, you'll finish the day at approximately $54.`,
+  };
+
+  let response = responses.default;
+  const lower = msg.toLowerCase();
+  if (lower.includes('status') || lower.includes('how are')) response = responses.status;
+  if (lower.includes('pause') || lower.includes('stop') || lower.includes('kill')) { response = responses.pause; toggleKill(); }
+  if (lower.includes('budget') || lower.includes('cost') || lower.includes('spend')) response = responses.budget;
+
+  text.textContent = response;
+  setTimeout(() => { resp.classList.remove('show'); }, 8000);
+}
+
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  document.getElementById('toastText').textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => { toast.classList.remove('show'); }, 3000);
+}
+
+function hideToast() {
+  document.getElementById('toast').classList.remove('show');
+}
+
+// ─── CLOCK ───
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.toLocaleTimeString('en-AU', { hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false }) + ' AEST';
+}
+
+// ─── INIT ───
+renderApprovals();
+renderWorkforce();
+renderFeed();
+updateClock();
+setInterval(updateClock, 1000);
+
+// Simulate a new feed item every 30s
+setInterval(() => {
+  const events = [
+    { agent:'Elliot', event:'Heartbeat check — all MCP servers responding', type:'info' },
+    { agent:'ATLAS', event:'Sub-agent build-2 completed task — PR ready for review', type:'success' },
+    { agent:'Enforcer', event:'Governance scan — no violations detected this cycle', type:'success' },
+    { agent:'Aiden', event:'Memory listener updated — 3 new facts ingested', type:'info' },
+    { agent:'ORION', event:'ContactOut credit check — 816/1000 searches remaining', type:'info' },
+  ];
+  const e = events[Math.floor(Math.random() * events.length)];
+  const now = new Date();
+  e.time = now.toLocaleTimeString('en-AU', { hour:'2-digit', minute:'2-digit', hour12:false });
+  feed.unshift(e);
+  if (feed.length > 20) feed.pop();
+  renderFeed();
+}, 30000);
+</script>
+</body>
+</html>

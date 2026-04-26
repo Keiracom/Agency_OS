@@ -233,3 +233,69 @@ def test_no_subprocess_calls_in_hook_module(check_output, check_call, run):
 def test_url_in_transcript_path_is_rejected():
     for u in ("http://x/y.jsonl", "https://x/y.jsonl", "ftp://x/y.jsonl"):
         assert gov.validate_transcript_path(u) is None
+
+
+# ─── P6 sandbox wire-up (GOV-12) ───────────────────────────────────────────
+
+def test_agent_type_from_env_unset_returns_empty(monkeypatch):
+    monkeypatch.delenv("CALLSIGN", raising=False)
+    assert gov._agent_type_from_env() == ""
+
+
+@pytest.mark.parametrize("callsign,expected", [
+    ("elliot", "build-2"),
+    ("ELLIOT", "build-2"),
+    ("atlas",  "build-2"),
+    ("aiden",  "build-3"),
+    ("orion",  "build-3"),
+    ("scout",  "research-1"),
+    ("unknown-bot", "build-2"),   # safe default for new callsigns
+])
+def test_agent_type_from_env_maps_known_callsigns(monkeypatch, callsign, expected):
+    monkeypatch.setenv("CALLSIGN", callsign)
+    assert gov._agent_type_from_env() == expected
+
+
+def test_decide_sandbox_blocks_disallowed_tool(monkeypatch):
+    monkeypatch.setenv("CALLSIGN", "scout")     # → research-1
+    code, msg = gov.decide({"tool_name": "Bash"})
+    assert code == 2
+    assert "sandbox:tool_not_in_allowlist" in msg
+    assert "research-1" in msg
+    assert "Bash" in msg
+
+
+def test_decide_sandbox_allows_when_tool_in_allowlist(monkeypatch):
+    monkeypatch.setenv("CALLSIGN", "scout")     # research-1 may Read
+    code, _ = gov.decide({"tool_name": "Read"})
+    assert code == 0
+
+
+def test_decide_sandbox_skipped_when_callsign_unset(monkeypatch):
+    monkeypatch.delenv("CALLSIGN", raising=False)
+    # build-2 surface — but we have no CALLSIGN, so sandbox check skips
+    # and we fall through to the Step 0 / mutating-tool path.
+    code, _ = gov.decide({"tool_name": "Read"})
+    assert code == 0
+
+
+def test_decide_sandbox_runs_before_step0_check(monkeypatch, tmp_path):
+    """Even with a valid Step 0 transcript, an off-allowlist tool must
+    still be blocked by the sandbox layer (defence-in-depth)."""
+    monkeypatch.setenv("CALLSIGN", "scout")
+    monkeypatch.setattr(gov, "TRANSCRIPT_ROOT", tmp_path)
+    p = tmp_path / "live.jsonl"
+    p.write_text("\n".join([
+        _msg("user", "do this"),
+        _msg("assistant", "Objective: a\nScope: b\nSuccess criteria: c"),
+    ]))
+    code, msg = gov.decide({"tool_name": "Bash", "transcript_path": str(p)})
+    assert code == 2
+    assert "sandbox:" in msg
+
+
+def test_decide_sandbox_block_uses_callsign_specific_agent(monkeypatch):
+    monkeypatch.setenv("CALLSIGN", "aiden")     # → build-3 (full surface)
+    # build-3 may Bash → not blocked by sandbox; falls through to allow
+    code, _ = gov.decide({"tool_name": "Bash"})
+    assert code == 0

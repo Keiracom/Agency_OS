@@ -53,6 +53,19 @@ import re
 import sys
 from pathlib import Path
 
+# Ensure the repo root is importable so `src.config.sandbox` resolves
+# whether the hook is invoked via `python3 scripts/governance_hooks.py`
+# or as a Claude Code PreToolUse spawn (cwd may not be on sys.path).
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
+try:
+    from src.config.sandbox import validate_tool_access  # P6 wire-up
+except Exception:  # noqa: BLE001 — fail-open if module missing
+    def validate_tool_access(_agent: str, _tool: str) -> bool:
+        return True
+
 logging.basicConfig(
     level=logging.INFO,
     format="[gov-hook] %(levelname)s: %(message)s",
@@ -193,9 +206,41 @@ def has_step0_since_last_user(transcript_blob: str) -> bool:
 
 # ── Decision ───────────────────────────────────────────────────────────────
 
+def _agent_type_from_env() -> str:
+    """Map the session CALLSIGN to a sandbox agent_type. Each callsign
+    operates as a build-2-equivalent surface by default; specialised
+    callsigns (scout=research, atlas=build) can be tightened later by
+    extending the map. Returns "" when CALLSIGN is unset, which the
+    sandbox layer treats as deny-by-default."""
+    cs = (os.environ.get("CALLSIGN") or "").strip().lower()
+    if not cs:
+        return ""
+    return {
+        "elliot": "build-2",
+        "atlas":  "build-2",
+        "aiden":  "build-3",
+        "orion":  "build-3",
+        "scout":  "research-1",
+    }.get(cs, "build-2")
+
+
 def decide(hook_input: dict) -> tuple[int, str]:
     """Return (exit_code, message). exit_code=0 allows; 2 blocks."""
     tool_name = hook_input.get("tool_name") or ""
+
+    # GOV-12 sandbox check (P6 wire-up). Runs BEFORE the Step 0 check so
+    # an off-allowlist tool is rejected even when Step 0 is satisfied.
+    # Skipped when CALLSIGN is unset (local dev / one-off scripts) so
+    # we don't block legitimate ad-hoc runs.
+    agent_type = _agent_type_from_env()
+    if agent_type and tool_name and not validate_tool_access(agent_type, tool_name):
+        return (
+            2,
+            f"sandbox:tool_not_in_allowlist — agent_type={agent_type!r} "
+            f"is not permitted to invoke tool={tool_name!r}. See "
+            f"src/config/sandbox.py:AGENT_ALLOWLISTS.",
+        )
+
     if tool_name not in MUTATING_TOOLS:
         return 0, "non-mutating tool — allow"
 

@@ -18,31 +18,53 @@ module.exports = {
       }
     },
     extend: {
-      // Pure Bloomberg Dark Theme — Warm Charcoal + Amber ONLY
+      // Agency Desk — Cream/Amber Light Theme (PR1 rebuild)
       colors: {
-        // Background layers — reference CSS vars so data-theme switches them
-        'bg-void': 'var(--bg-void)',
-        'bg-base': 'var(--bg-base)',
-        'bg-surface': 'var(--bg-surface)',
+        // Cream surface palette
+        'cream':     'var(--cream)',
+        'surface':   'var(--surface)',
+        'panel':     'var(--panel-bg)',
+        'brand-bar': 'var(--brand-bar)',
+        'on-amber':  'var(--on-amber)',
+
+        // Ink scale
+        'ink':   'var(--ink)',
+        'ink-2': 'var(--ink-2)',
+        'ink-3': 'var(--ink-3)',
+        'ink-4': 'var(--ink-4)',
+
+        // Rules (cream-friendly subtle borders)
+        'rule':        'var(--rule)',
+        'rule-strong': 'var(--rule-strong)',
+
+        // Status (muted to fit cream backdrop)
+        'green':  'var(--green)',
+        'red':    'var(--red)',
+        'blue':   'var(--blue)',
+        'copper': 'var(--copper)',
+
+        // Legacy aliases — keep old class names working while we migrate
+        'bg-void':     'var(--bg-void)',
+        'bg-base':     'var(--bg-base)',
+        'bg-surface':  'var(--bg-surface)',
         'bg-elevated': 'var(--bg-elevated)',
 
-        // Borders — reference CSS vars
-        'border-subtle': 'var(--border-subtle)',
+        'border-subtle':  'var(--border-subtle)',
         'border-default': 'var(--border-default)',
-        'border-focus': 'var(--border-focus)',
+        'border-focus':   'var(--border-focus)',
 
-        // Text — reference CSS vars
-        'text-primary': 'var(--text-primary)',
+        'text-primary':   'var(--text-primary)',
         'text-secondary': 'var(--text-secondary)',
-        'text-muted': 'var(--text-muted)',
+        'text-muted':     'var(--text-muted)',
 
-        // Accent — reference CSS vars (amber unchanged between themes)
-        'amber': 'var(--amber)',
+        // Accent — amber unchanged between themes
+        'amber':       'var(--amber)',
         'amber-light': 'var(--amber-light)',
-        'amber-glow': 'var(--amber-glow)',
+        'amber-soft':  'var(--amber-soft)',
+        'amber-glow':  'var(--amber-glow)',
 
-        // Error state — reference CSS vars
-        'error': 'var(--error)',
+        // Error state
+        'error':      'var(--error)',
         'error-glow': 'var(--error-glow)',
         
         // Glass
@@ -95,9 +117,15 @@ module.exports = {
         }
       },
       fontFamily: {
-        sans: ['DM Sans', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
-        serif: ['Instrument Serif', 'Georgia', 'serif'],
-        mono: ['JetBrains Mono', 'monospace'],
+        sans:    ['DM Sans', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        serif:   ['Playfair Display', 'Georgia', 'serif'],
+        display: ['Playfair Display', 'Georgia', 'serif'],
+        mono:    ['JetBrains Mono', 'monospace'],
+      },
+      spacing: {
+        // Layout dimensions exposed as Tailwind utilities
+        'sidebar': 'var(--sidebar-w)',     // 232px
+        'topbar':  'var(--topbar-h)',      // 56px
       },
       borderRadius: {
         lg: 'var(--radius)',

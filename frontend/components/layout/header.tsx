@@ -60,28 +60,49 @@ export function Header({ title = "Dashboard", user, client }: HeaderProps) {
   const initials = getInitials(displayName);
 
   return (
-    <header className="flex h-16 items-center justify-between border-b border-border-subtle bg-bg-surface px-6">
+    <header
+      className="sticky top-0 z-40 flex h-topbar items-center justify-between border-b border-rule px-6"
+      style={{
+        // Cream + blur (matches prototype #topbar but on cream backdrop)
+        backgroundColor: "rgba(247, 243, 238, 0.85)",
+        backdropFilter: "saturate(140%) blur(8px)",
+        WebkitBackdropFilter: "saturate(140%) blur(8px)",
+      }}
+    >
       {/* Left: Page title with LIVE badge */}
       <div className="flex items-center gap-4">
-        <h1 className="text-xl font-semibold text-text-primary">{title}</h1>
-        
-        {/* LIVE Status Badge */}
-        <div className="flex items-center gap-2 rounded-full bg-status-success/10 px-3 py-1">
+        <h1 className="font-display font-bold text-[20px] tracking-[-0.01em] text-ink">
+          {title}
+        </h1>
+
+        {/* LIVE Status Badge — muted green on cream */}
+        <div
+          className="flex items-center gap-2 rounded-full px-3 py-1"
+          style={{ backgroundColor: "rgba(107,142,90,0.16)" }}
+        >
           <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-status-success opacity-75" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-status-success" />
+            <span
+              className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-75"
+              style={{ backgroundColor: "var(--green)" }}
+            />
+            <span
+              className="relative inline-flex h-2 w-2 rounded-full"
+              style={{ backgroundColor: "var(--green)" }}
+            />
           </span>
-          <span className="text-xs font-medium text-status-success">LIVE</span>
+          <span className="font-mono text-[10px] tracking-[0.1em] uppercase text-green">
+            Live
+          </span>
         </div>
       </div>
 
-      {/* Center: Search (placeholder for Sprint 1) */}
+      {/* Center: Search */}
       <div className="hidden flex-1 justify-center md:flex">
         <div className="relative w-full max-w-md">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-3" />
           <Input
-            placeholder="Search campaigns, leads..."
-            className="w-full border-border-subtle bg-bg-primary pl-9 text-text-primary placeholder:text-text-muted"
+            placeholder="Search campaigns, leads…"
+            className="w-full border-rule bg-panel pl-9 text-ink placeholder:text-ink-3"
           />
         </div>
       </div>

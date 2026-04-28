@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700&family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 /* Import design tokens - single source of truth */
 @import '../src/styles/design-tokens.css';
@@ -10,78 +10,131 @@
 @layer base {
   :root {
     /* =================================================
-       PURE BLOOMBERG DESIGN SYSTEM
-       Warm Charcoal + Amber ONLY
-       CEO Directive #027
+       AGENCY DESK — CREAM / AMBER LIGHT THEME
+       Dashboard rebuild PR1 (2026-04-28)
+       Reference: dashboard-master-agency-desk.html
        ================================================= */
-    
-    /* Background Layers */
-    --bg-void: #0C0A08;
-    --bg-base: #141210;
-    --bg-surface: #1C1A17;
-    --bg-elevated: #242220;
-    
-    /* Text */
-    --text-primary: #F5F0EB;
-    --text-secondary: #A39E96;
-    --text-muted: #6B6660;
-    
-    /* Accent — THE ONLY COLOR */
-    --amber: #D4956A;
+
+    /* Cream surface palette */
+    --cream:    #F7F3EE;
+    --surface:  #EDE8E0;
+    --panel-bg: #FFFFFF;
+
+    /* Ink scale (replaces the old dark text scale) */
+    --ink:   #0C0A08;
+    --ink-2: #2E2B26;
+    --ink-3: #7A756D;
+    --ink-4: #B5B0A6;
+
+    /* Brand bar (sidebar + topbar share this in dark accents) */
+    --brand-bar: #0C0A08;
+    --on-amber:  #1a1207;
+
+    /* Accent — amber stays the single accent */
+    --amber:       #D4956A;
     --amber-light: #E8B48A;
-    --amber-glow: rgba(212,149,106,0.12);
-    
-    /* Error (muted warm red — use sparingly) */
-    --error: #C0675A;
-    --error-glow: rgba(192,103,90,0.12);
-    
-    /* Borders */
-    --border-subtle: rgba(255,255,255,0.06);
-    --border-default: rgba(255,255,255,0.10);
-    --border-focus: rgba(255,255,255,0.20);
-    
-    /* Glassmorphism */
-    --glass-surface: rgba(255,255,255,0.04);
-    --glass-border: rgba(255,255,255,0.10);
-    --glass-border-top: rgba(255,255,255,0.15);
-    --glass-border-left: rgba(255,255,255,0.12);
-    
+    --amber-soft:  rgba(212,149,106,0.14);
+    --amber-glow:  rgba(212,149,106,0.08);
+    --copper:      #C46A3E;
+
+    /* Status (muted, used sparingly per prototype) */
+    --green: #6B8E5A;
+    --red:   #B55A4C;
+    --blue:  #4A6FA5;
+    --error: #B55A4C;
+    --error-glow: rgba(181,90,76,0.14);
+
+    /* Rules / borders */
+    --rule:        rgba(12,10,8,0.08);
+    --rule-strong: rgba(12,10,8,0.14);
+
+    /* Layout dimensions (PR1 — match prototype) */
+    --sidebar-w:  232px;
+    --topbar-h:   56px;
+    --bottomnav-h: 60px;
+
+    /* Background semantic aliases — mapped to cream/panel so legacy
+       components reading bg-bg-surface render on the new palette */
+    --bg-void:     var(--cream);
+    --bg-base:     var(--cream);
+    --bg-surface:  var(--panel-bg);
+    --bg-elevated: var(--panel-bg);
+
+    /* Text semantic aliases — mapped to ink scale */
+    --text-primary:   var(--ink);
+    --text-secondary: var(--ink-2);
+    --text-muted:     var(--ink-3);
+
+    /* Border aliases */
+    --border-subtle:  var(--rule);
+    --border-default: var(--rule);
+    --border-focus:   var(--rule-strong);
+
+    /* Glass — kept for legacy refs but blended for cream */
+    --glass-surface:    rgba(255,255,255,0.6);
+    --glass-border:     var(--rule);
+    --glass-border-top: var(--rule-strong);
+    --glass-border-left: var(--rule);
+
     /* Gradients */
     --gradient-amber: linear-gradient(135deg, #D4956A 0%, #E8B48A 100%);
-    
-    /* Fonts */
-    --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-    --font-serif: 'Instrument Serif', Georgia, serif;
-    --font-mono: 'JetBrains Mono', monospace;
 
-    /* shadcn/ui compatibility layer */
-    --background: 20 12% 6%;
-    --foreground: 30 20% 95%;
-    --card: 20 12% 10%;
-    --card-foreground: 30 20% 95%;
-    --popover: 20 12% 8%;
-    --popover-foreground: 30 20% 95%;
-    --primary: 25 50% 62%;
-    --primary-foreground: 20 12% 6%;
-    --secondary: 20 8% 14%;
-    --secondary-foreground: 30 20% 95%;
-    --muted: 20 8% 14%;
-    --muted-foreground: 25 6% 40%;
+    /* Fonts */
+    --font-sans:    'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-serif:   'Playfair Display', Georgia, serif;
+    --font-display: 'Playfair Display', Georgia, serif;
+    --font-mono:    'JetBrains Mono', monospace;
+
+    /* shadcn/ui compatibility — cream/light HSL */
+    --background: 36 36% 95%;          /* cream */
+    --foreground: 24 13% 5%;           /* ink */
+    --card: 0 0% 100%;                 /* panel */
+    --card-foreground: 24 13% 5%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 24 13% 5%;
+    --primary: 25 50% 62%;             /* amber */
+    --primary-foreground: 24 13% 5%;
+    --secondary: 36 25% 90%;
+    --secondary-foreground: 24 13% 5%;
+    --muted: 36 25% 90%;
+    --muted-foreground: 30 6% 45%;
     --accent: 25 50% 62%;
-    --accent-foreground: 20 12% 6%;
-    --destructive: 8 55% 55%;
-    --destructive-foreground: 30 20% 95%;
-    --border: 0 0% 100% / 0.10;
-    --input: 0 0% 100% / 0.10;
+    --accent-foreground: 24 13% 5%;
+    --destructive: 8 40% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 24 13% 5% / 0.08;
+    --input: 24 13% 5% / 0.10;
     --ring: 25 50% 62%;
-    --radius: 0.75rem;
-    
-    /* Chart colors (amber variations) */
+    --radius: 0.625rem;
+
+    /* Chart colours (amber variations) */
     --chart-1: 25 50% 62%;
     --chart-2: 25 50% 72%;
     --chart-3: 25 50% 52%;
     --chart-4: 25 50% 45%;
     --chart-5: 25 50% 38%;
+  }
+
+  html.dark {
+    /* Dark inversion (matches prototype html.dark block). Default theme
+       remains light; dark only kicks in if a user opts in via the
+       theme toggle. */
+    --cream:    #0C0A08;
+    --surface:  #16130F;
+    --panel-bg: #16130F;
+    --ink:      #F5F2EC;
+    --ink-2:    #C9C3B8;
+    --ink-3:    #807A6E;
+    --ink-4:    #4A443A;
+    --brand-bar: #0C0A08;
+    --rule:        rgba(255,255,255,0.08);
+    --rule-strong: rgba(255,255,255,0.14);
+    --amber-soft:  rgba(212,149,106,0.18);
+    --copper:      #E6A87D;
+    --bg-void:     var(--cream);
+    --bg-base:     var(--cream);
+    --bg-surface:  var(--panel-bg);
+    --bg-elevated: var(--panel-bg);
   }
 }
 
@@ -92,16 +145,34 @@
   
   body {
     @apply text-foreground;
-    background-color: var(--bg-void);
+    background-color: var(--cream);
     font-family: var(--font-sans);
     font-feature-settings: "rlig" 1, "calt" 1;
-    color: var(--text-primary);
+    color: var(--ink);
   }
-  
-  /* Typography */
+
+  /* Typography — Playfair Display headlines; ink colour via cascade */
   h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-serif);
-    color: var(--text-primary);
+    font-family: var(--font-display);
+    color: var(--ink);
+    letter-spacing: -0.01em;
+  }
+  /* Italic emphasis renders amber per prototype's `<em>` accent */
+  h1 em, h2 em, h3 em, h4 em, h5 em, h6 em,
+  .display em, .brand em {
+    color: var(--amber);
+    font-style: italic;
+    font-weight: 700;
+  }
+  /* Mono utility class — used for labels / numbers */
+  .mono { font-family: var(--font-mono); }
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
   }
   
   /* Data/numbers use mono */

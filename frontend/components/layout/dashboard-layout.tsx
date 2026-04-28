@@ -28,13 +28,17 @@ interface DashboardLayoutProps {
 }
 
 export function DashboardLayout({ children, user, client }: DashboardLayoutProps) {
+  // PR1 rebuild — fixed 232px dark sidebar + cream main area with
+  // 56px sticky cream-blur topbar. The sidebar is `position: fixed`,
+  // so the right column reserves space via `pl-sidebar` instead of
+  // wrapping in a flex grid (matches prototype #shell layout).
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="min-h-screen bg-cream text-ink">
       <Sidebar />
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="pl-sidebar flex min-h-screen flex-col">
         <Header user={user} client={client} />
-        <main className="flex-1 overflow-y-auto bg-muted/30 p-6">
-          {children}
+        <main className="flex-1 bg-cream px-8 py-6">
+          <div className="mx-auto w-full max-w-[1280px]">{children}</div>
         </main>
       </div>
     </div>

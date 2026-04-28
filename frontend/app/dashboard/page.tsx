@@ -40,6 +40,11 @@ import { TodayStrip } from "@/components/dashboard/TodayStrip";
 import { FunnelBar } from "@/components/dashboard/FunnelBar";
 import { AttentionCards } from "@/components/dashboard/AttentionCards";
 import { ProspectDrawer } from "@/components/dashboard/ProspectDrawer";
+// PR2 — dashboard rebuild core components (cream/amber palette, Playfair Display)
+import { CycleProgress } from "@/components/dashboard/CycleProgress";
+import { PerformanceMetrics } from "@/components/dashboard/PerformanceMetrics";
+import { HotReplies } from "@/components/dashboard/HotReplies";
+import { SystemHealth } from "@/components/dashboard/SystemHealth";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -92,6 +97,18 @@ export default function DashboardPage() {
         }}
       >
         <div className="relative z-10">
+          {/* PR2 — Cycle progress + performance + hot replies + health */}
+          <section className="mb-6 grid gap-5 lg:grid-cols-3">
+            <div className="lg:col-span-2 space-y-5">
+              <CycleProgress />
+              <PerformanceMetrics />
+              <SystemHealth />
+            </div>
+            <div className="lg:col-span-1">
+              <HotReplies />
+            </div>
+          </section>
+
           {/* v10 HOME SURFACES — BDR hero + today + funnel + attention */}
           <section className="mb-8 space-y-6">
             <HeroStrip />

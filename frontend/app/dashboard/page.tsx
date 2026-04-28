@@ -26,12 +26,9 @@ import {
   TrendingUp,
   ArrowUpRight,
 } from "lucide-react";
-// TODO: wire channel-orchestration when API exposes per-channel touch counts
-import { mockChannelOrchestration } from "@/data/mock-dashboard";
-// TODO: wire smart-calling when voice AI call data API is available
-import { mockVoiceStats, mockRecentCalls } from "@/data/mock-dashboard";
-// TODO: wire what's-working insights (who-converts + best-channel-mix) when segment analytics API is available
-import { mockInsights } from "@/data/mock-dashboard";
+// PR4 — mock-data imports removed. The Channel Orchestration / Smart
+// Calling / What's Working slots now render a `TodoMockPanel` until
+// their endpoints exist. See ./TodoMockPanel.tsx + the JSX below.
 import { useLiveActivityFeed } from "@/lib/useLiveActivityFeed";
 import { providerLabel } from "@/lib/provider-labels";
 import { useDashboardV4 } from "@/hooks/use-dashboard-v4";
@@ -45,6 +42,8 @@ import { CycleProgress } from "@/components/dashboard/CycleProgress";
 import { PerformanceMetrics } from "@/components/dashboard/PerformanceMetrics";
 import { HotReplies } from "@/components/dashboard/HotReplies";
 import { SystemHealth } from "@/components/dashboard/SystemHealth";
+// PR4 — placeholder for slots whose backend endpoints don't exist yet
+import { TodoMockPanel } from "@/components/dashboard/TodoMockPanel";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -201,15 +200,17 @@ export default function DashboardPage() {
                 ))}
               </div>
 
-              {/* Channel Stats */}
-              <div className="grid grid-cols-5 gap-2">
-                {mockChannelOrchestration.channels.map((channel) => (
-                  <div key={channel.id} className="text-center p-3 bg-bg-elevated rounded-lg">
-                    <div className="text-lg font-bold font-mono text-text-primary">{channel.value}</div>
-                    <div className="text-[10px] text-text-muted uppercase mt-1 font-mono">{channel.label}</div>
-                  </div>
-                ))}
-              </div>
+              {/* Channel Stats — PR4: was mockChannelOrchestration */}
+              <TodoMockPanel
+                icon={<Zap className="w-4 h-4" strokeWidth={1.6} />}
+                eyebrow="Channel orchestration"
+                title="Per-channel touch counts not yet wired"
+                description="The hero ring above renders a fixed sample. Per-channel touch counts will populate when the metrics endpoint exposes a touches-by-channel breakdown."
+                endpointsNeeded={[
+                  "GET /api/v1/dashboard/touches?breakdown=channel",
+                  "fields: email_count, linkedin_count, sms_count, voice_count, mail_count",
+                ]}
+              />
             </GlassCard>
           </div>
 
@@ -285,73 +286,20 @@ export default function DashboardPage() {
               </div>
             </GlassCard>
 
-            {/* Smart Calling — TODO: wire smart-calling when voice AI call data API is available */}
-            <GlassCard className="p-0 overflow-hidden">
-              <div className="px-6 py-5 border-b border-border-subtle flex items-center justify-between">
-                <div className="flex items-center gap-2.5 text-sm font-semibold text-text-primary">
-                  <PhoneCall className="w-5 h-5 text-amber" strokeWidth={1.5} />
-                  Smart Calling
-                </div>
-                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-glow border border-amber/30 rounded-full text-xs font-mono font-medium text-amber">
-                  <div className="w-2 h-2 bg-amber rounded-full animate-pulse" />
-                  Active
-                </div>
-              </div>
-              <div className="p-6">
-                {/* Voice Stats */}
-                <div className="grid grid-cols-4 gap-3 mb-5">
-                  <div className="text-center p-4 bg-bg-elevated rounded-lg">
-                    <div className="text-2xl font-bold font-mono text-text-primary">{mockVoiceStats.calls}</div>
-                    <div className="text-[11px] text-text-muted mt-1 font-mono">Calls</div>
-                  </div>
-                  <div className="text-center p-4 bg-bg-elevated rounded-lg">
-                    <div className="text-2xl font-bold font-mono text-text-primary">{mockVoiceStats.connected}</div>
-                    <div className="text-[11px] text-text-muted mt-1 font-mono">Connect</div>
-                  </div>
-                  <div className="text-center p-4 bg-bg-elevated rounded-lg">
-                    <div className="text-2xl font-bold font-mono text-text-primary">{mockVoiceStats.booked}</div>
-                    <div className="text-[11px] text-text-muted mt-1 font-mono">Booked</div>
-                  </div>
-                  <div className="text-center p-4 bg-bg-elevated rounded-lg">
-                    <div className="text-2xl font-bold font-mono text-text-primary">{mockVoiceStats.rate}</div>
-                    <div className="text-[11px] text-text-muted mt-1 font-mono">Rate</div>
-                  </div>
-                </div>
+            {/* Smart Calling — PR4: was mockVoiceStats + mockRecentCalls */}
+            <TodoMockPanel
+              icon={<PhoneCall className="w-4 h-4" strokeWidth={1.6} />}
+              eyebrow="Smart calling"
+              title="Voice AI call data endpoint pending"
+              description="The voice channel runs through VAPI today, but no aggregated calls/connect/booked/rate endpoint exists yet. Recent calls + listen/transcript controls will land when this hook is added."
+              endpointsNeeded={[
+                "GET /api/v1/voice/stats?range=30d",
+                "GET /api/v1/voice/recent?limit=10",
+                "fields: calls, connected, booked, connect_rate, recent[{ name, outcome, summary, duration_s, recording_url, transcript_url }]",
+              ]}
+            />
 
-                {/* Recent Calls */}
-                {mockRecentCalls.map((call) => (
-                  <div key={call.id} className="flex items-start gap-3 py-3.5 border-b border-border-subtle last:border-0">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                      call.outcome === 'BOOKED' ? 'bg-amber-glow text-amber' : 'bg-bg-elevated text-text-secondary'
-                    }`}>
-                      {call.outcome === 'BOOKED' ? <CheckCircle2 className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm">
-                        <span className="font-semibold text-text-primary">{call.name}</span>
-                        <span className={`ml-2 text-xs font-mono font-medium ${
-                          call.outcome === 'BOOKED' ? 'text-amber' : 'text-text-secondary'
-                        }`}>
-                          {call.outcome}
-                        </span>
-                      </div>
-                      <div className="text-sm text-text-secondary mt-1">{call.summary}</div>
-                      <div className="flex gap-4 mt-2">
-                        <button className="text-xs text-amber flex items-center gap-1 hover:underline">
-                          <Play className="w-3 h-3" /> Listen
-                        </button>
-                        <button className="text-xs text-amber flex items-center gap-1 hover:underline">
-                          <FileText className="w-3 h-3" /> Transcript
-                        </button>
-                      </div>
-                    </div>
-                    <div className="text-sm text-text-muted font-mono">{call.duration}</div>
-                  </div>
-                ))}
-              </div>
-            </GlassCard>
-
-            {/* What's Working — TODO: wire who-converts + best-channel-mix when segment analytics API is available */}
+            {/* What's Working — PR4: insight is live, who-converts/channel-mix are mocks */}
             <GlassCard className="p-0 overflow-hidden">
               <div className="px-6 py-5 border-b border-border-subtle flex items-center justify-between">
                 <div className="flex items-center gap-2.5 text-sm font-semibold text-text-primary">
@@ -360,43 +308,31 @@ export default function DashboardPage() {
                 </div>
                 <span className="text-xs text-text-muted font-mono">Updated 2h ago</span>
               </div>
-              <div className="p-6">
-                {/* Insights Grid */}
-                <div className="grid grid-cols-2 gap-4 mb-5">
-                  <div className="bg-bg-elevated rounded-lg p-4">
-                    <div className="text-[11px] font-mono font-semibold uppercase tracking-wider text-text-muted mb-3">
-                      Who Converts
-                    </div>
-                    {mockInsights.whoConverts.map((item: { label: string; value: string }, i: number) => (
-                      <div key={i} className="flex justify-between items-center py-2">
-                        <span className="text-sm text-text-secondary">{item.label}</span>
-                        <span className="text-sm font-semibold font-mono text-amber">{item.value}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="bg-bg-elevated rounded-lg p-4">
-                    <div className="text-[11px] font-mono font-semibold uppercase tracking-wider text-text-muted mb-3">
-                      Best Channel Mix
-                    </div>
-                    {mockInsights.bestChannelMix.map((item: { label: string; value: string }, i: number) => (
-                      <div key={i} className="flex justify-between items-center py-2">
-                        <span className="text-sm text-text-secondary">{item.label}</span>
-                        <span className="text-sm font-semibold font-mono text-amber">{item.value}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+              <div className="p-6 space-y-5">
+                {/* Who-converts + channel-mix sub-panels — endpoints pending */}
+                <TodoMockPanel
+                  icon={<Lightbulb className="w-4 h-4" strokeWidth={1.6} />}
+                  eyebrow="Segment analytics"
+                  title="Who Converts + Best Channel Mix breakdowns pending"
+                  description="The segment analytics view requires a who-converts aggregation (industry / size buckets ranked by reply→meeting conversion) and a best-channel-mix aggregation (per-channel reply + meeting yield)."
+                  endpointsNeeded={[
+                    "GET /api/v1/insights/who-converts",
+                    "GET /api/v1/insights/channel-mix",
+                  ]}
+                />
 
-                {/* Discovery Banner — wired to useDashboardV4 insight */}
-                <div className="p-4 rounded-lg bg-amber-glow border border-amber/30">
-                  <div className="flex items-center gap-1.5 text-[11px] font-mono font-semibold uppercase tracking-wider text-amber mb-2">
-                    <Flame className="w-4 h-4" strokeWidth={1.5} />
-                    This Week's Discovery
+                {/* Discovery Banner — already wired to useDashboardV4 insight */}
+                {dashboardData?.insight.detail && (
+                  <div className="p-4 rounded-lg bg-amber-glow border border-amber/30">
+                    <div className="flex items-center gap-1.5 text-[11px] font-mono font-semibold uppercase tracking-wider text-amber mb-2">
+                      <Flame className="w-4 h-4" strokeWidth={1.5} />
+                      This Week's Discovery
+                    </div>
+                    <div className="text-sm text-text-primary leading-relaxed">
+                      {dashboardData.insight.detail}
+                    </div>
                   </div>
-                  <div className="text-sm text-text-primary leading-relaxed">
-                    {dashboardData?.insight.detail ?? mockInsights.discovery}
-                  </div>
-                </div>
+                )}
               </div>
             </GlassCard>
           </div>

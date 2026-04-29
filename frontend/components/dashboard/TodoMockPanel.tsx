@@ -8,10 +8,13 @@
  *
  * Each panel:
  *   - Shows a TODO · MOCK pill so demo viewers + CEO can tell at a
- *     glance that the surface is unwired
+ *     glance that the surface is unwired (hidden when hideBadge=true)
  *   - Names the missing endpoint(s) so a future PR can grep for it
  *   - Carries an optional eyebrow + icon to keep the slot visually
  *     coherent with the rest of the dashboard chrome
+ *
+ * hideBadge: pass true when IS_DEMO_MODE is active so investor demos
+ *   don't surface internal "TODO · MOCK" labels to external viewers.
  */
 
 "use client";
@@ -24,10 +27,11 @@ interface Props {
   title: string;             // Playfair-style headline
   description: string;       // body copy
   endpointsNeeded: string[]; // bullet list of pending endpoints
+  hideBadge?: boolean;       // when true, suppress the TODO · MOCK pill
 }
 
 export function TodoMockPanel({
-  icon, eyebrow, title, description, endpointsNeeded,
+  icon, eyebrow, title, description, endpointsNeeded, hideBadge = false,
 }: Props) {
   return (
     <div className="rounded-[10px] border border-dashed border-amber/40 bg-amber-soft px-5 py-5">
@@ -40,9 +44,11 @@ export function TodoMockPanel({
         <span className="font-mono text-[10px] tracking-[0.14em] uppercase font-semibold text-copper">
           {eyebrow}
         </span>
-        <span className="ml-auto font-mono text-[8px] tracking-[0.14em] uppercase text-amber bg-amber-soft border border-amber/40 rounded px-1.5 py-[1px]">
-          TODO · MOCK
-        </span>
+        {!hideBadge && (
+          <span className="ml-auto font-mono text-[8px] tracking-[0.14em] uppercase text-amber bg-amber-soft border border-amber/40 rounded px-1.5 py-[1px]">
+            TODO · MOCK
+          </span>
+        )}
       </div>
 
       <div className="font-display font-bold text-[18px] text-ink leading-snug">

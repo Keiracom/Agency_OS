@@ -3,15 +3,21 @@
 Usage:  python scripts/stage_subset_runner.py [--dry-run]
 """
 from __future__ import annotations
-import argparse, asyncio, json, logging, os, subprocess, sys
-from datetime import UTC, datetime
+
+import argparse
+import asyncio
+import json
+import logging
+import os
+import subprocess
+import sys
 
 import asyncpg
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from src.integrations.bright_data_client import BrightDataClient
-from src.intelligence.stage9_social import run_stage9_social
 from src.intelligence.enhanced_vr import run_stage10_vr_and_messaging
+from src.intelligence.stage9_social import run_stage9_social
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -103,7 +109,8 @@ async def _process_one(row: dict, bd: BrightDataClient, dry_run: bool,
 async def main(dry_run: bool) -> None:
     db_url = os.environ.get("DATABASE_URL", "").replace("postgresql+asyncpg://", "postgresql://")
     if not db_url:
-        logger.error("DATABASE_URL not set"); sys.exit(1)
+        logger.error("DATABASE_URL not set")
+        sys.exit(1)
 
     bd = BrightDataClient(api_key=os.environ.get("BRIGHTDATA_API_KEY", ""))
     conn = await asyncpg.connect(db_url, statement_cache_size=0)
@@ -117,7 +124,8 @@ async def main(dry_run: bool) -> None:
             rows.append(d)
         logger.info("Prospects matching filter: %d", len(rows))
         if not rows:
-            logger.info("Nothing to process."); return
+            logger.info("Nothing to process.")
+            return
 
         cost: list[float] = [0.0]
         processed = 0

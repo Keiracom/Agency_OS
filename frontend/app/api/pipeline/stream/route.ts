@@ -4,6 +4,8 @@
  * Sends initial 50 cards then polls every 5s for new arrivals
  */
 
+export const dynamic = "force-dynamic";
+
 import { createClient } from "@supabase/supabase-js";
 import type { ProspectCard, AffordabilityBand, IntentBand, VulnerabilityReport } from "@/lib/types/prospect-card";
 

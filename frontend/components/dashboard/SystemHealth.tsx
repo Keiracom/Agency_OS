@@ -9,14 +9,14 @@
 
 "use client";
 
-import { Mail, Linkedin, Phone, MessageSquare } from "lucide-react";
+import { Mail, Linkedin, Phone, MessageSquare, type LucideIcon } from "lucide-react";
 
 type HealthStatus = "ok" | "warn" | "error";
 
 interface ChannelHealth {
   id: string;
   label: string;
-  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  icon: LucideIcon;
   status: HealthStatus;
   detail: string;     // short subtitle, e.g. "98.2% delivered"
 }

@@ -68,7 +68,7 @@ export function MeetingsCalendar({ meetings, onOpen, isLoading }: Props) {
       list.push(row);
       m.set(key, list);
     }
-    for (const list of m.values()) {
+    for (const list of Array.from(m.values())) {
       list.sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
     }
     return m;

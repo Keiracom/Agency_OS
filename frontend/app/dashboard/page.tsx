@@ -46,6 +46,8 @@ import { SystemHealth } from "@/components/dashboard/SystemHealth";
 import { TodoMockPanel } from "@/components/dashboard/TodoMockPanel";
 import Link from "next/link";
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import api from "@/lib/api";
 
 // Channel icon component
 const ChannelIcon = ({ type }: { type: string }) => {
@@ -64,6 +66,21 @@ export default function DashboardPage() {
   const { data: dashboardData, isLoading: dashboardLoading } = useDashboardV4();
   const { activities: activityFeed, isLoading: activityLoading } = useLiveActivityFeed({ limit: 8 });
   const [drawerLeadId, setDrawerLeadId] = useState<string | null>(null);
+
+  // Demo mode — hide TODO · MOCK badges for investor-facing demos
+  const { data: demoModeData } = useQuery({
+    queryKey: ["demo-mode"],
+    queryFn: async () => {
+      try {
+        return await api.get<{ is_demo_mode: boolean }>("/api/v1/dashboard/demo-mode");
+      } catch {
+        return { is_demo_mode: false };
+      }
+    },
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+  const isDemoMode = demoModeData?.is_demo_mode ?? false;
 
   const meetingsBooked = dashboardData?.meetingsGoal.current ?? 0;
   const meetingsTarget = dashboardData?.meetingsGoal.target ?? 10;
@@ -210,6 +227,7 @@ export default function DashboardPage() {
                   "GET /api/v1/dashboard/touches?breakdown=channel",
                   "fields: email_count, linkedin_count, sms_count, voice_count, mail_count",
                 ]}
+                hideBadge={isDemoMode}
               />
             </GlassCard>
           </div>
@@ -297,6 +315,7 @@ export default function DashboardPage() {
                 "GET /api/v1/voice/recent?limit=10",
                 "fields: calls, connected, booked, connect_rate, recent[{ name, outcome, summary, duration_s, recording_url, transcript_url }]",
               ]}
+              hideBadge={isDemoMode}
             />
 
             {/* What's Working — PR4: insight is live, who-converts/channel-mix are mocks */}
@@ -319,6 +338,7 @@ export default function DashboardPage() {
                     "GET /api/v1/insights/who-converts",
                     "GET /api/v1/insights/channel-mix",
                   ]}
+                  hideBadge={isDemoMode}
                 />
 
                 {/* Discovery Banner — already wired to useDashboardV4 insight */}

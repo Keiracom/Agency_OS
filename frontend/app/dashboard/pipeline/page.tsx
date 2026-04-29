@@ -112,7 +112,6 @@ export default function PipelinePage() {
 
         {/* State-machine tabs */}
         <PipelineStateTabs
-          mode={mode}
           onChange={setMode}
           {...(mode === "review"
             ? {

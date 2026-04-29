@@ -52,8 +52,12 @@ Vendors inside it are replaced. The orchestrator improves.
 1. Verify ICP (2s)
 2. Generate campaign name — Claude Haiku (11s)
 3. Create draft campaign (1s)
-4. GMB discovery — Bright Data batched (4 min, 400+ records)
-   Captures all 14 fields including open_website → domain
+4. T0 — Multi-category discovery — DataForSEO domain_metrics_by_categories (4 min, 400+ records)
+   Source: src/pipeline/discovery.py — sweeps DFS domain_metrics_by_categories across all
+   category codes matching the agency's services. Returns domain + GMB-equivalent fields
+   (rating, review count, gmb_category) per business at $0.002/query.
+   Bright Data GMB scrape is NOT primary T0 — it appears later as T2 backfill (Section 5)
+   when T0 returns incomplete fields.
 5. Bulk insert to lead_pool (2s)
 6. business_universe ABN match — local Supabase JOIN (2s)
    NOT an API call. Query our own DB. Free and instant.
@@ -61,7 +65,7 @@ Vendors inside it are replaced. The orchestrator improves.
    (e.g. "Acme Digital" vs "ACME DIGITAL PTY LTD").
    Fuzzy/trigram matching needed — tracked separately.
 7. Bulk assign to campaign (2s)
-8. Bulk promote to leads with all GMB fields intact (2s)
+8. Bulk promote to leads with all captured fields intact (2s)
 9. Activate campaign (1s)
 10. Fire Flow B (async, fire and forget)
 
@@ -70,13 +74,13 @@ batch_size: 500 (not 100)
 No Clay budget cap. CLAY_MAX_PERCENTAGE is dead.
 
 Parallel architecture — fire simultaneously per lead:
-  GROUP A (all have domain from GMB, no dependencies):
+  GROUP A (all have domain from T0 DFS discovery, no dependencies):
     T1 — business_universe JOIN (local, free)
     T1.25 — ABR SearchByASIC (trading name, free)
     T1.5 — Bright Data LinkedIn Company
-    T2 — Bright Data GMB (full fields if not from T0)
+    T2 — Bright Data GMB scrape (full fields if T0 was incomplete — backfill only)
     T3 — Leadmagic email
-    T-DM0 — DataForSEO ad spend + DM discovery
+    T-DM0 — DataForSEO ad spend + DM discovery (separate DFS endpoint from T0)
     All six fire via asyncio.gather() simultaneously.
 
   THEN (depends on T1.5 LinkedIn company URL):
@@ -119,11 +123,11 @@ These are the only external services called in production.
 
 | Vendor                | Purpose                 | Env var               |
 |-----------------------|-------------------------|-----------------------|
-| Bright Data           | GMB, LinkedIn, scrape   | BRIGHTDATA_API_KEY    |
+| DataForSEO            | T0 multi-category discovery (domain_metrics_by_categories) + T-DM0 ad spend + DM signals | DATAFORSEO_LOGIN |
+|                       |                         | DATAFORSEO_PASSWORD   |
+| Bright Data           | T2 GMB backfill (gd_m8ebnr0q2qlklc02fz), T1.5 LinkedIn Company, T-DM2 LinkedIn Profile, generic web scrape | BRIGHTDATA_API_KEY |
 | ABR (data.gov.au)     | ABN + trading name      | ABN_LOOKUP_GUID       |
 | Leadmagic             | Email + mobile          | LEADMAGIC_API_KEY     |
-| DataForSEO            | Ad spend + DM signals   | DATAFORSEO_LOGIN      |
-|                       |                         | DATAFORSEO_PASSWORD   |
 | Jina AI Reader        | Web scrape (free)       | None required         |
 | Anthropic API         | Claude Haiku            | ANTHROPIC_API_KEY     |
 | Salesforge            | Email outreach          | Verify with Dave      |

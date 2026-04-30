@@ -44,6 +44,8 @@ import { HotReplies } from "@/components/dashboard/HotReplies";
 import { SystemHealth } from "@/components/dashboard/SystemHealth";
 // PR4 — placeholder for slots whose backend endpoints don't exist yet
 import { TodoMockPanel } from "@/components/dashboard/TodoMockPanel";
+// P3 — reusable section label (mono uppercase, ink-3)
+import { SectionLabel } from "@/components/dashboard/SectionLabel";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -115,17 +117,19 @@ export default function DashboardPage() {
           {/* v10 HOME SURFACES — BDR hero + today + funnel + attention */}
           <section className="mb-8 space-y-6">
             <HeroStrip />
-            <TodayStrip />
+
             <div>
-              <div className="text-[11px] font-mono uppercase tracking-[0.16em] text-gray-500 mb-2">
-                Cycle funnel
-              </div>
+              <SectionLabel className="mt-0 mb-2">Today&apos;s meetings</SectionLabel>
+              <TodayStrip />
+            </div>
+
+            <div>
+              <SectionLabel className="mt-0 mb-2">Cycle funnel</SectionLabel>
               <FunnelBar />
             </div>
+
             <div>
-              <div className="text-[11px] font-mono uppercase tracking-[0.16em] text-gray-500 mb-3">
-                Needs your attention
-              </div>
+              <SectionLabel className="mt-0 mb-3">Needs your attention</SectionLabel>
               <AttentionCards onLeadClick={(id) => setDrawerLeadId(id)} />
             </div>
           </section>

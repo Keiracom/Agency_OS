@@ -45,33 +45,37 @@ export default function MeetingsPage() {
 
   return (
     <AppShell pageTitle="Meetings">
-      <div className="min-h-screen bg-gray-950 text-gray-100 p-4 md:p-6">
-        <header className="mb-4">
-          <h1 className="font-serif text-2xl md:text-3xl text-gray-100">
-            Your week,{" "}
-            <em className="font-normal italic text-amber-300">
+      <div>
+        <header className="mb-6">
+          <h1 className="font-display font-bold text-[28px] md:text-[36px] text-ink leading-[1.06] tracking-[-0.02em]">
+            Your week,
+            <br />
+            <em className="text-amber" style={{ fontStyle: "italic" }}>
               {upcomingThisWeek.length}{" "}
               {upcomingThisWeek.length === 1 ? "meeting" : "meetings"}.
             </em>
           </h1>
-          <div className="flex items-start sm:items-center justify-between flex-col sm:flex-row gap-2">
-            <p className="text-sm text-gray-400">
-              Click any slot to open the prospect drawer.
+          <div className="flex items-start sm:items-center justify-between flex-col sm:flex-row gap-2 mt-3">
+            <p className="text-[13px] text-ink-3">
+              Click any calendar slot or row to open the briefing.
             </p>
-            <div className="inline-flex flex-wrap gap-1 rounded-lg border border-gray-800 bg-gray-900 p-0.5">
-              {(["drawer", "briefing"] as Surface[]).map((v) => (
-                <button
-                  key={v}
-                  onClick={() => setSurface(v)}
-                  className={`px-3 py-1 text-[10px] font-mono uppercase tracking-widest rounded-md ${
-                    surface === v
-                      ? "bg-amber-500/10 text-amber-300 border border-amber-500/40"
-                      : "text-gray-400 hover:text-gray-200"
-                  }`}
-                >
-                  {v}
-                </button>
-              ))}
+            <div className="inline-flex flex-wrap gap-1 rounded-md bg-surface p-[2px]">
+              {(["drawer", "briefing"] as Surface[]).map((v) => {
+                const isActive = surface === v;
+                return (
+                  <button
+                    key={v}
+                    onClick={() => setSurface(v)}
+                    className={`px-3.5 py-1.5 font-mono text-[11px] tracking-[0.06em] rounded-[4px] uppercase transition-colors ${
+                      isActive
+                        ? "bg-ink text-white font-semibold"
+                        : "text-ink-3 hover:text-ink"
+                    }`}
+                  >
+                    {v}
+                  </button>
+                );
+              })}
             </div>
           </div>
         </header>
@@ -83,53 +87,66 @@ export default function MeetingsPage() {
         />
 
         {/* Upcoming list */}
-        <section className="mt-6">
-          <div className="font-mono text-[10px] tracking-widest uppercase text-gray-500 mb-2">
+        <section className="mt-8">
+          <div className="font-mono text-[10px] tracking-[0.14em] uppercase text-ink-3 font-semibold mb-3">
             Upcoming this week
           </div>
           {upcomingThisWeek.length === 0 ? (
-            <div className="text-sm text-gray-500 italic py-4">
-              No meetings booked yet.
+            <div className="rounded-[10px] border border-dashed border-rule bg-surface px-5 py-5 text-[13px] text-ink-2">
+              <b className="text-ink">No meetings booked yet</b> — Maya is working on{" "}
+              {meetings.length > 0 ? `${meetings.length} prospect${meetings.length === 1 ? "" : "s"}` : "your prospects"}.
             </div>
           ) : (
-            <ul className="divide-y divide-gray-800 bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-              {upcomingThisWeek.map((m) => (
-                <li
-                  key={m.id}
-                  onClick={() => openMeeting(m.id)}
-                  className="px-4 py-3 flex items-center gap-3 cursor-pointer hover:bg-gray-800/60"
-                >
-                  {m.vrGrade && (
-                    <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/30">
-                      {m.vrGrade}
-                    </span>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm text-gray-100 truncate">
-                      {m.dmName} · <span className="text-gray-400">{m.company}</span>
+            <ul className="bg-panel border border-rule rounded-[10px] overflow-hidden divide-y divide-rule">
+              {upcomingThisWeek.map((m) => {
+                const dt = new Date(m.scheduledAt);
+                return (
+                  <li
+                    key={m.id}
+                    onClick={() => openMeeting(m.id)}
+                    className="px-4 py-3.5 flex items-center gap-3 cursor-pointer hover:bg-amber-soft transition-colors"
+                  >
+                    {m.vrGrade && (
+                      <span
+                        className="shrink-0 grid place-items-center w-7 h-7 rounded-[5px] font-display font-bold text-[14px]"
+                        style={{
+                          backgroundColor:
+                            m.vrGrade === "A" || m.vrGrade === "B" ? "var(--green)" :
+                            m.vrGrade === "C" ? "var(--amber)" :
+                            m.vrGrade === "D" ? "var(--copper)" :
+                            "var(--red)",
+                          color: m.vrGrade === "C" ? "var(--on-amber)" : "white",
+                        }}
+                      >
+                        {m.vrGrade}
+                      </span>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[14px] text-ink truncate">
+                        <span className="font-display font-bold">{m.dmName}</span>
+                        <span className="text-ink-3"> · {m.company}</span>
+                      </div>
+                      {m.dmTitle && (
+                        <div className="text-[12px] text-ink-3 truncate">{m.dmTitle}</div>
+                      )}
                     </div>
-                    <div className="text-xs text-gray-500 truncate">
-                      {m.dmTitle ?? ""}
+                    <div className="text-[11.5px] text-ink-3 font-mono shrink-0 text-right">
+                      {dt.toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                      {" · "}
+                      {dt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
                     </div>
-                  </div>
-                  <div className="text-xs text-gray-400 font-mono shrink-0">
-                    {new Date(m.scheduledAt).toLocaleDateString(undefined, {
-                      month: "short", day: "numeric",
-                    })}
-                    {" · "}
-                    {new Date(m.scheduledAt).toLocaleTimeString([], {
-                      hour: "numeric", minute: "2-digit",
-                    })}
-                  </div>
-                </li>
-              ))}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>
 
-        <nav className="mt-6 text-xs text-gray-500 font-mono flex gap-3">
-          <Link href="/dashboard" className="hover:text-gray-300">← Home</Link>
-          <Link href="/dashboard/pipeline" className="hover:text-gray-300">
+        <nav className="mt-6 text-[11px] font-mono text-ink-3 flex gap-3 pt-4 border-t border-rule">
+          <Link href="/dashboard" className="hover:text-copper transition-colors">
+            ← Home
+          </Link>
+          <Link href="/dashboard/pipeline" className="hover:text-copper transition-colors">
             Pipeline →
           </Link>
         </nav>

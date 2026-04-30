@@ -6,7 +6,6 @@
  */
 
 // Navigation & Layout
-export { Sidebar, type PageKey } from "./Sidebar";
 export { 
   Header, 
   type HeaderProps, 
@@ -35,7 +34,6 @@ export {
 } from "./GlobalSearch";
 
 // Stats & Metrics
-export { StatsGrid, StatCard } from "./StatsGrid";
 
 // Campaigns
 export {
@@ -74,9 +72,6 @@ export {
 } from "./CampaignWizard";
 
 // Activity
-export { ActivityTicker } from "./ActivityTicker";
-export { LiveActivityFeed } from "./LiveActivityFeed";
-export { ActivityFeed } from "./ActivityFeed";
 
 // Leads
 export { LeadTable } from "./LeadTable";
@@ -119,7 +114,6 @@ export {
 } from "./QuickActions";
 
 // Settings
-export { SettingsPanel } from "./SettingsPanel";
 
 // Channel Integrations
 export { ChannelIntegrations, type ChannelIntegrationsProps } from "./ChannelIntegrations";
@@ -128,7 +122,6 @@ export { ChannelIntegrations, type ChannelIntegrationsProps } from "./ChannelInt
 export { default as BillingPage } from "./BillingPage";
 
 // Reports & Analytics
-export { ReportsView } from "./ReportsView";
 
 // Replies & Inbox
 export { RepliesInbox } from "./RepliesInbox";
@@ -142,18 +135,11 @@ export type {
 } from "./RepliesInbox";
 export type { ConversationDetail } from "./ReplyDetail";
 
-// Main Dashboard View
-export { DashboardMain } from "./DashboardMain";
-export type { 
-  DashboardMainProps,
-} from "./DashboardMain";
-
 // Existing components (from previous implementation)
 export { BestOfShowcase } from "./BestOfShowcase";
 export { CapacityGauge } from "./CapacityGauge";
 export { CoPilotView } from "./CoPilotView";
 export { EmergencyPauseButton } from "./EmergencyPauseButton";
-export { HeroMetricsCard } from "./HeroMetricsCard";
 export { OnTrackIndicator } from "./OnTrackIndicator";
 
 // Re-export hook types for convenience

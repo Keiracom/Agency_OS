@@ -7,6 +7,15 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Honor users who opt out of motion at the OS level. Mirrors the
+   /demo prototype (frontend/landing/demo/index.html line 14). */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    transition-duration: .01ms !important;
+  }
+}
+
 @layer base {
   :root {
     /* =================================================

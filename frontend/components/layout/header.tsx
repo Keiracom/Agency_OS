@@ -26,6 +26,7 @@ import { createBrowserClient } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { getInitials, getAvatarColor } from "@/lib/utils";
 import { CreditsBadge } from "./credits-badge";
+import { ThemeToggle } from "./theme-toggle";
 import { EmergencyPauseButton } from "@/components/dashboard/EmergencyPauseButton";
 
 interface HeaderProps {
@@ -131,6 +132,9 @@ export function Header({ title = "Dashboard", user, client, onOpenMenu }: Header
             onPauseChange={setIsPaused}
           />
         )}
+
+        {/* Theme toggle (sun ↔ moon) — A2 dark-mode dispatch */}
+        <ThemeToggle />
 
         {/* Credits Badge */}
         <div className="hidden md:block">

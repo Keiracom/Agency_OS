@@ -44,8 +44,24 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // A2 dark-mode anti-flash. Runs synchronously before any paint so
+  // the html element gets `.dark` set (or unset) before React renders
+  // — no flicker between server-default light and the user's saved
+  // preference. Mirrors the /demo prototype pattern.
+  const themeBootScript = `
+    try {
+      var t = localStorage.getItem('agencyos_theme');
+      if (t === 'dark' || (!t && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+      }
+    } catch (e) {}
+  `;
+
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
+      </head>
       {/* Fonts loaded via @import in globals.css */}
       <body className={`${dmSans.variable} ${jetbrainsMono.variable} ${playfair.variable} font-sans bg-cream text-ink`}>
         <Providers>{children}</Providers>

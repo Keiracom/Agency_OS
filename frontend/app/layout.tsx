@@ -44,8 +44,23 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // A4 sidebar pre-paint — read agencyos_sidebar from localStorage
+  // synchronously and stamp [data-sidebar="collapsed"] on <html>
+  // before any paint, so the layout doesn't snap from 232px → 72px
+  // (or vice versa) after hydration.
+  const sidebarBootScript = `
+    try {
+      if (localStorage.getItem('agencyos_sidebar') === 'collapsed') {
+        document.documentElement.setAttribute('data-sidebar', 'collapsed');
+      }
+    } catch (e) {}
+  `;
+
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: sidebarBootScript }} />
+      </head>
       {/* Fonts loaded via @import in globals.css */}
       <body className={`${dmSans.variable} ${jetbrainsMono.variable} ${playfair.variable} font-sans bg-cream text-ink`}>
         <Providers>{children}</Providers>

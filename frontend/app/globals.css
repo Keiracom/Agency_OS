@@ -50,6 +50,11 @@
 
     /* Layout dimensions (PR1 — match prototype) */
     --sidebar-w:  232px;
+    --sidebar-collapsed-w: 72px;
+    /* Current sidebar width, toggled by [data-sidebar="collapsed"]
+       on <html>. Drives both the <aside> width and the main column's
+       left padding so they never desync. */
+    --sidebar-current-w: var(--sidebar-w);
     --topbar-h:   56px;
     --bottomnav-h: 60px;
 
@@ -113,6 +118,12 @@
     --chart-3: 25 50% 52%;
     --chart-4: 25 50% 45%;
     --chart-5: 25 50% 38%;
+  }
+
+  /* A4 sidebar collapse — overrides --sidebar-current-w so first
+     paint renders at the correct width even before React hydrates. */
+  html[data-sidebar="collapsed"] {
+    --sidebar-current-w: var(--sidebar-collapsed-w);
   }
 
   html.dark {

@@ -11,6 +11,7 @@
 // Force dynamic for entire dashboard segment
 export const dynamic = "force-dynamic";
 
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getCurrentUser, getUserMemberships } from "@/lib/supabase-server";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
@@ -19,11 +20,80 @@ import { KillSwitch } from "@/components/dashboard/KillSwitch";
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
 import { DemoModeBanner } from "@/components/dashboard/DemoModeBanner";
 
+const DEMO_COOKIE = "agency_os_demo";
+const DEMO_CLIENT_NAME = "Demo Agency";
+
+/** Demo-mode bypass — when the agency_os_demo cookie is set the
+ *  dashboard renders without a Supabase session. The shell uses the
+ *  Demo Agency client row (created by scripts/seed_demo_tenant.py)
+ *  for client context; falls back to a static stub when the row is
+ *  unreachable so the demo never hard-fails. */
+async function loadDemoContext() {
+  let clientDataForLayout: {
+    id: string; name: string; tier: string;
+    creditsRemaining: number;
+    pausedAt: string | null; pauseReason: string | null;
+  } = {
+    id: "demo-agency", name: DEMO_CLIENT_NAME, tier: "ignition",
+    creditsRemaining: 1250, pausedAt: null, pauseReason: null,
+  };
+  try {
+    const supabase = await createServerClient();
+    const { data: row } = (await supabase
+      .from("clients")
+      .select("id, name, tier, credits_remaining, paused_at, pause_reason")
+      .eq("name", DEMO_CLIENT_NAME)
+      .is("deleted_at", null)
+      .maybeSingle()) as {
+        data: {
+          id: string; name: string; tier: string;
+          credits_remaining: number;
+          paused_at: string | null; pause_reason: string | null;
+        } | null;
+      };
+    if (row) {
+      clientDataForLayout = {
+        id: row.id, name: row.name, tier: row.tier,
+        creditsRemaining: row.credits_remaining ?? 0,
+        pausedAt: row.paused_at, pauseReason: row.pause_reason,
+      };
+    }
+  } catch {
+    // Fall through to stub client; the dashboard still renders.
+  }
+  return {
+    userData: {
+      email:    "demo@keiracom.com",
+      fullName: "Demo Investor",
+      avatarUrl: undefined as string | undefined,
+    },
+    clientDataForLayout,
+  };
+}
+
 export default async function DashboardRootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // Demo-mode short-circuit — middleware bypasses auth for the
+  // agency_os_demo=true cookie; this server layout must do the same
+  // or the three redirects below fire before render.
+  const demoCookie = cookies().get(DEMO_COOKIE)?.value;
+  if (demoCookie === "true") {
+    const { userData, clientDataForLayout } = await loadDemoContext();
+    return (
+      <DashboardLayout user={userData} client={clientDataForLayout}>
+        <DemoModeBanner />
+        <KillSwitch />
+        <div className="flex min-h-screen">
+          <DashboardNav />
+          <div className="flex-1 min-w-0 pt-14 md:pt-0">{children}</div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   const user = await getCurrentUser();
 
   if (!user) {

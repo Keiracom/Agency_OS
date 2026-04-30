@@ -40,7 +40,7 @@ export function ConversationList({
             <div className="flex justify-between items-start mb-1.5">
               <div className="flex items-center gap-1.5 font-semibold text-sm text-slate-800">
                 {isUnread && (
-                  <span className="w-2 h-2 rounded-full bg-bg-elevated flex-shrink-0" />
+                  <span className="w-2 h-2 rounded-full bg-panel flex-shrink-0" />
                 )}
                 <span>{conversation.leadName}</span>
               </div>

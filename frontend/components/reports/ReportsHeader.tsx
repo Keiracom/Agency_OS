@@ -15,7 +15,7 @@ interface ReportsHeaderProps {
 
 export function ReportsHeader({ selectedRange, onRangeChange }: ReportsHeaderProps) {
   return (
-    <header className="bg-bg-surface border-b border-default px-8 py-4 flex items-center justify-between">
+    <header className="bg-panel border-b border-default px-8 py-4 flex items-center justify-between">
       <div className="flex items-center gap-6">
         <div>
           <h1 className="text-sm font-semibold text-ink">Analytics Terminal</h1>
@@ -29,7 +29,7 @@ export function ReportsHeader({ selectedRange, onRangeChange }: ReportsHeaderPro
               className={`px-4 py-2 text-[13px] font-medium rounded-md transition-all ${
                 selectedRange === opt.value
                   ? "bg-[#D4956A] text-ink"
-                  : "text-ink-3 hover:text-ink-2 hover:bg-bg-elevated"
+                  : "text-ink-3 hover:text-ink-2 hover:bg-panel"
               }`}
             >
               {opt.label}
@@ -38,7 +38,7 @@ export function ReportsHeader({ selectedRange, onRangeChange }: ReportsHeaderPro
         </div>
       </div>
       <div className="flex gap-3">
-        <button className="flex items-center gap-2 px-4 py-2.5 text-[13px] font-medium text-ink-2 bg-transparent border border-default rounded-lg hover:bg-bg-elevated hover:border-[#3A3A50] transition-all">
+        <button className="flex items-center gap-2 px-4 py-2.5 text-[13px] font-medium text-ink-2 bg-transparent border border-default rounded-lg hover:bg-panel hover:border-[#3A3A50] transition-all">
           <Download className="w-4 h-4" />
           CSV
         </button>

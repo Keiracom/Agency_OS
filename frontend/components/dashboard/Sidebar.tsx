@@ -184,7 +184,7 @@ export function Sidebar({
           className={`
             absolute -right-3 top-1/2 -translate-y-1/2
             w-6 h-6 rounded-full
-            bg-bg-surface border border-white/20
+            bg-panel border border-white/20
             flex items-center justify-center
             text-ink-2 hover:text-ink hover:bg-slate-700
             transition-all duration-200
@@ -215,9 +215,9 @@ export function Sidebar({
               py-2.5 rounded-lg text-sm font-medium 
               transition-all duration-200 transform
               ${activePage === item.key
-                ? "bg-bg-elevated/80 text-ink shadow-lg shadow-amber/30 scale-100 backdrop-blur-sm"
+                ? "bg-panel/80 text-ink shadow-lg shadow-amber/30 scale-100 backdrop-blur-sm"
                 : clickedItem === item.key
-                ? "bg-bg-elevated/60 text-ink scale-95"
+                ? "bg-panel/60 text-ink scale-95"
                 : "text-ink-2 hover:text-ink hover:bg-bg-panel/10 hover:scale-[1.02] active:scale-95"
               }
             `}
@@ -234,7 +234,7 @@ export function Sidebar({
                   <span
                     className={`px-2 py-0.5 rounded-full text-xs transition-all duration-200 ${
                       activePage === item.key
-                        ? "bg-bg-elevated/50 text-ink"
+                        ? "bg-panel/50 text-ink"
                         : "bg-bg-panel/10 text-ink-2 border border-white/10"
                     } ${clickedItem === item.key ? "scale-110" : ""}`}
                   >
@@ -245,7 +245,7 @@ export function Sidebar({
             )}
             {/* Badge indicator when collapsed */}
             {collapsed && item.badge && (
-              <span className="absolute top-1 right-1 w-2 h-2 bg-bg-elevated rounded-full" />
+              <span className="absolute top-1 right-1 w-2 h-2 bg-panel rounded-full" />
             )}
           </Link>
         ))}

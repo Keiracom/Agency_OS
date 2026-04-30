@@ -51,8 +51,8 @@ export interface Recommendation {
 export const statusStyles: Record<CampaignStatus, { bg: string; text: string; dot: string }> = {
   active: { bg: 'bg-emerald-50', text: 'text-emerald-600', dot: '●' },
   paused: { bg: 'bg-amber-50', text: 'text-amber-600', dot: '◐' },
-  draft: { bg: 'bg-slate-100', text: 'text-text-muted', dot: '○' },
-  complete: { bg: 'bg-bg-surface', text: 'text-text-secondary', dot: '✓' },
+  draft: { bg: 'bg-slate-100', text: 'text-ink-3', dot: '○' },
+  complete: { bg: 'bg-panel', text: 'text-ink-2', dot: '✓' },
 };
 
 // Mock campaign data (from HTML prototype)

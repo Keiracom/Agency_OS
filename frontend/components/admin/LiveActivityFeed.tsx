@@ -79,7 +79,7 @@ export function LiveActivityFeed({
   const getChannelColor = (channel?: Activity["channel"]) => {
     switch (channel) {
       case "email":
-        return "bg-bg-elevated/10 text-ink-2";
+        return "bg-panel/10 text-ink-2";
       case "sms":
         return "bg-amber/10 text-amber";
       case "linkedin":

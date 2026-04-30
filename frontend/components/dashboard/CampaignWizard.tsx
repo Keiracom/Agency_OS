@@ -432,7 +432,7 @@ function StepAudience({
                       className={`px-3 py-1.5 text-xs font-medium rounded-md border transition-colors ${
                         option.selected
                           ? "bg-amber/20 border-amber/50 text-amber"
-                          : "bg-bg-surface/60 border-white/10 text-ink-2 hover:bg-slate-700/60"
+                          : "bg-panel/60 border-white/10 text-ink-2 hover:bg-slate-700/60"
                       }`}
                     >
                       {option.label}
@@ -547,7 +547,7 @@ function StepChannels({
 
                 return (
                   <div key={`${step.type}-${step.day}`} className="flex items-center gap-2">
-                    <div className={`flex items-center gap-2 px-3 py-2 bg-bg-surface/60 border border-white/10 ${borderColor} border-l-2 rounded-lg`}>
+                    <div className={`flex items-center gap-2 px-3 py-2 bg-panel/60 border border-white/10 ${borderColor} border-l-2 rounded-lg`}>
                       <Icon className="w-4 h-4 text-ink-2" />
                       <span className="text-xs text-ink-2">Day {step.day}</span>
                     </div>
@@ -636,7 +636,7 @@ function StepMessaging({
                   className={`px-4 py-2 text-sm font-medium rounded-lg border transition-colors ${
                     isSelected
                       ? "bg-amber/20 border-amber/50 text-amber"
-                      : "bg-slate-950/40 border-white/10 text-ink-2 hover:bg-bg-surface/60"
+                      : "bg-slate-950/40 border-white/10 text-ink-2 hover:bg-panel/60"
                   }`}
                 >
                   {prop}
@@ -692,7 +692,7 @@ function StepMessaging({
         {/* AI Preview */}
         {state.messageGeneration === "ai" && (
           <div className="bg-slate-950/40 border border-white/10 rounded-xl overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-4 bg-bg-surface/40 border-b border-white/10">
+            <div className="flex items-center justify-between px-5 py-4 bg-panel/40 border-b border-white/10">
               <div className="flex items-center gap-2 text-sm font-semibold text-ink">
                 <Eye className="w-4 h-4 text-amber" />
                 First Touch Preview
@@ -724,12 +724,12 @@ function StepMessaging({
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3 px-5 py-4 bg-bg-surface/40 border-t border-white/10">
-              <button className="flex items-center gap-2 px-4 py-2 bg-slate-700/60 hover:bg-bg-elevated/60 border border-white/10 rounded-lg text-sm text-ink-2 transition-colors">
+            <div className="flex items-center gap-3 px-5 py-4 bg-panel/40 border-t border-white/10">
+              <button className="flex items-center gap-2 px-4 py-2 bg-slate-700/60 hover:bg-panel/60 border border-white/10 rounded-lg text-sm text-ink-2 transition-colors">
                 <RefreshCw className="w-4 h-4" />
                 Regenerate
               </button>
-              <button className="flex items-center gap-2 px-4 py-2 bg-slate-700/60 hover:bg-bg-elevated/60 border border-white/10 rounded-lg text-sm text-ink-2 transition-colors">
+              <button className="flex items-center gap-2 px-4 py-2 bg-slate-700/60 hover:bg-panel/60 border border-white/10 rounded-lg text-sm text-ink-2 transition-colors">
                 <Edit2 className="w-4 h-4" />
                 Edit
               </button>
@@ -814,7 +814,7 @@ function StepReview({
                 return (
                   <span
                     key={channel}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 bg-bg-surface/60 rounded-lg text-xs font-medium text-ink-2"
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 bg-panel/60 rounded-lg text-xs font-medium text-ink-2"
                   >
                     <Icon className="w-3.5 h-3.5" />
                     {config.label}
@@ -1040,7 +1040,7 @@ export function CampaignWizard({ onBack, onComplete, isSubmitting = false }: Cam
           {currentStep > 1 ? (
             <button
               onClick={prevStep}
-              className="flex items-center gap-2 px-5 py-2.5 bg-bg-surface/60 hover:bg-slate-700/60 border border-white/10 rounded-lg text-sm text-ink transition-colors"
+              className="flex items-center gap-2 px-5 py-2.5 bg-panel/60 hover:bg-slate-700/60 border border-white/10 rounded-lg text-sm text-ink transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
               Back

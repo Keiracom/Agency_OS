@@ -14,7 +14,7 @@ function MessageBubble({ message }: { message: Message }) {
       <div
         className={`px-4 py-3.5 rounded-2xl text-sm leading-relaxed ${
           isSent
-            ? 'bg-bg-elevated text-ink rounded-br-sm'
+            ? 'bg-panel text-ink rounded-br-sm'
             : 'bg-bg-panel border border-slate-200 text-slate-700 rounded-bl-sm'
         }`}
       >
@@ -45,7 +45,7 @@ function AISuggestedReply({ suggestedReply }: { suggestedReply: string }) {
       </div>
       
       <div className="flex gap-2.5">
-        <button className="flex items-center gap-2 px-5 py-2.5 bg-bg-elevated text-ink rounded-lg text-sm font-semibold hover:bg-bg-elevated transition-colors">
+        <button className="flex items-center gap-2 px-5 py-2.5 bg-panel text-ink rounded-lg text-sm font-semibold hover:bg-panel transition-colors">
           Send
         </button>
         <button className="flex items-center gap-2 px-5 py-2.5 bg-bg-panel border border-slate-200 text-ink-3 rounded-lg text-sm font-semibold hover:bg-slate-50 transition-colors">

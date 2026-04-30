@@ -128,7 +128,7 @@ const initialIntegrations: Integration[] = [
     name: "LinkedIn",
     icon: <Briefcase className="w-5 h-5" />,
     status: "connected",
-    colorClass: "bg-bg-elevated/15 text-ink-2",
+    colorClass: "bg-panel/15 text-ink-2",
   },
   {
     id: "sms",
@@ -198,7 +198,7 @@ function TagInput({
   };
 
   return (
-    <div className="min-h-[48px] p-2 bg-bg-elevated border border-default rounded-lg flex flex-wrap gap-2 focus-within:border-amber focus-within:ring-2 focus-within:ring-amber/20 transition-all">
+    <div className="min-h-[48px] p-2 bg-panel border border-default rounded-lg flex flex-wrap gap-2 focus-within:border-amber focus-within:ring-2 focus-within:ring-amber/20 transition-all">
       {tags.map((tag) => (
         <span
           key={tag.id}
@@ -239,7 +239,7 @@ function Toggle({
       className={`w-12 h-6 rounded-full relative transition-all duration-200 ${
         enabled
           ? "bg-amber"
-          : "bg-bg-elevated border border-default"
+          : "bg-panel border border-default"
       }`}
     >
       <span
@@ -384,7 +384,7 @@ export function SettingsPanel() {
   return (
     <div className="min-h-screen bg-bg-cream text-ink">
       {/* Header */}
-      <header className="bg-bg-surface/80 backdrop-blur-xl border-b border-default px-8 py-5">
+      <header className="bg-panel/80 backdrop-blur-xl border-b border-default px-8 py-5">
         <h1 className="text-xl font-bold">Settings</h1>
         <p className="text-sm text-ink-3 mt-1">
           Manage your account, ICP, and integrations
@@ -393,7 +393,7 @@ export function SettingsPanel() {
 
       <div className="max-w-4xl mx-auto px-8 py-8">
         {/* Tabs */}
-        <div className="inline-flex gap-1 p-1.5 bg-bg-surface/80 backdrop-blur-xl rounded-xl border border-default mb-8">
+        <div className="inline-flex gap-1 p-1.5 bg-panel/80 backdrop-blur-xl rounded-xl border border-default mb-8">
           {TABS.map((tab) => (
             <button
               key={tab.key}
@@ -401,7 +401,7 @@ export function SettingsPanel() {
               className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg transition-all ${
                 activeTab === tab.key
                   ? "bg-amber/15 text-amber"
-                  : "text-ink-3 hover:text-ink-2 hover:bg-bg-elevated"
+                  : "text-ink-3 hover:text-ink-2 hover:bg-panel"
               }`}
             >
               {tab.icon}
@@ -414,7 +414,7 @@ export function SettingsPanel() {
         {activeTab === "profile" && (
           <div className="space-y-6">
             {/* Profile Card */}
-            <div className="bg-bg-surface/60 backdrop-blur-xl border border-default rounded-xl overflow-hidden">
+            <div className="bg-panel/60 backdrop-blur-xl border border-default rounded-xl overflow-hidden">
               <div className="px-6 py-4 border-b border-default flex items-center gap-3">
                 <User className="w-5 h-5 text-amber" />
                 <span className="font-semibold">Profile Information</span>
@@ -448,7 +448,7 @@ export function SettingsPanel() {
                       type="text"
                       value={profile.firstName}
                       onChange={(e) => handleProfileChange("firstName", e.target.value)}
-                      className="w-full px-4 py-3 bg-bg-elevated border border-default rounded-lg text-ink text-sm focus:border-amber focus:ring-2 focus:ring-amber/20 outline-none transition-all"
+                      className="w-full px-4 py-3 bg-panel border border-default rounded-lg text-ink text-sm focus:border-amber focus:ring-2 focus:ring-amber/20 outline-none transition-all"
                     />
                   </div>
                   <div className="space-y-2">
@@ -457,7 +457,7 @@ export function SettingsPanel() {
                       type="text"
                       value={profile.lastName}
                       onChange={(e) => handleProfileChange("lastName", e.target.value)}
-                      className="w-full px-4 py-3 bg-bg-elevated border border-default rounded-lg text-ink text-sm focus:border-amber focus:ring-2 focus:ring-amber/20 outline-none transition-all"
+                      className="w-full px-4 py-3 bg-panel border border-default rounded-lg text-ink text-sm focus:border-amber focus:ring-2 focus:ring-amber/20 outline-none transition-all"
                     />
                   </div>
                   <div className="space-y-2">
@@ -466,7 +466,7 @@ export function SettingsPanel() {
                       type="email"
                       value={profile.email}
                       onChange={(e) => handleProfileChange("email", e.target.value)}
-                      className="w-full px-4 py-3 bg-bg-elevated border border-default rounded-lg text-ink text-sm focus:border-amber focus:ring-2 focus:ring-amber/20 outline-none transition-all"
+                      className="w-full px-4 py-3 bg-panel border border-default rounded-lg text-ink text-sm focus:border-amber focus:ring-2 focus:ring-amber/20 outline-none transition-all"
                     />
                   </div>
                   <div className="space-y-2">
@@ -475,7 +475,7 @@ export function SettingsPanel() {
                       type="tel"
                       value={profile.phone}
                       onChange={(e) => handleProfileChange("phone", e.target.value)}
-                      className="w-full px-4 py-3 bg-bg-elevated border border-default rounded-lg text-ink text-sm focus:border-amber focus:ring-2 focus:ring-amber/20 outline-none transition-all"
+                      className="w-full px-4 py-3 bg-panel border border-default rounded-lg text-ink text-sm focus:border-amber focus:ring-2 focus:ring-amber/20 outline-none transition-all"
                     />
                   </div>
                   <div className="space-y-2">
@@ -484,7 +484,7 @@ export function SettingsPanel() {
                       type="text"
                       value={profile.company}
                       onChange={(e) => handleProfileChange("company", e.target.value)}
-                      className="w-full px-4 py-3 bg-bg-elevated border border-default rounded-lg text-ink text-sm focus:border-amber focus:ring-2 focus:ring-amber/20 outline-none transition-all"
+                      className="w-full px-4 py-3 bg-panel border border-default rounded-lg text-ink text-sm focus:border-amber focus:ring-2 focus:ring-amber/20 outline-none transition-all"
                     />
                   </div>
                   <div className="space-y-2">
@@ -492,7 +492,7 @@ export function SettingsPanel() {
                     <select
                       value={profile.timezone}
                       onChange={(e) => handleProfileChange("timezone", e.target.value)}
-                      className="w-full px-4 py-3 bg-bg-elevated border border-default rounded-lg text-ink text-sm focus:border-amber focus:ring-2 focus:ring-amber/20 outline-none transition-all cursor-pointer"
+                      className="w-full px-4 py-3 bg-panel border border-default rounded-lg text-ink text-sm focus:border-amber focus:ring-2 focus:ring-amber/20 outline-none transition-all cursor-pointer"
                     >
                       {TIMEZONES.map((tz) => (
                         <option key={tz} value={tz}>{tz}</option>
@@ -503,7 +503,7 @@ export function SettingsPanel() {
 
                 {/* Actions */}
                 <div className="flex justify-end gap-3 mt-6 pt-6 border-t border-default">
-                  <button className="px-5 py-2.5 text-sm font-medium text-ink-2 border border-default rounded-lg hover:bg-bg-elevated transition-all">
+                  <button className="px-5 py-2.5 text-sm font-medium text-ink-2 border border-default rounded-lg hover:bg-panel transition-all">
                     Cancel
                   </button>
                   <button className="px-5 py-2.5 text-sm font-medium bg-amber text-ink rounded-lg hover:bg-amber transition-all">
@@ -514,13 +514,13 @@ export function SettingsPanel() {
             </div>
 
             {/* API Keys Card */}
-            <div className="bg-bg-surface/60 backdrop-blur-xl border border-default rounded-xl overflow-hidden">
+            <div className="bg-panel/60 backdrop-blur-xl border border-default rounded-xl overflow-hidden">
               <div className="px-6 py-4 border-b border-default flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <Key className="w-5 h-5 text-amber" />
                   <span className="font-semibold">API Keys</span>
                 </div>
-                <button className="flex items-center gap-2 px-4 py-2 text-xs font-medium text-ink-2 border border-default rounded-lg hover:bg-bg-elevated transition-all">
+                <button className="flex items-center gap-2 px-4 py-2 text-xs font-medium text-ink-2 border border-default rounded-lg hover:bg-panel transition-all">
                   <Plus className="w-3 h-3" />
                   Generate New Key
                 </button>
@@ -532,7 +532,7 @@ export function SettingsPanel() {
                 ].map((key) => (
                   <div
                     key={key.name}
-                    className="flex items-center justify-between p-4 bg-bg-elevated rounded-lg"
+                    className="flex items-center justify-between p-4 bg-panel rounded-lg"
                   >
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 bg-amber/15 rounded-lg flex items-center justify-center">
@@ -544,10 +544,10 @@ export function SettingsPanel() {
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      <button className="px-3 py-1.5 text-xs font-medium text-ink-2 bg-bg-elevated rounded-md hover:bg-[#2A2A3D] transition-all">
+                      <button className="px-3 py-1.5 text-xs font-medium text-ink-2 bg-panel rounded-md hover:bg-[#2A2A3D] transition-all">
                         Copy
                       </button>
-                      <button className="px-3 py-1.5 text-xs font-medium text-ink-2 bg-bg-elevated rounded-md hover:bg-[#2A2A3D] transition-all">
+                      <button className="px-3 py-1.5 text-xs font-medium text-ink-2 bg-panel rounded-md hover:bg-[#2A2A3D] transition-all">
                         Regenerate
                       </button>
                     </div>
@@ -579,7 +579,7 @@ export function SettingsPanel() {
         {/* ICP Tab */}
         {activeTab === "icp" && (
           <div className="space-y-6">
-            <div className="bg-bg-surface/60 backdrop-blur-xl border border-default rounded-xl overflow-hidden">
+            <div className="bg-panel/60 backdrop-blur-xl border border-default rounded-xl overflow-hidden">
               <div className="px-6 py-4 border-b border-default flex items-center gap-3">
                 <Target className="w-5 h-5 text-amber" />
                 <span className="font-semibold">Ideal Customer Profile</span>
@@ -613,7 +613,7 @@ export function SettingsPanel() {
                   <select
                     value={icp.companySize}
                     onChange={(e) => setIcp((prev) => ({ ...prev, companySize: e.target.value }))}
-                    className="w-full px-4 py-3 bg-bg-elevated border border-default rounded-lg text-ink text-sm focus:border-amber focus:ring-2 focus:ring-amber/20 outline-none transition-all cursor-pointer"
+                    className="w-full px-4 py-3 bg-panel border border-default rounded-lg text-ink text-sm focus:border-amber focus:ring-2 focus:ring-amber/20 outline-none transition-all cursor-pointer"
                   >
                     {COMPANY_SIZES.map((size) => (
                       <option key={size} value={size}>{size}</option>
@@ -648,7 +648,7 @@ export function SettingsPanel() {
 
                 {/* Actions */}
                 <div className="flex justify-end gap-3 pt-6 border-t border-default">
-                  <button className="px-5 py-2.5 text-sm font-medium text-ink-2 border border-default rounded-lg hover:bg-bg-elevated transition-all">
+                  <button className="px-5 py-2.5 text-sm font-medium text-ink-2 border border-default rounded-lg hover:bg-panel transition-all">
                     Reset to Defaults
                   </button>
                   <button className="px-5 py-2.5 text-sm font-medium bg-amber text-ink rounded-lg hover:bg-amber transition-all">
@@ -663,7 +663,7 @@ export function SettingsPanel() {
         {/* Integrations Tab */}
         {activeTab === "integrations" && (
           <div className="space-y-6">
-            <div className="bg-bg-surface/60 backdrop-blur-xl border border-default rounded-xl overflow-hidden">
+            <div className="bg-panel/60 backdrop-blur-xl border border-default rounded-xl overflow-hidden">
               <div className="px-6 py-4 border-b border-default flex items-center gap-3">
                 <Link2 className="w-5 h-5 text-amber" />
                 <span className="font-semibold">Connected Services</span>
@@ -671,8 +671,8 @@ export function SettingsPanel() {
               <div className="p-6">
                 {/* LinkedIn Status Highlight (per requirement) */}
                 {linkedInStatus === "connected" && (
-                  <div className="mb-6 p-4 bg-bg-elevated/10 border border-default/20 rounded-lg flex items-center gap-3">
-                    <div className="w-10 h-10 bg-bg-elevated/20 rounded-lg flex items-center justify-center">
+                  <div className="mb-6 p-4 bg-panel/10 border border-default/20 rounded-lg flex items-center gap-3">
+                    <div className="w-10 h-10 bg-panel/20 rounded-lg flex items-center justify-center">
                       <Briefcase className="w-5 h-5 text-ink-2" />
                     </div>
                     <div className="flex-1">
@@ -690,7 +690,7 @@ export function SettingsPanel() {
                   {integrations.map((integration) => (
                     <div
                       key={integration.id}
-                      className="flex items-center justify-between p-5 bg-bg-elevated border border-default rounded-xl hover:border-default transition-all"
+                      className="flex items-center justify-between p-5 bg-panel border border-default rounded-xl hover:border-default transition-all"
                     >
                       <div className="flex items-center gap-4">
                         <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${integration.colorClass}`}>
@@ -713,7 +713,7 @@ export function SettingsPanel() {
         {/* Notifications Tab */}
         {activeTab === "notifications" && (
           <div className="space-y-6">
-            <div className="bg-bg-surface/60 backdrop-blur-xl border border-default rounded-xl overflow-hidden">
+            <div className="bg-panel/60 backdrop-blur-xl border border-default rounded-xl overflow-hidden">
               <div className="px-6 py-4 border-b border-default flex items-center gap-3">
                 <Bell className="w-5 h-5 text-amber" />
                 <span className="font-semibold">Notification Preferences</span>
@@ -722,7 +722,7 @@ export function SettingsPanel() {
                 {notifications.map((notif) => (
                   <div
                     key={notif.id}
-                    className="flex items-center justify-between p-4 bg-bg-elevated rounded-xl"
+                    className="flex items-center justify-between p-4 bg-panel rounded-xl"
                   >
                     <div>
                       <div className="font-medium text-sm">{notif.label}</div>

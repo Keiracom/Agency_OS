@@ -28,7 +28,7 @@ const mockChannelCosts = {
       name: "Email",
       provider: "Resend",
       icon: Mail,
-      color: "bg-bg-elevated",
+      color: "bg-panel",
       sent: 18470,
       cost: 456.23,
       costPer: 0.025,

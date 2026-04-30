@@ -49,7 +49,7 @@ function getStatusStyles(status: CampaignStatus) {
       return "bg-green-500/10 text-green-400 border-green-500/30";
     case "draft":
     default:
-      return "bg-bg-elevated text-ink-3 border-rule";
+      return "bg-panel text-ink-3 border-rule";
   }
 }
 
@@ -125,13 +125,13 @@ function RejectDialog({ campaignName, onConfirm, onCancel, isLoading }: RejectDi
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           placeholder="e.g. Copy needs revision, target audience too broad…"
-          className="w-full h-28 px-3 py-2 rounded-lg bg-bg-elevated border border-rule text-ink text-sm placeholder:text-ink-3 resize-none focus:outline-none focus:border-accent-primary transition-colors"
+          className="w-full h-28 px-3 py-2 rounded-lg bg-panel border border-rule text-ink text-sm placeholder:text-ink-3 resize-none focus:outline-none focus:border-accent-primary transition-colors"
         />
         <div className="flex items-center gap-3 mt-4">
           <button
             onClick={onCancel}
             disabled={isLoading}
-            className="flex-1 px-4 py-2.5 rounded-lg text-sm font-medium text-ink-2 bg-bg-panel border border-rule hover:bg-bg-elevated transition-colors disabled:opacity-50"
+            className="flex-1 px-4 py-2.5 rounded-lg text-sm font-medium text-ink-2 bg-bg-panel border border-rule hover:bg-panel transition-colors disabled:opacity-50"
           >
             Cancel
           </button>
@@ -316,7 +316,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <button className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-ink-2 bg-bg-panel border border-rule hover:bg-bg-elevated transition-colors">
+                <button className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-ink-2 bg-bg-panel border border-rule hover:bg-panel transition-colors">
                   <Edit2 className="w-4 h-4" />
                   Edit
                 </button>

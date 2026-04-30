@@ -60,13 +60,13 @@ function RejectDialog({ campaign, onConfirm, onCancel, isLoading }: RejectDialog
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           placeholder="e.g. Copy needs revision, target audience too broad…"
-          className="w-full h-28 px-3 py-2 rounded-lg bg-bg-elevated border border-rule text-ink text-sm placeholder:text-ink-3 resize-none focus:outline-none focus:border-accent-primary transition-colors"
+          className="w-full h-28 px-3 py-2 rounded-lg bg-panel border border-rule text-ink text-sm placeholder:text-ink-3 resize-none focus:outline-none focus:border-accent-primary transition-colors"
         />
         <div className="flex items-center gap-3 mt-4">
           <button
             onClick={onCancel}
             disabled={isLoading}
-            className="flex-1 px-4 py-2.5 rounded-lg text-sm font-medium text-ink-2 bg-bg-panel border border-rule hover:bg-bg-elevated transition-colors disabled:opacity-50"
+            className="flex-1 px-4 py-2.5 rounded-lg text-sm font-medium text-ink-2 bg-bg-panel border border-rule hover:bg-panel transition-colors disabled:opacity-50"
           >
             Cancel
           </button>
@@ -152,7 +152,7 @@ function CampaignApprovalCard({
 
         {/* Channel allocations */}
         {(campaign.allocation_email + campaign.allocation_linkedin + campaign.allocation_sms + campaign.allocation_voice + campaign.allocation_mail) > 0 && (
-          <div className="flex items-center gap-3 mb-5 p-3 rounded-lg bg-bg-elevated/50">
+          <div className="flex items-center gap-3 mb-5 p-3 rounded-lg bg-panel/50">
             <span className="text-xs text-ink-3 uppercase tracking-wider">Channels:</span>
             {campaign.allocation_email > 0 && (
               <span className="text-xs font-medium text-ink-2">Email {campaign.allocation_email}%</span>
@@ -283,14 +283,14 @@ export default function CampaignApprovalPage() {
           </div>
         ) : pendingCampaigns.length === 0 ? (
           <div className="glass-surface rounded-xl p-16 text-center">
-            <div className="w-16 h-16 rounded-full bg-bg-elevated flex items-center justify-center mx-auto mb-4">
+            <div className="w-16 h-16 rounded-full bg-panel flex items-center justify-center mx-auto mb-4">
               <Inbox className="w-8 h-8 text-ink-3" />
             </div>
             <h3 className="font-serif font-semibold text-ink mb-2">All clear!</h3>
             <p className="text-sm text-ink-3">No campaigns are pending approval right now.</p>
             <Link
               href="/dashboard/campaigns"
-              className="inline-flex items-center gap-2 mt-6 px-4 py-2 rounded-lg text-sm font-medium text-ink-2 bg-bg-panel border border-rule hover:bg-bg-elevated transition-colors"
+              className="inline-flex items-center gap-2 mt-6 px-4 py-2 rounded-lg text-sm font-medium text-ink-2 bg-bg-panel border border-rule hover:bg-panel transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
               Back to Campaigns

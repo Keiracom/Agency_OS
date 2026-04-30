@@ -111,7 +111,7 @@ function ActionButton({
     return (
       <button
         onClick={onManage}
-        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-ink-2 bg-bg-elevated border border-default rounded-lg hover:bg-bg-elevated hover:border-[#3A3A4D] transition-all"
+        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-ink-2 bg-panel border border-default rounded-lg hover:bg-panel hover:border-[#3A3A4D] transition-all"
       >
         <Settings className="w-4 h-4" />
         Manage
@@ -170,7 +170,7 @@ function IntegrationCard({
   onReconnect: (id: string) => void;
 }) {
   return (
-    <div className="group bg-bg-surface/60 backdrop-blur-xl border border-default rounded-xl overflow-hidden hover:border-default transition-all duration-200">
+    <div className="group bg-panel/60 backdrop-blur-xl border border-default rounded-xl overflow-hidden hover:border-default transition-all duration-200">
       {/* Card Header */}
       <div className="p-5">
         <div className="flex items-start justify-between mb-4">
@@ -247,7 +247,7 @@ const initialIntegrations: ChannelIntegration[] = [
     status: "connected",
     lastSync: "5 min ago",
     colorClass: "text-ink-2",
-    bgColorClass: "bg-bg-elevated/15",
+    bgColorClass: "bg-panel/15",
     stats: { label: "Connections pending", value: 47 },
   },
   {
@@ -344,7 +344,7 @@ export function ChannelIntegrations({ className = "" }: ChannelIntegrationsProps
           <button
             onClick={handleRefreshAll}
             disabled={isRefreshing}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-ink-2 bg-bg-elevated border border-default rounded-lg hover:bg-bg-elevated hover:border-[#3A3A4D] transition-all disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-ink-2 bg-panel border border-default rounded-lg hover:bg-panel hover:border-[#3A3A4D] transition-all disabled:opacity-50"
           >
             <RefreshCw
               className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`}
@@ -406,9 +406,9 @@ export function ChannelIntegrations({ className = "" }: ChannelIntegrationsProps
       </div>
 
       {/* Help Section */}
-      <div className="bg-bg-surface/40 border border-default rounded-xl p-5">
+      <div className="bg-panel/40 border border-default rounded-xl p-5">
         <div className="flex items-start gap-4">
-          <div className="w-10 h-10 bg-bg-elevated rounded-lg flex items-center justify-center flex-shrink-0">
+          <div className="w-10 h-10 bg-panel rounded-lg flex items-center justify-center flex-shrink-0">
             <Zap className="w-5 h-5 text-ink-3" />
           </div>
           <div>

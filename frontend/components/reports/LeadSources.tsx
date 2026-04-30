@@ -24,7 +24,7 @@ const colorMap: Record<string, { bg: string; bar: string }> = {
 
 export function LeadSources() {
   return (
-    <div className="bg-bg-surface border border-default rounded-xl overflow-hidden">
+    <div className="bg-panel border border-default rounded-xl overflow-hidden">
       <div className="px-5 py-4 border-b border-default flex items-center gap-2">
         <MapPin className="w-4 h-4 text-ink-2" />
         <h3 className="text-sm font-semibold text-ink">Lead Sources</h3>

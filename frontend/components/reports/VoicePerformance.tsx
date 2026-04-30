@@ -10,7 +10,7 @@ import { voiceStats, objectionData } from "@/lib/mock/reports-data";
 
 export function VoicePerformance() {
   return (
-    <div className="bg-bg-surface border border-default rounded-xl overflow-hidden">
+    <div className="bg-panel border border-default rounded-xl overflow-hidden">
       <div className="px-5 py-4 border-b border-default flex items-center gap-2">
         <Phone className="w-4 h-4 text-amber-500" />
         <h3 className="text-sm font-semibold text-ink">Smart Calling Performance</h3>

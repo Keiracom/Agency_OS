@@ -50,7 +50,7 @@ const mockSuppressionList = [
 
 const reasonColors = {
   spam: "bg-amber-glow text-error border-amber/20",
-  unsubscribe: "bg-bg-elevated/10 text-amber border-default/20",
+  unsubscribe: "bg-panel/10 text-amber border-default/20",
   bounce: "bg-yellow-500/10 text-yellow-700 border-yellow-500/20",
   manual: "bg-bg-surface0/10 text-ink-3 border-gray-500/20",
 };

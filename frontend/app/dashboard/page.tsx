@@ -267,7 +267,7 @@ export default function DashboardPage() {
                 {(dashboardData?.hotProspects ?? []).map((prospect) => (
                   <div 
                     key={prospect.id}
-                    className="flex items-center gap-4 py-4 border-b border-rule last:border-0 cursor-pointer hover:bg-bg-elevated hover:-mx-6 hover:px-6 transition-all"
+                    className="flex items-center gap-4 py-4 border-b border-rule last:border-0 cursor-pointer hover:bg-panel hover:-mx-6 hover:px-6 transition-all"
                   >
                     <div className="w-11 h-11 rounded-lg flex items-center justify-center text-bg-cream text-sm font-semibold bg-gradient-to-br from-amber to-amber-light">
                       {prospect.initials}

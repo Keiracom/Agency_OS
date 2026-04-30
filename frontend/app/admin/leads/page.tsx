@@ -43,12 +43,12 @@ const mockLeads = [
 const tierColors = {
   hot: "bg-amber-glow text-error border-amber/20",
   warm: "bg-orange-500/10 text-orange-700 border-orange-500/20",
-  cold: "bg-bg-elevated/10 text-amber border-default/20",
+  cold: "bg-panel/10 text-amber border-default/20",
 };
 
 const statusColors = {
   new: "bg-bg-surface0/10 text-ink-3 border-gray-500/20",
-  enriched: "bg-bg-elevated/10 text-amber border-default/20",
+  enriched: "bg-panel/10 text-amber border-default/20",
   scored: "bg-amber/10 text-amber border-amber/20",
   in_sequence: "bg-yellow-500/10 text-yellow-700 border-yellow-500/20",
   converted: "bg-amber/10 text-amber border-amber/20",

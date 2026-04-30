@@ -47,7 +47,7 @@ import type { ArchiveContentItem, ContentArchiveFilters } from "@/lib/api/types"
 
 // Channel icons and colors
 const channelConfig: Record<string, { icon: React.ReactNode; color: string; label: string }> = {
-  email: { icon: <Mail className="h-4 w-4" />, color: "bg-bg-elevated/10 text-ink-2", label: "Email" },
+  email: { icon: <Mail className="h-4 w-4" />, color: "bg-panel/10 text-ink-2", label: "Email" },
   sms: { icon: <MessageSquare className="h-4 w-4" />, color: "bg-amber/10 text-amber", label: "SMS" },
   linkedin: { icon: <Linkedin className="h-4 w-4" />, color: "bg-amber-glow text-amber", label: "LinkedIn" },
   voice: { icon: <Phone className="h-4 w-4" />, color: "bg-amber/10 text-amber", label: "Voice" },

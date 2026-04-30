@@ -168,7 +168,7 @@ function Card({
 }) {
   return (
     <div
-      className={`bg-bg-surface border border-default rounded-2xl overflow-hidden ${className}`}
+      className={`bg-panel border border-default rounded-2xl overflow-hidden ${className}`}
     >
       {children}
     </div>
@@ -226,7 +226,7 @@ function UsageMeter({
   const percentage = Math.min((currentNum / totalNum) * 100, 100);
 
   return (
-    <div className="bg-bg-elevated rounded-xl p-5">
+    <div className="bg-panel rounded-xl p-5">
       <div className="flex justify-between items-start mb-4">
         <span className="font-semibold text-ink text-sm">{label}</span>
         <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${colorClass}`}>
@@ -239,7 +239,7 @@ function UsageMeter({
         </span>
         <span className="text-base text-ink-3 font-mono">/ {total}</span>
       </div>
-      <div className="h-2 bg-bg-elevated rounded-full overflow-hidden mb-2">
+      <div className="h-2 bg-panel rounded-full overflow-hidden mb-2">
         <div
           className={`h-full rounded-full transition-all duration-500 ${barColorClass}`}
           style={{ width: `${percentage}%` }}
@@ -272,10 +272,10 @@ function PlanCard({
       className={`
         relative rounded-2xl p-7 text-center transition-all duration-200
         ${isCurrent
-          ? "bg-bg-elevated border-2 border-amber"
+          ? "bg-panel border-2 border-amber"
           : isRecommended
           ? "bg-gradient-to-b from-amber/10 to-[#1A1A28] border-2 border-amber"
-          : "bg-bg-elevated border-2 border-default hover:border-default"
+          : "bg-panel border-2 border-default hover:border-default"
         }
       `}
     >
@@ -307,7 +307,7 @@ function PlanCard({
       </div>
 
       {/* Outcomes preview */}
-      <div className="flex justify-center gap-3 md:gap-6 my-5 p-4 bg-bg-surface rounded-lg">
+      <div className="flex justify-center gap-3 md:gap-6 my-5 p-4 bg-panel rounded-lg">
         <div className="text-center">
           <div className="text-xl font-bold font-mono text-ink">{plan.meetingsRange}</div>
           <div className="text-xs text-ink-3 uppercase tracking-wide">Meetings/mo</div>
@@ -338,7 +338,7 @@ function PlanCard({
             ? "bg-amber-glow text-amber border border-amber cursor-default"
             : isRecommended
             ? "bg-amber text-ink hover:bg-violet-400 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-amber/30"
-            : "bg-bg-surface text-ink-3 border border-default hover:bg-bg-elevated hover:text-ink-2"
+            : "bg-panel text-ink-3 border border-default hover:bg-panel hover:text-ink-2"
           }
         `}
       >
@@ -353,7 +353,7 @@ function PlanCard({
  */
 function InvoiceRow({ invoice }: { invoice: Invoice }) {
   return (
-    <tr className="hover:bg-bg-elevated transition-colors">
+    <tr className="hover:bg-panel transition-colors">
       <td className="px-6 py-4 font-mono text-ink">{invoice.date}</td>
       <td className="px-6 py-4 text-ink-2">{invoice.description}</td>
       <td className="px-6 py-4 font-mono font-semibold text-ink">
@@ -417,14 +417,14 @@ export default function BillingPage() {
   return (
     <div className="min-h-screen bg-bg-cream">
       {/* Header */}
-      <header className="bg-bg-surface border-b border-default px-8 py-5 flex items-center justify-between">
+      <header className="bg-panel border-b border-default px-8 py-5 flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-ink">Billing & Subscription</h1>
           <p className="text-sm text-ink-3 mt-1">
             Manage your plan, usage, and payment methods
           </p>
         </div>
-        <button className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-ink-2 border border-default rounded-lg hover:bg-bg-elevated hover:text-ink transition-colors">
+        <button className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-ink-2 border border-default rounded-lg hover:bg-panel hover:text-ink transition-colors">
           <HelpCircle className="w-4 h-4" />
           Support
         </button>
@@ -462,7 +462,7 @@ export default function BillingPage() {
 
             {/* Plan metrics */}
             <div className="grid grid-cols-4 gap-4 my-7 py-6 border-y border-default">
-              <div className="flex items-center gap-3 px-4 py-3.5 bg-bg-elevated rounded-lg">
+              <div className="flex items-center gap-3 px-4 py-3.5 bg-panel rounded-lg">
                 <div className="w-10 h-10 bg-amber/15 rounded-lg flex items-center justify-center">
                   <Users className="w-5 h-5 text-amber" />
                 </div>
@@ -473,7 +473,7 @@ export default function BillingPage() {
                   Leads per month
                 </div>
               </div>
-              <div className="flex items-center gap-3 px-4 py-3.5 bg-bg-elevated rounded-lg">
+              <div className="flex items-center gap-3 px-4 py-3.5 bg-panel rounded-lg">
                 <div className="w-10 h-10 bg-amber-glow rounded-lg flex items-center justify-center">
                   <Calendar className="w-5 h-5 text-amber" />
                 </div>
@@ -484,8 +484,8 @@ export default function BillingPage() {
                   Meetings per month
                 </div>
               </div>
-              <div className="flex items-center gap-3 px-4 py-3.5 bg-bg-elevated rounded-lg">
-                <div className="w-10 h-10 bg-bg-elevated/15 rounded-lg flex items-center justify-center">
+              <div className="flex items-center gap-3 px-4 py-3.5 bg-panel rounded-lg">
+                <div className="w-10 h-10 bg-panel/15 rounded-lg flex items-center justify-center">
                   <User className="w-5 h-5 text-ink-2" />
                 </div>
                 <div className="text-sm text-ink-2">
@@ -495,7 +495,7 @@ export default function BillingPage() {
                   New clients per month
                 </div>
               </div>
-              <div className="flex items-center gap-3 px-4 py-3.5 bg-bg-elevated rounded-lg">
+              <div className="flex items-center gap-3 px-4 py-3.5 bg-panel rounded-lg">
                 <div className="w-10 h-10 bg-amber-500/15 rounded-lg flex items-center justify-center">
                   <Lightbulb className="w-5 h-5 text-amber-400" />
                 </div>
@@ -514,11 +514,11 @@ export default function BillingPage() {
                 <TrendingUp className="w-4 h-4" />
                 Upgrade Plan
               </button>
-              <button className="flex items-center gap-2 px-5 py-2.5 text-ink-2 border border-default rounded-lg hover:bg-bg-elevated hover:text-ink transition-colors">
+              <button className="flex items-center gap-2 px-5 py-2.5 text-ink-2 border border-default rounded-lg hover:bg-panel hover:text-ink transition-colors">
                 <CreditCard className="w-4 h-4" />
                 Update Payment
               </button>
-              <button className="px-5 py-2.5 text-ink-2 border border-default rounded-lg hover:bg-bg-elevated hover:text-ink transition-colors">
+              <button className="px-5 py-2.5 text-ink-2 border border-default rounded-lg hover:bg-panel hover:text-ink transition-colors">
                 Cancel Subscription
               </button>
             </div>
@@ -590,8 +590,8 @@ export default function BillingPage() {
           />
           <div className="p-6">
             <div className="grid grid-cols-3 gap-5">
-              <div className="flex gap-3.5 p-5 bg-bg-elevated rounded-xl">
-                <div className="w-11 h-11 bg-bg-elevated/15 rounded-lg flex items-center justify-center flex-shrink-0">
+              <div className="flex gap-3.5 p-5 bg-panel rounded-xl">
+                <div className="w-11 h-11 bg-panel/15 rounded-lg flex items-center justify-center flex-shrink-0">
                   <ArrowUpRight className="w-5 h-5 text-ink-2" />
                 </div>
                 <div>
@@ -601,8 +601,8 @@ export default function BillingPage() {
                   </p>
                 </div>
               </div>
-              <div className="flex gap-3.5 p-5 bg-bg-elevated rounded-xl">
-                <div className="w-11 h-11 bg-bg-elevated/15 rounded-lg flex items-center justify-center flex-shrink-0">
+              <div className="flex gap-3.5 p-5 bg-panel rounded-xl">
+                <div className="w-11 h-11 bg-panel/15 rounded-lg flex items-center justify-center flex-shrink-0">
                   <Bell className="w-5 h-5 text-ink-2" />
                 </div>
                 <div>
@@ -612,8 +612,8 @@ export default function BillingPage() {
                   </p>
                 </div>
               </div>
-              <div className="flex gap-3.5 p-5 bg-bg-elevated rounded-xl">
-                <div className="w-11 h-11 bg-bg-elevated/15 rounded-lg flex items-center justify-center flex-shrink-0">
+              <div className="flex gap-3.5 p-5 bg-panel rounded-xl">
+                <div className="w-11 h-11 bg-panel/15 rounded-lg flex items-center justify-center flex-shrink-0">
                   <Database className="w-5 h-5 text-ink-2" />
                 </div>
                 <div>
@@ -639,9 +639,9 @@ export default function BillingPage() {
             }
           />
           <div className="p-6">
-            <div className="flex items-center justify-between p-5 bg-bg-elevated rounded-xl">
+            <div className="flex items-center justify-between p-5 bg-panel rounded-xl">
               <div className="flex items-center gap-4">
-                <div className="w-14 h-9 bg-bg-elevated border border-default rounded flex items-center justify-center">
+                <div className="w-14 h-9 bg-panel border border-default rounded flex items-center justify-center">
                   <MastercardIcon />
                 </div>
                 <div>
@@ -654,7 +654,7 @@ export default function BillingPage() {
                   </p>
                 </div>
               </div>
-              <button className="px-4 py-2 text-sm text-ink-2 border border-default rounded-lg hover:bg-bg-elevated hover:text-ink transition-colors">
+              <button className="px-4 py-2 text-sm text-ink-2 border border-default rounded-lg hover:bg-panel hover:text-ink transition-colors">
                 Update
               </button>
             </div>
@@ -675,7 +675,7 @@ export default function BillingPage() {
           />
           <table className="w-full">
             <thead>
-              <tr className="bg-bg-elevated border-b border-default">
+              <tr className="bg-panel border-b border-default">
                 <th className="px-6 py-3.5 text-left text-xs font-semibold text-ink-3 uppercase tracking-wide">
                   Date
                 </th>

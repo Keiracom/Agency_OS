@@ -158,7 +158,7 @@ const getOutcomeConfig = (outcome: TranscriptData["outcome"]) => {
       };
     case "callback_requested":
       return {
-        color: "bg-bg-elevated/20 text-ink-2 border-default/30",
+        color: "bg-panel/20 text-ink-2 border-default/30",
         label: "Callback Requested",
       };
     case "not_interested":
@@ -256,7 +256,7 @@ export function TranscriptViewer({ transcript }: TranscriptViewerProps) {
               className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
                 message.role === "agent"
                   ? "bg-amber/20"
-                  : "bg-bg-elevated/20"
+                  : "bg-panel/20"
               }`}
             >
               {message.role === "agent" ? (
@@ -276,7 +276,7 @@ export function TranscriptViewer({ transcript }: TranscriptViewerProps) {
                 className={`inline-block px-4 py-2.5 rounded-2xl ${
                   message.role === "agent"
                     ? "bg-[#2a2a2f] rounded-tl-none"
-                    : "bg-bg-elevated/20 rounded-tr-none"
+                    : "bg-panel/20 rounded-tr-none"
                 }`}
               >
                 <p className="text-sm text-ink-2 leading-relaxed">

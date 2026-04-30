@@ -92,7 +92,7 @@ export function ProcessingOverlay({
                   i < stage
                     ? "bg-amber text-ink"
                     : i === stage
-                    ? "bg-bg-elevated text-ink"
+                    ? "bg-panel text-ink"
                     : "bg-slate-200 text-ink-2"
                 }`}
               >

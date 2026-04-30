@@ -43,8 +43,8 @@ interface LeadTableProps {
 // Glass-themed status labels per LEADS.md spec
 const statusLabels: Record<LeadStatus, { label: string; style: string }> = {
   new: { label: "New", style: "bg-slate-500/20 text-ink-2 border border-slate-500/20" },
-  enriched: { label: "Enriched", style: "bg-bg-elevated/20 text-ink-2 border border-default/20" },
-  scored: { label: "Scored", style: "bg-bg-elevated/20 text-ink-2 border border-default/20" },
+  enriched: { label: "Enriched", style: "bg-panel/20 text-ink-2 border border-default/20" },
+  scored: { label: "Scored", style: "bg-panel/20 text-ink-2 border border-default/20" },
   in_sequence: { label: "In Sequence", style: "bg-amber/20 text-amber border border-amber/20" },
   converted: { label: "Meeting Booked", style: "bg-amber/20 text-amber border border-amber/20" },
   unsubscribed: { label: "Unsubscribed", style: "bg-slate-500/20 text-ink-2 border border-slate-500/20" },
@@ -55,9 +55,9 @@ const statusLabels: Record<LeadStatus, { label: string; style: string }> = {
 const tierFilters: { tier: ALSTier; label: string; color: string; textColor: string }[] = [
   { tier: "hot", label: "High Priority", color: "border-orange-500/40 bg-orange-500/10 backdrop-blur-md", textColor: "text-orange-400" },
   { tier: "warm", label: "Engaged", color: "border-yellow-500/40 bg-yellow-500/10 backdrop-blur-md", textColor: "text-yellow-400" },
-  { tier: "cool", label: "Nurturing", color: "border-default/40 bg-bg-elevated/10 backdrop-blur-md", textColor: "text-ink-2" },
+  { tier: "cool", label: "Nurturing", color: "border-default/40 bg-panel/10 backdrop-blur-md", textColor: "text-ink-2" },
   { tier: "cold", label: "Low Activity", color: "border-slate-400/40 bg-bg-panel backdrop-blur-md", textColor: "text-ink-2" },
-  { tier: "dead", label: "Inactive", color: "border-slate-500/40 bg-bg-elevated/10 backdrop-blur-md", textColor: "text-ink-3" },
+  { tier: "dead", label: "Inactive", color: "border-slate-500/40 bg-panel/10 backdrop-blur-md", textColor: "text-ink-3" },
 ];
 
 // ============================================

@@ -21,7 +21,7 @@ export function HeroMetrics() {
       {heroMetrics.map((metric) => (
         <div
           key={metric.id}
-          className="bg-bg-surface border border-default rounded-xl p-5 relative overflow-hidden"
+          className="bg-panel border border-default rounded-xl p-5 relative overflow-hidden"
         >
           <div
             className="absolute top-0 left-0 right-0 h-0.5"

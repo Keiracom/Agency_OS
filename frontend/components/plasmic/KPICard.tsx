@@ -48,9 +48,9 @@ export function KPICard({
         )}
       >
         <CardContent className="p-6">
-          <Skeleton className={cn("h-4 w-32 mb-4", isDark ? "bg-bg-panel/10" : "bg-bg-elevated")} />
-          <Skeleton className={cn("h-10 w-20 mb-2", isDark ? "bg-bg-panel/10" : "bg-bg-elevated")} />
-          <Skeleton className={cn("h-4 w-24", isDark ? "bg-bg-panel/10" : "bg-bg-elevated")} />
+          <Skeleton className={cn("h-4 w-32 mb-4", isDark ? "bg-bg-panel/10" : "bg-panel")} />
+          <Skeleton className={cn("h-10 w-20 mb-2", isDark ? "bg-bg-panel/10" : "bg-panel")} />
+          <Skeleton className={cn("h-4 w-24", isDark ? "bg-bg-panel/10" : "bg-panel")} />
         </CardContent>
       </Card>
     );

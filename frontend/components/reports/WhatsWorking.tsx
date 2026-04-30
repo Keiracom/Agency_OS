@@ -10,7 +10,7 @@ import { whoConverts, bestTiming, discoveryInsight } from "@/lib/mock/reports-da
 
 export function WhatsWorking() {
   return (
-    <div className="bg-bg-surface border border-default rounded-xl overflow-hidden">
+    <div className="bg-panel border border-default rounded-xl overflow-hidden">
       <div className="px-5 py-4 border-b border-default flex items-center gap-2">
         <Lightbulb className="w-4 h-4 text-[#D4956A]" />
         <h3 className="text-sm font-semibold text-ink">What&apos;s Working</h3>

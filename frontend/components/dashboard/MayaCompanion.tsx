@@ -372,7 +372,7 @@ export function MayaCompanion({
           )}
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-700/50 bg-bg-surface/30">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-700/50 bg-panel/30">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber to-amber flex items-center justify-center text-ink font-bold shadow-lg shadow-amber/30">
                 M
@@ -409,7 +409,7 @@ export function MayaCompanion({
                         ? "bg-amber w-6"
                         : i < currentStep
                         ? "bg-amber/50 w-1.5"
-                        : "bg-bg-elevated w-1.5"
+                        : "bg-panel w-1.5"
                     )}
                   />
                 ))}
@@ -493,7 +493,7 @@ export function MayaCompanion({
                     <button
                       key={i}
                       onClick={() => handleSuggestionClick(suggestion)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-bg-surface/60 hover:bg-slate-700/60 border border-slate-600/30 rounded-full text-xs text-ink-2 hover:text-ink transition-colors"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-panel/60 hover:bg-slate-700/60 border border-slate-600/30 rounded-full text-xs text-ink-2 hover:text-ink transition-colors"
                     >
                       {suggestion.icon}
                       {suggestion.label}
@@ -512,7 +512,7 @@ export function MayaCompanion({
                     onChange={(e) => setInputValue(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder="Ask Maya anything..."
-                    className="w-full px-4 py-3 pr-12 bg-bg-surface/60 border border-slate-600/50 rounded-xl text-sm text-ink placeholder-slate-500 focus:outline-none focus:border-amber/50 focus:ring-1 focus:ring-amber/20 transition-colors"
+                    className="w-full px-4 py-3 pr-12 bg-panel/60 border border-slate-600/50 rounded-xl text-sm text-ink placeholder-slate-500 focus:outline-none focus:border-amber/50 focus:ring-1 focus:ring-amber/20 transition-colors"
                   />
                   <button
                     onClick={handleSendMessage}

@@ -51,7 +51,7 @@ const getTierBadgeColor = (tier: string): string => {
     case "Warm":
       return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30 hover:bg-yellow-500/30";
     case "Cool":
-      return "bg-bg-elevated/20 text-ink-2 border-default/30 hover:bg-bg-elevated/30";
+      return "bg-panel/20 text-ink-2 border-default/30 hover:bg-panel/30";
     case "Cold":
       return "bg-bg-surface0/20 text-ink-3 border-gray-500/30 hover:bg-bg-surface0/30";
     default:

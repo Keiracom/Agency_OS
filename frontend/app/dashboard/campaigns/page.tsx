@@ -43,7 +43,7 @@ function getStatusStyles(status: CampaignStatus) {
       return "bg-green-500/10 text-green-400 border-green-500/30";
     case "draft":
     default:
-      return "bg-bg-elevated text-ink-3 border-rule";
+      return "bg-panel text-ink-3 border-rule";
   }
 }
 
@@ -166,7 +166,7 @@ export default function CampaignsPage() {
                 </span>
               )}
             </Link>
-            <button className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-ink-2 bg-bg-panel border border-rule hover:bg-bg-elevated transition-colors">
+            <button className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-ink-2 bg-bg-panel border border-rule hover:bg-panel transition-colors">
               <Filter className="w-4 h-4" />
               Filters
             </button>
@@ -270,10 +270,10 @@ export default function CampaignsPage() {
                             <Play className="w-4 h-4" />
                           </button>
                         ) : null}
-                        <button className="p-1.5 rounded-lg text-ink-3 hover:text-ink hover:bg-bg-elevated transition-colors">
+                        <button className="p-1.5 rounded-lg text-ink-3 hover:text-ink hover:bg-panel transition-colors">
                           <Edit2 className="w-4 h-4" />
                         </button>
-                        <button className="p-1.5 rounded-lg text-ink-3 hover:text-ink hover:bg-bg-elevated transition-colors">
+                        <button className="p-1.5 rounded-lg text-ink-3 hover:text-ink hover:bg-panel transition-colors">
                           <Copy className="w-4 h-4" />
                         </button>
                       </div>
@@ -283,7 +283,7 @@ export default function CampaignsPage() {
                         {channels.map((channel) => (
                           <div
                             key={channel}
-                            className="w-6 h-6 rounded-md bg-bg-elevated flex items-center justify-center"
+                            className="w-6 h-6 rounded-md bg-panel flex items-center justify-center"
                           >
                             <ChannelIcon channel={channel} />
                           </div>
@@ -309,7 +309,7 @@ export default function CampaignsPage() {
                           className={`text-center py-2 px-1 rounded-lg ${
                             stat.highlight && stat.value > 0
                               ? "bg-accent-primary/10 border border-accent-primary/30"
-                              : "bg-bg-elevated"
+                              : "bg-panel"
                           }`}
                         >
                           <p
@@ -373,7 +373,7 @@ export default function CampaignsPage() {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-rule bg-bg-elevated/50">
+                  <tr className="border-b border-rule bg-panel/50">
                     <th className="text-left px-5 py-3 text-xs font-semibold text-ink-3 uppercase tracking-wider">
                       Campaign
                     </th>

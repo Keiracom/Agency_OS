@@ -175,7 +175,7 @@ const mockSearch = async (query: string): Promise<SearchResult[]> => {
 
 function CategoryBadge({ category }: { category: SearchCategory }) {
   const styles: Record<SearchCategory, { bg: string; text: string; label: string }> = {
-    lead: { bg: "bg-bg-elevated/20", text: "text-ink-2", label: "Lead" },
+    lead: { bg: "bg-panel/20", text: "text-ink-2", label: "Lead" },
     campaign: { bg: "bg-amber/20", text: "text-amber", label: "Campaign" },
     reply: { bg: "bg-amber/20", text: "text-amber", label: "Reply" },
     action: { bg: "bg-amber-500/20", text: "text-amber-400", label: "Action" },

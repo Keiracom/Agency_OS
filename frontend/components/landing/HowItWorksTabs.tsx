@@ -34,7 +34,7 @@ const steps: Step[] = [
     title: "Enter your website URL",
     label: "Discover",
     badge: "5 minutes",
-    badgeColor: "bg-bg-elevated/20 text-amber-light",
+    badgeColor: "bg-panel/20 text-amber-light",
     description:
       "Our AI scans your services, case studies, and testimonials. It extracts exactly who your ideal clients are — industries, company sizes, decision-maker titles.",
     subtext: "No forms. No questionnaires. Just your URL.",
@@ -150,7 +150,7 @@ function ScoutDemo() {
 
 function ScoreDemo() {
   const dimensions = [
-    { name: "Data Quality", score: "18/20", percent: 90, color: "bg-bg-elevated" },
+    { name: "Data Quality", score: "18/20", percent: 90, color: "bg-panel" },
     { name: "Authority", score: "23/25", percent: 92, color: "bg-amber" },
     { name: "Company Fit", score: "22/25", percent: 88, color: "bg-amber" },
     { name: "Timing", score: "14/15", percent: 93, color: "bg-amber-500" },
@@ -190,7 +190,7 @@ function ScoreDemo() {
 
 function ReachDemo() {
   const steps = [
-    { icon: Mail, label: "Email sent", sub: "Personalized intro", status: "Opened", statusColor: "text-amber", iconBg: "bg-bg-elevated/20", iconColor: "text-ink-2" },
+    { icon: Mail, label: "Email sent", sub: "Personalized intro", status: "Opened", statusColor: "text-amber", iconBg: "bg-panel/20", iconColor: "text-ink-2" },
     { icon: Linkedin, label: "LinkedIn connection", sub: "With note", status: "Accepted", statusColor: "text-amber", iconBg: "bg-amber/20", iconColor: "text-amber" },
     { icon: Phone, label: "Voice AI call", sub: "Friendly follow-up", status: "In progress", statusColor: "text-ink-2", iconBg: "bg-amber/20", iconColor: "text-amber", pulse: true },
   ]
@@ -240,7 +240,7 @@ function ConvertDemo() {
         <div className="p-4 rounded-lg bg-bg-panel/5">
           <p className="text-xs text-ink/40 mb-2">What converted this lead:</p>
           <div className="flex flex-wrap gap-2">
-            <span className="text-xs px-2 py-1 rounded bg-bg-elevated/20 text-amber-light">Case study mention</span>
+            <span className="text-xs px-2 py-1 rounded bg-panel/20 text-amber-light">Case study mention</span>
             <span className="text-xs px-2 py-1 rounded bg-amber/20 text-amber-light">3rd touchpoint</span>
             <span className="text-xs px-2 py-1 rounded bg-amber/20 text-amber-light">Morning send time</span>
           </div>

@@ -32,7 +32,7 @@ const INTENT_BAND_CONFIG: Record<
   DABBLING: {
     label: "DABBLING",
     className:
-      "text-ink-2 bg-bg-elevated border-rule font-medium",
+      "text-ink-2 bg-panel border-rule font-medium",
   },
   NOT_TRYING: {
     label: "NOT TRYING",

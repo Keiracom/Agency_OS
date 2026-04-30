@@ -35,7 +35,7 @@ const STATUS_CONFIG: Record<OnTrackStatus, {
   on_track: {
     label: "On track",
     color: "text-ink-2",
-    bgColor: "bg-bg-elevated/10",
+    bgColor: "bg-panel/10",
     icon: CheckCircle,
   },
   behind: {

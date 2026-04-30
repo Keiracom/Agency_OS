@@ -25,7 +25,7 @@ export function PaymentMethod({ paymentMethod }: PaymentMethodProps) {
       <div className="p-6">
         <div className="flex items-center justify-between p-5 bg-bg-panel-hover rounded-xl">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-9 bg-bg-elevated rounded-md flex items-center justify-center border border-rule-strong">
+            <div className="w-14 h-9 bg-panel rounded-md flex items-center justify-center border border-rule-strong">
               {/* Mastercard Logo SVG */}
               <svg viewBox="0 0 32 20" fill="none" className="w-8 h-5">
                 <rect width="32" height="20" rx="2" fill="#1A1F71" />

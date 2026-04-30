@@ -43,7 +43,7 @@ export function RiveLoader({
         />
 
         {/* Rive canvas container */}
-        <div className="relative w-full h-full rounded-full overflow-hidden bg-bg-void/50 backdrop-blur-sm">
+        <div className="relative w-full h-full rounded-full overflow-hidden bg-cream/50 backdrop-blur-sm">
           <RiveComponent />
         </div>
 

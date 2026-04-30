@@ -143,7 +143,7 @@ const getActivityColor = (type: Activity["type"]) => {
     case "email_opened":
     case "email_clicked":
     case "email_replied":
-      return "text-ink-2 bg-bg-elevated/10";
+      return "text-ink-2 bg-panel/10";
     case "linkedin_connection":
     case "linkedin_message":
       return "text-amber bg-amber-glow";

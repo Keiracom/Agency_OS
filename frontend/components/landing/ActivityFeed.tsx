@@ -36,8 +36,8 @@ const defaultActivities: ActivityItem[] = [
 ];
 
 const channelConfig = {
-  email: { icon: Mail, color: "text-ink-2", bg: "bg-bg-elevated/20" },
-  linkedin: { icon: Linkedin, color: "text-ink-2", bg: "bg-bg-elevated/20" },
+  email: { icon: Mail, color: "text-ink-2", bg: "bg-panel/20" },
+  linkedin: { icon: Linkedin, color: "text-ink-2", bg: "bg-panel/20" },
   sms: { icon: MessageSquare, color: "text-amber", bg: "bg-amber/20" },
   voice: { icon: Phone, color: "text-amber", bg: "bg-amber/20" },
   mail: { icon: FileText, color: "text-orange-400", bg: "bg-orange-500/20" },

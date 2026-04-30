@@ -60,7 +60,7 @@ export function AlertBanner({ alerts, onDismiss, className }: AlertBannerProps) 
       case "warning":
         return "bg-yellow-500/10 border-yellow-500/20 text-yellow-700 dark:text-yellow-400";
       case "info":
-        return "bg-bg-elevated/10 border-default/20 text-amber dark:text-ink-2";
+        return "bg-panel/10 border-default/20 text-amber dark:text-ink-2";
     }
   };
 
@@ -71,7 +71,7 @@ export function AlertBanner({ alerts, onDismiss, className }: AlertBannerProps) 
       case "warning":
         return "bg-yellow-500";
       case "info":
-        return "bg-bg-elevated";
+        return "bg-panel";
     }
   };
 

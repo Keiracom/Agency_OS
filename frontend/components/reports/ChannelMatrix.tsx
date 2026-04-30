@@ -20,7 +20,7 @@ export function ChannelMatrix() {
   const maxMeetings = Math.max(...channelData.map((c) => c.meetings));
 
   return (
-    <div className="bg-bg-surface border border-default rounded-xl overflow-hidden mb-6">
+    <div className="bg-panel border border-default rounded-xl overflow-hidden mb-6">
       <div className="flex items-center justify-between px-5 py-4 border-b border-default">
         <h3 className="text-sm font-semibold text-ink">5-Channel Performance Matrix</h3>
         <span className="text-xs text-ink-3">Feb 1-28, 2026</span>
@@ -45,7 +45,7 @@ export function ChannelMatrix() {
                 <p className="text-xl font-bold font-mono text-[#22C55E]">{ch.meetings}</p>
                 <p className="text-[10px] text-ink-3">Meetings</p>
               </div>
-              <div className="h-1 bg-bg-surface rounded-full mt-2 overflow-hidden">
+              <div className="h-1 bg-panel rounded-full mt-2 overflow-hidden">
                 <div className={`h-full rounded-full ${cfg.barColor}`} style={{ width: `${barWidth}%` }} />
               </div>
             </div>

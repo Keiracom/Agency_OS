@@ -24,7 +24,7 @@ const tierColors: Record<TierType, string> = {
 const tierBgColors: Record<TierType, string> = {
   hot: 'bg-amber-glow',
   warm: 'bg-amber-500/15',
-  cool: 'bg-bg-elevated/15',
+  cool: 'bg-panel/15',
 };
 
 interface LeadHeaderProps {

@@ -618,7 +618,7 @@ export default function LandingPage() {
 
           <ScrollReveal delay={300}>
             <div className="max-w-3xl mx-auto mt-16">
-              <div className="rounded-2xl p-8 bg-bg-elevated border border-amber/20 text-center">
+              <div className="rounded-2xl p-8 bg-panel border border-amber/20 text-center">
                 <h3 className="text-xl font-bold mb-4">The ROI Math</h3>
                 <p className="text-3xl font-bold text-amber mb-3">Close ONE new client → Pay for an entire year</p>
                 <p className="text-ink-3">At $1,250/month founding price, one new client at a $5,000/month retainer covers 4 months of Agency OS.</p>

@@ -32,7 +32,7 @@ export function LeadDetails({ message, additionalDetails = [] }: LeadDetailsProp
   const details = [...defaultDetails, ...additionalDetails];
   
   return (
-    <div className="bg-bg-surface rounded-xl p-4">
+    <div className="bg-panel rounded-xl p-4">
       <div className="flex items-center gap-2 mb-4 text-xs font-semibold uppercase tracking-wide text-ink-3">
         <User className="w-3.5 h-3.5" />
         Lead Details

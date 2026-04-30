@@ -19,7 +19,7 @@ export function ProfileSection({ profile }: ProfileSectionProps) {
   });
 
   const inputClass = `px-4 py-3 text-sm border border-rule rounded-lg 
-    bg-bg-surface text-ink outline-none transition-all
+    bg-panel text-ink outline-none transition-all
     focus:border-[#D4956A] focus:ring-[3px] focus:ring-[rgba(212,149,106,0.15)]`;
 
   return (

@@ -48,7 +48,7 @@ function ActionButton({ action }: { action: QuickActionItem }) {
   return (
     <Link
       href={action.href}
-      className="flex items-center gap-3 px-4 py-3.5 bg-bg-elevated border border-rule-strong rounded-lg mb-2.5 last:mb-0 hover:border-accent-primary hover:bg-accent-primary/5 transition-all group"
+      className="flex items-center gap-3 px-4 py-3.5 bg-panel border border-rule-strong rounded-lg mb-2.5 last:mb-0 hover:border-accent-primary hover:bg-accent-primary/5 transition-all group"
     >
       <Icon className="w-5 h-5 text-accent-primary" />
       <span className="text-sm font-medium text-ink group-hover:text-ink">

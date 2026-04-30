@@ -15,7 +15,7 @@ interface NotesSectionProps {
 
 export function NotesSection({ notes, onAddNote }: NotesSectionProps) {
   return (
-    <div className="bg-bg-surface rounded-xl p-4">
+    <div className="bg-panel rounded-xl p-4">
       <div className="flex items-center gap-2 mb-4 text-xs font-semibold uppercase tracking-wide text-ink-3">
         <Edit3 className="w-3.5 h-3.5" />
         Notes

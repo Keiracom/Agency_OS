@@ -29,7 +29,7 @@ const iconMap = {
 }
 
 const colorMap = {
-  blue: "bg-bg-elevated/20 text-ink-2 border-default/30",
+  blue: "bg-panel/20 text-ink-2 border-default/30",
   green: "bg-amber/20 text-amber border-amber/30",
   purple: "bg-amber/20 text-amber border-amber/30",
 }
@@ -65,7 +65,7 @@ export default function AgencyOSHero() {
     <section className="relative min-h-screen bg-[#0a0a0f] overflow-hidden">
       {/* Floating gradient orbs */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-bg-elevated/30 rounded-full blur-[120px] animate-float" />
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-panel/30 rounded-full blur-[120px] animate-float" />
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-amber/30 rounded-full blur-[120px] animate-float-delayed" />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-text-secondary/20 rounded-full blur-[100px] animate-pulse-slow" />
       </div>

@@ -113,7 +113,7 @@ Best,
       case "warm":
         return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30";
       case "cool":
-        return "bg-bg-elevated/20 text-ink-2 border-default/30";
+        return "bg-panel/20 text-ink-2 border-default/30";
       case "cold":
         return "bg-bg-surface0/20 text-ink-3 border-gray-500/30";
       default:
@@ -342,7 +342,7 @@ Best,
                       {item.value}/{item.max}
                     </span>
                   </div>
-                  <div className="h-2 bg-bg-surface rounded-full overflow-hidden">
+                  <div className="h-2 bg-panel rounded-full overflow-hidden">
                     <div
                       className="h-full bg-gradient-to-r from-amber to-amber rounded-full transition-all"
                       style={{ width: `${(item.value / item.max) * 100}%` }}

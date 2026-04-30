@@ -75,7 +75,7 @@ export function InboxPreview({ message }: InboxPreviewProps) {
       {/* Composer */}
       <div className="glass-surface border-t border-rule p-5">
         <div className="max-w-2xl">
-          <textarea className="w-full p-4 bg-bg-surface border border-rule rounded-xl text-sm text-ink placeholder:text-ink-3 resize-none h-24 focus:outline-none focus:border-accent-primary focus:ring-2 focus:ring-accent-primary/20" placeholder="Write your reply..." />
+          <textarea className="w-full p-4 bg-panel border border-rule rounded-xl text-sm text-ink placeholder:text-ink-3 resize-none h-24 focus:outline-none focus:border-accent-primary focus:ring-2 focus:ring-accent-primary/20" placeholder="Write your reply..." />
           <div className="flex items-center justify-between mt-3">
             <div className="flex gap-2">
               <button className="flex items-center gap-1.5 px-3 py-2 glass-surface border border-rule rounded-md text-xs text-ink-3 hover:text-ink-2">

@@ -156,7 +156,7 @@ export function WaitlistForm({ source = "landing-page", className = "", variant 
         <button
           type="submit"
           disabled={status === "loading"}
-          className="px-6 py-3 rounded-full bg-bg-cream text-ink font-medium hover:bg-bg-surface transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+          className="px-6 py-3 rounded-full bg-bg-cream text-ink font-medium hover:bg-panel transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
         >
           {status === "loading" ? (
             <span className="flex items-center gap-2">
@@ -197,7 +197,7 @@ export function WaitlistForm({ source = "landing-page", className = "", variant 
         <button
           type="submit"
           disabled={status === "loading"}
-          className="px-8 py-4 rounded-full bg-bg-cream text-ink font-medium hover:bg-bg-surface transition-all hover:scale-105 hover:shadow-xl hover:shadow-black/10 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+          className="px-8 py-4 rounded-full bg-bg-cream text-ink font-medium hover:bg-panel transition-all hover:scale-105 hover:shadow-xl hover:shadow-black/10 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
         >
           {status === "loading" ? (
             <span className="flex items-center gap-2">

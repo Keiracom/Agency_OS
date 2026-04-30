@@ -10,7 +10,7 @@ import { roiSummary } from "@/lib/mock/reports-data";
 
 export function ROISummary() {
   return (
-    <div className="bg-bg-surface border border-default rounded-xl overflow-hidden">
+    <div className="bg-panel border border-default rounded-xl overflow-hidden">
       <div className="px-5 py-4 border-b border-default flex items-center gap-2">
         <DollarSign className="w-4 h-4 text-[#D4956A]" />
         <h3 className="text-sm font-semibold text-ink">ROI Summary</h3>

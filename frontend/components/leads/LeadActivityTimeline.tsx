@@ -121,7 +121,7 @@ const channelIcons: Record<string, React.ReactNode> = {
 };
 
 const channelColors: Record<string, string> = {
-  email: "bg-bg-elevated",
+  email: "bg-panel",
   sms: "bg-amber",
   voice: "bg-amber",
   linkedin: "bg-amber",

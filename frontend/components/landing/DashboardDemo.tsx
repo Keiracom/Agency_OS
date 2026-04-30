@@ -31,7 +31,7 @@ const channelIcons = {
 };
 
 const channelStyles = {
-  email: { icon: "text-ink-2", bg: "bg-bg-elevated/20" },
+  email: { icon: "text-ink-2", bg: "bg-panel/20" },
   linkedin: { icon: "text-amber", bg: "bg-amber/20" },
   sms: { icon: "text-amber", bg: "bg-amber/20" },
   phone: { icon: "text-amber", bg: "bg-amber/20" },
@@ -230,7 +230,7 @@ export default function DashboardDemo({ className = "" }: DashboardDemoProps) {
             {[
               { label: "Hot", value: 24, color: "bg-amber", textColor: "text-amber" },
               { label: "Warm", value: 31, color: "bg-orange-500", textColor: "text-orange-400" },
-              { label: "Cool", value: 28, color: "bg-bg-elevated", textColor: "text-ink-2" },
+              { label: "Cool", value: 28, color: "bg-panel", textColor: "text-ink-2" },
               { label: "Cold", value: 12, color: "bg-bg-surface0", textColor: "text-ink-3" },
               { label: "Dead", value: 5, color: "bg-gray-700", textColor: "text-text-primary0" },
             ].map((tier) => (

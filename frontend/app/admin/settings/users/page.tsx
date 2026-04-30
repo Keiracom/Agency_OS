@@ -120,7 +120,7 @@ const mockUsers: User[] = [
 
 const roleColors: Record<string, string> = {
   owner: "bg-amber/10 text-amber border-amber/20",
-  admin: "bg-bg-elevated/10 text-amber border-default/20",
+  admin: "bg-panel/10 text-amber border-default/20",
   member: "bg-amber/10 text-amber border-amber/20",
   viewer: "bg-bg-surface0/10 text-ink-3 border-gray-500/20",
 };

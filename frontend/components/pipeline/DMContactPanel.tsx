@@ -21,7 +21,7 @@ function ConfidenceBadge({ confidence }: { confidence: string | null }) {
       ? "text-[#10B981] bg-[#10B981]/10 border-[#10B981]/30"
       : upper === "MEDIUM"
       ? "text-amber bg-amber-glow border-amber/30"
-      : "text-ink-3 bg-bg-elevated border-rule";
+      : "text-ink-3 bg-panel border-rule";
   return (
     <span
       className={`text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded border uppercase tracking-wide ${color}`}
@@ -43,7 +43,7 @@ function SourceBadge({ source }: { source: string | null }) {
   };
   const label = labels[source.toLowerCase()] ?? source.toUpperCase().slice(0, 8);
   return (
-    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-bg-elevated text-ink-3 border border-rule">
+    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-panel text-ink-3 border border-rule">
       {label}
     </span>
   );
@@ -69,14 +69,14 @@ export function DMContactPanel({ card }: DMContactPanelProps) {
 
   if (!hasDM) {
     return (
-      <div className="p-3 rounded-lg bg-bg-elevated border border-rule">
+      <div className="p-3 rounded-lg bg-panel border border-rule">
         <p className="text-xs text-ink-3 font-mono">DM not identified</p>
       </div>
     );
   }
 
   return (
-    <div className="rounded-lg bg-bg-elevated border border-rule overflow-hidden">
+    <div className="rounded-lg bg-panel border border-rule overflow-hidden">
       {/* Header */}
       <div className="px-3 py-2.5 border-b border-rule flex items-center gap-2">
         <div className="w-7 h-7 rounded-lg bg-amber-glow flex items-center justify-center text-amber text-xs font-bold">

@@ -244,7 +244,7 @@ const getActivityIcon = (type: ActivityType) => {
 
 const getActivityStyles = (type: ActivityType) => {
   const styleMap: Record<ActivityType, { bg: string; text: string; glow: string }> = {
-    email_sent: { bg: "bg-bg-elevated/20", text: "text-ink-2", glow: "shadow-amber/20" },
+    email_sent: { bg: "bg-panel/20", text: "text-ink-2", glow: "shadow-amber/20" },
     email_opened: { bg: "bg-amber/20", text: "text-amber", glow: "shadow-amber/20" },
     email_clicked: { bg: "bg-indigo-500/20", text: "text-indigo-400", glow: "shadow-indigo-500/20" },
     email_replied: { bg: "bg-amber/20", text: "text-amber", glow: "shadow-amber/20" },

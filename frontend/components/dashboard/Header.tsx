@@ -197,7 +197,7 @@ function NotificationBell({
   }, [open]);
 
   const typeStyles = {
-    info: "bg-bg-elevated/20 text-ink-2",
+    info: "bg-panel/20 text-ink-2",
     success: "bg-amber/20 text-amber",
     warning: "bg-amber-500/20 text-amber-400",
     error: "bg-amber/20 text-amber",
@@ -257,7 +257,7 @@ function NotificationBell({
                     w-full px-4 py-3 text-left
                     hover:bg-bg-panel/5 transition-colors
                     border-b border-white/5 last:border-0
-                    ${!notification.read ? "bg-bg-elevated/5" : ""}
+                    ${!notification.read ? "bg-panel/5" : ""}
                   `}
                 >
                   <div className="flex items-start gap-3">
@@ -276,7 +276,7 @@ function NotificationBell({
                       </p>
                     </div>
                     {!notification.read && (
-                      <div className="w-2 h-2 bg-bg-elevated rounded-full mt-2" />
+                      <div className="w-2 h-2 bg-panel rounded-full mt-2" />
                     )}
                   </div>
                 </button>

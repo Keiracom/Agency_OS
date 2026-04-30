@@ -23,7 +23,7 @@ const tierConfig: Record<TierType, { label: string; badgeBg: string; badgeText: 
   },
   cool: {
     label: "COOL",
-    badgeBg: "bg-bg-elevated/15",
+    badgeBg: "bg-panel/15",
     badgeText: "text-ink-2",
     barGradient: "from-amber/30 to-amber",
   },
@@ -39,7 +39,7 @@ export function TierConversion() {
   const maxRate = Math.max(...tierData.map((t) => t.conversionRate));
 
   return (
-    <div className="bg-bg-surface border border-default rounded-xl overflow-hidden">
+    <div className="bg-panel border border-default rounded-xl overflow-hidden">
       <div className="px-5 py-4 border-b border-default flex items-center gap-2">
         <BarChart3 className="w-4 h-4 text-[#D4956A]" />
         <h3 className="text-sm font-semibold text-ink">Conversion Rate by Tier</h3>

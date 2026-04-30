@@ -39,7 +39,7 @@ export function UsageMeters({ usage, resetDate }: UsageMetersProps) {
               <span className="text-[28px] font-extrabold font-mono text-ink">{usage.leads.current.toLocaleString()}</span>
               <span className="text-base text-ink-3 font-mono">/ {usage.leads.max.toLocaleString()}</span>
             </div>
-            <div className="h-2 bg-bg-elevated rounded overflow-hidden mb-2">
+            <div className="h-2 bg-panel rounded overflow-hidden mb-2">
               <div
                 className="h-full rounded bg-gradient-to-r from-accent-primary to-accent-blue transition-all duration-500"
                 style={{ width: `${leadsPercent}%` }}
@@ -62,7 +62,7 @@ export function UsageMeters({ usage, resetDate }: UsageMetersProps) {
               <span className="text-[28px] font-extrabold font-mono text-ink">{usage.meetings.current}</span>
               <span className="text-base text-ink-3 font-mono">/ {usage.meetings.targetMin}-{usage.meetings.targetMax}</span>
             </div>
-            <div className="h-2 bg-bg-elevated rounded overflow-hidden mb-2">
+            <div className="h-2 bg-panel rounded overflow-hidden mb-2">
               <div
                 className="h-full rounded bg-gradient-to-r from-accent-teal to-status-success transition-all duration-500"
                 style={{ width: `${meetingsPercent}%` }}
@@ -85,7 +85,7 @@ export function UsageMeters({ usage, resetDate }: UsageMetersProps) {
               <span className="text-[28px] font-extrabold font-mono text-ink">{usage.clients.current}</span>
               <span className="text-base text-ink-3 font-mono">/ {usage.clients.targetMin}-{usage.clients.targetMax}</span>
             </div>
-            <div className="h-2 bg-bg-elevated rounded overflow-hidden mb-2">
+            <div className="h-2 bg-panel rounded overflow-hidden mb-2">
               <div
                 className="h-full rounded bg-gradient-to-r from-accent-teal to-status-success transition-all duration-500"
                 style={{ width: `${clientsPercent}%` }}

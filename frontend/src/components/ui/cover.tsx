@@ -131,7 +131,7 @@ export const Cover = ({
           },
         }}
         className={cn(
-          "dark:text-text-primary inline-block text-neutral-900 relative z-20 group-hover/cover:text-text-primary transition duration-200",
+          "dark:text-ink inline-block text-neutral-900 relative z-20 group-hover/cover:text-ink transition duration-200",
           className
         )}
       >
@@ -220,7 +220,7 @@ export const CircleIcon = ({
   return (
     <div
       className={cn(
-        `pointer-events-none animate-pulse group-hover/cover:hidden group-hover/cover:opacity-100 group h-2 w-2 rounded-full bg-neutral-600 dark:bg-bg-surface opacity-20 group-hover/cover:bg-bg-surface`,
+        `pointer-events-none animate-pulse group-hover/cover:hidden group-hover/cover:opacity-100 group h-2 w-2 rounded-full bg-neutral-600 dark:bg-panel opacity-20 group-hover/cover:bg-panel`,
         className
       )}
     ></div>

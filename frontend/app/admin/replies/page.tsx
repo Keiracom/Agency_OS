@@ -121,7 +121,7 @@ const mockReplies: Reply[] = [
 
 const intentColors: Record<string, string> = {
   interested: "bg-amber/10 text-amber border-amber/20",
-  meeting_request: "bg-bg-elevated/10 text-amber border-default/20",
+  meeting_request: "bg-panel/10 text-amber border-default/20",
   question: "bg-amber/10 text-amber border-amber/20",
   not_interested: "bg-amber-glow text-error border-amber/20",
   unsubscribe: "bg-amber-glow text-error border-amber/20",
@@ -136,7 +136,7 @@ const channelIcons = {
 };
 
 const channelColors = {
-  email: "bg-bg-elevated/10 text-ink-2",
+  email: "bg-panel/10 text-ink-2",
   sms: "bg-amber/10 text-amber",
   linkedin: "bg-amber-glow text-amber",
 };

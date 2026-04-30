@@ -279,7 +279,7 @@ const channelLabels: Record<ChannelType, string> = {
 
 const stepTypeColors: Record<ChannelType, string> = {
   email: "bg-amber/20 text-amber",
-  linkedin: "bg-bg-elevated/20 text-ink-2",
+  linkedin: "bg-panel/20 text-ink-2",
   sms: "bg-amber/20 text-amber",
   voice: "bg-amber-500/20 text-amber-400",
   mail: "bg-amber-light/20 text-amber-light",
@@ -299,14 +299,14 @@ const scoreColors: Record<LeadTier, string> = {
 
 const statusConfig: Record<LeadStatus, { label: string; icon: LucideIcon; class: string }> = {
   meeting: { label: "Meeting", icon: Calendar, class: "bg-amber/20 text-amber" },
-  replied: { label: "Replied", icon: Reply, class: "bg-bg-elevated/20 text-ink-2" },
+  replied: { label: "Replied", icon: Reply, class: "bg-panel/20 text-ink-2" },
   opened: { label: "Opened", icon: Eye, class: "bg-amber/20 text-amber" },
   sent: { label: "Sent", icon: Send, class: "bg-slate-500/20 text-ink-2" },
 };
 
 const activityIcons: Record<string, { icon: LucideIcon; bg: string }> = {
   meeting: { icon: Calendar, bg: "bg-amber/20" },
-  reply: { icon: Reply, bg: "bg-bg-elevated/20" },
+  reply: { icon: Reply, bg: "bg-panel/20" },
   open: { icon: Eye, bg: "bg-amber/20" },
   sent: { icon: Send, bg: "bg-slate-500/20" },
   call: { icon: Phone, bg: "bg-amber-500/20" },
@@ -370,7 +370,7 @@ function CampaignHero({
         <div className="flex items-center gap-3">
           <button
             onClick={onEdit}
-            className="flex items-center gap-2 px-4 py-2 bg-bg-surface/60 hover:bg-slate-700/60 border border-white/10 rounded-lg text-sm text-ink transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-panel/60 hover:bg-slate-700/60 border border-white/10 rounded-lg text-sm text-ink transition-colors"
           >
             <Edit2 className="w-4 h-4" />
             Edit
@@ -597,7 +597,7 @@ function ChannelPerformance({
                     className={`p-4 rounded-lg border ${
                       variant.isWinner
                         ? "bg-amber/5 border-amber/30"
-                        : "bg-bg-surface/40 border-white/5"
+                        : "bg-panel/40 border-white/5"
                     }`}
                   >
                     <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-3 mb-2">
@@ -650,7 +650,7 @@ function LeadsTable({
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="bg-bg-surface/40">
+            <tr className="bg-panel/40">
               <th className="text-left px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-ink-3">Lead</th>
               <th className="text-left px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-ink-3">Status</th>
               <th className="text-left px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-ink-3">Step</th>
@@ -663,7 +663,7 @@ function LeadsTable({
               const status = statusConfig[lead.status];
               const StatusIcon = status.icon;
               return (
-                <tr key={lead.id} className="hover:bg-bg-surface/20 transition-colors">
+                <tr key={lead.id} className="hover:bg-panel/20 transition-colors">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${tierColors[lead.tier]} flex items-center justify-center text-ink text-xs font-bold`}>
@@ -694,7 +694,7 @@ function LeadsTable({
       </div>
       <button
         onClick={onViewAll}
-        className="w-full py-4 text-sm font-medium text-amber hover:text-violet-300 hover:bg-bg-surface/20 transition-colors border-t border-white/10"
+        className="w-full py-4 text-sm font-medium text-amber hover:text-violet-300 hover:bg-panel/20 transition-colors border-t border-white/10"
       >
         Explore All Leads →
       </button>

@@ -15,7 +15,7 @@ function UsageBar({ used, limit, label }: { used: number; limit: number; label: 
         <span className="text-ink-2">{label}</span>
         <span className="text-ink-3">{used.toLocaleString()} / {limit.toLocaleString()}</span>
       </div>
-      <div className="h-2 bg-bg-elevated rounded-full overflow-hidden">
+      <div className="h-2 bg-panel rounded-full overflow-hidden">
         <div
           className="h-full bg-gradient-to-r from-[#D4956A] to-[#E4A57A] rounded-full transition-all"
           style={{ width: `${pct}%` }}

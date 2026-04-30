@@ -19,7 +19,7 @@ const channelIcons: Record<ChannelType, typeof Mail> = {
 const channelColors: Record<ChannelType, string> = {
   email: 'bg-amber/15 text-amber',
   sms: 'bg-amber-glow text-amber',
-  linkedin: 'bg-bg-elevated/15 text-ink-2',
+  linkedin: 'bg-panel/15 text-ink-2',
   voice: 'bg-amber-500/15 text-amber-400',
 };
 
@@ -29,7 +29,7 @@ interface ActivityTimelineProps {
 
 export function ActivityTimeline({ activities }: ActivityTimelineProps) {
   return (
-    <div className="bg-bg-surface rounded-xl p-4">
+    <div className="bg-panel rounded-xl p-4">
       <div className="flex items-center gap-2 mb-4 text-xs font-semibold uppercase tracking-wide text-ink-3">
         <Clock className="w-3.5 h-3.5" />
         Related Activity

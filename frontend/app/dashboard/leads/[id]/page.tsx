@@ -427,7 +427,7 @@ export default function LeadDetailPage() {
               </div>
               <div className="p-5">
                 <div className="flex items-center gap-4 mb-5">
-                  <div className="w-12 h-12 rounded-xl bg-bg-elevated flex items-center justify-center text-xl border border-rule-strong">
+                  <div className="w-12 h-12 rounded-xl bg-panel flex items-center justify-center text-xl border border-rule-strong">
                     <Building2 className="w-6 h-6 text-ink-3" />
                   </div>
                   <div>
@@ -441,11 +441,11 @@ export default function LeadDetailPage() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 mb-5">
-                  <div className="p-3 rounded-xl bg-bg-elevated text-center">
+                  <div className="p-3 rounded-xl bg-panel text-center">
                     <p className="text-lg font-bold font-mono text-ink">{companyDetails.employees}</p>
                     <p className="text-[10px] text-ink-3 uppercase">Employees</p>
                   </div>
-                  <div className="p-3 rounded-xl bg-bg-elevated text-center">
+                  <div className="p-3 rounded-xl bg-panel text-center">
                     <p className="text-lg font-bold font-mono text-ink">{companyDetails.revenue}</p>
                     <p className="text-[10px] text-ink-3 uppercase">Revenue</p>
                   </div>
@@ -493,7 +493,7 @@ export default function LeadDetailPage() {
                             <span className="text-ink-2">{item.label}</span>
                             <span className="font-mono font-medium text-ink">{item.score}/{item.max}</span>
                           </div>
-                          <div className="h-2 rounded-full bg-bg-elevated overflow-hidden">
+                          <div className="h-2 rounded-full bg-panel overflow-hidden">
                             <motion.div
                               initial={{ width: 0 }}
                               animate={{ width: `${percent}%` }}
@@ -544,7 +544,7 @@ export default function LeadDetailPage() {
                   {enrichmentDepth}%
                 </span>
               </div>
-              <div className="h-3 rounded-full bg-bg-elevated overflow-hidden">
+              <div className="h-3 rounded-full bg-panel overflow-hidden">
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${enrichmentDepth}%` }}

@@ -437,7 +437,7 @@ function ChannelStatusPanel({
       fullLabel: "LinkedIn",
       icon: ChatBubbleLeftRightIcon, 
       color: "text-ink-2", 
-      bgColor: "bg-bg-elevated/15" 
+      bgColor: "bg-panel/15" 
     },
     { 
       key: "sms", 
@@ -496,7 +496,7 @@ function ChannelStatusPanel({
               key={key}
               className={cn(
                 "relative p-4 rounded-xl border transition-all cursor-pointer group",
-                "bg-bg-surface/40 hover:bg-bg-surface/60",
+                "bg-panel/40 hover:bg-panel/60",
                 status.status === "active" 
                   ? "border-white/10 hover:border-amber/30" 
                   : "border-white/5 opacity-75 hover:opacity-100"
@@ -564,7 +564,7 @@ function RecentActivitySummary({ activities }: { activities: RecentActivity[] })
   const getActivityColor = (channel: keyof ChannelStats) => {
     switch (channel) {
       case "email": return { bg: "bg-amber/15", text: "text-amber" };
-      case "linkedin": return { bg: "bg-bg-elevated/15", text: "text-ink-2" };
+      case "linkedin": return { bg: "bg-panel/15", text: "text-ink-2" };
       case "sms": return { bg: "bg-amber-glow", text: "text-amber" };
       case "voice": return { bg: "bg-amber-500/15", text: "text-amber-400" };
       case "directMail": return { bg: "bg-amber-glow", text: "text-amber-light" };
@@ -601,7 +601,7 @@ function RecentActivitySummary({ activities }: { activities: RecentActivity[] })
             <div
               key={activity.id}
               className={cn(
-                "flex items-start gap-3 py-3 cursor-pointer transition-colors hover:bg-bg-surface/30 -mx-4 px-4",
+                "flex items-start gap-3 py-3 cursor-pointer transition-colors hover:bg-panel/30 -mx-4 px-4",
                 idx !== activities.length - 1 && "border-b border-white/5"
               )}
             >
@@ -704,7 +704,7 @@ function ChannelOrchestrationWheel({
 
   const channels = [
     { key: "email", icon: EnvelopeIcon, label: "Email", color: "bg-amber/15 text-amber" },
-    { key: "linkedin", icon: ChatBubbleLeftRightIcon, label: "LinkedIn", color: "bg-bg-elevated/15 text-ink-2" },
+    { key: "linkedin", icon: ChatBubbleLeftRightIcon, label: "LinkedIn", color: "bg-panel/15 text-ink-2" },
     { key: "sms", icon: ChatBubbleLeftRightIcon, label: "SMS", color: "bg-amber-glow text-amber" },
     { key: "voice", icon: PhoneIcon, label: "Calls", color: "bg-amber-500/15 text-amber-400" },
     { key: "directMail", icon: EnvelopeIcon, label: "Mail", color: "bg-amber-glow text-amber-light" },
@@ -779,7 +779,7 @@ function ChannelOrchestrationWheel({
         {channels.map(({ key, label }) => (
           <div
             key={key}
-            className="text-center py-3 px-2 bg-bg-surface/50 rounded-lg"
+            className="text-center py-3 px-2 bg-panel/50 rounded-lg"
           >
             <div className="text-lg font-bold font-mono text-ink">
               {stats[key as keyof ChannelStats]}
@@ -853,7 +853,7 @@ function HotProspectsCard({ prospects }: { prospects: Prospect[] }) {
           <div
             key={prospect.id}
             className={cn(
-              "flex items-center gap-4 py-4 cursor-pointer transition-colors hover:bg-bg-surface/30 -mx-6 px-6",
+              "flex items-center gap-4 py-4 cursor-pointer transition-colors hover:bg-panel/30 -mx-6 px-6",
               idx !== prospects.length - 1 && "border-b border-white/5"
             )}
           >
@@ -925,7 +925,7 @@ function VoiceAICard({ calls }: { calls: VoiceCall[] }) {
         };
       case "followup":
         return {
-          bg: "bg-bg-elevated/15",
+          bg: "bg-panel/15",
           text: "text-ink-2",
           icon: ClockIcon,
         };
@@ -956,7 +956,7 @@ function VoiceAICard({ calls }: { calls: VoiceCall[] }) {
           {stats.map(({ value, label }) => (
             <div
               key={label}
-              className="text-center py-4 px-2 bg-bg-surface/50 rounded-lg"
+              className="text-center py-4 px-2 bg-panel/50 rounded-lg"
             >
               <div className="text-2xl font-bold font-mono text-ink">
                 {value}
@@ -1045,7 +1045,7 @@ function WhatsWorkingCard({
       <div className="px-6 py-4">
         <div className="grid grid-cols-2 gap-4">
           {/* Who Converts */}
-          <div className="bg-bg-surface/50 rounded-lg p-4">
+          <div className="bg-panel/50 rounded-lg p-4">
             <div className="text-[11px] font-semibold text-ink-2 uppercase tracking-wide mb-3">
               Who Converts
             </div>
@@ -1063,7 +1063,7 @@ function WhatsWorkingCard({
           </div>
 
           {/* Best Channel Mix */}
-          <div className="bg-bg-surface/50 rounded-lg p-4">
+          <div className="bg-panel/50 rounded-lg p-4">
             <div className="text-[11px] font-semibold text-ink-2 uppercase tracking-wide mb-3">
               Best Channel Mix
             </div>

@@ -98,7 +98,7 @@ export function UserDropdown({ user, className }: UserDropdownProps) {
           className={cn(
             "flex items-center gap-2 rounded-lg px-2 py-1.5",
             "transition-all duration-200 ease-out",
-            "hover:bg-bg-surface/5 focus:bg-bg-surface/5",
+            "hover:bg-panel/5 focus:bg-panel/5",
             "focus:outline-none focus:ring-2 focus:ring-amber/50",
             "border border-transparent hover:border-white/10",
             className
@@ -109,7 +109,7 @@ export function UserDropdown({ user, className }: UserDropdownProps) {
           <div
             className={cn(
               "relative h-8 w-8 rounded-full flex items-center justify-center",
-              "text-sm font-medium text-text-primary",
+              "text-sm font-medium text-ink",
               "ring-2 ring-white/20",
               user.avatar_url ? "" : avatarColor
             )}
@@ -171,7 +171,7 @@ export function UserDropdown({ user, className }: UserDropdownProps) {
                     <div
                       className={cn(
                         "h-10 w-10 rounded-full flex items-center justify-center",
-                        "text-sm font-semibold text-text-primary",
+                        "text-sm font-semibold text-ink",
                         user.avatar_url ? "" : avatarColor
                       )}
                     >
@@ -186,7 +186,7 @@ export function UserDropdown({ user, className }: UserDropdownProps) {
                       )}
                     </div>
                     <div className="flex flex-col">
-                      <span className="text-sm font-medium text-text-primary truncate max-w-[150px]">
+                      <span className="text-sm font-medium text-ink truncate max-w-[150px]">
                         {displayName}
                       </span>
                       <span className="text-xs text-neutral-400 truncate max-w-[150px]">
@@ -206,9 +206,9 @@ export function UserDropdown({ user, className }: UserDropdownProps) {
                           "flex items-center gap-3 px-3 py-2 mx-1.5 rounded-lg",
                           "text-sm text-neutral-300",
                           "cursor-pointer transition-colors duration-150",
-                          "hover:bg-bg-surface/10 hover:text-text-primary",
-                          "focus:bg-bg-surface/10 focus:text-text-primary focus:outline-none",
-                          "data-[highlighted]:bg-bg-surface/10 data-[highlighted]:text-text-primary"
+                          "hover:bg-panel/10 hover:text-ink",
+                          "focus:bg-panel/10 focus:text-ink focus:outline-none",
+                          "data-[highlighted]:bg-panel/10 data-[highlighted]:text-ink"
                         )}
                       >
                         <span className="text-neutral-400 group-hover:text-neutral-300">

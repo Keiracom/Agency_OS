@@ -35,7 +35,7 @@ export function NotificationsSection({ preferences: initialPrefs }: Notification
                 className={`relative w-12 h-[26px] rounded-[13px] cursor-pointer transition-all duration-200 border ${
                   pref.enabled
                     ? 'bg-[#D4956A] border-[#D4956A]'
-                    : 'bg-bg-elevated border-rule-strong'
+                    : 'bg-panel border-rule-strong'
                 }`}
               >
                 <span className={`absolute top-[2px] w-5 h-5 bg-bg-panel rounded-full shadow-md transition-all duration-200 ${

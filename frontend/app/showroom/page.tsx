@@ -162,7 +162,7 @@ function ShowcaseCard({ title, engine, description, accentColor, children, codeS
                   </div>
                   <button
                     onClick={() => setIsFullscreen(false)}
-                    className="w-10 h-10 rounded-lg bg-bg-surface hover:bg-slate-700 flex items-center justify-center text-ink-2 hover:text-ink transition-colors"
+                    className="w-10 h-10 rounded-lg bg-panel hover:bg-slate-700 flex items-center justify-center text-ink-2 hover:text-ink transition-colors"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -198,7 +198,7 @@ function ShowcaseCard({ title, engine, description, accentColor, children, codeS
               {/* Fullscreen button */}
               <button
                 onClick={() => setIsFullscreen(true)}
-                className="w-7 h-7 rounded-md bg-bg-surface/50 hover:bg-slate-700 flex items-center justify-center text-ink-3 hover:text-ink transition-colors"
+                className="w-7 h-7 rounded-md bg-panel/50 hover:bg-slate-700 flex items-center justify-center text-ink-3 hover:text-ink transition-colors"
                 title="Fullscreen"
               >
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -211,7 +211,7 @@ function ShowcaseCard({ title, engine, description, accentColor, children, codeS
                   className={`w-7 h-7 rounded-md flex items-center justify-center transition-colors ${
                     showCode
                       ? 'bg-slate-700 text-ink'
-                      : 'bg-bg-surface/50 hover:bg-slate-700 text-ink-3 hover:text-ink'
+                      : 'bg-panel/50 hover:bg-slate-700 text-ink-3 hover:text-ink'
                   }`}
                   title="Show code"
                 >
@@ -237,7 +237,7 @@ function ShowcaseCard({ title, engine, description, accentColor, children, codeS
           {tags.length > 0 && (
             <div className="px-4 py-2 border-b border-slate-700/30 flex gap-2 flex-wrap flex-shrink-0">
               {tags.map((tag) => (
-                <span key={tag} className="px-2 py-0.5 bg-bg-surface/50 rounded text-xs text-ink-2 font-mono">
+                <span key={tag} className="px-2 py-0.5 bg-panel/50 rounded text-xs text-ink-2 font-mono">
                   {tag}
                 </span>
               ))}
@@ -372,7 +372,7 @@ export default function ShowroomPage() {
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className={`w-full border rounded-lg px-4 py-2 pl-10 text-sm focus:outline-none transition-colors ${
                       isDark
-                        ? "bg-bg-surface/50 border-slate-700/50 text-ink placeholder-slate-500 focus:border-amber/50"
+                        ? "bg-panel/50 border-slate-700/50 text-ink placeholder-slate-500 focus:border-amber/50"
                         : "bg-bg-panel border-gray-300 text-gray-900 placeholder-gray-400 focus:border-amber"
                     }`}
                   />
@@ -388,8 +388,8 @@ export default function ShowroomPage() {
                   onClick={() => setTheme(isDark ? "light" : "dark")}
                   className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${
                     isDark
-                      ? "bg-bg-surface hover:bg-slate-700 text-yellow-400"
-                      : "bg-bg-panel hover:bg-bg-elevated text-slate-700"
+                      ? "bg-panel hover:bg-slate-700 text-yellow-400"
+                      : "bg-bg-panel hover:bg-panel text-slate-700"
                   }`}
                   title={`Switch to ${isDark ? "light" : "dark"} mode`}
                 >
@@ -784,7 +784,7 @@ export default function ShowroomPage() {
                 { title: "Rive", color: "#f97316", imports: ["RiveButton", "RiveLoader", "RiveCharacter"] },
                 { title: "UI Effects", color: "#22c55e", imports: ["HoloCard", "SparklesCore"] },
               ].map((group) => (
-                <div key={group.title} className="p-4 bg-bg-surface/30 rounded-xl border border-slate-700/30">
+                <div key={group.title} className="p-4 bg-panel/30 rounded-xl border border-slate-700/30">
                   <h3 className="font-mono text-sm mb-3" style={{ color: group.color }}>{group.title}</h3>
                   <code className="text-ink-2 text-xs block space-y-1">
                     <span className="text-ink-3">import {"{"}</span>

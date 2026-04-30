@@ -197,7 +197,7 @@ export function CapacityGauge({
         </CardHeader>
         <CardContent className="space-y-3">
           {/* Progress bar */}
-          <div className="h-4 bg-bg-surface rounded-full overflow-hidden">
+          <div className="h-4 bg-panel rounded-full overflow-hidden">
             <div
               className={`h-full bg-gradient-to-r ${config.color} rounded-full transition-all duration-500`}
               style={{ width: `${percentage}%` }}

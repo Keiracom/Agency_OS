@@ -52,9 +52,9 @@ import type {
 // Bloomberg Color Reference (Tailwind classes)
 // ============================================
 // Base: bg-bg-cream
-// Surface: bg-bg-surface
-// Surface Hover: bg-bg-elevated
-// Elevated: bg-bg-elevated
+// Surface: bg-panel
+// Surface Hover: bg-panel
+// Elevated: bg-panel
 // Border Subtle: border-default
 // Border Default: border-default
 // Text Primary: text-ink
@@ -318,7 +318,7 @@ function VoiceTranscriptModal({
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[60]">
-      <div className="w-full max-w-2xl bg-bg-surface border border-default rounded-2xl shadow-2xl overflow-hidden mx-4 animate-in fade-in zoom-in-95 duration-200">
+      <div className="w-full max-w-2xl bg-panel border border-default rounded-2xl shadow-2xl overflow-hidden mx-4 animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-default">
           <h3 className="flex items-center gap-2 text-lg font-semibold text-ink">
@@ -327,7 +327,7 @@ function VoiceTranscriptModal({
           </h3>
           <button
             onClick={onClose}
-            className="p-2 rounded-lg bg-bg-elevated text-ink-3 hover:text-ink transition-colors"
+            className="p-2 rounded-lg bg-panel text-ink-3 hover:text-ink transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -336,7 +336,7 @@ function VoiceTranscriptModal({
         {/* Body */}
         <div className="p-6 max-h-[70vh] overflow-y-auto">
           {/* Call Header */}
-          <div className="flex items-center gap-4 p-5 bg-bg-elevated rounded-xl mb-5">
+          <div className="flex items-center gap-4 p-5 bg-panel rounded-xl mb-5">
             <div className="w-13 h-13 bg-gradient-to-br from-amber to-amber-light rounded-xl flex items-center justify-center p-3">
               <Phone className="w-6 h-6 text-ink" />
             </div>
@@ -382,7 +382,7 @@ function VoiceTranscriptModal({
                     className={`w-9 h-9 rounded-lg flex items-center justify-center text-xs font-semibold flex-shrink-0 ${
                       line.speaker === "ai"
                         ? "bg-amber/15 text-amber"
-                        : "bg-bg-elevated text-ink-3"
+                        : "bg-panel text-ink-3"
                     }`}
                   >
                     {line.speaker === "ai" ? "AI" : "SC"}
@@ -435,7 +435,7 @@ function EmailThreadModal({
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[60]">
-      <div className="w-full max-w-2xl bg-bg-surface border border-default rounded-2xl shadow-2xl overflow-hidden mx-4 animate-in fade-in zoom-in-95 duration-200">
+      <div className="w-full max-w-2xl bg-panel border border-default rounded-2xl shadow-2xl overflow-hidden mx-4 animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-default">
           <h3 className="flex items-center gap-2 text-lg font-semibold text-ink">
@@ -444,7 +444,7 @@ function EmailThreadModal({
           </h3>
           <button
             onClick={onClose}
-            className="p-2 rounded-lg bg-bg-elevated text-ink-3 hover:text-ink transition-colors"
+            className="p-2 rounded-lg bg-panel text-ink-3 hover:text-ink transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -458,7 +458,7 @@ function EmailThreadModal({
               className={`p-5 rounded-xl ${
                 email.direction === "sent"
                   ? "bg-amber/10 border border-amber/20 ml-6"
-                  : "bg-bg-elevated border border-default mr-6"
+                  : "bg-panel border border-default mr-6"
               }`}
             >
               <div className="flex items-center justify-between mb-3">
@@ -496,7 +496,7 @@ function LinkedInThreadModal({
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[60]">
-      <div className="w-full max-w-2xl bg-bg-surface border border-default rounded-2xl shadow-2xl overflow-hidden mx-4 animate-in fade-in zoom-in-95 duration-200">
+      <div className="w-full max-w-2xl bg-panel border border-default rounded-2xl shadow-2xl overflow-hidden mx-4 animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-default">
           <h3 className="flex items-center gap-2 text-lg font-semibold text-ink">
@@ -505,7 +505,7 @@ function LinkedInThreadModal({
           </h3>
           <button
             onClick={onClose}
-            className="p-2 rounded-lg bg-bg-elevated text-ink-3 hover:text-ink transition-colors"
+            className="p-2 rounded-lg bg-panel text-ink-3 hover:text-ink transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -550,7 +550,7 @@ function LinkedInThreadModal({
                   className={`max-w-[85%] p-4 rounded-2xl ${
                     msg.direction === "sent"
                       ? "bg-[#0077B5] text-ink ml-auto rounded-br-sm"
-                      : "bg-bg-elevated text-ink mr-auto rounded-bl-sm"
+                      : "bg-panel text-ink mr-auto rounded-bl-sm"
                   }`}
                 >
                   <p className="text-sm leading-relaxed">{msg.text}</p>
@@ -625,7 +625,7 @@ export function LeadDetailModal({ isOpen, onClose, lead: propLead }: LeadDetailM
       {/* Slide-over Panel */}
       <div className="fixed inset-y-0 right-0 w-full max-w-4xl bg-bg-cream shadow-xl z-50 overflow-hidden flex flex-col animate-in slide-in-from-right duration-300">
         {/* Header */}
-        <div className="bg-bg-surface border-b border-default px-6 py-4">
+        <div className="bg-panel border-b border-default px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <button
@@ -640,7 +640,7 @@ export function LeadDetailModal({ isOpen, onClose, lead: propLead }: LeadDetailM
             </div>
             <button
               onClick={onClose}
-              className="p-2 rounded-lg bg-bg-elevated text-ink-3 hover:text-ink transition-colors"
+              className="p-2 rounded-lg bg-panel text-ink-3 hover:text-ink transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
@@ -651,7 +651,7 @@ export function LeadDetailModal({ isOpen, onClose, lead: propLead }: LeadDetailM
         <div className="flex-1 overflow-y-auto">
           <div className="p-6">
             {/* Profile Header Card */}
-            <div className="bg-bg-surface border border-default rounded-2xl p-6 mb-6 relative overflow-hidden">
+            <div className="bg-panel border border-default rounded-2xl p-6 mb-6 relative overflow-hidden">
               {/* Top accent bar */}
               <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-amber to-amber" />
 
@@ -743,7 +743,7 @@ export function LeadDetailModal({ isOpen, onClose, lead: propLead }: LeadDetailM
               {/* Left Column (2/3) */}
               <div className="col-span-2 space-y-6">
                 {/* Engagement Profile Card */}
-                <div className="bg-bg-surface border border-default rounded-xl overflow-hidden">
+                <div className="bg-panel border border-default rounded-xl overflow-hidden">
                   <div className="px-6 py-4 border-b border-default flex items-center justify-between">
                     <div className="flex items-center gap-2.5 text-[15px] font-semibold text-ink">
                       <BarChart3 className="w-4 h-4" />
@@ -756,14 +756,14 @@ export function LeadDetailModal({ isOpen, onClose, lead: propLead }: LeadDetailM
                       {Object.values(lead.engagementProfile).map((score) => (
                         <div key={score.label} className="flex items-center gap-4">
                           <span className="flex-1 text-sm text-ink-2">{score.label}</span>
-                          <div className="w-32 h-2 bg-bg-elevated rounded-full overflow-hidden">
+                          <div className="w-32 h-2 bg-panel rounded-full overflow-hidden">
                             <div
                               className={`h-full rounded-full transition-all ${
                                 score.level === "high"
                                   ? "bg-amber"
                                   : score.level === "medium"
                                   ? "bg-amber-500"
-                                  : "bg-bg-elevated"
+                                  : "bg-panel"
                               }`}
                               style={{ width: `${(score.value / score.maxValue) * 100}%` }}
                             />
@@ -778,7 +778,7 @@ export function LeadDetailModal({ isOpen, onClose, lead: propLead }: LeadDetailM
                 </div>
 
                 {/* Activity Timeline Card */}
-                <div className="bg-bg-surface border border-default rounded-xl overflow-hidden">
+                <div className="bg-panel border border-default rounded-xl overflow-hidden">
                   <div className="px-6 py-4 border-b border-default flex items-center justify-between">
                     <div className="flex items-center gap-2.5 text-[15px] font-semibold text-ink">
                       <Zap className="w-4 h-4" />
@@ -796,7 +796,7 @@ export function LeadDetailModal({ isOpen, onClose, lead: propLead }: LeadDetailM
                           className={`px-3 py-1.5 text-xs font-medium rounded-md border transition-colors ${
                             activeFilter === filter
                               ? filter === "all"
-                                ? "bg-bg-elevated text-ink border-[#3A3A50]"
+                                ? "bg-panel text-ink border-[#3A3A50]"
                                 : filter === "email"
                                 ? "border-amber text-amber"
                                 : filter === "linkedin"
@@ -804,7 +804,7 @@ export function LeadDetailModal({ isOpen, onClose, lead: propLead }: LeadDetailM
                                 : filter === "voice"
                                 ? "border-amber-500 text-amber-400"
                                 : "border-amber text-amber"
-                              : "bg-bg-elevated text-ink-3 border-default hover:text-ink hover:border-[#3A3A50]"
+                              : "bg-panel text-ink-3 border-default hover:text-ink hover:border-[#3A3A50]"
                           }`}
                         >
                           {filter.charAt(0).toUpperCase() + filter.slice(1)}
@@ -834,7 +834,7 @@ export function LeadDetailModal({ isOpen, onClose, lead: propLead }: LeadDetailM
                                   else if (event.hasThread && event.type === "linkedin") setSubModal("linkedin");
                                   else if (event.hasThread) setSubModal("email");
                                 }}
-                                className="relative flex items-start gap-3.5 p-4 bg-bg-elevated hover:bg-bg-elevated rounded-xl cursor-pointer transition-all hover:translate-x-1"
+                                className="relative flex items-start gap-3.5 p-4 bg-panel hover:bg-panel rounded-xl cursor-pointer transition-all hover:translate-x-1"
                               >
                                 {/* Timeline dot */}
                                 <div
@@ -873,7 +873,7 @@ export function LeadDetailModal({ isOpen, onClose, lead: propLead }: LeadDetailM
                                         className={`text-[10px] font-semibold px-1.5 py-0.5 rounded uppercase ${
                                           event.badge.type === "booked"
                                             ? "bg-amber/15 text-amber"
-                                            : "bg-bg-elevated/15 text-ink-2"
+                                            : "bg-panel/15 text-ink-2"
                                         }`}
                                       >
                                         {event.badge.label}
@@ -909,7 +909,7 @@ export function LeadDetailModal({ isOpen, onClose, lead: propLead }: LeadDetailM
               {/* Right Column (1/3) */}
               <div className="space-y-6">
                 {/* Company Intel Card */}
-                <div className="bg-bg-surface border border-default rounded-xl overflow-hidden">
+                <div className="bg-panel border border-default rounded-xl overflow-hidden">
                   <div className="px-5 py-4 border-b border-default">
                     <div className="flex items-center gap-2 text-[15px] font-semibold text-ink">
                       Company Intel
@@ -918,7 +918,7 @@ export function LeadDetailModal({ isOpen, onClose, lead: propLead }: LeadDetailM
                   <div className="p-5">
                     {/* Company Header */}
                     <div className="flex items-center gap-4 mb-5">
-                      <div className="w-13 h-13 bg-bg-elevated rounded-xl flex items-center justify-center text-2xl border border-default p-3">
+                      <div className="w-13 h-13 bg-panel rounded-xl flex items-center justify-center text-2xl border border-default p-3">
                         <Briefcase className="w-6 h-6 text-ink-3" />
                       </div>
                       <div>
@@ -937,7 +937,7 @@ export function LeadDetailModal({ isOpen, onClose, lead: propLead }: LeadDetailM
                         { label: "Est. Revenue", value: lead.company.estimatedRevenue },
                         { label: "Location", value: lead.company.location },
                       ].map((stat) => (
-                        <div key={stat.label} className="p-4 bg-bg-elevated rounded-xl text-center">
+                        <div key={stat.label} className="p-4 bg-panel rounded-xl text-center">
                           <div className="text-lg font-bold font-mono text-ink">{stat.value}</div>
                           <div className="text-[11px] text-ink-3 uppercase mt-1">{stat.label}</div>
                         </div>
@@ -962,7 +962,7 @@ export function LeadDetailModal({ isOpen, onClose, lead: propLead }: LeadDetailM
                 </div>
 
                 {/* Quick Actions Card */}
-                <div className="bg-bg-surface border border-default rounded-xl overflow-hidden">
+                <div className="bg-panel border border-default rounded-xl overflow-hidden">
                   <div className="px-5 py-4 border-b border-default">
                     <div className="flex items-center gap-2 text-[15px] font-semibold text-ink">
                       <Zap className="w-4 h-4" />
@@ -975,19 +975,19 @@ export function LeadDetailModal({ isOpen, onClose, lead: propLead }: LeadDetailM
                         <Calendar className="w-5 h-5" />
                         Book Meeting
                       </button>
-                      <button className="flex items-center justify-center gap-2 px-4 py-3 bg-bg-elevated text-ink-2 text-sm font-medium rounded-xl border border-default hover:bg-bg-elevated hover:text-ink hover:border-[#3A3A50] transition-all">
+                      <button className="flex items-center justify-center gap-2 px-4 py-3 bg-panel text-ink-2 text-sm font-medium rounded-xl border border-default hover:bg-panel hover:text-ink hover:border-[#3A3A50] transition-all">
                         <Mail className="w-4 h-4" />
                         Send Email
                       </button>
-                      <button className="flex items-center justify-center gap-2 px-4 py-3 bg-bg-elevated text-ink-2 text-sm font-medium rounded-xl border border-default hover:bg-bg-elevated hover:text-ink hover:border-[#3A3A50] transition-all">
+                      <button className="flex items-center justify-center gap-2 px-4 py-3 bg-panel text-ink-2 text-sm font-medium rounded-xl border border-default hover:bg-panel hover:text-ink hover:border-[#3A3A50] transition-all">
                         <Briefcase className="w-4 h-4" />
                         LinkedIn DM
                       </button>
-                      <button className="flex items-center justify-center gap-2 px-4 py-3 bg-bg-elevated text-ink-2 text-sm font-medium rounded-xl border border-default hover:bg-bg-elevated hover:text-ink hover:border-[#3A3A50] transition-all">
+                      <button className="flex items-center justify-center gap-2 px-4 py-3 bg-panel text-ink-2 text-sm font-medium rounded-xl border border-default hover:bg-panel hover:text-ink hover:border-[#3A3A50] transition-all">
                         <MessageSquare className="w-4 h-4" />
                         Send SMS
                       </button>
-                      <button className="flex items-center justify-center gap-2 px-4 py-3 bg-bg-elevated text-ink-2 text-sm font-medium rounded-xl border border-default hover:bg-bg-elevated hover:text-ink hover:border-[#3A3A50] transition-all">
+                      <button className="flex items-center justify-center gap-2 px-4 py-3 bg-panel text-ink-2 text-sm font-medium rounded-xl border border-default hover:bg-panel hover:text-ink hover:border-[#3A3A50] transition-all">
                         <Phone className="w-4 h-4" />
                         AI Call
                       </button>
@@ -999,7 +999,7 @@ export function LeadDetailModal({ isOpen, onClose, lead: propLead }: LeadDetailM
                 </div>
 
                 {/* Notes Card */}
-                <div className="bg-bg-surface border border-default rounded-xl overflow-hidden">
+                <div className="bg-panel border border-default rounded-xl overflow-hidden">
                   <div className="px-5 py-4 border-b border-default">
                     <div className="flex items-center gap-2 text-[15px] font-semibold text-ink">
                       Notes
@@ -1011,7 +1011,7 @@ export function LeadDetailModal({ isOpen, onClose, lead: propLead }: LeadDetailM
                       onChange={(e) => setNoteInput(e.target.value)}
                       placeholder="Add a note about this lead..."
                       rows={3}
-                      className="w-full p-4 text-sm bg-bg-elevated border border-default rounded-xl resize-none text-ink placeholder-[#6E6E82] outline-none focus:border-amber focus:ring-2 focus:ring-amber/20 transition-all"
+                      className="w-full p-4 text-sm bg-panel border border-default rounded-xl resize-none text-ink placeholder-[#6E6E82] outline-none focus:border-amber focus:ring-2 focus:ring-amber/20 transition-all"
                     />
                     <div className="mt-4 space-y-3">
                       {lead.notes.map((note) => (

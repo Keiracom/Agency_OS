@@ -40,7 +40,7 @@ export function ReplyComposer({ recipientEmail, initialValue = '', onSend }: Rep
           onChange={(e) => setMessage(e.target.value)}
           placeholder="Write your reply..."
           className={cn(
-            'w-full p-4 bg-bg-surface border border-rule rounded-xl',
+            'w-full p-4 bg-panel border border-rule rounded-xl',
             'text-sm text-ink placeholder:text-ink-3',
             'resize-none min-h-[120px]',
             'focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20',

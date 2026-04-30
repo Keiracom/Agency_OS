@@ -19,7 +19,7 @@ export function ResponseRates() {
   const circumference = 2 * Math.PI * radius;
 
   return (
-    <div className="bg-bg-surface border border-default rounded-xl overflow-hidden">
+    <div className="bg-panel border border-default rounded-xl overflow-hidden">
       <div className="px-5 py-4 border-b border-default flex items-center gap-2">
         <Zap className="w-4 h-4 text-amber-500" />
         <h3 className="text-sm font-semibold text-ink">Response Rates</h3>

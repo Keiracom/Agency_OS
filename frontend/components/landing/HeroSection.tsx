@@ -29,7 +29,7 @@ const iconMap = {
 }
 
 const colorMap = {
-  blue: "bg-bg-elevated/20 text-ink-2 border-default/30",
+  blue: "bg-panel/20 text-ink-2 border-default/30",
   green: "bg-amber/20 text-amber border-amber/30",
   purple: "bg-amber/20 text-amber border-amber/30",
 }

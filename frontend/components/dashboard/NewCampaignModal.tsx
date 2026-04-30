@@ -163,7 +163,7 @@ export function NewCampaignModal({
                   <div
                     className={`w-10 h-10 rounded-lg flex items-center justify-center ${
                       permissionMode === mode.id
-                        ? "bg-bg-elevated text-ink"
+                        ? "bg-panel text-ink"
                         : "bg-slate-100 text-ink-3"
                     }`}
                   >
@@ -194,7 +194,7 @@ export function NewCampaignModal({
           <button
             onClick={handleSubmit}
             disabled={!name.trim() || isSubmitting}
-            className="px-5 py-2 bg-bg-elevated text-ink text-sm font-medium rounded-lg hover:bg-amber disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            className="px-5 py-2 bg-panel text-ink text-sm font-medium rounded-lg hover:bg-amber disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {isSubmitting ? (
               <>

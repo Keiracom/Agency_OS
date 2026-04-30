@@ -216,7 +216,7 @@ export const MOCK_OVERVIEW_STATS: OverviewStatsProps = {
 
 const channelConfig: Record<ChannelType, { icon: typeof Mail; bg: string }> = {
   email: { icon: Mail, bg: "bg-amber/20 text-amber" },
-  linkedin: { icon: Linkedin, bg: "bg-bg-elevated/20 text-ink-2" },
+  linkedin: { icon: Linkedin, bg: "bg-panel/20 text-ink-2" },
   sms: { icon: MessageCircle, bg: "bg-amber/20 text-amber" },
   voice: { icon: Phone, bg: "bg-amber-500/20 text-amber-400" },
   mail: { icon: Package, bg: "bg-amber-light/20 text-amber-light" },
@@ -396,7 +396,7 @@ export function CampaignCard({
           )}
           {campaign.status !== "completed" && onEdit && (
             <button
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-ink-2 hover:bg-bg-elevated/20 hover:text-ink-2 transition-colors"
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-ink-2 hover:bg-panel/20 hover:text-ink-2 transition-colors"
               onClick={(e) => handleAction(e, () => onEdit(campaign.id))}
               title="Edit"
             >

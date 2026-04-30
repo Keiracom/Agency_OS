@@ -210,9 +210,9 @@ const mockDetail: ConversationDetail = {
 const tierScoreConfig: Record<ALSTier, { text: string; bg: string; border: string }> = {
   hot: { text: "text-amber", bg: "bg-gradient-to-br from-amber to-amber-light", border: "border-amber" },
   warm: { text: "text-amber-light", bg: "bg-gradient-to-br from-amber-light to-amber", border: "border-amber-light" },
-  cool: { text: "text-ink-2", bg: "bg-bg-elevated", border: "border-default" },
+  cool: { text: "text-ink-2", bg: "bg-panel", border: "border-default" },
   cold: { text: "text-ink-3", bg: "bg-bg-panel", border: "border-subtle" },
-  dead: { text: "text-ink-3", bg: "bg-bg-surface", border: "border-subtle" },
+  dead: { text: "text-ink-3", bg: "bg-panel", border: "border-subtle" },
 };
 
 const intentConfig: Record<IntentType, { bg: string; text: string }> = {
@@ -303,10 +303,10 @@ export function ReplyDetail({ conversation = mockDetail, onBack }: ReplyDetailPr
   return (
     <div className="flex flex-col h-full bg-bg-cream">
       {/* Header */}
-      <header className="bg-bg-surface border-b border-default px-6 py-3 flex items-center gap-4">
+      <header className="bg-panel border-b border-default px-6 py-3 flex items-center gap-4">
         <button
           onClick={onBack}
-          className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-ink-3 hover:bg-bg-elevated hover:text-ink-2 transition-colors"
+          className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-ink-3 hover:bg-panel hover:text-ink-2 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to Inbox
@@ -320,7 +320,7 @@ export function ReplyDetail({ conversation = mockDetail, onBack }: ReplyDetailPr
         {/* Conversation Panel */}
         <div className="flex flex-col overflow-hidden">
           {/* Lead Header */}
-          <div className="bg-bg-surface border-b border-default px-8 py-5 flex items-center gap-5">
+          <div className="bg-panel border-b border-default px-8 py-5 flex items-center gap-5">
             <div className={`w-14 h-14 rounded-xl flex items-center justify-center text-bg-cream font-bold text-xl ${config.bg}`}>
               {conversation.initials}
             </div>
@@ -345,7 +345,7 @@ export function ReplyDetail({ conversation = mockDetail, onBack }: ReplyDetailPr
                 <Calendar className="w-4 h-4" />
                 Schedule Call
               </button>
-              <button className="flex items-center gap-2 px-4 py-2.5 bg-bg-elevated border border-default rounded-lg text-ink text-sm font-semibold hover:bg-bg-panel transition-colors">
+              <button className="flex items-center gap-2 px-4 py-2.5 bg-panel border border-default rounded-lg text-ink text-sm font-semibold hover:bg-bg-panel transition-colors">
                 <Phone className="w-4 h-4" />
                 Call Now
               </button>
@@ -487,7 +487,7 @@ export function ReplyDetail({ conversation = mockDetail, onBack }: ReplyDetailPr
           </div>
 
           {/* Composer */}
-          <div className="bg-bg-surface border-t border-default px-8 py-5">
+          <div className="bg-panel border-t border-default px-8 py-5">
             <div className="max-w-[720px]">
               <div className="flex items-center gap-2 mb-3 text-sm">
                 <span className="text-ink-3">To:</span>
@@ -501,15 +501,15 @@ export function ReplyDetail({ conversation = mockDetail, onBack }: ReplyDetailPr
               />
               <div className="flex items-center justify-between mt-3">
                 <div className="flex gap-2">
-                  <button className="flex items-center gap-2 px-3 py-2 bg-bg-elevated border border-default rounded-md text-xs text-ink-2 hover:bg-bg-panel hover:text-ink transition-colors">
+                  <button className="flex items-center gap-2 px-3 py-2 bg-panel border border-default rounded-md text-xs text-ink-2 hover:bg-bg-panel hover:text-ink transition-colors">
                     <Paperclip className="w-3.5 h-3.5" />
                     Attach
                   </button>
-                  <button className="flex items-center gap-2 px-3 py-2 bg-bg-elevated border border-default rounded-md text-xs text-ink-2 hover:bg-bg-panel hover:text-ink transition-colors">
+                  <button className="flex items-center gap-2 px-3 py-2 bg-panel border border-default rounded-md text-xs text-ink-2 hover:bg-bg-panel hover:text-ink transition-colors">
                     <Calendar className="w-3.5 h-3.5" />
                     Schedule
                   </button>
-                  <button className="flex items-center gap-2 px-3 py-2 bg-bg-elevated border border-default rounded-md text-xs text-ink-2 hover:bg-bg-panel hover:text-ink transition-colors">
+                  <button className="flex items-center gap-2 px-3 py-2 bg-panel border border-default rounded-md text-xs text-ink-2 hover:bg-bg-panel hover:text-ink transition-colors">
                     <Sparkles className="w-3.5 h-3.5" />
                     AI Write
                   </button>
@@ -524,7 +524,7 @@ export function ReplyDetail({ conversation = mockDetail, onBack }: ReplyDetailPr
         </div>
 
         {/* Right Panel - Score Breakdown & Details */}
-        <div className="bg-bg-surface border-l border-default overflow-y-auto p-6 space-y-6">
+        <div className="bg-panel border-l border-default overflow-y-auto p-6 space-y-6">
           {/* Quick Actions */}
           <div className="bg-bg-cream rounded-xl p-4">
             <div className="flex items-center gap-2 mb-4 text-xs font-semibold uppercase tracking-wide text-ink-3">
@@ -536,15 +536,15 @@ export function ReplyDetail({ conversation = mockDetail, onBack }: ReplyDetailPr
                 <Calendar className="w-4 h-4 opacity-80" />
                 Schedule Call
               </button>
-              <button className="w-full flex items-center gap-3 px-3.5 py-3 bg-bg-elevated border border-default rounded-lg text-ink text-sm font-medium hover:bg-bg-panel hover:translate-x-0.5 transition-all">
+              <button className="w-full flex items-center gap-3 px-3.5 py-3 bg-panel border border-default rounded-lg text-ink text-sm font-medium hover:bg-bg-panel hover:translate-x-0.5 transition-all">
                 <Edit3 className="w-4 h-4 text-ink-2" />
                 Add Note
               </button>
-              <button className="w-full flex items-center gap-3 px-3.5 py-3 bg-bg-elevated border border-default rounded-lg text-ink text-sm font-medium hover:bg-bg-panel hover:translate-x-0.5 transition-all">
+              <button className="w-full flex items-center gap-3 px-3.5 py-3 bg-panel border border-default rounded-lg text-ink text-sm font-medium hover:bg-bg-panel hover:translate-x-0.5 transition-all">
                 <Upload className="w-4 h-4 text-ink-2" />
                 Send to CRM
               </button>
-              <button className="w-full flex items-center gap-3 px-3.5 py-3 bg-bg-elevated border border-default rounded-lg text-ink text-sm font-medium hover:bg-bg-panel hover:translate-x-0.5 transition-all">
+              <button className="w-full flex items-center gap-3 px-3.5 py-3 bg-panel border border-default rounded-lg text-ink text-sm font-medium hover:bg-bg-panel hover:translate-x-0.5 transition-all">
                 <User className="w-4 h-4 text-ink-2" />
                 View Full Profile
               </button>
@@ -634,7 +634,7 @@ export function ReplyDetail({ conversation = mockDetail, onBack }: ReplyDetailPr
                   <div className="text-sm text-ink-2 leading-relaxed">{note.text}</div>
                 </div>
               ))}
-              <button className="w-full flex items-center justify-center gap-2 p-2.5 border border-dashed border-default rounded-lg text-xs text-ink-3 hover:bg-bg-elevated hover:text-ink-2 hover:border-border-focus transition-colors">
+              <button className="w-full flex items-center justify-center gap-2 p-2.5 border border-dashed border-default rounded-lg text-xs text-ink-3 hover:bg-panel hover:text-ink-2 hover:border-border-focus transition-colors">
                 <Plus className="w-3.5 h-3.5" />
                 Add Note
               </button>

@@ -157,7 +157,7 @@ export default function NewCampaignPage() {
                         ? "bg-status-success text-ink"
                         : currentStep === step.id
                         ? "gradient-premium text-ink shadow-lg"
-                        : "bg-bg-elevated text-ink-3 border-2 border-rule-strong"
+                        : "bg-panel text-ink-3 border-2 border-rule-strong"
                     }`}
                     style={
                       currentStep === step.id
@@ -246,7 +246,7 @@ export default function NewCampaignPage() {
                             className={`w-12 h-12 rounded-xl mx-auto mb-3 flex items-center justify-center transition-colors ${
                               isSelected
                                 ? "gradient-premium"
-                                : "bg-bg-elevated"
+                                : "bg-panel"
                             }`}
                           >
                             <Icon

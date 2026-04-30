@@ -25,7 +25,7 @@ export function PlanComparison({ plans }: PlanComparisonProps) {
             key={plan.id}
             className={`relative rounded-2xl p-7 text-center transition-all ${
               plan.isCurrent
-                ? 'bg-bg-elevated border-2 border-accent-teal'
+                ? 'bg-panel border-2 border-accent-teal'
                 : plan.isPopular
                 ? 'bg-gradient-to-b from-[rgba(124,58,237,0.08)] to-bg-panel-hover border-2 border-accent-primary'
                 : 'bg-bg-panel-hover border-2 border-rule hover:border-rule-strong'
@@ -89,7 +89,7 @@ export function PlanComparison({ plans }: PlanComparisonProps) {
                   ? 'bg-[rgba(20,184,166,0.15)] text-accent-teal border border-accent-teal cursor-default'
                   : plan.isPopular
                   ? 'bg-accent-primary text-ink hover:bg-accent-primary-hover hover:-translate-y-0.5 hover:shadow-[0_8px_20px_rgba(124,58,237,0.3)]'
-                  : 'bg-bg-panel text-ink-3 border border-rule-strong hover:bg-bg-elevated hover:text-ink-2'
+                  : 'bg-bg-panel text-ink-3 border border-rule-strong hover:bg-panel hover:text-ink-2'
               }`}
               disabled={plan.isCurrent}
             >

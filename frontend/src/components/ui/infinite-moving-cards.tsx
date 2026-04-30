@@ -95,15 +95,15 @@ export const InfiniteMovingCards = ({
                 aria-hidden="true"
                 className="user-select-none pointer-events-none absolute -top-0.5 -left-0.5 -z-1 h-[calc(100%_+_4px)] w-[calc(100%_+_4px)]"
               ></div>
-              <span className="relative z-20 text-sm leading-[1.6] font-normal text-neutral-800 dark:text-text-primary">
+              <span className="relative z-20 text-sm leading-[1.6] font-normal text-neutral-800 dark:text-ink">
                 {item.quote}
               </span>
               <div className="relative z-20 mt-6 flex flex-row items-center">
                 <span className="flex flex-col gap-1">
-                  <span className="text-sm leading-[1.6] font-normal text-neutral-500 dark:text-text-muted">
+                  <span className="text-sm leading-[1.6] font-normal text-neutral-500 dark:text-ink-3">
                     {item.name}
                   </span>
-                  <span className="text-sm leading-[1.6] font-normal text-neutral-500 dark:text-text-muted">
+                  <span className="text-sm leading-[1.6] font-normal text-neutral-500 dark:text-ink-3">
                     {item.title}
                   </span>
                 </span>

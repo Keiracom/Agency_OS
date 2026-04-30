@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 
 const statusConfig: Record<TaskStatus, { icon: typeof Bot; color: string; label: string }> = {
-  running: { icon: Play, color: "bg-bg-elevated", label: "Running" },
+  running: { icon: Play, color: "bg-panel", label: "Running" },
   completed: { icon: CheckCircle2, color: "bg-amber", label: "Completed" },
   failed: { icon: XCircle, color: "bg-amber", label: "Failed" },
   retry: { icon: RefreshCw, color: "bg-yellow-500", label: "Retry" },

@@ -17,7 +17,7 @@ const stageGradients: Record<number, string> = {
 
 export function ConversionFunnel() {
   return (
-    <div className="bg-bg-surface border border-default rounded-xl overflow-hidden">
+    <div className="bg-panel border border-default rounded-xl overflow-hidden">
       <div className="px-5 py-4 border-b border-default flex items-center gap-2">
         <Shield className="w-4 h-4 text-amber" />
         <h3 className="text-sm font-semibold text-ink">Conversion Funnel</h3>

@@ -80,7 +80,7 @@ export const DirectionAwareHover = ({
           <motion.div className="group-hover/card:block hidden absolute inset-0 w-full h-full bg-black/40 z-10 transition duration-500" />
           <motion.div
             variants={variants}
-            className="h-full w-full relative bg-bg-surface dark:bg-black"
+            className="h-full w-full relative bg-panel dark:bg-black"
             transition={{
               duration: 0.2,
               ease: "easeOut",
@@ -104,7 +104,7 @@ export const DirectionAwareHover = ({
               ease: "easeOut",
             }}
             className={cn(
-              "text-text-primary absolute bottom-4 left-4 z-40",
+              "text-ink absolute bottom-4 left-4 z-40",
               childrenClassName
             )}
           >

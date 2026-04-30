@@ -15,7 +15,7 @@ export default function CampaignsPage() {
       {/* Page Header */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-slate-800">Campaigns</h1>
-        <button className="px-5 py-2.5 bg-bg-elevated text-ink rounded-lg font-semibold text-sm hover:bg-bg-elevated transition-colors">
+        <button className="px-5 py-2.5 bg-panel text-ink rounded-lg font-semibold text-sm hover:bg-panel transition-colors">
           + New Campaign
         </button>
       </div>

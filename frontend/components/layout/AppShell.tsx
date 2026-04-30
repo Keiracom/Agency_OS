@@ -108,14 +108,14 @@ export function AppShell({ children, pageTitle = 'Agency OS' }: AppShellProps) {
                   ${
                     isActive
                       ? "bg-amber-glow text-amber"
-                      : "text-ink-3 hover:bg-bg-elevated hover:text-ink"
+                      : "text-ink-3 hover:bg-panel hover:text-ink"
                   }
                 `}
                 title={item.label}
               >
                 <Icon className="w-5 h-5" />
                 {/* Tooltip */}
-                <span className="absolute left-14 px-2 py-1 bg-bg-elevated text-ink text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap transition-opacity">
+                <span className="absolute left-14 px-2 py-1 bg-panel text-ink text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap transition-opacity">
                   {item.label}
                 </span>
               </Link>
@@ -133,7 +133,7 @@ export function AppShell({ children, pageTitle = 'Agency OS' }: AppShellProps) {
               type="button"
               onClick={() => setMobileOpen(true)}
               aria-label="Open navigation"
-              className="md:hidden -ml-1 p-2 rounded-md text-ink-3 hover:text-ink hover:bg-bg-elevated transition-colors"
+              className="md:hidden -ml-1 p-2 rounded-md text-ink-3 hover:text-ink hover:bg-panel transition-colors"
             >
               <Menu className="w-5 h-5" />
             </button>

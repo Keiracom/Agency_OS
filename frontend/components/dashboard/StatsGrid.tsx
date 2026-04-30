@@ -56,7 +56,7 @@ interface StatsGridProps {
 
 // Glass-themed color configuration
 const colorConfig: Record<ColorVariant, string> = {
-  blue: "bg-bg-elevated/20 text-ink-2",
+  blue: "bg-panel/20 text-ink-2",
   green: "bg-amber/20 text-amber",
   orange: "bg-orange-500/20 text-orange-400",
   purple: "bg-amber/20 text-amber",

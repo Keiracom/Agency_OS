@@ -41,9 +41,9 @@ import { cn } from "@/lib/utils";
 // Bloomberg Color Reference (from LeadDetailModal)
 // ============================================
 // Base: bg-bg-cream
-// Surface: bg-bg-surface
-// Surface Hover: bg-bg-elevated
-// Elevated: bg-bg-elevated
+// Surface: bg-panel
+// Surface Hover: bg-panel
+// Elevated: bg-panel
 // Border Subtle: border-default
 // Border Default: border-default
 // Text Primary: text-ink
@@ -219,14 +219,14 @@ function CalendarPicker({ selectedDate, onSelectDate, minDate }: CalendarPickerP
       <div className="flex items-center justify-between">
         <button
           onClick={prevMonth}
-          className="p-2 rounded-lg hover:bg-bg-elevated transition-colors text-ink-2 hover:text-ink"
+          className="p-2 rounded-lg hover:bg-panel transition-colors text-ink-2 hover:text-ink"
         >
           <ChevronLeft className="w-5 h-5" />
         </button>
         <span className="text-ink font-semibold">{monthName}</span>
         <button
           onClick={nextMonth}
-          className="p-2 rounded-lg hover:bg-bg-elevated transition-colors text-ink-2 hover:text-ink"
+          className="p-2 rounded-lg hover:bg-panel transition-colors text-ink-2 hover:text-ink"
         >
           <ChevronRight className="w-5 h-5" />
         </button>
@@ -263,7 +263,7 @@ function CalendarPicker({ selectedDate, onSelectDate, minDate }: CalendarPickerP
                 "flex items-center justify-center",
                 isSelected && "bg-amber text-ink ring-2 ring-amber/50",
                 !isSelected && isToday && "ring-1 ring-amber/50 text-amber",
-                !isSelected && !isToday && !isDisabled && "text-ink hover:bg-bg-elevated",
+                !isSelected && !isToday && !isDisabled && "text-ink hover:bg-panel",
                 isDisabled && "text-[#3A3A4D] cursor-not-allowed",
                 weekend && !isSelected && !isDisabled && "text-ink-3"
               )}
@@ -307,7 +307,7 @@ function TimeSlotPicker({ slots, selectedTime, onSelectTime }: TimeSlotPickerPro
                 "px-3 py-2 rounded-lg text-sm font-medium transition-all",
                 "border",
                 isSelected && "bg-amber border-amber text-ink",
-                !isSelected && slot.available && "border-default text-ink-2 hover:border-amber/50 hover:text-ink hover:bg-bg-elevated",
+                !isSelected && slot.available && "border-default text-ink-2 hover:border-amber/50 hover:text-ink hover:bg-panel",
                 !slot.available && "border-default text-[#3A3A4D] cursor-not-allowed line-through"
               )}
             >
@@ -405,7 +405,7 @@ export function MeetingScheduler({
             "pointer-events-auto w-full max-w-2xl max-h-[90vh] overflow-hidden",
             "rounded-2xl border border-default",
             // Glassmorphic effect
-            "bg-bg-surface/95 backdrop-blur-xl",
+            "bg-panel/95 backdrop-blur-xl",
             "shadow-2xl shadow-black/50",
             "animate-in zoom-in-95 slide-in-from-bottom-4 duration-300"
           )}
@@ -423,7 +423,7 @@ export function MeetingScheduler({
             </div>
             <button
               onClick={onClose}
-              className="p-2 rounded-lg hover:bg-bg-elevated transition-colors text-ink-3 hover:text-ink"
+              className="p-2 rounded-lg hover:bg-panel transition-colors text-ink-3 hover:text-ink"
             >
               <X className="w-5 h-5" />
             </button>
@@ -483,7 +483,7 @@ export function MeetingScheduler({
                           "p-4 rounded-xl border text-left transition-all",
                           isSelected 
                             ? "border-amber bg-amber/10" 
-                            : "border-default hover:border-[#3A3A4D] hover:bg-bg-elevated"
+                            : "border-default hover:border-[#3A3A4D] hover:bg-panel"
                         )}
                       >
                         <Icon className={cn("w-5 h-5 mb-2", isSelected ? "text-amber" : "text-ink-3")} />
@@ -606,7 +606,7 @@ export function MeetingScheduler({
                 <Button
                   variant="ghost"
                   onClick={onClose}
-                  className="text-ink-2 hover:text-ink hover:bg-bg-elevated"
+                  className="text-ink-2 hover:text-ink hover:bg-panel"
                 >
                   Cancel
                 </Button>

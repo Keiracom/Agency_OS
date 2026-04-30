@@ -141,7 +141,7 @@ export function Header({ title = "Dashboard", user, client, onOpenMenu }: Header
         <Button 
           variant="ghost" 
           size="icon" 
-          className="relative text-ink-2 hover:bg-bg-elevated hover:text-ink"
+          className="relative text-ink-2 hover:bg-panel hover:text-ink"
         >
           <Bell className="h-5 w-5" />
           <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-status-error text-[10px] font-medium text-ink">
@@ -197,11 +197,11 @@ export function Header({ title = "Dashboard", user, client, onOpenMenu }: Header
                 <DropdownMenuSeparator className="bg-border-subtle" />
               </>
             )}
-            <DropdownMenuItem className="text-ink-2 hover:bg-bg-elevated hover:text-ink">
+            <DropdownMenuItem className="text-ink-2 hover:bg-panel hover:text-ink">
               <User className="mr-2 h-4 w-4" />
               <span>Profile</span>
             </DropdownMenuItem>
-            <DropdownMenuItem className="text-ink-2 hover:bg-bg-elevated hover:text-ink">
+            <DropdownMenuItem className="text-ink-2 hover:bg-panel hover:text-ink">
               <Settings className="mr-2 h-4 w-4" />
               <span>Settings</span>
             </DropdownMenuItem>

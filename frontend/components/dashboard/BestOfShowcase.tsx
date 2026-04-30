@@ -36,7 +36,7 @@ import type { BestOfContentItem } from "@/lib/api/types";
 
 // Channel configuration
 const channelConfig: Record<string, { icon: React.ReactNode; color: string }> = {
-  email: { icon: <Mail className="h-4 w-4" />, color: "bg-bg-elevated/10 text-ink-2" },
+  email: { icon: <Mail className="h-4 w-4" />, color: "bg-panel/10 text-ink-2" },
   sms: { icon: <MessageSquare className="h-4 w-4" />, color: "bg-amber/10 text-amber" },
   linkedin: { icon: <Linkedin className="h-4 w-4" />, color: "bg-amber-glow text-amber" },
   voice: { icon: <Phone className="h-4 w-4" />, color: "bg-amber/10 text-amber" },
@@ -62,7 +62,7 @@ function PerformanceBadge({ item }: { item: BestOfContentItem }) {
   }
   if (item.got_reply) {
     return (
-      <Badge className="bg-bg-elevated/20 text-ink-2 border-default/30">
+      <Badge className="bg-panel/20 text-ink-2 border-default/30">
         <MessageCircle className="h-3 w-3 mr-1" />
         Reply
       </Badge>

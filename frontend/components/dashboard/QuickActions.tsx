@@ -204,14 +204,14 @@ export function QuickActions({
           )}
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700/50 bg-bg-surface/40">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700/50 bg-panel/40">
             <div className="flex items-center gap-2">
               <div className="p-1.5 rounded-lg bg-gradient-to-br from-amber/20 to-amber/20 border border-amber/30">
                 <Plus className="w-4 h-4 text-amber" />
               </div>
               <span className="text-sm font-medium text-ink">Quick Actions</span>
             </div>
-            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-bg-surface/60 border border-slate-600/30">
+            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-panel/60 border border-slate-600/30">
               <Command className="w-3 h-3 text-ink-2" />
               <span className="text-[10px] text-ink-2 font-medium">K</span>
             </div>
@@ -225,7 +225,7 @@ export function QuickActions({
                 onClick={() => handleActionClick(action)}
                 className={cn(
                   "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl",
-                  "bg-transparent hover:bg-bg-surface/60",
+                  "bg-transparent hover:bg-panel/60",
                   "border border-transparent hover:border-slate-700/50",
                   "transition-all duration-150 group",
                   "animate-in fade-in slide-in-from-right-2"
@@ -257,7 +257,7 @@ export function QuickActions({
                 </div>
 
                 {/* Shortcut */}
-                <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-bg-surface/60 border border-slate-600/30 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-panel/60 border border-slate-600/30 opacity-0 group-hover:opacity-100 transition-opacity">
                   <Command className="w-2.5 h-2.5 text-ink-3" />
                   <span className="text-[10px] text-ink-2 font-mono">
                     {action.shortcut}
@@ -268,7 +268,7 @@ export function QuickActions({
           </div>
 
           {/* Footer Hint */}
-          <div className="px-4 py-2.5 border-t border-slate-700/50 bg-bg-surface/30">
+          <div className="px-4 py-2.5 border-t border-slate-700/50 bg-panel/30">
             <p className="text-[10px] text-ink-3 text-center flex items-center justify-center gap-1.5">
               <span className="inline-flex items-center gap-0.5">
                 <Command className="w-2.5 h-2.5" />K
@@ -312,7 +312,7 @@ export function QuickActions({
       {/* Tooltip when closed */}
       {!isOpen && (
         <div className="absolute right-full mr-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-bg-surface/90 backdrop-blur-sm border border-slate-700/50 rounded-lg whitespace-nowrap">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-panel/90 backdrop-blur-sm border border-slate-700/50 rounded-lg whitespace-nowrap">
             <span className="text-xs text-ink">Quick Actions</span>
             <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-slate-700/60 border border-slate-600/30">
               <Command className="w-2.5 h-2.5 text-ink-2" />

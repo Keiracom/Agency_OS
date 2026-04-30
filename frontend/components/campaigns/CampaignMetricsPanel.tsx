@@ -61,7 +61,7 @@ const CHANNEL_CONFIG: Record<
   email: {
     label: "Email",
     icon: <Mail className="h-4 w-4" />,
-    color: "bg-bg-elevated",
+    color: "bg-panel",
   },
   sms: {
     label: "SMS",

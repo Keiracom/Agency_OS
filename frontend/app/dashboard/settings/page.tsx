@@ -101,8 +101,8 @@ function ApiKeysSection() {
               </div>
             </div>
             <div className="flex gap-2">
-              <button className="px-3 py-1.5 text-xs font-medium rounded-md bg-bg-elevated text-ink-2 hover:bg-border-default hover:text-ink transition-all">Copy</button>
-              <button className="px-3 py-1.5 text-xs font-medium rounded-md bg-bg-elevated text-ink-2 hover:bg-border-default hover:text-ink transition-all">Regenerate</button>
+              <button className="px-3 py-1.5 text-xs font-medium rounded-md bg-panel text-ink-2 hover:bg-border-default hover:text-ink transition-all">Copy</button>
+              <button className="px-3 py-1.5 text-xs font-medium rounded-md bg-panel text-ink-2 hover:bg-border-default hover:text-ink transition-all">Regenerate</button>
             </div>
           </div>
         ))}

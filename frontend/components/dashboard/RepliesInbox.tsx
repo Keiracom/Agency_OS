@@ -264,7 +264,7 @@ const intentConfig: Record<IntentType, { bg: string; text: string; label: string
   interested: { bg: "bg-amber/15", text: "text-amber", label: "Interested" },
   objection: { bg: "bg-amber-glow", text: "text-amber", label: "Objection" },
   later: { bg: "bg-amber-500/15", text: "text-amber-400", label: "Not Now" },
-  question: { bg: "bg-bg-elevated/15", text: "text-ink-2", label: "Question" },
+  question: { bg: "bg-panel/15", text: "text-ink-2", label: "Question" },
 };
 
 const sentimentConfig: Record<SentimentType, { color: string; label: string; border: string }> = {
@@ -278,7 +278,7 @@ const tierScoreConfig: Record<ALSTier, { text: string; bg: string }> = {
   warm: { text: "text-amber-400", bg: "bg-gradient-to-br from-amber-500 to-yellow-500" },
   cool: { text: "text-ink-2", bg: "bg-gradient-to-br from-amber to-amber" },
   cold: { text: "text-ink-2", bg: "bg-gradient-to-br from-slate-500 to-slate-600" },
-  dead: { text: "text-ink-3", bg: "bg-bg-elevated" },
+  dead: { text: "text-ink-3", bg: "bg-panel" },
 };
 
 // ============================================
@@ -358,7 +358,7 @@ export function RepliesInbox({ onViewDetail }: RepliesInboxProps) {
   return (
     <div className="flex flex-col h-full bg-bg-cream">
       {/* Header */}
-      <header className="bg-bg-surface border-b border-default px-6 py-4 flex items-center justify-between">
+      <header className="bg-panel border-b border-default px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <h1 className="text-lg font-bold text-ink flex items-center gap-3">
             <Mail className="w-5 h-5 text-amber" />
@@ -369,11 +369,11 @@ export function RepliesInbox({ onViewDetail }: RepliesInboxProps) {
           </h1>
         </div>
         <div className="flex gap-3">
-          <button className="flex items-center gap-2 px-4 py-2.5 bg-bg-elevated border border-default rounded-lg text-ink-2 text-sm font-medium hover:bg-bg-elevated hover:text-ink-2 transition-colors">
+          <button className="flex items-center gap-2 px-4 py-2.5 bg-panel border border-default rounded-lg text-ink-2 text-sm font-medium hover:bg-panel hover:text-ink-2 transition-colors">
             <Filter className="w-4 h-4" />
             Filters
           </button>
-          <button className="flex items-center gap-2 px-4 py-2.5 bg-bg-elevated border border-default rounded-lg text-ink-2 text-sm font-medium hover:bg-bg-elevated hover:text-ink-2 transition-colors">
+          <button className="flex items-center gap-2 px-4 py-2.5 bg-panel border border-default rounded-lg text-ink-2 text-sm font-medium hover:bg-panel hover:text-ink-2 transition-colors">
             <RefreshCw className="w-4 h-4" />
             Sync
           </button>
@@ -383,7 +383,7 @@ export function RepliesInbox({ onViewDetail }: RepliesInboxProps) {
       {/* Content */}
       <div className="flex-1 grid grid-cols-[420px_1fr] overflow-hidden">
         {/* Inbox List */}
-        <div className="bg-bg-surface border-r border-default flex flex-col overflow-hidden">
+        <div className="bg-panel border-r border-default flex flex-col overflow-hidden">
           {/* Filters */}
           <div className="p-4 border-b border-default">
             <div className="relative mb-3">
@@ -409,7 +409,7 @@ export function RepliesInbox({ onViewDetail }: RepliesInboxProps) {
                   className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                     filter === tab.key
                       ? "bg-amber/15 text-amber"
-                      : "text-ink-3 hover:bg-bg-elevated hover:text-ink-2"
+                      : "text-ink-3 hover:bg-panel hover:text-ink-2"
                   }`}
                 >
                   {tab.label}
@@ -435,8 +435,8 @@ export function RepliesInbox({ onViewDetail }: RepliesInboxProps) {
                     isActive
                       ? "bg-amber/8 border-l-amber"
                       : conv.unread
-                      ? "bg-amber/4 hover:bg-bg-elevated"
-                      : "hover:bg-bg-elevated"
+                      ? "bg-amber/4 hover:bg-panel"
+                      : "hover:bg-panel"
                   }`}
                 >
                   {/* Header */}
@@ -467,7 +467,7 @@ export function RepliesInbox({ onViewDetail }: RepliesInboxProps) {
 
                   {/* Footer */}
                   <div className="flex items-center gap-2 flex-wrap">
-                    <div className="flex items-center gap-1 px-2 py-0.5 bg-bg-elevated rounded text-[11px] text-ink-2">
+                    <div className="flex items-center gap-1 px-2 py-0.5 bg-panel rounded text-[11px] text-ink-2">
                       <ChannelIcon channel={conv.channel} size="sm" bare />
                       <span className="capitalize">{conv.channel}</span>
                     </div>
@@ -485,7 +485,7 @@ export function RepliesInbox({ onViewDetail }: RepliesInboxProps) {
         {selected && (
           <div className="flex flex-col overflow-hidden bg-bg-cream">
             {/* Preview Header */}
-            <div className="bg-bg-surface border-b border-default px-6 py-5 flex items-center justify-between">
+            <div className="bg-panel border-b border-default px-6 py-5 flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <div className={`w-13 h-13 rounded-xl flex items-center justify-center text-ink font-bold text-lg ${tierScoreConfig[selected.tier].bg}`}>
                   {selected.initials}
@@ -505,14 +505,14 @@ export function RepliesInbox({ onViewDetail }: RepliesInboxProps) {
                   <Calendar className="w-4 h-4" />
                   Schedule Meeting
                 </button>
-                <button className="flex items-center gap-2 px-4 py-2.5 bg-bg-elevated border border-default rounded-lg text-ink text-sm font-semibold hover:bg-bg-elevated transition-colors">
+                <button className="flex items-center gap-2 px-4 py-2.5 bg-panel border border-default rounded-lg text-ink text-sm font-semibold hover:bg-panel transition-colors">
                   <Phone className="w-4 h-4" />
                   Call
                 </button>
-                <button className="w-10 h-10 flex items-center justify-center bg-bg-elevated border border-default rounded-lg text-ink-2 hover:bg-bg-elevated hover:text-ink transition-colors">
+                <button className="w-10 h-10 flex items-center justify-center bg-panel border border-default rounded-lg text-ink-2 hover:bg-panel hover:text-ink transition-colors">
                   <User className="w-4 h-4" />
                 </button>
-                <button className="w-10 h-10 flex items-center justify-center bg-bg-elevated border border-default rounded-lg text-ink-2 hover:bg-bg-elevated hover:text-ink transition-colors">
+                <button className="w-10 h-10 flex items-center justify-center bg-panel border border-default rounded-lg text-ink-2 hover:bg-panel hover:text-ink transition-colors">
                   <Archive className="w-4 h-4" />
                 </button>
               </div>
@@ -531,7 +531,7 @@ export function RepliesInbox({ onViewDetail }: RepliesInboxProps) {
                           {msg.timestamp.split(",")[0]}
                         </div>
                       )}
-                      <div className={`bg-bg-surface border rounded-xl p-5 mb-4 ${
+                      <div className={`bg-panel border rounded-xl p-5 mb-4 ${
                         msg.sender === "you"
                           ? "bg-amber/8 border-amber/20"
                           : "border-default border-l-3 border-l-amber"
@@ -569,7 +569,7 @@ export function RepliesInbox({ onViewDetail }: RepliesInboxProps) {
 
                 {/* AI Suggestions */}
                 {selected.aiSuggestions.length > 0 && (
-                  <div className="bg-bg-surface border border-default rounded-xl p-5 mt-5">
+                  <div className="bg-panel border border-default rounded-xl p-5 mt-5">
                     <div className="flex items-center gap-2 mb-4 text-sm font-semibold text-amber">
                       <Lightbulb className="w-4 h-4" />
                       Suggested Responses
@@ -598,7 +598,7 @@ export function RepliesInbox({ onViewDetail }: RepliesInboxProps) {
             </div>
 
             {/* Reply Composer */}
-            <div className="bg-bg-surface border-t border-default px-6 py-5">
+            <div className="bg-panel border-t border-default px-6 py-5">
               <div className="max-w-[720px]">
                 <textarea
                   value={replyText}
@@ -608,15 +608,15 @@ export function RepliesInbox({ onViewDetail }: RepliesInboxProps) {
                 />
                 <div className="flex items-center justify-between mt-3">
                   <div className="flex gap-2">
-                    <button className="flex items-center gap-2 px-3 py-2 bg-bg-elevated border border-default rounded-md text-xs text-ink-2 hover:bg-bg-elevated hover:text-ink-2 transition-colors">
+                    <button className="flex items-center gap-2 px-3 py-2 bg-panel border border-default rounded-md text-xs text-ink-2 hover:bg-panel hover:text-ink-2 transition-colors">
                       <Paperclip className="w-3.5 h-3.5" />
                       Attach
                     </button>
-                    <button className="flex items-center gap-2 px-3 py-2 bg-bg-elevated border border-default rounded-md text-xs text-ink-2 hover:bg-bg-elevated hover:text-ink-2 transition-colors">
+                    <button className="flex items-center gap-2 px-3 py-2 bg-panel border border-default rounded-md text-xs text-ink-2 hover:bg-panel hover:text-ink-2 transition-colors">
                       <Calendar className="w-3.5 h-3.5" />
                       Schedule
                     </button>
-                    <button className="flex items-center gap-2 px-3 py-2 bg-bg-elevated border border-default rounded-md text-xs text-ink-2 hover:bg-bg-elevated hover:text-ink-2 transition-colors">
+                    <button className="flex items-center gap-2 px-3 py-2 bg-panel border border-default rounded-md text-xs text-ink-2 hover:bg-panel hover:text-ink-2 transition-colors">
                       <Zap className="w-3.5 h-3.5" />
                       AI Write
                     </button>

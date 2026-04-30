@@ -22,7 +22,7 @@ const badgeVariants = cva(
         hot: "border-amber/30 bg-amber-glow text-amber",
         warm: "border-amber-light/25 bg-amber-glow/70 text-amber-light",
         cool: "border-rule-strong bg-bg-panel text-ink-2",
-        cold: "border-rule bg-bg-surface text-ink-3",
+        cold: "border-rule bg-panel text-ink-3",
         dead: "border-rule bg-bg-cream text-ink-3 opacity-60",
         // Status variants — Amber-based
         active: "border-amber/30 bg-amber-glow text-amber",

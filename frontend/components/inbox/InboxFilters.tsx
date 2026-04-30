@@ -26,7 +26,7 @@ export function InboxFilters({ activeFilter, onFilterChange, tabs }: InboxFilter
         <input
           type="text"
           placeholder="Search conversations..."
-          className="w-full pl-10 pr-4 py-2.5 bg-bg-surface border border-rule rounded-lg text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-accent-primary focus:ring-2 focus:ring-accent-primary/20"
+          className="w-full pl-10 pr-4 py-2.5 bg-panel border border-rule rounded-lg text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-accent-primary focus:ring-2 focus:ring-accent-primary/20"
         />
       </div>
       <div className="flex gap-2">

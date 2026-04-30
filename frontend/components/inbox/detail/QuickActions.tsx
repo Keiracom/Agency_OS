@@ -33,7 +33,7 @@ export function QuickActions({ onScheduleCall, onAddNote, onSendToCRM, onViewPro
   const handlers = [onScheduleCall, onAddNote, onSendToCRM, onViewProfile];
   
   return (
-    <div className="bg-bg-surface rounded-xl p-4">
+    <div className="bg-panel rounded-xl p-4">
       <div className="flex items-center gap-2 mb-4 text-xs font-semibold uppercase tracking-wide text-ink-3">
         <span className="text-amber-500"></span>
         Quick Actions

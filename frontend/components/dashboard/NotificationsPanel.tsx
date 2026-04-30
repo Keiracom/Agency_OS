@@ -87,7 +87,7 @@ interface NotificationTypeConfig {
 const notificationTypeConfig: Record<NotificationType, NotificationTypeConfig> = {
   reply: {
     icon: MessageSquare,
-    bgColor: "bg-bg-elevated/20",
+    bgColor: "bg-panel/20",
     iconColor: "text-ink-2",
     label: "New Reply",
   },
@@ -245,7 +245,7 @@ function NotificationItem({
         transition-all duration-200
         border-b border-white/5 last:border-0
         hover:bg-bg-panel/5
-        ${isUnread ? "bg-bg-elevated/5" : ""}
+        ${isUnread ? "bg-panel/5" : ""}
       `}
     >
       <div className="flex items-start gap-3">
@@ -268,7 +268,7 @@ function NotificationItem({
             
             {/* Unread indicator */}
             {isUnread && (
-              <div className="w-2 h-2 bg-bg-elevated rounded-full flex-shrink-0 mt-1.5 animate-pulse" />
+              <div className="w-2 h-2 bg-panel rounded-full flex-shrink-0 mt-1.5 animate-pulse" />
             )}
           </div>
           
@@ -454,7 +454,7 @@ export function NotificationsPanel({
                 Notifications
               </h3>
               {unreadCount > 0 && (
-                <span className="px-2 py-0.5 text-[10px] font-medium bg-bg-elevated/20 text-ink-2 rounded-full">
+                <span className="px-2 py-0.5 text-[10px] font-medium bg-panel/20 text-ink-2 rounded-full">
                   {unreadCount} new
                 </span>
               )}
@@ -466,7 +466,7 @@ export function NotificationsPanel({
                 className="
                   flex items-center gap-1.5 px-2.5 py-1 rounded-lg
                   text-xs text-ink-2 hover:text-amber-light 
-                  hover:bg-bg-elevated/10 transition-colors
+                  hover:bg-panel/10 transition-colors
                 "
               >
                 <CheckCheck className="w-3.5 h-3.5" />

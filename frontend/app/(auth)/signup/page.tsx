@@ -2,21 +2,18 @@
 
 /**
  * FILE: frontend/app/(auth)/signup/page.tsx
- * PURPOSE: Signup page with Supabase auth
- * PHASE: 8 (Frontend)
- * TASK: FE-006
- * 
- * SSG: Static shell - form is client-side
+ * PURPOSE: Signup form — cream/amber /demo palette. Playfair
+ *          headline, JetBrains Mono labels, DM Sans body.
+ * UPDATED: 2026-04-30 — A6 auth refinement.
+ *
+ * Auth logic (Supabase signUp + email confirmation flow) is
+ * unchanged; only chrome was repalleted.
  */
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createBrowserClient } from "../../../lib/supabase";
-import { Button } from "../../../components/ui/button";
-import { Input } from "../../../components/ui/input";
-import { Label } from "../../../components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../../../components/ui/card";
 import { useToast } from "../../../hooks/use-toast";
 import { Loader2 } from "lucide-react";
 
@@ -33,29 +30,19 @@ export default function SignupPage() {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: {
-            full_name: fullName,
-            company_name: companyName,
-          },
+          data: { full_name: fullName, company_name: companyName },
           emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
       });
-
       if (error) {
-        toast({
-          title: "Signup failed",
-          description: error.message,
-          variant: "destructive",
-        });
+        toast({ title: "Signup failed", description: error.message, variant: "destructive" });
         return;
       }
-
       if (data.user) {
         toast({
           title: "Check your email",
@@ -63,7 +50,7 @@ export default function SignupPage() {
         });
         router.push("/login");
       }
-    } catch (err) {
+    } catch {
       toast({
         title: "Error",
         description: "An unexpected error occurred. Please try again.",
@@ -75,100 +62,121 @@ export default function SignupPage() {
   };
 
   return (
-    <Card>
-      <CardHeader className="space-y-1">
-        <div className="flex items-center justify-center mb-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground text-xl font-bold">
-            A
-          </div>
-        </div>
-        <CardTitle className="text-2xl text-center">Create an account</CardTitle>
-        <CardDescription className="text-center">
-          Join Agency OS - 16+ meetings guaranteed or money back
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <form onSubmit={handleSignup} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="fullName">Full Name</Label>
-            <Input
-              id="fullName"
-              type="text"
-              placeholder="John Smith"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              required
-              disabled={loading}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="companyName">Company Name</Label>
-            <Input
-              id="companyName"
-              type="text"
-              placeholder="Acme Agency"
-              value={companyName}
-              onChange={(e) => setCompanyName(e.target.value)}
-              required
-              disabled={loading}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              disabled={loading}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              placeholder="Create a password (min 8 characters)"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={8}
-              disabled={loading}
-            />
-          </div>
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Creating account...
-              </>
-            ) : (
-              "Create account"
-            )}
-          </Button>
-        </form>
+    <div className="w-full rounded-[12px] border border-rule bg-panel px-7 py-8 shadow-[0_1px_2px_rgba(12,10,8,0.04)]">
+      <h1 className="font-display font-bold text-[28px] leading-[1.2] tracking-[-0.02em] text-ink">
+        Create your <em className="text-amber" style={{ fontStyle: "italic" }}>account</em>
+      </h1>
+      <p className="text-[13px] text-ink-3 mt-1.5 mb-6">
+        Join AgencyOS — 16+ meetings guaranteed or your money back.
+      </p>
 
-        <p className="text-center text-xs text-muted-foreground">
-          By signing up, you agree to our{" "}
-          <Link href="/terms" className="hover:underline">
-            Terms of Service
-          </Link>{" "}
-          and{" "}
-          <Link href="/privacy" className="hover:underline">
-            Privacy Policy
-          </Link>
-        </p>
-      </CardContent>
-      <CardFooter>
-        <p className="text-center text-sm text-muted-foreground w-full">
-          Already have an account?{" "}
-          <Link href="/login" className="text-primary hover:underline">
-            Sign in
-          </Link>
-        </p>
-      </CardFooter>
-    </Card>
+      <form onSubmit={handleSignup} className="space-y-4">
+        <Field
+          id="fullName"
+          label="Full name"
+          type="text"
+          placeholder="John Smith"
+          value={fullName}
+          onChange={setFullName}
+          autoComplete="name"
+          loading={loading}
+        />
+        <Field
+          id="companyName"
+          label="Agency name"
+          type="text"
+          placeholder="Acme Agency"
+          value={companyName}
+          onChange={setCompanyName}
+          autoComplete="organization"
+          loading={loading}
+        />
+        <Field
+          id="email"
+          label="Email"
+          type="email"
+          placeholder="you@agency.com"
+          value={email}
+          onChange={setEmail}
+          autoComplete="email"
+          loading={loading}
+        />
+        <Field
+          id="password"
+          label="Password"
+          type="password"
+          placeholder="Create a password (min 8 chars)"
+          value={password}
+          onChange={setPassword}
+          autoComplete="new-password"
+          minLength={8}
+          loading={loading}
+        />
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full rounded-[8px] bg-ink text-white font-mono text-[12px] tracking-[0.08em] uppercase font-semibold py-3 hover:opacity-90 disabled:opacity-50 transition-opacity flex items-center justify-center gap-2"
+        >
+          {loading ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Creating account…
+            </>
+          ) : "Create account"}
+        </button>
+      </form>
+
+      <p className="mt-6 text-center text-[11.5px] text-ink-3 leading-relaxed">
+        By signing up, you agree to our{" "}
+        <Link href="/terms" className="text-copper hover:text-amber transition-colors">Terms</Link>{" "}
+        and{" "}
+        <Link href="/privacy" className="text-copper hover:text-amber transition-colors">Privacy Policy</Link>.
+      </p>
+
+      <p className="mt-4 text-center text-[13px] text-ink-3">
+        Already have an account?{" "}
+        <Link href="/login" className="text-copper hover:text-amber transition-colors font-medium">
+          Sign in
+        </Link>
+      </p>
+    </div>
+  );
+}
+
+function Field({
+  id, label, type, placeholder, value, onChange, autoComplete, minLength, loading,
+}: {
+  id: string;
+  label: string;
+  type: string;
+  placeholder: string;
+  value: string;
+  onChange: (v: string) => void;
+  autoComplete?: string;
+  minLength?: number;
+  loading?: boolean;
+}) {
+  return (
+    <div>
+      <label
+        htmlFor={id}
+        className="block font-mono text-[10px] tracking-[0.14em] uppercase text-ink-3 mb-1.5"
+      >
+        {label}
+      </label>
+      <input
+        id={id}
+        type={type}
+        placeholder={placeholder}
+        autoComplete={autoComplete}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        required
+        minLength={minLength}
+        disabled={loading}
+        className="w-full rounded-[8px] border border-rule bg-cream px-3 py-2.5 text-[14px] text-ink placeholder:text-ink-4 font-mono focus:outline-none focus:border-amber focus:ring-1 focus:ring-amber/40 transition-colors disabled:opacity-60"
+      />
+    </div>
   );
 }

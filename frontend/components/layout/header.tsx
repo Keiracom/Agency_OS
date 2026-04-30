@@ -65,7 +65,7 @@ export function Header({ title = "Dashboard", user, client, onOpenMenu }: Header
 
   return (
     <header
-      className="sticky top-0 z-40 flex h-topbar items-center justify-between border-b border-rule px-6"
+      className="hidden md:flex sticky top-0 z-40 h-topbar items-center justify-between border-b border-rule px-6"
       style={{
         // Cream + blur (matches prototype #topbar but on cream backdrop)
         backgroundColor: "rgba(247, 243, 238, 0.85)",

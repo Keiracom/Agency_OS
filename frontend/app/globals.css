@@ -215,6 +215,43 @@
 }
 
 /* =================================================
+   A5c — MOBILE TABLE → CARD TRANSFORM
+   Apply `.mobile-card-table` to a <table>; on <md viewports its
+   <thead> hides, each <tr> becomes a stacked card, and each <td>
+   stacks vertically with optional data-label callouts.
+   Reference: /demo lines 736-749 (.pipe-table mobile rules).
+   ================================================= */
+@media (max-width: 767px) {
+  .mobile-card-table { display: block; width: 100%; }
+  .mobile-card-table thead { display: none; }
+  .mobile-card-table tbody { display: block; }
+  .mobile-card-table tr {
+    display: block;
+    background: var(--panel-bg);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    margin-bottom: 10px;
+    padding: 14px 16px;
+  }
+  .mobile-card-table td {
+    display: block;
+    padding: 4px 0;
+    border: 0 !important;
+    text-align: left !important;
+  }
+  /* Optional data-label hint shown before each cell on mobile */
+  .mobile-card-table td[data-label]::before {
+    content: attr(data-label) " · ";
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-right: 6px;
+  }
+}
+
+/* =================================================
    TIER SYSTEM (Amber-based)
    ================================================= */
 .tier-hot {

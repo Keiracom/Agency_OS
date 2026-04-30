@@ -1,12 +1,13 @@
 /**
  * FILE: frontend/components/layout/dashboard-layout.tsx
- * PURPOSE: Main dashboard layout wrapper
- * PHASE: 8 (Frontend)
- * TASK: FE-004
- * UPDATED: 2026-04-30 — mobile-responsive shell. Sidebar now collapses
- *          to an off-canvas drawer on <md viewports; Header gains a
- *          hamburger button. State lifted here (now a client component)
- *          so Sidebar + Header share open/close.
+ * PURPOSE: Main dashboard layout wrapper.
+ * UPDATED:
+ *   2026-04-30 — mobile-responsive shell (#452): Sidebar drawer + Header
+ *                hamburger.
+ *   2026-04-30 — A5 mobile chrome (this PR): mobile topbar (52px,
+ *                replaces desktop Header on <md), bottom nav (60px,
+ *                fixed bottom md:hidden), content padding adjusts so
+ *                neither bar occludes the page.
  */
 
 "use client";
@@ -15,6 +16,8 @@ import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { Sidebar } from "./sidebar";
 import { Header } from "./header";
+import { MobileTopbar } from "./mobile-topbar";
+import { BottomNav } from "./bottom-nav";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -28,16 +31,16 @@ interface DashboardLayoutProps {
     name: string;
     tier: string;
     creditsRemaining: number;
-    // Phase H, Item 43: Emergency pause status
     pausedAt?: string | null;
     pauseReason?: string | null;
   };
 }
 
 export function DashboardLayout({ children, user, client }: DashboardLayoutProps) {
-  // Mobile drawer state. Defaults closed; opened by the Header
-  // hamburger; closed by the Sidebar X button, the backdrop, or any
-  // nav-link click. Always closed on route change.
+  // Mobile drawer state. Defaults closed; opened by either the desktop
+  // Header hamburger or the MobileTopbar hamburger; closed by the
+  // Sidebar X button, the backdrop, or any nav-link click. Always
+  // closed on route change.
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
   useEffect(() => { setMobileOpen(false); }, [pathname]);
@@ -57,9 +60,19 @@ export function DashboardLayout({ children, user, client }: DashboardLayoutProps
     <div className="min-h-screen bg-cream text-ink">
       <Sidebar open={mobileOpen} onClose={() => setMobileOpen(false)} />
 
-      {/* Right column. On mobile the sidebar is off-canvas → no left
-          padding; on md+ it's fixed at 232px → reserve space. */}
-      <div className="md:pl-sidebar flex min-h-screen flex-col">
+      {/* Mobile-only topbar — replaces the desktop Header on <md */}
+      <MobileTopbar
+        onOpenMenu={() => setMobileOpen(true)}
+        client={client?.id
+          ? { id: client.id, pausedAt: client.pausedAt, pauseReason: client.pauseReason }
+          : undefined}
+      />
+
+      {/* Right column. Mobile: no left pad (sidebar off-canvas), bottom
+          padding reserves space for the BottomNav (60px) so content
+          isn't hidden behind it. md+: 232px sidebar reservation, no
+          bottom nav, no extra bottom pad. */}
+      <div className="md:pl-sidebar flex min-h-screen flex-col pb-[var(--bottomnav-h)] md:pb-0">
         <Header
           user={user}
           client={client}
@@ -69,6 +82,9 @@ export function DashboardLayout({ children, user, client }: DashboardLayoutProps
           <div className="mx-auto w-full max-w-[1280px]">{children}</div>
         </main>
       </div>
+
+      {/* Mobile-only bottom navigation */}
+      <BottomNav />
     </div>
   );
 }

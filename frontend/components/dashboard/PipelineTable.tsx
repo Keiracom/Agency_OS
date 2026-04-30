@@ -84,8 +84,8 @@ export function PipelineTable({ prospects, onOpen, isLoading }: Props) {
   }, [prospects, sortKey, dir]);
 
   return (
-    <div className="overflow-x-auto bg-gray-900 border border-gray-800 rounded-xl">
-      <table className="w-full text-sm">
+    <div className="md:overflow-x-auto md:bg-gray-900 md:border md:border-gray-800 md:rounded-xl">
+      <table className="w-full text-sm mobile-card-table">
         <thead className="border-b border-gray-800">
           <tr>
             <HeaderCell label="Prospect"   sortKey="name"         active={sortKey} dir={dir} onClick={handleSort} />

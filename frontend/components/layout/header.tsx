@@ -9,7 +9,7 @@
 "use client";
 
 import { useState } from "react";
-import { Bell, Search, LogOut, User, Settings } from "lucide-react";
+import { Bell, Search, LogOut, User, Settings, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -43,9 +43,12 @@ interface HeaderProps {
     pausedAt?: string | null;
     pauseReason?: string | null;
   };
+  /** Mobile hamburger callback — wired by DashboardLayout to open the
+   *  off-canvas Sidebar drawer. Button is visible only on <md viewports. */
+  onOpenMenu?: () => void;
 }
 
-export function Header({ title = "Dashboard", user, client }: HeaderProps) {
+export function Header({ title = "Dashboard", user, client, onOpenMenu }: HeaderProps) {
   const router = useRouter();
   const supabase = createBrowserClient();
 
@@ -69,15 +72,24 @@ export function Header({ title = "Dashboard", user, client }: HeaderProps) {
         WebkitBackdropFilter: "saturate(140%) blur(8px)",
       }}
     >
-      {/* Left: Page title with LIVE badge */}
-      <div className="flex items-center gap-4">
-        <h1 className="font-display font-bold text-[20px] tracking-[-0.01em] text-ink">
+      {/* Left: hamburger (mobile only) + Page title with LIVE badge */}
+      <div className="flex items-center gap-3 md:gap-4">
+        <button
+          type="button"
+          onClick={onOpenMenu}
+          aria-label="Open navigation"
+          className="md:hidden -ml-2 p-2 rounded-md text-ink hover:bg-rule transition-colors"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+        <h1 className="font-display font-bold text-[18px] md:text-[20px] tracking-[-0.01em] text-ink truncate">
           {title}
         </h1>
 
-        {/* LIVE Status Badge — muted green on cream */}
+        {/* LIVE Status Badge — muted green on cream. Hidden on small
+            screens to save room for the title + hamburger. */}
         <div
-          className="flex items-center gap-2 rounded-full px-3 py-1"
+          className="hidden sm:flex items-center gap-2 rounded-full px-3 py-1"
           style={{ backgroundColor: "rgba(107,142,90,0.16)" }}
         >
           <span className="relative flex h-2 w-2">

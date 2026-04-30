@@ -19,6 +19,7 @@ import {
   Radio,
   Inbox,
   Calendar,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -61,25 +62,62 @@ const navSections: NavSection[] = [
   },
 ];
 
-export function Sidebar() {
+interface SidebarProps {
+  /** Mobile drawer state — controlled by DashboardLayout. Desktop
+   *  sidebar always renders; mobile renders only when `open` is true. */
+  open?: boolean;
+  /** Mobile drawer dismiss callback (X button + backdrop tap + nav click). */
+  onClose?: () => void;
+}
+
+export function Sidebar({ open = false, onClose }: SidebarProps = {}) {
   const pathname = usePathname();
 
   return (
-    <aside
-      className="fixed left-0 top-0 bottom-0 w-sidebar bg-brand-bar text-white/80 flex flex-col z-50 overflow-y-auto"
-      style={{ borderRight: "1px solid rgba(255,255,255,0.06)" }}
-    >
+    <>
+      {/* Mobile backdrop — click to dismiss. Hidden on md+ where the
+          sidebar always renders. */}
+      <div
+        className={cn(
+          "fixed inset-0 z-40 bg-black/55 backdrop-blur-[2px] md:hidden transition-opacity",
+          open ? "opacity-100" : "pointer-events-none opacity-0",
+        )}
+        onClick={onClose}
+        aria-hidden="true"
+      />
+
+      <aside
+        className={cn(
+          "fixed left-0 top-0 bottom-0 w-sidebar bg-brand-bar text-white/80 flex flex-col z-50 overflow-y-auto",
+          "transition-transform duration-300 ease-out",
+          // Mobile: off-canvas unless `open`. Desktop (md+): always visible.
+          open ? "translate-x-0" : "-translate-x-full md:translate-x-0",
+        )}
+        style={{ borderRight: "1px solid rgba(255,255,255,0.06)" }}
+        aria-label="Primary navigation"
+      >
       {/* Logo block — Playfair Display with amber italic accent */}
       <div
-        className="px-5 pt-[22px] pb-[18px]"
+        className="px-5 pt-[22px] pb-[18px] flex items-start justify-between"
         style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
       >
-        <div className="font-display font-bold text-[20px] tracking-[-0.02em] text-white">
-          Agency<em className="text-amber not-italic-fallback" style={{ fontStyle: "italic" }}>OS</em>
+        <div>
+          <div className="font-display font-bold text-[20px] tracking-[-0.02em] text-white">
+            Agency<em className="text-amber not-italic-fallback" style={{ fontStyle: "italic" }}>OS</em>
+          </div>
+          <div className="font-mono text-[9px] tracking-[0.14em] uppercase text-white/30 mt-[3px]">
+            Agency Desk
+          </div>
         </div>
-        <div className="font-mono text-[9px] tracking-[0.14em] uppercase text-white/30 mt-[3px]">
-          Agency Desk
-        </div>
+        {/* Mobile-only close button */}
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close navigation"
+          className="md:hidden p-1.5 -mr-1 -mt-1 rounded text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+        >
+          <X className="w-5 h-5" />
+        </button>
       </div>
 
       {/* Nav sections */}
@@ -99,6 +137,7 @@ export function Sidebar() {
                 <Link
                   key={item.href}
                   href={item.href}
+                  onClick={onClose}
                   className={cn(
                     "flex items-center gap-3 px-5 py-[9px] text-[13px] transition-colors",
                     "border-l-2",
@@ -141,6 +180,7 @@ export function Sidebar() {
           </div>
         </div>
       </div>
-    </aside>
+      </aside>
+    </>
   );
 }

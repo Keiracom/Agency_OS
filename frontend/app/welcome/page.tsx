@@ -56,12 +56,12 @@ export default function WelcomePage() {
         .eq("role", "owner")
         .single();
 
-      if (!membership || !membership.clients) {
+      if (!membership || !(membership as Record<string, unknown>).clients) {
         router.replace("/");
         return;
       }
 
-      const clientRow = membership.clients as unknown as {
+      const clientRow = (membership as Record<string, unknown>).clients as {
         id: string;
         name: string;
         tier: string;
@@ -80,8 +80,9 @@ export default function WelcomePage() {
         .eq("id", clientRow.id)
         .single();
 
+      const ob = onboarding as Record<string, unknown> | null;
       const onboardingComplete =
-        onboarding?.website_url && onboarding?.icp_extracted;
+        ob?.website_url && ob?.icp_extracted;
 
       if (onboardingComplete) {
         router.replace("/dashboard");
@@ -95,7 +96,7 @@ export default function WelcomePage() {
         .eq("id", 1)
         .single();
 
-      const pos = spotsRow?.spots_taken ?? 4;
+      const pos = (spotsRow as Record<string, unknown> | null)?.spots_taken as number ?? 4;
       setPosition(pos);
 
       // Tier rates

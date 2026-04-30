@@ -21,6 +21,7 @@
 import { useMemo } from "react";
 import {
   Mail, Linkedin, Phone, MessageSquare, MessageSquareReply, Calendar,
+  type LucideIcon,
 } from "lucide-react";
 
 export type Grade = "A" | "B" | "C" | "D" | "F";
@@ -168,7 +169,7 @@ function GradeStrip({ grades }: { grades: ProspectGrades }) {
 // ─── Timeline — matches .event-card / .event-quote ─────────────────────────
 
 const SIGNAL_ICON: Record<SignalKind, {
-  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  icon: LucideIcon;
   bg: string;
   color: string;
   type: string;

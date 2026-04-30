@@ -20,7 +20,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Mail, Linkedin, Phone, MessageSquare,
-  CircleCheck, CircleX, Circle, MessageCircle,
+  CheckCircle, XCircle, Circle, MessageCircle,
 } from "lucide-react";
 import { useClient } from "@/hooks/use-client";
 import { useLiveActivityFeed } from "@/lib/useLiveActivityFeed";
@@ -54,8 +54,8 @@ function statusIcon(action: string, status: string | null) {
   const a = action.toLowerCase();
   const s = (status ?? "").toLowerCase();
   if (a.includes("repl") || s.includes("repl")) return <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />;
-  if (s.includes("bounc") || s === "failed") return <CircleX className="w-3.5 h-3.5 text-red-400" />;
-  if (s.includes("convert") || s === "sent") return <CircleCheck className="w-3.5 h-3.5 text-gray-400" />;
+  if (s.includes("bounc") || s === "failed") return <XCircle className="w-3.5 h-3.5 text-red-400" />;
+  if (s.includes("convert") || s === "sent") return <CheckCircle className="w-3.5 h-3.5 text-gray-400" />;
   return <Circle className="w-3.5 h-3.5 text-gray-600" />;
 }
 

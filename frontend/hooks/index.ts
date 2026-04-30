@@ -27,7 +27,7 @@ export {
 } from "./use-reports";
 
 // LinkedIn
-export { useLinkedInStatus, useLinkedInConnect, useLinkedInVerify2FA, useLinkedInDisconnect } from "./use-linkedin";
+export { useLinkedInStatus, useLinkedInDisconnect } from "./use-linkedin";
 
 // Meetings
 export { useMeetings, useUpcomingMeetings } from "./use-meetings";

@@ -21,30 +21,10 @@ export const PLASMIC = initPlasmicLoader({
 // Register code components that Plasmic can use
 // Using React.lazy for code splitting
 
-// Dashboard Components
-PLASMIC.registerComponent(
-  React.lazy(() => import("@/components/dashboard/HeroMetricsCard").then(m => ({ default: m.HeroMetricsCard }))),
-  {
-    name: "HeroMetricsCard",
-    props: {
-      className: "string",
-    },
-    importPath: "@/components/dashboard/HeroMetricsCard",
-  }
-);
-
-PLASMIC.registerComponent(
-  React.lazy(() => import("@/components/dashboard/LiveActivityFeed").then(m => ({ default: m.LiveActivityFeed }))),
-  {
-    name: "LiveActivityFeed",
-    props: {
-      maxItems: "number",
-      showLoadMore: "boolean",
-      className: "string",
-    },
-    importPath: "@/components/dashboard/LiveActivityFeed",
-  }
-);
+// HeroMetricsCard + LiveActivityFeed registrations removed in P3
+// cleanup (2026-04-30) — both components were obsolete and have been
+// deleted. Restore registrations here if either component is
+// reintroduced.
 
 PLASMIC.registerComponent(
   React.lazy(() => import("@/components/dashboard/meetings-widget").then(m => ({ default: m.MeetingsWidget }))),

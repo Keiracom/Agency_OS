@@ -27,7 +27,9 @@ import { useRouter } from "next/navigation";
 import { getInitials, getAvatarColor } from "@/lib/utils";
 import { CreditsBadge } from "./credits-badge";
 import { ThemeToggle } from "./theme-toggle";
-import { EmergencyPauseButton } from "@/components/dashboard/EmergencyPauseButton";
+// P3 — consolidated pause + cycle indicators
+import { PauseAllButton } from "./pause-all-button";
+import { CycleIndicator } from "./cycle-indicator";
 
 interface HeaderProps {
   title?: string;
@@ -122,16 +124,17 @@ export function Header({ title = "Dashboard", user, client, onOpenMenu }: Header
 
       {/* Right side */}
       <div className="flex items-center gap-3">
-        {/* Emergency Pause Button */}
-        {client?.id && (
-          <EmergencyPauseButton
-            clientId={client.id}
-            isPaused={isPaused}
-            pausedAt={client.pausedAt}
-            pauseReason={client.pauseReason}
-            onPauseChange={setIsPaused}
-          />
-        )}
+        {/* Cycle indicator — MAYA · DAY N/30 with pulsing amber dot */}
+        <CycleIndicator className="hidden lg:inline-flex" />
+
+        {/* Consolidated Pause-all (replaces EmergencyPauseButton) */}
+        <PauseAllButton
+          clientId={client?.id}
+          isPaused={isPaused}
+          pausedAt={client?.pausedAt}
+          pauseReason={client?.pauseReason}
+          onPauseChange={setIsPaused}
+        />
 
         {/* Theme toggle (sun ↔ moon) — A2 dark-mode dispatch */}
         <ThemeToggle />

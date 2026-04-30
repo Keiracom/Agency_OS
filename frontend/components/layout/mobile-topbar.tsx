@@ -13,7 +13,9 @@
 
 import { useEffect, useState } from "react";
 import { Menu, Sun, Moon } from "lucide-react";
-import { EmergencyPauseButton } from "@/components/dashboard/EmergencyPauseButton";
+// P3 — consolidated pause + cycle indicator (replaces EmergencyPauseButton)
+import { PauseAllButton } from "./pause-all-button";
+import { CycleIndicator } from "./cycle-indicator";
 
 const THEME_KEY = "agencyos_theme";
 
@@ -62,7 +64,7 @@ export function MobileTopbar({ onOpenMenu, client }: Props) {
         WebkitBackdropFilter: "saturate(140%) blur(8px)",
       }}
     >
-      {/* Left: hamburger + logo */}
+      {/* Left: hamburger + logo + compact cycle pill */}
       <div className="flex items-center gap-2 min-w-0">
         <button
           type="button"
@@ -75,6 +77,8 @@ export function MobileTopbar({ onOpenMenu, client }: Props) {
         <div className="font-display font-bold text-[16px] tracking-[-0.01em] text-ink whitespace-nowrap">
           Agency<em className="text-amber" style={{ fontStyle: "italic" }}>OS</em>
         </div>
+        {/* Compact cycle indicator — DAY N/30 with pulsing dot, MAYA prefix dropped */}
+        <CycleIndicator compact className="hidden xs:inline-flex sm:inline-flex" />
       </div>
 
       {/* Right: theme toggle + compact pause */}
@@ -91,17 +95,14 @@ export function MobileTopbar({ onOpenMenu, client }: Props) {
             : <Sun  className="w-4 h-4" strokeWidth={1.6} />}
         </button>
 
-        {client?.id && (
-          <div className="scale-90 origin-right">
-            <EmergencyPauseButton
-              clientId={client.id}
-              isPaused={isPaused}
-              pausedAt={client.pausedAt}
-              pauseReason={client.pauseReason}
-              onPauseChange={setIsPaused}
-            />
-          </div>
-        )}
+        <PauseAllButton
+          clientId={client?.id}
+          isPaused={isPaused}
+          pausedAt={client?.pausedAt}
+          pauseReason={client?.pauseReason}
+          onPauseChange={setIsPaused}
+          compact
+        />
       </div>
     </header>
   );

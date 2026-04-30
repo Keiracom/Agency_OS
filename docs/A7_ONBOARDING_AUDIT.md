@@ -68,19 +68,36 @@ within the dashboard if the first call dropped.
 `POST /api/v1/pipeline/trigger` that resolves `client_id` from the
 auth cookie and queues a pipeline run for that tenant.
 
-## Sub-task 3 — `/welcome` retire
+## Sub-task 3 — `/welcome` re-skin (revised by A7.1 dispatch)
 
 ### Pre-existing state
 `/welcome/page.tsx` was 862 lines: a celebratory founding-member
 landing page with tier card, founding-position counter, tier rate
 display, sub-state branching for "no subscription / no onboarding /
-complete". Most of the visual surface is bespoke and out of scope
-for the dashboard rebuild.
+complete". Already implemented the cream/amber/Playfair design via
+local CSS-var redefinitions in a `<style>` block.
 
-### Action this PR
-Replaced with a **redirect-only stub** (~95 lines including comments)
-that preserves the original destination logic:
+### Action — revised in A7.1 (Dave kept the page)
+The earlier retire to a 95-line redirect stub was reverted. The full
+862-line founding-member welcome is restored, with three targeted
+edits to bring it onto the global token system from A1+A2:
 
+1. **Removed local `:root` redefinitions** of `--cream / --surface /
+   --ink / --ink-2 / --ink-3 / --amber / --rule`. The page now reads
+   these from `globals.css`, so:
+   - The A1 token vocabulary is consistent across all pages.
+   - The A2 dark-mode toggle automatically inverts `/welcome`
+     alongside the rest of the dashboard.
+2. **Added page-local helper vars** inside `.welcome-body { … }`:
+   `--amber-b` / `--amber-d` (amber tints), `--rule-2` aliased to
+   the global `--rule-strong`, and `--rule-i` (inverse white-on-dark
+   rule for the dark hero card — no global equivalent).
+3. **Demo-cookie short-circuit** added at the top of `useEffect`:
+   `agency_os_demo=true` → `/onboarding/step-1?demo=true`. Investor
+   previews don't have a Supabase session and the original page
+   would otherwise bounce them to `/`.
+
+### Final destination map
 | User state | Destination |
 |---|---|
 | `agency_os_demo=true` cookie | `/onboarding/step-1?demo=true` |
@@ -88,15 +105,11 @@ that preserves the original destination logic:
 | no membership | `/` |
 | `deposit_paid = false` | `/` |
 | `deposit_paid = true`, onboarding complete | `/dashboard` |
-| `deposit_paid = true`, onboarding incomplete | `/onboarding/crm` |
+| `deposit_paid = true`, onboarding incomplete | render `/welcome` |
 
-The visual placeholder is a minimal cream "Loading your next step…"
-card with the Playfair brand mark, shown only during the brief
-state-resolution before the redirect fires.
-
-The full prior implementation is preserved in git history — recover
-with `git show <prev-sha>:frontend/app/welcome/page.tsx` if the
-founding-member program ships again and needs the celebratory copy.
+All founding-member functionality preserved: spot counter, deposit
+confirmation badge, tier card, monthly-rate / standard-rate / savings
+display, "What happens next" timeline, all CTA buttons.
 
 ## Verification
 ```

@@ -16,7 +16,9 @@ import { redirect } from "next/navigation";
 import { getCurrentUser, getUserMemberships } from "@/lib/supabase-server";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { createServerClient } from "@/lib/supabase-server";
-import { KillSwitch } from "@/components/dashboard/KillSwitch";
+// KillSwitch consolidated into PauseAllButton (P3) — pause action now
+// lives in the topbar (Header + MobileTopbar) instead of as a fixed-
+// position floater. Import + render removed in this PR.
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
 import { DemoModeBanner } from "@/components/dashboard/DemoModeBanner";
 
@@ -85,7 +87,6 @@ export default async function DashboardRootLayout({
     return (
       <DashboardLayout user={userData} client={clientDataForLayout}>
         <DemoModeBanner />
-        <KillSwitch />
         <div className="flex min-h-screen">
           <DashboardNav />
           <div className="flex-1 min-w-0 pt-14 md:pt-0">{children}</div>
@@ -166,7 +167,6 @@ export default async function DashboardRootLayout({
   return (
     <DashboardLayout user={userData} client={clientDataForLayout}>
       <DemoModeBanner />
-      <KillSwitch />
       <div className="flex min-h-screen">
         <DashboardNav />
         <div className="flex-1 min-w-0 pt-14 md:pt-0">{children}</div>

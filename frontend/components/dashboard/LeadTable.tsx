@@ -149,8 +149,9 @@ export function LeadTable({
       cold: 0,
       dead: 0,
     };
-    // If we have unfiltered data, calculate counts
-    // For now, use placeholder counts - in production, this would come from API aggregation
+    // Per-tier counts aggregated from the loaded `leads` array. When
+    // pagination is added, swap to GET /api/leads/counts?by=tier so
+    // the bar reflects the full dataset, not just the current page.
     leads.forEach((lead) => {
       const tier = lead.propensity_tier ?? "cool";
       counts[tier]++;

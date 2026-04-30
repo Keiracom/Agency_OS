@@ -98,14 +98,14 @@ export function NewCampaignModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-bg-surface rounded-xl shadow-xl w-full max-w-lg mx-4 animate-in fade-in zoom-in-95 duration-200">
+      <div className="bg-bg-panel rounded-xl shadow-xl w-full max-w-lg mx-4 animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-slate-900">New Campaign</h2>
           <button
             onClick={handleClose}
             disabled={isSubmitting}
-            className="text-text-secondary hover:text-text-muted disabled:opacity-50"
+            className="text-ink-2 hover:text-ink-3 disabled:opacity-50"
           >
             <XCircle className="w-5 h-5" />
           </button>
@@ -131,7 +131,7 @@ export function NewCampaignModal({
           {/* Description */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">
-              Description <span className="text-text-secondary">(optional)</span>
+              Description <span className="text-ink-2">(optional)</span>
             </label>
             <textarea
               value={description}
@@ -156,25 +156,25 @@ export function NewCampaignModal({
                   disabled={isSubmitting}
                   className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
                     permissionMode === mode.id
-                      ? "border-default bg-bg-surface"
+                      ? "border-default bg-bg-panel"
                       : "border-slate-200 hover:border-slate-300"
                   } disabled:opacity-50`}
                 >
                   <div
                     className={`w-10 h-10 rounded-lg flex items-center justify-center ${
                       permissionMode === mode.id
-                        ? "bg-bg-elevated text-text-primary"
-                        : "bg-slate-100 text-text-muted"
+                        ? "bg-bg-elevated text-ink"
+                        : "bg-slate-100 text-ink-3"
                     }`}
                   >
                     <mode.icon className="w-5 h-5" />
                   </div>
                   <div className="text-left">
                     <div className="font-medium text-slate-900">{mode.label}</div>
-                    <div className="text-xs text-text-muted">{mode.description}</div>
+                    <div className="text-xs text-ink-3">{mode.description}</div>
                   </div>
                   {permissionMode === mode.id && (
-                    <CheckCircle className="w-5 h-5 text-text-secondary ml-auto" />
+                    <CheckCircle className="w-5 h-5 text-ink-2 ml-auto" />
                   )}
                 </button>
               ))}
@@ -187,14 +187,14 @@ export function NewCampaignModal({
           <button
             onClick={handleClose}
             disabled={isSubmitting}
-            className="px-4 py-2 text-text-muted text-sm font-medium hover:text-slate-800 disabled:opacity-50"
+            className="px-4 py-2 text-ink-3 text-sm font-medium hover:text-slate-800 disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             onClick={handleSubmit}
             disabled={!name.trim() || isSubmitting}
-            className="px-5 py-2 bg-bg-elevated text-text-primary text-sm font-medium rounded-lg hover:bg-amber disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            className="px-5 py-2 bg-bg-elevated text-ink text-sm font-medium rounded-lg hover:bg-amber disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {isSubmitting ? (
               <>

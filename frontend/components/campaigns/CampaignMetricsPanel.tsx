@@ -113,7 +113,7 @@ function getPerformanceStatus(replyRate: number): {
   if (replyRate >= 5) {
     return { label: "Excellent", color: "text-amber dark:text-amber" };
   } else if (replyRate >= 3) {
-    return { label: "Good", color: "text-text-secondary dark:text-text-secondary" };
+    return { label: "Good", color: "text-ink-2 dark:text-ink-2" };
   } else if (replyRate >= 1) {
     return { label: "Average", color: "text-amber-600 dark:text-amber-400" };
   }
@@ -192,7 +192,7 @@ export function CampaignMetricsPanel({
 
           {/* Reply Rate */}
           <MetricCard
-            icon={<MessageCircle className="h-5 w-5 text-text-secondary" />}
+            icon={<MessageCircle className="h-5 w-5 text-ink-2" />}
             label="Reply Rate"
             value={formatPercent(campaign.reply_rate)}
             compact={compact}

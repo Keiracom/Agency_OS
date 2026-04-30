@@ -38,10 +38,10 @@ interface StatCardProps {
 
 function StatCard({ label, value, icon, colorClass }: StatCardProps) {
   return (
-    <div className="bg-bg-surface border border-border-default rounded-xl p-5 hover:bg-bg-surface-hover transition-colors">
+    <div className="bg-bg-panel border border-rule-strong rounded-xl p-5 hover:bg-bg-panel-hover transition-colors">
       <div className="flex items-start justify-between mb-2">
-        <span className="text-sm text-text-secondary">{label}</span>
-        <div className="text-text-muted">{icon}</div>
+        <span className="text-sm text-ink-2">{label}</span>
+        <div className="text-ink-3">{icon}</div>
       </div>
       <div className={`text-3xl font-bold font-mono ${colorClass}`}>
         {value}

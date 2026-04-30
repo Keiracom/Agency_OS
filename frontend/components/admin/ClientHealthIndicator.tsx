@@ -52,7 +52,7 @@ export function ClientHealthIndicator({
     <div className={cn("flex items-center gap-2", className)}>
       <div
         className={cn(
-          "rounded-full flex items-center justify-center font-bold text-text-primary",
+          "rounded-full flex items-center justify-center font-bold text-ink",
           sizeClass,
           colorClass.split(" ")[1]
         )}

@@ -366,25 +366,25 @@ export function MayaCompanion({
         <div
           className={cn(
             "absolute bottom-full right-0 mb-4 w-[360px] rounded-2xl overflow-hidden",
-            "bg-bg-void/60 backdrop-blur-xl border border-slate-700/50",
+            "bg-bg-cream/60 backdrop-blur-xl border border-slate-700/50",
             "shadow-2xl shadow-black/40",
             "animate-in slide-in-from-bottom-4 fade-in duration-300"
           )}
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-700/50 bg-bg-base/30">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-700/50 bg-bg-surface/30">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber to-amber flex items-center justify-center text-text-primary font-bold shadow-lg shadow-amber/30">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber to-amber flex items-center justify-center text-ink font-bold shadow-lg shadow-amber/30">
                 M
               </div>
               <div>
-                <p className="font-semibold text-text-primary text-sm">Maya</p>
-                <p className="text-xs text-text-secondary">Your Digital Employee</p>
+                <p className="font-semibold text-ink text-sm">Maya</p>
+                <p className="text-xs text-ink-2">Your Digital Employee</p>
               </div>
             </div>
             <button
               onClick={() => setIsOpen(false)}
-              className="p-1.5 rounded-lg hover:bg-slate-700/50 text-text-secondary hover:text-text-primary transition-colors"
+              className="p-1.5 rounded-lg hover:bg-slate-700/50 text-ink-2 hover:text-ink transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
@@ -394,7 +394,7 @@ export function MayaCompanion({
           {currentView === "tour" && !tourCompleted && currentTourStep && (
             <div className="p-5">
               {/* Tour Content */}
-              <p className="text-sm text-text-secondary leading-relaxed mb-4">
+              <p className="text-sm text-ink-2 leading-relaxed mb-4">
                 {currentTourStep.content}
               </p>
 
@@ -419,14 +419,14 @@ export function MayaCompanion({
               <div className="flex gap-2">
                 <button
                   onClick={handleNextStep}
-                  className="flex-1 px-4 py-2.5 bg-amber hover:bg-amber text-text-primary text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+                  className="flex-1 px-4 py-2.5 bg-amber hover:bg-amber text-ink text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
                 >
                   {currentTourStep.action}
                   <ChevronRight className="w-4 h-4" />
                 </button>
                 <button
                   onClick={handleDismissTour}
-                  className="px-4 py-2.5 bg-slate-700/50 hover:bg-slate-700 text-text-secondary text-sm font-medium rounded-lg border border-slate-600/50 transition-colors"
+                  className="px-4 py-2.5 bg-slate-700/50 hover:bg-slate-700 text-ink-2 text-sm font-medium rounded-lg border border-slate-600/50 transition-colors"
                 >
                   Skip
                 </button>
@@ -442,7 +442,7 @@ export function MayaCompanion({
                 {messages.length === 0 && (
                   <div className="text-center py-6">
                     <Sparkles className="w-8 h-8 text-amber mx-auto mb-3" />
-                    <p className="text-text-secondary text-sm">
+                    <p className="text-ink-2 text-sm">
                       Hi! I'm Maya. How can I help you today?
                     </p>
                   </div>
@@ -460,8 +460,8 @@ export function MayaCompanion({
                       className={cn(
                         "max-w-[85%] px-4 py-2.5 rounded-2xl text-sm",
                         message.role === "user"
-                          ? "bg-amber text-text-primary rounded-br-md"
-                          : "bg-slate-700/60 text-text-secondary rounded-bl-md"
+                          ? "bg-amber text-ink rounded-br-md"
+                          : "bg-slate-700/60 text-ink-2 rounded-bl-md"
                       )}
                     >
                       {message.content}
@@ -484,7 +484,7 @@ export function MayaCompanion({
 
               {/* Contextual Suggestions */}
               <div className="px-4 pb-3">
-                <p className="text-xs text-text-muted mb-2 flex items-center gap-1.5">
+                <p className="text-xs text-ink-3 mb-2 flex items-center gap-1.5">
                   <Lightbulb className="w-3 h-3" />
                   Suggestions for {pageContext.title}
                 </p>
@@ -493,7 +493,7 @@ export function MayaCompanion({
                     <button
                       key={i}
                       onClick={() => handleSuggestionClick(suggestion)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-bg-base/60 hover:bg-slate-700/60 border border-slate-600/30 rounded-full text-xs text-text-secondary hover:text-text-primary transition-colors"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-bg-surface/60 hover:bg-slate-700/60 border border-slate-600/30 rounded-full text-xs text-ink-2 hover:text-ink transition-colors"
                     >
                       {suggestion.icon}
                       {suggestion.label}
@@ -512,7 +512,7 @@ export function MayaCompanion({
                     onChange={(e) => setInputValue(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder="Ask Maya anything..."
-                    className="w-full px-4 py-3 pr-12 bg-bg-base/60 border border-slate-600/50 rounded-xl text-sm text-text-primary placeholder-slate-500 focus:outline-none focus:border-amber/50 focus:ring-1 focus:ring-amber/20 transition-colors"
+                    className="w-full px-4 py-3 pr-12 bg-bg-surface/60 border border-slate-600/50 rounded-xl text-sm text-ink placeholder-slate-500 focus:outline-none focus:border-amber/50 focus:ring-1 focus:ring-amber/20 transition-colors"
                   />
                   <button
                     onClick={handleSendMessage}
@@ -520,8 +520,8 @@ export function MayaCompanion({
                     className={cn(
                       "absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg transition-colors",
                       inputValue.trim()
-                        ? "bg-amber hover:bg-amber text-text-primary"
-                        : "bg-slate-700/50 text-text-muted cursor-not-allowed"
+                        ? "bg-amber hover:bg-amber text-ink"
+                        : "bg-slate-700/50 text-ink-3 cursor-not-allowed"
                     )}
                   >
                     <Send className="w-4 h-4" />
@@ -542,7 +542,7 @@ export function MayaCompanion({
           "border-[3px] border-slate-900",
           "shadow-lg shadow-amber/40",
           "flex items-center justify-center",
-          "text-text-primary text-xl font-bold",
+          "text-ink text-xl font-bold",
           "transition-all duration-200",
           "hover:scale-110 hover:shadow-amber/50",
           isOpen && "scale-95"
@@ -560,7 +560,7 @@ export function MayaCompanion({
 
       {/* Notification Badge */}
       {!isOpen && !tourCompleted && (
-        <span className="absolute -top-1 -right-1 w-5 h-5 bg-amber rounded-full flex items-center justify-center text-[10px] text-text-primary font-bold animate-bounce">
+        <span className="absolute -top-1 -right-1 w-5 h-5 bg-amber rounded-full flex items-center justify-center text-[10px] text-ink font-bold animate-bounce">
           !
         </span>
       )}

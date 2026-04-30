@@ -37,7 +37,7 @@ export default function SettingsPage() {
       <SettingsHeader />
 
       {/* Tabs — wrap on small screens so labels stay readable */}
-      <div className="flex flex-wrap gap-1 mb-6 md:mb-8 p-1.5 bg-bg-surface rounded-xl w-full sm:w-fit overflow-x-auto">
+      <div className="flex flex-wrap gap-1 mb-6 md:mb-8 p-1.5 bg-bg-panel rounded-xl w-full sm:w-fit overflow-x-auto">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -48,7 +48,7 @@ export default function SettingsPage() {
               className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg transition-all ${
                 isActive
                   ? 'bg-[rgba(212,149,106,0.15)] text-[#D4956A]'
-                  : 'text-text-muted hover:text-text-secondary hover:bg-bg-surface-hover'
+                  : 'text-ink-3 hover:text-ink-2 hover:bg-bg-panel-hover'
               }`}
             >
               <Icon className="w-4 h-4" />
@@ -78,31 +78,31 @@ export default function SettingsPage() {
 
 function ApiKeysSection() {
   return (
-    <div className="glass-surface border border-border-subtle rounded-xl overflow-hidden">
-      <div className="px-6 py-5 border-b border-border-subtle flex items-center justify-between">
+    <div className="glass-surface border border-rule rounded-xl overflow-hidden">
+      <div className="px-6 py-5 border-b border-rule flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <Key className="w-5 h-5 text-[#D4956A]" />
-          <span className="font-serif font-semibold text-text-primary">API Keys</span>
+          <span className="font-serif font-semibold text-ink">API Keys</span>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border border-border-default text-text-secondary hover:bg-bg-surface-hover hover:text-text-primary transition-all">
+        <button className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border border-rule-strong text-ink-2 hover:bg-bg-panel-hover hover:text-ink transition-all">
           + Generate New Key
         </button>
       </div>
       <div className="p-6 space-y-3">
         {mockApiKeys.map((key) => (
-          <div key={key.id} className="flex items-center justify-between p-4 bg-bg-surface-hover rounded-xl">
+          <div key={key.id} className="flex items-center justify-between p-4 bg-bg-panel-hover rounded-xl">
             <div className="flex items-center gap-4">
               <div className="w-10 h-10 bg-[rgba(212,149,106,0.15)] rounded-xl flex items-center justify-center">
                 <Key className="w-5 h-5 text-[#D4956A]" />
               </div>
               <div>
-                <div className="text-sm font-semibold text-text-primary">{key.name}</div>
-                <div className="text-sm text-text-muted font-mono">{key.value}</div>
+                <div className="text-sm font-semibold text-ink">{key.name}</div>
+                <div className="text-sm text-ink-3 font-mono">{key.value}</div>
               </div>
             </div>
             <div className="flex gap-2">
-              <button className="px-3 py-1.5 text-xs font-medium rounded-md bg-bg-elevated text-text-secondary hover:bg-border-default hover:text-text-primary transition-all">Copy</button>
-              <button className="px-3 py-1.5 text-xs font-medium rounded-md bg-bg-elevated text-text-secondary hover:bg-border-default hover:text-text-primary transition-all">Regenerate</button>
+              <button className="px-3 py-1.5 text-xs font-medium rounded-md bg-bg-elevated text-ink-2 hover:bg-border-default hover:text-ink transition-all">Copy</button>
+              <button className="px-3 py-1.5 text-xs font-medium rounded-md bg-bg-elevated text-ink-2 hover:bg-border-default hover:text-ink transition-all">Regenerate</button>
             </div>
           </div>
         ))}

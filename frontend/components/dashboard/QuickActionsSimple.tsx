@@ -48,10 +48,10 @@ function ActionButton({ action }: { action: QuickActionItem }) {
   return (
     <Link
       href={action.href}
-      className="flex items-center gap-3 px-4 py-3.5 bg-bg-elevated border border-border-default rounded-lg mb-2.5 last:mb-0 hover:border-accent-primary hover:bg-accent-primary/5 transition-all group"
+      className="flex items-center gap-3 px-4 py-3.5 bg-bg-elevated border border-rule-strong rounded-lg mb-2.5 last:mb-0 hover:border-accent-primary hover:bg-accent-primary/5 transition-all group"
     >
       <Icon className="w-5 h-5 text-accent-primary" />
-      <span className="text-sm font-medium text-text-primary group-hover:text-text-primary">
+      <span className="text-sm font-medium text-ink group-hover:text-ink">
         {action.label}
       </span>
     </Link>
@@ -64,15 +64,15 @@ function ActionButton({ action }: { action: QuickActionItem }) {
 
 export function QuickActionsSimple({ actions }: QuickActionsProps) {
   return (
-    <div className="bg-bg-surface border border-border-default rounded-2xl p-6">
+    <div className="bg-bg-panel border border-rule-strong rounded-2xl p-6">
       <div className="mb-5">
-        <h3 className="text-base font-semibold text-text-primary">Quick Actions</h3>
+        <h3 className="text-base font-semibold text-ink">Quick Actions</h3>
       </div>
       <div>
         {actions.length > 0 ? (
           actions.map((action) => <ActionButton key={action.id} action={action} />)
         ) : (
-          <p className="text-sm text-text-muted py-4 text-center">
+          <p className="text-sm text-ink-3 py-4 text-center">
             No actions available
           </p>
         )}

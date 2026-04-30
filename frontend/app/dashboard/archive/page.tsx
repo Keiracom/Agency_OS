@@ -47,7 +47,7 @@ import type { ArchiveContentItem, ContentArchiveFilters } from "@/lib/api/types"
 
 // Channel icons and colors
 const channelConfig: Record<string, { icon: React.ReactNode; color: string; label: string }> = {
-  email: { icon: <Mail className="h-4 w-4" />, color: "bg-bg-elevated/10 text-text-secondary", label: "Email" },
+  email: { icon: <Mail className="h-4 w-4" />, color: "bg-bg-elevated/10 text-ink-2", label: "Email" },
   sms: { icon: <MessageSquare className="h-4 w-4" />, color: "bg-amber/10 text-amber", label: "SMS" },
   linkedin: { icon: <Linkedin className="h-4 w-4" />, color: "bg-amber-glow text-amber", label: "LinkedIn" },
   voice: { icon: <Phone className="h-4 w-4" />, color: "bg-amber/10 text-amber", label: "Voice" },
@@ -90,7 +90,7 @@ function ContentCard({
           <div className="flex-1 min-w-0">
             {/* Header */}
             <div className="flex items-center justify-between gap-2 mb-1">
-              <span className="text-sm font-medium text-text-primary truncate">
+              <span className="text-sm font-medium text-ink truncate">
                 {item.lead_name || item.lead_email || "Unknown recipient"}
               </span>
               <span className="text-xs text-text-primary0 flex-shrink-0">
@@ -100,12 +100,12 @@ function ContentCard({
 
             {/* Company */}
             {item.lead_company && (
-              <p className="text-xs text-text-muted mb-1">{item.lead_company}</p>
+              <p className="text-xs text-ink-3 mb-1">{item.lead_company}</p>
             )}
 
             {/* Subject */}
             {item.subject && (
-              <p className="text-sm text-text-secondary truncate mb-2">{item.subject}</p>
+              <p className="text-sm text-ink-2 truncate mb-2">{item.subject}</p>
             )}
 
             {/* Preview */}
@@ -130,7 +130,7 @@ function ContentCard({
                 </span>
               )}
               {item.email_clicked && (
-                <span className="flex items-center gap-1 text-xs text-text-secondary">
+                <span className="flex items-center gap-1 text-xs text-ink-2">
                   <MousePointer className="h-3 w-3" />
                   {item.email_click_count}
                 </span>
@@ -180,26 +180,26 @@ function ContentDetailModal({
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <span className="text-text-primary0">Sent:</span>
-              <span className="ml-2 text-text-secondary">{formatDate(item.timestamp)}</span>
+              <span className="ml-2 text-ink-2">{formatDate(item.timestamp)}</span>
             </div>
             <div>
               <span className="text-text-primary0">Campaign:</span>
-              <span className="ml-2 text-text-secondary">{item.campaign_name || "—"}</span>
+              <span className="ml-2 text-ink-2">{item.campaign_name || "—"}</span>
             </div>
             <div>
               <span className="text-text-primary0">Recipient:</span>
-              <span className="ml-2 text-text-secondary">{item.lead_email || "—"}</span>
+              <span className="ml-2 text-ink-2">{item.lead_email || "—"}</span>
             </div>
             <div>
               <span className="text-text-primary0">Company:</span>
-              <span className="ml-2 text-text-secondary">{item.lead_company || "—"}</span>
+              <span className="ml-2 text-ink-2">{item.lead_company || "—"}</span>
             </div>
           </div>
 
           {/* Engagement */}
-          <div className="flex items-center gap-4 p-3 bg-bg-surface/5 rounded-lg">
+          <div className="flex items-center gap-4 p-3 bg-bg-panel/5 rounded-lg">
             <div className="flex items-center gap-2">
-              <Eye className="h-4 w-4 text-text-muted" />
+              <Eye className="h-4 w-4 text-ink-3" />
               <span className="text-sm">
                 {item.email_opened ? (
                   <span className="text-amber">
@@ -211,10 +211,10 @@ function ContentDetailModal({
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <MousePointer className="h-4 w-4 text-text-muted" />
+              <MousePointer className="h-4 w-4 text-ink-3" />
               <span className="text-sm">
                 {item.email_clicked ? (
-                  <span className="text-text-secondary">
+                  <span className="text-ink-2">
                     Clicked {item.email_click_count} time{item.email_click_count !== 1 ? "s" : ""}
                   </span>
                 ) : (
@@ -227,16 +227,16 @@ function ContentDetailModal({
           {/* Subject */}
           {item.subject && (
             <div>
-              <h4 className="text-sm font-medium text-text-muted mb-1">Subject</h4>
-              <p className="text-text-secondary">{item.subject}</p>
+              <h4 className="text-sm font-medium text-ink-3 mb-1">Subject</h4>
+              <p className="text-ink-2">{item.subject}</p>
             </div>
           )}
 
           {/* Full Content */}
           <div>
-            <h4 className="text-sm font-medium text-text-muted mb-1">Content</h4>
-            <div className="p-4 bg-bg-surface/5 rounded-lg">
-              <pre className="whitespace-pre-wrap text-sm text-text-secondary font-sans">
+            <h4 className="text-sm font-medium text-ink-3 mb-1">Content</h4>
+            <div className="p-4 bg-bg-panel/5 rounded-lg">
+              <pre className="whitespace-pre-wrap text-sm text-ink-2 font-sans">
                 {item.full_message_body || item.content_preview || "No content available"}
               </pre>
             </div>
@@ -245,10 +245,10 @@ function ContentDetailModal({
           {/* Links */}
           {item.links_included && item.links_included.length > 0 && (
             <div>
-              <h4 className="text-sm font-medium text-text-muted mb-1">Links Included</h4>
+              <h4 className="text-sm font-medium text-ink-3 mb-1">Links Included</h4>
               <ul className="space-y-1">
                 {item.links_included.map((link, idx) => (
-                  <li key={idx} className="text-sm text-text-secondary truncate">
+                  <li key={idx} className="text-sm text-ink-2 truncate">
                     {link}
                   </li>
                 ))}
@@ -259,7 +259,7 @@ function ContentDetailModal({
           {/* Personalization */}
           {item.personalization_fields_used && item.personalization_fields_used.length > 0 && (
             <div>
-              <h4 className="text-sm font-medium text-text-muted mb-1">Personalization Used</h4>
+              <h4 className="text-sm font-medium text-ink-3 mb-1">Personalization Used</h4>
               <div className="flex flex-wrap gap-1">
                 {item.personalization_fields_used.map((field, idx) => (
                   <Badge key={idx} variant="secondary" className="text-xs">
@@ -332,8 +332,8 @@ export default function ContentArchivePage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-semibold text-text-primary">Content Archive</h1>
-        <p className="text-text-muted mt-1">
+        <h1 className="text-2xl font-semibold text-ink">Content Archive</h1>
+        <p className="text-ink-3 mt-1">
           Browse all content sent on your behalf
         </p>
       </div>
@@ -426,7 +426,7 @@ export default function ContentArchivePage() {
 
       {/* Results Summary */}
       <div className="flex items-center justify-between">
-        <p className="text-sm text-text-muted">
+        <p className="text-sm text-ink-3">
           {archiveData?.total ?? 0} items found
           {hasActiveFilters && " (filtered)"}
         </p>
@@ -442,7 +442,7 @@ export default function ContentArchivePage() {
         <div className="grid gap-4 md:grid-cols-2">
           {[...Array(6)].map((_, i) => (
             <Card key={i} className="animate-pulse">
-              <CardContent className="p-4 h-32 bg-bg-surface/5" />
+              <CardContent className="p-4 h-32 bg-bg-panel/5" />
             </Card>
           ))}
         </div>
@@ -455,8 +455,8 @@ export default function ContentArchivePage() {
       ) : archiveData?.items.length === 0 ? (
         <Card>
           <CardContent className="p-8 text-center">
-            <Mail className="h-12 w-12 mx-auto text-text-muted mb-4" />
-            <p className="text-text-muted">
+            <Mail className="h-12 w-12 mx-auto text-ink-3 mb-4" />
+            <p className="text-ink-3">
               {hasActiveFilters
                 ? "No content matches your filters"
                 : "No content sent yet"}
@@ -487,7 +487,7 @@ export default function ContentArchivePage() {
             <ChevronLeft className="h-4 w-4" />
             Previous
           </Button>
-          <span className="text-sm text-text-muted px-4">
+          <span className="text-sm text-ink-3 px-4">
             Page {archiveData.page} of {archiveData.total_pages}
           </span>
           <Button

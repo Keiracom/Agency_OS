@@ -91,7 +91,7 @@ export function ExtractionBar({
 
       {/* Info */}
       <div className="flex-1 min-w-0">
-        <h4 className="font-semibold text-sm text-text-primary mb-1">
+        <h4 className="font-semibold text-sm text-ink mb-1">
           {isComplete ? "Analysis Complete!" : "Analyzing your agency..."}
         </h4>
         <p className="text-sm text-[#A0A0B0] truncate">{status}</p>

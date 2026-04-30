@@ -31,12 +31,12 @@ export default function SettingsPage() {
   return (
     <AppShell pageTitle="Settings">
       <div className="px-6 pt-2 pb-0">
-        <p className="text-sm text-text-muted">Manage your account, team, and integrations</p>
+        <p className="text-sm text-ink-3">Manage your account, team, and integrations</p>
       </div>
 
       <div className="p-6 max-w-[1000px]">
         {/* Tabs */}
-        <div className="flex gap-1 mb-8 p-1.5 bg-bg-surface rounded-xl w-fit">
+        <div className="flex gap-1 mb-8 p-1.5 bg-bg-panel rounded-xl w-fit">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -47,7 +47,7 @@ export default function SettingsPage() {
                 className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg transition-all ${
                   isActive
                     ? 'bg-[rgba(212,149,106,0.15)] text-[#D4956A]'
-                    : 'text-text-muted hover:text-text-secondary hover:bg-bg-surface-hover'
+                    : 'text-ink-3 hover:text-ink-2 hover:bg-bg-panel-hover'
                 }`}
               >
                 <Icon className="w-4 h-4" />

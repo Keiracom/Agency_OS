@@ -141,10 +141,10 @@ export function Header({ title = "Dashboard", user, client, onOpenMenu }: Header
         <Button 
           variant="ghost" 
           size="icon" 
-          className="relative text-text-secondary hover:bg-bg-elevated hover:text-text-primary"
+          className="relative text-ink-2 hover:bg-bg-elevated hover:text-ink"
         >
           <Bell className="h-5 w-5" />
-          <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-status-error text-[10px] font-medium text-text-primary">
+          <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-status-error text-[10px] font-medium text-ink">
             3
           </span>
         </Button>
@@ -165,16 +165,16 @@ export function Header({ title = "Dashboard", user, client, onOpenMenu }: Header
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent 
-            className="w-56 border-border-subtle bg-bg-surface" 
+            className="w-56 border-rule bg-bg-panel" 
             align="end" 
             forceMount
           >
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none text-text-primary">
+                <p className="text-sm font-medium leading-none text-ink">
                   {displayName}
                 </p>
-                <p className="text-xs leading-none text-text-muted">
+                <p className="text-xs leading-none text-ink-3">
                   {user?.email}
                 </p>
               </div>
@@ -184,8 +184,8 @@ export function Header({ title = "Dashboard", user, client, onOpenMenu }: Header
               <>
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
-                    <p className="text-xs text-text-muted">Organization</p>
-                    <p className="text-sm font-medium text-text-primary">{client.name}</p>
+                    <p className="text-xs text-ink-3">Organization</p>
+                    <p className="text-sm font-medium text-ink">{client.name}</p>
                     <Badge 
                       variant="outline" 
                       className="mt-1 w-fit border-accent-primary/50 capitalize text-accent-primary"
@@ -197,11 +197,11 @@ export function Header({ title = "Dashboard", user, client, onOpenMenu }: Header
                 <DropdownMenuSeparator className="bg-border-subtle" />
               </>
             )}
-            <DropdownMenuItem className="text-text-secondary hover:bg-bg-elevated hover:text-text-primary">
+            <DropdownMenuItem className="text-ink-2 hover:bg-bg-elevated hover:text-ink">
               <User className="mr-2 h-4 w-4" />
               <span>Profile</span>
             </DropdownMenuItem>
-            <DropdownMenuItem className="text-text-secondary hover:bg-bg-elevated hover:text-text-primary">
+            <DropdownMenuItem className="text-ink-2 hover:bg-bg-elevated hover:text-ink">
               <Settings className="mr-2 h-4 w-4" />
               <span>Settings</span>
             </DropdownMenuItem>

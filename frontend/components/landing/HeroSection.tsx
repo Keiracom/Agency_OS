@@ -29,7 +29,7 @@ const iconMap = {
 }
 
 const colorMap = {
-  blue: "bg-bg-elevated/20 text-text-secondary border-default/30",
+  blue: "bg-bg-elevated/20 text-ink-2 border-default/30",
   green: "bg-amber/20 text-amber border-amber/30",
   purple: "bg-amber/20 text-amber border-amber/30",
 }
@@ -77,7 +77,7 @@ export default function AgencyOSHero() {
           <div className="space-y-8">
             {/* Urgency badge */}
             <div
-              className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-bg-surface/5 backdrop-blur-[20px] transition-all duration-700 ${
+              className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-bg-panel/5 backdrop-blur-[20px] transition-all duration-700 ${
                 isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
               }`}
               style={{ transitionDelay: "0ms" }}
@@ -86,7 +86,7 @@ export default function AgencyOSHero() {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber opacity-75" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-amber" />
               </span>
-              <span className="text-sm text-text-primary/90 font-medium">Only 17 of 20 founding spots remaining</span>
+              <span className="text-sm text-ink/90 font-medium">Only 17 of 20 founding spots remaining</span>
             </div>
 
             {/* Headline - Mint gradient */}
@@ -105,7 +105,7 @@ export default function AgencyOSHero() {
 
             {/* Subheadline */}
             <p
-              className={`text-xl lg:text-2xl text-text-primary/70 transition-all duration-700 ${
+              className={`text-xl lg:text-2xl text-ink/70 transition-all duration-700 ${
                 isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
               }`}
               style={{ transitionDelay: "200ms" }}
@@ -120,12 +120,12 @@ export default function AgencyOSHero() {
               }`}
               style={{ transitionDelay: "300ms" }}
             >
-              <button className="group relative px-8 py-4 rounded-lg bg-gradient-to-r from-mint-500 to-mint-600 text-text-primary font-semibold text-lg overflow-hidden transition-all hover:scale-105 hover:shadow-[0_0_40px_rgba(46,212,152,0.5)]">
+              <button className="group relative px-8 py-4 rounded-lg bg-gradient-to-r from-mint-500 to-mint-600 text-ink font-semibold text-lg overflow-hidden transition-all hover:scale-105 hover:shadow-[0_0_40px_rgba(46,212,152,0.5)]">
                 <span className="relative z-10">See It In Action</span>
                 <div className="absolute inset-0 bg-gradient-to-r from-mint-600 to-mint-700 opacity-0 group-hover:opacity-100 transition-opacity" />
               </button>
 
-              <button className="group flex items-center gap-2 px-8 py-4 text-text-primary/90 font-semibold text-lg hover:text-text-primary transition-colors">
+              <button className="group flex items-center gap-2 px-8 py-4 text-ink/90 font-semibold text-lg hover:text-ink transition-colors">
                 How it works
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </button>
@@ -141,15 +141,15 @@ export default function AgencyOSHero() {
           >
             <div className="relative">
               {/* Glass card container */}
-              <div className="rounded-lg border border-white/10 bg-bg-surface/5 backdrop-blur-[20px] p-4 space-y-3">
+              <div className="rounded-lg border border-white/10 bg-bg-panel/5 backdrop-blur-[20px] p-4 space-y-3">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-text-primary font-semibold text-lg">Live Activity</h3>
+                  <h3 className="text-ink font-semibold text-lg">Live Activity</h3>
                   <div className="flex items-center gap-2">
                     <span className="relative flex h-2 w-2">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber opacity-75" />
                       <span className="relative inline-flex rounded-full h-2 w-2 bg-amber" />
                     </span>
-                    <span className="text-xs text-text-primary/50">Live</span>
+                    <span className="text-xs text-ink/50">Live</span>
                   </div>
                 </div>
 
@@ -160,7 +160,7 @@ export default function AgencyOSHero() {
                     return (
                       <div
                         key={`${activity.id}-${index}`}
-                        className="flex items-start gap-3 p-3 rounded-lg border border-white/10 bg-bg-surface/5 backdrop-blur-[20px] animate-slide-in"
+                        className="flex items-start gap-3 p-3 rounded-lg border border-white/10 bg-bg-panel/5 backdrop-blur-[20px] animate-slide-in"
                         style={{
                           animationDelay: index === 0 ? "0ms" : "0ms",
                           animationFillMode: "backwards",
@@ -172,8 +172,8 @@ export default function AgencyOSHero() {
                           <Icon className="w-5 h-5" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-text-primary/90 text-sm leading-relaxed">{activity.message}</p>
-                          <p className="text-text-primary/50 text-xs mt-1">Just now</p>
+                          <p className="text-ink/90 text-sm leading-relaxed">{activity.message}</p>
+                          <p className="text-ink/50 text-xs mt-1">Just now</p>
                         </div>
                       </div>
                     )

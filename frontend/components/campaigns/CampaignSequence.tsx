@@ -10,7 +10,7 @@ interface Props {
 export function CampaignSequence({ sequence }: Props) {
   return (
     <div className="mb-5">
-      <div className="text-[13px] text-text-muted uppercase tracking-wide font-semibold mb-3">
+      <div className="text-[13px] text-ink-3 uppercase tracking-wide font-semibold mb-3">
         Sequence Progress
       </div>
       <div className="flex items-center gap-2">
@@ -18,7 +18,7 @@ export function CampaignSequence({ sequence }: Props) {
           <div key={idx} className="contents">
             <SequenceStep step={step} />
             {idx < sequence.length - 1 && (
-              <span className="text-text-secondary text-lg">→</span>
+              <span className="text-ink-2 text-lg">→</span>
             )}
           </div>
         ))}

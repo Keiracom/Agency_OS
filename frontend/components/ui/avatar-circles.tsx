@@ -38,7 +38,7 @@ export const AvatarCircles = ({
       ))}
       {(numPeople ?? 0) > 0 && (
         <a
-          className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-white bg-black text-center text-xs font-medium text-text-primary hover:bg-gray-600 dark:border-gray-800 dark:bg-bg-surface dark:text-black"
+          className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-white bg-black text-center text-xs font-medium text-ink hover:bg-gray-600 dark:border-gray-800 dark:bg-bg-panel dark:text-black"
           href=""
         >
           +{numPeople}

@@ -9,15 +9,15 @@ interface LeadContactInfoProps {
 
 export function LeadContactInfo({ company }: LeadContactInfoProps) {
   return (
-    <div className="bg-surface border border-border-subtle rounded-xl overflow-hidden">
-      <div className="px-6 py-5 border-b border-border-subtle">
+    <div className="bg-panel border border-rule rounded-xl overflow-hidden">
+      <div className="px-6 py-5 border-b border-rule">
         <span className="text-sm font-semibold text-primary">Company Intel</span>
       </div>
 
       <div className="p-6">
         {/* Company header */}
         <div className="flex items-center gap-4 mb-5">
-          <div className="w-13 h-13 bg-elevated rounded-xl flex items-center justify-center text-2xl border border-border-default">
+          <div className="w-13 h-13 bg-elevated rounded-xl flex items-center justify-center text-2xl border border-rule-strong">
             <Building2 className="w-6 h-6 text-muted" />
           </div>
           <div>
@@ -67,7 +67,7 @@ export function LeadContactInfo({ company }: LeadContactInfoProps) {
 
         {/* Insights */}
         {company.insights && company.insights.length > 0 && (
-          <div className="pt-5 border-t border-border-subtle">
+          <div className="pt-5 border-t border-rule">
             <div className="flex items-center gap-2 text-xs font-semibold text-muted uppercase tracking-wider mb-3">
               <Lightbulb className="w-3.5 h-3.5" />
               Key Insights

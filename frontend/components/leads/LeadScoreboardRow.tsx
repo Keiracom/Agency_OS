@@ -186,10 +186,10 @@ export function LeadScoreboardRow({
 
       {/* Company & Decision Maker */}
       <div className="flex-1 min-w-0">
-        <p className="font-medium text-sm text-text-primary truncate group-hover:text-accent-primary transition-colors">
+        <p className="font-medium text-sm text-ink truncate group-hover:text-accent-primary transition-colors">
           {companyName}
         </p>
-        <p className="text-xs text-text-muted truncate">
+        <p className="text-xs text-ink-3 truncate">
           {decisionMaker} · {title}
         </p>
       </div>
@@ -215,7 +215,7 @@ export function LeadScoreboardRow({
 
       {/* Arrow */}
       <motion.span
-        className="text-text-muted opacity-0 group-hover:opacity-100 transition-opacity"
+        className="text-ink-3 opacity-0 group-hover:opacity-100 transition-opacity"
         animate={{ x: [0, 4, 0] }}
         transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
       >

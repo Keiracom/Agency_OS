@@ -33,8 +33,8 @@ export function QuickActions({ onScheduleCall, onAddNote, onSendToCRM, onViewPro
   const handlers = [onScheduleCall, onAddNote, onSendToCRM, onViewProfile];
   
   return (
-    <div className="bg-bg-base rounded-xl p-4">
-      <div className="flex items-center gap-2 mb-4 text-xs font-semibold uppercase tracking-wide text-text-muted">
+    <div className="bg-bg-surface rounded-xl p-4">
+      <div className="flex items-center gap-2 mb-4 text-xs font-semibold uppercase tracking-wide text-ink-3">
         <span className="text-amber-500"></span>
         Quick Actions
       </div>
@@ -46,11 +46,11 @@ export function QuickActions({ onScheduleCall, onAddNote, onSendToCRM, onViewPro
             className={cn(
               'w-full flex items-center gap-3 px-3.5 py-3 rounded-lg text-sm font-medium transition-all',
               action.primary
-                ? 'bg-amber-600 text-text-primary hover:bg-amber-500'
-                : 'glass-surface border border-border-subtle text-text-primary hover:bg-bg-surface/[0.05] hover:translate-x-0.5'
+                ? 'bg-amber-600 text-ink hover:bg-amber-500'
+                : 'glass-surface border border-rule text-ink hover:bg-bg-panel/[0.05] hover:translate-x-0.5'
             )}
           >
-            <action.icon className={cn('w-[18px] h-[18px]', action.primary ? 'text-text-primary/80' : 'text-text-muted')} />
+            <action.icon className={cn('w-[18px] h-[18px]', action.primary ? 'text-ink/80' : 'text-ink-3')} />
             {action.label}
           </button>
         ))}

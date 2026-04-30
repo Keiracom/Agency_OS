@@ -46,7 +46,7 @@ export function ActivityFeed({ activities, className, maxItems = 5 }: ActivityFe
     <div className={cn("bg-[#12121A] border border-[#2A2A3A] rounded-2xl", className)}>
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-[#2A2A3A]">
-        <h3 className="font-semibold text-text-primary">Recent Activity</h3>
+        <h3 className="font-semibold text-ink">Recent Activity</h3>
         <a href="#" className="text-sm text-[#7C3AED] hover:text-[#9D5CFF] transition-colors">
           View all
         </a>
@@ -69,7 +69,7 @@ export function ActivityFeed({ activities, className, maxItems = 5 }: ActivityFe
                   <Icon className={cn("w-[18px] h-[18px]", config.iconClass)} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm text-text-primary">{activity.text}</p>
+                  <p className="text-sm text-ink">{activity.text}</p>
                   <p className="text-xs text-[#6B6B7B] mt-0.5">{activity.timestamp}</p>
                 </div>
               </div>

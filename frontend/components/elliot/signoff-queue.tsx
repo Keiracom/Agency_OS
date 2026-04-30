@@ -30,7 +30,7 @@ import { useToast } from "@/hooks/use-toast";
 type SignoffStatus = "pending" | "approved" | "rejected" | "all";
 
 const actionTypeConfig: Record<string, { icon: typeof Microscope; label: string; color: string }> = {
-  evaluate_tool: { icon: Microscope, label: "Evaluate Tool", color: "text-text-secondary" },
+  evaluate_tool: { icon: Microscope, label: "Evaluate Tool", color: "text-ink-2" },
   build_poc: { icon: Hammer, label: "Build PoC", color: "text-amber" },
   research: { icon: Search, label: "Research", color: "text-amber" },
 };

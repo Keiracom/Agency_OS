@@ -11,11 +11,11 @@ export function SettingsHeader({ onSave, isSaving }: SettingsHeaderProps) {
   return (
     <header className="flex items-center justify-between mb-8">
       <div>
-        <h1 className="font-serif text-2xl font-bold text-text-primary flex items-center gap-3">
+        <h1 className="font-serif text-2xl font-bold text-ink flex items-center gap-3">
           <Settings className="w-6 h-6 text-[#D4956A]" />
           Settings
         </h1>
-        <p className="text-sm text-text-muted mt-1">
+        <p className="text-sm text-ink-3 mt-1">
           Manage your account, team, and integrations
         </p>
       </div>
@@ -24,7 +24,7 @@ export function SettingsHeader({ onSave, isSaving }: SettingsHeaderProps) {
           onClick={onSave}
           disabled={isSaving}
           className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg
-            bg-gradient-to-r from-[#D4956A] to-[#C4854A] text-text-primary
+            bg-gradient-to-r from-[#D4956A] to-[#C4854A] text-ink
             hover:from-[#E4A57A] hover:to-[#D4956A] hover:-translate-y-px
             disabled:opacity-50 disabled:cursor-not-allowed transition-all"
         >

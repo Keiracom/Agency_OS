@@ -40,15 +40,15 @@ import { cn } from "@/lib/utils";
 // ============================================
 // Bloomberg Color Reference (from LeadDetailModal)
 // ============================================
-// Base: bg-bg-void
-// Surface: bg-bg-base
+// Base: bg-bg-cream
+// Surface: bg-bg-surface
 // Surface Hover: bg-bg-elevated
 // Elevated: bg-bg-elevated
 // Border Subtle: border-default
 // Border Default: border-default
-// Text Primary: text-text-primary
-// Text Secondary: text-text-secondary
-// Text Muted: text-text-muted
+// Text Primary: text-ink
+// Text Secondary: text-ink-2
+// Text Muted: text-ink-3
 // Accent Purple: text-amber / bg-amber
 
 // ============================================
@@ -219,21 +219,21 @@ function CalendarPicker({ selectedDate, onSelectDate, minDate }: CalendarPickerP
       <div className="flex items-center justify-between">
         <button
           onClick={prevMonth}
-          className="p-2 rounded-lg hover:bg-bg-elevated transition-colors text-text-secondary hover:text-text-primary"
+          className="p-2 rounded-lg hover:bg-bg-elevated transition-colors text-ink-2 hover:text-ink"
         >
           <ChevronLeft className="w-5 h-5" />
         </button>
-        <span className="text-text-primary font-semibold">{monthName}</span>
+        <span className="text-ink font-semibold">{monthName}</span>
         <button
           onClick={nextMonth}
-          className="p-2 rounded-lg hover:bg-bg-elevated transition-colors text-text-secondary hover:text-text-primary"
+          className="p-2 rounded-lg hover:bg-bg-elevated transition-colors text-ink-2 hover:text-ink"
         >
           <ChevronRight className="w-5 h-5" />
         </button>
       </div>
       
       {/* Day Headers */}
-      <div className="grid grid-cols-7 gap-1 text-center text-xs text-text-muted font-medium">
+      <div className="grid grid-cols-7 gap-1 text-center text-xs text-ink-3 font-medium">
         {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
           <div key={day} className="py-2">{day}</div>
         ))}
@@ -261,11 +261,11 @@ function CalendarPicker({ selectedDate, onSelectDate, minDate }: CalendarPickerP
               className={cn(
                 "aspect-square rounded-lg text-sm font-medium transition-all",
                 "flex items-center justify-center",
-                isSelected && "bg-amber text-text-primary ring-2 ring-amber/50",
+                isSelected && "bg-amber text-ink ring-2 ring-amber/50",
                 !isSelected && isToday && "ring-1 ring-amber/50 text-amber",
-                !isSelected && !isToday && !isDisabled && "text-text-primary hover:bg-bg-elevated",
+                !isSelected && !isToday && !isDisabled && "text-ink hover:bg-bg-elevated",
                 isDisabled && "text-[#3A3A4D] cursor-not-allowed",
-                weekend && !isSelected && !isDisabled && "text-text-muted"
+                weekend && !isSelected && !isDisabled && "text-ink-3"
               )}
             >
               {day}
@@ -290,7 +290,7 @@ function TimeSlotPicker({ slots, selectedTime, onSelectTime }: TimeSlotPickerPro
   
   const renderSlotGroup = (groupSlots: TimeSlot[], label: string) => (
     <div className="space-y-2">
-      <span className="text-xs font-medium text-text-muted uppercase tracking-wide">{label}</span>
+      <span className="text-xs font-medium text-ink-3 uppercase tracking-wide">{label}</span>
       <div className="grid grid-cols-3 gap-2">
         {groupSlots.map((slot) => {
           const isSelected = selectedTime === slot.time;
@@ -306,8 +306,8 @@ function TimeSlotPicker({ slots, selectedTime, onSelectTime }: TimeSlotPickerPro
               className={cn(
                 "px-3 py-2 rounded-lg text-sm font-medium transition-all",
                 "border",
-                isSelected && "bg-amber border-amber text-text-primary",
-                !isSelected && slot.available && "border-default text-text-secondary hover:border-amber/50 hover:text-text-primary hover:bg-bg-elevated",
+                isSelected && "bg-amber border-amber text-ink",
+                !isSelected && slot.available && "border-default text-ink-2 hover:border-amber/50 hover:text-ink hover:bg-bg-elevated",
                 !slot.available && "border-default text-[#3A3A4D] cursor-not-allowed line-through"
               )}
             >
@@ -405,7 +405,7 @@ export function MeetingScheduler({
             "pointer-events-auto w-full max-w-2xl max-h-[90vh] overflow-hidden",
             "rounded-2xl border border-default",
             // Glassmorphic effect
-            "bg-bg-base/95 backdrop-blur-xl",
+            "bg-bg-surface/95 backdrop-blur-xl",
             "shadow-2xl shadow-black/50",
             "animate-in zoom-in-95 slide-in-from-bottom-4 duration-300"
           )}
@@ -417,13 +417,13 @@ export function MeetingScheduler({
                 <Calendar className="w-5 h-5" />
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-text-primary">Schedule Meeting</h2>
-                <p className="text-sm text-text-muted">Book a time with {lead.name}</p>
+                <h2 className="text-lg font-semibold text-ink">Schedule Meeting</h2>
+                <p className="text-sm text-ink-3">Book a time with {lead.name}</p>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="p-2 rounded-lg hover:bg-bg-elevated transition-colors text-text-muted hover:text-text-primary"
+              className="p-2 rounded-lg hover:bg-bg-elevated transition-colors text-ink-3 hover:text-ink"
             >
               <X className="w-5 h-5" />
             </button>
@@ -433,7 +433,7 @@ export function MeetingScheduler({
           <div className="overflow-y-auto max-h-[calc(90vh-140px)]">
             <div className="p-6 space-y-6">
               {/* Lead Info Card */}
-              <div className="p-4 rounded-xl bg-bg-void border border-default">
+              <div className="p-4 rounded-xl bg-bg-cream border border-default">
                 <div className="flex items-center gap-4">
                   {/* Avatar */}
                   {lead.avatarUrl ? (
@@ -443,23 +443,23 @@ export function MeetingScheduler({
                       className="w-12 h-12 rounded-full object-cover ring-2 ring-amber/30"
                     />
                   ) : (
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber to-amber flex items-center justify-center text-text-primary font-semibold">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber to-amber flex items-center justify-center text-ink font-semibold">
                       {initials}
                     </div>
                   )}
                   
                   {/* Info */}
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-text-primary font-semibold truncate">{lead.name}</h3>
+                    <h3 className="text-ink font-semibold truncate">{lead.name}</h3>
                     {lead.title && (
-                      <div className="flex items-center gap-1.5 text-sm text-text-secondary">
-                        <User className="w-3.5 h-3.5 text-text-muted" />
+                      <div className="flex items-center gap-1.5 text-sm text-ink-2">
+                        <User className="w-3.5 h-3.5 text-ink-3" />
                         <span className="truncate">{lead.title}</span>
                       </div>
                     )}
                     {lead.company && (
-                      <div className="flex items-center gap-1.5 text-sm text-text-secondary">
-                        <Building2 className="w-3.5 h-3.5 text-text-muted" />
+                      <div className="flex items-center gap-1.5 text-sm text-ink-2">
+                        <Building2 className="w-3.5 h-3.5 text-ink-3" />
                         <span className="truncate">{lead.company}</span>
                       </div>
                     )}
@@ -469,7 +469,7 @@ export function MeetingScheduler({
               
               {/* Meeting Type Selection */}
               <div className="space-y-3">
-                <label className="block text-sm font-medium text-text-primary">Meeting Type</label>
+                <label className="block text-sm font-medium text-ink">Meeting Type</label>
                 <div className="grid grid-cols-3 gap-3">
                   {MEETING_TYPES.map((type) => {
                     const Icon = type.icon;
@@ -486,11 +486,11 @@ export function MeetingScheduler({
                             : "border-default hover:border-[#3A3A4D] hover:bg-bg-elevated"
                         )}
                       >
-                        <Icon className={cn("w-5 h-5 mb-2", isSelected ? "text-amber" : "text-text-muted")} />
-                        <div className={cn("font-medium text-sm", isSelected ? "text-text-primary" : "text-text-secondary")}>
+                        <Icon className={cn("w-5 h-5 mb-2", isSelected ? "text-amber" : "text-ink-3")} />
+                        <div className={cn("font-medium text-sm", isSelected ? "text-ink" : "text-ink-2")}>
                           {type.label}
                         </div>
-                        <div className="text-xs text-text-muted mt-1">{type.description}</div>
+                        <div className="text-xs text-ink-3 mt-1">{type.description}</div>
                       </button>
                     );
                   })}
@@ -499,7 +499,7 @@ export function MeetingScheduler({
               
               {/* Duration Selection */}
               <div className="space-y-3">
-                <label className="block text-sm font-medium text-text-primary">Duration</label>
+                <label className="block text-sm font-medium text-ink">Duration</label>
                 <div className="flex gap-2">
                   {DURATIONS.map((d) => (
                     <button
@@ -508,8 +508,8 @@ export function MeetingScheduler({
                       className={cn(
                         "px-4 py-2 rounded-lg text-sm font-medium transition-all border",
                         duration === d.value
-                          ? "bg-amber border-amber text-text-primary"
-                          : "border-default text-text-secondary hover:border-amber/50 hover:text-text-primary"
+                          ? "bg-amber border-amber text-ink"
+                          : "border-default text-ink-2 hover:border-amber/50 hover:text-ink"
                       )}
                     >
                       {d.label}
@@ -522,8 +522,8 @@ export function MeetingScheduler({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6">
                 {/* Calendar */}
                 <div className="space-y-3">
-                  <label className="block text-sm font-medium text-text-primary">Select Date</label>
-                  <div className="p-4 rounded-xl bg-bg-void border border-default">
+                  <label className="block text-sm font-medium text-ink">Select Date</label>
+                  <div className="p-4 rounded-xl bg-bg-cream border border-default">
                     <CalendarPicker
                       selectedDate={selectedDate}
                       onSelectDate={(date) => {
@@ -536,8 +536,8 @@ export function MeetingScheduler({
                 
                 {/* Time Slots */}
                 <div className="space-y-3">
-                  <label className="block text-sm font-medium text-text-primary">Select Time</label>
-                  <div className="p-4 rounded-xl bg-bg-void border border-default max-h-[320px] overflow-y-auto">
+                  <label className="block text-sm font-medium text-ink">Select Time</label>
+                  <div className="p-4 rounded-xl bg-bg-cream border border-default max-h-[320px] overflow-y-auto">
                     <TimeSlotPicker
                       slots={timeSlots}
                       selectedTime={selectedTime}
@@ -549,8 +549,8 @@ export function MeetingScheduler({
               
               {/* Notes */}
               <div className="space-y-3">
-                <label className="block text-sm font-medium text-text-primary">
-                  Notes <span className="text-text-muted font-normal">(optional)</span>
+                <label className="block text-sm font-medium text-ink">
+                  Notes <span className="text-ink-3 font-normal">(optional)</span>
                 </label>
                 <textarea
                   value={notes}
@@ -559,8 +559,8 @@ export function MeetingScheduler({
                   rows={3}
                   className={cn(
                     "w-full px-4 py-3 rounded-xl resize-none",
-                    "bg-bg-void border border-default",
-                    "text-text-primary placeholder-[#6E6E82]",
+                    "bg-bg-cream border border-default",
+                    "text-ink placeholder-[#6E6E82]",
                     "focus:outline-none focus:ring-2 focus:ring-amber/50 focus:border-amber",
                     "transition-all"
                   )}
@@ -568,7 +568,7 @@ export function MeetingScheduler({
               </div>
               
               {/* Timezone Display */}
-              <div className="flex items-center gap-2 text-sm text-text-muted">
+              <div className="flex items-center gap-2 text-sm text-ink-3">
                 <Globe className="w-4 h-4" />
                 <span>Times shown in {timezone.replace(/_/g, " ")}</span>
               </div>
@@ -576,17 +576,17 @@ export function MeetingScheduler({
           </div>
           
           {/* Footer */}
-          <div className="px-6 py-4 border-t border-default bg-bg-void/50">
+          <div className="px-6 py-4 border-t border-default bg-bg-cream/50">
             <div className="flex items-center justify-between">
               {/* Selected Summary */}
-              <div className="text-sm text-text-secondary">
+              <div className="text-sm text-ink-2">
                 {selectedTime ? (
                   <span>
-                    <span className="text-text-primary font-medium">
+                    <span className="text-ink font-medium">
                       {selectedDate.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
                     </span>
                     {" at "}
-                    <span className="text-text-primary font-medium">
+                    <span className="text-ink font-medium">
                       {(() => {
                         const hour = parseInt(selectedTime.split(":")[0]);
                         const minute = selectedTime.split(":")[1];
@@ -597,7 +597,7 @@ export function MeetingScheduler({
                     <span className="text-amber">{duration} min</span>
                   </span>
                 ) : (
-                  <span className="text-text-muted">Select a date and time</span>
+                  <span className="text-ink-3">Select a date and time</span>
                 )}
               </div>
               
@@ -606,7 +606,7 @@ export function MeetingScheduler({
                 <Button
                   variant="ghost"
                   onClick={onClose}
-                  className="text-text-secondary hover:text-text-primary hover:bg-bg-elevated"
+                  className="text-ink-2 hover:text-ink hover:bg-bg-elevated"
                 >
                   Cancel
                 </Button>
@@ -614,7 +614,7 @@ export function MeetingScheduler({
                   onClick={handleSubmit}
                   disabled={!isValid || isSubmitting}
                   className={cn(
-                    "bg-amber hover:bg-violet-700 text-text-primary",
+                    "bg-amber hover:bg-violet-700 text-ink",
                     "disabled:opacity-50 disabled:cursor-not-allowed",
                     "min-w-[140px]"
                   )}

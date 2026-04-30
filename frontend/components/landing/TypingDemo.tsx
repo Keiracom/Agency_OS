@@ -69,7 +69,7 @@ export default function AIEmailWriter({ className = "" }: AIEmailWriterProps) {
   return (
     <div className={`w-full max-w-2xl ${className}`}>
       {/* Glass morphism card */}
-      <div className="bg-bg-surface/5 backdrop-blur-[20px] border border-white/10 rounded-lg overflow-hidden">
+      <div className="bg-bg-panel/5 backdrop-blur-[20px] border border-white/10 rounded-lg overflow-hidden">
         {/* Status indicator */}
         <div className="flex items-center gap-2 px-4 py-3 border-b border-white/10">
           <div className="relative">
@@ -78,28 +78,28 @@ export default function AIEmailWriter({ className = "" }: AIEmailWriterProps) {
               <span className="absolute -top-1 -right-1 w-2 h-2 bg-amber rounded-full animate-pulse" />
             )}
           </div>
-          <span className="text-sm text-text-primary/70">{isComplete ? "AI finished" : "AI is writing..."}</span>
+          <span className="text-sm text-ink/70">{isComplete ? "AI finished" : "AI is writing..."}</span>
         </div>
 
         {/* Email compose UI */}
         <div className="p-4 space-y-3">
           {/* To field */}
           <div className="flex items-center gap-2 text-sm">
-            <span className="text-text-primary/50 min-w-[60px]">To:</span>
-            <span className="text-text-primary">sarah@bloomdigital.com.au</span>
+            <span className="text-ink/50 min-w-[60px]">To:</span>
+            <span className="text-ink">sarah@bloomdigital.com.au</span>
           </div>
 
           {/* Subject field */}
           <div className="flex items-center gap-2 text-sm">
-            <span className="text-text-primary/50 min-w-[60px]">Subject:</span>
-            <span className="text-text-primary">Quick question about your healthcare marketing expansion</span>
+            <span className="text-ink/50 min-w-[60px]">Subject:</span>
+            <span className="text-ink">Quick question about your healthcare marketing expansion</span>
           </div>
 
           {/* Divider */}
           <div className="border-t border-white/10" />
 
           {/* Email body with typewriter effect */}
-          <div className="min-h-[300px] text-sm text-text-primary/90 leading-relaxed font-mono whitespace-pre-wrap">
+          <div className="min-h-[300px] text-sm text-ink/90 leading-relaxed font-mono whitespace-pre-wrap">
             {displayedText}
             <span
               className={`inline-block w-[2px] h-4 bg-gradient-to-b from-amber to-amber ml-0.5 ${

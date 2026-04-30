@@ -21,12 +21,12 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
 
   return (
     <AppShell>
-      <div className="min-h-screen bg-bg-void">
+      <div className="min-h-screen bg-bg-cream">
         {/* Breadcrumb Header */}
-        <div className="bg-bg-surface border-b border-border-subtle px-8 py-4">
+        <div className="bg-bg-panel border-b border-rule px-8 py-4">
           <Link
             href="/leads"
-            className="inline-flex items-center gap-2 text-text-muted hover:text-text-primary transition-colors"
+            className="inline-flex items-center gap-2 text-ink-3 hover:text-ink transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Leads

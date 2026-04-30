@@ -28,7 +28,7 @@ function ScoreBar({ label, value, max, inverted = false }: ScoreBarProps) {
   }
 
   return (
-    <div className="flex items-center gap-4 py-3 border-b border-border-subtle last:border-b-0">
+    <div className="flex items-center gap-4 py-3 border-b border-rule last:border-b-0">
       <span className="flex-1 text-sm text-secondary">{label}</span>
       <div className="w-28 h-2 bg-elevated rounded-full overflow-hidden">
         <div
@@ -98,8 +98,8 @@ export function LeadRadarChart({ scores }: LeadRadarChartProps) {
   ];
 
   return (
-    <div className="bg-surface border border-border-subtle rounded-xl overflow-hidden">
-      <div className="px-6 py-5 border-b border-border-subtle flex items-center justify-between">
+    <div className="bg-panel border border-rule rounded-xl overflow-hidden">
+      <div className="px-6 py-5 border-b border-rule flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <BarChart3 className="w-4 h-4 text-accent-primary" />
           <span className="text-sm font-semibold text-primary">Engagement Profile</span>

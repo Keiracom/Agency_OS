@@ -17,7 +17,7 @@ export function FloatingFoundingSpots() {
   // Sold out state
   if (soldOut) {
     return (
-      <div className="fixed bottom-4 right-4 z-50 bg-amber text-text-primary px-4 py-3 rounded-lg shadow-lg">
+      <div className="fixed bottom-4 right-4 z-50 bg-amber text-ink px-4 py-3 rounded-lg shadow-lg">
         <span className="font-semibold">Founding spots sold out</span>
       </div>
     );
@@ -33,13 +33,13 @@ export function FloatingFoundingSpots() {
   return (
     <a
       href="#pricing"
-      className={`fixed bottom-4 right-4 z-50 ${urgencyClass} text-text-primary px-4 py-3 rounded-lg shadow-lg cursor-pointer hover:scale-105 transition-transform flex items-center gap-3`}
+      className={`fixed bottom-4 right-4 z-50 ${urgencyClass} text-ink px-4 py-3 rounded-lg shadow-lg cursor-pointer hover:scale-105 transition-transform flex items-center gap-3`}
     >
       {/* Pulsing dot for urgency */}
       {isUrgent && (
         <span className="relative flex h-3 w-3">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-bg-surface opacity-75"></span>
-          <span className="relative inline-flex rounded-full h-3 w-3 bg-bg-surface"></span>
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-bg-panel opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-3 w-3 bg-bg-panel"></span>
         </span>
       )}
 

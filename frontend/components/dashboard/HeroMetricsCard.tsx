@@ -42,7 +42,7 @@ export function HeroMetricsCard({ className }: HeroMetricsCardProps) {
     return (
       <Card className={cn("bg-[#1a1a1f] border-white/10", className)}>
         <CardContent className="p-6">
-          <div className="text-text-primary/60 text-center py-4">
+          <div className="text-ink/60 text-center py-4">
             Unable to load metrics
           </div>
         </CardContent>
@@ -59,12 +59,12 @@ export function HeroMetricsCard({ className }: HeroMetricsCardProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6">
           {/* Meetings Booked */}
           <div className="space-y-2">
-            <div className="flex items-center gap-2 text-text-primary/60">
+            <div className="flex items-center gap-2 text-ink/60">
               <Calendar className="h-4 w-4" />
               <span className="text-sm font-medium">Meetings Booked</span>
             </div>
             <div className="flex items-baseline gap-3">
-              <span className="text-4xl font-bold text-text-primary">
+              <span className="text-4xl font-bold text-ink">
                 {outcomes.meetings_booked}
               </span>
               <ComparisonBadge value={vsLastMonth} label="vs last month" />
@@ -79,21 +79,21 @@ export function HeroMetricsCard({ className }: HeroMetricsCardProps) {
 
           {/* Show Rate */}
           <div className="space-y-2">
-            <div className="flex items-center gap-2 text-text-primary/60">
+            <div className="flex items-center gap-2 text-ink/60">
               <TrendingUp className="h-4 w-4" />
               <span className="text-sm font-medium">Show Rate</span>
             </div>
             <div className="flex items-baseline gap-3">
-              <span className="text-4xl font-bold text-text-primary">
+              <span className="text-4xl font-bold text-ink">
                 {Math.round(outcomes.show_rate)}%
               </span>
               {outcomes.meetings_showed > 0 && (
-                <span className="text-sm text-text-primary/40">
+                <span className="text-sm text-ink/40">
                   ({outcomes.meetings_showed} showed)
                 </span>
               )}
             </div>
-            <div className="text-sm text-text-primary/60">
+            <div className="text-sm text-ink/60">
               {outcomes.deals_created > 0 && (
                 <span className="text-amber">
                   {outcomes.deals_created} deal{outcomes.deals_created !== 1 ? "s" : ""} created
@@ -116,7 +116,7 @@ function ComparisonBadge({ value, label }: { value: number; label: string }) {
 
   const Icon = isNeutral ? Minus : isPositive ? ArrowUp : ArrowDown;
   const colorClass = isNeutral
-    ? "text-text-primary/40"
+    ? "text-ink/40"
     : isPositive
     ? "text-amber"
     : "text-amber-400";
@@ -128,7 +128,7 @@ function ComparisonBadge({ value, label }: { value: number; label: string }) {
         {isPositive && "+"}
         {value}
       </span>
-      <span className="text-text-primary/40">{label}</span>
+      <span className="text-ink/40">{label}</span>
     </div>
   );
 }
@@ -143,15 +143,15 @@ function HeroMetricsCardSkeleton({ className }: { className?: string }) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6">
           {/* Meetings Booked skeleton */}
           <div className="space-y-2">
-            <Skeleton className="h-4 w-32 bg-bg-surface/10" />
-            <Skeleton className="h-10 w-20 bg-bg-surface/10" />
-            <Skeleton className="h-6 w-40 bg-bg-surface/10" />
+            <Skeleton className="h-4 w-32 bg-bg-panel/10" />
+            <Skeleton className="h-10 w-20 bg-bg-panel/10" />
+            <Skeleton className="h-6 w-40 bg-bg-panel/10" />
           </div>
           {/* Show Rate skeleton */}
           <div className="space-y-2">
-            <Skeleton className="h-4 w-24 bg-bg-surface/10" />
-            <Skeleton className="h-10 w-16 bg-bg-surface/10" />
-            <Skeleton className="h-4 w-32 bg-bg-surface/10" />
+            <Skeleton className="h-4 w-24 bg-bg-panel/10" />
+            <Skeleton className="h-10 w-16 bg-bg-panel/10" />
+            <Skeleton className="h-4 w-32 bg-bg-panel/10" />
           </div>
         </div>
       </CardContent>

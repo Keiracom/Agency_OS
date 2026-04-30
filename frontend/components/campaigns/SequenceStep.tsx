@@ -15,10 +15,10 @@ const stepStyles = {
 export function SequenceStep({ step }: Props) {
   return (
     <div className={`flex-1 p-3 rounded-lg text-center ${stepStyles[step.status]}`}>
-      <div className="text-[10px] text-text-muted uppercase">Day {step.day}</div>
+      <div className="text-[10px] text-ink-3 uppercase">Day {step.day}</div>
       <div className="text-base my-1">{channelEmoji[step.channel]}</div>
-      <div className="text-[11px] font-semibold text-text-muted">{step.label}</div>
-      <div className="text-[10px] text-text-muted mt-1">{step.stats}</div>
+      <div className="text-[11px] font-semibold text-ink-3">{step.label}</div>
+      <div className="text-[10px] text-ink-3 mt-1">{step.stats}</div>
     </div>
   );
 }

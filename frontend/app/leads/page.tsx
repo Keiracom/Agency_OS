@@ -41,13 +41,13 @@ export default function LeadsPage() {
         {/* Page Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-text-primary flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-ink flex items-center gap-3">
               Leads
               <span className="text-sm font-mono font-medium px-2 py-1 bg-accent-primary/15 text-accent-primary rounded">
                 {mockLeadStats.total}
               </span>
             </h1>
-            <p className="text-text-muted mt-1">
+            <p className="text-ink-3 mt-1">
               Your enriched leads scored by the ALS algorithm
             </p>
           </div>

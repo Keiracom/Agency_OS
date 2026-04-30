@@ -216,7 +216,7 @@ export const MOCK_OVERVIEW_STATS: OverviewStatsProps = {
 
 const channelConfig: Record<ChannelType, { icon: typeof Mail; bg: string }> = {
   email: { icon: Mail, bg: "bg-amber/20 text-amber" },
-  linkedin: { icon: Linkedin, bg: "bg-bg-elevated/20 text-text-secondary" },
+  linkedin: { icon: Linkedin, bg: "bg-bg-elevated/20 text-ink-2" },
   sms: { icon: MessageCircle, bg: "bg-amber/20 text-amber" },
   voice: { icon: Phone, bg: "bg-amber-500/20 text-amber-400" },
   mail: { icon: Package, bg: "bg-amber-light/20 text-amber-light" },
@@ -260,7 +260,7 @@ const statusConfig: Record<CampaignStatus, { label: string; classes: string; pul
   },
   draft: {
     label: "Draft",
-    classes: "bg-bg-surface text-text-secondary border-slate-500/30",
+    classes: "bg-bg-panel text-ink-2 border-slate-500/30",
     pulse: false,
   },
 };
@@ -308,11 +308,11 @@ export function OverviewStats({
         {Array.from({ length: 5 }).map((_, i) => (
           <div
             key={i}
-            className="bg-bg-void/40 backdrop-blur-md rounded-xl border border-white/10 p-5 animate-pulse"
+            className="bg-bg-cream/40 backdrop-blur-md rounded-xl border border-white/10 p-5 animate-pulse"
           >
-            <div className="h-7 w-16 bg-bg-surface/10 rounded mb-2" />
-            <div className="h-3 w-20 bg-bg-surface/10 rounded mb-2" />
-            <div className="h-3 w-24 bg-bg-surface/10 rounded" />
+            <div className="h-7 w-16 bg-bg-panel/10 rounded mb-2" />
+            <div className="h-3 w-20 bg-bg-panel/10 rounded mb-2" />
+            <div className="h-3 w-24 bg-bg-panel/10 rounded" />
           </div>
         ))}
       </div>
@@ -324,20 +324,20 @@ export function OverviewStats({
       {items.map((item) => (
         <div
           key={item.label}
-          className="relative bg-bg-void/40 backdrop-blur-md rounded-xl border border-white/10 p-5 text-center overflow-hidden hover:border-amber/30 transition-colors"
+          className="relative bg-bg-cream/40 backdrop-blur-md rounded-xl border border-white/10 p-5 text-center overflow-hidden hover:border-amber/30 transition-colors"
         >
           {/* Gradient top border accent */}
           <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-amber to-amber opacity-50" />
           
-          <div className="text-2xl font-extrabold font-mono text-text-primary drop-shadow-sm">
+          <div className="text-2xl font-extrabold font-mono text-ink drop-shadow-sm">
             {item.value}
           </div>
-          <div className="text-[11px] font-medium text-text-secondary uppercase tracking-wider mt-1.5">
+          <div className="text-[11px] font-medium text-ink-2 uppercase tracking-wider mt-1.5">
             {item.label}
           </div>
           <div className={`text-xs font-medium mt-2 ${
             item.change.includes("↑") ? "text-amber" : 
-            item.change.includes("↓") ? "text-amber" : "text-text-secondary"
+            item.change.includes("↓") ? "text-amber" : "text-ink-2"
           }`}>
             {item.change}
           </div>
@@ -366,19 +366,19 @@ export function CampaignCard({
 
   return (
     <div
-      className="bg-bg-void/40 backdrop-blur-md rounded-2xl border border-white/10 overflow-hidden cursor-pointer transition-all duration-200 hover:border-amber/50 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-amber/10"
+      className="bg-bg-cream/40 backdrop-blur-md rounded-2xl border border-white/10 overflow-hidden cursor-pointer transition-all duration-200 hover:border-amber/50 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-amber/10"
       onClick={() => onClick?.(campaign.id)}
     >
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-5 border-b border-white/5">
         <div className="flex items-center gap-3">
-          <span className="text-lg font-semibold text-text-primary">{campaign.name}</span>
+          <span className="text-lg font-semibold text-ink">{campaign.name}</span>
           <StatusBadge status={campaign.status} />
         </div>
         <div className="flex gap-2">
           {campaign.status === "active" && onPause && (
             <button
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-text-secondary hover:bg-amber-500/20 hover:text-amber-400 transition-colors"
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-ink-2 hover:bg-amber-500/20 hover:text-amber-400 transition-colors"
               onClick={(e) => handleAction(e, () => onPause(campaign.id))}
               title="Pause"
             >
@@ -387,7 +387,7 @@ export function CampaignCard({
           )}
           {campaign.status === "paused" && onResume && (
             <button
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-text-secondary hover:bg-amber/20 hover:text-amber transition-colors"
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-ink-2 hover:bg-amber/20 hover:text-amber transition-colors"
               onClick={(e) => handleAction(e, () => onResume(campaign.id))}
               title="Resume"
             >
@@ -396,7 +396,7 @@ export function CampaignCard({
           )}
           {campaign.status !== "completed" && onEdit && (
             <button
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-text-secondary hover:bg-bg-elevated/20 hover:text-text-secondary transition-colors"
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-ink-2 hover:bg-bg-elevated/20 hover:text-ink-2 transition-colors"
               onClick={(e) => handleAction(e, () => onEdit(campaign.id))}
               title="Edit"
             >
@@ -405,7 +405,7 @@ export function CampaignCard({
           )}
           {onDuplicate && (
             <button
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-text-secondary hover:bg-amber/20 hover:text-amber transition-colors"
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-ink-2 hover:bg-amber/20 hover:text-amber transition-colors"
               onClick={(e) => handleAction(e, () => onDuplicate(campaign.id))}
               title="Duplicate"
             >
@@ -416,8 +416,8 @@ export function CampaignCard({
       </div>
 
       {/* Channels Bar */}
-      <div className="flex items-center gap-4 px-6 py-3 bg-bg-surface/[0.02]">
-        <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">
+      <div className="flex items-center gap-4 px-6 py-3 bg-bg-panel/[0.02]">
+        <span className="text-[10px] font-semibold text-ink-3 uppercase tracking-wider">
           Channels:
         </span>
         <div className="flex gap-2">
@@ -425,7 +425,7 @@ export function CampaignCard({
             <ChannelBadge key={channel.type} channel={channel} />
           ))}
         </div>
-        <div className="ml-auto flex items-center gap-1.5 text-xs text-text-secondary">
+        <div className="ml-auto flex items-center gap-1.5 text-xs text-ink-2">
           <Calendar className="w-3.5 h-3.5" />
           {campaign.dateRange.start} — {campaign.dateRange.end || "Paused"}
         </div>
@@ -442,16 +442,16 @@ export function CampaignCard({
         ].map((stat) => (
           <div
             key={stat.label}
-            className="text-center py-3 px-2 bg-bg-void rounded-lg"
+            className="text-center py-3 px-2 bg-bg-cream rounded-lg"
           >
             <div
               className={`text-xl font-bold font-mono ${
-                stat.highlight ? "text-amber" : "text-text-primary"
+                stat.highlight ? "text-amber" : "text-ink"
               }`}
             >
               {stat.value.toLocaleString()}
             </div>
-            <div className="text-[9px] font-medium text-text-muted uppercase tracking-wider mt-1">
+            <div className="text-[9px] font-medium text-ink-3 uppercase tracking-wider mt-1">
               {stat.label}
             </div>
           </div>
@@ -461,12 +461,12 @@ export function CampaignCard({
       {/* Progress Section */}
       <div className="px-6 py-4 border-t border-white/5">
         <div className="flex justify-between items-center mb-2.5">
-          <span className="text-xs text-text-secondary">Sequence Progress</span>
+          <span className="text-xs text-ink-2">Sequence Progress</span>
           <span className="text-sm font-semibold font-mono text-amber">
             {campaign.progress}%
           </span>
         </div>
-        <div className="h-1.5 bg-bg-void rounded-full overflow-hidden">
+        <div className="h-1.5 bg-bg-cream rounded-full overflow-hidden">
           <div
             className="h-full bg-gradient-to-r from-amber to-amber rounded-full transition-all duration-500"
             style={{ width: `${campaign.progress}%` }}
@@ -487,8 +487,8 @@ export function CampaignCard({
                   : "bg-slate-500"
               }`}
             />
-            <span className="text-text-secondary">{perf.label}:</span>
-            <span className="font-semibold font-mono text-text-primary">{perf.value}</span>
+            <span className="text-ink-2">{perf.label}:</span>
+            <span className="font-semibold font-mono text-ink">{perf.value}</span>
             {perf.change !== 0 && (
               <span
                 className={`font-medium ${
@@ -499,19 +499,19 @@ export function CampaignCard({
               </span>
             )}
             {perf.change === 0 && (
-              <span className="text-text-muted">baseline</span>
+              <span className="text-ink-3">baseline</span>
             )}
           </div>
         ))}
       </div>
 
       {/* Footer */}
-      <div className="flex items-center justify-between px-6 py-4 bg-bg-void border-t border-white/5">
+      <div className="flex items-center justify-between px-6 py-4 bg-bg-cream border-t border-white/5">
         <button className="flex items-center gap-1.5 text-sm font-medium text-amber hover:text-amber-light transition-colors">
           Explore Campaign
           <ChevronRight className="w-4 h-4" />
         </button>
-        <span className="text-xs text-text-muted">
+        <span className="text-xs text-ink-3">
           {campaign.lastActivity}
         </span>
       </div>
@@ -532,13 +532,13 @@ export function CampaignComparison({
 }) {
   if (isLoading) {
     return (
-      <div className="bg-bg-void/40 backdrop-blur-md rounded-2xl border border-white/10 overflow-hidden animate-pulse">
+      <div className="bg-bg-cream/40 backdrop-blur-md rounded-2xl border border-white/10 overflow-hidden animate-pulse">
         <div className="px-6 py-5 border-b border-white/5">
-          <div className="h-5 w-48 bg-bg-surface/10 rounded" />
+          <div className="h-5 w-48 bg-bg-panel/10 rounded" />
         </div>
         <div className="p-6">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-12 bg-bg-surface/5 rounded mb-2" />
+            <div key={i} className="h-12 bg-bg-panel/5 rounded mb-2" />
           ))}
         </div>
       </div>
@@ -562,22 +562,22 @@ export function CampaignComparison({
   const bestPipeline = Math.max(...metrics.map((m) => parseFloat(m.pipeline?.replace(/[$K]/g, "") || "0")));
 
   return (
-    <div className="mt-8 bg-bg-void/40 backdrop-blur-md rounded-2xl border border-white/10 overflow-hidden">
+    <div className="mt-8 bg-bg-cream/40 backdrop-blur-md rounded-2xl border border-white/10 overflow-hidden">
       {/* Header */}
       <div className="flex items-center gap-2.5 px-6 py-5 border-b border-white/5">
         <BarChart3 className="w-5 h-5 text-amber" />
-        <h2 className="text-base font-semibold text-text-primary">Performance Comparison</h2>
+        <h2 className="text-base font-semibold text-ink">Performance Comparison</h2>
       </div>
 
       {/* Table */}
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="bg-bg-surface/[0.02]">
+            <tr className="bg-bg-panel/[0.02]">
               {["Campaign", "Status", "Open Rate", "Reply Rate", "Book Rate", "Meetings", "Pipeline"].map((header) => (
                 <th
                   key={header}
-                  className="text-left px-5 py-3.5 text-[10px] font-semibold text-text-muted uppercase tracking-wider border-b border-white/5"
+                  className="text-left px-5 py-3.5 text-[10px] font-semibold text-ink-3 uppercase tracking-wider border-b border-white/5"
                 >
                   {header}
                 </th>
@@ -590,7 +590,7 @@ export function CampaignComparison({
               return (
                 <tr
                   key={campaign.id}
-                  className="border-b border-white/5 last:border-b-0 hover:bg-bg-surface/[0.02] transition-colors"
+                  className="border-b border-white/5 last:border-b-0 hover:bg-bg-panel/[0.02] transition-colors"
                 >
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-2.5">
@@ -603,7 +603,7 @@ export function CampaignComparison({
                             : "bg-amber"
                         }`}
                       />
-                      <span className="font-semibold text-text-primary">{campaign.name}</span>
+                      <span className="font-semibold text-ink">{campaign.name}</span>
                     </div>
                   </td>
                   <td className="px-5 py-4">
@@ -612,7 +612,7 @@ export function CampaignComparison({
                   <td className="px-5 py-4">
                     <span
                       className={`font-mono font-medium ${
-                        parseFloat(m.openRate) === bestOpen ? "text-amber font-bold" : "text-text-primary"
+                        parseFloat(m.openRate) === bestOpen ? "text-amber font-bold" : "text-ink"
                       }`}
                     >
                       {m.openRate}%
@@ -621,7 +621,7 @@ export function CampaignComparison({
                   <td className="px-5 py-4">
                     <span
                       className={`font-mono font-medium ${
-                        parseFloat(m.replyRate) === bestReply ? "text-amber font-bold" : "text-text-primary"
+                        parseFloat(m.replyRate) === bestReply ? "text-amber font-bold" : "text-ink"
                       }`}
                     >
                       {m.replyRate}%
@@ -630,7 +630,7 @@ export function CampaignComparison({
                   <td className="px-5 py-4">
                     <span
                       className={`font-mono font-medium ${
-                        parseFloat(m.bookRate) === bestBook ? "text-amber font-bold" : "text-text-primary"
+                        parseFloat(m.bookRate) === bestBook ? "text-amber font-bold" : "text-ink"
                       }`}
                     >
                       {isNaN(parseFloat(m.bookRate)) ? "N/A" : `${m.bookRate}%`}
@@ -639,7 +639,7 @@ export function CampaignComparison({
                   <td className="px-5 py-4">
                     <span
                       className={`font-mono font-medium ${
-                        m.meetings === bestMeetings ? "text-amber font-bold" : "text-text-primary"
+                        m.meetings === bestMeetings ? "text-amber font-bold" : "text-ink"
                       }`}
                     >
                       {m.meetings}
@@ -650,7 +650,7 @@ export function CampaignComparison({
                       className={`font-mono font-medium ${
                         parseFloat(m.pipeline?.replace(/[$K]/g, "") || "0") === bestPipeline
                           ? "text-amber font-bold"
-                          : "text-text-primary"
+                          : "text-ink"
                       }`}
                     >
                       {m.pipeline}
@@ -717,14 +717,14 @@ export function CampaignCards({
         {Array.from({ length: 4 }).map((_, i) => (
           <div
             key={i}
-            className="bg-bg-void/40 backdrop-blur-md rounded-2xl border border-white/10 h-96 animate-pulse"
+            className="bg-bg-cream/40 backdrop-blur-md rounded-2xl border border-white/10 h-96 animate-pulse"
           >
             <div className="p-6">
-              <div className="h-6 w-48 bg-bg-surface/10 rounded mb-4" />
-              <div className="h-4 w-32 bg-bg-surface/10 rounded mb-6" />
+              <div className="h-6 w-48 bg-bg-panel/10 rounded mb-4" />
+              <div className="h-4 w-32 bg-bg-panel/10 rounded mb-6" />
               <div className="grid grid-cols-5 gap-3">
                 {Array.from({ length: 5 }).map((_, j) => (
-                  <div key={j} className="h-16 bg-bg-surface/5 rounded" />
+                  <div key={j} className="h-16 bg-bg-panel/5 rounded" />
                 ))}
               </div>
             </div>

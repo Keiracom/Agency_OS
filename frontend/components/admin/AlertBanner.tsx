@@ -60,7 +60,7 @@ export function AlertBanner({ alerts, onDismiss, className }: AlertBannerProps) 
       case "warning":
         return "bg-yellow-500/10 border-yellow-500/20 text-yellow-700 dark:text-yellow-400";
       case "info":
-        return "bg-bg-elevated/10 border-default/20 text-amber dark:text-text-secondary";
+        return "bg-bg-elevated/10 border-default/20 text-amber dark:text-ink-2";
     }
   };
 
@@ -80,7 +80,7 @@ export function AlertBanner({ alerts, onDismiss, className }: AlertBannerProps) 
       <CardHeader className="pb-3">
         <CardTitle className="text-sm font-medium flex items-center gap-2">
           Alerts
-          <span className="inline-flex items-center justify-center rounded-full bg-amber px-2 py-0.5 text-xs text-text-primary">
+          <span className="inline-flex items-center justify-center rounded-full bg-amber px-2 py-0.5 text-xs text-ink">
             {alerts.length}
           </span>
         </CardTitle>

@@ -17,11 +17,11 @@ export default function PricingClient() {
   return (
     <main className="min-h-screen bg-[#fafafa] text-[#1d1d1f] antialiased">
       {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl bg-bg-surface/70 border-b border-black/5">
+      <nav className="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl bg-bg-panel/70 border-b border-black/5">
         <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#0066CC] to-[#5856D6] flex items-center justify-center">
-              <span className="text-text-primary font-bold text-sm">A</span>
+              <span className="text-ink font-bold text-sm">A</span>
             </div>
             <span className="font-semibold text-lg tracking-tight">Agency OS</span>
           </Link>
@@ -33,7 +33,7 @@ export default function PricingClient() {
           </div>
           <div className="flex items-center gap-4">
             <Link href="/login" className="text-sm text-[#1d1d1f]/60 hover:text-[#1d1d1f] transition-colors hidden sm:block">Sign in</Link>
-            <Link href="/#waitlist" className="text-sm font-medium px-4 py-2 rounded-full bg-[#1d1d1f] text-text-primary hover:bg-[#1d1d1f]/90 transition-all hover:scale-105">Join Waitlist</Link>
+            <Link href="/#waitlist" className="text-sm font-medium px-4 py-2 rounded-full bg-[#1d1d1f] text-ink hover:bg-[#1d1d1f]/90 transition-all hover:scale-105">Join Waitlist</Link>
           </div>
         </div>
       </nav>
@@ -90,26 +90,26 @@ export default function PricingClient() {
               },
             ].map((tier, i) => (
               <ScrollReveal key={i} animation="fade-up" delay={i * 100}>
-                <div className={`relative h-full flex flex-col p-8 rounded-2xl border ${tier.popular ? 'bg-[#1d1d1f] text-text-primary border-[#1d1d1f] shadow-2xl shadow-black/20 md:scale-105' : 'bg-bg-surface border-black/10'}`}>
+                <div className={`relative h-full flex flex-col p-8 rounded-2xl border ${tier.popular ? 'bg-[#1d1d1f] text-ink border-[#1d1d1f] shadow-2xl shadow-black/20 md:scale-105' : 'bg-bg-panel border-black/10'}`}>
                   {tier.popular && (
                     <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                      <span className="px-4 py-1 rounded-full bg-gradient-to-r from-[#0066CC] to-[#5856D6] text-text-primary text-sm font-medium">Most Popular</span>
+                      <span className="px-4 py-1 rounded-full bg-gradient-to-r from-[#0066CC] to-[#5856D6] text-ink text-sm font-medium">Most Popular</span>
                     </div>
                   )}
 
                   <h3 className="text-2xl font-semibold mb-2">{tier.name}</h3>
-                  <p className={`text-sm mb-6 ${tier.popular ? 'text-text-primary/60' : 'text-[#1d1d1f]/60'}`}>{tier.desc}</p>
+                  <p className={`text-sm mb-6 ${tier.popular ? 'text-ink/60' : 'text-[#1d1d1f]/60'}`}>{tier.desc}</p>
 
                   <div className="mb-6">
-                    <span className={`text-sm line-through ${tier.popular ? 'text-text-primary/40' : 'text-[#1d1d1f]/40'}`}>
+                    <span className={`text-sm line-through ${tier.popular ? 'text-ink/40' : 'text-[#1d1d1f]/40'}`}>
                       ${tier.originalPrice.toLocaleString()}
                     </span>
                     <div className="flex items-baseline gap-1">
                       <span className="text-4xl font-bold">${(tier.originalPrice / 2).toLocaleString()}</span>
-                      <span className={tier.popular ? 'text-text-primary/60' : 'text-[#1d1d1f]/60'}>/month</span>
+                      <span className={tier.popular ? 'text-ink/60' : 'text-[#1d1d1f]/60'}>/month</span>
                     </div>
                     <span className="text-sm text-amber font-medium">Founding price (50% off for life)</span>
-                    <div className={`mt-4 p-3 rounded-xl ${tier.popular ? 'bg-bg-surface/10 border border-white/20' : 'bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200'}`}>
+                    <div className={`mt-4 p-3 rounded-xl ${tier.popular ? 'bg-bg-panel/10 border border-white/20' : 'bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200'}`}>
                       <div className="flex items-center gap-2">
                         <svg className={`w-5 h-5 ${tier.popular ? 'text-amber' : 'text-amber'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <rect x="3" y="4" width="18" height="18" rx="2" ry="2" strokeWidth={2}/>
@@ -128,7 +128,7 @@ export default function PricingClient() {
                         <svg className={`w-5 h-5 flex-shrink-0 ${tier.popular ? 'text-amber' : 'text-amber'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
-                        <span className={`text-sm font-medium ${tier.popular ? 'text-text-primary/80' : 'text-[#1d1d1f]/70'}`}>
+                        <span className={`text-sm font-medium ${tier.popular ? 'text-ink/80' : 'text-[#1d1d1f]/70'}`}>
                           {limit}
                         </span>
                       </li>
@@ -137,7 +137,7 @@ export default function PricingClient() {
 
                   <Link
                     href="/#waitlist"
-                    className={`block text-center py-3 px-6 rounded-full font-medium transition-all hover:scale-105 ${tier.popular ? 'bg-bg-surface text-[#1d1d1f] hover:bg-bg-surface/90' : 'bg-[#1d1d1f] text-text-primary hover:bg-[#1d1d1f]/90'}`}
+                    className={`block text-center py-3 px-6 rounded-full font-medium transition-all hover:scale-105 ${tier.popular ? 'bg-bg-panel text-[#1d1d1f] hover:bg-bg-panel/90' : 'bg-[#1d1d1f] text-ink hover:bg-[#1d1d1f]/90'}`}
                   >
                     Claim Founding Spot
                   </Link>
@@ -176,7 +176,7 @@ export default function PricingClient() {
 
 
       {/* What's a Credit */}
-      <section className="px-6 py-24 bg-bg-surface">
+      <section className="px-6 py-24 bg-bg-panel">
         <div className="max-w-4xl mx-auto">
           <ScrollReveal animation="fade-up">
             <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-center mb-12">
@@ -219,7 +219,7 @@ export default function PricingClient() {
                       "AI content generation",
                     ].map((item, i) => (
                       <li key={i} className="flex items-center gap-2 text-sm text-[#1d1d1f]/60">
-                        <svg className="w-4 h-4 text-text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg className="w-4 h-4 text-ink-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         {item}
@@ -277,7 +277,7 @@ export default function PricingClient() {
               },
             ].map((faq, i) => (
               <ScrollReveal key={i} animation="fade-up" delay={i * 50}>
-                <div className="p-6 rounded-xl bg-bg-surface border border-black/5">
+                <div className="p-6 rounded-xl bg-bg-panel border border-black/5">
                   <h3 className="font-semibold mb-2">{faq.q}</h3>
                   <p className="text-[#1d1d1f]/60">{faq.a}</p>
                 </div>
@@ -288,7 +288,7 @@ export default function PricingClient() {
       </section>
 
       {/* CTA */}
-      <section className="px-6 py-24 bg-bg-surface">
+      <section className="px-6 py-24 bg-bg-panel">
         <div className="max-w-3xl mx-auto text-center">
           <ScrollReveal animation="fade-up">
             <h2 className="text-4xl md:text-5xl font-semibold tracking-tight mb-4">
@@ -303,21 +303,21 @@ export default function PricingClient() {
       </section>
 
       {/* Footer */}
-      <footer className="px-6 py-12 bg-[#1d1d1f] text-text-primary">
+      <footer className="px-6 py-12 bg-[#1d1d1f] text-ink">
         <div className="max-w-6xl mx-auto">
           <div className="flex flex-col md:flex-row items-center justify-between gap-8">
             <Link href="/" className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#0066CC] to-[#5856D6] flex items-center justify-center">
-                <span className="text-text-primary font-bold text-sm">A</span>
+                <span className="text-ink font-bold text-sm">A</span>
               </div>
               <span className="font-semibold text-lg">Agency OS</span>
             </Link>
-            <div className="flex items-center gap-8 text-sm text-text-primary/60">
-              <Link href="/how-it-works" className="hover:text-text-primary transition-colors">How it Works</Link>
-              <Link href="/pricing" className="hover:text-text-primary transition-colors">Pricing</Link>
-              <Link href="/about" className="hover:text-text-primary transition-colors">About</Link>
+            <div className="flex items-center gap-8 text-sm text-ink/60">
+              <Link href="/how-it-works" className="hover:text-ink transition-colors">How it Works</Link>
+              <Link href="/pricing" className="hover:text-ink transition-colors">Pricing</Link>
+              <Link href="/about" className="hover:text-ink transition-colors">About</Link>
             </div>
-            <p className="text-sm text-text-primary/40">© 2025 Agency OS. Made in Australia 🇦🇺</p>
+            <p className="text-sm text-ink/40">© 2025 Agency OS. Made in Australia 🇦🇺</p>
           </div>
         </div>
       </footer>

@@ -24,15 +24,15 @@ function SMSBubble({ message }: { message: ThreadMessage }) {
         className={cn(
           'px-4 py-3 text-sm leading-relaxed',
           isSent
-            ? 'bg-amber-600 text-text-primary rounded-2xl rounded-br-sm'
-            : 'bg-surface-dark border border-border-subtle text-text-primary rounded-2xl rounded-bl-sm'
+            ? 'bg-amber-600 text-ink rounded-2xl rounded-br-sm'
+            : 'bg-panel-dark border border-rule text-ink rounded-2xl rounded-bl-sm'
         )}
       >
         {message.body}
       </div>
       <div className={cn(
         'flex items-center gap-2 mt-1.5 text-[11px]',
-        isSent ? 'justify-end text-amber-400/70' : 'text-text-muted'
+        isSent ? 'justify-end text-amber-400/70' : 'text-ink-3'
       )}>
         {!isSent && intentLabel && (
           <span className="px-1.5 py-0.5 bg-amber/15 text-amber rounded text-[10px] font-semibold uppercase">
@@ -50,7 +50,7 @@ export function SMSThread({ messages }: SMSThreadProps) {
   return (
     <div className="max-w-[500px] mb-6">
       {/* Header */}
-      <div className="flex items-center gap-2 mb-4 pb-3 border-b border-border-subtle">
+      <div className="flex items-center gap-2 mb-4 pb-3 border-b border-rule">
         <div className="w-8 h-8 rounded-lg bg-amber-glow flex items-center justify-center">
           <MessageCircle className="w-4 h-4 text-amber" />
         </div>

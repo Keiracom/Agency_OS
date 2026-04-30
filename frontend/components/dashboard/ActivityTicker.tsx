@@ -143,7 +143,7 @@ const getActivityColor = (type: Activity["type"]) => {
     case "email_opened":
     case "email_clicked":
     case "email_replied":
-      return "text-text-secondary bg-bg-elevated/10";
+      return "text-ink-2 bg-bg-elevated/10";
     case "linkedin_connection":
     case "linkedin_message":
       return "text-amber bg-amber-glow";
@@ -154,7 +154,7 @@ const getActivityColor = (type: Activity["type"]) => {
     case "sms_replied":
       return "text-amber bg-amber/10";
     default:
-      return "text-text-muted bg-bg-surface0/10";
+      return "text-ink-3 bg-bg-surface0/10";
   }
 };
 
@@ -239,7 +239,7 @@ export function ActivityTicker({
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber opacity-75" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-amber" />
               </div>
-              <span className="text-xs font-medium text-text-primary uppercase tracking-wider">
+              <span className="text-xs font-medium text-ink uppercase tracking-wider">
                 Live Activity
               </span>
             </>
@@ -255,7 +255,7 @@ export function ActivityTicker({
         {displayActivities.slice(0, maxVisible).map((activity, index) => (
           <div
             key={`${activity.id}-${index}`}
-            className="flex items-center gap-3 px-4 py-2.5 hover:bg-bg-surface/5 transition-colors"
+            className="flex items-center gap-3 px-4 py-2.5 hover:bg-bg-panel/5 transition-colors"
           >
             {/* Icon */}
             <div
@@ -268,7 +268,7 @@ export function ActivityTicker({
 
             {/* Message */}
             <div className="flex-1 min-w-0">
-              <p className="text-sm text-text-secondary truncate">{activity.message}</p>
+              <p className="text-sm text-ink-2 truncate">{activity.message}</p>
             </div>
 
             {/* Timestamp */}

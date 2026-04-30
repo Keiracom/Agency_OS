@@ -12,8 +12,8 @@ function UsageBar({ used, limit, label }: { used: number; limit: number; label: 
   return (
     <div className="flex flex-col gap-2">
       <div className="flex justify-between text-sm">
-        <span className="text-text-secondary">{label}</span>
-        <span className="text-text-muted">{used.toLocaleString()} / {limit.toLocaleString()}</span>
+        <span className="text-ink-2">{label}</span>
+        <span className="text-ink-3">{used.toLocaleString()} / {limit.toLocaleString()}</span>
       </div>
       <div className="h-2 bg-bg-elevated rounded-full overflow-hidden">
         <div
@@ -27,22 +27,22 @@ function UsageBar({ used, limit, label }: { used: number; limit: number; label: 
 
 export function BillingSection({ billing }: BillingSectionProps) {
   return (
-    <div className="glass-surface border border-border-subtle rounded-xl overflow-hidden">
-      <div className="px-6 py-5 border-b border-border-subtle flex items-center gap-2.5">
+    <div className="glass-surface border border-rule rounded-xl overflow-hidden">
+      <div className="px-6 py-5 border-b border-rule flex items-center gap-2.5">
         <CreditCard className="w-5 h-5 text-[#D4956A]" />
-        <span className="font-serif font-semibold text-text-primary">Billing & Usage</span>
+        <span className="font-serif font-semibold text-ink">Billing & Usage</span>
       </div>
 
       <div className="p-6 space-y-6">
         {/* Current Plan */}
-        <div className="flex items-center justify-between p-5 bg-bg-surface-hover rounded-xl border border-border-subtle">
+        <div className="flex items-center justify-between p-5 bg-bg-panel-hover rounded-xl border border-rule">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#D4956A] to-[#C4854A] flex items-center justify-center">
-              <TrendingUp className="w-6 h-6 text-text-primary" />
+              <TrendingUp className="w-6 h-6 text-ink" />
             </div>
             <div>
-              <div className="text-lg font-semibold text-text-primary">{billing.plan} Plan</div>
-              <div className="text-sm text-text-muted">
+              <div className="text-lg font-semibold text-ink">{billing.plan} Plan</div>
+              <div className="text-sm text-ink-3">
                 {billing.price}/{billing.period} · Next billing: {billing.nextBilling}
               </div>
             </div>
@@ -54,7 +54,7 @@ export function BillingSection({ billing }: BillingSectionProps) {
 
         {/* Usage Stats */}
         <div className="space-y-4">
-          <h4 className="text-sm font-medium text-text-secondary">Current Usage</h4>
+          <h4 className="text-sm font-medium text-ink-2">Current Usage</h4>
           <UsageBar used={billing.usage.leads.used} limit={billing.usage.leads.limit} label="Leads" />
           <UsageBar used={billing.usage.emails.used} limit={billing.usage.emails.limit} label="Emails Sent" />
           <UsageBar used={billing.usage.campaigns.used} limit={billing.usage.campaigns.limit} label="Active Campaigns" />

@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 const intentStyles: Record<IntentType, string> = {
   meeting: 'bg-status-success/15 text-status-success',
   interested: 'bg-accent-primary/15 text-accent-primary',
-  question: 'bg-bg-elevated/15 text-text-secondary',
+  question: 'bg-bg-elevated/15 text-ink-2',
   objection: 'bg-status-error/15 text-status-error',
   later: 'bg-status-warning/15 text-status-warning',
 };

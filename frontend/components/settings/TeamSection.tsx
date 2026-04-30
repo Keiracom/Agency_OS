@@ -28,13 +28,13 @@ const roleStyles = {
 
 export function TeamSection({ members, maxSeats = 5 }: TeamSectionProps) {
   return (
-    <div className="glass-surface border border-border-subtle rounded-xl overflow-hidden">
-      <div className="px-6 py-5 border-b border-border-subtle flex items-center justify-between">
+    <div className="glass-surface border border-rule rounded-xl overflow-hidden">
+      <div className="px-6 py-5 border-b border-rule flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <Users className="w-5 h-5 text-[#D4956A]" />
-          <span className="font-serif font-semibold text-text-primary">Team Members</span>
+          <span className="font-serif font-semibold text-ink">Team Members</span>
         </div>
-        <span className="text-sm text-text-muted">{members.length} of {maxSeats} seats used</span>
+        <span className="text-sm text-ink-3">{members.length} of {maxSeats} seats used</span>
       </div>
 
       <div className="p-6">
@@ -42,14 +42,14 @@ export function TeamSection({ members, maxSeats = 5 }: TeamSectionProps) {
           {members.map((member) => {
             const style = roleStyles[member.role];
             return (
-              <div key={member.id} className="flex items-center justify-between px-5 py-4 bg-bg-surface-hover rounded-xl">
+              <div key={member.id} className="flex items-center justify-between px-5 py-4 bg-bg-panel-hover rounded-xl">
                 <div className="flex items-center gap-4">
-                  <div className={`w-11 h-11 rounded-full flex items-center justify-center font-semibold text-sm text-text-primary ${style.avatarBg}`}>
+                  <div className={`w-11 h-11 rounded-full flex items-center justify-center font-semibold text-sm text-ink ${style.avatarBg}`}>
                     {member.initials}
                   </div>
                   <div>
-                    <h4 className="text-sm font-semibold text-text-primary">{member.name}</h4>
-                    <p className="text-sm text-text-muted">{member.email}</p>
+                    <h4 className="text-sm font-semibold text-ink">{member.name}</h4>
+                    <p className="text-sm text-ink-3">{member.email}</p>
                   </div>
                 </div>
                 <span className={`px-3 py-1 text-xs font-medium rounded-full capitalize ${style.bg} ${style.text}`}>
@@ -60,7 +60,7 @@ export function TeamSection({ members, maxSeats = 5 }: TeamSectionProps) {
           })}
         </div>
 
-        <button className="flex items-center justify-center gap-2 w-full p-4 mt-4 bg-transparent border-2 border-dashed border-border-default rounded-xl text-text-muted text-sm font-medium cursor-pointer transition-all hover:border-[#D4956A] hover:text-[#D4956A] hover:bg-[rgba(212,149,106,0.1)]">
+        <button className="flex items-center justify-center gap-2 w-full p-4 mt-4 bg-transparent border-2 border-dashed border-rule-strong rounded-xl text-ink-3 text-sm font-medium cursor-pointer transition-all hover:border-[#D4956A] hover:text-[#D4956A] hover:bg-[rgba(212,149,106,0.1)]">
           <UserPlus className="w-[18px] h-[18px]" />
           Invite Team Member
         </button>

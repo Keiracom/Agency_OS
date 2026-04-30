@@ -252,7 +252,7 @@ function StatusBadge({ status }: { status: CampaignStatus }) {
     },
     completed: {
       label: "Completed",
-      className: "text-text-secondary",
+      className: "text-ink-2",
     },
     pending_approval: {
       label: "Pending Approval",

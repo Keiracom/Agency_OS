@@ -205,7 +205,7 @@ export default function LeadsScoreboardPage() {
         {/* Header Bar */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-serif text-text-primary flex items-center gap-3">
+            <h1 className="text-2xl font-serif text-ink flex items-center gap-3">
               Lead Scoreboard
               <motion.span
                 initial={{ opacity: 0, scale: 0.8 }}
@@ -219,20 +219,20 @@ export default function LeadsScoreboardPage() {
                 LIVE
               </motion.span>
             </h1>
-            <p className="text-sm text-text-muted mt-1">
+            <p className="text-sm text-ink-3 mt-1">
               Real-time lead rankings by Adaptive Lead Score
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium glass-surface hover:bg-bg-surface-hover transition-colors">
+            <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium glass-surface hover:bg-bg-panel-hover transition-colors">
               <Download className="w-4 h-4" />
               Export
             </button>
-            <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium glass-surface hover:bg-bg-surface-hover transition-colors">
+            <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium glass-surface hover:bg-bg-panel-hover transition-colors">
               <Upload className="w-4 h-4" />
               Import
             </button>
-            <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium gradient-premium text-text-primary hover:opacity-90 transition-opacity">
+            <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium gradient-premium text-ink hover:opacity-90 transition-opacity">
               <Plus className="w-4 h-4" />
               Add Lead
             </button>
@@ -266,10 +266,10 @@ export default function LeadsScoreboardPage() {
                     <Sparkles className="w-5 h-5 text-accent-primary" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-text-primary">
+                    <p className="text-sm font-semibold text-ink">
                       Building your pipeline
                     </p>
-                    <p className="text-xs text-text-muted">
+                    <p className="text-xs text-ink-3">
                       Maya is sourcing leads based on your ICP
                     </p>
                   </div>
@@ -344,7 +344,7 @@ export default function LeadsScoreboardPage() {
                       </span>
                       {isActive && (
                         <motion.span
-                          className="ml-auto text-xs text-text-muted font-mono"
+                          className="ml-auto text-xs text-ink-3 font-mono"
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
                         >
@@ -356,7 +356,7 @@ export default function LeadsScoreboardPage() {
                 })}
               </div>
 
-              <p className="text-xs text-text-muted text-center">
+              <p className="text-xs text-ink-3 text-center">
                 Auto-refreshing every 10 seconds · this usually takes 2–3 minutes
               </p>
             </motion.div>
@@ -387,7 +387,7 @@ export default function LeadsScoreboardPage() {
                 <p className="text-sm font-semibold text-status-success">
                   Your pipeline is ready!
                 </p>
-                <p className="text-xs text-text-muted mt-0.5">
+                <p className="text-xs text-ink-3 mt-0.5">
                   {leads.length} leads discovered and scored for you
                 </p>
               </div>
@@ -406,13 +406,13 @@ export default function LeadsScoreboardPage() {
         {/* Filters */}
         <div className="flex items-center gap-4">
           <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-ink-3" />
             <input
               type="text"
               placeholder="Search by name, company, or email..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 rounded-lg text-sm text-text-primary placeholder-text-muted transition-all"
+              className="w-full pl-10 pr-4 py-2.5 rounded-lg text-sm text-ink placeholder-text-muted transition-all"
               style={{
                 backgroundColor: "rgba(255,255,255,0.03)",
                 border: "1px solid rgba(255,255,255,0.08)",
@@ -423,7 +423,7 @@ export default function LeadsScoreboardPage() {
           {/* Sort Toggle */}
           <button
             onClick={() => setSortAscending(!sortAscending)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium glass-surface hover:bg-bg-surface-hover transition-colors"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium glass-surface hover:bg-bg-panel-hover transition-colors"
           >
             <ArrowUpDown className="w-4 h-4" />
             {sortAscending ? "Low → High" : "High → Low"}
@@ -457,8 +457,8 @@ export default function LeadsScoreboardPage() {
                 onClick={() => setSelectedTier(key)}
                 className={`px-4 py-2 text-sm font-medium transition-colors flex items-center gap-2 ${
                   selectedTier === key
-                    ? "bg-bg-surface text-text-primary"
-                    : "text-text-muted hover:text-text-secondary"
+                    ? "bg-bg-panel text-ink"
+                    : "text-ink-3 hover:text-ink-2"
                 }`}
                 style={selectedTier === key && color ? { color } : {}}
               >
@@ -487,16 +487,16 @@ export default function LeadsScoreboardPage() {
             className="flex items-center gap-4 px-5 py-3 mb-4 rounded-xl"
             style={{ backgroundColor: "rgba(255,255,255,0.02)" }}
           >
-            <span className="w-8 text-xs font-semibold text-text-muted uppercase tracking-wider">
+            <span className="w-8 text-xs font-semibold text-ink-3 uppercase tracking-wider">
               #
             </span>
-            <span className="w-16 text-xs font-semibold text-text-muted uppercase tracking-wider">
+            <span className="w-16 text-xs font-semibold text-ink-3 uppercase tracking-wider">
               Score
             </span>
-            <span className="flex-1 text-xs font-semibold text-text-muted uppercase tracking-wider">
+            <span className="flex-1 text-xs font-semibold text-ink-3 uppercase tracking-wider">
               Lead
             </span>
-            <span className="w-24 text-xs font-semibold text-text-muted uppercase tracking-wider">
+            <span className="w-24 text-xs font-semibold text-ink-3 uppercase tracking-wider">
               Enrichment
             </span>
             <span className="w-12"></span>
@@ -508,7 +508,7 @@ export default function LeadsScoreboardPage() {
               <motion.div
                 animate={{ opacity: [0.4, 1, 0.4] }}
                 transition={{ repeat: Infinity, duration: 1.5 }}
-                className="text-text-muted font-mono text-sm"
+                className="text-ink-3 font-mono text-sm"
               >
                 Loading leads...
               </motion.div>
@@ -518,7 +518,7 @@ export default function LeadsScoreboardPage() {
           {/* Error State */}
           {error && !isLoading && (
             <div className="text-center py-12">
-              <p className="text-text-muted text-sm">
+              <p className="text-ink-3 text-sm">
                 Failed to load leads. Please try refreshing.
               </p>
             </div>
@@ -557,7 +557,7 @@ export default function LeadsScoreboardPage() {
                     animate={{ opacity: 1 }}
                     className="text-center py-12"
                   >
-                    <p className="text-text-muted">
+                    <p className="text-ink-3">
                       {searchQuery || selectedTier !== "all"
                         ? "No leads match your filters"
                         : "No leads yet"}
@@ -633,14 +633,14 @@ export default function LeadsScoreboardPage() {
         </motion.div>
 
         {/* Footer Stats */}
-        <div className="flex items-center justify-between text-sm text-text-muted">
+        <div className="flex items-center justify-between text-sm text-ink-3">
           <p>
             Showing{" "}
-            <span className="font-mono font-medium text-text-secondary">
+            <span className="font-mono font-medium text-ink-2">
               {sortedLeads.length}
             </span>{" "}
             of{" "}
-            <span className="font-mono font-medium text-text-secondary">
+            <span className="font-mono font-medium text-ink-2">
               {stats.total}
             </span>{" "}
             leads

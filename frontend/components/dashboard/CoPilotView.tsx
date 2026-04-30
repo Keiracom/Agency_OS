@@ -113,11 +113,11 @@ Best,
       case "warm":
         return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30";
       case "cool":
-        return "bg-bg-elevated/20 text-text-secondary border-default/30";
+        return "bg-bg-elevated/20 text-ink-2 border-default/30";
       case "cold":
-        return "bg-bg-surface0/20 text-text-muted border-gray-500/30";
+        return "bg-bg-surface0/20 text-ink-3 border-gray-500/30";
       default:
-        return "bg-bg-surface0/20 text-text-muted border-gray-500/30";
+        return "bg-bg-surface0/20 text-ink-3 border-gray-500/30";
     }
   };
 
@@ -131,7 +131,7 @@ Best,
         <Card className="bg-[#1a1a1f] border-white/10">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-text-primary flex items-center gap-2">
+              <CardTitle className="text-ink flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-amber" />
                 Draft Email
               </CardTitle>
@@ -141,7 +141,7 @@ Best,
                 </Badge>
               </div>
             </div>
-            <p className="text-sm text-text-muted">
+            <p className="text-sm text-ink-3">
               To: {fullName} &lt;{lead.email || `${fullName.toLowerCase().replace(" ", ".")}@${emailDomain}`}&gt;
             </p>
           </CardHeader>
@@ -152,7 +152,7 @@ Best,
               </label>
               <input
                 type="text"
-                className="w-full bg-[#0f0f13] border border-white/10 rounded-md px-3 py-2 text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-amber/50"
+                className="w-full bg-[#0f0f13] border border-white/10 rounded-md px-3 py-2 text-ink text-sm focus:outline-none focus:ring-2 focus:ring-amber/50"
                 defaultValue={`Quick question about ${lead.company || "your"}'s marketing tech stack`}
               />
             </div>
@@ -163,7 +163,7 @@ Best,
               <Textarea
                 value={emailContent}
                 onChange={(e) => setEmailContent(e.target.value)}
-                className="min-h-[300px] bg-[#0f0f13] border-white/10 text-text-primary resize-none focus:ring-2 focus:ring-amber/50"
+                className="min-h-[300px] bg-[#0f0f13] border-white/10 text-ink resize-none focus:ring-2 focus:ring-amber/50"
               />
             </div>
             <div className="flex gap-2">
@@ -177,7 +177,7 @@ Best,
               <Button
                 variant="outline"
                 onClick={onRegenerateEmail}
-                className="border-white/10 text-text-secondary hover:bg-bg-surface/5"
+                className="border-white/10 text-ink-2 hover:bg-bg-panel/5"
               >
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Regenerate
@@ -185,7 +185,7 @@ Best,
               <Button
                 variant="outline"
                 onClick={handleCopy}
-                className="border-white/10 text-text-secondary hover:bg-bg-surface/5"
+                className="border-white/10 text-ink-2 hover:bg-bg-panel/5"
               >
                 {copied ? (
                   <Check className="h-4 w-4 text-amber" />
@@ -211,9 +211,9 @@ Best,
             </CardContent>
           </Card>
         ) : isResearching ? (
-          <Card className="bg-bg-void/20 border-default/30">
+          <Card className="bg-bg-cream/20 border-default/30">
             <CardContent className="p-4">
-              <div className="flex items-center gap-3 text-text-secondary">
+              <div className="flex items-center gap-3 text-ink-2">
                 <Loader2 className="h-5 w-5 animate-spin" />
                 <span>Deep research in progress...</span>
               </div>
@@ -273,8 +273,8 @@ Best,
         {isComplete && research?.social_posts && research.social_posts.length > 0 && (
           <Card className="bg-[#1a1a1f] border-white/10">
             <CardHeader className="pb-2">
-              <CardTitle className="text-text-primary text-sm flex items-center gap-2">
-                <Linkedin className="h-4 w-4 text-text-secondary" />
+              <CardTitle className="text-ink text-sm flex items-center gap-2">
+                <Linkedin className="h-4 w-4 text-ink-2" />
                 Recent LinkedIn Posts
                 <span className="text-text-primary0 font-normal">
                   ({research.posts_found} found)
@@ -284,7 +284,7 @@ Best,
             <CardContent className="space-y-3">
               {research.social_posts.slice(0, 3).map((post, index) => (
                 <div key={post.id || index} className="p-3 bg-[#0f0f13] rounded-lg">
-                  <p className="text-text-secondary text-sm leading-relaxed line-clamp-3">
+                  <p className="text-ink-2 text-sm leading-relaxed line-clamp-3">
                     "{post.content}"
                   </p>
                   {post.date && (
@@ -302,13 +302,13 @@ Best,
         {isComplete && research?.profile_summary && (
           <Card className="bg-[#1a1a1f] border-white/10">
             <CardHeader className="pb-2">
-              <CardTitle className="text-text-primary text-sm flex items-center gap-2">
+              <CardTitle className="text-ink text-sm flex items-center gap-2">
                 <Globe className="h-4 w-4 text-amber" />
                 Profile Summary
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-text-secondary text-sm leading-relaxed">
+              <p className="text-ink-2 text-sm leading-relaxed">
                 {research.profile_summary}
               </p>
             </CardContent>
@@ -319,7 +319,7 @@ Best,
         {(lead.als_data_quality !== undefined || lead.propensity_score !== undefined) && (
           <Card className="bg-[#1a1a1f] border-white/10">
             <CardHeader className="pb-2">
-              <CardTitle className="text-text-primary text-sm flex items-center gap-2">
+              <CardTitle className="text-ink text-sm flex items-center gap-2">
                 <BarChart3 className="h-4 w-4 text-amber" />
                 ALS Score Breakdown
                 <Badge className={getTierColor(lead.propensity_tier)}>
@@ -337,12 +337,12 @@ Best,
               ].map((item) => (
                 <div key={item.label} className="space-y-1">
                   <div className="flex justify-between text-xs">
-                    <span className="text-text-muted">{item.label}</span>
-                    <span className="text-text-primary">
+                    <span className="text-ink-3">{item.label}</span>
+                    <span className="text-ink">
                       {item.value}/{item.max}
                     </span>
                   </div>
-                  <div className="h-2 bg-bg-base rounded-full overflow-hidden">
+                  <div className="h-2 bg-bg-surface rounded-full overflow-hidden">
                     <div
                       className="h-full bg-gradient-to-r from-amber to-amber rounded-full transition-all"
                       style={{ width: `${(item.value / item.max) * 100}%` }}
@@ -356,9 +356,9 @@ Best,
 
         {/* AI Icebreaker Suggestion */}
         {isComplete && research?.icebreaker_hook && (
-          <Card className="bg-gradient-to-br from-purple-900/20 to-bg-void/20 border-amber/30">
+          <Card className="bg-gradient-to-br from-purple-900/20 to-bg-cream/20 border-amber/30">
             <CardHeader className="pb-2">
-              <CardTitle className="text-text-primary text-sm flex items-center gap-2">
+              <CardTitle className="text-ink text-sm flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-amber" />
                 AI Icebreaker Suggestion
                 {research.confidence && (
@@ -378,9 +378,9 @@ Best,
 
         {/* No LinkedIn URL Warning */}
         {!lead.linkedin_url && (
-          <Card className="bg-bg-void/20 border-gray-500/30">
+          <Card className="bg-bg-cream/20 border-gray-500/30">
             <CardContent className="p-4">
-              <div className="flex items-center gap-3 text-text-muted">
+              <div className="flex items-center gap-3 text-ink-3">
                 <Linkedin className="h-5 w-5" />
                 <span>No LinkedIn URL available. Add LinkedIn to enable deep research.</span>
               </div>

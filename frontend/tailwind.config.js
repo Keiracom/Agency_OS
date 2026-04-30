@@ -43,19 +43,13 @@ module.exports = {
         'blue':   'var(--blue)',
         'copper': 'var(--copper)',
 
-        // Legacy aliases — keep old class names working while we migrate
-        'bg-void':     'var(--bg-void)',
-        'bg-base':     'var(--bg-base)',
-        'bg-surface':  'var(--bg-surface)',
-        'bg-elevated': 'var(--bg-elevated)',
-
-        'border-subtle':  'var(--border-subtle)',
-        'border-default': 'var(--border-default)',
-        'border-focus':   'var(--border-focus)',
-
-        'text-primary':   'var(--text-primary)',
-        'text-secondary': 'var(--text-secondary)',
-        'text-muted':     'var(--text-muted)',
+        // Legacy aliases removed in A1 token codemod (2026-04-30).
+        // Components now use the canonical /demo tokens directly:
+        //   bg-void → bg-cream            border-border-subtle  → border-rule
+        //   bg-base → bg-surface          border-border-default → border-rule-strong
+        //   bg-surface → bg-panel         text-text-primary    → text-ink
+        //   bg-elevated → bg-panel        text-text-secondary  → text-ink-2
+        //                                  text-text-muted      → text-ink-3
 
         // Accent — amber unchanged between themes
         'amber':       'var(--amber)',

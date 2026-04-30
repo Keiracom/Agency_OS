@@ -51,7 +51,7 @@ export function ICPProgressBanner({
     <div
       className={cn(
         'relative rounded-lg border p-4 shadow-sm transition-all duration-300',
-        isRunning && 'bg-bg-surface border-blue-200 dark:bg-blue-950/30 dark:border-blue-800',
+        isRunning && 'bg-bg-panel border-blue-200 dark:bg-blue-950/30 dark:border-blue-800',
         isCompleted && 'bg-amber-glow border-amber dark:bg-amber-glow dark:border-amber',
         isFailed && 'bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800',
         className
@@ -63,9 +63,9 @@ export function ICPProgressBanner({
           {isRunning && (
             <div className="space-y-3">
               <div className="flex items-center gap-3">
-                <Loader2 className="h-5 w-5 animate-spin text-text-secondary dark:text-text-secondary flex-shrink-0" />
+                <Loader2 className="h-5 w-5 animate-spin text-ink-2 dark:text-ink-2 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-bg-void dark:text-amber-glow">
+                  <p className="font-medium text-bg-cream dark:text-amber-glow">
                     Setting up your profile...
                   </p>
                   {status.current_step && (
@@ -80,7 +80,7 @@ export function ICPProgressBanner({
               </div>
               <Progress
                 value={status.progress_percent}
-                className="h-2 bg-amber-glow dark:bg-bg-void"
+                className="h-2 bg-amber-glow dark:bg-bg-cream"
               />
             </div>
           )}
@@ -136,7 +136,7 @@ export function ICPProgressBanner({
           onClick={onDismiss}
           className={cn(
             'rounded-md p-1 transition-colors flex-shrink-0',
-            isRunning && 'text-text-secondary hover:bg-amber-glow dark:hover:bg-bg-void/50',
+            isRunning && 'text-ink-2 hover:bg-amber-glow dark:hover:bg-bg-cream/50',
             isCompleted && 'text-amber hover:bg-amber-glow dark:hover:bg-amber-glow',
             isFailed && 'text-amber hover:bg-amber-glow dark:hover:bg-red-900/50'
           )}

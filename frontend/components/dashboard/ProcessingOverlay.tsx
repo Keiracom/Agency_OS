@@ -60,7 +60,7 @@ export function ProcessingOverlay({
   const currentStage = stages[stage] ?? stages[0];
 
   return (
-    <div className="fixed inset-0 bg-bg-surface/95 flex items-center justify-center z-50 animate-in fade-in duration-300">
+    <div className="fixed inset-0 bg-bg-panel/95 flex items-center justify-center z-50 animate-in fade-in duration-300">
       <div className="text-center max-w-md mx-4">
         {/* Spinner */}
         <div className="w-16 h-16 mx-auto mb-6 relative">
@@ -72,7 +72,7 @@ export function ProcessingOverlay({
         <h2 className="text-xl font-semibold text-slate-900 mb-2">
           {title ?? currentStage?.label ?? "Processing..."}
         </h2>
-        <p className="text-sm text-text-muted mb-8">{subtitle}</p>
+        <p className="text-sm text-ink-3 mb-8">{subtitle}</p>
 
         {/* Progress Steps */}
         <div className="space-y-3">
@@ -83,17 +83,17 @@ export function ProcessingOverlay({
                 i < stage
                   ? "bg-emerald-50"
                   : i === stage
-                  ? "bg-bg-surface"
+                  ? "bg-bg-panel"
                   : "bg-slate-50"
               }`}
             >
               <div
                 className={`w-6 h-6 rounded-full flex items-center justify-center transition-all duration-300 ${
                   i < stage
-                    ? "bg-amber text-text-primary"
+                    ? "bg-amber text-ink"
                     : i === stage
-                    ? "bg-bg-elevated text-text-primary"
-                    : "bg-slate-200 text-text-secondary"
+                    ? "bg-bg-elevated text-ink"
+                    : "bg-slate-200 text-ink-2"
                 }`}
               >
                 {i < stage ? (
@@ -110,7 +110,7 @@ export function ProcessingOverlay({
                     ? "text-emerald-700"
                     : i === stage
                     ? "text-amber font-medium"
-                    : "text-text-secondary"
+                    : "text-ink-2"
                 }`}
               >
                 {s.label}

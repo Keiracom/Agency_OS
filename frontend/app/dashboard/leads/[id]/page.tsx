@@ -156,7 +156,7 @@ export default function LeadDetailPage() {
         <div className="space-y-6">
           <Link
             href="/dashboard/leads"
-            className="inline-flex items-center gap-2 text-sm text-text-muted hover:text-accent-primary transition-colors"
+            className="inline-flex items-center gap-2 text-sm text-ink-3 hover:text-accent-primary transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Scoreboard
@@ -165,7 +165,7 @@ export default function LeadDetailPage() {
             <motion.div
               animate={{ opacity: [0.4, 1, 0.4] }}
               transition={{ repeat: Infinity, duration: 1.5 }}
-              className="text-text-muted font-mono"
+              className="text-ink-3 font-mono"
             >
               Loading lead data...
             </motion.div>
@@ -182,13 +182,13 @@ export default function LeadDetailPage() {
         <div className="space-y-6">
           <Link
             href="/dashboard/leads"
-            className="inline-flex items-center gap-2 text-sm text-text-muted hover:text-accent-primary transition-colors"
+            className="inline-flex items-center gap-2 text-sm text-ink-3 hover:text-accent-primary transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Scoreboard
           </Link>
           <div className="glass-surface rounded-2xl p-8 text-center">
-            <p className="text-text-muted">Lead not found or failed to load.</p>
+            <p className="text-ink-3">Lead not found or failed to load.</p>
           </div>
         </div>
       </AppShell>
@@ -237,7 +237,7 @@ export default function LeadDetailPage() {
         {/* Back Navigation */}
         <Link
           href="/dashboard/leads"
-          className="inline-flex items-center gap-2 text-sm text-text-muted hover:text-accent-primary transition-colors"
+          className="inline-flex items-center gap-2 text-sm text-ink-3 hover:text-accent-primary transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to Scoreboard
@@ -260,7 +260,7 @@ export default function LeadDetailPage() {
             <div className="flex gap-3 md:gap-6 flex-1">
               {/* Avatar */}
               <div
-                className="w-20 h-20 rounded-2xl flex items-center justify-center text-text-primary font-bold text-2xl flex-shrink-0"
+                className="w-20 h-20 rounded-2xl flex items-center justify-center text-ink font-bold text-2xl flex-shrink-0"
                 style={{ 
                   backgroundColor: tierColours.bg,
                   border: `2px solid ${tierColours.border}`,
@@ -272,20 +272,20 @@ export default function LeadDetailPage() {
 
               {/* Info */}
               <div>
-                <h1 className="text-2xl font-serif font-semibold text-text-primary">{name}</h1>
-                <p className="text-base text-text-secondary mt-1">
+                <h1 className="text-2xl font-serif font-semibold text-ink">{name}</h1>
+                <p className="text-base text-ink-2 mt-1">
                   {lead.title ? `${lead.title}${lead.company ? ` at ${lead.company}` : ""}` : lead.company ?? ""}
                 </p>
 
                 {/* Meta items */}
                 <div className="flex flex-wrap items-center gap-5 mt-4">
-                  <a href={`mailto:${lead.email}`} className="flex items-center gap-2 text-sm text-text-secondary hover:text-accent-primary transition-colors">
-                    <Mail className="w-4 h-4 text-text-muted" />
+                  <a href={`mailto:${lead.email}`} className="flex items-center gap-2 text-sm text-ink-2 hover:text-accent-primary transition-colors">
+                    <Mail className="w-4 h-4 text-ink-3" />
                     {lead.email}
                   </a>
                   {lead.phone && (
-                    <span className="flex items-center gap-2 text-sm text-text-secondary">
-                      <Phone className="w-4 h-4 text-text-muted" />
+                    <span className="flex items-center gap-2 text-sm text-ink-2">
+                      <Phone className="w-4 h-4 text-ink-3" />
                       {lead.phone}
                     </span>
                   )}
@@ -318,7 +318,7 @@ export default function LeadDetailPage() {
                 >
                   {alsScore}
                 </p>
-                <p className="text-[11px] font-semibold text-text-muted uppercase tracking-wider mt-1">ALS Score</p>
+                <p className="text-[11px] font-semibold text-ink-3 uppercase tracking-wider mt-1">ALS Score</p>
               </motion.div>
               <span
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold"
@@ -336,8 +336,8 @@ export default function LeadDetailPage() {
 
           {/* Why Hot Section */}
           {whyHot.length > 0 && (
-            <div className="mt-6 pt-6 border-t border-border-subtle">
-              <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-3 flex items-center gap-2">
+            <div className="mt-6 pt-6 border-t border-rule">
+              <p className="text-xs font-semibold text-ink-3 uppercase tracking-wider mb-3 flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4" />
                 Why This Lead is {tier === "hot" ? "Hot" : tier === "warm" ? "Warm" : "Ranked"}
               </p>
@@ -366,19 +366,19 @@ export default function LeadDetailPage() {
         {/* Quick Actions */}
         <div className="glass-surface rounded-xl p-4">
           <div className="grid grid-cols-4 gap-3">
-            <button className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium gradient-premium text-text-primary hover:opacity-90 transition-opacity">
+            <button className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium gradient-premium text-ink hover:opacity-90 transition-opacity">
               <Mail className="w-4 h-4" />
               Send Email
             </button>
-            <button className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium glass-surface hover:bg-bg-surface-hover transition-colors">
+            <button className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium glass-surface hover:bg-bg-panel-hover transition-colors">
               <Linkedin className="w-4 h-4" />
               Connect LinkedIn
             </button>
-            <button className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium glass-surface hover:bg-bg-surface-hover transition-colors">
+            <button className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium glass-surface hover:bg-bg-panel-hover transition-colors">
               <Phone className="w-4 h-4" />
               Call
             </button>
-            <button className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium glass-surface hover:bg-bg-surface-hover transition-colors">
+            <button className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium glass-surface hover:bg-bg-panel-hover transition-colors">
               <Calendar className="w-4 h-4" />
               Schedule
             </button>
@@ -396,12 +396,12 @@ export default function LeadDetailPage() {
               transition={{ delay: 0.3 }}
               className="glass-surface rounded-xl overflow-hidden"
             >
-              <div className="flex items-center justify-between p-5 border-b border-border-subtle">
-                <h3 className="font-serif font-semibold text-text-primary flex items-center gap-2">
+              <div className="flex items-center justify-between p-5 border-b border-rule">
+                <h3 className="font-serif font-semibold text-ink flex items-center gap-2">
                   <Send className="w-5 h-5 text-accent-primary" />
                   Communication Timeline
                 </h3>
-                <p className="text-xs text-text-muted">Chronological activity history</p>
+                <p className="text-xs text-ink-3">Chronological activity history</p>
               </div>
               <div className="p-5">
                 {/* TODO: wire timeline with getLeadActivities() when integrated */}
@@ -419,19 +419,19 @@ export default function LeadDetailPage() {
               transition={{ delay: 0.4 }}
               className="glass-surface rounded-xl overflow-hidden"
             >
-              <div className="p-5 border-b border-border-subtle">
-                <h3 className="font-serif font-semibold text-text-primary flex items-center gap-2">
+              <div className="p-5 border-b border-rule">
+                <h3 className="font-serif font-semibold text-ink flex items-center gap-2">
                   <Building2 className="w-5 h-5 text-accent-primary" />
                   Company Intel
                 </h3>
               </div>
               <div className="p-5">
                 <div className="flex items-center gap-4 mb-5">
-                  <div className="w-12 h-12 rounded-xl bg-bg-elevated flex items-center justify-center text-xl border border-border-default">
-                    <Building2 className="w-6 h-6 text-text-muted" />
+                  <div className="w-12 h-12 rounded-xl bg-bg-elevated flex items-center justify-center text-xl border border-rule-strong">
+                    <Building2 className="w-6 h-6 text-ink-3" />
                   </div>
                   <div>
-                    <p className="font-semibold text-text-primary">{lead.company ?? "Unknown Company"}</p>
+                    <p className="font-semibold text-ink">{lead.company ?? "Unknown Company"}</p>
                     {companyDetails.website && (
                       <a href={`https://${companyDetails.website.replace(/^https?:\/\//, "")}`} target="_blank" rel="noopener noreferrer" className="text-sm text-accent-primary hover:underline">
                         {companyDetails.website}
@@ -442,29 +442,29 @@ export default function LeadDetailPage() {
 
                 <div className="grid grid-cols-2 gap-3 mb-5">
                   <div className="p-3 rounded-xl bg-bg-elevated text-center">
-                    <p className="text-lg font-bold font-mono text-text-primary">{companyDetails.employees}</p>
-                    <p className="text-[10px] text-text-muted uppercase">Employees</p>
+                    <p className="text-lg font-bold font-mono text-ink">{companyDetails.employees}</p>
+                    <p className="text-[10px] text-ink-3 uppercase">Employees</p>
                   </div>
                   <div className="p-3 rounded-xl bg-bg-elevated text-center">
-                    <p className="text-lg font-bold font-mono text-text-primary">{companyDetails.revenue}</p>
-                    <p className="text-[10px] text-text-muted uppercase">Revenue</p>
+                    <p className="text-lg font-bold font-mono text-ink">{companyDetails.revenue}</p>
+                    <p className="text-[10px] text-ink-3 uppercase">Revenue</p>
                   </div>
                 </div>
 
-                <div className="pt-5 border-t border-border-subtle space-y-3">
-                  <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">Details</p>
+                <div className="pt-5 border-t border-rule space-y-3">
+                  <p className="text-xs font-semibold text-ink-3 uppercase tracking-wider">Details</p>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-text-muted">Industry</span>
-                      <span className="text-text-primary">{companyDetails.industry}</span>
+                      <span className="text-ink-3">Industry</span>
+                      <span className="text-ink">{companyDetails.industry}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-text-muted">Location</span>
-                      <span className="text-text-primary">{location}</span>
+                      <span className="text-ink-3">Location</span>
+                      <span className="text-ink">{location}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-text-muted">Status</span>
-                      <span className="text-text-primary capitalize">{lead.status.replace(/_/g, " ")}</span>
+                      <span className="text-ink-3">Status</span>
+                      <span className="text-ink capitalize">{lead.status.replace(/_/g, " ")}</span>
                     </div>
                   </div>
                 </div>
@@ -478,9 +478,9 @@ export default function LeadDetailPage() {
               transition={{ delay: 0.5 }}
               className="glass-surface rounded-xl overflow-hidden"
             >
-              <div className="p-5 border-b border-border-subtle">
-                <h3 className="font-serif font-semibold text-text-primary">ALS Score Breakdown</h3>
-                <p className="text-xs text-text-muted mt-1">Adaptive Lead Scoring components</p>
+              <div className="p-5 border-b border-rule">
+                <h3 className="font-serif font-semibold text-ink">ALS Score Breakdown</h3>
+                <p className="text-xs text-ink-3 mt-1">Adaptive Lead Scoring components</p>
               </div>
               <div className="p-5 space-y-4">
                 {alsBreakdown.length > 0 ? (
@@ -490,8 +490,8 @@ export default function LeadDetailPage() {
                       return (
                         <div key={idx}>
                           <div className="flex justify-between text-sm mb-1">
-                            <span className="text-text-secondary">{item.label}</span>
-                            <span className="font-mono font-medium text-text-primary">{item.score}/{item.max}</span>
+                            <span className="text-ink-2">{item.label}</span>
+                            <span className="font-mono font-medium text-ink">{item.score}/{item.max}</span>
                           </div>
                           <div className="h-2 rounded-full bg-bg-elevated overflow-hidden">
                             <motion.div
@@ -507,9 +507,9 @@ export default function LeadDetailPage() {
                         </div>
                       );
                     })}
-                    <div className="pt-4 border-t border-border-subtle">
+                    <div className="pt-4 border-t border-rule">
                       <div className="flex justify-between items-center">
-                        <span className="font-semibold text-text-primary">Total Score</span>
+                        <span className="font-semibold text-ink">Total Score</span>
                         <span 
                           className="text-2xl font-bold font-mono"
                           style={{ color: tierColours.text }}
@@ -520,7 +520,7 @@ export default function LeadDetailPage() {
                     </div>
                   </>
                 ) : (
-                  <div className="py-4 text-center text-text-muted text-sm">
+                  <div className="py-4 text-center text-ink-3 text-sm">
                     <p>Score breakdown unavailable</p>
                     <p className="text-xs mt-1 font-mono">Run lead scoring to see details</p>
                   </div>
@@ -536,7 +536,7 @@ export default function LeadDetailPage() {
               className="glass-surface rounded-xl p-5"
             >
               <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-medium text-text-secondary">Enrichment Depth</span>
+                <span className="text-sm font-medium text-ink-2">Enrichment Depth</span>
                 <span 
                   className="font-mono font-bold"
                   style={{ color: enrichmentDepth >= 80 ? "#D4956A" : enrichmentDepth >= 50 ? "#EAB308" : "#6B7280" }}
@@ -555,7 +555,7 @@ export default function LeadDetailPage() {
                   }}
                 />
               </div>
-              <p className="text-xs text-text-muted mt-2">
+              <p className="text-xs text-ink-3 mt-2">
                 {enrichmentDepth >= 80 
                   ? "Fully enriched — all data points captured" 
                   : enrichmentDepth >= 50 

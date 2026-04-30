@@ -86,7 +86,7 @@ export function TargetingFilters({
       {/* ALS Tier Filter */}
       <div>
         <div className="flex items-center gap-2 mb-3">
-          <label className="block text-sm font-medium text-text-primary">
+          <label className="block text-sm font-medium text-ink">
             Lead Quality (ALS Tier)
           </label>
           {isSuggestedField("alsTiers") && (
@@ -107,15 +107,15 @@ export function TargetingFilters({
                 className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
                   isSelected
                     ? `${tier.bg} border-current ${tier.color}`
-                    : "bg-bg-surface border-border-default hover:border-border-strong"
+                    : "bg-bg-panel border-rule-strong hover:border-border-strong"
                 }`}
               >
                 <Icon
-                  className={`w-6 h-6 ${isSelected ? tier.color : "text-text-muted"}`}
+                  className={`w-6 h-6 ${isSelected ? tier.color : "text-ink-3"}`}
                 />
                 <span
                   className={`text-sm font-medium ${
-                    isSelected ? tier.color : "text-text-secondary"
+                    isSelected ? tier.color : "text-ink-2"
                   }`}
                 >
                   {tier.id}
@@ -124,13 +124,13 @@ export function TargetingFilters({
             );
           })}
         </div>
-        <p className="text-xs text-text-muted mt-2">
+        <p className="text-xs text-ink-3 mt-2">
           Hot = High intent | Warm = Good fit | Cool = Potential | Cold = Low priority
         </p>
       </div>
 
       {/* Hiring Signal Filter */}
-      <div className="p-4 rounded-xl bg-bg-surface border border-border-default">
+      <div className="p-4 rounded-xl bg-bg-panel border border-rule-strong">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center">
@@ -138,7 +138,7 @@ export function TargetingFilters({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-text-primary">
+                <span className="text-sm font-medium text-ink">
                   Only Companies Actively Hiring
                 </span>
                 {isSuggestedField("hiringOnly") && (
@@ -148,7 +148,7 @@ export function TargetingFilters({
                   </span>
                 )}
               </div>
-              <p className="text-xs text-text-muted">
+              <p className="text-xs text-ink-3">
                 Filter to companies with active job postings (higher budget signal)
               </p>
             </div>
@@ -174,7 +174,7 @@ export function TargetingFilters({
           <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center">
             <DollarSign className="w-4 h-4 text-emerald-500" />
           </div>
-          <label className="block text-sm font-medium text-text-primary">
+          <label className="block text-sm font-medium text-ink">
             Company Revenue Range (AUD)
           </label>
           {isSuggestedField("revenueMinAud") && (
@@ -186,9 +186,9 @@ export function TargetingFilters({
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs text-text-muted mb-1.5">Minimum</label>
+            <label className="block text-xs text-ink-3 mb-1.5">Minimum</label>
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-3">
                 $
               </span>
               <input
@@ -201,14 +201,14 @@ export function TargetingFilters({
                   })
                 }
                 placeholder="0"
-                className="w-full pl-7 pr-4 py-2.5 rounded-lg text-sm bg-bg-surface border border-border-default text-text-primary placeholder-text-muted focus:outline-none focus:border-accent-primary focus:ring-2 focus:ring-accent-primary/20 transition-all font-mono"
+                className="w-full pl-7 pr-4 py-2.5 rounded-lg text-sm bg-bg-panel border border-rule-strong text-ink placeholder-text-muted focus:outline-none focus:border-accent-primary focus:ring-2 focus:ring-accent-primary/20 transition-all font-mono"
               />
             </div>
           </div>
           <div>
-            <label className="block text-xs text-text-muted mb-1.5">Maximum</label>
+            <label className="block text-xs text-ink-3 mb-1.5">Maximum</label>
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-3">
                 $
               </span>
               <input
@@ -221,7 +221,7 @@ export function TargetingFilters({
                   })
                 }
                 placeholder="No limit"
-                className="w-full pl-7 pr-4 py-2.5 rounded-lg text-sm bg-bg-surface border border-border-default text-text-primary placeholder-text-muted focus:outline-none focus:border-accent-primary focus:ring-2 focus:ring-accent-primary/20 transition-all font-mono"
+                className="w-full pl-7 pr-4 py-2.5 rounded-lg text-sm bg-bg-panel border border-rule-strong text-ink placeholder-text-muted focus:outline-none focus:border-accent-primary focus:ring-2 focus:ring-accent-primary/20 transition-all font-mono"
               />
             </div>
           </div>
@@ -234,7 +234,7 @@ export function TargetingFilters({
           <div className="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center">
             <TrendingUp className="w-4 h-4 text-purple-500" />
           </div>
-          <label className="block text-sm font-medium text-text-primary">
+          <label className="block text-sm font-medium text-ink">
             Funding Stage
           </label>
           {isSuggestedField("fundingStages") && (
@@ -254,7 +254,7 @@ export function TargetingFilters({
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                   isSelected
                     ? "bg-purple-500/20 text-purple-400 border border-purple-500/50"
-                    : "bg-bg-surface text-text-secondary border border-border-default hover:border-border-strong"
+                    : "bg-bg-panel text-ink-2 border border-rule-strong hover:border-border-strong"
                 }`}
               >
                 {stage.label}
@@ -262,7 +262,7 @@ export function TargetingFilters({
             );
           })}
         </div>
-        <p className="text-xs text-text-muted mt-2">
+        <p className="text-xs text-ink-3 mt-2">
           Select one or more funding stages, or leave empty for all
         </p>
       </div>

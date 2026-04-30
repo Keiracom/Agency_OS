@@ -20,32 +20,32 @@ export function ChannelMatrix() {
   const maxMeetings = Math.max(...channelData.map((c) => c.meetings));
 
   return (
-    <div className="bg-bg-base border border-default rounded-xl overflow-hidden mb-6">
+    <div className="bg-bg-surface border border-default rounded-xl overflow-hidden mb-6">
       <div className="flex items-center justify-between px-5 py-4 border-b border-default">
-        <h3 className="text-sm font-semibold text-text-primary">5-Channel Performance Matrix</h3>
-        <span className="text-xs text-text-muted">Feb 1-28, 2026</span>
+        <h3 className="text-sm font-semibold text-ink">5-Channel Performance Matrix</h3>
+        <span className="text-xs text-ink-3">Feb 1-28, 2026</span>
       </div>
       <div className="p-5 grid grid-cols-5 gap-3">
         {channelData.map((ch) => {
           const cfg = channelConfig[ch.channel];
           const barWidth = (ch.meetings / maxMeetings) * 100;
           return (
-            <div key={ch.channel} className="bg-bg-void rounded-lg p-4 text-center">
-              <div className="text-text-muted mb-2 flex justify-center">{cfg.icon}</div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted mb-3">{ch.name}</p>
+            <div key={ch.channel} className="bg-bg-cream rounded-lg p-4 text-center">
+              <div className="text-ink-3 mb-2 flex justify-center">{cfg.icon}</div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-3 mb-3">{ch.name}</p>
               <div className="mb-2">
-                <p className="text-xl font-bold font-mono text-text-primary">{ch.volume.toLocaleString()}</p>
-                <p className="text-[10px] text-text-muted">{ch.volumeLabel}</p>
+                <p className="text-xl font-bold font-mono text-ink">{ch.volume.toLocaleString()}</p>
+                <p className="text-[10px] text-ink-3">{ch.volumeLabel}</p>
               </div>
               <div className="mb-2">
                 <p className={`text-xl font-bold font-mono ${cfg.rateColor}`}>{ch.replyRate}%</p>
-                <p className="text-[10px] text-text-muted">Reply Rate</p>
+                <p className="text-[10px] text-ink-3">Reply Rate</p>
               </div>
               <div className="mb-2">
                 <p className="text-xl font-bold font-mono text-[#22C55E]">{ch.meetings}</p>
-                <p className="text-[10px] text-text-muted">Meetings</p>
+                <p className="text-[10px] text-ink-3">Meetings</p>
               </div>
-              <div className="h-1 bg-bg-base rounded-full mt-2 overflow-hidden">
+              <div className="h-1 bg-bg-surface rounded-full mt-2 overflow-hidden">
                 <div className={`h-full rounded-full ${cfg.barColor}`} style={{ width: `${barWidth}%` }} />
               </div>
             </div>

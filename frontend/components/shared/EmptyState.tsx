@@ -113,17 +113,17 @@ export function EmptyState({ page, className = "" }: EmptyStateProps) {
   return (
     <div className={`flex flex-col items-center justify-center py-20 px-6 ${className}`}>
       {/* Icon */}
-      <div className="w-24 h-24 rounded-2xl bg-bg-surface border border-border-subtle flex items-center justify-center text-text-muted mb-6">
+      <div className="w-24 h-24 rounded-2xl bg-bg-panel border border-rule flex items-center justify-center text-ink-3 mb-6">
         {content.icon}
       </div>
 
       {/* Title */}
-      <h2 className="text-2xl font-bold text-text-primary mb-3 text-center">
+      <h2 className="text-2xl font-bold text-ink mb-3 text-center">
         {content.title}
       </h2>
 
       {/* Description */}
-      <p className="text-text-secondary text-center max-w-md mb-8">
+      <p className="text-ink-2 text-center max-w-md mb-8">
         {content.description}
       </p>
 
@@ -131,14 +131,14 @@ export function EmptyState({ page, className = "" }: EmptyStateProps) {
       {content.mayaMessage && (
         <div className="flex items-start gap-4 max-w-lg mb-8 p-4 rounded-xl bg-gradient-to-r from-accent-primary/10 to-accent-blue/10 border border-accent-primary/20">
           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-accent-primary to-accent-blue flex items-center justify-center flex-shrink-0">
-            <Sparkles className="w-5 h-5 text-text-primary" />
+            <Sparkles className="w-5 h-5 text-ink" />
           </div>
           <div>
             <div className="flex items-center gap-2 mb-1">
               <span className="text-sm font-semibold text-accent-primary">Maya</span>
-              <span className="text-xs text-text-muted">AI Assistant</span>
+              <span className="text-xs text-ink-3">AI Assistant</span>
             </div>
-            <p className="text-sm text-text-secondary leading-relaxed">
+            <p className="text-sm text-ink-2 leading-relaxed">
               {content.mayaMessage}
             </p>
           </div>
@@ -149,7 +149,7 @@ export function EmptyState({ page, className = "" }: EmptyStateProps) {
       {content.action && (
         <a
           href={content.action.href}
-          className="inline-flex items-center gap-2 px-6 py-3 bg-accent-primary hover:bg-accent-primary-hover text-text-primary font-semibold rounded-lg transition-all hover:-translate-y-0.5"
+          className="inline-flex items-center gap-2 px-6 py-3 bg-accent-primary hover:bg-accent-primary-hover text-ink font-semibold rounded-lg transition-all hover:-translate-y-0.5"
         >
           <Zap className="w-4 h-4" />
           {content.action.label}

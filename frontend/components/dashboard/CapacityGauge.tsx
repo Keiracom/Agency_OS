@@ -79,8 +79,8 @@ export function CapacityGauge({
     return (
       <Card className="bg-[#1a1a1f] border-white/10">
         <CardHeader className="pb-2">
-          <CardTitle className="text-text-primary text-sm flex items-center gap-2">
-            <Fuel className="h-4 w-4 text-text-secondary" />
+          <CardTitle className="text-ink text-sm flex items-center gap-2">
+            <Fuel className="h-4 w-4 text-ink-2" />
             {label}
           </CardTitle>
         </CardHeader>
@@ -155,7 +155,7 @@ export function CapacityGauge({
           {/* Stats below gauge */}
           <div className="flex items-center justify-between w-full mt-4 px-4">
             <div className="text-center">
-              <p className="text-2xl font-bold text-text-primary">
+              <p className="text-2xl font-bold text-ink">
                 {current.toLocaleString()}
               </p>
               <p className="text-xs text-text-primary0">Used</p>
@@ -167,7 +167,7 @@ export function CapacityGauge({
               </span>
             </div>
             <div className="text-center">
-              <p className="text-2xl font-bold text-text-primary">
+              <p className="text-2xl font-bold text-ink">
                 {limit.toLocaleString()}
               </p>
               <p className="text-xs text-text-primary0">Limit</p>
@@ -184,8 +184,8 @@ export function CapacityGauge({
       <Card className="bg-[#1a1a1f] border-white/10">
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-text-primary text-sm flex items-center gap-2">
-              <Fuel className="h-4 w-4 text-text-secondary" />
+            <CardTitle className="text-ink text-sm flex items-center gap-2">
+              <Fuel className="h-4 w-4 text-ink-2" />
               {label}
             </CardTitle>
             {showPercentage && (
@@ -197,7 +197,7 @@ export function CapacityGauge({
         </CardHeader>
         <CardContent className="space-y-3">
           {/* Progress bar */}
-          <div className="h-4 bg-bg-base rounded-full overflow-hidden">
+          <div className="h-4 bg-bg-surface rounded-full overflow-hidden">
             <div
               className={`h-full bg-gradient-to-r ${config.color} rounded-full transition-all duration-500`}
               style={{ width: `${percentage}%` }}
@@ -206,7 +206,7 @@ export function CapacityGauge({
 
           {/* Labels */}
           <div className="flex items-center justify-between text-sm">
-            <span className="text-text-primary font-medium">
+            <span className="text-ink font-medium">
               {current.toLocaleString()} / {limit.toLocaleString()}
             </span>
             <div className={`flex items-center gap-1.5 ${config.textColor}`}>
@@ -227,8 +227,8 @@ export function CapacityGauge({
   return (
     <Card className="bg-[#1a1a1f] border-white/10">
       <CardHeader className="pb-2">
-        <CardTitle className="text-text-primary text-sm flex items-center gap-2">
-          <Fuel className="h-4 w-4 text-text-secondary" />
+        <CardTitle className="text-ink text-sm flex items-center gap-2">
+          <Fuel className="h-4 w-4 text-ink-2" />
           {label}
         </CardTitle>
       </CardHeader>
@@ -266,18 +266,18 @@ export function CapacityGauge({
           </svg>
           {/* Center text */}
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-2xl font-bold text-text-primary">{percentage}%</span>
+            <span className="text-2xl font-bold text-ink">{percentage}%</span>
           </div>
         </div>
 
         {/* Stats below */}
         <div className="flex items-center justify-between w-full mt-4">
           <div className="text-center flex-1">
-            <p className="text-lg font-bold text-text-primary">{current.toLocaleString()}</p>
+            <p className="text-lg font-bold text-ink">{current.toLocaleString()}</p>
             <p className="text-xs text-text-primary0">Used</p>
           </div>
           <div className="text-center flex-1">
-            <p className="text-lg font-bold text-text-primary">{(limit - current).toLocaleString()}</p>
+            <p className="text-lg font-bold text-ink">{(limit - current).toLocaleString()}</p>
             <p className="text-xs text-text-primary0">Remaining</p>
           </div>
         </div>

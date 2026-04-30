@@ -109,37 +109,37 @@ export function LeadsTable({ leads, onLeadClick, className }: LeadsTableProps) {
   };
 
   return (
-    <div className={cn('bg-surface rounded-xl border border-subtle overflow-hidden', className)}>
+    <div className={cn('bg-panel rounded-xl border border-subtle overflow-hidden', className)}>
       <table className="w-full border-collapse">
         <thead>
           <tr>
-            <th className="w-10 bg-surface-hover px-5 py-3.5 text-left border-b border-subtle">
+            <th className="w-10 bg-panel-hover px-5 py-3.5 text-left border-b border-subtle">
               <input
                 type="checkbox"
                 checked={selectedIds.size === leads.length && leads.length > 0}
                 onChange={toggleAll}
-                className="w-[18px] h-[18px] rounded border-2 border-default bg-base cursor-pointer appearance-none checked:bg-[#7C3AED] checked:border-[#7C3AED] transition-all"
+                className="w-[18px] h-[18px] rounded border-2 border-default bg-surface cursor-pointer appearance-none checked:bg-[#7C3AED] checked:border-[#7C3AED] transition-all"
               />
             </th>
-            <th className="group bg-surface-hover px-5 py-3.5 text-left text-[11px] font-semibold text-muted uppercase tracking-wider border-b border-subtle cursor-pointer">
+            <th className="group bg-panel-hover px-5 py-3.5 text-left text-[11px] font-semibold text-muted uppercase tracking-wider border-b border-subtle cursor-pointer">
               <span className="flex items-center gap-1">Lead <SortIcon /></span>
             </th>
-            <th className="group bg-surface-hover px-5 py-3.5 text-left text-[11px] font-semibold text-muted uppercase tracking-wider border-b border-subtle cursor-pointer">
+            <th className="group bg-panel-hover px-5 py-3.5 text-left text-[11px] font-semibold text-muted uppercase tracking-wider border-b border-subtle cursor-pointer">
               <span className="flex items-center gap-1">Company <SortIcon /></span>
             </th>
-            <th className="group bg-surface-hover px-5 py-3.5 text-left text-[11px] font-semibold text-muted uppercase tracking-wider border-b border-subtle cursor-pointer">
+            <th className="group bg-panel-hover px-5 py-3.5 text-left text-[11px] font-semibold text-muted uppercase tracking-wider border-b border-subtle cursor-pointer">
               <span className="flex items-center gap-1">Score <SortIcon /></span>
             </th>
-            <th className="bg-surface-hover px-5 py-3.5 text-left text-[11px] font-semibold text-muted uppercase tracking-wider border-b border-subtle">
+            <th className="bg-panel-hover px-5 py-3.5 text-left text-[11px] font-semibold text-muted uppercase tracking-wider border-b border-subtle">
               Why Hot?
             </th>
-            <th className="bg-surface-hover px-5 py-3.5 text-left text-[11px] font-semibold text-muted uppercase tracking-wider border-b border-subtle">
+            <th className="bg-panel-hover px-5 py-3.5 text-left text-[11px] font-semibold text-muted uppercase tracking-wider border-b border-subtle">
               Channels
             </th>
-            <th className="group bg-surface-hover px-5 py-3.5 text-left text-[11px] font-semibold text-muted uppercase tracking-wider border-b border-subtle cursor-pointer">
+            <th className="group bg-panel-hover px-5 py-3.5 text-left text-[11px] font-semibold text-muted uppercase tracking-wider border-b border-subtle cursor-pointer">
               <span className="flex items-center gap-1">Last Activity <SortIcon /></span>
             </th>
-            <th className="w-[100px] bg-surface-hover px-5 py-3.5 text-left text-[11px] font-semibold text-muted uppercase tracking-wider border-b border-subtle">
+            <th className="w-[100px] bg-panel-hover px-5 py-3.5 text-left text-[11px] font-semibold text-muted uppercase tracking-wider border-b border-subtle">
               Actions
             </th>
           </tr>
@@ -153,7 +153,7 @@ export function LeadsTable({ leads, onLeadClick, className }: LeadsTableProps) {
                 key={lead.id}
                 onClick={() => onLeadClick(lead)}
                 className={cn(
-                  'cursor-pointer transition-all hover:bg-surface-hover',
+                  'cursor-pointer transition-all hover:bg-panel-hover',
                   rowHoverBorders[lead.tier]
                 )}
               >
@@ -164,7 +164,7 @@ export function LeadsTable({ leads, onLeadClick, className }: LeadsTableProps) {
                     checked={selectedIds.has(lead.id)}
                     onChange={() => toggleOne(lead.id)}
                     onClick={(e) => e.stopPropagation()}
-                    className="w-[18px] h-[18px] rounded border-2 border-default bg-base cursor-pointer appearance-none checked:bg-[#7C3AED] checked:border-[#7C3AED] transition-all"
+                    className="w-[18px] h-[18px] rounded border-2 border-default bg-surface cursor-pointer appearance-none checked:bg-[#7C3AED] checked:border-[#7C3AED] transition-all"
                   />
                 </td>
 
@@ -173,7 +173,7 @@ export function LeadsTable({ leads, onLeadClick, className }: LeadsTableProps) {
                   <div className="flex items-center gap-3.5">
                     <div
                       className={cn(
-                        'w-11 h-11 rounded-[10px] flex items-center justify-center text-text-primary font-semibold text-sm flex-shrink-0',
+                        'w-11 h-11 rounded-[10px] flex items-center justify-center text-ink font-semibold text-sm flex-shrink-0',
                         avatarGradients[lead.tier]
                       )}
                     >

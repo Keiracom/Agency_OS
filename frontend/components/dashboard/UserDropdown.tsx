@@ -90,7 +90,7 @@ function TierIndicator({ tier }: { tier?: UserData["tier"] }) {
       className={`
         inline-flex items-center gap-1 px-2 py-0.5
         bg-gradient-to-r ${config.gradient}
-        rounded-full text-[10px] font-semibold text-text-primary
+        rounded-full text-[10px] font-semibold text-ink
         shadow-lg ${config.glow}
       `}
     >
@@ -138,7 +138,7 @@ function MenuItem({
     ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
     ${danger
       ? "text-amber hover:bg-amber-glow focus:bg-amber-glow"
-      : "text-text-secondary hover:text-text-primary hover:bg-bg-surface/5 focus:bg-bg-surface/5"
+      : "text-ink-2 hover:text-ink hover:bg-bg-panel/5 focus:bg-bg-panel/5"
     }
   `;
 
@@ -258,13 +258,13 @@ export function UserDropdown({
           className={`
             flex items-center gap-2
             ${compact ? "p-1" : "pl-1 pr-2.5 py-1"}
-            bg-bg-surface/5 backdrop-blur-xl
+            bg-bg-panel/5 backdrop-blur-xl
             border border-white/10 hover:border-white/20
             rounded-xl
-            hover:bg-bg-surface/10
+            hover:bg-bg-panel/10
             transition-all duration-200
             outline-none focus:ring-2 focus:ring-amber/40
-            ${open ? "bg-bg-surface/10 border-white/20" : ""}
+            ${open ? "bg-bg-panel/10 border-white/20" : ""}
             ${className}
           `}
           aria-label="User menu"
@@ -280,7 +280,7 @@ export function UserDropdown({
               className="
                 w-full h-full flex items-center justify-center
                 bg-gradient-to-br from-amber to-amber
-                text-text-primary text-sm font-semibold
+                text-ink text-sm font-semibold
               "
               delayMs={100}
             >
@@ -290,7 +290,7 @@ export function UserDropdown({
 
           {/* Name (hidden in compact mode) */}
           {!compact && (
-            <span className="text-sm font-medium text-text-primary hidden sm:block max-w-24 truncate">
+            <span className="text-sm font-medium text-ink hidden sm:block max-w-24 truncate">
               {displayName}
             </span>
           )}
@@ -298,7 +298,7 @@ export function UserDropdown({
           {/* Chevron */}
           <ChevronDown
             className={`
-              w-4 h-4 text-text-secondary
+              w-4 h-4 text-ink-2
               transition-transform duration-200
               ${open ? "rotate-180" : ""}
             `}
@@ -322,7 +322,7 @@ export function UserDropdown({
                 transition={{ duration: 0.15, ease: "easeOut" }}
                 className="
                   w-64
-                  bg-bg-void/95 backdrop-blur-xl
+                  bg-bg-cream/95 backdrop-blur-xl
                   border border-white/10
                   rounded-xl shadow-2xl shadow-black/40
                   overflow-hidden
@@ -341,7 +341,7 @@ export function UserDropdown({
                         className="
                           w-full h-full flex items-center justify-center
                           bg-gradient-to-br from-amber to-amber
-                          text-text-primary text-lg font-semibold
+                          text-ink text-lg font-semibold
                         "
                         delayMs={100}
                       >
@@ -350,11 +350,11 @@ export function UserDropdown({
                     </Avatar.Root>
 
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-text-primary truncate">
+                      <p className="text-sm font-semibold text-ink truncate">
                         {displayName}
                       </p>
                       {displayEmail && (
-                        <p className="text-xs text-text-secondary truncate mt-0.5">
+                        <p className="text-xs text-ink-2 truncate mt-0.5">
                           {displayEmail}
                         </p>
                       )}
@@ -385,7 +385,7 @@ export function UserDropdown({
                     onClick={handleBillingClick}
                   />
 
-                  <DropdownMenu.Separator className="my-2 h-px bg-bg-surface/10" />
+                  <DropdownMenu.Separator className="my-2 h-px bg-bg-panel/10" />
 
                   <MenuItem
                     icon={HelpCircle}
@@ -394,7 +394,7 @@ export function UserDropdown({
                     external
                   />
 
-                  <DropdownMenu.Separator className="my-2 h-px bg-bg-surface/10" />
+                  <DropdownMenu.Separator className="my-2 h-px bg-bg-panel/10" />
 
                   <MenuItem
                     icon={LogOut}

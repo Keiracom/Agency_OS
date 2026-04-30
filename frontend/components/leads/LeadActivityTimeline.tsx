@@ -130,12 +130,12 @@ const channelColors: Record<string, string> = {
 };
 
 const channelBadgeColors: Record<string, string> = {
-  email: "bg-amber-glow text-amber dark:bg-bg-void/30 dark:text-text-secondary",
+  email: "bg-amber-glow text-amber dark:bg-bg-cream/30 dark:text-ink-2",
   sms: "bg-amber-glow text-amber dark:bg-amber-glow dark:text-amber",
   voice: "bg-amber-glow text-amber dark:bg-amber-glow dark:text-amber",
   linkedin: "bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-amber",
   mail: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
-  system: "bg-bg-surface text-gray-800 dark:bg-bg-void/30 dark:text-text-muted",
+  system: "bg-bg-panel text-gray-800 dark:bg-bg-cream/30 dark:text-ink-3",
 };
 
 const allChannels: ChannelType[] = ["email", "sms", "linkedin", "voice", "mail"];
@@ -272,7 +272,7 @@ function TimelineItem({
               className={cn(
                 "rounded-lg p-3 text-sm",
                 isReceived
-                  ? "bg-bg-surface dark:bg-blue-950 border-l-4 border-default"
+                  ? "bg-bg-panel dark:bg-blue-950 border-l-4 border-default"
                   : "bg-muted"
               )}
             >

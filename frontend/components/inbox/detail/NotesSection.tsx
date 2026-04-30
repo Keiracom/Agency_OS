@@ -15,8 +15,8 @@ interface NotesSectionProps {
 
 export function NotesSection({ notes, onAddNote }: NotesSectionProps) {
   return (
-    <div className="bg-bg-base rounded-xl p-4">
-      <div className="flex items-center gap-2 mb-4 text-xs font-semibold uppercase tracking-wide text-text-muted">
+    <div className="bg-bg-surface rounded-xl p-4">
+      <div className="flex items-center gap-2 mb-4 text-xs font-semibold uppercase tracking-wide text-ink-3">
         <Edit3 className="w-3.5 h-3.5" />
         Notes
       </div>
@@ -26,14 +26,14 @@ export function NotesSection({ notes, onAddNote }: NotesSectionProps) {
             key={note.id}
             className="bg-amber-500/8 border-l-[3px] border-l-amber-500 rounded-r-lg p-3"
           >
-            <p className="text-[10px] text-text-muted mb-1.5">{note.timestamp}</p>
-            <p className="text-[13px] text-text-secondary leading-relaxed">{note.text}</p>
+            <p className="text-[10px] text-ink-3 mb-1.5">{note.timestamp}</p>
+            <p className="text-[13px] text-ink-2 leading-relaxed">{note.text}</p>
           </div>
         ))}
         
         <button
           onClick={onAddNote}
-          className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 border border-dashed border-border-default rounded-lg text-xs text-text-muted hover:text-text-secondary hover:border-border-strong hover:bg-bg-surface/[0.03] transition-colors"
+          className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 border border-dashed border-rule-strong rounded-lg text-xs text-ink-3 hover:text-ink-2 hover:border-border-strong hover:bg-bg-panel/[0.03] transition-colors"
         >
           <Plus className="w-3.5 h-3.5" />
           Add Note

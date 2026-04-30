@@ -279,7 +279,7 @@ const channelLabels: Record<ChannelType, string> = {
 
 const stepTypeColors: Record<ChannelType, string> = {
   email: "bg-amber/20 text-amber",
-  linkedin: "bg-bg-elevated/20 text-text-secondary",
+  linkedin: "bg-bg-elevated/20 text-ink-2",
   sms: "bg-amber/20 text-amber",
   voice: "bg-amber-500/20 text-amber-400",
   mail: "bg-amber-light/20 text-amber-light",
@@ -294,14 +294,14 @@ const tierColors: Record<LeadTier, string> = {
 const scoreColors: Record<LeadTier, string> = {
   hot: "text-amber",
   warm: "text-amber-400",
-  cool: "text-text-secondary",
+  cool: "text-ink-2",
 };
 
 const statusConfig: Record<LeadStatus, { label: string; icon: LucideIcon; class: string }> = {
   meeting: { label: "Meeting", icon: Calendar, class: "bg-amber/20 text-amber" },
-  replied: { label: "Replied", icon: Reply, class: "bg-bg-elevated/20 text-text-secondary" },
+  replied: { label: "Replied", icon: Reply, class: "bg-bg-elevated/20 text-ink-2" },
   opened: { label: "Opened", icon: Eye, class: "bg-amber/20 text-amber" },
-  sent: { label: "Sent", icon: Send, class: "bg-slate-500/20 text-text-secondary" },
+  sent: { label: "Sent", icon: Send, class: "bg-slate-500/20 text-ink-2" },
 };
 
 const activityIcons: Record<string, { icon: LucideIcon; bg: string }> = {
@@ -330,20 +330,20 @@ function CampaignHero({
   const isPaused = campaign.status === "paused";
 
   return (
-    <div className="relative bg-bg-void/40 backdrop-blur-md border border-white/10 rounded-2xl p-8 overflow-hidden">
+    <div className="relative bg-bg-cream/40 backdrop-blur-md border border-white/10 rounded-2xl p-8 overflow-hidden">
       {/* Top gradient bar */}
       <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-violet-600 via-amber to-amber" />
 
       <div className="flex items-start justify-between mb-6">
         <div>
           <div className="flex items-center gap-4 mb-3">
-            <h1 className="text-3xl font-bold text-text-primary">{campaign.name}</h1>
+            <h1 className="text-3xl font-bold text-ink">{campaign.name}</h1>
             <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide ${
               campaign.status === "active"
                 ? "bg-amber/20 text-amber border border-amber/30"
                 : campaign.status === "paused"
                 ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
-                : "bg-slate-500/20 text-text-secondary border border-slate-500/30"
+                : "bg-slate-500/20 text-ink-2 border border-slate-500/30"
             }`}>
               {campaign.status === "active" && (
                 <span className="w-2 h-2 bg-amber rounded-full animate-pulse" />
@@ -351,7 +351,7 @@ function CampaignHero({
               {campaign.status}
             </span>
           </div>
-          <div className="flex items-center gap-8 text-text-secondary text-sm">
+          <div className="flex items-center gap-8 text-ink-2 text-sm">
             <div className="flex items-center gap-2">
               <Calendar className="w-4 h-4" />
               <span>{campaign.dateRange.start} — {campaign.dateRange.end}</span>
@@ -370,7 +370,7 @@ function CampaignHero({
         <div className="flex items-center gap-3">
           <button
             onClick={onEdit}
-            className="flex items-center gap-2 px-4 py-2 bg-bg-base/60 hover:bg-slate-700/60 border border-white/10 rounded-lg text-sm text-text-primary transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-bg-surface/60 hover:bg-slate-700/60 border border-white/10 rounded-lg text-sm text-ink transition-colors"
           >
             <Edit2 className="w-4 h-4" />
             Edit
@@ -388,7 +388,7 @@ function CampaignHero({
           </button>
           <button
             onClick={onAddLeads}
-            className="flex items-center gap-2 px-4 py-2 bg-amber hover:bg-amber rounded-lg text-sm text-text-primary font-medium transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-amber hover:bg-amber rounded-lg text-sm text-ink font-medium transition-colors"
           >
             <Plus className="w-4 h-4" />
             Add Leads
@@ -407,11 +407,11 @@ function CampaignHero({
                 !channel.active ? "opacity-40" : ""
               }`}
             >
-              <Icon className="w-6 h-6 text-text-secondary" />
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">
+              <Icon className="w-6 h-6 text-ink-2" />
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-3">
                 {channelLabels[channel.type]}
               </span>
-              <span className="text-lg font-bold font-mono text-text-primary">
+              <span className="text-lg font-bold font-mono text-ink">
                 {channel.count.toLocaleString()}
               </span>
             </div>
@@ -428,10 +428,10 @@ function CampaignHero({
 
 function FunnelVisualization({ funnel }: { funnel: FunnelStep[] }) {
   return (
-    <div className="bg-bg-void/40 backdrop-blur-md border border-white/10 rounded-2xl p-6">
+    <div className="bg-bg-cream/40 backdrop-blur-md border border-white/10 rounded-2xl p-6">
       <div className="flex items-center gap-3 mb-6">
         <Shield className="w-5 h-5 text-amber" />
-        <h3 className="text-lg font-semibold text-text-primary">Campaign Funnel</h3>
+        <h3 className="text-lg font-semibold text-ink">Campaign Funnel</h3>
       </div>
       
       <div className="flex items-stretch gap-0">
@@ -450,12 +450,12 @@ function FunnelVisualization({ funnel }: { funnel: FunnelStep[] }) {
                 marginLeft: idx === 0 ? 0 : "-20px",
               }}
             >
-              <span className="text-3xl font-bold font-mono text-text-primary">
+              <span className="text-3xl font-bold font-mono text-ink">
                 {step.value.toLocaleString()}
               </span>
             </div>
-            <p className="mt-3 text-sm font-semibold text-text-primary">{step.label}</p>
-            <p className="text-xs text-text-muted">{step.rate}</p>
+            <p className="mt-3 text-sm font-semibold text-ink">{step.label}</p>
+            <p className="text-xs text-ink-3">{step.rate}</p>
           </div>
         ))}
       </div>
@@ -469,10 +469,10 @@ function FunnelVisualization({ funnel }: { funnel: FunnelStep[] }) {
 
 function SequenceFlow({ steps }: { steps: SequenceStep[] }) {
   return (
-    <div className="bg-bg-void/40 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
+    <div className="bg-bg-cream/40 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
       <div className="flex items-center gap-3 p-5 border-b border-white/10">
         <Activity className="w-5 h-5 text-amber" />
-        <h3 className="text-base font-semibold text-text-primary">Sequence Flow</h3>
+        <h3 className="text-base font-semibold text-ink">Sequence Flow</h3>
       </div>
       <div className="p-5 space-y-3">
         {steps.map((step) => {
@@ -494,10 +494,10 @@ function SequenceFlow({ steps }: { steps: SequenceStep[] }) {
               <div
                 className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${
                   isCompleted
-                    ? "bg-amber text-text-primary"
+                    ? "bg-amber text-ink"
                     : isActive
-                    ? "bg-amber text-text-primary"
-                    : "bg-slate-700 text-text-secondary"
+                    ? "bg-amber text-ink"
+                    : "bg-slate-700 text-ink-2"
                 }`}
               >
                 {isCompleted ? (
@@ -512,10 +512,10 @@ function SequenceFlow({ steps }: { steps: SequenceStep[] }) {
                   <span className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide ${stepTypeColors[step.type]}`}>
                     {channelLabels[step.type]}
                   </span>
-                  <span className="text-xs text-text-muted">Day {step.day}</span>
+                  <span className="text-xs text-ink-3">Day {step.day}</span>
                 </div>
-                <p className="text-sm font-medium text-text-primary mb-2">{step.title}</p>
-                <div className="flex items-center gap-4 text-xs text-text-secondary">
+                <p className="text-sm font-medium text-ink mb-2">{step.title}</p>
+                <div className="flex items-center gap-4 text-xs text-ink-2">
                   {step.stats.sent && <span> {step.stats.sent.toLocaleString()} sent</span>}
                   {step.stats.opened && <span><Eye className="inline w-3 h-3 mr-0.5" /> {step.stats.opened.toLocaleString()} opened</span>}
                   {step.stats.replied && <span>↩️ {step.stats.replied.toLocaleString()} replied</span>}
@@ -523,7 +523,7 @@ function SequenceFlow({ steps }: { steps: SequenceStep[] }) {
                   {step.stats.called && <span> {step.stats.called.toLocaleString()} called</span>}
                   {step.stats.connected && <span> {step.stats.connected.toLocaleString()} connected</span>}
                   {step.stats.booked && <span> {step.stats.booked.toLocaleString()} booked</span>}
-                  {step.status === "pending" && <span className="text-text-muted">Pending...</span>}
+                  {step.status === "pending" && <span className="text-ink-3">Pending...</span>}
                 </div>
               </div>
             </div>
@@ -546,10 +546,10 @@ function ChannelPerformance({
   abTests: ABTest[];
 }) {
   return (
-    <div className="bg-bg-void/40 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
+    <div className="bg-bg-cream/40 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
       <div className="flex items-center gap-3 p-5 border-b border-white/10">
         <BarChart3 className="w-5 h-5 text-amber" />
-        <h3 className="text-base font-semibold text-text-primary">Channel Performance</h3>
+        <h3 className="text-base font-semibold text-ink">Channel Performance</h3>
       </div>
       <div className="p-5">
         {/* Channel grid */}
@@ -558,15 +558,15 @@ function ChannelPerformance({
             const Icon = channelIcons[channel.channel];
             return (
               <div key={channel.channel} className="bg-slate-950/40 rounded-xl p-4 text-center">
-                <Icon className="w-7 h-7 mx-auto mb-3 text-text-secondary" />
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted mb-2">
+                <Icon className="w-7 h-7 mx-auto mb-3 text-ink-2" />
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-3 mb-2">
                   {channelLabels[channel.channel]}
                 </p>
                 <div className="space-y-2">
                   {channel.stats.map((stat) => (
                     <div key={stat.label} className="flex justify-between items-center text-xs">
-                      <span className="text-text-secondary">{stat.label}</span>
-                      <span className="font-mono font-semibold text-text-primary">{stat.value}</span>
+                      <span className="text-ink-2">{stat.label}</span>
+                      <span className="font-mono font-semibold text-ink">{stat.value}</span>
                     </div>
                   ))}
                 </div>
@@ -577,14 +577,14 @@ function ChannelPerformance({
 
         {/* A/B Tests */}
         <div className="pt-4 border-t border-white/10">
-          <div className="flex items-center gap-2 mb-4 text-sm font-semibold text-text-primary">
+          <div className="flex items-center gap-2 mb-4 text-sm font-semibold text-ink">
             <Zap className="w-4 h-4 text-amber" />
             A/B Test Results
           </div>
           {abTests.map((test) => (
             <div key={test.id} className="bg-slate-950/40 rounded-xl p-4">
               <div className="flex items-center justify-between mb-4">
-                <span className="text-sm font-semibold text-text-primary">{test.name}</span>
+                <span className="text-sm font-semibold text-ink">{test.name}</span>
                 <span className="flex items-center gap-1.5 px-2 py-1 bg-amber/20 text-amber rounded text-[10px] font-semibold uppercase">
                   <Trophy className="w-3 h-3" />
                   Winner
@@ -597,21 +597,21 @@ function ChannelPerformance({
                     className={`p-4 rounded-lg border ${
                       variant.isWinner
                         ? "bg-amber/5 border-amber/30"
-                        : "bg-bg-base/40 border-white/5"
+                        : "bg-bg-surface/40 border-white/5"
                     }`}
                   >
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-text-muted mb-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-3 mb-2">
                       {variant.label}
                     </p>
-                    <p className="text-xs text-text-secondary italic mb-3">"{variant.subject}"</p>
+                    <p className="text-xs text-ink-2 italic mb-3">"{variant.subject}"</p>
                     <div className="flex gap-4">
                       <div className="text-center">
-                        <p className="text-xl font-bold font-mono text-text-primary">{variant.openRate}%</p>
-                        <p className="text-[9px] uppercase text-text-muted">Open</p>
+                        <p className="text-xl font-bold font-mono text-ink">{variant.openRate}%</p>
+                        <p className="text-[9px] uppercase text-ink-3">Open</p>
                       </div>
                       <div className="text-center">
-                        <p className="text-xl font-bold font-mono text-text-primary">{variant.replyRate}%</p>
-                        <p className="text-[9px] uppercase text-text-muted">Reply</p>
+                        <p className="text-xl font-bold font-mono text-ink">{variant.replyRate}%</p>
+                        <p className="text-[9px] uppercase text-ink-3">Reply</p>
                       </div>
                     </div>
                   </div>
@@ -639,23 +639,23 @@ function LeadsTable({
   onViewAll?: () => void;
 }) {
   return (
-    <div className="bg-bg-void/40 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
+    <div className="bg-bg-cream/40 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
       <div className="flex items-center justify-between p-5 border-b border-white/10">
         <div className="flex items-center gap-3">
           <Users className="w-5 h-5 text-amber" />
-          <h3 className="text-base font-semibold text-text-primary">Leads in Campaign</h3>
+          <h3 className="text-base font-semibold text-ink">Leads in Campaign</h3>
         </div>
-        <span className="text-sm text-text-muted">{totalLeads.toLocaleString()} total</span>
+        <span className="text-sm text-ink-3">{totalLeads.toLocaleString()} total</span>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="bg-bg-base/40">
-              <th className="text-left px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-text-muted">Lead</th>
-              <th className="text-left px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-text-muted">Status</th>
-              <th className="text-left px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-text-muted">Step</th>
-              <th className="text-left px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-text-muted">Score</th>
-              <th className="text-left px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-text-muted">Last Activity</th>
+            <tr className="bg-bg-surface/40">
+              <th className="text-left px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-ink-3">Lead</th>
+              <th className="text-left px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-ink-3">Status</th>
+              <th className="text-left px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-ink-3">Step</th>
+              <th className="text-left px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-ink-3">Score</th>
+              <th className="text-left px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-ink-3">Last Activity</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
@@ -663,15 +663,15 @@ function LeadsTable({
               const status = statusConfig[lead.status];
               const StatusIcon = status.icon;
               return (
-                <tr key={lead.id} className="hover:bg-bg-base/20 transition-colors">
+                <tr key={lead.id} className="hover:bg-bg-surface/20 transition-colors">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
-                      <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${tierColors[lead.tier]} flex items-center justify-center text-text-primary text-xs font-bold`}>
+                      <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${tierColors[lead.tier]} flex items-center justify-center text-ink text-xs font-bold`}>
                         {lead.initials}
                       </div>
                       <div>
-                        <p className="text-sm font-semibold text-text-primary">{lead.name}</p>
-                        <p className="text-xs text-text-muted">{lead.company}</p>
+                        <p className="text-sm font-semibold text-ink">{lead.name}</p>
+                        <p className="text-xs text-ink-3">{lead.company}</p>
                       </div>
                     </div>
                   </td>
@@ -681,11 +681,11 @@ function LeadsTable({
                       {status.label}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-sm text-text-secondary">Step {lead.step}</td>
+                  <td className="px-4 py-3 text-sm text-ink-2">Step {lead.step}</td>
                   <td className="px-4 py-3">
                     <span className={`text-base font-bold font-mono ${scoreColors[lead.tier]}`}>{lead.score}</span>
                   </td>
-                  <td className="px-4 py-3 text-xs text-text-muted">{lead.lastActivity}</td>
+                  <td className="px-4 py-3 text-xs text-ink-3">{lead.lastActivity}</td>
                 </tr>
               );
             })}
@@ -694,7 +694,7 @@ function LeadsTable({
       </div>
       <button
         onClick={onViewAll}
-        className="w-full py-4 text-sm font-medium text-amber hover:text-violet-300 hover:bg-bg-base/20 transition-colors border-t border-white/10"
+        className="w-full py-4 text-sm font-medium text-amber hover:text-violet-300 hover:bg-bg-surface/20 transition-colors border-t border-white/10"
       >
         Explore All Leads →
       </button>
@@ -708,13 +708,13 @@ function LeadsTable({
 
 function ActivityFeed({ activities }: { activities: ActivityItem[] }) {
   return (
-    <div className="bg-bg-void/40 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
+    <div className="bg-bg-cream/40 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
       <div className="flex items-center justify-between p-5 border-b border-white/10">
         <div className="flex items-center gap-3">
           <Zap className="w-5 h-5 text-amber-400" />
-          <h3 className="text-base font-semibold text-text-primary">Activity Feed</h3>
+          <h3 className="text-base font-semibold text-ink">Activity Feed</h3>
         </div>
-        <span className="text-xs text-text-muted">Live</span>
+        <span className="text-xs text-ink-3">Live</span>
       </div>
       <div className="p-5 space-y-0">
         {activities.map((item, idx) => {
@@ -723,14 +723,14 @@ function ActivityFeed({ activities }: { activities: ActivityItem[] }) {
           return (
             <div key={item.id} className={`flex gap-4 py-4 ${idx < activities.length - 1 ? "border-b border-white/5" : ""}`}>
               <div className={`w-9 h-9 rounded-full ${config.bg} flex items-center justify-center flex-shrink-0`}>
-                <Icon className="w-4 h-4 text-text-secondary" />
+                <Icon className="w-4 h-4 text-ink-2" />
               </div>
               <div className="flex-1">
-                <p className="text-sm text-text-primary">
+                <p className="text-sm text-ink">
                   <span className="font-semibold">{item.text.split(" ")[0]} {item.text.split(" ")[1]}</span>
                   {" "}{item.text.split(" ").slice(2).join(" ")}
                 </p>
-                <p className="text-xs text-text-muted">{item.time} • {item.detail}</p>
+                <p className="text-xs text-ink-3">{item.time} • {item.detail}</p>
               </div>
             </div>
           );
@@ -747,11 +747,11 @@ function ActivityFeed({ activities }: { activities: ActivityItem[] }) {
 function CampaignDetailSkeleton() {
   return (
     <div className="space-y-6 animate-pulse">
-      <div className="h-64 bg-bg-void/40 rounded-2xl" />
-      <div className="h-40 bg-bg-void/40 rounded-2xl" />
+      <div className="h-64 bg-bg-cream/40 rounded-2xl" />
+      <div className="h-40 bg-bg-cream/40 rounded-2xl" />
       <div className="grid grid-cols-2 gap-3 md:gap-6">
-        <div className="h-96 bg-bg-void/40 rounded-2xl" />
-        <div className="h-96 bg-bg-void/40 rounded-2xl" />
+        <div className="h-96 bg-bg-cream/40 rounded-2xl" />
+        <div className="h-96 bg-bg-cream/40 rounded-2xl" />
       </div>
     </div>
   );
@@ -779,12 +779,12 @@ export function CampaignDetail({
       {/* Back navigation */}
       <button
         onClick={onBack}
-        className="flex items-center gap-2 text-sm text-text-muted hover:text-text-secondary transition-colors"
+        className="flex items-center gap-2 text-sm text-ink-3 hover:text-ink-2 transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
         <span>Back to Campaigns</span>
-        <span className="mx-2 text-text-muted">/</span>
-        <span className="text-text-secondary">{campaign.name}</span>
+        <span className="mx-2 text-ink-3">/</span>
+        <span className="text-ink-2">{campaign.name}</span>
       </button>
 
       {/* Hero */}

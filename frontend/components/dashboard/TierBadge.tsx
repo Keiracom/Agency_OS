@@ -34,9 +34,9 @@ interface TierBadgeProps {
 const tierConfig: Record<ALSTier, { style: string; clientLabel: string }> = {
   hot: { style: "bg-orange-500/20 text-orange-400 border border-orange-500/30", clientLabel: "High Priority" },
   warm: { style: "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30", clientLabel: "Engaged" },
-  cool: { style: "bg-bg-elevated/20 text-text-secondary border border-default/30", clientLabel: "Nurturing" },
-  cold: { style: "bg-slate-500/20 text-text-secondary border border-slate-500/30", clientLabel: "Low Activity" },
-  dead: { style: "bg-bg-elevated/20 text-text-muted border border-slate-600/30", clientLabel: "Inactive" },
+  cool: { style: "bg-bg-elevated/20 text-ink-2 border border-default/30", clientLabel: "Nurturing" },
+  cold: { style: "bg-slate-500/20 text-ink-2 border border-slate-500/30", clientLabel: "Low Activity" },
+  dead: { style: "bg-bg-elevated/20 text-ink-3 border border-slate-600/30", clientLabel: "Inactive" },
 };
 
 // ============================================

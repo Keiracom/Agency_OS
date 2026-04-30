@@ -44,7 +44,7 @@ export function LinkedInSuccess({
                     href={profileUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-sm text-text-secondary hover:underline"
+                    className="text-sm text-ink-2 hover:underline"
                   >
                     View Profile
                   </a>

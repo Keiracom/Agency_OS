@@ -126,7 +126,7 @@ export default function LandingPage() {
   const { remaining: spotsRemaining, soldOut, isUrgent } = useFoundingSpots();
 
   return (
-    <main className="min-h-screen bg-bg-surface text-text-primary antialiased overflow-x-hidden">
+    <main className="min-h-screen bg-bg-panel text-ink antialiased overflow-x-hidden">
       {/* Custom Styles */}
       <style jsx global>{`
         @keyframes float {
@@ -197,23 +197,23 @@ export default function LandingPage() {
           <div className="flex items-center justify-between">
             <Link href="/" className="flex items-center gap-2.5">
               <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-lg shadow-amber/25" style={{ background: "#D4956A" }}>
-                <span className="text-text-primary font-bold text-sm">A</span>
+                <span className="text-ink font-bold text-sm">A</span>
               </div>
               <span className="font-bold text-xl tracking-tight">Agency OS</span>
             </Link>
             
             <div className="hidden md:flex items-center gap-8">
-              <a href="#features" className="text-sm font-medium text-text-muted hover:text-text-primary transition-colors">Features</a>
-              <a href="#how-it-works" className="text-sm font-medium text-text-muted hover:text-text-primary transition-colors">How It Works</a>
-              <a href="#comparison" className="text-sm font-medium text-text-muted hover:text-text-primary transition-colors">ROI</a>
-              <a href="#pricing" className="text-sm font-medium text-text-muted hover:text-text-primary transition-colors">Pricing</a>
+              <a href="#features" className="text-sm font-medium text-ink-3 hover:text-ink transition-colors">Features</a>
+              <a href="#how-it-works" className="text-sm font-medium text-ink-3 hover:text-ink transition-colors">How It Works</a>
+              <a href="#comparison" className="text-sm font-medium text-ink-3 hover:text-ink transition-colors">ROI</a>
+              <a href="#pricing" className="text-sm font-medium text-ink-3 hover:text-ink transition-colors">Pricing</a>
             </div>
             
             <div className="flex items-center gap-4">
-              <Link href="/login" className="hidden sm:block text-sm font-medium text-text-muted hover:text-text-primary transition-colors">
+              <Link href="/login" className="hidden sm:block text-sm font-medium text-ink-3 hover:text-ink transition-colors">
                 Sign in
               </Link>
-              <a href="#pricing" className="btn-gradient text-text-primary px-5 py-2.5 rounded-xl font-semibold text-sm shadow-lg">
+              <a href="#pricing" className="btn-gradient text-ink px-5 py-2.5 rounded-xl font-semibold text-sm shadow-lg">
                 Claim Your Spot
               </a>
             </div>
@@ -222,7 +222,7 @@ export default function LandingPage() {
       </nav>
 
       {/* HERO SECTION */}
-      <section className="relative overflow-hidden pt-32 pb-20 md:pt-40 md:pb-32 bg-bg-void">
+      <section className="relative overflow-hidden pt-32 pb-20 md:pt-40 md:pb-32 bg-bg-cream">
         {/* Floating orbs */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-20 left-10 w-[500px] h-[500px] bg-gradient-to-r from-amber/10 to-amber-light/10 rounded-full blur-3xl animate-float" />
@@ -251,12 +251,12 @@ export default function LandingPage() {
             </h1>
 
             {/* Audience qualifier */}
-            <p className="text-sm font-medium text-text-muted uppercase tracking-wider mb-6 animate-slide-up" style={{ animationDelay: "150ms" }}>
+            <p className="text-sm font-medium text-ink-3 uppercase tracking-wider mb-6 animate-slide-up" style={{ animationDelay: "150ms" }}>
               For Australian marketing agencies only
             </p>
 
             {/* Subheadline */}
-            <p className="text-lg md:text-xl text-text-muted max-w-3xl leading-relaxed mb-10 animate-slide-up" style={{ animationDelay: "200ms" }}>
+            <p className="text-lg md:text-xl text-ink-3 max-w-3xl leading-relaxed mb-10 animate-slide-up" style={{ animationDelay: "200ms" }}>
               Agency OS runs your outbound acquisition across 5 channels while you focus on doing the work. 
               Booked meetings. Not leads. 
               
@@ -264,13 +264,13 @@ export default function LandingPage() {
 
             {/* CTAs */}
             <div className="flex flex-col sm:flex-row items-center gap-4 mb-6 animate-slide-up" style={{ animationDelay: "300ms" }}>
-              <a href="#pricing" className="btn-gradient text-text-primary px-10 py-4 rounded-xl font-semibold text-lg shadow-xl inline-flex items-center gap-2 group">
+              <a href="#pricing" className="btn-gradient text-ink px-10 py-4 rounded-xl font-semibold text-lg shadow-xl inline-flex items-center gap-2 group">
                 Claim Your Founding Spot
                 <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3"/>
                 </svg>
               </a>
-              <a href="#comparison" className="text-text-muted hover:text-text-primary font-medium py-3 inline-flex items-center gap-2 group">
+              <a href="#comparison" className="text-ink-3 hover:text-ink font-medium py-3 inline-flex items-center gap-2 group">
                 <svg className="w-5 h-5 group-hover:scale-110 transition-transform" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M8 5v14l11-7z"/>
                 </svg>
@@ -279,7 +279,7 @@ export default function LandingPage() {
             </div>
 
             {/* Trust signals */}
-            <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-text-muted mb-16 animate-slide-up" style={{ animationDelay: "350ms" }}>
+            <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-ink-3 mb-16 animate-slide-up" style={{ animationDelay: "350ms" }}>
               <span>✓ Lock in 50% off for life</span>
               <span>✓ 3 booked meetings guaranteed or full refund</span>
               <span>✓ Cancel anytime</span>
@@ -294,7 +294,7 @@ export default function LandingPage() {
       </section>
 
       {/* SOCIAL PROOF METRICS */}
-      <section className="py-16 border-y border-white/10 bg-bg-surface">
+      <section className="py-16 border-y border-white/10 bg-bg-panel">
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
             {[
@@ -308,8 +308,8 @@ export default function LandingPage() {
                   <div className="text-4xl md:text-5xl font-bold gradient-text">
                     <AnimatedCounter target={stat.value} suffix={stat.suffix} prefix={stat.prefix} />
                   </div>
-                  <div className="text-sm font-medium text-text-primary mt-2">{stat.label}</div>
-                  <div className="text-xs text-text-muted mt-0.5">{stat.sub}</div>
+                  <div className="text-sm font-medium text-ink mt-2">{stat.label}</div>
+                  <div className="text-xs text-ink-3 mt-0.5">{stat.sub}</div>
                 </div>
               </ScrollReveal>
             ))}
@@ -318,7 +318,7 @@ export default function LandingPage() {
       </section>
 
       {/* LIVE DEMO SECTION - Using v0 Components */}
-      <section className="py-20 md:py-28 bg-bg-void text-text-primary relative overflow-hidden">
+      <section className="py-20 md:py-28 bg-bg-cream text-ink relative overflow-hidden">
         {/* Subtle background orbs */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-amber/10 rounded-full blur-[120px]" />
@@ -331,7 +331,7 @@ export default function LandingPage() {
               <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
                 See the AI in action
               </h2>
-              <p className="text-lg text-text-primary/60 max-w-2xl mx-auto">
+              <p className="text-lg text-ink/60 max-w-2xl mx-auto">
                 Watch how Agency OS crafts personalized outreach while you focus on closing deals.
               </p>
             </div>
@@ -346,7 +346,7 @@ export default function LandingPage() {
       </section>
 
       {/* FEATURES */}
-      <section id="features" className="py-20 md:py-28 bg-bg-surface">
+      <section id="features" className="py-20 md:py-28 bg-bg-panel">
         <div className="max-w-7xl mx-auto px-6">
           
           <ScrollReveal>
@@ -354,7 +354,7 @@ export default function LandingPage() {
               <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-4">
                 This isn't another AI sales tool.
               </h2>
-              <p className="text-lg text-text-muted max-w-2xl mx-auto">
+              <p className="text-lg text-ink-3 max-w-2xl mx-auto">
                 It's your agency's growth operating system.
               </p>
             </div>
@@ -363,12 +363,12 @@ export default function LandingPage() {
           {/* Comparison Grid */}
           <ScrollReveal delay={100}>
             <div className="max-w-4xl mx-auto mb-20">
-              <div className="grid md:grid-cols-2 gap-8 p-8 rounded-2xl bg-bg-surface border border-white/10 shadow-lg">
+              <div className="grid md:grid-cols-2 gap-8 p-8 rounded-2xl bg-bg-panel border border-white/10 shadow-lg">
                 <div>
-                  <h3 className="font-bold text-text-muted uppercase text-sm tracking-wider mb-4">Generic AI SDRs</h3>
+                  <h3 className="font-bold text-ink-3 uppercase text-sm tracking-wider mb-4">Generic AI SDRs</h3>
                   <ul className="space-y-3">
                     {["Spray-and-pray to any B2B", "US-centric data and timing", "Email-only or email-first", '"Set and forget" black box', "$5,000-10,000/month pricing"].map((item, i) => (
-                      <li key={i} className="flex items-start gap-3 text-text-muted">
+                      <li key={i} className="flex items-start gap-3 text-ink-3">
                         <span className="text-amber mt-0.5">✗</span>
                         <span>{item}</span>
                       </li>
@@ -379,7 +379,7 @@ export default function LandingPage() {
                   <h3 className="font-bold gradient-text uppercase text-sm tracking-wider mb-4">Agency OS</h3>
                   <ul className="space-y-3">
                     {["Built around your actual client portfolio", "Australian market, AEST, local compliance", "True 5-channel: Email, SMS, LinkedIn, Voice, Mail", "Conversion Intelligence shows WHY it works", "Founding tier: $375-2,500/month"].map((item, i) => (
-                      <li key={i} className="flex items-start gap-3 text-text-primary">
+                      <li key={i} className="flex items-start gap-3 text-ink">
                         <span className="text-amber mt-0.5">✓</span>
                         <span>{item}</span>
                       </li>
@@ -393,30 +393,30 @@ export default function LandingPage() {
           {/* Feature Cards */}
           <div className="grid md:grid-cols-3 gap-8">
             <ScrollReveal delay={0}>
-              <div className="bg-bg-surface rounded-2xl p-8 border border-white/10 card-hover h-full">
+              <div className="bg-bg-panel rounded-2xl p-8 border border-white/10 card-hover h-full">
                 <div className="w-14 h-14 rounded-xl flex items-center justify-center mb-6 shadow-lg" style={{ background: "#D4956A" }}>
-                  <Globe className="w-7 h-7 text-text-primary" />
+                  <Globe className="w-7 h-7 text-ink" />
                 </div>
                 <h3 className="text-2xl font-bold mb-4">Australian-First</h3>
-                <p className="text-text-muted leading-relaxed">Built specifically for Australian agencies. Understands ACMA/DNCR compliance, Aussie business culture, and AEST timing.</p>
+                <p className="text-ink-3 leading-relaxed">Built specifically for Australian agencies. Understands ACMA/DNCR compliance, Aussie business culture, and AEST timing.</p>
               </div>
             </ScrollReveal>
             <ScrollReveal delay={100}>
-              <div className="bg-bg-surface rounded-2xl p-8 border border-white/10 card-hover h-full">
+              <div className="bg-bg-panel rounded-2xl p-8 border border-white/10 card-hover h-full">
                 <div className="w-14 h-14 rounded-xl flex items-center justify-center mb-6 shadow-lg" style={{ background: "#D4956A" }}>
-                  <Brain className="w-7 h-7 text-text-primary" />
+                  <Brain className="w-7 h-7 text-ink" />
                 </div>
                 <h3 className="text-2xl font-bold mb-4">Conversion Intelligence</h3>
-                <p className="text-text-muted leading-relaxed">ML learns from every interaction. See exactly what subject lines, messages, and timing work for YOUR ideal clients.</p>
+                <p className="text-ink-3 leading-relaxed">ML learns from every interaction. See exactly what subject lines, messages, and timing work for YOUR ideal clients.</p>
               </div>
             </ScrollReveal>
             <ScrollReveal delay={200}>
-              <div className="bg-bg-surface rounded-2xl p-8 border border-white/10 card-hover h-full">
+              <div className="bg-bg-panel rounded-2xl p-8 border border-white/10 card-hover h-full">
                 <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-orange-500 to-amber flex items-center justify-center mb-6 shadow-lg">
-                  <Target className="w-7 h-7 text-text-primary" />
+                  <Target className="w-7 h-7 text-ink" />
                 </div>
                 <h3 className="text-2xl font-bold mb-4">ALS Score™</h3>
-                <p className="text-text-muted leading-relaxed">Proprietary scoring ranks leads by budget, decision timeline, and agency fit. Focus only on deals worth your time.</p>
+                <p className="text-ink-3 leading-relaxed">Proprietary scoring ranks leads by budget, decision timeline, and agency fit. Focus only on deals worth your time.</p>
               </div>
             </ScrollReveal>
           </div>
@@ -424,7 +424,7 @@ export default function LandingPage() {
       </section>
 
       {/* HOW IT WORKS - Instagram-style Carousel */}
-      <section className="bg-bg-void text-text-primary relative overflow-hidden">
+      <section className="bg-bg-cream text-ink relative overflow-hidden">
         {/* Subtle background gradient */}
         <div className="absolute inset-0 bg-gradient-to-b from-[#0a0a0f] via-[#0f0f13] to-[#0a0a0f] pointer-events-none" />
 
@@ -434,16 +434,16 @@ export default function LandingPage() {
       </section>
 
       {/* SDR COMPARISON */}
-      <section id="comparison" className="py-20 md:py-28 bg-bg-void text-text-primary">
+      <section id="comparison" className="py-20 md:py-28 bg-bg-cream text-ink">
         <div className="max-w-6xl mx-auto px-6">
           <ScrollReveal>
             <div className="text-center mb-16">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-bg-surface/10 border border-white/20 text-sm mb-6">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-bg-panel/10 border border-white/20 text-sm mb-6">
                 <DollarSign className="w-4 h-4 text-amber" />
-                <span className="text-text-primary/80">The math that matters</span>
+                <span className="text-ink/80">The math that matters</span>
               </div>
               <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-4">Agency OS vs. Hiring a Junior SDR</h2>
-              <p className="text-lg text-text-primary/60 max-w-2xl mx-auto">The numbers don't lie. Here's what the real comparison looks like.</p>
+              <p className="text-lg text-ink/60 max-w-2xl mx-auto">The numbers don't lie. Here's what the real comparison looks like.</p>
             </div>
           </ScrollReveal>
 
@@ -452,8 +452,8 @@ export default function LandingPage() {
               <table className="w-full max-w-4xl mx-auto">
                 <thead>
                   <tr className="border-b border-white/20">
-                    <th className="text-left py-4 px-4 text-text-primary/60 font-medium">Factor</th>
-                    <th className="text-center py-4 px-4 text-text-primary/60 font-medium">Junior SDR</th>
+                    <th className="text-left py-4 px-4 text-ink/60 font-medium">Factor</th>
+                    <th className="text-center py-4 px-4 text-ink/60 font-medium">Junior SDR</th>
                     <th className="text-center py-4 px-4 font-medium"><span className="gradient-text">Agency OS (founding)</span></th>
                   </tr>
                 </thead>
@@ -470,10 +470,10 @@ export default function LandingPage() {
                     { factor: "Works 24/7", sdr: "No", aos: "Yes", winner: "aos" },
                   ].map((row, i) => (
                     <tr key={i} className="border-b border-white/10">
-                      <td className="py-4 px-4 text-text-primary/80">{row.factor}</td>
-                      <td className="py-4 px-4 text-center text-text-primary/50">{row.sdr}</td>
+                      <td className="py-4 px-4 text-ink/80">{row.factor}</td>
+                      <td className="py-4 px-4 text-center text-ink/50">{row.sdr}</td>
                       <td className="py-4 px-4 text-center">
-                        <span className={row.winner === "aos" ? "text-amber font-semibold" : "text-text-primary/80"}>{row.aos}</span>
+                        <span className={row.winner === "aos" ? "text-amber font-semibold" : "text-ink/80"}>{row.aos}</span>
                       </td>
                     </tr>
                   ))}
@@ -485,13 +485,13 @@ export default function LandingPage() {
           {/* Year 1 Summary */}
           <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
             <ScrollReveal delay={200}>
-              <div className="p-8 rounded-2xl bg-bg-surface/5 border border-white/10">
-                <h3 className="text-lg font-semibold text-text-primary/60 mb-4">Year 1: Junior SDR</h3>
+              <div className="p-8 rounded-2xl bg-bg-panel/5 border border-white/10">
+                <h3 className="text-lg font-semibold text-ink/60 mb-4">Year 1: Junior SDR</h3>
                 <div className="space-y-3 text-sm">
-                  <div className="flex justify-between"><span className="text-text-primary/60">Total cost</span><span className="text-text-primary font-semibold">$84,000</span></div>
-                  <div className="flex justify-between"><span className="text-text-primary/60">Total meetings</span><span className="text-text-primary font-semibold">~85</span></div>
-                  <div className="flex justify-between"><span className="text-text-primary/60">Cost per meeting</span><span className="text-amber font-semibold">$988</span></div>
-                  <div className="flex justify-between"><span className="text-text-primary/60">Your time invested</span><span className="text-text-primary font-semibold">250-500 hrs</span></div>
+                  <div className="flex justify-between"><span className="text-ink/60">Total cost</span><span className="text-ink font-semibold">$84,000</span></div>
+                  <div className="flex justify-between"><span className="text-ink/60">Total meetings</span><span className="text-ink font-semibold">~85</span></div>
+                  <div className="flex justify-between"><span className="text-ink/60">Cost per meeting</span><span className="text-amber font-semibold">$988</span></div>
+                  <div className="flex justify-between"><span className="text-ink/60">Your time invested</span><span className="text-ink font-semibold">250-500 hrs</span></div>
                 </div>
               </div>
             </ScrollReveal>
@@ -500,10 +500,10 @@ export default function LandingPage() {
               <div className="p-8 rounded-2xl bg-gradient-to-br from-amber/10 to-amber-light/10 border border-amber/30">
                 <h3 className="text-lg font-semibold text-amber-light mb-4">Year 1: Agency OS (founding) (founding)</h3>
                 <div className="space-y-3 text-sm">
-                  <div className="flex justify-between"><span className="text-text-primary/60">Total cost</span><span className="text-text-primary font-semibold">$30,000</span></div>
-                  <div className="flex justify-between"><span className="text-text-primary/60">Total meetings</span><span className="text-amber font-semibold">~187</span></div>
-                  <div className="flex justify-between"><span className="text-text-primary/60">Cost per meeting</span><span className="text-amber font-semibold">$160</span></div>
-                  <div className="flex justify-between"><span className="text-text-primary/60">Your time invested</span><span className="text-amber font-semibold">&lt;50 hrs</span></div>
+                  <div className="flex justify-between"><span className="text-ink/60">Total cost</span><span className="text-ink font-semibold">$30,000</span></div>
+                  <div className="flex justify-between"><span className="text-ink/60">Total meetings</span><span className="text-amber font-semibold">~187</span></div>
+                  <div className="flex justify-between"><span className="text-ink/60">Cost per meeting</span><span className="text-amber font-semibold">$160</span></div>
+                  <div className="flex justify-between"><span className="text-ink/60">Your time invested</span><span className="text-amber font-semibold">&lt;50 hrs</span></div>
                 </div>
               </div>
             </ScrollReveal>
@@ -512,10 +512,10 @@ export default function LandingPage() {
           <ScrollReveal delay={400}>
             <div className="mt-16 text-center">
               <div className="inline-block p-8 rounded-2xl bg-gradient-to-r from-amber/20 to-amber/20 border border-amber/30">
-                <p className="text-3xl md:text-4xl font-bold text-text-primary mb-3">
+                <p className="text-3xl md:text-4xl font-bold text-ink mb-3">
                   Save <span className="text-amber">$54,000</span> + Get <span className="text-amber">2.2x</span> more meetings
                 </p>
-                <p className="text-text-primary/60">84% lower cost per meeting • 200-450 hours of your time saved • Ramp in weeks</p>
+                <p className="text-ink/60">84% lower cost per meeting • 200-450 hours of your time saved • Ramp in weeks</p>
               </div>
             </div>
           </ScrollReveal>
@@ -523,7 +523,7 @@ export default function LandingPage() {
       </section>
 
       {/* PRICING */}
-      <section id="pricing" className="py-20 md:py-28 bg-bg-surface">
+      <section id="pricing" className="py-20 md:py-28 bg-bg-panel">
         <div className="max-w-6xl mx-auto px-6">
           <ScrollReveal>
             <div className="text-center mb-12">
@@ -536,7 +536,7 @@ export default function LandingPage() {
                 </span>
               </div>
               <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-4">Lock in 50% off. Forever.</h2>
-              <p className="text-lg text-text-muted max-w-2xl mx-auto">Founding members keep their rate for life. No contracts. Cancel anytime.</p>
+              <p className="text-lg text-ink-3 max-w-2xl mx-auto">Founding members keep their rate for life. No contracts. Cancel anytime.</p>
             </div>
           </ScrollReveal>
 
@@ -547,22 +547,22 @@ export default function LandingPage() {
               { name: "Velocity", originalPrice: "$5,000", foundingPrice: "$2,500", savings: "Save $30K/year", expectedMeetings: "All 4 outreach channels", desc: "Maximum pipeline capacity", limits: ["1,500 records/month", "All 4 outreach channels • Full AI intelligence • Haiku personalisation"], cta: "Get Started", popular: false },
             ].map((tier, i) => (
               <ScrollReveal key={i} delay={i * 100}>
-                <div className={`rounded-2xl p-8 card-hover flex flex-col h-full relative ${tier.popular ? "bg-bg-surface border-2 border-amber shadow-xl shadow-amber/10 scale-105" : "bg-bg-surface border border-white/10"}`}>
+                <div className={`rounded-2xl p-8 card-hover flex flex-col h-full relative ${tier.popular ? "bg-bg-panel border-2 border-amber shadow-xl shadow-amber/10 scale-105" : "bg-bg-panel border border-white/10"}`}>
                   {tier.popular && (
-                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 text-text-primary px-6 py-1.5 rounded-full text-sm font-semibold shadow-lg flex items-center gap-1" style={{ background: "linear-gradient(135deg, #D4956A 0%, #E8B48A 100%)" }}>
+                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 text-ink px-6 py-1.5 rounded-full text-sm font-semibold shadow-lg flex items-center gap-1" style={{ background: "linear-gradient(135deg, #D4956A 0%, #E8B48A 100%)" }}>
                       <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
                       Most Chosen
                     </div>
                   )}
                   <div className="mb-6">
                     <h3 className="text-2xl font-bold mb-2">{tier.name}</h3>
-                    <p className="text-text-muted text-sm mb-4">{tier.desc}</p>
+                    <p className="text-ink-3 text-sm mb-4">{tier.desc}</p>
                     <div className="flex items-baseline gap-2 mb-1">
                       <span className="text-5xl font-bold tracking-tight">{tier.foundingPrice}</span>
-                      <span className="text-text-muted text-lg">/mo</span>
+                      <span className="text-ink-3 text-lg">/mo</span>
                     </div>
                     <div className="flex items-center gap-2 mb-4">
-                      <span className="text-text-muted line-through text-sm">Was {tier.originalPrice}/mo</span>
+                      <span className="text-ink-3 line-through text-sm">Was {tier.originalPrice}/mo</span>
                       <span className="text-xs font-semibold text-amber bg-amber-glow px-2 py-0.5 rounded">{tier.savings}</span>
                     </div>
                     {/* Expected Meetings Highlight */}
@@ -579,11 +579,11 @@ export default function LandingPage() {
                         <svg className="w-5 h-5 text-amber shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/>
                         </svg>
-                        <span className="text-sm text-text-muted font-medium">{limit}</span>
+                        <span className="text-sm text-ink-3 font-medium">{limit}</span>
                       </li>
                     ))}
                   </ul>
-                  <a href="#waitlist" className={`w-full py-3 px-6 rounded-xl font-semibold text-center transition-all ${tier.popular ? "btn-gradient text-text-primary" : "border-2 border-white/10 text-text-muted hover:border-amber hover:text-amber"}`}>
+                  <a href="#waitlist" className={`w-full py-3 px-6 rounded-xl font-semibold text-center transition-all ${tier.popular ? "btn-gradient text-ink" : "border-2 border-white/10 text-ink-3 hover:border-amber hover:text-amber"}`}>
                     {tier.cta}
                   </a>
                 </div>
@@ -594,7 +594,7 @@ export default function LandingPage() {
           {/* All Plans Include */}
           <ScrollReveal delay={200}>
             <div className="max-w-4xl mx-auto mt-16">
-              <h3 className="text-xl font-bold text-center mb-8 text-text-primary">All plans include</h3>
+              <h3 className="text-xl font-bold text-center mb-8 text-ink">All plans include</h3>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 {[
                   { icon: Mail, label: "Full 5-channel outreach", sub: "Email, LinkedIn, Voice AI, SMS, Direct Mail" },
@@ -604,11 +604,11 @@ export default function LandingPage() {
                   { icon: Globe, label: "API access", sub: "Integrate with your stack" },
                   { icon: Shield, label: "Priority support", sub: "We're here when you need us" },
                 ].map((feature, i) => (
-                  <div key={i} className="flex items-start gap-3 p-4 rounded-xl bg-bg-surface border border-white/06">
+                  <div key={i} className="flex items-start gap-3 p-4 rounded-xl bg-bg-panel border border-white/06">
                     <feature.icon className="w-5 h-5 text-amber shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-sm font-medium text-text-primary">{feature.label}</p>
-                      <p className="text-xs text-text-muted">{feature.sub}</p>
+                      <p className="text-sm font-medium text-ink">{feature.label}</p>
+                      <p className="text-xs text-ink-3">{feature.sub}</p>
                     </div>
                   </div>
                 ))}
@@ -621,20 +621,20 @@ export default function LandingPage() {
               <div className="rounded-2xl p-8 bg-bg-elevated border border-amber/20 text-center">
                 <h3 className="text-xl font-bold mb-4">The ROI Math</h3>
                 <p className="text-3xl font-bold text-amber mb-3">Close ONE new client → Pay for an entire year</p>
-                <p className="text-text-muted">At $1,250/month founding price, one new client at a $5,000/month retainer covers 4 months of Agency OS.</p>
+                <p className="text-ink-3">At $1,250/month founding price, one new client at a $5,000/month retainer covers 4 months of Agency OS.</p>
               </div>
             </div>
           </ScrollReveal>
 
           <ScrollReveal delay={400}>
-            <div className="flex flex-wrap justify-center gap-x-8 gap-y-3 mt-12 text-sm text-text-muted">
+            <div className="flex flex-wrap justify-center gap-x-8 gap-y-3 mt-12 text-sm text-ink-3">
               <span className="inline-flex items-center gap-1.5"><Shield className="w-4 h-4" /> Australian Privacy Act Compliant</span>
               <span className="inline-flex items-center gap-1.5"><Smartphone className="w-4 h-4" /> DNCR Integration Built-In</span>
               <span className="inline-flex items-center gap-1.5"><CreditCard className="w-4 h-4" /> Cancel Anytime—No Lock-In</span>
               <span className="inline-flex items-center gap-1.5"><Globe className="w-4 h-4" /> Built for Australian Agencies</span>
             </div>
             {/* Ramp Clause */}
-            <p className="text-center text-xs text-text-muted mt-6">
+            <p className="text-center text-xs text-ink-3 mt-6">
               *Full guarantee kicks in after 30-day onboarding period
             </p>
           </ScrollReveal>
@@ -642,7 +642,7 @@ export default function LandingPage() {
       </section>
 
       {/* FINAL CTA */}
-      <section id="waitlist" className="py-20 md:py-28 bg-bg-void">
+      <section id="waitlist" className="py-20 md:py-28 bg-bg-cream">
         <div className="max-w-6xl mx-auto px-6">
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <ScrollReveal>
@@ -651,8 +651,8 @@ export default function LandingPage() {
                   20 agencies will build the future of agency growth.
                   <span className="gradient-text"> Will you be one of them?</span>
                 </h2>
-                <p className="text-lg text-text-muted mb-8">Most agencies will wait. Wait until it's proven. Wait until everyone has it. Wait until competitive advantage disappears.</p>
-                <p className="text-lg font-medium text-text-primary mb-8">The agencies that win don't wait. They move first.</p>
+                <p className="text-lg text-ink-3 mb-8">Most agencies will wait. Wait until it's proven. Wait until everyone has it. Wait until competitive advantage disappears.</p>
+                <p className="text-lg font-medium text-ink mb-8">The agencies that win don't wait. They move first.</p>
                 <div className="space-y-4">
                   {["Lock in 50% off for life", "Direct line to the product team", "White-glove onboarding"].map((item, i) => (
                     <div key={i} className="flex items-center gap-3">
@@ -661,7 +661,7 @@ export default function LandingPage() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/>
                         </svg>
                       </div>
-                      <span className="text-text-muted">{item}</span>
+                      <span className="text-ink-3">{item}</span>
                     </div>
                   ))}
                 </div>
@@ -669,22 +669,22 @@ export default function LandingPage() {
             </ScrollReveal>
 
             <ScrollReveal delay={200}>
-              <div className="bg-bg-surface rounded-2xl p-8 border border-white/10 shadow-xl">
+              <div className="bg-bg-panel rounded-2xl p-8 border border-white/10 shadow-xl">
                 <div className="flex items-center justify-center gap-2 mb-6">
                   <span className="relative flex h-3 w-3">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-3 w-3 bg-amber"></span>
                   </span>
-                  <span className="text-sm font-medium text-text-muted">
+                  <span className="text-sm font-medium text-ink-3">
                     {soldOut ? "Founding spots sold out!" : `${spotsRemaining ?? "..."} founding spots remaining`}
                   </span>
                 </div>
                 <h3 className="text-2xl font-bold text-center mb-2">Claim your founding spot</h3>
-                <p className="text-text-muted text-sm text-center mb-6">$500 AUD • Funds your pilot campaign • 3 meetings guaranteed or full refund</p>
+                <p className="text-ink-3 text-sm text-center mb-6">$500 AUD • Funds your pilot campaign • 3 meetings guaranteed or full refund</p>
                 {/* Step 8/8: Stripe Checkout Button */}
                 <FoundingDepositButton spotsRemaining={spotsRemaining ?? undefined} />
                 <div className="mt-6 pt-6 border-t border-white/06">
-                  <div className="grid grid-cols-2 gap-4 text-xs text-text-muted">
+                  <div className="grid grid-cols-2 gap-4 text-xs text-ink-3">
                     <div className="flex items-center gap-2">
                       <Shield className="w-4 h-4 text-amber" />
                       <span>Australian Privacy Compliant</span>
@@ -710,34 +710,34 @@ export default function LandingPage() {
       </section>
 
       {/* FOOTER */}
-      <footer className="bg-bg-void text-text-muted py-12">
+      <footer className="bg-bg-cream text-ink-3 py-12">
         <div className="max-w-6xl mx-auto px-6">
           <div className="grid md:grid-cols-4 gap-8 mb-8">
             <div className="md:col-span-2">
               <div className="flex items-center gap-2 mb-4">
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "#D4956A" }}>
-                  <span className="text-text-primary font-bold text-sm">A</span>
+                  <span className="text-ink font-bold text-sm">A</span>
                 </div>
-                <span className="font-bold text-xl text-text-primary">Agency OS</span>
+                <span className="font-bold text-xl text-ink">Agency OS</span>
               </div>
               <p className="text-sm leading-relaxed mb-4 max-w-sm">The client acquisition operating system for Australian marketing agencies.</p>
             </div>
             <div>
-              <h4 className="font-semibold text-text-primary mb-4">Product</h4>
+              <h4 className="font-semibold text-ink mb-4">Product</h4>
               <ul className="space-y-2 text-sm">
-                <li><a href="#features" className="hover:text-text-primary transition-colors">Features</a></li>
-                <li><a href="#pricing" className="hover:text-text-primary transition-colors">Pricing</a></li>
-                <li><a href="#how-it-works" className="hover:text-text-primary transition-colors">How It Works</a></li>
-                <li><a href="#comparison" className="hover:text-text-primary transition-colors">ROI Calculator</a></li>
+                <li><a href="#features" className="hover:text-ink transition-colors">Features</a></li>
+                <li><a href="#pricing" className="hover:text-ink transition-colors">Pricing</a></li>
+                <li><a href="#how-it-works" className="hover:text-ink transition-colors">How It Works</a></li>
+                <li><a href="#comparison" className="hover:text-ink transition-colors">ROI Calculator</a></li>
               </ul>
             </div>
             <div>
-              <h4 className="font-semibold text-text-primary mb-4">Company</h4>
+              <h4 className="font-semibold text-ink mb-4">Company</h4>
               <ul className="space-y-2 text-sm">
-                <li><Link href="/about" className="hover:text-text-primary transition-colors">About</Link></li>
-                <li><a href="#" className="hover:text-text-primary transition-colors">Blog</a></li>
-                <li><a href="#" className="hover:text-text-primary transition-colors">Privacy Policy</a></li>
-                <li><a href="#" className="hover:text-text-primary transition-colors">Terms of Service</a></li>
+                <li><Link href="/about" className="hover:text-ink transition-colors">About</Link></li>
+                <li><a href="#" className="hover:text-ink transition-colors">Blog</a></li>
+                <li><a href="#" className="hover:text-ink transition-colors">Privacy Policy</a></li>
+                <li><a href="#" className="hover:text-ink transition-colors">Terms of Service</a></li>
               </ul>
             </div>
           </div>

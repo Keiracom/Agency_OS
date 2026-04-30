@@ -108,7 +108,7 @@ export default function DashboardPage() {
           background: `
             radial-gradient(ellipse at 20% 0%, rgba(212,149,106,0.08) 0%, transparent 50%),
             radial-gradient(ellipse at 80% 100%, rgba(212,149,106,0.04) 0%, transparent 50%),
-            var(--bg-void)
+            var(--bg-cream)
           `,
         }}
       >
@@ -147,34 +147,34 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-6 mb-8">
             {/* Meetings Booked Hero - Accent Glass Card */}
             <HeroMetricCard className="p-8">
-              <div className="text-[11px] font-mono font-semibold uppercase tracking-wider text-text-muted mb-3">
+              <div className="text-[11px] font-mono font-semibold uppercase tracking-wider text-ink-3 mb-3">
                 Meetings Booked
               </div>
               <div className="flex items-baseline gap-0">
-                <span className="text-4xl md:text-6xl font-extrabold text-text-primary font-mono tracking-tight">
+                <span className="text-4xl md:text-6xl font-extrabold text-ink font-mono tracking-tight">
                   {meetingsBooked}
                 </span>
-                <span className="text-2xl md:text-3xl font-extrabold text-text-muted font-mono">
+                <span className="text-2xl md:text-3xl font-extrabold text-ink-3 font-mono">
                   /{meetingsTarget}
                 </span>
               </div>
-              <div className="text-base text-text-secondary mt-3">
+              <div className="text-base text-ink-2 mt-3">
                 {meetingsBooked >= meetingsTarget ? (
                   <span className="text-amber font-semibold">Target exceeded</span>
                 ) : (
-                  <span className="text-text-muted">{meetingsTarget - meetingsBooked} to go</span>
+                  <span className="text-ink-3">{meetingsTarget - meetingsBooked} to go</span>
                 )}
               </div>
               <div className="flex items-center gap-2 mt-4 pt-4 border-t border-amber/20 text-sm">
                 <ArrowUpRight className="w-4 h-4 text-amber" strokeWidth={1.5} />
                 <span className="text-amber font-mono">{Math.round((meetingsBooked / Math.max(meetingsTarget, 1)) * 100)}%</span>
-                <span className="text-text-secondary">of target</span>
+                <span className="text-ink-2">of target</span>
               </div>
             </HeroMetricCard>
 
             {/* Channel Orchestration — TODO: wire to real per-channel touch counts */}
             <GlassCard className="p-8">
-              <div className="text-[11px] font-mono font-semibold uppercase tracking-wider text-text-muted mb-4 text-center">
+              <div className="text-[11px] font-mono font-semibold uppercase tracking-wider text-ink-3 mb-4 text-center">
                 5-Channel Orchestration
               </div>
               
@@ -203,7 +203,7 @@ export default function DashboardPage() {
                     <div className="text-4xl font-extrabold font-mono text-amber">
                       1.8K
                     </div>
-                    <div className="text-xs text-text-muted uppercase tracking-wider font-mono">Touches</div>
+                    <div className="text-xs text-ink-3 uppercase tracking-wider font-mono">Touches</div>
                   </div>
                 </div>
               </div>
@@ -236,13 +236,13 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">
             {statsGrid.map((stat) => (
               <GlassCard key={stat.id} glow className="p-6">
-                <div className="text-3xl font-extrabold font-mono text-text-primary">{stat.value}</div>
-                <div className="text-xs font-mono text-text-muted uppercase tracking-wider mt-2">
+                <div className="text-3xl font-extrabold font-mono text-ink">{stat.value}</div>
+                <div className="text-xs font-mono text-ink-3 uppercase tracking-wider mt-2">
                   {stat.label}
                 </div>
                 <div className={`text-sm font-mono mt-2 ${
                   stat.positive === true ? 'text-amber' : 
-                  stat.positive === false ? 'text-error' : 'text-text-muted'
+                  stat.positive === false ? 'text-error' : 'text-ink-3'
                 }`}>
                   {stat.change}
                 </div>
@@ -254,8 +254,8 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-6 mb-8">
             {/* Hot Prospects — wired to useDashboardV4 */}
             <GlassCard className="p-0 overflow-hidden">
-              <div className="px-6 py-5 border-b border-border-subtle flex items-center justify-between">
-                <div className="flex items-center gap-2.5 text-sm font-semibold text-text-primary">
+              <div className="px-6 py-5 border-b border-rule flex items-center justify-between">
+                <div className="flex items-center gap-2.5 text-sm font-semibold text-ink">
                   <Flame className="w-5 h-5 text-amber" strokeWidth={1.5} />
                   Hot Right Now
                 </div>
@@ -267,14 +267,14 @@ export default function DashboardPage() {
                 {(dashboardData?.hotProspects ?? []).map((prospect) => (
                   <div 
                     key={prospect.id}
-                    className="flex items-center gap-4 py-4 border-b border-border-subtle last:border-0 cursor-pointer hover:bg-bg-elevated hover:-mx-6 hover:px-6 transition-all"
+                    className="flex items-center gap-4 py-4 border-b border-rule last:border-0 cursor-pointer hover:bg-bg-elevated hover:-mx-6 hover:px-6 transition-all"
                   >
-                    <div className="w-11 h-11 rounded-lg flex items-center justify-center text-bg-void text-sm font-semibold bg-gradient-to-br from-amber to-amber-light">
+                    <div className="w-11 h-11 rounded-lg flex items-center justify-center text-bg-cream text-sm font-semibold bg-gradient-to-br from-amber to-amber-light">
                       {prospect.initials}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-sm text-text-primary">{prospect.name}</div>
-                      <div className="text-sm text-text-secondary mt-0.5">
+                      <div className="font-semibold text-sm text-ink">{prospect.name}</div>
+                      <div className="text-sm text-ink-2 mt-0.5">
                         {prospect.company} • {prospect.title}
                       </div>
                       <div className="flex gap-1.5 mt-1.5">
@@ -292,12 +292,12 @@ export default function DashboardPage() {
                       <div className="text-2xl font-extrabold font-mono text-amber">
                         {prospect.score}
                       </div>
-                      <div className="text-[10px] text-text-muted uppercase font-mono">Score</div>
+                      <div className="text-[10px] text-ink-3 uppercase font-mono">Score</div>
                     </div>
                   </div>
                 ))}
                 {!dashboardLoading && (dashboardData?.hotProspects ?? []).length === 0 && (
-                  <div className="py-8 text-center text-text-muted text-sm">
+                  <div className="py-8 text-center text-ink-3 text-sm">
                     No hot prospects yet
                   </div>
                 )}
@@ -320,12 +320,12 @@ export default function DashboardPage() {
 
             {/* What's Working — PR4: insight is live, who-converts/channel-mix are mocks */}
             <GlassCard className="p-0 overflow-hidden">
-              <div className="px-6 py-5 border-b border-border-subtle flex items-center justify-between">
-                <div className="flex items-center gap-2.5 text-sm font-semibold text-text-primary">
+              <div className="px-6 py-5 border-b border-rule flex items-center justify-between">
+                <div className="flex items-center gap-2.5 text-sm font-semibold text-ink">
                   <Lightbulb className="w-5 h-5 text-amber" strokeWidth={1.5} />
                   What's Working
                 </div>
-                <span className="text-xs text-text-muted font-mono">Updated 2h ago</span>
+                <span className="text-xs text-ink-3 font-mono">Updated 2h ago</span>
               </div>
               <div className="p-6 space-y-5">
                 {/* Who-converts + channel-mix sub-panels — endpoints pending */}
@@ -348,7 +348,7 @@ export default function DashboardPage() {
                       <Flame className="w-4 h-4" strokeWidth={1.5} />
                       This Week's Discovery
                     </div>
-                    <div className="text-sm text-text-primary leading-relaxed">
+                    <div className="text-sm text-ink leading-relaxed">
                       {dashboardData.insight.detail}
                     </div>
                   </div>
@@ -361,8 +361,8 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-6">
             {/* Recent Activity — wired to useLiveActivityFeed (30s polling) */}
             <GlassCard className="p-0 overflow-hidden">
-              <div className="px-6 py-5 border-b border-border-subtle flex items-center justify-between">
-                <div className="flex items-center gap-2.5 text-sm font-semibold text-text-primary">
+              <div className="px-6 py-5 border-b border-rule flex items-center justify-between">
+                <div className="flex items-center gap-2.5 text-sm font-semibold text-ink">
                   <Zap className="w-5 h-5 text-amber" strokeWidth={1.5} />
                   Recent Activity
                 </div>
@@ -372,24 +372,24 @@ export default function DashboardPage() {
               </div>
               <div className="px-6 py-4 max-h-80 overflow-y-auto">
                 {activityFeed.map((item) => (
-                  <div key={item.id} className="flex items-start gap-3 py-3 border-b border-border-subtle last:border-0">
+                  <div key={item.id} className="flex items-start gap-3 py-3 border-b border-rule last:border-0">
                     <div className="w-8 h-8 rounded-lg bg-amber-glow flex items-center justify-center text-amber">
                       <ChannelIcon type={item.channel || 'email'} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm text-text-primary">
+                      <div className="text-sm text-ink">
                         <span className="font-medium">{item.leadName}</span>
-                        {item.company ? <span className="text-text-secondary"> · {item.company}</span> : null}
+                        {item.company ? <span className="text-ink-2"> · {item.company}</span> : null}
                       </div>
-                      <div className="text-xs text-text-secondary mt-0.5">{providerLabel(item.action)}</div>
-                      <div className="text-xs text-text-muted mt-1 font-mono">
+                      <div className="text-xs text-ink-2 mt-0.5">{providerLabel(item.action)}</div>
+                      <div className="text-xs text-ink-3 mt-1 font-mono">
                         {new Date(item.createdAt).toLocaleString()}
                       </div>
                     </div>
                   </div>
                 ))}
                 {!activityLoading && activityFeed.length === 0 && (
-                  <div className="py-8 text-center text-text-muted text-sm">
+                  <div className="py-8 text-center text-ink-3 text-sm">
                     No recent activity
                   </div>
                 )}
@@ -398,8 +398,8 @@ export default function DashboardPage() {
 
             {/* Week Ahead — wired to useDashboardV4 weekAhead */}
             <GlassCard className="p-0 overflow-hidden">
-              <div className="px-6 py-5 border-b border-border-subtle flex items-center justify-between">
-                <div className="flex items-center gap-2.5 text-sm font-semibold text-text-primary">
+              <div className="px-6 py-5 border-b border-rule flex items-center justify-between">
+                <div className="flex items-center gap-2.5 text-sm font-semibold text-ink">
                   <Calendar className="w-5 h-5 text-amber" strokeWidth={1.5} />
                   Week Ahead
                 </div>
@@ -409,10 +409,10 @@ export default function DashboardPage() {
               </div>
               <div className="px-6 py-4">
                 {(dashboardData?.weekAhead ?? []).map((meeting) => (
-                  <div key={meeting.id} className="flex items-center gap-4 py-3.5 border-b border-border-subtle last:border-0">
+                  <div key={meeting.id} className="flex items-center gap-4 py-3.5 border-b border-rule last:border-0">
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-semibold text-text-primary">{meeting.type}</div>
-                      <div className="text-sm text-text-secondary mt-0.5">
+                      <div className="text-sm font-semibold text-ink">{meeting.type}</div>
+                      <div className="text-sm text-ink-2 mt-0.5">
                         {meeting.name} • {meeting.company}
                       </div>
                     </div>
@@ -421,7 +421,7 @@ export default function DashboardPage() {
                         {meeting.dayLabel} {meeting.time}
                       </div>
                       {meeting.potentialValue > 0 && (
-                        <div className="text-xs text-text-muted font-mono">
+                        <div className="text-xs text-ink-3 font-mono">
                           ${meeting.potentialValue.toLocaleString()}
                         </div>
                       )}
@@ -429,7 +429,7 @@ export default function DashboardPage() {
                   </div>
                 ))}
                 {!dashboardLoading && (dashboardData?.weekAhead ?? []).length === 0 && (
-                  <div className="py-8 text-center text-text-muted text-sm">
+                  <div className="py-8 text-center text-ink-3 text-sm">
                     No upcoming meetings
                   </div>
                 )}
@@ -438,8 +438,8 @@ export default function DashboardPage() {
 
             {/* Warm Replies — wired to useDashboardV4 warmReplies */}
             <GlassCard className="p-0 overflow-hidden">
-              <div className="px-6 py-5 border-b border-border-subtle flex items-center justify-between">
-                <div className="flex items-center gap-2.5 text-sm font-semibold text-text-primary">
+              <div className="px-6 py-5 border-b border-rule flex items-center justify-between">
+                <div className="flex items-center gap-2.5 text-sm font-semibold text-ink">
                   <MessageSquare className="w-5 h-5 text-amber" strokeWidth={1.5} />
                   Warm Replies
                 </div>
@@ -449,23 +449,23 @@ export default function DashboardPage() {
               </div>
               <div className="px-6 py-4">
                 {(dashboardData?.warmReplies ?? []).map((reply) => (
-                  <div key={reply.id} className="py-3.5 border-b border-border-subtle last:border-0">
+                  <div key={reply.id} className="py-3.5 border-b border-rule last:border-0">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber to-amber-light flex items-center justify-center text-bg-void text-xs font-semibold">
+                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber to-amber-light flex items-center justify-center text-bg-cream text-xs font-semibold">
                           {reply.initials}
                         </div>
                         <div>
-                          <div className="text-sm font-semibold text-text-primary">{reply.name}</div>
-                          <div className="text-xs text-text-muted">{reply.company}</div>
+                          <div className="text-sm font-semibold text-ink">{reply.name}</div>
+                          <div className="text-xs text-ink-3">{reply.company}</div>
                         </div>
                       </div>
                     </div>
-                    <p className="text-sm text-text-secondary line-clamp-2 italic">{reply.preview}</p>
+                    <p className="text-sm text-ink-2 line-clamp-2 italic">{reply.preview}</p>
                   </div>
                 ))}
                 {!dashboardLoading && (dashboardData?.warmReplies ?? []).length === 0 && (
-                  <div className="py-8 text-center text-text-muted text-sm">
+                  <div className="py-8 text-center text-ink-3 text-sm">
                     No warm replies yet
                   </div>
                 )}

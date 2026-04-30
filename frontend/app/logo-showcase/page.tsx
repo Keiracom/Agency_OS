@@ -2,12 +2,12 @@
 
 export default function LogoShowcasePage() {
   return (
-    <div className="min-h-screen bg-bg-surface py-12 px-4">
+    <div className="min-h-screen bg-bg-panel py-12 px-4">
       <div className="max-w-7xl mx-auto">
         <h1 className="text-4xl font-bold text-center mb-2 text-gray-900">
           Agency OS Logo Options
         </h1>
-        <p className="text-center text-text-muted mb-12">
+        <p className="text-center text-ink-3 mb-12">
           Compare all variations side by side
         </p>
 
@@ -25,7 +25,7 @@ export default function LogoShowcasePage() {
                   <span className="text-xs text-text-primary0 mb-2 block">Full Size</span>
                   <div className="flex flex-col items-center">
                     <span className="text-5xl font-bold tracking-tight text-black">AOS</span>
-                    <span className="text-sm font-light text-text-muted tracking-widest uppercase mt-1">
+                    <span className="text-sm font-light text-ink-3 tracking-widest uppercase mt-1">
                       Agency Operating System
                     </span>
                   </div>
@@ -46,18 +46,18 @@ export default function LogoShowcasePage() {
             <LogoCardDark label="A1 - Solid Text (Dark)">
               <div className="space-y-8">
                 <div>
-                  <span className="text-xs text-text-muted mb-2 block">Full Size</span>
+                  <span className="text-xs text-ink-3 mb-2 block">Full Size</span>
                   <div className="flex flex-col items-center">
-                    <span className="text-5xl font-bold tracking-tight text-text-primary">AOS</span>
-                    <span className="text-sm font-light text-text-muted tracking-widest uppercase mt-1">
+                    <span className="text-5xl font-bold tracking-tight text-ink">AOS</span>
+                    <span className="text-sm font-light text-ink-3 tracking-widest uppercase mt-1">
                       Agency Operating System
                     </span>
                   </div>
                 </div>
                 <div>
-                  <span className="text-xs text-text-muted mb-2 block">Nav Size</span>
+                  <span className="text-xs text-ink-3 mb-2 block">Nav Size</span>
                   <div className="flex items-baseline gap-2">
-                    <span className="text-2xl font-bold tracking-tight text-text-primary">AOS</span>
+                    <span className="text-2xl font-bold tracking-tight text-ink">AOS</span>
                     <span className="text-xs font-light text-text-primary0 tracking-wider">
                       Agency Operating System
                     </span>
@@ -75,7 +75,7 @@ export default function LogoShowcasePage() {
                     <span className="text-5xl font-bold tracking-tight bg-gradient-to-r from-amber to-amber bg-clip-text text-transparent">
                       AOS
                     </span>
-                    <span className="text-sm font-light text-text-muted tracking-widest uppercase mt-1">
+                    <span className="text-sm font-light text-ink-3 tracking-widest uppercase mt-1">
                       Agency Operating System
                     </span>
                   </div>
@@ -97,18 +97,18 @@ export default function LogoShowcasePage() {
             <LogoCardDark label="A2 - Gradient Text (Dark)">
               <div className="space-y-8">
                 <div>
-                  <span className="text-xs text-text-muted mb-2 block">Full Size</span>
+                  <span className="text-xs text-ink-3 mb-2 block">Full Size</span>
                   <div className="flex flex-col items-center">
                     <span className="text-5xl font-bold tracking-tight bg-gradient-to-r from-text-secondary to-amber bg-clip-text text-transparent">
                       AOS
                     </span>
-                    <span className="text-sm font-light text-text-muted tracking-widest uppercase mt-1">
+                    <span className="text-sm font-light text-ink-3 tracking-widest uppercase mt-1">
                       Agency Operating System
                     </span>
                   </div>
                 </div>
                 <div>
-                  <span className="text-xs text-text-muted mb-2 block">Nav Size</span>
+                  <span className="text-xs text-ink-3 mb-2 block">Nav Size</span>
                   <div className="flex items-baseline gap-2">
                     <span className="text-2xl font-bold tracking-tight bg-gradient-to-r from-text-secondary to-amber bg-clip-text text-transparent">
                       AOS
@@ -136,7 +136,7 @@ export default function LogoShowcasePage() {
                   <span className="text-xs text-text-primary0 mb-2 block">Full Size</span>
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber to-amber flex items-center justify-center">
-                      <span className="text-text-primary font-bold text-lg">A</span>
+                      <span className="text-ink font-bold text-lg">A</span>
                     </div>
                     <div className="flex flex-col">
                       <span className="text-3xl font-bold tracking-tight text-black">AOS</span>
@@ -150,7 +150,7 @@ export default function LogoShowcasePage() {
                   <span className="text-xs text-text-primary0 mb-2 block">Nav Size</span>
                   <div className="flex items-center gap-2">
                     <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber to-amber flex items-center justify-center">
-                      <span className="text-text-primary font-bold text-sm">A</span>
+                      <span className="text-ink font-bold text-sm">A</span>
                     </div>
                     <span className="text-xl font-bold tracking-tight text-black">AOS</span>
                   </div>
@@ -161,26 +161,26 @@ export default function LogoShowcasePage() {
             <LogoCardDark label="B1 - Rounded Square (Dark)">
               <div className="space-y-8">
                 <div>
-                  <span className="text-xs text-text-muted mb-2 block">Full Size</span>
+                  <span className="text-xs text-ink-3 mb-2 block">Full Size</span>
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber to-amber flex items-center justify-center">
-                      <span className="text-text-primary font-bold text-lg">A</span>
+                      <span className="text-ink font-bold text-lg">A</span>
                     </div>
                     <div className="flex flex-col">
-                      <span className="text-3xl font-bold tracking-tight text-text-primary">AOS</span>
-                      <span className="text-xs font-light text-text-muted tracking-wider uppercase">
+                      <span className="text-3xl font-bold tracking-tight text-ink">AOS</span>
+                      <span className="text-xs font-light text-ink-3 tracking-wider uppercase">
                         Agency Operating System
                       </span>
                     </div>
                   </div>
                 </div>
                 <div>
-                  <span className="text-xs text-text-muted mb-2 block">Nav Size</span>
+                  <span className="text-xs text-ink-3 mb-2 block">Nav Size</span>
                   <div className="flex items-center gap-2">
                     <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber to-amber flex items-center justify-center">
-                      <span className="text-text-primary font-bold text-sm">A</span>
+                      <span className="text-ink font-bold text-sm">A</span>
                     </div>
-                    <span className="text-xl font-bold tracking-tight text-text-primary">AOS</span>
+                    <span className="text-xl font-bold tracking-tight text-ink">AOS</span>
                   </div>
                 </div>
               </div>
@@ -232,7 +232,7 @@ export default function LogoShowcasePage() {
             <LogoCardDark label="B2 - Hexagon (Dark)">
               <div className="space-y-8">
                 <div>
-                  <span className="text-xs text-text-muted mb-2 block">Full Size</span>
+                  <span className="text-xs text-ink-3 mb-2 block">Full Size</span>
                   <div className="flex items-center gap-3">
                     <svg width="48" height="48" viewBox="0 0 48 48" className="flex-shrink-0">
                       <defs>
@@ -248,15 +248,15 @@ export default function LogoShowcasePage() {
                       <text x="24" y="29" textAnchor="middle" fill="white" fontWeight="bold" fontSize="16">A</text>
                     </svg>
                     <div className="flex flex-col">
-                      <span className="text-3xl font-bold tracking-tight text-text-primary">AOS</span>
-                      <span className="text-xs font-light text-text-muted tracking-wider uppercase">
+                      <span className="text-3xl font-bold tracking-tight text-ink">AOS</span>
+                      <span className="text-xs font-light text-ink-3 tracking-wider uppercase">
                         Agency Operating System
                       </span>
                     </div>
                   </div>
                 </div>
                 <div>
-                  <span className="text-xs text-text-muted mb-2 block">Nav Size</span>
+                  <span className="text-xs text-ink-3 mb-2 block">Nav Size</span>
                   <div className="flex items-center gap-2">
                     <svg width="32" height="32" viewBox="0 0 48 48" className="flex-shrink-0">
                       <path
@@ -265,7 +265,7 @@ export default function LogoShowcasePage() {
                       />
                       <text x="24" y="29" textAnchor="middle" fill="white" fontWeight="bold" fontSize="16">A</text>
                     </svg>
-                    <span className="text-xl font-bold tracking-tight text-text-primary">AOS</span>
+                    <span className="text-xl font-bold tracking-tight text-ink">AOS</span>
                   </div>
                 </div>
               </div>
@@ -317,7 +317,7 @@ export default function LogoShowcasePage() {
             <LogoCardDark label="B3 - Abstract A (Dark)">
               <div className="space-y-8">
                 <div>
-                  <span className="text-xs text-text-muted mb-2 block">Full Size</span>
+                  <span className="text-xs text-ink-3 mb-2 block">Full Size</span>
                   <div className="flex items-center gap-3">
                     <svg width="48" height="48" viewBox="0 0 48 48" className="flex-shrink-0">
                       <defs>
@@ -333,15 +333,15 @@ export default function LogoShowcasePage() {
                       />
                     </svg>
                     <div className="flex flex-col">
-                      <span className="text-3xl font-bold tracking-tight text-text-primary">AOS</span>
-                      <span className="text-xs font-light text-text-muted tracking-wider uppercase">
+                      <span className="text-3xl font-bold tracking-tight text-ink">AOS</span>
+                      <span className="text-xs font-light text-ink-3 tracking-wider uppercase">
                         Agency Operating System
                       </span>
                     </div>
                   </div>
                 </div>
                 <div>
-                  <span className="text-xs text-text-muted mb-2 block">Nav Size</span>
+                  <span className="text-xs text-ink-3 mb-2 block">Nav Size</span>
                   <div className="flex items-center gap-2">
                     <svg width="32" height="32" viewBox="0 0 48 48" className="flex-shrink-0">
                       <path
@@ -350,7 +350,7 @@ export default function LogoShowcasePage() {
                         fillRule="evenodd"
                       />
                     </svg>
-                    <span className="text-xl font-bold tracking-tight text-text-primary">AOS</span>
+                    <span className="text-xl font-bold tracking-tight text-ink">AOS</span>
                   </div>
                 </div>
               </div>
@@ -409,7 +409,7 @@ export default function LogoShowcasePage() {
             <LogoCardDark label="C1 - Connected Letters (Dark)">
               <div className="space-y-8">
                 <div>
-                  <span className="text-xs text-text-muted mb-2 block">Full Size</span>
+                  <span className="text-xs text-ink-3 mb-2 block">Full Size</span>
                   <div className="flex flex-col items-center">
                     <svg width="180" height="60" viewBox="0 0 180 60" className="mb-1">
                       <defs>
@@ -424,13 +424,13 @@ export default function LogoShowcasePage() {
                       <path d="M130 18 C150 10 165 20 155 32 C145 44 165 54 145 50" stroke="url(#connGradDark)" strokeWidth="6" fill="none" strokeLinecap="round"/>
                       <line x1="115" y1="30" x2="130" y2="22" stroke="url(#connGradDark)" strokeWidth="3" strokeLinecap="round"/>
                     </svg>
-                    <span className="text-xs font-light text-text-muted tracking-wider uppercase">
+                    <span className="text-xs font-light text-ink-3 tracking-wider uppercase">
                       Agency Operating System
                     </span>
                   </div>
                 </div>
                 <div>
-                  <span className="text-xs text-text-muted mb-2 block">Nav Size</span>
+                  <span className="text-xs text-ink-3 mb-2 block">Nav Size</span>
                   <svg width="100" height="32" viewBox="0 0 180 60">
                     <path d="M10 50 L30 10 L50 50 M18 38 L42 38" stroke="url(#connGradDark)" strokeWidth="6" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
                     <ellipse cx="90" cy="30" rx="25" ry="22" stroke="url(#connGradDark)" strokeWidth="6" fill="none"/>
@@ -464,7 +464,7 @@ export default function LogoShowcasePage() {
                       <span className="text-xl font-black bg-gradient-to-r from-amber to-amber bg-clip-text text-transparent">A</span>
                       <span className="text-base font-black bg-gradient-to-r from-amber to-amber bg-clip-text text-transparent -mt-1">OS</span>
                     </div>
-                    <span className="text-sm font-medium text-text-muted">Agency OS</span>
+                    <span className="text-sm font-medium text-ink-3">Agency OS</span>
                   </div>
                 </div>
               </div>
@@ -473,25 +473,25 @@ export default function LogoShowcasePage() {
             <LogoCardDark label="C2 - Stacked Letters (Dark)">
               <div className="space-y-8">
                 <div>
-                  <span className="text-xs text-text-muted mb-2 block">Full Size</span>
+                  <span className="text-xs text-ink-3 mb-2 block">Full Size</span>
                   <div className="flex flex-col items-center">
                     <div className="flex flex-col items-center leading-none">
                       <span className="text-4xl font-black bg-gradient-to-r from-text-secondary to-amber bg-clip-text text-transparent">A</span>
                       <span className="text-3xl font-black bg-gradient-to-r from-text-secondary to-amber bg-clip-text text-transparent -mt-2">OS</span>
                     </div>
-                    <span className="text-xs font-light text-text-muted tracking-wider uppercase mt-2">
+                    <span className="text-xs font-light text-ink-3 tracking-wider uppercase mt-2">
                       Agency Operating System
                     </span>
                   </div>
                 </div>
                 <div>
-                  <span className="text-xs text-text-muted mb-2 block">Nav Size</span>
+                  <span className="text-xs text-ink-3 mb-2 block">Nav Size</span>
                   <div className="flex items-center gap-2">
                     <div className="flex flex-col items-center leading-none">
                       <span className="text-xl font-black bg-gradient-to-r from-text-secondary to-amber bg-clip-text text-transparent">A</span>
                       <span className="text-base font-black bg-gradient-to-r from-text-secondary to-amber bg-clip-text text-transparent -mt-1">OS</span>
                     </div>
-                    <span className="text-sm font-medium text-text-secondary">Agency OS</span>
+                    <span className="text-sm font-medium text-ink-2">Agency OS</span>
                   </div>
                 </div>
               </div>
@@ -538,7 +538,7 @@ export default function LogoShowcasePage() {
             <LogoCardDark label="C3 - Geometric Integration (Dark)">
               <div className="space-y-8">
                 <div>
-                  <span className="text-xs text-text-muted mb-2 block">Full Size</span>
+                  <span className="text-xs text-ink-3 mb-2 block">Full Size</span>
                   <div className="flex flex-col items-center">
                     <svg width="160" height="50" viewBox="0 0 160 50">
                       <defs>
@@ -552,13 +552,13 @@ export default function LogoShowcasePage() {
                       <text x="85" y="40" fill="url(#geoGradDark)" fontWeight="800" fontSize="40" fontFamily="system-ui">O</text>
                       <text x="120" y="40" fill="url(#geoGradDark)" fontWeight="800" fontSize="40" fontFamily="system-ui">S</text>
                     </svg>
-                    <span className="text-xs font-light text-text-muted tracking-wider uppercase">
+                    <span className="text-xs font-light text-ink-3 tracking-wider uppercase">
                       Agency Operating System
                     </span>
                   </div>
                 </div>
                 <div>
-                  <span className="text-xs text-text-muted mb-2 block">Nav Size</span>
+                  <span className="text-xs text-ink-3 mb-2 block">Nav Size</span>
                   <svg width="90" height="28" viewBox="0 0 160 50">
                     <path d="M25 45 L40 5 L55 45 M32 32 L48 32" stroke="url(#geoGradDark)" strokeWidth="5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
                     <rect x="33" y="15" width="14" height="14" transform="rotate(45 40 22)" fill="url(#geoGradDark)" opacity="0.3"/>
@@ -582,19 +582,19 @@ export default function LogoShowcasePage() {
               <div className="flex items-center gap-6">
                 <div className="flex flex-col items-center gap-2">
                   <div className="w-16 h-16 rounded-full bg-gradient-to-br from-amber to-amber flex items-center justify-center">
-                    <span className="text-text-primary font-bold text-2xl">A</span>
+                    <span className="text-ink font-bold text-2xl">A</span>
                   </div>
                   <span className="text-xs text-text-primary0">64px</span>
                 </div>
                 <div className="flex flex-col items-center gap-2">
                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber to-amber flex items-center justify-center">
-                    <span className="text-text-primary font-bold text-lg">A</span>
+                    <span className="text-ink font-bold text-lg">A</span>
                   </div>
                   <span className="text-xs text-text-primary0">40px</span>
                 </div>
                 <div className="flex flex-col items-center gap-2">
                   <div className="w-6 h-6 rounded-full bg-gradient-to-br from-amber to-amber flex items-center justify-center">
-                    <span className="text-text-primary font-bold text-xs">A</span>
+                    <span className="text-ink font-bold text-xs">A</span>
                   </div>
                   <span className="text-xs text-text-primary0">24px</span>
                 </div>
@@ -605,21 +605,21 @@ export default function LogoShowcasePage() {
               <div className="flex items-center gap-6">
                 <div className="flex flex-col items-center gap-2">
                   <div className="w-16 h-16 rounded-full bg-gradient-to-br from-amber to-amber flex items-center justify-center">
-                    <span className="text-text-primary font-bold text-2xl">A</span>
+                    <span className="text-ink font-bold text-2xl">A</span>
                   </div>
-                  <span className="text-xs text-text-muted">64px</span>
+                  <span className="text-xs text-ink-3">64px</span>
                 </div>
                 <div className="flex flex-col items-center gap-2">
                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber to-amber flex items-center justify-center">
-                    <span className="text-text-primary font-bold text-lg">A</span>
+                    <span className="text-ink font-bold text-lg">A</span>
                   </div>
-                  <span className="text-xs text-text-muted">40px</span>
+                  <span className="text-xs text-ink-3">40px</span>
                 </div>
                 <div className="flex flex-col items-center gap-2">
                   <div className="w-6 h-6 rounded-full bg-gradient-to-br from-amber to-amber flex items-center justify-center">
-                    <span className="text-text-primary font-bold text-xs">A</span>
+                    <span className="text-ink font-bold text-xs">A</span>
                   </div>
-                  <span className="text-xs text-text-muted">24px</span>
+                  <span className="text-xs text-ink-3">24px</span>
                 </div>
               </div>
             </LogoCardDark>
@@ -629,19 +629,19 @@ export default function LogoShowcasePage() {
               <div className="flex items-center gap-6">
                 <div className="flex flex-col items-center gap-2">
                   <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber to-amber flex items-center justify-center">
-                    <span className="text-text-primary font-bold text-2xl">A</span>
+                    <span className="text-ink font-bold text-2xl">A</span>
                   </div>
                   <span className="text-xs text-text-primary0">64px</span>
                 </div>
                 <div className="flex flex-col items-center gap-2">
                   <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber to-amber flex items-center justify-center">
-                    <span className="text-text-primary font-bold text-lg">A</span>
+                    <span className="text-ink font-bold text-lg">A</span>
                   </div>
                   <span className="text-xs text-text-primary0">40px</span>
                 </div>
                 <div className="flex flex-col items-center gap-2">
                   <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-amber to-amber flex items-center justify-center">
-                    <span className="text-text-primary font-bold text-xs">A</span>
+                    <span className="text-ink font-bold text-xs">A</span>
                   </div>
                   <span className="text-xs text-text-primary0">24px</span>
                 </div>
@@ -652,21 +652,21 @@ export default function LogoShowcasePage() {
               <div className="flex items-center gap-6">
                 <div className="flex flex-col items-center gap-2">
                   <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber to-amber flex items-center justify-center">
-                    <span className="text-text-primary font-bold text-2xl">A</span>
+                    <span className="text-ink font-bold text-2xl">A</span>
                   </div>
-                  <span className="text-xs text-text-muted">64px</span>
+                  <span className="text-xs text-ink-3">64px</span>
                 </div>
                 <div className="flex flex-col items-center gap-2">
                   <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber to-amber flex items-center justify-center">
-                    <span className="text-text-primary font-bold text-lg">A</span>
+                    <span className="text-ink font-bold text-lg">A</span>
                   </div>
-                  <span className="text-xs text-text-muted">40px</span>
+                  <span className="text-xs text-ink-3">40px</span>
                 </div>
                 <div className="flex flex-col items-center gap-2">
                   <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-amber to-amber flex items-center justify-center">
-                    <span className="text-text-primary font-bold text-xs">A</span>
+                    <span className="text-ink font-bold text-xs">A</span>
                   </div>
-                  <span className="text-xs text-text-muted">24px</span>
+                  <span className="text-xs text-ink-3">24px</span>
                 </div>
               </div>
             </LogoCardDark>
@@ -717,21 +717,21 @@ export default function LogoShowcasePage() {
                     <path d="M32 4 L58 18 L58 46 L32 60 L6 46 L6 18 Z" fill="url(#iconHexGradDark)" />
                     <text x="32" y="40" textAnchor="middle" fill="white" fontWeight="bold" fontSize="24">A</text>
                   </svg>
-                  <span className="text-xs text-text-muted">64px</span>
+                  <span className="text-xs text-ink-3">64px</span>
                 </div>
                 <div className="flex flex-col items-center gap-2">
                   <svg width="40" height="40" viewBox="0 0 64 64">
                     <path d="M32 4 L58 18 L58 46 L32 60 L6 46 L6 18 Z" fill="url(#iconHexGradDark)" />
                     <text x="32" y="40" textAnchor="middle" fill="white" fontWeight="bold" fontSize="24">A</text>
                   </svg>
-                  <span className="text-xs text-text-muted">40px</span>
+                  <span className="text-xs text-ink-3">40px</span>
                 </div>
                 <div className="flex flex-col items-center gap-2">
                   <svg width="24" height="24" viewBox="0 0 64 64">
                     <path d="M32 4 L58 18 L58 46 L32 60 L6 46 L6 18 Z" fill="url(#iconHexGradDark)" />
                     <text x="32" y="40" textAnchor="middle" fill="white" fontWeight="bold" fontSize="24">A</text>
                   </svg>
-                  <span className="text-xs text-text-muted">24px</span>
+                  <span className="text-xs text-ink-3">24px</span>
                 </div>
               </div>
             </LogoCardDark>
@@ -741,19 +741,19 @@ export default function LogoShowcasePage() {
               <div className="flex items-center gap-6">
                 <div className="flex flex-col items-center gap-2">
                   <div className="w-16 h-16 rounded-2xl bg-black flex items-center justify-center">
-                    <span className="text-text-primary font-bold text-2xl">A</span>
+                    <span className="text-ink font-bold text-2xl">A</span>
                   </div>
                   <span className="text-xs text-text-primary0">64px</span>
                 </div>
                 <div className="flex flex-col items-center gap-2">
                   <div className="w-10 h-10 rounded-xl bg-black flex items-center justify-center">
-                    <span className="text-text-primary font-bold text-lg">A</span>
+                    <span className="text-ink font-bold text-lg">A</span>
                   </div>
                   <span className="text-xs text-text-primary0">40px</span>
                 </div>
                 <div className="flex flex-col items-center gap-2">
                   <div className="w-6 h-6 rounded-lg bg-black flex items-center justify-center">
-                    <span className="text-text-primary font-bold text-xs">A</span>
+                    <span className="text-ink font-bold text-xs">A</span>
                   </div>
                   <span className="text-xs text-text-primary0">24px</span>
                 </div>
@@ -763,22 +763,22 @@ export default function LogoShowcasePage() {
             <LogoCardDark label="D4 - Solid White">
               <div className="flex items-center gap-6">
                 <div className="flex flex-col items-center gap-2">
-                  <div className="w-16 h-16 rounded-2xl bg-bg-surface flex items-center justify-center">
+                  <div className="w-16 h-16 rounded-2xl bg-bg-panel flex items-center justify-center">
                     <span className="text-black font-bold text-2xl">A</span>
                   </div>
-                  <span className="text-xs text-text-muted">64px</span>
+                  <span className="text-xs text-ink-3">64px</span>
                 </div>
                 <div className="flex flex-col items-center gap-2">
-                  <div className="w-10 h-10 rounded-xl bg-bg-surface flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-xl bg-bg-panel flex items-center justify-center">
                     <span className="text-black font-bold text-lg">A</span>
                   </div>
-                  <span className="text-xs text-text-muted">40px</span>
+                  <span className="text-xs text-ink-3">40px</span>
                 </div>
                 <div className="flex flex-col items-center gap-2">
-                  <div className="w-6 h-6 rounded-lg bg-bg-surface flex items-center justify-center">
+                  <div className="w-6 h-6 rounded-lg bg-bg-panel flex items-center justify-center">
                     <span className="text-black font-bold text-xs">A</span>
                   </div>
-                  <span className="text-xs text-text-muted">24px</span>
+                  <span className="text-xs text-ink-3">24px</span>
                 </div>
               </div>
             </LogoCardDark>
@@ -786,9 +786,9 @@ export default function LogoShowcasePage() {
         </section>
 
         {/* Summary */}
-        <section className="bg-bg-surface rounded-xl p-6 shadow-sm border">
+        <section className="bg-bg-panel rounded-xl p-6 shadow-sm border">
           <h2 className="text-xl font-semibold mb-4 text-gray-800">Summary</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm text-text-muted">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm text-ink-3">
             <div>
               <h3 className="font-medium text-gray-800 mb-2">Option A</h3>
               <p>Clean wordmark, minimal, professional. Best for text-heavy layouts.</p>
@@ -814,8 +814,8 @@ export default function LogoShowcasePage() {
 
 function LogoCard({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="bg-bg-surface rounded-xl p-6 shadow-sm border">
-      <span className="text-sm font-medium text-text-muted mb-4 block">{label}</span>
+    <div className="bg-bg-panel rounded-xl p-6 shadow-sm border">
+      <span className="text-sm font-medium text-ink-3 mb-4 block">{label}</span>
       {children}
     </div>
   );
@@ -824,7 +824,7 @@ function LogoCard({ label, children }: { label: string; children: React.ReactNod
 function LogoCardDark({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="rounded-xl p-6 shadow-sm border" style={{ backgroundColor: "#1d1d1f" }}>
-      <span className="text-sm font-medium text-text-secondary mb-4 block">{label}</span>
+      <span className="text-sm font-medium text-ink-2 mb-4 block">{label}</span>
       {children}
     </div>
   );

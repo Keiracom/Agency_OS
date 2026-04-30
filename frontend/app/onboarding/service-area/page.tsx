@@ -64,6 +64,24 @@ export default function ServiceAreaPage() {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.detail || `Save failed (${res.status})`);
       }
+
+      // A7 dispatch: kick off the first pipeline run for this agency
+      // immediately after onboarding finalizes. Fire-and-forget — a
+      // 404 / 5xx here must NOT block dashboard entry, so we swallow
+      // any error and the operator can retrigger from /dashboard.
+      // Backend endpoint: POST /api/v1/pipeline/trigger
+      // (reuses the same auth cookie as /onboarding/confirm).
+      void fetch(`${API_BASE}/api/v1/pipeline/trigger`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ source: "onboarding_finalize" }),
+      }).catch(() => {
+        // Non-fatal; endpoint may not be deployed yet — dashboard
+        // still loads with whatever data the seed_demo_tenant or
+        // existing pipeline runs have produced.
+      });
+
       router.push("/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save");
@@ -72,10 +90,7 @@ export default function ServiceAreaPage() {
   };
 
   return (
-    <div
-      style={{ backgroundColor: "#F7F3EE", color: "#0C0A08", minHeight: "100vh" }}
-      className="flex items-center justify-center px-4 py-16"
-    >
+    <div className="min-h-screen flex items-center justify-center px-4 py-16 bg-cream text-ink">
       <div className="w-full max-w-xl">
         {/* Step label */}
         <p

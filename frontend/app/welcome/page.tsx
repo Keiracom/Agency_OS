@@ -4,13 +4,24 @@
  * FILE: frontend/app/welcome/page.tsx
  * PURPOSE: Post-deposit welcome page for founding members
  * DIRECTIVE: #314 — Task B
- * DESIGN: Matches prototype_welcome_page.html exactly
- *   cream #F7F3EE bg, ink #0C0A08 text, amber #D4956A accents
- *   Playfair Display headlines, DM Sans body, JetBrains Mono labels
+ * UPDATED: A7.1 (2026-04-30) — restored after the brief retire in
+ *          PR #461. Local CSS-var redefinitions (cream/ink/amber)
+ *          dropped so the page now reads from the global tokens
+ *          set in app/globals.css by the A1 codemod. Side-effect:
+ *          A2's dark-mode toggle automatically inverts this page
+ *          alongside the rest of the dashboard. Demo-cookie
+ *          short-circuit added so investor previews bounce to
+ *          /onboarding/step-1?demo=true (matching the rest of the
+ *          /welcome flow's redirect contracts).
+ * DESIGN: Cream/ink/amber palette (now inherited from globals.css);
+ *          Playfair Display headlines, DM Sans body, JetBrains Mono
+ *          labels — unchanged from the original /welcome render.
  * STATE:
- *   - No subscription → redirect to /
- *   - Subscription, no onboarding → show welcome
- *   - Onboarding complete → redirect to /dashboard
+ *   - agency_os_demo cookie     → /onboarding/step-1?demo=true
+ *   - No auth                    → /
+ *   - No paid subscription       → /
+ *   - Paid, onboarding complete  → /dashboard
+ *   - Paid, onboarding pending   → render founding-member welcome
  */
 
 import { useEffect, useState } from "react";
@@ -42,6 +53,19 @@ export default function WelcomePage() {
 
   useEffect(() => {
     async function checkState() {
+      // A7.1 demo-cookie short-circuit — investor previews don't have
+      // a Supabase session, so the welcome page would otherwise bounce
+      // them to /. Forward to the onboarding demo flow instead.
+      if (typeof document !== "undefined") {
+        const cookie = document.cookie
+          .split("; ")
+          .find((row) => row.startsWith("agency_os_demo="));
+        if (cookie?.split("=")[1] === "true") {
+          router.replace("/onboarding/step-1?demo=true");
+          return;
+        }
+      }
+
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         router.replace("/");
@@ -144,20 +168,21 @@ export default function WelcomePage() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400;1,700&family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap');
-
-        :root {
-          --cream:   #F7F3EE;
-          --surface: #EDE8E0;
-          --ink:     #0C0A08;
-          --ink-2:   #2E2B26;
-          --ink-3:   #7A756D;
-          --amber:   #D4956A;
+        /* A7.1: fonts are loaded once in app/globals.css; the local
+           :root token overrides have been removed so this page reads
+           from the global cream/amber/ink scale set by the A1 codemod
+           (and inverts under html.dark from A2). The amber-tinted
+           helper vars below are page-local — they don't have a
+           global counterpart and only this surface uses them. */
+        .welcome-body {
+          /* Amber tints — only used on this surface */
           --amber-b: rgba(212,149,106,0.28);
           --amber-d: rgba(212,149,106,0.10);
-          --rule:    rgba(12,10,8,0.08);
-          --rule-2:  rgba(12,10,8,0.14);
-          --rule-i:  rgba(255,255,255,0.08);
+          /* --rule-2 alias → globals' --rule-strong (same value) */
+          --rule-2: var(--rule-strong);
+          /* --rule-i: inverse rule for dark-on-light blocks (e.g. the
+             ink hero card). No global equivalent — page-local. */
+          --rule-i: rgba(255,255,255,0.08);
         }
 
         .welcome-body {

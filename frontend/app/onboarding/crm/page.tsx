@@ -49,8 +49,7 @@ export default function CRMOnboardingPage() {
 
   return (
     <div
-      style={{ backgroundColor: "#F7F3EE", color: "#0C0A08", minHeight: "100vh" }}
-      className="flex items-center justify-center px-4 py-16"
+      className="min-h-screen flex items-center justify-center px-4 py-16 bg-cream text-ink"
     >
       <div className="w-full max-w-xl">
         {/* Step label */}

@@ -60,7 +60,7 @@ function HeaderCell({
   return (
     <th
       onClick={() => onClick(sortKey)}
-      className="text-left px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-gray-400 cursor-pointer select-none hover:text-gray-200"
+      className="text-left px-[18px] py-3.5 font-mono text-[10px] uppercase tracking-[0.12em] text-ink-3 cursor-pointer select-none hover:text-amber bg-surface border-b border-rule font-semibold"
     >
       {label}{is ? (dir === "asc" ? " ↑" : " ↓") : ""}
     </th>
@@ -84,9 +84,9 @@ export function PipelineTable({ prospects, onOpen, isLoading }: Props) {
   }, [prospects, sortKey, dir]);
 
   return (
-    <div className="md:overflow-x-auto md:bg-gray-900 md:border md:border-gray-800 md:rounded-xl">
-      <table className="w-full text-sm mobile-card-table">
-        <thead className="border-b border-gray-800">
+    <div className="md:overflow-x-auto md:bg-panel md:border md:border-rule md:rounded-[10px]">
+      <table className="w-full text-[13px] mobile-card-table">
+        <thead>
           <tr>
             <HeaderCell label="Prospect"   sortKey="name"         active={sortKey} dir={dir} onClick={handleSort} />
             <HeaderCell label="Company"    sortKey="company"      active={sortKey} dir={dir} onClick={handleSort} />
@@ -100,7 +100,7 @@ export function PipelineTable({ prospects, onOpen, isLoading }: Props) {
         <tbody>
           {sorted.length === 0 ? (
             <tr>
-              <td colSpan={7} className="px-3 py-8 text-center text-gray-500 italic">
+              <td colSpan={7} className="px-[18px] py-8 text-center text-ink-3 italic">
                 {isLoading ? "Loading…" : "No prospects yet"}
               </td>
             </tr>
@@ -108,22 +108,35 @@ export function PipelineTable({ prospects, onOpen, isLoading }: Props) {
             <tr
               key={p.id}
               onClick={() => onOpen(p.id)}
-              className="border-b border-gray-800/60 hover:bg-gray-800/60 cursor-pointer"
+              data-label="Row"
+              className="border-b border-rule hover:bg-amber-soft cursor-pointer transition-colors"
             >
-              <td className="px-3 py-2 text-gray-100">{p.name}</td>
-              <td className="px-3 py-2 text-gray-300">{p.company}</td>
-              <td className="px-3 py-2 text-gray-300">{STAGE_LABEL[p.stage]}</td>
-              <td className="px-3 py-2 text-gray-400 font-mono text-xs">
+              <td data-label="Prospect"   className="px-[18px] py-4 font-display font-bold text-[14px] text-ink">
+                {p.name}
+              </td>
+              <td data-label="Company"    className="px-[18px] py-4 text-ink-2">{p.company}</td>
+              <td data-label="Stage"      className="px-[18px] py-4 text-ink-2">{STAGE_LABEL[p.stage]}</td>
+              <td data-label="Channel"    className="px-[18px] py-4 font-mono text-[11px] text-ink-3">
                 {p.lastChannel ? canonicalChannel(p.lastChannel) : "—"}
               </td>
-              <td className="px-3 py-2 text-gray-400 font-mono text-xs">{fmtDate(p.lastTouchAt)}</td>
-              <td className="px-3 py-2 text-gray-400 font-mono text-xs">{fmtDate(p.nextTouchAt)}</td>
-              <td className="px-3 py-2">
+              <td data-label="Last touch" className="px-[18px] py-4 font-mono text-[11px] text-ink-3">{fmtDate(p.lastTouchAt)}</td>
+              <td data-label="Next touch" className="px-[18px] py-4 font-mono text-[11px] text-ink-3">{fmtDate(p.nextTouchAt)}</td>
+              <td data-label="Grade"      className="px-[18px] py-4">
                 {p.vrGrade ? (
-                  <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/30">
+                  <span
+                    className="font-display font-bold text-[12px] grid place-items-center w-6 h-6 rounded-[5px]"
+                    style={{
+                      backgroundColor:
+                        p.vrGrade === "A" || p.vrGrade === "B" ? "var(--green)" :
+                        p.vrGrade === "C" ? "var(--amber)" :
+                        p.vrGrade === "D" ? "var(--copper)" :
+                        "var(--red)",
+                      color: p.vrGrade === "C" ? "var(--on-amber)" : "white",
+                    }}
+                  >
                     {p.vrGrade}
                   </span>
-                ) : "—"}
+                ) : <span className="text-ink-3">—</span>}
               </td>
             </tr>
           ))}

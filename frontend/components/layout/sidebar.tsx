@@ -14,13 +14,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
-  Users,
-  Megaphone,
-  MessageSquareReply,
   BarChart3,
   Settings,
   Radio,
-  Inbox,
+  List,
   Calendar,
   X,
   ChevronLeft,
@@ -40,36 +37,36 @@ interface NavSection {
   items: NavItem[];
 }
 
+// Sections match /demo's three-block structure (Workspace / Report /
+// Account). Each href targets a real route; Feed = /dashboard/activity
+// per the BottomNav convention from PR #458.
 const navSections: NavSection[] = [
   {
-    title: "Today",
+    title: "Workspace",
     items: [
-      { title: "Command Center", href: "/dashboard", icon: LayoutDashboard },
-      { title: "Live Pipeline",  href: "/dashboard/pipeline", icon: Radio },
-      { title: "Inbox",          href: "/dashboard/inbox", icon: Inbox },
-      { title: "Meetings",       href: "/dashboard/meetings", icon: Calendar },
+      { title: "Home",     href: "/dashboard",          icon: LayoutDashboard },
+      { title: "Pipeline", href: "/dashboard/pipeline", icon: Radio },
+      { title: "Feed",     href: "/dashboard/activity", icon: List },
+      { title: "Meetings", href: "/dashboard/meetings", icon: Calendar },
     ],
   },
   {
-    title: "Workflow",
+    title: "Report",
     items: [
-      { title: "Leads",     href: "/dashboard/leads", icon: Users },
-      { title: "Campaigns", href: "/dashboard/campaigns", icon: Megaphone },
-      { title: "Replies",   href: "/dashboard/replies", icon: MessageSquareReply },
+      { title: "Progress", href: "/dashboard/reports", icon: BarChart3 },
     ],
   },
   {
-    title: "Insights",
+    title: "Account",
     items: [
-      { title: "Reports",  href: "/dashboard/reports", icon: BarChart3 },
       { title: "Settings", href: "/dashboard/settings", icon: Settings },
     ],
   },
 ];
 
 interface SidebarProps {
-  /** Mobile drawer state — controlled by DashboardLayout. Desktop
-   *  sidebar always renders; mobile renders only when `open` is true. */
+  /** Mobile drawer state — controlled by AppShell. Desktop sidebar
+   *  always renders; mobile renders only when `open` is true. */
   open?: boolean;
   /** Mobile drawer dismiss callback (X button + backdrop tap + nav click). */
   onClose?: () => void;
@@ -77,11 +74,21 @@ interface SidebarProps {
   collapsed?: boolean;
   /** A4 — toggle callback for the chevron button. */
   onToggleCollapsed?: () => void;
+  /** B1 — user info for the footer avatar block. Falls back to a
+   *  Maya placeholder when undefined (demo / pre-login). */
+  user?: {
+    initials?: string;
+    name?: string;
+    role?: string;
+  };
 }
 
 export function Sidebar({
-  open = false, onClose, collapsed = false, onToggleCollapsed,
+  open = false, onClose, collapsed = false, onToggleCollapsed, user,
 }: SidebarProps = {}) {
+  const footerInitials = (user?.initials || user?.name?.[0] || "M").toUpperCase().slice(0, 1);
+  const footerName = user?.name || "Maya";
+  const footerRole = user?.role || "BDR · ON";
   const pathname = usePathname();
 
   return (
@@ -251,15 +258,15 @@ export function Sidebar({
         >
           <div
             className="w-[30px] h-[30px] rounded-full bg-amber text-on-amber grid place-items-center font-display font-bold text-[12px] shrink-0"
-            title={collapsed ? "Maya · BDR · ON" : undefined}
+            title={collapsed ? `${footerName} · ${footerRole}` : undefined}
           >
-            M
+            {footerInitials}
           </div>
           {!collapsed && (
             <div className="leading-tight min-w-0">
-              <div className="text-[13px] text-white">Maya</div>
-              <div className="font-mono text-[10.5px] tracking-[0.06em] text-white/40">
-                BDR · ON
+              <div className="text-[13px] text-white truncate">{footerName}</div>
+              <div className="font-mono text-[10.5px] tracking-[0.06em] text-white/40 truncate">
+                {footerRole}
               </div>
             </div>
           )}

@@ -1,11 +1,22 @@
 /**
  * FILE: frontend/app/dashboard/layout.tsx
- * PURPOSE: Dashboard layout with sidebar and header
- * PHASE: 8 (Frontend)
- * TASK: FE-007
+ * PURPOSE: Dashboard route layout — server auth gate.
+ * UPDATED:
+ *   2026-04-30 — B1 sidebar consolidation. Stopped wrapping children
+ *   in `DashboardLayout`; sub-routes use `<AppShell>` directly so
+ *   only one sidebar renders (the prior layout rendered AppShell's
+ *   72px rail AND DashboardLayout's 232px sidebar simultaneously —
+ *   the double-sidebar bug). Server-fetched user + client now flow
+ *   through `<AppShellProvider>` so `useAppShellContext()` inside
+ *   each sub-route's AppShell picks up the right tenant context
+ *   without prop threading.
  *
- * Directive #309 — Auth re-enabled. Middleware handles the auth gate;
- * this layout handles session-based data fetch and DashboardLayout wrapper.
+ *   `DashboardNav` removed — the consolidated Sidebar covers both the
+ *   primary nav and the previous in-page nav, and the BottomNav from
+ *   PR #458 covers mobile.
+ *   `KillSwitch` already removed in P3-2-1 / P3 cleanup.
+ *   `DemoModeBanner` already retired in favour of the consolidated
+ *   `DemoBanner` rendered inside AppShell.
  */
 
 // Force dynamic for entire dashboard segment
@@ -14,28 +25,21 @@ export const dynamic = "force-dynamic";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getCurrentUser, getUserMemberships } from "@/lib/supabase-server";
-import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { createServerClient } from "@/lib/supabase-server";
-// KillSwitch consolidated into PauseAllButton (P3) — pause action now
-// lives in the topbar (Header + MobileTopbar) instead of as a fixed-
-// position floater. Import + render removed in this PR.
-import { DashboardNav } from "@/components/dashboard/DashboardNav";
-import { DemoModeBanner } from "@/components/dashboard/DemoModeBanner";
+import {
+  AppShellProvider,
+  type AppShellUser,
+  type AppShellClient,
+} from "@/components/layout/AppShellContext";
 
 const DEMO_COOKIE = "agency_os_demo";
 const DEMO_CLIENT_NAME = "Demo Agency";
 
 /** Demo-mode bypass — when the agency_os_demo cookie is set the
- *  dashboard renders without a Supabase session. The shell uses the
- *  Demo Agency client row (created by scripts/seed_demo_tenant.py)
- *  for client context; falls back to a static stub when the row is
- *  unreachable so the demo never hard-fails. */
-async function loadDemoContext() {
-  let clientDataForLayout: {
-    id: string; name: string; tier: string;
-    creditsRemaining: number;
-    pausedAt: string | null; pauseReason: string | null;
-  } = {
+ *  dashboard renders without a Supabase session. Falls back to a
+ *  static stub when the row is unreachable so the demo never fails. */
+async function loadDemoContext(): Promise<{ user: AppShellUser; client: AppShellClient }> {
+  let client: AppShellClient = {
     id: "demo-agency", name: DEMO_CLIENT_NAME, tier: "ignition",
     creditsRemaining: 1250, pausedAt: null, pauseReason: null,
   };
@@ -54,7 +58,7 @@ async function loadDemoContext() {
         } | null;
       };
     if (row) {
-      clientDataForLayout = {
+      client = {
         id: row.id, name: row.name, tier: row.tier,
         creditsRemaining: row.credits_remaining ?? 0,
         pausedAt: row.paused_at, pauseReason: row.pause_reason,
@@ -64,12 +68,12 @@ async function loadDemoContext() {
     // Fall through to stub client; the dashboard still renders.
   }
   return {
-    userData: {
+    user: {
       email:    "demo@keiracom.com",
       fullName: "Demo Investor",
-      avatarUrl: undefined as string | undefined,
+      avatarUrl: undefined,
     },
-    clientDataForLayout,
+    client,
   };
 }
 
@@ -79,37 +83,27 @@ export default async function DashboardRootLayout({
   children: React.ReactNode;
 }) {
   // Demo-mode short-circuit — middleware bypasses auth for the
-  // agency_os_demo=true cookie; this server layout must do the same
-  // or the three redirects below fire before render.
+  // agency_os_demo=true cookie; this server layout must do the same.
   const demoCookie = cookies().get(DEMO_COOKIE)?.value;
   if (demoCookie === "true") {
-    const { userData, clientDataForLayout } = await loadDemoContext();
+    const { user, client } = await loadDemoContext();
     return (
-      <DashboardLayout user={userData} client={clientDataForLayout}>
-        <DemoModeBanner />
-        <div className="flex min-h-screen">
-          <DashboardNav />
-          <div className="flex-1 min-w-0 pt-14 md:pt-0">{children}</div>
-        </div>
-      </DashboardLayout>
+      <AppShellProvider user={user} client={client}>
+        {children}
+      </AppShellProvider>
     );
   }
 
   const user = await getCurrentUser();
+  if (!user) redirect("/login");
 
-  if (!user) {
-    redirect("/login");
-  }
-
-  // Check onboarding status
+  // Onboarding gate
   const supabase = await createServerClient();
   const { data: onboardingStatus } = (await supabase.rpc(
-    "get_onboarding_status"
+    "get_onboarding_status",
   )) as {
     data: Array<{ client_id: string; needs_onboarding: boolean }> | null;
   };
-
-  // If user needs onboarding, redirect
   if (
     onboardingStatus &&
     onboardingStatus.length > 0 &&
@@ -118,14 +112,13 @@ export default async function DashboardRootLayout({
     redirect("/onboarding");
   }
 
+  // Membership gate
   const memberships = await getUserMemberships();
   const activeMembership = memberships[0];
+  if (!activeMembership) redirect("/onboarding");
 
-  if (!activeMembership) {
-    redirect("/onboarding");
-  }
-
-  const userData = {
+  // Build context payload for AppShell consumers
+  const userData: AppShellUser = {
     email: user.email || "",
     fullName: user.user_metadata?.full_name,
     avatarUrl: user.user_metadata?.avatar_url,
@@ -134,43 +127,37 @@ export default async function DashboardRootLayout({
   let creditsRemaining = 0;
   let pausedAt: string | null = null;
   let pauseReason: string | null = null;
-
   if (activeMembership?.client?.id) {
     const { data: clientData } = (await supabase
       .from("clients")
       .select("credits_remaining, paused_at, pause_reason")
       .eq("id", activeMembership.client.id)
       .single()) as {
-      data: {
-        credits_remaining: number;
-        paused_at: string | null;
-        pause_reason: string | null;
-      } | null;
-    };
-
+        data: {
+          credits_remaining: number;
+          paused_at: string | null;
+          pause_reason: string | null;
+        } | null;
+      };
     creditsRemaining = clientData?.credits_remaining ?? 0;
     pausedAt = clientData?.paused_at ?? null;
     pauseReason = clientData?.pause_reason ?? null;
   }
 
-  const clientDataForLayout = activeMembership?.client
+  const clientData: AppShellClient | undefined = activeMembership?.client
     ? {
         id: activeMembership.client.id,
         name: activeMembership.client.name,
         tier: activeMembership.client.tier,
-        creditsRemaining: creditsRemaining,
-        pausedAt: pausedAt,
-        pauseReason: pauseReason,
+        creditsRemaining,
+        pausedAt,
+        pauseReason,
       }
     : undefined;
 
   return (
-    <DashboardLayout user={userData} client={clientDataForLayout}>
-      <DemoModeBanner />
-      <div className="flex min-h-screen">
-        <DashboardNav />
-        <div className="flex-1 min-w-0 pt-14 md:pt-0">{children}</div>
-      </div>
-    </DashboardLayout>
+    <AppShellProvider user={userData} client={clientData}>
+      {children}
+    </AppShellProvider>
   );
 }

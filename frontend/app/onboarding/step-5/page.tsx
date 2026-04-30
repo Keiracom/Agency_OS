@@ -35,7 +35,7 @@ export default function OnboardingStep5() {
     } else {
       // All stages complete
       const t1 = setTimeout(() => setDone(true), 300);
-      const t2 = setTimeout(() => router.push("/dashboard"), 2300);
+      const t2 = setTimeout(() => router.push("/dashboard?demo=true"), 2300);
       return () => { clearTimeout(t1); clearTimeout(t2); };
     }
   }, [stageIndex, router]);

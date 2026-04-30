@@ -24,28 +24,28 @@ const colorMap: Record<string, { bg: string; bar: string }> = {
 
 export function LeadSources() {
   return (
-    <div className="bg-bg-base border border-default rounded-xl overflow-hidden">
+    <div className="bg-panel border border-default rounded-xl overflow-hidden">
       <div className="px-5 py-4 border-b border-default flex items-center gap-2">
-        <MapPin className="w-4 h-4 text-text-secondary" />
-        <h3 className="text-sm font-semibold text-text-primary">Lead Sources</h3>
+        <MapPin className="w-4 h-4 text-ink-2" />
+        <h3 className="text-sm font-semibold text-ink">Lead Sources</h3>
       </div>
       <div className="p-5 space-y-2.5">
         {leadSources.map((src) => {
           const colors = colorMap[src.id];
           return (
             <div key={src.id} className="flex items-center gap-3">
-              <div className={`w-8 h-8 rounded-md flex items-center justify-center text-text-secondary ${colors.bg}`}>
+              <div className={`w-8 h-8 rounded-md flex items-center justify-center text-ink-2 ${colors.bg}`}>
                 {iconMap[src.id]}
               </div>
               <div className="flex-1">
-                <p className="text-[13px] font-medium text-text-primary">{src.name}</p>
-                <div className="h-1 bg-bg-void rounded-full mt-1.5 overflow-hidden">
+                <p className="text-[13px] font-medium text-ink">{src.name}</p>
+                <div className="h-1 bg-bg-cream rounded-full mt-1.5 overflow-hidden">
                   <div className={`h-full rounded-full ${colors.bar}`} style={{ width: `${src.percentage}%` }} />
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-sm font-mono font-semibold text-text-primary">{src.count}</p>
-                <p className="text-[10px] text-text-muted">{src.percentage}%</p>
+                <p className="text-sm font-mono font-semibold text-ink">{src.count}</p>
+                <p className="text-[10px] text-ink-3">{src.percentage}%</p>
               </div>
             </div>
           );

@@ -6,7 +6,7 @@
 
 export default function PipelineLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div data-theme="light" className="min-h-screen" style={{ backgroundColor: "var(--bg-void)" }}>
+    <div data-theme="light" className="min-h-screen" style={{ backgroundColor: "var(--bg-cream)" }}>
       {children}
     </div>
   );

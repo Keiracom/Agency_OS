@@ -25,7 +25,7 @@ const iconBgMap: Record<string, string> = {
 const statusStyles: Record<IntegrationStatus, { dot: string; text: string; label: string }> = {
   connected: { dot: 'bg-status-success', text: 'text-status-success', label: 'Connected' },
   pending: { dot: 'bg-status-warning', text: 'text-status-warning', label: 'Pending Setup' },
-  disconnected: { dot: 'bg-text-muted', text: 'text-text-muted', label: 'Not Connected' },
+  disconnected: { dot: 'bg-text-muted', text: 'text-ink-3', label: 'Not Connected' },
 };
 
 const buttonStyles: Record<IntegrationStatus, { bg: string; text: string; label: string }> = {
@@ -40,13 +40,13 @@ export function IntegrationCard({ integration, onAction }: IntegrationCardProps)
   const button = buttonStyles[integration.status];
 
   return (
-    <div className="flex items-center justify-between p-5 bg-bg-surface-hover border border-border-subtle rounded-xl transition-all hover:border-border-default">
+    <div className="flex items-center justify-between p-5 bg-bg-panel-hover border border-rule rounded-xl transition-all hover:border-rule-strong">
       <div className="flex items-center gap-4">
         <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${iconBgMap[integration.icon]}`}>
-          <Icon className="w-6 h-6 text-text-secondary" />
+          <Icon className="w-6 h-6 text-ink-2" />
         </div>
         <div>
-          <div className="text-[15px] font-semibold text-text-primary">{integration.name}</div>
+          <div className="text-[15px] font-semibold text-ink">{integration.name}</div>
           <div className={`flex items-center gap-1.5 text-sm mt-1 ${status.text}`}>
             <span className={`w-2 h-2 rounded-full ${status.dot}`} />
             {status.label}

@@ -75,24 +75,24 @@ const mockClient = {
 };
 
 const tierColors = {
-  ignition: "bg-bg-elevated/10 text-amber border-default/20",
+  ignition: "bg-panel/10 text-amber border-default/20",
   velocity: "bg-amber/10 text-amber border-amber/20",
   spark: "bg-sky-500/10 text-sky-700 border-sky-500/20",
 };
 
 const statusColors = {
   active: "bg-amber/10 text-amber",
-  trialing: "bg-bg-elevated/10 text-amber",
+  trialing: "bg-panel/10 text-amber",
   past_due: "bg-amber-glow text-error",
   paused: "bg-yellow-500/10 text-yellow-700",
-  cancelled: "bg-bg-surface0/10 text-text-muted",
+  cancelled: "bg-bg-surface0/10 text-ink-3",
 };
 
 const campaignStatusColors = {
   active: "bg-amber/10 text-amber border-amber/20",
   paused: "bg-yellow-500/10 text-yellow-700 border-yellow-500/20",
-  completed: "bg-bg-surface0/10 text-text-muted border-gray-500/20",
-  draft: "bg-bg-elevated/10 text-amber border-default/20",
+  completed: "bg-bg-surface0/10 text-ink-3 border-gray-500/20",
+  draft: "bg-panel/10 text-amber border-default/20",
 };
 
 function formatDate(date: Date): string {

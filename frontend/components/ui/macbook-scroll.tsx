@@ -75,7 +75,7 @@ export const MacbookScroll = ({
           translateY: textTransform,
           opacity: textOpacity,
         }}
-        className="mb-20 text-center text-3xl font-bold text-neutral-800 dark:text-text-primary"
+        className="mb-20 text-center text-3xl font-bold text-neutral-800 dark:text-ink"
       >
         {title || (
           <span>
@@ -92,7 +92,7 @@ export const MacbookScroll = ({
         translate={translate}
       />
       {/* Base area */}
-      <div className="relative -z-10 h-[22rem] w-[32rem] overflow-hidden rounded-2xl bg-bg-elevated dark:bg-[#272729]">
+      <div className="relative -z-10 h-[22rem] w-[32rem] overflow-hidden rounded-2xl bg-panel dark:bg-[#272729]">
         {/* above keyboard bar */}
         <div className="relative h-10 w-full">
           <div className="absolute inset-x-0 mx-auto h-4 w-[80%] bg-[#050505]" />
@@ -148,7 +148,7 @@ export const Lid = ({
           }}
           className="absolute inset-0 flex items-center justify-center rounded-lg bg-[#010101]"
         >
-          <span className="text-text-primary">
+          <span className="text-ink">
             <AceternityLogo />
           </span>
         </div>
@@ -559,7 +559,7 @@ export const KBtn = ({
     <div
       className={cn(
         "[transform:translateZ(0)] rounded-[4px] p-[0.5px] [will-change:transform]",
-        backlit && "bg-bg-surface/[0.2] shadow-xl shadow-white",
+        backlit && "bg-bg-panel/[0.2] shadow-xl shadow-white",
       )}
     >
       <div
@@ -576,7 +576,7 @@ export const KBtn = ({
           className={cn(
             "flex w-full flex-col items-center justify-center text-[5px] text-neutral-200",
             childrenClassName,
-            backlit && "text-text-primary",
+            backlit && "text-ink",
           )}
         >
           {children}
@@ -641,7 +641,7 @@ const AceternityLogo = () => {
       viewBox="0 0 66 65"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      className="h-3 w-3 text-text-primary"
+      className="h-3 w-3 text-ink"
     >
       <path
         d="M8 8.05571C8 8.05571 54.9009 18.1782 57.8687 30.062C60.8365 41.9458 9.05432 57.4696 9.05432 57.4696"

@@ -182,13 +182,13 @@ export default function AdminCostsOverviewPage() {
         <CardContent>
           <div className="flex h-8 rounded-lg overflow-hidden">
             <div
-              className="bg-amber flex items-center justify-center text-text-primary text-sm font-medium"
+              className="bg-amber flex items-center justify-center text-ink text-sm font-medium"
               style={{ width: `${aiPercent}%` }}
             >
               AI {aiPercent}%
             </div>
             <div
-              className="bg-bg-elevated flex items-center justify-center text-text-primary text-sm font-medium"
+              className="bg-panel flex items-center justify-center text-ink text-sm font-medium"
               style={{ width: `${channelPercent}%` }}
             >
               Channels {channelPercent}%
@@ -200,7 +200,7 @@ export default function AdminCostsOverviewPage() {
               AI Costs (Anthropic)
             </div>
             <div className="flex items-center gap-2">
-              <div className="h-3 w-3 rounded bg-bg-elevated" />
+              <div className="h-3 w-3 rounded bg-panel" />
               Channel Costs (Email, SMS, LinkedIn, Voice, Mail)
             </div>
           </div>

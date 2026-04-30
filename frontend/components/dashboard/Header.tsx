@@ -123,19 +123,19 @@ function SearchTrigger({
       onClick={onOpen}
       className="
         relative flex items-center gap-2 w-64
-        bg-bg-surface/5 backdrop-blur-xl
+        bg-bg-panel/5 backdrop-blur-xl
         border border-white/10 hover:border-white/20
         rounded-xl px-3 py-2.5
         transition-all duration-200
-        hover:bg-bg-surface/10 hover:w-72
+        hover:bg-bg-panel/10 hover:w-72
         group
       "
     >
-      <Search className="w-4 h-4 text-text-secondary group-hover:text-text-secondary" />
-      <span className="text-sm text-text-muted group-hover:text-text-secondary flex-1 text-left truncate">
+      <Search className="w-4 h-4 text-ink-2 group-hover:text-ink-2" />
+      <span className="text-sm text-ink-3 group-hover:text-ink-2 flex-1 text-left truncate">
         {placeholder}
       </span>
-      <kbd className="hidden sm:flex items-center gap-1 text-[10px] text-text-muted bg-bg-surface/5 px-1.5 py-0.5 rounded border border-white/10">
+      <kbd className="hidden sm:flex items-center gap-1 text-[10px] text-ink-3 bg-bg-panel/5 px-1.5 py-0.5 rounded border border-white/10">
         <span className="text-xs">⌘</span>K
       </kbd>
     </button>
@@ -156,13 +156,13 @@ function CreditsDisplay({
   const isMedium = percentage >= 20 && percentage < 50;
 
   return (
-    <div className="flex items-center gap-2 px-3 py-2 bg-bg-surface/5 backdrop-blur-xl rounded-xl border border-white/10">
+    <div className="flex items-center gap-2 px-3 py-2 bg-bg-panel/5 backdrop-blur-xl rounded-xl border border-white/10">
       <div className={`p-1.5 rounded-lg ${isLow ? "bg-amber/20" : isMedium ? "bg-amber-500/20" : "bg-amber/20"}`}>
         <Coins className={`w-4 h-4 ${isLow ? "text-amber" : isMedium ? "text-amber-400" : "text-amber"}`} />
       </div>
       <div className="flex flex-col">
-        <span className="text-xs text-text-secondary">{label}</span>
-        <span className={`text-sm font-semibold ${isLow ? "text-amber" : isMedium ? "text-amber-400" : "text-text-primary"}`}>
+        <span className="text-xs text-ink-2">{label}</span>
+        <span className={`text-sm font-semibold ${isLow ? "text-amber" : isMedium ? "text-amber-400" : "text-ink"}`}>
           {credits.toLocaleString()}
         </span>
       </div>
@@ -197,7 +197,7 @@ function NotificationBell({
   }, [open]);
 
   const typeStyles = {
-    info: "bg-bg-elevated/20 text-text-secondary",
+    info: "bg-panel/20 text-ink-2",
     success: "bg-amber/20 text-amber",
     warning: "bg-amber-500/20 text-amber-400",
     error: "bg-amber/20 text-amber",
@@ -209,31 +209,31 @@ function NotificationBell({
         onClick={() => setOpen(!open)}
         className={`
           relative p-2.5 rounded-xl
-          bg-bg-surface/5 backdrop-blur-xl border border-white/10
-          text-text-secondary hover:text-text-primary hover:bg-bg-surface/10
+          bg-bg-panel/5 backdrop-blur-xl border border-white/10
+          text-ink-2 hover:text-ink hover:bg-bg-panel/10
           transition-all duration-200
-          ${open ? "bg-bg-surface/10 text-text-primary" : ""}
+          ${open ? "bg-bg-panel/10 text-ink" : ""}
         `}
       >
         <Bell className="w-5 h-5" />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 w-5 h-5 bg-amber rounded-full flex items-center justify-center text-[10px] font-bold text-text-primary animate-pulse">
+          <span className="absolute -top-1 -right-1 w-5 h-5 bg-amber rounded-full flex items-center justify-center text-[10px] font-bold text-ink animate-pulse">
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-80 bg-bg-void/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50">
+        <div className="absolute right-0 top-full mt-2 w-80 bg-bg-cream/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50">
           <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
-            <h3 className="text-sm font-semibold text-text-primary">Notifications</h3>
+            <h3 className="text-sm font-semibold text-ink">Notifications</h3>
             {unreadCount > 0 && onMarkAllRead && (
               <button
                 onClick={() => {
                   onMarkAllRead();
                   setOpen(false);
                 }}
-                className="text-xs text-text-secondary hover:text-amber-light transition-colors"
+                className="text-xs text-ink-2 hover:text-amber-light transition-colors"
               >
                 Mark all read
               </button>
@@ -242,8 +242,8 @@ function NotificationBell({
           <div className="max-h-80 overflow-y-auto">
             {notifications.length === 0 ? (
               <div className="px-4 py-8 text-center">
-                <Bell className="w-8 h-8 text-text-muted mx-auto mb-2" />
-                <p className="text-sm text-text-muted">No notifications</p>
+                <Bell className="w-8 h-8 text-ink-3 mx-auto mb-2" />
+                <p className="text-sm text-ink-3">No notifications</p>
               </div>
             ) : (
               notifications.map((notification) => (
@@ -255,9 +255,9 @@ function NotificationBell({
                   }}
                   className={`
                     w-full px-4 py-3 text-left
-                    hover:bg-bg-surface/5 transition-colors
+                    hover:bg-bg-panel/5 transition-colors
                     border-b border-white/5 last:border-0
-                    ${!notification.read ? "bg-bg-elevated/5" : ""}
+                    ${!notification.read ? "bg-panel/5" : ""}
                   `}
                 >
                   <div className="flex items-start gap-3">
@@ -265,18 +265,18 @@ function NotificationBell({
                       <Sparkles className="w-3.5 h-3.5" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-medium truncate ${!notification.read ? "text-text-primary" : "text-text-secondary"}`}>
+                      <p className={`text-sm font-medium truncate ${!notification.read ? "text-ink" : "text-ink-2"}`}>
                         {notification.title}
                       </p>
-                      <p className="text-xs text-text-muted truncate mt-0.5">
+                      <p className="text-xs text-ink-3 truncate mt-0.5">
                         {notification.message}
                       </p>
-                      <p className="text-[10px] text-text-muted mt-1">
+                      <p className="text-[10px] text-ink-3 mt-1">
                         {notification.time}
                       </p>
                     </div>
                     {!notification.read && (
-                      <div className="w-2 h-2 bg-bg-elevated rounded-full mt-2" />
+                      <div className="w-2 h-2 bg-panel rounded-full mt-2" />
                     )}
                   </div>
                 </button>
@@ -322,10 +322,10 @@ function UserDropdown({
         onClick={() => setOpen(!open)}
         className={`
           flex items-center gap-2 pl-1 pr-2 py-1
-          bg-bg-surface/5 backdrop-blur-xl border border-white/10
+          bg-bg-panel/5 backdrop-blur-xl border border-white/10
           rounded-xl
-          hover:bg-bg-surface/10 transition-all duration-200
-          ${open ? "bg-bg-surface/10" : ""}
+          hover:bg-bg-panel/10 transition-all duration-200
+          ${open ? "bg-bg-panel/10" : ""}
         `}
       >
         {user?.avatarUrl ? (
@@ -335,23 +335,23 @@ function UserDropdown({
             className="w-8 h-8 rounded-lg object-cover"
           />
         ) : (
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber to-amber flex items-center justify-center text-text-primary text-sm font-semibold">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber to-amber flex items-center justify-center text-ink text-sm font-semibold">
             {initial}
           </div>
         )}
-        <span className="text-sm font-medium text-text-primary hidden sm:block max-w-24 truncate">
+        <span className="text-sm font-medium text-ink hidden sm:block max-w-24 truncate">
           {displayName}
         </span>
-        <ChevronDown className={`w-4 h-4 text-text-secondary transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+        <ChevronDown className={`w-4 h-4 text-ink-2 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-56 bg-bg-void/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50">
+        <div className="absolute right-0 top-full mt-2 w-56 bg-bg-cream/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50">
           {/* User Info Header */}
           <div className="px-4 py-3 border-b border-white/10">
-            <p className="text-sm font-medium text-text-primary truncate">{displayName}</p>
+            <p className="text-sm font-medium text-ink truncate">{displayName}</p>
             {displayEmail && (
-              <p className="text-xs text-text-secondary truncate">{displayEmail}</p>
+              <p className="text-xs text-ink-2 truncate">{displayEmail}</p>
             )}
           </div>
 
@@ -372,7 +372,7 @@ function UserDropdown({
                     text-sm transition-colors
                     ${action.danger
                       ? "text-amber hover:bg-amber-glow"
-                      : "text-text-secondary hover:text-text-primary hover:bg-bg-surface/5"
+                      : "text-ink-2 hover:text-ink hover:bg-bg-panel/5"
                     }
                   `}
                 >

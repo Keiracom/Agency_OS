@@ -106,7 +106,7 @@ const mockErrors: ErrorEntry[] = [
 const levelColors = {
   error: "bg-amber-glow text-error border-amber/20",
   warning: "bg-yellow-500/10 text-yellow-700 border-yellow-500/20",
-  info: "bg-bg-elevated/10 text-amber border-default/20",
+  info: "bg-panel/10 text-amber border-default/20",
 };
 
 function formatTimeAgo(date: Date): string {

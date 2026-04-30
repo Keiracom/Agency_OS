@@ -26,12 +26,12 @@ export function ReplyComposer({ recipientEmail, initialValue = '', onSend }: Rep
   };
   
   return (
-    <div className="bg-surface-dark border-t border-border-subtle px-8 py-5">
+    <div className="bg-panel-dark border-t border-rule px-8 py-5">
       <div className="max-w-[720px]">
         {/* To field */}
         <div className="flex items-center gap-2 mb-3 text-sm">
-          <span className="text-text-muted">To:</span>
-          <span className="text-text-primary font-medium">{recipientEmail}</span>
+          <span className="text-ink-3">To:</span>
+          <span className="text-ink font-medium">{recipientEmail}</span>
         </div>
         
         {/* Textarea */}
@@ -40,8 +40,8 @@ export function ReplyComposer({ recipientEmail, initialValue = '', onSend }: Rep
           onChange={(e) => setMessage(e.target.value)}
           placeholder="Write your reply..."
           className={cn(
-            'w-full p-4 bg-bg-base border border-border-subtle rounded-xl',
-            'text-sm text-text-primary placeholder:text-text-muted',
+            'w-full p-4 bg-panel border border-rule rounded-xl',
+            'text-sm text-ink placeholder:text-ink-3',
             'resize-none min-h-[120px]',
             'focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20',
             'transition-colors'
@@ -52,15 +52,15 @@ export function ReplyComposer({ recipientEmail, initialValue = '', onSend }: Rep
         <div className="flex items-center justify-between mt-3">
           {/* Tools */}
           <div className="flex gap-2">
-            <button className="flex items-center gap-1.5 px-3 py-2 glass-surface border border-border-subtle rounded-md text-xs text-text-muted hover:text-text-secondary hover:bg-bg-surface/[0.05] transition-colors">
+            <button className="flex items-center gap-1.5 px-3 py-2 glass-surface border border-rule rounded-md text-xs text-ink-3 hover:text-ink-2 hover:bg-bg-panel/[0.05] transition-colors">
               <Paperclip className="w-3.5 h-3.5" />
               Attach
             </button>
-            <button className="flex items-center gap-1.5 px-3 py-2 glass-surface border border-border-subtle rounded-md text-xs text-text-muted hover:text-text-secondary hover:bg-bg-surface/[0.05] transition-colors">
+            <button className="flex items-center gap-1.5 px-3 py-2 glass-surface border border-rule rounded-md text-xs text-ink-3 hover:text-ink-2 hover:bg-bg-panel/[0.05] transition-colors">
               <Calendar className="w-3.5 h-3.5" />
               Schedule
             </button>
-            <button className="flex items-center gap-1.5 px-3 py-2 glass-surface border border-border-subtle rounded-md text-xs text-text-muted hover:text-text-secondary hover:bg-bg-surface/[0.05] transition-colors">
+            <button className="flex items-center gap-1.5 px-3 py-2 glass-surface border border-rule rounded-md text-xs text-ink-3 hover:text-ink-2 hover:bg-bg-panel/[0.05] transition-colors">
               <Zap className="w-3.5 h-3.5" />
               AI Write
             </button>
@@ -73,8 +73,8 @@ export function ReplyComposer({ recipientEmail, initialValue = '', onSend }: Rep
             className={cn(
               'flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold transition-all',
               message.trim()
-                ? 'bg-amber-600 hover:bg-amber-500 text-text-primary hover:-translate-y-0.5'
-                : 'bg-amber-600/50 text-text-primary/50 cursor-not-allowed'
+                ? 'bg-amber-600 hover:bg-amber-500 text-ink hover:-translate-y-0.5'
+                : 'bg-amber-600/50 text-ink/50 cursor-not-allowed'
             )}
           >
             <Send className="w-4 h-4" />

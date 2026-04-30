@@ -89,7 +89,7 @@ export default function PipelinePage() {
           </div>
 
           {/* View toggle */}
-          <div className="inline-flex flex-wrap gap-2 p-[2px] rounded-md bg-surface">
+          <div className="inline-flex flex-wrap gap-2 p-[2px] rounded-md bg-panel">
             {(["list", "kanban", "table"] as View[]).map(v => {
               const isActive = v === view;
               return (
@@ -155,11 +155,11 @@ export default function PipelinePage() {
         {view === "list" && (
           <div className="space-y-2">
             {isLoading ? (
-              <div className="rounded-[10px] border border-dashed border-rule bg-surface/50 px-5 py-6 text-[13px] text-ink-3">
+              <div className="rounded-[10px] border border-dashed border-rule bg-panel/50 px-5 py-6 text-[13px] text-ink-3">
                 Loading prospects…
               </div>
             ) : ranked.length === 0 ? (
-              <div className="rounded-[10px] border border-dashed border-rule bg-surface/50 px-5 py-6 text-[13px] text-ink-3">
+              <div className="rounded-[10px] border border-dashed border-rule bg-panel/50 px-5 py-6 text-[13px] text-ink-3">
                 No prospects match this filter yet.
               </div>
             ) : (

@@ -9,10 +9,10 @@ interface PaymentMethodProps {
 
 export function PaymentMethod({ paymentMethod }: PaymentMethodProps) {
   return (
-    <div className="bg-bg-surface border border-border-subtle rounded-2xl mb-6 overflow-hidden">
+    <div className="bg-bg-panel border border-rule rounded-2xl mb-6 overflow-hidden">
       {/* Header */}
-      <div className="px-6 py-5 border-b border-border-subtle flex items-center justify-between">
-        <div className="flex items-center gap-2.5 text-text-primary font-semibold">
+      <div className="px-6 py-5 border-b border-rule flex items-center justify-between">
+        <div className="flex items-center gap-2.5 text-ink font-semibold">
           <CreditCard className="w-5 h-5 text-accent-primary" />
           Payment Method
         </div>
@@ -23,9 +23,9 @@ export function PaymentMethod({ paymentMethod }: PaymentMethodProps) {
 
       {/* Body */}
       <div className="p-6">
-        <div className="flex items-center justify-between p-5 bg-bg-surface-hover rounded-xl">
+        <div className="flex items-center justify-between p-5 bg-bg-panel-hover rounded-xl">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-9 bg-bg-elevated rounded-md flex items-center justify-center border border-border-default">
+            <div className="w-14 h-9 bg-panel rounded-md flex items-center justify-center border border-rule-strong">
               {/* Mastercard Logo SVG */}
               <svg viewBox="0 0 32 20" fill="none" className="w-8 h-5">
                 <rect width="32" height="20" rx="2" fill="#1A1F71" />
@@ -35,15 +35,15 @@ export function PaymentMethod({ paymentMethod }: PaymentMethodProps) {
               </svg>
             </div>
             <div>
-              <h4 className="text-sm font-semibold text-text-primary">
+              <h4 className="text-sm font-semibold text-ink">
                 {paymentMethod.type.charAt(0).toUpperCase() + paymentMethod.type.slice(1)} ending in {paymentMethod.lastFour}
               </h4>
-              <p className="text-sm text-text-muted font-mono mt-0.5">
+              <p className="text-sm text-ink-3 font-mono mt-0.5">
                 Expires {paymentMethod.expiryMonth}/{paymentMethod.expiryYear}
               </p>
             </div>
           </div>
-          <button className="px-4 py-2 text-sm font-medium rounded-lg bg-transparent text-text-secondary border border-border-default hover:bg-bg-surface-hover hover:text-text-primary transition-all">
+          <button className="px-4 py-2 text-sm font-medium rounded-lg bg-transparent text-ink-2 border border-rule-strong hover:bg-bg-panel-hover hover:text-ink transition-all">
             Update
           </button>
         </div>

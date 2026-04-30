@@ -56,7 +56,7 @@ interface StatsGridProps {
 
 // Glass-themed color configuration
 const colorConfig: Record<ColorVariant, string> = {
-  blue: "bg-bg-elevated/20 text-text-secondary",
+  blue: "bg-panel/20 text-ink-2",
   green: "bg-amber/20 text-amber",
   orange: "bg-orange-500/20 text-orange-400",
   purple: "bg-amber/20 text-amber",
@@ -78,21 +78,21 @@ export function StatCard({
 }: StatCardProps) {
   if (isLoading) {
     return (
-      <div className="bg-bg-void/40 backdrop-blur-md rounded-lg border border-white/10 shadow-lg shadow-black/20 p-4 animate-pulse">
+      <div className="bg-bg-cream/40 backdrop-blur-md rounded-lg border border-white/10 shadow-lg shadow-black/20 p-4 animate-pulse">
         <div className="flex items-start justify-between mb-2">
-          <div className="h-3 w-24 bg-bg-surface/10 rounded" />
-          <div className="w-8 h-8 rounded-lg bg-bg-surface/10" />
+          <div className="h-3 w-24 bg-bg-panel/10 rounded" />
+          <div className="w-8 h-8 rounded-lg bg-bg-panel/10" />
         </div>
-        <div className="h-8 w-16 bg-bg-surface/10 rounded mt-2" />
-        <div className="h-3 w-20 bg-bg-surface/10 rounded mt-2" />
+        <div className="h-8 w-16 bg-bg-panel/10 rounded mt-2" />
+        <div className="h-3 w-20 bg-bg-panel/10 rounded mt-2" />
       </div>
     );
   }
 
   return (
-    <div className="bg-bg-void/40 backdrop-blur-md rounded-lg border border-white/10 shadow-lg shadow-black/20 p-4 hover:bg-bg-void/50 transition-colors">
+    <div className="bg-bg-cream/40 backdrop-blur-md rounded-lg border border-white/10 shadow-lg shadow-black/20 p-4 hover:bg-bg-cream/50 transition-colors">
       <div className="flex items-start justify-between mb-2">
-        <span className="text-xs font-medium text-text-secondary uppercase tracking-wide">
+        <span className="text-xs font-medium text-ink-2 uppercase tracking-wide">
           {label}
         </span>
         <div
@@ -101,7 +101,7 @@ export function StatCard({
           <Icon className="w-4 h-4" />
         </div>
       </div>
-      <div className="text-2xl font-bold text-text-primary drop-shadow-sm">{value}</div>
+      <div className="text-2xl font-bold text-ink drop-shadow-sm">{value}</div>
       {change !== undefined && (
         <div className="flex items-center gap-1 mt-1">
           {change >= 0 ? (
@@ -118,7 +118,7 @@ export function StatCard({
             {change}%
           </span>
           {changeLabel && (
-            <span className="text-xs text-text-secondary">{changeLabel}</span>
+            <span className="text-xs text-ink-2">{changeLabel}</span>
           )}
         </div>
       )}
@@ -146,13 +146,13 @@ function StatusCard({
 
   if (isLoading) {
     return (
-      <div className="bg-bg-void/40 backdrop-blur-md rounded-lg border border-white/10 shadow-lg shadow-black/20 p-4 animate-pulse">
+      <div className="bg-bg-cream/40 backdrop-blur-md rounded-lg border border-white/10 shadow-lg shadow-black/20 p-4 animate-pulse">
         <div className="flex items-start justify-between mb-2">
-          <div className="h-3 w-24 bg-bg-surface/10 rounded" />
-          <div className="w-8 h-8 rounded-lg bg-bg-surface/10" />
+          <div className="h-3 w-24 bg-bg-panel/10 rounded" />
+          <div className="w-8 h-8 rounded-lg bg-bg-panel/10" />
         </div>
-        <div className="h-8 w-20 bg-bg-surface/10 rounded mt-2" />
-        <div className="h-3 w-32 bg-bg-surface/10 rounded mt-2" />
+        <div className="h-8 w-20 bg-bg-panel/10 rounded mt-2" />
+        <div className="h-3 w-32 bg-bg-panel/10 rounded mt-2" />
       </div>
     );
   }
@@ -160,12 +160,12 @@ function StatusCard({
   // Map color to glass-friendly variants
   const glassColor = color.includes('emerald') ? 'text-amber' : 
                      color.includes('yellow') ? 'text-yellow-400' : 
-                     color.includes('red') ? 'text-amber' : 'text-text-primary';
+                     color.includes('red') ? 'text-amber' : 'text-ink';
 
   return (
-    <div className="bg-bg-void/40 backdrop-blur-md rounded-lg border border-white/10 shadow-lg shadow-black/20 p-4 hover:bg-bg-void/50 transition-colors">
+    <div className="bg-bg-cream/40 backdrop-blur-md rounded-lg border border-white/10 shadow-lg shadow-black/20 p-4 hover:bg-bg-cream/50 transition-colors">
       <div className="flex items-start justify-between mb-2">
-        <span className="text-xs font-medium text-text-secondary uppercase tracking-wide">
+        <span className="text-xs font-medium text-ink-2 uppercase tracking-wide">
           Campaign Status
         </span>
         <div className="w-8 h-8 rounded-lg bg-amber/20 text-amber flex items-center justify-center backdrop-blur-sm">
@@ -175,11 +175,11 @@ function StatusCard({
       <div className="flex items-center gap-2">
         <span className={`text-2xl font-bold ${glassColor} drop-shadow-sm`}>{label}</span>
       </div>
-      <div className="text-xs text-text-secondary mt-1">
+      <div className="text-xs text-ink-2 mt-1">
         {meetingsBooked} of {targetHigh} meetings target
       </div>
       {/* Progress bar with glass effect */}
-      <div className="mt-2 h-1.5 bg-bg-surface/10 rounded-full overflow-hidden">
+      <div className="mt-2 h-1.5 bg-bg-panel/10 rounded-full overflow-hidden">
         <div
           className="h-full bg-amber rounded-full transition-all duration-500"
           style={{ width: `${progressPercent}%` }}

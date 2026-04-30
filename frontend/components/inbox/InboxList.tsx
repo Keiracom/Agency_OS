@@ -33,7 +33,7 @@ export function InboxList({ messages, selectedId, onSelectMessage }: InboxListPr
   });
 
   return (
-    <div className="w-[420px] glass-surface border-r border-border-subtle flex flex-col h-full">
+    <div className="w-[420px] glass-surface border-r border-rule flex flex-col h-full">
       <InboxFilters activeFilter={activeFilter} onFilterChange={setActiveFilter} tabs={filterTabs} />
       <div className="flex-1 overflow-y-auto">
         {filteredMessages.map((message) => (

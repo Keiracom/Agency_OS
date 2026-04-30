@@ -209,7 +209,7 @@ export function IconContainer({
   const variantClasses = {
     default: 'bg-amber-glow',
     accent: 'bg-amber/20',
-    muted: 'bg-bg-elevated',
+    muted: 'bg-panel',
   };
   
   return (

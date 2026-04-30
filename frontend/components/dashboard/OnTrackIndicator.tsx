@@ -34,8 +34,8 @@ const STATUS_CONFIG: Record<OnTrackStatus, {
   },
   on_track: {
     label: "On track",
-    color: "text-text-secondary",
-    bgColor: "bg-bg-elevated/10",
+    color: "text-ink-2",
+    bgColor: "bg-panel/10",
     icon: CheckCircle,
   },
   behind: {
@@ -80,11 +80,11 @@ export function OnTrackIndicator({
           {config.label}
         </span>
       </div>
-      <span className="text-sm text-text-primary/60">
+      <span className="text-sm text-ink/60">
         for {targetLow}-{targetHigh}
       </span>
       {/* Optional: Show expected range tooltip */}
-      <span className="text-xs text-text-primary/40 hidden sm:inline">
+      <span className="text-xs text-ink/40 hidden sm:inline">
         (expect {expectedLow}-{expectedHigh} by day {dayOfMonth})
       </span>
     </div>

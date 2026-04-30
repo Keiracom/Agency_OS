@@ -206,7 +206,7 @@ function ProgressStepper({ currentStep, totalSteps }: { currentStep: number; tot
   const steps = ["Basics", "Audience", "Channels", "Messaging", "Review"];
 
   return (
-    <div className="bg-bg-void/40 backdrop-blur-md border-b border-white/10 py-6 px-8">
+    <div className="bg-bg-cream/40 backdrop-blur-md border-b border-white/10 py-6 px-8">
       <div className="flex items-center justify-center gap-0 max-w-3xl mx-auto">
         {steps.map((step, idx) => {
           const stepNum = idx + 1;
@@ -219,17 +219,17 @@ function ProgressStepper({ currentStep, totalSteps }: { currentStep: number; tot
                 <div
                   className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
                     isCompleted
-                      ? "bg-amber text-text-primary"
+                      ? "bg-amber text-ink"
                       : isActive
-                      ? "bg-amber text-text-primary shadow-lg shadow-amber/30"
-                      : "bg-slate-700 text-text-secondary"
+                      ? "bg-amber text-ink shadow-lg shadow-amber/30"
+                      : "bg-slate-700 text-ink-2"
                   }`}
                 >
                   {isCompleted ? <Check className="w-5 h-5" /> : stepNum}
                 </div>
                 <span
                   className={`text-sm font-medium transition-colors ${
-                    isActive ? "text-text-primary" : isCompleted ? "text-amber" : "text-text-muted"
+                    isActive ? "text-ink" : isCompleted ? "text-amber" : "text-ink-3"
                   }`}
                 >
                   {step}
@@ -262,30 +262,30 @@ function StepBasics({
   onChange: (updates: Partial<WizardState>) => void;
 }) {
   return (
-    <div className="bg-bg-void/40 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
+    <div className="bg-bg-cream/40 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
       <div className="p-6 border-b border-white/10">
         <div className="flex items-center gap-3 mb-1">
           <FileText className="w-5 h-5 text-amber" />
-          <h2 className="text-lg font-semibold text-text-primary">Campaign Basics</h2>
+          <h2 className="text-lg font-semibold text-ink">Campaign Basics</h2>
         </div>
-        <p className="text-sm text-text-muted ml-8">Start by naming your campaign and setting your primary goal</p>
+        <p className="text-sm text-ink-3 ml-8">Start by naming your campaign and setting your primary goal</p>
       </div>
       <div className="p-6 space-y-6">
         {/* Campaign Name */}
         <div>
-          <label className="block text-sm font-medium text-text-primary mb-2">Campaign Name</label>
+          <label className="block text-sm font-medium text-ink mb-2">Campaign Name</label>
           <input
             type="text"
             value={state.name}
             onChange={(e) => onChange({ name: e.target.value })}
             placeholder="e.g., Q1 SaaS Founder Blitz"
-            className="w-full px-4 py-3 bg-slate-950/60 border border-white/10 rounded-lg text-text-primary placeholder:text-text-muted focus:outline-none focus:border-amber focus:ring-1 focus:ring-amber/30"
+            className="w-full px-4 py-3 bg-slate-950/60 border border-white/10 rounded-lg text-ink placeholder:text-ink-3 focus:outline-none focus:border-amber focus:ring-1 focus:ring-amber/30"
           />
         </div>
 
         {/* Campaign Goal */}
         <div>
-          <label className="block text-sm font-medium text-text-primary mb-3">Campaign Goal</label>
+          <label className="block text-sm font-medium text-ink mb-3">Campaign Goal</label>
           <div className="grid grid-cols-3 gap-4">
             {goalOptions.map((goal) => {
               const Icon = goal.icon;
@@ -305,10 +305,10 @@ function StepBasics({
                       isSelected ? "bg-amber" : "bg-slate-700"
                     }`}
                   >
-                    <Icon className={`w-6 h-6 ${isSelected ? "text-text-primary" : "text-text-secondary"}`} />
+                    <Icon className={`w-6 h-6 ${isSelected ? "text-ink" : "text-ink-2"}`} />
                   </div>
-                  <p className="text-sm font-semibold text-text-primary">{goal.label}</p>
-                  <p className="text-xs text-text-muted">{goal.desc}</p>
+                  <p className="text-sm font-semibold text-ink">{goal.label}</p>
+                  <p className="text-xs text-ink-3">{goal.desc}</p>
                 </button>
               );
             })}
@@ -317,35 +317,35 @@ function StepBasics({
 
         {/* Target Meetings */}
         <div>
-          <label className="block text-sm font-medium text-text-primary mb-2">Target Monthly Meetings</label>
+          <label className="block text-sm font-medium text-ink mb-2">Target Monthly Meetings</label>
           <input
             type="number"
             value={state.targetMeetings}
             onChange={(e) => onChange({ targetMeetings: parseInt(e.target.value) || 0 })}
-            className="w-48 px-4 py-3 bg-slate-950/60 border border-white/10 rounded-lg text-text-primary focus:outline-none focus:border-amber focus:ring-1 focus:ring-amber/30"
+            className="w-48 px-4 py-3 bg-slate-950/60 border border-white/10 rounded-lg text-ink focus:outline-none focus:border-amber focus:ring-1 focus:ring-amber/30"
           />
         </div>
 
         {/* Dates */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-text-primary mb-2">Start Date</label>
+            <label className="block text-sm font-medium text-ink mb-2">Start Date</label>
             <input
               type="date"
               value={state.startDate}
               onChange={(e) => onChange({ startDate: e.target.value })}
-              className="w-full px-4 py-3 bg-slate-950/60 border border-white/10 rounded-lg text-text-primary focus:outline-none focus:border-amber focus:ring-1 focus:ring-amber/30"
+              className="w-full px-4 py-3 bg-slate-950/60 border border-white/10 rounded-lg text-ink focus:outline-none focus:border-amber focus:ring-1 focus:ring-amber/30"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-text-primary mb-2">
-              End Date <span className="font-normal text-text-muted">(or ongoing)</span>
+            <label className="block text-sm font-medium text-ink mb-2">
+              End Date <span className="font-normal text-ink-3">(or ongoing)</span>
             </label>
             <input
               type="date"
               value={state.endDate}
               onChange={(e) => onChange({ endDate: e.target.value })}
-              className="w-full px-4 py-3 bg-slate-950/60 border border-white/10 rounded-lg text-text-primary focus:outline-none focus:border-amber focus:ring-1 focus:ring-amber/30"
+              className="w-full px-4 py-3 bg-slate-950/60 border border-white/10 rounded-lg text-ink focus:outline-none focus:border-amber focus:ring-1 focus:ring-amber/30"
             />
           </div>
         </div>
@@ -370,18 +370,18 @@ function StepAudience({
   onFilterToggle: (groupId: string, optionId: string) => void;
 }) {
   return (
-    <div className="bg-bg-void/40 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
+    <div className="bg-bg-cream/40 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
       <div className="p-6 border-b border-white/10">
         <div className="flex items-center gap-3 mb-1">
           <Users className="w-5 h-5 text-amber" />
-          <h2 className="text-lg font-semibold text-text-primary">Target Audience</h2>
+          <h2 className="text-lg font-semibold text-ink">Target Audience</h2>
         </div>
-        <p className="text-sm text-text-muted ml-8">Select an existing ICP or create a custom segment</p>
+        <p className="text-sm text-ink-3 ml-8">Select an existing ICP or create a custom segment</p>
       </div>
       <div className="p-6 space-y-6">
         {/* ICP Selection */}
         <div>
-          <label className="block text-sm font-medium text-text-primary mb-3">Select ICP</label>
+          <label className="block text-sm font-medium text-ink mb-3">Select ICP</label>
           <div className="space-y-3">
             {icpOptions.map((icp) => {
               const isSelected = state.selectedICP === icp.id;
@@ -400,11 +400,11 @@ function StepAudience({
                       isSelected ? "border-amber bg-amber" : "border-slate-500"
                     }`}
                   >
-                    {isSelected && <div className="w-2 h-2 bg-bg-surface rounded-full" />}
+                    {isSelected && <div className="w-2 h-2 bg-bg-panel rounded-full" />}
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm font-semibold text-text-primary">{icp.name}</p>
-                    <p className="text-xs text-text-muted">{icp.details}</p>
+                    <p className="text-sm font-semibold text-ink">{icp.name}</p>
+                    <p className="text-xs text-ink-3">{icp.details}</p>
                   </div>
                   <span className="text-sm font-semibold font-mono text-amber">
                     {icp.leadCount > 0 ? icp.leadCount.toLocaleString() : "—"}
@@ -417,11 +417,11 @@ function StepAudience({
 
         {/* Additional Filters */}
         <div className="pt-6 border-t border-white/10">
-          <label className="block text-sm font-medium text-text-primary mb-4">Additional Filters</label>
+          <label className="block text-sm font-medium text-ink mb-4">Additional Filters</label>
           <div className="grid grid-cols-2 gap-4">
             {filterState.map((group) => (
               <div key={group.id} className="bg-slate-950/40 border border-white/5 rounded-xl p-4">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted mb-3">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-3 mb-3">
                   {group.label}
                 </p>
                 <div className="flex flex-wrap gap-2">
@@ -432,7 +432,7 @@ function StepAudience({
                       className={`px-3 py-1.5 text-xs font-medium rounded-md border transition-colors ${
                         option.selected
                           ? "bg-amber/20 border-amber/50 text-amber"
-                          : "bg-bg-base/60 border-white/10 text-text-secondary hover:bg-slate-700/60"
+                          : "bg-panel/60 border-white/10 text-ink-2 hover:bg-slate-700/60"
                       }`}
                     >
                       {option.label}
@@ -448,14 +448,14 @@ function StepAudience({
         <div className="flex items-center justify-between p-5 bg-slate-950/40 border border-white/10 rounded-xl">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-amber flex items-center justify-center">
-              <Users className="w-6 h-6 text-text-primary" />
+              <Users className="w-6 h-6 text-ink" />
             </div>
             <div>
-              <p className="text-2xl font-bold font-mono text-text-primary">~{state.estimatedLeads.toLocaleString()} leads</p>
-              <p className="text-sm text-text-muted">match this criteria</p>
+              <p className="text-2xl font-bold font-mono text-ink">~{state.estimatedLeads.toLocaleString()} leads</p>
+              <p className="text-sm text-ink-3">match this criteria</p>
             </div>
           </div>
-          <button className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-violet-600 to-amber text-text-primary text-sm font-medium rounded-lg hover:shadow-lg hover:shadow-amber/25 transition-shadow">
+          <button className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-violet-600 to-amber text-ink text-sm font-medium rounded-lg hover:shadow-lg hover:shadow-amber/25 transition-shadow">
             <Zap className="w-4 h-4" />
             Use AI to find best matches
           </button>
@@ -477,13 +477,13 @@ function StepChannels({
   onChannelToggle: (channel: ChannelType) => void;
 }) {
   return (
-    <div className="bg-bg-void/40 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
+    <div className="bg-bg-cream/40 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
       <div className="p-6 border-b border-white/10">
         <div className="flex items-center gap-3 mb-1">
           <MessageCircle className="w-5 h-5 text-amber" />
-          <h2 className="text-lg font-semibold text-text-primary">Channel Strategy</h2>
+          <h2 className="text-lg font-semibold text-ink">Channel Strategy</h2>
         </div>
-        <p className="text-sm text-text-muted ml-8">Select which channels to use in your outreach sequence</p>
+        <p className="text-sm text-ink-3 ml-8">Select which channels to use in your outreach sequence</p>
       </div>
       <div className="p-6 space-y-6">
         {/* Channel Toggles */}
@@ -506,15 +506,15 @@ function StepChannels({
                     isActive ? "bg-amber" : "bg-slate-700"
                   }`}
                 >
-                  <Icon className={`w-6 h-6 ${isActive ? "text-text-primary" : "text-text-secondary"}`} />
+                  <Icon className={`w-6 h-6 ${isActive ? "text-ink" : "text-ink-2"}`} />
                 </div>
-                <span className="text-sm font-semibold text-text-primary mb-3">{channel.label}</span>
+                <span className="text-sm font-semibold text-ink mb-3">{channel.label}</span>
                 <div
                   className={`w-5 h-5 rounded flex items-center justify-center border-2 ${
                     isActive ? "bg-amber border-amber" : "border-slate-500"
                   }`}
                 >
-                  {isActive && <Check className="w-3.5 h-3.5 text-text-primary" />}
+                  {isActive && <Check className="w-3.5 h-3.5 text-ink" />}
                 </div>
               </button>
             );
@@ -523,7 +523,7 @@ function StepChannels({
 
         {/* Sequence Preview */}
         <div className="bg-slate-950/40 border border-white/10 rounded-xl p-6">
-          <div className="flex items-center gap-2 mb-5 text-sm font-semibold text-text-primary">
+          <div className="flex items-center gap-2 mb-5 text-sm font-semibold text-ink">
             <TrendingUp className="w-4 h-4 text-amber" />
             Sequence Preview
           </div>
@@ -547,11 +547,11 @@ function StepChannels({
 
                 return (
                   <div key={`${step.type}-${step.day}`} className="flex items-center gap-2">
-                    <div className={`flex items-center gap-2 px-3 py-2 bg-bg-base/60 border border-white/10 ${borderColor} border-l-2 rounded-lg`}>
-                      <Icon className="w-4 h-4 text-text-secondary" />
-                      <span className="text-xs text-text-secondary">Day {step.day}</span>
+                    <div className={`flex items-center gap-2 px-3 py-2 bg-panel/60 border border-white/10 ${borderColor} border-l-2 rounded-lg`}>
+                      <Icon className="w-4 h-4 text-ink-2" />
+                      <span className="text-xs text-ink-2">Day {step.day}</span>
                     </div>
-                    {idx < arr.length - 1 && <ChevronRight className="w-4 h-4 text-text-muted" />}
+                    {idx < arr.length - 1 && <ChevronRight className="w-4 h-4 text-ink-3" />}
                   </div>
                 );
               })}
@@ -560,11 +560,11 @@ function StepChannels({
           {/* AI Recommendation */}
           <div className="flex items-start gap-3 mt-5 p-4 bg-amber/10 border border-amber/30 rounded-lg">
             <div className="w-9 h-9 rounded-lg bg-amber flex items-center justify-center flex-shrink-0">
-              <Lightbulb className="w-5 h-5 text-text-primary" />
+              <Lightbulb className="w-5 h-5 text-ink" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-text-primary">Recommended for your ICP</p>
-              <p className="text-xs text-text-secondary mt-1">
+              <p className="text-sm font-semibold text-ink">Recommended for your ICP</p>
+              <p className="text-xs text-ink-2 mt-1">
                 Based on SaaS Founders, we recommend Email + LinkedIn + Voice AI. This combination has a 23% higher
                 meeting book rate for similar audiences.
               </p>
@@ -590,18 +590,18 @@ function StepMessaging({
   onValuePropToggle: (prop: string) => void;
 }) {
   return (
-    <div className="bg-bg-void/40 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
+    <div className="bg-bg-cream/40 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
       <div className="p-6 border-b border-white/10">
         <div className="flex items-center gap-3 mb-1">
           <Send className="w-5 h-5 text-amber" />
-          <h2 className="text-lg font-semibold text-text-primary">Messaging</h2>
+          <h2 className="text-lg font-semibold text-ink">Messaging</h2>
         </div>
-        <p className="text-sm text-text-muted ml-8">Define your tone and let AI craft your outreach messages</p>
+        <p className="text-sm text-ink-3 ml-8">Define your tone and let AI craft your outreach messages</p>
       </div>
       <div className="p-6 space-y-6">
         {/* Tone Selection */}
         <div>
-          <label className="block text-sm font-medium text-text-primary mb-3">Tone</label>
+          <label className="block text-sm font-medium text-ink mb-3">Tone</label>
           <div className="grid grid-cols-3 gap-4">
             {toneOptions.map((tone) => {
               const isSelected = state.tone === tone.value;
@@ -615,8 +615,8 @@ function StepMessaging({
                       : "border-white/10 bg-slate-950/40 hover:border-white/20"
                   }`}
                 >
-                  <p className="text-sm font-semibold text-text-primary mb-1">{tone.label}</p>
-                  <p className="text-xs text-text-muted italic">{tone.example}</p>
+                  <p className="text-sm font-semibold text-ink mb-1">{tone.label}</p>
+                  <p className="text-xs text-ink-3 italic">{tone.example}</p>
                 </button>
               );
             })}
@@ -625,7 +625,7 @@ function StepMessaging({
 
         {/* Value Props */}
         <div>
-          <label className="block text-sm font-medium text-text-primary mb-3">Key Value Props to Emphasize</label>
+          <label className="block text-sm font-medium text-ink mb-3">Key Value Props to Emphasize</label>
           <div className="flex flex-wrap gap-2">
             {valuePropOptions.map((prop) => {
               const isSelected = state.valueProps.includes(prop);
@@ -636,7 +636,7 @@ function StepMessaging({
                   className={`px-4 py-2 text-sm font-medium rounded-lg border transition-colors ${
                     isSelected
                       ? "bg-amber/20 border-amber/50 text-amber"
-                      : "bg-slate-950/40 border-white/10 text-text-secondary hover:bg-bg-base/60"
+                      : "bg-slate-950/40 border-white/10 text-ink-2 hover:bg-panel/60"
                   }`}
                 >
                   {prop}
@@ -648,7 +648,7 @@ function StepMessaging({
 
         {/* Message Generation */}
         <div className="pt-6 border-t border-white/10">
-          <label className="block text-sm font-medium text-text-primary mb-4">Message Generation</label>
+          <label className="block text-sm font-medium text-ink mb-4">Message Generation</label>
           <div className="grid grid-cols-2 gap-4 mb-6">
             <button
               onClick={() => onChange({ messageGeneration: "ai" })}
@@ -663,10 +663,10 @@ function StepMessaging({
                   state.messageGeneration === "ai" ? "bg-amber" : "bg-slate-700"
                 }`}
               >
-                <Zap className={`w-7 h-7 ${state.messageGeneration === "ai" ? "text-text-primary" : "text-text-secondary"}`} />
+                <Zap className={`w-7 h-7 ${state.messageGeneration === "ai" ? "text-ink" : "text-ink-2"}`} />
               </div>
-              <p className="text-sm font-semibold text-text-primary">Let AI generate messaging</p>
-              <p className="text-xs text-text-muted mt-1">Based on your tone and value props</p>
+              <p className="text-sm font-semibold text-ink">Let AI generate messaging</p>
+              <p className="text-xs text-ink-3 mt-1">Based on your tone and value props</p>
             </button>
             <button
               onClick={() => onChange({ messageGeneration: "manual" })}
@@ -681,10 +681,10 @@ function StepMessaging({
                   state.messageGeneration === "manual" ? "bg-amber" : "bg-slate-700"
                 }`}
               >
-                <Edit2 className={`w-7 h-7 ${state.messageGeneration === "manual" ? "text-text-primary" : "text-text-secondary"}`} />
+                <Edit2 className={`w-7 h-7 ${state.messageGeneration === "manual" ? "text-ink" : "text-ink-2"}`} />
               </div>
-              <p className="text-sm font-semibold text-text-primary">I'll provide templates</p>
-              <p className="text-xs text-text-muted mt-1">Write your own copy</p>
+              <p className="text-sm font-semibold text-ink">I'll provide templates</p>
+              <p className="text-xs text-ink-3 mt-1">Write your own copy</p>
             </button>
           </div>
         </div>
@@ -692,19 +692,19 @@ function StepMessaging({
         {/* AI Preview */}
         {state.messageGeneration === "ai" && (
           <div className="bg-slate-950/40 border border-white/10 rounded-xl overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-4 bg-bg-base/40 border-b border-white/10">
-              <div className="flex items-center gap-2 text-sm font-semibold text-text-primary">
+            <div className="flex items-center justify-between px-5 py-4 bg-panel/40 border-b border-white/10">
+              <div className="flex items-center gap-2 text-sm font-semibold text-ink">
                 <Eye className="w-4 h-4 text-amber" />
                 First Touch Preview
               </div>
-              <span className="flex items-center gap-1.5 px-2.5 py-1 bg-gradient-to-r from-violet-600 to-amber text-[10px] font-semibold uppercase tracking-wide text-text-primary rounded">
+              <span className="flex items-center gap-1.5 px-2.5 py-1 bg-gradient-to-r from-violet-600 to-amber text-[10px] font-semibold uppercase tracking-wide text-ink rounded">
                 <Sparkles className="w-3 h-3" />
                 AI Generated
               </span>
             </div>
             <div className="p-5">
-              <p className="text-sm font-semibold text-text-primary mb-3">Re: Quick question about {"{{company}}"}'s growth</p>
-              <div className="text-sm text-text-secondary space-y-3 leading-relaxed">
+              <p className="text-sm font-semibold text-ink mb-3">Re: Quick question about {"{{company}}"}'s growth</p>
+              <div className="text-sm text-ink-2 space-y-3 leading-relaxed">
                 <p>Hi {"{{firstName}}"},</p>
                 <p>
                   I noticed {"{{company}}"} has been scaling rapidly — congrats on the recent momentum.
@@ -724,12 +724,12 @@ function StepMessaging({
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3 px-5 py-4 bg-bg-base/40 border-t border-white/10">
-              <button className="flex items-center gap-2 px-4 py-2 bg-slate-700/60 hover:bg-bg-elevated/60 border border-white/10 rounded-lg text-sm text-text-secondary transition-colors">
+            <div className="flex items-center gap-3 px-5 py-4 bg-panel/40 border-t border-white/10">
+              <button className="flex items-center gap-2 px-4 py-2 bg-slate-700/60 hover:bg-panel/60 border border-white/10 rounded-lg text-sm text-ink-2 transition-colors">
                 <RefreshCw className="w-4 h-4" />
                 Regenerate
               </button>
-              <button className="flex items-center gap-2 px-4 py-2 bg-slate-700/60 hover:bg-bg-elevated/60 border border-white/10 rounded-lg text-sm text-text-secondary transition-colors">
+              <button className="flex items-center gap-2 px-4 py-2 bg-slate-700/60 hover:bg-panel/60 border border-white/10 rounded-lg text-sm text-ink-2 transition-colors">
                 <Edit2 className="w-4 h-4" />
                 Edit
               </button>
@@ -757,55 +757,55 @@ function StepReview({
   const toneLabel = toneOptions.find((t) => t.value === state.tone)?.label || "Professional";
 
   return (
-    <div className="bg-bg-void/40 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
+    <div className="bg-bg-cream/40 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
       <div className="p-6 border-b border-white/10">
         <div className="flex items-center gap-3 mb-1">
           <Target className="w-5 h-5 text-amber" />
-          <h2 className="text-lg font-semibold text-text-primary">Review & Launch</h2>
+          <h2 className="text-lg font-semibold text-ink">Review & Launch</h2>
         </div>
-        <p className="text-sm text-text-muted ml-8">Review your campaign settings before going live</p>
+        <p className="text-sm text-ink-3 ml-8">Review your campaign settings before going live</p>
       </div>
       <div className="p-6 space-y-6">
         {/* Summary Card */}
         <div className="bg-slate-950/40 border border-white/10 rounded-xl overflow-hidden divide-y divide-white/5">
           <div className="p-5">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted mb-3">Campaign Details</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-3 mb-3">Campaign Details</p>
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-text-secondary">Campaign Name</span>
-                <span className="font-semibold text-text-primary">{state.name || "Untitled Campaign"}</span>
+                <span className="text-ink-2">Campaign Name</span>
+                <span className="font-semibold text-ink">{state.name || "Untitled Campaign"}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-text-secondary">Goal</span>
-                <span className="font-semibold text-text-primary">{goalLabel}</span>
+                <span className="text-ink-2">Goal</span>
+                <span className="font-semibold text-ink">{goalLabel}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-text-secondary">Target</span>
-                <span className="font-semibold text-text-primary">{state.targetMeetings} meetings / month</span>
+                <span className="text-ink-2">Target</span>
+                <span className="font-semibold text-ink">{state.targetMeetings} meetings / month</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-text-secondary">Duration</span>
-                <span className="font-semibold text-text-primary">
+                <span className="text-ink-2">Duration</span>
+                <span className="font-semibold text-ink">
                   {state.startDate || "TBD"} — {state.endDate || "Ongoing"}
                 </span>
               </div>
             </div>
           </div>
           <div className="p-5">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted mb-3">Audience</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-3 mb-3">Audience</p>
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-text-secondary">ICP</span>
-                <span className="font-semibold text-text-primary">{icpLabel}</span>
+                <span className="text-ink-2">ICP</span>
+                <span className="font-semibold text-ink">{icpLabel}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-text-secondary">Total Leads</span>
+                <span className="text-ink-2">Total Leads</span>
                 <span className="font-semibold text-amber">{state.estimatedLeads.toLocaleString()} leads</span>
               </div>
             </div>
           </div>
           <div className="p-5">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted mb-3">Channels</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-3 mb-3">Channels</p>
             <div className="flex gap-2">
               {state.selectedChannels.map((channel) => {
                 const config = channelConfig.find((c) => c.type === channel);
@@ -814,7 +814,7 @@ function StepReview({
                 return (
                   <span
                     key={channel}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 bg-bg-base/60 rounded-lg text-xs font-medium text-text-secondary"
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 bg-panel/60 rounded-lg text-xs font-medium text-ink-2"
                   >
                     <Icon className="w-3.5 h-3.5" />
                     {config.label}
@@ -824,15 +824,15 @@ function StepReview({
             </div>
           </div>
           <div className="p-5">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted mb-3">Messaging</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-3 mb-3">Messaging</p>
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-text-secondary">Tone</span>
-                <span className="font-semibold text-text-primary">{toneLabel}</span>
+                <span className="text-ink-2">Tone</span>
+                <span className="font-semibold text-ink">{toneLabel}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-text-secondary">Generation</span>
-                <span className="font-semibold text-text-primary">
+                <span className="text-ink-2">Generation</span>
+                <span className="font-semibold text-ink">
                   {state.messageGeneration === "ai" ? "AI Generated" : "Custom Templates"}
                 </span>
               </div>
@@ -843,25 +843,25 @@ function StepReview({
         {/* Projected Metrics */}
         <div className="grid grid-cols-3 gap-4">
           <div className="p-6 bg-slate-950/40 border border-white/10 rounded-xl text-center">
-            <p className="text-3xl font-bold font-mono text-text-primary mb-1">~42%</p>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">Projected Opens</p>
-            <p className="text-[10px] text-text-muted mt-2">Industry avg: 35%</p>
+            <p className="text-3xl font-bold font-mono text-ink mb-1">~42%</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-3">Projected Opens</p>
+            <p className="text-[10px] text-ink-3 mt-2">Industry avg: 35%</p>
           </div>
           <div className="p-6 bg-slate-950/40 border border-white/10 rounded-xl text-center">
-            <p className="text-3xl font-bold font-mono text-text-primary mb-1">~8%</p>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">Projected Replies</p>
-            <p className="text-[10px] text-text-muted mt-2">Industry avg: 4%</p>
+            <p className="text-3xl font-bold font-mono text-ink mb-1">~8%</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-3">Projected Replies</p>
+            <p className="text-[10px] text-ink-3 mt-2">Industry avg: 4%</p>
           </div>
           <div className="p-6 bg-slate-950/40 border border-white/10 rounded-xl text-center">
             <p className="text-3xl font-bold font-mono text-amber mb-1">8-12</p>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">Projected Meetings</p>
-            <p className="text-[10px] text-text-muted mt-2">Based on similar campaigns</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-3">Projected Meetings</p>
+            <p className="text-[10px] text-ink-3 mt-2">Based on similar campaigns</p>
           </div>
         </div>
 
         {/* Schedule Options */}
         <div className="pt-6 border-t border-white/10">
-          <label className="block text-sm font-medium text-text-primary mb-4">Launch Schedule</label>
+          <label className="block text-sm font-medium text-ink mb-4">Launch Schedule</label>
           <div className="grid grid-cols-2 gap-4">
             <button
               onClick={() => onChange({ launchSchedule: "now" })}
@@ -877,11 +877,11 @@ function StepReview({
                     state.launchSchedule === "now" ? "bg-amber" : "bg-slate-700"
                   }`}
                 >
-                  <Zap className={`w-5 h-5 ${state.launchSchedule === "now" ? "text-text-primary" : "text-text-secondary"}`} />
+                  <Zap className={`w-5 h-5 ${state.launchSchedule === "now" ? "text-ink" : "text-ink-2"}`} />
                 </div>
-                <span className="text-sm font-semibold text-text-primary">Launch Now</span>
+                <span className="text-sm font-semibold text-ink">Launch Now</span>
               </div>
-              <p className="text-xs text-text-muted ml-13">Start sending immediately</p>
+              <p className="text-xs text-ink-3 ml-13">Start sending immediately</p>
             </button>
             <button
               onClick={() => onChange({ launchSchedule: "scheduled" })}
@@ -897,11 +897,11 @@ function StepReview({
                     state.launchSchedule === "scheduled" ? "bg-amber" : "bg-slate-700"
                   }`}
                 >
-                  <Clock className={`w-5 h-5 ${state.launchSchedule === "scheduled" ? "text-text-primary" : "text-text-secondary"}`} />
+                  <Clock className={`w-5 h-5 ${state.launchSchedule === "scheduled" ? "text-ink" : "text-ink-2"}`} />
                 </div>
-                <span className="text-sm font-semibold text-text-primary">Schedule</span>
+                <span className="text-sm font-semibold text-ink">Schedule</span>
               </div>
-              <p className="text-xs text-text-muted ml-13">Pick a date and time</p>
+              <p className="text-xs text-ink-3 ml-13">Pick a date and time</p>
             </button>
           </div>
         </div>
@@ -1001,17 +1001,17 @@ export function CampaignWizard({ onBack, onComplete, isSubmitting = false }: Cam
   return (
     <div className="min-h-screen bg-slate-950">
       {/* Header */}
-      <div className="bg-bg-void/40 backdrop-blur-md border-b border-white/10 px-8 py-4">
+      <div className="bg-bg-cream/40 backdrop-blur-md border-b border-white/10 px-8 py-4">
         <div className="flex items-center gap-4">
           <button
             onClick={onBack}
-            className="flex items-center gap-2 px-3 py-2 text-sm text-text-muted hover:text-text-secondary rounded-lg transition-colors"
+            className="flex items-center gap-2 px-3 py-2 text-sm text-ink-3 hover:text-ink-2 rounded-lg transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Back
           </button>
-          <div className="w-px h-6 bg-bg-surface/10" />
-          <h1 className="text-lg font-semibold text-text-primary">New Campaign</h1>
+          <div className="w-px h-6 bg-bg-panel/10" />
+          <h1 className="text-lg font-semibold text-ink">New Campaign</h1>
         </div>
       </div>
 
@@ -1040,7 +1040,7 @@ export function CampaignWizard({ onBack, onComplete, isSubmitting = false }: Cam
           {currentStep > 1 ? (
             <button
               onClick={prevStep}
-              className="flex items-center gap-2 px-5 py-2.5 bg-bg-base/60 hover:bg-slate-700/60 border border-white/10 rounded-lg text-sm text-text-primary transition-colors"
+              className="flex items-center gap-2 px-5 py-2.5 bg-panel/60 hover:bg-slate-700/60 border border-white/10 rounded-lg text-sm text-ink transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
               Back
@@ -1052,7 +1052,7 @@ export function CampaignWizard({ onBack, onComplete, isSubmitting = false }: Cam
           {currentStep < 5 ? (
             <button
               onClick={nextStep}
-              className="flex items-center gap-2 px-5 py-2.5 bg-amber hover:bg-amber rounded-lg text-sm font-medium text-text-primary transition-colors"
+              className="flex items-center gap-2 px-5 py-2.5 bg-amber hover:bg-amber rounded-lg text-sm font-medium text-ink transition-colors"
             >
               Continue
               <ArrowRight className="w-4 h-4" />
@@ -1061,7 +1061,7 @@ export function CampaignWizard({ onBack, onComplete, isSubmitting = false }: Cam
             <button
               onClick={handleLaunch}
               disabled={isSubmitting}
-              className="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-violet-600 to-amber hover:shadow-lg hover:shadow-amber/25 rounded-lg text-sm font-semibold text-text-primary transition-all disabled:opacity-50"
+              className="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-violet-600 to-amber hover:shadow-lg hover:shadow-amber/25 rounded-lg text-sm font-semibold text-ink transition-all disabled:opacity-50"
             >
               <Rocket className="w-4 h-4" />
               {isSubmitting ? "Launching..." : "Launch Campaign"}

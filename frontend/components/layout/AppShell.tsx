@@ -57,7 +57,7 @@ export function AppShell({ children, pageTitle = 'Agency OS' }: AppShellProps) {
       <DemoBanner />
 
       {/* Base background — uses CSS var so it responds to data-theme */}
-      <div className="fixed inset-0 -z-10" style={{ backgroundColor: "var(--bg-void)" }} />
+      <div className="fixed inset-0 -z-10" style={{ backgroundColor: "var(--bg-cream)" }} />
 
       {/* Mobile backdrop */}
       <div
@@ -70,7 +70,7 @@ export function AppShell({ children, pageTitle = 'Agency OS' }: AppShellProps) {
 
       {/* Fixed Left Sidebar — 72px desktop, off-canvas drawer on <md */}
       <aside
-        className={`fixed left-0 h-full w-[72px] bg-bg-surface border-r border-[var(--border-default)] flex flex-col items-center py-4 z-50 transition-transform duration-300 ease-out ${
+        className={`fixed left-0 h-full w-[72px] bg-bg-panel border-r border-[var(--border-default)] flex flex-col items-center py-4 z-50 transition-transform duration-300 ease-out ${
           isDemo ? 'top-10' : 'top-0'
         } ${mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
         aria-label="Primary navigation"
@@ -80,7 +80,7 @@ export function AppShell({ children, pageTitle = 'Agency OS' }: AppShellProps) {
           type="button"
           onClick={() => setMobileOpen(false)}
           aria-label="Close navigation"
-          className="md:hidden absolute top-2 right-2 p-1 text-text-muted hover:text-text-primary"
+          className="md:hidden absolute top-2 right-2 p-1 text-ink-3 hover:text-ink"
         >
           <X className="w-4 h-4" />
         </button>
@@ -108,14 +108,14 @@ export function AppShell({ children, pageTitle = 'Agency OS' }: AppShellProps) {
                   ${
                     isActive
                       ? "bg-amber-glow text-amber"
-                      : "text-text-muted hover:bg-bg-elevated hover:text-text-primary"
+                      : "text-ink-3 hover:bg-panel hover:text-ink"
                   }
                 `}
                 title={item.label}
               >
                 <Icon className="w-5 h-5" />
                 {/* Tooltip */}
-                <span className="absolute left-14 px-2 py-1 bg-bg-elevated text-text-primary text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap transition-opacity">
+                <span className="absolute left-14 px-2 py-1 bg-panel text-ink text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap transition-opacity">
                   {item.label}
                 </span>
               </Link>
@@ -127,17 +127,17 @@ export function AppShell({ children, pageTitle = 'Agency OS' }: AppShellProps) {
       {/* Main Content Area — full-width on mobile, 72px reservation on md+ */}
       <div className={`md:ml-[72px] min-h-screen flex flex-col ${isDemo ? 'pt-10' : ''}`}>
         {/* Top Header Bar */}
-        <header className={`h-16 bg-bg-surface border-b border-border-subtle flex items-center justify-between px-4 md:px-6 sticky z-40 ${isDemo ? 'top-10' : 'top-0'}`}>
+        <header className={`h-16 bg-bg-panel border-b border-rule flex items-center justify-between px-4 md:px-6 sticky z-40 ${isDemo ? 'top-10' : 'top-0'}`}>
           <div className="flex items-center gap-3 md:gap-4 min-w-0">
             <button
               type="button"
               onClick={() => setMobileOpen(true)}
               aria-label="Open navigation"
-              className="md:hidden -ml-1 p-2 rounded-md text-text-muted hover:text-text-primary hover:bg-bg-elevated transition-colors"
+              className="md:hidden -ml-1 p-2 rounded-md text-ink-3 hover:text-ink hover:bg-panel transition-colors"
             >
               <Menu className="w-5 h-5" />
             </button>
-            <h1 className="text-base md:text-lg font-semibold text-text-primary truncate">
+            <h1 className="text-base md:text-lg font-semibold text-ink truncate">
               {pageTitle}
             </h1>
             <span className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-status-success/15 border border-status-success/30 rounded-full text-xs font-semibold text-status-success">
@@ -159,9 +159,9 @@ export function AppShell({ children, pageTitle = 'Agency OS' }: AppShellProps) {
           title="Maya AI Assistant"
         >
           {/* Avatar placeholder - using "M" for Maya */}
-          <span className="text-bg-void font-bold text-lg">M</span>
+          <span className="text-bg-cream font-bold text-lg">M</span>
           {/* Online indicator */}
-          <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-[#10B981] rounded-full border-2 border-bg-void">
+          <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-[#10B981] rounded-full border-2 border-bg-cream">
             <span className="absolute inset-0 bg-[#10B981] rounded-full animate-ping opacity-75" />
           </span>
         </button>

@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 const sentimentStyles: Record<SentimentType, string> = {
   positive: 'text-status-success',
   negative: 'text-status-error',
-  neutral: 'text-text-muted',
+  neutral: 'text-ink-3',
 };
 
 const sentimentLabels: Record<SentimentType, string> = {

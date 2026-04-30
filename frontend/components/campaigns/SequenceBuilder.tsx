@@ -99,7 +99,7 @@ const CHANNEL_CONFIG: Record<
   email: {
     label: "Email",
     icon: <Mail className="h-4 w-4" />,
-    color: "bg-amber-glow text-amber dark:bg-bg-void/30 dark:text-text-secondary",
+    color: "bg-amber-glow text-amber dark:bg-bg-cream/30 dark:text-ink-2",
   },
   sms: {
     label: "SMS",

@@ -18,7 +18,7 @@ export function ConversationList({
   className,
 }: ConversationListProps) {
   return (
-    <div className={cn('bg-bg-surface overflow-y-auto', className)}>
+    <div className={cn('bg-bg-panel overflow-y-auto', className)}>
       {conversations.map((conversation) => {
         const isActive = conversation.id === selectedId;
         const isUnread = conversation.unread;
@@ -31,31 +31,31 @@ export function ConversationList({
             className={cn(
               'px-5 py-4 border-b border-slate-100 cursor-pointer transition-colors',
               'hover:bg-slate-50',
-              isActive && 'bg-bg-surface border-l-[3px] border-l-amber',
+              isActive && 'bg-bg-panel border-l-[3px] border-l-amber',
               isUnread && !isActive && 'bg-amber-50',
-              isUnread && isActive && 'bg-bg-surface'
+              isUnread && isActive && 'bg-bg-panel'
             )}
           >
             {/* Header: Name + Time */}
             <div className="flex justify-between items-start mb-1.5">
               <div className="flex items-center gap-1.5 font-semibold text-sm text-slate-800">
                 {isUnread && (
-                  <span className="w-2 h-2 rounded-full bg-bg-elevated flex-shrink-0" />
+                  <span className="w-2 h-2 rounded-full bg-panel flex-shrink-0" />
                 )}
                 <span>{conversation.leadName}</span>
               </div>
-              <span className="text-xs text-text-secondary flex-shrink-0">
+              <span className="text-xs text-ink-2 flex-shrink-0">
                 {conversation.lastMessageTime}
               </span>
             </div>
 
             {/* Company */}
-            <div className="text-xs text-text-muted mb-1.5">
+            <div className="text-xs text-ink-3 mb-1.5">
               {conversation.company}
             </div>
 
             {/* Preview: Channel emoji + Message + Intent badge */}
-            <div className="flex items-center gap-2 text-[13px] text-text-muted">
+            <div className="flex items-center gap-2 text-[13px] text-ink-3">
               <span className="flex-shrink-0">
                 {channelEmoji[conversation.channel]}
               </span>
@@ -78,9 +78,9 @@ export function ConversationList({
 
       {conversations.length === 0 && (
         <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-          <Inbox className="w-10 h-10 text-text-muted mb-3" />
+          <Inbox className="w-10 h-10 text-ink-3 mb-3" />
           <div className="text-sm font-medium text-slate-800 mb-1">No conversations</div>
-          <div className="text-xs text-text-secondary">
+          <div className="text-xs text-ink-2">
             Conversations will appear here when leads reply
           </div>
         </div>

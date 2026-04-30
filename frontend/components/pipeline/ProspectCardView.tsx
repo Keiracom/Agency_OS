@@ -32,17 +32,17 @@ const INTENT_BAND_CONFIG: Record<
   DABBLING: {
     label: "DABBLING",
     className:
-      "text-text-secondary bg-bg-elevated border-border-subtle font-medium",
+      "text-ink-2 bg-panel border-rule font-medium",
   },
   NOT_TRYING: {
     label: "NOT TRYING",
     className:
-      "text-text-muted bg-bg-surface border-border-subtle font-medium",
+      "text-ink-3 bg-bg-panel border-rule font-medium",
   },
   UNKNOWN: {
     label: "UNKNOWN",
     className:
-      "text-text-muted bg-bg-surface border-border-subtle font-medium",
+      "text-ink-3 bg-bg-panel border-rule font-medium",
   },
 };
 
@@ -75,7 +75,7 @@ export function ProspectCardView({ card }: ProspectCardViewProps) {
   return (
     <GlassCard className="p-0 overflow-hidden" hover>
       {/* Card header */}
-      <div className="px-5 py-4 border-b border-border-subtle">
+      <div className="px-5 py-4 border-b border-rule">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap mb-1">
@@ -87,10 +87,10 @@ export function ProspectCardView({ card }: ProspectCardViewProps) {
                 </span>
               )}
             </div>
-            <h3 className="text-base font-bold text-text-primary leading-tight">
+            <h3 className="text-base font-bold text-ink leading-tight">
               {card.company_name}
             </h3>
-            <p className="text-xs text-text-muted font-mono mt-0.5">
+            <p className="text-xs text-ink-3 font-mono mt-0.5">
               {card.location_display || card.domain}
             </p>
           </div>
@@ -98,17 +98,17 @@ export function ProspectCardView({ card }: ProspectCardViewProps) {
             <div className="text-2xl font-extrabold font-mono text-amber leading-none">
               {card.intent_score || card.affordability_score}
             </div>
-            <div className="text-[10px] text-text-muted font-mono uppercase mt-0.5">Score</div>
+            <div className="text-[10px] text-ink-3 font-mono uppercase mt-0.5">Score</div>
           </div>
         </div>
 
         {/* DM name */}
         {card.dm_name && (
-          <p className="text-xs text-text-secondary mt-2">
-            <span className="text-text-muted">Owner </span>
-            <span className="font-semibold text-text-primary">{card.dm_name}</span>
+          <p className="text-xs text-ink-2 mt-2">
+            <span className="text-ink-3">Owner </span>
+            <span className="font-semibold text-ink">{card.dm_name}</span>
             {card.dm_title && (
-              <span className="text-text-muted"> • {card.dm_title}</span>
+              <span className="text-ink-3"> • {card.dm_title}</span>
             )}
           </p>
         )}
@@ -119,7 +119,7 @@ export function ProspectCardView({ card }: ProspectCardViewProps) {
         {/* Headline signal */}
         {card.headline_signal && (
           <div>
-            <p className="text-sm italic text-text-primary leading-relaxed">
+            <p className="text-sm italic text-ink leading-relaxed">
               &ldquo;{card.headline_signal}&rdquo;
             </p>
           </div>
@@ -128,7 +128,7 @@ export function ProspectCardView({ card }: ProspectCardViewProps) {
         {/* Recommended service */}
         {card.recommended_service && (
           <div className="flex items-start gap-2">
-            <span className="text-[11px] font-mono font-semibold uppercase tracking-wide text-text-muted flex-shrink-0 pt-0.5">
+            <span className="text-[11px] font-mono font-semibold uppercase tracking-wide text-ink-3 flex-shrink-0 pt-0.5">
               Service
             </span>
             <span className="text-xs text-amber font-semibold">
@@ -141,7 +141,7 @@ export function ProspectCardView({ card }: ProspectCardViewProps) {
         {evidenceToShow.length > 0 && (
           <ul className="space-y-1">
             {evidenceToShow.map((item, i) => (
-              <li key={i} className="flex gap-2 text-xs text-text-secondary">
+              <li key={i} className="flex gap-2 text-xs text-ink-2">
                 <span className="text-amber font-mono flex-shrink-0 mt-0.5">•</span>
                 <span className="leading-relaxed">{item}</span>
               </li>
@@ -153,7 +153,7 @@ export function ProspectCardView({ card }: ProspectCardViewProps) {
         {(gmbStars || card.brand_competitors_bidding) && (
           <div className="flex flex-wrap gap-3">
             {gmbStars && (
-              <span className="flex items-center gap-1 text-xs text-text-secondary font-mono">
+              <span className="flex items-center gap-1 text-xs text-ink-2 font-mono">
                 <Star className="w-3 h-3 text-amber fill-amber" />
                 {gmbStars}
               </span>

@@ -31,7 +31,7 @@ export function QuickActions({ actions = defaultActions, className }: QuickActio
     <div className={cn("bg-[#12121A] border border-[#2A2A3A] rounded-2xl", className)}>
       {/* Header */}
       <div className="px-6 py-4 border-b border-[#2A2A3A]">
-        <h3 className="font-semibold text-text-primary">Quick Actions</h3>
+        <h3 className="font-semibold text-ink">Quick Actions</h3>
       </div>
 
       {/* Actions */}
@@ -43,7 +43,7 @@ export function QuickActions({ actions = defaultActions, className }: QuickActio
             className="flex items-center gap-3 px-4 py-3.5 bg-[#1A1A24] border border-[#2A2A3A] rounded-xl cursor-pointer transition-all hover:border-[#7C3AED] hover:bg-[#7C3AED]/5 group"
           >
             <action.icon className="w-5 h-5 text-[#7C3AED]" />
-            <span className="text-sm font-medium text-text-primary group-hover:text-[#9D5CFF] transition-colors">
+            <span className="text-sm font-medium text-ink group-hover:text-[#9D5CFF] transition-colors">
               {action.label}
             </span>
           </Link>

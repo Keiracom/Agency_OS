@@ -136,7 +136,7 @@ const getStatusConfig = (status: TranscriptData["status"]) => {
       };
     case "no_answer":
       return {
-        color: "bg-bg-surface0/20 text-text-muted border-gray-500/30",
+        color: "bg-bg-surface0/20 text-ink-3 border-gray-500/30",
         icon: AlertCircle,
         label: "No Answer",
       };
@@ -158,12 +158,12 @@ const getOutcomeConfig = (outcome: TranscriptData["outcome"]) => {
       };
     case "callback_requested":
       return {
-        color: "bg-bg-elevated/20 text-text-secondary border-default/30",
+        color: "bg-panel/20 text-ink-2 border-default/30",
         label: "Callback Requested",
       };
     case "not_interested":
       return {
-        color: "bg-bg-surface0/20 text-text-muted border-gray-500/30",
+        color: "bg-bg-surface0/20 text-ink-3 border-gray-500/30",
         label: "Not Interested",
       };
     case "no_decision":
@@ -206,12 +206,12 @@ export function TranscriptViewer({ transcript }: TranscriptViewerProps) {
       <CardHeader className="border-b border-white/10 pb-4">
         <div className="flex items-start justify-between">
           <div className="space-y-1">
-            <CardTitle className="text-text-primary flex items-center gap-2">
+            <CardTitle className="text-ink flex items-center gap-2">
               <Phone className="h-5 w-5 text-amber" />
               Voice AI Transcript
             </CardTitle>
-            <div className="flex items-center gap-2 text-sm text-text-muted">
-              <span className="font-medium text-text-primary">{effectiveTranscript.leadName}</span>
+            <div className="flex items-center gap-2 text-sm text-ink-3">
+              <span className="font-medium text-ink">{effectiveTranscript.leadName}</span>
               <span>-</span>
               <span>{effectiveTranscript.leadCompany}</span>
             </div>
@@ -256,13 +256,13 @@ export function TranscriptViewer({ transcript }: TranscriptViewerProps) {
               className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
                 message.role === "agent"
                   ? "bg-amber/20"
-                  : "bg-bg-elevated/20"
+                  : "bg-panel/20"
               }`}
             >
               {message.role === "agent" ? (
                 <Bot className="h-4 w-4 text-amber" />
               ) : (
-                <User className="h-4 w-4 text-text-secondary" />
+                <User className="h-4 w-4 text-ink-2" />
               )}
             </div>
 
@@ -276,14 +276,14 @@ export function TranscriptViewer({ transcript }: TranscriptViewerProps) {
                 className={`inline-block px-4 py-2.5 rounded-2xl ${
                   message.role === "agent"
                     ? "bg-[#2a2a2f] rounded-tl-none"
-                    : "bg-bg-elevated/20 rounded-tr-none"
+                    : "bg-panel/20 rounded-tr-none"
                 }`}
               >
-                <p className="text-sm text-text-secondary leading-relaxed">
+                <p className="text-sm text-ink-2 leading-relaxed">
                   {message.content}
                 </p>
               </div>
-              <p className="text-[10px] text-text-muted mt-1 px-2">
+              <p className="text-[10px] text-ink-3 mt-1 px-2">
                 {formatTime(message.timestamp)}
               </p>
             </div>

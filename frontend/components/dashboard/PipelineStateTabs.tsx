@@ -72,7 +72,7 @@ function TabRow({
     { key: "complete", label: "Complete" },
   ];
   return (
-    <div className="inline-flex p-[2px] rounded-md bg-surface">
+    <div className="inline-flex p-[2px] rounded-md bg-panel">
       {tabs.map(t => {
         const isActive = t.key === active;
         return (

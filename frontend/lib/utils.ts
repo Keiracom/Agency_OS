@@ -25,7 +25,7 @@ const avatarColors = [
   "bg-amber",
   "bg-amber",
   "bg-amber",
-  "bg-bg-elevated",
+  "bg-panel",
   "bg-indigo-500",
   "bg-amber",
   "bg-amber",
@@ -47,7 +47,7 @@ export function getTierColor(tier: string): string {
   const tierColors: Record<string, string> = {
     hot: "text-amber",
     warm: "text-orange-500",
-    cool: "text-text-secondary",
+    cool: "text-ink-2",
     cold: "text-amber",
     dead: "text-text-primary0",
   }

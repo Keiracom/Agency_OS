@@ -19,11 +19,11 @@ interface ALSTierBarProps {
 }
 
 const tierConfig: Record<ALSTier, { label: string; color: string; bg: string }> = {
-  hot: { label: "Hot", color: "text-text-primary", bg: "bg-[#EF4444]" },
-  warm: { label: "Warm", color: "text-text-primary", bg: "bg-[#F97316]" },
-  cool: { label: "Cool", color: "text-text-primary", bg: "bg-[#3B82F6]" },
-  cold: { label: "Cold", color: "text-text-primary", bg: "bg-[#6B7280]" },
-  dead: { label: "Dead", color: "text-text-muted", bg: "bg-[#D1D5DB]" },
+  hot: { label: "Hot", color: "text-ink", bg: "bg-[#EF4444]" },
+  warm: { label: "Warm", color: "text-ink", bg: "bg-[#F97316]" },
+  cool: { label: "Cool", color: "text-ink", bg: "bg-[#3B82F6]" },
+  cold: { label: "Cold", color: "text-ink", bg: "bg-[#6B7280]" },
+  dead: { label: "Dead", color: "text-ink-3", bg: "bg-[#D1D5DB]" },
 };
 
 export function ALSTierBar({ tier, count, percentage, className }: ALSTierBarProps) {
@@ -36,11 +36,11 @@ export function ALSTierBar({ tier, count, percentage, className }: ALSTierBarPro
         <Badge className={cn("text-xs font-medium", config.bg, config.color)}>
           {config.label}
         </Badge>
-        <span className="text-sm font-medium text-text-primary">{Math.round(percentage)}%</span>
+        <span className="text-sm font-medium text-ink">{Math.round(percentage)}%</span>
       </div>
 
       {/* Progress Bar */}
-      <div className="h-2 w-full rounded-full bg-bg-surface/10 overflow-hidden">
+      <div className="h-2 w-full rounded-full bg-bg-panel/10 overflow-hidden">
         <div
           className={cn("h-full rounded-full transition-all duration-500", config.bg)}
           style={{ width: `${percentage}%` }}
@@ -48,7 +48,7 @@ export function ALSTierBar({ tier, count, percentage, className }: ALSTierBarPro
       </div>
 
       {/* Count */}
-      <p className="text-xs text-text-primary/40 text-center">
+      <p className="text-xs text-ink/40 text-center">
         {count.toLocaleString()} leads
       </p>
     </div>

@@ -15,7 +15,7 @@ export default function CampaignsPage() {
       {/* Page Header */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-slate-800">Campaigns</h1>
-        <button className="px-5 py-2.5 bg-bg-elevated text-text-primary rounded-lg font-semibold text-sm hover:bg-bg-elevated transition-colors">
+        <button className="px-5 py-2.5 bg-panel text-ink rounded-lg font-semibold text-sm hover:bg-panel transition-colors">
           + New Campaign
         </button>
       </div>
@@ -32,8 +32,8 @@ export default function CampaignsPage() {
               onClick={() => setSelectedCampaignId(campaign.id)}
               className={`p-4 rounded-xl border text-left transition-all ${
                 isSelected
-                  ? 'border-default bg-bg-surface ring-2 ring-blue-200'
-                  : 'border-slate-200 bg-bg-surface hover:border-slate-300 hover:shadow-sm'
+                  ? 'border-default bg-bg-panel ring-2 ring-blue-200'
+                  : 'border-slate-200 bg-bg-panel hover:border-slate-300 hover:shadow-sm'
               }`}
             >
               <div className="flex items-start justify-between mb-2">
@@ -61,15 +61,15 @@ export default function CampaignsPage() {
               <div className="flex items-center gap-4 mt-3 pt-3 border-t border-slate-100">
                 <div className="text-center">
                   <div className="text-lg font-bold text-slate-800">{campaign.metrics[0]?.value}</div>
-                  <div className="text-xs text-text-muted">Meetings</div>
+                  <div className="text-xs text-ink-3">Meetings</div>
                 </div>
                 <div className="text-center">
                   <div className="text-lg font-bold text-slate-800">{campaign.metrics[1]?.value}</div>
-                  <div className="text-xs text-text-muted">Reply Rate</div>
+                  <div className="text-xs text-ink-3">Reply Rate</div>
                 </div>
                 <div className="text-center">
                   <div className="text-lg font-bold text-slate-800">{campaign.metrics[4]?.value}</div>
-                  <div className="text-xs text-text-muted">Avg ALS</div>
+                  <div className="text-xs text-ink-3">Avg ALS</div>
                 </div>
               </div>
             </button>

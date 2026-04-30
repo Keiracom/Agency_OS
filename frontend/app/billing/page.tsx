@@ -24,10 +24,10 @@ export default function BillingPage() {
     <AppShell pageTitle="Billing & Subscription">
       {/* Header Row with Subtitle and Support */}
       <div className="px-6 pt-2 pb-0 flex items-center justify-between">
-        <p className="text-sm text-text-muted">Manage your plan, usage, and payment methods</p>
+        <p className="text-sm text-ink-3">Manage your plan, usage, and payment methods</p>
         <a
           href="#"
-          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-transparent text-text-secondary border border-border-default hover:bg-bg-surface-hover hover:text-text-primary transition-all no-underline"
+          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-transparent text-ink-2 border border-rule-strong hover:bg-bg-panel-hover hover:text-ink transition-all no-underline"
         >
           <HelpCircle className="w-4 h-4" />
           Support

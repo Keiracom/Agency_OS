@@ -24,7 +24,7 @@ const tierColors: Record<TierType, string> = {
 const tierBgColors: Record<TierType, string> = {
   hot: 'bg-amber-glow',
   warm: 'bg-amber-500/15',
-  cool: 'bg-bg-elevated/15',
+  cool: 'bg-panel/15',
 };
 
 interface LeadHeaderProps {
@@ -64,10 +64,10 @@ export function LeadHeader({ message }: LeadHeaderProps) {
   }
   
   return (
-    <div className="bg-surface-dark border-b border-border-subtle px-8 py-5 flex items-center gap-5">
+    <div className="bg-panel-dark border-b border-rule px-8 py-5 flex items-center gap-5">
       {/* Avatar */}
       <div className={cn(
-        'w-14 h-14 rounded-2xl flex items-center justify-center text-text-primary font-bold text-xl bg-gradient-to-br flex-shrink-0',
+        'w-14 h-14 rounded-2xl flex items-center justify-center text-ink font-bold text-xl bg-gradient-to-br flex-shrink-0',
         tierGradients[message.tier]
       )}>
         {message.initials}
@@ -75,10 +75,10 @@ export function LeadHeader({ message }: LeadHeaderProps) {
       
       {/* Info */}
       <div className="flex-1 min-w-0">
-        <h1 className="font-serif text-xl font-bold text-text-primary mb-1">
+        <h1 className="font-serif text-xl font-bold text-ink mb-1">
           {message.name}
         </h1>
-        <p className="text-sm text-text-muted">
+        <p className="text-sm text-ink-3">
           {message.title} at {message.company} • {message.email}
         </p>
         {badges.length > 0 && (
@@ -99,16 +99,16 @@ export function LeadHeader({ message }: LeadHeaderProps) {
         <span className="font-mono text-2xl font-extrabold leading-none" style={{ color: tierColors[message.tier] }}>
           {message.score}
         </span>
-        <span className="text-[9px] text-text-muted uppercase tracking-wider mt-0.5">Score</span>
+        <span className="text-[9px] text-ink-3 uppercase tracking-wider mt-0.5">Score</span>
       </div>
       
       {/* Actions */}
       <div className="flex gap-2.5">
-        <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold bg-amber-600 hover:bg-amber-500 text-text-primary transition-colors">
+        <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold bg-amber-600 hover:bg-amber-500 text-ink transition-colors">
           <Calendar className="w-4 h-4" />
           Schedule Call
         </button>
-        <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold glass-surface border border-border-subtle text-text-primary hover:bg-bg-surface/[0.05] transition-colors">
+        <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold glass-surface border border-rule text-ink hover:bg-bg-panel/[0.05] transition-colors">
           <Phone className="w-4 h-4" />
           Call Now
         </button>

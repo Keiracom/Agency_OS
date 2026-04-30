@@ -70,7 +70,7 @@ export function WaitlistForm({ source = "landing-page", className = "", variant 
           </svg>
         </div>
         <h3 className="text-2xl font-semibold text-gray-900 mb-2">You're in!</h3>
-        <p className="text-text-muted">Redirecting...</p>
+        <p className="text-ink-3">Redirecting...</p>
       </div>
     );
   }
@@ -89,7 +89,7 @@ export function WaitlistForm({ source = "landing-page", className = "", variant 
             }}
             placeholder="your.email@agency.com"
             required
-            className={`w-full h-12 px-4 rounded-xl border bg-bg-surface text-gray-900 placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent transition ${
+            className={`w-full h-12 px-4 rounded-xl border bg-bg-panel text-gray-900 placeholder:text-ink-3 focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent transition ${
               status === "error" ? "border-amber-light" : "border-gray-200"
             }`}
             disabled={status === "loading"}
@@ -101,14 +101,14 @@ export function WaitlistForm({ source = "landing-page", className = "", variant 
             value={agencyName}
             onChange={(e) => setAgencyName(e.target.value)}
             placeholder="Your Agency Name"
-            className="w-full h-12 px-4 rounded-xl border border-gray-200 bg-bg-surface text-gray-900 placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent transition"
+            className="w-full h-12 px-4 rounded-xl border border-gray-200 bg-bg-panel text-gray-900 placeholder:text-ink-3 focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent transition"
             disabled={status === "loading"}
           />
         </div>
         <button
           type="submit"
           disabled={status === "loading"}
-          className="w-full h-12 rounded-xl bg-gradient-to-r from-amber to-amber text-text-primary font-semibold flex items-center justify-center gap-2 hover:opacity-95 hover:shadow-lg hover:shadow-amber/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full h-12 rounded-xl bg-gradient-to-r from-amber to-amber text-ink font-semibold flex items-center justify-center gap-2 hover:opacity-95 hover:shadow-lg hover:shadow-amber/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {status === "loading" ? (
             <span className="flex items-center gap-2">
@@ -147,7 +147,7 @@ export function WaitlistForm({ source = "landing-page", className = "", variant 
               if (status === "error") setStatus("idle");
             }}
             placeholder="Enter your work email"
-            className={`w-full px-5 py-3 rounded-full border bg-bg-surface text-gray-900 placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent transition-all ${
+            className={`w-full px-5 py-3 rounded-full border bg-bg-panel text-gray-900 placeholder:text-ink-3 focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent transition-all ${
               status === "error" ? "border-amber-light" : "border-gray-200"
             }`}
             disabled={status === "loading"}
@@ -156,7 +156,7 @@ export function WaitlistForm({ source = "landing-page", className = "", variant 
         <button
           type="submit"
           disabled={status === "loading"}
-          className="px-6 py-3 rounded-full bg-bg-void text-text-primary font-medium hover:bg-bg-base transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+          className="px-6 py-3 rounded-full bg-bg-cream text-ink font-medium hover:bg-panel transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
         >
           {status === "loading" ? (
             <span className="flex items-center gap-2">
@@ -189,7 +189,7 @@ export function WaitlistForm({ source = "landing-page", className = "", variant 
             if (status === "error") setStatus("idle");
           }}
           placeholder="Enter your work email"
-          className={`flex-1 px-6 py-4 rounded-full border bg-bg-surface text-gray-900 placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent transition-all ${
+          className={`flex-1 px-6 py-4 rounded-full border bg-bg-panel text-gray-900 placeholder:text-ink-3 focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent transition-all ${
             status === "error" ? "border-amber-light" : "border-gray-200"
           }`}
           disabled={status === "loading"}
@@ -197,7 +197,7 @@ export function WaitlistForm({ source = "landing-page", className = "", variant 
         <button
           type="submit"
           disabled={status === "loading"}
-          className="px-8 py-4 rounded-full bg-bg-void text-text-primary font-medium hover:bg-bg-base transition-all hover:scale-105 hover:shadow-xl hover:shadow-black/10 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+          className="px-8 py-4 rounded-full bg-bg-cream text-ink font-medium hover:bg-panel transition-all hover:scale-105 hover:shadow-xl hover:shadow-black/10 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
         >
           {status === "loading" ? (
             <span className="flex items-center gap-2">

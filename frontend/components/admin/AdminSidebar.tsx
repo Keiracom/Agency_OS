@@ -134,14 +134,14 @@ export function AdminSidebar() {
       <div className="flex h-16 items-center border-b px-4">
         {!collapsed && (
           <Link href="/admin" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber text-text-primary font-bold">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber text-ink font-bold">
               A
             </div>
             <span className="font-semibold">Admin Console</span>
           </Link>
         )}
         {collapsed && (
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber text-text-primary font-bold mx-auto">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber text-ink font-bold mx-auto">
             A
           </div>
         )}
@@ -158,7 +158,7 @@ export function AdminSidebar() {
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                 active
-                  ? "bg-amber text-text-primary"
+                  ? "bg-amber text-ink"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground",
                 collapsed && "justify-center"
               )}

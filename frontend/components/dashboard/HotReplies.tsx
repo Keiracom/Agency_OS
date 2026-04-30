@@ -44,11 +44,11 @@ export function HotReplies() {
       </div>
 
       {isLoading ? (
-        <div className="rounded-[10px] border border-dashed border-rule bg-surface/50 px-5 py-4 text-[13px] text-ink-3">
+        <div className="rounded-[10px] border border-dashed border-rule bg-panel/50 px-5 py-4 text-[13px] text-ink-3">
           Loading replies…
         </div>
       ) : replies.length === 0 ? (
-        <div className="rounded-[10px] border border-dashed border-rule bg-surface/50 px-5 py-4 text-[13px] text-ink-3">
+        <div className="rounded-[10px] border border-dashed border-rule bg-panel/50 px-5 py-4 text-[13px] text-ink-3">
           <b className="text-ink">No hot replies yet</b> — new responses will surface here.
         </div>
       ) : (

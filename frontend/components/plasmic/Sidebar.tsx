@@ -56,13 +56,13 @@ export function Sidebar({ className }: SidebarProps) {
       {/* Logo */}
       <div className="flex h-16 items-center justify-between px-4 border-b border-white/10">
         {!collapsed && (
-          <span className="text-lg font-bold text-text-primary tracking-tight">
+          <span className="text-lg font-bold text-ink tracking-tight">
             AGENCY OS
           </span>
         )}
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="p-2 rounded-lg hover:bg-bg-surface/10 text-text-primary/60 hover:text-text-primary transition-colors"
+          className="p-2 rounded-lg hover:bg-bg-panel/10 text-ink/60 hover:text-ink transition-colors"
         >
           {collapsed ? (
             <ChevronRight className="h-4 w-4" />
@@ -87,8 +87,8 @@ export function Sidebar({ className }: SidebarProps) {
                 "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all",
                 "text-sm font-medium",
                 isActive
-                  ? "bg-bg-surface/10 text-text-primary border-l-3 border-l-[#2196F3]"
-                  : "text-text-primary/60 hover:text-text-primary hover:bg-bg-surface/5"
+                  ? "bg-bg-panel/10 text-ink border-l-3 border-l-[#2196F3]"
+                  : "text-ink/60 hover:text-ink hover:bg-bg-panel/5"
               )}
             >
               <Icon className="h-5 w-5 shrink-0" />
@@ -101,8 +101,8 @@ export function Sidebar({ className }: SidebarProps) {
       {/* Bottom section */}
       <div className="absolute bottom-4 left-0 right-0 px-3">
         {!collapsed && (
-          <div className="rounded-lg bg-bg-surface/5 p-3">
-            <p className="text-xs text-text-primary/40">Need help?</p>
+          <div className="rounded-lg bg-bg-panel/5 p-3">
+            <p className="text-xs text-ink/40">Need help?</p>
             <a
               href="mailto:support@agencyos.com"
               className="text-xs text-[#2196F3] hover:underline"

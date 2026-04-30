@@ -121,12 +121,12 @@ const mockReplies: Reply[] = [
 
 const intentColors: Record<string, string> = {
   interested: "bg-amber/10 text-amber border-amber/20",
-  meeting_request: "bg-bg-elevated/10 text-amber border-default/20",
+  meeting_request: "bg-panel/10 text-amber border-default/20",
   question: "bg-amber/10 text-amber border-amber/20",
   not_interested: "bg-amber-glow text-error border-amber/20",
   unsubscribe: "bg-amber-glow text-error border-amber/20",
-  out_of_office: "bg-bg-surface0/10 text-text-muted border-gray-500/20",
-  auto_reply: "bg-bg-surface0/10 text-text-muted border-gray-500/20",
+  out_of_office: "bg-bg-surface0/10 text-ink-3 border-gray-500/20",
+  auto_reply: "bg-bg-surface0/10 text-ink-3 border-gray-500/20",
 };
 
 const channelIcons = {
@@ -136,7 +136,7 @@ const channelIcons = {
 };
 
 const channelColors = {
-  email: "bg-bg-elevated/10 text-text-secondary",
+  email: "bg-panel/10 text-ink-2",
   sms: "bg-amber/10 text-amber",
   linkedin: "bg-amber-glow text-amber",
 };
@@ -212,7 +212,7 @@ export default function AdminRepliesPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-text-secondary">{meetingCount}</div>
+            <div className="text-2xl font-bold text-ink-2">{meetingCount}</div>
           </CardContent>
         </Card>
         <Card>

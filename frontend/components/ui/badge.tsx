@@ -21,14 +21,14 @@ const badgeVariants = cva(
         // ALS Tier variants — Amber-based
         hot: "border-amber/30 bg-amber-glow text-amber",
         warm: "border-amber-light/25 bg-amber-glow/70 text-amber-light",
-        cool: "border-border-default bg-bg-surface text-text-secondary",
-        cold: "border-border-subtle bg-bg-base text-text-muted",
-        dead: "border-border-subtle bg-bg-void text-text-muted opacity-60",
+        cool: "border-rule-strong bg-bg-panel text-ink-2",
+        cold: "border-rule bg-panel text-ink-3",
+        dead: "border-rule bg-bg-cream text-ink-3 opacity-60",
         // Status variants — Amber-based
         active: "border-amber/30 bg-amber-glow text-amber",
-        draft: "border-border-default bg-bg-surface text-text-secondary",
+        draft: "border-rule-strong bg-bg-panel text-ink-2",
         paused: "border-amber-light/20 bg-amber-glow/50 text-amber-light",
-        completed: "border-border-subtle bg-bg-surface text-text-muted",
+        completed: "border-rule bg-bg-panel text-ink-3",
         // Error variant
         error: "border-error/30 bg-error-glow text-error",
       },

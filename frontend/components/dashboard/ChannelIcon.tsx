@@ -34,7 +34,7 @@ interface ChannelIconProps {
 // ============================================
 
 const channelConfig: Record<string, { bg: string; icon: LucideIcon }> = {
-  email: { bg: "bg-amber-glow text-text-secondary", icon: Mail },
+  email: { bg: "bg-amber-glow text-ink-2", icon: Mail },
   linkedin: { bg: "bg-sky-100 text-amber", icon: Linkedin },
   sms: { bg: "bg-emerald-100 text-emerald-600", icon: MessageCircle },
   voice: { bg: "bg-amber-glow text-amber", icon: Phone },

@@ -1,0 +1,58 @@
+name: Deprecated Tokens (GOV-12)
+
+# Fails the build if any of the legacy /demo design-token aliases
+# resurface in frontend/. Companion to the A1 / A1.1 codemods that
+# moved every component to the canonical token vocabulary
+# (cream / surface / panel / ink / rule).
+#
+# Excluded paths:
+#   - frontend/landing/             marketing site has its own tokens
+#   - frontend/app/onboarding/step-* inline styles, no Tailwind tokens
+#   - frontend/tailwind.config.js   migration map kept as a comment
+#
+# Pre-existing typo `text-text-primary0` (literal `0` suffix) and
+# its siblings `bg-bg-surface0` etc. are NOT scanned here — they are
+# tracked under a separate triage ticket.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - "frontend/**"
+      - ".github/workflows/deprecated-tokens.yml"
+
+jobs:
+  scan:
+    name: Scan frontend for deprecated tokens
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build deprecation regex
+        id: regex
+        run: |
+          # \b boundaries everywhere so the typo cousins
+          # (text-text-primary0 / bg-bg-surface0) are NOT flagged.
+          PATTERN='\bbg-bg-void\b|\bbg-bg-base\b|\bbg-bg-surface\b|\bbg-bg-elevated\b|\btext-text-primary\b|\btext-text-secondary\b|\btext-text-muted\b|\bborder-border-subtle\b|\bborder-border-default\b'
+          echo "pattern=${PATTERN}" >> "$GITHUB_OUTPUT"
+
+      - name: Grep for deprecated tokens
+        run: |
+          set +e
+          HITS=$(grep -rEn "${{ steps.regex.outputs.pattern }}" \
+            frontend/ \
+            --include='*.tsx' --include='*.ts' --include='*.jsx' --include='*.js' \
+            --exclude-dir=node_modules \
+            --exclude-dir=.next \
+            --exclude='tailwind.config.js' \
+            | grep -v 'frontend/landing/' \
+            | grep -v 'frontend/app/onboarding/step-')
+          if [ -n "$HITS" ]; then
+            echo "::error::Deprecated /demo design tokens detected. Replace with canonical names per the A1 codemod migration map (see frontend/tailwind.config.js)."
+            echo ""
+            echo "$HITS"
+            exit 1
+          fi
+          echo "OK — no deprecated /demo design tokens found in frontend/."

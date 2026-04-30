@@ -244,7 +244,7 @@ const getActivityIcon = (type: ActivityType) => {
 
 const getActivityStyles = (type: ActivityType) => {
   const styleMap: Record<ActivityType, { bg: string; text: string; glow: string }> = {
-    email_sent: { bg: "bg-bg-elevated/20", text: "text-text-secondary", glow: "shadow-amber/20" },
+    email_sent: { bg: "bg-panel/20", text: "text-ink-2", glow: "shadow-amber/20" },
     email_opened: { bg: "bg-amber/20", text: "text-amber", glow: "shadow-amber/20" },
     email_clicked: { bg: "bg-indigo-500/20", text: "text-indigo-400", glow: "shadow-indigo-500/20" },
     email_replied: { bg: "bg-amber/20", text: "text-amber", glow: "shadow-amber/20" },
@@ -289,7 +289,7 @@ function DetailModal({ activity, onClose }: DetailModalProps) {
       onClick={onClose}
     >
       <div
-        className="bg-bg-void/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl shadow-black/40 w-full max-w-md mx-4 overflow-hidden"
+        className="bg-bg-cream/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl shadow-black/40 w-full max-w-md mx-4 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -301,8 +301,8 @@ function DetailModal({ activity, onClose }: DetailModalProps) {
               {getActivityIcon(activity.type)}
             </div>
             <div>
-              <h3 className="text-text-primary font-semibold">{activity.title}</h3>
-              <p className="text-xs text-text-secondary flex items-center gap-1">
+              <h3 className="text-ink font-semibold">{activity.title}</h3>
+              <p className="text-xs text-ink-2 flex items-center gap-1">
                 <Clock className="w-3 h-3" />
                 {formatTimestamp(activity.timestamp)}
               </p>
@@ -310,54 +310,54 @@ function DetailModal({ activity, onClose }: DetailModalProps) {
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-bg-surface/10 transition-colors"
+            className="p-1.5 rounded-lg hover:bg-bg-panel/10 transition-colors"
           >
-            <X className="w-5 h-5 text-text-secondary" />
+            <X className="w-5 h-5 text-ink-2" />
           </button>
         </div>
 
         {/* Content */}
         <div className="px-5 py-4 space-y-4">
           {/* Contact Info */}
-          <div className="bg-bg-surface/5 rounded-lg p-4 border border-white/5">
-            <h4 className="text-xs font-medium text-text-secondary uppercase tracking-wider mb-2">
+          <div className="bg-bg-panel/5 rounded-lg p-4 border border-white/5">
+            <h4 className="text-xs font-medium text-ink-2 uppercase tracking-wider mb-2">
               Contact
             </h4>
             <div className="space-y-1.5">
-              <p className="text-text-primary font-medium">{activity.contactName}</p>
+              <p className="text-ink font-medium">{activity.contactName}</p>
               {activity.contactCompany && (
-                <p className="text-sm text-text-secondary">{activity.contactCompany}</p>
+                <p className="text-sm text-ink-2">{activity.contactCompany}</p>
               )}
               {activity.contactEmail && (
-                <p className="text-sm text-text-secondary">{activity.contactEmail}</p>
+                <p className="text-sm text-ink-2">{activity.contactEmail}</p>
               )}
             </div>
           </div>
 
           {/* Activity Details */}
           <div>
-            <h4 className="text-xs font-medium text-text-secondary uppercase tracking-wider mb-2">
+            <h4 className="text-xs font-medium text-ink-2 uppercase tracking-wider mb-2">
               Details
             </h4>
-            <p className="text-text-secondary">{activity.description}</p>
+            <p className="text-ink-2">{activity.description}</p>
           </div>
 
           {/* Metadata */}
           {activity.metadata && Object.keys(activity.metadata).length > 0 && (
             <div>
-              <h4 className="text-xs font-medium text-text-secondary uppercase tracking-wider mb-2">
+              <h4 className="text-xs font-medium text-ink-2 uppercase tracking-wider mb-2">
                 Additional Info
               </h4>
               <div className="grid grid-cols-2 gap-2">
                 {Object.entries(activity.metadata).map(([key, value]) => (
                   <div
                     key={key}
-                    className="bg-bg-surface/5 rounded-lg px-3 py-2 border border-white/5"
+                    className="bg-bg-panel/5 rounded-lg px-3 py-2 border border-white/5"
                   >
-                    <span className="text-xs text-text-secondary capitalize">
+                    <span className="text-xs text-ink-2 capitalize">
                       {key.replace(/_/g, " ")}
                     </span>
-                    <p className="text-sm text-text-primary">{String(value)}</p>
+                    <p className="text-sm text-ink">{String(value)}</p>
                   </div>
                 ))}
               </div>
@@ -368,9 +368,9 @@ function DetailModal({ activity, onClose }: DetailModalProps) {
           <div className="flex items-center justify-between pt-2">
             <div className="flex items-center gap-2">
               {getStatusIcon(activity.status)}
-              <span className="text-sm text-text-secondary capitalize">{activity.status}</span>
+              <span className="text-sm text-ink-2 capitalize">{activity.status}</span>
             </div>
-            <button className="flex items-center gap-1.5 text-sm text-text-secondary hover:text-amber-light transition-colors">
+            <button className="flex items-center gap-1.5 text-sm text-ink-2 hover:text-amber-light transition-colors">
               View Full Record
               <ExternalLink className="w-3.5 h-3.5" />
             </button>
@@ -398,9 +398,9 @@ function ActivityItem({ activity, onClick }: ActivityItemProps) {
       onClick={onClick}
       className={`
         group flex items-center gap-3 px-4 py-3 
-        hover:bg-bg-surface/5 cursor-pointer transition-all duration-200
+        hover:bg-bg-panel/5 cursor-pointer transition-all duration-200
         border-b border-white/5 last:border-b-0
-        ${activity.isNew ? "animate-pulse-once bg-bg-surface/[0.03]" : ""}
+        ${activity.isNew ? "animate-pulse-once bg-bg-panel/[0.03]" : ""}
       `}
     >
       {/* Icon */}
@@ -418,11 +418,11 @@ function ActivityItem({ activity, onClick }: ActivityItemProps) {
       {/* Content */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <p className="text-sm font-medium text-text-primary truncate">
+          <p className="text-sm font-medium text-ink truncate">
             {activity.contactName}
           </p>
           {activity.contactCompany && (
-            <span className="text-xs text-text-muted truncate hidden sm:inline">
+            <span className="text-xs text-ink-3 truncate hidden sm:inline">
               · {activity.contactCompany}
             </span>
           )}
@@ -432,14 +432,14 @@ function ActivityItem({ activity, onClick }: ActivityItemProps) {
             </span>
           )}
         </div>
-        <p className="text-xs text-text-secondary truncate mt-0.5">
+        <p className="text-xs text-ink-2 truncate mt-0.5">
           {activity.title}: {activity.description}
         </p>
       </div>
 
       {/* Timestamp & Status */}
       <div className="flex-shrink-0 flex items-center gap-2">
-        <span className="text-[11px] text-text-muted tabular-nums">
+        <span className="text-[11px] text-ink-3 tabular-nums">
           {formatTimestamp(activity.timestamp)}
         </span>
         {getStatusIcon(activity.status)}
@@ -529,14 +529,14 @@ export function ActivityFeed({
     <>
       <div
         className={`
-          bg-bg-void/40 backdrop-blur-md rounded-xl 
+          bg-bg-cream/40 backdrop-blur-md rounded-xl 
           border border-white/10 shadow-xl shadow-black/20
           overflow-hidden flex flex-col
           ${className}
         `}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-bg-void/60">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-bg-cream/60">
           <div className="flex items-center gap-3">
             {/* Live Indicator */}
             <div className="flex items-center gap-2">
@@ -548,13 +548,13 @@ export function ActivityFeed({
                   <span className="relative block w-2 h-2 rounded-full bg-amber" />
                 </div>
               )}
-              <span className="text-xs font-semibold text-text-primary uppercase tracking-wider">
+              <span className="text-xs font-semibold text-ink uppercase tracking-wider">
                 {isDemo ? "Demo" : "Live"} Activity
               </span>
             </div>
 
             {/* Activity Counter */}
-            <span className="text-[10px] text-text-muted bg-bg-surface/5 px-2 py-0.5 rounded-full">
+            <span className="text-[10px] text-ink-3 bg-bg-panel/5 px-2 py-0.5 rounded-full">
               {liveCount} in last 5m
             </span>
           </div>
@@ -568,7 +568,7 @@ export function ActivityFeed({
               ${
                 isPaused
                   ? "bg-amber/20 text-amber hover:bg-amber/30"
-                  : "bg-bg-surface/5 text-text-secondary hover:bg-bg-surface/10 hover:text-text-primary"
+                  : "bg-bg-panel/5 text-ink-2 hover:bg-bg-panel/10 hover:text-ink"
               }
             `}
           >
@@ -602,8 +602,8 @@ export function ActivityFeed({
         </div>
 
         {/* Footer */}
-        <div className="px-4 py-2 border-t border-white/10 bg-bg-void/60">
-          <p className="text-[10px] text-text-muted text-center">
+        <div className="px-4 py-2 border-t border-white/10 bg-bg-cream/60">
+          <p className="text-[10px] text-ink-3 text-center">
             {activities.length} total activities · {isPaused ? "Paused" : "Auto-updating"}
           </p>
         </div>

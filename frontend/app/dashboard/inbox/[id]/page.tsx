@@ -67,8 +67,8 @@ export default function ReplyDetailPage() {
     return (
       <div className="flex-1 flex flex-col items-center justify-center bg-[#0C0A08]">
         <div className="w-20 h-20 glass-surface rounded-2xl flex items-center justify-center text-4xl mb-5">❓</div>
-        <h3 className="text-lg font-semibold text-text-primary mb-2">Conversation not found</h3>
-        <p className="text-sm text-text-muted">The message you&apos;re looking for doesn&apos;t exist.</p>
+        <h3 className="text-lg font-semibold text-ink mb-2">Conversation not found</h3>
+        <p className="text-sm text-ink-3">The message you&apos;re looking for doesn&apos;t exist.</p>
       </div>
     );
   }
@@ -110,7 +110,7 @@ export default function ReplyDetailPage() {
                 {/* Date divider */}
                 <div className="flex items-center gap-4 py-4">
                   <div className="flex-1 h-px bg-border-subtle" />
-                  <span className="text-xs text-text-muted">{group.date}</span>
+                  <span className="text-xs text-ink-3">{group.date}</span>
                   <div className="flex-1 h-px bg-border-subtle" />
                 </div>
                 
@@ -142,7 +142,7 @@ export default function ReplyDetailPage() {
         </div>
         
         {/* Right Panel / Sidebar */}
-        <div className="w-[340px] bg-surface-dark border-l border-border-subtle overflow-y-auto p-6 space-y-5 flex-shrink-0">
+        <div className="w-[340px] bg-panel-dark border-l border-rule overflow-y-auto p-6 space-y-5 flex-shrink-0">
           <QuickActions />
           <LeadDetails message={message} />
           <ScoreBreakdown score={message.score} factors={scoreFactors} />

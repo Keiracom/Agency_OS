@@ -28,7 +28,7 @@ const mockChannelCosts = {
       name: "Email",
       provider: "Resend",
       icon: Mail,
-      color: "bg-bg-elevated",
+      color: "bg-panel",
       sent: 18470,
       cost: 456.23,
       costPer: 0.025,
@@ -116,7 +116,7 @@ export default function AdminChannelCostsPage() {
             <Card key={channel.name}>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <div className={`p-1.5 rounded ${channel.color} text-text-primary`}>
+                  <div className={`p-1.5 rounded ${channel.color} text-ink`}>
                     <Icon className="h-4 w-4" />
                   </div>
                   {channel.name}

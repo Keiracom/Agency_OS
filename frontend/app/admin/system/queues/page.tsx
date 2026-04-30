@@ -111,7 +111,7 @@ const statusIcons = {
 const statusColors = {
   success: "text-amber",
   failed: "text-amber",
-  running: "text-text-secondary",
+  running: "text-ink-2",
   pending: "text-yellow-500",
 };
 
@@ -157,7 +157,7 @@ export default function AdminQueuesPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-text-secondary">{mockQueueStats.active}</div>
+            <div className="text-2xl font-bold text-ink-2">{mockQueueStats.active}</div>
             <p className="text-xs text-muted-foreground">Currently running</p>
           </CardContent>
         </Card>

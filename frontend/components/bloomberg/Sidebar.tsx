@@ -70,7 +70,7 @@ export function BloombergSidebar() {
             <path d="M10 18L15 23L26 12" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </div>
-        <span className="text-lg font-bold text-text-primary">Agency OS</span>
+        <span className="text-lg font-bold text-ink">Agency OS</span>
       </div>
 
       {/* Navigation */}
@@ -92,7 +92,7 @@ export function BloombergSidebar() {
                     flex items-center gap-3 px-5 py-3 mx-0 text-sm font-medium transition-all
                     ${active 
                       ? "bg-[#7C3AED]/10 text-[#9D5CFF] border-r-2 border-[#7C3AED]" 
-                      : "text-[#A0A0B0] hover:bg-[#1A1A24] hover:text-text-primary"
+                      : "text-[#A0A0B0] hover:bg-[#1A1A24] hover:text-ink"
                     }
                   `}
                 >

@@ -32,15 +32,15 @@ export function LeadDetails({ message, additionalDetails = [] }: LeadDetailsProp
   const details = [...defaultDetails, ...additionalDetails];
   
   return (
-    <div className="bg-bg-base rounded-xl p-4">
-      <div className="flex items-center gap-2 mb-4 text-xs font-semibold uppercase tracking-wide text-text-muted">
+    <div className="bg-panel rounded-xl p-4">
+      <div className="flex items-center gap-2 mb-4 text-xs font-semibold uppercase tracking-wide text-ink-3">
         <User className="w-3.5 h-3.5" />
         Lead Details
       </div>
       <div className="space-y-3">
         {details.map((detail) => (
           <div key={detail.label} className="flex justify-between items-start text-sm">
-            <span className="text-text-muted">{detail.label}</span>
+            <span className="text-ink-3">{detail.label}</span>
             {detail.isLink ? (
               <a
                 href={detail.href}
@@ -49,7 +49,7 @@ export function LeadDetails({ message, additionalDetails = [] }: LeadDetailsProp
                 {detail.value}
               </a>
             ) : (
-              <span className="text-text-primary font-medium text-right max-w-[60%]">{detail.value}</span>
+              <span className="text-ink font-medium text-right max-w-[60%]">{detail.value}</span>
             )}
           </div>
         ))}

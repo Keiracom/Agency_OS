@@ -122,7 +122,7 @@ export const TweetHeader = ({ tweet }: { tweet: EnrichedTweet }) => (
           {truncate(tweet.user.name, 20)}
           {tweet.user.verified ||
             (tweet.user.is_blue_verified && (
-              <Verified className="ml-1 inline size-4 text-text-secondary" />
+              <Verified className="ml-1 inline size-4 text-ink-2" />
             ))}
         </a>
         <div className="flex items-center space-x-1">

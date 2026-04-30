@@ -49,7 +49,7 @@ function getStatusStyles(status: CampaignStatus) {
       return "bg-green-500/10 text-green-400 border-green-500/30";
     case "draft":
     default:
-      return "bg-bg-elevated text-text-muted border-border-subtle";
+      return "bg-panel text-ink-3 border-rule";
   }
 }
 
@@ -57,7 +57,7 @@ function getStatusStyles(status: CampaignStatus) {
 function ChannelIcon({ type, className = "w-4 h-4" }: { type: string; className?: string }) {
   switch (type) {
     case "email":
-      return <Mail className={`${className} text-text-secondary`} />;
+      return <Mail className={`${className} text-ink-2`} />;
     case "linkedin":
       return <Linkedin className={`${className} text-amber`} />;
     case "sms":
@@ -114,24 +114,24 @@ function RejectDialog({ campaignName, onConfirm, onCancel, isLoading }: RejectDi
             <XCircle className="w-5 h-5 text-status-error" />
           </div>
           <div>
-            <h3 className="font-serif font-semibold text-text-primary">Reject Campaign</h3>
-            <p className="text-sm text-text-muted">{campaignName}</p>
+            <h3 className="font-serif font-semibold text-ink">Reject Campaign</h3>
+            <p className="text-sm text-ink-3">{campaignName}</p>
           </div>
         </div>
-        <p className="text-sm text-text-secondary mb-4">
+        <p className="text-sm text-ink-2 mb-4">
           Please provide a reason for rejection.
         </p>
         <textarea
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           placeholder="e.g. Copy needs revision, target audience too broad…"
-          className="w-full h-28 px-3 py-2 rounded-lg bg-bg-elevated border border-border-subtle text-text-primary text-sm placeholder:text-text-muted resize-none focus:outline-none focus:border-accent-primary transition-colors"
+          className="w-full h-28 px-3 py-2 rounded-lg bg-panel border border-rule text-ink text-sm placeholder:text-ink-3 resize-none focus:outline-none focus:border-accent-primary transition-colors"
         />
         <div className="flex items-center gap-3 mt-4">
           <button
             onClick={onCancel}
             disabled={isLoading}
-            className="flex-1 px-4 py-2.5 rounded-lg text-sm font-medium text-text-secondary bg-bg-surface border border-border-subtle hover:bg-bg-elevated transition-colors disabled:opacity-50"
+            className="flex-1 px-4 py-2.5 rounded-lg text-sm font-medium text-ink-2 bg-bg-panel border border-rule hover:bg-panel transition-colors disabled:opacity-50"
           >
             Cancel
           </button>
@@ -159,7 +159,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
     return (
       <AppShell pageTitle="Campaign">
         <div className="flex items-center justify-center h-64">
-          <div className="text-text-muted text-sm animate-pulse">Loading campaign…</div>
+          <div className="text-ink-3 text-sm animate-pulse">Loading campaign…</div>
         </div>
       </AppShell>
     );
@@ -170,7 +170,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
       <AppShell pageTitle="Campaign">
         <div className="space-y-6">
           <div className="flex items-center gap-3 text-sm">
-            <Link href="/dashboard/campaigns" className="flex items-center gap-2 text-text-muted hover:text-text-primary transition-colors">
+            <Link href="/dashboard/campaigns" className="flex items-center gap-2 text-ink-3 hover:text-ink transition-colors">
               <ArrowLeft className="w-4 h-4" />
               Back
             </Link>
@@ -230,15 +230,15 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
         <div className="flex items-center gap-3 text-sm">
           <Link
             href="/dashboard/campaigns"
-            className="flex items-center gap-2 text-text-muted hover:text-text-primary transition-colors"
+            className="flex items-center gap-2 text-ink-3 hover:text-ink transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Back
           </Link>
           <span className="text-border-strong">·</span>
-          <span className="text-text-muted">Campaigns</span>
+          <span className="text-ink-3">Campaigns</span>
           <span className="text-border-strong">/</span>
-          <span className="text-text-primary font-medium">{campaign.name}</span>
+          <span className="text-ink font-medium">{campaign.name}</span>
         </div>
 
         {/* Pending Approval Banner */}
@@ -266,7 +266,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                 <button
                   onClick={() => approveMutation.mutate(campaign.id)}
                   disabled={approveMutation.isPending}
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-text-primary gradient-premium hover:opacity-90 transition-opacity disabled:opacity-50"
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-ink gradient-premium hover:opacity-90 transition-opacity disabled:opacity-50"
                 >
                   <CheckCircle2 className="w-4 h-4" />
                   {approveMutation.isPending ? "Approving…" : "Approve Campaign"}
@@ -286,7 +286,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
             <div className="flex items-start justify-between mb-6">
               <div>
                 <div className="flex items-center gap-4 mb-3 flex-wrap">
-                  <h1 className="text-2xl font-serif font-semibold text-text-primary">
+                  <h1 className="text-2xl font-serif font-semibold text-ink">
                     {campaign.name}
                   </h1>
                   <span
@@ -300,23 +300,23 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                     {campaign.status.replace("_", " ")}
                   </span>
                 </div>
-                <div className="flex items-center gap-3 md:gap-6 text-sm text-text-secondary flex-wrap">
+                <div className="flex items-center gap-3 md:gap-6 text-sm text-ink-2 flex-wrap">
                   <span className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-text-muted" />
+                    <Calendar className="w-4 h-4 text-ink-3" />
                     {formatDateRange(campaign.start_date, campaign.end_date)}
                   </span>
                   <span className="flex items-center gap-2">
-                    <Users className="w-4 h-4 text-text-muted" />
+                    <Users className="w-4 h-4 text-ink-3" />
                     {campaign.total_leads.toLocaleString()} leads enrolled
                   </span>
                   <span className="flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-text-muted" />
+                    <Clock className="w-4 h-4 text-ink-3" />
                     Created {formatDate(campaign.created_at)}
                   </span>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <button className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-text-secondary bg-bg-surface border border-border-subtle hover:bg-bg-elevated transition-colors">
+                <button className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-ink-2 bg-bg-panel border border-rule hover:bg-panel transition-colors">
                   <Edit2 className="w-4 h-4" />
                   Edit
                 </button>
@@ -332,7 +332,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                     Resume
                   </button>
                 )}
-                <button className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-text-primary gradient-premium hover:opacity-90 transition-opacity">
+                <button className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-ink gradient-premium hover:opacity-90 transition-opacity">
                   <UserPlus className="w-4 h-4" />
                   Add Leads
                 </button>
@@ -341,7 +341,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
 
             {/* Channel Stats */}
             {channelData.length > 0 ? (
-              <div className="flex items-center gap-3 pt-5 border-t border-border-subtle">
+              <div className="flex items-center gap-3 pt-5 border-t border-rule">
                 {channelData.map(({ key, label, allocation }) => (
                   <div
                     key={key}
@@ -349,18 +349,18 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                     style={{ backgroundColor: "rgba(255,255,255,0.03)" }}
                   >
                     <ChannelIcon type={key} className="w-5 h-5" />
-                    <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">
+                    <span className="text-[10px] font-semibold text-ink-3 uppercase tracking-wider">
                       {label}
                     </span>
-                    <span className="text-lg font-bold font-mono text-text-primary">
+                    <span className="text-lg font-bold font-mono text-ink">
                       {allocation}%
                     </span>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="pt-5 border-t border-border-subtle">
-                <p className="text-sm text-text-muted">No channel allocations configured yet.</p>
+              <div className="pt-5 border-t border-rule">
+                <p className="text-sm text-ink-3">No channel allocations configured yet.</p>
               </div>
             )}
           </div>
@@ -382,19 +382,19 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
             >
               <p
                 className={`text-2xl font-bold font-mono ${
-                  stat.highlight ? "text-accent-primary" : "text-text-primary"
+                  stat.highlight ? "text-accent-primary" : "text-ink"
                 }`}
               >
                 {stat.value}
               </p>
-              <p className="text-xs text-text-muted uppercase tracking-wider mt-1">{stat.label}</p>
+              <p className="text-xs text-ink-3 uppercase tracking-wider mt-1">{stat.label}</p>
             </div>
           ))}
         </div>
 
         {/* Campaign Funnel */}
         <div className="glass-surface rounded-xl p-6">
-          <h3 className="font-serif font-semibold text-text-primary mb-6 flex items-center gap-2">
+          <h3 className="font-serif font-semibold text-ink mb-6 flex items-center gap-2">
             <Activity className="w-5 h-5 text-accent-primary" />
             Campaign Funnel
           </h3>
@@ -403,7 +403,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
               {funnel.map((stage, idx) => (
                 <div key={stage.stage} className="flex-1 text-center relative">
                   <div
-                    className="h-20 flex flex-col items-center justify-center text-text-primary mx-[-1px]"
+                    className="h-20 flex flex-col items-center justify-center text-ink mx-[-1px]"
                     style={{
                       background: funnelColors[idx],
                       clipPath:
@@ -422,13 +422,13 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                   >
                     <span className="text-2xl font-bold font-mono">{stage.count.toLocaleString()}</span>
                   </div>
-                  <p className="text-sm font-semibold text-text-primary mt-3">{stage.stage}</p>
-                  <p className="text-xs text-text-muted">{stage.rate}%</p>
+                  <p className="text-sm font-semibold text-ink mt-3">{stage.stage}</p>
+                  <p className="text-xs text-ink-3">{stage.rate}%</p>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="text-center py-8 text-text-muted text-sm">
+            <div className="text-center py-8 text-ink-3 text-sm">
               No funnel data yet — campaign hasn&apos;t started.
             </div>
           )}
@@ -438,8 +438,8 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
         <div className="grid grid-cols-2 gap-3 md:gap-6">
           {/* Conversion Metrics */}
           <div className="glass-surface rounded-xl overflow-hidden">
-            <div className="p-5 border-b border-border-subtle">
-              <h3 className="font-serif font-semibold text-text-primary flex items-center gap-2">
+            <div className="p-5 border-b border-rule">
+              <h3 className="font-serif font-semibold text-ink flex items-center gap-2">
                 <Activity className="w-5 h-5 text-accent-primary" />
                 Conversion Metrics
               </h3>
@@ -467,12 +467,12 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                   subtext: "Leads in active sequence steps",
                 },
               ].map((metric) => (
-                <div key={metric.label} className="flex items-center justify-between py-2 border-b border-border-subtle last:border-b-0">
+                <div key={metric.label} className="flex items-center justify-between py-2 border-b border-rule last:border-b-0">
                   <div>
-                    <p className="text-sm font-medium text-text-primary">{metric.label}</p>
-                    <p className="text-xs text-text-muted">{metric.subtext}</p>
+                    <p className="text-sm font-medium text-ink">{metric.label}</p>
+                    <p className="text-xs text-ink-3">{metric.subtext}</p>
                   </div>
-                  <span className="font-mono font-bold text-lg text-text-primary">{metric.value}</span>
+                  <span className="font-mono font-bold text-lg text-ink">{metric.value}</span>
                 </div>
               ))}
             </div>
@@ -480,8 +480,8 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
 
           {/* Campaign Info */}
           <div className="glass-surface rounded-xl overflow-hidden">
-            <div className="p-5 border-b border-border-subtle">
-              <h3 className="font-serif font-semibold text-text-primary flex items-center gap-2">
+            <div className="p-5 border-b border-rule">
+              <h3 className="font-serif font-semibold text-ink flex items-center gap-2">
                 <CheckCircle2 className="w-5 h-5 text-accent-primary" />
                 Campaign Info
               </h3>
@@ -489,39 +489,39 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
             <div className="p-5 space-y-4">
               {campaign.description && (
                 <div>
-                  <p className="text-xs text-text-muted uppercase tracking-wider mb-1">Description</p>
-                  <p className="text-sm text-text-secondary">{campaign.description}</p>
+                  <p className="text-xs text-ink-3 uppercase tracking-wider mb-1">Description</p>
+                  <p className="text-sm text-ink-2">{campaign.description}</p>
                 </div>
               )}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-xs text-text-muted uppercase tracking-wider mb-1">Status</p>
+                  <p className="text-xs text-ink-3 uppercase tracking-wider mb-1">Status</p>
                   <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${getStatusStyles(campaign.status)}`}>
                     {campaign.status.replace("_", " ")}
                   </span>
                 </div>
                 <div>
-                  <p className="text-xs text-text-muted uppercase tracking-wider mb-1">Daily Limit</p>
-                  <p className="font-mono font-semibold text-text-primary">{campaign.daily_limit}</p>
+                  <p className="text-xs text-ink-3 uppercase tracking-wider mb-1">Daily Limit</p>
+                  <p className="font-mono font-semibold text-ink">{campaign.daily_limit}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-text-muted uppercase tracking-wider mb-1">Lead Allocation</p>
-                  <p className="font-mono font-semibold text-text-primary">{campaign.lead_allocation_pct}%</p>
+                  <p className="text-xs text-ink-3 uppercase tracking-wider mb-1">Lead Allocation</p>
+                  <p className="font-mono font-semibold text-ink">{campaign.lead_allocation_pct}%</p>
                 </div>
                 <div>
-                  <p className="text-xs text-text-muted uppercase tracking-wider mb-1">AI Suggested</p>
-                  <p className="text-sm text-text-primary">{campaign.is_ai_suggested ? "Yes" : "No"}</p>
+                  <p className="text-xs text-ink-3 uppercase tracking-wider mb-1">AI Suggested</p>
+                  <p className="text-sm text-ink">{campaign.is_ai_suggested ? "Yes" : "No"}</p>
                 </div>
               </div>
               <div>
-                <p className="text-xs text-text-muted uppercase tracking-wider mb-1">Date Range</p>
-                <p className="text-sm text-text-primary">{formatDateRange(campaign.start_date, campaign.end_date)}</p>
+                <p className="text-xs text-ink-3 uppercase tracking-wider mb-1">Date Range</p>
+                <p className="text-sm text-ink">{formatDateRange(campaign.start_date, campaign.end_date)}</p>
               </div>
-              <div className="pt-2 border-t border-border-subtle">
-                <p className="text-xs text-text-muted">
+              <div className="pt-2 border-t border-rule">
+                <p className="text-xs text-ink-3">
                   Created: {formatDate(campaign.created_at)}
                 </p>
-                <p className="text-xs text-text-muted">
+                <p className="text-xs text-ink-3">
                   Last updated: {formatDate(campaign.updated_at)}
                 </p>
               </div>
@@ -530,8 +530,8 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
         </div>
 
         {/* Unavailable sections notice */}
-        <div className="glass-surface rounded-xl p-5 border border-border-subtle/50">
-          <p className="text-sm text-text-muted text-center">
+        <div className="glass-surface rounded-xl p-5 border border-rule/50">
+          <p className="text-sm text-ink-3 text-center">
             📊 Sequence flow, A/B test results, and per-lead activity feed will appear here as campaign data is collected.
           </p>
         </div>

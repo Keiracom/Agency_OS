@@ -47,7 +47,7 @@ export function CampaignCard({
   const statusStyle = statusColors[status];
 
   return (
-    <div className="bg-bg-surface rounded-xl border border-[#E2E8F0] p-5 shadow-sm">
+    <div className="bg-bg-panel rounded-xl border border-[#E2E8F0] p-5 shadow-sm">
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-2">

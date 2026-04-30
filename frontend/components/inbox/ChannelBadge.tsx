@@ -24,7 +24,7 @@ export function ChannelBadge({ channel }: { channel: ChannelType }) {
   const Icon = channelIcons[channel];
   return (
     <span className={cn(
-      'flex items-center gap-1 px-2 py-0.5 bg-bg-surface/5 rounded text-[11px]',
+      'flex items-center gap-1 px-2 py-0.5 bg-bg-panel/5 rounded text-[11px]',
       channelStyles[channel]
     )}>
       <Icon className="w-3.5 h-3.5" />

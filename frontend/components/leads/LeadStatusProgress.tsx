@@ -280,9 +280,9 @@ export function LeadStatusProgress({
                         sizes.step,
                         {
                           // Completed step
-                          "bg-amber text-text-primary": isComplete,
+                          "bg-amber text-ink": isComplete,
                           // Current step
-                          "bg-bg-elevated text-text-primary ring-2 ring-amber/30 ring-offset-2 ring-offset-background":
+                          "bg-panel text-ink ring-2 ring-amber/30 ring-offset-2 ring-offset-background":
                             isCurrent,
                           // Pending step
                           "bg-muted text-muted-foreground": isPending,
@@ -349,7 +349,7 @@ export function LeadStatusProgress({
                     "flex-1 text-center truncate px-0.5",
                     sizes.text,
                     {
-                      "font-medium text-text-secondary": isCurrent,
+                      "font-medium text-ink-2": isCurrent,
                       "text-amber": isComplete,
                       "text-muted-foreground": !isCurrent && !isComplete,
                     }
@@ -394,7 +394,7 @@ export function LeadStatusBadge({ status, className }: LeadStatusBadgeProps) {
               // Amber-light for unsubscribed
               status === "unsubscribed" && "bg-amber-light/20 text-amber-light border border-amber-light/30",
               // Muted for in progress
-              !isSpecial && !isFinal && "bg-bg-elevated/20 text-text-secondary border border-default/30",
+              !isSpecial && !isFinal && "bg-panel/20 text-ink-2 border border-default/30",
               className
             )}
           >

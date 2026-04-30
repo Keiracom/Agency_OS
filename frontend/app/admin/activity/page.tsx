@@ -39,7 +39,7 @@ const channelIcons: Record<string, typeof Mail> = {
 };
 
 const channelColors: Record<string, string> = {
-  email: "bg-bg-elevated/10 text-text-secondary",
+  email: "bg-panel/10 text-ink-2",
   sms: "bg-amber/10 text-amber",
   linkedin: "bg-amber-glow text-amber",
   voice: "bg-amber/10 text-amber",

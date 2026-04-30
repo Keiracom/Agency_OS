@@ -13,7 +13,7 @@ interface Props {
 
 export function CampaignCard({ campaign }: Props) {
   return (
-    <div className="bg-bg-surface rounded-xl p-6 border border-slate-200 mb-4">
+    <div className="bg-bg-panel rounded-xl p-6 border border-slate-200 mb-4">
       {/* Header */}
       <div className="flex justify-between items-start mb-4">
         <div>
@@ -28,7 +28,7 @@ export function CampaignCard({ campaign }: Props) {
           <div className="flex items-center gap-3 mt-2">
             <CampaignChannels channels={campaign.channels} />
             <CampaignStatusBadge status={campaign.status} />
-            <span className="text-xs text-text-muted">Priority: {campaign.priority}%</span>
+            <span className="text-xs text-ink-3">Priority: {campaign.priority}%</span>
           </div>
         </div>
       </div>

@@ -22,15 +22,15 @@ export function EmailMessage({ message }: EmailMessageProps) {
         'max-w-[720px] rounded-2xl p-6 mb-5',
         isSent
           ? 'ml-auto bg-amber-500/8 border border-amber-500/20'
-          : 'bg-surface-dark border border-border-subtle border-l-[3px] border-l-amber'
+          : 'bg-panel-dark border border-rule border-l-[3px] border-l-amber'
       )}
     >
       {/* Header */}
-      <div className="flex items-center justify-between mb-4 pb-4 border-b border-border-subtle">
+      <div className="flex items-center justify-between mb-4 pb-4 border-b border-rule">
         <div className="flex items-center gap-3">
           <div
             className={cn(
-              'w-10 h-10 rounded-xl flex items-center justify-center font-semibold text-sm text-text-primary',
+              'w-10 h-10 rounded-xl flex items-center justify-center font-semibold text-sm text-ink',
               isSent
                 ? 'bg-gradient-to-br from-amber-500 to-orange-400'
                 : 'bg-gradient-to-br from-amber to-amber-light'
@@ -39,12 +39,12 @@ export function EmailMessage({ message }: EmailMessageProps) {
             {isSent ? 'Y' : message.senderName.split(' ').map(n => n[0]).join('')}
           </div>
           <div>
-            <div className="font-semibold text-sm text-text-primary">{message.senderName}</div>
-            <div className="text-xs text-text-muted">{message.senderEmail}</div>
+            <div className="font-semibold text-sm text-ink">{message.senderName}</div>
+            <div className="text-xs text-ink-3">{message.senderEmail}</div>
           </div>
         </div>
         <div className="text-right">
-          <div className="text-xs text-text-muted">{message.timestamp}</div>
+          <div className="text-xs text-ink-3">{message.timestamp}</div>
           <div className="flex items-center gap-1 text-[11px] text-amber-500 justify-end mt-1">
             <Mail className="w-3.5 h-3.5" />
             Email
@@ -54,11 +54,11 @@ export function EmailMessage({ message }: EmailMessageProps) {
       
       {/* Subject */}
       {message.subject && (
-        <h3 className="font-semibold text-[15px] text-text-primary mb-4">{message.subject}</h3>
+        <h3 className="font-semibold text-[15px] text-ink mb-4">{message.subject}</h3>
       )}
       
       {/* Body */}
-      <div className="text-sm text-text-secondary leading-relaxed whitespace-pre-wrap">
+      <div className="text-sm text-ink-2 leading-relaxed whitespace-pre-wrap">
         {message.body}
       </div>
       
@@ -68,7 +68,7 @@ export function EmailMessage({ message }: EmailMessageProps) {
           {sentimentEmoji[message.sentiment]} {message.sentiment.charAt(0).toUpperCase() + message.sentiment.slice(1)}
           {message.intent === 'meeting' && (
             <>
-              <span className="text-text-muted">•</span>
+              <span className="text-ink-3">•</span>
               <Calendar className="w-3.5 h-3.5" />
               Meeting Intent Detected
             </>

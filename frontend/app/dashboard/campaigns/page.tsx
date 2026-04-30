@@ -43,7 +43,7 @@ function getStatusStyles(status: CampaignStatus) {
       return "bg-green-500/10 text-green-400 border-green-500/30";
     case "draft":
     default:
-      return "bg-bg-elevated text-text-muted border-border-subtle";
+      return "bg-panel text-ink-3 border-rule";
   }
 }
 
@@ -52,7 +52,7 @@ function ChannelIcon({ channel }: { channel: string }) {
   const iconClasses = "w-4 h-4";
   switch (channel) {
     case "email":
-      return <Mail className={`${iconClasses} text-text-secondary`} />;
+      return <Mail className={`${iconClasses} text-ink-2`} />;
     case "linkedin":
       return <Linkedin className={`${iconClasses} text-amber`} />;
     case "sms":
@@ -121,7 +121,7 @@ export default function CampaignsPage() {
       <AppShell pageTitle="Campaigns">
         <div className="space-y-6">
           <div className="flex items-center justify-center h-64">
-            <div className="text-text-muted text-sm animate-pulse">Loading campaigns…</div>
+            <div className="text-ink-3 text-sm animate-pulse">Loading campaigns…</div>
           </div>
         </div>
       </AppShell>
@@ -146,10 +146,10 @@ export default function CampaignsPage() {
         {/* Header Bar */}
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-2xl font-serif text-text-primary">
+            <h1 className="text-2xl font-serif text-ink">
               Campaign War Room
             </h1>
-            <p className="text-sm text-text-secondary mt-1">
+            <p className="text-sm text-ink-2 mt-1">
               {activeCampaigns} active campaigns · {totalLeads.toLocaleString()} leads in pipeline
             </p>
           </div>
@@ -166,13 +166,13 @@ export default function CampaignsPage() {
                 </span>
               )}
             </Link>
-            <button className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-text-secondary bg-bg-surface border border-border-subtle hover:bg-bg-elevated transition-colors">
+            <button className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-ink-2 bg-bg-panel border border-rule hover:bg-panel transition-colors">
               <Filter className="w-4 h-4" />
               Filters
             </button>
             <Link
               href="/dashboard/campaigns/new"
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-text-primary gradient-premium hover:opacity-90 transition-opacity"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-ink gradient-premium hover:opacity-90 transition-opacity"
             >
               <Plus className="w-4 h-4" />
               New Campaign
@@ -183,31 +183,31 @@ export default function CampaignsPage() {
         {/* Summary Stats Strip */}
         <div className="grid grid-cols-5 gap-4">
           <div className="glass-surface rounded-xl p-4 text-center">
-            <p className="text-2xl font-bold font-mono text-text-primary">
+            <p className="text-2xl font-bold font-mono text-ink">
               {totalLeads.toLocaleString()}
             </p>
-            <p className="text-xs text-text-muted uppercase tracking-wider mt-1">
+            <p className="text-xs text-ink-3 uppercase tracking-wider mt-1">
               Total Leads
             </p>
           </div>
           <div className="glass-surface rounded-xl p-4 text-center">
-            <p className="text-2xl font-bold font-mono text-text-primary">
+            <p className="text-2xl font-bold font-mono text-ink">
               {totalContacted.toLocaleString()}
             </p>
-            <p className="text-xs text-text-muted uppercase tracking-wider mt-1">
+            <p className="text-xs text-ink-3 uppercase tracking-wider mt-1">
               Contacted
             </p>
           </div>
           <div className="glass-surface rounded-xl p-4 text-center">
-            <p className="text-2xl font-bold font-mono text-text-primary">
+            <p className="text-2xl font-bold font-mono text-ink">
               {totalReplied}
             </p>
-            <p className="text-xs text-text-muted uppercase tracking-wider mt-1">
+            <p className="text-xs text-ink-3 uppercase tracking-wider mt-1">
               Replies ({avgReplyRate}% avg)
             </p>
           </div>
           <div className="glass-surface rounded-xl p-4 text-center">
-            <p className="text-2xl font-bold font-mono text-text-primary">
+            <p className="text-2xl font-bold font-mono text-ink">
               {totalMeetings}
             </p>
             <p className="text-xs text-status-success uppercase tracking-wider mt-1 font-medium">
@@ -218,7 +218,7 @@ export default function CampaignsPage() {
             <p className="text-2xl font-bold font-mono text-accent-primary">
               {campaigns.length}
             </p>
-            <p className="text-xs text-text-muted uppercase tracking-wider mt-1">
+            <p className="text-xs text-ink-3 uppercase tracking-wider mt-1">
               Total Campaigns
             </p>
           </div>
@@ -227,10 +227,10 @@ export default function CampaignsPage() {
         {/* Campaign Cards Grid */}
         {campaigns.length === 0 ? (
           <div className="glass-surface rounded-xl p-12 text-center">
-            <p className="text-text-muted text-sm">No campaigns yet.</p>
+            <p className="text-ink-3 text-sm">No campaigns yet.</p>
             <Link
               href="/dashboard/campaigns/new"
-              className="inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-lg text-sm font-medium text-text-primary gradient-premium hover:opacity-90 transition-opacity"
+              className="inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-lg text-sm font-medium text-ink gradient-premium hover:opacity-90 transition-opacity"
             >
               <Plus className="w-4 h-4" />
               Create your first campaign
@@ -246,10 +246,10 @@ export default function CampaignsPage() {
                   className="glass-surface rounded-xl overflow-hidden hover:border-accent-primary/50 transition-colors"
                 >
                   {/* Card Header */}
-                  <div className="p-5 border-b border-border-subtle">
+                  <div className="p-5 border-b border-rule">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-3 flex-wrap">
-                        <h3 className="font-serif font-semibold text-text-primary text-lg">
+                        <h3 className="font-serif font-semibold text-ink text-lg">
                           {campaign.name}
                         </h3>
                         <span
@@ -262,18 +262,18 @@ export default function CampaignsPage() {
                       </div>
                       <div className="flex items-center gap-1">
                         {campaign.status === "active" ? (
-                          <button className="p-1.5 rounded-lg text-text-muted hover:text-amber-400 hover:bg-amber-500/10 transition-colors">
+                          <button className="p-1.5 rounded-lg text-ink-3 hover:text-amber-400 hover:bg-amber-500/10 transition-colors">
                             <Pause className="w-4 h-4" />
                           </button>
                         ) : campaign.status === "paused" ? (
-                          <button className="p-1.5 rounded-lg text-text-muted hover:text-amber hover:bg-amber-glow transition-colors">
+                          <button className="p-1.5 rounded-lg text-ink-3 hover:text-amber hover:bg-amber-glow transition-colors">
                             <Play className="w-4 h-4" />
                           </button>
                         ) : null}
-                        <button className="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-bg-elevated transition-colors">
+                        <button className="p-1.5 rounded-lg text-ink-3 hover:text-ink hover:bg-panel transition-colors">
                           <Edit2 className="w-4 h-4" />
                         </button>
-                        <button className="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-bg-elevated transition-colors">
+                        <button className="p-1.5 rounded-lg text-ink-3 hover:text-ink hover:bg-panel transition-colors">
                           <Copy className="w-4 h-4" />
                         </button>
                       </div>
@@ -283,13 +283,13 @@ export default function CampaignsPage() {
                         {channels.map((channel) => (
                           <div
                             key={channel}
-                            className="w-6 h-6 rounded-md bg-bg-elevated flex items-center justify-center"
+                            className="w-6 h-6 rounded-md bg-panel flex items-center justify-center"
                           >
                             <ChannelIcon channel={channel} />
                           </div>
                         ))}
                       </div>
-                      <span className="text-xs text-text-muted">
+                      <span className="text-xs text-ink-3">
                         {formatDateRange(campaign.start_date, campaign.end_date)}
                       </span>
                     </div>
@@ -309,19 +309,19 @@ export default function CampaignsPage() {
                           className={`text-center py-2 px-1 rounded-lg ${
                             stat.highlight && stat.value > 0
                               ? "bg-accent-primary/10 border border-accent-primary/30"
-                              : "bg-bg-elevated"
+                              : "bg-panel"
                           }`}
                         >
                           <p
                             className={`text-base font-bold font-mono ${
                               stat.highlight && stat.value > 0
                                 ? "text-accent-primary"
-                                : "text-text-primary"
+                                : "text-ink"
                             }`}
                           >
                             {stat.value.toLocaleString()}
                           </p>
-                          <p className="text-[10px] text-text-muted uppercase">{stat.label}</p>
+                          <p className="text-[10px] text-ink-3 uppercase">{stat.label}</p>
                         </div>
                       ))}
                     </div>
@@ -329,21 +329,21 @@ export default function CampaignsPage() {
                     {/* Rate Indicators */}
                     <div className="flex items-center gap-3 md:gap-6 mb-4">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-text-muted">Reply Rate</span>
-                        <span className="font-mono font-bold text-sm text-text-primary">
+                        <span className="text-xs text-ink-3">Reply Rate</span>
+                        <span className="font-mono font-bold text-sm text-ink">
                           {campaign.reply_rate.toFixed(1)}%
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-text-muted">Conv. Rate</span>
-                        <span className="font-mono font-bold text-sm text-text-primary">
+                        <span className="text-xs text-ink-3">Conv. Rate</span>
+                        <span className="font-mono font-bold text-sm text-ink">
                           {campaign.conversion_rate.toFixed(1)}%
                         </span>
                       </div>
                     </div>
 
                     {/* Footer */}
-                    <div className="flex items-center justify-between pt-3 border-t border-border-subtle">
+                    <div className="flex items-center justify-between pt-3 border-t border-rule">
                       <Link
                         href={`/dashboard/campaigns/${campaign.id}`}
                         className="flex items-center gap-1 text-sm font-medium text-accent-primary hover:underline"
@@ -351,7 +351,7 @@ export default function CampaignsPage() {
                         Explore Campaign
                         <ArrowUpRight className="w-3.5 h-3.5" />
                       </Link>
-                      <span className="text-xs text-text-muted">
+                      <span className="text-xs text-ink-3">
                         Updated: {formatRelativeTime(campaign.updated_at)}
                       </span>
                     </div>
@@ -365,31 +365,31 @@ export default function CampaignsPage() {
         {/* Performance Comparison Table */}
         {campaigns.length > 0 && (
           <div className="glass-surface rounded-xl overflow-hidden">
-            <div className="p-5 border-b border-border-subtle">
-              <h3 className="font-serif font-semibold text-text-primary">
+            <div className="p-5 border-b border-rule">
+              <h3 className="font-serif font-semibold text-ink">
                 Performance Comparison
               </h3>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-border-subtle bg-bg-elevated/50">
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider">
+                  <tr className="border-b border-rule bg-panel/50">
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-ink-3 uppercase tracking-wider">
                       Campaign
                     </th>
-                    <th className="text-center px-3 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider">
+                    <th className="text-center px-3 py-3 text-xs font-semibold text-ink-3 uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="text-right px-3 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider">
+                    <th className="text-right px-3 py-3 text-xs font-semibold text-ink-3 uppercase tracking-wider">
                       Total Leads
                     </th>
-                    <th className="text-right px-3 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider">
+                    <th className="text-right px-3 py-3 text-xs font-semibold text-ink-3 uppercase tracking-wider">
                       Reply Rate
                     </th>
-                    <th className="text-right px-3 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider">
+                    <th className="text-right px-3 py-3 text-xs font-semibold text-ink-3 uppercase tracking-wider">
                       Conv. Rate
                     </th>
-                    <th className="text-right px-5 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider">
+                    <th className="text-right px-5 py-3 text-xs font-semibold text-ink-3 uppercase tracking-wider">
                       Meetings
                     </th>
                   </tr>
@@ -403,12 +403,12 @@ export default function CampaignsPage() {
                     return (
                       <tr
                         key={campaign.id}
-                        className="border-b border-border-subtle last:border-b-0 hover:bg-bg-surface transition-colors"
+                        className="border-b border-rule last:border-b-0 hover:bg-bg-panel transition-colors"
                       >
                         <td className="px-5 py-4">
                           <Link
                             href={`/dashboard/campaigns/${campaign.id}`}
-                            className="font-medium text-text-primary hover:text-accent-primary transition-colors"
+                            className="font-medium text-ink hover:text-accent-primary transition-colors"
                           >
                             {campaign.name}
                           </Link>
@@ -423,7 +423,7 @@ export default function CampaignsPage() {
                           </span>
                         </td>
                         <td className="px-3 py-4 text-right">
-                          <span className="font-mono font-medium text-text-primary">
+                          <span className="font-mono font-medium text-ink">
                             {campaign.total_leads.toLocaleString()}
                           </span>
                         </td>
@@ -432,7 +432,7 @@ export default function CampaignsPage() {
                             className={`font-mono font-medium ${
                               campaign.reply_rate === bestReplyRate && bestReplyRate > 0
                                 ? "text-status-success"
-                                : "text-text-primary"
+                                : "text-ink"
                             }`}
                           >
                             {campaign.reply_rate.toFixed(1)}%
@@ -443,7 +443,7 @@ export default function CampaignsPage() {
                             className={`font-mono font-medium ${
                               campaign.conversion_rate === bestConvRate && bestConvRate > 0
                                 ? "text-status-success"
-                                : "text-text-primary"
+                                : "text-ink"
                             }`}
                           >
                             {campaign.conversion_rate.toFixed(1)}%
@@ -454,7 +454,7 @@ export default function CampaignsPage() {
                             className={`font-mono font-bold ${
                               campaign.meetings_booked === bestMeetings && bestMeetings > 0
                                 ? "text-status-success"
-                                : "text-text-primary"
+                                : "text-ink"
                             }`}
                           >
                             {campaign.meetings_booked}

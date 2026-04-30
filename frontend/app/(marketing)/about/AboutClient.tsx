@@ -14,11 +14,11 @@ export default function AboutClient() {
   return (
     <main className="min-h-screen bg-[#fafafa] text-[#1d1d1f] antialiased">
       {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl bg-bg-surface/70 border-b border-black/5">
+      <nav className="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl bg-bg-panel/70 border-b border-black/5">
         <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#0066CC] to-[#5856D6] flex items-center justify-center">
-              <span className="text-text-primary font-bold text-sm">A</span>
+              <span className="text-ink font-bold text-sm">A</span>
             </div>
             <span className="font-semibold text-lg tracking-tight">Agency OS</span>
           </Link>
@@ -30,7 +30,7 @@ export default function AboutClient() {
           </div>
           <div className="flex items-center gap-4">
             <Link href="/login" className="text-sm text-[#1d1d1f]/60 hover:text-[#1d1d1f] transition-colors hidden sm:block">Sign in</Link>
-            <Link href="/#waitlist" className="text-sm font-medium px-4 py-2 rounded-full bg-[#1d1d1f] text-text-primary hover:bg-[#1d1d1f]/90 transition-all hover:scale-105">Join Waitlist</Link>
+            <Link href="/#waitlist" className="text-sm font-medium px-4 py-2 rounded-full bg-[#1d1d1f] text-ink hover:bg-[#1d1d1f]/90 transition-all hover:scale-105">Join Waitlist</Link>
           </div>
         </div>
       </nav>
@@ -51,7 +51,7 @@ export default function AboutClient() {
       </section>
 
       {/* The Problem */}
-      <section className="px-6 py-24 bg-bg-surface">
+      <section className="px-6 py-24 bg-bg-panel">
         <div className="max-w-4xl mx-auto">
           <ScrollReveal animation="fade-up">
             <h2 className="text-3xl md:text-4xl font-semibold tracking-tight mb-8">
@@ -98,7 +98,7 @@ export default function AboutClient() {
       </section>
 
       {/* Why Australia First */}
-      <section className="px-6 py-24 bg-bg-surface">
+      <section className="px-6 py-24 bg-bg-panel">
         <div className="max-w-4xl mx-auto">
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <ScrollReveal animation="fade-right">
@@ -147,7 +147,7 @@ export default function AboutClient() {
       </section>
 
       {/* Values */}
-      <section className="px-6 py-24 bg-[#1d1d1f] text-text-primary">
+      <section className="px-6 py-24 bg-[#1d1d1f] text-ink">
         <div className="max-w-5xl mx-auto">
           <ScrollReveal animation="fade-up">
             <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-center mb-12">
@@ -170,9 +170,9 @@ export default function AboutClient() {
               },
             ].map((value, i) => (
               <ScrollReveal key={i} animation="fade-up" delay={i * 100}>
-                <div className="p-6 rounded-xl bg-bg-surface/5 border border-white/10">
+                <div className="p-6 rounded-xl bg-bg-panel/5 border border-white/10">
                   <h3 className="text-xl font-semibold mb-3">{value.title}</h3>
-                  <p className="text-text-primary/60">{value.desc}</p>
+                  <p className="text-ink/60">{value.desc}</p>
                 </div>
               </ScrollReveal>
             ))}
@@ -196,21 +196,21 @@ export default function AboutClient() {
       </section>
 
       {/* Footer */}
-      <footer className="px-6 py-12 bg-[#1d1d1f] text-text-primary">
+      <footer className="px-6 py-12 bg-[#1d1d1f] text-ink">
         <div className="max-w-6xl mx-auto">
           <div className="flex flex-col md:flex-row items-center justify-between gap-8">
             <Link href="/" className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#0066CC] to-[#5856D6] flex items-center justify-center">
-                <span className="text-text-primary font-bold text-sm">A</span>
+                <span className="text-ink font-bold text-sm">A</span>
               </div>
               <span className="font-semibold text-lg">Agency OS</span>
             </Link>
-            <div className="flex items-center gap-8 text-sm text-text-primary/60">
-              <Link href="/how-it-works" className="hover:text-text-primary transition-colors">How it Works</Link>
-              <Link href="/pricing" className="hover:text-text-primary transition-colors">Pricing</Link>
-              <Link href="/about" className="hover:text-text-primary transition-colors">About</Link>
+            <div className="flex items-center gap-8 text-sm text-ink/60">
+              <Link href="/how-it-works" className="hover:text-ink transition-colors">How it Works</Link>
+              <Link href="/pricing" className="hover:text-ink transition-colors">Pricing</Link>
+              <Link href="/about" className="hover:text-ink transition-colors">About</Link>
             </div>
-            <p className="text-sm text-text-primary/40">© 2025 Agency OS. Made in Australia 🇦🇺</p>
+            <p className="text-sm text-ink/40">© 2025 Agency OS. Made in Australia 🇦🇺</p>
           </div>
         </div>
       </footer>

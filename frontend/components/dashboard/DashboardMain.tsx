@@ -325,7 +325,7 @@ function GlassCard({
   return (
     <div
       className={cn(
-        "relative bg-bg-void/40 backdrop-blur-md rounded-xl border border-white/10",
+        "relative bg-bg-cream/40 backdrop-blur-md rounded-xl border border-white/10",
         "shadow-lg shadow-black/20 overflow-hidden",
         className
       )}
@@ -436,8 +436,8 @@ function ChannelStatusPanel({
       label: "LinkedIn", 
       fullLabel: "LinkedIn",
       icon: ChatBubbleLeftRightIcon, 
-      color: "text-text-secondary", 
-      bgColor: "bg-bg-elevated/15" 
+      color: "text-ink-2", 
+      bgColor: "bg-panel/15" 
     },
     { 
       key: "sms", 
@@ -477,11 +477,11 @@ function ChannelStatusPanel({
   return (
     <GlassCard gradient>
       <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-        <div className="flex items-center gap-2.5 text-sm font-semibold text-text-primary">
+        <div className="flex items-center gap-2.5 text-sm font-semibold text-ink">
           <SparklesIcon className="w-5 h-5 text-amber" />
           5-Channel Orchestration
         </div>
-        <div className="flex items-center gap-2 text-xs text-text-secondary">
+        <div className="flex items-center gap-2 text-xs text-ink-2">
           <span className="flex items-center gap-1.5">
             <div className="w-2 h-2 rounded-full bg-amber" />
             {Object.values(channelStatus).filter(c => c.status === "active").length} Active
@@ -496,7 +496,7 @@ function ChannelStatusPanel({
               key={key}
               className={cn(
                 "relative p-4 rounded-xl border transition-all cursor-pointer group",
-                "bg-bg-base/40 hover:bg-bg-base/60",
+                "bg-panel/40 hover:bg-panel/60",
                 status.status === "active" 
                   ? "border-white/10 hover:border-amber/30" 
                   : "border-white/5 opacity-75 hover:opacity-100"
@@ -513,10 +513,10 @@ function ChannelStatusPanel({
               </div>
 
               {/* Stats */}
-              <div className="text-xl font-bold font-mono text-text-primary">
+              <div className="text-xl font-bold font-mono text-ink">
                 {stats[key].toLocaleString()}
               </div>
-              <div className="text-[10px] text-text-secondary uppercase tracking-wider mt-0.5">
+              <div className="text-[10px] text-ink-2 uppercase tracking-wider mt-0.5">
                 {label}
               </div>
 
@@ -534,9 +534,9 @@ function ChannelStatusPanel({
               </div>
 
               {/* Hover Tooltip */}
-              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-bg-void rounded-lg border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
-                <div className="text-xs font-medium text-text-primary">{fullLabel}</div>
-                <div className="text-[10px] text-text-secondary">{getStatusLabel(status.status)} • {status.health}% health</div>
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-bg-cream rounded-lg border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
+                <div className="text-xs font-medium text-ink">{fullLabel}</div>
+                <div className="text-[10px] text-ink-2">{getStatusLabel(status.status)} • {status.health}% health</div>
               </div>
             </div>
           );
@@ -564,7 +564,7 @@ function RecentActivitySummary({ activities }: { activities: RecentActivity[] })
   const getActivityColor = (channel: keyof ChannelStats) => {
     switch (channel) {
       case "email": return { bg: "bg-amber/15", text: "text-amber" };
-      case "linkedin": return { bg: "bg-bg-elevated/15", text: "text-text-secondary" };
+      case "linkedin": return { bg: "bg-panel/15", text: "text-ink-2" };
       case "sms": return { bg: "bg-amber-glow", text: "text-amber" };
       case "voice": return { bg: "bg-amber-500/15", text: "text-amber-400" };
       case "directMail": return { bg: "bg-amber-glow", text: "text-amber-light" };
@@ -584,8 +584,8 @@ function RecentActivitySummary({ activities }: { activities: RecentActivity[] })
   return (
     <GlassCard className="h-full">
       <div className="flex items-center justify-between px-6 py-5 border-b border-white/10">
-        <div className="flex items-center gap-2.5 text-sm font-semibold text-text-primary">
-          <BoltIcon className="w-5 h-5 text-text-secondary" />
+        <div className="flex items-center gap-2.5 text-sm font-semibold text-ink">
+          <BoltIcon className="w-5 h-5 text-ink-2" />
           Recent Activity
         </div>
         <div className="flex items-center gap-1.5 text-xs font-medium text-amber bg-amber-glow px-2.5 py-1 rounded-full">
@@ -601,7 +601,7 @@ function RecentActivitySummary({ activities }: { activities: RecentActivity[] })
             <div
               key={activity.id}
               className={cn(
-                "flex items-start gap-3 py-3 cursor-pointer transition-colors hover:bg-bg-base/30 -mx-4 px-4",
+                "flex items-start gap-3 py-3 cursor-pointer transition-colors hover:bg-panel/30 -mx-4 px-4",
                 idx !== activities.length - 1 && "border-b border-white/5"
               )}
             >
@@ -610,19 +610,19 @@ function RecentActivitySummary({ activities }: { activities: RecentActivity[] })
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold text-text-primary truncate">
+                  <span className="text-sm font-semibold text-ink truncate">
                     {activity.contactName}
                   </span>
-                  <span className="text-xs text-text-muted">•</span>
-                  <span className="text-xs text-text-secondary truncate">
+                  <span className="text-xs text-ink-3">•</span>
+                  <span className="text-xs text-ink-2 truncate">
                     {activity.company}
                   </span>
                 </div>
-                <div className="text-sm text-text-secondary mt-0.5 truncate">
+                <div className="text-sm text-ink-2 mt-0.5 truncate">
                   {activity.description}
                 </div>
               </div>
-              <div className="text-xs text-text-muted flex-shrink-0">
+              <div className="text-xs text-ink-3 flex-shrink-0">
                 {formatTimeAgo(activity.timestamp)}
               </div>
             </div>
@@ -657,22 +657,22 @@ function HeroMeetingsCard({
 
   return (
     <GlassCard className="p-8" gradient>
-      <div className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-3">
+      <div className="text-xs font-semibold text-ink-2 uppercase tracking-wider mb-3">
         Meetings Booked
       </div>
       <div className="flex items-baseline gap-1">
-        <span className="text-6xl font-extrabold text-text-primary font-mono tracking-tighter">
+        <span className="text-6xl font-extrabold text-ink font-mono tracking-tighter">
           {booked}
         </span>
-        <span className="text-3xl font-bold text-text-muted font-mono">
+        <span className="text-3xl font-bold text-ink-3 font-mono">
           /{target}
         </span>
       </div>
-      <div className="mt-3 text-base text-text-secondary">
+      <div className="mt-3 text-base text-ink-2">
         {exceeded ? (
           <span className="text-amber font-medium">Target exceeded</span>
         ) : (
-          <span className="text-text-secondary">
+          <span className="text-ink-2">
             {target - booked} more to target
           </span>
         )}{" "}
@@ -682,7 +682,7 @@ function HeroMeetingsCard({
         <span className="text-amber font-medium flex items-center gap-1">
           <ArrowTrendingUpIcon className="w-4 h-4" />↑ {changePercent}%
         </span>
-        <span className="text-text-secondary">vs last month</span>
+        <span className="text-ink-2">vs last month</span>
       </div>
     </GlassCard>
   );
@@ -704,7 +704,7 @@ function ChannelOrchestrationWheel({
 
   const channels = [
     { key: "email", icon: EnvelopeIcon, label: "Email", color: "bg-amber/15 text-amber" },
-    { key: "linkedin", icon: ChatBubbleLeftRightIcon, label: "LinkedIn", color: "bg-bg-elevated/15 text-text-secondary" },
+    { key: "linkedin", icon: ChatBubbleLeftRightIcon, label: "LinkedIn", color: "bg-panel/15 text-ink-2" },
     { key: "sms", icon: ChatBubbleLeftRightIcon, label: "SMS", color: "bg-amber-glow text-amber" },
     { key: "voice", icon: PhoneIcon, label: "Calls", color: "bg-amber-500/15 text-amber-400" },
     { key: "directMail", icon: EnvelopeIcon, label: "Mail", color: "bg-amber-glow text-amber-light" },
@@ -712,7 +712,7 @@ function ChannelOrchestrationWheel({
 
   return (
     <GlassCard className="p-8 flex flex-col items-center" gradient>
-      <div className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-4">
+      <div className="text-xs font-semibold text-ink-2 uppercase tracking-wider mb-4">
         5-Channel Orchestration
       </div>
 
@@ -753,7 +753,7 @@ function ChannelOrchestrationWheel({
           <span className="text-5xl font-extrabold font-mono bg-gradient-to-r from-amber to-text-secondary bg-clip-text text-transparent">
             {(totalTouches / 1000).toFixed(1)}K
           </span>
-          <span className="text-xs text-text-secondary uppercase tracking-wider">
+          <span className="text-xs text-ink-2 uppercase tracking-wider">
             Touches
           </span>
         </div>
@@ -779,12 +779,12 @@ function ChannelOrchestrationWheel({
         {channels.map(({ key, label }) => (
           <div
             key={key}
-            className="text-center py-3 px-2 bg-bg-base/50 rounded-lg"
+            className="text-center py-3 px-2 bg-panel/50 rounded-lg"
           >
-            <div className="text-lg font-bold font-mono text-text-primary">
+            <div className="text-lg font-bold font-mono text-ink">
               {stats[key as keyof ChannelStats]}
             </div>
-            <div className="text-[10px] text-text-secondary uppercase mt-1">
+            <div className="text-[10px] text-ink-2 uppercase mt-1">
               {label}
             </div>
           </div>
@@ -808,7 +808,7 @@ function HotProspectsCard({ prospects }: { prospects: Prospect[] }) {
       case "active":
         return "bg-amber-glow text-amber";
       default:
-        return "bg-bg-surface text-text-secondary";
+        return "bg-bg-panel text-ink-2";
     }
   };
 
@@ -830,14 +830,14 @@ function HotProspectsCard({ prospects }: { prospects: Prospect[] }) {
       case "warm":
         return "text-amber-400";
       default:
-        return "text-text-secondary";
+        return "text-ink-2";
     }
   };
 
   return (
     <GlassCard className="h-full">
       <div className="flex items-center justify-between px-6 py-5 border-b border-white/10">
-        <div className="flex items-center gap-2.5 text-sm font-semibold text-text-primary">
+        <div className="flex items-center gap-2.5 text-sm font-semibold text-ink">
           <FireIcon className="w-5 h-5 text-amber" />
           Hot Right Now
         </div>
@@ -853,23 +853,23 @@ function HotProspectsCard({ prospects }: { prospects: Prospect[] }) {
           <div
             key={prospect.id}
             className={cn(
-              "flex items-center gap-4 py-4 cursor-pointer transition-colors hover:bg-bg-base/30 -mx-6 px-6",
+              "flex items-center gap-4 py-4 cursor-pointer transition-colors hover:bg-panel/30 -mx-6 px-6",
               idx !== prospects.length - 1 && "border-b border-white/5"
             )}
           >
             <div
               className={cn(
-                "w-11 h-11 rounded-lg flex items-center justify-center text-sm font-semibold text-text-primary",
+                "w-11 h-11 rounded-lg flex items-center justify-center text-sm font-semibold text-ink",
                 getAvatarGradient(prospect.tier)
               )}
             >
               {prospect.initials}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="font-semibold text-sm text-text-primary truncate">
+              <div className="font-semibold text-sm text-ink truncate">
                 {prospect.name}
               </div>
-              <div className="text-sm text-text-secondary truncate">
+              <div className="text-sm text-ink-2 truncate">
                 {prospect.company} • {prospect.title}
               </div>
               <div className="flex gap-1.5 mt-1.5">
@@ -895,7 +895,7 @@ function HotProspectsCard({ prospects }: { prospects: Prospect[] }) {
               >
                 {prospect.score}
               </div>
-              <div className="text-[10px] text-text-muted uppercase">Score</div>
+              <div className="text-[10px] text-ink-3 uppercase">Score</div>
             </div>
           </div>
         ))}
@@ -925,14 +925,14 @@ function VoiceAICard({ calls }: { calls: VoiceCall[] }) {
         };
       case "followup":
         return {
-          bg: "bg-bg-elevated/15",
-          text: "text-text-secondary",
+          bg: "bg-panel/15",
+          text: "text-ink-2",
           icon: ClockIcon,
         };
       default:
         return {
-          bg: "bg-bg-surface",
-          text: "text-text-secondary",
+          bg: "bg-bg-panel",
+          text: "text-ink-2",
           icon: PhoneIcon,
         };
     }
@@ -941,7 +941,7 @@ function VoiceAICard({ calls }: { calls: VoiceCall[] }) {
   return (
     <GlassCard className="h-full">
       <div className="flex items-center justify-between px-6 py-5 border-b border-white/10">
-        <div className="flex items-center gap-2.5 text-sm font-semibold text-text-primary">
+        <div className="flex items-center gap-2.5 text-sm font-semibold text-ink">
           <PhoneIcon className="w-5 h-5 text-amber-400" />
           Smart Calling
         </div>
@@ -956,12 +956,12 @@ function VoiceAICard({ calls }: { calls: VoiceCall[] }) {
           {stats.map(({ value, label }) => (
             <div
               key={label}
-              className="text-center py-4 px-2 bg-bg-base/50 rounded-lg"
+              className="text-center py-4 px-2 bg-panel/50 rounded-lg"
             >
-              <div className="text-2xl font-bold font-mono text-text-primary">
+              <div className="text-2xl font-bold font-mono text-ink">
                 {value}
               </div>
-              <div className="text-xs text-text-secondary mt-1">{label}</div>
+              <div className="text-xs text-ink-2 mt-1">{label}</div>
             </div>
           ))}
         </div>
@@ -987,7 +987,7 @@ function VoiceAICard({ calls }: { calls: VoiceCall[] }) {
                 <Icon className="w-4 h-4" />
               </div>
               <div className="flex-1">
-                <div className="text-sm font-semibold text-text-primary">
+                <div className="text-sm font-semibold text-ink">
                   {call.name}{" "}
                   <span
                     className={cn(
@@ -998,7 +998,7 @@ function VoiceAICard({ calls }: { calls: VoiceCall[] }) {
                     {call.outcome.replace("-", " ")}
                   </span>
                 </div>
-                <div className="text-sm text-text-secondary mt-0.5">
+                <div className="text-sm text-ink-2 mt-0.5">
                   {call.summary}
                 </div>
                 <div className="flex gap-4 mt-2">
@@ -1010,7 +1010,7 @@ function VoiceAICard({ calls }: { calls: VoiceCall[] }) {
                   </button>
                 </div>
               </div>
-              <div className="text-sm text-text-muted font-mono">
+              <div className="text-sm text-ink-3 font-mono">
                 {call.duration}
               </div>
             </div>
@@ -1036,17 +1036,17 @@ function WhatsWorkingCard({
   return (
     <GlassCard className="h-full">
       <div className="flex items-center justify-between px-6 py-5 border-b border-white/10">
-        <div className="flex items-center gap-2.5 text-sm font-semibold text-text-primary">
+        <div className="flex items-center gap-2.5 text-sm font-semibold text-ink">
           <LightBulbIcon className="w-5 h-5 text-amber" />
           What's Working
         </div>
-        <span className="text-xs text-text-muted">Updated 2h ago</span>
+        <span className="text-xs text-ink-3">Updated 2h ago</span>
       </div>
       <div className="px-6 py-4">
         <div className="grid grid-cols-2 gap-4">
           {/* Who Converts */}
-          <div className="bg-bg-base/50 rounded-lg p-4">
-            <div className="text-[11px] font-semibold text-text-secondary uppercase tracking-wide mb-3">
+          <div className="bg-panel/50 rounded-lg p-4">
+            <div className="text-[11px] font-semibold text-ink-2 uppercase tracking-wide mb-3">
               Who Converts
             </div>
             {whoConverts.map((item) => (
@@ -1054,7 +1054,7 @@ function WhatsWorkingCard({
                 key={item.label}
                 className="flex justify-between items-center py-2"
               >
-                <span className="text-sm text-text-secondary">{item.label}</span>
+                <span className="text-sm text-ink-2">{item.label}</span>
                 <span className="text-sm font-semibold text-amber">
                   {item.value}
                 </span>
@@ -1063,8 +1063,8 @@ function WhatsWorkingCard({
           </div>
 
           {/* Best Channel Mix */}
-          <div className="bg-bg-base/50 rounded-lg p-4">
-            <div className="text-[11px] font-semibold text-text-secondary uppercase tracking-wide mb-3">
+          <div className="bg-panel/50 rounded-lg p-4">
+            <div className="text-[11px] font-semibold text-ink-2 uppercase tracking-wide mb-3">
               Best Channel Mix
             </div>
             {channelMix.map((item) => (
@@ -1072,7 +1072,7 @@ function WhatsWorkingCard({
                 key={item.label}
                 className="flex justify-between items-center py-2"
               >
-                <span className="text-sm text-text-secondary">{item.label}</span>
+                <span className="text-sm text-ink-2">{item.label}</span>
                 <span className="text-sm font-semibold text-amber">
                   {item.value}
                 </span>
@@ -1087,7 +1087,7 @@ function WhatsWorkingCard({
             <FireIcon className="w-3.5 h-3.5 text-amber" />
             This Week's Discovery
           </div>
-          <p className="text-sm text-text-primary leading-relaxed">{discovery}</p>
+          <p className="text-sm text-ink leading-relaxed">{discovery}</p>
         </div>
       </div>
     </GlassCard>
@@ -1101,11 +1101,11 @@ function WeekAheadCard({ meetings }: { meetings: Meeting[] }) {
   return (
     <GlassCard className="h-full">
       <div className="flex items-center justify-between px-6 py-5 border-b border-white/10">
-        <div className="flex items-center gap-2.5 text-sm font-semibold text-text-primary">
-          <CalendarIcon className="w-5 h-5 text-text-secondary" />
+        <div className="flex items-center gap-2.5 text-sm font-semibold text-ink">
+          <CalendarIcon className="w-5 h-5 text-ink-2" />
           Week Ahead
         </div>
-        <span className="text-xs text-text-muted">
+        <span className="text-xs text-ink-3">
           {meetings.length} meetings
         </span>
       </div>
@@ -1127,11 +1127,11 @@ function WeekAheadCard({ meetings }: { meetings: Meeting[] }) {
               )}
             />
             <div className="flex-1">
-              <div className="text-sm text-text-primary">
+              <div className="text-sm text-ink">
                 <span className="font-semibold">{meeting.time}</span> —{" "}
                 {meeting.title}
               </div>
-              <div className="text-sm text-text-secondary mt-0.5">
+              <div className="text-sm text-ink-2 mt-0.5">
                 {meeting.contact} • {meeting.company}
                 {meeting.dealValue && (
                   <span className="text-amber ml-2">
@@ -1161,17 +1161,17 @@ function StatsSummaryRow() {
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
       {stats.map(({ value, label, change, positive, neutral }) => (
-        <GlassCard key={label} className="p-6 hover:bg-bg-void/50 transition-colors cursor-pointer">
-          <div className="text-3xl font-extrabold font-mono text-text-primary">
+        <GlassCard key={label} className="p-6 hover:bg-bg-cream/50 transition-colors cursor-pointer">
+          <div className="text-3xl font-extrabold font-mono text-ink">
             {value}
           </div>
-          <div className="text-xs font-medium text-text-secondary uppercase tracking-wide mt-2">
+          <div className="text-xs font-medium text-ink-2 uppercase tracking-wide mt-2">
             {label}
           </div>
           <div
             className={cn(
               "text-sm font-medium mt-2",
-              neutral ? "text-text-muted" : positive ? "text-amber" : "text-amber"
+              neutral ? "text-ink-3" : positive ? "text-amber" : "text-amber"
             )}
           >
             {change}

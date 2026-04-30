@@ -42,7 +42,7 @@ export const GlowingStarsDescription = ({
   children?: React.ReactNode;
 }) => {
   return (
-    <p className={cn("text-base text-text-primary max-w-[16rem]", className)}>
+    <p className={cn("text-base text-ink max-w-[16rem]", className)}>
       {children}
     </p>
   );
@@ -152,7 +152,7 @@ const Glow = ({ delay }: { delay: number }) => {
       exit={{
         opacity: 0,
       }}
-      className="absolute  left-1/2 -translate-x-1/2 z-10 h-[4px] w-[4px] rounded-full bg-bg-elevated blur-[1px] shadow-2xl shadow-text-secondary"
+      className="absolute  left-1/2 -translate-x-1/2 z-10 h-[4px] w-[4px] rounded-full bg-panel blur-[1px] shadow-2xl shadow-text-secondary"
     />
   );
 };

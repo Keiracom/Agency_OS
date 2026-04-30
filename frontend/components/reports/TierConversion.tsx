@@ -23,14 +23,14 @@ const tierConfig: Record<TierType, { label: string; badgeBg: string; badgeText: 
   },
   cool: {
     label: "COOL",
-    badgeBg: "bg-bg-elevated/15",
-    badgeText: "text-text-secondary",
+    badgeBg: "bg-panel/15",
+    badgeText: "text-ink-2",
     barGradient: "from-amber/30 to-amber",
   },
   cold: {
     label: "COLD",
     badgeBg: "bg-bg-surface0/15",
-    badgeText: "text-text-muted",
+    badgeText: "text-ink-3",
     barGradient: "from-gray-500/30 to-gray-500",
   },
 };
@@ -39,10 +39,10 @@ export function TierConversion() {
   const maxRate = Math.max(...tierData.map((t) => t.conversionRate));
 
   return (
-    <div className="bg-bg-base border border-default rounded-xl overflow-hidden">
+    <div className="bg-panel border border-default rounded-xl overflow-hidden">
       <div className="px-5 py-4 border-b border-default flex items-center gap-2">
         <BarChart3 className="w-4 h-4 text-[#D4956A]" />
-        <h3 className="text-sm font-semibold text-text-primary">Conversion Rate by Tier</h3>
+        <h3 className="text-sm font-semibold text-ink">Conversion Rate by Tier</h3>
       </div>
       <div className="p-5 space-y-3">
         {tierData.map((tier) => {
@@ -53,17 +53,17 @@ export function TierConversion() {
               <span className={`w-12 py-1 text-center text-[10px] font-bold uppercase rounded ${cfg.badgeBg} ${cfg.badgeText}`}>
                 {cfg.label}
               </span>
-              <div className="flex-1 h-6 bg-bg-void rounded overflow-hidden">
+              <div className="flex-1 h-6 bg-bg-cream rounded overflow-hidden">
                 <div
                   className={`h-full rounded flex items-center pl-2.5 bg-gradient-to-r ${cfg.barGradient}`}
                   style={{ width: `${barWidth}%` }}
                 >
-                  <span className="text-[11px] font-mono font-semibold text-text-primary">{tier.count}</span>
+                  <span className="text-[11px] font-mono font-semibold text-ink">{tier.count}</span>
                 </div>
               </div>
               <div className="w-16 text-right">
-                <p className="text-sm font-mono font-bold text-text-primary">{tier.conversionRate}%</p>
-                <p className="text-[9px] text-text-muted">conv rate</p>
+                <p className="text-sm font-mono font-bold text-ink">{tier.conversionRate}%</p>
+                <p className="text-[9px] text-ink-3">conv rate</p>
               </div>
             </div>
           );

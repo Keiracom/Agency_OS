@@ -26,7 +26,7 @@ import { Badge } from "@/components/ui/badge";
 const statusConfig = {
   connecting: { label: "Connecting...", className: "text-yellow-600 border-yellow-600/50" },
   connected: { label: "LIVE", className: "text-amber border-green-600/50" },
-  disconnected: { label: "Offline", className: "text-text-muted border-gray-600/50" },
+  disconnected: { label: "Offline", className: "text-ink-3 border-gray-600/50" },
   error: { label: "Error", className: "text-amber border-amber/50" },
 };
 

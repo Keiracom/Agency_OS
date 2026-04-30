@@ -51,15 +51,15 @@ import type {
 // ============================================
 // Bloomberg Color Reference (Tailwind classes)
 // ============================================
-// Base: bg-bg-void
-// Surface: bg-bg-base
-// Surface Hover: bg-bg-elevated
-// Elevated: bg-bg-elevated
+// Base: bg-bg-cream
+// Surface: bg-panel
+// Surface Hover: bg-panel
+// Elevated: bg-panel
 // Border Subtle: border-default
 // Border Default: border-default
-// Text Primary: text-text-primary
-// Text Secondary: text-text-secondary
-// Text Muted: text-text-muted
+// Text Primary: text-ink
+// Text Secondary: text-ink-2
+// Text Muted: text-ink-3
 // Accent Purple: text-amber / bg-amber
 // Tier Hot: text-amber / bg-amber-glow
 
@@ -286,7 +286,7 @@ function getWhyHotStyle(category: WhyHotCategory) {
     case "buyer": return "bg-amber-500/15 text-amber-400 border-amber-500/30";
     case "linkedin": return "bg-amber-glow text-amber border-amber/30";
     case "timing": return "bg-amber-glow text-amber-light border-amber-light/30";
-    default: return "bg-bg-surface text-text-secondary border-slate-500/30";
+    default: return "bg-bg-panel text-ink-2 border-slate-500/30";
   }
 }
 
@@ -318,16 +318,16 @@ function VoiceTranscriptModal({
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[60]">
-      <div className="w-full max-w-2xl bg-bg-base border border-default rounded-2xl shadow-2xl overflow-hidden mx-4 animate-in fade-in zoom-in-95 duration-200">
+      <div className="w-full max-w-2xl bg-panel border border-default rounded-2xl shadow-2xl overflow-hidden mx-4 animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-default">
-          <h3 className="flex items-center gap-2 text-lg font-semibold text-text-primary">
+          <h3 className="flex items-center gap-2 text-lg font-semibold text-ink">
             <Phone className="w-5 h-5" />
             Voice AI Transcript
           </h3>
           <button
             onClick={onClose}
-            className="p-2 rounded-lg bg-bg-elevated text-text-muted hover:text-text-primary transition-colors"
+            className="p-2 rounded-lg bg-panel text-ink-3 hover:text-ink transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -336,29 +336,29 @@ function VoiceTranscriptModal({
         {/* Body */}
         <div className="p-6 max-h-[70vh] overflow-y-auto">
           {/* Call Header */}
-          <div className="flex items-center gap-4 p-5 bg-bg-elevated rounded-xl mb-5">
+          <div className="flex items-center gap-4 p-5 bg-panel rounded-xl mb-5">
             <div className="w-13 h-13 bg-gradient-to-br from-amber to-amber-light rounded-xl flex items-center justify-center p-3">
-              <Phone className="w-6 h-6 text-text-primary" />
+              <Phone className="w-6 h-6 text-ink" />
             </div>
             <div className="flex-1">
-              <h4 className="font-semibold text-text-primary">
+              <h4 className="font-semibold text-ink">
                 Call with {lead.firstName} {lead.lastName}
               </h4>
-              <p className="text-sm text-text-muted">{lead.phone}</p>
+              <p className="text-sm text-ink-3">{lead.phone}</p>
             </div>
             <div className="text-right">
               <div className="text-2xl font-bold font-mono text-amber">3:24</div>
-              <div className="text-xs text-text-muted">Yesterday • 4:30 PM</div>
+              <div className="text-xs text-ink-3">Yesterday • 4:30 PM</div>
             </div>
           </div>
 
           {/* Audio Player */}
-          <div className="flex items-center gap-4 p-4 bg-bg-void rounded-xl mb-6">
+          <div className="flex items-center gap-4 p-4 bg-bg-cream rounded-xl mb-6">
             <button className="w-12 h-12 bg-amber hover:bg-violet-400 rounded-full flex items-center justify-center transition-colors">
-              <Play className="w-5 h-5 text-text-primary ml-0.5" />
+              <Play className="w-5 h-5 text-ink ml-0.5" />
             </button>
             <div className="flex-1">
-              <div className="flex justify-between text-xs font-mono text-text-muted mb-2">
+              <div className="flex justify-between text-xs font-mono text-ink-3 mb-2">
                 <span>0:00</span>
                 <span>3:24</span>
               </div>
@@ -370,7 +370,7 @@ function VoiceTranscriptModal({
 
           {/* Transcript */}
           <div>
-            <h4 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-text-muted mb-4">
+            <h4 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-ink-3 mb-4">
               <FileText className="w-4 h-4" />
               AI Transcript with Highlights
             </h4>
@@ -382,17 +382,17 @@ function VoiceTranscriptModal({
                     className={`w-9 h-9 rounded-lg flex items-center justify-center text-xs font-semibold flex-shrink-0 ${
                       line.speaker === "ai"
                         ? "bg-amber/15 text-amber"
-                        : "bg-bg-elevated text-text-muted"
+                        : "bg-panel text-ink-3"
                     }`}
                   >
                     {line.speaker === "ai" ? "AI" : "SC"}
                   </div>
                   <div className="flex-1">
-                    <div className="text-xs text-text-secondary mb-1">
+                    <div className="text-xs text-ink-2 mb-1">
                       <span className="font-semibold">{line.speakerName}</span>
-                      <span className="font-mono text-text-muted ml-2">{line.timestamp}</span>
+                      <span className="font-mono text-ink-3 ml-2">{line.timestamp}</span>
                     </div>
-                    <p className="text-sm text-text-primary leading-relaxed">{line.text}</p>
+                    <p className="text-sm text-ink leading-relaxed">{line.text}</p>
                     {line.highlight && (
                       <div
                         className={`inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 rounded-md text-xs font-medium ${
@@ -435,16 +435,16 @@ function EmailThreadModal({
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[60]">
-      <div className="w-full max-w-2xl bg-bg-base border border-default rounded-2xl shadow-2xl overflow-hidden mx-4 animate-in fade-in zoom-in-95 duration-200">
+      <div className="w-full max-w-2xl bg-panel border border-default rounded-2xl shadow-2xl overflow-hidden mx-4 animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-default">
-          <h3 className="flex items-center gap-2 text-lg font-semibold text-text-primary">
+          <h3 className="flex items-center gap-2 text-lg font-semibold text-ink">
             <Mail className="w-5 h-5" />
             Email Conversation
           </h3>
           <button
             onClick={onClose}
-            className="p-2 rounded-lg bg-bg-elevated text-text-muted hover:text-text-primary transition-colors"
+            className="p-2 rounded-lg bg-panel text-ink-3 hover:text-ink transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -458,17 +458,17 @@ function EmailThreadModal({
               className={`p-5 rounded-xl ${
                 email.direction === "sent"
                   ? "bg-amber/10 border border-amber/20 ml-6"
-                  : "bg-bg-elevated border border-default mr-6"
+                  : "bg-panel border border-default mr-6"
               }`}
             >
               <div className="flex items-center justify-between mb-3">
-                <span className="font-semibold text-text-primary">{email.sender}</span>
-                <span className="text-xs text-text-muted">{email.timestamp}</span>
+                <span className="font-semibold text-ink">{email.sender}</span>
+                <span className="text-xs text-ink-3">{email.timestamp}</span>
               </div>
-              <div className="text-sm font-medium text-text-secondary mb-3 pb-3 border-b border-default">
+              <div className="text-sm font-medium text-ink-2 mb-3 pb-3 border-b border-default">
                 Subject: {email.subject}
               </div>
-              <div className="text-sm text-text-primary leading-relaxed whitespace-pre-line">
+              <div className="text-sm text-ink leading-relaxed whitespace-pre-line">
                 {email.body}
               </div>
             </div>
@@ -496,16 +496,16 @@ function LinkedInThreadModal({
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[60]">
-      <div className="w-full max-w-2xl bg-bg-base border border-default rounded-2xl shadow-2xl overflow-hidden mx-4 animate-in fade-in zoom-in-95 duration-200">
+      <div className="w-full max-w-2xl bg-panel border border-default rounded-2xl shadow-2xl overflow-hidden mx-4 animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-default">
-          <h3 className="flex items-center gap-2 text-lg font-semibold text-text-primary">
+          <h3 className="flex items-center gap-2 text-lg font-semibold text-ink">
             <Briefcase className="w-5 h-5" />
             LinkedIn Conversation
           </h3>
           <button
             onClick={onClose}
-            className="p-2 rounded-lg bg-bg-elevated text-text-muted hover:text-text-primary transition-colors"
+            className="p-2 rounded-lg bg-panel text-ink-3 hover:text-ink transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -516,13 +516,13 @@ function LinkedInThreadModal({
           {/* LinkedIn Header */}
           <div className="flex items-center gap-4 p-5 bg-amber-glow border border-amber/20 rounded-xl mb-5">
             <div className="w-13 h-13 bg-[#0077B5] rounded-xl flex items-center justify-center p-3">
-              <Briefcase className="w-7 h-7 text-text-primary" />
+              <Briefcase className="w-7 h-7 text-ink" />
             </div>
             <div className="flex-1">
-              <h4 className="font-semibold text-text-primary">
+              <h4 className="font-semibold text-ink">
                 {lead.firstName} {lead.lastName}
               </h4>
-              <p className="text-sm text-text-muted">{lead.title} at {lead.company.name}</p>
+              <p className="text-sm text-ink-3">{lead.title} at {lead.company.name}</p>
             </div>
             <div className="flex items-center gap-1.5 text-sm text-amber font-medium">
               <CheckCircle2 className="w-4 h-4" />
@@ -549,14 +549,14 @@ function LinkedInThreadModal({
                   key={msg.id}
                   className={`max-w-[85%] p-4 rounded-2xl ${
                     msg.direction === "sent"
-                      ? "bg-[#0077B5] text-text-primary ml-auto rounded-br-sm"
-                      : "bg-bg-elevated text-text-primary mr-auto rounded-bl-sm"
+                      ? "bg-[#0077B5] text-ink ml-auto rounded-br-sm"
+                      : "bg-panel text-ink mr-auto rounded-bl-sm"
                   }`}
                 >
                   <p className="text-sm leading-relaxed">{msg.text}</p>
                   <div
                     className={`text-xs mt-1.5 ${
-                      msg.direction === "sent" ? "text-text-primary/70" : "text-text-muted"
+                      msg.direction === "sent" ? "text-ink/70" : "text-ink-3"
                     }`}
                   >
                     {msg.timestamp}
@@ -623,24 +623,24 @@ export function LeadDetailModal({ isOpen, onClose, lead: propLead }: LeadDetailM
       <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50" onClick={onClose} />
 
       {/* Slide-over Panel */}
-      <div className="fixed inset-y-0 right-0 w-full max-w-4xl bg-bg-void shadow-xl z-50 overflow-hidden flex flex-col animate-in slide-in-from-right duration-300">
+      <div className="fixed inset-y-0 right-0 w-full max-w-4xl bg-bg-cream shadow-xl z-50 overflow-hidden flex flex-col animate-in slide-in-from-right duration-300">
         {/* Header */}
-        <div className="bg-bg-base border-b border-default px-6 py-4">
+        <div className="bg-panel border-b border-default px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <button
                 onClick={onClose}
-                className="flex items-center gap-2 text-sm text-text-muted hover:text-text-secondary transition-colors"
+                className="flex items-center gap-2 text-sm text-ink-3 hover:text-ink-2 transition-colors"
               >
                 <ArrowLeft className="w-4 h-4" />
                 Back to Leads
               </button>
               <div className="w-px h-6 bg-[#2A2A3D]" />
-              <span className="text-sm text-text-muted">Lead Details</span>
+              <span className="text-sm text-ink-3">Lead Details</span>
             </div>
             <button
               onClick={onClose}
-              className="p-2 rounded-lg bg-bg-elevated text-text-muted hover:text-text-primary transition-colors"
+              className="p-2 rounded-lg bg-panel text-ink-3 hover:text-ink transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
@@ -651,7 +651,7 @@ export function LeadDetailModal({ isOpen, onClose, lead: propLead }: LeadDetailM
         <div className="flex-1 overflow-y-auto">
           <div className="p-6">
             {/* Profile Header Card */}
-            <div className="bg-bg-base border border-default rounded-2xl p-6 mb-6 relative overflow-hidden">
+            <div className="bg-panel border border-default rounded-2xl p-6 mb-6 relative overflow-hidden">
               {/* Top accent bar */}
               <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-amber to-amber" />
 
@@ -659,37 +659,37 @@ export function LeadDetailModal({ isOpen, onClose, lead: propLead }: LeadDetailM
                 {/* Left: Avatar + Info */}
                 <div className="flex gap-3 md:gap-6 flex-1">
                   {/* Avatar */}
-                  <div className="w-20 h-20 bg-gradient-to-br from-amber to-amber-light rounded-2xl flex items-center justify-center text-text-primary font-bold text-2xl flex-shrink-0">
+                  <div className="w-20 h-20 bg-gradient-to-br from-amber to-amber-light rounded-2xl flex items-center justify-center text-ink font-bold text-2xl flex-shrink-0">
                     {lead.firstName[0]}
                     {lead.lastName[0]}
                   </div>
 
                   {/* Info */}
                   <div>
-                    <h1 className="text-2xl font-bold text-text-primary mb-1">
+                    <h1 className="text-2xl font-bold text-ink mb-1">
                       {lead.firstName} {lead.lastName}
                     </h1>
-                    <p className="text-text-secondary mb-4">
+                    <p className="text-ink-2 mb-4">
                       {lead.title} at {lead.company.name}
                     </p>
 
                     {/* Meta */}
                     <div className="flex flex-wrap gap-5">
-                      <div className="flex items-center gap-2 text-sm text-text-secondary">
-                        <Mail className="w-4 h-4 text-text-muted" />
+                      <div className="flex items-center gap-2 text-sm text-ink-2">
+                        <Mail className="w-4 h-4 text-ink-3" />
                         <a href={`mailto:${lead.email}`} className="text-amber hover:underline">
                           {lead.email}
                         </a>
                       </div>
                       {lead.phone && (
-                        <div className="flex items-center gap-2 text-sm text-text-secondary">
-                          <Phone className="w-4 h-4 text-text-muted" />
+                        <div className="flex items-center gap-2 text-sm text-ink-2">
+                          <Phone className="w-4 h-4 text-ink-3" />
                           {lead.phone}
                         </div>
                       )}
                       {lead.linkedinUrl && (
-                        <div className="flex items-center gap-2 text-sm text-text-secondary">
-                          <Briefcase className="w-4 h-4 text-text-muted" />
+                        <div className="flex items-center gap-2 text-sm text-ink-2">
+                          <Briefcase className="w-4 h-4 text-ink-3" />
                           <a href="#" className="text-amber hover:underline">
                             {lead.linkedinUrl}
                           </a>
@@ -705,7 +705,7 @@ export function LeadDetailModal({ isOpen, onClose, lead: propLead }: LeadDetailM
                     <div className="text-5xl font-extrabold font-mono text-amber leading-none">
                       {lead.score}
                     </div>
-                    <div className="text-[10px] font-semibold text-text-muted uppercase tracking-widest mt-1">
+                    <div className="text-[10px] font-semibold text-ink-3 uppercase tracking-widest mt-1">
                       Lead Score
                     </div>
                   </div>
@@ -718,7 +718,7 @@ export function LeadDetailModal({ isOpen, onClose, lead: propLead }: LeadDetailM
 
               {/* Why Hot Section */}
               <div className="mt-6 pt-6 border-t border-default">
-                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-text-muted mb-3">
+                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-ink-3 mb-3">
                   <BadgeCheck className="w-4 h-4" />
                   Why This Lead is Hot
                 </div>
@@ -743,32 +743,32 @@ export function LeadDetailModal({ isOpen, onClose, lead: propLead }: LeadDetailM
               {/* Left Column (2/3) */}
               <div className="col-span-2 space-y-6">
                 {/* Engagement Profile Card */}
-                <div className="bg-bg-base border border-default rounded-xl overflow-hidden">
+                <div className="bg-panel border border-default rounded-xl overflow-hidden">
                   <div className="px-6 py-4 border-b border-default flex items-center justify-between">
-                    <div className="flex items-center gap-2.5 text-[15px] font-semibold text-text-primary">
+                    <div className="flex items-center gap-2.5 text-[15px] font-semibold text-ink">
                       <BarChart3 className="w-4 h-4" />
                       Engagement Profile
                     </div>
-                    <span className="text-xs text-text-muted">Score breakdown by signal</span>
+                    <span className="text-xs text-ink-3">Score breakdown by signal</span>
                   </div>
                   <div className="p-6">
                     <div className="space-y-3">
                       {Object.values(lead.engagementProfile).map((score) => (
                         <div key={score.label} className="flex items-center gap-4">
-                          <span className="flex-1 text-sm text-text-secondary">{score.label}</span>
-                          <div className="w-32 h-2 bg-bg-elevated rounded-full overflow-hidden">
+                          <span className="flex-1 text-sm text-ink-2">{score.label}</span>
+                          <div className="w-32 h-2 bg-panel rounded-full overflow-hidden">
                             <div
                               className={`h-full rounded-full transition-all ${
                                 score.level === "high"
                                   ? "bg-amber"
                                   : score.level === "medium"
                                   ? "bg-amber-500"
-                                  : "bg-bg-elevated"
+                                  : "bg-panel"
                               }`}
                               style={{ width: `${(score.value / score.maxValue) * 100}%` }}
                             />
                           </div>
-                          <span className="text-sm font-semibold font-mono text-text-primary min-w-[50px] text-right">
+                          <span className="text-sm font-semibold font-mono text-ink min-w-[50px] text-right">
                             {score.value}/{score.maxValue}
                           </span>
                         </div>
@@ -778,13 +778,13 @@ export function LeadDetailModal({ isOpen, onClose, lead: propLead }: LeadDetailM
                 </div>
 
                 {/* Activity Timeline Card */}
-                <div className="bg-bg-base border border-default rounded-xl overflow-hidden">
+                <div className="bg-panel border border-default rounded-xl overflow-hidden">
                   <div className="px-6 py-4 border-b border-default flex items-center justify-between">
-                    <div className="flex items-center gap-2.5 text-[15px] font-semibold text-text-primary">
+                    <div className="flex items-center gap-2.5 text-[15px] font-semibold text-ink">
                       <Zap className="w-4 h-4" />
                       Activity Timeline
                     </div>
-                    <span className="text-xs text-text-muted">Multi-channel engagement history</span>
+                    <span className="text-xs text-ink-3">Multi-channel engagement history</span>
                   </div>
                   <div className="p-6">
                     {/* Filters */}
@@ -796,7 +796,7 @@ export function LeadDetailModal({ isOpen, onClose, lead: propLead }: LeadDetailM
                           className={`px-3 py-1.5 text-xs font-medium rounded-md border transition-colors ${
                             activeFilter === filter
                               ? filter === "all"
-                                ? "bg-bg-elevated text-text-primary border-[#3A3A50]"
+                                ? "bg-panel text-ink border-[#3A3A50]"
                                 : filter === "email"
                                 ? "border-amber text-amber"
                                 : filter === "linkedin"
@@ -804,7 +804,7 @@ export function LeadDetailModal({ isOpen, onClose, lead: propLead }: LeadDetailM
                                 : filter === "voice"
                                 ? "border-amber-500 text-amber-400"
                                 : "border-amber text-amber"
-                              : "bg-bg-elevated text-text-muted border-default hover:text-text-primary hover:border-[#3A3A50]"
+                              : "bg-panel text-ink-3 border-default hover:text-ink hover:border-[#3A3A50]"
                           }`}
                         >
                           {filter.charAt(0).toUpperCase() + filter.slice(1)}
@@ -818,11 +818,11 @@ export function LeadDetailModal({ isOpen, onClose, lead: propLead }: LeadDetailM
                         <div key={day.date}>
                           <div
                             className={`flex items-center gap-3 text-[11px] font-semibold uppercase tracking-widest mb-3 ${
-                              day.isToday ? "text-amber" : "text-text-muted"
+                              day.isToday ? "text-amber" : "text-ink-3"
                             }`}
                           >
                             {day.date}
-                            <div className="flex-1 h-px bg-bg-surface" />
+                            <div className="flex-1 h-px bg-bg-panel" />
                           </div>
 
                           <div className="space-y-2 pl-5 border-l-2 border-default">
@@ -834,7 +834,7 @@ export function LeadDetailModal({ isOpen, onClose, lead: propLead }: LeadDetailM
                                   else if (event.hasThread && event.type === "linkedin") setSubModal("linkedin");
                                   else if (event.hasThread) setSubModal("email");
                                 }}
-                                className="relative flex items-start gap-3.5 p-4 bg-bg-elevated hover:bg-bg-elevated rounded-xl cursor-pointer transition-all hover:translate-x-1"
+                                className="relative flex items-start gap-3.5 p-4 bg-panel hover:bg-panel rounded-xl cursor-pointer transition-all hover:translate-x-1"
                               >
                                 {/* Timeline dot */}
                                 <div
@@ -866,14 +866,14 @@ export function LeadDetailModal({ isOpen, onClose, lead: propLead }: LeadDetailM
 
                                 {/* Content */}
                                 <div className="flex-1">
-                                  <div className="flex items-center gap-2 text-sm text-text-primary">
+                                  <div className="flex items-center gap-2 text-sm text-ink">
                                     <span className="font-semibold">{event.title}</span>
                                     {event.badge && (
                                       <span
                                         className={`text-[10px] font-semibold px-1.5 py-0.5 rounded uppercase ${
                                           event.badge.type === "booked"
                                             ? "bg-amber/15 text-amber"
-                                            : "bg-bg-elevated/15 text-text-secondary"
+                                            : "bg-panel/15 text-ink-2"
                                         }`}
                                       >
                                         {event.badge.label}
@@ -881,12 +881,12 @@ export function LeadDetailModal({ isOpen, onClose, lead: propLead }: LeadDetailM
                                     )}
                                   </div>
                                   {event.detail && (
-                                    <p className="text-sm text-text-secondary mt-1 leading-relaxed">
+                                    <p className="text-sm text-ink-2 mt-1 leading-relaxed">
                                       {event.detail}
                                     </p>
                                   )}
                                   <div className="flex items-center gap-3 mt-2">
-                                    <span className="text-xs font-mono text-text-muted">
+                                    <span className="text-xs font-mono text-ink-3">
                                       {event.displayTime}
                                     </span>
                                     {(event.hasTranscript || event.hasThread) && (
@@ -909,20 +909,20 @@ export function LeadDetailModal({ isOpen, onClose, lead: propLead }: LeadDetailM
               {/* Right Column (1/3) */}
               <div className="space-y-6">
                 {/* Company Intel Card */}
-                <div className="bg-bg-base border border-default rounded-xl overflow-hidden">
+                <div className="bg-panel border border-default rounded-xl overflow-hidden">
                   <div className="px-5 py-4 border-b border-default">
-                    <div className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
+                    <div className="flex items-center gap-2 text-[15px] font-semibold text-ink">
                       Company Intel
                     </div>
                   </div>
                   <div className="p-5">
                     {/* Company Header */}
                     <div className="flex items-center gap-4 mb-5">
-                      <div className="w-13 h-13 bg-bg-elevated rounded-xl flex items-center justify-center text-2xl border border-default p-3">
-                        <Briefcase className="w-6 h-6 text-text-muted" />
+                      <div className="w-13 h-13 bg-panel rounded-xl flex items-center justify-center text-2xl border border-default p-3">
+                        <Briefcase className="w-6 h-6 text-ink-3" />
                       </div>
                       <div>
-                        <h3 className="font-semibold text-text-primary">{lead.company.name}</h3>
+                        <h3 className="font-semibold text-ink">{lead.company.name}</h3>
                         <a href={`https://${lead.company.domain}`} className="text-sm text-amber hover:underline">
                           {lead.company.domain}
                         </a>
@@ -937,23 +937,23 @@ export function LeadDetailModal({ isOpen, onClose, lead: propLead }: LeadDetailM
                         { label: "Est. Revenue", value: lead.company.estimatedRevenue },
                         { label: "Location", value: lead.company.location },
                       ].map((stat) => (
-                        <div key={stat.label} className="p-4 bg-bg-elevated rounded-xl text-center">
-                          <div className="text-lg font-bold font-mono text-text-primary">{stat.value}</div>
-                          <div className="text-[11px] text-text-muted uppercase mt-1">{stat.label}</div>
+                        <div key={stat.label} className="p-4 bg-panel rounded-xl text-center">
+                          <div className="text-lg font-bold font-mono text-ink">{stat.value}</div>
+                          <div className="text-[11px] text-ink-3 uppercase mt-1">{stat.label}</div>
                         </div>
                       ))}
                     </div>
 
                     {/* Recent Intelligence */}
                     <div className="pt-5 border-t border-default">
-                      <div className="text-xs font-semibold uppercase tracking-widest text-text-muted mb-3">
+                      <div className="text-xs font-semibold uppercase tracking-widest text-ink-3 mb-3">
                         Recent Intelligence
                       </div>
                       <div className="space-y-2.5">
                         {lead.company.recentIntelligence.map((intel, idx) => (
                           <div key={idx} className="flex items-start gap-2.5 py-2.5 border-b border-default last:border-0">
                             <span className="text-sm">{intel.icon}</span>
-                            <span className="text-sm text-text-secondary leading-relaxed">{intel.text}</span>
+                            <span className="text-sm text-ink-2 leading-relaxed">{intel.text}</span>
                           </div>
                         ))}
                       </div>
@@ -962,32 +962,32 @@ export function LeadDetailModal({ isOpen, onClose, lead: propLead }: LeadDetailM
                 </div>
 
                 {/* Quick Actions Card */}
-                <div className="bg-bg-base border border-default rounded-xl overflow-hidden">
+                <div className="bg-panel border border-default rounded-xl overflow-hidden">
                   <div className="px-5 py-4 border-b border-default">
-                    <div className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
+                    <div className="flex items-center gap-2 text-[15px] font-semibold text-ink">
                       <Zap className="w-4 h-4" />
                       Quick Actions
                     </div>
                   </div>
                   <div className="p-5">
                     <div className="grid grid-cols-2 gap-2.5">
-                      <button className="col-span-2 flex items-center justify-center gap-2 px-4 py-3.5 bg-gradient-to-r from-amber to-amber-light text-text-primary text-sm font-medium rounded-xl hover:opacity-90 hover:-translate-y-0.5 transition-all">
+                      <button className="col-span-2 flex items-center justify-center gap-2 px-4 py-3.5 bg-gradient-to-r from-amber to-amber-light text-ink text-sm font-medium rounded-xl hover:opacity-90 hover:-translate-y-0.5 transition-all">
                         <Calendar className="w-5 h-5" />
                         Book Meeting
                       </button>
-                      <button className="flex items-center justify-center gap-2 px-4 py-3 bg-bg-elevated text-text-secondary text-sm font-medium rounded-xl border border-default hover:bg-bg-elevated hover:text-text-primary hover:border-[#3A3A50] transition-all">
+                      <button className="flex items-center justify-center gap-2 px-4 py-3 bg-panel text-ink-2 text-sm font-medium rounded-xl border border-default hover:bg-panel hover:text-ink hover:border-[#3A3A50] transition-all">
                         <Mail className="w-4 h-4" />
                         Send Email
                       </button>
-                      <button className="flex items-center justify-center gap-2 px-4 py-3 bg-bg-elevated text-text-secondary text-sm font-medium rounded-xl border border-default hover:bg-bg-elevated hover:text-text-primary hover:border-[#3A3A50] transition-all">
+                      <button className="flex items-center justify-center gap-2 px-4 py-3 bg-panel text-ink-2 text-sm font-medium rounded-xl border border-default hover:bg-panel hover:text-ink hover:border-[#3A3A50] transition-all">
                         <Briefcase className="w-4 h-4" />
                         LinkedIn DM
                       </button>
-                      <button className="flex items-center justify-center gap-2 px-4 py-3 bg-bg-elevated text-text-secondary text-sm font-medium rounded-xl border border-default hover:bg-bg-elevated hover:text-text-primary hover:border-[#3A3A50] transition-all">
+                      <button className="flex items-center justify-center gap-2 px-4 py-3 bg-panel text-ink-2 text-sm font-medium rounded-xl border border-default hover:bg-panel hover:text-ink hover:border-[#3A3A50] transition-all">
                         <MessageSquare className="w-4 h-4" />
                         Send SMS
                       </button>
-                      <button className="flex items-center justify-center gap-2 px-4 py-3 bg-bg-elevated text-text-secondary text-sm font-medium rounded-xl border border-default hover:bg-bg-elevated hover:text-text-primary hover:border-[#3A3A50] transition-all">
+                      <button className="flex items-center justify-center gap-2 px-4 py-3 bg-panel text-ink-2 text-sm font-medium rounded-xl border border-default hover:bg-panel hover:text-ink hover:border-[#3A3A50] transition-all">
                         <Phone className="w-4 h-4" />
                         AI Call
                       </button>
@@ -999,9 +999,9 @@ export function LeadDetailModal({ isOpen, onClose, lead: propLead }: LeadDetailM
                 </div>
 
                 {/* Notes Card */}
-                <div className="bg-bg-base border border-default rounded-xl overflow-hidden">
+                <div className="bg-panel border border-default rounded-xl overflow-hidden">
                   <div className="px-5 py-4 border-b border-default">
-                    <div className="flex items-center gap-2 text-[15px] font-semibold text-text-primary">
+                    <div className="flex items-center gap-2 text-[15px] font-semibold text-ink">
                       Notes
                     </div>
                   </div>
@@ -1011,7 +1011,7 @@ export function LeadDetailModal({ isOpen, onClose, lead: propLead }: LeadDetailM
                       onChange={(e) => setNoteInput(e.target.value)}
                       placeholder="Add a note about this lead..."
                       rows={3}
-                      className="w-full p-4 text-sm bg-bg-elevated border border-default rounded-xl resize-none text-text-primary placeholder-[#6E6E82] outline-none focus:border-amber focus:ring-2 focus:ring-amber/20 transition-all"
+                      className="w-full p-4 text-sm bg-panel border border-default rounded-xl resize-none text-ink placeholder-[#6E6E82] outline-none focus:border-amber focus:ring-2 focus:ring-amber/20 transition-all"
                     />
                     <div className="mt-4 space-y-3">
                       {lead.notes.map((note) => (
@@ -1019,10 +1019,10 @@ export function LeadDetailModal({ isOpen, onClose, lead: propLead }: LeadDetailM
                           key={note.id}
                           className="bg-amber-500/10 border-l-[3px] border-amber-500 rounded-r-xl p-4"
                         >
-                          <div className="text-xs text-text-muted mb-1.5">
+                          <div className="text-xs text-ink-3 mb-1.5">
                             {note.author} • {note.timestamp}
                           </div>
-                          <p className="text-sm text-text-secondary leading-relaxed">{note.text}</p>
+                          <p className="text-sm text-ink-2 leading-relaxed">{note.text}</p>
                         </div>
                       ))}
                     </div>

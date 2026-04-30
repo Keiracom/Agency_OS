@@ -56,15 +56,15 @@ function ActivityItemRow({ item }: { item: ActivityItem }) {
   const config = iconConfig[item.type];
 
   return (
-    <div className="flex items-start gap-3 py-3 border-b border-border-default last:border-b-0">
+    <div className="flex items-start gap-3 py-3 border-b border-rule-strong last:border-b-0">
       <div
         className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${config.bgClass}`}
       >
         {config.icon}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm text-text-primary truncate">{item.text}</p>
-        <p className="text-xs text-text-muted mt-1">{item.time}</p>
+        <p className="text-sm text-ink truncate">{item.text}</p>
+        <p className="text-xs text-ink-3 mt-1">{item.time}</p>
       </div>
     </div>
   );
@@ -76,9 +76,9 @@ function ActivityItemRow({ item }: { item: ActivityItem }) {
 
 export function ActivityFeedSimple({ items, viewAllHref }: ActivityFeedProps) {
   return (
-    <div className="bg-bg-surface border border-border-default rounded-2xl p-6">
+    <div className="bg-bg-panel border border-rule-strong rounded-2xl p-6">
       <div className="flex items-center justify-between mb-5">
-        <h3 className="text-base font-semibold text-text-primary">Recent Activity</h3>
+        <h3 className="text-base font-semibold text-ink">Recent Activity</h3>
         {viewAllHref && (
           <a
             href={viewAllHref}
@@ -92,7 +92,7 @@ export function ActivityFeedSimple({ items, viewAllHref }: ActivityFeedProps) {
         {items.length > 0 ? (
           items.map((item) => <ActivityItemRow key={item.id} item={item} />)
         ) : (
-          <p className="text-sm text-text-muted py-4 text-center">
+          <p className="text-sm text-ink-3 py-4 text-center">
             No recent activity
           </p>
         )}

@@ -27,8 +27,8 @@ const statusTextColors: Record<SiegeWaterfallTier['status'], string> = {
 
 export function SiegeWaterfallProgress({ tiers }: SiegeWaterfallProgressProps) {
   return (
-    <div className="bg-surface border border-border-subtle rounded-xl overflow-hidden">
-      <div className="px-6 py-5 border-b border-border-subtle flex items-center justify-between">
+    <div className="bg-panel border border-rule rounded-xl overflow-hidden">
+      <div className="px-6 py-5 border-b border-rule flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <Database className="w-4 h-4 text-accent-primary" />
           <span className="text-sm font-semibold text-primary">Siege Waterfall</span>
@@ -83,7 +83,7 @@ export function SiegeWaterfallProgress({ tiers }: SiegeWaterfallProgressProps) {
         </div>
 
         {/* Progress summary */}
-        <div className="mt-4 pt-4 border-t border-border-subtle">
+        <div className="mt-4 pt-4 border-t border-rule">
           <div className="flex items-center justify-between text-xs">
             <span className="text-muted">
               {tiers.filter((t) => t.status === 'complete').length} of {tiers.length} tiers complete

@@ -134,15 +134,15 @@ export default function NewCampaignPage() {
         <div className="flex items-center gap-3 text-sm mb-6">
           <Link
             href="/dashboard/campaigns"
-            className="flex items-center gap-2 text-text-muted hover:text-text-primary transition-colors"
+            className="flex items-center gap-2 text-ink-3 hover:text-ink transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Back
           </Link>
           <span className="text-border-strong">·</span>
-          <span className="text-text-muted">Campaigns</span>
+          <span className="text-ink-3">Campaigns</span>
           <span className="text-border-strong">/</span>
-          <span className="text-text-primary font-medium">New Campaign</span>
+          <span className="text-ink font-medium">New Campaign</span>
         </div>
 
         {/* Step Progress Indicator */}
@@ -154,10 +154,10 @@ export default function NewCampaignPage() {
                   <div
                     className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
                       currentStep > step.id
-                        ? "bg-status-success text-text-primary"
+                        ? "bg-status-success text-ink"
                         : currentStep === step.id
-                        ? "gradient-premium text-text-primary shadow-lg"
-                        : "bg-bg-elevated text-text-muted border-2 border-border-default"
+                        ? "gradient-premium text-ink shadow-lg"
+                        : "bg-panel text-ink-3 border-2 border-rule-strong"
                     }`}
                     style={
                       currentStep === step.id
@@ -174,10 +174,10 @@ export default function NewCampaignPage() {
                   <span
                     className={`text-sm font-medium transition-colors ${
                       currentStep === step.id
-                        ? "text-text-primary"
+                        ? "text-ink"
                         : currentStep > step.id
                         ? "text-status-success"
-                        : "text-text-muted"
+                        : "text-ink-3"
                     }`}
                   >
                     {step.label}
@@ -200,18 +200,18 @@ export default function NewCampaignPage() {
           {/* Step 1: Campaign Basics */}
           {currentStep === 1 && (
             <div className="animate-fade-in">
-              <div className="p-6 border-b border-border-subtle">
-                <h2 className="text-xl font-serif font-semibold text-text-primary">
+              <div className="p-6 border-b border-rule">
+                <h2 className="text-xl font-serif font-semibold text-ink">
                   Campaign Basics
                 </h2>
-                <p className="text-sm text-text-muted mt-1">
+                <p className="text-sm text-ink-3 mt-1">
                   Set the foundation for your outreach campaign
                 </p>
               </div>
               <div className="p-6 space-y-8">
                 {/* Campaign Name */}
                 <div>
-                  <label className="block text-sm font-medium text-text-primary mb-2">
+                  <label className="block text-sm font-medium text-ink mb-2">
                     Campaign Name
                   </label>
                   <input
@@ -219,13 +219,13 @@ export default function NewCampaignPage() {
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     placeholder="e.g., Q1 SaaS Founder Blitz"
-                    className="w-full px-4 py-3 rounded-lg text-sm bg-bg-surface border border-border-default text-text-primary placeholder-text-muted focus:outline-none focus:border-accent-primary focus:ring-2 focus:ring-accent-primary/20 transition-all"
+                    className="w-full px-4 py-3 rounded-lg text-sm bg-bg-panel border border-rule-strong text-ink placeholder-text-muted focus:outline-none focus:border-accent-primary focus:ring-2 focus:ring-accent-primary/20 transition-all"
                   />
                 </div>
 
                 {/* Campaign Goal */}
                 <div>
-                  <label className="block text-sm font-medium text-text-primary mb-3">
+                  <label className="block text-sm font-medium text-ink mb-3">
                     Campaign Goal
                   </label>
                   <div className="grid grid-cols-3 gap-4">
@@ -239,26 +239,26 @@ export default function NewCampaignPage() {
                           className={`p-5 rounded-xl text-center transition-all ${
                             isSelected
                               ? "bg-accent-primary/10 border-2 border-accent-primary"
-                              : "bg-bg-surface border-2 border-border-default hover:border-border-strong"
+                              : "bg-bg-panel border-2 border-rule-strong hover:border-border-strong"
                           }`}
                         >
                           <div
                             className={`w-12 h-12 rounded-xl mx-auto mb-3 flex items-center justify-center transition-colors ${
                               isSelected
                                 ? "gradient-premium"
-                                : "bg-bg-elevated"
+                                : "bg-panel"
                             }`}
                           >
                             <Icon
                               className={`w-6 h-6 ${
-                                isSelected ? "text-text-primary" : "text-text-muted"
+                                isSelected ? "text-ink" : "text-ink-3"
                               }`}
                             />
                           </div>
-                          <p className="text-sm font-semibold text-text-primary mb-1">
+                          <p className="text-sm font-semibold text-ink mb-1">
                             {goal.name}
                           </p>
-                          <p className="text-xs text-text-muted">{goal.description}</p>
+                          <p className="text-xs text-ink-3">{goal.description}</p>
                         </button>
                       );
                     })}
@@ -267,7 +267,7 @@ export default function NewCampaignPage() {
 
                 {/* Target Monthly Meetings */}
                 <div>
-                  <label className="block text-sm font-medium text-text-primary mb-2">
+                  <label className="block text-sm font-medium text-ink mb-2">
                     Target Monthly Meetings
                   </label>
                   <input
@@ -277,37 +277,37 @@ export default function NewCampaignPage() {
                       setFormData({ ...formData, targetMeetings: parseInt(e.target.value) || 0 })
                     }
                     min={1}
-                    className="w-full px-4 py-3 rounded-lg text-sm bg-bg-surface border border-border-default text-text-primary font-mono focus:outline-none focus:border-accent-primary focus:ring-2 focus:ring-accent-primary/20 transition-all"
+                    className="w-full px-4 py-3 rounded-lg text-sm bg-bg-panel border border-rule-strong text-ink font-mono focus:outline-none focus:border-accent-primary focus:ring-2 focus:ring-accent-primary/20 transition-all"
                   />
-                  <p className="text-xs text-text-muted mt-1.5">
+                  <p className="text-xs text-ink-3 mt-1.5">
                     Based on industry benchmarks, you'll need ~{Math.round(formData.targetMeetings * 50)} leads
                   </p>
                 </div>
 
                 {/* Date Range */}
                 <div>
-                  <label className="block text-sm font-medium text-text-primary mb-2">
+                  <label className="block text-sm font-medium text-ink mb-2">
                     Campaign Duration
                   </label>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs text-text-muted mb-1.5">Start Date</label>
+                      <label className="block text-xs text-ink-3 mb-1.5">Start Date</label>
                       <input
                         type="date"
                         value={formData.startDate}
                         onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                        className="w-full px-4 py-3 rounded-lg text-sm bg-bg-surface border border-border-default text-text-primary focus:outline-none focus:border-accent-primary focus:ring-2 focus:ring-accent-primary/20 transition-all"
+                        className="w-full px-4 py-3 rounded-lg text-sm bg-bg-panel border border-rule-strong text-ink focus:outline-none focus:border-accent-primary focus:ring-2 focus:ring-accent-primary/20 transition-all"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs text-text-muted mb-1.5">End Date</label>
+                      <label className="block text-xs text-ink-3 mb-1.5">End Date</label>
                       <div className="relative">
                         <input
                           type="date"
                           value={formData.endDate}
                           onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
                           disabled={formData.ongoing}
-                          className="w-full px-4 py-3 rounded-lg text-sm bg-bg-surface border border-border-default text-text-primary focus:outline-none focus:border-accent-primary focus:ring-2 focus:ring-accent-primary/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="w-full px-4 py-3 rounded-lg text-sm bg-bg-panel border border-rule-strong text-ink focus:outline-none focus:border-accent-primary focus:ring-2 focus:ring-accent-primary/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         />
                       </div>
                     </div>
@@ -317,9 +317,9 @@ export default function NewCampaignPage() {
                       type="checkbox"
                       checked={formData.ongoing}
                       onChange={(e) => setFormData({ ...formData, ongoing: e.target.checked })}
-                      className="w-4 h-4 rounded border-border-default bg-bg-surface text-accent-primary focus:ring-accent-primary/20"
+                      className="w-4 h-4 rounded border-rule-strong bg-bg-panel text-accent-primary focus:ring-accent-primary/20"
                     />
-                    <span className="text-sm text-text-secondary flex items-center gap-1.5">
+                    <span className="text-sm text-ink-2 flex items-center gap-1.5">
                       <Clock className="w-4 h-4" />
                       Run indefinitely (no end date)
                     </span>
@@ -332,13 +332,13 @@ export default function NewCampaignPage() {
           {/* Step 2: Audience Targeting */}
           {currentStep === 2 && (
             <div className="animate-fade-in">
-              <div className="p-6 border-b border-border-subtle">
+              <div className="p-6 border-b border-rule">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-xl font-serif font-semibold text-text-primary">
+                    <h2 className="text-xl font-serif font-semibold text-ink">
                       Target Audience
                     </h2>
-                    <p className="text-sm text-text-muted mt-1">
+                    <p className="text-sm text-ink-3 mt-1">
                       Define who you want to reach with this campaign
                     </p>
                   </div>
@@ -361,10 +361,10 @@ export default function NewCampaignPage() {
                         <Sparkles className="w-5 h-5 text-accent-primary" />
                       </div>
                       <div>
-                        <h4 className="text-sm font-semibold text-text-primary">
+                        <h4 className="text-sm font-semibold text-ink">
                           Suggested by Maya based on your ICP
                         </h4>
-                        <p className="text-xs text-text-muted mt-1">
+                        <p className="text-xs text-ink-3 mt-1">
                           We've pre-filled targeting based on your agency profile. 
                           Feel free to adjust any settings below.
                         </p>
@@ -376,7 +376,7 @@ export default function NewCampaignPage() {
                 {/* Target Industries */}
                 <div>
                   <div className="flex items-center gap-2 mb-3">
-                    <label className="block text-sm font-medium text-text-primary">
+                    <label className="block text-sm font-medium text-ink">
                       Target Industries
                     </label>
                     {(icpSuggestion?.targetIndustries?.length ?? 0) > 0 && (
@@ -403,7 +403,7 @@ export default function NewCampaignPage() {
                           className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                             isSelected
                               ? "bg-accent-primary/20 text-accent-primary border border-accent-primary/50"
-                              : "bg-bg-surface text-text-secondary border border-border-default hover:border-border-strong"
+                              : "bg-bg-panel text-ink-2 border border-rule-strong hover:border-border-strong"
                           }`}
                         >
                           {industry}
@@ -416,7 +416,7 @@ export default function NewCampaignPage() {
                 {/* Target Locations */}
                 <div>
                   <div className="flex items-center gap-2 mb-3">
-                    <label className="block text-sm font-medium text-text-primary">
+                    <label className="block text-sm font-medium text-ink">
                       Geographic Focus
                     </label>
                     {(icpSuggestion?.targetLocations?.length ?? 0) > 0 && (
@@ -443,7 +443,7 @@ export default function NewCampaignPage() {
                           className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                             isSelected
                               ? "bg-blue-500/20 text-blue-400 border border-blue-500/50"
-                              : "bg-bg-surface text-text-secondary border border-border-default hover:border-border-strong"
+                              : "bg-bg-panel text-ink-2 border border-rule-strong hover:border-border-strong"
                           }`}
                         >
                           {location}
@@ -456,7 +456,7 @@ export default function NewCampaignPage() {
                 {/* Company Size */}
                 <div>
                   <div className="flex items-center gap-2 mb-3">
-                    <label className="block text-sm font-medium text-text-primary">
+                    <label className="block text-sm font-medium text-ink">
                       Company Size
                     </label>
                     {(icpSuggestion?.targetCompanySizes?.length ?? 0) > 0 && (
@@ -483,7 +483,7 @@ export default function NewCampaignPage() {
                           className={`p-3 rounded-xl text-center transition-all ${
                             isSelected
                               ? "bg-green-500/20 text-green-400 border-2 border-green-500/50"
-                              : "bg-bg-surface text-text-secondary border-2 border-border-default hover:border-border-strong"
+                              : "bg-bg-panel text-ink-2 border-2 border-rule-strong hover:border-border-strong"
                           }`}
                         >
                           <span className="text-sm font-medium">{size.label}</span>
@@ -494,8 +494,8 @@ export default function NewCampaignPage() {
                 </div>
 
                 {/* Advanced Targeting Filters (4 new filters) */}
-                <div className="pt-6 border-t border-border-subtle">
-                  <h3 className="text-lg font-serif font-semibold text-text-primary mb-4">
+                <div className="pt-6 border-t border-rule">
+                  <h3 className="text-lg font-serif font-semibold text-ink mb-4">
                     Advanced Targeting
                   </h3>
                   <TargetingFilters
@@ -511,18 +511,18 @@ export default function NewCampaignPage() {
           {/* Steps 3-5: Coming Soon Placeholder */}
           {currentStep > 2 && (
             <div className="animate-fade-in">
-              <div className="p-6 border-b border-border-subtle">
-                <h2 className="text-xl font-serif font-semibold text-text-primary">
+              <div className="p-6 border-b border-rule">
+                <h2 className="text-xl font-serif font-semibold text-ink">
                   {STEPS[currentStep - 1].label}
                 </h2>
-                <p className="text-sm text-text-muted mt-1">
+                <p className="text-sm text-ink-3 mt-1">
                   Step {currentStep} of {STEPS.length}
                 </p>
               </div>
               <div className="p-12 text-center">
-                <div className="w-20 h-20 rounded-2xl mx-auto mb-6 bg-bg-surface flex items-center justify-center">
+                <div className="w-20 h-20 rounded-2xl mx-auto mb-6 bg-bg-panel flex items-center justify-center">
                   <svg
-                    className="w-10 h-10 text-text-muted"
+                    className="w-10 h-10 text-ink-3"
                     fill="none"
                     stroke="currentColor"
                     strokeWidth={1.5}
@@ -535,10 +535,10 @@ export default function NewCampaignPage() {
                     />
                   </svg>
                 </div>
-                <h3 className="text-lg font-serif font-semibold text-text-primary mb-2">
+                <h3 className="text-lg font-serif font-semibold text-ink mb-2">
                   Coming Soon
                 </h3>
-                <p className="text-sm text-text-muted max-w-sm mx-auto">
+                <p className="text-sm text-ink-3 max-w-sm mx-auto">
                   This step is under development. In the meantime, you can navigate through
                   the wizard to see the flow.
                 </p>
@@ -547,11 +547,11 @@ export default function NewCampaignPage() {
           )}
 
           {/* Navigation Footer */}
-          <div className="p-6 border-t border-border-subtle flex items-center justify-between">
+          <div className="p-6 border-t border-rule flex items-center justify-between">
             {currentStep > 1 ? (
               <button
                 onClick={handleBack}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-text-secondary hover:text-text-primary transition-colors"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-ink-2 hover:text-ink transition-colors"
               >
                 <ArrowLeft className="w-4 h-4" />
                 Back
@@ -562,7 +562,7 @@ export default function NewCampaignPage() {
             <button
               onClick={handleNext}
               disabled={currentStep === STEPS.length}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium text-text-primary gradient-premium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium text-ink gradient-premium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {currentStep === STEPS.length ? "Create Campaign" : "Continue"}
               <ArrowRight className="w-4 h-4" />

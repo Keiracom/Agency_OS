@@ -34,7 +34,7 @@ export function ALSDistribution({ data }: ALSDistributionProps) {
           <div key={item.tier} className="space-y-2">
             {/* Header */}
             <div className="flex items-center justify-between">
-              <span className={`px-2 py-0.5 rounded-full text-xs font-medium text-text-primary ${style.bg}`}>
+              <span className={`px-2 py-0.5 rounded-full text-xs font-medium text-ink ${style.bg}`}>
                 {style.label}
               </span>
               <span className="text-sm font-medium text-[#1E293B]">

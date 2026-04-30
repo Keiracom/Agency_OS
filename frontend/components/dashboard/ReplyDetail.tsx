@@ -210,16 +210,16 @@ const mockDetail: ConversationDetail = {
 const tierScoreConfig: Record<ALSTier, { text: string; bg: string; border: string }> = {
   hot: { text: "text-amber", bg: "bg-gradient-to-br from-amber to-amber-light", border: "border-amber" },
   warm: { text: "text-amber-light", bg: "bg-gradient-to-br from-amber-light to-amber", border: "border-amber-light" },
-  cool: { text: "text-text-secondary", bg: "bg-bg-elevated", border: "border-default" },
-  cold: { text: "text-text-muted", bg: "bg-bg-surface", border: "border-subtle" },
-  dead: { text: "text-text-muted", bg: "bg-bg-base", border: "border-subtle" },
+  cool: { text: "text-ink-2", bg: "bg-panel", border: "border-default" },
+  cold: { text: "text-ink-3", bg: "bg-bg-panel", border: "border-subtle" },
+  dead: { text: "text-ink-3", bg: "bg-panel", border: "border-subtle" },
 };
 
 const intentConfig: Record<IntentType, { bg: string; text: string }> = {
   meeting: { bg: "bg-amber-glow", text: "text-amber" },
   interested: { bg: "bg-amber-glow", text: "text-amber-light" },
   objection: { bg: "bg-error-glow", text: "text-error" },
-  later: { bg: "bg-amber-glow/50", text: "text-text-secondary" },
+  later: { bg: "bg-amber-glow/50", text: "text-ink-2" },
   question: { bg: "bg-amber-glow/50", text: "text-amber-light" },
 };
 
@@ -250,7 +250,7 @@ function ScoreRing({ score, tier }: { score: number; tier: ALSTier }) {
   return (
     <div className={`w-[72px] h-[72px] rounded-full border-4 ${config.border} flex flex-col items-center justify-center bg-amber-glow`}>
       <span className={`text-2xl font-extrabold font-mono leading-none ${config.text}`}>{score}</span>
-      <span className="text-[9px] text-text-muted uppercase tracking-wide">Score</span>
+      <span className="text-[9px] text-ink-3 uppercase tracking-wide">Score</span>
     </div>
   );
 }
@@ -301,18 +301,18 @@ export function ReplyDetail({ conversation = mockDetail, onBack }: ReplyDetailPr
   };
 
   return (
-    <div className="flex flex-col h-full bg-bg-void">
+    <div className="flex flex-col h-full bg-bg-cream">
       {/* Header */}
-      <header className="bg-bg-base border-b border-default px-6 py-3 flex items-center gap-4">
+      <header className="bg-panel border-b border-default px-6 py-3 flex items-center gap-4">
         <button
           onClick={onBack}
-          className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-text-muted hover:bg-bg-elevated hover:text-text-secondary transition-colors"
+          className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-ink-3 hover:bg-panel hover:text-ink-2 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to Inbox
         </button>
         <div className="w-px h-6 bg-border-default" />
-        <span className="text-sm text-text-secondary">Conversation with {conversation.name}</span>
+        <span className="text-sm text-ink-2">Conversation with {conversation.name}</span>
       </header>
 
       {/* Content */}
@@ -320,13 +320,13 @@ export function ReplyDetail({ conversation = mockDetail, onBack }: ReplyDetailPr
         {/* Conversation Panel */}
         <div className="flex flex-col overflow-hidden">
           {/* Lead Header */}
-          <div className="bg-bg-base border-b border-default px-8 py-5 flex items-center gap-5">
-            <div className={`w-14 h-14 rounded-xl flex items-center justify-center text-bg-void font-bold text-xl ${config.bg}`}>
+          <div className="bg-panel border-b border-default px-8 py-5 flex items-center gap-5">
+            <div className={`w-14 h-14 rounded-xl flex items-center justify-center text-bg-cream font-bold text-xl ${config.bg}`}>
               {conversation.initials}
             </div>
             <div className="flex-1">
-              <h1 className="text-xl font-bold text-text-primary mb-1">{conversation.name}</h1>
-              <p className="text-sm text-text-muted">{conversation.title} at {conversation.company} • {conversation.email}</p>
+              <h1 className="text-xl font-bold text-ink mb-1">{conversation.name}</h1>
+              <p className="text-sm text-ink-3">{conversation.title} at {conversation.company} • {conversation.email}</p>
               <div className="flex gap-2 mt-2">
                 <LeadBadge type="hot">
                   <Flame className="w-3 h-3" /> Hot
@@ -341,11 +341,11 @@ export function ReplyDetail({ conversation = mockDetail, onBack }: ReplyDetailPr
             </div>
             <ScoreRing score={conversation.score} tier={conversation.tier} />
             <div className="flex gap-2.5">
-              <button className="flex items-center gap-2 px-4 py-2.5 bg-amber hover:bg-amber-light rounded-lg text-bg-void text-sm font-semibold transition-colors">
+              <button className="flex items-center gap-2 px-4 py-2.5 bg-amber hover:bg-amber-light rounded-lg text-bg-cream text-sm font-semibold transition-colors">
                 <Calendar className="w-4 h-4" />
                 Schedule Call
               </button>
-              <button className="flex items-center gap-2 px-4 py-2.5 bg-bg-elevated border border-default rounded-lg text-text-primary text-sm font-semibold hover:bg-bg-surface transition-colors">
+              <button className="flex items-center gap-2 px-4 py-2.5 bg-panel border border-default rounded-lg text-ink text-sm font-semibold hover:bg-bg-panel transition-colors">
                 <Phone className="w-4 h-4" />
                 Call Now
               </button>
@@ -364,7 +364,7 @@ export function ReplyDetail({ conversation = mockDetail, onBack }: ReplyDetailPr
               return (
                 <div key={msg.id}>
                   {showDate && (
-                    <div className="flex items-center gap-4 py-4 text-xs text-text-muted">
+                    <div className="flex items-center gap-4 py-4 text-xs text-ink-3">
                       <div className="flex-1 h-px bg-border-default" />
                       <span>{currDate}</span>
                       <div className="flex-1 h-px bg-border-default" />
@@ -378,30 +378,30 @@ export function ReplyDetail({ conversation = mockDetail, onBack }: ReplyDetailPr
                     <div className="flex items-center justify-between mb-4 pb-4 border-b border-default">
                       <div className="flex items-center gap-3">
                         <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-semibold text-sm ${
-                          msg.sender === "you" ? "bg-amber text-bg-void" : config.bg + " text-bg-void"
+                          msg.sender === "you" ? "bg-amber text-bg-cream" : config.bg + " text-bg-cream"
                         }`}>
                           {msg.sender === "you" ? "Y" : conversation.initials}
                         </div>
                         <div>
-                          <div className="font-semibold text-sm text-text-primary">
+                          <div className="font-semibold text-sm text-ink">
                             {msg.sender === "you" ? "You" : conversation.name}
                           </div>
-                          <div className="text-xs text-text-muted">
+                          <div className="text-xs text-ink-3">
                             {msg.sender === "you" ? "dave@agencyos.com" : conversation.email}
                           </div>
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-xs text-text-muted">{msg.timestamp.split(",")[1]?.trim() || msg.timestamp}</div>
+                        <div className="text-xs text-ink-3">{msg.timestamp.split(",")[1]?.trim() || msg.timestamp}</div>
                         <div className="text-[11px] text-amber flex items-center gap-1 justify-end mt-1">
                           <Mail className="w-3 h-3" /> Email
                         </div>
                       </div>
                     </div>
                     {msg.subject && (
-                      <div className="text-[15px] font-semibold text-text-primary mb-4">{msg.subject}</div>
+                      <div className="text-[15px] font-semibold text-ink mb-4">{msg.subject}</div>
                     )}
-                    <div className="text-sm text-text-secondary leading-relaxed whitespace-pre-line">
+                    <div className="text-sm text-ink-2 leading-relaxed whitespace-pre-line">
                       {msg.content}
                     </div>
                     {msg.sender === "them" && (
@@ -428,13 +428,13 @@ export function ReplyDetail({ conversation = mockDetail, onBack }: ReplyDetailPr
                     key={sms.id}
                     className={`max-w-[85%] p-3 px-4 rounded-2xl mb-2 text-sm leading-relaxed ${
                       sms.sender === "you"
-                        ? "ml-auto bg-amber text-bg-void rounded-br-sm"
-                        : "glass-surface text-text-primary rounded-bl-sm"
+                        ? "ml-auto bg-amber text-bg-cream rounded-br-sm"
+                        : "glass-surface text-ink rounded-bl-sm"
                     }`}
                   >
                     {sms.text}
                     <div className={`flex items-center gap-2 mt-1.5 text-[11px] ${
-                      sms.sender === "you" ? "justify-end text-bg-void/70" : "text-text-muted"
+                      sms.sender === "you" ? "justify-end text-bg-cream/70" : "text-ink-3"
                     }`}>
                       {sms.intent && (
                         <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase ${intentConfig[sms.intent].bg} ${intentConfig[sms.intent].text}`}>
@@ -453,11 +453,11 @@ export function ReplyDetail({ conversation = mockDetail, onBack }: ReplyDetailPr
               <div className="max-w-[720px] glass-surface rounded-2xl p-6 mt-6">
                 <div className="flex items-center gap-3 mb-5">
                   <div className="w-10 h-10 bg-amber rounded-lg flex items-center justify-center">
-                    <Sparkles className="w-5 h-5 text-bg-void" />
+                    <Sparkles className="w-5 h-5 text-bg-cream" />
                   </div>
                   <div>
-                    <div className="text-base font-bold text-text-primary">Suggested Responses</div>
-                    <div className="text-sm text-text-muted">Click to use • Based on conversation context</div>
+                    <div className="text-base font-bold text-ink">Suggested Responses</div>
+                    <div className="text-sm text-ink-3">Click to use • Based on conversation context</div>
                   </div>
                 </div>
                 <div className="space-y-3">
@@ -474,11 +474,11 @@ export function ReplyDetail({ conversation = mockDetail, onBack }: ReplyDetailPr
                           {sug.icon === "target" && <Target className="w-3 h-3" />}
                           {sug.label}
                         </span>
-                        <button className="px-3 py-1.5 bg-amber rounded-md text-[11px] font-semibold text-bg-void opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button className="px-3 py-1.5 bg-amber rounded-md text-[11px] font-semibold text-bg-cream opacity-0 group-hover:opacity-100 transition-opacity">
                           Use This
                         </button>
                       </div>
-                      <p className="text-sm text-text-secondary leading-relaxed">{sug.text}</p>
+                      <p className="text-sm text-ink-2 leading-relaxed">{sug.text}</p>
                     </div>
                   ))}
                 </div>
@@ -487,34 +487,34 @@ export function ReplyDetail({ conversation = mockDetail, onBack }: ReplyDetailPr
           </div>
 
           {/* Composer */}
-          <div className="bg-bg-base border-t border-default px-8 py-5">
+          <div className="bg-panel border-t border-default px-8 py-5">
             <div className="max-w-[720px]">
               <div className="flex items-center gap-2 mb-3 text-sm">
-                <span className="text-text-muted">To:</span>
-                <span className="text-text-primary font-medium">{conversation.email}</span>
+                <span className="text-ink-3">To:</span>
+                <span className="text-ink font-medium">{conversation.email}</span>
               </div>
               <textarea
                 value={replyText}
                 onChange={(e) => setReplyText(e.target.value)}
                 placeholder="Write your reply..."
-                className="w-full p-4 bg-bg-void border border-default rounded-xl text-text-primary text-sm placeholder:text-text-muted resize-none min-h-[120px] focus:outline-none focus:border-amber focus:ring-2 focus:ring-amber/20"
+                className="w-full p-4 bg-bg-cream border border-default rounded-xl text-ink text-sm placeholder:text-ink-3 resize-none min-h-[120px] focus:outline-none focus:border-amber focus:ring-2 focus:ring-amber/20"
               />
               <div className="flex items-center justify-between mt-3">
                 <div className="flex gap-2">
-                  <button className="flex items-center gap-2 px-3 py-2 bg-bg-elevated border border-default rounded-md text-xs text-text-secondary hover:bg-bg-surface hover:text-text-primary transition-colors">
+                  <button className="flex items-center gap-2 px-3 py-2 bg-panel border border-default rounded-md text-xs text-ink-2 hover:bg-bg-panel hover:text-ink transition-colors">
                     <Paperclip className="w-3.5 h-3.5" />
                     Attach
                   </button>
-                  <button className="flex items-center gap-2 px-3 py-2 bg-bg-elevated border border-default rounded-md text-xs text-text-secondary hover:bg-bg-surface hover:text-text-primary transition-colors">
+                  <button className="flex items-center gap-2 px-3 py-2 bg-panel border border-default rounded-md text-xs text-ink-2 hover:bg-bg-panel hover:text-ink transition-colors">
                     <Calendar className="w-3.5 h-3.5" />
                     Schedule
                   </button>
-                  <button className="flex items-center gap-2 px-3 py-2 bg-bg-elevated border border-default rounded-md text-xs text-text-secondary hover:bg-bg-surface hover:text-text-primary transition-colors">
+                  <button className="flex items-center gap-2 px-3 py-2 bg-panel border border-default rounded-md text-xs text-ink-2 hover:bg-bg-panel hover:text-ink transition-colors">
                     <Sparkles className="w-3.5 h-3.5" />
                     AI Write
                   </button>
                 </div>
-                <button className="flex items-center gap-2 px-6 py-3 bg-amber hover:bg-amber-light rounded-lg text-bg-void text-sm font-semibold transition-colors">
+                <button className="flex items-center gap-2 px-6 py-3 bg-amber hover:bg-amber-light rounded-lg text-bg-cream text-sm font-semibold transition-colors">
                   <Send className="w-4 h-4" />
                   Send Reply
                 </button>
@@ -524,36 +524,36 @@ export function ReplyDetail({ conversation = mockDetail, onBack }: ReplyDetailPr
         </div>
 
         {/* Right Panel - Score Breakdown & Details */}
-        <div className="bg-bg-base border-l border-default overflow-y-auto p-6 space-y-6">
+        <div className="bg-panel border-l border-default overflow-y-auto p-6 space-y-6">
           {/* Quick Actions */}
-          <div className="bg-bg-void rounded-xl p-4">
-            <div className="flex items-center gap-2 mb-4 text-xs font-semibold uppercase tracking-wide text-text-muted">
+          <div className="bg-bg-cream rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-4 text-xs font-semibold uppercase tracking-wide text-ink-3">
               <Sparkles className="w-3.5 h-3.5" />
               Quick Actions
             </div>
             <div className="space-y-2">
-              <button className="w-full flex items-center gap-3 px-3.5 py-3 bg-amber hover:bg-amber-light rounded-lg text-bg-void text-sm font-medium transition-colors">
+              <button className="w-full flex items-center gap-3 px-3.5 py-3 bg-amber hover:bg-amber-light rounded-lg text-bg-cream text-sm font-medium transition-colors">
                 <Calendar className="w-4 h-4 opacity-80" />
                 Schedule Call
               </button>
-              <button className="w-full flex items-center gap-3 px-3.5 py-3 bg-bg-elevated border border-default rounded-lg text-text-primary text-sm font-medium hover:bg-bg-surface hover:translate-x-0.5 transition-all">
-                <Edit3 className="w-4 h-4 text-text-secondary" />
+              <button className="w-full flex items-center gap-3 px-3.5 py-3 bg-panel border border-default rounded-lg text-ink text-sm font-medium hover:bg-bg-panel hover:translate-x-0.5 transition-all">
+                <Edit3 className="w-4 h-4 text-ink-2" />
                 Add Note
               </button>
-              <button className="w-full flex items-center gap-3 px-3.5 py-3 bg-bg-elevated border border-default rounded-lg text-text-primary text-sm font-medium hover:bg-bg-surface hover:translate-x-0.5 transition-all">
-                <Upload className="w-4 h-4 text-text-secondary" />
+              <button className="w-full flex items-center gap-3 px-3.5 py-3 bg-panel border border-default rounded-lg text-ink text-sm font-medium hover:bg-bg-panel hover:translate-x-0.5 transition-all">
+                <Upload className="w-4 h-4 text-ink-2" />
                 Send to CRM
               </button>
-              <button className="w-full flex items-center gap-3 px-3.5 py-3 bg-bg-elevated border border-default rounded-lg text-text-primary text-sm font-medium hover:bg-bg-surface hover:translate-x-0.5 transition-all">
-                <User className="w-4 h-4 text-text-secondary" />
+              <button className="w-full flex items-center gap-3 px-3.5 py-3 bg-panel border border-default rounded-lg text-ink text-sm font-medium hover:bg-bg-panel hover:translate-x-0.5 transition-all">
+                <User className="w-4 h-4 text-ink-2" />
                 View Full Profile
               </button>
             </div>
           </div>
 
           {/* Lead Details */}
-          <div className="bg-bg-void rounded-xl p-4">
-            <div className="flex items-center gap-2 mb-4 text-xs font-semibold uppercase tracking-wide text-text-muted">
+          <div className="bg-bg-cream rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-4 text-xs font-semibold uppercase tracking-wide text-ink-3">
               <User className="w-3.5 h-3.5" />
               Lead Details
             </div>
@@ -567,13 +567,13 @@ export function ReplyDetail({ conversation = mockDetail, onBack }: ReplyDetailPr
                 { label: "Campaign", value: conversation.campaign },
               ].map((item) => (
                 <div key={item.label} className="flex justify-between items-start text-sm">
-                  <span className="text-text-muted">{item.label}</span>
+                  <span className="text-ink-3">{item.label}</span>
                   {item.isLink ? (
                     <a href={conversation.linkedinUrl} className="text-amber font-medium hover:underline">
                       {item.value}
                     </a>
                   ) : (
-                    <span className="text-text-primary font-medium text-right">{item.value}</span>
+                    <span className="text-ink font-medium text-right">{item.value}</span>
                   )}
                 </div>
               ))}
@@ -581,8 +581,8 @@ export function ReplyDetail({ conversation = mockDetail, onBack }: ReplyDetailPr
           </div>
 
           {/* Score Breakdown */}
-          <div className="bg-bg-void rounded-xl p-4">
-            <div className="flex items-center gap-2 mb-4 text-xs font-semibold uppercase tracking-wide text-text-muted">
+          <div className="bg-bg-cream rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-4 text-xs font-semibold uppercase tracking-wide text-ink-3">
               <BarChart3 className="w-3.5 h-3.5" />
               Why {conversation.score} Score
             </div>
@@ -592,7 +592,7 @@ export function ReplyDetail({ conversation = mockDetail, onBack }: ReplyDetailPr
                   <div className="w-6 h-6 rounded-md bg-amber-glow flex items-center justify-center">
                     <ScoreFactorIcon iconName={factor.icon} />
                   </div>
-                  <span className="flex-1 text-xs text-text-secondary">{factor.label}</span>
+                  <span className="flex-1 text-xs text-ink-2">{factor.label}</span>
                   <span className="text-xs font-semibold font-mono text-amber">+{factor.value}</span>
                 </div>
               ))}
@@ -600,8 +600,8 @@ export function ReplyDetail({ conversation = mockDetail, onBack }: ReplyDetailPr
           </div>
 
           {/* Related Activity */}
-          <div className="bg-bg-void rounded-xl p-4">
-            <div className="flex items-center gap-2 mb-4 text-xs font-semibold uppercase tracking-wide text-text-muted">
+          <div className="bg-bg-cream rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-4 text-xs font-semibold uppercase tracking-wide text-ink-3">
               <Clock className="w-3.5 h-3.5" />
               Related Activity
             </div>
@@ -610,8 +610,8 @@ export function ReplyDetail({ conversation = mockDetail, onBack }: ReplyDetailPr
                 <div key={act.id} className="flex items-start gap-2.5">
                   <ActivityIcon channel={act.channel} />
                   <div className="flex-1 min-w-0">
-                    <div className="text-xs text-text-secondary leading-relaxed">{act.text}</div>
-                    <div className="text-[11px] text-text-muted mt-0.5">{act.timestamp}</div>
+                    <div className="text-xs text-ink-2 leading-relaxed">{act.text}</div>
+                    <div className="text-[11px] text-ink-3 mt-0.5">{act.timestamp}</div>
                   </div>
                 </div>
               ))}
@@ -619,8 +619,8 @@ export function ReplyDetail({ conversation = mockDetail, onBack }: ReplyDetailPr
           </div>
 
           {/* Notes */}
-          <div className="bg-bg-void rounded-xl p-4">
-            <div className="flex items-center gap-2 mb-4 text-xs font-semibold uppercase tracking-wide text-text-muted">
+          <div className="bg-bg-cream rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-4 text-xs font-semibold uppercase tracking-wide text-ink-3">
               <Edit3 className="w-3.5 h-3.5" />
               Notes
             </div>
@@ -630,11 +630,11 @@ export function ReplyDetail({ conversation = mockDetail, onBack }: ReplyDetailPr
                   key={note.id}
                   className="bg-amber-glow border-l-[3px] border-l-amber p-3 rounded-r-lg"
                 >
-                  <div className="text-[10px] text-text-muted mb-1.5">{note.timestamp}</div>
-                  <div className="text-sm text-text-secondary leading-relaxed">{note.text}</div>
+                  <div className="text-[10px] text-ink-3 mb-1.5">{note.timestamp}</div>
+                  <div className="text-sm text-ink-2 leading-relaxed">{note.text}</div>
                 </div>
               ))}
-              <button className="w-full flex items-center justify-center gap-2 p-2.5 border border-dashed border-default rounded-lg text-xs text-text-muted hover:bg-bg-elevated hover:text-text-secondary hover:border-border-focus transition-colors">
+              <button className="w-full flex items-center justify-center gap-2 p-2.5 border border-dashed border-default rounded-lg text-xs text-ink-3 hover:bg-panel hover:text-ink-2 hover:border-border-focus transition-colors">
                 <Plus className="w-3.5 h-3.5" />
                 Add Note
               </button>

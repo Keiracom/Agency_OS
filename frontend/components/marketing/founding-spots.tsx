@@ -54,7 +54,7 @@ export function FoundingSpots({
   if (loading) {
     // Show skeleton while loading
     return (
-      <span className={`inline-block h-4 w-32 animate-pulse bg-bg-elevated rounded ${className}`} />
+      <span className={`inline-block h-4 w-32 animate-pulse bg-panel rounded ${className}`} />
     );
   }
 

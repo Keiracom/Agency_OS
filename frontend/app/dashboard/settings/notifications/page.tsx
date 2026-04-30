@@ -309,7 +309,7 @@ export default function NotificationsSettingsPage() {
 
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-text-secondary" />
+                        <Calendar className="h-4 w-4 text-ink-2" />
                         <div className="space-y-0.5">
                           <Label htmlFor="email_campaign_alerts">Campaign Alerts</Label>
                           <p className="text-sm text-muted-foreground">

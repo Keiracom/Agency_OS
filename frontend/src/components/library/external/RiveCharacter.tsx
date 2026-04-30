@@ -155,22 +155,22 @@ export function RiveCharacter({
 
         {/* State indicators */}
         <div className="flex gap-6 text-xs font-mono">
-          <span className={`flex items-center gap-2 transition-colors ${currentState === "idle" ? "text-amber" : "text-text-muted"}`}>
-            <span className={`w-2 h-2 rounded-full transition-colors ${currentState === "idle" ? "bg-amber" : "bg-bg-elevated"}`} />
+          <span className={`flex items-center gap-2 transition-colors ${currentState === "idle" ? "text-amber" : "text-ink-3"}`}>
+            <span className={`w-2 h-2 rounded-full transition-colors ${currentState === "idle" ? "bg-amber" : "bg-panel"}`} />
             IDLE
           </span>
-          <span className={`flex items-center gap-2 transition-colors ${currentState === "waving" ? "text-amber" : "text-text-muted"}`}>
-            <span className={`w-2 h-2 rounded-full transition-colors ${currentState === "waving" ? "bg-amber" : "bg-bg-elevated"}`} />
+          <span className={`flex items-center gap-2 transition-colors ${currentState === "waving" ? "text-amber" : "text-ink-3"}`}>
+            <span className={`w-2 h-2 rounded-full transition-colors ${currentState === "waving" ? "bg-amber" : "bg-panel"}`} />
             WAVE
           </span>
-          <span className={`flex items-center gap-2 transition-colors ${currentState === "jumping" ? "text-lime-300" : "text-text-muted"}`}>
-            <span className={`w-2 h-2 rounded-full transition-colors ${currentState === "jumping" ? "bg-lime-400" : "bg-bg-elevated"}`} />
+          <span className={`flex items-center gap-2 transition-colors ${currentState === "jumping" ? "text-lime-300" : "text-ink-3"}`}>
+            <span className={`w-2 h-2 rounded-full transition-colors ${currentState === "jumping" ? "bg-lime-400" : "bg-panel"}`} />
             JUMP
           </span>
         </div>
 
         {/* Interaction counter */}
-        <div className="text-xs font-mono text-text-muted">
+        <div className="text-xs font-mono text-ink-3">
           Interactions: <span className="text-amber">{interactionCount}</span>
         </div>
       </div>

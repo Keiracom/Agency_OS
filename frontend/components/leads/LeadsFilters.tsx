@@ -79,12 +79,12 @@ export function LeadsFilters({
           value={searchQuery}
           onChange={(e) => onSearch(e.target.value)}
           placeholder="Search by name, company, or email..."
-          className="w-full py-2.5 px-4 pl-[42px] text-sm bg-base border border-default rounded-lg text-primary outline-none transition-all placeholder:text-muted focus:border-[#7C3AED] focus:ring-[3px] focus:ring-[rgba(124,58,237,0.15)]"
+          className="w-full py-2.5 px-4 pl-[42px] text-sm bg-surface border border-default rounded-lg text-primary outline-none transition-all placeholder:text-muted focus:border-[#7C3AED] focus:ring-[3px] focus:ring-[rgba(124,58,237,0.15)]"
         />
       </div>
 
       {/* Tier Tabs */}
-      <div className="flex bg-base border border-default rounded-lg p-1 gap-1">
+      <div className="flex bg-surface border border-default rounded-lg p-1 gap-1">
         {tierTabs.map((tab) => {
           const isActive = activeTier === tab.id;
           const tierColor = tierColors[tab.id];
@@ -96,16 +96,16 @@ export function LeadsFilters({
               className={cn(
                 'flex items-center gap-1.5 px-4 py-2 text-[13px] font-medium rounded-md transition-all',
                 isActive
-                  ? cn('bg-surface', tierColor || 'text-primary')
-                  : 'text-muted hover:text-secondary hover:bg-surface-hover'
+                  ? cn('bg-panel', tierColor || 'text-primary')
+                  : 'text-muted hover:text-secondary hover:bg-panel-hover'
               )}
             >
               {tab.icon}
               {tab.label}
               <span
                 className={cn(
-                  'font-mono text-[11px] px-1.5 py-0.5 rounded bg-surface-hover',
-                  isActive && 'bg-base'
+                  'font-mono text-[11px] px-1.5 py-0.5 rounded bg-panel-hover',
+                  isActive && 'bg-surface'
                 )}
               >
                 {counts[tab.countKey]}

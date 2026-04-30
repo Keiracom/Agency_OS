@@ -34,7 +34,7 @@ const steps: Step[] = [
     title: "Enter your website URL",
     label: "Discover",
     badge: "5 minutes",
-    badgeColor: "bg-bg-elevated/20 text-amber-light",
+    badgeColor: "bg-panel/20 text-amber-light",
     description:
       "Our AI scans your services, case studies, and testimonials. It extracts exactly who your ideal clients are — industries, company sizes, decision-maker titles.",
     subtext: "No forms. No questionnaires. Just your URL.",
@@ -96,14 +96,14 @@ function DiscoverDemo() {
     <div className="rounded-xl bg-[#0a0a0f] border border-white/10 p-6">
       <div className="flex items-center gap-3 mb-6">
         <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-mint-500 to-mint-600 flex items-center justify-center">
-          <Globe className="w-5 h-5 text-text-primary" />
+          <Globe className="w-5 h-5 text-ink" />
         </div>
         <div className="flex-1">
           <input
             type="text"
             value="https://yourwebsite.com.au"
             disabled
-            className="w-full bg-transparent text-text-primary border-b border-white/20 pb-2 text-sm focus:outline-none"
+            className="w-full bg-transparent text-ink border-b border-white/20 pb-2 text-sm focus:outline-none"
           />
         </div>
       </div>
@@ -113,9 +113,9 @@ function DiscoverDemo() {
           "Company size: 50-500 employees",
           "Titles: CMO, Marketing Director, Head of Growth",
         ].map((item, i) => (
-          <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-bg-surface/5">
+          <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-bg-panel/5">
             <Check className="w-5 h-5 text-amber" />
-            <span className="text-sm text-text-primary/80">{item}</span>
+            <span className="text-sm text-ink/80">{item}</span>
           </div>
         ))}
       </div>
@@ -133,13 +133,13 @@ function ScoutDemo() {
   return (
     <div className="rounded-xl bg-[#0a0a0f] border border-white/10 p-6 space-y-3">
       {leads.map((lead, i) => (
-        <div key={i} className="flex items-center gap-4 p-3 rounded-lg bg-bg-surface/5">
-          <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${lead.gradient} flex items-center justify-center text-text-primary text-xs font-bold`}>
+        <div key={i} className="flex items-center gap-4 p-3 rounded-lg bg-bg-panel/5">
+          <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${lead.gradient} flex items-center justify-center text-ink text-xs font-bold`}>
             {lead.initials}
           </div>
           <div className="flex-1">
-            <p className="font-medium text-sm text-text-primary">{lead.name}</p>
-            <p className="text-xs text-text-primary/50">{lead.title}</p>
+            <p className="font-medium text-sm text-ink">{lead.name}</p>
+            <p className="text-xs text-ink/50">{lead.title}</p>
           </div>
           <span className="text-xs px-2 py-1 rounded bg-amber/20 text-amber-light">Verified</span>
         </div>
@@ -150,7 +150,7 @@ function ScoutDemo() {
 
 function ScoreDemo() {
   const dimensions = [
-    { name: "Data Quality", score: "18/20", percent: 90, color: "bg-bg-elevated" },
+    { name: "Data Quality", score: "18/20", percent: 90, color: "bg-panel" },
     { name: "Authority", score: "23/25", percent: 92, color: "bg-amber" },
     { name: "Company Fit", score: "22/25", percent: 88, color: "bg-amber" },
     { name: "Timing", score: "14/15", percent: 93, color: "bg-amber-500" },
@@ -161,12 +161,12 @@ function ScoreDemo() {
     <div className="rounded-xl bg-[#0a0a0f] border border-white/10 p-6">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-amber to-amber-light flex items-center justify-center text-text-primary text-xl font-bold">
+          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-amber to-amber-light flex items-center justify-center text-ink text-xl font-bold">
             92
           </div>
           <div>
-            <p className="font-medium text-text-primary">Sarah Chen</p>
-            <p className="text-xs text-text-primary/50">Bloom Digital</p>
+            <p className="font-medium text-ink">Sarah Chen</p>
+            <p className="text-xs text-ink/50">Bloom Digital</p>
           </div>
         </div>
         <span className="text-xs px-3 py-1 rounded-full bg-amber/20 text-amber-light font-medium">HOT</span>
@@ -175,10 +175,10 @@ function ScoreDemo() {
         {dimensions.map((dim, i) => (
           <div key={i}>
             <div className="flex justify-between text-xs mb-1">
-              <span className="text-text-primary/50">{dim.name}</span>
-              <span className="text-text-primary/80">{dim.score}</span>
+              <span className="text-ink/50">{dim.name}</span>
+              <span className="text-ink/80">{dim.score}</span>
             </div>
-            <div className="h-1.5 rounded-full bg-bg-surface/10">
+            <div className="h-1.5 rounded-full bg-bg-panel/10">
               <div className={`h-full rounded-full ${dim.color}`} style={{ width: `${dim.percent}%` }} />
             </div>
           </div>
@@ -190,9 +190,9 @@ function ScoreDemo() {
 
 function ReachDemo() {
   const steps = [
-    { icon: Mail, label: "Email sent", sub: "Personalized intro", status: "Opened", statusColor: "text-amber", iconBg: "bg-bg-elevated/20", iconColor: "text-text-secondary" },
+    { icon: Mail, label: "Email sent", sub: "Personalized intro", status: "Opened", statusColor: "text-amber", iconBg: "bg-panel/20", iconColor: "text-ink-2" },
     { icon: Linkedin, label: "LinkedIn connection", sub: "With note", status: "Accepted", statusColor: "text-amber", iconBg: "bg-amber/20", iconColor: "text-amber" },
-    { icon: Phone, label: "Voice AI call", sub: "Friendly follow-up", status: "In progress", statusColor: "text-text-secondary", iconBg: "bg-amber/20", iconColor: "text-amber", pulse: true },
+    { icon: Phone, label: "Voice AI call", sub: "Friendly follow-up", status: "In progress", statusColor: "text-ink-2", iconBg: "bg-amber/20", iconColor: "text-amber", pulse: true },
   ]
 
   return (
@@ -205,8 +205,8 @@ function ReachDemo() {
                 <step.icon className={`w-5 h-5 ${step.iconColor}`} />
               </div>
               <div className="flex-1">
-                <p className="text-sm font-medium text-text-primary">{step.label}</p>
-                <p className="text-xs text-text-primary/50">{step.sub}</p>
+                <p className="text-sm font-medium text-ink">{step.label}</p>
+                <p className="text-xs text-ink/50">{step.sub}</p>
               </div>
               <span className={`text-xs ${step.statusColor} ${step.pulse ? "animate-pulse" : ""}`}>
                 {step.pulse ? "●" : "✓"} {step.status}
@@ -214,7 +214,7 @@ function ReachDemo() {
             </div>
             {i < steps.length - 1 && (
               <div className="border-l-2 border-white/10 ml-5 pl-8 py-2">
-                <span className="text-xs text-text-primary/30">Wait {i === 0 ? "2 days" : "1 day"}</span>
+                <span className="text-xs text-ink/30">Wait {i === 0 ? "2 days" : "1 day"}</span>
               </div>
             )}
           </div>
@@ -229,26 +229,26 @@ function ConvertDemo() {
     <div className="rounded-xl bg-[#0a0a0f] border border-white/10 p-6">
       <div className="flex items-center gap-3 mb-6 p-4 rounded-lg bg-amber-glow border border-amber/20">
         <div className="w-10 h-10 rounded-full bg-amber flex items-center justify-center">
-          <Check className="w-5 h-5 text-text-primary" />
+          <Check className="w-5 h-5 text-ink" />
         </div>
         <div>
           <p className="font-medium text-amber-light">Meeting Booked!</p>
-          <p className="text-xs text-text-primary/50">Sarah Chen • Tomorrow 2:00 PM AEST</p>
+          <p className="text-xs text-ink/50">Sarah Chen • Tomorrow 2:00 PM AEST</p>
         </div>
       </div>
       <div className="space-y-4">
-        <div className="p-4 rounded-lg bg-bg-surface/5">
-          <p className="text-xs text-text-primary/40 mb-2">What converted this lead:</p>
+        <div className="p-4 rounded-lg bg-bg-panel/5">
+          <p className="text-xs text-ink/40 mb-2">What converted this lead:</p>
           <div className="flex flex-wrap gap-2">
-            <span className="text-xs px-2 py-1 rounded bg-bg-elevated/20 text-amber-light">Case study mention</span>
+            <span className="text-xs px-2 py-1 rounded bg-panel/20 text-amber-light">Case study mention</span>
             <span className="text-xs px-2 py-1 rounded bg-amber/20 text-amber-light">3rd touchpoint</span>
             <span className="text-xs px-2 py-1 rounded bg-amber/20 text-amber-light">Morning send time</span>
           </div>
         </div>
-        <div className="p-4 rounded-lg bg-bg-surface/5">
-          <p className="text-xs text-text-primary/40 mb-2">Pipeline impact:</p>
+        <div className="p-4 rounded-lg bg-bg-panel/5">
+          <p className="text-xs text-ink/40 mb-2">Pipeline impact:</p>
           <p className="text-2xl font-bold text-amber">+$45,000</p>
-          <p className="text-xs text-text-primary/50">Estimated deal value</p>
+          <p className="text-xs text-ink/50">Estimated deal value</p>
         </div>
       </div>
     </div>
@@ -332,11 +332,11 @@ export default function HowItWorksSection({ autoRotate = true, rotateInterval = 
       <div className="max-w-5xl mx-auto">
         {/* Header */}
         <div className="text-center mb-12">
-          <p className="text-text-secondary font-semibold text-sm uppercase tracking-wider mb-3">How It Works</p>
-          <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-4 text-text-primary">
+          <p className="text-ink-2 font-semibold text-sm uppercase tracking-wider mb-3">How It Works</p>
+          <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-4 text-ink">
             From zero to booked meetings
           </h2>
-          <p className="text-xl text-text-primary/50">In days, not months.</p>
+          <p className="text-xl text-ink/50">In days, not months.</p>
         </div>
 
         {/* Tabs */}
@@ -349,8 +349,8 @@ export default function HowItWorksSection({ autoRotate = true, rotateInterval = 
                 px-6 py-3 rounded-full text-sm font-medium transition-all duration-300
                 ${
                   activeStep === index
-                    ? "bg-gradient-to-r from-mint-500 to-mint-600 text-text-primary"
-                    : "bg-bg-surface/5 text-text-primary/60 hover:text-text-primary hover:bg-bg-surface/10"
+                    ? "bg-gradient-to-r from-mint-500 to-mint-600 text-ink"
+                    : "bg-bg-panel/5 text-ink/60 hover:text-ink hover:bg-bg-panel/10"
                 }
               `}
             >
@@ -368,9 +368,9 @@ export default function HowItWorksSection({ autoRotate = true, rotateInterval = 
                 <span className={`text-xs px-3 py-1 rounded-full ${activeStepData.badgeColor} mb-4 inline-block`}>
                   {activeStepData.badge}
                 </span>
-                <h3 className="text-2xl md:text-3xl font-bold mb-4 text-text-primary">{activeStepData.title}</h3>
-                <p className="text-text-primary/60 leading-relaxed mb-6">{activeStepData.description}</p>
-                <p className="text-text-primary/40 text-sm">{activeStepData.subtext}</p>
+                <h3 className="text-2xl md:text-3xl font-bold mb-4 text-ink">{activeStepData.title}</h3>
+                <p className="text-ink/60 leading-relaxed mb-6">{activeStepData.description}</p>
+                <p className="text-ink/40 text-sm">{activeStepData.subtext}</p>
               </div>
 
               {/* Right: Visual Demo */}

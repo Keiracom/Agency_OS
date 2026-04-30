@@ -223,20 +223,20 @@ function TimelineEventCard({ event, isLast }: TimelineEventCardProps) {
                 )}
               </div>
               {event.preview && (
-                <p className="text-xs text-text-muted mt-1 line-clamp-2">
+                <p className="text-xs text-ink-3 mt-1 line-clamp-2">
                   {event.preview}
                 </p>
               )}
             </div>
 
             <div className="flex items-center gap-2 flex-shrink-0">
-              <span className="text-xs text-text-muted font-mono">
+              <span className="text-xs text-ink-3 font-mono">
                 {date} · {time}
               </span>
               {event.fullContent && (
                 <motion.span
                   animate={{ rotate: isExpanded ? 180 : 0 }}
-                  className="text-text-muted"
+                  className="text-ink-3"
                 >
                   <ChevronDown className="w-4 h-4" />
                 </motion.span>
@@ -255,7 +255,7 @@ function TimelineEventCard({ event, isLast }: TimelineEventCardProps) {
                 className="overflow-hidden"
               >
                 <div 
-                  className="mt-3 pt-3 border-t text-sm text-text-secondary whitespace-pre-wrap"
+                  className="mt-3 pt-3 border-t text-sm text-ink-2 whitespace-pre-wrap"
                   style={{ borderColor: "rgba(255,255,255,0.08)" }}
                 >
                   {event.fullContent}
@@ -352,7 +352,7 @@ export function TimelineEmptyState() {
       >
         Siege Waterfall is enriching your leads
       </h3>
-      <p className="text-sm text-text-muted max-w-sm">
+      <p className="text-sm text-ink-3 max-w-sm">
         We&apos;re gathering intelligence and preparing outreach sequences. 
         Check back shortly for activity updates.
       </p>

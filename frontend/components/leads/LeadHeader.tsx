@@ -38,7 +38,7 @@ export function LeadHeader({ lead }: LeadHeaderProps) {
     .toUpperCase();
 
   return (
-    <div className="bg-surface border border-border-subtle rounded-2xl p-8 relative overflow-hidden">
+    <div className="bg-panel border border-rule rounded-2xl p-8 relative overflow-hidden">
       {/* Top gradient accent bar */}
       <div
         className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${tierGradients[lead.tier]}`}
@@ -49,7 +49,7 @@ export function LeadHeader({ lead }: LeadHeaderProps) {
         <div className="flex gap-6 flex-1">
           {/* Avatar with tier gradient */}
           <div
-            className={`w-20 h-20 rounded-2xl flex items-center justify-center text-text-primary font-bold text-2xl bg-gradient-to-br ${tierGradients[lead.tier]} shrink-0 shadow-lg`}
+            className={`w-20 h-20 rounded-2xl flex items-center justify-center text-ink font-bold text-2xl bg-gradient-to-br ${tierGradients[lead.tier]} shrink-0 shadow-lg`}
           >
             {initials}
           </div>
@@ -107,7 +107,7 @@ export function LeadHeader({ lead }: LeadHeaderProps) {
 
       {/* Why Hot Section */}
       {lead.whyHot && lead.whyHot.length > 0 && (
-        <div className="mt-6 pt-6 border-t border-border-subtle">
+        <div className="mt-6 pt-6 border-t border-rule">
           <div className="flex items-center gap-2 text-xs font-semibold text-muted uppercase tracking-wider mb-3">
             <Flame className="w-3.5 h-3.5" />
             Why This Lead is Hot
@@ -119,24 +119,24 @@ export function LeadHeader({ lead }: LeadHeaderProps) {
       )}
 
       {/* Action Buttons Row */}
-      <div className="mt-6 pt-6 border-t border-border-subtle flex gap-3">
-        <button className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-accent-primary to-accent-blue text-text-primary font-medium rounded-lg hover:opacity-90 transition-opacity">
+      <div className="mt-6 pt-6 border-t border-rule flex gap-3">
+        <button className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-accent-primary to-accent-blue text-ink font-medium rounded-lg hover:opacity-90 transition-opacity">
           <Calendar className="w-4 h-4" />
           Book Meeting
         </button>
-        <button className="flex items-center gap-2 px-4 py-2.5 bg-elevated border border-border-default text-secondary font-medium rounded-lg hover:bg-surface-hover hover:text-primary transition-colors">
+        <button className="flex items-center gap-2 px-4 py-2.5 bg-elevated border border-rule-strong text-secondary font-medium rounded-lg hover:bg-panel-hover hover:text-primary transition-colors">
           <Mail className="w-4 h-4" />
           Send Email
         </button>
-        <button className="flex items-center gap-2 px-4 py-2.5 bg-elevated border border-border-default text-secondary font-medium rounded-lg hover:bg-surface-hover hover:text-primary transition-colors">
+        <button className="flex items-center gap-2 px-4 py-2.5 bg-elevated border border-rule-strong text-secondary font-medium rounded-lg hover:bg-panel-hover hover:text-primary transition-colors">
           <MessageSquare className="w-4 h-4" />
           Send SMS
         </button>
-        <button className="flex items-center gap-2 px-4 py-2.5 bg-elevated border border-border-default text-secondary font-medium rounded-lg hover:bg-surface-hover hover:text-primary transition-colors">
+        <button className="flex items-center gap-2 px-4 py-2.5 bg-elevated border border-rule-strong text-secondary font-medium rounded-lg hover:bg-panel-hover hover:text-primary transition-colors">
           <Phone className="w-4 h-4" />
           Call
         </button>
-        <button className="flex items-center justify-center w-10 h-10 bg-elevated border border-border-default text-muted rounded-lg hover:bg-surface-hover hover:text-secondary transition-colors ml-auto">
+        <button className="flex items-center justify-center w-10 h-10 bg-elevated border border-rule-strong text-muted rounded-lg hover:bg-panel-hover hover:text-secondary transition-colors ml-auto">
           <MoreHorizontal className="w-4 h-4" />
         </button>
       </div>

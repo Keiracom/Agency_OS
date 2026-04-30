@@ -192,7 +192,7 @@ export function QuickActionsPanel({
                     // Glassmorphic styling
                     "bg-neutral-900/90 backdrop-blur-xl",
                     "border border-white/10",
-                    "text-text-primary shadow-lg shadow-black/30",
+                    "text-ink shadow-lg shadow-black/30",
                     "whitespace-nowrap"
                   )}
                 >
@@ -215,7 +215,7 @@ export function QuickActionsPanel({
                     `bg-gradient-to-br ${action.color}`,
                     // Glassmorphic overlay
                     "before:absolute before:inset-0 before:rounded-full",
-                    "before:bg-bg-surface/10 before:opacity-0 before:transition-opacity",
+                    "before:bg-panel/10 before:opacity-0 before:transition-opacity",
                     "hover:before:opacity-100",
                     // Shadow and glow
                     "shadow-lg shadow-black/30",
@@ -227,7 +227,7 @@ export function QuickActionsPanel({
                   )}
                   aria-label={action.label}
                 >
-                  <span className="relative z-10 text-text-primary">
+                  <span className="relative z-10 text-ink">
                     {action.icon}
                   </span>
                 </a>
@@ -275,7 +275,7 @@ export function QuickActionsPanel({
                 exit={{ opacity: 0, scale: 0.5 }}
                 transition={{ duration: 0.1 }}
               >
-                <IconX className="h-6 w-6 text-text-primary" />
+                <IconX className="h-6 w-6 text-ink" />
               </motion.div>
             ) : (
               <motion.div

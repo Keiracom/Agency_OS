@@ -70,8 +70,8 @@ export function LeadTimeline({ events, filters: initialFilters }: LeadTimelinePr
   const dateOrder = Object.keys(groupedEvents);
 
   return (
-    <div className="bg-surface border border-border-subtle rounded-xl overflow-hidden">
-      <div className="px-6 py-5 border-b border-border-subtle flex items-center justify-between">
+    <div className="bg-panel border border-rule rounded-xl overflow-hidden">
+      <div className="px-6 py-5 border-b border-rule flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <Zap className="w-4 h-4 text-accent-primary" />
           <span className="text-sm font-semibold text-primary">Activity Timeline</span>
@@ -88,8 +88,8 @@ export function LeadTimeline({ events, filters: initialFilters }: LeadTimelinePr
               onClick={() => setActiveFilter(filter)}
               className={`px-3 py-1.5 text-xs font-medium rounded-md border transition-colors capitalize ${
                 activeFilter === filter
-                  ? 'bg-surface-hover text-primary border-border-strong'
-                  : 'bg-elevated text-muted border-border-default hover:text-secondary'
+                  ? 'bg-panel-hover text-primary border-border-strong'
+                  : 'bg-elevated text-muted border-rule-strong hover:text-secondary'
               }`}
             >
               {filter === 'all' ? (
@@ -119,11 +119,11 @@ export function LeadTimeline({ events, filters: initialFilters }: LeadTimelinePr
               </div>
 
               {/* Events */}
-              <div className="flex flex-col gap-2 pl-5 border-l-2 border-border-subtle">
+              <div className="flex flex-col gap-2 pl-5 border-l-2 border-rule">
                 {groupedEvents[date].map((event) => (
                   <div
                     key={event.id}
-                    className="relative flex items-start gap-3.5 p-3.5 bg-surface-hover rounded-lg cursor-pointer hover:bg-elevated hover:translate-x-1 transition-all"
+                    className="relative flex items-start gap-3.5 p-3.5 bg-panel-hover rounded-lg cursor-pointer hover:bg-elevated hover:translate-x-1 transition-all"
                   >
                     {/* Timeline dot */}
                     <div

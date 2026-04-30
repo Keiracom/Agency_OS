@@ -44,7 +44,7 @@ export default function RepliesPage() {
       </div>
 
       {/* Inbox Container - Two Column Layout */}
-      <div className="flex gap-0 bg-bg-surface rounded-2xl border border-slate-200 overflow-hidden h-[calc(100vh-180px)]">
+      <div className="flex gap-0 bg-bg-panel rounded-2xl border border-slate-200 overflow-hidden h-[calc(100vh-180px)]">
         {/* Left: Conversation List */}
         <div className="w-[360px] overflow-y-auto">
           <ConversationList

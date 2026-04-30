@@ -118,8 +118,14 @@ VALUES (gen_random_uuid(), 'daily_log', '<summary: what was done, PRs, decisions
 | R6 | Verdict-Wait — when peer posts critic catch or `[DIFFER:<callsign>]`, originating bot pauses execution until peer concurs OR Dave overrides. No 'moving in parallel' without explicit peer ack. |
 | R7 | Audit-Before-Recommend — before any 'we should build X' proposal, both bots independently audit what already exists in the codebase that covers X. Post findings before recommending. Ratified 2026-04-30 after both bots proposed rebuilding /demo features that already existed in 68 React components + 17 API endpoints. |
 | R8 | Dual-Concur Yellow Flag — if both bots agree on a non-trivial architectural question in under 60 seconds, the agreeing bot must re-check independently before posting concur. Convergence without friction is often parallel error. Ratified 2026-04-30 after both bots dual-concurred on 4-week rebuild without auditing existing build. |
+| R9 | Verify-Before-Claim — every completion claim must include raw verification command output (`$ command` + stdout) in the same message. 'Complete' without paste = violation. Ratified 2026-04-30 from mutual peer review (Elliot's 3 optimistic-completion failures this session). |
+| R10 | Audit-In-Proposal — every `[PROPOSE]` or 'we should build/rebuild/migrate X' message must include git ls-files / grep / find audit output showing existing relevant code. No architecture recommendation without inline inventory. Ratified 2026-04-30 (R7 as format requirement, not aspiration). |
+| R11 | Build-While-Review — R6 verdict-wait blocks MERGE, not next ATLAS dispatch. Next task can BUILD while peer reviews current PR. Merge waits for concur. Eliminates serial bottleneck. Ratified 2026-04-30. |
+| R12 | Batch-Merge Requests — when 3+ PRs are dual-bot approved, present to Dave as single 'merge all N PRs' request. One decision, not N. Ratified 2026-04-30. |
+| R13 | Message Density Cap — TG messages max 12 lines unless multi-section structure explicitly required. Trim before sending. Ratified 2026-04-30 (Aiden's verbose-summary gap). |
+| R14 | No Parallel Fix on DIFFER — when peer posts `[DIFFER:<callsign>]`, originator pauses ALL execution (including fix attempts) until peer concurs or Dave overrides. No pushing fixes mid-diagnosis. Ratified 2026-04-30 (Elliot's 'stop correcting mid-diagnosis' lesson, codified). |
 
-> **Shared governance:** laws that apply to every callsign (e.g. LAW XVII — Callsign Discipline, Directive Acknowledgement, Claim-Before-Touch on Shared Files, R1-R8 Coordination Rules) live in `~/.claude/CLAUDE.md §Shared Governance Laws`. Treat that as authoritative for all-callsign rules; worktree laws above are Agency_OS-main specific.
+> **Shared governance:** laws that apply to every callsign (e.g. LAW XVII — Callsign Discipline, Directive Acknowledgement, Claim-Before-Touch on Shared Files, R1-R14 Coordination Rules) live in `~/.claude/CLAUDE.md §Shared Governance Laws`. Treat that as authoritative for all-callsign rules; worktree laws above are Agency_OS-main specific.
 
 ## Directive + Validation Governance
 

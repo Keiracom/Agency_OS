@@ -46,8 +46,6 @@ import { SystemHealth } from "@/components/dashboard/SystemHealth";
 import { TodoMockPanel } from "@/components/dashboard/TodoMockPanel";
 import Link from "next/link";
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import api from "@/lib/api";
 
 // Channel icon component
 const ChannelIcon = ({ type }: { type: string }) => {
@@ -67,20 +65,9 @@ export default function DashboardPage() {
   const { activities: activityFeed, isLoading: activityLoading } = useLiveActivityFeed({ limit: 8 });
   const [drawerLeadId, setDrawerLeadId] = useState<string | null>(null);
 
-  // Demo mode — hide TODO · MOCK badges for investor-facing demos
-  const { data: demoModeData } = useQuery({
-    queryKey: ["demo-mode"],
-    queryFn: async () => {
-      try {
-        return await api.get<{ is_demo_mode: boolean }>("/api/v1/dashboard/demo-mode");
-      } catch {
-        return { is_demo_mode: false };
-      }
-    },
-    staleTime: 60 * 1000,
-    refetchOnWindowFocus: false,
-  });
-  const isDemoMode = demoModeData?.is_demo_mode ?? false;
+  // A3: TODO · MOCK badges removed entirely; the underlying empty
+  // states are honest now, so the demo-mode hide-badge query is no
+  // longer needed by this page.
 
   const meetingsBooked = dashboardData?.meetingsGoal.current ?? 0;
   const meetingsTarget = dashboardData?.meetingsGoal.target ?? 10;
@@ -217,17 +204,12 @@ export default function DashboardPage() {
                 ))}
               </div>
 
-              {/* Channel Stats — PR4: was mockChannelOrchestration */}
+              {/* Channel Stats — A3: honest empty state, not fabricated numbers */}
               <TodoMockPanel
                 icon={<Zap className="w-4 h-4" strokeWidth={1.6} />}
-                eyebrow="Channel orchestration"
-                title="Per-channel touch counts not yet wired"
-                description="The hero ring above renders a fixed sample. Per-channel touch counts will populate when the metrics endpoint exposes a touches-by-channel breakdown."
-                endpointsNeeded={[
-                  "GET /api/v1/dashboard/touches?breakdown=channel",
-                  "fields: email_count, linkedin_count, sms_count, voice_count, mail_count",
-                ]}
-                hideBadge={isDemoMode}
+                eyebrow="Channel breakdown"
+                title="Per-channel breakdown coming soon"
+                description="Detailed per-channel touch counts will appear here once your campaigns send their first 50 touches."
               />
             </GlassCard>
           </div>
@@ -304,18 +286,12 @@ export default function DashboardPage() {
               </div>
             </GlassCard>
 
-            {/* Smart Calling — PR4: was mockVoiceStats + mockRecentCalls */}
+            {/* Smart Calling — A3: honest empty state, not fabricated numbers */}
             <TodoMockPanel
               icon={<PhoneCall className="w-4 h-4" strokeWidth={1.6} />}
               eyebrow="Smart calling"
-              title="Voice AI call data endpoint pending"
-              description="The voice channel runs through VAPI today, but no aggregated calls/connect/booked/rate endpoint exists yet. Recent calls + listen/transcript controls will land when this hook is added."
-              endpointsNeeded={[
-                "GET /api/v1/voice/stats?range=30d",
-                "GET /api/v1/voice/recent?limit=10",
-                "fields: calls, connected, booked, connect_rate, recent[{ name, outcome, summary, duration_s, recording_url, transcript_url }]",
-              ]}
-              hideBadge={isDemoMode}
+              title="Voice AI call summary coming soon"
+              description="Once voice campaigns are active you'll see call outcomes, connect rates, and recent recordings here."
             />
 
             {/* What's Working — PR4: insight is live, who-converts/channel-mix are mocks */}
@@ -328,17 +304,12 @@ export default function DashboardPage() {
                 <span className="text-xs text-ink-3 font-mono">Updated 2h ago</span>
               </div>
               <div className="p-6 space-y-5">
-                {/* Who-converts + channel-mix sub-panels — endpoints pending */}
+                {/* Who-converts + channel-mix — A3: honest empty state */}
                 <TodoMockPanel
                   icon={<Lightbulb className="w-4 h-4" strokeWidth={1.6} />}
                   eyebrow="Segment analytics"
-                  title="Who Converts + Best Channel Mix breakdowns pending"
-                  description="The segment analytics view requires a who-converts aggregation (industry / size buckets ranked by reply→meeting conversion) and a best-channel-mix aggregation (per-channel reply + meeting yield)."
-                  endpointsNeeded={[
-                    "GET /api/v1/insights/who-converts",
-                    "GET /api/v1/insights/channel-mix",
-                  ]}
-                  hideBadge={isDemoMode}
+                  title="Insights coming soon"
+                  description="After your first cycle of replies we'll surface which segments convert and which channel mix produces the best meeting yield."
                 />
 
                 {/* Discovery Banner — already wired to useDashboardV4 insight */}

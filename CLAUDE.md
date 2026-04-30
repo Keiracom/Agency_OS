@@ -109,9 +109,17 @@ VALUES (gen_random_uuid(), 'daily_log', '<summary: what was done, PRs, decisions
 | GOV-9 | Two-Layer Directive Scrutiny — every directive triggers Layer 2 CTO scrutiny before Step 0. Report DIRECTIVE SCRUTINY — N GAPS FOUND or CLEAR before any execution |
 | GOV-10 | Resolve-Now-Not-Later — fix bounded gaps in current PR, not follow-up directives |
 | GOV-11 | Structural Audit Before Validation — stage audit within 7 days before any N>=20 validation run |
-
-> **Shared governance:** laws that apply to every callsign (e.g. LAW XVII — Callsign Discipline, Directive Acknowledgement, Claim-Before-Touch on Shared Files) live in `~/.claude/CLAUDE.md §Shared Governance Laws`. Treat that as authoritative for all-callsign rules; worktree laws above are Agency_OS-main specific.
 | GOV-12 | Gates As Code Not Comments — runtime enforcement required, not documentation-only |
+| R1 | Diagnosis Lock — when peer posts 'diagnosing X' or starts a tool-call sequence on a shared issue, do NOT take action on X until verdict lands. Time-boxed 5 min — peer may take over with explicit `[TAKING-OVER:<callsign>]` after timeout. |
+| R2 | Claim-Before-Commit — any code push / clone dispatch / merge-action requires posting `[CLAIM:<callsign>] <task>` ≥30s before action. Peer 30s window to flag conflict. Extends Dispatch Coordination Protocol to ALL execution. |
+| R3 | Methodology + Data Source First — cost/time/scope estimates require both bots to AGREE on methodology AND data source AND verify source exists BEFORE plugging numbers. Prevents estimate cycling. |
+| R4 | Watcher Uniqueness — only one bot runs a background watcher on a given remote state (Vercel deploy, Railway service, GitHub PR check). Peer subscribes via TG, no duplicate polling. |
+| R5 | Domain Split First — when work is parallelisable (multi-deck, multi-prospect, multi-error fix), bots define scope ownership BEFORE either starts. Posted to TG before any tool call. |
+| R6 | Verdict-Wait — when peer posts critic catch or `[DIFFER:<callsign>]`, originating bot pauses execution until peer concurs OR Dave overrides. No 'moving in parallel' without explicit peer ack. |
+| R7 | Audit-Before-Recommend — before any 'we should build X' proposal, both bots independently audit what already exists in the codebase that covers X. Post findings before recommending. Ratified 2026-04-30 after both bots proposed rebuilding /demo features that already existed in 68 React components + 17 API endpoints. |
+| R8 | Dual-Concur Yellow Flag — if both bots agree on a non-trivial architectural question in under 60 seconds, the agreeing bot must re-check independently before posting concur. Convergence without friction is often parallel error. Ratified 2026-04-30 after both bots dual-concurred on 4-week rebuild without auditing existing build. |
+
+> **Shared governance:** laws that apply to every callsign (e.g. LAW XVII — Callsign Discipline, Directive Acknowledgement, Claim-Before-Touch on Shared Files, R1-R8 Coordination Rules) live in `~/.claude/CLAUDE.md §Shared Governance Laws`. Treat that as authoritative for all-callsign rules; worktree laws above are Agency_OS-main specific.
 
 ## Directive + Validation Governance
 

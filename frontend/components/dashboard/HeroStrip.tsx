@@ -85,8 +85,8 @@ export function HeroStrip({ personaName = "Maya" }: { personaName?: string }) {
         </div>
       </div>
 
-      {/* Sum row — 4 cards */}
-      <div className="grid grid-cols-4 gap-3.5">
+      {/* Sum row — 4 cards (stack 2-col on mobile) */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-3.5">
         {stats.isLoading ? (
           <>
             <SumCardSkeleton />

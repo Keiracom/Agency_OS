@@ -291,7 +291,7 @@ export default function ProfileSettingsPage() {
               Your profile picture is visible to team members
             </CardDescription>
           </CardHeader>
-          <CardContent className="flex items-center gap-6">
+          <CardContent className="flex items-center gap-3 md:gap-6">
             <Avatar className="h-24 w-24">
               <AvatarImage src={profile.avatar_url || ""} />
               <AvatarFallback className="text-2xl bg-primary/10 text-primary">

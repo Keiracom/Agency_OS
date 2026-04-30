@@ -39,13 +39,13 @@ export default function ReportsPage() {
         <ChannelMatrix />
 
         {/* 3. Charts Row */}
-        <div className="grid grid-cols-2 gap-6 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6 mb-6">
           <MeetingsChart />
           <ConversionFunnel />
         </div>
 
         {/* 4. Middle Row (3-col) */}
-        <div className="grid grid-cols-3 gap-6 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-6 mb-6">
           <ResponseRates />
           <WhatsWorking />
           <LeadSources />

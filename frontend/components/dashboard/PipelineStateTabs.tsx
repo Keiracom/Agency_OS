@@ -159,7 +159,7 @@ function OutreachBody({ contacted, replied, meetingsBooked }: OutreachProps) {
         Sequences in flight. Numbers refresh every 5 minutes.
       </p>
 
-      <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-rule">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mt-4 pt-4 border-t border-rule">
         <Metric label="Contacted" value={contacted} />
         <Metric label="Replied" value={replied} />
         <Metric label="Booked" value={meetingsBooked} />
@@ -203,7 +203,7 @@ function CompleteBody({
         )}
       </div>
 
-      <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-rule">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mt-4 pt-4 border-t border-rule">
         <Metric label="Contacted" value={contacted} />
         <Metric label="Replied" value={replied} />
         <Metric label="Booked" value={meetingsBooked} />

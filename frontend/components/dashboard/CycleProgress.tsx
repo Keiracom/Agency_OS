@@ -100,7 +100,7 @@ export function CycleProgress() {
       </div>
 
       {/* Counts row — 3 cells */}
-      <div className="grid grid-cols-3 gap-4 mt-5 pt-5 border-t border-rule">
+      <div className="grid grid-cols-3 gap-2 md:gap-4 mt-5 pt-5 border-t border-rule">
         <CycleCell label="Contacted" value={c.contacted} loading={loading} />
         <CycleCell label="Replies"    value={c.replies}    loading={loading} />
         <CycleCell label="Meetings"   value={c.meetings}   loading={loading} />

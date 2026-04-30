@@ -56,7 +56,7 @@ export function HeroMetricsCard({ className }: HeroMetricsCardProps) {
   return (
     <Card className={cn("bg-[#1a1a1f] border-white/10", className)}>
       <CardContent className="p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6">
           {/* Meetings Booked */}
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-text-primary/60">
@@ -140,7 +140,7 @@ function HeroMetricsCardSkeleton({ className }: { className?: string }) {
   return (
     <Card className={cn("bg-[#1a1a1f] border-white/10", className)}>
       <CardContent className="p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6">
           {/* Meetings Booked skeleton */}
           <div className="space-y-2">
             <Skeleton className="h-4 w-32 bg-bg-surface/10" />

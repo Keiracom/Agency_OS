@@ -257,7 +257,7 @@ export default function LeadDetailPage() {
 
           <div className="flex gap-8">
             {/* Left: Profile info */}
-            <div className="flex gap-6 flex-1">
+            <div className="flex gap-3 md:gap-6 flex-1">
               {/* Avatar */}
               <div
                 className="w-20 h-20 rounded-2xl flex items-center justify-center text-text-primary font-bold text-2xl flex-shrink-0"
@@ -386,7 +386,7 @@ export default function LeadDetailPage() {
         </div>
 
         {/* Two Column Layout */}
-        <div className="grid grid-cols-3 gap-6">
+        <div className="grid grid-cols-3 gap-3 md:gap-6">
           {/* Left Column - Communication Timeline (2/3 width) */}
           <div className="col-span-2 space-y-6">
             {/* Communication Timeline */}

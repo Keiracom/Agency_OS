@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -12,6 +12,8 @@ import {
   Settings,
   Check,
   Radio,
+  Menu,
+  X,
 } from "lucide-react";
 import { DemoBanner } from "@/components/demo/DemoBanner";
 import { useDemoMode } from "@/lib/demo-context";
@@ -35,6 +37,20 @@ export function AppShell({ children, pageTitle = 'Agency OS' }: AppShellProps) {
   const pathname = usePathname();
   const isDemo = useDemoMode();
 
+  // Mobile drawer state — desktop ignores. Auto-closes on route change
+  // and locks body scroll while open so the page can't pan through the
+  // backdrop. Mirrors components/layout/dashboard-layout.tsx behaviour.
+  const [mobileOpen, setMobileOpen] = useState(false);
+  useEffect(() => { setMobileOpen(false); }, [pathname]);
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    if (mobileOpen) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => { document.body.style.overflow = prev; };
+    }
+  }, [mobileOpen]);
+
   return (
     <div className="min-h-screen relative overflow-hidden">
       {/* Demo Mode Banner */}
@@ -43,8 +59,32 @@ export function AppShell({ children, pageTitle = 'Agency OS' }: AppShellProps) {
       {/* Base background — uses CSS var so it responds to data-theme */}
       <div className="fixed inset-0 -z-10" style={{ backgroundColor: "var(--bg-void)" }} />
 
-      {/* Fixed Left Sidebar - 72px */}
-      <aside className={`fixed left-0 h-full w-[72px] bg-bg-surface border-r border-[var(--border-default)] flex flex-col items-center py-4 z-50 ${isDemo ? 'top-10' : 'top-0'}`}>
+      {/* Mobile backdrop */}
+      <div
+        className={`fixed inset-0 z-40 bg-black/55 backdrop-blur-[2px] md:hidden transition-opacity ${
+          mobileOpen ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+        onClick={() => setMobileOpen(false)}
+        aria-hidden="true"
+      />
+
+      {/* Fixed Left Sidebar — 72px desktop, off-canvas drawer on <md */}
+      <aside
+        className={`fixed left-0 h-full w-[72px] bg-bg-surface border-r border-[var(--border-default)] flex flex-col items-center py-4 z-50 transition-transform duration-300 ease-out ${
+          isDemo ? 'top-10' : 'top-0'
+        } ${mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
+        aria-label="Primary navigation"
+      >
+        {/* Mobile close button */}
+        <button
+          type="button"
+          onClick={() => setMobileOpen(false)}
+          aria-label="Close navigation"
+          className="md:hidden absolute top-2 right-2 p-1 text-text-muted hover:text-text-primary"
+        >
+          <X className="w-4 h-4" />
+        </button>
+
         {/* Logo */}
         <div className="mb-8">
           <div className="w-[42px] h-[42px] bg-amber-glow border border-[var(--border-amber)] rounded-xl flex items-center justify-center shadow-glow-sm">
@@ -61,6 +101,7 @@ export function AppShell({ children, pageTitle = 'Agency OS' }: AppShellProps) {
               <Link
                 key={item.href}
                 href={item.href}
+                onClick={() => setMobileOpen(false)}
                 className={`
                   group relative w-11 h-11 rounded-xl flex items-center justify-center
                   transition-all duration-200
@@ -83,15 +124,23 @@ export function AppShell({ children, pageTitle = 'Agency OS' }: AppShellProps) {
         </nav>
       </aside>
 
-      {/* Main Content Area */}
-      <div className={`ml-[72px] min-h-screen flex flex-col ${isDemo ? 'pt-10' : ''}`}>
+      {/* Main Content Area — full-width on mobile, 72px reservation on md+ */}
+      <div className={`md:ml-[72px] min-h-screen flex flex-col ${isDemo ? 'pt-10' : ''}`}>
         {/* Top Header Bar */}
-        <header className={`h-16 bg-bg-surface border-b border-border-subtle flex items-center justify-between px-6 sticky z-40 ${isDemo ? 'top-10' : 'top-0'}`}>
-          <div className="flex items-center gap-4">
-            <h1 className="text-lg font-semibold text-text-primary">
+        <header className={`h-16 bg-bg-surface border-b border-border-subtle flex items-center justify-between px-4 md:px-6 sticky z-40 ${isDemo ? 'top-10' : 'top-0'}`}>
+          <div className="flex items-center gap-3 md:gap-4 min-w-0">
+            <button
+              type="button"
+              onClick={() => setMobileOpen(true)}
+              aria-label="Open navigation"
+              className="md:hidden -ml-1 p-2 rounded-md text-text-muted hover:text-text-primary hover:bg-bg-elevated transition-colors"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <h1 className="text-base md:text-lg font-semibold text-text-primary truncate">
               {pageTitle}
             </h1>
-            <span className="flex items-center gap-1.5 px-2.5 py-1 bg-status-success/15 border border-status-success/30 rounded-full text-xs font-semibold text-status-success">
+            <span className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-status-success/15 border border-status-success/30 rounded-full text-xs font-semibold text-status-success">
               <span className="w-1.5 h-1.5 bg-status-success rounded-full animate-pulse" />
               LIVE
             </span>

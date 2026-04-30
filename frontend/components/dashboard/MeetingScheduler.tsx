@@ -519,7 +519,7 @@ export function MeetingScheduler({
               </div>
               
               {/* Date & Time Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6">
                 {/* Calendar */}
                 <div className="space-y-3">
                   <label className="block text-sm font-medium text-text-primary">Select Date</label>

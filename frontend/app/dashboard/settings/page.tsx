@@ -36,8 +36,8 @@ export default function SettingsPage() {
     <div className="max-w-4xl mx-auto">
       <SettingsHeader />
 
-      {/* Tabs */}
-      <div className="flex gap-1 mb-8 p-1.5 bg-bg-surface rounded-xl w-fit">
+      {/* Tabs — wrap on small screens so labels stay readable */}
+      <div className="flex flex-wrap gap-1 mb-6 md:mb-8 p-1.5 bg-bg-surface rounded-xl w-full sm:w-fit overflow-x-auto">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;

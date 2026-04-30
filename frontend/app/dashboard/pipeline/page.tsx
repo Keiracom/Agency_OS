@@ -89,7 +89,7 @@ export default function PipelinePage() {
           </div>
 
           {/* View toggle */}
-          <div className="inline-flex p-[2px] rounded-md bg-surface">
+          <div className="inline-flex flex-wrap gap-2 p-[2px] rounded-md bg-surface">
             {(["list", "kanban", "table"] as View[]).map(v => {
               const isActive = v === view;
               return (

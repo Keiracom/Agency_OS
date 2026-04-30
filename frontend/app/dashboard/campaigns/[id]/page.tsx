@@ -300,7 +300,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                     {campaign.status.replace("_", " ")}
                   </span>
                 </div>
-                <div className="flex items-center gap-6 text-sm text-text-secondary flex-wrap">
+                <div className="flex items-center gap-3 md:gap-6 text-sm text-text-secondary flex-wrap">
                   <span className="flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-text-muted" />
                     {formatDateRange(campaign.start_date, campaign.end_date)}
@@ -435,7 +435,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
         </div>
 
         {/* Two column: Metrics detail + Campaign info */}
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-2 gap-3 md:gap-6">
           {/* Conversion Metrics */}
           <div className="glass-surface rounded-xl overflow-hidden">
             <div className="p-5 border-b border-border-subtle">

@@ -103,7 +103,7 @@ export default function DashboardPage() {
     <AppShell>
       {/* Page background with ambient radials */}
       <div 
-        className="relative p-8 min-h-screen overflow-hidden"
+        className="relative p-4 md:p-8 min-h-screen overflow-hidden"
         style={{
           background: `
             radial-gradient(ellipse at 20% 0%, rgba(212,149,106,0.08) 0%, transparent 50%),
@@ -144,17 +144,17 @@ export default function DashboardPage() {
           </section>
 
           {/* ROW 1: Hero Section - 2 column grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-6 mb-8">
             {/* Meetings Booked Hero - Accent Glass Card */}
             <HeroMetricCard className="p-8">
               <div className="text-[11px] font-mono font-semibold uppercase tracking-wider text-text-muted mb-3">
                 Meetings Booked
               </div>
               <div className="flex items-baseline gap-0">
-                <span className="text-6xl font-extrabold text-text-primary font-mono tracking-tight">
+                <span className="text-4xl md:text-6xl font-extrabold text-text-primary font-mono tracking-tight">
                   {meetingsBooked}
                 </span>
-                <span className="text-3xl font-extrabold text-text-muted font-mono">
+                <span className="text-2xl md:text-3xl font-extrabold text-text-muted font-mono">
                   /{meetingsTarget}
                 </span>
               </div>
@@ -233,7 +233,7 @@ export default function DashboardPage() {
           </div>
 
           {/* ROW 2: Stats Grid - 4 column */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">
             {statsGrid.map((stat) => (
               <GlassCard key={stat.id} glow className="p-6">
                 <div className="text-3xl font-extrabold font-mono text-text-primary">{stat.value}</div>
@@ -251,7 +251,7 @@ export default function DashboardPage() {
           </div>
 
           {/* ROW 3: Main Grid - 3 column */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-6 mb-8">
             {/* Hot Prospects — wired to useDashboardV4 */}
             <GlassCard className="p-0 overflow-hidden">
               <div className="px-6 py-5 border-b border-border-subtle flex items-center justify-between">
@@ -358,7 +358,7 @@ export default function DashboardPage() {
           </div>
 
           {/* ROW 4: Bottom Grid - 3 column */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-6">
             {/* Recent Activity — wired to useLiveActivityFeed (30s polling) */}
             <GlassCard className="p-0 overflow-hidden">
               <div className="px-6 py-5 border-b border-border-subtle flex items-center justify-between">

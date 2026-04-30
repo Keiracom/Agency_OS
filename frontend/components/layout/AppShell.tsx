@@ -1,47 +1,92 @@
+/**
+ * FILE: frontend/components/layout/AppShell.tsx
+ * PURPOSE: Single canonical layout shell for every authenticated route.
+ *          Renders the rich 232px ↔ 72px collapsible Sidebar (PR #441 +
+ *          A4), the desktop Header (with cycle indicator + pause-all +
+ *          theme toggle from P3-2-1), the MobileTopbar + BottomNav
+ *          (A5), and the demo banner.
+ *
+ *          B1 dispatch (2026-04-30) consolidates this with the former
+ *          components/layout/dashboard-layout.tsx so dashboard routes
+ *          stop double-rendering a sidebar (the bug: `app/dashboard/
+ *          layout.tsx` wrapped sub-routes in `DashboardLayout` while
+ *          each sub-route also imported `AppShell` — two sidebars).
+ *
+ *          Sub-routes import `AppShell` directly; `app/dashboard/
+ *          layout.tsx` no longer wraps. Single sidebar everywhere.
+ */
+
 "use client";
 
-import { ReactNode, useEffect, useState } from "react";
-import Link from "next/link";
+import { ReactNode, useState, useEffect, useCallback } from "react";
 import { usePathname } from "next/navigation";
-import {
-  LayoutDashboard,
-  Users,
-  Megaphone,
-  MessageSquareReply,
-  BarChart3,
-  Settings,
-  Check,
-  Radio,
-  Menu,
-  X,
-} from "lucide-react";
+import { Sidebar } from "./sidebar";
+import { Header } from "./header";
+import { MobileTopbar } from "./mobile-topbar";
+import { BottomNav } from "./bottom-nav";
+import { useAppShellContext } from "./AppShellContext";
 import { DemoBanner } from "@/components/demo/DemoBanner";
 import { useDemoMode } from "@/lib/demo-context";
+
+const SIDEBAR_STORAGE_KEY = "agencyos_sidebar";
 
 interface AppShellProps {
   children: ReactNode;
   pageTitle?: string;
+  /** Optional auth context — when provided, drives the user dropdown
+   *  in Header and the avatar in the Sidebar footer. Demo mode passes
+   *  the Demo Investor stub; pre-login routes pass nothing. */
+  user?: {
+    email: string;
+    fullName?: string;
+    avatarUrl?: string;
+  };
+  /** Optional client (tenant) — gates the pause-all button + credits
+   *  badge in Header. */
+  client?: {
+    id: string;
+    name: string;
+    tier: string;
+    creditsRemaining: number;
+    pausedAt?: string | null;
+    pauseReason?: string | null;
+  };
 }
 
-const navItems = [
-  { href: "/dashboard", icon: LayoutDashboard, label: "Command Center" },
-  { href: "/dashboard/pipeline", icon: Radio, label: "Live Pipeline" },
-  { href: "/leads", icon: Users, label: "Leads" },
-  { href: "/campaigns", icon: Megaphone, label: "Campaigns" },
-  { href: "/replies", icon: MessageSquareReply, label: "Replies" },
-  { href: "/reports", icon: BarChart3, label: "Reports" },
-  { href: "/settings", icon: Settings, label: "Settings" },
-];
-
-export function AppShell({ children, pageTitle = 'Agency OS' }: AppShellProps) {
+export function AppShell({
+  children, pageTitle = "Agency OS", user: userProp, client: clientProp,
+}: AppShellProps) {
   const pathname = usePathname();
   const isDemo = useDemoMode();
+  // Fall back to context provided by the server layout when explicit
+  // props aren't passed (most sub-routes don't supply them).
+  const ctx = useAppShellContext();
+  const user = userProp ?? ctx.user;
+  const client = clientProp ?? ctx.client;
 
-  // Mobile drawer state — desktop ignores. Auto-closes on route change
-  // and locks body scroll while open so the page can't pan through the
-  // backdrop. Mirrors components/layout/dashboard-layout.tsx behaviour.
+  // Mobile drawer state — opened by either the desktop Header
+  // hamburger (md:hidden inside Header) or the MobileTopbar
+  // hamburger; closed by the Sidebar X / backdrop / nav-link click.
+  // Always closed on route change.
   const [mobileOpen, setMobileOpen] = useState(false);
   useEffect(() => { setMobileOpen(false); }, [pathname]);
+
+  // A4 desktop collapse state. Hydration-safe: starts `false`, then
+  // useEffect reads localStorage + the `[data-sidebar]` attr the
+  // pre-paint script in app/layout.tsx wrote. The CSS var
+  // --sidebar-current-w resolves at first paint, so reconciling
+  // React state here doesn't cause a width-snap.
+  const [collapsed, setCollapsed] = useState(false);
+  useEffect(() => {
+    try {
+      setCollapsed(localStorage.getItem(SIDEBAR_STORAGE_KEY) === "collapsed");
+    } catch {
+      /* localStorage may be blocked; default to expanded. */
+    }
+  }, []);
+
+  // Lock body scroll while the mobile drawer is open so the page
+  // can't pan through the backdrop.
   useEffect(() => {
     if (typeof document === "undefined") return;
     if (mobileOpen) {
@@ -51,121 +96,88 @@ export function AppShell({ children, pageTitle = 'Agency OS' }: AppShellProps) {
     }
   }, [mobileOpen]);
 
+  const toggleCollapsed = useCallback(() => {
+    setCollapsed(prev => {
+      const next = !prev;
+      try {
+        if (typeof document !== "undefined") {
+          if (next) {
+            document.documentElement.setAttribute("data-sidebar", "collapsed");
+          } else {
+            document.documentElement.removeAttribute("data-sidebar");
+          }
+        }
+        localStorage.setItem(SIDEBAR_STORAGE_KEY, next ? "collapsed" : "expanded");
+      } catch {
+        /* localStorage blocked; attribute change still wins for the session. */
+      }
+      return next;
+    });
+  }, []);
+
+  // Sidebar footer user info — falls back to Maya BDR when no real
+  // user is in scope (e.g. AppShell rendered from a marketing page).
+  const sidebarUser = user
+    ? {
+        initials: (user.fullName || user.email || "U")
+          .split(" ")
+          .map(s => s[0])
+          .join("")
+          .slice(0, 2)
+          .toUpperCase(),
+        name: user.fullName || user.email,
+        role: client?.tier ? `${client.tier} · CLIENT` : "Operator",
+      }
+    : undefined;
+
   return (
-    <div className="min-h-screen relative overflow-hidden">
-      {/* Demo Mode Banner */}
+    <div className="min-h-screen bg-cream text-ink">
+      {/* Demo Mode Banner (renders only when IS_DEMO_MODE / cookie set) */}
       <DemoBanner />
 
-      {/* Base background — uses CSS var so it responds to data-theme */}
-      <div className="fixed inset-0 -z-10" style={{ backgroundColor: "var(--bg-cream)" }} />
-
-      {/* Mobile backdrop */}
-      <div
-        className={`fixed inset-0 z-40 bg-black/55 backdrop-blur-[2px] md:hidden transition-opacity ${
-          mobileOpen ? "opacity-100" : "pointer-events-none opacity-0"
-        }`}
-        onClick={() => setMobileOpen(false)}
-        aria-hidden="true"
+      {/* Sidebar (rich 232 ↔ 72 collapsible, mobile drawer) */}
+      <Sidebar
+        open={mobileOpen}
+        onClose={() => setMobileOpen(false)}
+        collapsed={collapsed}
+        onToggleCollapsed={toggleCollapsed}
+        user={sidebarUser}
       />
 
-      {/* Fixed Left Sidebar — 72px desktop, off-canvas drawer on <md */}
-      <aside
-        className={`fixed left-0 h-full w-[72px] bg-bg-panel border-r border-[var(--border-default)] flex flex-col items-center py-4 z-50 transition-transform duration-300 ease-out ${
-          isDemo ? 'top-10' : 'top-0'
-        } ${mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
-        aria-label="Primary navigation"
+      {/* Mobile-only topbar — replaces desktop Header on <md */}
+      <MobileTopbar
+        onOpenMenu={() => setMobileOpen(true)}
+        client={client?.id
+          ? { id: client.id, pausedAt: client.pausedAt, pauseReason: client.pauseReason }
+          : undefined}
+      />
+
+      {/* Right column.
+          Mobile: no left pad (sidebar is off-canvas); pb reserves space
+          for the BottomNav (60px) so content isn't occluded.
+          md+: padding-left tracks --sidebar-current-w (232px expanded
+          ↔ 72px collapsed) with a 300ms transition that animates in
+          lockstep with the sidebar's width transition.
+          When the demo banner is visible, push the column down by 40px
+          so its content doesn't slide under the banner. */}
+      <div
+        className={`flex min-h-screen flex-col transition-[padding-left] duration-300 ease-out md:pl-[var(--sidebar-current-w)] pb-[var(--bottomnav-h)] md:pb-0 ${
+          isDemo ? "pt-10" : ""
+        }`}
       >
-        {/* Mobile close button */}
-        <button
-          type="button"
-          onClick={() => setMobileOpen(false)}
-          aria-label="Close navigation"
-          className="md:hidden absolute top-2 right-2 p-1 text-ink-3 hover:text-ink"
-        >
-          <X className="w-4 h-4" />
-        </button>
-
-        {/* Logo */}
-        <div className="mb-8">
-          <div className="w-[42px] h-[42px] bg-amber-glow border border-[var(--border-amber)] rounded-xl flex items-center justify-center shadow-glow-sm">
-            <Check className="w-5 h-5 text-amber" strokeWidth={3} />
-          </div>
-        </div>
-
-        {/* Navigation */}
-        <nav className="flex flex-col gap-2 flex-1">
-          {navItems.map((item) => {
-            const isActive = pathname === item.href;
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setMobileOpen(false)}
-                className={`
-                  group relative w-11 h-11 rounded-xl flex items-center justify-center
-                  transition-all duration-200
-                  ${
-                    isActive
-                      ? "bg-amber-glow text-amber"
-                      : "text-ink-3 hover:bg-panel hover:text-ink"
-                  }
-                `}
-                title={item.label}
-              >
-                <Icon className="w-5 h-5" />
-                {/* Tooltip */}
-                <span className="absolute left-14 px-2 py-1 bg-panel text-ink text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap transition-opacity">
-                  {item.label}
-                </span>
-              </Link>
-            );
-          })}
-        </nav>
-      </aside>
-
-      {/* Main Content Area — full-width on mobile, 72px reservation on md+ */}
-      <div className={`md:ml-[72px] min-h-screen flex flex-col ${isDemo ? 'pt-10' : ''}`}>
-        {/* Top Header Bar */}
-        <header className={`h-16 bg-bg-panel border-b border-rule flex items-center justify-between px-4 md:px-6 sticky z-40 ${isDemo ? 'top-10' : 'top-0'}`}>
-          <div className="flex items-center gap-3 md:gap-4 min-w-0">
-            <button
-              type="button"
-              onClick={() => setMobileOpen(true)}
-              aria-label="Open navigation"
-              className="md:hidden -ml-1 p-2 rounded-md text-ink-3 hover:text-ink hover:bg-panel transition-colors"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-            <h1 className="text-base md:text-lg font-semibold text-ink truncate">
-              {pageTitle}
-            </h1>
-            <span className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-status-success/15 border border-status-success/30 rounded-full text-xs font-semibold text-status-success">
-              <span className="w-1.5 h-1.5 bg-status-success rounded-full animate-pulse" />
-              LIVE
-            </span>
-          </div>
-        </header>
-
-        {/* Page Content */}
-        <main className="flex-1">{children}</main>
+        <Header
+          title={pageTitle}
+          user={user}
+          client={client}
+          onOpenMenu={() => setMobileOpen(true)}
+        />
+        <main className="flex-1 bg-cream px-4 py-4 sm:px-6 md:px-8 md:py-6">
+          <div className="mx-auto w-full max-w-[1280px]">{children}</div>
+        </main>
       </div>
 
-      {/* Maya AI Bubble - Fixed Bottom Right */}
-      <div className="fixed bottom-6 right-6 z-50">
-        <button
-          className="relative w-14 h-14 rounded-full bg-amber
-            flex items-center justify-center shadow-glow-md hover:shadow-glow-lg transition-shadow"
-          title="Maya AI Assistant"
-        >
-          {/* Avatar placeholder - using "M" for Maya */}
-          <span className="text-bg-cream font-bold text-lg">M</span>
-          {/* Online indicator */}
-          <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-[#10B981] rounded-full border-2 border-bg-cream">
-            <span className="absolute inset-0 bg-[#10B981] rounded-full animate-ping opacity-75" />
-          </span>
-        </button>
-      </div>
+      {/* Mobile-only bottom navigation */}
+      <BottomNav />
     </div>
   );
 }

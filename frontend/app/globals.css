@@ -59,6 +59,11 @@
 
     /* Layout dimensions (PR1 — match prototype) */
     --sidebar-w:  232px;
+    --sidebar-collapsed-w: 72px;
+    /* A4: current sidebar width, switched by [data-sidebar="collapsed"]
+       on <html>. Both the <aside> width and the right column's
+       padding-left reference this var so they never desync. */
+    --sidebar-current-w: var(--sidebar-w);
     --topbar-h:   56px;
     --bottomnav-h: 60px;
 
@@ -122,6 +127,14 @@
     --chart-3: 25 50% 52%;
     --chart-4: 25 50% 45%;
     --chart-5: 25 50% 38%;
+  }
+
+  /* A4: when the pre-paint script (in app/layout.tsx) sees
+     localStorage.agencyos_sidebar === "collapsed", it stamps the
+     attribute below on <html>. CSS resolves --sidebar-current-w to
+     the collapsed width before React hydrates → no width-snap. */
+  html[data-sidebar="collapsed"] {
+    --sidebar-current-w: var(--sidebar-collapsed-w);
   }
 
   html.dark {

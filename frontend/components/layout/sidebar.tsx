@@ -1,8 +1,11 @@
 /**
  * FILE: frontend/components/layout/sidebar.tsx
- * PURPOSE: 232px dark sidebar with amber active borders + Playfair logo accent.
- *          Ported from dashboard-master-agency-desk.html (PR1 rebuild).
- * PHASE: 8 (Frontend) — Dashboard rebuild PR 1 of 4
+ * PURPOSE: Dark sidebar with amber active borders + Playfair logo accent.
+ *          Two desktop states — expanded (232px, full nav text) and
+ *          collapsed (72px, icon-only rail with hover tooltips). Mobile
+ *          (<md) drawer pattern from #452 / A5 unchanged.
+ * REFERENCE: dashboard-master-agency-desk.html — sb-logo / sb-section /
+ *            sb-item / sb-icon / sb-badge / sb-foot styling.
  */
 
 "use client";
@@ -20,6 +23,8 @@ import {
   Inbox,
   Calendar,
   X,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -68,9 +73,15 @@ interface SidebarProps {
   open?: boolean;
   /** Mobile drawer dismiss callback (X button + backdrop tap + nav click). */
   onClose?: () => void;
+  /** A4 — desktop collapse state. Mobile ignores. */
+  collapsed?: boolean;
+  /** A4 — toggle callback for the chevron button. */
+  onToggleCollapsed?: () => void;
 }
 
-export function Sidebar({ open = false, onClose }: SidebarProps = {}) {
+export function Sidebar({
+  open = false, onClose, collapsed = false, onToggleCollapsed,
+}: SidebarProps = {}) {
   const pathname = usePathname();
 
   return (
@@ -88,98 +99,171 @@ export function Sidebar({ open = false, onClose }: SidebarProps = {}) {
 
       <aside
         className={cn(
-          "fixed left-0 top-0 bottom-0 w-sidebar bg-brand-bar text-white/80 flex flex-col z-50 overflow-y-auto",
-          "transition-transform duration-300 ease-out",
+          "fixed left-0 top-0 bottom-0 bg-brand-bar text-white/80 flex flex-col z-50 overflow-y-auto",
+          "transition-[transform,width] duration-300 ease-out",
           // Mobile: off-canvas unless `open`. Desktop (md+): always visible.
           open ? "translate-x-0" : "-translate-x-full md:translate-x-0",
         )}
-        style={{ borderRight: "1px solid rgba(255,255,255,0.06)" }}
+        // Width comes from --sidebar-current-w (driven by [data-sidebar=
+        // "collapsed"] on <html>, set by the pre-paint script in
+        // app/layout.tsx). React state simply flips the attr — both code
+        // paths produce the same width without flicker.
+        style={{
+          width: "var(--sidebar-current-w)",
+          borderRight: "1px solid rgba(255,255,255,0.06)",
+        }}
         aria-label="Primary navigation"
       >
-      {/* Logo block — Playfair Display with amber italic accent */}
-      <div
-        className="px-5 pt-[22px] pb-[18px] flex items-start justify-between"
-        style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
-      >
-        <div>
-          <div className="font-display font-bold text-[20px] tracking-[-0.02em] text-white">
-            Agency<em className="text-amber not-italic-fallback" style={{ fontStyle: "italic" }}>OS</em>
-          </div>
-          <div className="font-mono text-[9px] tracking-[0.14em] uppercase text-white/30 mt-[3px]">
-            Agency Desk
-          </div>
-        </div>
-        {/* Mobile-only close button */}
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close navigation"
-          className="md:hidden p-1.5 -mr-1 -mt-1 rounded text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+        {/* Logo block + collapse toggle (md+) + close (mobile) */}
+        <div
+          className={cn(
+            "pt-[22px] pb-[18px] flex items-start justify-between gap-2 relative",
+            collapsed ? "px-3" : "px-5",
+          )}
+          style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
         >
-          <X className="w-5 h-5" />
-        </button>
-      </div>
-
-      {/* Nav sections */}
-      <nav className="flex-1">
-        {navSections.map((section) => (
-          <div key={section.title} className="pt-4 pb-1">
-            <div className="font-mono text-[9px] tracking-[0.14em] uppercase text-white/30 px-5 pb-2">
-              {section.title}
+          {!collapsed && (
+            <div>
+              <div className="font-display font-bold text-[20px] tracking-[-0.02em] text-white whitespace-nowrap">
+                Agency<em className="text-amber" style={{ fontStyle: "italic" }}>OS</em>
+              </div>
+              <div className="font-mono text-[9px] tracking-[0.14em] uppercase text-white/30 mt-[3px] whitespace-nowrap">
+                Agency Desk
+              </div>
             </div>
-            {section.items.map((item) => {
-              const isActive =
-                pathname === item.href ||
-                (item.href !== "/dashboard" && pathname.startsWith(item.href + "/"));
-              const Icon = item.icon;
+          )}
 
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={onClose}
-                  className={cn(
-                    "flex items-center gap-3 px-5 py-[9px] text-[13px] transition-colors",
-                    "border-l-2",
-                    isActive
-                      ? "text-white bg-amber-soft border-amber font-medium"
-                      : "text-white/70 border-transparent hover:text-white hover:bg-white/[0.03]",
-                  )}
-                >
-                  <Icon
+          {collapsed && (
+            <div
+              className="font-display font-bold text-[18px] text-amber w-full text-center"
+              style={{ fontStyle: "italic" }}
+              title="AgencyOS"
+            >
+              OS
+            </div>
+          )}
+
+          {/* Desktop collapse toggle — md+ only, mobile keeps the X close.
+              Anchored top-right when collapsed so it stays clickable on
+              the narrow rail. */}
+          <button
+            type="button"
+            onClick={onToggleCollapsed}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            className={cn(
+              "hidden md:grid place-items-center w-7 h-7 rounded-md shrink-0",
+              "text-white/50 hover:text-white hover:bg-white/[0.06]",
+              "transition-colors",
+              collapsed && "absolute top-2 right-2",
+            )}
+          >
+            {collapsed
+              ? <ChevronRight className="w-4 h-4" />
+              : <ChevronLeft  className="w-4 h-4" />}
+          </button>
+
+          {/* Mobile-only close button */}
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close navigation"
+            className="md:hidden p-1.5 -mr-1 -mt-1 rounded text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Nav sections */}
+        <nav className="flex-1">
+          {navSections.map((section) => (
+            <div key={section.title} className="pt-4 pb-1">
+              {!collapsed && (
+                <div className="font-mono text-[9px] tracking-[0.14em] uppercase text-white/30 px-5 pb-2">
+                  {section.title}
+                </div>
+              )}
+              {section.items.map((item) => {
+                const isActive =
+                  pathname === item.href ||
+                  (item.href !== "/dashboard" && pathname.startsWith(item.href + "/"));
+                const Icon = item.icon;
+
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={onClose}
+                    title={collapsed ? item.title : undefined}
                     className={cn(
-                      "w-4 h-4 shrink-0",
-                      isActive ? "text-amber opacity-100" : "opacity-75",
+                      "group relative flex items-center text-[13px] transition-colors border-l-2",
+                      collapsed ? "px-0 py-[10px] justify-center" : "gap-3 px-5 py-[9px]",
+                      isActive
+                        ? "text-white bg-amber-soft border-amber font-medium"
+                        : "text-white/70 border-transparent hover:text-white hover:bg-white/[0.03]",
                     )}
-                  />
-                  <span>{item.title}</span>
-                  {item.badge && (
-                    <span className="ml-auto font-mono text-[10px] bg-amber text-on-amber px-[6px] py-[1px] rounded-[10px] min-w-[20px] text-center font-semibold">
-                      {item.badge}
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
-          </div>
-        ))}
-      </nav>
+                  >
+                    <Icon
+                      className={cn(
+                        "w-4 h-4 shrink-0",
+                        isActive ? "text-amber opacity-100" : "opacity-75",
+                      )}
+                    />
+                    {!collapsed && <span className="truncate">{item.title}</span>}
 
-      {/* Footer — avatar block (matches prototype .sb-foot) */}
-      <div
-        className="mt-auto px-5 py-4 flex items-center gap-[10px]"
-        style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
-      >
-        <div className="w-[30px] h-[30px] rounded-full bg-amber text-on-amber grid place-items-center font-display font-bold text-[12px] shrink-0">
-          M
-        </div>
-        <div className="leading-tight">
-          <div className="text-[13px] text-white">Maya</div>
-          <div className="font-mono text-[10.5px] tracking-[0.06em] text-white/40">
-            BDR · ON
+                    {/* Badge — visible in both states (right-floated when
+                        expanded, top-right corner when collapsed). */}
+                    {item.badge && (
+                      <span
+                        className={cn(
+                          "font-mono text-[10px] bg-amber text-on-amber font-semibold rounded-[10px] text-center",
+                          collapsed
+                            ? "absolute top-1 right-1 px-1 min-w-[16px]"
+                            : "ml-auto px-[6px] py-[1px] min-w-[20px]",
+                        )}
+                      >
+                        {item.badge}
+                      </span>
+                    )}
+
+                    {/* Tooltip on hover when collapsed */}
+                    {collapsed && (
+                      <span
+                        className="absolute left-full ml-2 px-2 py-1 rounded bg-brand-bar border border-white/10 text-[11px] text-white whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10 shadow-lg"
+                      >
+                        {item.title}
+                      </span>
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
+        </nav>
+
+        {/* Footer — avatar block (matches prototype .sb-foot) */}
+        <div
+          className={cn(
+            "mt-auto py-4 flex items-center gap-[10px]",
+            collapsed ? "px-3 justify-center" : "px-5",
+          )}
+          style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
+        >
+          <div
+            className="w-[30px] h-[30px] rounded-full bg-amber text-on-amber grid place-items-center font-display font-bold text-[12px] shrink-0"
+            title={collapsed ? "Maya · BDR · ON" : undefined}
+          >
+            M
           </div>
+          {!collapsed && (
+            <div className="leading-tight min-w-0">
+              <div className="text-[13px] text-white">Maya</div>
+              <div className="font-mono text-[10.5px] tracking-[0.06em] text-white/40">
+                BDR · ON
+              </div>
+            </div>
+          )}
         </div>
-      </div>
       </aside>
     </>
   );

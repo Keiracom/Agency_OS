@@ -44,15 +44,21 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // A2 dark-mode anti-flash. Runs synchronously before any paint so
-  // the html element gets `.dark` set (or unset) before React renders
-  // — no flicker between server-default light and the user's saved
-  // preference. Mirrors the /demo prototype pattern.
-  const themeBootScript = `
+  // A2 dark-mode + A4 sidebar-collapse anti-flash. Both run
+  // synchronously before any paint so <html> gets the right class +
+  // data attr before React renders — no flicker on reload between
+  // server-default state and the user's saved preference. Mirrors
+  // the /demo prototype pattern.
+  const bootScript = `
     try {
       var t = localStorage.getItem('agencyos_theme');
       if (t === 'dark' || (!t && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
         document.documentElement.classList.add('dark');
+      }
+    } catch (e) {}
+    try {
+      if (localStorage.getItem('agencyos_sidebar') === 'collapsed') {
+        document.documentElement.setAttribute('data-sidebar', 'collapsed');
       }
     } catch (e) {}
   `;
@@ -60,7 +66,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
+        <script dangerouslySetInnerHTML={{ __html: bootScript }} />
       </head>
       {/* Fonts loaded via @import in globals.css */}
       <body className={`${dmSans.variable} ${jetbrainsMono.variable} ${playfair.variable} font-sans bg-cream text-ink`}>

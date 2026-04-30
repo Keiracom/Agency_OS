@@ -108,7 +108,7 @@ function EmptyPipelineVisual() {
       {(["01", "02", "03", "04"] as const).map((label, i) => {
         const isWorking = i < 2;
         return (
-          <div key={label} className="flex items-center gap-6">
+          <div key={label} className="flex items-center gap-3 md:gap-6">
             <div
               style={{
                 width: 64,

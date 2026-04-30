@@ -54,11 +54,11 @@ export default function MeetingsPage() {
               {upcomingThisWeek.length === 1 ? "meeting" : "meetings"}.
             </em>
           </h1>
-          <div className="flex items-center justify-between">
+          <div className="flex items-start sm:items-center justify-between flex-col sm:flex-row gap-2">
             <p className="text-sm text-gray-400">
               Click any slot to open the prospect drawer.
             </p>
-            <div className="inline-flex rounded-lg border border-gray-800 bg-gray-900 p-0.5">
+            <div className="inline-flex flex-wrap gap-1 rounded-lg border border-gray-800 bg-gray-900 p-0.5">
               {(["drawer", "briefing"] as Surface[]).map((v) => (
                 <button
                   key={v}

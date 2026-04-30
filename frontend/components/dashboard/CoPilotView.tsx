@@ -125,7 +125,7 @@ Best,
   const emailDomain = lead.email?.split("@")[1] || (lead.company?.toLowerCase().replace(/\s+/g, "") + ".com");
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-6 bg-[#0f0f13] min-h-screen">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-6 p-6 bg-[#0f0f13] min-h-screen">
       {/* Left Panel: Email Composer */}
       <div className="space-y-4">
         <Card className="bg-[#1a1a1f] border-white/10">

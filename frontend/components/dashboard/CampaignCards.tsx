@@ -713,7 +713,7 @@ export function CampaignCards({
 
   if (isLoading) {
     return (
-      <div className={`grid grid-cols-2 gap-6 ${className}`}>
+      <div className={`grid grid-cols-2 gap-3 md:gap-6 ${className}`}>
         {Array.from({ length: 4 }).map((_, i) => (
           <div
             key={i}
@@ -735,7 +735,7 @@ export function CampaignCards({
   }
 
   return (
-    <div className={`grid grid-cols-2 gap-6 ${className}`}>
+    <div className={`grid grid-cols-2 gap-3 md:gap-6 ${className}`}>
       {localCampaigns.map((campaign) => (
         <CampaignCard
           key={campaign.id}

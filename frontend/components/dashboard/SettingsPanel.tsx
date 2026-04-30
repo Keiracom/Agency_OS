@@ -421,7 +421,7 @@ export function SettingsPanel() {
               </div>
               <div className="p-6">
                 {/* Avatar Section */}
-                <div className="flex items-center gap-6 mb-8">
+                <div className="flex items-center gap-3 md:gap-6 mb-8">
                   <div className="relative">
                     <div className="w-20 h-20 rounded-full bg-gradient-to-br from-amber to-amber flex items-center justify-center text-2xl font-bold ring-4 ring-[#12121D] ring-offset-2 ring-offset-amber/20">
                       {profile.firstName[0]}{profile.lastName[0]}

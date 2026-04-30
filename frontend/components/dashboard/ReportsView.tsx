@@ -382,7 +382,7 @@ export const ReportsView: React.FC = () => {
         className="px-8 py-4 flex items-center justify-between border-b"
         style={{ background: colors.bgSurface, borderColor: colors.borderSubtle }}
       >
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-3 md:gap-6">
           <div>
             <h1 className="text-sm font-semibold" style={{ color: colors.textPrimary }}>
               Analytics Terminal
@@ -498,7 +498,7 @@ export const ReportsView: React.FC = () => {
         </div>
 
         {/* Charts Row */}
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-2 gap-3 md:gap-6">
           {/* Meetings Over Time */}
           <div 
             className="rounded-xl border overflow-hidden"
@@ -568,7 +568,7 @@ export const ReportsView: React.FC = () => {
         </div>
 
         {/* Key Metrics Row */}
-        <div className="grid grid-cols-3 gap-6">
+        <div className="grid grid-cols-3 gap-3 md:gap-6">
           {/* Response Rates */}
           <div 
             className="rounded-xl border overflow-hidden"
@@ -720,7 +720,7 @@ export const ReportsView: React.FC = () => {
         </div>
 
         {/* Bottom Row */}
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-2 gap-3 md:gap-6">
           {/* Conversion by Tier */}
           <div 
             className="rounded-xl border overflow-hidden"

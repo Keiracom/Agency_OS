@@ -307,7 +307,7 @@ function PlanCard({
       </div>
 
       {/* Outcomes preview */}
-      <div className="flex justify-center gap-6 my-5 p-4 bg-bg-base rounded-lg">
+      <div className="flex justify-center gap-3 md:gap-6 my-5 p-4 bg-bg-base rounded-lg">
         <div className="text-center">
           <div className="text-xl font-bold font-mono text-text-primary">{plan.meetingsRange}</div>
           <div className="text-xs text-text-muted uppercase tracking-wide">Meetings/mo</div>
@@ -533,7 +533,7 @@ export default function BillingPage() {
             subtitle="Resets March 1, 2026"
           />
           <div className="p-6">
-            <div className="grid grid-cols-3 gap-6">
+            <div className="grid grid-cols-3 gap-3 md:gap-6">
               <UsageMeter
                 label="Leads Contacted"
                 current={usage.leadsContacted}

@@ -749,7 +749,7 @@ function CampaignDetailSkeleton() {
     <div className="space-y-6 animate-pulse">
       <div className="h-64 bg-bg-void/40 rounded-2xl" />
       <div className="h-40 bg-bg-void/40 rounded-2xl" />
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-2 gap-3 md:gap-6">
         <div className="h-96 bg-bg-void/40 rounded-2xl" />
         <div className="h-96 bg-bg-void/40 rounded-2xl" />
       </div>
@@ -799,7 +799,7 @@ export function CampaignDetail({
       <FunnelVisualization funnel={campaign.funnel} />
 
       {/* Sequence + Channel Performance */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-6">
         <SequenceFlow steps={campaign.sequence} />
         <ChannelPerformance
           channels={campaign.channelPerformance}
@@ -808,7 +808,7 @@ export function CampaignDetail({
       </div>
 
       {/* Leads Table + Activity Feed */}
-      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-3 md:gap-6">
         <LeadsTable
           leads={campaign.leads}
           totalLeads={campaign.totalLeads}

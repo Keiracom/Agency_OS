@@ -1203,7 +1203,7 @@ export function DashboardMain({ className }: DashboardMainProps) {
   return (
     <div className={cn("space-y-6", className)}>
       {/* Hero Section - Metrics + Channel Status */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-3 md:gap-6">
         <HeroMeetingsCard booked={meetingsData?.total ?? 0} target={10} changePercent={25} />
         <div className="xl:col-span-2">
           <ChannelStatusPanel stats={mockChannelStats} channelStatus={mockChannelStatus} />
@@ -1214,12 +1214,12 @@ export function DashboardMain({ className }: DashboardMainProps) {
       <StatsSummaryRow />
 
       {/* Main Grid - 2 columns for orchestration + activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 md:gap-6">
         <div className="lg:col-span-2">
           <ChannelOrchestrationWheel stats={mockChannelStats} totalTouches={1800} />
         </div>
         <div className="lg:col-span-3">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6 h-full">
             <HotProspectsCard prospects={mockProspects} />
             <RecentActivitySummary activities={mockRecentActivity} />
           </div>
@@ -1227,7 +1227,7 @@ export function DashboardMain({ className }: DashboardMainProps) {
       </div>
 
       {/* Secondary Grid - Voice AI + Insights + Calendar */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-6">
         <VoiceAICard calls={mockVoiceCalls} />
         <WhatsWorkingCard
           whoConverts={mockWhoConverts}

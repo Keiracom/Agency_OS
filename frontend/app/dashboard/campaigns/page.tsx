@@ -327,7 +327,7 @@ export default function CampaignsPage() {
                     </div>
 
                     {/* Rate Indicators */}
-                    <div className="flex items-center gap-6 mb-4">
+                    <div className="flex items-center gap-3 md:gap-6 mb-4">
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-text-muted">Reply Rate</span>
                         <span className="font-mono font-bold text-sm text-text-primary">

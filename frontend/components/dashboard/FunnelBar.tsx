@@ -39,7 +39,7 @@ export function FunnelBar() {
               key={s.key}
               className="flex-1 flex flex-col justify-center px-3.5 text-white font-mono border-r border-white/20 last:border-r-0 bg-gray-800"
             >
-              <div className="text-[13px] font-bold leading-none">0</div>
+              <div className="text-[11px] md:text-[13px] font-bold leading-none">0</div>
               <div className="text-[9px] tracking-[0.1em] opacity-80 mt-0.5 uppercase">
                 {s.label}
               </div>
@@ -66,7 +66,7 @@ export function FunnelBar() {
               style={{ flex }}
               className={`flex flex-col justify-center px-3.5 text-white font-mono border-r border-white/20 last:border-r-0 overflow-hidden min-w-0 ${STAGE_STYLES[s.key]}`}
             >
-              <div className="text-[13px] font-bold leading-none whitespace-nowrap">
+              <div className="text-[11px] md:text-[13px] font-bold leading-none whitespace-nowrap">
                 {s.count}
               </div>
               <div className="text-[9px] tracking-[0.1em] opacity-85 mt-0.5 uppercase whitespace-nowrap">

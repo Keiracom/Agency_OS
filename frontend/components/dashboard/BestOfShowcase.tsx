@@ -182,7 +182,7 @@ function ContentDetailModal({
           </div>
 
           {/* Engagement Stats */}
-          <div className="flex items-center gap-6 p-3 bg-bg-surface/5 rounded-lg">
+          <div className="flex items-center gap-3 md:gap-6 p-3 bg-bg-surface/5 rounded-lg">
             <div className="flex items-center gap-2">
               <Eye className="h-4 w-4 text-text-muted" />
               <span className="text-sm text-text-secondary">{item.email_open_count} opens</span>

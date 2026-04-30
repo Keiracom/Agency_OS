@@ -107,7 +107,7 @@ function isMeetingToday(m: Meeting): boolean {
 
 function MeetingCard({ meeting }: { meeting: Meeting }) {
   return (
-    <div className="flex-none w-72 bg-gray-800 border border-gray-700 rounded-xl p-3.5 cursor-pointer hover:border-amber-500 hover:shadow-[0_2px_10px_rgba(212,149,106,0.12)] transition-all scroll-snap-align-start">
+    <div className="flex-none w-full sm:w-72 bg-gray-800 border border-gray-700 rounded-xl p-3.5 cursor-pointer hover:border-amber-500 hover:shadow-[0_2px_10px_rgba(212,149,106,0.12)] transition-all scroll-snap-align-start">
       <div className="font-mono text-[11px] text-amber-400 font-semibold tracking-wider mb-1">
         {formatTimeAEST(meeting.scheduled_at)}
       </div>

@@ -36,6 +36,7 @@ from telegram.ext import (
 )
 
 from src.telegram_bot.save_handler import cmd_save
+from src.telegram_bot.recall_handler import cmd_recall
 from src.telegram_bot.memory_listener import find_relevant_memories, find_matching_commits, find_repo_mentions, format_memory_context, auto_capture_message
 
 # ---------------------------------------------------------------------------
@@ -1304,6 +1305,7 @@ def main() -> None:
     app.add_handler(CommandHandler("history", cmd_history))
     app.add_handler(CommandHandler("relay", cmd_relay))
     app.add_handler(CommandHandler("save", cmd_save))
+    app.add_handler(CommandHandler("recall", cmd_recall))
     app.add_handler(CommandHandler("update", cmd_update))
     app.add_handler(CommandHandler("help", cmd_help))
     # Media handlers before text fallback

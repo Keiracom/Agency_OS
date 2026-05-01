@@ -88,7 +88,8 @@ def main() -> None:
             print(f"WARN: failed to write record {row.get('id')}: {exc}")
             failed += 1
 
-    usage = adapter.get_monthly_usage() if hasattr(adapter, "get_monthly_usage") else {}
+    from src.governance.mem0_adapter import get_monthly_usage
+    usage = get_monthly_usage()
     print(f"Backfill complete: {added} added, {failed} failed")
     print(f"Monthly usage after backfill: {usage}")
 

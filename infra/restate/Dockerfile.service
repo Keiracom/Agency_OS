@@ -1,0 +1,23 @@
+# Restate Python service container.
+# Hosts the `governance` VirtualObject (directive_start, directive_complete,
+# get_state) defined in src/governance/restate_service.py. Registers with
+# the Restate server (separate Railway service) via the Restate admin API
+# after deploy. Exposes ASGI on port 9070 (Restate SDK default).
+
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Minimal deps. The full Agency OS requirements.txt has heavy unrelated
+# packages — this service only needs restate-sdk + uvicorn.
+RUN pip install --no-cache-dir \
+      "restate-sdk>=0.17.0,<0.18.0" \
+      "uvicorn[standard]>=0.27"
+
+COPY src /app/src
+
+ENV PYTHONUNBUFFERED=1
+EXPOSE 9070
+
+CMD ["uvicorn", "src.governance.restate_service:asgi_app", \
+     "--host", "0.0.0.0", "--port", "9070", "--log-level", "info"]

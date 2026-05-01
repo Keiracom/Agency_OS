@@ -14,6 +14,7 @@ from src.governance.router import (
     RoutingDecision,
     _heuristic_fallback,
     classify,
+    _over_daily_cap,
 )
 
 
@@ -119,6 +120,32 @@ def test_classify_no_client_falls_back_to_heuristic_for_peer_tag():
     # a RoutingDecision with a valid audience.
     assert isinstance(decision, RoutingDecision)
     assert decision.audience in ("dave", "peer", "system")
+
+
+def test_classifier_skips_when_over_daily_cap(tmp_path, monkeypatch):
+    """When daily AUD spend exceeds ROUTER_DAILY_CAP_AUD, classify() returns
+    the conservative default (peer, force_tg=False) without calling OpenAI."""
+    from datetime import datetime, timezone
+    import src.governance.router as router_mod
+
+    # Write a cost log entry for today well over the cap.
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%dT12:00:00")
+    cost_log = tmp_path / "openai-cost.jsonl"
+    cost_log.write_text(
+        json.dumps({
+            "ts": today, "callsign": "orion", "use_case": "governance.router",
+            "model": "gpt-4o-mini", "input_tokens": 1000000, "output_tokens": 200000,
+            "estimated_cost_usd": 10.0,  # $10 USD = $15.50 AUD >> $5.00 cap
+        }) + "\n"
+    )
+    monkeypatch.setattr(router_mod, "COST_LOG_PATH", str(cost_log))
+    monkeypatch.setenv("ROUTER_DAILY_CAP_AUD", "5.00")
+
+    client = MagicMock()  # should NOT be called
+    decision = classify("Approve | Reject | Alternative", client=client)
+    client.chat.completions.create.assert_not_called()
+    assert decision.audience == "peer"
+    assert decision.force_tg is False
 
 
 def test_heuristic_fallback_directly():

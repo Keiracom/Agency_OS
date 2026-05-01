@@ -116,6 +116,7 @@ class Mem0Adapter:
                 messages,
                 user_id=callsign,
                 metadata={**(metadata or {}), "source_type": source_type},
+                filters={"user_id": callsign},
             )
         except Exception as exc:
             logger.error(
@@ -138,7 +139,9 @@ class Mem0Adapter:
         """
         _check_caps("search")
         try:
-            results = self._client.search(query, user_id=callsign, limit=limit)
+            results = self._client.search(
+                query, filters={"user_id": callsign}, limit=limit,
+            )
         except Exception as exc:
             logger.error(
                 "[mem0-adapter] search() failed callsign=%s query=%r: %s",

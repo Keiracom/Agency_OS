@@ -33,25 +33,14 @@ def _run(coro: Any) -> Any:
 
 
 def test_generate_summary_formats_correctly() -> None:
-    """OpenAI response content is returned as-is."""
+    """Opus call response is returned as-is (post-Phase-B migration)."""
     events = [_make_event("COST_CAP", "daily cap hit"), _make_event("GOV_DENY", "classifier blocked")]
 
-    fake_choice = MagicMock()
-    fake_choice.message.content = "- Cost cap hit\n- Classifier blocked"
-    fake_resp = MagicMock()
-    fake_resp.choices = [fake_choice]
-
-    with patch.dict(
-        "os.environ",
-        {"COO_BOT_TOKEN": "fake-token", "OPENAI_API_KEY": "fake-key"},
-    ):
-        with patch("src.coo_bot.bot.openai.AsyncOpenAI") as mock_openai_cls:
-            mock_client = MagicMock()
-            mock_client.chat = MagicMock()
-            mock_client.chat.completions = MagicMock()
-            mock_client.chat.completions.create = AsyncMock(return_value=fake_resp)
-            mock_openai_cls.return_value = mock_client
-
+    with patch.dict("os.environ", {"COO_BOT_TOKEN": "fake-token"}):
+        with patch(
+            "src.coo_bot.bot.opus_call",
+            AsyncMock(return_value="- Cost cap hit\n- Classifier blocked"),
+        ):
             from src.coo_bot.bot import generate_summary
 
             result = _run(generate_summary(events, window_hours=1))

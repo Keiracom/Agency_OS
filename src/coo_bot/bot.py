@@ -1,15 +1,19 @@
-"""COO Bot (Max) — Plain-English executive summaries for Dave.
+"""COO Bot (Max) — Dave's COO proxy for Agency OS.
 
-Phase 2 roadmap component. Observe-only v1: reads governance_events +
-ceo_memory, generates summaries, DMs Dave. Does NOT make decisions.
+Phase 2 build (Tier 0 starting authority). Reads supergroup + governance_events,
+DMs Dave summaries on hourly cadence + on-demand /status, accepts Dave's DMs
+as conversational + /post group-relay instructions.
+
+LLM: Claude Opus via `claude -p` subprocess on Dave's Max plan ($0/call).
 
 Environment:
-  COO_BOT_TOKEN         — Telegram bot token for @MaxCOO_Bot
-  OPENAI_API_KEY        — for summary generation
-  SUPABASE_URL + SUPABASE_SERVICE_KEY — for reading events
-  COO_DAVE_CHAT_ID      — Dave's chat ID for DM (default: 7267788033)
-  COO_DIGEST_INTERVAL_MINUTES — poll cadence (default: 60)
+  COO_BOT_TOKEN          — Telegram bot token for @MaxCOO_Bot
+  COO_DAVE_CHAT_ID       — Dave's chat ID for DM (default: 7267788033)
+  COO_DIGEST_INTERVAL_MINUTES — digest poll cadence (default: 60)
+  COO_APPROVAL_TIER      — 0..3, default 0 (tier-gated autonomy)
   DATABASE_URL or SUPABASE_DB_URL — asyncpg DSN
+  MEMORY_RECALL_BACKEND  — 'supabase' | 'mem0' | 'hybrid' for context retriever
+  OPENAI_API_KEY         — DEPRECATED for primary path; kept as legacy fallback
 """
 from __future__ import annotations
 
@@ -22,20 +26,26 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import asyncpg
-import openai
 from telegram import Bot, Update
 from telegram.error import TelegramError
-from telegram.ext import Application, CommandHandler, ContextTypes
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    ContextTypes,
+    MessageHandler,
+    filters,
+)
 
 from src.coo_bot.config import COOConfig
+from src.coo_bot.dm_handler import handle_dm
+from src.coo_bot.group_handler import handle_group_message
+from src.coo_bot.opus_client import opus_call
+from src.coo_bot.persona import get_system_prompt
 
 logger = logging.getLogger(__name__)
 
-_SYSTEM_PROMPT = (
-    "You are Max, COO of Agency OS. "
-    "Summarize agent activity for Dave in 3-5 bullet points. "
-    "Be concise, flag anything unusual."
-)
+# Group chat ID for the Agency OS supergroup (used to filter MessageHandlers).
+_GROUP_CHAT_ID = -1003926592540
 
 
 # ---------------------------------------------------------------------------
@@ -44,37 +54,22 @@ _SYSTEM_PROMPT = (
 
 
 async def generate_summary(events: list[dict[str, Any]], window_hours: int = 1) -> str:
-    """Generate a plain-English digest of recent governance events via OpenAI.
+    """Generate a plain-English digest of recent governance events via Opus CLI.
 
-    Uses gpt-4o-mini to keep costs low. Returns an empty string on failure
-    so the caller can skip the DM gracefully.
+    Uses Claude Opus subprocess (Max plan, $0/call). Returns an empty string
+    on failure so the caller can skip the DM gracefully.
     """
-    cfg = COOConfig()
-    client = openai.AsyncOpenAI(api_key=cfg.openai_api_key)
-
     event_lines = "\n".join(
         f"- [{e.get('event_type', 'unknown')}] {e.get('event_data', {})} "
         f"(callsign={e.get('callsign', '?')}, ts={e.get('timestamp', '')})"
-        for e in events[:30]  # cap at 30 to stay under token budget
+        for e in events[:30]  # cap at 30 to stay under prompt budget
     )
     user_msg = (
-        f"Last {window_hours}h governance events ({len(events)} total):\n{event_lines}"
+        f"Last {window_hours}h governance events ({len(events)} total):\n"
+        f"{event_lines}\n\n"
+        "Summarize for Dave: 3-5 bullet points, flag anything unusual."
     )
-
-    try:
-        resp = await client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": _SYSTEM_PROMPT},
-                {"role": "user", "content": user_msg},
-            ],
-            max_tokens=300,
-            temperature=0.3,
-        )
-        return resp.choices[0].message.content or ""
-    except Exception as exc:
-        logger.error("OpenAI summary failed: %s", exc)
-        return ""
+    return await opus_call(get_system_prompt("dm"), user_msg, timeout=60)
 
 
 async def fetch_recent_events(
@@ -328,6 +323,22 @@ def main() -> None:
 
     app.add_handler(CommandHandler("status", cmd_status))
 
+    # Group reader — store messages from supergroup in rolling buffer.
+    app.add_handler(
+        MessageHandler(
+            filters.Chat(chat_id=_GROUP_CHAT_ID) & filters.TEXT,
+            handle_group_message,
+        )
+    )
+
+    # Dave's DM — bidirectional conversation + /post relay + STOP MAX kill.
+    app.add_handler(
+        MessageHandler(
+            filters.Chat(chat_id=cfg.dave_chat_id) & filters.TEXT,
+            handle_dm,
+        )
+    )
+
     interval_seconds = cfg.digest_interval_minutes * 60
     app.job_queue.run_repeating(
         _make_digest_job(cfg),
@@ -336,9 +347,9 @@ def main() -> None:
         name="digest",
     )
 
+    tier = int(os.environ.get("COO_APPROVAL_TIER", "0"))
     logger.info(
-        "COO bot starting — digest interval=%dm, dave_chat_id=%s",
-        cfg.digest_interval_minutes,
-        cfg.dave_chat_id,
+        "Max COO bot starting — digest interval=%dm, dave_chat_id=%s, tier=%d",
+        cfg.digest_interval_minutes, cfg.dave_chat_id, tier,
     )
     app.run_polling(drop_pending_updates=True)

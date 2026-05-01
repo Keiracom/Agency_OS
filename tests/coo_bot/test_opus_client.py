@@ -9,15 +9,13 @@ import pytest
 from src.coo_bot.opus_client import opus_call
 
 
-@pytest.fixture
-def event_loop():
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
-
-
 def _run(coro):
-    return asyncio.get_event_loop().run_until_complete(coro)
+    """Run an async coro on a fresh event loop — avoids cross-test pollution."""
+    loop = asyncio.new_event_loop()
+    try:
+        return loop.run_until_complete(coro)
+    finally:
+        loop.close()
 
 
 def test_happy_path():

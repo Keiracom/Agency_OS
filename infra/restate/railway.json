@@ -1,0 +1,11 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "dockerfilePath": "infra/restate/Dockerfile"
+  },
+  "deploy": {
+    "startCommand": "restate-server",
+    "healthcheckPath": "/health",
+    "healthcheckTimeout": 30
+  }
+}

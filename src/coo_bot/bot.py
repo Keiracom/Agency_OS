@@ -52,8 +52,8 @@ async def generate_summary(events: list[dict[str, Any]], window_hours: int = 1) 
     client = openai.AsyncOpenAI(api_key=cfg.openai_api_key)
 
     event_lines = "\n".join(
-        f"- [{e.get('event_type', 'unknown')}] {e.get('message', '')} "
-        f"(callsign={e.get('callsign', '?')}, ts={e.get('created_at', '')})"
+        f"- [{e.get('event_type', 'unknown')}] {e.get('event_data', {})} "
+        f"(callsign={e.get('callsign', '?')}, ts={e.get('timestamp', '')})"
         for e in events[:30]  # cap at 30 to stay under token budget
     )
     user_msg = (
@@ -89,11 +89,11 @@ async def fetch_recent_events(
 
     since: datetime = datetime.now(UTC) - timedelta(hours=hours)
     query = """
-        SELECT event_type, message, callsign, created_at, metadata
+        SELECT event_type, event_data, callsign, timestamp, tool_name, directive_id
         FROM public.governance_events
-        WHERE created_at > $1
-        ORDER BY created_at DESC
-        LIMIT 200
+        WHERE timestamp > $1
+        ORDER BY timestamp DESC
+        LIMIT 500
     """
     try:
         conn: asyncpg.Connection = await asyncpg.connect(database_url)

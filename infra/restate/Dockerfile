@@ -1,0 +1,3 @@
+FROM restatedev/restate:latest
+EXPOSE 8080 9070
+ENV RESTATE_OBSERVABILITY__LOG__FORMAT=Json

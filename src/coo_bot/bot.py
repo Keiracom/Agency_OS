@@ -96,7 +96,7 @@ async def fetch_recent_events(
         LIMIT 500
     """
     try:
-        conn: asyncpg.Connection = await asyncpg.connect(database_url)
+        conn: asyncpg.Connection = await asyncpg.connect(database_url, statement_cache_size=0)
         try:
             rows = await conn.fetch(query, since)
             return [dict(r) for r in rows]

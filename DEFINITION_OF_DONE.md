@@ -64,6 +64,21 @@ Not a summary. Not a tick. Verbatim output.
 [ ] C4. PR URL
     Paste full GitHub PR URL. No shortlinks.
 
+[ ] C5. Gatekeeper verdict obtained (GOV-PHASE3)
+    Command: scripts/check_claim.py --help to see flags.
+    Run check_claim.py with the directive's callsign,
+    directive_id, claim_text, evidence (raw verification
+    output with '$ ' prefix), target_files, and the four
+    store_writes (manual / ceo_memory / cis_directive_metrics
+    / drive_mirror — only those that apply to this directive).
+    Paste verbatim: verdict line + the governance_events row
+    inserted (callsign, event_type, directive_id, allow,
+    reasons).
+    Required: allow=true. If allow=false, address the
+    deny_reasons and re-run the gate before pasting any
+    completion claim. Deny verdict triggers a TG alert
+    automatically — do not suppress it.
+
 ---
 
 ## THREE-STORE COMPLETION

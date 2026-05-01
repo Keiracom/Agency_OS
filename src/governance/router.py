@@ -24,7 +24,7 @@ import logging
 import os
 import sys
 from dataclasses import asdict, dataclass
-from typing import Any, Callable, Literal
+from typing import Any, Literal
 
 from src.telegram_bot.openai_cost_logger import log_openai_call
 

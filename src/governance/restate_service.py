@@ -16,7 +16,7 @@ from __future__ import annotations
 from typing import Any
 
 # restate-sdk imports — requires restate-sdk>=0.5.0
-from restate import VirtualObject, ObjectContext
+from restate import ObjectContext, VirtualObject
 from restate.server import app as restate_app
 
 # ---------------------------------------------------------------------------

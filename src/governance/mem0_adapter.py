@@ -7,7 +7,7 @@ PURPOSE: Mem0 integration adapter — wraps official mem0 SDK with cap tracking,
 import json
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ def _append_usage(op: str, callsign: str, count: int = 1) -> None:
     try:
         os.makedirs(os.path.dirname(MEM0_USAGE_LOG), exist_ok=True)
         entry = {
-            "ts": datetime.now(timezone.utc).isoformat(),
+            "ts": datetime.now(datetime.UTC).isoformat(),
             "op": op,
             "callsign": callsign,
             "count": count,
@@ -40,7 +40,7 @@ def get_monthly_usage(period: str | None = None) -> dict:
     Defaults to current month. Returns {adds, searches, period}.
     """
     if period is None:
-        period = datetime.now(timezone.utc).strftime("%Y-%m")
+        period = datetime.now(datetime.UTC).strftime("%Y-%m")
     adds = searches = 0
     try:
         with open(MEM0_USAGE_LOG, encoding="utf-8") as fh:
@@ -85,7 +85,7 @@ class Mem0Adapter:
     def __init__(self) -> None:
         api_key = os.environ.get("MEM0_API_KEY")
         if not api_key:
-            raise EnvironmentError(
+            raise OSError(
                 "MEM0_API_KEY env var is not set. "
                 "Set it to your Mem0 API key before using Mem0Adapter."
             )

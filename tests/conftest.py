@@ -62,6 +62,11 @@ def _cleanup_polluted_modules():
                 if "takes 0 positional arguments" in str(e):
                     # This IS the polluted lambda — delete it so fresh import happens
                     del sys.modules["src.memory.store"]
+            except ValueError:
+                # Real store validates source_type — 'test' is invalid, which
+                # confirms this is the production store, not the polluted lambda.
+                # No action needed.
+                pass
     yield
     # Cleanup after all tests (optional, for hygiene)
 

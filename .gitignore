@@ -136,3 +136,4 @@ screenshot-to-code/
 # ~/.config/agency-os/.manual_mirror_state (M11-2 — shared across clones).
 # This entry remains so any pre-fix per-worktree file gets ignored too.
 scripts/.manual_mirror_state
+IDENTITY.md

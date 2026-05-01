@@ -19,13 +19,15 @@ SUPABASE_KEY: str = (
 )
 OPENAI_API_KEY: str = os.environ.get("OPENAI_API_KEY", "")
 
-MAX_RELEVANCE_RESULTS: int = 5
+MAX_RELEVANCE_RESULTS: int = int(os.environ.get("LISTENER_TOP_K", "3"))
 
 # Similarity threshold for semantic retrieval.
-# Raised 0.35 → 0.50 (2026-04-24) to suppress low-relevance matches that added
-# 200+ tokens of noise per brief without informing decisions. Override with
-# LISTENER_SIM_THRESHOLD env var if tuning further.
-SIM_THRESHOLD: float = float(os.environ.get("LISTENER_SIM_THRESHOLD", "0.50"))
+# Raised 0.35 → 0.50 (2026-04-24) to suppress low-relevance matches.
+# Raised 0.50 → 0.55 (2026-05-01) after Dave flagged ~50K tokens/session of
+# memory-brief noise where sim 0.50–0.55 results were topically off (Pipeline F
+# audit memories, ContactOut credit model, etc. injected into governance threads).
+# Override with LISTENER_SIM_THRESHOLD env var if tuning further.
+SIM_THRESHOLD: float = float(os.environ.get("LISTENER_SIM_THRESHOLD", "0.55"))
 
 # Context attachment toggles. Git + repo context averaged ~200 tokens each per
 # inbound message with low cited-rate. Default off 2026-04-24; re-enable via env

@@ -24,14 +24,54 @@ import logging
 import os
 import sys
 from dataclasses import asdict, dataclass
+from datetime import datetime, timezone
 from typing import Any, Literal
 
-from src.telegram_bot.openai_cost_logger import log_openai_call
+from src.telegram_bot.openai_cost_logger import log_openai_call, COST_LOG_PATH
 
 logger = logging.getLogger(__name__)
 
 Audience = Literal["dave", "peer", "system"]
 DEFAULT_MODEL = "gpt-4o-mini"
+_USD_TO_AUD = 1.55
+_DEFAULT_DAILY_CAP_AUD = 5.00
+
+
+def _daily_cost_usd_today() -> float:
+    """Sum estimated_cost_usd from COST_LOG_PATH for current UTC date. Best-effort."""
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    total = 0.0
+    try:
+        with open(COST_LOG_PATH, encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    entry = json.loads(line)
+                    if entry.get("ts", "").startswith(today):
+                        total += float(entry.get("estimated_cost_usd", 0))
+                except (json.JSONDecodeError, ValueError):
+                    continue
+    except FileNotFoundError:
+        pass
+    except Exception as exc:
+        logger.warning("router: cost cap read failed: %s", exc)
+    return total
+
+
+def _over_daily_cap() -> bool:
+    """Return True if today's OpenAI spend (converted to AUD) exceeds ROUTER_DAILY_CAP_AUD."""
+    cap_aud = float(os.environ.get("ROUTER_DAILY_CAP_AUD", _DEFAULT_DAILY_CAP_AUD))
+    spent_aud = _daily_cost_usd_today() * _USD_TO_AUD
+    if spent_aud >= cap_aud:
+        logger.warning(
+            "router: daily cap reached ($%.4f AUD of $%.2f AUD limit); "
+            "skipping OpenAI classifier",
+            spent_aud, cap_aud,
+        )
+        return True
+    return False
 
 
 # ── Classifier prompt ────────────────────────────────────────────────────────
@@ -132,6 +172,8 @@ def classify(
         text = text[:8000]
 
     cs = callsign or os.environ.get("CALLSIGN") or "unknown"
+    if _over_daily_cap():
+        return RoutingDecision(audience="peer", force_tg=False)
     if client is None:
         client = _build_openai_client()
     if client is None:

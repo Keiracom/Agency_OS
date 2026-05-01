@@ -14,6 +14,7 @@ from src.governance.coordinator import (
     ClaimRecord,
     MergerVerdict,
     _heuristic_dsae_classify,
+    check_conflict,
     claim,
     list_active_claims,
     merge_drafts,
@@ -195,6 +196,44 @@ def test_heuristic_dsae_classify_different_defaults_to_differ():
     available, surface DIFFER so Dave sees both drafts."""
     out = _heuristic_dsae_classify("body A", "body B")
     assert out.kind == "differ"
+
+
+# ── check_conflict() tests ─────────────────────────────────────────────────
+
+def test_check_conflict_finds_peer_claim():
+    """When a peer (different callsign) has an active claim on the target path,
+    check_conflict returns that claim dict."""
+    future = (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat()
+    rows = [
+        {"id": "peer-1", "callsign": "atlas", "action": "commit",
+         "target_path": "src/foo.py", "claimed_at": "x", "released_at": None,
+         "status": "active", "expires_at": future, "metadata": None},
+    ]
+    client = _fake_supabase_client(select_rows=rows)
+    result = check_conflict("orion", "src/foo.py", client=client)
+    assert result is not None
+    assert result["callsign"] == "atlas"
+    assert result["id"] == "peer-1"
+
+
+def test_check_conflict_ignores_own_claim():
+    """Own claims on the target path do not count as conflicts."""
+    future = (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat()
+    rows = [
+        {"id": "own-1", "callsign": "orion", "action": "commit",
+         "target_path": "src/bar.py", "claimed_at": "x", "released_at": None,
+         "status": "active", "expires_at": future, "metadata": None},
+    ]
+    client = _fake_supabase_client(select_rows=rows)
+    result = check_conflict("orion", "src/bar.py", client=client)
+    assert result is None
+
+
+def test_check_conflict_returns_none_on_clean():
+    """No claims at all → no conflict."""
+    client = _fake_supabase_client(select_rows=[])
+    result = check_conflict("orion", "src/baz.py", client=client)
+    assert result is None
 
 
 def test_merge_drafts_no_classifier_no_api_key_uses_heuristic(monkeypatch):

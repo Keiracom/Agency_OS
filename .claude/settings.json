@@ -48,6 +48,18 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/elliotbot/clawd/venv/bin/python3 scripts/governance_router.py",
+            "timeout": 10
+          }
+        ]
+      }
     ]
   },
   "mcpServers": {

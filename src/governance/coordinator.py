@@ -35,7 +35,7 @@ import logging
 import os
 from collections.abc import Callable
 from dataclasses import asdict, dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Literal
 
 logger = logging.getLogger(__name__)
@@ -113,7 +113,7 @@ def claim(
             "coordinator: no Supabase client available; cannot claim"
         )
     expires_at = (
-        datetime.now(datetime.UTC) + timedelta(seconds=expires_in_seconds)
+        datetime.now(timezone.utc) + timedelta(seconds=expires_in_seconds)
     ).isoformat()
     payload = {
         "callsign": callsign,
@@ -140,7 +140,7 @@ def release(claim_id: str, *, client: Any | None = None) -> bool:
         client = _build_supabase_client()
     if client is None:
         raise RuntimeError("coordinator: no Supabase client available; cannot release")
-    now_iso = datetime.now(datetime.UTC).isoformat()
+    now_iso = datetime.now(timezone.utc).isoformat()
     response = (
         client.table("coordinator_claims")
         .update({"status": "released", "released_at": now_iso})
@@ -170,7 +170,7 @@ def list_active_claims(
     response = query.execute()
     rows = getattr(response, "data", None) or []
     out: list[ClaimRecord] = []
-    now = datetime.now(datetime.UTC)
+    now = datetime.now(timezone.utc)
     for row in rows:
         rec = ClaimRecord.from_row(row)
         # Drop expired rows from the active view (best-effort filter; the
@@ -183,6 +183,27 @@ def list_active_claims(
             pass
         out.append(rec)
     return out
+
+
+def check_conflict(
+    callsign: str,
+    target_path: str,
+    *,
+    client: Any | None = None,
+) -> dict[str, Any] | None:
+    """Return the first peer claim on target_path not from callsign, or None if no conflict."""
+    claims = list_active_claims(target_path=target_path, client=client)
+    for claim_rec in claims:
+        if claim_rec.callsign != callsign and claim_rec.status == "active":
+            return {
+                "id": claim_rec.id,
+                "callsign": claim_rec.callsign,
+                "action": claim_rec.action,
+                "target_path": claim_rec.target_path,
+                "status": claim_rec.status,
+                "expires_at": claim_rec.expires_at,
+            }
+    return None
 
 
 def subscribe_realtime(

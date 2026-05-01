@@ -190,8 +190,8 @@ def write_memory(summary: dict) -> dict:
                 key = f"ceo:session_end_{datetime.now(UTC).date().isoformat()}_{os.environ.get('CALLSIGN', 'unknown')}"
                 await conn.execute(
                     """
-                    INSERT INTO ceo_memory (key, value, created_at, updated_at)
-                    VALUES ($1, $2::jsonb, NOW(), NOW())
+                    INSERT INTO ceo_memory (key, value, updated_at)
+                    VALUES ($1, $2::jsonb, NOW())
                     ON CONFLICT (key) DO UPDATE
                       SET value = EXCLUDED.value, updated_at = NOW()
                     """,

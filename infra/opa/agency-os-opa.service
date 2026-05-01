@@ -1,0 +1,13 @@
+[Unit]
+Description=Agency OS OPA Policy Server
+After=network.target
+
+[Service]
+ExecStart=/home/elliotbot/.local/bin/opa run --server /home/elliotbot/clawd/Agency_OS/infra/opa/policies/ --addr :8181
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

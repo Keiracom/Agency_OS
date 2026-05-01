@@ -39,12 +39,22 @@ def _build_mock_client(rows):
     return client
 
 
+def _run(coro):
+    """Run an async coro on a fresh event loop — avoids cross-test pollution."""
+    import asyncio
+    loop = asyncio.new_event_loop()
+    try:
+        return loop.run_until_complete(coro)
+    finally:
+        loop.close()
+
+
 def test_supabase_returns_rows():
     from src.coo_bot import memory_retriever as mr
 
     rows = [{"id": "1", "content": "hello world", "source_type": "research"}]
     with patch.object(mr, "_supabase_client", return_value=_build_mock_client(rows)):
-        out = mr.get_relevant_memories("hello", limit=5)
+        out = _run(mr.get_relevant_memories("hello", limit=5))
     assert out == rows
 
 
@@ -52,7 +62,7 @@ def test_empty_result_returns_empty_list():
     from src.coo_bot import memory_retriever as mr
 
     with patch.object(mr, "_supabase_client", return_value=_build_mock_client([])):
-        assert mr.get_relevant_memories("nothing-matches") == []
+        assert _run(mr.get_relevant_memories("nothing-matches")) == []
         assert mr.get_high_value_memories(callsign="aiden") == []
         assert mr.get_ceo_memory_keys("ceo:") == []
 
@@ -63,7 +73,7 @@ def test_exception_returns_empty_list():
     failing_client = MagicMock()
     failing_client.table.side_effect = RuntimeError("boom")
     with patch.object(mr, "_supabase_client", return_value=failing_client):
-        assert mr.get_relevant_memories("anything") == []
+        assert _run(mr.get_relevant_memories("anything")) == []
         assert mr.get_high_value_memories() == []
         assert mr.get_ceo_memory_keys("ceo:") == []
 
@@ -87,7 +97,7 @@ def test_hybrid_backend_uses_memory_listener_path(monkeypatch):
     with patch.dict(
         "sys.modules", {"src.telegram_bot.memory_listener": fake_module},
     ):
-        out = mr.get_relevant_memories("test query", limit=5)
+        out = _run(mr.get_relevant_memories("test query", limit=5))
     assert out == expected
 
 
@@ -111,5 +121,5 @@ def test_supabase_fallback_when_memory_listener_unavailable(monkeypatch):
             mr, "_supabase_client",
             return_value=_build_mock_client(fallback_rows),
         ):
-            out = mr.get_relevant_memories("query")
+            out = _run(mr.get_relevant_memories("query"))
     assert out == fallback_rows

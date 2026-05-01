@@ -81,20 +81,21 @@ def _supabase_ilike_search(query: str, limit: int) -> list[dict[str, Any]]:
         return []
 
 
-def get_relevant_memories(query: str, limit: int = 5) -> list[dict[str, Any]]:
+async def get_relevant_memories(query: str, limit: int = 5) -> list[dict[str, Any]]:
     """Load relevant agent_memories rows for `query`.
 
     Routes through memory_listener.recall_via_mem0 when MEMORY_RECALL_BACKEND
-    in ('mem0','hybrid'), otherwise direct Supabase ILIKE.
+    in ('mem0','hybrid'), otherwise direct Supabase ILIKE. Async because
+    callers run inside the bot's event loop — we must await recall_via_mem0
+    rather than spawn a nested asyncio.run() (which raises
+    'cannot be called from a running event loop').
     """
     backend = os.environ.get("MEMORY_RECALL_BACKEND", "supabase").lower()
     if backend in ("mem0", "hybrid"):
         try:
             from src.telegram_bot.memory_listener import recall_via_mem0
             callsign = os.environ.get("CALLSIGN", "aiden")
-            return asyncio.run(
-                recall_via_mem0(query, callsign=callsign, limit=limit)
-            )
+            return await recall_via_mem0(query, callsign=callsign, limit=limit)
         except Exception as exc:
             logger.warning(
                 "[memory_retriever] memory_listener path failed (%s); "
@@ -160,9 +161,13 @@ def _format_block(title: str, rows: list[dict[str, Any]]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def assemble_context(query: str) -> str:
-    """Build the combined context block injected into the Opus prompt."""
-    relevant = get_relevant_memories(query)
+async def assemble_context(query: str) -> str:
+    """Build the combined context block injected into the Opus prompt.
+
+    Async because get_relevant_memories is async (must await recall_via_mem0
+    inside the bot's running event loop).
+    """
+    relevant = await get_relevant_memories(query)
     high_value = get_high_value_memories()
     ceo_keys = get_ceo_memory_keys("ceo:")
     parts = [

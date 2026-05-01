@@ -27,7 +27,10 @@ logger = logging.getLogger(__name__)
 
 _CLAUDE_BIN = shutil.which("claude") or "/home/elliotbot/.local/bin/claude"
 _DEFAULT_MODEL = "claude-opus-4-6"
-_DEFAULT_TIMEOUT = 30
+# Opus latency on Max plan is 5-15s base; with memory context payload + DM
+# response generation, observed >30s in production. Bumped to 90s — still
+# inside the LAW VII >60s async-pattern threshold the bot already uses.
+_DEFAULT_TIMEOUT = 90
 
 
 async def opus_call(

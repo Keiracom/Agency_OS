@@ -22,13 +22,16 @@ DEFAULT_PROJECT = os.environ.get("PHOENIX_PROJECT", "agency-os-governance")
 
 
 def init_tracer(project: str = DEFAULT_PROJECT, endpoint: str = DEFAULT_ENDPOINT):
-    """Register a Phoenix OTel tracer. Returns the tracer or None on failure.
+    """Register a Phoenix OTel tracer. Returns a tracer or None on failure.
 
-    Wrapped — observability never blocks the caller.
+    `phoenix.otel.register()` returns a TracerProvider — call `.get_tracer()` on
+    it to get the actual Tracer that has `start_as_current_span`. Wrapped —
+    observability never blocks the caller.
     """
     try:
         from phoenix.otel import register
-        return register(project_name=project, endpoint=endpoint)
+        provider = register(project_name=project, endpoint=endpoint)
+        return provider.get_tracer(__name__)
     except Exception as exc:  # pragma: no cover - import / network failure
         logger.warning("init_tracer failed (%s)", exc)
         return None

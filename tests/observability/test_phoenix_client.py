@@ -67,3 +67,18 @@ def test_init_tracer_returns_none_when_phoenix_missing():
         with patch.dict("sys.modules", {"phoenix.otel": None}):
             tracer = phoenix_client.init_tracer()
             assert tracer is None
+
+
+def test_init_tracer_calls_get_tracer_on_provider():
+    """register() returns TracerProvider; init_tracer must call .get_tracer()
+    on it, not return the provider directly (which lacks
+    start_as_current_span)."""
+    fake_tracer = MagicMock()
+    fake_provider = MagicMock()
+    fake_provider.get_tracer.return_value = fake_tracer
+    fake_register = MagicMock(return_value=fake_provider)
+    with patch.dict("sys.modules", {"phoenix.otel": MagicMock(register=fake_register)}):
+        tracer = phoenix_client.init_tracer(project="p", endpoint="https://x/v1/traces")
+    fake_register.assert_called_once_with(project_name="p", endpoint="https://x/v1/traces")
+    fake_provider.get_tracer.assert_called_once()
+    assert tracer is fake_tracer

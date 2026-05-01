@@ -71,16 +71,17 @@ Never call external services ad-hoc. No credential hunting.
 
 Session START query:
 ```sql
-SELECT type, LEFT(content, 200) as preview, created_at::date as date
-FROM elliot_internal.memories
-WHERE deleted_at IS NULL AND type IN ('daily_log', 'core_fact')
+SELECT source_type AS type, LEFT(content, 200) AS preview, created_at::date AS date
+FROM public.agent_memories
+WHERE callsign = 'elliot' AND state != 'archived'
+  AND source_type IN ('daily_log', 'core_fact')
 ORDER BY created_at DESC LIMIT 10;
 ```
 
 Session END — write daily_log before closing:
 ```sql
-INSERT INTO elliot_internal.memories (id, type, content, metadata, created_at)
-VALUES (gen_random_uuid(), 'daily_log', '<summary: what was done, PRs, decisions, blockers>', '{}'::jsonb, NOW());
+INSERT INTO public.agent_memories (id, callsign, source_type, content, typed_metadata, created_at, valid_from, state)
+VALUES (gen_random_uuid(), 'elliot', 'daily_log', '<summary: what was done, PRs, decisions, blockers>', '{}'::jsonb, NOW(), NOW(), 'confirmed');
 ```
 
 ## Governance Laws (Active)

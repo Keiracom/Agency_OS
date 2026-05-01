@@ -12,8 +12,8 @@ reason). Performs three best-effort steps:
      fresh content to the Drive doc.
   2. Writes a compact session-end summary into public.ceo_memory keyed
      `ceo:session_end_<YYYY-MM-DD>`.
-  3. Writes a daily_log row into elliot_internal.memories so the next
-     session's start-up query finds the trail.
+  3. Writes a daily_log row into public.agent_memories (unified SSOT) so
+     the next session's start-up query finds the trail.
 
 Non-blocking: every step is wrapped in try/except so a failure in one
 step does NOT prevent the next from running, and the hook ALWAYS exits
@@ -171,7 +171,7 @@ def _build_summary(hook_input: dict, mirror_report: dict) -> dict:
 
 
 def write_memory(summary: dict) -> dict:
-    """Write to ceo_memory + elliot_internal.memories. Returns counts."""
+    """Write to ceo_memory + public.agent_memories. Returns counts."""
     out = {"ceo_memory_upserted": False, "daily_log_written": False}
     dsn = _supabase_dsn()
     if not dsn:
@@ -204,13 +204,16 @@ def write_memory(summary: dict) -> dict:
                     f"MANUAL mirror: changed={summary['manual_mirror'].get('changed')}, "
                     f"invoked={summary['manual_mirror'].get('mirror_invoked')}."
                 )
+                callsign = os.environ.get("CALLSIGN", "elliot")
                 await conn.execute(
                     """
-                    INSERT INTO elliot_internal.memories
-                      (id, type, content, metadata, created_at)
-                    VALUES (gen_random_uuid(), 'daily_log', $1, $2::jsonb, NOW())
+                    INSERT INTO public.agent_memories
+                      (id, callsign, source_type, content, typed_metadata,
+                       created_at, valid_from, state)
+                    VALUES (gen_random_uuid(), $1, 'daily_log', $2, $3::jsonb,
+                            NOW(), NOW(), 'confirmed')
                     """,
-                    content, json.dumps(summary),
+                    callsign, content, json.dumps(summary),
                 )
                 out["daily_log_written"] = True
             finally:

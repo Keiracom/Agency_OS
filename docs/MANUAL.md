@@ -23,15 +23,16 @@ Revenue model for BU: API subscriptions, Salesforce/HubSpot marketplace, bulk an
 
 ## SECTION 2 — CURRENT STATE
 
-**Last directive:** CD-PLAYER-V1 (streaming pipeline + budget enforcement + BU/CIS audit + closed-loop scoping)
+**Last directive:** GOVERNANCE-PHASE1-2-3 (recorder hooks + OPA Gatekeeper + check_claim.py CLI gate)
 **Pipeline F status:** P5 COMPLETE, PHASE 1.5 COMPLETE, DASHBOARD DESIGN COMPLETE, CD PLAYER V1 SHIPPED
+**Governance status:** PHASE 1+1.5+2+3 COMPLETE. All hooks writing to governance_events. OPA Gatekeeper live (systemd). check_claim.py CLI gate + DoD C5 shipped. PRs #474-482 merged 2026-05-01.
 **Phase 1.5 result:** Operational autonomy achieved. Clone architecture live. Dual-concur governance ratified.
 **Dashboard result:** Master Agency Desk v10 shipped (2344 lines). 5 concepts explored. Demo archaeology revealed product is a Sales Intelligence Briefing System.
 **CD Player v1 result:** Pipeline_orchestrator unified with cohort_runner proven stages. Per-domain streaming, SSECardStreamer, capacity skip (Stage 6), drop-triggered refill (8% default). Budget P0 fix: 4-layer defence in depth (admission control + per-stage gate + max_in_flight + run-level kill). Budget incident: $73 AUD burned on T5 live test — fixed structurally.
 **Next phase:** BU Closed-Loop Engine (ORION, free-mode) + Phase 2.1 dashboard wiring (ATLAS) — parallel tracks
 **Test baseline:** 2152 passed, 0 failed, 28 skipped
 **BU status:** 8,593 businesses (2,747 new dental from T5 recovery), 253 emails, 90 mobiles, 508 BDMs. 4 full cards, 162 actionable (email+LinkedIn).
-**Last merged PR:** #408 (listener tuning v1)
+**Last merged PR:** #482 (Phase 3 check_claim.py CLI + OPA systemd)
 **Team roster:** ELLIOT + AIDEN + ATLAS + ORION + SCOUT (5 sessions)
 
 ### BU + CIS Audit (2026-04-25)

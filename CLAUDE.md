@@ -84,51 +84,24 @@ INSERT INTO public.agent_memories (id, callsign, source_type, content, typed_met
 VALUES (gen_random_uuid(), 'elliot', 'daily_log', '<summary: what was done, PRs, decisions, blockers>', '{}'::jsonb, NOW(), NOW(), 'confirmed');
 ```
 
-## Governance Laws (Active)
+## Governance — 7 Consolidated Rules (Ratified 2026-05-01)
 
-| Law | Rule |
-|-----|------|
-| LAW I-A | Architecture First — cat ARCHITECTURE.md before any code decision |
-| LAW II | Australia First — all financial outputs in $AUD (1 USD = 1.55 AUD) |
-| LAW III | Justification Required — Governance Trace on every decision |
-| LAW IV | Non-Coder Bridge — no code blocks >20 lines without Conceptual Summary |
-| LAW V | 50-Line Protection — if task requires >50 lines, spawn sub-agent |
-| LAW VI | Skills-First Operations — use skill -> MCP -> exec hierarchy |
-| LAW VII | Timeout Protection — use async patterns for >60s tasks |
-| LAW VIII | GitHub Visibility — all work pushed before reporting complete |
-| LAW IX | Session Memory — Supabase is SOLE persistent memory |
-| LAW XI | Orchestrate — Elliottbot delegates, never executes task work directly |
-| LAW XII | Skills-First Integration — direct calls to src/integrations/ outside skill execution are forbidden |
-| LAW XIII | Skill Currency Enforcement — skill files must be updated in the same PR as any service call change; update noted in Manual |
-| LAW XIV | Raw Output Mandate — paste verbatim terminal output, never summarise |
-| LAW XV | Four-Store Completion — docs/MANUAL.md + ceo_memory + cis_directive_metrics + Google Drive mirror |
-| LAW XV-A | Skills Are Mandatory — cat skill file before any matching task |
-| LAW XV-B | DoD Is Mandatory — cat DEFINITION_OF_DONE.md before reporting complete |
-| LAW XV-C | Governance Docs Immutable — never recreate/modify without explicit CEO directive |
-| LAW XV-D | Step 0 RESTATE — mandatory restate before any directive execution, no exceptions |
-| GOV-8 | Maximum Extraction Per Call — every API response captured in full, written to BU regardless of card eligibility, never re-fetched if prior stage received it |
-| GOV-9 | Two-Layer Directive Scrutiny — every directive triggers Layer 2 CTO scrutiny before Step 0. Report DIRECTIVE SCRUTINY — N GAPS FOUND or CLEAR before any execution |
-| GOV-10 | Resolve-Now-Not-Later — fix bounded gaps in current PR, not follow-up directives |
-| GOV-11 | Structural Audit Before Validation — stage audit within 7 days before any N>=20 validation run |
+**Canonical document:** `docs/governance/CONSOLIDATED_RULES.md`
 
-> **Shared governance:** laws that apply to every callsign (e.g. LAW XVII — Callsign Discipline, Directive Acknowledgement, Claim-Before-Touch on Shared Files) live in `~/.claude/CLAUDE.md §Shared Governance Laws`. Treat that as authoritative for all-callsign rules; worktree laws above are Agency_OS-main specific.
-| GOV-12 | Gates As Code Not Comments — runtime enforcement required, not documentation-only |
+| # | Rule | Principle |
+|---|------|-----------|
+| 1 | VERIFY | Truth over speed — run verification before claiming done |
+| 2 | COORDINATE | No overlap, no surprise — claim before touch, peer before dispatch |
+| 3 | APPROVE | Two checkpoints only — queue approval + merge approval |
+| 4 | ORCHESTRATE | Delegate, don't execute — sub-agents build, bots verify |
+| 5 | COMMUNICATE | Right channel, right density — TG group, concise, always propose |
+| 6 | GOVERN | Rules are code, not comments — runtime enforcement required |
+| 7 | BUSINESS | Australia-first, pre-revenue honest — $AUD, no fake social proof |
 
-## Directive + Validation Governance
-
-### GOV-9 — Directive Scrutiny (MANDATORY)
-
-Every directive received triggers Layer 2 scrutiny pass before Step 0. Scrutinise for: missing capabilities, missing config, missing instrumentation, contradicted assumptions, recently-merged code that changes the path. Report gaps as `DIRECTIVE SCRUTINY — N GAPS FOUND` with gap list, or `DIRECTIVE SCRUTINY — CLEAR` before proceeding to Step 0 RESTATE. This is mandatory regardless of how thorough the CEO's Layer 1 drafting was.
-
-### GOV-11 — Structural Audit Before Validation (MANDATORY)
-
-Before any cohort run intended to validate pipeline behavior at scale (N>=20 domains, intended to inform ship/no-ship decision), a structural stage audit must complete in the prior 7 days. Audit covers: data flow gaps, GOV-8 violations, dead code paths, gate enforcement vs documentation, unfilled template tokens, cascade failure risk per stage. No validation run without recent audit on file.
-
-### GOV-12 — Gates As Code (MANDATORY)
-
-Any gate specified in a directive must be runtime enforcement. Reports of "gate added" require evidence of executable conditional, not comment block. Gates as comments create false confidence.
-
-> **Shared governance:** laws that apply to every callsign (e.g. LAW XVII — Callsign Discipline, Directive Acknowledgement, Claim-Before-Touch on Shared Files) live in `~/.claude/CLAUDE.md §Shared Governance Laws`. Treat that as authoritative for all-callsign rules.
+> **Full rule text** (triggers, satisfied-by, violations, absorbs): read `docs/governance/CONSOLIDATED_RULES.md`.
+> **Shared governance** (all callsigns): `~/.claude/CLAUDE.md §Shared Governance Laws`.
+> **Infrastructure procedures:** separate operational doc (not governance).
+> **Dead References:** see ARCHITECTURE.md.
 
 ## Dead References (Do Not Use)
 

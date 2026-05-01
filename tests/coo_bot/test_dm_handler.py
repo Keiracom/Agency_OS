@@ -49,18 +49,23 @@ def test_resume_max_clears_state():
         assert "Resumed" in update.message.reply_text.call_args[0][0]
 
 
-def test_post_command_calls_group_writer():
-    """'/post hello world' delegates to group_writer."""
+def test_relay_intent_calls_group_writer():
+    """When classifier returns relay intent, post_to_group is called and DM confirms."""
     mock_post = AsyncMock(return_value=True)
-    with patch.dict("sys.modules", {"src.coo_bot.group_writer": MagicMock(post_to_group=mock_post)}):
-        update = _make_update("/post hello world")
-        _run(handle_dm(update, MagicMock()))
+    relay_result = {"intent": "relay", "relay_text": "approve that PR"}
+    with patch("src.coo_bot.dm_handler._classify_intent", new_callable=AsyncMock, return_value=relay_result), \
+         patch("src.coo_bot.dm_handler._load_context", new_callable=AsyncMock, return_value="context"):
+        update = _make_update("tell them to approve that PR")
+        with patch.dict("sys.modules", {"src.coo_bot.group_writer": MagicMock(post_to_group=mock_post)}):
+            _run(handle_dm(update, MagicMock()))
         assert "Posted" in update.message.reply_text.call_args[0][0]
 
 
-def test_regular_text_calls_opus():
-    """Regular DM text calls opus_call and replies."""
-    with patch("src.coo_bot.dm_handler.opus_call", new_callable=AsyncMock, return_value="Max response") as mock_opus, \
+def test_private_intent_calls_opus():
+    """When classifier returns private intent, opus_call is invoked for response."""
+    private_result = {"intent": "private", "relay_text": None}
+    with patch("src.coo_bot.dm_handler._classify_intent", new_callable=AsyncMock, return_value=private_result), \
+         patch("src.coo_bot.dm_handler.opus_call", new_callable=AsyncMock, return_value="Max response") as mock_opus, \
          patch("src.coo_bot.dm_handler._load_context", new_callable=AsyncMock, return_value="context"):
         update = _make_update("what's happening?")
         _run(handle_dm(update, MagicMock()))
@@ -70,7 +75,9 @@ def test_regular_text_calls_opus():
 
 def test_opus_failure_shows_fallback():
     """When opus_call returns '', show fallback message."""
-    with patch("src.coo_bot.dm_handler.opus_call", new_callable=AsyncMock, return_value="") as mock_opus, \
+    private_result = {"intent": "private", "relay_text": None}
+    with patch("src.coo_bot.dm_handler._classify_intent", new_callable=AsyncMock, return_value=private_result), \
+         patch("src.coo_bot.dm_handler.opus_call", new_callable=AsyncMock, return_value="") as mock_opus, \
          patch("src.coo_bot.dm_handler._load_context", new_callable=AsyncMock, return_value=""):
         update = _make_update("tell me something")
         _run(handle_dm(update, MagicMock()))

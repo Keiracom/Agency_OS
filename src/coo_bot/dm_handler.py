@@ -1,8 +1,9 @@
 """Max COO bot — DM handler (Dave ↔ Max private channel).
 
 Handles bidirectional DM conversation with Dave:
-- Dave sends message → Max loads context (memories + recent group buffer) → responds via Opus
-- Dave sends /post <text> → Max posts to group via group_writer
+- Dave sends message → intent classifier (Opus) decides relay vs private
+- relay: posts to group via group_writer, confirms in DM
+- private: loads full context + responds via Opus
 - Dave sends STOP MAX → Max drops to relay-only (Tier 0 emergency)
 
 Public API:
@@ -29,7 +30,6 @@ _COO_SYSTEM_PROMPT = (
     "You have access to the full history of agent activity via governance_events "
     "and agent_memories. You watch the group chat in real-time. "
     "Respond concisely and directly. Dave is the CEO — be useful, not verbose. "
-    "If Dave says '/post <text>' relay that text to the group (handled separately). "
     "If Dave asks what's happening, summarise recent group activity. "
     "If Dave asks for your opinion, give it honestly — you are his COO, not a yes-man."
 )
@@ -65,27 +65,38 @@ async def handle_dm(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         logger.info("RESUME MAX triggered by Dave")
         return
 
-    # /post command — relay to group
-    if text.startswith("/post "):
-        group_text = text[6:].strip()
-        if group_text:
-            # Import here to avoid circular — group_writer posts to group
-            try:
-                from src.coo_bot.group_writer import post_to_group
-                ok = await post_to_group(cfg.bot_token, group_text)
-                status = "Posted to group." if ok else "Failed to post."
-                await update.message.reply_text(status)
-            except Exception as exc:
-                await update.message.reply_text(f"Post failed: {exc}")
-        else:
-            await update.message.reply_text("Usage: /post <message to post to group>")
+    # Classify intent: relay to group or private response
+    try:
+        from src.coo_bot.group_handler import get_recent_messages
+        recent_msgs = get_recent_messages(limit=10)
+    except Exception:
+        recent_msgs = []
+    recent_group = "\n".join(
+        f"[{m.get('sender', '?')}] {m.get('text', '')[:100]}" for m in recent_msgs
+    )
+
+    intent = await _classify_intent(text, recent_group)
+
+    if intent.get("intent") == "relay":
+        relay_text = intent.get("relay_text") or text
+        try:
+            from src.coo_bot.group_writer import post_to_group
+            ok = await post_to_group(
+                cfg.bot_token, relay_text, dave_dm_id=update.message.message_id
+            )
+            if ok:
+                await update.message.reply_text(f"Posted to group: {relay_text}")
+            else:
+                await update.message.reply_text("Failed to post to group.")
+        except Exception as exc:
+            await update.message.reply_text(f"Post failed: {exc}")
         return
 
-    # Regular conversation — call Opus with context
+    # Private response — load full context + call Opus
     memory_context = await _load_context()
     user_msg = f"[Recent context]\n{memory_context}\n\n[Dave's message]\n{text}"
 
-    response = await opus_call(_COO_SYSTEM_PROMPT, user_msg, timeout=30)
+    response = await opus_call(_COO_SYSTEM_PROMPT, user_msg, timeout=90)
 
     if response:
         await update.message.reply_text(response)
@@ -93,6 +104,35 @@ async def handle_dm(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await update.message.reply_text(
             "I couldn't generate a response right now. Try again in a moment."
         )
+
+
+async def _classify_intent(text: str, recent_group: str) -> dict:
+    """Classify Dave's DM intent: 'relay' or 'private'.
+
+    Returns: {"intent": "relay"|"private", "relay_text": "..." or None}
+    """
+    import json
+    prompt = (
+        "You are Max's intent classifier. Dave DM'd you this message. "
+        "Based on the message content + recent group context, decide:\n"
+        "- 'relay': Dave wants this posted to the group (e.g. 'tell them X', "
+        "'approve that', 'merge it', direct instructions for agents)\n"
+        "- 'private': Dave wants a response from you in DM (questions, "
+        "'what do you think', 'summarise', opinions)\n\n"
+        "If relay: extract the exact text to post (clean it up for group "
+        "consumption but keep Dave's voice/intent).\n\n"
+        "Respond with ONLY valid JSON: {\"intent\": \"relay\"|\"private\", "
+        "\"relay_text\": \"text to post\" or null}\n\n"
+        f"Recent group context:\n{recent_group}\n\n"
+        f"Dave's DM: {text}"
+    )
+    raw = await opus_call(
+        "You are a JSON-only intent classifier.", prompt, timeout=30
+    )
+    try:
+        return json.loads(raw)
+    except (json.JSONDecodeError, TypeError, AttributeError):
+        return {"intent": "private", "relay_text": None}
 
 
 async def _load_context() -> str:

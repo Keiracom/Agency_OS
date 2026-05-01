@@ -23,15 +23,24 @@ Revenue model for BU: API subscriptions, Salesforce/HubSpot marketplace, bulk an
 
 ## SECTION 2 — CURRENT STATE
 
-**Last directive:** CD-PLAYER-V1 (streaming pipeline + budget enforcement + BU/CIS audit + closed-loop scoping)
+**Last directive:** GOV-CONSOLIDATION-2026-05-01 (governance + memory + observability marathon — 26 PRs #474–#501)
 **Pipeline F status:** P5 COMPLETE, PHASE 1.5 COMPLETE, DASHBOARD DESIGN COMPLETE, CD PLAYER V1 SHIPPED
 **Phase 1.5 result:** Operational autonomy achieved. Clone architecture live. Dual-concur governance ratified.
 **Dashboard result:** Master Agency Desk v10 shipped (2344 lines). 5 concepts explored. Demo archaeology revealed product is a Sales Intelligence Briefing System.
 **CD Player v1 result:** Pipeline_orchestrator unified with cohort_runner proven stages. Per-domain streaming, SSECardStreamer, capacity skip (Stage 6), drop-triggered refill (8% default). Budget P0 fix: 4-layer defence in depth (admission control + per-stage gate + max_in_flight + run-level kill). Budget incident: $73 AUD burned on T5 live test — fixed structurally.
+
+**Governance + Observability state (2026-05-01):**
+- GOV-PHASE 1 + 1.5 + 2 + 3 + 4 SHIPPED: PreToolUse recorder → governance_events; OPA Gatekeeper live with verdict instrumentation; check_claim.py CLI gate + DoD C5; SessionEnd auto-enforcement (observe-only); enforcer R2/R3 recalibrated.
+- Memory: Mem0 SDK 2.x live with hybrid recall (`MEMORY_RECALL_BACKEND=hybrid`); /save + /recall TG handlers wired; 1589 legacy rows migrated `elliot_internal.memories → public.agent_memories` with `legacy_source`/`legacy_id` provenance keys; ~2170 rows total in agent_memories.
+- Observability: Phoenix Auditor live on Railway (`auditor-phoenix-production.up.railway.app`); Python adapter + watermark export-loop systemd service active; first synthetic span verified live.
+- COO bot Max (`@MaxCOO_Bot`): live as systemd service, hourly digest delivery, on-demand `/status` command verified working.
+- Railway services: Phoenix + Restate-server + OPA + Restate-py-service all created. Restate Python service deploy hit Railpack-vs-dockerfilePath blocker (deferred to follow-up: needs `rootDirectory=infra/restate` solution).
+- Rule consolidation: 60+ scattered rules → 7 consolidated rules ratified in `docs/governance/CONSOLIDATED_RULES.md` (PR #501). Tension decisions: interruption=implicit, dead-references=architecture, infra-rules=separate, dual-concur-timing=hard-LLM-evaluated. CLAUDE.md migration follow-up.
+
 **Next phase:** BU Closed-Loop Engine (ORION, free-mode) + Phase 2.1 dashboard wiring (ATLAS) — parallel tracks
-**Test baseline:** 2152 passed, 0 failed, 28 skipped
+**Test baseline:** 2152 passed, 0 failed, 28 skipped (pre-session; not re-baselined this session — governance work landed without test additions to the main suites)
 **BU status:** 8,593 businesses (2,747 new dental from T5 recovery), 253 emails, 90 mobiles, 508 BDMs. 4 full cards, 162 actionable (email+LinkedIn).
-**Last merged PR:** #408 (listener tuning v1)
+**Last merged PR:** #501 (7 consolidated rules — canonical governance)
 **Team roster:** ELLIOT + AIDEN + ATLAS + ORION + SCOUT (5 sessions)
 
 ### BU + CIS Audit (2026-04-25)

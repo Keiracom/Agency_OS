@@ -1,0 +1,22 @@
+[Unit]
+Description=Agency OS Phoenix Export Loop — ships governance_events to Phoenix Auditor
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+ExecStart=/home/elliotbot/clawd/venv/bin/python3 /home/elliotbot/clawd/Agency_OS/scripts/phoenix_export_loop.py
+Restart=on-failure
+RestartSec=15
+StandardOutput=journal
+StandardError=journal
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+Environment=PYTHONUNBUFFERED=1
+Environment=PHOENIX_OTLP_ENDPOINT=https://auditor-phoenix-production.up.railway.app/v1/traces
+Environment=PHOENIX_PROJECT=agency-os-governance
+Environment=PHOENIX_EXPORT_INTERVAL_S=60
+Environment=PHOENIX_EXPORT_BATCH_LIMIT=500
+Environment=PHOENIX_WATERMARK_PATH=/home/elliotbot/clawd/state/phoenix_watermark.txt
+
+[Install]
+WantedBy=default.target

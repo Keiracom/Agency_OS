@@ -1230,6 +1230,29 @@ Infrastructure (Category A): GitHub branch protection + pre-commit hooks + auto-
 **Pre-revenue reality check (RATIFIED 2026-04-21):**
 Zero clients. All social proof claims REJECTED unless Dave confirms. Applies through first paying customer. DEFAULT_AGENCY eliminated from production (architectural antipattern — hardcoded fallbacks for customer data). _KEIRACOM_PROFILE truthful (no case_study). social_proof_sourced HARD-FAIL gate in writer/critic.
 
+**Phase-2 roadmap status (refreshed 2026-05-01 — sourced from `ceo:phase2_component_status_2026-05-01` + `ceo:mem0_decision_2026-05-01` + `ceo:coo_bot_scope_2026-05-01`):**
+
+Phase numbering convention: bare `Phase N` refers to original 4-phase roadmap (Phase 1 governance core → Phase 2 COO + Observability → Phase 3 Authority → Phase 4 North Star). `GOV-PHASE-N` refers to session-governance phases shipped 2026-05-01 (recorder, Gatekeeper, CLI, SessionEnd auto-enforce). The two namespaces are not the same — see `ceo:phase_naming_convention_2026-05-01`.
+
+Phase 1 (Governance Core) — original roadmap:
+- Track A (Recorder + Gatekeeper + Frozen Registry): SHIPPED via PRs #474–#480 (this session)
+- Track B (Router + Coordinator + Structured Outputs): SHIPPED earlier in arc
+- Track C1 (Restate on Railway): CODE WRITTEN — `src/governance/restate_service.py` (106 lines, 3 async handlers); blocked on `restate-sdk` install + Railway deploy
+- Track C2 (Mem0 integration): BUILT + OPERATIONAL ~80% — adapter (`src/governance/mem0_adapter.py`, 175 lines, free-tier caps + usage logging), dual-write live in `src/memory/store.py:210`, hybrid recall in `src/telegram_bot/memory_listener.py:549`, backfill script `migrations/mem0_backfill.py`, 50 production log entries (last 2026-05-01T05:04Z). Remaining: M1 verify `MEMORY_RECALL_BACKEND` default, M2 build `/save` and `/recall` CLI commands, M3 Hit-Rate benchmark vs Supabase-only baseline.
+- Track D (Integration wiring): DEFERRED — depends on C1 + C2 closeout
+
+Phase 2 (COO + Observability) — original roadmap:
+- COO Bot: BLOCKED — needs TG bot token from Dave (@BotFather) + Anthropic API key (fallback, capped). Scope per `ceo:coo_bot_scope_2026-05-01`: plain-English DM summaries to Dave, behavioral pattern detection, Phase-3 Tier-1 solo decisions
+- Auditor (Phoenix self-hosted): DEFERRED
+- Daily Digest service: QUEUED behind COO Bot
+- Listener improvements: PARTIAL — sim threshold tuned, top-K reduced (this session)
+
+Phase 3 (Authority + Refinement): QUEUED — depends on Phase 2 proving out (~3 months observed COO data before Tier-1 calibration)
+
+Phase 4 (North Star — declarative execution + event-sourced save): QUEUED — 6-month horizon
+
+Immediately buildable without Dave inputs: Track C2 Mem0 closeout (M1+M2+M3) and Track C1 Restate deploy. COO Bot blocked until token + key provided.
+
 ## SECTION 18 — OUTREACH + CONTENT (pre-launch)
 
 Landing page (`agency_os_v5.html`) is built with Bloomberg aesthetic and "Who built yours?" hero. Pending: Remotion video hero, Stripe Checkout on pricing CTAs, live founding counter from Supabase. Video strategy: 5 versions (dashboard animation, Maya walkthrough, HeyGen avatar, customer-specific, results) built via Remotion + HeyGen (Maya avatar). Content distribution via Prefect Flow #28 (Claude API → Remotion → HeyGen → distribution APIs). Demo mode active via `?demo=true` URL param with seeded Supabase demo tenant. Onboarding starts with a 15-minute activation call (CRM + LinkedIn connect, watch dashboard populate live).

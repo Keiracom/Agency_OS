@@ -43,6 +43,7 @@ printf '%s\t%s\t%s\t%s\t%s\n' "$ts" "$callsign" "$tool_name" "$file_path" "$dire
 
 # Background MCP insert — fire and forget.
 MCP_BRIDGE="${MCP_BRIDGE_DIR:-/home/elliotbot/clawd/skills/mcp-bridge}"
+SUPABASE_PROJECT_ID="${SUPABASE_PROJECT_ID:-jatzvazlbusedwsnqxzr}"
 if [[ -x "$MCP_BRIDGE/scripts/mcp-bridge.js" || -f "$MCP_BRIDGE/scripts/mcp-bridge.js" ]]; then
     # Build SQL — single-quote escape values via Postgres E'...' syntax.
     esc() { printf "%s" "$1" | sed "s/'/''/g"; }
@@ -51,11 +52,22 @@ if [[ -x "$MCP_BRIDGE/scripts/mcp-bridge.js" || -f "$MCP_BRIDGE/scripts/mcp-brid
 VALUES ('$(esc "$callsign")', 'tool_call', '$(esc "$tool_name")', \
 NULLIF('$(esc "$file_path")', ''), NULLIF('$(esc "$directive_id")', ''), \
 '{\"hook\":\"recorder\"}'::jsonb);"
-    args="$(printf '{"query":%s}' "$(printf '%s' "$sql" | jq -Rs . 2>/dev/null || printf '"%s"' "$sql")")"
+    sql_json="$(printf '%s' "$sql" | jq -Rs . 2>/dev/null || printf '"%s"' "$sql")"
+    pid_json="$(printf '%s' "$SUPABASE_PROJECT_ID" | jq -Rs . 2>/dev/null || printf '"%s"' "$SUPABASE_PROJECT_ID")"
+    args="$(printf '{"project_id":%s,"query":%s}' "$pid_json" "$sql_json")"
     (
         cd "$MCP_BRIDGE" \
-            && node scripts/mcp-bridge.js call supabase execute_sql "$args" \
-                >>"$LOG_DIR/mcp.log" 2>&1
+            && out="$(node scripts/mcp-bridge.js call supabase execute_sql "$args" 2>&1)"
+        rc=$?
+        if [[ $rc -ne 0 ]]; then
+            printf '[%s] recorder_hook MCP write FAILED rc=%s callsign=%s tool=%s\n%s\n' \
+                "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$rc" "$callsign" "$tool_name" "$out" \
+                >>"$LOG_DIR/mcp.log" 2>/dev/null
+            printf '[recorder_hook] MCP write failed (rc=%s) — see %s/mcp.log\n' \
+                "$rc" "$LOG_DIR" >&2
+        else
+            printf '%s\n' "$out" >>"$LOG_DIR/mcp.log" 2>/dev/null
+        fi
     ) &
     disown 2>/dev/null || true
 fi

@@ -29,11 +29,16 @@ MCP_BRIDGE_DIR = os.environ.get(
 )
 MCP_BRIDGE_SCRIPT = "scripts/mcp-bridge.js"
 MCP_TIMEOUT_S = 30
+# Single source of truth for governance MCP calls. Read from env so
+# recorder_hook.sh + governance_preflight.sh + freeze.py all agree.
+SUPABASE_PROJECT_ID = os.environ.get(
+    "SUPABASE_PROJECT_ID", "jatzvazlbusedwsnqxzr",
+)
 
 
 def _mcp_execute_sql(sql: str) -> list[dict[str, Any]]:
     """Run SQL through the supabase MCP bridge, return rows as dicts."""
-    args_json = json.dumps({"query": sql, "project_id": "jatzvazlbusedwsnqxzr"})
+    args_json = json.dumps({"query": sql, "project_id": SUPABASE_PROJECT_ID})
     proc = subprocess.run(
         ["node", MCP_BRIDGE_SCRIPT, "call", "supabase", "execute_sql", args_json],
         cwd=MCP_BRIDGE_DIR,

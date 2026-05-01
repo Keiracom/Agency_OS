@@ -39,7 +39,7 @@ evidence_has_raw_output if {
 required_stores := {"manual", "ceo_memory", "cis_directive_metrics", "drive_mirror"}
 
 # Set of stores actually written for this directive.
-written_stores[s] {
+written_stores contains s if {
     some w in input.store_writes
     w.directive_id == input.directive_id
     s := w.store
@@ -59,7 +59,7 @@ store_writes_complete if {
 # everything under src/legacy/ recursively; "src/legacy/*" only
 # matches direct children. Authors should write registry entries
 # with the appropriate wildcard for the lock they want.
-frozen_hits[path] {
+frozen_hits contains path if {
     some path in input.target_files
     some pattern in input.frozen_paths
     glob.match(pattern, [], path)
@@ -79,18 +79,18 @@ allow if {
 
 # Human-readable failure reasons — surfaced by the Python client when
 # allow is false.
-deny_reasons[msg] {
+deny_reasons contains msg if {
     not evidence_has_raw_output
     msg := "evidence missing raw shell output (no '$ ' prefix detected)"
 }
 
-deny_reasons[msg] {
+deny_reasons contains msg if {
     not store_writes_complete
     missing := required_stores - written_stores
     msg := sprintf("store writes incomplete for %v: missing %v", [input.directive_id, missing])
 }
 
-deny_reasons[msg] {
+deny_reasons contains msg if {
     not no_frozen_targets
     msg := sprintf("target files include frozen paths: %v", [frozen_hits])
 }

@@ -22,8 +22,10 @@ class COOConfig:
         self.digest_interval_minutes: int = int(
             os.getenv("COO_DIGEST_INTERVAL_MINUTES", "60")
         )
-        self.database_url: str = (
-            os.getenv("DATABASE_URL") or os.getenv("SUPABASE_DB_URL") or ""
+        raw_dsn = os.getenv("DATABASE_URL") or os.getenv("SUPABASE_DB_URL") or ""
+        # asyncpg rejects the SQLAlchemy prefix — strip it
+        self.database_url: str = raw_dsn.replace(
+            "postgresql+asyncpg://", "postgresql://"
         )
 
     @staticmethod

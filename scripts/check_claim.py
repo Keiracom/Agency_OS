@@ -22,8 +22,8 @@ Exit codes:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
-import subprocess
 import sys
 from pathlib import Path
 
@@ -32,18 +32,6 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-
-def _send_tg_alert(message: str) -> None:
-    """Fire-and-forget TG alert via the tg shell helper."""
-    try:
-        subprocess.run(
-            ["tg", "-g", message],
-            check=False,
-            capture_output=True,
-            timeout=10,
-        )
-    except Exception:
-        pass  # Never block the gate on a notification failure
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -167,10 +155,17 @@ def main() -> int:
     reasons_str = "; ".join(result.reasons) if result.reasons else "policy denied (no reasons returned)"
     print(f"DENY: {reasons_str}", file=sys.stderr)
 
-    _send_tg_alert(
-        f"[GOVERNANCE] Gatekeeper DENY — directive={directive_id} "
-        f"callsign={callsign} reasons: {reasons_str}"
-    )
+    try:
+        from src.governance.tg_alert import alert_on_deny
+        claim_hash = hashlib.sha256(claim_text.encode()).hexdigest()[:16]
+        alert_on_deny(
+            callsign=callsign,
+            directive_id=directive_id,
+            reasons=result.reasons or [reasons_str],
+            claim_text_sha256_16=claim_hash,
+        )
+    except Exception:
+        pass  # Never block the gate on a notification failure
 
     return 1
 

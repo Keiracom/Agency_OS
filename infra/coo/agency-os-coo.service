@@ -1,0 +1,14 @@
+[Unit]
+Description=Agency OS COO Bot (Max) — plain-English executive summaries for Dave
+After=network.target
+
+[Service]
+ExecStart=/home/elliotbot/clawd/venv/bin/python3 /home/elliotbot/clawd/Agency_OS/scripts/coo_bot_service.py
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+
+[Install]
+WantedBy=default.target

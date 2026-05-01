@@ -16,15 +16,16 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-import signal
+import subprocess
 import sys
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import asyncpg
 import openai
-from telegram import Bot
+from telegram import Bot, Update
 from telegram.error import TelegramError
+from telegram.ext import Application, CommandHandler, ContextTypes
 
 from src.coo_bot.config import COOConfig
 
@@ -152,8 +153,165 @@ async def digest_loop(cfg: COOConfig) -> None:
         await asyncio.sleep(interval_seconds)
 
 
+# ---------------------------------------------------------------------------
+# /status command handler
+# ---------------------------------------------------------------------------
+
+
+async def _check_opa() -> str:
+    """Return OPA health string without raising."""
+    try:
+        import urllib.request
+        req = urllib.request.urlopen("http://localhost:8181/health", timeout=2)
+        return "up" if req.status == 200 else f"degraded ({req.status})"
+    except Exception:
+        return "unavailable"
+
+
+async def _recorder_status() -> str:
+    """Return recorder freshness based on log mtime."""
+    log_path = "/tmp/agency-os-recorder/recorder.log"
+    try:
+        mtime = os.path.getmtime(log_path)
+        age_minutes = (datetime.now().timestamp() - mtime) / 60
+        return f"up (last write {age_minutes:.0f}m ago)"
+    except FileNotFoundError:
+        return "unavailable (log not found)"
+    except Exception:
+        return "unavailable"
+
+
+async def _last_governance_event(database_url: str) -> str:
+    """Return timestamp of most recent governance_event."""
+    if not database_url:
+        return "unavailable (no DB URL)"
+    try:
+        conn = await asyncpg.connect(database_url, statement_cache_size=0)
+        try:
+            row = await conn.fetchrow(
+                "SELECT timestamp FROM public.governance_events ORDER BY timestamp DESC LIMIT 1"
+            )
+            if row:
+                return str(row["timestamp"])
+            return "none recorded"
+        finally:
+            await conn.close()
+    except Exception as exc:
+        logger.error("last_governance_event query failed: %s", exc)
+        return "unavailable"
+
+
+async def _today_event_count(database_url: str) -> str:
+    """Return count of governance_events since midnight UTC today."""
+    if not database_url:
+        return "unavailable (no DB URL)"
+    try:
+        conn = await asyncpg.connect(database_url, statement_cache_size=0)
+        try:
+            row = await conn.fetchrow(
+                "SELECT COUNT(*) AS cnt FROM public.governance_events "
+                "WHERE timestamp > current_date"
+            )
+            return str(row["cnt"]) if row else "0"
+        finally:
+            await conn.close()
+    except Exception as exc:
+        logger.error("today_event_count query failed: %s", exc)
+        return "unavailable"
+
+
+async def _open_pr_count() -> str:
+    """Return count of open PRs via gh CLI."""
+    try:
+        result = subprocess.run(
+            ["gh", "pr", "list", "--state", "open", "--json", "number"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        if result.returncode == 0:
+            import json
+            prs = json.loads(result.stdout or "[]")
+            return str(len(prs))
+        return "unavailable"
+    except Exception as exc:
+        logger.error("open_pr_count failed: %s", exc)
+        return "unavailable"
+
+
+async def _memory_count(database_url: str) -> str:
+    """Return total agent_memories row count."""
+    if not database_url:
+        return "unavailable (no DB URL)"
+    try:
+        conn = await asyncpg.connect(database_url, statement_cache_size=0)
+        try:
+            row = await conn.fetchrow("SELECT COUNT(*) AS cnt FROM public.agent_memories")
+            return str(row["cnt"]) if row else "0"
+        finally:
+            await conn.close()
+    except Exception as exc:
+        logger.error("memory_count query failed: %s", exc)
+        return "unavailable"
+
+
+async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle /status command — return system health snapshot."""
+    cfg = COOConfig()
+
+    opa, recorder, last_event, today_count, open_prs, mem_count = await asyncio.gather(
+        _check_opa(),
+        _recorder_status(),
+        _last_governance_event(cfg.database_url),
+        _today_event_count(cfg.database_url),
+        _open_pr_count(),
+        _memory_count(cfg.database_url),
+    )
+
+    lines = [
+        "Agency OS — system status",
+        f"OPA: {opa}",
+        f"Max (COO bot): up",
+        f"Recorder: {recorder}",
+        f"Last governance event: {last_event}",
+        f"Governance events today: {today_count}",
+        f"Open PRs: {open_prs}",
+        f"Agent memories: {mem_count}",
+    ]
+    text = "\n".join(lines)
+
+    if update.message:
+        await update.message.reply_text(text)
+
+
+# ---------------------------------------------------------------------------
+# Entry point — Application with job_queue + command handler
+# ---------------------------------------------------------------------------
+
+
+def _make_digest_job(cfg: COOConfig):
+    """Return a job_queue callback that runs one digest cycle."""
+    async def _digest_job(context: ContextTypes.DEFAULT_TYPE) -> None:
+        try:
+            hours = cfg.digest_interval_minutes // 60 or 1
+            events = await fetch_recent_events(cfg.database_url, hours=hours)
+            if not events:
+                logger.info("No governance events in window — skipping DM")
+                return
+            summary = await generate_summary(events, window_hours=hours)
+            if summary:
+                ok = await send_dm(cfg.bot_token, cfg.dave_chat_id, summary)
+                logger.info("DM sent=%s (%d events)", ok, len(events))
+            else:
+                logger.warning("Empty summary from OpenAI — skipping DM")
+        except Exception as exc:
+            logger.error("Unhandled digest error: %s", exc)
+
+    return _digest_job
+
+
 def main() -> None:
-    """Entry point. Loads config, wires signal handlers, runs digest loop."""
+    """Entry point. Loads config, builds Application, registers handlers."""
     logging.basicConfig(
         level=logging.INFO,
         format="[coo-bot] %(asctime)s %(levelname)s: %(message)s",
@@ -162,18 +320,25 @@ def main() -> None:
 
     cfg = COOConfig()
 
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
+    app = (
+        Application.builder()
+        .token(cfg.bot_token)
+        .build()
+    )
 
-    def _shutdown(sig: int, frame: Any) -> None:  # noqa: ANN401
-        logger.info("Received signal %s — shutting down COO bot", sig)
-        loop.stop()
+    app.add_handler(CommandHandler("status", cmd_status))
 
-    signal.signal(signal.SIGTERM, _shutdown)
-    signal.signal(signal.SIGINT, _shutdown)
+    interval_seconds = cfg.digest_interval_minutes * 60
+    app.job_queue.run_repeating(
+        _make_digest_job(cfg),
+        interval=interval_seconds,
+        first=interval_seconds,
+        name="digest",
+    )
 
-    try:
-        loop.run_until_complete(digest_loop(cfg))
-    finally:
-        loop.close()
-        logger.info("COO bot stopped")
+    logger.info(
+        "COO bot starting — digest interval=%dm, dave_chat_id=%s",
+        cfg.digest_interval_minutes,
+        cfg.dave_chat_id,
+    )
+    app.run_polling(drop_pending_updates=True)

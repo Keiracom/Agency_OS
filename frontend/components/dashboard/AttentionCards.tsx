@@ -1,9 +1,11 @@
 /**
- * AttentionCards — items needing operator attention.
+ * FILE: frontend/components/dashboard/AttentionCards.tsx
+ * PURPOSE: "Needs your attention" card list — /demo renderHome lines 1714-1720
+ * PHASE: B2.4 — cream/amber rebrand
  *
- * Port of Master v10 .attention-card (dashboard-master-agency-desk.html:221-231, 1714-1720).
- * 4 types (meeting-today, positive-reply, overdue-followup, hot-prospect) with
- * per-type colour variants. Real data from useAttentionItems hook.
+ * 4 types (meeting-today, positive-reply, overdue-followup, hot-prospect)
+ * with per-type colour variants on the cream surface. Real data via
+ * useAttentionItems.
  */
 
 "use client";
@@ -17,25 +19,25 @@ import {
 
 const TYPE_STYLES: Record<AttentionType, { card: string; icon: string }> = {
   "meeting-today": {
-    card: "bg-emerald-900/20 border-emerald-600 border-l-emerald-500",
+    card: "bg-emerald-50 border-emerald-200 border-l-emerald-500",
     icon: "bg-emerald-600 text-white",
   },
   "positive-reply": {
-    card: "bg-emerald-900/10 border-emerald-700 border-l-emerald-600",
+    card: "bg-emerald-50/60 border-emerald-200 border-l-emerald-400",
     icon: "bg-emerald-600 text-white",
   },
   "overdue-followup": {
-    card: "bg-red-900/15 border-red-700 border-l-red-500",
+    card: "bg-red-50 border-red-200 border-l-red-500",
     icon: "bg-red-600 text-white",
   },
   "hot-prospect": {
-    card: "bg-amber-900/20 border-amber-700 border-l-amber-500",
-    icon: "bg-amber-600 text-white",
+    card: "bg-amber-soft border-rule border-l-amber",
+    icon: "bg-amber text-white",
   },
 };
 
 export interface AttentionCardsProps {
-  /** Optional — intercept leads-detail clicks and open a drawer instead of navigating. */
+  /** Optional — intercept leads-detail clicks and open a drawer instead. */
   onLeadClick?: (leadId: string) => void;
 }
 
@@ -46,7 +48,7 @@ export function AttentionCards({ onLeadClick }: AttentionCardsProps = {}) {
     return (
       <div className="space-y-2.5">
         {[0, 1, 2].map((i) => (
-          <div key={i} className="h-14 rounded-lg bg-gray-800 animate-pulse" />
+          <div key={i} className="h-14 rounded-[10px] bg-panel animate-pulse" />
         ))}
       </div>
     );
@@ -54,7 +56,7 @@ export function AttentionCards({ onLeadClick }: AttentionCardsProps = {}) {
 
   if (error || items.length === 0) {
     return (
-      <div className="rounded-lg border border-gray-800 bg-gray-900/50 px-4 py-6 text-center text-sm text-gray-400">
+      <div className="rounded-[10px] border border-rule bg-panel px-4 py-6 text-center text-sm text-ink-2">
         All clear — no items need your attention right now.
       </div>
     );
@@ -92,7 +94,7 @@ function AttentionRow({
     <Link
       href={item.href}
       onClick={handleClick}
-      className={`grid grid-cols-[28px_1fr_auto] gap-3 items-center rounded-lg border border-l-4 px-4 py-3.5 transition-colors hover:brightness-110 ${style.card}`}
+      className={`grid grid-cols-[28px_1fr_auto] gap-3 items-center rounded-[10px] border border-l-4 px-4 py-3.5 transition-colors hover:brightness-[1.02] ${style.card}`}
     >
       <div
         className={`w-7 h-7 rounded-md flex items-center justify-center text-base ${style.icon}`}
@@ -100,8 +102,8 @@ function AttentionRow({
       >
         {item.icon}
       </div>
-      <div className="min-w-0 text-sm text-gray-100 truncate">{item.text}</div>
-      <span className="text-xs font-mono text-amber-400 tracking-wider whitespace-nowrap">
+      <div className="min-w-0 text-sm text-ink truncate">{item.text}</div>
+      <span className="text-xs font-mono text-copper tracking-wider whitespace-nowrap uppercase">
         {item.cta}
       </span>
     </Link>

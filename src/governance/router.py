@@ -173,10 +173,47 @@ def classify(
 
     cs = callsign or os.environ.get("CALLSIGN") or "unknown"
     if _over_daily_cap():
+        # GOV-PHASE1-COMPREHENSIVE-FIX D2 — emit a governance event so the
+        # cost-cap fallback is loud, not silent. event_emit is a no-op on
+        # any failure (governance signals must NEVER block the assistant).
+        try:
+            from src.governance._mcp_helpers import governance_event_emit
+            governance_event_emit(
+                callsign=cs,
+                event_type="router_cost_cap_reached",
+                event_data={
+                    "spent_aud": round(_daily_cost_usd_today() * _USD_TO_AUD, 4),
+                    "cap_aud": float(os.environ.get(
+                        "ROUTER_DAILY_CAP_AUD", _DEFAULT_DAILY_CAP_AUD)),
+                    "fallback": "heuristic_only",
+                },
+                tool_name="governance.router",
+            )
+        except Exception:  # pragma: no cover
+            pass
+        # Conservative default on cost-cap: peer + force_tg=False so we
+        # never spam Dave when the classifier is unavailable for spend
+        # reasons. Heuristic could mis-flag dave-cue content here.
         return RoutingDecision(audience="peer", force_tg=False)
     if client is None:
         client = _build_openai_client()
     if client is None:
+        # GOV-PHASE1-COMPREHENSIVE-FIX D3 — heuristic-only fallback fired
+        # because the OpenAI client could not be built (no API key, package
+        # missing). Emit a governance event so the absence is observable.
+        try:
+            from src.governance._mcp_helpers import governance_event_emit
+            governance_event_emit(
+                callsign=cs,
+                event_type="router_heuristic_fallback",
+                event_data={
+                    "reason": "no_openai_client",
+                    "openai_key_present": bool(os.environ.get("OPENAI_API_KEY")),
+                },
+                tool_name="governance.router",
+            )
+        except Exception:  # pragma: no cover
+            pass
         return _heuristic_fallback(text)
 
     try:

@@ -16,52 +16,18 @@ Public surface:
 
 from __future__ import annotations
 
-import json
 import logging
-import os
-import subprocess
 from typing import Any
+
+from src.governance._mcp_helpers import supabase_mcp_execute_sql
 
 logger = logging.getLogger(__name__)
 
-MCP_BRIDGE_DIR = os.environ.get(
-    "MCP_BRIDGE_DIR", "/home/elliotbot/clawd/skills/mcp-bridge",
-)
-MCP_BRIDGE_SCRIPT = "scripts/mcp-bridge.js"
-MCP_TIMEOUT_S = 30
-# Single source of truth for governance MCP calls. Read from env so
-# recorder_hook.sh + governance_preflight.sh + freeze.py all agree.
-SUPABASE_PROJECT_ID = os.environ.get(
-    "SUPABASE_PROJECT_ID", "jatzvazlbusedwsnqxzr",
-)
-
 
 def _mcp_execute_sql(sql: str) -> list[dict[str, Any]]:
-    """Run SQL through the supabase MCP bridge, return rows as dicts."""
-    args_json = json.dumps({"query": sql, "project_id": SUPABASE_PROJECT_ID})
-    proc = subprocess.run(
-        ["node", MCP_BRIDGE_SCRIPT, "call", "supabase", "execute_sql", args_json],
-        cwd=MCP_BRIDGE_DIR,
-        capture_output=True,
-        text=True,
-        timeout=MCP_TIMEOUT_S,
-        check=False,
-    )
-    if proc.returncode != 0:
-        raise RuntimeError(
-            f"mcp-bridge supabase.execute_sql failed: {proc.stderr.strip()}"
-        )
-    out = proc.stdout.strip()
-    if not out:
-        return []
-    parsed = json.loads(out)
-    if isinstance(parsed, dict):
-        rows = parsed.get("rows") or parsed.get("data") or []
-    elif isinstance(parsed, list):
-        rows = parsed
-    else:
-        rows = []
-    return list(rows) if isinstance(rows, list) else []
+    """Run SQL through the shared supabase MCP helper. Thin re-export so
+    in-tree callers / tests can patch one symbol."""
+    return supabase_mcp_execute_sql(sql)
 
 
 def _quote(s: str) -> str:

@@ -104,14 +104,25 @@ class Mem0Adapter:
         callsign: str = "unknown",
         source_type: str = "daily_log",
     ) -> dict:
-        """Write a memory to Mem0. Returns API response dict."""
+        """Write a memory to Mem0. Returns API response dict.
+
+        D4 fix: explicit error logging on Mem0 API failure (was fire-and-forget).
+        Failures re-raise after logging; usage event only on success.
+        """
         _check_caps("add")
         messages = [{"role": "user", "content": content}]
-        result = self._client.add(
-            messages,
-            user_id=callsign,
-            metadata={**(metadata or {}), "source_type": source_type},
-        )
+        try:
+            result = self._client.add(
+                messages,
+                user_id=callsign,
+                metadata={**(metadata or {}), "source_type": source_type},
+            )
+        except Exception as exc:
+            logger.error(
+                "[mem0-adapter] add() failed callsign=%s source_type=%s: %s",
+                callsign, source_type, exc,
+            )
+            raise
         _append_usage("add", callsign)
         return result
 
@@ -121,16 +132,44 @@ class Mem0Adapter:
         limit: int = 5,
         callsign: str = "unknown",
     ) -> list[dict]:
-        """Search Mem0 for memories relevant to query. Returns list of result dicts."""
+        """Search Mem0 for memories relevant to query. Returns list of result dicts.
+
+        D4 fix: explicit error logging on Mem0 API failure.
+        """
         _check_caps("search")
-        results = self._client.search(query, user_id=callsign, limit=limit)
+        try:
+            results = self._client.search(query, user_id=callsign, limit=limit)
+        except Exception as exc:
+            logger.error(
+                "[mem0-adapter] search() failed callsign=%s query=%r: %s",
+                callsign, query[:80], exc,
+            )
+            raise
         _append_usage("search", callsign)
         return results if isinstance(results, list) else []
 
     def delete(self, memory_id: str) -> dict:
-        """Delete a memory by ID. Returns API response."""
-        return self._client.delete(memory_id)
+        """Delete a memory by ID. Returns API response.
+
+        D4 fix: explicit error logging on Mem0 API failure.
+        """
+        try:
+            return self._client.delete(memory_id)
+        except Exception as exc:
+            logger.error(
+                "[mem0-adapter] delete() failed memory_id=%s: %s", memory_id, exc,
+            )
+            raise
 
     def update(self, memory_id: str, content: str) -> dict:
-        """Update memory content by ID. Returns API response."""
-        return self._client.update(memory_id, content)
+        """Update memory content by ID. Returns API response.
+
+        D4 fix: explicit error logging on Mem0 API failure.
+        """
+        try:
+            return self._client.update(memory_id, content)
+        except Exception as exc:
+            logger.error(
+                "[mem0-adapter] update() failed memory_id=%s: %s", memory_id, exc,
+            )
+            raise

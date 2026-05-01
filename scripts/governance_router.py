@@ -10,6 +10,9 @@ The hook MUST never block the assistant — failures exit 0 silently.
 
 GOV-PHASE1-TRACK-B / B1.
 """
+import os, sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from src.governance.router import main
 
 if __name__ == "__main__":

@@ -185,6 +185,27 @@ def list_active_claims(
     return out
 
 
+def check_conflict(
+    callsign: str,
+    target_path: str,
+    *,
+    client: Any | None = None,
+) -> dict[str, Any] | None:
+    """Return the first peer claim on target_path not from callsign, or None if no conflict."""
+    claims = list_active_claims(target_path=target_path, client=client)
+    for claim_rec in claims:
+        if claim_rec.callsign != callsign and claim_rec.status == "active":
+            return {
+                "id": claim_rec.id,
+                "callsign": claim_rec.callsign,
+                "action": claim_rec.action,
+                "target_path": claim_rec.target_path,
+                "status": claim_rec.status,
+                "expires_at": claim_rec.expires_at,
+            }
+    return None
+
+
 def subscribe_realtime(
     handler: Callable[[dict[str, Any]], None],
     *,

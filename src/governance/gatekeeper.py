@@ -26,6 +26,7 @@ unless the caller passes them explicitly (used for tests).
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import os
 from collections.abc import Iterable
@@ -38,6 +39,35 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_OPA_URL = os.environ.get("OPA_URL", "http://localhost:8181")
 DEFAULT_DECISION_PATH = "v1/data/agency/completion_claims"
+
+
+def _emit_verdict(
+    *,
+    callsign: str,
+    directive_id: str,
+    claim_text: str,
+    allow: bool,
+    reasons: list[str],
+    error: str | None = None,
+) -> None:
+    """Emit one governance_events row per Gatekeeper verdict (GOV-12)."""
+    try:
+        from src.governance._mcp_helpers import governance_event_emit
+        claim_hash = hashlib.sha256(claim_text.encode("utf-8")).hexdigest()[:16]
+        governance_event_emit(
+            callsign=callsign,
+            event_type="gatekeeper_decision",
+            event_data={
+                "allow": allow,
+                "reasons": reasons,
+                "claim_text_sha256_16": claim_hash,
+                "error": error,
+            },
+            tool_name="governance.gatekeeper",
+            directive_id=directive_id,
+        )
+    except Exception:  # pragma: no cover
+        pass
 
 
 @dataclass
@@ -97,14 +127,23 @@ def check_completion_claim(
         result = _post_decision(payload, opa_url=opa_url)
     except httpx.HTTPError as exc:
         logger.warning("Gatekeeper OPA request failed: %s", exc)
+        err_reasons = [f"opa request failed: {exc}"]
+        _emit_verdict(
+            callsign=callsign, directive_id=directive_id, claim_text=claim_text,
+            allow=False, reasons=err_reasons, error=str(exc),
+        )
         return GatekeeperResult(
             allow=False,
-            reasons=[f"opa request failed: {exc}"],
+            reasons=err_reasons,
             raw={"error": str(exc)},
         )
 
     allow = bool(result.get("allow", False))
     reasons = list(result.get("deny_reasons", []) or [])
+    _emit_verdict(
+        callsign=callsign, directive_id=directive_id, claim_text=claim_text,
+        allow=allow, reasons=reasons,
+    )
     return GatekeeperResult(allow=allow, reasons=reasons, raw=result)
 
 

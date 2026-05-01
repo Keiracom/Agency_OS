@@ -18,21 +18,12 @@ from telegram.ext import ContextTypes
 
 from src.coo_bot.opus_client import opus_call
 from src.coo_bot.config import COOConfig
+from src.coo_bot.persona import get_system_prompt
 
 if TYPE_CHECKING:
     pass
 
 logger = logging.getLogger(__name__)
-
-_COO_SYSTEM_PROMPT = (
-    "You are Max, COO of Agency OS. You are Dave's private strategic advisor. "
-    "You have access to the full history of agent activity via governance_events "
-    "and agent_memories. You watch the group chat in real-time. "
-    "Respond concisely and directly. Dave is the CEO — be useful, not verbose. "
-    "If Dave says '/post <text>' relay that text to the group (handled separately). "
-    "If Dave asks what's happening, summarise recent group activity. "
-    "If Dave asks for your opinion, give it honestly — you are his COO, not a yes-man."
-)
 
 
 async def handle_dm(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -85,7 +76,7 @@ async def handle_dm(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     memory_context = await _load_context()
     user_msg = f"[Recent context]\n{memory_context}\n\n[Dave's message]\n{text}"
 
-    response = await opus_call(_COO_SYSTEM_PROMPT, user_msg, timeout=30)
+    response = await opus_call(get_system_prompt("dm"), user_msg, timeout=30)
 
     if response:
         await update.message.reply_text(response)

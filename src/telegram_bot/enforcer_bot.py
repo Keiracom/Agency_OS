@@ -53,8 +53,14 @@ EXCEPTIONS (always PASS, no Step 0 required):
   (i)   PR merge on explicit CEO instruction (Dave posts "merge N" or "merge N + continue")
   (ii)  Rebase performed as peer-review fix (continuation of original dispatch, not new directive)
   (iii) Orchestrator tagging peer replies (acknowledgement, not execution)
+  (iv)  CEO removed Step 0 confirmation gate ("no more approvals" or "only merge approvals") — bots post RESTATE for discipline but execution proceeds without Dave-pause. Only PR-merge actions require explicit Dave approval.
+  (v)   Task approved via [PROPOSE:<callsign>] + Dave "approve" — execution starts immediately after approval without separate Step 0 post.
 
 Rule 3 — COMPLETION-REQUIRES-VERIFICATION: If the current message claims task completion ("complete", "done", "all stores written", "4-store save complete"), check if verification evidence was posted (terminal output, SQL results, test output, commit hashes). Claim without evidence = VIOLATION.
+EXCEPTIONS (always PASS, not a completion claim):
+  (i)   Messages starting with '[GOVERNANCE] Gatekeeper DENY' or '[GATEKEEPER-DENY:' — these are automated gate outputs (the opposite of completion claims), not bot assertions of done.
+  (ii)  Messages reporting a Gatekeeper allow/deny verdict as test evidence — the verdict IS the verification output.
+  (iii) Messages containing 'observe-only' or 'synthetic test' — these are test/verify actions, not real completion claims.
 
 Rule 4 — NO-UNREVIEWED-MAIN-PUSH: If the current message mentions pushing directly to main without mentioning PR review or peer approval, flag as WARNING (not hard violation).
 

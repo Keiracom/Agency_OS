@@ -33,7 +33,7 @@ MCP_TIMEOUT_S = 30
 
 def _mcp_execute_sql(sql: str) -> list[dict[str, Any]]:
     """Run SQL through the supabase MCP bridge, return rows as dicts."""
-    args_json = json.dumps({"query": sql})
+    args_json = json.dumps({"query": sql, "project_id": "jatzvazlbusedwsnqxzr"})
     proc = subprocess.run(
         ["node", MCP_BRIDGE_SCRIPT, "call", "supabase", "execute_sql", args_json],
         cwd=MCP_BRIDGE_DIR,

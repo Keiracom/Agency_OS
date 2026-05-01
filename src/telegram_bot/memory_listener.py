@@ -544,6 +544,62 @@ async def _increment_access_counts(rows: list[dict], headers: dict) -> None:
         pass
 
 
+async def recall_via_mem0(
+    query: str,
+    callsign: str,
+    limit: int = 5,
+) -> list[dict]:
+    """Retrieve memories from Mem0 for cross-session relationship-aware recall.
+
+    Controlled by MEMORY_RECALL_BACKEND env var (mem0|supabase|hybrid).
+    Hybrid: queries both stores, merges by score, dedupes by content prefix.
+    Returns [] on any error — never blocks the message flow.
+    """
+    backend = os.environ.get("MEMORY_RECALL_BACKEND", "supabase").lower()
+    if backend == "supabase":
+        return []
+
+    mem0_results: list[dict] = []
+    try:
+        from src.governance.mem0_adapter import Mem0Adapter
+        adapter = Mem0Adapter()
+        raw = adapter.search(query, limit=limit, callsign=callsign)
+        mem0_results = [
+            {
+                "id": r.get("id", ""),
+                "content": r.get("memory", r.get("content", "")),
+                "source_type": (r.get("metadata") or {}).get("source_type", "research"),
+                "similarity": r.get("score", 0.0),
+                "_source": "mem0",
+            }
+            for r in raw
+        ]
+    except Exception as exc:
+        logger.warning(f"[memory-listener] Mem0 recall failed: {exc}")
+
+    if backend == "mem0":
+        return mem0_results
+
+    # Hybrid: merge mem0 results with Supabase find_relevant_memories
+    supabase_raw = await find_relevant_memories(query, n=limit)
+    supabase_rows: list[dict] = []
+    if isinstance(supabase_raw, dict):
+        supabase_rows = supabase_raw.get("selected_rows", [])
+    elif isinstance(supabase_raw, list):
+        supabase_rows = supabase_raw
+
+    seen_prefixes: set[str] = set()
+    merged: list[dict] = []
+    for row in mem0_results + supabase_rows:
+        prefix = (row.get("content") or "")[:80]
+        if prefix not in seen_prefixes:
+            seen_prefixes.add(prefix)
+            merged.append(row)
+
+    merged.sort(key=lambda r: float(r.get("similarity") or 0.0), reverse=True)
+    return merged[:limit]
+
+
 async def find_matching_commits(message_text: str, n: int = 5) -> list[str]:
     """Search git commit messages — AND match (all terms must appear). Local, no cost."""
     import asyncio

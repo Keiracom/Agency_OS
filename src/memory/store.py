@@ -202,6 +202,22 @@ def store(
         except Exception:
             pass  # never block store on organisation failure
 
-        return uuid.UUID(row["id"])
+        mem0_row_id = uuid.UUID(row["id"])
+
+        # Parallel Mem0 write (feature-flagged, best-effort)
+        if os.environ.get("MEM0_INTEGRATION_ENABLED", "").lower() == "true":
+            try:
+                from src.governance.mem0_adapter import Mem0Adapter
+                adapter = Mem0Adapter()
+                adapter.add(
+                    content=content,
+                    metadata={**(typed_metadata or {}), "supabase_id": str(mem0_row_id)},
+                    callsign=callsign,
+                    source_type=source_type,
+                )
+            except Exception as mem0_exc:
+                logger.warning(f"[store] Mem0 parallel write failed (non-blocking): {mem0_exc}")
+
+        return mem0_row_id
     except httpx.HTTPError as exc:
         raise RuntimeError(f"HTTP error storing memory: {exc}") from exc

@@ -249,12 +249,13 @@ def main() -> int:
     memory_report = write_memory(summary)
 
     # ── Step 4: Gatekeeper soft-validation (observe-only, never blocks) ────────
+    # F3: only fire when a real DIRECTIVE_ID is set — skip for routine sessions
     gatekeeper_report = {"checked": False, "allow": None}
+    directive_id = os.environ.get("DIRECTIVE_ID", "")
     try:
         from src.governance.gatekeeper import check_completion_claim, opa_health
-        if opa_health():
+        if directive_id and opa_health():
             callsign = os.environ.get("CALLSIGN", "unknown")
-            directive_id = os.environ.get("DIRECTIVE_ID", "session-end-auto")
             result = check_completion_claim(
                 callsign=callsign,
                 directive_id=directive_id,

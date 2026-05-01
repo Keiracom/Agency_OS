@@ -248,11 +248,50 @@ def main() -> int:
     summary = _build_summary(hook_input, mirror_report)
     memory_report = write_memory(summary)
 
+    # ── Step 4: Gatekeeper soft-validation (observe-only, never blocks) ────────
+    gatekeeper_report = {"checked": False, "allow": None}
+    try:
+        from src.governance.gatekeeper import check_completion_claim, opa_health
+        if opa_health():
+            callsign = os.environ.get("CALLSIGN", "unknown")
+            directive_id = os.environ.get("DIRECTIVE_ID", "session-end-auto")
+            result = check_completion_claim(
+                callsign=callsign,
+                directive_id=directive_id,
+                claim_text=f"Session ended: {summary.get('reason', 'unknown')}",
+                evidence=f"$ session_end auto-check\nceo_memory={memory_report.get('ceo_memory_upserted')}, daily_log={memory_report.get('daily_log_written')}",
+                target_files=[],
+                store_writes=[sw for sw in [
+                    {"directive_id": directive_id, "store": "ceo_memory"} if memory_report.get("ceo_memory_upserted") else None,
+                    {"directive_id": directive_id, "store": "manual"} if mirror_report.get("mirror_invoked") else None,
+                ] if sw is not None],
+                frozen_paths=[],
+            )
+            gatekeeper_report["checked"] = True
+            gatekeeper_report["allow"] = result.allow
+            if not result.allow:
+                logger.warning("Gatekeeper DENY (observe-only): %s", result.reasons)
+                try:
+                    from src.governance.tg_alert import alert_on_deny
+                    import hashlib
+                    claim_hash = hashlib.sha256(f"session-end-{callsign}".encode()).hexdigest()[:16]
+                    alert_on_deny(
+                        callsign=callsign,
+                        directive_id=directive_id,
+                        reasons=result.reasons,
+                        claim_text_sha256_16=claim_hash,
+                    )
+                except Exception:
+                    pass
+    except Exception as exc:
+        logger.info("Gatekeeper check skipped (non-fatal): %s", exc)
+
     logger.info(
-        "Done. mirror_invoked=%s ceo_memory=%s daily_log=%s",
+        "Done. mirror_invoked=%s ceo_memory=%s daily_log=%s gatekeeper_allow=%s",
         mirror_report.get("mirror_invoked"),
         memory_report.get("ceo_memory_upserted"),
         memory_report.get("daily_log_written"),
+        gatekeeper_report.get("allow"),
     )
     # Always exit 0 so Claude Code never blocks SessionEnd on us.
     return 0

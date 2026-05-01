@@ -78,6 +78,10 @@ def _map_row(row: dict) -> dict:
         except json.JSONDecodeError:
             metadata = {"raw": metadata}
 
+    # Provenance keys for audit traceability (N1 from PR #488 review)
+    metadata["legacy_source"] = "elliot_internal.memories"
+    metadata["legacy_id"] = str(row.get("id", ""))
+
     return {
         "callsign": "elliot",
         "source_type": row.get("type") or "unknown",

@@ -67,7 +67,7 @@ structlog>=24.1.0
 restate-sdk>=0.5.0
 
 # === Memory ===
-mem0ai>=0.1.0  # Mem0 cross-session memory layer (Phase 1 Track C2)
+mem0ai>=2.0.0,<3.0.0  # Mem0 2.x — requires filters={} wrapper, not top-level user_id
 
 # === Testing ===
 pytest>=7.4.0

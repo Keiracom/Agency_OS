@@ -15,9 +15,9 @@ from __future__ import annotations
 
 from typing import Any
 
-# restate-sdk imports — requires restate-sdk>=0.5.0
-from restate import ObjectContext, VirtualObject
-from restate.server import app as restate_app
+# restate-sdk imports — pinned to 0.17.x. SDK 0.17 removed restate.server.app
+# in favour of the top-level restate.app() factory; see requirements.txt pin.
+from restate import ObjectContext, VirtualObject, app as restate_app
 
 # ---------------------------------------------------------------------------
 # State schema (stored per directive_id key in Restate durable store)

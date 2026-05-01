@@ -82,7 +82,7 @@ AU_GOVERNMENT = frozenset({
     "accc.gov.au", "medicare.gov.au", "servicesaustralia.gov.au",
     "ndis.gov.au", "tga.gov.au", "aihw.gov.au", "aemo.com.au",
     "nhmrc.gov.au", "nla.gov.au", "anao.gov.au",
-    "ombudsman.gov.au", "oaic.gov.au", "ato.gov.au",
+    "ombudsman.gov.au", "oaic.gov.au",
     "fwc.gov.au", "asc.gov.au", "afsa.gov.au",
     "arpansa.gov.au", "gbrmpa.gov.au", "aims.gov.au",
     "csiro.au", "geoscience.gov.au", "ga.gov.au",
@@ -94,10 +94,10 @@ AU_GOVERNMENT = frozenset({
     "dtf.vic.gov.au", "delwp.vic.gov.au",
     "qra.qld.gov.au", "tmr.qld.gov.au", "police.qld.gov.au",
     "health.qld.gov.au", "daf.qld.gov.au",
-    "dpti.sa.gov.au", "sa.gov.au", "sahealth.sa.gov.au",
+    "dpti.sa.gov.au", "sahealth.sa.gov.au",
     "mainroads.wa.gov.au", "health.wa.gov.au",
     "transport.tas.gov.au", "health.tas.gov.au",
-    "nt.gov.au", "health.nt.gov.au",
+    "health.nt.gov.au",
     "environment.act.gov.au", "health.act.gov.au",
     # Govt enterprises
     "auspost.com.au", "nbn.com.au", "abc.net.au", "sbs.com.au",
@@ -162,7 +162,7 @@ AGGREGATORS = frozenset({
     "lawinfoon.com.au", "australianlawyer.com.au",
     # Construction
     "masterbuilders.com.au", "buildsearch.com.au",
-    "architectslist.com.au", "hipages.com.au",
+    "architectslist.com.au",
     # Industry bodies / bar associations
     "ada.org.au", "ada.org", "finder.orthodonticsaustralia.org.au",
     "hia.com.au", "aibs.com.au", "lawcouncil.asn.au",
@@ -193,7 +193,7 @@ AGGREGATORS = frozenset({
     "mozo.com.au", "infochoice.com.au", "comparethemarket.com.au",
     "iselect.com.au", "getcovered.com.au",
     # Insurance comparison
-    "insuranceline.com.au", "comparethemarket.com.au",
+    "insuranceline.com.au",
 })
 
 # ── CONSTRUCTION RETAILERS / DISTRIBUTORS ────────────────────────────────────
@@ -531,7 +531,7 @@ RETAIL_CHAINS = frozenset({
     # Furniture / homewares
     "ikea.com.au", "fantastic.com.au", "amart.com.au",
     "freedom.com.au", "nickscali.com.au",
-    "harvey-norman.com.au", "harveynorman.com.au",
+    "harvey-norman.com.au",
     "oz-design.com.au", "domayne.com.au",
     "bcf.com.au", "anaconda.com.au",
     # Liquor
@@ -554,7 +554,7 @@ RETAIL_CHAINS = frozenset({
     "laubman-pank.com.au", "clearly.com.au", "vision-works.com.au",
     "eyesite.com.au",
     # Stationery / office
-    "officeworks.com.au", "staples.com.au",
+    "staples.com.au",
 })
 
 # ── TELCO & UTILITIES (NEW) ──────────────────────────────────────────────────
@@ -844,7 +844,7 @@ ALLIED_HEALTH_CHAINS = frozenset({
     "scope.org.au", "lifestart.net.au",
     "lifespan.org.au", "achieveaustralia.org.au",
     "afford.com.au", "endeavour.com.au",
-    "nova-employment.com.au", "afford.com.au",
+    "nova-employment.com.au",
     "downessyndrome.org.au", "cerebralpalsy.org.au",
     "amaze.org.au", "autism.org.au",
     # Vet chains
@@ -910,7 +910,7 @@ GAMBLING_CHAINS = frozenset({
     "pointsbet.com.au", "betfair.com.au", "unibet.com.au",
     "williamhill.com.au", "palmerbet.com.au", "topbetta.com.au",
     "boombet.com.au", "draftstars.com.au", "topsport.com.au",
-    "bluebet.com.au", "elitebet.com.au", "tab.com.au",
+    "bluebet.com.au", "elitebet.com.au",
     # Lottery
     "thelott.com", "ozlotteries.com", "melbournemelbourne.com.au",
     "goldenlotteries.com.au", "nsw-lotteries.com.au",

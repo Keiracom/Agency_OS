@@ -127,7 +127,7 @@ async def _respond_in_group(update: Update, text: str, sender: str) -> None:
         ])
         response = await opus_call(
             get_system_prompt("dm"), classifier_prompt,
-            timeout=120 if needs_tools else 45,
+            timeout=120,
             with_tools=needs_tools,
         )
 

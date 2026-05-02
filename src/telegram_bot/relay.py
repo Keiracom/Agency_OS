@@ -8,6 +8,8 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
+from src.relay.redis_relay import push_sync as redis_push_sync, outbox_queue
+
 RELAY_DIR = "/tmp/telegram-relay"
 INBOX_DIR = f"{RELAY_DIR}/inbox"
 OUTBOX_DIR = f"{RELAY_DIR}/outbox"
@@ -29,6 +31,11 @@ def send_text(text: str, chat_id: int = CHAT_ID) -> str:
     path = os.path.join(OUTBOX_DIR, f"{msg_id}.json")
     with open(path, "w") as f:
         json.dump(payload, f)
+    # Phase 1b dual-write: also push to Redis (fail-open)
+    try:
+        redis_push_sync(outbox_queue(os.environ.get("CALLSIGN", "elliot")), payload)
+    except Exception:
+        pass  # fail-open
     return msg_id
 
 
@@ -48,6 +55,11 @@ def send_file(file_path: str, caption: str = "", chat_id: int = CHAT_ID) -> str:
     path = os.path.join(OUTBOX_DIR, f"{msg_id}.json")
     with open(path, "w") as f:
         json.dump(payload, f)
+    # Phase 1b dual-write: also push to Redis (fail-open)
+    try:
+        redis_push_sync(outbox_queue(os.environ.get("CALLSIGN", "elliot")), payload)
+    except Exception:
+        pass  # fail-open
     return msg_id
 
 

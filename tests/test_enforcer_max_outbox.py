@@ -71,7 +71,9 @@ def _make_outbox_file(tmp_path, text: str) -> None:
 
 
 def _verify_json(merged: bool, ci_passing: bool, state: str = "MERGED",
-                 failed_checks: list | None = None) -> str:
+                 failed_checks: list | None = None,
+                 review_state: str = "APPROVED",
+                 latest_reviews: list | None = None) -> str:
     """Return JSON string as verify_pr.sh would output."""
     return json.dumps({
         "pr": 521,
@@ -81,6 +83,8 @@ def _verify_json(merged: bool, ci_passing: bool, state: str = "MERGED",
         "ci_passing": ci_passing,
         "failed_checks": failed_checks or [],
         "pending_checks": [],
+        "review_state": review_state,
+        "latest_reviews": latest_reviews if latest_reviews is not None else [],
     })
 
 
@@ -209,3 +213,94 @@ async def test_verify_pr_ci_unknown_no_ghost_green(tmp_path):
 def test_max_inbox_in_bot_inboxes():
     """MAX inbox must be present in BOT_INBOXES so interjections reach MAX."""
     assert "/tmp/telegram-relay-max/inbox" in BOT_INBOXES
+
+
+# ---------------------------------------------------------------------------
+# Review-state tests (verify_pr.sh review_state field)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_verify_pr_review_state_approved(tmp_path):
+    """review_state=APPROVED + claim says 'approved' → no interjection."""
+    _make_outbox_file(tmp_path, "PR #521 approved by both reviewers")
+
+    proc_mock = _async_proc_mock(_verify_json(
+        merged=True, ci_passing=True,
+        review_state="APPROVED",
+        latest_reviews=[
+            {"author": "elliotbot", "state": "APPROVED"},
+            {"author": "aidenbot", "state": "APPROVED"},
+        ],
+    ))
+
+    with patch("src.telegram_bot.enforcer_bot.MAX_OUTBOX", str(tmp_path)), \
+         patch("asyncio.create_subprocess_exec", proc_mock), \
+         patch("src.telegram_bot.enforcer_bot.send_interjection",
+               new_callable=AsyncMock) as mock_interject:
+
+        task = asyncio.create_task(watch_max_outbox())
+        await asyncio.sleep(0.05)
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
+
+        mock_interject.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_verify_pr_review_state_changes_requested(tmp_path):
+    """review_state=CHANGES_REQUESTED + claim says 'approved' → interjection fired."""
+    _make_outbox_file(tmp_path, "PR #521 approved")
+
+    proc_mock = _async_proc_mock(_verify_json(
+        merged=False, ci_passing=True, state="OPEN",
+        review_state="CHANGES_REQUESTED",
+        latest_reviews=[
+            {"author": "elliotbot", "state": "CHANGES_REQUESTED"},
+        ],
+    ))
+
+    with patch("src.telegram_bot.enforcer_bot.MAX_OUTBOX", str(tmp_path)), \
+         patch("asyncio.create_subprocess_exec", proc_mock), \
+         patch("src.telegram_bot.enforcer_bot.send_interjection",
+               new_callable=AsyncMock) as mock_interject:
+
+        task = asyncio.create_task(watch_max_outbox())
+        await asyncio.sleep(0.05)
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
+
+        mock_interject.assert_called_once()
+        call_text = mock_interject.call_args[0][0]
+        assert "CHANGES_REQUESTED" in call_text or "COMPLETION-REQUIRES-VERIFICATION" in call_text
+
+
+@pytest.mark.asyncio
+async def test_verify_pr_review_state_unknown(tmp_path):
+    """review_state=unknown + claim says 'approved' → must NOT ghost-green (interjection fired)."""
+    _make_outbox_file(tmp_path, "PR #521 approved")
+
+    proc_mock = _async_proc_mock(_verify_json(
+        merged=True, ci_passing=True,
+        review_state="unknown",
+        latest_reviews=[],
+    ))
+
+    with patch("src.telegram_bot.enforcer_bot.MAX_OUTBOX", str(tmp_path)), \
+         patch("asyncio.create_subprocess_exec", proc_mock), \
+         patch("src.telegram_bot.enforcer_bot.send_interjection",
+               new_callable=AsyncMock) as mock_interject:
+
+        task = asyncio.create_task(watch_max_outbox())
+        await asyncio.sleep(0.05)
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
+
+        # review_state=unknown must trigger interjection — never ghost-green
+        mock_interject.assert_called_once()
+        call_text = mock_interject.call_args[0][0]
+        # Must reference unknown state and not claim approval
+        assert "unknown" in call_text.lower() or "COMPLETION-REQUIRES-VERIFICATION" in call_text
+        assert "review_state=APPROVED" not in call_text

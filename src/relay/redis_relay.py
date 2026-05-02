@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 
 # ── Queue name builders ────────────────────────────────────────────────────────
 
+
 def inbox_queue(callsign: str) -> str:
     return f"relay:inbox:{callsign}"
 
@@ -33,6 +34,7 @@ def dispatch_queue(clone: str) -> str:
 
 
 # ── Async transport ────────────────────────────────────────────────────────────
+
 
 async def push(queue: str, payload: dict) -> bool:
     """LPUSH payload to queue. Fail-open — returns False on error."""
@@ -61,12 +63,11 @@ async def pop(queue: str, timeout: int = 5) -> dict | None:
 
 # ── Sync transport (for bash hooks) ───────────────────────────────────────────
 
+
 def push_sync(queue: str, payload: dict) -> bool:
     """Synchronous LPUSH. For use from bash hooks via python3 -c. Fail-open."""
     try:
-        r = redis_sync.Redis.from_url(
-            os.environ["REDIS_URL"], decode_responses=True
-        )
+        r = redis_sync.Redis.from_url(os.environ["REDIS_URL"], decode_responses=True)
         r.lpush(queue, json.dumps(payload))
         return True
     except Exception as exc:

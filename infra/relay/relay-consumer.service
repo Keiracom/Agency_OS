@@ -1,0 +1,16 @@
+[Unit]
+Description=Redis Relay Consumer — replaces 7 inotifywait watchers (Change 1b Phase 2)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/home/elliotbot/clawd/venv/bin/python3 /home/elliotbot/clawd/Agency_OS/src/relay/relay_consumer.py
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+Restart=on-failure
+RestartSec=5
+StandardOutput=append:/home/elliotbot/clawd/logs/relay-consumer.log
+StandardError=append:/home/elliotbot/clawd/logs/relay-consumer.log
+
+[Install]
+WantedBy=default.target

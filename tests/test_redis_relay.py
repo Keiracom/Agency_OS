@@ -1,13 +1,17 @@
 """Tests for src/relay/redis_relay.py — Change 1b Phase 1."""
 import json
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from src.relay.redis_relay import (
-    push, pop, push_sync,
-    inbox_queue, outbox_queue, dispatch_queue,
-)
+import pytest
 
+from src.relay.redis_relay import (
+    dispatch_queue,
+    inbox_queue,
+    outbox_queue,
+    pop,
+    push,
+    push_sync,
+)
 
 # ── Queue name builders ──────────────────────────────────────────────────────
 

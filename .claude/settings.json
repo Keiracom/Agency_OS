@@ -11,6 +11,11 @@
             "type": "command",
             "command": "cd /home/elliotbot/clawd/Agency_OS && PYTHONPATH=/home/elliotbot/clawd/Agency_OS /home/elliotbot/clawd/venv/bin/python3 scripts/governance_router.py",
             "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "bash /home/elliotbot/clawd/Agency_OS/.claude/hooks/stop_relay_hook.sh",
+            "timeout": 5
           }
         ]
       }

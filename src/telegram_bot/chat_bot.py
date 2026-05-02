@@ -106,6 +106,7 @@ running_processes: dict[int, asyncio.subprocess.Process] = {}
 RELAY_DIR = f"/tmp/telegram-relay-{CALLSIGN}"  # per-callsign isolation (LAW XVII)
 INBOX_DIR = f"{RELAY_DIR}/inbox"    # messages FROM Telegram TO tmux session
 OUTBOX_DIR = f"{RELAY_DIR}/outbox"  # messages FROM tmux session TO Telegram
+RELAY_SEND_TIMEOUT = 30  # seconds — guards against silent Telegram API stalls
 
 os.makedirs(INBOX_DIR, exist_ok=True)
 os.makedirs(OUTBOX_DIR, exist_ok=True)
@@ -750,7 +751,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     # that causes "group" to match every group-chat commit)
     raw_text = update.message.text or ""
     memory_context = ""
-    if sender != Sender.SELF:
+    # LISTENER_AUTO_INJECT gates push-style injection. Default OFF — agents pull via MCP memory tool when needed.
+    if sender != Sender.SELF and os.getenv("LISTENER_AUTO_INJECT", "0") == "1":
         try:
             memories = await find_relevant_memories(raw_text)
             commits = await find_matching_commits(raw_text)
@@ -1066,22 +1068,31 @@ async def _outbox_watcher(app: Application) -> None:
                             with open(tmp, "w") as tf:
                                 tf.write(text)
                             with open(tmp, "rb") as tf:
-                                await bot.send_document(chat_id=chat_id, document=tf, filename="message.md")
+                                await asyncio.wait_for(
+                                    bot.send_document(chat_id=chat_id, document=tf, filename="message.md"),
+                                    timeout=RELAY_SEND_TIMEOUT,
+                                )
                             os.unlink(tmp)
                         else:
                             for chunk in chunk_response(text):
-                                await bot.send_message(chat_id=chat_id, text=chunk)
+                                await asyncio.wait_for(
+                                    bot.send_message(chat_id=chat_id, text=chunk),
+                                    timeout=RELAY_SEND_TIMEOUT,
+                                )
 
                     elif msg.get("type") == "file":
                         file_path = msg.get("file_path", "")
                         caption = msg.get("caption", "")
                         if os.path.exists(file_path):
                             with open(file_path, "rb") as fh:
-                                await bot.send_document(
-                                    chat_id=chat_id,
-                                    document=fh,
-                                    filename=os.path.basename(file_path),
-                                    caption=caption[:1024] if caption else None,
+                                await asyncio.wait_for(
+                                    bot.send_document(
+                                        chat_id=chat_id,
+                                        document=fh,
+                                        filename=os.path.basename(file_path),
+                                        caption=caption[:1024] if caption else None,
+                                    ),
+                                    timeout=RELAY_SEND_TIMEOUT,
                                 )
 
                     os.unlink(fpath)
@@ -1095,15 +1106,16 @@ async def _outbox_watcher(app: Application) -> None:
                         peer_ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
                         peer_fname = f"{peer_ts}_{uuid.uuid4().hex[:8]}.json"
 
-                        # Enrich with memory context for the peer
+                        # Enrich with memory context for the peer (gated by LISTENER_AUTO_INJECT — default OFF).
                         outgoing_text = msg.get("text", "")
-                        try:
-                            peer_memories = await find_relevant_memories(outgoing_text)
-                            if peer_memories:
-                                mem_block = format_memory_context(peer_memories)
-                                outgoing_text = f"{mem_block}\n\n{outgoing_text}"
-                        except Exception:
-                            pass  # best-effort — cross-post still works without enrichment
+                        if os.getenv("LISTENER_AUTO_INJECT", "0") == "1":
+                            try:
+                                peer_memories = await find_relevant_memories(outgoing_text)
+                                if peer_memories:
+                                    mem_block = format_memory_context(peer_memories)
+                                    outgoing_text = f"{mem_block}\n\n{outgoing_text}"
+                            except Exception:
+                                pass  # best-effort — cross-post still works without enrichment
 
                         peer_payload = {
                             "id": peer_fname.replace(".json", ""),

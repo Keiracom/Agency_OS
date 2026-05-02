@@ -78,6 +78,12 @@ path = os.path.join(OUTBOX, fname)
 with open(path, "w") as f:
     json.dump(payload, f)
 
+# FIX 2: Write de-dup marker so Stop hook doesn't double-relay this content
+import hashlib
+_hash = hashlib.md5(tagged.encode()).hexdigest()[:8]
+_marker = f"/tmp/.relay_dedup_{CALLSIGN}_{_hash}"
+open(_marker, "w").close()
+
 # Cross-post handled by outbox watcher in chat_bot.py — not duplicated here
 
 # Max COO sideband: Telegram filters bot-to-bot messages, so peer chatter

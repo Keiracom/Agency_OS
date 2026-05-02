@@ -60,12 +60,18 @@ if [[ -f "$DEDUP_MARKER" ]]; then
     fi
 fi
 
-# Determine destination chat_id (group by default)
+# FIX 1: Determine destination chat_id from last_chat_id state file
+# (not hardcoded group — prevents DM responses leaking to group)
 GROUP_CHAT_ID="-1003926592540"
-DM_CHAT_ID=""
-case "$CALLSIGN" in
-    elliot|aiden|max) DM_CHAT_ID="" ;;  # Group relay default
-esac
+LAST_CHAT_FILE="${RELAY_DIR}/last_chat_id"
+DEST_CHAT_ID="$GROUP_CHAT_ID"  # fallback to group
+
+if [[ -f "$LAST_CHAT_FILE" ]]; then
+    LAST_CHAT="$(cat "$LAST_CHAT_FILE" 2>/dev/null | tr -d '[:space:]')"
+    if [[ -n "$LAST_CHAT" ]]; then
+        DEST_CHAT_ID="$LAST_CHAT"
+    fi
+fi
 
 # Write to outbox (existing watcher delivers to TG)
 TS="$(date -u +%Y%m%d_%H%M%S)"
@@ -83,7 +89,7 @@ TAGGED="[${CALLSIGN^^}] ${TEXT}"
 cat > "${OUTBOX}/${FNAME}" << ENDJSON
 {
     "type": "text",
-    "chat_id": ${GROUP_CHAT_ID},
+    "chat_id": ${DEST_CHAT_ID},
     "text": $(printf '%s' "$TAGGED" | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read()))' 2>/dev/null || printf '"%s"' "$TAGGED")
 }
 ENDJSON

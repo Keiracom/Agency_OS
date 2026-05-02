@@ -108,16 +108,26 @@ async def _respond_to_dave_in_group(update: Update, text: str) -> None:
             "- If Dave is asking Max something, giving an instruction, or saying something "
             "that warrants a COO response → respond with the actual response text.\n"
             "- If Dave is addressing Elliot/Aiden specifically (not Max) → respond with exactly: SKIP\n"
-            "- If it's a general statement not needing Max input → respond with: SKIP\n\n"
+            "- If it's a general statement not needing Max input → respond with: SKIP\n"
+            "- IMPORTANT: You cannot read files or query databases. If Dave asks you to "
+            "read files, check code, or look up data — say you'll ask Elliot/Aiden to do it "
+            "and relay the answer. Be honest about your limitations.\n"
+            "- Keep responses under 5 lines. Be terse like a COO.\n\n"
             f"Recent group:\n{recent}\n\nDave's message: {text}"
         )
 
         response = await opus_call(
-            get_system_prompt("dm"), classifier_prompt, timeout=60
+            get_system_prompt("dm"), classifier_prompt, timeout=45
         )
 
-        if response and response.strip() != "SKIP":
-            # Post Max's response to group
+        if not response:
+            # Timeout or failure — give useful fallback, not generic error
+            await update.message.reply_text(
+                "[MAX] Response timed out. For file reads or data queries, "
+                "ask Elliot/Aiden directly — I don't have tool access yet."
+            )
+            logger.warning("group_handler: opus_call timeout responding to Dave")
+        elif response.strip() != "SKIP":
             await update.message.reply_text(f"[MAX] {response}")
             logger.info("group_handler: Max responded to Dave in group")
     except Exception as exc:

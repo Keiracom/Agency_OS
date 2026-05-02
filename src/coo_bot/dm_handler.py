@@ -85,7 +85,7 @@ async def handle_dm(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     memory_context = await _load_context()
     user_msg = f"[Recent context]\n{memory_context}\n\n[Dave's message]\n{text}"
 
-    response = await opus_call(_COO_SYSTEM_PROMPT, user_msg, timeout=30)
+    response = await opus_call(_COO_SYSTEM_PROMPT, user_msg, timeout=90)
 
     if response:
         await update.message.reply_text(response)

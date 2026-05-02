@@ -751,7 +751,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     # that causes "group" to match every group-chat commit)
     raw_text = update.message.text or ""
     memory_context = ""
-    if sender != Sender.SELF:
+    # LISTENER_AUTO_INJECT gates push-style injection. Default OFF — agents pull via MCP memory tool when needed.
+    if sender != Sender.SELF and os.getenv("LISTENER_AUTO_INJECT", "0") == "1":
         try:
             memories = await find_relevant_memories(raw_text)
             commits = await find_matching_commits(raw_text)
@@ -1105,15 +1106,16 @@ async def _outbox_watcher(app: Application) -> None:
                         peer_ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
                         peer_fname = f"{peer_ts}_{uuid.uuid4().hex[:8]}.json"
 
-                        # Enrich with memory context for the peer
+                        # Enrich with memory context for the peer (gated by LISTENER_AUTO_INJECT — default OFF).
                         outgoing_text = msg.get("text", "")
-                        try:
-                            peer_memories = await find_relevant_memories(outgoing_text)
-                            if peer_memories:
-                                mem_block = format_memory_context(peer_memories)
-                                outgoing_text = f"{mem_block}\n\n{outgoing_text}"
-                        except Exception:
-                            pass  # best-effort — cross-post still works without enrichment
+                        if os.getenv("LISTENER_AUTO_INJECT", "0") == "1":
+                            try:
+                                peer_memories = await find_relevant_memories(outgoing_text)
+                                if peer_memories:
+                                    mem_block = format_memory_context(peer_memories)
+                                    outgoing_text = f"{mem_block}\n\n{outgoing_text}"
+                            except Exception:
+                                pass  # best-effort — cross-post still works without enrichment
 
                         peer_payload = {
                             "id": peer_fname.replace(".json", ""),

@@ -88,10 +88,18 @@ KNOWN_PEER_BOTS: set[str] = {
 }  # lowercase
 DAVE_USER_ID: int = 7267788033  # hardcoded CEO user_id — only this human gets Sender.DAVE
 # Peer cross-post: bot-to-bot visibility bypass (Telegram doesn't deliver bot-to-bot)
-_PEER_MAP = {"elliot": "aiden", "aiden": "elliot", "scout": "elliot"}
-PEER_INBOX: str | None = (
-    f"/tmp/telegram-relay-{_PEER_MAP[CALLSIGN]}/inbox" if CALLSIGN in _PEER_MAP else None
-)
+_PEER_MAP: dict[str, list[str]] = {
+    "elliot": ["aiden", "max"],
+    "aiden": ["elliot", "max"],
+    "scout": ["elliot"],
+    "max": [],  # Max receives but doesn't cross-post
+}
+PEER_INBOXES: list[str] = [
+    f"/tmp/telegram-relay-{p}/inbox" for p in _PEER_MAP.get(CALLSIGN, [])
+]
+# Backward-compat shim — callers that still reference PEER_INBOX get the first peer.
+# Migrate callers to iterate PEER_INBOXES directly.
+PEER_INBOX: str | None = PEER_INBOXES[0] if PEER_INBOXES else None
 ENFORCER_INBOX = "/tmp/telegram-relay-enforcer/inbox"
 GROUP_CHAT_ID = -1003926592540
 
@@ -1198,13 +1206,11 @@ async def _outbox_watcher(app: Application) -> None:
                     os.unlink(fpath)
                     logger.info(f"[relay] outbox sent: {fname}")
 
-                    # Cross-post group messages to peer bot's inbox (Telegram bot-to-bot blind spot)
+                    # Cross-post group messages to all peer bot inboxes (Telegram bot-to-bot blind spot)
                     # Sender-side listener hook: enrich cross-post with memory context
                     # so the receiving peer gets context they'd miss (their listener doesn't fire on cross-posts)
-                    if chat_id == GROUP_CHAT_ID and PEER_INBOX and msg.get("type") == "text":
-                        os.makedirs(PEER_INBOX, exist_ok=True)
+                    if chat_id == GROUP_CHAT_ID and PEER_INBOXES and msg.get("type") == "text":
                         peer_ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
-                        peer_fname = f"{peer_ts}_{uuid.uuid4().hex[:8]}.json"
 
                         # Enrich with memory context for the peer (gated by LISTENER_AUTO_INJECT — default OFF).
                         outgoing_text = msg.get("text", "")
@@ -1217,17 +1223,20 @@ async def _outbox_watcher(app: Application) -> None:
                             except Exception:
                                 pass  # best-effort — cross-post still works without enrichment
 
-                        peer_payload = {
-                            "id": peer_fname.replace(".json", ""),
-                            "type": "text",
-                            "chat_id": chat_id,
-                            "text": f"[GROUP — from {CALLSIGN.upper()} (peer bot, NOT your boss Dave)]: {outgoing_text}",
-                            "sender": "peer",
-                            "timestamp": datetime.now(UTC).isoformat(),
-                        }
-                        with open(os.path.join(PEER_INBOX, peer_fname), "w") as pf:
-                            _json.dump(peer_payload, pf)
-                        logger.info(f"[relay] cross-posted to peer inbox: {peer_fname}")
+                        for peer_inbox in PEER_INBOXES:
+                            os.makedirs(peer_inbox, exist_ok=True)
+                            peer_fname = f"{peer_ts}_{uuid.uuid4().hex[:8]}.json"
+                            peer_payload = {
+                                "id": peer_fname.replace(".json", ""),
+                                "type": "text",
+                                "chat_id": chat_id,
+                                "text": f"[GROUP — from {CALLSIGN.upper()} (peer bot, NOT your boss Dave)]: {outgoing_text}",
+                                "sender": "peer",
+                                "timestamp": datetime.now(UTC).isoformat(),
+                            }
+                            with open(os.path.join(peer_inbox, peer_fname), "w") as pf:
+                                _json.dump(peer_payload, pf)
+                            logger.info(f"[relay] cross-posted to peer inbox: {peer_inbox}/{peer_fname}")
 
                     # Cross-post to enforcer inbox (governance enforcement daemon)
                     if chat_id == GROUP_CHAT_ID and msg.get("type") == "text":

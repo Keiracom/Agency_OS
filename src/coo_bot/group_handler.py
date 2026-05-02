@@ -96,12 +96,21 @@ async def handle_group_message(
 async def _respond_in_group(update: Update, text: str, sender: str) -> None:
     """When someone addresses Max in group, respond in-group like a COO.
 
-    Uses Opus to generate a contextual response based on recent group activity.
-    Responds to Dave always; responds to Elliot/Aiden when they address Max directly.
+    Latency-optimised: keyword pre-filter → Haiku for routine → Opus for deep.
     """
     try:
         from src.coo_bot.opus_client import opus_call
         from src.coo_bot.persona import get_system_prompt
+
+        # LAYER 1: Keyword pre-filter (instant, no LLM) — skip obvious non-Max chatter
+        lowered = text.lower()
+        skip_patterns = [
+            "[concur:", "[agree:", "[release:", "[claim:", "[queue-board]",
+            "[dispatch", "co-authored-by:", "commit ", "pushed to",
+        ]
+        if any(pat in lowered for pat in skip_patterns) and "max" not in lowered:
+            logger.debug("group_handler: pre-filter SKIP (pattern match)")
+            return
 
         # Build context from recent buffer
         recent = "\n".join(
@@ -109,25 +118,34 @@ async def _respond_in_group(update: Update, text: str, sender: str) -> None:
             for m in list(_buffer)[-10:]
         )
 
-        classifier_prompt = (
-            f"{sender} just posted in the group. Decide: does this need a Max response?\n"
-            "- If someone is asking Max something, addressing Max, or saying something "
-            "that warrants a COO response → respond with the actual response text.\n"
-            "- If they're talking to each other and Max isn't relevant → respond with: SKIP\n"
-            "- You CAN read files and query databases when with_tools=True. Use that capability.\n"
-            "- Keep responses under 8 lines. Be terse like a COO.\n\n"
-            f"Recent group:\n{recent}\n\n{sender}'s message: {text}"
-        )
-
-        # Use tool access for requests that need file reads or data queries
-        needs_tools = any(kw in text.lower() for kw in [
+        # LAYER 2: Decide complexity — Haiku (fast) vs Opus (deep)
+        needs_tools = any(kw in lowered for kw in [
             "read", "file", "check", "look at", "query", "show me",
             "what's in", "cat ", "grep", "find", "database", "supabase",
             "store", "manual", "claude.md", "architecture",
         ])
+        needs_deep = needs_tools or any(kw in lowered for kw in [
+            "why", "diagnose", "explain", "analyse", "opinion", "think",
+            "strategy", "plan", "recommend",
+        ])
+
+        # Select model: Haiku for routine, Opus for deep
+        model = "claude-opus-4-6" if needs_deep else "claude-haiku-4-5"
+        timeout = 120 if needs_tools else (60 if needs_deep else 20)
+
+        classifier_prompt = (
+            f"{sender} just posted in the group. Decide: does this need a Max response?\n"
+            "- If someone is asking Max something, addressing Max, or saying something "
+            "that warrants a COO response → respond with the actual response text.\n"
+            "- If they're talking to each other and Max isn't relevant → respond with exactly: SKIP\n"
+            "- Keep responses under 5 lines. Be terse.\n\n"
+            f"Recent group:\n{recent}\n\n{sender}'s message: {text}"
+        )
+
         response = await opus_call(
             get_system_prompt("dm"), classifier_prompt,
-            timeout=120,
+            timeout=timeout,
+            model=model,
             with_tools=needs_tools,
         )
 

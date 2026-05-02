@@ -305,6 +305,67 @@ def _make_digest_job(cfg: COOConfig):
     return _digest_job
 
 
+def _make_inbox_poll_job():
+    """Return a job_queue callback that reads peer messages from /tmp/coo-inbox/.
+
+    Telegram bots can't see other bots' messages in groups. Peers (Elliot/Aiden)
+    cross-post to this file inbox. Max reads them here, feeds into group_handler
+    buffer, and responds if addressed.
+    """
+    import json as _json
+    from pathlib import Path
+
+    inbox_dir = Path("/tmp/coo-inbox")
+
+    async def _inbox_poll_job(context: ContextTypes.DEFAULT_TYPE) -> None:
+        if not inbox_dir.exists():
+            return
+        for fpath in sorted(inbox_dir.glob("*.json")):
+            try:
+                data = _json.loads(fpath.read_text())
+                fpath.unlink()  # consume the message
+
+                sender = data.get("sender_callsign", "peer")
+                text = data.get("text", "")
+                ts = data.get("timestamp_iso", "")
+
+                if not text:
+                    continue
+
+                # Feed into group_handler buffer
+                from src.coo_bot.group_handler import _buffer, _respond_in_group
+                entry = {
+                    "sender": sender,
+                    "text": text,
+                    "timestamp": ts,
+                    "message_id": data.get("message_id", 0),
+                }
+                _buffer.append(entry)
+
+                # Check if Max should respond
+                should_respond = "max" in text.lower() or "@maxcoo_bot" in text.lower()
+                if should_respond:
+                    # Create a minimal fake update for reply
+                    class FakeMsg:
+                        async def reply_text(self, t):
+                            from src.coo_bot.group_writer import post_to_group
+                            cfg = COOConfig()
+                            await post_to_group(cfg.bot_token, t.replace("[MAX] ", ""))
+                    class FakeUpdate:
+                        message = FakeMsg()
+
+                    await _respond_in_group(FakeUpdate(), text, sender)
+
+            except Exception as exc:
+                logger.warning("inbox_poll: error processing %s: %s", fpath, exc)
+                try:
+                    fpath.unlink(missing_ok=True)
+                except Exception:
+                    pass
+
+    return _inbox_poll_job
+
+
 def main() -> None:
     """Entry point. Loads config, builds Application, registers handlers."""
     logging.basicConfig(
@@ -346,6 +407,15 @@ def main() -> None:
         interval=interval_seconds,
         first=interval_seconds,
         name="digest",
+    )
+
+    # Inbox poll — reads peer bot messages from /tmp/coo-inbox/ sideband
+    # (Telegram doesn't deliver bot-to-bot messages in groups)
+    app.job_queue.run_repeating(
+        _make_inbox_poll_job(),
+        interval=5,  # poll every 5 seconds
+        first=5,
+        name="inbox_poll",
     )
 
     tier = int(os.environ.get("COO_APPROVAL_TIER", "0"))

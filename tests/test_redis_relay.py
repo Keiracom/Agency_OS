@@ -76,14 +76,24 @@ async def test_pop_fail_open():
 
 def test_push_sync_success():
     mock_client = MagicMock()
-    with patch("src.relay.redis_relay.redis_sync.Redis.from_url", return_value=mock_client), \
-         patch.dict("os.environ", {"REDIS_URL": "redis://fake:6379"}):
+    import src.relay.redis_relay as mod
+    mod._sync_client = None  # reset singleton
+    with patch("src.relay.redis_relay._get_sync_client", return_value=mock_client):
         result = push_sync("dispatch:atlas", {"type": "task_dispatch", "brief": "test"})
     assert result is True
     mock_client.lpush.assert_called_once()
 
 def test_push_sync_fail_open():
-    with patch("src.relay.redis_relay.redis_sync.Redis.from_url", side_effect=ConnectionError("nope")), \
-         patch.dict("os.environ", {"REDIS_URL": "redis://fake:6379"}):
+    import src.relay.redis_relay as mod
+    mod._sync_client = None  # reset singleton
+    with patch("src.relay.redis_relay._get_sync_client", side_effect=ConnectionError("nope")):
         result = push_sync("dispatch:atlas", {"type": "task_dispatch"})
     assert result is False
+
+
+# ── Case normalization ──────────────────────────────────────────────────────
+
+def test_queue_names_always_lowercase():
+    assert inbox_queue("ELLIOT") == "relay:inbox:elliot"
+    assert outbox_queue("AIDEN") == "relay:outbox:aiden"
+    assert dispatch_queue("ATLAS") == "dispatch:atlas"

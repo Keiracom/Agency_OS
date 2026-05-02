@@ -114,7 +114,7 @@ try:
     if not url:
         sys.exit(0)
     r = redis.Redis.from_url(url, decode_responses=True)
-    callsign = '${CALLSIGN}'
+    callsign = '${CALLSIGN}'.lower()
     payload = json.dumps({
         'type': 'text',
         'chat_id': ${DEST_CHAT_ID},

@@ -94,9 +94,7 @@ _PEER_MAP: dict[str, list[str]] = {
     "scout": ["elliot"],
     "max": [],  # Max receives but doesn't cross-post
 }
-PEER_INBOXES: list[str] = [
-    f"/tmp/telegram-relay-{p}/inbox" for p in _PEER_MAP.get(CALLSIGN, [])
-]
+PEER_INBOXES: list[str] = [f"/tmp/telegram-relay-{p}/inbox" for p in _PEER_MAP.get(CALLSIGN, [])]
 # Backward-compat shim — callers that still reference PEER_INBOX get the first peer.
 # Migrate callers to iterate PEER_INBOXES directly.
 PEER_INBOX: str | None = PEER_INBOXES[0] if PEER_INBOXES else None
@@ -1236,7 +1234,9 @@ async def _outbox_watcher(app: Application) -> None:
                             }
                             with open(os.path.join(peer_inbox, peer_fname), "w") as pf:
                                 _json.dump(peer_payload, pf)
-                            logger.info(f"[relay] cross-posted to peer inbox: {peer_inbox}/{peer_fname}")
+                            logger.info(
+                                f"[relay] cross-posted to peer inbox: {peer_inbox}/{peer_fname}"
+                            )
 
                     # Cross-post to enforcer inbox (governance enforcement daemon)
                     if chat_id == GROUP_CHAT_ID and msg.get("type") == "text":

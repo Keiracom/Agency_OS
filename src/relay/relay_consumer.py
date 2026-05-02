@@ -15,8 +15,9 @@ import hmac as hmac_mod
 import json
 import logging
 import os
+import signal
 import subprocess
-import time
+import sys
 
 logger = logging.getLogger(__name__)
 
@@ -66,12 +67,12 @@ async def wait_for_prompt(tmux_target: str, max_attempts: int = 30) -> bool:
     return False
 
 
-def inject_into_tmux(tmux_target: str, text: str) -> bool:
+async def inject_into_tmux(tmux_target: str, text: str) -> bool:
     """Send text then C-m as separate keys (proven anti-paste-bracket pattern)."""
     try:
         text = text.replace("\n", " ")
         subprocess.run(["tmux", "send-keys", "-t", tmux_target, text], timeout=5, check=True)
-        time.sleep(0.5)
+        await asyncio.sleep(0.5)
         subprocess.run(["tmux", "send-keys", "-t", tmux_target, "C-m"], timeout=5, check=True)
         return True
     except Exception as exc:
@@ -142,7 +143,7 @@ async def consume_queue(queue: str, config: dict) -> None:
             if not prompt_ready:
                 logger.warning("Prompt not ready on %s after 30s, injecting anyway", tmux_target)
 
-            inject_into_tmux(tmux_target, text)
+            await inject_into_tmux(tmux_target, text)
             logger.info("Injected into %s from %s: %.80s", tmux_target, queue, text)
 
         except Exception as exc:
@@ -152,11 +153,31 @@ async def consume_queue(queue: str, config: dict) -> None:
 
 # ── Entry point ─────────────────────────────────────────────────────────────────
 
+def _file_watchers_active() -> bool:
+    """Check if inotifywait relay watchers are still running (Phase 1 overlap guard)."""
+    try:
+        result = subprocess.run(
+            ["pgrep", "-f", "inotifywait.*telegram-relay"],
+            capture_output=True, text=True, timeout=5,
+        )
+        return result.returncode == 0
+    except Exception:
+        return False
+
+
 async def main() -> None:
     logging.basicConfig(
         level=logging.INFO,
         format="[relay-consumer] %(asctime)s %(levelname)s %(message)s",
     )
+
+    # Guard: refuse to start if file-based watchers are still active (double-injection)
+    if _file_watchers_active():
+        logger.error(
+            "inotifywait relay watchers still active — refusing to start. "
+            "Disable file watchers before enabling Redis consumer (Phase 3)."
+        )
+        sys.exit(1)
 
     active: dict[str, dict] = {}
     for queue, config in QUEUE_MAP.items():
@@ -174,7 +195,16 @@ async def main() -> None:
 
     tasks = [asyncio.create_task(consume_queue(q, c)) for q, c in active.items()]
     logger.info("Started %d consumers", len(tasks))
-    await asyncio.gather(*tasks)
+
+    # Graceful shutdown: cancel tasks on SIGTERM/SIGINT, let in-flight messages drain
+    loop = asyncio.get_event_loop()
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        loop.add_signal_handler(sig, lambda: [t.cancel() for t in tasks])
+
+    try:
+        await asyncio.gather(*tasks)
+    except asyncio.CancelledError:
+        logger.info("Shutdown signal received — consumers stopped gracefully")
 
 
 if __name__ == "__main__":

@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from src.relay.relay_consumer import (
+    _file_watchers_active,
     _hmac_verify_dict,
     format_message,
     inject_into_tmux,
@@ -72,19 +73,34 @@ def test_format_unknown_returns_none():
 
 # ── inject_into_tmux ─────────────────────────────────────────────────────────
 
-def test_inject_success():
+@pytest.mark.asyncio
+async def test_inject_success():
     with patch("src.relay.relay_consumer.subprocess.run") as mock_run, \
-         patch("src.relay.relay_consumer.time.sleep"):
+         patch("src.relay.relay_consumer.asyncio.sleep", new_callable=AsyncMock):
         mock_run.return_value = MagicMock(returncode=0)
-        result = inject_into_tmux("elliottbot:0.0", "hello world")
+        result = await inject_into_tmux("elliottbot:0.0", "hello world")
     assert result is True
     assert mock_run.call_count == 2  # send-keys text + send-keys C-m
 
-def test_inject_failure():
+@pytest.mark.asyncio
+async def test_inject_failure():
     with patch("src.relay.relay_consumer.subprocess.run", side_effect=Exception("tmux error")), \
-         patch("src.relay.relay_consumer.time.sleep"):
-        result = inject_into_tmux("elliottbot:0.0", "hello")
+         patch("src.relay.relay_consumer.asyncio.sleep", new_callable=AsyncMock):
+        result = await inject_into_tmux("elliottbot:0.0", "hello")
     assert result is False
+
+
+# ── file watcher guard ──────────────────────────────────────────────────────
+
+def test_file_watchers_active_detected():
+    mock_result = MagicMock(returncode=0)
+    with patch("src.relay.relay_consumer.subprocess.run", return_value=mock_result):
+        assert _file_watchers_active() is True
+
+def test_file_watchers_not_active():
+    mock_result = MagicMock(returncode=1)
+    with patch("src.relay.relay_consumer.subprocess.run", return_value=mock_result):
+        assert _file_watchers_active() is False
 
 
 # ── wait_for_prompt ──────────────────────────────────────────────────────────

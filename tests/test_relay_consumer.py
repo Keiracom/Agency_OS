@@ -2,8 +2,9 @@
 import hashlib
 import hmac
 import json
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import MagicMock, patch, AsyncMock
 
 from src.relay.relay_consumer import (
     _hmac_verify_dict,
@@ -11,7 +12,6 @@ from src.relay.relay_consumer import (
     inject_into_tmux,
     wait_for_prompt,
 )
-
 
 # ── HMAC verify ──────────────────────────────────────────────────────────────
 

@@ -23,6 +23,10 @@ if [[ -z "$PR_NUM" ]]; then
     echo '{"error": "usage: verify_pr.sh <pr_number>"}' >&2
     exit 1
 fi
+if ! [[ "$PR_NUM" =~ ^[0-9]+$ ]]; then
+    echo '{"error": "PR number must be numeric"}' >&2
+    exit 1
+fi
 
 # --- Fetch PR state ---
 PR_JSON=$(gh pr view "$PR_NUM" --json state,mergedAt,mergeCommit 2>&1)

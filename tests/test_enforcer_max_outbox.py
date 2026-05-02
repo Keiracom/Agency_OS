@@ -304,3 +304,34 @@ async def test_verify_pr_review_state_unknown(tmp_path):
         # Must reference unknown state and not claim approval
         assert "unknown" in call_text.lower() or "COMPLETION-REQUIRES-VERIFICATION" in call_text
         assert "review_state=APPROVED" not in call_text
+
+
+@pytest.mark.asyncio
+async def test_verify_pr_review_state_commented_only(tmp_path):
+    """COMMENTED-only reviews (no APPROVED, no CHANGES_REQUESTED) → REVIEW_REQUIRED;
+    'approved' claim must trigger interjection."""
+    _make_outbox_file(tmp_path, "PR #521 approved")
+
+    proc_mock = _async_proc_mock(_verify_json(
+        merged=True, ci_passing=True,
+        review_state="REVIEW_REQUIRED",
+        latest_reviews=[
+            {"author": "elliotbot", "state": "COMMENTED"},
+        ],
+    ))
+
+    with patch("src.telegram_bot.enforcer_bot.MAX_OUTBOX", str(tmp_path)), \
+         patch("asyncio.create_subprocess_exec", proc_mock), \
+         patch("src.telegram_bot.enforcer_bot.send_interjection",
+               new_callable=AsyncMock) as mock_interject:
+
+        task = asyncio.create_task(watch_max_outbox())
+        await asyncio.sleep(0.05)
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
+
+        # COMMENTED-only must NOT count as APPROVED — claim "approved" → mismatch interjection
+        mock_interject.assert_called_once()
+        call_text = mock_interject.call_args[0][0]
+        assert "REVIEW_REQUIRED" in call_text or "COMPLETION-REQUIRES-VERIFICATION" in call_text

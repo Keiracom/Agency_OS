@@ -51,15 +51,23 @@ def _hmac_verify_dict(payload: dict, secret: str) -> tuple[bool, str]:
 
 # ── Tmux helpers ────────────────────────────────────────────────────────────────
 
+async def _run_tmux(*args: str) -> tuple[int, str]:
+    """Run a tmux command asynchronously (non-blocking)."""
+    proc = await asyncio.create_subprocess_exec(
+        "tmux", *args,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=5)
+    return proc.returncode or 0, (stdout or b"").decode()
+
+
 async def wait_for_prompt(tmux_target: str, max_attempts: int = 30) -> bool:
     """Poll tmux pane until Claude's ❯ prompt appears (up to max_attempts seconds)."""
     for _ in range(max_attempts):
         try:
-            result = subprocess.run(
-                ["tmux", "capture-pane", "-t", tmux_target, "-p"],
-                capture_output=True, text=True, timeout=5,
-            )
-            if "❯" in (result.stdout or ""):
+            _, stdout = await _run_tmux("capture-pane", "-t", tmux_target, "-p")
+            if "❯" in stdout:
                 return True
         except Exception:
             pass
@@ -71,9 +79,9 @@ async def inject_into_tmux(tmux_target: str, text: str) -> bool:
     """Send text then C-m as separate keys (proven anti-paste-bracket pattern)."""
     try:
         text = text.replace("\n", " ")
-        subprocess.run(["tmux", "send-keys", "-t", tmux_target, text], timeout=5, check=True)
+        await _run_tmux("send-keys", "-t", tmux_target, text)
         await asyncio.sleep(0.5)
-        subprocess.run(["tmux", "send-keys", "-t", tmux_target, "C-m"], timeout=5, check=True)
+        await _run_tmux("send-keys", "-t", tmux_target, "C-m")
         return True
     except Exception as exc:
         logger.error("tmux inject failed target=%s: %s", tmux_target, exc)
@@ -197,7 +205,7 @@ async def main() -> None:
     logger.info("Started %d consumers", len(tasks))
 
     # Graceful shutdown: cancel tasks on SIGTERM/SIGINT, let in-flight messages drain
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     for sig in (signal.SIGTERM, signal.SIGINT):
         loop.add_signal_handler(sig, lambda: [t.cancel() for t in tasks])
 

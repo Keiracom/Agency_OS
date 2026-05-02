@@ -75,16 +75,17 @@ def test_format_unknown_returns_none():
 
 @pytest.mark.asyncio
 async def test_inject_success():
-    with patch("src.relay.relay_consumer.subprocess.run") as mock_run, \
+    mock_run = AsyncMock(return_value=(0, ""))
+    with patch("src.relay.relay_consumer._run_tmux", mock_run), \
          patch("src.relay.relay_consumer.asyncio.sleep", new_callable=AsyncMock):
-        mock_run.return_value = MagicMock(returncode=0)
         result = await inject_into_tmux("elliottbot:0.0", "hello world")
     assert result is True
     assert mock_run.call_count == 2  # send-keys text + send-keys C-m
 
 @pytest.mark.asyncio
 async def test_inject_failure():
-    with patch("src.relay.relay_consumer.subprocess.run", side_effect=Exception("tmux error")), \
+    mock_run = AsyncMock(side_effect=Exception("tmux error"))
+    with patch("src.relay.relay_consumer._run_tmux", mock_run), \
          patch("src.relay.relay_consumer.asyncio.sleep", new_callable=AsyncMock):
         result = await inject_into_tmux("elliottbot:0.0", "hello")
     assert result is False
@@ -107,17 +108,15 @@ def test_file_watchers_not_active():
 
 @pytest.mark.asyncio
 async def test_wait_for_prompt_found():
-    mock_result = MagicMock()
-    mock_result.stdout = "some text ❯ "
-    with patch("src.relay.relay_consumer.subprocess.run", return_value=mock_result):
+    mock_run = AsyncMock(return_value=(0, "some text ❯ "))
+    with patch("src.relay.relay_consumer._run_tmux", mock_run):
         result = await wait_for_prompt("elliottbot:0.0", max_attempts=1)
     assert result is True
 
 @pytest.mark.asyncio
 async def test_wait_for_prompt_not_found():
-    mock_result = MagicMock()
-    mock_result.stdout = "processing..."
-    with patch("src.relay.relay_consumer.subprocess.run", return_value=mock_result), \
+    mock_run = AsyncMock(return_value=(0, "processing..."))
+    with patch("src.relay.relay_consumer._run_tmux", mock_run), \
          patch("src.relay.relay_consumer.asyncio.sleep", new_callable=AsyncMock):
         result = await wait_for_prompt("elliottbot:0.0", max_attempts=2)
     assert result is False

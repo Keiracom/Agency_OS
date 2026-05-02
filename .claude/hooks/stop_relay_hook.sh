@@ -1,0 +1,94 @@
+#!/usr/bin/env bash
+# Change 1 — Stop hook auto-relay.
+#
+# Fires on every Stop event (assistant turn completion). Writes the
+# assistant's final response to the outbox for Telegram delivery.
+#
+# Scope rules:
+#   - Final response text only (not internal reasoning/tool output)
+#   - Top-level session only (sub-agents don't relay)
+#   - Fail-open: relay failure never blocks the turn
+#   - Writes to outbox (existing watcher handles delivery + timeout)
+#   - De-dup: skips if identical content was written to outbox in last 30s
+#
+# stdin: Claude Code Stop event JSON
+#   { "message": { "content": "..." }, "reason": "..." }
+
+set -u
+
+CALLSIGN="${CALLSIGN:-}"
+if [[ -z "$CALLSIGN" && -r ./IDENTITY.md ]]; then
+    CALLSIGN="$(grep -m1 -oE '\[(ATLAS|ELLIOT|AIDEN|ORION|SCOUT|MAX)\]' ./IDENTITY.md 2>/dev/null \
+        | tr -d '[]' | tr '[:upper:]' '[:lower:]')"
+fi
+CALLSIGN="${CALLSIGN:-elliot}"
+
+# Sub-agents: skip relay (they return results to parent)
+if [[ -n "${CLAUDE_AGENT_ID:-}" ]]; then
+    exit 0
+fi
+
+RELAY_DIR="/tmp/telegram-relay-${CALLSIGN}"
+OUTBOX="${RELAY_DIR}/outbox"
+mkdir -p "$OUTBOX" 2>/dev/null || true
+
+# Read Stop event from stdin
+PAYLOAD="$(cat || true)"
+if [[ -z "$PAYLOAD" ]]; then
+    exit 0
+fi
+
+# Extract final response text
+TEXT=""
+if command -v jq >/dev/null 2>&1; then
+    TEXT="$(printf '%s' "$PAYLOAD" | jq -r '.message.content // .response // .text // ""' 2>/dev/null || echo "")"
+fi
+
+# Skip empty responses
+if [[ -z "$TEXT" || ${#TEXT} -lt 3 ]]; then
+    exit 0
+fi
+
+# De-dup: check if identical content was written to outbox in last 30s
+HASH="$(printf '%s' "$TEXT" | md5sum | cut -c1-8)"
+DEDUP_MARKER="/tmp/.relay_dedup_${CALLSIGN}_${HASH}"
+if [[ -f "$DEDUP_MARKER" ]]; then
+    MARKER_AGE=$(( $(date +%s) - $(stat -c %Y "$DEDUP_MARKER" 2>/dev/null || echo 0) ))
+    if [[ $MARKER_AGE -lt 30 ]]; then
+        # Same content relayed within 30s — skip (agent already called tg manually)
+        exit 0
+    fi
+fi
+
+# Determine destination chat_id (group by default)
+GROUP_CHAT_ID="-1003926592540"
+DM_CHAT_ID=""
+case "$CALLSIGN" in
+    elliot|aiden|max) DM_CHAT_ID="" ;;  # Group relay default
+esac
+
+# Write to outbox (existing watcher delivers to TG)
+TS="$(date -u +%Y%m%d_%H%M%S)"
+RAND="$(head -c4 /dev/urandom | od -An -tx4 | tr -d ' ')"
+FNAME="${TS}_${RAND}.json"
+
+# Truncate if too long for TG (4096 char limit)
+if [[ ${#TEXT} -gt 4000 ]]; then
+    TEXT="${TEXT:0:3990}... [truncated]"
+fi
+
+# Tag with callsign prefix
+TAGGED="[${CALLSIGN^^}] ${TEXT}"
+
+cat > "${OUTBOX}/${FNAME}" << ENDJSON
+{
+    "type": "text",
+    "chat_id": ${GROUP_CHAT_ID},
+    "text": $(printf '%s' "$TAGGED" | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read()))' 2>/dev/null || printf '"%s"' "$TAGGED")
+}
+ENDJSON
+
+# Write de-dup marker
+touch "$DEDUP_MARKER" 2>/dev/null || true
+
+exit 0

@@ -6,9 +6,12 @@ interjects on violations. NOT a Claude Code session — stateless per-check.
 """
 
 import asyncio
+import contextlib
 import json
 import logging
 import os
+import re
+import subprocess
 import time
 from collections import deque
 from datetime import datetime, timezone
@@ -162,7 +165,17 @@ async def check_with_llm(current_msg: str, recent_msgs: list[str]) -> dict | Non
 BOT_INBOXES = [
     "/tmp/telegram-relay-elliot/inbox",
     "/tmp/telegram-relay-aiden/inbox",
+    "/tmp/telegram-relay-max/inbox",   # NEW — Dave directive 2026-05-02
 ]
+
+# Regex to detect PR number adjacent to a positive-claim keyword (either order).
+# Liberal on purpose — false positives are cheap (verification is mechanical and fast).
+# Matches both "#521 merged" and "521 passed" (bare number) and reverse-order "merged #521".
+PR_CLAIM_RE = re.compile(
+    r"#?(\d+).{0,80}?(merged|approved|complete|passed?|green|all\s+tests|ci\s+pass|ship)"
+    r"|(merged|approved|complete|passed?|green|all\s+tests|ci\s+pass).{0,80}?#?(\d+)",
+    re.IGNORECASE,
+)
 
 
 async def send_interjection(text: str) -> None:
@@ -359,8 +372,143 @@ async def watch_inbox() -> None:
         await asyncio.sleep(1)  # check inbox every second
 
 
+MAX_OUTBOX = "/tmp/telegram-relay-max/outbox"
+
+
+async def watch_max_outbox() -> None:
+    """Watch MAX's outbox for PR/completion claims and mechanically verify them.
+
+    Applies regex pre-filter (cheap) before running verify_pr.sh (slightly heavier).
+    Fail-open: errors in verification log a warning and continue — never crash the watcher.
+    """
+    os.makedirs(MAX_OUTBOX, exist_ok=True)
+    logger.info("Enforcer watching MAX outbox: %s", MAX_OUTBOX)
+
+    while True:
+        try:
+            files = sorted(
+                f for f in os.listdir(MAX_OUTBOX)
+                if f.endswith(".json")
+            )
+            for fname in files:
+                fpath = os.path.join(MAX_OUTBOX, fname)
+                try:
+                    with open(fpath) as f:
+                        msg = json.load(f)
+                    os.unlink(fpath)
+
+                    text = msg.get("text", "")
+                    if not text:
+                        continue
+
+                    # Cheap regex pre-filter — skip if no PR claim detected
+                    match = PR_CLAIM_RE.search(text)
+                    if not match:
+                        logger.debug("MAX outbox: no PR claim in %s", fname)
+                        continue
+
+                    # Extract PR number from first numeric capture group
+                    pr_num_str = match.group(1) or match.group(4)
+                    if not pr_num_str:
+                        logger.debug("MAX outbox: regex matched but no PR number in %s", fname)
+                        continue
+                    pr_num = int(pr_num_str)
+
+                    # Determine which claim keyword triggered the match
+                    claim_kw = (match.group(2) or match.group(3) or "").lower().strip()
+
+                    logger.info(
+                        "MAX outbox: PR claim detected — PR #%d keyword=%r in %s",
+                        pr_num, claim_kw, fname,
+                    )
+
+                    # Mechanical verification via verify_pr.sh
+                    try:
+                        script_path = os.path.join(
+                            os.path.dirname(os.path.dirname(os.path.dirname(
+                                os.path.abspath(__file__)
+                            ))),
+                            "scripts", "verify_pr.sh",
+                        )
+                        proc = await asyncio.create_subprocess_exec(
+                            "bash", script_path, str(pr_num),
+                            stdout=asyncio.subprocess.PIPE,
+                            stderr=asyncio.subprocess.PIPE,
+                        )
+                        try:
+                            stdout_b, stderr_b = await asyncio.wait_for(
+                                proc.communicate(), timeout=15
+                            )
+                        except asyncio.TimeoutError:
+                            proc.kill()
+                            await proc.wait()
+                            logger.warning("verify_pr.sh timed out for PR #%d — skipping", pr_num)
+                            continue
+                        stdout = stdout_b.decode()
+                        stderr = stderr_b.decode()
+                        if not stdout.strip():
+                            logger.warning(
+                                "verify_pr.sh returned no output for PR #%d (exit %d): %s",
+                                pr_num, proc.returncode, stderr[:200],
+                            )
+                            continue
+
+                        verify = json.loads(stdout)
+                    except json.JSONDecodeError as exc:
+                        logger.warning(
+                            "verify_pr.sh output not valid JSON for PR #%d: %s", pr_num, exc
+                        )
+                        continue
+                    except Exception as exc:
+                        logger.warning(
+                            "verify_pr.sh error for PR #%d: %s", pr_num, exc
+                        )
+                        continue
+
+                    # Mechanical comparison — "approved" skipped (requires LLM semantics)
+                    mismatch_reason = None
+
+                    if claim_kw in ("merged", "complete", "ship") and not verify.get("merged"):
+                        mismatch_reason = (
+                            f"claimed '{claim_kw}' but merged=false (state={verify.get('state')})"
+                        )
+                    elif claim_kw in ("passed", "pass", "green", "all tests", "ci pass") \
+                            and not verify.get("ci_passing"):
+                        mismatch_reason = (
+                            f"claimed '{claim_kw}' but ci_passing=false"
+                        )
+
+                    if mismatch_reason:
+                        failed = verify.get("failed_checks", [])
+                        source_excerpt = text[:100].replace("\n", " ")
+                        interjection = (
+                            f"[ENFORCER] Rule 3 — COMPLETION-REQUIRES-VERIFICATION:\n"
+                            f"MAX claimed PR #{pr_num} {mismatch_reason}. "
+                            f"state={verify.get('state')} ci_passing={verify.get('ci_passing')}. "
+                            f"Failed checks: {failed}. "
+                            f"Source: {source_excerpt}"
+                        )
+                        logger.info("MISMATCH: %s", interjection)
+                        await send_interjection(interjection)
+                    else:
+                        logger.debug(
+                            "MAX PR #%d claim verified OK (merged=%s ci_passing=%s)",
+                            pr_num, verify.get("merged"), verify.get("ci_passing"),
+                        )
+
+                except Exception as exc:
+                    logger.error("Error processing MAX outbox %s: %s", fname, exc)
+                    with contextlib.suppress(OSError):
+                        os.unlink(fpath)
+
+        except Exception as exc:
+            logger.error("MAX outbox watch error: %s", exc)
+
+        await asyncio.sleep(1)  # check outbox every second
+
+
 def main():
-    """Entry point — watches inbox for cross-posted messages, sends interjections via Bot API."""
+    """Entry point — watches inbox and MAX outbox concurrently, sends interjections via Bot API."""
     if not BOT_TOKEN:
         logger.error("ENFORCER_BOT_TOKEN not set")
         return
@@ -368,7 +516,12 @@ def main():
         logger.warning("OPENAI_API_KEY not set — enforcement checks disabled")
 
     logger.info("Enforcer bot starting — inbox mode, group %s", GROUP_CHAT_ID)
-    asyncio.run(watch_inbox())
+
+    async def main_loop() -> None:
+        """Run inbox watcher and MAX outbox watcher concurrently."""
+        await asyncio.gather(watch_inbox(), watch_max_outbox())
+
+    asyncio.run(main_loop())
 
 
 if __name__ == "__main__":

@@ -81,6 +81,48 @@ async def handle_group_message(
     _buffer.append(entry)
     logger.debug("group_handler: buffered message from %s (buffer=%d)", sender_name, len(_buffer))
 
+    # If Dave addresses Max in group, respond IN the group
+    dave_id = 7267788033
+    if sender_id == dave_id:
+        await _respond_to_dave_in_group(update, text)
+
+
+async def _respond_to_dave_in_group(update: Update, text: str) -> None:
+    """When Dave messages in the group, Max responds in-group like a COO would.
+
+    Uses Opus to generate a contextual response based on recent group activity.
+    Only responds if the message seems directed at Max or is a question/instruction.
+    """
+    try:
+        from src.coo_bot.opus_client import opus_call
+        from src.coo_bot.persona import get_system_prompt
+
+        # Build context from recent buffer
+        recent = "\n".join(
+            f"[{m.get('sender', '?')}] {m.get('text', '')[:100]}"
+            for m in list(_buffer)[-10:]
+        )
+
+        classifier_prompt = (
+            "Dave just posted in the group. Decide: does this need a Max response?\n"
+            "- If Dave is asking Max something, giving an instruction, or saying something "
+            "that warrants a COO response → respond with the actual response text.\n"
+            "- If Dave is addressing Elliot/Aiden specifically (not Max) → respond with exactly: SKIP\n"
+            "- If it's a general statement not needing Max input → respond with: SKIP\n\n"
+            f"Recent group:\n{recent}\n\nDave's message: {text}"
+        )
+
+        response = await opus_call(
+            get_system_prompt("dm"), classifier_prompt, timeout=60
+        )
+
+        if response and response.strip() != "SKIP":
+            # Post Max's response to group
+            await update.message.reply_text(f"[MAX] {response}")
+            logger.info("group_handler: Max responded to Dave in group")
+    except Exception as exc:
+        logger.warning("group_handler: failed to respond to Dave: %s", exc)
+
 
 def get_recent_messages(limit: int = 20) -> list[dict[str, Any]]:
     """Return the most recent `limit` buffered group messages (newest last).

@@ -1,8 +1,16 @@
 #!/usr/bin/env bash
 # Usage: verify_pr.sh <pr_number>
 # Outputs JSON: {"pr": <num>, "state": "...", "merged": bool, "merge_sha": "...",
-#                "ci_passing": bool, "failed_checks": [...], "pending_checks": [...]}
+#                "ci_passing": bool, "failed_checks": [...], "pending_checks": [...],
+#                "review_state": "APPROVED|CHANGES_REQUESTED|REVIEW_REQUIRED|unknown",
+#                "latest_reviews": [{"author": "...", "state": "..."}]}
 # Exit 0 on successful query, 2 on PR not found, 1 on gh error.
+#
+# review_state logic (uses GitHub's per-reviewer latest review — already de-duplicated):
+#   - Any CHANGES_REQUESTED among latest reviews → "CHANGES_REQUESTED"
+#   - At least one APPROVED and no CHANGES_REQUESTED → "APPROVED"
+#   - latestReviews empty or all COMMENTED → "REVIEW_REQUIRED"
+#   - gh fetch error → "unknown" (never silently defaults to APPROVED — anti-ghost-green)
 #
 # Gating checks (failures block merge): Backend Tests, MyPy, Frontend Checks, Dead Reference Guard
 # Non-blocking (pre-existing): Ruff/Backend Lint, SonarCloud, Vercel deployments — these are
@@ -13,6 +21,10 @@ set -uo pipefail
 PR_NUM="${1:-}"
 if [[ -z "$PR_NUM" ]]; then
     echo '{"error": "usage: verify_pr.sh <pr_number>"}' >&2
+    exit 1
+fi
+if ! [[ "$PR_NUM" =~ ^[0-9]+$ ]]; then
+    echo '{"error": "PR number must be numeric"}' >&2
     exit 1
 fi
 
@@ -60,6 +72,7 @@ if [[ $CHECKS_EXIT -ne 0 ]] && ! echo "$CHECKS_OUTPUT" | grep -q $'\t'; then
         --arg detail "$(echo "$CHECKS_OUTPUT" | head -c 200)" \
         '{pr: $pr, state: $state, merged: $merged, merge_sha: $merge_sha,
           ci_passing: null, ci_status: "unknown", failed_checks: [], pending_checks: [],
+          review_state: "unknown", latest_reviews: [],
           detail: $detail}'
     exit 1
 fi
@@ -93,6 +106,38 @@ else
     CI_PASSING=false
 fi
 
+# --- Fetch review state ---
+# Uses GitHub's latestReviews (per-reviewer latest — already de-duplicated by GitHub).
+# On error: review_state="unknown" — never silently defaults to APPROVED (anti-ghost-green).
+REVIEW_JSON=$(gh pr view "$PR_NUM" --json reviewDecision,latestReviews 2>&1)
+REVIEW_EXIT=$?
+
+if [[ $REVIEW_EXIT -ne 0 ]]; then
+    REVIEW_STATE="unknown"
+    LATEST_REVIEWS="[]"
+else
+    # Build latest_reviews array: [{"author": "login", "state": "APPROVED|..."}]
+    LATEST_REVIEWS=$(echo "$REVIEW_JSON" | jq '[
+        .latestReviews[]
+        | {"author": .author.login, "state": .state}
+    ]')
+
+    # Derive review_state from the latest review per reviewer
+    HAS_CHANGES=$(echo "$LATEST_REVIEWS" | jq 'map(select(.state == "CHANGES_REQUESTED")) | length > 0')
+    HAS_APPROVED=$(echo "$LATEST_REVIEWS" | jq 'map(select(.state == "APPROVED")) | length > 0')
+    REVIEWS_EMPTY=$(echo "$LATEST_REVIEWS" | jq 'length == 0')
+
+    if [[ "$REVIEWS_EMPTY" == "true" ]]; then
+        REVIEW_STATE="REVIEW_REQUIRED"
+    elif [[ "$HAS_CHANGES" == "true" ]]; then
+        REVIEW_STATE="CHANGES_REQUESTED"
+    elif [[ "$HAS_APPROVED" == "true" ]]; then
+        REVIEW_STATE="APPROVED"
+    else
+        REVIEW_STATE="REVIEW_REQUIRED"
+    fi
+fi
+
 # --- Compose output ---
 jq -n \
     --argjson pr "$PR_NUM" \
@@ -102,5 +147,8 @@ jq -n \
     --argjson ci_passing "$CI_PASSING" \
     --argjson failed_checks "$FAILED_CHECKS" \
     --argjson pending_checks "$PENDING_CHECKS" \
+    --arg review_state "$REVIEW_STATE" \
+    --argjson latest_reviews "$LATEST_REVIEWS" \
     '{pr: $pr, state: $state, merged: $merged, merge_sha: $merge_sha,
-      ci_passing: $ci_passing, failed_checks: $failed_checks, pending_checks: $pending_checks}'
+      ci_passing: $ci_passing, failed_checks: $failed_checks, pending_checks: $pending_checks,
+      review_state: $review_state, latest_reviews: $latest_reviews}'

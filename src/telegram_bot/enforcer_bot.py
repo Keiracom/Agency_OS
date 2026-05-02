@@ -198,9 +198,10 @@ BOT_INBOXES = [
 # Regex to detect PR number adjacent to a positive-claim keyword (either order).
 # Liberal on purpose — false positives are cheap (verification is mechanical and fast).
 # Matches both "#521 merged" and "521 passed" (bare number) and reverse-order "merged #521".
+# "approved" / "approved by both" included so review-state claims trigger mechanical check.
 PR_CLAIM_RE = re.compile(
-    r"#?(\d+).{0,80}?(merged|approved|complete|passed?|green|all\s+tests|ci\s+pass|ship)"
-    r"|(merged|approved|complete|passed?|green|all\s+tests|ci\s+pass).{0,80}?#?(\d+)",
+    r"#?(\d+).{0,80}?(merged|approved(?:\s+by\s+both)?|complete|passed?|green|all\s+tests|ci\s+pass|ship)"
+    r"|(merged|approved(?:\s+by\s+both)?|complete|passed?|green|all\s+tests|ci\s+pass).{0,80}?#?(\d+)",
     re.IGNORECASE,
 )
 
@@ -495,7 +496,7 @@ async def watch_max_outbox() -> None:
                         logger.warning("verify_pr.sh error for PR #%d: %s", pr_num, exc)
                         continue
 
-                    # Mechanical comparison — "approved" skipped (requires LLM semantics)
+                    # Mechanical comparison against verify_pr.sh output.
                     mismatch_reason = None
 
                     if claim_kw in ("merged", "complete", "ship") and not verify.get("merged"):
@@ -510,6 +511,12 @@ async def watch_max_outbox() -> None:
                         "ci pass",
                     ) and not verify.get("ci_passing"):
                         mismatch_reason = f"claimed '{claim_kw}' but ci_passing=false"
+                    elif re.match(r"approved", claim_kw, re.IGNORECASE):
+                        review_state = verify.get("review_state", "unknown")
+                        if review_state != "APPROVED":
+                            mismatch_reason = (
+                                f"claimed '{claim_kw}' but review_state={review_state}"
+                            )
 
                     if mismatch_reason:
                         failed = verify.get("failed_checks", [])
@@ -517,7 +524,8 @@ async def watch_max_outbox() -> None:
                         interjection = (
                             f"[ENFORCER] Rule 3 — COMPLETION-REQUIRES-VERIFICATION:\n"
                             f"MAX claimed PR #{pr_num} {mismatch_reason}. "
-                            f"state={verify.get('state')} ci_passing={verify.get('ci_passing')}. "
+                            f"state={verify.get('state')} ci_passing={verify.get('ci_passing')} "
+                            f"review_state={verify.get('review_state')}. "
                             f"Failed checks: {failed}. "
                             f"Source: {source_excerpt}"
                         )

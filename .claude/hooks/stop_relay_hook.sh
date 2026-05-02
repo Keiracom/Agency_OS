@@ -38,7 +38,14 @@ if [[ -z "$PAYLOAD" ]]; then
     exit 0
 fi
 
-# Extract final response text
+# Extract final response text.
+# FIX 3 DOCUMENTATION: Claude Code Stop event payload contains ONLY the final
+# assistant response in .message.content — NOT internal reasoning, tool calls,
+# or planning text. This is per Claude Code hook spec:
+# https://docs.anthropic.com/en/docs/claude-code/hooks#hook-types
+# The Stop event fires after the assistant's turn completes. The "message"
+# field contains the rendered response that would display in the terminal.
+# Internal reasoning (thinking blocks) is never included in this field.
 TEXT=""
 if command -v jq >/dev/null 2>&1; then
     TEXT="$(printf '%s' "$PAYLOAD" | jq -r '.message.content // .response // .text // ""' 2>/dev/null || echo "")"

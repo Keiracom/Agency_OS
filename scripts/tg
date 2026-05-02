@@ -80,5 +80,21 @@ with open(path, "w") as f:
 
 # Cross-post handled by outbox watcher in chat_bot.py — not duplicated here
 
+# Max COO sideband: Telegram filters bot-to-bot messages, so peer chatter
+# never reaches @MaxCOO_Bot via getUpdates. Mirror group-targeted messages
+# into Max's file inbox so his bot can read them via inbox-poll.
+if chat_id == GROUP_CHAT_ID and CALLSIGN in PEER_CALLSIGNS:
+    coo_inbox = "/tmp/coo-inbox"
+    os.makedirs(coo_inbox, exist_ok=True)
+    coo_payload = {
+        "sender_callsign": CALLSIGN,
+        "text": tagged,
+        "timestamp_iso": datetime.now(timezone.utc).isoformat(),
+        "message_id": rand,
+        "chat_id": chat_id,
+    }
+    with open(os.path.join(coo_inbox, fname), "w") as f:
+        json.dump(coo_payload, f)
+
 dest = "DM" if chat_id == DM_CHAT_ID else "group" if chat_id == GROUP_CHAT_ID else str(chat_id)
 print(f"→ {CALLSIGN_TAG} sent to {dest} (chat {chat_id})")

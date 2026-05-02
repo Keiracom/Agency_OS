@@ -194,7 +194,8 @@ class TestCheck3HMACRoundtrip:
         mock_inbox_hmac.sign = MagicMock(return_value=signed_payload)
 
         with patch.dict(
-            "sys.modules", {"security": mock_security, "security.inbox_hmac": mock_inbox_hmac}
+            "sys.modules",
+            {"src.security": mock_security, "src.security.inbox_hmac": mock_inbox_hmac},
         ):
             passed, detail = p3.check3_hmac_roundtrip()
 
@@ -213,7 +214,8 @@ class TestCheck3HMACRoundtrip:
         mock_inbox_hmac = MagicMock()
 
         with patch.dict(
-            "sys.modules", {"security": mock_security, "security.inbox_hmac": mock_inbox_hmac}
+            "sys.modules",
+            {"src.security": mock_security, "src.security.inbox_hmac": mock_inbox_hmac},
         ):
             passed, detail = p3.check3_hmac_roundtrip()
 
@@ -237,7 +239,8 @@ class TestCheck3HMACRoundtrip:
         mock_inbox_hmac.sign = MagicMock(return_value=signed_payload)
 
         with patch.dict(
-            "sys.modules", {"security": mock_security, "security.inbox_hmac": mock_inbox_hmac}
+            "sys.modules",
+            {"src.security": mock_security, "src.security.inbox_hmac": mock_inbox_hmac},
         ):
             passed, detail = p3.check3_hmac_roundtrip()
 
@@ -263,7 +266,8 @@ class TestCheck3HMACRoundtrip:
         mock_inbox_hmac.sign = MagicMock(return_value=signed_payload)
 
         with patch.dict(
-            "sys.modules", {"security": mock_security, "security.inbox_hmac": mock_inbox_hmac}
+            "sys.modules",
+            {"src.security": mock_security, "src.security.inbox_hmac": mock_inbox_hmac},
         ):
             passed, detail = p3.check3_hmac_roundtrip()
 
@@ -277,7 +281,7 @@ class TestCheck4ConsumerDryRun:
     @patch("subprocess.run")
     def test_import_failure(self, mock_subprocess):
         """Should fail when relay_consumer cannot be imported."""
-        with patch.dict("sys.modules", {"relay.relay_consumer": None}):
+        with patch.dict("sys.modules", {"src.relay.relay_consumer": None}):
             passed, detail = p3.check4_consumer_dry_run()
 
             assert passed is False
@@ -289,7 +293,9 @@ class TestCheck4ConsumerDryRun:
         mock_relay = MagicMock()
         mock_relay.QUEUE_MAP = {"queue1": {}, "queue2": {}}  # Only 2 entries
 
-        with patch.dict("sys.modules", {"relay": MagicMock(), "relay.relay_consumer": mock_relay}):
+        with patch.dict(
+            "sys.modules", {"src.relay": MagicMock(), "src.relay.relay_consumer": mock_relay}
+        ):
             passed, detail = p3.check4_consumer_dry_run()
 
             assert passed is False
@@ -314,7 +320,9 @@ class TestCheck4ConsumerDryRun:
         }
         mock_relay.QUEUE_MAP = queue_map
 
-        with patch.dict("sys.modules", {"relay": MagicMock(), "relay.relay_consumer": mock_relay}):
+        with patch.dict(
+            "sys.modules", {"src.relay": MagicMock(), "src.relay.relay_consumer": mock_relay}
+        ):
             passed, detail = p3.check4_consumer_dry_run()
 
             assert passed is True
@@ -339,7 +347,9 @@ class TestCheck4ConsumerDryRun:
         }
         mock_relay.QUEUE_MAP = queue_map
 
-        with patch.dict("sys.modules", {"relay": MagicMock(), "relay.relay_consumer": mock_relay}):
+        with patch.dict(
+            "sys.modules", {"src.relay": MagicMock(), "src.relay.relay_consumer": mock_relay}
+        ):
             passed, detail = p3.check4_consumer_dry_run()
 
             assert passed is False
@@ -373,7 +383,9 @@ class TestCheck4ConsumerDryRun:
         }
         mock_relay.QUEUE_MAP = queue_map
 
-        with patch.dict("sys.modules", {"relay": MagicMock(), "relay.relay_consumer": mock_relay}):
+        with patch.dict(
+            "sys.modules", {"src.relay": MagicMock(), "src.relay.relay_consumer": mock_relay}
+        ):
             passed, detail = p3.check4_consumer_dry_run()
 
             assert passed is True
@@ -609,10 +621,10 @@ WantedBy=multi-user.target
             patch.dict(
                 "sys.modules",
                 {
-                    "relay": MagicMock(),
-                    "relay.relay_consumer": mock_relay,
-                    "security": mock_security,
-                    "security.inbox_hmac": mock_inbox_hmac,
+                    "src.relay": MagicMock(),
+                    "src.relay.relay_consumer": mock_relay,
+                    "src.security": mock_security,
+                    "src.security.inbox_hmac": mock_inbox_hmac,
                 },
             ),
             patch.object(Path, "exists", return_value=True),

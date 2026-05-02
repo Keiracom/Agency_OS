@@ -116,7 +116,7 @@ def check2_dual_write(depths: dict) -> tuple[bool, str]:
 
 def check3_hmac_roundtrip() -> tuple[bool, str]:
     """Sign a test payload, push to Redis, pop it, verify HMAC."""
-    from security.inbox_hmac import sign  # noqa: E402
+    from src.security.inbox_hmac import sign  # noqa: E402
 
     secret = os.environ.get("INBOX_HMAC_SECRET")
     if not secret:
@@ -158,8 +158,8 @@ def check3_hmac_roundtrip() -> tuple[bool, str]:
 def check4_consumer_dry_run() -> tuple[bool, str]:
     """Import relay_consumer, validate QUEUE_MAP, check tmux sessions."""
     try:
-        from relay import relay_consumer  # noqa: F401
-        from relay.relay_consumer import QUEUE_MAP
+        from src.relay import relay_consumer  # noqa: F401
+        from src.relay.relay_consumer import QUEUE_MAP
     except Exception as exc:
         return False, f"import failed: {exc}"
 
@@ -180,7 +180,7 @@ def check4_consumer_dry_run() -> tuple[bool, str]:
             dead_sessions.append(session)
 
     required_live = {"elliottbot", "aiden"}
-    passed = len(live_sessions) >= 2 or required_live.issubset(set(live_sessions))
+    passed = required_live.issubset(set(live_sessions))
     detail = f"{len(live_sessions)}/{len(seen_sessions)} tmux sessions live ({', '.join(live_sessions) or 'none'})"
     if dead_sessions:
         detail += f" | dead: {', '.join(dead_sessions)}"

@@ -2,13 +2,15 @@
 Relay utilities for tmux session ↔ Telegram communication.
 Used by Elliottbot in the tmux Claude session to send/receive messages from Dave.
 """
+
+import contextlib
 import json
 import os
 import uuid
-from datetime import datetime, timezone
-from pathlib import Path
+from datetime import UTC, datetime
 
-from src.relay.redis_relay import push_sync as redis_push_sync, outbox_queue
+from src.relay.redis_relay import outbox_queue
+from src.relay.redis_relay import push_sync as redis_push_sync
 
 RELAY_DIR = "/tmp/telegram-relay"
 INBOX_DIR = f"{RELAY_DIR}/inbox"
@@ -19,30 +21,28 @@ CHAT_ID = 7267788033
 def send_text(text: str, chat_id: int = CHAT_ID) -> str:
     """Send a text message to Telegram via the relay outbox."""
     os.makedirs(OUTBOX_DIR, exist_ok=True)
-    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     msg_id = f"{ts}_{uuid.uuid4().hex[:8]}"
     payload = {
         "id": msg_id,
         "type": "text",
         "chat_id": chat_id,
         "text": text,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
     }
     path = os.path.join(OUTBOX_DIR, f"{msg_id}.json")
     with open(path, "w") as f:
         json.dump(payload, f)
     # Phase 1b dual-write: also push to Redis (fail-open)
-    try:
+    with contextlib.suppress(Exception):
         redis_push_sync(outbox_queue(os.environ.get("CALLSIGN", "elliot")), payload)
-    except Exception:
-        pass  # fail-open
     return msg_id
 
 
 def send_file(file_path: str, caption: str = "", chat_id: int = CHAT_ID) -> str:
     """Send a file to Telegram via the relay outbox."""
     os.makedirs(OUTBOX_DIR, exist_ok=True)
-    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     msg_id = f"{ts}_{uuid.uuid4().hex[:8]}"
     payload = {
         "id": msg_id,
@@ -50,16 +50,14 @@ def send_file(file_path: str, caption: str = "", chat_id: int = CHAT_ID) -> str:
         "chat_id": chat_id,
         "file_path": os.path.abspath(file_path),
         "caption": caption,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
     }
     path = os.path.join(OUTBOX_DIR, f"{msg_id}.json")
     with open(path, "w") as f:
         json.dump(payload, f)
     # Phase 1b dual-write: also push to Redis (fail-open)
-    try:
+    with contextlib.suppress(Exception):
         redis_push_sync(outbox_queue(os.environ.get("CALLSIGN", "elliot")), payload)
-    except Exception:
-        pass  # fail-open
     return msg_id
 
 

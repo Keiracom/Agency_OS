@@ -7,12 +7,13 @@ Consumers: Dave via Telegram
 """
 
 import asyncio
+import contextlib
 import logging
 import os
 import subprocess
 import sys
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 # Add repo root to sys.path so `from src.*` imports resolve when this script
 # is launched directly by systemd (sys.path[0] is src/telegram_bot/ by default,
@@ -35,10 +36,17 @@ from telegram.ext import (
     filters,
 )
 
-from src.telegram_bot.save_handler import cmd_save
+from src.relay.redis_relay import inbox_queue
+from src.relay.redis_relay import push as redis_push
+from src.telegram_bot.memory_listener import (
+    auto_capture_message,
+    find_matching_commits,
+    find_relevant_memories,
+    find_repo_mentions,
+    format_memory_context,
+)
 from src.telegram_bot.recall_handler import cmd_recall
-from src.telegram_bot.memory_listener import find_relevant_memories, find_matching_commits, find_repo_mentions, format_memory_context, auto_capture_message
-from src.relay.redis_relay import push as redis_push, inbox_queue
+from src.telegram_bot.save_handler import cmd_save
 
 # ---------------------------------------------------------------------------
 # Config
@@ -73,19 +81,25 @@ CALLSIGN_TAG: str = f"[{CALLSIGN.upper()}]"
 
 # Sender classification for group chats (LAW XVII)
 BOT_USERNAME: str = ""  # populated at startup from getMe
-KNOWN_PEER_BOTS: set[str] = {"eeeeelllliiiioooottt_bot", "aaaaidenbot", "scoutbotstephensbot"}  # lowercase
+KNOWN_PEER_BOTS: set[str] = {
+    "eeeeelllliiiioooottt_bot",
+    "aaaaidenbot",
+    "scoutbotstephensbot",
+}  # lowercase
 DAVE_USER_ID: int = 7267788033  # hardcoded CEO user_id — only this human gets Sender.DAVE
 # Peer cross-post: bot-to-bot visibility bypass (Telegram doesn't deliver bot-to-bot)
 _PEER_MAP = {"elliot": "aiden", "aiden": "elliot", "scout": "elliot"}
-PEER_INBOX: str | None = f"/tmp/telegram-relay-{_PEER_MAP[CALLSIGN]}/inbox" if CALLSIGN in _PEER_MAP else None
+PEER_INBOX: str | None = (
+    f"/tmp/telegram-relay-{_PEER_MAP[CALLSIGN]}/inbox" if CALLSIGN in _PEER_MAP else None
+)
 ENFORCER_INBOX = "/tmp/telegram-relay-enforcer/inbox"
 GROUP_CHAT_ID = -1003926592540
 
 
 class Sender:
-    DAVE = "dave"       # human boss — follow instructions
-    PEER_BOT = "peer"   # other bot — discuss only, no directives
-    SELF = "self"       # own message — ignore
+    DAVE = "dave"  # human boss — follow instructions
+    PEER_BOT = "peer"  # other bot — discuss only, no directives
+    SELF = "self"  # own message — ignore
     UNKNOWN = "unknown"  # unknown sender — reject in group, allow in private
 
 
@@ -105,7 +119,7 @@ running_processes: dict[int, asyncio.subprocess.Process] = {}
 # ---------------------------------------------------------------------------
 
 RELAY_DIR = f"/tmp/telegram-relay-{CALLSIGN}"  # per-callsign isolation (LAW XVII)
-INBOX_DIR = f"{RELAY_DIR}/inbox"    # messages FROM Telegram TO tmux session
+INBOX_DIR = f"{RELAY_DIR}/inbox"  # messages FROM Telegram TO tmux session
 OUTBOX_DIR = f"{RELAY_DIR}/outbox"  # messages FROM tmux session TO Telegram
 RELAY_SEND_TIMEOUT = 30  # seconds — guards against silent Telegram API stalls
 
@@ -116,7 +130,7 @@ os.makedirs(OUTBOX_DIR, exist_ok=True)
 _TMUX_TARGETS = {"elliot": "elliottbot", "aiden": "aiden", "scout": "scout"}
 _tmux_session = _TMUX_TARGETS.get(CALLSIGN, f"{CALLSIGN}bot")
 _tmux_exists = os.system(f"tmux has-session -t {_tmux_session} 2>/dev/null") == 0
-relay_mode: dict[int, bool] = {cid: True for cid in ALLOWED_CHAT_IDS} if _tmux_exists else {}
+relay_mode: dict[int, bool] = dict.fromkeys(ALLOWED_CHAT_IDS, True) if _tmux_exists else {}
 # When relay is ON, messages continue the tmux session directly
 RELAY_SESSION_ID: str | None = None  # set by /relay on, read from latest JSONL
 
@@ -173,7 +187,9 @@ def classify_sender(update: Update) -> str:
     if not user.is_bot and user.id == DAVE_USER_ID:
         return Sender.DAVE
     # Axis 4: Unknown — any other human or unrecognized bot
-    logger.warning(f"[classify] UNKNOWN sender: user_id={user.id} username={user.username} is_bot={user.is_bot}")
+    logger.warning(
+        f"[classify] UNKNOWN sender: user_id={user.id} username={user.username} is_bot={user.is_bot}"
+    )
     return Sender.UNKNOWN
 
 
@@ -184,7 +200,7 @@ async def reply_tagged(message, text: str, **kwargs) -> None:
         await message.reply_text(tagged, **kwargs)
     else:
         # Split long messages, tag only the first chunk
-        chunks = [tagged[i:i + 4096] for i in range(0, len(tagged), 4096)]
+        chunks = [tagged[i : i + 4096] for i in range(0, len(tagged), 4096)]
         for chunk in chunks:
             await message.reply_text(chunk, **kwargs)
 
@@ -230,14 +246,13 @@ async def supabase_create_session(
 
 async def supabase_deactivate_sessions(chat_id: int) -> None:
     url = (
-        f"{SUPABASE_URL}/rest/v1/telegram_sessions"
-        f"?telegram_chat_id=eq.{chat_id}&is_active=eq.true"
+        f"{SUPABASE_URL}/rest/v1/telegram_sessions?telegram_chat_id=eq.{chat_id}&is_active=eq.true"
     )
     async with httpx.AsyncClient() as client:
         resp = await client.patch(
             url,
             headers=SUPABASE_HEADERS,
-            json={"is_active": False, "updated_at": datetime.now(timezone.utc).isoformat()},
+            json={"is_active": False, "updated_at": datetime.now(UTC).isoformat()},
             timeout=10,
         )
     resp.raise_for_status()
@@ -245,7 +260,7 @@ async def supabase_deactivate_sessions(chat_id: int) -> None:
 
 async def supabase_update_session(session_id: str, **kwargs) -> None:
     url = f"{SUPABASE_URL}/rest/v1/telegram_sessions?id=eq.{session_id}"
-    kwargs["updated_at"] = datetime.now(timezone.utc).isoformat()
+    kwargs["updated_at"] = datetime.now(UTC).isoformat()
     async with httpx.AsyncClient() as client:
         resp = await client.patch(
             url,
@@ -337,7 +352,7 @@ async def run_claude(
 
         return text_result, real_session_id
 
-    except asyncio.TimeoutError:
+    except TimeoutError:
         proc.kill()
         logger.warning(f"[chat={chat_id}] claude timed out")
         return "Response timed out after 10 minutes. Process killed.", None
@@ -365,14 +380,14 @@ def chunk_response(text: str, max_len: int = 3800) -> list[str]:
         cut = text.rfind("\n\n", 0, max_len)
         if cut > max_len // 2:
             chunks.append(text[:cut])
-            text = text[cut + 2:]
+            text = text[cut + 2 :]
             continue
 
         # Sentence break
         cut = text.rfind(". ", 0, max_len)
         if cut > max_len // 2:
-            chunks.append(text[:cut + 1])
-            text = text[cut + 2:]
+            chunks.append(text[: cut + 1])
+            text = text[cut + 2 :]
             continue
 
         # Hard cut
@@ -527,10 +542,10 @@ async def cmd_update(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     if not await auth_check(update):
         return
 
-    target = (context.args[0].lower() if context.args else
-              ("aiden" if CALLSIGN == "elliot" else "elliot"))
+    target = (
+        context.args[0].lower() if context.args else ("aiden" if CALLSIGN == "elliot" else "elliot")
+    )
     peer_clone = "ORION" if target == "aiden" else "ATLAS"
-    my_clone = "ATLAS" if CALLSIGN == "elliot" else "ORION"
 
     # --- Data collection (comprehensive, Option B) ---
     sections: list[str] = []
@@ -546,7 +561,7 @@ async def cmd_update(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     sections.append(
         f"[UPDATE:{CALLSIGN.upper()}→{target.upper()}] — session-resume handoff\n\n"
         f"PROTOCOL CHECKLIST (reconstitute FIRST, before acting):\n"
-        f"1. You are {target.upper()}. Read ./IDENTITY.md + verify CALLSIGN env. If stale, prefix: CALLSIGN={target} tg -g \"...\"\n"
+        f'1. You are {target.upper()}. Read ./IDENTITY.md + verify CALLSIGN env. If stale, prefix: CALLSIGN={target} tg -g "..."\n'
         f"2. TELEGRAM-ONLY: every response via `tg -g`. Dave reads Telegram, NOT terminal.\n"
         f"3. Your peer is {CALLSIGN.upper()}. Prefix messages [{target.upper()}].\n"
         f"4. Your clone is {peer_clone}. Dispatch via /tmp/telegram-relay-{peer_clone.lower()}/inbox/.\n"
@@ -559,8 +574,11 @@ async def cmd_update(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     # 2. ceo_memory state
     try:
         async with httpx.AsyncClient(timeout=10) as client:
-            keys = ["ceo:directives.last_number", "ceo:roadmap_master.active_phase",
-                    "ceo:session_end_" + datetime.now(timezone.utc).strftime("%Y-%m-%d")]
+            keys = [
+                "ceo:directives.last_number",
+                "ceo:roadmap_master.active_phase",
+                "ceo:session_end_" + datetime.now(UTC).strftime("%Y-%m-%d"),
+            ]
             key_filter = ",".join(f'"{k}"' for k in keys)
             r = await client.get(
                 f"{SUPABASE_URL}/rest/v1/ceo_memory?key=in.({key_filter})&select=key,value,updated_at",
@@ -578,9 +596,21 @@ async def cmd_update(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     # 3. Open PRs
     try:
         pr_result = subprocess.run(
-            ["gh", "pr", "list", "--state", "open", "--json", "number,title",
-             "--jq", '.[] | "#\\(.number) \\(.title)"'],
-            capture_output=True, text=True, timeout=15, cwd=WORK_DIR,
+            [
+                "gh",
+                "pr",
+                "list",
+                "--state",
+                "open",
+                "--json",
+                "number,title",
+                "--jq",
+                '.[] | "#\\(.number) \\(.title)"',
+            ],
+            capture_output=True,
+            text=True,
+            timeout=15,
+            cwd=WORK_DIR,
         )
         pr_text = pr_result.stdout.strip() or "None"
         sections.append(f"OPEN PRs:\n{pr_text}")
@@ -591,7 +621,10 @@ async def cmd_update(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     try:
         log_result = subprocess.run(
             ["git", "log", "--oneline", "-10"],
-            capture_output=True, text=True, timeout=10, cwd=WORK_DIR,
+            capture_output=True,
+            text=True,
+            timeout=10,
+            cwd=WORK_DIR,
         )
         sections.append(f"RECENT COMMITS (last 10):\n{log_result.stdout.strip()}")
     except Exception:
@@ -601,7 +634,9 @@ async def cmd_update(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     try:
         tmux_result = subprocess.run(
             ["tmux", "list-sessions"],
-            capture_output=True, text=True, timeout=5,
+            capture_output=True,
+            text=True,
+            timeout=5,
         )
         sessions_text = tmux_result.stdout.strip() or "No tmux sessions"
         sections.append(f"CLONE SESSIONS:\n{sessions_text}")
@@ -612,9 +647,15 @@ async def cmd_update(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     for clone_name in ["atlas", "orion", "scout"]:
         inbox = f"/tmp/telegram-relay-{clone_name}/inbox"
         try:
-            files = [f for f in os.listdir(inbox) if f.endswith(".json")] if os.path.isdir(inbox) else []
+            files = (
+                [f for f in os.listdir(inbox) if f.endswith(".json")]
+                if os.path.isdir(inbox)
+                else []
+            )
             if files:
-                sections.append(f"PENDING DISPATCH ({clone_name}): {len(files)} file(s) — {', '.join(files[-3:])}")
+                sections.append(
+                    f"PENDING DISPATCH ({clone_name}): {len(files)} file(s) — {', '.join(files[-3:])}"
+                )
         except Exception:
             pass
 
@@ -686,7 +727,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     sender = classify_sender(update)
     is_group = update.effective_chat.type in ("group", "supergroup")
     user = update.effective_user
-    logger.info(f"[msg] chat={chat_id} sender={sender} is_group={is_group} from={user.username if user else '?'} is_bot={user.is_bot if user else '?'} text={(update.message.text or '')[:60]}")
+    logger.info(
+        f"[msg] chat={chat_id} sender={sender} is_group={is_group} from={user.username if user else '?'} is_bot={user.is_bot if user else '?'} text={(update.message.text or '')[:60]}"
+    )
 
     # Self messages — always ignore
     if sender == Sender.SELF:
@@ -697,9 +740,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         user = update.effective_user
         uid = user.id if user else 0
         uname = user.username if user else "?"
-        logger.warning(f"[security] Rejected UNKNOWN sender in group: user_id={uid} username={uname}")
+        logger.warning(
+            f"[security] Rejected UNKNOWN sender in group: user_id={uid} username={uname}"
+        )
         # Rate-limited DM alert to Dave (silent rejection — unknown user doesn't see it)
         import time as _t
+
         cache_key = (uid, chat_id)
         last_alert = _security_alert_cache.get(cache_key, 0)
         if _t.time() - last_alert > SECURITY_ALERT_COOLDOWN:
@@ -726,7 +772,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     # Group mention filter and text enrichment (Message.text is immutable — use local var)
     message_text = update.message.text or ""
     if is_group and sender == Sender.DAVE:
-        bot_mentioned = f"@{BOT_USERNAME}".lower() in message_text.lower() if BOT_USERNAME else False
+        bot_mentioned = (
+            f"@{BOT_USERNAME}".lower() in message_text.lower() if BOT_USERNAME else False
+        )
         is_reply_to_us = (
             update.message.reply_to_message
             and update.message.reply_to_message.from_user
@@ -760,7 +808,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             repo_hits = await find_repo_mentions(raw_text)
             if memories or commits or repo_hits:
                 memory_context = format_memory_context(memories, commits, repo_hits)
-                logger.info(f"[memory-listener] surfaced memories + {len(commits)} commits + {len(repo_hits)} repo hits")
+                logger.info(
+                    f"[memory-listener] surfaced memories + {len(commits)} commits + {len(repo_hits)} repo hits"
+                )
         except Exception as _mem_exc:
             logger.warning(f"[memory-listener] non-fatal error: {_mem_exc}")
 
@@ -771,7 +821,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             target_callsign = parts[1].lower()
             result = subprocess.run(
                 [sys.executable, "scripts/update_peer.py", target_callsign],
-                capture_output=True, text=True, cwd=WORK_DIR,
+                capture_output=True,
+                text=True,
+                cwd=WORK_DIR,
                 timeout=30,
             )
             if result.returncode == 0:
@@ -779,7 +831,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 await context.bot.send_message(chat_id=GROUP_CHAT_ID, text=brief[:4096])
                 target_inbox = f"/tmp/telegram-relay-{target_callsign}/inbox"
                 os.makedirs(target_inbox, exist_ok=True)
-                ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+                ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
                 fname = f"{ts}_{uuid.uuid4().hex[:8]}.json"
                 payload = {
                     "id": fname.replace(".json", ""),
@@ -787,7 +839,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                     "chat_id": GROUP_CHAT_ID,
                     "text": f"[UPDATE FROM {CALLSIGN.upper()}]: {brief}",
                     "sender": "peer",
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "timestamp": datetime.now(UTC).isoformat(),
                 }
                 with open(os.path.join(target_inbox, fname), "w") as f:
                     _json.dump(payload, f)
@@ -835,9 +887,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 session = await supabase_create_session(chat_id, real_session_id, model)
                 logger.info(f"[chat={chat_id}] created session {real_session_id[:8]}")
             elif session["claude_session_id"] != real_session_id:
-                await supabase_update_session(
-                    session["id"], claude_session_id=real_session_id
-                )
+                await supabase_update_session(session["id"], claude_session_id=real_session_id)
                 session["claude_session_id"] = real_session_id
                 logger.info(f"[chat={chat_id}] updated session to {real_session_id[:8]}")
 
@@ -868,7 +918,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             await supabase_update_session(
                 session["id"],
                 message_count=session["message_count"] + 1,
-                last_message_at=datetime.now(timezone.utc).isoformat(),
+                last_message_at=datetime.now(UTC).isoformat(),
             )
 
     except Exception as exc:
@@ -879,23 +929,23 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     # Bidirectional write side — auto-capture Dave + peer messages as tentative memories
     if sender in (Sender.DAVE, Sender.PEER_BOT):
-        try:
+        with contextlib.suppress(Exception):
             await auto_capture_message(raw_text, sender, chat_id, CALLSIGN)
-        except Exception:
-            pass  # never block on capture failure
 
     # Cross-post incoming group messages to enforcer inbox
     if is_group:
         try:
             os.makedirs(ENFORCER_INBOX, exist_ok=True)
-            enf_ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+            enf_ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
             enf_fname = f"{enf_ts}_{uuid.uuid4().hex[:8]}.json"
             enf_payload = {
                 "type": "text",
                 "text": raw_text,
-                "sender_callsign": sender if sender == Sender.DAVE else (update.effective_user.first_name or "unknown").lower(),
+                "sender_callsign": sender
+                if sender == Sender.DAVE
+                else (update.effective_user.first_name or "unknown").lower(),
                 "sender_is_bot": sender == Sender.PEER_BOT,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             }
             with open(os.path.join(ENFORCER_INBOX, enf_fname), "w") as ef:
                 _json.dump(enf_payload, ef)
@@ -910,7 +960,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 async def _relay_text_to_inbox(chat_id: int, text: str, sender: str = Sender.DAVE) -> None:
     """Write a text message to the inbox dir for the tmux session to pick up."""
-    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     msg_id = f"{ts}_{uuid.uuid4().hex[:8]}"
     payload = {
         "id": msg_id,
@@ -918,17 +968,15 @@ async def _relay_text_to_inbox(chat_id: int, text: str, sender: str = Sender.DAV
         "chat_id": chat_id,
         "text": text,
         "sender": sender,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
     }
     path = os.path.join(INBOX_DIR, f"{msg_id}.json")
     with open(path, "w") as f:
         _json.dump(payload, f)
     logger.info(f"[relay] text message written to {path}")
     # Phase 1b dual-write: also push to Redis (fail-open)
-    try:
+    with contextlib.suppress(Exception):
         await redis_push(inbox_queue(CALLSIGN), payload)
-    except Exception:
-        pass  # fail-open — file write is primary
 
 
 # ---------------------------------------------------------------------------
@@ -940,22 +988,63 @@ TELEMETRY_LOG_PATH = "/home/elliotbot/clawd/logs/listener-telemetry.jsonl"
 # Minimal inline tokenizer — swap for Elliot's richer module when it lands.
 # English + callsign + AU-business stopwords per MEASURE-V1 spec.
 _MV_STOPWORDS = {
-    "about", "after", "again", "because", "before", "being", "between",
-    "could", "doing", "during", "every", "going", "having", "maybe",
-    "other", "should", "something", "their", "there", "these", "thing",
-    "things", "think", "those", "through", "where", "which", "while",
-    "would", "already", "really", "still",
+    "about",
+    "after",
+    "again",
+    "because",
+    "before",
+    "being",
+    "between",
+    "could",
+    "doing",
+    "during",
+    "every",
+    "going",
+    "having",
+    "maybe",
+    "other",
+    "should",
+    "something",
+    "their",
+    "there",
+    "these",
+    "thing",
+    "things",
+    "think",
+    "those",
+    "through",
+    "where",
+    "which",
+    "while",
+    "would",
+    "already",
+    "really",
+    "still",
     # callsigns
-    "dave", "elliot", "aiden", "scout", "claude",
+    "dave",
+    "elliot",
+    "aiden",
+    "scout",
+    "claude",
     # AU business / project terms that match too broadly in our corpus
-    "agency", "client", "domain", "pipeline", "directive", "memory",
-    "save", "recall", "session", "aidenbot", "elliotbot",
+    "agency",
+    "client",
+    "domain",
+    "pipeline",
+    "directive",
+    "memory",
+    "save",
+    "recall",
+    "session",
+    "aidenbot",
+    "elliotbot",
 }
 
 
 def _mv_tokenize(text: str) -> set[str]:
     """Minimal cited-term tokenizer. Returns lowercase 4+ char non-stopword tokens."""
     import re as _re
+
     tokens = _re.findall(r"[a-zA-Z][a-zA-Z0-9_]{3,}", (text or "").lower())
     return {t for t in tokens if t not in _MV_STOPWORDS}
 
@@ -971,7 +1060,7 @@ def _annotate_last_retrieval_with_cited_terms(outgoing_text: str) -> None:
     if not outgoing_text or not outgoing_text.strip():
         return
     try:
-        with open(TELEMETRY_LOG_PATH, "r") as fh:
+        with open(TELEMETRY_LOG_PATH) as fh:
             lines = fh.readlines()
     except Exception:
         return
@@ -979,8 +1068,9 @@ def _annotate_last_retrieval_with_cited_terms(outgoing_text: str) -> None:
         return
 
     # Find most recent matching event (scan backward)
-    from datetime import datetime, timedelta, timezone as _tz
-    now = datetime.now(_tz.utc)
+    from datetime import datetime, timedelta
+
+    now = datetime.now(UTC)
     cutoff = now - timedelta(seconds=60)
     target_event = None
     for line in reversed(lines[-50:]):  # scan last 50 events max
@@ -1018,12 +1108,14 @@ def _annotate_last_retrieval_with_cited_terms(outgoing_text: str) -> None:
         content_tokens = _mv_tokenize(prev.get("content_100") or "")
         overlap = outgoing_tokens & content_tokens
         cited = len(overlap) >= 2
-        per_item_ratings.append({
-            "id": prev.get("id"),
-            "bot_cited": cited,
-            "overlap_count": len(overlap),
-            "shared_tokens": sorted(overlap)[:8],
-        })
+        per_item_ratings.append(
+            {
+                "id": prev.get("id"),
+                "bot_cited": cited,
+                "overlap_count": len(overlap),
+                "shared_tokens": sorted(overlap)[:8],
+            }
+        )
 
     # Append annotation event (doesn't mutate the original line — JSONL-safe)
     annotation = {
@@ -1075,7 +1167,9 @@ async def _outbox_watcher(app: Application) -> None:
                                 tf.write(text)
                             with open(tmp, "rb") as tf:
                                 await asyncio.wait_for(
-                                    bot.send_document(chat_id=chat_id, document=tf, filename="message.md"),
+                                    bot.send_document(
+                                        chat_id=chat_id, document=tf, filename="message.md"
+                                    ),
                                     timeout=RELAY_SEND_TIMEOUT,
                                 )
                             os.unlink(tmp)
@@ -1109,7 +1203,7 @@ async def _outbox_watcher(app: Application) -> None:
                     # so the receiving peer gets context they'd miss (their listener doesn't fire on cross-posts)
                     if chat_id == GROUP_CHAT_ID and PEER_INBOX and msg.get("type") == "text":
                         os.makedirs(PEER_INBOX, exist_ok=True)
-                        peer_ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+                        peer_ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
                         peer_fname = f"{peer_ts}_{uuid.uuid4().hex[:8]}.json"
 
                         # Enrich with memory context for the peer (gated by LISTENER_AUTO_INJECT — default OFF).
@@ -1129,7 +1223,7 @@ async def _outbox_watcher(app: Application) -> None:
                             "chat_id": chat_id,
                             "text": f"[GROUP — from {CALLSIGN.upper()} (peer bot, NOT your boss Dave)]: {outgoing_text}",
                             "sender": "peer",
-                            "timestamp": datetime.now(timezone.utc).isoformat(),
+                            "timestamp": datetime.now(UTC).isoformat(),
                         }
                         with open(os.path.join(PEER_INBOX, peer_fname), "w") as pf:
                             _json.dump(peer_payload, pf)
@@ -1138,14 +1232,14 @@ async def _outbox_watcher(app: Application) -> None:
                     # Cross-post to enforcer inbox (governance enforcement daemon)
                     if chat_id == GROUP_CHAT_ID and msg.get("type") == "text":
                         os.makedirs(ENFORCER_INBOX, exist_ok=True)
-                        enf_ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+                        enf_ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
                         enf_fname = f"{enf_ts}_{uuid.uuid4().hex[:8]}.json"
                         enf_payload = {
                             "type": "text",
                             "text": msg.get("text", ""),
                             "sender_callsign": CALLSIGN,
                             "sender_is_bot": True,
-                            "timestamp": datetime.now(timezone.utc).isoformat(),
+                            "timestamp": datetime.now(UTC).isoformat(),
                         }
                         with open(os.path.join(ENFORCER_INBOX, enf_fname), "w") as ef:
                             _json.dump(enf_payload, ef)
@@ -1170,9 +1264,8 @@ async def _outbox_watcher(app: Application) -> None:
 def _find_tmux_session_id() -> str | None:
     """Find the most recently active Claude session JSONL in the project."""
     import glob
-    pattern = os.path.expanduser(
-        "~/.claude/projects/-home-elliotbot-clawd-Agency-OS/*.jsonl"
-    )
+
+    pattern = os.path.expanduser("~/.claude/projects/-home-elliotbot-clawd-Agency-OS/*.jsonl")
     files = sorted(glob.glob(pattern), key=os.path.getmtime, reverse=True)
     if files:
         return os.path.basename(files[0]).replace(".jsonl", "")
@@ -1227,7 +1320,7 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     photo = update.message.photo[-1]  # largest size
     file = await photo.get_file()
 
-    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     msg_id = f"{ts}_{uuid.uuid4().hex[:8]}"
 
     file_path = os.path.join(INBOX_DIR, f"{msg_id}.jpg")
@@ -1239,17 +1332,15 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         "chat_id": chat_id,
         "file_path": file_path,
         "caption": update.message.caption or "",
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
     }
     meta_path = os.path.join(INBOX_DIR, f"{msg_id}.json")
     with open(meta_path, "w") as f:
         _json.dump(payload, f)
 
     # Phase 1b dual-write: also push to Redis (fail-open)
-    try:
+    with contextlib.suppress(Exception):
         await redis_push(inbox_queue(CALLSIGN), payload)
-    except Exception:
-        pass  # fail-open — file write is primary
 
     # Silent — no confirmation message
     logger.info(f"[relay] photo saved to {file_path}")
@@ -1267,7 +1358,7 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     doc = update.message.document
     file = await doc.get_file()
 
-    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     msg_id = f"{ts}_{uuid.uuid4().hex[:8]}"
 
     ext = os.path.splitext(doc.file_name or "file")[1] or ""
@@ -1282,17 +1373,15 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         "file_name": doc.file_name or "unknown",
         "mime_type": doc.mime_type or "",
         "caption": update.message.caption or "",
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
     }
     meta_path = os.path.join(INBOX_DIR, f"{msg_id}.json")
     with open(meta_path, "w") as f:
         _json.dump(payload, f)
 
     # Phase 1b dual-write: also push to Redis (fail-open)
-    try:
+    with contextlib.suppress(Exception):
         await redis_push(inbox_queue(CALLSIGN), payload)
-    except Exception:
-        pass  # fail-open — file write is primary
 
     # Silent — no confirmation message
     logger.info(f"[relay] document saved to {file_path}")
@@ -1305,16 +1394,18 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 def main() -> None:
     if not BOT_TOKEN:
-        raise RuntimeError(
-            "No bot token found. Set TELEGRAM_BOT_TOKEN or TELEGRAM_TOKEN in env."
-        )
+        raise RuntimeError("No bot token found. Set TELEGRAM_BOT_TOKEN or TELEGRAM_TOKEN in env.")
 
-    logger.info(f"Starting Telegram chat bot {CALLSIGN_TAG} callsign={CALLSIGN!r} work_dir={WORK_DIR!r} allowed_chat_ids={ALLOWED_CHAT_IDS}")
+    logger.info(
+        f"Starting Telegram chat bot {CALLSIGN_TAG} callsign={CALLSIGN!r} work_dir={WORK_DIR!r} allowed_chat_ids={ALLOWED_CHAT_IDS}"
+    )
     if not BOT_TOKEN:
         logger.error(f"{CALLSIGN_TAG} TELEGRAM_BOT_TOKEN not set — refusing to start")
         sys.exit(1)
     if not ALLOWED_CHAT_IDS:
-        logger.warning(f"{CALLSIGN_TAG} TELEGRAM_CHAT_ID empty — bot will accept first /start to capture chat_id (one-shot)")
+        logger.warning(
+            f"{CALLSIGN_TAG} TELEGRAM_CHAT_ID empty — bot will accept first /start to capture chat_id (one-shot)"
+        )
 
     async def post_init(application: Application) -> None:
         global BOT_USERNAME

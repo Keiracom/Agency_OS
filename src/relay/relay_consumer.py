@@ -23,18 +23,19 @@ logger = logging.getLogger(__name__)
 
 # Queue → tmux target mapping
 QUEUE_MAP: dict[str, dict] = {
-    "relay:inbox:elliot":  {"tmux": "elliottbot:0.0", "type": "inbox"},
-    "relay:inbox:aiden":   {"tmux": "aiden:0.0",      "type": "inbox"},
-    "relay:inbox:scout":   {"tmux": "scout:0.0",       "type": "inbox"},
-    "relay:inbox:max":     {"tmux": "maxbot:0.0",      "type": "inbox"},
-    "relay:outbox:atlas":  {"tmux": "elliottbot:0.0",  "type": "clone_outbox", "clone": "ATLAS"},
-    "relay:outbox:orion":  {"tmux": "aiden:0.0",       "type": "clone_outbox", "clone": "ORION"},
-    "dispatch:atlas":      {"tmux": "atlas:0.0",        "type": "dispatch"},
-    "dispatch:orion":      {"tmux": "orion:0.0",        "type": "dispatch"},
+    "relay:inbox:elliot": {"tmux": "elliottbot:0.0", "type": "inbox"},
+    "relay:inbox:aiden": {"tmux": "aiden:0.0", "type": "inbox"},
+    "relay:inbox:scout": {"tmux": "scout:0.0", "type": "inbox"},
+    "relay:inbox:max": {"tmux": "maxbot:0.0", "type": "inbox"},
+    "relay:outbox:atlas": {"tmux": "elliottbot:0.0", "type": "clone_outbox", "clone": "ATLAS"},
+    "relay:outbox:orion": {"tmux": "aiden:0.0", "type": "clone_outbox", "clone": "ORION"},
+    "dispatch:atlas": {"tmux": "atlas:0.0", "type": "dispatch"},
+    "dispatch:orion": {"tmux": "orion:0.0", "type": "dispatch"},
 }
 
 
 # ── HMAC (inline dict verify — inbox_hmac.verify() expects a file path) ────────
+
 
 def _hmac_verify_dict(payload: dict, secret: str) -> tuple[bool, str]:
     """Re-implement the canonical HMAC check from inbox_hmac directly on a dict."""
@@ -51,10 +52,12 @@ def _hmac_verify_dict(payload: dict, secret: str) -> tuple[bool, str]:
 
 # ── Tmux helpers ────────────────────────────────────────────────────────────────
 
+
 async def _run_tmux(*args: str) -> tuple[int, str]:
     """Run a tmux command asynchronously (non-blocking)."""
     proc = await asyncio.create_subprocess_exec(
-        "tmux", *args,
+        "tmux",
+        *args,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
@@ -90,6 +93,7 @@ async def inject_into_tmux(tmux_target: str, text: str) -> bool:
 
 # ── Message formatting ──────────────────────────────────────────────────────────
 
+
 def format_message(payload: dict, queue_type: str, clone_name: str = "") -> str | None:
     msg_type = payload.get("type", "text")
 
@@ -119,6 +123,7 @@ def format_message(payload: dict, queue_type: str, clone_name: str = "") -> str 
 
 
 # ── Per-queue consumer ──────────────────────────────────────────────────────────
+
 
 async def consume_queue(queue: str, config: dict) -> None:
     from src.relay.redis_relay import pop  # late import — allows module-level compile check
@@ -161,12 +166,15 @@ async def consume_queue(queue: str, config: dict) -> None:
 
 # ── Entry point ─────────────────────────────────────────────────────────────────
 
+
 def _file_watchers_active() -> bool:
     """Check if inotifywait relay watchers are still running (Phase 1 overlap guard)."""
     try:
         result = subprocess.run(
             ["pgrep", "-f", "inotifywait.*telegram-relay"],
-            capture_output=True, text=True, timeout=5,
+            capture_output=True,
+            text=True,
+            timeout=5,
         )
         return result.returncode == 0
     except Exception:

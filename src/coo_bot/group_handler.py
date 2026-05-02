@@ -81,17 +81,23 @@ async def handle_group_message(
     _buffer.append(entry)
     logger.debug("group_handler: buffered message from %s (buffer=%d)", sender_name, len(_buffer))
 
-    # If Dave addresses Max in group, respond IN the group
+    # Respond in group when addressed by anyone (Dave, Elliot, Aiden)
+    # Max is a group participant — responds when relevant
     dave_id = 7267788033
-    if sender_id == dave_id:
-        await _respond_to_dave_in_group(update, text)
+    should_respond = (
+        sender_id == dave_id  # Always respond to Dave
+        or "max" in text.lower()  # Respond when @-mentioned or name-dropped
+        or "@maxcoo_bot" in text.lower()
+    )
+    if should_respond:
+        await _respond_in_group(update, text, sender_name)
 
 
-async def _respond_to_dave_in_group(update: Update, text: str) -> None:
-    """When Dave messages in the group, Max responds in-group like a COO would.
+async def _respond_in_group(update: Update, text: str, sender: str) -> None:
+    """When someone addresses Max in group, respond in-group like a COO.
 
     Uses Opus to generate a contextual response based on recent group activity.
-    Only responds if the message seems directed at Max or is a question/instruction.
+    Responds to Dave always; responds to Elliot/Aiden when they address Max directly.
     """
     try:
         from src.coo_bot.opus_client import opus_call
@@ -104,16 +110,13 @@ async def _respond_to_dave_in_group(update: Update, text: str) -> None:
         )
 
         classifier_prompt = (
-            "Dave just posted in the group. Decide: does this need a Max response?\n"
-            "- If Dave is asking Max something, giving an instruction, or saying something "
+            f"{sender} just posted in the group. Decide: does this need a Max response?\n"
+            "- If someone is asking Max something, addressing Max, or saying something "
             "that warrants a COO response → respond with the actual response text.\n"
-            "- If Dave is addressing Elliot/Aiden specifically (not Max) → respond with exactly: SKIP\n"
-            "- If it's a general statement not needing Max input → respond with: SKIP\n"
-            "- IMPORTANT: You cannot read files or query databases. If Dave asks you to "
-            "read files, check code, or look up data — say you'll ask Elliot/Aiden to do it "
-            "and relay the answer. Be honest about your limitations.\n"
-            "- Keep responses under 5 lines. Be terse like a COO.\n\n"
-            f"Recent group:\n{recent}\n\nDave's message: {text}"
+            "- If they're talking to each other and Max isn't relevant → respond with: SKIP\n"
+            "- You CAN read files and query databases when with_tools=True. Use that capability.\n"
+            "- Keep responses under 8 lines. Be terse like a COO.\n\n"
+            f"Recent group:\n{recent}\n\n{sender}'s message: {text}"
         )
 
         # Use tool access for requests that need file reads or data queries

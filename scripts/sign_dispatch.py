@@ -26,6 +26,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from security.inbox_hmac import sign  # noqa: E402
+from relay.redis_relay import push_sync as redis_push_sync, dispatch_queue  # noqa: E402
 
 
 VALID_TARGETS = {
@@ -77,6 +78,12 @@ def main() -> int:
     inbox.mkdir(parents=True, exist_ok=True)
     out_path = inbox / f"{task_ref}.json"
     out_path.write_text(json.dumps(signed))
+
+    # Phase 1b dual-write: also push to Redis (fail-open)
+    try:
+        redis_push_sync(dispatch_queue(args.target), signed)
+    except Exception:
+        pass  # fail-open — file write is primary
 
     print(str(out_path))
     return 0

@@ -32,8 +32,12 @@ RELAY_DIR="/tmp/telegram-relay-${CALLSIGN}"
 OUTBOX="${RELAY_DIR}/outbox"
 mkdir -p "$OUTBOX" 2>/dev/null || true
 
-# Read Stop event from stdin
+# Read Stop event from stdin; fall back to temp file if stdin was consumed
+# by a prior hook in the same chain (governance_router.py saves it)
 PAYLOAD="$(cat || true)"
+if [[ -z "$PAYLOAD" && -f /tmp/.stop_event_payload.json ]]; then
+    PAYLOAD="$(cat /tmp/.stop_event_payload.json 2>/dev/null || true)"
+fi
 if [[ -z "$PAYLOAD" ]]; then
     exit 0
 fi
@@ -48,7 +52,7 @@ fi
 # Internal reasoning (thinking blocks) is never included in this field.
 TEXT=""
 if command -v jq >/dev/null 2>&1; then
-    TEXT="$(printf '%s' "$PAYLOAD" | jq -r '.message.content // .response // .text // ""' 2>/dev/null || echo "")"
+    TEXT="$(printf '%s' "$PAYLOAD" | jq -r '.last_assistant_message // .message.content // .response // .text // ""' 2>/dev/null || echo "")"
 fi
 
 # Skip empty responses
@@ -100,6 +104,26 @@ cat > "${OUTBOX}/${FNAME}" << ENDJSON
     "text": $(printf '%s' "$TAGGED" | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read()))' 2>/dev/null || printf '"%s"' "$TAGGED")
 }
 ENDJSON
+
+# Phase 1b dual-write: also push to Redis queue (fail-open)
+python3 -c "
+import json, os, sys
+try:
+    import redis
+    url = os.environ.get('REDIS_URL', '')
+    if not url:
+        sys.exit(0)
+    r = redis.Redis.from_url(url, decode_responses=True)
+    callsign = '${CALLSIGN}'
+    payload = json.dumps({
+        'type': 'text',
+        'chat_id': ${DEST_CHAT_ID},
+        'text': json.loads(sys.stdin.read())
+    })
+    r.lpush(f'relay:outbox:{callsign}', payload)
+except Exception:
+    pass  # fail-open: Redis failure never blocks relay
+" <<< "$(printf '%s' "$TAGGED" | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read()))' 2>/dev/null)" 2>/dev/null || true
 
 # Write de-dup marker
 touch "$DEDUP_MARKER" 2>/dev/null || true

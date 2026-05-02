@@ -38,6 +38,7 @@ from telegram.ext import (
 from src.telegram_bot.save_handler import cmd_save
 from src.telegram_bot.recall_handler import cmd_recall
 from src.telegram_bot.memory_listener import find_relevant_memories, find_matching_commits, find_repo_mentions, format_memory_context, auto_capture_message
+from src.relay.redis_relay import push as redis_push, inbox_queue
 
 # ---------------------------------------------------------------------------
 # Config
@@ -923,6 +924,11 @@ async def _relay_text_to_inbox(chat_id: int, text: str, sender: str = Sender.DAV
     with open(path, "w") as f:
         _json.dump(payload, f)
     logger.info(f"[relay] text message written to {path}")
+    # Phase 1b dual-write: also push to Redis (fail-open)
+    try:
+        await redis_push(inbox_queue(CALLSIGN), payload)
+    except Exception:
+        pass  # fail-open — file write is primary
 
 
 # ---------------------------------------------------------------------------
@@ -1239,6 +1245,12 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     with open(meta_path, "w") as f:
         _json.dump(payload, f)
 
+    # Phase 1b dual-write: also push to Redis (fail-open)
+    try:
+        await redis_push(inbox_queue(CALLSIGN), payload)
+    except Exception:
+        pass  # fail-open — file write is primary
+
     # Silent — no confirmation message
     logger.info(f"[relay] photo saved to {file_path}")
 
@@ -1275,6 +1287,12 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     meta_path = os.path.join(INBOX_DIR, f"{msg_id}.json")
     with open(meta_path, "w") as f:
         _json.dump(payload, f)
+
+    # Phase 1b dual-write: also push to Redis (fail-open)
+    try:
+        await redis_push(inbox_queue(CALLSIGN), payload)
+    except Exception:
+        pass  # fail-open — file write is primary
 
     # Silent — no confirmation message
     logger.info(f"[relay] document saved to {file_path}")

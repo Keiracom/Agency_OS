@@ -284,7 +284,14 @@ def main() -> int:
     Failures still exit 0 — this hook must NEVER block the assistant.
     """
     try:
-        payload = json.loads(sys.stdin.read() or "{}")
+        raw = sys.stdin.read() or "{}"
+        # Save stdin for downstream hooks (they share the same pipe)
+        try:
+            with open("/tmp/.stop_event_payload.json", "w") as _f:
+                _f.write(raw)
+        except OSError:
+            pass
+        payload = json.loads(raw)
     except json.JSONDecodeError:
         payload = {}
 

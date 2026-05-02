@@ -116,8 +116,16 @@ async def _respond_to_dave_in_group(update: Update, text: str) -> None:
             f"Recent group:\n{recent}\n\nDave's message: {text}"
         )
 
+        # Use tool access for requests that need file reads or data queries
+        needs_tools = any(kw in text.lower() for kw in [
+            "read", "file", "check", "look at", "query", "show me",
+            "what's in", "cat ", "grep", "find", "database", "supabase",
+            "store", "manual", "claude.md", "architecture",
+        ])
         response = await opus_call(
-            get_system_prompt("dm"), classifier_prompt, timeout=45
+            get_system_prompt("dm"), classifier_prompt,
+            timeout=120 if needs_tools else 45,
+            with_tools=needs_tools,
         )
 
         if not response:

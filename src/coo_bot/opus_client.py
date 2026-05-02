@@ -39,15 +39,26 @@ async def opus_call(
     *,
     model: str = _DEFAULT_MODEL,
     timeout: float = _DEFAULT_TIMEOUT,
+    with_tools: bool = False,
 ) -> str:
     """Call Claude Opus via CLI subprocess. Returns response text or "" on failure.
 
     Non-blocking (asyncio subprocess). Never raises.
+
+    Args:
+        with_tools: If True, grants read-only tool access (Read, Grep, Glob,
+                    Supabase SQL). Enables Max to actually read files and query
+                    databases. Slower (~30-90s) but capable.
     """
     prompt = f"{system_prompt}\n\n{user_message}"
+    cmd = [_CLAUDE_BIN, "-p", prompt, "--model", model]
+    if with_tools:
+        cmd.extend([
+            "--allowedTools", "Read,Grep,Glob,mcp__supabase__execute_sql",
+        ])
     try:
         proc = await asyncio.create_subprocess_exec(
-            _CLAUDE_BIN, "-p", prompt, "--model", model,
+            *cmd,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )

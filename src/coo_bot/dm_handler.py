@@ -92,11 +92,28 @@ async def handle_dm(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             await update.message.reply_text(f"Post failed: {exc}")
         return
 
-    # Private response — load full context + call Opus
+    # Private response — Haiku tier for routine, Opus only for deep/tools.
+    # Mirrors group_handler latency strategy (commit 6823670e).
     memory_context = await _load_context()
     user_msg = f"[Recent context]\n{memory_context}\n\n[Dave's message]\n{text}"
 
-    response = await opus_call(_COO_SYSTEM_PROMPT, user_msg, timeout=90)
+    lowered = text.lower()
+    needs_tools = any(kw in lowered for kw in [
+        "read", "file", "check", "look at", "query", "show me",
+        "what's in", "cat ", "grep", "find", "database", "supabase",
+        "store", "manual", "claude.md", "architecture",
+    ])
+    needs_deep = needs_tools or any(kw in lowered for kw in [
+        "why", "diagnose", "explain", "analyse", "opinion", "think",
+        "strategy", "plan", "recommend",
+    ])
+    model = "claude-opus-4-6" if needs_deep else "claude-haiku-4-5"
+    timeout = 120 if needs_tools else (90 if needs_deep else 20)
+
+    response = await opus_call(
+        _COO_SYSTEM_PROMPT, user_msg,
+        timeout=timeout, model=model, with_tools=needs_tools,
+    )
 
     if response:
         await update.message.reply_text(response)

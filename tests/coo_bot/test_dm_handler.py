@@ -84,6 +84,48 @@ def test_opus_failure_shows_fallback():
         assert "couldn't generate" in update.message.reply_text.call_args[0][0]
 
 
+def test_routine_dm_uses_haiku_short_timeout():
+    """Routine 'what's up?' DM routes to Haiku with 20s timeout (no deep/tools keywords)."""
+    private_result = {"intent": "private", "relay_text": None}
+    with patch("src.coo_bot.dm_handler._classify_intent", new_callable=AsyncMock, return_value=private_result), \
+         patch("src.coo_bot.dm_handler.opus_call", new_callable=AsyncMock, return_value="ok") as mock_opus, \
+         patch("src.coo_bot.dm_handler._load_context", new_callable=AsyncMock, return_value=""):
+        update = _make_update("hey max status update")
+        _run(handle_dm(update, MagicMock()))
+        kwargs = mock_opus.call_args.kwargs
+        assert kwargs["model"] == "claude-haiku-4-5"
+        assert kwargs["timeout"] == 20
+        assert kwargs["with_tools"] is False
+
+
+def test_deep_dm_routes_to_opus():
+    """DM with deep keywords ('why', 'explain') routes to Opus, longer timeout."""
+    private_result = {"intent": "private", "relay_text": None}
+    with patch("src.coo_bot.dm_handler._classify_intent", new_callable=AsyncMock, return_value=private_result), \
+         patch("src.coo_bot.dm_handler.opus_call", new_callable=AsyncMock, return_value="ok") as mock_opus, \
+         patch("src.coo_bot.dm_handler._load_context", new_callable=AsyncMock, return_value=""):
+        update = _make_update("why is the pipeline stalled, explain")
+        _run(handle_dm(update, MagicMock()))
+        kwargs = mock_opus.call_args.kwargs
+        assert kwargs["model"] == "claude-opus-4-6"
+        assert kwargs["timeout"] == 90
+        assert kwargs["with_tools"] is False
+
+
+def test_tools_dm_routes_to_opus_with_tools():
+    """DM with tools keywords ('check the file', 'query database') gets tool access + 120s timeout."""
+    private_result = {"intent": "private", "relay_text": None}
+    with patch("src.coo_bot.dm_handler._classify_intent", new_callable=AsyncMock, return_value=private_result), \
+         patch("src.coo_bot.dm_handler.opus_call", new_callable=AsyncMock, return_value="ok") as mock_opus, \
+         patch("src.coo_bot.dm_handler._load_context", new_callable=AsyncMock, return_value=""):
+        update = _make_update("check the manual for the deploy section")
+        _run(handle_dm(update, MagicMock()))
+        kwargs = mock_opus.call_args.kwargs
+        assert kwargs["model"] == "claude-opus-4-6"
+        assert kwargs["timeout"] == 120
+        assert kwargs["with_tools"] is True
+
+
 def test_write_stop_state_creates_file(tmp_path):
     """_write_stop_state(True) creates the state file."""
     state_file = tmp_path / "max-coo-stopped"

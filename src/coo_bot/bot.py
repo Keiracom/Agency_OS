@@ -318,6 +318,7 @@ def main() -> None:
     app = (
         Application.builder()
         .token(cfg.bot_token)
+        .concurrent_updates(True)
         .build()
     )
 

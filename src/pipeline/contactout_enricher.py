@@ -15,6 +15,7 @@ Usage:
     # Pass result to discover_email(..., contactout_result=result)
     # Pass result to run_mobile_waterfall(..., contactout_result=result)
 """
+
 from __future__ import annotations
 
 import logging
@@ -70,10 +71,13 @@ async def enrich_dm_via_contactout(
             resolved_url = search_result.linkedin_url
             logger.info(
                 "contactout_enricher: search found LinkedIn for %s → %s",
-                dm_name, resolved_url,
+                dm_name,
+                resolved_url,
             )
         else:
-            logger.debug("contactout_enricher: search found no match for %s at %s", dm_name, company_name)
+            logger.debug(
+                "contactout_enricher: search found no match for %s at %s", dm_name, company_name
+            )
             return None
 
     if not resolved_url:
@@ -86,9 +90,13 @@ async def enrich_dm_via_contactout(
         # Even if enrich fails, return search data if available (GOV-8: don't discard)
         if search_result and search_result.found:
             return {
-                "email": None, "email_confidence": "none",
-                "all_emails": [], "work_emails": [], "personal_emails": [],
-                "phone": None, "all_phones": [],
+                "email": None,
+                "email_confidence": "none",
+                "all_emails": [],
+                "work_emails": [],
+                "personal_emails": [],
+                "phone": None,
+                "all_phones": [],
                 "full_name": search_result.full_name,
                 "headline": search_result.headline,
                 "company_name": search_result.company_name,

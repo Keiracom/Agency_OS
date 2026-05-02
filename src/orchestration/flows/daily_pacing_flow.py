@@ -177,7 +177,6 @@ async def calculate_daily_pacing_task(client_data: dict[str, Any]) -> dict[str, 
             # Assume cycle started 30 days ago
             from datetime import timedelta
 
-
             cycle_start = now - timedelta(days=30)
 
         cumulative_stmt = (

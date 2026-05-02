@@ -5,6 +5,7 @@ ETV percentile is computed relative to the prospect's category window.
 
 Pipeline F v2.1. Ratified: 2026-04-15.
 """
+
 from __future__ import annotations
 
 import logging
@@ -248,8 +249,23 @@ def score_prospect(
     viability_reason = None
     industry = (f3a_output.get("industry_category") or "").lower()
 
-    media_keywords = ["media", "magazine", "newspaper", "news", "broadcast", "publisher", "publishing"]
-    directory_keywords = ["directory", "aggregator", "listing", "marketplace", "platform", "comparison"]
+    media_keywords = [
+        "media",
+        "magazine",
+        "newspaper",
+        "news",
+        "broadcast",
+        "publisher",
+        "publishing",
+    ]
+    directory_keywords = [
+        "directory",
+        "aggregator",
+        "listing",
+        "marketplace",
+        "platform",
+        "comparison",
+    ]
 
     if any(k in industry for k in media_keywords):
         is_viable = False

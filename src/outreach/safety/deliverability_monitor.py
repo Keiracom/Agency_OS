@@ -4,16 +4,16 @@ Purpose:  Auto-pause/quarantine based on bounce, complaint, and LinkedIn 402/429
 Layer:    Outreach Safety — no DB dependency; all I/O via injected callables.
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from enum import Enum
-from typing import Callable
+from enum import StrEnum
 
 
-class Health(str, Enum):
+class Health(StrEnum):
     HEALTHY = "healthy"
-    DEGRADED = "degraded"        # soft warning — approaching threshold
-    PAUSED = "paused"            # auto-pause: bounce >5% over 100+ sends, 72hr
+    DEGRADED = "degraded"  # soft warning — approaching threshold
+    PAUSED = "paused"  # auto-pause: bounce >5% over 100+ sends, 72hr
     QUARANTINED = "quarantined"  # spam complaint >0.1%, indefinite
 
 
@@ -34,12 +34,12 @@ class OperatorAlert:
 
 
 # Thresholds — module-level for override in tests
-BOUNCE_RATE_PAUSE_THRESHOLD = 0.05        # 5%
+BOUNCE_RATE_PAUSE_THRESHOLD = 0.05  # 5%
 BOUNCE_MIN_SEND_SAMPLE = 100
 BOUNCE_PAUSE_DURATION = timedelta(hours=72)
-SPAM_COMPLAINT_QUARANTINE = 0.001         # 0.1%
+SPAM_COMPLAINT_QUARANTINE = 0.001  # 0.1%
 LINKEDIN_COOLDOWN = timedelta(days=7)
-DEGRADED_BOUNCE_WARN = 0.03              # 3% warning before 5% pause
+DEGRADED_BOUNCE_WARN = 0.03  # 3% warning before 5% pause
 
 
 class DeliverabilityMonitor:
@@ -167,9 +167,7 @@ class DeliverabilityMonitor:
         last_429_at = stats.get("last_429_at")
         cutoff = now - LINKEDIN_COOLDOWN
 
-        recent_events = [
-            t for t in (last_402_at, last_429_at) if t and t > cutoff
-        ]
+        recent_events = [t for t in (last_402_at, last_429_at) if t and t > cutoff]
 
         if recent_events:
             latest = max(recent_events)
@@ -203,4 +201,5 @@ class DeliverabilityMonitor:
 def default_emitter():
     """Lazy-import to avoid pulling httpx into unit tests that don't use Telegram."""
     from src.outreach.safety.alert_emitter import TelegramAlertEmitter
+
     return TelegramAlertEmitter()

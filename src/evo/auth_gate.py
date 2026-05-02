@@ -1,8 +1,9 @@
 """auth_gate.py — Write evo_auth_requests row, notify Telegram, poll for response."""
+
 import time
-import httpx
+
+from src.evo.supabase_client import sb_get, sb_post
 from src.evo.tg_notify import tg_send
-from src.evo.supabase_client import sb_post, sb_get
 
 POLL_INTERVAL = 15
 TIMEOUT_SECS = 1800  # 30 minutes
@@ -12,9 +13,13 @@ def request_authorisation(
     task_id: str, flow_run_id: str, reason: str, estimated: dict, actual: dict
 ) -> str:
     payload = {
-        "task_id": task_id, "flow_run_id": flow_run_id, "reason": reason,
-        "request_type": "budget_exceeded", "estimated": estimated,
-        "actual": actual, "status": "pending",
+        "task_id": task_id,
+        "flow_run_id": flow_run_id,
+        "reason": reason,
+        "request_type": "budget_exceeded",
+        "estimated": estimated,
+        "actual": actual,
+        "status": "pending",
     }
     row = sb_post("evo_auth_requests", payload)
     row_id = row[0]["id"]

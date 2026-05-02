@@ -794,8 +794,7 @@ class ABNClient:
         if isinstance(gst_info, list):
             # Multiple GST records — find current (effectiveTo is sentinel 0001-01-01)
             gst_info = next(
-                (g for g in gst_info
-                 if g.get("effectiveTo") in (None, "0001-01-01")),
+                (g for g in gst_info if g.get("effectiveTo") in (None, "0001-01-01")),
                 gst_info[0] if gst_info else {},
             )
 
@@ -815,8 +814,13 @@ class ABNClient:
             gst_status = GST_UNKNOWN
             gst_registered = None
 
-        logger.info("ABR GST parsed abn=%s raw_from=%s raw_to=%s parsed_state=%s",
-                    abn, gst_from, gst_to, gst_status)
+        logger.info(
+            "ABR GST parsed abn=%s raw_from=%s raw_to=%s parsed_state=%s",
+            abn,
+            gst_from,
+            gst_to,
+            gst_status,
+        )
 
         # Extract names
         business_name = ""

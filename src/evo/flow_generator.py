@@ -1,7 +1,10 @@
 """flow_generator.py — Dynamic Prefect flow from task_graph JSON."""
-from datetime import datetime, timezone
-from prefect import flow
+
+from datetime import UTC, datetime
+
 import prefect.runtime.flow_run as _fr
+from prefect import flow
+
 from src.evo.flow_builder import wire_tasks
 from src.prefect_utils.completion_hook import on_completion_hook
 from src.prefect_utils.hooks import on_failure_hook
@@ -14,7 +17,7 @@ def _slug(objective: str) -> str:
 
 
 def _flow_name(objective: str) -> str:
-    ts = datetime.now(timezone.utc).strftime("%Y%m%d")
+    ts = datetime.now(UTC).strftime("%Y%m%d")
     return f"evo-{_slug(objective)}-{ts}"
 
 

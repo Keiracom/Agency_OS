@@ -11,21 +11,22 @@ to flow.serve(). Production deployment is canonical via prefect.yaml's
 `free-enrichment-flow` entry; running this script is for ad-hoc /
 local-dev serve sessions.
 """
+
 from src.orchestration.flows.free_enrichment_flow import free_enrichment_flow
 
 DEPLOYMENT_CONFIG = {
-    "name":        "free-enrichment-flow",
-    "version":     "1.0.0",
-    "tags":        ["bu-closed-loop", "free-enrichment", "stage-0-trigger", "free-mode"],
+    "name": "free-enrichment-flow",
+    "version": "1.0.0",
+    "tags": ["bu-closed-loop", "free-enrichment", "stage-0-trigger", "free-mode"],
     "description": (
         "BU Closed-Loop S3 free-enrichment flow. ACTIVE (AUD 0 — local DNS / "
         "httpx / abn_registry). Hourly safety-net: promotes stage-0/NULL BU "
         "rows to stage 1 then runs FreeEnrichment.run() over the backlog."
     ),
-    "cron":        "15 * * * *",
-    "paused":      False,  # ACTIVE — was is_schedule_active=True
+    "cron": "15 * * * *",
+    "paused": False,  # ACTIVE — was is_schedule_active=True
     "parameters": {
-        "limit":           500,
+        "limit": 500,
         "promote_stage_0": True,
     },
 }

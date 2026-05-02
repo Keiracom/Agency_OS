@@ -5,6 +5,7 @@ Layer: services
 Imports: models, integrations
 Consumers: orchestration only
 """
+
 from datetime import date
 from typing import TYPE_CHECKING
 
@@ -18,7 +19,7 @@ class ProspectEntryScheduler:
     def calculate_daily_entries(
         self,
         target_total: int,
-        calendar: 'CycleCalendar',
+        calendar: "CycleCalendar",
         cycle_start: date,
         total_working_days: int = 22,
     ) -> dict[int, int]:
@@ -41,10 +42,7 @@ class ProspectEntryScheduler:
         # Adjust for rounding — distribute remainder across Tue-Thu
         remainder = target_total - total_allocated
         if remainder != 0:
-            mid_days = [
-                d for d in schedule
-                if calendar.cycle_day_to_date(d).weekday() in (1, 2, 3)
-            ]
+            mid_days = [d for d in schedule if calendar.cycle_day_to_date(d).weekday() in (1, 2, 3)]
             for d in mid_days:
                 if remainder == 0:
                     break

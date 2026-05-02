@@ -27,6 +27,7 @@ async def check_tier(task_class: str) -> str:
     """Query tier_registry for task_class. Returns 'A' or 'B'."""
     try:
         import asyncpg
+
         db_url = os.environ.get("DATABASE_URL", "").replace(
             "postgresql+asyncpg://", "postgresql://"
         )
@@ -54,17 +55,21 @@ async def dispatch_to_clone(
     """Write task brief to clone inbox for dispatch."""
     inbox_dir = Path(f"/tmp/telegram-relay-{clone_callsign}/inbox")
     inbox_dir.mkdir(parents=True, exist_ok=True)
-    
+
     ts = time.strftime("%Y%m%d_%H%M%S")
     task_file = inbox_dir / f"{ts}_dispatch.json"
-    task_file.write_text(json.dumps({
-        "type": "task_dispatch",
-        "from": os.environ.get("CALLSIGN", "unknown"),
-        "to": clone_callsign,
-        "max_task_minutes": max_task_minutes,
-        "brief": task_brief,
-        "dispatched_at": time.strftime("%Y-%m-%dT%H:%M:%SZ"),
-    }))
+    task_file.write_text(
+        json.dumps(
+            {
+                "type": "task_dispatch",
+                "from": os.environ.get("CALLSIGN", "unknown"),
+                "to": clone_callsign,
+                "max_task_minutes": max_task_minutes,
+                "brief": task_brief,
+                "dispatched_at": time.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            }
+        )
+    )
     logger.info("Dispatched task to %s: %s", clone_callsign, task_file)
 
 
@@ -76,6 +81,7 @@ async def escalate_to_tier_a(
     """Permanently escalate a task_class to Tier A after stall."""
     try:
         import asyncpg
+
         db_url = os.environ.get("DATABASE_URL", "").replace(
             "postgresql+asyncpg://", "postgresql://"
         )
@@ -94,7 +100,9 @@ async def escalate_to_tier_a(
                        reviewed_by = EXCLUDED.reviewed_by,
                        last_reviewed_at = NOW(),
                        updated_at = NOW()""",
-                task_class, stall_evidence, reviewed_by,
+                task_class,
+                stall_evidence,
+                reviewed_by,
             )
             logger.info("Escalated %s to Tier A: %s", task_class, stall_evidence)
         finally:

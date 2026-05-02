@@ -32,6 +32,7 @@ The function is intentionally conservative:
 Security: pure HTTP via httpx, API key from settings, no shell, no URL
 following from caller-supplied input.
 """
+
 from __future__ import annotations
 
 import logging
@@ -45,30 +46,31 @@ from src.config.settings import settings
 logger = logging.getLogger(__name__)
 
 ANTHROPIC_API_BASE = "https://api.anthropic.com/v1"
-ANTHROPIC_VERSION  = "2023-06-01"
-PROBE_TTL_SECONDS  = 30
-PROBE_TIMEOUT_S    = 5.0
+ANTHROPIC_VERSION = "2023-06-01"
+PROBE_TTL_SECONDS = 30
+PROBE_TIMEOUT_S = 5.0
 
 # Headers we care about — names as documented by Anthropic.
-_HDR_REQ_REM    = "anthropic-ratelimit-requests-remaining"
-_HDR_TOK_REM    = "anthropic-ratelimit-tokens-remaining"
-_HDR_IN_REM     = "anthropic-ratelimit-input-tokens-remaining"
-_HDR_OUT_REM    = "anthropic-ratelimit-output-tokens-remaining"
-_HDR_REQ_RESET  = "anthropic-ratelimit-requests-reset"
-_HDR_TOK_RESET  = "anthropic-ratelimit-tokens-reset"
+_HDR_REQ_REM = "anthropic-ratelimit-requests-remaining"
+_HDR_TOK_REM = "anthropic-ratelimit-tokens-remaining"
+_HDR_IN_REM = "anthropic-ratelimit-input-tokens-remaining"
+_HDR_OUT_REM = "anthropic-ratelimit-output-tokens-remaining"
+_HDR_REQ_RESET = "anthropic-ratelimit-requests-reset"
+_HDR_TOK_RESET = "anthropic-ratelimit-tokens-reset"
 
 
 @dataclass
 class RateLimitSnapshot:
     """Cached headers from the most-recent probe per model."""
-    model:                str
-    requests_remaining:   int | None
-    tokens_remaining:     int | None
-    input_tokens_remaining:  int | None
+
+    model: str
+    requests_remaining: int | None
+    tokens_remaining: int | None
+    input_tokens_remaining: int | None
     output_tokens_remaining: int | None
-    requests_reset_iso:   str | None
-    tokens_reset_iso:     str | None
-    captured_at:          float
+    requests_reset_iso: str | None
+    tokens_reset_iso: str | None
+    captured_at: float
 
     def headroom_for(self, required_tokens: int) -> tuple[bool, str]:
         """Return (has_headroom, reason). Considers the most-restrictive
@@ -78,22 +80,24 @@ class RateLimitSnapshot:
             return False, f"requests_remaining={self.requests_remaining}"
 
         # Token budgets — prefer the more specific headers when present.
-        if self.input_tokens_remaining is not None and self.input_tokens_remaining < required_tokens:
+        if (
+            self.input_tokens_remaining is not None
+            and self.input_tokens_remaining < required_tokens
+        ):
             return False, (
-                f"input_tokens_remaining={self.input_tokens_remaining} "
-                f"< required={required_tokens}"
+                f"input_tokens_remaining={self.input_tokens_remaining} < required={required_tokens}"
             )
-        if self.output_tokens_remaining is not None and self.output_tokens_remaining < required_tokens:
+        if (
+            self.output_tokens_remaining is not None
+            and self.output_tokens_remaining < required_tokens
+        ):
             return False, (
                 f"output_tokens_remaining={self.output_tokens_remaining} "
                 f"< required={required_tokens}"
             )
         # Total tokens fallback when per-direction headers absent.
         if self.tokens_remaining is not None and self.tokens_remaining < required_tokens:
-            return False, (
-                f"tokens_remaining={self.tokens_remaining} "
-                f"< required={required_tokens}"
-            )
+            return False, (f"tokens_remaining={self.tokens_remaining} < required={required_tokens}")
         return True, "ok"
 
 
@@ -102,6 +106,7 @@ _SNAPSHOT_CACHE: dict[str, RateLimitSnapshot] = {}
 
 
 # ── Header parsing ─────────────────────────────────────────────────────────
+
 
 def _parse_int(v: str | None) -> int | None:
     if v is None or v == "":
@@ -128,6 +133,7 @@ def _snapshot_from_headers(model: str, headers) -> RateLimitSnapshot:
 
 # ── Probe ──────────────────────────────────────────────────────────────────
 
+
 def _api_key() -> str | None:
     key = getattr(settings, "anthropic_api_key", "") or ""
     return key.strip() or None
@@ -147,16 +153,17 @@ def _probe(model: str) -> RateLimitSnapshot | None:
         "messages": [{"role": "user", "content": "ok"}],
     }
     headers = {
-        "x-api-key":         key,
+        "x-api-key": key,
         "anthropic-version": ANTHROPIC_VERSION,
-        "content-type":      "application/json",
+        "content-type": "application/json",
     }
 
     try:
         with httpx.Client(timeout=PROBE_TIMEOUT_S) as client:
             resp = client.post(
                 f"{ANTHROPIC_API_BASE}/messages/count_tokens",
-                json=payload, headers=headers,
+                json=payload,
+                headers=headers,
             )
     except httpx.HTTPError as exc:
         logger.warning("anthropic_rate_limit: probe HTTP error: %s", exc)
@@ -167,7 +174,8 @@ def _probe(model: str) -> RateLimitSnapshot | None:
     if resp.status_code >= 400:
         logger.warning(
             "anthropic_rate_limit: probe status=%s body[:200]=%r",
-            resp.status_code, resp.text[:200],
+            resp.status_code,
+            resp.text[:200],
         )
 
     return _snapshot_from_headers(model, resp.headers)
@@ -183,6 +191,7 @@ def _cached_snapshot(model: str) -> RateLimitSnapshot | None:
 
 
 # ── Public surface ─────────────────────────────────────────────────────────
+
 
 def check_rate_limits(model: str, required_tokens: int) -> bool:
     """Return True iff there is enough headroom on `model` for an
@@ -216,7 +225,8 @@ def check_rate_limits(model: str, required_tokens: int) -> bool:
         if snap is None:
             logger.info(
                 "anthropic_rate_limit: no probe data for model=%s required=%d — fail-open",
-                model, required_tokens,
+                model,
+                required_tokens,
             )
             return True
         _SNAPSHOT_CACHE[model] = snap
@@ -226,9 +236,14 @@ def check_rate_limits(model: str, required_tokens: int) -> bool:
     log(
         "anthropic_rate_limit: model=%s required=%d ok=%s reason=%s "
         "rpm_rem=%s tpm_rem=%s in_rem=%s out_rem=%s",
-        model, required_tokens, ok, reason,
-        snap.requests_remaining, snap.tokens_remaining,
-        snap.input_tokens_remaining, snap.output_tokens_remaining,
+        model,
+        required_tokens,
+        ok,
+        reason,
+        snap.requests_remaining,
+        snap.tokens_remaining,
+        snap.input_tokens_remaining,
+        snap.output_tokens_remaining,
     )
     return ok
 

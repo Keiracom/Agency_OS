@@ -9,12 +9,13 @@ Prefect 3.x) to flow.serve() per Prefect 3 docs. Production deployment is
 canonical via prefect.yaml's `pipeline-f-master-flow` entry; running this
 script is for ad-hoc / local-dev serve sessions.
 """
+
 from src.orchestration.flows.pipeline_f_master_flow import pipeline_f_master_flow
 
 DEPLOYMENT_CONFIG = {
-    "name":        "pipeline-f-p5",
-    "version":     "1.1.0",
-    "tags":        ["p4", "pipeline-f", "master-flow", "cd-player-v1"],
+    "name": "pipeline-f-p5",
+    "version": "1.1.0",
+    "tags": ["p4", "pipeline-f", "master-flow", "cd-player-v1"],
     "description": (
         "P4 Build: Pipeline F master flow (CD Player v1). Manual trigger for P5 validation. "
         "Tier-aware runtime via {tier, demo_mode, client_id} parameters."
@@ -22,12 +23,12 @@ DEPLOYMENT_CONFIG = {
     # No 'cron' key — manual trigger only for P5. Production cron TBD post-P5.
     "parameters": {
         # T4 params — tier-aware CD Player v1 wiring
-        "tier":           "ignition",
-        "demo_mode":      False,
-        "client_id":      None,
+        "tier": "ignition",
+        "demo_mode": False,
+        "client_id": None,
         # Legacy discovery + budget knobs
-        "categories":     ["dental", "plumbing", "legal", "accounting", "fitness"],
-        "dry_run":        False,
+        "categories": ["dental", "plumbing", "legal", "accounting", "fitness"],
+        "dry_run": False,
         "budget_cap_aud": None,  # None → let tier default win (see _tier_runtime)
     },
 }
@@ -42,5 +43,7 @@ def serve() -> None:
 if __name__ == "__main__":
     print("Serving: pipeline-f-master-flow/pipeline-f-p5 (manual trigger, tier-aware)")
     print("Run via: prefect deployment run 'pipeline-f-master-flow/pipeline-f-p5'")
-    print("Override params: prefect deployment run '...' -p tier=spark -p demo_mode=true -p client_id=test")
+    print(
+        "Override params: prefect deployment run '...' -p tier=spark -p demo_mode=true -p client_id=test"
+    )
     serve()

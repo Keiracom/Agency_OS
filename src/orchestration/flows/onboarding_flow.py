@@ -37,12 +37,12 @@ from src.engines.client_intelligence import (
 )
 from src.integrations.supabase import get_db_session
 from src.models.resource_pool import ResourceType
+from src.prefect_utils.completion_hook import on_completion_hook
+from src.prefect_utils.hooks import on_failure_hook
 from src.services.resource_assignment_service import (
     assign_resources_to_client,
     check_buffer_and_alert,
 )
-from src.prefect_utils.completion_hook import on_completion_hook
-from src.prefect_utils.hooks import on_failure_hook
 
 logger = logging.getLogger(__name__)
 
@@ -1056,7 +1056,6 @@ def deploy_onboarding_flows():
     Run this to register flows with the Prefect server.
     """
     from prefect.deployments import Deployment
-
 
     # Main onboarding flow deployment
     onboarding_deployment = Deployment.build_from_flow(

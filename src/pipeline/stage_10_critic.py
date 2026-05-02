@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import os
 from typing import Any
 
 from src.intelligence.gemini_client import GeminiClient
@@ -192,7 +191,7 @@ async def critique_draft(
             ),
             timeout=15.0,
         )
-    except asyncio.TimeoutError:
+    except TimeoutError:
         logger.warning("Critic timed out after 15s — shipping unreviewed")
         return {
             "score": 0,
@@ -297,13 +296,17 @@ async def critique_and_revise(
     body = initial_body
     subject = initial_subject
     best: dict[str, Any] = {}
-    revision_count = 0
 
     for attempt in range(MAX_REVISIONS + 1):
-        result = await critique_draft(gemini, channel, body, subject, prospect_brief, agency_profile)
+        result = await critique_draft(
+            gemini, channel, body, subject, prospect_brief, agency_profile
+        )
 
         # On critic failure (timeout/parse error) ship immediately — any attempt
-        if result.get("needs_review") and result["feedback"] in ("critic_timeout", "critic_parse_error"):
+        if result.get("needs_review") and result["feedback"] in (
+            "critic_timeout",
+            "critic_parse_error",
+        ):
             return {
                 "body": body,
                 "subject": subject,
@@ -321,7 +324,7 @@ async def critique_and_revise(
                 "critic_score": result["score"],
                 "critic_feedback": result["feedback"],
                 "needs_review": result.get("needs_review", False),
-                "revision_count": revision_count,
+                "revision_count": attempt,
             }
 
         if result["pass"]:
@@ -350,7 +353,6 @@ async def critique_and_revise(
 
         body = revised.get("body", body)
         subject = revised.get("subject", subject)
-        revision_count += 1
 
     # Should not reach here
     best["needs_review"] = True

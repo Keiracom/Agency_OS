@@ -847,7 +847,8 @@ async def log_content_run_task(
 
 
 @flow(
-    name="daily_content_flow", log_prints=True,
+    name="daily_content_flow",
+    log_prints=True,
     on_completion=[on_completion_hook],
     on_failure=[on_failure_hook],
 )
@@ -982,7 +983,8 @@ async def daily_content_flow(
 
 
 @flow(
-    name="milestone_content_flow", log_prints=True,
+    name="milestone_content_flow",
+    log_prints=True,
     on_completion=[on_completion_hook],
     on_failure=[on_failure_hook],
 )
@@ -1057,7 +1059,6 @@ async def milestone_content_flow(
 
     # Generate celebratory posts
     from src.integrations.anthropic import get_anthropic_client
-
 
     client = get_anthropic_client()
 
@@ -1144,7 +1145,8 @@ Be concise and impactful. Include key metric. Use 1-2 relevant emojis.""",
 
 
 @flow(
-    name="preview_daily_content", log_prints=True,
+    name="preview_daily_content",
+    log_prints=True,
     on_completion=[on_completion_hook],
     on_failure=[on_failure_hook],
 )

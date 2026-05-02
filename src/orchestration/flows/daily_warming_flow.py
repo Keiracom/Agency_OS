@@ -14,16 +14,17 @@ Warming ladder (days 1-14 ramp, day 15+ fully warmed):
     Day 11-14: 75/day cap
     Day 15+:  100/day cap (warming_day set to NULL — fully warmed)
 """
+
 from __future__ import annotations
 
 import asyncio
 import logging
 from dataclasses import dataclass
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from prefect import flow, task
 from prefect.client.schemas.schedules import CronSchedule
-from zoneinfo import ZoneInfo
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +35,7 @@ WARMED_AT_DAY = 15  # warming_day >= 15 -> set to NULL (fully warmed)
 @dataclass
 class WarmingAdvanceSummary:
     mailboxes_advanced: int
-    mailboxes_graduated: int      # warming_day was 14, now NULL (warmed)
+    mailboxes_graduated: int  # warming_day was 14, now NULL (warmed)
     mailboxes_already_warmed: int
     daily_counts_reset: int
     cycles_advanced: int

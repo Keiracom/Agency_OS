@@ -9,6 +9,7 @@ Handles bidirectional DM conversation with Dave:
 Public API:
     handle_dm(update, context) — registered as MessageHandler for Dave's DM chat
 """
+
 from __future__ import annotations
 
 import logging
@@ -17,8 +18,8 @@ from typing import TYPE_CHECKING
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from src.coo_bot.opus_client import opus_call
 from src.coo_bot.config import COOConfig
+from src.coo_bot.opus_client import opus_call
 
 if TYPE_CHECKING:
     pass
@@ -68,6 +69,7 @@ async def handle_dm(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     # Classify intent: relay to group or private response
     try:
         from src.coo_bot.group_handler import get_recent_messages
+
         recent_msgs = get_recent_messages(limit=10)
     except Exception:
         recent_msgs = []
@@ -81,6 +83,7 @@ async def handle_dm(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         relay_text = intent.get("relay_text") or text
         try:
             from src.coo_bot.group_writer import post_to_group
+
             ok = await post_to_group(
                 cfg.bot_token, relay_text, dave_dm_id=update.message.message_id
             )
@@ -98,21 +101,50 @@ async def handle_dm(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_msg = f"[Recent context]\n{memory_context}\n\n[Dave's message]\n{text}"
 
     lowered = text.lower()
-    needs_tools = any(kw in lowered for kw in [
-        "read", "file", "check", "look at", "query", "show me",
-        "what's in", "cat ", "grep", "find", "database", "supabase",
-        "store", "manual", "claude.md", "architecture",
-    ])
-    needs_deep = needs_tools or any(kw in lowered for kw in [
-        "why", "diagnose", "explain", "analyse", "opinion", "think",
-        "strategy", "plan", "recommend",
-    ])
+    needs_tools = any(
+        kw in lowered
+        for kw in [
+            "read",
+            "file",
+            "check",
+            "look at",
+            "query",
+            "show me",
+            "what's in",
+            "cat ",
+            "grep",
+            "find",
+            "database",
+            "supabase",
+            "store",
+            "manual",
+            "claude.md",
+            "architecture",
+        ]
+    )
+    needs_deep = needs_tools or any(
+        kw in lowered
+        for kw in [
+            "why",
+            "diagnose",
+            "explain",
+            "analyse",
+            "opinion",
+            "think",
+            "strategy",
+            "plan",
+            "recommend",
+        ]
+    )
     model = "claude-opus-4-6" if needs_deep else "claude-haiku-4-5"
     timeout = 120 if needs_tools else (90 if needs_deep else 20)
 
     response = await opus_call(
-        _COO_SYSTEM_PROMPT, user_msg,
-        timeout=timeout, model=model, with_tools=needs_tools,
+        _COO_SYSTEM_PROMPT,
+        user_msg,
+        timeout=timeout,
+        model=model,
+        with_tools=needs_tools,
     )
 
     if response:
@@ -129,6 +161,7 @@ async def _classify_intent(text: str, recent_group: str) -> dict:
     Returns: {"intent": "relay"|"private", "relay_text": "..." or None}
     """
     import json
+
     prompt = (
         "You are Max's intent classifier. Dave DM'd you this message. "
         "Based on the message content + recent group context, decide:\n"
@@ -138,14 +171,12 @@ async def _classify_intent(text: str, recent_group: str) -> dict:
         "'what do you think', 'summarise', opinions)\n\n"
         "If relay: extract the exact text to post (clean it up for group "
         "consumption but keep Dave's voice/intent).\n\n"
-        "Respond with ONLY valid JSON: {\"intent\": \"relay\"|\"private\", "
-        "\"relay_text\": \"text to post\" or null}\n\n"
+        'Respond with ONLY valid JSON: {"intent": "relay"|"private", '
+        '"relay_text": "text to post" or null}\n\n'
         f"Recent group context:\n{recent_group}\n\n"
         f"Dave's DM: {text}"
     )
-    raw = await opus_call(
-        "You are a JSON-only intent classifier.", prompt, timeout=30
-    )
+    raw = await opus_call("You are a JSON-only intent classifier.", prompt, timeout=30)
     try:
         return json.loads(raw)
     except (json.JSONDecodeError, TypeError, AttributeError):
@@ -158,6 +189,7 @@ async def _load_context() -> str:
     # Load from working state buffer (populated by group_handler)
     try:
         from src.coo_bot.group_handler import get_recent_messages
+
         recent = get_recent_messages(limit=20)
         if recent:
             lines.append("Recent group messages:")
@@ -171,6 +203,7 @@ async def _load_context() -> str:
     # Load from agent_memories
     try:
         from src.coo_bot.memory_retriever import get_relevant_memories
+
         memories = await get_relevant_memories(query="recent activity", limit=5)
         if memories:
             lines.append("\nRelevant memories:")
@@ -187,6 +220,7 @@ async def _load_context() -> str:
 def _write_stop_state(stopped: bool) -> None:
     """Write STOP MAX state to a file that tier_framework reads."""
     import pathlib
+
     state_file = pathlib.Path("/tmp/max-coo-stopped")
     if stopped:
         state_file.write_text("STOPPED")

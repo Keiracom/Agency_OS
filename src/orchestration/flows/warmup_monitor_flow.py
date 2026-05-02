@@ -138,7 +138,6 @@ async def update_domain_status_task(
     async with get_db_session() as db:
         from uuid import UUID
 
-
         result = await db.execute(select(ResourcePool).where(ResourcePool.id == UUID(resource_id)))
         resource = result.scalar_one_or_none()
 
@@ -167,7 +166,8 @@ async def update_domain_status_task(
 
 
 @flow(
-    name="process_single_domain", log_prints=True,
+    name="process_single_domain",
+    log_prints=True,
     on_completion=[on_completion_hook],
     on_failure=[on_failure_hook],
 )
@@ -215,7 +215,8 @@ async def process_single_domain_flow(domain_record: dict) -> dict:
 
 
 @flow(
-    name="warmup_monitor", log_prints=True,
+    name="warmup_monitor",
+    log_prints=True,
     on_completion=[on_completion_hook],
     on_failure=[on_failure_hook],
 )

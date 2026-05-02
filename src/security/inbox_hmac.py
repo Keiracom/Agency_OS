@@ -97,7 +97,9 @@ def verify(path: str | Path, secret: str | None = None) -> tuple[bool, str]:
 
     expected = _compute(payload, secret)
     if not hmac.compare_digest(stored, expected):
-        logger.warning("HMAC mismatch for %s — computed %s, stored %s", p, expected[:12], stored[:12])
+        logger.warning(
+            "HMAC mismatch for %s — computed %s, stored %s", p, expected[:12], stored[:12]
+        )
         return False, "HMAC mismatch (tampered or signed with different secret)"
 
     return True, "ok"

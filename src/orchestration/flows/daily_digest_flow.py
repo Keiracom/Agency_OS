@@ -21,9 +21,9 @@ from prefect.runtime import flow_run
 
 from src.config.database import get_db_session
 from src.config.settings import settings
-from src.services.digest_service import DigestService
 from src.prefect_utils.completion_hook import on_completion_hook
 from src.prefect_utils.hooks import on_failure_hook
+from src.services.digest_service import DigestService
 
 logger = logging.getLogger(__name__)
 
@@ -168,7 +168,6 @@ async def send_digest_email_task(
         # Import email engine
         from src.engines.email import EmailEngine
 
-
         async with get_db_session() as db:
             email_engine = EmailEngine(db)
 
@@ -264,7 +263,8 @@ async def log_digest_result_task(
 
 
 @flow(
-    name="send_client_digest", log_prints=True,
+    name="send_client_digest",
+    log_prints=True,
     on_completion=[on_completion_hook],
     on_failure=[on_failure_hook],
 )
@@ -332,7 +332,8 @@ async def send_client_digest_flow(client_id: str, client_name: str, digest_date:
 
 
 @flow(
-    name="daily_digest_flow", log_prints=True,
+    name="daily_digest_flow",
+    log_prints=True,
     on_completion=[on_completion_hook],
     on_failure=[on_failure_hook],
 )

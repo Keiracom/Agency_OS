@@ -17,14 +17,16 @@ Usage (instance):
     async with cb:
         result = await api_call()
 """
+
 from __future__ import annotations
 
 import asyncio
 import functools
 import logging
 import time
+from collections.abc import Callable
 from enum import Enum
-from typing import Any, Callable
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -35,8 +37,8 @@ logger = logging.getLogger(__name__)
 
 
 class CircuitState(Enum):
-    CLOSED = "closed"        # Normal operation
-    OPEN = "open"            # Failing — reject all calls
+    CLOSED = "closed"  # Normal operation
+    OPEN = "open"  # Failing — reject all calls
     HALF_OPEN = "half_open"  # Testing recovery — allow limited calls
 
 
@@ -46,9 +48,7 @@ class CircuitOpenError(Exception):
     def __init__(self, provider: str, retry_after: float) -> None:
         self.provider = provider
         self.retry_after = retry_after
-        super().__init__(
-            f"Circuit OPEN for '{provider}'. Retry after {retry_after:.1f}s."
-        )
+        super().__init__(f"Circuit OPEN for '{provider}'. Retry after {retry_after:.1f}s.")
 
 
 # ---------------------------------------------------------------------------
@@ -232,6 +232,7 @@ def circuit_breaker(
         async def call_bright_data(...):
             ...
     """
+
     def decorator(fn: Callable) -> Callable:
         @functools.wraps(fn)
         async def wrapper(*args: Any, **kwargs: Any) -> Any:
@@ -242,5 +243,7 @@ def circuit_breaker(
                 half_open_max_calls=half_open_max_calls,
             )
             return await cb.call(fn(*args, **kwargs))
+
         return wrapper
+
     return decorator

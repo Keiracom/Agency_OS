@@ -37,9 +37,9 @@ from src.engines.scout import get_scout_engine
 from src.integrations.supabase import get_db_session
 from src.models.base import SubscriptionStatus
 from src.models.client import Client
-from src.services.who_refinement_service import get_who_refined_criteria
 from src.prefect_utils.completion_hook import on_completion_hook
 from src.prefect_utils.hooks import on_failure_hook
+from src.services.who_refinement_service import get_who_refined_criteria
 
 logger = logging.getLogger(__name__)
 
@@ -140,10 +140,7 @@ async def _exclude_existing_bu_domains(
     Returns the filtered candidate list. Logs a structured info line so
     the de-dup ratio is observable in run summaries.
     """
-    incoming_domains = sorted({
-        r["gmb_domain"] for r in bu_gmb_rows
-        if r.get("gmb_domain")
-    })
+    incoming_domains = sorted({r["gmb_domain"] for r in bu_gmb_rows if r.get("gmb_domain")})
     if not incoming_domains:
         return bu_gmb_rows
 
@@ -183,14 +180,14 @@ async def _exclude_existing_bu_domains(
     skipped_count = len(bu_gmb_rows) - len(kept)
     if skipped_count:
         skipped_domains = sorted(
-            {r["gmb_domain"] for r in bu_gmb_rows
-             if r.get("gmb_domain") in blocked}
+            {r["gmb_domain"] for r in bu_gmb_rows if r.get("gmb_domain") in blocked}
         )
         # Truncate the logged list so a 1000-row dedupe doesn't spam logs.
         preview = skipped_domains[:20]
         logger.info(
             "pool_population_skipped_existing_bus count=%d sample=%r",
-            skipped_count, preview,
+            skipped_count,
+            preview,
         )
     return kept
 
@@ -576,7 +573,6 @@ async def populate_pool_from_icp_task(
             return None
 
     from src.integrations.bright_data_client import DATASET_IDS, get_bright_data_client
-
 
     MAX_ONBOARDING_COMBOS = 3
 

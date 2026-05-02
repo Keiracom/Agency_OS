@@ -13,6 +13,7 @@ Per client:
 Errors in one client's evaluation do not block the rest — gathered with
 return_exceptions=True. hourly_cadence_flow fires the scheduled rows later.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -30,9 +31,7 @@ logger = logging.getLogger(__name__)
 async def _list_active_clients(db_conn: Any) -> list[str]:
     if db_conn is None:
         return []
-    rows = await db_conn.fetch(
-        "SELECT id FROM clients WHERE status = 'active'"
-    )
+    rows = await db_conn.fetch("SELECT id FROM clients WHERE status = 'active'")
     return [str(r["id"]) for r in rows]
 
 
@@ -60,19 +59,22 @@ async def daily_decider_flow(
         actions = await decider.evaluate_all(db_conn, cid)
         if dry_run:
             counts = Counter(a.action for a in actions)
-            return {"scheduled": counts.get("schedule_next", 0),
-                    "nurture":   counts.get("nurture", 0),
-                    "skipped":   counts.get("skip", 0),
-                    "suppressed": counts.get("suppress", 0),
-                    "escalated": counts.get("escalate", 0),
-                    "errors":    0,
-                    "evaluated": len(actions)}
+            return {
+                "scheduled": counts.get("schedule_next", 0),
+                "nurture": counts.get("nurture", 0),
+                "skipped": counts.get("skip", 0),
+                "suppressed": counts.get("suppress", 0),
+                "escalated": counts.get("escalate", 0),
+                "errors": 0,
+                "evaluated": len(actions),
+            }
         applied = await apply_actions(db_conn, cid, actions)
         applied["evaluated"] = len(actions)
         return applied
 
     per_client = await asyncio.gather(
-        *[evaluate_client(c) for c in clients], return_exceptions=True,
+        *[evaluate_client(c) for c in clients],
+        return_exceptions=True,
     )
 
     totals = _empty_summary()
@@ -90,8 +92,16 @@ async def daily_decider_flow(
 
 
 def _empty_summary() -> dict[str, int]:
-    return {"clients": 0, "evaluated": 0, "scheduled": 0, "nurture": 0,
-            "skipped": 0, "suppressed": 0, "escalated": 0, "errors": 0}
+    return {
+        "clients": 0,
+        "evaluated": 0,
+        "scheduled": 0,
+        "nurture": 0,
+        "skipped": 0,
+        "suppressed": 0,
+        "escalated": 0,
+        "errors": 0,
+    }
 
 
 @flow(name="daily_decider_flow", log_prints=True)

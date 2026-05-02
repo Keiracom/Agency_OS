@@ -5,13 +5,14 @@ Layer: 3 - engines (imports: models, integrations only)
 Imports: src.integrations.anthropic
 Consumers: src.pipeline.pipeline_orchestrator (injected as dependency)
 """
+
 from __future__ import annotations
 
 import asyncio
 import json
 import logging
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 from src.exceptions import AISpendLimitError, APIError, IntegrationError
@@ -52,22 +53,23 @@ _GMB_SYSTEM = (
 
 # ── Output schema ──────────────────────────────────────────────────────────────
 
+
 @dataclass
 class WebsiteIntelligence:
     # ── Haiku-powered: website comprehension ──────────────────────────
     services: list[str]
-    business_type: str                  # "agency" | "freelancer" | "in-house" | "unknown"
-    team_size_signal: str               # "solo" | "small" | "medium" | "large" | "unknown"
+    business_type: str  # "agency" | "freelancer" | "in-house" | "unknown"
+    team_size_signal: str  # "solo" | "small" | "medium" | "large" | "unknown"
     is_actively_marketing: bool
-    comprehension_confidence: float     # 0.0-1.0
+    comprehension_confidence: float  # 0.0-1.0
 
     # ── Sonnet-powered: intent classification ─────────────────────────
-    intent_grade: str                   # "HOT" | "WARM" | "COLD"
-    intent_reasoning: str               # 1-sentence explanation
+    intent_grade: str  # "HOT" | "WARM" | "COLD"
+    intent_reasoning: str  # 1-sentence explanation
 
     # ── Haiku-powered: GMB review intelligence ────────────────────────
     gmb_pain_themes: list[str]
-    gmb_opportunity_score: int          # 0-100
+    gmb_opportunity_score: int  # 0-100
 
     # ── Meta ──────────────────────────────────────────────────────────
     haiku_cost_aud: float = 0.0
@@ -77,8 +79,8 @@ class WebsiteIntelligence:
 
 # ── Engine ─────────────────────────────────────────────────────────────────────
 
-class WebsiteIntelligenceEngine:
 
+class WebsiteIntelligenceEngine:
     HAIKU_MODEL = "claude-haiku-4-5-20251001"
     SONNET_MODEL = "claude-sonnet-4-20250514"
     HTML_TEXT_MAX_CHARS = 3000
@@ -108,6 +110,7 @@ class WebsiteIntelligenceEngine:
         Returns WebsiteIntelligence with fallback_used=True on any API failure.
         """
         try:
+
             async def _empty_gmb() -> dict:
                 return {}
 
@@ -166,15 +169,15 @@ class WebsiteIntelligenceEngine:
             f"{extracted_text}\n"
             "---\n\n"
             "Return ONLY this JSON (no markdown, no explanation):\n"
-            '{\n'
+            "{\n"
             '  "services": [],\n'
             '  "business_type": "unknown",\n'
             '  "team_size_signal": "unknown",\n'
             '  "is_actively_marketing": false,\n'
             '  "comprehension_confidence": 0.0\n'
-            '}\n\n'
+            "}\n\n"
             "Field definitions:\n"
-            '- services: What the business sells or does. Max 6 items. Use plain English labels '
+            "- services: What the business sells or does. Max 6 items. Use plain English labels "
             '(e.g. "dental services", "Google Ads management", "plumbing repairs"). Empty array if unclear.\n'
             '- business_type: "agency" if they sell marketing/design/digital services to other businesses. '
             '"freelancer" if solo consultant or contractor. "in-house" if corporate internal team. '
@@ -188,8 +191,11 @@ class WebsiteIntelligenceEngine:
         )
 
         expected_keys = [
-            "services", "business_type", "team_size_signal",
-            "is_actively_marketing", "comprehension_confidence",
+            "services",
+            "business_type",
+            "team_size_signal",
+            "is_actively_marketing",
+            "comprehension_confidence",
         ]
         defaults: dict[str, Any] = {
             "services": [],
@@ -279,7 +285,7 @@ class WebsiteIntelligenceEngine:
             f"- GMB opportunity score: {gmb_opportunity_score}/100\n"
             f"- Actively marketing: {is_actively_marketing}\n"
             f"- Business actively marketing but lacking conversion tracking: {ads_without_conversion}\n\n"
-            'Return ONLY this JSON:\n'
+            "Return ONLY this JSON:\n"
             '{"intent_grade": "HOT", "intent_reasoning": "one sentence"}'
         )
 
@@ -355,7 +361,7 @@ class WebsiteIntelligenceEngine:
             "- 21-50: Decent but gaps exist\n"
             "- 51-75: Clear pain signals, likely receptive\n"
             "- 76-100: Urgent — reputation damage, missing presence, or obvious neglect\n\n"
-            'Return ONLY this JSON:\n'
+            "Return ONLY this JSON:\n"
             '{"gmb_pain_themes": [], "gmb_opportunity_score": 0}'
         )
 
@@ -409,12 +415,14 @@ class WebsiteIntelligenceEngine:
         # Extract meta description
         meta_match = re.search(
             r'<meta[^>]+name=["\']description["\'][^>]+content=["\']([^"\']+)',
-            html, re.IGNORECASE,
+            html,
+            re.IGNORECASE,
         )
         if not meta_match:
             meta_match = re.search(
                 r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+name=["\']description["\']',
-                html, re.IGNORECASE,
+                html,
+                re.IGNORECASE,
             )
         meta_description = meta_match.group(1).strip() if meta_match else ""
 
@@ -495,7 +503,9 @@ class WebsiteIntelligenceEngine:
 
 # ── Factory ────────────────────────────────────────────────────────────────────
 
+
 def get_website_intelligence_engine() -> WebsiteIntelligenceEngine:
     """Get singleton WebsiteIntelligenceEngine using global AnthropicClient."""
     from src.integrations.anthropic import get_anthropic_client
+
     return WebsiteIntelligenceEngine(get_anthropic_client())

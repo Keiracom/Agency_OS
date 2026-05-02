@@ -7,6 +7,7 @@ S5.5 (vulnerability report), S6 (DM identification), S9 (messages).
 
 Ratified: 2026-04-13. Part of Pipeline E S2 = Scrape + Comprehend.
 """
+
 from __future__ import annotations
 
 from pydantic import BaseModel, Field
@@ -16,25 +17,31 @@ class IntelligencePayload(BaseModel):
     """Structured business intelligence from Sonnet comprehension."""
 
     canonical_business_name: str = Field(
-        ..., description="The actual business name as a customer would know it. Strip 'Home |', 'Welcome to', 'Pty Ltd'. E.g. 'Affordable Dental' not 'Your Trusted Dental Care Provider - Affordable Dental'."
+        ...,
+        description="The actual business name as a customer would know it. Strip 'Home |', 'Welcome to', 'Pty Ltd'. E.g. 'Affordable Dental' not 'Your Trusted Dental Care Provider - Affordable Dental'.",
     )
     trading_name: str | None = Field(
-        None, description="Trading name if different from canonical. E.g. if website says 'Trading as XYZ' or footer shows 'XYZ Pty Ltd trading as ABC'."
+        None,
+        description="Trading name if different from canonical. E.g. if website says 'Trading as XYZ' or footer shows 'XYZ Pty Ltd trading as ABC'.",
     )
     services_offered: list[str] = Field(
-        default_factory=list, description="Services the business provides. E.g. ['general dentistry', 'cosmetic dentistry', 'dental implants']."
+        default_factory=list,
+        description="Services the business provides. E.g. ['general dentistry', 'cosmetic dentistry', 'dental implants'].",
     )
     target_audience: str | None = Field(
-        None, description="Who the business serves. E.g. 'residential homeowners', 'small businesses', 'families'."
+        None,
+        description="Who the business serves. E.g. 'residential homeowners', 'small businesses', 'families'.",
     )
     primary_location: str | None = Field(
-        None, description="City/suburb + state. E.g. 'Newtown, NSW'. Extract from address, footer, or content."
+        None,
+        description="City/suburb + state. E.g. 'Newtown, NSW'. Extract from address, footer, or content.",
     )
     state: str | None = Field(
         None, description="Australian state abbreviation: NSW, VIC, QLD, SA, WA, TAS, ACT, NT."
     )
     business_type_hint: str | None = Field(
-        None, description="One of: sole_trader, small_practice, multi_location, franchise, chain, enterprise, unknown."
+        None,
+        description="One of: sole_trader, small_practice, multi_location, franchise, chain, enterprise, unknown.",
     )
     site_quality_signal: str | None = Field(
         None, description="One of: professional, basic, template, minimal, broken."
@@ -45,17 +52,20 @@ class IntelligencePayload(BaseModel):
     has_booking_system: bool = Field(
         False, description="Does the site have online booking/scheduling?"
     )
-    has_ecommerce: bool = Field(
-        False, description="Does the site sell products online?"
-    )
+    has_ecommerce: bool = Field(False, description="Does the site sell products online?")
     team_members_detected: list[str] = Field(
-        default_factory=list, description="Names of team members found on /team or /about pages. E.g. ['Dr Sarah Smith', 'John Parker']. Empty if no team page found."
+        default_factory=list,
+        description="Names of team members found on /team or /about pages. E.g. ['Dr Sarah Smith', 'John Parker']. Empty if no team page found.",
     )
     pain_indicators: list[str] = Field(
-        default_factory=list, description="Marketing pain signals. E.g. ['no Google Ads', 'outdated design', 'no social media links']."
+        default_factory=list,
+        description="Marketing pain signals. E.g. ['no Google Ads', 'outdated design', 'no social media links'].",
     )
     confidence: float = Field(
-        0.0, ge=0.0, le=1.0, description="Confidence in the extraction quality. 1.0 = rich content, 0.3 = minimal info."
+        0.0,
+        ge=0.0,
+        le=1.0,
+        description="Confidence in the extraction quality. 1.0 = rich content, 0.3 = minimal info.",
     )
 
 

@@ -14,6 +14,7 @@ Flow:
 A single touch failure never blocks the rest — all results are gathered
 with return_exceptions=True and unexpected raises are recorded as failures.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -44,7 +45,8 @@ async def get_pending_touches(db_conn: Any, limit: int = BATCH_LIMIT) -> list[di
         ORDER BY scheduled_at
         LIMIT $2
         """,
-        now, limit,
+        now,
+        limit,
     )
     return [dict(r) for r in rows]
 
@@ -70,7 +72,9 @@ async def process_touch(
 
 
 async def _update_touch_status(
-    db_conn: Any, touch_id: Any, result: DispatchResult,
+    db_conn: Any,
+    touch_id: Any,
+    result: DispatchResult,
 ) -> None:
     """Record the outcome on scheduled_touches. Swallows DB errors."""
     if db_conn is None or touch_id is None:
@@ -87,7 +91,10 @@ async def _update_touch_status(
                 updated_at = NOW()
             WHERE id = $1
             """,
-            touch_id, result.status, result.reason, result.provider_message_id,
+            touch_id,
+            result.status,
+            result.reason,
+            result.provider_message_id,
         )
     except Exception as exc:
         logger.exception("failed to update scheduled_touches id=%s: %s", touch_id, exc)
@@ -130,7 +137,8 @@ async def hourly_cadence_flow(
             return await process_touch(dispatcher, db_conn, t)
 
     results = await asyncio.gather(
-        *[bounded(t) for t in touches], return_exceptions=True,
+        *[bounded(t) for t in touches],
+        return_exceptions=True,
     )
 
     counts: Counter[str] = Counter()
@@ -142,10 +150,10 @@ async def hourly_cadence_flow(
             logger.exception("touch raised out of dispatcher: %s", r)
 
     summary = {
-        "total":   len(touches),
-        "sent":    counts.get("sent", 0),
+        "total": len(touches),
+        "sent": counts.get("sent", 0),
         "skipped": counts.get("skipped", 0),
-        "failed":  counts.get("failed", 0),
+        "failed": counts.get("failed", 0),
     }
     logger.info("hourly_cadence_flow complete: %s", summary)
     return summary

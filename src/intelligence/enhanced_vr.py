@@ -12,6 +12,7 @@ Facebook deferred to post-launch.
 
 Pipeline F v2.1. Ratified: 2026-04-15.
 """
+
 from __future__ import annotations
 
 import json
@@ -163,10 +164,7 @@ async def run_stage10_vr_and_messaging(
     )
 
     # --- Call 1: VR Report ---
-    vr_user_prompt = (
-        f"Signal data:\n{signal_ctx}\n\n"
-        "Produce the vulnerability report as specified."
-    )
+    vr_user_prompt = f"Signal data:\n{signal_ctx}\n\nProduce the vulnerability report as specified."
     vr_result = await gemini_call_with_retry(
         api_key=key,
         system_prompt=_VR_SYSTEM_PROMPT,

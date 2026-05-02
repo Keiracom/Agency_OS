@@ -7,10 +7,21 @@ Consumers: src.services.domain_pool_manager
 """
 
 import random
-from typing import Optional
 
 # Hard rejection rules
-MARKETING_VERBS = {"get", "try", "hello", "go", "grab", "join", "use", "meet", "start", "buy", "free"}
+MARKETING_VERBS = {
+    "get",
+    "try",
+    "hello",
+    "go",
+    "grab",
+    "join",
+    "use",
+    "meet",
+    "start",
+    "buy",
+    "free",
+}
 BAD_TLDS = {".io", ".co", ".xyz", ".site", ".online", ".click", ".ai", ".dev"}
 MAX_NAME_LENGTH = 22
 
@@ -65,14 +76,16 @@ class DomainNameGenerator:
 
             domain = f"{name}{tld}"
             if domain not in [c["domain_name"] for c in candidates]:
-                candidates.append({
-                    "domain_name": domain,
-                    "name_part": name,
-                    "tld": tld.lstrip("."),
-                    "pattern_type": pattern.get("pattern_type", "unknown"),
-                    "seed_word": seed_word,
-                    "suffix": suffix,
-                })
+                candidates.append(
+                    {
+                        "domain_name": domain,
+                        "name_part": name,
+                        "tld": tld.lstrip("."),
+                        "pattern_type": pattern.get("pattern_type", "unknown"),
+                        "seed_word": seed_word,
+                        "suffix": suffix,
+                    }
+                )
 
         return candidates[:count]
 
@@ -88,9 +101,7 @@ class DomainNameGenerator:
             return False
         if not name.isalpha():
             return False
-        if not self._is_pronounceable(name):
-            return False
-        return True
+        return self._is_pronounceable(name)
 
     def _is_pronounceable(self, name: str) -> bool:
         """Reject names with more than 3 consecutive consonants."""

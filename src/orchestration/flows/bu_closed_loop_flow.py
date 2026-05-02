@@ -29,6 +29,7 @@ NOT in scope (deferred to S3 / S4):
     when prerequisites are missing — that is logged but not retried here).
   - Live execution — flow ships PAUSED.
 """
+
 from __future__ import annotations
 
 import json
@@ -66,7 +67,7 @@ _FREE_CLIENT_KEYS: set[str] = {"gemini"}
 STAGE_ADVANCEMENT: dict[int, dict[str, Any]] = {
     # S3 — Stage 0 / 1 (post-discovery, pre-enrichment) advances via
     # free_enrichment. Pure local: DNS + httpx + abn_registry. AUD 0.
-    0:  {"next_stage": 1,  "runner": "free_enrichment", "clients": [],         "is_free": True},
+    0: {"next_stage": 1, "runner": "free_enrichment", "clients": [], "is_free": True},
     # S3-2 — Stage 1 -> 1 self-advancement is INTENTIONAL, not a bug.
     # free_enrichment is the free-mode terminal stage (no paid path forward
     # without human spend approval). Stamping stage_completed_at on each
@@ -76,23 +77,24 @@ STAGE_ADVANCEMENT: dict[int, dict[str, Any]] = {
     # cadence (hot=14d / warm=60d / cold=180d) AND the row has not yet been
     # enriched. Looks like an S2-1-class self-loop bug at first glance but
     # is the correct semantics for the free-mode terminal.
-    1:  {"next_stage": 1,  "runner": "free_enrichment", "clients": [],         "is_free": True},
-    2:  {"next_stage": 3,  "runner": "_run_stage3",     "clients": ["gemini"], "is_free": True},
-    3:  {"next_stage": 5,  "runner": "_run_stage5",     "clients": [],         "is_free": True},
+    1: {"next_stage": 1, "runner": "free_enrichment", "clients": [], "is_free": True},
+    2: {"next_stage": 3, "runner": "_run_stage3", "clients": ["gemini"], "is_free": True},
+    3: {"next_stage": 5, "runner": "_run_stage5", "clients": [], "is_free": True},
     # 4 advances to 5 directly when the paid stage 4 is skipped — pure logic.
-    4:  {"next_stage": 5,  "runner": "_run_stage5",     "clients": [],         "is_free": True},
-    5:  {"next_stage": 7,  "runner": "_run_stage7",     "clients": ["gemini"], "is_free": True},
+    4: {"next_stage": 5, "runner": "_run_stage5", "clients": [], "is_free": True},
+    5: {"next_stage": 7, "runner": "_run_stage7", "clients": ["gemini"], "is_free": True},
     # Stage 6 is DFS-paid and unreachable in free-mode; rows landing at 6
     # advance via _run_stage7 (Gemini, free) when free-mode is on.
-    6:  {"next_stage": 7,  "runner": "_run_stage7",     "clients": ["gemini"], "is_free": True},
-    7:  {"next_stage": 9,  "runner": "_run_stage9",     "clients": ["bd"],     "is_free": False},
-    8:  {"next_stage": 9,  "runner": "_run_stage9",     "clients": ["bd"],     "is_free": False},
-    9:  {"next_stage": 10, "runner": "_run_stage10",    "clients": [],         "is_free": True},
-    10: {"next_stage": 11, "runner": "_run_stage11",    "clients": [],         "is_free": True},
+    6: {"next_stage": 7, "runner": "_run_stage7", "clients": ["gemini"], "is_free": True},
+    7: {"next_stage": 9, "runner": "_run_stage9", "clients": ["bd"], "is_free": False},
+    8: {"next_stage": 9, "runner": "_run_stage9", "clients": ["bd"], "is_free": False},
+    9: {"next_stage": 10, "runner": "_run_stage10", "clients": [], "is_free": True},
+    10: {"next_stage": 11, "runner": "_run_stage11", "clients": [], "is_free": True},
 }
 
 
 # ── DB helpers ───────────────────────────────────────────────────────────────
+
 
 async def _init_jsonb_codec(conn):
     await conn.set_type_codec(
@@ -106,11 +108,16 @@ async def _init_jsonb_codec(conn):
 async def _open_pool() -> asyncpg.pool.Pool:
     db_url = os.environ["DATABASE_URL"].replace("postgresql+asyncpg://", "postgresql://")
     return await asyncpg.create_pool(
-        db_url, min_size=2, max_size=4, statement_cache_size=0, init=_init_jsonb_codec,
+        db_url,
+        min_size=2,
+        max_size=4,
+        statement_cache_size=0,
+        init=_init_jsonb_codec,
     )
 
 
 # ── Cursor: age-tiered backlog query ─────────────────────────────────────────
+
 
 @task(name="bu-closed-loop-fetch-backlog", retries=1, cache_policy=NO_CACHE)
 async def fetch_backlog(
@@ -159,12 +166,17 @@ async def fetch_backlog(
     """
     async with pool.acquire() as conn:
         records = await conn.fetch(
-            sql, max_rows, cadence_hot_days, cadence_warm_days, cadence_cold_days,
+            sql,
+            max_rows,
+            cadence_hot_days,
+            cadence_warm_days,
+            cadence_cold_days,
         )
     return [dict(r) for r in records]
 
 
 # ── Per-row advancement ──────────────────────────────────────────────────────
+
 
 def _classify_row(
     row: dict[str, Any],
@@ -426,8 +438,7 @@ async def _invoke_runner(
 
     fn = getattr(cr, runner_label, None)
     if fn is None:
-        return {**domain_data, "dropped_at": runner_label,
-                "drop_reason": "runner_not_found"}
+        return {**domain_data, "dropped_at": runner_label, "drop_reason": "runner_not_found"}
     if runner_label == "_run_stage3":
         return await fn(domain_data, clients["gemini"])
     if runner_label == "_run_stage5":
@@ -440,8 +451,7 @@ async def _invoke_runner(
         return await fn(domain_data)
     if runner_label == "_run_stage11":
         return await fn(domain_data)
-    return {**domain_data, "dropped_at": runner_label,
-            "drop_reason": "runner_dispatch_unmapped"}
+    return {**domain_data, "dropped_at": runner_label, "drop_reason": "runner_dispatch_unmapped"}
 
 
 @task(name="bu-closed-loop-advance-row", retries=0, cache_policy=NO_CACHE)
@@ -457,10 +467,14 @@ async def advance_row(
     try:
         result = await _invoke_runner(plan["runner"], domain_data, clients)
     except Exception as exc:
-        logger.warning("advance_row runner=%s domain=%s failed: %s",
-                       plan["runner"], row["domain"], exc)
-        return {"id": row["id"], "outcome": "error",
-                "reason": f"runner_exception:{type(exc).__name__}"}
+        logger.warning(
+            "advance_row runner=%s domain=%s failed: %s", plan["runner"], row["domain"], exc
+        )
+        return {
+            "id": row["id"],
+            "outcome": "error",
+            "reason": f"runner_exception:{type(exc).__name__}",
+        }
 
     if result.get("dropped_at"):
         # S2-1 — record the attempt in stage_metrics.bu_closed_loop_attempts
@@ -469,11 +483,13 @@ async def advance_row(
         # MAX-age computation in fetch_backlog and must reflect successful
         # stage advancements only.
         outcome_reason = result.get("drop_reason", "unknown")
-        attempt_entry = json.dumps({
-            "ts": datetime.now(UTC).isoformat(),
-            "reason": outcome_reason,
-            "runner": plan["runner"],
-        })
+        attempt_entry = json.dumps(
+            {
+                "ts": datetime.now(UTC).isoformat(),
+                "reason": outcome_reason,
+                "runner": plan["runner"],
+            }
+        )
         async with pool.acquire() as conn:
             await conn.execute(
                 """UPDATE business_universe SET
@@ -486,10 +502,10 @@ async def advance_row(
                        ),
                        updated_at = NOW()
                    WHERE id = $1""",
-                row["id"], attempt_entry,
+                row["id"],
+                attempt_entry,
             )
-        return {"id": row["id"], "outcome": "runner_early_exit",
-                "reason": outcome_reason}
+        return {"id": row["id"], "outcome": "runner_early_exit", "reason": outcome_reason}
 
     # Success — advance pipeline_stage and stamp stage_completed_at marker.
     next_stage = plan["next_stage"]
@@ -505,10 +521,12 @@ async def advance_row(
 
     async with pool.acquire() as conn:
         if paid_skip_for_current_stage is not None:
-            paid_skip_entry = json.dumps({
-                "stage": paid_skip_for_current_stage,
-                "skipped_at": datetime.now(UTC).isoformat(),
-            })
+            paid_skip_entry = json.dumps(
+                {
+                    "stage": paid_skip_for_current_stage,
+                    "skipped_at": datetime.now(UTC).isoformat(),
+                }
+            )
             await conn.execute(
                 """UPDATE business_universe SET
                        pipeline_stage = $2,
@@ -526,7 +544,10 @@ async def advance_row(
                        ),
                        updated_at = NOW()
                    WHERE id = $1""",
-                row["id"], next_stage, stage_key, paid_skip_entry,
+                row["id"],
+                next_stage,
+                stage_key,
+                paid_skip_entry,
             )
         else:
             await conn.execute(
@@ -540,15 +561,22 @@ async def advance_row(
                        ),
                        updated_at = NOW()
                    WHERE id = $1""",
-                row["id"], next_stage, stage_key,
+                row["id"],
+                next_stage,
+                stage_key,
             )
-    return {"id": row["id"], "outcome": "advanced",
-            "from_stage": row["pipeline_stage"], "to_stage": next_stage,
-            "runner": plan["runner"],
-            "paid_data_skipped_stage": paid_skip_for_current_stage}
+    return {
+        "id": row["id"],
+        "outcome": "advanced",
+        "from_stage": row["pipeline_stage"],
+        "to_stage": next_stage,
+        "runner": plan["runner"],
+        "paid_data_skipped_stage": paid_skip_for_current_stage,
+    }
 
 
 # ── Master flow ──────────────────────────────────────────────────────────────
+
 
 @flow(
     name="bu-closed-loop-flow",
@@ -573,16 +601,18 @@ async def bu_closed_loop_flow(
     if not free_mode_only:
         # Real-mode client wiring belongs in a separate directive — emit a
         # warning here so anyone flipping the flag sees it.
-        logger.warning("bu_closed_loop_flow: free_mode_only=False — paid "
-                       "stages would run, but client wiring is not provided "
-                       "by this flow. Refusing paid invocations regardless.")
+        logger.warning(
+            "bu_closed_loop_flow: free_mode_only=False — paid "
+            "stages would run, but client wiring is not provided "
+            "by this flow. Refusing paid invocations regardless."
+        )
     else:
         try:
             from src.intelligence.gemini_client import GeminiClient
+
             clients["gemini"] = GeminiClient(api_key=os.environ.get("GEMINI_API_KEY"))
         except Exception as exc:
-            logger.warning("bu_closed_loop_flow: GeminiClient init failed: %s",
-                           exc)
+            logger.warning("bu_closed_loop_flow: GeminiClient init failed: %s", exc)
 
     summary: dict[str, Any] = {
         "run_start_ts": run_start,
@@ -601,7 +631,11 @@ async def bu_closed_loop_flow(
 
     try:
         rows = await fetch_backlog(
-            pool, max_rows, cadence_hot_days, cadence_warm_days, cadence_cold_days,
+            pool,
+            max_rows,
+            cadence_hot_days,
+            cadence_warm_days,
+            cadence_cold_days,
         )
         summary["queried"] = len(rows)
         logger.info("bu_closed_loop_flow: queried=%d rows", len(rows))

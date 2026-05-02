@@ -12,11 +12,11 @@ Categories:
 
 Ratified: 2026-04-13. Pipeline E S2 discover-filter-scrape-comprehend.
 """
+
 from __future__ import annotations
 
 import re
 from urllib.parse import urlparse
-
 
 # Category → URL keyword patterns (matched against path segments)
 CATEGORY_PATTERNS: dict[str, list[re.Pattern]] = {

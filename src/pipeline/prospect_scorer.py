@@ -10,53 +10,52 @@ PROPRIETARY: Signal weights are defined as constants only. Do not add
 inline comments explaining what scores mean. The algorithm is not for
 public disclosure.
 """
+
 from __future__ import annotations
 
-import re
-from dataclasses import dataclass, field
-from typing import Any
+from dataclasses import dataclass
 
 # ── Affordability constants ──────────────────────────────────────────────────
-_A_GATE_MIN = 3          # min score to pass affordability gate
+_A_GATE_MIN = 3  # min score to pass affordability gate
 _A_BAND_MEDIUM = 3
 _A_BAND_HIGH = 6
 _A_BAND_VERY_HIGH = 9
 
 # Affordability signal weights
-_AW_ENTITY_TRUST    = 3
-_AW_ENTITY_COMPANY  = 2
-_AW_ENTITY_PARTNER  = 1
-_AW_GST             = 1
-_AW_PROF_EMAIL      = 1
-_AW_CMS             = 1
-_AW_SSL             = 1
-_AW_PAGES           = 1
+_AW_ENTITY_TRUST = 3
+_AW_ENTITY_COMPANY = 2
+_AW_ENTITY_PARTNER = 1
+_AW_GST = 1
+_AW_PROF_EMAIL = 1
+_AW_CMS = 1
+_AW_SSL = 1
+_AW_PAGES = 1
 
 # ── Intent constants ─────────────────────────────────────────────────────────
-_I_GATE_FREE = "NOT_TRYING"   # band that skips paid enrichment
-_I_BAND_DABBLING    = 3
-_I_BAND_TRYING      = 5
-_I_BAND_STRUGGLING  = 8
+_I_GATE_FREE = "NOT_TRYING"  # band that skips paid enrichment
+_I_BAND_DABBLING = 3
+_I_BAND_TRYING = 5
+_I_BAND_STRUGGLING = 8
 
 # Intent free-pass signal weights
-_IW_WEBSITE_NO_ANALYTICS   = 2
-_IW_ADS_TAG_NO_CONVERSION  = 3
-_IW_SOCIAL_LINKS           = 1
-_IW_BOOKING_NO_ANALYTICS   = 2
-_IW_STALE_CMS              = 1
-_IW_META_PIXEL             = 1
+_IW_WEBSITE_NO_ANALYTICS = 2
+_IW_ADS_TAG_NO_CONVERSION = 3
+_IW_SOCIAL_LINKS = 1
+_IW_BOOKING_NO_ANALYTICS = 2
+_IW_STALE_CMS = 1
+_IW_META_PIXEL = 1
 
 # Intent paid-supplement signal weights
-_IW_RUNNING_GADS           = 2
-_IW_RUNNING_META_ADS       = 1
-_IW_GMB_LOW_RESPONSE       = 2
-_IW_GMB_ESTABLISHED        = 1
+_IW_RUNNING_GADS = 2
+_IW_RUNNING_META_ADS = 1
+_IW_GMB_LOW_RESPONSE = 2
+_IW_GMB_ESTABLISHED = 1
 
 
 @dataclass
 class AffordabilityResult:
     raw_score: int
-    band: str          # LOW | MEDIUM | HIGH | VERY_HIGH
+    band: str  # LOW | MEDIUM | HIGH | VERY_HIGH
     signals: dict
     gaps: list
     passed_gate: bool
@@ -66,9 +65,9 @@ class AffordabilityResult:
 @dataclass
 class IntentResult:
     raw_score: int
-    band: str          # NOT_TRYING | DABBLING | TRYING | STRUGGLING
+    band: str  # NOT_TRYING | DABBLING | TRYING | STRUGGLING
     signals: dict
-    evidence: list     # plain-English paired statements for Haiku
+    evidence: list  # plain-English paired statements for Haiku
     passed_free_gate: bool  # False if NOT_TRYING → skip paid enrichment
 
 
@@ -112,31 +111,37 @@ class ProspectScorer:
 
         entity_type = (enrichment.get("entity_type") or "").lower()
         gst = enrichment.get("gst_registered")
-        has_web = (
-            enrichment.get("website_cms") is not None
-            or enrichment.get("abn_matched")
-        )
+        has_web = enrichment.get("website_cms") is not None or enrichment.get("abn_matched")
 
         # Hard gates
         if "sole trader" in entity_type or "individual" in entity_type:
             return AffordabilityResult(
-                raw_score=0, band="LOW", signals={"hard_gate": "sole_trader"},
+                raw_score=0,
+                band="LOW",
+                signals={"hard_gate": "sole_trader"},
                 gaps=["Business is a sole trader — not a viable agency prospect"],
-                passed_gate=False, reject_reason="sole_trader",
+                passed_gate=False,
+                reject_reason="sole_trader",
             )
 
         if gst is False:
             return AffordabilityResult(
-                raw_score=0, band="LOW", signals={"hard_gate": "no_gst"},
+                raw_score=0,
+                band="LOW",
+                signals={"hard_gate": "no_gst"},
                 gaps=["Not GST registered — revenue likely below $75k threshold"],
-                passed_gate=False, reject_reason="no_gst",
+                passed_gate=False,
+                reject_reason="no_gst",
             )
 
         if not has_web:
             return AffordabilityResult(
-                raw_score=0, band="LOW", signals={"hard_gate": "unreachable"},
+                raw_score=0,
+                band="LOW",
+                signals={"hard_gate": "unreachable"},
                 gaps=["No website or ABN match — business not contactable"],
-                passed_gate=False, reject_reason="unreachable",
+                passed_gate=False,
+                reject_reason="unreachable",
             )
 
         # Entity type
@@ -155,7 +160,9 @@ class ProspectScorer:
         signals["gst_registered"] = _AW_GST if gst else 0
 
         # Professional email
-        email_maturity = (enrichment.get("email_maturity") or enrichment.get("dns_email_maturity") or "").lower()
+        email_maturity = (
+            enrichment.get("email_maturity") or enrichment.get("dns_email_maturity") or ""
+        ).lower()
         if email_maturity == "professional":
             signals["professional_email"] = _AW_PROF_EMAIL
         else:
@@ -164,8 +171,18 @@ class ProspectScorer:
 
         # Website investment
         cms = (enrichment.get("website_cms") or "").lower()
-        professional_cms = ["wordpress", "squarespace", "shopify", "webflow", "wix",
-                            "custom", "react", "next", "nuxt", "gatsby"]
+        professional_cms = [
+            "wordpress",
+            "squarespace",
+            "shopify",
+            "webflow",
+            "wix",
+            "custom",
+            "react",
+            "next",
+            "nuxt",
+            "gatsby",
+        ]
         if any(c in cms for c in professional_cms):
             signals["website_cms"] = _AW_CMS
         else:
@@ -177,7 +194,9 @@ class ProspectScorer:
             signals["website_ssl"] = 0
 
         pages = enrichment.get("website_page_links") or []
-        signals["website_pages"] = _AW_PAGES if (len(pages) > 1 or enrichment.get("website_cms")) else 0
+        signals["website_pages"] = (
+            _AW_PAGES if (len(pages) > 1 or enrichment.get("website_cms")) else 0
+        )
 
         raw = sum(signals.values())
 
@@ -207,26 +226,36 @@ class ProspectScorer:
         evidence: list[str] = []
 
         tracking = enrichment.get("website_tracking_codes") or []
-        tech     = enrichment.get("website_tech_stack") or []
-        cms      = (enrichment.get("website_cms") or "").lower()
+        tech = enrichment.get("website_tech_stack") or []
+        cms = (enrichment.get("website_cms") or "").lower()
 
         tracking_lower = [t.lower() for t in tracking]
-        tech_lower     = [t.lower() for t in tech]
+        tech_lower = [t.lower() for t in tech]
 
         has_analytics = any(
-            k in t for t in tracking_lower + tech_lower
+            k in t
+            for t in tracking_lower + tech_lower
             for k in ("ga4", "gtm", "google-analytics", "analytics", "hotjar", "clarity")
         )
-        has_ads_tag     = enrichment.get("has_google_ads_tag") or False
-        has_meta_pixel  = enrichment.get("has_meta_pixel") or False
-        has_conversion  = any("aw-" in t or "conversion" in t for t in tracking_lower)
-        has_booking     = any(
+        has_ads_tag = enrichment.get("has_google_ads_tag") or False
+        has_meta_pixel = enrichment.get("has_meta_pixel") or False
+        has_conversion = any("aw-" in t or "conversion" in t for t in tracking_lower)
+        has_booking = any(
             b in cms or any(b in t for t in tech_lower + tracking_lower)
-            for b in ("calendly", "acuity", "mindbody", "timely", "bookeo",
-                      "appointy", "fresha", "shortcuts", "booking")
+            for b in (
+                "calendly",
+                "acuity",
+                "mindbody",
+                "timely",
+                "bookeo",
+                "appointy",
+                "fresha",
+                "shortcuts",
+                "booking",
+            )
         )
         has_website = bool(enrichment.get("website_cms") or enrichment.get("title"))
-        has_social  = bool(enrichment.get("website_team_names"))  # proxy for social links
+        has_social = bool(enrichment.get("website_team_names"))  # proxy for social links
 
         # Website with no analytics
         if has_website and not has_analytics:
@@ -238,9 +267,7 @@ class ProspectScorer:
         # Ads tag without conversion tracking
         if has_ads_tag and not has_conversion:
             signals["ads_tag_no_conversion"] = _IW_ADS_TAG_NO_CONVERSION
-            evidence.append(
-                "Running Google Ads but missing conversion tracking — wasting budget"
-            )
+            evidence.append("Running Google Ads but missing conversion tracking — wasting budget")
         elif has_ads_tag and has_conversion:
             signals["ads_tag_no_conversion"] = 0
 
@@ -256,9 +283,7 @@ class ProspectScorer:
         # Booking system without analytics
         if has_booking and not has_analytics:
             signals["booking_no_analytics"] = _IW_BOOKING_NO_ANALYTICS
-            evidence.append(
-                "Has online booking but can't measure which channels drive bookings"
-            )
+            evidence.append("Has online booking but can't measure which channels drive bookings")
 
         # Professional CMS with stale/thin content signal
         if cms in ("wordpress", "squarespace", "webflow", "wix"):
@@ -318,9 +343,7 @@ class ProspectScorer:
                 review_count = 0
             if review_count > 20:
                 signals["gmb_established"] = _IW_GMB_ESTABLISHED
-                evidence.append(
-                    f"Has {review_count} Google reviews — established local presence"
-                )
+                evidence.append(f"Has {review_count} Google reviews — established local presence")
 
         raw = sum(signals.values())
 

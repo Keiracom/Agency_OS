@@ -3,11 +3,11 @@
 Detection is always ON. Findings logged to health_checks table.
 T1 auto-fix response gated by SELF_HEAL_T1_ACTIVE env var.
 """
-import asyncio
+
 import json
 import logging
 import os
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime
 
 import asyncpg
 from prefect import flow, task
@@ -22,7 +22,7 @@ async def _get_pool():
 
 
 async def _init_jsonb_codec(conn):
-    await conn.set_type_codec('jsonb', encoder=json.dumps, decoder=json.loads, schema='pg_catalog')
+    await conn.set_type_codec("jsonb", encoder=json.dumps, decoder=json.loads, schema="pg_catalog")
 
 
 @task(name="check-prefect-worker", cache_policy=NO_CACHE)
@@ -31,7 +31,10 @@ async def check_prefect_worker() -> dict:
     # Query evo_flow_callbacks for recent activity
     pool = await asyncpg.create_pool(
         os.environ["DATABASE_URL"].replace("postgresql+asyncpg://", "postgresql://"),
-        min_size=1, max_size=2, statement_cache_size=0, init=_init_jsonb_codec,
+        min_size=1,
+        max_size=2,
+        statement_cache_size=0,
+        init=_init_jsonb_codec,
     )
     try:
         async with pool.acquire() as conn:
@@ -40,7 +43,7 @@ async def check_prefect_worker() -> dict:
                 "SELECT MAX(created_at) as last_callback FROM evo_flow_callbacks"
             )
             last = row["last_callback"] if row else None
-            if last and (datetime.now(timezone.utc) - last).total_seconds() < 3600:
+            if last and (datetime.now(UTC) - last).total_seconds() < 3600:
                 return {"status": "ok", "last_callback": last.isoformat()}
             return {"status": "stale", "last_callback": last.isoformat() if last else "never"}
     finally:
@@ -53,7 +56,10 @@ async def check_api_keys() -> list[dict]:
     findings = []
     pool = await asyncpg.create_pool(
         os.environ["DATABASE_URL"].replace("postgresql+asyncpg://", "postgresql://"),
-        min_size=1, max_size=2, statement_cache_size=0, init=_init_jsonb_codec,
+        min_size=1,
+        max_size=2,
+        statement_cache_size=0,
+        init=_init_jsonb_codec,
     )
     try:
         async with pool.acquire() as conn:
@@ -61,13 +67,15 @@ async def check_api_keys() -> list[dict]:
                 "SELECT service_name, env_var_name, status FROM elliot_internal.api_keys_ledger WHERE status != 'live'"
             )
             for r in rows:
-                findings.append({
-                    "service": r["service_name"],
-                    "env_var": r["env_var_name"],
-                    "status": r["status"],
-                    "tier": 3,  # Key issues are always Dave-lane
-                    "severity": "HIGH",
-                })
+                findings.append(
+                    {
+                        "service": r["service_name"],
+                        "env_var": r["env_var_name"],
+                        "status": r["status"],
+                        "tier": 3,  # Key issues are always Dave-lane
+                        "severity": "HIGH",
+                    }
+                )
     finally:
         await pool.close()
     return findings
@@ -77,9 +85,11 @@ async def check_api_keys() -> list[dict]:
 async def check_enforcer_alive() -> dict:
     """Check if enforcer bot process is running."""
     import subprocess
+
     result = subprocess.run(
         ["pgrep", "-f", "enforcer_bot.py"],
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
     )
     if result.returncode == 0:
         return {"status": "ok", "pid": result.stdout.strip()}
@@ -92,7 +102,10 @@ async def check_recent_flow_failures() -> list[dict]:
     findings = []
     pool = await asyncpg.create_pool(
         os.environ["DATABASE_URL"].replace("postgresql+asyncpg://", "postgresql://"),
-        min_size=1, max_size=2, statement_cache_size=0, init=_init_jsonb_codec,
+        min_size=1,
+        max_size=2,
+        statement_cache_size=0,
+        init=_init_jsonb_codec,
     )
     try:
         async with pool.acquire() as conn:
@@ -103,13 +116,15 @@ async def check_recent_flow_failures() -> list[dict]:
                    ORDER BY created_at DESC LIMIT 5"""
             )
             for r in rows:
-                findings.append({
-                    "flow_name": r["flow_name"],
-                    "summary": r["summary"],
-                    "created_at": r["created_at"].isoformat(),
-                    "tier": 2,  # Flow failures need agent diagnosis
-                    "severity": "HIGH",
-                })
+                findings.append(
+                    {
+                        "flow_name": r["flow_name"],
+                        "summary": r["summary"],
+                        "created_at": r["created_at"].isoformat(),
+                        "tier": 2,  # Flow failures need agent diagnosis
+                        "severity": "HIGH",
+                    }
+                )
     finally:
         await pool.close()
     return findings
@@ -122,7 +137,10 @@ async def write_health_findings(findings: list[dict]) -> int:
         return 0
     pool = await asyncpg.create_pool(
         os.environ["DATABASE_URL"].replace("postgresql+asyncpg://", "postgresql://"),
-        min_size=1, max_size=2, statement_cache_size=0, init=_init_jsonb_codec,
+        min_size=1,
+        max_size=2,
+        statement_cache_size=0,
+        init=_init_jsonb_codec,
     )
     written = 0
     try:
@@ -133,7 +151,8 @@ async def write_health_findings(findings: list[dict]) -> int:
                     """SELECT COUNT(*) FROM health_checks
                        WHERE signal_type = $1 AND description = $2
                        AND resolved_at IS NULL AND created_at > NOW() - INTERVAL '1 hour'""",
-                    f.get("signal_type", "unknown"), f.get("description", ""),
+                    f.get("signal_type", "unknown"),
+                    f.get("description", ""),
                 )
                 if existing and existing > 0:
                     continue
@@ -160,68 +179,80 @@ async def health_check_flow() -> dict:
     # Check Prefect worker
     worker = await check_prefect_worker()
     if worker["status"] != "ok":
-        findings.append({
-            "signal_type": "worker_stale",
-            "tier": 2,
-            "severity": "HIGH",
-            "description": f"Prefect worker stale — last callback: {worker.get('last_callback', 'never')}",
-            "metadata": worker,
-        })
+        findings.append(
+            {
+                "signal_type": "worker_stale",
+                "tier": 2,
+                "severity": "HIGH",
+                "description": f"Prefect worker stale — last callback: {worker.get('last_callback', 'never')}",
+                "metadata": worker,
+            }
+        )
 
     # Check API keys
     key_issues = await check_api_keys()
     for ki in key_issues:
-        findings.append({
-            "signal_type": "key_expired",
-            "tier": ki["tier"],
-            "severity": ki["severity"],
-            "description": f"{ki['service']} ({ki['env_var']}) status: {ki['status']}",
-            "metadata": ki,
-        })
+        findings.append(
+            {
+                "signal_type": "key_expired",
+                "tier": ki["tier"],
+                "severity": ki["severity"],
+                "description": f"{ki['service']} ({ki['env_var']}) status: {ki['status']}",
+                "metadata": ki,
+            }
+        )
 
     # Check enforcer
     enforcer = await check_enforcer_alive()
     if enforcer["status"] != "ok":
-        findings.append({
-            "signal_type": "service_down",
-            "tier": 3,
-            "severity": "CRITICAL",
-            "description": "Enforcer bot process not running",
-            "metadata": enforcer,
-        })
+        findings.append(
+            {
+                "signal_type": "service_down",
+                "tier": 3,
+                "severity": "CRITICAL",
+                "description": "Enforcer bot process not running",
+                "metadata": enforcer,
+            }
+        )
 
     # Check recent flow failures
     flow_failures = await check_recent_flow_failures()
     for ff in flow_failures:
-        findings.append({
-            "signal_type": "flow_failure",
-            "tier": ff["tier"],
-            "severity": ff["severity"],
-            "description": f"Flow '{ff['flow_name']}' failed: {ff['summary'][:100]}",
-            "metadata": ff,
-        })
+        findings.append(
+            {
+                "signal_type": "flow_failure",
+                "tier": ff["tier"],
+                "severity": ff["severity"],
+                "description": f"Flow '{ff['flow_name']}' failed: {ff['summary'][:100]}",
+                "metadata": ff,
+            }
+        )
 
     # Check test suite baseline (probe 5)
     test_result = await check_test_baseline()
     if test_result["status"] != "ok":
-        findings.append({
-            "signal_type": "test_regression",
-            "tier": 1,
-            "severity": "HIGH",
-            "description": f"Test baseline drift: {test_result['passed']} passed (expected {test_result['baseline']}), {test_result['failed']} failed",
-            "metadata": test_result,
-        })
+        findings.append(
+            {
+                "signal_type": "test_regression",
+                "tier": 1,
+                "severity": "HIGH",
+                "description": f"Test baseline drift: {test_result['passed']} passed (expected {test_result['baseline']}), {test_result['failed']} failed",
+                "metadata": test_result,
+            }
+        )
 
     # Check swap pressure (probe 7)
     swap = await check_swap_pressure()
     if swap["status"] != "ok":
-        findings.append({
-            "signal_type": "swap_pressure",
-            "tier": 2,
-            "severity": "MEDIUM",
-            "description": f"Swap usage {swap['used_mb']}MB exceeds 2048MB threshold",
-            "metadata": swap,
-        })
+        findings.append(
+            {
+                "signal_type": "swap_pressure",
+                "tier": 2,
+                "severity": "MEDIUM",
+                "description": f"Swap usage {swap['used_mb']}MB exceeds 2048MB threshold",
+                "metadata": swap,
+            }
+        )
 
     # Write findings
     written = await write_health_findings(findings)
@@ -232,11 +263,23 @@ async def health_check_flow() -> dict:
     if t1_active:
         t1_dispatched = await dispatch_t1_fixes(findings)
 
-    logger.info("Health check: %d findings, %d new written, %d T1 dispatched", len(findings), written, t1_dispatched)
+    logger.info(
+        "Health check: %d findings, %d new written, %d T1 dispatched",
+        len(findings),
+        written,
+        t1_dispatched,
+    )
     return {
         "findings": len(findings),
         "written": written,
-        "checks": ["prefect_worker", "api_keys", "enforcer", "flow_failures", "test_baseline", "swap_pressure"],
+        "checks": [
+            "prefect_worker",
+            "api_keys",
+            "enforcer",
+            "flow_failures",
+            "test_baseline",
+            "swap_pressure",
+        ],
         "t1_active": t1_active,
         "t1_dispatched": t1_dispatched,
     }
@@ -246,10 +289,13 @@ async def health_check_flow() -> dict:
 async def check_test_baseline() -> dict:
     """Probe 5: run pytest, compare against baseline."""
     import subprocess
+
     baseline = 2152
     result = subprocess.run(
         ["python3", "-m", "pytest", "--tb=no", "-q", "--co", "-q"],
-        capture_output=True, text=True, timeout=60,
+        capture_output=True,
+        text=True,
+        timeout=60,
         cwd="/home/elliotbot/clawd/Agency_OS",
     )
     # Count collected tests from --co output (last line: "N tests collected")
@@ -264,13 +310,19 @@ async def check_test_baseline() -> dict:
                     break
     if collected >= baseline:
         return {"status": "ok", "passed": collected, "baseline": baseline, "failed": 0}
-    return {"status": "drift", "passed": collected, "baseline": baseline, "failed": baseline - collected}
+    return {
+        "status": "drift",
+        "passed": collected,
+        "baseline": baseline,
+        "failed": baseline - collected,
+    }
 
 
 @task(name="check-swap-pressure", cache_policy=NO_CACHE)
 async def check_swap_pressure() -> dict:
     """Probe 7: check swap usage."""
     import subprocess
+
     result = subprocess.run(["free", "-m"], capture_output=True, text=True)
     for line in result.stdout.strip().split("\n"):
         if line.startswith("Swap:"):
@@ -288,7 +340,9 @@ async def dispatch_t1_fixes(findings: list[dict]) -> int:
     dispatched = 0
     pool = await asyncpg.create_pool(
         os.environ["DATABASE_URL"].replace("postgresql+asyncpg://", "postgresql://"),
-        min_size=1, max_size=2, statement_cache_size=0,
+        min_size=1,
+        max_size=2,
+        statement_cache_size=0,
     )
     try:
         async with pool.acquire() as conn:
@@ -311,19 +365,24 @@ async def dispatch_t1_fixes(findings: list[dict]) -> int:
                 # Write dispatch to ATLAS inbox
                 import time
                 from pathlib import Path
+
                 inbox = Path("/tmp/telegram-relay-atlas/inbox")
                 inbox.mkdir(parents=True, exist_ok=True)
                 ts = time.strftime("%Y%m%d_%H%M%S")
                 dispatch_file = inbox / f"{ts}_t1_fix.json"
-                dispatch_file.write_text(json.dumps({
-                    "type": "task_dispatch",
-                    "from": "health_check_flow",
-                    "to": "atlas",
-                    "max_task_minutes": 15,
-                    "brief": f"T1 auto-fix: {f['signal_type']} — {f['description']}",
-                    "dispatched_at": time.strftime("%Y-%m-%dT%H:%M:%SZ"),
-                    "finding": f,
-                }))
+                dispatch_file.write_text(
+                    json.dumps(
+                        {
+                            "type": "task_dispatch",
+                            "from": "health_check_flow",
+                            "to": "atlas",
+                            "max_task_minutes": 15,
+                            "brief": f"T1 auto-fix: {f['signal_type']} — {f['description']}",
+                            "dispatched_at": time.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                            "finding": f,
+                        }
+                    )
+                )
                 dispatched += 1
                 logger.info("T1 dispatched to ATLAS: %s", f["signal_type"])
     finally:
@@ -336,7 +395,10 @@ async def daily_health_digest() -> dict:
     """T3 daily digest — summarises last 24h health checks. Scheduled 20:00 UTC (6 AM AEST)."""
     pool = await asyncpg.create_pool(
         os.environ["DATABASE_URL"].replace("postgresql+asyncpg://", "postgresql://"),
-        min_size=1, max_size=2, statement_cache_size=0, init=_init_jsonb_codec,
+        min_size=1,
+        max_size=2,
+        statement_cache_size=0,
+        init=_init_jsonb_codec,
     )
     try:
         async with pool.acquire() as conn:
@@ -356,7 +418,7 @@ async def daily_health_digest() -> dict:
             # Swap check
             swap = await check_swap_pressure()
 
-            summary = f"DAILY HEALTH DIGEST — {datetime.now(timezone.utc).strftime('%Y-%m-%d')}\n"
+            summary = f"DAILY HEALTH DIGEST — {datetime.now(UTC).strftime('%Y-%m-%d')}\n"
             summary += f"Findings (24h): {total}\n"
             for tier, items in sorted(by_tier.items()):
                 summary += f"  {tier}: {', '.join(items)}\n"
@@ -365,17 +427,22 @@ async def daily_health_digest() -> dict:
             # Write to Elliot inbox
             import time
             from pathlib import Path
+
             inbox = Path("/tmp/telegram-relay-elliot/inbox")
             inbox.mkdir(parents=True, exist_ok=True)
             ts = time.strftime("%Y%m%d_%H%M%S")
             digest_file = inbox / f"{ts}_daily_digest.json"
-            digest_file.write_text(json.dumps({
-                "type": "daily_digest",
-                "from": "health_check_flow",
-                "to": "elliot",
-                "summary": summary,
-                "dispatched_at": time.strftime("%Y-%m-%dT%H:%M:%SZ"),
-            }))
+            digest_file.write_text(
+                json.dumps(
+                    {
+                        "type": "daily_digest",
+                        "from": "health_check_flow",
+                        "to": "elliot",
+                        "summary": summary,
+                        "dispatched_at": time.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    }
+                )
+            )
             logger.info("Daily digest written to Elliot inbox")
             return {"total_findings": total, "by_tier": by_tier, "swap_mb": swap["used_mb"]}
     finally:

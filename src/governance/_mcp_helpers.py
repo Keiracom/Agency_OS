@@ -26,6 +26,7 @@ Public surface:
       Returns True on success, False on failure (logged, never raised —
       governance event writes must NEVER block the calling assistant).
 """
+
 from __future__ import annotations
 
 import json
@@ -42,7 +43,8 @@ logger = logging.getLogger(__name__)
 # the consolidation target.
 _DEFAULT_PROJECT_ID = "jatzvazlbusedwsnqxzr"
 _MCP_BRIDGE_DIR = os.environ.get(
-    "MCP_BRIDGE_DIR", "/home/elliotbot/clawd/skills/mcp-bridge",
+    "MCP_BRIDGE_DIR",
+    "/home/elliotbot/clawd/skills/mcp-bridge",
 )
 _MCP_BRIDGE_SCRIPT = "scripts/mcp-bridge.js"
 _DEFAULT_TIMEOUT_S = 30
@@ -96,8 +98,7 @@ def supabase_mcp_execute_sql(
     )
     if proc.returncode != 0:
         raise RuntimeError(
-            "mcp-bridge supabase execute_sql failed: "
-            f"{proc.stderr.strip() or proc.stdout.strip()}"
+            f"mcp-bridge supabase execute_sql failed: {proc.stderr.strip() or proc.stdout.strip()}"
         )
     out = proc.stdout.strip()
     if not out:
@@ -111,7 +112,8 @@ def supabase_mcp_execute_sql(
         match = re.search(
             r"<untrusted-data-[^>]+>\s*(?P<inner>[\[{].*?[\]}])\s*"
             r"</untrusted-data-[^>]+>",
-            parsed, flags=re.DOTALL,
+            parsed,
+            flags=re.DOTALL,
         )
         if match:
             try:
@@ -170,10 +172,7 @@ def governance_event_emit(
     if directive_id is not None:
         cols.append("directive_id")
         vals.append(f"'{_quote(directive_id)}'")
-    sql = (
-        "INSERT INTO public.governance_events "
-        f"({', '.join(cols)}) VALUES ({', '.join(vals)});"
-    )
+    sql = f"INSERT INTO public.governance_events ({', '.join(cols)}) VALUES ({', '.join(vals)});"
     try:
         supabase_mcp_execute_sql(sql)
         return True

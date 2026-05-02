@@ -8,8 +8,8 @@ Two voice modes for Opus calls:
 These prompts are small and stable; they live in code rather than a table so
 they're easy to diff in PRs.
 """
-from __future__ import annotations
 
+from __future__ import annotations
 
 DM_SYSTEM_PROMPT = (
     "You are Max, COO of Agency OS. Dave is the CEO and has stepped out of the "

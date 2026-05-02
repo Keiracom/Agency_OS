@@ -2,10 +2,10 @@
 OpenAI cost logger — append-only JSONL for all OpenAI API calls in the listener subsystem.
 F4-PART2-SETUP: 7 days of data collection before budget trigger ratification.
 """
+
 import json
 import logging
-import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 logger = logging.getLogger(__name__)
 
@@ -28,12 +28,9 @@ def log_openai_call(
     """Append one cost event to the JSONL log. Best-effort, never raises."""
     try:
         pricing = PRICING.get(model, {})
-        cost_usd = (
-            input_tokens * pricing.get("input", 0)
-            + output_tokens * pricing.get("output", 0)
-        )
+        cost_usd = input_tokens * pricing.get("input", 0) + output_tokens * pricing.get("output", 0)
         entry = {
-            "ts": datetime.now(timezone.utc).isoformat(),
+            "ts": datetime.now(UTC).isoformat(),
             "callsign": callsign,
             "use_case": use_case,
             "model": model,

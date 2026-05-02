@@ -16,6 +16,7 @@ Max safe batch: 20 category codes per API call (conservative limit).
 
 Category codes sourced from DFS /v3/dataforseo_labs/categories (3,182 total categories).
 """
+
 from __future__ import annotations
 
 # ── Maximum category codes per DFS API call ──────────────────────────────────
@@ -25,7 +26,6 @@ MAX_CATEGORIES_PER_CALL = 20
 CATEGORY_LABELS: dict[int, str] = {
     # Dental
     10514: "Dentists & Dental Services",
-
     # Construction & Trades
     10282: "Building Construction & Maintenance",
     11138: "Building Painting Services",
@@ -33,45 +33,34 @@ CATEGORY_LABELS: dict[int, str] = {
     11295: "Electrical Wiring",
     11284: "HVAC & Climate Control",
     11147: "HVAC Service & Repair",
-
     # Legal
     10163: "Legal",
     13686: "Attorneys & Law Firms",
-
     # Automotive (corrected: 10193 = Vehicle Repair & Maintenance, not GPS/parts)
     10193: "Vehicle Repair & Maintenance",
-
     # Real Estate
     10531: "Real Estate Investments",
     10040: "Real Estate Agents & Brokerages",  # corrected: was wrongly labelled Auto Parts
     10830: "Real Estate Rental & Leasing Forms",  # corrected full DFS name
-
     # Accounting & Finance
     11093: "Accounting & Auditing",
     12391: "Bookkeeping",
-
     # Medical
     10520: "Hospitals & Health Clinics",
     10509: "Laboratory Testing & Medical Diagnostic Services",  # corrected full DFS name
-
     # Hospitality
     10020: "Dining & Nightlife",
     12975: "Restaurant Reviews, Guides & Listings",  # corrected full DFS name
-
     # Fitness
     10123: "Fitness",
     12049: "Fitness Instruction Training",  # corrected: no ampersand in DFS name
-
     # Hair & Beauty
     10333: "Hair Salons & Styling Services",
-
     # Veterinary
     11979: "Veterinary",
-
     # Marketing
     11088: "Advertising & Marketing",
     12376: "Internet Marketing",
-
     # Home Services
     10418: "Home Heating & Cooling",
 }
@@ -180,28 +169,26 @@ SERVICE_CATEGORY_MAP: dict[str, list[int]] = {
 }
 
 # ── All discovery categories (for unrestricted service-first sweep) ───────────
-ALL_DISCOVERY_CATEGORIES: list[int] = sorted(set(
-    code
-    for codes in SERVICE_CATEGORY_MAP.values()
-    for code in codes
-))
+ALL_DISCOVERY_CATEGORIES: list[int] = sorted(
+    {code for codes in SERVICE_CATEGORY_MAP.values() for code in codes}
+)
 
 # ── Industry vertical groupings (for preferred_industries soft-weighting) ─────
 INDUSTRY_VERTICALS: dict[str, list[int]] = {
-    "dental":       [10514],
-    "trades":       [13462, 11295, 11147, 11284, 10418, 11138],
-    "legal":        [13686, 10163],
+    "dental": [10514],
+    "trades": [13462, 11295, 11147, 11284, 10418, 11138],
+    "legal": [13686, 10163],
     "construction": [10282, 11138],
-    "hospitality":  [10020, 12975],
-    "automotive":   [10193],  # Vehicle Repair & Maintenance (corrected from GPS/parts codes)
-    "real_estate":  [10531, 10830],
-    "accounting":   [11093, 12391],
-    "medical":      [10520, 10509],
-    "fitness":      [10123, 12049],
-    "hair_beauty":  [10333],
-    "veterinary":   [11979],
-    "hvac":         [11284, 11147, 10418],
-    "marketing":    [11088, 12376],
+    "hospitality": [10020, 12975],
+    "automotive": [10193],  # Vehicle Repair & Maintenance (corrected from GPS/parts codes)
+    "real_estate": [10531, 10830],
+    "accounting": [11093, 12391],
+    "medical": [10520, 10509],
+    "fitness": [10123, 12049],
+    "hair_beauty": [10333],
+    "veterinary": [11979],
+    "hvac": [11284, 11147, 10418],
+    "marketing": [11088, 12376],
 }
 
 
@@ -241,7 +228,9 @@ def get_discovery_categories(
             for code in INDUSTRY_VERTICALS.get(ind, []):
                 if code in all_codes and code not in preferred_codes:
                     preferred_codes.append(code)
-        remaining = [c for c in ALL_DISCOVERY_CATEGORIES if c in all_codes and c not in preferred_codes]
+        remaining = [
+            c for c in ALL_DISCOVERY_CATEGORIES if c in all_codes and c not in preferred_codes
+        ]
         return preferred_codes + remaining
 
     # Default order: stable sort by code for reproducibility

@@ -25,12 +25,12 @@ from prefect import flow, task
 from prefect.task_runners import ConcurrentTaskRunner
 
 from src.integrations.supabase import get_db_session
+from src.prefect_utils.completion_hook import on_completion_hook
+from src.prefect_utils.hooks import on_failure_hook
 from src.services.recording_cleanup_service import (
     RECORDING_RETENTION_DAYS,
     RecordingCleanupService,
 )
-from src.prefect_utils.completion_hook import on_completion_hook
-from src.prefect_utils.hooks import on_failure_hook
 
 logger = logging.getLogger(__name__)
 

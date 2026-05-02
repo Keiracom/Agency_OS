@@ -6,11 +6,11 @@ Layer: services
 Imports: stdlib, pytz
 Consumers: sequence_engine
 """
+
 import random
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import UTC, date, datetime, time, timedelta
 
 import pytz
-
 
 WINDOWS: dict[str, tuple[time, time]] = {
     "morning_email": (time(8, 0), time(10, 0)),
@@ -54,7 +54,7 @@ class TimeWindowEngine:
         result = start_dt + timedelta(seconds=random_offset)
 
         local_dt = tz.localize(result)
-        utc_dt = local_dt.astimezone(timezone.utc)
+        utc_dt = local_dt.astimezone(UTC)
         return utc_dt
 
     def add_linkedin_gap(self, base_time: datetime) -> datetime:

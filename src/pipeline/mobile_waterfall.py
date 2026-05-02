@@ -15,6 +15,7 @@ TIERS:
 
 Mobile runs on ALL DM-found prospects, not just STRUGGLING.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -28,19 +29,19 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 # ── Mobile regex patterns ─────────────────────────────────────────────────────
-_MOBILE_AU_RE    = re.compile(r'04\d{2}[\s.\-]?\d{3}[\s.\-]?\d{3}')
-_MOBILE_INTL_RE  = re.compile(r'\+614\d{2}[\s.\-]?\d{3}[\s.\-]?\d{3}')
-_MOBILE_CLEAN_RE = re.compile(r'[\s.\-]')
+_MOBILE_AU_RE = re.compile(r"04\d{2}[\s.\-]?\d{3}[\s.\-]?\d{3}")
+_MOBILE_INTL_RE = re.compile(r"\+614\d{2}[\s.\-]?\d{3}[\s.\-]?\d{3}")
+_MOBILE_CLEAN_RE = re.compile(r"[\s.\-]")
 
 # ── Costs ─────────────────────────────────────────────────────────────────────
-COST_LAYER2_LEADMAGIC  = Decimal("0.077")
+COST_LAYER2_LEADMAGIC = Decimal("0.077")
 COST_LAYER3_BRIGHTDATA = Decimal("0.00075")
 
 
 @dataclass
 class MobileResult:
     mobile: str | None = None
-    source: str | None = None        # "html_regex" | "leadmagic" | "brightdata" | None
+    source: str | None = None  # "html_regex" | "leadmagic" | "brightdata" | None
     cost_usd: Decimal = field(default_factory=Decimal)
     tier_used: int | None = None
     error: str | None = None
@@ -98,7 +99,8 @@ async def run_mobile_waterfall(
         if co_phone:
             logger.info(
                 "mobile_waterfall L0 contactout domain=%s phone=%s",
-                domain, co_phone,
+                domain,
+                co_phone,
             )
             return MobileResult(
                 mobile=co_phone,

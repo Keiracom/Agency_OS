@@ -7,7 +7,7 @@ PURPOSE: Daily (UTC) write counter for agent_memories.
 """
 
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from .types import RateLimitExceeded
 
@@ -17,7 +17,7 @@ DEFAULT_CAP = 5000
 
 
 def _count_file() -> str:
-    date_str = datetime.now(timezone.utc).strftime("%Y%m%d")
+    date_str = datetime.now(UTC).strftime("%Y%m%d")
     return os.path.join(_COUNT_DIR, f"{_COUNT_PREFIX}{date_str}.count")
 
 
@@ -40,9 +40,7 @@ def check_and_increment() -> int:
     path = _count_file()
     current = _read_count(path)
     if current >= cap:
-        raise RateLimitExceeded(
-            f"Daily memory write cap ({cap}) reached. Resets at UTC midnight."
-        )
+        raise RateLimitExceeded(f"Daily memory write cap ({cap}) reached. Resets at UTC midnight.")
     new_count = current + 1
     _write_count(path, new_count)
     return new_count

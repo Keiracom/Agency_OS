@@ -10,8 +10,10 @@ Operations:
 Trigger: store() calls increment_write_counter() after every write.
 Every 25 writes, run_organisation() fires automatically.
 """
+
 import logging
 import os
+from datetime import UTC
 
 import httpx
 
@@ -58,7 +60,8 @@ def backfill_embeddings(limit: int = EMBED_BATCH_LIMIT) -> int:
     headers = _headers()
     resp = httpx.get(
         f"{SUPABASE_URL}/rest/v1/agent_memories?embedding=is.null&select=id,content&limit={limit}",
-        headers=headers, timeout=10,
+        headers=headers,
+        timeout=10,
     )
     if resp.status_code != 200:
         return 0
@@ -69,7 +72,10 @@ def backfill_embeddings(limit: int = EMBED_BATCH_LIMIT) -> int:
         try:
             emb_resp = httpx.post(
                 "https://api.openai.com/v1/embeddings",
-                headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
+                headers={
+                    "Authorization": f"Bearer {OPENAI_API_KEY}",
+                    "Content-Type": "application/json",
+                },
                 json={"model": "text-embedding-3-small", "input": row["content"][:8000]},
                 timeout=10,
             )
@@ -77,6 +83,7 @@ def backfill_embeddings(limit: int = EMBED_BATCH_LIMIT) -> int:
                 emb_data = emb_resp.json()
                 try:
                     from src.telegram_bot.openai_cost_logger import log_openai_call
+
                     usage = emb_data.get("usage", {})
                     log_openai_call(
                         callsign=os.environ.get("CALLSIGN", "unknown"),
@@ -109,7 +116,8 @@ def archive_stale(limit: int = 20) -> int:
     try:
         count_resp = httpx.get(
             f"{SUPABASE_URL}/rest/v1/agent_memories?select=id",
-            headers={**headers, "Prefer": "count=exact"}, timeout=5,
+            headers={**headers, "Prefer": "count=exact"},
+            timeout=5,
         )
         total = int(count_resp.headers.get("content-range", "0/0").split("/")[-1])
         if total < STALE_MIN_ROWS:
@@ -118,8 +126,9 @@ def archive_stale(limit: int = 20) -> int:
         return 0
 
     # Find stale: confirmed + never accessed + older than 7 days + not system reference facts
-    from datetime import datetime, timezone, timedelta
-    cutoff = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+    from datetime import datetime, timedelta
+
+    cutoff = (datetime.now(UTC) - timedelta(days=7)).isoformat()
     try:
         resp = httpx.get(
             f"{SUPABASE_URL}/rest/v1/agent_memories"
@@ -127,7 +136,8 @@ def archive_stale(limit: int = 20) -> int:
             f"&callsign=neq.system"
             f"&created_at=lt.{cutoff}"
             f"&select=id&limit={limit}",
-            headers=headers, timeout=10,
+            headers=headers,
+            timeout=10,
         )
         if resp.status_code != 200:
             return 0

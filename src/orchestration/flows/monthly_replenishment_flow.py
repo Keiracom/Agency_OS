@@ -30,10 +30,9 @@ from src.models.base import CampaignStatus, LeadStatus
 from src.models.campaign import Campaign
 from src.models.client import Client
 from src.models.lead import Lead
-from src.services.lead_allocator_service import LeadAllocatorService
 from src.prefect_utils.completion_hook import on_completion_hook
 from src.prefect_utils.hooks import on_failure_hook
-
+from src.services.lead_allocator_service import LeadAllocatorService
 
 logger = logging.getLogger(__name__)
 

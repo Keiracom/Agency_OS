@@ -185,6 +185,7 @@ class BrightDataClient:
     async def _serp_request(self, url: str, max_retries: int = 2) -> Any:
         """Execute SERP API request via Direct API with Bearer token auth."""
         import os
+
         if os.environ.get("DRY_RUN"):
             logger.info("[DRY-RUN] Would call Bright Data SERP: %s", url[:100])
             return {}
@@ -344,8 +345,13 @@ class BrightDataClient:
     ) -> list[dict]:
         """Single attempt of Scraper API: trigger → poll → download."""
         import os
+
         if os.environ.get("DRY_RUN"):
-            logger.info("[DRY-RUN] Would call Bright Data Scraper: dataset_id=%s inputs=%d", dataset_id, len(inputs))
+            logger.info(
+                "[DRY-RUN] Would call Bright Data Scraper: dataset_id=%s inputs=%d",
+                dataset_id,
+                len(inputs),
+            )
             return []
         base_url = "https://api.brightdata.com/datasets/v3"
         headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}

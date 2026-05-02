@@ -23,6 +23,7 @@ Two-phase logic:
      and the stage_metrics.stage_completed_at.free_enrichment marker
      introduced in BU Closed-Loop S1.
 """
+
 from __future__ import annotations
 
 import json
@@ -53,7 +54,11 @@ async def _init_jsonb_codec(conn):
 async def _open_pool() -> asyncpg.pool.Pool:
     db_url = os.environ["DATABASE_URL"].replace("postgresql+asyncpg://", "postgresql://")
     return await asyncpg.create_pool(
-        db_url, min_size=2, max_size=4, statement_cache_size=0, init=_init_jsonb_codec,
+        db_url,
+        min_size=2,
+        max_size=4,
+        statement_cache_size=0,
+        init=_init_jsonb_codec,
     )
 
 
@@ -119,8 +124,7 @@ async def free_enrichment_flow(
         if promote_stage_0:
             promoted = await promote_stage_0_rows(pool)
             summary["promoted"] = promoted
-            logger.info("free_enrichment_flow: promoted %d stage-0/NULL rows to stage 1",
-                        promoted)
+            logger.info("free_enrichment_flow: promoted %d stage-0/NULL rows to stage 1", promoted)
         else:
             logger.info("free_enrichment_flow: promote_stage_0=False — skipping promote step")
 
@@ -129,6 +133,5 @@ async def free_enrichment_flow(
     finally:
         await pool.close()
 
-    logger.info("free_enrichment_flow complete: %s",
-                json.dumps(summary, default=str))
+    logger.info("free_enrichment_flow complete: %s", json.dumps(summary, default=str))
     return summary

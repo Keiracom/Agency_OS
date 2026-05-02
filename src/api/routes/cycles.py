@@ -18,7 +18,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.dependencies import get_current_client, get_db_session, ClientContext
+from src.api.dependencies import ClientContext, get_current_client, get_db_session
 from src.models.cycle import Cycle, CycleEvent
 
 logger = logging.getLogger(__name__)

@@ -46,7 +46,6 @@ from src.models.lead import Lead
 from src.prefect_utils.completion_hook import on_completion_hook
 from src.prefect_utils.hooks import on_failure_hook
 
-
 logger = logging.getLogger(__name__)
 
 # Minimum conversions required for pattern detection

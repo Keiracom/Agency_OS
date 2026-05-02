@@ -19,6 +19,7 @@ discern_and_summarise(query, candidate_rows) after retrieval returns the
 top-20 candidates. The result replaces the raw-row injection with a
 synthesised brief block.
 """
+
 import json
 import logging
 import os  # noqa: F401 — used in cost logging block
@@ -134,6 +135,7 @@ async def discern_and_summarise(
             raw = resp_json["choices"][0]["message"]["content"]
             try:
                 from src.telegram_bot.openai_cost_logger import log_openai_call
+
                 usage = resp_json.get("usage", {})
                 log_openai_call(
                     callsign=os.environ.get("CALLSIGN", "unknown"),
@@ -152,9 +154,7 @@ async def discern_and_summarise(
     return parsed
 
 
-def _parse_and_validate(
-    raw: str, candidate_rows: list[dict]
-) -> dict[str, Any]:
+def _parse_and_validate(raw: str, candidate_rows: list[dict]) -> dict[str, Any]:
     """Parse the JSON + run citation validation. Drops sentences missing citations."""
     try:
         data = json.loads(raw)
@@ -162,9 +162,9 @@ def _parse_and_validate(
         logger.warning(f"[discernment] JSON parse failed: {exc}")
         return _empty_result("json_parse_error")
 
-    selected_ids = [
-        s for s in (data.get("selected_ids") or []) if isinstance(s, str)
-    ][:MAX_SELECTED]
+    selected_ids = [s for s in (data.get("selected_ids") or []) if isinstance(s, str)][
+        :MAX_SELECTED
+    ]
     brief = data.get("brief") or ""
     citations = data.get("citations") or {}
 

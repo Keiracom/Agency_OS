@@ -10,6 +10,7 @@ tiering (Tier 1 website > Tier 2 LinkedIn > Tier 3 ASIC conflict resolution favo
 Operational Leader). Fixes mspcorp-style drops where ASIC shows legacy director but
 Operational Leader exists on website/LinkedIn.
 """
+
 from __future__ import annotations
 
 STAGE3_IDENTIFY_PROMPT = """Role: You are the Strategic Lead for Agency OS, a premium B2B marketing agency serving Australian SMBs. Your goal is to generate a high-fidelity identity and decision-maker profile for a prospect domain.

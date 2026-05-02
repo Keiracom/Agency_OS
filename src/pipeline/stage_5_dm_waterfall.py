@@ -347,8 +347,11 @@ class Stage5DMWaterfall:
         if dm and (dm.name or dm.linkedin_url):
             # P1.7b: NULL-URL guard — skip INSERT unless at least one contact method present
             if dm and not (dm.linkedin_url or dm.email):
-                logger.info("stage5_skip_no_contact domain=%s name=%s reason=no_linkedin_no_email",
-                            business.get("domain"), dm.name)
+                logger.info(
+                    "stage5_skip_no_contact domain=%s name=%s reason=no_linkedin_no_email",
+                    business.get("domain"),
+                    dm.name,
+                )
                 # Still advance pipeline stage but don't create non-actionable BDM
                 await self.conn.execute(
                     """
@@ -374,7 +377,9 @@ class Stage5DMWaterfall:
                 if existing:
                     logger.info(
                         "stage5_dedup_skip domain=%s linkedin_url=%s existing_bdm=%s",
-                        business.get("domain"), dm.linkedin_url, existing,
+                        business.get("domain"),
+                        dm.linkedin_url,
+                        existing,
                     )
                     # Advance pipeline stage without creating a duplicate BDM
                     await self.conn.execute(
@@ -393,7 +398,9 @@ class Stage5DMWaterfall:
                     return
 
             # P1.6d: name hygiene — strip emoji/non-letter leading/trailing chars
-            clean_name = re.sub(r'^[^a-zA-Z]+|[^a-zA-Z.]+$', '', dm.name).strip() if dm.name else None
+            clean_name = (
+                re.sub(r"^[^a-zA-Z]+|[^a-zA-Z.]+$", "", dm.name).strip() if dm.name else None
+            )
             # P1.7d: title-case normalization — "sian mcconnell" → "Sian Mcconnell"
             if clean_name:
                 clean_name = clean_name.title()
@@ -424,8 +431,11 @@ class Stage5DMWaterfall:
                 dm.phone,
                 now,
             )
-            logger.info("stage5_dm_write domain=%s dm=%s → business_decision_makers",
-                        business.get("domain"), clean_name)
+            logger.info(
+                "stage5_dm_write domain=%s dm=%s → business_decision_makers",
+                business.get("domain"),
+                clean_name,
+            )
 
         # Update BU pipeline state only (no dm_* fields)
         await self.conn.execute(

@@ -38,6 +38,7 @@ Per-agent rationale (matches CLAUDE.md agent registry):
     devops-6      deploys + infra — read+exec, NO arbitrary write
     general-purpose  broad fallback for ad-hoc spawns
 """
+
 from __future__ import annotations
 
 from collections.abc import Iterable
@@ -45,72 +46,142 @@ from collections.abc import Iterable
 # ── Canonical Claude Code tool names ───────────────────────────────────────
 # Mirrors the tool list the agent harness exposes. Used here only as
 # referent strings; this module never imports tool implementations.
-_READ      = "Read"
-_WRITE     = "Write"
-_EDIT      = "Edit"
-_NB_EDIT   = "NotebookEdit"
-_BASH      = "Bash"
-_GREP      = "Grep"
-_GLOB      = "Glob"
+_READ = "Read"
+_WRITE = "Write"
+_EDIT = "Edit"
+_NB_EDIT = "NotebookEdit"
+_BASH = "Bash"
+_GREP = "Grep"
+_GLOB = "Glob"
 _WEB_FETCH = "WebFetch"
 _WEB_SEARCH = "WebSearch"
-_TASK      = "Task"
-_SKILL     = "Skill"
-_TODO      = "TodoWrite"
+_TASK = "Task"
+_SKILL = "Skill"
+_TODO = "TodoWrite"
 
 # ── Per-agent allowlists ───────────────────────────────────────────────────
 
 AGENT_ALLOWLISTS: dict[str, frozenset[str]] = {
     # Architecture — pure planning + reading. No writes, no shell.
-    "architect-0": frozenset({
-        _READ, _GREP, _GLOB, _WEB_FETCH, _WEB_SEARCH, _TASK, _SKILL, _TODO,
-    }),
-
+    "architect-0": frozenset(
+        {
+            _READ,
+            _GREP,
+            _GLOB,
+            _WEB_FETCH,
+            _WEB_SEARCH,
+            _TASK,
+            _SKILL,
+            _TODO,
+        }
+    ),
     # Research — read + web only. No writes, no shell.
-    "research-1": frozenset({
-        _READ, _WEB_SEARCH, _WEB_FETCH, _GREP, _GLOB, _SKILL, _TODO,
-    }),
-
+    "research-1": frozenset(
+        {
+            _READ,
+            _WEB_SEARCH,
+            _WEB_FETCH,
+            _GREP,
+            _GLOB,
+            _SKILL,
+            _TODO,
+        }
+    ),
     # Primary build — full read+write+exec surface (the workhorse).
-    "build-2": frozenset({
-        _READ, _WRITE, _EDIT, _NB_EDIT, _BASH, _GREP, _GLOB,
-        _WEB_FETCH, _WEB_SEARCH, _TASK, _SKILL, _TODO,
-    }),
-
+    "build-2": frozenset(
+        {
+            _READ,
+            _WRITE,
+            _EDIT,
+            _NB_EDIT,
+            _BASH,
+            _GREP,
+            _GLOB,
+            _WEB_FETCH,
+            _WEB_SEARCH,
+            _TASK,
+            _SKILL,
+            _TODO,
+        }
+    ),
     # Secondary build — same as build-2 so parallel work is symmetric.
-    "build-3": frozenset({
-        _READ, _WRITE, _EDIT, _NB_EDIT, _BASH, _GREP, _GLOB,
-        _WEB_FETCH, _WEB_SEARCH, _TASK, _SKILL, _TODO,
-    }),
-
+    "build-3": frozenset(
+        {
+            _READ,
+            _WRITE,
+            _EDIT,
+            _NB_EDIT,
+            _BASH,
+            _GREP,
+            _GLOB,
+            _WEB_FETCH,
+            _WEB_SEARCH,
+            _TASK,
+            _SKILL,
+            _TODO,
+        }
+    ),
     # Test — read + write tests + run pytest. No NotebookEdit (test files
     # are *.py, not notebooks).
-    "test-4": frozenset({
-        _READ, _WRITE, _EDIT, _BASH, _GREP, _GLOB, _SKILL, _TODO,
-    }),
-
+    "test-4": frozenset(
+        {
+            _READ,
+            _WRITE,
+            _EDIT,
+            _BASH,
+            _GREP,
+            _GLOB,
+            _SKILL,
+            _TODO,
+        }
+    ),
     # Review — strictly read-only inspection. NO Bash, NO Write, NO Edit.
     # The whole point of a review pass is "look, don't change."
-    "review-5": frozenset({
-        _READ, _GREP, _GLOB, _SKILL, _TODO,
-    }),
-
+    "review-5": frozenset(
+        {
+            _READ,
+            _GREP,
+            _GLOB,
+            _SKILL,
+            _TODO,
+        }
+    ),
     # DevOps — read + exec for deploys/infra. NO arbitrary file Write so
     # an infra agent can't silently rewrite source code on its way to
     # `railway up`. Edits to deploy configs go through Edit (precise).
-    "devops-6": frozenset({
-        _READ, _EDIT, _BASH, _GREP, _GLOB, _SKILL, _TODO,
-    }),
-
+    "devops-6": frozenset(
+        {
+            _READ,
+            _EDIT,
+            _BASH,
+            _GREP,
+            _GLOB,
+            _SKILL,
+            _TODO,
+        }
+    ),
     # General-purpose — broad fallback. Mirrors build-2.
-    "general-purpose": frozenset({
-        _READ, _WRITE, _EDIT, _NB_EDIT, _BASH, _GREP, _GLOB,
-        _WEB_FETCH, _WEB_SEARCH, _TASK, _SKILL, _TODO,
-    }),
+    "general-purpose": frozenset(
+        {
+            _READ,
+            _WRITE,
+            _EDIT,
+            _NB_EDIT,
+            _BASH,
+            _GREP,
+            _GLOB,
+            _WEB_FETCH,
+            _WEB_SEARCH,
+            _TASK,
+            _SKILL,
+            _TODO,
+        }
+    ),
 }
 
 
 # ── Public surface ─────────────────────────────────────────────────────────
+
 
 def get_tool_allowlist(agent_type: str) -> frozenset[str]:
     """Return the frozen allowlist for `agent_type`. Unknown agents get

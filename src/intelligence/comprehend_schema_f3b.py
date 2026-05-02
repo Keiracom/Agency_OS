@@ -14,6 +14,7 @@ CRITICAL: Do NOT modify identity facts from Stage 3 IDENTIFY. Use them as-is.
 
 Pipeline F v2. Ratified: 2026-04-15.
 """
+
 from __future__ import annotations
 
 STAGE7_ANALYSE_PROMPT = """You are a senior marketing analyst producing a vulnerability report and outreach drafts for an Australian SMB prospect. You receive identity data from Stage 3 IDENTIFY plus a DFS signal bundle with organic/paid/GMB/backlink/tech metrics.

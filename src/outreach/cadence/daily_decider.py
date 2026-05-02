@@ -11,6 +11,7 @@ decide one of: schedule_next | skip | suppress | escalate | nurture.
 Writes one row to scheduled_touches per 'schedule_next' or 'nurture' action.
 Does NOT fire touches — that's hourly_cadence_flow's job once scheduled_at <= now().
 """
+
 from __future__ import annotations
 
 import logging
@@ -33,19 +34,31 @@ OOO_RESUME_OFFSET_DAYS = 2
 
 # Any of these response intents mean we don't schedule anything new.
 # Spans both reply_router vocabulary and reply_intent taxonomy.
-_SKIP_REPLIED_INTENTS = frozenset({
-    "positive", "positive_interested",
-    "booked", "meeting_booked", "meeting_request", "booking_request",
-    "question",
-})
-_SKIP_SUPPRESSED_INTENTS = frozenset({
-    "unsubscribe", "opt_out", "not_interested", "bounce",
-})
+_SKIP_REPLIED_INTENTS = frozenset(
+    {
+        "positive",
+        "positive_interested",
+        "booked",
+        "meeting_booked",
+        "meeting_request",
+        "booking_request",
+        "question",
+    }
+)
+_SKIP_SUPPRESSED_INTENTS = frozenset(
+    {
+        "unsubscribe",
+        "opt_out",
+        "not_interested",
+        "bounce",
+    }
+)
 
 
 @dataclass
 class DeciderAction:
     """One decision per prospect. Executor writes to scheduled_touches (or no-ops)."""
+
     lead_id: str
     action: str  # schedule_next | skip | suppress | escalate | nurture
     channel: str | None = None
@@ -69,9 +82,7 @@ class DailyDecider:
         if db_conn is None:
             return []
         prospects = await self._load_prospects(db_conn, client_id)
-        logger.info(
-            "daily_decider: client=%s prospects=%d", client_id, len(prospects)
-        )
+        logger.info("daily_decider: client=%s prospects=%d", client_id, len(prospects))
         return [self._decide_one(p) for p in prospects]
 
     # -- per-prospect decision ----------------------------------------------
@@ -81,18 +92,23 @@ class DailyDecider:
 
         # 9. Meeting booked → skip permanently
         if p.get("meeting_booked_at"):
-            return DeciderAction(lead_id=lead_id, action="skip",
-                                 reason="meeting_booked — sequence complete")
+            return DeciderAction(
+                lead_id=lead_id, action="skip", reason="meeting_booked — sequence complete"
+            )
 
         last_intent = (p.get("last_reply_intent") or "").strip().lower() or None
 
         # 5 + 6. Replied (positive / question) or suppressed → skip
         if last_intent in _SKIP_SUPPRESSED_INTENTS:
-            return DeciderAction(lead_id=lead_id, action="skip",
-                                 reason=f"suppressed (intent={last_intent})")
+            return DeciderAction(
+                lead_id=lead_id, action="skip", reason=f"suppressed (intent={last_intent})"
+            )
         if last_intent in _SKIP_REPLIED_INTENTS:
-            return DeciderAction(lead_id=lead_id, action="skip",
-                                 reason=f"replied (intent={last_intent}) — webhook owns")
+            return DeciderAction(
+                lead_id=lead_id,
+                action="skip",
+                reason=f"replied (intent={last_intent}) — webhook owns",
+            )
 
         # 7. Out-of-office → skip until return_date + 2 days
         if last_intent in {"ooo", "out_of_office"}:
@@ -107,8 +123,9 @@ class DailyDecider:
 
         # 2. First touch ever → schedule Step 1 today/tomorrow
         if total_sent == 0:
-            return self._schedule_step(p, lead_id, step=1, delay_days=0,
-                                       reason="no touches yet — scheduling step 1")
+            return self._schedule_step(
+                p, lead_id, step=1, delay_days=0, reason="no touches yet — scheduling step 1"
+            )
 
         # 3 + 4. Gap since last touch governs scheduling
         next_info = get_next_step(lead_id, current_step, last_response=last_intent)
@@ -118,7 +135,8 @@ class DailyDecider:
             return self._schedule_nurture(p, lead_id)
         if action in ("pause", "suppress"):
             return DeciderAction(
-                lead_id=lead_id, action="skip",
+                lead_id=lead_id,
+                action="skip",
                 reason=f"cadence_orchestrator {action}: {next_info.get('reason', '')}",
             )
 
@@ -130,19 +148,29 @@ class DailyDecider:
 
         if gap_days < delay_days:
             return DeciderAction(
-                lead_id=lead_id, action="skip",
+                lead_id=lead_id,
+                action="skip",
                 reason=f"too soon (gap={gap_days}d < required={delay_days}d)",
             )
 
         return self._schedule_step(
-            p, lead_id, step=target_step, delay_days=0,
+            p,
+            lead_id,
+            step=target_step,
+            delay_days=0,
             reason=f"gap satisfied — scheduling step {target_step}",
         )
 
     # -- helpers ------------------------------------------------------------
 
     def _schedule_step(
-        self, p: dict, lead_id: str, *, step: int, delay_days: int, reason: str,
+        self,
+        p: dict,
+        lead_id: str,
+        *,
+        step: int,
+        delay_days: int,
+        reason: str,
     ) -> DeciderAction:
         channel = get_channel_for_step(
             step=step,
@@ -151,27 +179,36 @@ class DailyDecider:
             has_linkedin=bool(p.get("has_linkedin")),
         )
         if channel is None:
-            return DeciderAction(lead_id=lead_id, action="escalate",
-                                 reason="no usable channel for prospect")
+            return DeciderAction(
+                lead_id=lead_id, action="escalate", reason="no usable channel for prospect"
+            )
 
         start = datetime.now(UTC) + timedelta(days=delay_days)
         scheduled_at = self._next_valid_window(channel, start, p.get("timezone"))
         return DeciderAction(
-            lead_id=lead_id, action="schedule_next",
-            channel=channel, scheduled_at=scheduled_at,
-            sequence_step=step, reason=reason,
+            lead_id=lead_id,
+            action="schedule_next",
+            channel=channel,
+            scheduled_at=scheduled_at,
+            sequence_step=step,
+            reason=reason,
         )
 
     def _schedule_nurture(self, p: dict, lead_id: str) -> DeciderAction:
         channel = "email" if p.get("has_email") else None
         if channel is None:
-            return DeciderAction(lead_id=lead_id, action="escalate",
-                                 reason="sequence exhausted + no email for nurture drip")
+            return DeciderAction(
+                lead_id=lead_id,
+                action="escalate",
+                reason="sequence exhausted + no email for nurture drip",
+            )
         start = datetime.now(UTC) + timedelta(days=NURTURE_INTERVAL_DAYS)
         scheduled_at = self._next_valid_window(channel, start, p.get("timezone"))
         return DeciderAction(
-            lead_id=lead_id, action="nurture",
-            channel=channel, scheduled_at=scheduled_at,
+            lead_id=lead_id,
+            action="nurture",
+            channel=channel,
+            scheduled_at=scheduled_at,
             reason=f"sequence exhausted — nurture drip in {NURTURE_INTERVAL_DAYS}d",
         )
 
@@ -181,19 +218,24 @@ class DailyDecider:
         resume = resume + timedelta(days=OOO_RESUME_OFFSET_DAYS)
         if datetime.now(UTC) < resume:
             return DeciderAction(
-                lead_id=lead_id, action="skip",
+                lead_id=lead_id,
+                action="skip",
                 reason=f"ooo — resume after {resume.date().isoformat()}",
             )
         # Past the OOO window — resume at the next step
         return self._schedule_step(
-            p, lead_id,
+            p,
+            lead_id,
             step=int(p.get("current_sequence_step") or 1),
             delay_days=0,
             reason="ooo window passed — resuming",
         )
 
     def _next_valid_window(
-        self, channel: str, start: datetime, prospect_tz: str | None,
+        self,
+        channel: str,
+        start: datetime,
+        prospect_tz: str | None,
     ) -> datetime:
         """Ask timing_engine when the next allowed send window begins."""
         try:
@@ -226,8 +268,11 @@ class DailyDecider:
 # Executor — turn DeciderActions into scheduled_touches INSERTs
 # ---------------------------------------------------------------------------
 
+
 async def apply_actions(
-    db_conn: Any, client_id: str, actions: list[DeciderAction],
+    db_conn: Any,
+    client_id: str,
+    actions: list[DeciderAction],
 ) -> dict[str, int]:
     """Write schedule_next + nurture actions to scheduled_touches. Never raises.
 
@@ -240,8 +285,14 @@ async def apply_actions(
     BU UPDATEs are best-effort — failures are logged but do not abort the
     touch insert or bump the errors counter beyond the insert path.
     """
-    counts = {"scheduled": 0, "nurture": 0, "skipped": 0,
-              "suppressed": 0, "escalated": 0, "errors": 0}
+    counts = {
+        "scheduled": 0,
+        "nurture": 0,
+        "skipped": 0,
+        "suppressed": 0,
+        "escalated": 0,
+        "errors": 0,
+    }
     for a in actions:
         try:
             if a.action in ("schedule_next", "nurture") and a.scheduled_at and a.channel:
@@ -252,7 +303,10 @@ async def apply_actions(
                         scheduled_at, status, created_at, updated_at
                     ) VALUES ($1, $2, $3, $4, $5, 'pending', NOW(), NOW())
                     """,
-                    client_id, a.lead_id, a.channel, a.sequence_step or 1,
+                    client_id,
+                    a.lead_id,
+                    a.channel,
+                    a.sequence_step or 1,
                     a.scheduled_at,
                 )
                 counts["scheduled" if a.action == "schedule_next" else "nurture"] += 1
@@ -271,7 +325,10 @@ async def apply_actions(
 
 
 async def _bu_mark_active(
-    db_conn: Any, lead_id: str, channel: str, scheduled_at: datetime,
+    db_conn: Any,
+    lead_id: str,
+    channel: str,
+    scheduled_at: datetime,
 ) -> None:
     """Transition BU row to 'active' (from 'pending' only) and record last-touch
     timestamp per channel. Idempotent: repeated calls for an already-active row
@@ -290,7 +347,9 @@ async def _bu_mark_active(
                 updated_at = NOW()
             WHERE id = $1
             """,
-            lead_id, channel, scheduled_at,
+            lead_id,
+            channel,
+            scheduled_at,
         )
     except Exception as exc:
         logger.warning("bu_mark_active failed for lead=%s: %s", lead_id, exc)
@@ -316,6 +375,7 @@ async def _bu_mark_suppressed(db_conn: Any, lead_id: str) -> None:
 # ---------------------------------------------------------------------------
 # Tiny helpers
 # ---------------------------------------------------------------------------
+
 
 def _to_dt(raw: Any) -> datetime | None:
     if raw is None:

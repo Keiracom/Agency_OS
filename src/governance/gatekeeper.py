@@ -53,6 +53,7 @@ def _emit_verdict(
     """Emit one governance_events row per Gatekeeper verdict (GOV-12)."""
     try:
         from src.governance._mcp_helpers import governance_event_emit
+
         claim_hash = hashlib.sha256(claim_text.encode("utf-8")).hexdigest()[:16]
         governance_event_emit(
             callsign=callsign,
@@ -111,6 +112,7 @@ def check_completion_claim(
     """
     if frozen_paths is None:
         from src.governance.freeze import list_frozen_paths
+
         frozen_paths = list_frozen_paths()
 
     payload = {
@@ -129,8 +131,12 @@ def check_completion_claim(
         logger.warning("Gatekeeper OPA request failed: %s", exc)
         err_reasons = [f"opa request failed: {exc}"]
         _emit_verdict(
-            callsign=callsign, directive_id=directive_id, claim_text=claim_text,
-            allow=False, reasons=err_reasons, error=str(exc),
+            callsign=callsign,
+            directive_id=directive_id,
+            claim_text=claim_text,
+            allow=False,
+            reasons=err_reasons,
+            error=str(exc),
         )
         return GatekeeperResult(
             allow=False,
@@ -141,8 +147,11 @@ def check_completion_claim(
     allow = bool(result.get("allow", False))
     reasons = list(result.get("deny_reasons", []) or [])
     _emit_verdict(
-        callsign=callsign, directive_id=directive_id, claim_text=claim_text,
-        allow=allow, reasons=reasons,
+        callsign=callsign,
+        directive_id=directive_id,
+        claim_text=claim_text,
+        allow=allow,
+        reasons=reasons,
     )
     return GatekeeperResult(allow=allow, reasons=reasons, raw=result)
 

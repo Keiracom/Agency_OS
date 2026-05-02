@@ -15,8 +15,7 @@ import asyncio
 import logging
 import os
 import threading
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +35,7 @@ VALID_CHANNELS = {"all", "email", "phone", "linkedin", "sms", "voice"}
 # PostgREST helpers (best-effort — non-fatal if Supabase is down)
 # ---------------------------------------------------------------------------
 
+
 def _get_supabase_creds() -> tuple[str, str]:
     url = os.environ.get("SUPABASE_URL", "")
     key = os.environ.get("SUPABASE_SERVICE_KEY", "")
@@ -46,13 +46,18 @@ async def _db_check(email: str) -> dict | None:
     """GET /rest/v1/suppression_list?email=eq.{email} — returns first row or None."""
     try:
         import httpx
+
         url, key = _get_supabase_creds()
         if not url or not key:
             return None
         async with httpx.AsyncClient(timeout=5) as client:
             resp = await client.get(
                 f"{url}/rest/v1/suppression_list",
-                params={"email": f"eq.{email}", "select": "email,reason,channel,source,suppressed_at", "limit": "1"},
+                params={
+                    "email": f"eq.{email}",
+                    "select": "email,reason,channel,source,suppressed_at",
+                    "limit": "1",
+                },
                 headers={"apikey": key, "Authorization": f"Bearer {key}"},
             )
         if resp.status_code == 200:
@@ -67,6 +72,7 @@ async def _db_upsert(record: dict) -> bool:
     """POST /rest/v1/suppression_list with upsert prefer header."""
     try:
         import httpx
+
         url, key = _get_supabase_creds()
         if not url or not key:
             return False
@@ -91,6 +97,7 @@ async def _db_delete(email: str) -> bool:
     """DELETE /rest/v1/suppression_list?email=eq.{email}."""
     try:
         import httpx
+
         url, key = _get_supabase_creds()
         if not url or not key:
             return False
@@ -122,13 +129,14 @@ def _fire_and_forget(coro) -> None:
 # Public class
 # ---------------------------------------------------------------------------
 
+
 class SuppressionManager:
     """Manage cross-campaign suppression to prevent re-contacting opted-out prospects."""
 
     @staticmethod
     def check_before_outreach(
         email: str,
-        phone: Optional[str] = None,
+        phone: str | None = None,
     ) -> dict:
         """Check if a prospect should be suppressed before any outreach.
 
@@ -209,7 +217,7 @@ class SuppressionManager:
             }
 
         key = email.lower().strip()
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         with _lock:
             _store[key] = {
                 "reason": reason,

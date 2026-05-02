@@ -20,6 +20,7 @@ Flow per domain:
 Layer: 2 - pipeline
 Directive: CD Player v1 (refactor from #293)
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -28,8 +29,14 @@ import logging
 import re
 import time
 import warnings
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Optional
+from typing import Any
+
+from src.config.category_registry import (  # noqa: F401
+    SERVICE_CATEGORY_MAP,
+    get_discovery_categories,
+)
 
 # ── Import proven stage functions from cohort_runner ─────────────────────────
 from src.orchestration.cohort_runner import (
@@ -45,9 +52,6 @@ from src.orchestration.cohort_runner import (
     _run_stage10,
     _run_stage11,
 )
-
-from src.pipeline.intelligence import GLOBAL_SEM_SONNET, GLOBAL_SEM_HAIKU  # shared semaphores
-from src.config.category_registry import get_discovery_categories, SERVICE_CATEGORY_MAP  # noqa: F401
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +74,7 @@ DEFAULT_MAX_IN_FLIGHT = 20
 # import of persist_stage8_to_db avoids circular-import pain during module
 # load (pipeline_f_master_flow imports from this module).
 
+
 async def _default_on_domain_complete(domain_data: dict) -> None:
     """Default persistence hook — writes the completed domain row to BU+BDM.
 
@@ -81,6 +86,7 @@ async def _default_on_domain_complete(domain_data: dict) -> None:
         from src.orchestration.flows.pipeline_f_master_flow import (
             persist_stage8_to_db,
         )
+
         # persist_stage8_to_db is a Prefect @task; the underlying async fn is
         # .fn when called outside a flow context.
         target = getattr(persist_stage8_to_db, "fn", persist_stage8_to_db)
@@ -88,7 +94,8 @@ async def _default_on_domain_complete(domain_data: dict) -> None:
     except Exception as exc:  # noqa: BLE001
         logger.warning(
             "on_domain_complete persistence failed domain=%s: %s",
-            domain_data.get("domain"), exc,
+            domain_data.get("domain"),
+            exc,
         )
 
 
@@ -116,6 +123,7 @@ def resolve_business_name(
     4. Page title prefix (enrichment["company_name"])
     5. Domain stem
     """
+
     def _is_valid(name: str) -> bool:
         if not name or not name.strip():
             return False
@@ -124,9 +132,7 @@ def resolve_business_name(
             return False  # was only suffixes
         if re.fullmatch(r"\d{9,11}", name.replace(" ", "")):
             return False  # ABN number
-        if cleaned.lower() in ("com", "com.au", "net.au", "org.au", "au"):
-            return False
-        return True
+        return cleaned.lower() not in ("com", "com.au", "net.au", "org.au", "au")
 
     candidates = [
         enrichment.get("abn_trading_name", ""),
@@ -147,14 +153,17 @@ def resolve_business_name(
 
 # ── Location waterfall helpers (Directive #305) ───────────────────────────────
 
-_AU_STATE_ABBR_RE = re.compile(
-    r"\b(NSW|VIC|QLD|WA|SA|TAS|ACT|NT)\b", re.IGNORECASE
-)
+_AU_STATE_ABBR_RE = re.compile(r"\b(NSW|VIC|QLD|WA|SA|TAS|ACT|NT)\b", re.IGNORECASE)
 
 _STATE_NAME_TO_ABBR: dict[str, str] = {
-    "new south wales": "NSW", "victoria": "VIC", "queensland": "QLD",
-    "western australia": "WA", "south australia": "SA", "tasmania": "TAS",
-    "australian capital territory": "ACT", "northern territory": "NT",
+    "new south wales": "NSW",
+    "victoria": "VIC",
+    "queensland": "QLD",
+    "western australia": "WA",
+    "south australia": "SA",
+    "tasmania": "TAS",
+    "australian capital territory": "ACT",
+    "northern territory": "NT",
 }
 
 
@@ -203,16 +212,12 @@ def resolve_location(
     state = ""
 
     # Priority 1: GMB address
-    gmb_address = (
-        (gmb_data or {}).get("gmb_address")
-        or (gmb_data or {}).get("address")
-        or ""
-    )
+    gmb_address = (gmb_data or {}).get("gmb_address") or (gmb_data or {}).get("address") or ""
     if gmb_address:
         state_match = _AU_STATE_ABBR_RE.search(gmb_address)
         if state_match:
             state = state_match.group(0).upper()
-            before_state = gmb_address[:state_match.start()].strip().rstrip(",").strip()
+            before_state = gmb_address[: state_match.start()].strip().rstrip(",").strip()
             parts = [p.strip() for p in before_state.split(",") if p.strip()]
             if parts:
                 suburb = parts[-1]
@@ -261,19 +266,20 @@ def resolve_location(
 # Tuned for DFS 30-concurrent + Spider 15-concurrent limits.
 # Module-level singletons shared across parallel workers.
 
-SEM_SPIDER = 15    # Spider.cloud concurrent scrapes
-SEM_ABN    = 50    # asyncpg pool connections (Supabase Pro; pool max_size=50)
-SEM_PAID   = 20    # DFS Ads Search + GMB concurrent
-SEM_DM     = 20    # DFS SERP LinkedIn concurrent
-SEM_LLM    = 10    # Anthropic concurrent limit
+SEM_SPIDER = 15  # Spider.cloud concurrent scrapes
+SEM_ABN = 50  # asyncpg pool connections (Supabase Pro; pool max_size=50)
+SEM_PAID = 20  # DFS Ads Search + GMB concurrent
+SEM_DM = 20  # DFS SERP LinkedIn concurrent
+SEM_LLM = 10  # Anthropic concurrent limit
 
-GLOBAL_SEM_DFS         = asyncio.Semaphore(28)   # DFS API concurrent calls
-GLOBAL_SEM_SCRAPE      = asyncio.Semaphore(80)   # httpx + Spider concurrent scrapes
-GLOBAL_SEM_ADS_SCRAPER = asyncio.Semaphore(15)   # Ads Transparency concurrent scrapes
-GLOBAL_SEM_ABN         = asyncio.Semaphore(50)   # asyncpg ABN queries
+GLOBAL_SEM_DFS = asyncio.Semaphore(28)  # DFS API concurrent calls
+GLOBAL_SEM_SCRAPE = asyncio.Semaphore(80)  # httpx + Spider concurrent scrapes
+GLOBAL_SEM_ADS_SCRAPER = asyncio.Semaphore(15)  # Ads Transparency concurrent scrapes
+GLOBAL_SEM_ABN = asyncio.Semaphore(50)  # asyncpg ABN queries
 
 
 # ── Dataclasses ───────────────────────────────────────────────────────────────
+
 
 @dataclass
 class PipelineStats:
@@ -305,21 +311,21 @@ class ProspectCard:
     intent_score: int = 0
     is_running_ads: bool = False
     gmb_review_count: int = 0
-    gmb_rating: Optional[float] = None
-    dm_name: Optional[str] = None
-    dm_title: Optional[str] = None
-    dm_linkedin_url: Optional[str] = None
-    dm_confidence: Optional[str] = None
+    gmb_rating: float | None = None
+    dm_name: str | None = None
+    dm_title: str | None = None
+    dm_linkedin_url: str | None = None
+    dm_confidence: str | None = None
     # Email waterfall fields (Directive #299)
-    dm_email: Optional[str] = None
+    dm_email: str | None = None
     dm_email_verified: bool = False
-    dm_email_source: Optional[str] = None
-    dm_email_confidence: Optional[str] = None
+    dm_email_source: str | None = None
+    dm_email_confidence: str | None = None
     email_cost_usd: float = 0.0
     # Mobile waterfall fields (Directive #317)
-    dm_mobile: Optional[str] = None
-    dm_mobile_source: Optional[str] = None
-    dm_mobile_tier: Optional[int] = None
+    dm_mobile: str | None = None
+    dm_mobile_source: str | None = None
+    dm_mobile_tier: int | None = None
     # Location fields (Directive #305)
     location_suburb: str = ""
     location_state: str = ""
@@ -330,7 +336,7 @@ class ProspectCard:
     referring_domains: int = 0
     domain_rank: int = 0
     backlink_trend: str = "unknown"
-    brand_position: Optional[int] = None
+    brand_position: int | None = None
     brand_gmb_showing: bool = False
     brand_competitors_bidding: bool = False
     indexed_pages: int = 0
@@ -348,6 +354,7 @@ class PipelineResult:
 
 # ── SSECardStreamer ────────────────────────────────────────────────────────────
 
+
 class SSECardStreamer:
     """
     Converts ProspectCard callbacks into Server-Sent Events for dashboard streaming.
@@ -363,11 +370,13 @@ class SSECardStreamer:
         """Serialize card and put onto asyncio queue for SSE emission."""
         import json
         from dataclasses import asdict
+
         data = asdict(card)
         self._queue.put_nowait({"event": "prospect_card", "data": json.dumps(data)})
 
 
 # ── Helper: build a ProspectCard from a completed domain_data dict ────────────
+
 
 def _card_from_domain_data(domain_data: dict) -> ProspectCard | None:
     """
@@ -389,9 +398,7 @@ def _card_from_domain_data(domain_data: dict) -> ProspectCard | None:
     signals = domain_data.get("stage4") or {}
 
     company_name = (
-        stage11.get("company_name")
-        or identity.get("business_name")
-        or domain.split(".")[0].title()
+        stage11.get("company_name") or identity.get("business_name") or domain.split(".")[0].title()
     )
     location_display = stage11.get("location") or stage11.get("location_display") or "Australia"
     location_suburb = stage11.get("location_suburb") or ""
@@ -444,6 +451,7 @@ def _card_from_domain_data(domain_data: dict) -> ProspectCard | None:
 
 
 # ── PipelineOrchestrator ──────────────────────────────────────────────────────
+
 
 class PipelineOrchestrator:
     """
@@ -576,9 +584,11 @@ class PipelineOrchestrator:
                 or 0
             )
             if composite_score >= 60:
+
                 async def _stage6_bg():
                     async with GLOBAL_SEM_DFS:
                         return await _run_stage6(domain_data, clients["dfs"])
+
                 stage6_task = asyncio.create_task(_stage6_bg())
 
             # Stage 7 — Gemini F3B analysis (concurrent with stage 6)
@@ -589,8 +599,10 @@ class PipelineOrchestrator:
             # Stage 8 — contact waterfall (PAID)
             async with GLOBAL_SEM_DFS:
                 domain_data = await _run_stage8(
-                    domain_data, clients["dfs"],
-                    bd=clients["bd"], lm=clients["lm"],
+                    domain_data,
+                    clients["dfs"],
+                    bd=clients["bd"],
+                    lm=clients["lm"],
                 )
             if domain_data.get("dropped_at"):
                 return None
@@ -642,7 +654,8 @@ class PipelineOrchestrator:
                 except Exception as exc:
                     logger.warning(
                         "on_domain_complete callback failed domain=%s: %s",
-                        domain_data.get("domain"), exc,
+                        domain_data.get("domain"),
+                        exc,
                     )
 
     async def _check_budget_gate(self, domain_data: dict, stage: str) -> bool:
@@ -671,7 +684,10 @@ class PipelineOrchestrator:
         if total >= cap:
             logger.warning(
                 "budget_exceeded gate=%s domain=%s total=$%.3f cap=$%.3f",
-                stage, domain_data.get("domain"), total, cap,
+                stage,
+                domain_data.get("domain"),
+                total,
+                cap,
             )
             domain_data["dropped_at"] = "budget_exceeded"
             domain_data["drop_reason"] = f"budget_exceeded at {stage}"
@@ -739,10 +755,10 @@ class PipelineOrchestrator:
         # (cost-aware admission) and C (max_in_flight semaphore) read
         # budget_cap_usd + admission_sem directly from run_streaming scope.
         self._run_cost_state = {
-            "total":      0.0,
-            "cap":        budget_cap_usd,
-            "lock":       asyncio.Lock(),
-            "per_domain": {},                # id(domain_data) -> last cost
+            "total": 0.0,
+            "cap": budget_cap_usd,
+            "lock": asyncio.Lock(),
+            "per_domain": {},  # id(domain_data) -> last cost
         }
         admission_sem = asyncio.Semaphore(max(1, max_in_flight))
         budget_exceeded = asyncio.Event()
@@ -769,7 +785,7 @@ class PipelineOrchestrator:
             else:
                 resolved_codes.append(str(cat))  # assume already a code
 
-        offsets: dict[str, int] = {code: 0 for code in resolved_codes}
+        offsets: dict[str, int] = dict.fromkeys(resolved_codes, 0)
         offsets_lock = asyncio.Lock()
 
         async def _process_one(domain: str, category_label: str) -> None:
@@ -787,10 +803,11 @@ class PipelineOrchestrator:
                 projected = cost_state["total"] + ESTIMATED_PER_DOMAIN_COST_USD
                 if projected >= cost_state["cap"]:
                     logger.warning(
-                        "budget_exceeded admission_gate domain=%s total=$%.3f "
-                        "+est=$%.3f cap=$%.3f",
-                        domain, cost_state["total"],
-                        ESTIMATED_PER_DOMAIN_COST_USD, cost_state["cap"],
+                        "budget_exceeded admission_gate domain=%s total=$%.3f +est=$%.3f cap=$%.3f",
+                        domain,
+                        cost_state["total"],
+                        ESTIMATED_PER_DOMAIN_COST_USD,
+                        cost_state["cap"],
                     )
                     budget_exceeded.set()
                     target_reached.set()
@@ -826,10 +843,7 @@ class PipelineOrchestrator:
             if card is None:
                 async with drops_lock:
                     drops_since_last_refill += 1
-                    if (
-                        drops_since_last_refill >= refill_threshold
-                        and not target_reached.is_set()
-                    ):
+                    if drops_since_last_refill >= refill_threshold and not target_reached.is_set():
                         drops_since_last_refill = 0
                         # FIX 1 — auto-discard completed refill tasks.
                         _t = asyncio.create_task(_trigger_refill())
@@ -848,11 +862,16 @@ class PipelineOrchestrator:
                         self._on_card(card)
                     except Exception as cb_exc:
                         logger.warning(
-                            "on_card callback error domain=%s: %s", domain, cb_exc,
+                            "on_card callback error domain=%s: %s",
+                            domain,
+                            cb_exc,
                         )
                 logger.info(
                     "cd_player_card_emitted domain=%s cards=%d/%d cost=$%.3f",
-                    domain, cards_emitted, target_cards, stats.total_cost_usd,
+                    domain,
+                    cards_emitted,
+                    target_cards,
+                    stats.total_cost_usd,
                 )
                 if cards_emitted >= target_cards:
                     target_reached.set()
@@ -920,7 +939,10 @@ class PipelineOrchestrator:
                 spawned += 1
             logger.info(
                 "cd_player_refill triggered cat=%s offset=%d spawned=%d drops_threshold=%d",
-                cat_code, offset, spawned, refill_threshold,
+                cat_code,
+                offset,
+                spawned,
+                refill_threshold,
             )
 
         async def _worker(worker_id: int) -> None:
@@ -936,7 +958,9 @@ class PipelineOrchestrator:
                     if stats.total_cost_usd >= budget_cap_usd:
                         logger.warning(
                             "worker_%d: budget cap reached $%.2f USD ($%.2f AUD) — stopping",
-                            worker_id, budget_cap_usd, budget_cap_aud,
+                            worker_id,
+                            budget_cap_usd,
+                            budget_cap_aud,
                         )
                         budget_exceeded.set()
                         target_reached.set()
@@ -962,7 +986,9 @@ class PipelineOrchestrator:
                     break
 
                 if not raw_batch:
-                    logger.info("worker_%d: category %s exhausted at offset %d", worker_id, cat_code, offset)
+                    logger.info(
+                        "worker_%d: category %s exhausted at offset %d", worker_id, cat_code, offset
+                    )
                     break
 
                 for domain_row in raw_batch:
@@ -1014,11 +1040,18 @@ class PipelineOrchestrator:
         if budget_exceeded.is_set():
             logger.warning(
                 "run_streaming_budget_exceeded cards=%d discovered=%d cap_usd=$%.3f total_usd=$%.3f",
-                len(results), stats.discovered, budget_cap_usd, stats.total_cost_usd,
+                len(results),
+                stats.discovered,
+                budget_cap_usd,
+                stats.total_cost_usd,
             )
         logger.info(
             "run_streaming_complete cards=%d discovered=%d workers=%d elapsed=%.1fs cost_usd=$%.3f",
-            len(results), stats.discovered, num_workers, stats.elapsed_seconds, stats.total_cost_usd,
+            len(results),
+            stats.discovered,
+            num_workers,
+            stats.elapsed_seconds,
+            stats.total_cost_usd,
         )
         return PipelineResult(prospects=results, stats=stats)
 

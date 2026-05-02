@@ -335,7 +335,9 @@ HUBSPOT_SCOPES = [
 async def start_hubspot_oauth(
     user: CurrentUser = Depends(get_current_user_from_token),
     db: AsyncSession = Depends(get_db_session),
-    origin: str = Query("settings", description="Where OAuth was initiated: 'onboarding' or 'settings'"),
+    origin: str = Query(
+        "settings", description="Where OAuth was initiated: 'onboarding' or 'settings'"
+    ),
 ):
     """Start HubSpot OAuth flow. Returns URL to redirect user.
 
@@ -358,6 +360,7 @@ async def start_hubspot_oauth(
 
     # Build OAuth URL with expanded scope list
     import urllib.parse
+
     scope_str = " ".join(HUBSPOT_SCOPES)
     base_url = "https://app.hubspot.com/oauth/authorize"
     params = {

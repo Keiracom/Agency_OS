@@ -11,6 +11,7 @@ Features:
 
 Ratified: 2026-04-14. Pipeline F architecture refactor.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -111,9 +112,16 @@ class GeminiClient:
                 ),
                 timeout=60.0,
             )
-        except asyncio.TimeoutError:
-            logger.warning("call_f3a timed out after 60s for domain %s — returning comprehension_timeout", domain)
-            return {"content": {"comprehension_timeout": True}, "f_status": "comprehension_timeout", "cost_usd": 0}
+        except TimeoutError:
+            logger.warning(
+                "call_f3a timed out after 60s for domain %s — returning comprehension_timeout",
+                domain,
+            )
+            return {
+                "content": {"comprehension_timeout": True},
+                "f_status": "comprehension_timeout",
+                "cost_usd": 0,
+            }
         self._accumulate(result)
 
         if result.get("f_status") == "failed":
@@ -185,18 +193,28 @@ class GeminiClient:
         if str(verified).lower() == "true":
             # Confirmed — keep original Stage 3 IDENTIFY result
             stage3_result["content"]["_dm_verified"] = True
-            stage3_result["content"]["_dm_verification_note"] = v_content.get("verification_note", "")
+            stage3_result["content"]["_dm_verification_note"] = v_content.get(
+                "verification_note", ""
+            )
             return stage3_result
 
         if corrected_dm and corrected_dm != dm:
             # Corrected — update DM in Stage 3 IDENTIFY content
-            logger.info("DM CORRECTED for %s: %s → %s (%s)", domain, dm, corrected_dm, v_content.get("verification_note", ""))
+            logger.info(
+                "DM CORRECTED for %s: %s → %s (%s)",
+                domain,
+                dm,
+                corrected_dm,
+                v_content.get("verification_note", ""),
+            )
             stage3_result["content"]["dm_candidate"]["name"] = corrected_dm
             if corrected_role:
                 stage3_result["content"]["dm_candidate"]["role"] = corrected_role
             stage3_result["content"]["_dm_verified"] = True
             stage3_result["content"]["_dm_corrected_from"] = dm
-            stage3_result["content"]["_dm_verification_note"] = v_content.get("verification_note", "")
+            stage3_result["content"]["_dm_verification_note"] = v_content.get(
+                "verification_note", ""
+            )
             if v_content.get("entity_name"):
                 stage3_result["content"]["_entity_name"] = v_content["entity_name"]
 
@@ -259,7 +277,14 @@ class GeminiClient:
         """
         if os.environ.get("DRY_RUN"):
             logger.info("[DRY-RUN] Would call Gemini comprehend: %d chars prompt", len(user_prompt))
-            return {"content": {}, "f3_status": "dry_run", "cost_usd": 0, "grounding_used": False, "url_context_used": False, "model": GEMINI_MODEL}
+            return {
+                "content": {},
+                "f3_status": "dry_run",
+                "cost_usd": 0,
+                "grounding_used": False,
+                "url_context_used": False,
+                "model": GEMINI_MODEL,
+            }
         result = await gemini_call_with_retry(
             api_key=self.api_key,
             system_prompt=system_prompt,

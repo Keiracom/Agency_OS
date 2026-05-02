@@ -9,12 +9,13 @@ Contract:
 
 Returns True if relay write succeeded, False otherwise. Wrapped — never raises.
 """
+
 from __future__ import annotations
 
 import logging
 import shutil
 import subprocess
-from typing import Iterable
+from collections.abc import Iterable
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +46,10 @@ def alert_on_deny(
     try:
         result = subprocess.run(
             [_TG_BIN, "-g", msg],
-            capture_output=True, text=True, timeout=_TIMEOUT_S, check=False,
+            capture_output=True,
+            text=True,
+            timeout=_TIMEOUT_S,
+            check=False,
         )
         return result.returncode == 0
     except (subprocess.TimeoutExpired, OSError) as exc:

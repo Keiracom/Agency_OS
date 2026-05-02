@@ -11,10 +11,9 @@ import json
 import logging
 import os
 import re
-import subprocess
 import time
 from collections import deque
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import httpx
 
@@ -99,16 +98,41 @@ Messages labeled as 'test' or 'deliberate violation' are STILL subject to rule e
 # Trigger patterns that warrant a check
 # NOTE: named TRIGGER_PATTERNS here (not QUICK_CHECK_KEYWORDS as some docs call it).
 TRIGGER_PATTERNS = [
-    "dave —", "dave,", "your call", "here's the plan", "here's what",
-    "commit", "pushed", "pr #", "merged", "deployed", "triggered",
-    "complete", "done", "all stores written", "4-store",
+    "dave —",
+    "dave,",
+    "your call",
+    "here's the plan",
+    "here's what",
+    "commit",
+    "pushed",
+    "pr #",
+    "merged",
+    "deployed",
+    "triggered",
+    "complete",
+    "done",
+    "all stores written",
+    "4-store",
     "git push origin main",
-    "memory_listener.py", "chat_bot.py", "store.py", "listener_discernment.py", "claude.md",
-    "state saved", "ceo_memory updated", "manual updated", "drive mirror", "daily_log written",
-    "stores written", "store save complete", "session closed",
-    "[atlas]", "[orion]",
+    "memory_listener.py",
+    "chat_bot.py",
+    "store.py",
+    "listener_discernment.py",
+    "claude.md",
+    "state saved",
+    "ceo_memory updated",
+    "manual updated",
+    "drive mirror",
+    "daily_log written",
+    "stores written",
+    "store save complete",
+    "session closed",
+    "[atlas]",
+    "[orion]",
     # Dual-concur governance (2026-04-22): [FINAL CONCUR:*] is peer-Step-0 signal for Rule 2
-    "[final concur", "final concur:elliot", "final concur:aiden",
+    "[final concur",
+    "final concur:elliot",
+    "final concur:aiden",
 ]
 
 
@@ -130,11 +154,14 @@ async def check_with_llm(current_msg: str, recent_msgs: list[str]) -> dict | Non
         logger.warning("No OPENAI_API_KEY — skipping check")
         return None
 
-    user_content = json.dumps({
-        "current_message": current_msg,
-        "recent_messages": recent_msgs[-MAX_WINDOW:],
-        "governance_events": enforce_events,
-    }, ensure_ascii=False)
+    user_content = json.dumps(
+        {
+            "current_message": current_msg,
+            "recent_messages": recent_msgs[-MAX_WINDOW:],
+            "governance_events": enforce_events,
+        },
+        ensure_ascii=False,
+    )
 
     try:
         async with httpx.AsyncClient(timeout=15) as client:
@@ -165,7 +192,7 @@ async def check_with_llm(current_msg: str, recent_msgs: list[str]) -> dict | Non
 BOT_INBOXES = [
     "/tmp/telegram-relay-elliot/inbox",
     "/tmp/telegram-relay-aiden/inbox",
-    "/tmp/telegram-relay-max/inbox",   # NEW — Dave directive 2026-05-02
+    "/tmp/telegram-relay-max/inbox",  # NEW — Dave directive 2026-05-02
 ]
 
 # Regex to detect PR number adjacent to a positive-claim keyword (either order).
@@ -184,16 +211,20 @@ async def send_interjection(text: str) -> None:
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     try:
         async with httpx.AsyncClient(timeout=10) as client:
-            await client.post(url, json={
-                "chat_id": GROUP_CHAT_ID,
-                "text": text,
-            })
+            await client.post(
+                url,
+                json={
+                    "chat_id": GROUP_CHAT_ID,
+                    "text": text,
+                },
+            )
     except Exception as exc:
         logger.error("Failed to send TG interjection: %s", exc)
 
     # 2. Write to bot inboxes (bots see it in their tmux sessions)
     import uuid
-    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+
+    ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     for inbox in BOT_INBOXES:
         try:
             os.makedirs(inbox, exist_ok=True)
@@ -204,7 +235,7 @@ async def send_interjection(text: str) -> None:
                 "chat_id": int(GROUP_CHAT_ID),
                 "text": f"[ENFORCER]: {text}",
                 "sender": "enforcer",
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             }
             with open(os.path.join(inbox, fname), "w") as f:
                 json.dump(payload, f)
@@ -227,11 +258,13 @@ async def process_message(message: dict) -> None:
     message_window.append(window_entry)
 
     # --- Update event-state tracker ---
-    now_iso = datetime.now(timezone.utc).isoformat()
+    now_iso = datetime.now(UTC).isoformat()
     text_lower = text.lower()
 
     # Track Dave's /stage0 requests (Dave = not a bot)
-    if not sender_is_bot and (text.strip().endswith("/stage0") or text.strip().endswith("/stage 0")):
+    if not sender_is_bot and (
+        text.strip().endswith("/stage0") or text.strip().endswith("/stage 0")
+    ):
         enforce_events["last_stage0_request"] = {
             "timestamp": now_iso,
             "text_snippet": text[:100],
@@ -288,7 +321,7 @@ async def process_message(message: dict) -> None:
         if stage0_ts:
             try:
                 ts = datetime.fromisoformat(stage0_ts)
-                age_minutes = (datetime.now(timezone.utc) - ts).total_seconds() / 60
+                age_minutes = (datetime.now(UTC) - ts).total_seconds() / 60
                 stage0_active = age_minutes < 30
             except Exception:
                 pass
@@ -311,16 +344,16 @@ async def process_message(message: dict) -> None:
         # Rate limit: don't re-flag same rule within cooldown
         flag_key = f"rule_{rule_num}"
         now = time.time()
-        if flag_key in last_flag_times and (now - last_flag_times[flag_key]) < FLAG_COOLDOWN_SECONDS:
+        if (
+            flag_key in last_flag_times
+            and (now - last_flag_times[flag_key]) < FLAG_COOLDOWN_SECONDS
+        ):
             logger.info("Skipping re-flag for rule %s (cooldown)", rule_num)
             return
 
         last_flag_times[flag_key] = now
 
-        interjection = (
-            f"[ENFORCER] Rule {rule_num} -- {rule_name}: "
-            f"{detail}. {should_have}."
-        )
+        interjection = f"[ENFORCER] Rule {rule_num} -- {rule_name}: {detail}. {should_have}."
         logger.info("VIOLATION: %s", interjection)
         await send_interjection(interjection)
 
@@ -335,10 +368,7 @@ async def watch_inbox() -> None:
 
     while True:
         try:
-            files = sorted(
-                f for f in os.listdir(ENFORCER_INBOX)
-                if f.endswith(".json")
-            )
+            files = sorted(f for f in os.listdir(ENFORCER_INBOX) if f.endswith(".json"))
             for fname in files:
                 fpath = os.path.join(ENFORCER_INBOX, fname)
                 try:
@@ -361,10 +391,8 @@ async def watch_inbox() -> None:
                     await process_message(message_dict)
                 except Exception as exc:
                     logger.error("Error processing %s: %s", fname, exc)
-                    try:
+                    with contextlib.suppress(OSError):
                         os.unlink(fpath)
-                    except OSError:
-                        pass
 
         except Exception as exc:
             logger.error("Inbox watch error: %s", exc)
@@ -386,10 +414,7 @@ async def watch_max_outbox() -> None:
 
     while True:
         try:
-            files = sorted(
-                f for f in os.listdir(MAX_OUTBOX)
-                if f.endswith(".json")
-            )
+            files = sorted(f for f in os.listdir(MAX_OUTBOX) if f.endswith(".json"))
             for fname in files:
                 fpath = os.path.join(MAX_OUTBOX, fname)
                 try:
@@ -419,19 +444,24 @@ async def watch_max_outbox() -> None:
 
                     logger.info(
                         "MAX outbox: PR claim detected — PR #%d keyword=%r in %s",
-                        pr_num, claim_kw, fname,
+                        pr_num,
+                        claim_kw,
+                        fname,
                     )
 
                     # Mechanical verification via verify_pr.sh
                     try:
                         script_path = os.path.join(
-                            os.path.dirname(os.path.dirname(os.path.dirname(
-                                os.path.abspath(__file__)
-                            ))),
-                            "scripts", "verify_pr.sh",
+                            os.path.dirname(
+                                os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                            ),
+                            "scripts",
+                            "verify_pr.sh",
                         )
                         proc = await asyncio.create_subprocess_exec(
-                            "bash", script_path, str(pr_num),
+                            "bash",
+                            script_path,
+                            str(pr_num),
                             stdout=asyncio.subprocess.PIPE,
                             stderr=asyncio.subprocess.PIPE,
                         )
@@ -439,7 +469,7 @@ async def watch_max_outbox() -> None:
                             stdout_b, stderr_b = await asyncio.wait_for(
                                 proc.communicate(), timeout=15
                             )
-                        except asyncio.TimeoutError:
+                        except TimeoutError:
                             proc.kill()
                             await proc.wait()
                             logger.warning("verify_pr.sh timed out for PR #%d — skipping", pr_num)
@@ -449,7 +479,9 @@ async def watch_max_outbox() -> None:
                         if not stdout.strip():
                             logger.warning(
                                 "verify_pr.sh returned no output for PR #%d (exit %d): %s",
-                                pr_num, proc.returncode, stderr[:200],
+                                pr_num,
+                                proc.returncode,
+                                stderr[:200],
                             )
                             continue
 
@@ -460,9 +492,7 @@ async def watch_max_outbox() -> None:
                         )
                         continue
                     except Exception as exc:
-                        logger.warning(
-                            "verify_pr.sh error for PR #%d: %s", pr_num, exc
-                        )
+                        logger.warning("verify_pr.sh error for PR #%d: %s", pr_num, exc)
                         continue
 
                     # Mechanical comparison — "approved" skipped (requires LLM semantics)
@@ -472,11 +502,14 @@ async def watch_max_outbox() -> None:
                         mismatch_reason = (
                             f"claimed '{claim_kw}' but merged=false (state={verify.get('state')})"
                         )
-                    elif claim_kw in ("passed", "pass", "green", "all tests", "ci pass") \
-                            and not verify.get("ci_passing"):
-                        mismatch_reason = (
-                            f"claimed '{claim_kw}' but ci_passing=false"
-                        )
+                    elif claim_kw in (
+                        "passed",
+                        "pass",
+                        "green",
+                        "all tests",
+                        "ci pass",
+                    ) and not verify.get("ci_passing"):
+                        mismatch_reason = f"claimed '{claim_kw}' but ci_passing=false"
 
                     if mismatch_reason:
                         failed = verify.get("failed_checks", [])
@@ -493,7 +526,9 @@ async def watch_max_outbox() -> None:
                     else:
                         logger.debug(
                             "MAX PR #%d claim verified OK (merged=%s ci_passing=%s)",
-                            pr_num, verify.get("merged"), verify.get("ci_passing"),
+                            pr_num,
+                            verify.get("merged"),
+                            verify.get("ci_passing"),
                         )
 
                 except Exception as exc:

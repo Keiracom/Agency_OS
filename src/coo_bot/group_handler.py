@@ -7,11 +7,12 @@ Public API:
     handle_group_message(update, context) — MessageHandler callback
     get_recent_messages(limit=20) -> list[dict]
 """
+
 from __future__ import annotations
 
 import logging
 from collections import deque
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from telegram import Update
@@ -27,9 +28,7 @@ _MAX_BUFFER = 50
 _buffer: deque[dict[str, Any]] = deque(maxlen=_MAX_BUFFER)
 
 
-async def handle_group_message(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
-) -> None:
+async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """MessageHandler callback for group chat messages.
 
     Filters out own messages and enforcer alerts, stores the rest in the
@@ -68,9 +67,9 @@ async def handle_group_message(
         u = update.message.from_user
         sender_name = u.username or u.full_name or str(u.id)
 
-    ts = datetime.now(tz=timezone.utc).isoformat()
+    ts = datetime.now(tz=UTC).isoformat()
     if update.message.date:
-        ts = update.message.date.astimezone(timezone.utc).isoformat()
+        ts = update.message.date.astimezone(UTC).isoformat()
 
     entry: dict[str, Any] = {
         "sender": sender_name,
@@ -105,8 +104,15 @@ async def _respond_in_group(update: Update, text: str, sender: str) -> None:
         # LAYER 1: Keyword pre-filter (instant, no LLM) — skip obvious non-Max chatter
         lowered = text.lower()
         skip_patterns = [
-            "[concur:", "[agree:", "[release:", "[claim:", "[queue-board]",
-            "[dispatch", "co-authored-by:", "commit ", "pushed to",
+            "[concur:",
+            "[agree:",
+            "[release:",
+            "[claim:",
+            "[queue-board]",
+            "[dispatch",
+            "co-authored-by:",
+            "commit ",
+            "pushed to",
         ]
         if any(pat in lowered for pat in skip_patterns) and "max" not in lowered:
             logger.debug("group_handler: pre-filter SKIP (pattern match)")
@@ -114,20 +120,45 @@ async def _respond_in_group(update: Update, text: str, sender: str) -> None:
 
         # Build context from recent buffer
         recent = "\n".join(
-            f"[{m.get('sender', '?')}] {m.get('text', '')[:100]}"
-            for m in list(_buffer)[-10:]
+            f"[{m.get('sender', '?')}] {m.get('text', '')[:100]}" for m in list(_buffer)[-10:]
         )
 
         # LAYER 2: Decide complexity — Haiku (fast) vs Opus (deep)
-        needs_tools = any(kw in lowered for kw in [
-            "read", "file", "check", "look at", "query", "show me",
-            "what's in", "cat ", "grep", "find", "database", "supabase",
-            "store", "manual", "claude.md", "architecture",
-        ])
-        needs_deep = needs_tools or any(kw in lowered for kw in [
-            "why", "diagnose", "explain", "analyse", "opinion", "think",
-            "strategy", "plan", "recommend",
-        ])
+        needs_tools = any(
+            kw in lowered
+            for kw in [
+                "read",
+                "file",
+                "check",
+                "look at",
+                "query",
+                "show me",
+                "what's in",
+                "cat ",
+                "grep",
+                "find",
+                "database",
+                "supabase",
+                "store",
+                "manual",
+                "claude.md",
+                "architecture",
+            ]
+        )
+        needs_deep = needs_tools or any(
+            kw in lowered
+            for kw in [
+                "why",
+                "diagnose",
+                "explain",
+                "analyse",
+                "opinion",
+                "think",
+                "strategy",
+                "plan",
+                "recommend",
+            ]
+        )
 
         # Select model: Haiku for routine, Opus for deep
         model = "claude-opus-4-6" if needs_deep else "claude-haiku-4-5"
@@ -143,7 +174,8 @@ async def _respond_in_group(update: Update, text: str, sender: str) -> None:
         )
 
         response = await opus_call(
-            get_system_prompt("dm"), classifier_prompt,
+            get_system_prompt("dm"),
+            classifier_prompt,
             timeout=timeout,
             model=model,
             with_tools=needs_tools,

@@ -17,6 +17,7 @@ Tier categories (per docs/architecture/MAX_COO_ARCHITECTURE.md):
 
 GOV-12: each tier check is a runtime conditional, not a comment.
 """
+
 from __future__ import annotations
 
 import logging
@@ -32,19 +33,25 @@ STOP_OVERRIDE_PATH = Path(
     )
 )
 
-TIER_1_ACTIONS: frozenset[str] = frozenset({
-    "governance_flag",
-    "dispatch_ack",
-})
-TIER_2_ACTIONS: frozenset[str] = frozenset({
-    "status_report",
-    "memory_write",
-    "log_query",
-})
-TIER_3_ACTIONS: frozenset[str] = frozenset({
-    "directive_issuance",
-    "peer_dispatch",
-})
+TIER_1_ACTIONS: frozenset[str] = frozenset(
+    {
+        "governance_flag",
+        "dispatch_ack",
+    }
+)
+TIER_2_ACTIONS: frozenset[str] = frozenset(
+    {
+        "status_report",
+        "memory_write",
+        "log_query",
+    }
+)
+TIER_3_ACTIONS: frozenset[str] = frozenset(
+    {
+        "directive_issuance",
+        "peer_dispatch",
+    }
+)
 
 
 def force_tier_zero() -> bool:
@@ -99,6 +106,4 @@ def can_post(action_type: str, current_tier: int | None = None) -> bool:
         return True
     if tier >= 2 and action_type in TIER_2_ACTIONS:
         return True
-    if tier >= 3 and action_type in TIER_3_ACTIONS:
-        return True
-    return False
+    return bool(tier >= 3 and action_type in TIER_3_ACTIONS)

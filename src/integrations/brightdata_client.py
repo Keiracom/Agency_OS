@@ -8,11 +8,9 @@ Consumers: src/pipeline/dm_identification.py
 brightdata_client.py — LinkedIn DM lookup via Bright Data Scrapers API.
 Directive #286 | Cost: $0.00075/record ($0.75/1000)
 """
+
 import asyncio
 import logging
-import re
-from dataclasses import dataclass
-from typing import Optional
 
 import httpx
 
@@ -20,9 +18,13 @@ from src.integrations.circuit_breaker import circuit_breaker
 
 logger = logging.getLogger(__name__)
 
-BRIGHTDATA_SCRAPER_KEY = "636a81d7-4f89-4fb5-904b-f1e195ec20d2"  # updated 2026-03-31 (Directive #300g+h)
+BRIGHTDATA_SCRAPER_KEY = (
+    "636a81d7-4f89-4fb5-904b-f1e195ec20d2"  # updated 2026-03-31 (Directive #300g+h)
+)
 DATASET_LINKEDIN_COMPANY = "gd_l1vikfnt1wgvvqz95w"
-DATASET_LINKEDIN_PROFILE = "gd_l1viktl72bvl7bjuj0"   # LinkedIn person profile dataset (confirmed 2026-04-01)
+DATASET_LINKEDIN_PROFILE = (
+    "gd_l1viktl72bvl7bjuj0"  # LinkedIn person profile dataset (confirmed 2026-04-01)
+)
 COST_PER_RECORD_USD = 0.00075
 
 # DM title priority (lower index = higher priority)
@@ -52,7 +54,7 @@ class BrightDataLinkedInClient:
 
     def __init__(self, api_key: str | None = None):
         self.api_key = api_key or BRIGHTDATA_SCRAPER_KEY
-        self._client: Optional[httpx.AsyncClient] = None
+        self._client: httpx.AsyncClient | None = None
 
     async def _get_client(self) -> httpx.AsyncClient:
         if self._client is None or self._client.is_closed:
@@ -62,8 +64,8 @@ class BrightDataLinkedInClient:
     async def lookup_company_people(
         self,
         company_name: str,
-        domain: Optional[str] = None,
-        linkedin_url: Optional[str] = None,
+        domain: str | None = None,
+        linkedin_url: str | None = None,
     ) -> list[dict]:
         """
         Returns list of dicts with keys: name, title, linkedin_url.
@@ -73,7 +75,9 @@ class BrightDataLinkedInClient:
             inputs = [{"url": linkedin_url}]
             discover_by = None
         else:
-            search_url = f"https://www.linkedin.com/search/results/companies/?keywords={company_name}"
+            search_url = (
+                f"https://www.linkedin.com/search/results/companies/?keywords={company_name}"
+            )
             inputs = [{"url": search_url}]
             discover_by = "keyword"
 
@@ -106,7 +110,7 @@ class BrightDataLinkedInClient:
         )
         return people
 
-    def pick_decision_maker(self, people: list[dict]) -> Optional[dict]:
+    def pick_decision_maker(self, people: list[dict]) -> dict | None:
         """
         Synchronous. Scores each person by DM_TITLE_PRIORITY.
         Returns best match with confidence, or None if list is empty.
@@ -151,7 +155,7 @@ class BrightDataLinkedInClient:
         self,
         dataset_id: str,
         inputs: list[dict],
-        discover_by: Optional[str] = None,
+        discover_by: str | None = None,
     ) -> list[dict]:
         """
         Trigger → poll → download pattern. 120s timeout (24 × 5s).
@@ -172,16 +176,18 @@ class BrightDataLinkedInClient:
         # Company dataset: async /trigger endpoint (returns snapshot_id, then poll)
         if dataset_id == DATASET_LINKEDIN_PROFILE:
             scrape_url = (
-                f"{base_url}/scrape?dataset_id={dataset_id}"
-                f"&notify=false&include_errors=true"
+                f"{base_url}/scrape?dataset_id={dataset_id}&notify=false&include_errors=true"
             )
             response = await client.post(
-                scrape_url, headers=headers,
+                scrape_url,
+                headers=headers,
                 json={"input": inputs},
                 timeout=300.0,  # synchronous — wait up to 5 min
             )
             if response.status_code >= 400:
-                raise ValueError(f"Bright Data API error: {response.status_code} {response.text[:200]}")
+                raise ValueError(
+                    f"Bright Data API error: {response.status_code} {response.text[:200]}"
+                )
             if not response.text.strip():
                 return []
             data = response.json()
@@ -202,7 +208,8 @@ class BrightDataLinkedInClient:
                 if prog.json().get("status") == "ready":
                     dl = await client.get(
                         f"{base_url}/snapshot/{snapshot_id_from_scrape}?format=json",
-                        headers=headers, timeout=60.0
+                        headers=headers,
+                        timeout=60.0,
                     )
                     dl.raise_for_status()
                     return dl.json()
@@ -257,7 +264,9 @@ class BrightDataLinkedInClient:
                 pass  # retry on transient network errors
 
         else:
-            raise TimeoutError(f"Bright Data scraper timed out after 300s (snapshot_id={snapshot_id})")
+            raise TimeoutError(
+                f"Bright Data scraper timed out after 300s (snapshot_id={snapshot_id})"
+            )
 
         # Download results
         data = await client.get(

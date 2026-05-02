@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 try:
     from src.integrations.supabase import get_db_session  # type: ignore
+
     _HAS_SUPABASE = True
 except ImportError:
     _HAS_SUPABASE = False
@@ -29,6 +30,7 @@ except ImportError:
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def handle_booking_webhook(payload: dict) -> dict:
     """Process a booking webhook from a calendar provider (Calendly, Cal.com, etc).
@@ -81,6 +83,7 @@ def handle_booking_webhook(payload: dict) -> dict:
 # Extraction — normalise across provider payload shapes
 # ---------------------------------------------------------------------------
 
+
 def extract_prospect_from_booking(payload: dict) -> dict:
     """Normalise email/name from Calendly and Cal.com webhook shapes.
 
@@ -131,6 +134,7 @@ def extract_prospect_from_booking(payload: dict) -> dict:
 # Deal creation — Supabase best-effort
 # ---------------------------------------------------------------------------
 
+
 def create_deal_from_booking(
     email: str,
     name: str,
@@ -160,6 +164,7 @@ def create_deal_from_booking(
 
     try:
         import asyncio
+
         asyncio.get_event_loop().run_until_complete(_persist_deal(deal))
         deal["persisted"] = True
     except Exception as exc:  # noqa: BLE001
@@ -172,6 +177,7 @@ async def _persist_deal(deal: dict) -> None:
     """Write deal row via SQLAlchemy session (best-effort inner coroutine)."""
     async with get_db_session() as db:
         from sqlalchemy import text  # lazy import
+
         await db.execute(
             text(
                 "INSERT INTO public.deals "
@@ -190,6 +196,7 @@ async def _persist_deal(deal: dict) -> None:
 # Cadence pause — marks prospect as booked in Supabase (best-effort)
 # ---------------------------------------------------------------------------
 
+
 def pause_prospect_cadence(email: str) -> dict:
     """Mark prospect as 'booked' to halt all outreach channels.
 
@@ -207,6 +214,7 @@ def pause_prospect_cadence(email: str) -> dict:
 
     try:
         import asyncio
+
         asyncio.get_event_loop().run_until_complete(_pause_in_db(email))
         result["paused"] = True
     except Exception as exc:  # noqa: BLE001
@@ -219,6 +227,7 @@ async def _pause_in_db(email: str) -> None:
     """Update prospect cadence_status via SQLAlchemy session."""
     async with get_db_session() as db:
         from sqlalchemy import text  # lazy import
+
         await db.execute(
             text(
                 "UPDATE public.prospects "

@@ -20,6 +20,7 @@ Design:
   - Missing secret in env -> rejection (fail loud in prod). Dev callers can
     set the secret to an empty string to opt out (explicit).
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -72,7 +73,9 @@ def compute_signature(secret: str, payload: bytes) -> str:
 
 
 def verify_signature(
-    secret_env: str, payload: bytes, signature: str | None,
+    secret_env: str,
+    payload: bytes,
+    signature: str | None,
 ) -> bool:
     """Pure verify. Returns True iff signature matches HMAC(secret_env, payload).
 
@@ -92,7 +95,9 @@ def verify_signature(
 
 
 def verify_provider(
-    provider: str, payload: bytes, signature: str | None,
+    provider: str,
+    payload: bytes,
+    signature: str | None,
 ) -> bool:
     spec = PROVIDERS.get(provider.lower())
     if spec is None:
@@ -120,7 +125,9 @@ async def require_signature(request, provider: str) -> bytes:
 
 
 def require_header_signature(
-    raw_body: bytes, signature: str | None, provider: str,
+    raw_body: bytes,
+    signature: str | None,
+    provider: str,
 ) -> None:
     """Sync variant for callers that already have the body (e.g. FastAPI
     dependency that captured body upstream). Raises HTTPException(401) on

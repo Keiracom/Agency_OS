@@ -17,6 +17,7 @@ Hook integration: .claude/settings.json `Stop` event invokes
 `scripts/governance_router.py` which calls `main()` here. ATLAS owns the
 PreToolUse hook entry; this hook is sequential and does not conflict.
 """
+
 from __future__ import annotations
 
 import json
@@ -24,10 +25,10 @@ import logging
 import os
 import sys
 from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, Literal
 
-from src.telegram_bot.openai_cost_logger import log_openai_call, COST_LOG_PATH
+from src.telegram_bot.openai_cost_logger import COST_LOG_PATH, log_openai_call
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +40,7 @@ _DEFAULT_DAILY_CAP_AUD = 5.00
 
 def _daily_cost_usd_today() -> float:
     """Sum estimated_cost_usd from COST_LOG_PATH for current UTC date. Best-effort."""
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    today = datetime.now(UTC).strftime("%Y-%m-%d")
     total = 0.0
     try:
         with open(COST_LOG_PATH, encoding="utf-8") as fh:
@@ -66,9 +67,9 @@ def _over_daily_cap() -> bool:
     spent_aud = _daily_cost_usd_today() * _USD_TO_AUD
     if spent_aud >= cap_aud:
         logger.warning(
-            "router: daily cap reached ($%.4f AUD of $%.2f AUD limit); "
-            "skipping OpenAI classifier",
-            spent_aud, cap_aud,
+            "router: daily cap reached ($%.4f AUD of $%.2f AUD limit); skipping OpenAI classifier",
+            spent_aud,
+            cap_aud,
         )
         return True
     return False
@@ -105,7 +106,7 @@ class RoutingDecision:
     audience: Audience
     force_tg: bool
     raw_response: str | None = None  # full classifier reply for audit
-    error: str | None = None         # populated on classifier failure
+    error: str | None = None  # populated on classifier failure
 
     def to_json(self) -> str:
         return json.dumps(asdict(self))
@@ -117,8 +118,10 @@ def _heuristic_fallback(text: str) -> RoutingDecision:
     side of NOT force-routing to TG — the goal is to never spam Dave on
     classifier failure."""
     lowered = text.lower()
-    if any(tag in text for tag in ("[ELLIOT]", "[AIDEN]", "[ATLAS:", "[ORION:",
-                                    "[CONCUR]", "[DIFFER]", "[CLAIM:")):
+    if any(
+        tag in text
+        for tag in ("[ELLIOT]", "[AIDEN]", "[ATLAS:", "[ORION:", "[CONCUR]", "[DIFFER]", "[CLAIM:")
+    ):
         return RoutingDecision(audience="peer", force_tg=False)
     # Strong Dave cues + a deliverable signature.
     has_dave_cue = (
@@ -178,13 +181,15 @@ def classify(
         # any failure (governance signals must NEVER block the assistant).
         try:
             from src.governance._mcp_helpers import governance_event_emit
+
             governance_event_emit(
                 callsign=cs,
                 event_type="router_cost_cap_reached",
                 event_data={
                     "spent_aud": round(_daily_cost_usd_today() * _USD_TO_AUD, 4),
-                    "cap_aud": float(os.environ.get(
-                        "ROUTER_DAILY_CAP_AUD", _DEFAULT_DAILY_CAP_AUD)),
+                    "cap_aud": float(
+                        os.environ.get("ROUTER_DAILY_CAP_AUD", _DEFAULT_DAILY_CAP_AUD)
+                    ),
                     "fallback": "heuristic_only",
                 },
                 tool_name="governance.router",
@@ -203,6 +208,7 @@ def classify(
         # missing). Emit a governance event so the absence is observable.
         try:
             from src.governance._mcp_helpers import governance_event_emit
+
             governance_event_emit(
                 callsign=cs,
                 event_type="router_heuristic_fallback",
@@ -262,11 +268,12 @@ def classify(
         if audience != "dave":
             force_tg = False
         return RoutingDecision(
-            audience=audience, force_tg=force_tg, raw_response=raw,
+            audience=audience,
+            force_tg=force_tg,
+            raw_response=raw,
         )
     except json.JSONDecodeError as exc:
-        logger.warning("router: classifier returned non-JSON (%s); raw=%r",
-                       exc, raw[:200])
+        logger.warning("router: classifier returned non-JSON (%s); raw=%r", exc, raw[:200])
         fallback = _heuristic_fallback(text)
         return RoutingDecision(
             audience=fallback.audience,

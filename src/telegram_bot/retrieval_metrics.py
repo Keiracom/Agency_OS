@@ -9,27 +9,99 @@ No LLM calls — pure string matching with proper tokenization.
 # Stopword list: English common + callsigns + AU business terms
 STOPWORDS = {
     # English common (top 50)
-    "about", "after", "again", "also", "back", "been", "before", "being",
-    "between", "both", "came", "come", "could", "does", "done", "each",
-    "even", "every", "from", "going", "have", "here", "into", "just",
-    "know", "like", "made", "make", "many", "more", "most", "much",
-    "must", "need", "only", "other", "over", "right", "same", "some",
-    "still", "such", "take", "than", "that", "them", "then", "there",
-    "these", "they", "this", "those", "through", "very", "want", "well",
-    "were", "what", "when", "where", "which", "while", "will", "with",
-    "would", "your",
+    "about",
+    "after",
+    "again",
+    "also",
+    "back",
+    "been",
+    "before",
+    "being",
+    "between",
+    "both",
+    "came",
+    "come",
+    "could",
+    "does",
+    "done",
+    "each",
+    "even",
+    "every",
+    "from",
+    "going",
+    "have",
+    "here",
+    "into",
+    "just",
+    "know",
+    "like",
+    "made",
+    "make",
+    "many",
+    "more",
+    "most",
+    "much",
+    "must",
+    "need",
+    "only",
+    "other",
+    "over",
+    "right",
+    "same",
+    "some",
+    "still",
+    "such",
+    "take",
+    "than",
+    "that",
+    "them",
+    "then",
+    "there",
+    "these",
+    "they",
+    "this",
+    "those",
+    "through",
+    "very",
+    "want",
+    "well",
+    "were",
+    "what",
+    "when",
+    "where",
+    "which",
+    "while",
+    "will",
+    "with",
+    "would",
+    "your",
     # Callsigns
-    "dave", "elliot", "aiden", "scout", "claude", "elliottbot",
+    "dave",
+    "elliot",
+    "aiden",
+    "scout",
+    "claude",
+    "elliottbot",
     # AU business / Agency OS domain
-    "agency", "client", "domain", "pipeline", "directive", "memory",
-    "save", "recall", "supabase", "stage", "manual",
+    "agency",
+    "client",
+    "domain",
+    "pipeline",
+    "directive",
+    "memory",
+    "save",
+    "recall",
+    "supabase",
+    "stage",
+    "manual",
 }
 
 
 def tokenize(text: str) -> list[str]:
     """Extract meaningful tokens: lowercase, strip punctuation, remove stopwords, 4+ chars only."""
     import re
-    words = re.findall(r'[a-zA-Z0-9]+', text.lower())
+
+    words = re.findall(r"[a-zA-Z0-9]+", text.lower())
     return [w for w in words if len(w) >= 4 and w not in STOPWORDS]
 
 
@@ -50,13 +122,15 @@ def compute_cited_flags(
         content = row.get("content", "")
         row_tokens = set(tokenize(content))
         shared = row_tokens & response_tokens
-        results.append({
-            "row_id": row.get("id", "unknown"),
-            "source_type": row.get("source_type", "unknown"),
-            "cited": len(shared) >= 2,
-            "shared_tokens": len(shared),
-            "total_row_tokens": len(row_tokens),
-        })
+        results.append(
+            {
+                "row_id": row.get("id", "unknown"),
+                "source_type": row.get("source_type", "unknown"),
+                "cited": len(shared) >= 2,
+                "shared_tokens": len(shared),
+                "total_row_tokens": len(row_tokens),
+            }
+        )
 
     return results
 
@@ -117,7 +191,7 @@ def generate_summary(cited_flags_list: list[list[dict]]) -> str:
         f"Retrieval Quality Summary ({total_retrievals} retrievals)",
         f"  Hit Rate@5: {hr:.1%}",
         f"  MRR@5: {mrr:.3f}",
-        f"  Source-type breakdown:",
+        "  Source-type breakdown:",
     ]
     for st, counts in sorted(breakdown.items()):
         rate = counts["cited"] / counts["total"] if counts["total"] else 0

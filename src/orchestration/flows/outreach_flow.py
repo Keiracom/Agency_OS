@@ -58,14 +58,14 @@ from src.models.base import (
 from src.models.campaign import Campaign
 from src.models.client import Client
 from src.models.lead import Lead
+from src.prefect_utils.completion_hook import on_completion_hook
+from src.prefect_utils.hooks import on_failure_hook
 from src.services.cis_service import get_cis_service
 from src.services.content_qa_service import (
     validate_email_content,
     validate_linkedin_content,
     validate_sms_content,
 )
-from src.prefect_utils.completion_hook import on_completion_hook
-from src.prefect_utils.hooks import on_failure_hook
 
 logger = logging.getLogger(__name__)
 
@@ -87,10 +87,10 @@ logger = logging.getLogger(__name__)
 #   - SMS (Telnyx):        $0.014  AUD per message
 #   - Voice (Telnyx 1min): $0.14   AUD per minute (see voice_agent_telnyx.py L23)
 CHANNEL_COST_AUD: dict[str, float] = {
-    "email":    0.0006,
+    "email": 0.0006,
     "linkedin": 0.10,
-    "sms":      0.014,
-    "voice":    0.14,
+    "sms": 0.014,
+    "voice": 0.14,
 }
 
 # OB-4: Per-domain AUD cap — hardcoded at $5/day for launch. Roadmap polish:
@@ -103,7 +103,7 @@ DEFAULT_DOMAIN_DAILY_AUD_CAP: float = 5.0
 # Per-customer per-tier daily AUD cap. Tracks src/config/settings.py SDK
 # budgets (which already exist, ratified via Stripe pricing).
 TIER_DAILY_AUD_CAP: dict[str, float] = {
-    "spark":    25.0,
+    "spark": 25.0,
     "ignition": 50.0,
     "velocity": 100.0,
     # dominance is deprecated per src/config/tiers.py — rows still tagged
@@ -133,20 +133,22 @@ def _emit_snapshot_failure_alert(stage: str, exc: Exception) -> None:
     logger.error(
         "outreach_budget_snapshot_alert stage=%s exc_type=%s: %s "
         "(in-memory gate untrusted — investigate prospect_telemetry / clients tables)",
-        stage, type(exc).__name__, exc,
+        stage,
+        type(exc).__name__,
+        exc,
     )
     try:
         from src.prefect_utils.failure_alert import send_failure_alert
+
         send_failure_alert(
             flow_name="hourly_outreach",
             flow_run_id=f"snapshot:{stage}",
             error_message=f"snapshot_outreach_spend {stage} fetch failed: "
-                          f"{type(exc).__name__}: {exc}",
+            f"{type(exc).__name__}: {exc}",
             timestamp=datetime.now(UTC).isoformat(),
         )
     except Exception as alert_exc:
-        logger.error("outreach_budget_snapshot_alert: telegram emit failed: %s",
-                     alert_exc)
+        logger.error("outreach_budget_snapshot_alert: telegram emit failed: %s", alert_exc)
 
 
 @task(name="snapshot_outreach_spend", retries=1, retry_delay_seconds=2)
@@ -178,7 +180,7 @@ async def snapshot_outreach_spend_task(
     independently.
     """
     snapshot: dict[str, dict[str, float]] = {
-        "by_client": {cid: 0.0 for cid in client_ids},
+        "by_client": dict.fromkeys(client_ids, 0.0),
         "by_domain": {d: 0.0 for d in domains if d},
         "by_client_credits": {},
         "by_client_tier": {},
@@ -239,9 +241,7 @@ async def snapshot_outreach_spend_task(
                  WHERE id = ANY(:client_ids::uuid[])
                    AND deleted_at IS NULL
             """)
-            result = await db.execute(
-                client_q, {"client_ids": [str(c) for c in client_ids]}
-            )
+            result = await db.execute(client_q, {"client_ids": [str(c) for c in client_ids]})
             for row in result:
                 snapshot["by_client_credits"][row.id] = int(row.credits_remaining or 0)
                 snapshot["by_client_tier"][row.id] = (row.tier or "ignition").lower()
@@ -1160,7 +1160,6 @@ async def send_linkedin_outreach_task(
     if timing_engine.is_weekend(timezone):
         from zoneinfo import ZoneInfo
 
-
         tz = ZoneInfo(timezone)
         today = datetime.now(tz).weekday()
 
@@ -1536,17 +1535,21 @@ async def hourly_outreach_flow(batch_size: int = 50) -> dict[str, Any]:
     # AUD spend per client + per domain, plus credits_remaining and tier.
     # The in-memory snapshot dict doubles as the shared counter advanced
     # by _admit_send() after each successful admission.
-    snapshot_client_ids = sorted({
-        lead_data["client_id"]
-        for channel_leads in leads_data["leads_by_channel"].values()
-        for lead_data in channel_leads
-    })
-    snapshot_domains = sorted({
-        (lead_data.get("domain") or "")
-        for channel_leads in leads_data["leads_by_channel"].values()
-        for lead_data in channel_leads
-        if lead_data.get("domain")
-    })
+    snapshot_client_ids = sorted(
+        {
+            lead_data["client_id"]
+            for channel_leads in leads_data["leads_by_channel"].values()
+            for lead_data in channel_leads
+        }
+    )
+    snapshot_domains = sorted(
+        {
+            (lead_data.get("domain") or "")
+            for channel_leads in leads_data["leads_by_channel"].values()
+            for lead_data in channel_leads
+            if lead_data.get("domain")
+        }
+    )
     spend_snapshot = await snapshot_outreach_spend_task(
         client_ids=snapshot_client_ids,
         domains=snapshot_domains,
@@ -1558,7 +1561,8 @@ async def hourly_outreach_flow(batch_size: int = 50) -> dict[str, Any]:
         if gate_skip is not None:
             logger.info(
                 "outreach_budget_gate refused: lead=%s channel=email reason=%s",
-                lead_data.get("lead_id"), gate_skip["reason"],
+                lead_data.get("lead_id"),
+                gate_skip["reason"],
             )
             results["email"].append(gate_skip)
             continue
@@ -1598,7 +1602,8 @@ async def hourly_outreach_flow(batch_size: int = 50) -> dict[str, Any]:
         if gate_skip is not None:
             logger.info(
                 "outreach_budget_gate refused: lead=%s channel=linkedin reason=%s",
-                lead_data.get("lead_id"), gate_skip["reason"],
+                lead_data.get("lead_id"),
+                gate_skip["reason"],
             )
             results["linkedin"].append(gate_skip)
             continue
@@ -1638,7 +1643,8 @@ async def hourly_outreach_flow(batch_size: int = 50) -> dict[str, Any]:
         if gate_skip is not None:
             logger.info(
                 "outreach_budget_gate refused: lead=%s channel=sms reason=%s",
-                lead_data.get("lead_id"), gate_skip["reason"],
+                lead_data.get("lead_id"),
+                gate_skip["reason"],
             )
             results["sms"].append(gate_skip)
             continue
@@ -1680,11 +1686,15 @@ async def hourly_outreach_flow(batch_size: int = 50) -> dict[str, Any]:
     # BU-CLOSED-LOOP-C1 — surface budget-cap skips so CIS / dashboards see
     # them as a first-class outcome rather than a generic failure.
     skipped_per_domain_cap = sum(
-        1 for ch in results.values() for r in ch
+        1
+        for ch in results.values()
+        for r in ch
         if r.get("reason") == "budget_cap_per_domain_exceeded"
     )
     skipped_per_customer_cap = sum(
-        1 for ch in results.values() for r in ch
+        1
+        for ch in results.values()
+        for r in ch
         if r.get("reason") == "budget_cap_per_customer_exceeded"
     )
 

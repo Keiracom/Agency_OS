@@ -15,10 +15,9 @@ import os
 import asyncpg
 from prefect import flow, task
 
+from src.pipeline.rescore_engine import RescoreEngine, RescoreResult
 from src.prefect_utils.completion_hook import on_completion_hook
 from src.prefect_utils.hooks import on_failure_hook
-
-from src.pipeline.rescore_engine import RescoreEngine, RescoreResult
 
 logger = logging.getLogger(__name__)
 

@@ -39,9 +39,7 @@ class WebhookEventLog(Base, UUIDMixin):
     )
     status: Mapped[str] = mapped_column(Text, nullable=False, default="processed")
 
-    __table_args__ = (
-        Index("idx_webhook_events_event_id", "event_id"),
-    )
+    __table_args__ = (Index("idx_webhook_events_event_id", "event_id"),)
 
     def __repr__(self) -> str:
         return (

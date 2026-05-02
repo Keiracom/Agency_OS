@@ -15,7 +15,7 @@ import json
 import logging
 import os
 import re
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 import asyncpg
@@ -23,7 +23,6 @@ import dns.resolver
 import httpx
 
 from src.integrations.httpx_scraper import HttpxScraper
-from src.pipeline.pipeline_orchestrator import GLOBAL_SEM_ABN  # shared ABN query semaphore
 
 SPIDER_API_URL = "https://api.spider.cloud/scrape"
 BATCH_SIZE = 50
@@ -36,11 +35,11 @@ AW_TAG_RE = re.compile(
     re.IGNORECASE,
 )
 GADS_RMK_RE = re.compile(
-    r'google_remarketing_only|google_conversion_id|googleads\.g\.doubleclick\.net',
+    r"google_remarketing_only|google_conversion_id|googleads\.g\.doubleclick\.net",
     re.IGNORECASE,
 )
 META_PIXEL_RE = re.compile(
-    r'connect\.facebook\.net|fbq\s*\(|facebook-jssdk',
+    r"connect\.facebook\.net|fbq\s*\(|facebook-jssdk",
     re.IGNORECASE,
 )
 
@@ -71,7 +70,7 @@ def _semantic_split(text: str, known_terms: frozenset[str]) -> list[str]:
     idx, term = matches[0]
 
     before = text[:idx]
-    after = text[idx + len(term):]
+    after = text[idx + len(term) :]
 
     result = []
     if before and len(before) >= 3:
@@ -85,6 +84,8 @@ def _semantic_split(text: str, known_terms: frozenset[str]) -> list[str]:
     # Drop short trailing fragments silently
 
     return result
+
+
 _RE_ABN_ENTITY_SUFFIXES = re.compile(
     r"\s*(PTY\.?\s*LTD\.?|PROPRIETARY\s+LIMITED|PTY\s+LIMITED|LIMITED"
     r"|LTD\.?|TRUST|TRADING\s+AS|T/A|ABN)\s*$",
@@ -148,20 +149,21 @@ DKIM_SELECTORS = ["google._domainkey", "selector1._domainkey", "default._domaink
 TEAM_SLUGS = ["/about", "/team", "/our-team", "/people", "/staff"]
 
 
-class ABNMatchConfidence(str, Enum):
-    EXACT   = "exact"    # >=90% similarity
+class ABNMatchConfidence(StrEnum):
+    EXACT = "exact"  # >=90% similarity
     PARTIAL = "partial"  # 60-89% similarity
-    LOW     = "low"      # <60% similarity
+    LOW = "low"  # <60% similarity
 
 
-class EmailMaturity(str, Enum):
-    PROFESSIONAL = "professional"   # custom domain MX + SPF
-    WEBMAIL      = "webmail"        # has MX but no SPF
-    NONE         = "none"           # no MX record
+class EmailMaturity(StrEnum):
+    PROFESSIONAL = "professional"  # custom domain MX + SPF
+    WEBMAIL = "webmail"  # has MX but no SPF
+    NONE = "none"  # no MX record
 
 
 class _SingleConnCtx:
     """Async context manager wrapping a single asyncpg Connection for pool-compatible usage."""
+
     __slots__ = ("_conn",)
 
     def __init__(self, conn: asyncpg.Connection) -> None:
@@ -213,10 +215,10 @@ class FreeEnrichment:
         """
         if not html:
             return {"has_google_ads_tag": False, "has_meta_pixel": False, "has_any_ad_tag": False}
-        aw    = bool(AW_TAG_RE.search(html))
-        rmk   = bool(GADS_RMK_RE.search(html))
-        meta  = bool(META_PIXEL_RE.search(html))
-        gads  = aw or rmk
+        aw = bool(AW_TAG_RE.search(html))
+        rmk = bool(GADS_RMK_RE.search(html))
+        meta = bool(META_PIXEL_RE.search(html))
+        gads = aw or rmk
         return {
             "has_google_ads_tag": gads,
             "has_meta_pixel": meta,
@@ -225,9 +227,7 @@ class FreeEnrichment:
 
     def _abn_confidence(self, search_name: str, api_name: str) -> ABNMatchConfidence:
         """Compute name similarity between search term and ABN registry name."""
-        ratio = difflib.SequenceMatcher(
-            None, search_name.lower(), api_name.lower()
-        ).ratio()
+        ratio = difflib.SequenceMatcher(None, search_name.lower(), api_name.lower()).ratio()
         if ratio >= 0.90:
             return ABNMatchConfidence.EXACT
         if ratio >= 0.60:
@@ -261,18 +261,30 @@ class FreeEnrichment:
             "dentistsatpymble.com.au" → ["dentists", "pymble"]
             "happy-dentistry.com.au" → ["happy", "dentistry"]
         """
-        from src.config.au_lexicon import BUSINESS_TERMS, AU_SUBURBS, DOMAIN_STOPWORDS
+        from src.config.au_lexicon import AU_SUBURBS, BUSINESS_TERMS, DOMAIN_STOPWORDS
 
         # Step 1: Strip protocol, www, TLD
         d = domain.lower().strip()
         for prefix in ("https://", "http://", "www."):
             d = d.removeprefix(prefix)
         # Strip AU TLDs
-        for suffix in (".com.au", ".net.au", ".org.au", ".id.au", ".asn.au",
-                       ".sydney", ".melbourne", ".perth", ".brisbane",
-                       ".com", ".net", ".org", ".au"):
+        for suffix in (
+            ".com.au",
+            ".net.au",
+            ".org.au",
+            ".id.au",
+            ".asn.au",
+            ".sydney",
+            ".melbourne",
+            ".perth",
+            ".brisbane",
+            ".com",
+            ".net",
+            ".org",
+            ".au",
+        ):
             if d.endswith(suffix):
-                d = d[:-len(suffix)]
+                d = d[: -len(suffix)]
                 break
 
         # Strip any remaining subdomain dots (take last segment)
@@ -328,9 +340,7 @@ class FreeEnrichment:
         params: list[str] = []
         for kw in keywords[:4]:  # cap at 4 to avoid over-constraining
             idx = len(params) + 1
-            conditions.append(
-                f"(LOWER(legal_name) LIKE ${idx} OR LOWER(trading_name) LIKE ${idx})"
-            )
+            conditions.append(f"(LOWER(legal_name) LIKE ${idx} OR LOWER(trading_name) LIKE ${idx})")
             params.append(f"%{kw}%")
         sql = (
             "SELECT abn, legal_name, trading_name, gst_registered, "
@@ -372,9 +382,7 @@ class FreeEnrichment:
     ) -> dict[str, Any]:
         """Build the standard abn_matched result dict from a local DB row."""
         api_name = row.get("trading_name") or row.get("legal_name") or ""
-        confidence = self._abn_confidence(
-            search_name, self._abn_clean_entity_name(api_name)
-        )
+        confidence = self._abn_confidence(search_name, self._abn_clean_entity_name(api_name))
         return {
             "abn_matched": True,
             "gst_registered": row["gst_registered"],
@@ -386,9 +394,7 @@ class FreeEnrichment:
             "abn_legal_name": row.get("legal_name") or "",
         }
 
-    def _compute_email_maturity(
-        self, mx_provider: str | None, has_spf: bool
-    ) -> EmailMaturity:
+    def _compute_email_maturity(self, mx_provider: str | None, has_spf: bool) -> EmailMaturity:
         """Classify email infrastructure maturity from MX provider + SPF presence."""
         if mx_provider is None:
             return EmailMaturity.NONE
@@ -445,9 +451,7 @@ class FreeEnrichment:
             return True
         # 4. Australian postcode pattern (4-digit, 2000-9999 range)
         AU_POSTCODE_RE = re.compile(r"\b[2-9]\d{3}\b")
-        if AU_POSTCODE_RE.search(html):
-            return True
-        return False
+        return bool(AU_POSTCODE_RE.search(html))
 
     async def run(self, limit: int = 500) -> dict:
         async with self._acquire() as conn:
@@ -498,7 +502,6 @@ class FreeEnrichment:
             if domain_alive:
                 website_data = await self._scrape_website(domain) or {}
             dns_data = self._enrich_dns(domain)
-            suburb = (website_data.get("website_address") or {}).get("suburb")
             abn_data = await self._match_abn(
                 domain,
                 website_data.get("title"),
@@ -601,7 +604,8 @@ class FreeEnrichment:
             except Exception as inner:
                 self._logger.warning(
                     "FreeEnrichment: failed to write exception filter_reason for %s: %s",
-                    domain, inner,
+                    domain,
+                    inner,
                 )
 
     async def _write_filter_reason(self, bu_id: str, reason: str) -> None:
@@ -611,7 +615,8 @@ class FreeEnrichment:
                 """UPDATE business_universe
                    SET filter_reason = $2, updated_at = NOW()
                    WHERE id = $1""",
-                bu_id, reason,
+                bu_id,
+                reason,
             )
 
     def _dns_precheck(self, domain: str) -> bool:
@@ -887,9 +892,9 @@ class FreeEnrichment:
             try:
                 row = await self._local_abn_match(domain_keywords, state_hint)
                 if row:
-                    r = _keep(self._abn_result_from_row(
-                        row, " ".join(domain_keywords), "domain_keywords"
-                    ))
+                    r = _keep(
+                        self._abn_result_from_row(row, " ".join(domain_keywords), "domain_keywords")
+                    )
                     if r:
                         return r
             except Exception as exc:
@@ -898,9 +903,9 @@ class FreeEnrichment:
         # ── Strategy 2: Title keyword intersection (local DB) ─────────────
         if title_cleaned:
             from src.config.au_lexicon import DOMAIN_STOPWORDS as _DS
+
             title_kw = [
-                w for w in re.split(r"\s+", title_cleaned.lower())
-                if len(w) > 2 and w not in _DS
+                w for w in re.split(r"\s+", title_cleaned.lower()) if len(w) > 2 and w not in _DS
             ]
             if len(title_kw) >= 1:
                 try:
@@ -919,17 +924,22 @@ class FreeEnrichment:
                 try:
                     row = await self._local_abn_match(suburb_kw, state_hint)
                     if row:
-                        r = _keep(self._abn_result_from_row(
-                            row, f"{suburb} {domain_keywords[0]}", "suburb_category"
-                        ))
+                        r = _keep(
+                            self._abn_result_from_row(
+                                row, f"{suburb} {domain_keywords[0]}", "suburb_category"
+                            )
+                        )
                         if r:
                             return r
                 except Exception as exc:
                     self._logger.debug("ABN strategy3 (suburb) failed %s: %s", domain, exc)
 
         # ── Strategy 4: Live ABN API fuzzy search ─────────────────────────
-        api_terms = [t for t in [title_cleaned, " ".join(domain_keywords) if domain_keywords else None]
-                     if t and len(t) >= 2]
+        api_terms = [
+            t
+            for t in [title_cleaned, " ".join(domain_keywords) if domain_keywords else None]
+            if t and len(t) >= 2
+        ]
         for api_term in api_terms:
             try:
                 from src.config.settings import settings
@@ -941,9 +951,7 @@ class FreeEnrichment:
                     continue
                 best = api_results[0]
                 api_name = best.get("business_name") or ""
-                confidence = self._abn_confidence(
-                    api_term, self._abn_clean_entity_name(api_name)
-                )
+                confidence = self._abn_confidence(api_term, self._abn_clean_entity_name(api_name))
                 abn_raw = (best.get("abn") or "").replace(" ", "")
                 gst, etype, reg_date = await self._local_abn_gst(abn_raw)
                 candidate = {

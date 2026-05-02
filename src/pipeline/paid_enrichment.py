@@ -96,9 +96,7 @@ async def affordability_gate(
     # Suppression cross-check BEFORE any paid-spend SQL. Skip-marker rows
     # whose contact emails match the suppression list — they never enter the
     # _check_gates loop and never reach DFS / GMB calls downstream.
-    suppressed_ids = await _suppression_cross_check(
-        conn, [str(r["id"]) for r in rows]
-    )
+    suppressed_ids = await _suppression_cross_check(conn, [str(r["id"]) for r in rows])
 
     passing: list[asyncpg.Record] = []
     failing: list[tuple[asyncpg.Record, str]] = []
@@ -270,7 +268,9 @@ class PaidEnrichment:
         for row in passing_rows:
             domain = row["domain"]
             bu_id = row["id"]
-            business_name = row.get("display_name") or row.get("gmb_name") or extract_business_name(domain)
+            business_name = (
+                row.get("display_name") or row.get("gmb_name") or extract_business_name(domain)
+            )
             try:
                 (
                     comp_result,
@@ -363,7 +363,9 @@ class PaidEnrichment:
 
             except Exception as exc:
                 self._logger.error("Intelligence enrichment error for %s: %s", domain, exc)
-                stats["errors"].append({"step": "intelligence", "domain": domain, "error": str(exc)})
+                stats["errors"].append(
+                    {"step": "intelligence", "domain": domain, "error": str(exc)}
+                )
 
         stats["intelligence_enriched"] = len(intel_results)
 

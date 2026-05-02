@@ -1,12 +1,21 @@
 """task_consumer.py — Poll queue, execute, verify, write result."""
-import time, os, sys
+
+import os
+import sys
+import time
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from src.evo.consumer_helpers import (
-    fetch_pending, claim_task, write_result, update_queue_status,
-    fail_task, invoke_agent_local, verify_output,
-)
-from src.evo.auth_gate import request_authorisation
 from src.evo.api_tracker import ApiTracker
+from src.evo.auth_gate import request_authorisation
+from src.evo.consumer_helpers import (
+    claim_task,
+    fail_task,
+    fetch_pending,
+    invoke_agent_local,
+    update_queue_status,
+    verify_output,
+    write_result,
+)
 from src.evo.tg_notify import tg_send
 
 
@@ -31,18 +40,32 @@ def run_consumer_once() -> int:
             agent_result = invoke_agent_local(agent_id, description)
             verified, verify_out = verify_output(vcmd, expected)
         status = "completed" if verified else "failed"
-        write_result(task_id, flow_run_id, agent_id, {
-            "status": status, "agent_output": agent_result.get("text", ""),
-            "verification_output": verify_out, "verified": verified,
-        }, tracker.get_counts())
+        write_result(
+            task_id,
+            flow_run_id,
+            agent_id,
+            {
+                "status": status,
+                "agent_output": agent_result.get("text", ""),
+                "verification_output": verify_out,
+                "verified": verified,
+            },
+            tracker.get_counts(),
+        )
         update_queue_status(task_id, status)
         if not tracker.check_budget(estimated_cost)["within_budget"]:
-            request_authorisation(task_id, flow_run_id, reason="API >120% estimate",
-                estimated=estimated_cost, actual=tracker.get_counts())
+            request_authorisation(
+                task_id,
+                flow_run_id,
+                reason="API >120% estimate",
+                estimated=estimated_cost,
+                actual=tracker.get_counts(),
+            )
     except Exception as e:
         fail_task(task_id, str(e))
         tg_send(f"[EVO consumer] task {task_id} failed: {e}")
     return 1
+
 
 if __name__ == "__main__":
     _consecutive_failures = 0

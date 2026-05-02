@@ -12,13 +12,12 @@ AU domain filter, blocklist, dedup, trajectory computation, writes to business_u
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import traceback
 import uuid
 from dataclasses import dataclass, field
 from decimal import Decimal
-from enum import Enum
+from enum import StrEnum
 from urllib.parse import urlparse
 
 import asyncpg
@@ -31,7 +30,7 @@ from src.utils.domain_blocklist import is_blocked
 logger = logging.getLogger(__name__)
 
 
-class DiscoverySource(str, Enum):
+class DiscoverySource(StrEnum):
     DOMAIN_CATEGORIES = "domain_categories"
     MAPS_SERP = "maps_serp"
 
@@ -230,11 +229,9 @@ class Layer2Discovery:
                     f"{traceback.format_exc()}"
                 )
                 raise
-            except (asyncio.TimeoutError, httpx.TimeoutException) as exc:
+            except (TimeoutError, httpx.TimeoutException) as exc:
                 # Timeouts are expected and non-fatal — log and skip this category
-                logger.warning(
-                    f"Layer2 [{vertical_slug}] category={code} DFS timeout: {exc}"
-                )
+                logger.warning(f"Layer2 [{vertical_slug}] category={code} DFS timeout: {exc}")
                 stats.source_errors.append(f"category={code}: timeout: {exc}")
                 continue
             except Exception as exc:
@@ -439,7 +436,9 @@ class Layer2Discovery:
                 paid_etv_min=0.0,
             )
         except Exception as exc:
-            logger.error("pull_batch: DFS error category=%s offset=%d: %s", category_code, offset, exc)
+            logger.error(
+                "pull_batch: DFS error category=%s offset=%d: %s", category_code, offset, exc
+            )
             return []
 
         filtered = [
@@ -447,7 +446,7 @@ class Layer2Discovery:
             for r in results
             if etv_min <= r.get("organic_etv", 0.0) <= etv_max
         ]
-        return filtered[offset: offset + limit]
+        return filtered[offset : offset + limit]
 
     async def run_batch(
         self,

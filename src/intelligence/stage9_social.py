@@ -5,6 +5,7 @@ Facebook deferred to post-launch.
 
 Pipeline F v2.1. Ratified: 2026-04-15.
 """
+
 from __future__ import annotations
 
 import logging

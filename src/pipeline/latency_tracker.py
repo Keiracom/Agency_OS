@@ -25,11 +25,12 @@ Usage::
     #   "slowest_stage": "stage3",
     # }
 """
+
 from __future__ import annotations
 
 import logging
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 logger = logging.getLogger(__name__)
 
@@ -41,13 +42,13 @@ class LatencyTracker:
         self.domain = domain
         self._stages: dict[str, dict] = {}
         self._run_start_mono = time.monotonic()
-        self._run_start_utc = datetime.now(timezone.utc)
+        self._run_start_utc = datetime.now(UTC)
 
     def start_stage(self, stage_name: str) -> None:
         """Record stage entry. Safe to call even if stage already started."""
         self._stages[stage_name] = {
             "_start_mono": time.monotonic(),
-            "start_utc": datetime.now(timezone.utc).isoformat(),
+            "start_utc": datetime.now(UTC).isoformat(),
         }
 
     def end_stage(self, stage_name: str) -> None:
@@ -57,7 +58,7 @@ class LatencyTracker:
             return
         end_mono = time.monotonic()
         stage = self._stages[stage_name]
-        stage["end_utc"] = datetime.now(timezone.utc).isoformat()
+        stage["end_utc"] = datetime.now(UTC).isoformat()
         stage["seconds"] = round(end_mono - stage["_start_mono"], 3)
 
     def report(self) -> dict:
@@ -73,11 +74,7 @@ class LatencyTracker:
         stage_times = [s["seconds"] for s in completed.values()]
         sorted_times = sorted(stage_times)
         p50 = sorted_times[len(sorted_times) // 2] if sorted_times else 0.0
-        slowest = (
-            max(completed.items(), key=lambda x: x[1]["seconds"])[0]
-            if completed
-            else "none"
-        )
+        slowest = max(completed.items(), key=lambda x: x[1]["seconds"])[0] if completed else "none"
 
         return {
             "domain": self.domain,

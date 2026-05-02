@@ -88,9 +88,11 @@ def route_prospect(
     score = cis_score if cis_score is not None else 0
     cis_supplied = cis_score is not None
 
-    sequence = _apply_cis_adjustments(
-        base_sequence, score, has_email, has_phone, has_linkedin
-    ) if cis_supplied else base_sequence
+    sequence = (
+        _apply_cis_adjustments(base_sequence, score, has_email, has_phone, has_linkedin)
+        if cis_supplied
+        else base_sequence
+    )
 
     # High CIS: voice > linkedin > email for personal touch
     if cis_supplied and score >= 85 and has_phone and primary == "email":
@@ -105,9 +107,7 @@ def route_prospect(
         reason += "+low_cis_email_only"
         email_touches = [t for t in sequence if t["channel"] == "email"]
         # Re-number touch indices to stay sequential
-        sequence = [
-            {**t, "touch": i + 1} for i, t in enumerate(email_touches)
-        ]
+        sequence = [{**t, "touch": i + 1} for i, t in enumerate(email_touches)]
 
     return {
         "primary_channel": primary,

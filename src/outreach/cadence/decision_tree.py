@@ -19,6 +19,7 @@ A low confidence (< CONFIDENCE_FLOOR) always downgrades to 'unclear' so
 the webhook layer can trigger LLM escalation or human review. The tree
 itself never calls the LLM — that's the webhook's job.
 """
+
 from __future__ import annotations
 
 import logging
@@ -35,10 +36,18 @@ CONFIDENCE_FLOOR = 0.7
 QUESTION_PAUSE_HOURS = 48
 OOO_RESUME_OFFSET_DAYS = 2
 
-VALID_ACTIONS = frozenset({
-    "cancel", "pause", "reschedule", "insert", "suppress", "escalate", "noop",
-    "create_prospect",
-})
+VALID_ACTIONS = frozenset(
+    {
+        "cancel",
+        "pause",
+        "reschedule",
+        "insert",
+        "suppress",
+        "escalate",
+        "noop",
+        "create_prospect",
+    }
+)
 
 
 @dataclass
@@ -49,8 +58,8 @@ class TouchMutation:
     touch_id: str | None = None
     new_scheduled_at: datetime | None = None
     reason: str = ""
-    channel: str | None = None            # for 'insert' mutations
-    sequence_step: int | None = None      # for 'insert' mutations
+    channel: str | None = None  # for 'insert' mutations
+    sequence_step: int | None = None  # for 'insert' mutations
     content: dict[str, Any] = field(default_factory=dict)
     extra: dict[str, Any] = field(default_factory=dict)
 
@@ -86,7 +95,8 @@ class CadenceDecisionTree:
         if confidence < CONFIDENCE_FLOOR and intent != "unclear":
             logger.info(
                 "decision_tree: intent=%s confidence=%.2f below floor — forcing unclear",
-                intent, confidence,
+                intent,
+                confidence,
             )
             intent = "unclear"
 
@@ -98,6 +108,7 @@ class CadenceDecisionTree:
 # Per-intent handlers — each returns list[TouchMutation]
 # ---------------------------------------------------------------------------
 
+
 def _cancel_all_pending(state: dict, reason: str) -> list[TouchMutation]:
     return [
         TouchMutation(action="cancel", touch_id=str(t["id"]), reason=reason)
@@ -107,13 +118,15 @@ def _cancel_all_pending(state: dict, reason: str) -> list[TouchMutation]:
 
 def _handle_positive(state: dict, extracted: dict) -> list[TouchMutation]:
     muts = _cancel_all_pending(state, "positive_reply — booking outreach next")
-    muts.append(TouchMutation(
-        action="insert",
-        channel="email",
-        sequence_step=0,
-        reason="send booking link in response to positive reply",
-        content={"template": "booking_offer", "extracted": extracted},
-    ))
+    muts.append(
+        TouchMutation(
+            action="insert",
+            channel="email",
+            sequence_step=0,
+            reason="send booking link in response to positive reply",
+            content={"template": "booking_offer", "extracted": extracted},
+        )
+    )
     # cadence_orchestrator agrees we should pause cycle here
     assert should_pause(str(state.get("lead_id", "")), "positive")
     return muts
@@ -121,13 +134,15 @@ def _handle_positive(state: dict, extracted: dict) -> list[TouchMutation]:
 
 def _handle_booking(state: dict, extracted: dict) -> list[TouchMutation]:
     muts = _cancel_all_pending(state, "booking_request — confirmation outreach next")
-    muts.append(TouchMutation(
-        action="insert",
-        channel="email",
-        sequence_step=0,
-        reason="send meeting confirmation in response to booking request",
-        content={"template": "meeting_confirmation", "extracted": extracted},
-    ))
+    muts.append(
+        TouchMutation(
+            action="insert",
+            channel="email",
+            sequence_step=0,
+            reason="send meeting confirmation in response to booking request",
+            content={"template": "meeting_confirmation", "extracted": extracted},
+        )
+    )
     return muts
 
 
@@ -162,76 +177,89 @@ def _handle_question(state: dict, _: dict) -> list[TouchMutation]:
     resume = datetime.now(UTC) + timedelta(hours=QUESTION_PAUSE_HOURS)
     muts: list[TouchMutation] = [
         TouchMutation(
-            action="pause", touch_id=str(t["id"]),
+            action="pause",
+            touch_id=str(t["id"]),
             new_scheduled_at=resume,
             reason=f"question — paused {QUESTION_PAUSE_HOURS}h for human answer",
         )
         for t in state.get("pending_touches", [])
     ]
-    muts.append(TouchMutation(
-        action="escalate", reason="question — human review required",
-        extra={"lead_id": state.get("lead_id")},
-    ))
+    muts.append(
+        TouchMutation(
+            action="escalate",
+            reason="question — human review required",
+            extra={"lead_id": state.get("lead_id")},
+        )
+    )
     return muts
 
 
 def _handle_referral(state: dict, extracted: dict) -> list[TouchMutation]:
     # Always log the referral against the original prospect's history.
-    muts: list[TouchMutation] = [TouchMutation(
-        action="noop",
-        reason="referral logged — sequence unchanged",
-        extra={
-            "referral_name": extracted.get("referral_name"),
-            "referral_email": extracted.get("referral_email"),
-            "lead_id": state.get("lead_id"),
-        },
-    )]
+    muts: list[TouchMutation] = [
+        TouchMutation(
+            action="noop",
+            reason="referral logged — sequence unchanged",
+            extra={
+                "referral_name": extracted.get("referral_name"),
+                "referral_email": extracted.get("referral_email"),
+                "lead_id": state.get("lead_id"),
+            },
+        )
+    ]
     # When a referral email is present, emit a create_prospect mutation so the
     # webhook executor can call cadence_orchestrator.create_prospect_from_referral.
     # The mutation carries the minimum payload the orchestrator needs.
     referral_email = extracted.get("referral_email")
     if referral_email:
-        muts.append(TouchMutation(
-            action="create_prospect",
-            reason="referral contains new prospect email — spawn cadence",
-            extra={
-                "source": "referral",
-                "referral_email": referral_email,
-                "referral_name": extracted.get("referral_name"),
-                "referred_by_lead_id": state.get("lead_id"),
-                "client_id": state.get("client_id"),
-            },
-        ))
+        muts.append(
+            TouchMutation(
+                action="create_prospect",
+                reason="referral contains new prospect email — spawn cadence",
+                extra={
+                    "source": "referral",
+                    "referral_email": referral_email,
+                    "referral_name": extracted.get("referral_name"),
+                    "referred_by_lead_id": state.get("lead_id"),
+                    "client_id": state.get("client_id"),
+                },
+            )
+        )
     return muts
 
 
 def _handle_unclear(state: dict, _: dict) -> list[TouchMutation]:
-    return [TouchMutation(
-        action="noop", reason="unclear intent — deferring to human review",
-        extra={"lead_id": state.get("lead_id")},
-    )]
+    return [
+        TouchMutation(
+            action="noop",
+            reason="unclear intent — deferring to human review",
+            extra={"lead_id": state.get("lead_id")},
+        )
+    ]
 
 
 _INTENT_HANDLERS = {
     "positive_interested": _handle_positive,
-    "booking_request":     _handle_booking,
-    "not_interested":      _handle_not_interested,
-    "unsubscribe":         _handle_unsubscribe,
-    "out_of_office":       _handle_ooo,
-    "question":            _handle_question,
-    "referral":            _handle_referral,
-    "unclear":             _handle_unclear,
+    "booking_request": _handle_booking,
+    "not_interested": _handle_not_interested,
+    "unsubscribe": _handle_unsubscribe,
+    "out_of_office": _handle_ooo,
+    "question": _handle_question,
+    "referral": _handle_referral,
+    "unclear": _handle_unclear,
 }
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _suppress_mutation(state: dict, *, reason: str) -> TouchMutation:
     """Build a suppress mutation; actual SuppressionManager call is deferred to executor."""
     email = (state.get("prospect") or {}).get("email") or ""
     return TouchMutation(
-        action="suppress", reason=reason,
+        action="suppress",
+        reason=reason,
         extra={
             "email": email,
             "suppression_reason": reason,

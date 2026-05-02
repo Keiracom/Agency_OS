@@ -15,6 +15,7 @@ Fields (per dispatch GOV-PHASE1-TRACK-B / B3):
   source             — 'dave' | 'parent_bot' | 'self'
   ratified_at        — ISO timestamp
 """
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -27,20 +28,24 @@ class DirectiveContract(BaseModel):
     """Structured shape of a directive dispatched to a bot or clone."""
 
     model_config = ConfigDict(
-        extra="forbid",            # Anthropic structured outputs reject unknown keys
+        extra="forbid",  # Anthropic structured outputs reject unknown keys
         str_strip_whitespace=True,
     )
 
     intent: str = Field(
-        ..., min_length=1, max_length=500,
+        ...,
+        min_length=1,
+        max_length=500,
         description="One-line objective. Must be answerable as a single goal.",
     )
     context: str = Field(
-        default="", max_length=4000,
+        default="",
+        max_length=4000,
         description="Background paragraph — why now, what changed.",
     )
     latitude: str = Field(
-        default="", max_length=2000,
+        default="",
+        max_length=2000,
         description="What the bot may decide autonomously vs what must escalate.",
     )
     frozen_artifacts: list[str] = Field(
@@ -48,7 +53,8 @@ class DirectiveContract(BaseModel):
         description="Files / branches / states that must NOT be modified.",
     )
     success_criteria: list[str] = Field(
-        default_factory=list, min_length=0,
+        default_factory=list,
+        min_length=0,
         description="Acceptance gates. Empty list = no formal gates (rare).",
     )
     scope_in: list[str] = Field(
@@ -60,7 +66,8 @@ class DirectiveContract(BaseModel):
         description="Explicit out-of-scope items.",
     )
     spend_aud_cap: float = Field(
-        default=0.0, ge=0,
+        default=0.0,
+        ge=0,
         description="AUD spend ceiling for executing this directive. 0 = read-only.",
     )
     step0_exemption: bool = Field(
@@ -68,13 +75,15 @@ class DirectiveContract(BaseModel):
         description="True for clone dispatches under Clone Step 0 Exemption.",
     )
     source: Literal["dave", "parent_bot", "self"] = Field(
-        ..., description="Who originated the directive.",
+        ...,
+        description="Who originated the directive.",
     )
     ratified_at: datetime = Field(
         default_factory=datetime.utcnow,
         description="When the directive was ratified.",
     )
     task_ref: str = Field(
-        default="", max_length=200,
+        default="",
+        max_length=200,
         description="Short reference label (e.g. 'GOV-PHASE1-TRACK-B').",
     )

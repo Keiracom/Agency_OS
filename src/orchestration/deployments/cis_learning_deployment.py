@@ -15,31 +15,32 @@ to flow.serve() per Prefect 3 docs. The CONFIG dicts are the single
 source of truth and importable for tests; the __main__ block hands them
 to flow.serve() to start the deployment server.
 """
+
 from src.orchestration.flows.cis_learning_flow import cis_learning_flow
 
 # Weekly deployment — runs every Sunday at 3 AM UTC
 WEEKLY_CONFIG = {
-    "name":        "cis-weekly",
-    "version":     "1.0.0",
-    "tags":        ["cis", "learning", "weekly", "directive-147"],
+    "name": "cis-weekly",
+    "version": "1.0.0",
+    "tags": ["cis", "learning", "weekly", "directive-147"],
     "description": (
         "Directive #147: CIS Learning Engine - Weekly weight adjustment. "
         "Analyzes meeting outcomes and adjusts propensity weights for "
         "continuous improvement. This is the moat."
     ),
-    "cron":        "0 3 * * 0",  # Every Sunday at 3:00 AM UTC
+    "cron": "0 3 * * 0",  # Every Sunday at 3:00 AM UTC
     "parameters": {
         "customer_id": None,  # Global weights
-        "run_type":    "weekly",
+        "run_type": "weekly",
     },
 }
 
 
 # Manual / on-demand deployment — no schedule
 MANUAL_CONFIG = {
-    "name":        "cis-manual",
-    "version":     "1.0.0",
-    "tags":        ["cis", "learning", "manual", "directive-147"],
+    "name": "cis-manual",
+    "version": "1.0.0",
+    "tags": ["cis", "learning", "manual", "directive-147"],
     "description": (
         "Directive #147: CIS Learning Engine - Manual trigger. "
         "Use for testing or forced weight updates."
@@ -47,7 +48,7 @@ MANUAL_CONFIG = {
     # No 'cron' key — Prefect interprets absence as no schedule.
     "parameters": {
         "customer_id": None,
-        "run_type":    "manual",
+        "run_type": "manual",
     },
 }
 
@@ -68,6 +69,7 @@ def serve_both() -> None:
     weekly = cis_learning_flow.to_deployment(**WEEKLY_CONFIG)
     manual = cis_learning_flow.to_deployment(**MANUAL_CONFIG)
     from prefect import serve as _serve
+
     _serve(weekly, manual)
 
 
@@ -75,5 +77,7 @@ if __name__ == "__main__":
     print("Serving: cis-learning-engine/cis-weekly + cis-manual")
     print("Run weekly:    prefect deployment run 'cis-learning-engine/cis-weekly'")
     print("Run manual:    prefect deployment run 'cis-learning-engine/cis-manual'")
-    print("With customer: prefect deployment run 'cis-learning-engine/cis-manual' -p customer_id=<uuid>")
+    print(
+        "With customer: prefect deployment run 'cis-learning-engine/cis-manual' -p customer_id=<uuid>"
+    )
     serve_both()

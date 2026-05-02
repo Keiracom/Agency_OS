@@ -41,7 +41,10 @@ OPERATOR_SECRET_ENV = "OPERATOR_WEBHOOK_SECRET"
 
 
 def _require_operator_signature(
-    x_signature: str | None, client_id: UUID, approval_id: UUID, action: str,
+    x_signature: str | None,
+    client_id: UUID,
+    approval_id: UUID,
+    action: str,
 ) -> None:
     """HMAC gate for operator actions. When OPERATOR_WEBHOOK_SECRET is set
     (production), the X-Signature header is MANDATORY — missing or invalid

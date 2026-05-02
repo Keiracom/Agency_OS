@@ -11,13 +11,15 @@ Handlers:
 
 Uses Restate durable state (ctx.get/ctx.set) so state survives crashes/restarts.
 """
+
 from __future__ import annotations
 
 from typing import Any
 
 # restate-sdk imports — pinned to 0.17.x. SDK 0.17 removed restate.server.app
 # in favour of the top-level restate.app() factory; see requirements.txt pin.
-from restate import ObjectContext, VirtualObject, app as restate_app
+from restate import ObjectContext, VirtualObject
+from restate import app as restate_app
 
 # ---------------------------------------------------------------------------
 # State schema (stored per directive_id key in Restate durable store)

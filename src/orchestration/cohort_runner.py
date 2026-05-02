@@ -8,6 +8,7 @@ Usage:
 
 Pipeline F v2.1. Directive D1.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -36,9 +37,6 @@ from src.clients.dfs_labs_client import DFSLabsClient
 from src.config.category_etv_windows import CATEGORY_ETV_WINDOWS, get_etv_window
 from src.integrations.bright_data_client import BrightDataClient
 from src.integrations.leadmagic import LeadmagicClient
-from src.pipeline.contactout_enricher import enrich_dm_via_contactout
-from src.pipeline.email_waterfall import discover_email
-from src.pipeline.mobile_waterfall import run_mobile_waterfall
 from src.intelligence.dfs_signal_bundle import build_signal_bundle
 from src.intelligence.enhanced_vr import run_stage10_vr_and_messaging
 from src.intelligence.funnel_classifier import assemble_card
@@ -49,8 +47,11 @@ from src.intelligence.serp_verify import run_serp_verify
 from src.intelligence.stage6_enrich import run_stage6_enrich
 from src.intelligence.stage9_social import run_stage9_social
 from src.intelligence.verify_fills import run_verify_fills
-from src.utils.domain_blocklist import is_blocked
+from src.pipeline.contactout_enricher import enrich_dm_via_contactout
+from src.pipeline.email_waterfall import discover_email
 from src.pipeline.latency_tracker import LatencyTracker
+from src.pipeline.mobile_waterfall import run_mobile_waterfall
+from src.utils.domain_blocklist import is_blocked
 
 logger = logging.getLogger(__name__)
 
@@ -92,7 +93,10 @@ async def _persist_drop_reason(domain_data: dict) -> None:
 
     try:
         if _get_supabase is None:
-            logger.warning("Supabase integration unavailable — skipping rejection_reason persist for %s", domain)
+            logger.warning(
+                "Supabase integration unavailable — skipping rejection_reason persist for %s",
+                domain,
+            )
             return
         sb = await _get_supabase()
         await (
@@ -105,6 +109,7 @@ async def _persist_drop_reason(domain_data: dict) -> None:
         logger.debug("Persisted rejection_reason=%s for domain=%s", rejection_reason, domain)
     except Exception as exc:
         logger.warning("Could not persist rejection_reason for %s: %s", domain, exc)
+
 
 # ---------------------------------------------------------------------------
 # Category map (name -> DFS category code)
@@ -123,10 +128,10 @@ CATEGORY_MAP: dict[str, int] = {
     "fitness": 10123,
     "veterinary": 11979,
     # D2.2-PREP: 4 new verticals (verified via DFS API, offset_start=50 recommended)
-    "recruitment": 12371,    # Recruiting & Retention — HIGH confidence
-    "itmsp": 12202,          # Computer Tech Support — MEDIUM confidence (narrow ETV)
-    "webdev": 11493,         # Web Design & Development — MEDIUM-HIGH confidence
-    "coaching": 11098,       # Management Consulting (proxy for business coaching) — HIGH confidence
+    "recruitment": 12371,  # Recruiting & Retention — HIGH confidence
+    "itmsp": 12202,  # Computer Tech Support — MEDIUM confidence (narrow ETV)
+    "webdev": 11493,  # Web Design & Development — MEDIUM-HIGH confidence
+    "coaching": 11098,  # Management Consulting (proxy for business coaching) — HIGH confidence
 }
 
 # ---------------------------------------------------------------------------
@@ -137,8 +142,8 @@ CATEGORY_MAP: dict[str, int] = {
 STAGE2_COST_PER_DOMAIN = 0.010  # 5 SERP queries × $0.002
 STAGE4_COST_PER_DOMAIN = 0.078  # 10 DFS endpoints sum = $0.0775, rounded up
 STAGE6_COST_PER_DOMAIN = 0.106  # historical_rank_overview
-STAGE8_SERP_FALLBACK = 0.008    # verify_fills SERP cost if _cost field missing
-STAGE8_WATERFALL_COST = 0.015   # scraper ($0.004) + ContactOut (~$0.011)
+STAGE8_SERP_FALLBACK = 0.008  # verify_fills SERP cost if _cost field missing
+STAGE8_WATERFALL_COST = 0.015  # scraper ($0.004) + ContactOut (~$0.011)
 STAGE9_COST_PER_DOMAIN = 0.027  # BD LinkedIn DM ($0.002) + company ($0.025)
 
 # ---------------------------------------------------------------------------
@@ -346,7 +351,9 @@ async def _persist_stage4_to_bu(domain: str, bundle: dict) -> None:
             finally:
                 await conn.close()
         except Exception as exc2:
-            logger.error("H3 stage4 BU write FAILED permanently for %s: %s (GOV-8 data loss)", domain, exc2)
+            logger.error(
+                "H3 stage4 BU write FAILED permanently for %s: %s (GOV-8 data loss)", domain, exc2
+            )
 
 
 async def _run_stage4(domain_data: dict, dfs: DFSLabsClient) -> dict:
@@ -456,7 +463,12 @@ def _source_to_tier(source: str) -> str:
     }.get(source, f"UNKNOWN:{source}")
 
 
-async def _run_stage8(domain_data: dict, dfs: DFSLabsClient, bd: BrightDataClient | None = None, lm: LeadmagicClient | None = None) -> dict:
+async def _run_stage8(
+    domain_data: dict,
+    dfs: DFSLabsClient,
+    bd: BrightDataClient | None = None,
+    lm: LeadmagicClient | None = None,
+) -> dict:
     """Stage 8 CONTACT — verify fills (8a) + unified contact waterfall (8b-d)."""
     _tracker(domain_data).start_stage("stage8")
     t0 = time.monotonic()
@@ -506,7 +518,9 @@ async def _run_stage8(domain_data: dict, dfs: DFSLabsClient, bd: BrightDataClien
 
     email_result = None
     try:
-        dm_verified = bool((identity.get("dm_candidate") or {}).get("_dm_verified") or identity.get("_dm_verified"))
+        dm_verified = bool(
+            (identity.get("dm_candidate") or {}).get("_dm_verified") or identity.get("_dm_verified")
+        )
         email_result = await discover_email(
             domain=domain_data["domain"],
             dm_name=dm.get("name", ""),
@@ -562,10 +576,18 @@ async def _run_stage8(domain_data: dict, dfs: DFSLabsClient, bd: BrightDataClien
         "match_type": "direct_match" if dm_linkedin else "no_match",
     }
     # Tier tracking for GOV-8 verification
-    contacts["email_resolved_at_tier"] = _source_to_tier(email_result.source if email_result else "none")
-    contacts["email_resolved_by_provider"] = email_result.source if email_result and email_result.email else None
-    contacts["mobile_resolved_at_tier"] = _source_to_tier(mobile_result.source if mobile_result else "none")
-    contacts["mobile_resolved_by_provider"] = mobile_result.source if mobile_result and mobile_result.mobile else None
+    contacts["email_resolved_at_tier"] = _source_to_tier(
+        email_result.source if email_result else "none"
+    )
+    contacts["email_resolved_by_provider"] = (
+        email_result.source if email_result and email_result.email else None
+    )
+    contacts["mobile_resolved_at_tier"] = _source_to_tier(
+        mobile_result.source if mobile_result else "none"
+    )
+    contacts["mobile_resolved_by_provider"] = (
+        mobile_result.source if mobile_result and mobile_result.mobile else None
+    )
 
     domain_data["stage8_contacts"] = contacts
 
@@ -641,7 +663,9 @@ async def _persist_stage9_social_to_bu(domain: str, social_result: dict) -> None
         finally:
             await conn.close()
     except Exception as exc:
-        logger.warning("H2 stage9 social BU write attempt 1 failed for %s: %s — retrying", domain, exc)
+        logger.warning(
+            "H2 stage9 social BU write attempt 1 failed for %s: %s — retrying", domain, exc
+        )
         try:
             await asyncio.sleep(1)
             conn = await _asyncpg.connect(db_url, statement_cache_size=0)
@@ -659,7 +683,11 @@ async def _persist_stage9_social_to_bu(domain: str, social_result: dict) -> None
             finally:
                 await conn.close()
         except Exception as exc2:
-            logger.error("H2 stage9 social BU write FAILED permanently for %s: %s (GOV-8 data loss)", domain, exc2)
+            logger.error(
+                "H2 stage9 social BU write FAILED permanently for %s: %s (GOV-8 data loss)",
+                domain,
+                exc2,
+            )
 
 
 async def _run_stage10(domain_data: dict) -> dict:
@@ -737,22 +765,25 @@ def _write_outputs(pipeline: list[dict], output_dir: Path) -> None:
 
 def _build_summary(pipeline: list[dict], wall_s: float) -> dict:
     def _survived_after(stage: str) -> int:
-        return sum(
-            1
-            for d in pipeline
-            if not d.get("dropped_at") or d["dropped_at"] > stage
-        )
+        return sum(1 for d in pipeline if not d.get("dropped_at") or d["dropped_at"] > stage)
 
     total_cost = sum(d["cost_usd"] for d in pipeline)
-    cards = sum(
-        1 for d in pipeline if (d.get("stage11") or {}).get("lead_pool_eligible")
-    )
-    drop_reasons: Counter = Counter(
-        d["drop_reason"] for d in pipeline if d.get("drop_reason")
-    )
+    cards = sum(1 for d in pipeline if (d.get("stage11") or {}).get("lead_pool_eligible"))
+    drop_reasons: Counter = Counter(d["drop_reason"] for d in pipeline if d.get("drop_reason"))
 
     per_stage_timing: dict[str, float] = {}
-    for stage_key in ("stage2", "stage3", "stage4", "stage5", "stage6", "stage7", "stage8", "stage9", "stage10", "stage11"):
+    for stage_key in (
+        "stage2",
+        "stage3",
+        "stage4",
+        "stage5",
+        "stage6",
+        "stage7",
+        "stage8",
+        "stage9",
+        "stage10",
+        "stage11",
+    ):
         timings = [d["timings"].get(stage_key) for d in pipeline if d["timings"].get(stage_key)]
         if timings:
             per_stage_timing[stage_key] = round(sorted(timings)[len(timings) // 2], 2)
@@ -830,7 +861,10 @@ async def run_cohort(
     budget_hard_cap = estimated_total * 5
     logger.info(
         "PRE-RUN ESTIMATE: %d domains × $%.2f = $%.2f USD. Hard cap: $%.2f",
-        total_requested, estimated_cost_per_domain, estimated_total, budget_hard_cap,
+        total_requested,
+        estimated_cost_per_domain,
+        estimated_total,
+        budget_hard_cap,
     )
     _tg(
         f"Pre-run estimate: {total_requested} domains × $0.25 = ${estimated_total:.2f}. "
@@ -849,7 +883,9 @@ async def run_cohort(
                 logger.warning("Domain %s has no TLD — skipping", d)
                 continue
             if is_blocked(d) and not force_replay:
-                logger.warning("Domain %s is in blocklist — skipping (use --force-replay to override)", d)
+                logger.warning(
+                    "Domain %s is in blocklist — skipping (use --force-replay to override)", d
+                )
                 continue
             all_domain_items.append(_new_domain(d, "replay"))
         logger.info("Direct injection: %d domains (bypassed Stage 1)", len(all_domain_items))
@@ -886,7 +922,9 @@ async def run_cohort(
 
             logger.info("  %s: %d domains discovered", cat_name, added)
 
-        _tg(f"Stage 1 DISCOVER complete: {len(all_domain_items)} domains across {len(categories)} categories")
+        _tg(
+            f"Stage 1 DISCOVER complete: {len(all_domain_items)} domains across {len(categories)} categories"
+        )
 
     if domains:
         # all_domain_items already contains _new_domain() dicts (injected above)
@@ -910,13 +948,21 @@ async def run_cohort(
         return sum(d["cost_usd"] for d in pipeline)
 
     # Stage 2
-    updated = await run_parallel(pipeline, lambda d: _run_stage2(d, dfs), concurrency=30, label="Stage 2 VERIFY")
+    updated = await run_parallel(
+        pipeline, lambda d: _run_stage2(d, dfs), concurrency=30, label="Stage 2 VERIFY"
+    )
     pipeline = updated
     _tg_progress("Stage 2 VERIFY", pipeline, _total_cost())
     if _check_budget(pipeline, budget_hard_cap):
         cost_now = _total_cost()
-        logger.error("BUDGET HARD CAP EXCEEDED: $%.2f > $%.2f. Saving partial results.", cost_now, budget_hard_cap)
-        _tg(f"BUDGET KILL: ${cost_now:.2f} exceeds cap ${budget_hard_cap:.2f}. Partial results saved.")
+        logger.error(
+            "BUDGET HARD CAP EXCEEDED: $%.2f > $%.2f. Saving partial results.",
+            cost_now,
+            budget_hard_cap,
+        )
+        _tg(
+            f"BUDGET KILL: ${cost_now:.2f} exceeds cap ${budget_hard_cap:.2f}. Partial results saved."
+        )
         await dfs.close()
         wall_s = time.monotonic() - wall_start
         summary = _build_summary(pipeline, wall_s)
@@ -927,13 +973,21 @@ async def run_cohort(
 
     # Stage 3
     active3 = _active(pipeline)
-    updated3 = await run_parallel(active3, lambda d: _run_stage3(d, gemini), concurrency=20, label="Stage 3 IDENTIFY")
+    updated3 = await run_parallel(
+        active3, lambda d: _run_stage3(d, gemini), concurrency=20, label="Stage 3 IDENTIFY"
+    )
     _merge(pipeline, updated3)
     _tg_progress("Stage 3 IDENTIFY", pipeline, _total_cost())
     if _check_budget(pipeline, budget_hard_cap):
         cost_now = _total_cost()
-        logger.error("BUDGET HARD CAP EXCEEDED: $%.2f > $%.2f. Saving partial results.", cost_now, budget_hard_cap)
-        _tg(f"BUDGET KILL: ${cost_now:.2f} exceeds cap ${budget_hard_cap:.2f}. Partial results saved.")
+        logger.error(
+            "BUDGET HARD CAP EXCEEDED: $%.2f > $%.2f. Saving partial results.",
+            cost_now,
+            budget_hard_cap,
+        )
+        _tg(
+            f"BUDGET KILL: ${cost_now:.2f} exceeds cap ${budget_hard_cap:.2f}. Partial results saved."
+        )
         await dfs.close()
         wall_s = time.monotonic() - wall_start
         summary = _build_summary(pipeline, wall_s)
@@ -944,13 +998,21 @@ async def run_cohort(
 
     # Stage 4
     active4 = _active(pipeline)
-    updated4 = await run_parallel(active4, lambda d: _run_stage4(d, dfs), concurrency=20, label="Stage 4 SIGNAL")
+    updated4 = await run_parallel(
+        active4, lambda d: _run_stage4(d, dfs), concurrency=20, label="Stage 4 SIGNAL"
+    )
     _merge(pipeline, updated4)
     _tg_progress("Stage 4 SIGNAL", pipeline, _total_cost())
     if _check_budget(pipeline, budget_hard_cap):
         cost_now = _total_cost()
-        logger.error("BUDGET HARD CAP EXCEEDED: $%.2f > $%.2f. Saving partial results.", cost_now, budget_hard_cap)
-        _tg(f"BUDGET KILL: ${cost_now:.2f} exceeds cap ${budget_hard_cap:.2f}. Partial results saved.")
+        logger.error(
+            "BUDGET HARD CAP EXCEEDED: $%.2f > $%.2f. Saving partial results.",
+            cost_now,
+            budget_hard_cap,
+        )
+        _tg(
+            f"BUDGET KILL: ${cost_now:.2f} exceeds cap ${budget_hard_cap:.2f}. Partial results saved."
+        )
         await dfs.close()
         wall_s = time.monotonic() - wall_start
         summary = _build_summary(pipeline, wall_s)
@@ -961,19 +1023,29 @@ async def run_cohort(
 
     # Stage 5
     active5 = _active(pipeline)
-    updated5 = await run_parallel(active5, lambda d: _run_stage5(d), concurrency=50, label="Stage 5 SCORE")
+    updated5 = await run_parallel(
+        active5, lambda d: _run_stage5(d), concurrency=50, label="Stage 5 SCORE"
+    )
     _merge(pipeline, updated5)
     _tg_progress("Stage 5 SCORE", pipeline, _total_cost())
 
     # Stage 6 (gated inside wrapper — runs all active, skips low scorers internally)
     active6 = _active(pipeline)
-    updated6 = await run_parallel(active6, lambda d: _run_stage6(d, dfs), concurrency=10, label="Stage 6 ENRICH")
+    updated6 = await run_parallel(
+        active6, lambda d: _run_stage6(d, dfs), concurrency=10, label="Stage 6 ENRICH"
+    )
     _merge(pipeline, updated6)
     _tg_progress("Stage 6 ENRICH", pipeline, _total_cost())
     if _check_budget(pipeline, budget_hard_cap):
         cost_now = _total_cost()
-        logger.error("BUDGET HARD CAP EXCEEDED: $%.2f > $%.2f. Saving partial results.", cost_now, budget_hard_cap)
-        _tg(f"BUDGET KILL: ${cost_now:.2f} exceeds cap ${budget_hard_cap:.2f}. Partial results saved.")
+        logger.error(
+            "BUDGET HARD CAP EXCEEDED: $%.2f > $%.2f. Saving partial results.",
+            cost_now,
+            budget_hard_cap,
+        )
+        _tg(
+            f"BUDGET KILL: ${cost_now:.2f} exceeds cap ${budget_hard_cap:.2f}. Partial results saved."
+        )
         await dfs.close()
         wall_s = time.monotonic() - wall_start
         summary = _build_summary(pipeline, wall_s)
@@ -984,13 +1056,21 @@ async def run_cohort(
 
     # Stage 7
     active7 = _active(pipeline)
-    updated7 = await run_parallel(active7, lambda d: _run_stage7(d, gemini), concurrency=20, label="Stage 7 ANALYSE")
+    updated7 = await run_parallel(
+        active7, lambda d: _run_stage7(d, gemini), concurrency=20, label="Stage 7 ANALYSE"
+    )
     _merge(pipeline, updated7)
     _tg_progress("Stage 7 ANALYSE", pipeline, _total_cost())
     if _check_budget(pipeline, budget_hard_cap):
         cost_now = _total_cost()
-        logger.error("BUDGET HARD CAP EXCEEDED: $%.2f > $%.2f. Saving partial results.", cost_now, budget_hard_cap)
-        _tg(f"BUDGET KILL: ${cost_now:.2f} exceeds cap ${budget_hard_cap:.2f}. Partial results saved.")
+        logger.error(
+            "BUDGET HARD CAP EXCEEDED: $%.2f > $%.2f. Saving partial results.",
+            cost_now,
+            budget_hard_cap,
+        )
+        _tg(
+            f"BUDGET KILL: ${cost_now:.2f} exceeds cap ${budget_hard_cap:.2f}. Partial results saved."
+        )
         await dfs.close()
         wall_s = time.monotonic() - wall_start
         summary = _build_summary(pipeline, wall_s)
@@ -1001,13 +1081,21 @@ async def run_cohort(
 
     # Stage 8
     active8 = _active(pipeline)
-    updated8 = await run_parallel(active8, lambda d: _run_stage8(d, dfs, bd, lm), concurrency=15, label="Stage 8 CONTACT")
+    updated8 = await run_parallel(
+        active8, lambda d: _run_stage8(d, dfs, bd, lm), concurrency=15, label="Stage 8 CONTACT"
+    )
     _merge(pipeline, updated8)
     _tg_progress("Stage 8 CONTACT", pipeline, _total_cost())
     if _check_budget(pipeline, budget_hard_cap):
         cost_now = _total_cost()
-        logger.error("BUDGET HARD CAP EXCEEDED: $%.2f > $%.2f. Saving partial results.", cost_now, budget_hard_cap)
-        _tg(f"BUDGET KILL: ${cost_now:.2f} exceeds cap ${budget_hard_cap:.2f}. Partial results saved.")
+        logger.error(
+            "BUDGET HARD CAP EXCEEDED: $%.2f > $%.2f. Saving partial results.",
+            cost_now,
+            budget_hard_cap,
+        )
+        _tg(
+            f"BUDGET KILL: ${cost_now:.2f} exceeds cap ${budget_hard_cap:.2f}. Partial results saved."
+        )
         await dfs.close()
         wall_s = time.monotonic() - wall_start
         summary = _build_summary(pipeline, wall_s)
@@ -1018,13 +1106,21 @@ async def run_cohort(
 
     # Stage 9 (gated inside wrapper)
     active9 = _active(pipeline)
-    updated9 = await run_parallel(active9, lambda d: _run_stage9(d, bd), concurrency=10, label="Stage 9 SOCIAL")
+    updated9 = await run_parallel(
+        active9, lambda d: _run_stage9(d, bd), concurrency=10, label="Stage 9 SOCIAL"
+    )
     _merge(pipeline, updated9)
     _tg_progress("Stage 9 SOCIAL", pipeline, _total_cost())
     if _check_budget(pipeline, budget_hard_cap):
         cost_now = _total_cost()
-        logger.error("BUDGET HARD CAP EXCEEDED: $%.2f > $%.2f. Saving partial results.", cost_now, budget_hard_cap)
-        _tg(f"BUDGET KILL: ${cost_now:.2f} exceeds cap ${budget_hard_cap:.2f}. Partial results saved.")
+        logger.error(
+            "BUDGET HARD CAP EXCEEDED: $%.2f > $%.2f. Saving partial results.",
+            cost_now,
+            budget_hard_cap,
+        )
+        _tg(
+            f"BUDGET KILL: ${cost_now:.2f} exceeds cap ${budget_hard_cap:.2f}. Partial results saved."
+        )
         await dfs.close()
         wall_s = time.monotonic() - wall_start
         summary = _build_summary(pipeline, wall_s)
@@ -1035,13 +1131,21 @@ async def run_cohort(
 
     # Stage 10 (gated inside wrapper)
     active10 = _active(pipeline)
-    updated10 = await run_parallel(active10, lambda d: _run_stage10(d), concurrency=10, label="Stage 10 VR+MSG")
+    updated10 = await run_parallel(
+        active10, lambda d: _run_stage10(d), concurrency=10, label="Stage 10 VR+MSG"
+    )
     _merge(pipeline, updated10)
     _tg_progress("Stage 10 VR+MSG", pipeline, _total_cost())
     if _check_budget(pipeline, budget_hard_cap):
         cost_now = _total_cost()
-        logger.error("BUDGET HARD CAP EXCEEDED: $%.2f > $%.2f. Saving partial results.", cost_now, budget_hard_cap)
-        _tg(f"BUDGET KILL: ${cost_now:.2f} exceeds cap ${budget_hard_cap:.2f}. Partial results saved.")
+        logger.error(
+            "BUDGET HARD CAP EXCEEDED: $%.2f > $%.2f. Saving partial results.",
+            cost_now,
+            budget_hard_cap,
+        )
+        _tg(
+            f"BUDGET KILL: ${cost_now:.2f} exceeds cap ${budget_hard_cap:.2f}. Partial results saved."
+        )
         await dfs.close()
         wall_s = time.monotonic() - wall_start
         summary = _build_summary(pipeline, wall_s)
@@ -1052,7 +1156,9 @@ async def run_cohort(
 
     # Stage 11 — all active get a card attempt
     active11 = _active(pipeline)
-    updated11 = await run_parallel(active11, lambda d: _run_stage11(d), concurrency=50, label="Stage 11 CARD")
+    updated11 = await run_parallel(
+        active11, lambda d: _run_stage11(d), concurrency=50, label="Stage 11 CARD"
+    )
     _merge(pipeline, updated11)
     _tg_progress("Stage 11 CARD", pipeline, _total_cost())
 
@@ -1102,11 +1208,23 @@ def _parse_args() -> argparse.Namespace:
         default="dental,plumbing,legal,accounting,fitness",
         help="Comma-separated category names (default: dental,plumbing,legal,accounting,fitness)",
     )
-    p.add_argument("--size", type=int, default=20, help="Total cohort size (split across categories)")
-    p.add_argument("--output-dir", default=None, help="Output directory (default: auto-timestamped)")
-    p.add_argument("--domains", default=None, help="Comma-separated domain list (bypasses Stage 1 discovery)")
-    p.add_argument("--force-replay", action="store_true", help="Allow blocked domains through for diagnostic replay")
-    p.add_argument("--dry-run", action="store_true", help="Trace decision logic without API calls (no spend)")
+    p.add_argument(
+        "--size", type=int, default=20, help="Total cohort size (split across categories)"
+    )
+    p.add_argument(
+        "--output-dir", default=None, help="Output directory (default: auto-timestamped)"
+    )
+    p.add_argument(
+        "--domains", default=None, help="Comma-separated domain list (bypasses Stage 1 discovery)"
+    )
+    p.add_argument(
+        "--force-replay",
+        action="store_true",
+        help="Allow blocked domains through for diagnostic replay",
+    )
+    p.add_argument(
+        "--dry-run", action="store_true", help="Trace decision logic without API calls (no spend)"
+    )
     return p.parse_args()
 
 
@@ -1116,24 +1234,28 @@ if __name__ == "__main__":
 
     if args.domains:
         domain_list = [d.strip() for d in args.domains.split(",") if d.strip()]
-        asyncio.run(run_cohort(
-            categories=[],
-            domains_per_category=0,
-            output_dir=args.output_dir,
-            domains=domain_list,
-            force_replay=args.force_replay,
-            dry_run=args.dry_run,
-        ))
+        asyncio.run(
+            run_cohort(
+                categories=[],
+                domains_per_category=0,
+                output_dir=args.output_dir,
+                domains=domain_list,
+                force_replay=args.force_replay,
+                dry_run=args.dry_run,
+            )
+        )
     else:
         cats = [c.strip() for c in args.categories.split(",") if c.strip()]
         per_cat = max(1, args.size // len(cats))
         if per_cat * len(cats) > 2 * args.size:
             print(f"ERROR: Computed {per_cat * len(cats)} domains exceeds 2× requested {args.size}")
             sys.exit(1)
-        asyncio.run(run_cohort(
-            categories=cats,
-            domains_per_category=per_cat,
-            output_dir=args.output_dir,
-            force_replay=args.force_replay,
-            dry_run=args.dry_run,
-        ))
+        asyncio.run(
+            run_cohort(
+                categories=cats,
+                domains_per_category=per_cat,
+                output_dir=args.output_dir,
+                force_replay=args.force_replay,
+                dry_run=args.dry_run,
+            )
+        )

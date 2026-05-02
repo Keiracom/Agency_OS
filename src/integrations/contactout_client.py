@@ -5,9 +5,9 @@ Layer: 2 - integrations
 Endpoint: POST /v1/people/enrich (canonical — NOT /v1/people/linkedin)
 Auth: authorization: basic + token: <API_KEY> headers
 """
+
 import logging
 import os
-from typing import Optional
 from dataclasses import dataclass, field
 
 import httpx
@@ -66,6 +66,7 @@ class ContactOutClient:
     async def enrich_by_linkedin(self, linkedin_url: str) -> ContactOutResult:
         """Enrich a prospect by LinkedIn URL. Returns full result with freshness logic applied."""
         import os
+
         result = ContactOutResult(linkedin_url=linkedin_url)
 
         if os.environ.get("DRY_RUN"):
@@ -125,9 +126,7 @@ class ContactOutClient:
             company = profile.get("company", {})
             if isinstance(company, dict):
                 result.company_name = company.get("name", "")
-                result.company_domain = company.get("domain", "") or company.get(
-                    "email_domain", ""
-                )
+                result.company_domain = company.get("domain", "") or company.get("email_domain", "")
                 result.company_linkedin_url = company.get("url", "")
                 result.company_industry = company.get("industry", "")
                 result.company_size = company.get("size", "")
@@ -201,7 +200,6 @@ class ContactOutClient:
         if result.all_phones:
             result.best_phone = result.all_phones[0]
 
-
     async def search_by_name(
         self,
         dm_name: str,
@@ -219,6 +217,7 @@ class ContactOutClient:
           2. enrich_by_linkedin(linkedin_url) → get email + mobile + full profile
         """
         import os
+
         result = ContactOutResult(linkedin_url="")
 
         if os.environ.get("DRY_RUN"):
@@ -277,7 +276,9 @@ class ContactOutClient:
                 result.found = True
                 logger.info(
                     "ContactOut search: matched %s → %s (score=%d)",
-                    dm_name, result.full_name, best_score,
+                    dm_name,
+                    result.full_name,
+                    best_score,
                 )
             elif best_url:
                 # No name match but profiles found — take first as fallback
@@ -285,7 +286,8 @@ class ContactOutClient:
                 result.found = True
                 logger.info(
                     "ContactOut search: no name match for %s, using first result %s",
-                    dm_name, result.full_name,
+                    dm_name,
+                    result.full_name,
                 )
             else:
                 result.found = False

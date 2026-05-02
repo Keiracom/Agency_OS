@@ -73,6 +73,7 @@ def extract_memory_fields(raw_text: str) -> dict:
     )
     try:
         from src.telegram_bot.openai_cost_logger import log_openai_call
+
         log_openai_call(
             callsign=os.getenv("CALLSIGN", "unknown"),
             use_case="save_extraction",
@@ -158,9 +159,7 @@ async def cmd_save(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             tags=tags,
         )
         preview = content[:50] + ("..." if len(content) > 50 else "")
-        await update.message.reply_text(
-            f"Saved [{source_type}]: {preview}\nid={memory_id}"
-        )
+        await update.message.reply_text(f"Saved [{source_type}]: {preview}\nid={memory_id}")
         logger.info(f"[save] callsign={CALLSIGN} type={source_type} id={memory_id}")
     except ValueError as exc:
         logger.error(f"[save] validation error: {exc}")

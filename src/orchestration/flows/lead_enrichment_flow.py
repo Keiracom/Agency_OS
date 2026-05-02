@@ -390,7 +390,6 @@ async def score_enriched_lead_task(
 
             import json
 
-
             await db.execute(
                 update_query,
                 {

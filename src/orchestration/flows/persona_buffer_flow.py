@@ -24,11 +24,10 @@ from sqlalchemy import func, select
 
 from src.config.database import get_db_session
 from src.models.resource_pool import ResourcePool, ResourceStatus, ResourceType
-from src.services.domain_provisioning_service import provision_persona_with_domains
-from src.services.persona_service import generate_persona
 from src.prefect_utils.completion_hook import on_completion_hook
 from src.prefect_utils.hooks import on_failure_hook
-
+from src.services.domain_provisioning_service import provision_persona_with_domains
+from src.services.persona_service import generate_persona
 
 logger = logging.getLogger(__name__)
 
@@ -134,7 +133,8 @@ async def provision_persona_set_task() -> dict:
 
 
 @flow(
-    name="persona_buffer_replenishment", log_prints=True,
+    name="persona_buffer_replenishment",
+    log_prints=True,
     on_completion=[on_completion_hook],
     on_failure=[on_failure_hook],
 )

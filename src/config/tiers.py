@@ -22,7 +22,9 @@ class TierName(StrEnum):
     SPARK = "spark"
     IGNITION = "ignition"
     VELOCITY = "velocity"
-    DOMINANCE = "dominance"  # DEPRECATED — kept for DB migration safety. Do not assign to new clients.
+    DOMINANCE = (
+        "dominance"  # DEPRECATED — kept for DB migration safety. Do not assign to new clients.
+    )
 
 
 @dataclass(frozen=True)

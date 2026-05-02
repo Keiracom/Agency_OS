@@ -113,7 +113,9 @@ class DomainPoolManager:
     # 3. Approve a candidate (persist to DB)
     # ------------------------------------------------------------------
 
-    async def approve_candidate(self, domain_name: str, pattern_type: str | None = None) -> BurnerDomain:
+    async def approve_candidate(
+        self, domain_name: str, pattern_type: str | None = None
+    ) -> BurnerDomain:
         """
         Approve a generated candidate and persist it with status=approved.
 
@@ -165,12 +167,16 @@ class DomainPoolManager:
                         updated_at=datetime.now(UTC),
                     )
                 )
-                outcomes.append({"domain": domain.domain_name, "dry_run": True, "status": "purchasing"})
+                outcomes.append(
+                    {"domain": domain.domain_name, "dry_run": True, "status": "purchasing"}
+                )
             else:
                 # Live purchase path — Salesforge API call goes here
                 # TODO: integrate salesforge.purchase_domain() when Dave approves
                 logger.warning(f"Live purchase not yet wired for {domain.domain_name}")
-                outcomes.append({"domain": domain.domain_name, "dry_run": False, "status": "skipped_not_wired"})
+                outcomes.append(
+                    {"domain": domain.domain_name, "dry_run": False, "status": "skipped_not_wired"}
+                )
 
         await self.db.flush()
         return outcomes
@@ -187,10 +193,12 @@ class DomainPoolManager:
         """
         result = await self.db.execute(
             select(BurnerDomain).where(
-                BurnerDomain.status.in_([
-                    BurnerDomainStatus.DNS_CONFIGURING,
-                    BurnerDomainStatus.WARMING,
-                ])
+                BurnerDomain.status.in_(
+                    [
+                        BurnerDomainStatus.DNS_CONFIGURING,
+                        BurnerDomainStatus.WARMING,
+                    ]
+                )
             )
         )
         domains = result.scalars().all()
@@ -206,7 +214,10 @@ class DomainPoolManager:
                         if domain.status == BurnerDomainStatus.DNS_CONFIGURING
                         else BurnerDomainStatus.READY
                     )
-                    values: dict[str, Any] = {"status": next_status, "updated_at": datetime.now(UTC)}
+                    values: dict[str, Any] = {
+                        "status": next_status,
+                        "updated_at": datetime.now(UTC),
+                    }
                     if next_status == BurnerDomainStatus.WARMING:
                         values["warmup_started_at"] = datetime.now(UTC)
                     elif next_status == BurnerDomainStatus.READY:
@@ -214,9 +225,17 @@ class DomainPoolManager:
                     await self.db.execute(
                         update(BurnerDomain).where(BurnerDomain.id == domain.id).values(**values)
                     )
-                    updates.append({"domain": domain.domain_name, "new_status": next_status, "dry_run": True})
+                    updates.append(
+                        {"domain": domain.domain_name, "new_status": next_status, "dry_run": True}
+                    )
                 else:
-                    updates.append({"domain": domain.domain_name, "new_status": domain.status, "unchanged": True})
+                    updates.append(
+                        {
+                            "domain": domain.domain_name,
+                            "new_status": domain.status,
+                            "unchanged": True,
+                        }
+                    )
             else:
                 # Live: call Salesforge get_warmup_status
                 # TODO: wire salesforge.get_warmup_status(domain.salesforge_domain_id)
@@ -277,9 +296,7 @@ class DomainPoolManager:
         """
         Release an assigned domain. Moves it to quarantine for QUARANTINE_DAYS.
         """
-        result = await self.db.execute(
-            select(BurnerDomain).where(BurnerDomain.id == domain_id)
-        )
+        result = await self.db.execute(select(BurnerDomain).where(BurnerDomain.id == domain_id))
         domain = result.scalar_one()
         quarantine_until = datetime.now(UTC) + timedelta(days=QUARANTINE_DAYS)
 
@@ -358,9 +375,7 @@ class DomainPoolManager:
         """
         Permanently retire a domain. No further use.
         """
-        result = await self.db.execute(
-            select(BurnerDomain).where(BurnerDomain.id == domain_id)
-        )
+        result = await self.db.execute(select(BurnerDomain).where(BurnerDomain.id == domain_id))
         domain = result.scalar_one()
 
         await self.db.execute(

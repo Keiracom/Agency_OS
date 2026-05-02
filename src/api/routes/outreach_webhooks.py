@@ -19,6 +19,7 @@ Signature pattern follows src/integrations/calendar_booking.py:verify_cal_signat
 hmac.new(SECRET.encode(), payload, hashlib.sha256).hexdigest(), compared via
 hmac.compare_digest.
 """
+
 from __future__ import annotations
 
 import json
@@ -44,13 +45,13 @@ FAST_PATH_FLOOR = 0.7
 # Map fast-path (reply_router) intents to the reply_intent taxonomy the
 # decision_tree uses.
 _FAST_TO_CANONICAL = {
-    "positive":       "positive_interested",
-    "booking":        "booking_request",
+    "positive": "positive_interested",
+    "booking": "booking_request",
     "not_interested": "not_interested",
-    "unsubscribe":    "unsubscribe",
-    "ooo":            "out_of_office",
-    "bounce":         "unsubscribe",  # bounce is a hard suppression
-    "unclear":        "unclear",
+    "unsubscribe": "unsubscribe",
+    "ooo": "out_of_office",
+    "bounce": "unsubscribe",  # bounce is a hard suppression
+    "unclear": "unclear",
 }
 
 
@@ -71,6 +72,7 @@ def _verify(secret_env: str, payload: bytes, signature: str | None) -> bool:
 # ---------------------------------------------------------------------------
 # DB-facing shim — injectable for tests
 # ---------------------------------------------------------------------------
+
 
 class TouchStore:
     """Persists TouchMutation objects to the scheduled_touches table.
@@ -158,6 +160,7 @@ def get_touch_store() -> TouchStore:
 # Shared pipeline
 # ---------------------------------------------------------------------------
 
+
 async def _process_reply(
     *,
     body_text: str,
@@ -183,9 +186,9 @@ async def _process_reply(
 
     pending = await store.load_pending(lead_id)
     prospect_state = {
-        "lead_id":    lead_id,
-        "client_id":  client_id,
-        "prospect":   {"email": sender},
+        "lead_id": lead_id,
+        "client_id": client_id,
+        "prospect": {"email": sender},
         "pending_touches": pending,
     }
     mutations = CadenceDecisionTree().decide(intent, confidence, prospect_state, extracted)
@@ -206,10 +209,18 @@ async def _process_reply(
     }
 
 
-_ALL_CANONICAL = frozenset({
-    "positive_interested", "booking_request", "not_interested",
-    "unsubscribe", "out_of_office", "question", "referral", "unclear",
-})
+_ALL_CANONICAL = frozenset(
+    {
+        "positive_interested",
+        "booking_request",
+        "not_interested",
+        "unsubscribe",
+        "out_of_office",
+        "question",
+        "referral",
+        "unclear",
+    }
+)
 
 
 async def _read_and_verify(request: Request, secret_env: str, header: str) -> dict:
@@ -226,6 +237,7 @@ async def _read_and_verify(request: Request, secret_env: str, header: str) -> di
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
+
 
 @router.post("/salesforge")
 async def salesforge_webhook(
@@ -264,7 +276,9 @@ async def elevenagents_webhook(
     request: Request,
     store: TouchStore = Depends(get_touch_store),
 ):
-    payload = await _read_and_verify(request, "ELEVENAGENTS_WEBHOOK_SECRET", "X-ElevenAgents-Signature")
+    payload = await _read_and_verify(
+        request, "ELEVENAGENTS_WEBHOOK_SECRET", "X-ElevenAgents-Signature"
+    )
     transcript = payload.get("transcript") or payload.get("summary") or ""
     return await _process_reply(
         body_text=transcript,

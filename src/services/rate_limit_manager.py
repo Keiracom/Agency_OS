@@ -5,8 +5,8 @@ Layer: services
 Imports: models, integrations
 Consumers: orchestration only
 """
-from datetime import datetime, timezone, timedelta
-from typing import Optional
+
+from datetime import UTC, datetime
 
 
 class RateLimitManager:
@@ -14,11 +14,11 @@ class RateLimitManager:
 
     # Base daily limits per channel per customer
     CHANNEL_LIMITS = {
-        'email': 100,           # per burner domain, sum across all domains
-        'linkedin_connect': 60, # per connected account per day
-        'linkedin_message': 80, # per connected account per day
-        'voice': 30,            # per customer per day
-        'sms': 0,               # paused
+        "email": 100,  # per burner domain, sum across all domains
+        "linkedin_connect": 60,  # per connected account per day
+        "linkedin_message": 80,  # per connected account per day
+        "voice": 30,  # per customer per day
+        "sms": 0,  # paused
     }
 
     # Weekly volume distribution (Mon=0 through Fri=4)
@@ -32,9 +32,9 @@ class RateLimitManager:
 
     # Warmup modifiers for LinkedIn
     WARMUP_MODIFIERS = {
-        'full': {1: 1.0, 2: 1.0, 3: 1.0, 4: 1.0},
-        'first_cycle_rampup': {1: 0.5, 2: 0.75, 3: 1.0, 4: 1.0},
-        'dormant_reactivation': {1: 0.3, 2: 0.3, 3: 0.3, 4: 0.3},
+        "full": {1: 1.0, 2: 1.0, 3: 1.0, 4: 1.0},
+        "first_cycle_rampup": {1: 0.5, 2: 0.75, 3: 1.0, 4: 1.0},
+        "dormant_reactivation": {1: 0.3, 2: 0.3, 3: 0.3, 4: 0.3},
     }
 
     async def get_remaining_budget(
@@ -42,7 +42,7 @@ class RateLimitManager:
         client_id: str,
         channel: str,
         target_date: datetime,
-        warmup_mode: str = 'full',
+        warmup_mode: str = "full",
         cycle_week: int = 1,
         db=None,
     ) -> int:
@@ -59,7 +59,7 @@ class RateLimitManager:
         day_multiplier = self.WEEKLY_MULTIPLIERS.get(dow, 1.0)
 
         # Apply warmup modifier for LinkedIn channels
-        if 'linkedin' in channel:
+        if "linkedin" in channel:
             warmup_map = self.WARMUP_MODIFIERS.get(warmup_mode, {})
             warmup_mult = warmup_map.get(min(cycle_week, 4), 1.0)
             base_limit = int(base_limit * warmup_mult)
@@ -82,7 +82,7 @@ class RateLimitManager:
         channel: str,
         target_date: datetime,
         manual_actions_24h: int = 0,
-        warmup_mode: str = 'full',
+        warmup_mode: str = "full",
         cycle_week: int = 1,
         db=None,
     ) -> int:
@@ -106,7 +106,7 @@ class RateLimitManager:
         client_id: str,
         channel: str,
         target_date: datetime,
-        warmup_mode: str = 'full',
+        warmup_mode: str = "full",
         cycle_week: int = 1,
         db=None,
     ) -> tuple[bool, str]:
@@ -120,28 +120,32 @@ class RateLimitManager:
             return False, f"Daily {channel} limit reached"
 
         # Additional LinkedIn spacing check
-        if 'linkedin' in channel:
+        if "linkedin" in channel:
             last_action = await self._get_last_linkedin_action(client_id, db) if db else None
             if last_action:
-                seconds_since = (datetime.now(timezone.utc) - last_action).total_seconds()
+                seconds_since = (datetime.now(UTC) - last_action).total_seconds()
                 if seconds_since < 90:
-                    return False, f"LinkedIn minimum spacing (90s), last was {int(seconds_since)}s ago"
+                    return (
+                        False,
+                        f"LinkedIn minimum spacing (90s), last was {int(seconds_since)}s ago",
+                    )
 
         # Voice spacing check
-        if channel == 'voice':
+        if channel == "voice":
             last_call = await self._get_last_voice_action(client_id, db) if db else None
             if last_call:
-                minutes_since = (datetime.now(timezone.utc) - last_call).total_seconds() / 60
+                minutes_since = (datetime.now(UTC) - last_call).total_seconds() / 60
                 if minutes_since < 10:
-                    return False, f"Voice minimum spacing (10min), last was {int(minutes_since)}min ago"
+                    return (
+                        False,
+                        f"Voice minimum spacing (10min), last was {int(minutes_since)}min ago",
+                    )
 
         return True, "OK"
 
     async def _count_actions_today(self, client_id, channel, target_date, db):
         """Count actions already fired today for this client+channel."""
         # Query outreach_actions table
-        start_of_day = target_date.replace(hour=0, minute=0, second=0)
-        end_of_day = start_of_day + timedelta(days=1)
         # Stubbed — production query:
         # SELECT count(*) FROM outreach_actions
         # WHERE client_id = client_id AND channel = channel

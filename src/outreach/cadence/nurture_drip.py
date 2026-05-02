@@ -28,13 +28,14 @@ The drip itself does NOT dispatch touches — it writes rows into
 scheduled_touches just like daily_decider. The hourly cadence flow
 dispatches them as normal.
 """
+
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
-from enum import Enum
-from typing import Callable
+from collections.abc import Callable
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
+from enum import StrEnum
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +49,7 @@ NURTURE_FIRST_TOUCH_OFFSET_DAYS = 30
 _CHANNEL_BY_TOUCH = ["email", "linkedin", "email", "linkedin", "email", "linkedin"]
 
 
-class NurtureStatus(str, Enum):
+class NurtureStatus(StrEnum):
     ACTIVE = "active"
     EXHAUSTED = "exhausted"
     PAUSED = "paused"
@@ -104,7 +105,7 @@ class NurtureDrip:
         get_state: Callable,
         upsert_state: Callable,
         insert_scheduled_touch: Callable,
-        now_fn: Callable = lambda: datetime.now(timezone.utc),
+        now_fn: Callable = lambda: datetime.now(UTC),
     ):
         self._get_prospect_status = get_prospect_status
         self._get_state = get_state
@@ -117,8 +118,9 @@ class NurtureDrip:
         try:
             info = self._get_prospect_status(prospect_id)
         except Exception as exc:
-            logger.exception("nurture_drip.is_eligible: status lookup failed prospect=%s: %s",
-                             prospect_id, exc)
+            logger.exception(
+                "nurture_drip.is_eligible: status lookup failed prospect=%s: %s", prospect_id, exc
+            )
             return False, "status_lookup_error"
 
         status = info.get("outreach_status", "")
@@ -177,10 +179,17 @@ class NurtureDrip:
             )
             self._upsert_state(state)
             self._insert_scheduled_touch(
-                prospect_id, client_id, "email", first_touch_at, sequence_step=100,
+                prospect_id,
+                client_id,
+                "email",
+                first_touch_at,
+                sequence_step=100,
             )
-            logger.info("nurture_drip.enqueue: prospect=%s enqueued touch-1 at %s",
-                        prospect_id, first_touch_at.isoformat())
+            logger.info(
+                "nurture_drip.enqueue: prospect=%s enqueued touch-1 at %s",
+                prospect_id,
+                first_touch_at.isoformat(),
+            )
             return EnqueueResult(
                 prospect_id=prospect_id,
                 status=NurtureStatus.ACTIVE,
@@ -189,8 +198,9 @@ class NurtureDrip:
             )
 
         except Exception as exc:
-            logger.exception("nurture_drip.enqueue: unexpected error prospect=%s: %s",
-                             prospect_id, exc)
+            logger.exception(
+                "nurture_drip.enqueue: unexpected error prospect=%s: %s", prospect_id, exc
+            )
             return EnqueueResult(
                 prospect_id=prospect_id,
                 status=NurtureStatus.PAUSED,
@@ -220,8 +230,11 @@ class NurtureDrip:
                 state.next_scheduled_at = None
                 state.next_channel = None
                 self._upsert_state(state)
-                logger.info("nurture_drip.record_send: prospect=%s exhausted after %d touches",
-                            prospect_id, state.touches_sent)
+                logger.info(
+                    "nurture_drip.record_send: prospect=%s exhausted after %d touches",
+                    prospect_id,
+                    state.touches_sent,
+                )
                 return EnqueueResult(
                     prospect_id=prospect_id,
                     status=NurtureStatus.EXHAUSTED,
@@ -235,11 +248,18 @@ class NurtureDrip:
             state.next_scheduled_at = next_at
             self._upsert_state(state)
             self._insert_scheduled_touch(
-                prospect_id, state.client_id, next_ch, next_at, sequence_step=100,
+                prospect_id,
+                state.client_id,
+                next_ch,
+                next_at,
+                sequence_step=100,
             )
             logger.info(
                 "nurture_drip.record_send: prospect=%s touch=%d next=%s at %s",
-                prospect_id, state.touches_sent, next_ch, next_at.isoformat(),
+                prospect_id,
+                state.touches_sent,
+                next_ch,
+                next_at.isoformat(),
             )
             return EnqueueResult(
                 prospect_id=prospect_id,
@@ -249,8 +269,9 @@ class NurtureDrip:
             )
 
         except Exception as exc:
-            logger.exception("nurture_drip.record_send: unexpected error prospect=%s: %s",
-                             prospect_id, exc)
+            logger.exception(
+                "nurture_drip.record_send: unexpected error prospect=%s: %s", prospect_id, exc
+            )
             return EnqueueResult(
                 prospect_id=prospect_id,
                 status=NurtureStatus.PAUSED,

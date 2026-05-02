@@ -29,10 +29,12 @@ class ApprovalStatus(StrEnum):
     EDITED = "edit_applied"  # matches existing route output and DB enum value
 
 
-TERMINAL_STATUSES = frozenset({
-    ApprovalStatus.APPROVED,
-    ApprovalStatus.REJECTED,
-})
+TERMINAL_STATUSES = frozenset(
+    {
+        ApprovalStatus.APPROVED,
+        ApprovalStatus.REJECTED,
+    }
+)
 
 
 class Approval(Base, TimestampMixin):

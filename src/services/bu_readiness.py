@@ -16,6 +16,7 @@ Consumers:
 Both call gather_metrics(conn) so the cron, the dashboard, and the
 REST response can never disagree on numbers.
 """
+
 from __future__ import annotations
 
 import json
@@ -27,21 +28,21 @@ from src.config.settings import settings
 logger = logging.getLogger(__name__)
 
 # ── Thresholds (canonical Manual values) ───────────────────────────────────
-COVERAGE_THRESHOLD_PCT        = 40.0
-VERIFIED_THRESHOLD_PCT        = 55.0
-OUTCOMES_THRESHOLD_COUNT      = 500
-TRAJECTORY_THRESHOLD_PCT      = 30.0
-TRAJECTORY_LOOKBACK_DAYS      = 30
+COVERAGE_THRESHOLD_PCT = 40.0
+VERIFIED_THRESHOLD_PCT = 55.0
+OUTCOMES_THRESHOLD_COUNT = 500
+TRAJECTORY_THRESHOLD_PCT = 30.0
+TRAJECTORY_LOOKBACK_DAYS = 30
 
 
 @dataclass
 class Metric:
     name: str
-    value: float           # the measured value (% or count)
-    unit: str              # 'pct' | 'count'
+    value: float  # the measured value (% or count)
+    unit: str  # 'pct' | 'count'
     threshold: float
-    pass_: bool            # alias for `pass` (Python keyword)
-    detail: str            # human-readable context
+    pass_: bool  # alias for `pass` (Python keyword)
+    detail: str  # human-readable context
 
     def to_dict(self) -> dict:
         d = asdict(self)
@@ -56,12 +57,13 @@ class ReadinessReport:
 
     def to_dict(self) -> dict:
         return {
-            "metrics":      [m.to_dict() for m in self.metrics],
+            "metrics": [m.to_dict() for m in self.metrics],
             "overall_pass": self.overall_pass,
         }
 
 
 # ── Per-metric measurements ────────────────────────────────────────────────
+
 
 async def measure_coverage(conn) -> Metric:
     target = max(1, int(getattr(settings, "TARGET_BU_SIZE", 50_000)))
@@ -87,7 +89,7 @@ async def measure_verified(conn) -> Metric:
         """,
     )
     with_email = int(row["with_email"] or 0)
-    verified   = int(row["verified"] or 0)
+    verified = int(row["verified"] or 0)
     pct = (verified / with_email * 100) if with_email > 0 else 0.0
     return Metric(
         name="verified",
@@ -141,7 +143,7 @@ async def measure_trajectory(conn) -> Metric:
         FROM business_universe
         """,
     )
-    new_rows  = int(row["new_rows"] or 0)
+    new_rows = int(row["new_rows"] or 0)
     prev_rows = int(row["prev_rows"] or 0)
     pct = (new_rows / prev_rows * 100) if prev_rows > 0 else 0.0
     return Metric(
@@ -151,13 +153,13 @@ async def measure_trajectory(conn) -> Metric:
         threshold=TRAJECTORY_THRESHOLD_PCT,
         pass_=pct >= TRAJECTORY_THRESHOLD_PCT,
         detail=(
-            f"{new_rows:,} created last {days}d / "
-            f"{prev_rows:,} created {days}-{2 * days}d ago"
+            f"{new_rows:,} created last {days}d / {prev_rows:,} created {days}-{2 * days}d ago"
         ),
     )
 
 
 # ── Roll-up ────────────────────────────────────────────────────────────────
+
 
 async def gather_metrics(conn) -> ReadinessReport:
     metrics = [
@@ -173,6 +175,7 @@ async def gather_metrics(conn) -> ReadinessReport:
 
 
 # ── Convenience: human render (used by the CLI) ────────────────────────────
+
 
 def render_human(report: ReadinessReport) -> str:
     lines = [

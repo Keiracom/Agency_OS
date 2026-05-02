@@ -35,11 +35,10 @@ from prefect import flow, task
 from prefect.task_runners import ConcurrentTaskRunner
 
 from src.integrations.supabase import get_db_session
-from src.services.linkedin_health_service import linkedin_health_service
-from src.services.linkedin_warmup_service import linkedin_warmup_service
 from src.prefect_utils.completion_hook import on_completion_hook
 from src.prefect_utils.hooks import on_failure_hook
-
+from src.services.linkedin_health_service import linkedin_health_service
+from src.services.linkedin_warmup_service import linkedin_warmup_service
 
 logger = logging.getLogger(__name__)
 

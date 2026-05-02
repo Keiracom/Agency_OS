@@ -37,7 +37,6 @@ from src.prefect_utils.completion_hook import on_completion_hook
 from src.prefect_utils.hooks import on_failure_hook
 from src.services.domain_pool_manager import DomainPoolManager
 
-
 logger = logging.getLogger(__name__)
 
 

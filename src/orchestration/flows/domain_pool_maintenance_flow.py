@@ -23,7 +23,7 @@ from prefect import flow, get_run_logger, task
 from src.config.database import get_db_session
 from src.prefect_utils.completion_hook import on_completion_hook
 from src.prefect_utils.hooks import on_failure_hook
-from src.services.domain_pool_manager import POOL_TARGET_SIZE, DomainPoolManager
+from src.services.domain_pool_manager import DomainPoolManager
 
 logger = logging.getLogger(__name__)
 

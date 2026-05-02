@@ -18,6 +18,7 @@ All calls:
   - Return parsed JSON; on parse failure return safe fallback dict
   - Log input/output token counts for cost tracking
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -25,7 +26,6 @@ import json
 import logging
 import os
 import re
-from typing import Any
 
 import httpx
 
@@ -33,8 +33,8 @@ logger = logging.getLogger(__name__)
 
 # ── Semaphores — defined here and re-exported; pipeline_orchestrator imports these ──
 # Defined in intelligence.py to avoid circular import with pipeline_orchestrator.
-GLOBAL_SEM_SONNET = asyncio.Semaphore(55)   # Sonnet concurrent calls (prompt caching reduces ITPM)
-GLOBAL_SEM_HAIKU  = asyncio.Semaphore(55)   # Haiku concurrent calls
+GLOBAL_SEM_SONNET = asyncio.Semaphore(55)  # Sonnet concurrent calls (prompt caching reduces ITPM)
+GLOBAL_SEM_HAIKU = asyncio.Semaphore(55)  # Haiku concurrent calls
 
 
 async def ramp_semaphore(
@@ -58,9 +58,10 @@ async def ramp_semaphore(
             sem.release()
         current += add
 
+
 # ── Model constants ───────────────────────────────────────────────────────────
 _MODEL_SONNET = "claude-sonnet-4-5"
-_MODEL_HAIKU  = "claude-haiku-4-5"
+_MODEL_HAIKU = "claude-haiku-4-5"
 _ANTHROPIC_API = "https://api.anthropic.com/v1/messages"
 _ANTHROPIC_VERSION = "2023-06-01"
 
@@ -78,6 +79,7 @@ def _get_api_key() -> str:
     if not key:
         try:
             from src.config.settings import settings
+
             key = settings.anthropic_api_key
         except Exception:
             pass
@@ -137,7 +139,7 @@ async def _call_anthropic(
 
     text = data["content"][0]["text"] if data.get("content") else ""
     usage = data.get("usage", {})
-    in_tok  = usage.get("input_tokens", 0)
+    in_tok = usage.get("input_tokens", 0)
     out_tok = usage.get("output_tokens", 0)
     return text, in_tok, out_tok
 
@@ -185,14 +187,22 @@ async def comprehend_website(domain: str, html: str, url: str) -> dict:
     Replaces regex-based extraction in free_enrichment.py.
     """
     fallback = {
-        "services": [], "team_size_indicator": "unknown",
+        "services": [],
+        "team_size_indicator": "unknown",
         "technology_signals": {
-            "has_analytics": False, "has_ads_tag": False, "has_meta_pixel": False,
-            "has_booking_system": False, "has_conversion_tracking": False,
-            "cms": "unknown", "analytics_tools": [],
+            "has_analytics": False,
+            "has_ads_tag": False,
+            "has_meta_pixel": False,
+            "has_booking_system": False,
+            "has_conversion_tracking": False,
+            "cms": "unknown",
+            "analytics_tools": [],
         },
-        "contact_methods": [], "content_freshness": "unknown",
-        "business_maturity": "unknown", "location_signals": [], "pain_indicators": [],
+        "contact_methods": [],
+        "content_freshness": "unknown",
+        "business_maturity": "unknown",
+        "location_signals": [],
+        "pain_indicators": [],
         "emails_found": [],
     }
     async with GLOBAL_SEM_SONNET:
@@ -256,14 +266,21 @@ async def classify_intent(
     Replaces point-counting in prospect_scorer.py score_intent_full().
     """
     fallback = {
-        "band": "NOT_TRYING", "score": 0, "confidence": "LOW",
-        "evidence": [], "primary_signal": "", "recommended_entry_point": "",
+        "band": "NOT_TRYING",
+        "score": 0,
+        "confidence": "LOW",
+        "evidence": [],
+        "primary_signal": "",
+        "recommended_entry_point": "",
     }
     async with GLOBAL_SEM_SONNET:
         try:
             system_text = _INTENT_SYSTEM
             if category_name:
-                system_text = system_text + f"\n\nThis business operates in the {category_name} industry. Do not reference other industries in evidence statements."
+                system_text = (
+                    system_text
+                    + f"\n\nThis business operates in the {category_name} industry. Do not reference other industries in evidence statements."
+                )
 
             system_block = {
                 "type": "text",
@@ -283,10 +300,7 @@ async def classify_intent(
                     "ad_count": (ads_data or {}).get("ad_count", 0),
                 },
             }
-            user_content = (
-                f"Domain: {domain}\n\n"
-                f"Signals:\n{json.dumps(signals_summary, indent=2)}"
-            )
+            user_content = f"Domain: {domain}\n\nSignals:\n{json.dumps(signals_summary, indent=2)}"
             text, in_tok, out_tok = await _call_anthropic(
                 model=_MODEL_SONNET,
                 system_blocks=[system_block],
@@ -332,9 +346,14 @@ async def analyse_reviews(domain: str, reviews: list[dict]) -> dict:
     Only called when reviews are available from DFS GMB endpoint.
     """
     fallback = {
-        "sentiment_trend": "insufficient_data", "average_rating": 0.0,
-        "pain_themes": [], "strength_themes": [], "owner_responsiveness": "absent",
-        "owner_tone": "absent", "staff_mentions": [], "decision_maker_signals": [],
+        "sentiment_trend": "insufficient_data",
+        "average_rating": 0.0,
+        "pain_themes": [],
+        "strength_themes": [],
+        "owner_responsiveness": "absent",
+        "owner_tone": "absent",
+        "staff_mentions": [],
+        "decision_maker_signals": [],
         "marketing_opportunity": "",
     }
     if not reviews:
@@ -351,8 +370,13 @@ async def analyse_reviews(domain: str, reviews: list[dict]) -> dict:
                 user_content=user_content,
                 max_tokens=600,
             )
-            logger.info("analyse_reviews domain=%s reviews=%d tokens=%d/%d",
-                        domain, len(reviews), in_tok, out_tok)
+            logger.info(
+                "analyse_reviews domain=%s reviews=%d tokens=%d/%d",
+                domain,
+                len(reviews),
+                in_tok,
+                out_tok,
+            )
             return _parse_json_response(text, fallback)
         except Exception as exc:
             logger.warning("analyse_reviews failed domain=%s: %s", domain, exc)
@@ -399,8 +423,12 @@ async def judge_affordability(
     Complements ProspectScorer.score_affordability() with LLM judgment.
     """
     fallback = {
-        "score": 0, "hard_gate": False, "gate_reason": "none",
-        "band": "MEDIUM", "judgment": "", "confidence": "LOW",
+        "score": 0,
+        "hard_gate": False,
+        "gate_reason": "none",
+        "band": "MEDIUM",
+        "judgment": "",
+        "confidence": "LOW",
     }
     async with GLOBAL_SEM_HAIKU:
         try:
@@ -417,7 +445,8 @@ async def judge_affordability(
                     "team_size": website_data.get("team_size_indicator"),
                     "content_freshness": website_data.get("content_freshness"),
                     "business_maturity": website_data.get("business_maturity"),
-                    "has_professional_email": "email" in (website_data.get("contact_methods") or []),
+                    "has_professional_email": "email"
+                    in (website_data.get("contact_methods") or []),
                 },
             }
             user_content = f"SMB profile:\n{json.dumps(context, indent=2)}"
@@ -594,15 +623,29 @@ async def generate_vulnerability_report(
             context_dict = {
                 "company_name": company_name,
                 "domain": domain,
-                "intent_band": intent_data.get("band", intelligence.get("intent_band", "UNKNOWN")) if intelligence else "UNKNOWN",
-                "intent_score": intent_data.get("score", intelligence.get("intent_score", 0)) if intelligence else 0,
+                "intent_band": intent_data.get("band", intelligence.get("intent_band", "UNKNOWN"))
+                if intelligence
+                else "UNKNOWN",
+                "intent_score": intent_data.get("score", intelligence.get("intent_score", 0))
+                if intelligence
+                else 0,
                 "website": {
                     "services": enrichment.get("services") or website_data.get("services", []),
-                    "cms": (website_data.get("technology_signals") or {}).get("cms", enrichment.get("cms", "unknown")),
-                    "has_analytics": (website_data.get("technology_signals") or {}).get("has_analytics", enrichment.get("has_analytics", False)),
-                    "has_ads_tag": (website_data.get("technology_signals") or {}).get("has_ads_tag", enrichment.get("has_ads_tag", False)),
-                    "has_booking_system": (website_data.get("technology_signals") or {}).get("has_booking_system", enrichment.get("has_booking_system", False)),
-                    "has_conversion_tracking": (website_data.get("technology_signals") or {}).get("has_conversion_tracking", enrichment.get("has_conversion_tracking", False)),
+                    "cms": (website_data.get("technology_signals") or {}).get(
+                        "cms", enrichment.get("cms", "unknown")
+                    ),
+                    "has_analytics": (website_data.get("technology_signals") or {}).get(
+                        "has_analytics", enrichment.get("has_analytics", False)
+                    ),
+                    "has_ads_tag": (website_data.get("technology_signals") or {}).get(
+                        "has_ads_tag", enrichment.get("has_ads_tag", False)
+                    ),
+                    "has_booking_system": (website_data.get("technology_signals") or {}).get(
+                        "has_booking_system", enrichment.get("has_booking_system", False)
+                    ),
+                    "has_conversion_tracking": (website_data.get("technology_signals") or {}).get(
+                        "has_conversion_tracking", enrichment.get("has_conversion_tracking", False)
+                    ),
                 },
                 "ads": {
                     "is_running_ads": enrichment.get("is_running_ads", False),
@@ -624,7 +667,9 @@ async def generate_vulnerability_report(
                 "brand_serp": {
                     "brand_position": (brand_serp_data or {}).get("position"),
                     "gmb_showing": (brand_serp_data or {}).get("gmb_showing", False),
-                    "competitors_bidding": (brand_serp_data or {}).get("competitors_bidding", False),
+                    "competitors_bidding": (brand_serp_data or {}).get(
+                        "competitors_bidding", False
+                    ),
                 },
                 "indexed_pages": indexed_pages,
             }
@@ -639,7 +684,9 @@ async def generate_vulnerability_report(
                 user_content=user_content,
                 max_tokens=1200,
             )
-            logger.info("generate_vulnerability_report domain=%s tokens=%d/%d", domain, in_tok, out_tok)
+            logger.info(
+                "generate_vulnerability_report domain=%s tokens=%d/%d", domain, in_tok, out_tok
+            )
             return _parse_json_response(text, _VULN_FALLBACK)
         except Exception as exc:
             logger.warning("generate_vulnerability_report failed domain=%s: %s", domain, exc)

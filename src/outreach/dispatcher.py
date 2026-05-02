@@ -16,6 +16,7 @@ All provider calls are async and wrapped in try/except so a single failure
 never crashes the flow. The dispatcher never raises — every outcome is
 returned as a DispatchResult for the caller to record.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -92,15 +93,12 @@ class OutreachDispatcher:
         self.compliance = compliance_guard or ComplianceGuard()
         # None => disabled; _UNSET => auto-create if class available
         self.rate_limiter = (
-            rate_limiter if rate_limiter is not _UNSET
-            else (RateLimiter() if RateLimiter else None)
+            rate_limiter if rate_limiter is not _UNSET else (RateLimiter() if RateLimiter else None)
         )
         # send_pacer is opt-in: None (or _UNSET) => disabled; explicit instance => active
         self.send_pacer = send_pacer if send_pacer is not _UNSET else None
         # linkedin_state is opt-in: when provided, gates DM sends through FSM
-        self.linkedin_state = (
-            linkedin_state if linkedin_state is not _UNSET else None
-        )
+        self.linkedin_state = linkedin_state if linkedin_state is not _UNSET else None
         self.db = db_conn
 
     # -- public entrypoint ---------------------------------------------------
@@ -124,7 +122,8 @@ class OutreachDispatcher:
         if getattr(settings, "IS_DEMO_MODE", False):
             channel_str = (touch.get("channel") or "").lower()
             return DispatchResult(
-                status="skipped", channel=channel_str,
+                status="skipped",
+                channel=channel_str,
                 reason="demo_mode:no_real_send",
             )
 
@@ -133,7 +132,8 @@ class OutreachDispatcher:
             channel = Channel(channel_str)
         except ValueError:
             return DispatchResult(
-                status="failed", channel=channel_str,
+                status="failed",
+                channel=channel_str,
                 reason=f"unknown channel: {channel_str!r}",
             )
 
@@ -147,7 +147,8 @@ class OutreachDispatcher:
         )
         if not timing_dec.allowed:
             return DispatchResult(
-                status="skipped", channel=channel_str,
+                status="skipped",
+                channel=channel_str,
                 reason=f"timing:{timing_dec.reason}",
             )
 
@@ -159,7 +160,8 @@ class OutreachDispatcher:
         )
         if not compliance_dec.allowed:
             return DispatchResult(
-                status="skipped", channel=channel_str,
+                status="skipped",
+                channel=channel_str,
                 reason=f"compliance:{compliance_dec.reason}",
                 extra={"violations": compliance_dec.violations},
             )
@@ -173,7 +175,8 @@ class OutreachDispatcher:
                 )
                 if not allowed:
                     return DispatchResult(
-                        status="skipped", channel=channel_str,
+                        status="skipped",
+                        channel=channel_str,
                         reason="rate_limit:quota_exhausted",
                     )
             except Exception as exc:
@@ -191,14 +194,15 @@ class OutreachDispatcher:
 
         # 5/6. Provider dispatch ---------------------------------------------
         sender = {
-            "email":    self.send_email,
+            "email": self.send_email,
             "linkedin": self.send_linkedin,
-            "voice":    self.send_voice,
+            "voice": self.send_voice,
         }.get(channel_str)
 
         if sender is None:
             return DispatchResult(
-                status="failed", channel=channel_str,
+                status="failed",
+                channel=channel_str,
                 reason=f"no sender for channel {channel_str}",
             )
 
@@ -221,7 +225,8 @@ class OutreachDispatcher:
     async def send_email(self, touch: dict) -> DispatchResult:
         if self.salesforge is None:
             return DispatchResult(
-                status="failed", channel="email",
+                status="failed",
+                channel="email",
                 reason="salesforge_client not configured",
             )
         content = touch.get("content") or {}
@@ -239,21 +244,26 @@ class OutreachDispatcher:
                 },
             )
             return DispatchResult(
-                status="sent", channel="email", provider="salesforge",
+                status="sent",
+                channel="email",
+                provider="salesforge",
                 provider_message_id=str(resp.get("message_id", "")),
                 reason="ok",
             )
         except Exception as exc:
             logger.exception("salesforge.send_email failed")
             return DispatchResult(
-                status="failed", channel="email", provider="salesforge",
+                status="failed",
+                channel="email",
+                provider="salesforge",
                 reason=f"provider_error:{type(exc).__name__}:{exc}",
             )
 
     async def send_linkedin(self, touch: dict) -> DispatchResult:
         if self.unipile is None:
             return DispatchResult(
-                status="failed", channel="linkedin",
+                status="failed",
+                channel="linkedin",
                 reason="unipile_client not configured",
             )
         content = touch.get("content") or {}
@@ -266,7 +276,8 @@ class OutreachDispatcher:
                 prospect_id = str(touch.get("prospect_id") or touch.get("lead_id") or "")
                 if not self.linkedin_state.allows_dm(account_id, prospect_id):
                     return DispatchResult(
-                        status="skipped", channel="linkedin",
+                        status="skipped",
+                        channel="linkedin",
                         reason="linkedin_gate:connect_not_accepted",
                         extra={
                             "account_id": account_id,
@@ -281,21 +292,26 @@ class OutreachDispatcher:
                 text=content.get("text", ""),
             )
             return DispatchResult(
-                status="sent", channel="linkedin", provider="unipile",
+                status="sent",
+                channel="linkedin",
+                provider="unipile",
                 provider_message_id=str(resp.get("message_id", "")),
                 reason="ok",
             )
         except Exception as exc:
             logger.exception("unipile.send_message failed")
             return DispatchResult(
-                status="failed", channel="linkedin", provider="unipile",
+                status="failed",
+                channel="linkedin",
+                provider="unipile",
                 reason=f"provider_error:{type(exc).__name__}:{exc}",
             )
 
     async def send_voice(self, touch: dict) -> DispatchResult:
         if self.elevenagents is None:
             return DispatchResult(
-                status="failed", channel="voice",
+                status="failed",
+                channel="voice",
                 reason="elevenagents_client not configured",
             )
         prospect = touch.get("prospect") or {}
@@ -311,25 +327,34 @@ class OutreachDispatcher:
             success = getattr(resp, "success", False)
             if not success:
                 return DispatchResult(
-                    status="failed", channel="voice", provider="elevenagents",
+                    status="failed",
+                    channel="voice",
+                    provider="elevenagents",
                     reason=f"provider_error:{getattr(resp, 'error', 'unknown')}",
                 )
             return DispatchResult(
-                status="sent", channel="voice", provider="elevenagents",
+                status="sent",
+                channel="voice",
+                provider="elevenagents",
                 provider_message_id=str(getattr(resp, "call_id", "")),
                 reason="ok",
             )
         except Exception as exc:
             logger.exception("elevenagents.initiate_call failed")
             return DispatchResult(
-                status="failed", channel="voice", provider="elevenagents",
+                status="failed",
+                channel="voice",
+                provider="elevenagents",
                 reason=f"provider_error:{type(exc).__name__}:{exc}",
             )
 
     # -- recording -----------------------------------------------------------
 
     async def _record_outcome(
-        self, touch: dict, result: DispatchResult, sent_at: datetime,
+        self,
+        touch: dict,
+        result: DispatchResult,
+        sent_at: datetime,
     ) -> bool:
         """INSERT one row into cis_outreach_outcomes. Returns True on success."""
         if self.db is None:

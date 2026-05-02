@@ -1,5 +1,7 @@
 """supabase_client.py — Thin Supabase REST helpers shared across evo modules."""
+
 import os
+
 import httpx
 from dotenv import load_dotenv
 
@@ -31,7 +33,6 @@ def sb_get(table: str, params: dict) -> list:
 
 def sb_patch(table: str, params: dict, payload: dict) -> list:
     with httpx.Client(timeout=30) as c:
-        r = c.patch(f"{_URL}/rest/v1/{table}", headers=_HEADERS,
-                    params=params, json=payload)
+        r = c.patch(f"{_URL}/rest/v1/{table}", headers=_HEADERS, params=params, json=payload)
         r.raise_for_status()
         return r.json()

@@ -14,9 +14,9 @@ time across all accounts).  All other channels are per-account independent.
 from __future__ import annotations
 
 import random
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Callable
 
 from src.outreach.safety.timing_engine import Channel
 
@@ -30,9 +30,9 @@ class PacerConfig:
 
 DEFAULT_CONFIGS: dict[Channel, PacerConfig] = {
     Channel.LINKEDIN: PacerConfig(min_seconds=120, max_seconds=480),
-    Channel.EMAIL:    PacerConfig(min_seconds=30,  max_seconds=90),
-    Channel.VOICE:    PacerConfig(min_seconds=30,  max_seconds=60, serialised=True),
-    Channel.SMS:      PacerConfig(min_seconds=2,   max_seconds=5),
+    Channel.EMAIL: PacerConfig(min_seconds=30, max_seconds=90),
+    Channel.VOICE: PacerConfig(min_seconds=30, max_seconds=60, serialised=True),
+    Channel.SMS: PacerConfig(min_seconds=2, max_seconds=5),
 }
 
 

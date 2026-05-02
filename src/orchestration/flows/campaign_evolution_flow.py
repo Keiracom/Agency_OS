@@ -271,7 +271,6 @@ async def fetch_client_context_task(client_id: UUID) -> dict[str, Any]:
         # Get tier config
         from src.config.tiers import get_leads_for_tier
 
-
         tier_name = client.tier.value if client.tier else "ignition"
         monthly_leads = get_leads_for_tier(tier_name)
 

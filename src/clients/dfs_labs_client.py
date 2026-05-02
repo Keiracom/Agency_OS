@@ -878,8 +878,10 @@ class DFSLabsClient:
         # rating may be a scalar float or a dict like {"value": 4.2, "votes_count": 87}
         rating_raw = item.get("rating")
         rating_obj = rating_raw if isinstance(rating_raw, dict) else {}
-        gmb_rating = rating_obj.get("value") if rating_obj else (
-            float(rating_raw) if rating_raw is not None else None
+        gmb_rating = (
+            rating_obj.get("value")
+            if rating_obj
+            else (float(rating_raw) if rating_raw is not None else None)
         )
         gmb_review_count = (
             item.get("rating_count")
@@ -1003,7 +1005,10 @@ class DFSLabsClient:
             # LinkedIn profile titles: "Name - Job Title | LinkedIn"
             name = ""
             job_title = ""
-            m = re.match(r"^([^|\u2013\-]+?)(?:\s*[-\u2013]\s*(.+?))?(?:\s*\|\s*LinkedIn.*)?$", title_raw.strip())
+            m = re.match(
+                r"^([^|\u2013\-]+?)(?:\s*[-\u2013]\s*(.+?))?(?:\s*\|\s*LinkedIn.*)?$",
+                title_raw.strip(),
+            )
             if m:
                 name = m.group(1).strip()
                 job_title = (m.group(2) or "").strip()
@@ -1191,7 +1196,6 @@ class DFSLabsClient:
             domain = domain[4:]
         return domain
 
-
     # ============================================
     # ENDPOINT 13: serp_email_search  (Directive #300-FIX-7)
     # ============================================
@@ -1211,6 +1215,7 @@ class DFSLabsClient:
         Returns list of email strings found in SERP snippets (deduped, lowercased).
         """
         import re as _re
+
         _EMAIL_RE = _re.compile(r"[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}")
 
         query = f'"{business_name}" email contact'
@@ -1235,14 +1240,18 @@ class DFSLabsClient:
                 text = item.get(field) or ""
                 for email in _EMAIL_RE.findall(text):
                     # Filter out common false positives
-                    if not any(email.endswith(ext) for ext in (".png", ".jpg", ".css", ".js", ".gif")):
+                    if not any(
+                        email.endswith(ext) for ext in (".png", ".jpg", ".css", ".js", ".gif")
+                    ):
                         found.add(email.lower())
             # Check nested items (e.g. sitelinks)
             for nested in item.get("items") or []:
                 for field in ("snippet", "description"):
                     text = nested.get(field) or ""
                     for email in _EMAIL_RE.findall(text):
-                        if not any(email.endswith(ext) for ext in (".png", ".jpg", ".css", ".js", ".gif")):
+                        if not any(
+                            email.endswith(ext) for ext in (".png", ".jpg", ".css", ".js", ".gif")
+                        ):
                             found.add(email.lower())
         return list(found)
 

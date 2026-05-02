@@ -1,11 +1,14 @@
 """consumer_helpers.py — DB ops for task_consumer: claim, result write, status update."""
+
 import datetime
+
 from src.evo.supabase_client import sb_get, sb_patch, sb_post
 
 
 def fetch_pending() -> dict | None:
-    rows = sb_get("evo_task_queue", {"status": "eq.pending",
-                                     "order": "created_at.asc", "limit": "1"})
+    rows = sb_get(
+        "evo_task_queue", {"status": "eq.pending", "order": "created_at.asc", "limit": "1"}
+    )
     return rows[0] if rows else None
 
 
@@ -21,17 +24,22 @@ def claim_task(task_id: str) -> bool:
     return bool(rows) and rows[0].get("status") == "running"
 
 
-def write_result(task_id: str, flow_run_id: str, agent_id: str, result: dict, actual_cost: dict) -> None:
-    sb_post("evo_task_results", {
-        "task_id": task_id,
-        "flow_run_id": flow_run_id,
-        "agent_id": agent_id,
-        "status": result["status"],
-        "agent_output": result.get("agent_output", ""),
-        "verification_output": result.get("verification_output", ""),
-        "verified": result.get("verified", False),
-        "actual_cost": actual_cost,
-    })
+def write_result(
+    task_id: str, flow_run_id: str, agent_id: str, result: dict, actual_cost: dict
+) -> None:
+    sb_post(
+        "evo_task_results",
+        {
+            "task_id": task_id,
+            "flow_run_id": flow_run_id,
+            "agent_id": agent_id,
+            "status": result["status"],
+            "agent_output": result.get("agent_output", ""),
+            "verification_output": result.get("verification_output", ""),
+            "verified": result.get("verified", False),
+            "actual_cost": actual_cost,
+        },
+    )
 
 
 def update_queue_status(task_id: str, status: str) -> None:
@@ -39,13 +47,18 @@ def update_queue_status(task_id: str, status: str) -> None:
 
 
 def fail_task(task_id: str, reason: str = "") -> None:
-    sb_patch("evo_task_queue", {"id": f"eq.{task_id}"},
-             {"status": "failed", "completed_at": datetime.datetime.utcnow().isoformat()})
+    sb_patch(
+        "evo_task_queue",
+        {"id": f"eq.{task_id}"},
+        {"status": "failed", "completed_at": datetime.datetime.utcnow().isoformat()},
+    )
 
 
 def invoke_agent_local(agent_id: str, description: str, timeout: int = 300) -> dict:
     """Run claude -p with appropriate model per agent_id."""
-    import subprocess, json
+    import json
+    import subprocess
+
     model_map = {
         "architect-0": "claude-opus-4-6",
         "build-2": "claude-sonnet-4-6",
@@ -61,7 +74,11 @@ def invoke_agent_local(agent_id: str, description: str, timeout: int = 300) -> d
     try:
         proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout + 10)
         if proc.returncode != 0:
-            return {"text": "", "exit_code": proc.returncode, "error": (proc.stderr + proc.stdout).strip()}
+            return {
+                "text": "",
+                "exit_code": proc.returncode,
+                "error": (proc.stderr + proc.stdout).strip(),
+            }
         data = json.loads(proc.stdout)
         text = data.get("result") or data.get("text", "")
         return {"text": text, "exit_code": 0}
@@ -73,5 +90,6 @@ def invoke_agent_local(agent_id: str, description: str, timeout: int = 300) -> d
 def verify_output(cmd: str, expected: str) -> tuple[bool, str]:
     """Run shell verification command, return (matched, stdout)."""
     import subprocess
+
     r = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=30)
     return expected in r.stdout, r.stdout

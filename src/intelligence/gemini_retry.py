@@ -5,6 +5,7 @@ without class state. Standalone async function with exponential backoff.
 
 Ratified: 2026-04-14. Pipeline F architecture refactor.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -20,8 +21,8 @@ GEMINI_MODEL = "gemini-2.5-flash"
 GEMINI_MODEL_DM = "gemini-3.1-pro-preview"
 GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta"
 
-INPUT_COST = 0.00000015   # per token
-OUTPUT_COST = 0.0000006   # per token
+INPUT_COST = 0.00000015  # per token
+OUTPUT_COST = 0.0000006  # per token
 
 
 async def gemini_call_with_retry(
@@ -65,8 +66,7 @@ async def gemini_call_with_retry(
         effective_prompt = user_prompt
         if attempt > 1:
             effective_prompt += (
-                "\n\nIMPORTANT: Return ONLY valid JSON. "
-                "No prose, no markdown, no preamble."
+                "\n\nIMPORTANT: Return ONLY valid JSON. No prose, no markdown, no preamble."
             )
 
         payload: dict = {
@@ -85,17 +85,19 @@ async def gemini_call_with_retry(
                 resp = await client.post(url, json=payload)
 
             if resp.status_code == 429:
-                wait = 2 ** attempt + random.random()
+                wait = 2**attempt + random.random()
                 logger.warning("Gemini 429 attempt %d, backoff %.1fs", attempt, wait)
                 await asyncio.sleep(wait)
                 continue
 
             if resp.status_code != 200:
                 last_error = f"HTTP {resp.status_code}: {resp.text[:200]}"
-                wait = 2 ** attempt + random.random()
+                wait = 2**attempt + random.random()
                 logger.warning(
                     "Gemini error attempt %d: %s, backoff %.1fs",
-                    attempt, last_error, wait,
+                    attempt,
+                    last_error,
+                    wait,
                 )
                 await asyncio.sleep(wait)
                 continue
@@ -139,9 +141,7 @@ async def gemini_call_with_retry(
                     "input_tokens": total_in,
                     "output_tokens": total_out,
                     "cost_usd": round(total_cost, 6),
-                    "grounding_queries": len(
-                        grounding_meta.get("webSearchQueries", [])
-                    ),
+                    "grounding_queries": len(grounding_meta.get("webSearchQueries", [])),
                     "attempt": attempt,
                     "f_status": "success",
                     "f_failure_reason": None,
@@ -153,16 +153,14 @@ async def gemini_call_with_retry(
                     if not text.strip().startswith("{") and "```" not in text
                     else "json_parse_failure"
                 )
-                wait = 2 ** attempt + random.random()
-                logger.warning(
-                    "Gemini %s attempt %d, backoff %.1fs", reason, attempt, wait
-                )
+                wait = 2**attempt + random.random()
+                logger.warning("Gemini %s attempt %d, backoff %.1fs", reason, attempt, wait)
                 await asyncio.sleep(wait)
                 continue
 
         except httpx.TimeoutException:
             last_error = "timeout"
-            wait = 2 ** attempt + random.random()
+            wait = 2**attempt + random.random()
             await asyncio.sleep(wait)
 
     # All retries exhausted — classify the error

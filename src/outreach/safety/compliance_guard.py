@@ -14,20 +14,20 @@ blocks the send.
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Callable
 from zoneinfo import ZoneInfo
 
-from src.outreach.safety.timing_engine import AU_PUBLIC_HOLIDAYS_2026, Channel
+from src.outreach.safety.timing_engine import Channel
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_TZ = "Australia/Sydney"
 
 # TCP: Telecommunications Consumer Protection Act hours for voice/SMS
-TCP_START = 9   # 9am (inclusive)
-TCP_END = 20    # 8pm (exclusive) — i.e. calls/SMS allowed until 19:59
+TCP_START = 9  # 9am (inclusive)
+TCP_END = 20  # 8pm (exclusive) — i.e. calls/SMS allowed until 19:59
 
 
 @dataclass
@@ -51,6 +51,7 @@ def _resolve_dncr(lookup: Callable[[str], bool] | None) -> Callable[[str], bool]
         return lookup
     try:
         from src.outreach.safety.dncr_adapter import build_dncr_lookup as _build_dncr
+
         return _build_dncr()
     except Exception as exc:
         logger.warning("DNCR adapter init failed, falling back to no-op: %s", exc)
@@ -111,6 +112,7 @@ class ComplianceGuard:
 # ---------------------------------------------------------------------------
 # Private rule checkers — each under 20 lines
 # ---------------------------------------------------------------------------
+
 
 def _check_suppression(
     prospect: dict,

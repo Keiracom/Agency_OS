@@ -237,7 +237,6 @@ def get_dncr_rewash_schedule() -> CronSchedule:
     )
 
 
-
 # ============================================
 # Warmup Monitor Schedule (Domain Warmup Completion)
 # ============================================
@@ -325,6 +324,7 @@ def get_daily_warming_schedule() -> CronSchedule:
     from src.orchestration.flows.daily_warming_flow import (
         get_daily_warming_schedule as _flow_schedule,
     )
+
     return _flow_schedule()
 
 
@@ -333,6 +333,7 @@ def get_weekly_linkedin_reset_schedule() -> CronSchedule:
     from src.orchestration.flows.weekly_linkedin_reset_flow import (
         get_weekly_linkedin_reset_schedule as _flow_schedule,
     )
+
     return _flow_schedule()
 
 
@@ -341,6 +342,7 @@ def get_monthly_cycle_close_schedule() -> CronSchedule:
     from src.orchestration.flows.monthly_cycle_close_flow import (
         get_monthly_cycle_close_schedule as _flow_schedule,
     )
+
     return _flow_schedule()
 
 

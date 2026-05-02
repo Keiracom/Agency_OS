@@ -8,20 +8,23 @@ Imports: httpx only
 Consumers: src/pipeline/free_enrichment.py
 Directive: #295, updated #300-FIX (Issue 9)
 """
+
 from __future__ import annotations
 
 import re
 
 import httpx
 
-_TITLE_RE      = re.compile(r"<title[^>]*>(.*?)</title>", re.IGNORECASE | re.DOTALL)
-_MOBILE_AU_RE  = re.compile(r'04\d{2}[\s.\-]?\d{3}[\s.\-]?\d{3}')
-_MOBILE_INT_RE = re.compile(r'\+614\d{2}[\s.\-]?\d{3}[\s.\-]?\d{3}')
-_LANDLINE_RE   = re.compile(r'0[2378][\s.\-]?\d{4}[\s.\-]?\d{4}')
-_EMAIL_RE      = re.compile(r'[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}')
-_LINKEDIN_RE   = re.compile(r'linkedin\.com/(?:in|company)/[\w\-]+')
-_CLEAN_RE      = re.compile(r'[\s.\-]')
-_GENERIC_EMAIL = frozenset({"noreply", "info", "support", "admin", "webmaster", "hello", "contact", "enquiries", "enquiry"})
+_TITLE_RE = re.compile(r"<title[^>]*>(.*?)</title>", re.IGNORECASE | re.DOTALL)
+_MOBILE_AU_RE = re.compile(r"04\d{2}[\s.\-]?\d{3}[\s.\-]?\d{3}")
+_MOBILE_INT_RE = re.compile(r"\+614\d{2}[\s.\-]?\d{3}[\s.\-]?\d{3}")
+_LANDLINE_RE = re.compile(r"0[2378][\s.\-]?\d{4}[\s.\-]?\d{4}")
+_EMAIL_RE = re.compile(r"[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}")
+_LINKEDIN_RE = re.compile(r"linkedin\.com/(?:in|company)/[\w\-]+")
+_CLEAN_RE = re.compile(r"[\s.\-]")
+_GENERIC_EMAIL = frozenset(
+    {"noreply", "info", "support", "admin", "webmaster", "hello", "contact", "enquiries", "enquiry"}
+)
 _PLACEHOLDER_EMAIL_RE = re.compile(
     r"(?:^|\b)(example@|test@|you@|your@|user@|mail@|email@|no-?reply@"
     r"|noreply@)|example\.com|yourdomain|placeholder|samplesite",
@@ -66,15 +69,15 @@ class HttpxScraper:
         Never raises.
         """
         contact: dict = {
-            "company_email":   None,   # from website mailto/contact page
-            "company_phone":   None,   # landline: 0[2378]XXXXXXXX
-            "company_mobile":  None,   # 04XX mobile from website
+            "company_email": None,  # from website mailto/contact page
+            "company_phone": None,  # landline: 0[2378]XXXXXXXX
+            "company_mobile": None,  # 04XX mobile from website
             "linkedin_company": None,  # company LinkedIn page URL
-            "linkedin_dm":     None,   # person LinkedIn profile URL (/in/)
+            "linkedin_dm": None,  # person LinkedIn profile URL (/in/)
             # DM fields (populated by paid waterfalls, not scrape)
-            "dm_email":        None,
+            "dm_email": None,
             "dm_email_verified": False,
-            "dm_mobile":       None,
+            "dm_mobile": None,
         }
         if not html:
             return contact
@@ -94,9 +97,11 @@ class HttpxScraper:
         # Company email (first non-generic)
         for email in _EMAIL_RE.findall(html):
             local = email.split("@")[0].lower()
-            if (local not in _GENERIC_EMAIL
-                    and not email.endswith((".png", ".jpg", ".gif"))
-                    and not _PLACEHOLDER_EMAIL_RE.search(email)):
+            if (
+                local not in _GENERIC_EMAIL
+                and not email.endswith((".png", ".jpg", ".gif"))
+                and not _PLACEHOLDER_EMAIL_RE.search(email)
+            ):
                 contact["company_email"] = email.lower()
                 break
         # LinkedIn — split company vs person

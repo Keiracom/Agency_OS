@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text
@@ -21,7 +21,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.models.base import Base, TimestampMixin
 
 if TYPE_CHECKING:
-    from src.models.client import Client
+    pass
 
 
 class BurnerDomainStatus(StrEnum):
@@ -65,31 +65,35 @@ class BurnerDomain(Base, TimestampMixin):
     )
     domain_name: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
     tld: Mapped[str] = mapped_column(String(20), nullable=False, default="com.au")
-    salesforge_domain_id: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    salesforge_domain_id: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(
         String(30),
         nullable=False,
         default=BurnerDomainStatus.CANDIDATE,
     )
-    pattern_type: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    purchased_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    warmup_started_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    ready_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    assigned_to_client_id: Mapped[Optional[UUID]] = mapped_column(
+    pattern_type: Mapped[str | None] = mapped_column(Text, nullable=True)
+    purchased_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    warmup_started_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    ready_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    assigned_to_client_id: Mapped[UUID | None] = mapped_column(
         UUID_DB(as_uuid=True),
         ForeignKey("clients.id", ondelete="SET NULL"),
         nullable=True,
     )
-    assigned_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    released_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    quarantine_until: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    sender_reputation_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    assigned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    released_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    quarantine_until: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    sender_reputation_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     daily_send_limit: Mapped[int] = mapped_column(Integer, nullable=False, default=50)
     dry_run: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Relationships
-    mailboxes: Mapped[list["BurnerMailbox"]] = relationship(
+    mailboxes: Mapped[list[BurnerMailbox]] = relationship(
         "BurnerMailbox",
         back_populates="domain",
         cascade="all, delete-orphan",
@@ -121,7 +125,7 @@ class BurnerMailbox(Base):
         nullable=False,
         default="{first_name} {last_name}",
     )
-    salesforge_mailbox_id: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    salesforge_mailbox_id: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(
         String(20),
         nullable=False,
@@ -134,7 +138,7 @@ class BurnerMailbox(Base):
     )
 
     # Relationships
-    domain: Mapped["BurnerDomain"] = relationship("BurnerDomain", back_populates="mailboxes")
+    domain: Mapped[BurnerDomain] = relationship("BurnerDomain", back_populates="mailboxes")
 
 
 class DomainNamingPattern(Base):

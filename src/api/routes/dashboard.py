@@ -11,6 +11,7 @@ Multi-tenant filtering: business_universe is shared inventory — every
 BU-touching endpoint joins through campaign_leads (which carries
 client_id) so a client only ever sees BU rows they have claimed.
 """
+
 from __future__ import annotations
 
 import logging
@@ -36,6 +37,7 @@ router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 # ─────────────────────────────────────────────────────────────────────────────
 # Schemas
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class BUHotLead(BaseModel):
     id: str
@@ -88,16 +90,16 @@ class ActivityResponse(BaseModel):
 
 # Stage label map — ordered for UI funnel rendering.
 _STAGE_LABELS: dict[int, str] = {
-    0:  "Queued",
-    1:  "Discovered",
-    2:  "SERP-verified",
-    3:  "Identity-confirmed",
-    4:  "Signal-bundled",
-    5:  "Composite-scored",
-    6:  "Historically-ranked",
-    7:  "F3B-analysed",
-    8:  "Contact-enriched",
-    9:  "LinkedIn-confirmed",
+    0: "Queued",
+    1: "Discovered",
+    2: "SERP-verified",
+    3: "Identity-confirmed",
+    4: "Signal-bundled",
+    5: "Composite-scored",
+    6: "Historically-ranked",
+    7: "F3B-analysed",
+    8: "Contact-enriched",
+    9: "LinkedIn-confirmed",
     10: "VR-scored",
     11: "Card-ready",
 }
@@ -106,6 +108,7 @@ _STAGE_LABELS: dict[int, str] = {
 # ─────────────────────────────────────────────────────────────────────────────
 # Endpoints
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class DemoModeResponse(BaseModel):
     is_demo_mode: bool
@@ -125,13 +128,14 @@ async def demo_mode_state() -> DemoModeResponse:
     dismissed in the UI, only via the env toggle.
     """
     from src.config.settings import settings as _settings
+
     enabled = bool(getattr(_settings, "IS_DEMO_MODE", False))
     return DemoModeResponse(
         is_demo_mode=enabled,
         message=(
-            "DEMO MODE — No outreach will be sent. "
-            "Data is real prospect intelligence."
-            if enabled else None
+            "DEMO MODE — No outreach will be sent. Data is real prospect intelligence."
+            if enabled
+            else None
         ),
     )
 
@@ -147,8 +151,10 @@ async def bu_hot_leads(
     """Hot leads from business_universe — pipeline_stage >= min_stage AND
     propensity_score >= min_score, ordered by score desc.
     Multi-tenant via JOIN on campaign_leads.client_id."""
-    page = (await db.execute(
-        text("""
+    page = (
+        (
+            await db.execute(
+                text("""
             SELECT bu.id, bu.domain, bu.display_name, bu.dm_name, bu.dm_title,
                    COALESCE(bu.propensity_score, 0) AS propensity_score,
                    COALESCE(bu.pipeline_stage, 0)   AS pipeline_stage,
@@ -163,17 +169,22 @@ async def bu_hot_leads(
             ORDER BY MAX(COALESCE(bu.propensity_score, 0)) DESC
             LIMIT :limit
         """),
-        {
-            "client_id": ctx.client_id,
-            "min_stage": min_stage,
-            "min_score": min_score,
-            "limit":     limit,
-        },
-    )).mappings().all()
+                {
+                    "client_id": ctx.client_id,
+                    "min_stage": min_stage,
+                    "min_score": min_score,
+                    "limit": limit,
+                },
+            )
+        )
+        .mappings()
+        .all()
+    )
 
     # Distinct count of qualifying BU rows for this client (not page size).
-    total = (await db.execute(
-        text("""
+    total = (
+        await db.execute(
+            text("""
             SELECT COUNT(DISTINCT bu.id) AS n
             FROM business_universe bu
             JOIN campaign_leads cl ON cl.business_universe_id = bu.id
@@ -181,12 +192,13 @@ async def bu_hot_leads(
               AND bu.pipeline_stage >= :min_stage
               AND COALESCE(bu.propensity_score, 0) >= :min_score
         """),
-        {
-            "client_id": ctx.client_id,
-            "min_stage": min_stage,
-            "min_score": min_score,
-        },
-    )).scalar_one_or_none() or 0
+            {
+                "client_id": ctx.client_id,
+                "min_stage": min_stage,
+                "min_score": min_score,
+            },
+        )
+    ).scalar_one_or_none() or 0
 
     items = [
         BUHotLead(
@@ -215,8 +227,10 @@ async def bu_stats(
     All BU counts JOIN campaign_leads.client_id; BDM count joins via
     business_universe_id → campaign_leads."""
     cutoff = datetime.now(UTC) - timedelta(hours=24)
-    row = (await db.execute(
-        text("""
+    row = (
+        (
+            await db.execute(
+                text("""
             SELECT
               COUNT(DISTINCT bu.id) AS total_businesses,
               COUNT(DISTINCT bu.id) FILTER (WHERE bu.dm_email IS NOT NULL)
@@ -230,11 +244,16 @@ async def bu_stats(
             JOIN campaign_leads cl ON cl.business_universe_id = bu.id
             WHERE cl.client_id = :client_id
         """),
-        {"client_id": ctx.client_id, "cutoff": cutoff},
-    )).mappings().first()
+                {"client_id": ctx.client_id, "cutoff": cutoff},
+            )
+        )
+        .mappings()
+        .first()
+    )
 
-    bdm_total = (await db.execute(
-        text("""
+    bdm_total = (
+        await db.execute(
+            text("""
             SELECT COUNT(DISTINCT bdm.id) AS n
             FROM business_decision_makers bdm
             JOIN campaign_leads cl
@@ -242,8 +261,9 @@ async def bu_stats(
             WHERE cl.client_id = :client_id
               AND bdm.is_current = TRUE
         """),
-        {"client_id": ctx.client_id},
-    )).scalar_one_or_none() or 0
+            {"client_id": ctx.client_id},
+        )
+    ).scalar_one_or_none() or 0
 
     return BUStats(
         total_businesses=int((row or {}).get("total_businesses", 0)),
@@ -262,8 +282,10 @@ async def bu_funnel(
     """Pipeline-stage distribution across business_universe.
     Returns one row per stage 0..11 with the stage label and live count.
     Multi-tenant via JOIN on campaign_leads.client_id."""
-    rows = (await db.execute(
-        text("""
+    rows = (
+        (
+            await db.execute(
+                text("""
             SELECT COALESCE(bu.pipeline_stage, 0) AS stage,
                    COUNT(DISTINCT bu.id)          AS n
             FROM business_universe bu
@@ -271,8 +293,12 @@ async def bu_funnel(
             WHERE cl.client_id = :client_id
             GROUP BY bu.pipeline_stage
         """),
-        {"client_id": ctx.client_id},
-    )).mappings().all()
+                {"client_id": ctx.client_id},
+            )
+        )
+        .mappings()
+        .all()
+    )
     counts: dict[int, int] = {int(r["stage"]): int(r["n"]) for r in rows}
 
     stages = [
@@ -292,8 +318,10 @@ async def bu_activity(
     plus most-recent outreach events from cis_outreach_outcomes, merged
     and ordered by timestamp desc.
     Both sources scoped to ctx.client_id."""
-    enrich_rows = (await db.execute(
-        text("""
+    enrich_rows = (
+        (
+            await db.execute(
+                text("""
             SELECT bu.id, bu.domain, bu.display_name, bu.last_enriched_at,
                    bu.pipeline_stage, bu.enrichment_cost_usd
             FROM business_universe bu
@@ -304,13 +332,19 @@ async def bu_activity(
             ORDER BY MAX(bu.last_enriched_at) DESC
             LIMIT :limit
         """),
-        {"client_id": ctx.client_id, "limit": limit},
-    )).mappings().all()
+                {"client_id": ctx.client_id, "limit": limit},
+            )
+        )
+        .mappings()
+        .all()
+    )
 
     outreach_rows: list[Any] = []
     try:
-        outreach_rows = (await db.execute(
-            text("""
+        outreach_rows = (
+            (
+                await db.execute(
+                    text("""
                 SELECT o.id, o.channel, o.sent_at, o.final_outcome,
                        bu.domain
                 FROM cis_outreach_outcomes o
@@ -321,33 +355,44 @@ async def bu_activity(
                 ORDER BY o.sent_at DESC
                 LIMIT :limit
             """),
-            {"client_id": ctx.client_id, "limit": limit},
-        )).mappings().all()
+                    {"client_id": ctx.client_id, "limit": limit},
+                )
+            )
+            .mappings()
+            .all()
+        )
     except Exception as exc:  # noqa: BLE001 — table may not exist in dev
         logger.error(
-            "bu_activity: outreach query failed (table missing in dev?): %s", exc,
+            "bu_activity: outreach query failed (table missing in dev?): %s",
+            exc,
         )
         outreach_rows = []
 
     items: list[ActivityEvent] = []
     for r in enrich_rows:
-        items.append(ActivityEvent(
-            id=f"enr-{r['id']}",
-            timestamp=(r["last_enriched_at"] or datetime.now(UTC)).isoformat(),
-            kind="enrichment",
-            domain=r["domain"],
-            detail=f"{r['display_name'] or r['domain']} → stage {r['pipeline_stage'] or 0}",
-            cost_usd=float(r["enrichment_cost_usd"]) if r["enrichment_cost_usd"] is not None else None,
-        ))
+        items.append(
+            ActivityEvent(
+                id=f"enr-{r['id']}",
+                timestamp=(r["last_enriched_at"] or datetime.now(UTC)).isoformat(),
+                kind="enrichment",
+                domain=r["domain"],
+                detail=f"{r['display_name'] or r['domain']} → stage {r['pipeline_stage'] or 0}",
+                cost_usd=float(r["enrichment_cost_usd"])
+                if r["enrichment_cost_usd"] is not None
+                else None,
+            )
+        )
     for r in outreach_rows:
-        items.append(ActivityEvent(
-            id=f"out-{r['id']}",
-            timestamp=(r["sent_at"] or datetime.now(UTC)).isoformat(),
-            kind="outreach",
-            domain=r.get("domain"),
-            detail=f"{r['channel']} sent — outcome={r['final_outcome'] or 'pending'}",
-            cost_usd=None,
-        ))
+        items.append(
+            ActivityEvent(
+                id=f"out-{r['id']}",
+                timestamp=(r["sent_at"] or datetime.now(UTC)).isoformat(),
+                kind="outreach",
+                domain=r.get("domain"),
+                detail=f"{r['channel']} sent — outcome={r['final_outcome'] or 'pending'}",
+                cost_usd=None,
+            )
+        )
 
     items.sort(key=lambda e: e.timestamp, reverse=True)
     return ActivityResponse(items=items[:limit])

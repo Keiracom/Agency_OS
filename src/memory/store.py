@@ -36,7 +36,10 @@ def _generate_embedding(text: str) -> list[float] | None:
     try:
         resp = httpx.post(
             "https://api.openai.com/v1/embeddings",
-            headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
+            headers={
+                "Authorization": f"Bearer {OPENAI_API_KEY}",
+                "Content-Type": "application/json",
+            },
             json={"model": "text-embedding-3-small", "input": text[:8000]},
             timeout=10,
         )
@@ -44,6 +47,7 @@ def _generate_embedding(text: str) -> list[float] | None:
             emb_data = resp.json()
             try:
                 from src.telegram_bot.openai_cost_logger import log_openai_call
+
                 usage = emb_data.get("usage", {})
                 log_openai_call(
                     callsign=os.environ.get("CALLSIGN", "unknown"),
@@ -142,8 +146,7 @@ def store(
     """
     if source_type not in VALID_SOURCE_TYPES:
         raise ValueError(
-            f"Invalid source_type {source_type!r}. "
-            f"Must be one of: {sorted(VALID_SOURCE_TYPES)}"
+            f"Invalid source_type {source_type!r}. Must be one of: {sorted(VALID_SOURCE_TYPES)}"
         )
 
     ratelimit.check_and_increment()
@@ -182,9 +185,7 @@ def store(
     try:
         response = httpx.post(url, json=payload, headers=headers, timeout=10)
         if response.status_code not in (200, 201):
-            raise RuntimeError(
-                f"Supabase returned {response.status_code}: {response.text}"
-            )
+            raise RuntimeError(f"Supabase returned {response.status_code}: {response.text}")
         row = response.json()
         # PostgREST returns a list when Prefer: return=representation
         if isinstance(row, list):
@@ -192,12 +193,11 @@ def store(
         # Now that the new row landed cleanly, retire the old one
         if supersede_id:
             _mark_superseded(supersede_id)
-            logger.info(
-                f"[store] connective write: new {source_type} supersedes {supersede_id}"
-            )
+            logger.info(f"[store] connective write: new {source_type} supersedes {supersede_id}")
         # Trigger organisation check (every N writes)
         try:
             from .organise import increment_write_counter
+
             increment_write_counter()
         except Exception:
             pass  # never block store on organisation failure
@@ -208,6 +208,7 @@ def store(
         if os.environ.get("MEM0_INTEGRATION_ENABLED", "").lower() == "true":
             try:
                 from src.governance.mem0_adapter import Mem0Adapter
+
                 adapter = Mem0Adapter()
                 adapter.add(
                     content=content,

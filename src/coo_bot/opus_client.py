@@ -17,6 +17,7 @@ Design:
 - Never raises — returns "" on any failure (Max must never crash)
 - Logs failures for debugging
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -53,26 +54,28 @@ async def opus_call(
     prompt = f"{system_prompt}\n\n{user_message}"
     cmd = [_CLAUDE_BIN, "-p", prompt, "--model", model]
     if with_tools:
-        cmd.extend([
-            "--allowedTools", "Read,Grep,Glob,mcp__supabase__execute_sql",
-        ])
+        cmd.extend(
+            [
+                "--allowedTools",
+                "Read,Grep,Glob,mcp__supabase__execute_sql",
+            ]
+        )
     try:
         proc = await asyncio.create_subprocess_exec(
             *cmd,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
-        stdout, stderr = await asyncio.wait_for(
-            proc.communicate(), timeout=timeout
-        )
+        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
         if proc.returncode != 0:
             logger.warning(
                 "opus_call failed (rc=%s): %s",
-                proc.returncode, stderr.decode()[:200],
+                proc.returncode,
+                stderr.decode()[:200],
             )
             return ""
         return stdout.decode().strip()
-    except asyncio.TimeoutError:
+    except TimeoutError:
         logger.warning("opus_call timed out after %ss", timeout)
         if proc:
             proc.kill()

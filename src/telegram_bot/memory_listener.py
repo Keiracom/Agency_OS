@@ -5,6 +5,8 @@ Runs as part of handle_message flow (not a separate service).
 Uses embedding cosine similarity (pgvector) for semantic search.
 Falls back to ILIKE text search if embedding generation fails.
 """
+
+import contextlib
 import json
 import logging
 import os
@@ -14,9 +16,7 @@ import httpx
 logger = logging.getLogger(__name__)
 
 SUPABASE_URL: str = os.environ.get("SUPABASE_URL", "")
-SUPABASE_KEY: str = (
-    os.environ.get("SUPABASE_SERVICE_KEY", "") or os.environ.get("SUPABASE_KEY", "")
-)
+SUPABASE_KEY: str = os.environ.get("SUPABASE_SERVICE_KEY", "") or os.environ.get("SUPABASE_KEY", "")
 OPENAI_API_KEY: str = os.environ.get("OPENAI_API_KEY", "")
 
 MAX_RELEVANCE_RESULTS: int = int(os.environ.get("LISTENER_TOP_K", "3"))
@@ -33,23 +33,66 @@ SIM_THRESHOLD: float = float(os.environ.get("LISTENER_SIM_THRESHOLD", "0.55"))
 # inbound message with low cited-rate. Default off 2026-04-24; re-enable via env
 # vars if needed for specific use cases.
 ENABLE_GIT_CONTEXT: bool = os.environ.get("LISTENER_ENABLE_GIT_CONTEXT", "false").lower() == "true"
-ENABLE_REPO_CONTEXT: bool = os.environ.get("LISTENER_ENABLE_REPO_CONTEXT", "false").lower() == "true"
+ENABLE_REPO_CONTEXT: bool = (
+    os.environ.get("LISTENER_ENABLE_REPO_CONTEXT", "false").lower() == "true"
+)
 
 # Stopwords — common words that match too broadly
 STOPWORDS: set[str] = {
-    "about", "after", "again", "because", "before", "being", "between",
-    "could", "doing", "during", "every", "going", "having", "maybe",
-    "other", "should", "something", "their", "there", "these", "thing",
-    "things", "think", "those", "through", "where", "which", "while",
-    "would", "already", "really", "still",
+    "about",
+    "after",
+    "again",
+    "because",
+    "before",
+    "being",
+    "between",
+    "could",
+    "doing",
+    "during",
+    "every",
+    "going",
+    "having",
+    "maybe",
+    "other",
+    "should",
+    "something",
+    "their",
+    "there",
+    "these",
+    "thing",
+    "things",
+    "think",
+    "those",
+    "through",
+    "where",
+    "which",
+    "while",
+    "would",
+    "already",
+    "really",
+    "still",
 }
 
 # Git commit message prefixes that match too broadly
 GIT_STOPWORDS: set[str] = STOPWORDS | {
-    "feat", "feature", "merge", "request", "branch",
-    "docs", "chore", "refactor", "style", "build",
-    "elliot", "aiden", "scout", "claude",
-    "pull", "commit", "pushed", "merged",
+    "feat",
+    "feature",
+    "merge",
+    "request",
+    "branch",
+    "docs",
+    "chore",
+    "refactor",
+    "style",
+    "build",
+    "elliot",
+    "aiden",
+    "scout",
+    "claude",
+    "pull",
+    "commit",
+    "pushed",
+    "merged",
 }
 
 
@@ -83,9 +126,7 @@ async def _expand_query(query_text: str) -> list[str]:
                 json={
                     "model": "gpt-4o-mini",
                     "temperature": 0.3,
-                    "messages": [
-                        {"role": "user", "content": prompt}
-                    ],
+                    "messages": [{"role": "user", "content": prompt}],
                     "response_format": {"type": "json_object"},
                 },
             )
@@ -96,6 +137,7 @@ async def _expand_query(query_text: str) -> list[str]:
                 variations = parsed.get("variations", [])
                 try:
                     from src.telegram_bot.openai_cost_logger import log_openai_call
+
                     usage = data.get("usage", {})
                     log_openai_call(
                         callsign=os.environ.get("CALLSIGN", "unknown"),
@@ -172,6 +214,7 @@ async def _embed_text(text: str) -> list[float] | None:
                 emb_data = resp.json()
                 try:
                     from src.telegram_bot.openai_cost_logger import log_openai_call
+
                     usage = emb_data.get("usage", {})
                     log_openai_call(
                         callsign=os.environ.get("CALLSIGN", "unknown"),
@@ -210,10 +253,11 @@ async def find_relevant_memories(
     }
 
     # Strip callsign prefixes before embedding — [AIDEN]/[ELLIOT] tags add noise to cosine
-    import re
     import asyncio as _asyncio
-    clean_text = re.sub(r'^\[(?:ELLIOT|AIDEN|SCOUT|DAVE)\]\s*', '', message_text.strip())
-    clean_text = re.sub(r'^\[(?:ELLIOT|AIDEN|SCOUT|DAVE)\]\s*', '', clean_text)  # double prefix
+    import re
+
+    clean_text = re.sub(r"^\[(?:ELLIOT|AIDEN|SCOUT|DAVE)\]\s*", "", message_text.strip())
+    clean_text = re.sub(r"^\[(?:ELLIOT|AIDEN|SCOUT|DAVE)\]\s*", "", clean_text)  # double prefix
     query = clean_text or message_text
 
     # MultiQueryRetriever: expand query into variations, search each in parallel
@@ -226,7 +270,9 @@ async def find_relevant_memories(
     )
 
     # Only proceed with variations that have valid embeddings
-    valid_pairs = [(v, emb) for v, emb in zip(variations, embeddings) if emb is not None]
+    valid_pairs = [
+        (v, emb) for v, emb in zip(variations, embeddings, strict=False) if emb is not None
+    ]
 
     if valid_pairs:
         # Search hybrid for every variation in parallel (20 candidates each)
@@ -241,13 +287,18 @@ async def find_relevant_memories(
             results = _apply_trust_weighting(raw_results)
             # L2: LLM discernment — pick best N and summarise
             from src.telegram_bot.listener_discernment import discern_and_summarise
+
             discerned = await discern_and_summarise(query, results)
             if discerned is not None and discerned.get("selected_ids"):
                 # Map discernment's selected_ids → actual row dicts for callers
                 rows_by_id = {r.get("id"): r for r in results}
-                selected_rows = [rows_by_id[sid] for sid in discerned["selected_ids"] if sid in rows_by_id]
+                selected_rows = [
+                    rows_by_id[sid] for sid in discerned["selected_ids"] if sid in rows_by_id
+                ]
                 await _increment_access_counts(selected_rows, headers)
-                source_tag = "multiquery+hybrid+discern" if len(valid_pairs) > 1 else "hybrid+discern"
+                source_tag = (
+                    "multiquery+hybrid+discern" if len(valid_pairs) > 1 else "hybrid+discern"
+                )
                 _log_retrieval_event(message_text, raw_results, selected_rows, source=source_tag)
                 return {
                     "summary": discerned.get("brief", ""),
@@ -291,9 +342,7 @@ def _log_retrieval_event(
     try:
         callsign = os.environ.get("CALLSIGN", "unknown")
         raw_ids = [r.get("id") for r in (raw_results or [])]
-        raw_sims = [
-            round(float(r.get("similarity", 0) or 0), 4) for r in (raw_results or [])
-        ]
+        raw_sims = [round(float(r.get("similarity", 0) or 0), 4) for r in (raw_results or [])]
         final_ids = [r.get("id") for r in (final_results or [])]
         # Capture content previews of final rows — needed for retrospective
         # relevance scoring (Dave pushback 2026-04-17: 'stable enough' was
@@ -309,7 +358,7 @@ def _log_retrieval_event(
             for r in (final_results or [])
         ]
         event = {
-            "ts": _dt.datetime.now(_dt.timezone.utc).isoformat(),
+            "ts": _dt.datetime.now(_dt.UTC).isoformat(),
             "callsign": callsign,
             "source": source,  # "embedding" | "text_fallback"
             "query_preview": (query_text or "")[:160],
@@ -342,13 +391,13 @@ def _log_retrieval_event(
 TRUST_WEIGHTS: dict[str, float] = {
     "dave_confirmed": 1.30,
     "verified_fact": 1.20,
-    "test_result":   1.10,
-    "reasoning":     1.05,
-    "decision":      1.00,  # baseline
-    "pattern":       0.95,
-    "research":      0.90,
-    "skill":         0.90,
-    "daily_log":     0.85,
+    "test_result": 1.10,
+    "reasoning": 1.05,
+    "decision": 1.00,  # baseline
+    "pattern": 0.95,
+    "research": 0.90,
+    "skill": 0.90,
+    "daily_log": 0.85,
 }
 
 # State weights — tentative rows (auto-captured, unverified) get discounted so
@@ -356,8 +405,8 @@ TRUST_WEIGHTS: dict[str, float] = {
 # Surfacing-despite-discount IS the promotion signal (access_count ticks up →
 # tentative eventually flips to confirmed at PROMOTION_ACCESS_THRESHOLD).
 STATE_WEIGHTS: dict[str, float] = {
-    "confirmed":  1.00,
-    "tentative":  0.50,  # heavy discount — bulk-extracted tentative rows only surface on very strong match
+    "confirmed": 1.00,
+    "tentative": 0.50,  # heavy discount — bulk-extracted tentative rows only surface on very strong match
     # superseded / contradicted / archived excluded at the RPC layer
 }
 
@@ -366,18 +415,19 @@ STATE_WEIGHTS: dict[str, float] = {
 # Recent memories rank higher than old ones at same similarity.
 # λ values per source_type (higher = faster decay):
 TIME_DECAY_LAMBDA: dict[str, float] = {
-    "daily_log":     0.05,   # 14-day half-life — ephemeral
-    "reasoning":     0.03,   # 23-day half-life
-    "test_result":   0.02,   # 35-day half-life
-    "research":      0.02,   # 35-day half-life
-    "decision":      0.01,   # 69-day half-life — durable
-    "pattern":       0.01,   # 69-day half-life — durable
-    "skill":         0.005,  # 139-day half-life — very durable
-    "dave_confirmed": 0.003, # 231-day half-life — near-permanent
+    "daily_log": 0.05,  # 14-day half-life — ephemeral
+    "reasoning": 0.03,  # 23-day half-life
+    "test_result": 0.02,  # 35-day half-life
+    "research": 0.02,  # 35-day half-life
+    "decision": 0.01,  # 69-day half-life — durable
+    "pattern": 0.01,  # 69-day half-life — durable
+    "skill": 0.005,  # 139-day half-life — very durable
+    "dave_confirmed": 0.003,  # 231-day half-life — near-permanent
     "verified_fact": 0.003,  # 231-day half-life — near-permanent
 }
 
 import math
+from datetime import UTC
 
 
 def _apply_trust_weighting(results: list[dict]) -> list[dict]:
@@ -387,7 +437,7 @@ def _apply_trust_weighting(results: list[dict]) -> list[dict]:
     Time decay: e^(-λ × days_old). Old debugging notes get buried;
     recent context rises. λ varies by source_type — daily_logs decay
     fast, dave_confirmed decays very slowly."""
-    now = _dt.datetime.now(_dt.timezone.utc)
+    now = _dt.datetime.now(_dt.UTC)
     for r in results:
         base_sim = r.get("similarity", 0.0) or 0.0
         source_w = TRUST_WEIGHTS.get(r.get("source_type", ""), 1.0)
@@ -431,7 +481,9 @@ async def _hybrid_search(
             if resp.status_code == 200:
                 return resp.json()
             # Fallback to embedding-only if hybrid RPC doesn't exist yet
-            logger.warning(f"[memory-listener] hybrid search returned {resp.status_code}, falling back to embedding-only")
+            logger.warning(
+                f"[memory-listener] hybrid search returned {resp.status_code}, falling back to embedding-only"
+            )
     except Exception as exc:
         logger.warning(f"[memory-listener] hybrid search failed: {exc}")
 
@@ -439,9 +491,7 @@ async def _hybrid_search(
     return await _search_by_embedding(embedding, n, headers)
 
 
-async def _search_by_embedding(
-    embedding: list[float], n: int, headers: dict
-) -> list[dict]:
+async def _search_by_embedding(embedding: list[float], n: int, headers: dict) -> list[dict]:
     """Fallback: cosine similarity only via Supabase RPC (pgvector)."""
     try:
         rpc_url = f"{SUPABASE_URL}/rest/v1/rpc/match_agent_memories"
@@ -462,9 +512,7 @@ async def _search_by_embedding(
     return []
 
 
-async def _search_by_text(
-    message_text: str, n: int, headers: dict
-) -> list[dict]:
+async def _search_by_text(message_text: str, n: int, headers: dict) -> list[dict]:
     """Fallback ILIKE text search with stopword filtering."""
     words = [w.strip(".,!?()[]\"'").lower() for w in message_text.split()]
     terms = [w for w in words if len(w) > 4 and w not in STOPWORDS][:5]
@@ -527,21 +575,19 @@ async def _increment_access_counts(rows: list[dict], headers: dict) -> None:
                     current_meta = row.get("typed_metadata") or {}
                     payload["typed_metadata"] = {
                         **current_meta,
-                        "promoted_at": _dt.datetime.now(_dt.timezone.utc).isoformat(),
+                        "promoted_at": _dt.datetime.now(_dt.UTC).isoformat(),
                         "promoted_from_state": "tentative",
                     }
                     logger.info(
                         f"[memory-listener] PROMOTION FIRED id={row['id']} tentative→confirmed "
                         f"(access_count={new_count})"
                     )
-                try:
+                with contextlib.suppress(Exception):
                     await client.patch(
                         update_url,
                         headers={**headers, "Prefer": "return=minimal"},
                         json=payload,
                     )
-                except Exception:
-                    pass
     except Exception:
         pass
 
@@ -564,6 +610,7 @@ async def recall_via_mem0(
     mem0_results: list[dict] = []
     try:
         from src.governance.mem0_adapter import Mem0Adapter
+
         adapter = Mem0Adapter()
         raw = adapter.search(query, limit=limit, callsign=callsign)
         mem0_results = [
@@ -616,7 +663,12 @@ async def find_matching_commits(message_text: str, n: int = 5) -> list[str]:
     # AND-match: search for first term, then filter results that contain ALL other terms
     try:
         proc = await asyncio.create_subprocess_exec(
-            "git", "log", "--all", "--oneline", f"--grep={terms[0]}", "-i",
+            "git",
+            "log",
+            "--all",
+            "--oneline",
+            f"--grep={terms[0]}",
+            "-i",
             "--max-count=50",
             cwd=repo_dir,
             stdout=asyncio.subprocess.PIPE,
@@ -660,7 +712,11 @@ async def find_repo_mentions(message_text: str, n: int = 5) -> list[str]:
     for term in terms:
         try:
             proc = await asyncio.create_subprocess_exec(
-                "git", "grep", "-i", "-l", term,
+                "git",
+                "grep",
+                "-i",
+                "-l",
+                term,
                 cwd=repo_dir,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.DEVNULL,
@@ -668,12 +724,24 @@ async def find_repo_mentions(message_text: str, n: int = 5) -> list[str]:
             stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=3)
             files = stdout.decode().strip().splitlines()
             for f in files[:3]:
-                if f and f not in seen and not f.startswith("node_modules") and not f.startswith("frontend/node_modules"):
+                if (
+                    f
+                    and f not in seen
+                    and not f.startswith("node_modules")
+                    and not f.startswith("frontend/node_modules")
+                ):
                     seen.add(f)
                     # Get matching line for context
                     try:
                         proc2 = await asyncio.create_subprocess_exec(
-                            "git", "grep", "-i", "-m", "1", term, "--", f,
+                            "git",
+                            "grep",
+                            "-i",
+                            "-m",
+                            "1",
+                            term,
+                            "--",
+                            f,
                             cwd=repo_dir,
                             stdout=asyncio.subprocess.PIPE,
                             stderr=asyncio.subprocess.DEVNULL,
@@ -694,7 +762,18 @@ async def find_repo_mentions(message_text: str, n: int = 5) -> list[str]:
 # ---------------------------------------------------------------------------
 
 # Rule-based heuristics for source_type classification (no LLM needed)
-_DECISION_SIGNALS = {"decided", "decision", "chose", "approved", "ratified", "agreed", "confirmed", "rejected", "moving to", "switching to"}
+_DECISION_SIGNALS = {
+    "decided",
+    "decision",
+    "chose",
+    "approved",
+    "ratified",
+    "agreed",
+    "confirmed",
+    "rejected",
+    "moving to",
+    "switching to",
+}
 _DIRECTIVE_SIGNALS = {"directive", "scope:", "success criteria:", "objective:"}
 _BLOCKER_SIGNALS = {"blocked", "blocker", "waiting on", "can't proceed", "stuck"}
 _REMEMBER_SIGNALS = {"remember", "save this", "note this", "important:"}
@@ -748,23 +827,24 @@ async def auto_capture_message(
         "Prefer": "return=minimal",
     }
 
-    import uuid as _uuid
-    from datetime import datetime as _dt, timezone as _tz
+    from datetime import datetime as _dt
 
     payload = {
         "callsign": callsign,
         "source_type": source_type,
         "content": message_text[:5000],
-        "typed_metadata": json.dumps({
-            "source": "auto_capture",
-            "chat_id": str(chat_id),
-            "captured_by": callsign,
-        }),
+        "typed_metadata": json.dumps(
+            {
+                "source": "auto_capture",
+                "chat_id": str(chat_id),
+                "captured_by": callsign,
+            }
+        ),
         "tags": [source_type, "auto_capture"],
         "state": "tentative",
         "trust": "dave_observed",
         "confidence": 0.5,
-        "valid_from": _dt.now(_tz.utc).isoformat(),
+        "valid_from": _dt.now(UTC).isoformat(),
     }
 
     if embedding:
@@ -785,7 +865,9 @@ async def auto_capture_message(
         logger.warning(f"[auto-capture] error: {exc}")
 
 
-def format_memory_context(memories, commits: list[str] | None = None, repo_hits: list[str] | None = None) -> str:
+def format_memory_context(
+    memories, commits: list[str] | None = None, repo_hits: list[str] | None = None
+) -> str:
     """Format retrieved memories + git commits into context blocks for injection.
 
     memories can be:

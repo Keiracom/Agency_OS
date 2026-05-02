@@ -19,21 +19,23 @@ from typing import Any
 PASS_THRESHOLD = 70
 
 # Generic subject line phrases that signal low effort
-_GENERIC_SUBJECTS = frozenset([
-    "quick question",
-    "following up",
-    "touching base",
-    "just checking in",
-    "circling back",
-    "checking in",
-    "a quick note",
-])
+_GENERIC_SUBJECTS = frozenset(
+    [
+        "quick question",
+        "following up",
+        "touching base",
+        "just checking in",
+        "circling back",
+        "checking in",
+        "a quick note",
+    ]
+)
 
 # Unmerged template token patterns — catches {name}, {{company}}, <FIRST_NAME>, [NAME], etc.
 _TEMPLATE_TOKEN_RE = re.compile(
-    r"(\{+\s*\w[\w\s]*\s*\}+)"           # {name} or {{company}}
-    r"|(<\s*[A-Z][A-Z_\s]{2,}\s*>)"      # <FIRST_NAME>
-    r"|(\[\s*[A-Z][A-Z_\s]{2,}\s*\])",   # [COMPANY_NAME]
+    r"(\{+\s*\w[\w\s]*\s*\}+)"  # {name} or {{company}}
+    r"|(<\s*[A-Z][A-Z_\s]{2,}\s*>)"  # <FIRST_NAME>
+    r"|(\[\s*[A-Z][A-Z_\s]{2,}\s*\])",  # [COMPANY_NAME]
 )
 
 # First-person pronouns
@@ -49,40 +51,49 @@ _FAKE_THREAD_RE = re.compile(r"^\s*(re|fw|fwd)\s*:", re.IGNORECASE)
 # Subject-line checks
 # ---------------------------------------------------------------------------
 
+
 def _check_subject(subject: str, flags: list[dict], score: int) -> int:
     stripped = subject.strip()
 
     if len(stripped) < 5:
-        flags.append({
-            "pattern": "weak_subject",
-            "severity": "high",
-            "detail": "Subject line is empty or too short (< 5 chars).",
-        })
+        flags.append(
+            {
+                "pattern": "weak_subject",
+                "severity": "high",
+                "detail": "Subject line is empty or too short (< 5 chars).",
+            }
+        )
         score -= 30
         return score
 
     if stripped.isupper() or len(re.findall(r"[!?]", stripped)) > 2:
-        flags.append({
-            "pattern": "spammy_subject",
-            "severity": "medium",
-            "detail": "Subject is all-caps or contains excessive punctuation (> 2 ! or ?).",
-        })
+        flags.append(
+            {
+                "pattern": "spammy_subject",
+                "severity": "medium",
+                "detail": "Subject is all-caps or contains excessive punctuation (> 2 ! or ?).",
+            }
+        )
         score -= 15
 
     if _FAKE_THREAD_RE.match(stripped):
-        flags.append({
-            "pattern": "fake_threading",
-            "severity": "high",
-            "detail": "Subject starts with RE: or FW: suggesting a false thread.",
-        })
+        flags.append(
+            {
+                "pattern": "fake_threading",
+                "severity": "high",
+                "detail": "Subject starts with RE: or FW: suggesting a false thread.",
+            }
+        )
         score -= 20
 
     if stripped.lower() in _GENERIC_SUBJECTS:
-        flags.append({
-            "pattern": "generic_subject",
-            "severity": "low",
-            "detail": f"Subject '{stripped}' is a known low-effort phrase.",
-        })
+        flags.append(
+            {
+                "pattern": "generic_subject",
+                "severity": "low",
+                "detail": f"Subject '{stripped}' is a known low-effort phrase.",
+            }
+        )
         score -= 10
 
     return score
@@ -92,6 +103,7 @@ def _check_subject(subject: str, flags: list[dict], score: int) -> int:
 # Body checks
 # ---------------------------------------------------------------------------
 
+
 def _check_body(
     body: str,
     recipient_company: str | None,
@@ -99,43 +111,49 @@ def _check_body(
     score: int,
 ) -> int:
     if _TEMPLATE_TOKEN_RE.search(body):
-        flags.append({
-            "pattern": "mail_merge_failure",
-            "severity": "critical",
-            "detail": "Body contains unmerged template tokens (e.g. {name}, <FIRST_NAME>).",
-        })
+        flags.append(
+            {
+                "pattern": "mail_merge_failure",
+                "severity": "critical",
+                "detail": "Body contains unmerged template tokens (e.g. {name}, <FIRST_NAME>).",
+            }
+        )
         score -= 25
 
     body_lower = body.lower()
-    company_mentioned = (
-        recipient_company and recipient_company.lower() in body_lower
-    )
+    company_mentioned = recipient_company and recipient_company.lower() in body_lower
     if not company_mentioned:
-        flags.append({
-            "pattern": "zero_buyer_knowledge",
-            "severity": "medium",
-            "detail": "Recipient company not mentioned — shows no buyer research.",
-        })
+        flags.append(
+            {
+                "pattern": "zero_buyer_knowledge",
+                "severity": "medium",
+                "detail": "Recipient company not mentioned — shows no buyer research.",
+            }
+        )
         score -= 15
 
     word_count = len(body.split())
     if word_count > 300:
-        flags.append({
-            "pattern": "too_long",
-            "severity": "low",
-            "detail": f"Body is {word_count} words — cold emails should be under 300.",
-        })
+        flags.append(
+            {
+                "pattern": "too_long",
+                "severity": "low",
+                "detail": f"Body is {word_count} words — cold emails should be under 300.",
+            }
+        )
         score -= 10
 
     score = _check_pronoun_balance(body, flags, score)
     score = _check_cta(body, flags, score)
 
     if "unsubscribe" in body_lower and "http" not in body_lower:
-        flags.append({
-            "pattern": "missing_unsubscribe_link",
-            "severity": "low",
-            "detail": "Mentions 'unsubscribe' but no URL present.",
-        })
+        flags.append(
+            {
+                "pattern": "missing_unsubscribe_link",
+                "severity": "low",
+                "detail": "Mentions 'unsubscribe' but no URL present.",
+            }
+        )
         score -= 5
 
     return score
@@ -152,14 +170,16 @@ def _check_pronoun_balance(body: str, flags: list[dict], score: int) -> int:
 
     first_count_before = len(_FIRST_PERSON_RE.findall(prefix))
     if first_count_before > 3:
-        flags.append({
-            "pattern": "self_focused",
-            "severity": "medium",
-            "detail": (
-                f"First-person pronouns appear {first_count_before}x before any "
-                "second-person reference — email is seller-centric, not buyer-centric."
-            ),
-        })
+        flags.append(
+            {
+                "pattern": "self_focused",
+                "severity": "medium",
+                "detail": (
+                    f"First-person pronouns appear {first_count_before}x before any "
+                    "second-person reference — email is seller-centric, not buyer-centric."
+                ),
+            }
+        )
         score -= 15
     return score
 
@@ -169,11 +189,13 @@ def _check_cta(body: str, flags: list[dict], score: int) -> int:
     sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", body.strip()) if s.strip()]
     last_two = sentences[-2:] if len(sentences) >= 2 else sentences
     if not any("?" in s for s in last_two):
-        flags.append({
-            "pattern": "no_call_to_action",
-            "severity": "medium",
-            "detail": "Last two sentences contain no question — no clear CTA.",
-        })
+        flags.append(
+            {
+                "pattern": "no_call_to_action",
+                "severity": "medium",
+                "detail": "Last two sentences contain no question — no clear CTA.",
+            }
+        )
         score -= 10
     return score
 
@@ -182,6 +204,7 @@ def _check_cta(body: str, flags: list[dict], score: int) -> int:
 # Sequence checks
 # ---------------------------------------------------------------------------
 
+
 def _check_sequence(
     sequence_position: int,
     total_sequence_length: int,
@@ -189,19 +212,23 @@ def _check_sequence(
     score: int,
 ) -> int:
     if total_sequence_length == 1:
-        flags.append({
-            "pattern": "insufficient_follow_up",
-            "severity": "medium",
-            "detail": "Sequence has only one touch — 80% of sales need 5+ follow-ups.",
-        })
+        flags.append(
+            {
+                "pattern": "insufficient_follow_up",
+                "severity": "medium",
+                "detail": "Sequence has only one touch — 80% of sales need 5+ follow-ups.",
+            }
+        )
         score -= 10
 
     if sequence_position > 5:
-        flags.append({
-            "pattern": "spam_fatigue_risk",
-            "severity": "low",
-            "detail": f"Touch #{sequence_position} — beyond touch 5 risks fatigue/spam reports.",
-        })
+        flags.append(
+            {
+                "pattern": "spam_fatigue_risk",
+                "severity": "low",
+                "detail": f"Touch #{sequence_position} — beyond touch 5 risks fatigue/spam reports.",
+            }
+        )
         score -= 5
 
     return score
@@ -210,6 +237,7 @@ def _check_sequence(
 # ---------------------------------------------------------------------------
 # Personalisation checks
 # ---------------------------------------------------------------------------
+
 
 def _check_personalisation(
     body: str,
@@ -221,11 +249,13 @@ def _check_personalisation(
     body_lower = body.lower()
 
     if recipient_name and recipient_name.lower() not in body_lower:
-        flags.append({
-            "pattern": "name_unused",
-            "severity": "low",
-            "detail": f"Recipient name '{recipient_name}' was available but not used in body.",
-        })
+        flags.append(
+            {
+                "pattern": "name_unused",
+                "severity": "low",
+                "detail": f"Recipient name '{recipient_name}' was available but not used in body.",
+            }
+        )
         score -= 10
 
     # Company already deducted in _check_body; skip double-penalising.
@@ -233,11 +263,13 @@ def _check_personalisation(
     already_flagged = any(f["pattern"] == "zero_buyer_knowledge" for f in flags)
     if recipient_company and not already_flagged:
         if recipient_company.lower() not in body_lower:
-            flags.append({
-                "pattern": "company_unused",
-                "severity": "low",
-                "detail": f"Company '{recipient_company}' was available but not used in body.",
-            })
+            flags.append(
+                {
+                    "pattern": "company_unused",
+                    "severity": "low",
+                    "detail": f"Company '{recipient_company}' was available but not used in body.",
+                }
+            )
             score -= 10
 
     return score
@@ -246,6 +278,7 @@ def _check_personalisation(
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def score_email(
     subject: str,
@@ -368,9 +401,7 @@ def _build_suggestions(
             suggestions.append(f"Fix unmerged template tokens: {token_str}")
         elif pattern == "zero_buyer_knowledge":
             company_hint = recipient_company or "the recipient's company"
-            suggestions.append(
-                f"Add reference to {company_hint}'s industry or recent activity"
-            )
+            suggestions.append(f"Add reference to {company_hint}'s industry or recent activity")
         elif pattern in _SUGGESTION_MAP:
             suggestions.append(_SUGGESTION_MAP[pattern])
     return suggestions

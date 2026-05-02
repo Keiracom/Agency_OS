@@ -9,6 +9,7 @@ Public-by-design endpoint: returns ONLY the four aggregate threshold
 metrics (no PII, no per-row data). The frontend widget polls this on
 mount and renders progress bars + pass/fail badges.
 """
+
 from __future__ import annotations
 
 import logging
@@ -30,7 +31,7 @@ class ReadinessMetric(BaseModel):
 
     name: str
     value: float
-    unit: str       # 'pct' | 'count'
+    unit: str  # 'pct' | 'count'
     threshold: float
     # Serialized + accepted as 'pass' (Python keyword); attribute is pass_field.
     pass_field: bool = Field(..., alias="pass")
@@ -66,10 +67,16 @@ async def bu_readiness() -> ReadinessResponse:
 
     return ReadinessResponse(
         metrics=[
-            ReadinessMetric.model_validate({
-                "name": m.name, "value": m.value, "unit": m.unit,
-                "threshold": m.threshold, "pass": m.pass_, "detail": m.detail,
-            })
+            ReadinessMetric.model_validate(
+                {
+                    "name": m.name,
+                    "value": m.value,
+                    "unit": m.unit,
+                    "threshold": m.threshold,
+                    "pass": m.pass_,
+                    "detail": m.detail,
+                }
+            )
             for m in report.metrics
         ],
         overall_pass=report.overall_pass,

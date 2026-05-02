@@ -911,7 +911,9 @@ async def post_onboarding_setup_flow(
         tier_config = TIER_CONFIG.get(tier_lower, TIER_CONFIG["ignition"])
         # Defensive access: supports both TierConfig dataclass (attr) and dict mock (key)
         if isinstance(tier_config, dict):
-            tier_lead_count = tier_config.get("leads_per_month", 150)  # Default to Spark (TIERS-002)
+            tier_lead_count = tier_config.get(
+                "leads_per_month", 150
+            )  # Default to Spark (TIERS-002)
         else:
             tier_lead_count = tier_config.leads_per_month
 
@@ -1193,7 +1195,6 @@ def deploy_post_onboarding_flows():
     Run this to register flows with the Prefect server.
     """
     from prefect.deployments import Deployment
-
 
     # Main post-onboarding setup flow
     setup_deployment = Deployment.build_from_flow(

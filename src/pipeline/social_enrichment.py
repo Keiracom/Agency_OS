@@ -16,14 +16,14 @@ Both functions:
   - Log cost per call ($0.00075)
   - Results stored in BU under linkedin_company (jsonb) and linkedin_dm_profile (jsonb)
 """
+
 from __future__ import annotations
 
 import asyncio
 import logging
 from decimal import Decimal
-from typing import Any
 
-from src.integrations.brightdata_client import BrightDataLinkedInClient, COST_PER_RECORD_USD
+from src.integrations.brightdata_client import COST_PER_RECORD_USD, BrightDataLinkedInClient
 
 logger = logging.getLogger(__name__)
 
@@ -98,15 +98,15 @@ async def scrape_linkedin_company(
             post_count = len(raw_posts) if isinstance(raw_posts, list) else None
 
             result = {
-                "employee_count":  r.get("employee_count") or r.get("company_size"),
-                "follower_count":  r.get("followers") or r.get("follower_count"),
-                "recent_posts":    recent_posts,
-                "last_post_date":  last_post_date,
-                "job_postings":    r.get("job_openings") or r.get("jobs_count") or 0,
-                "specialties":     r.get("specialties") or [],
-                "description":     (r.get("description") or r.get("about") or "")[:500],
-                "activity_level":  _activity_level(post_count),
-                "cost_usd":        str(_COST),
+                "employee_count": r.get("employee_count") or r.get("company_size"),
+                "follower_count": r.get("followers") or r.get("follower_count"),
+                "recent_posts": recent_posts,
+                "last_post_date": last_post_date,
+                "job_postings": r.get("job_openings") or r.get("jobs_count") or 0,
+                "specialties": r.get("specialties") or [],
+                "description": (r.get("description") or r.get("about") or "")[:500],
+                "activity_level": _activity_level(post_count),
+                "cost_usd": str(_COST),
             }
 
             logger.info(
@@ -182,9 +182,9 @@ async def scrape_linkedin_dm(
             career_history = [
                 {
                     "company": e.get("company") or e.get("company_name"),
-                    "title":   e.get("title") or e.get("position"),
-                    "start":   e.get("start_date") or e.get("start"),
-                    "end":     e.get("end_date") or e.get("end"),
+                    "title": e.get("title") or e.get("position"),
+                    "start": e.get("start_date") or e.get("start"),
+                    "end": e.get("end_date") or e.get("end"),
                     "current": not bool(e.get("end_date") or e.get("end")),
                 }
                 for e in (experience[:5] if isinstance(experience, list) else [])
@@ -203,15 +203,15 @@ async def scrape_linkedin_dm(
             ]
 
             result = {
-                "headline":          (r.get("headline") or r.get("occupation") or r.get("title") or ""),
-                "summary":           (r.get("summary") or r.get("about") or "")[:500],
-                "recent_posts":      recent_posts if recent_posts else recent_posts_from_activity,
-                "career_history":    career_history,
-                "skills":            (r.get("skills") or [])[:20],
+                "headline": (r.get("headline") or r.get("occupation") or r.get("title") or ""),
+                "summary": (r.get("summary") or r.get("about") or "")[:500],
+                "recent_posts": recent_posts if recent_posts else recent_posts_from_activity,
+                "career_history": career_history,
+                "skills": (r.get("skills") or [])[:20],
                 "connections_count": r.get("connections") or r.get("connection_count"),
-                "location":          r.get("city") or r.get("location"),
-                "activity_level":    _activity_level(post_count),
-                "cost_usd":          str(_COST),
+                "location": r.get("city") or r.get("location"),
+                "activity_level": _activity_level(post_count),
+                "cost_usd": str(_COST),
             }
 
             logger.info(

@@ -26,13 +26,11 @@ Usage:
 On-demand model: run_parallel calls next_batch() as the queue drains.
 Discovery stops as soon as target_reached fires — DFS cost tracks actual need.
 """
+
 from __future__ import annotations
 
-import asyncio
 import logging
-from typing import Any, Callable
-
-from src.config.category_registry import MAX_CATEGORIES_PER_CALL
+from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +59,7 @@ class MultiCategoryDiscovery:
 
     def reset(self, category_codes: list[int]) -> None:
         """Reset pagination state for a new sweep."""
-        self._offsets = {code: 0 for code in category_codes}
+        self._offsets = dict.fromkeys(category_codes, 0)
         self._exhausted = set()
         self._total_counts = {}
 
@@ -155,25 +153,27 @@ class MultiCategoryDiscovery:
                 organic_etv = item.get("organic_etv", 0.0) or 0.0
                 if not (etv_min <= organic_etv <= etv_max):
                     continue
-                results.append({
-                    "domain": domain,
-                    "organic_etv": organic_etv,
-                    "paid_etv": item.get("paid_etv", 0.0) or 0.0,
-                    "category_codes": [code],
-                })
+                results.append(
+                    {
+                        "domain": domain,
+                        "organic_etv": organic_etv,
+                        "paid_etv": item.get("paid_etv", 0.0) or 0.0,
+                        "category_codes": [code],
+                    }
+                )
 
             # Advance offset
             self._offsets[code] = offset + len(raw)
 
             # Mark exhausted if past SMB tail or last page
-            if min_etv_in_batch < etv_min:
-                self._exhausted.add(code)
-            elif len(raw) < batch_size:
+            if min_etv_in_batch < etv_min or len(raw) < batch_size:
                 self._exhausted.add(code)
 
         logger.info(
             "next_batch: returned %d domains (active_cats=%d, exhausted=%d)",
-            len(results), len(active_codes), len(self._exhausted),
+            len(results),
+            len(active_codes),
+            len(self._exhausted),
         )
         return results
 
@@ -247,7 +247,9 @@ class MultiCategoryDiscovery:
                 except Exception as exc:
                     logger.error(
                         "discover_prospects: DFS error code=%s offset=%d: %s",
-                        code, offset, exc,
+                        code,
+                        offset,
+                        exc,
                     )
                     break
 
@@ -272,18 +274,23 @@ class MultiCategoryDiscovery:
                     if domain in exclude or domain in seen:
                         continue
                     seen.add(domain)
-                    batch_results.append({
-                        "domain": domain,
-                        "organic_etv": organic_etv,
-                        "paid_etv": item.get("paid_etv", 0.0) or 0.0,
-                        "category_codes": [code],
-                    })
+                    batch_results.append(
+                        {
+                            "domain": domain,
+                            "organic_etv": organic_etv,
+                            "paid_etv": item.get("paid_etv", 0.0) or 0.0,
+                            "category_codes": [code],
+                        }
+                    )
 
                 results.extend(batch_results)
 
                 logger.info(
                     "discover_prospects: code=%s offset=%d → %d new domains (total=%d)",
-                    code, offset, len(batch_results), len(results),
+                    code,
+                    offset,
+                    len(batch_results),
+                    len(results),
                 )
 
                 if batch_callback is not None:
@@ -298,16 +305,18 @@ class MultiCategoryDiscovery:
                 # 1. Min ETV in this batch dropped below etv_min (we're past SMB tail)
                 # 2. We've paginated past total_count
                 # 3. Batch returned fewer items than requested (last page)
-                if min_etv_in_batch < etv_min:
-                    code_done = True
-                elif total_count and offset >= total_count:
-                    code_done = True
-                elif len(raw) < batch_size:
+                if (
+                    min_etv_in_batch < etv_min
+                    or total_count
+                    and offset >= total_count
+                    or len(raw) < batch_size
+                ):
                     code_done = True
 
         logger.info(
             "discover_prospects: complete codes=%d domains=%d",
-            len(category_codes), len(results),
+            len(category_codes),
+            len(results),
         )
         return results
 
@@ -344,7 +353,9 @@ class MultiCategoryDiscovery:
                 paid_etv_min=0.0,
             )
         except Exception as exc:
-            logger.error("pull_batch: DFS error category=%s offset=%d: %s", category_code, offset, exc)
+            logger.error(
+                "pull_batch: DFS error category=%s offset=%d: %s", category_code, offset, exc
+            )
             return []
 
         filtered = [
@@ -356,4 +367,4 @@ class MultiCategoryDiscovery:
             for r in raw
             if etv_min <= (r.get("organic_etv") or 0.0) <= etv_max
         ]
-        return filtered[offset: offset + limit]
+        return filtered[offset : offset + limit]

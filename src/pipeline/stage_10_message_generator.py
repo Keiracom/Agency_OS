@@ -19,7 +19,7 @@ from typing import Any
 import asyncpg
 
 from src.enrichment.signal_config import SignalConfigRepository
-from src.pipeline.stage_10_critic import critique_and_revise, CRITIC_PASS_THRESHOLD  # noqa: F401
+from src.pipeline.stage_10_critic import CRITIC_PASS_THRESHOLD, critique_and_revise  # noqa: F401
 from src.utils.domain_blocklist import BLOCKED_DOMAINS
 
 logger = logging.getLogger(__name__)
@@ -33,10 +33,10 @@ SONNET_CONCURRENCY = 12
 HAIKU_CONCURRENCY = 15
 
 # USD pricing per token
-SONNET_INPUT_COST = 0.000003    # $3/M input
-SONNET_OUTPUT_COST = 0.000015   # $15/M output
-HAIKU_INPUT_COST = 0.0000008    # $0.80/M input
-HAIKU_OUTPUT_COST = 0.000004    # $4/M output
+SONNET_INPUT_COST = 0.000003  # $3/M input
+SONNET_OUTPUT_COST = 0.000015  # $15/M output
+HAIKU_INPUT_COST = 0.0000008  # $0.80/M input
+HAIKU_OUTPUT_COST = 0.000004  # $4/M output
 
 _CHANNEL_PROMPTS = {
     "email": (
@@ -191,15 +191,15 @@ class Stage10MessageGenerator:
                     self._generate_for_channel("email", business, prospect_brief, agency_brief)
                 )
             for ch in haiku_channels:
-                tasks.append(
-                    self._generate_for_channel(ch, business, prospect_brief, agency_brief)
-                )
+                tasks.append(self._generate_for_channel(ch, business, prospect_brief, agency_brief))
 
             results = await asyncio.gather(*tasks, return_exceptions=True)
             channel_messages: list[tuple[str, str, str | None, dict[str, Any]]] = []
             for res in results:
                 if isinstance(res, Exception):
-                    logger.warning("Channel generation failed for %s: %s", business.get("domain"), res)
+                    logger.warning(
+                        "Channel generation failed for %s: %s", business.get("domain"), res
+                    )
                     continue
                 channel_messages.append(res)  # type: ignore[arg-type]
 
@@ -209,6 +209,7 @@ class Stage10MessageGenerator:
                     critic_results: dict[str, dict] = {}
                     final_messages: list[tuple[str, str, str | None, dict[str, Any]]] = []
                     for channel, body, subject, cost_info in channel_messages:
+
                         async def _revise(
                             feedback: str,
                             ch: str = channel,
@@ -217,7 +218,9 @@ class Stage10MessageGenerator:
                             ab: str = agency_brief,
                         ) -> dict[str, Any]:
                             revised_tuple = await self._generate_for_channel(
-                                ch, biz, pb,
+                                ch,
+                                biz,
+                                pb,
                                 ab + "\n\nCRITIC FEEDBACK (fix this):\n" + feedback,
                             )
                             return {"body": revised_tuple[1], "subject": revised_tuple[2]}
@@ -243,15 +246,11 @@ class Stage10MessageGenerator:
                         business["id"], business["bdm_id"], final_messages, critic_results
                     )
                 else:
-                    await self._write_messages(
-                        business["id"], business["bdm_id"], channel_messages
-                    )
+                    await self._write_messages(business["id"], business["bdm_id"], channel_messages)
                 messages_generated += len(channel_messages)
                 dms_processed += 1
 
-        total_non_cached = max(
-            0, self._stats["input_tokens"] - self._stats["cached_tokens"]
-        )
+        total_non_cached = max(0, self._stats["input_tokens"] - self._stats["cached_tokens"])
         total_seen = total_non_cached + self._stats["cached_tokens"]
         cache_hit_rate = (
             round(self._stats["cached_tokens"] / total_seen, 4) if total_seen > 0 else 0.0
@@ -320,7 +319,12 @@ class Stage10MessageGenerator:
             subject = lines[0].replace("SUBJECT:", "").strip()
             body = lines[2].strip() if len(lines) > 2 else body
 
-        return (channel, body, subject, {"input_tokens": in_tok, "output_tokens": out_tok, "cost_usd": cost_usd})
+        return (
+            channel,
+            body,
+            subject,
+            {"input_tokens": in_tok, "output_tokens": out_tok, "cost_usd": cost_usd},
+        )
 
     async def _write_messages(
         self,
@@ -346,10 +350,15 @@ class Stage10MessageGenerator:
             critic_score = critic.get("score")
             critic_feedback = critic.get("feedback")
             needs_review = critic.get("needs_review", False)
-            if channel == "email" and needs_review and critic_feedback in ("critic_timeout", "critic_parse_error"):
+            if (
+                channel == "email"
+                and needs_review
+                and critic_feedback in ("critic_timeout", "critic_parse_error")
+            ):
                 logger.warning(
                     "Skipping email write for bu_id=%s — critic did not review (%s). Queued for manual review.",
-                    bu_id, critic_feedback,
+                    bu_id,
+                    critic_feedback,
                 )
                 continue
             await self.conn.execute(
@@ -361,10 +370,17 @@ class Stage10MessageGenerator:
                 VALUES ($1, $2, $3, $4, $5, $6, $7, 'draft', $8,
                         $9, $10, $11)
                 """,
-                bu_id, bdm_id, channel,
-                subject, body, model_name,
-                cost_info["cost_usd"], now,
-                critic_score, critic_feedback, needs_review,
+                bu_id,
+                bdm_id,
+                channel,
+                subject,
+                body,
+                model_name,
+                cost_info["cost_usd"],
+                now,
+                critic_score,
+                critic_feedback,
+                needs_review,
             )
 
         await self.conn.execute(
@@ -373,7 +389,9 @@ class Stage10MessageGenerator:
             SET pipeline_stage = $1, pipeline_updated_at = $2
             WHERE id = $3
             """,
-            PIPELINE_STAGE_S10, now, bu_id,
+            PIPELINE_STAGE_S10,
+            now,
+            bu_id,
         )
 
     def _build_prospect_brief(self, business: dict[str, Any]) -> str:
@@ -393,7 +411,9 @@ class Stage10MessageGenerator:
         vuln = business.get("vulnerability_report") or {}
         vuln_summary = ""
         if vuln and isinstance(vuln, dict):
-            grades = {k: v.get("grade") for k, v in vuln.items() if isinstance(v, dict) and "grade" in v}
+            grades = {
+                k: v.get("grade") for k, v in vuln.items() if isinstance(v, dict) and "grade" in v
+            }
             if grades:
                 vuln_summary = ", ".join(f"{k}:{g}" for k, g in grades.items())
 

@@ -6,10 +6,10 @@ Layer: services
 Imports: stdlib, holidays
 Consumers: sequence_engine, orchestration
 """
-import holidays
-from datetime import date, timedelta
-from typing import Optional
 
+from datetime import date, timedelta
+
+import holidays
 
 AU_HOLIDAYS = holidays.Australia()
 
@@ -34,9 +34,7 @@ class CycleCalendar:
         """Is this a working day? (not weekend, not public holiday in customer's state)"""
         if d.weekday() >= 5:  # Saturday=5, Sunday=6
             return False
-        if d in self._state_holidays:
-            return False
-        return True
+        return d not in self._state_holidays
 
     def get_day_volume_multiplier(self, d: date) -> float:
         """Volume multiplier for this calendar day."""

@@ -5,7 +5,7 @@ PURPOSE: Read memories from agent_memories via PostgREST filters.
 """
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Literal
 
 import httpx
@@ -18,12 +18,12 @@ def _parse_memory(row: dict) -> Memory:
     def _dt(val: str | None) -> datetime | None:
         if val is None:
             return None
-        from datetime import timezone
         from dateutil import parser as dateutil_parser
+
         try:
             dt = dateutil_parser.isoparse(val)
             if dt.tzinfo is None:
-                dt = dt.replace(tzinfo=timezone.utc)
+                dt = dt.replace(tzinfo=UTC)
             return dt
         except Exception:
             return None
@@ -31,13 +31,12 @@ def _parse_memory(row: dict) -> Memory:
     valid_from_raw = row.get("valid_from")
     created_at_raw = row.get("created_at")
 
-    from datetime import timezone
     valid_from_dt = _dt(valid_from_raw)
     if valid_from_dt is None:
-        valid_from_dt = datetime.now(timezone.utc)
+        valid_from_dt = datetime.now(UTC)
     created_at_dt = _dt(created_at_raw)
     if created_at_dt is None:
-        created_at_dt = datetime.now(timezone.utc)
+        created_at_dt = datetime.now(UTC)
 
     return Memory(
         id=uuid.UUID(row["id"]),
@@ -103,9 +102,7 @@ def retrieve(
     try:
         response = httpx.get(url, headers=_supabase_headers(), timeout=10)
         if response.status_code != 200:
-            raise RuntimeError(
-                f"Supabase returned {response.status_code}: {response.text}"
-            )
+            raise RuntimeError(f"Supabase returned {response.status_code}: {response.text}")
         return [_parse_memory(row) for row in response.json()]
     except httpx.HTTPError as exc:
         raise RuntimeError(f"HTTP error retrieving memories: {exc}") from exc

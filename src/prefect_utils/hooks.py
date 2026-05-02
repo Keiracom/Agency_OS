@@ -1,6 +1,7 @@
-from datetime import datetime, timezone
-from .failure_alert import send_failure_alert
+from datetime import UTC, datetime
+
 from .callback_writer import write_flow_callback
+from .failure_alert import send_failure_alert
 
 
 # Add to any flow with: @flow(on_failure=[on_failure_hook])
@@ -16,7 +17,7 @@ def on_failure_hook(flow, flow_run, state) -> None:
     except Exception as exc:
         error_message = str(exc)
 
-    timestamp = datetime.now(timezone.utc).isoformat()
+    timestamp = datetime.now(UTC).isoformat()
     send_failure_alert(
         flow_name=flow_name,
         flow_run_id=flow_run_id,

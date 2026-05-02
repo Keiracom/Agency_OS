@@ -14,10 +14,10 @@ Suppression store: delegates to SuppressionManager (Supabase PostgREST + cache).
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
-from src.pipeline.suppression_manager import SuppressionManager, _store, _lock
+from src.pipeline.suppression_manager import SuppressionManager, _lock, _store
 
 logger = logging.getLogger(__name__)
 
@@ -42,15 +42,18 @@ _SOFT_BOUNCE_REASONS = {"soft_bounce", "mailbox_full", "quota_exceeded"}
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+
 def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 async def _write_supabase(record: dict) -> bool:
     """Write to suppression_list via PostgREST. Parameterised — no SQL injection."""
     try:
-        import httpx
         import os
+
+        import httpx
+
         url = os.environ.get("SUPABASE_URL", "")
         key = os.environ.get("SUPABASE_SERVICE_KEY", "")
         if not url or not key:
@@ -123,7 +126,10 @@ def _upsert_suppression(
 
     logger.info(
         "compliance_handler: suppressed email=%s reason=%s channel=%s source=%s",
-        email, reason, channel, source,
+        email,
+        reason,
+        channel,
+        source,
     )
     return record
 
@@ -131,6 +137,7 @@ def _upsert_suppression(
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def process_unsubscribe(email: str, reason: str | None = None) -> dict[str, Any]:
     """Process an unsubscribe request per AU Spam Act 2003 s.16/s.17.
@@ -267,7 +274,8 @@ def process_bounce(email: str, bounce_type: str) -> dict[str, Any]:
     # Soft bounce — log but do not suppress
     logger.info(
         "compliance_handler: soft bounce email=%s bounce_type=%s — not suppressed",
-        email, bounce_type,
+        email,
+        bounce_type,
     )
     return {
         "status": "soft_bounce_logged",
@@ -297,10 +305,8 @@ def generate_compliance_report(start_date: str, end_date: str) -> dict[str, Any]
     Returns:
         Report dict with counts, breakdowns, and compliance notes.
     """
-    start_dt = datetime.fromisoformat(start_date).replace(tzinfo=timezone.utc)
-    end_dt = datetime.fromisoformat(end_date).replace(
-        hour=23, minute=59, second=59, tzinfo=timezone.utc
-    )
+    start_dt = datetime.fromisoformat(start_date).replace(tzinfo=UTC)
+    end_dt = datetime.fromisoformat(end_date).replace(hour=23, minute=59, second=59, tzinfo=UTC)
 
     by_reason: dict[str, int] = {}
     by_channel: dict[str, int] = {}

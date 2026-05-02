@@ -26,13 +26,14 @@ Failure modes (never raise):
   - Invalid JSON response                                 -> degraded:parse
   - Rate limit (429)                                      -> degraded:rate_limited
 """
+
 from __future__ import annotations
 
 import logging
 import os
+from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
-from typing import Callable
+from datetime import UTC, datetime, timedelta
 
 import httpx
 
@@ -45,10 +46,10 @@ DEFAULT_CACHE_TTL_HOURS = 24
 
 @dataclass
 class DNCRResult:
-    registered: bool | None       # True = on register, False = not, None = degraded
+    registered: bool | None  # True = on register, False = not, None = degraded
     registered_at: datetime | None
     last_checked: datetime
-    status: str                   # "ok" | "degraded:no_api_key" | "degraded:network" | "degraded:parse" | "degraded:rate_limited"
+    status: str  # "ok" | "degraded:no_api_key" | "degraded:network" | "degraded:parse" | "degraded:rate_limited"
 
 
 class DNCRClient:
@@ -61,10 +62,12 @@ class DNCRClient:
         timeout: float = DEFAULT_TIMEOUT,
         cache_ttl_hours: int | None = None,
         http_client: httpx.Client | None = None,
-        now_fn: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
+        now_fn: Callable[[], datetime] = lambda: datetime.now(UTC),
     ):
         self.api_key = api_key or os.environ.get("DNCR_API_KEY")
-        self.base_url = (base_url or os.environ.get("DNCR_API_BASE_URL") or DEFAULT_BASE_URL).rstrip("/")
+        self.base_url = (
+            base_url or os.environ.get("DNCR_API_BASE_URL") or DEFAULT_BASE_URL
+        ).rstrip("/")
         self.timeout = timeout
         ttl_hours = (
             cache_ttl_hours
@@ -115,8 +118,10 @@ class DNCRClient:
 
     def _degraded(self, kind: str) -> DNCRResult:
         return DNCRResult(
-            registered=None, registered_at=None,
-            last_checked=self._now(), status=f"degraded:{kind}",
+            registered=None,
+            registered_at=None,
+            last_checked=self._now(),
+            status=f"degraded:{kind}",
         )
 
     def _cache_get(self, phone: str) -> DNCRResult | None:

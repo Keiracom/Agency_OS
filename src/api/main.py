@@ -119,6 +119,7 @@ async def lifespan(app: FastAPI):
     # Verify Stripe configuration (fail loud, not silent)
     try:
         from src.integrations.stripe import StripeClient
+
         StripeClient.validate_config()
         logger.info("Stripe configuration verified")
     except RuntimeError as e:
@@ -396,15 +397,14 @@ async def root() -> dict[str, Any]:
 # ============================================
 
 from src.api.routes.admin import router as admin_router
-from src.api.routes.bu_readiness import router as bu_readiness_router
-from src.api.routes.cycles import router as cycles_router
-from src.api.routes.dashboard import router as dashboard_router
-from src.api.routes.tiers import router as tiers_router
 from src.api.routes.billing import router as billing_router
+from src.api.routes.bu_readiness import router as bu_readiness_router
 from src.api.routes.campaign_generation import router as campaign_generation_router
 from src.api.routes.campaigns import router as campaigns_router
 from src.api.routes.crm import router as crm_router
 from src.api.routes.customers import router as customers_router
+from src.api.routes.cycles import router as cycles_router
+from src.api.routes.dashboard import router as dashboard_router
 from src.api.routes.digest import router as digest_router
 from src.api.routes.health import router as health_router
 from src.api.routes.internal import router as internal_router
@@ -416,6 +416,7 @@ from src.api.routes.patterns import router as patterns_router
 from src.api.routes.pool import router as pool_router
 from src.api.routes.replies import router as replies_router
 from src.api.routes.reports import router as reports_router
+from src.api.routes.tiers import router as tiers_router
 from src.api.routes.unipile import router as unipile_router
 from src.api.routes.webhooks import router as webhooks_router
 from src.api.routes.webhooks_outbound import router as webhooks_outbound_router

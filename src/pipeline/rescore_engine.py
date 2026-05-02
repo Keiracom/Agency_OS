@@ -110,7 +110,9 @@ class RescoreEngine:
         try:
             repo = SignalConfigRepository(self.conn)
             config = await repo.get_config(vertical)
-            return int(config.enrichment_gates.get("min_rescore_threshold", DEFAULT_RESCORE_THRESHOLD))
+            return int(
+                config.enrichment_gates.get("min_rescore_threshold", DEFAULT_RESCORE_THRESHOLD)
+            )
         except Exception as exc:
             logger.warning(
                 f"Could not load signal config for vertical '{vertical}': {exc}. "

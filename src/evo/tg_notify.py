@@ -1,5 +1,7 @@
 """Tiny Telegram send helper for the callback poller."""
+
 import os
+
 import httpx
 
 TG_TOKEN = os.environ.get("TELEGRAM_TOKEN")

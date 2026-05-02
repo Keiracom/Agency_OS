@@ -22,11 +22,11 @@ Idempotency: only cycles that have (a) status='active' and (b) reached
 day 30 are closed. Re-running the flow within the same day is safe — the
 second run finds no cycles still 'active' at day 30.
 """
+
 from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -42,7 +42,7 @@ CYCLE_LENGTH_DAYS = 30
 @dataclass
 class CycleCloseSummary:
     cycles_closed: int
-    transitions: dict[str, int] = field(default_factory=dict)   # outreach_status -> count
+    transitions: dict[str, int] = field(default_factory=dict)  # outreach_status -> count
     events_emitted: int = 0
     next_cycles_released: int = 0
 
@@ -147,7 +147,9 @@ async def emit_cycle_close_event(db_conn: Any, cycle: dict, transitions: dict) -
 
 
 async def trigger_next_cycle_release(
-    db_conn: Any, client_id: str, new_cycle_trigger,
+    db_conn: Any,
+    client_id: str,
+    new_cycle_trigger,
 ) -> bool:
     """Call the injected new_cycle_trigger(db_conn, client_id) to release a new
     30-day cycle for active customers. Returns True on success."""
@@ -172,7 +174,10 @@ def _rowcount(result: Any) -> int:
 
 
 async def _enqueue_cold_prospects_for_nurture(
-    db_conn: Any, cycle: dict, transitions: dict, nurture_enqueue_fn,
+    db_conn: Any,
+    cycle: dict,
+    transitions: dict,
+    nurture_enqueue_fn,
 ) -> None:
     """Post-close hook: enqueue cold prospects (outreach_status=complete) into nurture drip.
     Fetches the prospect_ids just transitioned to 'complete' then calls
@@ -197,11 +202,18 @@ async def _enqueue_cold_prospects_for_nurture(
 
 @task(name="close-cycles")
 async def close_cycles_task(
-    db_conn: Any, new_cycle_trigger, nurture_enqueue_fn=None,
+    db_conn: Any,
+    new_cycle_trigger,
+    nurture_enqueue_fn=None,
 ) -> CycleCloseSummary:
-    summary = CycleCloseSummary(cycles_closed=0, transitions={
-        "meeting_booked": 0, "replied": 0, "complete": 0,
-    })
+    summary = CycleCloseSummary(
+        cycles_closed=0,
+        transitions={
+            "meeting_booked": 0,
+            "replied": 0,
+            "complete": 0,
+        },
+    )
     cycles = await find_cycles_to_close(db_conn)
     for cycle in cycles:
         transitions = await transition_cycle_prospects(db_conn, cycle["id"])
@@ -237,8 +249,9 @@ async def monthly_cycle_close_flow(
     new_cycle_trigger=_default_new_cycle_trigger,
     nurture_enqueue_fn=None,
 ) -> CycleCloseSummary:
-    summary = await close_cycles_task(db_conn, new_cycle_trigger,
-                                      nurture_enqueue_fn=nurture_enqueue_fn)
+    summary = await close_cycles_task(
+        db_conn, new_cycle_trigger, nurture_enqueue_fn=nurture_enqueue_fn
+    )
     logger.info("monthly_cycle_close_flow complete: %s", summary)
     return summary
 

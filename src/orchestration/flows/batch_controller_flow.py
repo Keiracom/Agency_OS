@@ -33,9 +33,9 @@ from prefect import flow, task
 from sqlalchemy import text
 
 from src.integrations.supabase import get_db_session
-from src.services.icp_filter_service import get_icp_filter_service
 from src.prefect_utils.completion_hook import on_completion_hook
 from src.prefect_utils.hooks import on_failure_hook
+from src.services.icp_filter_service import get_icp_filter_service
 
 logger = logging.getLogger(__name__)
 
@@ -672,7 +672,6 @@ async def _soft_discard_lead(
         Discard record UUID or None
     """
     import json
-
 
     try:
         result = await db.execute(

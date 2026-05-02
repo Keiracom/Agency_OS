@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
-from enum import Enum
+from enum import StrEnum
 from zoneinfo import ZoneInfo
 
 DEFAULT_TZ = "Australia/Sydney"
@@ -23,21 +23,21 @@ DEFAULT_TZ = "Australia/Sydney"
 # 2026 Australian national public holidays
 AU_PUBLIC_HOLIDAYS_2026: frozenset[date] = frozenset(
     {
-        date(2026, 1, 1),   # New Year's Day
+        date(2026, 1, 1),  # New Year's Day
         date(2026, 1, 26),  # Australia Day
-        date(2026, 4, 3),   # Good Friday
-        date(2026, 4, 4),   # Easter Saturday
-        date(2026, 4, 5),   # Easter Sunday
-        date(2026, 4, 6),   # Easter Monday
+        date(2026, 4, 3),  # Good Friday
+        date(2026, 4, 4),  # Easter Saturday
+        date(2026, 4, 5),  # Easter Sunday
+        date(2026, 4, 6),  # Easter Monday
         date(2026, 4, 25),  # ANZAC Day
-        date(2026, 12, 25), # Christmas Day
-        date(2026, 12, 26), # Boxing Day
+        date(2026, 12, 25),  # Christmas Day
+        date(2026, 12, 26),  # Boxing Day
     }
 )
 
 # Work-hour window (inclusive start, exclusive end) in prospect TZ
-WORK_HOUR_START = 9   # 9am
-WORK_HOUR_END = 17    # 5pm (excluded)
+WORK_HOUR_START = 9  # 9am
+WORK_HOUR_END = 17  # 5pm (excluded)
 
 # Optimal windows: dict of channel -> list of (weekdays, hour_start, hour_end_exclusive)
 # weekdays: set of 0=Mon..4=Fri
@@ -45,14 +45,14 @@ _TUE_THU = {1, 2, 3}
 _MON_FRI = {0, 1, 2, 3, 4}
 
 _OPTIMAL: dict[str, list[tuple[set[int], int, int]]] = {
-    "email":    [(_TUE_THU, 10, 11), (_TUE_THU, 14, 15)],
+    "email": [(_TUE_THU, 10, 11), (_TUE_THU, 14, 15)],
     "linkedin": [(_TUE_THU, 8, 10)],
-    "voice":    [(_TUE_THU, 10, 12), (_TUE_THU, 14, 16)],
-    "sms":      [(_MON_FRI, 12, 13)],
+    "voice": [(_TUE_THU, 10, 12), (_TUE_THU, 14, 16)],
+    "sms": [(_MON_FRI, 12, 13)],
 }
 
 
-class Channel(str, Enum):
+class Channel(StrEnum):
     EMAIL = "email"
     LINKEDIN = "linkedin"
     VOICE = "voice"
@@ -91,7 +91,9 @@ class TimingEngine:
             TimingDecision with allowed, reason, and next_window_start if blocked.
         """
         tz = ZoneInfo(prospect_tz or DEFAULT_TZ)
-        local = now.astimezone(tz) if now.tzinfo else now.replace(tzinfo=ZoneInfo("UTC")).astimezone(tz)
+        local = (
+            now.astimezone(tz) if now.tzinfo else now.replace(tzinfo=ZoneInfo("UTC")).astimezone(tz)
+        )
 
         # 1. Workday check
         workday_decision = _check_workday(local, tz)
@@ -110,6 +112,7 @@ class TimingEngine:
 # ---------------------------------------------------------------------------
 # Private helpers — each fits well under 50 lines
 # ---------------------------------------------------------------------------
+
 
 def _check_workday(local: datetime, tz: ZoneInfo) -> TimingDecision | None:
     """Return a blocking TimingDecision if today is not a valid workday, else None."""
@@ -208,4 +211,6 @@ def _next_workday(from_date: date, tz: ZoneInfo) -> datetime:
         d += timedelta(days=1)
 
     # Fallback — should never happen in practice
-    return datetime(from_date.year, from_date.month, from_date.day, WORK_HOUR_START, 0, 0, tzinfo=tz)
+    return datetime(
+        from_date.year, from_date.month, from_date.day, WORK_HOUR_START, 0, 0, tzinfo=tz
+    )

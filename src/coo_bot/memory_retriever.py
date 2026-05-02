@@ -24,9 +24,9 @@ Every external call is wrapped in try/except — a memory miss must never
 block the COO bot from responding. Failures return [] / "" and log a
 warning.
 """
+
 from __future__ import annotations
 
-import asyncio
 import logging
 import os
 from typing import Any
@@ -46,7 +46,8 @@ def _supabase_client():
     missing — callers degrade to []."""
     url = os.environ.get("SUPABASE_URL", "")
     key = os.environ.get("SUPABASE_SERVICE_KEY", "") or os.environ.get(
-        "SUPABASE_KEY", "",
+        "SUPABASE_KEY",
+        "",
     )
     if not url or not key:
         return None
@@ -94,19 +95,20 @@ async def get_relevant_memories(query: str, limit: int = 5) -> list[dict[str, An
     if backend in ("mem0", "hybrid"):
         try:
             from src.telegram_bot.memory_listener import recall_via_mem0
+
             callsign = os.environ.get("CALLSIGN", "aiden")
             return await recall_via_mem0(query, callsign=callsign, limit=limit)
         except Exception as exc:
             logger.warning(
-                "[memory_retriever] memory_listener path failed (%s); "
-                "falling back to supabase",
+                "[memory_retriever] memory_listener path failed (%s); falling back to supabase",
                 exc,
             )
     return _supabase_ilike_search(query, limit)
 
 
 def get_high_value_memories(
-    callsign: str = "aiden", limit: int = 10,
+    callsign: str = "aiden",
+    limit: int = 10,
 ) -> list[dict[str, Any]]:
     """Load high-signal agent_memories for `callsign`, newest first."""
     client = _supabase_client()

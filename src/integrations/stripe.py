@@ -46,8 +46,6 @@ from tenacity import (
     wait_exponential,
 )
 
-import httpx
-
 from src.config.settings import get_settings, settings
 from src.exceptions import IntegrationError
 
@@ -317,7 +315,9 @@ class StripeClient:
             )
         webhook = getattr(settings, "stripe_webhook_secret", None)
         if not webhook:
-            logger.warning("[Stripe] STRIPE_WEBHOOK_SECRET not set — webhooks will reject all events")
+            logger.warning(
+                "[Stripe] STRIPE_WEBHOOK_SECRET not set — webhooks will reject all events"
+            )
 
     def _get_stripe(self):
         """Lazy-load stripe module and configure API key."""
@@ -814,7 +814,7 @@ class StripeClient:
     async def handle_webhook_event(
         self,
         event: WebhookEvent,
-        db: "AsyncSession | None" = None,
+        db: AsyncSession | None = None,
     ) -> dict[str, Any]:
         """
         Handle a verified webhook event.
@@ -877,7 +877,7 @@ class StripeClient:
     async def _handle_subscription_created(
         self,
         event: WebhookEvent,
-        db: "AsyncSession | None" = None,
+        db: AsyncSession | None = None,
     ) -> dict[str, Any]:
         """customer.subscription.created — activate the client."""
         from src.models.client import Client
@@ -890,9 +890,7 @@ class StripeClient:
             logger.info(f"[Stripe] Subscription created (no-db): {subscription_id}")
             return {"status": "processed", "action": "subscription_created"}
 
-        result = await db.execute(
-            select(Client).where(Client.stripe_customer_id == customer_id)
-        )
+        result = await db.execute(select(Client).where(Client.stripe_customer_id == customer_id))
         client = result.scalar_one_or_none()
         if not client:
             logger.warning(f"[Stripe] No client found for Stripe customer {customer_id}")
@@ -918,7 +916,7 @@ class StripeClient:
     async def _handle_subscription_updated(
         self,
         event: WebhookEvent,
-        db: "AsyncSession | None" = None,
+        db: AsyncSession | None = None,
     ) -> dict[str, Any]:
         """customer.subscription.updated — tier change, pause, status change."""
         from src.models.client import Client
@@ -930,9 +928,7 @@ class StripeClient:
             logger.info(f"[Stripe] Subscription updated (no-db): {subscription.get('id')}")
             return {"status": "processed", "action": "subscription_updated"}
 
-        result = await db.execute(
-            select(Client).where(Client.stripe_customer_id == customer_id)
-        )
+        result = await db.execute(select(Client).where(Client.stripe_customer_id == customer_id))
         client = result.scalar_one_or_none()
         if not client:
             return {"status": "skipped", "reason": "client_not_found"}
@@ -961,7 +957,7 @@ class StripeClient:
     async def _handle_subscription_deleted(
         self,
         event: WebhookEvent,
-        db: "AsyncSession | None" = None,
+        db: AsyncSession | None = None,
     ) -> dict[str, Any]:
         """customer.subscription.deleted — cancel but preserve data."""
         from src.models.client import Client
@@ -973,9 +969,7 @@ class StripeClient:
             logger.info(f"[Stripe] Subscription deleted (no-db): {subscription.get('id')}")
             return {"status": "processed", "action": "subscription_deleted"}
 
-        result = await db.execute(
-            select(Client).where(Client.stripe_customer_id == customer_id)
-        )
+        result = await db.execute(select(Client).where(Client.stripe_customer_id == customer_id))
         client = result.scalar_one_or_none()
         if not client:
             return {"status": "skipped", "reason": "client_not_found"}
@@ -991,7 +985,7 @@ class StripeClient:
     async def _handle_invoice_paid(
         self,
         event: WebhookEvent,
-        db: "AsyncSession | None" = None,
+        db: AsyncSession | None = None,
     ) -> dict[str, Any]:
         """invoice.paid — record payment."""
         from src.models.client import Client
@@ -1003,18 +997,14 @@ class StripeClient:
             logger.info(f"[Stripe] Invoice paid (no-db): {invoice.get('id')}")
             return {"status": "processed", "action": "invoice_paid"}
 
-        result = await db.execute(
-            select(Client).where(Client.stripe_customer_id == customer_id)
-        )
+        result = await db.execute(select(Client).where(Client.stripe_customer_id == customer_id))
         client = result.scalar_one_or_none()
         if not client:
             return {"status": "skipped", "reason": "client_not_found"}
 
         client.last_payment_at = datetime.now(UTC)
         if invoice.get("next_payment_attempt"):
-            client.next_billing_at = datetime.fromtimestamp(
-                invoice["next_payment_attempt"], tz=UTC
-            )
+            client.next_billing_at = datetime.fromtimestamp(invoice["next_payment_attempt"], tz=UTC)
 
         await db.flush()
         logger.info(f"[Stripe] Invoice paid for client {client.id}")
@@ -1023,7 +1013,7 @@ class StripeClient:
     async def _handle_payment_failed(
         self,
         event: WebhookEvent,
-        db: "AsyncSession | None" = None,
+        db: AsyncSession | None = None,
     ) -> dict[str, Any]:
         """invoice.payment_failed — mark past_due."""
         from src.models.client import Client
@@ -1035,9 +1025,7 @@ class StripeClient:
             logger.warning(f"[Stripe] Payment failed (no-db): {invoice.get('id')}")
             return {"status": "processed", "action": "payment_failed"}
 
-        result = await db.execute(
-            select(Client).where(Client.stripe_customer_id == customer_id)
-        )
+        result = await db.execute(select(Client).where(Client.stripe_customer_id == customer_id))
         client = result.scalar_one_or_none()
         if not client:
             return {"status": "skipped", "reason": "client_not_found"}
@@ -1067,7 +1055,7 @@ class StripeClient:
     async def _send_activation_email(
         self,
         client: Any,
-        db: "AsyncSession | None" = None,
+        db: AsyncSession | None = None,
     ) -> None:
         """Send subscription activation email via Resend."""
         s = get_settings()
@@ -1412,7 +1400,9 @@ async def _send_activation_email(
         logger.warning("[ActivationEmail] Resend API key not configured — skipping")
         return
 
-    base_url = (frontend_url or settings.frontend_url or "https://agency-os-liart.vercel.app").rstrip("/")
+    base_url = (
+        frontend_url or settings.frontend_url or "https://agency-os-liart.vercel.app"
+    ).rstrip("/")
     onboarding_url = f"{base_url}/onboarding/crm"
     unsubscribe_url = f"{base_url}/unsubscribe"
 

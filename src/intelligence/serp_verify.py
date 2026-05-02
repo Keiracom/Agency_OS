@@ -5,6 +5,7 @@ Gemini uses these as starting points, not restrictions.
 
 Pipeline F v2.1. Ratified: 2026-04-15.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -22,9 +23,7 @@ ABN_RE = re.compile(r"\b(\d{2}\s?\d{3}\s?\d{3}\s?\d{3})\b")
 LINKEDIN_COMPANY_RE = re.compile(
     r"https?://(?:[a-z]{2,3}\.)?linkedin\.com/company/[a-zA-Z0-9\-_%]+/?", re.IGNORECASE
 )
-FACEBOOK_PAGE_RE = re.compile(
-    r"https?://(?:www\.)?facebook\.com/[a-zA-Z0-9.\-_]+/?", re.IGNORECASE
-)
+FACEBOOK_PAGE_RE = re.compile(r"https?://(?:www\.)?facebook\.com/[a-zA-Z0-9.\-_]+/?", re.IGNORECASE)
 
 
 def _extract_business_name(serp_result: dict) -> str | None:
@@ -160,7 +159,9 @@ async def run_serp_verify(
         _serp(f'"{clean_domain}" ABN'),
         _serp(f'"{clean_domain}" site:linkedin.com/company'),
         _serp(f'"{clean_domain}" owner OR director OR founder'),
-        _serp(f'"{biz_name}" site:facebook.com' if biz_name else f'"{clean_domain}" site:facebook.com'),
+        _serp(
+            f'"{biz_name}" site:facebook.com' if biz_name else f'"{clean_domain}" site:facebook.com'
+        ),
     )
 
     # Determine if any queries failed (non-empty results vs errors)

@@ -7,12 +7,13 @@ deal won). Queryable for campaign-level aggregations.
 Storage: public.outreach_telemetry via MCP bridge (best-effort, non-fatal).
 All costs in AUD (LAW II).
 """
+
 from __future__ import annotations
 
 import json
 import logging
 import subprocess
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -25,7 +26,7 @@ VALID_EVENT_TYPES = {"touch", "response", "conversion"}
 
 
 def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _escape(val: str) -> str:
@@ -90,7 +91,10 @@ class ProspectTelemetry:
         _write_supabase(row)
         logger.info(
             "telemetry: touch prospect=%s channel=%s step=%s cost_aud=%.4f",
-            prospect_id, channel, step, cost_aud,
+            prospect_id,
+            channel,
+            step,
+            cost_aud,
         )
         return row
 
@@ -119,7 +123,9 @@ class ProspectTelemetry:
         _write_supabase(row)
         logger.info(
             "telemetry: response prospect=%s channel=%s intent=%s",
-            prospect_id, channel, intent,
+            prospect_id,
+            channel,
+            intent,
         )
         return row
 
@@ -146,7 +152,9 @@ class ProspectTelemetry:
         _write_supabase(row)
         logger.info(
             "telemetry: conversion prospect=%s type=%s value_aud=%.2f",
-            prospect_id, conversion_type, value_aud,
+            prospect_id,
+            conversion_type,
+            value_aud,
         )
         return row
 
@@ -168,7 +176,9 @@ class ProspectTelemetry:
         try:
             result = subprocess.run(
                 ["node", _BRIDGE, "call", "supabase", "execute_sql", args],
-                capture_output=True, text=True, timeout=10,
+                capture_output=True,
+                text=True,
+                timeout=10,
             )
             payload = json.loads(result.stdout or "[]")
             if isinstance(payload, list):
@@ -214,7 +224,9 @@ class ProspectTelemetry:
         try:
             result = subprocess.run(
                 ["node", _BRIDGE, "call", "supabase", "execute_sql", args],
-                capture_output=True, text=True, timeout=10,
+                capture_output=True,
+                text=True,
+                timeout=10,
             )
             payload = json.loads(result.stdout or "[]")
             if isinstance(payload, list):
@@ -244,11 +256,15 @@ class ProspectTelemetry:
         for r in responses:
             ch = r.get("channel", "")
             channel_responses[ch] = channel_responses.get(ch, 0) + 1
-        best_channel = max(
-            channel_touches,
-            key=lambda ch: channel_responses.get(ch, 0) / channel_touches[ch],
-            default="none",
-        ) if channel_touches else "none"
+        best_channel = (
+            max(
+                channel_touches,
+                key=lambda ch: channel_responses.get(ch, 0) / channel_touches[ch],
+                default="none",
+            )
+            if channel_touches
+            else "none"
+        )
 
         return {
             "campaign_id": campaign_id,

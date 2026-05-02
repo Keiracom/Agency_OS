@@ -15,9 +15,11 @@ Environment:
   MEMORY_RECALL_BACKEND  — 'supabase' | 'mem0' | 'hybrid' for context retriever
   OPENAI_API_KEY         — DEPRECATED for primary path; kept as legacy fallback
 """
+
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 import os
 import subprocess
@@ -72,9 +74,7 @@ async def generate_summary(events: list[dict[str, Any]], window_hours: int = 1) 
     return await opus_call(get_system_prompt("dm"), user_msg, timeout=60)
 
 
-async def fetch_recent_events(
-    database_url: str, hours: int = 1
-) -> list[dict[str, Any]]:
+async def fetch_recent_events(database_url: str, hours: int = 1) -> list[dict[str, Any]]:
     """Fetch governance_events created in the last *hours* hours via asyncpg.
 
     Returns an empty list on connection failure so the digest loop continues.
@@ -157,6 +157,7 @@ async def _check_opa() -> str:
     """Return OPA health string without raising."""
     try:
         import urllib.request
+
         req = urllib.request.urlopen("http://localhost:8181/health", timeout=2)
         return "up" if req.status == 200 else f"degraded ({req.status})"
     except Exception:
@@ -226,6 +227,7 @@ async def _open_pr_count() -> str:
         )
         if result.returncode == 0:
             import json
+
             prs = json.loads(result.stdout or "[]")
             return str(len(prs))
         return "unavailable"
@@ -266,7 +268,7 @@ async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     lines = [
         "Agency OS — system status",
         f"OPA: {opa}",
-        f"Max (COO bot): up",
+        "Max (COO bot): up",
         f"Recorder: {recorder}",
         f"Last governance event: {last_event}",
         f"Governance events today: {today_count}",
@@ -286,6 +288,7 @@ async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
 
 def _make_digest_job(cfg: COOConfig):
     """Return a job_queue callback that runs one digest cycle."""
+
     async def _digest_job(context: ContextTypes.DEFAULT_TYPE) -> None:
         try:
             hours = cfg.digest_interval_minutes // 60 or 1
@@ -334,6 +337,7 @@ def _make_inbox_poll_job():
 
                 # Feed into group_handler buffer
                 from src.coo_bot.group_handler import _buffer, _respond_in_group
+
                 entry = {
                     "sender": sender,
                     "text": text,
@@ -349,8 +353,10 @@ def _make_inbox_poll_job():
                     class FakeMsg:
                         async def reply_text(self, t):
                             from src.coo_bot.group_writer import post_to_group
+
                             cfg = COOConfig()
                             await post_to_group(cfg.bot_token, t.replace("[MAX] ", ""))
+
                     class FakeUpdate:
                         message = FakeMsg()
 
@@ -358,10 +364,8 @@ def _make_inbox_poll_job():
 
             except Exception as exc:
                 logger.warning("inbox_poll: error processing %s: %s", fpath, exc)
-                try:
+                with contextlib.suppress(Exception):
                     fpath.unlink(missing_ok=True)
-                except Exception:
-                    pass
 
     return _inbox_poll_job
 
@@ -376,12 +380,7 @@ def main() -> None:
 
     cfg = COOConfig()
 
-    app = (
-        Application.builder()
-        .token(cfg.bot_token)
-        .concurrent_updates(True)
-        .build()
-    )
+    app = Application.builder().token(cfg.bot_token).concurrent_updates(True).build()
 
     app.add_handler(CommandHandler("status", cmd_status))
 
@@ -421,6 +420,8 @@ def main() -> None:
     tier = int(os.environ.get("COO_APPROVAL_TIER", "0"))
     logger.info(
         "Max COO bot starting — digest interval=%dm, dave_chat_id=%s, tier=%d",
-        cfg.digest_interval_minutes, cfg.dave_chat_id, tier,
+        cfg.digest_interval_minutes,
+        cfg.dave_chat_id,
+        tier,
     )
     app.run_polling(drop_pending_updates=True)

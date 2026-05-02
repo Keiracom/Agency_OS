@@ -5,6 +5,7 @@ LinkedIn DM URL fill also uses DFS SERP with safe error handling.
 
 Ratified: 2026-04-14. Pipeline F architecture refactor.
 """
+
 from __future__ import annotations
 
 import logging
@@ -121,11 +122,23 @@ async def fill_abn_via_serp(
         try:
             result = await dfs._post(
                 endpoint="/v3/serp/google/organic/live/advanced",
-                payload=[{"keyword": query, "location_name": "Australia", "language_name": "English", "depth": 5}],
-                cost_per_call=Decimal("0.002"), cost_attr="_cost_serp", swallow_no_data=True)
+                payload=[
+                    {
+                        "keyword": query,
+                        "location_name": "Australia",
+                        "language_name": "English",
+                        "depth": 5,
+                    }
+                ],
+                cost_per_call=Decimal("0.002"),
+                cost_attr="_cost_serp",
+                swallow_no_data=True,
+            )
             abn = _parse_abn_from_snippets(result)
             if abn:
-                logger.info("ABN found via SERP for '%s' (query: %s): %s", business_name, query[:40], abn)
+                logger.info(
+                    "ABN found via SERP for '%s' (query: %s): %s", business_name, query[:40], abn
+                )
                 return abn
         except Exception as exc:
             logger.warning("fill_abn_via_serp query '%s' failed: %s", query[:40], exc)
@@ -148,26 +161,38 @@ async def fill_linkedin_via_serp(
     query = f"site:linkedin.com/in {dm_name} {business_name}"
     try:
         from decimal import Decimal
+
         result = await dfs._post(
             endpoint="/v3/serp/google/organic/live/advanced",
-            payload=[{"keyword": query, "location_name": "Australia", "language_name": "English", "depth": 5}],
-            cost_per_call=Decimal("0.002"), cost_attr="_cost_serp", swallow_no_data=True)
+            payload=[
+                {
+                    "keyword": query,
+                    "location_name": "Australia",
+                    "language_name": "English",
+                    "depth": 5,
+                }
+            ],
+            cost_per_call=Decimal("0.002"),
+            cost_attr="_cost_serp",
+            swallow_no_data=True,
+        )
         url = _parse_linkedin_from_snippets(result)
         if url:
             logger.info(
                 "LinkedIn found via SERP for '%s' at '%s': %s",
-                dm_name, business_name, url,
+                dm_name,
+                business_name,
+                url,
             )
         else:
             logger.info(
                 "LinkedIn not found via SERP for '%s' at '%s'",
-                dm_name, business_name,
+                dm_name,
+                business_name,
             )
         return url
     except Exception as exc:
-        logger.warning(
-            "fill_linkedin_via_serp failed for '%s': %s", dm_name, exc
-        )
+        logger.warning("fill_linkedin_via_serp failed for '%s': %s", dm_name, exc)
         return None
 
 
@@ -184,10 +209,21 @@ async def fill_company_linkedin_via_serp(
     query = f'site:linkedin.com/company "{business_name}"'
     try:
         from decimal import Decimal
+
         result = await dfs._post(
             endpoint="/v3/serp/google/organic/live/advanced",
-            payload=[{"keyword": query, "location_name": "Australia", "language_name": "English", "depth": 5}],
-            cost_per_call=Decimal("0.002"), cost_attr="_cost_serp", swallow_no_data=True)
+            payload=[
+                {
+                    "keyword": query,
+                    "location_name": "Australia",
+                    "language_name": "English",
+                    "depth": 5,
+                }
+            ],
+            cost_per_call=Decimal("0.002"),
+            cost_attr="_cost_serp",
+            swallow_no_data=True,
+        )
         url = _parse_linkedin_company_from_snippets(result)
         if url:
             logger.info("Company LinkedIn found via SERP for '%s': %s", business_name, url)
@@ -223,7 +259,9 @@ async def run_verify_fills(
     location = f3a_output.get("location") or {}
     suburb = location.get("suburb")
     state = location.get("state")
-    abn, dm_linkedin, company_linkedin = await _gather_fills(dfs, business_name, dm_name, suburb, state)
+    abn, dm_linkedin, company_linkedin = await _gather_fills(
+        dfs, business_name, dm_name, suburb, state
+    )
 
     # FIX L4: _cost updated to 0.008 (4 SERP call variants now possible)
     # FIX M3: gmb_rating/gmb_reviews/gmb_category removed — always None, deferred by design

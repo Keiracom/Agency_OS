@@ -5,6 +5,7 @@ No Ready/Near-ready/Watchlist classification. 4-dimension scores handle prioriti
 
 Pipeline F v2.1. Ratified: 2026-04-15.
 """
+
 from __future__ import annotations
 
 
@@ -80,7 +81,8 @@ def assemble_card(
         # This is informational — card remains eligible. Dashboard can highlight non-enhanced cards.
         "stage10_status": (stage10_vr_msg or {}).get("f_status"),
         # FIX L3: fall back to Stage 7 draft outreach if Stage 10 outreach absent
-        "outreach": (stage10_vr_msg or {}).get("outreach") or {
+        "outreach": (stage10_vr_msg or {}).get("outreach")
+        or {
             "draft_email": stage7_analyse.get("draft_email"),
             "draft_linkedin_note": stage7_analyse.get("draft_linkedin_note"),
             "draft_voice_script": stage7_analyse.get("draft_voice_script"),

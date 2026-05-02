@@ -1,6 +1,8 @@
 """flow_builder.py — Task wrapping and dependency wiring helpers."""
-from prefect import task
+
 import prefect.runtime.flow_run as _fr
+from prefect import task
+
 from src.evo.agent_invoker import enqueue_and_wait
 
 

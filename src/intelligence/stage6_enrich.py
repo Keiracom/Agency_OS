@@ -7,6 +7,7 @@ google_jobs_advertisers REMOVED — 0/5 data return rate for AU SMBs (audit 2026
 
 Pipeline F v2.1. Ratified: 2026-04-15.
 """
+
 from __future__ import annotations
 
 import logging

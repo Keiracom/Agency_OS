@@ -8,12 +8,13 @@ Layer:   3 - engines
 Imports: stdlib + tg_notify helper
 Consumers: DeliverabilityMonitor (as emit_operator_alert)
 """
+
 from __future__ import annotations
 
 import logging
 import os
-from datetime import datetime, timedelta, timezone
-from typing import Callable
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
 
 from src.outreach.safety.deliverability_monitor import Health, OperatorAlert
 
@@ -55,6 +56,7 @@ def _send_to_supergroup(text: str) -> None:
         logger.warning("TELEGRAM_TOKEN not set — deliverability alert suppressed")
         return
     import httpx
+
     httpx.post(
         f"https://api.telegram.org/bot{token}/sendMessage",
         json={"chat_id": TELEGRAM_SUPERGROUP_ID, "text": text},
@@ -75,7 +77,7 @@ class TelegramAlertEmitter:
     def __init__(
         self,
         send_fn: Callable[[str], None] | None = None,
-        now_fn: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
+        now_fn: Callable[[], datetime] = lambda: datetime.now(UTC),
         dedupe_window: timedelta = DEDUPE_WINDOW,
     ):
         self._send_fn = send_fn if send_fn is not None else _send_to_supergroup

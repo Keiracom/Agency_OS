@@ -28,6 +28,7 @@ The Supabase client is injectable for hermetic tests; production uses
 src.integrations.supabase.create_client(). The classifier is also
 injectable; production uses governance.router._build_openai_client().
 """
+
 from __future__ import annotations
 
 import json
@@ -35,7 +36,7 @@ import logging
 import os
 from collections.abc import Callable
 from dataclasses import asdict, dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any, Literal
 
 logger = logging.getLogger(__name__)
@@ -51,6 +52,7 @@ MergerVerdictKind = Literal[
 
 
 # ── Claims ───────────────────────────────────────────────────────────────────
+
 
 @dataclass
 class ClaimRecord:
@@ -109,12 +111,8 @@ def claim(
     if client is None:
         client = _build_supabase_client()
     if client is None:
-        raise RuntimeError(
-            "coordinator: no Supabase client available; cannot claim"
-        )
-    expires_at = (
-        datetime.now(timezone.utc) + timedelta(seconds=expires_in_seconds)
-    ).isoformat()
+        raise RuntimeError("coordinator: no Supabase client available; cannot claim")
+    expires_at = (datetime.now(UTC) + timedelta(seconds=expires_in_seconds)).isoformat()
     payload = {
         "callsign": callsign,
         "action": action,
@@ -123,11 +121,7 @@ def claim(
         "expires_at": expires_at,
         "metadata": metadata,
     }
-    response = (
-        client.table("coordinator_claims")
-        .insert(payload)
-        .execute()
-    )
+    response = client.table("coordinator_claims").insert(payload).execute()
     rows = getattr(response, "data", None) or []
     if not rows:
         raise RuntimeError("coordinator: claim insert returned no row")
@@ -140,7 +134,7 @@ def release(claim_id: str, *, client: Any | None = None) -> bool:
         client = _build_supabase_client()
     if client is None:
         raise RuntimeError("coordinator: no Supabase client available; cannot release")
-    now_iso = datetime.now(timezone.utc).isoformat()
+    now_iso = datetime.now(UTC).isoformat()
     response = (
         client.table("coordinator_claims")
         .update({"status": "released", "released_at": now_iso})
@@ -170,7 +164,7 @@ def list_active_claims(
     response = query.execute()
     rows = getattr(response, "data", None) or []
     out: list[ClaimRecord] = []
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     for row in rows:
         rec = ClaimRecord.from_row(row)
         # Drop expired rows from the active view (best-effort filter; the
@@ -222,8 +216,7 @@ def subscribe_realtime(
         client = _build_supabase_client()
     if client is None:
         logger.warning(
-            "coordinator: subscribe_realtime called without a client; "
-            "no subscription created"
+            "coordinator: subscribe_realtime called without a client; no subscription created"
         )
         return None
     channel = client.channel("coordinator-claims")
@@ -237,6 +230,7 @@ def subscribe_realtime(
 
 
 # ── DSAE Merger ──────────────────────────────────────────────────────────────
+
 
 @dataclass
 class MergerVerdict:
@@ -322,6 +316,7 @@ def merge_drafts(
         return _heuristic_dsae_classify(draft_a, draft_b)
     try:
         from openai import OpenAI  # type: ignore
+
         client = OpenAI(api_key=api_key)
     except ImportError:
         return _heuristic_dsae_classify(draft_a, draft_b)

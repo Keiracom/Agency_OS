@@ -29,6 +29,7 @@ Failure modes:
 
 Cost: ~$0.0001 USD per reply (GPT-4o-mini). Off the Anthropic credit pool.
 """
+
 from __future__ import annotations
 
 import json
@@ -127,9 +128,7 @@ async def classify_reply(
                 },
             )
             if resp.status_code != 200:
-                logger.warning(
-                    f"[reply_intent] OpenAI {resp.status_code}: {resp.text[:200]}"
-                )
+                logger.warning(f"[reply_intent] OpenAI {resp.status_code}: {resp.text[:200]}")
                 return _unclear_envelope(f"openai_http_{resp.status_code}")
             raw = resp.json()["choices"][0]["message"]["content"]
     except Exception as exc:

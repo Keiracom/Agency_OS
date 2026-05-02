@@ -7,14 +7,14 @@ PURPOSE: Mem0 integration adapter — wraps official mem0 SDK with cap tracking,
 import json
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 logger = logging.getLogger(__name__)
 
 MEM0_USAGE_LOG = "/home/elliotbot/clawd/logs/mem0-usage.jsonl"
 FREE_TIER_ADD_CAP = 10_000
 FREE_TIER_SEARCH_CAP = 1_000
-WARN_ADD_THRESHOLD = 8_000   # 80% of add cap
+WARN_ADD_THRESHOLD = 8_000  # 80% of add cap
 WARN_SEARCH_THRESHOLD = 800  # 80% of search cap
 
 
@@ -23,7 +23,7 @@ def _append_usage(op: str, callsign: str, count: int = 1) -> None:
     try:
         os.makedirs(os.path.dirname(MEM0_USAGE_LOG), exist_ok=True)
         entry = {
-            "ts": datetime.now(timezone.utc).isoformat(),
+            "ts": datetime.now(UTC).isoformat(),
             "op": op,
             "callsign": callsign,
             "count": count,
@@ -40,7 +40,7 @@ def get_monthly_usage(period: str | None = None) -> dict:
     Defaults to current month. Returns {adds, searches, period}.
     """
     if period is None:
-        period = datetime.now(timezone.utc).strftime("%Y-%m")
+        period = datetime.now(UTC).strftime("%Y-%m")
     adds = searches = 0
     try:
         with open(MEM0_USAGE_LOG, encoding="utf-8") as fh:
@@ -91,6 +91,7 @@ class Mem0Adapter:
             )
         try:
             from mem0 import MemoryClient
+
             self._client = MemoryClient(api_key=api_key)
         except ImportError as exc:
             raise ImportError(
@@ -121,7 +122,9 @@ class Mem0Adapter:
         except Exception as exc:
             logger.error(
                 "[mem0-adapter] add() failed callsign=%s source_type=%s: %s",
-                callsign, source_type, exc,
+                callsign,
+                source_type,
+                exc,
             )
             raise
         _append_usage("add", callsign)
@@ -140,12 +143,16 @@ class Mem0Adapter:
         _check_caps("search")
         try:
             results = self._client.search(
-                query, filters={"user_id": callsign}, limit=limit,
+                query,
+                filters={"user_id": callsign},
+                limit=limit,
             )
         except Exception as exc:
             logger.error(
                 "[mem0-adapter] search() failed callsign=%s query=%r: %s",
-                callsign, query[:80], exc,
+                callsign,
+                query[:80],
+                exc,
             )
             raise
         _append_usage("search", callsign)
@@ -160,7 +167,9 @@ class Mem0Adapter:
             return self._client.delete(memory_id)
         except Exception as exc:
             logger.error(
-                "[mem0-adapter] delete() failed memory_id=%s: %s", memory_id, exc,
+                "[mem0-adapter] delete() failed memory_id=%s: %s",
+                memory_id,
+                exc,
             )
             raise
 
@@ -173,6 +182,8 @@ class Mem0Adapter:
             return self._client.update(memory_id, content)
         except Exception as exc:
             logger.error(
-                "[mem0-adapter] update() failed memory_id=%s: %s", memory_id, exc,
+                "[mem0-adapter] update() failed memory_id=%s: %s",
+                memory_id,
+                exc,
             )
             raise

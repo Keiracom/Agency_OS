@@ -8,11 +8,11 @@ Consumers: enrichment_flow.py, lead_enrichment_flow.py
 dm_identification.py — Decision maker identification pipeline.
 Directive #287 — SERP-first DM waterfall + AU location filter.
 """
+
 import logging
-import re as _re
 import re
-from dataclasses import dataclass, field
-from typing import Optional
+import re as _re
+from dataclasses import dataclass
 
 _COMPANY_NAME_RE = _re.compile(
     r"\b(PTY|LTD|AUSTRALIA|GROUP|COMPANY|CORP|HOLDINGS|SERVICES|SOLUTIONS|INDUSTRIES)\b",
@@ -36,9 +36,7 @@ def _is_company_profile(candidate: dict) -> bool:
     if name == name.upper() and len(name) > 3 and " " in name:
         return True
     # Corporate keyword in name with no job title
-    if _COMPANY_NAME_RE.search(name) and not title:
-        return True
-    return False
+    return bool(_COMPANY_NAME_RE.search(name) and not title)
 
 
 def _best_company_name(
@@ -68,16 +66,43 @@ def _best_company_name(
     stem = _d.split(".")[0].replace("-", " ").title()
     return stem, "domain_stem"
 
+
 logger = logging.getLogger(__name__)
 
 # Words that indicate a business entity name, not a person name
 _BUSINESS_WORDS = {
-    "PLUMBING", "DENTAL", "SERVICES", "PTY", "LTD", "LIMITED", "TRUST",
-    "FAMILY", "AUSTRALIA", "MANAGEMENT", "GROUP", "HOLDINGS", "PARTNERS",
-    "CONSULTING", "SOLUTIONS", "SYSTEMS", "TECHNOLOGIES", "ENTERPRISES",
-    "INDUSTRIES", "TRADING", "INVESTMENTS", "PROPERTY", "PROPERTIES",
-    "CONSTRUCTION", "ENGINEERING", "MEDICAL", "HEALTH", "CARE",
-    "THE", "AND", "OF", "FOR",
+    "PLUMBING",
+    "DENTAL",
+    "SERVICES",
+    "PTY",
+    "LTD",
+    "LIMITED",
+    "TRUST",
+    "FAMILY",
+    "AUSTRALIA",
+    "MANAGEMENT",
+    "GROUP",
+    "HOLDINGS",
+    "PARTNERS",
+    "CONSULTING",
+    "SOLUTIONS",
+    "SYSTEMS",
+    "TECHNOLOGIES",
+    "ENTERPRISES",
+    "INDUSTRIES",
+    "TRADING",
+    "INVESTMENTS",
+    "PROPERTY",
+    "PROPERTIES",
+    "CONSTRUCTION",
+    "ENGINEERING",
+    "MEDICAL",
+    "HEALTH",
+    "CARE",
+    "THE",
+    "AND",
+    "OF",
+    "FOR",
 }
 
 # Title keywords that indicate a decision maker, scored by seniority
@@ -97,12 +122,12 @@ _DM_TITLE_KEYWORDS: dict[str, int] = {
 
 @dataclass
 class DMResult:
-    name: Optional[str] = None
-    title: Optional[str] = None
-    source: str = "none"         # serp_linkedin | brightdata_linkedin | website_scrape | abn_entity
-    confidence: str = "none"     # HIGH | MEDIUM | LOW | none
-    linkedin_url: Optional[str] = None
-    tier_used: str = "none"      # T-DM1 | T-DM2 | T-DM3 | T-DM4 | none (for CIS tracking)
+    name: str | None = None
+    title: str | None = None
+    source: str = "none"  # serp_linkedin | brightdata_linkedin | website_scrape | abn_entity
+    confidence: str = "none"  # HIGH | MEDIUM | LOW | none
+    linkedin_url: str | None = None
+    tier_used: str = "none"  # T-DM1 | T-DM2 | T-DM3 | T-DM4 | none (for CIS tracking)
     dm_search_source: str = "none"  # abn_display | gmb_name | website_title | domain_stem
 
 
@@ -119,9 +144,9 @@ class DMIdentification:
         self,
         domain: str,
         company_name: str,
-        linkedin_company_url: Optional[str] = None,
-        spider_data: Optional[dict] = None,
-        abn_data: Optional[dict] = None,
+        linkedin_company_url: str | None = None,
+        spider_data: dict | None = None,
+        abn_data: dict | None = None,
     ) -> DMResult:
         """
         Identify the decision maker for a business using tiered fallback logic.
@@ -225,7 +250,7 @@ class DMIdentification:
         return DMResult()
 
     @staticmethod
-    def _pick_serp_dm(people: list[dict]) -> Optional[dict]:
+    def _pick_serp_dm(people: list[dict]) -> dict | None:
         """
         Pick the best decision maker from SERP LinkedIn results.
         Scores by title keyword seniority; falls back to first result with a name.
@@ -250,8 +275,8 @@ class DMIdentification:
     def _resolve_linkedin_url(
         self,
         spider_data: dict,
-        linkedin_company_url: Optional[str],
-    ) -> Optional[str]:
+        linkedin_company_url: str | None,
+    ) -> str | None:
         """Try to extract LinkedIn URL from spider_data socials, fallback to param."""
         socials = spider_data.get("socials") or {}
         if isinstance(socials, dict):
@@ -266,19 +291,14 @@ class DMIdentification:
                     return f"https://www.linkedin.com/company/{slug}"
         return linkedin_company_url
 
-    def _extract_name_from_entity(self, entity_name: str) -> Optional[str]:
+    def _extract_name_from_entity(self, entity_name: str) -> str | None:
         """
         Try to extract a person surname from an ABN entity name.
         Returns title-cased word if found, else None.
         """
         words = entity_name.upper().split()
         # Filter business words and short/non-alpha tokens
-        candidates = [
-            w for w in words
-            if w.isalpha()
-            and len(w) > 2
-            and w not in _BUSINESS_WORDS
-        ]
+        candidates = [w for w in words if w.isalpha() and len(w) > 2 and w not in _BUSINESS_WORDS]
         if candidates:
             return candidates[0].title()
         return None

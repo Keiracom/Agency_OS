@@ -11,6 +11,7 @@ result.get("items", []) before slicing.
 
 Ratified: 2026-04-14. Pipeline F architecture refactor.
 """
+
 from __future__ import annotations
 
 import asyncio

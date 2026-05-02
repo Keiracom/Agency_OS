@@ -18,23 +18,24 @@ Unpause criteria (per repo pause-governance policy in prefect.yaml):
   - Live-spend safety review confirmed AUD 0 budget enforcement holds when
     free_mode_only=True at scale.
 """
+
 from src.orchestration.flows.bu_closed_loop_flow import bu_closed_loop_flow
 
 DEPLOYMENT_CONFIG = {
-    "name":        "bu-closed-loop-flow",
-    "version":     "1.0.0",
-    "tags":        ["bu-closed-loop", "backlog-driver", "free-mode", "paused"],
+    "name": "bu-closed-loop-flow",
+    "version": "1.0.0",
+    "tags": ["bu-closed-loop", "backlog-driver", "free-mode", "paused"],
     "description": (
         "BU Closed-Loop S2 backlog driver. PAUSED by default. Daily 04:00 UTC "
         "scan of stuck BU rows; advances by one stage per row in free-mode "
         "(zero AUD spend) using age-tiered cadence."
     ),
-    "cron":        "0 4 * * *",
-    "paused":      True,  # PAUSED until S3 ratifies (was is_schedule_active=False)
+    "cron": "0 4 * * *",
+    "paused": True,  # PAUSED until S3 ratifies (was is_schedule_active=False)
     "parameters": {
-        "max_rows":          500,
-        "free_mode_only":    True,
-        "cadence_hot_days":  14,
+        "max_rows": 500,
+        "free_mode_only": True,
+        "cadence_hot_days": 14,
         "cadence_warm_days": 60,
         "cadence_cold_days": 180,
     },

@@ -23,11 +23,11 @@ _FALLBACK_ORDER: list[str] = ["email", "linkedin", "voice"]
 # ---------------------------------------------------------------------------
 
 _DEFAULT_SEQUENCE: list[dict] = [
-    {"step": 1, "channel": "email",    "delay_after_previous": 0},
-    {"step": 2, "channel": "email",    "delay_after_previous": 3},
+    {"step": 1, "channel": "email", "delay_after_previous": 0},
+    {"step": 2, "channel": "email", "delay_after_previous": 3},
     {"step": 3, "channel": "linkedin", "delay_after_previous": 4},
-    {"step": 4, "channel": "email",    "delay_after_previous": 7},
-    {"step": 5, "channel": "voice",    "delay_after_previous": 3},
+    {"step": 4, "channel": "email", "delay_after_previous": 7},
+    {"step": 5, "channel": "voice", "delay_after_previous": 3},
 ]
 
 
@@ -45,6 +45,7 @@ def get_default_sequence() -> list[dict]:
 # ---------------------------------------------------------------------------
 # Core decision functions
 # ---------------------------------------------------------------------------
+
 
 def should_pause(prospect_id: str, response_intent: str) -> bool:  # noqa: ARG001
     """Return True if the cadence must pause due to the prospect's reply intent.
@@ -175,7 +176,8 @@ def get_next_step(
 # ---------------------------------------------------------------------------
 
 import re as _re
-from datetime import datetime as _datetime, timedelta as _timedelta, timezone as _tz
+from datetime import UTC
+from datetime import datetime as _datetime
 
 _EMAIL_RE = _re.compile(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$")
 
@@ -190,7 +192,7 @@ def create_prospect_from_referral(
     bu_lookup_by_email,
     bu_insert,
     scheduled_touches_insert,
-    now_fn=lambda: _datetime.now(_tz.utc),
+    now_fn=lambda: _datetime.now(UTC),
 ) -> dict:
     """Spawn a new prospect from a referral mutation payload.
 
@@ -212,17 +214,28 @@ def create_prospect_from_referral(
     client_id = extra_payload.get("client_id")
     email = extra_payload.get("referral_email")
     if not client_id:
-        return {"status": "rejected", "reason": "missing client_id",
-                "prospect_id": None, "touches_scheduled": 0}
+        return {
+            "status": "rejected",
+            "reason": "missing client_id",
+            "prospect_id": None,
+            "touches_scheduled": 0,
+        }
     if not _valid_email(email):
-        return {"status": "rejected", "reason": f"invalid email: {email!r}",
-                "prospect_id": None, "touches_scheduled": 0}
+        return {
+            "status": "rejected",
+            "reason": f"invalid email: {email!r}",
+            "prospect_id": None,
+            "touches_scheduled": 0,
+        }
 
     existing = bu_lookup_by_email(client_id, email)
     if existing is not None:
-        return {"status": "exists",
-                "reason": "prospect already in BU for this client",
-                "prospect_id": existing.get("id"), "touches_scheduled": 0}
+        return {
+            "status": "exists",
+            "reason": "prospect already in BU for this client",
+            "prospect_id": existing.get("id"),
+            "touches_scheduled": 0,
+        }
 
     now = now_fn()
     row = {
@@ -236,7 +249,13 @@ def create_prospect_from_referral(
     }
     prospect_id = bu_insert(row)
     count = scheduled_touches_insert(
-        prospect_id, client_id, get_default_sequence(),
+        prospect_id,
+        client_id,
+        get_default_sequence(),
     )
-    return {"status": "created", "reason": "new prospect + cadence spawned",
-            "prospect_id": prospect_id, "touches_scheduled": count}
+    return {
+        "status": "created",
+        "reason": "new prospect + cadence spawned",
+        "prospect_id": prospect_id,
+        "touches_scheduled": count,
+    }

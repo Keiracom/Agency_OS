@@ -171,7 +171,6 @@ async def dncr_rewash_batch_task(
     """
     from src.integrations.dncr import get_dncr_client
 
-
     if not leads:
         return {"total": 0, "checked": 0, "changed": 0}
 

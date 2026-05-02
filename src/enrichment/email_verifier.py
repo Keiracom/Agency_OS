@@ -6,6 +6,7 @@ Purpose: SMTP-based email discovery and verification. Zero cost. No external API
 Layer: 2 - integrations
 Directive: #301
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -13,7 +14,6 @@ import logging
 import random
 import re
 import smtplib
-import socket
 import string
 import time
 from dataclasses import dataclass, field
@@ -24,6 +24,7 @@ import dns.resolver
 logger = logging.getLogger(__name__)
 
 # ── Pattern generation ────────────────────────────────────────────────────────
+
 
 def _clean(name: str) -> str:
     """Lowercase, strip non-alpha except spaces, collapse spaces."""
@@ -46,27 +47,27 @@ def generate_patterns(first_name: str, last_name: str, domain: str) -> list[str]
     templates = []
 
     if f:
-        templates.append(f"{f}@{domain}")                 # first@
+        templates.append(f"{f}@{domain}")  # first@
     if l:
-        templates.append(f"{l}@{domain}")                 # last@
+        templates.append(f"{l}@{domain}")  # last@
     if f and l:
-        templates.append(f"{f}.{l}@{domain}")             # first.last@
-        templates.append(f"{l}.{f}@{domain}")             # last.first@
-        templates.append(f"{f}{l}@{domain}")              # firstlast@
-        templates.append(f"{l}{f}@{domain}")              # lastfirst@
+        templates.append(f"{f}.{l}@{domain}")  # first.last@
+        templates.append(f"{l}.{f}@{domain}")  # last.first@
+        templates.append(f"{f}{l}@{domain}")  # firstlast@
+        templates.append(f"{l}{f}@{domain}")  # lastfirst@
     if fi and l:
-        templates.append(f"{fi}.{l}@{domain}")            # f.last@
-        templates.append(f"{fi}{l}@{domain}")             # flast@
+        templates.append(f"{fi}.{l}@{domain}")  # f.last@
+        templates.append(f"{fi}{l}@{domain}")  # flast@
     if f and li:
-        templates.append(f"{f}.{li}@{domain}")            # first.l@
+        templates.append(f"{f}.{li}@{domain}")  # first.l@
     if f and l:
-        templates.append(f"{f}_{l}@{domain}")             # first_last@
+        templates.append(f"{f}_{l}@{domain}")  # first_last@
     if fi and l:
-        templates.append(f"{fi}_{l}@{domain}")            # f_last@
+        templates.append(f"{fi}_{l}@{domain}")  # f_last@
     if f and l:
-        templates.append(f"{f}-{l}@{domain}")             # first-last@
+        templates.append(f"{f}-{l}@{domain}")  # first-last@
     if fi and l:
-        templates.append(f"{fi}-{l}@{domain}")            # f-last@
+        templates.append(f"{fi}-{l}@{domain}")  # f-last@
 
     # Deduplicate while preserving order
     seen: set[str] = set()
@@ -79,6 +80,7 @@ def generate_patterns(first_name: str, last_name: str, domain: str) -> list[str]
 
 
 # ── MX resolution ─────────────────────────────────────────────────────────────
+
 
 def resolve_mx(domain: str, timeout: float = 5.0) -> str | None:
     """Resolve MX record for domain. Returns highest-priority MX host or None."""
@@ -94,6 +96,7 @@ def resolve_mx(domain: str, timeout: float = 5.0) -> str | None:
 
 
 # ── SMTP probing ──────────────────────────────────────────────────────────────
+
 
 @dataclass
 class SmtpProbeResult:
@@ -120,7 +123,7 @@ def _smtp_probe(
     Accept-all check: probe one random garbage address first.
     """
     verified: list[str] = []
-    invalid:  list[str] = []
+    invalid: list[str] = []
 
     # Random garbage address for accept-all detection
     rand_local = "".join(random.choices(string.ascii_lowercase + string.digits, k=12))
@@ -134,7 +137,7 @@ def _smtp_probe(
 
         # Canary check
         code, _ = smtp.rcpt(canary)
-        accept_all = (code == 250)
+        accept_all = code == 250
 
         if accept_all:
             smtp.quit()
@@ -157,9 +160,9 @@ def _smtp_probe(
         smtp.quit()
     except smtplib.SMTPConnectError:
         return [], [], False
-    except smtplib.SMTPException as exc:
+    except smtplib.SMTPException:
         raise
-    except (socket.timeout, OSError) as exc:
+    except (TimeoutError, OSError):
         raise
 
     return verified, invalid, False
@@ -177,8 +180,8 @@ def probe_domain(
     try:
         verified, invalid, accept_all = _smtp_probe(candidates, mx_host, domain, timeout=timeout)
         result.verified_emails = verified
-        result.invalid_emails  = invalid
-        result.accept_all      = accept_all
+        result.invalid_emails = invalid
+        result.accept_all = accept_all
         result.patterns_tested = len(candidates)
     except Exception as exc:
         result.error = str(exc)
@@ -215,9 +218,14 @@ async def discover_email(
         candidates = generate_patterns(first_name, last_name, domain)
         if not candidates:
             return {
-                "domain": domain, "mx_host": None, "accept_all": False,
-                "verified_emails": [], "invalid_emails": [],
-                "patterns_tested": 0, "time_seconds": 0.0, "error": "no_patterns",
+                "domain": domain,
+                "mx_host": None,
+                "accept_all": False,
+                "verified_emails": [],
+                "invalid_emails": [],
+                "patterns_tested": 0,
+                "time_seconds": 0.0,
+                "error": "no_patterns",
             }
 
         loop = asyncio.get_event_loop()
@@ -225,9 +233,14 @@ async def discover_email(
         mx_host = await loop.run_in_executor(None, lambda: resolve_mx(domain))
         if not mx_host:
             return {
-                "domain": domain, "mx_host": None, "accept_all": False,
-                "verified_emails": [], "invalid_emails": [],
-                "patterns_tested": 0, "time_seconds": 0.0, "error": "no_mx",
+                "domain": domain,
+                "mx_host": None,
+                "accept_all": False,
+                "verified_emails": [],
+                "invalid_emails": [],
+                "patterns_tested": 0,
+                "time_seconds": 0.0,
+                "error": "no_mx",
             }
 
         result = await loop.run_in_executor(
@@ -235,14 +248,14 @@ async def discover_email(
             lambda: probe_domain(candidates, domain, mx_host, timeout=timeout),
         )
         return {
-            "domain":           result.domain,
-            "mx_host":          result.mx_host,
-            "accept_all":       result.accept_all,
-            "verified_emails":  result.verified_emails,
-            "invalid_emails":   result.invalid_emails,
-            "patterns_tested":  result.patterns_tested,
-            "time_seconds":     result.time_seconds,
-            "error":            result.error,
+            "domain": result.domain,
+            "mx_host": result.mx_host,
+            "accept_all": result.accept_all,
+            "verified_emails": result.verified_emails,
+            "invalid_emails": result.invalid_emails,
+            "patterns_tested": result.patterns_tested,
+            "time_seconds": result.time_seconds,
+            "error": result.error,
         }
 
 
@@ -268,22 +281,45 @@ async def verify_emails(emails: list[str]) -> list[dict[str, Any]]:
             mx_host = await loop.run_in_executor(None, lambda: resolve_mx(domain))
             if not mx_host:
                 for e in email_list:
-                    results.append({"email": e, "domain": domain, "verified": False, "error": "no_mx"})
+                    results.append(
+                        {"email": e, "domain": domain, "verified": False, "error": "no_mx"}
+                    )
                 return
             probe = await loop.run_in_executor(
                 None,
                 lambda: probe_domain(email_list, domain, mx_host),
             )
             for e in probe.verified_emails:
-                results.append({"email": e, "domain": domain, "verified": True,
-                                 "accept_all": probe.accept_all, "error": probe.error})
+                results.append(
+                    {
+                        "email": e,
+                        "domain": domain,
+                        "verified": True,
+                        "accept_all": probe.accept_all,
+                        "error": probe.error,
+                    }
+                )
             for e in probe.invalid_emails:
-                results.append({"email": e, "domain": domain, "verified": False,
-                                 "accept_all": probe.accept_all, "error": probe.error})
+                results.append(
+                    {
+                        "email": e,
+                        "domain": domain,
+                        "verified": False,
+                        "accept_all": probe.accept_all,
+                        "error": probe.error,
+                    }
+                )
             if probe.accept_all:
                 for e in email_list:
-                    results.append({"email": e, "domain": domain, "verified": False,
-                                    "accept_all": True, "error": None})
+                    results.append(
+                        {
+                            "email": e,
+                            "domain": domain,
+                            "verified": False,
+                            "accept_all": True,
+                            "error": None,
+                        }
+                    )
 
     await asyncio.gather(*[_verify_domain_group(d, el) for d, el in by_domain.items()])
     return results
@@ -299,11 +335,12 @@ async def discover_and_verify_batch(
 
     Returns enriched list with smtp_verified_email, smtp_result.
     """
+
     async def _process(p: dict[str, Any]) -> dict[str, Any]:
-        domain      = p.get("domain", "")
-        first_name  = p.get("first_name", "")
-        last_name   = p.get("last_name", "")
-        existing    = p.get("dm_email")
+        domain = p.get("domain", "")
+        first_name = p.get("first_name", "")
+        last_name = p.get("last_name", "")
+        existing = p.get("dm_email")
 
         # Clean domain
         d = domain[4:] if domain.startswith("www.") else domain
@@ -317,11 +354,7 @@ async def discover_and_verify_batch(
             if existing in result.get("verified_emails", []):
                 verified_existing = True
 
-        smtp_email = (
-            result["verified_emails"][0]
-            if result.get("verified_emails")
-            else None
-        )
+        smtp_email = result["verified_emails"][0] if result.get("verified_emails") else None
 
         return {
             **p,

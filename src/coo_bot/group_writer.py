@@ -6,6 +6,7 @@ Called by dm_handler when Dave uses /post command.
 Public API:
     post_to_group(bot_token: str, text: str) -> bool
 """
+
 from __future__ import annotations
 
 import logging
@@ -62,8 +63,10 @@ async def post_to_group(
 async def _write_audit_event(text: str, dave_dm_id: int | None) -> None:
     """Write a governance_events row for every Max group post. Best-effort."""
     import os
+
     try:
         from src.governance._mcp_helpers import governance_event_emit
+
         governance_event_emit(
             callsign="max",
             event_type="max_group_post",

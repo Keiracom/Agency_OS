@@ -12,6 +12,7 @@ Budget: hard cap per run (default $5 USD)
 Concurrency: anthropic=12, contactout=15
 Alerting: Telegram on failure
 """
+
 from __future__ import annotations
 
 import json
@@ -38,11 +39,12 @@ def _logger() -> logging.Logger:
             pass
     return logging.getLogger(__name__)
 
+
+from src.enrichment.signal_config import SignalConfigRepository
+from src.exceptions import AgencyProfileMissingError
 from src.pipeline.stage_9_vulnerability_enrichment import Stage9VulnerabilityEnrichment
 from src.pipeline.stage_10_message_generator import Stage10MessageGenerator
-from src.enrichment.signal_config import SignalConfigRepository
 from src.prefect_utils.hooks import on_failure_hook
-from src.exceptions import AgencyProfileMissingError
 
 _REQUIRED_AGENCY_FIELDS = {"name", "services", "tone", "founder_name"}
 
@@ -52,10 +54,10 @@ logger = logging.getLogger(__name__)
 async def _init_jsonb_codec(conn):
     """Register JSONB codec for connections behind pgbouncer (statement_cache_size=0)."""
     await conn.set_type_codec(
-        'jsonb',
+        "jsonb",
         encoder=json.dumps,
         decoder=json.loads,
-        schema='pg_catalog',
+        schema="pg_catalog",
     )
 
 
@@ -131,10 +133,13 @@ async def run_stage_10(
     """Run Stage 10 message generation."""
     from src.integrations.anthropic import AnthropicClient
     from src.intelligence.gemini_client import GeminiClient
+
     ai = AnthropicClient()
     signal_repo = SignalConfigRepository(pool)
     gemini = GeminiClient(api_key=os.environ.get("GEMINI_API_KEY"))
-    gen = Stage10MessageGenerator(ai, signal_repo, pool, gemini_client=gemini, agency_profile=agency_profile)
+    gen = Stage10MessageGenerator(
+        ai, signal_repo, pool, gemini_client=gemini, agency_profile=agency_profile
+    )
     return await gen.run(vertical_slug, agency_profile, batch_size=len(bdm_ids))
 
 
@@ -205,7 +210,7 @@ async def stage_9_10_pipeline(
             # Resolve dependencies and estimate costs without API calls
             s9_vr_cost = len(selected) * 0.025  # Sonnet VR per domain
             s9_co_cost = len(selected) * 0.033  # ContactOut per profile
-            s10_cost = len(selected) * 0.007    # 4 channels per DM
+            s10_cost = len(selected) * 0.007  # 4 channels per DM
             total_est = s9_vr_cost + s9_co_cost + s10_cost
             return {
                 "dry_run": True,
@@ -245,9 +250,7 @@ async def stage_9_10_pipeline(
         # 4. Verify Stage 9
         vr_count = await verify_stage_9(pool, selected)
         if vr_count < len(selected):
-            raise RuntimeError(
-                f"Stage 9 incomplete: {vr_count}/{len(selected)} VRs generated"
-            )
+            raise RuntimeError(f"Stage 9 incomplete: {vr_count}/{len(selected)} VRs generated")
 
         # 5. Post-S9 budget gate
         s9_cost = float(s9_result.get("cost_total_usd", 0))

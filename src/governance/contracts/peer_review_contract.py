@@ -4,6 +4,7 @@ Used when one bot reviews the other's PR / proposal. Encodes the R6
 Verdict-Wait + R8 Dual-Concur Yellow Flag + DSAE AGREE/DIFFER protocols
 in a single typed shape.
 """
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -18,14 +19,18 @@ class PeerReviewContract(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
     reviewer_callsign: Literal["elliot", "aiden", "orion", "atlas", "scout"] = Field(
-        ..., description="Who is posting the review.",
+        ...,
+        description="Who is posting the review.",
     )
     target_pr: str = Field(
-        ..., min_length=1, max_length=200,
+        ...,
+        min_length=1,
+        max_length=200,
         description="PR URL or branch identifier under review.",
     )
     status: Literal["concur", "differ", "yellow_flag"] = Field(
-        ..., description=(
+        ...,
+        description=(
             "concur = approve. differ = halt + verdict-wait per R6. "
             "yellow_flag = dual-concur agreed too fast (R8); re-check needed."
         ),
@@ -35,7 +40,8 @@ class PeerReviewContract(BaseModel):
         description="Concrete observations that drove the verdict.",
     )
     recommendation: str = Field(
-        default="", max_length=2000,
+        default="",
+        max_length=2000,
         description="Recommended next action for the originating bot.",
     )
     audit_evidence: list[str] = Field(

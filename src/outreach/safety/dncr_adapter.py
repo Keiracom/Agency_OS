@@ -8,10 +8,11 @@ Layer:   3 - engines
 Imports: stdlib + src.integrations.dncr_client
 Consumers: src/outreach/safety/compliance_guard.py (as dncr_lookup arg)
 """
+
 from __future__ import annotations
 
 import logging
-from typing import Callable
+from collections.abc import Callable
 
 from src.integrations.dncr_client import DNCRClient, DNCRResult
 
@@ -44,7 +45,8 @@ def build_dncr_lookup(
             logger.warning(
                 "DNCR degraded for %s (status=%s) — allowing send under "
                 "AU business-interest B2B exemption. Operator audit required.",
-                phone, result.status,
+                phone,
+                result.status,
             )
         return False
 

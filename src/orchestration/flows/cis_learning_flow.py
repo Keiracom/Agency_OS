@@ -29,6 +29,8 @@ from prefect import flow, get_run_logger, task
 
 from src.integrations.sdk_brain import SiegeSDKIntelligence
 from src.integrations.supabase import get_db_session
+from src.prefect_utils.completion_hook import on_completion_hook
+from src.prefect_utils.hooks import on_failure_hook
 from src.services.cis_outcome_service import (
     count_meeting_booked_outcomes,
     get_outcomes_since_last_run,
@@ -38,8 +40,6 @@ from src.services.cis_outcome_service import (
     log_weight_adjustment,
     save_propensity_weights,
 )
-from src.prefect_utils.completion_hook import on_completion_hook
-from src.prefect_utils.hooks import on_failure_hook
 
 CEO_MEMORY_WEIGHTS_KEY = "ceo:propensity_weights_v3"
 MIN_OUTCOMES_THRESHOLD = int(os.environ.get("CIS_MIN_OUTCOMES_THRESHOLD", "20"))
@@ -225,7 +225,8 @@ async def complete_cis_run(
 
 
 @flow(
-    name="cis-learning-engine", log_prints=True,
+    name="cis-learning-engine",
+    log_prints=True,
     on_completion=[on_completion_hook],
     on_failure=[on_failure_hook],
 )
@@ -419,4 +420,5 @@ async def run_cis_manually(customer_id: str | None = None):
 
 if __name__ == "__main__":
     import asyncio
+
     asyncio.run(run_cis_manually())

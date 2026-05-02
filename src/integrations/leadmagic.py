@@ -389,6 +389,7 @@ class LeadmagicClient:
             APIError: Other API errors
         """
         import os
+
         if os.environ.get("DRY_RUN"):
             logger.info("[DRY-RUN] Would call Leadmagic: %s %s", method, endpoint)
             return {}

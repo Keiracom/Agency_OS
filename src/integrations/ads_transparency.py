@@ -9,7 +9,9 @@ Replaces the stub from #290 with a real implementation using the DFS
 3/10 AU dental SMBs detected, $0.002/call, status 40102 = no ads).
 Cost: $0.002/domain.
 """
+
 from __future__ import annotations
+
 import logging
 from typing import TYPE_CHECKING
 
@@ -19,7 +21,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-async def check_google_ads(domain: str, dfs_client: "DFSLabsClient | None" = None) -> dict | None:
+async def check_google_ads(domain: str, dfs_client: DFSLabsClient | None = None) -> dict | None:
     """
     Check if a domain is running Google Ads via DFS Ads Search.
 

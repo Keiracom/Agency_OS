@@ -7,6 +7,7 @@ Hybrid Mem0 retrieval is M3 territory and lives in
 src.telegram_bot.memory_listener.recall_via_mem0; this handler uses the
 canonical Supabase-backed recall() for now.
 """
+
 from __future__ import annotations
 
 import logging
@@ -53,5 +54,7 @@ async def cmd_recall(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     await update.message.reply_text("\n".join(lines))
     logger.info(
         "[recall] topic=%r returned %d types, %d total memories",
-        topic, len(grouped), sum(len(v) for v in grouped.values()),
+        topic,
+        len(grouped),
+        sum(len(v) for v in grouped.values()),
     )

@@ -11,11 +11,12 @@ Works by deleting stale outreach_rate_state rows (channel='linkedin') whose
 window_start < this_week_monday_00_utc. The rate_limiter will re-initialise
 fresh rows on the next send against any account.
 """
+
 from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -39,7 +40,10 @@ def _current_week_monday(now_aest: datetime) -> datetime:
     """Return Monday 00:00 AEST of the ISO-week containing now_aest."""
     # weekday(): Monday=0 .. Sunday=6
     monday = (now_aest - timedelta(days=now_aest.weekday())).replace(
-        hour=0, minute=0, second=0, microsecond=0,
+        hour=0,
+        minute=0,
+        second=0,
+        microsecond=0,
     )
     return monday
 
@@ -61,7 +65,7 @@ async def reset_linkedin_weekly(db_conn: Any, now_aest: datetime) -> dict:
         return {"rows_reset": 0, "accounts_affected": 0}
 
     monday_aest = _current_week_monday(now_aest)
-    monday_utc = monday_aest.astimezone(timezone.utc)
+    monday_utc = monday_aest.astimezone(UTC)
 
     # Count affected rows first (for idempotent reporting), then DELETE.
     count_rows = await db_conn.fetch(

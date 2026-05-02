@@ -21,13 +21,13 @@ Waterfall layers (short-circuit — returns on first hit):
 
 Semaphore: GLOBAL_SEM_LEADMAGIC (10 concurrent) added to global pool.
 """
+
 from __future__ import annotations
 
 import asyncio
 import logging
 import re
 from dataclasses import dataclass
-from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -48,42 +48,46 @@ GLOBAL_SEM_LEADMAGIC = asyncio.Semaphore(10)
 
 # ── Placeholder email/phone blocklists (Directive #305) ──────────────────────
 
-PLACEHOLDER_EMAILS: frozenset[str] = frozenset({
-    "example@mail.com",
-    "you@mail.com",
-    "email@example.com",
-    "info@example.com",
-    "your@email.com",
-    "name@email.com",
-    "test@test.com",
-    "admin@example.com",
-    "yourname@email.com",
-    "user@example.com",
-    "email@yourdomain.com",
-    "you@yourdomain.com",
-    "hello@example.com",
-    "someone@example.com",
-    "address@example.com",
-    "noreply@example.com",
-})
+PLACEHOLDER_EMAILS: frozenset[str] = frozenset(
+    {
+        "example@mail.com",
+        "you@mail.com",
+        "email@example.com",
+        "info@example.com",
+        "your@email.com",
+        "name@email.com",
+        "test@test.com",
+        "admin@example.com",
+        "yourname@email.com",
+        "user@example.com",
+        "email@yourdomain.com",
+        "you@yourdomain.com",
+        "hello@example.com",
+        "someone@example.com",
+        "address@example.com",
+        "noreply@example.com",
+    }
+)
 
-PLACEHOLDER_PHONES: frozenset[str] = frozenset({
-    "+1234567891",
-    "1234567890",
-    "0000000000",
-    "1111111111",
-    "2222222222",
-    "3333333333",
-    "4444444444",
-    "5555555555",
-    "6666666666",
-    "7777777777",
-    "8888888888",
-    "9999999999",
-    "0412345678",
-    "0400000000",
-    "0412000000",
-})
+PLACEHOLDER_PHONES: frozenset[str] = frozenset(
+    {
+        "+1234567891",
+        "1234567890",
+        "0000000000",
+        "1111111111",
+        "2222222222",
+        "3333333333",
+        "4444444444",
+        "5555555555",
+        "6666666666",
+        "7777777777",
+        "8888888888",
+        "9999999999",
+        "0412345678",
+        "0400000000",
+        "0412000000",
+    }
+)
 
 _PLACEHOLDER_EMAIL_PATTERN = re.compile(
     r"(example|yourname|placeholder|test|yourdomain|your-domain"
@@ -98,11 +102,28 @@ _SEQUENTIAL_PHONE_RE = re.compile(r"^(0?1234567|01234567|12345678|23456789|34567
 # These local parts indicate shared company inboxes, not personal DM emails.
 # When found, do NOT short-circuit — fall through to paid providers that can
 # find the actual DM-specific email.
-GENERIC_INBOX_PREFIXES: frozenset[str] = frozenset({
-    "sales", "info", "contact", "admin", "hello", "office",
-    "enquiries", "reception", "team", "mail", "general", "accounts",
-    "support", "help", "billing", "enquiry", "feedback", "marketing",
-})
+GENERIC_INBOX_PREFIXES: frozenset[str] = frozenset(
+    {
+        "sales",
+        "info",
+        "contact",
+        "admin",
+        "hello",
+        "office",
+        "enquiries",
+        "reception",
+        "team",
+        "mail",
+        "general",
+        "accounts",
+        "support",
+        "help",
+        "billing",
+        "enquiry",
+        "feedback",
+        "marketing",
+    }
+)
 
 
 def _is_generic_inbox(email: str) -> bool:
@@ -121,9 +142,7 @@ def is_placeholder_email(email: str) -> bool:
     if email_lower in PLACEHOLDER_EMAILS:
         return True
     local = email_lower.split("@")[0] if "@" in email_lower else email_lower
-    if _PLACEHOLDER_EMAIL_PATTERN.search(local):
-        return True
-    return False
+    return bool(_PLACEHOLDER_EMAIL_PATTERN.search(local))
 
 
 def is_placeholder_phone(phone: str) -> bool:
@@ -138,9 +157,8 @@ def is_placeholder_phone(phone: str) -> bool:
         return True
     if _ALL_SAME_DIGIT_RE.match(digits_only):
         return True
-    if _SEQUENTIAL_PHONE_RE.match(digits_only):
-        return True
-    return False
+    return bool(_SEQUENTIAL_PHONE_RE.match(digits_only))
+
 
 # Email regex — matches standard email formats
 _EMAIL_RE = re.compile(
@@ -151,14 +169,14 @@ _EMAIL_RE = re.compile(
 # Pattern templates: (format_name, template)
 # {f} = first name, {l} = last name, {fi} = first initial, {li} = last initial
 _PATTERN_TEMPLATES = [
-    ("first.last",  "{f}.{l}"),
-    ("first",       "{f}"),
-    ("flast",       "{fi}{l}"),
-    ("firstl",      "{f}{li}"),
-    ("f.last",      "{fi}.{l}"),
-    ("first_last",  "{f}_{l}"),
-    ("last",        "{l}"),
-    ("firstlast",   "{f}{l}"),
+    ("first.last", "{f}.{l}"),
+    ("first", "{f}"),
+    ("flast", "{fi}{l}"),
+    ("firstl", "{f}{li}"),
+    ("f.last", "{fi}.{l}"),
+    ("first_last", "{f}_{l}"),
+    ("last", "{l}"),
+    ("firstlast", "{f}{l}"),
 ]
 
 # Cost constants (USD)
@@ -169,6 +187,7 @@ COST_BRIGHTDATA = 0.00075
 @dataclass
 class EmailResult:
     """Result from email waterfall discovery."""
+
     email: str | None
     verified: bool
     source: str  # "website" | "pattern" | "leadmagic" | "brightdata" | "none"
@@ -202,9 +221,21 @@ _LINKEDIN_NOISE = re.compile(
 )
 
 _ROLE_WORDS = {
-    "owner", "founder", "director", "manager", "principal",
-    "partner", "associate", "consultant", "engineer", "head",
-    "president", "ceo", "cto", "coo", "cfo",
+    "owner",
+    "founder",
+    "director",
+    "manager",
+    "principal",
+    "partner",
+    "associate",
+    "consultant",
+    "engineer",
+    "head",
+    "president",
+    "ceo",
+    "cto",
+    "coo",
+    "cfo",
 }
 
 
@@ -278,6 +309,7 @@ def _generate_patterns(first: str, last: str, domain: str) -> list[str]:
 
 # ── Layer 1: Website HTML scrape ──────────────────────────────────────────────
 
+
 def _extract_emails_from_html(html: str, domain: str, dm_name: str) -> EmailResult | None:
     """
     Layer 1: Extract emails from cached website HTML.
@@ -326,10 +358,12 @@ def _extract_emails_from_html(html: str, domain: str, dm_name: str) -> EmailResu
 
 # ── Layer 2: Pattern generation + MX check ───────────────────────────────────
 
+
 async def _check_mx(domain: str) -> bool:
     """Check if domain has MX records (accepts mail). Returns False on error."""
     try:
         import dns.resolver
+
         resolver = dns.resolver.Resolver()
         resolver.lifetime = 5.0
         resolver.resolve(domain, "MX")
@@ -368,6 +402,7 @@ async def _try_patterns(first: str, last: str, domain: str) -> EmailResult | Non
 
 # ── Layer 3: Leadmagic email finder ──────────────────────────────────────────
 
+
 async def _leadmagic_lookup(
     first: str,
     last: str,
@@ -384,6 +419,7 @@ async def _leadmagic_lookup(
     async with GLOBAL_SEM_LEADMAGIC:
         try:
             from src.config.settings import settings
+
             if LeadmagicClient is None:
                 return None
 
@@ -397,8 +433,10 @@ async def _leadmagic_lookup(
 
             if result.found and result.email:
                 confidence = (
-                    "high" if result.confidence >= 80
-                    else "medium" if result.confidence >= 50
+                    "high"
+                    if result.confidence >= 80
+                    else "medium"
+                    if result.confidence >= 50
                     else "low"
                 )
                 return EmailResult(
@@ -414,6 +452,7 @@ async def _leadmagic_lookup(
 
 
 # ── Layer 4: Bright Data LinkedIn enrichment ─────────────────────────────────
+
 
 async def _brightdata_lookup(
     dm_linkedin: str | None,
@@ -453,6 +492,7 @@ async def _brightdata_lookup(
 
 
 # ── Main entry point ─────────────────────────────────────────────────────────
+
 
 async def discover_email(
     domain: str,
@@ -511,12 +551,14 @@ async def discover_email(
                 if is_placeholder_email(email_val):
                     logger.debug(
                         "email_waterfall L0 placeholder rejected domain=%s email=%s",
-                        domain, email_val,
+                        domain,
+                        email_val,
                     )
                 else:
                     logger.info(
                         "email_waterfall L0 contact_registry domain=%s email=%s (name match)",
-                        domain, email_val,
+                        domain,
+                        email_val,
                     )
                     return EmailResult(
                         email=email_val,
@@ -529,7 +571,10 @@ async def discover_email(
                 logger.debug(
                     "email_waterfall L0 contact_registry domain=%s email=%s SKIPPED "
                     "(name mismatch: dm=%r local=%r)",
-                    domain, email_val, dm_name, local,
+                    domain,
+                    email_val,
+                    dm_name,
+                    local,
                 )
 
     # Layer 1: ContactOut (DM-specific, verified — PROMOTED above website HTML)
@@ -545,26 +590,31 @@ async def discover_email(
             if not is_placeholder_email(co_email):
                 logger.info(
                     "email_waterfall L1 contactout current_match domain=%s email=%s",
-                    domain, co_email,
+                    domain,
+                    co_email,
                 )
                 return EmailResult(
                     email=co_email,
-                    verified=True,   # ContactOut verifies against current employer
+                    verified=True,  # ContactOut verifies against current employer
                     source="contactout",
                     confidence="high",
-                    cost_usd=0.0,    # cost charged at orchestrator level, not per layer
+                    cost_usd=0.0,  # cost charged at orchestrator level, not per layer
                 )
         elif co_email and co_conf == "stale":
             logger.debug(
                 "email_waterfall L1 contactout stale domain=%s email=%s — falling through",
-                domain, co_email,
+                domain,
+                co_email,
             )
 
     # Layer 2: Hunter email-finder (free — included in plan, 2000 calls/mo)
     # GOV-12: Gated on dm_verified=True to avoid confident email on unconfirmed DM.
     if first and last and clean_domain and dm_verified:
         try:
-            import os, httpx
+            import os
+
+            import httpx
+
             if os.environ.get("DRY_RUN"):
                 logger.info("[DRY-RUN] Would call Hunter: %s %s @ %s", first, last, clean_domain)
             else:
@@ -587,7 +637,9 @@ async def discover_email(
                             if hunter_email and hunter_score >= 70:
                                 logger.info(
                                     "email_waterfall L2 hunter domain=%s email=%s score=%s",
-                                    domain, hunter_email, hunter_score,
+                                    domain,
+                                    hunter_email,
+                                    hunter_score,
                                 )
                                 return EmailResult(
                                     email=hunter_email,
@@ -601,7 +653,8 @@ async def discover_email(
     elif first and last and clean_domain:
         logger.info(
             "email_waterfall L2 hunter SKIPPED — dm_verified=%s (GOV-12) domain=%s",
-            dm_verified, domain,
+            dm_verified,
+            domain,
         )
 
     # Layer 3: Leadmagic find_email (verified — Leadmagic finds real address)
@@ -621,7 +674,8 @@ async def discover_email(
         if co_email and co_conf == "stale" and not is_placeholder_email(co_email):
             logger.info(
                 "email_waterfall L2-fallback contactout stale domain=%s email=%s",
-                domain, co_email,
+                domain,
+                co_email,
             )
             return EmailResult(
                 email=co_email,

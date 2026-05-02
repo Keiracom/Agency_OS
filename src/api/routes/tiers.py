@@ -3,7 +3,9 @@ Contract: src/api/routes/tiers.py
 Purpose: Expose tier configuration as API endpoint
 Layer: API
 """
+
 from fastapi import APIRouter
+
 from src.config.tiers import TIER_CONFIG
 
 router = APIRouter(prefix="/tiers", tags=["tiers"])

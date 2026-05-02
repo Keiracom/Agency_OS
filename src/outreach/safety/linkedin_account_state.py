@@ -20,17 +20,18 @@ Valid state transitions:
     accepted         -> (terminal — DMs now allowed)
     rejected         -> (terminal — skip LinkedIn)
 """
+
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
-from enum import Enum
-from typing import Callable
+from datetime import UTC, datetime, timedelta
+from enum import StrEnum
 
 STALE_CONNECT_DAYS = 7
 
 
-class LinkedInState(str, Enum):
+class LinkedInState(StrEnum):
     CONNECT_SENT = "connect_sent"
     ACCEPTED = "accepted"
     REJECTED = "rejected"
@@ -88,7 +89,7 @@ class LinkedInAccountState:
         get_record: Callable,
         upsert_record: Callable,
         list_pending: Callable,
-        now_fn: Callable = lambda: datetime.now(timezone.utc),
+        now_fn: Callable = lambda: datetime.now(UTC),
     ):
         self._get = get_record
         self._upsert = upsert_record
@@ -147,27 +148,25 @@ class LinkedInAccountState:
             record.state = LinkedInState.STALE_SKIPPED
             record.days_pending = self._elapsed_days(record.sent_at, now=now)
             self._upsert(record)
-            results.append(SkipResult(
-                prospect_id=record.prospect_id,
-                account_id=record.account_id,
-                previous_state=prev,
-                new_state=record.state,
-                days_pending=record.days_pending,
-            ))
+            results.append(
+                SkipResult(
+                    prospect_id=record.prospect_id,
+                    account_id=record.account_id,
+                    previous_state=prev,
+                    new_state=record.state,
+                    days_pending=record.days_pending,
+                )
+            )
         return results
 
     def _require(self, account_id: str, prospect_id: str) -> ConnectionRecord:
         record = self._get(account_id, prospect_id)
         if record is None:
-            raise InvalidTransition(
-                f"no record for account={account_id} prospect={prospect_id}"
-            )
+            raise InvalidTransition(f"no record for account={account_id} prospect={prospect_id}")
         return record
 
     @staticmethod
-    def _assert_transition(
-        from_state: LinkedInState | None, to_state: LinkedInState
-    ) -> None:
+    def _assert_transition(from_state: LinkedInState | None, to_state: LinkedInState) -> None:
         allowed = _VALID_TRANSITIONS.get(from_state, set())
         if to_state not in allowed:
             raise InvalidTransition(f"{from_state} -> {to_state} not permitted")

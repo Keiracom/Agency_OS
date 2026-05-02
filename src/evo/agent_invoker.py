@@ -1,8 +1,10 @@
 """agent_invoker.py — Railway side only: write task to queue, poll results."""
+
+import os
 import time
+
 import httpx
 from dotenv import load_dotenv
-import os
 
 load_dotenv("/home/elliotbot/.config/agency-os/.env")
 
@@ -18,21 +20,28 @@ HEADERS = {
 
 
 def enqueue_and_wait(
-    task_id: str, agent_id: str, description: str, flow_run_id: str,
-    verification_cmd: str, expected_output: str, estimated_cost=None
+    task_id: str,
+    agent_id: str,
+    description: str,
+    flow_run_id: str,
+    verification_cmd: str,
+    expected_output: str,
+    estimated_cost=None,
 ) -> dict:
     payload = {
-        "task_id": task_id, "agent_id": agent_id, "description": description,
-        "flow_run_id": flow_run_id, "verification_cmd": verification_cmd,
-        "expected_output": expected_output, "status": "pending",
+        "task_id": task_id,
+        "agent_id": agent_id,
+        "description": description,
+        "flow_run_id": flow_run_id,
+        "verification_cmd": verification_cmd,
+        "expected_output": expected_output,
+        "status": "pending",
     }
     if estimated_cost is not None:
         payload["estimated_cost"] = estimated_cost
 
     with httpx.Client(timeout=30) as client:
-        resp = client.post(
-            f"{SUPABASE_URL}/rest/v1/evo_task_queue", headers=HEADERS, json=payload
-        )
+        resp = client.post(f"{SUPABASE_URL}/rest/v1/evo_task_queue", headers=HEADERS, json=payload)
         resp.raise_for_status()
 
     deadline = time.time() + 600
@@ -40,7 +49,8 @@ def enqueue_and_wait(
         time.sleep(10)
         with httpx.Client(timeout=30) as client:
             r = client.get(
-                f"{SUPABASE_URL}/rest/v1/evo_task_results", headers=HEADERS,
+                f"{SUPABASE_URL}/rest/v1/evo_task_results",
+                headers=HEADERS,
                 params={"task_id": f"eq.{task_id}", "flow_run_id": f"eq.{flow_run_id}"},
             )
             r.raise_for_status()

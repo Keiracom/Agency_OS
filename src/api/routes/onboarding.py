@@ -803,6 +803,7 @@ async def confirm_icp(
     # Process-wide IS_DEMO_MODE forces every onboarding into demo regardless
     # of the per-request flag. Keeps the investor-demo build self-consistent.
     from src.config.settings import settings as _settings
+
     effective_demo_mode = bool(request.demo_mode or getattr(_settings, "IS_DEMO_MODE", False))
 
     await run_deployment(

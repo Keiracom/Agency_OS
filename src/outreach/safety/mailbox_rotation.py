@@ -16,37 +16,38 @@ try:
 except ImportError:
     _redis_mod = None  # type: ignore[assignment]
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Callable
 
 from src.outreach.safety.rate_limiter import _EMAIL_WARMED_CAP, _WARMING_LADDER
-
 
 # ---------------------------------------------------------------------------
 # Public data classes
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class MailboxState:
     mailbox_id: str
     client_id: str
-    channel: str              # "email" | "linkedin"
+    channel: str  # "email" | "linkedin"
     last_send_at: datetime | None
     daily_count: int
-    warming_day: int | None   # None = warmed; 1..14 = warming day number
-    healthy: bool = True      # toggle to False removes from rotation
+    warming_day: int | None  # None = warmed; 1..14 = warming day number
+    healthy: bool = True  # toggle to False removes from rotation
 
 
 @dataclass
 class RotationDecision:
     mailbox_id: str | None
-    reason: str               # "lru-warming" | "lru-warmed" | "no-eligible" | "locked-by-other"
+    reason: str  # "lru-warming" | "lru-warmed" | "no-eligible" | "locked-by-other"
 
 
 # ---------------------------------------------------------------------------
 # Default warming cap (importable for tests)
 # ---------------------------------------------------------------------------
+
 
 def _default_warming_cap(warming_day: int | None) -> int:
     """Return daily cap given warming_day. None = fully warmed."""
@@ -58,6 +59,7 @@ def _default_warming_cap(warming_day: int | None) -> int:
 # ---------------------------------------------------------------------------
 # MailboxRotator
 # ---------------------------------------------------------------------------
+
 
 class MailboxRotator:
     """LRU rotation with warming cap respect. Optional Redis lock for multi-worker coord.
@@ -126,11 +128,14 @@ class MailboxRotator:
             cap = self._warming_ladder_cap(state.warming_day)
             if state.daily_count < cap:
                 eligible.append(state)
-        return sorted(eligible, key=lambda s: (
-            s.last_send_at is not None,   # None (never-used) sorts first
-            s.last_send_at or datetime.min,
-            s.mailbox_id,                  # deterministic lex tie-break
-        ))
+        return sorted(
+            eligible,
+            key=lambda s: (
+                s.last_send_at is not None,  # None (never-used) sorts first
+                s.last_send_at or datetime.min,
+                s.mailbox_id,  # deterministic lex tie-break
+            ),
+        )
 
     def _lock_key(self, mailbox_id: str) -> str:
         return f"mailbox-rotate:{mailbox_id}"

@@ -15,10 +15,10 @@ Rotation logic:
 Category codes sourced from DFS taxonomy, validated against AU domain volumes
 (spike Mar 2026).
 """
+
 from __future__ import annotations
 
 import datetime
-
 
 # DFS category codes for AU local service businesses.
 # Ordered by estimated AU domain volume (largest pools first within each tier).

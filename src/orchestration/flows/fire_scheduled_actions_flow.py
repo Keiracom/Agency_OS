@@ -5,8 +5,9 @@ Layer: orchestration
 Imports: models, integrations, engines, services
 Consumers: Prefect scheduler
 """
+
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from prefect import flow, task
 
@@ -41,12 +42,12 @@ async def fire_action(action, rate_limit_manager, db):
     can_fire, reason = await rate_limit_manager.can_fire(
         client_id=str(action.cycle_id),  # Resolve to client_id in production
         channel=action.channel,
-        target_date=datetime.now(timezone.utc),
+        target_date=datetime.now(UTC),
         db=db,
     )
 
     if not can_fire:
-        action.status = 'held'
+        action.status = "held"
         action.skipped_reason = reason
         logger.info(f"Action {action.id} HELD: {reason}")
         return
@@ -59,22 +60,22 @@ async def fire_action(action, rate_limit_manager, db):
         # email.send(), linkedin.connect(), voice.call() fire here
         # NOT IMPLEMENTED in this directive — gated behind go-live
         logger.warning(f"REAL MODE not implemented — action {action.id} skipped")
-        action.status = 'skipped'
-        action.skipped_reason = 'real_mode_not_implemented'
+        action.status = "skipped"
+        action.skipped_reason = "real_mode_not_implemented"
     else:
         # DRY-RUN MODE — log what would fire
         logger.info(
             f"DRY-RUN: Would fire {action.channel} {action.action_type} "
             f"for prospect {action.prospect_id} at {action.scheduled_at}"
         )
-        action.status = 'fired'
-        action.fired_at = datetime.now(timezone.utc)
+        action.status = "fired"
+        action.fired_at = datetime.now(UTC)
         action.dry_run = True
         action.result = {
-            'dry_run': True,
-            'would_fire': action.channel,
-            'action_type': action.action_type,
-            'logged_at': datetime.now(timezone.utc).isoformat(),
+            "dry_run": True,
+            "would_fire": action.channel,
+            "action_type": action.action_type,
+            "logged_at": datetime.now(UTC).isoformat(),
         }
 
 
@@ -103,11 +104,11 @@ async def fire_scheduled_actions_flow():
     fired = held = skipped = 0
     for action in actions:
         await fire_action(action, rate_limit_manager, db)
-        if action.status == 'fired':
+        if action.status == "fired":
             fired += 1
-        elif action.status == 'held':
+        elif action.status == "held":
             held += 1
-        elif action.status == 'skipped':
+        elif action.status == "skipped":
             skipped += 1
 
     logger.info(f"Firing engine complete: {fired} fired, {held} held, {skipped} skipped")

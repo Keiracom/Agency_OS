@@ -24,6 +24,7 @@ RULES APPLIED:
 """
 
 import asyncio
+import contextlib
 import logging
 import os
 from typing import Any
@@ -110,7 +111,7 @@ class TelnyxClient:
                 )
 
                 if response.status_code == 429:
-                    wait = _BACKOFF_BASE * (2 ** attempt)
+                    wait = _BACKOFF_BASE * (2**attempt)
                     logger.warning("Telnyx rate limited (429). Waiting %.1fs before retry.", wait)
                     await asyncio.sleep(wait)
                     attempt += 1
@@ -118,10 +119,8 @@ class TelnyxClient:
 
                 if response.status_code >= 400:
                     body: dict = {}
-                    try:
+                    with contextlib.suppress(Exception):
                         body = response.json()
-                    except Exception:
-                        pass
                     errors = body.get("errors", [{}])
                     detail = errors[0].get("detail", response.text) if errors else response.text
                     raise APIError(
@@ -140,7 +139,7 @@ class TelnyxClient:
                 raise
             except Exception as exc:
                 last_exc = exc
-                wait = _BACKOFF_BASE * (2 ** attempt)
+                wait = _BACKOFF_BASE * (2**attempt)
                 logger.warning("Telnyx request error: %s. Retrying in %.1fs.", exc, wait)
                 await asyncio.sleep(wait)
                 attempt += 1
@@ -220,7 +219,9 @@ class TelnyxClient:
             return {
                 "success": True,
                 "message_id": data.get("id"),
-                "status": data.get("to", [{}])[0].get("status") if data.get("to") else data.get("status"),
+                "status": data.get("to", [{}])[0].get("status")
+                if data.get("to")
+                else data.get("status"),
                 "provider": "telnyx",
                 "to": to,
                 "from_number": from_number,
@@ -350,9 +351,7 @@ class TelnyxClient:
         try:
             response = await self._request("GET", "/available_phone_numbers", params=params)
             numbers = response.get("data", [])
-            logger.info(
-                "Telnyx: found %d available numbers in %s", len(numbers), country_code
-            )
+            logger.info("Telnyx: found %d available numbers in %s", len(numbers), country_code)
             return numbers
         except APIError:
             raise
@@ -384,7 +383,9 @@ class TelnyxClient:
         try:
             response = await self._request("POST", "/number_orders", json=payload)
             data = response.get("data", {})
-            logger.info("Telnyx number order placed for %s — order_id: %s", phone_number, data.get("id"))
+            logger.info(
+                "Telnyx number order placed for %s — order_id: %s", phone_number, data.get("id")
+            )
             return {
                 "success": True,
                 "order_id": data.get("id"),

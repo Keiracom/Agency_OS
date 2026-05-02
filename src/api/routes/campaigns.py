@@ -16,22 +16,22 @@ RULES APPLIED:
 """
 
 import logging
+import os
 from datetime import UTC, date, datetime, time
 from typing import Annotated
 from uuid import UUID
-
-import os
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query, status
 
 from src.security.webhook_sigs import verify_signature as _verify_sig
 
-
 _CAMPAIGN_KILL_SECRET_ENV = "OPERATOR_WEBHOOK_SECRET"
 
 
 def _require_kill_signature(
-    x_signature: str | None, client_id: UUID, campaign_id: UUID,
+    x_signature: str | None,
+    client_id: UUID,
+    campaign_id: UUID,
 ) -> None:
     """HMAC gate for campaign kill. When OPERATOR_WEBHOOK_SECRET is set
     (production), X-Signature is MANDATORY — missing or invalid raises 401.
@@ -41,6 +41,8 @@ def _require_kill_signature(
     payload = f"{client_id}\n{campaign_id}\nkill".encode()
     if not _verify_sig(_CAMPAIGN_KILL_SECRET_ENV, payload, x_signature):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "invalid signature")
+
+
 from prefect.deployments import run_deployment
 from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import and_, desc, func, select, text
@@ -849,6 +851,7 @@ async def activate_campaign(
     # Trigger Prefect campaign-flow
     logger = logging.getLogger(__name__)
     from src.config.settings import get_settings as _get_settings
+
     _settings = _get_settings()
     if not _settings.campaign_activation_enabled:
         logger.warning(
@@ -2172,7 +2175,9 @@ class KillCampaignBody(BaseModel):
     """Body for killing a campaign."""
 
     campaign_id: UUID = Field(..., description="Campaign UUID to kill")
-    reason: str = Field(..., min_length=1, max_length=500, description="Reason for killing campaign")
+    reason: str = Field(
+        ..., min_length=1, max_length=500, description="Reason for killing campaign"
+    )
 
 
 @router.post(
@@ -2212,9 +2217,7 @@ async def kill_campaign(
 
     # Mark campaign killed
     await db.execute(
-        text(
-            "UPDATE campaigns SET status='killed', updated_at=:now WHERE id=:cid"
-        ),
+        text("UPDATE campaigns SET status='killed', updated_at=:now WHERE id=:cid"),
         {"now": now, "cid": body.campaign_id},
     )
 

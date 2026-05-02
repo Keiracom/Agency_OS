@@ -6,6 +6,7 @@ Layer: services
 Imports: stdlib, src.models
 Consumers: orchestration
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
@@ -34,11 +35,11 @@ class SequenceEngine:
 
     async def schedule_prospect(
         self,
-        cycle: "Cycle",
-        prospect: "CycleProspect",
-        calendar: "CycleCalendar",
+        cycle: Cycle,
+        prospect: CycleProspect,
+        calendar: CycleCalendar,
         template: dict[str, Any],
-        time_window_engine: "TimeWindowEngine",
+        time_window_engine: TimeWindowEngine,
         prospect_timezone: str = "Australia/Sydney",
     ) -> list[OutreachAction]:
         """Generate all outreach_actions for a prospect entering the cycle."""
@@ -74,10 +75,10 @@ class SequenceEngine:
     async def bulk_schedule(
         self,
         db: AsyncSession,
-        cycle: "Cycle",
-        prospects: list["CycleProspect"],
-        calendar: "CycleCalendar",
-        time_window_engine: "TimeWindowEngine",
+        cycle: Cycle,
+        prospects: list[CycleProspect],
+        calendar: CycleCalendar,
+        time_window_engine: TimeWindowEngine,
     ) -> list[OutreachAction]:
         """Schedule all prospects in a cycle. Loads template once per sequence_type."""
         template_cache: dict[str, dict[str, Any]] = {}

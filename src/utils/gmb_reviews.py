@@ -4,6 +4,7 @@ Best-effort GMB review text scraper via Google Maps HTML.
 Free (httpx only). Falls back to empty list on any error.
 Directive: #300-FIX Issue 4
 """
+
 from __future__ import annotations
 
 import re

@@ -23,9 +23,9 @@ Violation codes:
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Callable
 
 from src.outreach.safety.timing_engine import Channel
 
@@ -34,16 +34,16 @@ from src.outreach.safety.timing_engine import Channel
 # Days 1-3: 10, 4-6: 25, 7-10: 50, 11-14: 75, 15+: 100
 # ---------------------------------------------------------------------------
 _WARMING_LADDER: dict[int, int] = {
-    **{d: 10 for d in range(1, 4)},
-    **{d: 25 for d in range(4, 7)},
-    **{d: 50 for d in range(7, 11)},
-    **{d: 75 for d in range(11, 15)},
+    **dict.fromkeys(range(1, 4), 10),
+    **dict.fromkeys(range(4, 7), 25),
+    **dict.fromkeys(range(7, 11), 50),
+    **dict.fromkeys(range(11, 15), 75),
 }
 _WARMED_CAP = 100
 
 # Per-channel caps
 _DAILY_CAP: dict[Channel, int] = {
-    Channel.LINKEDIN: 50,   # simplified: connect+msg collapsed (see module docstring)
+    Channel.LINKEDIN: 50,  # simplified: connect+msg collapsed (see module docstring)
 }
 _EMAIL_WARMED_CAP = _WARMED_CAP
 
@@ -60,7 +60,7 @@ class RateDecision:
     allowed: bool
     reason: str
     violations: list[str] = field(default_factory=list)
-    retry_after: datetime | None = None     # earliest datetime caller can retry
+    retry_after: datetime | None = None  # earliest datetime caller can retry
 
 
 @dataclass
@@ -68,7 +68,7 @@ class AccountPool:
     """Pool of accounts (mailboxes/seats/phones) eligible for rotation per channel."""
 
     channel: Channel
-    accounts: list[str]                     # account ids
+    accounts: list[str]  # account ids
 
     def pick_next(self, usage_counts: dict[str, int]) -> str | None:
         """Return the account with the lowest current usage.
@@ -84,6 +84,7 @@ class AccountPool:
 # ---------------------------------------------------------------------------
 # RateLimiter
 # ---------------------------------------------------------------------------
+
 
 class RateLimiter:
     """Per-channel caps + warming ladder + rotation + same-prospect frequency cap.
@@ -130,9 +131,13 @@ class RateLimiter:
 
         if channel == Channel.EMAIL:
             ra = _check_email_caps(
-                account_id, prospect_id, now,
-                self._get_window_count, self._get_warming_day,
-                self._get_prospect_frequency, violations,
+                account_id,
+                prospect_id,
+                now,
+                self._get_window_count,
+                self._get_warming_day,
+                self._get_prospect_frequency,
+                violations,
             )
             retry_after = _earliest(retry_after, ra)
 
@@ -150,7 +155,9 @@ class RateLimiter:
 
         allowed = len(violations) == 0
         reason = "; ".join(violations) if violations else "allowed"
-        return RateDecision(allowed=allowed, reason=reason, violations=violations, retry_after=retry_after)
+        return RateDecision(
+            allowed=allowed, reason=reason, violations=violations, retry_after=retry_after
+        )
 
     def consume(
         self,
@@ -172,6 +179,7 @@ class RateLimiter:
 # ---------------------------------------------------------------------------
 # Private per-channel checkers — each under 50 lines
 # ---------------------------------------------------------------------------
+
 
 def _check_email_caps(
     account_id: str,
@@ -262,6 +270,7 @@ def _check_sms_caps(
 # ---------------------------------------------------------------------------
 # Utility helpers
 # ---------------------------------------------------------------------------
+
 
 def _email_cap(warming_day: int | None) -> int:
     """Return daily cap given warming_day. None = warmed."""

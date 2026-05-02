@@ -19,6 +19,7 @@ Leadmagic EXCLUDED (0% AU mobile, 7% AU email per ratified memory).
 
 Ratified: 2026-04-14. Pipeline F architecture refactor.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -40,6 +41,7 @@ APIFY_BASE = "https://api.apify.com/v2"
 
 # ── Author filter for DM posts ─────────────────────────────────────────────
 
+
 def _author_matches_dm(
     post_author: dict,
     dm_name: str | None,
@@ -59,12 +61,19 @@ def _author_matches_dm(
     return False
 
 
-def filter_dm_posts(posts: list[dict], dm_name: str | None, dm_linkedin_url: str | None) -> list[dict]:
+def filter_dm_posts(
+    posts: list[dict], dm_name: str | None, dm_linkedin_url: str | None
+) -> list[dict]:
     """Filter to authored-by-DM only (not engaged/reshared)."""
-    return [p for p in (posts or []) if _author_matches_dm(p.get("author") or {}, dm_name, dm_linkedin_url)]
+    return [
+        p
+        for p in (posts or [])
+        if _author_matches_dm(p.get("author") or {}, dm_name, dm_linkedin_url)
+    ]
 
 
 # ── LinkedIn URL cascade ───────────────────────────────────────────────────
+
 
 def _fuzzy_match_company(
     profile: dict,
@@ -82,12 +91,20 @@ def _fuzzy_match_company(
     # Check headline first
     headline = (profile.get("headline") or "").lower()
     if biz_lower in headline:
-        return {"match_type": "direct_match", "match_company": business_name, "match_confidence": 1.0}
+        return {
+            "match_type": "direct_match",
+            "match_company": business_name,
+            "match_confidence": 1.0,
+        }
 
     # Check current position
     current_position = profile.get("currentPosition") or profile.get("position") or ""
     if isinstance(current_position, str) and biz_lower in current_position.lower():
-        return {"match_type": "direct_match", "match_company": business_name, "match_confidence": 1.0}
+        return {
+            "match_type": "direct_match",
+            "match_company": business_name,
+            "match_confidence": 1.0,
+        }
 
     # Extract core business name words (drop Pty, Ltd, Australia, Group, etc.)
     noise = {"pty", "ltd", "limited", "australia", "australian", "group", "inc", "co", "the", "of"}
@@ -124,7 +141,11 @@ def _fuzzy_match_company(
     elif best_ratio >= 0.75:
         best_type = "past_or_related_match"
 
-    return {"match_type": best_type, "match_company": best_company, "match_confidence": round(best_ratio, 3)}
+    return {
+        "match_type": best_type,
+        "match_company": best_company,
+        "match_confidence": round(best_ratio, 3),
+    }
 
 
 async def _linkedin_cascade(
@@ -145,12 +166,20 @@ async def _linkedin_cascade(
 
     # L1: Collect candidate URL from Stage 3 IDENTIFY or Stage 2 VERIFY SERP (discovery only, NOT verified)
     candidate_url = stage3_linkedin or stage2_serp_linkedin
-    candidate_source = "stage3_gemini" if stage3_linkedin else ("stage2_serp" if stage2_serp_linkedin else None)
+    candidate_source = (
+        "stage3_gemini" if stage3_linkedin else ("stage2_serp" if stage2_serp_linkedin else None)
+    )
 
     if not candidate_url or not apify_token:
-        return {"linkedin_url": None, "source": "unresolved", "tier": "L3",
-                "match_type": "no_match", "match_company": "", "match_confidence": 0.0,
-                "l2_status": "no_candidate_url"}
+        return {
+            "linkedin_url": None,
+            "source": "unresolved",
+            "tier": "L3",
+            "match_type": "no_match",
+            "match_company": "",
+            "match_confidence": 0.0,
+            "l2_status": "no_candidate_url",
+        }
 
     # L2: Verify candidate via harvestapi/linkedin-profile-scraper
     try:
@@ -160,18 +189,31 @@ async def _linkedin_cascade(
                 json={
                     "queries": [candidate_url],
                     "profileScraperMode": "Profile details no email ($4 per 1k)",
-                })
+                },
+            )
             if r.status_code not in (200, 201):
                 logger.warning("F5 LinkedIn L2 scraper HTTP %s: %s", r.status_code, r.text[:200])
-                return {"linkedin_url": None, "source": "unresolved", "tier": "L2",
-                        "match_type": "no_match", "match_company": "", "match_confidence": 0.0,
-                        "l2_status": "scraper_http_error"}
+                return {
+                    "linkedin_url": None,
+                    "source": "unresolved",
+                    "tier": "L2",
+                    "match_type": "no_match",
+                    "match_company": "",
+                    "match_confidence": 0.0,
+                    "l2_status": "scraper_http_error",
+                }
 
             run_id = r.json().get("data", {}).get("id")
             if not run_id:
-                return {"linkedin_url": None, "source": "unresolved", "tier": "L2",
-                        "match_type": "no_match", "match_company": "", "match_confidence": 0.0,
-                        "l2_status": "no_run_id"}
+                return {
+                    "linkedin_url": None,
+                    "source": "unresolved",
+                    "tier": "L2",
+                    "match_type": "no_match",
+                    "match_company": "",
+                    "match_confidence": 0.0,
+                    "l2_status": "no_run_id",
+                }
 
             for _ in range(20):
                 await asyncio.sleep(3)
@@ -183,16 +225,25 @@ async def _linkedin_cascade(
                         break
 
                     ds_id = sd.get("defaultDatasetId")
-                    items = (await client.get(
-                        f"{APIFY_BASE}/datasets/{ds_id}/items?token={apify_token}"
-                    )).json()
+                    items = (
+                        await client.get(f"{APIFY_BASE}/datasets/{ds_id}/items?token={apify_token}")
+                    ).json()
 
                     if not items:
-                        logger.info("F5 LinkedIn L2: scraper returned 0 profiles for %s", candidate_url)
-                        return {"linkedin_url": None, "source": "unresolved", "tier": "L2",
-                                "match_type": "no_match", "match_company": "", "match_confidence": 0.0,
-                                "l2_status": "scraper_empty_response",
-                                "l1_candidate_url": candidate_url, "l1_candidate_source": candidate_source}
+                        logger.info(
+                            "F5 LinkedIn L2: scraper returned 0 profiles for %s", candidate_url
+                        )
+                        return {
+                            "linkedin_url": None,
+                            "source": "unresolved",
+                            "tier": "L2",
+                            "match_type": "no_match",
+                            "match_company": "",
+                            "match_confidence": 0.0,
+                            "l2_status": "scraper_empty_response",
+                            "l1_candidate_url": candidate_url,
+                            "l1_candidate_source": candidate_source,
+                        }
 
                     profile = items[0]
                     scraped_url = profile.get("linkedinUrl") or candidate_url
@@ -201,37 +252,64 @@ async def _linkedin_cascade(
                     if match["match_type"] != "no_match":
                         logger.info(
                             "F5 LinkedIn L2: VERIFIED %s (%s, confidence=%.3f, company=%s)",
-                            scraped_url, match["match_type"], match["match_confidence"], match["match_company"])
-                        return {"linkedin_url": scraped_url, "source": f"l2_verified_{candidate_source}",
-                                "tier": "L2", **match,
-                                "l1_candidate_url": candidate_url, "l1_candidate_source": candidate_source}
+                            scraped_url,
+                            match["match_type"],
+                            match["match_confidence"],
+                            match["match_company"],
+                        )
+                        return {
+                            "linkedin_url": scraped_url,
+                            "source": f"l2_verified_{candidate_source}",
+                            "tier": "L2",
+                            **match,
+                            "l1_candidate_url": candidate_url,
+                            "l1_candidate_source": candidate_source,
+                        }
 
                     # Profile scraped but company doesn't match
                     profile_headline = profile.get("headline", "")
                     profile_exp = profile.get("experience") or profile.get("experiences") or []
                     exp_companies = [
                         (e.get("company") or e.get("companyName") or e.get("subtitle") or "")
-                        for e in profile_exp if isinstance(e, dict)
+                        for e in profile_exp
+                        if isinstance(e, dict)
                     ]
                     logger.info(
                         "F5 LinkedIn L2: REJECTED %s (headline='%s', companies=%s, wanted='%s')",
-                        scraped_url, profile_headline[:60], exp_companies[:3], business_name)
-                    return {"linkedin_url": None, "source": "unresolved", "tier": "L2",
-                            "match_type": "no_match", "match_company": match["match_company"],
-                            "match_confidence": match["match_confidence"],
-                            "l2_status": "rejected_no_company_match",
-                            "l2_profile_headline": profile_headline[:100],
-                            "l2_profile_companies": exp_companies[:5],
-                            "l1_candidate_url": candidate_url, "l1_candidate_source": candidate_source}
+                        scraped_url,
+                        profile_headline[:60],
+                        exp_companies[:3],
+                        business_name,
+                    )
+                    return {
+                        "linkedin_url": None,
+                        "source": "unresolved",
+                        "tier": "L2",
+                        "match_type": "no_match",
+                        "match_company": match["match_company"],
+                        "match_confidence": match["match_confidence"],
+                        "l2_status": "rejected_no_company_match",
+                        "l2_profile_headline": profile_headline[:100],
+                        "l2_profile_companies": exp_companies[:5],
+                        "l1_candidate_url": candidate_url,
+                        "l1_candidate_source": candidate_source,
+                    }
 
     except Exception as e:
         logger.warning("F5 LinkedIn L2 scraper failed: %s", e)
 
-    return {"linkedin_url": None, "source": "unresolved", "tier": "L3",
-            "match_type": "no_match", "match_company": "", "match_confidence": 0.0}
+    return {
+        "linkedin_url": None,
+        "source": "unresolved",
+        "tier": "L3",
+        "match_type": "no_match",
+        "match_company": "",
+        "match_confidence": 0.0,
+    }
 
 
 # ── Email waterfall ────────────────────────────────────────────────────────
+
 
 async def _email_waterfall(
     dm_name: str | None,
@@ -244,27 +322,49 @@ async def _email_waterfall(
     zb_key = os.environ.get("ZEROBOUNCE_API_KEY", "")
 
     first = (dm_name or "").split()[0] if dm_name else ""
-    last = " ".join((dm_name or "").split()[1:]) if dm_name and len((dm_name or "").split()) > 1 else ""
+    last = (
+        " ".join((dm_name or "").split()[1:])
+        if dm_name and len((dm_name or "").split()) > 1
+        else ""
+    )
 
     # L1: ContactOut /v1/people/linkedin (GET — returns email + phone in one call)
     if linkedin_url and co_key:
         try:
             async with httpx.AsyncClient(timeout=30) as client:
-                r = await client.get(CONTACTOUT_REVEAL_URL,
+                r = await client.get(
+                    CONTACTOUT_REVEAL_URL,
                     headers={"authorization": "basic", "token": co_key},
-                    params={"profile": linkedin_url, "include_phone": "true"})
+                    params={"profile": linkedin_url, "include_phone": "true"},
+                )
                 if r.status_code in (401, 403):
-                    logger.error("F5 Email L1 ContactOut AUTH/CREDIT FAILURE: HTTP %s — %s", r.status_code, r.text[:200])
+                    logger.error(
+                        "F5 Email L1 ContactOut AUTH/CREDIT FAILURE: HTTP %s — %s",
+                        r.status_code,
+                        r.text[:200],
+                    )
                 elif r.status_code == 200:
                     profile = r.json().get("profile") or r.json()
-                    emails = profile.get("work_email") or profile.get("email") or profile.get("emails") or []
+                    emails = (
+                        profile.get("work_email")
+                        or profile.get("email")
+                        or profile.get("emails")
+                        or []
+                    )
                     if isinstance(emails, str):
                         emails = [emails]
                     if emails:
-                        email = emails[0] if isinstance(emails[0], str) else emails[0].get("email", "")
+                        email = (
+                            emails[0] if isinstance(emails[0], str) else emails[0].get("email", "")
+                        )
                         if email:
-                            return {"email": email, "source": "contactout", "tier": "L1", "verified": True,
-                                    "_co_phones": profile.get("phone") or []}
+                            return {
+                                "email": email,
+                                "source": "contactout",
+                                "tier": "L1",
+                                "verified": True,
+                                "_co_phones": profile.get("phone") or [],
+                            }
         except Exception as e:
             logger.warning("F5 Email L1 ContactOut failed: %s", e)
 
@@ -272,16 +372,30 @@ async def _email_waterfall(
     if hunter_key and first and domain:
         try:
             async with httpx.AsyncClient(timeout=15) as client:
-                r = await client.get(HUNTER_EMAIL_FINDER_URL,
-                    params={"domain": domain, "first_name": first, "last_name": last, "api_key": hunter_key})
+                r = await client.get(
+                    HUNTER_EMAIL_FINDER_URL,
+                    params={
+                        "domain": domain,
+                        "first_name": first,
+                        "last_name": last,
+                        "api_key": hunter_key,
+                    },
+                )
                 if r.status_code in (401, 403):
-                    logger.error("F5 Email L2 Hunter AUTH FAILURE: HTTP %s — %s", r.status_code, r.text[:200])
+                    logger.error(
+                        "F5 Email L2 Hunter AUTH FAILURE: HTTP %s — %s", r.status_code, r.text[:200]
+                    )
                 elif r.status_code == 200:
                     data = r.json().get("data", {})
                     email = data.get("email")
                     conf = data.get("score", 0) or data.get("confidence", 0)
                     if email and conf >= 70:
-                        return {"email": email, "source": "hunter", "tier": "L2", "confidence": conf}
+                        return {
+                            "email": email,
+                            "source": "hunter",
+                            "tier": "L2",
+                            "confidence": conf,
+                        }
         except Exception as e:
             logger.warning("F5 Email L2 Hunter failed: %s", e)
 
@@ -295,10 +409,16 @@ async def _email_waterfall(
         for pattern in [p for p in patterns if p]:
             try:
                 async with httpx.AsyncClient(timeout=10) as client:
-                    r = await client.get(ZEROBOUNCE_VALIDATE_URL,
-                        params={"api_key": zb_key, "email": pattern})
+                    r = await client.get(
+                        ZEROBOUNCE_VALIDATE_URL, params={"api_key": zb_key, "email": pattern}
+                    )
                     if r.status_code == 200 and r.json().get("status") == "valid":
-                        return {"email": pattern, "source": "pattern_zerobounce", "tier": "L3", "verified": True}
+                        return {
+                            "email": pattern,
+                            "source": "pattern_zerobounce",
+                            "tier": "L3",
+                            "verified": True,
+                        }
             except Exception as e:
                 logger.debug("F5 Email L3 ZeroBounce failed for %s: %s", pattern, e)
 
@@ -308,6 +428,7 @@ async def _email_waterfall(
 
 
 # ── Mobile waterfall ───────────────────────────────────────────────────────
+
 
 async def _mobile_waterfall(
     dm_name: str | None,
@@ -322,8 +443,12 @@ async def _mobile_waterfall(
     if business_phone and entity_type and "sole trader" in entity_type.lower():
         classified = classify_au_phone(business_phone)
         if classified["phone_type"] == "mobile":
-            return {"mobile": classified["normalized_e164"], "source": "sole_trader_inference",
-                    "tier": "L0", **classified}
+            return {
+                "mobile": classified["normalized_e164"],
+                "source": "sole_trader_inference",
+                "tier": "L0",
+                **classified,
+            }
 
     # L1: ContactOut phone — extracted from email L1 response (same /v1/people/linkedin call)
     # The phone data is passed via _co_phones from the email waterfall result to avoid double API call.
@@ -335,6 +460,7 @@ async def _mobile_waterfall(
 
 
 # ── DM social (LinkedIn posts) ─────────────────────────────────────────────
+
 
 async def fetch_dm_posts(
     dm_linkedin_url: str | None,
@@ -350,7 +476,8 @@ async def fetch_dm_posts(
         async with httpx.AsyncClient(timeout=90) as client:
             r = await client.post(
                 f"{APIFY_BASE}/acts/apimaestro~linkedin-posts-search-scraper-no-cookies/runs?token={apify_token}",
-                json={"profileUrl": dm_linkedin_url, "maxPosts": max_posts})
+                json={"profileUrl": dm_linkedin_url, "maxPosts": max_posts},
+            )
             if r.status_code not in (200, 201):
                 return []
             run_id = r.json().get("data", {}).get("id")
@@ -363,7 +490,11 @@ async def fetch_dm_posts(
                 if sd.get("status") in ("SUCCEEDED", "FAILED", "ABORTED", "TIMED-OUT"):
                     if sd["status"] == "SUCCEEDED":
                         ds_id = sd.get("defaultDatasetId")
-                        items = (await client.get(f"{APIFY_BASE}/datasets/{ds_id}/items?token={apify_token}")).json()
+                        items = (
+                            await client.get(
+                                f"{APIFY_BASE}/datasets/{ds_id}/items?token={apify_token}"
+                            )
+                        ).json()
                         return filter_dm_posts(items, dm_name, dm_linkedin_url)
                     return []
     except Exception as e:
@@ -372,6 +503,7 @@ async def fetch_dm_posts(
 
 
 # ── Main entry point ───────────────────────────────────────────────────────
+
 
 async def run_contact_waterfall(
     dm_name: str | None,
@@ -399,7 +531,9 @@ async def run_contact_waterfall(
     }
     """
     # LinkedIn first (email/mobile may need the URL)
-    linkedin = await _linkedin_cascade(dm_name, business_name, f3a_linkedin_url, f4_linkedin_url, company_linkedin_url)
+    linkedin = await _linkedin_cascade(
+        dm_name, business_name, f3a_linkedin_url, f4_linkedin_url, company_linkedin_url
+    )
     resolved_li = linkedin.get("linkedin_url")
 
     # Email first (ContactOut /v1/people/linkedin returns phone data too)
@@ -413,8 +547,12 @@ async def run_contact_waterfall(
             if p:
                 classified = classify_au_phone(p)
                 if classified["phone_type"] == "mobile":
-                    mobile = {"mobile": classified["normalized_e164"], "source": "contactout",
-                              "tier": "L1", **classified}
+                    mobile = {
+                        "mobile": classified["normalized_e164"],
+                        "source": "contactout",
+                        "tier": "L1",
+                        **classified,
+                    }
                     return {"linkedin": linkedin, "email": email, "mobile": mobile}
 
     # Fallback mobile waterfall (sole-trader inference only, ContactOut already called)

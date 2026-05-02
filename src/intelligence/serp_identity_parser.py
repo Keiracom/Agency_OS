@@ -14,13 +14,14 @@ scraping fails to extract.
 
 Ratified: 2026-04-13.
 """
+
 from __future__ import annotations
+
 import re
 from typing import Any
 
-
-ABN_RE = re.compile(r'\b(\d{2}\s?\d{3}\s?\d{3}\s?\d{3})\b')
-PHONE_RE = re.compile(r'(?:\+61|0)\d[\d\s\-\.]{7,12}')
+ABN_RE = re.compile(r"\b(\d{2}\s?\d{3}\s?\d{3}\s?\d{3})\b")
+PHONE_RE = re.compile(r"(?:\+61|0)\d[\d\s\-\.]{7,12}")
 
 
 def parse_serp_identity(items: list[dict], domain: str) -> dict[str, Any]:
@@ -70,8 +71,10 @@ def parse_serp_identity(items: list[dict], domain: str) -> dict[str, Any]:
             if not result["business_name"] and title:
                 # Clean title: strip common suffixes
                 name = re.sub(
-                    r'\s*[\|\-–—]\s*(Home|Welcome|Official|Website|Main|Australia).*$',
-                    '', title, flags=re.I
+                    r"\s*[\|\-–—]\s*(Home|Welcome|Official|Website|Main|Australia).*$",
+                    "",
+                    title,
+                    flags=re.I,
                 ).strip()
                 if len(name) > 2:
                     result["business_name"] = name
@@ -81,7 +84,7 @@ def parse_serp_identity(items: list[dict], domain: str) -> dict[str, Any]:
         if clean_domain in item_domain and not result["phone"]:
             phones = PHONE_RE.findall(f"{title} {desc}")
             if phones:
-                result["phone"] = re.sub(r'[\s\-\.]', '', phones[0])
+                result["phone"] = re.sub(r"[\s\-\.]", "", phones[0])
                 result["source_details"].append(f"phone:organic:{url[:60]}")
 
     return result
@@ -109,7 +112,9 @@ def _extract_gmb(item: dict, result: dict) -> None:
         # Try description for location pattern
         desc = item.get("description") or ""
         # Match "Category in Location" pattern
-        loc_match = re.search(r'(?:in|located in|serving)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*(?:,\s*[A-Z]{2,3})?)', desc)
+        loc_match = re.search(
+            r"(?:in|located in|serving)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*(?:,\s*[A-Z]{2,3})?)", desc
+        )
         if loc_match:
             address = loc_match.group(1)
 
@@ -121,7 +126,7 @@ def _extract_gmb(item: dict, result: dict) -> None:
     category = item.get("category") or ""
     if not category:
         desc = item.get("description") or ""
-        cat_match = re.match(r'^([A-Z][a-z]+(?:\s+[a-z]+)*)\s+in\s+', desc)
+        cat_match = re.match(r"^([A-Z][a-z]+(?:\s+[a-z]+)*)\s+in\s+", desc)
         if cat_match:
             category = cat_match.group(1)
     if category and not result["gmb_category"]:
@@ -130,7 +135,7 @@ def _extract_gmb(item: dict, result: dict) -> None:
     # Phone
     phone = item.get("phone")
     if phone and not result["phone"]:
-        result["phone"] = re.sub(r'[\s\-\.]', '', str(phone))
+        result["phone"] = re.sub(r"[\s\-\.]", "", str(phone))
         result["source_details"].append("phone:gmb_panel")
 
 
@@ -142,7 +147,7 @@ def _extract_abr(item: dict, result: dict) -> None:
     text = f"{title} {desc}"
 
     # ABN from URL
-    url_match = re.search(r'ABN/View[/?].*?(\d{11})', url)
+    url_match = re.search(r"ABN/View[/?].*?(\d{11})", url)
     if url_match and not result["footer_abn"]:
         result["footer_abn"] = url_match.group(1)
         result["source_details"].append(f"abn:abr_url:{result['footer_abn']}")
@@ -158,7 +163,7 @@ def _extract_abr(item: dict, result: dict) -> None:
 
     # Entity name from ABR title: "Current details for ABN XX XXX XXX XXX"
     # Or from description: "Entity name: MADDOCKS"
-    entity_match = re.search(r'Entity name:\s*([A-Z][A-Z\s&\',\.\-]+)', desc)
+    entity_match = re.search(r"Entity name:\s*([A-Z][A-Z\s&\',\.\-]+)", desc)
     if entity_match and not result["business_name"]:
         result["business_name"] = entity_match.group(1).strip().title()
         result["source_details"].append("name:abr_entity")

@@ -147,7 +147,9 @@ class Stage7Haiku:
             if not channels:
                 continue
 
-            messages, channel_costs = await self._generate_messages(business, agency_profile, channels)
+            messages, channel_costs = await self._generate_messages(
+                business, agency_profile, channels
+            )
             await self._write_messages(business["id"], bdm_id, messages, channel_costs)
             messages_generated += len(messages)
 
@@ -267,7 +269,10 @@ class Stage7Haiku:
         return "\n".join(lines)
 
     async def _write_messages(
-        self, row_id: str, bdm_id: str, messages: dict[str, str],
+        self,
+        row_id: str,
+        bdm_id: str,
+        messages: dict[str, str],
         channel_costs: dict[str, dict],
     ) -> None:
         """Insert messages into dm_messages and advance pipeline stage."""
@@ -285,8 +290,13 @@ class Stage7Haiku:
                     channel, body, model, cost_usd, status, generated_at
                 ) VALUES ($1, $2, $3, $4, $5, $6, 'draft', $7)
                 """,
-                row_id, bdm_id, channel, body, HAIKU_MODEL,
-                round(cost_usd, 6), now,
+                row_id,
+                bdm_id,
+                channel,
+                body,
+                HAIKU_MODEL,
+                round(cost_usd, 6),
+                now,
             )
         await self.conn.execute(
             """
@@ -294,5 +304,7 @@ class Stage7Haiku:
                 pipeline_stage = $1, pipeline_updated_at = $2
             WHERE id = $3
             """,
-            PIPELINE_STAGE_S7, now, row_id,
+            PIPELINE_STAGE_S7,
+            now,
+            row_id,
         )

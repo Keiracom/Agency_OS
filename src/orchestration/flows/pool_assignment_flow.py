@@ -36,12 +36,11 @@ from src.models.base import SubscriptionStatus
 from src.models.campaign import Campaign
 from src.models.client import Client
 from src.orchestration.flows.lead_enrichment_flow import lead_enrichment_flow
+from src.prefect_utils.completion_hook import on_completion_hook
+from src.prefect_utils.hooks import on_failure_hook
 from src.services.jit_validator import JITValidator
 from src.services.lead_allocator_service import LeadAllocatorService
 from src.services.lead_pool_service import LeadPoolService
-from src.prefect_utils.completion_hook import on_completion_hook
-from src.prefect_utils.hooks import on_failure_hook
-
 
 logger = logging.getLogger(__name__)
 

@@ -106,6 +106,7 @@ running_processes: dict[int, asyncio.subprocess.Process] = {}
 RELAY_DIR = f"/tmp/telegram-relay-{CALLSIGN}"  # per-callsign isolation (LAW XVII)
 INBOX_DIR = f"{RELAY_DIR}/inbox"    # messages FROM Telegram TO tmux session
 OUTBOX_DIR = f"{RELAY_DIR}/outbox"  # messages FROM tmux session TO Telegram
+RELAY_SEND_TIMEOUT = 30  # seconds — guards against silent Telegram API stalls
 
 os.makedirs(INBOX_DIR, exist_ok=True)
 os.makedirs(OUTBOX_DIR, exist_ok=True)
@@ -1066,22 +1067,31 @@ async def _outbox_watcher(app: Application) -> None:
                             with open(tmp, "w") as tf:
                                 tf.write(text)
                             with open(tmp, "rb") as tf:
-                                await bot.send_document(chat_id=chat_id, document=tf, filename="message.md")
+                                await asyncio.wait_for(
+                                    bot.send_document(chat_id=chat_id, document=tf, filename="message.md"),
+                                    timeout=RELAY_SEND_TIMEOUT,
+                                )
                             os.unlink(tmp)
                         else:
                             for chunk in chunk_response(text):
-                                await bot.send_message(chat_id=chat_id, text=chunk)
+                                await asyncio.wait_for(
+                                    bot.send_message(chat_id=chat_id, text=chunk),
+                                    timeout=RELAY_SEND_TIMEOUT,
+                                )
 
                     elif msg.get("type") == "file":
                         file_path = msg.get("file_path", "")
                         caption = msg.get("caption", "")
                         if os.path.exists(file_path):
                             with open(file_path, "rb") as fh:
-                                await bot.send_document(
-                                    chat_id=chat_id,
-                                    document=fh,
-                                    filename=os.path.basename(file_path),
-                                    caption=caption[:1024] if caption else None,
+                                await asyncio.wait_for(
+                                    bot.send_document(
+                                        chat_id=chat_id,
+                                        document=fh,
+                                        filename=os.path.basename(file_path),
+                                        caption=caption[:1024] if caption else None,
+                                    ),
+                                    timeout=RELAY_SEND_TIMEOUT,
                                 )
 
                     os.unlink(fpath)

@@ -582,7 +582,7 @@ class FreeEnrichment:
                 stats["dns_skipped"] += 1
                 # Instrumentation: mark the dead-DNS skip path so the gap is visible.
                 # Not a hard drop — _write_results still runs below with empty website_data.
-                await self._write_filter_reason(bu_id, "free_enrichment_dns_unreachable")
+                await self._write_filter_reason(bu_id, "permanent_dns_unreachable")
             dns_data = self._enrich_dns(domain)
             suburb = (website_data.get("website_address") or {}).get("suburb")
             abn_data = await self._match_abn(

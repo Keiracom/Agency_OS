@@ -51,6 +51,7 @@ from src.pipeline.contactout_enricher import enrich_dm_via_contactout
 from src.pipeline.email_waterfall import discover_email
 from src.pipeline.latency_tracker import LatencyTracker
 from src.pipeline.mobile_waterfall import run_mobile_waterfall
+from src.pipeline.suppression_manager import SuppressionManager
 from src.utils.domain_blocklist import is_blocked
 
 logger = logging.getLogger(__name__)
@@ -516,11 +517,31 @@ async def _run_stage8(
     elif identity.get("primary_email"):
         stage3_contact_data["company_email"] = identity["primary_email"]
 
+    # Gap #12 — Suppression pre-check before paid email + mobile waterfall.
+    # Any known email from stage3 identity is checked against suppression list.
+    # If suppressed, skip 8c and 8d entirely — no paid API calls fired.
+    _known_email = (
+        dm.get("email")
+        or identity.get("dm_email")
+        or identity.get("primary_email")
+        or stage3_contact_data.get("company_email")
+    )
+    _suppressed = False
+    if _known_email:
+        _sup_result = SuppressionManager.check_before_outreach(_known_email)
+        if _sup_result.get("suppressed"):
+            _suppressed = True
+            domain_data["errors"].append(
+                f"stage8_suppressed: {_known_email} suppressed ({_sup_result.get('reason')})"
+            )
+
     email_result = None
     try:
         dm_verified = bool(
             (identity.get("dm_candidate") or {}).get("_dm_verified") or identity.get("_dm_verified")
         )
+        if _suppressed:
+            raise RuntimeError("contact_suppressed")
         email_result = await discover_email(
             domain=domain_data["domain"],
             dm_name=dm.get("name", ""),
@@ -537,6 +558,8 @@ async def _run_stage8(
     # Pass brightdata_client (bd) and contact_data from Stage 3 identity (Fix D2.2-1)
     mobile_result = None
     try:
+        if _suppressed:
+            raise RuntimeError("contact_suppressed")
         contact_data_mobile: dict = {}
         dm_phone = dm.get("dm_phone") or dm.get("primary_phone") or identity.get("primary_phone")
         if dm_phone:

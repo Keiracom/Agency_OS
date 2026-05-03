@@ -29,11 +29,14 @@ async def get_category_conversion_boost(conn, gmb_category: str | None) -> int:
         return 0
 
     try:
+        # Join path: cis_outreach_outcomes → leads (via lead_id) → business_universe (via domain)
+        # cis_outreach_outcomes has no direct FK to business_universe
         count = await conn.fetchval(
             """
             SELECT COUNT(*)
             FROM cis_outreach_outcomes o
-            JOIN business_universe bu ON bu.id = o.business_universe_id
+            JOIN leads l ON l.id = o.lead_id
+            JOIN business_universe bu ON bu.domain = l.company_domain
             WHERE bu.gmb_category = $1
               AND o.converted_at IS NOT NULL
               AND o.converted_at > NOW() - INTERVAL '90 days'

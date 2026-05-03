@@ -307,7 +307,7 @@ class CISService:
             if row:
                 logger.info(f"CIS: Updated outcome for activity {activity_id}: {event_type}")
 
-                # Post-conversion: record vertical in BU stage_metrics
+                # Gap #10: record gmb_category into BU stage_metrics on conversion
                 if event_type == "converted":
                     try:
                         outcome_row = await db.execute(

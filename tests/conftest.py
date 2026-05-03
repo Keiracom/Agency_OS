@@ -21,8 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 # Set test environment before importing app modules
 os.environ["ENVIRONMENT"] = "development"  # Use development for tests (Settings model requires development/staging/production)
 os.environ["DATABASE_URL"] = "postgresql+asyncpg://test:test@localhost:5432/test_db"
-# Disable Prefect ephemeral server to avoid timeouts in tests
-os.environ["PREFECT_SERVER_ALLOW_EPHEMERAL_MODE"] = "false"
+# Prefect ephemeral server enabled via session fixture below (not env var)
 os.environ["REDIS_URL"] = "redis://localhost:6379/1"
 os.environ["SUPABASE_URL"] = "https://test.supabase.co"
 os.environ["SUPABASE_KEY"] = "test-key"
@@ -69,6 +68,31 @@ def _cleanup_polluted_modules():
                 pass
     yield
     # Cleanup after all tests (optional, for hygiene)
+
+
+# ============================================================================
+# Prefect Ephemeral Server (session-scoped)
+# ============================================================================
+
+@pytest.fixture(scope="session", autouse=True)
+def prefect_ephemeral_server():
+    """Start a temporary in-process Prefect server for the test session.
+
+    Clears PREFECT_API_URL (overrides Railway URL in env) and enables
+    ephemeral mode so Prefect auto-starts a local SQLite-backed server.
+    """
+    from prefect.settings import (
+        PREFECT_API_URL,
+        PREFECT_SERVER_ALLOW_EPHEMERAL_MODE,
+        temporary_settings,
+    )
+    with temporary_settings(
+        updates={
+            PREFECT_API_URL: None,
+            PREFECT_SERVER_ALLOW_EPHEMERAL_MODE: True,
+        }
+    ):
+        yield
 
 
 # ============================================================================

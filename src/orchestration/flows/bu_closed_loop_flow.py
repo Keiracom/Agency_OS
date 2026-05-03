@@ -143,11 +143,13 @@ async def fetch_backlog(
               FROM business_universe
              WHERE pipeline_stage < 11
                AND (filter_reason IS NULL OR filter_reason NOT LIKE 'permanent_%')
-               AND (filter_reason IS NULL OR filter_reason NOT IN (
-                       'free_enrichment_dns_unreachable',
-                       'free_enrichment_http_unreachable',
-                       'free_enrichment_exception'
-                   ))
+               AND (filter_reason IS NULL
+                    OR filter_reason NOT IN (
+                        'free_enrichment_http_unreachable',
+                        'free_enrichment_exception'
+                    )
+                    OR updated_at < NOW() - INTERVAL '7 days'
+                   )
                AND domain IS NOT NULL
         )
         SELECT id, domain, category, pipeline_stage, propensity_score,

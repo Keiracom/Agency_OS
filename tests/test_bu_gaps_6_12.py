@@ -91,11 +91,12 @@ class TestGap6BacklogExclusion:
         # Unwrap the Prefect task to get the original function source
         fn = fetch_backlog.fn if hasattr(fetch_backlog, "fn") else fetch_backlog
         source = inspect.getsource(fn)
-        assert "free_enrichment_dns_unreachable" in source, (
-            "fetch_backlog SQL must exclude 'free_enrichment_dns_unreachable'"
-        )
         assert "free_enrichment_http_unreachable" in source, (
             "fetch_backlog SQL must exclude 'free_enrichment_http_unreachable'"
+        )
+        # Transient errors re-enter after 7-day cooldown
+        assert "7 days" in source, (
+            "fetch_backlog SQL must allow transient errors to re-enter after 7-day cooldown"
         )
 
     def test_free_enrichment_writes_permanent_prefix_on_dns_fail(self):

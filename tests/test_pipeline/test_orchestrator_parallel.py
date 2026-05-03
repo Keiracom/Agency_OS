@@ -1,7 +1,10 @@
 """Tests for PipelineOrchestrator.run_parallel() — Directive #295."""
+
 import asyncio
+import contextlib
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock
 
 from src.pipeline.pipeline_orchestrator import PipelineOrchestrator
 
@@ -73,28 +76,60 @@ def _make_orch(domains_per_call: list[list[str]], enrich_non_au: bool = False):
         free_enrichment=enr,
         scorer=scorer,
         dm_identification=dm_module,
+        dfs_client=MagicMock(),
+        gemini_client=MagicMock(),
+        bd_client=MagicMock(),
+        lm_client=MagicMock(),
+        on_domain_complete=AsyncMock(),
     )
     return orch
 
 
-@pytest.mark.xfail(reason="Legacy orchestrator API — CD Player v1 rewrite pending")
+def _passthrough(domain_data, *a, **kw):
+    """Stage mock that passes domain_data through unchanged."""
+    return domain_data
+
+
+async def _async_passthrough(domain_data, *a, **kw):
+    domain_data.setdefault("_cost", 0.0)
+    return domain_data
+
+
+_STAGE_TARGETS = [
+    "src.pipeline.pipeline_orchestrator._run_stage2",
+    "src.pipeline.pipeline_orchestrator._run_stage3",
+    "src.pipeline.pipeline_orchestrator._run_stage4",
+    "src.pipeline.pipeline_orchestrator._run_stage5",
+    "src.pipeline.pipeline_orchestrator._run_stage6",
+    "src.pipeline.pipeline_orchestrator._run_stage7",
+    "src.pipeline.pipeline_orchestrator._run_stage8",
+    "src.pipeline.pipeline_orchestrator._run_stage9",
+    "src.pipeline.pipeline_orchestrator._run_stage10",
+    "src.pipeline.pipeline_orchestrator._run_stage11",
+]
+
+
+@pytest.mark.xfail(reason="Stage mock needs full card assembly fields — follow-up")
 @pytest.mark.asyncio
 async def test_parallel_stops_at_target_count():
-    """run_parallel must stop once target_count prospects are found."""
-    # 10 domains across two batches — we only want 2
+    """run_streaming must stop once target_cards prospects are found."""
     orch = _make_orch(
         domains_per_call=[
             [f"domain{i}.com.au" for i in range(5)],
             [f"domain{i}.com.au" for i in range(5, 10)],
         ]
     )
-    result = await orch.run_parallel(
-        category_codes=["10514"],
-        location="Sydney",
-        target_count=2,
-        num_workers=1,
-        batch_size=5,
-    )
+    patches = [patch(t, _async_passthrough) for t in _STAGE_TARGETS]
+    with contextlib.ExitStack() as stack:
+        for p in patches:
+            stack.enter_context(p)
+        result = await orch.run_streaming(
+            categories=["dental"],
+            target_cards=2,
+            budget_cap_aud=50.0,
+            num_workers=1,
+            batch_size=5,
+        )
     assert len(result.prospects) == 2
     assert result.stats.viable_prospects == 2
 
@@ -175,7 +210,10 @@ async def test_parallel_merges_stats():
         batch_size=10,
     )
     # Stats should be non-zero and reflect combined worker output
-    total = result.stats.enriched + result.stats.enrichment_failed + result.stats.affordability_rejected
+    assert (
+        result.stats.enriched + result.stats.enrichment_failed + result.stats.affordability_rejected
+        >= 0
+    )
     assert result.stats.discovered >= 0
     assert result.stats.elapsed_seconds >= 0
     # viable_prospects must equal len(prospects)

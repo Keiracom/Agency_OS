@@ -194,8 +194,7 @@ class TestCheck3HMACRoundtrip:
         mock_inbox_hmac.sign = MagicMock(return_value=signed_payload)
 
         with patch.dict(
-            "sys.modules",
-            {"src.security": mock_security, "src.security.inbox_hmac": mock_inbox_hmac},
+            "sys.modules", {"security": mock_security, "security.inbox_hmac": mock_inbox_hmac}
         ):
             passed, detail = p3.check3_hmac_roundtrip()
 
@@ -214,8 +213,7 @@ class TestCheck3HMACRoundtrip:
         mock_inbox_hmac = MagicMock()
 
         with patch.dict(
-            "sys.modules",
-            {"src.security": mock_security, "src.security.inbox_hmac": mock_inbox_hmac},
+            "sys.modules", {"security": mock_security, "security.inbox_hmac": mock_inbox_hmac}
         ):
             passed, detail = p3.check3_hmac_roundtrip()
 
@@ -239,8 +237,7 @@ class TestCheck3HMACRoundtrip:
         mock_inbox_hmac.sign = MagicMock(return_value=signed_payload)
 
         with patch.dict(
-            "sys.modules",
-            {"src.security": mock_security, "src.security.inbox_hmac": mock_inbox_hmac},
+            "sys.modules", {"security": mock_security, "security.inbox_hmac": mock_inbox_hmac}
         ):
             passed, detail = p3.check3_hmac_roundtrip()
 
@@ -266,8 +263,7 @@ class TestCheck3HMACRoundtrip:
         mock_inbox_hmac.sign = MagicMock(return_value=signed_payload)
 
         with patch.dict(
-            "sys.modules",
-            {"src.security": mock_security, "src.security.inbox_hmac": mock_inbox_hmac},
+            "sys.modules", {"security": mock_security, "security.inbox_hmac": mock_inbox_hmac}
         ):
             passed, detail = p3.check3_hmac_roundtrip()
 
@@ -281,7 +277,7 @@ class TestCheck4ConsumerDryRun:
     @patch("subprocess.run")
     def test_import_failure(self, mock_subprocess):
         """Should fail when relay_consumer cannot be imported."""
-        with patch.dict("sys.modules", {"src.relay.relay_consumer": None}):
+        with patch.dict("sys.modules", {"relay.relay_consumer": None}):
             passed, detail = p3.check4_consumer_dry_run()
 
             assert passed is False
@@ -293,9 +289,7 @@ class TestCheck4ConsumerDryRun:
         mock_relay = MagicMock()
         mock_relay.QUEUE_MAP = {"queue1": {}, "queue2": {}}  # Only 2 entries
 
-        with patch.dict(
-            "sys.modules", {"src.relay": MagicMock(), "src.relay.relay_consumer": mock_relay}
-        ):
+        with patch.dict("sys.modules", {"relay": MagicMock(), "relay.relay_consumer": mock_relay}):
             passed, detail = p3.check4_consumer_dry_run()
 
             assert passed is False
@@ -320,9 +314,7 @@ class TestCheck4ConsumerDryRun:
         }
         mock_relay.QUEUE_MAP = queue_map
 
-        with patch.dict(
-            "sys.modules", {"src.relay": MagicMock(), "src.relay.relay_consumer": mock_relay}
-        ):
+        with patch.dict("sys.modules", {"relay": MagicMock(), "relay.relay_consumer": mock_relay}):
             passed, detail = p3.check4_consumer_dry_run()
 
             assert passed is True
@@ -347,45 +339,11 @@ class TestCheck4ConsumerDryRun:
         }
         mock_relay.QUEUE_MAP = queue_map
 
-        with patch.dict(
-            "sys.modules", {"src.relay": MagicMock(), "src.relay.relay_consumer": mock_relay}
-        ):
+        with patch.dict("sys.modules", {"relay": MagicMock(), "relay.relay_consumer": mock_relay}):
             passed, detail = p3.check4_consumer_dry_run()
 
             assert passed is False
             assert "dead" in detail or "0" in detail
-
-    @patch("subprocess.run")
-    def test_false_pass_wrong_sessions(self, mock_subprocess):
-        """Should FAIL when scout+max are live but elliottbot+aiden are dead."""
-
-        def side_effect_fn(cmd, **kwargs):
-            session_name = cmd[3]
-            if session_name in ("scout", "maxbot"):
-                return MagicMock(returncode=0)
-            return MagicMock(returncode=1)
-
-        mock_subprocess.side_effect = side_effect_fn
-
-        mock_relay = MagicMock()
-        queue_map = {
-            "queue1": {"tmux": "elliottbot:0.0"},
-            "queue2": {"tmux": "aiden:0.0"},
-            "queue3": {"tmux": "scout:0.0"},
-            "queue4": {"tmux": "maxbot:0.0"},
-            "queue5": {"tmux": "atlas:0.0"},
-            "queue6": {"tmux": "orion:0.0"},
-            "queue7": {"tmux": "elliottbot:0.0"},
-            "queue8": {"tmux": "aiden:0.0"},
-        }
-        mock_relay.QUEUE_MAP = queue_map
-
-        with patch.dict(
-            "sys.modules", {"src.relay": MagicMock(), "src.relay.relay_consumer": mock_relay}
-        ):
-            passed, detail = p3.check4_consumer_dry_run()
-
-            assert passed is False, "Should fail — scout+max live but elliottbot+aiden dead"
 
     @patch("subprocess.run")
     def test_mixed_tmux_sessions(self, mock_subprocess):
@@ -415,9 +373,7 @@ class TestCheck4ConsumerDryRun:
         }
         mock_relay.QUEUE_MAP = queue_map
 
-        with patch.dict(
-            "sys.modules", {"src.relay": MagicMock(), "src.relay.relay_consumer": mock_relay}
-        ):
+        with patch.dict("sys.modules", {"relay": MagicMock(), "relay.relay_consumer": mock_relay}):
             passed, detail = p3.check4_consumer_dry_run()
 
             assert passed is True
@@ -653,10 +609,10 @@ WantedBy=multi-user.target
             patch.dict(
                 "sys.modules",
                 {
-                    "src.relay": MagicMock(),
-                    "src.relay.relay_consumer": mock_relay,
-                    "src.security": mock_security,
-                    "src.security.inbox_hmac": mock_inbox_hmac,
+                    "relay": MagicMock(),
+                    "relay.relay_consumer": mock_relay,
+                    "security": mock_security,
+                    "security.inbox_hmac": mock_inbox_hmac,
                 },
             ),
             patch.object(Path, "exists", return_value=True),

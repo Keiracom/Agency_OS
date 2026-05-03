@@ -309,6 +309,8 @@ async def persist_stage8_to_db(pipeline: list[dict]) -> list[str]:
                                 "stage4": stage4,
                                 "stage5": stage5,
                                 "dropped_at": dropped_at_str,
+                                # gap #3 — populate stage_completed_at on pipeline_f drops to advance fetch_backlog cursor
+                                "stage_completed_at": {"pipeline_f": datetime.now(UTC).isoformat()},
                             }
                         ),
                     )

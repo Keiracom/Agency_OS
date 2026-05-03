@@ -1787,7 +1787,7 @@ class ScoutEngine(BaseEngine):
                 company_technologies, company_keywords,
                 email_status, enrichment_source, enrichment_confidence,
                 enriched_at, enrichment_data,
-                pool_status
+                pool_status, last_enriched_at  -- gap #13 — last_enriched_at on enrichment completion
             ) VALUES (
                 :email, :linkedin_url,
                 :first_name, :last_name, :title, :seniority,
@@ -1806,7 +1806,7 @@ class ScoutEngine(BaseEngine):
                 :company_technologies, :company_keywords,
                 CAST(:email_status AS email_status_type), :enrichment_source, :enrichment_confidence,
                 NOW(), CAST(:enrichment_data AS jsonb),
-                'available'
+                'available', NOW()
             )
             ON CONFLICT (email) DO UPDATE SET
                 last_enriched_at = NOW(),

@@ -500,10 +500,12 @@ async def advance_row(
                                || $2::jsonb,
                            true
                        ),
+                       filter_reason = $3,  -- gap #2 — instrument transient-drop filter_reason for BU audit
                        updated_at = NOW()
                    WHERE id = $1""",
                 row["id"],
                 attempt_entry,
+                outcome_reason,
             )
         return {"id": row["id"], "outcome": "runner_early_exit", "reason": outcome_reason}
 

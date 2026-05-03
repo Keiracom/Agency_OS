@@ -31,6 +31,7 @@ from typing import Any
 from uuid import UUID
 
 from prefect import flow, task
+from prefect.runtime import flow_run as _prefect_flow_run
 from sqlalchemy import and_, select, text
 
 from src.engines.scout import get_scout_engine
@@ -782,6 +783,11 @@ async def populate_pool_from_icp_task(
 
         # Directive #215: GMB write-back to business_universe
         try:
+            # gap #8 — track which discovery batch sourced this GMB-discovered row
+            import uuid as _uuid_mod
+            _raw_flow_run_id = _prefect_flow_run.id
+            flow_run_id = _raw_flow_run_id if _raw_flow_run_id else str(_uuid_mod.uuid4())
+
             bu_gmb_rows = []
             for row in rows_to_insert:
                 if row.get("abn") is None:
@@ -806,6 +812,7 @@ async def populate_pool_from_icp_task(
                         "gmb_city": row.get("city"),
                         "gmb_latitude": row.get("latitude"),
                         "gmb_longitude": row.get("longitude"),
+                        "discovery_batch_id": flow_run_id,
                     }
                 )
             if bu_gmb_rows:
@@ -831,13 +838,13 @@ async def populate_pool_from_icp_task(
                                 abn, gmb_place_id, gmb_cid, gmb_category,
                                 gmb_rating, gmb_review_count, gmb_phone, gmb_website, gmb_domain,
                                 gmb_address, gmb_city, gmb_latitude, gmb_longitude,
-                                gmb_enriched_at, updated_at
+                                gmb_enriched_at, updated_at, discovery_batch_id
                             )
                             VALUES (
                                 :abn, :gmb_place_id, :gmb_cid, :gmb_category,
                                 :gmb_rating, :gmb_review_count, :gmb_phone, :gmb_website, :gmb_domain,
                                 :gmb_address, :gmb_city, :gmb_latitude, :gmb_longitude,
-                                NOW(), NOW()
+                                NOW(), NOW(), :discovery_batch_id
                             )
                             ON CONFLICT (abn) DO UPDATE SET
                                 gmb_place_id = EXCLUDED.gmb_place_id,

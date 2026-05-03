@@ -149,7 +149,9 @@ async def free_enrichment_flow(
         # gap #11 — backfill domain from gmb_domain before promote gate runs
         backfilled = await backfill_domain_from_gmb(pool)
         summary["backfilled"] = backfilled
-        logger.info("free_enrichment_flow: backfilled domain for %d rows from gmb_domain", backfilled)
+        logger.info(
+            "free_enrichment_flow: backfilled domain for %d rows from gmb_domain", backfilled
+        )
 
         if promote_stage_0:
             promoted = await promote_stage_0_rows(pool)

@@ -37,18 +37,28 @@ try:
     from httpx import HTTPStatusError as _HttpxHTTPStatusError
     from httpx import TimeoutException as _HttpxTimeout
 
+    # Only timeouts and connection errors are unconditionally transient.
+    # HTTPStatusError handled separately — only 5xx is retryable.
+    # 429 falls through — Leadmagic Retry-After is authoritative, our blanket backoff would compound.
     TRANSIENT_EXCEPTIONS: tuple[type[BaseException], ...] = (
         _HttpxTimeout,
-        _HttpxHTTPStatusError,
         ConnectionError,
         OSError,
     )
+    _HTTP_STATUS_ERROR = _HttpxHTTPStatusError
 except ImportError:
     TRANSIENT_EXCEPTIONS = (ConnectionError, OSError)
+    _HTTP_STATUS_ERROR = None
 
 
-async def _with_retry(coro_fn, *, retries: int = 1, backoff: float = 2.0, label: str = ""):
-    """Retry a coroutine on transient errors. Return None on permanent failure."""
+# GOV-3 cost trade-off: retries double provider cost on transient failures.
+# Justified because recovered leads at $0.015-$0.077 outweigh the 2× cost during
+# brief outages. Retry budget is exactly 1 (not exponential) to bound exposure.
+async def _with_retry(coro_fn, *, retries: int = 1, backoff: float = 5.0, label: str = ""):
+    """Retry a coroutine on transient errors. Return None on permanent failure.
+
+    Backoff is 5s fixed (aligns with Leadmagic's own 2-10s tenacity range).
+    """
     for attempt in range(retries + 1):
         try:
             return await coro_fn()
@@ -72,7 +82,29 @@ async def _with_retry(coro_fn, *, retries: int = 1, backoff: float = 2.0, label:
                 )
                 return None
         except Exception as exc:
-            # Non-transient (auth, credit exhausted, etc.) — don't retry
+            # Check if it's a 5xx HTTPStatusError — those are transient
+            if _HTTP_STATUS_ERROR and isinstance(exc, _HTTP_STATUS_ERROR):
+                if hasattr(exc, "response") and 500 <= exc.response.status_code < 600:
+                    if attempt < retries:
+                        logger.warning(
+                            "[%s] server error %d (attempt %d/%d): %s — retrying in %.1fs",
+                            label,
+                            exc.response.status_code,
+                            attempt + 1,
+                            retries + 1,
+                            exc,
+                            backoff,
+                        )
+                        await asyncio.sleep(backoff)
+                        continue
+                    logger.warning(
+                        "[%s] server error after %d attempts: %s — falling through",
+                        label,
+                        retries + 1,
+                        exc,
+                    )
+                    return None
+            # Non-transient (auth 401, credit 402, rate limit 429, etc.) — don't retry
             logger.warning("[%s] non-transient error: %s — falling through", label, exc)
             return None
 

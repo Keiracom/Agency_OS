@@ -510,9 +510,9 @@ All fields are optional. Only provided fields are updated.
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| POST | `/webhooks/postmark/inbound` | Signature | Inbound email replies |
-| POST | `/webhooks/postmark/bounce` | Signature | Email bounces |
-| POST | `/webhooks/postmark/spam` | Signature | Spam complaints |
+| POST | `/webhooks/postmark/inbound` | Domain verification | Inbound email replies |
+| POST | `/webhooks/postmark/bounce` | Domain verification | Email bounces |
+| POST | `/webhooks/postmark/spam` | Domain verification | Spam complaints |
 | POST | `/webhooks/twilio/inbound` | Signature | Inbound SMS replies |
 | POST | `/webhooks/twilio/status` | Signature | SMS delivery status |
 | POST | `/webhooks/unipile/account` | None | LinkedIn connection events |

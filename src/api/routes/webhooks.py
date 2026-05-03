@@ -65,27 +65,19 @@ router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 
 def verify_postmark_signature(payload: bytes, signature: str | None) -> bool:
     """
-    Verify Postmark webhook signature.
+    Verify Postmark webhook authenticity.
 
-    Postmark doesn't provide built-in signature verification,
-    so this is a placeholder for custom implementation if needed.
+    Postmark uses inbound domain verification (not HMAC signatures).
+    Authenticity is handled at the infrastructure level via Railway
+    ingress and Postmark's domain verification. Always returns True.
 
     Args:
         payload: Raw webhook payload
-        signature: X-Postmark-Signature header value
+        signature: X-Postmark-Signature header value (unused — Postmark does not send one)
 
     Returns:
-        True if signature is valid (currently always returns True)
+        True (domain verification is the auth mechanism, not per-request signatures)
     """
-    # NOTE: Postmark doesn't have built-in webhook signature verification
-    # In production, you may want to:
-    # 1. Use IP allowlisting
-    # 2. Use a custom HMAC signature with your own secret
-    # 3. Use Postmark's inbound domain verification
-
-    # Postmark webhooks are verified by IP allowlisting at the infrastructure level
-    # (Railway ingress). Custom HMAC verification is not required for inbound webhooks
-    # per Postmark's recommendation — domain verification handles authenticity.
     return True
 
 

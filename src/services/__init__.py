@@ -56,10 +56,10 @@ Phase 22 additions (Content QA):
 Phase H additions (Client Transparency):
 - DigestService: Daily digest email generation and delivery (Item 44)
 
-Voice Retry additions (TODO.md #3):
+Voice Retry additions:
 - VoiceRetryService: Schedule voice call retries (busy=2hr, no_answer=next business day)
 
-Phone Provisioning additions (TODO.md #13):
+Phone Provisioning additions:
 - PhoneProvisioningService: Automated phone number provisioning via Twilio
 """
 
@@ -244,13 +244,13 @@ __all__ = [
     "validate_voice_script",
     # Phase H - Daily Digest
     "DigestService",
-    # Voice Retry (TODO.md #3)
+    # Voice Retry
     "VoiceRetryService",
     "get_voice_retry_service",
     "RETRY_DELAYS",
     "MAX_RETRIES",
     "RETRYABLE_OUTCOMES",
-    # Email Signature (TODO.md #20)
+    # Email Signature
     "generate_signature_text",
     "generate_signature_html",
     "get_display_name",
@@ -258,7 +258,7 @@ __all__ = [
     "get_signature_for_client",
     "get_display_name_for_persona",
     "append_signature_to_body",
-    # Phone Provisioning (TODO.md #13)
+    # Phone Provisioning
     "PhoneProvisioningService",
     "get_phone_provisioning_service",
     "get_voice_daily_limit",

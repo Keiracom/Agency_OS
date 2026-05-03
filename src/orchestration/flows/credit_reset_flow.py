@@ -2,7 +2,7 @@
 FILE: src/orchestration/flows/credit_reset_flow.py
 PURPOSE: Monthly credit reset flow - resets client credits on billing date
 PHASE: P0 Critical Fix, Phase D Item 17 (trigger replenishment)
-TASK: TODO P0-001, Item 17
+TASK: P0-001 (completed)
 DEPENDENCIES:
   - src/integrations/supabase.py
   - src/models/client.py

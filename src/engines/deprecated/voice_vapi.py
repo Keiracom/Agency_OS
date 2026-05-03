@@ -1296,12 +1296,12 @@ def get_voice_engine() -> VoiceEngine:
 # [x] Phase 16: outcome, duration, touch_number tracked
 # [x] Phase 16: led_to_booking flag for converting touches
 # [x] Phase 17: Vapi + ElevenLabs stack (STT handled by Vapi)
-# [x] Voice retry: busy=2hr, no_answer=next business day (TODO.md #3)
+# [x] Voice retry: busy=2hr, no_answer=next business day
 # [x] Voice retry: MAX_RETRIES=3 enforced
 # [x] Voice retry: VoiceRetryService integration in process_call_webhook
-# [x] Business hours validation: 9-5 weekdays, skip 12-1 PM lunch (TODO.md #15)
+# [x] Business hours validation: 9-5 weekdays, skip 12-1 PM lunch
 # [x] Timezone-aware: uses lead.timezone or Australia/Sydney default
 # [x] get_next_business_hour() calculates next valid call time
-# [x] DNCR check: Australian numbers checked against Do Not Call Register (TODO.md #16)
+# [x] DNCR check: Australian numbers checked against Do Not Call Register
 # [x] DNCR cached: uses lead.dncr_checked/dncr_result to avoid redundant API calls
 # [x] DNCR rejection logging: _log_dncr_rejection() for audit trail

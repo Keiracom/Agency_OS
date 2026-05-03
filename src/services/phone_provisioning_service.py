@@ -5,7 +5,7 @@ Layer: 3 - services
 Imports: models, integrations
 Consumers: orchestration flows, API routes, campaign creation
 Spec: docs/architecture/distribution/VOICE.md
-TODO.md: #13 (P3 Medium - Voice Engine)
+P3 (completed)
 
 Handles:
 - Search available Australian phone numbers from Twilio

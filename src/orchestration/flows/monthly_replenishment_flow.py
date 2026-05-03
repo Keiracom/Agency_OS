@@ -2,7 +2,7 @@
 FILE: src/orchestration/flows/monthly_replenishment_flow.py
 PURPOSE: Monthly lead replenishment flow - sources new leads after credit reset
 PHASE: Phase D - Item 17
-TASK: TODO Item 17 (P2: Implement monthly replenishment flow)
+TASK: P2 (completed)
 DEPENDENCIES:
   - src/orchestration/flows/pool_population_flow.py
   - src/orchestration/flows/credit_reset_flow.py (trigger)

@@ -104,7 +104,7 @@ def test_search_queries_mem0_and_logs(log_path, monkeypatch):
     adapter = mod.Mem0Adapter()
     results = adapter.search("pipeline decision", limit=3, callsign="elliot")
 
-    mock_client.search.assert_called_once_with("pipeline decision", user_id="elliot", limit=3)
+    mock_client.search.assert_called_once_with("pipeline decision", filters={"user_id": "elliot"}, limit=3)
     assert isinstance(results, list)
     assert results[0]["memory"] == "test memory content"
 

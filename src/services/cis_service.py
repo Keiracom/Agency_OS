@@ -306,6 +306,52 @@ class CISService:
 
             if row:
                 logger.info(f"CIS: Updated outcome for activity {activity_id}: {event_type}")
+
+                # Post-conversion: record vertical in BU stage_metrics
+                if event_type == "converted":
+                    try:
+                        outcome_row = await db.execute(
+                            text("""
+                                SELECT o.lead_id, l.domain, bu.gmb_category
+                                FROM cis_outreach_outcomes o
+                                JOIN leads l ON l.id = o.lead_id
+                                JOIN business_universe bu ON bu.domain = l.domain
+                                WHERE o.activity_id = :activity_id
+                            """),
+                            {"activity_id": str(activity_id)},
+                        )
+                        bu_info = outcome_row.fetchone()
+
+                        if bu_info and bu_info.domain:
+                            category = bu_info.gmb_category or "unknown"
+                            await db.execute(
+                                text("""
+                                    UPDATE business_universe
+                                    SET stage_metrics = jsonb_set(
+                                        COALESCE(stage_metrics, '{}'::jsonb),
+                                        '{conversions}',
+                                        COALESCE(stage_metrics->'conversions', '[]'::jsonb) ||
+                                        jsonb_build_object(
+                                            'category', :category,
+                                            'converted_at', NOW()::text,
+                                            'lead_domain', :domain
+                                        )::jsonb
+                                    ),
+                                    updated_at = NOW()
+                                    WHERE domain = :domain
+                                """),
+                                {"category": category, "domain": bu_info.domain},
+                            )
+                            await db.commit()
+                            logger.info(
+                                "CIS: recorded conversion vertical %s for domain %s",
+                                category,
+                                bu_info.domain,
+                            )
+                    except Exception as exc:
+                        logger.warning("CIS: failed to record conversion vertical: %s", exc)
+                        # fail-open — never break the conversion flow
+
                 return {"success": True, "activity_id": str(activity_id)}
             else:
                 logger.warning(f"CIS: No outcome found for activity {activity_id}")

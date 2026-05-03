@@ -2,7 +2,7 @@
 FILE: src/orchestration/flows/recording_cleanup_flow.py
 PURPOSE: Daily cleanup of voice recordings older than 90 days
 PHASE: Voice Engine Compliance
-TASK: TODO.md #14
+TASK: #14 (completed)
 DEPENDENCIES:
   - src/services/recording_cleanup_service.py
   - src/integrations/supabase.py

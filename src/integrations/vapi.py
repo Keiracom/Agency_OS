@@ -570,7 +570,7 @@ def get_vapi_client() -> VapiClient:
 # [x] All functions have type hints
 # [x] All functions have docstrings
 # [x] Webhook parsing method included
-# [x] Recording deletion for 90-day retention compliance (TODO.md #14)
+# [x] Recording deletion for 90-day retention compliance
 # [x] Retry logic with tenacity (exponential backoff, 3 attempts)
 # [x] Retries on transient failures (network errors, timeouts)
 # [x] Failure logging before and after retries

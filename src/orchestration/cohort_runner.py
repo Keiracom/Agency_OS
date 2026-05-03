@@ -357,6 +357,91 @@ async def _persist_stage4_to_bu(domain: str, bundle: dict) -> None:
             )
 
 
+async def _persist_stage5_to_bu(domain: str, scores: dict) -> None:
+    """Persist Stage 5 scores to business_universe.
+
+    Best-effort — failure does not block pipeline. Writes propensity_score
+    (composite), sub-scores, scored_at, and stage_metrics JSONB so CIS and
+    downstream systems always have fresh scores even if domain drops later.
+    """
+    import asyncpg as _asyncpg
+
+    db_url_raw = os.environ.get("DATABASE_URL", "")
+    if not db_url_raw:
+        logger.warning("Stage5 BU write skipped: DATABASE_URL not set for domain=%s", domain)
+        return
+    db_url = db_url_raw.replace("postgresql+asyncpg://", "postgresql://")
+    composite = scores.get("composite_score")
+    budget = scores.get("budget_score")
+    pain = scores.get("pain_score")
+    fit = scores.get("fit_score")
+    reachability = scores.get("reachability_score")
+    stage5_jsonb = json.dumps({"stage5": scores})
+    try:
+        conn = await _asyncpg.connect(db_url, statement_cache_size=0)
+        try:
+            await conn.execute(
+                """INSERT INTO business_universe (domain, display_name,
+                       propensity_score, score_budget, score_pain, score_fit,
+                       reachability_score, scored_at, stage_metrics)
+                   VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8)
+                   ON CONFLICT (domain) WHERE domain IS NOT NULL AND domain != '' DO UPDATE SET
+                       propensity_score = COALESCE(EXCLUDED.propensity_score, business_universe.propensity_score),
+                       score_budget = COALESCE(EXCLUDED.score_budget, business_universe.score_budget),
+                       score_pain = COALESCE(EXCLUDED.score_pain, business_universe.score_pain),
+                       score_fit = COALESCE(EXCLUDED.score_fit, business_universe.score_fit),
+                       reachability_score = COALESCE(EXCLUDED.reachability_score, business_universe.reachability_score),
+                       scored_at = NOW(),
+                       stage_metrics = COALESCE(business_universe.stage_metrics, '{}'::jsonb) || $8::jsonb,
+                       updated_at = NOW()""",
+                domain,
+                domain.split(".")[0].replace("-", " ").title(),
+                composite,
+                budget,
+                pain,
+                fit,
+                reachability,
+                stage5_jsonb,
+            )
+        finally:
+            await conn.close()
+    except Exception as exc:
+        logger.warning("Stage5 BU write failed for %s: %s — retrying", domain, exc)
+        try:
+            await asyncio.sleep(1)
+            conn = await _asyncpg.connect(db_url, statement_cache_size=0)
+            try:
+                await conn.execute(
+                    """INSERT INTO business_universe (domain, display_name,
+                           propensity_score, score_budget, score_pain, score_fit,
+                           reachability_score, scored_at, stage_metrics)
+                       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8)
+                       ON CONFLICT (domain) WHERE domain IS NOT NULL AND domain != '' DO UPDATE SET
+                           propensity_score = COALESCE(EXCLUDED.propensity_score, business_universe.propensity_score),
+                           score_budget = COALESCE(EXCLUDED.score_budget, business_universe.score_budget),
+                           score_pain = COALESCE(EXCLUDED.score_pain, business_universe.score_pain),
+                           score_fit = COALESCE(EXCLUDED.score_fit, business_universe.score_fit),
+                           reachability_score = COALESCE(EXCLUDED.reachability_score, business_universe.reachability_score),
+                           scored_at = NOW(),
+                           stage_metrics = COALESCE(business_universe.stage_metrics, '{}'::jsonb) || $8::jsonb,
+                           updated_at = NOW()""",
+                    domain,
+                    domain.split(".")[0].replace("-", " ").title(),
+                    composite,
+                    budget,
+                    pain,
+                    fit,
+                    reachability,
+                    stage5_jsonb,
+                )
+            finally:
+                await conn.close()
+        except Exception as exc2:
+            logger.error(
+                "Stage5 BU write FAILED permanently for %s: %s (GOV-8 data loss)", domain, exc2
+            )
+
+
 async def _run_stage4(domain_data: dict, dfs: DFSLabsClient) -> dict:
     """Stage 4 SIGNAL — DFS signal bundle."""
     _tracker(domain_data).start_stage("stage4")
@@ -402,6 +487,8 @@ async def _run_stage5(domain_data: dict) -> dict:
         return domain_data
 
     domain_data["timings"]["stage5"] = round(time.monotonic() - t0, 4)
+    # Persist scores to BU regardless of viability gate — survives drop
+    await _persist_stage5_to_bu(domain_data["domain"], scores)
     if not scores.get("is_viable_prospect"):
         domain_data["dropped_at"] = "stage5"
         domain_data["drop_reason"] = f"viability: {scores.get('viability_reason')}"

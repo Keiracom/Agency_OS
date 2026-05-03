@@ -45,6 +45,7 @@ def _stub_restate() -> None:
     restate_mod = types.ModuleType("restate")
     restate_mod.VirtualObject = _VirtualObject
     restate_mod.ObjectContext = _ObjectContext
+    restate_mod.app = _app  # SDK 0.17+ exposes app at top level
 
     server_mod = types.ModuleType("restate.server")
     server_mod.app = _app

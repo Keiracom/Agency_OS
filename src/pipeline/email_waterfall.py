@@ -31,6 +31,52 @@ from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
+# ── Transient-error retry helper ──────────────────────────────────────────────
+
+try:
+    from httpx import HTTPStatusError as _HttpxHTTPStatusError
+    from httpx import TimeoutException as _HttpxTimeout
+
+    TRANSIENT_EXCEPTIONS: tuple[type[BaseException], ...] = (
+        _HttpxTimeout,
+        _HttpxHTTPStatusError,
+        ConnectionError,
+        OSError,
+    )
+except ImportError:
+    TRANSIENT_EXCEPTIONS = (ConnectionError, OSError)
+
+
+async def _with_retry(coro_fn, *, retries: int = 1, backoff: float = 2.0, label: str = ""):
+    """Retry a coroutine on transient errors. Return None on permanent failure."""
+    for attempt in range(retries + 1):
+        try:
+            return await coro_fn()
+        except TRANSIENT_EXCEPTIONS as exc:
+            if attempt < retries:
+                logger.warning(
+                    "[%s] transient error (attempt %d/%d): %s — retrying in %.1fs",
+                    label,
+                    attempt + 1,
+                    retries + 1,
+                    exc,
+                    backoff,
+                )
+                await asyncio.sleep(backoff)
+            else:
+                logger.warning(
+                    "[%s] transient error after %d attempts: %s — falling through",
+                    label,
+                    retries + 1,
+                    exc,
+                )
+                return None
+        except Exception as exc:
+            # Non-transient (auth, credit exhausted, etc.) — don't retry
+            logger.warning("[%s] non-transient error: %s — falling through", label, exc)
+            return None
+
+
 # ── Lazy-imported clients (at module level for patchability) ─────────────────
 try:
     from src.integrations.leadmagic import LeadmagicClient
@@ -417,37 +463,37 @@ async def _leadmagic_lookup(
         return None
 
     async with GLOBAL_SEM_LEADMAGIC:
-        try:
+
+        async def _do_leadmagic_call():
             from src.config.settings import settings
 
             if LeadmagicClient is None:
                 return None
-
             async with LeadmagicClient(api_key=settings.leadmagic_api_key) as client:
-                result = await client.find_email(
+                return await client.find_email(
                     first_name=first.capitalize(),
                     last_name=last.capitalize(),
                     domain=domain,
                     company=company_name,
                 )
 
-            if result.found and result.email:
-                confidence = (
-                    "high"
-                    if result.confidence >= 80
-                    else "medium"
-                    if result.confidence >= 50
-                    else "low"
-                )
-                return EmailResult(
-                    email=result.email,
-                    verified=True,  # Leadmagic verifies via SMTP
-                    source="leadmagic",
-                    confidence=confidence,
-                    cost_usd=COST_LEADMAGIC,
-                )
-        except Exception as exc:
-            logger.warning("email_waterfall layer3 leadmagic failed domain=%s: %s", domain, exc)
+        result = await _with_retry(_do_leadmagic_call, label="leadmagic-email")
+
+        if result is not None and result.found and result.email:
+            confidence = (
+                "high"
+                if result.confidence >= 80
+                else "medium"
+                if result.confidence >= 50
+                else "low"
+            )
+            return EmailResult(
+                email=result.email,
+                verified=True,  # Leadmagic verifies via SMTP
+                source="leadmagic",
+                confidence=confidence,
+                cost_usd=COST_LEADMAGIC,
+            )
     return None
 
 
@@ -466,28 +512,28 @@ async def _brightdata_lookup(
     if not dm_linkedin:
         return None
 
-    try:
-        if BrightDataLinkedInClient is None:
-            return None
+    if BrightDataLinkedInClient is None:
+        return None
 
-        client = BrightDataLinkedInClient()
-        people = await client.lookup_company_people(
+    async def _do_brightdata_call():
+        _client = BrightDataLinkedInClient()
+        return await _client.lookup_company_people(
             company_name=company_name or domain,
             linkedin_url=dm_linkedin,
         )
 
-        for person in people or []:
-            email = person.get("email") or person.get("email_address")
-            if email and "@" in email:
-                return EmailResult(
-                    email=email,
-                    verified=False,  # LinkedIn profile data, not SMTP-verified
-                    source="brightdata",
-                    confidence="medium",
-                    cost_usd=COST_BRIGHTDATA,
-                )
-    except Exception as exc:
-        logger.warning("email_waterfall layer4 brightdata failed domain=%s: %s", domain, exc)
+    people = await _with_retry(_do_brightdata_call, label="brightdata-email")
+
+    for person in people or []:
+        email = person.get("email") or person.get("email_address")
+        if email and "@" in email:
+            return EmailResult(
+                email=email,
+                verified=False,  # LinkedIn profile data, not SMTP-verified
+                source="brightdata",
+                confidence="medium",
+                cost_usd=COST_BRIGHTDATA,
+            )
     return None
 
 
@@ -620,34 +666,38 @@ async def discover_email(
             else:
                 hunter_key = os.environ.get("HUNTER_API_KEY", "")
                 if hunter_key:
-                    async with httpx.AsyncClient(timeout=15) as client:
-                        r = await client.get(
-                            "https://api.hunter.io/v2/email-finder",
-                            params={
-                                "domain": clean_domain,
-                                "first_name": first.capitalize(),
-                                "last_name": last.capitalize(),
-                                "api_key": hunter_key,
-                            },
-                        )
-                        if r.status_code == 200:
-                            data = r.json().get("data", {})
-                            hunter_email = data.get("email")
-                            hunter_score = data.get("score", 0)
-                            if hunter_email and hunter_score >= 70:
-                                logger.info(
-                                    "email_waterfall L2 hunter domain=%s email=%s score=%s",
-                                    domain,
-                                    hunter_email,
-                                    hunter_score,
-                                )
-                                return EmailResult(
-                                    email=hunter_email,
-                                    verified=False,
-                                    source="hunter",
-                                    confidence="high" if hunter_score >= 90 else "medium",
-                                    cost_usd=0.0,  # included in plan
-                                )
+
+                    async def _do_hunter_call():
+                        async with httpx.AsyncClient(timeout=15) as _client:
+                            return await _client.get(
+                                "https://api.hunter.io/v2/email-finder",
+                                params={
+                                    "domain": clean_domain,
+                                    "first_name": first.capitalize(),
+                                    "last_name": last.capitalize(),
+                                    "api_key": hunter_key,
+                                },
+                            )
+
+                    r = await _with_retry(_do_hunter_call, label="hunter-email")
+                    if r is not None and r.status_code == 200:
+                        data = r.json().get("data", {})
+                        hunter_email = data.get("email")
+                        hunter_score = data.get("score", 0)
+                        if hunter_email and hunter_score >= 70:
+                            logger.info(
+                                "email_waterfall L2 hunter domain=%s email=%s score=%s",
+                                domain,
+                                hunter_email,
+                                hunter_score,
+                            )
+                            return EmailResult(
+                                email=hunter_email,
+                                verified=False,
+                                source="hunter",
+                                confidence="high" if hunter_score >= 90 else "medium",
+                                cost_usd=0.0,  # included in plan
+                            )
         except Exception as exc:
             logger.warning("email_waterfall L2 hunter failed domain=%s: %s", domain, exc)
     elif first and last and clean_domain:

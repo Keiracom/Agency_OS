@@ -26,6 +26,8 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Any
 
+from src.pipeline.email_waterfall import _with_retry
+
 logger = logging.getLogger(__name__)
 
 # ── Mobile regex patterns ─────────────────────────────────────────────────────
@@ -122,43 +124,43 @@ async def run_mobile_waterfall(
 
     # ── Layer 2: Leadmagic mobile lookup ──────────────────────────────────────
     if leadmagic_client is not None and dm_linkedin_url:
-        try:
-            async with _sem:
-                result = await leadmagic_client.find_mobile(
-                    linkedin_url=dm_linkedin_url,
-                )
-            # LeadmagicClient returns MobileFinderResult dataclass (not dict)
-            mobile_num = None
-            if result is not None:
-                if hasattr(result, "mobile_number"):
-                    mobile_num = result.mobile_number if result.found else None
-                elif isinstance(result, dict):
-                    mobile_num = result.get("mobile") or result.get("mobile_number")
-            if mobile_num:
-                return MobileResult(
-                    mobile=mobile_num,
-                    source="leadmagic",
-                    cost_usd=COST_LAYER2_LEADMAGIC,
-                    tier_used=2,
-                )
-        except Exception as exc:
-            logger.warning("mobile_waterfall Layer 2 failed for %s: %s", domain, exc)
+        async with _sem:
+
+            async def _do_leadmagic_mobile():
+                return await leadmagic_client.find_mobile(linkedin_url=dm_linkedin_url)
+
+            result = await _with_retry(_do_leadmagic_mobile, label="leadmagic-mobile")
+
+        # LeadmagicClient returns MobileFinderResult dataclass (not dict)
+        mobile_num = None
+        if result is not None:
+            if hasattr(result, "mobile_number"):
+                mobile_num = result.mobile_number if result.found else None
+            elif isinstance(result, dict):
+                mobile_num = result.get("mobile") or result.get("mobile_number")
+        if mobile_num:
+            return MobileResult(
+                mobile=mobile_num,
+                source="leadmagic",
+                cost_usd=COST_LAYER2_LEADMAGIC,
+                tier_used=2,
+            )
 
     # ── Layer 3: Bright Data LinkedIn profile ─────────────────────────────────
     if brightdata_client is not None and dm_linkedin_url:
-        try:
-            async with _sem:
-                profile = await brightdata_client.get_profile(
-                    linkedin_url=dm_linkedin_url,
-                )
-            if profile and profile.get("mobile"):
-                return MobileResult(
-                    mobile=profile["mobile"],
-                    source="brightdata",
-                    cost_usd=COST_LAYER3_BRIGHTDATA,
-                    tier_used=3,
-                )
-        except Exception as exc:
-            logger.warning("mobile_waterfall Layer 3 failed for %s: %s", domain, exc)
+        async with _sem:
+
+            async def _do_brightdata_mobile():
+                return await brightdata_client.get_profile(linkedin_url=dm_linkedin_url)
+
+            profile = await _with_retry(_do_brightdata_mobile, label="brightdata-mobile")
+
+        if profile and profile.get("mobile"):
+            return MobileResult(
+                mobile=profile["mobile"],
+                source="brightdata",
+                cost_usd=COST_LAYER3_BRIGHTDATA,
+                tier_used=3,
+            )
 
     return MobileResult(mobile=None, source=None, cost_usd=Decimal("0"), tier_used=None)

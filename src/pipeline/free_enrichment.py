@@ -385,6 +385,7 @@ class FreeEnrichment:
         confidence = self._abn_confidence(search_name, self._abn_clean_entity_name(api_name))
         return {
             "abn_matched": True,
+            "abn": row.get("abn"),
             "gst_registered": row["gst_registered"],
             "entity_type": row["entity_type"],
             "registration_date": row.get("registration_date"),
@@ -956,6 +957,7 @@ class FreeEnrichment:
                 gst, etype, reg_date = await self._local_abn_gst(abn_raw)
                 candidate = {
                     "abn_matched": True,
+                    "abn": abn_raw or None,
                     "gst_registered": gst,
                     "entity_type": etype,
                     "registration_date": reg_date,
@@ -999,6 +1001,7 @@ class FreeEnrichment:
                     entity_type                   = COALESCE($12, entity_type),
                     registration_date             = COALESCE($13, registration_date),
                     email_maturity                = $14,
+                    abn                           = COALESCE($15, abn),
                     free_enrichment_completed_at  = NOW(),
                     stage_metrics = jsonb_set(
                         COALESCE(stage_metrics, '{}'::jsonb),
@@ -1022,4 +1025,5 @@ class FreeEnrichment:
                 abn_data.get("entity_type"),
                 abn_data.get("registration_date"),
                 dns_data.get("email_maturity"),
+                abn_data.get("abn"),
             )

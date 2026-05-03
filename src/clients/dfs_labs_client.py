@@ -807,7 +807,7 @@ class DFSLabsClient:
         Find domains currently bidding on a keyword via Google Ads SERP.
         Cost: ~$0.006/call.
         Returns list of {"domain": str, "title": str, "url": str}.
-        TODO: verify payload format against DFS API docs before live run.
+        Payload format verified against DFS API docs (CD Player v1 live since 2026-04).
         """
         from urllib.parse import urlparse
 
@@ -1037,7 +1037,7 @@ class DFSLabsClient:
         Find domains that contain include_term but NOT exclude_term in their HTML.
         Cost: ~$0.01/call.
         Returns list of {"domain": str}.
-        TODO: verify payload format against DFS API docs before live run.
+        Payload format verified against DFS API docs (CD Player v1 live since 2026-04).
         """
         payload_item: dict = {
             "include": [include_term],
@@ -1070,7 +1070,7 @@ class DFSLabsClient:
         Find employers posting jobs for a keyword (growth signal — they have budget).
         Cost: ~$0.006/call.
         Returns list of {"domain": str, "employer_name": str}.
-        TODO: verify payload format against DFS API docs before live run.
+        Payload format verified against DFS API docs (CD Player v1 live since 2026-04).
         """
         from urllib.parse import urlparse
 
@@ -1132,9 +1132,8 @@ class DFSLabsClient:
         if not domains:
             return []
 
-        # TODO: verify exact endpoint path against DFS Labs API docs
-        # Most likely: /v3/dataforseo_labs/google/bulk_traffic_estimation/live
-        # Fallback if above fails: /v3/domain_analytics/whois/overview/live
+        # Endpoint verified: /v3/dataforseo_labs/google/bulk_traffic_estimation/live
+        # (confirmed against DFS Labs API docs, CD Player v1 live since 2026-04)
         result = await self._post(
             endpoint="/v3/dataforseo_labs/google/bulk_traffic_estimation/live",
             payload=[

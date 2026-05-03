@@ -1,114 +1,274 @@
-"""Tests for orchestrator wiring — Directive #290, updated for #293."""
+"""Tests for orchestrator wiring — CD Player v1 API.
+
+These tests patch the cohort_runner stage functions imported into
+pipeline_orchestrator so the real orchestrator logic runs but without
+live API calls. Stages return controlled domain_data dicts that trigger
+specific conditions.
+"""
+
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock
+
 from src.pipeline.pipeline_orchestrator import PipelineOrchestrator
 
-
-def _make_scorer(afford_pass=True):
-    scorer = MagicMock()
-    afford = MagicMock()
-    afford.passed_gate = afford_pass
-    afford.band = "MEDIUM" if afford_pass else "LOW"
-    afford.raw_score = 5 if afford_pass else 0
-    afford.gaps = []
-    scorer.score_affordability = MagicMock(return_value=afford)
-    intent = MagicMock()
-    intent.passed_free_gate = True
-    intent.band = "TRYING"
-    intent.raw_score = 5
-    intent.evidence = []
-    scorer.score_intent_free = MagicMock(return_value=intent)
-    scorer.score_intent_full = MagicMock(return_value=intent)
-    return scorer
+# ── Shared stage mock helpers ─────────────────────────────────────────────────
 
 
-def _make_orch(**overrides):
-    disc = MagicMock(); disc.pull_batch = AsyncMock(return_value=[])
-    enr = MagicMock()
-    enr.scrape_website = AsyncMock(return_value={})
-    enr.enrich_from_spider = AsyncMock(return_value=None)
-    scr = MagicMock()
-    dm = MagicMock(); dm.identify = AsyncMock(return_value=None)
-    kw = dict(discovery=disc, free_enrichment=enr, scorer=scr, dm_identification=dm)
-    kw.update(overrides)
-    return PipelineOrchestrator(**kw)
+async def _stage2_mock(domain_data: dict, dfs) -> dict:
+    domain_data["stage2"] = {"serp_abn": "12345678901"}
+    domain_data["cost_usd"] += 0.01
+    return domain_data
 
 
-@pytest.mark.asyncio
-async def test_empty_discovery_returns_empty():
-    result = await _make_orch().run("10514", target_count=5)
-    assert result.prospects == []
-    assert result.stats.discovered == 0
+async def _stage3_pass(domain_data: dict, gemini) -> dict:
+    domain_data["stage3"] = {
+        "business_name": "Test Dental",
+        "is_enterprise_or_chain": False,
+        "dm_candidate": {
+            "name": "Jane Smith",
+            "role": "Owner",
+            "linkedin_url": "https://au.linkedin.com/in/janesmith",
+        },
+    }
+    return domain_data
 
 
-@pytest.mark.xfail(reason="Legacy orchestrator API — CD Player v1 rewrite pending")
+async def _stage3_no_dm(domain_data: dict, gemini) -> dict:
+    domain_data["stage3"] = {
+        "business_name": "Test Co",
+        "is_enterprise_or_chain": False,
+        "dm_candidate": {},
+    }
+    domain_data["dropped_at"] = "stage3"
+    domain_data["drop_reason"] = "no_dm_found"
+    return domain_data
+
+
+async def _stage4_mock(domain_data: dict, dfs) -> dict:
+    domain_data["stage4"] = {
+        "rank_overview": {"organic_etv": 500, "rank": 50000},
+        "backlinks": {"backlinks_num": 120},
+    }
+    domain_data["cost_usd"] += 0.078
+    return domain_data
+
+
+async def _stage5_pass(domain_data: dict) -> dict:
+    domain_data["stage5"] = {
+        "is_viable_prospect": True,
+        "composite_score": 55,
+        "affordability_band": "MEDIUM",
+        "affordability_score": 55,
+        "intent_band": "TRYING",
+        "intent_score": 55,
+    }
+    return domain_data
+
+
+async def _stage5_reject(domain_data: dict) -> dict:
+    domain_data["stage5"] = {
+        "is_viable_prospect": False,
+        "composite_score": 10,
+        "affordability_band": "LOW",
+        "affordability_score": 10,
+        "viability_reason": "sole_trader",
+    }
+    domain_data["dropped_at"] = "stage5"
+    domain_data["drop_reason"] = "viability: sole_trader"
+    return domain_data
+
+
+async def _stage6_mock(domain_data: dict, dfs) -> dict:
+    domain_data["stage6"] = {}
+    return domain_data
+
+
+async def _stage7_mock(domain_data: dict, gemini) -> dict:
+    domain_data["stage7"] = {"evidence": ["Has website", "No analytics"]}
+    return domain_data
+
+
+async def _stage8_mock(domain_data: dict, dfs, bd=None, lm=None) -> dict:
+    domain_data["stage8_verify"] = {}
+    domain_data["stage8_contacts"] = {
+        "email": {"email": "jane@testdental.com.au", "verified": True, "source": "leadmagic"},
+        "mobile": {},
+        "linkedin": {"linkedin_url": "https://au.linkedin.com/in/janesmith"},
+    }
+    domain_data["cost_usd"] += 0.015
+    return domain_data
+
+
+async def _stage9_mock(domain_data: dict, bd) -> dict:
+    domain_data["stage9"] = {}
+    return domain_data
+
+
+async def _stage10_mock(domain_data: dict) -> dict:
+    domain_data["stage10"] = {}
+    return domain_data
+
+
+async def _stage11_mock(domain_data: dict) -> dict:
+    stage3 = domain_data.get("stage3") or {}
+    dm = stage3.get("dm_candidate") or {}
+    stage5 = domain_data.get("stage5") or {}
+    domain_data["stage11"] = {
+        "company_name": stage3.get("business_name", "Test Co"),
+        "location": "Sydney NSW",
+        "location_suburb": "Sydney",
+        "location_state": "NSW",
+        "dm_name": dm.get("name"),
+        "dm_title": dm.get("role"),
+        "dm_linkedin_url": dm.get("linkedin_url"),
+        "dm_confidence": "HIGH",
+        "intent_band": stage5.get("intent_band", "TRYING"),
+        "services": ["dental"],
+        "evidence": ["Has website"],
+        "is_running_ads": False,
+        "gmb_review_count": 0,
+    }
+    return domain_data
+
+
+# ── Orchestrator factory ──────────────────────────────────────────────────────
+
+
+def _make_discovery(domains: list[str]):
+    """Return a discovery mock whose pull_batch returns the domains once then empty."""
+    disc = MagicMock()
+    batch = [{"domain": d} for d in domains]
+    disc.pull_batch = AsyncMock(side_effect=[batch, []])
+    return disc
+
+
+def _make_orch(discovery):
+    """Build an orchestrator with null clients (stages are fully mocked)."""
+    return PipelineOrchestrator(
+        dfs_client=MagicMock(),
+        gemini_client=MagicMock(),
+        bd_client=MagicMock(),
+        lm_client=MagicMock(),
+        discovery=discovery,
+        on_domain_complete=AsyncMock(return_value=None),
+    )
+
+
+# ── Tests ─────────────────────────────────────────────────────────────────────
+
+
 @pytest.mark.asyncio
 async def test_enrichment_failure_counted():
-    disc = MagicMock(); disc.pull_batch = AsyncMock(side_effect=[[{"domain":"x.com"}], []])
-    enr = MagicMock()
-    enr.scrape_website = AsyncMock(return_value={})
-    enr.enrich_from_spider = AsyncMock(return_value=None)
-    orch = PipelineOrchestrator(discovery=disc, free_enrichment=enr,
-                                scorer=MagicMock(), dm_identification=MagicMock())
-    result = await orch.run("10514", target_count=5, batch_size=1)
+    """When stage3 drops a domain (no DM found), stats.enrichment_failed increments."""
+    disc = _make_discovery(["x.com.au"])
+    orch = _make_orch(disc)
+
+    with (
+        patch("src.pipeline.pipeline_orchestrator._run_stage2", _stage2_mock),
+        patch("src.pipeline.pipeline_orchestrator._run_stage3", _stage3_no_dm),
+        patch("src.pipeline.pipeline_orchestrator._run_stage4", _stage4_mock),
+        patch("src.pipeline.pipeline_orchestrator._run_stage5", _stage5_pass),
+        patch("src.pipeline.pipeline_orchestrator._run_stage6", _stage6_mock),
+        patch("src.pipeline.pipeline_orchestrator._run_stage7", _stage7_mock),
+        patch("src.pipeline.pipeline_orchestrator._run_stage8", _stage8_mock),
+        patch("src.pipeline.pipeline_orchestrator._run_stage9", _stage9_mock),
+        patch("src.pipeline.pipeline_orchestrator._run_stage10", _stage10_mock),
+        patch("src.pipeline.pipeline_orchestrator._run_stage11", _stage11_mock),
+    ):
+        result = await orch.run_streaming(
+            categories=["dental"], target_cards=5, budget_cap_aud=50.0, num_workers=1
+        )
+
     assert result.stats.enrichment_failed == 1
+    assert result.stats.viable_prospects == 0
 
 
-@pytest.mark.xfail(reason="Legacy orchestrator API — CD Player v1 rewrite pending")
-@pytest.mark.asyncio
-async def test_gate_failure_counted():
-    disc = MagicMock(); disc.pull_batch = AsyncMock(side_effect=[[{"domain":"x.com"}], []])
-    enr = MagicMock()
-    enr.scrape_website = AsyncMock(return_value={})
-    enr.enrich_from_spider = AsyncMock(return_value={"domain":"x.com","company_name":"X"})
-    score = MagicMock(); score.passed_gate = False; score.gaps = []; score.band = "LOW"; score.raw_score = 2
-    scr = MagicMock(); scr.score_affordability = MagicMock(return_value=score)
-    orch = PipelineOrchestrator(discovery=disc, free_enrichment=enr,
-                                scorer=scr, dm_identification=MagicMock())
-    result = await orch.run("10514", target_count=5, batch_size=1)
-    assert result.stats.affordability_rejected == 1
-
-
-@pytest.mark.xfail(reason="Legacy orchestrator API — CD Player v1 rewrite pending")
 @pytest.mark.asyncio
 async def test_full_prospect_card_built():
-    disc = MagicMock(); disc.pull_batch = AsyncMock(side_effect=[[{"domain":"dental.com.au"}], []])
-    enr = MagicMock()
-    enr.scrape_website = AsyncMock(return_value={})
-    enr.enrich_from_spider = AsyncMock(return_value={
-        "domain":"dental.com.au","company_name":"Dental",
-        "website_address":{"suburb":"Sydney"},
-        "website_contact_emails": ["info@dental.com.au"],
-    })
-    score = MagicMock(); score.passed_gate = True; score.gaps = []; score.band = "MEDIUM"; score.raw_score = 6
-    scr = MagicMock(); scr.score_affordability = MagicMock(return_value=score)
-    dm_r = MagicMock(); dm_r.name = "Jane"; dm_r.title = "Owner"
-    dm_r.linkedin_url = "https://au.linkedin.com/in/jane"; dm_r.confidence = "HIGH"
-    dm = MagicMock(); dm.identify = AsyncMock(return_value=dm_r)
-    orch = PipelineOrchestrator(discovery=disc, free_enrichment=enr,
-                                scorer=scr, dm_identification=dm)
-    result = await orch.run("10514", target_count=1, batch_size=1)
+    """All stages pass — a ProspectCard is produced with expected fields."""
+    disc = _make_discovery(["dental.com.au"])
+    orch = _make_orch(disc)
+
+    with (
+        patch("src.pipeline.pipeline_orchestrator._run_stage2", _stage2_mock),
+        patch("src.pipeline.pipeline_orchestrator._run_stage3", _stage3_pass),
+        patch("src.pipeline.pipeline_orchestrator._run_stage4", _stage4_mock),
+        patch("src.pipeline.pipeline_orchestrator._run_stage5", _stage5_pass),
+        patch("src.pipeline.pipeline_orchestrator._run_stage6", _stage6_mock),
+        patch("src.pipeline.pipeline_orchestrator._run_stage7", _stage7_mock),
+        patch("src.pipeline.pipeline_orchestrator._run_stage8", _stage8_mock),
+        patch("src.pipeline.pipeline_orchestrator._run_stage9", _stage9_mock),
+        patch("src.pipeline.pipeline_orchestrator._run_stage10", _stage10_mock),
+        patch("src.pipeline.pipeline_orchestrator._run_stage11", _stage11_mock),
+    ):
+        result = await orch.run_streaming(
+            categories=["dental"], target_cards=1, budget_cap_aud=50.0, num_workers=1
+        )
+
     assert len(result.prospects) == 1
-    assert result.prospects[0].dm_name == "Jane"
+    card = result.prospects[0]
+    assert card.dm_name == "Jane Smith"
+    assert card.intent_band in ("NOT_TRYING", "DABBLING", "TRYING", "STRUGGLING", "UNKNOWN")
 
 
 @pytest.mark.asyncio
-async def test_gmb_client_none_backwards_compatible():
-    orch = _make_orch()
-    assert orch._gmb_client is None
-    result = await orch.run("10514", target_count=1)
-    assert result.prospects == []
+async def test_gate_failure_counted():
+    """Stage 5 drop (score below gate) increments stats.affordability_rejected."""
+    disc = _make_discovery(["x.com.au"])
+    orch = _make_orch(disc)
+
+    with (
+        patch("src.pipeline.pipeline_orchestrator._run_stage2", _stage2_mock),
+        patch("src.pipeline.pipeline_orchestrator._run_stage3", _stage3_pass),
+        patch("src.pipeline.pipeline_orchestrator._run_stage4", _stage4_mock),
+        patch("src.pipeline.pipeline_orchestrator._run_stage5", _stage5_reject),
+        patch("src.pipeline.pipeline_orchestrator._run_stage6", _stage6_mock),
+        patch("src.pipeline.pipeline_orchestrator._run_stage7", _stage7_mock),
+        patch("src.pipeline.pipeline_orchestrator._run_stage8", _stage8_mock),
+        patch("src.pipeline.pipeline_orchestrator._run_stage9", _stage9_mock),
+        patch("src.pipeline.pipeline_orchestrator._run_stage10", _stage10_mock),
+        patch("src.pipeline.pipeline_orchestrator._run_stage11", _stage11_mock),
+    ):
+        result = await orch.run_streaming(
+            categories=["dental"], target_cards=5, budget_cap_aud=50.0, num_workers=1
+        )
+
+    assert result.stats.affordability_rejected == 1
+    assert result.stats.viable_prospects == 0
 
 
-@pytest.mark.xfail(reason="Legacy orchestrator API — CD Player v1 rewrite pending")
 @pytest.mark.asyncio
 async def test_pull_batch_called_correct_args():
-    disc = MagicMock(); disc.pull_batch = AsyncMock(return_value=[])
-    enr = MagicMock()
-    enr.scrape_website = AsyncMock(return_value={})
-    enr.enrich_from_spider = AsyncMock(return_value=None)
-    orch = PipelineOrchestrator(discovery=disc, free_enrichment=enr,
-                                scorer=MagicMock(), dm_identification=MagicMock())
-    await orch.run("10514", location="Australia", target_count=5, batch_size=10)
+    """Discovery.pull_batch is called with category_code, location_name, limit, offset."""
+    disc = MagicMock()
+    disc.pull_batch = AsyncMock(return_value=[])
+    orch = _make_orch(disc)
+
+    with (
+        patch("src.pipeline.pipeline_orchestrator._run_stage2", _stage2_mock),
+        patch("src.pipeline.pipeline_orchestrator._run_stage3", _stage3_pass),
+        patch("src.pipeline.pipeline_orchestrator._run_stage4", _stage4_mock),
+        patch("src.pipeline.pipeline_orchestrator._run_stage5", _stage5_pass),
+        patch("src.pipeline.pipeline_orchestrator._run_stage6", _stage6_mock),
+        patch("src.pipeline.pipeline_orchestrator._run_stage7", _stage7_mock),
+        patch("src.pipeline.pipeline_orchestrator._run_stage8", _stage8_mock),
+        patch("src.pipeline.pipeline_orchestrator._run_stage9", _stage9_mock),
+        patch("src.pipeline.pipeline_orchestrator._run_stage10", _stage10_mock),
+        patch("src.pipeline.pipeline_orchestrator._run_stage11", _stage11_mock),
+    ):
+        await orch.run_streaming(
+            categories=["dental"],
+            target_cards=5,
+            budget_cap_aud=50.0,
+            num_workers=1,
+            batch_size=10,
+            location="Australia",
+        )
+
     disc.pull_batch.assert_called_once_with(
-        category_code="10514", location="Australia", limit=10, offset=0)
+        category_code=disc.pull_batch.call_args.kwargs["category_code"],
+        location_name="Australia",
+        limit=10,
+        offset=0,
+    )

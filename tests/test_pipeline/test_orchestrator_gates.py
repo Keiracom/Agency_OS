@@ -5,17 +5,17 @@ pipeline_orchestrator so the real orchestrator logic runs but without
 live API calls. Stages return controlled domain_data dicts that trigger
 specific gate conditions.
 """
-import pytest
+
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
 from src.pipeline.pipeline_orchestrator import (
     PipelineOrchestrator,
-    PipelineResult,
-    PipelineStats,
-    ProspectCard,
 )
 
-
 # ── Shared stage mock helpers ─────────────────────────────────────────────────
+
 
 def _stage_pass(domain_data: dict) -> dict:
     """Return domain_data unchanged (stage succeeded, no drop)."""
@@ -149,6 +149,7 @@ async def _stage11_mock(domain_data: dict) -> dict:
 
 # ── Discovery mock factory ────────────────────────────────────────────────────
 
+
 def _make_discovery(domains: list[str]):
     """Return a discovery mock whose pull_batch returns the domains once then empty."""
     disc = MagicMock()
@@ -203,9 +204,11 @@ async def test_affordability_rejected_counted():
     disc = _make_discovery(["dental.com.au"])
     orch = _make_orch(disc)
 
-    stage_mocks = _patch_stages(overrides={
-        "src.pipeline.pipeline_orchestrator._run_stage5": _stage5_reject,
-    })
+    _patch_stages(
+        overrides={
+            "src.pipeline.pipeline_orchestrator._run_stage5": _stage5_reject,
+        }
+    )
     with (
         patch("src.pipeline.pipeline_orchestrator._run_stage2", _stage2_mock),
         patch("src.pipeline.pipeline_orchestrator._run_stage3", _stage3_pass),

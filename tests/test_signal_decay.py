@@ -75,12 +75,12 @@ def _stage_minus1_eligible(last_rescored_at: datetime | None) -> bool:
 
 
 def _stage_passing_eligible(pipeline_stage: int, scored_at: datetime | None) -> bool:
-    """Mirrors the rescore_engine stage>=4 condition."""
+    """Mirrors the rescore_engine stage>=4 condition (aligned to 30d decay band)."""
     if pipeline_stage < 4:
         return False
     if scored_at is None:
-        return False
-    return scored_at < datetime.now(UTC) - timedelta(days=90)
+        return True  # NULL scored_at = never scored → eligible
+    return scored_at < datetime.now(UTC) - timedelta(days=30)
 
 
 def test_rescore_reject_null_last_rescored_eligible():
@@ -101,14 +101,19 @@ def test_rescore_reject_recent_last_rescored_not_eligible():
 
 
 def test_rescore_passing_lead_stale_score_eligible():
-    """pipeline_stage=5 with scored_at 100 days ago → eligible (new rule)."""
-    scored_at = datetime.now(UTC) - timedelta(days=100)
+    """pipeline_stage=5 with scored_at 35 days ago → eligible (aligned to 30d decay band)."""
+    scored_at = datetime.now(UTC) - timedelta(days=35)
     assert _stage_passing_eligible(5, scored_at) is True
 
 
+def test_rescore_passing_lead_null_scored_at_eligible():
+    """pipeline_stage=5 with scored_at NULL → eligible (never scored)."""
+    assert _stage_passing_eligible(5, None) is True
+
+
 def test_rescore_passing_lead_recent_score_not_eligible():
-    """pipeline_stage=5 with scored_at 30 days ago → NOT eligible."""
-    scored_at = datetime.now(UTC) - timedelta(days=30)
+    """pipeline_stage=5 with scored_at 10 days ago → NOT eligible (within 30d cooldown)."""
+    scored_at = datetime.now(UTC) - timedelta(days=10)
     assert _stage_passing_eligible(5, scored_at) is False
 
 
@@ -122,3 +127,19 @@ def test_rescore_passing_lead_stage3_not_eligible():
     """pipeline_stage=3 (below gate) → NOT eligible regardless of age."""
     scored_at = datetime.now(UTC) - timedelta(days=200)
     assert _stage_passing_eligible(3, scored_at) is False
+
+
+# ─── decay wiring verification ──────────────────────────────────────────────
+
+
+def test_rescore_row_applies_decay():
+    """Verify _rescore_row calls score_decay_factor (wiring check via source inspection)."""
+    import inspect
+
+    from src.pipeline.rescore_engine import RescoreEngine
+
+    source = inspect.getsource(RescoreEngine._rescore_row)
+    assert "score_decay_factor" in source, (
+        "_rescore_row must call score_decay_factor to apply time-weighted decay"
+    )
+    assert "decay" in source, "_rescore_row must use decay multiplier"

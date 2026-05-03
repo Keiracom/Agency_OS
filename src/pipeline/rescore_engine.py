@@ -141,7 +141,7 @@ class RescoreEngine:
                 OR
                 (
                     pipeline_stage >= 4
-                    AND scored_at < NOW() - INTERVAL '90 days'
+                    AND (scored_at IS NULL OR scored_at < NOW() - INTERVAL '30 days')
                 )
             )
             ORDER BY updated_at ASC
@@ -170,9 +170,14 @@ class RescoreEngine:
         gmb_rating = float(row["gmb_rating"] or 0)
         gmb_reviews = int(row["gmb_review_count"] or 0)
 
+        from src.pipeline.stage_4_scoring import score_decay_factor
+
         budget_score = _calc_budget_score(paid_kw, paid_etv, organic_etv, gmb_rating=gmb_rating)
         pain_score = _calc_pain_score(gmb_rating, gmb_reviews, gap_count=0)
-        combined = budget_score + pain_score
+        raw_combined = budget_score + pain_score
+        # Apply time-weighted decay: stale scores are penalised (gap #4)
+        decay = score_decay_factor(row.get("scored_at"))
+        combined = int(raw_combined * decay)
 
         if combined >= self._threshold:
             return "promoted"

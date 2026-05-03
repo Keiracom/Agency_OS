@@ -15,6 +15,7 @@ from dataclasses import dataclass, field
 import asyncpg
 
 from src.enrichment.signal_config import SignalConfigRepository
+from src.pipeline.conversion_feedback import get_category_conversion_boosts
 from src.pipeline.stage_4_scoring import _calc_budget_score, _calc_pain_score
 
 logger = logging.getLogger(__name__)
@@ -67,12 +68,20 @@ class RescoreEngine:
 
         rows = await self._fetch_rejects(vertical, batch_size)
 
+        # Batch-fetch conversion boosts for all unique categories (Fix #1 — N+1 elimination)
+        unique_categories = list(
+            {row["gmb_category"] for row in rows if row["gmb_category"]}
+        )
+        conversion_boost_cache = await get_category_conversion_boosts(
+            self.conn, unique_categories
+        )
+
         promoted = 0
         still_rejected = 0
         skipped = 0
 
         for row in rows:
-            outcome = await self._rescore_row(row)
+            outcome = await self._rescore_row(row, conversion_boost_cache)
 
             if outcome == "promoted":
                 if not dry_run:
@@ -151,9 +160,18 @@ class RescoreEngine:
         )
         return list(rows)
 
-    async def _rescore_row(self, row: asyncpg.Record) -> str:
+    async def _rescore_row(
+        self,
+        row: asyncpg.Record,
+        conversion_boost_cache: dict[str, int] | None = None,
+    ) -> str:
         """
         Evaluate a single reject row against current thresholds.
+
+        Args:
+            row: A business_universe row from _fetch_rejects.
+            conversion_boost_cache: Pre-fetched category→boost dict (batch optimisation).
+                                    If None or category missing, defaults to 0 (fail-open).
 
         Returns:
             "promoted"       — score >= threshold, ready for re-enrichment
@@ -179,10 +197,9 @@ class RescoreEngine:
         decay = score_decay_factor(row.get("scored_at"))
         combined = int(raw_combined * decay)
 
-        # Gap #7: conversion feedback boost for high-performing categories
-        from src.pipeline.conversion_feedback import get_category_conversion_boost
-
-        boost = await get_category_conversion_boost(self.conn, row.get("gmb_category"))
+        # Gap #7: conversion feedback boost — dict lookup against pre-fetched batch cache
+        gmb_category = row.get("gmb_category")
+        boost = (conversion_boost_cache or {}).get(gmb_category, 0) if gmb_category else 0
         combined = combined + boost
 
         if combined >= self._threshold:

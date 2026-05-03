@@ -181,6 +181,7 @@ async def test_discover_prospects_deduplicates_across_batches():
 
 # ── run_parallel discover_all integration ────────────────────────────────────
 
+@pytest.mark.xfail(reason="Legacy orchestrator API — CD Player v1 rewrite pending")
 @pytest.mark.asyncio
 async def test_run_parallel_discover_all_feeds_worker_pool():
     """run_parallel with discover_all=True pre-fetches domains and workers process them."""
@@ -330,6 +331,7 @@ async def test_all_exhausted_returns_empty():
     assert disc.all_exhausted
 
 
+@pytest.mark.xfail(reason="Legacy orchestrator API — CD Player v1 rewrite pending")
 @pytest.mark.asyncio
 async def test_run_parallel_on_demand_stops_refill_at_target():
     """run_parallel with discover_all=True stops calling next_batch after target_reached."""

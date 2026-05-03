@@ -78,8 +78,7 @@ async def backfill_domain_from_gmb(pool: asyncpg.pool.Pool) -> int:
                   SET domain = gmb_domain,
                       updated_at = NOW()
                 WHERE domain IS NULL
-                  AND gmb_domain IS NOT NULL
-            RETURNING id"""
+                  AND gmb_domain IS NOT NULL"""
         )
     try:
         return int(result.split()[-1])

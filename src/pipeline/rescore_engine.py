@@ -179,6 +179,12 @@ class RescoreEngine:
         decay = score_decay_factor(row.get("scored_at"))
         combined = int(raw_combined * decay)
 
+        # Gap #7: conversion feedback boost for high-performing categories
+        from src.pipeline.conversion_feedback import get_category_conversion_boost
+
+        boost = await get_category_conversion_boost(self.conn, row.get("gmb_category"))
+        combined = combined + boost
+
         if combined >= self._threshold:
             return "promoted"
         return "still_rejected"

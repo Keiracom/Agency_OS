@@ -75,8 +75,8 @@ async def test_aggregates_actions_across_clients():
     assert summary["nurture"] == 1
     assert summary["skipped"] == 1
     assert summary["escalated"] == 1
-    # Two INSERTs (one per schedule_next+nurture)
-    assert db.execute.await_count == 2
+    # Two INSERTs (one per schedule_next+nurture) + two BU mark_active calls
+    assert db.execute.await_count == 4
 
 
 @pytest.mark.asyncio

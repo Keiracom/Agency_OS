@@ -117,6 +117,18 @@ async def test_stage_9_verification_gate():
     with (
         patch("asyncpg.create_pool", new_callable=AsyncMock) as mock_create_pool,
         patch(
+            "src.orchestration.flows.stage_9_10_flow.select_bdms",
+            new=AsyncMock(return_value=["id1"]),
+        ),
+        patch(
+            "src.orchestration.flows.stage_9_10_flow.run_stage_9",
+            new=AsyncMock(return_value={"cost_total_usd": 0.05}),
+        ),
+        patch(
+            "src.orchestration.flows.stage_9_10_flow.verify_stage_9",
+            new=AsyncMock(return_value=0),  # 0 VRs < 1 selected → RuntimeError
+        ),
+        patch(
             "src.orchestration.flows.stage_9_10_flow.Stage9VulnerabilityEnrichment"
         ) as mock_s9_cls,
         patch(

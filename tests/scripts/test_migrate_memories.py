@@ -122,18 +122,18 @@ def test_field_mapping_type_to_source_type():
 
 
 def test_field_mapping_metadata_to_typed_metadata():
-    """_map_row must copy metadata → typed_metadata as dict."""
+    """_map_row must copy metadata → typed_metadata as dict (may include provenance keys)."""
     row = _legacy_row(metadata={"directive": 42})
     mapped = migrate._map_row(row)
-    assert mapped["typed_metadata"] == {"directive": 42}
+    assert {"directive": 42}.items() <= mapped["typed_metadata"].items()
     assert "metadata" not in mapped
 
 
 def test_field_mapping_string_metadata_parsed():
-    """_map_row must JSON-parse string metadata."""
+    """_map_row must JSON-parse string metadata (may include provenance keys)."""
     row = _legacy_row(metadata='{"foo": "bar"}')
     mapped = migrate._map_row(row)
-    assert mapped["typed_metadata"] == {"foo": "bar"}
+    assert {"foo": "bar"}.items() <= mapped["typed_metadata"].items()
 
 
 def test_field_mapping_callsign_fixed():

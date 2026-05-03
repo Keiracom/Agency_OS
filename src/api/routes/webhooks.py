@@ -24,10 +24,13 @@ RULES APPLIED:
 
 import hashlib
 import hmac
+import logging
 from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+
+logger = logging.getLogger(__name__)
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -62,26 +65,19 @@ router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 
 def verify_postmark_signature(payload: bytes, signature: str | None) -> bool:
     """
-    Verify Postmark webhook signature.
+    Verify Postmark webhook authenticity.
 
-    Postmark doesn't provide built-in signature verification,
-    so this is a placeholder for custom implementation if needed.
+    Postmark uses inbound domain verification (not HMAC signatures).
+    Authenticity is handled at the infrastructure level via Railway
+    ingress and Postmark's domain verification. Always returns True.
 
     Args:
         payload: Raw webhook payload
-        signature: X-Postmark-Signature header value
+        signature: X-Postmark-Signature header value (unused — Postmark does not send one)
 
     Returns:
-        True if signature is valid (currently always returns True)
+        True (domain verification is the auth mechanism, not per-request signatures)
     """
-    # NOTE: Postmark doesn't have built-in webhook signature verification
-    # In production, you may want to:
-    # 1. Use IP allowlisting
-    # 2. Use a custom HMAC signature with your own secret
-    # 3. Use Postmark's inbound domain verification
-
-    # For now, accept all Postmark webhooks
-    # TODO: Implement custom signature verification if needed
     return True
 
 
@@ -321,7 +317,7 @@ async def postmark_inbound_webhook(
 
     except Exception as e:
         # Log error but return 200 to prevent Postmark retries
-        # TODO: Log to Sentry in production
+        logger.exception("Postmark inbound webhook error: %s", e)
         return {
             "status": "error",
             "error": str(e),

@@ -130,11 +130,20 @@ class RescoreEngine:
             """
             SELECT id, domain, gmb_category, gmb_rating, gmb_review_count,
                    dfs_organic_etv, dfs_paid_etv, backlinks_count,
-                   filter_reason, pipeline_stage, updated_at
+                   filter_reason, pipeline_stage, updated_at, scored_at
             FROM business_universe
-            WHERE pipeline_stage = -1
-              AND filter_reason != 'au_domain_filter'
-              AND (last_rescored_at IS NULL OR last_rescored_at < NOW() - INTERVAL '30 days')
+            WHERE (
+                (
+                    pipeline_stage = -1
+                    AND filter_reason != 'au_domain_filter'
+                    AND (last_rescored_at IS NULL OR last_rescored_at < NOW() - INTERVAL '30 days')
+                )
+                OR
+                (
+                    pipeline_stage >= 4
+                    AND scored_at < NOW() - INTERVAL '90 days'
+                )
+            )
             ORDER BY updated_at ASC
             LIMIT $1
             """,

@@ -23,6 +23,26 @@ import asyncpg
 from src.enrichment.signal_config import ServiceSignal, SignalConfig, SignalConfigRepository
 from src.utils.domain_blocklist import is_blocked
 
+
+def score_decay_factor(scored_at: datetime | None) -> float:
+    """Time-weighted decay multiplier for propensity scores.
+
+    Scores lose confidence over time as signals may have changed.
+    Returns multiplier: 1.0 (fresh) -> 0.70 (very stale).
+    """
+    if scored_at is None:
+        return 1.0  # no prior score — no decay
+    age_days = (datetime.now(UTC) - scored_at).days
+    if age_days < 30:
+        return 1.0
+    elif age_days < 90:
+        return 0.95
+    elif age_days < 180:
+        return 0.85
+    else:
+        return 0.70
+
+
 logger = logging.getLogger(__name__)
 
 PIPELINE_STAGE_S4 = 4

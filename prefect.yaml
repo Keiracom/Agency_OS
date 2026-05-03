@@ -463,7 +463,7 @@ deployments:
   # safety review confirms AUD 0 budget enforcement at scale.
   - name: bu-closed-loop-flow
     version: "1.0.0"
-    paused: true  # PAUSED — see unpause criteria above
+    paused: false  # gap #1 — S3 ratification complete (commit 711d38a6), unpause criteria met
     tags: [bu-closed-loop, backlog-driver, free-mode, safety-net]
     description: "BU Closed-Loop S2 backlog driver — daily 04:00 UTC stuck-row sweep with age-tiered cadence."
     entrypoint: src/orchestration/flows/bu_closed_loop_flow.py:bu_closed_loop_flow
@@ -479,7 +479,7 @@ deployments:
     schedules:
       - cron: "0 4 * * *"
         timezone: UTC
-        active: false  # Inactive until S3 ratification
+        active: true  # gap #1 — activated, S3 ratification complete
 
 # Environment variables reference
 # These should be set in Railway/environment, not hardcoded here

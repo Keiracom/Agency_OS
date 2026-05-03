@@ -62,6 +62,30 @@ async def _open_pool() -> asyncpg.pool.Pool:
     )
 
 
+# gap #11 — domain backfill from gmb_domain to unblock promote_stage_0_rows
+@task(name="free-enrichment-backfill-domain", retries=1, cache_policy=NO_CACHE)
+async def backfill_domain_from_gmb(pool: asyncpg.pool.Pool) -> int:
+    """Backfill domain from gmb_domain for BU rows that have gmb_domain set
+    but domain NULL. pool_population_flow sets gmb_domain but not domain, so
+    promote_stage_0_rows (which gates on domain IS NOT NULL) silently skips
+    those rows. Running this first unlocks ~5022 stuck rows.
+
+    Idempotent — WHERE filter ensures rows already backfilled are not touched.
+    Returns the number of rows updated."""
+    async with pool.acquire() as conn:
+        result = await conn.execute(
+            """UPDATE business_universe
+                  SET domain = gmb_domain,
+                      updated_at = NOW()
+                WHERE domain IS NULL
+                  AND gmb_domain IS NOT NULL"""
+        )
+    try:
+        return int(result.split()[-1])
+    except (ValueError, IndexError):
+        return 0
+
+
 @task(name="free-enrichment-promote-stage-0", retries=1, cache_policy=NO_CACHE)
 async def promote_stage_0_rows(pool: asyncpg.pool.Pool) -> int:
     """Promote BU rows whose pipeline_stage is NULL or 0 to pipeline_stage=1
@@ -116,11 +140,17 @@ async def free_enrichment_flow(
         "run_start_ts": run_start,
         "limit": limit,
         "promote_stage_0": promote_stage_0,
+        "backfilled": 0,
         "promoted": 0,
         "enrichment": {},
     }
 
     try:
+        # gap #11 — backfill domain from gmb_domain before promote gate runs
+        backfilled = await backfill_domain_from_gmb(pool)
+        summary["backfilled"] = backfilled
+        logger.info("free_enrichment_flow: backfilled domain for %d rows from gmb_domain", backfilled)
+
         if promote_stage_0:
             promoted = await promote_stage_0_rows(pool)
             summary["promoted"] = promoted

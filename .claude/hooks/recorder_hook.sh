@@ -21,7 +21,7 @@ PAYLOAD="$(cat || true)"
 # the cwd has one; final fallback "unknown".
 callsign="${CALLSIGN:-}"
 if [[ -z "$callsign" && -r ./IDENTITY.md ]]; then
-    callsign="$(grep -m1 -oE '\[(ATLAS|ELLIOT|AIDEN|ORION|SCOUT)\]' ./IDENTITY.md 2>/dev/null \
+    callsign="$(grep -m1 -oE '\[(ATLAS|ELLIOT|AIDEN|ORION|SCOUT|MAX)\]' ./IDENTITY.md 2>/dev/null \
         | tr -d '[]' | tr '[:upper:]' '[:lower:]')"
 fi
 callsign="${callsign:-unknown}"

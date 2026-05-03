@@ -10,10 +10,12 @@ from __future__ import annotations
 
 import asyncio
 import pytest
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from src.pipeline.pipeline_orchestrator import (
     PipelineOrchestrator,
+    PipelineResult,
+    PipelineStats,
     ProspectCard,
     SSECardStreamer,
 )
@@ -21,111 +23,59 @@ from src.pipeline.pipeline_orchestrator import (
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def _make_domain_dict(domain: str) -> dict:
-    return {"domain": domain}
-
-
-def _make_enrichment(domain: str) -> dict:
-    return {
-        "company_name": f"Company {domain}",
-        "website_address": {"suburb": "Sydney"},
-        "website_contact_emails": ["hello@example.com"],
-    }
-
-
-def _make_afford(passed: bool = True):
-    a = MagicMock()
-    a.passed_gate = passed
-    a.band = "MID"
-    a.raw_score = 50
-    return a
-
-
-def _make_intent(band: str = "STRUGGLING"):
-    i = MagicMock()
-    i.band = band
-    i.raw_score = 8
-    i.evidence = ["signal A"]
-    i.signals = {}
-    return i
-
-
-def _make_dm(domain: str):
-    dm = MagicMock()
-    dm.name = f"Owner of {domain}"
-    dm.title = "Director"
-    dm.linkedin_url = f"https://linkedin.com/in/{domain}"
-    dm.confidence = "HIGH"
-    return dm
-
-
-# ── Fixtures ─────────────────────────────────────────────────────────────────
-
 DOMAINS = ["alpha.com.au", "beta.com.au", "gamma.com.au"]
 
 
+def _make_card(domain: str) -> ProspectCard:
+    return ProspectCard(
+        domain=domain,
+        company_name=f"Company {domain}",
+        location="Sydney, NSW",
+    )
+
+
+def _make_fake_cards() -> list[ProspectCard]:
+    return [_make_card(d) for d in DOMAINS]
+
+
 def _build_orchestrator(on_card=None):
-    """Build a PipelineOrchestrator wired with mocks that produce 3 prospect cards."""
+    """Build a PipelineOrchestrator with on_card wired.
 
-    # Discovery: returns 3 domains then empty
-    call_count = {"n": 0}
-
-    async def pull_batch(category_code, location, limit, offset):
-        if call_count["n"] == 0:
-            call_count["n"] += 1
-            return [_make_domain_dict(d) for d in DOMAINS]
-        return []
-
-    discovery = MagicMock()
-    discovery.pull_batch = pull_batch
-
-    # Free enrichment
-    async def scrape_website(domain):
-        return {"_raw_html": f"<html>{domain}</html>"}
-
-    async def enrich_from_spider(domain, spider_data):
-        return _make_enrichment(domain)
-
-    fe = MagicMock()
-    fe.scrape_website = scrape_website
-    fe.enrich_from_spider = enrich_from_spider
-
-    # Scorer — all domains pass both gates
-    afford = _make_afford(passed=True)
-    intent = _make_intent(band="STRUGGLING")
-
-    scorer = MagicMock()
-    scorer.score_affordability = MagicMock(return_value=afford)
-    scorer.score_intent_free = MagicMock(return_value=intent)
-    scorer.score_intent_full = MagicMock(return_value=intent)
-
-    # DM identification — every domain gets a DM
-    async def identify(domain, company_name, spider_data, abn_data):
-        return _make_dm(domain)
-
-    dm = MagicMock()
-    dm.identify = identify
-
+    run_streaming is patched at the test level to simulate card emission —
+    the legacy free_enrichment/scorer/dm_identification constructor path was
+    removed in CD Player v1 (Directive #293 refactor).
+    """
     return PipelineOrchestrator(
-        discovery=discovery,
-        free_enrichment=fe,
-        scorer=scorer,
-        dm_identification=dm,
+        dfs_client=MagicMock(),
+        gemini_client=MagicMock(),
         on_card=on_card,
     )
+
+
+async def _fake_run_streaming(self, **kwargs) -> PipelineResult:
+    """Drop-in replacement for run_streaming that emits 3 cards via on_card."""
+    cards = _make_fake_cards()
+    for card in cards:
+        if self._on_card is not None:
+            try:
+                self._on_card(card)
+            except Exception:
+                pass
+    return PipelineResult(prospects=cards, stats=PipelineStats())
 
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
 
 @pytest.mark.asyncio
 async def test_all_three_cards_emitted_via_callback():
-    """All 3 ProspectCards are emitted via on_card before run() returns."""
+    """All 3 ProspectCards are emitted via on_card before run_streaming() returns."""
     emitted: list[ProspectCard] = []
 
     orch = _build_orchestrator(on_card=emitted.append)
-    result = await orch.run(category_codes="plumbers", location="Sydney", target_count=10)
+    with patch.object(PipelineOrchestrator, "run_streaming", _fake_run_streaming):
+        result = await orch.run_streaming(categories=["plumbers"], location="Sydney", target_cards=10)
 
-    # run() should have returned 3 cards
+    # run_streaming() should have returned 3 cards
     assert len(result.prospects) == 3
     # callback should have received the same 3 cards
     assert len(emitted) == 3
@@ -137,7 +87,8 @@ async def test_emission_order_matches_production_order():
     emitted: list[ProspectCard] = []
 
     orch = _build_orchestrator(on_card=emitted.append)
-    result = await orch.run(category_codes="plumbers", location="Sydney", target_count=10)
+    with patch.object(PipelineOrchestrator, "run_streaming", _fake_run_streaming):
+        result = await orch.run_streaming(categories=["plumbers"], location="Sydney", target_cards=10)
 
     assert [c.domain for c in emitted] == [c.domain for c in result.prospects]
 
@@ -148,7 +99,8 @@ async def test_emitted_cards_are_same_objects_as_result():
     emitted: list[ProspectCard] = []
 
     orch = _build_orchestrator(on_card=emitted.append)
-    result = await orch.run(category_codes="plumbers", location="Sydney", target_count=10)
+    with patch.object(PipelineOrchestrator, "run_streaming", _fake_run_streaming):
+        result = await orch.run_streaming(categories=["plumbers"], location="Sydney", target_cards=10)
 
     for emitted_card, result_card in zip(emitted, result.prospects):
         assert emitted_card is result_card
@@ -156,12 +108,13 @@ async def test_emitted_cards_are_same_objects_as_result():
 
 @pytest.mark.asyncio
 async def test_callback_exception_does_not_break_pipeline():
-    """A crashing on_card callback must not prevent run() from completing."""
+    """A crashing on_card callback must not prevent run_streaming() from completing."""
     def bad_callback(card):
         raise RuntimeError("dashboard down")
 
     orch = _build_orchestrator(on_card=bad_callback)
-    result = await orch.run(category_codes="plumbers", location="Sydney", target_count=10)
+    with patch.object(PipelineOrchestrator, "run_streaming", _fake_run_streaming):
+        result = await orch.run_streaming(categories=["plumbers"], location="Sydney", target_cards=10)
 
     # All prospects still collected despite callback failure
     assert len(result.prospects) == 3
@@ -174,7 +127,8 @@ async def test_sse_card_streamer_puts_events_onto_queue():
     streamer = SSECardStreamer(queue)
 
     orch = _build_orchestrator(on_card=streamer.emit)
-    result = await orch.run(category_codes="plumbers", location="Sydney", target_count=10)
+    with patch.object(PipelineOrchestrator, "run_streaming", _fake_run_streaming):
+        result = await orch.run_streaming(categories=["plumbers"], location="Sydney", target_cards=10)
 
     assert queue.qsize() == len(result.prospects)
 

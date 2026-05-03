@@ -785,6 +785,7 @@ async def populate_pool_from_icp_task(
         try:
             # gap #8 — track which discovery batch sourced this GMB-discovered row
             import uuid as _uuid_mod
+
             _raw_flow_run_id = _prefect_flow_run.id
             flow_run_id = _raw_flow_run_id if _raw_flow_run_id else str(_uuid_mod.uuid4())
 

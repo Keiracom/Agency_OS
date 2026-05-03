@@ -846,6 +846,8 @@ async def populate_pool_from_icp_task(
                                 :gmb_address, :gmb_city, :gmb_latitude, :gmb_longitude,
                                 NOW(), NOW(), :discovery_batch_id
                             )
+                            -- gap #8 note: discovery_batch_id intentionally NOT in ON CONFLICT
+                            -- update — preserves the first batch that surfaced this row.
                             ON CONFLICT (abn) DO UPDATE SET
                                 gmb_place_id = EXCLUDED.gmb_place_id,
                                 gmb_cid = EXCLUDED.gmb_cid,

@@ -64,6 +64,16 @@
             "timeout": 5
           }
         ]
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/inbox_check_hook.sh",
+            "timeout": 5
+          }
+        ]
       }
     ]
   },

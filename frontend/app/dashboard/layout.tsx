@@ -33,15 +33,24 @@ import {
 } from "@/components/layout/AppShellContext";
 
 const DEMO_COOKIE = "agency_os_demo";
-const DEMO_CLIENT_NAME = "Demo Agency";
+// Use Keiracom's own client record so the demo dashboard surfaces real internal
+// usage data (real BU pool, real campaigns, real CIS scores). Honest framing per
+// pre-revenue rule: this is OUR usage of the product, not a paying client's data.
+const DEMO_CLIENT_NAME = "Keira Communications";
 
 /** Demo-mode bypass — when the agency_os_demo cookie is set the
  *  dashboard renders without a Supabase session. Falls back to a
  *  static stub when the row is unreachable so the demo never fails. */
 async function loadDemoContext(): Promise<{ user: AppShellUser; client: AppShellClient }> {
+  // Stub fallback uses Keiracom's known UUID directly so the dashboard hooks
+  // (which filter by client_id) hit real data even if the clients-table lookup fails.
   let client: AppShellClient = {
-    id: "demo-agency", name: DEMO_CLIENT_NAME, tier: "ignition",
-    creditsRemaining: 1250, pausedAt: null, pauseReason: null,
+    id: "ec9b4f47-8098-4d98-b449-e15308a79e17",
+    name: DEMO_CLIENT_NAME,
+    tier: "ignition",
+    creditsRemaining: 0,
+    pausedAt: null,
+    pauseReason: null,
   };
   try {
     const supabase = await createServerClient();

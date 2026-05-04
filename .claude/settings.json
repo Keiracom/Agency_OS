@@ -9,7 +9,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cd /home/elliotbot/clawd/Agency_OS && CALLSIGN=$(grep -m1 '^callsign:' IDENTITY.md 2>/dev/null | awk '{print $2}' || echo elliot) /home/elliotbot/clawd/venv/bin/python3 scripts/context_compiler.py --callsign ${CALLSIGN:-elliot} --budget 2000",
+            "command": "/home/elliotbot/clawd/venv/bin/python3 scripts/context_compiler.py --budget 2000",
             "timeout": 15
           }
         ]

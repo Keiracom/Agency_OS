@@ -267,14 +267,26 @@ def compile_briefing(callsign: str, budget: int = DEFAULT_BUDGET, raw: bool = Fa
     return briefing
 
 
+def detect_callsign() -> str:
+    """Auto-detect callsign from IDENTITY.md in the repo root."""
+    identity_path = REPO_ROOT / "IDENTITY.md"
+    if identity_path.exists():
+        for line in identity_path.read_text().splitlines():
+            if "CALLSIGN:" in line:
+                # Format: **CALLSIGN:** elliot
+                return line.split("CALLSIGN:")[-1].strip().strip("*").strip()
+    return "elliot"
+
+
 def main():
     parser = argparse.ArgumentParser(description="Context Compiler — scored session briefing")
-    parser.add_argument("--callsign", required=True, help="Agent callsign")
+    parser.add_argument("--callsign", default=None, help="Agent callsign (auto-detected from IDENTITY.md if omitted)")
     parser.add_argument("--budget", type=int, default=DEFAULT_BUDGET, help="Token budget")
     parser.add_argument("--raw", action="store_true", help="Dump scored memories instead of briefing")
     args = parser.parse_args()
 
-    print(compile_briefing(args.callsign, args.budget, args.raw))
+    callsign = args.callsign or detect_callsign()
+    print(compile_briefing(callsign, args.budget, args.raw))
 
 
 if __name__ == "__main__":

@@ -55,15 +55,25 @@ print(t)
 " 2>/dev/null)
 
         if [ -n "$text" ]; then
-            echo "[relay-watcher-${CALLSIGN}] Text from Telegram: ${text:0:80}..."
             sender=$(python3 -c "import json; print(json.load(open('$fpath')).get('sender','unknown'))" 2>/dev/null)
-            # Wait for Claude prompt (❯) before injecting — avoids stuck input
-            for attempt in $(seq 1 30); do
-                last_line=$(tmux capture-pane -t "$TMUX_TARGET" -p 2>/dev/null | grep -c '❯' || true)
-                if [ "$last_line" -gt 0 ]; then
+            # Skip idle echo messages from PEER BOTS ONLY to prevent feedback loops.
+            # Never filter messages from dave, max, or unknown senders.
+            if echo "$sender" | grep -qiP '^(elliotbot|aidenbot|atlasbot|orionbot|scoutbot)$'; then
+                stripped=$(echo "$text" | sed 's/\[[^]]*\]//g' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | tr -s ' ')
+                if [ ${#stripped} -le 40 ] && { [ -z "$stripped" ] || echo "$stripped" | grep -qiP '\b(hold|wait|stand|ack|noted|session\.wrap|concur)\b'; }; then
+                    echo "[relay-watcher-${CALLSIGN}] SKIPPED idle echo from ${sender}: ${text:0:60}"
+                    mv "$fpath" "$PROCESSED/" 2>/dev/null
+                    continue
+                fi
+            fi
+            echo "[relay-watcher-${CALLSIGN}] Text from Telegram: ${text:0:80}..."
+            # Wait for Claude prompt (❯) on the LAST line before injecting
+            for attempt in $(seq 1 60); do
+                prompt_ready=$(tmux capture-pane -t "$TMUX_TARGET" -p 2>/dev/null | tail -5 | grep -c '❯' || true)
+                if [ "$prompt_ready" -gt 0 ]; then
                     break
                 fi
-                sleep 1
+                sleep 2
             done
             tmux send-keys -t "$TMUX_TARGET" "[TG-${sender^^}] $text"
             sleep 0.5
@@ -76,9 +86,9 @@ print(t)
         sender=$(python3 -c "import json; print(json.load(open('$fpath')).get('sender','unknown'))" 2>/dev/null)
 
         echo "[relay-watcher-${CALLSIGN}] Photo from Telegram: $photo_path"
-        for attempt in $(seq 1 30); do
-            last_line=$(tmux capture-pane -t "$TMUX_TARGET" -p 2>/dev/null | grep -c '❯' || true)
-            [ "$last_line" -gt 0 ] && break; sleep 1
+        for attempt in $(seq 1 60); do
+            prompt_ready=$(tmux capture-pane -t "$TMUX_TARGET" -p 2>/dev/null | tail -5 | grep -c '❯' || true)
+            [ "$prompt_ready" -gt 0 ] && break; sleep 2
         done
         tmux send-keys -t "$TMUX_TARGET" "[TG-${sender^^}] Dave sent a screenshot: $photo_path ${caption:+— $caption}"
         sleep 0.5; tmux send-keys -t "$TMUX_TARGET" C-m
@@ -89,9 +99,9 @@ print(t)
         sender=$(python3 -c "import json; print(json.load(open('$fpath')).get('sender','unknown'))" 2>/dev/null)
 
         echo "[relay-watcher-${CALLSIGN}] Document from Telegram: $file_name"
-        for attempt in $(seq 1 30); do
-            last_line=$(tmux capture-pane -t "$TMUX_TARGET" -p 2>/dev/null | grep -c '❯' || true)
-            [ "$last_line" -gt 0 ] && break; sleep 1
+        for attempt in $(seq 1 60); do
+            prompt_ready=$(tmux capture-pane -t "$TMUX_TARGET" -p 2>/dev/null | tail -5 | grep -c '❯' || true)
+            [ "$prompt_ready" -gt 0 ] && break; sleep 2
         done
         tmux send-keys -t "$TMUX_TARGET" "[TG-${sender^^}] Dave sent a file: $file_path ($file_name)"
         sleep 0.5; tmux send-keys -t "$TMUX_TARGET" C-m

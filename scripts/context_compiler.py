@@ -63,16 +63,19 @@ def query_memories(callsign: str) -> list[dict]:
     headers = {"apikey": key, "Authorization": f"Bearer {key}"}
 
     # Get memories for this callsign + shared (dave instructions apply to all)
-    resp = requests.get(
-        f"{url}/rest/v1/agent_memories"
-        f"?or=(callsign.eq.{callsign},callsign.eq.dave)"
-        f"&state=eq.confirmed"
-        f"&order=created_at.desc"
-        f"&limit=500"
-        f"&select=source_type,content,typed_metadata,created_at,callsign",
-        headers=headers,
-        timeout=10,
-    )
+    try:
+        resp = requests.get(
+            f"{url}/rest/v1/agent_memories"
+            f"?or=(callsign.eq.{callsign},callsign.eq.dave)"
+            f"&state=eq.confirmed"
+            f"&order=created_at.desc"
+            f"&limit=500"
+            f"&select=source_type,content,typed_metadata,created_at,callsign",
+            headers=headers,
+            timeout=10,
+        )
+    except requests.RequestException:
+        return []
     if resp.status_code != 200:
         return []
     return resp.json()
@@ -86,11 +89,14 @@ def query_checkpoint(callsign: str) -> dict | None:
     headers = {"apikey": key, "Authorization": f"Bearer {key}"}
 
     key_name = f"ceo:{callsign}_operational_state"
-    resp = requests.get(
-        f"{url}/rest/v1/ceo_memory?key=eq.{key_name}&select=value,updated_at",
-        headers=headers,
-        timeout=5,
-    )
+    try:
+        resp = requests.get(
+            f"{url}/rest/v1/ceo_memory?key=eq.{key_name}&select=value,updated_at",
+            headers=headers,
+            timeout=5,
+        )
+    except requests.RequestException:
+        return None
     if resp.status_code == 200 and resp.json():
         return resp.json()[0]
     return None
@@ -278,6 +284,37 @@ def detect_callsign() -> str:
     return "elliot"
 
 
+METRICS_LOG = "/tmp/context_compiler.log"
+
+
+def log_metrics(callsign: str, briefing: str) -> None:
+    """Append briefing metrics to METRICS_LOG. Detects empty/truncated output."""
+    ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    chars = len(briefing)
+    counts = {}
+    current = None
+    for line in briefing.splitlines():
+        if line.startswith("## "):
+            current = line[3:].strip().replace(" ", "_")
+            counts[current] = 0
+        elif current and line.startswith("- "):
+            counts[current] += 1
+    # Real briefing requires at least one memory-backed tier; RECENT_COMMITS
+    # alone means Supabase queries failed and only the local git log section
+    # rendered.
+    memory_tiers = ("IDENTITY", "STRATEGIC", "OPERATIONAL", "RECENT")
+    memory_lines = sum(counts.get(t, 0) for t in memory_tiers)
+    try:
+        with open(METRICS_LOG, "a") as f:
+            tier_str = " ".join(f"{k}={v}" for k, v in counts.items()) or "no_sections"
+            if chars == 0 or memory_lines == 0:
+                f.write(f"{ts} {callsign} WARNING empty_briefing chars={chars} {tier_str}\n")
+            else:
+                f.write(f"{ts} {callsign} chars={chars} {tier_str}\n")
+    except OSError:
+        pass
+
+
 def main():
     parser = argparse.ArgumentParser(description="Context Compiler — scored session briefing")
     parser.add_argument("--callsign", default=None, help="Agent callsign (auto-detected from IDENTITY.md if omitted)")
@@ -286,7 +323,10 @@ def main():
     args = parser.parse_args()
 
     callsign = args.callsign or detect_callsign()
-    print(compile_briefing(callsign, args.budget, args.raw))
+    output = compile_briefing(callsign, args.budget, args.raw)
+    if not args.raw:
+        log_metrics(callsign, output)
+    print(output)
 
 
 if __name__ == "__main__":

@@ -58,7 +58,7 @@ print(t)
             sender=$(python3 -c "import json; print(json.load(open('$fpath')).get('sender','unknown'))" 2>/dev/null)
             # Skip idle echo messages from PEER BOTS ONLY to prevent feedback loops.
             # Never filter messages from dave, max, or unknown senders.
-            if echo "$sender" | grep -qiP '^(elliotbot|aidenbot|atlasbot|orionbot|scoutbot|maxbot)$'; then
+            if echo "$sender" | grep -qiP '^(elliotbot|aidenbot|atlasbot|orionbot|scoutbot)$'; then
                 stripped=$(echo "$text" | sed 's/\[[^]]*\]//g' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | tr -s ' ')
                 if [ ${#stripped} -le 40 ] && { [ -z "$stripped" ] || echo "$stripped" | grep -qiP '\b(hold|wait|stand|ack|noted|session\.wrap|concur)\b'; }; then
                     echo "[relay-watcher-${CALLSIGN}] SKIPPED idle echo from ${sender}: ${text:0:60}"

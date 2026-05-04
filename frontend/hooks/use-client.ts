@@ -17,15 +17,49 @@ interface ClientWithMembership {
   token: string | null;
 }
 
+// Demo mode: Keiracom (Keira Communications) — own usage data shown to prospects
+// when no auth session + agency_os_demo cookie is present. Set by middleware on ?demo=true.
+const KEIRACOM_CLIENT_ID = "ec9b4f47-8098-4d98-b449-e15308a79e17";
+
+function readCookie(name: string): string | undefined {
+  if (typeof document === "undefined") return undefined;
+  return document.cookie
+    .split("; ")
+    .find((r) => r.startsWith(name + "="))
+    ?.split("=")[1];
+}
+
 /**
- * Fetch the current user's primary client
+ * Fetch the current user's primary client. In demo mode (no session + demo cookie),
+ * fall back to Keiracom's own client record so prospects see real internal usage data.
  */
 async function fetchCurrentClient(): Promise<ClientWithMembership | null> {
   const supabase = createBrowserClient();
   const { data: { session } } = await supabase.auth.getSession();
   const user = session?.user;
 
-  if (!user) return null;
+  if (!user) {
+    // Demo mode fallback — middleware set agency_os_demo=true cookie via ?demo=true
+    const demoCookie = readCookie("agency_os_demo");
+    if (demoCookie === "true") {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: demoClient, error } = await (supabase as any)
+        .from("clients")
+        .select("*")
+        .eq("id", KEIRACOM_CLIENT_ID)
+        .single();
+      if (error || !demoClient) {
+        console.error("Demo client fetch failed:", error);
+        return null;
+      }
+      return {
+        client: demoClient as Client,
+        role: "viewer" as MembershipRole,
+        token: null,
+      };
+    }
+    return null;
+  }
 
   // Get user's primary membership (first accepted membership)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

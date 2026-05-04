@@ -102,7 +102,7 @@ def get_recent_git(n: int = 10) -> list[str]:
         result = subprocess.run(
             ["git", "log", "--oneline", f"-{n}", "--format=%h %s"],
             capture_output=True, text=True, timeout=5,
-            cwd="/home/elliotbot/clawd/Agency_OS",
+            cwd=str(REPO_ROOT),
         )
         return result.stdout.strip().split("\n") if result.returncode == 0 else []
     except Exception:

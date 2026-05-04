@@ -55,17 +55,18 @@ print(t)
 " 2>/dev/null)
 
         if [ -n "$text" ]; then
-            # Skip idle echo messages from peer bots to prevent feedback loops.
-            # Strip all [TAG] prefixes, then check if the remaining content is
-            # just filler (short acknowledgements, holding, standing by, etc).
-            stripped=$(echo "$text" | sed 's/\[[^]]*\]//g' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | tr -s ' ')
-            if [ ${#stripped} -le 40 ] && { [ -z "$stripped" ] || echo "$stripped" | grep -qiP '(hold|wait|stand|ack|noted|session.wrap|concur)'; }; then
-                echo "[relay-watcher-${CALLSIGN}] SKIPPED idle echo: ${text:0:60}"
-                mv "$fpath" "$PROCESSED/" 2>/dev/null
-                continue
+            sender=$(python3 -c "import json; print(json.load(open('$fpath')).get('sender','unknown'))" 2>/dev/null)
+            # Skip idle echo messages from PEER BOTS ONLY to prevent feedback loops.
+            # Never filter messages from dave, max, or unknown senders.
+            if echo "$sender" | grep -qiP '^(elliotbot|aidenbot|atlasbot|orionbot|scoutbot|maxbot)$'; then
+                stripped=$(echo "$text" | sed 's/\[[^]]*\]//g' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | tr -s ' ')
+                if [ ${#stripped} -le 40 ] && { [ -z "$stripped" ] || echo "$stripped" | grep -qiP '\b(hold|wait|stand|ack|noted|session\.wrap|concur)\b'; }; then
+                    echo "[relay-watcher-${CALLSIGN}] SKIPPED idle echo from ${sender}: ${text:0:60}"
+                    mv "$fpath" "$PROCESSED/" 2>/dev/null
+                    continue
+                fi
             fi
             echo "[relay-watcher-${CALLSIGN}] Text from Telegram: ${text:0:80}..."
-            sender=$(python3 -c "import json; print(json.load(open('$fpath')).get('sender','unknown'))" 2>/dev/null)
             # Wait for Claude prompt (❯) on the LAST line before injecting
             for attempt in $(seq 1 60); do
                 prompt_ready=$(tmux capture-pane -t "$TMUX_TARGET" -p 2>/dev/null | tail -5 | grep -c '❯' || true)

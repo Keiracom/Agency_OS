@@ -34,6 +34,8 @@ args = sys.argv[1:]
 chat_id = None
 message_parts = []
 
+VALID_FLAGS = {"-g", "--group", "-d", "--dm", "-c", "--chat"}
+
 i = 0
 while i < len(args):
     if args[i] in ("-g", "--group"):
@@ -43,6 +45,10 @@ while i < len(args):
     elif args[i] in ("-c", "--chat") and i + 1 < len(args):
         chat_id = int(args[i + 1])
         i += 1
+    elif args[i].startswith("-") and args[i] not in VALID_FLAGS:
+        print(f"Unknown flag: {args[i]}", file=sys.stderr)
+        print(f"Valid flags: -g (group), -d (DM), -c <chat_id>", file=sys.stderr)
+        sys.exit(1)
     else:
         message_parts.append(args[i])
     i += 1

@@ -406,6 +406,7 @@ from src.api.routes.customers import router as customers_router
 from src.api.routes.cycles import router as cycles_router
 from src.api.routes.dashboard import router as dashboard_router
 from src.api.routes.digest import router as digest_router
+from src.api.routes.email import router as email_router
 from src.api.routes.health import router as health_router
 from src.api.routes.internal import router as internal_router
 from src.api.routes.leads import router as leads_router
@@ -460,6 +461,9 @@ app.include_router(tiers_router, prefix="/api/v1")
 app.include_router(cycles_router, prefix="/api/v1")
 # ElevenAgents voice webhooks (router has own /api/webhooks/elevenagets prefix)
 app.include_router(elevenagets_router)
+# Task #20: Email backend (Resend send + status + HMAC-verified webhook).
+# email_router carries its own `/api/email` prefix — no extra prefix here.
+app.include_router(email_router)
 
 
 # ============================================

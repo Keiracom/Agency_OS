@@ -13,6 +13,7 @@ Waterfall layers (short-circuit — returns on first hit):
            stale = domain mismatch → falls through to Hunter
   Layer 2: Hunter email-finder (free, included in plan) — name + domain lookup
            Score >= 70 required. 2000 calls/mo.
+  Layer 2.5: Prospeo email-finder ($0.01 USD) — name + domain lookup, verified
   Layer 3: Leadmagic email finder ($0.015 USD) — API lookup by name + domain, verified
   Layer 4: ContactOut stale fallback — stale email accepted after Leadmagic miss
   Layer 5: Bright Data LinkedIn enrichment ($0.00075 USD) — profile → email, unverified
@@ -120,9 +121,15 @@ try:
 except ImportError:
     BrightDataLinkedInClient = None  # type: ignore
 
+try:
+    from src.integrations.prospeo_client import ProspeoClient
+except ImportError:
+    ProspeoClient = None  # type: ignore
+
 # ── Global semaphore for Leadmagic API calls ──────────────────────────────────
 # Added to global pool alongside GLOBAL_SEM_SONNET / GLOBAL_SEM_HAIKU
 GLOBAL_SEM_LEADMAGIC = asyncio.Semaphore(10)
+GLOBAL_SEM_PROSPEO = asyncio.Semaphore(10)
 
 # ── Placeholder email/phone blocklists (Directive #305) ──────────────────────
 
@@ -260,6 +267,7 @@ _PATTERN_TEMPLATES = [
 # Cost constants (USD)
 COST_LEADMAGIC = 0.015
 COST_BRIGHTDATA = 0.00075
+COST_PROSPEO = 0.01
 
 
 @dataclass
@@ -268,7 +276,7 @@ class EmailResult:
 
     email: str | None
     verified: bool
-    source: str  # "website" | "pattern" | "leadmagic" | "brightdata" | "none"
+    source: str  # "website" | "pattern" | "prospeo" | "leadmagic" | "brightdata" | "none"
     confidence: str  # "high" | "medium" | "low"
     cost_usd: float
 
@@ -476,6 +484,54 @@ async def _try_patterns(first: str, last: str, domain: str) -> EmailResult | Non
         confidence="medium",
         cost_usd=0.0,
     )
+
+
+# ── Layer 2.5: Prospeo email finder ──────────────────────────────────────────
+
+
+async def _prospeo_lookup(
+    first: str,
+    last: str,
+    domain: str,
+) -> EmailResult | None:
+    """
+    Layer 2.5: Prospeo /email-finder — $0.01/call.
+    Slots between Hunter (free) and Leadmagic (paid).
+    """
+    if not first or not last or not domain:
+        return None
+
+    async with GLOBAL_SEM_PROSPEO:
+
+        async def _do_prospeo_call():
+            from src.config.settings import settings
+
+            if ProspeoClient is None or not settings.prospeo_api_key:
+                return None
+            client = ProspeoClient(api_key=settings.prospeo_api_key)
+            return await client.find_email(
+                full_name=f"{first.capitalize()} {last.capitalize()}",
+                domain=domain,
+            )
+
+        result = await _with_retry(_do_prospeo_call, label="prospeo-email")
+
+        if result and result.email and result.status in ("valid", "risky"):
+            confidence = (
+                "high"
+                if result.confidence >= 80
+                else "medium"
+                if result.confidence >= 50
+                else "low"
+            )
+            return EmailResult(
+                email=result.email,
+                verified=result.verified,
+                source="prospeo",
+                confidence=confidence,
+                cost_usd=COST_PROSPEO,
+            )
+    return None
 
 
 # ── Layer 3: Leadmagic email finder ──────────────────────────────────────────
@@ -738,6 +794,12 @@ async def discover_email(
             dm_verified,
             domain,
         )
+
+    # Layer 2.5: Prospeo email finder ($0.01/call — slots between Hunter and Leadmagic)
+    if first and last and clean_domain:
+        result = await _prospeo_lookup(first, last, clean_domain)
+        if result and result.email:
+            return result
 
     # Layer 3: Leadmagic find_email (verified — Leadmagic finds real address)
     # Website HTML layer REMOVED (D2.1B GOV-8) — Stage 3 Gemini already reads the

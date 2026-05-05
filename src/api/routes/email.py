@@ -228,16 +228,20 @@ async def post_webhook(request: Request) -> dict[str, Any]:
             status_code=400, detail="missing type or email_id"
         )
 
-    # Translate Resend event_type → row.status. Anything we don't know
-    # about is recorded but doesn't change status.
-    status_map = {
+    # Translate Resend event_type → row.status. Mapping must stay within the
+    # email_events.status CHECK constraint: queued/sent/delivered/opened/
+    # clicked/bounced/complained/failed. Events outside the enum (e.g.
+    # email.delivery_delayed) map to None — recorded in events jsonb array
+    # but the row's status column is left unchanged via COALESCE below.
+    status_map: dict[str, str | None] = {
         "email.sent": "sent",
         "email.delivered": "delivered",
-        "email.delivery_delayed": "delayed",
+        "email.delivery_delayed": None,
         "email.bounced": "bounced",
         "email.complained": "complained",
         "email.opened": "opened",
         "email.clicked": "clicked",
+        "email.failed": "failed",
     }
     new_status = status_map.get(event_type)
     now = datetime.now(timezone.utc)

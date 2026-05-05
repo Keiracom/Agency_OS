@@ -5,6 +5,7 @@ Layer: 2 - integrations
 Imports: models only
 Consumers: email_waterfall.py
 """
+
 from __future__ import annotations
 
 import logging

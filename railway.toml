@@ -27,18 +27,26 @@ restartPolicyMaxRetries = 3
 
 # ── Service: API (FastAPI) ────────────────────────────────────────────────
 [[services]]
-name = "api"
+name = "agency-os"
 [services.deploy]
 startCommand = "uvicorn src.api.main:app --host 0.0.0.0 --port ${PORT:-8000}"
 [services.resources]
 # 2 GB ceiling. Guard warns at 1.6 GB, kills sub-agents at 1.9 GB.
 memoryMB = 2048
 
-# ── Service: Worker (Prefect / orchestration) ─────────────────────────────
+# ── Service: Prefect Server ───────────────────────────────────────────────
 [[services]]
-name = "worker"
+name = "prefect-server"
 [services.deploy]
-startCommand = "python -m src.workers.main"
+startCommand = "prefect server start --host 0.0.0.0 --port ${PORT:-4200}"
+[services.resources]
+memoryMB = 1024
+
+# ── Service: Prefect Worker ───────────────────────────────────────────────
+[[services]]
+name = "prefect-worker"
+[services.deploy]
+startCommand = "prefect worker start --pool default --type process"
 [services.resources]
 # 4 GB ceiling — workers spawn sub-agents that each need ~512 MB.
 memoryMB = 4096

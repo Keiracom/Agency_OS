@@ -5,6 +5,7 @@ smoke test lives in `scripts/smoke_email_backend.py` (committed alongside).
 """
 from __future__ import annotations
 
+import base64
 import hashlib
 import hmac
 import json
@@ -129,12 +130,13 @@ def test_webhook_accepts_valid_signature_and_updates_status(
         "type": "email.delivered",
         "data": {"email_id": "msg_test_123"},
     }).encode("utf-8")
-    sig = hmac.new(b"shh", body, hashlib.sha256).hexdigest()
+    digest = hmac.new(b"shh", body, hashlib.sha256).digest()
+    sig_b64 = base64.b64encode(digest).decode("ascii")
     resp = client.post(
         "/api/email/webhook",
         content=body,
         headers={
-            "svix-signature": f"v1,{sig}",
+            "svix-signature": f"v1,{sig_b64}",
             "content-type": "application/json",
         },
     )
@@ -165,11 +167,53 @@ def test_webhook_unknown_event_type_keeps_status(client, mock_db, monkeypatch):
         "type": "email.something_new",
         "data": {"email_id": "msg_test_123"},
     }).encode("utf-8")
-    sig = hmac.new(b"shh", body, hashlib.sha256).hexdigest()
+    digest = hmac.new(b"shh", body, hashlib.sha256).digest()
+    sig_b64 = base64.b64encode(digest).decode("ascii")
     resp = client.post(
         "/api/email/webhook",
         content=body,
-        headers={"svix-signature": f"v1,{sig}"},
+        headers={"svix-signature": f"v1,{sig_b64}"},
     )
     assert resp.status_code == 200
     assert resp.json()["applied_status"] is None
+
+
+def test_webhook_accepts_multiple_space_separated_signatures(
+    client, mock_db, monkeypatch,
+):
+    """Svix delivers multiple v1,<sig> tokens space-separated when keys
+    rotate. At least one matching token should pass."""
+    monkeypatch.setenv("RESEND_WEBHOOK_SECRET", "current_secret")
+    body = json.dumps({
+        "type": "email.delivered",
+        "data": {"email_id": "msg_test_123"},
+    }).encode("utf-8")
+    good = base64.b64encode(
+        hmac.new(b"current_secret", body, hashlib.sha256).digest()
+    ).decode("ascii")
+    bad = base64.b64encode(
+        hmac.new(b"old_rotated_secret", body, hashlib.sha256).digest()
+    ).decode("ascii")
+    resp = client.post(
+        "/api/email/webhook",
+        content=body,
+        headers={"svix-signature": f"v1,{bad} v1,{good}"},
+    )
+    assert resp.status_code == 200, resp.text
+
+
+def test_webhook_rejects_hex_signature(client, monkeypatch):
+    """Hex digests must NOT be accepted — Svix is base64-only. Guards
+    against accidental regression to the old hex-accepting behaviour."""
+    monkeypatch.setenv("RESEND_WEBHOOK_SECRET", "shh")
+    body = json.dumps({
+        "type": "email.delivered",
+        "data": {"email_id": "msg_test_123"},
+    }).encode("utf-8")
+    sig_hex = hmac.new(b"shh", body, hashlib.sha256).hexdigest()
+    resp = client.post(
+        "/api/email/webhook",
+        content=body,
+        headers={"svix-signature": f"v1,{sig_hex}"},
+    )
+    assert resp.status_code == 401

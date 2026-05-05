@@ -9,6 +9,7 @@ SDK shape.
 """
 from __future__ import annotations
 
+import base64
 import hashlib
 import hmac
 import logging
@@ -74,11 +75,12 @@ def send_email(
 
 
 def verify_webhook_signature(raw_body: bytes, signature_header: str | None) -> bool:
-    """Verify Resend webhook HMAC-SHA256.
+    """Verify Resend webhook HMAC-SHA256 — Svix base64 format.
 
-    Resend sends `svix-signature` (the underlying provider). We accept any
-    header value of shape `v1,<base64>` or `<hex>` for forward-compat with
-    plain HMAC senders. Returns False on any error.
+    Resend uses Svix under the hood. Svix `v1` signatures are base64-encoded
+    HMAC-SHA256 of the raw body, formatted as `v1,<base64>` (or
+    space-separated when multiple keys are active). We accept the spec form
+    plus the bare-base64 fallback.
 
     The signing secret comes from `RESEND_WEBHOOK_SECRET`. If unset, this
     function returns False — the route handler converts that to 401.
@@ -92,19 +94,26 @@ def verify_webhook_signature(raw_body: bytes, signature_header: str | None) -> b
         )
         return False
     try:
-        expected = hmac.new(
+        digest = hmac.new(
             secret.encode("utf-8"), raw_body, hashlib.sha256,
-        ).hexdigest()
+        ).digest()
+        expected_b64 = base64.b64encode(digest).decode("ascii")
     except Exception as exc:
         logger.warning("[resend_client] HMAC compute failed: %s", exc)
         return False
-    # Accept either `v1,<sig>` (svix-style, sig portion) or the plain hex
-    # digest. Constant-time compare to defeat timing attacks.
+    # Svix can deliver multiple signatures separated by spaces, each shaped
+    # `v1,<base64>` (the `v1,` is the version prefix, followed by the
+    # base64 digest). Strip the prefix and constant-time-compare each.
     candidates: list[str] = []
-    for token in signature_header.split(","):
-        token = token.strip()
-        if "=" in token:
-            token = token.split("=", 1)[1]
-        candidates.append(token)
-    candidates.append(signature_header.strip())
-    return any(hmac.compare_digest(expected, c) for c in candidates)
+    for token in signature_header.replace("\t", " ").split():
+        token = token.strip().rstrip(",")
+        if not token:
+            continue
+        if token.startswith("v1,"):
+            candidates.append(token[len("v1,"):])
+        else:
+            # Bare token (no version prefix) — accept verbatim.
+            candidates.append(token)
+    return any(
+        hmac.compare_digest(expected_b64, c) for c in candidates
+    )

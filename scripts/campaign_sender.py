@@ -85,7 +85,16 @@ def fetch_prospects(
     require_verified: bool,
     min_confidence: int,
 ) -> list[Prospect]:
-    """Fetch BU prospects matching vertical, with email + suppression filters."""
+    """Fetch BU prospects matching vertical, with email + suppression + quality filters.
+
+    Quality gates (always on; cold outbound to generic inboxes or unknown DMs
+    burns domain reputation and produces no replies):
+      - Excludes generic inboxes (hello@, info@, reception@, admin@, office@,
+        contact@, sales@, enquiries@, support@, hi@, team@). These rarely reach
+        a decision-maker.
+      - Excludes prospects with NULL dm_name. No first name = no salvageable
+        cold subject line.
+    """
     sql = """
         SELECT bu.id::text, bu.dm_email, bu.dm_name, bu.display_name,
                bu.state, bu.suburb, bu.gmb_category, bu.dm_email_confidence
@@ -94,6 +103,11 @@ def fetch_prospects(
           ON LOWER(gs.email) = LOWER(bu.dm_email)
         WHERE bu.dm_email IS NOT NULL
           AND gs.email IS NULL
+          AND bu.dm_name IS NOT NULL
+          AND LOWER(SPLIT_PART(bu.dm_email, '@', 1)) NOT IN (
+              'hello', 'info', 'reception', 'admin', 'office',
+              'contact', 'sales', 'enquiries', 'support', 'hi', 'team'
+          )
           AND bu.gmb_category ILIKE %s
           AND (NOT %s OR bu.dm_email_verified = TRUE)
           AND COALESCE(bu.dm_email_confidence, 0) >= %s
@@ -118,10 +132,24 @@ def render(template: str, ctx: dict[str, str]) -> str:
     return TAG_RE.sub(lambda m: ctx.get(m.group(1), m.group(0)), template)
 
 
+def clean_display_name(raw: str | None) -> str:
+    """Strip GMB scraper artefacts from display_name before merge-tag substitution.
+
+    GMB titles often carry listing-type suffixes after a pipe ('Foo Agency |
+    Marketing Agency Sydney') that read like junk in a cold-email body. Take
+    the part before the first '|' and trim. Returns 'your practice' when
+    nothing usable remains.
+    """
+    if not raw:
+        return "your practice"
+    head = raw.split("|", 1)[0].strip()
+    return head or "your practice"
+
+
 def build_context(p: Prospect, sender_name: str) -> dict[str, str]:
     return {
         "dm_name": first_name(p.dm_name),
-        "display_name": p.display_name or "your practice",
+        "display_name": clean_display_name(p.display_name),
         "state": p.state or "Australia",
         "suburb": p.suburb or "your area",
         "sender_name": sender_name,

@@ -100,6 +100,8 @@ class EmailSendRequest(BaseModel):
 class EmailSendResponse(BaseModel):
     message_id: str
     status: str = "queued"
+    warning: str | None = None
+    detail: str | None = None
 
 
 class EmailStatusResponse(BaseModel):
@@ -167,6 +169,13 @@ def post_send(req: EmailSendRequest) -> EmailSendResponse:
         # Send already succeeded; log but don't fail the response.
         logger.error("[email/send] db insert failed message_id=%s: %s",
                      message_id, exc)
+        return EmailSendResponse(
+            message_id=message_id,
+            status="queued",
+            warning="tracking_insert_failed",
+            detail="email sent via Resend but DB insert failed; "
+                   "/status will return 404 for this message_id",
+        )
     return EmailSendResponse(message_id=message_id, status="queued")
 
 

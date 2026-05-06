@@ -32,6 +32,7 @@ psycopg DSN.
 
 from __future__ import annotations
 
+import hmac
 import json
 import logging
 import os
@@ -341,3 +342,54 @@ async def post_webhook(request: Request) -> dict[str, Any]:
         _bounce_ratchet(data, event_type)
 
     return {"ok": True, "message_id": message_id, "applied_status": new_status}
+
+
+def _verify_unsubscribe_token(email: str, token: str) -> bool:
+    """Verify HMAC token matches the email — prevents DoS suppression attacks."""
+    from src.integrations.resend_client import _unsubscribe_token
+
+    expected = _unsubscribe_token(email)
+    return hmac.compare_digest(expected, token)
+
+
+@router.get("/unsubscribe", status_code=status.HTTP_200_OK)
+def unsubscribe_confirm(email: str, token: str = "") -> dict[str, str]:
+    """GET shows confirmation — does NOT unsubscribe (prevents link prefetcher DoS)."""
+    email = email.strip().lower()
+    if not email or "@" not in email or not _verify_unsubscribe_token(email, token):
+        raise HTTPException(status_code=400, detail="invalid request")
+    return {
+        "status": "confirm",
+        "message": "POST to this URL to complete unsubscribe",
+        "email": email,
+    }
+
+
+@router.post("/unsubscribe", status_code=status.HTTP_200_OK)
+def unsubscribe(email: str, token: str = "") -> dict[str, str]:
+    """RFC 8058 one-click unsubscribe endpoint (POST only).
+
+    Validates HMAC token, then adds email to global_suppression.
+    GET returns confirmation only (prevents Outlook Safe Links / Gmail
+    proxy prefetcher from triggering silent unsubs).
+    """
+    email = email.strip().lower()
+    if not email or "@" not in email:
+        raise HTTPException(status_code=400, detail="invalid email")
+    if not _verify_unsubscribe_token(email, token):
+        raise HTTPException(status_code=403, detail="invalid token")
+    sql = (
+        "INSERT INTO public.global_suppression "
+        "(id, email, reason, source, added_by, created_at) "
+        "VALUES (gen_random_uuid(), %s, %s, %s, %s, NOW()) "
+        "ON CONFLICT (email) DO NOTHING"
+    )
+    try:
+        with _connect() as conn, conn.cursor() as cur:
+            cur.execute(sql, (email, "unsubscribe", "rfc8058", "recipient"))
+            conn.commit()
+        logger.info("[email/unsubscribe] suppressed: %s", email)
+    except Exception as exc:
+        logger.error("[email/unsubscribe] db insert failed: %s", exc)
+        raise HTTPException(status_code=500, detail="db error") from exc
+    return {"status": "unsubscribed", "email": email}

@@ -16,6 +16,7 @@ import hmac
 import logging
 import os
 from typing import Any
+from urllib.parse import quote
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +39,24 @@ def _build_client():
     return resend
 
 
+def _unsubscribe_token(email: str) -> str:
+    """HMAC-SHA256 token to authenticate unsubscribe requests."""
+    secret = os.environ.get("UNSUBSCRIBE_SECRET", "default-unsub-secret")
+    return hmac.new(
+        secret.encode(),
+        email.encode(),
+        hashlib.sha256,
+    ).hexdigest()[:32]
+
+
+def _unsubscribe_url(to_email: str) -> str:
+    """Build the HMAC-signed one-click unsubscribe URL for RFC 8058 compliance."""
+    base = os.environ.get("API_BASE_URL", "https://api.agencyxos.ai")
+    encoded_email = quote(to_email, safe="")
+    token = _unsubscribe_token(to_email.strip().lower())
+    return f"{base}/api/email/unsubscribe?email={encoded_email}&token={token}"
+
+
 def send_email(
     *,
     to: str | list[str],
@@ -55,10 +74,16 @@ def send_email(
         "noreply@keiracom.com",
     )
     resend = _build_client()
+    to_list = [to] if isinstance(to, str) else list(to)
+    unsub_url = _unsubscribe_url(to_list[0])
     payload: dict[str, Any] = {
         "from": sender,
-        "to": [to] if isinstance(to, str) else list(to),
+        "to": to_list,
         "subject": subject,
+        "headers": {
+            "List-Unsubscribe": f"<{unsub_url}>",
+            "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        },
     }
     if body_html:
         payload["html"] = body_html

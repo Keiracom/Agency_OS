@@ -10,6 +10,7 @@ Usage:
     PYTHON_SERVICE_URI=http://restate-py-service.railway.internal:9070 \
     python3 scripts/register_restate_service.py
 """
+
 from __future__ import annotations
 
 import os

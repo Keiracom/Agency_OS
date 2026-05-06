@@ -10,6 +10,7 @@ refill_threshold, and verifies:
 
 Pure mocks — no real DFS / Gemini / Supabase / BrightData / Leadmagic calls.
 """
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -33,10 +34,7 @@ class _FakeDiscovery:
         self.call_log.append((str(category_code), int(offset)))
         if self.calls > self.total_batches:
             return []  # exhausted
-        return [
-            {"domain": f"cat{category_code}-off{offset}-d{i}.com.au"}
-            for i in range(limit)
-        ]
+        return [{"domain": f"cat{category_code}-off{offset}-d{i}.com.au"} for i in range(limit)]
 
 
 @pytest.mark.asyncio
@@ -46,8 +44,10 @@ async def test_refill_fires_when_drops_hit_threshold_and_prunes_tasks():
     refill_pct = 0.10
 
     orch = PipelineOrchestrator(
-        dfs_client=MagicMock(), gemini_client=MagicMock(),
-        bd_client=MagicMock(), lm_client=MagicMock(),
+        dfs_client=MagicMock(),
+        gemini_client=MagicMock(),
+        bd_client=MagicMock(),
+        lm_client=MagicMock(),
         discovery=_FakeDiscovery(batch_size=3, total_batches=4),
         on_card=None,
         on_domain_complete=lambda _d: None,  # disable persistence
@@ -64,8 +64,10 @@ async def test_refill_fires_when_drops_hit_threshold_and_prunes_tasks():
     # resolves to a category code.
     fake_cat_map = {"dental": 7013}
 
-    with patch.object(orch, "_process_domain", side_effect=fake_process_domain), \
-         patch("src.orchestration.cohort_runner.CATEGORY_MAP", fake_cat_map):
+    with (
+        patch.object(orch, "_process_domain", side_effect=fake_process_domain),
+        patch("src.orchestration.cohort_runner.CATEGORY_MAP", fake_cat_map),
+    ):
         result = await orch.run_streaming(
             categories=["dental"],
             target_cards=target_cards,
@@ -96,6 +98,7 @@ async def test_refill_respects_target_reached_and_budget_cap():
     async def fake_process_domain(domain_data):
         # First two return a card; rest drop.
         from src.pipeline.schemas.prospect_card import ProspectCard  # type: ignore
+
         domain = domain_data["domain"]
         if domain.endswith("d0.com.au"):
             domain_data["cost_usd"] = 0.01
@@ -107,16 +110,20 @@ async def test_refill_respects_target_reached_and_budget_cap():
         return None
 
     orch = PipelineOrchestrator(
-        dfs_client=MagicMock(), gemini_client=MagicMock(),
-        bd_client=MagicMock(), lm_client=MagicMock(),
+        dfs_client=MagicMock(),
+        gemini_client=MagicMock(),
+        bd_client=MagicMock(),
+        lm_client=MagicMock(),
         discovery=_FakeDiscovery(batch_size=5, total_batches=2),
         on_card=None,
         on_domain_complete=lambda _d: None,
     )
 
     fake_cat_map = {"dental": 7013}
-    with patch.object(orch, "_process_domain", side_effect=fake_process_domain), \
-         patch("src.orchestration.cohort_runner.CATEGORY_MAP", fake_cat_map):
+    with (
+        patch.object(orch, "_process_domain", side_effect=fake_process_domain),
+        patch("src.orchestration.cohort_runner.CATEGORY_MAP", fake_cat_map),
+    ):
         result = await orch.run_streaming(
             categories=["dental"],
             target_cards=target_cards,
@@ -143,8 +150,10 @@ async def test_on_domain_complete_fires_after_card_assembly():
         captured.append(d)
 
     orch = PipelineOrchestrator(
-        dfs_client=MagicMock(), gemini_client=MagicMock(),
-        bd_client=MagicMock(), lm_client=MagicMock(),
+        dfs_client=MagicMock(),
+        gemini_client=MagicMock(),
+        bd_client=MagicMock(),
+        lm_client=MagicMock(),
         discovery=_FakeDiscovery(),
         on_domain_complete=capture,
     )
@@ -154,17 +163,19 @@ async def test_on_domain_complete_fires_after_card_assembly():
     async def passthrough(d, *args, **kwargs):
         return d
 
-    with patch.object(po, "_run_stage2", side_effect=passthrough), \
-         patch.object(po, "_run_stage3", side_effect=passthrough), \
-         patch.object(po, "_run_stage4", side_effect=passthrough), \
-         patch.object(po, "_run_stage5", side_effect=passthrough), \
-         patch.object(po, "_run_stage6", side_effect=passthrough), \
-         patch.object(po, "_run_stage7", side_effect=passthrough), \
-         patch.object(po, "_run_stage8", side_effect=passthrough), \
-         patch.object(po, "_run_stage9", side_effect=passthrough), \
-         patch.object(po, "_run_stage10", side_effect=passthrough), \
-         patch.object(po, "_run_stage11", side_effect=passthrough), \
-         patch.object(po, "_card_from_domain_data", return_value=MagicMock()):
+    with (
+        patch.object(po, "_run_stage2", side_effect=passthrough),
+        patch.object(po, "_run_stage3", side_effect=passthrough),
+        patch.object(po, "_run_stage4", side_effect=passthrough),
+        patch.object(po, "_run_stage5", side_effect=passthrough),
+        patch.object(po, "_run_stage6", side_effect=passthrough),
+        patch.object(po, "_run_stage7", side_effect=passthrough),
+        patch.object(po, "_run_stage8", side_effect=passthrough),
+        patch.object(po, "_run_stage9", side_effect=passthrough),
+        patch.object(po, "_run_stage10", side_effect=passthrough),
+        patch.object(po, "_run_stage11", side_effect=passthrough),
+        patch.object(po, "_card_from_domain_data", return_value=MagicMock()),
+    ):
         await orch._process_domain({"domain": "acme.com.au", "scores": {"composite_score": 40}})
 
     assert len(captured) == 1
@@ -180,8 +191,10 @@ async def test_gov8_on_domain_complete_fires_on_drop():
         captured.append(d)
 
     orch = PipelineOrchestrator(
-        dfs_client=MagicMock(), gemini_client=MagicMock(),
-        bd_client=MagicMock(), lm_client=MagicMock(),
+        dfs_client=MagicMock(),
+        gemini_client=MagicMock(),
+        bd_client=MagicMock(),
+        lm_client=MagicMock(),
         discovery=_FakeDiscovery(),
         on_domain_complete=capture,
     )
@@ -195,8 +208,10 @@ async def test_gov8_on_domain_complete_fires_on_drop():
     async def passthrough(d, *args, **kwargs):
         return d
 
-    with patch.object(po, "_run_stage2", side_effect=passthrough), \
-         patch.object(po, "_run_stage3", side_effect=drop_in_stage3):
+    with (
+        patch.object(po, "_run_stage2", side_effect=passthrough),
+        patch.object(po, "_run_stage3", side_effect=drop_in_stage3),
+    ):
         result = await orch._process_domain({"domain": "drop.com.au"})
 
     assert result is None
@@ -209,15 +224,21 @@ async def test_gov8_on_domain_complete_fires_on_drop():
 async def test_budget_gate_b_drops_when_stage_cost_exceeds_cap():
     """Gate B — per-stage cost check drops the domain with 'budget_exceeded'."""
     orch = PipelineOrchestrator(
-        dfs_client=MagicMock(), gemini_client=MagicMock(),
-        bd_client=MagicMock(), lm_client=MagicMock(),
+        dfs_client=MagicMock(),
+        gemini_client=MagicMock(),
+        bd_client=MagicMock(),
+        lm_client=MagicMock(),
         discovery=_FakeDiscovery(),
         on_domain_complete=None,
     )
     # Wire the per-run cost state directly (run_streaming normally does this).
     import asyncio as _aio
+
     orch._run_cost_state = {
-        "total": 0.0, "cap": 0.05, "lock": _aio.Lock(), "per_domain": {},
+        "total": 0.0,
+        "cap": 0.05,
+        "lock": _aio.Lock(),
+        "per_domain": {},
     }
 
     from src.pipeline import pipeline_orchestrator as po
@@ -229,10 +250,12 @@ async def test_budget_gate_b_drops_when_stage_cost_exceeds_cap():
     async def other(d, *args, **kwargs):
         return d
 
-    with patch.object(po, "_run_stage2", side_effect=stage2_spend), \
-         patch.object(po, "_run_stage3", side_effect=other), \
-         patch.object(po, "_run_stage4", side_effect=other), \
-         patch.object(po, "_run_stage5", side_effect=other):
+    with (
+        patch.object(po, "_run_stage2", side_effect=stage2_spend),
+        patch.object(po, "_run_stage3", side_effect=other),
+        patch.object(po, "_run_stage4", side_effect=other),
+        patch.object(po, "_run_stage5", side_effect=other),
+    ):
         result = await orch._process_domain({"domain": "burn.com.au"})
 
     assert result is None
@@ -245,8 +268,10 @@ async def test_budget_gate_b_drops_when_stage_cost_exceeds_cap():
 async def test_admission_gate_skips_when_projected_cost_over_cap():
     """Gate A — _process_one refuses to start a domain when reservation breaches cap."""
     orch = PipelineOrchestrator(
-        dfs_client=MagicMock(), gemini_client=MagicMock(),
-        bd_client=MagicMock(), lm_client=MagicMock(),
+        dfs_client=MagicMock(),
+        gemini_client=MagicMock(),
+        bd_client=MagicMock(),
+        lm_client=MagicMock(),
         discovery=_FakeDiscovery(batch_size=2, total_batches=1),
         on_domain_complete=None,
     )
@@ -261,15 +286,19 @@ async def test_admission_gate_skips_when_projected_cost_over_cap():
         return None
 
     fake_cat_map = {"dental": 7013}
-    with patch.object(orch, "_process_domain", side_effect=fake), \
-         patch("src.orchestration.cohort_runner.CATEGORY_MAP", fake_cat_map):
+    with (
+        patch.object(orch, "_process_domain", side_effect=fake),
+        patch("src.orchestration.cohort_runner.CATEGORY_MAP", fake_cat_map),
+    ):
         # cap $0.10 USD ≈ $0.155 AUD; estimated per-domain = $0.25 → admission
         # gate should trip on the first domain before _process_domain fires.
         result = await orch.run_streaming(
             categories=["dental"],
             target_cards=5,
             budget_cap_aud=0.155,  # → 0.10 USD after /1.55
-            num_workers=1, batch_size=2, refill_pct=0.10,
+            num_workers=1,
+            batch_size=2,
+            refill_pct=0.10,
         )
 
     # Admission gate tripped immediately; no domain processed.

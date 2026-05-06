@@ -16,6 +16,7 @@ from typing import Any
 # Postmark Webhook Payloads
 # ============================================================================
 
+
 def postmark_inbound_email(
     from_email: str = "lead@techcompany.io",
     to_email: str = "campaign@agency.com",
@@ -25,7 +26,8 @@ def postmark_inbound_email(
 ) -> dict[str, Any]:
     """Create a Postmark inbound email webhook payload."""
     return {
-        "MessageID": message_id or f"{uuid.uuid4().hex[:8]}-{uuid.uuid4().hex[:4]}-{uuid.uuid4().hex[:4]}-{uuid.uuid4().hex[:4]}-{uuid.uuid4().hex[:12]}",
+        "MessageID": message_id
+        or f"{uuid.uuid4().hex[:8]}-{uuid.uuid4().hex[:4]}-{uuid.uuid4().hex[:4]}-{uuid.uuid4().hex[:4]}-{uuid.uuid4().hex[:12]}",
         "From": from_email,
         "FromName": "Jane Smith",
         "FromFull": {
@@ -163,6 +165,7 @@ def postmark_open_webhook(
 # Twilio Webhook Payloads
 # ============================================================================
 
+
 def twilio_inbound_sms(
     from_number: str = "+61412345678",
     to_number: str = "+61499999999",
@@ -236,6 +239,7 @@ def generate_twilio_signature(
 # HeyReach Webhook Payloads
 # ============================================================================
 
+
 def heyreach_message_received(
     linkedin_url: str = "https://linkedin.com/in/janesmith",
     message: str = "Thanks for connecting! I'd be interested to learn more.",
@@ -308,6 +312,7 @@ def heyreach_connection_request_sent(
 # Synthflow Webhook Payloads
 # ============================================================================
 
+
 def synthflow_call_completed(
     call_id: str | None = None,
     outcome: str = "interested",
@@ -360,6 +365,7 @@ def synthflow_call_failed(
 # ============================================================================
 # Stripe Webhook Payloads (for billing tests)
 # ============================================================================
+
 
 def stripe_subscription_created(
     customer_id: str | None = None,
@@ -450,6 +456,7 @@ def stripe_subscription_cancelled(
 # ============================================================================
 # HMAC Signature Helpers
 # ============================================================================
+
 
 def generate_webhook_signature(
     payload: str,

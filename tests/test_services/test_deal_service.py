@@ -292,7 +292,9 @@ class TestDealServiceQueries:
         """Test getting pipeline summary."""
         mock_result = MagicMock()
         mock_rows = [
-            MagicMock(stage="qualification", count=5, total_value=Decimal("50000"), avg_probability=20),
+            MagicMock(
+                stage="qualification", count=5, total_value=Decimal("50000"), avg_probability=20
+            ),
             MagicMock(stage="proposal", count=3, total_value=Decimal("30000"), avg_probability=40),
         ]
         mock_result.fetchall.return_value = mock_rows

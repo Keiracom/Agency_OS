@@ -1,4 +1,5 @@
 """Tests for HttpxScraper — Directive #295, updated #300-FIX (Issue 9)."""
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -68,7 +69,9 @@ async def test_scrape_extracts_title():
     scraper = HttpxScraper()
     mock_resp = MagicMock()
     mock_resp.status_code = 200
-    mock_resp.text = "<html><head><title>  My Dental Clinic  </title></head><body>hello</body></html>"
+    mock_resp.text = (
+        "<html><head><title>  My Dental Clinic  </title></head><body>hello</body></html>"
+    )
 
     mock_client = MagicMock()
     mock_client.is_closed = False
@@ -93,7 +96,9 @@ async def test_scraper_reuses_persistent_client():
     mock_client.is_closed = False
     mock_client.get = AsyncMock(return_value=mock_resp)
 
-    with patch("src.integrations.httpx_scraper.httpx.AsyncClient", return_value=mock_client) as mock_cls:
+    with patch(
+        "src.integrations.httpx_scraper.httpx.AsyncClient", return_value=mock_client
+    ) as mock_cls:
         await scraper.scrape("example.com")
         await scraper.scrape("example2.com")
         # AsyncClient constructor called only once (persistent)

@@ -13,6 +13,7 @@ from typing import Any
 # Clay API Responses
 # ============================================================================
 
+
 def clay_enrichment_success() -> dict[str, Any]:
     """Successful Clay enrichment response."""
     return {
@@ -60,6 +61,7 @@ def clay_enrichment_pending() -> dict[str, Any]:
 # Resend API Responses
 # ============================================================================
 
+
 def resend_send_success() -> dict[str, Any]:
     """Successful Resend email send response."""
     return {
@@ -96,6 +98,7 @@ def resend_rate_limited() -> dict[str, Any]:
 # ============================================================================
 # Twilio API Responses
 # ============================================================================
+
 
 def twilio_sms_success() -> dict[str, Any]:
     """Successful Twilio SMS send."""
@@ -157,6 +160,7 @@ def twilio_dncr_not_registered() -> dict[str, Any]:
 # HeyReach API Responses
 # ============================================================================
 
+
 def heyreach_connection_request_success() -> dict[str, Any]:
     """Successful HeyReach connection request."""
     return {
@@ -207,13 +211,16 @@ def heyreach_daily_usage() -> dict[str, Any]:
             "limit": 50,
             "remaining": 40,
         },
-        "reset_at": (datetime.now(UTC).replace(hour=0, minute=0, second=0) + timedelta(days=1)).isoformat(),
+        "reset_at": (
+            datetime.now(UTC).replace(hour=0, minute=0, second=0) + timedelta(days=1)
+        ).isoformat(),
     }
 
 
 # ============================================================================
 # Synthflow API Responses
 # ============================================================================
+
 
 def synthflow_call_initiated() -> dict[str, Any]:
     """Successful Synthflow voice call initiation."""
@@ -262,6 +269,7 @@ def synthflow_call_failed() -> dict[str, Any]:
 # ============================================================================
 # Anthropic API Responses
 # ============================================================================
+
 
 def anthropic_message_success() -> dict[str, Any]:
     """Successful Anthropic message generation."""

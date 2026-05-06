@@ -19,6 +19,7 @@ Usage:
 
 Exit 0 on pass, non-zero on fail. Prints verbatim evidence per step.
 """
+
 import argparse
 import json
 import os
@@ -73,7 +74,8 @@ def main() -> int:
     # 2. Systemd service active
     result = subprocess.run(
         ["systemctl", "--user", "is-active", cfg["systemd_unit"]],
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
     )
     check(
         f"{cfg['systemd_unit']} active",
@@ -84,12 +86,16 @@ def main() -> int:
     # 3. Inbox write — simulate parent dispatch
     test_id = f"rt_{int(time.time())}_{uuid.uuid4().hex[:6]}"
     inbox_file = relay / "inbox" / f"{test_id}.json"
-    inbox_file.write_text(json.dumps({
-        "id": test_id,
-        "type": "text",
-        "text": f"[ROUND-TRIP-TEST] Smoke probe for {clone}. No action required.",
-        "sender": "test-harness",
-    }))
+    inbox_file.write_text(
+        json.dumps(
+            {
+                "id": test_id,
+                "type": "text",
+                "text": f"[ROUND-TRIP-TEST] Smoke probe for {clone}. No action required.",
+                "sender": "test-harness",
+            }
+        )
+    )
     check("inbox write", inbox_file.exists(), str(inbox_file))
 
     # 4. Outbox write — simulate clone returning result

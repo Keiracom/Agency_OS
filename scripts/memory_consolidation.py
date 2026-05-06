@@ -35,6 +35,7 @@ Usage:
 
 Exit codes: 0 OK · 3 DB unavailable.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -63,18 +64,24 @@ from src.config.settings import settings  # noqa: E402
 
 # ── Scoring weights (OC1 spec) ─────────────────────────────────────────────
 WEIGHTS = {
-    "relevance":     0.30,
-    "frequency":     0.24,
-    "recency":       0.15,
+    "relevance": 0.30,
+    "frequency": 0.24,
+    "recency": 0.15,
     "consolidation": 0.10,
-    "richness":      0.06,
+    "richness": 0.06,
 }
 WEIGHT_SUM = sum(WEIGHTS.values())  # 0.85 — composite is normalised by this
 
 DURABLE_MARKERS = (
-    r"\bdirective\b", r"\brule\b", r"\blaw\b", r"\bdecision\b",
-    r"\bfix(?:ed)?\b", r"\bbroke\b", r"\blearned\b",
-    r"\balways\b", r"\bnever\b",
+    r"\bdirective\b",
+    r"\brule\b",
+    r"\blaw\b",
+    r"\bdecision\b",
+    r"\bfix(?:ed)?\b",
+    r"\bbroke\b",
+    r"\blearned\b",
+    r"\balways\b",
+    r"\bnever\b",
 )
 _MARKER_RE = re.compile("|".join(DURABLE_MARKERS), re.IGNORECASE)
 _WORD_RE = re.compile(r"\b[a-z][a-z0-9_-]{2,}\b")
@@ -94,6 +101,7 @@ class Memory:
 
 
 # ── Factor calculators ─────────────────────────────────────────────────────
+
 
 def _tokens(text: str) -> set[str]:
     return set(_WORD_RE.findall(text.lower()))
@@ -136,18 +144,20 @@ def score(memories: list[Memory]) -> None:
 
     for m, toks in zip(memories, token_sets, strict=True):
         m.factors = {
-            "relevance":     relevance_score(m),
-            "frequency":     frequency_score_with_tokens(m, toks, token_sets),
-            "recency":       recency_score(m, max_age),
+            "relevance": relevance_score(m),
+            "frequency": frequency_score_with_tokens(m, toks, token_sets),
+            "recency": recency_score(m, max_age),
             "consolidation": consolidation_score(m, hash_counts),
-            "richness":      richness_score(m),
+            "richness": richness_score(m),
         }
         weighted = sum(WEIGHTS[k] * v for k, v in m.factors.items())
         m.composite = round(weighted / WEIGHT_SUM, 4) if WEIGHT_SUM else 0.0
 
 
 def frequency_score_with_tokens(
-    m: Memory, my_tokens: set[str], all_tokens: list[set[str]],
+    m: Memory,
+    my_tokens: set[str],
+    all_tokens: list[set[str]],
 ) -> float:
     if not my_tokens:
         return 0.0
@@ -158,6 +168,7 @@ def frequency_score_with_tokens(
 
 
 # ── DB I/O ─────────────────────────────────────────────────────────────────
+
 
 async def fetch_recent(conn, lookback_days: int) -> list[Memory]:
     cutoff = datetime.now(UTC) - timedelta(days=lookback_days)
@@ -198,12 +209,14 @@ async def promote_to_core_fact(conn, m: Memory, *, dry_run: bool) -> bool:
     if dry_run:
         return True
     metadata = dict(m.metadata or {})
-    metadata.update({
-        "consolidated_from": m.id,
-        "consolidation_run": datetime.now(UTC).isoformat(),
-        "composite_score":   m.composite,
-        "factors":           m.factors,
-    })
+    metadata.update(
+        {
+            "consolidated_from": m.id,
+            "consolidation_run": datetime.now(UTC).isoformat(),
+            "composite_score": m.composite,
+            "factors": m.factors,
+        }
+    )
     new_hash = hashlib.sha256(m.content.encode()).hexdigest()
     result = await conn.execute(
         """
@@ -218,7 +231,10 @@ async def promote_to_core_fact(conn, m: Memory, *, dry_run: bool) -> bool:
             AND metadata->>'consolidated_from' = $4
         )
         """,
-        m.content, new_hash, json.dumps(metadata), m.id,
+        m.content,
+        new_hash,
+        json.dumps(metadata),
+        m.id,
     )
     # asyncpg returns "INSERT 0 N" — N == 0 means the guard skipped it.
     inserted = result.endswith(" 1") if isinstance(result, str) else False
@@ -241,8 +257,13 @@ async def soft_delete(conn, memory_id: str, *, dry_run: bool) -> bool:
 
 # ── Pipeline ───────────────────────────────────────────────────────────────
 
+
 async def consolidate(
-    conn, *, lookback_days: int, min_score: float, dry_run: bool,
+    conn,
+    *,
+    lookback_days: int,
+    min_score: float,
+    dry_run: bool,
 ) -> dict:
     memories = await fetch_recent(conn, lookback_days)
     score(memories)
@@ -272,16 +293,16 @@ async def consolidate(
             pruned += 1
 
     return {
-        "scanned":      len(memories),
-        "promoted":     len(promoted),
-        "pruned":       pruned,
+        "scanned": len(memories),
+        "promoted": len(promoted),
+        "pruned": pruned,
         "lookback_days": lookback_days,
-        "min_score":    min_score,
+        "min_score": min_score,
         "top_promotions": [
             {
-                "id":        m.id,
+                "id": m.id,
                 "composite": m.composite,
-                "preview":   (m.content or "")[:120].replace("\n", " "),
+                "preview": (m.content or "")[:120].replace("\n", " "),
             }
             for m in sorted(promoted, key=lambda x: x.composite, reverse=True)[:10]
         ],
@@ -290,13 +311,13 @@ async def consolidate(
 
 # ── CLI ────────────────────────────────────────────────────────────────────
 
+
 def render_human(result: dict, *, dry_run: bool) -> str:
     lines = [
         "=" * 64,
         f"Memory Consolidation — {'DRY-RUN' if dry_run else 'EXECUTE'}",
         "=" * 64,
-        f"  scanned (daily_log, last {result['lookback_days']}d):  "
-        f"{result['scanned']:,}",
+        f"  scanned (daily_log, last {result['lookback_days']}d):  {result['scanned']:,}",
         f"  promoted (composite ≥ {result['min_score']}):     {result['promoted']:,}",
         f"  pruned (duplicate content_hash):                {result['pruned']:,}",
     ]
@@ -310,12 +331,16 @@ def render_human(result: dict, *, dry_run: bool) -> str:
 
 async def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="OC1 Memory Consolidation (Dreaming).")
-    ap.add_argument("--lookback-days", type=int, default=30,
-                    help="Window of daily_logs to score (default 30).")
-    ap.add_argument("--min-score", type=float, default=0.6,
-                    help="Composite-score threshold for promotion (default 0.6).")
-    ap.add_argument("--execute", action="store_true",
-                    help="Apply writes. Default is dry-run.")
+    ap.add_argument(
+        "--lookback-days", type=int, default=30, help="Window of daily_logs to score (default 30)."
+    )
+    ap.add_argument(
+        "--min-score",
+        type=float,
+        default=0.6,
+        help="Composite-score threshold for promotion (default 0.6).",
+    )
+    ap.add_argument("--execute", action="store_true", help="Apply writes. Default is dry-run.")
     args = ap.parse_args(argv)
     dry_run = not args.execute
 

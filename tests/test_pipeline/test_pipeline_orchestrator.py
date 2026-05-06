@@ -1,4 +1,5 @@
 """Tests for PipelineOrchestrator — Directive #288, updated for #293."""
+
 import asyncio
 import pytest
 from unittest.mock import AsyncMock, MagicMock
@@ -86,7 +87,9 @@ async def test_orchestrator_stops_at_target():
     scorer = MagicMock()
     scorer.score_affordability = MagicMock(return_value=make_score_result())
     scorer.score_intent_free = MagicMock(return_value=MagicMock(band="TRYING"))
-    scorer.score_intent_full = MagicMock(return_value=MagicMock(band="TRYING", raw_score=6, evidence=[]))
+    scorer.score_intent_full = MagicMock(
+        return_value=MagicMock(band="TRYING", raw_score=6, evidence=[])
+    )
 
     dm = MagicMock()
     dm.identify = AsyncMock(return_value=make_dm_result())
@@ -119,7 +122,9 @@ async def test_orchestrator_stops_on_category_exhausted():
     scorer = MagicMock()
     scorer.score_affordability = MagicMock(return_value=make_score_result())
     scorer.score_intent_free = MagicMock(return_value=MagicMock(band="TRYING"))
-    scorer.score_intent_full = MagicMock(return_value=MagicMock(band="TRYING", raw_score=6, evidence=[]))
+    scorer.score_intent_full = MagicMock(
+        return_value=MagicMock(band="TRYING", raw_score=6, evidence=[])
+    )
 
     dm = MagicMock()
     dm.identify = AsyncMock(return_value=make_dm_result())
@@ -146,7 +151,13 @@ async def test_orchestrator_tracks_stats():
     discovery = MagicMock()
     discovery.pull_batch = AsyncMock(side_effect=[domains, []])
 
-    enrich_responses = [None, make_enrichment(), make_enrichment(), make_enrichment(), make_enrichment()]
+    enrich_responses = [
+        None,
+        make_enrichment(),
+        make_enrichment(),
+        make_enrichment(),
+        make_enrichment(),
+    ]
     enrich_iter = iter(enrich_responses)
 
     async def enrich_from_spider(domain, spider_data):
@@ -167,7 +178,9 @@ async def test_orchestrator_tracks_stats():
     scorer = MagicMock()
     scorer.score_affordability = MagicMock(side_effect=lambda e: next(afford_iter))
     scorer.score_intent_free = MagicMock(return_value=MagicMock(band="TRYING"))
-    scorer.score_intent_full = MagicMock(return_value=MagicMock(band="TRYING", raw_score=6, evidence=[]))
+    scorer.score_intent_full = MagicMock(
+        return_value=MagicMock(band="TRYING", raw_score=6, evidence=[])
+    )
 
     dm_responses = [make_dm_result(name=None), make_dm_result(name="Alice")]
     dm_iter = iter(dm_responses)
@@ -204,7 +217,9 @@ async def test_prospect_card_fields():
     scorer = MagicMock()
     scorer.score_affordability = MagicMock(return_value=make_score_result(band="HIGH", score=11))
     scorer.score_intent_free = MagicMock(return_value=MagicMock(band="TRYING"))
-    scorer.score_intent_full = MagicMock(return_value=MagicMock(band="TRYING", raw_score=6, evidence=["Signal A"]))
+    scorer.score_intent_full = MagicMock(
+        return_value=MagicMock(band="TRYING", raw_score=6, evidence=["Signal A"])
+    )
 
     dm = MagicMock()
     dm.identify = AsyncMock(return_value=make_dm_result())

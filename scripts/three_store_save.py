@@ -29,6 +29,7 @@ from pathlib import Path
 # DSN resolver — prefer DATABASE_URL, fall back to settings.database_url
 # ---------------------------------------------------------------------------
 
+
 def _resolve_dsn() -> str | None:
     """Return a postgres DSN suitable for asyncpg, or None when unconfigured.
 
@@ -36,15 +37,12 @@ def _resolve_dsn() -> str | None:
     src.config.settings.database_url. Strips any 'postgresql+asyncpg://'
     prefix because asyncpg.connect rejects the SQLAlchemy variant.
     """
-    raw = (
-        os.environ.get("DATABASE_URL")
-        or os.environ.get("SUPABASE_DB_URL")
-        or ""
-    )
+    raw = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL") or ""
     if not raw:
         try:
             sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
             from src.config.settings import settings  # type: ignore[import-not-found]
+
             raw = settings.database_url or ""
         except Exception:  # noqa: BLE001
             raw = ""
@@ -57,6 +55,7 @@ def _resolve_dsn() -> str | None:
 # ---------------------------------------------------------------------------
 # Env loading
 # ---------------------------------------------------------------------------
+
 
 def load_env():
     env_path = Path("/home/elliotbot/.config/agency-os/.env")
@@ -71,6 +70,7 @@ def load_env():
 # ---------------------------------------------------------------------------
 # CALLSIGN — LAW XVII enforcement (GOV-12: gate as code, not comment)
 # ---------------------------------------------------------------------------
+
 
 def get_callsign() -> str:
     """Return CALLSIGN env var (default 'elliot'). Raise SystemExit if empty string.
@@ -88,20 +88,29 @@ def get_callsign() -> str:
 # Args
 # ---------------------------------------------------------------------------
 
+
 def parse_args():
     parser = argparse.ArgumentParser(
         description="Canonical 3-store save for directive completion (LAW XV)."
     )
-    parser.add_argument("--directive", required=True,
-                        help='Directive label, e.g. "D1.8", "309", "A"')
-    parser.add_argument("--pr-number", required=True, type=int,
-                        help="GitHub PR number")
-    parser.add_argument("--summary", required=True,
-                        help='Completion summary text, or "-" to read from stdin')
-    parser.add_argument("--manual-section", type=int, default=13,
-                        help="Manual section number to append entry under (default: 13)")
-    parser.add_argument("--dry-run", action="store_true",
-                        help="Print what would be written without writing anything")
+    parser.add_argument(
+        "--directive", required=True, help='Directive label, e.g. "D1.8", "309", "A"'
+    )
+    parser.add_argument("--pr-number", required=True, type=int, help="GitHub PR number")
+    parser.add_argument(
+        "--summary", required=True, help='Completion summary text, or "-" to read from stdin'
+    )
+    parser.add_argument(
+        "--manual-section",
+        type=int,
+        default=13,
+        help="Manual section number to append entry under (default: 13)",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Print what would be written without writing anything",
+    )
     return parser.parse_args()
 
 
@@ -115,13 +124,17 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 def manual_entry(directive: str, pr_number: int, summary: str, callsign: str) -> str:
     date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     tag = f"[{callsign.upper()}] " if callsign else ""
-    return (
-        f"\n### {tag}Directive {directive} (PR #{pr_number}, {date_str})\n"
-        f"{summary}\n"
-    )
+    return f"\n### {tag}Directive {directive} (PR #{pr_number}, {date_str})\n{summary}\n"
 
 
-def save_manual(directive: str, pr_number: int, summary: str, section: int, dry_run: bool, callsign: str = "elliot") -> bool:
+def save_manual(
+    directive: str,
+    pr_number: int,
+    summary: str,
+    section: int,
+    dry_run: bool,
+    callsign: str = "elliot",
+) -> bool:
     manual_path = REPO_ROOT / "docs" / "MANUAL.md"
     if not manual_path.exists():
         print(f"[STORE 1/4] Manual: FAILED — docs/MANUAL.md not found at {manual_path}")
@@ -149,7 +162,9 @@ def save_manual(directive: str, pr_number: int, summary: str, section: int, dry_
 
     if dry_run:
         insert_before = next_idx if next_idx is not None else len(lines)
-        print(f"[DRY-RUN][STORE 1/4] Would insert before line {insert_before + 1} in docs/MANUAL.md:")
+        print(
+            f"[DRY-RUN][STORE 1/4] Would insert before line {insert_before + 1} in docs/MANUAL.md:"
+        )
         print("---")
         print(entry.strip())
         print("---")
@@ -170,7 +185,10 @@ def save_manual(directive: str, pr_number: int, summary: str, section: int, dry_
 # STORE 2 — ceo_memory
 # ---------------------------------------------------------------------------
 
-def save_ceo_memory(directive: str, pr_number: int, summary: str, dry_run: bool, callsign: str = "elliot") -> bool:
+
+def save_ceo_memory(
+    directive: str, pr_number: int, summary: str, dry_run: bool, callsign: str = "elliot"
+) -> bool:
     """Upsert public.ceo_memory via asyncpg (no REST, no PostgREST).
 
     statement_cache_size=0 so the connection works through Supabase's
@@ -198,6 +216,7 @@ def save_ceo_memory(directive: str, pr_number: int, summary: str, dry_run: bool,
 
     async def _upsert() -> None:
         import asyncpg
+
         conn = await asyncpg.connect(dsn, statement_cache_size=0)
         try:
             await conn.execute(
@@ -207,7 +226,8 @@ def save_ceo_memory(directive: str, pr_number: int, summary: str, dry_run: bool,
                 ON CONFLICT (key) DO UPDATE
                   SET value = EXCLUDED.value, updated_at = NOW()
                 """,
-                key, json.dumps(value),
+                key,
+                json.dumps(value),
             )
         finally:
             await conn.close()
@@ -225,7 +245,10 @@ def save_ceo_memory(directive: str, pr_number: int, summary: str, dry_run: bool,
 # STORE 3 — cis_directive_metrics
 # ---------------------------------------------------------------------------
 
-def save_metrics(directive: str, pr_number: int, summary: str, dry_run: bool, callsign: str = "elliot") -> bool:
+
+def save_metrics(
+    directive: str, pr_number: int, summary: str, dry_run: bool, callsign: str = "elliot"
+) -> bool:
     """Insert into public.cis_directive_metrics via asyncpg (no REST)."""
     # Determine directive_id vs directive_ref
     if re.fullmatch(r"\d+", directive):
@@ -263,6 +286,7 @@ def save_metrics(directive: str, pr_number: int, summary: str, dry_run: bool, ca
 
     async def _insert() -> None:
         import asyncpg
+
         conn = await asyncpg.connect(dsn, statement_cache_size=0)
         try:
             await conn.execute(
@@ -277,16 +301,27 @@ def save_metrics(directive: str, pr_number: int, summary: str, dry_run: bool, ca
                   $8, $9, $10, $11, $12
                 )
                 """,
-                directive_id, directive_ref, now, now,
-                1, False, True,
-                True, ["build-2", "build-3"], summary, callsign, now,
+                directive_id,
+                directive_ref,
+                now,
+                now,
+                1,
+                False,
+                True,
+                True,
+                ["build-2", "build-3"],
+                summary,
+                callsign,
+                now,
             )
         finally:
             await conn.close()
 
     try:
         asyncio.run(_insert())
-        print(f"[STORE 3/4] cis_directive_metrics: OK — directive_ref={directive_ref!r}, directive_id={directive_id}")
+        print(
+            f"[STORE 3/4] cis_directive_metrics: OK — directive_ref={directive_ref!r}, directive_id={directive_id}"
+        )
         return True
     except Exception as exc:  # noqa: BLE001
         print(f"[STORE 3/4] cis_directive_metrics: FAILED — {exc}")
@@ -297,15 +332,13 @@ def save_metrics(directive: str, pr_number: int, summary: str, dry_run: bool, ca
 # STORE 4 — Drive mirror (best-effort)
 # ---------------------------------------------------------------------------
 
+
 def run_drive_mirror(dry_run: bool) -> None:
     mirror_script = REPO_ROOT / "scripts" / "write_manual_mirror.py"
     if dry_run:
         print(f"[DRY-RUN][STORE 4/4] Would run: {sys.executable} {mirror_script}")
         return
-    result = subprocess.run(
-        [sys.executable, str(mirror_script)],
-        capture_output=True, text=True
-    )
+    result = subprocess.run([sys.executable, str(mirror_script)], capture_output=True, text=True)
     if result.returncode == 0:
         print("[STORE 4/4] Drive mirror: OK")
     else:
@@ -317,6 +350,7 @@ def run_drive_mirror(dry_run: bool) -> None:
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 def main():
     load_env()
@@ -333,7 +367,9 @@ def main():
     callsign = get_callsign()  # LAW XVII: fail loud on empty CALLSIGN
 
     if dry_run:
-        print(f"[DRY-RUN] directive={directive!r} pr={pr_number} section={section} callsign={callsign!r}")
+        print(
+            f"[DRY-RUN] directive={directive!r} pr={pr_number} section={section} callsign={callsign!r}"
+        )
         print()
 
     succeeded = []

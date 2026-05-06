@@ -4,6 +4,7 @@
 Usage: python scripts/update_peer.py <target_callsign>
 Output: formatted brief to stdout (caller handles delivery)
 """
+
 import asyncio
 import json
 import os
@@ -32,6 +33,7 @@ CALLSIGN_CONFIG = {
 async def query_ceo_memory():
     """Get latest session_end, last directive number, and roadmap from ceo_memory."""
     import asyncpg
+
     db_url = os.environ.get("DATABASE_URL", "").replace("postgresql+asyncpg://", "postgresql://")
     conn = await asyncpg.connect(db_url, statement_cache_size=0)
     try:
@@ -63,6 +65,7 @@ async def query_ceo_memory():
 async def query_daily_log():
     """Get latest daily_log from elliot_internal.memories."""
     import asyncpg
+
     db_url = os.environ.get("DATABASE_URL", "").replace("postgresql+asyncpg://", "postgresql://")
     conn = await asyncpg.connect(db_url, statement_cache_size=0)
     try:
@@ -80,7 +83,9 @@ def query_manual_commit():
     """Get latest MANUAL.md commit from git log."""
     result = subprocess.run(
         ["git", "log", "--oneline", "-1", "--", "docs/MANUAL.md"],
-        capture_output=True, text=True, cwd="/home/elliotbot/clawd/Agency_OS"
+        capture_output=True,
+        text=True,
+        cwd="/home/elliotbot/clawd/Agency_OS",
     )
     return result.stdout.strip()
 
@@ -89,8 +94,7 @@ def query_drive_mirror():
     """Get Drive mirror verification status."""
     for cwd in ["/home/elliotbot/clawd/Agency_OS", "/home/elliotbot/clawd/Agency_OS-aiden"]:
         result = subprocess.run(
-            ["python3", "scripts/verify_manual.py"],
-            capture_output=True, text=True, cwd=cwd
+            ["python3", "scripts/verify_manual.py"], capture_output=True, text=True, cwd=cwd
         )
         if result.returncode == 0:
             return result.stdout.strip()
@@ -114,7 +118,7 @@ async def build_brief(target_callsign: str) -> str:
 
     brief = f"""[UPDATE FOR {target_callsign.upper()} — post-reset catchup]
 
-IDENTITY: You are {target_callsign.upper()} (Keiracom CTO). IDENTITY.md={config['identity_path']}. CALLSIGN={target_callsign}. Worktree={config['worktree']}. TG bot={config['tg_bot']}. Branch={config['branch']}.
+IDENTITY: You are {target_callsign.upper()} (Keiracom CTO). IDENTITY.md={config["identity_path"]}. CALLSIGN={target_callsign}. Worktree={config["worktree"]}. TG bot={config["tg_bot"]}. Branch={config["branch"]}.
 
 COMMS: All outbound via Telegram group (chat_id -1003926592540). NEVER terminal stdout. Use `tg -g` for group, `tg -d` for Dave DM. Verify `tg -g "test"` before first outbound. Dave reads Telegram only.
 
@@ -131,8 +135,8 @@ BEFORE FIRST OUTBOUND, READ:
 4. ARCHITECTURE.md if about to touch code (LAW I-A)
 
 4-STORE SNAPSHOT (queried at {now} by {sender}):
-- ceo_memory latest: {session_end.get('key', 'unknown')} (updated {session_end.get('updated_at', 'unknown')}) — "{session_preview[:200]}"
-- daily_log latest: {daily_log.get('created_at', 'unknown')} — "{daily_log.get('preview', 'none')[:200]}"
+- ceo_memory latest: {session_end.get("key", "unknown")} (updated {session_end.get("updated_at", "unknown")}) — "{session_preview[:200]}"
+- daily_log latest: {daily_log.get("created_at", "unknown")} — "{daily_log.get("preview", "none")[:200]}"
 - MANUAL commit: {manual_commit}
 - Drive mirror: {drive_info}
 
@@ -160,6 +164,7 @@ RESUME PROTOCOL:
 
 def main():
     from dotenv import dotenv_values
+
     env_path = "/home/elliotbot/.config/agency-os/.env"
     for k, v in dotenv_values(env_path).items():
         if v is not None:

@@ -16,10 +16,10 @@ from dotenv import load_dotenv
 # ── env ───────────────────────────────────────────────────────────────────────
 load_dotenv("/home/elliotbot/.config/agency-os/.env")
 
-HUNTER_API_KEY   = os.getenv("HUNTER_API_KEY", "")
-APIFY_API_TOKEN  = os.getenv("APIFY_API_TOKEN", "")
-DFS_LOGIN        = os.getenv("DATAFORSEO_LOGIN", "")
-DFS_PASSWORD     = os.getenv("DATAFORSEO_PASSWORD", "")
+HUNTER_API_KEY = os.getenv("HUNTER_API_KEY", "")
+APIFY_API_TOKEN = os.getenv("APIFY_API_TOKEN", "")
+DFS_LOGIN = os.getenv("DATAFORSEO_LOGIN", "")
+DFS_PASSWORD = os.getenv("DATAFORSEO_PASSWORD", "")
 
 if not all([HUNTER_API_KEY, APIFY_API_TOKEN, DFS_LOGIN, DFS_PASSWORD]):
     print("ERROR: Missing API keys. Check .env")
@@ -33,14 +33,14 @@ OUT_PATH = OUT_DIR / "335_1_stage_8.json"
 
 # ── constants ─────────────────────────────────────────────────────────────────
 HUNTER_SEM = 15
-DFS_SEM    = 15
+DFS_SEM = 15
 APIFY_ACTOR = "automation-lab~linkedin-company-scraper"
 DFS_BASE = "https://api.dataforseo.com"
 APIFY_BASE = "https://api.apify.com"
 
-COST_HUNTER_PER_CALL = Decimal("0.0")   # Hunter company find is included in plan
-COST_DFS_SERP        = Decimal("0.002") # $0.002 per SERP call
-COST_APIFY_RUN       = Decimal("0.0")   # actor cost varies; track separately
+COST_HUNTER_PER_CALL = Decimal("0.0")  # Hunter company find is included in plan
+COST_DFS_SERP = Decimal("0.002")  # $0.002 per SERP call
+COST_APIFY_RUN = Decimal("0.0")  # actor cost varies; track separately
 
 # ── load inputs ───────────────────────────────────────────────────────────────
 with open(S6_PATH) as f:
@@ -53,8 +53,8 @@ s2_map = {e["domain"]: e for e in s2["domains"]}
 
 # 57 domains from stage 6
 domains_data = s6["domains"]  # list of {domain, category, dm_name, ...}
-domain_list  = [e["domain"] for e in domains_data]
-domain_meta  = {e["domain"]: e for e in domains_data}
+domain_list = [e["domain"] for e in domains_data]
+domain_meta = {e["domain"]: e for e in domains_data}
 
 print(f"Loaded {len(domain_list)} domains from Stage 6")
 
@@ -63,8 +63,10 @@ print(f"Loaded {len(domain_list)} domains from Stage 6")
 # L1: Hunter Company Enrichment
 # ══════════════════════════════════════════════════════════════════════════════
 
-async def hunter_company(client: httpx.AsyncClient, sem: asyncio.Semaphore,
-                          domain: str) -> dict | None:
+
+async def hunter_company(
+    client: httpx.AsyncClient, sem: asyncio.Semaphore, domain: str
+) -> dict | None:
     """GET Hunter company-find for a domain. Returns data dict or None."""
     # Fix 1: Strip www. prefix — Hunter 403s on www. domains
     clean_domain = domain.removeprefix("www.")
@@ -77,8 +79,10 @@ async def hunter_company(client: httpx.AsyncClient, sem: asyncio.Semaphore,
             )
             if resp.status_code == 200:
                 data = resp.json().get("data", {})
-                print(f"  [L1] {domain}: OK | employees={data.get('metrics', {}).get('employees')} "
-                      f"| linkedin={data.get('linkedin', {}).get('handle')}")
+                print(
+                    f"  [L1] {domain}: OK | employees={data.get('metrics', {}).get('employees')} "
+                    f"| linkedin={data.get('linkedin', {}).get('handle')}"
+                )
                 return data
             elif resp.status_code == 404:
                 print(f"  [L1] {domain}: 404 not found")
@@ -104,6 +108,7 @@ async def run_l1(domain_list: list[str]) -> dict[str, dict | None]:
 # L2: DFS SERP LinkedIn URL recovery
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def _dfs_auth_header() -> str:
     creds = f"{DFS_LOGIN}:{DFS_PASSWORD}"
     return "Basic " + base64.b64encode(creds.encode()).decode()
@@ -111,8 +116,12 @@ def _dfs_auth_header() -> str:
 
 def _extract_linkedin_company_url(items: list, business_name: str = "") -> str | None:
     """Parse SERP items for first /company/ URL with cross-validation."""
-    biz_words = [w.lower() for w in business_name.split() if len(w) >= 4
-                 and w.lower() not in ("pty", "ltd", "limited", "the", "trustee", "trust", "for")]
+    biz_words = [
+        w.lower()
+        for w in business_name.split()
+        if len(w) >= 4
+        and w.lower() not in ("pty", "ltd", "limited", "the", "trustee", "trust", "for")
+    ]
     for item in items:
         url = item.get("url", "")
         title = item.get("title", "")
@@ -140,17 +149,20 @@ def _extract_linkedin_company_url(items: list, business_name: str = "") -> str |
     return None
 
 
-async def dfs_linkedin_serp(client: httpx.AsyncClient, sem: asyncio.Semaphore,
-                             domain: str, legal_name: str) -> str | None:
+async def dfs_linkedin_serp(
+    client: httpx.AsyncClient, sem: asyncio.Semaphore, domain: str, legal_name: str
+) -> str | None:
     """POST DFS SERP for LinkedIn company URL. Returns URL or None."""
     query = f'"{legal_name}" site:linkedin.com/company/'
-    payload = [{
-        "keyword": query,
-        "location_code": 2036,
-        "language_code": "en",
-        "depth": 10,
-        "se_domain": "google.com.au",
-    }]
+    payload = [
+        {
+            "keyword": query,
+            "location_code": 2036,
+            "language_code": "en",
+            "depth": 10,
+            "se_domain": "google.com.au",
+        }
+    ]
     async with sem:
         try:
             resp = await client.post(
@@ -166,7 +178,7 @@ async def dfs_linkedin_serp(client: httpx.AsyncClient, sem: asyncio.Semaphore,
                 print(f"  [L2] {domain}: no tasks in response")
                 return None
             result = (tasks[0].get("result") or [{}])[0]
-            items  = result.get("items") or []
+            items = result.get("items") or []
             url = _extract_linkedin_company_url(items, legal_name)
             if url:
                 print(f"  [L2] {domain}: RECOVERED {url}")
@@ -178,8 +190,9 @@ async def dfs_linkedin_serp(client: httpx.AsyncClient, sem: asyncio.Semaphore,
             return None
 
 
-async def run_l2(domains_needing_recovery: list[str],
-                 domain_names: dict[str, str]) -> dict[str, str | None]:
+async def run_l2(
+    domains_needing_recovery: list[str], domain_names: dict[str, str]
+) -> dict[str, str | None]:
     """Run DFS SERP L2 for domains missing LinkedIn handle. Returns domain → url."""
     if not domains_needing_recovery:
         return {}
@@ -197,6 +210,7 @@ async def run_l2(domains_needing_recovery: list[str],
 # ══════════════════════════════════════════════════════════════════════════════
 # L3: Apify batch scrape
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 async def _apify_batch(client: httpx.AsyncClient, urls: list[str], batch_label: str) -> list[dict]:
     """Run one Apify batch of <=20 URLs. Returns list of records."""
@@ -248,13 +262,13 @@ async def run_l3(linkedin_urls: list[str]) -> dict[str, dict]:
         return {}
 
     BATCH_SIZE = 20
-    batches = [linkedin_urls[i:i+BATCH_SIZE] for i in range(0, len(linkedin_urls), BATCH_SIZE)]
+    batches = [linkedin_urls[i : i + BATCH_SIZE] for i in range(0, len(linkedin_urls), BATCH_SIZE)]
     print(f"  [L3] {len(linkedin_urls)} URLs split into {len(batches)} batches of ≤{BATCH_SIZE}")
 
     all_records = []
     async with httpx.AsyncClient(timeout=60.0) as client:
         for i, batch in enumerate(batches):
-            records = await _apify_batch(client, batch, f"b{i+1}")
+            records = await _apify_batch(client, batch, f"b{i + 1}")
             all_records.extend(records)
 
     # Key by URL
@@ -275,6 +289,7 @@ async def run_l3(linkedin_urls: list[str]) -> dict[str, dict]:
 # Main
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 async def main() -> None:
     t_start = time.monotonic()
 
@@ -292,8 +307,8 @@ async def main() -> None:
 
     l1_success = sum(1 for v in l1_results.values() if v is not None)
     l1_linkedin_found = 0
-    linkedin_urls: dict[str, str] = {}   # domain → URL
-    url_source:   dict[str, str] = {}    # domain → "hunter"|"serp"|"none"
+    linkedin_urls: dict[str, str] = {}  # domain → URL
+    url_source: dict[str, str] = {}  # domain → "hunter"|"serp"|"none"
 
     for domain, data in l1_results.items():
         if data and data.get("linkedin", {}).get("handle"):
@@ -302,11 +317,13 @@ async def main() -> None:
             slug = handle.replace("company/", "").strip("/")
             url = f"https://www.linkedin.com/company/{slug}/"
             linkedin_urls[domain] = url
-            url_source[domain]    = "hunter"
+            url_source[domain] = "hunter"
             l1_linkedin_found += 1
 
-    print(f"\nL1 summary: {l1_success}/{len(domain_list)} API success | "
-          f"{l1_linkedin_found} LinkedIn URLs found")
+    print(
+        f"\nL1 summary: {l1_success}/{len(domain_list)} API success | "
+        f"{l1_linkedin_found} LinkedIn URLs found"
+    )
 
     # ── L2 DFS SERP ──────────────────────────────────────────────────────────
     domains_for_l2 = [d for d in domain_list if d not in linkedin_urls]
@@ -317,7 +334,7 @@ async def main() -> None:
     for domain, url in l2_results.items():
         if url:
             linkedin_urls[domain] = url
-            url_source[domain]    = "serp"
+            url_source[domain] = "serp"
             l2_recovered += 1
 
     # Domains still without LinkedIn URL
@@ -336,7 +353,7 @@ async def main() -> None:
         l3_success = len(apify_map)
     except Exception as e:
         print(f"  [L3] FAILED: {e}")
-        apify_map  = {}
+        apify_map = {}
         l3_success = 0
 
     # ── Assemble per-domain output ────────────────────────────────────────────
@@ -345,8 +362,8 @@ async def main() -> None:
 
     for domain in domain_list:
         hunter_data = l1_results.get(domain) or {}
-        li_url      = linkedin_urls.get(domain)
-        apify_data  = {}
+        li_url = linkedin_urls.get(domain)
+        apify_data = {}
         if li_url:
             # Try exact URL match first, then normalized, then slug-only
             norm_url = li_url.rstrip("/") + "/"
@@ -374,7 +391,7 @@ async def main() -> None:
         }
 
     # ── Cost ─────────────────────────────────────────────────────────────────
-    cost_serp  = float(COST_DFS_SERP * len(domains_for_l2))
+    cost_serp = float(COST_DFS_SERP * len(domains_for_l2))
     cost_total = cost_serp  # Hunter included in plan; Apify billed separately
 
     # ── Output JSON ──────────────────────────────────────────────────────────
@@ -403,9 +420,9 @@ async def main() -> None:
     print(f"\nOutput written to {OUT_PATH}")
 
     # ── Report ────────────────────────────────────────────────────────────────
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("STAGE 8 REPORT")
-    print("="*60)
+    print("=" * 60)
     print(f"L1 Hunter success:        {l1_success}/{len(domain_list)}")
     print(f"L1 LinkedIn URLs found:   {l1_linkedin_found}")
     print(f"L2 SERP attempted:        {len(domains_for_l2)}")
@@ -413,7 +430,7 @@ async def main() -> None:
     print(f"L3 Apify input URLs:      {len(all_urls)}")
     print(f"L3 Apify results:         {l3_success}")
     print(f"Combined enriched:        {combined_enriched}/{len(domain_list)}")
-    print(f"Cost (SERP only):         ${cost_serp:.4f} USD / ${cost_serp*1.55:.4f} AUD")
+    print(f"Cost (SERP only):         ${cost_serp:.4f} USD / ${cost_serp * 1.55:.4f} AUD")
     print(f"Wall time:                {wall_time:.1f}s")
 
     # URL source breakdown

@@ -1,4 +1,5 @@
 """Tests for FreeEnrichment.enrich() — Directive #290, updated pool mock — #300."""
+
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from src.pipeline.free_enrichment import FreeEnrichment

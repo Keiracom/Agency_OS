@@ -72,9 +72,9 @@ def _make_app_kill(campaign_row=None, cancel_rowcount=3, client_id: UUID = CLIEN
     app.include_router(router)
 
     responses = [
-        _sync_result(row=campaign_row),       # 1: campaign existence check
-        _sync_result(rowcount=0),              # 2: UPDATE campaigns SET status='killed'
-        _sync_result(rowcount=cancel_rowcount), # 3: UPDATE scheduled_touches
+        _sync_result(row=campaign_row),  # 1: campaign existence check
+        _sync_result(rowcount=0),  # 2: UPDATE campaigns SET status='killed'
+        _sync_result(rowcount=cancel_rowcount),  # 3: UPDATE scheduled_touches
     ]
     call_idx = [0]
 

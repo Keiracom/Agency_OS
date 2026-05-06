@@ -1,4 +1,5 @@
 """Tests for Layer2Discovery exception handling — Directive #285 additions."""
+
 from __future__ import annotations
 
 import uuid

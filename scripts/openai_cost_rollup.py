@@ -8,6 +8,7 @@ summary to the group.
 
 Intended to run via systemd timer at 23:55 AEST (13:55 UTC).
 """
+
 import json
 import os
 import subprocess
@@ -77,7 +78,11 @@ def send_telegram(summary: dict) -> None:
     """Send daily summary to Telegram group."""
     total = summary["total_usd"]
     by_uc = summary.get("by_use_case", {})
-    embed_cost = by_uc.get("embedding", 0) + by_uc.get("store_embedding", 0) + by_uc.get("backfill_embedding", 0)
+    embed_cost = (
+        by_uc.get("embedding", 0)
+        + by_uc.get("store_embedding", 0)
+        + by_uc.get("backfill_embedding", 0)
+    )
     disc_cost = by_uc.get("discernment", 0)
     save_cost = by_uc.get("save_extraction", 0)
     qe_cost = by_uc.get("query_expansion", 0)

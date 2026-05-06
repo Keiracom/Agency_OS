@@ -12,6 +12,7 @@ Covers:
 - Mutations are dispatched to the injected TouchStore.apply()
 - Suppression mutations hit SuppressionManager.add_to_suppression
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -31,7 +32,7 @@ from src.api.routes.outreach_webhooks import TouchStore, get_touch_store, router
 def store():
     s = TouchStore()
     s.load_pending = AsyncMock(return_value=[])  # type: ignore[method-assign]
-    s.apply = AsyncMock(return_value=0)          # type: ignore[method-assign]
+    s.apply = AsyncMock(return_value=0)  # type: ignore[method-assign]
     return s
 
 
@@ -64,6 +65,7 @@ def _post(client, path, secret, header_name, body: dict) -> tuple[int, dict]:
 
 # ---------- signature validation -------------------------------------------
 
+
 def test_invalid_signature_rejected(client, monkeypatch):
     monkeypatch.setenv("SALESFORGE_WEBHOOK_SECRET", "shh")
     raw = json.dumps({"body": "hi"}).encode()
@@ -88,28 +90,44 @@ def test_missing_secret_env_rejects(client, monkeypatch):
 
 # ---------- fast-path routing ----------------------------------------------
 
+
 def test_salesforge_fast_path_unsubscribe_applies_cancels_and_suppress(client, monkeypatch, store):
     monkeypatch.setenv("SALESFORGE_WEBHOOK_SECRET", "shh")
     # 2 pending touches waiting to be cancelled
-    store.load_pending = AsyncMock(return_value=[
-        {"id": "t1", "channel": "email", "sequence_step": 2},
-        {"id": "t2", "channel": "email", "sequence_step": 3},
-    ])
+    store.load_pending = AsyncMock(
+        return_value=[
+            {"id": "t1", "channel": "email", "sequence_step": 2},
+            {"id": "t2", "channel": "email", "sequence_step": 3},
+        ]
+    )
 
     # Body stacks 3/4 unsubscribe keywords -> fast-path confidence 0.75 (>= floor),
     # so no LLM escalation. If ordering changes and it still dips below, the
     # patched LLM confirms unsubscribe anyway.
-    fake_llm = AsyncMock(return_value={
-        "intent": "unsubscribe", "confidence": 0.95,
-        "evidence_phrase": "unsubscribe", "extracted": {},
-    })
-    with patch.object(outreach_webhooks, "apply_suppression") as apply_sup, \
-         patch.object(outreach_webhooks, "llm_classify", fake_llm):
+    fake_llm = AsyncMock(
+        return_value={
+            "intent": "unsubscribe",
+            "confidence": 0.95,
+            "evidence_phrase": "unsubscribe",
+            "extracted": {},
+        }
+    )
+    with (
+        patch.object(outreach_webhooks, "apply_suppression") as apply_sup,
+        patch.object(outreach_webhooks, "llm_classify", fake_llm),
+    ):
         code, body = _post(
-            client, "/webhooks/salesforge", "shh", "X-Salesforge-Signature",
-            {"body": "please unsubscribe me, opt out, remove from list",
-             "subject": "Re: your offer",
-             "from_email": "ceo@acme.com.au", "lead_id": "lead-1", "client_id": "c1"},
+            client,
+            "/webhooks/salesforge",
+            "shh",
+            "X-Salesforge-Signature",
+            {
+                "body": "please unsubscribe me, opt out, remove from list",
+                "subject": "Re: your offer",
+                "from_email": "ceo@acme.com.au",
+                "lead_id": "lead-1",
+                "client_id": "c1",
+            },
         )
 
     assert code == 200
@@ -121,16 +139,24 @@ def test_salesforge_fast_path_unsubscribe_applies_cancels_and_suppress(client, m
 
 def test_fast_path_positive_hits_decision_tree(client, monkeypatch, store):
     monkeypatch.setenv("UNIPILE_WEBHOOK_SECRET", "shh")
-    store.load_pending = AsyncMock(return_value=[
-        {"id": "t1", "channel": "email", "sequence_step": 2},
-    ])
+    store.load_pending = AsyncMock(
+        return_value=[
+            {"id": "t1", "channel": "email", "sequence_step": 2},
+        ]
+    )
 
     code, body = _post(
-        client, "/webhooks/unipile", "shh", "X-Unipile-Signature",
-        {"message": "very interested, book me in please",
-         "thread_subject": "intro",
-         "from_profile_url": "linkedin.com/in/amy",
-         "lead_id": "lead-1", "client_id": "c1"},
+        client,
+        "/webhooks/unipile",
+        "shh",
+        "X-Unipile-Signature",
+        {
+            "message": "very interested, book me in please",
+            "thread_subject": "intro",
+            "from_profile_url": "linkedin.com/in/amy",
+            "lead_id": "lead-1",
+            "client_id": "c1",
+        },
     )
     assert code == 200
     # "book" + "interested" — router may pick booking (priority); either is a valid high-conf path
@@ -140,22 +166,32 @@ def test_fast_path_positive_hits_decision_tree(client, monkeypatch, store):
 
 # ---------- LLM escalation --------------------------------------------------
 
+
 def test_low_confidence_unclear_escalates_to_llm(client, monkeypatch, store):
     monkeypatch.setenv("SALESFORGE_WEBHOOK_SECRET", "shh")
     store.load_pending = AsyncMock(return_value=[])
 
-    fake_llm = AsyncMock(return_value={
-        "intent": "question",
-        "confidence": 0.88,
-        "evidence_phrase": "what are your pricing tiers?",
-        "extracted": {},
-    })
+    fake_llm = AsyncMock(
+        return_value={
+            "intent": "question",
+            "confidence": 0.88,
+            "evidence_phrase": "what are your pricing tiers?",
+            "extracted": {},
+        }
+    )
     with patch.object(outreach_webhooks, "llm_classify", fake_llm):
         code, body = _post(
-            client, "/webhooks/salesforge", "shh", "X-Salesforge-Signature",
-            {"body": "hmm tell me more about this?",  # no keyword hits -> unclear
-             "subject": "", "from_email": "ceo@acme.com.au",
-             "lead_id": "lead-1", "client_id": "c1"},
+            client,
+            "/webhooks/salesforge",
+            "shh",
+            "X-Salesforge-Signature",
+            {
+                "body": "hmm tell me more about this?",  # no keyword hits -> unclear
+                "subject": "",
+                "from_email": "ceo@acme.com.au",
+                "lead_id": "lead-1",
+                "client_id": "c1",
+            },
         )
 
     assert code == 200
@@ -168,16 +204,27 @@ def test_llm_unclear_stays_unclear(client, monkeypatch, store):
     monkeypatch.setenv("ELEVENAGENTS_WEBHOOK_SECRET", "shh")
     store.load_pending = AsyncMock(return_value=[])
 
-    fake_llm = AsyncMock(return_value={
-        "intent": "unclear", "confidence": 0.2,
-        "evidence_phrase": "", "extracted": {},
-    })
+    fake_llm = AsyncMock(
+        return_value={
+            "intent": "unclear",
+            "confidence": 0.2,
+            "evidence_phrase": "",
+            "extracted": {},
+        }
+    )
     with patch.object(outreach_webhooks, "llm_classify", fake_llm):
         code, body = _post(
-            client, "/webhooks/elevenagents", "shh", "X-ElevenAgents-Signature",
-            {"transcript": "um yeah sure i dunno",
-             "call_id": "v1", "phone_number": "+61412345678",
-             "lead_id": "lead-1", "client_id": "c1"},
+            client,
+            "/webhooks/elevenagents",
+            "shh",
+            "X-ElevenAgents-Signature",
+            {
+                "transcript": "um yeah sure i dunno",
+                "call_id": "v1",
+                "phone_number": "+61412345678",
+                "lead_id": "lead-1",
+                "client_id": "c1",
+            },
         )
 
     assert code == 200
@@ -188,13 +235,13 @@ def test_llm_unclear_stays_unclear(client, monkeypatch, store):
 
 # ---------- bad payload -----------------------------------------------------
 
+
 def test_invalid_json_is_400(client, monkeypatch):
     monkeypatch.setenv("SALESFORGE_WEBHOOK_SECRET", "shh")
     raw = b"not-json"
     resp = client.post(
         "/webhooks/salesforge",
         data=raw,
-        headers={"Content-Type": "application/json",
-                 "X-Salesforge-Signature": _sign("shh", raw)},
+        headers={"Content-Type": "application/json", "X-Salesforge-Signature": _sign("shh", raw)},
     )
     assert resp.status_code == 400

@@ -49,9 +49,10 @@ MELBOURNE_AGENCIES = [
 # RESULT STORAGE
 # ============================================
 
+
 class VerificationResult:
     """Stores verification results for a single company."""
-    
+
     def __init__(self, company_name: str):
         self.company_name = company_name
         self.t0_gmb = False
@@ -68,7 +69,7 @@ class VerificationResult:
         self.errors = []
         self.field_provenance = {}
         self.discovery_source = None
-        
+
     def to_row(self) -> dict:
         """Convert to table row format."""
         emp_display = "N/A"
@@ -77,7 +78,7 @@ class VerificationResult:
                 emp_display = f"{self.t1_5_employees} ({self.t1_5_employee_provenance})"
             else:
                 emp_display = str(self.t1_5_employees)
-        
+
         return {
             "Company": self.company_name[:30],
             "T0 GMB": "✓" if self.t0_gmb else "✗",
@@ -95,30 +96,32 @@ class VerificationResult:
 # T0 GMB DISCOVERY
 # ============================================
 
+
 async def t0_gmb_discover(client, company_name: str) -> dict:
     """
     T0 GMB-first discovery via Bright Data.
-    
+
     Searches Google Maps for the company to get GMB data.
     """
     try:
         # Use SERP API to search Google Maps for the company
         query = f'"{company_name}" Melbourne marketing agency'
         results = await client.search_google_maps(query, "Melbourne VIC", max_results=5)
-        
+
         if results:
             # Find best match by name similarity
             from fuzzywuzzy import fuzz
+
             best_match = None
             best_score = 0
-            
+
             for r in results:
                 name = r.get("title", "") or r.get("name", "")
                 score = fuzz.ratio(company_name.lower(), name.lower())
                 if score > best_score:
                     best_score = score
                     best_match = r
-            
+
             if best_match and best_score >= 50:
                 return {
                     "found": True,
@@ -132,9 +135,9 @@ async def t0_gmb_discover(client, company_name: str) -> dict:
                     "category": best_match.get("category"),
                     "match_score": best_score,
                 }
-        
+
         return {"found": False, "discovery_source": "gmb_first"}
-        
+
     except Exception as e:
         return {"found": False, "discovery_source": "gmb_first", "error": str(e)}
 
@@ -143,19 +146,20 @@ async def t0_gmb_discover(client, company_name: str) -> dict:
 # DUAL SCORING
 # ============================================
 
+
 async def calculate_dual_scores(db, lead_data: dict) -> tuple[int, int]:
     """
     Calculate Reachability + Propensity scores.
-    
+
     Does NOT use single composite ALS.
     """
     from src.engines.scorer import ScorerEngine
-    
+
     scorer = ScorerEngine()
-    
+
     reachability = await scorer.calculate_reachability(db, lead_data)
     propensity = await scorer.calculate_propensity(db, lead_data)
-    
+
     return reachability, propensity
 
 
@@ -163,10 +167,11 @@ async def calculate_dual_scores(db, lead_data: dict) -> tuple[int, int]:
 # PROVENANCE EXTRACTION
 # ============================================
 
+
 def extract_provenance_value(field_value: Any) -> tuple[Any, str | None]:
     """
     Extract value and source from provenance-wrapped field.
-    
+
     Returns (raw_value, source) tuple.
     """
     if isinstance(field_value, dict) and "value" in field_value and "source" in field_value:
@@ -177,11 +182,11 @@ def extract_provenance_value(field_value: Any) -> tuple[Any, str | None]:
 def check_field_provenance(enriched_data: dict) -> dict[str, dict]:
     """
     Check all fields for provenance tagging.
-    
+
     Returns dict of {field: {"value": X, "source": Y, "has_provenance": bool}}
     """
     provenance_report = {}
-    
+
     for key, value in enriched_data.items():
         if isinstance(value, dict) and "value" in value and "source" in value:
             provenance_report[key] = {
@@ -196,13 +201,14 @@ def check_field_provenance(enriched_data: dict) -> dict[str, dict]:
                 "source": None,
                 "has_provenance": False,
             }
-    
+
     return provenance_report
 
 
 # ============================================
 # MAIN TEST FUNCTION
 # ============================================
+
 
 async def run_verification() -> list[VerificationResult]:
     """
@@ -212,53 +218,53 @@ async def run_verification() -> list[VerificationResult]:
     print("DIRECTIVE #150 — Step 4: End-to-End Verification")
     print("Siege Waterfall v3 on 10 Melbourne Marketing Agencies")
     print("=" * 80 + "\n")
-    
+
     results = []
     total_cost = 0.0
-    
+
     # Initialize Bright Data client (LAW VI compliance)
     from src.integrations.bright_data_client import get_bright_data_client
-    
+
     try:
         bd_client = get_bright_data_client()
     except ValueError as e:
         print(f"ERROR: {e}")
         print("Please ensure BRIGHTDATA_API_KEY is set in environment")
         return []
-    
+
     # Initialize SiegeWaterfall
     from src.integrations.siege_waterfall import SiegeWaterfall
-    
+
     waterfall = SiegeWaterfall(bright_data_client=bd_client)
-    
+
     # Initialize database for scoring
     from src.integrations.supabase import get_async_supabase_client
-    
+
     try:
         supabase = await get_async_supabase_client()
     except Exception as e:
         print(f"WARNING: Supabase unavailable: {e}")
         print("Dual scoring will use default scores")
         supabase = None
-    
+
     for i, company_name in enumerate(MELBOURNE_AGENCIES, 1):
         print(f"\n[{i}/10] Testing: {company_name}")
         print("-" * 60)
-        
+
         result = VerificationResult(company_name)
-        
+
         try:
             # ===== T0: GMB-First Discovery =====
             print("  T0 GMB Discovery...")
             gmb_data = await t0_gmb_discover(bd_client, company_name)
-            
+
             if gmb_data.get("found"):
                 result.t0_gmb = True
                 result.t0_gmb_data = gmb_data
                 result.discovery_source = gmb_data.get("discovery_source")
                 print(f"     ✓ Found: {gmb_data.get('business_name')}")
                 print(f"     Discovery source: {result.discovery_source}")
-                
+
                 # Add T0 GMB data to enriched_data for provenance
                 result.cost_aud += 0.001  # GMB discovery cost
             else:
@@ -267,7 +273,7 @@ async def run_verification() -> list[VerificationResult]:
                 print(f"     ✗ Not found via GMB")
                 if gmb_data.get("error"):
                     result.errors.append(f"T0 GMB: {gmb_data['error']}")
-            
+
             # ===== Build lead for enrichment =====
             lead = {
                 "company_name": company_name,
@@ -275,41 +281,43 @@ async def run_verification() -> list[VerificationResult]:
                 "city": "Melbourne",
                 "discovery_source": result.discovery_source,
             }
-            
+
             # Merge T0 GMB data
             if result.t0_gmb_data.get("found"):
-                lead.update({
-                    "gmb_rating": result.t0_gmb_data.get("rating"),
-                    "gmb_review_count": result.t0_gmb_data.get("reviews_count"),
-                    "gmb_phone": result.t0_gmb_data.get("phone"),
-                    "gmb_website": result.t0_gmb_data.get("website"),
-                    "gmb_address": result.t0_gmb_data.get("address"),
-                    "gmb_category": result.t0_gmb_data.get("category"),
-                    "domain": _extract_domain(result.t0_gmb_data.get("website")),
-                })
-            
+                lead.update(
+                    {
+                        "gmb_rating": result.t0_gmb_data.get("rating"),
+                        "gmb_review_count": result.t0_gmb_data.get("reviews_count"),
+                        "gmb_phone": result.t0_gmb_data.get("phone"),
+                        "gmb_website": result.t0_gmb_data.get("website"),
+                        "gmb_address": result.t0_gmb_data.get("address"),
+                        "gmb_category": result.t0_gmb_data.get("category"),
+                        "domain": _extract_domain(result.t0_gmb_data.get("website")),
+                    }
+                )
+
             # ===== Run enrich_lead (T1 → T1.5 → T2 → T3 → T5) =====
             print("  Running enrich_lead waterfall...")
             enrichment_result = await waterfall.enrich_lead(
                 lead=lead,
                 skip_tiers=[],  # Run all tiers
             )
-            
+
             # ===== Extract T1 ABN =====
             enriched_data = enrichment_result.enriched_data
             abn_value, abn_source = extract_provenance_value(enriched_data.get("abn"))
-            
+
             if abn_value:
                 result.t1_abn = str(abn_value)
                 print(f"     T1 ABN: {result.t1_abn} (source: {abn_source})")
             else:
                 print("     T1 ABN: Not found")
-            
+
             # ===== Extract LinkedIn URL =====
             linkedin_url, linkedin_source = extract_provenance_value(
                 enriched_data.get("company_linkedin_url")
             )
-            
+
             if linkedin_url:
                 result.linkedin_url = linkedin_url
                 print(f"     LinkedIn URL: ✓ (source: {linkedin_source})")
@@ -320,27 +328,29 @@ async def run_verification() -> list[VerificationResult]:
                     print(f"     LinkedIn URL: ✓ resolved")
                 else:
                     print("     LinkedIn URL: Not found")
-            
+
             # ===== Extract T1.5 Employee Count =====
             emp_raw = enriched_data.get("linkedin_company_size")
             if emp_raw is None:
                 emp_raw = enriched_data.get("company_size")
             if emp_raw is None:
                 emp_raw = enriched_data.get("employee_count")
-            
+
             emp_value, emp_source = extract_provenance_value(emp_raw)
-            
+
             if emp_value:
                 result.t1_5_employees = emp_value
                 result.t1_5_employee_provenance = emp_source
                 print(f"     T1.5 Employees: {emp_value} (source: {emp_source})")
-                
+
                 # Check provenance tag format
                 if emp_source and "T1.5" in str(emp_source):
-                    print(f"     ✓ Provenance tag format correct: {{'value': {emp_value}, 'source': '{emp_source}'}}")
+                    print(
+                        f"     ✓ Provenance tag format correct: {{'value': {emp_value}, 'source': '{emp_source}'}}"
+                    )
             else:
                 print("     T1.5 Employees: Not found")
-            
+
             # ===== Size Gate Status =====
             if enriched_data.get("size_gate_skipped"):
                 result.size_gate = "skipped"
@@ -351,7 +361,7 @@ async def run_verification() -> list[VerificationResult]:
             else:
                 result.size_gate = "PASS"
                 print("     Size Gate: PASS")
-            
+
             # ===== Dual Scores =====
             # Build lead_data for scoring
             lead_data = {
@@ -366,112 +376,127 @@ async def run_verification() -> list[VerificationResult]:
                 "dm_linkedin_posts_count": len(enriched_data.get("dm_linkedin_posts") or []),
                 "gmb_reviews_count": enriched_data.get("gmb_review_count") or 0,
             }
-            
+
             # Use simple scoring (avoids DB connection issues in test)
             result.reachability = _simple_reachability(lead_data)
             result.propensity = _simple_propensity(lead_data)
-            
-            print(f"     Dual Scores: Reachability={result.reachability}, Propensity={result.propensity}")
-            
+
+            print(
+                f"     Dual Scores: Reachability={result.reachability}, Propensity={result.propensity}"
+            )
+
             # ===== Cost =====
             result.cost_aud += enrichment_result.total_cost_aud
             print(f"     Cost: ${result.cost_aud:.4f} AUD")
-            
+
             # ===== Tier Results =====
             result.tier_results = enrichment_result.tier_results
             for tr in enrichment_result.tier_results:
                 status = "✓" if tr.success else ("⊘" if tr.skipped else "✗")
                 msg = tr.skip_reason if tr.skipped else (tr.error or "success")
                 print(f"       {status} {tr.tier.value}: {msg}")
-                
+
                 if tr.error:
                     result.errors.append(f"{tr.tier.value}: {tr.error}")
-            
+
             # ===== Field Provenance =====
             result.field_provenance = check_field_provenance(enriched_data)
-            provenance_count = sum(1 for f in result.field_provenance.values() if f.get("has_provenance"))
+            provenance_count = sum(
+                1 for f in result.field_provenance.values() if f.get("has_provenance")
+            )
             total_fields = len(result.field_provenance)
             print(f"     Provenance: {provenance_count}/{total_fields} fields tagged")
-            
+
             total_cost += result.cost_aud
-            
+
         except Exception as e:
             import traceback
+
             error_msg = f"Error: {str(e)}"
             result.errors.append(error_msg)
             print(f"  ERROR: {e}")
             traceback.print_exc()
-        
+
         results.append(result)
-        
+
         # Small delay between requests
         await asyncio.sleep(1)
-    
+
     # ===== Print Results Table =====
     print("\n" + "=" * 120)
     print("RESULTS TABLE")
     print("=" * 120)
-    
+
     # Table header
-    headers = ["Company", "T0 GMB", "T1 ABN", "LinkedIn URL", "T1.5 Employees", "Reachability", "Propensity", "Size Gate", "Cost"]
+    headers = [
+        "Company",
+        "T0 GMB",
+        "T1 ABN",
+        "LinkedIn URL",
+        "T1.5 Employees",
+        "Reachability",
+        "Propensity",
+        "Size Gate",
+        "Cost",
+    ]
     widths = [32, 8, 13, 14, 20, 14, 12, 12, 12]
-    
+
     header_row = " | ".join(h.ljust(w) for h, w in zip(headers, widths))
     print(header_row)
     print("-" * len(header_row))
-    
+
     for result in results:
         row = result.to_row()
         row_str = " | ".join(str(row.get(h, ""))[:w].ljust(w) for h, w in zip(headers, widths))
         print(row_str)
-    
+
     print("-" * len(header_row))
     print(f"TOTAL COST: ${total_cost:.4f} AUD")
-    
+
     # ===== Error Summary =====
     all_errors = []
     for r in results:
         for e in r.errors:
             all_errors.append(f"{r.company_name}: {e}")
-    
+
     if all_errors:
         print("\n" + "=" * 80)
         print("ERRORS ENCOUNTERED")
         print("=" * 80)
         for e in all_errors:
             print(f"  • {e}")
-    
+
     # ===== Verification Summary =====
     print("\n" + "=" * 80)
     print("VERIFICATION SUMMARY")
     print("=" * 80)
-    
+
     # Check 1: Entry via T0 GMB
     gmb_count = sum(1 for r in results if r.t0_gmb)
     print(f"  T0 GMB Discovery: {gmb_count}/10 companies found via GMB-first")
-    
+
     # Check 2: ABN verified
     abn_count = sum(1 for r in results if r.t1_abn)
     print(f"  T1 ABN Verified: {abn_count}/10 companies have ABN")
-    
+
     # Check 3: LinkedIn URL resolved
     linkedin_count = sum(1 for r in results if r.linkedin_url)
     print(f"  LinkedIn URL Resolved: {linkedin_count}/10 companies")
-    
+
     # Check 4: T1.5 Employee Count with Provenance
     emp_with_prov = sum(1 for r in results if r.t1_5_employees and r.t1_5_employee_provenance)
     print(f"  T1.5 Employees with Provenance: {emp_with_prov}/10 companies")
-    
+
     # Check 5: Dual Scores (not single ALS)
     has_dual = sum(1 for r in results if r.reachability > 0 or r.propensity > 0)
     print(f"  Dual Scores Calculated: {has_dual}/10 companies")
-    
+
     # Check 6: Size Gate
     pass_count = sum(1 for r in results if r.size_gate == "PASS")
     held_count = sum(1 for r in results if r.size_gate == "HELD")
     skip_count = sum(1 for r in results if r.size_gate == "skipped")
     print(f"  Size Gate: {pass_count} PASS, {held_count} HELD, {skip_count} skipped")
-    
+
     # Check 7: Field Provenance
     fields_with_prov = []
     for r in results:
@@ -480,9 +505,9 @@ async def run_verification() -> list[VerificationResult]:
                 fields_with_prov.append(field)
     unique_prov_fields = len(set(fields_with_prov))
     print(f"  Fields with Provenance Tags: {unique_prov_fields} unique fields")
-    
+
     print(f"\n  TOTAL COST: ${total_cost:.4f} AUD")
-    
+
     return results
 
 
@@ -492,6 +517,7 @@ def _extract_domain(url: str | None) -> str | None:
         return None
     try:
         from urllib.parse import urlparse
+
         parsed = urlparse(url)
         domain = parsed.netloc or parsed.path.split("/")[0]
         if domain.startswith("www."):
@@ -532,7 +558,7 @@ def _simple_propensity(lead_data: dict) -> int:
 if __name__ == "__main__":
     # Load environment
     import subprocess
-    
+
     print("Loading environment...")
     env_file = os.path.expanduser("~/.config/agency-os/.env")
     if os.path.exists(env_file):
@@ -542,6 +568,6 @@ if __name__ == "__main__":
                 if line and not line.startswith("#") and "=" in line:
                     key, _, value = line.partition("=")
                     os.environ[key.strip()] = value.strip()
-    
+
     # Run verification
     asyncio.run(run_verification())

@@ -7,6 +7,7 @@ Covers:
 - cadence_orchestrator.create_prospect_from_referral: happy path, existing, malformed,
   missing client_id, name-optional.
 """
+
 from __future__ import annotations
 
 from src.outreach.cadence.decision_tree import (
@@ -20,9 +21,14 @@ from src.pipeline.cadence_orchestrator import create_prospect_from_referral
 # Decision tree — referral now emits create_prospect + noop
 # ---------------------------------------------------------------------------
 
+
 def _state() -> dict:
-    return {"lead_id": "lead-1", "client_id": "client-1",
-            "prospect": {"email": "ceo@acme.com.au"}, "pending_touches": []}
+    return {
+        "lead_id": "lead-1",
+        "client_id": "client-1",
+        "prospect": {"email": "ceo@acme.com.au"},
+        "pending_touches": [],
+    }
 
 
 def test_valid_action_create_prospect_registered():
@@ -31,7 +37,9 @@ def test_valid_action_create_prospect_registered():
 
 def test_referral_with_email_emits_noop_plus_create_prospect():
     muts = CadenceDecisionTree().decide(
-        "referral", 0.9, _state(),
+        "referral",
+        0.9,
+        _state(),
         {"referral_name": "Jane", "referral_email": "jane@acme.com.au"},
     )
     actions = [m.action for m in muts]
@@ -47,7 +55,9 @@ def test_referral_with_email_emits_noop_plus_create_prospect():
 def test_referral_without_email_only_logs():
     # Existing behaviour preserved when no referral_email extracted.
     muts = CadenceDecisionTree().decide(
-        "referral", 0.9, _state(),
+        "referral",
+        0.9,
+        _state(),
         {"referral_name": "Jane"},
     )
     assert [m.action for m in muts] == ["noop"]
@@ -57,8 +67,13 @@ def test_referral_without_email_only_logs():
 # create_prospect_from_referral — injected DB callables
 # ---------------------------------------------------------------------------
 
-def _noop_lookup(*_a, **_kw): return None
-def _reject_insert(*_a, **_kw): raise AssertionError("should not insert")
+
+def _noop_lookup(*_a, **_kw):
+    return None
+
+
+def _reject_insert(*_a, **_kw):
+    raise AssertionError("should not insert")
 
 
 def test_create_prospect_happy_path():
@@ -74,8 +89,12 @@ def test_create_prospect_happy_path():
         return len(seq)
 
     out = create_prospect_from_referral(
-        {"client_id": "c1", "referral_email": "new@acme.com",
-         "referral_name": "New Person", "referred_by_lead_id": "lead-A"},
+        {
+            "client_id": "c1",
+            "referral_email": "new@acme.com",
+            "referral_name": "New Person",
+            "referred_by_lead_id": "lead-A",
+        },
         bu_lookup_by_email=_noop_lookup,
         bu_insert=bu_insert,
         scheduled_touches_insert=touches_insert,
@@ -91,7 +110,8 @@ def test_create_prospect_happy_path():
 
 
 def test_create_prospect_existing_rejects_insert():
-    def lookup(_cid, _email): return {"id": "existing-123"}
+    def lookup(_cid, _email):
+        return {"id": "existing-123"}
 
     out = create_prospect_from_referral(
         {"client_id": "c1", "referral_email": "dup@acme.com"},
@@ -138,8 +158,11 @@ def test_create_prospect_missing_client_id_rejected():
 
 
 def test_create_prospect_name_optional():
-    def bu_insert(_row): return "pid-1"
-    def touches_insert(_a, _b, _c): return 5
+    def bu_insert(_row):
+        return "pid-1"
+
+    def touches_insert(_a, _b, _c):
+        return 5
 
     out = create_prospect_from_referral(
         {"client_id": "c1", "referral_email": "a@b.com"},

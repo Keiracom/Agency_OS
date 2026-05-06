@@ -88,7 +88,9 @@ class TestLeadAllocatorAllocate:
         mock_session.commit.assert_called()
 
     @pytest.mark.asyncio
-    async def test_allocate_leads_empty_pool(self, allocator_service, mock_session, sample_icp_criteria):
+    async def test_allocate_leads_empty_pool(
+        self, allocator_service, mock_session, sample_icp_criteria
+    ):
         """Test allocation when no matching leads found."""
         client_id = uuid4()
 
@@ -106,7 +108,9 @@ class TestLeadAllocatorAllocate:
         assert len(result) == 0
 
     @pytest.mark.asyncio
-    async def test_allocate_validates_count(self, allocator_service, mock_session, sample_icp_criteria):
+    async def test_allocate_validates_count(
+        self, allocator_service, mock_session, sample_icp_criteria
+    ):
         """Test that count validation works."""
         client_id = uuid4()
 
@@ -159,20 +163,24 @@ class TestLeadAllocatorAssignment:
 
         mock_result = MagicMock()
         mock_rows = [
-            MagicMock(_mapping={
-                "id": uuid4(),
-                "lead_pool_id": uuid4(),
-                "client_id": client_id,
-                "status": "active",
-                "email": "lead1@example.com",
-            }),
-            MagicMock(_mapping={
-                "id": uuid4(),
-                "lead_pool_id": uuid4(),
-                "client_id": client_id,
-                "status": "active",
-                "email": "lead2@example.com",
-            }),
+            MagicMock(
+                _mapping={
+                    "id": uuid4(),
+                    "lead_pool_id": uuid4(),
+                    "client_id": client_id,
+                    "status": "active",
+                    "email": "lead1@example.com",
+                }
+            ),
+            MagicMock(
+                _mapping={
+                    "id": uuid4(),
+                    "lead_pool_id": uuid4(),
+                    "client_id": client_id,
+                    "status": "active",
+                    "email": "lead2@example.com",
+                }
+            ),
         ]
         mock_result.fetchall.return_value = mock_rows
         mock_session.execute.return_value = mock_result
@@ -290,6 +298,7 @@ class TestLeadAllocatorTracking:
 
         assert result is True
         mock_session.commit.assert_called()
+
 
 class TestLeadAllocatorStats:
     """Tests for stats operations."""

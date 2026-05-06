@@ -3,6 +3,7 @@ DIRECTIVE #300b — Integration Test: Stage 2 Website Scraping
 Load 1,500 domains from 300a_rerun.json, scrape with httpx (Spider fallback),
 apply AU country filter. Zero API cost.
 """
+
 import asyncio
 import json
 import os
@@ -12,23 +13,28 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dotenv import load_dotenv
+
 load_dotenv("/home/elliotbot/.config/agency-os/.env")
 
 from src.integrations.httpx_scraper import HttpxScraper
 from src.config.settings import settings
 
-INPUT_FILE  = os.path.join(os.path.dirname(__file__), "output", "300a_rerun.json")
+INPUT_FILE = os.path.join(os.path.dirname(__file__), "output", "300a_rerun.json")
 OUTPUT_FILE = os.path.join(os.path.dirname(__file__), "output", "300b_scrape.json")
 
 CATEGORY_MAP = {10514: "Dental", 10282: "Construction", 10163: "Legal"}
 
-SEM_SCRAPE  = asyncio.Semaphore(80)
-SPIDER_URL  = "https://api.spider.cloud/scrape"
-SPIDER_KEY  = settings.spider_api_key if hasattr(settings, "spider_api_key") else os.environ.get("SPIDER_API_KEY", "")
+SEM_SCRAPE = asyncio.Semaphore(80)
+SPIDER_URL = "https://api.spider.cloud/scrape"
+SPIDER_KEY = (
+    settings.spider_api_key
+    if hasattr(settings, "spider_api_key")
+    else os.environ.get("SPIDER_API_KEY", "")
+)
 
 # AU detection regexes (from free_enrichment.py)
-_AU_PHONE_RE    = re.compile(r"\b(0[2347]|0[45]\d|\+61)\d{8}\b")
-_AU_STATE_RE    = re.compile(r"\b(NSW|VIC|QLD|SA|WA|TAS|NT|ACT)\b")
+_AU_PHONE_RE = re.compile(r"\b(0[2347]|0[45]\d|\+61)\d{8}\b")
+_AU_STATE_RE = re.compile(r"\b(NSW|VIC|QLD|SA|WA|TAS|NT|ACT)\b")
 _AU_POSTCODE_RE = re.compile(r"\b[2-9]\d{3}\b")
 
 
@@ -60,14 +66,19 @@ async def scrape_httpx(scraper: HttpxScraper, domain: str) -> dict | None:
 
 async def scrape_spider(domain: str) -> dict | None:
     import httpx as _httpx
+
     t0 = time.monotonic()
     try:
-        payload = {"url": f"https://{domain}", "return_format": "raw",
-                   "metadata": True, "limit": 1, "max_credits_per_page": 50}
+        payload = {
+            "url": f"https://{domain}",
+            "return_format": "raw",
+            "metadata": True,
+            "limit": 1,
+            "max_credits_per_page": 50,
+        }
         async with _httpx.AsyncClient(timeout=30) as client:
             resp = await client.post(
-                SPIDER_URL, json=payload,
-                headers={"Authorization": f"Bearer {SPIDER_KEY}"}
+                SPIDER_URL, json=payload, headers={"Authorization": f"Bearer {SPIDER_KEY}"}
             )
         elapsed_ms = (time.monotonic() - t0) * 1000
         if resp.status_code != 200:
@@ -173,12 +184,12 @@ async def main():
     elapsed = time.monotonic() - t0
 
     # Compute stats
-    scraped       = [r for r in results if r["scraper_used"] != "failed"]
-    httpx_ok      = [r for r in results if r["scraper_used"] == "httpx"]
-    spider_ok     = [r for r in results if r["scraper_used"] == "spider"]
-    failed        = [r for r in results if r["scraper_used"] == "failed"]
-    au_pass       = [r for r in results if r["au_filter"] == "pass"]
-    au_fail       = [r for r in results if r["au_filter"] != "pass"]
+    scraped = [r for r in results if r["scraper_used"] != "failed"]
+    httpx_ok = [r for r in results if r["scraper_used"] == "httpx"]
+    spider_ok = [r for r in results if r["scraper_used"] == "spider"]
+    failed = [r for r in results if r["scraper_used"] == "failed"]
+    au_pass = [r for r in results if r["au_filter"] == "pass"]
+    au_fail = [r for r in results if r["au_filter"] != "pass"]
     scrape_failed = [r for r in results if r["au_filter_reason"] == "scrape_failed"]
 
     cat_stats = {}
@@ -199,10 +210,14 @@ async def main():
     content_buckets = {"<1000": 0, "1000-10000": 0, "10001-50000": 0, "50001+": 0}
     for r in results:
         cl = r["content_length"]
-        if cl < 1000:          content_buckets["<1000"] += 1
-        elif cl <= 10000:      content_buckets["1000-10000"] += 1
-        elif cl <= 50000:      content_buckets["10001-50000"] += 1
-        else:                  content_buckets["50001+"] += 1
+        if cl < 1000:
+            content_buckets["<1000"] += 1
+        elif cl <= 10000:
+            content_buckets["1000-10000"] += 1
+        elif cl <= 50000:
+            content_buckets["10001-50000"] += 1
+        else:
+            content_buckets["50001+"] += 1
 
     fail_reasons = {}
     for r in au_fail:
@@ -237,7 +252,9 @@ async def main():
     print()
     print("10. FIRST 5 AU-FAILED DOMAINS:")
     for r in first_au_fails:
-        print(f"   {r['domain']} | reason={r['au_filter_reason']} | scraper={r['scraper_used']} | len={r['content_length']}")
+        print(
+            f"   {r['domain']} | reason={r['au_filter_reason']} | scraper={r['scraper_used']} | len={r['content_length']}"
+        )
 
     # Save
     os.makedirs(os.path.dirname(OUTPUT_FILE), exist_ok=True)

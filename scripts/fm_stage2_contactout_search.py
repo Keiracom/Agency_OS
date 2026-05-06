@@ -45,6 +45,7 @@ EXCLUSION_TERMS = [
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 
+
 def load_companies(csv_path: Path) -> list[dict]:
     rows = []
     with open(csv_path, newline="", encoding="utf-8") as f:
@@ -116,6 +117,7 @@ def normalise_profile(linkedin_url: str, raw: dict, company_row: dict, title_sea
 
 # ── main ──────────────────────────────────────────────────────────────────────
 
+
 def main():
     companies = load_companies(TARGET_CSV)
     print(f"Loaded {len(companies)} companies from {TARGET_CSV}")
@@ -172,10 +174,7 @@ def main():
             companies_with_results += 1
 
     # ── build output ──────────────────────────────────────────────────────────
-    all_titles_searched = PRIMARY_TITLES + [
-        t for t in SECONDARY_TITLES
-        if t in title_dist
-    ]
+    all_titles_searched = PRIMARY_TITLES + [t for t in SECONDARY_TITLES if t in title_dist]
 
     output = {
         "metadata": {

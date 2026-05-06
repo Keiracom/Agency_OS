@@ -24,14 +24,12 @@ import pytest
 # Data Classes for Voice Agent (these would typically be imported from src/)
 # ============================================================================
 
+
 class CallValidationResult:
     """Result of call validation checks."""
 
     def __init__(
-        self,
-        valid: bool,
-        reason: str | None = None,
-        next_valid_window: datetime | None = None
+        self, valid: bool, reason: str | None = None, next_valid_window: datetime | None = None
     ):
         self.valid = valid
         self.reason = reason
@@ -81,8 +79,10 @@ class WebhookVerificationResult:
 # Validation Reasons
 # ============================================================================
 
+
 class ValidationReason:
     """Constants for validation failure reasons."""
+
     DNCR_BLOCKED = "DNCR_BLOCKED"
     OUTSIDE_HOURS = "OUTSIDE_HOURS"
     EXCLUDED = "EXCLUDED"
@@ -92,6 +92,7 @@ class ValidationReason:
 
 class CallOutcome:
     """Constants for call outcomes."""
+
     BOOKED = "BOOKED"
     INTERESTED = "INTERESTED"
     NOT_INTERESTED = "NOT_INTERESTED"
@@ -104,6 +105,7 @@ class CallOutcome:
 # ============================================================================
 # Test Fixtures
 # ============================================================================
+
 
 @pytest.fixture
 def mock_lead_pool():
@@ -193,7 +195,11 @@ def mock_anthropic_client():
     """Mock Claude API for SDK calls and classification."""
     client = MagicMock()
     response = MagicMock()
-    response.content = [MagicMock(text="Based on their recent LinkedIn post about looking for marketing partners, I'd open with: 'I noticed your recent post about seeking marketing partnerships...'")]
+    response.content = [
+        MagicMock(
+            text="Based on their recent LinkedIn post about looking for marketing partners, I'd open with: 'I noticed your recent post about seeking marketing partnerships...'"
+        )
+    ]
     response.usage = MagicMock(input_tokens=150, output_tokens=75)
     client.messages.create = AsyncMock(return_value=response)
     return client
@@ -223,10 +229,12 @@ def mock_supabase_client():
 def mock_telnyx_client():
     """Mock Telnyx SMS client."""
     client = MagicMock()
-    client.send_sms = AsyncMock(return_value={
-        "id": f"sms_{uuid4().hex[:12]}",
-        "status": "queued",
-    })
+    client.send_sms = AsyncMock(
+        return_value={
+            "id": f"sms_{uuid4().hex[:12]}",
+            "status": "queued",
+        }
+    )
     return client
 
 
@@ -234,10 +242,12 @@ def mock_telnyx_client():
 def mock_resend_client():
     """Mock Resend email client."""
     client = MagicMock()
-    client.send = AsyncMock(return_value={
-        "id": f"email_{uuid4().hex[:12]}",
-        "status": "sent",
-    })
+    client.send = AsyncMock(
+        return_value={
+            "id": f"email_{uuid4().hex[:12]}",
+            "status": "sent",
+        }
+    )
     return client
 
 
@@ -245,15 +255,19 @@ def mock_resend_client():
 def mock_notification_client():
     """Mock push notification client for agency owner alerts."""
     client = MagicMock()
-    client.send_push = AsyncMock(return_value={
-        "id": f"push_{uuid4().hex[:12]}",
-        "status": "delivered",
-        "recipient": "agency_owner",
-    })
-    client.send_dashboard_alert = AsyncMock(return_value={
-        "id": f"alert_{uuid4().hex[:12]}",
-        "status": "created",
-    })
+    client.send_push = AsyncMock(
+        return_value={
+            "id": f"push_{uuid4().hex[:12]}",
+            "status": "delivered",
+            "recipient": "agency_owner",
+        }
+    )
+    client.send_dashboard_alert = AsyncMock(
+        return_value={
+            "id": f"alert_{uuid4().hex[:12]}",
+            "status": "created",
+        }
+    )
     return client
 
 
@@ -261,12 +275,14 @@ def mock_notification_client():
 def mock_als_service():
     """Mock ALS scoring service for score adjustments."""
     service = MagicMock()
-    service.adjust_score = AsyncMock(return_value={
-        "old_score": 82,
-        "new_score": 97,
-        "adjustment": 15,
-        "reason": "booked_meeting",
-    })
+    service.adjust_score = AsyncMock(
+        return_value={
+            "old_score": 82,
+            "new_score": 97,
+            "adjustment": 15,
+            "reason": "booked_meeting",
+        }
+    )
     service.log_adjustment = AsyncMock(return_value=True)
     return service
 
@@ -274,6 +290,7 @@ def mock_als_service():
 # ============================================================================
 # Voice Agent Service (Mock Implementation for Testing)
 # ============================================================================
+
 
 class VoiceAgentService:
     """
@@ -283,8 +300,8 @@ class VoiceAgentService:
 
     # Australian telemarketing regulations: 9 AM - 8 PM weekdays only
     CALLING_HOURS_START = 9  # 9 AM
-    CALLING_HOURS_END = 20   # 8 PM (20:00)
-    BLOCKED_DAYS = {5, 6}    # Saturday=5, Sunday=6
+    CALLING_HOURS_END = 20  # 8 PM (20:00)
+    BLOCKED_DAYS = {5, 6}  # Saturday=5, Sunday=6
 
     # ALS score adjustment for positive outcomes
     ALS_BOOKED_ADJUSTMENT = 15
@@ -408,11 +425,13 @@ class VoiceAgentService:
             return False
 
         # Check agency_exclusion_list table
-        result = await self.supabase.table("agency_exclusion_list") \
-            .select("*") \
-            .eq("agency_id", agency_id) \
-            .eq("email", lead.get("email")) \
+        result = (
+            await self.supabase.table("agency_exclusion_list")
+            .select("*")
+            .eq("agency_id", agency_id)
+            .eq("email", lead.get("email"))
             .execute()
+        )
 
         return bool(result.data)
 
@@ -453,10 +472,9 @@ class VoiceAgentService:
         if not self.supabase:
             return []
 
-        result = await self.supabase.table("activities") \
-            .select("*") \
-            .eq("lead_id", lead_id) \
-            .execute()
+        result = (
+            await self.supabase.table("activities").select("*").eq("lead_id", lead_id).execute()
+        )
 
         return result.data if result.data else []
 
@@ -483,7 +501,7 @@ class VoiceAgentService:
 
         # Call Claude Sonnet for hook selection
         prompt = f"""
-        Based on the following LinkedIn posts from {lead.get('first_name')} at {lead.get('company_name')}:
+        Based on the following LinkedIn posts from {lead.get("first_name")} at {lead.get("company_name")}:
         {linkedin_posts}
         
         Generate a personalized opening hook for a sales call.
@@ -556,10 +574,12 @@ class VoiceAgentService:
 
             # Update lead status to CONVERTED
             if self.supabase:
-                await self.supabase.table("lead_pool") \
-                    .update({"status": "CONVERTED"}) \
-                    .eq("id", lead["id"]) \
+                await (
+                    self.supabase.table("lead_pool")
+                    .update({"status": "CONVERTED"})
+                    .eq("id", lead["id"])
                     .execute()
+                )
                 result.lead_status_updated = True
 
             # Adjust propensity score for booked outcome
@@ -586,29 +606,37 @@ class VoiceAgentService:
 
                 # Also update in Supabase if available
                 if self.supabase:
-                    await self.supabase.table("lead_pool") \
-                        .update({"propensity_score": new_score}) \
-                        .eq("id", lead["id"]) \
+                    await (
+                        self.supabase.table("lead_pool")
+                        .update({"propensity_score": new_score})
+                        .eq("id", lead["id"])
                         .execute()
+                    )
 
         elif outcome == CallOutcome.UNSUBSCRIBE:
             # Mark lead as unsubscribed
             if self.supabase:
-                await self.supabase.table("lead_pool") \
-                    .update({"unsubscribed": True}) \
-                    .eq("id", lead["id"]) \
+                await (
+                    self.supabase.table("lead_pool")
+                    .update({"unsubscribed": True})
+                    .eq("id", lead["id"])
                     .execute()
+                )
 
                 # Create exclusion list entry
-                await self.supabase.table("agency_exclusion_list") \
-                    .insert({
-                        "agency_id": lead.get("client_id"),
-                        "email": lead.get("email"),
-                        "phone": lead.get("phone"),
-                        "reason": "unsubscribe_request",
-                        "created_at": datetime.now(UTC).isoformat(),
-                    }) \
+                await (
+                    self.supabase.table("agency_exclusion_list")
+                    .insert(
+                        {
+                            "agency_id": lead.get("client_id"),
+                            "email": lead.get("email"),
+                            "phone": lead.get("phone"),
+                            "reason": "unsubscribe_request",
+                            "created_at": datetime.now(UTC).isoformat(),
+                        }
+                    )
                     .execute()
+                )
 
                 result.exclusion_created = True
                 result.lead_status_updated = True
@@ -646,12 +674,27 @@ class VoiceAgentService:
         transcript_lower = transcript.lower()
 
         escalation_phrases = [
-            "this is ridiculous", "speak to your manager", "supervisor",
-            "i'm going to report", "lawsuit", "legal action", "sue you",
-            "how dare you", "this is harassment", "i'm furious",
-            "absolutely unacceptable", "complaint", "regulatory",
-            "never call me", "f**k", "damn", "hell", "pissed off",
-            "waste of my time", "scam", "fraud",
+            "this is ridiculous",
+            "speak to your manager",
+            "supervisor",
+            "i'm going to report",
+            "lawsuit",
+            "legal action",
+            "sue you",
+            "how dare you",
+            "this is harassment",
+            "i'm furious",
+            "absolutely unacceptable",
+            "complaint",
+            "regulatory",
+            "never call me",
+            "f**k",
+            "damn",
+            "hell",
+            "pissed off",
+            "waste of my time",
+            "scam",
+            "fraud",
         ]
 
         return any(phrase in transcript_lower for phrase in escalation_phrases)
@@ -701,17 +744,25 @@ class VoiceAgentService:
 
         # Check for booking confirmation
         booking_phrases = [
-            "let's book", "schedule a meeting", "put me down for",
-            "i'll take that meeting", "book me in", "confirmed",
+            "let's book",
+            "schedule a meeting",
+            "put me down for",
+            "i'll take that meeting",
+            "book me in",
+            "confirmed",
         ]
         if any(phrase in transcript_lower for phrase in booking_phrases):
             return CallOutcome.BOOKED
 
         # Check for unsubscribe request
         unsubscribe_phrases = [
-            "don't call me again", "remove me from your list",
-            "unsubscribe", "stop calling", "take me off",
-            "do not contact", "opt out",
+            "don't call me again",
+            "remove me from your list",
+            "unsubscribe",
+            "stop calling",
+            "take me off",
+            "do not contact",
+            "opt out",
         ]
         if any(phrase in transcript_lower for phrase in unsubscribe_phrases):
             return CallOutcome.UNSUBSCRIBE
@@ -733,6 +784,7 @@ class VoiceAgentService:
 # COMPLIANCE TESTS
 # ============================================================================
 
+
 class TestDNCRCompliance:
     """Test DNCR (Do Not Call Register) compliance checks."""
 
@@ -740,7 +792,7 @@ class TestDNCRCompliance:
     async def test_dncr_check_blocks_registered_number(self, mock_lead_pool, mock_dncr_client):
         """
         Test that DNCR-registered numbers are blocked from calling.
-        
+
         Validates:
         - DNCR API is called with the lead's phone number
         - When DNCR returns registered=True, call is blocked
@@ -771,7 +823,7 @@ class TestCallingHoursCompliance:
     async def test_calling_hours_blocks_sunday_call(self, mock_lead_pool):
         """
         Test that calls on Sunday are blocked.
-        
+
         Validates:
         - Sunday calls are rejected regardless of time
         - Validation returns OUTSIDE_HOURS reason
@@ -801,7 +853,7 @@ class TestCallingHoursCompliance:
     async def test_calling_hours_blocks_after_8pm_weekday(self, mock_lead_pool):
         """
         Test that calls after 8 PM on weekdays are blocked.
-        
+
         Validates:
         - Calls after 20:00 local time are rejected
         - Validation returns OUTSIDE_HOURS reason
@@ -830,7 +882,7 @@ class TestCallingHoursCompliance:
     async def test_calling_hours_allows_10am_weekday(self, mock_lead_pool):
         """
         Test that calls at 10 AM on weekdays are allowed.
-        
+
         Validates:
         - Calls within valid hours (9 AM - 8 PM weekdays) are accepted
         - Validation returns valid=True
@@ -853,13 +905,13 @@ class TestCallingHoursCompliance:
     async def test_calling_hours_uses_prospect_local_timezone(self, mock_lead_pool):
         """
         Test that calling hours use the prospect's local timezone, not server timezone.
-        
+
         This is CRITICAL for compliance:
         - Lead is in Perth (UTC+8)
         - Server might be in Sydney (UTC+11)
         - Time is 17:00 UTC = 01:00 Sydney (next day) = 01:00 Perth (next day)
         - Both are outside hours, but we must use Perth timezone
-        
+
         Validates:
         - Lead's timezone is respected
         - Server timezone does not affect validation
@@ -893,7 +945,7 @@ class TestCallingHoursCompliance:
     async def test_calling_hours_boundary_8pm_exactly(self, mock_lead_pool):
         """
         Test boundary condition: exactly 8 PM should be blocked.
-        
+
         Validates:
         - 20:00 (8 PM) is the cut-off, not 20:01
         - OUTSIDE_HOURS is correctly set at boundary
@@ -916,7 +968,7 @@ class TestCallingHoursCompliance:
     async def test_calling_hours_boundary_9am_exactly(self, mock_lead_pool):
         """
         Test boundary condition: exactly 9 AM should be allowed.
-        
+
         Validates:
         - 09:00 (9 AM) is the start time, calls are allowed
         """
@@ -943,24 +995,39 @@ class TestExclusionListCompliance:
     ):
         """
         Test that leads on agency exclusion list are blocked.
-        
+
         Validates:
         - Exclusion list is checked before call
         - Leads on exclusion list return valid=False
         - Reason is EXCLUDED
         """
         # Configure Supabase to return exclusion match
-        mock_supabase_client.table = MagicMock(return_value=MagicMock(
-            select=MagicMock(return_value=MagicMock(
-                eq=MagicMock(return_value=MagicMock(
-                    eq=MagicMock(return_value=MagicMock(
-                        execute=AsyncMock(return_value=MagicMock(
-                            data=[{"id": "exclusion_1", "email": mock_lead_pool["email"]}]
-                        ))
-                    ))
-                ))
-            ))
-        ))
+        mock_supabase_client.table = MagicMock(
+            return_value=MagicMock(
+                select=MagicMock(
+                    return_value=MagicMock(
+                        eq=MagicMock(
+                            return_value=MagicMock(
+                                eq=MagicMock(
+                                    return_value=MagicMock(
+                                        execute=AsyncMock(
+                                            return_value=MagicMock(
+                                                data=[
+                                                    {
+                                                        "id": "exclusion_1",
+                                                        "email": mock_lead_pool["email"],
+                                                    }
+                                                ]
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            )
+        )
 
         service = VoiceAgentService(supabase_client=mock_supabase_client)
 
@@ -981,6 +1048,7 @@ class TestExclusionListCompliance:
 # CONTEXT BUILDER TESTS
 # ============================================================================
 
+
 class TestContextBuilder:
     """Test context builder for voice calls."""
 
@@ -990,7 +1058,7 @@ class TestContextBuilder:
     ):
         """
         Test that context builder returns all required fields.
-        
+
         Validates:
         - All required keys are present in context
         - lead_name, company, title, phone
@@ -999,18 +1067,26 @@ class TestContextBuilder:
         - prior_touchpoints_summary
         """
         # Configure Supabase for activities query
-        mock_supabase_client.table = MagicMock(return_value=MagicMock(
-            select=MagicMock(return_value=MagicMock(
-                eq=MagicMock(return_value=MagicMock(
-                    execute=AsyncMock(return_value=MagicMock(
-                        data=[
-                            {"id": "1", "channel": "email", "action": "sent"},
-                            {"id": "2", "channel": "sms", "action": "sent"},
-                        ]
-                    ))
-                ))
-            ))
-        ))
+        mock_supabase_client.table = MagicMock(
+            return_value=MagicMock(
+                select=MagicMock(
+                    return_value=MagicMock(
+                        eq=MagicMock(
+                            return_value=MagicMock(
+                                execute=AsyncMock(
+                                    return_value=MagicMock(
+                                        data=[
+                                            {"id": "1", "channel": "email", "action": "sent"},
+                                            {"id": "2", "channel": "sms", "action": "sent"},
+                                        ]
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            )
+        )
 
         service = VoiceAgentService(
             supabase_client=mock_supabase_client,
@@ -1040,20 +1116,26 @@ class TestContextBuilder:
     ):
         """
         Test that SDK hook selection calls Claude Sonnet.
-        
+
         Validates:
         - Claude API is called when LinkedIn posts are available
         - sdk_hook_selected is populated from API response
         - hook_type reflects the source (linkedin_activity)
         """
         # Configure Supabase for activities (empty for this test)
-        mock_supabase_client.table = MagicMock(return_value=MagicMock(
-            select=MagicMock(return_value=MagicMock(
-                eq=MagicMock(return_value=MagicMock(
-                    execute=AsyncMock(return_value=MagicMock(data=[]))
-                ))
-            ))
-        ))
+        mock_supabase_client.table = MagicMock(
+            return_value=MagicMock(
+                select=MagicMock(
+                    return_value=MagicMock(
+                        eq=MagicMock(
+                            return_value=MagicMock(
+                                execute=AsyncMock(return_value=MagicMock(data=[]))
+                            )
+                        )
+                    )
+                )
+            )
+        )
 
         service = VoiceAgentService(
             supabase_client=mock_supabase_client,
@@ -1070,7 +1152,10 @@ class TestContextBuilder:
 
         # Assert hook was populated
         assert context.sdk_hook_selected is not None
-        assert "LinkedIn" in context.sdk_hook_selected or "marketing partners" in context.sdk_hook_selected
+        assert (
+            "LinkedIn" in context.sdk_hook_selected
+            or "marketing partners" in context.sdk_hook_selected
+        )
         assert context.hook_type == "linkedin_activity"
 
     @pytest.mark.asyncio
@@ -1079,19 +1164,25 @@ class TestContextBuilder:
     ):
         """
         Test that case study selection matches lead's industry.
-        
+
         Validates:
         - Case study with matching industry is selected
         - Technology industry lead gets Technology case study
         """
         # Configure Supabase for activities (empty)
-        mock_supabase_client.table = MagicMock(return_value=MagicMock(
-            select=MagicMock(return_value=MagicMock(
-                eq=MagicMock(return_value=MagicMock(
-                    execute=AsyncMock(return_value=MagicMock(data=[]))
-                ))
-            ))
-        ))
+        mock_supabase_client.table = MagicMock(
+            return_value=MagicMock(
+                select=MagicMock(
+                    return_value=MagicMock(
+                        eq=MagicMock(
+                            return_value=MagicMock(
+                                execute=AsyncMock(return_value=MagicMock(data=[]))
+                            )
+                        )
+                    )
+                )
+            )
+        )
 
         service = VoiceAgentService(supabase_client=mock_supabase_client)
 
@@ -1110,6 +1201,7 @@ class TestContextBuilder:
 # POST-CALL PROCESSOR TESTS
 # ============================================================================
 
+
 class TestPostCallProcessor:
     """Test post-call processing."""
 
@@ -1119,7 +1211,7 @@ class TestPostCallProcessor:
     ):
         """
         Test that booked outcome triggers all follow-up actions.
-        
+
         Validates:
         - Transcript with booking confirmation yields outcome=BOOKED
         - SMS is sent via Telnyx
@@ -1127,13 +1219,21 @@ class TestPostCallProcessor:
         - lead_pool.status is updated to CONVERTED
         """
         # Configure Supabase for updates
-        mock_supabase_client.table = MagicMock(return_value=MagicMock(
-            update=MagicMock(return_value=MagicMock(
-                eq=MagicMock(return_value=MagicMock(
-                    execute=AsyncMock(return_value=MagicMock(data={"status": "CONVERTED"}))
-                ))
-            ))
-        ))
+        mock_supabase_client.table = MagicMock(
+            return_value=MagicMock(
+                update=MagicMock(
+                    return_value=MagicMock(
+                        eq=MagicMock(
+                            return_value=MagicMock(
+                                execute=AsyncMock(
+                                    return_value=MagicMock(data={"status": "CONVERTED"})
+                                )
+                            )
+                        )
+                    )
+                )
+            )
+        )
 
         service = VoiceAgentService(
             supabase_client=mock_supabase_client,
@@ -1171,7 +1271,7 @@ class TestPostCallProcessor:
     ):
         """
         Test that unsubscribe request triggers full suppression.
-        
+
         Validates:
         - Transcript with unsubscribe request yields outcome=UNSUBSCRIBE
         - lead_pool.unsubscribed is set to True
@@ -1188,9 +1288,11 @@ class TestPostCallProcessor:
 
         def mock_update(data):
             updated_data.append(data)
-            return MagicMock(eq=MagicMock(return_value=MagicMock(
-                execute=AsyncMock(return_value=MagicMock(data=data))
-            )))
+            return MagicMock(
+                eq=MagicMock(
+                    return_value=MagicMock(execute=AsyncMock(return_value=MagicMock(data=data)))
+                )
+            )
 
         mock_table = MagicMock()
         mock_table.insert = mock_insert
@@ -1230,7 +1332,7 @@ class TestPostCallProcessor:
     async def test_post_call_processor_interested_outcome(self, mock_lead_pool):
         """
         Test that interested outcome is correctly classified.
-        
+
         Validates:
         - Transcript with interest signals yields outcome=INTERESTED
         - No immediate follow-up actions (handled separately)
@@ -1255,7 +1357,7 @@ class TestPostCallProcessor:
     async def test_post_call_processor_not_interested_outcome(self, mock_lead_pool):
         """
         Test that rejection is correctly classified.
-        
+
         Validates:
         - Transcript with rejection yields outcome=NOT_INTERESTED
         """
@@ -1279,6 +1381,7 @@ class TestPostCallProcessor:
 # ============================================================================
 # EDGE CASES AND ERROR HANDLING
 # ============================================================================
+
 
 class TestEdgeCases:
     """Test edge cases and error handling."""
@@ -1321,13 +1424,19 @@ class TestEdgeCases:
         # Remove LinkedIn posts
         mock_lead_pool["enrichment_data"]["linkedin_posts"] = []
 
-        mock_supabase_client.table = MagicMock(return_value=MagicMock(
-            select=MagicMock(return_value=MagicMock(
-                eq=MagicMock(return_value=MagicMock(
-                    execute=AsyncMock(return_value=MagicMock(data=[]))
-                ))
-            ))
-        ))
+        mock_supabase_client.table = MagicMock(
+            return_value=MagicMock(
+                select=MagicMock(
+                    return_value=MagicMock(
+                        eq=MagicMock(
+                            return_value=MagicMock(
+                                execute=AsyncMock(return_value=MagicMock(data=[]))
+                            )
+                        )
+                    )
+                )
+            )
+        )
 
         service = VoiceAgentService(supabase_client=mock_supabase_client)
 
@@ -1365,6 +1474,7 @@ class TestEdgeCases:
 # ADDITIONAL REQUIRED TESTS (Per CEO Directive)
 # ============================================================================
 
+
 class TestEscalationHandling:
     """Test escalation detection and agency owner notification."""
 
@@ -1374,9 +1484,9 @@ class TestEscalationHandling:
     ):
         """
         Test that angry/escalation responses trigger owner notification.
-        
+
         Per CEO directive: Escalated calls must immediately notify agency owner.
-        
+
         Validates:
         - Transcript with angry/hostile language is detected
         - escalation_notified is set to True
@@ -1384,13 +1494,19 @@ class TestEscalationHandling:
         - Dashboard alert is created for visibility
         """
         # Configure Supabase mock (no-op for this test)
-        mock_supabase_client.table = MagicMock(return_value=MagicMock(
-            update=MagicMock(return_value=MagicMock(
-                eq=MagicMock(return_value=MagicMock(
-                    execute=AsyncMock(return_value=MagicMock(data={}))
-                ))
-            ))
-        ))
+        mock_supabase_client.table = MagicMock(
+            return_value=MagicMock(
+                update=MagicMock(
+                    return_value=MagicMock(
+                        eq=MagicMock(
+                            return_value=MagicMock(
+                                execute=AsyncMock(return_value=MagicMock(data={}))
+                            )
+                        )
+                    )
+                )
+            )
+        )
 
         service = VoiceAgentService(
             notification_client=mock_notification_client,
@@ -1438,14 +1554,18 @@ class TestPropensityScoreAdjustment:
 
     @pytest.mark.asyncio
     async def test_propensity_score_updated_on_booked_outcome(
-        self, mock_lead_pool, mock_supabase_client, mock_als_service,
-        mock_telnyx_client, mock_resend_client
+        self,
+        mock_lead_pool,
+        mock_supabase_client,
+        mock_als_service,
+        mock_telnyx_client,
+        mock_resend_client,
     ):
         """
         Test that propensity score is increased when a meeting is booked.
-        
+
         Per CEO directive: Positive outcomes should boost lead scores.
-        
+
         Validates:
         - BOOKED outcome triggers +15 propensity adjustment
         - Adjustment is logged for audit trail
@@ -1456,9 +1576,11 @@ class TestPropensityScoreAdjustment:
 
         def track_update(data):
             propensity_updates.append(data)
-            return MagicMock(eq=MagicMock(return_value=MagicMock(
-                execute=AsyncMock(return_value=MagicMock(data=data))
-            )))
+            return MagicMock(
+                eq=MagicMock(
+                    return_value=MagicMock(execute=AsyncMock(return_value=MagicMock(data=data)))
+                )
+            )
 
         mock_table = MagicMock()
         mock_table.update = track_update
@@ -1514,8 +1636,7 @@ class TestPropensityScoreAdjustment:
 
         # Verify database was updated with new score
         propensity_score_update = next(
-            (u for u in propensity_updates if "propensity_score" in u),
-            None
+            (u for u in propensity_updates if "propensity_score" in u), None
         )
         assert propensity_score_update is not None
         assert propensity_score_update["propensity_score"] == 97
@@ -1527,9 +1648,9 @@ class TestWebhookSecurity:
     def test_webhook_signature_verification_rejects_invalid(self):
         """
         Test that invalid webhook signatures are rejected.
-        
+
         Per CEO directive: All webhooks must be signature-verified.
-        
+
         Validates:
         - Invalid signature returns 401/403 status
         - Call is NOT processed when signature fails
@@ -1591,7 +1712,7 @@ class TestWebhookSecurity:
     def test_webhook_signature_verification_accepts_valid(self):
         """
         Test that valid webhook signatures are accepted.
-        
+
         Validates:
         - Correct signature returns valid=True
         - Status code is 200

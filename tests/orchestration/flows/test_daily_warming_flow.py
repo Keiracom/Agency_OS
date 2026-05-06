@@ -1,4 +1,5 @@
 """Tests for daily_warming_flow — all run without a real DB or Prefect runtime."""
+
 from __future__ import annotations
 
 import logging
@@ -16,6 +17,7 @@ from src.orchestration.flows.daily_warming_flow import (
 # ---------------------------------------------------------------------------
 # Fake DB connection
 # ---------------------------------------------------------------------------
+
 
 class FakeConn:
     """Records all SQL calls; pops from rowcounts for execute(); returns
@@ -39,6 +41,7 @@ class FakeConn:
 # Case 1: advance_mailbox_warming returns correct counts
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_advance_mailbox_warming_counts():
     """5 advanced, 1 graduated, fetch returns 4 NULL rows -> already_warmed=3,
@@ -58,6 +61,7 @@ async def test_advance_mailbox_warming_counts():
 # Case 2: advance_active_cycles returns correct count
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_advance_active_cycles_count():
     """Fake returns 3 -> function returns 3."""
@@ -69,6 +73,7 @@ async def test_advance_active_cycles_count():
 # ---------------------------------------------------------------------------
 # Case 3: daily_warming_flow composes WarmingAdvanceSummary correctly
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_daily_warming_flow_summary():
@@ -89,6 +94,7 @@ async def test_daily_warming_flow_summary():
 # ---------------------------------------------------------------------------
 # Case 4: Mailbox SQL contains warming_day ladder references
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_mailbox_sql_contains_warming_ladder_keywords():
@@ -111,6 +117,7 @@ async def test_mailbox_sql_contains_warming_ladder_keywords():
 # Case 5: Cycle advancement SQL is idempotent (contains CURRENT_DATE gate)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_cycle_sql_is_idempotent():
     """SQL must contain CURRENT_DATE or last_advanced_on guard."""
@@ -126,8 +133,10 @@ async def test_cycle_sql_is_idempotent():
 # Case 6: get_daily_warming_schedule returns correct cron + timezone
 # ---------------------------------------------------------------------------
 
+
 def test_get_daily_warming_schedule():
     from prefect.client.schemas.schedules import CronSchedule
+
     sched = get_daily_warming_schedule()
     assert isinstance(sched, CronSchedule)
     assert sched.cron == "0 2 * * *"
@@ -137,6 +146,7 @@ def test_get_daily_warming_schedule():
 # ---------------------------------------------------------------------------
 # Case 7: Logging side-effect — INFO message emitted after successful run
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_daily_warming_flow_logs_info(caplog):

@@ -1,25 +1,38 @@
 """Tests for Stage6Reachability — Directive #264"""
+
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from datetime import datetime
 
 from src.pipeline.stage_6_reachability import (
-    Stage6Reachability, PIPELINE_STAGE_S6,
-    validate_email, validate_au_phone, validate_linkedin_url, calculate_reachability,
+    Stage6Reachability,
+    PIPELINE_STAGE_S6,
+    validate_email,
+    validate_au_phone,
+    validate_linkedin_url,
+    calculate_reachability,
 )
 from src.enrichment.signal_config import SignalConfig, ServiceSignal
 
 
 def make_config(channel_config=None):
     import uuid
+
     return SignalConfig(
-        id=str(uuid.uuid4()), vertical="marketing_agency",
+        id=str(uuid.uuid4()),
+        vertical="marketing_agency",
         services=[],
         discovery_config={},
-        enrichment_gates={"min_score_to_enrich": 30, "min_score_to_dm": 50, "min_score_to_outreach": 65},
+        enrichment_gates={
+            "min_score_to_enrich": 30,
+            "min_score_to_dm": 50,
+            "min_score_to_outreach": 65,
+        },
         competitor_config={},
-        channel_config=channel_config or {"email": True, "linkedin": True, "voice": True, "sms": False},
-        created_at=datetime.now(), updated_at=datetime.now(),
+        channel_config=channel_config
+        or {"email": True, "linkedin": True, "voice": True, "sms": False},
+        created_at=datetime.now(),
+        updated_at=datetime.now(),
     )
 
 
@@ -59,6 +72,7 @@ def make_stage(channel_config=None, rows=None):
 
 
 # ─── Unit tests ──────────────────────────────────────────────────────────────
+
 
 def test_validates_email_format():
     assert validate_email("john@acme.com.au") is True
@@ -105,7 +119,9 @@ async def test_determines_outreach_channels():
 @pytest.mark.asyncio
 async def test_respects_channel_config():
     """SMS disabled in config → not in confirmed channels."""
-    stage, conn = make_stage(channel_config={"email": True, "linkedin": False, "voice": False, "sms": False})
+    stage, conn = make_stage(
+        channel_config={"email": True, "linkedin": False, "voice": False, "sms": False}
+    )
     result = await stage.run("marketing_agency")
     args = conn.execute.call_args[0]
     channels = args[1]

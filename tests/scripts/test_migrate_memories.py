@@ -6,6 +6,7 @@ Pure mocks — no database connections. Verifies:
   - deduplication skips rows whose content already exists
   - field mapping: type→source_type, metadata→typed_metadata
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -26,6 +27,7 @@ _spec.loader.exec_module(migrate)
 
 # ── helpers ────────────────────────────────────────────────────────────────
 
+
 def _legacy_row(**kwargs) -> dict:
     defaults = {
         "id": "abc123",
@@ -38,6 +40,7 @@ def _legacy_row(**kwargs) -> dict:
 
 
 # ── test_dry_run_no_writes ─────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_dry_run_no_writes():
@@ -74,6 +77,7 @@ async def test_dry_run_no_writes():
 
 
 # ── test_dedup_skips_existing ──────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_dedup_skips_existing():
@@ -112,6 +116,7 @@ async def test_dedup_skips_existing():
 
 
 # ── test_field_mapping ─────────────────────────────────────────────────────
+
 
 def test_field_mapping_type_to_source_type():
     """_map_row must copy type → source_type."""

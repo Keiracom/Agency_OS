@@ -2,6 +2,7 @@
 
 Hermetic — Supabase client is mocked; OpenAI classifier is injected.
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -25,8 +26,8 @@ from src.governance.coordinator import (
 
 # ── Fake Supabase client builder ────────────────────────────────────────────
 
-def _fake_supabase_client(*, insert_rows=None, select_rows=None,
-                          update_rows=None) -> MagicMock:
+
+def _fake_supabase_client(*, insert_rows=None, select_rows=None, update_rows=None) -> MagicMock:
     """Build a MagicMock Supabase client supporting the chained API
     coordinator.py uses: client.table(...).select/insert/update(...).execute()."""
     insert_resp = SimpleNamespace(data=insert_rows or [])
@@ -34,13 +35,17 @@ def _fake_supabase_client(*, insert_rows=None, select_rows=None,
     update_resp = SimpleNamespace(data=update_rows or [])
 
     table_mock = MagicMock()
-    table_mock.insert = MagicMock(return_value=MagicMock(
-        execute=MagicMock(return_value=insert_resp),
-    ))
+    table_mock.insert = MagicMock(
+        return_value=MagicMock(
+            execute=MagicMock(return_value=insert_resp),
+        )
+    )
     update_chain = MagicMock()
-    update_chain.eq = MagicMock(return_value=MagicMock(
-        execute=MagicMock(return_value=update_resp),
-    ))
+    update_chain.eq = MagicMock(
+        return_value=MagicMock(
+            execute=MagicMock(return_value=update_resp),
+        )
+    )
     table_mock.update = MagicMock(return_value=update_chain)
     select_chain = MagicMock()
     select_chain.eq = MagicMock(return_value=select_chain)
@@ -53,6 +58,7 @@ def _fake_supabase_client(*, insert_rows=None, select_rows=None,
 
 
 # ── claim() tests ──────────────────────────────────────────────────────────
+
 
 def test_claim_inserts_active_row_and_returns_record():
     fake_row = {
@@ -67,8 +73,13 @@ def test_claim_inserts_active_row_and_returns_record():
         "metadata": {"reason": "test"},
     }
     client = _fake_supabase_client(insert_rows=[fake_row])
-    rec = claim("orion", "shared-file-edit", "src/orchestration/flows/foo.py",
-                metadata={"reason": "test"}, client=client)
+    rec = claim(
+        "orion",
+        "shared-file-edit",
+        "src/orchestration/flows/foo.py",
+        metadata={"reason": "test"},
+        client=client,
+    )
     assert isinstance(rec, ClaimRecord)
     assert rec.callsign == "orion"
     assert rec.action == "shared-file-edit"
@@ -93,6 +104,7 @@ def test_claim_raises_when_insert_returns_no_row():
 
 # ── release() tests ────────────────────────────────────────────────────────
 
+
 def test_release_marks_claim_released_and_returns_true():
     client = _fake_supabase_client(update_rows=[{"id": "abc"}])
     assert release("abc", client=client) is True
@@ -105,18 +117,35 @@ def test_release_returns_false_on_miss():
 
 # ── list_active_claims() tests ─────────────────────────────────────────────
 
+
 def test_list_active_claims_filters_expired_rows_client_side():
     """An expired row in the response (expires_at in the past) is
     filtered out client-side even if status='active' was returned."""
     past = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
     future = (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat()
     rows = [
-        {"id": "fresh", "callsign": "orion", "action": "commit",
-         "target_path": "main", "claimed_at": "x", "released_at": None,
-         "status": "active", "expires_at": future, "metadata": None},
-        {"id": "stale", "callsign": "atlas", "action": "watcher",
-         "target_path": "vercel-prod", "claimed_at": "y", "released_at": None,
-         "status": "active", "expires_at": past, "metadata": None},
+        {
+            "id": "fresh",
+            "callsign": "orion",
+            "action": "commit",
+            "target_path": "main",
+            "claimed_at": "x",
+            "released_at": None,
+            "status": "active",
+            "expires_at": future,
+            "metadata": None,
+        },
+        {
+            "id": "stale",
+            "callsign": "atlas",
+            "action": "watcher",
+            "target_path": "vercel-prod",
+            "claimed_at": "y",
+            "released_at": None,
+            "status": "active",
+            "expires_at": past,
+            "metadata": None,
+        },
     ]
     client = _fake_supabase_client(select_rows=rows)
     out = list_active_claims(client=client)
@@ -135,6 +164,7 @@ def test_list_active_claims_returns_empty_list_when_no_client(monkeypatch):
 
 
 # ── subscribe_realtime() tests ─────────────────────────────────────────────
+
 
 def test_subscribe_realtime_wires_handler_to_postgres_changes():
     handler = MagicMock()
@@ -159,6 +189,7 @@ def test_subscribe_realtime_returns_none_when_no_client(monkeypatch):
 
 
 # ── DSAE merger tests ──────────────────────────────────────────────────────
+
 
 def test_merge_drafts_uses_injected_classifier():
     expected = MergerVerdict(
@@ -200,14 +231,23 @@ def test_heuristic_dsae_classify_different_defaults_to_differ():
 
 # ── check_conflict() tests ─────────────────────────────────────────────────
 
+
 def test_check_conflict_finds_peer_claim():
     """When a peer (different callsign) has an active claim on the target path,
     check_conflict returns that claim dict."""
     future = (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat()
     rows = [
-        {"id": "peer-1", "callsign": "atlas", "action": "commit",
-         "target_path": "src/foo.py", "claimed_at": "x", "released_at": None,
-         "status": "active", "expires_at": future, "metadata": None},
+        {
+            "id": "peer-1",
+            "callsign": "atlas",
+            "action": "commit",
+            "target_path": "src/foo.py",
+            "claimed_at": "x",
+            "released_at": None,
+            "status": "active",
+            "expires_at": future,
+            "metadata": None,
+        },
     ]
     client = _fake_supabase_client(select_rows=rows)
     result = check_conflict("orion", "src/foo.py", client=client)
@@ -220,9 +260,17 @@ def test_check_conflict_ignores_own_claim():
     """Own claims on the target path do not count as conflicts."""
     future = (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat()
     rows = [
-        {"id": "own-1", "callsign": "orion", "action": "commit",
-         "target_path": "src/bar.py", "claimed_at": "x", "released_at": None,
-         "status": "active", "expires_at": future, "metadata": None},
+        {
+            "id": "own-1",
+            "callsign": "orion",
+            "action": "commit",
+            "target_path": "src/bar.py",
+            "claimed_at": "x",
+            "released_at": None,
+            "status": "active",
+            "expires_at": future,
+            "metadata": None,
+        },
     ]
     client = _fake_supabase_client(select_rows=rows)
     result = check_conflict("orion", "src/bar.py", client=client)

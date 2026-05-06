@@ -60,10 +60,12 @@ class TestWebsiteParserSkill:
         """Test input validation."""
         skill = WebsiteParserSkill()
 
-        input_data = skill.validate_input({
-            "html": "<html><body>Test</body></html>",
-            "url": "https://example.com",
-        })
+        input_data = skill.validate_input(
+            {
+                "html": "<html><body>Test</body></html>",
+                "url": "https://example.com",
+            }
+        )
 
         assert input_data.html == "<html><body>Test</body></html>"
         assert input_data.url == "https://example.com"
@@ -87,12 +89,14 @@ class TestWebsiteParserSkill:
         """Test successful execution."""
         skill = WebsiteParserSkill()
         mock_anthropic = AsyncMock()
-        mock_anthropic.complete = AsyncMock(return_value={
-            "content": '{"company_name": "Test Corp", "domain": "test.com", "navigation": ["Home", "About"], "pages": [{"url": "https://test.com", "title": "Home", "page_type": "home", "headings": [], "content_summary": "Test", "key_points": [], "images_described": [], "ctas": [], "has_testimonials": false, "has_case_studies": false, "has_client_logos": false}], "meta_description": "", "social_links": [], "contact_info": {}}',
-            "input_tokens": 100,
-            "output_tokens": 200,
-            "cost_aud": 0.01,
-        })
+        mock_anthropic.complete = AsyncMock(
+            return_value={
+                "content": '{"company_name": "Test Corp", "domain": "test.com", "navigation": ["Home", "About"], "pages": [{"url": "https://test.com", "title": "Home", "page_type": "home", "headings": [], "content_summary": "Test", "key_points": [], "images_described": [], "ctas": [], "has_testimonials": false, "has_case_studies": false, "has_client_logos": false}], "meta_description": "", "social_links": [], "contact_info": {}}',
+                "input_tokens": 100,
+                "output_tokens": 200,
+                "cost_aud": 0.01,
+            }
+        )
 
         # HTML must be >= 100 chars to pass validation in WebsiteParserSkill
         realistic_html = """<!DOCTYPE html>
@@ -448,6 +452,7 @@ class TestSkillRegistration:
     def test_all_skills_registered(self):
         """Test all ICP skills are registered."""
         import importlib
+
         # Reload all skill modules to ensure registration runs
         # (handles case where another test cleared the registry)
         import src.agents.skills.website_parser
@@ -458,7 +463,7 @@ class TestSkillRegistration:
         import src.agents.skills.company_size_estimator
         import src.agents.skills.icp_deriver
         import src.agents.skills.als_weight_suggester
-        
+
         for mod in [
             src.agents.skills.website_parser,
             src.agents.skills.service_extractor,
@@ -470,7 +475,7 @@ class TestSkillRegistration:
             src.agents.skills.als_weight_suggester,
         ]:
             importlib.reload(mod)
-        
+
         from src.agents.skills import SkillRegistry
 
         expected_skills = [

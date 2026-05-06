@@ -10,6 +10,7 @@ Each test confirms:
 
 No live Prefect server required — flow.serve() itself is NOT invoked.
 """
+
 from __future__ import annotations
 
 import importlib
@@ -19,12 +20,15 @@ import pytest
 EXPECTED_KEYS_REQUIRED = {"name", "version", "tags", "description", "parameters"}
 
 
-@pytest.mark.parametrize("module_name", [
-    "src.orchestration.deployments.bu_closed_loop_deployment",
-    "src.orchestration.deployments.cis_learning_deployment",
-    "src.orchestration.deployments.free_enrichment_deployment",
-    "src.orchestration.deployments.pipeline_f_deployment",
-])
+@pytest.mark.parametrize(
+    "module_name",
+    [
+        "src.orchestration.deployments.bu_closed_loop_deployment",
+        "src.orchestration.deployments.cis_learning_deployment",
+        "src.orchestration.deployments.free_enrichment_deployment",
+        "src.orchestration.deployments.pipeline_f_deployment",
+    ],
+)
 def test_module_imports_cleanly(module_name):
     """Importing the module must not raise (the old import was
     `from prefect.deployments import Deployment` which is gone)."""
@@ -34,6 +38,7 @@ def test_module_imports_cleanly(module_name):
 
 def test_bu_closed_loop_config_shape():
     from src.orchestration.deployments import bu_closed_loop_deployment as m
+
     cfg = m.DEPLOYMENT_CONFIG
     assert EXPECTED_KEYS_REQUIRED.issubset(cfg.keys())
     assert cfg["name"] == "bu-closed-loop-flow"
@@ -44,6 +49,7 @@ def test_bu_closed_loop_config_shape():
 
 def test_free_enrichment_config_shape():
     from src.orchestration.deployments import free_enrichment_deployment as m
+
     cfg = m.DEPLOYMENT_CONFIG
     assert EXPECTED_KEYS_REQUIRED.issubset(cfg.keys())
     assert cfg["name"] == "free-enrichment-flow"
@@ -54,6 +60,7 @@ def test_free_enrichment_config_shape():
 
 def test_pipeline_f_config_shape():
     from src.orchestration.deployments import pipeline_f_deployment as m
+
     cfg = m.DEPLOYMENT_CONFIG
     assert EXPECTED_KEYS_REQUIRED.issubset(cfg.keys())
     assert cfg["name"] == "pipeline-f-p5"
@@ -64,6 +71,7 @@ def test_pipeline_f_config_shape():
 
 def test_cis_learning_has_two_configs():
     from src.orchestration.deployments import cis_learning_deployment as m
+
     assert EXPECTED_KEYS_REQUIRED.issubset(m.WEEKLY_CONFIG.keys())
     assert EXPECTED_KEYS_REQUIRED.issubset(m.MANUAL_CONFIG.keys())
     assert m.WEEKLY_CONFIG["cron"] == "0 3 * * 0"
@@ -79,6 +87,7 @@ def test_no_legacy_imports_in_any_deployment_file():
     Docstring mentions are allowed (the M8 migration note references the
     old API by name); we forbid the actual import + call sites only."""
     import inspect
+
     forbidden_lines = (
         "from prefect.deployments import Deployment",
         "from prefect.server.schemas",
@@ -100,6 +109,7 @@ def test_init_exports_config_dicts_not_objects():
     """The package __init__ used to re-export deployment objects which
     no longer exist after migration. Confirm it now exports the configs."""
     from src.orchestration import deployments
+
     assert hasattr(deployments, "cis_weekly_config")
     assert hasattr(deployments, "cis_manual_config")
     assert deployments.cis_weekly_config["name"] == "cis-weekly"

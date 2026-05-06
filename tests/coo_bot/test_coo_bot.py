@@ -1,4 +1,5 @@
 """Tests for src/coo_bot — COO bot (Max)."""
+
 from __future__ import annotations
 
 import asyncio
@@ -34,7 +35,10 @@ def _run(coro: Any) -> Any:
 
 def test_generate_summary_formats_correctly() -> None:
     """Opus call response is returned as-is (post-Phase-B migration)."""
-    events = [_make_event("COST_CAP", "daily cap hit"), _make_event("GOV_DENY", "classifier blocked")]
+    events = [
+        _make_event("COST_CAP", "daily cap hit"),
+        _make_event("GOV_DENY", "classifier blocked"),
+    ]
 
     with patch.dict("os.environ", {"COO_BOT_TOKEN": "fake-token"}):
         with patch(
@@ -104,10 +108,17 @@ def test_digest_loop_skips_when_no_events() -> None:
             "COO_DIGEST_INTERVAL_MINUTES": "60",
         },
     ):
-        with patch("src.coo_bot.bot.fetch_recent_events", new_callable=AsyncMock, return_value=[]) as mock_fetch, \
-             patch("src.coo_bot.bot.send_dm", new_callable=AsyncMock) as mock_send, \
-             patch("src.coo_bot.bot.asyncio.sleep", new_callable=AsyncMock, side_effect=asyncio.CancelledError):
-
+        with (
+            patch(
+                "src.coo_bot.bot.fetch_recent_events", new_callable=AsyncMock, return_value=[]
+            ) as mock_fetch,
+            patch("src.coo_bot.bot.send_dm", new_callable=AsyncMock) as mock_send,
+            patch(
+                "src.coo_bot.bot.asyncio.sleep",
+                new_callable=AsyncMock,
+                side_effect=asyncio.CancelledError,
+            ),
+        ):
             from src.coo_bot.bot import digest_loop
             from src.coo_bot.config import COOConfig
 

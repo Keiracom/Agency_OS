@@ -69,12 +69,8 @@ class RescoreEngine:
         rows = await self._fetch_rejects(vertical, batch_size)
 
         # Batch-fetch conversion boosts for all unique categories (Fix #1 — N+1 elimination)
-        unique_categories = list(
-            {row["gmb_category"] for row in rows if row["gmb_category"]}
-        )
-        conversion_boost_cache = await get_category_conversion_boosts(
-            self.conn, unique_categories
-        )
+        unique_categories = list({row["gmb_category"] for row in rows if row["gmb_category"]})
+        conversion_boost_cache = await get_category_conversion_boosts(self.conn, unique_categories)
 
         promoted = 0
         still_rejected = 0

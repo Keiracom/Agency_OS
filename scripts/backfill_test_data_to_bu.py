@@ -14,6 +14,7 @@ Usage:
   python scripts/backfill_test_data_to_bu.py            # dry-run
   python scripts/backfill_test_data_to_bu.py --execute  # write
 """
+
 import argparse
 import asyncio
 import json
@@ -24,6 +25,7 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dotenv import load_dotenv
+
 load_dotenv("/home/elliotbot/.config/agency-os/.env")
 
 import asyncpg
@@ -32,10 +34,10 @@ from src.config.settings import settings
 OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "output")
 
 SOURCE_FILES = {
-    "300f_dm":          "300f_dm.json",
-    "300g_email":       "300g_email.json",
-    "300g_v2_email":    "300g_v2_email.json",
-    "300h_mobile":      "300h_mobile.json",
+    "300f_dm": "300f_dm.json",
+    "300g_email": "300g_email.json",
+    "300g_v2_email": "300g_v2_email.json",
+    "300h_mobile": "300h_mobile.json",
     "300i_linkedin_co": "300i_linkedin_co.json",
     "300j_linkedin_dm": "300j_linkedin_dm.json",
 }
@@ -101,10 +103,7 @@ def load_sources():
             data = json.load(f)
         rows = data.get("domains", [])
         loaded[name] = {normalize_domain(r.get("domain", "")): r for r in rows if r.get("domain")}
-    legacy_missing = [
-        f for f in OPTIONAL_LEGACY
-        if not os.path.exists(os.path.join(OUTPUT_DIR, f))
-    ]
+    legacy_missing = [f for f in OPTIONAL_LEGACY if not os.path.exists(os.path.join(OUTPUT_DIR, f))]
     return loaded, missing, legacy_missing
 
 
@@ -126,10 +125,13 @@ def merge_per_domain(sources):
         j_dm = sources["300j_linkedin_dm"].get(d, {})
 
         # Email — prefer g_v2 (later run), else g
-        raw_email = (gv2.get("email") if gv2.get("email_found") else None) or \
-                    (g.get("email") if g.get("email_found") else None)
+        raw_email = (gv2.get("email") if gv2.get("email_found") else None) or (
+            g.get("email") if g.get("email_found") else None
+        )
         email = raw_email if valid_email(raw_email) else None
-        email_verified = bool(gv2.get("email_verified") or g.get("email_verified")) if email else None
+        email_verified = (
+            bool(gv2.get("email_verified") or g.get("email_verified")) if email else None
+        )
         email_source = gv2.get("email_source") or g.get("email_source") if email else None
 
         # Mobile — only h
@@ -209,10 +211,17 @@ async def upsert_bu(conn, p, dry_run):
                 updated_at           = NOW()
             WHERE id = $1""",
             existing["id"],
-            p["dm_name"], p["dm_title"], p["dm_linkedin"],
-            p["email"], p["email_verified"], p["mobile"], p["dm_source"],
-            p["linkedin_company_url"], p["company_followers"],
-            p["company_about"], specialties_json,
+            p["dm_name"],
+            p["dm_title"],
+            p["dm_linkedin"],
+            p["email"],
+            p["email_verified"],
+            p["mobile"],
+            p["dm_source"],
+            p["linkedin_company_url"],
+            p["company_followers"],
+            p["company_about"],
+            specialties_json,
         )
         return "update", existing["id"]
 
@@ -236,11 +245,19 @@ async def upsert_bu(conn, p, dry_run):
             'test_data_backfill', NOW(), NOW(),
             NOW(), NOW()
         ) RETURNING id""",
-        p["domain"], f"https://{p['domain']}",
-        p["dm_name"] or None, p["dm_title"] or None, p["dm_linkedin"] or None,
-        p["email"] or None, p.get("email_verified") or False, p["mobile"] or None, p["dm_source"] or None,
-        p["linkedin_company_url"] or None, p.get("company_followers") or None,
-        p["company_about"] or None, specialties_json or '[]',
+        p["domain"],
+        f"https://{p['domain']}",
+        p["dm_name"] or None,
+        p["dm_title"] or None,
+        p["dm_linkedin"] or None,
+        p["email"] or None,
+        p.get("email_verified") or False,
+        p["mobile"] or None,
+        p["dm_source"] or None,
+        p["linkedin_company_url"] or None,
+        p.get("company_followers") or None,
+        p["company_about"] or None,
+        specialties_json or "[]",
     )
     return "insert", new_id
 
@@ -256,7 +273,8 @@ async def upsert_dm(conn, bu_id, p, dry_run):
     existing = await conn.fetchrow(
         """SELECT id FROM business_decision_makers
            WHERE business_universe_id = $1 AND linkedin_url = $2""",
-        bu_id, p["dm_linkedin"],
+        bu_id,
+        p["dm_linkedin"],
     )
     posts_json = json.dumps(p["li_dm_recent_posts"]) if p["li_dm_recent_posts"] else None
 
@@ -279,10 +297,16 @@ async def upsert_dm(conn, bu_id, p, dry_run):
                 updated_at        = NOW()
             WHERE id = $1""",
             existing["id"],
-            p["dm_name"], p["dm_title"],
-            p["email"], p["email_verified"], p["email_source"],
-            p["mobile"], p["mobile_source"],
-            p["li_dm_headline"], p["li_dm_connections"], posts_json,
+            p["dm_name"],
+            p["dm_title"],
+            p["email"],
+            p["email_verified"],
+            p["email_source"],
+            p["mobile"],
+            p["mobile_source"],
+            p["li_dm_headline"],
+            p["li_dm_connections"],
+            posts_json,
         )
         return "update"
 
@@ -302,18 +326,27 @@ async def upsert_dm(conn, bu_id, p, dry_run):
             $10, $11, $12::jsonb,
             'test_data_backfill', TRUE, NOW(), NOW()
         )""",
-        bu_id, p["dm_linkedin"], p["dm_name"], p["dm_title"],
-        p["email"], p["email_verified"], p["email_source"],
-        p["mobile"], p["mobile_source"],
-        p["li_dm_headline"], p["li_dm_connections"], posts_json,
+        bu_id,
+        p["dm_linkedin"],
+        p["dm_name"],
+        p["dm_title"],
+        p["email"],
+        p["email_verified"],
+        p["email_source"],
+        p["mobile"],
+        p["mobile_source"],
+        p["li_dm_headline"],
+        p["li_dm_connections"],
+        posts_json,
     )
     return "insert"
 
 
 async def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--execute", action="store_true",
-                    help="Apply writes (default: dry-run, counts only)")
+    ap.add_argument(
+        "--execute", action="store_true", help="Apply writes (default: dry-run, counts only)"
+    )
     args = ap.parse_args()
     dry_run = not args.execute
 

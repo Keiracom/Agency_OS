@@ -19,30 +19,32 @@ from src.engines.campaign_suggester import CampaignSuggesterEngine, CampaignSugg
 # Helpers
 # ============================================
 
-VALID_SUGGESTIONS_JSON = json.dumps([
-    {
-        "name": "C-Suite Decision Makers",
-        "description": "CEOs and MDs at SMBs",
-        "target_industries": ["Professional Services"],
-        "target_titles": ["CEO", "MD"],
-        "target_company_sizes": ["11-50"],
-        "target_locations": ["Australia"],
-        "lead_allocation_pct": 60,
-        "ai_reasoning": "High budget authority",
-        "priority": 1,
-    },
-    {
-        "name": "Operations Leaders",
-        "description": "COOs at mid-market companies",
-        "target_industries": ["Professional Services"],
-        "target_titles": ["COO"],
-        "target_company_sizes": ["51-200"],
-        "target_locations": ["Australia"],
-        "lead_allocation_pct": 40,
-        "ai_reasoning": "Fast decision cycles",
-        "priority": 2,
-    },
-])
+VALID_SUGGESTIONS_JSON = json.dumps(
+    [
+        {
+            "name": "C-Suite Decision Makers",
+            "description": "CEOs and MDs at SMBs",
+            "target_industries": ["Professional Services"],
+            "target_titles": ["CEO", "MD"],
+            "target_company_sizes": ["11-50"],
+            "target_locations": ["Australia"],
+            "lead_allocation_pct": 60,
+            "ai_reasoning": "High budget authority",
+            "priority": 1,
+        },
+        {
+            "name": "Operations Leaders",
+            "description": "COOs at mid-market companies",
+            "target_industries": ["Professional Services"],
+            "target_titles": ["COO"],
+            "target_company_sizes": ["51-200"],
+            "target_locations": ["Australia"],
+            "lead_allocation_pct": 40,
+            "ai_reasoning": "Fast decision cycles",
+            "priority": 2,
+        },
+    ]
+)
 
 PROSE_PLUS_JSON = (
     "Here are my campaign suggestions based on the provided ICP data:\n\n"
@@ -98,6 +100,7 @@ def _make_anthropic_response(text: str):
 # Fixtures
 # ============================================
 
+
 @pytest.fixture
 def engine():
     return CampaignSuggesterEngine()
@@ -106,6 +109,7 @@ def engine():
 # ============================================
 # _parse_suggestions — FIX 4 (response cleaning)
 # ============================================
+
 
 class TestParseSuggestions:
     def test_parses_clean_json_array(self, engine):
@@ -153,6 +157,7 @@ class TestParseSuggestions:
 
     def test_logs_warning_on_preamble(self, engine, caplog):
         import logging
+
         with caplog.at_level(logging.WARNING, logger="src.engines.campaign_suggester"):
             engine._parse_suggestions(PROSE_PLUS_JSON, 2)
         assert any("preamble" in r.message for r in caplog.records)
@@ -161,6 +166,7 @@ class TestParseSuggestions:
 # ============================================
 # _build_prompt — FIX 2 (sparse ICP note)
 # ============================================
+
 
 class TestBuildPrompt:
     def test_no_sparse_note_when_data_rich(self, engine):
@@ -209,12 +215,13 @@ class TestBuildPrompt:
         client = _make_client(industries=["Tech"])
         prompt = engine._build_prompt(client, 2)
         assert "Decision makers" in prompt  # icp_titles fallback
-        assert "Australia" in prompt         # icp_locations fallback
+        assert "Australia" in prompt  # icp_locations fallback
 
 
 # ============================================
 # _get_ai_suggestions — FIX 3 (parse retry)
 # ============================================
+
 
 class TestGetAiSuggestions:
     @pytest.mark.asyncio
@@ -233,10 +240,12 @@ class TestGetAiSuggestions:
     async def test_retries_on_first_parse_failure(self, engine):
         """FIX 3: First call returns garbage, second returns valid JSON → retry fires."""
         mock_client = AsyncMock()
-        mock_client.messages.create = AsyncMock(side_effect=[
-            _make_anthropic_response(UNPARSEABLE_RESPONSE),
-            _make_anthropic_response(VALID_SUGGESTIONS_JSON),
-        ])
+        mock_client.messages.create = AsyncMock(
+            side_effect=[
+                _make_anthropic_response(UNPARSEABLE_RESPONSE),
+                _make_anthropic_response(VALID_SUGGESTIONS_JSON),
+            ]
+        )
         with patch("src.engines.campaign_suggester.get_anthropic_client", return_value=mock_client):
             result = await engine._get_ai_suggestions("test prompt", 2)
         assert result is not None
@@ -247,10 +256,12 @@ class TestGetAiSuggestions:
     async def test_retry_prompt_contains_nudge(self, engine):
         """Retry call must include the explicit 'only JSON array' nudge."""
         mock_client = AsyncMock()
-        mock_client.messages.create = AsyncMock(side_effect=[
-            _make_anthropic_response(UNPARSEABLE_RESPONSE),
-            _make_anthropic_response(VALID_SUGGESTIONS_JSON),
-        ])
+        mock_client.messages.create = AsyncMock(
+            side_effect=[
+                _make_anthropic_response(UNPARSEABLE_RESPONSE),
+                _make_anthropic_response(VALID_SUGGESTIONS_JSON),
+            ]
+        )
         with patch("src.engines.campaign_suggester.get_anthropic_client", return_value=mock_client):
             await engine._get_ai_suggestions("base prompt", 2)
         retry_call_kwargs = mock_client.messages.create.call_args_list[1]
@@ -296,6 +307,7 @@ class TestGetAiSuggestions:
 # Integration: sparse ICP end-to-end
 # ============================================
 
+
 class TestSparseIcpIntegration:
     @pytest.mark.asyncio
     async def test_sparse_icp_returns_valid_suggestions(self, engine):
@@ -305,7 +317,9 @@ class TestSparseIcpIntegration:
         """
         mock_db = AsyncMock()
         sparse_client = _make_client(industries=["Digital Marketing"])
-        mock_db.execute = AsyncMock(return_value=MagicMock(scalar_one_or_none=MagicMock(return_value=sparse_client)))
+        mock_db.execute = AsyncMock(
+            return_value=MagicMock(scalar_one_or_none=MagicMock(return_value=sparse_client))
+        )
 
         mock_anthropic = AsyncMock()
         mock_anthropic.messages.create = AsyncMock(
@@ -313,7 +327,9 @@ class TestSparseIcpIntegration:
         )
 
         with (
-            patch("src.engines.campaign_suggester.get_anthropic_client", return_value=mock_anthropic),
+            patch(
+                "src.engines.campaign_suggester.get_anthropic_client", return_value=mock_anthropic
+            ),
             patch("src.config.tiers.get_campaign_slots", return_value=(2, 2)),
         ):
             result = await engine.suggest_campaigns(mock_db, sparse_client.id)

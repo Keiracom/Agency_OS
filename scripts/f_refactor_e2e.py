@@ -7,6 +7,7 @@ Stage order per F-REFACTOR-01:
 
 Default domain: taxopia.com.au
 """
+
 import os
 import sys
 
@@ -57,9 +58,9 @@ def _sub_placeholders(obj: Any) -> Any:
 
 
 async def main(domain: str = "taxopia.com.au") -> None:
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"Pipeline F E2E — {domain}")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
 
     dfs = DFSLabsClient(
         login=os.environ["DATAFORSEO_LOGIN"],
@@ -88,8 +89,10 @@ async def main(domain: str = "taxopia.com.au") -> None:
     afford_gate = f3a_content.get("affordability_gate", "")
     intent_prelim = f3a_content.get("intent_band_preliminary", "")
     would_drop = afford_gate == "cannot_afford" or intent_prelim.upper() in NOT_TRYING
-    print(f"drop/retain:         {'DROP' if would_drop else 'RETAIN'} "
-          f"(gate={afford_gate}, intent={intent_prelim})")
+    print(
+        f"drop/retain:         {'DROP' if would_drop else 'RETAIN'} "
+        f"(gate={afford_gate}, intent={intent_prelim})"
+    )
 
     if f3a_status != "success":
         print(f"F3a failed — aborting. reason: {f3a_result.get('f_failure_reason')}")
@@ -103,10 +106,14 @@ async def main(domain: str = "taxopia.com.au") -> None:
 
     print(f"cost_usd:            {signal_bundle.get('cost_usd', 0.0)}")
     ro = signal_bundle.get("rank_overview") or {}
-    print(f"rank_overview:       etv={ro.get('organic_etv')}, organic_count={ro.get('organic_count')}")
+    print(
+        f"rank_overview:       etv={ro.get('organic_etv')}, organic_count={ro.get('organic_count')}"
+    )
     competitors = signal_bundle.get("competitors", [])
     print(f"competitors count:   {len(competitors)}")
-    print(f"  first 3:           {[c.get('domain') or c.get('competitor_domain') for c in competitors[:3]]}")
+    print(
+        f"  first 3:           {[c.get('domain') or c.get('competitor_domain') for c in competitors[:3]]}"
+    )
     keywords = signal_bundle.get("keywords", [])
     print(f"keywords count:      {len(keywords)}")
     print(f"  top 5:             {[k.get('keyword') for k in keywords[:5]]}")
@@ -174,21 +181,35 @@ async def main(domain: str = "taxopia.com.au") -> None:
     li = f5_result.get("linkedin", {})
     em = f5_result.get("email", {})
     mo = f5_result.get("mobile", {})
-    print(f"linkedin:            url={li.get('linkedin_url')}, source={li.get('source')}, "
-          f"tier={li.get('tier')}, match_type={li.get('match_type')}, "
-          f"match_company={li.get('match_company')}, match_confidence={li.get('match_confidence')}")
+    print(
+        f"linkedin:            url={li.get('linkedin_url')}, source={li.get('source')}, "
+        f"tier={li.get('tier')}, match_type={li.get('match_type')}, "
+        f"match_company={li.get('match_company')}, match_confidence={li.get('match_confidence')}"
+    )
     if li.get("l1_candidate_url"):
-        print(f"  l1_candidate:      {li.get('l1_candidate_url')} (from {li.get('l1_candidate_source')})")
+        print(
+            f"  l1_candidate:      {li.get('l1_candidate_url')} (from {li.get('l1_candidate_source')})"
+        )
     if li.get("l2_profile_headline"):
-        print(f"  l2_rejected:       headline='{li.get('l2_profile_headline')}', companies={li.get('l2_profile_companies')}")
-    print(f"email:               email={em.get('email')}, source={em.get('source')}, "
-          f"tier={em.get('tier')}, verified={em.get('verified') or em.get('confidence')}")
-    print(f"mobile:              mobile={mo.get('mobile')}, source={mo.get('source')}, tier={mo.get('tier')}")
+        print(
+            f"  l2_rejected:       headline='{li.get('l2_profile_headline')}', companies={li.get('l2_profile_companies')}"
+        )
+    print(
+        f"email:               email={em.get('email')}, source={em.get('source')}, "
+        f"tier={em.get('tier')}, verified={em.get('verified') or em.get('confidence')}"
+    )
+    print(
+        f"mobile:              mobile={mo.get('mobile')}, source={mo.get('source')}, tier={mo.get('tier')}"
+    )
 
     # ── F5 DM POSTS ─────────────────────────────────────────────────────────
     print("\n─── F5 DM POSTS ───")
     t0 = time.monotonic()
-    dm_linkedin_url = f4_result.get("dm_linkedin_url") or dm_candidate.get("linkedin_url") or li.get("linkedin_url")
+    dm_linkedin_url = (
+        f4_result.get("dm_linkedin_url")
+        or dm_candidate.get("linkedin_url")
+        or li.get("linkedin_url")
+    )
     dm_name_for_filter = dm_candidate.get("name")
 
     raw_posts: list[dict] = []
@@ -203,6 +224,7 @@ async def main(domain: str = "taxopia.com.au") -> None:
         # We need raw count separately — fetch without filter then re-filter
         try:
             import httpx
+
             apify_token = os.environ.get("APIFY_API_TOKEN", "")
             APIFY_BASE = "https://api.apify.com/v2"
             if apify_token:
@@ -210,23 +232,33 @@ async def main(domain: str = "taxopia.com.au") -> None:
                     r = await client.post(
                         f"{APIFY_BASE}/acts/apimaestro~linkedin-posts-search-scraper-no-cookies/runs"
                         f"?token={apify_token}",
-                        json={"profileUrl": dm_linkedin_url, "maxPosts": 10})
+                        json={"profileUrl": dm_linkedin_url, "maxPosts": 10},
+                    )
                     if r.status_code in (200, 201):
                         run_id = r.json().get("data", {}).get("id")
                         if run_id:
                             for _ in range(20):
                                 await asyncio.sleep(3)
                                 sr = await client.get(
-                                    f"{APIFY_BASE}/actor-runs/{run_id}?token={apify_token}")
+                                    f"{APIFY_BASE}/actor-runs/{run_id}?token={apify_token}"
+                                )
                                 sd = sr.json().get("data", {})
-                                if sd.get("status") in ("SUCCEEDED", "FAILED", "ABORTED", "TIMED-OUT"):
+                                if sd.get("status") in (
+                                    "SUCCEEDED",
+                                    "FAILED",
+                                    "ABORTED",
+                                    "TIMED-OUT",
+                                ):
                                     if sd["status"] == "SUCCEEDED":
                                         ds_id = sd.get("defaultDatasetId")
-                                        raw_posts = (await client.get(
-                                            f"{APIFY_BASE}/datasets/{ds_id}/items?token={apify_token}"
-                                        )).json()
+                                        raw_posts = (
+                                            await client.get(
+                                                f"{APIFY_BASE}/datasets/{ds_id}/items?token={apify_token}"
+                                            )
+                                        ).json()
                                         filtered_posts = filter_dm_posts(
-                                            raw_posts, dm_name_for_filter, dm_linkedin_url)
+                                            raw_posts, dm_name_for_filter, dm_linkedin_url
+                                        )
                                     break
             else:
                 logger.warning("APIFY_API_TOKEN not set — skipping DM posts fetch")
@@ -304,7 +336,8 @@ async def main(domain: str = "taxopia.com.au") -> None:
         "dm_linkedin_url": f4_result.get("dm_linkedin_url") or dm_candidate.get("linkedin_url"),
         "contacts": f5_result,
         "intent_band": (
-            f3b_content.get("intent_band_final") if f3b_content
+            f3b_content.get("intent_band_final")
+            if f3b_content
             else f3a_content.get("intent_band_preliminary")
         ),
         "affordability_score": f3a_content.get("affordability_score"),
@@ -350,7 +383,9 @@ async def main(domain: str = "taxopia.com.au") -> None:
             "f3b_usd": f3b_result.get("cost_usd", 0.0),
             "f4_usd": 0.006,
             "f5_usd": 0.0,
-            "f6_enhanced_vr_usd": enhanced_vr_result.get("cost_usd", 0.0) if enhanced_vr_result else 0.0,
+            "f6_enhanced_vr_usd": enhanced_vr_result.get("cost_usd", 0.0)
+            if enhanced_vr_result
+            else 0.0,
             "total_usd": round(total_cost, 6),
             "total_aud": round(total_cost * 1.55, 4),
         },

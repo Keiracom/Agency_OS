@@ -12,6 +12,7 @@ Coverage:
 8. Log message contains phone + status for operator audit trail
 9. client=None path constructs a DNCRClient and returns a callable
 """
+
 from __future__ import annotations
 
 import logging
@@ -27,6 +28,7 @@ PHONE = "+61411111111"
 
 def _make_result(registered, status="ok"):
     from datetime import datetime, timezone
+
     return DNCRResult(
         registered=registered,
         registered_at=None,
@@ -45,6 +47,7 @@ def _mock_client(registered, status="ok"):
 # Case 1 — registered=True
 # ---------------------------------------------------------------------------
 
+
 def test_registered_true_returns_true():
     client = _mock_client(True)
     lookup = build_dncr_lookup(client)
@@ -55,6 +58,7 @@ def test_registered_true_returns_true():
 # Case 2 — registered=False
 # ---------------------------------------------------------------------------
 
+
 def test_registered_false_returns_false():
     client = _mock_client(False)
     lookup = build_dncr_lookup(client)
@@ -64,6 +68,7 @@ def test_registered_false_returns_false():
 # ---------------------------------------------------------------------------
 # Case 3 — degraded (registered=None) -> False + warning log
 # ---------------------------------------------------------------------------
+
 
 def test_degraded_returns_false_and_logs_warning(caplog):
     client = _mock_client(None, status="degraded:no_api_key")
@@ -78,6 +83,7 @@ def test_degraded_returns_false_and_logs_warning(caplog):
 # Case 4 — empty phone -> False, client NOT called
 # ---------------------------------------------------------------------------
 
+
 def test_empty_phone_returns_false_without_lookup():
     client = _mock_client(True)
     lookup = build_dncr_lookup(client)
@@ -89,6 +95,7 @@ def test_empty_phone_returns_false_without_lookup():
 # Case 5 — None phone -> False, client NOT called
 # ---------------------------------------------------------------------------
 
+
 def test_none_phone_returns_false_without_lookup():
     client = _mock_client(True)
     lookup = build_dncr_lookup(client)
@@ -99,6 +106,7 @@ def test_none_phone_returns_false_without_lookup():
 # ---------------------------------------------------------------------------
 # Case 6 — log_degraded=False -> no warning logged
 # ---------------------------------------------------------------------------
+
 
 def test_degraded_no_log_when_disabled(caplog):
     client = _mock_client(None, status="degraded:network")
@@ -113,6 +121,7 @@ def test_degraded_no_log_when_disabled(caplog):
 # Case 7 — two calls with same phone -> consistent result (adapter is pass-through)
 # ---------------------------------------------------------------------------
 
+
 def test_two_calls_consistent():
     client = _mock_client(True)
     lookup = build_dncr_lookup(client)
@@ -124,6 +133,7 @@ def test_two_calls_consistent():
 # ---------------------------------------------------------------------------
 # Case 8 — log message contains phone + status
 # ---------------------------------------------------------------------------
+
 
 def test_degraded_log_contains_phone_and_status(caplog):
     status = "degraded:rate_limited"
@@ -140,6 +150,7 @@ def test_degraded_log_contains_phone_and_status(caplog):
 # ---------------------------------------------------------------------------
 # Case 9 — client=None path: constructs DNCRClient, returns callable
 # ---------------------------------------------------------------------------
+
 
 def test_no_client_arg_constructs_default():
     """build_dncr_lookup() with no args should return a callable without raising."""

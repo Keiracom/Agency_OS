@@ -19,6 +19,7 @@ def clear_store():
 # add + check
 # ---------------------------------------------------------------------------
 
+
 def test_add_then_check_suppressed():
     result = SuppressionManager.add_to_suppression("dave@example.com", reason="unsubscribe")
     assert result["success"] is True
@@ -58,6 +59,7 @@ def test_invalid_channel_rejected():
 # remove + check
 # ---------------------------------------------------------------------------
 
+
 def test_remove_then_check_not_suppressed():
     SuppressionManager.add_to_suppression("rm@example.com", reason="manual")
     remove = SuppressionManager.remove_from_suppression("rm@example.com")
@@ -77,6 +79,7 @@ def test_remove_non_existent_returns_was_suppressed_false():
 # ---------------------------------------------------------------------------
 # bulk_check
 # ---------------------------------------------------------------------------
+
 
 def test_bulk_check_mixed_list():
     SuppressionManager.add_to_suppression("a@x.com", reason="complaint")
@@ -102,6 +105,7 @@ def test_bulk_check_normalises_email_case():
 # ---------------------------------------------------------------------------
 # stats
 # ---------------------------------------------------------------------------
+
 
 def test_stats_shape_empty():
     stats = SuppressionManager.get_suppression_stats()

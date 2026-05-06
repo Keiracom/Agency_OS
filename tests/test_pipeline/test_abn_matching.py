@@ -137,7 +137,10 @@ class TestABNCleanEntityName:
         assert "TRUSTEE" not in result.upper()
 
     def test_no_suffix_unchanged(self):
-        assert FreeEnrichment._abn_clean_entity_name("Pymble Dental Practice") == "Pymble Dental Practice"
+        assert (
+            FreeEnrichment._abn_clean_entity_name("Pymble Dental Practice")
+            == "Pymble Dental Practice"
+        )
 
     def test_case_insensitive_suffix(self):
         assert FreeEnrichment._abn_clean_entity_name("Dental Care pty ltd") == "Dental Care"
@@ -164,7 +167,9 @@ class TestABNConfidence:
         assert c in (ABNMatchConfidence.PARTIAL, ABNMatchConfidence.LOW)
 
     def test_low_dissimilar(self):
-        assert self.fe._abn_confidence("dental pymble", "haircuts unlimited") == ABNMatchConfidence.LOW
+        assert (
+            self.fe._abn_confidence("dental pymble", "haircuts unlimited") == ABNMatchConfidence.LOW
+        )
 
     def test_exact_threshold_boundary(self):
         # Identical strings → always EXACT
@@ -241,17 +246,17 @@ class TestMatchABNWaterfall:
     async def test_strategy4_live_api_match(self):
         """S1–S3 all fail, S4 live API returns PARTIAL match."""
         self.fe._conn.fetch = AsyncMock(return_value=[])
-        self.fe._conn.fetchrow = AsyncMock(return_value={
-            "gst_registered": True,
-            "entity_type": "Australian Private Company",
-            "registration_date": None,
-        })
+        self.fe._conn.fetchrow = AsyncMock(
+            return_value={
+                "gst_registered": True,
+                "entity_type": "Australian Private Company",
+                "registration_date": None,
+            }
+        )
 
         mock_api_result = [{"business_name": "Dentists at Pymble", "abn": "92 605 514 421"}]
 
-        with patch(
-            "src.integrations.abn_client.ABNClient"
-        ) as MockABNClient:
+        with patch("src.integrations.abn_client.ABNClient") as MockABNClient:
             instance = AsyncMock()
             instance.search_by_name = AsyncMock(return_value=mock_api_result)
             MockABNClient.return_value.__aenter__ = AsyncMock(return_value=instance)
@@ -272,9 +277,7 @@ class TestMatchABNWaterfall:
         self.fe._conn.fetch = AsyncMock(return_value=[])
         self.fe._conn.fetchrow = AsyncMock(return_value=None)
 
-        with patch(
-            "src.integrations.abn_client.ABNClient"
-        ) as MockABNClient:
+        with patch("src.integrations.abn_client.ABNClient") as MockABNClient:
             instance = AsyncMock()
             instance.search_by_name = AsyncMock(return_value=[])
             MockABNClient.return_value.__aenter__ = AsyncMock(return_value=instance)
@@ -312,11 +315,13 @@ class TestMatchABNWaterfall:
     @pytest.mark.asyncio
     async def test_low_confidence_stored_as_fallback(self):
         """LOW confidence match stored as best_low; returned only if nothing better found."""
-        self.fe._conn.fetchrow = AsyncMock(return_value={
-            "gst_registered": False,
-            "entity_type": "Individual/Sole Trader",
-            "registration_date": None,
-        })
+        self.fe._conn.fetchrow = AsyncMock(
+            return_value={
+                "gst_registered": False,
+                "entity_type": "Individual/Sole Trader",
+                "registration_date": None,
+            }
+        )
 
         # Return a dissimilar result to force LOW confidence
         low_row = _make_row("Completely Different Business Name Here")
@@ -326,8 +331,8 @@ class TestMatchABNWaterfall:
             nonlocal call_count
             call_count += 1
             if call_count == 1:
-                return [low_row]   # S1: returns something but LOW confidence
-            return []               # S2, S3: empty
+                return [low_row]  # S1: returns something but LOW confidence
+            return []  # S2, S3: empty
 
         self.fe._conn.fetch = mock_fetch
 
@@ -377,11 +382,13 @@ class TestMatchABNWaterfall:
         # Domain: "dentist.com.au" → keywords = ["dentist"]
         row = _make_row("Dentist Services Pty Ltd")  # Closer match to "dentist"
         self.fe._conn.fetch = AsyncMock(return_value=[row])
-        self.fe._conn.fetchrow = AsyncMock(return_value={
-            "gst_registered": True,
-            "entity_type": "Australian Private Company",
-            "registration_date": None,
-        })
+        self.fe._conn.fetchrow = AsyncMock(
+            return_value={
+                "gst_registered": True,
+                "entity_type": "Australian Private Company",
+                "registration_date": None,
+            }
+        )
 
         result = await self.fe._match_abn("dentist.com.au")
 
@@ -403,11 +410,13 @@ class TestMatchABNWaterfall:
             return [_make_row("City Plumbing Pty Ltd")]  # S2 hits with title keyword "plumber"
 
         self.fe._conn.fetch = mock_fetch
-        self.fe._conn.fetchrow = AsyncMock(return_value={
-            "gst_registered": True,
-            "entity_type": "Australian Private Company",
-            "registration_date": None,
-        })
+        self.fe._conn.fetchrow = AsyncMock(
+            return_value={
+                "gst_registered": True,
+                "entity_type": "Australian Private Company",
+                "registration_date": None,
+            }
+        )
 
         with patch("src.integrations.abn_client.ABNClient") as MockABNClient:
             instance = AsyncMock()
@@ -430,17 +439,17 @@ class TestMatchABNWaterfall:
         # Domain: "ab.com.au" → short domain
         # Title: "AB Legal" → title_cleaned = "AB Legal", api_terms includes terms >= 2 chars
         self.fe._conn.fetch = AsyncMock(return_value=[])
-        self.fe._conn.fetchrow = AsyncMock(return_value={
-            "gst_registered": True,
-            "entity_type": "Australian Private Company",
-            "registration_date": None,
-        })
+        self.fe._conn.fetchrow = AsyncMock(
+            return_value={
+                "gst_registered": True,
+                "entity_type": "Australian Private Company",
+                "registration_date": None,
+            }
+        )
 
         mock_api_result = [{"business_name": "AB Legal Services Pty Ltd", "abn": "12 345 678 901"}]
 
-        with patch(
-            "src.integrations.abn_client.ABNClient"
-        ) as MockABNClient:
+        with patch("src.integrations.abn_client.ABNClient") as MockABNClient:
             instance = AsyncMock()
             instance.search_by_name = AsyncMock(return_value=mock_api_result)
             MockABNClient.return_value.__aenter__ = AsyncMock(return_value=instance)

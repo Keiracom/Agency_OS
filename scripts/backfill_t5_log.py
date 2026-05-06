@@ -20,6 +20,7 @@ Output (end of run):
     total updated:   N
     total skipped:   N
 """
+
 from __future__ import annotations
 
 import argparse
@@ -33,6 +34,7 @@ REPO_ROOT = os.path.dirname(SCRIPTS_DIR)
 sys.path.insert(0, REPO_ROOT)
 
 from dotenv import load_dotenv
+
 load_dotenv("/home/elliotbot/.config/agency-os/.env")
 
 import asyncpg  # noqa: E402
@@ -87,9 +89,9 @@ def parse_log(path: str) -> dict[str, dict]:
             if not domain:
                 continue
             out[domain] = {
-                "domain":       domain,
+                "domain": domain,
                 "display_name": (null_or(biz) or domain)[:255],
-                "abn":          null_or(abn),
+                "abn": null_or(abn),
                 "has_linkedin": truthy(li),
                 "dm_name_serp": null_or(dm),
                 "has_facebook": truthy(fb),
@@ -114,10 +116,14 @@ async def upsert(pool, rows: dict[str, dict], *, dry_run: bool) -> tuple[int, in
         # domain; the log is a secondary source so we drop the ABN on new
         # rows when it collides with an existing row for a different domain).
         incoming_abns = [r["abn"] for r in rows.values() if r["abn"]]
-        used_abn_rows = await conn.fetch(
-            "SELECT abn FROM business_universe WHERE abn = ANY($1::text[])",
-            incoming_abns,
-        ) if incoming_abns else []
+        used_abn_rows = (
+            await conn.fetch(
+                "SELECT abn FROM business_universe WHERE abn = ANY($1::text[])",
+                incoming_abns,
+            )
+            if incoming_abns
+            else []
+        )
     by_domain = {r["domain"]: r for r in existing}
     used_abns = {r["abn"] for r in used_abn_rows}
 
@@ -183,8 +189,11 @@ async def upsert(pool, rows: dict[str, dict], *, dry_run: bool) -> tuple[int, in
                         ON CONFLICT (domain) WHERE domain IS NOT NULL AND domain <> ''
                         DO NOTHING
                         """,
-                        domain, f"https://{domain}",
-                        r["display_name"], abn_for_insert, r["dm_name_serp"],
+                        domain,
+                        f"https://{domain}",
+                        r["display_name"],
+                        abn_for_insert,
+                        r["dm_name_serp"],
                     )
                 # Track newly-used ABN so downstream rows in this run don't
                 # try to re-use it.
@@ -201,8 +210,9 @@ async def upsert(pool, rows: dict[str, dict], *, dry_run: bool) -> tuple[int, in
 async def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[1])
     ap.add_argument("--source", default=DEFAULT_SOURCE)
-    ap.add_argument("--dry-run", action="store_true",
-                    help="Parse + compute counts without writing.")
+    ap.add_argument(
+        "--dry-run", action="store_true", help="Parse + compute counts without writing."
+    )
     args = ap.parse_args()
 
     print(f"source: {args.source}")
@@ -216,7 +226,10 @@ async def main():
 
     dsn = settings.database_url.replace("postgresql+asyncpg://", "postgresql://")
     pool = await asyncpg.create_pool(
-        dsn, min_size=2, max_size=8, statement_cache_size=0,
+        dsn,
+        min_size=2,
+        max_size=8,
+        statement_cache_size=0,
     )
     try:
         ins, upd, skp = await upsert(pool, rows, dry_run=args.dry_run)

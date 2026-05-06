@@ -3,13 +3,14 @@ Unit tests for Waterfall v2 Pipeline
 
 Tests the enrichment pipeline including gates and tier sequencing.
 """
+
 import os
 import sys
 from unittest.mock import Mock
 
 import pytest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src"))
 
 
 class TestWaterfallConstants:
@@ -17,10 +18,12 @@ class TestWaterfallConstants:
 
     def test_pre_als_gate_value(self):
         from enrichment.waterfall_v2 import WaterfallV2
+
         assert WaterfallV2.PRE_ALS_GATE == 20
 
     def test_hot_threshold_value(self):
         from enrichment.waterfall_v2 import WaterfallV2
+
         assert WaterfallV2.HOT_THRESHOLD == 85
 
 
@@ -29,6 +32,7 @@ class TestLeadRecord:
 
     def test_lead_record_defaults(self):
         from enrichment.waterfall_v2 import LeadRecord
+
         lead = LeadRecord()
 
         assert lead.abn is None
@@ -37,11 +41,8 @@ class TestLeadRecord:
 
     def test_lead_record_with_values(self):
         from enrichment.waterfall_v2 import LeadRecord
-        lead = LeadRecord(
-            abn="12345678901",
-            business_name="Test Company",
-            propensity_score=75
-        )
+
+        lead = LeadRecord(abn="12345678901", business_name="Test Company", propensity_score=75)
 
         assert lead.abn == "12345678901"
         assert lead.business_name == "Test Company"
@@ -118,9 +119,7 @@ class TestALSCalculation:
         waterfall = WaterfallV2(bright_data_client=mock_client)
 
         # Lead without hiring signals
-        lead_no_hiring = LeadRecord(
-            linkedin_data={"updates": [{"text": "Regular company update"}]}
-        )
+        lead_no_hiring = LeadRecord(linkedin_data={"updates": [{"text": "Regular company update"}]})
 
         # Lead with hiring signals
         lead_hiring = LeadRecord(
@@ -148,7 +147,10 @@ class TestTierSequence:
 
         # After Tier 1
         lead = await waterfall.enrich_tier_1(lead)
-        assert "tier_1" in lead.enrichment_tiers_completed or lead.enrichment_tiers_completed is not None
+        assert (
+            "tier_1" in lead.enrichment_tiers_completed
+            or lead.enrichment_tiers_completed is not None
+        )
 
 
 class TestCostAccumulation:

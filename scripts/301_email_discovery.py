@@ -42,6 +42,7 @@ email_map = {d["domain"]: d for d in email_data["domains"]}
 # Build prospect list
 # ---------------------------------------------------------------------------
 
+
 def split_name(full_name: str) -> tuple[str, str]:
     """Split 'First Last' into (first, last). Handles multi-word names."""
     if not full_name:
@@ -61,17 +62,19 @@ for domain, dm in domains_300f.items():
     # Strip www. for clean domain
     clean_domain = re.sub(r"^www\.", "", domain)
 
-    prospects.append({
-        "domain": clean_domain,
-        "original_domain": domain,
-        "category": dm.get("category", "unknown"),
-        "dm_name": dm.get("dm_name", ""),
-        "first_name": first,
-        "last_name": last,
-        "existing_email": existing_email,
-        "email_source": email_entry.get("email_source", "none"),
-        "email_verified": email_entry.get("email_verified", False),
-    })
+    prospects.append(
+        {
+            "domain": clean_domain,
+            "original_domain": domain,
+            "category": dm.get("category", "unknown"),
+            "dm_name": dm.get("dm_name", ""),
+            "first_name": first,
+            "last_name": last,
+            "existing_email": existing_email,
+            "email_source": email_entry.get("email_source", "none"),
+            "email_verified": email_entry.get("email_verified", False),
+        }
+    )
 
 print(f"Total prospects: {len(prospects)}")
 with_existing = [p for p in prospects if p["existing_email"]]
@@ -100,9 +103,19 @@ output = []
 pattern_hits = defaultdict(int)
 
 PATTERN_NAMES = [
-    "first", "last", "first.last", "last.first",
-    "firstlast", "lastfirst", "f.last", "flast",
-    "first.l", "first_last", "f_last", "first-last", "f-last",
+    "first",
+    "last",
+    "first.last",
+    "last.first",
+    "firstlast",
+    "lastfirst",
+    "f.last",
+    "flast",
+    "first.l",
+    "first_last",
+    "f_last",
+    "first-last",
+    "f-last",
 ]
 
 stats = {
@@ -141,13 +154,19 @@ for r in results:
         local = email.split("@")[0].lower()
         # Check if it matches a DM pattern
         expected_locals = [
-            first, last,
-            f"{first}.{last}", f"{last}.{first}",
-            f"{first}{last}", f"{last}{first}",
-            f"{f}.{last}", f"{f}{last}",
+            first,
+            last,
+            f"{first}.{last}",
+            f"{last}.{first}",
+            f"{first}{last}",
+            f"{last}{first}",
+            f"{f}.{last}",
+            f"{f}{last}",
             f"{first}.{last[:1]}",
-            f"{first}_{last}", f"{f}_{last}",
-            f"{first}-{last}", f"{f}-{last}",
+            f"{first}_{last}",
+            f"{f}_{last}",
+            f"{first}-{last}",
+            f"{f}-{last}",
         ]
         if local in expected_locals:
             if dm_email_found is None:
@@ -157,7 +176,19 @@ for r in results:
                 if local == exp:
                     pattern_hits[pname] += 1
                     break
-        elif any(local.startswith(p) for p in ("info", "contact", "admin", "hello", "office", "reception", "enquiries", "enquiry")):
+        elif any(
+            local.startswith(p)
+            for p in (
+                "info",
+                "contact",
+                "admin",
+                "hello",
+                "office",
+                "reception",
+                "enquiries",
+                "enquiry",
+            )
+        ):
             company_email_found = email
 
     if dm_email_found:
@@ -175,24 +206,28 @@ for r in results:
         if not smtp.get("accept_all") and smtp.get("mx_host"):
             stats["no_valid_email"] += 1
 
-    output.append({
-        "domain": r["original_domain"],
-        "category": r["category"],
-        "dm_name": r["dm_name"],
-        "existing_email": existing,
-        "existing_email_source": r["email_source"],
-        "existing_verified_by_smtp": existing_now_verified,
-        "smtp_verified_dm_email": dm_email_found,
-        "smtp_verified_company_email": company_email_found,
-        "smtp_all_verified": verified_list,
-        "mx_host": smtp.get("mx_host"),
-        "accept_all": smtp.get("accept_all", False),
-        "patterns_tested": smtp.get("patterns_tested", 0),
-        "time_seconds": smtp.get("time_seconds", 0),
-        "error": smtp_error,
-    })
+    output.append(
+        {
+            "domain": r["original_domain"],
+            "category": r["category"],
+            "dm_name": r["dm_name"],
+            "existing_email": existing,
+            "existing_email_source": r["email_source"],
+            "existing_verified_by_smtp": existing_now_verified,
+            "smtp_verified_dm_email": dm_email_found,
+            "smtp_verified_company_email": company_email_found,
+            "smtp_all_verified": verified_list,
+            "mx_host": smtp.get("mx_host"),
+            "accept_all": smtp.get("accept_all", False),
+            "patterns_tested": smtp.get("patterns_tested", 0),
+            "time_seconds": smtp.get("time_seconds", 0),
+            "error": smtp_error,
+        }
+    )
 
-stats["total_sendable"] = stats["verified_dm_email"] + stats["company_email_verified"] + stats["existing_verified"]
+stats["total_sendable"] = (
+    stats["verified_dm_email"] + stats["company_email_verified"] + stats["existing_verified"]
+)
 stats["total_time_seconds"] = round(total_time, 1)
 stats["cost_usd"] = 0.0
 

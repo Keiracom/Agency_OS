@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """COO bot service entry point — launched by systemd agency-os-coo.service."""
+
 import os
 import sys
 

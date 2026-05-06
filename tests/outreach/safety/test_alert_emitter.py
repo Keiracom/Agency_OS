@@ -1,4 +1,5 @@
 """Tests for src/outreach/safety/alert_emitter.py — 10 cases."""
+
 from __future__ import annotations
 
 import os
@@ -17,8 +18,11 @@ from src.outreach.safety.deliverability_monitor import Health, OperatorAlert
 
 # --- helpers ---
 
+
 def _mailbox_alert(health: Health, reason: str = "bounce rate 6.0000% >= 5.0000%") -> OperatorAlert:
-    return OperatorAlert(mailbox_id="mb-001", linkedin_account_id=None, health=health, reason=reason)
+    return OperatorAlert(
+        mailbox_id="mb-001", linkedin_account_id=None, health=health, reason=reason
+    )
 
 
 def _linkedin_alert() -> OperatorAlert:
@@ -40,6 +44,7 @@ def _quarantine_alert() -> OperatorAlert:
 
 
 # --- format_alert tests ---
+
 
 def test_format_alert_mailbox_paused():
     msg = format_alert(_mailbox_alert(Health.PAUSED))
@@ -74,6 +79,7 @@ def test_format_alert_healthy_defensive():
 
 
 # --- TelegramAlertEmitter behavioural tests ---
+
 
 def test_alert_invokes_send_fn_once():
     send = Mock()
@@ -131,8 +137,12 @@ def test_dedupe_key_differs_per_target():
     send = Mock()
     now = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
     emitter = TelegramAlertEmitter(send_fn=send, now_fn=lambda: now)
-    alert_a = OperatorAlert(mailbox_id="mb-A", linkedin_account_id=None, health=Health.PAUSED, reason="x")
-    alert_b = OperatorAlert(mailbox_id="mb-B", linkedin_account_id=None, health=Health.PAUSED, reason="x")
+    alert_a = OperatorAlert(
+        mailbox_id="mb-A", linkedin_account_id=None, health=Health.PAUSED, reason="x"
+    )
+    alert_b = OperatorAlert(
+        mailbox_id="mb-B", linkedin_account_id=None, health=Health.PAUSED, reason="x"
+    )
     emitter(alert_a)
     emitter(alert_b)
     assert send.call_count == 2

@@ -1,4 +1,5 @@
 """Tests for src/pipeline/latency_tracker.py."""
+
 from __future__ import annotations
 
 import time

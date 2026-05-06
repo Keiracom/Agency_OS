@@ -142,14 +142,39 @@ class TestEmailGeneration:
 
     @pytest.mark.asyncio
     async def test_generate_email_success(
-        self, content_engine, mock_db_session, mock_lead, mock_campaign,
-        mock_lead_context, mock_proof_points
+        self,
+        content_engine,
+        mock_db_session,
+        mock_lead,
+        mock_campaign,
+        mock_lead_context,
+        mock_proof_points,
     ):
         """Test successful email generation with smart prompt."""
-        with patch.object(content_engine, "get_campaign_by_id", new_callable=AsyncMock, return_value=mock_campaign):
-            with patch(f"{SMART_PROMPTS_MODULE}.build_full_lead_context", new_callable=AsyncMock, return_value=mock_lead_context):
-                with patch(f"{SMART_PROMPTS_MODULE}.build_client_proof_points", new_callable=AsyncMock, return_value=mock_proof_points):
-                    with patch.object(content_engine, "_fact_check_content", new_callable=AsyncMock, return_value={"verdict": "PASS", "unsupported_claims": [], "risk_level": "LOW", "cost_aud": 0.01}):
+        with patch.object(
+            content_engine, "get_campaign_by_id", new_callable=AsyncMock, return_value=mock_campaign
+        ):
+            with patch(
+                f"{SMART_PROMPTS_MODULE}.build_full_lead_context",
+                new_callable=AsyncMock,
+                return_value=mock_lead_context,
+            ):
+                with patch(
+                    f"{SMART_PROMPTS_MODULE}.build_client_proof_points",
+                    new_callable=AsyncMock,
+                    return_value=mock_proof_points,
+                ):
+                    with patch.object(
+                        content_engine,
+                        "_fact_check_content",
+                        new_callable=AsyncMock,
+                        return_value={
+                            "verdict": "PASS",
+                            "unsupported_claims": [],
+                            "risk_level": "LOW",
+                            "cost_aud": 0.01,
+                        },
+                    ):
                         # Mock AI response
                         content_engine.anthropic.complete.return_value = {
                             "content": '{"subject": "Test Subject", "body": "Test Body"}',
@@ -168,19 +193,46 @@ class TestEmailGeneration:
                         assert result.data["subject"] == "Test Subject"
                         assert result.data["body"] == "Test Body"
                         # Cost now includes fact-check cost (use approx for floating point)
-                        assert result.metadata["cost_aud"] == pytest.approx(0.06)  # 0.05 + 0.01 from fact-check
+                        assert result.metadata["cost_aud"] == pytest.approx(
+                            0.06
+                        )  # 0.05 + 0.01 from fact-check
                         assert result.metadata.get("smart_prompt") is True
 
     @pytest.mark.asyncio
     async def test_generate_email_with_template(
-        self, content_engine, mock_db_session, mock_lead, mock_campaign,
-        mock_lead_context, mock_proof_points
+        self,
+        content_engine,
+        mock_db_session,
+        mock_lead,
+        mock_campaign,
+        mock_lead_context,
+        mock_proof_points,
     ):
         """Test email generation with template."""
-        with patch.object(content_engine, "get_campaign_by_id", new_callable=AsyncMock, return_value=mock_campaign):
-            with patch(f"{SMART_PROMPTS_MODULE}.build_full_lead_context", new_callable=AsyncMock, return_value=mock_lead_context):
-                with patch(f"{SMART_PROMPTS_MODULE}.build_client_proof_points", new_callable=AsyncMock, return_value=mock_proof_points):
-                    with patch.object(content_engine, "_fact_check_content", new_callable=AsyncMock, return_value={"verdict": "PASS", "unsupported_claims": [], "risk_level": "LOW", "cost_aud": 0.01}):
+        with patch.object(
+            content_engine, "get_campaign_by_id", new_callable=AsyncMock, return_value=mock_campaign
+        ):
+            with patch(
+                f"{SMART_PROMPTS_MODULE}.build_full_lead_context",
+                new_callable=AsyncMock,
+                return_value=mock_lead_context,
+            ):
+                with patch(
+                    f"{SMART_PROMPTS_MODULE}.build_client_proof_points",
+                    new_callable=AsyncMock,
+                    return_value=mock_proof_points,
+                ):
+                    with patch.object(
+                        content_engine,
+                        "_fact_check_content",
+                        new_callable=AsyncMock,
+                        return_value={
+                            "verdict": "PASS",
+                            "unsupported_claims": [],
+                            "risk_level": "LOW",
+                            "cost_aud": 0.01,
+                        },
+                    ):
                         content_engine.anthropic.complete.return_value = {
                             "content": '{"subject": "Custom Subject", "body": "Custom Body"}',
                             "cost_aud": 0.05,
@@ -215,9 +267,20 @@ class TestEmailGeneration:
         # Empty context simulates missing lead data
         empty_context = {}
 
-        with patch.object(content_engine, "get_campaign_by_id", new_callable=AsyncMock, return_value=mock_campaign):
-            with patch(f"{SMART_PROMPTS_MODULE}.build_full_lead_context", new_callable=AsyncMock, return_value=empty_context):
-                with patch.object(content_engine, "get_lead_by_id", new_callable=AsyncMock, return_value=incomplete_lead):
+        with patch.object(
+            content_engine, "get_campaign_by_id", new_callable=AsyncMock, return_value=mock_campaign
+        ):
+            with patch(
+                f"{SMART_PROMPTS_MODULE}.build_full_lead_context",
+                new_callable=AsyncMock,
+                return_value=empty_context,
+            ):
+                with patch.object(
+                    content_engine,
+                    "get_lead_by_id",
+                    new_callable=AsyncMock,
+                    return_value=incomplete_lead,
+                ):
                     result = await content_engine.generate_email(
                         db=mock_db_session,
                         lead_id=incomplete_lead.id,
@@ -229,13 +292,28 @@ class TestEmailGeneration:
 
     @pytest.mark.asyncio
     async def test_generate_email_json_fallback(
-        self, content_engine, mock_db_session, mock_lead, mock_campaign,
-        mock_lead_context, mock_proof_points
+        self,
+        content_engine,
+        mock_db_session,
+        mock_lead,
+        mock_campaign,
+        mock_lead_context,
+        mock_proof_points,
     ):
         """Test email generation with JSON parsing fallback uses safe fallback template."""
-        with patch.object(content_engine, "get_campaign_by_id", new_callable=AsyncMock, return_value=mock_campaign):
-            with patch(f"{SMART_PROMPTS_MODULE}.build_full_lead_context", new_callable=AsyncMock, return_value=mock_lead_context):
-                with patch(f"{SMART_PROMPTS_MODULE}.build_client_proof_points", new_callable=AsyncMock, return_value=mock_proof_points):
+        with patch.object(
+            content_engine, "get_campaign_by_id", new_callable=AsyncMock, return_value=mock_campaign
+        ):
+            with patch(
+                f"{SMART_PROMPTS_MODULE}.build_full_lead_context",
+                new_callable=AsyncMock,
+                return_value=mock_lead_context,
+            ):
+                with patch(
+                    f"{SMART_PROMPTS_MODULE}.build_client_proof_points",
+                    new_callable=AsyncMock,
+                    return_value=mock_proof_points,
+                ):
                     # Mock AI response with invalid JSON - will trigger safe fallback
                     content_engine.anthropic.complete.return_value = {
                         "content": "This is not valid JSON",
@@ -259,13 +337,28 @@ class TestEmailGeneration:
 
     @pytest.mark.asyncio
     async def test_generate_email_spend_limit(
-        self, content_engine, mock_db_session, mock_lead, mock_campaign,
-        mock_lead_context, mock_proof_points
+        self,
+        content_engine,
+        mock_db_session,
+        mock_lead,
+        mock_campaign,
+        mock_lead_context,
+        mock_proof_points,
     ):
         """Test email generation respects spend limit."""
-        with patch.object(content_engine, "get_campaign_by_id", new_callable=AsyncMock, return_value=mock_campaign):
-            with patch(f"{SMART_PROMPTS_MODULE}.build_full_lead_context", new_callable=AsyncMock, return_value=mock_lead_context):
-                with patch(f"{SMART_PROMPTS_MODULE}.build_client_proof_points", new_callable=AsyncMock, return_value=mock_proof_points):
+        with patch.object(
+            content_engine, "get_campaign_by_id", new_callable=AsyncMock, return_value=mock_campaign
+        ):
+            with patch(
+                f"{SMART_PROMPTS_MODULE}.build_full_lead_context",
+                new_callable=AsyncMock,
+                return_value=mock_lead_context,
+            ):
+                with patch(
+                    f"{SMART_PROMPTS_MODULE}.build_client_proof_points",
+                    new_callable=AsyncMock,
+                    return_value=mock_proof_points,
+                ):
                     # Mock AI spend limit error
                     content_engine.anthropic.complete.side_effect = AISpendLimitError(
                         spent=100.0, limit=100.0

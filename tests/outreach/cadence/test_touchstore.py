@@ -1,6 +1,7 @@
 """
 Tests for TouchStore.apply() — all DB calls are AsyncMock, zero real DB hits.
 """
+
 from __future__ import annotations
 
 import json
@@ -27,6 +28,7 @@ def _store() -> tuple[TouchStore, AsyncMock]:
 # ---------------------------------------------------------------------------
 # Single-action tests
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_cancel_updates_status():
@@ -80,10 +82,10 @@ async def test_insert_creates_row():
     call_sql = db.execute.call_args[0][0]
     assert "INSERT INTO scheduled_touches" in call_sql
     args = db.execute.call_args[0]
-    assert args[1] == FAKE_LEAD          # lead_id
-    assert args[2] == "email"            # channel
-    assert args[3] == 1                  # sequence_step
-    assert args[4] == FUTURE             # scheduled_at
+    assert args[1] == FAKE_LEAD  # lead_id
+    assert args[2] == "email"  # channel
+    assert args[3] == 1  # sequence_step
+    assert args[4] == FUTURE  # scheduled_at
     content_arg = json.loads(args[5])
     assert content_arg["template"] == "booking_offer"
 
@@ -130,6 +132,7 @@ async def test_noop_and_escalate_skip_db():
 # ---------------------------------------------------------------------------
 # Edge cases
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_no_db_returns_zero():

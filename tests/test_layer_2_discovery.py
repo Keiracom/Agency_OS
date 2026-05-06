@@ -1,4 +1,5 @@
 """Tests for Layer2Discovery — Directive #280 Gate 1 + 7 integration tests."""
+
 from __future__ import annotations
 
 import uuid
@@ -97,7 +98,7 @@ async def test_discovery_filters_non_au_domains():
     cfg = {"category_codes": [10233]}
     results = [
         {"domain": "agency.co.uk", "organic_etv": 500.0, "paid_etv": 100.0},
-        {"domain": "acme.com", "organic_etv": 200.0, "paid_etv": 50.0},   # non-AU .com kept
+        {"domain": "acme.com", "organic_etv": 200.0, "paid_etv": 50.0},  # non-AU .com kept
         {"domain": "dept.gov.au", "organic_etv": 1000.0, "paid_etv": 0.0},
     ]
     conn = make_conn()
@@ -111,8 +112,8 @@ async def test_discovery_filters_non_au_domains():
         MockRepo.return_value.get_config = AsyncMock(return_value=config)
         stats = await engine.run("marketing_agency", daily_budget_usd=10.0)
 
-    assert stats.domains_au_filtered >= 1          # .co.uk rejected
-    assert stats.domains_blocked >= 1              # .gov.au rejected
+    assert stats.domains_au_filtered >= 1  # .co.uk rejected
+    assert stats.domains_blocked >= 1  # .gov.au rejected
     assert stats.domains_au_filtered + stats.domains_blocked >= 2
 
 
@@ -126,7 +127,7 @@ async def test_discovery_dedupes_against_bu():
     results = [{"domain": "existing.com.au", "organic_etv": 500.0, "paid_etv": 100.0}]
     conn = make_conn(domain_exists=True)
     # Gate 1: fetchval for dedup returns 1, then gate fetchval returns 0
-    conn.fetchval = AsyncMock(side_effect=[1, 0])   # dedup hit, then gate count
+    conn.fetchval = AsyncMock(side_effect=[1, 0])  # dedup hit, then gate count
     conn.execute = AsyncMock(return_value="UPDATE 0")
     dfs = make_dfs(results=results)
     engine = Layer2Discovery(conn=conn, dfs=dfs)
@@ -160,9 +161,24 @@ async def test_discovery_computes_trajectory():
 
     cfg = {"category_codes": [10233]}
     results = [
-        {"domain": "growing.com.au", "organic_etv": 120.0, "organic_etv_prev": 100.0, "paid_etv": 0.0},
-        {"domain": "declining.com.au", "organic_etv": 80.0, "organic_etv_prev": 100.0, "paid_etv": 0.0},
-        {"domain": "stable.com.au", "organic_etv": 105.0, "organic_etv_prev": 100.0, "paid_etv": 0.0},
+        {
+            "domain": "growing.com.au",
+            "organic_etv": 120.0,
+            "organic_etv_prev": 100.0,
+            "paid_etv": 0.0,
+        },
+        {
+            "domain": "declining.com.au",
+            "organic_etv": 80.0,
+            "organic_etv_prev": 100.0,
+            "paid_etv": 0.0,
+        },
+        {
+            "domain": "stable.com.au",
+            "organic_etv": 105.0,
+            "organic_etv_prev": 100.0,
+            "paid_etv": 0.0,
+        },
     ]
     conn = make_conn()
     conn.fetchval = AsyncMock(return_value=None)  # no existing domain, gate count=0 at end
@@ -274,7 +290,7 @@ async def test_discovery_inserts_to_bu():
 
     assert "INSERT INTO business_universe" in sql
     assert "validagency.com.au" in positional_args
-    assert 1 in positional_args               # pipeline_stage=1
+    assert 1 in positional_args  # pipeline_stage=1
     assert "dfs_categories" in positional_args  # discovery_source
 
 
@@ -338,9 +354,7 @@ async def test_source_error_does_not_abort_run():
 
     dfs = MagicMock()
     # First category raises, second succeeds with empty list
-    dfs.domain_metrics_by_categories = AsyncMock(
-        side_effect=[RuntimeError("DFS timeout"), []]
-    )
+    dfs.domain_metrics_by_categories = AsyncMock(side_effect=[RuntimeError("DFS timeout"), []])
     engine = Layer2Discovery(conn=conn, dfs=dfs)
     config = make_signal_config(cfg)
 
@@ -349,7 +363,10 @@ async def test_source_error_does_not_abort_run():
         stats = await engine.run("marketing_agency", daily_budget_usd=10.0)
 
     # run() must complete and return DiscoveryStats
-    assert isinstance(stats, __import__("src.pipeline.layer_2_discovery", fromlist=["DiscoveryStats"]).DiscoveryStats)
+    assert isinstance(
+        stats,
+        __import__("src.pipeline.layer_2_discovery", fromlist=["DiscoveryStats"]).DiscoveryStats,
+    )
     assert len(stats.source_errors) == 1
 
 
@@ -401,6 +418,7 @@ async def test_maps_serp_raises_not_implemented():
 
 # ─── Regression test: #317.3 — no hardcoded second_date in pull_batch ─────────
 
+
 class TestPullBatchDateRegression:
     """#317.3: Layer2Discovery.pull_batch() must NOT pass explicit second_date.
 
@@ -416,13 +434,15 @@ class TestPullBatchDateRegression:
         """pull_batch must call domain_metrics_by_categories WITHOUT
         first_date or second_date, letting the client resolve dynamically."""
         mock_dfs = AsyncMock()
-        mock_dfs.domain_metrics_by_categories = AsyncMock(return_value=[
-            {"domain": "example.com.au", "organic_etv": 500.0}
-        ])
+        mock_dfs.domain_metrics_by_categories = AsyncMock(
+            return_value=[{"domain": "example.com.au", "organic_etv": 500.0}]
+        )
         mock_conn = AsyncMock()
 
         discovery = Layer2Discovery(conn=mock_conn, dfs=mock_dfs)
-        await discovery.pull_batch(category_code="10514", location="Australia", etv_min=0.0, etv_max=999999.0)
+        await discovery.pull_batch(
+            category_code="10514", location="Australia", etv_min=0.0, etv_max=999999.0
+        )
 
         # Assert the DFS call was made
         mock_dfs.domain_metrics_by_categories.assert_called_once()
@@ -437,10 +457,12 @@ class TestPullBatchDateRegression:
 
         # The critical assertion: second_date and first_date must NOT
         # be in the kwargs (let the client resolve dynamically)
-        assert "second_date" not in kwargs, \
-            f"REGRESSION: pull_batch passed explicit second_date={kwargs.get('second_date')}. " \
-            f"This bypasses _get_latest_available_date() and causes empty results for future dates. " \
+        assert "second_date" not in kwargs, (
+            f"REGRESSION: pull_batch passed explicit second_date={kwargs.get('second_date')}. "
+            f"This bypasses _get_latest_available_date() and causes empty results for future dates. "
             f"See Directive #317.3."
-        assert "first_date" not in kwargs, \
-            f"REGRESSION: pull_batch passed explicit first_date={kwargs.get('first_date')}. " \
+        )
+        assert "first_date" not in kwargs, (
+            f"REGRESSION: pull_batch passed explicit first_date={kwargs.get('first_date')}. "
             f"See Directive #317.3."
+        )

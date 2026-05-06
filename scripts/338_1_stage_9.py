@@ -3,6 +3,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from dotenv import load_dotenv
+
 load_dotenv("/home/elliotbot/.config/agency-os/.env")
 
 CO_KEY = os.getenv("CONTACTOUT_API_KEY", "")
@@ -14,9 +15,11 @@ async def enrich_dm(client, dm):
     if not url:
         return {"domain": dm["domain"], "profile_enriched": False, "reason": "no_url"}
 
-    resp = await client.post(CO_URL, headers={
-        "authorization": "basic", "token": CO_KEY
-    }, json={"linkedin_url": url, "include": ["work_email", "personal_email", "phone"]})
+    resp = await client.post(
+        CO_URL,
+        headers={"authorization": "basic", "token": CO_KEY},
+        json={"linkedin_url": url, "include": ["work_email", "personal_email", "phone"]},
+    )
 
     if resp.status_code != 200:
         return {
@@ -78,9 +81,11 @@ async def main():
     t0 = time.time()
 
     async with httpx.AsyncClient(timeout=30.0) as client:
+
         async def gated(dm):
             async with sem:
                 return await enrich_dm(client, dm)
+
         results = await asyncio.gather(*[gated(dm) for dm in dms])
 
     elapsed = time.time() - t0
@@ -94,42 +99,59 @@ async def main():
     # Strip raw_payload for summary (keep in full output)
     summary_results = []
     for r in results:
-        sr = {k: v for k, v in r.items() if k not in ("raw_payload", "experience", "skills", "education")}
+        sr = {
+            k: v
+            for k, v in r.items()
+            if k not in ("raw_payload", "experience", "skills", "education")
+        }
         summary_results.append(sr)
 
     print(f"\n=== STAGE 9 RESULTS ===")
     print(f"Processed: {len(results)}")
-    print(f"Enriched: {len(enriched)}/{len(results)} ({len(enriched)/len(results)*100:.0f}%)")
+    print(f"Enriched: {len(enriched)}/{len(results)} ({len(enriched) / len(results) * 100:.0f}%)")
     print(f"Headline: {len(headlines)}")
-    print(f"Experience: {len(has_exp)} (avg {sum(r.get('experience_count',0) for r in enriched)/max(len(enriched),1):.1f} entries)")
-    print(f"Skills: {len(has_skills)} (avg {sum(r.get('skills_count',0) for r in enriched)/max(len(enriched),1):.1f})")
+    print(
+        f"Experience: {len(has_exp)} (avg {sum(r.get('experience_count', 0) for r in enriched) / max(len(enriched), 1):.1f} entries)"
+    )
+    print(
+        f"Skills: {len(has_skills)} (avg {sum(r.get('skills_count', 0) for r in enriched) / max(len(enriched), 1):.1f})"
+    )
     print(f"Education: {len(has_edu)}")
-    print(f"Cost: {len(enriched)} × $0.033 = ${len(enriched)*0.033:.2f} USD (${len(enriched)*0.033*1.55:.2f} AUD)")
+    print(
+        f"Cost: {len(enriched)} × $0.033 = ${len(enriched) * 0.033:.2f} USD (${len(enriched) * 0.033 * 1.55:.2f} AUD)"
+    )
     print(f"Wall time: {elapsed:.1f}s")
 
     output_path = "/home/elliotbot/clawd/Agency_OS/scripts/output/338_1_stage_9_live_fire.json"
     with open(output_path, "w") as f:
-        json.dump({
-            "total": len(results),
-            "enriched": len(enriched),
-            "cost_usd": round(len(enriched) * 0.033, 3),
-            "cost_aud": round(len(enriched) * 0.033 * 1.55, 3),
-            "wall_time_s": round(elapsed, 1),
-            "summary_results": summary_results,
-            "results": results,
-        }, f, indent=2, default=str)
+        json.dump(
+            {
+                "total": len(results),
+                "enriched": len(enriched),
+                "cost_usd": round(len(enriched) * 0.033, 3),
+                "cost_aud": round(len(enriched) * 0.033 * 1.55, 3),
+                "wall_time_s": round(elapsed, 1),
+                "summary_results": summary_results,
+                "results": results,
+            },
+            f,
+            indent=2,
+            default=str,
+        )
 
     print(f"\nOutput: {output_path}")
 
     # Per-DM detail
     print("\n=== PER DM ===")
     for r in results:
-        status = "OK" if r.get("profile_enriched") else f"FAIL:{r.get('reason','?')}"
-        print(f"  {r['domain']} | {r.get('dm_name','')} | {status} | "
-              f"headline={'Y' if r.get('headline') else 'N'} | "
-              f"exp={r.get('experience_count','-')} | "
-              f"skills={r.get('skills_count','-')} | "
-              f"edu={r.get('education_count','-')}")
+        status = "OK" if r.get("profile_enriched") else f"FAIL:{r.get('reason', '?')}"
+        print(
+            f"  {r['domain']} | {r.get('dm_name', '')} | {status} | "
+            f"headline={'Y' if r.get('headline') else 'N'} | "
+            f"exp={r.get('experience_count', '-')} | "
+            f"skills={r.get('skills_count', '-')} | "
+            f"edu={r.get('education_count', '-')}"
+        )
 
 
 asyncio.run(main())

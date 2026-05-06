@@ -20,6 +20,7 @@ from src.integrations.leadmagic import (
 # FIXTURES
 # ============================================================
 
+
 @pytest.fixture(autouse=True)
 def disable_mock_mode():
     """
@@ -41,6 +42,7 @@ def client():
 # ============================================================
 # TEST 1: find_email — success (email found)
 # ============================================================
+
 
 @pytest.mark.asyncio
 async def test_find_email_success(client):
@@ -70,6 +72,7 @@ async def test_find_email_success(client):
 # TEST 2: find_email — not found (empty email in response)
 # ============================================================
 
+
 @pytest.mark.asyncio
 async def test_find_email_not_found(client):
     """find_email() returns found=False when API response has no email."""
@@ -89,6 +92,7 @@ async def test_find_email_not_found(client):
 # ============================================================
 # TEST 3: find_mobile — success
 # ============================================================
+
 
 @pytest.mark.asyncio
 async def test_find_mobile_success(client):
@@ -117,6 +121,7 @@ async def test_find_mobile_success(client):
 # TEST 4: find_email not found returns falsy / found == False
 # ============================================================
 
+
 @pytest.mark.asyncio
 async def test_find_email_not_found_returns_falsy(client):
     """find_email() with not-found response: result.found is falsy."""
@@ -137,6 +142,7 @@ async def test_find_email_not_found_returns_falsy(client):
 # TEST 5: cost tracking accumulates correctly
 # ============================================================
 
+
 @pytest.mark.asyncio
 async def test_cost_tracking(client):
     """After 2 find_email (found) + 1 find_mobile (found), total_cost_aud is correct."""
@@ -154,11 +160,17 @@ async def test_cost_tracking(client):
     # Reset cost to be safe
     client.reset_cost_tracking()
 
-    with patch.object(client, "_request", new=AsyncMock(side_effect=[
-        email_response_found,
-        email_response_found,
-        mobile_response_found,
-    ])):
+    with patch.object(
+        client,
+        "_request",
+        new=AsyncMock(
+            side_effect=[
+                email_response_found,
+                email_response_found,
+                mobile_response_found,
+            ]
+        ),
+    ):
         await client.find_email("Alice", "Smith", "example.com")
         await client.find_email("Bob", "Jones", "example.com")
         await client.find_mobile("https://linkedin.com/in/test")

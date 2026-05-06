@@ -26,6 +26,7 @@ from src.models.url_validation import URLValidationResult
 @dataclass
 class ScrapeResult:
     """Stub for deprecated Apify ScrapeResult."""
+
     url: str
     raw_html: str = ""
     title: str = ""
@@ -37,6 +38,7 @@ class ScrapeResult:
     def has_valid_content(self) -> bool:
         """Check if scrape has valid content."""
         return len(self.raw_html) >= 500 and not self.needs_fallback
+
 
 # ============================================
 # Fixtures
@@ -363,7 +365,9 @@ class TestCamoufoxScraper:
         scraper = CamoufoxScraper()
 
         # Multiple blocked indicators
-        blocked_html = "<html>Access Denied. Ray ID: 12345. Please enable JavaScript and cookies.</html>"
+        blocked_html = (
+            "<html>Access Denied. Ray ID: 12345. Please enable JavaScript and cookies.</html>"
+        )
         assert scraper._is_blocked_page(blocked_html) is True
 
         # Single indicator - not enough
@@ -430,6 +434,7 @@ class TestCamoufoxAvailability:
         from src.integrations.camoufox_scraper import (
             is_camoufox_configured,
         )
+
         camoufox_module._camoufox_scraper = None
 
         with patch.object(

@@ -1,28 +1,52 @@
 """Tests for PipelineOrchestrator.run_parallel — Directive #295 Task E."""
+
 import asyncio
 import pytest
 from unittest.mock import AsyncMock, MagicMock
-from src.pipeline.pipeline_orchestrator import PipelineOrchestrator, GLOBAL_SEM_DFS, GLOBAL_SEM_SCRAPE
+from src.pipeline.pipeline_orchestrator import (
+    PipelineOrchestrator,
+    GLOBAL_SEM_DFS,
+    GLOBAL_SEM_SCRAPE,
+)
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
+
 def _afford_pass():
-    r = MagicMock(); r.passed_gate = True; r.band = "HIGH"; r.raw_score = 9; r.gaps = []
+    r = MagicMock()
+    r.passed_gate = True
+    r.band = "HIGH"
+    r.raw_score = 9
+    r.gaps = []
     return r
+
 
 def _intent_pass():
-    r = MagicMock(); r.passed_free_gate = True; r.band = "TRYING"; r.raw_score = 5; r.evidence = ["Has website, no analytics"]
+    r = MagicMock()
+    r.passed_free_gate = True
+    r.band = "TRYING"
+    r.raw_score = 5
+    r.evidence = ["Has website, no analytics"]
     return r
+
 
 def _intent_full():
-    r = MagicMock(); r.band = "TRYING"; r.raw_score = 6; r.evidence = ["Has website, no analytics"]
+    r = MagicMock()
+    r.band = "TRYING"
+    r.raw_score = 6
+    r.evidence = ["Has website, no analytics"]
     return r
 
+
 def _dm(name="Jane Owner"):
-    d = MagicMock(); d.name = name; d.title = "Owner"
-    d.linkedin_url = "https://au.linkedin.com/in/jane"; d.confidence = "HIGH"
+    d = MagicMock()
+    d.name = name
+    d.title = "Owner"
+    d.linkedin_url = "https://au.linkedin.com/in/jane"
+    d.confidence = "HIGH"
     return d
+
 
 def _enrichment(domain="x.com.au"):
     return {
@@ -34,6 +58,7 @@ def _enrichment(domain="x.com.au"):
         "website_contact_emails": ["info@x.com.au"],
         "website_address": {"suburb": "Sydney"},
     }
+
 
 def _make_orch(domains_per_batch=5, target=3):
     """Build a PipelineOrchestrator with all dependencies mocked."""
@@ -69,6 +94,7 @@ def _make_orch(domains_per_batch=5, target=3):
 
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
+
 
 @pytest.mark.xfail(reason="Legacy orchestrator API — CD Player v1 rewrite pending")
 @pytest.mark.asyncio
@@ -115,11 +141,17 @@ async def test_run_parallel_deduplicates_domains():
     dm_id.identify = AsyncMock(return_value=_dm())
 
     orch = PipelineOrchestrator(
-        discovery=discovery, free_enrichment=fe, scorer=scorer, dm_identification=dm_id,
+        discovery=discovery,
+        free_enrichment=fe,
+        scorer=scorer,
+        dm_identification=dm_id,
     )
     result = await orch.run_parallel(
-        category_codes=["10514"], location="Australia",
-        target_count=10, num_workers=2, batch_size=1,
+        category_codes=["10514"],
+        location="Australia",
+        target_count=10,
+        num_workers=2,
+        batch_size=1,
     )
     # shared.com.au should only be counted once
     assert result.stats.discovered == 1
@@ -139,11 +171,17 @@ async def test_run_parallel_stops_on_exhaustion():
     dm_id = MagicMock()
 
     orch = PipelineOrchestrator(
-        discovery=discovery, free_enrichment=fe, scorer=scorer, dm_identification=dm_id,
+        discovery=discovery,
+        free_enrichment=fe,
+        scorer=scorer,
+        dm_identification=dm_id,
     )
     result = await orch.run_parallel(
-        category_codes=["10514"], location="Australia",
-        target_count=100, num_workers=2, batch_size=10,
+        category_codes=["10514"],
+        location="Australia",
+        target_count=100,
+        num_workers=2,
+        batch_size=10,
     )
     assert len(result.prospects) == 0
     assert result.stats.discovered == 0
@@ -154,28 +192,38 @@ async def test_run_parallel_stops_on_exhaustion():
 async def test_run_parallel_non_au_rejected():
     """Domains with non_au=True are counted in affordability_rejected."""
     discovery = MagicMock()
-    discovery.pull_batch = AsyncMock(side_effect=[
-        [{"domain": "dentatur.com"}],
-        [],
-    ])
+    discovery.pull_batch = AsyncMock(
+        side_effect=[
+            [{"domain": "dentatur.com"}],
+            [],
+        ]
+    )
 
     fe = MagicMock()
     fe.scrape_website = AsyncMock(return_value={"title": "Turkish Dental"})
-    fe.enrich_from_spider = AsyncMock(return_value={
-        "domain": "dentatur.com",
-        "company_name": "Denta Tur",
-        "non_au": True,
-    })
+    fe.enrich_from_spider = AsyncMock(
+        return_value={
+            "domain": "dentatur.com",
+            "company_name": "Denta Tur",
+            "non_au": True,
+        }
+    )
 
     scorer = MagicMock()
     dm_id = MagicMock()
 
     orch = PipelineOrchestrator(
-        discovery=discovery, free_enrichment=fe, scorer=scorer, dm_identification=dm_id,
+        discovery=discovery,
+        free_enrichment=fe,
+        scorer=scorer,
+        dm_identification=dm_id,
     )
     result = await orch.run_parallel(
-        category_codes=["10514"], location="Australia",
-        target_count=10, num_workers=1, batch_size=5,
+        category_codes=["10514"],
+        location="Australia",
+        target_count=10,
+        num_workers=1,
+        batch_size=5,
     )
     assert result.stats.affordability_rejected == 1
     assert len(result.prospects) == 0

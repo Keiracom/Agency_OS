@@ -16,6 +16,7 @@ Usage:
     PYTHONPATH=. python3 scripts/phoenix_export_loop.py
     PHOENIX_EXPORT_INTERVAL_S=30 python3 scripts/phoenix_export_loop.py  # tune
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -98,11 +99,7 @@ async def fetch_events(since: datetime, dsn: str, limit: int = BATCH_LIMIT) -> l
 
 
 def _resolve_dsn() -> str | None:
-    raw = (
-        os.environ.get("DATABASE_URL")
-        or os.environ.get("SUPABASE_DB_URL")
-        or ""
-    ).strip()
+    raw = (os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL") or "").strip()
     if not raw:
         return None
     return raw.replace("postgresql+asyncpg://", "postgresql://")
@@ -132,7 +129,9 @@ async def run_one_cycle(tracer) -> int:
     if events:
         logger.info(
             "cycle: fetched=%d exported=%d watermark_advanced=%s",
-            len(events), exported, latest_ts.isoformat(),
+            len(events),
+            exported,
+            latest_ts.isoformat(),
         )
     return exported
 
@@ -147,7 +146,9 @@ async def main() -> int:
 
     logger.info(
         "Phoenix export loop started — interval=%ds, batch_limit=%d, watermark_path=%s",
-        INTERVAL_S, BATCH_LIMIT, WATERMARK_PATH,
+        INTERVAL_S,
+        BATCH_LIMIT,
+        WATERMARK_PATH,
     )
     while True:
         try:

@@ -4,6 +4,7 @@ Tests for src/outreach/safety/linkedin_account_state.py.
 Covers state transitions (valid + invalid), DM gate, stale-connect auto-skip,
 and elapsed-day accounting. Storage is faked via an in-memory dict.
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -50,6 +51,7 @@ def _manager(now: datetime | None = None) -> tuple[LinkedInAccountState, _FakeSt
 
 # -- happy-path transitions --------------------------------------------------
 
+
 def test_record_connect_sent_creates_row():
     mgr, store = _manager()
     rec = mgr.record_connect_sent("acct-1", "p-1")
@@ -82,6 +84,7 @@ def test_allows_dm_false_when_no_record():
 
 # -- invalid transitions -----------------------------------------------------
 
+
 def test_cannot_accept_without_connect_sent():
     mgr, _ = _manager()
     with pytest.raises(InvalidTransition):
@@ -105,27 +108,37 @@ def test_cannot_transition_from_accepted():
 
 # -- stale connect auto-skip -------------------------------------------------
 
+
 def test_auto_skip_advances_connects_older_than_threshold():
     now = datetime(2026, 4, 23, 10, 0, tzinfo=timezone.utc)
     mgr, store = _manager(now)
     # 10-day-old pending connect → should advance to stale_skipped
-    store.upsert(ConnectionRecord(
-        account_id="acct-1", prospect_id="p-old",
-        state=LinkedInState.CONNECT_SENT,
-        sent_at=now - timedelta(days=10),
-        accepted_at=None, days_pending=10,
-    ))
+    store.upsert(
+        ConnectionRecord(
+            account_id="acct-1",
+            prospect_id="p-old",
+            state=LinkedInState.CONNECT_SENT,
+            sent_at=now - timedelta(days=10),
+            accepted_at=None,
+            days_pending=10,
+        )
+    )
     # 3-day-old pending → untouched (< 7 days)
-    store.upsert(ConnectionRecord(
-        account_id="acct-1", prospect_id="p-fresh",
-        state=LinkedInState.CONNECT_SENT,
-        sent_at=now - timedelta(days=3),
-        accepted_at=None, days_pending=3,
-    ))
+    store.upsert(
+        ConnectionRecord(
+            account_id="acct-1",
+            prospect_id="p-fresh",
+            state=LinkedInState.CONNECT_SENT,
+            sent_at=now - timedelta(days=3),
+            accepted_at=None,
+            days_pending=3,
+        )
+    )
     results = mgr.auto_skip_stale_connects()
     assert len(results) == 1
     assert results[0] == SkipResult(
-        prospect_id="p-old", account_id="acct-1",
+        prospect_id="p-old",
+        account_id="acct-1",
         previous_state=LinkedInState.CONNECT_SENT,
         new_state=LinkedInState.STALE_SKIPPED,
         days_pending=10,
@@ -142,10 +155,16 @@ def test_auto_skip_ignores_accepted_rejected_and_already_skipped():
         ("p-rej", LinkedInState.REJECTED),
         ("p-skipped", LinkedInState.STALE_SKIPPED),
     ]:
-        store.upsert(ConnectionRecord(
-            account_id="acct-1", prospect_id=pid, state=state,
-            sent_at=now - timedelta(days=30), accepted_at=None, days_pending=30,
-        ))
+        store.upsert(
+            ConnectionRecord(
+                account_id="acct-1",
+                prospect_id=pid,
+                state=state,
+                sent_at=now - timedelta(days=30),
+                accepted_at=None,
+                days_pending=30,
+            )
+        )
     results = mgr.auto_skip_stale_connects()
     assert results == []
 
@@ -154,12 +173,16 @@ def test_auto_skip_filters_by_account_id():
     now = datetime(2026, 4, 23, 10, 0, tzinfo=timezone.utc)
     mgr, store = _manager(now)
     for acct in ["acct-A", "acct-B"]:
-        store.upsert(ConnectionRecord(
-            account_id=acct, prospect_id="p-1",
-            state=LinkedInState.CONNECT_SENT,
-            sent_at=now - timedelta(days=10),
-            accepted_at=None, days_pending=10,
-        ))
+        store.upsert(
+            ConnectionRecord(
+                account_id=acct,
+                prospect_id="p-1",
+                state=LinkedInState.CONNECT_SENT,
+                sent_at=now - timedelta(days=10),
+                accepted_at=None,
+                days_pending=10,
+            )
+        )
     results = mgr.auto_skip_stale_connects(account_id="acct-A")
     assert [r.account_id for r in results] == ["acct-A"]
     assert store.get("acct-B", "p-1").state is LinkedInState.CONNECT_SENT
@@ -170,6 +193,7 @@ def test_stale_threshold_constant_is_seven_days():
 
 
 # -- elapsed-day accounting --------------------------------------------------
+
 
 def test_accepted_records_actual_days_pending():
     sent = datetime(2026, 4, 20, 10, 0, tzinfo=timezone.utc)

@@ -7,6 +7,7 @@ cannot be silently reverted.
 Note: The module docstring at line 9 legitimately mentions {{agency_name}} as a
 negative example ("Do NOT use..."). Tests scope to prompt constants only.
 """
+
 from __future__ import annotations
 
 import src.intelligence.enhanced_vr as _vr_mod
@@ -34,14 +35,10 @@ def test_no_agency_name_token_in_system_prompts():
 def test_agency_os_literal_present_in_prompts():
     """The literal 'Agency OS' must appear in at least one *_PROMPT constant."""
     combined = " ".join(text for _, text in _prompt_constants())
-    assert "Agency OS" in combined, (
-        "'Agency OS' not found in any *_PROMPT constant in enhanced_vr"
-    )
+    assert "Agency OS" in combined, "'Agency OS' not found in any *_PROMPT constant in enhanced_vr"
 
 
 def test_no_double_brace_tokens_in_system_prompts():
     """No {{ ... }} placeholder tokens should appear in the system prompts."""
     for name, text in _prompt_constants():
-        assert "{{" not in text, (
-            f"Unfilled template token found in {name}: ...{text[:80]}..."
-        )
+        assert "{{" not in text, f"Unfilled template token found in {name}: ...{text[:80]}..."

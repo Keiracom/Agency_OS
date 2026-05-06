@@ -28,6 +28,7 @@ Schema note: the clients table currently has no `is_demo` column. The
 demo tenant is identified by name='Demo Agency' (idempotent lookup).
 A future migration could promote this to a typed column.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -66,10 +67,20 @@ DEMO_AUTH_EMAIL = "demo@keiracom.com"
 DEMO_AUTH_PASSWORD_DEFAULT = "demo-investor-2026"
 
 # Placeholder / non-deliverable email locals — treat the address as missing.
-PLACEHOLDER_LOCALS = frozenset({
-    "example", "test", "info", "admin", "noreply", "no-reply",
-    "mailer-daemon", "postmaster", "sample", "dummy",
-})
+PLACEHOLDER_LOCALS = frozenset(
+    {
+        "example",
+        "test",
+        "info",
+        "admin",
+        "noreply",
+        "no-reply",
+        "mailer-daemon",
+        "postmaster",
+        "sample",
+        "dummy",
+    }
+)
 EMAIL_RE = re.compile(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$")
 
 
@@ -99,7 +110,8 @@ async def ensure_demo_client(conn) -> str:
         VALUES (gen_random_uuid(), $1, $2, 'active', NOW(), NOW())
         RETURNING id
         """,
-        DEMO_CLIENT_NAME, DEMO_TIER,
+        DEMO_CLIENT_NAME,
+        DEMO_TIER,
     )
     print(f"demo client created — id={new_id}")
     return str(new_id)
@@ -120,7 +132,8 @@ async def ensure_demo_campaign(conn, client_id: str) -> str:
         WHERE client_id = $1 AND name = $2 AND deleted_at IS NULL
         ORDER BY created_at DESC LIMIT 1
         """,
-        client_id, DEMO_CAMPAIGN_NAME,
+        client_id,
+        DEMO_CAMPAIGN_NAME,
     )
     if row:
         print(f"demo campaign exists — id={row['id']}")
@@ -132,7 +145,8 @@ async def ensure_demo_campaign(conn, client_id: str) -> str:
         VALUES (gen_random_uuid(), $1, $2, 'active', NOW(), NOW())
         RETURNING id
         """,
-        client_id, DEMO_CAMPAIGN_NAME,
+        client_id,
+        DEMO_CAMPAIGN_NAME,
     )
     print(f"demo campaign created — id={new_id}")
     return str(new_id)
@@ -160,8 +174,7 @@ def ensure_demo_auth_user(
         return None
     if not supabase_url or not service_key:
         print(
-            "  WARNING — SUPABASE_URL or SUPABASE_SERVICE_KEY missing; "
-            "skipping auth-user creation",
+            "  WARNING — SUPABASE_URL or SUPABASE_SERVICE_KEY missing; skipping auth-user creation",
             file=sys.stderr,
         )
         return None
@@ -169,9 +182,9 @@ def ensure_demo_auth_user(
     pw = password or os.environ.get("DEMO_PASSWORD") or DEMO_AUTH_PASSWORD_DEFAULT
     base = supabase_url.rstrip("/")
     headers = {
-        "apikey":         service_key,
+        "apikey": service_key,
         "Authorization": f"Bearer {service_key}",
-        "Content-Type":  "application/json",
+        "Content-Type": "application/json",
     }
 
     # 1) Idempotent lookup — does the user already exist?
@@ -196,16 +209,18 @@ def ensure_demo_auth_user(
 
     # 2) Create.
     create_url = f"{base}/auth/v1/admin/users"
-    body = json.dumps({
-        "email":         email,
-        "password":      pw,
-        "email_confirm": True,
-        "user_metadata": {
-            "role":     "demo",
-            "label":    "Demo Investor",
-            "seeded_by": "scripts/seed_demo_tenant.py",
-        },
-    }).encode()
+    body = json.dumps(
+        {
+            "email": email,
+            "password": pw,
+            "email_confirm": True,
+            "user_metadata": {
+                "role": "demo",
+                "label": "Demo Investor",
+                "seeded_by": "scripts/seed_demo_tenant.py",
+            },
+        }
+    ).encode()
     req = urllib.request.Request(create_url, data=body, headers=headers, method="POST")
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:
@@ -223,7 +238,11 @@ def ensure_demo_auth_user(
 
 
 async def link_auth_user_to_client(
-    conn, *, auth_user_id: str | None, client_id: str, dry_run: bool,
+    conn,
+    *,
+    auth_user_id: str | None,
+    client_id: str,
+    dry_run: bool,
 ) -> bool:
     """Best-effort link in client_users (if the table exists). Idempotent.
 
@@ -252,7 +271,8 @@ async def link_auth_user_to_client(
             VALUES (gen_random_uuid(), $1, $2, 'admin', NOW(), NOW())
             ON CONFLICT DO NOTHING
             """,
-            client_id, auth_user_id,
+            client_id,
+            auth_user_id,
         )
         print(f"  linked auth user {auth_user_id[:8]}… → client via {table}")
         return True
@@ -275,12 +295,13 @@ async def select_prospects(conn) -> list[dict]:
         ORDER BY (COALESCE(propensity_score, 0) + COALESCE(reachability_score, 0)) DESC
         LIMIT {TARGET_PROSPECTS * 5}
         """,
-        MIN_STAGE, MIN_PROPENSITY,
+        MIN_STAGE,
+        MIN_PROPENSITY,
     )
 
     # Suppression filter
     domains = list({r["domain"] for r in rows if r["domain"]})
-    emails  = list({r["dm_email"].lower() for r in rows if r["dm_email"]})
+    emails = list({r["dm_email"].lower() for r in rows if r["dm_email"]})
     suppressed_domains: set[str] = set()
     suppressed_emails: set[str] = set()
     if domains:
@@ -320,7 +341,11 @@ async def select_prospects(conn) -> list[dict]:
 
 
 async def link_prospects(
-    conn, client_id: str, prospects: list[dict], *, dry_run: bool,
+    conn,
+    client_id: str,
+    prospects: list[dict],
+    *,
+    dry_run: bool,
     campaign_id: str | None = None,
 ) -> int:
     """Insert (or skip-if-exists) one campaign_leads row per prospect.
@@ -349,7 +374,9 @@ async def link_prospects(
             ON CONFLICT DO NOTHING
             RETURNING id
             """,
-            client_id, campaign_id, p["id"],
+            client_id,
+            campaign_id,
+            p["id"],
         )
         if result:
             inserted += 1
@@ -358,8 +385,7 @@ async def link_prospects(
 
 async def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[1])
-    ap.add_argument("--execute", action="store_true",
-                    help="Apply writes (default: dry-run)")
+    ap.add_argument("--execute", action="store_true", help="Apply writes (default: dry-run)")
     args = ap.parse_args()
     dry_run = not args.execute
 
@@ -374,12 +400,10 @@ async def main():
     try:
         client_id = await ensure_demo_client(conn) if not dry_run else "DRY-RUN-CLIENT"
         campaign_id = (
-            await ensure_demo_campaign(conn, client_id)
-            if not dry_run else "DRY-RUN-CAMPAIGN"
+            await ensure_demo_campaign(conn, client_id) if not dry_run else "DRY-RUN-CAMPAIGN"
         )
 
-        print("\nensuring demo Supabase auth user "
-              f"(email={DEMO_AUTH_EMAIL})…")
+        print(f"\nensuring demo Supabase auth user (email={DEMO_AUTH_EMAIL})…")
         auth_user = ensure_demo_auth_user(
             supabase_url=settings.supabase_url,
             service_key=settings.supabase_service_key,
@@ -393,15 +417,19 @@ async def main():
                 dry_run=False,
             )
 
-        print(f"\nselecting top {TARGET_PROSPECTS} BU prospects "
-              f"(stage >= {MIN_STAGE}, propensity > {MIN_PROPENSITY}, real email)…")
+        print(
+            f"\nselecting top {TARGET_PROSPECTS} BU prospects "
+            f"(stage >= {MIN_STAGE}, propensity > {MIN_PROPENSITY}, real email)…"
+        )
         prospects = await select_prospects(conn)
 
         print(f"\nselected: {len(prospects)} prospects")
         for p in prospects[:5]:
             score = (p["propensity_score"] or 0) + (p["reachability_score"] or 0)
-            print(f"  - {p['domain']} | {p['display_name']} | "
-                  f"score={score} | dm={p['dm_name']} <{p['dm_email']}>")
+            print(
+                f"  - {p['domain']} | {p['display_name']} | "
+                f"score={score} | dm={p['dm_name']} <{p['dm_email']}>"
+            )
         if len(prospects) > 5:
             print(f"  … and {len(prospects) - 5} more")
 
@@ -426,8 +454,11 @@ async def main():
             return
 
         linked = await link_prospects(
-            conn, client_id, prospects,
-            dry_run=False, campaign_id=campaign_id,
+            conn,
+            client_id,
+            prospects,
+            dry_run=False,
+            campaign_id=campaign_id,
         )
         print(f"\nlinked: {linked} new campaign_leads rows")
         print(f"demo_client_id: {client_id}")

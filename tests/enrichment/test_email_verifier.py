@@ -1,4 +1,5 @@
 """Tests for src/enrichment/email_verifier.py — Directive #301."""
+
 from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
@@ -9,6 +10,7 @@ from src.enrichment.email_verifier import generate_patterns, discover_email, ver
 
 
 # ── test_generate_patterns ────────────────────────────────────────────────────
+
 
 def test_generate_patterns_count():
     """Should return up to 13 unique variants for a full name."""
@@ -44,15 +46,20 @@ def test_generate_patterns_single_name():
 
 # ── test_accept_all_detection ─────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_accept_all_detection():
     """If canary address returns 250, domain is accept_all and we bail early."""
     with patch("src.enrichment.email_verifier.resolve_mx", return_value="mail.example.com"):
         with patch("src.enrichment.email_verifier.probe_domain") as mock_probe:
             from src.enrichment.email_verifier import SmtpProbeResult
+
             mock_probe.return_value = SmtpProbeResult(
-                domain="example.com", mx_host="mail.example.com",
-                accept_all=True, verified_emails=[], invalid_emails=[],
+                domain="example.com",
+                mx_host="mail.example.com",
+                accept_all=True,
+                verified_emails=[],
+                invalid_emails=[],
                 patterns_tested=13,
             )
             result = await discover_email("Raj", "Patel", "example.com")
@@ -62,12 +69,14 @@ async def test_accept_all_detection():
 
 # ── test_valid_email_found ────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_valid_email_found():
     """Returns the first verified email."""
     with patch("src.enrichment.email_verifier.resolve_mx", return_value="mail.brightsmile.com.au"):
         with patch("src.enrichment.email_verifier.probe_domain") as mock_probe:
             from src.enrichment.email_verifier import SmtpProbeResult
+
             mock_probe.return_value = SmtpProbeResult(
                 domain="brightsmile.com.au",
                 mx_host="mail.brightsmile.com.au",
@@ -84,6 +93,7 @@ async def test_valid_email_found():
 
 # ── test_no_mx_record_handled ─────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_no_mx_record_handled():
     """Returns error dict gracefully when no MX record found."""
@@ -95,17 +105,24 @@ async def test_no_mx_record_handled():
 
 # ── test_timeout_handled ──────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_timeout_handled():
     """Timeout during SMTP probe is caught gracefully."""
     import socket
+
     with patch("src.enrichment.email_verifier.resolve_mx", return_value="mail.example.com"):
         with patch("src.enrichment.email_verifier.probe_domain") as mock_probe:
             from src.enrichment.email_verifier import SmtpProbeResult
+
             mock_probe.return_value = SmtpProbeResult(
-                domain="example.com", mx_host="mail.example.com",
-                accept_all=False, verified_emails=[], invalid_emails=[],
-                patterns_tested=0, error="timed out",
+                domain="example.com",
+                mx_host="mail.example.com",
+                accept_all=False,
+                verified_emails=[],
+                invalid_emails=[],
+                patterns_tested=0,
+                error="timed out",
             )
             result = await discover_email("Jane", "Smith", "timeout.com")
     assert result["error"] == "timed out"

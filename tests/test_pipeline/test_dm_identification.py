@@ -1,4 +1,5 @@
 """Tests for src/pipeline/dm_identification.py — Directive #287"""
+
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 
@@ -34,8 +35,18 @@ def _make_dfs_client(people=None):
 async def test_serp_t_dm1_returns_best_by_title():
     """SERP returns multiple people → highest-scoring title wins."""
     people = [
-        {"name": "Alice Smith", "title": "Sales Manager", "linkedin_url": "https://li.com/in/alice", "snippet": ""},
-        {"name": "Bob Jones", "title": "Owner", "linkedin_url": "https://li.com/in/bob", "snippet": ""},
+        {
+            "name": "Alice Smith",
+            "title": "Sales Manager",
+            "linkedin_url": "https://li.com/in/alice",
+            "snippet": "",
+        },
+        {
+            "name": "Bob Jones",
+            "title": "Owner",
+            "linkedin_url": "https://li.com/in/bob",
+            "snippet": "",
+        },
     ]
     dfs = _make_dfs_client(people=people)
 
@@ -57,7 +68,12 @@ async def test_serp_t_dm1_returns_best_by_title():
 async def test_serp_t_dm1_first_result_when_no_title_match():
     """SERP results with no DM-keyword title → first named result returned."""
     people = [
-        {"name": "Charlie Brown", "title": "Consultant", "linkedin_url": "https://li.com/in/charlie", "snippet": ""},
+        {
+            "name": "Charlie Brown",
+            "title": "Consultant",
+            "linkedin_url": "https://li.com/in/charlie",
+            "snippet": "",
+        },
     ]
     dfs = _make_dfs_client(people=people)
 

@@ -13,6 +13,7 @@ Coverage targets:
     9.  Deterministic with seed
     10. Custom configs override defaults
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta
@@ -33,24 +34,28 @@ def _pacer(seed: int = 42, now: datetime = _NOW, configs=None) -> SendPacer:
 # 1-4: channel bounds over 200 samples
 # ---------------------------------------------------------------------------
 
-@pytest.mark.parametrize("channel,lo,hi", [
-    (Channel.LINKEDIN, 120, 480),
-    (Channel.EMAIL,    30,  90),
-    (Channel.VOICE,    30,  60),
-    (Channel.SMS,      2,   5),
-])
+
+@pytest.mark.parametrize(
+    "channel,lo,hi",
+    [
+        (Channel.LINKEDIN, 120, 480),
+        (Channel.EMAIL, 30, 90),
+        (Channel.VOICE, 30, 60),
+        (Channel.SMS, 2, 5),
+    ],
+)
 def test_channel_bounds(channel, lo, hi):
     pacer = SendPacer(rng_seed=0, now_fn=lambda: _NOW)
     delays = [pacer.compute_delay(channel, "acct", None) for _ in range(200)]
     assert all(lo <= d <= hi for d in delays), (
-        f"{channel}: some delays outside [{lo}, {hi}]: "
-        f"min={min(delays):.2f} max={max(delays):.2f}"
+        f"{channel}: some delays outside [{lo}, {hi}]: min={min(delays):.2f} max={max(delays):.2f}"
     )
 
 
 # ---------------------------------------------------------------------------
 # 5: recent last_send_at — partial elapsed, delay reduced not zero
 # ---------------------------------------------------------------------------
+
 
 def test_recent_last_send_reduces_delay():
     now = _NOW
@@ -70,6 +75,7 @@ def test_recent_last_send_reduces_delay():
 # 6: fully elapsed — returns 0.0
 # ---------------------------------------------------------------------------
 
+
 def test_elapsed_last_send_returns_zero():
     now = _NOW
     last_send = now - timedelta(seconds=120)  # 120s ago; EMAIL min=30
@@ -82,6 +88,7 @@ def test_elapsed_last_send_returns_zero():
 # ---------------------------------------------------------------------------
 # 7: voice serialisation — different account still waits
 # ---------------------------------------------------------------------------
+
 
 def test_voice_serialisation_different_account_must_wait():
     now = _NOW
@@ -98,6 +105,7 @@ def test_voice_serialisation_different_account_must_wait():
 # 8: voice serialisation elapsed — returns 0.0
 # ---------------------------------------------------------------------------
 
+
 def test_voice_serialisation_elapsed_returns_zero():
     now = _NOW
     last_voice = now - timedelta(seconds=120)  # 120s ago; voice min=30
@@ -112,6 +120,7 @@ def test_voice_serialisation_elapsed_returns_zero():
 # ---------------------------------------------------------------------------
 # 9: deterministic with same seed
 # ---------------------------------------------------------------------------
+
 
 def test_deterministic_with_seed():
     p1 = _pacer(seed=7)
@@ -132,6 +141,7 @@ def test_different_seeds_differ():
 # ---------------------------------------------------------------------------
 # 10: custom configs override defaults
 # ---------------------------------------------------------------------------
+
 
 def test_custom_configs_override_defaults():
     custom = {Channel.EMAIL: PacerConfig(min_seconds=5, max_seconds=10)}

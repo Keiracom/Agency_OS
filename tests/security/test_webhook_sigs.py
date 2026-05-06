@@ -2,6 +2,7 @@
 Tests for src/security/webhook_sigs.py — per-provider HMAC-SHA256
 verification used by outreach webhooks + operator actions.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -23,6 +24,7 @@ from src.security.webhook_sigs import (
 
 
 # -- compute_signature + verify_signature ---------------------------------
+
 
 def test_compute_signature_matches_manual_hmac():
     secret, payload = "topsecret", b'{"a":1}'
@@ -61,6 +63,7 @@ def test_verify_missing_signature_returns_false(monkeypatch):
 
 # -- verify_provider -------------------------------------------------------
 
+
 def test_verify_provider_maps_to_correct_env(monkeypatch):
     monkeypatch.setenv("SALESFORGE_WEBHOOK_SECRET", "sf-secret")
     sig = compute_signature("sf-secret", b"payload")
@@ -80,6 +83,7 @@ def test_providers_registry_includes_four_targets():
 
 # -- require_signature + require_header_signature (FastAPI-bound) ---------
 
+
 @pytest.mark.asyncio
 async def test_require_signature_reads_body_and_passes(monkeypatch):
     monkeypatch.setenv("SALESFORGE_WEBHOOK_SECRET", "secret")
@@ -89,8 +93,12 @@ async def test_require_signature_reads_body_and_passes(monkeypatch):
     # Build a minimal Request with the required body + headers.
     app = FastAPI()
     scope = {
-        "type": "http", "headers": [(b"x-salesforge-signature", sig.encode())],
-        "method": "POST", "path": "/", "query_string": b"", "app": app,
+        "type": "http",
+        "headers": [(b"x-salesforge-signature", sig.encode())],
+        "method": "POST",
+        "path": "/",
+        "query_string": b"",
+        "app": app,
     }
 
     async def receive():
@@ -108,8 +116,12 @@ async def test_require_signature_raises_401_on_mismatch(monkeypatch):
 
     app = FastAPI()
     scope = {
-        "type": "http", "headers": [(b"x-salesforge-signature", b"wrong")],
-        "method": "POST", "path": "/", "query_string": b"", "app": app,
+        "type": "http",
+        "headers": [(b"x-salesforge-signature", b"wrong")],
+        "method": "POST",
+        "path": "/",
+        "query_string": b"",
+        "app": app,
     }
 
     async def receive():
@@ -124,8 +136,14 @@ async def test_require_signature_raises_401_on_mismatch(monkeypatch):
 @pytest.mark.asyncio
 async def test_require_signature_unknown_provider_500(monkeypatch):
     app = FastAPI()
-    scope = {"type": "http", "headers": [], "method": "POST", "path": "/",
-             "query_string": b"", "app": app}
+    scope = {
+        "type": "http",
+        "headers": [],
+        "method": "POST",
+        "path": "/",
+        "query_string": b"",
+        "app": app,
+    }
 
     async def receive():
         return {"type": "http.request", "body": b"", "more_body": False}
@@ -160,6 +178,7 @@ def test_require_header_signature_sync_missing_secret_fails_loud(monkeypatch):
 
 
 # -- ProviderSpec as documented ------------------------------------------
+
 
 def test_provider_spec_is_immutable():
     spec = PROVIDERS["salesforge"]

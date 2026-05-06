@@ -4,6 +4,7 @@ These tests verify that per-domain cost tracking doesn't cross-contaminate
 when multiple domains run through shared clients in parallel.
 Would have caught Bug 2 (cumulative DFS cost) from D1 smoke test.
 """
+
 import asyncio
 
 import pytest

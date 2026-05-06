@@ -10,6 +10,7 @@ Pure mocks — no Drive, no Supabase. Confirms:
   - main() always returns 0 (never blocks SessionEnd)
   - main() handles unexpected exceptions in steps without raising
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -31,6 +32,7 @@ _spec.loader.exec_module(hook)
 
 # ─── read_hook_input ───────────────────────────────────────────────────────
 
+
 def test_read_hook_input_parses_valid_json(monkeypatch):
     payload = {"session_id": "abc", "reason": "exit"}
     monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(payload)))
@@ -48,6 +50,7 @@ def test_read_hook_input_returns_empty_on_blank(monkeypatch):
 
 
 # ─── maybe_mirror_manual ───────────────────────────────────────────────────
+
 
 def test_mirror_skipped_when_manual_missing(monkeypatch, tmp_path):
     monkeypatch.setattr(hook, "MANUAL_PATH", tmp_path / "no-such-manual.md")
@@ -122,6 +125,7 @@ def test_mirror_skipped_when_script_missing(monkeypatch, tmp_path):
 
 # ─── _last_mirrored_blob ───────────────────────────────────────────────────
 
+
 def test_last_mirrored_blob_returns_none_when_state_missing(monkeypatch, tmp_path):
     monkeypatch.setattr(hook, "STATE_PATH", tmp_path / "no-such-state")
     assert hook._last_mirrored_blob() is None
@@ -143,6 +147,7 @@ def test_last_mirrored_blob_returns_none_on_garbage(monkeypatch, tmp_path):
 
 # ─── write_memory ──────────────────────────────────────────────────────────
 
+
 def test_write_memory_returns_safely_when_no_dsn(monkeypatch):
     monkeypatch.setattr(hook, "_supabase_dsn", lambda: None)
     out = hook.write_memory({"session_id": "x", "manual_mirror": {}})
@@ -162,12 +167,18 @@ def test_write_memory_handles_db_error(monkeypatch):
 
 # ─── main() — always returns 0 ─────────────────────────────────────────────
 
+
 def test_main_returns_zero_on_happy_path(monkeypatch):
     monkeypatch.setattr("sys.stdin", io.StringIO('{"session_id":"x","reason":"exit"}'))
     monkeypatch.setattr(hook, "maybe_mirror_manual", lambda: {"mirror_invoked": False})
-    monkeypatch.setattr(hook, "write_memory", lambda _s: {
-        "ceo_memory_upserted": True, "daily_log_written": True,
-    })
+    monkeypatch.setattr(
+        hook,
+        "write_memory",
+        lambda _s: {
+            "ceo_memory_upserted": True,
+            "daily_log_written": True,
+        },
+    )
     assert hook.main() == 0
 
 
@@ -204,6 +215,7 @@ def test_module_entrypoint_swallows_exceptions(monkeypatch):
 
 # ─── settings.json wiring smoke ────────────────────────────────────────────
 
+
 def test_settings_json_contains_session_end_hook():
     settings = json.loads(
         (Path(__file__).resolve().parent.parent.parent / ".claude" / "settings.json").read_text()
@@ -215,7 +227,6 @@ def test_settings_json_contains_session_end_hook():
     # The first SessionEnd entry references our hook script
     cmd_block = se[0]
     assert "hooks" in cmd_block
-    assert any(
-        "session_end_hook.py" in h.get("command", "")
-        for h in cmd_block["hooks"]
-    ), "session_end_hook.py not registered in .claude/settings.json"
+    assert any("session_end_hook.py" in h.get("command", "") for h in cmd_block["hooks"]), (
+        "session_end_hook.py not registered in .claude/settings.json"
+    )

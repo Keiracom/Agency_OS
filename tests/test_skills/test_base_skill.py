@@ -110,6 +110,7 @@ class TestSkillRegistry:
         """Re-register skills after each test to avoid polluting other tests."""
         import importlib
         import src.agents.skills
+
         # Reload the skills module to re-register all skills
         importlib.reload(src.agents.skills)
 
@@ -178,11 +179,13 @@ class TestSkillRegistry:
 
 class DummyInput(BaseModel):
     """Dummy input model for testing."""
+
     text: str
 
 
 class DummyOutput(BaseModel):
     """Dummy output model for testing."""
+
     result: str
     confidence: float
 

@@ -25,8 +25,7 @@ from uuid import uuid4
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -167,7 +166,7 @@ class IntegrationTestResult:
 async def run_waterfall_on_lead(lead: dict) -> IntegrationTestResult:
     """
     Run full waterfall on a single lead.
-    
+
     This is a simulation that validates the cost structure.
     Note: Full integration requires DB + API credentials.
     """
@@ -215,7 +214,9 @@ async def run_waterfall_on_lead(lead: dict) -> IntegrationTestResult:
         # Check ALS threshold for social intelligence
         if lead["propensity_score"] >= 70:
             # T-DM2: LinkedIn Posts
-            logger.info(f"Running T-DM2 for {lead['company_name']} (propensity={lead['propensity_score']})")
+            logger.info(
+                f"Running T-DM2 for {lead['company_name']} (propensity={lead['propensity_score']})"
+            )
 
             # Note: In real test, this would call:
             # posts = await worker._tier_dm2_linkedin_posts(dm_linkedin_url)
@@ -224,7 +225,9 @@ async def run_waterfall_on_lead(lead: dict) -> IntegrationTestResult:
             result.total_cost_aud += COSTS_AUD["dm2_linkedin_posts"]
 
             # T-DM3: X Posts
-            logger.info(f"Running T-DM3 for {lead['company_name']} (propensity={lead['propensity_score']})")
+            logger.info(
+                f"Running T-DM3 for {lead['company_name']} (propensity={lead['propensity_score']})"
+            )
 
             # Note: In real test, this would call:
             # x_handle = await worker._discover_x_handle(website, dm_name, registered_name)
@@ -235,7 +238,9 @@ async def run_waterfall_on_lead(lead: dict) -> IntegrationTestResult:
             # Below ALS threshold
             result.tiers_skipped.append("T_DM2_LINKEDIN_POSTS")
             result.tiers_skipped.append("T_DM3_X_POSTS")
-            logger.info(f"Skipping T-DM2/T-DM3 for {lead['company_name']} (propensity={lead['propensity_score']} < 70)")
+            logger.info(
+                f"Skipping T-DM2/T-DM3 for {lead['company_name']} (propensity={lead['propensity_score']} < 70)"
+            )
 
         # T4/T5 parked
         result.tiers_skipped.append("T4_ZEROBOUNCE")
@@ -251,7 +256,7 @@ async def run_waterfall_on_lead(lead: dict) -> IntegrationTestResult:
 async def run_integration_test():
     """
     Run the full 10-lead integration test.
-    
+
     CEO Directive #041 Part C.
     """
     logger.info("=" * 60)
@@ -262,7 +267,9 @@ async def run_integration_test():
     total_cost = Decimal("0.00")
 
     for i, lead in enumerate(TEST_LEADS, 1):
-        logger.info(f"\n[{i}/10] Processing: {lead['company_name']} (propensity={lead['propensity_score']})")
+        logger.info(
+            f"\n[{i}/10] Processing: {lead['company_name']} (propensity={lead['propensity_score']})"
+        )
         result = await run_waterfall_on_lead(lead)
         results.append(result)
         total_cost += result.total_cost_aud

@@ -8,6 +8,7 @@ Gap #11: backfill_domain_from_gmb task copies gmb_domain → domain so the
 Gap #1:  prefect.yaml unpauses bu-closed-loop-flow deployment (paused→false,
          active→true) since S3 ratification is complete (commit 711d38a6).
 """
+
 from __future__ import annotations
 
 import inspect

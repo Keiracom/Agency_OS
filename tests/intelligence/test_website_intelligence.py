@@ -3,6 +3,7 @@ Tests for src/intelligence/website_intelligence.py
 
 All tests use mocked AnthropicClient — no real API calls.
 """
+
 from __future__ import annotations
 
 import json
@@ -15,6 +16,7 @@ from src.intelligence.website_intelligence import WebsiteIntelligence, WebsiteIn
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
+
 
 def make_client(content: str = "{}", cost_aud: float = 0.001) -> MagicMock:
     """Return a mocked AnthropicClient whose complete() returns `content`."""
@@ -53,6 +55,7 @@ SAMPLE_HTML = """
 
 # ── 1. _extract_visible_text strips scripts ────────────────────────────────────
 
+
 def test_extract_visible_text_strips_scripts():
     html = "<html><script>var x = 'secret';</script><body><p>Visible text</p></body></html>"
     result = WebsiteIntelligenceEngine._extract_visible_text(html)
@@ -61,6 +64,7 @@ def test_extract_visible_text_strips_scripts():
 
 
 # ── 2. _extract_visible_text truncates to max_chars ───────────────────────────
+
 
 def test_extract_visible_text_truncates_to_3000():
     long_text = "A" * 50_000
@@ -74,16 +78,16 @@ def test_extract_visible_text_truncates_to_3000():
 
 # ── 3. _parse_haiku_json handles markdown fences ──────────────────────────────
 
+
 def test_parse_haiku_json_handles_markdown_fences():
     raw = '```json\n{"services": ["plumbing"], "business_type": "agency"}\n```'
-    result = WebsiteIntelligenceEngine._parse_haiku_json(
-        raw, ["services", "business_type"]
-    )
+    result = WebsiteIntelligenceEngine._parse_haiku_json(raw, ["services", "business_type"])
     assert result["services"] == ["plumbing"]
     assert result["business_type"] == "agency"
 
 
 # ── 4. _parse_haiku_json returns empty dict on bad JSON ───────────────────────
+
 
 def test_parse_haiku_json_returns_defaults_on_bad_json():
     bad_inputs = [
@@ -100,12 +104,13 @@ def test_parse_haiku_json_returns_defaults_on_bad_json():
 
 # ── 5. analyze returns fallback on API error ──────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_analyze_returns_fallback_on_api_error():
     client = MagicMock()
-    client.complete = AsyncMock(side_effect=APIError(
-        service="anthropic", status_code=500, message="server error"
-    ))
+    client.complete = AsyncMock(
+        side_effect=APIError(service="anthropic", status_code=500, message="server error")
+    )
     engine = WebsiteIntelligenceEngine(client)
     result = await engine.analyze("example.com.au", SAMPLE_HTML, {})
     assert isinstance(result, WebsiteIntelligence)
@@ -115,12 +120,13 @@ async def test_analyze_returns_fallback_on_api_error():
 
 # ── 6. analyze returns fallback on spend limit ────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_analyze_returns_fallback_on_spend_limit():
     client = MagicMock()
-    client.complete = AsyncMock(side_effect=AISpendLimitError(
-        spent=10.0, limit=5.0, message="limit exceeded"
-    ))
+    client.complete = AsyncMock(
+        side_effect=AISpendLimitError(spent=10.0, limit=5.0, message="limit exceeded")
+    )
     engine = WebsiteIntelligenceEngine(client)
     result = await engine.analyze("example.com.au", SAMPLE_HTML, {})
     assert isinstance(result, WebsiteIntelligence)
@@ -129,6 +135,7 @@ async def test_analyze_returns_fallback_on_spend_limit():
 
 
 # ── 7. comprehend_website parses services ─────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_comprehend_website_parses_services():
@@ -149,6 +156,7 @@ async def test_comprehend_website_parses_services():
 
 # ── 8. grade_intent returns HOT, WARM, or COLD only ──────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_grade_intent_returns_hot_warm_cold():
     valid_grades = ("HOT", "WARM", "COLD")
@@ -158,8 +166,12 @@ async def test_grade_intent_returns_hot_warm_cold():
         engine = make_engine(json.dumps(payload))
         result = await engine.grade_intent(
             "example.com.au",
-            comprehension={"services": [], "business_type": "unknown",
-                           "team_size_signal": "unknown", "is_actively_marketing": False},
+            comprehension={
+                "services": [],
+                "business_type": "unknown",
+                "team_size_signal": "unknown",
+                "is_actively_marketing": False,
+            },
             intent_signals={},
         )
         assert result["intent_grade"] == grade
@@ -168,14 +180,19 @@ async def test_grade_intent_returns_hot_warm_cold():
     engine = make_engine('{"intent_grade": "SCORCHING", "intent_reasoning": "test"}')
     result = await engine.grade_intent(
         "example.com.au",
-        comprehension={"services": [], "business_type": "unknown",
-                       "team_size_signal": "unknown", "is_actively_marketing": False},
+        comprehension={
+            "services": [],
+            "business_type": "unknown",
+            "team_size_signal": "unknown",
+            "is_actively_marketing": False,
+        },
         intent_signals={},
     )
     assert result["intent_grade"] == "WARM"
 
 
 # ── 9. analyze_gmb handles missing review snippets ───────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_analyze_gmb_handles_missing_review_snippets():

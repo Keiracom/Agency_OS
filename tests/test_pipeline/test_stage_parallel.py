@@ -1,9 +1,16 @@
 """Tests for stage-parallel PipelineOrchestrator — Directive #293."""
+
 import asyncio
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from src.pipeline.pipeline_orchestrator import (
-    PipelineOrchestrator, ProspectCard, PipelineStats, SEM_SPIDER, SEM_ABN, SEM_PAID, SEM_DM
+    PipelineOrchestrator,
+    ProspectCard,
+    PipelineStats,
+    SEM_SPIDER,
+    SEM_ABN,
+    SEM_PAID,
+    SEM_DM,
 )
 
 
@@ -62,7 +69,8 @@ def _make_orch(
     fe = MagicMock()
     fe.scrape_website = AsyncMock(return_value=spider_result or {"title": "Dental Clinic"})
     fe.enrich_from_spider = AsyncMock(
-        return_value=enrich_result or {
+        return_value=enrich_result
+        or {
             "domain": "dental.com.au",
             "company_name": "Dental Clinic",
             "website_contact_emails": ["info@dental.com.au"],
@@ -123,10 +131,13 @@ async def test_batch_of_10_all_concurrent():
 
     fe = MagicMock()
     fe.scrape_website = mock_scrape
-    fe.enrich_from_spider = AsyncMock(return_value={
-        "domain": "d0.com.au", "company_name": "Clinic",
-        "website_contact_emails": ["a@b.com"]
-    })
+    fe.enrich_from_spider = AsyncMock(
+        return_value={
+            "domain": "d0.com.au",
+            "company_name": "Clinic",
+            "website_contact_emails": ["a@b.com"],
+        }
+    )
 
     scorer = MagicMock()
     scorer.score_affordability = MagicMock(return_value=_afford_pass())
@@ -136,8 +147,9 @@ async def test_batch_of_10_all_concurrent():
     dm_id = MagicMock()
     dm_id.identify = AsyncMock(return_value=_make_dm())
 
-    orch = PipelineOrchestrator(discovery=disc, free_enrichment=fe,
-                                scorer=scorer, dm_identification=dm_id)
+    orch = PipelineOrchestrator(
+        discovery=disc, free_enrichment=fe, scorer=scorer, dm_identification=dm_id
+    )
     await orch.run("10514", target_count=5, batch_size=10)
 
     # All 10 spider calls should have started within a short window (concurrent)
@@ -167,7 +179,11 @@ async def test_spider_failure_doesnt_block_others():
         # fail.com.au got empty spider_data → return None to simulate enrichment failure
         if not spider_data:
             return None
-        return {"domain": domain, "company_name": "OK Dental", "website_contact_emails": ["a@b.com"]}
+        return {
+            "domain": domain,
+            "company_name": "OK Dental",
+            "website_contact_emails": ["a@b.com"],
+        }
 
     fe = MagicMock()
     fe.scrape_website = mock_scrape
@@ -181,8 +197,9 @@ async def test_spider_failure_doesnt_block_others():
     dm_id = MagicMock()
     dm_id.identify = AsyncMock(return_value=_make_dm())
 
-    orch = PipelineOrchestrator(discovery=disc, free_enrichment=fe,
-                                scorer=scorer, dm_identification=dm_id)
+    orch = PipelineOrchestrator(
+        discovery=disc, free_enrichment=fe, scorer=scorer, dm_identification=dm_id
+    )
     result = await orch.run("10514", target_count=5, batch_size=2)
 
     # fail.com.au spider returned {} → enrich_from_spider returned None → enrichment_failed
@@ -220,10 +237,13 @@ async def test_stops_at_target_count():
 
     fe = MagicMock()
     fe.scrape_website = AsyncMock(return_value={"title": "Dental"})
-    fe.enrich_from_spider = AsyncMock(return_value={
-        "domain": "d0.com.au", "company_name": "Dental",
-        "website_contact_emails": ["a@b.com"]
-    })
+    fe.enrich_from_spider = AsyncMock(
+        return_value={
+            "domain": "d0.com.au",
+            "company_name": "Dental",
+            "website_contact_emails": ["a@b.com"],
+        }
+    )
 
     scorer = MagicMock()
     scorer.score_affordability = MagicMock(return_value=_afford_pass())
@@ -233,8 +253,9 @@ async def test_stops_at_target_count():
     dm_id = MagicMock()
     dm_id.identify = AsyncMock(return_value=_make_dm())
 
-    orch = PipelineOrchestrator(discovery=disc, free_enrichment=fe,
-                                scorer=scorer, dm_identification=dm_id)
+    orch = PipelineOrchestrator(
+        discovery=disc, free_enrichment=fe, scorer=scorer, dm_identification=dm_id
+    )
     result = await orch.run("10514", target_count=3, batch_size=20)
     assert len(result.prospects) == 3
 
@@ -258,8 +279,9 @@ async def test_empty_discovery_returns_empty():
     fe = MagicMock()
     scorer = MagicMock()
     dm_id = MagicMock()
-    orch = PipelineOrchestrator(discovery=disc, free_enrichment=fe,
-                                scorer=scorer, dm_identification=dm_id)
+    orch = PipelineOrchestrator(
+        discovery=disc, free_enrichment=fe, scorer=scorer, dm_identification=dm_id
+    )
     result = await orch.run("10514", target_count=10)
     assert result.prospects == []
     assert result.stats.discovered == 0

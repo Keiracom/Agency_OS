@@ -12,6 +12,7 @@ Three smoke tests:
   2. coordinator_claims insert + check_conflict() detection + release
   3. frozen_artifacts insert + is_frozen() detection
 """
+
 from __future__ import annotations
 
 import os
@@ -49,12 +50,7 @@ def test_governance_event_emit_round_trip(cleanup_rows):
     assert ok is True
 
     client = _supabase_client()
-    response = (
-        client.table("governance_events")
-        .select("*")
-        .eq("event_type", event_type)
-        .execute()
-    )
+    response = client.table("governance_events").select("*").eq("event_type", event_type).execute()
     rows = getattr(response, "data", None) or []
     assert len(rows) == 1, f"expected 1 row, got {len(rows)}"
     assert rows[0]["callsign"] == callsign
@@ -82,14 +78,18 @@ def test_coordinator_claim_conflict_and_release(cleanup_rows):
     cleanup_rows.append(("coordinator_claims", "id", rec.id))
 
     conflict = check_conflict(
-        callsign="self-bot", target_path=target, client=client,
+        callsign="self-bot",
+        target_path=target,
+        client=client,
     )
     assert conflict is not None, "expected conflict for peer-claimed target"
     assert conflict["callsign"] == "peer-bot"
     assert conflict["target_path"] == target
 
     same_callsign = check_conflict(
-        callsign="peer-bot", target_path=target, client=client,
+        callsign="peer-bot",
+        target_path=target,
+        client=client,
     )
     assert same_callsign is None, "expected no conflict for self-callsign"
 
@@ -110,7 +110,9 @@ def test_frozen_artifact_round_trip(cleanup_rows):
     cleanup_rows.append(("frozen_artifacts", "artifact_path", path))
 
     row = freeze_artifact(
-        path, frozen_by="integration-test", reason="smoke",
+        path,
+        frozen_by="integration-test",
+        reason="smoke",
     )
     assert row.get("artifact_path") == path
     assert is_frozen(path) is True

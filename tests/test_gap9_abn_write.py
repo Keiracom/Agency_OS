@@ -7,6 +7,7 @@ Verifies three things:
    is not clobbered.
 3. abn_matched boolean still fires — no regression on existing column writes.
 """
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, call, patch

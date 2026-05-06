@@ -1,4 +1,5 @@
 """Tests for CategoryRotation — Directive #294."""
+
 import pytest
 from src.pipeline.category_rotation import CategoryRotation, MASTER_CATEGORIES
 

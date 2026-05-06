@@ -1,6 +1,7 @@
 """Isolation test for persist_stage8_to_db against production schema.
 Zero pipeline spend. Fabricated input. Cleanup after test.
 """
+
 import asyncio
 import os
 import sys
@@ -16,6 +17,7 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(messag
 logger = logging.getLogger(__name__)
 
 from dotenv import dotenv_values
+
 env = dotenv_values("/home/elliotbot/.config/agency-os/.env")
 for k, v in env.items():
     if v is not None:
@@ -24,33 +26,35 @@ for k, v in env.items():
 
 def fabricate_pipeline() -> list[dict]:
     """Build a fake pipeline list matching Stage 8 output shape."""
-    return [{
-        "domain": "test-persist-isolation.example.com",
-        "category": "dental",
-        "dropped_at": None,
-        "cost_usd": 0.05,
-        "errors": [],
-        "timings": {},
-        "stage3": {
-            "business_name": "Test Dental Clinic",
-            "company_name": "Test Dental Clinic Pty Ltd",
-            "dm_candidate": {
-                "name": "Dr Test Person",
-                "linkedin_url": "https://linkedin.com/in/test-persist-isolation",
-                "_dm_verified": True,
+    return [
+        {
+            "domain": "test-persist-isolation.example.com",
+            "category": "dental",
+            "dropped_at": None,
+            "cost_usd": 0.05,
+            "errors": [],
+            "timings": {},
+            "stage3": {
+                "business_name": "Test Dental Clinic",
+                "company_name": "Test Dental Clinic Pty Ltd",
+                "dm_candidate": {
+                    "name": "Dr Test Person",
+                    "linkedin_url": "https://linkedin.com/in/test-persist-isolation",
+                    "_dm_verified": True,
+                },
             },
-        },
-        "stage4": {"dfs_signals": {}},
-        "stage5": {"composite_score": 65},
-        "stage7": {"outreach_draft": "test outreach"},
-        "stage8_contacts": {
-            "email": {"email": "test@example.com", "source": "test"},
-            "linkedin": {"linkedin_url": "https://linkedin.com/in/test-persist-isolation"},
-        },
-        "stage9": {},
-        "stage10": {"messages": {"email": {"body": "test email body"}}},
-        "stage11": {"lead_pool_eligible": True},
-    }]
+            "stage4": {"dfs_signals": {}},
+            "stage5": {"composite_score": 65},
+            "stage7": {"outreach_draft": "test outreach"},
+            "stage8_contacts": {
+                "email": {"email": "test@example.com", "source": "test"},
+                "linkedin": {"linkedin_url": "https://linkedin.com/in/test-persist-isolation"},
+            },
+            "stage9": {},
+            "stage10": {"messages": {"email": {"body": "test email body"}}},
+            "stage11": {"lead_pool_eligible": True},
+        }
+    ]
 
 
 async def test_persist():
@@ -67,6 +71,7 @@ async def test_persist():
     except Exception as e:
         logger.error("FAILED: %s: %s", type(e).__name__, e)
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -83,7 +88,9 @@ async def test_persist():
             if bu_row:
                 logger.info(
                     "BU row found: id=%s, display_name=%s, pipeline_stage=%s",
-                    bu_row["id"], bu_row["display_name"], bu_row["pipeline_stage"],
+                    bu_row["id"],
+                    bu_row["display_name"],
+                    bu_row["pipeline_stage"],
                 )
             else:
                 logger.error("BU row NOT FOUND after persist")
@@ -98,7 +105,9 @@ async def test_persist():
                 if bdm_row:
                     logger.info(
                         "BDM row found: id=%s, name=%s, linkedin=%s",
-                        bdm_row["id"], bdm_row["name"], bdm_row["linkedin_url"],
+                        bdm_row["id"],
+                        bdm_row["name"],
+                        bdm_row["linkedin_url"],
                     )
                 else:
                     logger.error("BDM row NOT FOUND after persist")
@@ -109,9 +118,7 @@ async def test_persist():
             # Cleanup
             for bid in bdm_ids:
                 bid_uuid = uuid.UUID(bid) if isinstance(bid, str) else bid
-                await conn.execute(
-                    "DELETE FROM business_decision_makers WHERE id = $1", bid_uuid
-                )
+                await conn.execute("DELETE FROM business_decision_makers WHERE id = $1", bid_uuid)
             await conn.execute(
                 "DELETE FROM business_universe WHERE domain = $1",
                 "test-persist-isolation.example.com",

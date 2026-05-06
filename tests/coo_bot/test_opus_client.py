@@ -1,4 +1,5 @@
 """Tests for src/coo_bot/opus_client.py — Opus CLI subprocess wrapper."""
+
 from __future__ import annotations
 
 import asyncio
@@ -53,7 +54,9 @@ def test_timeout_returns_empty():
 
 def test_missing_binary_returns_empty():
     """opus_call returns '' when claude binary not found."""
-    with patch("src.coo_bot.opus_client.asyncio.create_subprocess_exec", side_effect=FileNotFoundError()):
+    with patch(
+        "src.coo_bot.opus_client.asyncio.create_subprocess_exec", side_effect=FileNotFoundError()
+    ):
         result = _run(opus_call("system", "user"))
     assert result == ""
 

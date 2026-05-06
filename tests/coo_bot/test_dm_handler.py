@@ -1,4 +1,5 @@
 """Tests for src/coo_bot/dm_handler.py — DM bidirectional handler."""
+
 from __future__ import annotations
 
 import asyncio
@@ -53,10 +54,20 @@ def test_relay_intent_calls_group_writer():
     """When classifier returns relay intent, post_to_group is called and DM confirms."""
     mock_post = AsyncMock(return_value=True)
     relay_result = {"intent": "relay", "relay_text": "approve that PR"}
-    with patch("src.coo_bot.dm_handler._classify_intent", new_callable=AsyncMock, return_value=relay_result), \
-         patch("src.coo_bot.dm_handler._load_context", new_callable=AsyncMock, return_value="context"):
+    with (
+        patch(
+            "src.coo_bot.dm_handler._classify_intent",
+            new_callable=AsyncMock,
+            return_value=relay_result,
+        ),
+        patch(
+            "src.coo_bot.dm_handler._load_context", new_callable=AsyncMock, return_value="context"
+        ),
+    ):
         update = _make_update("tell them to approve that PR")
-        with patch.dict("sys.modules", {"src.coo_bot.group_writer": MagicMock(post_to_group=mock_post)}):
+        with patch.dict(
+            "sys.modules", {"src.coo_bot.group_writer": MagicMock(post_to_group=mock_post)}
+        ):
             _run(handle_dm(update, MagicMock()))
         assert "Posted" in update.message.reply_text.call_args[0][0]
 
@@ -64,9 +75,19 @@ def test_relay_intent_calls_group_writer():
 def test_private_intent_calls_opus():
     """When classifier returns private intent, opus_call is invoked for response."""
     private_result = {"intent": "private", "relay_text": None}
-    with patch("src.coo_bot.dm_handler._classify_intent", new_callable=AsyncMock, return_value=private_result), \
-         patch("src.coo_bot.dm_handler.opus_call", new_callable=AsyncMock, return_value="Max response") as mock_opus, \
-         patch("src.coo_bot.dm_handler._load_context", new_callable=AsyncMock, return_value="context"):
+    with (
+        patch(
+            "src.coo_bot.dm_handler._classify_intent",
+            new_callable=AsyncMock,
+            return_value=private_result,
+        ),
+        patch(
+            "src.coo_bot.dm_handler.opus_call", new_callable=AsyncMock, return_value="Max response"
+        ) as mock_opus,
+        patch(
+            "src.coo_bot.dm_handler._load_context", new_callable=AsyncMock, return_value="context"
+        ),
+    ):
         update = _make_update("what's happening?")
         _run(handle_dm(update, MagicMock()))
         mock_opus.assert_called_once()
@@ -76,9 +97,17 @@ def test_private_intent_calls_opus():
 def test_opus_failure_shows_fallback():
     """When opus_call returns '', show fallback message."""
     private_result = {"intent": "private", "relay_text": None}
-    with patch("src.coo_bot.dm_handler._classify_intent", new_callable=AsyncMock, return_value=private_result), \
-         patch("src.coo_bot.dm_handler.opus_call", new_callable=AsyncMock, return_value="") as mock_opus, \
-         patch("src.coo_bot.dm_handler._load_context", new_callable=AsyncMock, return_value=""):
+    with (
+        patch(
+            "src.coo_bot.dm_handler._classify_intent",
+            new_callable=AsyncMock,
+            return_value=private_result,
+        ),
+        patch(
+            "src.coo_bot.dm_handler.opus_call", new_callable=AsyncMock, return_value=""
+        ) as mock_opus,
+        patch("src.coo_bot.dm_handler._load_context", new_callable=AsyncMock, return_value=""),
+    ):
         update = _make_update("tell me something")
         _run(handle_dm(update, MagicMock()))
         assert "couldn't generate" in update.message.reply_text.call_args[0][0]
@@ -87,9 +116,17 @@ def test_opus_failure_shows_fallback():
 def test_routine_dm_uses_haiku_short_timeout():
     """Routine 'what's up?' DM routes to Haiku with 20s timeout (no deep/tools keywords)."""
     private_result = {"intent": "private", "relay_text": None}
-    with patch("src.coo_bot.dm_handler._classify_intent", new_callable=AsyncMock, return_value=private_result), \
-         patch("src.coo_bot.dm_handler.opus_call", new_callable=AsyncMock, return_value="ok") as mock_opus, \
-         patch("src.coo_bot.dm_handler._load_context", new_callable=AsyncMock, return_value=""):
+    with (
+        patch(
+            "src.coo_bot.dm_handler._classify_intent",
+            new_callable=AsyncMock,
+            return_value=private_result,
+        ),
+        patch(
+            "src.coo_bot.dm_handler.opus_call", new_callable=AsyncMock, return_value="ok"
+        ) as mock_opus,
+        patch("src.coo_bot.dm_handler._load_context", new_callable=AsyncMock, return_value=""),
+    ):
         update = _make_update("hey max status update")
         _run(handle_dm(update, MagicMock()))
         kwargs = mock_opus.call_args.kwargs
@@ -101,9 +138,17 @@ def test_routine_dm_uses_haiku_short_timeout():
 def test_deep_dm_routes_to_opus():
     """DM with deep keywords ('why', 'explain') routes to Opus, longer timeout."""
     private_result = {"intent": "private", "relay_text": None}
-    with patch("src.coo_bot.dm_handler._classify_intent", new_callable=AsyncMock, return_value=private_result), \
-         patch("src.coo_bot.dm_handler.opus_call", new_callable=AsyncMock, return_value="ok") as mock_opus, \
-         patch("src.coo_bot.dm_handler._load_context", new_callable=AsyncMock, return_value=""):
+    with (
+        patch(
+            "src.coo_bot.dm_handler._classify_intent",
+            new_callable=AsyncMock,
+            return_value=private_result,
+        ),
+        patch(
+            "src.coo_bot.dm_handler.opus_call", new_callable=AsyncMock, return_value="ok"
+        ) as mock_opus,
+        patch("src.coo_bot.dm_handler._load_context", new_callable=AsyncMock, return_value=""),
+    ):
         update = _make_update("why is the pipeline stalled, explain")
         _run(handle_dm(update, MagicMock()))
         kwargs = mock_opus.call_args.kwargs
@@ -115,9 +160,17 @@ def test_deep_dm_routes_to_opus():
 def test_tools_dm_routes_to_opus_with_tools():
     """DM with tools keywords ('check the file', 'query database') gets tool access + 120s timeout."""
     private_result = {"intent": "private", "relay_text": None}
-    with patch("src.coo_bot.dm_handler._classify_intent", new_callable=AsyncMock, return_value=private_result), \
-         patch("src.coo_bot.dm_handler.opus_call", new_callable=AsyncMock, return_value="ok") as mock_opus, \
-         patch("src.coo_bot.dm_handler._load_context", new_callable=AsyncMock, return_value=""):
+    with (
+        patch(
+            "src.coo_bot.dm_handler._classify_intent",
+            new_callable=AsyncMock,
+            return_value=private_result,
+        ),
+        patch(
+            "src.coo_bot.dm_handler.opus_call", new_callable=AsyncMock, return_value="ok"
+        ) as mock_opus,
+        patch("src.coo_bot.dm_handler._load_context", new_callable=AsyncMock, return_value=""),
+    ):
         update = _make_update("check the manual for the deploy section")
         _run(handle_dm(update, MagicMock()))
         kwargs = mock_opus.call_args.kwargs

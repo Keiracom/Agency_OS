@@ -80,7 +80,7 @@ class WebhookUpdater:
                 data={
                     "SmsUrl": webhook_url,
                     "SmsMethod": "POST",
-                }
+                },
             )
             response.raise_for_status()
             print(f"  [OK] Twilio SMS webhook updated: {webhook_url}")
@@ -109,7 +109,7 @@ class WebhookUpdater:
                 data={
                     "VoiceUrl": webhook_url,
                     "VoiceMethod": "POST",
-                }
+                },
             )
             response.raise_for_status()
             print(f"  [OK] Twilio Voice webhook updated: {webhook_url}")
@@ -127,7 +127,7 @@ class WebhookUpdater:
             response = httpx.get(
                 f"https://api.twilio.com/2010-04-01/Accounts/{self.twilio_account_sid}/IncomingPhoneNumbers.json",
                 auth=(self.twilio_account_sid, self.twilio_auth_token),
-                params={"PhoneNumber": self.twilio_phone_number}
+                params={"PhoneNumber": self.twilio_phone_number},
             )
             response.raise_for_status()
             data = response.json()

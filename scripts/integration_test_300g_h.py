@@ -7,6 +7,7 @@ Mobile waterfall: contact registry (free) → HTML regex → Leadmagic → Brigh
 
 Cost estimate: ~$35-42 combined
 """
+
 import asyncio
 import json
 import os
@@ -15,6 +16,7 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dotenv import load_dotenv
+
 load_dotenv("/home/elliotbot/.config/agency-os/.env")
 
 from src.config.settings import settings
@@ -23,30 +25,41 @@ from src.pipeline.email_waterfall import discover_email
 from src.pipeline.mobile_waterfall import run_mobile_waterfall, extract_mobile_from_html
 from src.utils.asyncpg_connection import get_asyncpg_pool
 
-INPUT_DM       = os.path.join(os.path.dirname(__file__), "output", "300f_dm.json")
-INPUT_SCRAPE   = os.path.join(os.path.dirname(__file__), "output", "300b_scrape.json")
-INPUT_AFFORD   = os.path.join(os.path.dirname(__file__), "output", "300d_afford.json")
-OUTPUT_EMAIL   = os.path.join(os.path.dirname(__file__), "output", "300g_email.json")
-OUTPUT_MOBILE  = os.path.join(os.path.dirname(__file__), "output", "300h_mobile.json")
+INPUT_DM = os.path.join(os.path.dirname(__file__), "output", "300f_dm.json")
+INPUT_SCRAPE = os.path.join(os.path.dirname(__file__), "output", "300b_scrape.json")
+INPUT_AFFORD = os.path.join(os.path.dirname(__file__), "output", "300d_afford.json")
+OUTPUT_EMAIL = os.path.join(os.path.dirname(__file__), "output", "300g_email.json")
+OUTPUT_MOBILE = os.path.join(os.path.dirname(__file__), "output", "300h_mobile.json")
 OUTPUT_COMBINED = os.path.join(os.path.dirname(__file__), "output", "300gh_combined.json")
 
 # Semaphores
-SEM_EMAIL  = asyncio.Semaphore(10)
+SEM_EMAIL = asyncio.Semaphore(10)
 SEM_MOBILE = asyncio.Semaphore(10)
 
 
 def _empty_contact() -> dict:
     """Return empty contact_data using new schema."""
     return {
-        "company_email": None, "company_phone": None, "company_mobile": None,
-        "linkedin_company": None, "linkedin_dm": None,
-        "dm_email": None, "dm_email_verified": False, "dm_mobile": None,
+        "company_email": None,
+        "company_phone": None,
+        "company_mobile": None,
+        "linkedin_company": None,
+        "linkedin_dm": None,
+        "dm_email": None,
+        "dm_email_verified": False,
+        "dm_mobile": None,
     }
 
 
-async def upsert_contact(pool, domain: str, email: str | None, mobile: str | None,
-                         company_email: str | None, company_phone: str | None,
-                         company_mobile: str | None) -> None:
+async def upsert_contact(
+    pool,
+    domain: str,
+    email: str | None,
+    mobile: str | None,
+    company_email: str | None,
+    company_phone: str | None,
+    company_mobile: str | None,
+) -> None:
     try:
         async with pool.acquire() as conn:
             await conn.execute(
@@ -57,7 +70,9 @@ async def upsert_contact(pool, domain: str, email: str | None, mobile: str | Non
                     pipeline_stage   = GREATEST(pipeline_stage, 7)
                 WHERE domain = $1
                 """,
-                domain, email, mobile,
+                domain,
+                email,
+                mobile,
             )
     except Exception:
         pass
@@ -78,28 +93,28 @@ async def process_domain(
     t0: float,
 ) -> dict:
     result = {
-        "domain":      domain,
-        "category":    category,
+        "domain": domain,
+        "category": category,
         "intent_band": intent_band,
         "intent_score": intent_score,
-        "dm_name":     dm_name,
+        "dm_name": dm_name,
         "contact_data_prefill": {
-            "company_email":    contact_data.get("company_email") or contact_data.get("email"),
-            "company_phone":    contact_data.get("company_phone") or contact_data.get("landline"),
-            "company_mobile":   contact_data.get("company_mobile") or contact_data.get("mobile"),
-            "linkedin_dm":      contact_data.get("linkedin_dm") or contact_data.get("linkedin"),
+            "company_email": contact_data.get("company_email") or contact_data.get("email"),
+            "company_phone": contact_data.get("company_phone") or contact_data.get("landline"),
+            "company_mobile": contact_data.get("company_mobile") or contact_data.get("mobile"),
+            "linkedin_dm": contact_data.get("linkedin_dm") or contact_data.get("linkedin"),
             "linkedin_company": contact_data.get("linkedin_company"),
         },
         # Email fields
         "email_found": False,
-        "email":       None,
+        "email": None,
         "email_verified": False,
         "email_source": "none",
         "email_layers_attempted": 0,
         "email_cost_usd": 0.0,
         # Mobile fields
         "mobile_found": False,
-        "mobile":      None,
+        "mobile": None,
         "mobile_source": None,
         "mobile_layers_attempted": 0,
         "mobile_cost_usd": 0.0,
@@ -121,21 +136,29 @@ async def process_domain(
             )
             # Count layers attempted
             source = email_res.source
-            if source == "contact_registry": layers_attempted = 0
-            elif source == "website":        layers_attempted = 1
-            elif source == "pattern":        layers_attempted = 2
-            elif source == "leadmagic":      layers_attempted = 3
-            elif source == "brightdata":     layers_attempted = 4
-            else:                            layers_attempted = 4  # all tried, none found
+            if source == "contact_registry":
+                layers_attempted = 0
+            elif source == "website":
+                layers_attempted = 1
+            elif source == "pattern":
+                layers_attempted = 2
+            elif source == "leadmagic":
+                layers_attempted = 3
+            elif source == "brightdata":
+                layers_attempted = 4
+            else:
+                layers_attempted = 4  # all tried, none found
 
-            result.update({
-                "email_found": email_res.email is not None,
-                "email": email_res.email,
-                "email_verified": email_res.verified,
-                "email_source": source,
-                "email_layers_attempted": layers_attempted,
-                "email_cost_usd": email_res.cost_usd,
-            })
+            result.update(
+                {
+                    "email_found": email_res.email is not None,
+                    "email": email_res.email,
+                    "email_verified": email_res.verified,
+                    "email_source": source,
+                    "email_layers_attempted": layers_attempted,
+                    "email_cost_usd": email_res.cost_usd,
+                }
+            )
         except Exception as exc:
             result["_email_error"] = str(exc)
 
@@ -149,6 +172,7 @@ async def process_domain(
             leadmagic = None
             try:
                 from src.integrations.leadmagic import LeadmagicClient
+
                 leadmagic = LeadmagicClient(api_key=settings.leadmagic_api_key)
             except Exception:
                 pass
@@ -161,27 +185,37 @@ async def process_domain(
                 brightdata_client=None,  # skip BD for now — Leadmagic first
             )
 
-            if mobile_res.tier_used == 1:   mobile_layers = 0  # HTML regex (free)
-            elif mobile_res.tier_used == 2: mobile_layers = 1  # Leadmagic
-            elif mobile_res.tier_used == 3: mobile_layers = 2  # BD
-            else:                           mobile_layers = 2  # all tried
+            if mobile_res.tier_used == 1:
+                mobile_layers = 0  # HTML regex (free)
+            elif mobile_res.tier_used == 2:
+                mobile_layers = 1  # Leadmagic
+            elif mobile_res.tier_used == 3:
+                mobile_layers = 2  # BD
+            else:
+                mobile_layers = 2  # all tried
 
-            result.update({
-                "mobile_found": mobile_res.mobile is not None,
-                "mobile": mobile_res.mobile,
-                "mobile_source": mobile_res.source,
-                "mobile_layers_attempted": mobile_layers,
-                "mobile_cost_usd": float(mobile_res.cost_usd),
-            })
+            result.update(
+                {
+                    "mobile_found": mobile_res.mobile is not None,
+                    "mobile": mobile_res.mobile,
+                    "mobile_source": mobile_res.source,
+                    "mobile_layers_attempted": mobile_layers,
+                    "mobile_cost_usd": float(mobile_res.cost_usd),
+                }
+            )
         except Exception as exc:
             result["_mobile_error"] = str(exc)
 
     # Upsert to BU
     prefill = result.get("contact_data_prefill", {})
     await upsert_contact(
-        pool, domain,
-        result.get("email"), result.get("mobile"),
-        prefill.get("company_email"), prefill.get("company_phone"), prefill.get("company_mobile"),
+        pool,
+        domain,
+        result.get("email"),
+        result.get("mobile"),
+        prefill.get("company_email"),
+        prefill.get("company_phone"),
+        prefill.get("company_mobile"),
     )
 
     done[0] += 1
@@ -231,43 +265,54 @@ async def main():
     scrape_tasks = [scrape_contact(p["domain"]) for p in prospects]
     contact_results = await asyncio.gather(*scrape_tasks)
     scrape_map = {prospects[i]["domain"]: contact_results[i] for i in range(len(prospects))}
-    populated = sum(1 for v in scrape_map.values()
-                    if any(v.get(k) for k in ("company_email","company_mobile","company_phone","linkedin_dm")))
+    populated = sum(
+        1
+        for v in scrape_map.values()
+        if any(
+            v.get(k) for k in ("company_email", "company_mobile", "company_phone", "linkedin_dm")
+        )
+    )
     print(f"Contact registry populated: {populated}/{len(prospects)} domains with data\n")
     await scraper.close()
 
     # Init pool
-    dsn = settings.database_url.replace("postgresql+asyncpg://", "postgresql://").replace("postgres://", "postgresql://")
+    dsn = settings.database_url.replace("postgresql+asyncpg://", "postgresql://").replace(
+        "postgres://", "postgresql://"
+    )
     pool = await get_asyncpg_pool(dsn, min_size=1, max_size=20)
 
-    t0    = time.monotonic()
-    done  = [0]
+    t0 = time.monotonic()
+    done = [0]
     total = len(prospects)
 
     tasks = []
     for p in prospects:
-        domain     = p["domain"]
+        domain = p["domain"]
         contact_data = scrape_map.get(domain, _empty_contact())
         afford_item = afford_map.get(domain, {})
         # Derive company name
-        abn_display = afford_item.get("haiku_result", {}).get("company_name") if afford_item else None
+        abn_display = (
+            afford_item.get("haiku_result", {}).get("company_name") if afford_item else None
+        )
         d_strip = domain[4:] if domain.startswith("www.") else domain
         company_name = abn_display or d_strip.split(".")[0].replace("-", " ").title()
 
-        tasks.append(process_domain(
-            domain=domain,
-            category=p.get("category", ""),
-            intent_band=p.get("intent_band", ""),
-            intent_score=p.get("intent_score", 0),
-            dm_name=p.get("dm_name"),
-            dm_linkedin=p.get("dm_linkedin_url"),
-            contact_data=contact_data,
-            company_name=company_name,
-            pool=pool,
-            done=done,
-            total=total,
-            t0=t0,
-        ))
+        tasks.append(
+            process_domain(
+                domain=domain,
+                category=p.get("category", ""),
+                intent_band=p.get("intent_band", ""),
+                intent_score=p.get("intent_score", 0),
+                dm_name=p.get("dm_name"),
+                dm_linkedin=p.get("dm_linkedin_url"),
+                contact_data=contact_data,
+                company_name=company_name,
+                pool=pool,
+                done=done,
+                total=total,
+                t0=t0,
+            )
+        )
 
     raw_results = await asyncio.gather(*tasks, return_exceptions=True)
     elapsed = time.monotonic() - t0
@@ -278,10 +323,12 @@ async def main():
     errors = 0
     for i, r in enumerate(raw_results):
         if isinstance(r, Exception):
-            results.append({
-                "domain": prospects[i]["domain"],
-                "_exception": str(r),
-            })
+            results.append(
+                {
+                    "domain": prospects[i]["domain"],
+                    "_exception": str(r),
+                }
+            )
             errors += 1
         else:
             results.append(r)
@@ -289,7 +336,7 @@ async def main():
     ok = [r for r in results if not r.get("_exception")]
 
     # ── EMAIL STATS ──
-    email_found   = [r for r in ok if r.get("email_found")]
+    email_found = [r for r in ok if r.get("email_found")]
     email_missing = [r for r in ok if not r.get("email_found")]
     email_hit_rate = round(len(email_found) / len(ok) * 100, 1) if ok else 0
 
@@ -315,7 +362,7 @@ async def main():
     total_email_cost = round(sum(r.get("email_cost_usd", 0) for r in ok), 2)
 
     # ── MOBILE STATS ──
-    mob_found   = [r for r in ok if r.get("mobile_found")]
+    mob_found = [r for r in ok if r.get("mobile_found")]
     mob_missing = [r for r in ok if not r.get("mobile_found")]
     mob_hit_rate = round(len(mob_found) / len(ok) * 100, 1) if ok else 0
 
@@ -340,26 +387,45 @@ async def main():
     total_mobile_cost = round(sum(r.get("mobile_cost_usd", 0) for r in ok), 2)
 
     # ── COMBINED ──
-    both    = sum(1 for r in ok if r.get("email_found") and r.get("mobile_found"))
+    both = sum(1 for r in ok if r.get("email_found") and r.get("mobile_found"))
     email_only = sum(1 for r in ok if r.get("email_found") and not r.get("mobile_found"))
     mobile_only = sum(1 for r in ok if not r.get("email_found") and r.get("mobile_found"))
     neither = sum(1 for r in ok if not r.get("email_found") and not r.get("mobile_found"))
     total_cost = round(total_email_cost + total_mobile_cost, 2)
 
     # ── 5 EXAMPLES ──
-    ex_both_free   = next((r for r in ok if
-                           r.get("email_source") == "contact_registry" and
-                           r.get("mobile_source") == "contact_registry"), None)
-    ex_email_free_mob_paid = next((r for r in ok if
-                                   r.get("email_source") in ("contact_registry","website","pattern") and
-                                   r.get("mobile_source") == "leadmagic"), None)
-    ex_both_paid   = next((r for r in ok if
-                           r.get("email_source") == "leadmagic" and
-                           r.get("mobile_source") == "leadmagic"), None)
-    ex_email_no_mob = next((r for r in ok if
-                            r.get("email_found") and not r.get("mobile_found")), None)
-    ex_neither     = next((r for r in ok if
-                           not r.get("email_found") and not r.get("mobile_found")), None)
+    ex_both_free = next(
+        (
+            r
+            for r in ok
+            if r.get("email_source") == "contact_registry"
+            and r.get("mobile_source") == "contact_registry"
+        ),
+        None,
+    )
+    ex_email_free_mob_paid = next(
+        (
+            r
+            for r in ok
+            if r.get("email_source") in ("contact_registry", "website", "pattern")
+            and r.get("mobile_source") == "leadmagic"
+        ),
+        None,
+    )
+    ex_both_paid = next(
+        (
+            r
+            for r in ok
+            if r.get("email_source") == "leadmagic" and r.get("mobile_source") == "leadmagic"
+        ),
+        None,
+    )
+    ex_email_no_mob = next(
+        (r for r in ok if r.get("email_found") and not r.get("mobile_found")), None
+    )
+    ex_neither = next(
+        (r for r in ok if not r.get("email_found") and not r.get("mobile_found")), None
+    )
 
     print()
     print("=" * 60)
@@ -377,7 +443,9 @@ async def main():
     for cat, s in email_by_cat.items():
         print(f"    {cat}: found={s['found']}/{s['total']} ({s['hit_rate']}%)")
     print(f"7.  TOTAL EMAIL COST: ${total_email_cost:.2f} USD")
-    print(f"8.  CONTACT REGISTRY SAVES: {email_registry_saves} lookups = ${email_registry_cost_saved:.2f} saved")
+    print(
+        f"8.  CONTACT REGISTRY SAVES: {email_registry_saves} lookups = ${email_registry_cost_saved:.2f} saved"
+    )
     print()
     print("── MOBILE (Stage 8) ──")
     print(f"9.  TOTAL PROCESSED: {len(results)} | ERRORS: {errors}")
@@ -390,7 +458,9 @@ async def main():
     for cat, s in mob_by_cat.items():
         print(f"    {cat}: found={s['found']}/{s['total']} ({s['hit_rate']}%)")
     print(f"14. TOTAL MOBILE COST: ${total_mobile_cost:.2f} USD")
-    print(f"15. CONTACT REGISTRY SAVES: {mob_registry_saves} lookups = ${mob_registry_cost_saved:.2f} saved")
+    print(
+        f"15. CONTACT REGISTRY SAVES: {mob_registry_saves} lookups = ${mob_registry_cost_saved:.2f} saved"
+    )
     print()
     print("── COMBINED ──")
     print(f"16. TOTAL COST: ${total_cost:.2f} USD")
@@ -411,44 +481,82 @@ async def main():
         print(json.dumps(printable, indent=4, default=str))
 
     show("Contact registry had both (zero paid)", ex_both_free)
-    show("Email free, mobile needed Leadmagic",   ex_email_free_mob_paid)
-    show("Both needed paid lookups",              ex_both_paid)
-    show("Email found, mobile not found",         ex_email_no_mob)
-    show("Neither found",                         ex_neither)
+    show("Email free, mobile needed Leadmagic", ex_email_free_mob_paid)
+    show("Both needed paid lookups", ex_both_paid)
+    show("Email found, mobile not found", ex_email_no_mob)
+    show("Neither found", ex_neither)
 
     # ── SAVE ──
     summary = {
-        "total": len(results), "ok": len(ok), "errors": errors,
-        "email_found": len(email_found), "email_missing": len(email_missing),
-        "email_hit_rate": email_hit_rate, "email_sources": email_sources,
+        "total": len(results),
+        "ok": len(ok),
+        "errors": errors,
+        "email_found": len(email_found),
+        "email_missing": len(email_missing),
+        "email_hit_rate": email_hit_rate,
+        "email_sources": email_sources,
         "email_verified": email_verified,
-        "email_by_cat": email_by_cat, "email_cost_usd": total_email_cost,
+        "email_by_cat": email_by_cat,
+        "email_cost_usd": total_email_cost,
         "email_registry_saves": email_registry_saves,
-        "mobile_found": len(mob_found), "mobile_missing": len(mob_missing),
-        "mobile_hit_rate": mob_hit_rate, "mobile_sources": mob_sources,
-        "mobile_by_cat": mob_by_cat, "mobile_cost_usd": total_mobile_cost,
+        "mobile_found": len(mob_found),
+        "mobile_missing": len(mob_missing),
+        "mobile_hit_rate": mob_hit_rate,
+        "mobile_sources": mob_sources,
+        "mobile_by_cat": mob_by_cat,
+        "mobile_cost_usd": total_mobile_cost,
         "mobile_registry_saves": mob_registry_saves,
         "total_cost_usd": total_cost,
-        "both": both, "email_only": email_only, "mobile_only": mobile_only, "neither": neither,
+        "both": both,
+        "email_only": email_only,
+        "mobile_only": mobile_only,
+        "neither": neither,
         "elapsed_seconds": round(elapsed, 1),
     }
 
     os.makedirs(os.path.dirname(OUTPUT_COMBINED), exist_ok=True)
     with open(OUTPUT_COMBINED, "w") as f:
-        json.dump({"stage": "300gh_combined", "summary": summary, "domains": results},
-                  f, indent=2, default=str)
+        json.dump(
+            {"stage": "300gh_combined", "summary": summary, "domains": results},
+            f,
+            indent=2,
+            default=str,
+        )
 
     # Also save split files
     with open(OUTPUT_EMAIL, "w") as f:
-        json.dump({"stage": "300g_email", "summary": {k: v for k, v in summary.items()
-                   if "email" in k or k in ("total","ok","errors","elapsed_seconds")},
-                   "domains": [{k: v for k, v in r.items() if "mobile" not in k}
-                                for r in results]}, f, indent=2, default=str)
+        json.dump(
+            {
+                "stage": "300g_email",
+                "summary": {
+                    k: v
+                    for k, v in summary.items()
+                    if "email" in k or k in ("total", "ok", "errors", "elapsed_seconds")
+                },
+                "domains": [{k: v for k, v in r.items() if "mobile" not in k} for r in results],
+            },
+            f,
+            indent=2,
+            default=str,
+        )
     with open(OUTPUT_MOBILE, "w") as f:
-        json.dump({"stage": "300h_mobile", "summary": {k: v for k, v in summary.items()
-                   if "mobile" in k or k in ("total","ok","errors","elapsed_seconds")},
-                   "domains": [{k: v for k, v in r.items() if "email" not in k or k == "domain"}
-                                for r in results]}, f, indent=2, default=str)
+        json.dump(
+            {
+                "stage": "300h_mobile",
+                "summary": {
+                    k: v
+                    for k, v in summary.items()
+                    if "mobile" in k or k in ("total", "ok", "errors", "elapsed_seconds")
+                },
+                "domains": [
+                    {k: v for k, v in r.items() if "email" not in k or k == "domain"}
+                    for r in results
+                ],
+            },
+            f,
+            indent=2,
+            default=str,
+        )
 
     print(f"\nSaved: {OUTPUT_COMBINED}")
     print(f"Saved: {OUTPUT_EMAIL}")

@@ -10,6 +10,7 @@ dispatcher. Verifies:
 - per-touch UPDATE scheduled_touches fires for each completed touch
 - missing db_conn -> zero summary, no raise
 """
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock
@@ -29,10 +30,15 @@ def _fake_db(touches: list[dict]):
 
 def _touch(i: int, channel="email") -> dict:
     return {
-        "id": f"t{i}", "channel": channel,
+        "id": f"t{i}",
+        "channel": channel,
         "prospect": {"email": f"lead{i}@x.com"},
-        "client_id": "c1", "lead_id": f"l{i}", "activity_id": f"a{i}",
-        "campaign_id": None, "content": {}, "sequence_step": 1,
+        "client_id": "c1",
+        "lead_id": f"l{i}",
+        "activity_id": f"a{i}",
+        "campaign_id": None,
+        "content": {},
+        "sequence_step": 1,
         "scheduled_at": None,
     }
 

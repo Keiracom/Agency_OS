@@ -9,6 +9,7 @@ wiring + response shape WITHOUT hitting Supabase. Each test confirms:
 
 Zero paid API calls, zero real DB.
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -55,20 +56,28 @@ def _make_app(execute_side_effect):
 
 # ─── /bu-hot-leads ──────────────────────────────────────────────────────────
 
+
 def test_bu_hot_leads_happy_path():
     page_rows = [
         {
-            "id": uuid4(), "domain": "acme.com.au", "display_name": "Acme",
-            "dm_name": "Amy Boss", "dm_title": "CEO",
-            "propensity_score": 88, "pipeline_stage": 7,
-            "has_email": True, "has_mobile": False,
+            "id": uuid4(),
+            "domain": "acme.com.au",
+            "display_name": "Acme",
+            "dm_name": "Amy Boss",
+            "dm_title": "CEO",
+            "propensity_score": 88,
+            "pipeline_stage": 7,
+            "has_email": True,
+            "has_mobile": False,
         },
     ]
     total_row = [{"n": 42}]
-    execute_returns = iter([
-        _result_with_rows(page_rows),
-        _result_with_rows(total_row),
-    ])
+    execute_returns = iter(
+        [
+            _result_with_rows(page_rows),
+            _result_with_rows(total_row),
+        ]
+    )
 
     async def side_effect(_sql, _params=None):
         return next(execute_returns)
@@ -89,18 +98,23 @@ def test_bu_hot_leads_happy_path():
 
 # ─── /bu-stats ──────────────────────────────────────────────────────────────
 
+
 def test_bu_stats_happy_path():
-    stats_row = [{
-        "total_businesses": 100,
-        "with_email": 60,
-        "with_mobile": 25,
-        "enriched_24h": 12,
-    }]
+    stats_row = [
+        {
+            "total_businesses": 100,
+            "with_email": 60,
+            "with_mobile": 25,
+            "enriched_24h": 12,
+        }
+    ]
     bdm_row = [{"n": 73}]
-    execute_returns = iter([
-        _result_with_rows(stats_row),
-        _result_with_rows(bdm_row),
-    ])
+    execute_returns = iter(
+        [
+            _result_with_rows(stats_row),
+            _result_with_rows(bdm_row),
+        ]
+    )
 
     async def side_effect(_sql, _params=None):
         return next(execute_returns)
@@ -110,11 +124,11 @@ def test_bu_stats_happy_path():
     assert res.status_code == 200
     body = res.json()
     assert body == {
-        "total_businesses":      100,
+        "total_businesses": 100,
         "businesses_with_email": 60,
         "businesses_with_mobile": 25,
-        "total_bdms":            73,
-        "enriched_last_24h":     12,
+        "total_bdms": 73,
+        "enriched_last_24h": 12,
     }
     for call in db.execute.await_args_list:
         params = call.args[1] if len(call.args) > 1 else {}
@@ -122,6 +136,7 @@ def test_bu_stats_happy_path():
 
 
 # ─── /bu-funnel ─────────────────────────────────────────────────────────────
+
 
 def test_bu_funnel_returns_all_12_stages():
     funnel_row = [
@@ -153,26 +168,33 @@ def test_bu_funnel_returns_all_12_stages():
 
 # ─── /bu-activity ───────────────────────────────────────────────────────────
 
+
 def test_bu_activity_merges_enrichment_and_outreach():
     enrich_rows = [
         {
-            "id": uuid4(), "domain": "acme.com.au", "display_name": "Acme",
+            "id": uuid4(),
+            "domain": "acme.com.au",
+            "display_name": "Acme",
             "last_enriched_at": datetime(2026, 4, 25, 12, 0, tzinfo=UTC),
-            "pipeline_stage": 7, "enrichment_cost_usd": 0.18,
+            "pipeline_stage": 7,
+            "enrichment_cost_usd": 0.18,
         },
     ]
     outreach_rows = [
         {
-            "id": uuid4(), "channel": "email",
+            "id": uuid4(),
+            "channel": "email",
             "sent_at": datetime(2026, 4, 25, 13, 0, tzinfo=UTC),
             "final_outcome": "delivered",
             "domain": "beta.com.au",  # quality fix D: domain joined in
         },
     ]
-    execute_returns = iter([
-        _result_with_rows(enrich_rows),
-        _result_with_rows(outreach_rows),
-    ])
+    execute_returns = iter(
+        [
+            _result_with_rows(enrich_rows),
+            _result_with_rows(outreach_rows),
+        ]
+    )
 
     async def side_effect(_sql, _params=None):
         return next(execute_returns)
@@ -198,9 +220,12 @@ def test_bu_activity_handles_outreach_table_missing():
     returns enrichment rows — quality fix C ensures the error is logged."""
     enrich_rows = [
         {
-            "id": uuid4(), "domain": "acme.com.au", "display_name": "Acme",
+            "id": uuid4(),
+            "domain": "acme.com.au",
+            "display_name": "Acme",
             "last_enriched_at": datetime(2026, 4, 25, tzinfo=UTC),
-            "pipeline_stage": 5, "enrichment_cost_usd": None,
+            "pipeline_stage": 5,
+            "enrichment_cost_usd": None,
         },
     ]
 
@@ -236,20 +261,30 @@ CLIENT_B = uuid4()
 _BU_BY_CLIENT: dict = {
     CLIENT_A: [
         {  # Acme — owned by client A
-            "id": uuid4(), "domain": "acme-clienta.com.au", "display_name": "Acme A",
-            "dm_name": "Amy A", "dm_title": "CEO A",
-            "propensity_score": 95, "pipeline_stage": 8,
-            "has_email": True, "has_mobile": True,
+            "id": uuid4(),
+            "domain": "acme-clienta.com.au",
+            "display_name": "Acme A",
+            "dm_name": "Amy A",
+            "dm_title": "CEO A",
+            "propensity_score": 95,
+            "pipeline_stage": 8,
+            "has_email": True,
+            "has_mobile": True,
             "last_enriched_at": datetime(2026, 4, 25, 10, 0, tzinfo=UTC),
             "enrichment_cost_usd": 0.22,
         },
     ],
     CLIENT_B: [
         {  # Beta — owned by client B
-            "id": uuid4(), "domain": "beta-clientb.com.au", "display_name": "Beta B",
-            "dm_name": "Bob B", "dm_title": "Founder B",
-            "propensity_score": 80, "pipeline_stage": 7,
-            "has_email": True, "has_mobile": False,
+            "id": uuid4(),
+            "domain": "beta-clientb.com.au",
+            "display_name": "Beta B",
+            "dm_name": "Bob B",
+            "dm_title": "Founder B",
+            "propensity_score": 80,
+            "pipeline_stage": 7,
+            "has_email": True,
+            "has_mobile": False,
             "last_enriched_at": datetime(2026, 4, 25, 11, 0, tzinfo=UTC),
             "enrichment_cost_usd": 0.18,
         },
@@ -272,20 +307,25 @@ def _tenant_filtered_execute_factory(endpoint: str):
             # Call 1 = page rows (filtered by stage/score), Call 2 = total
             if call_idx["i"] == 1:
                 ms, sc = params["min_stage"], params["min_score"]
-                page = [r for r in rows
-                        if r["pipeline_stage"] >= ms and r["propensity_score"] >= sc]
+                page = [
+                    r for r in rows if r["pipeline_stage"] >= ms and r["propensity_score"] >= sc
+                ]
                 return _result_with_rows(page)
             return _result_with_rows([{"n": len(rows)}])
 
         if endpoint == "bu-stats":
             # Call 1 = aggregate row, Call 2 = BDM count
             if call_idx["i"] == 1:
-                return _result_with_rows([{
-                    "total_businesses": len(rows),
-                    "with_email":       sum(1 for r in rows if r["has_email"]),
-                    "with_mobile":      sum(1 for r in rows if r["has_mobile"]),
-                    "enriched_24h":     len(rows),
-                }])
+                return _result_with_rows(
+                    [
+                        {
+                            "total_businesses": len(rows),
+                            "with_email": sum(1 for r in rows if r["has_email"]),
+                            "with_mobile": sum(1 for r in rows if r["has_mobile"]),
+                            "enriched_24h": len(rows),
+                        }
+                    ]
+                )
             return _result_with_rows([{"n": len(rows)}])
 
         if endpoint == "bu-funnel":
@@ -307,12 +347,15 @@ def _tenant_filtered_execute_factory(endpoint: str):
     return side_effect
 
 
-@pytest.mark.parametrize("endpoint,client_a_marker", [
-    ("bu-hot-leads", "acme-clienta.com.au"),
-    ("bu-stats",     None),  # stats are aggregate; check via row count vs A's data
-    ("bu-funnel",    None),  # ditto — funnel is aggregate
-    ("bu-activity",  "acme-clienta.com.au"),
-])
+@pytest.mark.parametrize(
+    "endpoint,client_a_marker",
+    [
+        ("bu-hot-leads", "acme-clienta.com.au"),
+        ("bu-stats", None),  # stats are aggregate; check via row count vs A's data
+        ("bu-funnel", None),  # ditto — funnel is aggregate
+        ("bu-activity", "acme-clienta.com.au"),
+    ],
+)
 def test_bu_endpoints_do_not_leak_other_client_data(endpoint, client_a_marker):
     """Request each BU endpoint as CLIENT_B and confirm CLIENT_A's data
     never appears. Aggregate endpoints (stats, funnel) are checked by
@@ -320,9 +363,7 @@ def test_bu_endpoints_do_not_leak_other_client_data(endpoint, client_a_marker):
 
     app = FastAPI()
     app.include_router(router)
-    app.dependency_overrides[get_current_client] = (
-        lambda: SimpleNamespace(client_id=CLIENT_B)
-    )
+    app.dependency_overrides[get_current_client] = lambda: SimpleNamespace(client_id=CLIENT_B)
     db = MagicMock()
     db.execute = AsyncMock(side_effect=_tenant_filtered_execute_factory(endpoint))
     app.dependency_overrides[get_db_session] = lambda: db
@@ -355,7 +396,7 @@ def test_bu_endpoints_do_not_leak_other_client_data(endpoint, client_a_marker):
         # Aggregate counts reflect B's single row only (not A's row).
         assert body["total_businesses"] == 1
         assert body["businesses_with_email"] == 1
-        assert body["businesses_with_mobile"] == 0   # B's row has has_mobile=False
+        assert body["businesses_with_mobile"] == 0  # B's row has has_mobile=False
         assert body["total_bdms"] == 1
     elif endpoint == "bu-funnel":
         # Funnel sees only B's stage-7 row.

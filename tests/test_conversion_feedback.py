@@ -148,11 +148,13 @@ async def test_batch_empty_categories_returns_empty_dict_no_db_call():
 @pytest.mark.asyncio
 async def test_batch_returns_correct_boosts_for_tiers():
     """Batch function maps counts to correct tier boosts."""
-    conn = _make_conn_batch([
-        {"gmb_category": "Plumber", "conversions": 6},      # high → 15
-        {"gmb_category": "Electrician", "conversions": 3},  # moderate → 10
-        {"gmb_category": "Dentist", "conversions": 1},      # low → 5
-    ])
+    conn = _make_conn_batch(
+        [
+            {"gmb_category": "Plumber", "conversions": 6},  # high → 15
+            {"gmb_category": "Electrician", "conversions": 3},  # moderate → 10
+            {"gmb_category": "Dentist", "conversions": 1},  # low → 5
+        ]
+    )
     result = await get_category_conversion_boosts(conn, ["Plumber", "Electrician", "Dentist"])
     assert result["Plumber"] == 15
     assert result["Electrician"] == 10
@@ -162,9 +164,11 @@ async def test_batch_returns_correct_boosts_for_tiers():
 @pytest.mark.asyncio
 async def test_batch_missing_category_not_in_result():
     """Categories with zero conversions are absent from the result dict (default 0)."""
-    conn = _make_conn_batch([
-        {"gmb_category": "Plumber", "conversions": 2},
-    ])
+    conn = _make_conn_batch(
+        [
+            {"gmb_category": "Plumber", "conversions": 2},
+        ]
+    )
     result = await get_category_conversion_boosts(conn, ["Plumber", "NoHits"])
     assert result.get("Plumber") == 5
     assert "NoHits" not in result  # caller defaults to 0 via .get()

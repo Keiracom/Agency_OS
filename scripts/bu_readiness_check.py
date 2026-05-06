@@ -13,6 +13,7 @@ Exit codes:
     1  — at least one threshold failed
     3  — DB unavailable
 """
+
 from __future__ import annotations
 
 import argparse

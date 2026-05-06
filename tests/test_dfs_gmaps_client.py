@@ -23,6 +23,7 @@ from src.clients.dfs_gmaps_client import (
 # Helpers
 # ============================================================
 
+
 def _make_client() -> DFSGMapsClient:
     return DFSGMapsClient(login="test_login", password="test_password")
 
@@ -133,7 +134,9 @@ class TestMapToBuColumns:
 
 @pytest.mark.asyncio
 class TestDiscoverByCoordinates:
-    @pytest.mark.skip(reason="Retry test patches removed internal method fetch_task_results — needs rewrite for current client")
+    @pytest.mark.skip(
+        reason="Retry test patches removed internal method fetch_task_results — needs rewrite for current client"
+    )
     async def test_retry_on_429(self):
         """429 responses trigger tenacity retries; third attempt succeeds."""
         client = _make_client()

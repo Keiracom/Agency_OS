@@ -47,10 +47,16 @@ async def test_mock_mode():
 
         # Verify expectations
         assert email_result.found is True, "Expected found=True"
-        assert email_result.email == "jane.doe@acme.com", f"Expected jane.doe@acme.com, got {email_result.email}"
+        assert email_result.email == "jane.doe@acme.com", (
+            f"Expected jane.doe@acme.com, got {email_result.email}"
+        )
         assert email_result.cost_aud == 0.0, f"Expected cost_aud=0.0, got {email_result.cost_aud}"
-        assert email_result.source == "leadmagic-mock", f"Expected source=leadmagic-mock, got {email_result.source}"
-        assert 85 <= email_result.confidence <= 98, f"Expected confidence 85-98, got {email_result.confidence}"
+        assert email_result.source == "leadmagic-mock", (
+            f"Expected source=leadmagic-mock, got {email_result.source}"
+        )
+        assert 85 <= email_result.confidence <= 98, (
+            f"Expected confidence 85-98, got {email_result.confidence}"
+        )
         print("  ✅ find_email() PASSED")
         print()
 
@@ -71,10 +77,16 @@ async def test_mock_mode():
         # Verify expectations
         assert mobile_result.found is True, "Expected found=True"
         assert mobile_result.mobile_number is not None, "Expected mobile_number"
-        assert mobile_result.mobile_number.startswith("+61 4"), f"Expected AU mobile starting +61 4, got {mobile_result.mobile_number}"
+        assert mobile_result.mobile_number.startswith("+61 4"), (
+            f"Expected AU mobile starting +61 4, got {mobile_result.mobile_number}"
+        )
         assert mobile_result.cost_aud == 0.0, f"Expected cost_aud=0.0, got {mobile_result.cost_aud}"
-        assert mobile_result.source == "leadmagic-mock", f"Expected source=leadmagic-mock, got {mobile_result.source}"
-        assert 80 <= mobile_result.mobile_confidence <= 95, f"Expected confidence 80-95, got {mobile_result.mobile_confidence}"
+        assert mobile_result.source == "leadmagic-mock", (
+            f"Expected source=leadmagic-mock, got {mobile_result.source}"
+        )
+        assert 80 <= mobile_result.mobile_confidence <= 95, (
+            f"Expected confidence 80-95, got {mobile_result.mobile_confidence}"
+        )
         print("  ✅ find_mobile() PASSED")
         print()
 

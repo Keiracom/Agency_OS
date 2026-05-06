@@ -349,7 +349,7 @@ class TestVoiceSyncTasks:
         # This test verifies the expected result shape without running the actual task
         # The actual task returns this shape:
         expected_result_keys = ["synced", "skipped_already_synced", "skipped_no_outcome", "errors"]
-        
+
         # Create a mock result that matches expected shape
         mock_result = {
             "synced": 5,
@@ -357,7 +357,7 @@ class TestVoiceSyncTasks:
             "skipped_no_outcome": 1,
             "errors": 0,
         }
-        
+
         # Verify result shape
         assert isinstance(mock_result, dict)
         for key in expected_result_keys:
@@ -406,14 +406,14 @@ class TestWebhookHandlers:
         """Test call-completed webhook returns expected structure."""
         # This test verifies the expected response structure without running the actual handler
         # The handler returns: {"status": "ok", "call_id": ..., "outcome": ..., "duration_seconds": ...}
-        
+
         expected_response = {
             "status": "ok",
             "call_id": "test-call-123",
             "outcome": "INTERESTED",
             "duration_seconds": 120,
         }
-        
+
         assert expected_response["status"] == "ok"
         assert "outcome" in expected_response
         assert expected_response["outcome"] == "INTERESTED"
@@ -423,21 +423,21 @@ class TestWebhookHandlers:
         """Test no-answer webhook handler returns NO_ANSWER outcome."""
         # Verify the expected outcome mapping
         from src.api.webhooks.elevenagets import _map_outcome
-        
+
         outcome = _map_outcome(None, "no_answer")
         assert outcome == "NO_ANSWER"
 
     def test_busy_handler_returns_correct_outcome(self):
         """Test busy webhook handler returns BUSY outcome."""
         from src.api.webhooks.elevenagets import _map_outcome
-        
+
         outcome = _map_outcome(None, "busy")
         assert outcome == "BUSY"
-        
+
     def test_call_declined_handler_returns_correct_outcome(self):
         """Test call_declined webhook handler returns CALL_DECLINED outcome."""
         from src.api.webhooks.elevenagets import _map_outcome
-        
+
         outcome = _map_outcome(None, "call_declined")
         assert outcome == "CALL_DECLINED"
 

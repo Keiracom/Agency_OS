@@ -14,12 +14,14 @@ from lxml import etree
 
 # Import the module under test
 import sys
+
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 
 
 # =============================================================================
 # FIXTURES
 # =============================================================================
+
 
 @pytest.fixture
 def sample_xml_valid_company():
@@ -207,13 +209,13 @@ def mock_db_pool():
     """Mock asyncpg connection pool."""
     pool = MagicMock()
     conn = AsyncMock()
-    
+
     # Create a proper async context manager
     async_cm = AsyncMock()
     async_cm.__aenter__.return_value = conn
     async_cm.__aexit__.return_value = None
     pool.acquire.return_value = async_cm
-    
+
     conn.executemany = AsyncMock()
     return pool
 
@@ -222,17 +224,20 @@ def mock_db_pool():
 # MIGRATION TESTS
 # =============================================================================
 
+
 class TestMigrationBusinessUniverse:
     """Tests for 086_business_universe.sql migration."""
 
     def test_business_universe_table_structure(self):
         """Test business_universe table exists with all expected columns."""
-        migration_path = Path(__file__).parent.parent / "supabase/migrations/086_business_universe.sql"
+        migration_path = (
+            Path(__file__).parent.parent / "supabase/migrations/086_business_universe.sql"
+        )
         content = migration_path.read_text()
-        
+
         # Check table creation
         assert "CREATE TABLE IF NOT EXISTS business_universe" in content
-        
+
         # Check all expected columns
         expected_columns = [
             "id UUID PRIMARY KEY",
@@ -255,7 +260,7 @@ class TestMigrationBusinessUniverse:
             "created_at TIMESTAMPTZ",
             "updated_at TIMESTAMPTZ",
         ]
-        
+
         for col in expected_columns:
             # Normalize whitespace for comparison
             col_pattern = col.replace(" ", r"\s+")
@@ -263,9 +268,11 @@ class TestMigrationBusinessUniverse:
 
     def test_business_universe_indexes(self):
         """Test indexes exist on business_universe table."""
-        migration_path = Path(__file__).parent.parent / "supabase/migrations/086_business_universe.sql"
+        migration_path = (
+            Path(__file__).parent.parent / "supabase/migrations/086_business_universe.sql"
+        )
         content = migration_path.read_text()
-        
+
         expected_indexes = [
             "idx_bu_state",
             "idx_bu_entity_type",
@@ -273,15 +280,17 @@ class TestMigrationBusinessUniverse:
             "idx_bu_trading_name",
             "idx_bu_postcode",
         ]
-        
+
         for idx in expected_indexes:
             assert idx in content, f"Index {idx} not found in migration"
 
     def test_abn_unique_constraint(self):
         """Test ABN has UNIQUE constraint."""
-        migration_path = Path(__file__).parent.parent / "supabase/migrations/086_business_universe.sql"
+        migration_path = (
+            Path(__file__).parent.parent / "supabase/migrations/086_business_universe.sql"
+        )
         content = migration_path.read_text()
-        
+
         assert "abn TEXT UNIQUE NOT NULL" in content
 
 
@@ -290,12 +299,14 @@ class TestMigrationBusinessDecisionMakers:
 
     def test_business_decision_makers_table_structure(self):
         """Test business_decision_makers table exists with all expected columns."""
-        migration_path = Path(__file__).parent.parent / "supabase/migrations/087_business_decision_makers.sql"
+        migration_path = (
+            Path(__file__).parent.parent / "supabase/migrations/087_business_decision_makers.sql"
+        )
         content = migration_path.read_text()
-        
+
         # Check table creation
         assert "CREATE TABLE IF NOT EXISTS business_decision_makers" in content
-        
+
         # Check all expected columns
         expected_columns = [
             "id UUID PRIMARY KEY",
@@ -316,37 +327,43 @@ class TestMigrationBusinessDecisionMakers:
             "created_at TIMESTAMPTZ",
             "updated_at TIMESTAMPTZ",
         ]
-        
+
         for col in expected_columns:
             assert col.split()[0] in content, f"Column {col.split()[0]} not found"
 
     def test_foreign_key_constraint(self):
         """Test foreign key constraint from business_decision_makers to business_universe."""
-        migration_path = Path(__file__).parent.parent / "supabase/migrations/087_business_decision_makers.sql"
+        migration_path = (
+            Path(__file__).parent.parent / "supabase/migrations/087_business_decision_makers.sql"
+        )
         content = migration_path.read_text()
-        
+
         assert "REFERENCES business_universe(id)" in content
         assert "ON DELETE CASCADE" in content
 
     def test_business_decision_makers_indexes(self):
         """Test indexes exist on business_decision_makers table."""
-        migration_path = Path(__file__).parent.parent / "supabase/migrations/087_business_decision_makers.sql"
+        migration_path = (
+            Path(__file__).parent.parent / "supabase/migrations/087_business_decision_makers.sql"
+        )
         content = migration_path.read_text()
-        
+
         expected_indexes = [
             "idx_bdm_business_id",
             "idx_bdm_linkedin_url",
             "idx_bdm_is_current",
         ]
-        
+
         for idx in expected_indexes:
             assert idx in content, f"Index {idx} not found in migration"
 
     def test_mobile_never_stored_comment(self):
         """Test that documentation explicitly states mobile is never stored."""
-        migration_path = Path(__file__).parent.parent / "supabase/migrations/087_business_decision_makers.sql"
+        migration_path = (
+            Path(__file__).parent.parent / "supabase/migrations/087_business_decision_makers.sql"
+        )
         content = migration_path.read_text()
-        
+
         assert "mobile" in content.lower()
         assert "NEVER" in content
 
@@ -354,6 +371,7 @@ class TestMigrationBusinessDecisionMakers:
 # =============================================================================
 # FILTER LOGIC TESTS
 # =============================================================================
+
 
 class TestFilterLogic:
     """Unit tests for the load script filtering logic."""
@@ -365,50 +383,50 @@ class TestFilterLogic:
         """
         root = etree.fromstring(xml_bytes)
         elem = root.find(".//ABR")
-        
+
         if elem is None:
             return True, "no_abr_element"
-        
+
         # Check ABN exists
         abn_elem = elem.find(".//ABN")
         if abn_elem is None or not abn_elem.text:
             return True, "no_abn"
-        
+
         # Get entity status
         status_elem = elem.find(".//EntityStatus/EntityStatusCode")
         status_code = status_elem.text if status_elem is not None else ""
-        
+
         # FILTER 1: Inactive
         if status_code != "ACT":
             return True, "inactive"
-        
+
         # Get entity type
         entity_type_elem = elem.find(".//EntityType/EntityTypeCode")
         entity_type_code = entity_type_elem.text if entity_type_elem is not None else ""
-        
+
         entity_type_name_elem = elem.find(".//EntityType/EntityTypeInd")
         entity_type_name = entity_type_name_elem.text if entity_type_name_elem is not None else ""
-        
+
         # FILTER 2: Individuals
         if entity_type_code in {"IND", "PRV"}:
             return True, "individual"
-        
+
         # FILTER 3: Trusts
         if "TRU" in entity_type_code or "Trust" in entity_type_name:
             return True, "trust"
-        
+
         # FILTER 4: Government
         if entity_type_code in {"GVT", "LGV", "STG", "CGV", "GCO"}:
             return True, "government"
-        
+
         # FILTER 5: Super funds
         if entity_type_code in {"SUP", "ADF"}:
             return True, "superannuation"
-        
+
         # FILTER 6: NFP/Charities
         if entity_type_code in {"DIT", "NPF", "NPB", "NPE"}:
             return True, "nfp"
-        
+
         return False, "passed"
 
     def test_filter1_inactive_records_rejected(self, sample_xml_inactive):
@@ -494,6 +512,7 @@ class TestFilterLogic:
 # UPSERT LOGIC TESTS
 # =============================================================================
 
+
 class TestUpsertLogic:
     """Tests for UPSERT behavior."""
 
@@ -501,14 +520,14 @@ class TestUpsertLogic:
         """Test UPSERT uses ON CONFLICT (abn) DO UPDATE."""
         script_path = Path(__file__).parent.parent / "scripts/load_business_universe.py"
         content = script_path.read_text()
-        
+
         assert "ON CONFLICT (abn) DO UPDATE" in content
 
     def test_upsert_updates_timestamps(self):
         """Test last_abr_check and updated_at are set on update."""
         script_path = Path(__file__).parent.parent / "scripts/load_business_universe.py"
         content = script_path.read_text()
-        
+
         assert "last_abr_check = now()" in content
         assert "updated_at = now()" in content
 
@@ -517,7 +536,7 @@ class TestUpsertLogic:
         """Test new record inserted correctly via executemany."""
         # Import here to avoid module-level import issues
         from load_business_universe import BusinessRecord, LoadStats, upsert_batch
-        
+
         records = [
             BusinessRecord(
                 abn="12345678901",
@@ -534,14 +553,14 @@ class TestUpsertLogic:
                 registration_date="2020-01-01",
             )
         ]
-        
+
         stats = LoadStats()
         await upsert_batch(mock_db_pool, records, stats, dry_run=False)
-        
+
         # Verify executemany was called
         conn = mock_db_pool.acquire.return_value.__aenter__.return_value
         conn.executemany.assert_called_once()
-        
+
         # Verify stats updated
         assert stats.total_inserted == 1
 
@@ -549,7 +568,7 @@ class TestUpsertLogic:
     async def test_dry_run_no_database_writes(self, mock_db_pool):
         """Test dry_run mode does not write to database."""
         from load_business_universe import BusinessRecord, LoadStats, upsert_batch
-        
+
         records = [
             BusinessRecord(
                 abn="12345678901",
@@ -566,14 +585,14 @@ class TestUpsertLogic:
                 registration_date=None,
             )
         ]
-        
+
         stats = LoadStats()
         await upsert_batch(mock_db_pool, records, stats, dry_run=True)
-        
+
         # Verify no database calls
         conn = mock_db_pool.acquire.return_value.__aenter__.return_value
         conn.executemany.assert_not_called()
-        
+
         # But stats should still update
         assert stats.total_inserted == 1
 
@@ -582,6 +601,7 @@ class TestUpsertLogic:
 # DATA EXTRACTION TESTS
 # =============================================================================
 
+
 class TestDataExtraction:
     """Tests for data extraction from XML."""
 
@@ -589,24 +609,26 @@ class TestDataExtraction:
         """Extract business record fields from XML (mirrors load script logic)."""
         root = etree.fromstring(xml_bytes)
         elem = root.find(".//ABR")
-        
+
         # ABN
         abn_elem = elem.find(".//ABN")
         abn = abn_elem.text if abn_elem is not None else None
-        
+
         # ACN
         acn_elem = elem.find(".//ASICNumber")
         acn = acn_elem.text if acn_elem is not None else None
-        
+
         # Legal name - try multiple paths (same logic as load script)
         legal_name = None
-        for path in [".//MainEntity/NonIndividualName/NonIndividualNameText",
-                     ".//MainEntity/OrganisationName"]:
+        for path in [
+            ".//MainEntity/NonIndividualName/NonIndividualNameText",
+            ".//MainEntity/OrganisationName",
+        ]:
             name_elem = elem.find(path)
             if name_elem is not None and name_elem.text:
                 legal_name = name_elem.text
                 break
-        
+
         # Try concatenating individual name parts if no legal name yet
         if not legal_name:
             given = elem.find(".//LegalEntity/IndividualName/GivenName")
@@ -618,22 +640,22 @@ class TestDataExtraction:
                 if family is not None and family.text:
                     parts.append(family.text)
                 legal_name = " ".join(parts) if parts else None
-        
+
         # Trading name
         bn_elem = elem.find(".//BusinessName/OrganisationName")
         trading_name = bn_elem.text if bn_elem is not None else None
-        
+
         # State and postcode
         state_elem = elem.find(".//MainBusinessPhysicalAddress/StateCode")
         state = state_elem.text if state_elem is not None else None
-        
+
         pc_elem = elem.find(".//MainBusinessPhysicalAddress/Postcode")
         postcode = pc_elem.text if pc_elem is not None else None
-        
+
         # GST
         gst_elem = elem.find(".//GoodsAndServicesTax/GSTStatus")
         gst_registered = gst_elem is not None and gst_elem.text == "Registered"
-        
+
         return {
             "abn": abn,
             "acn": acn,
@@ -704,13 +726,14 @@ class TestDataExtraction:
 # INTEGRATION TESTS (with mocks)
 # =============================================================================
 
+
 class TestLoadScriptIntegration:
     """Integration tests for the load script (with mocks)."""
 
     def test_filter_stats_dataclass(self):
         """Test FilterStats dataclass tracks all filter categories."""
         from load_business_universe import FilterStats
-        
+
         stats = FilterStats()
         stats.inactive = 100
         stats.individuals = 200
@@ -718,7 +741,7 @@ class TestLoadScriptIntegration:
         stats.government = 25
         stats.superannuation = 15
         stats.charities_nfp = 30
-        
+
         assert stats.inactive == 100
         assert stats.individuals == 200
         assert stats.trusts == 50
@@ -729,17 +752,17 @@ class TestLoadScriptIntegration:
     def test_load_stats_qualified_count(self):
         """Test LoadStats.qualified_count calculation."""
         from load_business_universe import LoadStats
-        
+
         stats = LoadStats()
         stats.total_processed = 1000
         stats.total_filtered = 400
-        
+
         assert stats.qualified_count == 600
 
     def test_business_record_dataclass(self):
         """Test BusinessRecord dataclass has all required fields."""
         from load_business_universe import BusinessRecord
-        
+
         record = BusinessRecord(
             abn="12345678901",
             acn="123456789",
@@ -754,7 +777,7 @@ class TestLoadScriptIntegration:
             abn_status_code="ACT",
             registration_date="2020-01-01",
         )
-        
+
         assert record.abn == "12345678901"
         assert record.acn == "123456789"
         assert record.legal_name == "Test Company"
@@ -789,6 +812,6 @@ class TestLoadScriptIntegration:
     def test_batch_size_constant(self):
         """Test BATCH_SIZE constant is reasonable."""
         from load_business_universe import BATCH_SIZE
-        
+
         assert BATCH_SIZE >= 100
         assert BATCH_SIZE <= 10000

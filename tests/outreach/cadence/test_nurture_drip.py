@@ -3,6 +3,7 @@ Tests for src/outreach/cadence/nurture_drip.py
 
 In-memory fakes (dict-backed stores). now_fn frozen to a fixed datetime.
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -25,8 +26,11 @@ FIXED_NOW = datetime(2026, 4, 1, 12, 0, 0, tzinfo=timezone.utc)
 # In-memory fakes
 # ---------------------------------------------------------------------------
 
+
 class FakeStore:
-    def __init__(self, prospect_info: dict | None = None, initial_state: NurtureState | None = None):
+    def __init__(
+        self, prospect_info: dict | None = None, initial_state: NurtureState | None = None
+    ):
         self._prospects: dict[str, dict] = {}
         if prospect_info:
             self._prospects.update(prospect_info)
@@ -46,8 +50,9 @@ class FakeStore:
         self._states[state.prospect_id] = state
         self.upserted.append(state)
 
-    def insert_scheduled_touch(self, prospect_id, client_id, channel, scheduled_at,
-                               sequence_step=None) -> None:
+    def insert_scheduled_touch(
+        self, prospect_id, client_id, channel, scheduled_at, sequence_step=None
+    ) -> None:
         self.scheduled.append((prospect_id, client_id, channel, scheduled_at, sequence_step))
 
     def build_drip(self) -> NurtureDrip:
@@ -72,26 +77,34 @@ def cold_prospect_info() -> dict:
 # 1. next_channel_for — alternating pattern
 # ---------------------------------------------------------------------------
 
+
 def test_next_channel_email_at_0():
     assert next_channel_for(0) == "email"
+
 
 def test_next_channel_linkedin_at_1():
     assert next_channel_for(1) == "linkedin"
 
+
 def test_next_channel_email_at_2():
     assert next_channel_for(2) == "email"
+
 
 def test_next_channel_linkedin_at_3():
     assert next_channel_for(3) == "linkedin"
 
+
 def test_next_channel_email_at_4():
     assert next_channel_for(4) == "email"
+
 
 def test_next_channel_linkedin_at_5():
     assert next_channel_for(5) == "linkedin"
 
+
 def test_next_channel_none_at_6():
     assert next_channel_for(6) is None
+
 
 def test_next_channel_none_beyond_cap():
     assert next_channel_for(10) is None
@@ -100,6 +113,7 @@ def test_next_channel_none_beyond_cap():
 # ---------------------------------------------------------------------------
 # 2-6. is_eligible
 # ---------------------------------------------------------------------------
+
 
 def test_is_eligible_cold_prospect_true():
     store = FakeStore(prospect_info={"p1": cold_prospect_info()})
@@ -110,9 +124,15 @@ def test_is_eligible_cold_prospect_true():
 
 
 def test_is_eligible_rejects_non_complete_status():
-    store = FakeStore(prospect_info={"p1": {
-        "outreach_status": "in_sequence", "has_reply": False, "has_meeting": False,
-    }})
+    store = FakeStore(
+        prospect_info={
+            "p1": {
+                "outreach_status": "in_sequence",
+                "has_reply": False,
+                "has_meeting": False,
+            }
+        }
+    )
     drip = store.build_drip()
     eligible, reason = drip.is_eligible("p1")
     assert eligible is False
@@ -121,9 +141,15 @@ def test_is_eligible_rejects_non_complete_status():
 
 
 def test_is_eligible_rejects_has_reply():
-    store = FakeStore(prospect_info={"p1": {
-        "outreach_status": "complete", "has_reply": True, "has_meeting": False,
-    }})
+    store = FakeStore(
+        prospect_info={
+            "p1": {
+                "outreach_status": "complete",
+                "has_reply": True,
+                "has_meeting": False,
+            }
+        }
+    )
     drip = store.build_drip()
     eligible, reason = drip.is_eligible("p1")
     assert eligible is False
@@ -131,9 +157,15 @@ def test_is_eligible_rejects_has_reply():
 
 
 def test_is_eligible_rejects_has_meeting():
-    store = FakeStore(prospect_info={"p1": {
-        "outreach_status": "complete", "has_reply": False, "has_meeting": True,
-    }})
+    store = FakeStore(
+        prospect_info={
+            "p1": {
+                "outreach_status": "complete",
+                "has_reply": False,
+                "has_meeting": True,
+            }
+        }
+    )
     drip = store.build_drip()
     eligible, reason = drip.is_eligible("p1")
     assert eligible is False
@@ -141,9 +173,15 @@ def test_is_eligible_rejects_has_meeting():
 
 
 def test_is_eligible_rejects_suppressed():
-    store = FakeStore(prospect_info={"p1": {
-        "outreach_status": "suppressed", "has_reply": False, "has_meeting": False,
-    }})
+    store = FakeStore(
+        prospect_info={
+            "p1": {
+                "outreach_status": "suppressed",
+                "has_reply": False,
+                "has_meeting": False,
+            }
+        }
+    )
     drip = store.build_drip()
     eligible, reason = drip.is_eligible("p1")
     assert eligible is False
@@ -153,6 +191,7 @@ def test_is_eligible_rejects_suppressed():
 # ---------------------------------------------------------------------------
 # 7. enqueue happy path
 # ---------------------------------------------------------------------------
+
 
 def test_enqueue_cold_prospect_creates_active_state_and_schedules_touch():
     store = FakeStore(prospect_info={"p1": cold_prospect_info()})
@@ -183,11 +222,15 @@ def test_enqueue_cold_prospect_creates_active_state_and_schedules_touch():
 # 8. enqueue idempotent — already-active
 # ---------------------------------------------------------------------------
 
+
 def test_enqueue_already_active_returns_already_active_no_duplicate():
     existing = NurtureState(
-        prospect_id="p1", client_id="cl1", next_channel="linkedin",
+        prospect_id="p1",
+        client_id="cl1",
+        next_channel="linkedin",
         next_scheduled_at=FIXED_NOW + timedelta(days=15),
-        touches_sent=1, status=NurtureStatus.ACTIVE,
+        touches_sent=1,
+        status=NurtureStatus.ACTIVE,
         started_at=FIXED_NOW,
     )
     store = FakeStore(prospect_info={"p1": cold_prospect_info()}, initial_state=existing)
@@ -206,11 +249,16 @@ def test_enqueue_already_active_returns_already_active_no_duplicate():
 # 9. enqueue exhausted
 # ---------------------------------------------------------------------------
 
+
 def test_enqueue_exhausted_returns_exhausted_no_touch():
     existing = NurtureState(
-        prospect_id="p1", client_id="cl1", next_channel=None,
-        next_scheduled_at=None, touches_sent=6,
-        status=NurtureStatus.EXHAUSTED, started_at=FIXED_NOW,
+        prospect_id="p1",
+        client_id="cl1",
+        next_channel=None,
+        next_scheduled_at=None,
+        touches_sent=6,
+        status=NurtureStatus.EXHAUSTED,
+        started_at=FIXED_NOW,
     )
     store = FakeStore(prospect_info={"p1": cold_prospect_info()}, initial_state=existing)
     drip = store.build_drip()
@@ -225,10 +273,17 @@ def test_enqueue_exhausted_returns_exhausted_no_touch():
 # 10. enqueue ineligible (suppressed)
 # ---------------------------------------------------------------------------
 
+
 def test_enqueue_suppressed_returns_skipped():
-    store = FakeStore(prospect_info={"p1": {
-        "outreach_status": "suppressed", "has_reply": False, "has_meeting": False,
-    }})
+    store = FakeStore(
+        prospect_info={
+            "p1": {
+                "outreach_status": "suppressed",
+                "has_reply": False,
+                "has_meeting": False,
+            }
+        }
+    )
     drip = store.build_drip()
     result = drip.enqueue("p1", "cl1")
 
@@ -241,11 +296,16 @@ def test_enqueue_suppressed_returns_skipped():
 # 11. record_send advances 0->1 with next_channel='linkedin'
 # ---------------------------------------------------------------------------
 
+
 def test_record_send_advances_to_touch_1_linkedin():
     state = NurtureState(
-        prospect_id="p1", client_id="cl1", next_channel="email",
-        next_scheduled_at=FIXED_NOW, touches_sent=0,
-        status=NurtureStatus.ACTIVE, started_at=FIXED_NOW,
+        prospect_id="p1",
+        client_id="cl1",
+        next_channel="email",
+        next_scheduled_at=FIXED_NOW,
+        touches_sent=0,
+        status=NurtureStatus.ACTIVE,
+        started_at=FIXED_NOW,
     )
     store = FakeStore(initial_state=state)
     drip = store.build_drip()
@@ -265,11 +325,16 @@ def test_record_send_advances_to_touch_1_linkedin():
 # 12. record_send alternates channels across 6 calls
 # ---------------------------------------------------------------------------
 
+
 def test_record_send_alternates_channels_across_6_calls():
     state = NurtureState(
-        prospect_id="p1", client_id="cl1", next_channel="email",
-        next_scheduled_at=FIXED_NOW, touches_sent=0,
-        status=NurtureStatus.ACTIVE, started_at=FIXED_NOW,
+        prospect_id="p1",
+        client_id="cl1",
+        next_channel="email",
+        next_scheduled_at=FIXED_NOW,
+        touches_sent=0,
+        status=NurtureStatus.ACTIVE,
+        started_at=FIXED_NOW,
     )
     store = FakeStore(initial_state=state)
     drip = store.build_drip()
@@ -277,9 +342,9 @@ def test_record_send_alternates_channels_across_6_calls():
     expected_sequence = ["linkedin", "email", "linkedin", "email", "linkedin"]
     for i, expected_ch in enumerate(expected_sequence):
         result = drip.record_send("p1")
-        assert result.action == "enqueued", f"call {i+1}: expected enqueued got {result.action}"
+        assert result.action == "enqueued", f"call {i + 1}: expected enqueued got {result.action}"
         assert result.state.next_channel == expected_ch, (
-            f"call {i+1}: expected {expected_ch} got {result.state.next_channel}"
+            f"call {i + 1}: expected {expected_ch} got {result.state.next_channel}"
         )
 
 
@@ -287,11 +352,16 @@ def test_record_send_alternates_channels_across_6_calls():
 # 13. record_send at touch 5 -> touch 6 marks exhausted, no further insert
 # ---------------------------------------------------------------------------
 
+
 def test_record_send_at_touch_5_marks_exhausted():
     state = NurtureState(
-        prospect_id="p1", client_id="cl1", next_channel="linkedin",
-        next_scheduled_at=FIXED_NOW, touches_sent=5,
-        status=NurtureStatus.ACTIVE, started_at=FIXED_NOW,
+        prospect_id="p1",
+        client_id="cl1",
+        next_channel="linkedin",
+        next_scheduled_at=FIXED_NOW,
+        touches_sent=5,
+        status=NurtureStatus.ACTIVE,
+        started_at=FIXED_NOW,
     )
     store = FakeStore(initial_state=state)
     drip = store.build_drip()
@@ -309,6 +379,7 @@ def test_record_send_at_touch_5_marks_exhausted():
 # ---------------------------------------------------------------------------
 # 14. record_send on missing state -> skipped / no drip state
 # ---------------------------------------------------------------------------
+
 
 def test_record_send_missing_state_returns_skipped():
     store = FakeStore()  # no initial state

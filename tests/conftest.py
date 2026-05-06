@@ -19,7 +19,9 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 # Set test environment before importing app modules
-os.environ["ENVIRONMENT"] = "development"  # Use development for tests (Settings model requires development/staging/production)
+os.environ["ENVIRONMENT"] = (
+    "development"  # Use development for tests (Settings model requires development/staging/production)
+)
 os.environ["DATABASE_URL"] = "postgresql+asyncpg://test:test@localhost:5432/test_db"
 # Disable Prefect ephemeral server to avoid timeouts in tests
 os.environ["PREFECT_SERVER_ALLOW_EPHEMERAL_MODE"] = "false"
@@ -38,6 +40,7 @@ os.environ["SYNTHFLOW_API_KEY"] = "test-synthflow-key"
 # ============================================================================
 # LAW IX — Test Pollution Prevention (sys.modules cleanup)
 # ============================================================================
+
 
 @pytest.fixture(scope="session", autouse=True)
 def _cleanup_polluted_modules():
@@ -75,6 +78,7 @@ def _cleanup_polluted_modules():
 # Event Loop Configuration
 # ============================================================================
 
+
 @pytest.fixture(scope="session")
 def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
     """Create an event loop for the test session."""
@@ -86,6 +90,7 @@ def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
 # ============================================================================
 # Database Fixtures
 # ============================================================================
+
 
 @pytest_asyncio.fixture
 async def db_session() -> AsyncGenerator[AsyncMock, None]:
@@ -130,6 +135,7 @@ async def real_db_session() -> AsyncGenerator[AsyncSession, None]:
 # Redis Fixtures
 # ============================================================================
 
+
 @pytest.fixture
 def mock_redis() -> MagicMock:
     """Mock Redis client for testing."""
@@ -151,6 +157,7 @@ def mock_redis() -> MagicMock:
 # API Client Fixtures
 # ============================================================================
 
+
 @pytest_asyncio.fixture
 async def api_client() -> AsyncGenerator[AsyncClient, None]:
     """
@@ -167,6 +174,7 @@ async def api_client() -> AsyncGenerator[AsyncClient, None]:
 # ============================================================================
 # Authentication Fixtures
 # ============================================================================
+
 
 @pytest.fixture
 def mock_user() -> dict:
@@ -239,6 +247,7 @@ def auth_headers(mock_user: dict) -> dict:
 # Campaign Fixtures
 # ============================================================================
 
+
 @pytest.fixture
 def mock_campaign(mock_client: dict) -> dict:
     """Mock campaign for testing."""
@@ -271,6 +280,7 @@ def mock_campaign(mock_client: dict) -> dict:
 # ============================================================================
 # Lead Fixtures
 # ============================================================================
+
 
 @pytest.fixture
 def mock_lead(mock_client: dict, mock_campaign: dict) -> dict:
@@ -343,6 +353,7 @@ def mock_lead_cold(mock_lead: dict) -> dict:
 # Activity Fixtures
 # ============================================================================
 
+
 @pytest.fixture
 def mock_activity(mock_lead: dict) -> dict:
     """Mock activity for testing."""
@@ -367,16 +378,19 @@ def mock_activity(mock_lead: dict) -> dict:
 # Integration Mock Fixtures
 # ============================================================================
 
+
 @pytest.fixture
 def mock_resend_client() -> MagicMock:
     """Mock Resend email client."""
     client = MagicMock()
-    client.send = AsyncMock(return_value={
-        "id": f"email_{uuid.uuid4().hex[:12]}",
-        "from": "sender@agency.com",
-        "to": ["recipient@example.com"],
-        "created_at": datetime.now(UTC).isoformat(),
-    })
+    client.send = AsyncMock(
+        return_value={
+            "id": f"email_{uuid.uuid4().hex[:12]}",
+            "from": "sender@agency.com",
+            "to": ["recipient@example.com"],
+            "created_at": datetime.now(UTC).isoformat(),
+        }
+    )
     return client
 
 
@@ -397,14 +411,18 @@ def mock_twilio_client() -> MagicMock:
 def mock_heyreach_client() -> MagicMock:
     """Mock HeyReach LinkedIn client."""
     client = MagicMock()
-    client.send_connection_request = AsyncMock(return_value={
-        "id": f"conn_{uuid.uuid4().hex[:12]}",
-        "status": "pending",
-    })
-    client.send_message = AsyncMock(return_value={
-        "id": f"msg_{uuid.uuid4().hex[:12]}",
-        "status": "sent",
-    })
+    client.send_connection_request = AsyncMock(
+        return_value={
+            "id": f"conn_{uuid.uuid4().hex[:12]}",
+            "status": "pending",
+        }
+    )
+    client.send_message = AsyncMock(
+        return_value={
+            "id": f"msg_{uuid.uuid4().hex[:12]}",
+            "status": "sent",
+        }
+    )
     client.get_daily_usage = AsyncMock(return_value={"requests_today": 5, "limit": 17})
     return client
 
@@ -425,6 +443,7 @@ def mock_anthropic_client() -> MagicMock:
 # Rate Limiting Fixtures
 # ============================================================================
 
+
 @pytest.fixture
 def mock_rate_limiter(mock_redis: MagicMock) -> MagicMock:
     """Mock rate limiter for testing."""
@@ -440,22 +459,25 @@ def mock_rate_limiter(mock_redis: MagicMock) -> MagicMock:
 # Engine Fixtures
 # ============================================================================
 
+
 @pytest.fixture
 def mock_scout_engine() -> MagicMock:
     """Mock Scout engine for enrichment."""
     engine = MagicMock()
-    engine.enrich = AsyncMock(return_value={
-        "success": True,
-        "data": {
-            "first_name": "Jane",
-            "last_name": "Smith",
-            "title": "CTO",
-            "company_name": "TechCompany",
-            "industry": "Technology",
-        },
-        "source": "leadmagic",
-        "cached": False,
-    })
+    engine.enrich = AsyncMock(
+        return_value={
+            "success": True,
+            "data": {
+                "first_name": "Jane",
+                "last_name": "Smith",
+                "title": "CTO",
+                "company_name": "TechCompany",
+                "industry": "Technology",
+            },
+            "source": "leadmagic",
+            "cached": False,
+        }
+    )
     return engine
 
 
@@ -463,17 +485,19 @@ def mock_scout_engine() -> MagicMock:
 def mock_scorer_engine() -> MagicMock:
     """Mock Scorer engine for propensity calculation."""
     engine = MagicMock()
-    engine.score = AsyncMock(return_value={
-        "propensity_score": 82,
-        "propensity_tier": "warm",
-        "components": {
-            "data_quality": 90,
-            "authority": 85,
-            "company_fit": 80,
-            "timing": 75,
-            "risk": 80,
-        },
-    })
+    engine.score = AsyncMock(
+        return_value={
+            "propensity_score": 82,
+            "propensity_tier": "warm",
+            "components": {
+                "data_quality": 90,
+                "authority": 85,
+                "company_fit": 80,
+                "timing": 75,
+                "risk": 80,
+            },
+        }
+    )
     return engine
 
 
@@ -481,11 +505,13 @@ def mock_scorer_engine() -> MagicMock:
 def mock_allocator_engine() -> MagicMock:
     """Mock Allocator engine for channel selection."""
     engine = MagicMock()
-    engine.allocate = AsyncMock(return_value={
-        "channel": "email",
-        "resource_id": "email_account_1",
-        "within_limits": True,
-    })
+    engine.allocate = AsyncMock(
+        return_value={
+            "channel": "email",
+            "resource_id": "email_account_1",
+            "within_limits": True,
+        }
+    )
     return engine
 
 
@@ -493,15 +519,19 @@ def mock_allocator_engine() -> MagicMock:
 def mock_content_engine() -> MagicMock:
     """Mock Content engine for AI generation."""
     engine = MagicMock()
-    engine.generate_email = AsyncMock(return_value={
-        "subject": "Quick question about TechCompany",
-        "body": "Hi Jane, I noticed TechCompany is expanding...",
-        "personalization_score": 0.85,
-    })
-    engine.generate_sms = AsyncMock(return_value={
-        "body": "Hi Jane, quick Q about TechCompany expansion. Worth 5 min chat?",
-        "personalization_score": 0.80,
-    })
+    engine.generate_email = AsyncMock(
+        return_value={
+            "subject": "Quick question about TechCompany",
+            "body": "Hi Jane, I noticed TechCompany is expanding...",
+            "personalization_score": 0.85,
+        }
+    )
+    engine.generate_sms = AsyncMock(
+        return_value={
+            "body": "Hi Jane, quick Q about TechCompany expansion. Worth 5 min chat?",
+            "personalization_score": 0.80,
+        }
+    )
     return engine
 
 
@@ -509,17 +539,20 @@ def mock_content_engine() -> MagicMock:
 def mock_closer_engine() -> MagicMock:
     """Mock Closer engine for intent classification."""
     engine = MagicMock()
-    engine.classify_intent = AsyncMock(return_value={
-        "intent": "interested",
-        "confidence": 0.92,
-        "suggested_action": "schedule_meeting",
-    })
+    engine.classify_intent = AsyncMock(
+        return_value={
+            "intent": "interested",
+            "confidence": 0.92,
+            "suggested_action": "schedule_meeting",
+        }
+    )
     return engine
 
 
 # ============================================================================
 # Webhook Fixtures
 # ============================================================================
+
 
 @pytest.fixture
 def postmark_inbound_payload() -> dict:
@@ -566,6 +599,7 @@ def heyreach_inbound_payload() -> dict:
 # ============================================================================
 # Utility Functions
 # ============================================================================
+
 
 def generate_uuid() -> str:
     """Generate a random UUID string."""

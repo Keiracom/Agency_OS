@@ -13,11 +13,7 @@ from pathlib import Path
 from typing import Any
 
 # ── Input / Output paths ──────────────────────────────────────────────────────
-SESSION_DIR = Path(
-    os.path.expanduser(
-        "~/.claude/projects/-home-elliotbot-clawd-Agency-OS"
-    )
-)
+SESSION_DIR = Path(os.path.expanduser("~/.claude/projects/-home-elliotbot-clawd-Agency-OS"))
 
 TARGET_FILES = [
     "4298ba10-a9f2-4816-b3cf-c6b781eb9dd1.jsonl",
@@ -47,13 +43,9 @@ REDACTION_PATTERNS = [
     # Twilio/generic auth tokens — 32-char hex
     (re.compile(r"\b[a-f0-9]{32}\b"), "[REDACTED]"),
     # UUID-format secrets (8-4-4-4-12) — API keys in UUID form
-    (re.compile(
-        r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b"
-    ), "[REDACTED]"),
+    (re.compile(r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b"), "[REDACTED]"),
     # Generic env var assignment: VAR_NAME=<value>=<20+ non-space chars>
-    (re.compile(
-        r"(?m)^([A-Z][A-Z0-9_]+=)([A-Za-z0-9_\-+/=.@!#$%^&*]{20,})\s*$"
-    ), r"\1[REDACTED]"),
+    (re.compile(r"(?m)^([A-Z][A-Z0-9_]+=)([A-Za-z0-9_\-+/=.@!#$%^&*]{20,})\s*$"), r"\1[REDACTED]"),
 ]
 
 
@@ -80,6 +72,7 @@ def extract_text(content: Any) -> str:
 
 
 # ── Category matchers ─────────────────────────────────────────────────────────
+
 
 def is_dave_directive(role: str, text: str) -> bool:
     if role != "user":
@@ -212,6 +205,7 @@ def is_bug_discovery(role: str, text: str) -> bool:
 
 # ── Entry container ────────────────────────────────────────────────────────────
 
+
 class Entry:
     def __init__(self, timestamp: str, session_file: str, text: str):
         self.timestamp = timestamp or "no timestamp"
@@ -220,6 +214,7 @@ class Entry:
 
 
 # ── Parse a single JSONL file ─────────────────────────────────────────────────
+
 
 def parse_file(filepath: Path) -> list[dict]:
     """Return list of dicts with keys: timestamp, role, text (already extracted)."""
@@ -323,9 +318,7 @@ def write_category(cat: str, entries: list[Entry]) -> None:
     outpath = OUT_DIR / CATEGORY_FILES[cat]
     lines = [f"# {title}\n"]
     for i, entry in enumerate(entries, 1):
-        lines.append(
-            f"## Entry {i} — {entry.timestamp} — {entry.session_file}\n"
-        )
+        lines.append(f"## Entry {i} — {entry.timestamp} — {entry.session_file}\n")
         lines.append("```")
         lines.append(entry.text)
         lines.append("```")
@@ -363,6 +356,7 @@ def write_index(
 
 
 # ── Main ───────────────────────────────────────────────────────────────────────
+
 
 def main() -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)

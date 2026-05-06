@@ -1,4 +1,5 @@
 """Regression tests for domain keyword extraction — Directive #328.3b."""
+
 import pytest
 from src.pipeline.free_enrichment import FreeEnrichment
 

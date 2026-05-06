@@ -2,6 +2,7 @@
 CI guard: reject hardcoded ETV ranges outside category_etv_windows.py.
 Directive #328.1 — all ETV windows must come from the canonical config.
 """
+
 import re
 import pytest
 from pathlib import Path
@@ -9,12 +10,12 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).parent.parent.parent
 EXEMPT_FILES = {
     "src/config/category_etv_windows.py",  # canonical source
-    "src/integrations/dataforseo.py",       # display buckets, not discovery
-    "src/pipeline/stage_4_scoring.py",      # scoring thresholds, not discovery
-    "src/clients/dfs_labs_client.py",       # paid_etv_min=0.0 is API param, not window
-    "scripts/",                              # diagnostic scripts exempt
-    "tests/",                                # tests exempt
-    "research/",                             # research docs exempt
+    "src/integrations/dataforseo.py",  # display buckets, not discovery
+    "src/pipeline/stage_4_scoring.py",  # scoring thresholds, not discovery
+    "src/clients/dfs_labs_client.py",  # paid_etv_min=0.0 is API param, not window
+    "scripts/",  # diagnostic scripts exempt
+    "tests/",  # tests exempt
+    "research/",  # research docs exempt
 }
 
 # Only flag the patterns that are specifically discovery ETV windows.
@@ -61,7 +62,7 @@ def test_no_hardcoded_etv_windows():
                 if "=" not in stripped:
                     continue
                 # Must be a default parameter assignment with a numeric literal
-                if not re.search(rf'{pattern}\s*(?::\s*float\s*)?=\s*\d', stripped):
+                if not re.search(rf"{pattern}\s*(?::\s*float\s*)?=\s*\d", stripped):
                     continue
                 # Skip None defaults (they raise ValueError at runtime — safe)
                 if NONE_DEFAULT.search(stripped):

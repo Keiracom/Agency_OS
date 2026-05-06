@@ -35,18 +35,27 @@ SNAPSHOT_FILE = Path("/tmp/gmb_pilot2_snapshot.json")
 RETRY_SNAPSHOT_FILE = Path("/tmp/gmb_pilot2_retry_snapshot.json")
 BUSINESSES_FILE = Path("/tmp/gmb_pilot2_businesses.json")
 
-BD_POLL_MAX_SEC = 900   # 15 minutes
-BD_POLL_INTERVAL = 10   # seconds between status checks
-UPSERT_CHUNK = 500       # records per Supabase REST batch
+BD_POLL_MAX_SEC = 900  # 15 minutes
+BD_POLL_INTERVAL = 10  # seconds between status checks
+UPSERT_CHUNK = 500  # records per Supabase REST batch
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
+
 
 def mcp_sql(q, timeout=60):
     """Run SQL via MCP bridge, return list of row dicts."""
     r = subprocess.run(
-        ["node", str(MCP), "call", "supabase", "execute_sql",
-         json.dumps({"project_id": PROJ, "query": q})],
-        capture_output=True, text=True, timeout=timeout
+        [
+            "node",
+            str(MCP),
+            "call",
+            "supabase",
+            "execute_sql",
+            json.dumps({"project_id": PROJ, "query": q}),
+        ],
+        capture_output=True,
+        text=True,
+        timeout=timeout,
     )
     raw = r.stdout.strip()
     if not raw:
@@ -60,7 +69,7 @@ def mcp_sql(q, timeout=60):
         s = raw
 
     # Try extracting from untrusted-data block (handles both small and large payloads)
-    m = re.search(r'<untrusted-data[^>]+>\s*(.*?)\s*</untrusted-data', s, re.DOTALL)
+    m = re.search(r"<untrusted-data[^>]+>\s*(.*?)\s*</untrusted-data", s, re.DOTALL)
     if m:
         content = m.group(1).strip()
         try:
@@ -70,11 +79,11 @@ def mcp_sql(q, timeout=60):
 
     # Fallback: find outermost JSON array
     # Find first '[' and last ']' to handle large nested arrays
-    start = s.find('[')
-    end = s.rfind(']')
+    start = s.find("[")
+    end = s.rfind("]")
     if start != -1 and end != -1 and end > start:
         try:
-            return json.loads(s[start:end + 1])
+            return json.loads(s[start : end + 1])
         except Exception:
             pass
     return []
@@ -96,13 +105,13 @@ def supabase_bulk_insert(rows, table="gmb_pilot_results"):
     url = f"{os.environ['SUPABASE_URL']}/rest/v1/{table}"
     headers = {
         "Authorization": f"Bearer {os.environ['SUPABASE_SERVICE_KEY']}",
-        "apikey": os.environ['SUPABASE_SERVICE_KEY'],
+        "apikey": os.environ["SUPABASE_SERVICE_KEY"],
         "Content-Type": "application/json",
         "Prefer": "return=minimal",
     }
     inserted = 0
     for i in range(0, len(rows), UPSERT_CHUNK):
-        chunk = rows[i:i + UPSERT_CHUNK]
+        chunk = rows[i : i + UPSERT_CHUNK]
         resp = httpx.post(url, headers=headers, json=chunk, timeout=60)
         if resp.status_code not in (200, 201):
             print(f"  REST insert error {resp.status_code}: {resp.text[:200]}")
@@ -181,23 +190,23 @@ def bulk_update_business_universe(updates, batch=40):
     Sends 40 UPDATE statements per MCP call.
     """
     for i in range(0, len(updates), batch):
-        chunk = updates[i:i + batch]
+        chunk = updates[i : i + batch]
         stmts = []
-        for (abn, f) in chunk:
+        for abn, f in chunk:
             rating_sql = str(f["rating"]) if f.get("rating") else "NULL"
             lat_sql = str(f["lat"]) if f.get("lat") else "NULL"
             lon_sql = str(f["lon"]) if f.get("lon") else "NULL"
             stmts.append(f"""
                 UPDATE business_universe SET
-                  gmb_place_id='{safe(f.get("place_id",""))}',
-                  gmb_cid='{safe(f.get("cid",""))}',
-                  gmb_category='{safe(f.get("cat",""))}',
+                  gmb_place_id='{safe(f.get("place_id", ""))}',
+                  gmb_cid='{safe(f.get("cid", ""))}',
+                  gmb_category='{safe(f.get("cat", ""))}',
                   gmb_rating={rating_sql},
                   gmb_review_count={int(f.get("reviews_cnt", 0))},
-                  gmb_domain='{safe(f.get("domain",""))}',
-                  gmb_phone='{safe(f.get("phone",""))}',
-                  gmb_address='{safe(f.get("address",""))}',
-                  gmb_city='{safe(f.get("city",""))}',
+                  gmb_domain='{safe(f.get("domain", ""))}',
+                  gmb_phone='{safe(f.get("phone", ""))}',
+                  gmb_address='{safe(f.get("address", ""))}',
+                  gmb_city='{safe(f.get("city", ""))}',
                   gmb_latitude={lat_sql},
                   gmb_longitude={lon_sql},
                   gmb_enriched_at=NOW(), updated_at=NOW()
@@ -208,16 +217,18 @@ def bulk_update_business_universe(updates, batch=40):
 
 # ── Main ─────────────────────────────────────────────────────────────────────
 
+
 def main(dry_run=False):
     from dotenv import load_dotenv
+
     load_dotenv(Path.home() / ".config" / "agency-os" / ".env")
 
     api_key = os.environ["BRIGHTDATA_API_KEY"]
     t_total = time.time()
 
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print(f"GMB PILOT 2 — Directive #227 {'[DRY RUN]' if dry_run else ''}")
-    print("="*60)
+    print("=" * 60)
 
     # ── Phase 0: Select 1,000 fresh businesses ───────────────────────────────
     print("\n[Phase 0] Selecting businesses...")
@@ -241,7 +252,8 @@ def main(dry_run=False):
             "Authorization": f"Bearer {os.environ.get('SUPABASE_ACCESS_TOKEN', supa_key)}",
             "Content-Type": "application/json",
         },
-        json={"query": """
+        json={
+            "query": """
             SELECT abn, trading_name, state, postcode
             FROM business_universe
             WHERE abn NOT IN (SELECT abn FROM gmb_pilot_results)
@@ -256,7 +268,8 @@ def main(dry_run=False):
               AND trading_name !~ 'ACN[[:space:]]+[0-9]+'
             ORDER BY RANDOM()
             LIMIT 1000
-        """},
+        """
+        },
         timeout=30,
     )
     if mgmt_resp.status_code in (200, 201):
@@ -267,7 +280,8 @@ def main(dry_run=False):
     else:
         print(f"  Supabase management API error {mgmt_resp.status_code}: {mgmt_resp.text[:200]}")
         # Fallback: MCP with smaller LIMIT to test
-        businesses = mcp_sql("""
+        businesses = mcp_sql(
+            """
             SELECT abn, trading_name, state, postcode
             FROM business_universe
             WHERE abn NOT IN (SELECT abn FROM gmb_pilot_results)
@@ -282,7 +296,9 @@ def main(dry_run=False):
               AND trading_name !~ 'ACN[[:space:]]+[0-9]+'
             ORDER BY abn
             LIMIT 1000
-        """, timeout=60)
+        """,
+            timeout=60,
+        )
     print(f"  Selected: {len(businesses)} businesses")
 
     if len(businesses) < 1000:
@@ -301,8 +317,7 @@ def main(dry_run=False):
     # ── Phase 1: Trigger BD location snapshot ────────────────────────────────
     print("\n[Phase 1] Triggering BD batch snapshot...")
     inputs = [
-        {"keyword": f"{b['trading_name']} {b['postcode']}", "country": "AU"}
-        for b in businesses
+        {"keyword": f"{b['trading_name']} {b['postcode']}", "country": "AU"} for b in businesses
     ]
     t_bd_start = time.time()
     snapshot_id = bd_trigger(api_key, inputs, discover_by="location")
@@ -326,7 +341,9 @@ def main(dry_run=False):
     errors = [r for r in data if r.get("error")]
     single_page_errors = [r for r in errors if "does not contain a list" in str(r.get("error", ""))]
     other_errors = [r for r in errors if "does not contain a list" not in str(r.get("error", ""))]
-    print(f"  Valid: {len(valid)} | Single-page errors: {len(single_page_errors)} | Other errors: {len(other_errors)}")
+    print(
+        f"  Valid: {len(valid)} | Single-page errors: {len(single_page_errors)} | Other errors: {len(other_errors)}"
+    )
 
     # ── Phase 4: Retry single-page errors ───────────────────────────────────
     # Get the ABNs of single-page-error businesses by matching keywords back
@@ -382,8 +399,8 @@ def main(dry_run=False):
 
     # Build name lookup from ALL results (main + retry)
     all_valid = valid + retry_results
-    result_by_kw = {}     # discovery_input.keyword → first result
-    result_by_name = {}   # normalized name → result
+    result_by_kw = {}  # discovery_input.keyword → first result
+    result_by_name = {}  # normalized name → result
 
     for r in all_valid:
         di = r.get("discovery_input") or {}
@@ -394,8 +411,8 @@ def main(dry_run=False):
         if norm:
             result_by_name.setdefault(norm, r)
 
-    pilot_rows = []       # for gmb_pilot_results
-    bu_updates = []       # for business_universe
+    pilot_rows = []  # for gmb_pilot_results
+    bu_updates = []  # for business_universe
     matched = 0
     not_found = 0
     kw_matched = 0
@@ -404,14 +421,12 @@ def main(dry_run=False):
 
     for b in businesses:
         kw = f"{b['trading_name'].lower()} {b['postcode']}".strip()
-        kw_retry = f"{b['trading_name'].lower()} {b.get('state','nsw')}".strip()
+        kw_retry = f"{b['trading_name'].lower()} {b.get('state', 'nsw')}".strip()
         norm_b = normalize(b["trading_name"])
         words = [w for w in norm_b.split() if len(w) > 4]
 
         # Match priority: keyword (main) → keyword (retry) → exact name → prefix
-        gmb = (result_by_kw.get(kw)
-               or result_by_kw.get(kw_retry)
-               or result_by_name.get(norm_b))
+        gmb = result_by_kw.get(kw) or result_by_kw.get(kw_retry) or result_by_name.get(norm_b)
         match_path = None
 
         if result_by_kw.get(kw):
@@ -439,8 +454,12 @@ def main(dry_run=False):
             cid = gmb.get("fid_location", "") or gmb.get("cid", "") or ""
             details = gmb.get("business_details") or []
             domain = next(
-                (d.get("details", "").strip() for d in details if d.get("field_name") == "authority"),
-                gmb.get("open_website", "") or ""
+                (
+                    d.get("details", "").strip()
+                    for d in details
+                    if d.get("field_name") == "authority"
+                ),
+                gmb.get("open_website", "") or "",
             )
             if domain and domain.startswith("http"):
                 domain = urlparse(domain).netloc.replace("www.", "")
@@ -452,34 +471,50 @@ def main(dry_run=False):
             lat = float(gmb.get("lat") or 0)
             lon = float(gmb.get("lon") or 0)
 
-            pilot_rows.append({
-                "abn": b["abn"],
-                "trading_name": b["trading_name"],
-                "serp_match": True,
-                "gmb_category": cat or None,
-                "gmb_rating": rating if rating else None,
-                "gmb_review_count": reviews_cnt,
-                "gmb_domain": domain or None,
-                "match_confidence": match_path,
-            })
-            bu_updates.append((b["abn"], {
-                "place_id": place_id, "cid": cid, "cat": cat,
-                "rating": rating, "reviews_cnt": reviews_cnt, "domain": domain,
-                "phone": phone, "address": address, "city": city,
-                "lat": lat, "lon": lon,
-            }))
+            pilot_rows.append(
+                {
+                    "abn": b["abn"],
+                    "trading_name": b["trading_name"],
+                    "serp_match": True,
+                    "gmb_category": cat or None,
+                    "gmb_rating": rating if rating else None,
+                    "gmb_review_count": reviews_cnt,
+                    "gmb_domain": domain or None,
+                    "match_confidence": match_path,
+                }
+            )
+            bu_updates.append(
+                (
+                    b["abn"],
+                    {
+                        "place_id": place_id,
+                        "cid": cid,
+                        "cat": cat,
+                        "rating": rating,
+                        "reviews_cnt": reviews_cnt,
+                        "domain": domain,
+                        "phone": phone,
+                        "address": address,
+                        "city": city,
+                        "lat": lat,
+                        "lon": lon,
+                    },
+                )
+            )
         else:
             not_found += 1
-            pilot_rows.append({
-                "abn": b["abn"],
-                "trading_name": b["trading_name"],
-                "serp_match": False,
-                "gmb_category": None,
-                "gmb_rating": None,
-                "gmb_review_count": 0,
-                "gmb_domain": None,
-                "match_confidence": "none",
-            })
+            pilot_rows.append(
+                {
+                    "abn": b["abn"],
+                    "trading_name": b["trading_name"],
+                    "serp_match": False,
+                    "gmb_category": None,
+                    "gmb_rating": None,
+                    "gmb_review_count": 0,
+                    "gmb_domain": None,
+                    "match_confidence": "none",
+                }
+            )
 
     print(f"  Matched: {matched} | Not found: {not_found}")
     print(f"  By path: keyword={kw_matched} name_exact={name_matched} prefix={prefix_matched}")
@@ -526,9 +561,9 @@ def main(dry_run=False):
     total_elapsed = time.time() - t_total
 
     # ── Phase 9: Report ──────────────────────────────────────────────────────
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("PILOT 2 RESULTS")
-    print("="*60)
+    print("=" * 60)
     print(f"Total rows written:        {total_written}")
     print(f"Unique ABNs:               {unique}")
     print(f"Matched (GMB found):       {matched_db} ({match_rate:.1f}%)")
@@ -536,14 +571,18 @@ def main(dry_run=False):
     print(f"BD valid records:          {len(valid)}")
     print(f"BD single-page errors:     {len(single_page_errors)}")
     print(f"BD other errors:           {len(other_errors)}")
-    print(f"BD snapshot time:          {bd_elapsed:.0f}s ({bd_elapsed/60:.1f} min)")
+    print(f"BD snapshot time:          {bd_elapsed:.0f}s ({bd_elapsed / 60:.1f} min)")
     print(f"DB write time:             {db_elapsed:.1f}s")
-    print(f"Total wall clock:          {total_elapsed:.0f}s ({total_elapsed/60:.1f} min)")
+    print(f"Total wall clock:          {total_elapsed:.0f}s ({total_elapsed / 60:.1f} min)")
 
     print("\nVS TARGETS:")
     print(f"  Match rate:   {match_rate:.1f}%  (target 65%+)  {'✅' if match_rate >= 65 else '❌'}")
-    print(f"  Zero-result:  {not_found_db}    (target <120)   {'✅' if not_found_db < 120 else '❌'}")
-    print(f"  BD errors:    {len(single_page_errors)}   (target ~0)    {'✅' if len(single_page_errors) < 30 else f'❌ — {len(single_page_errors)} remain'}")
+    print(
+        f"  Zero-result:  {not_found_db}    (target <120)   {'✅' if not_found_db < 120 else '❌'}"
+    )
+    print(
+        f"  BD errors:    {len(single_page_errors)}   (target ~0)    {'✅' if len(single_page_errors) < 30 else f'❌ — {len(single_page_errors)} remain'}"
+    )
     print(f"  DB write:     {db_elapsed:.0f}s   (target <60s)  {'✅' if db_elapsed < 60 else '❌'}")
 
     if match_rate < 60:
@@ -551,26 +590,28 @@ def main(dry_run=False):
 
     # ── Phase 10: Write ceo_memory ───────────────────────────────────────────
     print("\n[Phase 10] Writing ceo_memory...")
-    payload = json.dumps({
-        "status": "complete",
-        "pilot": 2,
-        "snapshot_main": snapshot_id,
-        "businesses": len(businesses),
-        "total_written": total_written,
-        "unique_abns": unique,
-        "matched": matched_db,
-        "not_found": not_found_db,
-        "match_rate_pct": round(match_rate, 1),
-        "bd_valid": len(valid),
-        "bd_single_page_errors": len(single_page_errors),
-        "bd_other_errors": len(other_errors),
-        "bd_elapsed_sec": round(bd_elapsed),
-        "db_write_sec": round(db_elapsed, 1),
-        "total_elapsed_sec": round(total_elapsed),
-        "pass_match_rate": match_rate >= 65,
-        "pass_zero_result": not_found_db < 120,
-        "pass_db_write": db_elapsed < 60,
-    }).replace("'", "''")
+    payload = json.dumps(
+        {
+            "status": "complete",
+            "pilot": 2,
+            "snapshot_main": snapshot_id,
+            "businesses": len(businesses),
+            "total_written": total_written,
+            "unique_abns": unique,
+            "matched": matched_db,
+            "not_found": not_found_db,
+            "match_rate_pct": round(match_rate, 1),
+            "bd_valid": len(valid),
+            "bd_single_page_errors": len(single_page_errors),
+            "bd_other_errors": len(other_errors),
+            "bd_elapsed_sec": round(bd_elapsed),
+            "db_write_sec": round(db_elapsed, 1),
+            "total_elapsed_sec": round(total_elapsed),
+            "pass_match_rate": match_rate >= 65,
+            "pass_zero_result": not_found_db < 120,
+            "pass_db_write": db_elapsed < 60,
+        }
+    ).replace("'", "''")
 
     mcp_sql(f"""
         INSERT INTO ceo_memory (key, value, updated_at)

@@ -59,12 +59,21 @@ PTR_INDICATOR_RE = re.compile(
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
+
 def mcp_sql(q, timeout=60):
     """Run SQL via MCP bridge, return list of row dicts."""
     r = subprocess.run(
-        ["node", str(MCP), "call", "supabase", "execute_sql",
-         json.dumps({"project_id": PROJ, "query": q})],
-        capture_output=True, text=True, timeout=timeout
+        [
+            "node",
+            str(MCP),
+            "call",
+            "supabase",
+            "execute_sql",
+            json.dumps({"project_id": PROJ, "query": q}),
+        ],
+        capture_output=True,
+        text=True,
+        timeout=timeout,
     )
     raw = r.stdout.strip()
     if not raw:
@@ -76,7 +85,7 @@ def mcp_sql(q, timeout=60):
     except Exception:
         s = raw
 
-    m = re.search(r'<untrusted-data[^>]+>\s*(.*?)\s*</untrusted-data', s, re.DOTALL)
+    m = re.search(r"<untrusted-data[^>]+>\s*(.*?)\s*</untrusted-data", s, re.DOTALL)
     if m:
         content = m.group(1).strip()
         try:
@@ -84,11 +93,11 @@ def mcp_sql(q, timeout=60):
         except Exception:
             pass
 
-    start = s.find('[')
-    end = s.rfind(']')
+    start = s.find("[")
+    end = s.rfind("]")
     if start != -1 and end != -1 and end > start:
         try:
-            return json.loads(s[start:end + 1])
+            return json.loads(s[start : end + 1])
         except Exception:
             pass
     return []
@@ -100,7 +109,16 @@ def normalize(name):
     # Fix #3: normalise ampersand before stripping punctuation
     name = name.replace("&", "and")
     # Strip legal suffixes
-    for sfx in [" pty ltd", " pty. ltd.", " pty limited", " pty. limited", " limited", " ltd", " pty", " p/l"]:
+    for sfx in [
+        " pty ltd",
+        " pty. ltd.",
+        " pty limited",
+        " pty. limited",
+        " limited",
+        " ltd",
+        " pty",
+        " p/l",
+    ]:
         name = name.replace(sfx, "")
     # Strip all non-alphanumeric (except spaces)
     return re.sub(r"[^a-z0-9 ]", "", name).strip()
@@ -122,13 +140,13 @@ def supabase_bulk_upsert(rows, table="gmb_pilot_results"):
     url = f"{os.environ['SUPABASE_URL']}/rest/v1/{table}?on_conflict=abn"
     headers = {
         "Authorization": f"Bearer {os.environ['SUPABASE_SERVICE_KEY']}",
-        "apikey": os.environ['SUPABASE_SERVICE_KEY'],
+        "apikey": os.environ["SUPABASE_SERVICE_KEY"],
         "Content-Type": "application/json",
         "Prefer": "resolution=merge-duplicates,return=minimal",
     }
     inserted = 0
     for i in range(0, len(rows), UPSERT_CHUNK):
-        chunk = rows[i:i + UPSERT_CHUNK]
+        chunk = rows[i : i + UPSERT_CHUNK]
         resp = httpx.post(url, headers=headers, json=chunk, timeout=60)
         if resp.status_code not in (200, 201):
             print(f"  REST upsert error {resp.status_code}: {resp.text[:200]}")
@@ -204,23 +222,23 @@ def bd_download(api_key, snapshot_id):
 def bulk_update_business_universe(updates, batch=40):
     """Bulk UPDATE business_universe. updates = list of (abn, fields_dict)."""
     for i in range(0, len(updates), batch):
-        chunk = updates[i:i + batch]
+        chunk = updates[i : i + batch]
         stmts = []
-        for (abn, f) in chunk:
+        for abn, f in chunk:
             rating_sql = str(f["rating"]) if f.get("rating") else "NULL"
             lat_sql = str(f["lat"]) if f.get("lat") else "NULL"
             lon_sql = str(f["lon"]) if f.get("lon") else "NULL"
             stmts.append(f"""
                 UPDATE business_universe SET
-                  gmb_place_id='{safe(f.get("place_id",""))}',
-                  gmb_cid='{safe(f.get("cid",""))}',
-                  gmb_category='{safe(f.get("cat",""))}',
+                  gmb_place_id='{safe(f.get("place_id", ""))}',
+                  gmb_cid='{safe(f.get("cid", ""))}',
+                  gmb_category='{safe(f.get("cat", ""))}',
                   gmb_rating={rating_sql},
                   gmb_review_count={int(f.get("reviews_cnt", 0))},
-                  gmb_domain='{safe(f.get("domain",""))}',
-                  gmb_phone='{safe(f.get("phone",""))}',
-                  gmb_address='{safe(f.get("address",""))}',
-                  gmb_city='{safe(f.get("city",""))}',
+                  gmb_domain='{safe(f.get("domain", ""))}',
+                  gmb_phone='{safe(f.get("phone", ""))}',
+                  gmb_address='{safe(f.get("address", ""))}',
+                  gmb_city='{safe(f.get("city", ""))}',
                   gmb_latitude={lat_sql},
                   gmb_longitude={lon_sql},
                   gmb_enriched_at=NOW(), updated_at=NOW()
@@ -231,8 +249,10 @@ def bulk_update_business_universe(updates, batch=40):
 
 # ── Main ─────────────────────────────────────────────────────────────────────
 
+
 def main(dry_run=False):
     from dotenv import load_dotenv
+
     load_dotenv(Path.home() / ".config" / "agency-os" / ".env")
 
     api_key = os.environ["BRIGHTDATA_API_KEY"]
@@ -313,13 +333,13 @@ def main(dry_run=False):
     if dry_run:
         print("  Sample (first 10):")
         for b in businesses[:10]:
-            print(f"    {b['abn']} | {b['trading_name']} | {b.get('postcode','?')}")
+            print(f"    {b['abn']} | {b['trading_name']} | {b.get('postcode', '?')}")
         # Validate legal suffix stripping on the sample
         print("\n  Keyword construction check (first 10):")
         for b in businesses[:10]:
-            raw = b['trading_name']
+            raw = b["trading_name"]
             stripped = strip_legal_suffix(raw)
-            kw = f"{stripped} {b.get('postcode','')}"
+            kw = f"{stripped} {b.get('postcode', '')}"
             if stripped != raw:
                 print(f"    '{raw}' → '{kw}'")
             else:
@@ -336,16 +356,17 @@ def main(dry_run=False):
     inputs = []
     for b in businesses:
         keyword_name = strip_legal_suffix(b["trading_name"])
-        inputs.append({
-            "keyword": f"{keyword_name} {b['postcode']}",
-            "country": "AU",
-            "lat": "",
-        })
+        inputs.append(
+            {
+                "keyword": f"{keyword_name} {b['postcode']}",
+                "country": "AU",
+                "lat": "",
+            }
+        )
     print(f"  Built {len(inputs)} inputs")
     # Show suffix-stripping stats
     stripped_count = sum(
-        1 for b in businesses
-        if strip_legal_suffix(b["trading_name"]) != b["trading_name"]
+        1 for b in businesses if strip_legal_suffix(b["trading_name"]) != b["trading_name"]
     )
     print(f"  Legal suffixes stripped: {stripped_count}/{len(inputs)}")
 
@@ -379,7 +400,9 @@ def main(dry_run=False):
     errors = [r for r in data if r.get("error")]
     single_page_errors = [r for r in errors if "does not contain a list" in str(r.get("error", ""))]
     other_errors = [r for r in errors if "does not contain a list" not in str(r.get("error", ""))]
-    print(f"  Valid: {len(valid)} | Single-page errors: {len(single_page_errors)} | Other errors: {len(other_errors)}")
+    print(
+        f"  Valid: {len(valid)} | Single-page errors: {len(single_page_errors)} | Other errors: {len(other_errors)}"
+    )
 
     # ── Phase 5: Retry single-page errors ────────────────────────────────────
     retry_results = []
@@ -438,8 +461,8 @@ def main(dry_run=False):
 
     # Build lookup indexes from ALL results (main valid + retry)
     all_valid = valid + retry_results
-    result_by_kw = {}     # constructed_keyword_lower → first result
-    result_by_name = {}   # normalized_name → result
+    result_by_kw = {}  # constructed_keyword_lower → first result
+    result_by_name = {}  # normalized_name → result
 
     for r in all_valid:
         # Index by discovery_input.keyword (for valid/matched records)
@@ -497,8 +520,12 @@ def main(dry_run=False):
             cid = gmb.get("fid_location", "") or gmb.get("cid", "") or ""
             details = gmb.get("business_details") or []
             domain = next(
-                (d.get("details", "").strip() for d in details if d.get("field_name") == "authority"),
-                gmb.get("open_website", "") or ""
+                (
+                    d.get("details", "").strip()
+                    for d in details
+                    if d.get("field_name") == "authority"
+                ),
+                gmb.get("open_website", "") or "",
             )
             if domain and domain.startswith("http"):
                 domain = urlparse(domain).netloc.replace("www.", "")
@@ -510,37 +537,55 @@ def main(dry_run=False):
             lat = float(gmb.get("lat") or 0)
             lon = float(gmb.get("lon") or 0)
 
-            pilot_rows.append({
-                "abn": b["abn"],
-                "trading_name": b["trading_name"],
-                "serp_match": True,
-                "gmb_category": cat or None,
-                "gmb_rating": rating if rating else None,
-                "gmb_review_count": reviews_cnt,
-                "gmb_domain": domain or None,
-                "match_confidence": match_path,
-            })
-            bu_updates.append((b["abn"], {
-                "place_id": place_id, "cid": cid, "cat": cat,
-                "rating": rating, "reviews_cnt": reviews_cnt, "domain": domain,
-                "phone": phone, "address": address, "city": city,
-                "lat": lat, "lon": lon,
-            }))
+            pilot_rows.append(
+                {
+                    "abn": b["abn"],
+                    "trading_name": b["trading_name"],
+                    "serp_match": True,
+                    "gmb_category": cat or None,
+                    "gmb_rating": rating if rating else None,
+                    "gmb_review_count": reviews_cnt,
+                    "gmb_domain": domain or None,
+                    "match_confidence": match_path,
+                }
+            )
+            bu_updates.append(
+                (
+                    b["abn"],
+                    {
+                        "place_id": place_id,
+                        "cid": cid,
+                        "cat": cat,
+                        "rating": rating,
+                        "reviews_cnt": reviews_cnt,
+                        "domain": domain,
+                        "phone": phone,
+                        "address": address,
+                        "city": city,
+                        "lat": lat,
+                        "lon": lon,
+                    },
+                )
+            )
         else:
             not_found += 1
-            pilot_rows.append({
-                "abn": b["abn"],
-                "trading_name": b["trading_name"],
-                "serp_match": False,
-                "gmb_category": None,
-                "gmb_rating": None,
-                "gmb_review_count": 0,
-                "gmb_domain": None,
-                "match_confidence": "none",
-            })
+            pilot_rows.append(
+                {
+                    "abn": b["abn"],
+                    "trading_name": b["trading_name"],
+                    "serp_match": False,
+                    "gmb_category": None,
+                    "gmb_rating": None,
+                    "gmb_review_count": 0,
+                    "gmb_domain": None,
+                    "match_confidence": "none",
+                }
+            )
 
     print(f"  Matched: {matched} | Not found: {not_found}")
-    print(f"  By path: keyword={kw_matched} name_exact={name_exact_matched} prefix={prefix_matched}")
+    print(
+        f"  By path: keyword={kw_matched} name_exact={name_exact_matched} prefix={prefix_matched}"
+    )
 
     # ── Phase 7: Bulk REST upsert to gmb_pilot_results ───────────────────────
     print(f"\n[Phase 7] Bulk upserting {len(pilot_rows)} rows to gmb_pilot_results...")
@@ -618,67 +663,134 @@ def main(dry_run=False):
         ok = "✅" if pass_fn(actual) else "❌"
         return f"  {label:<22} {str(pilot2):<12} {str(target):<12} {str(actual):<12} {ok}"
 
-    print(row("Match rate", f"{match_rate:.1f}%", "63.2%", f"{tgt_match}%+",
-              lambda v: float(v.rstrip("%")) >= tgt_match))
-    print(row("Zero-result count", not_found_db, 368, f"<{tgt_zero}",
-              lambda v: v < tgt_zero))
-    print(row("BD errors (single-pg)", len(single_page_errors), 259, "~0",
-              lambda v: v < 30))
-    print(row("BD snapshot time", f"{bd_elapsed:.0f}s", "6.1 min", f"<{tgt_bd}s",
-              lambda v: float(v.rstrip("s")) < tgt_bd))
-    print(row("DB write time", f"{db_elapsed:.0f}s", "3.0s", f"<{tgt_db}s",
-              lambda v: float(v.rstrip("s")) < tgt_db))
-    print(row("Wall-clock total", f"{total_elapsed:.0f}s", "~45 min", f"<{tgt_total}s",
-              lambda v: float(v.rstrip("s")) < tgt_total))
+    print(
+        row(
+            "Match rate",
+            f"{match_rate:.1f}%",
+            "63.2%",
+            f"{tgt_match}%+",
+            lambda v: float(v.rstrip("%")) >= tgt_match,
+        )
+    )
+    print(row("Zero-result count", not_found_db, 368, f"<{tgt_zero}", lambda v: v < tgt_zero))
+    print(row("BD errors (single-pg)", len(single_page_errors), 259, "~0", lambda v: v < 30))
+    print(
+        row(
+            "BD snapshot time",
+            f"{bd_elapsed:.0f}s",
+            "6.1 min",
+            f"<{tgt_bd}s",
+            lambda v: float(v.rstrip("s")) < tgt_bd,
+        )
+    )
+    print(
+        row(
+            "DB write time",
+            f"{db_elapsed:.0f}s",
+            "3.0s",
+            f"<{tgt_db}s",
+            lambda v: float(v.rstrip("s")) < tgt_db,
+        )
+    )
+    print(
+        row(
+            "Wall-clock total",
+            f"{total_elapsed:.0f}s",
+            "~45 min",
+            f"<{tgt_total}s",
+            lambda v: float(v.rstrip("s")) < tgt_total,
+        )
+    )
 
     if match_rate < 68:
         print(f"\n⚠️  HALT CONDITION: Match rate {match_rate:.1f}% < 68% threshold. Halting.")
         # Still write ceo_memory with halt status before exiting
-        _write_ceo_memory(snapshot_id, businesses, total_written, unique,
-                          matched_db, not_found_db, match_rate, valid, single_page_errors,
-                          other_errors, bd_elapsed, db_elapsed, total_elapsed, halted=True)
+        _write_ceo_memory(
+            snapshot_id,
+            businesses,
+            total_written,
+            unique,
+            matched_db,
+            not_found_db,
+            match_rate,
+            valid,
+            single_page_errors,
+            other_errors,
+            bd_elapsed,
+            db_elapsed,
+            total_elapsed,
+            halted=True,
+        )
         sys.exit(1)
 
     # ── Phase 11: Write ceo_memory ─────────────────────────────────────────
-    _write_ceo_memory(snapshot_id, businesses, total_written, unique,
-                      matched_db, not_found_db, match_rate, valid, single_page_errors,
-                      other_errors, bd_elapsed, db_elapsed, total_elapsed, halted=False)
+    _write_ceo_memory(
+        snapshot_id,
+        businesses,
+        total_written,
+        unique,
+        matched_db,
+        not_found_db,
+        match_rate,
+        valid,
+        single_page_errors,
+        other_errors,
+        bd_elapsed,
+        db_elapsed,
+        total_elapsed,
+        halted=False,
+    )
 
     print("\nDirective #229 complete.")
 
 
-def _write_ceo_memory(snapshot_id, businesses, total_written, unique,
-                      matched_db, not_found_db, match_rate, valid, single_page_errors,
-                      other_errors, bd_elapsed, db_elapsed, total_elapsed, halted=False):
+def _write_ceo_memory(
+    snapshot_id,
+    businesses,
+    total_written,
+    unique,
+    matched_db,
+    not_found_db,
+    match_rate,
+    valid,
+    single_page_errors,
+    other_errors,
+    bd_elapsed,
+    db_elapsed,
+    total_elapsed,
+    halted=False,
+):
     print("\n[Phase 11] Writing ceo_memory...")
-    payload = json.dumps({
-        "status": "halted" if halted else "complete",
-        "pilot": 3,
-        "snapshot_main": snapshot_id,
-        "businesses": len(businesses),
-        "total_written": total_written,
-        "unique_abns": unique,
-        "matched": matched_db,
-        "not_found": not_found_db,
-        "match_rate_pct": round(match_rate, 1),
-        "bd_valid": len(valid),
-        "bd_single_page_errors": len(single_page_errors),
-        "bd_other_errors": len(other_errors),
-        "bd_elapsed_sec": round(bd_elapsed),
-        "db_write_sec": round(db_elapsed, 1),
-        "total_elapsed_sec": round(total_elapsed),
-        "pass_match_rate": match_rate >= 72,
-        "pass_zero_result": not_found_db < 280,
-        "pass_db_write": db_elapsed < 10,
-        "fixes_applied": [
-            "name_exclusion_expanded",
-            "ptr_personal_name_filter",
-            "ampersand_and_normalisation",
-            "legal_suffix_stripping",
-            "retry_reads_input_keyword",
-            "30s_ready_wait_before_download",
-        ],
-    }).replace("'", "''")
+    payload = json.dumps(
+        {
+            "status": "halted" if halted else "complete",
+            "pilot": 3,
+            "snapshot_main": snapshot_id,
+            "businesses": len(businesses),
+            "total_written": total_written,
+            "unique_abns": unique,
+            "matched": matched_db,
+            "not_found": not_found_db,
+            "match_rate_pct": round(match_rate, 1),
+            "bd_valid": len(valid),
+            "bd_single_page_errors": len(single_page_errors),
+            "bd_other_errors": len(other_errors),
+            "bd_elapsed_sec": round(bd_elapsed),
+            "db_write_sec": round(db_elapsed, 1),
+            "total_elapsed_sec": round(total_elapsed),
+            "pass_match_rate": match_rate >= 72,
+            "pass_zero_result": not_found_db < 280,
+            "pass_db_write": db_elapsed < 10,
+            "fixes_applied": [
+                "name_exclusion_expanded",
+                "ptr_personal_name_filter",
+                "ampersand_and_normalisation",
+                "legal_suffix_stripping",
+                "retry_reads_input_keyword",
+                "30s_ready_wait_before_download",
+            ],
+        }
+    ).replace("'", "''")
 
     mcp_sql(f"""
         INSERT INTO ceo_memory (key, value, updated_at)

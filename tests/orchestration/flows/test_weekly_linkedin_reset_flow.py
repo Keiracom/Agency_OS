@@ -1,4 +1,5 @@
 """Tests for weekly_linkedin_reset_flow.py — 9 cases."""
+
 from __future__ import annotations
 
 import pytest
@@ -21,6 +22,7 @@ from src.orchestration.flows.weekly_linkedin_reset_flow import (
 # Fake DB
 # ---------------------------------------------------------------------------
 
+
 class FakeConn:
     def __init__(self, count_row=None):
         self.executed: list[tuple] = []
@@ -40,15 +42,16 @@ class FakeConn:
 # Fixtures
 # ---------------------------------------------------------------------------
 
-MONDAY = datetime(2026, 4, 20, 9, 0, 0, tzinfo=AEST)       # Monday
-WEDNESDAY = datetime(2026, 4, 22, 12, 0, 0, tzinfo=AEST)   # Wednesday
-SUNDAY = datetime(2026, 4, 19, 23, 59, 0, tzinfo=AEST)     # Sunday
-TUESDAY = datetime(2026, 4, 21, 8, 0, 0, tzinfo=AEST)      # Tuesday
+MONDAY = datetime(2026, 4, 20, 9, 0, 0, tzinfo=AEST)  # Monday
+WEDNESDAY = datetime(2026, 4, 22, 12, 0, 0, tzinfo=AEST)  # Wednesday
+SUNDAY = datetime(2026, 4, 19, 23, 59, 0, tzinfo=AEST)  # Sunday
+TUESDAY = datetime(2026, 4, 21, 8, 0, 0, tzinfo=AEST)  # Tuesday
 
 
 # ---------------------------------------------------------------------------
 # Case 1: _is_monday
 # ---------------------------------------------------------------------------
+
 
 def test_is_monday_true():
     assert _is_monday(MONDAY) is True
@@ -66,6 +69,7 @@ def test_is_monday_false_tuesday():
 # Case 2: _current_week_monday — Wed 2026-04-22 → Mon 2026-04-20 00:00 AEST
 # ---------------------------------------------------------------------------
 
+
 def test_current_week_monday_from_wednesday():
     result = _current_week_monday(WEDNESDAY)
     expected = datetime(2026, 4, 20, 0, 0, 0, tzinfo=AEST)
@@ -81,6 +85,7 @@ def test_current_week_monday_from_monday():
 # ---------------------------------------------------------------------------
 # Case 3: reset_linkedin_weekly on Monday — fetch THEN execute (order check)
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_reset_on_monday_fetch_before_execute():
@@ -100,6 +105,7 @@ async def test_reset_on_monday_fetch_before_execute():
 # Case 4: reset on non-Monday — zero returns, NO DB calls
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_reset_on_wednesday_no_db_calls():
     conn = FakeConn()
@@ -113,6 +119,7 @@ async def test_reset_on_wednesday_no_db_calls():
 # ---------------------------------------------------------------------------
 # Case 5: Idempotent — two calls on same Monday both return well-formed dicts
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_idempotent_same_monday():
@@ -132,6 +139,7 @@ async def test_idempotent_same_monday():
 # Case 6: Returned dict reflects fetch count row values
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_result_reflects_count_row():
     conn = FakeConn(count_row={"rows_reset": 12, "accounts_affected": 7})
@@ -143,6 +151,7 @@ async def test_result_reflects_count_row():
 # ---------------------------------------------------------------------------
 # Case 7: weekly_linkedin_reset_flow.fn composes LinkedInResetSummary on Monday
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_flow_fn_monday_summary():
@@ -162,6 +171,7 @@ async def test_flow_fn_monday_summary():
 # Case 8: Non-Monday flow — fired_on_monday=False, zeros
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_flow_fn_non_monday_summary():
     conn = FakeConn()
@@ -178,6 +188,7 @@ async def test_flow_fn_non_monday_summary():
 # ---------------------------------------------------------------------------
 # Case 9: get_weekly_linkedin_reset_schedule returns correct CronSchedule
 # ---------------------------------------------------------------------------
+
 
 def test_get_schedule_cron_and_tz():
     schedule = get_weekly_linkedin_reset_schedule()

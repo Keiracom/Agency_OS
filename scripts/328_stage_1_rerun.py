@@ -10,6 +10,7 @@ Validates that calibration produces clean SMB output.
 Categories: 10514 (dental), 10282 (construction), 10163 (legal)
 Cost cap: $5 AUD (~$3.25 USD)
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -45,6 +46,7 @@ async def run_stage_1_rerun():
     env_file = Path("/home/elliotbot/.config/agency-os/.env")
     if env_file.exists():
         from dotenv import load_dotenv
+
         load_dotenv(env_file)
 
     from src.clients.dfs_labs_client import DFSLabsClient
@@ -67,11 +69,17 @@ async def run_stage_1_rerun():
         window_data = CATEGORY_ETV_WINDOWS[code]
 
         logger.info("=== Category %d: %s ===", code, cat_name)
-        logger.info("  Calibrated window: etv_min=%.1f, etv_max=%.1f (from get_etv_window)",
-                     etv_min, etv_max)
-        logger.info("  Calibrated offset range: %d-%d, $/kw=%.2f",
-                     window_data["offset_start"], window_data["offset_end"],
-                     window_data["median_etv_per_keyword"])
+        logger.info(
+            "  Calibrated window: etv_min=%.1f, etv_max=%.1f (from get_etv_window)",
+            etv_min,
+            etv_max,
+        )
+        logger.info(
+            "  Calibrated offset range: %d-%d, $/kw=%.2f",
+            window_data["offset_start"],
+            window_data["offset_end"],
+            window_data["median_etv_per_keyword"],
+        )
 
         # Walk pages starting from offset 0, pull until we have enough SMBs
         # or exhaust the category
@@ -98,12 +106,19 @@ async def run_stage_1_rerun():
                 etvs = [d.get("organic_etv", 0) for d in chunk]
                 min_etv = min(etvs) if etvs else 0
 
-                logger.info("  offset=%d: %d domains, etv=%.0f-%.0f",
-                            offset, len(chunk), min_etv, max(etvs) if etvs else 0)
+                logger.info(
+                    "  offset=%d: %d domains, etv=%.0f-%.0f",
+                    offset,
+                    len(chunk),
+                    min_etv,
+                    max(etvs) if etvs else 0,
+                )
 
                 # Stop if we've walked past the SMB band floor
                 if min_etv < etv_min and offset > 0:
-                    logger.info("  Passed SMB floor (min_etv=%.0f < etv_min=%.0f)", min_etv, etv_min)
+                    logger.info(
+                        "  Passed SMB floor (min_etv=%.0f < etv_min=%.0f)", min_etv, etv_min
+                    )
                     break
 
                 if len(chunk) < PAGE_SIZE:
@@ -129,15 +144,17 @@ async def run_stage_1_rerun():
             if not (etv_min <= etv <= etv_max):
                 continue
 
-            filtered.append({
-                "domain": domain,
-                "organic_etv": etv,
-                "paid_etv": paid_etv,
-                "organic_count": kw_count,
-                "offset_position": offset_pos,
-                "category_code": code,
-                "category_name": cat_name,
-            })
+            filtered.append(
+                {
+                    "domain": domain,
+                    "organic_etv": etv,
+                    "paid_etv": paid_etv,
+                    "organic_count": kw_count,
+                    "offset_position": offset_pos,
+                    "category_code": code,
+                    "category_name": cat_name,
+                }
+            )
 
         # Cap
         capped = filtered[:PER_CATEGORY_CAP]
@@ -158,16 +175,30 @@ async def run_stage_1_rerun():
         }
         all_domains.extend(capped)
 
-        logger.info("  Raw: %d | Blocked: %d | ETV-filtered: %d | Final: %d",
-                     len(raw), per_category[code]["blocked_count"], len(filtered), len(capped))
+        logger.info(
+            "  Raw: %d | Blocked: %d | ETV-filtered: %d | Final: %d",
+            len(raw),
+            per_category[code]["blocked_count"],
+            len(filtered),
+            len(capped),
+        )
         if capped:
-            logger.info("  Offset range: %d-%d (calibrated: %d-%d)",
-                        per_category[code]["offset_range_actual"][0],
-                        per_category[code]["offset_range_actual"][1],
-                        window_data["offset_start"], window_data["offset_end"])
+            logger.info(
+                "  Offset range: %d-%d (calibrated: %d-%d)",
+                per_category[code]["offset_range_actual"][0],
+                per_category[code]["offset_range_actual"][1],
+                window_data["offset_start"],
+                window_data["offset_end"],
+            )
         for i, d in enumerate(capped[:5], 1):
-            logger.info("    %d. %s (etv=%.0f, kw=%d, offset=%d)",
-                        i, d["domain"], d["organic_etv"], d["organic_count"], d["offset_position"])
+            logger.info(
+                "    %d. %s (etv=%.0f, kw=%d, offset=%d)",
+                i,
+                d["domain"],
+                d["organic_etv"],
+                d["organic_count"],
+                d["offset_position"],
+            )
 
     elapsed = time.time() - start
 
@@ -188,12 +219,23 @@ async def run_stage_1_rerun():
         json.dump(summary, f, indent=2)
 
     logger.info("=== STAGE 1 RERUN COMPLETE ===")
-    logger.info("Total: %d | API calls: %d | Cost: $%.2f USD ($%.2f AUD) | Time: %.1fs",
-                len(all_domains), api_calls, total_cost_usd, total_cost_usd * 1.55, elapsed)
+    logger.info(
+        "Total: %d | API calls: %d | Cost: $%.2f USD ($%.2f AUD) | Time: %.1fs",
+        len(all_domains),
+        api_calls,
+        total_cost_usd,
+        total_cost_usd * 1.55,
+        elapsed,
+    )
     for code in CATEGORIES:
         p = per_category[code]
-        logger.info("  %s: %d domains (window %.0f-%.0f)", p["name"], p["final_count"],
-                     p["etv_window_used"][0], p["etv_window_used"][1])
+        logger.info(
+            "  %s: %d domains (window %.0f-%.0f)",
+            p["name"],
+            p["final_count"],
+            p["etv_window_used"][0],
+            p["etv_window_used"][1],
+        )
 
 
 if __name__ == "__main__":

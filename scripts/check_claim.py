@@ -19,6 +19,7 @@ Exit codes:
     1  — DENY  (claim rejected, reasons printed to stderr)
     2  — usage / argument error
 """
+
 from __future__ import annotations
 
 import argparse
@@ -31,7 +32,6 @@ from pathlib import Path
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
-
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -61,7 +61,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--store-writes",
         dest="store_writes",
-        help='JSON array of {directive_id, store} objects covering the four-store write.',
+        help="JSON array of {directive_id, store} objects covering the four-store write.",
     )
     p.add_argument(
         "--frozen-paths",
@@ -80,7 +80,14 @@ def _build_parser() -> argparse.ArgumentParser:
 def _payload_from_args(args: argparse.Namespace) -> dict:
     """Build the claim payload from CLI flags."""
     missing = []
-    for field in ("callsign", "directive_id", "claim_text", "evidence", "target_files", "store_writes"):
+    for field in (
+        "callsign",
+        "directive_id",
+        "claim_text",
+        "evidence",
+        "target_files",
+        "store_writes",
+    ):
         if not getattr(args, field, None):
             missing.append(f"--{field.replace('_', '-')}")
     if missing:
@@ -152,11 +159,14 @@ def main() -> int:
         print(f"ALLOW: {truncated}")
         return 0
 
-    reasons_str = "; ".join(result.reasons) if result.reasons else "policy denied (no reasons returned)"
+    reasons_str = (
+        "; ".join(result.reasons) if result.reasons else "policy denied (no reasons returned)"
+    )
     print(f"DENY: {reasons_str}", file=sys.stderr)
 
     try:
         from src.governance.tg_alert import alert_on_deny
+
         claim_hash = hashlib.sha256(claim_text.encode()).hexdigest()[:16]
         alert_on_deny(
             callsign=callsign,

@@ -103,7 +103,9 @@ async def test_dry_run_makes_no_db_writes():
 
     with (
         patch.object(engine, "_load_threshold", AsyncMock(return_value=DEFAULT_RESCORE_THRESHOLD)),
-        patch.object(engine, "_fetch_rejects", AsyncMock(return_value=[promoted_row, rejected_row])),
+        patch.object(
+            engine, "_fetch_rejects", AsyncMock(return_value=[promoted_row, rejected_row])
+        ),
     ):
         result = await engine.run(dry_run=True)
 
@@ -142,7 +144,11 @@ async def test_rescore_result_counts_correct():
 
     with (
         patch.object(engine, "_load_threshold", AsyncMock(return_value=DEFAULT_RESCORE_THRESHOLD)),
-        patch.object(engine, "_fetch_rejects", AsyncMock(return_value=[promoted_row, rejected_row, skipped_row])),
+        patch.object(
+            engine,
+            "_fetch_rejects",
+            AsyncMock(return_value=[promoted_row, rejected_row, skipped_row]),
+        ),
     ):
         result = await engine.run(dry_run=False)
 

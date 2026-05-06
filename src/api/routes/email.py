@@ -42,6 +42,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, EmailStr, Field
 
+from src.config.email_costs import RESEND_COST_AUD_PER_EMAIL
 from src.integrations.resend_client import (
     ResendError,
     send_email,
@@ -267,8 +268,8 @@ def post_send(req: EmailSendRequest) -> EmailSendResponse:
     sql = (
         "INSERT INTO keiracom_admin.email_events "
         "(message_id, to_email, from_email, subject, status, "
-        " events, sent_at, last_event_at) "
-        "VALUES (%s, %s, %s, %s, %s, %s::jsonb, %s, %s) "
+        " events, sent_at, last_event_at, cost_aud) "
+        "VALUES (%s, %s, %s, %s, %s, %s::jsonb, %s, %s, %s) "
         "ON CONFLICT (message_id) DO NOTHING"
     )
     initial_event = json.dumps(
@@ -290,6 +291,9 @@ def post_send(req: EmailSendRequest) -> EmailSendResponse:
                         initial_event,
                         now,
                         now,
+                        # LAW II: AUD cost per send. Resend Pro at ~$0.001 AUD/email.
+                        # Subscription cost is tracked separately in finance ledger.
+                        RESEND_COST_AUD_PER_EMAIL,
                     ),
                 )
             conn.commit()

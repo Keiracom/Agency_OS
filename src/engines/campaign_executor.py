@@ -252,8 +252,17 @@ class CampaignExecutor:
         step: SequenceStep,
         message_id: str,
     ) -> None:
-        """Record a successful send in campaign_sends to prevent duplicates."""
+        """Record a successful send in campaign_sends to prevent duplicates.
+
+        LAW II: persists per-send AUD cost so run-level reporting can sum
+        cost_aud per (campaign_name, step_number) without joining external
+        billing data. Cost constant from src/config/email_costs.py.
+        """
         import asyncpg
+
+        # Local import — the cost constant lives in src/config/email_costs.py
+        # so it can be updated independently of the executor logic.
+        from src.config.email_costs import RESEND_COST_AUD_PER_EMAIL
 
         dsn = os.environ.get("DATABASE_URL_MIGRATIONS") or os.environ.get("DATABASE_URL", "")
         if dsn.startswith("postgresql+asyncpg://"):
@@ -263,14 +272,16 @@ class CampaignExecutor:
             try:
                 await conn.execute(
                     "INSERT INTO public.campaign_sends "
-                    "(prospect_id, dm_email, campaign_name, step_number, message_id, status) "
-                    "VALUES ($1::uuid, $2, $3, $4, $5, 'sent') "
+                    "(prospect_id, dm_email, campaign_name, step_number, "
+                    " message_id, status, cost_aud) "
+                    "VALUES ($1::uuid, $2, $3, $4, $5, 'sent', $6) "
                     "ON CONFLICT (campaign_name, step_number, dm_email) DO NOTHING",
                     prospect.id,
                     prospect.dm_email,
                     self.campaign_name,
                     step.step_number,
                     message_id,
+                    RESEND_COST_AUD_PER_EMAIL,
                 )
             finally:
                 await conn.close()

@@ -653,7 +653,7 @@ async def discover_email(
         html: Cached website HTML from scrape stage
         company_name: Company name for API lookup context
         contact_data: Pre-scraped contact data dict (may contain company_email)
-        skip_layers: List of layer numbers to skip (e.g. [2,3] to skip paid)
+        skip_layers: List of layer numbers to skip (e.g. [3,5] to skip paid)
         contactout_result: Pre-fetched ContactOut enrichment dict (from
             enrich_dm_via_contactout). Caller fetches once and passes to both
             email and mobile waterfalls — no duplicate API calls.
@@ -804,7 +804,7 @@ async def discover_email(
     # Layer 3: Leadmagic find_email (verified — Leadmagic finds real address)
     # Website HTML layer REMOVED (D2.1B GOV-8) — Stage 3 Gemini already reads the
     # website and extracts dm_email + primary_email at zero additional cost.
-    if 2 not in skip and first and last:
+    if 3 not in skip and first and last:
         result = await _leadmagic_lookup(first, last, clean_domain, company_name)
         if result and result.email:
             return result
@@ -830,7 +830,7 @@ async def discover_email(
             )
 
     # Layer 5: Bright Data (unverified)
-    if 3 not in skip:
+    if 5 not in skip:
         result = await _brightdata_lookup(dm_linkedin, clean_domain, company_name)
         if result and result.email:
             return result

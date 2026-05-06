@@ -80,7 +80,12 @@ const MCP_SERVERS: Record<string, MCPServerConfig> = {
   salesforge: {
     path: "/home/elliotbot/clawd/mcp-servers/salesforge-mcp/dist/index.js",
     env: { SALESFORGE_API_KEY: process.env.SALESFORGE_API_KEY || "" },
-    description: "Salesforge outreach - campaigns, sequences, leads",
+    description: "Salesforge outreach - DEAD (invalid API key as of 2026-05-06). Use smartlead instead.",
+  },
+  smartlead: {
+    npx: "smartlead-mcp-by-leadmagic",
+    env: { SMARTLEAD_API_KEY: process.env.SMARTLEAD_API_KEY || "" },
+    description: "Smartlead cold-outbound (LeadMagic MCP, 116+ tools across campaigns, leads, accounts, analytics, smart-delivery, smart-senders, webhooks, client mgmt). Pro plan required.",
   },
   vapi: {
     path: "/home/elliotbot/clawd/mcp-servers/vapi-mcp/dist/index.js",

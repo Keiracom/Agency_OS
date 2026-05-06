@@ -10,7 +10,7 @@ import hashlib
 import hmac
 import json
 import time
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
@@ -24,7 +24,7 @@ def _svix_sign(body: bytes, secret: str, msg_id: str = "msg_test",
                timestamp: int | None = None) -> dict[str, str]:
     """Build valid Svix headers for a webhook payload."""
     ts = timestamp or int(time.time())
-    sign_payload = f"{msg_id}.{ts}.".encode("utf-8") + body
+    sign_payload = f"{msg_id}.{ts}.".encode() + body
     key_material = secret.removeprefix("whsec_")
     try:
         key_bytes = base64.b64decode(key_material)

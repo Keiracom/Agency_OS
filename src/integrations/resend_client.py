@@ -119,7 +119,7 @@ def verify_webhook_signature(
         return False
 
     # Svix signing payload: "{msg_id}.{timestamp}.{body}"
-    sign_payload = f"{msg_id}.{timestamp}.".encode("utf-8") + raw_body
+    sign_payload = f"{msg_id}.{timestamp}.".encode() + raw_body
 
     # Svix secrets are prefixed "whsec_" — decode the base64 key after prefix
     key_material = secret.removeprefix("whsec_")

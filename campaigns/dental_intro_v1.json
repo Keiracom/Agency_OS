@@ -1,0 +1,27 @@
+{
+  "name": "Dental Practice Introduction",
+  "description": "3-step intro sequence for dental practices — Client Zero test",
+  "steps": [
+    {
+      "step_number": 1,
+      "channel": "email",
+      "delay_days": 0,
+      "subject_template": "Quick question about {{company_name}}",
+      "body_template": "Hi {{first_name}},\n\nI noticed {{company_name}} in {{industry}} — I'm working on a tool that helps practices like yours find new patients through targeted local outreach.\n\nWould you be open to a quick 10-minute chat about how you're currently attracting new patients? I'm genuinely curious about what works and what doesn't in your area.\n\nNo pitch, just research. Happy to share what we've learned from other practices too.\n\nCheers,\nDave\nKeiracom"
+    },
+    {
+      "step_number": 2,
+      "channel": "email",
+      "delay_days": 3,
+      "subject_template": "Re: Quick question about {{company_name}}",
+      "body_template": "Hi {{first_name}},\n\nJust following up on my note from a few days ago. I know you're busy running a practice — completely understand if now isn't the right time.\n\nIf you've got 10 minutes this week, I'd love to hear how {{company_name}} handles patient acquisition. We're building something specifically for Australian dental practices and your perspective would be really valuable.\n\nEither way, no worries at all.\n\nCheers,\nDave\nKeiracom"
+    },
+    {
+      "step_number": 3,
+      "channel": "email",
+      "delay_days": 5,
+      "subject_template": "Last note from me, {{first_name}}",
+      "body_template": "Hi {{first_name}},\n\nLast email from me on this — I don't want to be a pest.\n\nIf finding new patients is something {{company_name}} is thinking about, I'd genuinely love 10 minutes of your time. If not, I'll leave you in peace.\n\nEither way, wishing {{company_name}} all the best.\n\nCheers,\nDave\nKeiracom"
+    }
+  ]
+}

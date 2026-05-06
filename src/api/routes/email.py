@@ -269,3 +269,31 @@ async def post_webhook(request: Request) -> dict[str, Any]:
         logger.error("[email/webhook] db update failed: %s", exc)
         raise HTTPException(status_code=500, detail="db error") from exc
     return {"ok": True, "message_id": message_id, "applied_status": new_status}
+
+
+@router.post("/unsubscribe", status_code=status.HTTP_200_OK)
+@router.get("/unsubscribe", status_code=status.HTTP_200_OK)
+def unsubscribe(email: str) -> dict[str, str]:
+    """RFC 8058 one-click unsubscribe endpoint.
+
+    Adds the email to global_suppression so future campaigns skip it.
+    Accepts both GET (browser click) and POST (one-click mail client).
+    """
+    email = email.strip().lower()
+    if not email or "@" not in email:
+        raise HTTPException(status_code=400, detail="invalid email")
+    sql = (
+        "INSERT INTO public.global_suppression "
+        "(id, email, reason, source, added_by, created_at) "
+        "VALUES (gen_random_uuid(), %s, %s, %s, %s, NOW()) "
+        "ON CONFLICT (email) DO NOTHING"
+    )
+    try:
+        with _connect() as conn, conn.cursor() as cur:
+            cur.execute(sql, (email, "unsubscribe", "rfc8058", "recipient"))
+            conn.commit()
+        logger.info("[email/unsubscribe] suppressed: %s", email)
+    except Exception as exc:
+        logger.error("[email/unsubscribe] db insert failed: %s", exc)
+        raise HTTPException(status_code=500, detail="db error") from exc
+    return {"status": "unsubscribed", "email": email}

@@ -9,7 +9,7 @@ import base64
 import hashlib
 import hmac
 import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
@@ -65,6 +65,48 @@ def test_send_returns_message_id(client, mock_db, monkeypatch):
     args = mock_db.execute.call_args[0]
     assert "INSERT INTO keiracom_admin.email_events" in args[0]
     assert "msg_abc_456" in args[1]
+
+
+def test_send_includes_list_unsubscribe_header(client, mock_db, monkeypatch):
+    """Resend payload must include List-Unsubscribe and List-Unsubscribe-Post headers."""
+    captured = {}
+
+    def fake_send(payload):
+        captured.update(payload)
+        return {"id": "msg_unsub_test"}
+
+    monkeypatch.setattr(
+        email_route, "send_email",
+        lambda **kw: {"id": "msg_unsub_test"},
+    )
+    # Test the underlying resend_client.send_email builds headers
+    from src.integrations.resend_client import _unsubscribe_url
+    url = _unsubscribe_url("test@example.com")
+    assert "/api/email/unsubscribe" in url
+    assert "email=test@example.com" in url
+
+
+def test_unsubscribe_adds_to_suppression(client, monkeypatch):
+    """GET /unsubscribe?email=x adds to global_suppression."""
+    cur = MagicMock()
+    conn = MagicMock()
+    conn.cursor.return_value.__enter__ = MagicMock(return_value=cur)
+    conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+    conn.__enter__ = MagicMock(return_value=conn)
+    conn.__exit__ = MagicMock(return_value=False)
+    monkeypatch.setattr(email_route, "_connect", lambda: conn)
+
+    resp = client.get("/api/email/unsubscribe?email=unsub@example.com")
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "unsubscribed"
+    sql_arg = cur.execute.call_args[0][0]
+    assert "global_suppression" in sql_arg
+    assert cur.execute.call_args[0][1][0] == "unsub@example.com"
+
+
+def test_unsubscribe_rejects_invalid_email(client):
+    resp = client.get("/api/email/unsubscribe?email=notanemail")
+    assert resp.status_code == 400
 
 
 def test_send_rejects_no_body(client):

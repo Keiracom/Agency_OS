@@ -39,6 +39,12 @@ def _build_client():
     return resend
 
 
+def _unsubscribe_url(to_email: str) -> str:
+    """Build the one-click unsubscribe URL for RFC 8058 compliance."""
+    base = os.environ.get("API_BASE_URL", "https://api.agencyxos.ai")
+    return f"{base}/api/email/unsubscribe?email={to_email}"
+
+
 def send_email(
     *,
     to: str | list[str],
@@ -55,10 +61,16 @@ def send_email(
         "RESEND_DEFAULT_FROM", "noreply@keiracom.com",
     )
     resend = _build_client()
+    to_list = [to] if isinstance(to, str) else list(to)
+    unsub_url = _unsubscribe_url(to_list[0])
     payload: dict[str, Any] = {
         "from": sender,
-        "to": [to] if isinstance(to, str) else list(to),
+        "to": to_list,
         "subject": subject,
+        "headers": {
+            "List-Unsubscribe": f"<{unsub_url}>",
+            "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        },
     }
     if body_html:
         payload["html"] = body_html

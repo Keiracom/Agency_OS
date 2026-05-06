@@ -1,0 +1,43 @@
+{
+  "campaign_name": "agency_discovery_v1",
+  "vertical": "agency",
+  "target_country": "AU",
+  "purpose": "discovery",
+  "notes": "Pre-revenue research outreach to AU marketing agencies. Goal is 20-min discovery calls, NOT closed deals. No fake social proof — Keiracom has zero paying clients. Honesty wedge: 'we are building this and want a 20-min read from people who know this market.'",
+  "merge_tags_used": ["dm_name", "display_name", "state", "suburb", "sender_name"],
+  "compliance": {
+    "list_unsubscribe": "Auto-injected by src/integrations/resend_client.py (RFC 8058 List-Unsubscribe + List-Unsubscribe-Post headers).",
+    "suppression_check": "campaign_sender.py LEFT JOINs public.global_suppression before any send.",
+    "bounce_ratchet": "Resend webhook → email.bounced (hard) auto-sets dm_email_verified=false."
+  },
+  "emails": [
+    {
+      "step": 1,
+      "delay_days": 0,
+      "subject": "20 mins on AU agency tooling, {{dm_name}}?",
+      "body_html": "<p>Hi {{dm_name}},</p>\n\n<p>Short version: I am Dave, building Keiracom. We are a pre-revenue platform doing automated lead-gen for AU SMBs — discovery, enrichment, outreach, the whole loop. Before we put it in front of paying customers, I want a read from people who actually run agencies in this market.</p>\n\n<p>Would you be up for a 20-minute call? No pitch, no slides — just your honest take on what is missing in the current AU agency tooling stack (GoHighLevel, Salesforge, whatever you are using or hating). I will share what we are seeing across the 8,600+ AU businesses we have indexed so far.</p>\n\n<p>If the timing is wrong, no stress. If it is interesting, I am flexible — DM, Loom, written reply, whatever is lowest friction for {{display_name}}.</p>\n\n<p>{{sender_name}}<br>Keiracom</p>\n\n<p style=\"font-size:11px;color:#888;\">If this is not for you, just hit reply with \"unsubscribe\" — or use the one-click link in the headers.</p>",
+      "body_text": "Hi {{dm_name}},\n\nShort version: I am Dave, building Keiracom. We are a pre-revenue platform doing automated lead-gen for AU SMBs — discovery, enrichment, outreach, the whole loop. Before we put it in front of paying customers, I want a read from people who actually run agencies in this market.\n\nWould you be up for a 20-minute call? No pitch, no slides — just your honest take on what is missing in the current AU agency tooling stack (GoHighLevel, Salesforge, whatever you are using or hating). I will share what we are seeing across the 8,600+ AU businesses we have indexed so far.\n\nIf the timing is wrong, no stress. If it is interesting, I am flexible — DM, Loom, written reply, whatever is lowest friction for {{display_name}}.\n\n{{sender_name}}\nKeiracom\n\nIf this is not for you, just hit reply with \"unsubscribe\" — or use the one-click link in the headers."
+    },
+    {
+      "step": 2,
+      "delay_days": 3,
+      "subject": "No worries if not — {{dm_name}}",
+      "body_html": "<p>Hi {{dm_name}},</p>\n\n<p>Following up in case the last one got buried. No urgency.</p>\n\n<p>Quick context if it helps: we are not selling anything yet. We are weeks out from inviting first paying clients and I would rather hear \"your pricing is wrong\" or \"you are missing X\" from {{display_name}} now than after we have launched.</p>\n\n<p>Twenty minutes, your time, your call. If it is not a fit just say so and I will leave it.</p>\n\n<p>{{sender_name}}<br>Keiracom</p>\n\n<p style=\"font-size:11px;color:#888;\">If this is not for you, just hit reply with \"unsubscribe\".</p>",
+      "body_text": "Hi {{dm_name}},\n\nFollowing up in case the last one got buried. No urgency.\n\nQuick context if it helps: we are not selling anything yet. We are weeks out from inviting first paying clients and I would rather hear \"your pricing is wrong\" or \"you are missing X\" from {{display_name}} now than after we have launched.\n\nTwenty minutes, your time, your call. If it is not a fit just say so and I will leave it.\n\n{{sender_name}}\nKeiracom\n\nIf this is not for you, just hit reply with \"unsubscribe\"."
+    },
+    {
+      "step": 3,
+      "delay_days": 5,
+      "subject": "What we are seeing in {{state}} agencies",
+      "body_html": "<p>Hi {{dm_name}},</p>\n\n<p>Different tack this time — sharing instead of asking.</p>\n\n<p>Across the 8,600 AU businesses we have indexed, dental and trades verticals have the highest match rate to \"needs marketing help\" signals (low Google review counts, active ads, thin SEO presence). In {{state}} specifically, around a quarter of those businesses already have verified decision-maker contact data we could route into outreach.</p>\n\n<p>If you are targeting verticals like that for {{display_name}}, I am happy to share the raw breakdown — no strings, no follow-up if you do not want one. Genuinely curious whether the data matches your gut from running on the ground.</p>\n\n<p>If it sparks a longer conversation, even better. If not, no follow-up needed.</p>\n\n<p>{{sender_name}}<br>Keiracom</p>\n\n<p style=\"font-size:11px;color:#888;\">If this is not for you, just hit reply with \"unsubscribe\".</p>",
+      "body_text": "Hi {{dm_name}},\n\nDifferent tack this time — sharing instead of asking.\n\nAcross the 8,600 AU businesses we have indexed, dental and trades verticals have the highest match rate to \"needs marketing help\" signals (low Google review counts, active ads, thin SEO presence). In {{state}} specifically, around a quarter of those businesses already have verified decision-maker contact data we could route into outreach.\n\nIf you are targeting verticals like that for {{display_name}}, I am happy to share the raw breakdown — no strings, no follow-up if you do not want one. Genuinely curious whether the data matches your gut from running on the ground.\n\nIf it sparks a longer conversation, even better. If not, no follow-up needed.\n\n{{sender_name}}\nKeiracom\n\nIf this is not for you, just hit reply with \"unsubscribe\"."
+    },
+    {
+      "step": 4,
+      "delay_days": 7,
+      "subject": "Closing the loop, {{dm_name}}",
+      "body_html": "<p>Hi {{dm_name}},</p>\n\n<p>Last one — I will leave it here.</p>\n\n<p>If the timing is not right, or the platform is not relevant to {{display_name}}, all good. If down the track you want to compare notes on AU agency tech, I am always around.</p>\n\n<p>{{sender_name}}<br>Keiracom<br><a href=\"https://keiracom.com\">keiracom.com</a></p>\n\n<p style=\"font-size:11px;color:#888;\">If this is not for you, just hit reply with \"unsubscribe\".</p>",
+      "body_text": "Hi {{dm_name}},\n\nLast one — I will leave it here.\n\nIf the timing is not right, or the platform is not relevant to {{display_name}}, all good. If down the track you want to compare notes on AU agency tech, I am always around.\n\n{{sender_name}}\nKeiracom\nkeiracom.com\n\nIf this is not for you, just hit reply with \"unsubscribe\"."
+    }
+  ]
+}

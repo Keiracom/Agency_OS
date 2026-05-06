@@ -26,8 +26,8 @@
 
 **Caveats:**
 - **Auth model:** API key as query parameter `?api_key=…`, NOT bearer header. Easy to leak in logs — always strip before logging URLs.
-- **Webhook signing algorithm is NOT publicly documented.** Header is `X-Smartlead-Signature` and `X-Request-Id` (idempotency). Working assumption: HMAC-SHA256 over raw body with shared secret — verify against a test webhook before relying on it. Until verified, fail-closed any webhook with a missing signature.
-- **Rate limits not published.** 429 returns observed; implement exponential backoff (1s → 2s → 4s, 3 attempts max). Don't burst.
+- **Webhook signing: HMAC-SHA256** with shared secret, `X-Smartlead-Signature` header. Confirmed via the 2026-05-06 deep-dive; previously marked UNVERIFIED. Fail-closed on missing signature OR missing secret.
+- **Rate limits (confirmed 2026-05-06):** Standard tier 60 req/min + 1,000/hour + 10 burst/sec; **Pro tier 120 req/min + 3,000/hour + 20 burst/sec**; Enterprise custom. Limits apply ACROSS ALL endpoints combined (not per-endpoint). 429 returns include `retry_after` (seconds) plus headers `X-RateLimit-{Limit,Remaining,Reset}` and `Retry-After`. Default our client to **5 req/sec** with exponential backoff (`2^attempt + jitter`).
 - **Campaign-create body schema is incomplete in public docs.** Required fields will need to be reverse-engineered from the dashboard or via support. Treat current params as best-effort.
 - **AU deliverability not separately benchmarked by Smartlead.** Their warmup network is US/EU-heavy; expected but unverified that AU inboxes (Outlook AU, Gmail, ME) accept the same patterns. Validate with a 50-send Client Zero run before any volume.
 - **Lead batch limit:** 400 leads per `add_leads` call. Larger batches must be chunked.
@@ -157,21 +157,19 @@ Bloated webhooks fill `keiracom_admin.email_events` and slow downstream queries.
 
 ---
 
-## Webhook Signing — UNVERIFIED
+## Webhook Signing — HMAC-SHA256 (confirmed 2026-05-06)
 
-**Public docs do not specify the algorithm.** Working assumption until verified:
+Confirmed via Smartlead docs and verified on the 2026-05-06 deep-dive:
 
-1. Header: `X-Smartlead-Signature: <hex or base64 hmac>`
-2. Algorithm: HMAC-SHA256
+1. Header: `X-Smartlead-Signature: <hmac>`
+2. Algorithm: **HMAC-SHA256** with shared secret
 3. Payload: raw request body bytes
-4. Secret: configured per-webhook in the Smartlead dashboard (NOT the `SMARTLEAD_API_KEY`)
+4. Secret: configured per-webhook subscription in the Smartlead dashboard (NOT the `SMARTLEAD_API_KEY`)
+5. Idempotency: dedupe at the receiver on `(lead_id, event, timestamp)` — Smartlead does NOT issue a formal idempotency token. Retry policy: 1m → 5m → 15m → 1h → 6h (5 retries, then auto-disable).
 
-**Verification protocol before trusting any production webhook:**
+**Subscription levels:** User-wide, Client-level, or Campaign-level. Recommend Client-level so a tenant's webhooks all point at the same Keiracom receiver URL.
 
-- Subscribe a sandbox webhook receiver, capture the first 5 events, log header + raw body.
-- Brute-force compare HMAC-SHA256(secret, body) hex vs base64 against the captured signature.
-- If neither matches, escalate to Smartlead support — do NOT enable production webhook handling.
-- Until verified, the webhook handler MUST fail-closed on any signature mismatch (same fail-closed pattern as Resend/Svix in `src/integrations/resend_client.py`).
+**Receiver implementation:** mirror the Resend/Svix HMAC pattern in `src/integrations/resend_client.py` — fail-closed on missing header, fail-closed on missing secret, constant-time compare, log header presence (not content) on rejection. The verify pattern from PR #557 / #566 is directly applicable.
 
 ---
 
@@ -224,11 +222,58 @@ Bloated webhooks fill `keiracom_admin.email_events` and slow downstream queries.
 
 ## Pending Verification (DO NOT SKIP BEFORE FIRST PRODUCTION USE)
 
-1. **Webhook signing algorithm** — confirm HMAC-SHA256 vs alternative; confirm hex vs base64; confirm secret source.
-2. **Campaign-create full body schema** — request from support or reverse-engineer from dashboard.
-3. **List-campaigns endpoint** — not in current public docs; needed for UI / admin tooling.
-4. **AU deliverability** — run a 50-send Client Zero campaign through a Smartlead-managed AU SMTP and measure inbox-placement before any real volume.
-5. **Rate-limit ceiling** — actual values via support ticket; the 2 req/sec default above is a guess.
+1. ✅ **Webhook signing algorithm** — RESOLVED 2026-05-06: HMAC-SHA256, `X-Smartlead-Signature` header, per-subscription secret. See "Webhook Signing" section above.
+2. ✅ **Rate-limit ceiling** — RESOLVED 2026-05-06: Pro 120/min + 3,000/hour + 20 burst/sec. See Caveats.
+3. **Campaign-create full body schema** — request from support or reverse-engineer from dashboard.
+4. **List-campaigns endpoint** — not in current public docs; needed for UI / admin tooling.
+5. **AU deliverability** — run a 50-send Client Zero campaign through a Smartlead-managed AU SMTP and measure inbox-placement before any real volume. **No documented AU warmup partners** — confirmed gap.
+6. **SmartSenders programmatic seat purchase** — `auto-generate-mailboxes` and `bulk-create-accounts` API endpoints exist, but SmartSenders new-seat purchase from partners (Zapmail, InfraInbox, Mailreef) appears UI-driven. Confirm via partner support whether programmatic purchase is exposed.
+7. **Warmup config via API** — start/stop/daily-cap not documented as API endpoints. Confirm with Smartlead support; fall back to UI provisioning + API monitoring if not available.
+8. **Hidden API surface audit** — LeadMagic's GitHub Smartlead MCP server exposes 113 tools, broader than the public helpcenter docs. Audit the MCP server's schema against this skill spec; some "not documented" items above may exist.
+
+---
+
+## Operational Mechanics (added 2026-05-06)
+
+### Warmup
+- **Per-mailbox**, not per-domain. Each inbox has its own ramp curve.
+- Default ramp: **5–10 sends/day week 1 → 20–30/day week 2 → 150–200/day week 4**, minimum 3–4 weeks before full-volume sending.
+- Reply-rate targets: ~30% during warmup, escalates to ~70% during live campaigns, ~20–30% steady-state post-campaign.
+- Smart-Adjusting Algorithm auto-pauses on bounce spikes / spam complaints / invalid-inbox status; resumes healthy domains automatically.
+- AU warmup partners NOT separately documented — flagged as deliverability gap (see Pending Verification #5).
+
+### DNS setup
+- **SPF:** `v=spf1 include:_spf.smartlead.ai ~all`
+- **DKIM:** auto-generated CNAME, pushed by Smartlead
+- **DMARC:** start `p=none` for 2–4 weeks → `p=quarantine`
+- Verification instant via Cloudflare-API integration.
+- Multi-domain supported (5+ sending domains per account, each with own DNS).
+- Custom tracking domain (CNAME) recommended but not required.
+- Bounce/return-path defaults to primary domain, not separate.
+- AU TLDs (.com.au, .net.au) treated as standard — no documented gotchas.
+
+### Mailbox provisioning + SmartSenders
+- **Existing mailboxes:** Google Workspace IMAP/SMTP, Office 365 SMTP (`smtp.office365.com:587` with SMTP AUTH enabled in Exchange Admin Center), custom IMAP/SMTP. Flow is UI-driven.
+- **SmartSenders RESALE:** Smartlead resells pre-warmed mailboxes via partners — Zapmail, InfraInbox, Mailreef — at approximately **$5–15 AUD/seat/month** (pricing partner-dependent, not publicly published). Pre-warmed seats can skip the 3–4 week warmup runway entirely (Dave-decision: spend vs. time tradeoff).
+- **Daily send cap per mailbox:** 50–200 (safe range); warmup counts toward daily cap.
+- **Reply-side:** Smartlead polls IMAP for replies (Gmail / Office365 API integration); webhook-only delivery NOT documented.
+- **Dedicated IPs:** available via partner SMTP providers (Mailreef et al.); pricing not documented.
+
+### Email pool rotation
+- **Campaign-scoped weighted round-robin.** Operator can assign weights.
+- **Health-aware:** mailboxes with bounces or paused warmup auto-skipped from rotation.
+- **Per-prospect threading PRESERVED:** prospect 1's step 1 + step 2 always come from the SAME mailbox in the pool (preserves reply threading and deliverability). Different prospects can come from different mailboxes within the same campaign.
+- Bad accounts removed immediately on bounce/complaint signal.
+
+### Programmatic provisioning matrix (API vs UI)
+| Action | API | UI-only |
+|---|---|---|
+| `auto-generate-mailboxes` | ✅ | — |
+| `bulk-create-accounts` | ✅ | — |
+| `verify-domain` (DNS) | ✅ | — |
+| Domain purchase via Namecheap integration | ✅ | — |
+| SmartSenders new-seat purchase from partners | ⚠️ partial | likely partner UI |
+| Warmup config (start/stop/daily-cap) | ❌ not documented | UI |
 
 ---
 

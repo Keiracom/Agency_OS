@@ -15,6 +15,7 @@ import hmac
 import logging
 import os
 from typing import Any
+from urllib.parse import quote
 
 logger = logging.getLogger(__name__)
 
@@ -39,10 +40,20 @@ def _build_client():
     return resend
 
 
+def _unsubscribe_token(email: str) -> str:
+    """HMAC-SHA256 token to authenticate unsubscribe requests."""
+    secret = os.environ.get("UNSUBSCRIBE_SECRET", "default-unsub-secret")
+    return hmac.new(
+        secret.encode(), email.encode(), hashlib.sha256,
+    ).hexdigest()[:32]
+
+
 def _unsubscribe_url(to_email: str) -> str:
-    """Build the one-click unsubscribe URL for RFC 8058 compliance."""
+    """Build the HMAC-signed one-click unsubscribe URL for RFC 8058 compliance."""
     base = os.environ.get("API_BASE_URL", "https://api.agencyxos.ai")
-    return f"{base}/api/email/unsubscribe?email={to_email}"
+    encoded_email = quote(to_email, safe="")
+    token = _unsubscribe_token(to_email.strip().lower())
+    return f"{base}/api/email/unsubscribe?email={encoded_email}&token={token}"
 
 
 def send_email(

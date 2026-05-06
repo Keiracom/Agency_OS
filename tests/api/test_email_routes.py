@@ -68,26 +68,23 @@ def test_send_returns_message_id(client, mock_db, monkeypatch):
 
 
 def test_send_includes_list_unsubscribe_header(client, mock_db, monkeypatch):
-    """Resend payload must include List-Unsubscribe and List-Unsubscribe-Post headers."""
-    captured = {}
-
-    def fake_send(payload):
-        captured.update(payload)
-        return {"id": "msg_unsub_test"}
-
+    """Resend payload must include HMAC-signed List-Unsubscribe URL."""
     monkeypatch.setattr(
         email_route, "send_email",
         lambda **kw: {"id": "msg_unsub_test"},
     )
-    # Test the underlying resend_client.send_email builds headers
     from src.integrations.resend_client import _unsubscribe_url
     url = _unsubscribe_url("test@example.com")
     assert "/api/email/unsubscribe" in url
-    assert "email=test@example.com" in url
+    assert "email=test%40example.com" in url  # URL-encoded
+    assert "token=" in url  # HMAC token present
 
 
-def test_unsubscribe_adds_to_suppression(client, monkeypatch):
-    """GET /unsubscribe?email=x adds to global_suppression."""
+def test_unsubscribe_post_with_valid_token(client, monkeypatch):
+    """POST /unsubscribe with valid HMAC token adds to global_suppression."""
+    from src.integrations.resend_client import _unsubscribe_token
+    token = _unsubscribe_token("unsub@example.com")
+
     cur = MagicMock()
     conn = MagicMock()
     conn.cursor.return_value.__enter__ = MagicMock(return_value=cur)
@@ -96,16 +93,30 @@ def test_unsubscribe_adds_to_suppression(client, monkeypatch):
     conn.__exit__ = MagicMock(return_value=False)
     monkeypatch.setattr(email_route, "_connect", lambda: conn)
 
-    resp = client.get("/api/email/unsubscribe?email=unsub@example.com")
+    resp = client.post(f"/api/email/unsubscribe?email=unsub@example.com&token={token}")
     assert resp.status_code == 200
     assert resp.json()["status"] == "unsubscribed"
     sql_arg = cur.execute.call_args[0][0]
     assert "global_suppression" in sql_arg
-    assert cur.execute.call_args[0][1][0] == "unsub@example.com"
+
+
+def test_unsubscribe_post_rejects_bad_token(client):
+    """POST /unsubscribe with invalid token returns 403."""
+    resp = client.post("/api/email/unsubscribe?email=x@y.com&token=badtoken")
+    assert resp.status_code == 403
+
+
+def test_unsubscribe_get_does_not_suppress(client, monkeypatch):
+    """GET /unsubscribe returns confirmation only — does NOT add to suppression."""
+    from src.integrations.resend_client import _unsubscribe_token
+    token = _unsubscribe_token("safe@example.com")
+    resp = client.get(f"/api/email/unsubscribe?email=safe@example.com&token={token}")
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "confirm"  # NOT "unsubscribed"
 
 
 def test_unsubscribe_rejects_invalid_email(client):
-    resp = client.get("/api/email/unsubscribe?email=notanemail")
+    resp = client.post("/api/email/unsubscribe?email=notanemail&token=x")
     assert resp.status_code == 400
 
 

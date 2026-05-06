@@ -31,6 +31,7 @@ psycopg DSN.
 """
 from __future__ import annotations
 
+import hmac
 import json
 import logging
 import os
@@ -271,17 +272,40 @@ async def post_webhook(request: Request) -> dict[str, Any]:
     return {"ok": True, "message_id": message_id, "applied_status": new_status}
 
 
-@router.post("/unsubscribe", status_code=status.HTTP_200_OK)
-@router.get("/unsubscribe", status_code=status.HTTP_200_OK)
-def unsubscribe(email: str) -> dict[str, str]:
-    """RFC 8058 one-click unsubscribe endpoint.
+def _verify_unsubscribe_token(email: str, token: str) -> bool:
+    """Verify HMAC token matches the email — prevents DoS suppression attacks."""
+    from src.integrations.resend_client import _unsubscribe_token
 
-    Adds the email to global_suppression so future campaigns skip it.
-    Accepts both GET (browser click) and POST (one-click mail client).
+    expected = _unsubscribe_token(email)
+    return hmac.compare_digest(expected, token)
+
+
+@router.get("/unsubscribe", status_code=status.HTTP_200_OK)
+def unsubscribe_confirm(email: str, token: str = "") -> dict[str, str]:
+    """GET shows confirmation — does NOT unsubscribe (prevents link prefetcher DoS)."""
+    email = email.strip().lower()
+    if not email or "@" not in email or not _verify_unsubscribe_token(email, token):
+        raise HTTPException(status_code=400, detail="invalid request")
+    return {
+        "status": "confirm",
+        "message": "POST to this URL to complete unsubscribe",
+        "email": email,
+    }
+
+
+@router.post("/unsubscribe", status_code=status.HTTP_200_OK)
+def unsubscribe(email: str, token: str = "") -> dict[str, str]:
+    """RFC 8058 one-click unsubscribe endpoint (POST only).
+
+    Validates HMAC token, then adds email to global_suppression.
+    GET returns confirmation only (prevents Outlook Safe Links / Gmail
+    proxy prefetcher from triggering silent unsubs).
     """
     email = email.strip().lower()
     if not email or "@" not in email:
         raise HTTPException(status_code=400, detail="invalid email")
+    if not _verify_unsubscribe_token(email, token):
+        raise HTTPException(status_code=403, detail="invalid token")
     sql = (
         "INSERT INTO public.global_suppression "
         "(id, email, reason, source, added_by, created_at) "

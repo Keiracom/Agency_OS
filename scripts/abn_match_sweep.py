@@ -26,6 +26,7 @@ Usage:
     python scripts/abn_match_sweep.py --dry-run        # plan only, no writes
     python scripts/abn_match_sweep.py --bu-ids <id>,<id>  # restrict to ids
 """
+
 from __future__ import annotations
 
 import argparse
@@ -84,7 +85,8 @@ async def _select_unmatched_bus(
                   AND id = ANY($1::uuid[])
                 ORDER BY id
                 LIMIT $2""",
-            bu_ids, batch_size,
+            bu_ids,
+            batch_size,
         )
     return await conn.fetch(
         """SELECT id, domain, state, legal_name, display_name
@@ -240,7 +242,9 @@ async def _apply_match(
                   abr_matched_at  = NOW(),
                   updated_at      = NOW()
             WHERE id = $1""",
-        bu_id, match["abn"], abn_status_value,
+        bu_id,
+        match["abn"],
+        abn_status_value,
     )
 
 
@@ -253,7 +257,10 @@ async def sweep(
 ) -> dict[str, int]:
     stats = {"total": 0, "matched": 0, "skipped_no_name": 0, "skipped_low_conf": 0, "errors": 0}
     pool = await asyncpg.create_pool(
-        db_url, min_size=1, max_size=4, statement_cache_size=0,
+        db_url,
+        min_size=1,
+        max_size=4,
+        statement_cache_size=0,
     )
     conn: asyncpg.Connection | None = None
     try:
@@ -352,14 +359,20 @@ async def sweep(
 
 def _parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    p.add_argument("--batch-size", type=int, default=DEFAULT_BATCH_SIZE,
-                   help=f"Rows per sweep (default {DEFAULT_BATCH_SIZE})")
-    p.add_argument("--min-confidence", type=float, default=MIN_CONFIDENCE,
-                   help=f"pg_trgm similarity threshold (default {MIN_CONFIDENCE})")
-    p.add_argument("--dry-run", action="store_true",
-                   help="Plan only; do not write to BU")
-    p.add_argument("--bu-ids", default=None,
-                   help="Comma-separated UUIDs to restrict the sweep")
+    p.add_argument(
+        "--batch-size",
+        type=int,
+        default=DEFAULT_BATCH_SIZE,
+        help=f"Rows per sweep (default {DEFAULT_BATCH_SIZE})",
+    )
+    p.add_argument(
+        "--min-confidence",
+        type=float,
+        default=MIN_CONFIDENCE,
+        help=f"pg_trgm similarity threshold (default {MIN_CONFIDENCE})",
+    )
+    p.add_argument("--dry-run", action="store_true", help="Plan only; do not write to BU")
+    p.add_argument("--bu-ids", default=None, help="Comma-separated UUIDs to restrict the sweep")
     return p.parse_args()
 
 
@@ -368,13 +381,15 @@ def main() -> None:
     args = _parse_args()
     bu_ids = [s.strip() for s in args.bu_ids.split(",")] if args.bu_ids else None
     db_url = _resolve_db_url()
-    stats = asyncio.run(sweep(
-        db_url=db_url,
-        batch_size=args.batch_size,
-        min_confidence=args.min_confidence,
-        dry_run=args.dry_run,
-        bu_ids=bu_ids,
-    ))
+    stats = asyncio.run(
+        sweep(
+            db_url=db_url,
+            batch_size=args.batch_size,
+            min_confidence=args.min_confidence,
+            dry_run=args.dry_run,
+            bu_ids=bu_ids,
+        )
+    )
     print(f"\nSWEEP SUMMARY: {stats}")
     sys.exit(0 if stats["errors"] == 0 else 1)
 

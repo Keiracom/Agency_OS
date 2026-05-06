@@ -46,6 +46,7 @@ DRY_RUN_LIMIT = 1_000
 # DB helpers
 # ---------------------------------------------------------------------------
 
+
 def get_connection():
     db_url = os.environ["DATABASE_URL"]
     if db_url.startswith("postgresql+asyncpg://"):
@@ -90,6 +91,7 @@ WHERE bu.abn = tn.abn
 # Download
 # ---------------------------------------------------------------------------
 
+
 def download_zip(url: str, dest: str):
     print(f"[download] {url}", flush=True)
     print(f"           → {dest}", flush=True)
@@ -111,14 +113,18 @@ def download_zip(url: str, dest: str):
                 downloaded += len(chunk)
                 if total and downloaded - last_print >= 50 * 1_048_576:
                     pct = downloaded / total * 100
-                    print(f"           {downloaded/1_048_576:.0f} MB / {total/1_048_576:.0f} MB ({pct:.0f}%)", flush=True)
+                    print(
+                        f"           {downloaded / 1_048_576:.0f} MB / {total / 1_048_576:.0f} MB ({pct:.0f}%)",
+                        flush=True,
+                    )
                     last_print = downloaded
-    print(f"           Done. {downloaded/1_048_576:.1f} MB saved.", flush=True)
+    print(f"           Done. {downloaded / 1_048_576:.1f} MB saved.", flush=True)
 
 
 # ---------------------------------------------------------------------------
 # XML parsing — streaming iterparse
 # ---------------------------------------------------------------------------
+
 
 def parse_text(element, tag):
     """Safely get text from child element."""
@@ -193,8 +199,10 @@ def iter_abr_records(xml_fileobj):
 # Process one zip file — inserts trading_names only (no per-row BU updates)
 # ---------------------------------------------------------------------------
 
-def process_zip(zip_path: str, conn, dry_run: bool, dry_run_limit: int,
-                counters: dict, sample_printed: int) -> int:
+
+def process_zip(
+    zip_path: str, conn, dry_run: bool, dry_run_limit: int, counters: dict, sample_printed: int
+) -> int:
     """
     Process one zip file. Returns updated sample_printed count.
     counters keys: abns, trd, bn
@@ -216,7 +224,9 @@ def process_zip(zip_path: str, conn, dry_run: bool, dry_run_limit: int,
 
     with zipfile.ZipFile(zip_path, "r") as zf:
         xml_names = [n for n in zf.namelist() if n.lower().endswith(".xml")]
-        print(f"           Files in zip: {len(zf.namelist())} total, {len(xml_names)} XML", flush=True)
+        print(
+            f"           Files in zip: {len(zf.namelist())} total, {len(xml_names)} XML", flush=True
+        )
 
         for xml_name in xml_names:
             print(f"\n[parse]    {xml_name}", flush=True)
@@ -225,7 +235,10 @@ def process_zip(zip_path: str, conn, dry_run: bool, dry_run_limit: int,
                     counters["abns"] += 1
 
                     if dry_run and counters["abns"] > dry_run_limit:
-                        print(f"\n[dry-run]  Limit of {dry_run_limit} records reached — stopping.", flush=True)
+                        print(
+                            f"\n[dry-run]  Limit of {dry_run_limit} records reached — stopping.",
+                            flush=True,
+                        )
                         flush_batch()
                         return sample_printed
 
@@ -236,8 +249,11 @@ def process_zip(zip_path: str, conn, dry_run: bool, dry_run_limit: int,
                     postcode = rec["postcode"]
 
                     if dry_run and sample_printed < 10:
-                        print(f"  ABN={abn} active={is_active} state={state} "
-                              f"TRD={rec['trd_names'][:2]} BN={rec['bn_names'][:3]}", flush=True)
+                        print(
+                            f"  ABN={abn} active={is_active} state={state} "
+                            f"TRD={rec['trd_names'][:2]} BN={rec['bn_names'][:3]}",
+                            flush=True,
+                        )
                         sample_printed += 1
 
                     for name in rec["trd_names"]:
@@ -250,13 +266,19 @@ def process_zip(zip_path: str, conn, dry_run: bool, dry_run_limit: int,
 
                     if counters["abns"] % PROGRESS_EVERY == 0:
                         flush_batch()  # commit current batch first
-                        print(f"[progress] {counters['abns']:,} ABNs | "
-                              f"TRD: {counters['trd']:,} | BN: {counters['bn']:,}", flush=True)
+                        print(
+                            f"[progress] {counters['abns']:,} ABNs | "
+                            f"TRD: {counters['trd']:,} | BN: {counters['bn']:,}",
+                            flush=True,
+                        )
 
                     if len(batch) >= BATCH_SIZE:
                         flush_batch()
-                        print(f"[batch]    {counters['abns']:,} ABNs processed | "
-                              f"TRD: {counters['trd']:,} | BN: {counters['bn']:,}", flush=True)
+                        print(
+                            f"[batch]    {counters['abns']:,} ABNs processed | "
+                            f"TRD: {counters['trd']:,} | BN: {counters['bn']:,}",
+                            flush=True,
+                        )
 
     flush_batch()
     return sample_printed
@@ -266,6 +288,7 @@ def process_zip(zip_path: str, conn, dry_run: bool, dry_run_limit: int,
 # Bulk update business_universe after all inserts
 # ---------------------------------------------------------------------------
 
+
 def update_business_universe(conn):
     cur = conn.cursor()
 
@@ -274,14 +297,20 @@ def update_business_universe(conn):
     cur.execute(BU_UPDATE_TRADING_NAME_SQL)
     trd_updated = cur.rowcount
     conn.commit()
-    print(f"            trading_name updated: {trd_updated:,} rows ({time.time()-t0:.1f}s)", flush=True)
+    print(
+        f"            trading_name updated: {trd_updated:,} rows ({time.time() - t0:.1f}s)",
+        flush=True,
+    )
 
     print("[bu-update] Updating business_universe.abr_business_names...", flush=True)
     t0 = time.time()
     cur.execute(BU_UPDATE_BN_NAMES_SQL)
     bn_updated = cur.rowcount
     conn.commit()
-    print(f"            abr_business_names updated: {bn_updated:,} rows ({time.time()-t0:.1f}s)", flush=True)
+    print(
+        f"            abr_business_names updated: {bn_updated:,} rows ({time.time() - t0:.1f}s)",
+        flush=True,
+    )
 
     cur.close()
     return trd_updated, bn_updated
@@ -291,12 +320,17 @@ def update_business_universe(conn):
 # Main
 # ---------------------------------------------------------------------------
 
+
 def main():
     parser = argparse.ArgumentParser(description="Load ABR trading names into Supabase")
-    parser.add_argument("--dry-run", action="store_true",
-                        help=f"Process first {DRY_RUN_LIMIT} records only, no DB writes")
-    parser.add_argument("--part1-only", action="store_true",
-                        help="Only process Part 1 of the ABR extract")
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help=f"Process first {DRY_RUN_LIMIT} records only, no DB writes",
+    )
+    parser.add_argument(
+        "--part1-only", action="store_true", help="Only process Part 1 of the ABR extract"
+    )
     args = parser.parse_args()
 
     if args.dry_run:
@@ -325,8 +359,7 @@ def main():
 
     for _url, zip_path in parts:
         sample_printed = process_zip(
-            zip_path, conn, args.dry_run, DRY_RUN_LIMIT,
-            counters, sample_printed
+            zip_path, conn, args.dry_run, DRY_RUN_LIMIT, counters, sample_printed
         )
         if args.dry_run and counters["abns"] >= DRY_RUN_LIMIT:
             break
@@ -350,7 +383,7 @@ def main():
     print(f"  Total rows queued:       {counters['trd'] + counters['bn']:>12,}", flush=True)
     print(f"  BU trading_name updated: {bu_trd:>12,}", flush=True)
     print(f"  BU bn_names updated:     {bu_bn:>12,}", flush=True)
-    print(f"  Elapsed:                 {elapsed:.1f}s ({elapsed/60:.1f} min)", flush=True)
+    print(f"  Elapsed:                 {elapsed:.1f}s ({elapsed / 60:.1f} min)", flush=True)
     if args.dry_run:
         print("\n  [DRY RUN] No data written to database.", flush=True)
     print("=" * 60, flush=True)

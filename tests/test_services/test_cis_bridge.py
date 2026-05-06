@@ -219,9 +219,7 @@ class TestMeetingServiceCisBridge:
                 assert result is not None, (
                     "Meeting creation must succeed even when CIS bridge raises Exception"
                 )
-                assert "id" in result, (
-                    "Returned meeting dict must contain 'id' field"
-                )
+                assert "id" in result, "Returned meeting dict must contain 'id' field"
 
     @pytest.mark.asyncio
     async def test_cis_not_called_without_converting_activity_id(self):
@@ -294,8 +292,8 @@ class TestVoiceCisBridge:
         mock_act_result.fetchone.return_value = act_row
 
         mock_session.execute.side_effect = [
-            mock_insert_result,   # INSERT into conversion_events
-            mock_act_result,      # SELECT activity for CIS voice bridge
+            mock_insert_result,  # INSERT into conversion_events
+            mock_act_result,  # SELECT activity for CIS voice bridge
         ]
 
         processor = VoicePostCallProcessor(mock_session)
@@ -361,7 +359,7 @@ class TestVoiceCisBridge:
         mock_insert_result.fetchone.return_value = None
 
         mock_session.execute.side_effect = [
-            mock_insert_result,       # INSERT conversion_events OK
+            mock_insert_result,  # INSERT conversion_events OK
             Exception("DB timeout"),  # Activity SELECT blows up inside CIS try block
         ]
 
@@ -391,8 +389,8 @@ class TestVoiceCisBridge:
         mock_act_result.fetchone.return_value = None  # No activity found yet
 
         mock_session.execute.side_effect = [
-            mock_insert_result,   # INSERT conversion_events
-            mock_act_result,      # SELECT activity → no row
+            mock_insert_result,  # INSERT conversion_events
+            mock_act_result,  # SELECT activity → no row
         ]
 
         processor = VoicePostCallProcessor(mock_session)

@@ -14,6 +14,7 @@ Requires INBOX_HMAC_SECRET in env (auto-loaded from ~/.config/agency-os/.env).
 Exit 0 on success, prints the written path. Exit 2 on missing secret or
 unknown target.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -59,7 +60,10 @@ def main() -> int:
     args = parser.parse_args()
 
     if not os.environ.get("INBOX_HMAC_SECRET"):
-        print("ERROR: INBOX_HMAC_SECRET not set in env (expected in ~/.config/agency-os/.env)", file=sys.stderr)
+        print(
+            "ERROR: INBOX_HMAC_SECRET not set in env (expected in ~/.config/agency-os/.env)",
+            file=sys.stderr,
+        )
         return 2
 
     task_ref = args.task_ref or f"task_{int(time.time())}_{uuid.uuid4().hex[:6]}"

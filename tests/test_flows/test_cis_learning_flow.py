@@ -19,6 +19,7 @@ class TestCISThresholdConfig:
         if module_name in sys.modules:
             del sys.modules[module_name]
         import src.orchestration.flows.cis_learning_flow as cis_flow
+
         return cis_flow
 
     def test_default_threshold_is_20(self):
@@ -38,9 +39,10 @@ class TestCISThresholdConfig:
     def test_threshold_accepts_different_values(self):
         """Threshold can be set to various integer values."""
         test_values = [5, 10, 100, 1000]
-        
+
         for value in test_values:
             with patch.dict(os.environ, {"CIS_MIN_OUTCOMES_THRESHOLD": str(value)}):
                 cis_flow = self._reload_cis_module()
-                assert cis_flow.MIN_OUTCOMES_THRESHOLD == value, \
+                assert cis_flow.MIN_OUTCOMES_THRESHOLD == value, (
                     f"Expected {value}, got {cis_flow.MIN_OUTCOMES_THRESHOLD}"
+                )

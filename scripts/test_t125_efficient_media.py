@@ -4,7 +4,7 @@ CEO Directive #039 — T1.25 Validation Test
 Purpose: Confirm fuzzy match now clears 70% threshold for Efficient Media case
 
 Test case from #038 mini validation:
-- ABN: 77603054815 | EFFICIENT MEDIA PTY LTD | NSW  
+- ABN: 77603054815 | EFFICIENT MEDIA PTY LTD | NSW
 - GMB: Efficient Media | Digital Marketing Agency
 - Previous score: 55% (FAIL)
 - Expected after T1.25: >70% (PASS)
@@ -19,13 +19,15 @@ ABN_LEGAL_NAME = "EFFICIENT MEDIA PTY LTD"
 GMB_NAME = "Efficient Media"
 THRESHOLD = 70
 
+
 def clean_company_name(name: str) -> str:
     """Clean company name for better fuzzy matching (from T1.25)."""
     import re
+
     if not name:
         return ""
-    suffixes_pattern = r'\s+(PTY\.?\s*LTD\.?|LIMITED|LTD\.?|PROPRIETARY|INC\.?|INCORPORATED|HOLDINGS?|GROUP|AUSTRALIA|AUST\.?|AU)\s*$'
-    cleaned = re.sub(suffixes_pattern, '', name.upper(), flags=re.IGNORECASE)
+    suffixes_pattern = r"\s+(PTY\.?\s*LTD\.?|LIMITED|LTD\.?|PROPRIETARY|INC\.?|INCORPORATED|HOLDINGS?|GROUP|AUSTRALIA|AUST\.?|AU)\s*$"
+    cleaned = re.sub(suffixes_pattern, "", name.upper(), flags=re.IGNORECASE)
     return cleaned.strip().title()
 
 

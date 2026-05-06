@@ -18,6 +18,7 @@ import pytest
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _stub_mem0_module(mock_client_instance: MagicMock) -> ModuleType:
     """Return a fake 'mem0' module with MemoryClient returning mock_client_instance."""
     stub = ModuleType("mem0")
@@ -56,6 +57,7 @@ def _load_mod_with_mock_client(log_path: str):
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(autouse=True)
 def cleanup_mem0_stub():
     """Remove mem0 stub from sys.modules after each test."""
@@ -72,6 +74,7 @@ def log_path(tmp_path):
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 def test_add_writes_to_mem0_and_logs(log_path, monkeypatch):
     """add() calls client.add and appends an 'add' entry to usage log."""
@@ -104,7 +107,9 @@ def test_search_queries_mem0_and_logs(log_path, monkeypatch):
     adapter = mod.Mem0Adapter()
     results = adapter.search("pipeline decision", limit=3, callsign="elliot")
 
-    mock_client.search.assert_called_once_with("pipeline decision", filters={"user_id": "elliot"}, limit=3)
+    mock_client.search.assert_called_once_with(
+        "pipeline decision", filters={"user_id": "elliot"}, limit=3
+    )
     assert isinstance(results, list)
     assert results[0]["memory"] == "test memory content"
 
@@ -125,7 +130,12 @@ def test_get_monthly_usage_reads_jsonl(log_path, monkeypatch):
         {"ts": "2026-05-01T10:00:00+00:00", "op": "add", "callsign": "aiden", "count": 1},
         {"ts": "2026-05-01T10:01:00+00:00", "op": "add", "callsign": "elliot", "count": 1},
         {"ts": "2026-05-01T10:02:00+00:00", "op": "search", "callsign": "aiden", "count": 1},
-        {"ts": "2026-04-30T23:59:00+00:00", "op": "add", "callsign": "aiden", "count": 1},  # prior month
+        {
+            "ts": "2026-04-30T23:59:00+00:00",
+            "op": "add",
+            "callsign": "aiden",
+            "count": 1,
+        },  # prior month
     ]
     with open(log_path, "w") as fh:
         for e in sample_entries:
@@ -144,11 +154,20 @@ def test_cap_warning_fires_at_80_percent_add(log_path, monkeypatch, caplog):
 
     period = "2026-05"
     with open(log_path, "w") as fh:
-        fh.write(json.dumps(
-            {"ts": f"{period}-01T00:00:00+00:00", "op": "add", "callsign": "aiden", "count": 8000}
-        ) + "\n")
+        fh.write(
+            json.dumps(
+                {
+                    "ts": f"{period}-01T00:00:00+00:00",
+                    "op": "add",
+                    "callsign": "aiden",
+                    "count": 8000,
+                }
+            )
+            + "\n"
+        )
 
     import logging
+
     with caplog.at_level(logging.WARNING, logger="src.governance.mem0_adapter"):
         mod._check_caps("add")
 
@@ -162,11 +181,20 @@ def test_cap_warning_fires_at_80_percent_search(log_path, monkeypatch, caplog):
 
     period = "2026-05"
     with open(log_path, "w") as fh:
-        fh.write(json.dumps(
-            {"ts": f"{period}-01T00:00:00+00:00", "op": "search", "callsign": "elliot", "count": 800}
-        ) + "\n")
+        fh.write(
+            json.dumps(
+                {
+                    "ts": f"{period}-01T00:00:00+00:00",
+                    "op": "search",
+                    "callsign": "elliot",
+                    "count": 800,
+                }
+            )
+            + "\n"
+        )
 
     import logging
+
     with caplog.at_level(logging.WARNING, logger="src.governance.mem0_adapter"):
         mod._check_caps("search")
 

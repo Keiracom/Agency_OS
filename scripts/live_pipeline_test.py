@@ -27,9 +27,7 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(message)s",
     handlers=[
         logging.StreamHandler(sys.stdout),
-        logging.FileHandler(
-            f"logs/live_test_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
-        ),
+        logging.FileHandler(f"logs/live_test_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"),
     ],
 )
 log = logging.getLogger("live_test")
@@ -39,10 +37,10 @@ CAMPAIGN_ID = "4c894b10-fa19-48c9-b2c6-87941f6870e5"
 CLIENT_ID = "79113059-5b71-4f79-a321-d2ba326598bc"
 
 TEST_SUBURBS = [
-    {"name": "Surry Hills",  "state": "NSW", "lat": -33.8837, "lng": 151.2128},
-    {"name": "Newtown",      "state": "NSW", "lat": -33.8983, "lng": 151.1775},
-    {"name": "Paddington",   "state": "NSW", "lat": -33.8842, "lng": 151.2315},
-    {"name": "Redfern",      "state": "NSW", "lat": -33.8928, "lng": 151.2041},
+    {"name": "Surry Hills", "state": "NSW", "lat": -33.8837, "lng": 151.2128},
+    {"name": "Newtown", "state": "NSW", "lat": -33.8983, "lng": 151.1775},
+    {"name": "Paddington", "state": "NSW", "lat": -33.8842, "lng": 151.2315},
+    {"name": "Redfern", "state": "NSW", "lat": -33.8928, "lng": 151.2041},
     {"name": "Darlinghurst", "state": "NSW", "lat": -33.8794, "lng": 151.2193},
 ]
 CATEGORY = "dentist"
@@ -97,10 +95,9 @@ async def run_stage1(dfs_client: DFSGMapsClient, db_pool):
 
             # Spend cap check
             from src.clients.dfs_gmaps_client import COST_PER_SEARCH_AUD
+
             if dfs_client.estimated_cost_aud + COST_PER_SEARCH_AUD > Decimal(str(STAGE1_SPEND_CAP)):
-                log.warning(
-                    f"  Spend cap AUD {STAGE1_SPEND_CAP} reached — stopping discovery"
-                )
+                log.warning(f"  Spend cap AUD {STAGE1_SPEND_CAP} reached — stopping discovery")
                 break
 
             try:
@@ -126,13 +123,13 @@ async def run_stage1(dfs_client: DFSGMapsClient, db_pool):
 
                     # Dynamic INSERT
                     cols = list(bu_row.keys())
-                    placeholders = [f"${i+1}" for i in range(len(cols))]
+                    placeholders = [f"${i + 1}" for i in range(len(cols))]
                     values = [bu_row[c] for c in cols]
 
                     try:
                         inserted_id = await conn.fetchval(
-                            f"""INSERT INTO business_universe ({', '.join(cols)})
-                                VALUES ({', '.join(placeholders)})
+                            f"""INSERT INTO business_universe ({", ".join(cols)})
+                                VALUES ({", ".join(placeholders)})
                                 ON CONFLICT (gmb_place_id) DO NOTHING
                                 RETURNING id""",
                             *values,
@@ -143,11 +140,13 @@ async def run_stage1(dfs_client: DFSGMapsClient, db_pool):
                         else:
                             total_deduped += 1
                     except Exception as e:
-                        errors.append({
-                            "suburb": suburb["name"],
-                            "business": bu_row.get("display_name", ""),
-                            "error": str(e),
-                        })
+                        errors.append(
+                            {
+                                "suburb": suburb["name"],
+                                "business": bu_row.get("display_name", ""),
+                                "error": str(e),
+                            }
+                        )
 
             except Exception as e:
                 log.error(f"    {suburb['name']} DFS error: {e}")
@@ -209,11 +208,12 @@ async def run_test():
         # ── STAGE 1 ──────────────────────────────────────
         t0 = time.time()
         s1_result = await run_stage1(dfs_client, db_pool)
-        log.info(f"Stage 1 completed in {time.time()-t0:.1f}s")
+        log.info(f"Stage 1 completed in {time.time() - t0:.1f}s")
 
         # Checkpoint
         await checkpoint(
-            db_pool, "After Stage 1",
+            db_pool,
+            "After Stage 1",
             "SELECT COUNT(*) as count, pipeline_stage FROM business_universe "
             "WHERE pipeline_stage = 1 GROUP BY pipeline_stage",
         )
@@ -229,12 +229,13 @@ async def run_test():
             s2 = Stage2FreeSignals(conn)
             s2_result = await s2.run(batch_size=100)
         log.info(
-            f"Stage 2 complete in {time.time()-t0:.1f}s: "
+            f"Stage 2 complete in {time.time() - t0:.1f}s: "
             f"{json.dumps(s2_result, indent=2, default=str)}"
         )
 
         await checkpoint(
-            db_pool, "After Stage 2",
+            db_pool,
+            "After Stage 2",
             "SELECT COUNT(*) as count FROM business_universe WHERE pipeline_stage = 2",
         )
 
@@ -245,12 +246,13 @@ async def run_test():
             s3 = Stage3Propensity(conn)
             s3_result = await s3.run(batch_size=200)
         log.info(
-            f"Stage 3 complete in {time.time()-t0:.1f}s: "
+            f"Stage 3 complete in {time.time() - t0:.1f}s: "
             f"{json.dumps(s3_result, indent=2, default=str)}"
         )
 
         await checkpoint(
-            db_pool, "After Stage 3",
+            db_pool,
+            "After Stage 3",
             """SELECT
                 COUNT(*) as total,
                 COUNT(*) FILTER (WHERE propensity_score >= 70) as high,

@@ -3,6 +3,7 @@ Integration tests for stage_9_10_flow.py — P4
 
 Tests use mocked pool and stage classes. No DB or AI calls are made.
 """
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -31,6 +32,7 @@ AGENCY_PROFILE = {
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_pool(fetchval_return=None, fetch_return=None):
     """Return a mock asyncpg.Pool with acquire() context manager."""
     conn = AsyncMock()
@@ -48,6 +50,7 @@ def _make_pool(fetchval_return=None, fetch_return=None):
 # test_flow_dry_run
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_flow_dry_run():
     """Dry run returns bdm_count without calling Stage 9 or Stage 10."""
@@ -56,9 +59,7 @@ async def test_flow_dry_run():
         patch(
             "src.orchestration.flows.stage_9_10_flow.Stage9VulnerabilityEnrichment"
         ) as mock_s9_cls,
-        patch(
-            "src.orchestration.flows.stage_9_10_flow.Stage10MessageGenerator"
-        ) as mock_s10_cls,
+        patch("src.orchestration.flows.stage_9_10_flow.Stage10MessageGenerator") as mock_s10_cls,
     ):
         pool, conn = _make_pool()
         # select_bdms with explicit bdm_ids won't touch DB
@@ -86,12 +87,15 @@ async def test_flow_dry_run():
 # test_budget_cap_enforcement
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_budget_cap_enforcement():
     """Budget cap triggers ValueError before Stage 9 is called."""
     with (
         patch("asyncpg.create_pool", new_callable=AsyncMock) as mock_create_pool,
-        patch("src.orchestration.flows.stage_9_10_flow.Stage9VulnerabilityEnrichment") as mock_s9_cls,
+        patch(
+            "src.orchestration.flows.stage_9_10_flow.Stage9VulnerabilityEnrichment"
+        ) as mock_s9_cls,
     ):
         pool, _ = _make_pool()
         mock_create_pool.return_value = pool
@@ -110,6 +114,7 @@ async def test_budget_cap_enforcement():
 # ---------------------------------------------------------------------------
 # test_stage_9_verification_gate
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_stage_9_verification_gate():
@@ -131,9 +136,7 @@ async def test_stage_9_verification_gate():
         patch(
             "src.orchestration.flows.stage_9_10_flow.Stage9VulnerabilityEnrichment"
         ) as mock_s9_cls,
-        patch(
-            "src.orchestration.flows.stage_9_10_flow.Stage10MessageGenerator"
-        ) as mock_s10_cls,
+        patch("src.orchestration.flows.stage_9_10_flow.Stage10MessageGenerator") as mock_s10_cls,
     ):
         pool, conn = _make_pool(fetchval_return=0)
         mock_create_pool.return_value = pool
@@ -157,6 +160,7 @@ async def test_stage_9_verification_gate():
 # test_post_s9_budget_exhaustion
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_post_s9_budget_exhaustion():
     """Budget exhausted after Stage 9 halts before Stage 10."""
@@ -165,9 +169,7 @@ async def test_post_s9_budget_exhaustion():
         patch(
             "src.orchestration.flows.stage_9_10_flow.Stage9VulnerabilityEnrichment"
         ) as mock_s9_cls,
-        patch(
-            "src.orchestration.flows.stage_9_10_flow.Stage10MessageGenerator"
-        ) as mock_s10_cls,
+        patch("src.orchestration.flows.stage_9_10_flow.Stage10MessageGenerator") as mock_s10_cls,
     ):
         pool, conn = _make_pool(fetchval_return=1)  # VR verification passes
         mock_create_pool.return_value = pool
@@ -191,8 +193,10 @@ async def test_post_s9_budget_exhaustion():
 # test_on_failure_hook_wired
 # ---------------------------------------------------------------------------
 
+
 def test_on_failure_hook_wired():
     """Flow has on_failure hook configured for TG alerting."""
     from src.orchestration.flows.stage_9_10_flow import stage_9_10_pipeline as flow_obj
     from src.prefect_utils.hooks import on_failure_hook
+
     assert on_failure_hook in flow_obj.on_failure_hooks

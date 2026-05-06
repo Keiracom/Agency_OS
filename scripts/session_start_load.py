@@ -35,6 +35,7 @@ SUPABASE_PROJECT_ID = "jatzvazlbusedwsnqxzr"
 # Supabase helpers
 # ---------------------------------------------------------------------------
 
+
 def load_env() -> tuple[str, str]:
     env = dotenv_values(ENV_PATH)
     url = env.get("SUPABASE_URL", "").rstrip("/")
@@ -68,6 +69,7 @@ def supabase_get(base_url: str, key: str, path: str) -> list:
 # ---------------------------------------------------------------------------
 # Query functions
 # ---------------------------------------------------------------------------
+
 
 def fetch_daily_logs(base_url: str, key: str, callsign: str | None) -> list:
     path = (
@@ -148,6 +150,7 @@ def fetch_active_blockers(base_url: str, key: str) -> list:
 # ---------------------------------------------------------------------------
 # Formatting helpers
 # ---------------------------------------------------------------------------
+
 
 def _short_date(iso: str) -> str:
     """Return YYYY-MM-DD from an ISO timestamp."""
@@ -277,6 +280,7 @@ def format_json(
 # Main
 # ---------------------------------------------------------------------------
 
+
 def main():
     parser = argparse.ArgumentParser(
         description="Load agent_memories context brief for session start."
@@ -312,9 +316,13 @@ def main():
     )
 
     if args.format == "json":
-        output = format_json(args.callsign, daily_logs, dave_confirmed, patterns_skills, recent, blockers)
+        output = format_json(
+            args.callsign, daily_logs, dave_confirmed, patterns_skills, recent, blockers
+        )
     else:
-        output = format_markdown(args.callsign, daily_logs, dave_confirmed, patterns_skills, recent, blockers)
+        output = format_markdown(
+            args.callsign, daily_logs, dave_confirmed, patterns_skills, recent, blockers
+        )
 
     print(output)
 

@@ -15,6 +15,7 @@ per docs/governance_chunking.md rules).
 Embeds each chunk via OpenAI text-embedding-3-small (batched) and bulk-inserts
 into Supabase via REST. Logs OpenAI cost per batch.
 """
+
 import json
 import os
 import sys
@@ -104,14 +105,18 @@ def main() -> None:
             total_input_tokens += usage.get("total_tokens", 0)
             for c, emb in zip(batch, embeddings):
                 c["_embedding"] = emb
-            print(f"  batch {i // EMBED_BATCH + 1}: {len(batch)} chunks, "
-                  f"{usage.get('total_tokens', 0)} tokens")
+            print(
+                f"  batch {i // EMBED_BATCH + 1}: {len(batch)} chunks, "
+                f"{usage.get('total_tokens', 0)} tokens"
+            )
 
     # Rough cost calc: text-embedding-3-small = $0.02 per 1M tokens (USD)
     cost_usd = total_input_tokens / 1_000_000 * 0.02
     cost_aud = cost_usd * 1.55
-    print(f"\nEmbedding total: {total_input_tokens} tokens -> "
-          f"~${cost_usd:.6f} USD / ~${cost_aud:.6f} AUD")
+    print(
+        f"\nEmbedding total: {total_input_tokens} tokens -> "
+        f"~${cost_usd:.6f} USD / ~${cost_aud:.6f} AUD"
+    )
 
     # Step 2 — build insert rows
     rows = []
@@ -127,22 +132,25 @@ def main() -> None:
         if c.get("sub_section"):
             typed_meta["sub_section"] = c["sub_section"]
 
-        rows.append({
-            "callsign": "system",
-            "source_type": "verified_fact",
-            "content": c["content"],
-            "typed_metadata": typed_meta,
-            "tags": c.get("tags", []),
-            "state": "confirmed",
-            "confidence": 1.0,
-            "trust": "dave_confirmed",
-            "embedding": c["_embedding"],
-            "directive_id": DIRECTIVE_ID,
-        })
+        rows.append(
+            {
+                "callsign": "system",
+                "source_type": "verified_fact",
+                "content": c["content"],
+                "typed_metadata": typed_meta,
+                "tags": c.get("tags", []),
+                "state": "confirmed",
+                "confidence": 1.0,
+                "trust": "dave_confirmed",
+                "embedding": c["_embedding"],
+                "directive_id": DIRECTIVE_ID,
+            }
+        )
 
     # Step 3 — insert in batches
-    print(f"\nInserting {len(rows)} rows into public.agent_memories "
-          f"in batches of {INSERT_BATCH}...")
+    print(
+        f"\nInserting {len(rows)} rows into public.agent_memories in batches of {INSERT_BATCH}..."
+    )
     with httpx.Client() as client:
         for i in range(0, len(rows), INSERT_BATCH):
             batch = rows[i : i + INSERT_BATCH]

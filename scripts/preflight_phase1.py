@@ -16,6 +16,7 @@ FAIL. Companion to ATLAS's preflight_governance_a.py.
 
 Skips (logs SKIP, exit code stays 0) when env prerequisites are missing.
 """
+
 from __future__ import annotations
 
 import json
@@ -51,17 +52,27 @@ def check_coordinator() -> dict:
     read path is healthy without polluting state."""
     name = "coordinator_claims_read"
     if not (os.environ.get("SUPABASE_URL") and os.environ.get("SUPABASE_SERVICE_KEY")):
-        return {"name": name, "status": "SKIP",
-                "reason": "SUPABASE_URL or SUPABASE_SERVICE_KEY missing"}
+        return {
+            "name": name,
+            "status": "SKIP",
+            "reason": "SUPABASE_URL or SUPABASE_SERVICE_KEY missing",
+        }
     try:
         from src.governance.coordinator import list_active_claims
+
         rows = list_active_claims(target_path="__preflight_synthetic_path__")
-        return {"name": name, "status": "PASS",
-                "detail": f"read returned {len(rows)} rows (expected 0)"}
+        return {
+            "name": name,
+            "status": "PASS",
+            "detail": f"read returned {len(rows)} rows (expected 0)",
+        }
     except Exception as exc:
-        return {"name": name, "status": "FAIL",
-                "detail": f"{type(exc).__name__}: {exc}",
-                "traceback": traceback.format_exc()}
+        return {
+            "name": name,
+            "status": "FAIL",
+            "detail": f"{type(exc).__name__}: {exc}",
+            "traceback": traceback.format_exc(),
+        }
 
 
 def check_router() -> dict:
@@ -69,17 +80,27 @@ def check_router() -> dict:
     name = "router_heuristic_classify"
     try:
         from src.governance.router import _heuristic_fallback
+
         synthetic = "[CONCUR] preflight check"
         decision = _heuristic_fallback(synthetic)
         if decision.audience != "peer":
-            return {"name": name, "status": "FAIL",
-                    "detail": f"expected peer, got {decision.audience}"}
-        return {"name": name, "status": "PASS",
-                "detail": f"audience={decision.audience} force_tg={decision.force_tg}"}
+            return {
+                "name": name,
+                "status": "FAIL",
+                "detail": f"expected peer, got {decision.audience}",
+            }
+        return {
+            "name": name,
+            "status": "PASS",
+            "detail": f"audience={decision.audience} force_tg={decision.force_tg}",
+        }
     except Exception as exc:
-        return {"name": name, "status": "FAIL",
-                "detail": f"{type(exc).__name__}: {exc}",
-                "traceback": traceback.format_exc()}
+        return {
+            "name": name,
+            "status": "FAIL",
+            "detail": f"{type(exc).__name__}: {exc}",
+            "traceback": traceback.format_exc(),
+        }
 
 
 def check_mem0() -> dict:
@@ -91,20 +112,21 @@ def check_mem0() -> dict:
     try:
         from src.governance import mem0_adapter  # noqa: F401
     except ImportError as exc:
-        return {"name": name, "status": "FAIL",
-                "detail": f"mem0_adapter import failed: {exc}"}
+        return {"name": name, "status": "FAIL", "detail": f"mem0_adapter import failed: {exc}"}
     try:
         from src.governance.mem0_adapter import Mem0Adapter
+
         Mem0Adapter()
-        return {"name": name, "status": "PASS",
-                "detail": "Mem0Adapter init succeeded"}
+        return {"name": name, "status": "PASS", "detail": "Mem0Adapter init succeeded"}
     except ImportError as exc:
-        return {"name": name, "status": "SKIP",
-                "reason": f"mem0ai package not installed: {exc}"}
+        return {"name": name, "status": "SKIP", "reason": f"mem0ai package not installed: {exc}"}
     except Exception as exc:
-        return {"name": name, "status": "FAIL",
-                "detail": f"{type(exc).__name__}: {exc}",
-                "traceback": traceback.format_exc()}
+        return {
+            "name": name,
+            "status": "FAIL",
+            "detail": f"{type(exc).__name__}: {exc}",
+            "traceback": traceback.format_exc(),
+        }
 
 
 def main() -> int:
@@ -122,8 +144,7 @@ def main() -> int:
 
     fails = [r for r in results if r["status"] == "FAIL"]
     if fails:
-        print(f"[preflight] FAIL: {len(fails)} of {len(results)} checks failed",
-              file=sys.stderr)
+        print(f"[preflight] FAIL: {len(fails)} of {len(results)} checks failed", file=sys.stderr)
         return 1
     print(f"[preflight] OK: {len(results)} checks ran (no FAIL)")
     return 0

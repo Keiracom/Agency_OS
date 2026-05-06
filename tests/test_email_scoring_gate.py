@@ -29,6 +29,7 @@ def _flag_patterns(result: dict) -> list[str]:
 # Perfect email
 # ---------------------------------------------------------------------------
 
+
 class TestPerfectEmail:
     def test_perfect_email_scores_100(self):
         result = score_email(
@@ -49,49 +50,89 @@ class TestPerfectEmail:
 # Subject line checks
 # ---------------------------------------------------------------------------
 
+
 class TestSubjectChecks:
     def test_empty_subject_deducts_30(self):
         # Pass recipient_company so zero_buyer_knowledge doesn't fire — isolating subject check
-        result = score_email(subject="", body=GOOD_BODY, recipient_company="Acme Plumbing", total_sequence_length=5)
+        result = score_email(
+            subject="", body=GOOD_BODY, recipient_company="Acme Plumbing", total_sequence_length=5
+        )
         assert "weak_subject" in _flag_patterns(result)
         assert result["score"] == 70  # 100 - 30
 
     def test_short_subject_deducts_30(self):
-        result = score_email(subject="Hi", body=GOOD_BODY, recipient_company="Acme Plumbing", total_sequence_length=5)
+        result = score_email(
+            subject="Hi", body=GOOD_BODY, recipient_company="Acme Plumbing", total_sequence_length=5
+        )
         assert "weak_subject" in _flag_patterns(result)
         assert result["score"] == 70
 
     def test_all_caps_subject_deducts_15(self):
-        result = score_email(subject="BIG OPPORTUNITY FOR YOU", body=GOOD_BODY, recipient_company="Acme Plumbing", total_sequence_length=5)
+        result = score_email(
+            subject="BIG OPPORTUNITY FOR YOU",
+            body=GOOD_BODY,
+            recipient_company="Acme Plumbing",
+            total_sequence_length=5,
+        )
         assert "spammy_subject" in _flag_patterns(result)
         assert result["score"] == 85
 
     def test_excessive_punctuation_deducts_15(self):
         # Three exclamation marks — over the limit
-        result = score_email(subject="Hot deal available now!!!", body=GOOD_BODY, recipient_company="Acme Plumbing", total_sequence_length=5)
+        result = score_email(
+            subject="Hot deal available now!!!",
+            body=GOOD_BODY,
+            recipient_company="Acme Plumbing",
+            total_sequence_length=5,
+        )
         assert "spammy_subject" in _flag_patterns(result)
         assert result["score"] == 85
 
     def test_two_punctuation_is_ok(self):
-        result = score_email(subject="Quick win for you!?", body=GOOD_BODY, recipient_company="Acme Plumbing", total_sequence_length=5)
+        result = score_email(
+            subject="Quick win for you!?",
+            body=GOOD_BODY,
+            recipient_company="Acme Plumbing",
+            total_sequence_length=5,
+        )
         assert "spammy_subject" not in _flag_patterns(result)
 
     def test_fake_re_threading_deducts_20(self):
-        result = score_email(subject="Re: our conversation", body=GOOD_BODY, recipient_company="Acme Plumbing", total_sequence_length=5)
+        result = score_email(
+            subject="Re: our conversation",
+            body=GOOD_BODY,
+            recipient_company="Acme Plumbing",
+            total_sequence_length=5,
+        )
         assert "fake_threading" in _flag_patterns(result)
         assert result["score"] == 80
 
     def test_fake_fw_threading_deducts_20(self):
-        result = score_email(subject="Fw: something important", body=GOOD_BODY, recipient_company="Acme Plumbing", total_sequence_length=5)
+        result = score_email(
+            subject="Fw: something important",
+            body=GOOD_BODY,
+            recipient_company="Acme Plumbing",
+            total_sequence_length=5,
+        )
         assert "fake_threading" in _flag_patterns(result)
 
     def test_generic_subject_deducts_10(self):
-        result = score_email(subject="Following up", body=GOOD_BODY, recipient_company="Acme Plumbing", total_sequence_length=5)
+        result = score_email(
+            subject="Following up",
+            body=GOOD_BODY,
+            recipient_company="Acme Plumbing",
+            total_sequence_length=5,
+        )
         assert "generic_subject" in _flag_patterns(result)
         assert result["score"] == 90
 
     def test_generic_subject_case_insensitive(self):
-        result = score_email(subject="QUICK QUESTION", body=GOOD_BODY, recipient_company="Acme Plumbing", total_sequence_length=5)
+        result = score_email(
+            subject="QUICK QUESTION",
+            body=GOOD_BODY,
+            recipient_company="Acme Plumbing",
+            total_sequence_length=5,
+        )
         # all-caps triggers spammy_subject (-15); generic match on "quick question" also (-10)
         assert "generic_subject" in _flag_patterns(result)
         assert "spammy_subject" in _flag_patterns(result)
@@ -101,30 +142,53 @@ class TestSubjectChecks:
 # Body checks
 # ---------------------------------------------------------------------------
 
+
 class TestBodyChecks:
     def test_curly_template_token_deducts_25(self):
         body = "Hi {first_name}, I wanted to reach out about " + GOOD_BODY[20:]
-        result = score_email(subject=GOOD_SUBJECT, body=body, recipient_company="Acme Plumbing", total_sequence_length=5)
+        result = score_email(
+            subject=GOOD_SUBJECT,
+            body=body,
+            recipient_company="Acme Plumbing",
+            total_sequence_length=5,
+        )
         assert "mail_merge_failure" in _flag_patterns(result)
         assert result["score"] <= 75  # 100 - 25
 
     def test_double_curly_token(self):
         body = "Hey {{name}}, " + GOOD_BODY[10:]
-        result = score_email(subject=GOOD_SUBJECT, body=body, recipient_company="Acme Plumbing", total_sequence_length=5)
+        result = score_email(
+            subject=GOOD_SUBJECT,
+            body=body,
+            recipient_company="Acme Plumbing",
+            total_sequence_length=5,
+        )
         assert "mail_merge_failure" in _flag_patterns(result)
 
     def test_angle_bracket_token(self):
         body = "Dear <FIRST_NAME>, " + GOOD_BODY[10:]
-        result = score_email(subject=GOOD_SUBJECT, body=body, recipient_company="Acme Plumbing", total_sequence_length=5)
+        result = score_email(
+            subject=GOOD_SUBJECT,
+            body=body,
+            recipient_company="Acme Plumbing",
+            total_sequence_length=5,
+        )
         assert "mail_merge_failure" in _flag_patterns(result)
 
     def test_square_bracket_token(self):
         body = "Hi [COMPANY_NAME] team, " + GOOD_BODY[10:]
-        result = score_email(subject=GOOD_SUBJECT, body=body, recipient_company="Acme Plumbing", total_sequence_length=5)
+        result = score_email(
+            subject=GOOD_SUBJECT,
+            body=body,
+            recipient_company="Acme Plumbing",
+            total_sequence_length=5,
+        )
         assert "mail_merge_failure" in _flag_patterns(result)
 
     def test_no_company_mention_deducts_15(self):
-        generic_body = "Your business caught my eye and I think we can help. Would you be open to a chat?"
+        generic_body = (
+            "Your business caught my eye and I think we can help. Would you be open to a chat?"
+        )
         result = score_email(
             subject=GOOD_SUBJECT,
             body=generic_body,
@@ -205,6 +269,7 @@ class TestBodyChecks:
 # Pronoun balance checks
 # ---------------------------------------------------------------------------
 
+
 class TestPronounBalance:
     def test_self_focused_email_deducts_15(self):
         self_focused = (
@@ -263,6 +328,7 @@ class TestPronounBalance:
 # Sequence checks
 # ---------------------------------------------------------------------------
 
+
 class TestSequenceChecks:
     def test_single_touch_deducts_10(self):
         result = score_email(
@@ -310,6 +376,7 @@ class TestSequenceChecks:
 # ---------------------------------------------------------------------------
 # Personalisation checks
 # ---------------------------------------------------------------------------
+
 
 class TestPersonalisationChecks:
     def test_name_available_but_unused_deducts_10(self):
@@ -361,6 +428,7 @@ class TestPersonalisationChecks:
 # Multi-flag accumulation
 # ---------------------------------------------------------------------------
 
+
 class TestMultipleFlags:
     def test_multiple_flags_accumulate(self):
         """Mail merge failure + weak subject + single touch = -30 -25 -10 = 35."""
@@ -392,10 +460,13 @@ class TestMultipleFlags:
 # Pass / fail threshold
 # ---------------------------------------------------------------------------
 
+
 class TestPassFailThreshold:
     def test_score_70_passes(self):
         # Single touch only (-10) + generic subject (-10) + no CTA (-10) = 70
-        body = "Your business at Acme Plumbing caught my eye. I can help with your ads. Let me know."
+        body = (
+            "Your business at Acme Plumbing caught my eye. I can help with your ads. Let me know."
+        )
         result = score_email(
             subject="Following up",
             body=body,
@@ -441,6 +512,7 @@ class TestPassFailThreshold:
 # ---------------------------------------------------------------------------
 # score_and_suggest
 # ---------------------------------------------------------------------------
+
 
 class TestScoreAndSuggest:
     def test_passing_email_returns_passed_true_and_no_suggestions(self):
@@ -500,7 +572,9 @@ class TestScoreAndSuggest:
             recipient_company="Acme Plumbing",
             total_sequence_length=5,
         )
-        assert any("recipient" in s.lower() or "opening" in s.lower() for s in result["suggestions"])
+        assert any(
+            "recipient" in s.lower() or "opening" in s.lower() for s in result["suggestions"]
+        )
 
     def test_no_cta_suggestion(self):
         no_cta_body = "Hi Sarah, your Acme Plumbing ads need work. I can help. Let me know."

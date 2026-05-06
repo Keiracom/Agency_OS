@@ -5,6 +5,7 @@ Fresh 100 domains through full S1-S7 pipeline.
 Purpose: establish real funnel conversion rates for tier cost projections.
 Budget cap: $10 USD.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -94,8 +95,12 @@ async def main():
 
     dsn = os.environ.get("DATABASE_URL", "").replace("postgresql+asyncpg://", "postgresql://")
     conn = await asyncpg.connect(dsn, statement_cache_size=0)
-    await conn.set_type_codec("jsonb", encoder=json.dumps, decoder=json.loads, schema="pg_catalog", format="text")
-    await conn.set_type_codec("json", encoder=json.dumps, decoder=json.loads, schema="pg_catalog", format="text")
+    await conn.set_type_codec(
+        "jsonb", encoder=json.dumps, decoder=json.loads, schema="pg_catalog", format="text"
+    )
+    await conn.set_type_codec(
+        "json", encoder=json.dumps, decoder=json.loads, schema="pg_catalog", format="text"
+    )
     log.info("DB connected")
 
     try:
@@ -128,8 +133,15 @@ async def main():
             cost.add("S1", float(result1.get("cost_usd", 0)))
             post_s1 = await count_at_stage(conn, 1)
             s1_new = post_s1 - pre_s1
-            funnel["S1"] = {"in": "-", "out": result1.get("discovered", 0), "cost": float(result1.get("cost_usd", 0)), "time": time.time()-t0}
-            log.info(f"[FUNNEL] S1: {result1.get('discovered',0)} new discovered, {result1.get('duplicates_skipped',0)} dupes skipped, {result1.get('blocklist_filtered',0)} blocklisted")
+            funnel["S1"] = {
+                "in": "-",
+                "out": result1.get("discovered", 0),
+                "cost": float(result1.get("cost_usd", 0)),
+                "time": time.time() - t0,
+            }
+            log.info(
+                f"[FUNNEL] S1: {result1.get('discovered', 0)} new discovered, {result1.get('duplicates_skipped', 0)} dupes skipped, {result1.get('blocklist_filtered', 0)} blocklisted"
+            )
         except Exception as e:
             bugs.append(f"S1: {e}")
             log.error(f"S1 error: {e}", exc_info=True)
@@ -144,8 +156,15 @@ async def main():
             log.info(f"S2: {result2}")
             cost.add("S2", float(result2.get("cost_usd", 0)))
             n_s2 = await count_at_stage(conn, 2)
-            funnel["S2"] = {"in": funnel.get("S1", {}).get("out", 0), "out": result2.get("enriched", 0) + result2.get("already_enriched", 0), "cost": float(result2.get("cost_usd", 0)), "time": time.time()-t0}
-            log.info(f"[FUNNEL] S2 → stage=2: {n_s2} rows | enriched={result2.get('enriched',0)} already={result2.get('already_enriched',0)} no_gmb={result2.get('no_gmb_found',0)}")
+            funnel["S2"] = {
+                "in": funnel.get("S1", {}).get("out", 0),
+                "out": result2.get("enriched", 0) + result2.get("already_enriched", 0),
+                "cost": float(result2.get("cost_usd", 0)),
+                "time": time.time() - t0,
+            }
+            log.info(
+                f"[FUNNEL] S2 → stage=2: {n_s2} rows | enriched={result2.get('enriched', 0)} already={result2.get('already_enriched', 0)} no_gmb={result2.get('no_gmb_found', 0)}"
+            )
         except Exception as e:
             bugs.append(f"S2: {e}")
             log.error(f"S2 error: {e}", exc_info=True)
@@ -160,8 +179,13 @@ async def main():
             log.info(f"S3: {result3}")
             cost.add("S3", float(result3.get("cost_usd", 0)))
             n_s3 = await count_at_stage(conn, 3)
-            funnel["S3"] = {"in": funnel.get("S2", {}).get("out", 0), "out": result3.get("profiled", 0), "cost": float(result3.get("cost_usd", 0)), "time": time.time()-t0}
-            log.info(f"[FUNNEL] S3 → stage=3: {n_s3} rows | profiled={result3.get('profiled',0)}")
+            funnel["S3"] = {
+                "in": funnel.get("S2", {}).get("out", 0),
+                "out": result3.get("profiled", 0),
+                "cost": float(result3.get("cost_usd", 0)),
+                "time": time.time() - t0,
+            }
+            log.info(f"[FUNNEL] S3 → stage=3: {n_s3} rows | profiled={result3.get('profiled', 0)}")
         except Exception as e:
             bugs.append(f"S3: {e}")
             log.error(f"S3 error: {e}", exc_info=True)
@@ -198,7 +222,9 @@ async def main():
             """)
             log.info("[S4] Score distribution (this run):")
             for row in dist:
-                log.info(f"  {row['bucket']:20s} | {row['best_match_service'] or 'none':20s} | {row['count']} rows")
+                log.info(
+                    f"  {row['bucket']:20s} | {row['best_match_service'] or 'none':20s} | {row['count']} rows"
+                )
 
             # Disqualification reasons
             disq = await conn.fetch("""
@@ -225,16 +251,20 @@ async def main():
                   AND pipeline_updated_at > NOW() - INTERVAL '10 minutes'
             """)
             if avg_row:
-                log.info(f"[S4] Qualified: {avg_row['qualified_count']} | Avg propensity: {float(avg_row['avg_score'] or 0):.1f}")
+                log.info(
+                    f"[S4] Qualified: {avg_row['qualified_count']} | Avg propensity: {float(avg_row['avg_score'] or 0):.1f}"
+                )
 
             funnel["S4"] = {
                 "in": funnel.get("S3", {}).get("out", 0),
                 "out": result4.get("above_threshold", 0),
                 "qualified": result4.get("scored", 0) - result4.get("below_threshold", 0),
                 "cost": 0,
-                "time": time.time()-t0,
+                "time": time.time() - t0,
             }
-            log.info(f"[FUNNEL] S4 → stage=4: {n_s4} rows | above_gate={result4.get('above_threshold',0)} below={result4.get('below_threshold',0)}")
+            log.info(
+                f"[FUNNEL] S4 → stage=4: {n_s4} rows | above_gate={result4.get('above_threshold', 0)} below={result4.get('below_threshold', 0)}"
+            )
         except Exception as e:
             bugs.append(f"S4: {e}")
             log.error(f"S4 error: {e}", exc_info=True)
@@ -251,8 +281,15 @@ async def main():
             n_s5 = await count_at_stage(conn, 5)
             sources = result5.get("sources_used", {})
             log.info(f"[S5] Sources used: {sources}")
-            funnel["S5"] = {"in": funnel.get("S4", {}).get("out", 0), "out": result5.get("found", 0), "cost": float(result5.get("cost_usd", 0)), "time": time.time()-t0}
-            log.info(f"[FUNNEL] S5 → stage=5: {n_s5} rows | DMs found={result5.get('found',0)} not_found={result5.get('not_found',0)}")
+            funnel["S5"] = {
+                "in": funnel.get("S4", {}).get("out", 0),
+                "out": result5.get("found", 0),
+                "cost": float(result5.get("cost_usd", 0)),
+                "time": time.time() - t0,
+            }
+            log.info(
+                f"[FUNNEL] S5 → stage=5: {n_s5} rows | DMs found={result5.get('found', 0)} not_found={result5.get('not_found', 0)}"
+            )
         except Exception as e:
             bugs.append(f"S5: {e}")
             log.error(f"S5 error: {e}", exc_info=True)
@@ -272,8 +309,13 @@ async def main():
             log.info(f"[S6] Channel breakdown: {channels}")
             if total_validated:
                 for ch, cnt in channels.items():
-                    log.info(f"  {ch}: {cnt}/{total_validated} = {cnt*100//total_validated}%")
-            funnel["S6"] = {"in": funnel.get("S5", {}).get("out", 0), "out": total_validated, "cost": 0, "time": time.time()-t0}
+                    log.info(f"  {ch}: {cnt}/{total_validated} = {cnt * 100 // total_validated}%")
+            funnel["S6"] = {
+                "in": funnel.get("S5", {}).get("out", 0),
+                "out": total_validated,
+                "cost": 0,
+                "time": time.time() - t0,
+            }
             log.info(f"[FUNNEL] S6 → stage=6: {n_s6} rows | validated={total_validated}")
         except Exception as e:
             bugs.append(f"S6: {e}")
@@ -289,8 +331,15 @@ async def main():
             log.info(f"S7: {result7}")
             cost.add("S7", float(result7.get("cost_usd", 0)))
             n_s7 = await count_at_stage(conn, 7)
-            funnel["S7"] = {"in": funnel.get("S6", {}).get("out", 0), "out": result7.get("messages_generated", 0), "cost": float(result7.get("cost_usd", 0)), "time": time.time()-t0}
-            log.info(f"[FUNNEL] S7 → stage=7: {n_s7} rows | messages={result7.get('messages_generated',0)}")
+            funnel["S7"] = {
+                "in": funnel.get("S6", {}).get("out", 0),
+                "out": result7.get("messages_generated", 0),
+                "cost": float(result7.get("cost_usd", 0)),
+                "time": time.time() - t0,
+            }
+            log.info(
+                f"[FUNNEL] S7 → stage=7: {n_s7} rows | messages={result7.get('messages_generated', 0)}"
+            )
         except Exception as e:
             bugs.append(f"S7: {e}")
             log.error(f"S7 error: {e}", exc_info=True)
@@ -312,9 +361,11 @@ async def main():
                 msgs = row["outreach_messages"]
                 if isinstance(msgs, str):
                     msgs = json.loads(msgs)
-                print(f"\n{'='*60}")
+                print(f"\n{'=' * 60}")
                 print(f"Sample {i}: {row['display_name'] or row['domain']}")
-                print(f"DM: {row['dm_name']} ({row['dm_title']}) | Score: {row['propensity_score']}")
+                print(
+                    f"DM: {row['dm_name']} ({row['dm_title']}) | Score: {row['propensity_score']}"
+                )
                 if isinstance(msgs, dict):
                     for ch, txt in msgs.items():
                         print(f"\n  [{ch.upper()}]\n{txt}")
@@ -332,22 +383,22 @@ async def main():
         elapsed = time.time() - start_time
 
         # ─────────────────────────────────────────── FUNNEL TABLE
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("FUNNEL CONVERSION TABLE")
-        print("="*70)
+        print("=" * 70)
         print(f"{'STAGE':<12} {'IN':>6} {'OUT':>6} {'RATE':>7} {'COST':>8}")
-        print("-"*70)
+        print("-" * 70)
         stages = ["S1", "S2", "S3", "S4", "S5", "S6", "S7"]
         total_cost = 0.0
         for s in stages:
             d = funnel.get(s, {})
             inn = d.get("in", "-")
             out = d.get("out", 0)
-            rate = f"{out*100//inn:.0f}%" if isinstance(inn, int) and inn > 0 else "-"
+            rate = f"{out * 100 // inn:.0f}%" if isinstance(inn, int) and inn > 0 else "-"
             c = d.get("cost", 0)
             total_cost += c
             print(f"{s:<12} {str(inn):>6} {str(out):>6} {rate:>7} ${c:>7.4f}")
-        print("-"*70)
+        print("-" * 70)
         print(f"{'TOTAL':<12} {'':>6} {'':>6} {'':>7} ${total_cost:>7.4f}")
 
         # ─────────────────────────────────────────── TIER PROJECTIONS
@@ -356,14 +407,14 @@ async def main():
         overall_rate = s7_out / max(s1_out, 1)
         cost_per_s1 = total_cost / max(s1_out, 1)
 
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("TIER PROJECTIONS (based on this run)")
-        print("="*70)
-        print(f"Overall S1→S7 conversion rate: {overall_rate*100:.1f}%")
+        print("=" * 70)
+        print(f"Overall S1→S7 conversion rate: {overall_rate * 100:.1f}%")
         print(f"Cost per S1 domain: ${cost_per_s1:.4f}")
         print()
         print(f"{'TIER':<12} {'TARGET':>8} {'S1 NEEDED':>10} {'EST COST':>10}")
-        print("-"*45)
+        print("-" * 45)
         for tier, target in [("Spark", 150), ("Ignition", 600), ("Velocity", 1500)]:
             if overall_rate > 0:
                 s1_needed = int(target / overall_rate)

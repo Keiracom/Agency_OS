@@ -3,6 +3,7 @@
 Covers contract behaviour with Resend send + DB layer mocked. A real-network
 smoke test lives in `scripts/smoke_email_backend.py` (committed alongside).
 """
+
 from __future__ import annotations
 
 import base64
@@ -20,8 +21,9 @@ from src.api.routes import email as email_route
 from src.integrations import resend_client
 
 
-def _svix_sign(body: bytes, secret: str, msg_id: str = "msg_test",
-               timestamp: int | None = None) -> dict[str, str]:
+def _svix_sign(
+    body: bytes, secret: str, msg_id: str = "msg_test", timestamp: int | None = None
+) -> dict[str, str]:
     """Build valid Svix headers for a webhook payload."""
     ts = timestamp or int(time.time())
     sign_payload = f"{msg_id}.{ts}.".encode() + body
@@ -51,9 +53,14 @@ def mock_db(monkeypatch):
     returns a fixed row from fetchone()."""
     cur = MagicMock()
     cur.fetchone.return_value = (
-        "msg_test_123", "to@x.com", "from@x.com", "subj",
-        "delivered", '[{"type":"email.delivered","ts":"2026-05-05T00:00:00+00:00"}]',
-        None, None,
+        "msg_test_123",
+        "to@x.com",
+        "from@x.com",
+        "subj",
+        "delivered",
+        '[{"type":"email.delivered","ts":"2026-05-05T00:00:00+00:00"}]',
+        None,
+        None,
     )
     cur.execute = MagicMock()
     conn = MagicMock()
@@ -67,7 +74,8 @@ def mock_db(monkeypatch):
 
 def test_send_returns_message_id(client, mock_db, monkeypatch):
     monkeypatch.setattr(
-        email_route, "send_email",
+        email_route,
+        "send_email",
         lambda **kw: {"id": "msg_abc_456"},
     )
     resp = client.post(
@@ -99,6 +107,7 @@ def test_send_rejects_no_body(client):
 def test_send_resend_failure_returns_502(client, monkeypatch):
     def _boom(**kw):
         raise resend_client.ResendError("upstream down")
+
     monkeypatch.setattr(email_route, "send_email", _boom)
     resp = client.post(
         "/api/email/send",
@@ -149,13 +158,17 @@ def test_webhook_rejects_bad_signature(client, monkeypatch):
 
 
 def test_webhook_accepts_valid_signature_and_updates_status(
-    client, mock_db, monkeypatch,
+    client,
+    mock_db,
+    monkeypatch,
 ):
     monkeypatch.setenv("RESEND_WEBHOOK_SECRET", "shh")
-    body = json.dumps({
-        "type": "email.delivered",
-        "data": {"email_id": "msg_test_123"},
-    }).encode("utf-8")
+    body = json.dumps(
+        {
+            "type": "email.delivered",
+            "data": {"email_id": "msg_test_123"},
+        }
+    ).encode("utf-8")
     headers = _svix_sign(body, "shh")
     resp = client.post("/api/email/webhook", content=body, headers=headers)
     assert resp.status_code == 200, resp.text
@@ -177,10 +190,12 @@ def test_webhook_secret_unset_rejects_all(client, monkeypatch):
 
 def test_webhook_unknown_event_type_keeps_status(client, mock_db, monkeypatch):
     monkeypatch.setenv("RESEND_WEBHOOK_SECRET", "shh")
-    body = json.dumps({
-        "type": "email.something_new",
-        "data": {"email_id": "msg_test_123"},
-    }).encode("utf-8")
+    body = json.dumps(
+        {
+            "type": "email.something_new",
+            "data": {"email_id": "msg_test_123"},
+        }
+    ).encode("utf-8")
     headers = _svix_sign(body, "shh")
     resp = client.post("/api/email/webhook", content=body, headers=headers)
     assert resp.status_code == 200
@@ -188,15 +203,19 @@ def test_webhook_unknown_event_type_keeps_status(client, mock_db, monkeypatch):
 
 
 def test_webhook_accepts_multiple_space_separated_signatures(
-    client, mock_db, monkeypatch,
+    client,
+    mock_db,
+    monkeypatch,
 ):
     """Svix delivers multiple v1,<sig> tokens space-separated when keys
     rotate. At least one matching token should pass."""
     monkeypatch.setenv("RESEND_WEBHOOK_SECRET", "current_secret")
-    body = json.dumps({
-        "type": "email.delivered",
-        "data": {"email_id": "msg_test_123"},
-    }).encode("utf-8")
+    body = json.dumps(
+        {
+            "type": "email.delivered",
+            "data": {"email_id": "msg_test_123"},
+        }
+    ).encode("utf-8")
     good_headers = _svix_sign(body, "current_secret")
     bad_headers = _svix_sign(body, "old_rotated_secret")
     # Extract just the sig portion and combine
@@ -217,10 +236,12 @@ def test_webhook_rejects_hex_signature(client, monkeypatch):
     """Hex digests must NOT be accepted — Svix is base64-only. Guards
     against accidental regression to the old hex-accepting behaviour."""
     monkeypatch.setenv("RESEND_WEBHOOK_SECRET", "shh")
-    body = json.dumps({
-        "type": "email.delivered",
-        "data": {"email_id": "msg_test_123"},
-    }).encode("utf-8")
+    body = json.dumps(
+        {
+            "type": "email.delivered",
+            "data": {"email_id": "msg_test_123"},
+        }
+    ).encode("utf-8")
     ts = str(int(time.time()))
     sig_hex = hmac.new(b"shh", body, hashlib.sha256).hexdigest()
     resp = client.post(
@@ -238,10 +259,12 @@ def test_webhook_rejects_hex_signature(client, monkeypatch):
 def test_webhook_rejects_expired_timestamp(client, monkeypatch):
     """Timestamps older than 5 minutes must be rejected (replay protection)."""
     monkeypatch.setenv("RESEND_WEBHOOK_SECRET", "shh")
-    body = json.dumps({
-        "type": "email.delivered",
-        "data": {"email_id": "msg_test_123"},
-    }).encode("utf-8")
+    body = json.dumps(
+        {
+            "type": "email.delivered",
+            "data": {"email_id": "msg_test_123"},
+        }
+    ).encode("utf-8")
     old_ts = int(time.time()) - 600  # 10 minutes ago
     headers = _svix_sign(body, "shh", timestamp=old_ts)
     resp = client.post("/api/email/webhook", content=body, headers=headers)

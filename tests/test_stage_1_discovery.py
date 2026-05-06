@@ -1,4 +1,5 @@
 """Tests for Stage1Discovery — Directive #259"""
+
 import pytest
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch, call
@@ -10,10 +11,12 @@ from src.enrichment.signal_config import SignalConfig, ServiceSignal
 
 # ─── Fixtures ───────────────────────────────────────────────────────────────
 
+
 def make_signal_config(technologies: list[str] | None = None):
     """Build a minimal SignalConfig with given technology list."""
     import uuid
     from datetime import datetime
+
     services = [
         ServiceSignal(
             service_name="paid_ads",
@@ -28,7 +31,11 @@ def make_signal_config(technologies: list[str] | None = None):
         vertical="marketing_agency",
         services=services,
         discovery_config={},
-        enrichment_gates={"min_score_to_enrich": 30, "min_score_to_dm": 50, "min_score_to_outreach": 65},
+        enrichment_gates={
+            "min_score_to_enrich": 30,
+            "min_score_to_dm": 50,
+            "min_score_to_outreach": 65,
+        },
         competitor_config={},
         channel_config={"email": True, "linkedin": True, "voice": True, "sms": False},
         created_at=datetime.now(),
@@ -38,7 +45,9 @@ def make_signal_config(technologies: list[str] | None = None):
 
 def make_dfs_response(domains: list[str], total_count: int | None = None):
     """Build a mock DFS domains_by_technology response."""
-    items = [{"domain": d, "title": f"Title {d}", "description": "", "technologies": {}} for d in domains]
+    items = [
+        {"domain": d, "title": f"Title {d}", "description": "", "technologies": {}} for d in domains
+    ]
     return {"total_count": total_count or len(domains), "items": items}
 
 
@@ -74,6 +83,7 @@ def make_stage(techs=None, existing_domain=None, dfs_items=None):
 
 
 # ─── Tests ──────────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_discovers_domains_from_signal_config():
@@ -135,7 +145,12 @@ async def test_respects_max_domains_per_tech_limit():
     """max_domains_per_tech=1 should stop after 1 domain even if total_count is higher."""
     stage, dfs, repo, conn = make_stage()
     dfs.domains_by_technology = AsyncMock(
-        return_value={"total_count": 500, "items": [{"domain": "one.com.au", "title": "One", "description": "", "technologies": {}}]}
+        return_value={
+            "total_count": 500,
+            "items": [
+                {"domain": "one.com.au", "title": "One", "description": "", "technologies": {}}
+            ],
+        }
     )
     result = await stage.run_batch("marketing_agency", ["Google Ads"], max_domains_per_tech=1)
     assert dfs.domains_by_technology.call_count == 1
@@ -147,14 +162,21 @@ async def test_deduplicates_technologies_across_services():
     """all_dfs_technologies on config with 2 services sharing a tech deduplicates correctly."""
     import uuid
     from datetime import datetime
+
     services = [
         ServiceSignal("svc1", "S1", ["Google Ads", "Facebook Pixel"], [], {}),
         ServiceSignal("svc2", "S2", ["Google Ads", "HubSpot"], [], {}),
     ]
     config = SignalConfig(
-        id=str(uuid.uuid4()), vertical="test",
-        services=services, discovery_config={}, enrichment_gates={}, competitor_config={}, channel_config={},
-        created_at=datetime.now(), updated_at=datetime.now(),
+        id=str(uuid.uuid4()),
+        vertical="test",
+        services=services,
+        discovery_config={},
+        enrichment_gates={},
+        competitor_config={},
+        channel_config={},
+        created_at=datetime.now(),
+        updated_at=datetime.now(),
     )
     techs = config.all_dfs_technologies
     assert techs.count("Google Ads") == 1  # deduped
@@ -167,11 +189,13 @@ async def test_returns_correct_counts():
     stage, dfs, repo, conn = make_stage()
     call_count = 0
     domains = [["alpha.com.au"], ["beta.com.au"]]
+
     async def side_effect(**kwargs):
         nonlocal call_count
         r = make_dfs_response(domains[call_count])
         call_count += 1
         return r
+
     dfs.domains_by_technology = AsyncMock(side_effect=side_effect)
 
     result = await stage.run_batch("marketing_agency", ["Google Ads", "Facebook Pixel"])
@@ -195,14 +219,17 @@ async def test_sets_pipeline_stage_s1_discovered():
 
 # ─── Directive #267 tests ────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_no_duplicate_domains_across_techs():
     """ON CONFLICT upsert prevents duplicate rows when same domain appears in multiple techs."""
     stage, dfs, repo, conn = make_stage()
     # Both techs return the same domain → second call returns inserted=False
     call_count = 0
+
     async def side_effect(**kwargs):
         return make_dfs_response(["shared.com.au"])
+
     dfs.domains_by_technology = AsyncMock(side_effect=side_effect)
 
     # First call → inserted=True, second → inserted=False (conflict)
@@ -221,7 +248,7 @@ async def test_no_duplicate_domains_across_techs():
     conn.fetchrow = AsyncMock(side_effect=fetchrow_side_effect)
 
     result = await stage.run_batch("marketing_agency", ["Google Ads", "Facebook Pixel"])
-    assert result["discovered"] == 1       # only first call counted as new
+    assert result["discovered"] == 1  # only first call counted as new
     assert result["duplicates_skipped"] == 1  # second call was a conflict
 
 
@@ -242,9 +269,7 @@ async def test_blocks_platform_domains():
 async def test_allows_legitimate_business_domains():
     """Normal business domains pass the blocklist check and are inserted."""
     stage, dfs, repo, conn = make_stage()
-    dfs.domains_by_technology = AsyncMock(
-        return_value=make_dfs_response(["acme-dental.com.au"])
-    )
+    dfs.domains_by_technology = AsyncMock(return_value=make_dfs_response(["acme-dental.com.au"]))
     result = await stage.run_batch("marketing_agency", ["Google Ads"])
     assert result["discovered"] == 1
     conn.fetchrow.assert_called_once()  # DB upsert called for legitimate domain

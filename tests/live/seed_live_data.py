@@ -271,27 +271,19 @@ async def cleanup_test_data(client_id: str) -> None:
     print(f"\n🧹 Cleaning up test data for client {client_id}...")
 
     # Delete activities
-    supabase.table("activities").update(
-        {"deleted_at": now}
-    ).eq("client_id", client_id).execute()
+    supabase.table("activities").update({"deleted_at": now}).eq("client_id", client_id).execute()
     print("  - Activities soft deleted")
 
     # Delete leads
-    supabase.table("leads").update(
-        {"deleted_at": now}
-    ).eq("client_id", client_id).execute()
+    supabase.table("leads").update({"deleted_at": now}).eq("client_id", client_id).execute()
     print("  - Leads soft deleted")
 
     # Delete campaigns
-    supabase.table("campaigns").update(
-        {"deleted_at": now}
-    ).eq("client_id", client_id).execute()
+    supabase.table("campaigns").update({"deleted_at": now}).eq("client_id", client_id).execute()
     print("  - Campaigns soft deleted")
 
     # Delete client
-    supabase.table("clients").update(
-        {"deleted_at": now}
-    ).eq("id", client_id).execute()
+    supabase.table("clients").update({"deleted_at": now}).eq("id", client_id).execute()
     print("  - Client soft deleted")
 
     print("✅ Cleanup complete\n")

@@ -16,6 +16,7 @@ from src.models.base import ChannelType, LeadStatus
 @pytest.fixture
 def mock_salesforge_client():
     """Mock Salesforge client."""
+
     class MockSalesforgeClient:
         async def send_email(self, **kwargs):
             return {
@@ -36,6 +37,7 @@ def email_engine(mock_salesforge_client):
 @pytest.fixture
 def mock_db():
     """Mock database session."""
+
     class MockDB:
         def __init__(self):
             self.committed = False
@@ -51,13 +53,17 @@ def mock_db():
             class Result:
                 def scalar_one_or_none(self):
                     return None
+
                 def scalars(self):
                     class Scalars:
                         def all(self):
                             return []
+
                     return Scalars()
+
                 def all(self):
                     return []
+
             return Result()
 
     return MockDB()
@@ -66,6 +72,7 @@ def mock_db():
 @pytest.fixture
 def mock_lead():
     """Mock lead."""
+
     class MockLead:
         id = uuid4()
         client_id = uuid4()
@@ -84,6 +91,7 @@ def mock_lead():
 @pytest.fixture
 def mock_campaign():
     """Mock campaign."""
+
     class MockCampaign:
         id = uuid4()
         client_id = uuid4()
@@ -134,8 +142,11 @@ class TestEmailEngine:
         assert preview.endswith("...")
 
     @pytest.mark.asyncio
-    async def test_send_email_missing_subject(self, email_engine, mock_db, mock_lead, mock_campaign):
+    async def test_send_email_missing_subject(
+        self, email_engine, mock_db, mock_lead, mock_campaign
+    ):
         """Test send fails without subject."""
+
         # Mock validation methods
         async def mock_get_lead(db, lead_id):
             return mock_lead
@@ -159,8 +170,11 @@ class TestEmailEngine:
         assert "subject is required" in result.error.lower()
 
     @pytest.mark.asyncio
-    async def test_send_email_missing_from_email(self, email_engine, mock_db, mock_lead, mock_campaign):
+    async def test_send_email_missing_from_email(
+        self, email_engine, mock_db, mock_lead, mock_campaign
+    ):
         """Test send fails without from_email."""
+
         async def mock_get_lead(db, lead_id):
             return mock_lead
 
@@ -207,10 +221,12 @@ class TestEmailEngine:
 
             # Mock salesforge send
             email_engine._salesforge = AsyncMock()
-            email_engine._salesforge.send_email = AsyncMock(return_value={
-                "success": True,
-                "message_id": "msg_test123",
-            })
+            email_engine._salesforge.send_email = AsyncMock(
+                return_value={
+                    "success": True,
+                    "message_id": "msg_test123",
+                }
+            )
 
             # Mock activity logging
             email_engine._log_activity = AsyncMock()
@@ -264,10 +280,12 @@ class TestEmailEngine:
 
             # Mock salesforge send
             email_engine._salesforge = AsyncMock()
-            email_engine._salesforge.send_email = AsyncMock(return_value={
-                "success": True,
-                "message_id": "msg_followup123",
-            })
+            email_engine._salesforge.send_email = AsyncMock(
+                return_value={
+                    "success": True,
+                    "message_id": "msg_followup123",
+                }
+            )
 
             # Mock activity logging
             email_engine._log_activity = AsyncMock()

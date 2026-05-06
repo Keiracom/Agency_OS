@@ -11,6 +11,7 @@ Pure unit tests — no transcript files, no subprocess. Verifies:
   - main(): warn mode never returns 2; enforce mode propagates 2
   - module entry-point swallows unexpected exceptions (fail-open)
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -31,6 +32,7 @@ _spec.loader.exec_module(gov)
 
 
 # ─── validate_transcript_path ──────────────────────────────────────────────
+
 
 def test_validate_rejects_url_scheme():
     for s in ("http://evil.com/a.jsonl", "file:///etc/passwd", "https://x"):
@@ -76,57 +78,67 @@ def test_validate_rejects_null_byte_and_blank():
 
 # ─── has_step0_since_last_user ─────────────────────────────────────────────
 
+
 def _msg(role: str, text: str) -> str:
     return json.dumps({"message": {"role": role, "content": [{"type": "text", "text": text}]}})
 
 
 def test_step0_detected_when_three_markers_present():
-    blob = "\n".join([
-        _msg("user", "Build feature X"),
-        _msg("assistant",
-             "Objective: ship X.\nScope: a, b\nSuccess criteria: tests pass"),
-    ])
+    blob = "\n".join(
+        [
+            _msg("user", "Build feature X"),
+            _msg("assistant", "Objective: ship X.\nScope: a, b\nSuccess criteria: tests pass"),
+        ]
+    )
     assert gov.has_step0_since_last_user(blob) is True
 
 
 def test_step0_missing_when_only_two_markers():
-    blob = "\n".join([
-        _msg("user", "Build feature X"),
-        _msg("assistant", "Objective: do thing.\nScope: small"),
-    ])
+    blob = "\n".join(
+        [
+            _msg("user", "Build feature X"),
+            _msg("assistant", "Objective: do thing.\nScope: small"),
+        ]
+    )
     assert gov.has_step0_since_last_user(blob) is False
 
 
 def test_new_user_message_resets_seen():
     """Step 0 from a previous directive must NOT count for the new one."""
-    blob = "\n".join([
-        _msg("user", "First directive"),
-        _msg("assistant",
-             "Objective: x\nScope: y\nSuccess criteria: z\nAssumptions: w"),
-        _msg("user", "Second directive — different task"),
-    ])
+    blob = "\n".join(
+        [
+            _msg("user", "First directive"),
+            _msg("assistant", "Objective: x\nScope: y\nSuccess criteria: z\nAssumptions: w"),
+            _msg("user", "Second directive — different task"),
+        ]
+    )
     assert gov.has_step0_since_last_user(blob) is False
 
 
 def test_step0_per_directive_isolation():
-    blob = "\n".join([
-        _msg("user", "first"),
-        _msg("assistant", "Objective: a\nScope: b\nSuccess criteria: c"),
-        _msg("user", "second"),
-        _msg("assistant", "Objective: a2\nScope: b2\nSuccess criteria: c2"),
-    ])
+    blob = "\n".join(
+        [
+            _msg("user", "first"),
+            _msg("assistant", "Objective: a\nScope: b\nSuccess criteria: c"),
+            _msg("user", "second"),
+            _msg("assistant", "Objective: a2\nScope: b2\nSuccess criteria: c2"),
+        ]
+    )
     assert gov.has_step0_since_last_user(blob) is True
 
 
 def test_marker_match_is_case_insensitive():
-    blob = "\n".join([
-        _msg("user", "x"),
-        _msg("assistant", "OBJECTIVE: X\nSCOPE: Y\nSUCCESS CRITERIA: Z"),
-    ])
+    blob = "\n".join(
+        [
+            _msg("user", "x"),
+            _msg("assistant", "OBJECTIVE: X\nSCOPE: Y\nSUCCESS CRITERIA: Z"),
+        ]
+    )
     assert gov.has_step0_since_last_user(blob) is True
 
 
 # ─── decide() ──────────────────────────────────────────────────────────────
+
 
 def test_decide_non_mutating_tool_always_allowed():
     code, _ = gov.decide({"tool_name": "Read", "transcript_path": "/nope"})
@@ -141,10 +153,14 @@ def test_decide_mutating_with_no_transcript_fails_open():
 def test_decide_mutating_with_step0_allowed(monkeypatch, tmp_path):
     monkeypatch.setattr(gov, "TRANSCRIPT_ROOT", tmp_path)
     p = tmp_path / "live.jsonl"
-    p.write_text("\n".join([
-        _msg("user", "do this"),
-        _msg("assistant", "Objective: a\nScope: b\nSuccess criteria: c"),
-    ]))
+    p.write_text(
+        "\n".join(
+            [
+                _msg("user", "do this"),
+                _msg("assistant", "Objective: a\nScope: b\nSuccess criteria: c"),
+            ]
+        )
+    )
     code, msg = gov.decide({"tool_name": "Edit", "transcript_path": str(p)})
     assert code == 0
     assert "step0 found" in msg
@@ -161,6 +177,7 @@ def test_decide_mutating_without_step0_blocks(monkeypatch, tmp_path):
 
 
 # ─── main() — warn vs enforce ──────────────────────────────────────────────
+
 
 def test_main_warn_mode_never_blocks(monkeypatch, tmp_path):
     monkeypatch.setattr(gov, "TRANSCRIPT_ROOT", tmp_path)
@@ -183,10 +200,14 @@ def test_main_enforce_mode_blocks_when_step0_missing(monkeypatch, tmp_path):
 def test_main_enforce_allows_when_step0_present(monkeypatch, tmp_path):
     monkeypatch.setattr(gov, "TRANSCRIPT_ROOT", tmp_path)
     p = tmp_path / "live.jsonl"
-    p.write_text("\n".join([
-        _msg("user", "do this"),
-        _msg("assistant", "Objective: a\nScope: b\nSuccess criteria: c"),
-    ]))
+    p.write_text(
+        "\n".join(
+            [
+                _msg("user", "do this"),
+                _msg("assistant", "Objective: a\nScope: b\nSuccess criteria: c"),
+            ]
+        )
+    )
     payload = {"tool_name": "Edit", "transcript_path": str(p)}
     monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(payload)))
     assert gov.main(["--mode", "enforce"]) == 0
@@ -204,6 +225,7 @@ def test_module_entrypoint_swallows_exceptions():
 
 # ─── settings.json wiring smoke ────────────────────────────────────────────
 
+
 def test_settings_json_contains_pretooluse_hook():
     settings = json.loads(
         (Path(__file__).resolve().parent.parent.parent / ".claude" / "settings.json").read_text()
@@ -212,11 +234,13 @@ def test_settings_json_contains_pretooluse_hook():
     pre = settings["hooks"]["PreToolUse"]
     assert any(
         "governance_hooks.py" in h.get("command", "")
-        for entry in pre for h in entry.get("hooks", [])
+        for entry in pre
+        for h in entry.get("hooks", [])
     ), "governance_hooks.py not registered in PreToolUse"
 
 
 # ─── security guard surface (defence-in-depth) ─────────────────────────────
+
 
 @patch("subprocess.run")
 @patch("subprocess.check_call")
@@ -237,27 +261,31 @@ def test_url_in_transcript_path_is_rejected():
 
 # ─── P6 sandbox wire-up (GOV-12) ───────────────────────────────────────────
 
+
 def test_agent_type_from_env_unset_returns_empty(monkeypatch):
     monkeypatch.delenv("CALLSIGN", raising=False)
     assert gov._agent_type_from_env() == ""
 
 
-@pytest.mark.parametrize("callsign,expected", [
-    ("elliot", "build-2"),
-    ("ELLIOT", "build-2"),
-    ("atlas",  "build-2"),
-    ("aiden",  "build-3"),
-    ("orion",  "build-3"),
-    ("scout",  "research-1"),
-    ("unknown-bot", "build-2"),   # safe default for new callsigns
-])
+@pytest.mark.parametrize(
+    "callsign,expected",
+    [
+        ("elliot", "build-2"),
+        ("ELLIOT", "build-2"),
+        ("atlas", "build-2"),
+        ("aiden", "build-3"),
+        ("orion", "build-3"),
+        ("scout", "research-1"),
+        ("unknown-bot", "build-2"),  # safe default for new callsigns
+    ],
+)
 def test_agent_type_from_env_maps_known_callsigns(monkeypatch, callsign, expected):
     monkeypatch.setenv("CALLSIGN", callsign)
     assert gov._agent_type_from_env() == expected
 
 
 def test_decide_sandbox_blocks_disallowed_tool(monkeypatch):
-    monkeypatch.setenv("CALLSIGN", "scout")     # → research-1
+    monkeypatch.setenv("CALLSIGN", "scout")  # → research-1
     code, msg = gov.decide({"tool_name": "Bash"})
     assert code == 2
     assert "sandbox:tool_not_in_allowlist" in msg
@@ -266,7 +294,7 @@ def test_decide_sandbox_blocks_disallowed_tool(monkeypatch):
 
 
 def test_decide_sandbox_allows_when_tool_in_allowlist(monkeypatch):
-    monkeypatch.setenv("CALLSIGN", "scout")     # research-1 may Read
+    monkeypatch.setenv("CALLSIGN", "scout")  # research-1 may Read
     code, _ = gov.decide({"tool_name": "Read"})
     assert code == 0
 
@@ -285,17 +313,21 @@ def test_decide_sandbox_runs_before_step0_check(monkeypatch, tmp_path):
     monkeypatch.setenv("CALLSIGN", "scout")
     monkeypatch.setattr(gov, "TRANSCRIPT_ROOT", tmp_path)
     p = tmp_path / "live.jsonl"
-    p.write_text("\n".join([
-        _msg("user", "do this"),
-        _msg("assistant", "Objective: a\nScope: b\nSuccess criteria: c"),
-    ]))
+    p.write_text(
+        "\n".join(
+            [
+                _msg("user", "do this"),
+                _msg("assistant", "Objective: a\nScope: b\nSuccess criteria: c"),
+            ]
+        )
+    )
     code, msg = gov.decide({"tool_name": "Bash", "transcript_path": str(p)})
     assert code == 2
     assert "sandbox:" in msg
 
 
 def test_decide_sandbox_block_uses_callsign_specific_agent(monkeypatch):
-    monkeypatch.setenv("CALLSIGN", "aiden")     # → build-3 (full surface)
+    monkeypatch.setenv("CALLSIGN", "aiden")  # → build-3 (full surface)
     # build-3 may Bash → not blocked by sandbox; falls through to allow
     code, _ = gov.decide({"tool_name": "Bash"})
     assert code == 0

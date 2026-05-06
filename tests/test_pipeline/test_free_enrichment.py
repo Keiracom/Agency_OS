@@ -1,4 +1,5 @@
 """Tests for FreeEnrichment — Directive #285 additions (ABN confidence, JSON-LD, email maturity)."""
+
 from __future__ import annotations
 
 from src.pipeline.free_enrichment import ABNMatchConfidence, EmailMaturity, FreeEnrichment

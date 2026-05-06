@@ -20,6 +20,7 @@ from src.models.base import ChannelType, LeadStatus
 @pytest.fixture
 def mock_unipile_client():
     """Mock Unipile client."""
+
     class MockUnipileClient:
         async def send_connection_request(self, account_id, linkedin_url, message=None):
             return {
@@ -60,6 +61,7 @@ def linkedin_engine(mock_unipile_client):
 @pytest.fixture
 def mock_db():
     """Mock database session."""
+
     class MockDB:
         def __init__(self):
             self.committed = False
@@ -75,11 +77,14 @@ def mock_db():
             class Result:
                 def scalar_one_or_none(self):
                     return None
+
                 def scalars(self):
                     class Scalars:
                         def all(self):
                             return []
+
                     return Scalars()
+
             return Result()
 
     return MockDB()
@@ -88,6 +93,7 @@ def mock_db():
 @pytest.fixture
 def mock_lead():
     """Mock lead."""
+
     class MockLead:
         id = uuid4()
         client_id = uuid4()
@@ -108,6 +114,7 @@ def mock_lead():
 @pytest.fixture
 def mock_campaign():
     """Mock campaign."""
+
     class MockCampaign:
         id = uuid4()
         client_id = uuid4()
@@ -132,8 +139,11 @@ class TestLinkedInEngine:
         assert engine1 is engine2
 
     @pytest.mark.asyncio
-    async def test_send_missing_account_id(self, linkedin_engine, mock_db, mock_lead, mock_campaign):
+    async def test_send_missing_account_id(
+        self, linkedin_engine, mock_db, mock_lead, mock_campaign
+    ):
         """Test send fails without account_id."""
+
         async def mock_get_lead(db, lead_id):
             return mock_lead
 
@@ -157,6 +167,7 @@ class TestLinkedInEngine:
     @pytest.mark.asyncio
     async def test_send_invalid_action(self, linkedin_engine, mock_db, mock_lead, mock_campaign):
         """Test send fails with invalid action."""
+
         async def mock_get_lead(db, lead_id):
             return mock_lead
 
@@ -206,8 +217,10 @@ class TestLinkedInEngine:
     @pytest.mark.asyncio
     async def test_send_message_helper(self, linkedin_engine, mock_db, mock_lead, mock_campaign):
         """Test send_message helper method."""
+
         async def mock_validate_and_send(*args, **kwargs):
             from src.engines.base import EngineResult
+
             return EngineResult.ok(
                 data={
                     "provider_id": "msg_123",

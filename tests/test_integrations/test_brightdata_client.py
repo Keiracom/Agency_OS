@@ -1,4 +1,5 @@
 """Tests for src/integrations/brightdata_client.py — Directive #286"""
+
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -9,6 +10,7 @@ from src.integrations.brightdata_client import BrightDataLinkedInClient
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_mock_response(status_code: int, json_data):
     """Create a mock httpx response."""
     mock = MagicMock()
@@ -18,6 +20,7 @@ def _make_mock_response(status_code: int, json_data):
     mock.raise_for_status = MagicMock()
     if status_code >= 400:
         import httpx
+
         mock.raise_for_status.side_effect = httpx.HTTPStatusError(
             "error", request=MagicMock(), response=mock
         )

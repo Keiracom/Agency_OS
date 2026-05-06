@@ -1,4 +1,5 @@
 """Tests for AU country filter — Directive #295 Task D."""
+
 from __future__ import annotations
 
 import pytest
@@ -49,19 +50,19 @@ def test_foreign_domain_fails():
 
 def _make_orch_with_non_au(non_au: bool):
     disc = MagicMock()
-    disc.pull_batch = AsyncMock(
-        side_effect=[[{"domain": "example.com"}], []]
-    )
+    disc.pull_batch = AsyncMock(side_effect=[[{"domain": "example.com"}], []])
 
     fe = MagicMock()
     fe.scrape_website = AsyncMock(return_value={"title": "Example", "_raw_html": ""})
-    fe.enrich_from_spider = AsyncMock(return_value={
-        "domain": "example.com",
-        "company_name": "Example Co",
-        "non_au": non_au,
-        "website_contact_emails": [],
-        "website_address": {},
-    })
+    fe.enrich_from_spider = AsyncMock(
+        return_value={
+            "domain": "example.com",
+            "company_name": "Example Co",
+            "non_au": non_au,
+            "website_contact_emails": [],
+            "website_address": {},
+        }
+    )
 
     scorer = MagicMock()
     afford = MagicMock()

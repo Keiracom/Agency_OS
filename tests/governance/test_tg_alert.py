@@ -1,4 +1,5 @@
 """GOV-PHASE3 — TG alert helper tests."""
+
 from __future__ import annotations
 
 from unittest.mock import patch, MagicMock
@@ -15,8 +16,10 @@ def _ok_subproc() -> MagicMock:
 
 
 def test_alert_returns_true_on_relay_success() -> None:
-    with patch("shutil.which", return_value="/usr/bin/tg"), \
-         patch("subprocess.run", return_value=_ok_subproc()) as run:
+    with (
+        patch("shutil.which", return_value="/usr/bin/tg"),
+        patch("subprocess.run", return_value=_ok_subproc()) as run,
+    ):
         ok = alert_on_deny(
             callsign="aiden",
             directive_id="SYNTH-3",
@@ -38,27 +41,37 @@ def test_alert_returns_true_on_relay_success() -> None:
 def test_alert_returns_false_when_tg_missing() -> None:
     with patch("shutil.which", return_value=None):
         ok = alert_on_deny(
-            callsign="aiden", directive_id="X", reasons=[],
+            callsign="aiden",
+            directive_id="X",
+            reasons=[],
             claim_text_sha256_16="0" * 16,
         )
     assert ok is False
 
 
 def test_alert_returns_false_on_subprocess_error() -> None:
-    with patch("shutil.which", return_value="/usr/bin/tg"), \
-         patch("subprocess.run", side_effect=OSError("relay down")):
+    with (
+        patch("shutil.which", return_value="/usr/bin/tg"),
+        patch("subprocess.run", side_effect=OSError("relay down")),
+    ):
         ok = alert_on_deny(
-            callsign="aiden", directive_id="X", reasons=["G3"],
+            callsign="aiden",
+            directive_id="X",
+            reasons=["G3"],
             claim_text_sha256_16="0" * 16,
         )
     assert ok is False
 
 
 def test_alert_handles_empty_reasons() -> None:
-    with patch("shutil.which", return_value="/usr/bin/tg"), \
-         patch("subprocess.run", return_value=_ok_subproc()) as run:
+    with (
+        patch("shutil.which", return_value="/usr/bin/tg"),
+        patch("subprocess.run", return_value=_ok_subproc()) as run,
+    ):
         alert_on_deny(
-            callsign="aiden", directive_id="X", reasons=[],
+            callsign="aiden",
+            directive_id="X",
+            reasons=[],
             claim_text_sha256_16="0" * 16,
         )
     msg = run.call_args[0][0][2]

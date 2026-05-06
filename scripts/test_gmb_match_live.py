@@ -33,7 +33,6 @@ ABN_RECORDS = [
     {"name": "Bondi Beach Fitness Pty Ltd", "state": "NSW", "postcode": "2026"},
     {"name": "Parramatta Legal Services Pty Ltd", "state": "NSW", "postcode": "2150"},
     {"name": "Geelong Motor Repairs Pty Ltd", "state": "VIC", "postcode": "3220"},
-
     # Professional services
     {"name": "Smith & Partners Lawyers Pty Ltd", "state": "NSW", "postcode": "2000"},
     {"name": "Johnson Accounting Pty Ltd", "state": "VIC", "postcode": "3000"},
@@ -45,7 +44,6 @@ ABN_RECORDS = [
     {"name": "Wilson Plumbing Services Pty Ltd", "state": "NSW", "postcode": "2148"},
     {"name": "Martin Electrical Pty Ltd", "state": "VIC", "postcode": "3000"},
     {"name": "Harris Landscaping Pty Ltd", "state": "SA", "postcode": "5000"},
-
     # Retail/Hospitality
     {"name": "Harbour View Restaurant Pty Ltd", "state": "NSW", "postcode": "2000"},
     {"name": "Central Coffee House Pty Ltd", "state": "VIC", "postcode": "3000"},
@@ -57,7 +55,6 @@ ABN_RECORDS = [
     {"name": "Coastal Pet Supplies Pty Ltd", "state": "QLD", "postcode": "4217"},
     {"name": "Urban Fitness Centre Pty Ltd", "state": "NSW", "postcode": "2000"},
     {"name": "Village Butcher Shop Pty Ltd", "state": "SA", "postcode": "5000"},
-
     # Trades
     {"name": "Aussie Plumbers Pty Ltd", "state": "NSW", "postcode": "2000"},
     {"name": "Sydney Sparkies Electrical Pty Ltd", "state": "NSW", "postcode": "2150"},
@@ -69,7 +66,6 @@ ABN_RECORDS = [
     {"name": "Darwin Pool Services Pty Ltd", "state": "NT", "postcode": "0800"},
     {"name": "Hobart Heating Systems Pty Ltd", "state": "TAS", "postcode": "7000"},
     {"name": "Newcastle Tiling Pty Ltd", "state": "NSW", "postcode": "2300"},
-
     # More specific businesses
     {"name": "Eastern Suburbs Dentistry Pty Ltd", "state": "NSW", "postcode": "2026"},
     {"name": "Northern Beaches Physio Pty Ltd", "state": "NSW", "postcode": "2100"},
@@ -81,7 +77,6 @@ ABN_RECORDS = [
     {"name": "Newtown Tattoo Parlour Pty Ltd", "state": "NSW", "postcode": "2042"},
     {"name": "Fremantle Fish Market Pty Ltd", "state": "WA", "postcode": "6160"},
     {"name": "Byron Bay Surf School Pty Ltd", "state": "NSW", "postcode": "2481"},
-
     # Generic/Holding company names (likely to fail)
     {"name": "JKL Holdings Pty Ltd", "state": "NSW", "postcode": "2000"},
     {"name": "XYZ Enterprises Pty Ltd", "state": "VIC", "postcode": "3000"},
@@ -93,7 +88,6 @@ ABN_RECORDS = [
     {"name": "First Choice Ventures Pty Ltd", "state": "SA", "postcode": "5000"},
     {"name": "Premium Services Group Pty Ltd", "state": "NSW", "postcode": "2000"},
     {"name": "Global Trading Co Pty Ltd", "state": "VIC", "postcode": "3000"},
-
     # Tech/Digital
     {"name": "Digital Spark Agency Pty Ltd", "state": "NSW", "postcode": "2000"},
     {"name": "Cloud Nine Computing Pty Ltd", "state": "VIC", "postcode": "3000"},
@@ -105,7 +99,6 @@ ABN_RECORDS = [
     {"name": "Tech Support Geeks Pty Ltd", "state": "QLD", "postcode": "4000"},
     {"name": "Network Solutions Australia Pty Ltd", "state": "NSW", "postcode": "2000"},
     {"name": "Digital Marketing Experts Pty Ltd", "state": "VIC", "postcode": "3000"},
-
     # More trades
     {"name": "Sydney Mobile Mechanic Pty Ltd", "state": "NSW", "postcode": "2000"},
     {"name": "Melbourne Glass Repairs Pty Ltd", "state": "VIC", "postcode": "3000"},
@@ -117,7 +110,6 @@ ABN_RECORDS = [
     {"name": "Newcastle Removalists Pty Ltd", "state": "NSW", "postcode": "2300"},
     {"name": "Wollongong Skip Bins Pty Ltd", "state": "NSW", "postcode": "2500"},
     {"name": "Townsville Hire Equipment Pty Ltd", "state": "QLD", "postcode": "4810"},
-
     # Medical/Health
     {"name": "Sydney Skin Clinic Pty Ltd", "state": "NSW", "postcode": "2000"},
     {"name": "Melbourne Eye Centre Pty Ltd", "state": "VIC", "postcode": "3000"},
@@ -129,7 +121,6 @@ ABN_RECORDS = [
     {"name": "St Kilda Pathology Pty Ltd", "state": "VIC", "postcode": "3182"},
     {"name": "Toowoomba Aged Care Pty Ltd", "state": "QLD", "postcode": "4350"},
     {"name": "Ballarat Mental Health Pty Ltd", "state": "VIC", "postcode": "3350"},
-
     # Auto
     {"name": "Sydney Smash Repairs Pty Ltd", "state": "NSW", "postcode": "2000"},
     {"name": "Melbourne Auto Electrics Pty Ltd", "state": "VIC", "postcode": "3000"},
@@ -166,11 +157,11 @@ async def search_google_maps(query: str, client: httpx.AsyncClient) -> dict | No
             return {"found": False, "error": "blocked"}
 
         # Extract business name from title
-        title_match = re.search(r'<title>([^<]+)</title>', html, re.IGNORECASE)
+        title_match = re.search(r"<title>([^<]+)</title>", html, re.IGNORECASE)
         if title_match:
             title = title_match.group(1)
             # Clean up title - remove " - Google Maps" suffix
-            name = re.sub(r'\s*[-–]\s*Google Maps.*$', '', title).strip()
+            name = re.sub(r"\s*[-–]\s*Google Maps.*$", "", title).strip()
 
             # Skip if it's just "Google Maps" (no result)
             if name.lower() in ["google maps", "google", ""]:
@@ -191,7 +182,7 @@ def clean_abn_name(name: str) -> str:
     suffixes = [" pty ltd", " pty. ltd.", " proprietary limited", " limited", " ltd"]
     for suffix in suffixes:
         if cleaned.lower().endswith(suffix):
-            cleaned = cleaned[:-len(suffix)]
+            cleaned = cleaned[: -len(suffix)]
     return cleaned.strip()
 
 
@@ -263,7 +254,9 @@ async def run_test():
                 status = "✗"
 
             # Progress
-            print(f"[{i+1:3d}/{len(ABN_RECORDS)}] {status} [{score:3d}%] {clean_abn_name(abn_name)[:35]:<35} → {gmb_name[:25] if gmb_name else '(none)':<25}")
+            print(
+                f"[{i + 1:3d}/{len(ABN_RECORDS)}] {status} [{score:3d}%] {clean_abn_name(abn_name)[:35]:<35} → {gmb_name[:25] if gmb_name else '(none)':<25}"
+            )
 
             # Rate limit (be nice to Google)
             await asyncio.sleep(2.0 + random.random())
@@ -294,7 +287,7 @@ async def run_test():
     print("-" * 70)
 
     for i, fail in enumerate(failures[:10]):
-        print(f"{i+1}. ABN:   {fail['abn_name']}")
+        print(f"{i + 1}. ABN:   {fail['abn_name']}")
         print(f"   GMB:   {fail['gmb_name']}")
         print(f"   Score: {fail['match_score']}% (threshold: {FUZZY_MATCH_THRESHOLD}%)")
         print()
@@ -302,17 +295,21 @@ async def run_test():
     # Save results
     output_file = Path(__file__).parent / "abn_gmb_match_results.json"
     with open(output_file, "w") as f:
-        json.dump({
-            "timestamp": datetime.now().isoformat(),
-            "threshold": FUZZY_MATCH_THRESHOLD,
-            "total_records": len(ABN_RECORDS),
-            "tested": total_tested,
-            "errors": errors,
-            "passes": passes,
-            "fails": fails,
-            "match_rate_percent": round(match_rate, 1),
-            "results": results,
-        }, f, indent=2)
+        json.dump(
+            {
+                "timestamp": datetime.now().isoformat(),
+                "threshold": FUZZY_MATCH_THRESHOLD,
+                "total_records": len(ABN_RECORDS),
+                "tested": total_tested,
+                "errors": errors,
+                "passes": passes,
+                "fails": fails,
+                "match_rate_percent": round(match_rate, 1),
+                "results": results,
+            },
+            f,
+            indent=2,
+        )
 
     print(f"\nFull results saved to: {output_file}")
 

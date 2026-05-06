@@ -2,6 +2,7 @@
 
 Hermetic — no live OpenAI calls. The classifier client is mocked.
 """
+
 from __future__ import annotations
 
 import json
@@ -18,8 +19,9 @@ from src.governance.router import (
 )
 
 
-def _fake_openai_client(json_body: str, *, prompt_tokens: int = 50,
-                        completion_tokens: int = 10) -> MagicMock:
+def _fake_openai_client(
+    json_body: str, *, prompt_tokens: int = 50, completion_tokens: int = 10
+) -> MagicMock:
     """Build a MagicMock OpenAI client whose chat.completions.create()
     returns a response shaped like the real API."""
     msg = SimpleNamespace(content=json_body)
@@ -36,8 +38,10 @@ def _fake_openai_client(json_body: str, *, prompt_tokens: int = 50,
 
 def test_classify_routes_dave_text_to_force_tg():
     client = _fake_openai_client('{"audience": "dave", "force_tg": true}')
-    decision = classify("PR open: https://github.com/Keiracom/Agency_OS/pull/999\n"
-                        "Approve | Reject | Alternative", client=client)
+    decision = classify(
+        "PR open: https://github.com/Keiracom/Agency_OS/pull/999\nApprove | Reject | Alternative",
+        client=client,
+    )
     assert decision.audience == "dave"
     assert decision.force_tg is True
 
@@ -80,7 +84,8 @@ def test_classify_handles_classifier_exception_with_heuristic():
     client = MagicMock()
     client.chat.completions.create = MagicMock(side_effect=RuntimeError("api down"))
     decision = classify(
-        "PR open: https://github.com/x/y/pull/1\nApprove | Reject", client=client,
+        "PR open: https://github.com/x/y/pull/1\nApprove | Reject",
+        client=client,
     )
     assert decision.audience == "dave"  # heuristic fallback caught the URL cue
     assert decision.force_tg is True
@@ -96,8 +101,9 @@ def test_classify_handles_non_json_classifier_response():
 
 
 def test_classify_logs_cost_via_openai_cost_logger():
-    client = _fake_openai_client('{"audience": "dave", "force_tg": false}',
-                                  prompt_tokens=120, completion_tokens=20)
+    client = _fake_openai_client(
+        '{"audience": "dave", "force_tg": false}', prompt_tokens=120, completion_tokens=20
+    )
     with patch("src.governance.router.log_openai_call") as mock_log:
         classify("hello dave", callsign="orion", client=client)
         mock_log.assert_called_once()
@@ -132,11 +138,18 @@ def test_classifier_skips_when_over_daily_cap(tmp_path, monkeypatch):
     today = datetime.now(timezone.utc).strftime("%Y-%m-%dT12:00:00")
     cost_log = tmp_path / "openai-cost.jsonl"
     cost_log.write_text(
-        json.dumps({
-            "ts": today, "callsign": "orion", "use_case": "governance.router",
-            "model": "gpt-4o-mini", "input_tokens": 1000000, "output_tokens": 200000,
-            "estimated_cost_usd": 10.0,  # $10 USD = $15.50 AUD >> $5.00 cap
-        }) + "\n"
+        json.dumps(
+            {
+                "ts": today,
+                "callsign": "orion",
+                "use_case": "governance.router",
+                "model": "gpt-4o-mini",
+                "input_tokens": 1000000,
+                "output_tokens": 200000,
+                "estimated_cost_usd": 10.0,  # $10 USD = $15.50 AUD >> $5.00 cap
+            }
+        )
+        + "\n"
     )
     monkeypatch.setattr(router_mod, "COST_LOG_PATH", str(cost_log))
     monkeypatch.setenv("ROUTER_DAILY_CAP_AUD", "5.00")

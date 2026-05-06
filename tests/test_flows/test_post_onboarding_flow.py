@@ -172,12 +172,15 @@ async def test_score_promoted_leads_task_scores_unscored_leads():
         )
     )
 
-    with patch(
-        "src.orchestration.flows.post_onboarding_flow.get_db_session",
-        mock_get_session,
-    ), patch(
-        "src.engines.scorer.ScorerEngine",
-        return_value=mock_scorer_instance,
+    with (
+        patch(
+            "src.orchestration.flows.post_onboarding_flow.get_db_session",
+            mock_get_session,
+        ),
+        patch(
+            "src.engines.scorer.ScorerEngine",
+            return_value=mock_scorer_instance,
+        ),
     ):
         result = await score_promoted_leads_task.fn(client_id=client_id)
 
@@ -248,12 +251,15 @@ async def test_score_promoted_leads_task_handles_scorer_exception():
     mock_scorer_instance = MagicMock()
     mock_scorer_instance.score_lead = AsyncMock(side_effect=RuntimeError("DB timeout"))
 
-    with patch(
-        "src.orchestration.flows.post_onboarding_flow.get_db_session",
-        mock_get_session,
-    ), patch(
-        "src.engines.scorer.ScorerEngine",
-        return_value=mock_scorer_instance,
+    with (
+        patch(
+            "src.orchestration.flows.post_onboarding_flow.get_db_session",
+            mock_get_session,
+        ),
+        patch(
+            "src.engines.scorer.ScorerEngine",
+            return_value=mock_scorer_instance,
+        ),
     ):
         result = await score_promoted_leads_task.fn(client_id=client_id)
 
@@ -279,25 +285,35 @@ async def test_post_onboarding_flow_calls_scoring_after_promotion():
     mock_tier_config = {"leads_per_month": 100}
     mock_tier_cfg_map = {"velocity": mock_tier_config, "ignition": mock_tier_config}
 
-    with patch(
-        "src.orchestration.flows.post_onboarding_flow.verify_icp_ready_task",
-        new=AsyncMock(return_value={"ready": True, "tier": "velocity", "icp": {"industries": ["tech"]}}),
-    ), patch(
-        "src.orchestration.flows.post_onboarding_flow.generate_campaign_suggestions_task",
-        new=AsyncMock(return_value={"success": True, "suggestions": []}),
-    ), patch(
-        "src.orchestration.flows.post_onboarding_flow.promote_pool_leads_to_leads_task",
-        new=AsyncMock(return_value={"success": True, "promoted": 5, "skipped": 0, "errors": []}),
-    ), patch(
-        "src.orchestration.flows.post_onboarding_flow.update_onboarding_status_task",
-        new=AsyncMock(return_value=True),
-    ), patch(
-        "src.config.tiers.TIER_CONFIG",
-        mock_tier_cfg_map,
-    ), patch(
-        "src.orchestration.flows.post_onboarding_flow.get_db_session",
-    ) as mock_session:
-
+    with (
+        patch(
+            "src.orchestration.flows.post_onboarding_flow.verify_icp_ready_task",
+            new=AsyncMock(
+                return_value={"ready": True, "tier": "velocity", "icp": {"industries": ["tech"]}}
+            ),
+        ),
+        patch(
+            "src.orchestration.flows.post_onboarding_flow.generate_campaign_suggestions_task",
+            new=AsyncMock(return_value={"success": True, "suggestions": []}),
+        ),
+        patch(
+            "src.orchestration.flows.post_onboarding_flow.promote_pool_leads_to_leads_task",
+            new=AsyncMock(
+                return_value={"success": True, "promoted": 5, "skipped": 0, "errors": []}
+            ),
+        ),
+        patch(
+            "src.orchestration.flows.post_onboarding_flow.update_onboarding_status_task",
+            new=AsyncMock(return_value=True),
+        ),
+        patch(
+            "src.config.tiers.TIER_CONFIG",
+            mock_tier_cfg_map,
+        ),
+        patch(
+            "src.orchestration.flows.post_onboarding_flow.get_db_session",
+        ) as mock_session,
+    ):
         mock_db = AsyncMock()
         # Mock DB to return unenriched leads (simulates real DB query)
         mock_db.execute.return_value.fetchall.return_value = []
@@ -325,7 +341,9 @@ async def test_post_onboarding_flow_calls_scoring_after_promotion():
     )
     # Flow A must still report success after promotion
     assert result.get("success") is True, f"Expected success=True but got: {result.get('success')}"
-    assert result.get("leads_promoted") == 5, f"Expected leads_promoted=5 but got: {result.get('leads_promoted')}"
+    assert result.get("leads_promoted") == 5, (
+        f"Expected leads_promoted=5 but got: {result.get('leads_promoted')}"
+    )
 
 
 # ============================================
@@ -343,12 +361,15 @@ async def test_post_onboarding_error_has_failed_at_on_icp_failure():
 
     client_id = str(uuid4())
 
-    with patch(
-        "src.orchestration.flows.post_onboarding_flow.verify_icp_ready_task",
-        new=AsyncMock(return_value={"ready": False, "error": "No ICP data configured"}),
-    ), patch(
-        "src.orchestration.flows.post_onboarding_flow.get_db_session",
-    ) as mock_session:
+    with (
+        patch(
+            "src.orchestration.flows.post_onboarding_flow.verify_icp_ready_task",
+            new=AsyncMock(return_value={"ready": False, "error": "No ICP data configured"}),
+        ),
+        patch(
+            "src.orchestration.flows.post_onboarding_flow.get_db_session",
+        ) as mock_session,
+    ):
         mock_db = AsyncMock()
 
         @asynccontextmanager
@@ -378,12 +399,15 @@ async def test_post_onboarding_error_has_failed_at_on_exception():
 
     client_id = str(uuid4())
 
-    with patch(
-        "src.orchestration.flows.post_onboarding_flow.verify_icp_ready_task",
-        new=AsyncMock(side_effect=RuntimeError("Unexpected DB error")),
-    ), patch(
-        "src.orchestration.flows.post_onboarding_flow.get_db_session",
-    ) as mock_session:
+    with (
+        patch(
+            "src.orchestration.flows.post_onboarding_flow.verify_icp_ready_task",
+            new=AsyncMock(side_effect=RuntimeError("Unexpected DB error")),
+        ),
+        patch(
+            "src.orchestration.flows.post_onboarding_flow.get_db_session",
+        ) as mock_session,
+    ):
         mock_db = AsyncMock()
 
         @asynccontextmanager

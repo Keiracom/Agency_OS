@@ -99,14 +99,16 @@ class TestJITValidatorPoolChecks:
 
         # Mock bounced pool lead
         pool_result = MagicMock()
-        pool_result.fetchone.return_value = MagicMock(_mapping={
-            "id": pool_id,
-            "email": "bounced@example.com",
-            "email_status": "invalid",
-            "pool_status": "bounced",
-            "is_bounced": True,
-            "is_unsubscribed": False,
-        })
+        pool_result.fetchone.return_value = MagicMock(
+            _mapping={
+                "id": pool_id,
+                "email": "bounced@example.com",
+                "email_status": "invalid",
+                "pool_status": "bounced",
+                "is_bounced": True,
+                "is_unsubscribed": False,
+            }
+        )
         mock_session.execute.return_value = pool_result
 
         result = await jit_validator.validate(pool_id, client_id, "email")
@@ -122,14 +124,16 @@ class TestJITValidatorPoolChecks:
 
         # Mock unsubscribed pool lead
         pool_result = MagicMock()
-        pool_result.fetchone.return_value = MagicMock(_mapping={
-            "id": pool_id,
-            "email": "unsub@example.com",
-            "email_status": "verified",
-            "pool_status": "unsubscribed",
-            "is_bounced": False,
-            "is_unsubscribed": True,
-        })
+        pool_result.fetchone.return_value = MagicMock(
+            _mapping={
+                "id": pool_id,
+                "email": "unsub@example.com",
+                "email_status": "verified",
+                "pool_status": "unsubscribed",
+                "is_bounced": False,
+                "is_unsubscribed": True,
+            }
+        )
         mock_session.execute.return_value = pool_result
 
         result = await jit_validator.validate(pool_id, client_id, "email")
@@ -198,17 +202,19 @@ class TestJITValidatorAssignmentChecks:
 
         # Mock assignment at max touches
         assign_result = MagicMock()
-        assign_result.fetchone.return_value = MagicMock(_mapping={
-            "id": uuid4(),
-            "status": "active",
-            "total_touches": 10,
-            "max_touches": 10,
-            "cooling_until": None,
-            "has_replied": False,
-            "reply_intent": None,
-            "last_contacted_at": datetime.now() - timedelta(days=5),
-            "channels_used": ["email"],
-        })
+        assign_result.fetchone.return_value = MagicMock(
+            _mapping={
+                "id": uuid4(),
+                "status": "active",
+                "total_touches": 10,
+                "max_touches": 10,
+                "cooling_until": None,
+                "has_replied": False,
+                "reply_intent": None,
+                "last_contacted_at": datetime.now() - timedelta(days=5),
+                "channels_used": ["email"],
+            }
+        )
 
         mock_session.execute.side_effect = [pool_result, suppression_result, assign_result]
 
@@ -233,17 +239,19 @@ class TestJITValidatorAssignmentChecks:
 
         # Mock assignment with negative reply
         assign_result = MagicMock()
-        assign_result.fetchone.return_value = MagicMock(_mapping={
-            "id": uuid4(),
-            "status": "active",
-            "total_touches": 3,
-            "max_touches": 10,
-            "cooling_until": None,
-            "has_replied": True,
-            "reply_intent": "not_interested",
-            "last_contacted_at": datetime.now() - timedelta(days=5),
-            "channels_used": ["email"],
-        })
+        assign_result.fetchone.return_value = MagicMock(
+            _mapping={
+                "id": uuid4(),
+                "status": "active",
+                "total_touches": 3,
+                "max_touches": 10,
+                "cooling_until": None,
+                "has_replied": True,
+                "reply_intent": "not_interested",
+                "last_contacted_at": datetime.now() - timedelta(days=5),
+                "channels_used": ["email"],
+            }
+        )
 
         mock_session.execute.side_effect = [pool_result, suppression_result, assign_result]
 
@@ -272,17 +280,19 @@ class TestJITValidatorTimingChecks:
 
         # Mock assignment in cooling
         assign_result = MagicMock()
-        assign_result.fetchone.return_value = MagicMock(_mapping={
-            "id": uuid4(),
-            "status": "active",
-            "total_touches": 3,
-            "max_touches": 10,
-            "cooling_until": datetime.now() + timedelta(days=5),
-            "has_replied": False,
-            "reply_intent": None,
-            "last_contacted_at": datetime.now() - timedelta(days=10),
-            "channels_used": ["email"],
-        })
+        assign_result.fetchone.return_value = MagicMock(
+            _mapping={
+                "id": uuid4(),
+                "status": "active",
+                "total_touches": 3,
+                "max_touches": 10,
+                "cooling_until": datetime.now() + timedelta(days=5),
+                "has_replied": False,
+                "reply_intent": None,
+                "last_contacted_at": datetime.now() - timedelta(days=10),
+                "channels_used": ["email"],
+            }
+        )
 
         mock_session.execute.side_effect = [pool_result, suppression_result, assign_result]
 
@@ -307,17 +317,19 @@ class TestJITValidatorTimingChecks:
 
         # Mock assignment contacted yesterday
         assign_result = MagicMock()
-        assign_result.fetchone.return_value = MagicMock(_mapping={
-            "id": uuid4(),
-            "status": "active",
-            "total_touches": 3,
-            "max_touches": 10,
-            "cooling_until": None,
-            "has_replied": False,
-            "reply_intent": None,
-            "last_contacted_at": datetime.now() - timedelta(days=1),  # Too recent
-            "channels_used": ["email"],
-        })
+        assign_result.fetchone.return_value = MagicMock(
+            _mapping={
+                "id": uuid4(),
+                "status": "active",
+                "total_touches": 3,
+                "max_touches": 10,
+                "cooling_until": None,
+                "has_replied": False,
+                "reply_intent": None,
+                "last_contacted_at": datetime.now() - timedelta(days=1),  # Too recent
+                "channels_used": ["email"],
+            }
+        )
 
         mock_session.execute.side_effect = [pool_result, suppression_result, assign_result]
 
@@ -331,7 +343,9 @@ class TestJITValidatorSuccess:
     """Tests for successful validation."""
 
     @pytest.mark.asyncio
-    async def test_validate_success(self, jit_validator, mock_session, valid_pool_lead, valid_assignment):
+    async def test_validate_success(
+        self, jit_validator, mock_session, valid_pool_lead, valid_assignment
+    ):
         """Test successful validation passes all checks."""
         pool_id = uuid4()
         client_id = uuid4()
@@ -362,11 +376,18 @@ class TestJITValidatorSuccess:
 
         # Mock client branding check - include valid physical address for CAN-SPAM
         branding_result = MagicMock()
-        branding_result.fetchone.return_value = MagicMock(branding={
-            "address": "123 Main St, Sydney NSW 2000, AU"
-        })
+        branding_result.fetchone.return_value = MagicMock(
+            branding={"address": "123 Main St, Sydney NSW 2000, AU"}
+        )
 
-        mock_session.execute.side_effect = [pool_result, suppression_result, assign_result, rate_result, warmup_result, branding_result]
+        mock_session.execute.side_effect = [
+            pool_result,
+            suppression_result,
+            assign_result,
+            rate_result,
+            warmup_result,
+            branding_result,
+        ]
 
         result = await jit_validator.validate(pool_id, client_id, "email")
 
@@ -378,7 +399,9 @@ class TestJITValidatorByEmail:
     """Tests for email-based validation."""
 
     @pytest.mark.asyncio
-    async def test_validate_by_email(self, jit_validator, mock_session, valid_pool_lead, valid_assignment):
+    async def test_validate_by_email(
+        self, jit_validator, mock_session, valid_pool_lead, valid_assignment
+    ):
         """Test validation by email address."""
         client_id = uuid4()
         email = "test@example.com"
@@ -404,7 +427,13 @@ class TestJITValidatorByEmail:
             created_at=datetime.now() - timedelta(days=30)
         )
 
-        mock_session.execute.side_effect = [email_result, pool_result, assign_result, rate_result, warmup_result]
+        mock_session.execute.side_effect = [
+            email_result,
+            pool_result,
+            assign_result,
+            rate_result,
+            warmup_result,
+        ]
 
         await jit_validator.validate_by_email(email, client_id, "email")
 
@@ -432,7 +461,9 @@ class TestJITValidatorBatch:
     """Tests for batch validation."""
 
     @pytest.mark.asyncio
-    async def test_batch_validate(self, jit_validator, mock_session, valid_pool_lead, valid_assignment):
+    async def test_batch_validate(
+        self, jit_validator, mock_session, valid_pool_lead, valid_assignment
+    ):
         """Test batch validation of multiple leads."""
         client_id = uuid4()
         leads = [
@@ -458,9 +489,18 @@ class TestJITValidatorBatch:
 
         # Each lead needs 4 db calls
         mock_session.execute.side_effect = [
-            pool_result, assign_result, rate_result, warmup_result,
-            pool_result, assign_result, rate_result, warmup_result,
-            pool_result, assign_result, rate_result, warmup_result,
+            pool_result,
+            assign_result,
+            rate_result,
+            warmup_result,
+            pool_result,
+            assign_result,
+            rate_result,
+            warmup_result,
+            pool_result,
+            assign_result,
+            rate_result,
+            warmup_result,
         ]
 
         results = await jit_validator.batch_validate(leads, client_id, "email")

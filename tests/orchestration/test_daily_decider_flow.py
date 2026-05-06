@@ -7,6 +7,7 @@ Tests for src/orchestration/flows/daily_decider_flow.py.
 - dry_run = True: no db.execute (no insert), counts still aggregate
 - one client raises -> counted as error, others succeed
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
@@ -83,9 +84,13 @@ async def test_aggregates_actions_across_clients():
 async def test_dry_run_skips_inserts_but_counts():
     db = _fake_db_with_clients(["c1"])
     decider = AsyncMock()
-    decider.evaluate_all = AsyncMock(return_value=[
-        _action("schedule_next"), _action("nurture"), _action("skip"),
-    ])
+    decider.evaluate_all = AsyncMock(
+        return_value=[
+            _action("schedule_next"),
+            _action("nurture"),
+            _action("skip"),
+        ]
+    )
     summary = await daily_decider_flow(db_conn=db, decider=decider, dry_run=True)
     assert summary["scheduled"] == 1
     assert summary["nurture"] == 1

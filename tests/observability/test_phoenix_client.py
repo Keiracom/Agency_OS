@@ -1,4 +1,5 @@
 """GOV-PHASE2 Auditor — phoenix_client export tests."""
+
 from __future__ import annotations
 
 from unittest.mock import MagicMock, patch

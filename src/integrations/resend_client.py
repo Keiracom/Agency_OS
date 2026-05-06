@@ -7,6 +7,7 @@ The Resend Python SDK (`pip install resend`) is the canonical client.
 We keep the wrapper minimal so route handlers don't need to know about
 SDK shape.
 """
+
 from __future__ import annotations
 
 import base64
@@ -33,9 +34,7 @@ def _build_client():
     try:
         import resend  # type: ignore
     except ImportError as exc:
-        raise ResendError(
-            "resend package not installed. Run: pip install 'resend>=0.8.0'"
-        ) from exc
+        raise ResendError("resend package not installed. Run: pip install 'resend>=0.8.0'") from exc
     resend.api_key = api_key
     return resend
 
@@ -53,7 +52,8 @@ def send_email(
     if not body_html and not body_text:
         raise ResendError("either body_html or body_text is required")
     sender = from_address or os.environ.get(
-        "RESEND_DEFAULT_FROM", "noreply@keiracom.com",
+        "RESEND_DEFAULT_FROM",
+        "noreply@keiracom.com",
     )
     resend = _build_client()
     payload: dict[str, Any] = {
@@ -99,9 +99,7 @@ def verify_webhook_signature(
         return False
     secret = os.environ.get("RESEND_WEBHOOK_SECRET", "")
     if not secret:
-        logger.warning(
-            "[resend_client] RESEND_WEBHOOK_SECRET unset — rejecting webhook"
-        )
+        logger.warning("[resend_client] RESEND_WEBHOOK_SECRET unset — rejecting webhook")
         return False
 
     # Timestamp replay check
@@ -114,7 +112,8 @@ def verify_webhook_signature(
     if abs(now - ts) > WEBHOOK_TOLERANCE_SECONDS:
         logger.warning(
             "[resend_client] webhook timestamp outside tolerance: ts=%s now=%s",
-            ts, now,
+            ts,
+            now,
         )
         return False
 
@@ -143,9 +142,7 @@ def verify_webhook_signature(
         if not token:
             continue
         if token.startswith("v1,"):
-            candidates.append(token[len("v1,"):])
+            candidates.append(token[len("v1,") :])
         else:
             candidates.append(token)
-    return any(
-        hmac.compare_digest(expected_b64, c) for c in candidates
-    )
+    return any(hmac.compare_digest(expected_b64, c) for c in candidates)

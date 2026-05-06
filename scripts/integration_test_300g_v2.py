@@ -9,6 +9,7 @@ Re-runs email waterfall on 260 DM-found domains with:
 Input:  scripts/output/300f_dm.json
 Output: scripts/output/300g_v2_email.json
 """
+
 import asyncio
 import json
 import os
@@ -17,16 +18,17 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dotenv import load_dotenv
+
 load_dotenv("/home/elliotbot/.config/agency-os/.env")
 
 from src.integrations.httpx_scraper import HttpxScraper
 from src.pipeline.email_waterfall import discover_email
 
-INPUT_DM    = os.path.join(os.path.dirname(__file__), "output", "300f_dm.json")
+INPUT_DM = os.path.join(os.path.dirname(__file__), "output", "300f_dm.json")
 OUTPUT_FILE = os.path.join(os.path.dirname(__file__), "output", "300g_v2_email.json")
 
 SEM_SCRAPE = asyncio.Semaphore(15)
-SEM_EMAIL  = asyncio.Semaphore(10)
+SEM_EMAIL = asyncio.Semaphore(10)
 
 # AUD/USD exchange rate for cost reporting
 AUD_PER_USD = 1.55
@@ -34,9 +36,14 @@ AUD_PER_USD = 1.55
 
 def _empty_contact() -> dict:
     return {
-        "company_email": None, "company_phone": None, "company_mobile": None,
-        "linkedin_company": None, "linkedin_dm": None,
-        "dm_email": None, "dm_email_verified": False, "dm_mobile": None,
+        "company_email": None,
+        "company_phone": None,
+        "company_mobile": None,
+        "linkedin_company": None,
+        "linkedin_dm": None,
+        "dm_email": None,
+        "dm_email_verified": False,
+        "dm_mobile": None,
     }
 
 
@@ -82,13 +89,15 @@ async def process_domain(
                 company_name=company_name,
                 contact_data=contact_data,
             )
-            result.update({
-                "email_found": email_res.email is not None,
-                "email": email_res.email,
-                "email_verified": email_res.verified,
-                "email_source": email_res.source,
-                "email_cost_usd": email_res.cost_usd,
-            })
+            result.update(
+                {
+                    "email_found": email_res.email is not None,
+                    "email": email_res.email,
+                    "email_verified": email_res.verified,
+                    "email_source": email_res.source,
+                    "email_cost_usd": email_res.cost_usd,
+                }
+            )
         except Exception as exc:
             result["_error"] = str(exc)
 
@@ -123,10 +132,15 @@ async def main():
     scrape_map = {prospects[i]["domain"]: contact_results[i] for i in range(len(prospects))}
     await scraper.close()
     populated = sum(
-        1 for v in scrape_map.values()
-        if any(v.get(k) for k in ("company_email", "company_mobile", "company_phone", "linkedin_dm"))
+        1
+        for v in scrape_map.values()
+        if any(
+            v.get(k) for k in ("company_email", "company_mobile", "company_phone", "linkedin_dm")
+        )
     )
-    print(f"Scrape done in {time.monotonic()-t_scrape:.0f}s | {populated}/{len(prospects)} with contact data\n")
+    print(
+        f"Scrape done in {time.monotonic() - t_scrape:.0f}s | {populated}/{len(prospects)} with contact data\n"
+    )
 
     # Step 2: Email waterfall
     print("Running email waterfall...")
@@ -140,16 +154,18 @@ async def main():
         d_strip = domain[4:] if domain.startswith("www.") else domain
         company_name = d_strip.split(".")[0].replace("-", " ").title()
 
-        tasks.append(process_domain(
-            domain=domain,
-            dm_name=p.get("dm_name"),
-            dm_linkedin=p.get("dm_linkedin_url"),
-            company_name=company_name,
-            contact_data=scrape_map.get(domain, _empty_contact()),
-            done=done,
-            total=total,
-            t0=t0,
-        ))
+        tasks.append(
+            process_domain(
+                domain=domain,
+                dm_name=p.get("dm_name"),
+                dm_linkedin=p.get("dm_linkedin_url"),
+                company_name=company_name,
+                contact_data=scrape_map.get(domain, _empty_contact()),
+                done=done,
+                total=total,
+                t0=t0,
+            )
+        )
 
     raw = await asyncio.gather(*tasks, return_exceptions=True)
     elapsed = time.monotonic() - t0
@@ -169,13 +185,15 @@ async def main():
     # Save output
     os.makedirs(os.path.dirname(OUTPUT_FILE), exist_ok=True)
     with open(OUTPUT_FILE, "w") as f:
-        json.dump({"meta": {"total": len(results), "errors": errors}, "domains": results}, f, indent=2)
+        json.dump(
+            {"meta": {"total": len(results), "errors": errors}, "domains": results}, f, indent=2
+        )
     print(f"\nSaved → {OUTPUT_FILE}")
 
     # ── STATS ──────────────────────────────────────────────────────────────────
-    found_all   = [r for r in ok if r.get("email_found")]
-    verified    = [r for r in found_all if r.get("email_verified")]
-    unverified  = [r for r in found_all if not r.get("email_verified")]
+    found_all = [r for r in ok if r.get("email_found")]
+    verified = [r for r in found_all if r.get("email_verified")]
+    unverified = [r for r in found_all if not r.get("email_verified")]
 
     sources: dict[str, int] = {}
     for r in ok:

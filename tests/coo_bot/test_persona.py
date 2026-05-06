@@ -1,4 +1,5 @@
 """Tests for src/coo_bot/persona.py — system prompts for Opus calls."""
+
 from __future__ import annotations
 
 from src.coo_bot.persona import (

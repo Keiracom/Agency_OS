@@ -5,6 +5,7 @@ Verifies the post-close hook is called correctly for prospects
 transitioning to 'complete', and is safely skipped when absent
 or when no 'complete' transitions occurred.
 """
+
 from __future__ import annotations
 
 from datetime import date
@@ -41,6 +42,7 @@ class FakeConn:
 # Helper builders
 # ---------------------------------------------------------------------------
 
+
 def one_cycle(cycle_id="c1", client_id="cl1") -> dict:
     return {
         "id": cycle_id,
@@ -57,6 +59,7 @@ async def noop_trigger(db: Any, client_id: str) -> None:
 # ---------------------------------------------------------------------------
 # Test 1: nurture_enqueue_fn called for each complete prospect
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_nurture_enqueue_called_for_complete_prospects():
@@ -94,6 +97,7 @@ async def test_nurture_enqueue_called_for_complete_prospects():
 # Test 2: nurture_enqueue_fn=None — no crash
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_nurture_enqueue_fn_none_no_crash():
     """nurture_enqueue_fn=None is the default — must not raise."""
@@ -114,6 +118,7 @@ async def test_nurture_enqueue_fn_none_no_crash():
 # ---------------------------------------------------------------------------
 # Test 3: no 'complete' transitions — nurture_enqueue_fn NOT called
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_nurture_enqueue_not_called_when_no_complete_transitions():

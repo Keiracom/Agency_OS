@@ -7,6 +7,7 @@ computes 7-day totals, writes to Supabase ceo_memory key
 
 Intended to run via systemd timer on Fridays at 18:00 AEST (08:00 UTC).
 """
+
 import json
 import os
 import subprocess
@@ -107,7 +108,11 @@ def send_telegram(summary: dict) -> None:
     total = summary["total_usd"]
     total_aud = round(total * 1.55, 4)
     by_uc = summary.get("by_use_case", {})
-    embed_cost = by_uc.get("embedding", 0) + by_uc.get("store_embedding", 0) + by_uc.get("backfill_embedding", 0)
+    embed_cost = (
+        by_uc.get("embedding", 0)
+        + by_uc.get("store_embedding", 0)
+        + by_uc.get("backfill_embedding", 0)
+    )
     disc_cost = by_uc.get("discernment", 0)
     save_cost = by_uc.get("save_extraction", 0)
     qe_cost = by_uc.get("query_expansion", 0)

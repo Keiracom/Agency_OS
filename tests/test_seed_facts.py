@@ -89,6 +89,7 @@ BANNED_PHRASES = [
 # Tests
 # ---------------------------------------------------------------------------
 
+
 class TestFactCount:
     def test_between_20_and_50_facts(self):
         count = len(FACTS)
@@ -102,9 +103,7 @@ class TestRequiredFields:
     @pytest.mark.parametrize("idx,fact", list(enumerate(FACTS)))
     def test_fact_has_required_fields(self, idx, fact):
         missing = REQUIRED_FIELDS - set(fact.keys())
-        assert not missing, (
-            f"Fact #{idx} missing required fields: {missing}\nFact: {fact}"
-        )
+        assert not missing, f"Fact #{idx} missing required fields: {missing}\nFact: {fact}"
 
     @pytest.mark.parametrize("idx,fact", list(enumerate(FACTS)))
     def test_content_is_non_empty_string(self, idx, fact):
@@ -131,8 +130,7 @@ class TestNoMetaInstructionProse:
         content = fact.get("content", "")
         hits = [phrase for phrase in BANNED_PHRASES if phrase in content]
         assert not hits, (
-            f"Fact #{idx} contains meta-instruction prose {hits!r}.\n"
-            f"Content: {content[:200]!r}"
+            f"Fact #{idx} contains meta-instruction prose {hits!r}.\nContent: {content[:200]!r}"
         )
 
 
@@ -140,13 +138,9 @@ class TestGovernanceDocTag:
     @pytest.mark.parametrize("idx,fact", list(enumerate(FACTS)))
     def test_has_governance_doc_tag(self, idx, fact):
         tags = fact.get("tags", [])
-        assert "governance_doc" in tags, (
-            f"Fact #{idx} missing 'governance_doc' tag. Tags: {tags}"
-        )
+        assert "governance_doc" in tags, f"Fact #{idx} missing 'governance_doc' tag. Tags: {tags}"
 
     @pytest.mark.parametrize("idx,fact", list(enumerate(FACTS)))
     def test_has_claude_md_tag(self, idx, fact):
         tags = fact.get("tags", [])
-        assert "claude_md" in tags, (
-            f"Fact #{idx} missing 'claude_md' tag. Tags: {tags}"
-        )
+        assert "claude_md" in tags, f"Fact #{idx} missing 'claude_md' tag. Tags: {tags}"

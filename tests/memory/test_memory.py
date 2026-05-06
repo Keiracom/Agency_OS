@@ -53,11 +53,12 @@ def _mock_response(status_code: int = 201, json_data=None):
 # store() tests
 # ---------------------------------------------------------------------------
 
-class TestStore:
 
+class TestStore:
     def test_store_validates_source_type(self):
         """Invalid source_type raises ValueError before any HTTP call."""
         from src.memory.store import store
+
         with pytest.raises(ValueError, match="Invalid source_type"):
             store("aiden", "not_a_valid_type", "content")
 
@@ -81,7 +82,9 @@ class TestStore:
 
         with patch.dict("os.environ", ENV_PATCH):
             with patch("src.memory.ratelimit.check_and_increment", return_value=1):
-                with patch("httpx.post", return_value=_mock_response(201, [_fake_memory_row(id=FAKE_UUID)])):
+                with patch(
+                    "httpx.post", return_value=_mock_response(201, [_fake_memory_row(id=FAKE_UUID)])
+                ):
                     result = store("aiden", "decision", "a decision")
 
         assert isinstance(result, uuid.UUID)
@@ -92,7 +95,9 @@ class TestStore:
         from src.memory.store import store
         from src.memory.types import RateLimitExceeded
 
-        with patch("src.memory.ratelimit.check_and_increment", side_effect=RateLimitExceeded("cap")):
+        with patch(
+            "src.memory.ratelimit.check_and_increment", side_effect=RateLimitExceeded("cap")
+        ):
             with pytest.raises(RateLimitExceeded):
                 store("aiden", "pattern", "content")
 
@@ -117,15 +122,17 @@ class TestStore:
 
         call_kwargs = mock_post.call_args
         payload = call_kwargs[1]["json"] if "json" in call_kwargs[1] else call_kwargs[0][1]
-        assert "valid_from" not in payload, "valid_from must be omitted when None so DB DEFAULT fires"
+        assert "valid_from" not in payload, (
+            "valid_from must be omitted when None so DB DEFAULT fires"
+        )
 
 
 # ---------------------------------------------------------------------------
 # retrieve() tests
 # ---------------------------------------------------------------------------
 
-class TestRetrieve:
 
+class TestRetrieve:
     def _run_retrieve(self, **kwargs):
         """Helper: patch env + httpx.get, run retrieve(), return (result, mock_get)."""
         from src.memory.retrieve import retrieve
@@ -184,16 +191,18 @@ class TestRetrieve:
 # recall() tests
 # ---------------------------------------------------------------------------
 
-class TestRecall:
 
+class TestRecall:
     def _make_rows(self, types: list[str]) -> list[dict]:
         rows = []
         for st in types:
-            rows.append(_fake_memory_row(
-                id=str(uuid.uuid4()),
-                source_type=st,
-                content=f"Content about {st}",
-            ))
+            rows.append(
+                _fake_memory_row(
+                    id=str(uuid.uuid4()),
+                    source_type=st,
+                    content=f"Content about {st}",
+                )
+            )
         return rows
 
     def test_recall_with_topic_groups_by_type(self):

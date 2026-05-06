@@ -56,8 +56,7 @@ SIMILARITY_THRESHOLD = 0.85
 def fetch_superseded_nulls(client: httpx.Client) -> list[dict]:
     """Fetch all superseded rows with supersedes_id IS NULL."""
     url = (
-        supabase_url()
-        + "/rest/v1/agent_memories"
+        supabase_url() + "/rest/v1/agent_memories"
         "?state=eq.superseded"
         "&supersedes_id=is.null"
         "&select=id,callsign,source_type,content,typed_metadata,created_at,embedding"
@@ -72,9 +71,9 @@ def fetch_candidate_superseders(
 ) -> list[dict]:
     """Fetch rows with same callsign + source_type created after the superseded row."""
     from urllib.parse import quote
+
     url = (
-        supabase_url()
-        + "/rest/v1/agent_memories"
+        supabase_url() + "/rest/v1/agent_memories"
         f"?callsign=eq.{callsign}"
         f"&source_type=eq.{source_type}"
         f"&created_at=gt.{quote(after_ts)}"
@@ -111,9 +110,7 @@ def check_similarity_via_rpc(
     return None
 
 
-def patch_row(
-    client: httpx.Client, row_id: str, patch_payload: dict
-) -> bool:
+def patch_row(client: httpx.Client, row_id: str, patch_payload: dict) -> bool:
     url = supabase_url() + f"/rest/v1/agent_memories?id=eq.{row_id}"
     headers = {**supabase_headers(), "Prefer": "return=minimal"}
     resp = client.patch(url, headers=headers, json=patch_payload)
@@ -154,9 +151,7 @@ def main() -> None:
                 skipped_no_embedding += 1
                 continue
 
-            candidates = fetch_candidate_superseders(
-                client, callsign, source_type, created_at
-            )
+            candidates = fetch_candidate_superseders(client, callsign, source_type, created_at)
 
             if not candidates:
                 print(f"  NO CANDIDATES — marking backfill_failed")
@@ -175,9 +170,7 @@ def main() -> None:
 
             if len(above_threshold) == 1:
                 best_id, best_similarity = above_threshold[0]
-                print(
-                    f"  MATCH found: superseder={best_id} similarity={best_similarity:.4f}"
-                )
+                print(f"  MATCH found: superseder={best_id} similarity={best_similarity:.4f}")
                 meta = merge_typed_metadata(
                     current_meta,
                     {

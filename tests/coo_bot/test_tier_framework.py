@@ -2,6 +2,7 @@
 
 MAX-COO-PHASE-B / Phase B File 1.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -19,6 +20,7 @@ def tier_module(tmp_path, monkeypatch):
     import importlib
 
     import src.coo_bot.tier_framework as tf
+
     importlib.reload(tf)
     yield tf, override
     # Reload again post-test so the module's global path doesn't leak.

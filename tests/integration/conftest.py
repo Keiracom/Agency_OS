@@ -13,6 +13,7 @@ re-load them from the env file at module import — but only if the current
 values look like placeholders, so callers who exported real values into the
 shell still take precedence.
 """
+
 from __future__ import annotations
 
 import os
@@ -24,7 +25,8 @@ import pytest
 
 _ENV_FILE = Path(
     os.environ.get(
-        "AGENCY_OS_ENV_FILE", "/home/elliotbot/.config/agency-os/.env",
+        "AGENCY_OS_ENV_FILE",
+        "/home/elliotbot/.config/agency-os/.env",
     )
 )
 _PLACEHOLDER_URL = "https://test.supabase.co"
@@ -35,11 +37,9 @@ def _restore_real_env_if_placeholder() -> None:
     """If tests/conftest.py overrode SUPABASE_* with placeholders, re-read
     the real values from the agency-os env file. No-op if file missing or
     callers already exported real values."""
-    if (
-        os.environ.get("SUPABASE_URL") not in (None, "", _PLACEHOLDER_URL)
-        and os.environ.get("SUPABASE_SERVICE_KEY")
-        not in (None, "", _PLACEHOLDER_KEY)
-    ):
+    if os.environ.get("SUPABASE_URL") not in (None, "", _PLACEHOLDER_URL) and os.environ.get(
+        "SUPABASE_SERVICE_KEY"
+    ) not in (None, "", _PLACEHOLDER_KEY):
         return
     if not _ENV_FILE.is_file():
         return
@@ -55,7 +55,10 @@ def _restore_real_env_if_placeholder() -> None:
             real[key] = value
     for key, value in real.items():
         if value and os.environ.get(key) in (
-            None, "", _PLACEHOLDER_URL, _PLACEHOLDER_KEY,
+            None,
+            "",
+            _PLACEHOLDER_URL,
+            _PLACEHOLDER_KEY,
         ):
             os.environ[key] = value
 
@@ -80,8 +83,7 @@ def _skip_if_no_supabase_env(request: pytest.FixtureRequest) -> None:
         return
     if not _has_supabase_env():
         pytest.skip(
-            "SUPABASE_URL and/or SUPABASE_SERVICE_KEY not set; "
-            "skipping live integration test"
+            "SUPABASE_URL and/or SUPABASE_SERVICE_KEY not set; skipping live integration test"
         )
 
 
@@ -102,15 +104,13 @@ def cleanup_rows() -> Iterator[list[tuple[str, str, str]]]:
     # full privilege. This keeps cleanup reliable without weakening RLS.
     try:
         from src.governance._mcp_helpers import (
-            _quote, supabase_mcp_execute_sql,
+            _quote,
+            supabase_mcp_execute_sql,
         )
     except ImportError:
         return
     for table, column, value in registry:
-        sql = (
-            f"DELETE FROM public.{table} "
-            f"WHERE {column} = '{_quote(str(value))}';"
-        )
+        sql = f"DELETE FROM public.{table} WHERE {column} = '{_quote(str(value))}';"
         try:
             supabase_mcp_execute_sql(sql)
         except Exception as exc:  # pragma: no cover - cleanup is best-effort

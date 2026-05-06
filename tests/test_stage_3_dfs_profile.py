@@ -1,4 +1,5 @@
 """Tests for Stage3DFSProfile — Directive #261"""
+
 import pytest
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -9,8 +10,10 @@ from src.enrichment.signal_config import SignalConfig, ServiceSignal
 
 # ─── Fixtures ────────────────────────────────────────────────────────────────
 
+
 def make_signal_config(technologies: list[str] = None):
     import uuid
+
     services = [
         ServiceSignal(
             service_name="paid_ads",
@@ -46,7 +49,10 @@ MOCK_RANK_DATA = {
 
 MOCK_TECH_DATA = {
     "tech_stack": ["Google Ads", "WordPress", "Google Analytics"],
-    "tech_categories": {"cms": {"wordpress": ["WordPress"]}, "analytics": {"google_analytics": ["Google Analytics"]}},
+    "tech_categories": {
+        "cms": {"wordpress": ["WordPress"]},
+        "analytics": {"google_analytics": ["Google Analytics"]},
+    },
     "tech_stack_depth": 3,
 }
 
@@ -83,6 +89,7 @@ def make_stage(rank_data=MOCK_RANK_DATA, tech_data=MOCK_TECH_DATA, rows=None, te
 
 # ─── Tests ───────────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_profiles_s2_domains_with_rank_and_tech():
     """run() calls both DFS endpoints and writes all fields to BU."""
@@ -104,9 +111,7 @@ async def test_calculates_tech_gaps_from_signal_config():
     # Signal wants: Google Ads, Facebook Pixel, HubSpot
     # Domain has:   Google Ads, WordPress, Google Analytics
     # Expected gaps: Facebook Pixel, HubSpot
-    stage, dfs, repo, conn = make_stage(
-        technologies=["Google Ads", "Facebook Pixel", "HubSpot"]
-    )
+    stage, dfs, repo, conn = make_stage(technologies=["Google Ads", "Facebook Pixel", "HubSpot"])
     await stage.run("marketing_agency")
     update_sql = conn.execute.call_args[0][0]
     update_args = conn.execute.call_args[0]
@@ -193,18 +198,29 @@ async def test_maps_dfs_fields_to_bu_columns_correctly():
     await stage.run("marketing_agency")
     update_sql = conn.execute.call_args[0][0]
     expected_cols = [
-        "dfs_organic_etv", "dfs_paid_etv", "dfs_organic_keywords",
-        "dfs_paid_keywords", "dfs_organic_pos_1", "dfs_organic_pos_2_3",
-        "dfs_organic_pos_4_10", "dfs_organic_pos_11_20",
-        "dfs_rank_fetched_at", "tech_stack", "tech_categories",
-        "tech_stack_depth", "tech_gaps", "dfs_tech_fetched_at",
-        "pipeline_stage", "pipeline_updated_at",
+        "dfs_organic_etv",
+        "dfs_paid_etv",
+        "dfs_organic_keywords",
+        "dfs_paid_keywords",
+        "dfs_organic_pos_1",
+        "dfs_organic_pos_2_3",
+        "dfs_organic_pos_4_10",
+        "dfs_organic_pos_11_20",
+        "dfs_rank_fetched_at",
+        "tech_stack",
+        "tech_categories",
+        "tech_stack_depth",
+        "tech_gaps",
+        "dfs_tech_fetched_at",
+        "pipeline_stage",
+        "pipeline_updated_at",
     ]
     for col in expected_cols:
         assert col in update_sql, f"Expected column '{col}' in UPDATE but not found"
 
 
 # ─── BUG-265-2 regression tests ──────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_skips_null_domain_rows():

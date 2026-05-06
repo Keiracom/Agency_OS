@@ -1,4 +1,5 @@
 """Tests for real ads_transparency (DFS-backed) — Directive #291."""
+
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from src.integrations.ads_transparency import check_google_ads

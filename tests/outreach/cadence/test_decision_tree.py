@@ -9,6 +9,7 @@ Covers:
   an already-later scheduled_at backwards
 - suppress mutation carries the prospect email + correct reason
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
@@ -26,12 +27,17 @@ from src.outreach.cadence.decision_tree import (
 def _state(n_pending: int = 2, email: str = "ceo@acme.com.au") -> dict:
     base = datetime.now(UTC) + timedelta(days=1)
     touches = [
-        {"id": f"t{i}", "channel": "email", "sequence_step": i + 1,
-         "scheduled_at": base + timedelta(days=i)}
+        {
+            "id": f"t{i}",
+            "channel": "email",
+            "sequence_step": i + 1,
+            "scheduled_at": base + timedelta(days=i),
+        }
         for i in range(n_pending)
     ]
     return {
-        "lead_id": "lead-1", "client_id": "client-1",
+        "lead_id": "lead-1",
+        "client_id": "client-1",
         "prospect": {"email": email},
         "pending_touches": touches,
     }
@@ -39,10 +45,9 @@ def _state(n_pending: int = 2, email: str = "ceo@acme.com.au") -> dict:
 
 # -- high-confidence happy paths --------------------------------------------
 
+
 def test_positive_cancels_and_inserts_booking():
-    muts = CadenceDecisionTree().decide(
-        "positive_interested", 0.95, _state(n_pending=3), {}
-    )
+    muts = CadenceDecisionTree().decide("positive_interested", 0.95, _state(n_pending=3), {})
     actions = [m.action for m in muts]
     assert actions == ["cancel", "cancel", "cancel", "insert"]
     assert muts[-1].channel == "email"
@@ -86,7 +91,10 @@ def test_ooo_keeps_later_scheduled_at_untouched():
     state = _state(1)
     state["pending_touches"][0]["scheduled_at"] = datetime.now(UTC) + timedelta(days=30)
     muts = CadenceDecisionTree().decide(
-        "out_of_office", 0.9, state, {"return_date": resume_input},
+        "out_of_office",
+        0.9,
+        state,
+        {"return_date": resume_input},
     )
     # Kept the later scheduled_at (>2d+offset)
     assert muts[0].new_scheduled_at > datetime.now(UTC) + timedelta(days=7)
@@ -108,7 +116,9 @@ def test_referral_logs_and_continues_sequence():
     # (See tests/outreach/cadence/test_referral_create_prospect.py for the
     # create_prospect branch coverage.)
     muts = CadenceDecisionTree().decide(
-        "referral", 0.85, _state(3),
+        "referral",
+        0.85,
+        _state(3),
         {"referral_name": "Jane", "referral_email": "jane@acme.com.au"},
     )
     assert muts[0].action == "noop"
@@ -121,6 +131,7 @@ def test_unclear_returns_single_noop():
 
 
 # -- confidence-floor downgrade ---------------------------------------------
+
 
 def test_low_confidence_non_unclear_is_forced_to_unclear():
     muts = CadenceDecisionTree().decide(
@@ -136,6 +147,7 @@ def test_exact_floor_confidence_is_not_downgraded():
 
 # -- edge cases -------------------------------------------------------------
 
+
 def test_ooo_falls_back_to_plus_7d_when_return_date_missing():
     muts = CadenceDecisionTree().decide("out_of_office", 0.9, _state(1), {})
     # Fallback is now + 7d + OOO_RESUME_OFFSET_DAYS
@@ -150,10 +162,19 @@ def test_no_pending_touches_is_safe():
     assert [m.action for m in muts] == ["suppress"]
 
 
-@pytest.mark.parametrize("intent", [
-    "positive_interested", "booking_request", "not_interested",
-    "unsubscribe", "out_of_office", "question", "referral", "unclear",
-])
+@pytest.mark.parametrize(
+    "intent",
+    [
+        "positive_interested",
+        "booking_request",
+        "not_interested",
+        "unsubscribe",
+        "out_of_office",
+        "question",
+        "referral",
+        "unclear",
+    ],
+)
 def test_all_eight_intents_return_at_least_one_mutation(intent):
     muts = CadenceDecisionTree().decide(intent, 0.9, _state(1), {})
     assert len(muts) >= 1

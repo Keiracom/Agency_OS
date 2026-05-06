@@ -31,9 +31,7 @@ async def test_get_leads_needing_enrichment_success():
     lead_ids = [uuid4(), uuid4(), uuid4()]
     client_id = uuid4()
 
-    with patch(
-        "src.orchestration.flows.enrichment_flow.get_db_session"
-    ) as mock_get_session:
+    with patch("src.orchestration.flows.enrichment_flow.get_db_session") as mock_get_session:
         mock_db = AsyncMock()
         mock_result = MagicMock()  # Sync mock - result.all() is not async
         # Mock query result: (lead_id, client_id, campaign_id, credits)
@@ -55,9 +53,7 @@ async def test_get_leads_needing_enrichment_success():
 @pytest.mark.asyncio
 async def test_get_leads_needing_enrichment_no_leads():
     """Test getting leads when none are available."""
-    with patch(
-        "src.orchestration.flows.enrichment_flow.get_db_session"
-    ) as mock_get_session:
+    with patch("src.orchestration.flows.enrichment_flow.get_db_session") as mock_get_session:
         mock_db = AsyncMock()
         mock_result = MagicMock()  # Sync mock - result.all() is not async
         mock_result.all.return_value = []
@@ -81,11 +77,10 @@ async def test_enrich_lead_batch_success():
     lead_ids = [str(uuid4()), str(uuid4())]
     client_id = str(uuid4())
 
-    with patch(
-        "src.orchestration.flows.enrichment_flow.get_db_session"
-    ) as mock_get_session, patch(
-        "src.orchestration.flows.enrichment_flow.get_scout_engine"
-    ) as mock_get_scout:
+    with (
+        patch("src.orchestration.flows.enrichment_flow.get_db_session") as mock_get_session,
+        patch("src.orchestration.flows.enrichment_flow.get_scout_engine") as mock_get_scout,
+    ):
         # Mock database
         mock_db = AsyncMock()
         mock_get_session.return_value.__aenter__.return_value = mock_db

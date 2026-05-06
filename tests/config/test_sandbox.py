@@ -9,6 +9,7 @@ Covers:
   * Frozenset immutability — callers cannot mutate the registry
   * list_known_agents enumerates the eight registered roles
 """
+
 from __future__ import annotations
 
 import pytest
@@ -34,6 +35,7 @@ EXPECTED_AGENTS = {
 
 # ── Registry shape ────────────────────────────────────────────────────────
 
+
 def test_registry_covers_canonical_agent_set():
     assert set(AGENT_ALLOWLISTS.keys()) == EXPECTED_AGENTS
 
@@ -48,6 +50,7 @@ def test_all_allowlists_are_frozen():
 
 
 # ── get_tool_allowlist ────────────────────────────────────────────────────
+
 
 @pytest.mark.parametrize("agent", sorted(EXPECTED_AGENTS))
 def test_get_tool_allowlist_known_agent_non_empty(agent):
@@ -75,68 +78,81 @@ def test_returned_allowlist_cannot_mutate_registry():
 
 # ── validate_tool_access — positive cases ─────────────────────────────────
 
-@pytest.mark.parametrize("agent,tool", [
-    ("architect-0", "Read"),
-    ("architect-0", "WebSearch"),
-    ("research-1",  "WebFetch"),
-    ("research-1",  "Read"),
-    ("build-2",     "Write"),
-    ("build-2",     "Bash"),
-    ("build-3",     "Edit"),
-    ("test-4",      "Bash"),
-    ("test-4",      "Write"),
-    ("review-5",    "Read"),
-    ("review-5",    "Grep"),
-    ("devops-6",    "Bash"),
-    ("devops-6",    "Edit"),
-    ("general-purpose", "Bash"),
-])
+
+@pytest.mark.parametrize(
+    "agent,tool",
+    [
+        ("architect-0", "Read"),
+        ("architect-0", "WebSearch"),
+        ("research-1", "WebFetch"),
+        ("research-1", "Read"),
+        ("build-2", "Write"),
+        ("build-2", "Bash"),
+        ("build-3", "Edit"),
+        ("test-4", "Bash"),
+        ("test-4", "Write"),
+        ("review-5", "Read"),
+        ("review-5", "Grep"),
+        ("devops-6", "Bash"),
+        ("devops-6", "Edit"),
+        ("general-purpose", "Bash"),
+    ],
+)
 def test_validate_tool_access_allows_expected(agent, tool):
     assert validate_tool_access(agent, tool) is True
 
 
 # ── validate_tool_access — explicit denials ───────────────────────────────
 
-@pytest.mark.parametrize("agent,tool", [
-    # architect-0: planning only — no shell, no writes
-    ("architect-0", "Bash"),
-    ("architect-0", "Write"),
-    ("architect-0", "Edit"),
-    # research-1: read + web only
-    ("research-1", "Bash"),
-    ("research-1", "Write"),
-    ("research-1", "Edit"),
-    # test-4: no NotebookEdit (tests are .py), no web
-    ("test-4", "NotebookEdit"),
-    ("test-4", "WebSearch"),
-    # review-5: strictly read-only
-    ("review-5", "Bash"),
-    ("review-5", "Write"),
-    ("review-5", "Edit"),
-    # devops-6: no arbitrary file Write (Edit is the precise channel)
-    ("devops-6", "Write"),
-    ("devops-6", "NotebookEdit"),
-])
+
+@pytest.mark.parametrize(
+    "agent,tool",
+    [
+        # architect-0: planning only — no shell, no writes
+        ("architect-0", "Bash"),
+        ("architect-0", "Write"),
+        ("architect-0", "Edit"),
+        # research-1: read + web only
+        ("research-1", "Bash"),
+        ("research-1", "Write"),
+        ("research-1", "Edit"),
+        # test-4: no NotebookEdit (tests are .py), no web
+        ("test-4", "NotebookEdit"),
+        ("test-4", "WebSearch"),
+        # review-5: strictly read-only
+        ("review-5", "Bash"),
+        ("review-5", "Write"),
+        ("review-5", "Edit"),
+        # devops-6: no arbitrary file Write (Edit is the precise channel)
+        ("devops-6", "Write"),
+        ("devops-6", "NotebookEdit"),
+    ],
+)
 def test_validate_tool_access_denies_off_role_tools(agent, tool):
     assert validate_tool_access(agent, tool) is False
 
 
 # ── validate_tool_access — invalid input contracts ────────────────────────
 
-@pytest.mark.parametrize("agent,tool", [
-    ("",          "Read"),
-    ("build-2",   ""),
-    (None,        "Read"),
-    ("build-2",   None),
-    (123,         "Read"),
-    ("build-2",   123),
-    ("ghost-99",  "Read"),
-])
+
+@pytest.mark.parametrize(
+    "agent,tool",
+    [
+        ("", "Read"),
+        ("build-2", ""),
+        (None, "Read"),
+        ("build-2", None),
+        (123, "Read"),
+        ("build-2", 123),
+        ("ghost-99", "Read"),
+    ],
+)
 def test_validate_tool_access_invalid_input_returns_false(agent, tool):
     assert validate_tool_access(agent, tool) is False
 
 
 # ── MCP wildcard matching ─────────────────────────────────────────────────
+
 
 def _patched(agent: str, extra: set[str]):
     """Build a one-off allowlist with extra entries so we can exercise
@@ -185,12 +201,16 @@ def test_exact_mcp_tool_name_in_allowlist_also_works(monkeypatch):
 
 # ── Never raises ──────────────────────────────────────────────────────────
 
-@pytest.mark.parametrize("args", [
-    (None, None),
-    (object(), object()),
-    ("", ""),
-    ("build-2", "Read"),  # happy path also shouldn't raise
-])
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        (None, None),
+        (object(), object()),
+        ("", ""),
+        ("build-2", "Read"),  # happy path also shouldn't raise
+    ],
+)
 def test_validate_tool_access_never_raises(args):
     # Pure assertion: the call returns a bool no matter the input.
     result = validate_tool_access(*args)

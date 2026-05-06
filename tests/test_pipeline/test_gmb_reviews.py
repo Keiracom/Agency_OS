@@ -1,4 +1,5 @@
 """Tests for src/utils/gmb_reviews.py — Directive #300-FIX."""
+
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 
@@ -6,6 +7,7 @@ from unittest.mock import AsyncMock, patch, MagicMock
 @pytest.mark.asyncio
 async def test_fetch_gmb_reviews_empty_place_id():
     from src.utils.gmb_reviews import fetch_gmb_reviews
+
     result = await fetch_gmb_reviews("")
     assert result == []
 
@@ -14,6 +16,7 @@ async def test_fetch_gmb_reviews_empty_place_id():
 async def test_fetch_gmb_reviews_http_error():
     from src.utils.gmb_reviews import fetch_gmb_reviews
     import httpx
+
     with patch("httpx.AsyncClient") as mock_client_cls:
         mock_client = MagicMock()
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
@@ -27,6 +30,7 @@ async def test_fetch_gmb_reviews_http_error():
 @pytest.mark.asyncio
 async def test_fetch_gmb_reviews_non_200():
     from src.utils.gmb_reviews import fetch_gmb_reviews
+
     with patch("httpx.AsyncClient") as mock_client_cls:
         mock_resp = MagicMock()
         mock_resp.status_code = 403
@@ -42,6 +46,7 @@ async def test_fetch_gmb_reviews_non_200():
 @pytest.mark.asyncio
 async def test_fetch_gmb_reviews_extracts_wiI7pd():
     from src.utils.gmb_reviews import fetch_gmb_reviews
+
     fake_html = (
         '<span class="wiI7pd">Great service, would recommend to anyone!</span>'
         '<span class="wiI7pd">Fast response and professional team.</span>'

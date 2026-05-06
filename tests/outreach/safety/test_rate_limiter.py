@@ -32,10 +32,11 @@ from src.outreach.safety.timing_engine import Channel
 # In-memory fixture factories
 # ---------------------------------------------------------------------------
 
+
 def _make_stores(
     window_counts: dict | None = None,
     warming_days: dict | None = None,
-    prospect_sends: dict | None = None,   # (prospect_id, channel) -> list[datetime]
+    prospect_sends: dict | None = None,  # (prospect_id, channel) -> list[datetime]
 ):
     """Build injected callables backed by plain dicts."""
     wc: dict = defaultdict(int)
@@ -100,6 +101,7 @@ def _day_key(ch: Channel, acct: str, now: datetime):
 # Test 1: Email warming day 1 — cap = 10
 # ---------------------------------------------------------------------------
 
+
 def test_email_warming_day1_cap_10():
     ws = NOW.replace(hour=0, minute=0, second=0, microsecond=0)
     rl, _, _ = _limiter(
@@ -123,6 +125,7 @@ def test_email_warming_day1_10th_send_passes():
 # ---------------------------------------------------------------------------
 # Test 2: Email warming progression
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.parametrize("day,cap", [(5, 25), (10, 50), (15, 100)])
 def test_email_warming_progression(day, cap):
@@ -148,6 +151,7 @@ def test_email_warming_progression(day, cap):
 # Test 3: Email warmed (warming_day=None) — cap = 100
 # ---------------------------------------------------------------------------
 
+
 def test_email_warmed_cap_100():
     # 100 sends: blocked
     rl, _, _ = _limiter(
@@ -170,6 +174,7 @@ def test_email_warmed_cap_100():
 # Test 4: LinkedIn daily cap — 50/day
 # ---------------------------------------------------------------------------
 
+
 def test_linkedin_daily_cap_50():
     rl, _, _ = _limiter(
         window_counts={_day_key(Channel.LINKEDIN, ACCT, NOW): 50},
@@ -187,6 +192,7 @@ def test_linkedin_daily_cap_50():
 # ---------------------------------------------------------------------------
 # Test 5: Voice attempts per prospect — 3 in 24hr; 4th blocked
 # ---------------------------------------------------------------------------
+
 
 def test_voice_attempts_per_prospect_24hr():
     # 3 existing sends within 24hr: allowed for a 4th? No — 3rd send makes count=3 which hits cap
@@ -217,6 +223,7 @@ def test_voice_first_send_allowed():
 # Test 6: Voice cooldown — 23hr apart blocked, 25hr apart allowed
 # ---------------------------------------------------------------------------
 
+
 def test_voice_cooldown_23hr_blocked():
     last_send = NOW - timedelta(hours=23)
     rl, _, _ = _limiter(prospect_sends={(PID, Channel.VOICE): [last_send]})
@@ -236,6 +243,7 @@ def test_voice_cooldown_25hr_allowed():
 # Test 7: SMS cycle cap — 1/prospect/30 days
 # ---------------------------------------------------------------------------
 
+
 def test_sms_cycle_cap():
     recent_send = NOW - timedelta(days=15)
     rl, _, _ = _limiter(prospect_sends={(PID, Channel.SMS): [recent_send]})
@@ -254,6 +262,7 @@ def test_sms_outside_cycle_allowed():
 # ---------------------------------------------------------------------------
 # Test 8: Email same-prospect frequency — 3 in 14d max
 # ---------------------------------------------------------------------------
+
 
 def test_email_prospect_frequency_3_in_14d_passes():
     # 2 existing sends in window
@@ -277,6 +286,7 @@ def test_email_prospect_frequency_4th_blocked():
 # Test 9: Account rotation — balanced pool
 # ---------------------------------------------------------------------------
 
+
 def test_account_rotation_pick_lowest():
     pool = AccountPool(channel=Channel.EMAIL, accounts=["A", "B", "C"])
     usage = {"A": 5, "B": 3, "C": 4}
@@ -286,6 +296,7 @@ def test_account_rotation_pick_lowest():
 # ---------------------------------------------------------------------------
 # Test 10: Account rotation — tie → lexicographic
 # ---------------------------------------------------------------------------
+
 
 def test_account_rotation_tie_lexicographic():
     pool = AccountPool(channel=Channel.EMAIL, accounts=["A", "B"])
@@ -297,6 +308,7 @@ def test_account_rotation_tie_lexicographic():
 # Test 11: Account rotation — empty pool
 # ---------------------------------------------------------------------------
 
+
 def test_account_rotation_empty():
     pool = AccountPool(channel=Channel.EMAIL, accounts=[])
     assert pool.pick_next({}) is None
@@ -306,14 +318,17 @@ def test_account_rotation_empty():
 # Test 12: Multiple violations accumulate
 # ---------------------------------------------------------------------------
 
+
 def test_multiple_violations_accumulate():
     # Daily cap hit + prospect frequency hit for email
     ws = _day_key(Channel.EMAIL, ACCT, NOW)
     sends = [NOW - timedelta(days=d) for d in [1, 4, 8]]
     rl, _, _ = _limiter(
-        window_counts={ws: 100},       # warmed cap = 100 → hits daily cap
-        warming_days={},               # warmed
-        prospect_sends={(PID, Channel.EMAIL): sends},  # 3 sends → 4th is PROSPECT_FREQUENCY_EXCEEDED
+        window_counts={ws: 100},  # warmed cap = 100 → hits daily cap
+        warming_days={},  # warmed
+        prospect_sends={
+            (PID, Channel.EMAIL): sends
+        },  # 3 sends → 4th is PROSPECT_FREQUENCY_EXCEEDED
     )
     result = rl.check(Channel.EMAIL, ACCT, PID, now=NOW)
     assert not result.allowed
@@ -324,6 +339,7 @@ def test_multiple_violations_accumulate():
 # ---------------------------------------------------------------------------
 # Test 13: consume() increments counters
 # ---------------------------------------------------------------------------
+
 
 def test_consume_increments_counters():
     gw, iw, gwd, gpf, rps, wc, ps = _make_stores()
@@ -341,6 +357,7 @@ def test_consume_increments_counters():
 # ---------------------------------------------------------------------------
 # Test 14: retry_after populated for window violation
 # ---------------------------------------------------------------------------
+
 
 def test_retry_after_window_violation():
     ws = NOW.replace(hour=0, minute=0, second=0, microsecond=0)

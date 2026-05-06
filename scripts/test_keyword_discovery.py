@@ -19,6 +19,7 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dotenv import load_dotenv
+
 load_dotenv("/home/elliotbot/.config/agency-os/.env")
 
 import httpx
@@ -27,6 +28,7 @@ DATAFORSEO_LOGIN = os.getenv("DATAFORSEO_LOGIN")
 DATAFORSEO_PASSWORD = os.getenv("DATAFORSEO_PASSWORD")
 
 import base64
+
 _AUTH = "Basic " + base64.b64encode(f"{DATAFORSEO_LOGIN}:{DATAFORSEO_PASSWORD}".encode()).decode()
 HEADERS = {"Authorization": _AUTH, "Content-Type": "application/json"}
 DFS_BASE = "https://api.dataforseo.com"
@@ -43,6 +45,7 @@ SEED_KEYWORDS = [
 ]
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _is_au_domain(domain: str) -> bool:
     return (
@@ -74,14 +77,15 @@ async def dfs_post(client: httpx.AsyncClient, endpoint: str, payload: list) -> d
 
 # ── Task A: Keyword Suggestions ───────────────────────────────────────────────
 
+
 async def task_a(client: httpx.AsyncClient) -> dict:
     """
     Call DFS keywords_for_keywords for 5 seed keywords.
     Endpoint: /v3/keywords_data/google_ads/keywords_for_keywords/live
     """
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("TASK A — Keyword Suggestions")
-    print("="*60)
+    print("=" * 60)
 
     results = {}
     total_cost = 0.0
@@ -91,12 +95,14 @@ async def task_a(client: httpx.AsyncClient) -> dict:
         print(f"\n  Seed: '{seed}'", flush=True)
         try:
             # DFS Labs keyword_suggestions (not google_ads keywords_for_keywords)
-            payload = [{
-                "keyword": seed,
-                "location_code": 2036,
-                "language_code": "en",
-                "limit": 50,
-            }]
+            payload = [
+                {
+                    "keyword": seed,
+                    "location_code": 2036,
+                    "language_code": "en",
+                    "limit": 50,
+                }
+            ]
             result = await dfs_post(
                 client,
                 "/v3/dataforseo_labs/google/keyword_suggestions/live",
@@ -114,12 +120,14 @@ async def task_a(client: httpx.AsyncClient) -> dict:
             top10 = []
             for item in items_sorted[:10]:
                 ki = item.get("keyword_info") or {}
-                top10.append({
-                    "keyword": item.get("keyword"),
-                    "search_volume": ki.get("search_volume"),
-                    "cpc": ki.get("cpc"),
-                    "competition": ki.get("competition"),
-                })
+                top10.append(
+                    {
+                        "keyword": item.get("keyword"),
+                        "search_volume": ki.get("search_volume"),
+                        "cpc": ki.get("cpc"),
+                        "competition": ki.get("competition"),
+                    }
+                )
 
             results[seed] = {
                 "total_returned": len(items),
@@ -150,14 +158,15 @@ async def task_a(client: httpx.AsyncClient) -> dict:
 
 # ── Task B: SERP Scraping ─────────────────────────────────────────────────────
 
+
 async def task_b(client: httpx.AsyncClient, task_a_results: dict) -> dict:
     """
     Pick top 20 keywords by volume from Task A, run SERP for each.
     Endpoint: /v3/serp/google/organic/live/advanced
     """
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("TASK B — SERP Scraping (top 20 keywords)")
-    print("="*60)
+    print("=" * 60)
 
     # Collect all keywords across seeds, deduplicate
     all_kw: dict[str, int] = {}
@@ -182,13 +191,15 @@ async def task_b(client: httpx.AsyncClient, task_a_results: dict) -> dict:
     for kw, vol in top20:
         print(f"\n  SERP: '{kw}' (vol {vol})", flush=True)
         try:
-            payload = [{
-                "keyword": kw,
-                "location_code": 2036,
-                "language_code": "en",
-                "depth": 50,
-                "se_domain": "google.com.au",
-            }]
+            payload = [
+                {
+                    "keyword": kw,
+                    "location_code": 2036,
+                    "language_code": "en",
+                    "depth": 50,
+                    "se_domain": "google.com.au",
+                }
+            ]
             result = await dfs_post(
                 client,
                 "/v3/serp/google/organic/live/advanced",
@@ -202,13 +213,15 @@ async def task_b(client: httpx.AsyncClient, task_a_results: dict) -> dict:
             top10_domains = []
             for item in organic[:10]:
                 domain = item.get("domain", "")
-                top10_domains.append({
-                    "position": item.get("rank_absolute"),
-                    "domain": domain,
-                    "url": item.get("url"),
-                    "title": item.get("title", "")[:80],
-                    "is_au": _is_au_domain(domain),
-                })
+                top10_domains.append(
+                    {
+                        "position": item.get("rank_absolute"),
+                        "domain": domain,
+                        "url": item.get("url"),
+                        "title": item.get("title", "")[:80],
+                        "is_au": _is_au_domain(domain),
+                    }
+                )
 
             au_count = sum(1 for i in organic if _is_au_domain(i.get("domain", "")))
 
@@ -241,11 +254,12 @@ async def task_b(client: httpx.AsyncClient, task_a_results: dict) -> dict:
 
 # ── Task C: Domain-Keyword Matrix ─────────────────────────────────────────────
 
+
 def task_c(task_b_results: dict) -> dict:
     """Build domain → keyword count matrix from SERP results."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("TASK C — Domain-Keyword Matrix")
-    print("="*60)
+    print("=" * 60)
 
     domain_data: dict[str, dict] = {}
 
@@ -275,7 +289,9 @@ def task_c(task_b_results: dict) -> dict:
     # Compute averages
     for d in domain_data.values():
         d["keyword_count"] = len(d["keywords"])
-        d["avg_position"] = round(sum(d["positions"]) / len(d["positions"]), 1) if d["positions"] else 99
+        d["avg_position"] = (
+            round(sum(d["positions"]) / len(d["positions"]), 1) if d["positions"] else 99
+        )
 
     # Sort by keyword count desc
     sorted_domains = sorted(domain_data.values(), key=lambda x: -x["keyword_count"])
@@ -287,7 +303,9 @@ def task_c(task_b_results: dict) -> dict:
     print(f"\n  Top 20 by keyword count:")
     for d in top20:
         au_flag = "🇦🇺" if d["is_au"] else "  "
-        print(f"    {au_flag} {d['domain'][:45]:<45} kws={d['keyword_count']} avg_pos={d['avg_position']} best='{d['best_keyword']}'@{d['best_position']}")
+        print(
+            f"    {au_flag} {d['domain'][:45]:<45} kws={d['keyword_count']} avg_pos={d['avg_position']} best='{d['best_keyword']}'@{d['best_position']}"
+        )
 
     return {
         "total_unique_domains": len(domain_data),
@@ -299,14 +317,15 @@ def task_c(task_b_results: dict) -> dict:
 
 # ── Task D: Overlap Analysis ──────────────────────────────────────────────────
 
+
 async def task_d(client: httpx.AsyncClient, matrix_domains: list[dict]) -> dict:
     """
     Pull a small category discovery batch and compare overlap.
     Fetches 100 AU dental domains via domain_metrics_by_categories.
     """
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("TASK D — Overlap Analysis")
-    print("="*60)
+    print("=" * 60)
 
     keyword_domains = {d["domain"] for d in matrix_domains}
     category_domains: set[str] = set()
@@ -319,18 +338,20 @@ async def task_d(client: httpx.AsyncClient, matrix_domains: list[dict]) -> dict:
         first_date = str(today - __import__("datetime").timedelta(days=180))
         second_date = str(today)
 
-        payload = [{
-            "category_codes": [10514],
-            "location_code": 2036,
-            "language_code": "en",
-            "first_date": first_date,
-            "second_date": second_date,
-            "filters": [
-                ["metrics.organic.etv", ">", 0],
-            ],
-            "order_by": ["metrics.organic.etv,desc"],
-            "limit": 100,
-        }]
+        payload = [
+            {
+                "category_codes": [10514],
+                "location_code": 2036,
+                "language_code": "en",
+                "first_date": first_date,
+                "second_date": second_date,
+                "filters": [
+                    ["metrics.organic.etv", ">", 0],
+                ],
+                "order_by": ["metrics.organic.etv,desc"],
+                "limit": 100,
+            }
+        ]
         result = await dfs_post(
             client,
             "/v3/dataforseo_labs/google/domain_metrics_by_categories/live",
@@ -341,7 +362,9 @@ async def task_d(client: httpx.AsyncClient, matrix_domains: list[dict]) -> dict:
             domain = item.get("domain", "")
             if domain:
                 category_domains.add(domain)
-        print(f"\n  Category discovery (dental, top 100): {len(category_domains)} domains", flush=True)
+        print(
+            f"\n  Category discovery (dental, top 100): {len(category_domains)} domains", flush=True
+        )
     except Exception as e:
         print(f"  Category pull failed: {e}", flush=True)
 
@@ -367,6 +390,7 @@ async def task_d(client: httpx.AsyncClient, matrix_domains: list[dict]) -> dict:
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
+
 
 async def main():
     print("=" * 60)
@@ -410,13 +434,16 @@ async def main():
     serp_kws = [k for k, v in b_results["keywords"].items() if "error" not in v]
     avg_organic = (
         sum(b_results["keywords"][k]["organic_count"] for k in serp_kws) / len(serp_kws)
-        if serp_kws else 0
+        if serp_kws
+        else 0
     )
     print(f"\n4. {len(serp_kws)} SERP keywords → avg {avg_organic:.1f} organic results/keyword")
 
     print(f"\n5. Total unique domains from keyword discovery: {c_results['total_unique_domains']}")
-    print(f"6. AU domain percentage: {c_results['au_domain_count']}/{c_results['total_unique_domains']} "
-          f"= {100*c_results['au_domain_count']//max(c_results['total_unique_domains'],1)}%")
+    print(
+        f"6. AU domain percentage: {c_results['au_domain_count']}/{c_results['total_unique_domains']} "
+        f"= {100 * c_results['au_domain_count'] // max(c_results['total_unique_domains'], 1)}%"
+    )
     print(f"\n7. Overlap with category discovery:")
     print(f"   Category domains pulled: {d_results['category_domain_count']}")
     print(f"   Overlap: {d_results['overlap_count']}")
@@ -426,20 +453,44 @@ async def main():
     # Top 5 interesting AU SMBs
     print(f"\n8. Top 5 most interesting AU SMB domains found:")
     au_smbs = [
-        d for d in c_results["all_domains"]
+        d
+        for d in c_results["all_domains"]
         if d["is_au"]
-        and not any(x in d["domain"] for x in [
-            "healthdirect", "medicare", "health.gov", "betterhealth",
-            "yellowpages", "truelocal", "hotfrog", "localsearch",
-            "yelp", "google", "facebook", "instagram", "linkedin",
-            "wikipedia", "reddit", "finder.com", "canstar",
-            "nib.com", "bupa", "medibank", "ahm",
-            "lawpath", "legalvision", "armstronglegal",
-        ])
+        and not any(
+            x in d["domain"]
+            for x in [
+                "healthdirect",
+                "medicare",
+                "health.gov",
+                "betterhealth",
+                "yellowpages",
+                "truelocal",
+                "hotfrog",
+                "localsearch",
+                "yelp",
+                "google",
+                "facebook",
+                "instagram",
+                "linkedin",
+                "wikipedia",
+                "reddit",
+                "finder.com",
+                "canstar",
+                "nib.com",
+                "bupa",
+                "medibank",
+                "ahm",
+                "lawpath",
+                "legalvision",
+                "armstronglegal",
+            ]
+        )
         and d["keyword_count"] >= 2
     ][:5]
     for d in au_smbs:
-        print(f"   {d['domain']} — {d['keyword_count']} kws, avg pos {d['avg_position']}, best '{d['best_keyword']}'@{d['best_position']}")
+        print(
+            f"   {d['domain']} — {d['keyword_count']} kws, avg pos {d['avg_position']}, best '{d['best_keyword']}'@{d['best_position']}"
+        )
 
     # Save full output
     os.makedirs(OUT_DIR, exist_ok=True)
@@ -453,7 +504,9 @@ async def main():
             "avg_organic_per_keyword": round(avg_organic, 1),
             "total_unique_domains": c_results["total_unique_domains"],
             "au_domain_count": c_results["au_domain_count"],
-            "au_domain_pct": round(100 * c_results["au_domain_count"] / max(c_results["total_unique_domains"], 1), 1),
+            "au_domain_pct": round(
+                100 * c_results["au_domain_count"] / max(c_results["total_unique_domains"], 1), 1
+            ),
             "category_overlap": d_results["overlap_count"],
             "keyword_only_new": d_results["keyword_only_count"],
             "keyword_only_au": d_results["keyword_only_au_count"],

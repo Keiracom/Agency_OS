@@ -1,4 +1,5 @@
 """Tests for ads_transparency stub — Directive #290."""
+
 import pytest
 from src.integrations.ads_transparency import check_google_ads
 

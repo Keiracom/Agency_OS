@@ -45,6 +45,9 @@ async def main():
     parser.add_argument("--industry", help="Filter by industry (ILIKE match)")
     parser.add_argument("--min-confidence", type=int, default=70, help="Min dm_email_confidence")
     parser.add_argument("--from-address", help="Sender email address")
+    parser.add_argument(
+        "--campaign-name", help="Campaign name for send tracking (default: from JSON)"
+    )
     parser.add_argument("--live", action="store_true", help="Actually send (default: dry run)")
     args = parser.parse_args()
 
@@ -65,6 +68,7 @@ async def main():
         from_address=args.from_address,
         filter_industry=args.industry,
         min_confidence=args.min_confidence,
+        campaign_name=args.campaign_name,
     )
 
     results = await executor.run()

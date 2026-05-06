@@ -323,9 +323,7 @@ class DomainPoolManager:
                 # 7-day stats response includes a status/state field; we treat
                 # 'ready' / 'completed' / 'good' as READY, anything still
                 # warming as WARMING.
-                sl_state = (
-                    stats.get("warmup_status") or stats.get("status") or ""
-                ).lower()
+                sl_state = (stats.get("warmup_status") or stats.get("status") or "").lower()
                 if sl_state in ("ready", "completed", "good", "healthy"):
                     next_status: str = BurnerDomainStatus.READY
                 elif sl_state in ("warming", "in_progress", "configuring"):

@@ -44,7 +44,9 @@ class SmartleadMCPError(RuntimeError):
     """Raised when the MCP bridge invocation fails or returns an error payload."""
 
 
-async def _call(tool: str, args: dict[str, Any], *, timeout: float = _DEFAULT_TIMEOUT) -> dict[str, Any]:
+async def _call(
+    tool: str, args: dict[str, Any], *, timeout: float = _DEFAULT_TIMEOUT
+) -> dict[str, Any]:
     """Invoke `mcp-bridge call smartlead <tool>` with the given JSON args.
 
     Returns the parsed JSON response from the MCP server. Raises
@@ -72,9 +74,7 @@ async def _call(tool: str, args: dict[str, Any], *, timeout: float = _DEFAULT_TI
 
     if proc.returncode != 0:
         err = stderr.decode("utf-8", errors="replace")[:500]
-        raise SmartleadMCPError(
-            f"MCP bridge exit {proc.returncode} for {tool}: {err}"
-        )
+        raise SmartleadMCPError(f"MCP bridge exit {proc.returncode} for {tool}: {err}")
 
     raw = stdout.decode("utf-8", errors="replace").strip()
     if not raw:
@@ -92,9 +92,7 @@ async def _call(tool: str, args: dict[str, Any], *, timeout: float = _DEFAULT_TI
                     return json.loads(line)
                 except json.JSONDecodeError:
                     continue
-        raise SmartleadMCPError(
-            f"MCP bridge returned non-JSON for {tool}: {raw[:500]}"
-        ) from exc
+        raise SmartleadMCPError(f"MCP bridge returned non-JSON for {tool}: {raw[:500]}") from exc
 
 
 # ── Typed helpers ─────────────────────────────────────────────────────────────

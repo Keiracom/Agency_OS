@@ -93,19 +93,46 @@ class CampaignExecutor:
 
         # Load sequence
         if sequence_steps:
-            self.steps = [SequenceStep(**s) for s in sequence_steps]
+            self.steps = [SequenceStep(**self._normalize_step(s)) for s in sequence_steps]
         elif sequence_path:
             self.steps = self._load_sequence(sequence_path)
         else:
             raise ValueError("Either sequence_path or sequence_steps required")
 
     @staticmethod
+    def _normalize_step(raw: dict) -> dict:
+        """Normalize step dict to SequenceStep fields.
+
+        Handles both schemas:
+        - Ours: {"step_number": 1, "subject_template": "...", "body_template": "..."}
+        - Aiden's: {"step": 1, "subject": "...", "body_text": "...", "body_html": "..."}
+        """
+        out = dict(raw)
+        # step → step_number
+        if "step" in out and "step_number" not in out:
+            out["step_number"] = out.pop("step")
+        # subject → subject_template
+        if "subject" in out and "subject_template" not in out:
+            out["subject_template"] = out.pop("subject")
+        # body_text or body_html → body_template
+        if "body_template" not in out:
+            out["body_template"] = out.pop("body_text", None) or out.pop("body_html", "")
+        # Drop extra keys that SequenceStep doesn't accept
+        valid = {"step_number", "subject_template", "body_template", "delay_days", "channel"}
+        return {k: v for k, v in out.items() if k in valid}
+
+    @staticmethod
     def _load_sequence(path: str) -> list[SequenceStep]:
-        """Load sequence steps from a JSON file."""
+        """Load sequence steps from a JSON file.
+
+        Accepts both schema variants:
+        - {"steps": [...]} (CampaignExecutor native)
+        - {"emails": [...]} (campaign_sender.py / Aiden's format)
+        """
         data = json.loads(Path(path).read_text())
-        steps_data = data.get("steps") or data
+        steps_data = data.get("steps") or data.get("emails") or data
         if isinstance(steps_data, list):
-            return [SequenceStep(**s) for s in steps_data]
+            return [SequenceStep(**CampaignExecutor._normalize_step(s)) for s in steps_data]
         raise ValueError(f"Invalid sequence format in {path}")
 
     def _render_template(self, template: str, prospect: ProspectRecord) -> str:

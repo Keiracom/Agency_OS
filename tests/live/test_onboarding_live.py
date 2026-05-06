@@ -86,9 +86,7 @@ class TestLiveOnboarding:
         # This would use a real job_id from previous test
         job_id = "test-job-id"
 
-        response = await api_client.get(
-            f"/api/v1/onboarding/status/{job_id}"
-        )
+        response = await api_client.get(f"/api/v1/onboarding/status/{job_id}")
 
         # Either success or not found (if job doesn't exist)
         assert response.status_code in [200, 404]

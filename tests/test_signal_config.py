@@ -1,4 +1,5 @@
 """Tests for SignalConfigRepository — Directive #256"""
+
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from src.enrichment.signal_config import (
@@ -11,8 +12,10 @@ from src.enrichment.signal_config import (
 
 # ─── Helpers ────────────────────────────────────────────────────────────────
 
+
 def make_mock_row(**overrides):
     import uuid, datetime
+
     defaults = {
         "id": uuid.uuid4(),
         "vertical_slug": "marketing_agency",
@@ -29,7 +32,11 @@ def make_mock_row(**overrides):
             }
         ],
         "discovery_config": {"dfs_depth": 100, "gmb_zoom": "14z"},
-        "enrichment_gates": {"min_score_to_enrich": 30, "min_score_to_dm": 50, "min_score_to_outreach": 65},
+        "enrichment_gates": {
+            "min_score_to_enrich": 30,
+            "min_score_to_dm": 50,
+            "min_score_to_outreach": 65,
+        },
         "channel_config": {"email": True, "linkedin": True, "voice": True, "sms": False},
         "created_at": datetime.datetime.now(),
         "updated_at": datetime.datetime.now(),
@@ -42,6 +49,7 @@ def make_mock_row(**overrides):
 
 
 # ─── Tests ──────────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_get_config_returns_valid_structure():
@@ -91,12 +99,26 @@ async def test_get_services_for_vertical():
 @pytest.mark.asyncio
 async def test_all_dfs_technologies_deduped():
     conn = AsyncMock()
-    row = make_mock_row(service_signals=[
-        {"service_name": "svc1", "label": "S1", "dfs_technologies": ["Google Ads", "Facebook Pixel"],
-         "gmb_categories": [], "scoring_weights": {}, "must_not_have_technologies": []},
-        {"service_name": "svc2", "label": "S2", "dfs_technologies": ["Google Ads", "HubSpot"],
-         "gmb_categories": [], "scoring_weights": {}, "must_not_have_technologies": []},
-    ])
+    row = make_mock_row(
+        service_signals=[
+            {
+                "service_name": "svc1",
+                "label": "S1",
+                "dfs_technologies": ["Google Ads", "Facebook Pixel"],
+                "gmb_categories": [],
+                "scoring_weights": {},
+                "must_not_have_technologies": [],
+            },
+            {
+                "service_name": "svc2",
+                "label": "S2",
+                "dfs_technologies": ["Google Ads", "HubSpot"],
+                "gmb_categories": [],
+                "scoring_weights": {},
+                "must_not_have_technologies": [],
+            },
+        ]
+    )
     conn.fetchrow.return_value = row
     repo = SignalConfigRepository(conn)
     config = await repo.get_config("marketing_agency")
@@ -108,12 +130,17 @@ async def test_all_dfs_technologies_deduped():
 def test_enrichment_gate_defaults():
     """SignalConfig gate properties return correct values from enrichment_gates."""
     import uuid, datetime
+
     config = SignalConfig(
         id=str(uuid.uuid4()),
         vertical="test",
         services=[],
         discovery_config={},
-        enrichment_gates={"min_score_to_enrich": 30, "min_score_to_dm": 50, "min_score_to_outreach": 65},
+        enrichment_gates={
+            "min_score_to_enrich": 30,
+            "min_score_to_dm": 50,
+            "min_score_to_outreach": 65,
+        },
         competitor_config={},
         channel_config={},
         created_at=datetime.datetime.now(),

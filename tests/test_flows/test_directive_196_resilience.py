@@ -16,6 +16,7 @@ import pytest
 # FIX 5: test_pool_population_handles_empty_gmb
 # ============================================
 
+
 @pytest.mark.asyncio
 async def test_pool_population_handles_empty_gmb():
     """
@@ -54,6 +55,7 @@ async def test_pool_population_handles_empty_gmb():
 # ============================================
 # FIX 3: test_enrich_tier_failure_continues
 # ============================================
+
 
 @pytest.mark.asyncio
 async def test_enrich_tier_failure_continues():
@@ -152,6 +154,7 @@ async def test_enrich_tier_failure_continues():
 # ============================================
 # FIX 1: test_scraper_request_retries_on_timeout
 # ============================================
+
 
 @pytest.mark.asyncio
 async def test_scraper_request_retries_on_timeout():

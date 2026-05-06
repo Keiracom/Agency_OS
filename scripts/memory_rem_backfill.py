@@ -27,6 +27,7 @@ Usage
 
 Exit codes: 0 OK · 3 DB unavailable.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -56,15 +57,19 @@ from memory_consolidation import (  # noqa: E402
 from src.config.settings import settings  # noqa: E402
 
 DEFAULT_AGE_THRESHOLD_DAYS = 7
-DEFAULT_MIN_SCORE          = 0.6
-DEFAULT_BATCH_SIZE         = 200
-DEFAULT_MAX_ROWS           = 0       # 0 = unbounded
+DEFAULT_MIN_SCORE = 0.6
+DEFAULT_BATCH_SIZE = 200
+DEFAULT_MAX_ROWS = 0  # 0 = unbounded
 
 
 # ── DB I/O ────────────────────────────────────────────────────────────────
 
+
 async def fetch_old_daily_logs(
-    conn, *, age_threshold_days: int, max_rows: int,
+    conn,
+    *,
+    age_threshold_days: int,
+    max_rows: int,
 ) -> list[Memory]:
     """Pull every daily_log strictly OLDER than the age threshold,
     newest-first within the cold window. max_rows == 0 → unbounded."""
@@ -80,7 +85,8 @@ async def fetch_old_daily_logs(
             ORDER BY created_at DESC
             LIMIT $2
             """,
-            cutoff, max_rows,
+            cutoff,
+            max_rows,
         )
     else:
         rows = await conn.fetch(
@@ -109,10 +115,11 @@ async def fetch_old_daily_logs(
 
 def _chunked(seq: list, size: int):
     for i in range(0, len(seq), size):
-        yield seq[i:i + size]
+        yield seq[i : i + size]
 
 
 # ── Pipeline ──────────────────────────────────────────────────────────────
+
 
 async def replay(
     conn,
@@ -146,20 +153,20 @@ async def replay(
                     promoted.append(m)
 
     return {
-        "scanned":             len(cold),
-        "above_threshold":     above_threshold_total,
-        "promoted":            len(promoted),
-        "skipped_dup_guard":   above_threshold_total - len(promoted),
-        "age_threshold_days":  age_threshold_days,
-        "min_score":           min_score,
-        "batch_size":          batch_size,
-        "max_rows":            max_rows or "unbounded",
+        "scanned": len(cold),
+        "above_threshold": above_threshold_total,
+        "promoted": len(promoted),
+        "skipped_dup_guard": above_threshold_total - len(promoted),
+        "age_threshold_days": age_threshold_days,
+        "min_score": min_score,
+        "batch_size": batch_size,
+        "max_rows": max_rows or "unbounded",
         "top_promotions": [
             {
-                "id":        m.id,
+                "id": m.id,
                 "composite": m.composite,
-                "created":   m.created_at.date().isoformat(),
-                "preview":   (m.content or "")[:120].replace("\n", " "),
+                "created": m.created_at.date().isoformat(),
+                "preview": (m.content or "")[:120].replace("\n", " "),
             }
             for m in sorted(promoted, key=lambda x: x.composite, reverse=True)[:10]
         ],
@@ -167,6 +174,7 @@ async def replay(
 
 
 # ── Render ────────────────────────────────────────────────────────────────
+
 
 def render_human(result: dict, *, dry_run: bool) -> str:
     lines = [
@@ -195,18 +203,34 @@ def render_human(result: dict, *, dry_run: bool) -> str:
 
 # ── CLI ───────────────────────────────────────────────────────────────────
 
+
 async def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="P10 REM Backfill — one-shot memory migration.")
-    ap.add_argument("--age-threshold-days", type=int, default=DEFAULT_AGE_THRESHOLD_DAYS,
-                    help="Only replay daily_logs strictly OLDER than this (default 7).")
-    ap.add_argument("--min-score", type=float, default=DEFAULT_MIN_SCORE,
-                    help="Composite-score threshold for promotion (default 0.6).")
-    ap.add_argument("--batch-size", type=int, default=DEFAULT_BATCH_SIZE,
-                    help="Score window size (default 200).")
-    ap.add_argument("--max-rows", type=int, default=DEFAULT_MAX_ROWS,
-                    help="Cap rows pulled per run (default 0 = unbounded).")
-    ap.add_argument("--execute", action="store_true",
-                    help="Apply writes. Default is dry-run.")
+    ap.add_argument(
+        "--age-threshold-days",
+        type=int,
+        default=DEFAULT_AGE_THRESHOLD_DAYS,
+        help="Only replay daily_logs strictly OLDER than this (default 7).",
+    )
+    ap.add_argument(
+        "--min-score",
+        type=float,
+        default=DEFAULT_MIN_SCORE,
+        help="Composite-score threshold for promotion (default 0.6).",
+    )
+    ap.add_argument(
+        "--batch-size",
+        type=int,
+        default=DEFAULT_BATCH_SIZE,
+        help="Score window size (default 200).",
+    )
+    ap.add_argument(
+        "--max-rows",
+        type=int,
+        default=DEFAULT_MAX_ROWS,
+        help="Cap rows pulled per run (default 0 = unbounded).",
+    )
+    ap.add_argument("--execute", action="store_true", help="Apply writes. Default is dry-run.")
     args = ap.parse_args(argv)
     dry_run = not args.execute
 

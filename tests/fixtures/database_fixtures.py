@@ -13,6 +13,7 @@ from typing import Any
 # Client Fixtures
 # ============================================================================
 
+
 def create_test_client(
     name: str = "Test Agency",
     tier: str = "velocity",
@@ -74,6 +75,7 @@ def create_spark_client() -> dict[str, Any]:
 # User Fixtures
 # ============================================================================
 
+
 def create_test_user(
     email: str = "test@example.com",
     full_name: str = "Test User",
@@ -91,6 +93,7 @@ def create_test_user(
 # ============================================================================
 # Membership Fixtures
 # ============================================================================
+
 
 def create_test_membership(
     user_id: str,
@@ -113,6 +116,7 @@ def create_test_membership(
 # ============================================================================
 # Campaign Fixtures
 # ============================================================================
+
 
 def create_test_campaign(
     client_id: str,
@@ -185,6 +189,7 @@ def create_manual_campaign(client_id: str) -> dict[str, Any]:
 # ============================================================================
 # Lead Fixtures
 # ============================================================================
+
 
 def create_test_lead(
     client_id: str,
@@ -365,6 +370,7 @@ def create_unsubscribed_lead(client_id: str, campaign_id: str) -> dict[str, Any]
 # Activity Fixtures
 # ============================================================================
 
+
 def create_test_activity(
     lead_id: str,
     channel: str = "email",
@@ -438,6 +444,7 @@ def create_voice_call_activity(lead_id: str) -> dict[str, Any]:
 # Resource Fixtures
 # ============================================================================
 
+
 def create_email_resource(client_id: str) -> dict[str, Any]:
     """Create an email resource (sending account)."""
     return {
@@ -498,6 +505,7 @@ def create_linkedin_resource(client_id: str) -> dict[str, Any]:
 # ============================================================================
 # Batch Creation Helpers
 # ============================================================================
+
 
 def create_lead_batch(
     client_id: str,

@@ -23,7 +23,7 @@ import logging
 from datetime import datetime
 from uuid import uuid4
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -55,6 +55,7 @@ MOCK_MEETING_REQUEST_REPLIES = [
 # =============================================================================
 # SIMULATION FUNCTIONS
 # =============================================================================
+
 
 async def simulate_reply_received(reply_content: str) -> dict:
     """Simulate a lead reply being received and classified."""
@@ -120,7 +121,7 @@ async def simulate_automated_reply_sent(booking_link: str) -> dict:
     logger.info("STEP 4: Automated Reply Sent")
     logger.info("=" * 60)
 
-    reply_content = f"""Hi {MOCK_LEAD['first_name']},
+    reply_content = f"""Hi {MOCK_LEAD["first_name"]},
 
 Thanks for your interest! I'd love to chat.
 
@@ -133,7 +134,7 @@ Looking forward to connecting!
     logger.info("Channel: email")
     logger.info(f"To: {MOCK_LEAD['email']}")
     logger.info("Reply Preview:")
-    for line in reply_content.strip().split('\n'):
+    for line in reply_content.strip().split("\n"):
         logger.info(f"  | {line}")
 
     return {
@@ -285,6 +286,7 @@ async def run_full_simulation():
 # VALIDATION SCRIPT FOR DISCARDED_LEADS
 # =============================================================================
 
+
 async def validate_discarded_leads():
     """Validate the discarded_leads table and soft discard flow."""
     logger.info("")
@@ -315,11 +317,17 @@ async def validate_discarded_leads():
 
     logger.info("Expected discarded_leads table entries:")
     logger.info("")
-    logger.info("| lead_id  | discard_gate | discard_reason          | als_at_discard | held_until      |")
-    logger.info("|----------|--------------|-------------------------|----------------|-----------------|")
+    logger.info(
+        "| lead_id  | discard_gate | discard_reason          | als_at_discard | held_until      |"
+    )
+    logger.info(
+        "|----------|--------------|-------------------------|----------------|-----------------|"
+    )
     for lead in test_leads:
-        als = str(lead['als_at_discard'] or 'NULL').ljust(14)
-        logger.info(f"| {lead['id'].ljust(8)} | {str(lead['gate']).ljust(12)} | {lead['reason'][:23].ljust(23)} | {als} | NOW + 48 hours  |")
+        als = str(lead["als_at_discard"] or "NULL").ljust(14)
+        logger.info(
+            f"| {lead['id'].ljust(8)} | {str(lead['gate']).ljust(12)} | {lead['reason'][:23].ljust(23)} | {als} | NOW + 48 hours  |"
+        )
 
     logger.info("")
     logger.info("✅ Discard reasons logged before status change")

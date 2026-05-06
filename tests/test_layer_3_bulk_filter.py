@@ -1,4 +1,5 @@
 """Tests for Layer3BulkFilter — Directive #274"""
+
 import uuid
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, call, patch
@@ -35,10 +36,12 @@ def make_signal_config(enrichment_gates: dict | None = None) -> SignalConfig:
 def make_domain_row(domain: str, row_id: str | None = None) -> MagicMock:
     """Create an asyncpg-Record-like mock with id and domain."""
     row = MagicMock()
-    row.__getitem__ = MagicMock(side_effect=lambda k: {
-        "id": row_id or str(uuid.uuid4()),
-        "domain": domain,
-    }[k])
+    row.__getitem__ = MagicMock(
+        side_effect=lambda k: {
+            "id": row_id or str(uuid.uuid4()),
+            "domain": domain,
+        }[k]
+    )
     return row
 
 
@@ -103,10 +106,18 @@ async def test_batching_1001_domains_splits_into_two_calls():
     domains = [f"domain{i}.com" for i in range(1001)]
     rows = [make_domain_row(d, domain_ids[i]) for i, d in enumerate(domains)]
     metrics = [
-        {"domain": d, "organic_etv": 50.0, "paid_etv": 0.0, "backlinks_count": 10, "domain_rank": 20}
+        {
+            "domain": d,
+            "organic_etv": 50.0,
+            "paid_etv": 0.0,
+            "backlinks_count": 10,
+            "domain_rank": 20,
+        }
         for d in domains
     ]
-    engine, conn, dfs = make_engine(fetch_rows=rows, metrics=metrics[:1000], execute_result="UPDATE 1")
+    engine, conn, dfs = make_engine(
+        fetch_rows=rows, metrics=metrics[:1000], execute_result="UPDATE 1"
+    )
     # Second call returns metrics for the remaining 1 domain
     dfs.bulk_domain_metrics = AsyncMock(side_effect=[metrics[:1000], metrics[1000:]])
     config = make_signal_config()
@@ -125,7 +136,15 @@ async def test_pass_threshold_organic_etv_above_zero():
     """Domain with organic_etv=50 passes → pipeline_stage=2 update issued."""
     domain_id = str(uuid.uuid4())
     rows = [make_domain_row("example.com", domain_id)]
-    metrics = [{"domain": "example.com", "organic_etv": 50.0, "paid_etv": 0.0, "backlinks_count": 0, "domain_rank": 0}]
+    metrics = [
+        {
+            "domain": "example.com",
+            "organic_etv": 50.0,
+            "paid_etv": 0.0,
+            "backlinks_count": 0,
+            "domain_rank": 0,
+        }
+    ]
     engine, conn, dfs = make_engine(fetch_rows=rows, metrics=metrics, execute_result="UPDATE 1")
     config = make_signal_config()
 
@@ -145,7 +164,15 @@ async def test_reject_threshold_all_zeros():
     """Domain with organic_etv=0, paid_etv=0, backlinks=0 → rejected, filter_reason set."""
     domain_id = str(uuid.uuid4())
     rows = [make_domain_row("dead.com", domain_id)]
-    metrics = [{"domain": "dead.com", "organic_etv": 0.0, "paid_etv": 0.0, "backlinks_count": 0, "domain_rank": 0}]
+    metrics = [
+        {
+            "domain": "dead.com",
+            "organic_etv": 0.0,
+            "paid_etv": 0.0,
+            "backlinks_count": 0,
+            "domain_rank": 0,
+        }
+    ]
     engine, conn, dfs = make_engine(fetch_rows=rows, metrics=metrics, execute_result="UPDATE 1")
     config = make_signal_config()
 
@@ -186,7 +213,15 @@ async def test_filter_reason_populated_on_reject():
     """Rejected domain must have filter_reason='bulk_metrics_below_threshold' in its UPDATE."""
     domain_id = str(uuid.uuid4())
     rows = [make_domain_row("parked.com", domain_id)]
-    metrics = [{"domain": "parked.com", "organic_etv": 0.0, "paid_etv": 0.0, "backlinks_count": 2, "domain_rank": 0}]
+    metrics = [
+        {
+            "domain": "parked.com",
+            "organic_etv": 0.0,
+            "paid_etv": 0.0,
+            "backlinks_count": 2,
+            "domain_rank": 0,
+        }
+    ]
     # backlinks=2 < DEFAULT_MIN_BACKLINKS=5 → reject
     engine, conn, dfs = make_engine(fetch_rows=rows, metrics=metrics, execute_result="UPDATE 1")
     config = make_signal_config()

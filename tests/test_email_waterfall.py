@@ -3,6 +3,7 @@ Tests for email discovery waterfall — Directive #299.
 Covers all 4 layers, short-circuit logic, name parsing, pattern generation,
 orchestrator wiring, and cost tracking.
 """
+
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -21,10 +22,12 @@ NO_EMAIL_HTML = "<html><body><p>Welcome to our dental practice in Sydney.</p></b
 
 # ── Layer 1: Website HTML scrape ──────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_layer1_mailto_returns_email():
     """L0 contact_data returns email when name matches (simulates Stage 3 Gemini extraction)."""
     from src.pipeline.email_waterfall import discover_email
+
     result = await discover_email(
         domain="pymbledental.com.au",
         dm_name="Michael Chen",
@@ -40,6 +43,7 @@ async def test_layer1_mailto_returns_email():
 async def test_layer1_name_match_gives_high_confidence():
     """Email matching DM name via contact_data gets low confidence (unverified source)."""
     from src.pipeline.email_waterfall import discover_email
+
     result = await discover_email(
         domain="pymbledental.com.au",
         dm_name="Michael Chen",
@@ -54,6 +58,7 @@ async def test_layer1_name_match_gives_high_confidence():
 async def test_layer1_no_html_falls_through():
     """Empty HTML skips Layer 1; no paid layers → returns none."""
     from src.pipeline.email_waterfall import discover_email
+
     result = await discover_email(
         domain="dentist.com.au",
         dm_name="Jane Smith",
@@ -65,9 +70,11 @@ async def test_layer1_no_html_falls_through():
 
 # ── Layer 2: Pattern generation ───────────────────────────────────────────────
 
+
 def test_generate_patterns_produces_correct_emails():
     """Pattern generator produces expected email formats."""
     from src.pipeline.email_waterfall import _generate_patterns
+
     patterns = _generate_patterns("michael", "chen", "dentist.com.au")
     assert "michael.chen@dentist.com.au" in patterns
     assert "michael@dentist.com.au" in patterns
@@ -78,6 +85,7 @@ def test_generate_patterns_produces_correct_emails():
 def test_generate_patterns_empty_on_missing_name():
     """Pattern generator returns empty list when name parts missing."""
     from src.pipeline.email_waterfall import _generate_patterns
+
     assert _generate_patterns("", "chen", "dentist.com.au") == []
     assert _generate_patterns("michael", "", "dentist.com.au") == []
     assert _generate_patterns("michael", "chen", "") == []
@@ -87,6 +95,7 @@ def test_generate_patterns_empty_on_missing_name():
 async def test_layer2_mx_fail_skips_pattern():
     """Layer 2 returns None when MX check fails."""
     from src.pipeline.email_waterfall import _try_patterns
+
     with patch("src.pipeline.email_waterfall._check_mx", AsyncMock(return_value=False)):
         result = await _try_patterns("michael", "chen", "deadzone.invalid")
     assert result is None
@@ -96,6 +105,7 @@ async def test_layer2_mx_fail_skips_pattern():
 async def test_layer2_mx_pass_returns_pattern():
     """Layer 2 returns first.last@domain when MX passes."""
     from src.pipeline.email_waterfall import _try_patterns
+
     with patch("src.pipeline.email_waterfall._check_mx", AsyncMock(return_value=True)):
         result = await _try_patterns("michael", "chen", "dentist.com.au")
     assert result is not None
@@ -106,10 +116,12 @@ async def test_layer2_mx_pass_returns_pattern():
 
 # ── Layer 3: Leadmagic ────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_layer2_leadmagic_verified_email():
     """Layer 2 returns verified email from Leadmagic mock."""
     from src.pipeline.email_waterfall import discover_email
+
     mock_result = MagicMock()
     mock_result.found = True
     mock_result.email = "michael.chen@dentist.com.au"
@@ -120,7 +132,9 @@ async def test_layer2_leadmagic_verified_email():
     mock_client.__aenter__ = AsyncMock(return_value=mock_client)
     mock_client.__aexit__ = AsyncMock(return_value=False)
 
-    with patch("src.pipeline.email_waterfall.LeadmagicClient", return_value=mock_client) as mock_cls:
+    with patch(
+        "src.pipeline.email_waterfall.LeadmagicClient", return_value=mock_client
+    ) as mock_cls:
         # Make the class itself behave as async context manager
         mock_cls.return_value = mock_client
         result = await discover_email(
@@ -140,6 +154,7 @@ async def test_layer2_leadmagic_verified_email():
 async def test_layer2_leadmagic_not_found_falls_through():
     """Layer 2 miss falls through to Layer 3 (or returns none)."""
     from src.pipeline.email_waterfall import discover_email
+
     mock_result = MagicMock()
     mock_result.found = False
     mock_result.email = None
@@ -164,15 +179,16 @@ async def test_layer2_leadmagic_not_found_falls_through():
 
 # ── Layer 4: Bright Data ──────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_layer4_brightdata_returns_email_from_linkedin():
     """Layer 4 extracts email from Bright Data LinkedIn profile."""
     from src.pipeline.email_waterfall import _brightdata_lookup
 
     mock_bd = MagicMock()
-    mock_bd.lookup_company_people = AsyncMock(return_value=[
-        {"name": "Michael Chen", "email": "m.chen@dentist.com.au", "title": "Owner"}
-    ])
+    mock_bd.lookup_company_people = AsyncMock(
+        return_value=[{"name": "Michael Chen", "email": "m.chen@dentist.com.au", "title": "Owner"}]
+    )
 
     with patch("src.pipeline.email_waterfall.BrightDataLinkedInClient", return_value=mock_bd):
         result = await _brightdata_lookup(
@@ -190,18 +206,23 @@ async def test_layer4_brightdata_returns_email_from_linkedin():
 async def test_layer4_skipped_without_linkedin():
     """Layer 4 returns None when no LinkedIn URL provided."""
     from src.pipeline.email_waterfall import _brightdata_lookup
+
     result = await _brightdata_lookup(dm_linkedin=None, domain="dentist.com.au")
     assert result is None
 
 
 # ── Short-circuit logic ───────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_short_circuit_on_layer0_hit():
     """Paid layers not called when L0 contact_data finds name-matched email."""
     from src.pipeline.email_waterfall import discover_email
 
-    with patch("src.pipeline.email_waterfall.LeadmagicClient", side_effect=AssertionError("Leadmagic called")):
+    with patch(
+        "src.pipeline.email_waterfall.LeadmagicClient",
+        side_effect=AssertionError("Leadmagic called"),
+    ):
         result = await discover_email(
             domain="pymbledental.com.au",
             dm_name="Michael Chen",
@@ -214,13 +235,16 @@ async def test_short_circuit_on_layer0_hit():
 
 # ── No result ─────────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_all_layers_miss_returns_none_email():
     """When all layers fail, returns EmailResult with email=None."""
     from src.pipeline.email_waterfall import discover_email
 
-    with patch("src.pipeline.email_waterfall._check_mx", AsyncMock(return_value=False)), \
-         patch("src.pipeline.email_waterfall.LeadmagicClient", side_effect=Exception("API down")):
+    with (
+        patch("src.pipeline.email_waterfall._check_mx", AsyncMock(return_value=False)),
+        patch("src.pipeline.email_waterfall.LeadmagicClient", side_effect=Exception("API down")),
+    ):
         result = await discover_email(
             domain="nowhere.com",
             dm_name="Unknown Person",
@@ -236,12 +260,17 @@ async def test_all_layers_miss_returns_none_email():
 
 # ── Cost tracking ─────────────────────────────────────────────────────────────
 
+
 def test_email_result_to_dict_has_required_keys():
     """EmailResult.to_dict() produces all required prospect card keys."""
     from src.pipeline.email_waterfall import EmailResult
+
     r = EmailResult(
-        email="test@domain.com", verified=True,
-        source="leadmagic", confidence="high", cost_usd=0.015
+        email="test@domain.com",
+        verified=True,
+        source="leadmagic",
+        confidence="high",
+        cost_usd=0.015,
     )
     d = r.to_dict()
     assert "dm_email" in d
@@ -256,9 +285,11 @@ def test_email_result_to_dict_has_required_keys():
 
 # ── Orchestrator wiring ───────────────────────────────────────────────────────
 
+
 def test_prospect_card_has_email_fields():
     """ProspectCard has all email waterfall fields."""
     from src.pipeline.pipeline_orchestrator import ProspectCard
+
     card = ProspectCard(
         domain="test.com.au",
         company_name="Test Co",
@@ -279,35 +310,42 @@ def test_prospect_card_has_email_fields():
 def test_global_sem_leadmagic_exported():
     """GLOBAL_SEM_LEADMAGIC is importable from email_waterfall."""
     from src.pipeline.email_waterfall import GLOBAL_SEM_LEADMAGIC
+
     assert GLOBAL_SEM_LEADMAGIC._value == 10
 
 
 # ── _parse_name: prefix/suffix/noise stripping ────────────────────────────────
 
+
 def test_parse_name_dr_prefix():
     from src.pipeline.email_waterfall import _parse_name
+
     assert _parse_name("Dr. Harry Marget") == ("harry", "marget")
 
 
 def test_parse_name_dr_teresa():
     from src.pipeline.email_waterfall import _parse_name
+
     assert _parse_name("Dr. Teresa Sung") == ("teresa", "sung")
 
 
 def test_parse_name_prof_suffix():
     from src.pipeline.email_waterfall import _parse_name
+
     first, last = _parse_name("Prof. James Smith OAM")
     assert first == "james" and last == "smith"
 
 
 def test_parse_name_plain():
     from src.pipeline.email_waterfall import _parse_name
+
     assert _parse_name("Sam Carigliano") == ("sam", "carigliano")
 
 
 def test_parse_name_linkedin_noise():
     """Role-only name after noise strip returns ("", "")."""
     from src.pipeline.email_waterfall import _parse_name
+
     first, last = _parse_name("Owner at VC Dental")
     assert first == "" and last == ""
 

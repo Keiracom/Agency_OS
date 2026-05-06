@@ -117,7 +117,11 @@ class TestMeetingServiceConfirmation:
         # Mock update result
         update_result = MagicMock()
         update_row = MagicMock()
-        update_row._mapping = {**sample_meeting, "confirmed": True, "confirmed_at": datetime.now(UTC)}
+        update_row._mapping = {
+            **sample_meeting,
+            "confirmed": True,
+            "confirmed_at": datetime.now(UTC),
+        }
         update_result.fetchone.return_value = update_row
 
         mock_session.execute.side_effect = [get_result, update_result]
@@ -241,7 +245,9 @@ class TestMeetingServiceOutcomes:
         assert result["showed_up"] is True
 
     @pytest.mark.asyncio
-    async def test_record_outcome_with_deal_creation(self, meeting_service, mock_session, sample_meeting):
+    async def test_record_outcome_with_deal_creation(
+        self, meeting_service, mock_session, sample_meeting
+    ):
         """Test recording outcome and creating deal."""
         # Mock get_by_id
         get_result = MagicMock()

@@ -276,9 +276,12 @@ class TestLeadPoolServiceBulk:
 
         # Alternate between get_by_email (None) and create calls
         mock_session.execute.side_effect = [
-            mock_get_result, mock_create_result,  # lead 1
-            mock_get_result, mock_create_result,  # lead 2
-            mock_get_result, mock_create_result,  # lead 3
+            mock_get_result,
+            mock_create_result,  # lead 1
+            mock_get_result,
+            mock_create_result,  # lead 2
+            mock_get_result,
+            mock_create_result,  # lead 3
         ]
 
         created, updated = await pool_service.bulk_create(leads)

@@ -12,6 +12,7 @@ Pure mocks — never touches the real Anthropic API. Confirms:
   - Every error path raises AnthropicBatchError (not a generic exception)
   - No subprocess invoked anywhere
 """
+
 from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
@@ -21,6 +22,7 @@ import pytest
 from src.integrations import anthropic_batch as ab
 
 # ─── _normalise_requests ───────────────────────────────────────────────────
+
 
 def test_normalise_convenience_shape():
     out = ab._normalise_requests(
@@ -55,23 +57,36 @@ def test_normalise_rejects_bad_item_type():
 
 # ─── _validate_batch_id ────────────────────────────────────────────────────
 
-@pytest.mark.parametrize("good", [
-    "msgbatch_abc123",
-    "msgbatch_x-y_z",
-])
+
+@pytest.mark.parametrize(
+    "good",
+    [
+        "msgbatch_abc123",
+        "msgbatch_x-y_z",
+    ],
+)
 def test_valid_batch_ids_pass(good):
     assert ab._validate_batch_id(good) == good
 
 
-@pytest.mark.parametrize("bad", [
-    None, "", 123, "wrong_prefix_abc", "msgbatch_!!!", "msgbatch_" + "a" * 200,
-])
+@pytest.mark.parametrize(
+    "bad",
+    [
+        None,
+        "",
+        123,
+        "wrong_prefix_abc",
+        "msgbatch_!!!",
+        "msgbatch_" + "a" * 200,
+    ],
+)
 def test_invalid_batch_ids_rejected(bad):
     with pytest.raises(ab.AnthropicBatchError):
         ab._validate_batch_id(bad)
 
 
 # ─── HTTP harness ──────────────────────────────────────────────────────────
+
 
 class _FakeClient:
     """Context-manager fake httpx.Client that records calls + scripts responses."""
@@ -80,8 +95,11 @@ class _FakeClient:
         self._scripted = list(scripted_responses)
         self.calls = []
 
-    def __enter__(self): return self
-    def __exit__(self, *a): return False
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
 
     def _next(self, method, url, **kwargs):
         self.calls.append((method, url, kwargs))
@@ -89,8 +107,11 @@ class _FakeClient:
             raise AssertionError(f"unexpected extra HTTP call {method} {url}")
         return self._scripted.pop(0)
 
-    def post(self, url, **kw): return self._next("POST", url, **kw)
-    def get(self, url, **kw):  return self._next("GET", url, **kw)
+    def post(self, url, **kw):
+        return self._next("POST", url, **kw)
+
+    def get(self, url, **kw):
+        return self._next("GET", url, **kw)
 
 
 def _resp(status: int, json_data=None, text: str = "") -> MagicMock:
@@ -107,6 +128,7 @@ def _fake_api_key(monkeypatch):
 
 
 # ─── create_batch ──────────────────────────────────────────────────────────
+
 
 def test_create_batch_returns_id_and_sends_beta_header(monkeypatch):
     fake_client = _FakeClient([_resp(200, {"id": "msgbatch_abc"})])
@@ -147,11 +169,20 @@ def test_create_batch_rejects_blank_model(monkeypatch):
 
 # ─── poll_batch ────────────────────────────────────────────────────────────
 
+
 def test_poll_batch_returns_payload(monkeypatch):
-    fake_client = _FakeClient([_resp(200, {
-        "id": "msgbatch_abc", "processing_status": "in_progress",
-        "request_counts": {"processing": 5},
-    })])
+    fake_client = _FakeClient(
+        [
+            _resp(
+                200,
+                {
+                    "id": "msgbatch_abc",
+                    "processing_status": "in_progress",
+                    "request_counts": {"processing": 5},
+                },
+            )
+        ]
+    )
     monkeypatch.setattr(ab.httpx, "Client", lambda **_: fake_client)
     out = ab.poll_batch("msgbatch_abc")
     assert out["processing_status"] == "in_progress"
@@ -167,10 +198,11 @@ def test_poll_batch_rejects_invalid_id():
 
 # ─── get_results — JSONL parsing ───────────────────────────────────────────
 
+
 def test_get_results_parses_jsonl(monkeypatch):
     body = (
         '{"custom_id":"req-0","result":{"type":"succeeded"}}\n'
-        '\n'
+        "\n"
         '{"custom_id":"req-1","result":{"type":"succeeded"}}\n'
     )
     fake_client = _FakeClient([_resp(200, text=body)])
@@ -184,7 +216,7 @@ def test_get_results_parses_jsonl(monkeypatch):
 def test_get_results_skips_garbage_lines(monkeypatch):
     body = (
         '{"custom_id":"req-0","result":{"type":"succeeded"}}\n'
-        'NOT-JSON\n'
+        "NOT-JSON\n"
         '{"custom_id":"req-1","result":{"type":"succeeded"}}\n'
     )
     fake_client = _FakeClient([_resp(200, text=body)])
@@ -195,8 +227,11 @@ def test_get_results_skips_garbage_lines(monkeypatch):
 
 # ─── cancel_batch ──────────────────────────────────────────────────────────
 
+
 def test_cancel_batch_returns_payload(monkeypatch):
-    fake_client = _FakeClient([_resp(200, {"id": "msgbatch_abc", "processing_status": "canceling"})])
+    fake_client = _FakeClient(
+        [_resp(200, {"id": "msgbatch_abc", "processing_status": "canceling"})]
+    )
     monkeypatch.setattr(ab.httpx, "Client", lambda **_: fake_client)
     out = ab.cancel_batch("msgbatch_abc")
     assert out["processing_status"] == "canceling"
@@ -206,6 +241,7 @@ def test_cancel_batch_returns_payload(monkeypatch):
 
 
 # ─── wait_for_batch — polling loop ─────────────────────────────────────────
+
 
 def test_wait_for_batch_loops_until_terminal(monkeypatch):
     """3 poll responses: in_progress → in_progress → ended."""
@@ -239,6 +275,7 @@ def test_wait_for_batch_rejects_zero_interval():
 
 # ─── missing API key ───────────────────────────────────────────────────────
 
+
 def test_missing_api_key_raises(monkeypatch):
     monkeypatch.setattr(ab.settings, "anthropic_api_key", "")
     with pytest.raises(ab.AnthropicBatchError, match="API_KEY"):
@@ -246,6 +283,7 @@ def test_missing_api_key_raises(monkeypatch):
 
 
 # ─── security guards ──────────────────────────────────────────────────────
+
 
 @patch("subprocess.run")
 @patch("subprocess.check_call")

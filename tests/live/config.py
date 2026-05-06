@@ -29,31 +29,22 @@ class LiveTestConfig:
     # ========================================
     database_url: str = field(
         default_factory=lambda: os.environ.get(
-            "TEST_DATABASE_URL",
-            os.environ.get("DATABASE_URL", "")
+            "TEST_DATABASE_URL", os.environ.get("DATABASE_URL", "")
         )
     )
-    supabase_url: str = field(
-        default_factory=lambda: os.environ.get("SUPABASE_URL", "")
-    )
-    supabase_key: str = field(
-        default_factory=lambda: os.environ.get("SUPABASE_SERVICE_KEY", "")
-    )
+    supabase_url: str = field(default_factory=lambda: os.environ.get("SUPABASE_URL", ""))
+    supabase_key: str = field(default_factory=lambda: os.environ.get("SUPABASE_SERVICE_KEY", ""))
 
     # ========================================
     # API Configuration
     # ========================================
     api_base_url: str = field(
         default_factory=lambda: os.environ.get(
-            "API_BASE_URL",
-            "https://agency-os-production.up.railway.app"
+            "API_BASE_URL", "https://agency-os-production.up.railway.app"
         )
     )
     frontend_url: str = field(
-        default_factory=lambda: os.environ.get(
-            "FRONTEND_URL",
-            "https://agency-os-liart.vercel.app"
-        )
+        default_factory=lambda: os.environ.get("FRONTEND_URL", "https://agency-os-liart.vercel.app")
     )
 
     # ========================================
@@ -61,10 +52,7 @@ class LiveTestConfig:
     # ========================================
     test_client_name: str = "Live Test Agency"
     test_client_website: str = field(
-        default_factory=lambda: os.environ.get(
-            "TEST_CLIENT_WEBSITE",
-            "https://example-agency.com"
-        )
+        default_factory=lambda: os.environ.get("TEST_CLIENT_WEBSITE", "https://example-agency.com")
     )
     test_client_tier: str = "velocity"
 
@@ -72,16 +60,10 @@ class LiveTestConfig:
     # Test User Configuration
     # ========================================
     test_user_email: str = field(
-        default_factory=lambda: os.environ.get(
-            "TEST_USER_EMAIL",
-            "test@example.com"
-        )
+        default_factory=lambda: os.environ.get("TEST_USER_EMAIL", "test@example.com")
     )
     test_user_name: str = field(
-        default_factory=lambda: os.environ.get(
-            "TEST_USER_NAME",
-            "Test User"
-        )
+        default_factory=lambda: os.environ.get("TEST_USER_NAME", "Test User")
     )
 
     # ========================================
@@ -90,55 +72,35 @@ class LiveTestConfig:
     test_lead_email: str = field(
         default_factory=lambda: os.environ.get(
             "TEST_LEAD_EMAIL",
-            ""  # Must be set - this is YOUR email
+            "",  # Must be set - this is YOUR email
         )
     )
     test_lead_phone: str = field(
         default_factory=lambda: os.environ.get(
             "TEST_LEAD_PHONE",
-            ""  # Optional - YOUR phone for SMS tests
+            "",  # Optional - YOUR phone for SMS tests
         )
     )
     test_lead_first_name: str = field(
-        default_factory=lambda: os.environ.get(
-            "TEST_LEAD_FIRST_NAME",
-            "Test"
-        )
+        default_factory=lambda: os.environ.get("TEST_LEAD_FIRST_NAME", "Test")
     )
     test_lead_last_name: str = field(
-        default_factory=lambda: os.environ.get(
-            "TEST_LEAD_LAST_NAME",
-            "Lead"
-        )
+        default_factory=lambda: os.environ.get("TEST_LEAD_LAST_NAME", "Lead")
     )
     test_lead_company: str = field(
-        default_factory=lambda: os.environ.get(
-            "TEST_LEAD_COMPANY",
-            "Test Company Pty Ltd"
-        )
+        default_factory=lambda: os.environ.get("TEST_LEAD_COMPANY", "Test Company Pty Ltd")
     )
-    test_lead_title: str = field(
-        default_factory=lambda: os.environ.get(
-            "TEST_LEAD_TITLE",
-            "CEO"
-        )
-    )
+    test_lead_title: str = field(default_factory=lambda: os.environ.get("TEST_LEAD_TITLE", "CEO"))
 
     # ========================================
     # Integration Keys (for verification)
     # ========================================
-    anthropic_api_key: str = field(
-        default_factory=lambda: os.environ.get("ANTHROPIC_API_KEY", "")
-    )
-    resend_api_key: str = field(
-        default_factory=lambda: os.environ.get("RESEND_API_KEY", "")
-    )
+    anthropic_api_key: str = field(default_factory=lambda: os.environ.get("ANTHROPIC_API_KEY", ""))
+    resend_api_key: str = field(default_factory=lambda: os.environ.get("RESEND_API_KEY", ""))
     twilio_account_sid: str = field(
         default_factory=lambda: os.environ.get("TWILIO_ACCOUNT_SID", "")
     )
-    twilio_auth_token: str = field(
-        default_factory=lambda: os.environ.get("TWILIO_AUTH_TOKEN", "")
-    )
+    twilio_auth_token: str = field(default_factory=lambda: os.environ.get("TWILIO_AUTH_TOKEN", ""))
 
     # ========================================
     # Test Control
@@ -212,7 +174,9 @@ class LiveTestConfig:
         print(f"  Twilio: {'✅' if self.twilio_account_sid else '❌'}")
 
         print("\nTest Modes:")
-        print(f"  Dry Run: {'✅ Enabled (no real sends)' if self.dry_run else '⚠️ DISABLED (real sends!)'}")
+        print(
+            f"  Dry Run: {'✅ Enabled (no real sends)' if self.dry_run else '⚠️ DISABLED (real sends!)'}"
+        )
         print(f"  Skip Email: {'✅' if self.skip_email_tests else '❌'}")
         print(f"  Skip SMS: {'✅' if self.skip_sms_tests else '❌'}")
         print(f"  Skip LinkedIn: {'✅' if self.skip_linkedin_tests else '❌'}")
@@ -242,7 +206,7 @@ def get_config() -> LiveTestConfig:
 
 def require_valid_config() -> LiveTestConfig:
     """Get config and skip test if invalid.
-    
+
     This function is called from pytest fixtures. When config is invalid,
     it skips the test gracefully rather than erroring, so CI can run
     without all env vars configured.
@@ -253,8 +217,7 @@ def require_valid_config() -> LiveTestConfig:
     errors = config.validate()
     if errors:
         pytest.skip(
-            "Live test config incomplete (skipping):\n" +
-            "\n".join(f"  - {e}" for e in errors)
+            "Live test config incomplete (skipping):\n" + "\n".join(f"  - {e}" for e in errors)
         )
     return config
 

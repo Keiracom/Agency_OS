@@ -102,7 +102,7 @@ async def search_gmb(business_name: str, state: str) -> dict | None:
         scraper = GMBScraper()
         location = f"{state}, Australia"
         result = await scraper.search_business(business_name, location)
-        return result.to_dict() if hasattr(result, 'to_dict') else result
+        return result.to_dict() if hasattr(result, "to_dict") else result
     except Exception as e:
         return {"found": False, "error": str(e)}
 
@@ -192,7 +192,9 @@ async def run_test():
 
         # Progress update every 10
         if (i + 1) % 10 == 0:
-            print(f"[{i+1}/{len(abn_records)}] {status}: {abn_name[:40]:<40} → {gmb_name[:30] if gmb_name else '(none)':<30} ({score}%)")
+            print(
+                f"[{i + 1}/{len(abn_records)}] {status}: {abn_name[:40]:<40} → {gmb_name[:30] if gmb_name else '(none)':<30} ({score}%)"
+            )
 
         # Rate limit GMB requests
         await asyncio.sleep(2.5)  # 2.5s between GMB requests
@@ -218,7 +220,7 @@ async def run_test():
     print("-" * 60)
 
     for i, fail in enumerate(failures[:10]):
-        print(f"{i+1}. ABN: {fail['abn_name']}")
+        print(f"{i + 1}. ABN: {fail['abn_name']}")
         print(f"   GMB: {fail['gmb_name']}")
         print(f"   Score: {fail['match_score']}% (threshold: {FUZZY_MATCH_THRESHOLD}%)")
         print()
@@ -226,17 +228,21 @@ async def run_test():
     # Save full results
     output_file = Path(__file__).parent / "abn_gmb_match_results.json"
     with open(output_file, "w") as f:
-        json.dump({
-            "timestamp": datetime.now().isoformat(),
-            "threshold": FUZZY_MATCH_THRESHOLD,
-            "total_records": len(abn_records),
-            "tested": total_tested,
-            "errors": errors,
-            "passes": passes,
-            "fails": fails,
-            "match_rate_percent": round(match_rate, 1),
-            "results": results,
-        }, f, indent=2)
+        json.dump(
+            {
+                "timestamp": datetime.now().isoformat(),
+                "threshold": FUZZY_MATCH_THRESHOLD,
+                "total_records": len(abn_records),
+                "tested": total_tested,
+                "errors": errors,
+                "passes": passes,
+                "fails": fails,
+                "match_rate_percent": round(match_rate, 1),
+                "results": results,
+            },
+            f,
+            indent=2,
+        )
 
     print(f"\nFull results saved to: {output_file}")
 

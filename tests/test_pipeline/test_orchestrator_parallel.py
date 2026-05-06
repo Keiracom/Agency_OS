@@ -1,4 +1,5 @@
 """Tests for PipelineOrchestrator.run_parallel() — Directive #295."""
+
 import asyncio
 import pytest
 from unittest.mock import AsyncMock, MagicMock
@@ -175,7 +176,9 @@ async def test_parallel_merges_stats():
         batch_size=10,
     )
     # Stats should be non-zero and reflect combined worker output
-    total = result.stats.enriched + result.stats.enrichment_failed + result.stats.affordability_rejected
+    total = (
+        result.stats.enriched + result.stats.enrichment_failed + result.stats.affordability_rejected
+    )
     assert result.stats.discovered >= 0
     assert result.stats.elapsed_seconds >= 0
     # viable_prospects must equal len(prospects)

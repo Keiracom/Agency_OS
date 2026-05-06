@@ -5,11 +5,13 @@ Covers:
   - layer_2_discovery.py  → _is_au_domain() heuristic
   - pool_population_flow.py → gmb_domain nulling for non-AU domains (#task-1.2)
 """
+
 import pytest
 
 # ---------------------------------------------------------------------------
 # stage_1_discovery: inline filter logic (not a public function — replicate)
 # ---------------------------------------------------------------------------
+
 
 def _s1_is_au(domain: str) -> bool:
     """Mirrors stage_1_discovery.py line 156: AU-only filter."""
@@ -93,6 +95,7 @@ class TestLayer2AuDomainFilter:
 # The fix nulls non-AU gmb_domain values in bu_gmb_rows list comprehension.
 # We replicate the guard logic here to test it directly.
 # ---------------------------------------------------------------------------
+
 
 def _pool_population_au_gmb_domain(raw_gmb_domain: str | None) -> str | None:
     """

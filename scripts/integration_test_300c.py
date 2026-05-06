@@ -3,6 +3,7 @@ DIRECTIVE #300c — Integration Test: Stage 3 Sonnet Website Comprehension
 50% stratified sample (seed=42), real Anthropic API calls.
 Cost: ~$17 USD
 """
+
 import asyncio
 import json
 import os
@@ -12,15 +13,16 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dotenv import load_dotenv
+
 load_dotenv("/home/elliotbot/.config/agency-os/.env")
 
 from src.pipeline.intelligence import comprehend_website, GLOBAL_SEM_SONNET
 
-INPUT_FILE  = os.path.join(os.path.dirname(__file__), "output", "300b_scrape.json")
+INPUT_FILE = os.path.join(os.path.dirname(__file__), "output", "300b_scrape.json")
 OUTPUT_FILE = os.path.join(os.path.dirname(__file__), "output", "300c_comprehend.json")
 
 # Pricing: claude-sonnet-4-5 — $3/MTok input, $15/MTok output
-COST_PER_INPUT_TOKEN  = 3.0 / 1_000_000
+COST_PER_INPUT_TOKEN = 3.0 / 1_000_000
 COST_PER_OUTPUT_TOKEN = 15.0 / 1_000_000
 
 
@@ -35,10 +37,10 @@ def stratified_sample(domains_by_cat: dict, seed: int = 42) -> list[dict]:
 
 
 async def process_domain(item: dict) -> dict:
-    domain   = item["domain"]
-    html     = item.get("html", "")
+    domain = item["domain"]
+    html = item.get("html", "")
     category = item.get("category", "")
-    url      = f"https://{domain}"
+    url = f"https://{domain}"
 
     out = {
         "domain": domain,
@@ -64,30 +66,27 @@ async def process_domain(item: dict) -> dict:
 
         tech = result.get("technology_signals", {})
         has_tracking = (
-            tech.get("has_analytics") or
-            tech.get("has_ads_tag") or
-            tech.get("has_meta_pixel")
+            tech.get("has_analytics") or tech.get("has_ads_tag") or tech.get("has_meta_pixel")
         )
-        has_forms = (
-            tech.get("has_booking_system") or
-            tech.get("has_conversion_tracking")
-        )
+        has_forms = tech.get("has_booking_system") or tech.get("has_conversion_tracking")
 
-        out.update({
-            "services_detected":  result.get("services", []),
-            "team_size_indicator": result.get("team_size_indicator", "unknown"),
-            "technology_signals": tech,
-            "contact_methods":    result.get("contact_methods", []),
-            "content_freshness":  result.get("content_freshness", "unknown"),
-            "tracking_present":   bool(has_tracking),
-            "conversion_forms":   bool(has_forms),
-            "response_time_ms":   elapsed_ms,
-            "raw_result":         result,
-        })
+        out.update(
+            {
+                "services_detected": result.get("services", []),
+                "team_size_indicator": result.get("team_size_indicator", "unknown"),
+                "technology_signals": tech,
+                "contact_methods": result.get("contact_methods", []),
+                "content_freshness": result.get("content_freshness", "unknown"),
+                "tracking_present": bool(has_tracking),
+                "conversion_forms": bool(has_forms),
+                "response_time_ms": elapsed_ms,
+                "raw_result": result,
+            }
+        )
 
         # Token counts are logged inside comprehend_website but not returned.
         # Estimate from typical Sonnet HTML comprehension: ~4000 input, ~300 output.
-        out["sonnet_tokens_in"]  = 4000
+        out["sonnet_tokens_in"] = 4000
         out["sonnet_tokens_out"] = 300
 
     except Exception as exc:
@@ -131,7 +130,9 @@ async def main():
         if done[0] % 50 == 0:
             elapsed = time.monotonic() - t0
             ok = sum(1 for x in results if x.get("error") is None)
-            print(f"  {done[0]}/{len(sample)} done | {elapsed:.0f}s | errors so far: {done[0]-ok}")
+            print(
+                f"  {done[0]}/{len(sample)} done | {elapsed:.0f}s | errors so far: {done[0] - ok}"
+            )
         results.append(r)
         return r
 
@@ -140,11 +141,11 @@ async def main():
     elapsed = time.monotonic() - t0
 
     # Stats
-    errors    = [r for r in results if r.get("error")]
-    ok        = [r for r in results if not r.get("error")]
-    total_in  = sum(r["sonnet_tokens_in"]  for r in ok)
+    errors = [r for r in results if r.get("error")]
+    ok = [r for r in results if not r.get("error")]
+    total_in = sum(r["sonnet_tokens_in"] for r in ok)
     total_out = sum(r["sonnet_tokens_out"] for r in ok)
-    cost_usd  = total_in * COST_PER_INPUT_TOKEN + total_out * COST_PER_OUTPUT_TOKEN
+    cost_usd = total_in * COST_PER_INPUT_TOKEN + total_out * COST_PER_OUTPUT_TOKEN
 
     avg_rt = round(sum(r["response_time_ms"] for r in ok) / len(ok)) if ok else 0
 
@@ -159,31 +160,34 @@ async def main():
         team_size[t] = team_size.get(t, 0) + 1
 
     tracking_yes = sum(1 for r in ok if r.get("tracking_present"))
-    tracking_no  = len(ok) - tracking_yes
-    forms_yes    = sum(1 for r in ok if r.get("conversion_forms"))
-    forms_no     = len(ok) - forms_yes
+    tracking_no = len(ok) - tracking_yes
+    forms_yes = sum(1 for r in ok if r.get("conversion_forms"))
+    forms_no = len(ok) - forms_yes
 
     cat_stats = {}
     for cat in ["Dental", "Construction", "Legal"]:
         cat_r = [r for r in results if r["category"] == cat]
         cat_stats[cat] = {
             "processed": len(cat_r),
-            "errors":    len([r for r in cat_r if r.get("error")]),
+            "errors": len([r for r in cat_r if r.get("error")]),
         }
 
     # Pick 5 examples for Dave
-    dental_ok  = [r for r in ok if r["category"] == "Dental"]
-    const_ok   = [r for r in ok if r["category"] == "Construction"]
-    legal_ok   = [r for r in ok if r["category"] == "Legal"]
-    error_ex   = errors[:1]
+    dental_ok = [r for r in ok if r["category"] == "Dental"]
+    const_ok = [r for r in ok if r["category"] == "Construction"]
+    legal_ok = [r for r in ok if r["category"] == "Legal"]
+    error_ex = errors[:1]
 
     dental_sorted = sorted(dental_ok, key=lambda x: x["content_length_input"], reverse=True)
-    ex_dental_high = dental_sorted[0]  if dental_sorted else None
-    ex_dental_low  = dental_sorted[-1] if len(dental_sorted) > 1 else None
-    ex_const       = const_ok[0]  if const_ok  else None
-    ex_legal       = legal_ok[0]  if legal_ok  else None
-    ex_error_or_stale = (error_ex[0] if error_ex else
-                         next((r for r in ok if r.get("content_freshness") == "stale"), None))
+    ex_dental_high = dental_sorted[0] if dental_sorted else None
+    ex_dental_low = dental_sorted[-1] if len(dental_sorted) > 1 else None
+    ex_const = const_ok[0] if const_ok else None
+    ex_legal = legal_ok[0] if legal_ok else None
+    ex_error_or_stale = (
+        error_ex[0]
+        if error_ex
+        else next((r for r in ok if r.get("content_freshness") == "stale"), None)
+    )
 
     print("\n" + "=" * 60)
     print("=== TASK B REPORT ===")
@@ -228,10 +232,10 @@ async def main():
             print(json.dumps(raw, indent=4))
 
     show("DENTAL highest content_length", ex_dental_high)
-    show("DENTAL lowest content_length",  ex_dental_low)
-    show("CONSTRUCTION example",          ex_const)
-    show("LEGAL example",                 ex_legal)
-    show("ERROR or STALE example",        ex_error_or_stale)
+    show("DENTAL lowest content_length", ex_dental_low)
+    show("CONSTRUCTION example", ex_const)
+    show("LEGAL example", ex_legal)
+    show("ERROR or STALE example", ex_error_or_stale)
 
     # Save
     os.makedirs(os.path.dirname(OUTPUT_FILE), exist_ok=True)
@@ -244,13 +248,20 @@ async def main():
     output = {
         "stage": "300c_comprehend",
         "summary": {
-            "total": len(results), "ok": len(ok), "errors": len(errors),
-            "avg_response_ms": avg_rt, "total_tokens_in": total_in,
-            "total_tokens_out": total_out, "cost_usd": round(cost_usd, 2),
+            "total": len(results),
+            "ok": len(ok),
+            "errors": len(errors),
+            "avg_response_ms": avg_rt,
+            "total_tokens_in": total_in,
+            "total_tokens_out": total_out,
+            "cost_usd": round(cost_usd, 2),
             "elapsed_seconds": round(elapsed, 2),
-            "freshness": freshness, "team_size": team_size,
-            "tracking_present": tracking_yes, "tracking_absent": tracking_no,
-            "conversion_forms": forms_yes, "no_conversion_forms": forms_no,
+            "freshness": freshness,
+            "team_size": team_size,
+            "tracking_present": tracking_yes,
+            "tracking_absent": tracking_no,
+            "conversion_forms": forms_yes,
+            "no_conversion_forms": forms_no,
             "per_category": cat_stats,
         },
         "domains": save_results,

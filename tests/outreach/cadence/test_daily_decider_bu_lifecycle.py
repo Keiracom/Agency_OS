@@ -10,6 +10,7 @@ Covers the state transitions fired on scheduled_touches inserts + suppressions:
   - BU UPDATE failures are swallowed (logged, not raised; errors counter
     unaffected by BU-only failures).
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
@@ -30,6 +31,7 @@ def _when() -> datetime:
 
 
 # -- _bu_mark_active --------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_bu_mark_active_fires_update_with_channel_timestamp():
@@ -59,6 +61,7 @@ async def test_bu_mark_active_swallows_db_errors():
 
 # -- _bu_mark_suppressed ----------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_bu_mark_suppressed_fires_update_gated_on_not_converted():
     db = AsyncMock()
@@ -69,7 +72,7 @@ async def test_bu_mark_suppressed_fires_update_gated_on_not_converted():
     sql = call_args[0]
     rest = call_args[1:]
     assert "suppressed" in sql
-    assert "converted" in sql   # gate prevents regression from converted
+    assert "converted" in sql  # gate prevents regression from converted
     assert rest == ("lead-1",)
 
 
@@ -77,10 +80,11 @@ async def test_bu_mark_suppressed_fires_update_gated_on_not_converted():
 async def test_bu_mark_suppressed_swallows_db_errors():
     db = AsyncMock()
     db.execute = AsyncMock(side_effect=RuntimeError("dead conn"))
-    await _bu_mark_suppressed(db, "lead-1")   # no raise
+    await _bu_mark_suppressed(db, "lead-1")  # no raise
 
 
 # -- apply_actions composition --------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_schedule_next_fires_insert_and_bu_active():
@@ -128,8 +132,8 @@ async def test_skip_and_escalate_fire_no_bu_update():
     db = AsyncMock()
     db.execute = AsyncMock(return_value=None)
     actions = [
-        DeciderAction("lead-4", "skip",     None, None, "too soon", None),
-        DeciderAction("lead-5", "escalate", None, None, "no chan",   None),
+        DeciderAction("lead-4", "skip", None, None, "too soon", None),
+        DeciderAction("lead-5", "escalate", None, None, "no chan", None),
     ]
     counts = await apply_actions(db, "client-1", actions)
     assert counts["skipped"] == 1
@@ -147,11 +151,11 @@ async def test_bu_update_failure_does_not_regress_success_counts():
     async def flaky_execute(*_args, **_kw):
         call_count["n"] += 1
         if call_count["n"] == 1:
-            return None           # scheduled_touches insert succeeds
+            return None  # scheduled_touches insert succeeds
         raise RuntimeError("bu boom")
 
     db.execute = AsyncMock(side_effect=flaky_execute)
     actions = [DeciderAction("lead-1", "schedule_next", "email", _when(), "", 1)]
     counts = await apply_actions(db, "client-1", actions)
     assert counts["scheduled"] == 1
-    assert counts["errors"] == 0   # BU failure does not bump errors
+    assert counts["errors"] == 0  # BU failure does not bump errors

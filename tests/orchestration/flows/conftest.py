@@ -12,6 +12,7 @@ The fixture uses prefect.settings.temporary_settings to:
 
 Scope: session — one ephemeral server for the whole test session.
 """
+
 from __future__ import annotations
 
 import pytest

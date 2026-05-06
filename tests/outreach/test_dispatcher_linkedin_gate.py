@@ -5,6 +5,7 @@ Verifies that OutreachDispatcher.send_linkedin consults LinkedInAccountState
 before firing a DM and skips with linkedin_gate:connect_not_accepted when the
 connect is pending, rejected, or stale_skipped.
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -43,11 +44,16 @@ def _seed(state: LinkedInState) -> tuple[LinkedInAccountState, _FakeStore]:
         list_pending=store.list_pending,
         now_fn=lambda: clock,
     )
-    store.upsert(ConnectionRecord(
-        account_id="acct-1", prospect_id="p-1", state=state,
-        sent_at=clock, accepted_at=clock if state is LinkedInState.ACCEPTED else None,
-        days_pending=0,
-    ))
+    store.upsert(
+        ConnectionRecord(
+            account_id="acct-1",
+            prospect_id="p-1",
+            state=state,
+            sent_at=clock,
+            accepted_at=clock if state is LinkedInState.ACCEPTED else None,
+            days_pending=0,
+        )
+    )
     return mgr, store
 
 
@@ -81,6 +87,7 @@ def _dispatcher(linkedin_state, unipile_response=None) -> OutreachDispatcher:
 
 
 # -- dispatch-level DM gate (the 4 required scenarios) ---------------------
+
 
 @pytest.mark.asyncio
 async def test_accepted_allows_dm():
@@ -124,13 +131,15 @@ async def test_stale_skipped_blocks_dm():
 
 # -- gate-bypass paths ------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_connect_event_bypasses_gate_even_without_record():
     # No record for (acct-1, p-1) → allows_dm=False, but event_type=connect
     # should skip the gate entirely (connects are how we REACH accepted).
     store = _FakeStore()
     mgr = LinkedInAccountState(
-        get_record=store.get, upsert_record=store.upsert,
+        get_record=store.get,
+        upsert_record=store.upsert,
         list_pending=store.list_pending,
     )
     d = _dispatcher(mgr)
@@ -144,7 +153,9 @@ async def test_gate_disabled_when_no_linkedin_state_configured():
     unipile = MagicMock()
     unipile.send_message = AsyncMock(return_value={"message_id": "mid-1"})
     d = OutreachDispatcher(
-        unipile_client=unipile, linkedin_state=None, rate_limiter=None,
+        unipile_client=unipile,
+        linkedin_state=None,
+        rate_limiter=None,
     )
     result = await d.send_linkedin(_touch())
     assert result.status == "sent"

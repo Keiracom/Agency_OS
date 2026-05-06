@@ -26,25 +26,31 @@ def test_migration_file_exists():
 
 
 # 2. All 5 new columns present
-@pytest.mark.parametrize("column", [
-    "outreach_status",
-    "last_outreach_at",
-    "signal_snapshot_at",
-    "signal_delta",
-    "agency_notes",
-])
+@pytest.mark.parametrize(
+    "column",
+    [
+        "outreach_status",
+        "last_outreach_at",
+        "signal_snapshot_at",
+        "signal_delta",
+        "agency_notes",
+    ],
+)
 def test_column_present(migration_sql, column):
     assert column in migration_sql, f"Column '{column}' not found in migration"
 
 
 # 3. All enum values present
-@pytest.mark.parametrize("value", [
-    "'pending'",
-    "'active'",
-    "'replied'",
-    "'converted'",
-    "'suppressed'",
-])
+@pytest.mark.parametrize(
+    "value",
+    [
+        "'pending'",
+        "'active'",
+        "'replied'",
+        "'converted'",
+        "'suppressed'",
+    ],
+)
 def test_enum_value_present(migration_sql, value):
     assert value in migration_sql, f"Enum value {value} not found in migration"
 

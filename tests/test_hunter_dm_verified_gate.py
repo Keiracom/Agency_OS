@@ -4,6 +4,7 @@ Rationale: email_waterfall.py line 565 gates Hunter on dm_verified to avoid
 confident email attribution on unconfirmed DMs. These tests verify the
 runtime conditional is enforced — not merely documented.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -16,6 +17,7 @@ import pytest
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_hunter_response(email: str = "john.doe@example.com", score: int = 85) -> MagicMock:
     """Return a mock httpx Response for a successful Hunter call."""

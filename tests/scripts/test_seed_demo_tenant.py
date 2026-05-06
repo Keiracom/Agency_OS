@@ -11,6 +11,7 @@ Mocks the asyncpg connection. Verifies:
 
 Pure mocks — zero real DB, zero paid API calls.
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -23,7 +24,8 @@ import pytest
 # Load script as module without sys.path gymnastics.
 _SCRIPT_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-    "scripts", "seed_demo_tenant.py",
+    "scripts",
+    "seed_demo_tenant.py",
 )
 _spec = importlib.util.spec_from_file_location("seed_demo_tenant", _SCRIPT_PATH)
 seed = importlib.util.module_from_spec(_spec)
@@ -33,35 +35,48 @@ _spec.loader.exec_module(seed)
 
 # ─── is_real_email ──────────────────────────────────────────────────────────
 
-@pytest.mark.parametrize("email,expected", [
-    ("ceo@acme.com.au",      True),
-    ("amy@beta.io",          True),
-    ("example@mail.com",     False),    # placeholder local
-    ("test@foo.com",         False),
-    ("info@bar.com",         False),
-    ("admin@baz.com",        False),
-    ("noreply@x.com",        False),
-    ("no-reply@y.com",       False),
-    ("not-an-email",         False),
-    ("",                     False),
-    (None,                   False),
-])
+
+@pytest.mark.parametrize(
+    "email,expected",
+    [
+        ("ceo@acme.com.au", True),
+        ("amy@beta.io", True),
+        ("example@mail.com", False),  # placeholder local
+        ("test@foo.com", False),
+        ("info@bar.com", False),
+        ("admin@baz.com", False),
+        ("noreply@x.com", False),
+        ("no-reply@y.com", False),
+        ("not-an-email", False),
+        ("", False),
+        (None, False),
+    ],
+)
 def test_is_real_email(email, expected):
     assert seed.is_real_email(email) is expected
 
 
 # ─── select_prospects ───────────────────────────────────────────────────────
 
+
 def _make_prospect(
-    *, dom="acme.com.au", name="Acme", email="ceo@acme.com.au",
-    score=80, reach=10, stage=7,
+    *,
+    dom="acme.com.au",
+    name="Acme",
+    email="ceo@acme.com.au",
+    score=80,
+    reach=10,
+    stage=7,
 ) -> dict:
     return {
         "id": uuid4(),
-        "domain": dom, "display_name": name,
-        "dm_name": "Amy", "dm_title": "CEO",
+        "domain": dom,
+        "display_name": name,
+        "dm_name": "Amy",
+        "dm_title": "CEO",
         "dm_email": email,
-        "propensity_score": score, "reachability_score": reach,
+        "propensity_score": score,
+        "reachability_score": reach,
         "pipeline_stage": stage,
     }
 
@@ -69,20 +84,26 @@ def _make_prospect(
 @pytest.mark.asyncio
 async def test_select_prospects_filters_suppression_and_placeholders():
     rows = [
-        _make_prospect(dom="ok.com.au", email="ceo@ok.com.au"),                    # keep
-        _make_prospect(dom="placeholder.com.au", email="example@mail.com"),       # placeholder
-        _make_prospect(dom="suppressed-dom.com.au", email="ceo@suppressed-dom.com.au"),  # supp domain
-        _make_prospect(dom="another.com.au", email="bob@suppressed-em.com"),      # supp email
-        _make_prospect(dom="keep2.com.au", email="amy@keep2.com.au"),             # keep
+        _make_prospect(dom="ok.com.au", email="ceo@ok.com.au"),  # keep
+        _make_prospect(dom="placeholder.com.au", email="example@mail.com"),  # placeholder
+        _make_prospect(
+            dom="suppressed-dom.com.au", email="ceo@suppressed-dom.com.au"
+        ),  # supp domain
+        _make_prospect(dom="another.com.au", email="bob@suppressed-em.com"),  # supp email
+        _make_prospect(dom="keep2.com.au", email="amy@keep2.com.au"),  # keep
     ]
     conn = MagicMock()
-    fetch_returns = iter([
-        rows,                                                       # main BU
-        [{"domain": "suppressed-dom.com.au"}],                      # suppressed domains
-        [{"email": "bob@suppressed-em.com"}],                       # suppressed emails
-    ])
+    fetch_returns = iter(
+        [
+            rows,  # main BU
+            [{"domain": "suppressed-dom.com.au"}],  # suppressed domains
+            [{"email": "bob@suppressed-em.com"}],  # suppressed emails
+        ]
+    )
+
     async def fetch(*_a, **_k):
         return next(fetch_returns)
+
     conn.fetch = fetch
 
     selected = await seed.select_prospects(conn)
@@ -97,12 +118,16 @@ async def test_select_prospects_filters_suppression_and_placeholders():
 
 @pytest.mark.asyncio
 async def test_select_prospects_caps_at_target():
-    rows = [_make_prospect(dom=f"site{i}.com.au", email=f"ceo@site{i}.com.au")
-            for i in range(seed.TARGET_PROSPECTS + 5)]
+    rows = [
+        _make_prospect(dom=f"site{i}.com.au", email=f"ceo@site{i}.com.au")
+        for i in range(seed.TARGET_PROSPECTS + 5)
+    ]
     conn = MagicMock()
     fetch_returns = iter([rows, [], []])
+
     async def fetch(*_a, **_k):
         return next(fetch_returns)
+
     conn.fetch = fetch
     selected = await seed.select_prospects(conn)
     assert len(selected) == seed.TARGET_PROSPECTS
@@ -115,8 +140,10 @@ async def test_select_prospects_drops_null_display_name():
     rows = [_make_prospect(dom="ok.com.au")]
     conn = MagicMock()
     fetch_returns = iter([rows, [], []])
+
     async def fetch(*_a, **_k):
         return next(fetch_returns)
+
     conn.fetch = fetch
     selected = await seed.select_prospects(conn)
     assert len(selected) == 1
@@ -125,13 +152,18 @@ async def test_select_prospects_drops_null_display_name():
 
 # ─── link_prospects ─────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_link_prospects_writes_one_row_per_prospect():
     conn = MagicMock()
     conn.fetchval = AsyncMock(return_value=uuid4())
     prospects = [_make_prospect(dom=f"x{i}.com.au") for i in range(3)]
     n = await seed.link_prospects(
-        conn, "client-uuid", prospects, dry_run=False, campaign_id="cmp-uuid",
+        conn,
+        "client-uuid",
+        prospects,
+        dry_run=False,
+        campaign_id="cmp-uuid",
     )
     assert n == 3
     assert conn.fetchval.await_count == 3
@@ -158,7 +190,11 @@ async def test_link_prospects_skips_on_conflict_silently():
     conn.fetchval = AsyncMock(side_effect=[uuid4(), None, uuid4()])
     prospects = [_make_prospect(dom=f"x{i}.com.au") for i in range(3)]
     n = await seed.link_prospects(
-        conn, "client-uuid", prospects, dry_run=False, campaign_id="cmp-uuid",
+        conn,
+        "client-uuid",
+        prospects,
+        dry_run=False,
+        campaign_id="cmp-uuid",
     )
     assert n == 2
 
@@ -187,6 +223,7 @@ async def test_link_prospects_dry_run_allows_missing_campaign_id():
 
 
 # ─── ensure_demo_campaign (TASK A — schema-audited) ────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_ensure_demo_campaign_returns_existing():
@@ -225,27 +262,35 @@ async def test_ensure_demo_campaign_idempotent_lookup_by_name():
 
 # ─── ensure_demo_auth_user (TASK B) ─────────────────────────────────────────
 
+
 class _FakeResponse:
     def __init__(self, body: bytes):
         self._body = body
+
     def __enter__(self):
         return self
+
     def __exit__(self, *a):
         return False
+
     def read(self):
         return self._body
 
 
 def test_ensure_demo_auth_user_dry_run_returns_none():
     out = seed.ensure_demo_auth_user(
-        supabase_url="https://x.supabase.co", service_key="srv", dry_run=True,
+        supabase_url="https://x.supabase.co",
+        service_key="srv",
+        dry_run=True,
     )
     assert out is None
 
 
 def test_ensure_demo_auth_user_no_credentials_skips():
     out = seed.ensure_demo_auth_user(
-        supabase_url="", service_key="", dry_run=False,
+        supabase_url="",
+        service_key="",
+        dry_run=False,
     )
     assert out is None
 
@@ -312,7 +357,9 @@ def test_ensure_demo_auth_user_uses_env_password(monkeypatch):
 def test_ensure_demo_auth_user_handles_network_error(monkeypatch):
     def boom(req, timeout=10):
         import urllib.error
+
         raise urllib.error.URLError("connection refused")
+
     monkeypatch.setattr(seed.urllib.request, "urlopen", boom)
     out = seed.ensure_demo_auth_user(
         supabase_url="https://x.supabase.co",
@@ -324,13 +371,17 @@ def test_ensure_demo_auth_user_handles_network_error(monkeypatch):
 
 # ─── link_auth_user_to_client (TASK B) ──────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_link_auth_user_dry_run_noops():
     conn = MagicMock()
     conn.fetchval = AsyncMock()
     conn.execute = AsyncMock()
     out = await seed.link_auth_user_to_client(
-        conn, auth_user_id="u", client_id="c", dry_run=True,
+        conn,
+        auth_user_id="u",
+        client_id="c",
+        dry_run=True,
     )
     assert out is False
     conn.execute.assert_not_awaited()
@@ -342,7 +393,10 @@ async def test_link_auth_user_skips_when_no_membership_table():
     conn.fetchval = AsyncMock(return_value=None)
     conn.execute = AsyncMock()
     out = await seed.link_auth_user_to_client(
-        conn, auth_user_id="u", client_id="c", dry_run=False,
+        conn,
+        auth_user_id="u",
+        client_id="c",
+        dry_run=False,
     )
     assert out is False
     conn.execute.assert_not_awaited()
@@ -354,7 +408,10 @@ async def test_link_auth_user_inserts_when_table_present():
     conn.fetchval = AsyncMock(return_value="client_users")
     conn.execute = AsyncMock(return_value="INSERT 0 1")
     out = await seed.link_auth_user_to_client(
-        conn, auth_user_id="u", client_id="c", dry_run=False,
+        conn,
+        auth_user_id="u",
+        client_id="c",
+        dry_run=False,
     )
     assert out is True
     conn.execute.assert_awaited_once()

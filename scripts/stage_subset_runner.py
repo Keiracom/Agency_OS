@@ -2,6 +2,7 @@
 
 Usage:  python scripts/stage_subset_runner.py [--dry-run]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -22,7 +23,7 @@ from src.intelligence.stage9_social import run_stage9_social
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
-STAGE9_COST = 0.027   # USD per domain
+STAGE9_COST = 0.027  # USD per domain
 STAGE10_COST = 0.001  # USD per domain (Gemini is cheap)
 BUDGET_CAP_USD = 0.50
 
@@ -44,14 +45,20 @@ def _tg(msg: str) -> None:
         logger.warning("tg send failed: %s", exc)
 
 
-async def _process_one(row: dict, bd: BrightDataClient, dry_run: bool,
-                       cost: list[float], conn: asyncpg.Connection) -> None:
+async def _process_one(
+    row: dict, bd: BrightDataClient, dry_run: bool, cost: list[float], conn: asyncpg.Connection
+) -> None:
     domain = row["domain"]
     needs_s9 = row["signal_checked_at"] is None
     projected = cost[0] + (STAGE9_COST if needs_s9 else 0) + STAGE10_COST
 
     if projected > BUDGET_CAP_USD:
-        logger.warning("BUDGET CAP: skipping %s (projected $%.3f > cap $%.2f)", domain, projected, BUDGET_CAP_USD)
+        logger.warning(
+            "BUDGET CAP: skipping %s (projected $%.3f > cap $%.2f)",
+            domain,
+            projected,
+            BUDGET_CAP_USD,
+        )
         return
 
     sm = row["stage_metrics"] or {}
@@ -65,14 +72,16 @@ async def _process_one(row: dict, bd: BrightDataClient, dry_run: bool,
         company_li = (sm.get("stage2") or {}).get("serp_company_linkedin")
         if not dry_run:
             stage9_data = await run_stage9_social(
-                bd=bd, dm_linkedin_url=dm_li,
+                bd=bd,
+                dm_linkedin_url=dm_li,
                 company_linkedin_url=company_li,
                 dm_name=row.get("dm_name"),
             )
             await conn.execute(
                 "UPDATE business_universe SET stage_metrics = COALESCE(stage_metrics,'{}'::"
                 "jsonb) || $1::jsonb, signal_checked_at = NOW(), updated_at = NOW() WHERE id = $2",
-                json.dumps({"stage9": stage9_data}), row["id"],
+                json.dumps({"stage9": stage9_data}),
+                row["id"],
             )
         else:
             logger.info("[%s] DRY-RUN: would run Stage 9", domain)
@@ -98,7 +107,8 @@ async def _process_one(row: dict, bd: BrightDataClient, dry_run: bool,
                outreach_messages = $1::jsonb, pipeline_stage = 10,
                pipeline_updated_at = NOW(), updated_at = NOW()
                WHERE id = $2""",
-            json.dumps(result.get("outreach") or {}), row["id"],
+            json.dumps(result.get("outreach") or {}),
+            row["id"],
         )
         logger.info("[%s] written — cumulative cost $%.4f USD", domain, cost[0])
     else:
@@ -131,14 +141,20 @@ async def main(dry_run: bool) -> None:
         processed = 0
         for row in rows:
             if cost[0] >= BUDGET_CAP_USD:
-                logger.warning("BUDGET CAP $%.2f reached — stopping after %d processed", BUDGET_CAP_USD, processed)
+                logger.warning(
+                    "BUDGET CAP $%.2f reached — stopping after %d processed",
+                    BUDGET_CAP_USD,
+                    processed,
+                )
                 break
             await _process_one(row, bd, dry_run, cost, conn)
             processed += 1
 
         total_aud = cost[0] * 1.55
-        summary = (f"stage_subset_runner: {processed} processed, "
-                   f"${cost[0]:.4f} USD (${total_aud:.4f} AUD){' [DRY-RUN]' if dry_run else ''}")
+        summary = (
+            f"stage_subset_runner: {processed} processed, "
+            f"${cost[0]:.4f} USD (${total_aud:.4f} AUD){' [DRY-RUN]' if dry_run else ''}"
+        )
         logger.info(summary)
         _tg(summary)
     finally:

@@ -1,38 +1,56 @@
 """Tests for Stage5DMWaterfall — Directive #263"""
+
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime
 
 from src.pipeline.stage_5_dm_waterfall import (
-    Stage5DMWaterfall, DMResult, GMBContactExtractor,
-    WebsiteContactScraper, LeadmagicPersonFinder,
-    PIPELINE_STAGE_S5, DM_SOURCE_NONE,
+    Stage5DMWaterfall,
+    DMResult,
+    GMBContactExtractor,
+    WebsiteContactScraper,
+    LeadmagicPersonFinder,
+    PIPELINE_STAGE_S5,
+    DM_SOURCE_NONE,
 )
 from src.enrichment.signal_config import SignalConfig, ServiceSignal
 
 
 # ─── Fixtures ────────────────────────────────────────────────────────────────
 
+
 def make_config():
     import uuid
+
     return SignalConfig(
-        id=str(uuid.uuid4()), vertical="marketing_agency",
+        id=str(uuid.uuid4()),
+        vertical="marketing_agency",
         services=[ServiceSignal("paid_ads", "Paid Ads", ["Google Ads"], [], {})],
         discovery_config={},
-        enrichment_gates={"min_score_to_enrich": 30, "min_score_to_dm": 50, "min_score_to_outreach": 65},
+        enrichment_gates={
+            "min_score_to_enrich": 30,
+            "min_score_to_dm": 50,
+            "min_score_to_outreach": 65,
+        },
         competitor_config={},
         channel_config={},
-        created_at=datetime.now(), updated_at=datetime.now(),
+        created_at=datetime.now(),
+        updated_at=datetime.now(),
     )
 
 
 def make_row(**overrides):
     defaults = {
-        "id": "uuid-1", "domain": "acme.com.au",
-        "display_name": "Acme Marketing", "phone": "+61 3 1234 5678",
-        "address": "123 Main St", "gmb_place_id": "ChIJ123",
-        "propensity_score": 65, "reachability_score": 40,
-        "dm_email": None, "dm_phone": None,
+        "id": "uuid-1",
+        "domain": "acme.com.au",
+        "display_name": "Acme Marketing",
+        "phone": "+61 3 1234 5678",
+        "address": "123 Main St",
+        "gmb_place_id": "ChIJ123",
+        "propensity_score": 65,
+        "reachability_score": 40,
+        "dm_email": None,
+        "dm_phone": None,
     }
     defaults.update(overrides)
     row = MagicMock()
@@ -54,9 +72,17 @@ def make_conn(rows=None, existing_bdm_id=None):
 
 def make_lm_client(employees=None, email="dm@acme.com.au"):
     lm = MagicMock()
-    lm.find_employees = AsyncMock(return_value=employees or [
-        {"first_name": "John", "last_name": "Smith", "title": "Director", "linkedin_url": "https://linkedin.com/in/jsmith"}
-    ])
+    lm.find_employees = AsyncMock(
+        return_value=employees
+        or [
+            {
+                "first_name": "John",
+                "last_name": "Smith",
+                "title": "Director",
+                "linkedin_url": "https://linkedin.com/in/jsmith",
+            }
+        ]
+    )
     lm.find_email = AsyncMock(return_value={"email": email})
     lm.find_by_role = AsyncMock(return_value=None)
     return lm
@@ -73,14 +99,15 @@ def make_stage(rows=None, lm_client=None, extra_sources=None):
 
 # ─── Tests ───────────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_finds_dm_from_gmb_first():
     """GMBContactExtractor is tried first; waterfall stops on first valid result."""
     mock_source = MagicMock()
     mock_source.source_name = "gmb"
-    mock_source.find = AsyncMock(return_value=DMResult(
-        name="Jane Owner", email="jane@biz.com.au", source="gmb"
-    ))
+    mock_source.find = AsyncMock(
+        return_value=DMResult(name="Jane Owner", email="jane@biz.com.au", source="gmb")
+    )
     stage, conn, _ = make_stage()
     stage.sources = [mock_source]
     result = await stage.run("marketing_agency")
@@ -97,7 +124,10 @@ async def test_waterfall_gmb_then_leadmagic_only():
     stage = Stage5DMWaterfall(lm, signal_repo, conn)
     source_names = [s.source_name for s in stage.sources]
     assert "gmb" in source_names[0].lower() or "gmb" in type(stage.sources[0]).__name__.lower()
-    assert "leadmagic" in source_names[-1].lower() or "leadmagic" in type(stage.sources[-1]).__name__.lower()
+    assert (
+        "leadmagic" in source_names[-1].lower()
+        or "leadmagic" in type(stage.sources[-1]).__name__.lower()
+    )
     assert not any("website" in n.lower() or "jina" in n.lower() for n in source_names)
 
 
@@ -109,9 +139,9 @@ async def test_falls_through_to_leadmagic():
     source_2 = MagicMock(source_name="website")
     source_2.find = AsyncMock(return_value=None)
     source_3 = MagicMock(source_name="leadmagic")
-    source_3.find = AsyncMock(return_value=DMResult(
-        name="Alice CEO", email="alice@acme.com.au", source="leadmagic"
-    ))
+    source_3.find = AsyncMock(
+        return_value=DMResult(name="Alice CEO", email="alice@acme.com.au", source="leadmagic")
+    )
     stage, conn, _ = make_stage()
     stage.sources = [source_1, source_2, source_3]
     result = await stage.run("marketing_agency")
@@ -123,9 +153,9 @@ async def test_falls_through_to_leadmagic():
 async def test_stops_at_first_successful_source():
     """Waterfall stops after first valid result — subsequent sources not called."""
     source_1 = MagicMock(source_name="cheap")
-    source_1.find = AsyncMock(return_value=DMResult(
-        name="Winner", email="w@biz.com.au", source="cheap"
-    ))
+    source_1.find = AsyncMock(
+        return_value=DMResult(name="Winner", email="w@biz.com.au", source="cheap")
+    )
     source_2 = MagicMock(source_name="expensive")
     source_2.find = AsyncMock(return_value=None)
     stage, conn, _ = make_stage()
@@ -172,9 +202,11 @@ async def test_skips_below_threshold_businesses():
 async def test_recalculates_reachability_after_dm():
     """Reachability score is updated after DM is found with email + phone."""
     source = MagicMock(source_name="leadmagic")
-    source.find = AsyncMock(return_value=DMResult(
-        name="Sue Director", email="sue@biz.com.au", phone="+61412345678", source="leadmagic"
-    ))
+    source.find = AsyncMock(
+        return_value=DMResult(
+            name="Sue Director", email="sue@biz.com.au", phone="+61412345678", source="leadmagic"
+        )
+    )
     stage, conn, _ = make_stage()
     stage.sources = [source]
     await stage.run("marketing_agency")
@@ -187,9 +219,9 @@ async def test_recalculates_reachability_after_dm():
 async def test_tracks_cost_per_source():
     """sources_used dict tracks which sources were used."""
     source = MagicMock(source_name="leadmagic")
-    source.find = AsyncMock(return_value=DMResult(
-        name="Dan Owner", email="dan@biz.com.au", source="leadmagic"
-    ))
+    source.find = AsyncMock(
+        return_value=DMResult(name="Dan Owner", email="dan@biz.com.au", source="leadmagic")
+    )
     stage, conn, _ = make_stage()
     stage.sources = [source]
     result = await stage.run("marketing_agency")

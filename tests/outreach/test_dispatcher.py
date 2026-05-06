@@ -12,6 +12,7 @@ Covers:
 - outcome recorder catches DB errors silently
 - unknown channel -> failed result
 """
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -25,16 +26,24 @@ from src.outreach.safety.timing_engine import TimingDecision
 
 # ---------- helpers -----------------------------------------------------------
 
+
 def _touch(channel="email", **overrides) -> dict:
     base = {
         "id": "t1",
         "channel": channel,
         "prospect": {"email": "ceo@acme.com.au", "phone": "+61412345678", "tz": "Australia/Sydney"},
-        "client_id": "c1", "lead_id": "l1", "activity_id": "a1",
-        "campaign_id": "cam1", "sequence_step": 1,
+        "client_id": "c1",
+        "lead_id": "l1",
+        "activity_id": "a1",
+        "campaign_id": "cam1",
+        "sequence_step": 1,
         "content": {
-            "from_email": "me@keira.com", "subject": "Hi", "html_body": "<p>hi</p>",
-            "unipile_account_id": "ua1", "chat_id": "ch1", "text": "Hello",
+            "from_email": "me@keira.com",
+            "subject": "Hi",
+            "html_body": "<p>hi</p>",
+            "unipile_account_id": "ua1",
+            "chat_id": "ch1",
+            "text": "Hello",
             "compiled_context": {"first_name": "Amy"},
         },
     }
@@ -44,17 +53,13 @@ def _touch(channel="email", **overrides) -> dict:
 
 def _always_allow_timing():
     tm = AsyncMock()
-    tm.check = lambda channel, now, prospect_tz=None: TimingDecision(
-        allowed=True, reason="ok"
-    )
+    tm.check = lambda channel, now, prospect_tz=None: TimingDecision(allowed=True, reason="ok")
     return tm
 
 
 def _always_allow_compliance():
     cg = AsyncMock()
-    cg.check = lambda channel, prospect, now: ComplianceDecision(
-        allowed=True, reason="compliant"
-    )
+    cg.check = lambda channel, prospect, now: ComplianceDecision(allowed=True, reason="compliant")
     return cg
 
 
@@ -65,6 +70,7 @@ def _allow_rate():
 
 
 # ---------- gate paths --------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_dispatch_timing_block():
@@ -86,7 +92,9 @@ async def test_dispatch_timing_block():
 async def test_dispatch_compliance_block_carries_violations():
     cg = AsyncMock()
     cg.check = lambda channel, prospect, now: ComplianceDecision(
-        allowed=False, reason="unsubscribed", violations=["SPAM_ACT_UNSUBSCRIBED"],
+        allowed=False,
+        reason="unsubscribed",
+        violations=["SPAM_ACT_UNSUBSCRIBED"],
     )
     d = OutreachDispatcher(
         timing_engine=_always_allow_timing(),
@@ -131,6 +139,7 @@ async def test_dispatch_rate_raise_is_permissive():
 
 # ---------- successful sends --------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_send_email_success_records_to_db():
     sf = AsyncMock()
@@ -138,7 +147,8 @@ async def test_send_email_success_records_to_db():
     db = AsyncMock()
     db.execute = AsyncMock(return_value=None)
     d = OutreachDispatcher(
-        salesforge_client=sf, db_conn=db,
+        salesforge_client=sf,
+        db_conn=db,
         timing_engine=_always_allow_timing(),
         compliance_guard=_always_allow_compliance(),
         rate_limiter=_allow_rate(),
@@ -185,6 +195,7 @@ async def test_send_voice_success():
 
 # ---------- provider failure paths -------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_provider_exception_returns_failed_never_raises():
     sf = AsyncMock()
@@ -230,6 +241,7 @@ async def test_missing_provider_client_returns_failed():
 
 # ---------- recorder + unknown channel ---------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_record_swallows_db_errors():
     sf = AsyncMock()
@@ -237,7 +249,8 @@ async def test_record_swallows_db_errors():
     db = AsyncMock()
     db.execute = AsyncMock(side_effect=RuntimeError("dead conn"))
     d = OutreachDispatcher(
-        salesforge_client=sf, db_conn=db,
+        salesforge_client=sf,
+        db_conn=db,
         timing_engine=_always_allow_timing(),
         compliance_guard=_always_allow_compliance(),
         rate_limiter=_allow_rate(),
@@ -268,11 +281,13 @@ def test_dispatch_result_default_fields():
 
 # ─── DEM-2 — IS_DEMO_MODE gate ────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_dispatch_returns_skipped_when_demo_mode_on(monkeypatch):
     """IS_DEMO_MODE=True must short-circuit dispatch BEFORE any provider
     is touched. Salesforge mock would record an await if it fired."""
     from src.config.settings import settings as _s
+
     monkeypatch.setattr(_s, "IS_DEMO_MODE", True)
 
     sf = AsyncMock()
@@ -294,6 +309,7 @@ async def test_dispatch_proceeds_normally_when_demo_mode_off(monkeypatch):
     """IS_DEMO_MODE=False must NOT short-circuit — the regular happy path
     runs and Salesforge is called as in test_send_email_success_records_to_db."""
     from src.config.settings import settings as _s
+
     monkeypatch.setattr(_s, "IS_DEMO_MODE", False)
 
     sf = AsyncMock()
@@ -315,6 +331,7 @@ async def test_dispatch_skipped_result_has_demo_mode_reason_string(monkeypatch):
     """Reason string must be 'demo_mode:no_real_send' so downstream
     bookkeeping can distinguish a demo skip from timing/compliance skips."""
     from src.config.settings import settings as _s
+
     monkeypatch.setattr(_s, "IS_DEMO_MODE", True)
 
     d = OutreachDispatcher(

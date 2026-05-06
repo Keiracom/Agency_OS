@@ -14,6 +14,7 @@ Pure mocks — no real Supabase. Confirms:
   - render_human surfaces all four counts
   - CLI rejects negative thresholds + zero batch size
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -34,16 +35,17 @@ _spec.loader.exec_module(rem)
 
 def _row(i: int, content: str = "filler entry"):
     return {
-        "id":           f"00000000-0000-0000-0000-{i:012d}",
-        "content":      content,
+        "id": f"00000000-0000-0000-0000-{i:012d}",
+        "content": content,
         "content_hash": f"hash-{i}",
-        "type":         "daily_log",
-        "created_at":   datetime(2026, 1, 1, tzinfo=UTC),
-        "metadata":     {},
+        "type": "daily_log",
+        "created_at": datetime(2026, 1, 1, tzinfo=UTC),
+        "metadata": {},
     }
 
 
 # ─── _chunked ──────────────────────────────────────────────────────────────
+
 
 def test_chunked_yields_full_and_partial_windows():
     out = list(rem._chunked(list(range(7)), 3))
@@ -56,12 +58,15 @@ def test_chunked_empty_list():
 
 # ─── fetch_old_daily_logs ──────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_fetch_old_daily_logs_unbounded_branch():
     conn = MagicMock()
     conn.fetch = AsyncMock(return_value=[_row(0), _row(1)])
     out = await rem.fetch_old_daily_logs(
-        conn, age_threshold_days=7, max_rows=0,
+        conn,
+        age_threshold_days=7,
+        max_rows=0,
     )
     assert len(out) == 2
     sql = conn.fetch.await_args.args[0]
@@ -75,7 +80,9 @@ async def test_fetch_old_daily_logs_bounded_branch():
     conn = MagicMock()
     conn.fetch = AsyncMock(return_value=[_row(0)])
     await rem.fetch_old_daily_logs(
-        conn, age_threshold_days=14, max_rows=500,
+        conn,
+        age_threshold_days=14,
+        max_rows=500,
     )
     sql, *args = conn.fetch.await_args.args
     assert "LIMIT $2" in sql
@@ -84,14 +91,17 @@ async def test_fetch_old_daily_logs_bounded_branch():
 
 # ─── replay() — scoring + promotion routing ────────────────────────────────
 
+
 @pytest.fixture
 def patch_score(monkeypatch):
     """Score every memory at 0.7 by default; first arg of fetched list
     flagged at composite 0.4 to test below-threshold skip."""
+
     def _score(memories):
         for i, m in enumerate(memories):
             m.composite = 0.4 if i == 0 else 0.7
             m.factors = {"r": 1.0}
+
     monkeypatch.setattr(rem, "score", _score)
     return _score
 
@@ -104,8 +114,12 @@ async def test_replay_promotes_only_above_threshold(monkeypatch, patch_score):
     monkeypatch.setattr(rem, "promote_to_core_fact", promote)
 
     result = await rem.replay(
-        conn, age_threshold_days=7, min_score=0.6,
-        batch_size=10, max_rows=0, dry_run=True,
+        conn,
+        age_threshold_days=7,
+        min_score=0.6,
+        batch_size=10,
+        max_rows=0,
+        dry_run=True,
     )
 
     assert result["scanned"] == 3
@@ -127,8 +141,12 @@ async def test_replay_counts_idempotency_skip(monkeypatch, patch_score):
     monkeypatch.setattr(rem, "promote_to_core_fact", promote)
 
     result = await rem.replay(
-        conn, age_threshold_days=7, min_score=0.6,
-        batch_size=10, max_rows=0, dry_run=False,
+        conn,
+        age_threshold_days=7,
+        min_score=0.6,
+        batch_size=10,
+        max_rows=0,
+        dry_run=False,
     )
     assert result["above_threshold"] == 2
     assert result["promoted"] == 1
@@ -153,8 +171,12 @@ async def test_replay_chunks_into_batches(monkeypatch):
     monkeypatch.setattr(rem, "score", _score)
 
     result = await rem.replay(
-        conn, age_threshold_days=7, min_score=0.6,
-        batch_size=2, max_rows=0, dry_run=True,
+        conn,
+        age_threshold_days=7,
+        min_score=0.6,
+        batch_size=2,
+        max_rows=0,
+        dry_run=True,
     )
     assert score_calls["n"] == 3
     assert result["scanned"] == 5
@@ -174,19 +196,25 @@ async def test_replay_dry_run_passes_flag_to_promote(monkeypatch, patch_score):
     monkeypatch.setattr(rem, "score", lambda batch: setattr(batch[0], "composite", 0.9))
     monkeypatch.setattr(rem, "promote_to_core_fact", fake_promote)
 
-    await rem.replay(conn, age_threshold_days=7, min_score=0.6,
-                     batch_size=10, max_rows=0, dry_run=True)
+    await rem.replay(
+        conn, age_threshold_days=7, min_score=0.6, batch_size=10, max_rows=0, dry_run=True
+    )
     assert captured["dry_run"] is True
 
 
 # ─── render_human ──────────────────────────────────────────────────────────
 
+
 def test_render_human_surfaces_all_counts():
     result = {
-        "scanned": 100, "above_threshold": 40,
-        "promoted": 30, "skipped_dup_guard": 10,
-        "age_threshold_days": 7, "min_score": 0.6,
-        "batch_size": 200, "max_rows": "unbounded",
+        "scanned": 100,
+        "above_threshold": 40,
+        "promoted": 30,
+        "skipped_dup_guard": 10,
+        "age_threshold_days": 7,
+        "min_score": 0.6,
+        "batch_size": 200,
+        "max_rows": "unbounded",
         "top_promotions": [],
     }
     out = rem.render_human(result, dry_run=True)
@@ -199,12 +227,21 @@ def test_render_human_surfaces_all_counts():
 
 def test_render_human_lists_top_promotions():
     result = {
-        "scanned": 1, "above_threshold": 1, "promoted": 1, "skipped_dup_guard": 0,
-        "age_threshold_days": 7, "min_score": 0.6,
-        "batch_size": 200, "max_rows": "unbounded",
+        "scanned": 1,
+        "above_threshold": 1,
+        "promoted": 1,
+        "skipped_dup_guard": 0,
+        "age_threshold_days": 7,
+        "min_score": 0.6,
+        "batch_size": 200,
+        "max_rows": "unbounded",
         "top_promotions": [
-            {"id": "abcdef12-...", "composite": 0.9,
-             "created": "2026-04-01", "preview": "Session ended..."},
+            {
+                "id": "abcdef12-...",
+                "composite": 0.9,
+                "created": "2026-04-01",
+                "preview": "Session ended...",
+            },
         ],
     }
     out = rem.render_human(result, dry_run=False)
@@ -214,6 +251,7 @@ def test_render_human_lists_top_promotions():
 
 
 # ─── CLI guards ────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_cli_rejects_negative_age_threshold():

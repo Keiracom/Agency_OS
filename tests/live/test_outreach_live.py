@@ -203,9 +203,7 @@ class TestActivityLogging:
         client_id = str(uuid4())
         lead_id = str(uuid4())
 
-        response = await api_client.get(
-            f"/api/v1/clients/{client_id}/leads/{lead_id}/activities"
-        )
+        response = await api_client.get(f"/api/v1/clients/{client_id}/leads/{lead_id}/activities")
 
         # Should respond (may be empty or auth error)
         assert response.status_code in [200, 401, 403, 404]
@@ -234,7 +232,14 @@ class TestActivityLogging:
             assert field in sample_activity, f"Missing field: {field}"
 
         assert sample_activity["channel"] in ["email", "sms", "linkedin", "voice", "mail"]
-        assert sample_activity["action"] in ["sent", "delivered", "opened", "clicked", "replied", "bounced"]
+        assert sample_activity["action"] in [
+            "sent",
+            "delivered",
+            "opened",
+            "clicked",
+            "replied",
+            "bounced",
+        ]
 
         print("✅ Activity structure validated")
 

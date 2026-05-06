@@ -17,7 +17,7 @@ import logging
 from datetime import datetime
 from uuid import uuid4
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -43,6 +43,7 @@ MOCK_LEADS_100_COLD = [
 # =============================================================================
 # PART E: QUALITY GATE VALIDATION
 # =============================================================================
+
 
 async def validate_quality_gate_100_cold():
     """Validate quality gate halt with 100% Cold leads."""
@@ -83,12 +84,14 @@ async def validate_quality_gate_100_cold():
     logger.info(f"  Actual: {hot_warm_pct:.1f}%")
     logger.info(f"  Result: {status1}")
     if not check1_pass:
-        failures.append({
-            "check": "hot_warm_ratio",
-            "threshold": "5%",
-            "actual": f"{hot_warm_pct:.1f}%",
-            "message": f"Hot+Warm leads ({hot_warm_pct:.1f}%) below 5% threshold"
-        })
+        failures.append(
+            {
+                "check": "hot_warm_ratio",
+                "threshold": "5%",
+                "actual": f"{hot_warm_pct:.1f}%",
+                "message": f"Hot+Warm leads ({hot_warm_pct:.1f}%) below 5% threshold",
+            }
+        )
     logger.info("")
 
     # Check 2: Verified email below 80%
@@ -99,12 +102,14 @@ async def validate_quality_gate_100_cold():
     logger.info(f"  Actual: {verified_pct:.1f}%")
     logger.info(f"  Result: {status2}")
     if not check2_pass:
-        failures.append({
-            "check": "verified_email_ratio",
-            "threshold": "80%",
-            "actual": f"{verified_pct:.1f}%",
-            "message": f"Verified emails ({verified_pct:.1f}%) below 80% threshold"
-        })
+        failures.append(
+            {
+                "check": "verified_email_ratio",
+                "threshold": "80%",
+                "actual": f"{verified_pct:.1f}%",
+                "message": f"Verified emails ({verified_pct:.1f}%) below 80% threshold",
+            }
+        )
     logger.info("")
 
     # Check 3: DM identified below 60%
@@ -115,12 +120,14 @@ async def validate_quality_gate_100_cold():
     logger.info(f"  Actual: {dm_pct:.1f}%")
     logger.info(f"  Result: {status3}")
     if not check3_pass:
-        failures.append({
-            "check": "dm_identified_ratio",
-            "threshold": "60%",
-            "actual": f"{dm_pct:.1f}%",
-            "message": f"Decision Makers identified ({dm_pct:.1f}%) below 60% threshold"
-        })
+        failures.append(
+            {
+                "check": "dm_identified_ratio",
+                "threshold": "60%",
+                "actual": f"{dm_pct:.1f}%",
+                "message": f"Decision Makers identified ({dm_pct:.1f}%) below 60% threshold",
+            }
+        )
     logger.info("")
 
     # Overall result
@@ -149,7 +156,7 @@ async def validate_quality_gate_100_cold():
                     "hot_warm_percentage": hot_warm_pct,
                     "verified_email_percentage": verified_pct,
                     "dm_identified_percentage": dm_pct,
-                }
+                },
             },
         }
 
@@ -168,6 +175,7 @@ async def validate_quality_gate_100_cold():
 # =============================================================================
 # PART F: ALERT SYSTEM VALIDATION
 # =============================================================================
+
 
 async def validate_alert_system():
     """Validate alert system by simulating an alert."""
@@ -234,6 +242,7 @@ async def validate_alert_system():
 # PART G: WARMUP STATUS VALIDATION
 # =============================================================================
 
+
 async def validate_warmup_status():
     """Validate warmup status report."""
     logger.info("")
@@ -284,7 +293,9 @@ async def validate_warmup_status():
     logger.info(f"Report Generated: {datetime.utcnow().isoformat()}")
     logger.info(f"Total Domains: {len(mock_domains)}")
     logger.info(f"Healthy Domains: {sum(1 for d in mock_domains if d['is_healthy'])}")
-    logger.info(f"Warming Domains: {sum(1 for d in mock_domains if d['warmup_stage'] == 'ramping')}")
+    logger.info(
+        f"Warming Domains: {sum(1 for d in mock_domains if d['warmup_stage'] == 'ramping')}"
+    )
     logger.info("")
 
     logger.info("Domain Details:")
@@ -309,13 +320,14 @@ async def validate_warmup_status():
     return {
         "domains": mock_domains,
         "total": len(mock_domains),
-        "healthy": sum(1 for d in mock_domains if d['is_healthy']),
+        "healthy": sum(1 for d in mock_domains if d["is_healthy"]),
     }
 
 
 # =============================================================================
 # PART H: ONBOARDING AUTOMATION VALIDATION
 # =============================================================================
+
 
 async def validate_onboarding_automation():
     """Validate onboarding automation flow."""
@@ -381,6 +393,7 @@ async def validate_onboarding_automation():
 # =============================================================================
 # MAIN
 # =============================================================================
+
 
 async def main():
     print("\n" + "=" * 70)

@@ -5,7 +5,6 @@ PHASE: 16 (Conversion Intelligence)
 TASK: 16A-007, 16B-005, 16C-004, 16D-004
 """
 
-
 from src.detectors.how_detector import HowDetector
 from src.detectors.what_detector import WhatDetector
 from src.detectors.when_detector import WhenDetector
@@ -40,7 +39,10 @@ class TestWhoDetector:
         assert "industry_rankings" in patterns
         assert "size_analysis" in patterns
         assert "timing_signals" in patterns
-        assert patterns["note"] == "Insufficient data for pattern detection. Need at least 30 leads with outcomes."
+        assert (
+            patterns["note"]
+            == "Insufficient data for pattern detection. Need at least 30 leads with outcomes."
+        )
 
     def test_inherits_from_base_detector(self):
         """WHO detector inherits from BaseDetector."""
@@ -137,6 +139,7 @@ class TestPersonalizationDetection:
 
     def test_detects_name_personalization(self):
         """Detects when first name is used."""
+
         class MockLead:
             first_name = "John"
             company = "Acme Corp"
@@ -148,6 +151,7 @@ class TestPersonalizationDetection:
 
     def test_detects_company_personalization(self):
         """Detects when company name is used."""
+
         class MockLead:
             first_name = "John"
             company = "Acme Corp"
@@ -159,6 +163,7 @@ class TestPersonalizationDetection:
 
     def test_detects_no_personalization(self):
         """Detects when no personalization is used."""
+
         class MockLead:
             first_name = "John"
             company = "Acme Corp"

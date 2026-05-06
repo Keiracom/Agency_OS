@@ -7,6 +7,7 @@ Logic under test:
     when match confidence >= threshold and dry_run=False.
   - Low-confidence matches are skipped.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -30,6 +31,7 @@ _spec.loader.exec_module(abn_match_sweep)
 
 # ── _resolve_search_name ────────────────────────────────────────────────────
 
+
 class _Row(dict):
     """asyncpg.Record-like dict with .get() semantics used by the sweep code."""
 
@@ -52,6 +54,7 @@ def test_resolve_search_name_returns_none_when_empty():
 
 
 # ── sweep() — happy path with mocked pool ──────────────────────────────────
+
 
 def _make_pool(rows: list[_Row], match_row: dict | None) -> MagicMock:
     """Build a MagicMock asyncpg pool whose acquire() returns a conn whose
@@ -82,8 +85,15 @@ def _make_pool(rows: list[_Row], match_row: dict | None) -> MagicMock:
 
 def test_sweep_writes_match_when_confidence_above_threshold():
     bu_id = "00000000-0000-0000-0000-000000000001"
-    rows = [_Row(id=bu_id, domain="example.com.au", state="NSW",
-                 legal_name="Example Pty Ltd", display_name=None)]
+    rows = [
+        _Row(
+            id=bu_id,
+            domain="example.com.au",
+            state="NSW",
+            legal_name="Example Pty Ltd",
+            display_name=None,
+        )
+    ]
     match = {
         "abn": "12345678901",
         "legal_name": "Example Pty Ltd",
@@ -99,21 +109,29 @@ def test_sweep_writes_match_when_confidence_above_threshold():
         return pool
 
     with patch.object(abn_match_sweep.asyncpg, "create_pool", _fake_create_pool):
-        stats = asyncio.run(abn_match_sweep.sweep(
-            db_url="postgresql://stub",
-            batch_size=10,
-            min_confidence=0.7,
-            dry_run=False,
-            bu_ids=None,
-        ))
+        stats = asyncio.run(
+            abn_match_sweep.sweep(
+                db_url="postgresql://stub",
+                batch_size=10,
+                min_confidence=0.7,
+                dry_run=False,
+                bu_ids=None,
+            )
+        )
 
-    assert stats == {"total": 1, "matched": 1, "skipped_no_name": 0,
-                     "skipped_low_conf": 0, "errors": 0}
+    assert stats == {
+        "total": 1,
+        "matched": 1,
+        "skipped_no_name": 0,
+        "skipped_low_conf": 0,
+        "errors": 0,
+    }
     # _apply_match should have run an UPDATE on business_universe with the
     # production-schema columns (2026-04-26 fix): abn, abn_matched=TRUE,
     # abn_status, abr_matched_at — confirmed via live introspection.
-    update_calls = [c for c in conn.execute.await_args_list
-                    if "UPDATE business_universe" in c.args[0]]
+    update_calls = [
+        c for c in conn.execute.await_args_list if "UPDATE business_universe" in c.args[0]
+    ]
     assert update_calls, "expected at least one BU UPDATE"
     update_sql = update_calls[0].args[0]
     assert "abn_matched     = TRUE" in update_sql
@@ -123,11 +141,18 @@ def test_sweep_writes_match_when_confidence_above_threshold():
 
 def test_sweep_skips_low_confidence_match():
     bu_id = "00000000-0000-0000-0000-000000000002"
-    rows = [_Row(id=bu_id, domain="weak.com.au", state="VIC",
-                 legal_name="Weak Match", display_name=None)]
+    rows = [
+        _Row(
+            id=bu_id, domain="weak.com.au", state="VIC", legal_name="Weak Match", display_name=None
+        )
+    ]
     match = {
-        "abn": "99999999999", "legal_name": "X", "trading_name": "Y",
-        "entity_type": None, "registration_date": None, "state": "VIC",
+        "abn": "99999999999",
+        "legal_name": "X",
+        "trading_name": "Y",
+        "entity_type": None,
+        "registration_date": None,
+        "state": "VIC",
         "confidence": 0.42,  # below threshold
     }
     pool, conn = _make_pool(rows, match)
@@ -136,50 +161,69 @@ def test_sweep_skips_low_confidence_match():
         return pool
 
     with patch.object(abn_match_sweep.asyncpg, "create_pool", _fake_create_pool):
-        stats = asyncio.run(abn_match_sweep.sweep(
-            db_url="postgresql://stub",
-            batch_size=10,
-            min_confidence=0.7,
-            dry_run=False,
-            bu_ids=None,
-        ))
+        stats = asyncio.run(
+            abn_match_sweep.sweep(
+                db_url="postgresql://stub",
+                batch_size=10,
+                min_confidence=0.7,
+                dry_run=False,
+                bu_ids=None,
+            )
+        )
 
     assert stats["matched"] == 0
     assert stats["skipped_low_conf"] == 1
     # No UPDATE should have hit business_universe.
-    assert not any("UPDATE business_universe" in c.args[0]
-                   for c in conn.execute.await_args_list)
+    assert not any("UPDATE business_universe" in c.args[0] for c in conn.execute.await_args_list)
 
 
 def test_sweep_skips_row_with_no_resolvable_name():
-    rows = [_Row(id="00000000-0000-0000-0000-000000000003",
-                 domain="anon.com.au", state="QLD",
-                 legal_name=None, display_name=None)]
+    rows = [
+        _Row(
+            id="00000000-0000-0000-0000-000000000003",
+            domain="anon.com.au",
+            state="QLD",
+            legal_name=None,
+            display_name=None,
+        )
+    ]
     pool, conn = _make_pool(rows, match_row=None)
 
     async def _fake_create_pool(*_a, **_kw):
         return pool
 
     with patch.object(abn_match_sweep.asyncpg, "create_pool", _fake_create_pool):
-        stats = asyncio.run(abn_match_sweep.sweep(
-            db_url="postgresql://stub",
-            batch_size=10,
-            min_confidence=0.7,
-            dry_run=False,
-            bu_ids=None,
-        ))
+        stats = asyncio.run(
+            abn_match_sweep.sweep(
+                db_url="postgresql://stub",
+                batch_size=10,
+                min_confidence=0.7,
+                dry_run=False,
+                bu_ids=None,
+            )
+        )
 
-    assert stats == {"total": 1, "matched": 0, "skipped_no_name": 1,
-                     "skipped_low_conf": 0, "errors": 0}
+    assert stats == {
+        "total": 1,
+        "matched": 0,
+        "skipped_no_name": 1,
+        "skipped_low_conf": 0,
+        "errors": 0,
+    }
 
 
 def test_sweep_dry_run_does_not_write():
     bu_id = "00000000-0000-0000-0000-000000000004"
-    rows = [_Row(id=bu_id, domain="dry.com.au", state="NSW",
-                 legal_name="Dry Run", display_name=None)]
+    rows = [
+        _Row(id=bu_id, domain="dry.com.au", state="NSW", legal_name="Dry Run", display_name=None)
+    ]
     match = {
-        "abn": "11111111111", "legal_name": "X", "trading_name": "Y",
-        "entity_type": None, "registration_date": None, "state": "NSW",
+        "abn": "11111111111",
+        "legal_name": "X",
+        "trading_name": "Y",
+        "entity_type": None,
+        "registration_date": None,
+        "state": "NSW",
         "confidence": 0.95,
     }
     pool, conn = _make_pool(rows, match)
@@ -188,19 +232,20 @@ def test_sweep_dry_run_does_not_write():
         return pool
 
     with patch.object(abn_match_sweep.asyncpg, "create_pool", _fake_create_pool):
-        stats = asyncio.run(abn_match_sweep.sweep(
-            db_url="postgresql://stub",
-            batch_size=10,
-            min_confidence=0.7,
-            dry_run=True,
-            bu_ids=None,
-        ))
+        stats = asyncio.run(
+            abn_match_sweep.sweep(
+                db_url="postgresql://stub",
+                batch_size=10,
+                min_confidence=0.7,
+                dry_run=True,
+                bu_ids=None,
+            )
+        )
 
     # Total counted, but no match recorded and no UPDATE executed.
     assert stats["total"] == 1
     assert stats["matched"] == 0
-    assert not any("UPDATE business_universe" in c.args[0]
-                   for c in conn.execute.await_args_list)
+    assert not any("UPDATE business_universe" in c.args[0] for c in conn.execute.await_args_list)
 
 
 def test_resolve_db_url_normalises_sqlalchemy_form(monkeypatch):
@@ -236,19 +281,29 @@ def test_select_unmatched_bus_applies_W1_filter_on_display_name():
     captured_sql: list[str] = []
 
     conn = MagicMock()
+
     async def _capture_fetch(sql, *args, **kwargs):
         captured_sql.append(sql)
         return []
+
     conn.fetch = AsyncMock(side_effect=_capture_fetch)
 
     # Default branch — no bu_ids.
-    asyncio.run(abn_match_sweep._select_unmatched_bus(
-        conn, batch_size=10, bu_ids=None,
-    ))
+    asyncio.run(
+        abn_match_sweep._select_unmatched_bus(
+            conn,
+            batch_size=10,
+            bu_ids=None,
+        )
+    )
     # bu_ids branch.
-    asyncio.run(abn_match_sweep._select_unmatched_bus(
-        conn, batch_size=10, bu_ids=["00000000-0000-0000-0000-000000000001"],
-    ))
+    asyncio.run(
+        abn_match_sweep._select_unmatched_bus(
+            conn,
+            batch_size=10,
+            bu_ids=["00000000-0000-0000-0000-000000000001"],
+        )
+    )
 
     assert len(captured_sql) == 2
     for sql in captured_sql:
@@ -283,8 +338,15 @@ def test_statement_timeout_is_set_AFTER_initial_bulk_fetch():
     statement issued by sweep() must come AFTER the first conn.fetch() call.
     """
     bu_id = "00000000-0000-0000-0000-000000000099"
-    rows = [_Row(id=bu_id, domain="ordering.com.au", state="NSW",
-                 legal_name="Ordering Test", display_name=None)]
+    rows = [
+        _Row(
+            id=bu_id,
+            domain="ordering.com.au",
+            state="NSW",
+            legal_name="Ordering Test",
+            display_name=None,
+        )
+    ]
     pool, conn = _make_pool(rows, match_row=None)  # no match → SKIP low_conf
 
     # Capture the call order across both fetch and execute on the conn mock.
@@ -307,31 +369,37 @@ def test_statement_timeout_is_set_AFTER_initial_bulk_fetch():
         return pool
 
     with patch.object(abn_match_sweep.asyncpg, "create_pool", _fake_create_pool):
-        asyncio.run(abn_match_sweep.sweep(
-            db_url="postgresql://stub",
-            batch_size=10,
-            min_confidence=0.7,
-            dry_run=False,
-            bu_ids=None,
-        ))
+        asyncio.run(
+            abn_match_sweep.sweep(
+                db_url="postgresql://stub",
+                batch_size=10,
+                min_confidence=0.7,
+                dry_run=False,
+                bu_ids=None,
+            )
+        )
 
     # Find indexes of the first bulk fetch and the first statement_timeout SET.
     bulk_fetch_idx = next(
-        (i for i, c in enumerate(call_order)
-         if c.startswith("fetch:") and "business_universe" in c),
+        (
+            i
+            for i, c in enumerate(call_order)
+            if c.startswith("fetch:") and "business_universe" in c
+        ),
         None,
     )
     timeout_set_idx = next(
-        (i for i, c in enumerate(call_order)
-         if c.startswith("execute:") and "statement_timeout" in c),
+        (
+            i
+            for i, c in enumerate(call_order)
+            if c.startswith("execute:") and "statement_timeout" in c
+        ),
         None,
     )
     assert bulk_fetch_idx is not None, (
         f"Expected a fetch against business_universe; saw {call_order}"
     )
-    assert timeout_set_idx is not None, (
-        f"Expected a SET statement_timeout call; saw {call_order}"
-    )
+    assert timeout_set_idx is not None, f"Expected a SET statement_timeout call; saw {call_order}"
     assert bulk_fetch_idx < timeout_set_idx, (
         "ORDERING VIOLATION: SET statement_timeout fired BEFORE the initial "
         f"bulk fetch.\n  bulk_fetch_idx={bulk_fetch_idx}\n  "

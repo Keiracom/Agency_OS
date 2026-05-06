@@ -90,9 +90,9 @@ def valid_enrichment_data():
         "organization_employee_count": 50,
         "organization_country": "Australia",
         # Confidence gate signals (Directive #217) — must score >= 50 to pass gate
-        "gst_registered": True,            # +25
-        "dfs_paid_traffic_cost": 500.0,    # +25
-        "dfs_organic_traffic": 2000,       # +15 (total: 65 — passes threshold)
+        "gst_registered": True,  # +25
+        "dfs_paid_traffic_cost": 500.0,  # +25
+        "dfs_organic_traffic": 2000,  # +15 (total: 65 — passes threshold)
     }
 
 
@@ -168,7 +168,9 @@ class TestEnrichmentValidation:
                 "company": "Acme",
             }
             data[field] = None  # Remove required field
-            assert scout_engine._validate_enrichment(data) is False, f"Should fail for missing {field}"
+            assert scout_engine._validate_enrichment(data) is False, (
+                f"Should fail for missing {field}"
+            )
 
 
 # ============================================
@@ -206,7 +208,6 @@ class TestCacheBehavior:
     ):
         """Test that force_refresh=True skips cache."""
         from unittest.mock import MagicMock
-
 
         with patch.object(scout_engine, "get_lead_by_id", return_value=mock_lead):
             with patch("src.engines.scout.enrichment_cache") as mock_cache:
@@ -269,9 +270,7 @@ class TestWaterfallTiers:
                 assert "siege_waterfall" in result.metadata["source"]
 
     @pytest.mark.asyncio
-    async def test_all_tiers_fail(
-        self, scout_engine, mock_db_session, mock_lead
-    ):
+    async def test_all_tiers_fail(self, scout_engine, mock_db_session, mock_lead):
         """Test failure when Siege Waterfall returns no data."""
         from unittest.mock import MagicMock
 

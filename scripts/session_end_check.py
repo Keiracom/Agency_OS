@@ -110,7 +110,9 @@ def main():
         has_manual = (num in manual_nums) if num is not None else False
 
         metrics_str = "cis_directive_metrics: OK"
-        ceo_str = f"ceo_memory: OK" if has_ceo else f"ceo_memory: MISSING (expected key: {expected_key})"
+        ceo_str = (
+            f"ceo_memory: OK" if has_ceo else f"ceo_memory: MISSING (expected key: {expected_key})"
+        )
         manual_str = "Manual Section 13: OK" if has_manual else "Manual Section 13: MISSING"
 
         row_gaps = (not has_ceo) + (not has_manual)
@@ -127,7 +129,9 @@ def main():
     missing_stores = gaps
     complete_stores = total_stores - missing_stores
 
-    print(f"Summary: {complete_stores}/{total_stores} stores complete across {len(metrics)} directives")
+    print(
+        f"Summary: {complete_stores}/{total_stores} stores complete across {len(metrics)} directives"
+    )
     print(f"Gaps found: {gaps}")
 
     if gaps > 0:

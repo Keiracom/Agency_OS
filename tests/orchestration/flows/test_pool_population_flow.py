@@ -14,6 +14,7 @@ Coverage matrix per dispatch:
       AND filter_reason LIKE 'permanent_%' carve-out
   (d) soft-deleted/non-permanent-dropped row still excluded
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -31,6 +32,7 @@ flow_mod = importlib.import_module("src.orchestration.flows.pool_population_flow
 
 
 # ── helpers ─────────────────────────────────────────────────────────────────
+
 
 def _candidate(gmb_domain: str, abn: str = "12345678901") -> dict:
     """Build a minimal bu_gmb_rows entry mirroring the production INSERT shape."""
@@ -79,6 +81,7 @@ def _patch_session(monkeypatch, fetched_rows: list[tuple[str | None, str | None]
 
 
 # ── coverage matrix ─────────────────────────────────────────────────────────
+
 
 def test_a_existing_domain_skipped(monkeypatch):
     """Active BU row carrying gmb_domain='already.com.au' blocks re-INSERT."""
@@ -143,11 +146,13 @@ def test_d_soft_deleted_or_non_permanent_dropped_still_excluded(monkeypatch):
 
 # ── SQL-shape regressions (defends the carve-out clause from accidental edits) ──
 
+
 def test_select_excludes_soft_deleted_rows():
     """The SELECT WHERE clause must include 'deleted_at IS NULL' so soft-
     deleted rows do not leak into the blocked set (preserving GOV-8 audit
     trail without re-suppressing future re-discovery)."""
     import inspect
+
     src = inspect.getsource(flow_mod._exclude_existing_bu_domains)
     assert "deleted_at IS NULL" in src
 
@@ -156,6 +161,7 @@ def test_select_carves_out_permanent_drop_only():
     """The SELECT must NOT block rows where pipeline_status='dropped'
     AND filter_reason LIKE 'permanent_%' — that is the thaw carve-out."""
     import inspect
+
     src = inspect.getsource(flow_mod._exclude_existing_bu_domains)
     assert "pipeline_status = 'dropped'" in src
     assert "filter_reason LIKE 'permanent_%%'" in src
@@ -168,6 +174,7 @@ def test_select_matches_either_domain_or_gmb_domain():
     """Both BU domain columns are valid blocking keys — SELECT must
     consult both."""
     import inspect
+
     src = inspect.getsource(flow_mod._exclude_existing_bu_domains)
     assert "domain     = ANY(:incoming::text[])" in src
     assert "gmb_domain = ANY(:incoming::text[])" in src
@@ -177,8 +184,10 @@ def test_helper_short_circuits_when_no_candidates_have_domains():
     """If every candidate has gmb_domain=None the helper returns the input
     unchanged without issuing any SELECT — saves a DB round-trip on an
     all-null batch."""
-    captured = _patch_session(MagicMock(setattr=lambda *a, **kw: None),  # no-op patch
-                              fetched_rows=[])
+    captured = _patch_session(
+        MagicMock(setattr=lambda *a, **kw: None),  # no-op patch
+        fetched_rows=[],
+    )
 
     candidates = [{"abn": "x", "gmb_domain": None}]
     # Direct call — _patch_session above won't be reached because helper returns early.
@@ -193,11 +202,10 @@ def test_helper_logs_skip_count_and_sample(monkeypatch, caplog):
         monkeypatch,
         fetched_rows=[("dup1.com.au", None), (None, "dup2.com.au")],
     )
-    candidates = [_candidate("dup1.com.au"),
-                  _candidate("dup2.com.au"),
-                  _candidate("fresh.com.au")]
+    candidates = [_candidate("dup1.com.au"), _candidate("dup2.com.au"), _candidate("fresh.com.au")]
 
     import logging
+
     with caplog.at_level(logging.INFO, logger=flow_mod.logger.name):
         kept = asyncio.run(flow_mod._exclude_existing_bu_domains(candidates))
 

@@ -7,6 +7,7 @@ Verifies:
 3. _persist_drop_reason is best-effort — Supabase failure does not raise
 4. Domains without a lead row are handled gracefully (no exception)
 """
+
 from __future__ import annotations
 
 import pytest

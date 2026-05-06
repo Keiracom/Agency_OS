@@ -41,15 +41,16 @@ BASE_PROSPECT = {
     "has_unsubscribed": False,
 }
 
-TUESDAY_11AM = syd(2026, 4, 21, 11, 0)   # Tue within work + optimal email
-TUESDAY_8PM = syd(2026, 4, 21, 20, 0)    # Tue 8pm — boundary (TCP: hour < 20 allowed, 20 blocked)
-TUESDAY_9PM = syd(2026, 4, 21, 21, 0)    # Tue 9pm — TCP blocked
-SUNDAY_2PM = syd(2026, 4, 19, 14, 0)     # Sunday — TCP always blocked for voice/SMS
+TUESDAY_11AM = syd(2026, 4, 21, 11, 0)  # Tue within work + optimal email
+TUESDAY_8PM = syd(2026, 4, 21, 20, 0)  # Tue 8pm — boundary (TCP: hour < 20 allowed, 20 blocked)
+TUESDAY_9PM = syd(2026, 4, 21, 21, 0)  # Tue 9pm — TCP blocked
+SUNDAY_2PM = syd(2026, 4, 19, 14, 0)  # Sunday — TCP always blocked for voice/SMS
 
 
 # ---------------------------------------------------------------------------
 # Suppression — all 4 channels
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.parametrize("channel", [Channel.EMAIL, Channel.LINKEDIN, Channel.VOICE, Channel.SMS])
 def test_suppression_blocks_all_channels(channel: Channel):
@@ -74,6 +75,7 @@ def test_suppressed_phone_blocks_all_channels(channel: Channel):
 # ---------------------------------------------------------------------------
 # DNCR — voice/SMS only
 # ---------------------------------------------------------------------------
+
 
 def test_dncr_blocks_voice():
     guard = ComplianceGuard(dncr_lookup=_dncr)
@@ -108,6 +110,7 @@ def test_dncr_does_not_block_linkedin():
 # ---------------------------------------------------------------------------
 # TCP hours
 # ---------------------------------------------------------------------------
+
 
 def test_tcp_8pm_boundary_blocked():
     """8pm (hour=20) is >= TCP_END (20) so must be blocked."""
@@ -161,6 +164,7 @@ def test_tcp_does_not_apply_to_email():
 # SPAM Act
 # ---------------------------------------------------------------------------
 
+
 def test_spam_act_unsubscribed_email_blocked():
     guard = ComplianceGuard()
     prospect = {**BASE_PROSPECT, "has_unsubscribed": True}
@@ -180,11 +184,13 @@ def test_spam_act_does_not_affect_linkedin():
 # Multiple violations accumulate
 # ---------------------------------------------------------------------------
 
+
 def test_multiple_violations_accumulate():
     """
     Suppressed phone + DNCR-listed phone + TCP late hour = 3 violation codes.
     Use Voice channel so DNCR and TCP both apply.
     """
+
     def _always_suppress(contact: str) -> bool:
         return True
 
@@ -203,6 +209,7 @@ def test_multiple_violations_accumulate():
 # ---------------------------------------------------------------------------
 # Clean prospect — green path
 # ---------------------------------------------------------------------------
+
 
 def test_clean_prospect_email_tuesday_11am_allowed():
     """No violations: clean prospect, email, Tuesday 11am."""

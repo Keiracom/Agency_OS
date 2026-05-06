@@ -3,6 +3,7 @@
 Covers gaps #2, #3, #8, #13 per Phase 2 BU instrumentation directive.
 Hermetic — no live DB, no live Prefect server.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -18,6 +19,7 @@ from src.orchestration.flows import bu_closed_loop_flow as bu_flow_mod  # noqa: 
 
 
 # ── helpers ──────────────────────────────────────────────────────────────────
+
 
 def _make_pool(execute_calls: list) -> MagicMock:
     """Return a mock asyncpg pool that records every execute() call."""
@@ -40,6 +42,7 @@ def _make_pool(execute_calls: list) -> MagicMock:
 
 
 # ── gap #2 — filter_reason on runner_early_exit ───────────────────────────────
+
 
 def test_gap2_filter_reason_written_on_runner_early_exit():
     """advance_row must write filter_reason = outcome_reason on runner_early_exit.
@@ -68,24 +71,18 @@ def test_gap2_filter_reason_written_on_runner_early_exit():
     )
 
     with patch("src.orchestration.cohort_runner._run_stage5", fake_runner):
-        result = asyncio.run(
-            bu_flow_mod.advance_row.fn(pool, row, plan, clients={"gemini": None})
-        )
+        result = asyncio.run(bu_flow_mod.advance_row.fn(pool, row, plan, clients={"gemini": None}))
 
     assert result["outcome"] == "runner_early_exit"
     assert result["reason"] == "missing_prereqs"
 
     # Find the UPDATE call that writes the attempt entry (not the pipeline_stage advance)
-    early_exit_calls = [
-        c for c in execute_calls if "bu_closed_loop_attempt" in str(c[0])
-    ]
+    early_exit_calls = [c for c in execute_calls if "bu_closed_loop_attempt" in str(c[0])]
     assert early_exit_calls, "expected an UPDATE with bu_closed_loop_attempts"
 
     # SQL must include filter_reason = $3
     sql_text = str(early_exit_calls[0][0])
-    assert "filter_reason = $3" in sql_text, (
-        f"filter_reason = $3 not found in SQL: {sql_text!r}"
-    )
+    assert "filter_reason = $3" in sql_text, f"filter_reason = $3 not found in SQL: {sql_text!r}"
 
     # Third positional param (index 3 in the call tuple — idx 0 is SQL, 1 is row id, 2 is attempt json, 3 is reason)
     call_args = early_exit_calls[0]
@@ -115,18 +112,15 @@ def test_gap2_filter_reason_uses_unknown_fallback_when_drop_reason_missing():
     with patch("src.orchestration.cohort_runner._run_stage5", fake_runner):
         asyncio.run(bu_flow_mod.advance_row.fn(pool, row, plan, clients={"gemini": None}))
 
-    early_exit_calls = [
-        c for c in execute_calls if "bu_closed_loop_attempt" in str(c[0])
-    ]
+    early_exit_calls = [c for c in execute_calls if "bu_closed_loop_attempt" in str(c[0])]
     assert early_exit_calls, "expected an UPDATE with bu_closed_loop_attempts"
     call_args = early_exit_calls[0]
     assert len(call_args) >= 4
-    assert call_args[3] == "unknown", (
-        f"expected 'unknown' fallback, got {call_args[3]!r}"
-    )
+    assert call_args[3] == "unknown", f"expected 'unknown' fallback, got {call_args[3]!r}"
 
 
 # ── gap #3 — stage_completed_at on pipeline_f drops ─────────────────────────
+
 
 def test_gap3_stage_completed_at_present_in_pipeline_f_drop_blob():
     """The stage_metrics JSONB blob for dropped pipeline_f domains must include
@@ -135,9 +129,7 @@ def test_gap3_stage_completed_at_present_in_pipeline_f_drop_blob():
     import importlib
     import inspect
 
-    pipeline_f_mod = importlib.import_module(
-        "src.orchestration.flows.pipeline_f_master_flow"
-    )
+    pipeline_f_mod = importlib.import_module("src.orchestration.flows.pipeline_f_master_flow")
     source = inspect.getsource(pipeline_f_mod)
 
     # The blob construction must embed the stage_completed_at key
@@ -156,9 +148,7 @@ def test_gap3_stage_completed_at_value_is_isoformat_string():
     import importlib
     import inspect
 
-    pipeline_f_mod = importlib.import_module(
-        "src.orchestration.flows.pipeline_f_master_flow"
-    )
+    pipeline_f_mod = importlib.import_module("src.orchestration.flows.pipeline_f_master_flow")
     source = inspect.getsource(pipeline_f_mod)
 
     # Must call .isoformat() — not datetime.now() bare
@@ -169,15 +159,14 @@ def test_gap3_stage_completed_at_value_is_isoformat_string():
 
 # ── gap #8 — discovery_batch_id on pool_population GMB inserts ──────────────
 
+
 def test_gap8_discovery_batch_id_in_gmb_row_dict(monkeypatch):
     """The dict appended to bu_gmb_rows must include discovery_batch_id set
     to a known UUID (mocked prefect flow_run.id).
     """
     import importlib
 
-    pool_flow_mod = importlib.import_module(
-        "src.orchestration.flows.pool_population_flow"
-    )
+    pool_flow_mod = importlib.import_module("src.orchestration.flows.pool_population_flow")
 
     known_uuid = str(uuid4())
 
@@ -210,6 +199,7 @@ def test_gap8_discovery_batch_id_in_gmb_row_dict(monkeypatch):
     # Build the bu_gmb_rows list exactly as the flow code does
     _raw_flow_run_id = pool_flow_mod._prefect_flow_run.id
     import uuid as _uuid_mod
+
     flow_run_id = _raw_flow_run_id if _raw_flow_run_id else str(_uuid_mod.uuid4())
 
     bu_gmb_rows = []
@@ -249,9 +239,7 @@ def test_gap8_discovery_batch_id_propagates_to_insert_sql(known_uuid, monkeypatc
     import importlib
     import inspect
 
-    pool_flow_mod = importlib.import_module(
-        "src.orchestration.flows.pool_population_flow"
-    )
+    pool_flow_mod = importlib.import_module("src.orchestration.flows.pool_population_flow")
     source = inspect.getsource(pool_flow_mod)
 
     # Column must be in INSERT
@@ -269,6 +257,7 @@ def test_gap8_discovery_batch_id_propagates_to_insert_sql(known_uuid, monkeypatc
 
 
 # ── gap #13 Part A — last_enriched_at on scout.py lead_pool INSERT ───────────
+
 
 def test_gap13_last_enriched_at_in_scout_insert_column_list():
     """scout.py _insert_into_pool must include last_enriched_at in the INSERT

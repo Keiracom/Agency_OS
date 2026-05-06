@@ -85,9 +85,7 @@ class TestLiveCampaignCreation:
         """Test listing campaigns for a client."""
         client_id = str(uuid4())
 
-        response = await api_client.get(
-            f"/api/v1/clients/{client_id}/campaigns"
-        )
+        response = await api_client.get(f"/api/v1/clients/{client_id}/campaigns")
 
         # Should get response (may be empty or auth error)
         assert response.status_code in [200, 401, 403, 404]

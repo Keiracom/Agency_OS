@@ -16,6 +16,7 @@ from src.telegram_bot.retrieval_metrics import (
 # tokenize
 # ---------------------------------------------------------------------------
 
+
 class TestTokenize:
     def test_removes_stopwords(self):
         tokens = tokenize("what does this pipeline have")
@@ -70,6 +71,7 @@ class TestTokenize:
 # ---------------------------------------------------------------------------
 # compute_cited_flags
 # ---------------------------------------------------------------------------
+
 
 class TestComputeCitedFlags:
     def _make_row(self, row_id, content, source_type="core_fact"):
@@ -154,6 +156,7 @@ class TestComputeCitedFlags:
 # compute_hit_rate
 # ---------------------------------------------------------------------------
 
+
 class TestComputeHitRate:
     def _flags(self, cited_list):
         """Build a single retrieval's flags list from a list of booleans."""
@@ -192,6 +195,7 @@ class TestComputeHitRate:
 # ---------------------------------------------------------------------------
 # compute_mrr
 # ---------------------------------------------------------------------------
+
 
 class TestComputeMRR:
     def _flags(self, cited_list):
@@ -246,6 +250,7 @@ class TestComputeMRR:
 # compute_source_type_breakdown
 # ---------------------------------------------------------------------------
 
+
 class TestComputeSourceTypeBreakdown:
     def _flag(self, source_type, cited):
         return {"cited": cited, "source_type": source_type}
@@ -290,6 +295,7 @@ class TestComputeSourceTypeBreakdown:
 # ---------------------------------------------------------------------------
 # generate_summary
 # ---------------------------------------------------------------------------
+
 
 class TestGenerateSummary:
     def _flags(self, cited_list, source_type="core_fact"):

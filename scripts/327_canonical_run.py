@@ -26,6 +26,7 @@ num_workers=10 is intentional. This is the proven Ignition tier value.
 Do not change without explicit CEO directive. The orchestrator default
 of 4 was identified as a bottleneck in the #323 forensic audit.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -56,12 +57,12 @@ CATEGORY_NAMES = {
     10282: "Building Construction & Maintenance",
     10163: "Legal",
 }
-LOCATION = "Australia"               # National — code 2036
-CAP_PER_CATEGORY = 500               # Same as #300 — let categories exhaust naturally
-ETV_MIN = 100.0                      # next_batch path (NOT pull_batch's 200)
-ETV_MAX = 50000.0                    # next_batch path (NOT pull_batch's 5000)
-NUM_WORKERS = 10                     # Ignition default (NOT orchestrator default of 4)
-USE_CONTACTOUT = True                # Layer 1 email + Layer 0 mobile
+LOCATION = "Australia"  # National — code 2036
+CAP_PER_CATEGORY = 500  # Same as #300 — let categories exhaust naturally
+ETV_MIN = 100.0  # next_batch path (NOT pull_batch's 200)
+ETV_MAX = 50000.0  # next_batch path (NOT pull_batch's 5000)
+NUM_WORKERS = 10  # Ignition default (NOT orchestrator default of 4)
+USE_CONTACTOUT = True  # Layer 1 email + Layer 0 mobile
 
 OUTPUT = os.path.join(os.path.dirname(__file__), "output", "327_canonical_run.json")
 
@@ -77,6 +78,7 @@ async def run_canonical():
     env_file = Path("/home/elliotbot/.config/agency-os/.env")
     if env_file.exists():
         from dotenv import load_dotenv
+
         load_dotenv(env_file)
         logger.info("Loaded env from %s", env_file)
 
@@ -86,10 +88,20 @@ async def run_canonical():
         sys.exit(1)
 
     logger.info("=== Directive #327 — Canonical V7 + ContactOut Validation ===")
-    logger.info("categories=%s cap=%d etv=%s-%s workers=%d contactout=%s",
-                CATEGORIES, CAP_PER_CATEGORY, ETV_MIN, ETV_MAX, NUM_WORKERS, USE_CONTACTOUT)
-    logger.warning("LIVE RUN — estimated cost: ~$%.0f USD (~$%.0f AUD)",
-                   COST_ESTIMATE["usd"], COST_ESTIMATE["aud"])
+    logger.info(
+        "categories=%s cap=%d etv=%s-%s workers=%d contactout=%s",
+        CATEGORIES,
+        CAP_PER_CATEGORY,
+        ETV_MIN,
+        ETV_MAX,
+        NUM_WORKERS,
+        USE_CONTACTOUT,
+    )
+    logger.warning(
+        "LIVE RUN — estimated cost: ~$%.0f USD (~$%.0f AUD)",
+        COST_ESTIMATE["usd"],
+        COST_ESTIMATE["aud"],
+    )
 
     # ── Build dependencies ───────────────────────────────────────────────────
     from src.pipeline.pipeline_orchestrator import PipelineOrchestrator
@@ -113,8 +125,11 @@ async def run_canonical():
     bd_client = BrightDataLinkedInClient()
 
     discovery = MultiCategoryDiscovery(dfs_client)
-    logger.info("Discovery: %s (has next_batch: %s)",
-                type(discovery).__name__, hasattr(discovery, "next_batch"))
+    logger.info(
+        "Discovery: %s (has next_batch: %s)",
+        type(discovery).__name__,
+        hasattr(discovery, "next_batch"),
+    )
 
     free_enrichment = FreeEnrichment(conn=pool)
     scorer = ProspectScorer()
@@ -126,9 +141,13 @@ async def run_canonical():
         cards_received.append(card)
         logger.info(
             "CARD: domain=%s dm=%s email=%s(%s/%s) mobile=%s(%s)",
-            card.domain, card.dm_name,
-            card.dm_email, card.dm_email_source, card.dm_email_confidence,
-            card.dm_mobile, getattr(card, "dm_mobile_source", "?"),
+            card.domain,
+            card.dm_name,
+            card.dm_email,
+            card.dm_email_source,
+            card.dm_email_confidence,
+            card.dm_mobile,
+            getattr(card, "dm_mobile_source", "?"),
         )
 
     orchestrator = PipelineOrchestrator(
@@ -158,20 +177,22 @@ async def run_canonical():
     # ── Output ───────────────────────────────────────────────────────────────
     results = []
     for card in pipeline_result.prospects:
-        results.append({
-            "domain": card.domain,
-            "company_name": card.company_name,
-            "dm_name": card.dm_name,
-            "dm_email": card.dm_email,
-            "dm_email_source": card.dm_email_source,
-            "dm_email_confidence": card.dm_email_confidence,
-            "dm_email_verified": card.dm_email_verified,
-            "dm_mobile": card.dm_mobile,
-            "dm_mobile_source": getattr(card, "dm_mobile_source", None),
-            "dm_mobile_tier": getattr(card, "dm_mobile_tier", None),
-            "intent_score": card.intent_score,
-            "affordability_score": card.affordability_score,
-        })
+        results.append(
+            {
+                "domain": card.domain,
+                "company_name": card.company_name,
+                "dm_name": card.dm_name,
+                "dm_email": card.dm_email,
+                "dm_email_source": card.dm_email_source,
+                "dm_email_confidence": card.dm_email_confidence,
+                "dm_email_verified": card.dm_email_verified,
+                "dm_mobile": card.dm_mobile,
+                "dm_mobile_source": getattr(card, "dm_mobile_source", None),
+                "dm_mobile_tier": getattr(card, "dm_mobile_tier", None),
+                "intent_score": card.intent_score,
+                "affordability_score": card.affordability_score,
+            }
+        )
 
     # Attribution stats
     email_sources = {}
@@ -223,13 +244,16 @@ async def run_canonical():
         json.dump(summary, f, indent=2, default=str)
 
     logger.info("=== #327 COMPLETE ===")
-    logger.info("Cards: %d | Email: %d (%.1f%%) | Verified: %d (%.1f%%) | Mobile: %d (%.1f%%)",
-                len(results), has_email,
-                has_email / len(results) * 100 if results else 0,
-                verified,
-                verified / len(results) * 100 if results else 0,
-                has_mobile,
-                has_mobile / len(results) * 100 if results else 0)
+    logger.info(
+        "Cards: %d | Email: %d (%.1f%%) | Verified: %d (%.1f%%) | Mobile: %d (%.1f%%)",
+        len(results),
+        has_email,
+        has_email / len(results) * 100 if results else 0,
+        verified,
+        verified / len(results) * 100 if results else 0,
+        has_mobile,
+        has_mobile / len(results) * 100 if results else 0,
+    )
     logger.info("Email sources: %s", email_sources)
     logger.info("Mobile sources: %s", mobile_sources)
     logger.info("Elapsed: %.1fs | Output: %s", elapsed, OUTPUT)
@@ -239,7 +263,10 @@ async def run_canonical():
 
 def main():
     import argparse
-    parser = argparse.ArgumentParser(description="Directive #327 — Canonical V7 + ContactOut Validation")
+
+    parser = argparse.ArgumentParser(
+        description="Directive #327 — Canonical V7 + ContactOut Validation"
+    )
     parser.add_argument("--dry-run", action="store_true", help="Verify imports only, no API calls")
     args = parser.parse_args()
 
@@ -251,10 +278,13 @@ def main():
             from src.pipeline.contactout_enricher import enrich_dm_via_contactout
             from src.pipeline.email_waterfall import discover_email, GLOBAL_SEM_LEADMAGIC
             from src.pipeline.mobile_waterfall import run_mobile_waterfall
+
             logger.info("All imports OK")
             logger.info("PipelineOrchestrator: %s", PipelineOrchestrator)
-            logger.info("MultiCategoryDiscovery has next_batch: %s",
-                        hasattr(MultiCategoryDiscovery, "next_batch"))
+            logger.info(
+                "MultiCategoryDiscovery has next_batch: %s",
+                hasattr(MultiCategoryDiscovery, "next_batch"),
+            )
             logger.info("GLOBAL_SEM_LEADMAGIC value: %d", GLOBAL_SEM_LEADMAGIC._value)
         except ImportError as e:
             logger.error("Import failed: %s", e)

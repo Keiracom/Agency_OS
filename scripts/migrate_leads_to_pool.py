@@ -32,8 +32,7 @@ logger = logging.getLogger(__name__)
 
 # Database connection
 DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql+asyncpg://postgres:postgres@localhost:5432/agency_os"
+    "DATABASE_URL", "postgresql+asyncpg://postgres:postgres@localhost:5432/agency_os"
 )
 
 # Convert to async URL if needed
@@ -46,9 +45,7 @@ elif DATABASE_URL.startswith("postgresql://") and "+asyncpg" not in DATABASE_URL
 async def get_session() -> AsyncSession:
     """Create async database session."""
     engine = create_async_engine(DATABASE_URL, echo=False)
-    async_session = sessionmaker(
-        engine, class_=AsyncSession, expire_on_commit=False
-    )
+    async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
     async with async_session() as session:
         yield session
 
@@ -63,17 +60,13 @@ async def migrate_leads_to_pool():
     3. Link all leads with that email to the same pool entry
     """
     engine = create_async_engine(DATABASE_URL, echo=False)
-    async_session = sessionmaker(
-        engine, class_=AsyncSession, expire_on_commit=False
-    )
+    async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
     async with async_session() as db:
         logger.info("Starting lead pool migration...")
 
         # Step 1: Get count of existing leads
-        count_result = await db.execute(
-            text("SELECT COUNT(*) FROM leads WHERE deleted_at IS NULL")
-        )
+        count_result = await db.execute(text("SELECT COUNT(*) FROM leads WHERE deleted_at IS NULL"))
         total_leads = count_result.scalar() or 0
         logger.info(f"Found {total_leads} leads to migrate")
 
@@ -108,7 +101,7 @@ async def migrate_leads_to_pool():
                 # Check if already in pool
                 check_result = await db.execute(
                     text("SELECT id FROM lead_pool WHERE LOWER(email) = LOWER(:email)"),
-                    {"email": lead.email}
+                    {"email": lead.email},
                 )
                 existing = check_result.fetchone()
 
@@ -146,7 +139,7 @@ async def migrate_leads_to_pool():
                             "phone": lead.phone,
                             "als_score": lead.als_score,
                             "als_tier": lead.als_tier,
-                        }
+                        },
                     )
                     pool_row = insert_result.fetchone()
                     pool_id = pool_row.id
@@ -160,7 +153,7 @@ async def migrate_leads_to_pool():
                             SELECT id FROM lead_assignments
                             WHERE lead_pool_id = :pool_id
                         """),
-                        {"pool_id": str(pool_id)}
+                        {"pool_id": str(pool_id)},
                     )
 
                     if not assign_check.fetchone():
@@ -182,7 +175,7 @@ async def migrate_leads_to_pool():
                                 "client_id": str(lead.client_id),
                                 "campaign_id": str(lead.campaign_id) if lead.campaign_id else None,
                                 "assigned_at": lead.created_at or datetime.utcnow(),
-                            }
+                            },
                         )
                         assigned += 1
 
@@ -193,7 +186,7 @@ async def migrate_leads_to_pool():
                         SET lead_pool_id = :pool_id, updated_at = NOW()
                         WHERE id = :lead_id
                     """),
-                    {"pool_id": str(pool_id), "lead_id": str(lead.id)}
+                    {"pool_id": str(pool_id), "lead_id": str(lead.id)},
                 )
 
                 # Also update any other leads with the same email
@@ -204,7 +197,7 @@ async def migrate_leads_to_pool():
                         WHERE LOWER(email) = LOWER(:email)
                         AND lead_pool_id IS NULL
                     """),
-                    {"pool_id": str(pool_id), "email": lead.email}
+                    {"pool_id": str(pool_id), "email": lead.email},
                 )
 
             except Exception as e:
@@ -237,15 +230,15 @@ async def migrate_leads_to_pool():
             """)
         )
         stats = stats_result.fetchone()
-        logger.info(f"Pool stats - Total: {stats.total}, Available: {stats.available}, Assigned: {stats.assigned}")
+        logger.info(
+            f"Pool stats - Total: {stats.total}, Available: {stats.available}, Assigned: {stats.assigned}"
+        )
 
 
 async def verify_migration():
     """Verify the migration was successful."""
     engine = create_async_engine(DATABASE_URL, echo=False)
-    async_session = sessionmaker(
-        engine, class_=AsyncSession, expire_on_commit=False
-    )
+    async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
     async with async_session() as db:
         logger.info("\n" + "=" * 50)
@@ -307,12 +300,12 @@ async def main():
     elif args.dry_run:
         logger.info("DRY RUN - would migrate leads to pool")
         engine = create_async_engine(DATABASE_URL, echo=False)
-        async_session = sessionmaker(
-            engine, class_=AsyncSession, expire_on_commit=False
-        )
+        async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
         async with async_session() as db:
             count_result = await db.execute(
-                text("SELECT COUNT(DISTINCT LOWER(email)) FROM leads WHERE deleted_at IS NULL AND email IS NOT NULL")
+                text(
+                    "SELECT COUNT(DISTINCT LOWER(email)) FROM leads WHERE deleted_at IS NULL AND email IS NOT NULL"
+                )
             )
             unique_emails = count_result.scalar() or 0
             logger.info(f"Would migrate {unique_emails} unique emails to pool")

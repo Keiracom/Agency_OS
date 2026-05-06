@@ -10,7 +10,8 @@ import base64
 import hashlib
 import hmac
 import json
-from unittest.mock import MagicMock
+import time
+from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -18,6 +19,30 @@ from fastapi.testclient import TestClient
 from src.api.main import app
 from src.api.routes import email as email_route
 from src.integrations import resend_client
+
+
+def _svix_sign(
+    body: bytes,
+    secret: str,
+    msg_id: str = "msg_test",
+    timestamp: int | None = None,
+) -> dict[str, str]:
+    """Build valid Svix headers for a webhook payload."""
+    ts = timestamp or int(time.time())
+    sign_payload = f"{msg_id}.{ts}.".encode() + body
+    key_material = secret.removeprefix("whsec_")
+    try:
+        key_bytes = base64.b64decode(key_material)
+    except Exception:
+        key_bytes = key_material.encode()
+    digest = hmac.new(key_bytes, sign_payload, hashlib.sha256).digest()
+    sig_b64 = base64.b64encode(digest).decode("ascii")
+    return {
+        "svix-id": msg_id,
+        "svix-timestamp": str(ts),
+        "svix-signature": f"v1,{sig_b64}",
+        "content-type": "application/json",
+    }
 
 
 @pytest.fixture()
@@ -179,10 +204,15 @@ def test_status_404_when_missing(client, monkeypatch):
 def test_webhook_rejects_bad_signature(client, monkeypatch):
     monkeypatch.setenv("RESEND_WEBHOOK_SECRET", "shh")
     body = b'{"type":"email.delivered","data":{"email_id":"x"}}'
+    ts = str(int(time.time()))
     resp = client.post(
         "/api/email/webhook",
         content=body,
-        headers={"svix-signature": "v1,deadbeef"},
+        headers={
+            "svix-id": "msg_bad",
+            "svix-timestamp": ts,
+            "svix-signature": "v1,deadbeef",
+        },
     )
     assert resp.status_code == 401
 
@@ -199,21 +229,12 @@ def test_webhook_accepts_valid_signature_and_updates_status(
             "data": {"email_id": "msg_test_123"},
         }
     ).encode("utf-8")
-    digest = hmac.new(b"shh", body, hashlib.sha256).digest()
-    sig_b64 = base64.b64encode(digest).decode("ascii")
-    resp = client.post(
-        "/api/email/webhook",
-        content=body,
-        headers={
-            "svix-signature": f"v1,{sig_b64}",
-            "content-type": "application/json",
-        },
-    )
+    headers = _svix_sign(body, "shh")
+    resp = client.post("/api/email/webhook", content=body, headers=headers)
     assert resp.status_code == 200, resp.text
     body_json = resp.json()
     assert body_json["ok"] is True
     assert body_json["applied_status"] == "delivered"
-    # DB UPDATE was attempted.
     args = mock_db.execute.call_args[0]
     assert "UPDATE keiracom_admin.email_events" in args[0]
 
@@ -221,12 +242,8 @@ def test_webhook_accepts_valid_signature_and_updates_status(
 def test_webhook_secret_unset_rejects_all(client, monkeypatch):
     monkeypatch.delenv("RESEND_WEBHOOK_SECRET", raising=False)
     body = b'{"type":"email.delivered","data":{"email_id":"x"}}'
-    sig = "v1," + hmac.new(b"any", body, hashlib.sha256).hexdigest()
-    resp = client.post(
-        "/api/email/webhook",
-        content=body,
-        headers={"svix-signature": sig},
-    )
+    headers = _svix_sign(body, "any")
+    resp = client.post("/api/email/webhook", content=body, headers=headers)
     assert resp.status_code == 401
 
 
@@ -238,13 +255,8 @@ def test_webhook_unknown_event_type_keeps_status(client, mock_db, monkeypatch):
             "data": {"email_id": "msg_test_123"},
         }
     ).encode("utf-8")
-    digest = hmac.new(b"shh", body, hashlib.sha256).digest()
-    sig_b64 = base64.b64encode(digest).decode("ascii")
-    resp = client.post(
-        "/api/email/webhook",
-        content=body,
-        headers={"svix-signature": f"v1,{sig_b64}"},
-    )
+    headers = _svix_sign(body, "shh")
+    resp = client.post("/api/email/webhook", content=body, headers=headers)
     assert resp.status_code == 200
     assert resp.json()["applied_status"] is None
 
@@ -263,23 +275,21 @@ def test_webhook_accepts_multiple_space_separated_signatures(
             "data": {"email_id": "msg_test_123"},
         }
     ).encode("utf-8")
-    good = base64.b64encode(hmac.new(b"current_secret", body, hashlib.sha256).digest()).decode(
-        "ascii"
-    )
-    bad = base64.b64encode(hmac.new(b"old_rotated_secret", body, hashlib.sha256).digest()).decode(
-        "ascii"
-    )
-    resp = client.post(
-        "/api/email/webhook",
-        content=body,
-        headers={"svix-signature": f"v1,{bad} v1,{good}"},
-    )
+    good_headers = _svix_sign(body, "current_secret")
+    bad_headers = _svix_sign(body, "old_rotated_secret")
+    combined = f"{bad_headers['svix-signature']} {good_headers['svix-signature']}"
+    headers = {
+        "svix-id": good_headers["svix-id"],
+        "svix-timestamp": good_headers["svix-timestamp"],
+        "svix-signature": combined,
+        "content-type": "application/json",
+    }
+    resp = client.post("/api/email/webhook", content=body, headers=headers)
     assert resp.status_code == 200, resp.text
 
 
 def test_webhook_rejects_hex_signature(client, monkeypatch):
-    """Hex digests must NOT be accepted — Svix is base64-only. Guards
-    against accidental regression to the old hex-accepting behaviour."""
+    """Hex digests must NOT be accepted — Svix is base64-only."""
     monkeypatch.setenv("RESEND_WEBHOOK_SECRET", "shh")
     body = json.dumps(
         {
@@ -287,11 +297,43 @@ def test_webhook_rejects_hex_signature(client, monkeypatch):
             "data": {"email_id": "msg_test_123"},
         }
     ).encode("utf-8")
+    ts = str(int(time.time()))
     sig_hex = hmac.new(b"shh", body, hashlib.sha256).hexdigest()
     resp = client.post(
         "/api/email/webhook",
         content=body,
-        headers={"svix-signature": f"v1,{sig_hex}"},
+        headers={
+            "svix-id": "msg_hex",
+            "svix-timestamp": ts,
+            "svix-signature": f"v1,{sig_hex}",
+        },
+    )
+    assert resp.status_code == 401
+
+
+def test_webhook_rejects_expired_timestamp(client, monkeypatch):
+    """Timestamps older than 5 minutes must be rejected (replay protection)."""
+    monkeypatch.setenv("RESEND_WEBHOOK_SECRET", "shh")
+    body = json.dumps(
+        {
+            "type": "email.delivered",
+            "data": {"email_id": "msg_test_123"},
+        }
+    ).encode("utf-8")
+    old_ts = int(time.time()) - 600  # 10 minutes ago
+    headers = _svix_sign(body, "shh", timestamp=old_ts)
+    resp = client.post("/api/email/webhook", content=body, headers=headers)
+    assert resp.status_code == 401
+
+
+def test_webhook_rejects_missing_svix_headers(client, monkeypatch):
+    """Missing svix-id or svix-timestamp headers must be rejected."""
+    monkeypatch.setenv("RESEND_WEBHOOK_SECRET", "shh")
+    body = b'{"type":"email.delivered","data":{"email_id":"x"}}'
+    resp = client.post(
+        "/api/email/webhook",
+        content=body,
+        headers={"svix-signature": "v1,anything"},
     )
     assert resp.status_code == 401
 

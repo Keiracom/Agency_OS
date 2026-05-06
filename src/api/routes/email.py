@@ -87,13 +87,30 @@ def _connect():
 # ── Bounce ratchet ──────────────────────────────────────────────────────────
 
 
-def _bounce_ratchet(data: dict) -> None:
-    """On bounce/complaint, set dm_email_verified=false in business_universe.
+def _bounce_ratchet(data: dict, event_type: str) -> None:
+    """On hard bounce or complaint, unverify BU email and suppress if complained.
 
-    Resend webhook ``data`` contains ``to`` (list of recipient emails).
-    We match against ``dm_email`` in BU and mark unverified so future
-    campaigns skip this address.
+    Resend bounce ``data`` contains ``bounce_type`` ("hard" or "soft") inside
+    a nested ``bounce`` object (or top-level for older payloads). Soft bounces
+    (mailbox full, transient) are logged but not ratcheted — they don't
+    indicate a permanently bad address.
+
+    Complaints always suppress (global_suppression insert) per Spam Act 2003.
     """
+    is_complaint = event_type == "email.complained"
+    is_bounce = event_type == "email.bounced"
+
+    # Resend puts bounce details in data.bounce or data directly
+    bounce_info = data.get("bounce") or data
+    bounce_type = str(bounce_info.get("bounce_type", "")).lower()
+
+    # Only ratchet on hard bounces or complaints — soft bounces are transient
+    if is_bounce and bounce_type != "hard":
+        logger.info(
+            "[email/bounce-ratchet] soft bounce ignored (type=%s)", bounce_type,
+        )
+        return
+
     recipients = data.get("to") or []
     if isinstance(recipients, str):
         recipients = [recipients]
@@ -101,20 +118,36 @@ def _bounce_ratchet(data: dict) -> None:
         return
     try:
         with _connect() as conn, conn.cursor() as cur:
-            for email in recipients:
-                email = str(email).strip().lower()
-                if not email:
+            for email_addr in recipients:
+                email_addr = str(email_addr).strip().lower()
+                if not email_addr:
                     continue
+                # Update BU: unverify + zero confidence
                 cur.execute(
                     "UPDATE public.business_universe "
-                    "SET dm_email_verified = false "
-                    "WHERE LOWER(dm_email) = %s AND dm_email_verified IS DISTINCT FROM false",
-                    (email,),
+                    "SET dm_email_verified = false, dm_email_confidence = 0 "
+                    "WHERE LOWER(dm_email) = %s "
+                    "AND dm_email_verified IS DISTINCT FROM false",
+                    (email_addr,),
                 )
                 if cur.rowcount > 0:
                     logger.info(
-                        "[email/bounce-ratchet] marked dm_email unverified: %s (%d rows)",
-                        email, cur.rowcount,
+                        "[email/bounce-ratchet] unverified: %s (%d rows, reason=%s)",
+                        email_addr, cur.rowcount,
+                        "complaint" if is_complaint else "hard_bounce",
+                    )
+                # Complaints → global suppression (Spam Act compliance)
+                if is_complaint:
+                    cur.execute(
+                        "INSERT INTO public.global_suppression "
+                        "(id, email, reason, source, added_by, created_at) "
+                        "VALUES (gen_random_uuid(), %s, %s, %s, %s, NOW()) "
+                        "ON CONFLICT (email) DO NOTHING",
+                        (email_addr, "complaint", "resend_webhook", "system"),
+                    )
+                    logger.info(
+                        "[email/bounce-ratchet] suppressed (complaint): %s",
+                        email_addr,
                     )
             conn.commit()
     except Exception as exc:
@@ -306,8 +339,8 @@ async def post_webhook(request: Request) -> dict[str, Any]:
         logger.error("[email/webhook] db update failed: %s", exc)
         raise HTTPException(status_code=500, detail="db error") from exc
 
-    # Bounce ratchet: hard bounce → mark dm_email as unverified in BU
+    # Bounce ratchet: hard bounce/complaint → unverify + suppress
     if event_type in ("email.bounced", "email.complained"):
-        _bounce_ratchet(data)
+        _bounce_ratchet(data, event_type)
 
     return {"ok": True, "message_id": message_id, "applied_status": new_status}

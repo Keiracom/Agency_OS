@@ -427,3 +427,93 @@ def test_bounce_ratchet_skips_empty_to():
 
         email_route._bounce_ratchet({}, "email.bounced")
         mock_conn.assert_not_called()
+
+
+# ── _handle_reply ────────────────────────────────────────────────────────────
+
+
+def test_handle_reply_updates_bu_category_baselines():
+    """email.replied event merges email_reply jsonb onto BU."""
+    with patch.object(email_route, "_connect") as mock_conn:
+        cur = MagicMock()
+        cur.rowcount = 1
+        conn = MagicMock()
+        conn.cursor.return_value.__enter__ = MagicMock(return_value=cur)
+        conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+        conn.__enter__ = MagicMock(return_value=conn)
+        conn.__exit__ = MagicMock(return_value=False)
+        mock_conn.return_value = conn
+
+        email_route._handle_reply({
+            "to": ["replier@example.com"],
+            "subject": "Re: testing the loop",
+            "message_id": "msg_123",
+        })
+
+        cur.execute.assert_called_once()
+        sql_arg = cur.execute.call_args[0][0]
+        assert "category_baselines" in sql_arg
+        assert "email_reply" in sql_arg
+        assert "last_signal_refresh = NOW()" in sql_arg
+        # Email is lower-cased in the WHERE clause param
+        assert cur.execute.call_args[0][1][1] == "replier@example.com"
+
+
+def test_handle_reply_handles_string_to_field():
+    """_handle_reply handles 'to' as a string (Resend can deliver either)."""
+    with patch.object(email_route, "_connect") as mock_conn:
+        cur = MagicMock()
+        cur.rowcount = 0
+        conn = MagicMock()
+        conn.cursor.return_value.__enter__ = MagicMock(return_value=cur)
+        conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+        conn.__enter__ = MagicMock(return_value=conn)
+        conn.__exit__ = MagicMock(return_value=False)
+        mock_conn.return_value = conn
+
+        email_route._handle_reply({"to": "single@example.com"})
+        cur.execute.assert_called_once()
+
+
+def test_handle_reply_skips_empty_to():
+    """_handle_reply does nothing when 'to' is empty or missing."""
+    with patch.object(email_route, "_connect") as mock_conn:
+        email_route._handle_reply({"to": []})
+        mock_conn.assert_not_called()
+
+        email_route._handle_reply({})
+        mock_conn.assert_not_called()
+
+
+def test_handle_reply_caps_subject_at_200_chars():
+    """Long subjects are truncated to 200 chars to keep jsonb compact."""
+    with patch.object(email_route, "_connect") as mock_conn:
+        cur = MagicMock()
+        cur.rowcount = 1
+        conn = MagicMock()
+        conn.cursor.return_value.__enter__ = MagicMock(return_value=cur)
+        conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+        conn.__enter__ = MagicMock(return_value=conn)
+        conn.__exit__ = MagicMock(return_value=False)
+        mock_conn.return_value = conn
+
+        long_subject = "Re: " + "x" * 500
+        email_route._handle_reply({
+            "to": ["x@y.com"],
+            "subject": long_subject,
+        })
+
+        # Pull the jsonb payload arg (first positional)
+        payload_json = cur.execute.call_args[0][1][0]
+        assert len(payload_json) < 500  # jsonb itself is bounded
+        # The subject in the payload should be truncated
+        import json as _json
+        payload = _json.loads(payload_json)
+        assert len(payload["subject"]) <= 200
+
+
+def test_handle_reply_swallows_db_errors():
+    """DB failure during reply handling logs but doesn't raise — webhook still 200s."""
+    with patch.object(email_route, "_connect", side_effect=RuntimeError("db down")):
+        # Should not raise
+        email_route._handle_reply({"to": ["x@y.com"]})

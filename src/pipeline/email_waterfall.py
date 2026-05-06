@@ -507,6 +507,8 @@ async def _prospeo_lookup(
             from src.config.settings import settings
 
             if ProspeoClient is None or not settings.prospeo_api_key:
+                if not settings.prospeo_api_key:
+                    logger.warning("email_waterfall L2.5 prospeo skipped: PROSPEO_API_KEY not set")
                 return None
             client = ProspeoClient(api_key=settings.prospeo_api_key)
             return await client.find_email(

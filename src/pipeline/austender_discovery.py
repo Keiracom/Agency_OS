@@ -243,10 +243,7 @@ async def run_ingest(
                 result.filtered_non_au += 1
                 continue
 
-            if (
-                event.contract_value_aud is None
-                or event.contract_value_aud < value_min_aud
-            ):
+            if event.contract_value_aud is None or event.contract_value_aud < value_min_aud:
                 result.filtered_low_value += 1
                 continue
 

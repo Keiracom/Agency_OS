@@ -156,6 +156,29 @@ def test_unsubscribe_rejects_invalid_email(client):
     assert resp.status_code == 400
 
 
+def test_send_db_failure_returns_202_with_warning(client, monkeypatch):
+    """When Resend send succeeds but DB INSERT fails, return 202 with warning."""
+    monkeypatch.setattr(
+        email_route,
+        "send_email",
+        lambda **kw: {"id": "msg_db_fail"},
+    )
+    monkeypatch.setattr(
+        email_route,
+        "_connect",
+        lambda: (_ for _ in ()).throw(RuntimeError("db down")),
+    )
+    resp = client.post(
+        "/api/email/send",
+        json={"to": "x@y.com", "subject": "s", "body_text": "t"},
+    )
+    assert resp.status_code == 202
+    body = resp.json()
+    assert body["message_id"] == "msg_db_fail"
+    assert body["warning"] == "tracking_insert_failed"
+    assert "DB insert failed" in body["detail"]
+
+
 def test_send_rejects_no_body(client):
     resp = client.post(
         "/api/email/send",

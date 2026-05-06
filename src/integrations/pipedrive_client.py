@@ -138,7 +138,9 @@ def _request(
         if status == 429:
             if attempt < 3:
                 delay = backoff_delays[attempt]
-                LOGGER.warning("[pipedrive] 429 rate_limit, backoff %ds (attempt %d)", delay, attempt + 1)
+                LOGGER.warning(
+                    "[pipedrive] 429 rate_limit, backoff %ds (attempt %d)", delay, attempt + 1
+                )
                 time.sleep(delay)
                 last_exc = RuntimeError(f"[pipedrive] 429 rate limit after {attempt + 1} attempts")
                 continue

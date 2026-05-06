@@ -88,6 +88,7 @@ class CampaignExecutor:
         from_address: str | None = None,
         filter_industry: str | None = None,
         min_confidence: int = 70,
+        campaign_name: str | None = None,
     ):
         self.step = step
         self.daily_limit = daily_limit
@@ -98,13 +99,17 @@ class CampaignExecutor:
         )
         self.filter_industry = filter_industry
         self.min_confidence = min_confidence
+        self.campaign_name = campaign_name or "default"
         self._results: list[SendResult] = []
 
         # Load sequence
         if sequence_steps:
             self.steps = [SequenceStep(**self._normalize_step(s)) for s in sequence_steps]
         elif sequence_path:
-            self.steps = self._load_sequence(sequence_path)
+            data = json.loads(Path(sequence_path).read_text())
+            if campaign_name is None and "campaign_name" in data:
+                self.campaign_name = data["campaign_name"]
+            self.steps = self._load_sequence_data(data)
         else:
             raise ValueError("Either sequence_path or sequence_steps required")
 
@@ -131,18 +136,17 @@ class CampaignExecutor:
         return {k: v for k, v in out.items() if k in valid}
 
     @staticmethod
-    def _load_sequence(path: str) -> list[SequenceStep]:
-        """Load sequence steps from a JSON file.
+    def _load_sequence_data(data: dict) -> list[SequenceStep]:
+        """Parse sequence steps from a pre-loaded dict.
 
         Accepts both schema variants:
         - {"steps": [...]} (CampaignExecutor native)
         - {"emails": [...]} (campaign_sender.py / Aiden's format)
         """
-        data = json.loads(Path(path).read_text())
         steps_data = data.get("steps") or data.get("emails") or data
         if isinstance(steps_data, list):
             return [SequenceStep(**CampaignExecutor._normalize_step(s)) for s in steps_data]
-        raise ValueError(f"Invalid sequence format in {path}")
+        raise ValueError("Invalid sequence format: expected 'steps' or 'emails' list")
 
     def _render_template(self, template: str, prospect: ProspectRecord) -> str:
         """Replace merge tags in a template string.
@@ -190,10 +194,11 @@ class CampaignExecutor:
         if dsn.startswith("postgresql+asyncpg://"):
             dsn = dsn.replace("postgresql+asyncpg://", "postgresql://", 1)
 
-        params: list = [self.min_confidence, self.daily_limit]
+        # $1=min_confidence, $2=limit, $3=campaign_name, $4=step_number
+        params: list = [self.min_confidence, self.daily_limit, self.campaign_name, self.step]
         industry_clause = ""
         if self.filter_industry:
-            industry_clause = "AND gmb_category ILIKE $3"
+            industry_clause = "AND gmb_category ILIKE $5"
             params.append(f"%{self.filter_industry}%")
 
         sql = (
@@ -211,6 +216,11 @@ class CampaignExecutor:
             "  AND NOT EXISTS ("
             "    SELECT 1 FROM public.global_suppression gs "
             "    WHERE LOWER(gs.email) = LOWER(bu.dm_email)"
+            "  ) "
+            "  AND NOT EXISTS ("
+            "    SELECT 1 FROM public.campaign_sends cs "
+            "    WHERE cs.dm_email = bu.dm_email "
+            "    AND cs.campaign_name = $3 AND cs.step_number = $4"
             "  ) "
             f"  {industry_clause} "
             "ORDER BY COALESCE(dm_email_confidence, 0) DESC "
@@ -235,6 +245,41 @@ class CampaignExecutor:
             ]
         finally:
             await conn.close()
+
+    async def _record_send(
+        self,
+        prospect: ProspectRecord,
+        step: SequenceStep,
+        message_id: str,
+    ) -> None:
+        """Record a successful send in campaign_sends to prevent duplicates."""
+        import asyncpg
+
+        dsn = os.environ.get("DATABASE_URL_MIGRATIONS") or os.environ.get("DATABASE_URL", "")
+        if dsn.startswith("postgresql+asyncpg://"):
+            dsn = dsn.replace("postgresql+asyncpg://", "postgresql://", 1)
+        try:
+            conn = await asyncpg.connect(dsn)
+            try:
+                await conn.execute(
+                    "INSERT INTO public.campaign_sends "
+                    "(prospect_id, dm_email, campaign_name, step_number, message_id, status) "
+                    "VALUES ($1::uuid, $2, $3, $4, $5, 'sent') "
+                    "ON CONFLICT (campaign_name, step_number, dm_email) DO NOTHING",
+                    prospect.id,
+                    prospect.dm_email,
+                    self.campaign_name,
+                    step.step_number,
+                    message_id,
+                )
+            finally:
+                await conn.close()
+        except Exception as exc:
+            logger.error(
+                "[campaign] failed to record send: to=%s error=%s",
+                prospect.dm_email,
+                exc,
+            )
 
     async def _send_one(self, prospect: ProspectRecord, step: SequenceStep) -> SendResult:
         """Send one email to a prospect for a given sequence step."""
@@ -268,6 +313,7 @@ class CampaignExecutor:
                 prospect.dm_email,
                 message_id,
             )
+            await self._record_send(prospect, step, message_id)
             return SendResult(
                 prospect_id=prospect.id,
                 email=prospect.dm_email,

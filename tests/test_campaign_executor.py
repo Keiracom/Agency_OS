@@ -157,3 +157,30 @@ def test_compat_shim_aiden_json(tmp_path):
     assert len(executor.steps) == 1
     assert executor.steps[0].step_number == 1
     assert executor.steps[0].subject_template == "Test subject"
+    assert executor.campaign_name == "test"  # extracted from JSON
+
+
+def test_campaign_name_from_json(tmp_path):
+    """campaign_name is extracted from the sequence JSON when not provided."""
+    seq = {"campaign_name": "dental_intro_v1", "steps": SAMPLE_STEPS}
+    seq_file = tmp_path / "named.json"
+    seq_file.write_text(json.dumps(seq))
+    executor = CampaignExecutor(sequence_path=str(seq_file), step=1)
+    assert executor.campaign_name == "dental_intro_v1"
+
+
+def test_campaign_name_override(tmp_path):
+    """Explicit campaign_name overrides the JSON value."""
+    seq = {"campaign_name": "from_json", "steps": SAMPLE_STEPS}
+    seq_file = tmp_path / "override.json"
+    seq_file.write_text(json.dumps(seq))
+    executor = CampaignExecutor(
+        sequence_path=str(seq_file), step=1, campaign_name="explicit_override"
+    )
+    assert executor.campaign_name == "explicit_override"
+
+
+def test_campaign_name_default():
+    """campaign_name defaults to 'default' when not provided."""
+    executor = CampaignExecutor(sequence_steps=SAMPLE_STEPS, step=1)
+    assert executor.campaign_name == "default"

@@ -10,6 +10,7 @@ Reads JSON outputs from test stages and upserts to BU with:
 claimed_by = NULL (unclaimed inventory).
 From Stage 5 onwards: write to BOTH JSON and BU directly.
 """
+
 import asyncio
 import json
 import os
@@ -18,6 +19,7 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dotenv import load_dotenv
+
 load_dotenv("/home/elliotbot/.config/agency-os/.env")
 
 import asyncpg
@@ -41,10 +43,14 @@ async def main():
     t0 = time.monotonic()
 
     # ── Load all stage data ───────────────────────────────────────────────────
-    with open(STAGE1) as f: s1 = json.load(f)
-    with open(STAGE2) as f: s2 = json.load(f)
-    with open(STAGE3) as f: s3 = json.load(f)
-    with open(STAGE4) as f: s4 = json.load(f)
+    with open(STAGE1) as f:
+        s1 = json.load(f)
+    with open(STAGE2) as f:
+        s2 = json.load(f)
+    with open(STAGE3) as f:
+        s3 = json.load(f)
+    with open(STAGE4) as f:
+        s4 = json.load(f)
 
     # Index by domain
     s2_by_domain = {r["domain"]: r for r in s2["domains"]}
@@ -61,9 +67,9 @@ async def main():
 
     # ── Upsert all domains ────────────────────────────────────────────────────
     inserted = 0
-    updated  = 0
-    errors   = 0
-    done     = 0
+    updated = 0
+    errors = 0
+    done = 0
 
     async def upsert_domain(item):
         nonlocal inserted, updated, errors, done
@@ -84,36 +90,36 @@ async def main():
         comp = s3.get("comprehension") or {}
         tech = comp.get("technology_signals") or {}
         has_analytics = bool(tech.get("has_analytics"))
-        has_ads_tag   = bool(tech.get("has_ads_tag"))
-        has_pixel     = bool(tech.get("has_meta_pixel"))
-        has_booking   = bool(tech.get("has_booking_system"))
-        cms           = tech.get("cms") or ""
-        team_size     = comp.get("team_size_indicator", "unknown")
+        has_ads_tag = bool(tech.get("has_ads_tag"))
+        has_pixel = bool(tech.get("has_meta_pixel"))
+        has_booking = bool(tech.get("has_booking_system"))
+        cms = tech.get("cms") or ""
+        team_size = comp.get("team_size_indicator", "unknown")
         content_fresh = comp.get("content_freshness", "unknown")
-        services      = json.dumps(comp.get("services", []))
+        services = json.dumps(comp.get("services", []))
 
         # Stage 4 affordability
         s4r = s4_by_domain.get(domain, {})
-        abn_matched   = bool(s4r.get("abn_matched"))
-        entity_type   = s4r.get("abn_entity_type")
-        gst_reg       = s4r.get("gst_registered")
-        afford_score  = s4r.get("afford_score", 0)
-        afford_band   = s4r.get("afford_band", "unknown")
+        abn_matched = bool(s4r.get("abn_matched"))
+        entity_type = s4r.get("abn_entity_type")
+        gst_reg = s4r.get("gst_registered")
+        afford_score = s4r.get("afford_score", 0)
+        afford_band = s4r.get("afford_band", "unknown")
         afford_reject = bool(s4r.get("afford_hard_gate"))
-        abn_conf      = s4r.get("abn_confidence", "none")
+        abn_conf = s4r.get("abn_confidence", "none")
 
         # Determine furthest stage and status
         if domain in s4_by_domain:
-            stage  = 4
+            stage = 4
             status = "rejected" if afford_reject else "afford_passed"
         elif domain in s3_by_domain:
-            stage  = 3
+            stage = 3
             status = "comprehended"
         elif domain in s2_by_domain:
-            stage  = 2
+            stage = 2
             status = "scraped" if au_pass else "non_au"
         else:
-            stage  = 1
+            stage = 1
             status = "discovered"
 
         try:
@@ -141,9 +147,18 @@ async def main():
                                 pipeline_updated_at  = NOW(),
                                 updated_at           = NOW()
                             WHERE domain = $1""",
-                            domain, organic_etv, stage, status,
-                            has_analytics, has_ads_tag, has_pixel, has_booking,
-                            cms, abn_matched, entity_type, gst_reg,
+                            domain,
+                            organic_etv,
+                            stage,
+                            status,
+                            has_analytics,
+                            has_ads_tag,
+                            has_pixel,
+                            has_booking,
+                            cms,
+                            abn_matched,
+                            entity_type,
+                            gst_reg,
                         )
                     updated += 1
                 else:
@@ -165,10 +180,20 @@ async def main():
                             'dfs_domain_metrics', NOW(), NOW(),
                             NOW(), NOW()
                         )""",
-                        domain, f"https://{domain}", display, organic_etv, stage,
-                        status, has_analytics, has_ads_tag,
-                        has_pixel, has_booking, cms,
-                        abn_matched, entity_type, gst_reg,
+                        domain,
+                        f"https://{domain}",
+                        display,
+                        organic_etv,
+                        stage,
+                        status,
+                        has_analytics,
+                        has_ads_tag,
+                        has_pixel,
+                        has_booking,
+                        cms,
+                        abn_matched,
+                        entity_type,
+                        gst_reg,
                     )
                     inserted += 1
         except Exception as exc:
@@ -179,10 +204,13 @@ async def main():
         done += 1
         if done % 200 == 0:
             elapsed = time.monotonic() - t0
-            print(f"  {done}/{len(all_domains)} | {elapsed:.0f}s | inserted={inserted} updated={updated} errors={errors}")
+            print(
+                f"  {done}/{len(all_domains)} | {elapsed:.0f}s | inserted={inserted} updated={updated} errors={errors}"
+            )
 
     # Run with concurrency (pool handles DB side)
     sem = asyncio.Semaphore(25)
+
     async def bounded(item):
         async with sem:
             await upsert_domain(item)
@@ -190,7 +218,7 @@ async def main():
     await asyncio.gather(*[bounded(item) for item in all_domains])
 
     elapsed = time.monotonic() - t0
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"BACKFILL COMPLETE")
     print(f"  Inserted: {inserted}")
     print(f"  Updated:  {updated}")

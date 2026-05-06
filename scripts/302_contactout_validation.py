@@ -2,6 +2,7 @@
 Validation script: ContactOut 20-profile AU SMB enrichment test.
 Uses synchronous httpx directly (standalone runner, not async).
 """
+
 import os
 import sys
 import json
@@ -25,26 +26,106 @@ if not CONTACTOUT_API_KEY:
 print(f"ContactOut key: {CONTACTOUT_API_KEY[:8]}...")
 
 PROFILES = [
-    {"url": "https://au.linkedin.com/in/joealphonse", "known_company": "Oatlands Dental", "known_domain": "oatlandsdental.com.au"},
-    {"url": "https://au.linkedin.com/in/duncancopp", "known_company": "Paddington Dental Surgery", "known_domain": "thepaddingtondentalsurgery.com.au"},
-    {"url": "https://au.linkedin.com/in/stephen-wilson-39a96b41", "known_company": "Allabout Plumbing", "known_domain": "allaboutplumbing.net.au"},
-    {"url": "https://au.linkedin.com/in/karl-abel-b50b494a", "known_company": "Melbourne Plumbing Group", "known_domain": "melbourneplumbinggroup.com.au"},
-    {"url": "https://au.linkedin.com/in/andrew-scott-55635612", "known_company": "Highbury Plumbing", "known_domain": "highburyplumbing.com.au"},
-    {"url": "https://au.linkedin.com/in/sam-bell-b7aa12b6", "known_company": "Evans Plumbing", "known_domain": "evansplumbing.com.au"},
-    {"url": "https://au.linkedin.com/in/sean-parsonage-b3899422", "known_company": "Spadental", "known_domain": "spadental.com.au"},
-    {"url": "https://au.linkedin.com/in/david-jones-16112b116", "known_company": "North Shore Dental", "known_domain": "northsydneydental.com.au"},
-    {"url": "https://au.linkedin.com/in/josh-wilkinson-7978ab282", "known_company": "McGrath Plumbing", "known_domain": "mcgp.com.au"},
-    {"url": "https://au.linkedin.com/in/michael-garbett-2b2108aa", "known_company": "Mortons Solicitors", "known_domain": "moray.com.au"},
-    {"url": "https://au.linkedin.com/in/andrew-johnson-aa7aa431", "known_company": "AJ&Co Legal", "known_domain": "ajandco.com.au"},
-    {"url": "https://au.linkedin.com/in/travisschultz1", "known_company": "Travis Schultz & Partners", "known_domain": "schultzlaw.com.au"},
-    {"url": "https://au.linkedin.com/in/catherine-anne-walsh-5b635b35", "known_company": "Sydney Dental", "known_domain": "thedentist.net.au"},
-    {"url": "https://au.linkedin.com/in/mark-nieh-7174958", "known_company": "Sydney CBD Dentistry", "known_domain": "sydneycbddentistry.com.au"},
-    {"url": "https://au.linkedin.com/in/fadi-shawy-8a44946a", "known_company": "Dental Practice", "known_domain": ""},
-    {"url": "https://au.linkedin.com/in/peter-bakouris-0a8964113", "known_company": "Kalo Dental", "known_domain": "kalodental.com.au"},
-    {"url": "https://au.linkedin.com/in/grant-lawler-59271b192", "known_company": "Diverse Plumbing", "known_domain": "diverseplumbing.com.au"},
-    {"url": "https://au.linkedin.com/in/preetikennedy", "known_company": "Shopa Marketing", "known_domain": "shopamarketing.com.au"},
-    {"url": "https://au.linkedin.com/in/markkreuzer1", "known_company": "The Creative Works", "known_domain": "thecreativeworks.com.au"},
-    {"url": "https://au.linkedin.com/in/stuart-edwards-3b334a42", "known_company": "Digital Movement", "known_domain": "digitalmovement.com.au"},
+    {
+        "url": "https://au.linkedin.com/in/joealphonse",
+        "known_company": "Oatlands Dental",
+        "known_domain": "oatlandsdental.com.au",
+    },
+    {
+        "url": "https://au.linkedin.com/in/duncancopp",
+        "known_company": "Paddington Dental Surgery",
+        "known_domain": "thepaddingtondentalsurgery.com.au",
+    },
+    {
+        "url": "https://au.linkedin.com/in/stephen-wilson-39a96b41",
+        "known_company": "Allabout Plumbing",
+        "known_domain": "allaboutplumbing.net.au",
+    },
+    {
+        "url": "https://au.linkedin.com/in/karl-abel-b50b494a",
+        "known_company": "Melbourne Plumbing Group",
+        "known_domain": "melbourneplumbinggroup.com.au",
+    },
+    {
+        "url": "https://au.linkedin.com/in/andrew-scott-55635612",
+        "known_company": "Highbury Plumbing",
+        "known_domain": "highburyplumbing.com.au",
+    },
+    {
+        "url": "https://au.linkedin.com/in/sam-bell-b7aa12b6",
+        "known_company": "Evans Plumbing",
+        "known_domain": "evansplumbing.com.au",
+    },
+    {
+        "url": "https://au.linkedin.com/in/sean-parsonage-b3899422",
+        "known_company": "Spadental",
+        "known_domain": "spadental.com.au",
+    },
+    {
+        "url": "https://au.linkedin.com/in/david-jones-16112b116",
+        "known_company": "North Shore Dental",
+        "known_domain": "northsydneydental.com.au",
+    },
+    {
+        "url": "https://au.linkedin.com/in/josh-wilkinson-7978ab282",
+        "known_company": "McGrath Plumbing",
+        "known_domain": "mcgp.com.au",
+    },
+    {
+        "url": "https://au.linkedin.com/in/michael-garbett-2b2108aa",
+        "known_company": "Mortons Solicitors",
+        "known_domain": "moray.com.au",
+    },
+    {
+        "url": "https://au.linkedin.com/in/andrew-johnson-aa7aa431",
+        "known_company": "AJ&Co Legal",
+        "known_domain": "ajandco.com.au",
+    },
+    {
+        "url": "https://au.linkedin.com/in/travisschultz1",
+        "known_company": "Travis Schultz & Partners",
+        "known_domain": "schultzlaw.com.au",
+    },
+    {
+        "url": "https://au.linkedin.com/in/catherine-anne-walsh-5b635b35",
+        "known_company": "Sydney Dental",
+        "known_domain": "thedentist.net.au",
+    },
+    {
+        "url": "https://au.linkedin.com/in/mark-nieh-7174958",
+        "known_company": "Sydney CBD Dentistry",
+        "known_domain": "sydneycbddentistry.com.au",
+    },
+    {
+        "url": "https://au.linkedin.com/in/fadi-shawy-8a44946a",
+        "known_company": "Dental Practice",
+        "known_domain": "",
+    },
+    {
+        "url": "https://au.linkedin.com/in/peter-bakouris-0a8964113",
+        "known_company": "Kalo Dental",
+        "known_domain": "kalodental.com.au",
+    },
+    {
+        "url": "https://au.linkedin.com/in/grant-lawler-59271b192",
+        "known_company": "Diverse Plumbing",
+        "known_domain": "diverseplumbing.com.au",
+    },
+    {
+        "url": "https://au.linkedin.com/in/preetikennedy",
+        "known_company": "Shopa Marketing",
+        "known_domain": "shopamarketing.com.au",
+    },
+    {
+        "url": "https://au.linkedin.com/in/markkreuzer1",
+        "known_company": "The Creative Works",
+        "known_domain": "thecreativeworks.com.au",
+    },
+    {
+        "url": "https://au.linkedin.com/in/stuart-edwards-3b334a42",
+        "known_company": "Digital Movement",
+        "known_domain": "digitalmovement.com.au",
+    },
 ]
 
 HEADERS = {
@@ -116,7 +197,9 @@ for i, prof in enumerate(PROFILES, 1):
             company = profile.get("company", {}) or {}
             company_domain = company.get("domain", "") or company.get("email_domain", "") or ""
 
-            best_email, confidence = select_best_email(work_emails, all_emails, known_domain or company_domain)
+            best_email, confidence = select_best_email(
+                work_emails, all_emails, known_domain or company_domain
+            )
             best_phone, is_au_mobile = select_best_phone(phones)
 
             result = {
@@ -138,28 +221,58 @@ for i, prof in enumerate(PROFILES, 1):
             print(f"OK  name={full_name!r:30s} email={best_email or '—':40s} conf={confidence}")
         elif status_code == 404:
             result = {
-                "idx": i, "slug": url.split("/")[-1], "found": False,
-                "http_status": 404, "full_name": "", "work_emails": [], "all_emails": [],
-                "phones": [], "company_name": "", "company_domain": "",
-                "best_email": "", "confidence": "none", "best_phone": "", "is_au_mobile": False,
+                "idx": i,
+                "slug": url.split("/")[-1],
+                "found": False,
+                "http_status": 404,
+                "full_name": "",
+                "work_emails": [],
+                "all_emails": [],
+                "phones": [],
+                "company_name": "",
+                "company_domain": "",
+                "best_email": "",
+                "confidence": "none",
+                "best_phone": "",
+                "is_au_mobile": False,
             }
             print("404 not found")
         else:
             result = {
-                "idx": i, "slug": url.split("/")[-1], "found": False,
-                "http_status": status_code, "full_name": "", "work_emails": [], "all_emails": [],
-                "phones": [], "company_name": "", "company_domain": "",
-                "best_email": "", "confidence": "error", "best_phone": "", "is_au_mobile": False,
+                "idx": i,
+                "slug": url.split("/")[-1],
+                "found": False,
+                "http_status": status_code,
+                "full_name": "",
+                "work_emails": [],
+                "all_emails": [],
+                "phones": [],
+                "company_name": "",
+                "company_domain": "",
+                "best_email": "",
+                "confidence": "error",
+                "best_phone": "",
+                "is_au_mobile": False,
                 "error": resp.text[:200],
             }
             print(f"HTTP {status_code}: {resp.text[:100]}")
 
     except Exception as e:
         result = {
-            "idx": i, "slug": url.split("/")[-1], "found": False,
-            "http_status": 0, "full_name": "", "work_emails": [], "all_emails": [],
-            "phones": [], "company_name": "", "company_domain": "",
-            "best_email": "", "confidence": "error", "best_phone": "", "is_au_mobile": False,
+            "idx": i,
+            "slug": url.split("/")[-1],
+            "found": False,
+            "http_status": 0,
+            "full_name": "",
+            "work_emails": [],
+            "all_emails": [],
+            "phones": [],
+            "company_name": "",
+            "company_domain": "",
+            "best_email": "",
+            "confidence": "error",
+            "best_phone": "",
+            "is_au_mobile": False,
             "error": str(e),
         }
         print(f"ERROR: {e}")
@@ -177,20 +290,22 @@ no_email = [r for r in found if r["confidence"] == "none"]
 with_phone = [r for r in found if r["best_phone"]]
 au_mobile = [r for r in found if r["is_au_mobile"]]
 
-print("\n" + "="*80)
+print("\n" + "=" * 80)
 print("RESULTS TABLE")
-print("="*80)
+print("=" * 80)
 print(f"{'#':>2}  {'Slug':<35} {'Name':<25} {'Email':<40} {'Conf':<20} {'Phone':<15} AU?")
-print("-"*80)
+print("-" * 80)
 for r in results:
     found_str = r["full_name"][:24] if r["found"] else "(not found)"
     email_str = r["best_email"][:39] if r["best_email"] else "—"
     conf_str = r["confidence"][:19]
     phone_str = r["best_phone"][:14] if r["best_phone"] else "—"
     au_str = "Y" if r["is_au_mobile"] else ("n" if r["best_phone"] else "—")
-    print(f"{r['idx']:>2}  {r['slug']:<35} {found_str:<25} {email_str:<40} {conf_str:<20} {phone_str:<15} {au_str}")
+    print(
+        f"{r['idx']:>2}  {r['slug']:<35} {found_str:<25} {email_str:<40} {conf_str:<20} {phone_str:<15} {au_str}"
+    )
 
-print("="*80)
+print("=" * 80)
 print(f"\nSUMMARY ({len(PROFILES)} profiles)")
 print(f"  Profiles found:      {len(found)}/{len(PROFILES)}")
 print(f"  With any email:      {len(with_email)}/{len(found)}")

@@ -65,15 +65,16 @@ class TestJinaTier:
     @pytest.mark.asyncio
     async def test_jina_success_returns_tier2(self, scraper):
         """Jina 200 + long markdown → EngineResult with tier_used=2."""
-        scraper._url_validator.validate_and_normalize = AsyncMock(
-            return_value=_make_url_valid()
-        )
+        scraper._url_validator.validate_and_normalize = AsyncMock(return_value=_make_url_valid())
 
         jina_response = _make_response(200, LONG_MARKDOWN)
 
-        with patch.object(type(scraper), "camoufox_enabled", new_callable=lambda: property(lambda self: False)), \
-             patch("httpx.AsyncClient") as mock_client_cls:
-
+        with (
+            patch.object(
+                type(scraper), "camoufox_enabled", new_callable=lambda: property(lambda self: False)
+            ),
+            patch("httpx.AsyncClient") as mock_client_cls,
+        ):
             mock_ctx = AsyncMock()
             mock_ctx.__aenter__ = AsyncMock(return_value=mock_ctx)
             mock_ctx.__aexit__ = AsyncMock(return_value=False)
@@ -91,9 +92,7 @@ class TestJinaTier:
     @pytest.mark.asyncio
     async def test_jina_short_content_falls_through(self, scraper):
         """Jina 200 but short content (<200 chars) → falls to next tier."""
-        scraper._url_validator.validate_and_normalize = AsyncMock(
-            return_value=_make_url_valid()
-        )
+        scraper._url_validator.validate_and_normalize = AsyncMock(return_value=_make_url_valid())
 
         # Jina returns too-short content; BD also insufficient
         short_response = _make_response(200, "Too short")
@@ -105,10 +104,13 @@ class TestJinaTier:
         async def fake_post(*args, **kwargs):
             return bd_response
 
-        with patch.object(type(scraper), "camoufox_enabled", new_callable=lambda: property(lambda self: False)), \
-             patch("httpx.AsyncClient") as mock_client_cls, \
-             patch.dict("os.environ", {"BRIGHTDATA_API_KEY": "test-key"}):
-
+        with (
+            patch.object(
+                type(scraper), "camoufox_enabled", new_callable=lambda: property(lambda self: False)
+            ),
+            patch("httpx.AsyncClient") as mock_client_cls,
+            patch.dict("os.environ", {"BRIGHTDATA_API_KEY": "test-key"}),
+        ):
             mock_ctx = AsyncMock()
             mock_ctx.__aenter__ = AsyncMock(return_value=mock_ctx)
             mock_ctx.__aexit__ = AsyncMock(return_value=False)
@@ -124,9 +126,7 @@ class TestJinaTier:
     @pytest.mark.asyncio
     async def test_jina_exception_falls_through(self, scraper):
         """Jina raises exception → falls to Tier 3."""
-        scraper._url_validator.validate_and_normalize = AsyncMock(
-            return_value=_make_url_valid()
-        )
+        scraper._url_validator.validate_and_normalize = AsyncMock(return_value=_make_url_valid())
 
         bd_response = _make_response(200, LONG_HTML)
 
@@ -136,10 +136,13 @@ class TestJinaTier:
         async def fake_post(*args, **kwargs):
             return bd_response
 
-        with patch.object(type(scraper), "camoufox_enabled", new_callable=lambda: property(lambda self: False)), \
-             patch("httpx.AsyncClient") as mock_client_cls, \
-             patch.dict("os.environ", {"BRIGHTDATA_API_KEY": "test-key"}):
-
+        with (
+            patch.object(
+                type(scraper), "camoufox_enabled", new_callable=lambda: property(lambda self: False)
+            ),
+            patch("httpx.AsyncClient") as mock_client_cls,
+            patch.dict("os.environ", {"BRIGHTDATA_API_KEY": "test-key"}),
+        ):
             mock_ctx = AsyncMock()
             mock_ctx.__aenter__ = AsyncMock(return_value=mock_ctx)
             mock_ctx.__aexit__ = AsyncMock(return_value=False)
@@ -165,9 +168,7 @@ class TestBrightDataTier:
     @pytest.mark.asyncio
     async def test_brightdata_success_returns_tier3(self, scraper):
         """Bright Data 200 + long HTML after Jina failure → tier_used=3."""
-        scraper._url_validator.validate_and_normalize = AsyncMock(
-            return_value=_make_url_valid()
-        )
+        scraper._url_validator.validate_and_normalize = AsyncMock(return_value=_make_url_valid())
 
         jina_response = _make_response(200, "too short")
         bd_response = _make_response(200, LONG_HTML)
@@ -178,10 +179,13 @@ class TestBrightDataTier:
         async def fake_post(*args, **kwargs):
             return bd_response
 
-        with patch.object(type(scraper), "camoufox_enabled", new_callable=lambda: property(lambda self: False)), \
-             patch("httpx.AsyncClient") as mock_client_cls, \
-             patch.dict("os.environ", {"BRIGHTDATA_API_KEY": "fake-bd-key"}):
-
+        with (
+            patch.object(
+                type(scraper), "camoufox_enabled", new_callable=lambda: property(lambda self: False)
+            ),
+            patch("httpx.AsyncClient") as mock_client_cls,
+            patch.dict("os.environ", {"BRIGHTDATA_API_KEY": "fake-bd-key"}),
+        ):
             mock_ctx = AsyncMock()
             mock_ctx.__aenter__ = AsyncMock(return_value=mock_ctx)
             mock_ctx.__aexit__ = AsyncMock(return_value=False)
@@ -198,9 +202,7 @@ class TestBrightDataTier:
     @pytest.mark.asyncio
     async def test_brightdata_skipped_when_no_api_key(self, scraper):
         """Bright Data is skipped entirely when BRIGHTDATA_API_KEY is missing."""
-        scraper._url_validator.validate_and_normalize = AsyncMock(
-            return_value=_make_url_valid()
-        )
+        scraper._url_validator.validate_and_normalize = AsyncMock(return_value=_make_url_valid())
 
         jina_response = _make_response(200, "too short")
 
@@ -208,11 +210,17 @@ class TestBrightDataTier:
             return jina_response
 
         import os
+
         original = os.environ.pop("BRIGHTDATA_API_KEY", None)
         try:
-            with patch.object(type(scraper), "camoufox_enabled", new_callable=lambda: property(lambda self: False)), \
-                 patch("httpx.AsyncClient") as mock_client_cls:
-
+            with (
+                patch.object(
+                    type(scraper),
+                    "camoufox_enabled",
+                    new_callable=lambda: property(lambda self: False),
+                ),
+                patch("httpx.AsyncClient") as mock_client_cls,
+            ):
                 mock_ctx = AsyncMock()
                 mock_ctx.__aenter__ = AsyncMock(return_value=mock_ctx)
                 mock_ctx.__aexit__ = AsyncMock(return_value=False)
@@ -230,9 +238,7 @@ class TestBrightDataTier:
     @pytest.mark.asyncio
     async def test_brightdata_short_content_falls_to_manual(self, scraper):
         """Bright Data returns <500 chars → falls to manual fallback."""
-        scraper._url_validator.validate_and_normalize = AsyncMock(
-            return_value=_make_url_valid()
-        )
+        scraper._url_validator.validate_and_normalize = AsyncMock(return_value=_make_url_valid())
 
         jina_response = _make_response(500, "Jina error")
         bd_response = _make_response(200, "<html>short</html>")
@@ -243,10 +249,13 @@ class TestBrightDataTier:
         async def fake_post(*args, **kwargs):
             return bd_response
 
-        with patch.object(type(scraper), "camoufox_enabled", new_callable=lambda: property(lambda self: False)), \
-             patch("httpx.AsyncClient") as mock_client_cls, \
-             patch.dict("os.environ", {"BRIGHTDATA_API_KEY": "fake-bd-key"}):
-
+        with (
+            patch.object(
+                type(scraper), "camoufox_enabled", new_callable=lambda: property(lambda self: False)
+            ),
+            patch("httpx.AsyncClient") as mock_client_cls,
+            patch.dict("os.environ", {"BRIGHTDATA_API_KEY": "fake-bd-key"}),
+        ):
             mock_ctx = AsyncMock()
             mock_ctx.__aenter__ = AsyncMock(return_value=mock_ctx)
             mock_ctx.__aexit__ = AsyncMock(return_value=False)
@@ -271,15 +280,16 @@ class TestFullWaterfall:
     @pytest.mark.asyncio
     async def test_waterfall_camoufox_disabled_jina_wins(self, scraper):
         """Camoufox off → Jina returns content → stops at Tier 2."""
-        scraper._url_validator.validate_and_normalize = AsyncMock(
-            return_value=_make_url_valid()
-        )
+        scraper._url_validator.validate_and_normalize = AsyncMock(return_value=_make_url_valid())
 
         jina_response = _make_response(200, LONG_MARKDOWN)
 
-        with patch.object(type(scraper), "camoufox_enabled", new_callable=lambda: property(lambda self: False)), \
-             patch("httpx.AsyncClient") as mock_client_cls:
-
+        with (
+            patch.object(
+                type(scraper), "camoufox_enabled", new_callable=lambda: property(lambda self: False)
+            ),
+            patch("httpx.AsyncClient") as mock_client_cls,
+        ):
             mock_ctx = AsyncMock()
             mock_ctx.__aenter__ = AsyncMock(return_value=mock_ctx)
             mock_ctx.__aexit__ = AsyncMock(return_value=False)
@@ -293,9 +303,7 @@ class TestFullWaterfall:
     @pytest.mark.asyncio
     async def test_waterfall_jina_fails_brightdata_wins(self, scraper):
         """Camoufox off → Jina fails → Bright Data returns HTML → stops at Tier 3."""
-        scraper._url_validator.validate_and_normalize = AsyncMock(
-            return_value=_make_url_valid()
-        )
+        scraper._url_validator.validate_and_normalize = AsyncMock(return_value=_make_url_valid())
 
         jina_response = _make_response(200, "x" * 10)  # Too short
         bd_response = _make_response(200, LONG_HTML)
@@ -306,10 +314,13 @@ class TestFullWaterfall:
         async def fake_post(*args, **kwargs):
             return bd_response
 
-        with patch.object(type(scraper), "camoufox_enabled", new_callable=lambda: property(lambda self: False)), \
-             patch("httpx.AsyncClient") as mock_client_cls, \
-             patch.dict("os.environ", {"BRIGHTDATA_API_KEY": "fake-bd-key"}):
-
+        with (
+            patch.object(
+                type(scraper), "camoufox_enabled", new_callable=lambda: property(lambda self: False)
+            ),
+            patch("httpx.AsyncClient") as mock_client_cls,
+            patch.dict("os.environ", {"BRIGHTDATA_API_KEY": "fake-bd-key"}),
+        ):
             mock_ctx = AsyncMock()
             mock_ctx.__aenter__ = AsyncMock(return_value=mock_ctx)
             mock_ctx.__aexit__ = AsyncMock(return_value=False)
@@ -325,9 +336,7 @@ class TestFullWaterfall:
     @pytest.mark.asyncio
     async def test_waterfall_all_automated_fail_returns_manual(self, scraper):
         """All tiers fail → tier_used=4, needs_fallback=True."""
-        scraper._url_validator.validate_and_normalize = AsyncMock(
-            return_value=_make_url_valid()
-        )
+        scraper._url_validator.validate_and_normalize = AsyncMock(return_value=_make_url_valid())
 
         fail_response = _make_response(200, "short")
 
@@ -337,10 +346,13 @@ class TestFullWaterfall:
         async def fake_post(*args, **kwargs):
             return fail_response
 
-        with patch.object(type(scraper), "camoufox_enabled", new_callable=lambda: property(lambda self: False)), \
-             patch("httpx.AsyncClient") as mock_client_cls, \
-             patch.dict("os.environ", {"BRIGHTDATA_API_KEY": "fake-bd-key"}):
-
+        with (
+            patch.object(
+                type(scraper), "camoufox_enabled", new_callable=lambda: property(lambda self: False)
+            ),
+            patch("httpx.AsyncClient") as mock_client_cls,
+            patch.dict("os.environ", {"BRIGHTDATA_API_KEY": "fake-bd-key"}),
+        ):
             mock_ctx = AsyncMock()
             mock_ctx.__aenter__ = AsyncMock(return_value=mock_ctx)
             mock_ctx.__aexit__ = AsyncMock(return_value=False)
@@ -368,9 +380,12 @@ class TestFullWaterfall:
             )
         )
 
-        with patch.object(type(scraper), "camoufox_enabled", new_callable=lambda: property(lambda self: False)), \
-             patch("httpx.AsyncClient") as mock_client_cls:
-
+        with (
+            patch.object(
+                type(scraper), "camoufox_enabled", new_callable=lambda: property(lambda self: False)
+            ),
+            patch("httpx.AsyncClient") as mock_client_cls,
+        ):
             mock_ctx = AsyncMock()
             mock_ctx.__aenter__ = AsyncMock(return_value=mock_ctx)
             mock_ctx.__aexit__ = AsyncMock(return_value=False)

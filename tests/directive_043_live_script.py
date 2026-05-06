@@ -55,13 +55,14 @@ TEST_LEADS = [
 END_DATE = datetime.now()
 START_DATE = END_DATE - timedelta(days=90)
 
+
 async def test_linkedin_posts(client: httpx.AsyncClient, lead: dict) -> dict:
     """Task 1: Live T-DM2 test for LinkedIn Posts"""
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"T-DM2 TEST: {lead['name']} ({lead['company']})")
     print(f"LinkedIn URL: {lead['linkedin_url']}")
     print(f"Date window: {START_DATE.strftime('%Y-%m-%d')} to {END_DATE.strftime('%Y-%m-%d')}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     result = {
         "lead": lead["name"],
@@ -78,11 +79,13 @@ async def test_linkedin_posts(client: httpx.AsyncClient, lead: dict) -> dict:
     try:
         # Step 1: Trigger collection with date filters
         # LinkedIn uses YYYY-MM-DD format per docs
-        trigger_payload = [{
-            "url": lead["linkedin_url"],
-            "start_date": START_DATE.strftime("%Y-%m-%d"),
-            "end_date": END_DATE.strftime("%Y-%m-%d"),
-        }]
+        trigger_payload = [
+            {
+                "url": lead["linkedin_url"],
+                "start_date": START_DATE.strftime("%Y-%m-%d"),
+                "end_date": END_DATE.strftime("%Y-%m-%d"),
+            }
+        ]
 
         print(f"Triggering with payload: {json.dumps(trigger_payload)}")
 
@@ -124,7 +127,7 @@ async def test_linkedin_posts(client: httpx.AsyncClient, lead: dict) -> dict:
             )
             status_data = status_resp.json()
             status = status_data.get("status")
-            print(f"  Poll {i+1}: {status}")
+            print(f"  Poll {i + 1}: {status}")
 
             if status == "ready":
                 break
@@ -158,13 +161,15 @@ async def test_linkedin_posts(client: httpx.AsyncClient, lead: dict) -> dict:
                 print(f"  Post error: {post.get('error')}")
                 continue
 
-            posts.append({
-                "post_text": post.get("post_text", "")[:500],  # Truncate for readability
-                "date_posted": post.get("date_posted"),
-                "num_likes": post.get("num_likes", 0),
-                "num_comments": post.get("num_comments", 0),
-                "hashtags": post.get("hashtags", []),
-            })
+            posts.append(
+                {
+                    "post_text": post.get("post_text", "")[:500],  # Truncate for readability
+                    "date_posted": post.get("date_posted"),
+                    "num_likes": post.get("num_likes", 0),
+                    "num_comments": post.get("num_comments", 0),
+                    "hashtags": post.get("hashtags", []),
+                }
+            )
 
         result["success"] = True
         result["posts_returned"] = len(posts)
@@ -178,7 +183,7 @@ async def test_linkedin_posts(client: httpx.AsyncClient, lead: dict) -> dict:
 
         print(f"\n✅ SUCCESS: {len(posts)} posts returned")
         for i, p in enumerate(posts[:3]):
-            print(f"\n--- Post {i+1} ---")
+            print(f"\n--- Post {i + 1} ---")
             print(f"Date: {p.get('date_posted')}")
             print(f"Likes: {p.get('num_likes')} | Comments: {p.get('num_comments')}")
             print(f"Text: {p.get('post_text', '')[:200]}...")
@@ -203,12 +208,16 @@ async def discover_x_handle(client: httpx.AsyncClient, lead: dict) -> str | None
             html = resp.text
 
             patterns = [
-                r'https?://(?:www\.)?(?:twitter|x)\.com/([a-zA-Z0-9_]+)',
+                r"https?://(?:www\.)?(?:twitter|x)\.com/([a-zA-Z0-9_]+)",
             ]
 
             for pattern in patterns:
                 matches = re.findall(pattern, html, re.IGNORECASE)
-                valid = [m for m in matches if m.lower() not in ('share', 'intent', 'home', 'search', 'i')]
+                valid = [
+                    m
+                    for m in matches
+                    if m.lower() not in ("share", "intent", "home", "search", "i")
+                ]
                 if valid:
                     handle = valid[0]
                     print(f"  ✅ Found X handle from website: @{handle}")
@@ -223,9 +232,9 @@ async def discover_x_handle(client: httpx.AsyncClient, lead: dict) -> str | None
 
 async def test_x_posts(client: httpx.AsyncClient, lead: dict) -> dict:
     """Task 2: Live T-DM3 test for X Posts"""
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"T-DM3 TEST: {lead['name']} ({lead['company']})")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     result = {
         "lead": lead["name"],
@@ -256,11 +265,13 @@ async def test_x_posts(client: httpx.AsyncClient, lead: dict) -> dict:
         handle = x_handle.lstrip("@")
         profile_url = f"https://x.com/{handle}"
 
-        trigger_payload = [{
-            "url": profile_url,
-            "start_date": START_DATE.strftime("%m-%d-%Y"),
-            "end_date": END_DATE.strftime("%m-%d-%Y"),
-        }]
+        trigger_payload = [
+            {
+                "url": profile_url,
+                "start_date": START_DATE.strftime("%m-%d-%Y"),
+                "end_date": END_DATE.strftime("%m-%d-%Y"),
+            }
+        ]
 
         print(f"Triggering X Posts for {profile_url}")
         print(f"Payload: {json.dumps(trigger_payload)}")
@@ -303,7 +314,7 @@ async def test_x_posts(client: httpx.AsyncClient, lead: dict) -> dict:
             )
             status_data = status_resp.json()
             status = status_data.get("status")
-            print(f"  Poll {i+1}: {status}")
+            print(f"  Poll {i + 1}: {status}")
 
             if status == "ready":
                 break
@@ -335,13 +346,15 @@ async def test_x_posts(client: httpx.AsyncClient, lead: dict) -> dict:
         for post in posts_data:
             if "error" in post:
                 continue
-            posts.append({
-                "content": post.get("description", "")[:500],
-                "date_posted": post.get("date_posted"),
-                "likes": post.get("likes", 0),
-                "reposts": post.get("reposts", 0),
-                "views": post.get("views", 0),
-            })
+            posts.append(
+                {
+                    "content": post.get("description", "")[:500],
+                    "date_posted": post.get("date_posted"),
+                    "likes": post.get("likes", 0),
+                    "reposts": post.get("reposts", 0),
+                    "views": post.get("views", 0),
+                }
+            )
 
         result["success"] = True
         result["posts_returned"] = len(posts)
@@ -349,9 +362,11 @@ async def test_x_posts(client: httpx.AsyncClient, lead: dict) -> dict:
 
         print(f"\n✅ SUCCESS: {len(posts)} X posts returned")
         for i, p in enumerate(posts[:3]):
-            print(f"\n--- Post {i+1} ---")
+            print(f"\n--- Post {i + 1} ---")
             print(f"Date: {p.get('date_posted')}")
-            print(f"Likes: {p.get('likes')} | Reposts: {p.get('reposts')} | Views: {p.get('views')}")
+            print(
+                f"Likes: {p.get('likes')} | Reposts: {p.get('reposts')} | Views: {p.get('views')}"
+            )
             print(f"Content: {p.get('content', '')[:200]}...")
 
         return result
@@ -405,8 +420,7 @@ async def main():
                 for r in all_results["linkedin_posts"]
             ],
             "x_posts": [
-                {k: v for k, v in r.items() if k != "raw_response"}
-                for r in all_results["x_posts"]
+                {k: v for k, v in r.items() if k != "raw_response"} for r in all_results["x_posts"]
             ],
             "timestamp": datetime.now().isoformat(),
             "date_range": {
@@ -432,7 +446,9 @@ async def main():
     print(f"  Total posts returned: {li_total_posts}")
     if li_success > 0:
         counts = [r["posts_returned"] for r in li_posts if r["success"]]
-        print(f"  Posts per person: min={min(counts)}, max={max(counts)}, avg={sum(counts)/len(counts):.1f}")
+        print(
+            f"  Posts per person: min={min(counts)}, max={max(counts)}, avg={sum(counts) / len(counts):.1f}"
+        )
 
     x_posts = all_results["x_posts"]
     x_handles_found = sum(1 for r in x_posts if r["x_handle"])
@@ -441,7 +457,9 @@ async def main():
 
     print("\nT-DM3 X Posts:")
     print(f"  X handles found: {x_handles_found}/{len(x_posts)}")
-    print(f"  Successful post retrievals: {x_success}/{x_handles_found if x_handles_found else len(x_posts)}")
+    print(
+        f"  Successful post retrievals: {x_success}/{x_handles_found if x_handles_found else len(x_posts)}"
+    )
     print(f"  Total posts returned: {x_total_posts}")
 
     for r in li_posts:

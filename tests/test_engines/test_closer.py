@@ -19,7 +19,9 @@ from src.models.base import ChannelType, IntentType, LeadStatus
 class MockAnthropicClient:
     """Mock Anthropic client for testing."""
 
-    def __init__(self, intent_override: str | None = None, confidence_override: float | None = None):
+    def __init__(
+        self, intent_override: str | None = None, confidence_override: float | None = None
+    ):
         self.intent_override = intent_override
         self.confidence_override = confidence_override
         self.last_message = None
@@ -133,9 +135,20 @@ class MockThreadService:
     async def get_or_create_for_lead(self, client_id, lead_id, channel, campaign_id):
         return {"id": uuid4(), "lead_id": lead_id, "channel": channel}
 
-    async def add_message(self, thread_id, direction, content, sent_at, reply_id=None,
-                          sentiment=None, sentiment_score=None, intent=None,
-                          objection_type=None, question_extracted=None, topics_mentioned=None):
+    async def add_message(
+        self,
+        thread_id,
+        direction,
+        content,
+        sent_at,
+        reply_id=None,
+        sentiment=None,
+        sentiment_score=None,
+        intent=None,
+        objection_type=None,
+        question_extracted=None,
+        topics_mentioned=None,
+    ):
         return {"id": uuid4(), "thread_id": thread_id, "content": content}
 
     async def update_outcome(self, thread_id, outcome, reason=None):
@@ -176,7 +189,7 @@ class MockDB:
     async def refresh(self, obj):
         self.refreshed.append(obj)
         # Assign an ID if not present
-        if hasattr(obj, 'id') and obj.id is None:
+        if hasattr(obj, "id") and obj.id is None:
             obj.id = uuid4()
 
     async def execute(self, stmt):
@@ -215,16 +228,17 @@ def mock_db():
 def get_standard_patches(engine, lead, campaign):
     """Return standard patches for closer engine tests."""
     return [
-        patch.object(engine, 'get_lead_by_id', new_callable=AsyncMock, return_value=lead),
-        patch.object(engine, 'get_campaign_by_id', new_callable=AsyncMock, return_value=campaign),
-        patch.object(engine, '_get_thread_service', return_value=MockThreadService()),
-        patch.object(engine, '_get_reply_analyzer', return_value=MockReplyAnalyzer()),
+        patch.object(engine, "get_lead_by_id", new_callable=AsyncMock, return_value=lead),
+        patch.object(engine, "get_campaign_by_id", new_callable=AsyncMock, return_value=campaign),
+        patch.object(engine, "_get_thread_service", return_value=MockThreadService()),
+        patch.object(engine, "_get_reply_analyzer", return_value=MockReplyAnalyzer()),
     ]
 
 
 # ============================================
 # ENGINE PROPERTY TESTS
 # ============================================
+
 
 def test_engine_properties(closer_engine):
     """Test engine properties."""
@@ -368,6 +382,7 @@ async def test_classify_auto_reply(mock_db):
 # PROCESS REPLY TESTS
 # ============================================
 
+
 @pytest.mark.asyncio
 async def test_process_reply_success():
     """Test successful reply processing."""
@@ -397,6 +412,7 @@ async def test_process_reply_success():
 # INTENT HANDLING TESTS
 # ============================================
 
+
 @pytest.mark.asyncio
 async def test_handle_meeting_request_intent():
     """Test handling of meeting request intent."""
@@ -406,12 +422,21 @@ async def test_handle_meeting_request_intent():
     campaign = MockCampaign()
 
     patches = get_standard_patches(engine, lead, campaign)
-    with patches[0], patches[1], patches[2], patches[3], \
-         patch("src.engines.closer.generate_booking_link", new_callable=AsyncMock, return_value="https://calendly.com/test"), \
-         patch("src.engines.closer.send_booking_reply", new_callable=AsyncMock), \
-         patch.object(engine, '_update_thread_outcome', new_callable=AsyncMock), \
-         patch.object(engine, '_flag_for_human_review', new_callable=AsyncMock), \
-         patch("src.services.cis_service.get_cis_service") as mock_cis:
+    with (
+        patches[0],
+        patches[1],
+        patches[2],
+        patches[3],
+        patch(
+            "src.engines.closer.generate_booking_link",
+            new_callable=AsyncMock,
+            return_value="https://calendly.com/test",
+        ),
+        patch("src.engines.closer.send_booking_reply", new_callable=AsyncMock),
+        patch.object(engine, "_update_thread_outcome", new_callable=AsyncMock),
+        patch.object(engine, "_flag_for_human_review", new_callable=AsyncMock),
+        patch("src.services.cis_service.get_cis_service") as mock_cis,
+    ):
         # Mock CIS service
         mock_cis_instance = AsyncMock()
         mock_cis_instance.record_als_conversion = AsyncMock()
@@ -469,11 +494,16 @@ async def test_handle_unsubscribe_intent():
     mock_pool_service.mark_unsubscribed = AsyncMock()
 
     patches = get_standard_patches(engine, lead, campaign)
-    with patches[0], patches[1], patches[2], patches[3], \
-         patch("src.engines.closer.LeadPoolService", return_value=mock_pool_service), \
-         patch.object(engine, '_record_rejection', new_callable=AsyncMock), \
-         patch.object(engine, '_update_thread_outcome', new_callable=AsyncMock), \
-         patch.object(engine, '_flag_for_human_review', new_callable=AsyncMock):
+    with (
+        patches[0],
+        patches[1],
+        patches[2],
+        patches[3],
+        patch("src.engines.closer.LeadPoolService", return_value=mock_pool_service),
+        patch.object(engine, "_record_rejection", new_callable=AsyncMock),
+        patch.object(engine, "_update_thread_outcome", new_callable=AsyncMock),
+        patch.object(engine, "_flag_for_human_review", new_callable=AsyncMock),
+    ):
         result = await engine.process_reply(
             db=mock_db,
             lead_id=lead.id,
@@ -495,10 +525,15 @@ async def test_handle_not_interested_intent():
     campaign = MockCampaign()
 
     patches = get_standard_patches(engine, lead, campaign)
-    with patches[0], patches[1], patches[2], patches[3], \
-         patch.object(engine, '_record_rejection', new_callable=AsyncMock), \
-         patch.object(engine, '_update_thread_outcome', new_callable=AsyncMock), \
-         patch.object(engine, '_flag_for_human_review', new_callable=AsyncMock):
+    with (
+        patches[0],
+        patches[1],
+        patches[2],
+        patches[3],
+        patch.object(engine, "_record_rejection", new_callable=AsyncMock),
+        patch.object(engine, "_update_thread_outcome", new_callable=AsyncMock),
+        patch.object(engine, "_flag_for_human_review", new_callable=AsyncMock),
+    ):
         result = await engine.process_reply(
             db=mock_db,
             lead_id=lead.id,
@@ -560,6 +595,7 @@ async def test_handle_auto_reply_intent():
 # REPLY HISTORY TESTS
 # ============================================
 
+
 @pytest.mark.asyncio
 async def test_get_reply_history():
     """Test getting reply history for a lead."""
@@ -573,7 +609,7 @@ async def test_get_reply_history():
         MockActivity(lead_id=lead.id, intent=IntentType.QUESTION),
     ]
 
-    with patch.object(engine, 'get_lead_by_id', new_callable=AsyncMock) as mock_get_lead:
+    with patch.object(engine, "get_lead_by_id", new_callable=AsyncMock) as mock_get_lead:
         mock_get_lead.return_value = lead
 
         result = await engine.get_lead_reply_history(
@@ -590,6 +626,7 @@ async def test_get_reply_history():
 # ============================================
 # ACTIVITY LOGGING TESTS
 # ============================================
+
 
 @pytest.mark.asyncio
 async def test_activity_logging():
@@ -614,13 +651,14 @@ async def test_activity_logging():
         assert len(mock_db.added) >= 1
         # Check activity has correct attributes
         activity = mock_db.added[0]
-        assert hasattr(activity, 'lead_id')
-        assert hasattr(activity, 'channel')
+        assert hasattr(activity, "lead_id")
+        assert hasattr(activity, "channel")
 
 
 # ============================================
 # LEAD STATUS UPDATE TESTS
 # ============================================
+
 
 @pytest.mark.asyncio
 async def test_lead_status_updates_on_reply():

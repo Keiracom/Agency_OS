@@ -25,17 +25,17 @@ from src.engines.base import EngineResult
 def client():
     """Create FastAPI test client with auth mocked."""
     from src.api.dependencies import get_current_user_from_token, CurrentUser
-    
+
     # Mock user for authentication bypass
     mock_current_user = CurrentUser(
         id=uuid4(),
         email="test@example.com",
         full_name="Test User",
     )
-    
+
     def override_get_current_user():
         return mock_current_user
-    
+
     app.dependency_overrides[get_current_user_from_token] = override_get_current_user
     yield TestClient(app)
     app.dependency_overrides.clear()
@@ -246,9 +246,7 @@ class TestCampaignMetrics:
         self, client, mock_campaign_id, mock_campaign_metrics
     ):
         """Test successful campaign metrics retrieval."""
-        with patch(
-            "src.api.routes.reports.get_reporter_engine"
-        ) as mock_get_engine:
+        with patch("src.api.routes.reports.get_reporter_engine") as mock_get_engine:
             mock_engine = MagicMock()
             mock_engine.get_campaign_metrics = AsyncMock(
                 return_value=EngineResult.ok(data=mock_campaign_metrics)
@@ -269,9 +267,7 @@ class TestCampaignMetrics:
         self, client, mock_campaign_id, mock_campaign_metrics
     ):
         """Test campaign metrics with date range filtering."""
-        with patch(
-            "src.api.routes.reports.get_reporter_engine"
-        ) as mock_get_engine:
+        with patch("src.api.routes.reports.get_reporter_engine") as mock_get_engine:
             mock_engine = MagicMock()
             mock_engine.get_campaign_metrics = AsyncMock(
                 return_value=EngineResult.ok(data=mock_campaign_metrics)
@@ -292,9 +288,7 @@ class TestCampaignMetrics:
     @pytest.mark.asyncio
     async def test_get_campaign_metrics_not_found(self, client, mock_campaign_id):
         """Test campaign metrics with non-existent campaign."""
-        with patch(
-            "src.api.routes.reports.get_reporter_engine"
-        ) as mock_get_engine:
+        with patch("src.api.routes.reports.get_reporter_engine") as mock_get_engine:
             mock_engine = MagicMock()
             mock_engine.get_campaign_metrics = AsyncMock(
                 return_value=EngineResult.fail(error="Campaign not found")
@@ -311,9 +305,7 @@ class TestCampaignMetrics:
         self, client, mock_campaign_id, mock_campaign_metrics
     ):
         """Test campaign daily metrics endpoint."""
-        with patch(
-            "src.api.routes.reports.get_reporter_engine"
-        ) as mock_get_engine:
+        with patch("src.api.routes.reports.get_reporter_engine") as mock_get_engine:
             mock_engine = MagicMock()
             mock_engine.get_campaign_metrics = AsyncMock(
                 return_value=EngineResult.ok(data=mock_campaign_metrics)
@@ -337,13 +329,9 @@ class TestClientMetrics:
     """Test client metrics endpoints."""
 
     @pytest.mark.asyncio
-    async def test_get_client_metrics_success(
-        self, client, mock_client_id, mock_client_metrics
-    ):
+    async def test_get_client_metrics_success(self, client, mock_client_id, mock_client_metrics):
         """Test successful client metrics retrieval."""
-        with patch(
-            "src.api.routes.reports.get_reporter_engine"
-        ) as mock_get_engine:
+        with patch("src.api.routes.reports.get_reporter_engine") as mock_get_engine:
             mock_engine = MagicMock()
             mock_engine.get_client_metrics = AsyncMock(
                 return_value=EngineResult.ok(data=mock_client_metrics)
@@ -365,9 +353,7 @@ class TestClientMetrics:
         self, client, mock_client_id, mock_client_metrics
     ):
         """Test client metrics with date range filtering."""
-        with patch(
-            "src.api.routes.reports.get_reporter_engine"
-        ) as mock_get_engine:
+        with patch("src.api.routes.reports.get_reporter_engine") as mock_get_engine:
             mock_engine = MagicMock()
             mock_engine.get_client_metrics = AsyncMock(
                 return_value=EngineResult.ok(data=mock_client_metrics)
@@ -388,9 +374,7 @@ class TestClientMetrics:
     @pytest.mark.asyncio
     async def test_get_client_metrics_not_found(self, client, mock_client_id):
         """Test client metrics with non-existent client."""
-        with patch(
-            "src.api.routes.reports.get_reporter_engine"
-        ) as mock_get_engine:
+        with patch("src.api.routes.reports.get_reporter_engine") as mock_get_engine:
             mock_engine = MagicMock()
             mock_engine.get_client_metrics = AsyncMock(
                 return_value=EngineResult.fail(error="Client not found")
@@ -415,9 +399,7 @@ class TestALSDistribution:
         self, client, mock_campaign_id, mock_als_distribution
     ):
         """Test ALS distribution by campaign."""
-        with patch(
-            "src.api.routes.reports.get_reporter_engine"
-        ) as mock_get_engine:
+        with patch("src.api.routes.reports.get_reporter_engine") as mock_get_engine:
             mock_engine = MagicMock()
             mock_engine.get_als_distribution = AsyncMock(
                 return_value=EngineResult.ok(data=mock_als_distribution)
@@ -442,9 +424,7 @@ class TestALSDistribution:
         self, client, mock_client_id, mock_als_distribution
     ):
         """Test ALS distribution by client."""
-        with patch(
-            "src.api.routes.reports.get_reporter_engine"
-        ) as mock_get_engine:
+        with patch("src.api.routes.reports.get_reporter_engine") as mock_get_engine:
             mock_engine = MagicMock()
             mock_engine.get_als_distribution = AsyncMock(
                 return_value=EngineResult.ok(data=mock_als_distribution)
@@ -479,13 +459,9 @@ class TestLeadEngagement:
     """Test lead engagement endpoints."""
 
     @pytest.mark.asyncio
-    async def test_get_lead_engagement_success(
-        self, client, mock_lead_id, mock_lead_engagement
-    ):
+    async def test_get_lead_engagement_success(self, client, mock_lead_id, mock_lead_engagement):
         """Test successful lead engagement retrieval."""
-        with patch(
-            "src.api.routes.reports.get_reporter_engine"
-        ) as mock_get_engine:
+        with patch("src.api.routes.reports.get_reporter_engine") as mock_get_engine:
             mock_engine = MagicMock()
             mock_engine.get_lead_engagement = AsyncMock(
                 return_value=EngineResult.ok(data=mock_lead_engagement)
@@ -505,9 +481,7 @@ class TestLeadEngagement:
     @pytest.mark.asyncio
     async def test_get_lead_engagement_not_found(self, client, mock_lead_id):
         """Test lead engagement with non-existent lead."""
-        with patch(
-            "src.api.routes.reports.get_reporter_engine"
-        ) as mock_get_engine:
+        with patch("src.api.routes.reports.get_reporter_engine") as mock_get_engine:
             mock_engine = MagicMock()
             mock_engine.get_lead_engagement = AsyncMock(
                 return_value=EngineResult.fail(error="Lead not found")
@@ -528,13 +502,9 @@ class TestDailyActivity:
     """Test daily activity endpoints."""
 
     @pytest.mark.asyncio
-    async def test_get_daily_activity_success(
-        self, client, mock_client_id, mock_daily_activity
-    ):
+    async def test_get_daily_activity_success(self, client, mock_client_id, mock_daily_activity):
         """Test successful daily activity retrieval."""
-        with patch(
-            "src.api.routes.reports.get_reporter_engine"
-        ) as mock_get_engine:
+        with patch("src.api.routes.reports.get_reporter_engine") as mock_get_engine:
             mock_engine = MagicMock()
             mock_engine.get_daily_activity = AsyncMock(
                 return_value=EngineResult.ok(data=mock_daily_activity)
@@ -555,13 +525,9 @@ class TestDailyActivity:
             assert data["summary"]["total_activities"] == 150
 
     @pytest.mark.asyncio
-    async def test_get_daily_activity_with_date(
-        self, client, mock_client_id, mock_daily_activity
-    ):
+    async def test_get_daily_activity_with_date(self, client, mock_client_id, mock_daily_activity):
         """Test daily activity with specific date."""
-        with patch(
-            "src.api.routes.reports.get_reporter_engine"
-        ) as mock_get_engine:
+        with patch("src.api.routes.reports.get_reporter_engine") as mock_get_engine:
             mock_engine = MagicMock()
             mock_engine.get_daily_activity = AsyncMock(
                 return_value=EngineResult.ok(data=mock_daily_activity)
@@ -599,18 +565,14 @@ class TestReportsAuthorization:
         """Test campaign metrics without authentication returns 401."""
         # Use TestClient without auth override
         with TestClient(app) as unauthenticated_client:
-            response = unauthenticated_client.get(
-                f"/api/v1/reports/campaigns/{mock_campaign_id}"
-            )
+            response = unauthenticated_client.get(f"/api/v1/reports/campaigns/{mock_campaign_id}")
         assert response.status_code == 401
 
     def test_client_metrics_unauthorized(self, mock_client_id):
         """Test client metrics without authentication returns 401."""
         # Use TestClient without auth override
         with TestClient(app) as unauthenticated_client:
-            response = unauthenticated_client.get(
-                f"/api/v1/reports/clients/{mock_client_id}"
-            )
+            response = unauthenticated_client.get(f"/api/v1/reports/clients/{mock_client_id}")
         assert response.status_code == 401
 
 

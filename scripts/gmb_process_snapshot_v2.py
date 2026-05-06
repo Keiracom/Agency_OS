@@ -4,6 +4,7 @@ scripts/gmb_process_snapshot_v2.py
 Batched version — resumes from existing gmb_pilot_results rows.
 Inserts in chunks of 50, business_universe updates via VALUES batch.
 """
+
 import json, subprocess, re, time
 from pathlib import Path
 
@@ -12,24 +13,36 @@ MCP = ROOT / "skills/mcp-bridge/scripts/mcp-bridge.js"
 PROJ = "jatzvazlbusedwsnqxzr"
 BATCH = 50
 
+
 def mcp_sql(q):
     r = subprocess.run(
-        ["node", str(MCP), "call", "supabase", "execute_sql",
-         json.dumps({"project_id": PROJ, "query": q})],
-        capture_output=True, text=True, timeout=60
+        [
+            "node",
+            str(MCP),
+            "call",
+            "supabase",
+            "execute_sql",
+            json.dumps({"project_id": PROJ, "query": q}),
+        ],
+        capture_output=True,
+        text=True,
+        timeout=60,
     )
     if r.returncode != 0:
         print(f"  SQL ERR: {r.stderr[:200]}")
     return r.stdout
 
+
 def safe(s):
     return str(s).replace("'", "''").replace("\x00", "") if s else ""
+
 
 def normalize(name):
     name = name.lower()
     for sfx in [" pty ltd", " pty. ltd.", " pty limited", " ltd", " pty", " limited"]:
         name = name.replace(sfx, "")
     return re.sub(r"[^a-z0-9 ]", "", name).strip()
+
 
 # ── Step 1: Apply migration (idempotent) ──────────────────────────────────────
 print("Applying migration (idempotent)...")
@@ -54,7 +67,8 @@ try:
     rows = json.loads(raw.split("boundaries.")[1].strip()) if "boundaries." in raw else []
     # Strip the closing tag text
     import re as _re
-    m = _re.search(r'\[.*\]', raw, _re.DOTALL)
+
+    m = _re.search(r"\[.*\]", raw, _re.DOTALL)
     rows = json.loads(m.group(0)) if m else []
     done_abns = {r["abn"] for r in rows if r.get("abn")}
 except Exception as e:
@@ -90,8 +104,8 @@ else:
     t0 = time.time()
     matched = 0
     not_found = 0
-    pilot_batch = []    # rows for gmb_pilot_results
-    bu_updates = []     # (abn, fields_dict) for business_universe
+    pilot_batch = []  # rows for gmb_pilot_results
+    bu_updates = []  # (abn, fields_dict) for business_universe
 
     def flush_pilot_batch(batch):
         if not batch:
@@ -113,9 +127,9 @@ else:
         # Simpler: one UPDATE per row but send 10 at a time as a single multi-statement SQL
         chunk_size = 10
         for i in range(0, len(updates), chunk_size):
-            chunk = updates[i:i+chunk_size]
+            chunk = updates[i : i + chunk_size]
             stmts = []
-            for (abn, f) in chunk:
+            for abn, f in chunk:
                 rating_sql = str(f["rating"]) if f["rating"] else "NULL"
                 lat_sql = str(f["lat"]) if f["lat"] else "NULL"
                 lon_sql = str(f["lon"]) if f["lon"] else "NULL"
@@ -156,10 +170,17 @@ else:
             place_id = gmb.get("place_id", "") or ""
             fid = gmb.get("fid_location", "") or gmb.get("cid", "") or ""
             details = gmb.get("business_details") or []
-            domain = next((d.get("details", "").strip() for d in details if d.get("field_name") == "authority"),
-                          gmb.get("open_website", "") or "")
+            domain = next(
+                (
+                    d.get("details", "").strip()
+                    for d in details
+                    if d.get("field_name") == "authority"
+                ),
+                gmb.get("open_website", "") or "",
+            )
             if domain and domain.startswith("http"):
                 from urllib.parse import urlparse
+
                 domain = urlparse(domain).netloc.replace("www.", "")
             phone = gmb.get("phone_number", "") or ""
             address = gmb.get("address", "") or ""
@@ -175,12 +196,24 @@ else:
             pilot_batch.append(
                 f"('{b['abn']}','{safe(b['trading_name'])}',true,{cat_sql},{rating_sql},{reviews_cnt},{domain_sql},'high')"
             )
-            bu_updates.append((b["abn"], {
-                "place_id": place_id, "cid": fid, "cat": cat,
-                "rating": rating, "reviews_cnt": reviews_cnt, "domain": domain,
-                "phone": phone, "address": address, "city": city,
-                "lat": lat, "lon": lon
-            }))
+            bu_updates.append(
+                (
+                    b["abn"],
+                    {
+                        "place_id": place_id,
+                        "cid": fid,
+                        "cat": cat,
+                        "rating": rating,
+                        "reviews_cnt": reviews_cnt,
+                        "domain": domain,
+                        "phone": phone,
+                        "address": address,
+                        "city": city,
+                        "lat": lat,
+                        "lon": lon,
+                    },
+                )
+            )
         else:
             not_found += 1
             pilot_batch.append(
@@ -199,7 +232,9 @@ else:
 
         if (idx + 1) % 100 == 0:
             elapsed = time.time() - t0
-            print(f"  [{idx+1}/{len(remaining)}] matched={matched} not_found={not_found} ({elapsed:.0f}s)")
+            print(
+                f"  [{idx + 1}/{len(remaining)}] matched={matched} not_found={not_found} ({elapsed:.0f}s)"
+            )
 
     # Final flush
     flush_pilot_batch(pilot_batch)
@@ -210,8 +245,10 @@ else:
 
 # ── Step 6: Verify row count ──────────────────────────────────────────────────
 print("\nVerifying final row count...")
-raw = mcp_sql("SELECT COUNT(*) as total, SUM(CASE WHEN serp_match THEN 1 ELSE 0 END) as matched, SUM(CASE WHEN NOT serp_match THEN 1 ELSE 0 END) as not_found FROM gmb_pilot_results;")
-m = re.search(r'\[.*?\]', raw, re.DOTALL)
+raw = mcp_sql(
+    "SELECT COUNT(*) as total, SUM(CASE WHEN serp_match THEN 1 ELSE 0 END) as matched, SUM(CASE WHEN NOT serp_match THEN 1 ELSE 0 END) as not_found FROM gmb_pilot_results;"
+)
+m = re.search(r"\[.*?\]", raw, re.DOTALL)
 total = -1
 matched_total = 0
 not_found_total = 0
@@ -223,20 +260,22 @@ if m:
         not_found_total = int(result.get("not_found") or 0)
     except Exception as e:
         print(f"  Parse error: {e}\n  Raw: {raw[:300]}")
-print(f"\n{'='*50}")
+print(f"\n{'=' * 50}")
 print(f"FINAL VERIFICATION")
-print(f"{'='*50}")
+print(f"{'=' * 50}")
 print(f"Total rows written:  {total}")
-print(f"Matched (GMB found): {matched_total} ({matched_total/10:.1f}%)" if total > 0 else "")
+print(f"Matched (GMB found): {matched_total} ({matched_total / 10:.1f}%)" if total > 0 else "")
 print(f"Not found:           {not_found_total}")
 print(f"BD errors:           {len(errors)}")
-print(f"PASS/FAIL:           {'✅ PASS' if total >= 1000 else '❌ FAIL — only ' + str(total) + '/1000'}")
+print(
+    f"PASS/FAIL:           {'✅ PASS' if total >= 1000 else '❌ FAIL — only ' + str(total) + '/1000'}"
+)
 
 # ── Step 7: Write ceo_memory ──────────────────────────────────────────────────
 cost_aud = (1000 * 0.0015 + matched_total * 0.001) * 1.55 if total > 0 else 0
 mcp_sql(f"""
 INSERT INTO ceo_memory (key, value, updated_at)
-VALUES ('ceo:directive_225_complete', '{{"status":"complete","snapshot":"sd_mmxcph0hucllcqzlm","records_returned":{len(valid)},"total_written":{total},"matched":{matched_total},"not_found":{not_found_total},"bd_errors":{len(errors)},"cost_aud":{round(cost_aud,2)}}}'::jsonb, NOW())
+VALUES ('ceo:directive_225_complete', '{{"status":"complete","snapshot":"sd_mmxcph0hucllcqzlm","records_returned":{len(valid)},"total_written":{total},"matched":{matched_total},"not_found":{not_found_total},"bd_errors":{len(errors)},"cost_aud":{round(cost_aud, 2)}}}'::jsonb, NOW())
 ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value, updated_at=NOW();
 """)
 mcp_sql(f"""

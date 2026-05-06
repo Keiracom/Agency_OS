@@ -28,6 +28,7 @@ def syd(year: int, month: int, day: int, hour: int, minute: int = 0) -> datetime
 # Workday tests
 # ---------------------------------------------------------------------------
 
+
 def test_sunday_rejected():
     """Sunday (weekday=6) must always be blocked."""
     now = syd(2026, 4, 19, 10, 30)  # Sunday
@@ -70,6 +71,7 @@ def test_monday_10am_linkedin_allowed():
 # Work-hour tests
 # ---------------------------------------------------------------------------
 
+
 def test_before_9am_rejected():
     """8am on a valid Tuesday must be blocked by work-hour filter."""
     now = syd(2026, 4, 21, 8, 0)  # Tuesday 8am
@@ -84,6 +86,7 @@ def test_before_9am_rejected():
 # ---------------------------------------------------------------------------
 # Optimal-window tests
 # ---------------------------------------------------------------------------
+
 
 def test_friday_2pm_linkedin_rejected():
     """LinkedIn optimal = Tue–Thu 8–10am.  Friday 2pm must be blocked."""

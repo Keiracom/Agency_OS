@@ -51,6 +51,7 @@ def _run(coro):
         loop = None
     if loop and loop.is_running():
         import concurrent.futures
+
         with concurrent.futures.ThreadPoolExecutor() as pool:
             return pool.submit(asyncio.run, coro).result()
     return asyncio.run(coro)
@@ -81,24 +82,30 @@ class TestPromotionSetsPromotedFromId:
 
         env = {"SUPABASE_URL": FAKE_URL, "SUPABASE_SERVICE_KEY": FAKE_KEY}
 
-        with patch("src.telegram_bot.memory_listener.SUPABASE_URL", FAKE_URL), \
-             patch("src.telegram_bot.memory_listener.SUPABASE_KEY", FAKE_KEY), \
-             patch("httpx.AsyncClient", return_value=mock_client):
+        with (
+            patch("src.telegram_bot.memory_listener.SUPABASE_URL", FAKE_URL),
+            patch("src.telegram_bot.memory_listener.SUPABASE_KEY", FAKE_KEY),
+            patch("httpx.AsyncClient", return_value=mock_client),
+        ):
             _run(_increment_access_counts([row], HEADERS))
 
         assert len(captured_payloads) == 1
         payload = captured_payloads[0]
 
-        assert payload.get("state") == "confirmed", \
+        assert payload.get("state") == "confirmed", (
             f"Expected state='confirmed', got {payload.get('state')!r}"
-        assert payload.get("promoted_from_id") == row["id"], \
+        )
+        assert payload.get("promoted_from_id") == row["id"], (
             f"Expected promoted_from_id={row['id']!r}, got {payload.get('promoted_from_id')!r}"
+        )
 
         meta = payload.get("typed_metadata", {})
-        assert "promoted_at" in meta, \
+        assert "promoted_at" in meta, (
             f"Expected 'promoted_at' in typed_metadata, got keys: {list(meta.keys())}"
-        assert meta.get("promoted_from_state") == "tentative", \
+        )
+        assert meta.get("promoted_from_state") == "tentative", (
             f"Expected promoted_from_state='tentative', got {meta.get('promoted_from_state')!r}"
+        )
 
     def test_promoted_at_is_iso_timestamp(self):
         """promoted_at must be a parseable ISO 8601 string."""
@@ -117,9 +124,11 @@ class TestPromotionSetsPromotedFromId:
         mock_client.__aexit__ = AsyncMock(return_value=False)
         mock_client.patch = fake_patch
 
-        with patch("src.telegram_bot.memory_listener.SUPABASE_URL", FAKE_URL), \
-             patch("src.telegram_bot.memory_listener.SUPABASE_KEY", FAKE_KEY), \
-             patch("httpx.AsyncClient", return_value=mock_client):
+        with (
+            patch("src.telegram_bot.memory_listener.SUPABASE_URL", FAKE_URL),
+            patch("src.telegram_bot.memory_listener.SUPABASE_KEY", FAKE_KEY),
+            patch("httpx.AsyncClient", return_value=mock_client),
+        ):
             _run(_increment_access_counts([row], HEADERS))
 
         meta = captured_payloads[0].get("typed_metadata", {})
@@ -149,14 +158,17 @@ class TestPromotionSetsPromotedFromId:
         mock_client.__aexit__ = AsyncMock(return_value=False)
         mock_client.patch = fake_patch
 
-        with patch("src.telegram_bot.memory_listener.SUPABASE_URL", FAKE_URL), \
-             patch("src.telegram_bot.memory_listener.SUPABASE_KEY", FAKE_KEY), \
-             patch("httpx.AsyncClient", return_value=mock_client):
+        with (
+            patch("src.telegram_bot.memory_listener.SUPABASE_URL", FAKE_URL),
+            patch("src.telegram_bot.memory_listener.SUPABASE_KEY", FAKE_KEY),
+            patch("httpx.AsyncClient", return_value=mock_client),
+        ):
             _run(_increment_access_counts([row], HEADERS))
 
         meta = captured_payloads[0].get("typed_metadata", {})
-        assert meta.get("some_existing_key") == "some_value", \
+        assert meta.get("some_existing_key") == "some_value", (
             "Existing typed_metadata keys must survive the merge"
+        )
 
 
 class TestBelowThresholdNoPromotion:
@@ -181,18 +193,22 @@ class TestBelowThresholdNoPromotion:
         mock_client.__aexit__ = AsyncMock(return_value=False)
         mock_client.patch = fake_patch
 
-        with patch("src.telegram_bot.memory_listener.SUPABASE_URL", FAKE_URL), \
-             patch("src.telegram_bot.memory_listener.SUPABASE_KEY", FAKE_KEY), \
-             patch("httpx.AsyncClient", return_value=mock_client):
+        with (
+            patch("src.telegram_bot.memory_listener.SUPABASE_URL", FAKE_URL),
+            patch("src.telegram_bot.memory_listener.SUPABASE_KEY", FAKE_KEY),
+            patch("httpx.AsyncClient", return_value=mock_client),
+        ):
             _run(_increment_access_counts([row], HEADERS))
 
         assert len(captured_payloads) == 1
         payload = captured_payloads[0]
 
-        assert "promoted_from_id" not in payload, \
+        assert "promoted_from_id" not in payload, (
             f"promoted_from_id should NOT be in payload below threshold, got {payload}"
-        assert payload.get("state") != "confirmed", \
+        )
+        assert payload.get("state") != "confirmed", (
             "state should NOT be 'confirmed' below threshold"
+        )
 
 
 class TestAlreadyConfirmedNoPromotion:
@@ -217,16 +233,20 @@ class TestAlreadyConfirmedNoPromotion:
         mock_client.__aexit__ = AsyncMock(return_value=False)
         mock_client.patch = fake_patch
 
-        with patch("src.telegram_bot.memory_listener.SUPABASE_URL", FAKE_URL), \
-             patch("src.telegram_bot.memory_listener.SUPABASE_KEY", FAKE_KEY), \
-             patch("httpx.AsyncClient", return_value=mock_client):
+        with (
+            patch("src.telegram_bot.memory_listener.SUPABASE_URL", FAKE_URL),
+            patch("src.telegram_bot.memory_listener.SUPABASE_KEY", FAKE_KEY),
+            patch("httpx.AsyncClient", return_value=mock_client),
+        ):
             _run(_increment_access_counts([row], HEADERS))
 
         assert len(captured_payloads) == 1
         payload = captured_payloads[0]
 
-        assert "promoted_from_id" not in payload, \
+        assert "promoted_from_id" not in payload, (
             f"promoted_from_id should NOT be in payload for confirmed row, got {payload}"
+        )
         # access_count should still increment
-        assert payload.get("access_count") == 6, \
+        assert payload.get("access_count") == 6, (
             f"access_count should increment to 6 regardless, got {payload.get('access_count')}"
+        )

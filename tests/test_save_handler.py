@@ -41,31 +41,41 @@ from src.memory.types import VALID_SOURCE_TYPES  # noqa: E402
 
 class TestParseSaveCommand:
     def test_valid_type_pattern(self):
-        source_type, content, needs_extraction = parse_save_command(["pattern", "use", "asyncio.gather"])
+        source_type, content, needs_extraction = parse_save_command(
+            ["pattern", "use", "asyncio.gather"]
+        )
         assert source_type == "pattern"
         assert content == "use asyncio.gather"
         assert needs_extraction is False
 
     def test_valid_type_decision(self):
-        source_type, content, needs_extraction = parse_save_command(["decision", "always", "use", "REST"])
+        source_type, content, needs_extraction = parse_save_command(
+            ["decision", "always", "use", "REST"]
+        )
         assert source_type == "decision"
         assert content == "always use REST"
         assert needs_extraction is False
 
     def test_valid_type_skill(self):
-        source_type, content, needs_extraction = parse_save_command(["skill", "leadmagic does email lookup"])
+        source_type, content, needs_extraction = parse_save_command(
+            ["skill", "leadmagic does email lookup"]
+        )
         assert source_type == "skill"
         assert content == "leadmagic does email lookup"
         assert needs_extraction is False
 
     def test_valid_type_reasoning(self):
-        source_type, content, needs_extraction = parse_save_command(["reasoning", "because waterfall"])
+        source_type, content, needs_extraction = parse_save_command(
+            ["reasoning", "because waterfall"]
+        )
         assert source_type == "reasoning"
         assert content == "because waterfall"
         assert needs_extraction is False
 
     def test_valid_type_test_result(self):
-        source_type, content, needs_extraction = parse_save_command(["test_result", "stage8 passed"])
+        source_type, content, needs_extraction = parse_save_command(
+            ["test_result", "stage8 passed"]
+        )
         assert source_type == "test_result"
         assert content == "stage8 passed"
         assert needs_extraction is False
@@ -77,7 +87,9 @@ class TestParseSaveCommand:
         assert needs_extraction is False
 
     def test_valid_type_daily_log(self):
-        source_type, content, needs_extraction = parse_save_command(["daily_log", "wrapped up stage 8"])
+        source_type, content, needs_extraction = parse_save_command(
+            ["daily_log", "wrapped up stage 8"]
+        )
         assert source_type == "daily_log"
         assert content == "wrapped up stage 8"
         assert needs_extraction is False
@@ -153,7 +165,9 @@ class TestExtractMemoryFields:
         mock_client.chat.completions.create.return_value = _make_openai_response(expected)
 
         with patch("src.telegram_bot.save_handler.openai.OpenAI", return_value=mock_client):
-            result = extract_memory_fields("we decided to use Supabase for memory because it's already paid for")
+            result = extract_memory_fields(
+                "we decided to use Supabase for memory because it's already paid for"
+            )
 
         assert result["source_type"] == "decision"
         assert result["content"] == expected["content"]
@@ -225,8 +239,10 @@ async def test_cmd_save_free_text_uses_openai_extraction():
     mock_client = MagicMock()
     mock_client.chat.completions.create.return_value = _make_openai_response(extracted)
 
-    with patch("src.telegram_bot.save_handler.store", return_value=fake_uuid) as mock_store, \
-         patch("src.telegram_bot.save_handler.openai.OpenAI", return_value=mock_client):
+    with (
+        patch("src.telegram_bot.save_handler.store", return_value=fake_uuid) as mock_store,
+        patch("src.telegram_bot.save_handler.openai.OpenAI", return_value=mock_client),
+    ):
         await cmd_save(update, context)
 
     assert mock_store.call_count == 1
@@ -247,8 +263,10 @@ async def test_cmd_save_typed_input_skips_openai():
     fake_uuid = uuid.uuid4()
     mock_client = MagicMock()
 
-    with patch("src.telegram_bot.save_handler.store", return_value=fake_uuid), \
-         patch("src.telegram_bot.save_handler.openai.OpenAI", return_value=mock_client):
+    with (
+        patch("src.telegram_bot.save_handler.store", return_value=fake_uuid),
+        patch("src.telegram_bot.save_handler.openai.OpenAI", return_value=mock_client),
+    ):
         await cmd_save(update, context)
 
     mock_client.chat.completions.create.assert_not_called()
@@ -263,8 +281,10 @@ async def test_cmd_save_openai_failure_falls_back_to_daily_log():
     mock_client = MagicMock()
     mock_client.chat.completions.create.side_effect = Exception("OpenAI timeout")
 
-    with patch("src.telegram_bot.save_handler.store", return_value=fake_uuid) as mock_store, \
-         patch("src.telegram_bot.save_handler.openai.OpenAI", return_value=mock_client):
+    with (
+        patch("src.telegram_bot.save_handler.store", return_value=fake_uuid) as mock_store,
+        patch("src.telegram_bot.save_handler.openai.OpenAI", return_value=mock_client),
+    ):
         await cmd_save(update, context)
 
     assert mock_store.call_count == 1
@@ -290,8 +310,10 @@ async def test_cmd_save_unknown_type_triggers_extraction():
     mock_client = MagicMock()
     mock_client.chat.completions.create.return_value = _make_openai_response(extracted)
 
-    with patch("src.telegram_bot.save_handler.store", return_value=fake_uuid) as mock_store, \
-         patch("src.telegram_bot.save_handler.openai.OpenAI", return_value=mock_client):
+    with (
+        patch("src.telegram_bot.save_handler.store", return_value=fake_uuid) as mock_store,
+        patch("src.telegram_bot.save_handler.openai.OpenAI", return_value=mock_client),
+    ):
         await cmd_save(update, context)
 
     call_kwargs = mock_store.call_args.kwargs
@@ -372,8 +394,10 @@ async def test_cmd_save_openai_invalid_source_type_falls_back():
     mock_client = MagicMock()
     mock_client.chat.completions.create.return_value = _make_openai_response(extracted)
 
-    with patch("src.telegram_bot.save_handler.store", return_value=fake_uuid) as mock_store, \
-         patch("src.telegram_bot.save_handler.openai.OpenAI", return_value=mock_client):
+    with (
+        patch("src.telegram_bot.save_handler.store", return_value=fake_uuid) as mock_store,
+        patch("src.telegram_bot.save_handler.openai.OpenAI", return_value=mock_client),
+    ):
         await cmd_save(update, context)
 
     call_kwargs = mock_store.call_args.kwargs

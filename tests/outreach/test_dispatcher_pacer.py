@@ -6,6 +6,7 @@ Coverage:
     2. Dispatcher with pacer + delay > 0 — asyncio.sleep called with that delay.
     3. Dispatcher records send on pacer after successful send.
 """
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -19,6 +20,7 @@ from src.outreach.safety.timing_engine import Channel, TimingDecision
 
 
 # ---------- helpers -----------------------------------------------------------
+
 
 def _touch(channel="email", account_id="mailbox-1") -> dict:
     return {
@@ -44,17 +46,13 @@ def _touch(channel="email", account_id="mailbox-1") -> dict:
 
 def _allow_timing():
     tm = MagicMock()
-    tm.check = lambda channel, now, prospect_tz=None: TimingDecision(
-        allowed=True, reason="ok"
-    )
+    tm.check = lambda channel, now, prospect_tz=None: TimingDecision(allowed=True, reason="ok")
     return tm
 
 
 def _allow_compliance():
     cg = MagicMock()
-    cg.check = lambda channel, prospect, now: ComplianceDecision(
-        allowed=True, reason="compliant"
-    )
+    cg.check = lambda channel, prospect, now: ComplianceDecision(allowed=True, reason="compliant")
     return cg
 
 
@@ -75,6 +73,7 @@ def _allow_rate() -> AsyncMock:
 
 # ---------- test 1: no pacer — asyncio.sleep never called ---------------------
 
+
 @pytest.mark.asyncio
 async def test_no_pacer_no_sleep():
     dispatcher = OutreachDispatcher(
@@ -91,6 +90,7 @@ async def test_no_pacer_no_sleep():
 
 
 # ---------- test 2: pacer with delay > 0 — sleep called with returned delay ---
+
 
 @pytest.mark.asyncio
 async def test_pacer_with_positive_delay_calls_sleep():
@@ -112,6 +112,7 @@ async def test_pacer_with_positive_delay_calls_sleep():
 
 
 # ---------- test 3: pacer.record_send called after successful send ------------
+
 
 @pytest.mark.asyncio
 async def test_pacer_record_send_called_on_success():
@@ -137,6 +138,7 @@ async def test_pacer_record_send_called_on_success():
 
 
 # ---------- bonus: pacer.record_send NOT called when send fails ---------------
+
 
 @pytest.mark.asyncio
 async def test_pacer_record_send_not_called_on_failure():

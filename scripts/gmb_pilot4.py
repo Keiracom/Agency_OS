@@ -35,9 +35,9 @@ SNAPSHOT_FILE = Path("/tmp/gmb_pilot4_snapshot.json")
 RETRY_SNAPSHOT_FILE = Path("/tmp/gmb_pilot4_retry_snapshot.json")
 BUSINESSES_FILE = Path("/tmp/gmb_pilot4_businesses.json")
 
-BD_POLL_MAX_SEC = 1200   # 20 minutes
+BD_POLL_MAX_SEC = 1200  # 20 minutes
 BD_POLL_INTERVAL = 10
-BD_READY_WAIT_SEC = 60   # 60s — 30s was insufficient (Pilot 2 retry finding)
+BD_READY_WAIT_SEC = 60  # 60s — 30s was insufficient (Pilot 2 retry finding)
 UPSERT_CHUNK = 500
 
 # Legal suffixes to strip from BD keywords
@@ -51,11 +51,20 @@ KEYWORD_CLEAN_RE = re.compile(r"[''`]")
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
+
 def mcp_sql(q, timeout=120):
     r = subprocess.run(
-        ["node", str(MCP), "call", "supabase", "execute_sql",
-         json.dumps({"project_id": PROJ, "query": q})],
-        capture_output=True, text=True, timeout=timeout
+        [
+            "node",
+            str(MCP),
+            "call",
+            "supabase",
+            "execute_sql",
+            json.dumps({"project_id": PROJ, "query": q}),
+        ],
+        capture_output=True,
+        text=True,
+        timeout=timeout,
     )
     raw = r.stdout.strip()
     if not raw:
@@ -66,17 +75,17 @@ def mcp_sql(q, timeout=120):
             s = json.dumps(s)
     except Exception:
         s = raw
-    m = re.search(r'<untrusted-data[^>]+>\s*(.*?)\s*</untrusted-data', s, re.DOTALL)
+    m = re.search(r"<untrusted-data[^>]+>\s*(.*?)\s*</untrusted-data", s, re.DOTALL)
     if m:
         try:
             return json.loads(m.group(1).strip())
         except Exception:
             pass
-    start = s.find('[')
-    end = s.rfind(']')
+    start = s.find("[")
+    end = s.rfind("]")
     if start != -1 and end != -1 and end > start:
         try:
-            return json.loads(s[start:end + 1])
+            return json.loads(s[start : end + 1])
         except Exception:
             pass
     return []
@@ -86,8 +95,16 @@ def normalize(name):
     """Normalise business name. &/AND normalisation applied before punctuation strip."""
     name = name.lower()
     name = name.replace("&", "and")
-    for sfx in [" pty ltd", " pty. ltd.", " pty limited", " pty. limited",
-                " limited", " ltd", " pty", " p/l"]:
+    for sfx in [
+        " pty ltd",
+        " pty. ltd.",
+        " pty limited",
+        " pty. limited",
+        " limited",
+        " ltd",
+        " pty",
+        " p/l",
+    ]:
         name = name.replace(sfx, "")
     return re.sub(r"[^a-z0-9 ]", "", name).strip()
 
@@ -168,13 +185,13 @@ def bulk_insert(rows, table="gmb_pilot_results"):
     url = f"{os.environ['SUPABASE_URL']}/rest/v1/{table}"
     headers = {
         "Authorization": f"Bearer {os.environ['SUPABASE_SERVICE_KEY']}",
-        "apikey": os.environ['SUPABASE_SERVICE_KEY'],
+        "apikey": os.environ["SUPABASE_SERVICE_KEY"],
         "Content-Type": "application/json",
         "Prefer": "return=minimal",
     }
     inserted = 0
     for i in range(0, len(rows), UPSERT_CHUNK):
-        chunk = rows[i:i + UPSERT_CHUNK]
+        chunk = rows[i : i + UPSERT_CHUNK]
         resp = httpx.post(url, headers=headers, json=chunk, timeout=60)
         if resp.status_code in (200, 201):
             inserted += len(chunk)
@@ -186,23 +203,23 @@ def bulk_insert(rows, table="gmb_pilot_results"):
 
 def bulk_update_business_universe(updates, batch=40):
     for i in range(0, len(updates), batch):
-        chunk = updates[i:i + batch]
+        chunk = updates[i : i + batch]
         stmts = []
-        for (abn, f) in chunk:
+        for abn, f in chunk:
             rs = str(f["rating"]) if f.get("rating") else "NULL"
             ls = str(f["lat"]) if f.get("lat") else "NULL"
             los = str(f["lon"]) if f.get("lon") else "NULL"
             stmts.append(
                 f"UPDATE business_universe SET "
-                f"gmb_place_id='{safe(f.get('place_id',''))}', "
-                f"gmb_cid='{safe(f.get('cid',''))}', "
-                f"gmb_category='{safe(f.get('cat',''))}', "
+                f"gmb_place_id='{safe(f.get('place_id', ''))}', "
+                f"gmb_cid='{safe(f.get('cid', ''))}', "
+                f"gmb_category='{safe(f.get('cat', ''))}', "
                 f"gmb_rating={rs}, "
                 f"gmb_review_count={int(f.get('reviews_cnt', 0))}, "
-                f"gmb_domain='{safe(f.get('domain',''))}', "
-                f"gmb_phone='{safe(f.get('phone',''))}', "
-                f"gmb_address='{safe(f.get('address',''))}', "
-                f"gmb_city='{safe(f.get('city',''))}', "
+                f"gmb_domain='{safe(f.get('domain', ''))}', "
+                f"gmb_phone='{safe(f.get('phone', ''))}', "
+                f"gmb_address='{safe(f.get('address', ''))}', "
+                f"gmb_city='{safe(f.get('city', ''))}', "
                 f"gmb_latitude={ls}, gmb_longitude={los}, "
                 f"gmb_enriched_at=NOW(), updated_at=NOW() "
                 f"WHERE abn='{abn}';"
@@ -212,8 +229,10 @@ def bulk_update_business_universe(updates, batch=40):
 
 # ── Main ─────────────────────────────────────────────────────────────────────
 
+
 def main(dry_run=False):
     from dotenv import load_dotenv
+
     load_dotenv(Path.home() / ".config" / "agency-os" / ".env")
 
     api_key = os.environ["BRIGHTDATA_API_KEY"]
@@ -274,10 +293,10 @@ def main(dry_run=False):
     if dry_run:
         print("  Sample (first 10):")
         for b in businesses[:10]:
-            print(f"    {b['abn']} | {b['trading_name']} | {b.get('postcode','?')}")
+            print(f"    {b['abn']} | {b['trading_name']} | {b.get('postcode', '?')}")
         print("\n  Keyword construction (first 10 — showing legal suffix stripping):")
         for b in businesses[:10]:
-            raw = b['trading_name']
+            raw = b["trading_name"]
             stripped = strip_legal_suffix(raw)
             kw = f"{stripped} {b.get('postcode', '')}"
             changed = " → STRIPPED" if stripped != raw else ""
@@ -293,7 +312,9 @@ def main(dry_run=False):
     inputs = []
     for b in businesses:
         # display_name is pre-stripped at storage time (Directive #232) — use directly
-        inputs.append({"keyword": f"{b['trading_name']} {b['postcode']}", "country": "AU", "lat": ""})
+        inputs.append(
+            {"keyword": f"{b['trading_name']} {b['postcode']}", "country": "AU", "lat": ""}
+        )
     print(f"  Built {len(inputs)} inputs (display_name pre-stripped, no runtime suffix stripping)")
 
     # ── Phase 2: Trigger BD snapshot ─────────────────────────────────────────
@@ -324,7 +345,9 @@ def main(dry_run=False):
     errors = [r for r in data if r.get("error")]
     single_page_errors = [r for r in errors if "does not contain a list" in str(r.get("error", ""))]
     other_errors = [r for r in errors if "does not contain a list" not in str(r.get("error", ""))]
-    print(f"  Valid: {len(valid)} | Single-page errors: {len(single_page_errors)} | Other: {len(other_errors)}")
+    print(
+        f"  Valid: {len(valid)} | Single-page errors: {len(single_page_errors)} | Other: {len(other_errors)}"
+    )
 
     # ── Phase 5: Retry single-page errors ────────────────────────────────────
     retry_results = []
@@ -406,15 +429,22 @@ def main(dry_run=False):
         mp = None
 
         if result_by_kw.get(kw_main):
-            gmb = result_by_kw[kw_main]; mp = "keyword"; kw_m += 1
+            gmb = result_by_kw[kw_main]
+            mp = "keyword"
+            kw_m += 1
         elif result_by_kw.get(kw_retry):
-            gmb = result_by_kw[kw_retry]; mp = "keyword_retry"; kw_m += 1
+            gmb = result_by_kw[kw_retry]
+            mp = "keyword_retry"
+            kw_m += 1
         elif result_by_name.get(norm_b):
-            gmb = result_by_name[norm_b]; mp = "name_exact"; name_m += 1
+            gmb = result_by_name[norm_b]
+            mp = "name_exact"
+            name_m += 1
         elif words:
             gmb = next((v for k, v in result_by_name.items() if k.startswith(words[0])), None)
             if gmb:
-                mp = "name_prefix"; prefix_m += 1
+                mp = "name_prefix"
+                prefix_m += 1
 
         if gmb:
             matched += 1
@@ -423,8 +453,12 @@ def main(dry_run=False):
             cid = gmb.get("fid_location", "") or gmb.get("cid", "") or ""
             details = gmb.get("business_details") or []
             domain = next(
-                (d.get("details", "").strip() for d in details if d.get("field_name") == "authority"),
-                gmb.get("open_website", "") or ""
+                (
+                    d.get("details", "").strip()
+                    for d in details
+                    if d.get("field_name") == "authority"
+                ),
+                gmb.get("open_website", "") or "",
             )
             if domain and domain.startswith("http"):
                 domain = urlparse(domain).netloc.replace("www.", "")
@@ -436,24 +470,50 @@ def main(dry_run=False):
             lat = float(gmb.get("lat") or 0)
             lon = float(gmb.get("lon") or 0)
 
-            pilot_rows.append({
-                "abn": b["abn"], "trading_name": b["trading_name"], "serp_match": True,
-                "gmb_category": cat or None, "gmb_rating": rating if rating else None,
-                "gmb_review_count": reviews_cnt, "gmb_domain": domain or None,
-                "match_confidence": mp,
-            })
-            bu_updates.append((b["abn"], {
-                "place_id": place_id, "cid": cid, "cat": cat, "rating": rating,
-                "reviews_cnt": reviews_cnt, "domain": domain, "phone": phone,
-                "address": address, "city": city, "lat": lat, "lon": lon,
-            }))
+            pilot_rows.append(
+                {
+                    "abn": b["abn"],
+                    "trading_name": b["trading_name"],
+                    "serp_match": True,
+                    "gmb_category": cat or None,
+                    "gmb_rating": rating if rating else None,
+                    "gmb_review_count": reviews_cnt,
+                    "gmb_domain": domain or None,
+                    "match_confidence": mp,
+                }
+            )
+            bu_updates.append(
+                (
+                    b["abn"],
+                    {
+                        "place_id": place_id,
+                        "cid": cid,
+                        "cat": cat,
+                        "rating": rating,
+                        "reviews_cnt": reviews_cnt,
+                        "domain": domain,
+                        "phone": phone,
+                        "address": address,
+                        "city": city,
+                        "lat": lat,
+                        "lon": lon,
+                    },
+                )
+            )
         else:
             not_found += 1
-            pilot_rows.append({
-                "abn": b["abn"], "trading_name": b["trading_name"], "serp_match": False,
-                "gmb_category": None, "gmb_rating": None, "gmb_review_count": 0,
-                "gmb_domain": None, "match_confidence": "none",
-            })
+            pilot_rows.append(
+                {
+                    "abn": b["abn"],
+                    "trading_name": b["trading_name"],
+                    "serp_match": False,
+                    "gmb_category": None,
+                    "gmb_rating": None,
+                    "gmb_review_count": 0,
+                    "gmb_domain": None,
+                    "match_confidence": "none",
+                }
+            )
 
     print(f"  Matched: {matched} ({matched / 10:.1f}%) | Not found: {not_found}")
     print(f"  By path: keyword={kw_m} name_exact={name_m} prefix={prefix_m}")
@@ -479,7 +539,7 @@ def main(dry_run=False):
         params={"select": "abn,serp_match", "created_at": "gte.2026-03-20T02:50:00Z"},
         headers={
             "Authorization": f"Bearer {os.environ['SUPABASE_SERVICE_KEY']}",
-            "apikey": os.environ['SUPABASE_SERVICE_KEY'],
+            "apikey": os.environ["SUPABASE_SERVICE_KEY"],
             "Prefer": "count=exact",
         },
         timeout=15,
@@ -499,51 +559,94 @@ def main(dry_run=False):
     print(f"Matched (GMB found):       {matched} ({match_rate:.1f}%)")
     print(f"Not found:                 {not_found}")
     print(f"BD valid:                  {len(valid)} | Errors: {len(single_page_errors)}")
-    print(f"BD snapshot time:          {bd_elapsed:.0f}s ({bd_elapsed/60:.1f} min)")
+    print(f"BD snapshot time:          {bd_elapsed:.0f}s ({bd_elapsed / 60:.1f} min)")
     print(f"DB write time:             {db_elapsed:.1f}s")
-    print(f"Total wall clock:          {total_elapsed:.0f}s ({total_elapsed/60:.1f} min)")
+    print(f"Total wall clock:          {total_elapsed:.0f}s ({total_elapsed / 60:.1f} min)")
 
     print("\nVS TARGETS (Pilot 3 → Pilot 4):")
-    print(f"  Match rate:   {match_rate:.1f}% (Pilot3: 73.9%, target 65%+)  {'✅' if match_rate >= 65 else '❌ HALT'}")
-    print(f"  BD snapshot:  {bd_elapsed:.0f}s (target <600s)               {'✅' if bd_elapsed < 600 else '❌'}")
-    print(f"  DB write:     {db_elapsed:.1f}s (target <10s)                {'✅' if db_elapsed < 10 else '❌'}")
-    print(f"  Wall clock:   {total_elapsed:.0f}s (target <1200s)            {'✅' if total_elapsed < 1200 else '❌'}")
+    print(
+        f"  Match rate:   {match_rate:.1f}% (Pilot3: 73.9%, target 65%+)  {'✅' if match_rate >= 65 else '❌ HALT'}"
+    )
+    print(
+        f"  BD snapshot:  {bd_elapsed:.0f}s (target <600s)               {'✅' if bd_elapsed < 600 else '❌'}"
+    )
+    print(
+        f"  DB write:     {db_elapsed:.1f}s (target <10s)                {'✅' if db_elapsed < 10 else '❌'}"
+    )
+    print(
+        f"  Wall clock:   {total_elapsed:.0f}s (target <1200s)            {'✅' if total_elapsed < 1200 else '❌'}"
+    )
 
     if match_rate < 65:
         print(f"\n⚠️  HALT: Match rate {match_rate:.1f}% < 65% floor on new cohort.")
-        _write_ceo_memory(snapshot_id, businesses, matched, not_found, match_rate,
-                          valid, single_page_errors, other_errors, bd_elapsed, db_elapsed,
-                          total_elapsed, halted=True)
+        _write_ceo_memory(
+            snapshot_id,
+            businesses,
+            matched,
+            not_found,
+            match_rate,
+            valid,
+            single_page_errors,
+            other_errors,
+            bd_elapsed,
+            db_elapsed,
+            total_elapsed,
+            halted=True,
+        )
         sys.exit(1)
 
-    _write_ceo_memory(snapshot_id, businesses, matched, not_found, match_rate,
-                      valid, single_page_errors, other_errors, bd_elapsed, db_elapsed,
-                      total_elapsed, halted=False)
+    _write_ceo_memory(
+        snapshot_id,
+        businesses,
+        matched,
+        not_found,
+        match_rate,
+        valid,
+        single_page_errors,
+        other_errors,
+        bd_elapsed,
+        db_elapsed,
+        total_elapsed,
+        halted=False,
+    )
     print("\nDirective #230 complete.")
 
 
-def _write_ceo_memory(snapshot_id, businesses, matched, not_found, match_rate,
-                      valid, single_page_errors, other_errors, bd_elapsed, db_elapsed,
-                      total_elapsed, halted=False):
+def _write_ceo_memory(
+    snapshot_id,
+    businesses,
+    matched,
+    not_found,
+    match_rate,
+    valid,
+    single_page_errors,
+    other_errors,
+    bd_elapsed,
+    db_elapsed,
+    total_elapsed,
+    halted=False,
+):
     print("\n[Phase 11] Writing ceo_memory...")
-    payload = json.dumps({
-        "status": "halted" if halted else "complete",
-        "pilot": 4,
-        "cohort": "null_trading_name_coalesce",
-        "snapshot_main": snapshot_id,
-        "businesses": len(businesses),
-        "matched": matched,
-        "not_found": not_found,
-        "match_rate_pct": round(match_rate, 1),
-        "pass_match_rate": match_rate >= 65,
-        "bd_valid": len(valid),
-        "bd_single_page_errors": len(single_page_errors),
-        "bd_elapsed_sec": round(bd_elapsed),
-        "db_write_sec": round(db_elapsed, 1),
-        "total_elapsed_sec": round(total_elapsed),
-        "coalesce_fix_applied": True,
-        "halted": halted,
-    }).replace("'", "''")
+    payload = json.dumps(
+        {
+            "status": "halted" if halted else "complete",
+            "pilot": 4,
+            "cohort": "null_trading_name_coalesce",
+            "snapshot_main": snapshot_id,
+            "businesses": len(businesses),
+            "matched": matched,
+            "not_found": not_found,
+            "match_rate_pct": round(match_rate, 1),
+            "pass_match_rate": match_rate >= 65,
+            "bd_valid": len(valid),
+            "bd_single_page_errors": len(single_page_errors),
+            "bd_elapsed_sec": round(bd_elapsed),
+            "db_write_sec": round(db_elapsed, 1),
+            "total_elapsed_sec": round(total_elapsed),
+            "coalesce_fix_applied": True,
+            "halted": halted,
+        }
+    ).replace("'", "''")
 
     mcp_sql(f"""
         INSERT INTO ceo_memory (key, value, updated_at)
@@ -552,7 +655,7 @@ def _write_ceo_memory(snapshot_id, businesses, matched, not_found, match_rate,
         UPDATE ceo_memory SET value=jsonb_set(value,'{{last_number}}','230'), updated_at=NOW()
         WHERE key='ceo:directives';
         INSERT INTO ceo_memory (key, value, updated_at)
-        VALUES ('session_handoff_current', '{json.dumps({"updated": "2026-03-20", "last_directive": 230, "status": "complete" if not halted else "halted", "pilot_4_match_rate": round(match_rate,1), "coalesce_fix_validated": match_rate >= 65}).replace("'","''")}' ::jsonb, NOW())
+        VALUES ('session_handoff_current', '{json.dumps({"updated": "2026-03-20", "last_directive": 230, "status": "complete" if not halted else "halted", "pilot_4_match_rate": round(match_rate, 1), "coalesce_fix_validated": match_rate >= 65}).replace("'", "''")}' ::jsonb, NOW())
         ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value, updated_at=NOW();
     """)
     print("  ceo_memory written.")

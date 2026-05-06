@@ -10,6 +10,7 @@ Intent Classification + DFS Ads + DFS GMB
 
 Ramp Sonnet: start 5 concurrent, +5 every 2s until sem=55.
 """
+
 import asyncio
 import json
 import os
@@ -18,6 +19,7 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dotenv import load_dotenv
+
 load_dotenv("/home/elliotbot/.config/agency-os/.env")
 
 import asyncpg
@@ -26,12 +28,12 @@ from src.clients.dfs_labs_client import DFSLabsClient
 from src.pipeline.intelligence import classify_intent, analyse_reviews
 from src.utils.asyncpg_connection import get_asyncpg_pool
 
-INPUT_AFFORD   = os.path.join(os.path.dirname(__file__), "output", "300d_afford.json")
+INPUT_AFFORD = os.path.join(os.path.dirname(__file__), "output", "300d_afford.json")
 INPUT_COMPREHEND = os.path.join(os.path.dirname(__file__), "output", "300c_comprehend.json")
-OUTPUT_FILE    = os.path.join(os.path.dirname(__file__), "output", "300e_intent.json")
+OUTPUT_FILE = os.path.join(os.path.dirname(__file__), "output", "300e_intent.json")
 
 # Sonnet-4.5 pricing (USD per token)
-SONNET_IN_COST  = 3.00 / 1_000_000
+SONNET_IN_COST = 3.00 / 1_000_000
 SONNET_OUT_COST = 15.0 / 1_000_000
 
 # DFS pricing
@@ -39,8 +41,8 @@ DFS_ADS_COST = 0.002
 DFS_GMB_COST = 0.0035
 
 # Semaphores
-SEM_DFS    = asyncio.Semaphore(28)
-SEM_SONNET = asyncio.Semaphore(5)   # starts at 5, ramped up to 55
+SEM_DFS = asyncio.Semaphore(28)
+SEM_SONNET = asyncio.Semaphore(5)  # starts at 5, ramped up to 55
 
 
 async def ramp_sonnet():
@@ -59,7 +61,13 @@ async def fetch_ads(dfs: DFSLabsClient, domain: str) -> dict:
     async with SEM_DFS:
         try:
             result = await dfs.ads_search_by_domain(domain)
-            return result or {"is_running_ads": False, "ad_count": 0, "formats": [], "first_shown": None, "last_shown": None}
+            return result or {
+                "is_running_ads": False,
+                "ad_count": 0,
+                "formats": [],
+                "first_shown": None,
+                "last_shown": None,
+            }
         except Exception as exc:
             return {"is_running_ads": False, "ad_count": 0, "_error": str(exc)}
 
@@ -80,8 +88,12 @@ async def run_intent(domain: str, website_data: dict, gmb_data: dict, ads_data: 
             return result
         except Exception as exc:
             return {
-                "band": "NOT_TRYING", "score": 0, "confidence": "LOW",
-                "evidence": [], "primary_signal": "", "recommended_entry_point": "",
+                "band": "NOT_TRYING",
+                "score": 0,
+                "confidence": "LOW",
+                "evidence": [],
+                "primary_signal": "",
+                "recommended_entry_point": "",
                 "_error": str(exc),
             }
 
@@ -137,20 +149,28 @@ async def process_domain(
     total: int,
     t0: float,
 ) -> dict:
-    domain       = afford_item["domain"]
-    category     = afford_item.get("category", "")
+    domain = afford_item["domain"]
+    category = afford_item.get("category", "")
     comprehension = (comp_item or {}).get("comprehension") or {}
 
     # Build website_data from Stage 3 comprehension
     website_data = {
-        "has_analytics":          (comprehension.get("technology_signals") or {}).get("has_analytics", False),
-        "has_ads_tag":            (comprehension.get("technology_signals") or {}).get("has_ads_tag", False),
-        "has_meta_pixel":         (comprehension.get("technology_signals") or {}).get("has_meta_pixel", False),
-        "has_booking_system":     (comprehension.get("technology_signals") or {}).get("has_booking_system", False),
-        "has_conversion_tracking":(comprehension.get("technology_signals") or {}).get("has_conversion_tracking", False),
-        "cms":                    (comprehension.get("technology_signals") or {}).get("cms"),
-        "services":               comprehension.get("services", []),
-        "team_size_indicator":    comprehension.get("team_size_indicator", ""),
+        "has_analytics": (comprehension.get("technology_signals") or {}).get(
+            "has_analytics", False
+        ),
+        "has_ads_tag": (comprehension.get("technology_signals") or {}).get("has_ads_tag", False),
+        "has_meta_pixel": (comprehension.get("technology_signals") or {}).get(
+            "has_meta_pixel", False
+        ),
+        "has_booking_system": (comprehension.get("technology_signals") or {}).get(
+            "has_booking_system", False
+        ),
+        "has_conversion_tracking": (comprehension.get("technology_signals") or {}).get(
+            "has_conversion_tracking", False
+        ),
+        "cms": (comprehension.get("technology_signals") or {}).get("cms"),
+        "services": comprehension.get("services", []),
+        "team_size_indicator": comprehension.get("team_size_indicator", ""),
     }
 
     # Derive company name for GMB lookup
@@ -174,29 +194,29 @@ async def process_domain(
         review_analysis = await run_reviews(domain, reviews)
 
     # Estimate tokens (intelligence.py uses ~600 max_tokens for classify_intent)
-    tokens_in  = intent_result.pop("input_tokens", 800)   # prompt caching estimate
+    tokens_in = intent_result.pop("input_tokens", 800)  # prompt caching estimate
     tokens_out = intent_result.pop("output_tokens", 400)
 
     out = {
-        "domain":            domain,
-        "category":          category,
+        "domain": domain,
+        "category": category,
         "google_ads_active": ads_data.get("is_running_ads", False),
-        "google_ads_count":  ads_data.get("ad_count", 0),
-        "gmb_found":         gmb_data.get("gmb_found", False),
-        "gmb_rating":        gmb_data.get("gmb_rating"),
-        "gmb_review_count":  gmb_data.get("gmb_review_count", 0),
-        "gmb_reviews_text":  bool(reviews),
-        "intent_band":       intent_result.get("band", "NOT_TRYING"),
-        "intent_score":      intent_result.get("score", 0),
-        "evidence":          intent_result.get("evidence", []),
-        "review_analysis":   review_analysis,
-        "sonnet_tokens_in":  tokens_in,
+        "google_ads_count": ads_data.get("ad_count", 0),
+        "gmb_found": gmb_data.get("gmb_found", False),
+        "gmb_rating": gmb_data.get("gmb_rating"),
+        "gmb_review_count": gmb_data.get("gmb_review_count", 0),
+        "gmb_reviews_text": bool(reviews),
+        "intent_band": intent_result.get("band", "NOT_TRYING"),
+        "intent_score": intent_result.get("score", 0),
+        "evidence": intent_result.get("evidence", []),
+        "review_analysis": review_analysis,
+        "sonnet_tokens_in": tokens_in,
         "sonnet_tokens_out": tokens_out,
-        "dfs_cost_usd":      round(DFS_ADS_COST + DFS_GMB_COST, 4),
-        "sonnet_cost_usd":   round(tokens_in * SONNET_IN_COST + tokens_out * SONNET_OUT_COST, 4),
-        "_intent_ms":        intent_ms,
-        "_ads_error":        ads_data.get("_error"),
-        "_gmb_error":        gmb_data.get("_error"),
+        "dfs_cost_usd": round(DFS_ADS_COST + DFS_GMB_COST, 4),
+        "sonnet_cost_usd": round(tokens_in * SONNET_IN_COST + tokens_out * SONNET_OUT_COST, 4),
+        "_intent_ms": intent_ms,
+        "_ads_error": ads_data.get("_error"),
+        "_gmb_error": gmb_data.get("_error"),
     }
 
     # Write to BU
@@ -206,7 +226,7 @@ async def process_domain(
     if done[0] % 25 == 0:
         elapsed = time.monotonic() - t0
         rate = done[0] / elapsed
-        eta  = (total - done[0]) / rate if rate > 0 else 0
+        eta = (total - done[0]) / rate if rate > 0 else 0
         print(f"  {done[0]}/{total} | {elapsed:.0f}s elapsed | ETA {eta:.0f}s")
 
     return out
@@ -234,14 +254,16 @@ async def main():
         login=settings.dataforseo_login,
         password=settings.dataforseo_password,
     )
-    dsn = settings.database_url.replace("postgresql+asyncpg://", "postgresql://").replace("postgres://", "postgresql://")
+    dsn = settings.database_url.replace("postgresql+asyncpg://", "postgresql://").replace(
+        "postgres://", "postgresql://"
+    )
     pool = await get_asyncpg_pool(dsn, min_size=1, max_size=50)
 
     # Start Sonnet ramp task
     ramp_task = asyncio.create_task(ramp_sonnet())
 
-    t0    = time.monotonic()
-    done  = [0]
+    t0 = time.monotonic()
+    done = [0]
     total = len(passed)
 
     tasks = [
@@ -260,11 +282,13 @@ async def main():
     errors = 0
     for i, r in enumerate(results):
         if isinstance(r, Exception):
-            clean.append({
-                "domain":   passed[i]["domain"],
-                "category": passed[i].get("category", ""),
-                "_exception": str(r),
-            })
+            clean.append(
+                {
+                    "domain": passed[i]["domain"],
+                    "category": passed[i].get("category", ""),
+                    "_exception": str(r),
+                }
+            )
             errors += 1
         else:
             clean.append(r)
@@ -272,13 +296,13 @@ async def main():
     ok = [r for r in clean if not r.get("_exception")]
 
     # ── STATS ──
-    ads_active   = sum(1 for r in ok if r.get("google_ads_active"))
+    ads_active = sum(1 for r in ok if r.get("google_ads_active"))
     ads_inactive = sum(1 for r in ok if not r.get("google_ads_active"))
-    gmb_found    = sum(1 for r in ok if r.get("gmb_found"))
-    gmb_missing  = sum(1 for r in ok if not r.get("gmb_found"))
-    gmb_ratings  = [r["gmb_rating"] for r in ok if r.get("gmb_rating") is not None]
-    gmb_avg      = round(sum(gmb_ratings) / len(gmb_ratings), 2) if gmb_ratings else 0
-    gmb_reviews  = sum(1 for r in ok if r.get("gmb_reviews_text"))
+    gmb_found = sum(1 for r in ok if r.get("gmb_found"))
+    gmb_missing = sum(1 for r in ok if not r.get("gmb_found"))
+    gmb_ratings = [r["gmb_rating"] for r in ok if r.get("gmb_rating") is not None]
+    gmb_avg = round(sum(gmb_ratings) / len(gmb_ratings), 2) if gmb_ratings else 0
+    gmb_reviews = sum(1 for r in ok if r.get("gmb_reviews_text"))
 
     band_dist = {"NOT_TRYING": 0, "DABBLING": 0, "TRYING": 0, "STRUGGLING": 0}
     for r in ok:
@@ -288,27 +312,43 @@ async def main():
     score_dist = {"0-5": 0, "6-10": 0, "11-14": 0, "15-18": 0}
     for r in ok:
         s = r.get("intent_score", 0)
-        if s <= 5:   score_dist["0-5"]   += 1
-        elif s <= 10: score_dist["6-10"]  += 1
-        elif s <= 14: score_dist["11-14"] += 1
-        else:        score_dist["15-18"] += 1
+        if s <= 5:
+            score_dist["0-5"] += 1
+        elif s <= 10:
+            score_dist["6-10"] += 1
+        elif s <= 14:
+            score_dist["11-14"] += 1
+        else:
+            score_dist["15-18"] += 1
 
     cat_bands = {}
     for cat in ["Dental", "Construction", "Legal"]:
         cat_ok = [r for r in ok if r.get("category") == cat]
-        cat_bands[cat] = {b: sum(1 for r in cat_ok if r.get("intent_band") == b)
-                          for b in ["NOT_TRYING", "DABBLING", "TRYING", "STRUGGLING"]}
+        cat_bands[cat] = {
+            b: sum(1 for r in cat_ok if r.get("intent_band") == b)
+            for b in ["NOT_TRYING", "DABBLING", "TRYING", "STRUGGLING"]
+        }
 
-    total_dfs_cost    = round(len(ok) * (DFS_ADS_COST + DFS_GMB_COST), 2)
+    total_dfs_cost = round(len(ok) * (DFS_ADS_COST + DFS_GMB_COST), 2)
     total_sonnet_cost = round(sum(r.get("sonnet_cost_usd", 0) for r in ok), 2)
-    total_cost        = round(total_dfs_cost + total_sonnet_cost, 2)
+    total_cost = round(total_dfs_cost + total_sonnet_cost, 2)
 
     # ── 5 EXAMPLES ──
-    ex_not_trying  = next((r for r in ok if r.get("intent_band") == "NOT_TRYING" and r.get("evidence")), None)
-    ex_dabbling    = next((r for r in ok if r.get("intent_band") == "DABBLING"   and r.get("evidence")), None)
-    ex_trying      = next((r for r in ok if r.get("intent_band") == "TRYING"     and r.get("evidence")), None)
-    ex_struggling  = next((r for r in ok if r.get("intent_band") == "STRUGGLING" and r.get("evidence")), None)
-    ex_reviews     = next((r for r in ok if r.get("gmb_reviews_text") and r.get("review_analysis")), None)
+    ex_not_trying = next(
+        (r for r in ok if r.get("intent_band") == "NOT_TRYING" and r.get("evidence")), None
+    )
+    ex_dabbling = next(
+        (r for r in ok if r.get("intent_band") == "DABBLING" and r.get("evidence")), None
+    )
+    ex_trying = next(
+        (r for r in ok if r.get("intent_band") == "TRYING" and r.get("evidence")), None
+    )
+    ex_struggling = next(
+        (r for r in ok if r.get("intent_band") == "STRUGGLING" and r.get("evidence")), None
+    )
+    ex_reviews = next(
+        (r for r in ok if r.get("gmb_reviews_text") and r.get("review_analysis")), None
+    )
 
     print()
     print("=" * 60)
@@ -332,7 +372,9 @@ async def main():
     print()
     print("8. PER-CATEGORY INTENT BREAKDOWN:")
     for cat, bands in cat_bands.items():
-        parts = " / ".join(f"{b}={bands[b]}" for b in ["NOT_TRYING","DABBLING","TRYING","STRUGGLING"])
+        parts = " / ".join(
+            f"{b}={bands[b]}" for b in ["NOT_TRYING", "DABBLING", "TRYING", "STRUGGLING"]
+        )
         print(f"   {cat}: {parts}")
     print()
     print(f"9.  TOTAL DFS COST:    ${total_dfs_cost:.2f} USD")
@@ -350,17 +392,22 @@ async def main():
         print(f"\n[{label}]")
         print(json.dumps(printable, indent=4, default=str))
 
-    show("NOT_TRYING with evidence (rejected)",     ex_not_trying)
-    show("DABBLING with evidence",                  ex_dabbling)
-    show("TRYING with evidence",                    ex_trying)
-    show("STRUGGLING with evidence",                ex_struggling)
-    show("GMB reviews → pain themes",               ex_reviews)
+    show("NOT_TRYING with evidence (rejected)", ex_not_trying)
+    show("DABBLING with evidence", ex_dabbling)
+    show("TRYING with evidence", ex_trying)
+    show("STRUGGLING with evidence", ex_struggling)
+    show("GMB reviews → pain themes", ex_reviews)
 
     # ── SAVE ──
     summary = {
-        "total": len(clean), "ok": len(ok), "errors": errors,
-        "google_ads_active": ads_active, "google_ads_inactive": ads_inactive,
-        "gmb_found": gmb_found, "gmb_missing": gmb_missing, "gmb_avg_rating": gmb_avg,
+        "total": len(clean),
+        "ok": len(ok),
+        "errors": errors,
+        "google_ads_active": ads_active,
+        "google_ads_inactive": ads_inactive,
+        "gmb_found": gmb_found,
+        "gmb_missing": gmb_missing,
+        "gmb_avg_rating": gmb_avg,
         "gmb_reviews_with_text": gmb_reviews,
         "intent_bands": band_dist,
         "score_dist": score_dist,
@@ -373,7 +420,9 @@ async def main():
 
     os.makedirs(os.path.dirname(OUTPUT_FILE), exist_ok=True)
     with open(OUTPUT_FILE, "w") as f:
-        json.dump({"stage": "300e_intent", "summary": summary, "domains": clean}, f, indent=2, default=str)
+        json.dump(
+            {"stage": "300e_intent", "summary": summary, "domains": clean}, f, indent=2, default=str
+        )
     print(f"\nSaved: {OUTPUT_FILE}")
 
 

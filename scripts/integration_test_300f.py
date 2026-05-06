@@ -6,6 +6,7 @@ DM Identification
 DFS SERP LinkedIn lookup per domain.
 Cost: ~$3.70 DFS (370 × $0.01/call).
 """
+
 import asyncio
 import json
 import os
@@ -15,6 +16,7 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dotenv import load_dotenv
+
 load_dotenv("/home/elliotbot/.config/agency-os/.env")
 
 import asyncpg
@@ -23,8 +25,8 @@ from src.clients.dfs_labs_client import DFSLabsClient
 from src.integrations.brightdata_client import DM_TITLE_PRIORITY
 from src.utils.asyncpg_connection import get_asyncpg_pool
 
-INPUT_INTENT  = os.path.join(os.path.dirname(__file__), "output", "300e_intent.json")
-OUTPUT_FILE   = os.path.join(os.path.dirname(__file__), "output", "300f_dm.json")
+INPUT_INTENT = os.path.join(os.path.dirname(__file__), "output", "300e_intent.json")
+OUTPUT_FILE = os.path.join(os.path.dirname(__file__), "output", "300f_dm.json")
 
 DFS_COST_PER_CALL = 0.01  # search_linkedin_people = $0.01
 
@@ -32,16 +34,40 @@ SEM_DFS = asyncio.Semaphore(28)
 
 # DM title keywords that suggest NOT the decision maker
 NON_DM_TITLES = {
-    "coordinator", "assistant", "receptionist", "admin", "administrator",
-    "secretary", "clerk", "junior", "intern", "trainee", "graduate",
-    "marketing coordinator", "marketing manager", "account manager",
-    "social media", "content", "hr", "human resources",
+    "coordinator",
+    "assistant",
+    "receptionist",
+    "admin",
+    "administrator",
+    "secretary",
+    "clerk",
+    "junior",
+    "intern",
+    "trainee",
+    "graduate",
+    "marketing coordinator",
+    "marketing manager",
+    "account manager",
+    "social media",
+    "content",
+    "hr",
+    "human resources",
 }
 
 HIGH_CONFIDENCE_TITLES = {
-    "owner", "founder", "co-founder", "director", "principal",
-    "managing director", "managing partner", "ceo", "chief executive",
-    "proprietor", "partner", "president", "general manager",
+    "owner",
+    "founder",
+    "co-founder",
+    "director",
+    "principal",
+    "managing director",
+    "managing partner",
+    "ceo",
+    "chief executive",
+    "proprietor",
+    "partner",
+    "president",
+    "general manager",
 }
 
 
@@ -53,7 +79,9 @@ def _derive_company_name(domain: str, display_name: str | None, legal_name: str 
         # Strip PTY LTD etc
         name = re.sub(
             r"\s*(PTY\.?\s*LTD\.?|PROPRIETARY\s+LIMITED|PTY\s+LIMITED|LIMITED|LTD\.?|TRUST)\s*$",
-            "", legal_name.strip(), flags=re.IGNORECASE,
+            "",
+            legal_name.strip(),
+            flags=re.IGNORECASE,
         ).strip()
         if len(name) > 3:
             return name
@@ -80,7 +108,9 @@ def _pick_best_dm(people: list[dict]) -> dict | None:
         return None
 
     # Filter to AU profiles first
-    au_people = [p for p in people if _is_au_profile(p.get("snippet", ""), p.get("linkedin_url", ""))]
+    au_people = [
+        p for p in people if _is_au_profile(p.get("snippet", ""), p.get("linkedin_url", ""))
+    ]
     candidates = au_people if au_people else people
 
     best = None
@@ -109,7 +139,7 @@ async def lookup_dm(
     total: int,
     t0: float,
 ) -> dict:
-    search_query = f'{company_name} owner OR director OR founder site:linkedin.com'
+    search_query = f"{company_name} owner OR director OR founder site:linkedin.com"
     t_start = time.monotonic()
 
     async with SEM_DFS:
@@ -127,21 +157,23 @@ async def lookup_dm(
 
     # Check if the title suggests NOT the decision maker
     title_lower = (dm.get("title") or "").lower() if dm else ""
-    is_non_dm = any(t in title_lower for t in NON_DM_TITLES) and not any(t in title_lower for t in HIGH_CONFIDENCE_TITLES)
+    is_non_dm = any(t in title_lower for t in NON_DM_TITLES) and not any(
+        t in title_lower for t in HIGH_CONFIDENCE_TITLES
+    )
 
     result = {
-        "domain":          domain,
-        "dm_found":        dm is not None,
-        "dm_name":         dm["name"]         if dm else None,
-        "dm_title":        dm["title"]        if dm else None,
+        "domain": domain,
+        "dm_found": dm is not None,
+        "dm_name": dm["name"] if dm else None,
+        "dm_title": dm["title"] if dm else None,
         "dm_linkedin_url": dm["linkedin_url"] if dm else None,
         "dm_search_query": search_query,
-        "dm_source":       "serp_linkedin",
-        "dm_is_non_dm":    is_non_dm,          # title suggests not a decision maker
+        "dm_source": "serp_linkedin",
+        "dm_is_non_dm": is_non_dm,  # title suggests not a decision maker
         "candidates_found": len(people),
-        "dfs_cost_usd":    DFS_COST_PER_CALL,
+        "dfs_cost_usd": DFS_COST_PER_CALL,
         "response_time_ms": elapsed_ms,
-        "_error":          error,
+        "_error": error,
     }
 
     # Upsert to BU
@@ -196,7 +228,9 @@ async def main():
         login=settings.dataforseo_login,
         password=settings.dataforseo_password,
     )
-    dsn = settings.database_url.replace("postgresql+asyncpg://", "postgresql://").replace("postgres://", "postgresql://")
+    dsn = settings.database_url.replace("postgresql+asyncpg://", "postgresql://").replace(
+        "postgres://", "postgresql://"
+    )
     pool = await get_asyncpg_pool(dsn, min_size=1, max_size=20)
 
     # Get display_name + legal_name from BU for all 370 domains
@@ -214,13 +248,15 @@ async def main():
         domain = p["domain"]
         display, legal = bu_names.get(domain, (None, None))
         company_name = _derive_company_name(domain, display, legal)
-        enriched.append({
-            **p,
-            "company_name": company_name,
-        })
+        enriched.append(
+            {
+                **p,
+                "company_name": company_name,
+            }
+        )
 
-    t0    = time.monotonic()
-    done  = [0]
+    t0 = time.monotonic()
+    done = [0]
     total = len(enriched)
 
     tasks = [
@@ -241,39 +277,43 @@ async def main():
         domain = enriched[i]["domain"]
         ctx = enrich_map[domain]
         if isinstance(r, Exception):
-            results.append({
-                "domain":      domain,
-                "category":    ctx.get("category", ""),
-                "intent_band": ctx.get("intent_band", ""),
-                "intent_score": ctx.get("intent_score", 0),
-                "_exception":  str(r),
-            })
+            results.append(
+                {
+                    "domain": domain,
+                    "category": ctx.get("category", ""),
+                    "intent_band": ctx.get("intent_band", ""),
+                    "intent_score": ctx.get("intent_score", 0),
+                    "_exception": str(r),
+                }
+            )
             errors += 1
         else:
-            results.append({
-                "domain":       r["domain"],
-                "category":     ctx.get("category", ""),
-                "intent_band":  ctx.get("intent_band", ""),
-                "intent_score": ctx.get("intent_score", 0),
-                "dm_found":     r["dm_found"],
-                "dm_name":      r["dm_name"],
-                "dm_title":     r["dm_title"],
-                "dm_linkedin_url": r["dm_linkedin_url"],
-                "dm_search_query": r["dm_search_query"],
-                "dm_source":    r["dm_source"],
-                "dm_is_non_dm": r.get("dm_is_non_dm", False),
-                "candidates_found": r.get("candidates_found", 0),
-                "dfs_cost_usd": r["dfs_cost_usd"],
-                "response_time_ms": r["response_time_ms"],
-                "_error":       r.get("_error"),
-            })
+            results.append(
+                {
+                    "domain": r["domain"],
+                    "category": ctx.get("category", ""),
+                    "intent_band": ctx.get("intent_band", ""),
+                    "intent_score": ctx.get("intent_score", 0),
+                    "dm_found": r["dm_found"],
+                    "dm_name": r["dm_name"],
+                    "dm_title": r["dm_title"],
+                    "dm_linkedin_url": r["dm_linkedin_url"],
+                    "dm_search_query": r["dm_search_query"],
+                    "dm_source": r["dm_source"],
+                    "dm_is_non_dm": r.get("dm_is_non_dm", False),
+                    "candidates_found": r.get("candidates_found", 0),
+                    "dfs_cost_usd": r["dfs_cost_usd"],
+                    "response_time_ms": r["response_time_ms"],
+                    "_error": r.get("_error"),
+                }
+            )
 
     ok = [r for r in results if not r.get("_exception")]
 
     # ── STATS ──
     found_results = [r for r in ok if r.get("dm_found")]
-    not_found     = [r for r in ok if not r.get("dm_found")]
-    hit_rate      = round(len(found_results) / len(ok) * 100, 1) if ok else 0
+    not_found = [r for r in ok if not r.get("dm_found")]
+    hit_rate = round(len(found_results) / len(ok) * 100, 1) if ok else 0
 
     cat_stats = {}
     for cat in ["Dental", "Construction", "Legal"]:
@@ -300,13 +340,18 @@ async def main():
     non_dm_examples = [r for r in found_results if r.get("dm_is_non_dm")]
 
     # ── 5 EXAMPLES ──
-    ex_dental_high   = next((r for r in found_results
-                             if r.get("category") == "Dental" and
-                             r.get("intent_band") in ("STRUGGLING", "TRYING")), None)
-    ex_construction  = next((r for r in found_results if r.get("category") == "Construction"), None)
-    ex_legal         = next((r for r in found_results if r.get("category") == "Legal"), None)
-    ex_not_found     = next((r for r in not_found), None)
-    ex_non_dm        = non_dm_examples[0] if non_dm_examples else None
+    ex_dental_high = next(
+        (
+            r
+            for r in found_results
+            if r.get("category") == "Dental" and r.get("intent_band") in ("STRUGGLING", "TRYING")
+        ),
+        None,
+    )
+    ex_construction = next((r for r in found_results if r.get("category") == "Construction"), None)
+    ex_legal = next((r for r in found_results if r.get("category") == "Legal"), None)
+    ex_not_found = next((r for r in not_found), None)
+    ex_non_dm = non_dm_examples[0] if non_dm_examples else None
 
     print()
     print("=" * 60)
@@ -319,7 +364,9 @@ async def main():
     print()
     print("4. PER-CATEGORY:")
     for cat, s in cat_stats.items():
-        print(f"   {cat}: found={s['found']} / not_found={s['not_found']} / hit_rate={s['hit_rate']}%")
+        print(
+            f"   {cat}: found={s['found']} / not_found={s['not_found']} / hit_rate={s['hit_rate']}%"
+        )
     print()
     print("5. PER INTENT BAND:")
     for band, s in band_stats.items():
@@ -338,16 +385,19 @@ async def main():
         print(f"\n[{label}]")
         print(json.dumps(printable, indent=4, default=str))
 
-    show("DENTAL DM FOUND (STRUGGLING/TRYING)",   ex_dental_high)
-    show("CONSTRUCTION DM FOUND",                 ex_construction)
-    show("LEGAL DM FOUND",                        ex_legal)
-    show("DM NOT FOUND (search query + reason)",  ex_not_found)
-    show("NON-DM TITLE (not decision maker)",     ex_non_dm)
+    show("DENTAL DM FOUND (STRUGGLING/TRYING)", ex_dental_high)
+    show("CONSTRUCTION DM FOUND", ex_construction)
+    show("LEGAL DM FOUND", ex_legal)
+    show("DM NOT FOUND (search query + reason)", ex_not_found)
+    show("NON-DM TITLE (not decision maker)", ex_non_dm)
 
     # ── SAVE ──
     summary = {
-        "total": len(results), "ok": len(ok), "errors": errors,
-        "dm_found": len(found_results), "dm_not_found": len(not_found),
+        "total": len(results),
+        "ok": len(ok),
+        "errors": errors,
+        "dm_found": len(found_results),
+        "dm_not_found": len(not_found),
         "hit_rate_pct": hit_rate,
         "per_category": cat_stats,
         "per_band": band_stats,
@@ -358,7 +408,9 @@ async def main():
 
     os.makedirs(os.path.dirname(OUTPUT_FILE), exist_ok=True)
     with open(OUTPUT_FILE, "w") as f:
-        json.dump({"stage": "300f_dm", "summary": summary, "domains": results}, f, indent=2, default=str)
+        json.dump(
+            {"stage": "300f_dm", "summary": summary, "domains": results}, f, indent=2, default=str
+        )
     print(f"\nSaved: {OUTPUT_FILE}")
 
 

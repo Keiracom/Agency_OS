@@ -2,6 +2,7 @@
 Directive #253 Task C — Stages 4-7 live pipeline test.
 Runs against dentist cohort (propensity >= 40) already in BU at stage=3.
 """
+
 import asyncio
 import json
 import logging
@@ -48,17 +49,30 @@ class HaikuCompatClient(AnthropicClient):
         """Strip ```json ... ``` or ``` ... ``` fences from model output."""
         text = text.strip()
         # Match ```json\n...\n``` or ```\n...\n```
-        m = _re.match(r'^```(?:json)?\s*\n(.*?)\n```\s*$', text, _re.DOTALL)
+        m = _re.match(r"^```(?:json)?\s*\n(.*?)\n```\s*$", text, _re.DOTALL)
         if m:
             return m.group(1).strip()
         return text
 
-    async def complete(self, prompt, system=None, max_tokens=1024, temperature=0.7,
-                       model="claude-3-5-haiku-20241022", enable_caching=True, **kwargs):
+    async def complete(
+        self,
+        prompt,
+        system=None,
+        max_tokens=1024,
+        temperature=0.7,
+        model="claude-3-5-haiku-20241022",
+        enable_caching=True,
+        **kwargs,
+    ):
         model = HAIKU_REDIRECT.get(model, model)
         result = await super().complete(
-            prompt=prompt, system=system, max_tokens=max_tokens,
-            temperature=temperature, model=model, enable_caching=enable_caching, **kwargs,
+            prompt=prompt,
+            system=system,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            model=model,
+            enable_caching=enable_caching,
+            **kwargs,
         )
         # Strip markdown code fences so json.loads() in Stage7 can parse the response
         if isinstance(result.get("content"), str):
@@ -99,10 +113,12 @@ async def run_test():
     t4 = time.time()
     stage4 = Stage4DMIdentification(serp_client, db_pool)
     s4_result = await stage4.run(batch_size=100, daily_spend_cap_aud=STAGE4_SPEND_CAP)
-    log.info(f"Stage 4 complete in {time.time()-t4:.1f}s: {json.dumps(s4_result, default=str)}")
+    log.info(f"Stage 4 complete in {time.time() - t4:.1f}s: {json.dumps(s4_result, default=str)}")
 
     # checkpoint
-    s4_check = await db_pool.fetch("SELECT pipeline_stage, COUNT(*) as n FROM business_universe WHERE pipeline_stage >= 4 GROUP BY pipeline_stage ORDER BY pipeline_stage")
+    s4_check = await db_pool.fetch(
+        "SELECT pipeline_stage, COUNT(*) as n FROM business_universe WHERE pipeline_stage >= 4 GROUP BY pipeline_stage ORDER BY pipeline_stage"
+    )
     log.info(f"CHECKPOINT [After Stage 4]: {[dict(r) for r in s4_check]}")
 
     # --- STAGE 5 ---
@@ -110,9 +126,11 @@ async def run_test():
     t5 = time.time()
     stage5 = Stage5EmailEnrichment(leadmagic, db_pool)
     s5_result = await stage5.run(batch_size=100, daily_spend_cap_aud=STAGE5_SPEND_CAP)
-    log.info(f"Stage 5 complete in {time.time()-t5:.1f}s: {json.dumps(s5_result, default=str)}")
+    log.info(f"Stage 5 complete in {time.time() - t5:.1f}s: {json.dumps(s5_result, default=str)}")
 
-    s5_check = await db_pool.fetch("SELECT pipeline_stage, COUNT(*) as n FROM business_universe WHERE pipeline_stage >= 5 GROUP BY pipeline_stage ORDER BY pipeline_stage")
+    s5_check = await db_pool.fetch(
+        "SELECT pipeline_stage, COUNT(*) as n FROM business_universe WHERE pipeline_stage >= 5 GROUP BY pipeline_stage ORDER BY pipeline_stage"
+    )
     log.info(f"CHECKPOINT [After Stage 5]: {[dict(r) for r in s5_check]}")
 
     # --- STAGE 6 ---
@@ -120,9 +138,11 @@ async def run_test():
     t6 = time.time()
     stage6 = Stage6Reachability(leadmagic, db_pool)
     s6_result = await stage6.run(batch_size=100, mobile_spend_cap_aud=STAGE6_SPEND_CAP)
-    log.info(f"Stage 6 complete in {time.time()-t6:.1f}s: {json.dumps(s6_result, default=str)}")
+    log.info(f"Stage 6 complete in {time.time() - t6:.1f}s: {json.dumps(s6_result, default=str)}")
 
-    s6_check = await db_pool.fetch("SELECT pipeline_stage, pipeline_status, COUNT(*) as n FROM business_universe WHERE pipeline_stage = 6 GROUP BY pipeline_stage, pipeline_status ORDER BY pipeline_status")
+    s6_check = await db_pool.fetch(
+        "SELECT pipeline_stage, pipeline_status, COUNT(*) as n FROM business_universe WHERE pipeline_stage = 6 GROUP BY pipeline_stage, pipeline_status ORDER BY pipeline_status"
+    )
     log.info(f"CHECKPOINT [After Stage 6]: {[dict(r) for r in s6_check]}")
 
     # --- CAMPAIGN CLAIMER ---
@@ -137,9 +157,13 @@ async def run_test():
             filters={"min_propensity": 40, "min_reachability": 0},
             max_claims=200,
         )
-    log.info(f"Claim complete in {time.time()-t_claim:.1f}s: {json.dumps(claim_result, default=str)}")
+    log.info(
+        f"Claim complete in {time.time() - t_claim:.1f}s: {json.dumps(claim_result, default=str)}"
+    )
 
-    claim_check = await db_pool.fetchval("SELECT COUNT(*) FROM campaign_leads WHERE campaign_id = $1", CAMPAIGN_ID)
+    claim_check = await db_pool.fetchval(
+        "SELECT COUNT(*) FROM campaign_leads WHERE campaign_id = $1", CAMPAIGN_ID
+    )
     log.info(f"CHECKPOINT [campaign_leads]: {claim_check} rows")
 
     if claim_check == 0:
@@ -152,10 +176,11 @@ async def run_test():
     t7 = time.time()
     stage7 = Stage7Personalisation(anthropic, db_pool)
     s7_result = await stage7.run(campaign_id=CAMPAIGN_ID, batch_size=20)
-    log.info(f"Stage 7 complete in {time.time()-t7:.1f}s: {json.dumps(s7_result, default=str)}")
+    log.info(f"Stage 7 complete in {time.time() - t7:.1f}s: {json.dumps(s7_result, default=str)}")
 
     # Sample messages
-    msgs = await db_pool.fetch("""
+    msgs = await db_pool.fetch(
+        """
         SELECT cl.id, bu.display_name, bu.suburb, bu.propensity_score,
                m.channel, m.subject, m.body, m.generation_cost_aud, m.status
         FROM campaign_leads cl
@@ -164,7 +189,9 @@ async def run_test():
         WHERE cl.campaign_id = $1
         ORDER BY bu.propensity_score DESC
         LIMIT 3
-    """, CAMPAIGN_ID)
+    """,
+        CAMPAIGN_ID,
+    )
     log.info(f"SAMPLE MESSAGES ({len(msgs)} shown):")
     for m in msgs:
         log.info(f"  [{m['display_name']} / {m['suburb']} / score {m['propensity_score']}]")

@@ -1,4 +1,5 @@
 """GOV-PHASE2 Auditor — phoenix_export_loop tests."""
+
 from __future__ import annotations
 
 import sys
@@ -57,18 +58,30 @@ async def test_run_one_cycle_exports_and_advances_watermark(tmp_watermark, monke
     start_watermark = datetime(2026, 5, 1, 12, 0, 0, tzinfo=UTC)
     loop.write_watermark(start_watermark)
     fake_events = [
-        {"event_type": "tool_call", "callsign": "aiden",
-         "timestamp": datetime(2026, 5, 1, 13, 0, 0, tzinfo=UTC),
-         "event_data": {}, "tool_name": "Bash", "file_path": "",
-         "directive_id": ""},
-        {"event_type": "tool_call", "callsign": "aiden",
-         "timestamp": datetime(2026, 5, 1, 13, 5, 0, tzinfo=UTC),
-         "event_data": {}, "tool_name": "Read", "file_path": "",
-         "directive_id": ""},
+        {
+            "event_type": "tool_call",
+            "callsign": "aiden",
+            "timestamp": datetime(2026, 5, 1, 13, 0, 0, tzinfo=UTC),
+            "event_data": {},
+            "tool_name": "Bash",
+            "file_path": "",
+            "directive_id": "",
+        },
+        {
+            "event_type": "tool_call",
+            "callsign": "aiden",
+            "timestamp": datetime(2026, 5, 1, 13, 5, 0, tzinfo=UTC),
+            "event_data": {},
+            "tool_name": "Read",
+            "file_path": "",
+            "directive_id": "",
+        },
     ]
     tracer = MagicMock()
-    with patch.object(loop, "fetch_events", new=AsyncMock(return_value=fake_events)), \
-         patch("src.observability.phoenix_client.export_event", return_value=True) as mock_export:
+    with (
+        patch.object(loop, "fetch_events", new=AsyncMock(return_value=fake_events)),
+        patch("src.observability.phoenix_client.export_event", return_value=True) as mock_export,
+    ):
         exported = await loop.run_one_cycle(tracer)
     assert exported == 2
     assert mock_export.call_count == 2

@@ -175,7 +175,9 @@ async def test_hubspot_find_or_create_contact_existing(crm_service, hubspot_conf
 
 
 @pytest.mark.asyncio
-async def test_hubspot_find_or_create_contact_new(crm_service, hubspot_config, mock_lead, db_session):
+async def test_hubspot_find_or_create_contact_new(
+    crm_service, hubspot_config, mock_lead, db_session
+):
     """Test creating new HubSpot contact when not found."""
     # First call (search) returns empty
     mock_search_response = MagicMock()
@@ -257,9 +259,7 @@ async def test_hubspot_token_refresh(crm_service, hubspot_config, db_session):
 async def test_pipedrive_find_or_create_person_existing(crm_service, pipedrive_config, mock_lead):
     """Test finding existing Pipedrive person."""
     mock_response = MagicMock()
-    mock_response.json.return_value = {
-        "data": {"items": [{"item": {"id": 12345}}]}
-    }
+    mock_response.json.return_value = {"data": {"items": [{"item": {"id": 12345}}]}}
     mock_response.raise_for_status = MagicMock()
 
     crm_service.http.get = AsyncMock(return_value=mock_response)
@@ -270,7 +270,9 @@ async def test_pipedrive_find_or_create_person_existing(crm_service, pipedrive_c
 
 
 @pytest.mark.asyncio
-async def test_pipedrive_find_or_create_person_new(crm_service, pipedrive_config, mock_lead, db_session):
+async def test_pipedrive_find_or_create_person_new(
+    crm_service, pipedrive_config, mock_lead, db_session
+):
     """Test creating new Pipedrive person."""
     # Search returns empty
     mock_search_response = MagicMock()
@@ -291,7 +293,9 @@ async def test_pipedrive_find_or_create_person_new(crm_service, pipedrive_config
 
 
 @pytest.mark.asyncio
-async def test_pipedrive_create_deal(crm_service, pipedrive_config, mock_lead, mock_meeting, db_session):
+async def test_pipedrive_create_deal(
+    crm_service, pipedrive_config, mock_lead, mock_meeting, db_session
+):
     """Test creating Pipedrive deal."""
     person_id = "12345"
 
@@ -330,9 +334,7 @@ async def test_pipedrive_create_deal(crm_service, pipedrive_config, mock_lead, m
 async def test_close_find_or_create_lead_existing(crm_service, close_config, mock_lead):
     """Test finding existing Close lead."""
     mock_response = MagicMock()
-    mock_response.json.return_value = {
-        "data": [{"id": "lead_abc123"}]
-    }
+    mock_response.json.return_value = {"data": [{"id": "lead_abc123"}]}
     mock_response.raise_for_status = MagicMock()
 
     crm_service.http.get = AsyncMock(return_value=mock_response)
@@ -387,7 +389,9 @@ async def test_close_create_opportunity(crm_service, close_config, mock_lead, mo
 
 
 @pytest.mark.asyncio
-async def test_push_meeting_success_hubspot(crm_service, hubspot_config, mock_lead, mock_meeting, db_session):
+async def test_push_meeting_success_hubspot(
+    crm_service, hubspot_config, mock_lead, mock_meeting, db_session
+):
     """Test full meeting push flow for HubSpot."""
     crm_service.get_config = AsyncMock(return_value=hubspot_config)
     crm_service._refresh_hubspot_token_if_needed = AsyncMock(return_value=hubspot_config)
@@ -407,7 +411,9 @@ async def test_push_meeting_success_hubspot(crm_service, hubspot_config, mock_le
 
 
 @pytest.mark.asyncio
-async def test_push_meeting_error_handling(crm_service, hubspot_config, mock_lead, mock_meeting, db_session):
+async def test_push_meeting_error_handling(
+    crm_service, hubspot_config, mock_lead, mock_meeting, db_session
+):
     """Test error handling during push."""
     crm_service.get_config = AsyncMock(return_value=hubspot_config)
     crm_service._refresh_hubspot_token_if_needed = AsyncMock(return_value=hubspot_config)
@@ -441,7 +447,7 @@ async def test_get_hubspot_pipelines(crm_service, hubspot_config):
                 "stages": [
                     {"id": "stage_1", "label": "New Lead", "metadata": {"probability": 0.2}},
                     {"id": "stage_2", "label": "Meeting Booked", "metadata": {"probability": 0.5}},
-                ]
+                ],
             }
         ]
     }

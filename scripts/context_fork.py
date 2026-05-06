@@ -33,6 +33,7 @@ Same posture as scripts/governance_hooks.py (P1):
   - Module entry-point catches every Exception and returns "" so a
     bug here cannot block the dispatch.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -72,6 +73,7 @@ STEP0_MARKERS = ("objective:", "scope:", "success criteria:", "assumptions:")
 
 # ── Data shapes ────────────────────────────────────────────────────────────
 
+
 @dataclass
 class ForkedContext:
     step0_block: str | None = None
@@ -80,6 +82,7 @@ class ForkedContext:
 
 
 # ── Validation (same posture as governance_hooks) ──────────────────────────
+
 
 def _validate_transcript_path(raw: str | None) -> Path | None:
     if not raw or not isinstance(raw, str):
@@ -128,6 +131,7 @@ def _iter_jsonl(blob: str):
 
 
 # ── Extraction helpers ─────────────────────────────────────────────────────
+
 
 def _record_text(rec: dict) -> str:
     """Best-effort flatten of a transcript record → searchable text."""
@@ -194,6 +198,7 @@ def _extract_step0(text: str) -> str | None:
 
 # ── Pure transform ─────────────────────────────────────────────────────────
 
+
 def extract_context(blob: str, max_recent_turns: int = DEFAULT_MAX_RECENT_TURNS) -> ForkedContext:
     """Walk the transcript blob oldest→newest, build a ForkedContext."""
     ctx = ForkedContext()
@@ -227,10 +232,11 @@ def extract_context(blob: str, max_recent_turns: int = DEFAULT_MAX_RECENT_TURNS)
 
 # ── Render ─────────────────────────────────────────────────────────────────
 
+
 def _truncate_to_chars(s: str, char_budget: int) -> str:
     if len(s) <= char_budget:
         return s
-    return s[:char_budget - 50] + "\n…[truncated to fit token budget]…"
+    return s[: char_budget - 50] + "\n…[truncated to fit token budget]…"
 
 
 def render_brief(ctx: ForkedContext, max_tokens: int) -> str:
@@ -273,6 +279,7 @@ def render_brief(ctx: ForkedContext, max_tokens: int) -> str:
 
 # ── Public API ─────────────────────────────────────────────────────────────
 
+
 def build_forked_context(transcript_path: str | Path, max_tokens: int = 4000) -> str:
     """Read a parent session transcript and produce a markdown brief
     (Step 0 + active files + recent turns) to seed a sub-agent dispatch.
@@ -302,6 +309,7 @@ def build_forked_context(transcript_path: str | Path, max_tokens: int = 4000) ->
 
 
 # ── CLI for ad-hoc inspection ──────────────────────────────────────────────
+
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="P9 context forking — inspect a parent transcript.")

@@ -160,9 +160,9 @@ def setup_dependency_overrides(mock_client_context, mock_db_session, mock_curren
     app.dependency_overrides[get_current_client] = lambda: mock_client_context
     app.dependency_overrides[require_member] = lambda: mock_client_context
     app.dependency_overrides[require_admin] = lambda: mock_client_context
-    
+
     yield
-    
+
     app.dependency_overrides.clear()
 
 
@@ -240,10 +240,14 @@ async def test_list_campaigns_with_results(
     # enrich_campaign_response calls compute_campaign_metrics which does 2 more queries
     mock_meetings_result = create_metrics_result(total_meetings=5, showed_count=3)
     mock_sequences_result = create_metrics_result(active_count=10)
-    mock_db_session.execute = AsyncMock(side_effect=[
-        mock_count_result, mock_list_result,
-        mock_meetings_result, mock_sequences_result
-    ])
+    mock_db_session.execute = AsyncMock(
+        side_effect=[
+            mock_count_result,
+            mock_list_result,
+            mock_meetings_result,
+            mock_sequences_result,
+        ]
+    )
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -269,10 +273,14 @@ async def test_list_campaigns_with_status_filter(
     mock_list_result = create_list_result([mock_campaign])
     mock_meetings_result = create_metrics_result(total_meetings=5, showed_count=3)
     mock_sequences_result = create_metrics_result(active_count=10)
-    mock_db_session.execute = AsyncMock(side_effect=[
-        mock_count_result, mock_list_result,
-        mock_meetings_result, mock_sequences_result
-    ])
+    mock_db_session.execute = AsyncMock(
+        side_effect=[
+            mock_count_result,
+            mock_list_result,
+            mock_meetings_result,
+            mock_sequences_result,
+        ]
+    )
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -295,10 +303,14 @@ async def test_list_campaigns_with_search(
     mock_list_result = create_list_result([mock_campaign])
     mock_meetings_result = create_metrics_result(total_meetings=5, showed_count=3)
     mock_sequences_result = create_metrics_result(active_count=10)
-    mock_db_session.execute = AsyncMock(side_effect=[
-        mock_count_result, mock_list_result,
-        mock_meetings_result, mock_sequences_result
-    ])
+    mock_db_session.execute = AsyncMock(
+        side_effect=[
+            mock_count_result,
+            mock_list_result,
+            mock_meetings_result,
+            mock_sequences_result,
+        ]
+    )
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -324,7 +336,7 @@ async def test_get_campaign_success(
     mock_campaign_result = create_campaign_result(mock_campaign)
     mock_meetings_result = create_metrics_result(total_meetings=5, showed_count=3)
     mock_sequences_result = create_metrics_result(active_count=10)
-    
+
     mock_db_session.execute = AsyncMock(
         side_effect=[mock_campaign_result, mock_meetings_result, mock_sequences_result]
     )
@@ -434,7 +446,9 @@ async def test_create_campaign_success(setup_dependency_overrides, mock_db_sessi
 
 
 @pytest.mark.asyncio
-async def test_create_campaign_invalid_allocation(setup_dependency_overrides, mock_db_session, mock_client):
+async def test_create_campaign_invalid_allocation(
+    setup_dependency_overrides, mock_db_session, mock_client
+):
     """Test creating a campaign with invalid allocation (not summing to 100)."""
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -455,7 +469,9 @@ async def test_create_campaign_invalid_allocation(setup_dependency_overrides, mo
 
 
 @pytest.mark.asyncio
-async def test_create_campaign_with_all_fields(setup_dependency_overrides, mock_db_session, mock_client):
+async def test_create_campaign_with_all_fields(
+    setup_dependency_overrides, mock_db_session, mock_client
+):
     """Test creating a campaign with all fields."""
     created_campaign = MagicMock()
     created_campaign.id = uuid4()
@@ -754,9 +770,7 @@ async def test_list_sequences(
     mock_campaign_result = create_campaign_result(mock_campaign)
     mock_sequences_result = create_list_result([mock_sequence])
 
-    mock_db_session.execute = AsyncMock(
-        side_effect=[mock_campaign_result, mock_sequences_result]
-    )
+    mock_db_session.execute = AsyncMock(side_effect=[mock_campaign_result, mock_sequences_result])
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -779,9 +793,7 @@ async def test_create_sequence(
     mock_campaign_result = create_campaign_result(mock_campaign)
     mock_existing_result = create_campaign_result(None)  # No existing step
 
-    mock_db_session.execute = AsyncMock(
-        side_effect=[mock_campaign_result, mock_existing_result]
-    )
+    mock_db_session.execute = AsyncMock(side_effect=[mock_campaign_result, mock_existing_result])
 
     # Mock refresh to set required fields on the created sequence
     async def mock_refresh(obj):
@@ -837,9 +849,7 @@ async def test_list_resources(
     mock_campaign_result = create_campaign_result(mock_campaign)
     mock_resources_result = create_list_result([mock_resource])
 
-    mock_db_session.execute = AsyncMock(
-        side_effect=[mock_campaign_result, mock_resources_result]
-    )
+    mock_db_session.execute = AsyncMock(side_effect=[mock_campaign_result, mock_resources_result])
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -862,9 +872,7 @@ async def test_create_resource(
     mock_campaign_result = create_campaign_result(mock_campaign)
     mock_existing_result = create_campaign_result(None)  # No existing resource
 
-    mock_db_session.execute = AsyncMock(
-        side_effect=[mock_campaign_result, mock_existing_result]
-    )
+    mock_db_session.execute = AsyncMock(side_effect=[mock_campaign_result, mock_existing_result])
 
     # Mock refresh to set required non-computed fields on the created resource
     # Note: 'remaining' and 'is_available' are computed properties, don't set them
@@ -936,7 +944,7 @@ async def test_campaign_response_structure(
     mock_campaign_result = create_campaign_result(mock_campaign)
     mock_meetings_result = create_metrics_result(total_meetings=5, showed_count=3)
     mock_sequences_result = create_metrics_result(active_count=10)
-    
+
     mock_db_session.execute = AsyncMock(
         side_effect=[mock_campaign_result, mock_meetings_result, mock_sequences_result]
     )
@@ -952,13 +960,28 @@ async def test_campaign_response_structure(
     data = response.json()
 
     required_fields = [
-        "id", "client_id", "name", "status",
-        "allocation_email", "allocation_sms", "allocation_linkedin",
-        "allocation_voice", "allocation_mail",
-        "daily_limit", "timezone", "work_hours_start", "work_hours_end",
-        "work_days", "sequence_steps", "sequence_delay_days",
-        "total_leads", "leads_contacted", "leads_replied", "leads_converted",
-        "created_at", "updated_at",
+        "id",
+        "client_id",
+        "name",
+        "status",
+        "allocation_email",
+        "allocation_sms",
+        "allocation_linkedin",
+        "allocation_voice",
+        "allocation_mail",
+        "daily_limit",
+        "timezone",
+        "work_hours_start",
+        "work_hours_end",
+        "work_days",
+        "sequence_steps",
+        "sequence_delay_days",
+        "total_leads",
+        "leads_contacted",
+        "leads_replied",
+        "leads_converted",
+        "created_at",
+        "updated_at",
     ]
 
     for field in required_fields:

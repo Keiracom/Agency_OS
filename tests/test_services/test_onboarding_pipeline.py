@@ -208,12 +208,8 @@ class TestBypassGates:
                 "src.services.onboarding_gate_service.enforce_onboarding_gates",
                 new=spy_enforce,
             ),
-            patch(
-                "src.orchestration.flows.post_onboarding_flow.verify_icp_ready_task"
-            ) as mock_icp,
-            patch(
-                "src.orchestration.flows.post_onboarding_flow.get_db_session"
-            ) as mock_db_ctx,
+            patch("src.orchestration.flows.post_onboarding_flow.verify_icp_ready_task") as mock_icp,
+            patch("src.orchestration.flows.post_onboarding_flow.get_db_session") as mock_db_ctx,
         ):
             mock_db = AsyncMock()
             mock_ctx = MagicMock()
@@ -280,9 +276,7 @@ class TestBypassGates:
                 "src.services.onboarding_gate_service.enforce_onboarding_gates",
                 new=raise_linkedin,
             ),
-            patch(
-                "src.orchestration.flows.post_onboarding_flow.get_db_session"
-            ) as mock_db_ctx,
+            patch("src.orchestration.flows.post_onboarding_flow.get_db_session") as mock_db_ctx,
         ):
             mock_db = AsyncMock()
             mock_ctx = MagicMock()
@@ -332,12 +326,8 @@ class TestBypassGates:
                 "src.services.onboarding_gate_service.check_onboarding_gates",
                 new=mock_check_gates,
             ),
-            patch(
-                "src.orchestration.flows.post_onboarding_flow.get_db_session"
-            ) as mock_db_ctx,
-            patch(
-                "src.orchestration.flows.post_onboarding_flow.verify_icp_ready_task"
-            ) as mock_icp,
+            patch("src.orchestration.flows.post_onboarding_flow.get_db_session") as mock_db_ctx,
+            patch("src.orchestration.flows.post_onboarding_flow.verify_icp_ready_task") as mock_icp,
         ):
             mock_db = AsyncMock()
             mock_ctx = MagicMock()
@@ -372,9 +362,7 @@ class TestDemoMode:
 
     def test_demo_fixture_file_exists(self):
         """Demo leads fixture file must exist and contain >= 8 leads."""
-        fixture_path = (
-            Path(__file__).parent.parent.parent / "src" / "fixtures" / "demo_leads.json"
-        )
+        fixture_path = Path(__file__).parent.parent.parent / "src" / "fixtures" / "demo_leads.json"
         assert fixture_path.exists(), f"Demo fixture not found at {fixture_path}"
 
         with open(fixture_path) as f:
@@ -384,24 +372,18 @@ class TestDemoMode:
 
     def test_demo_fixture_required_fields(self):
         """Each demo lead must have email, company, domain, organization_industry."""
-        fixture_path = (
-            Path(__file__).parent.parent.parent / "src" / "fixtures" / "demo_leads.json"
-        )
+        fixture_path = Path(__file__).parent.parent.parent / "src" / "fixtures" / "demo_leads.json"
         with open(fixture_path) as f:
             leads = json.load(f)
 
         required_fields = ["email", "company", "domain", "organization_industry"]
         for lead in leads:
             for field in required_fields:
-                assert field in lead and lead[field], (
-                    f"Demo lead missing '{field}': {lead}"
-                )
+                assert field in lead and lead[field], f"Demo lead missing '{field}': {lead}"
 
     def test_demo_fixture_au_domains(self):
         """All demo leads should have .com.au domains (Brisbane construction companies)."""
-        fixture_path = (
-            Path(__file__).parent.parent.parent / "src" / "fixtures" / "demo_leads.json"
-        )
+        fixture_path = Path(__file__).parent.parent.parent / "src" / "fixtures" / "demo_leads.json"
         with open(fixture_path) as f:
             leads = json.load(f)
 
@@ -458,9 +440,7 @@ class TestDemoMode:
                 "src.orchestration.flows.post_onboarding_flow.update_onboarding_status_task",
                 new_callable=AsyncMock,
             ) as mock_status,
-            patch(
-                "src.orchestration.flows.post_onboarding_flow.get_db_session"
-            ) as mock_db_ctx,
+            patch("src.orchestration.flows.post_onboarding_flow.get_db_session") as mock_db_ctx,
             patch("src.config.tiers.TIER_CONFIG", {"ignition": {"leads_per_month": 100}}),
         ):
             mock_db = AsyncMock()
@@ -475,7 +455,13 @@ class TestDemoMode:
                 "client_id": client_id,
                 "company_name": "Demo Agency",
                 "tier": "ignition",
-                "icp": {"industries": ["Construction"], "titles": [], "company_sizes": [], "locations": [], "pain_points": []},
+                "icp": {
+                    "industries": ["Construction"],
+                    "titles": [],
+                    "company_sizes": [],
+                    "locations": [],
+                    "pain_points": [],
+                },
                 "icp_confirmed": True,
             }
             mock_suggest.return_value = {
@@ -487,7 +473,13 @@ class TestDemoMode:
             mock_create.return_value = {
                 "success": True,
                 "campaigns_created": 1,
-                "campaigns": [{"campaign_id": campaign_id, "name": "Construction Outreach", "allocation_pct": 100}],
+                "campaigns": [
+                    {
+                        "campaign_id": campaign_id,
+                        "name": "Construction Outreach",
+                        "allocation_pct": 100,
+                    }
+                ],
                 "total_allocation": 100,
             }
             mock_inject.return_value = 8
@@ -504,7 +496,9 @@ class TestDemoMode:
         # inject_demo_leads SHOULD have been called
         mock_inject.assert_called_once()
         # Gates should NOT have been enforced (demo_mode implies bypass)
-        assert called_enforce == [], "enforce_onboarding_gates was called but demo_mode implies bypass"
+        assert called_enforce == [], (
+            "enforce_onboarding_gates was called but demo_mode implies bypass"
+        )
 
         assert result["success"] is True
         assert result["demo_mode"] is True

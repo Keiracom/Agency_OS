@@ -2,6 +2,7 @@
 
 MAX-COO-PHASE-B / Phase B File 2.
 """
+
 from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
@@ -42,6 +43,7 @@ def _build_mock_client(rows):
 def _run(coro):
     """Run an async coro on a fresh event loop — avoids cross-test pollution."""
     import asyncio
+
     loop = asyncio.new_event_loop()
     try:
         return loop.run_until_complete(coro)
@@ -95,7 +97,8 @@ def test_hybrid_backend_uses_memory_listener_path(monkeypatch):
     fake_module = MagicMock()
     fake_module.recall_via_mem0 = _fake_recall
     with patch.dict(
-        "sys.modules", {"src.telegram_bot.memory_listener": fake_module},
+        "sys.modules",
+        {"src.telegram_bot.memory_listener": fake_module},
     ):
         out = _run(mr.get_relevant_memories("test query", limit=5))
     assert out == expected
@@ -118,7 +121,8 @@ def test_supabase_fallback_when_memory_listener_unavailable(monkeypatch):
 
     with patch.dict("sys.modules", {"src.telegram_bot.memory_listener": fake_module}):
         with patch.object(
-            mr, "_supabase_client",
+            mr,
+            "_supabase_client",
             return_value=_build_mock_client(fallback_rows),
         ):
             out = _run(mr.get_relevant_memories("query"))

@@ -6,6 +6,7 @@ via src/security/webhook_sigs.verify_signature (PHASE-2-SLICE-8 Track C).
 - Prod mode (secret set) -> X-Signature mandatory; mismatch -> 401.
 - Signed payload shape: f"{client_id}\\n{approval_id}\\n{action}".
 """
+
 from __future__ import annotations
 
 from uuid import uuid4
@@ -21,7 +22,7 @@ from src.security.webhook_sigs import compute_signature
 
 def test_gate_bypassed_when_secret_unset(monkeypatch):
     monkeypatch.delenv(OPERATOR_SECRET_ENV, raising=False)
-    _require_operator_signature(None, uuid4(), uuid4(), "approve")   # no raise
+    _require_operator_signature(None, uuid4(), uuid4(), "approve")  # no raise
 
 
 def test_gate_rejects_missing_signature_when_secret_set(monkeypatch):
@@ -60,7 +61,8 @@ def test_gate_action_is_part_of_signed_payload(monkeypatch):
     client_id = uuid4()
     approval_id = uuid4()
     sig_for_approve = compute_signature(
-        "prod-secret", f"{client_id}\n{approval_id}\napprove".encode(),
+        "prod-secret",
+        f"{client_id}\n{approval_id}\napprove".encode(),
     )
     with pytest.raises(HTTPException):
         _require_operator_signature(sig_for_approve, client_id, approval_id, "reject")

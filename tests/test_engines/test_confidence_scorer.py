@@ -1,4 +1,5 @@
 """Tests for confidence_scorer — Directive #215, amended Directive #219"""
+
 import pytest
 from src.engines.confidence_scorer import (
     score_business_confidence,

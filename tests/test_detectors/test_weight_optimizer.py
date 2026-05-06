@@ -5,7 +5,6 @@ PHASE: 16 (Conversion Intelligence)
 TASK: 16A-005 (tests)
 """
 
-
 from src.detectors.weight_optimizer import (
     COMPONENTS,
     DEFAULT_WEIGHTS,
@@ -116,10 +115,7 @@ class TestScoreCalculation:
         weights = DEFAULT_WEIGHTS
 
         # Calculate weighted score
-        score = sum(
-            components[comp] * weights[comp]
-            for comp in COMPONENTS
-        )
+        score = sum(components[comp] * weights[comp] for comp in COMPONENTS)
 
         # Score should be between 0 and 100
         assert 0 <= score <= 100

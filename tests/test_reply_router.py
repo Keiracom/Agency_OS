@@ -9,13 +9,17 @@ from src.pipeline.reply_router import classify_reply
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _classify(subject: str = "", body: str = "", sender: str = "test@example.com", step: int = 1):
-    return classify_reply(subject=subject, body=body, sender_email=sender, original_sequence_step=step)
+    return classify_reply(
+        subject=subject, body=body, sender_email=sender, original_sequence_step=step
+    )
 
 
 # ---------------------------------------------------------------------------
 # Intent: positive
 # ---------------------------------------------------------------------------
+
 
 class TestPositive:
     def test_interested_keyword(self):
@@ -48,6 +52,7 @@ class TestPositive:
 # ---------------------------------------------------------------------------
 # Intent: booking
 # ---------------------------------------------------------------------------
+
 
 class TestBooking:
     def test_schedule_keyword(self):
@@ -89,6 +94,7 @@ class TestBooking:
 # Intent: not_interested
 # ---------------------------------------------------------------------------
 
+
 class TestNotInterested:
     def test_not_interested(self):
         result = _classify(body="Not interested, thanks.")
@@ -122,9 +128,12 @@ class TestNotInterested:
 # Intent: ooo
 # ---------------------------------------------------------------------------
 
+
 class TestOOO:
     def test_out_of_office(self):
-        result = _classify(subject="Out of Office: Re: your email", body="I am out of office until May 1.")
+        result = _classify(
+            subject="Out of Office: Re: your email", body="I am out of office until May 1."
+        )
         assert result["intent"] == "ooo"
         assert result["action"] == "mark_ooo"
 
@@ -156,6 +165,7 @@ class TestOOO:
 # Intent: unsubscribe
 # ---------------------------------------------------------------------------
 
+
 class TestUnsubscribe:
     def test_unsubscribe_keyword(self):
         result = _classify(body="Please unsubscribe me from all future emails.")
@@ -183,6 +193,7 @@ class TestUnsubscribe:
 # ---------------------------------------------------------------------------
 # Intent: bounce
 # ---------------------------------------------------------------------------
+
 
 class TestBounce:
     def test_delivery_failed(self):
@@ -222,6 +233,7 @@ class TestBounce:
 # Intent: unclear
 # ---------------------------------------------------------------------------
 
+
 class TestUnclear:
     def test_empty_body(self):
         result = _classify(body="")
@@ -242,6 +254,7 @@ class TestUnclear:
 # Confidence scoring
 # ---------------------------------------------------------------------------
 
+
 class TestConfidence:
     def test_confidence_between_0_and_1(self):
         for body in [
@@ -258,7 +271,9 @@ class TestConfidence:
 
     def test_multiple_hits_raises_confidence(self):
         single = _classify(body="Interested.")
-        multi = _classify(body="Interested. Tell me more. Sounds good. Happy to. Love to. Can you send.")
+        multi = _classify(
+            body="Interested. Tell me more. Sounds good. Happy to. Love to. Can you send."
+        )
         assert multi["confidence"] >= single["confidence"]
 
     def test_unclear_always_zero(self):
@@ -270,6 +285,7 @@ class TestConfidence:
 # ---------------------------------------------------------------------------
 # Return value structure
 # ---------------------------------------------------------------------------
+
 
 class TestReturnStructure:
     def test_all_keys_present(self):
@@ -290,6 +306,7 @@ class TestReturnStructure:
 # ---------------------------------------------------------------------------
 # Subject line classification
 # ---------------------------------------------------------------------------
+
 
 class TestSubjectLine:
     def test_ooo_in_subject_only(self):

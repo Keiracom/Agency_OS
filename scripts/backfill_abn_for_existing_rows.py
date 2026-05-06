@@ -17,6 +17,7 @@ Usage:
 
 Idempotent — running twice on same row = no-op (filtered by `abn IS NULL`).
 """
+
 from __future__ import annotations
 
 import argparse

@@ -56,9 +56,7 @@ class TestUserDashboard:
         """Test dashboard stats API endpoint."""
         client_id = str(uuid4())
 
-        response = await api_client.get(
-            f"/api/v1/clients/{client_id}/reports/dashboard"
-        )
+        response = await api_client.get(f"/api/v1/clients/{client_id}/reports/dashboard")
 
         # Should respond (may be auth error)
         assert response.status_code in [200, 401, 403, 404]
@@ -69,9 +67,7 @@ class TestUserDashboard:
         """Test activity feed API endpoint."""
         client_id = str(uuid4())
 
-        response = await api_client.get(
-            f"/api/v1/clients/{client_id}/reports/activity"
-        )
+        response = await api_client.get(f"/api/v1/clients/{client_id}/reports/activity")
 
         assert response.status_code in [200, 401, 403, 404]
         print(f"✅ Activity feed endpoint: {response.status_code}")
@@ -168,9 +164,7 @@ class TestCampaignMetrics:
         """Test campaign performance API endpoint."""
         client_id = str(uuid4())
 
-        response = await api_client.get(
-            f"/api/v1/clients/{client_id}/reports/campaigns"
-        )
+        response = await api_client.get(f"/api/v1/clients/{client_id}/reports/campaigns")
 
         assert response.status_code in [200, 401, 403, 404]
         print(f"✅ Campaign performance endpoint: {response.status_code}")
@@ -180,9 +174,7 @@ class TestCampaignMetrics:
         """Test channel metrics API endpoint."""
         client_id = str(uuid4())
 
-        response = await api_client.get(
-            f"/api/v1/clients/{client_id}/reports/channels"
-        )
+        response = await api_client.get(f"/api/v1/clients/{client_id}/reports/channels")
 
         assert response.status_code in [200, 401, 403, 404]
         print(f"✅ Channel metrics endpoint: {response.status_code}")
@@ -227,9 +219,7 @@ class TestLeadStatusAccuracy:
         """Test leads list API endpoint."""
         client_id = str(uuid4())
 
-        response = await api_client.get(
-            f"/api/v1/clients/{client_id}/leads"
-        )
+        response = await api_client.get(f"/api/v1/clients/{client_id}/leads")
 
         assert response.status_code in [200, 401, 403, 404]
         print(f"✅ Leads list endpoint: {response.status_code}")
@@ -240,9 +230,7 @@ class TestLeadStatusAccuracy:
         client_id = str(uuid4())
         lead_id = str(uuid4())
 
-        response = await api_client.get(
-            f"/api/v1/clients/{client_id}/leads/{lead_id}"
-        )
+        response = await api_client.get(f"/api/v1/clients/{client_id}/leads/{lead_id}")
 
         assert response.status_code in [200, 401, 403, 404]
         print(f"✅ Lead detail endpoint: {response.status_code}")
@@ -284,9 +272,7 @@ class TestALSDistribution:
         """Test ALS distribution API endpoint."""
         client_id = str(uuid4())
 
-        response = await api_client.get(
-            f"/api/v1/clients/{client_id}/reports/als-distribution"
-        )
+        response = await api_client.get(f"/api/v1/clients/{client_id}/reports/als-distribution")
 
         assert response.status_code in [200, 401, 403, 404]
         print(f"✅ ALS distribution endpoint: {response.status_code}")
@@ -310,10 +296,7 @@ class TestALSDistribution:
             assert "percentage" in sample_distribution[tier]
 
         # Percentages should sum to 1.0
-        total_pct = sum(
-            sample_distribution[t]["percentage"]
-            for t in tiers
-        )
+        total_pct = sum(sample_distribution[t]["percentage"] for t in tiers)
         assert abs(total_pct - 1.0) < 0.01
 
         print("✅ ALS distribution structure validated")

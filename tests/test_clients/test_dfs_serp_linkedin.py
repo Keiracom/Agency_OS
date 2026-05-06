@@ -65,13 +65,15 @@ def make_serp_items(profiles: list[dict]) -> dict:
 @pytest.mark.asyncio
 async def test_search_linkedin_people_parses_name_and_title(client):
     """Standard LinkedIn title 'Name - Job Title | LinkedIn' is parsed correctly."""
-    serp_data = make_serp_items([
-        {
-            "url": "https://www.linkedin.com/in/john-smith-12345",
-            "title": "John Smith - CEO at Acme Corp | LinkedIn",
-            "description": "John Smith, CEO at Acme Corp, Sydney Australia.",
-        }
-    ])
+    serp_data = make_serp_items(
+        [
+            {
+                "url": "https://www.linkedin.com/in/john-smith-12345",
+                "title": "John Smith - CEO at Acme Corp | LinkedIn",
+                "description": "John Smith, CEO at Acme Corp, Sydney Australia.",
+            }
+        ]
+    )
     mock_resp = make_mock_response(make_dfs_response(serp_data))
 
     with patch.object(client, "_get_client") as mock_get_client:
@@ -91,18 +93,20 @@ async def test_search_linkedin_people_parses_name_and_title(client):
 @pytest.mark.asyncio
 async def test_search_linkedin_people_filters_non_profile_urls(client):
     """Items without linkedin.com/in/ in URL are excluded."""
-    serp_data = make_serp_items([
-        {
-            "url": "https://www.linkedin.com/company/acme-corp",
-            "title": "Acme Corp | LinkedIn",
-            "description": "Company page.",
-        },
-        {
-            "url": "https://www.linkedin.com/in/jane-doe",
-            "title": "Jane Doe - Owner | LinkedIn",
-            "description": "",
-        },
-    ])
+    serp_data = make_serp_items(
+        [
+            {
+                "url": "https://www.linkedin.com/company/acme-corp",
+                "title": "Acme Corp | LinkedIn",
+                "description": "Company page.",
+            },
+            {
+                "url": "https://www.linkedin.com/in/jane-doe",
+                "title": "Jane Doe - Owner | LinkedIn",
+                "description": "",
+            },
+        ]
+    )
     mock_resp = make_mock_response(make_dfs_response(serp_data))
 
     with patch.object(client, "_get_client") as mock_get_client:
@@ -148,6 +152,7 @@ async def test_search_linkedin_people_accumulates_cost(client):
         await client.search_linkedin_people("Corp B")
 
     from decimal import Decimal
+
     assert client._cost_search_linkedin_people == Decimal("0.02")
 
 

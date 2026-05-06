@@ -174,14 +174,16 @@ class TestChannelAllocation:
                 with patch.object(
                     allocator_engine,
                     "_get_campaign_resources",
-                    return_value=[{
-                        "resource": mock_email_resource,
-                        "resource_id": "company.com",
-                        "resource_name": "Sales Email",
-                        "channel": ChannelType.EMAIL,
-                        "remaining_quota": 50,
-                        "daily_limit": 50,
-                    }],
+                    return_value=[
+                        {
+                            "resource": mock_email_resource,
+                            "resource_id": "company.com",
+                            "resource_name": "Sales Email",
+                            "channel": ChannelType.EMAIL,
+                            "remaining_quota": 50,
+                            "daily_limit": 50,
+                        }
+                    ],
                 ):
                     result = await allocator_engine.allocate_channels(
                         db=mock_db_session,
@@ -194,8 +196,13 @@ class TestChannelAllocation:
 
     @pytest.mark.asyncio
     async def test_allocate_multiple_channels(
-        self, allocator_engine, mock_db_session, mock_lead, mock_campaign,
-        mock_email_resource, mock_linkedin_resource
+        self,
+        allocator_engine,
+        mock_db_session,
+        mock_lead,
+        mock_campaign,
+        mock_email_resource,
+        mock_linkedin_resource,
     ):
         """Test allocating multiple channels."""
         with patch.object(allocator_engine, "get_lead_by_id", return_value=mock_lead):
@@ -334,9 +341,7 @@ class TestResourceSelection:
                 assert result.data["remaining_quota"] == 45
 
     @pytest.mark.asyncio
-    async def test_get_next_resource_skips_exhausted(
-        self, allocator_engine, mock_db_session
-    ):
+    async def test_get_next_resource_skips_exhausted(self, allocator_engine, mock_db_session):
         """Test resource selection skips exhausted resources."""
         # Create two mock resources
         exhausted_resource = MagicMock()
@@ -414,9 +419,7 @@ class TestBatchAllocation:
     """Test batch allocation functionality."""
 
     @pytest.mark.asyncio
-    async def test_batch_allocation_success(
-        self, allocator_engine, mock_db_session, mock_lead
-    ):
+    async def test_batch_allocation_success(self, allocator_engine, mock_db_session, mock_lead):
         """Test batch allocation returns summary."""
         lead_ids = [uuid4() for _ in range(3)]
         tier_channels = {
@@ -427,6 +430,7 @@ class TestBatchAllocation:
 
         with patch.object(allocator_engine, "allocate_channels") as mock_allocate:
             from src.engines.base import EngineResult
+
             mock_allocate.return_value = EngineResult.ok(
                 data={"channels": ["email"]},
             )
@@ -441,9 +445,7 @@ class TestBatchAllocation:
             assert result.data["total"] == 3
 
     @pytest.mark.asyncio
-    async def test_batch_allocation_handles_failures(
-        self, allocator_engine, mock_db_session
-    ):
+    async def test_batch_allocation_handles_failures(self, allocator_engine, mock_db_session):
         """Test batch allocation handles individual failures."""
         lead_ids = [uuid4() for _ in range(2)]
         tier_channels = {
@@ -453,6 +455,7 @@ class TestBatchAllocation:
 
         with patch.object(allocator_engine, "allocate_channels") as mock_allocate:
             from src.engines.base import EngineResult
+
             mock_allocate.return_value = EngineResult.ok(
                 data={"channels": ["email"]},
             )

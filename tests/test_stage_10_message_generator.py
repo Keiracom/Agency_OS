@@ -1,4 +1,5 @@
 """Tests for Stage 10 Message Generator — Directive #339.1"""
+
 import pytest
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -24,14 +25,17 @@ AGENCY_PROFILE = {
 
 def make_config():
     import uuid
+
     return SignalConfig(
-        id=str(uuid.uuid4()), vertical="marketing_agency",
+        id=str(uuid.uuid4()),
+        vertical="marketing_agency",
         services=[],
         discovery_config={},
         enrichment_gates={"min_score_to_outreach": 65},
         competitor_config={},
         channel_config={"email": True, "linkedin": True, "voice": True, "sms": True},
-        created_at=datetime.now(), updated_at=datetime.now(),
+        created_at=datetime.now(),
+        updated_at=datetime.now(),
     )
 
 
@@ -75,7 +79,9 @@ def make_row(**overrides):
     return row
 
 
-def make_ai_response(content="Test message", input_tokens=500, output_tokens=100, cached_tokens=400):
+def make_ai_response(
+    content="Test message", input_tokens=500, output_tokens=100, cached_tokens=400
+):
     return {
         "content": content,
         "input_tokens": input_tokens,
@@ -85,7 +91,9 @@ def make_ai_response(content="Test message", input_tokens=500, output_tokens=100
     }
 
 
-def make_ai_client(content="Test message response", input_tokens=500, output_tokens=100, cached_tokens=400):
+def make_ai_client(
+    content="Test message response", input_tokens=500, output_tokens=100, cached_tokens=400
+):
     client = MagicMock()
     client.complete = AsyncMock(
         return_value=make_ai_response(content, input_tokens, output_tokens, cached_tokens)
@@ -100,7 +108,13 @@ def make_conn(rows=None):
     return conn
 
 
-def make_stage(rows=None, ai_content="Test message", ai_input_tokens=500, ai_output_tokens=100, ai_cached_tokens=400):
+def make_stage(
+    rows=None,
+    ai_content="Test message",
+    ai_input_tokens=500,
+    ai_output_tokens=100,
+    ai_cached_tokens=400,
+):
     ai = make_ai_client(ai_content, ai_input_tokens, ai_output_tokens, ai_cached_tokens)
     signal_repo = MagicMock()
     signal_repo.get_config = AsyncMock(return_value=make_config())
@@ -189,13 +203,13 @@ async def test_skips_no_bdm():
 @pytest.mark.asyncio
 async def test_writes_dm_messages_per_channel():
     """Each channel should write one dm_messages row."""
-    stage, ai, conn = make_stage(
-        rows=[make_row(outreach_channels=["email", "linkedin", "sms"])]
-    )
+    stage, ai, conn = make_stage(rows=[make_row(outreach_channels=["email", "linkedin", "sms"])])
     await stage.run("marketing_agency", AGENCY_PROFILE)
 
     # Should have 3 INSERT calls (one per channel) + 1 UPDATE
-    inserts = [call for call in conn.execute.call_args_list if "INSERT INTO dm_messages" in call[0][0]]
+    inserts = [
+        call for call in conn.execute.call_args_list if "INSERT INTO dm_messages" in call[0][0]
+    ]
     assert len(inserts) == 3
 
 
@@ -206,7 +220,9 @@ async def test_advances_pipeline_to_10():
     await stage.run("marketing_agency", AGENCY_PROFILE)
 
     # Find the UPDATE call
-    update_calls = [call for call in conn.execute.call_args_list if "UPDATE business_universe" in call[0][0]]
+    update_calls = [
+        call for call in conn.execute.call_args_list if "UPDATE business_universe" in call[0][0]
+    ]
     assert len(update_calls) > 0
     update_sql = update_calls[0][0][0]
     assert "pipeline_stage = $1" in update_sql
@@ -217,7 +233,9 @@ async def test_advances_pipeline_to_10():
 @pytest.mark.asyncio
 async def test_email_subject_extraction():
     """Email subject should be extracted from 'SUBJECT: ...' line."""
-    email_content = "SUBJECT: Check out your tech stack\n\nHey John,\n\nI noticed you're using Ads..."
+    email_content = (
+        "SUBJECT: Check out your tech stack\n\nHey John,\n\nI noticed you're using Ads..."
+    )
     stage, ai, conn = make_stage(
         rows=[make_row(outreach_channels=["email"])],
         ai_content=email_content,
@@ -225,7 +243,9 @@ async def test_email_subject_extraction():
     result = await stage.run("marketing_agency", AGENCY_PROFILE)
 
     # Check that the INSERT call includes the subject
-    inserts = [call for call in conn.execute.call_args_list if "INSERT INTO dm_messages" in call[0][0]]
+    inserts = [
+        call for call in conn.execute.call_args_list if "INSERT INTO dm_messages" in call[0][0]
+    ]
     assert len(inserts) == 1
     insert_call = inserts[0]
     # Args to INSERT: bu_id, bdm_id, channel, subject, body, model, cost, now
@@ -380,8 +400,7 @@ async def test_dms_processed_incremented():
     """dms_processed should increment for each successfully processed DM."""
     # 3 rows with valid BDM and channels
     rows = [
-        make_row(id=f"uuid-{i}", bdm_id=f"bdm-{i}", outreach_channels=["email"])
-        for i in range(3)
+        make_row(id=f"uuid-{i}", bdm_id=f"bdm-{i}", outreach_channels=["email"]) for i in range(3)
     ]
     stage, ai, conn = make_stage(rows=rows)
     result = await stage.run("marketing_agency", AGENCY_PROFILE)

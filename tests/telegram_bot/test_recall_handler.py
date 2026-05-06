@@ -1,4 +1,5 @@
 """GOV-PHASE2 Track C2 / M2 — /recall TG command handler tests."""
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch

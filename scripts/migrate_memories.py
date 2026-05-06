@@ -23,6 +23,7 @@ Safety guarantees:
     - Idempotent: re-running produces zero new inserts if all rows present
     - Reports: total, skipped, migrated, errors
 """
+
 from __future__ import annotations
 
 import argparse
@@ -46,19 +47,18 @@ ENV_FILE = "/home/elliotbot/.config/agency-os/.env"
 
 # ── DSN resolution (same pattern as session_end_hook.py) ───────────────────
 
+
 def _supabase_dsn() -> str | None:
-    raw = (
-        os.environ.get("DATABASE_URL")
-        or os.environ.get("SUPABASE_DB_URL")
-        or ""
-    ).strip()
+    raw = (os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL") or "").strip()
     if raw:
         return raw.replace("postgresql+asyncpg://", "postgresql://")
     try:
         sys.path.insert(0, str(REPO_ROOT))
         from dotenv import load_dotenv
+
         load_dotenv(ENV_FILE)
         from src.config.settings import settings  # type: ignore[import-not-found]
+
         return (settings.database_url or "").replace(
             "postgresql+asyncpg://", "postgresql://"
         ) or None
@@ -68,6 +68,7 @@ def _supabase_dsn() -> str | None:
 
 
 # ── field mapping ───────────────────────────────────────────────────────────
+
 
 def _map_row(row: dict) -> dict:
     """Map one elliot_internal.memories row → agent_memories insert dict."""
@@ -95,6 +96,7 @@ def _map_row(row: dict) -> dict:
 
 # ── core migration logic ────────────────────────────────────────────────────
 
+
 async def _fetch_legacy(conn) -> list[dict]:
     rows = await conn.fetch(
         """
@@ -108,9 +110,7 @@ async def _fetch_legacy(conn) -> list[dict]:
 
 
 async def _fetch_existing_contents(conn) -> set[str]:
-    rows = await conn.fetch(
-        "SELECT content FROM public.agent_memories WHERE callsign = 'elliot'"
-    )
+    rows = await conn.fetch("SELECT content FROM public.agent_memories WHERE callsign = 'elliot'")
     return {r["content"] for r in rows}
 
 
@@ -151,8 +151,11 @@ async def _migrate(dsn: str, execute: bool) -> dict:
                 continue
 
             if not execute:
-                logger.debug("DRY-RUN: would insert source_type=%s created_at=%s",
-                             mapped["source_type"], mapped["created_at"])
+                logger.debug(
+                    "DRY-RUN: would insert source_type=%s created_at=%s",
+                    mapped["source_type"],
+                    mapped["created_at"],
+                )
                 counts["migrated"] += 1
                 continue
 
@@ -171,6 +174,7 @@ async def _migrate(dsn: str, execute: bool) -> dict:
 
 
 # ── entry-point ─────────────────────────────────────────────────────────────
+
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(

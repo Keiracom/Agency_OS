@@ -213,7 +213,7 @@ Confirmed via Smartlead docs and verified on the 2026-05-06 deep-dive:
 ## Governance
 
 - **LAW II:** all Smartlead costs logged in AUD (subscription is flat-rate so primarily a `$145 AUD/mo` line item, not per-call).
-- **LAW VI:** prefer this skill > MCP > exec. There is currently NO Smartlead MCP server, so all calls go through `src/integrations/smartlead_client.py` and that is wrapped by this skill.
+- **LAW VI (updated 2026-05-06):** prefer this skill > MCP > exec. **Smartlead MCP server now wired** (PR #579) — `mcp-bridge call smartlead <tool>` is the canonical operational dispatch path for the 75 endpoints / 116 tools NOT explicitly listed in this skill. Direct Python client (`src/integrations/smartlead_client.py`) is **deferred** unless evidence shows MCP is insufficient (saves ~500 lines per ELLIOT's audit). The skill stays canonical for the strategic-tool subset documented above; MCP handles the long tail.
 - **LAW XII / XIII:** see Integration Points above.
 - **CEO Directive (2026-05-06):** Smartlead is the canonical replacement for Salesforge. Salesforge integration code (if any survives) is dead-on-import — do not extend, do not reference.
 - **Pre-revenue reality (per memory `feedback_pre_revenue_reality`):** zero clients today. Subscription cost is real money out — confirm with Dave before activating Pro plan.
@@ -228,8 +228,8 @@ Confirmed via Smartlead docs and verified on the 2026-05-06 deep-dive:
 4. **List-campaigns endpoint** — not in current public docs; needed for UI / admin tooling.
 5. **AU deliverability** — run a 50-send Client Zero campaign through a Smartlead-managed AU SMTP and measure inbox-placement before any real volume. **No documented AU warmup partners** — confirmed gap.
 6. **SmartSenders programmatic seat purchase** — `auto-generate-mailboxes` and `bulk-create-accounts` API endpoints exist, but SmartSenders new-seat purchase from partners (Zapmail, InfraInbox, Mailreef) appears UI-driven. Confirm via partner support whether programmatic purchase is exposed.
-7. **Warmup config via API** — start/stop/daily-cap not documented as API endpoints. Confirm with Smartlead support; fall back to UI provisioning + API monitoring if not available.
-8. **Hidden API surface audit** — LeadMagic's GitHub Smartlead MCP server exposes 113 tools, broader than the public helpcenter docs. Audit the MCP server's schema against this skill spec; some "not documented" items above may exist.
+7. ✅ **Warmup config via API** — RESOLVED 2026-05-06 (corrected from prior "not documented" claim): endpoints DO exist per ELLIOT's MCP-server source audit — `PUT /email-accounts/{id}/warmup-settings` (configure), `GET /email-accounts/{id}/warmup-status` (read), `GET /email-accounts/{id}/health-metrics` (deliverability metrics). All three available programmatically.
+8. ✅ **Hidden API surface audit** — RESOLVED 2026-05-06: ELLIOT cloned LeadMagic's `smartlead-mcp-server` repo, verified **116 `registerTool()` calls backed by 75 unique API endpoints** (vs ~28 in this skill prior to update). LAW VI dispatch path: route operational tools via the MCP server (`mcp-bridge call smartlead <tool>`); skill remains the canonical contract. See Build Recommendation below.
 
 ---
 
@@ -273,7 +273,10 @@ Confirmed via Smartlead docs and verified on the 2026-05-06 deep-dive:
 | `verify-domain` (DNS) | ✅ | — |
 | Domain purchase via Namecheap integration | ✅ | — |
 | SmartSenders new-seat purchase from partners | ⚠️ partial | likely partner UI |
-| Warmup config (start/stop/daily-cap) | ❌ not documented | UI |
+| Warmup config — `PUT /email-accounts/{id}/warmup-settings` | ✅ | — |
+| Warmup status — `GET /email-accounts/{id}/warmup-status` | ✅ | — |
+| Warmup health metrics — `GET /email-accounts/{id}/health-metrics` | ✅ | — |
+| Routing tools NOT in this skill (≈47 more) | ✅ via `mcp-bridge call smartlead` | — |
 
 ---
 

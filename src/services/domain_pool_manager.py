@@ -171,12 +171,58 @@ class DomainPoolManager:
                     {"domain": domain.domain_name, "dry_run": True, "status": "purchasing"}
                 )
             else:
-                # Live purchase path — Salesforge API call goes here
-                # TODO: integrate salesforge.purchase_domain() when Dave approves
-                logger.warning(f"Live purchase not yet wired for {domain.domain_name}")
-                outcomes.append(
-                    {"domain": domain.domain_name, "dry_run": False, "status": "skipped_not_wired"}
-                )
+                # Live purchase path — SmartLead via MCP bridge (PR #579 wired
+                # smartlead-mcp-by-leadmagic into the bridge registry; this
+                # helper is the canonical entry per LAW VI: skill > MCP > exec).
+                from src.integrations import smartlead_mcp
+
+                try:
+                    response = await smartlead_mcp.purchase_domain(domain.domain_name)
+                    # SmartLead returns the new email_account_id(s) and
+                    # domain status; persist whatever id field comes back so
+                    # subsequent get_warmup_stats() can reference it.
+                    smartlead_id = (
+                        response.get("email_account_id")
+                        or response.get("id")
+                        or response.get("domain_id")
+                    )
+                    await self.db.execute(
+                        update(BurnerDomain)
+                        .where(BurnerDomain.id == domain.id)
+                        .values(
+                            status=BurnerDomainStatus.PURCHASING,
+                            salesforge_domain_id=str(smartlead_id) if smartlead_id else None,
+                            notes=f"smartlead.auto_generate_mailboxes ok ({smartlead_id or 'no-id'})",
+                            updated_at=datetime.now(UTC),
+                        )
+                    )
+                    outcomes.append(
+                        {
+                            "domain": domain.domain_name,
+                            "dry_run": False,
+                            "status": "purchasing",
+                            "smartlead_id": smartlead_id,
+                        }
+                    )
+                    logger.info(
+                        "Purchased domain %s via SmartLead (id=%s)",
+                        domain.domain_name,
+                        smartlead_id,
+                    )
+                except smartlead_mcp.SmartleadMCPError as exc:
+                    logger.error(
+                        "SmartLead purchase failed for %s: %s",
+                        domain.domain_name,
+                        exc,
+                    )
+                    outcomes.append(
+                        {
+                            "domain": domain.domain_name,
+                            "dry_run": False,
+                            "status": "purchase_failed",
+                            "error": str(exc),
+                        }
+                    )
 
         await self.db.flush()
         return outcomes
@@ -237,10 +283,92 @@ class DomainPoolManager:
                         }
                     )
             else:
-                # Live: call Salesforge get_warmup_status
-                # TODO: wire salesforge.get_warmup_status(domain.salesforge_domain_id)
-                logger.info(f"Live warmup sync not yet wired for {domain.domain_name}")
-                updates.append({"domain": domain.domain_name, "skipped": True})
+                # Live: call SmartLead get_warmup_stats via MCP bridge.
+                # salesforge_domain_id holds the SmartLead email_account_id
+                # (set during purchase_approved → SmartLead.auto_generate_mailboxes).
+                from src.integrations import smartlead_mcp
+
+                if not domain.salesforge_domain_id:
+                    logger.warning(
+                        "Cannot sync warmup for %s — salesforge_domain_id (smartlead_id) unset",
+                        domain.domain_name,
+                    )
+                    updates.append(
+                        {
+                            "domain": domain.domain_name,
+                            "skipped": True,
+                            "reason": "no_external_id",
+                        }
+                    )
+                    continue
+
+                try:
+                    stats = await smartlead_mcp.get_warmup_stats(domain.salesforge_domain_id)
+                except smartlead_mcp.SmartleadMCPError as exc:
+                    logger.error(
+                        "SmartLead get_warmup_stats failed for %s: %s",
+                        domain.domain_name,
+                        exc,
+                    )
+                    updates.append(
+                        {
+                            "domain": domain.domain_name,
+                            "skipped": True,
+                            "error": str(exc),
+                        }
+                    )
+                    continue
+
+                # Map SmartLead warmup state to BurnerDomain status. SmartLead's
+                # 7-day stats response includes a status/state field; we treat
+                # 'ready' / 'completed' / 'good' as READY, anything still
+                # warming as WARMING.
+                sl_state = (stats.get("warmup_status") or stats.get("status") or "").lower()
+                if sl_state in ("ready", "completed", "good", "healthy"):
+                    next_status: str = BurnerDomainStatus.READY
+                elif sl_state in ("warming", "in_progress", "configuring"):
+                    next_status = (
+                        BurnerDomainStatus.WARMING
+                        if domain.status == BurnerDomainStatus.DNS_CONFIGURING
+                        else domain.status
+                    )
+                else:
+                    # Unknown state — leave domain unchanged but record
+                    # raw response in notes for diagnosis.
+                    updates.append(
+                        {
+                            "domain": domain.domain_name,
+                            "skipped": True,
+                            "reason": f"unknown_state:{sl_state}",
+                        }
+                    )
+                    continue
+
+                values: dict[str, Any] = {
+                    "status": next_status,
+                    "updated_at": datetime.now(UTC),
+                }
+                if next_status == BurnerDomainStatus.WARMING and not domain.warmup_started_at:
+                    values["warmup_started_at"] = datetime.now(UTC)
+                elif next_status == BurnerDomainStatus.READY:
+                    values["ready_at"] = datetime.now(UTC)
+
+                await self.db.execute(
+                    update(BurnerDomain).where(BurnerDomain.id == domain.id).values(**values)
+                )
+                updates.append(
+                    {
+                        "domain": domain.domain_name,
+                        "new_status": next_status,
+                        "smartlead_state": sl_state,
+                    }
+                )
+                logger.info(
+                    "Synced warmup for %s: smartlead=%s → bu=%s",
+                    domain.domain_name,
+                    sl_state,
+                    next_status,
+                )
 
         await self.db.flush()
         return updates

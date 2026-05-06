@@ -3,6 +3,7 @@ Tests for email discovery waterfall — Directive #299.
 Covers all 4 layers, short-circuit logic, name parsing, pattern generation,
 orchestrator wiring, and cost tracking.
 """
+
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest

@@ -845,3 +845,46 @@ async def discover_email(
         confidence="low",
         cost_usd=0.0,
     )
+
+
+async def verify_discovered_email(email_result: EmailResult) -> EmailResult:
+    """Post-discovery verification pass via Leadmagic email-validation.
+
+    Called after discover_email() returns an unverified email. Verifies via
+    Leadmagic's email-validation endpoint ($0.00375 AUD per email — 1 credit
+    per 4 validations).
+
+    Only verifies if the email is unverified and non-null. Returns the same
+    EmailResult with verified flag updated.
+    """
+    if not email_result or not email_result.email or email_result.verified:
+        return email_result
+
+    try:
+        from src.config.settings import settings
+
+        if not settings.leadmagic_api_key:
+            logger.warning("verify_discovered_email: LEADMAGIC_API_KEY not set, skipping")
+            return email_result
+
+        async with LeadmagicClient(api_key=settings.leadmagic_api_key) as client:
+            result = await client.verify_email(email_result.email)
+
+        if result.get("is_deliverable"):
+            email_result.verified = True
+            email_result.cost_usd += 0.00375
+            logger.info(
+                "verify_discovered_email VERIFIED: %s (status=%s)",
+                email_result.email,
+                result.get("status"),
+            )
+        else:
+            logger.info(
+                "verify_discovered_email FAILED: %s (status=%s)",
+                email_result.email,
+                result.get("status"),
+            )
+    except Exception as exc:
+        logger.warning("verify_discovered_email error for %s: %s", email_result.email, exc)
+
+    return email_result

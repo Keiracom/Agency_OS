@@ -48,7 +48,7 @@ from src.intelligence.stage6_enrich import run_stage6_enrich
 from src.intelligence.stage9_social import run_stage9_social
 from src.intelligence.verify_fills import run_verify_fills
 from src.pipeline.contactout_enricher import enrich_dm_via_contactout
-from src.pipeline.email_waterfall import discover_email
+from src.pipeline.email_waterfall import discover_email, verify_discovered_email
 from src.pipeline.latency_tracker import LatencyTracker
 from src.pipeline.mobile_waterfall import run_mobile_waterfall
 from src.pipeline.suppression_manager import SuppressionManager
@@ -640,6 +640,15 @@ async def _run_stage8(
         )
     except Exception as exc:
         domain_data["errors"].append(f"stage8c_email: {exc}")
+
+    # 8c-verify: Post-discovery email verification via Leadmagic
+    # Only fires on unverified emails found by earlier waterfall layers.
+    # Cost: $0.00375 AUD per email (1 credit per 4 validations).
+    if email_result and email_result.email and not email_result.verified:
+        try:
+            email_result = await verify_discovered_email(email_result)
+        except Exception as exc:
+            domain_data["errors"].append(f"stage8c_verify: {exc}")
 
     # 8d: Mobile waterfall (uses contactout_result, no duplicate API call)
     # Pass brightdata_client (bd) and contact_data from Stage 3 identity (Fix D2.2-1)

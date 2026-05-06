@@ -33,7 +33,8 @@ from typing import TYPE_CHECKING, Literal
 from pydantic import BaseModel, Field
 
 from src.agents.skills.base_skill import BaseSkill, SkillResult
-from src.integrations.serper import SerperClient, get_serper_client
+
+# DEAD: from src.integrations.serper import SerperClient, get_serper_client
 
 if TYPE_CHECKING:
     from src.integrations.anthropic import AnthropicClient

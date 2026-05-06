@@ -27,9 +27,11 @@ from prefect import flow, task
 from sqlalchemy import and_, select
 
 from src.engines.closer import get_closer_engine
-from src.integrations.postmark import get_postmark_client
+
+# DEAD: from src.integrations.postmark import get_postmark_client
 from src.integrations.supabase import get_db_session
-from src.integrations.twilio import get_twilio_client
+
+# DEAD: from src.integrations.twilio import get_twilio_client
 from src.integrations.unipile import get_unipile_client
 from src.models.activity import Activity
 from src.models.base import ChannelType

@@ -59,7 +59,9 @@ logger = logging.getLogger(__name__)
 from src.engines.content_utils import build_content_snapshot
 from src.exceptions import ResourceRateLimitError
 from src.integrations.redis import rate_limiter
-from src.integrations.salesforge import SalesforgeClient, get_salesforge_client
+
+# DEAD: salesforge removed (invalid API key, replaced by Smartlead).
+# from src.integrations.salesforge import SalesforgeClient, get_salesforge_client
 from src.models.activity import Activity
 from src.models.base import ChannelType
 from src.models.lead import Lead

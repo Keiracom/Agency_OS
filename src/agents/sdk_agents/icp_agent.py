@@ -19,7 +19,8 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 from src.agents.sdk_agents.sdk_tools import ICP_TOOLS
-from src.integrations.sdk_brain import SDKBrain, SDKBrainResult, create_sdk_brain
+
+# DEAD: from src.integrations.sdk_brain import SDKBrain, SDKBrainResult, create_sdk_brain
 
 logger = logging.getLogger(__name__)
 

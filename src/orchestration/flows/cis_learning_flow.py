@@ -27,7 +27,7 @@ import os
 
 from prefect import flow, get_run_logger, task
 
-from src.integrations.sdk_brain import SiegeSDKIntelligence
+# DEAD: from src.integrations.sdk_brain import SiegeSDKIntelligence
 from src.integrations.supabase import get_db_session
 from src.prefect_utils.completion_hook import on_completion_hook
 from src.prefect_utils.hooks import on_failure_hook

@@ -19,7 +19,8 @@ from prefect.runtime import flow_run
 from sqlalchemy import select
 
 from src.config.database import get_db_session
-from src.integrations.warmforge import get_warmforge_client
+
+# DEAD: from src.integrations.warmforge import get_warmforge_client
 from src.models.resource_pool import ResourcePool, ResourceStatus, ResourceType
 from src.prefect_utils.completion_hook import on_completion_hook
 from src.prefect_utils.hooks import on_failure_hook

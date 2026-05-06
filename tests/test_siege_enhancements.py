@@ -16,10 +16,11 @@ import pytest
 
 # Import the modules under test
 from src.engines.scout import ScoutEngine
-from src.integrations.siege_waterfall import (
-    EnrichmentTier,
-    SiegeWaterfall,
-)
+# DEAD: siege_waterfall removed.
+# from src.integrations.siege_waterfall import (
+#     EnrichmentTier,
+#     SiegeWaterfall,
+# )
 
 
 class MockLead:

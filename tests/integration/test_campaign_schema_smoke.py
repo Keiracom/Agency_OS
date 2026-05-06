@@ -55,15 +55,11 @@ def _load_env_if_needed() -> None:
 
 
 def _psycopg_dsn() -> str:
-    url = (
-        os.environ.get("DATABASE_URL")
-        or os.environ.get("DATABASE_URL_MIGRATIONS")
-        or ""
-    )
+    url = os.environ.get("DATABASE_URL") or os.environ.get("DATABASE_URL_MIGRATIONS") or ""
     if url.startswith("postgresql+asyncpg://"):
-        url = "postgresql://" + url[len("postgresql+asyncpg://"):]
+        url = "postgresql://" + url[len("postgresql+asyncpg://") :]
     elif url.startswith("postgres+asyncpg://"):
-        url = "postgresql://" + url[len("postgres+asyncpg://"):]
+        url = "postgresql://" + url[len("postgres+asyncpg://") :]
     return url
 
 
@@ -188,9 +184,16 @@ def test_business_universe_has_required_columns(db_conn):
     SQL error.
     """
     required = {
-        "id", "dm_email", "dm_name", "display_name", "domain",
-        "state", "suburb", "gmb_category",
-        "dm_email_verified", "dm_email_confidence",
+        "id",
+        "dm_email",
+        "dm_name",
+        "display_name",
+        "domain",
+        "state",
+        "suburb",
+        "gmb_category",
+        "dm_email_verified",
+        "dm_email_confidence",
     }
     with db_conn.cursor() as cur:
         cur.execute(

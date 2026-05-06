@@ -13,6 +13,7 @@ Queries agent_memories, ceo_memory, and git log. Scores each memory by:
 Outputs a synthesized briefing within the token budget, structured as:
     IDENTITY (stable) → STRATEGIC (slow-change) → OPERATIONAL (fast-change) → RECENT (session-level)
 """
+
 from __future__ import annotations
 
 import argparse
@@ -28,20 +29,21 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
 from dotenv import load_dotenv
+
 load_dotenv("/home/elliotbot/.config/agency-os/.env")
 
 # Decay half-lives in hours — how fast each memory type loses relevance
 DECAY_HALF_LIVES = {
-    "identity_fact": 720,       # 30 days — very stable
-    "ceo_instruction": 720,     # 30 days — Dave's rules persist
-    "strategic_shift": 336,     # 14 days
-    "pattern": 336,             # 14 days
-    "milestone": 168,           # 7 days
-    "decision": 72,             # 3 days
-    "lesson": 72,               # 3 days
-    "session_reflection": 24,   # 1 day
-    "daily_log": 12,            # 12 hours
-    "rsi_output": 48,           # 2 days
+    "identity_fact": 720,  # 30 days — very stable
+    "ceo_instruction": 720,  # 30 days — Dave's rules persist
+    "strategic_shift": 336,  # 14 days
+    "pattern": 336,  # 14 days
+    "milestone": 168,  # 7 days
+    "decision": 72,  # 3 days
+    "lesson": 72,  # 3 days
+    "session_reflection": 24,  # 1 day
+    "daily_log": 12,  # 12 hours
+    "rsi_output": 48,  # 2 days
 }
 
 # Role relevance — which memory types matter most per callsign
@@ -58,6 +60,7 @@ CHARS_PER_TOKEN = 4
 def query_memories(callsign: str) -> list[dict]:
     """Pull scored memories from agent_memories."""
     import requests
+
     url = os.environ["SUPABASE_URL"].rstrip("/")
     key = os.environ["SUPABASE_SERVICE_KEY"]
     headers = {"apikey": key, "Authorization": f"Bearer {key}"}
@@ -84,6 +87,7 @@ def query_memories(callsign: str) -> list[dict]:
 def query_checkpoint(callsign: str) -> dict | None:
     """Get latest operational checkpoint from ceo_memory."""
     import requests
+
     url = os.environ["SUPABASE_URL"].rstrip("/")
     key = os.environ["SUPABASE_SERVICE_KEY"]
     headers = {"apikey": key, "Authorization": f"Bearer {key}"}
@@ -107,7 +111,9 @@ def get_recent_git(n: int = 10) -> list[str]:
     try:
         result = subprocess.run(
             ["git", "log", "--oneline", f"-{n}", "--format=%h %s"],
-            capture_output=True, text=True, timeout=5,
+            capture_output=True,
+            text=True,
+            timeout=5,
             cwd=str(REPO_ROOT),
         )
         return result.stdout.strip().split("\n") if result.returncode == 0 else []
@@ -136,7 +142,11 @@ def score_memory(memory: dict, callsign: str) -> float:
     meta = {}
     if memory.get("typed_metadata"):
         try:
-            meta = json.loads(memory["typed_metadata"]) if isinstance(memory["typed_metadata"], str) else memory["typed_metadata"]
+            meta = (
+                json.loads(memory["typed_metadata"])
+                if isinstance(memory["typed_metadata"], str)
+                else memory["typed_metadata"]
+            )
         except (json.JSONDecodeError, TypeError):
             pass
     importance = meta.get("importance", 5) / 10.0
@@ -258,7 +268,9 @@ def compile_briefing(callsign: str, budget: int = DEFAULT_BUDGET, raw: bool = Fa
         if val.get("agent_status"):
             statuses = val["agent_status"]
             if isinstance(statuses, dict):
-                cp_lines.append(f"- Agent status: {', '.join(f'{k}={v}' for k,v in statuses.items())}")
+                cp_lines.append(
+                    f"- Agent status: {', '.join(f'{k}={v}' for k, v in statuses.items())}"
+                )
         if val.get("notes"):
             cp_lines.append(f"- Notes: {val['notes']}")
         if cp_lines:
@@ -268,7 +280,10 @@ def compile_briefing(callsign: str, budget: int = DEFAULT_BUDGET, raw: bool = Fa
     if git_log:
         sections.append("## RECENT COMMITS\n" + "\n".join(f"- {c}" for c in git_log[:5]))
 
-    briefing = f"# SESSION BRIEFING — {callsign.upper()}\nCompiled: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}\n\n" + "\n\n".join(sections)
+    briefing = (
+        f"# SESSION BRIEFING — {callsign.upper()}\nCompiled: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}\n\n"
+        + "\n\n".join(sections)
+    )
 
     return briefing
 
@@ -317,9 +332,15 @@ def log_metrics(callsign: str, briefing: str) -> None:
 
 def main():
     parser = argparse.ArgumentParser(description="Context Compiler — scored session briefing")
-    parser.add_argument("--callsign", default=None, help="Agent callsign (auto-detected from IDENTITY.md if omitted)")
+    parser.add_argument(
+        "--callsign",
+        default=None,
+        help="Agent callsign (auto-detected from IDENTITY.md if omitted)",
+    )
     parser.add_argument("--budget", type=int, default=DEFAULT_BUDGET, help="Token budget")
-    parser.add_argument("--raw", action="store_true", help="Dump scored memories instead of briefing")
+    parser.add_argument(
+        "--raw", action="store_true", help="Dump scored memories instead of briefing"
+    )
     args = parser.parse_args()
 
     callsign = args.callsign or detect_callsign()

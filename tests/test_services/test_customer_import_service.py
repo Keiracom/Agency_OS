@@ -245,9 +245,7 @@ class TestSuppressionService:
         assert result.suppressed is True
         assert result.reason == "existing_customer"
 
-    async def test_add_suppression_creates_entry(
-        self, suppression_service, mock_db, client_id
-    ):
+    async def test_add_suppression_creates_entry(self, suppression_service, mock_db, client_id):
         """Test that add_suppression creates a suppression entry."""
         # Arrange
         mock_result = MagicMock()
@@ -270,9 +268,7 @@ class TestSuppressionService:
         mock_db.execute.assert_called()
         mock_db.commit.assert_called()
 
-    async def test_remove_suppression_by_id(
-        self, suppression_service, mock_db, client_id
-    ):
+    async def test_remove_suppression_by_id(self, suppression_service, mock_db, client_id):
         """Test that remove_suppression removes by ID."""
         # Arrange
         suppression_id = uuid4()
@@ -321,7 +317,9 @@ class TestSuppressionService:
 
         # Mock domain suppression check
         domain_result = MagicMock()
-        domain_result.fetchall.return_value = [MagicMock(domain="competitor.com", reason="competitor")]
+        domain_result.fetchall.return_value = [
+            MagicMock(domain="competitor.com", reason="competitor")
+        ]
 
         # Mock email suppression check
         email_result = MagicMock()
@@ -372,9 +370,7 @@ class TestSuppressionService:
 class TestBuyerSignalService:
     """Tests for BuyerSignalService."""
 
-    async def test_get_buyer_signal_returns_signal_when_found(
-        self, buyer_signal_service, mock_db
-    ):
+    async def test_get_buyer_signal_returns_signal_when_found(self, buyer_signal_service, mock_db):
         """Test that get_buyer_signal returns signal when found."""
         # Arrange
         signal_id = uuid4()
@@ -472,9 +468,7 @@ class TestBuyerSignalService:
         assert result.reason is None
         assert result.signal is None
 
-    async def test_get_buyer_signal_from_email_extracts_domain(
-        self, buyer_signal_service, mock_db
-    ):
+    async def test_get_buyer_signal_from_email_extracts_domain(self, buyer_signal_service, mock_db):
         """Test that get_buyer_signal_from_email extracts domain correctly."""
         # Arrange
         signal_id = uuid4()

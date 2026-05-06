@@ -115,8 +115,8 @@ class TestConversionRateBy:
 
         assert len(result) == 3
         assert result[0]["key"] == "High"  # 100%
-        assert result[1]["key"] == "Med"   # 50%
-        assert result[2]["key"] == "Low"   # 33%
+        assert result[1]["key"] == "Med"  # 50%
+        assert result[2]["key"] == "Low"  # 33%
 
 
 class TestCalculateConfidence:

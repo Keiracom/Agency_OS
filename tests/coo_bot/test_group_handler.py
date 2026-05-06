@@ -1,4 +1,5 @@
 """Tests for src/coo_bot/group_handler.py — group message buffer."""
+
 from __future__ import annotations
 
 import asyncio

@@ -2,6 +2,7 @@
 Tests that PHASE-2-SLICE-6 flows are registered in SCHEDULE_REGISTRY with
 the correct cron + timezone. Slice 7 Track B.
 """
+
 from __future__ import annotations
 
 from prefect.client.schemas.schedules import CronSchedule
@@ -17,6 +18,7 @@ from src.orchestration.schedules.scheduled_jobs import (
 
 
 # -- schedule helper re-exports --------------------------------------------
+
 
 def test_daily_warming_schedule_cron_and_tz():
     s = get_daily_warming_schedule()
@@ -40,6 +42,7 @@ def test_monthly_cycle_close_schedule_cron_and_tz():
 
 
 # -- registry entries present ----------------------------------------------
+
 
 def test_daily_warming_registered():
     assert "daily_warming" in SCHEDULE_REGISTRY
@@ -67,6 +70,7 @@ def test_monthly_cycle_close_registered():
 
 # -- public API surface ----------------------------------------------------
 
+
 def test_get_schedule_config_returns_daily_warming():
     cfg = get_schedule_config("daily_warming")
     assert cfg["description"].startswith("Daily mailbox warming advance")
@@ -80,6 +84,7 @@ def test_list_all_schedules_includes_new_entries():
 
 
 # -- idempotent registration (re-import side-effect-free) -------------------
+
 
 def test_registry_is_idempotent_on_reimport():
     import importlib

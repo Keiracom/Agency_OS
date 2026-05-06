@@ -43,6 +43,7 @@ Environment knobs:
 #      session. Enforcement only fires on the well-defined
 #      "Step 0 missing AND mutating tool" path.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -63,8 +64,10 @@ if str(_REPO_ROOT) not in sys.path:
 try:
     from src.config.sandbox import validate_tool_access  # P6 wire-up
 except Exception:  # noqa: BLE001 — fail-open if module missing
+
     def validate_tool_access(_agent: str, _tool: str) -> bool:
         return True
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -93,6 +96,7 @@ _URL_RE = re.compile(r"^[a-z][a-z0-9+.\-]*://", re.IGNORECASE)
 
 
 # ── Validation ─────────────────────────────────────────────────────────────
+
 
 def validate_transcript_path(raw: str | None) -> Path | None:
     """Return a safe Path or None. Never raises."""
@@ -134,6 +138,7 @@ def read_hook_input() -> dict:
 
 
 # ── Transcript inspection ──────────────────────────────────────────────────
+
 
 def read_transcript_tail(path: Path) -> str:
     """Read up to TRANSCRIPT_TAIL_BYTES from the END of a .jsonl transcript.
@@ -206,6 +211,7 @@ def has_step0_since_last_user(transcript_blob: str) -> bool:
 
 # ── Decision ───────────────────────────────────────────────────────────────
 
+
 def _agent_type_from_env() -> str:
     """Map the session CALLSIGN to a sandbox agent_type. Each callsign
     operates as a build-2-equivalent surface by default; specialised
@@ -217,10 +223,10 @@ def _agent_type_from_env() -> str:
         return ""
     return {
         "elliot": "build-2",
-        "atlas":  "build-2",
-        "aiden":  "build-3",
-        "orion":  "build-3",
-        "scout":  "research-1",
+        "atlas": "build-2",
+        "aiden": "build-3",
+        "orion": "build-3",
+        "scout": "research-1",
     }.get(cs, "build-2")
 
 
@@ -264,9 +270,12 @@ def decide(hook_input: dict) -> tuple[int, str]:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="P1 governance PreToolUse hook.")
-    ap.add_argument("--mode", choices=("enforce", "warn"),
-                    default=os.environ.get("GOV_HOOK_MODE", "enforce"),
-                    help="Override mode (otherwise GOV_HOOK_MODE env).")
+    ap.add_argument(
+        "--mode",
+        choices=("enforce", "warn"),
+        default=os.environ.get("GOV_HOOK_MODE", "enforce"),
+        help="Override mode (otherwise GOV_HOOK_MODE env).",
+    )
     args = ap.parse_args(argv)
 
     hook_input = read_hook_input()

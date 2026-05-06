@@ -1,6 +1,7 @@
 """
 Tests for openai_cost_logger.py — F4-PART2-SETUP.
 """
+
 import json
 import os
 from pathlib import Path
@@ -12,6 +13,7 @@ def _make_logger(log_path: str):
     """Import the module with COST_LOG_PATH patched to a temp path."""
     import importlib
     import src.telegram_bot.openai_cost_logger as mod
+
     original = mod.COST_LOG_PATH
     mod.COST_LOG_PATH = log_path
     yield mod
@@ -22,6 +24,7 @@ def _make_logger(log_path: str):
 def cost_logger(tmp_path):
     """Yield the cost logger module with log path pointed at tmp_path."""
     import src.telegram_bot.openai_cost_logger as mod
+
     log_file = str(tmp_path / "openai-cost.jsonl")
     original = mod.COST_LOG_PATH
     mod.COST_LOG_PATH = log_file
@@ -108,6 +111,7 @@ def test_multiple_entries_appended(cost_logger):
 def test_does_not_raise_on_write_failure(tmp_path):
     """log_openai_call must never raise even on an unwritable path."""
     import src.telegram_bot.openai_cost_logger as mod
+
     original = mod.COST_LOG_PATH
     # Point to a non-existent directory — guaranteed write failure
     mod.COST_LOG_PATH = "/nonexistent_dir/openai-cost.jsonl"

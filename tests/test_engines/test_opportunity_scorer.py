@@ -2,6 +2,7 @@
 Tests for opportunity_scorer.py
 Directive #217 — 19 unit tests
 """
+
 import pytest
 from src.engines.opportunity_scorer import (
     score_business_opportunity,
@@ -13,90 +14,131 @@ from src.engines.opportunity_scorer import (
 
 # --- score_business_opportunity ---
 
+
 def test_zero_signals():
     """1. Zero signals: score == 0"""
-    assert score_business_opportunity({
-        "gmb_review_count": 0,
-        "abr_age_years": 0,
-        "multiple_gmb_locations": False,
-        "hiring_signals_detected": False,
-        "gmb_category": "",
-        "dfs_paid_traffic_cost": 100,
-        "dfs_organic_traffic": 500,
-    }) == 0
+    assert (
+        score_business_opportunity(
+            {
+                "gmb_review_count": 0,
+                "abr_age_years": 0,
+                "multiple_gmb_locations": False,
+                "hiring_signals_detected": False,
+                "gmb_category": "",
+                "dfs_paid_traffic_cost": 100,
+                "dfs_organic_traffic": 500,
+            }
+        )
+        == 0
+    )
 
 
 def test_reviews_exactly_20():
     """2. Reviews only >= 20 (exactly 20): score == 20"""
-    assert score_business_opportunity({
-        "gmb_review_count": 20,
-        "dfs_paid_traffic_cost": 1,
-        "dfs_organic_traffic": 1000,
-    }) == 20
+    assert (
+        score_business_opportunity(
+            {
+                "gmb_review_count": 20,
+                "dfs_paid_traffic_cost": 1,
+                "dfs_organic_traffic": 1000,
+            }
+        )
+        == 20
+    )
 
 
 def test_reviews_40_gives_30():
     """3. Reviews >= 40: score == 30 (20 + 10 bonus)"""
-    assert score_business_opportunity({
-        "gmb_review_count": 40,
-        "dfs_paid_traffic_cost": 1,
-        "dfs_organic_traffic": 1000,
-    }) == 30
+    assert (
+        score_business_opportunity(
+            {
+                "gmb_review_count": 40,
+                "dfs_paid_traffic_cost": 1,
+                "dfs_organic_traffic": 1000,
+            }
+        )
+        == 30
+    )
 
 
 def test_abr_age_years_5():
     """4. abr_age_years >= 5: score == 20"""
-    assert score_business_opportunity({
-        "abr_age_years": 5,
-        "dfs_paid_traffic_cost": 1,
-        "dfs_organic_traffic": 1000,
-    }) == 20
+    assert (
+        score_business_opportunity(
+            {
+                "abr_age_years": 5,
+                "dfs_paid_traffic_cost": 1,
+                "dfs_organic_traffic": 1000,
+            }
+        )
+        == 20
+    )
 
 
 def test_hiring_signals_detected():
     """5. hiring_signals_detected=True: score == 20"""
-    assert score_business_opportunity({
-        "hiring_signals_detected": True,
-        "dfs_paid_traffic_cost": 1,
-        "dfs_organic_traffic": 1000,
-    }) == 20
+    assert (
+        score_business_opportunity(
+            {
+                "hiring_signals_detected": True,
+                "dfs_paid_traffic_cost": 1,
+                "dfs_organic_traffic": 1000,
+            }
+        )
+        == 20
+    )
 
 
 def test_structural_gap_industry_plumbing():
     """6. Structural gap industry (e.g. "plumbing"): score == 15"""
-    assert score_business_opportunity({
-        "gmb_category": "plumbing",
-        "dfs_paid_traffic_cost": 1,
-        "dfs_organic_traffic": 1000,
-    }) == 15
+    assert (
+        score_business_opportunity(
+            {
+                "gmb_category": "plumbing",
+                "dfs_paid_traffic_cost": 1,
+                "dfs_organic_traffic": 1000,
+            }
+        )
+        == 15
+    )
 
 
 def test_dfs_paid_traffic_cost_zero():
     """7. dfs_paid_traffic_cost=0: score == 10"""
-    assert score_business_opportunity({
-        "dfs_paid_traffic_cost": 0,
-        "dfs_organic_traffic": 1000,
-    }) == 10
+    assert (
+        score_business_opportunity(
+            {
+                "dfs_paid_traffic_cost": 0,
+                "dfs_organic_traffic": 1000,
+            }
+        )
+        == 10
+    )
 
 
 def test_dfs_organic_traffic_low():
     """8. dfs_organic_traffic < 500 (e.g. 100): score == 10"""
-    assert score_business_opportunity({
-        "dfs_paid_traffic_cost": 1,
-        "dfs_organic_traffic": 100,
-    }) == 10
+    assert (
+        score_business_opportunity(
+            {
+                "dfs_paid_traffic_cost": 1,
+                "dfs_organic_traffic": 100,
+            }
+        )
+        == 10
+    )
 
 
 def test_all_signals_capped_at_100():
     """9. All signals combined: score == 100 (capped from 120)"""
     signals = {
-        "gmb_review_count": 50,       # +20 +10
-        "abr_age_years": 10,           # +20
-        "multiple_gmb_locations": True, # +15
-        "hiring_signals_detected": True,# +20
-        "gmb_category": "plumbing",    # +15
-        "dfs_paid_traffic_cost": 0,    # +10
-        "dfs_organic_traffic": 100,    # +10
+        "gmb_review_count": 50,  # +20 +10
+        "abr_age_years": 10,  # +20
+        "multiple_gmb_locations": True,  # +15
+        "hiring_signals_detected": True,  # +20
+        "gmb_category": "plumbing",  # +15
+        "dfs_paid_traffic_cost": 0,  # +10
+        "dfs_organic_traffic": 100,  # +10
         # Total = 120, capped at 100
     }
     assert score_business_opportunity(signals) == 100
@@ -105,9 +147,9 @@ def test_all_signals_capped_at_100():
 def test_priority_threshold_exact_60_is_true():
     """10. Priority threshold exact: score == 60 → is_priority_opportunity returns True"""
     signals = {
-        "gmb_review_count": 20,        # +20
-        "abr_age_years": 5,            # +20
-        "hiring_signals_detected": True,# +20
+        "gmb_review_count": 20,  # +20
+        "abr_age_years": 5,  # +20
+        "hiring_signals_detected": True,  # +20
         "dfs_paid_traffic_cost": 1,
         "dfs_organic_traffic": 1000,
     }
@@ -129,10 +171,10 @@ def test_priority_threshold_miss_returns_false():
     # reviews=20 (+20) + abr_age=5 (+20) + paid=0 (+10) = 50, nope
     # Best approach: mock a combination that gives 55 and verify < threshold
     signals = {
-        "gmb_review_count": 20,         # +20
-        "abr_age_years": 5,             # +20
-        "dfs_paid_traffic_cost": 0,     # +10
-        "dfs_organic_traffic": 1000,    # no bonus
+        "gmb_review_count": 20,  # +20
+        "abr_age_years": 5,  # +20
+        "dfs_paid_traffic_cost": 0,  # +10
+        "dfs_organic_traffic": 1000,  # no bonus
     }
     score = score_business_opportunity(signals)
     assert score == 50
@@ -221,6 +263,7 @@ def test_abr_age_4_9_does_not_trigger():
 
 
 # --- Wave 1 signal verification tests (Directive #wave1-scoring-signals) ---
+
 
 def test_no_paid_traffic_scores_higher_than_paid():
     """20. Lead with zero paid ad spend scores higher than same lead with active spend.

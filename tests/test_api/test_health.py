@@ -31,7 +31,7 @@ from src.api.main import app
 def mock_db_healthy():
     """Mock healthy database connection."""
     from contextlib import asynccontextmanager
-    
+
     mock_session = AsyncMock()
     mock_session.execute = AsyncMock()
 
@@ -46,7 +46,7 @@ def mock_db_healthy():
 def mock_db_unhealthy():
     """Mock unhealthy database connection."""
     from contextlib import asynccontextmanager
-    
+
     @asynccontextmanager
     async def mock_get_session():
         raise Exception("Database connection failed")
@@ -171,17 +171,15 @@ async def test_liveness_check_no_dependencies():
 
 @pytest.mark.asyncio
 async def test_readiness_check_all_healthy(
-    mock_db_healthy,
-    mock_redis_healthy,
-    mock_prefect_healthy
+    mock_db_healthy, mock_redis_healthy, mock_prefect_healthy
 ):
     """Test readiness check when all components are healthy."""
-    with patch("src.api.routes.health.get_async_session", mock_db_healthy), \
-         patch("src.api.routes.health.get_redis", return_value=mock_redis_healthy), \
-         patch("src.api.routes.health.httpx.AsyncClient", return_value=mock_prefect_healthy):
-
+    with (
+        patch("src.api.routes.health.get_async_session", mock_db_healthy),
+        patch("src.api.routes.health.get_redis", return_value=mock_redis_healthy),
+        patch("src.api.routes.health.httpx.AsyncClient", return_value=mock_prefect_healthy),
+    ):
         transport = ASGITransport(app=app)
-
 
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.get("/api/v1/health/ready")
@@ -211,17 +209,15 @@ async def test_readiness_check_all_healthy(
 
 @pytest.mark.asyncio
 async def test_readiness_check_redis_unhealthy(
-    mock_db_healthy,
-    mock_redis_unhealthy,
-    mock_prefect_healthy
+    mock_db_healthy, mock_redis_unhealthy, mock_prefect_healthy
 ):
     """Test readiness check when Redis is unhealthy (degraded state)."""
-    with patch("src.api.routes.health.get_async_session", mock_db_healthy), \
-         patch("src.api.routes.health.get_redis", return_value=mock_redis_unhealthy), \
-         patch("src.api.routes.health.httpx.AsyncClient", return_value=mock_prefect_healthy):
-
+    with (
+        patch("src.api.routes.health.get_async_session", mock_db_healthy),
+        patch("src.api.routes.health.get_redis", return_value=mock_redis_unhealthy),
+        patch("src.api.routes.health.httpx.AsyncClient", return_value=mock_prefect_healthy),
+    ):
         transport = ASGITransport(app=app)
-
 
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.get("/api/v1/health/ready")
@@ -243,17 +239,15 @@ async def test_readiness_check_redis_unhealthy(
 
 @pytest.mark.asyncio
 async def test_readiness_check_prefect_unhealthy(
-    mock_db_healthy,
-    mock_redis_healthy,
-    mock_prefect_unhealthy
+    mock_db_healthy, mock_redis_healthy, mock_prefect_unhealthy
 ):
     """Test readiness check when Prefect is unhealthy (degraded state)."""
-    with patch("src.api.routes.health.get_async_session", mock_db_healthy), \
-         patch("src.api.routes.health.get_redis", return_value=mock_redis_healthy), \
-         patch("src.api.routes.health.httpx.AsyncClient", return_value=mock_prefect_unhealthy):
-
+    with (
+        patch("src.api.routes.health.get_async_session", mock_db_healthy),
+        patch("src.api.routes.health.get_redis", return_value=mock_redis_healthy),
+        patch("src.api.routes.health.httpx.AsyncClient", return_value=mock_prefect_unhealthy),
+    ):
         transport = ASGITransport(app=app)
-
 
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.get("/api/v1/health/ready")
@@ -277,17 +271,15 @@ async def test_readiness_check_prefect_unhealthy(
 
 @pytest.mark.asyncio
 async def test_readiness_check_database_unhealthy(
-    mock_db_unhealthy,
-    mock_redis_healthy,
-    mock_prefect_healthy
+    mock_db_unhealthy, mock_redis_healthy, mock_prefect_healthy
 ):
     """Test readiness check when database is unhealthy (not ready)."""
-    with patch("src.api.routes.health.get_async_session", mock_db_unhealthy), \
-         patch("src.api.routes.health.get_redis", return_value=mock_redis_healthy), \
-         patch("src.api.routes.health.httpx.AsyncClient", return_value=mock_prefect_healthy):
-
+    with (
+        patch("src.api.routes.health.get_async_session", mock_db_unhealthy),
+        patch("src.api.routes.health.get_redis", return_value=mock_redis_healthy),
+        patch("src.api.routes.health.httpx.AsyncClient", return_value=mock_prefect_healthy),
+    ):
         transport = ASGITransport(app=app)
-
 
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.get("/api/v1/health/ready")
@@ -304,23 +296,23 @@ async def test_readiness_check_database_unhealthy(
     assert data["components"]["prefect"]["status"] == "healthy"
 
     # Check error message for database (format: "Connection failed: ...")
-    assert "Connection failed" in data["components"]["database"]["message"] or \
-           "Database connection failed" in data["components"]["database"]["message"]
+    assert (
+        "Connection failed" in data["components"]["database"]["message"]
+        or "Database connection failed" in data["components"]["database"]["message"]
+    )
 
 
 @pytest.mark.asyncio
 async def test_readiness_check_all_unhealthy(
-    mock_db_unhealthy,
-    mock_redis_unhealthy,
-    mock_prefect_unhealthy
+    mock_db_unhealthy, mock_redis_unhealthy, mock_prefect_unhealthy
 ):
     """Test readiness check when all components are unhealthy."""
-    with patch("src.api.routes.health.get_async_session", mock_db_unhealthy), \
-         patch("src.api.routes.health.get_redis", return_value=mock_redis_unhealthy), \
-         patch("src.api.routes.health.httpx.AsyncClient", return_value=mock_prefect_unhealthy):
-
+    with (
+        patch("src.api.routes.health.get_async_session", mock_db_unhealthy),
+        patch("src.api.routes.health.get_redis", return_value=mock_redis_unhealthy),
+        patch("src.api.routes.health.httpx.AsyncClient", return_value=mock_prefect_unhealthy),
+    ):
         transport = ASGITransport(app=app)
-
 
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.get("/api/v1/health/ready")
@@ -382,17 +374,15 @@ async def test_liveness_response_structure():
 
 @pytest.mark.asyncio
 async def test_readiness_response_structure(
-    mock_db_healthy,
-    mock_redis_healthy,
-    mock_prefect_healthy
+    mock_db_healthy, mock_redis_healthy, mock_prefect_healthy
 ):
     """Test that readiness response has correct structure."""
-    with patch("src.api.routes.health.get_async_session", mock_db_healthy), \
-         patch("src.api.routes.health.get_redis", return_value=mock_redis_healthy), \
-         patch("src.api.routes.health.httpx.AsyncClient", return_value=mock_prefect_healthy):
-
+    with (
+        patch("src.api.routes.health.get_async_session", mock_db_healthy),
+        patch("src.api.routes.health.get_redis", return_value=mock_redis_healthy),
+        patch("src.api.routes.health.httpx.AsyncClient", return_value=mock_prefect_healthy),
+    ):
         transport = ASGITransport(app=app)
-
 
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.get("/api/v1/health/ready")

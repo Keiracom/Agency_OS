@@ -75,9 +75,7 @@ class TestAustralianLeadNoApolloFallback:
         return mock
 
     @pytest.mark.asyncio
-    async def test_au_lead_uses_siege(
-        self, mock_siege_waterfall
-    ):
+    async def test_au_lead_uses_siege(self, mock_siege_waterfall):
         """Test that Australian leads use SIEGE waterfall."""
         # Create AU lead
         lead = MockLead(

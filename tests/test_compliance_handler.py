@@ -11,6 +11,7 @@ from unittest.mock import patch
 
 import sys
 import os
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 # Patch _write_supabase before importing the module under test
@@ -22,6 +23,7 @@ with patch("subprocess.run"):
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _clear_suppression() -> None:
     """Reset the in-memory suppression store between tests."""
     ch._SUPPRESSION.clear()
@@ -30,6 +32,7 @@ def _clear_suppression() -> None:
 # ---------------------------------------------------------------------------
 # process_unsubscribe
 # ---------------------------------------------------------------------------
+
 
 class TestProcessUnsubscribe:
     def setup_method(self) -> None:
@@ -71,6 +74,7 @@ class TestProcessUnsubscribe:
 # is_suppressed
 # ---------------------------------------------------------------------------
 
+
 class TestIsSuppressed:
     def setup_method(self) -> None:
         _clear_suppression()
@@ -100,6 +104,7 @@ class TestIsSuppressed:
 # ---------------------------------------------------------------------------
 # process_bounce
 # ---------------------------------------------------------------------------
+
 
 class TestProcessBounce:
     def setup_method(self) -> None:
@@ -136,6 +141,7 @@ class TestProcessBounce:
 # ---------------------------------------------------------------------------
 # generate_compliance_report
 # ---------------------------------------------------------------------------
+
 
 class TestGenerateComplianceReport:
     def setup_method(self) -> None:

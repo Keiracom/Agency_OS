@@ -53,8 +53,50 @@ ZIP_URLS = [
 # Entity type codes to EXCLUDE
 EXCLUDE_INDIVIDUAL = {"IND", "SIF", "SAI"}
 EXCLUDE_SUPER = {"SMF", "SAF", "ADF", "SUP", "PST", "SSS"}
-EXCLUDE_TRUST = {"TRT", "FPT", "STR", "LPT", "PTT", "CSF", "CCN", "LCR", "LCN", "CSS", "CSA", "CSP", "SCB", "SCN", "SCR", "SCC", "SCO", "POF", "DTT", "FUT", "DST", "FXT", "HYT", "PQT", "PUT", "CMT", "DES", "CUT"}  # CUT added: Directive #227
-EXCLUDE_GOVERNMENT = {"SGE", "LGE", "CGE", "TGE", "SGA", "LGA", "TGA", "CGA", "SGC", "LGC", "SGP", "TGE"}
+EXCLUDE_TRUST = {
+    "TRT",
+    "FPT",
+    "STR",
+    "LPT",
+    "PTT",
+    "CSF",
+    "CCN",
+    "LCR",
+    "LCN",
+    "CSS",
+    "CSA",
+    "CSP",
+    "SCB",
+    "SCN",
+    "SCR",
+    "SCC",
+    "SCO",
+    "POF",
+    "DTT",
+    "FUT",
+    "DST",
+    "FXT",
+    "HYT",
+    "PQT",
+    "PUT",
+    "CMT",
+    "DES",
+    "CUT",
+}  # CUT added: Directive #227
+EXCLUDE_GOVERNMENT = {
+    "SGE",
+    "LGE",
+    "CGE",
+    "TGE",
+    "SGA",
+    "LGA",
+    "TGA",
+    "CGA",
+    "SGC",
+    "LGC",
+    "SGP",
+    "TGE",
+}
 EXCLUDE_CHARITY_NFP = {"DIT", "NPF", "NPB", "NPE", "NRF"}
 
 # Name-based exclusion patterns (Directive #229, updated #233)
@@ -62,13 +104,17 @@ EXCLUDE_CHARITY_NFP = {"DIT", "NPF", "NPB", "NPE", "NRF"}
 # NOTE: PASTORAL intentionally excluded per Directive #233 — PASTORAL companies have
 # valid GMB presence (e.g. PARABELLA PASTORAL COMPANY confirmed in pilots).
 NAME_EXCLUDE_EXACT = {
-    "NOMINEES", "CUSTODIANS",
-    "FUNDS MANAGEMENT", "SUPER FUND", "FUNDRAISING",
+    "NOMINEES",
+    "CUSTODIANS",
+    "FUNDS MANAGEMENT",
+    "SUPER FUND",
+    "FUNDRAISING",
 }
 
 # Regex-based patterns (applied to full COALESCE name)
 # PASTORAL removed from this regex per Directive #233 CEO decision.
 import re as _re
+
 NAME_EXCLUDE_REGEX = _re.compile(
     r"\b(NOMINEES|CUSTODIANS|FUNDS\s+MANAGEMENT|SUPER\s+FUND|FUNDRAISING)\b",
     _re.IGNORECASE,
@@ -137,21 +183,23 @@ PROGRESS_LOG_INTERVAL = 100_000
 @dataclass
 class FilterStats:
     """Track how many records were filtered at each stage."""
+
     inactive: int = 0
     individuals: int = 0
     trusts: int = 0
     government: int = 0
     superannuation: int = 0
     charities_nfp: int = 0
-    name_based: int = 0        # Directive #229/#233: shell/holding name patterns
-    acn_only: int = 0          # Directive #233: ACN-only names (Cat 4)
+    name_based: int = 0  # Directive #229/#233: shell/holding name patterns
+    acn_only: int = 0  # Directive #233: ACN-only names (Cat 4)
     properties_personal: int = 0  # Directive #233: surname+PROPERTIES (Cat 5, narrowed)
-    ptr_personal: int = 0      # Directive #229: personal-name PTR partnerships
+    ptr_personal: int = 0  # Directive #229: personal-name PTR partnerships
 
 
 @dataclass
 class LoadStats:
     """Track overall load statistics."""
+
     total_processed: int = 0
     total_inserted: int = 0
     total_updated: int = 0
@@ -188,13 +236,14 @@ class LoadStats:
         logger.info(f"  - properties_personal: {self.filter_breakdown.properties_personal:,}")
         logger.info(f"  - ptr_personal: {self.filter_breakdown.ptr_personal:,}")
         logger.info(f"final_qualified_count: {self.qualified_count:,}")
-        logger.info(f"time_elapsed: {self.elapsed_seconds:.2f}s ({self.elapsed_seconds/60:.1f}m)")
+        logger.info(f"time_elapsed: {self.elapsed_seconds:.2f}s ({self.elapsed_seconds / 60:.1f}m)")
         logger.info("=" * 60)
 
 
 @dataclass
 class BusinessRecord:
     """Represents a single business record from ABR."""
+
     abn: str
     acn: str | None
     legal_name: str
@@ -213,12 +262,12 @@ class BusinessRecord:
 async def download_file(url: str, dest: Path) -> None:
     """Download a file with progress bar."""
     logger.info(f"Downloading: {url}")
-    
+
     async with httpx.AsyncClient(timeout=httpx.Timeout(300.0, connect=30.0)) as client:
         async with client.stream("GET", url, follow_redirects=True) as response:
             response.raise_for_status()
             total = int(response.headers.get("content-length", 0))
-            
+
             with open(dest, "wb") as f:
                 with tqdm(
                     total=total,
@@ -230,30 +279,32 @@ async def download_file(url: str, dest: Path) -> None:
                     async for chunk in response.aiter_bytes(chunk_size=8192):
                         f.write(chunk)
                         pbar.update(len(chunk))
-    
+
     logger.info(f"Downloaded: {dest} ({dest.stat().st_size / 1024 / 1024:.1f} MB)")
 
 
-async def download_and_extract(skip_download: bool = False, skip_extract: bool = False) -> list[Path]:
+async def download_and_extract(
+    skip_download: bool = False, skip_extract: bool = False
+) -> list[Path]:
     """Download ZIP files and extract XML contents."""
     EXTRACT_DIR.mkdir(parents=True, exist_ok=True)
-    
+
     xml_files = []
-    
+
     if skip_extract:
         logger.info("Skipping extraction (--skip-extract)")
         # Just find existing XML files
         xml_files = list(EXTRACT_DIR.glob("*.xml"))
         return sorted(xml_files)
-    
+
     for i, url in enumerate(ZIP_URLS, 1):
         zip_path = EXTRACT_DIR / f"abn_split_{i}.zip"
-        
+
         if skip_download and zip_path.exists():
             logger.info(f"Skipping download (file exists): {zip_path}")
         else:
             await download_file(url, zip_path)
-        
+
         # Extract XML files
         logger.info(f"Extracting: {zip_path}")
         with zipfile.ZipFile(zip_path, "r") as zf:
@@ -262,7 +313,7 @@ async def download_and_extract(skip_download: bool = False, skip_extract: bool =
                     zf.extract(name, EXTRACT_DIR)
                     xml_files.append(EXTRACT_DIR / name)
                     logger.info(f"  Extracted: {name}")
-    
+
     return sorted(xml_files)
 
 
@@ -272,73 +323,73 @@ def parse_abn_xml_streaming(xml_path: Path, stats: LoadStats) -> Iterator[Busine
     LAW VII compliant: Uses iterparse, clears elements after processing.
     """
     logger.info(f"Parsing XML (streaming): {xml_path}")
-    
+
     # ABR XML structure: <ABR> elements contain business records
     context = etree.iterparse(
         str(xml_path),
         events=("end",),
         tag="ABR",
     )
-    
+
     for event, elem in context:
         stats.total_processed += 1
-        
+
         # Extract fields
         abn_elem = elem.find(".//ABN")
         if abn_elem is None:
             elem.clear()
             continue
-        
+
         abn = abn_elem.text
         if not abn:
             elem.clear()
             continue
-        
+
         # Get entity status (status is an attribute on ABN element)
         status_code = abn_elem.get("status", "")
-        
+
         # FILTER 1: Inactive
         if status_code != "ACT":
             stats.filter_breakdown.inactive += 1
             stats.total_filtered += 1
             elem.clear()
             continue
-        
+
         # Get entity type (EntityTypeInd contains code like PUB/PRV, EntityTypeText contains description)
         entity_type_elem = elem.find(".//EntityType/EntityTypeInd")
         entity_type_code = entity_type_elem.text if entity_type_elem is not None else ""
-        
+
         entity_type_name_elem = elem.find(".//EntityType/EntityTypeText")
         entity_type_name = entity_type_name_elem.text if entity_type_name_elem is not None else ""
-        
+
         # FILTER 2: Individuals/sole traders
         if entity_type_code in EXCLUDE_INDIVIDUAL:
             stats.filter_breakdown.individuals += 1
             stats.total_filtered += 1
             elem.clear()
             continue
-        
+
         # FILTER 3: Trusts
         if entity_type_code in EXCLUDE_TRUST:
             stats.filter_breakdown.trusts += 1
             stats.total_filtered += 1
             elem.clear()
             continue
-        
+
         # FILTER 4: Government entities
         if entity_type_code in EXCLUDE_GOVERNMENT:
             stats.filter_breakdown.government += 1
             stats.total_filtered += 1
             elem.clear()
             continue
-        
+
         # FILTER 5: Superannuation funds
         if entity_type_code in EXCLUDE_SUPER:
             stats.filter_breakdown.superannuation += 1
             stats.total_filtered += 1
             elem.clear()
             continue
-        
+
         # FILTER 6: Charities/NFP
         if entity_type_code in EXCLUDE_CHARITY_NFP:
             stats.filter_breakdown.charities_nfp += 1
@@ -350,15 +401,19 @@ def parse_abn_xml_streaming(xml_path: Path, stats: LoadStats) -> Iterator[Busine
         # Read trading name early for name-based checks (also used below for DB write)
         _trading_name_elem = None
         _trading_name_early = None
-        for _other_entity in elem.findall(".//OtherEntity/NonIndividualName[@type='TRD']/NonIndividualNameText"):
+        for _other_entity in elem.findall(
+            ".//OtherEntity/NonIndividualName[@type='TRD']/NonIndividualNameText"
+        ):
             if _other_entity is not None and _other_entity.text:
                 _trading_name_early = _other_entity.text
                 break
         # Fall back to legal name for name check if no trading name yet
         _legal_name_early_elem = elem.find(".//MainEntity/NonIndividualName/NonIndividualNameText")
-        _check_name = (_trading_name_early or (
-            _legal_name_early_elem.text if _legal_name_early_elem is not None else ""
-        ) or "").upper()
+        _check_name = (
+            _trading_name_early
+            or (_legal_name_early_elem.text if _legal_name_early_elem is not None else "")
+            or ""
+        ).upper()
 
         if NAME_EXCLUDE_REGEX.search(_check_name):
             stats.filter_breakdown.name_based += 1
@@ -402,17 +457,19 @@ def parse_abn_xml_streaming(xml_path: Path, stats: LoadStats) -> Iterator[Busine
         # Extract remaining fields for qualified records
         acn_elem = elem.find(".//ASICNumber")
         acn = acn_elem.text if acn_elem is not None else None
-        
+
         # Legal name - try multiple paths
         legal_name = None
-        for path in [".//MainEntity/NonIndividualName/NonIndividualNameText",
-                     ".//LegalEntity/IndividualName/GivenName",
-                     ".//MainEntity/OrganisationName"]:
+        for path in [
+            ".//MainEntity/NonIndividualName/NonIndividualNameText",
+            ".//LegalEntity/IndividualName/GivenName",
+            ".//MainEntity/OrganisationName",
+        ]:
             name_elem = elem.find(path)
             if name_elem is not None and name_elem.text:
                 legal_name = name_elem.text
                 break
-        
+
         if not legal_name:
             # Try concatenating individual name parts
             given = elem.find(".//LegalEntity/IndividualName/GivenName")
@@ -424,17 +481,19 @@ def parse_abn_xml_streaming(xml_path: Path, stats: LoadStats) -> Iterator[Busine
                 if family is not None and family.text:
                     parts.append(family.text)
                 legal_name = " ".join(parts)
-        
+
         if not legal_name:
             legal_name = f"ABN {abn}"  # Fallback
-        
+
         # Trading name (from OtherEntity with type="TRD")
         trading_name = None
-        for other_entity in elem.findall(".//OtherEntity/NonIndividualName[@type='TRD']/NonIndividualNameText"):
+        for other_entity in elem.findall(
+            ".//OtherEntity/NonIndividualName[@type='TRD']/NonIndividualNameText"
+        ):
             if other_entity is not None and other_entity.text:
                 trading_name = other_entity.text
                 break
-        
+
         # Address info (in BusinessAddress/AddressDetails)
         state = None
         postcode = None
@@ -444,20 +503,18 @@ def parse_abn_xml_streaming(xml_path: Path, stats: LoadStats) -> Iterator[Busine
         pc_elem = elem.find(".//BusinessAddress/AddressDetails/Postcode")
         if pc_elem is not None:
             postcode = pc_elem.text
-        
+
         # GST registration (status is an attribute on GST element)
         gst_elem = elem.find(".//GST")
         gst_registered = gst_elem is not None and gst_elem.get("status", "") == "ACT"
-        
+
         # Registration date (ABNStatusFromDate attribute on ABN element, format YYYYMMDD)
         reg_date_raw = abn_elem.get("ABNStatusFromDate", None)
         reg_date = None
         if reg_date_raw and len(reg_date_raw) == 8:
             try:
                 reg_date = date(
-                    int(reg_date_raw[:4]),
-                    int(reg_date_raw[4:6]),
-                    int(reg_date_raw[6:8])
+                    int(reg_date_raw[:4]), int(reg_date_raw[4:6]), int(reg_date_raw[6:8])
                 )
             except (ValueError, TypeError):
                 reg_date = None
@@ -469,7 +526,7 @@ def parse_abn_xml_streaming(xml_path: Path, stats: LoadStats) -> Iterator[Busine
 
         # Clean up to free memory
         elem.clear()
-        
+
         yield BusinessRecord(
             abn=abn,
             acn=acn,
@@ -485,7 +542,7 @@ def parse_abn_xml_streaming(xml_path: Path, stats: LoadStats) -> Iterator[Busine
             registration_date=reg_date,
             display_name=display_name,
         )
-        
+
         # Progress logging
         if stats.total_processed % PROGRESS_LOG_INTERVAL == 0:
             qualified = stats.total_processed - stats.total_filtered
@@ -506,7 +563,7 @@ async def upsert_batch(
     if dry_run:
         stats.total_inserted += len(records)
         return
-    
+
     async with pool.acquire() as conn:
         # Prepare data for batch insert (display_name included — Directive #232/#233)
         values = [
@@ -527,7 +584,7 @@ async def upsert_batch(
             )
             for r in records
         ]
-        
+
         # Use executemany with UPSERT — display_name populated at write time
         result = await conn.executemany(
             """
@@ -552,7 +609,7 @@ async def upsert_batch(
             """,
             values,
         )
-        
+
         # Note: executemany doesn't return affected row counts easily
         # For accurate insert/update tracking, would need individual queries
         # For now, approximate by counting all as "processed"
@@ -567,20 +624,20 @@ async def process_xml_files(
 ) -> None:
     """Process all XML files and load into database."""
     batch: list[BusinessRecord] = []
-    
+
     for xml_path in xml_files:
         logger.info(f"Processing: {xml_path}")
-        
+
         for record in parse_abn_xml_streaming(xml_path, stats):
             batch.append(record)
-            
+
             if len(batch) >= BATCH_SIZE:
                 if pool:
                     await upsert_batch(pool, batch, stats, dry_run)
                 else:
                     stats.total_inserted += len(batch)
                 batch = []
-    
+
     # Final batch
     if batch:
         if pool:
@@ -616,27 +673,29 @@ async def main():
         help="Skip XML files before this filename",
     )
     args = parser.parse_args()
-    
+
     logger.info("=" * 60)
     logger.info("ABN BULK EXTRACT LOADER")
     logger.info(f"dry_run: {args.dry_run}")
     logger.info(f"skip_download: {args.skip_download}")
     logger.info(f"skip_extract: {args.skip_extract}")
     logger.info("=" * 60)
-    
+
     stats = LoadStats()
-    
+
     try:
         # Download and extract
-        xml_files = await download_and_extract(skip_download=args.skip_download, skip_extract=args.skip_extract)
-        
+        xml_files = await download_and_extract(
+            skip_download=args.skip_download, skip_extract=args.skip_extract
+        )
+
         # Filter to start from specific file if requested
         if args.start_file:
             xml_files = [f for f in xml_files if f.name >= args.start_file]
             logger.info(f"Resuming from: {args.start_file}")
-        
+
         logger.info(f"Files to process: {len(xml_files)}")
-        
+
         # Connect to database (unless dry run)
         pool = None
         if not args.dry_run:
@@ -644,24 +703,26 @@ async def main():
             if not database_url:
                 logger.error("DATABASE_URL not set")
                 sys.exit(1)
-            
+
             # Strip SQLAlchemy dialect suffix for asyncpg compatibility
             database_url = database_url.replace("postgresql+asyncpg://", "postgresql://")
-            
+
             logger.info("Connecting to database...")
-            pool = await asyncpg.create_pool(database_url, min_size=2, max_size=10, statement_cache_size=0)
+            pool = await asyncpg.create_pool(
+                database_url, min_size=2, max_size=10, statement_cache_size=0
+            )
             logger.info("Database connected")
-        
+
         try:
             # Process XML files
             await process_xml_files(xml_files, pool, stats, dry_run=args.dry_run)
         finally:
             if pool:
                 await pool.close()
-        
+
         # Log final stats
         stats.log_final()
-        
+
     except Exception as e:
         logger.exception(f"Load failed: {e}")
         sentry_sdk.capture_exception(e)

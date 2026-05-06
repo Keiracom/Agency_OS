@@ -72,6 +72,7 @@ def _state(
 # Test cases
 # ---------------------------------------------------------------------------
 
+
 def test_lru_none_sorts_first():
     """Pool A(1h ago), B(30min ago), C(never) → pick C (None last_send sorts first)."""
     pool = [
@@ -99,7 +100,7 @@ def test_all_at_cap_returns_no_eligible():
 def test_warming_day1_at_cap_skipped():
     """Mailbox on warming_day=1 with daily_count=10 → at cap (10) → skipped."""
     pool = [
-        _state("A", daily_count=10, warming_day=1),    # at cap
+        _state("A", daily_count=10, warming_day=1),  # at cap
         _state("B", daily_count=5, warming_day=None),  # eligible
     ]
     rotator = _make_rotator(pool)
@@ -111,7 +112,7 @@ def test_warmed_cap_respected():
     """warming_day=None with daily_count=100 → at cap (100) → skipped."""
     pool = [
         _state("A", daily_count=100, warming_day=None),  # at cap
-        _state("B", daily_count=0, warming_day=None),    # eligible
+        _state("B", daily_count=0, warming_day=None),  # eligible
     ]
     rotator = _make_rotator(pool)
     decision = rotator.pick_next_mailbox("client-1")
@@ -182,12 +183,10 @@ def test_redis_lock_held_by_other_falls_through():
     """set(NX) -> False on A → rotator skips A and picks B."""
     fake_redis = MagicMock()
     # A is locked; B is free
-    fake_redis.set.side_effect = lambda key, val, nx, ex: (
-        False if "A" in key else True
-    )
+    fake_redis.set.side_effect = lambda key, val, nx, ex: False if "A" in key else True
 
     pool = [
-        _state("A", last_send_at=None),          # LRU-first but locked
+        _state("A", last_send_at=None),  # LRU-first but locked
         _state("B", last_send_at=_NOW - timedelta(hours=1)),
     ]
     rotator = _make_rotator(pool, redis_client=fake_redis)
@@ -203,7 +202,7 @@ def test_record_send_releases_redis_lock():
 
     pool = [_state("A")]
     rotator = _make_rotator(pool, redis_client=fake_redis)
-    rotator.pick_next_mailbox("client-1")   # acquires lock on A
+    rotator.pick_next_mailbox("client-1")  # acquires lock on A
     rotator.record_send("A")
 
     fake_redis.delete.assert_called_once_with("mailbox-rotate:A")

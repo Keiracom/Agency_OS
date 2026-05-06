@@ -1,12 +1,16 @@
 """Tests for Stage7Haiku — Directive #F6 (BDM JOIN)"""
+
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, UTC
 import uuid
 
 from src.pipeline.stage_7_haiku import (
-    Stage7Haiku, PIPELINE_STAGE_S7, HAIKU_MODEL,
-    HAIKU_INPUT_COST_PER_TOKEN, HAIKU_OUTPUT_COST_PER_TOKEN,
+    Stage7Haiku,
+    PIPELINE_STAGE_S7,
+    HAIKU_MODEL,
+    HAIKU_INPUT_COST_PER_TOKEN,
+    HAIKU_OUTPUT_COST_PER_TOKEN,
 )
 from src.enrichment.signal_config import SignalConfig, ServiceSignal
 
@@ -23,13 +27,19 @@ AGENCY_PROFILE = {
 def make_config():
     """Returns SignalConfig with enrichment_gates including min_score_to_outreach: 65"""
     return SignalConfig(
-        id=str(uuid.uuid4()), vertical="marketing_agency",
+        id=str(uuid.uuid4()),
+        vertical="marketing_agency",
         services=[ServiceSignal("paid_ads", "Paid Ads", ["Google Ads"], [], {})],
         discovery_config={},
-        enrichment_gates={"min_score_to_enrich": 30, "min_score_to_dm": 50, "min_score_to_outreach": 65},
+        enrichment_gates={
+            "min_score_to_enrich": 30,
+            "min_score_to_dm": 50,
+            "min_score_to_outreach": 65,
+        },
         competitor_config={},
         channel_config={"email": True, "linkedin": True, "voice": True, "sms": False},
-        created_at=datetime.now(), updated_at=datetime.now(),
+        created_at=datetime.now(),
+        updated_at=datetime.now(),
     )
 
 
@@ -71,9 +81,7 @@ def make_row(**overrides):
             {"title": "Manager", "company": "TechCorp"},
         ],
         "dm_skills": ["Google Ads", "Facebook Ads", "Analytics", "Strategy"],
-        "dm_education": [
-            {"degree": "MBA", "institution": "University of Melbourne"}
-        ],
+        "dm_education": [{"degree": "MBA", "institution": "University of Melbourne"}],
     }
     defaults.update(overrides)
     row = MagicMock()
@@ -87,11 +95,13 @@ def make_row(**overrides):
 def make_ai_client(content="Test message response", input_tokens=100, output_tokens=50):
     """mock AI client returning content with token counts"""
     client = MagicMock()
-    client.complete = AsyncMock(return_value={
-        "content": content,
-        "input_tokens": input_tokens,
-        "output_tokens": output_tokens,
-    })
+    client.complete = AsyncMock(
+        return_value={
+            "content": content,
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+        }
+    )
     return client
 
 
@@ -114,6 +124,7 @@ def make_stage(rows=None, ai_content="Test outreach message", config=None):
 
 
 # ─── Core F6 Tests (BDM JOIN) ────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_query_joins_bdm():
@@ -157,8 +168,9 @@ async def test_writes_to_dm_messages():
     assert conn.execute.call_count == 3
 
     # Check that INSERTs target dm_messages
-    insert_calls = [call for call in conn.execute.call_args_list
-                    if "INSERT INTO dm_messages" in call[0][0]]
+    insert_calls = [
+        call for call in conn.execute.call_args_list if "INSERT INTO dm_messages" in call[0][0]
+    ]
     assert len(insert_calls) == 2
 
 
@@ -169,8 +181,9 @@ async def test_advances_pipeline_stage():
     await stage.run("marketing_agency", AGENCY_PROFILE)
 
     # Find the UPDATE call
-    update_calls = [call for call in conn.execute.call_args_list
-                    if "UPDATE business_universe" in call[0][0]]
+    update_calls = [
+        call for call in conn.execute.call_args_list if "UPDATE business_universe" in call[0][0]
+    ]
     assert len(update_calls) == 1
 
     # Verify pipeline_stage argument is PIPELINE_STAGE_S7
@@ -207,12 +220,14 @@ async def test_prospect_brief_handles_missing_bdm_fields():
     """All BDM fields None, brief still works"""
     stage, ai, conn = make_stage()
 
-    business = dict(make_row(
-        dm_headline=None,
-        dm_experience=None,
-        dm_skills=None,
-        dm_education=None,
-    ))
+    business = dict(
+        make_row(
+            dm_headline=None,
+            dm_experience=None,
+            dm_skills=None,
+            dm_education=None,
+        )
+    )
     brief = stage._build_prospect_brief(business)
 
     # Should not raise, should include base business info
@@ -247,15 +262,17 @@ async def test_vulnerability_report_in_brief():
     """VR data appears in prospect brief"""
     stage, ai, conn = make_stage()
 
-    business = dict(make_row(
-        vulnerability_report={
-            "vulnerabilities": [
-                {"title": "No marketing automation"},
-                {"title": "Manual CRM entry"},
-                {"title": "Poor email infrastructure"},
-            ]
-        }
-    ))
+    business = dict(
+        make_row(
+            vulnerability_report={
+                "vulnerabilities": [
+                    {"title": "No marketing automation"},
+                    {"title": "Manual CRM entry"},
+                    {"title": "Poor email infrastructure"},
+                ]
+            }
+        )
+    )
     brief = stage._build_prospect_brief(business)
 
     # Top 3 vulnerabilities should appear
@@ -265,6 +282,7 @@ async def test_vulnerability_report_in_brief():
 
 
 # ─── Integration & Legacy Tests ───────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_generates_email_message():
@@ -363,8 +381,9 @@ async def test_dm_messages_insert_has_status_draft():
     stage, ai, conn = make_stage()
     await stage.run("marketing_agency", AGENCY_PROFILE)
 
-    insert_calls = [call for call in conn.execute.call_args_list
-                    if "INSERT INTO dm_messages" in call[0][0]]
+    insert_calls = [
+        call for call in conn.execute.call_args_list if "INSERT INTO dm_messages" in call[0][0]
+    ]
     assert len(insert_calls) == 2
 
     for call in insert_calls:
@@ -392,9 +411,7 @@ async def test_handles_ai_exception_gracefully():
     stage.ai = ai
 
     business = dict(make_row())
-    messages, channel_costs = await stage._generate_messages(
-        business, AGENCY_PROFILE, ["email"]
-    )
+    messages, channel_costs = await stage._generate_messages(business, AGENCY_PROFILE, ["email"])
 
     # Should return empty messages dict (exception caught)
     assert len(messages) == 0
@@ -439,12 +456,14 @@ async def test_dm_experience_list_format():
     """dm_experience is list of dicts with title/company"""
     stage, ai, conn = make_stage()
 
-    business = dict(make_row(
-        dm_experience=[
-            {"title": "CEO", "company": "StartupCo"},
-            {"title": "Director", "company": "BigCorp"},
-        ]
-    ))
+    business = dict(
+        make_row(
+            dm_experience=[
+                {"title": "CEO", "company": "StartupCo"},
+                {"title": "Director", "company": "BigCorp"},
+            ]
+        )
+    )
     brief = stage._build_prospect_brief(business)
 
     # Should include recent experience entries
@@ -459,9 +478,18 @@ async def test_dm_skills_list_format():
     """dm_skills is list of strings, top 5 included"""
     stage, ai, conn = make_stage()
 
-    business = dict(make_row(
-        dm_skills=["Google Ads", "Facebook Ads", "Analytics", "Strategy", "Copywriting", "Design"]
-    ))
+    business = dict(
+        make_row(
+            dm_skills=[
+                "Google Ads",
+                "Facebook Ads",
+                "Analytics",
+                "Strategy",
+                "Copywriting",
+                "Design",
+            ]
+        )
+    )
     brief = stage._build_prospect_brief(business)
 
     # Top 5 should appear
@@ -475,11 +503,9 @@ async def test_dm_education_format():
     """dm_education is list of dicts with degree/institution"""
     stage, ai, conn = make_stage()
 
-    business = dict(make_row(
-        dm_education=[
-            {"degree": "Bachelor of Commerce", "institution": "UNSW"}
-        ]
-    ))
+    business = dict(
+        make_row(dm_education=[{"degree": "Bachelor of Commerce", "institution": "UNSW"}])
+    )
     brief = stage._build_prospect_brief(business)
 
     assert "Bachelor of Commerce" in brief
@@ -494,9 +520,7 @@ async def test_message_returned_stripped():
     stage.ai = ai
 
     business = dict(make_row())
-    messages, _ = await stage._generate_messages(
-        business, AGENCY_PROFILE, ["email"]
-    )
+    messages, _ = await stage._generate_messages(business, AGENCY_PROFILE, ["email"])
 
     # Message should be stripped
     assert messages["email"] == "Test message with whitespace"
@@ -508,8 +532,9 @@ async def test_dm_messages_insert_includes_all_fields():
     stage, ai, conn = make_stage()
     await stage.run("marketing_agency", AGENCY_PROFILE)
 
-    insert_calls = [call for call in conn.execute.call_args_list
-                    if "INSERT INTO dm_messages" in call[0][0]]
+    insert_calls = [
+        call for call in conn.execute.call_args_list if "INSERT INTO dm_messages" in call[0][0]
+    ]
 
     for call in insert_calls:
         sql = call[0][0]

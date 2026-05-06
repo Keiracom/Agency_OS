@@ -9,6 +9,7 @@ Covers:
   5. Circuit reopens after failed half-open call
   6. Decorator works on async functions
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -30,8 +31,10 @@ from src.integrations.circuit_breaker import (
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 async def _fail():
     raise ValueError("simulated failure")
+
 
 async def _ok():
     return "ok"
@@ -41,6 +44,7 @@ async def _ok():
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(autouse=True)
 def isolated_cb(request):
     """Yield a fresh CircuitBreaker for each test; clean up registry after."""
@@ -48,7 +52,7 @@ def isolated_cb(request):
     cb = CircuitBreaker(
         provider=provider,
         failure_threshold=3,
-        recovery_timeout_seconds=0.2,   # short for tests
+        recovery_timeout_seconds=0.2,  # short for tests
         half_open_max_calls=1,
     )
     yield cb, provider
@@ -58,6 +62,7 @@ def isolated_cb(request):
 # ---------------------------------------------------------------------------
 # Test 1 — circuit opens after N failures
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_circuit_opens_after_n_failures(isolated_cb):
@@ -75,6 +80,7 @@ async def test_circuit_opens_after_n_failures(isolated_cb):
 # ---------------------------------------------------------------------------
 # Test 2 — open circuit rejects calls
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_open_circuit_rejects_calls(isolated_cb):
@@ -96,6 +102,7 @@ async def test_open_circuit_rejects_calls(isolated_cb):
 # ---------------------------------------------------------------------------
 # Test 3 — OPEN -> HALF_OPEN after recovery timeout
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_transitions_to_half_open_after_timeout(isolated_cb):
@@ -120,6 +127,7 @@ async def test_transitions_to_half_open_after_timeout(isolated_cb):
 # Test 4 — circuit closes after successful half-open call
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_closes_after_successful_half_open(isolated_cb):
     cb, _ = isolated_cb
@@ -139,6 +147,7 @@ async def test_closes_after_successful_half_open(isolated_cb):
 # ---------------------------------------------------------------------------
 # Test 5 — circuit reopens after failed half-open call
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_reopens_after_failed_half_open(isolated_cb):
@@ -160,6 +169,7 @@ async def test_reopens_after_failed_half_open(isolated_cb):
 # ---------------------------------------------------------------------------
 # Test 6 — decorator works on async functions
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_decorator_wraps_async_function():

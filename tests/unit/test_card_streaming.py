@@ -6,6 +6,7 @@ Tests that:
   - Order matches production order (first domain processed = first emitted)
   - SSECardStreamer puts serialized events onto asyncio.Queue
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -66,6 +67,7 @@ async def _fake_run_streaming(self, **kwargs) -> PipelineResult:
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_all_three_cards_emitted_via_callback():
     """All 3 ProspectCards are emitted via on_card before run_streaming() returns."""
@@ -73,7 +75,9 @@ async def test_all_three_cards_emitted_via_callback():
 
     orch = _build_orchestrator(on_card=emitted.append)
     with patch.object(PipelineOrchestrator, "run_streaming", _fake_run_streaming):
-        result = await orch.run_streaming(categories=["plumbers"], location="Sydney", target_cards=10)
+        result = await orch.run_streaming(
+            categories=["plumbers"], location="Sydney", target_cards=10
+        )
 
     # run_streaming() should have returned 3 cards
     assert len(result.prospects) == 3
@@ -88,7 +92,9 @@ async def test_emission_order_matches_production_order():
 
     orch = _build_orchestrator(on_card=emitted.append)
     with patch.object(PipelineOrchestrator, "run_streaming", _fake_run_streaming):
-        result = await orch.run_streaming(categories=["plumbers"], location="Sydney", target_cards=10)
+        result = await orch.run_streaming(
+            categories=["plumbers"], location="Sydney", target_cards=10
+        )
 
     assert [c.domain for c in emitted] == [c.domain for c in result.prospects]
 
@@ -100,7 +106,9 @@ async def test_emitted_cards_are_same_objects_as_result():
 
     orch = _build_orchestrator(on_card=emitted.append)
     with patch.object(PipelineOrchestrator, "run_streaming", _fake_run_streaming):
-        result = await orch.run_streaming(categories=["plumbers"], location="Sydney", target_cards=10)
+        result = await orch.run_streaming(
+            categories=["plumbers"], location="Sydney", target_cards=10
+        )
 
     for emitted_card, result_card in zip(emitted, result.prospects):
         assert emitted_card is result_card
@@ -109,12 +117,15 @@ async def test_emitted_cards_are_same_objects_as_result():
 @pytest.mark.asyncio
 async def test_callback_exception_does_not_break_pipeline():
     """A crashing on_card callback must not prevent run_streaming() from completing."""
+
     def bad_callback(card):
         raise RuntimeError("dashboard down")
 
     orch = _build_orchestrator(on_card=bad_callback)
     with patch.object(PipelineOrchestrator, "run_streaming", _fake_run_streaming):
-        result = await orch.run_streaming(categories=["plumbers"], location="Sydney", target_cards=10)
+        result = await orch.run_streaming(
+            categories=["plumbers"], location="Sydney", target_cards=10
+        )
 
     # All prospects still collected despite callback failure
     assert len(result.prospects) == 3
@@ -128,7 +139,9 @@ async def test_sse_card_streamer_puts_events_onto_queue():
 
     orch = _build_orchestrator(on_card=streamer.emit)
     with patch.object(PipelineOrchestrator, "run_streaming", _fake_run_streaming):
-        result = await orch.run_streaming(categories=["plumbers"], location="Sydney", target_cards=10)
+        result = await orch.run_streaming(
+            categories=["plumbers"], location="Sydney", target_cards=10
+        )
 
     assert queue.qsize() == len(result.prospects)
 
@@ -136,6 +149,7 @@ async def test_sse_card_streamer_puts_events_onto_queue():
     event = queue.get_nowait()
     assert event["event"] == "prospect_card"
     import json
+
     data = json.loads(event["data"])
     assert "domain" in data
     assert "company_name" in data

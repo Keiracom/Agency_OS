@@ -2,6 +2,7 @@
 P1.7: Tests for NULL-URL BDM write-path guard, name normalization,
 unknown name rejection, and AU TLD filter in flow SQL.
 """
+
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -44,13 +45,15 @@ async def test_null_url_guard_allows_with_email():
     stage.conn.fetchval = AsyncMock(return_value=None)
     stage.conn.execute = AsyncMock()
 
-    dm = DMResult(
-        name="Jane Smith", source="test", linkedin_url=None, email="jane@example.com.au"
-    )
+    dm = DMResult(name="Jane Smith", source="test", linkedin_url=None, email="jane@example.com.au")
     business = {
-        "id": "biz-002", "domain": "example.com.au",
-        "dm_email": None, "dm_phone": None, "phone": None,
-        "address": None, "gmb_place_id": None,
+        "id": "biz-002",
+        "domain": "example.com.au",
+        "dm_email": None,
+        "dm_phone": None,
+        "phone": None,
+        "address": None,
+        "gmb_place_id": None,
     }
 
     await stage._write_result("biz-002", dm, business)
@@ -81,13 +84,19 @@ async def test_name_title_case_normalization():
     stage.conn.execute = capture_execute
 
     dm = DMResult(
-        name="sian mcconnell", source="test",
-        email="sian@example.com.au", linkedin_url=None,
+        name="sian mcconnell",
+        source="test",
+        email="sian@example.com.au",
+        linkedin_url=None,
     )
     business = {
-        "id": "biz-003", "domain": "example.com.au",
-        "dm_email": None, "dm_phone": None, "phone": None,
-        "address": None, "gmb_place_id": None,
+        "id": "biz-003",
+        "domain": "example.com.au",
+        "dm_email": None,
+        "dm_phone": None,
+        "phone": None,
+        "address": None,
+        "gmb_place_id": None,
     }
 
     await stage._write_result("biz-003", dm, business)

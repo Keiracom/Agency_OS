@@ -3,6 +3,7 @@ Unit tests for BrightDataClient
 
 Tests the unified Bright Data client covering SERP API and Scrapers API.
 """
+
 import os
 import sys
 from unittest.mock import AsyncMock, Mock, patch
@@ -10,7 +11,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 
 # Add src to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src"))
 
 
 class TestDatasetIDs:
@@ -18,14 +19,17 @@ class TestDatasetIDs:
 
     def test_linkedin_company_id(self):
         from integrations.bright_data_client import DATASET_IDS
+
         assert DATASET_IDS["linkedin_company"] == "gd_l1vikfnt1wgvvqz95w"
 
     def test_linkedin_people_id(self):
         from integrations.bright_data_client import DATASET_IDS
+
         assert DATASET_IDS["linkedin_people"] == "gd_l1viktl72bvl7bjuj0"
 
     def test_linkedin_jobs_id(self):
         from integrations.bright_data_client import DATASET_IDS
+
         assert DATASET_IDS["linkedin_jobs"] == "gd_lpfll7v5hcqtkxl6l"
 
 
@@ -34,10 +38,12 @@ class TestCosts:
 
     def test_serp_cost(self):
         from integrations.bright_data_client import COSTS_AUD
+
         assert COSTS_AUD["serp_request"] == 0.0015
 
     def test_scraper_cost(self):
         from integrations.bright_data_client import COSTS_AUD
+
         assert COSTS_AUD["scraper_record"] == 0.0015
 
 
@@ -46,21 +52,25 @@ class TestBrightDataClientInit:
 
     def test_init_with_api_key(self):
         from integrations.bright_data_client import BrightDataClient
+
         client = BrightDataClient(api_key="test-key-123")
         assert client.api_key == "test-key-123"
 
     def test_default_serp_zone(self):
         from integrations.bright_data_client import BrightDataClient
+
         client = BrightDataClient(api_key="test-key")
         assert client.serp_zone == "serp_api1"
 
     def test_custom_serp_zone(self):
         from integrations.bright_data_client import BrightDataClient
+
         client = BrightDataClient(api_key="test-key", serp_zone="custom_zone")
         assert client.serp_zone == "custom_zone"
 
     def test_cost_tracker_initialized(self):
         from integrations.bright_data_client import BrightDataClient
+
         client = BrightDataClient(api_key="test-key")
         assert client.get_total_cost() == 0.0
 
@@ -70,6 +80,7 @@ class TestCostTracking:
 
     def test_cost_breakdown_structure(self):
         from integrations.bright_data_client import BrightDataClient
+
         client = BrightDataClient(api_key="test-key")
         breakdown = client.get_cost_breakdown()
 
@@ -81,6 +92,7 @@ class TestCostTracking:
 
     def test_cost_calculation(self):
         from integrations.bright_data_client import COSTS_AUD, BrightDataClient
+
         client = BrightDataClient(api_key="test-key")
 
         # Simulate some costs
@@ -109,7 +121,7 @@ class TestSERPAPI:
         mock_client = AsyncMock()
         mock_client.post.return_value = mock_response
 
-        with patch.object(client, '_get_client', return_value=mock_client):
+        with patch.object(client, "_get_client", return_value=mock_client):
             await client.search_google_maps("restaurants", "Melbourne")
 
         # Verify the URL was constructed correctly in the request body
@@ -135,7 +147,7 @@ class TestSERPAPI:
         mock_client = AsyncMock()
         mock_client.post.return_value = mock_response
 
-        with patch.object(client, '_get_client', return_value=mock_client):
+        with patch.object(client, "_get_client", return_value=mock_client):
             await client.search_google('site:linkedin.com/company "test"')
 
         call_args = mock_client.post.call_args
@@ -159,7 +171,7 @@ class TestSERPAPI:
         mock_client = AsyncMock()
         mock_client.post.return_value = mock_response
 
-        with patch.object(client, '_get_client', return_value=mock_client):
+        with patch.object(client, "_get_client", return_value=mock_client):
             await client.search_google("test query")
 
         assert client.costs.serp_requests == initial_count + 1
@@ -200,7 +212,7 @@ class TestScrapersAPI:
         mock_client.__aenter__.return_value = mock_client
         mock_client.__aexit__.return_value = None
 
-        with patch.object(client, '_get_client', return_value=mock_client):
+        with patch.object(client, "_get_client", return_value=mock_client):
             result = await client.scrape_linkedin_company("https://linkedin.com/company/test")
 
         assert result["name"] == "Test Company"
@@ -237,7 +249,7 @@ class TestScrapersAPI:
         mock_client.__aenter__.return_value = mock_client
         mock_client.__aexit__.return_value = None
 
-        with patch.object(client, '_get_client', return_value=mock_client):
+        with patch.object(client, "_get_client", return_value=mock_client):
             await client.scrape_linkedin_jobs("marketing", "Melbourne", "AU")
 
         # Verify trigger URL includes discover_by parameter
@@ -252,6 +264,7 @@ class TestErrorHandling:
 
     def test_bright_data_error_class_exists(self):
         from integrations.bright_data_client import BrightDataError
+
         assert issubclass(BrightDataError, Exception)
 
     @pytest.mark.asyncio
@@ -265,6 +278,6 @@ class TestErrorHandling:
         mock_client = AsyncMock()
         mock_client.post.side_effect = httpx.RequestError("Connection failed")
 
-        with patch.object(client, '_get_client', return_value=mock_client):
+        with patch.object(client, "_get_client", return_value=mock_client):
             with pytest.raises(BrightDataError):
                 await client.search_google("test")

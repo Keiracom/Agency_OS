@@ -29,7 +29,6 @@ ABN_RECORDS = [
     {"name": "Geelong Plumbing Services Pty Ltd", "state": "VIC"},
     {"name": "Cairns Travel Agency Pty Ltd", "state": "QLD"},
     {"name": "Newcastle Motor Repairs Pty Ltd", "state": "NSW"},
-
     # Professional services
     {"name": "Smith & Partners Accountants Pty Ltd", "state": "NSW"},
     {"name": "Johnson Legal Services Pty Ltd", "state": "VIC"},
@@ -41,7 +40,6 @@ ABN_RECORDS = [
     {"name": "Wilson Electrical Services Pty Ltd", "state": "NSW"},
     {"name": "Martin Landscaping Pty Ltd", "state": "SA"},
     {"name": "Harris Cleaning Services Pty Ltd", "state": "VIC"},
-
     # Retail/Food
     {"name": "Harbour View Restaurant Pty Ltd", "state": "NSW"},
     {"name": "Central Cafe Pty Ltd", "state": "VIC"},
@@ -53,7 +51,6 @@ ABN_RECORDS = [
     {"name": "Urban Gym Pty Ltd", "state": "NSW"},
     {"name": "Village Butcher Pty Ltd", "state": "SA"},
     {"name": "Mountain View Hotel Pty Ltd", "state": "VIC"},
-
     # Trades
     {"name": "Aussie Plumbers Pty Ltd", "state": "NSW"},
     {"name": "Sydney Electricians Pty Ltd", "state": "NSW"},
@@ -65,7 +62,6 @@ ABN_RECORDS = [
     {"name": "Darwin Pool Services Pty Ltd", "state": "NT"},
     {"name": "Hobart Painters Pty Ltd", "state": "TAS"},
     {"name": "Wollongong Tilers Pty Ltd", "state": "NSW"},
-
     # Generic/Holdings - likely failures
     {"name": "JKL Holdings Pty Ltd", "state": "NSW"},
     {"name": "XYZ Enterprises Pty Ltd", "state": "VIC"},
@@ -84,7 +80,7 @@ def clean_name(name: str) -> str:
     """Strip Pty Ltd suffixes."""
     for suffix in [" pty ltd", " pty. ltd.", " proprietary limited", " limited", " ltd"]:
         if name.lower().endswith(suffix):
-            name = name[:-len(suffix)]
+            name = name[: -len(suffix)]
     return name.strip()
 
 
@@ -154,7 +150,9 @@ async def run_test():
             fails += 1
             status = "✗"
 
-        print(f"[{i+1:2d}/{len(ABN_RECORDS)}] {status} [{score:3d}%] {clean_name(abn_name)[:32]:<32} → {gmb_name[:25] if gmb_name else '(none)':<25}")
+        print(
+            f"[{i + 1:2d}/{len(ABN_RECORDS)}] {status} [{score:3d}%] {clean_name(abn_name)[:32]:<32} → {gmb_name[:25] if gmb_name else '(none)':<25}"
+        )
 
         # Small delay between requests (scraper has its own rate limiting)
         await asyncio.sleep(0.5)
@@ -179,7 +177,7 @@ async def run_test():
     print("\n10 FAILURE EXAMPLES:")
     print("-" * 70)
     for i, f in enumerate(failures[:10]):
-        print(f"{i+1}. ABN: {f['abn_name']}")
+        print(f"{i + 1}. ABN: {f['abn_name']}")
         print(f"   GMB: {f['gmb_name']}")
         print(f"   Score: {f['match_score']}%")
         print()
@@ -187,17 +185,21 @@ async def run_test():
     # Save
     output = Path(__file__).parent / "abn_gmb_match_results.json"
     with open(output, "w") as fp:
-        json.dump({
-            "timestamp": datetime.now().isoformat(),
-            "threshold": FUZZY_MATCH_THRESHOLD,
-            "total": len(ABN_RECORDS),
-            "tested": total_tested,
-            "errors": errors,
-            "passes": passes,
-            "fails": fails,
-            "match_rate": round(match_rate, 1),
-            "results": results,
-        }, fp, indent=2)
+        json.dump(
+            {
+                "timestamp": datetime.now().isoformat(),
+                "threshold": FUZZY_MATCH_THRESHOLD,
+                "total": len(ABN_RECORDS),
+                "tested": total_tested,
+                "errors": errors,
+                "passes": passes,
+                "fails": fails,
+                "match_rate": round(match_rate, 1),
+                "results": results,
+            },
+            fp,
+            indent=2,
+        )
 
     print(f"Results saved: {output}")
 

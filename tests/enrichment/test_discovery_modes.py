@@ -3,13 +3,14 @@ Unit tests for Discovery Modes
 
 Tests Mode A (ABN-First), Mode B (Maps-First), Mode C (Parallel)
 """
+
 import os
 import sys
 from unittest.mock import Mock
 
 import pytest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src"))
 
 
 class TestDiscoveryModeEnum:
@@ -17,16 +18,19 @@ class TestDiscoveryModeEnum:
 
     def test_mode_b_value(self):
         from enrichment.discovery_modes import DiscoveryMode
+
         assert DiscoveryMode.MAPS_FIRST.value == "mode_b"
 
     def test_mode_c_value(self):
         from enrichment.discovery_modes import DiscoveryMode
+
         assert DiscoveryMode.PARALLEL.value == "mode_c"
 
     def test_abn_first_deprecated(self):
         """ABN_FIRST was deprecated per Waterfall v3 Decision #1 (2026-03-01)"""
         from enrichment.discovery_modes import DiscoveryMode
-        assert not hasattr(DiscoveryMode, 'ABN_FIRST')
+
+        assert not hasattr(DiscoveryMode, "ABN_FIRST")
 
 
 class TestCampaignConfig:
@@ -36,9 +40,7 @@ class TestCampaignConfig:
         from enrichment.discovery_modes import CampaignConfig, DiscoveryMode
 
         config = CampaignConfig(
-            mode=DiscoveryMode.MAPS_FIRST,
-            industry="Advertising",
-            location="Melbourne"
+            mode=DiscoveryMode.MAPS_FIRST, industry="Advertising", location="Melbourne"
         )
 
         assert config.mode == DiscoveryMode.MAPS_FIRST
@@ -53,7 +55,7 @@ class TestCampaignConfig:
             industry="Restaurants",
             location="Sydney",
             state="NSW",
-            filters={"rating_min": 4.0}
+            filters={"rating_min": 4.0},
         )
 
         assert config.state == "NSW"
@@ -68,16 +70,12 @@ class TestMapsFirstDiscovery:
         from enrichment.discovery_modes import CampaignConfig, DiscoveryMode, MapsFirstDiscovery
 
         mock_client = Mock()
-        mock_client.search_google_maps = Mock(return_value=[
-            {"name": "Test Business", "phone": "0398765432", "rating": 4.5}
-        ])
+        mock_client.search_google_maps = Mock(
+            return_value=[{"name": "Test Business", "phone": "0398765432", "rating": 4.5}]
+        )
 
         MapsFirstDiscovery(bright_data_client=mock_client)
-        CampaignConfig(
-            mode=DiscoveryMode.MAPS_FIRST,
-            industry="Cafes",
-            location="Melbourne CBD"
-        )
+        CampaignConfig(mode=DiscoveryMode.MAPS_FIRST, industry="Cafes", location="Melbourne CBD")
 
         # Should call SERP Maps
         # results = await discovery.discover(config)

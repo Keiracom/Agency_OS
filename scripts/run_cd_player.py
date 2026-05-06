@@ -12,6 +12,7 @@ This script is the canonical local dev/test runner for the CD Player v1 pipeline
 It does NOT use cohort_runner.run_cohort() — it exercises the streaming
 orchestrator path directly so integration issues surface early.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -47,6 +48,7 @@ logger = logging.getLogger("cd_player_cli")
 # Discovery adapter — wraps DFSLabsClient for pull_batch interface
 # ---------------------------------------------------------------------------
 
+
 class DFSDiscoveryAdapter:
     """
     Minimal discovery adapter that implements pull_batch() using
@@ -80,6 +82,7 @@ class DFSDiscoveryAdapter:
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
+
 
 def _parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="CD Player v1 — streaming pipeline CLI")
@@ -152,7 +155,10 @@ async def main() -> None:
     categories = [c.strip() for c in args.categories.split(",") if c.strip()]
     logger.info(
         "CD Player v1 starting — categories=%s target_cards=%d budget=$%.2f AUD workers=%d",
-        categories, args.target_cards, args.budget, args.workers,
+        categories,
+        args.target_cards,
+        args.budget,
+        args.workers,
     )
 
     # Init clients
@@ -208,7 +214,9 @@ async def main() -> None:
 
     # Write outputs
     ts = int(time.time())
-    out_dir = Path(args.output_dir) if args.output_dir else Path("scripts/output") / f"cd_player_{ts}"
+    out_dir = (
+        Path(args.output_dir) if args.output_dir else Path("scripts/output") / f"cd_player_{ts}"
+    )
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "cards.json").write_text(json.dumps(cards_collected, indent=2, default=str))
 

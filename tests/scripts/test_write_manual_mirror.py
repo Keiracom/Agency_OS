@@ -14,6 +14,7 @@ Covers:
 
 Pure file/process I/O — no Drive calls (mirror_to_drive monkeypatched).
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -44,6 +45,7 @@ def tmp_manual(tmp_path, monkeypatch):
 
 # ─── fingerprint ───────────────────────────────────────────────────────────
 
+
 def test_fingerprint_includes_sha_and_size(tmp_manual):
     manual, _ = tmp_manual
     fp = mirror.fingerprint(manual)
@@ -69,6 +71,7 @@ def test_is_unchanged_prefers_git_blob_when_present():
 
 # ─── state roundtrip ───────────────────────────────────────────────────────
 
+
 def test_load_state_returns_empty_when_missing(tmp_manual):
     _, state = tmp_manual
     assert not state.exists()
@@ -77,13 +80,17 @@ def test_load_state_returns_empty_when_missing(tmp_manual):
 
 def test_save_then_load_state_roundtrip(tmp_manual):
     _, state = tmp_manual
-    payload = {"last_fingerprint": {"sha256": "abc"}, "last_mirrored_at": "2026-04-25T12:00:00+00:00"}
+    payload = {
+        "last_fingerprint": {"sha256": "abc"},
+        "last_mirrored_at": "2026-04-25T12:00:00+00:00",
+    }
     mirror.save_state(payload)
     assert state.exists()
     assert mirror.load_state() == payload
 
 
 # ─── main() flows ──────────────────────────────────────────────────────────
+
 
 def test_main_exits_3_when_manual_missing(tmp_manual, caplog):
     manual, _ = tmp_manual
@@ -155,6 +162,7 @@ def test_main_check_mode_prints_verdict_no_drive_write(tmp_manual):
 
 # ─── post-commit hook smoke ────────────────────────────────────────────────
 
+
 def test_post_commit_hook_exists_and_executable():
     repo_root = Path(__file__).resolve().parent.parent.parent
     hook = repo_root / ".githooks" / "post-commit"
@@ -167,6 +175,7 @@ def test_post_commit_hook_exists_and_executable():
 
 # ─── M11-3 — hook uses pinned venv python ──────────────────────────────────
 
+
 def test_post_commit_hook_uses_venv_python():
     repo_root = Path(__file__).resolve().parent.parent.parent
     body = (repo_root / ".githooks" / "post-commit").read_text()
@@ -176,6 +185,7 @@ def test_post_commit_hook_uses_venv_python():
 
 
 # ─── M11-2 — shared state path ─────────────────────────────────────────────
+
 
 def test_state_path_lives_under_shared_config_dir():
     """Default STATE_PATH must point at ~/.config/agency-os, not in scripts/."""
@@ -200,6 +210,7 @@ def test_load_state_migrates_legacy_path(tmp_path, monkeypatch):
 
 
 # ─── M11-1 — hook installation + warning ───────────────────────────────────
+
 
 def test_install_runs_git_config(monkeypatch):
     """--install must call `git config core.hooksPath .githooks` and
@@ -229,9 +240,7 @@ def test_warn_when_hook_not_installed(monkeypatch, caplog, tmp_manual):
     monkeypatch.setattr(mirror, "_current_hooks_path", lambda: None)
     with caplog.at_level("WARNING"), patch.object(mirror, "mirror_to_drive"):
         mirror.main([])
-    assert any(
-        "post-commit hook not installed" in r.message for r in caplog.records
-    )
+    assert any("post-commit hook not installed" in r.message for r in caplog.records)
 
 
 def test_no_warn_when_hook_correctly_installed(monkeypatch, caplog, tmp_manual):
@@ -249,6 +258,4 @@ def test_warn_when_hook_path_points_elsewhere(monkeypatch, caplog, tmp_manual):
     monkeypatch.setattr(mirror, "_current_hooks_path", lambda: ".husky")
     with caplog.at_level("WARNING"), patch.object(mirror, "mirror_to_drive"):
         mirror.main([])
-    assert any(
-        ".husky" in r.message and ".githooks" in r.message for r in caplog.records
-    )
+    assert any(".husky" in r.message and ".githooks" in r.message for r in caplog.records)

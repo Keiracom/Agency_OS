@@ -25,6 +25,7 @@ Exit codes:
     2  — refused: MANUAL.md unchanged since last mirror; pass --force to override
     3  — MANUAL.md missing
 """
+
 from __future__ import annotations
 
 import argparse
@@ -60,12 +61,14 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 
 # ─── fingerprinting ────────────────────────────────────────────────────────
 
+
 def _git_blob_hash(path: Path) -> str | None:
     """Return the git blob hash of `path`. None if not in a git repo."""
     try:
         out = subprocess.check_output(
             ["git", "hash-object", str(path)],
-            cwd=str(path.parent), stderr=subprocess.DEVNULL,
+            cwd=str(path.parent),
+            stderr=subprocess.DEVNULL,
         )
         return out.decode().strip()
     except (subprocess.CalledProcessError, FileNotFoundError):
@@ -85,9 +88,9 @@ def fingerprint(path: Path) -> dict:
     content; falls back to content sha256 + mtime + size."""
     stat = path.stat()
     fp: dict = {
-        "path":   str(path),
-        "size":   stat.st_size,
-        "mtime":  stat.st_mtime_ns,
+        "path": str(path),
+        "size": stat.st_size,
+        "mtime": stat.st_mtime_ns,
         "sha256": _content_hash(path),
     }
     blob = _git_blob_hash(path)
@@ -109,8 +112,7 @@ def load_state() -> dict:
     if _LEGACY_STATE_PATH.exists():
         try:
             data = json.loads(_LEGACY_STATE_PATH.read_text(encoding="utf-8"))
-            logger.info("M11-2 — migrating legacy state %s → %s",
-                        _LEGACY_STATE_PATH, STATE_PATH)
+            logger.info("M11-2 — migrating legacy state %s → %s", _LEGACY_STATE_PATH, STATE_PATH)
             save_state(data)
             return data
         except (json.JSONDecodeError, OSError):
@@ -133,13 +135,15 @@ def is_unchanged(current: dict, last: dict) -> bool:
 
 # ─── M11-1 — hook installation ─────────────────────────────────────────────
 
+
 def _current_hooks_path() -> str | None:
     """Return the value of `git config core.hooksPath` for REPO_ROOT,
     or None if unset / git unavailable."""
     try:
         out = subprocess.check_output(
             ["git", "config", "--get", "core.hooksPath"],
-            cwd=str(REPO_ROOT), stderr=subprocess.DEVNULL,
+            cwd=str(REPO_ROOT),
+            stderr=subprocess.DEVNULL,
         )
         return out.decode().strip() or None
     except (subprocess.CalledProcessError, FileNotFoundError):
@@ -189,11 +193,13 @@ def warn_if_hook_not_installed() -> None:
     else:
         logger.warning(
             "core.hooksPath = %s (not .githooks). The M11 auto-mirror hook will "
-            "NOT fire on commits. Run --install to switch.", current,
+            "NOT fire on commits. Run --install to switch.",
+            current,
         )
 
 
 # ─── mirror impl ───────────────────────────────────────────────────────────
+
 
 def read_manual() -> str:
     if not MANUAL_PATH.exists():
@@ -210,7 +216,9 @@ def mirror_to_drive(content: str) -> None:
             "google-api-python-client not installed. "
             "Run: pip install google-api-python-client google-auth"
         )
-        logger.warning("Mirror skipped — Drive write unavailable. Primary store (docs/MANUAL.md) is up to date.")
+        logger.warning(
+            "Mirror skipped — Drive write unavailable. Primary store (docs/MANUAL.md) is up to date."
+        )
         return
 
     if not Path(SERVICE_ACCOUNT_FILE).exists():
@@ -230,11 +238,9 @@ def mirror_to_drive(content: str) -> None:
 
         requests = []
         if end_index > 2:
-            requests.append({
-                "deleteContentRange": {
-                    "range": {"startIndex": 1, "endIndex": end_index - 1}
-                }
-            })
+            requests.append(
+                {"deleteContentRange": {"range": {"startIndex": 1, "endIndex": end_index - 1}}}
+            )
         if requests:
             service.documents().batchUpdate(
                 documentId=GOOGLE_DOC_ID, body={"requests": requests}
@@ -246,7 +252,11 @@ def mirror_to_drive(content: str) -> None:
 
         service.documents().batchUpdate(
             documentId=GOOGLE_DOC_ID,
-            body={"requests": [{"insertText": {"location": {"index": end_index - 1}, "text": content}}]},
+            body={
+                "requests": [
+                    {"insertText": {"location": {"index": end_index - 1}, "text": content}}
+                ]
+            },
         ).execute()
 
         doc = service.documents().get(documentId=GOOGLE_DOC_ID).execute()
@@ -268,18 +278,22 @@ def mirror_to_drive(content: str) -> None:
 
 # ─── entrypoint ────────────────────────────────────────────────────────────
 
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Mirror docs/MANUAL.md to Google Drive.")
     ap.add_argument(
-        "--force", action="store_true",
+        "--force",
+        action="store_true",
         help="Mirror even if MANUAL.md hasn't changed since last mirror.",
     )
     ap.add_argument(
-        "--check", action="store_true",
+        "--check",
+        action="store_true",
         help="Print staleness verdict and exit. No Drive write.",
     )
     ap.add_argument(
-        "--install", action="store_true",
+        "--install",
+        action="store_true",
         help="Install the post-commit hook (git config core.hooksPath .githooks) and exit.",
     )
     args = ap.parse_args(argv)
@@ -306,7 +320,8 @@ def main(argv: list[str] | None = None) -> int:
             logger.warning(
                 "MANUAL.md UNCHANGED since last mirror "
                 "(git_blob=%s sha=%s) — staleness check would refuse mirror.",
-                current_fp.get("git_blob", "n/a"), current_fp["sha256"][:12],
+                current_fp.get("git_blob", "n/a"),
+                current_fp["sha256"][:12],
             )
             return 2
         logger.info("MANUAL.md CHANGED since last mirror — mirror would proceed.")
@@ -317,7 +332,8 @@ def main(argv: list[str] | None = None) -> int:
             "MANUAL.md unchanged since last mirror "
             "(git_blob=%s, sha=%s). Refusing to re-mirror identical content. "
             "Pass --force to override (e.g. recovering from a manual Drive edit).",
-            current_fp.get("git_blob", "n/a"), current_fp["sha256"][:12],
+            current_fp.get("git_blob", "n/a"),
+            current_fp["sha256"][:12],
         )
         return 2
 
@@ -334,9 +350,7 @@ def main(argv: list[str] | None = None) -> int:
     # are best-effort and we don't want a stuck DRIVE outage to permanently
     # block the staleness check.
     state["last_fingerprint"] = current_fp
-    state["last_mirrored_at"] = (
-        subprocess.check_output(["date", "-Iseconds"]).decode().strip()
-    )
+    state["last_mirrored_at"] = subprocess.check_output(["date", "-Iseconds"]).decode().strip()
     save_state(state)
     logger.info(f"State persisted to {STATE_PATH}")
     logger.info("Done.")

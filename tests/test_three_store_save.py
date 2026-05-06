@@ -1,4 +1,5 @@
 """Tests for scripts/three_store_save.py — LAW XVII callsign discipline."""
+
 from __future__ import annotations
 
 import importlib.util
@@ -48,14 +49,18 @@ def test_manual_entry_tagged_aiden():
 
 # ─── asyncpg migration (REST → pgbouncer-friendly direct DB) ──────────────
 
+
 class _FakeConn:
     """Minimal asyncpg-conn double — records every execute call."""
+
     def __init__(self):
         self.executed: list[tuple[str, tuple]] = []
         self.closed = False
+
     async def execute(self, sql, *args):
         self.executed.append((sql, args))
         return "INSERT 0 1"
+
     async def close(self):
         self.closed = True
 
@@ -64,6 +69,7 @@ def _patch_asyncpg(monkeypatch, conn):
     """Stub `import asyncpg; await asyncpg.connect(...)` inside save_*."""
     import sys
     import types
+
     fake = types.SimpleNamespace()
 
     async def _connect(dsn, **kw):
@@ -99,6 +105,7 @@ def test_resolve_dsn_returns_none_when_unset(monkeypatch):
     # Make settings.database_url empty too.
     import sys
     import types
+
     fake_mod = types.ModuleType("src.config.settings")
     fake_mod.settings = types.SimpleNamespace(database_url="")
     monkeypatch.setitem(sys.modules, "src.config.settings", fake_mod)
@@ -117,6 +124,7 @@ def test_save_ceo_memory_no_dsn_returns_false(monkeypatch):
     monkeypatch.delenv("SUPABASE_DB_URL", raising=False)
     import sys
     import types
+
     fake_mod = types.ModuleType("src.config.settings")
     fake_mod.settings = types.SimpleNamespace(database_url="")
     monkeypatch.setitem(sys.modules, "src.config.settings", fake_mod)
@@ -136,6 +144,7 @@ def test_save_ceo_memory_executes_upsert_via_asyncpg(monkeypatch):
     assert args[0] == "ceo:directive_D7_complete"
     # JSON value carries callsign + pr.
     import json as _json
+
     payload = _json.loads(args[1])
     assert payload["pr"] == 707
     assert payload["source"] == "atlas"
@@ -158,7 +167,7 @@ def test_save_metrics_executes_insert_via_asyncpg(monkeypatch):
     # directive_id=0 / directive_ref="D7" because non-numeric label
     assert args[0] == 0
     assert args[1] == "D7"
-    assert args[10] == "atlas"   # callsign positional
+    assert args[10] == "atlas"  # callsign positional
 
 
 def test_save_metrics_numeric_directive_uses_directive_id(monkeypatch):
@@ -175,9 +184,12 @@ def test_save_ceo_memory_swallows_asyncpg_error(monkeypatch):
     monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@h/d")
     import sys
     import types
+
     fake = types.SimpleNamespace()
+
     async def boom(*a, **k):
         raise RuntimeError("connection refused")
+
     fake.connect = boom
     monkeypatch.setitem(sys.modules, "asyncpg", fake)
     assert tss.save_ceo_memory("D7", 707, "x", dry_run=False) is False

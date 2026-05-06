@@ -1,4 +1,5 @@
 """Tests for src/coo_bot/group_writer.py — group post wrapper."""
+
 from __future__ import annotations
 
 import asyncio

@@ -12,6 +12,7 @@ Pure unit tests — no real transcripts, no subprocess. Confirms:
   - build_forked_context returns "" on every failure path (fail-empty)
   - No subprocess invoked anywhere
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -32,26 +33,30 @@ _spec.loader.exec_module(cf)
 
 # ─── helpers ───────────────────────────────────────────────────────────────
 
+
 def _msg(role: str, text: str) -> str:
-    return json.dumps({
-        "message": {"role": role, "content": [{"type": "text", "text": text}]}
-    })
+    return json.dumps({"message": {"role": role, "content": [{"type": "text", "text": text}]}})
 
 
 def _tool_use(tool: str, file_path: str, key: str = "file_path") -> str:
-    return json.dumps({
-        "message": {
-            "role": "assistant",
-            "content": [{
-                "type": "tool_use",
-                "name": tool,
-                "input": {key: file_path},
-            }],
+    return json.dumps(
+        {
+            "message": {
+                "role": "assistant",
+                "content": [
+                    {
+                        "type": "tool_use",
+                        "name": tool,
+                        "input": {key: file_path},
+                    }
+                ],
+            }
         }
-    })
+    )
 
 
 # ─── _validate_transcript_path ─────────────────────────────────────────────
+
 
 def test_validate_rejects_url():
     for s in ("http://x/a.jsonl", "file:///etc/passwd"):
@@ -94,12 +99,17 @@ def test_validate_blank_or_none():
 
 # ─── extract_context ───────────────────────────────────────────────────────
 
+
 def test_extract_context_pulls_step0():
-    blob = "\n".join([
-        _msg("user", "Build the thing"),
-        _msg("assistant",
-             "Objective: do X.\nScope: just the lib.\nSuccess criteria: tests pass.\nAssumptions: env present."),
-    ])
+    blob = "\n".join(
+        [
+            _msg("user", "Build the thing"),
+            _msg(
+                "assistant",
+                "Objective: do X.\nScope: just the lib.\nSuccess criteria: tests pass.\nAssumptions: env present.",
+            ),
+        ]
+    )
     ctx = cf.extract_context(blob)
     assert ctx.step0_block is not None
     assert "Objective:" in ctx.step0_block
@@ -107,33 +117,39 @@ def test_extract_context_pulls_step0():
 
 
 def test_extract_context_keeps_only_last_step0():
-    blob = "\n".join([
-        _msg("user", "first"),
-        _msg("assistant", "Objective: A\nScope: a\nSuccess criteria: a"),
-        _msg("user", "second"),
-        _msg("assistant", "Objective: B\nScope: b\nSuccess criteria: b\nAssumptions: b"),
-    ])
+    blob = "\n".join(
+        [
+            _msg("user", "first"),
+            _msg("assistant", "Objective: A\nScope: a\nSuccess criteria: a"),
+            _msg("user", "second"),
+            _msg("assistant", "Objective: B\nScope: b\nSuccess criteria: b\nAssumptions: b"),
+        ]
+    )
     ctx = cf.extract_context(blob)
     # Last Step 0 wins
     assert "Objective: B" in ctx.step0_block
 
 
 def test_extract_context_step0_none_when_too_few_markers():
-    blob = "\n".join([
-        _msg("user", "x"),
-        _msg("assistant", "Objective: x\nScope: y"),  # only 2 markers
-    ])
+    blob = "\n".join(
+        [
+            _msg("user", "x"),
+            _msg("assistant", "Objective: x\nScope: y"),  # only 2 markers
+        ]
+    )
     ctx = cf.extract_context(blob)
     assert ctx.step0_block is None
 
 
 def test_extract_context_collects_recent_turns():
-    blob = "\n".join([
-        _msg("user", "hi"),
-        _msg("assistant", "hello"),
-        _msg("user", "do it"),
-        _msg("assistant", "doing"),
-    ])
+    blob = "\n".join(
+        [
+            _msg("user", "hi"),
+            _msg("assistant", "hello"),
+            _msg("user", "do it"),
+            _msg("assistant", "doing"),
+        ]
+    )
     ctx = cf.extract_context(blob, max_recent_turns=10)
     assert len(ctx.recent_turns) == 4
     assert ctx.recent_turns[0] == ("user", "hi")
@@ -151,48 +167,60 @@ def test_extract_context_caps_recent_turns():
 
 
 def test_extract_context_collects_active_files_from_tool_use():
-    blob = "\n".join([
-        _msg("user", "read it"),
-        _tool_use("Read", "/abs/path/foo.py"),
-        _tool_use("Edit", "/abs/path/bar.py"),
-        _tool_use("Write", "/abs/path/baz.py"),
-        _tool_use("NotebookEdit", "/abs/path/qux.ipynb", key="notebook_path"),
-        _tool_use("Glob", "/abs/path/quux.py", key="path"),
-    ])
+    blob = "\n".join(
+        [
+            _msg("user", "read it"),
+            _tool_use("Read", "/abs/path/foo.py"),
+            _tool_use("Edit", "/abs/path/bar.py"),
+            _tool_use("Write", "/abs/path/baz.py"),
+            _tool_use("NotebookEdit", "/abs/path/qux.ipynb", key="notebook_path"),
+            _tool_use("Glob", "/abs/path/quux.py", key="path"),
+        ]
+    )
     ctx = cf.extract_context(blob)
     assert ctx.active_files == [
-        "/abs/path/foo.py", "/abs/path/bar.py",
-        "/abs/path/baz.py", "/abs/path/qux.ipynb",
+        "/abs/path/foo.py",
+        "/abs/path/bar.py",
+        "/abs/path/baz.py",
+        "/abs/path/qux.ipynb",
         "/abs/path/quux.py",
     ]
 
 
 def test_extract_context_dedupes_files_preserves_order():
-    blob = "\n".join([
-        _tool_use("Read", "/abs/foo.py"),
-        _tool_use("Read", "/abs/bar.py"),
-        _tool_use("Edit", "/abs/foo.py"),  # duplicate
-    ])
+    blob = "\n".join(
+        [
+            _tool_use("Read", "/abs/foo.py"),
+            _tool_use("Read", "/abs/bar.py"),
+            _tool_use("Edit", "/abs/foo.py"),  # duplicate
+        ]
+    )
     ctx = cf.extract_context(blob)
     assert ctx.active_files == ["/abs/foo.py", "/abs/bar.py"]
 
 
 def test_extract_context_ignores_non_file_tools():
-    blob = "\n".join([
-        _msg("assistant", "thinking..."),
-        json.dumps({
-            "message": {
-                "role": "assistant",
-                "content": [{"type": "tool_use", "name": "Bash",
-                             "input": {"command": "rm -rf /"}}],
-            }
-        }),
-    ])
+    blob = "\n".join(
+        [
+            _msg("assistant", "thinking..."),
+            json.dumps(
+                {
+                    "message": {
+                        "role": "assistant",
+                        "content": [
+                            {"type": "tool_use", "name": "Bash", "input": {"command": "rm -rf /"}}
+                        ],
+                    }
+                }
+            ),
+        ]
+    )
     ctx = cf.extract_context(blob)
     assert ctx.active_files == []
 
 
 # ─── render_brief ──────────────────────────────────────────────────────────
+
 
 def test_render_brief_includes_all_three_sections():
     ctx = cf.ForkedContext(
@@ -230,6 +258,7 @@ def test_render_brief_truncates_to_max_tokens():
 
 # ─── build_forked_context — public surface ────────────────────────────────
 
+
 def test_build_returns_empty_for_invalid_path():
     assert cf.build_forked_context("/no/such/x.jsonl") == ""
     assert cf.build_forked_context("") == ""
@@ -247,13 +276,16 @@ def test_build_returns_empty_for_invalid_max_tokens(monkeypatch, tmp_path):
 def test_build_happy_path(monkeypatch, tmp_path):
     monkeypatch.setattr(cf, "TRANSCRIPT_ROOT", tmp_path)
     p = tmp_path / "live.jsonl"
-    p.write_text("\n".join([
-        _msg("user", "do this"),
-        _msg("assistant",
-             "Objective: ship X\nScope: a, b\nSuccess criteria: tests pass"),
-        _tool_use("Read", "/abs/foo.py"),
-        _msg("assistant", "Will read foo.py"),
-    ]))
+    p.write_text(
+        "\n".join(
+            [
+                _msg("user", "do this"),
+                _msg("assistant", "Objective: ship X\nScope: a, b\nSuccess criteria: tests pass"),
+                _tool_use("Read", "/abs/foo.py"),
+                _msg("assistant", "Will read foo.py"),
+            ]
+        )
+    )
     out = cf.build_forked_context(str(p), max_tokens=4000)
     assert "Objective: ship X" in out
     assert "/abs/foo.py" in out
@@ -282,6 +314,7 @@ def test_build_swallows_extraction_exceptions(monkeypatch, tmp_path):
 
 # ─── security guard surface ────────────────────────────────────────────────
 
+
 @patch("subprocess.run")
 @patch("subprocess.check_call")
 @patch("subprocess.check_output")
@@ -295,9 +328,15 @@ def test_no_subprocess_calls_anywhere(check_output, check_call, run, monkeypatch
     check_output.assert_not_called()
 
 
-@pytest.mark.parametrize("bad", [
-    "http://x/y.jsonl", "https://x/y.jsonl", "file:///x/y.jsonl",
-    "../../../etc/x.jsonl", "/tmp/x\x00.jsonl",
-])
+@pytest.mark.parametrize(
+    "bad",
+    [
+        "http://x/y.jsonl",
+        "https://x/y.jsonl",
+        "file:///x/y.jsonl",
+        "../../../etc/x.jsonl",
+        "/tmp/x\x00.jsonl",
+    ],
+)
 def test_security_rejects_path_payloads(bad):
     assert cf.build_forked_context(bad) == ""

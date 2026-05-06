@@ -1,4 +1,5 @@
 """Tests for Spider HTML ad tag detection — Directive #291."""
+
 from src.pipeline.free_enrichment import FreeEnrichment
 
 

@@ -2,6 +2,7 @@
 
 All Supabase writes are patched out — no network calls in unit tests.
 """
+
 from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
@@ -14,6 +15,7 @@ from src.pipeline.prospect_telemetry import ProspectTelemetry
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _patch_write():
     """Patch _write_supabase so no subprocess is spawned."""
@@ -32,6 +34,7 @@ def _patch_query(rows: list[dict]):
 # ---------------------------------------------------------------------------
 # record_touch
 # ---------------------------------------------------------------------------
+
 
 class TestRecordTouch:
     def test_returns_correct_shape(self):
@@ -75,6 +78,7 @@ class TestRecordTouch:
 # record_response
 # ---------------------------------------------------------------------------
 
+
 class TestRecordResponse:
     def test_returns_correct_shape_with_intent(self):
         with _patch_write():
@@ -104,6 +108,7 @@ class TestRecordResponse:
 # record_conversion
 # ---------------------------------------------------------------------------
 
+
 class TestRecordConversion:
     def test_returns_correct_shape(self):
         with _patch_write():
@@ -126,13 +131,14 @@ class TestRecordConversion:
 # get_prospect_summary
 # ---------------------------------------------------------------------------
 
+
 class TestGetProspectSummary:
     def _make_rows(self):
         return [
-            {"event_type": "touch",    "channel": "email",    "cost_aud": 0.015},
-            {"event_type": "touch",    "channel": "linkedin", "cost_aud": 0.01},
-            {"event_type": "response", "channel": "email",    "cost_aud": 0.0},
-            {"event_type": "conversion","channel": "email",   "cost_aud": 0.0},
+            {"event_type": "touch", "channel": "email", "cost_aud": 0.015},
+            {"event_type": "touch", "channel": "linkedin", "cost_aud": 0.01},
+            {"event_type": "response", "channel": "email", "cost_aud": 0.0},
+            {"event_type": "conversion", "channel": "email", "cost_aud": 0.0},
         ]
 
     def test_aggregation_correct(self):
@@ -164,14 +170,15 @@ class TestGetProspectSummary:
 # get_campaign_effectiveness
 # ---------------------------------------------------------------------------
 
+
 class TestGetCampaignEffectiveness:
     def _make_rows(self):
         return [
-            {"prospect_id": "p-1", "event_type": "touch",      "channel": "email",    "cost_aud": 0.015},
-            {"prospect_id": "p-1", "event_type": "touch",      "channel": "linkedin", "cost_aud": 0.01},
-            {"prospect_id": "p-1", "event_type": "response",   "channel": "email",    "cost_aud": 0.0},
-            {"prospect_id": "p-2", "event_type": "touch",      "channel": "email",    "cost_aud": 0.015},
-            {"prospect_id": "p-2", "event_type": "conversion", "channel": "email",    "cost_aud": 0.0},
+            {"prospect_id": "p-1", "event_type": "touch", "channel": "email", "cost_aud": 0.015},
+            {"prospect_id": "p-1", "event_type": "touch", "channel": "linkedin", "cost_aud": 0.01},
+            {"prospect_id": "p-1", "event_type": "response", "channel": "email", "cost_aud": 0.0},
+            {"prospect_id": "p-2", "event_type": "touch", "channel": "email", "cost_aud": 0.015},
+            {"prospect_id": "p-2", "event_type": "conversion", "channel": "email", "cost_aud": 0.0},
         ]
 
     def test_totals_correct(self):

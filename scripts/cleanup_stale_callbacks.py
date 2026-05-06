@@ -17,6 +17,7 @@ Scope guards:
 - Minimum age threshold: 7 days default, --days N to adjust. Refuses 0 or negative.
 - Dry-run by default. Must pass --execute explicitly to mutate the table.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -39,6 +40,7 @@ def _load_env(env_path: str) -> None:
 
 async def run(days: int, execute: bool) -> int:
     import asyncpg
+
     db_url = os.environ.get("DATABASE_URL", "").replace("postgresql+asyncpg://", "postgresql://")
     if not db_url:
         print("ERROR: DATABASE_URL not set", file=sys.stderr)

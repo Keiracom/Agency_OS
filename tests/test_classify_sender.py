@@ -1,4 +1,5 @@
 """Tests for classify_sender — four-axis security classification."""
+
 from __future__ import annotations
 from unittest.mock import MagicMock
 import pytest
@@ -40,20 +41,25 @@ def classify_sender(user_id, username, is_bot, bot_username="eeeeelllliiiioooott
     return Sender.UNKNOWN
 
 
-@pytest.mark.parametrize("user_id,username,is_bot,bot_username,expected", [
-    # Axis 1: Self detection
-    (8381203809, "Eeeeelllliiiioooottt_bot", True, "Eeeeelllliiiioooottt_bot", Sender.SELF),
-    # Axis 2: Peer bot detection
-    (8614728959, "Aaaaidenbot", True, "Eeeeelllliiiioooottt_bot", Sender.PEER_BOT),
-    # Axis 3: Dave with correct user_id
-    (7267788033, None, False, "Eeeeelllliiiioooottt_bot", Sender.DAVE),
-    # Axis 3 FAIL: Human with wrong user_id → UNKNOWN
-    (99999999, "stranger", False, "Eeeeelllliiiioooottt_bot", Sender.UNKNOWN),
-    # Axis 4: Unknown bot
-    (11111111, "random_bot", True, "Eeeeelllliiiioooottt_bot", Sender.UNKNOWN),
-    # Edge: no user_id
-    (None, None, False, "Eeeeelllliiiioooottt_bot", Sender.UNKNOWN),
-])
+@pytest.mark.parametrize(
+    "user_id,username,is_bot,bot_username,expected",
+    [
+        # Axis 1: Self detection
+        (8381203809, "Eeeeelllliiiioooottt_bot", True, "Eeeeelllliiiioooottt_bot", Sender.SELF),
+        # Axis 2: Peer bot detection
+        (8614728959, "Aaaaidenbot", True, "Eeeeelllliiiioooottt_bot", Sender.PEER_BOT),
+        # Axis 3: Dave with correct user_id
+        (7267788033, None, False, "Eeeeelllliiiioooottt_bot", Sender.DAVE),
+        # Axis 3 FAIL: Human with wrong user_id → UNKNOWN
+        (99999999, "stranger", False, "Eeeeelllliiiioooottt_bot", Sender.UNKNOWN),
+        # Axis 4: Unknown bot
+        (11111111, "random_bot", True, "Eeeeelllliiiioooottt_bot", Sender.UNKNOWN),
+        # Edge: no user_id
+        (None, None, False, "Eeeeelllliiiioooottt_bot", Sender.UNKNOWN),
+    ],
+)
 def test_classify_sender(user_id, username, is_bot, bot_username, expected):
     result = classify_sender(user_id, username, is_bot, bot_username)
-    assert result == expected, f"Expected {expected} for user_id={user_id} username={username} is_bot={is_bot}, got {result}"
+    assert result == expected, (
+        f"Expected {expected} for user_id={user_id} username={username} is_bot={is_bot}, got {result}"
+    )

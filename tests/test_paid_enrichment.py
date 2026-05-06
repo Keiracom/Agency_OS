@@ -1,4 +1,5 @@
 """Tests for PaidEnrichment + affordability_gate — Directive #283 + #303."""
+
 from __future__ import annotations
 
 import uuid
@@ -63,7 +64,9 @@ def make_pe(conn=None, dfs=None, gmaps=None) -> PaidEnrichment:
 async def test_affordability_gate_passes_gst_registered():
     """Row with abn_matched + gst_registered + Company entity passes all gates."""
     conn = make_conn()
-    row = make_row(website_cms="wordpress", abn_matched=True, gst_registered=True, entity_type="Company")
+    row = make_row(
+        website_cms="wordpress", abn_matched=True, gst_registered=True, entity_type="Company"
+    )
     # First fetch: BU candidate rows. Second fetch: suppression cross-check
     # (added in BU Closed-Loop S1) — return [] = no suppression match.
     conn.fetch = AsyncMock(side_effect=[[row], []])
@@ -82,8 +85,14 @@ async def test_affordability_gate_passes_gst_registered():
 async def test_affordability_gate_rejects_dead_site():
     """Row with no CMS/tech/email signals fails GATE 1."""
     conn = make_conn()
-    row = make_row(website_cms=None, website_tech_stack=None, website_contact_emails=None,
-                   abn_matched=True, gst_registered=True, entity_type="Company")
+    row = make_row(
+        website_cms=None,
+        website_tech_stack=None,
+        website_contact_emails=None,
+        abn_matched=True,
+        gst_registered=True,
+        entity_type="Company",
+    )
     # First fetch: BU candidate rows. Second fetch: suppression cross-check
     # (added in BU Closed-Loop S1) — return [] = no suppression match.
     conn.fetch = AsyncMock(side_effect=[[row], []])
@@ -102,8 +111,12 @@ async def test_affordability_gate_rejects_dead_site():
 async def test_affordability_gate_rejects_sole_trader():
     """Row with entity_type='Individual/Sole Trader' fails GATE 4."""
     conn = make_conn()
-    row = make_row(website_cms="wordpress", abn_matched=True, gst_registered=True,
-                   entity_type="Individual/Sole Trader")
+    row = make_row(
+        website_cms="wordpress",
+        abn_matched=True,
+        gst_registered=True,
+        entity_type="Individual/Sole Trader",
+    )
     # First fetch: BU candidate rows. Second fetch: suppression cross-check
     # (added in BU Closed-Loop S1) — return [] = no suppression match.
     conn.fetch = AsyncMock(side_effect=[[row], []])
@@ -121,7 +134,9 @@ async def test_affordability_gate_rejects_sole_trader():
 async def test_affordability_gate_rejects_no_gst():
     """Row with gst_registered=False fails GATE 3."""
     conn = make_conn()
-    row = make_row(website_cms="wordpress", abn_matched=True, gst_registered=False, entity_type="Company")
+    row = make_row(
+        website_cms="wordpress", abn_matched=True, gst_registered=False, entity_type="Company"
+    )
     # First fetch: BU candidate rows. Second fetch: suppression cross-check
     # (added in BU Closed-Loop S1) — return [] = no suppression match.
     conn.fetch = AsyncMock(side_effect=[[row], []])
@@ -161,20 +176,26 @@ async def test_bulk_domain_metrics_writes_to_bu():
     row = make_row(domain=domain)
 
     dfs = MagicMock()
-    dfs.bulk_domain_metrics = AsyncMock(return_value=[{
-        "domain": domain,
-        "organic_etv": 1500.0,
-        "domain_rank": 45,
-        "backlinks_count": 200,
-        "referring_domains": 50,
-    }])
+    dfs.bulk_domain_metrics = AsyncMock(
+        return_value=[
+            {
+                "domain": domain,
+                "organic_etv": 1500.0,
+                "domain_rank": 45,
+                "backlinks_count": 200,
+                "referring_domains": 50,
+            }
+        ]
+    )
 
     gmaps = MagicMock()
     gmaps.discover_by_coordinates = AsyncMock(return_value=[])
 
     engine = make_pe(conn=conn, dfs=dfs, gmaps=gmaps)
 
-    with patch("src.pipeline.paid_enrichment.affordability_gate", new=AsyncMock(return_value=([row], []))):
+    with patch(
+        "src.pipeline.paid_enrichment.affordability_gate", new=AsyncMock(return_value=([row], []))
+    ):
         stats = await engine.run()
 
     assert stats["dfs_enriched"] == 1
@@ -196,16 +217,22 @@ async def test_gmb_maps_serp_writes_to_bu():
     dfs.bulk_domain_metrics = AsyncMock(return_value=[])
 
     gmaps = MagicMock()
-    gmaps.discover_by_coordinates = AsyncMock(return_value=[{
-        "gmb_rating": 4.5,
-        "gmb_review_count": 120,
-        "phone": "0412345678",
-        "address": "1 Main St Sydney NSW",
-    }])
+    gmaps.discover_by_coordinates = AsyncMock(
+        return_value=[
+            {
+                "gmb_rating": 4.5,
+                "gmb_review_count": 120,
+                "phone": "0412345678",
+                "address": "1 Main St Sydney NSW",
+            }
+        ]
+    )
 
     engine = make_pe(conn=conn, dfs=dfs, gmaps=gmaps)
 
-    with patch("src.pipeline.paid_enrichment.affordability_gate", new=AsyncMock(return_value=([row], []))):
+    with patch(
+        "src.pipeline.paid_enrichment.affordability_gate", new=AsyncMock(return_value=([row], []))
+    ):
         stats = await engine.run()
 
     assert stats["gmb_enriched"] == 1
@@ -226,16 +253,22 @@ async def test_dfs_failure_continues_to_next_step():
     dfs.bulk_domain_metrics = AsyncMock(side_effect=Exception("DFS error"))
 
     gmaps = MagicMock()
-    gmaps.discover_by_coordinates = AsyncMock(return_value=[{
-        "gmb_rating": 4.2,
-        "gmb_review_count": 80,
-        "phone": "0400000000",
-        "address": "5 Test Rd",
-    }])
+    gmaps.discover_by_coordinates = AsyncMock(
+        return_value=[
+            {
+                "gmb_rating": 4.2,
+                "gmb_review_count": 80,
+                "phone": "0400000000",
+                "address": "5 Test Rd",
+            }
+        ]
+    )
 
     engine = make_pe(conn=conn, dfs=dfs, gmaps=gmaps)
 
-    with patch("src.pipeline.paid_enrichment.affordability_gate", new=AsyncMock(return_value=([row], []))):
+    with patch(
+        "src.pipeline.paid_enrichment.affordability_gate", new=AsyncMock(return_value=([row], []))
+    ):
         stats = await engine.run()
 
     assert len(stats["errors"]) == 1
@@ -280,7 +313,9 @@ async def test_completion_timestamp_set():
 
     engine = make_pe(conn=conn, dfs=dfs, gmaps=gmaps)
 
-    with patch("src.pipeline.paid_enrichment.affordability_gate", new=AsyncMock(return_value=([row], []))):
+    with patch(
+        "src.pipeline.paid_enrichment.affordability_gate", new=AsyncMock(return_value=([row], []))
+    ):
         stats = await engine.run()
 
     assert stats["completed"] == 1
@@ -300,20 +335,31 @@ async def test_competitors_enrichment():
 
     dfs = MagicMock()
     dfs.bulk_domain_metrics = AsyncMock(return_value=[])
-    dfs.competitors_domain = AsyncMock(return_value={
-        "items": [
-            {"domain": "comp1.com.au"},
-            {"domain": "comp2.com.au"},
-            {"domain": "comp3.com.au"},
-        ]
-    })
-    dfs.backlinks_summary = AsyncMock(return_value={
-        "referring_domains": 0, "rank": 0, "backlinks": 0,
-        "referring_domains_new": 0, "referring_domains_lost": 0,
-    })
-    dfs.brand_serp = AsyncMock(return_value={
-        "brand_position": None, "gmb_showing": False, "competitors_bidding": False,
-    })
+    dfs.competitors_domain = AsyncMock(
+        return_value={
+            "items": [
+                {"domain": "comp1.com.au"},
+                {"domain": "comp2.com.au"},
+                {"domain": "comp3.com.au"},
+            ]
+        }
+    )
+    dfs.backlinks_summary = AsyncMock(
+        return_value={
+            "referring_domains": 0,
+            "rank": 0,
+            "backlinks": 0,
+            "referring_domains_new": 0,
+            "referring_domains_lost": 0,
+        }
+    )
+    dfs.brand_serp = AsyncMock(
+        return_value={
+            "brand_position": None,
+            "gmb_showing": False,
+            "competitors_bidding": False,
+        }
+    )
     dfs.indexed_pages = AsyncMock(return_value=0)
 
     gmaps = MagicMock()
@@ -321,7 +367,9 @@ async def test_competitors_enrichment():
 
     engine = make_pe(conn=conn, dfs=dfs, gmaps=gmaps)
 
-    with patch("src.pipeline.paid_enrichment.affordability_gate", new=AsyncMock(return_value=([row], []))):
+    with patch(
+        "src.pipeline.paid_enrichment.affordability_gate", new=AsyncMock(return_value=([row], []))
+    ):
         stats = await engine.run()
 
     assert stats["intelligence_enriched"] == 1
@@ -344,16 +392,22 @@ async def test_backlinks_parser_fix():
     dfs = MagicMock()
     dfs.bulk_domain_metrics = AsyncMock(return_value=[])
     dfs.competitors_domain = AsyncMock(return_value={"items": []})
-    dfs.backlinks_summary = AsyncMock(return_value={
-        "referring_domains": 142,
-        "rank": 23,
-        "backlinks": 580,
-        "referring_domains_new": 10,
-        "referring_domains_lost": 3,
-    })
-    dfs.brand_serp = AsyncMock(return_value={
-        "brand_position": None, "gmb_showing": False, "competitors_bidding": False,
-    })
+    dfs.backlinks_summary = AsyncMock(
+        return_value={
+            "referring_domains": 142,
+            "rank": 23,
+            "backlinks": 580,
+            "referring_domains_new": 10,
+            "referring_domains_lost": 3,
+        }
+    )
+    dfs.brand_serp = AsyncMock(
+        return_value={
+            "brand_position": None,
+            "gmb_showing": False,
+            "competitors_bidding": False,
+        }
+    )
     dfs.indexed_pages = AsyncMock(return_value=0)
 
     gmaps = MagicMock()
@@ -361,7 +415,9 @@ async def test_backlinks_parser_fix():
 
     engine = make_pe(conn=conn, dfs=dfs, gmaps=gmaps)
 
-    with patch("src.pipeline.paid_enrichment.affordability_gate", new=AsyncMock(return_value=([row], []))):
+    with patch(
+        "src.pipeline.paid_enrichment.affordability_gate", new=AsyncMock(return_value=([row], []))
+    ):
         stats = await engine.run()
 
     # Verify the DB write contained backlinks data
@@ -372,15 +428,22 @@ async def test_backlinks_parser_fix():
     # Verify backlinks_summary parsed the trend correctly from the client
     # (new=10 > lost=3 * 1.1=3.3, so trend="growing")
     from src.clients.dfs_labs_client import DFSLabsClient
+
     client = DFSLabsClient.__new__(DFSLabsClient)
     # Direct unit test of parser logic via a mock _post call
-    with patch.object(client, "_post", new=AsyncMock(return_value={
-        "referring_domains": 142,
-        "rank": 23,
-        "backlinks": 580,
-        "referring_domains_new": 10,
-        "referring_domains_lost": 3,
-    })):
+    with patch.object(
+        client,
+        "_post",
+        new=AsyncMock(
+            return_value={
+                "referring_domains": 142,
+                "rank": 23,
+                "backlinks": 580,
+                "referring_domains_new": 10,
+                "referring_domains_lost": 3,
+            }
+        ),
+    ):
         result = await client.backlinks_summary("backlink-test.com.au")
     assert result["referring_domains"] == 142
     assert result["domain_rank"] == 23
@@ -400,13 +463,22 @@ async def test_brand_serp_uses_business_name():
     dfs = MagicMock()
     dfs.bulk_domain_metrics = AsyncMock(return_value=[])
     dfs.competitors_domain = AsyncMock(return_value={"items": []})
-    dfs.backlinks_summary = AsyncMock(return_value={
-        "referring_domains": 0, "rank": 0, "backlinks": 0,
-        "referring_domains_new": 0, "referring_domains_lost": 0,
-    })
-    dfs.brand_serp = AsyncMock(return_value={
-        "brand_position": None, "gmb_showing": False, "competitors_bidding": False,
-    })
+    dfs.backlinks_summary = AsyncMock(
+        return_value={
+            "referring_domains": 0,
+            "rank": 0,
+            "backlinks": 0,
+            "referring_domains_new": 0,
+            "referring_domains_lost": 0,
+        }
+    )
+    dfs.brand_serp = AsyncMock(
+        return_value={
+            "brand_position": None,
+            "gmb_showing": False,
+            "competitors_bidding": False,
+        }
+    )
     dfs.indexed_pages = AsyncMock(return_value=0)
 
     gmaps = MagicMock()
@@ -414,7 +486,9 @@ async def test_brand_serp_uses_business_name():
 
     engine = make_pe(conn=conn, dfs=dfs, gmaps=gmaps)
 
-    with patch("src.pipeline.paid_enrichment.affordability_gate", new=AsyncMock(return_value=([row], []))):
+    with patch(
+        "src.pipeline.paid_enrichment.affordability_gate", new=AsyncMock(return_value=([row], []))
+    ):
         await engine.run()
 
     # brand_serp should not be called with the raw domain (e.g. "bluegum-plumbing.com.au")
@@ -437,13 +511,22 @@ async def test_indexed_pages():
     dfs = MagicMock()
     dfs.bulk_domain_metrics = AsyncMock(return_value=[])
     dfs.competitors_domain = AsyncMock(return_value={"items": []})
-    dfs.backlinks_summary = AsyncMock(return_value={
-        "referring_domains": 0, "rank": 0, "backlinks": 0,
-        "referring_domains_new": 0, "referring_domains_lost": 0,
-    })
-    dfs.brand_serp = AsyncMock(return_value={
-        "brand_position": None, "gmb_showing": False, "competitors_bidding": False,
-    })
+    dfs.backlinks_summary = AsyncMock(
+        return_value={
+            "referring_domains": 0,
+            "rank": 0,
+            "backlinks": 0,
+            "referring_domains_new": 0,
+            "referring_domains_lost": 0,
+        }
+    )
+    dfs.brand_serp = AsyncMock(
+        return_value={
+            "brand_position": None,
+            "gmb_showing": False,
+            "competitors_bidding": False,
+        }
+    )
     dfs.indexed_pages = AsyncMock(return_value=47)
 
     gmaps = MagicMock()
@@ -451,7 +534,9 @@ async def test_indexed_pages():
 
     engine = make_pe(conn=conn, dfs=dfs, gmaps=gmaps)
 
-    with patch("src.pipeline.paid_enrichment.affordability_gate", new=AsyncMock(return_value=([row], []))):
+    with patch(
+        "src.pipeline.paid_enrichment.affordability_gate", new=AsyncMock(return_value=([row], []))
+    ):
         stats = await engine.run()
 
     assert stats["intelligence_enriched"] == 1
@@ -509,13 +594,22 @@ async def test_intelligence_calls_use_sem_dfs():
     dfs = MagicMock()
     dfs.bulk_domain_metrics = AsyncMock(return_value=[])
     dfs.competitors_domain = AsyncMock(return_value={"items": []})
-    dfs.backlinks_summary = AsyncMock(return_value={
-        "referring_domains": 0, "rank": 0, "backlinks": 0,
-        "referring_domains_new": 0, "referring_domains_lost": 0,
-    })
-    dfs.brand_serp = AsyncMock(return_value={
-        "brand_position": None, "gmb_showing": False, "competitors_bidding": False,
-    })
+    dfs.backlinks_summary = AsyncMock(
+        return_value={
+            "referring_domains": 0,
+            "rank": 0,
+            "backlinks": 0,
+            "referring_domains_new": 0,
+            "referring_domains_lost": 0,
+        }
+    )
+    dfs.brand_serp = AsyncMock(
+        return_value={
+            "brand_position": None,
+            "gmb_showing": False,
+            "competitors_bidding": False,
+        }
+    )
     dfs.indexed_pages = AsyncMock(return_value=0)
 
     gmaps = MagicMock()
@@ -524,7 +618,10 @@ async def test_intelligence_calls_use_sem_dfs():
     engine = make_pe(conn=conn, dfs=dfs, gmaps=gmaps)
 
     with (
-        patch("src.pipeline.paid_enrichment.affordability_gate", new=AsyncMock(return_value=([row], []))),
+        patch(
+            "src.pipeline.paid_enrichment.affordability_gate",
+            new=AsyncMock(return_value=([row], [])),
+        ),
         patch("src.pipeline.paid_enrichment.GLOBAL_SEM_DFS", new=CountingSem()),
     ):
         await engine.run()

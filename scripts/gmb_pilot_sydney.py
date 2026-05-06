@@ -69,6 +69,7 @@ spec.loader.exec_module(bdc_mod)
 BrightDataClient = bdc_mod.BrightDataClient
 
 from dotenv import load_dotenv
+
 load_dotenv(Path.home() / ".config" / "agency-os" / ".env")
 
 
@@ -76,12 +77,21 @@ load_dotenv(Path.home() / ".config" / "agency-os" / ".env")
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def mcp_sql(query: str) -> list[dict]:
     """Run SQL via MCP bridge. Returns list of row dicts."""
     result = subprocess.run(
-        ["node", str(MCP), "call", "supabase", "execute_sql",
-         json.dumps({"project_id": SUPABASE_PROJECT, "query": query})],
-        capture_output=True, text=True, timeout=60,
+        [
+            "node",
+            str(MCP),
+            "call",
+            "supabase",
+            "execute_sql",
+            json.dumps({"project_id": SUPABASE_PROJECT, "query": query}),
+        ],
+        capture_output=True,
+        text=True,
+        timeout=60,
     )
     raw = result.stdout
     outer = json.loads(raw)
@@ -120,16 +130,17 @@ def normalize(name: str) -> str:
 # Core
 # ---------------------------------------------------------------------------
 
+
 async def run_pilot(businesses: list[dict], dry_run: bool) -> dict:
     api_key = os.environ["BRIGHTDATA_API_KEY"]
     client = BrightDataClient(api_key=api_key)
 
     abn_map = {normalize(b["trading_name"]): b for b in businesses}
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"{'DRY RUN — ' if dry_run else ''}SYDNEY GMB PILOT")
     print(f"Businesses: {len(businesses)}")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
 
     if dry_run:
         print("First 5 businesses:")
@@ -142,15 +153,18 @@ async def run_pilot(businesses: list[dict], dry_run: bool) -> dict:
     # STEP 1 — Single batch snapshot (all 1,000 inputs in one trigger)
     # ------------------------------------------------------------------
     inputs = [
-        {"keyword": f"{b['trading_name']} {b['postcode']}", "country": "AU"}
-        for b in businesses
+        {"keyword": f"{b['trading_name']} {b['postcode']}", "country": "AU"} for b in businesses
     ]
 
     t0 = time.time()
-    print(f"[{datetime.now(timezone.utc).isoformat()}] Triggering batch snapshot ({len(inputs)} inputs)...")
+    print(
+        f"[{datetime.now(timezone.utc).isoformat()}] Triggering batch snapshot ({len(inputs)} inputs)..."
+    )
     results = await client._scraper_request(GMB_DATASET, inputs, discover_by="location")
     elapsed_discovery = time.time() - t0
-    print(f"[{datetime.now(timezone.utc).isoformat()}] Snapshot complete in {elapsed_discovery:.1f}s — {len(results)} GMB records returned\n")
+    print(
+        f"[{datetime.now(timezone.utc).isoformat()}] Snapshot complete in {elapsed_discovery:.1f}s — {len(results)} GMB records returned\n"
+    )
 
     # ------------------------------------------------------------------
     # STEP 2 — Match results → ABNs, write-backs
@@ -182,7 +196,7 @@ async def run_pilot(businesses: list[dict], dry_run: bool) -> dict:
 
         if serp_found:
             matched += 1
-            cat = (gmb.get("category") or [{}])
+            cat = gmb.get("category") or [{}]
             cat_title = cat[0].get("title") if isinstance(cat, list) and cat else str(cat)
 
             place_id = gmb.get("map_id_encoded") or ""
@@ -203,14 +217,14 @@ async def run_pilot(businesses: list[dict], dry_run: bool) -> dict:
                   gmb_place_id = '{safe(place_id)}',
                   gmb_cid = '{safe(fid)}',
                   gmb_category = '{safe(cat_title)}',
-                  gmb_rating = {float(rating) if rating else 'NULL'},
+                  gmb_rating = {float(rating) if rating else "NULL"},
                   gmb_review_count = {reviews_cnt},
                   gmb_domain = '{safe(domain)}',
                   gmb_phone = '{safe(phone)}',
                   gmb_address = '{safe(address)}',
                   gmb_city = '{safe(city)}',
-                  gmb_latitude = {float(lat) if lat else 'NULL'},
-                  gmb_longitude = {float(lon) if lon else 'NULL'},
+                  gmb_latitude = {float(lat) if lat else "NULL"},
+                  gmb_longitude = {float(lon) if lon else "NULL"},
                   gmb_enriched_at = NOW(),
                   updated_at = NOW()
                 WHERE abn = '{b["abn"]}';
@@ -242,19 +256,21 @@ async def run_pilot(businesses: list[dict], dry_run: bool) -> dict:
               (abn, trading_name, serp_match, gmb_category, gmb_rating, gmb_review_count, gmb_domain, match_confidence)
             VALUES (
               '{b["abn"]}', '{safe(b["trading_name"])}',
-              {'true' if serp_found else 'false'},
-              {'\''+safe(cat_title)+'\'' if cat_title else 'NULL'},
-              {float(rating) if rating else 'NULL'},
+              {"true" if serp_found else "false"},
+              {"'" + safe(cat_title) + "'" if cat_title else "NULL"},
+              {float(rating) if rating else "NULL"},
               {reviews_cnt},
-              {'\''+safe(domain)+'\'' if domain else 'NULL'},
-              '{'high' if serp_found else 'none'}'
+              {"'" + safe(domain) + "'" if domain else "NULL"},
+              '{"high" if serp_found else "none"}'
             );
         """)
 
         if len(pilot_rows) % 100 == 0:
             elapsed = time.time() - t0
-            est_cost = (matched * 0.001 * 1.55)
-            print(f"[Pilot] {len(pilot_rows)}/1000 processed — {matched} found, {not_found} not found, {est_cost:.4f} AUD spent")
+            est_cost = matched * 0.001 * 1.55
+            print(
+                f"[Pilot] {len(pilot_rows)}/1000 processed — {matched} found, {not_found} not found, {est_cost:.4f} AUD spent"
+            )
 
     # ------------------------------------------------------------------
     # STEP 3b — Reviews for businesses with reviews_cnt > 0
@@ -299,11 +315,11 @@ async def run_pilot(businesses: list[dict], dry_run: bool) -> dict:
                        review_date, owner_response, owner_response_date, owner_name)
                     VALUES (
                       '{row["abn"]}', '{safe(place_id)}', '{safe(reviewer)}',
-                      {int(rating) if rating else 'NULL'}, '{safe(text[:2000])}',
-                      {("'"+safe(date_str)+"'") if date_str else 'NULL'},
+                      {int(rating) if rating else "NULL"}, '{safe(text[:2000])}',
+                      {("'" + safe(date_str) + "'") if date_str else "NULL"},
                       '{safe(owner_resp[:2000])}',
-                      {("'"+safe(owner_resp_date)+"'") if owner_resp_date else 'NULL'},
-                      {("'"+safe(owner_name)+"'") if owner_name else 'NULL'}
+                      {("'" + safe(owner_resp_date) + "'") if owner_resp_date else "NULL"},
+                      {("'" + safe(owner_name) + "'") if owner_name else "NULL"}
                     );
                 """)
                 total_reviews += 1
@@ -326,7 +342,9 @@ async def run_pilot(businesses: list[dict], dry_run: bool) -> dict:
     # Output
     # ------------------------------------------------------------------
     elapsed_total = time.time() - t0
-    cost_aud = ((matched * 0.001) + (len(review_candidates) * 0.001) + (len(businesses) * 0.0015)) * 1.55
+    cost_aud = (
+        (matched * 0.001) + (len(review_candidates) * 0.001) + (len(businesses) * 0.0015)
+    ) * 1.55
 
     with open(RESULTS_FILE, "w") as f:
         for r in pilot_rows:
@@ -345,16 +363,20 @@ async def run_pilot(businesses: list[dict], dry_run: bool) -> dict:
     with open(SUMMARY_FILE, "w") as f:
         json.dump(summary, f, indent=2)
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("FINAL SUMMARY")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     print(f"Total processed:              {summary['total']}")
-    print(f"SERP matches found:           {summary['serp_found']} ({summary['serp_found']/summary['total']*100:.1f}%)")
+    print(
+        f"SERP matches found:           {summary['serp_found']} ({summary['serp_found'] / summary['total'] * 100:.1f}%)"
+    )
     print(f"Not found:                    {summary['serp_not_found']}")
     print(f"business_universe updated:    {summary['gmb_bu_updated']}")
     print(f"Reviews fetched:              {summary['reviews_fetched']}")
     print(f"Owner names extracted:        {summary['owner_names_extracted']}")
-    print(f"Wall-clock time:              {summary['wall_clock_seconds']}s ({summary['wall_clock_seconds']/60:.1f} min)")
+    print(
+        f"Wall-clock time:              {summary['wall_clock_seconds']}s ({summary['wall_clock_seconds'] / 60:.1f} min)"
+    )
     print(f"Estimated cost:               ${summary['cost_aud_estimate']:.4f} AUD")
 
     return summary
@@ -363,6 +385,7 @@ async def run_pilot(businesses: list[dict], dry_run: bool) -> dict:
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
+
 
 def main():
     parser = argparse.ArgumentParser(description="Sydney GMB Pre-Population Pilot")
@@ -373,8 +396,16 @@ def main():
     # Ensure migration applied
     if not args.dry_run:
         subprocess.run(
-            ["node", str(MCP), "call", "supabase", "execute_sql",
-             json.dumps({"project_id": SUPABASE_PROJECT, "query": """
+            [
+                "node",
+                str(MCP),
+                "call",
+                "supabase",
+                "execute_sql",
+                json.dumps(
+                    {
+                        "project_id": SUPABASE_PROJECT,
+                        "query": """
                 CREATE TABLE IF NOT EXISTS gmb_pilot_results (
                   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
                   abn TEXT, trading_name TEXT, serp_match BOOLEAN,
@@ -392,8 +423,13 @@ def main():
                 ALTER TABLE business_universe ADD COLUMN IF NOT EXISTS gmb_owner_name TEXT;
                 ALTER TABLE business_universe ADD COLUMN IF NOT EXISTS gmb_reviews_fetched_at TIMESTAMPTZ;
                 ALTER TABLE business_universe ADD COLUMN IF NOT EXISTS gmb_last_review_date TIMESTAMPTZ;
-             """})],
-            capture_output=True, text=True, timeout=30,
+             """,
+                    }
+                ),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=30,
         )
 
     businesses = json.loads(BUSINESSES_FILE.read_text())[: args.limit]

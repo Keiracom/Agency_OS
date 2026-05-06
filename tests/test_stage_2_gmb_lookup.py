@@ -1,4 +1,5 @@
 """Tests for Stage2GMBLookup — Directive #260"""
+
 import pytest
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
@@ -42,8 +43,13 @@ def make_stage(gmb_data=None, rows=None):
 @pytest.mark.asyncio
 async def test_enriches_s1_domains_with_gmb_data():
     """run() updates BU with GMB data when found."""
-    gmb_result = {"gmb_place_id": "ChIJ123", "gmb_category": "Marketing Agency",
-                  "gmb_rating": 4.8, "gmb_review_count": 42, "address": "123 Main St, Sydney NSW 2000"}
+    gmb_result = {
+        "gmb_place_id": "ChIJ123",
+        "gmb_category": "Marketing Agency",
+        "gmb_rating": 4.8,
+        "gmb_review_count": 42,
+        "address": "123 Main St, Sydney NSW 2000",
+    }
     rows = [make_row("acme-marketing.com.au")]
     stage, client, conn = make_stage(gmb_result, rows)
     result = await stage.run()
@@ -130,11 +136,13 @@ async def test_returns_correct_counts():
     ]
     conn = make_conn(rows)
     call_count = [0]
+
     async def side_effect(name, **kwargs):
         call_count[0] += 1
         if call_count[0] == 1:
             return {"gmb_place_id": "ChIJnew"}
         return None
+
     client = MagicMock()
     client.total_cost_usd = 0.001
     client.search_by_name = AsyncMock(side_effect=side_effect)
@@ -146,6 +154,7 @@ async def test_returns_correct_counts():
 
 
 # ─── BUG-265-1 regression tests ──────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_advances_already_enriched_to_stage_2():
@@ -160,4 +169,5 @@ async def test_advances_already_enriched_to_stage_2():
     assert "pipeline_stage" in update_sql
     # pipeline_stage=2 must appear in the positional args
     from src.pipeline.stage_2_gmb_lookup import PIPELINE_STAGE_S2
+
     assert PIPELINE_STAGE_S2 in conn.execute.call_args[0]

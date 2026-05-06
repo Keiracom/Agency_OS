@@ -3,6 +3,7 @@
 Original: Pipeline F v1 — 100-domain cohort runner.
 F-TASK-B-100: 10 categories × 10 domains → F3a→F6 pipeline.
 """
+
 import os
 import sys
 
@@ -60,12 +61,16 @@ BUDGET_TOTAL, BUDGET_GEMINI, BUDGET_APIFY, BUDGET_WARN_PCT = 25.0, 2.0, 8.0, 0.8
 
 def _tg(msg: str) -> None:
     import contextlib
+
     token = os.environ.get("TELEGRAM_TOKEN", "")
     if not token:
         return
     with contextlib.suppress(Exception):
-        _httpx.post(f"https://api.telegram.org/bot{token}/sendMessage",
-                    json={"chat_id": "7267788033", "text": f"[EVO] {msg}"}, timeout=10)
+        _httpx.post(
+            f"https://api.telegram.org/bot{token}/sendMessage",
+            json={"chat_id": "7267788033", "text": f"[EVO] {msg}"},
+            timeout=10,
+        )
 
 
 def _sub_placeholders(obj: Any) -> Any:
@@ -116,7 +121,11 @@ async def discover_category(
 
         logger.info(
             "[F1] %s page=%d offset=%d found=%d/%d",
-            category_name, page, offset, len(domains), target,
+            category_name,
+            page,
+            offset,
+            len(domains),
+            target,
         )
         if len(domains) >= target:
             break
@@ -126,10 +135,7 @@ async def discover_category(
 
 async def run_f1_discovery(dfs: DFSLabsClient) -> tuple[dict[str, list[str]], float]:
     """Discover 10 domains per category. Returns {category_name: [domains]}, cost."""
-    tasks = [
-        discover_category(dfs, code, name)
-        for code, name in CATEGORIES.items()
-    ]
+    tasks = [discover_category(dfs, code, name) for code, name in CATEGORIES.items()]
     results = await asyncio.gather(*tasks, return_exceptions=True)
 
     category_domains: dict[str, list[str]] = {}
@@ -149,10 +155,20 @@ async def run_f1_discovery(dfs: DFSLabsClient) -> tuple[dict[str, list[str]], fl
 
 
 def _build_card(
-    domain: str, f3a: dict, f3b: dict | None, f4: dict, f5: dict,
-    dm_candidate: dict, classification: dict, enhanced_vr_result: dict | None,
-    raw_posts: list, filtered_posts: list, f3a_result: dict,
-    signal_bundle: dict, f3b_result: dict, cost: float,
+    domain: str,
+    f3a: dict,
+    f3b: dict | None,
+    f4: dict,
+    f5: dict,
+    dm_candidate: dict,
+    classification: dict,
+    enhanced_vr_result: dict | None,
+    raw_posts: list,
+    filtered_posts: list,
+    f3a_result: dict,
+    signal_bundle: dict,
+    f3b_result: dict,
+    cost: float,
 ) -> dict:
     evr_content = enhanced_vr_result.get("content") if enhanced_vr_result else None
     return {
@@ -181,14 +197,20 @@ def _build_card(
             "draft_voice_script": f3b.get("draft_voice_script") if f3b else None,
             "enhanced": evr_content,
         },
-        "dm_posts": {"total_fetched": len(raw_posts), "after_author_filter": len(filtered_posts), "posts": filtered_posts},
+        "dm_posts": {
+            "total_fetched": len(raw_posts),
+            "after_author_filter": len(filtered_posts),
+            "posts": filtered_posts,
+        },
         "cost_breakdown": {
             "f3a_usd": f3a_result.get("cost_usd", 0.0),
             "f2_usd": signal_bundle.get("cost_usd", 0.0),
             "f3b_usd": f3b_result.get("cost_usd", 0.0),
             "f4_usd": f4.get("_cost") or 0.006,
             "f5_usd": 0.0,
-            "f6_enhanced_vr_usd": enhanced_vr_result.get("cost_usd", 0.0) if enhanced_vr_result else 0.0,
+            "f6_enhanced_vr_usd": enhanced_vr_result.get("cost_usd", 0.0)
+            if enhanced_vr_result
+            else 0.0,
             "total_usd": round(cost, 6),
             "total_aud": round(cost * 1.55, 4),
         },
@@ -368,14 +390,24 @@ async def run_pipeline_f(
         stage_times["f6_evr"] = round(time.monotonic() - t0, 2)
 
         # ── Build card ───────────────────────────────────────────────────────
-        result["card"] = _sub_placeholders(_build_card(
-            domain=domain, f3a=f3a_content, f3b=f3b_content,
-            f4=f4_result, f5=f5_result, dm_candidate=dm_candidate,
-            classification=classification, enhanced_vr_result=enhanced_vr_result,
-            raw_posts=raw_posts, filtered_posts=filtered_posts,
-            f3a_result=f3a_result, signal_bundle=signal_bundle,
-            f3b_result=f3b_result, cost=cost,
-        ))
+        result["card"] = _sub_placeholders(
+            _build_card(
+                domain=domain,
+                f3a=f3a_content,
+                f3b=f3b_content,
+                f4=f4_result,
+                f5=f5_result,
+                dm_candidate=dm_candidate,
+                classification=classification,
+                enhanced_vr_result=enhanced_vr_result,
+                raw_posts=raw_posts,
+                filtered_posts=filtered_posts,
+                f3a_result=f3a_result,
+                signal_bundle=signal_bundle,
+                f3b_result=f3b_result,
+                cost=cost,
+            )
+        )
         result["cost_usd"] = cost
         result["dfs_cost_delta"] = dfs.total_cost_usd - dfs_cost_before
         result["stage_times"] = stage_times
@@ -418,8 +450,12 @@ def _build_summary(results: list[dict], cost_total: float, wall_total: float) ->
         "f5_linkedin_l2_attempted": _count("f5_linkedin_source"),
         "f5_linkedin_l2_direct_match": _count("f5_linkedin_match_type", "direct_match"),
         "f5_linkedin_l2_no_match": _count("f5_linkedin_match_type", "no_match"),
-        "f5_email_resolved": sum(1 for r in results if r.get("f5_email_source") not in (None, "none")),
-        "f5_mobile_resolved": sum(1 for r in results if r.get("f5_mobile_tier") not in (None, "unresolved")),
+        "f5_email_resolved": sum(
+            1 for r in results if r.get("f5_email_source") not in (None, "none")
+        ),
+        "f5_mobile_resolved": sum(
+            1 for r in results if r.get("f5_mobile_tier") not in (None, "unresolved")
+        ),
         "cost_total_usd": round(cost_total, 4),
         "cost_total_aud": round(cost_total * 1.55, 4),
         "cost_per_prospect_median": round(_median(costs), 6),
@@ -463,7 +499,9 @@ async def main() -> None:
 
     total_found = sum(len(v) for v in category_domains.values())
     logger.info("F1 complete: %d domains discovered, cost=$%.3f", total_found, discovery_cost)
-    _tg(f"F1 complete: {total_found} domains across {len(category_domains)} categories | cost=${discovery_cost:.3f}")
+    _tg(
+        f"F1 complete: {total_found} domains across {len(category_domains)} categories | cost=${discovery_cost:.3f}"
+    )
 
     # Flatten to (domain, category_name) pairs preserving category order
     domain_pairs: list[tuple[str, str]] = []
@@ -478,13 +516,13 @@ async def main() -> None:
     completed = 0
 
     for batch_start in range(0, len(domain_pairs), BATCH_SIZE):
-        batch = domain_pairs[batch_start: batch_start + BATCH_SIZE]
+        batch = domain_pairs[batch_start : batch_start + BATCH_SIZE]
         logger.info("Batch %d-%d", batch_start + 1, batch_start + len(batch))
 
-        batch_results = await asyncio.gather(*[
-            run_pipeline_f(domain, cat, dfs, gemini)
-            for domain, cat in batch
-        ], return_exceptions=True)
+        batch_results = await asyncio.gather(
+            *[run_pipeline_f(domain, cat, dfs, gemini) for domain, cat in batch],
+            return_exceptions=True,
+        )
 
         for item in batch_results:
             if isinstance(item, Exception):
@@ -532,7 +570,9 @@ async def main() -> None:
 
     logger.info("COHORT COMPLETE | %s | $%.4f USD | %.1fs", dict(clf), cost_total, wall_total)
     logger.info("Output: %s", out_path)
-    _tg(f"COHORT COMPLETE: {len(all_results)}/{len(domain_pairs)} | cost=${cost_total:.3f} | wall={wall_total:.0f}s")
+    _tg(
+        f"COHORT COMPLETE: {len(all_results)}/{len(domain_pairs)} | cost=${cost_total:.3f} | wall={wall_total:.0f}s"
+    )
 
 
 if __name__ == "__main__":

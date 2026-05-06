@@ -217,3 +217,50 @@ def test_webhook_rejects_hex_signature(client, monkeypatch):
         headers={"svix-signature": f"v1,{sig_hex}"},
     )
     assert resp.status_code == 401
+
+
+def test_bounce_ratchet_updates_bu_on_bounce():
+    """Bounce event triggers _bounce_ratchet which sets dm_email_verified=false."""
+    with patch.object(email_route, "_connect") as mock_conn:
+        cur = MagicMock()
+        cur.rowcount = 1
+        conn = MagicMock()
+        conn.cursor.return_value.__enter__ = MagicMock(return_value=cur)
+        conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+        conn.__enter__ = MagicMock(return_value=conn)
+        conn.__exit__ = MagicMock(return_value=False)
+        mock_conn.return_value = conn
+
+        email_route._bounce_ratchet({"to": ["bounce@example.com"]})
+
+        cur.execute.assert_called_once()
+        sql_arg = cur.execute.call_args[0][0]
+        assert "dm_email_verified = false" in sql_arg
+        assert cur.execute.call_args[0][1] == ("bounce@example.com",)
+
+
+def test_bounce_ratchet_handles_string_to_field():
+    """_bounce_ratchet handles 'to' as a string (not list)."""
+    with patch.object(email_route, "_connect") as mock_conn:
+        cur = MagicMock()
+        cur.rowcount = 0
+        conn = MagicMock()
+        conn.cursor.return_value.__enter__ = MagicMock(return_value=cur)
+        conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+        conn.__enter__ = MagicMock(return_value=conn)
+        conn.__exit__ = MagicMock(return_value=False)
+        mock_conn.return_value = conn
+
+        email_route._bounce_ratchet({"to": "single@example.com"})
+        cur.execute.assert_called_once()
+        assert cur.execute.call_args[0][1] == ("single@example.com",)
+
+
+def test_bounce_ratchet_skips_empty_to():
+    """_bounce_ratchet does nothing when 'to' is empty."""
+    with patch.object(email_route, "_connect") as mock_conn:
+        email_route._bounce_ratchet({"to": []})
+        mock_conn.assert_not_called()
+
+        email_route._bounce_ratchet({})
+        mock_conn.assert_not_called()

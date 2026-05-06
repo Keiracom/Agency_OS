@@ -84,6 +84,43 @@ def _connect():
     return psycopg.connect(_psycopg_dsn(), prepare_threshold=None)
 
 
+# ── Bounce ratchet ──────────────────────────────────────────────────────────
+
+
+def _bounce_ratchet(data: dict) -> None:
+    """On bounce/complaint, set dm_email_verified=false in business_universe.
+
+    Resend webhook ``data`` contains ``to`` (list of recipient emails).
+    We match against ``dm_email`` in BU and mark unverified so future
+    campaigns skip this address.
+    """
+    recipients = data.get("to") or []
+    if isinstance(recipients, str):
+        recipients = [recipients]
+    if not recipients:
+        return
+    try:
+        with _connect() as conn, conn.cursor() as cur:
+            for email in recipients:
+                email = str(email).strip().lower()
+                if not email:
+                    continue
+                cur.execute(
+                    "UPDATE public.business_universe "
+                    "SET dm_email_verified = false "
+                    "WHERE LOWER(dm_email) = %s AND dm_email_verified IS DISTINCT FROM false",
+                    (email,),
+                )
+                if cur.rowcount > 0:
+                    logger.info(
+                        "[email/bounce-ratchet] marked dm_email unverified: %s (%d rows)",
+                        email, cur.rowcount,
+                    )
+            conn.commit()
+    except Exception as exc:
+        logger.error("[email/bounce-ratchet] BU update failed: %s", exc)
+
+
 # ── Request / response models ────────────────────────────────────────────────
 
 
@@ -268,4 +305,9 @@ async def post_webhook(request: Request) -> dict[str, Any]:
     except Exception as exc:
         logger.error("[email/webhook] db update failed: %s", exc)
         raise HTTPException(status_code=500, detail="db error") from exc
+
+    # Bounce ratchet: hard bounce → mark dm_email as unverified in BU
+    if event_type in ("email.bounced", "email.complained"):
+        _bounce_ratchet(data)
+
     return {"ok": True, "message_id": message_id, "applied_status": new_status}

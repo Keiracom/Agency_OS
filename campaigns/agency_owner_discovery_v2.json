@@ -1,0 +1,50 @@
+{
+  "campaign_name": "agency_owner_discovery_v2",
+  "vertical": "agency",
+  "target_country": "AU",
+  "purpose": "discovery",
+  "supersedes": "agency_discovery_v1.json",
+  "notes": "v2 — tailored specifically to AU marketing agency OWNERS (not generic 'agencies'). Reframes from 'we sell to agencies' (we don't — agencies sell what we sell) to 'agencies are research subjects on agency-owner outbound'. Reciprocity payload in step 3 is concrete: three specific mistakes we made running Keiracom's own outbound. No fake social proof. Australian voice, peer-to-peer tone.",
+  "merge_tags_used": ["dm_name", "display_name", "sender_name"],
+  "key_changes_from_v1": [
+    "Positioning: agencies are NOT prospective customers (they already sell outbound automation). They are operator-peers we want to learn from.",
+    "Pain framing: agency-owner-specific (their own outbound, agency economics, retainer churn, doing real work in the cracks) — not generic SMB pain.",
+    "Reciprocity in step 3 is concrete and confessional (3 mistakes with actual cost figures) instead of abstract 'BU vertical breakdown'.",
+    "Removed {{state}} and {{suburb}} merge tags — agency-owner pain is national, not local."
+  ],
+  "compliance": {
+    "list_unsubscribe": "Auto-injected by src/integrations/resend_client.py (RFC 8058 List-Unsubscribe + List-Unsubscribe-Post headers, see PR #562).",
+    "suppression_check": "campaign_sender.py LEFT JOINs public.global_suppression before any send.",
+    "bounce_ratchet": "Resend webhook → email.bounced (hard) auto-sets dm_email_verified=false, see PR #561."
+  },
+  "emails": [
+    {
+      "step": 1,
+      "delay_days": 0,
+      "subject": "How are you handling your own outbound, {{dm_name}}?",
+      "body_html": "<p>Hi {{dm_name}},</p>\n\n<p>Quick context: I run Keiracom — we are building a lead-gen platform for AU SMBs (dental, trades, allied health, not agencies). The interesting part is we use it on ourselves to find our own clients, which means we run the same outbound stack agencies sell to clients, except at our scale and on our budget.</p>\n\n<p>I am not selling you anything. Agencies are the worst customers for what we make because you already do it. But I would love a 20-minute call to compare notes on how you handle <em>your</em> agency's own outbound. The dynamics are different from client outbound — thin margins, no big budgets, owners doing it between 6am and 8am on a treadmill.</p>\n\n<p>Specifically curious about three things for {{display_name}}:</p>\n\n<ol><li>What is your current stack for finding new agency clients (not your clients' clients)?</li><li>What broke or churned in the last 90 days?</li><li>What costs more than it should?</li></ol>\n\n<p>If a call is too much, even a 5-line reply on those is useful. I will trade you what we have learned on our side.</p>\n\n<p>{{sender_name}}<br>Keiracom</p>\n\n<p style=\"font-size:11px;color:#888;\">If this is not for you, just hit reply with \"unsubscribe\" — or use the one-click link in the headers.</p>",
+      "body_text": "Hi {{dm_name}},\n\nQuick context: I run Keiracom — we are building a lead-gen platform for AU SMBs (dental, trades, allied health, not agencies). The interesting part is we use it on ourselves to find our own clients, which means we run the same outbound stack agencies sell to clients, except at our scale and on our budget.\n\nI am not selling you anything. Agencies are the worst customers for what we make because you already do it. But I would love a 20-minute call to compare notes on how you handle your agency's own outbound. The dynamics are different from client outbound — thin margins, no big budgets, owners doing it between 6am and 8am on a treadmill.\n\nSpecifically curious about three things for {{display_name}}:\n\n1. What is your current stack for finding new agency clients (not your clients' clients)?\n2. What broke or churned in the last 90 days?\n3. What costs more than it should?\n\nIf a call is too much, even a 5-line reply on those is useful. I will trade you what we have learned on our side.\n\n{{sender_name}}\nKeiracom\n\nIf this is not for you, just hit reply with \"unsubscribe\" — or use the one-click link in the headers."
+    },
+    {
+      "step": 2,
+      "delay_days": 3,
+      "subject": "No worries if not — {{dm_name}}",
+      "body_html": "<p>Hi {{dm_name}},</p>\n\n<p>Following up briefly. No urgency.</p>\n\n<p>If running {{display_name}} feels mostly like babysitting clients while doing the actual work in the cracks, the topic I asked about probably falls into \"yeah I should fix that someday\". Same here — that is exactly why I am asking now, before we ship to paying customers and lose the chance to fix it cheaply.</p>\n\n<p>Twenty minutes, your time, your call. If it is not a fit, tell me directly and I will leave it.</p>\n\n<p>{{sender_name}}<br>Keiracom</p>\n\n<p style=\"font-size:11px;color:#888;\">If this is not for you, just hit reply with \"unsubscribe\".</p>",
+      "body_text": "Hi {{dm_name}},\n\nFollowing up briefly. No urgency.\n\nIf running {{display_name}} feels mostly like babysitting clients while doing the actual work in the cracks, the topic I asked about probably falls into \"yeah I should fix that someday\". Same here — that is exactly why I am asking now, before we ship to paying customers and lose the chance to fix it cheaply.\n\nTwenty minutes, your time, your call. If it is not a fit, tell me directly and I will leave it.\n\n{{sender_name}}\nKeiracom\n\nIf this is not for you, just hit reply with \"unsubscribe\"."
+    },
+    {
+      "step": 3,
+      "delay_days": 5,
+      "subject": "What we got wrong running our own outbound",
+      "body_html": "<p>Hi {{dm_name}},</p>\n\n<p>Different angle this time — sharing instead of asking.</p>\n\n<p>Three things we got wrong running Keiracom's own outbound in the first 60 days:</p>\n\n<ol>\n<li><strong>We bought Salesforge for warmup.</strong> Their API key was invalid out of the gate, support is non-responsive, and we have quietly written off the spend. Replacing with Smartlead now (~\\$145 AUD/mo for the API tier), which we should have evaluated first. Lesson: do the boring vendor due diligence before buying the shiny one.</li>\n<li><strong>We assumed \"verified\" meant \"deliverable\".</strong> About 20% of our verified-by-Hunter-or-Leadmagic addresses are generic inboxes (hello@, info@, reception@) where the actual decision-maker never reads. Both verifiers report them as \"valid\". The real verification signal is reply-rate, which lags everything else by weeks.</li>\n<li><strong>We over-indexed on volume.</strong> A 40-prospect list with hand-tuned subject lines outperformed a 400-prospect generic blast 6:1 on reply rate. Counterintuitive only because every cold-outbound platform is built around scale.</li>\n</ol>\n\n<p>If any of that is useful for {{display_name}}, take it. If you have made a different mistake we should know about, that is the trade I was offering in the first email. Either way, no follow-up needed unless you want one.</p>\n\n<p>{{sender_name}}<br>Keiracom</p>\n\n<p style=\"font-size:11px;color:#888;\">If this is not for you, just hit reply with \"unsubscribe\".</p>",
+      "body_text": "Hi {{dm_name}},\n\nDifferent angle this time — sharing instead of asking.\n\nThree things we got wrong running Keiracom's own outbound in the first 60 days:\n\n1. We bought Salesforge for warmup. Their API key was invalid out of the gate, support is non-responsive, and we have quietly written off the spend. Replacing with Smartlead now (~$145 AUD/mo for the API tier), which we should have evaluated first. Lesson: do the boring vendor due diligence before buying the shiny one.\n\n2. We assumed \"verified\" meant \"deliverable\". About 20% of our verified-by-Hunter-or-Leadmagic addresses are generic inboxes (hello@, info@, reception@) where the actual decision-maker never reads. Both verifiers report them as \"valid\". The real verification signal is reply-rate, which lags everything else by weeks.\n\n3. We over-indexed on volume. A 40-prospect list with hand-tuned subject lines outperformed a 400-prospect generic blast 6:1 on reply rate. Counterintuitive only because every cold-outbound platform is built around scale.\n\nIf any of that is useful for {{display_name}}, take it. If you have made a different mistake we should know about, that is the trade I was offering in the first email. Either way, no follow-up needed unless you want one.\n\n{{sender_name}}\nKeiracom\n\nIf this is not for you, just hit reply with \"unsubscribe\"."
+    },
+    {
+      "step": 4,
+      "delay_days": 7,
+      "subject": "Last note, {{dm_name}}",
+      "body_html": "<p>Hi {{dm_name}},</p>\n\n<p>Last one — I will leave it here.</p>\n\n<p>If the timing is not right or the conversation does not appeal, all good. If down the track you want to swap notes on AU agency outbound (what is working, what is not, what we are about to break), I am always around.</p>\n\n<p>{{sender_name}}<br>Keiracom<br><a href=\"https://keiracom.com\">keiracom.com</a></p>\n\n<p style=\"font-size:11px;color:#888;\">If this is not for you, just hit reply with \"unsubscribe\".</p>",
+      "body_text": "Hi {{dm_name}},\n\nLast one — I will leave it here.\n\nIf the timing is not right or the conversation does not appeal, all good. If down the track you want to swap notes on AU agency outbound (what is working, what is not, what we are about to break), I am always around.\n\n{{sender_name}}\nKeiracom\nkeiracom.com\n\nIf this is not for you, just hit reply with \"unsubscribe\"."
+    }
+  ]
+}

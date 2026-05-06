@@ -125,7 +125,8 @@ def _handle_reply(data: dict) -> None:
                 if cur.rowcount > 0:
                     logger.info(
                         "[email/reply] recorded reply on BU: %s (%d rows)",
-                        email, cur.rowcount,
+                        email,
+                        cur.rowcount,
                     )
                 else:
                     logger.info(

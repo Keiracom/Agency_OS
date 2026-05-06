@@ -218,6 +218,14 @@ def create_person(
             f"[pipedrive] create_person: phone must be AU E.164 (^\\+61\\d{{9}}$), got: {phone!r}"
         )
 
+    if custom_fields:
+        reserved = {"name", "email", "phone", "owner_id"} & custom_fields.keys()
+        if reserved:
+            raise ValueError(
+                f"[pipedrive] create_person: custom_fields cannot include reserved "
+                f"structural keys {sorted(reserved)}. Use the named arguments instead."
+            )
+
     body: dict = {
         "name": name,
         "email": [{"value": email, "primary": True, "label": "work"}],

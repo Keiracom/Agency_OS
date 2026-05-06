@@ -25,15 +25,6 @@ def _mock_response(status_code: int, json_data: dict | None = None) -> MagicMock
     return resp
 
 
-def _patch_request(method: str, path_fragment: str, response: MagicMock):
-    """Context manager: patch httpx.Client so any request returns `response`."""
-    mock_client = MagicMock()
-    mock_client.__enter__ = lambda s: mock_client
-    mock_client.__exit__ = MagicMock(return_value=False)
-    mock_client.request.return_value = response
-    return patch("httpx.Client", return_value=mock_client)
-
-
 # ── (1) _dsn_base ──────────────────────────────────────────────────────────────
 
 
@@ -205,6 +196,22 @@ def test_create_person_rejects_name_over_120_chars():
             name=long_name,
             email="bob@dental.com.au",
             owner_id=1,
+        )
+
+
+def test_create_person_rejects_reserved_keys_in_custom_fields():
+    """custom_fields cannot contain structural keys (name/email/phone/owner_id).
+
+    Without this guard, body.update(custom_fields) would silently overwrite
+    validated structural fields — bypassing the regex/length checks above.
+    """
+    with pytest.raises(ValueError, match="reserved structural keys"):
+        pd.create_person(
+            "acme-agency",
+            name="Bob Smith",
+            email="bob@dental.com.au",
+            owner_id=1,
+            custom_fields={"name": "Mallory"},  # would overwrite validated name
         )
 
 

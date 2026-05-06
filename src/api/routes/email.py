@@ -34,7 +34,7 @@ from __future__ import annotations
 import json
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request, status
@@ -138,7 +138,7 @@ def post_send(req: EmailSendRequest) -> EmailSendResponse:
     sender = req.from_address or os.environ.get(
         "RESEND_DEFAULT_FROM", "noreply@keiracom.com",
     )
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     sql = (
         "INSERT INTO keiracom_admin.email_events "
@@ -178,10 +178,9 @@ def get_status(message_id: str) -> EmailStatusResponse:
         "FROM keiracom_admin.email_events WHERE message_id = %s LIMIT 1"
     )
     try:
-        with _connect() as conn:
-            with conn.cursor() as cur:
-                cur.execute(sql, (message_id,))
-                row = cur.fetchone()
+        with _connect() as conn, conn.cursor() as cur:
+            cur.execute(sql, (message_id,))
+            row = cur.fetchone()
     except Exception as exc:
         logger.error("[email/status] db query failed: %s", exc)
         raise HTTPException(status_code=500, detail="db error") from exc
@@ -244,7 +243,7 @@ async def post_webhook(request: Request) -> dict[str, Any]:
         "email.failed": "failed",
     }
     new_status = status_map.get(event_type)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     event_row = {
         "type": event_type,
         "ts": now.isoformat(),

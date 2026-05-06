@@ -237,3 +237,71 @@ def test_webhook_rejects_hex_signature(client, monkeypatch):
         headers={"svix-signature": f"v1,{sig_hex}"},
     )
     assert resp.status_code == 401
+
+
+def test_bounce_ratchet_hard_bounce_unverifies():
+    """Hard bounce sets dm_email_verified=false and dm_email_confidence=0."""
+    with patch.object(email_route, "_connect") as mock_conn:
+        cur = MagicMock()
+        cur.rowcount = 1
+        conn = MagicMock()
+        conn.cursor.return_value.__enter__ = MagicMock(return_value=cur)
+        conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+        conn.__enter__ = MagicMock(return_value=conn)
+        conn.__exit__ = MagicMock(return_value=False)
+        mock_conn.return_value = conn
+
+        email_route._bounce_ratchet(
+            {"to": ["bounce@example.com"], "bounce": {"bounce_type": "hard"}},
+            "email.bounced",
+        )
+
+        cur.execute.assert_called_once()
+        sql_arg = cur.execute.call_args[0][0]
+        assert "dm_email_verified = false" in sql_arg
+        assert "dm_email_confidence = 0" in sql_arg
+
+
+def test_bounce_ratchet_soft_bounce_ignored():
+    """Soft bounces (transient) should NOT ratchet."""
+    with patch.object(email_route, "_connect") as mock_conn:
+        email_route._bounce_ratchet(
+            {"to": ["soft@example.com"], "bounce": {"bounce_type": "soft"}},
+            "email.bounced",
+        )
+        mock_conn.assert_not_called()
+
+
+def test_bounce_ratchet_complaint_suppresses():
+    """Complaint adds to global_suppression AND unverifies in BU."""
+    with patch.object(email_route, "_connect") as mock_conn:
+        cur = MagicMock()
+        cur.rowcount = 1
+        conn = MagicMock()
+        conn.cursor.return_value.__enter__ = MagicMock(return_value=cur)
+        conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+        conn.__enter__ = MagicMock(return_value=conn)
+        conn.__exit__ = MagicMock(return_value=False)
+        mock_conn.return_value = conn
+
+        email_route._bounce_ratchet(
+            {"to": ["complainer@example.com"]},
+            "email.complained",
+        )
+
+        # Should have 2 execute calls: BU update + global_suppression insert
+        assert cur.execute.call_count == 2
+        bu_sql = cur.execute.call_args_list[0][0][0]
+        assert "dm_email_verified = false" in bu_sql
+        suppress_sql = cur.execute.call_args_list[1][0][0]
+        assert "global_suppression" in suppress_sql
+
+
+def test_bounce_ratchet_skips_empty_to():
+    """_bounce_ratchet does nothing when 'to' is empty."""
+    with patch.object(email_route, "_connect") as mock_conn:
+        email_route._bounce_ratchet({"to": []}, "email.bounced")
+        mock_conn.assert_not_called()
+
+        email_route._bounce_ratchet({}, "email.bounced")
+        mock_conn.assert_not_called()

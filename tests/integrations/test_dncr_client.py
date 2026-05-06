@@ -1,6 +1,7 @@
 """
 Tests for DNCRClient — 12 cases covering happy path, degraded modes, cache, and normalisation.
 """
+
 from __future__ import annotations
 
 import os
@@ -20,7 +21,10 @@ from integrations.dncr_client import DNCRClient, DNCRResult
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _mock_response(status_code: int, json_body: dict | None = None, raise_exc: Exception | None = None) -> MagicMock:
+
+def _mock_response(
+    status_code: int, json_body: dict | None = None, raise_exc: Exception | None = None
+) -> MagicMock:
     """Build a mock httpx.Client that returns a controlled response."""
     mock_client = MagicMock(spec=httpx.Client)
     if raise_exc:
@@ -47,9 +51,12 @@ def _fixed_now(t: datetime = _BASE_TIME):
 # 1. Happy path — registered=True
 # ---------------------------------------------------------------------------
 
+
 class TestHappyPathRegistered:
     def test_registered_true(self):
-        mock_http = _mock_response(200, {"registered": True, "registered_at": "2025-01-01T00:00:00Z"})
+        mock_http = _mock_response(
+            200, {"registered": True, "registered_at": "2025-01-01T00:00:00Z"}
+        )
         client = DNCRClient(api_key="test-key", http_client=mock_http, now_fn=_fixed_now())
         result = client.lookup("+61400000000")
         assert result.registered is True
@@ -60,6 +67,7 @@ class TestHappyPathRegistered:
 # ---------------------------------------------------------------------------
 # 2. Happy path — registered=False
 # ---------------------------------------------------------------------------
+
 
 class TestHappyPathNotRegistered:
     def test_registered_false(self):
@@ -73,6 +81,7 @@ class TestHappyPathNotRegistered:
 # ---------------------------------------------------------------------------
 # 3. Missing API key — degraded:no_api_key, no HTTP call made
 # ---------------------------------------------------------------------------
+
 
 class TestMissingApiKey:
     def test_no_api_key_returns_degraded(self, monkeypatch):
@@ -88,6 +97,7 @@ class TestMissingApiKey:
 # ---------------------------------------------------------------------------
 # 4. Network timeout — degraded:network
 # ---------------------------------------------------------------------------
+
 
 class TestNetworkTimeout:
     def test_timeout_returns_degraded(self):
@@ -105,6 +115,7 @@ class TestNetworkTimeout:
 # 5. HTTP 500 — degraded:network
 # ---------------------------------------------------------------------------
 
+
 class TestHTTP500:
     def test_500_returns_degraded_network(self):
         mock_http = _mock_response(500)
@@ -116,6 +127,7 @@ class TestHTTP500:
 # ---------------------------------------------------------------------------
 # 6. HTTP 429 — degraded:rate_limited
 # ---------------------------------------------------------------------------
+
 
 class TestHTTP429:
     def test_rate_limited(self):
@@ -129,6 +141,7 @@ class TestHTTP429:
 # ---------------------------------------------------------------------------
 # 7. Invalid JSON — degraded:parse
 # ---------------------------------------------------------------------------
+
 
 class TestInvalidJSON:
     def test_bad_json_returns_degraded_parse(self):
@@ -146,6 +159,7 @@ class TestInvalidJSON:
 # 8. Cache hit — HTTP client called once
 # ---------------------------------------------------------------------------
 
+
 class TestCacheHit:
     def test_second_call_uses_cache(self):
         mock_http = _mock_response(200, {"registered": True, "registered_at": None})
@@ -161,6 +175,7 @@ class TestCacheHit:
 # 9. Cache expiry — second call re-fetches
 # ---------------------------------------------------------------------------
 
+
 class TestCacheExpiry:
     def test_expired_cache_refetches(self):
         call_count = {"n": 0}
@@ -173,13 +188,15 @@ class TestCacheExpiry:
             return t
 
         mock_http = _mock_response(200, {"registered": False})
-        client = DNCRClient(api_key="test-key", http_client=mock_http, cache_ttl_hours=24, now_fn=advancing_now)
+        client = DNCRClient(
+            api_key="test-key", http_client=mock_http, cache_ttl_hours=24, now_fn=advancing_now
+        )
 
-        client.lookup("+61400000008")   # populates cache; now_fn returns base
+        client.lookup("+61400000008")  # populates cache; now_fn returns base
         # Advance internal clock past TTL for cache check
         # Override now_fn to return expired time
         client._now = lambda: base + timedelta(hours=25)
-        client.lookup("+61400000008")   # cache miss — should re-fetch
+        client.lookup("+61400000008")  # cache miss — should re-fetch
 
         assert mock_http.get.call_count == 2
 
@@ -187,6 +204,7 @@ class TestCacheExpiry:
 # ---------------------------------------------------------------------------
 # 10. Degraded result NOT cached — second call retries
 # ---------------------------------------------------------------------------
+
 
 class TestDegradedNotCached:
     def test_degraded_not_cached_retry_succeeds(self):
@@ -213,6 +231,7 @@ class TestDegradedNotCached:
 # 11. Phone normalisation — variants map to same cache entry
 # ---------------------------------------------------------------------------
 
+
 class TestPhoneNormalisation:
     def test_variants_share_cache_entry(self):
         mock_http = _mock_response(200, {"registered": True})
@@ -229,6 +248,7 @@ class TestPhoneNormalisation:
 # ---------------------------------------------------------------------------
 # 12. Never raises — pathological inputs return DNCRResult
 # ---------------------------------------------------------------------------
+
 
 class TestNeverRaises:
     def test_empty_string_no_raise(self):

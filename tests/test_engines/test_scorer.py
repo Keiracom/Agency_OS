@@ -426,11 +426,27 @@ class TestFullScoring:
         mock_lead.client_id = uuid4()
 
         with (
-            patch.object(scorer_engine, "get_lead_by_id", new_callable=AsyncMock, return_value=mock_lead),
-            patch.object(scorer_engine, "_get_learned_weights", new_callable=AsyncMock, return_value=None),
-            patch.object(scorer_engine, "_get_buyer_boost", new_callable=AsyncMock, return_value={"boost_points": 0}),
-            patch.object(scorer_engine, "_get_funnel_boost", new_callable=AsyncMock, return_value={"boost_points": 0}),
-            patch.object(scorer_engine, "_update_lead_score", new_callable=AsyncMock, return_value=None),
+            patch.object(
+                scorer_engine, "get_lead_by_id", new_callable=AsyncMock, return_value=mock_lead
+            ),
+            patch.object(
+                scorer_engine, "_get_learned_weights", new_callable=AsyncMock, return_value=None
+            ),
+            patch.object(
+                scorer_engine,
+                "_get_buyer_boost",
+                new_callable=AsyncMock,
+                return_value={"boost_points": 0},
+            ),
+            patch.object(
+                scorer_engine,
+                "_get_funnel_boost",
+                new_callable=AsyncMock,
+                return_value={"boost_points": 0},
+            ),
+            patch.object(
+                scorer_engine, "_update_lead_score", new_callable=AsyncMock, return_value=None
+            ),
         ):
             result = await scorer_engine.score_lead(
                 db=mock_db_session,
@@ -451,11 +467,27 @@ class TestFullScoring:
         mock_lead.client_id = uuid4()
 
         with (
-            patch.object(scorer_engine, "get_lead_by_id", new_callable=AsyncMock, return_value=mock_lead),
-            patch.object(scorer_engine, "_get_learned_weights", new_callable=AsyncMock, return_value=None),
-            patch.object(scorer_engine, "_get_buyer_boost", new_callable=AsyncMock, return_value={"boost_points": 0}),
-            patch.object(scorer_engine, "_get_funnel_boost", new_callable=AsyncMock, return_value={"boost_points": 0}),
-            patch.object(scorer_engine, "_update_lead_score", new_callable=AsyncMock, return_value=None),
+            patch.object(
+                scorer_engine, "get_lead_by_id", new_callable=AsyncMock, return_value=mock_lead
+            ),
+            patch.object(
+                scorer_engine, "_get_learned_weights", new_callable=AsyncMock, return_value=None
+            ),
+            patch.object(
+                scorer_engine,
+                "_get_buyer_boost",
+                new_callable=AsyncMock,
+                return_value={"boost_points": 0},
+            ),
+            patch.object(
+                scorer_engine,
+                "_get_funnel_boost",
+                new_callable=AsyncMock,
+                return_value={"boost_points": 0},
+            ),
+            patch.object(
+                scorer_engine, "_update_lead_score", new_callable=AsyncMock, return_value=None
+            ),
         ):
             result = await scorer_engine.score_lead(
                 db=mock_db_session,
@@ -492,7 +524,9 @@ class TestBatchScoring:
             }
         )
 
-        with patch.object(scorer_engine, "score_lead", new_callable=AsyncMock, return_value=mock_score_result):
+        with patch.object(
+            scorer_engine, "score_lead", new_callable=AsyncMock, return_value=mock_score_result
+        ):
             result = await scorer_engine.score_batch(
                 db=mock_db_session,
                 lead_ids=lead_ids,
@@ -519,7 +553,9 @@ class TestBatchScoring:
             }
         )
 
-        with patch.object(scorer_engine, "score_lead", new_callable=AsyncMock, return_value=mock_score_result):
+        with patch.object(
+            scorer_engine, "score_lead", new_callable=AsyncMock, return_value=mock_score_result
+        ):
             result = await scorer_engine.score_batch(
                 db=mock_db_session,
                 lead_ids=lead_ids,

@@ -20,6 +20,7 @@ If context exhausts before calling, the learnings are lost — run it regularly.
 
 Exit codes: 0 on success, 1 on any write failure (reported via stderr).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -100,26 +101,18 @@ def main() -> int:
     written: list[str] = []
 
     if args.summary:
-        ok, result = _capture_item(
-            args.callsign, session_id, "daily_log", args.summary
-        )
-        (written if ok else errors).append(
-            f"daily_log {'→ ' + result if ok else ': ' + result}"
-        )
+        ok, result = _capture_item(args.callsign, session_id, "daily_log", args.summary)
+        (written if ok else errors).append(f"daily_log {'→ ' + result if ok else ': ' + result}")
 
     if args.patterns:
         for p in [s.strip() for s in args.patterns.split(",") if s.strip()]:
             ok, result = _capture_item(args.callsign, session_id, "pattern", p)
-            (written if ok else errors).append(
-                f"pattern {'→ ' + result if ok else ': ' + result}"
-            )
+            (written if ok else errors).append(f"pattern {'→ ' + result if ok else ': ' + result}")
 
     if args.decisions:
         for d in [s.strip() for s in args.decisions.split(",") if s.strip()]:
             ok, result = _capture_item(args.callsign, session_id, "decision", d)
-            (written if ok else errors).append(
-                f"decision {'→ ' + result if ok else ': ' + result}"
-            )
+            (written if ok else errors).append(f"decision {'→ ' + result if ok else ': ' + result}")
 
     for line in written:
         print(f"  OK {line}")

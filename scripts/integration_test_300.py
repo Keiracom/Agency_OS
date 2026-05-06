@@ -3,6 +3,7 @@ DIRECTIVE #300a (rerun) — Integration Test: Stage 1 Discovery
 Categories: 10514 dental, 10282 construction, 10163 legal
 ETV: 100-50000, cap 500/category, on-demand next_batch.
 """
+
 import asyncio
 import base64
 import json
@@ -14,46 +15,59 @@ from datetime import date, timedelta
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dotenv import load_dotenv
+
 load_dotenv("/home/elliotbot/.config/agency-os/.env")
 
 import httpx
 from src.config.settings import settings
 
-CATEGORY_CODES  = [10514, 10282, 10163]
-CATEGORY_NAMES  = {
+CATEGORY_CODES = [10514, 10282, 10163]
+CATEGORY_NAMES = {
     10514: "Dentists & Dental Services",
     10282: "Building Construction & Maintenance",
     10163: "Legal",
 }
-LOCATION  = "Australia"
-ETV_MIN   = 100.0
-ETV_MAX   = 50000.0
-CAP       = 500
-BATCH     = 100
-OUTPUT    = os.path.join(os.path.dirname(__file__), "output", "300a_rerun.json")
-DFS_URL   = "https://api.dataforseo.com/v3/dataforseo_labs/google/domain_metrics_by_categories/live"
+LOCATION = "Australia"
+ETV_MIN = 100.0
+ETV_MAX = 50000.0
+CAP = 500
+BATCH = 100
+OUTPUT = os.path.join(os.path.dirname(__file__), "output", "300a_rerun.json")
+DFS_URL = "https://api.dataforseo.com/v3/dataforseo_labs/google/domain_metrics_by_categories/live"
 
 
 def etv_bucket(etv):
-    if etv <= 500:   return "100-500"
-    if etv <= 1000:  return "501-1000"
-    if etv <= 5000:  return "1001-5000"
-    if etv <= 20000: return "5001-20000"
+    if etv <= 500:
+        return "100-500"
+    if etv <= 1000:
+        return "501-1000"
+    if etv <= 5000:
+        return "1001-5000"
+    if etv <= 20000:
+        return "5001-20000"
     return "20001-50000"
 
 
 async def fetch(client, b64, code, cap):
     today = date.today()
-    fd    = (today - timedelta(days=180)).strftime("%Y-%m-%d")
-    sd    = today.strftime("%Y-%m-%d")
-    hdrs  = {"Authorization": f"Basic {b64}", "Content-Type": "application/json"}
+    fd = (today - timedelta(days=180)).strftime("%Y-%m-%d")
+    sd = today.strftime("%Y-%m-%d")
+    hdrs = {"Authorization": f"Basic {b64}", "Content-Type": "application/json"}
 
     results, offset, total_count, calls = [], 0, None, 0
 
     while len(results) < cap:
-        payload = [{"category_codes": [code], "location_name": LOCATION,
-                    "language_name": "English", "first_date": fd, "second_date": sd,
-                    "limit": BATCH, "offset": offset}]
+        payload = [
+            {
+                "category_codes": [code],
+                "location_name": LOCATION,
+                "language_name": "English",
+                "first_date": fd,
+                "second_date": sd,
+                "limit": BATCH,
+                "offset": offset,
+            }
+        ]
         r = await client.post(DFS_URL, headers=hdrs, json=payload, timeout=30)
         r.raise_for_status()
         task = r.json()["tasks"][0]
@@ -83,12 +97,19 @@ async def fetch(client, b64, code, cap):
             if ETV_MIN <= etv <= ETV_MAX:
                 d = item.get("domain") or item.get("main_domain", "")
                 if d:
-                    results.append({"domain": d, "organic_etv": round(float(etv), 2),
-                                    "paid_etv": round(float(item.get("paid_etv") or 0), 2)})
+                    results.append(
+                        {
+                            "domain": d,
+                            "organic_etv": round(float(etv), 2),
+                            "paid_etv": round(float(item.get("paid_etv") or 0), 2),
+                        }
+                    )
                     in_range += 1
 
-        print(f"    offset={offset:5d} | batch_etv=[{min_etv:.0f}-{max_etv:.0f}] "
-              f"| in_range={in_range} | total_so_far={len(results)}")
+        print(
+            f"    offset={offset:5d} | batch_etv=[{min_etv:.0f}-{max_etv:.0f}] "
+            f"| in_range={in_range} | total_so_far={len(results)}"
+        )
 
         offset += len(items)
 
@@ -126,11 +147,18 @@ async def main():
             elapsed_cat = time.monotonic() - tc
             total_calls += calls
             dist = Counter(etv_bucket(d["organic_etv"]) for d in domains)
-            per_cat[code] = {"name": CATEGORY_NAMES[code], "total_pool": total_count,
-                             "fetched": len(domains), "calls": calls,
-                             "elapsed": round(elapsed_cat, 1), "distribution": dict(dist),
-                             "domains": domains}
-            print(f"  Pool: {total_count:,} | Fetched: {len(domains)} | Calls: {calls} | Time: {elapsed_cat:.1f}s")
+            per_cat[code] = {
+                "name": CATEGORY_NAMES[code],
+                "total_pool": total_count,
+                "fetched": len(domains),
+                "calls": calls,
+                "elapsed": round(elapsed_cat, 1),
+                "distribution": dict(dist),
+                "domains": domains,
+            }
+            print(
+                f"  Pool: {total_count:,} | Fetched: {len(domains)} | Calls: {calls} | Time: {elapsed_cat:.1f}s"
+            )
 
     elapsed = time.monotonic() - t0
     cost = total_calls * 0.10
@@ -184,12 +212,23 @@ async def main():
     os.makedirs(os.path.dirname(OUTPUT), exist_ok=True)
     output = {
         "stage": "300a_rerun",
-        "config": {"category_codes": CATEGORY_CODES, "location": LOCATION,
-                   "etv_min": ETV_MIN, "etv_max": ETV_MAX, "cap": CAP},
-        "summary": {"total_unique": len(all_unique), "total_calls": total_calls,
-                    "cost_usd": round(cost, 2), "elapsed_seconds": round(elapsed, 2),
-                    "per_category": {str(c): {k: v for k, v in per_cat[c].items() if k != "domains"}
-                                     for c in CATEGORY_CODES}},
+        "config": {
+            "category_codes": CATEGORY_CODES,
+            "location": LOCATION,
+            "etv_min": ETV_MIN,
+            "etv_max": ETV_MAX,
+            "cap": CAP,
+        },
+        "summary": {
+            "total_unique": len(all_unique),
+            "total_calls": total_calls,
+            "cost_usd": round(cost, 2),
+            "elapsed_seconds": round(elapsed, 2),
+            "per_category": {
+                str(c): {k: v for k, v in per_cat[c].items() if k != "domains"}
+                for c in CATEGORY_CODES
+            },
+        },
         "all_domains": all_unique,
         "per_category_full": {str(c): per_cat[c]["domains"] for c in CATEGORY_CODES},
     }

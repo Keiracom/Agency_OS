@@ -29,6 +29,7 @@ from src.integrations.bright_data_client import BrightDataClient
 # FIXTURES
 # ============================================
 
+
 @pytest.fixture
 def bright_data_client():
     """
@@ -57,8 +58,10 @@ def abn_client():
 # SHARED STATE FOR INTEGRATION TEST
 # ============================================
 
+
 class TestState:
     """Shared state for passing data between tests in integration."""
+
     gmb_result: dict = None
     business_name: str = None
     abn_result: dict = None
@@ -73,13 +76,16 @@ class TestState:
 # TEST CLASS
 # ============================================
 
+
 class TestLiveDiscoveryEnrichment:
     """
     Live end-to-end tests for the Siege Waterfall discovery/enrichment pipeline.
     Uses AdVisible (advisible.com.au) as test target.
     """
 
-    @pytest.mark.skip(reason="Live Bright Data API test — requires active credentials and live network. Run manually on demand, not in CI baseline.")
+    @pytest.mark.skip(
+        reason="Live Bright Data API test — requires active credentials and live network. Run manually on demand, not in CI baseline."
+    )
     @pytest.mark.asyncio
     async def test_gmb_discovery_advisible(self, bright_data_client):
         """
@@ -92,9 +98,7 @@ class TestLiveDiscoveryEnrichment:
 
         # Execute GMB search
         results = await bright_data_client.search_google_maps(
-            query="advisible",
-            location="Melbourne VIC",
-            max_results=5
+            query="advisible", location="Melbourne VIC", max_results=5
         )
 
         # Log raw result (truncated)
@@ -110,12 +114,14 @@ class TestLiveDiscoveryEnrichment:
 
         # Assert required fields present (flexible on exact field names)
         # Bright Data GMB returns various formats
-        has_name = any(k in result for k in ['title', 'name', 'business_name'])
-        has_address = any(k in result for k in ['address', 'location', 'formatted_address'])
-        has_website = any(k in result for k in ['website', 'url', 'domain'])
-        has_place_id = any(k in result for k in ['place_id', 'placeId', 'cid'])
+        has_name = any(k in result for k in ["title", "name", "business_name"])
+        has_address = any(k in result for k in ["address", "location", "formatted_address"])
+        has_website = any(k in result for k in ["website", "url", "domain"])
+        has_place_id = any(k in result for k in ["place_id", "placeId", "cid"])
 
-        print(f"Has name: {has_name}, Has address: {has_address}, Has website: {has_website}, Has place_id: {has_place_id}")
+        print(
+            f"Has name: {has_name}, Has address: {has_address}, Has website: {has_website}, Has place_id: {has_place_id}"
+        )
 
         assert has_name, "GMB result must contain business name"
         assert has_address, "GMB result must contain address"
@@ -127,7 +133,9 @@ class TestLiveDiscoveryEnrichment:
 
         # Store for integration test
         TestState.gmb_result = result
-        TestState.business_name = result.get('title') or result.get('name') or result.get('business_name', 'AdVisible')
+        TestState.business_name = (
+            result.get("title") or result.get("name") or result.get("business_name", "AdVisible")
+        )
 
         print(f"✓ GMB Discovery passed - Found: {TestState.business_name}")
 
@@ -166,10 +174,7 @@ class TestLiveDiscoveryEnrichment:
                 # Execute ABN search
                 try:
                     search_results = await abn_client.search_by_name(
-                        name=name,
-                        state=state,
-                        limit=5,
-                        active_only=True
+                        name=name, state=state, limit=5, active_only=True
                     )
                     if search_results:
                         results = search_results
@@ -187,30 +192,32 @@ class TestLiveDiscoveryEnrichment:
         print(f"Raw ABN results (truncated): {raw_str[:500]}...")
 
         # Assert at least 1 result
-        assert len(results) >= 1, f"Expected at least 1 ABN result for AdVisible (tried: {search_names})"
+        assert len(results) >= 1, (
+            f"Expected at least 1 ABN result for AdVisible (tried: {search_names})"
+        )
 
         # Get first result
         result = results[0]
         print(f"ABN Result: {result}")
 
         # Assert active ABN
-        assert result.get('status') == 'Active', "Expected active ABN"
+        assert result.get("status") == "Active", "Expected active ABN"
 
         # Get entity type - need to do full lookup for entity_type
-        abn = result.get('abn_raw') or result.get('abn', '').replace(' ', '')
+        abn = result.get("abn_raw") or result.get("abn", "").replace(" ", "")
         if abn:
             # Full ABN lookup to get entity type
             try:
                 full_result = await abn_client.search_by_abn(abn)
-                entity_type = full_result.get('entity_type', '')
-                entity_type_code = full_result.get('entity_type_code', '')
+                entity_type = full_result.get("entity_type", "")
+                entity_type_code = full_result.get("entity_type_code", "")
 
                 print(f"ABN: {full_result.get('abn')}")
                 print(f"Entity Type: {entity_type} ({entity_type_code})")
 
                 # Assert not individual/sole trader
-                assert entity_type_code != 'IND', "Expected non-individual entity"
-                assert 'Sole Trader' not in entity_type, "Expected non-sole trader entity"
+                assert entity_type_code != "IND", "Expected non-individual entity"
+                assert "Sole Trader" not in entity_type, "Expected non-sole trader entity"
 
                 TestState.abn_result = full_result
             except Exception as e:
@@ -224,7 +231,9 @@ class TestLiveDiscoveryEnrichment:
         # Cleanup
         await abn_client.close()
 
-    @pytest.mark.skip(reason="Live Bright Data API test — requires active credentials and live network. Run manually on demand, not in CI baseline.")
+    @pytest.mark.skip(
+        reason="Live Bright Data API test — requires active credentials and live network. Run manually on demand, not in CI baseline."
+    )
     @pytest.mark.asyncio
     async def test_linkedin_company_enrichment_advisible(self, bright_data_client):
         """
@@ -249,18 +258,29 @@ class TestLiveDiscoveryEnrichment:
         assert result, "Expected non-empty LinkedIn company result"
 
         # Check for employee_count or specialties
-        has_employees = any(k in result for k in ['employee_count', 'employees', 'staff_count', 'company_size', 'size'])
-        has_specialties = any(k in result for k in ['specialties', 'industries', 'industry', 'tags'])
+        has_employees = any(
+            k in result
+            for k in ["employee_count", "employees", "staff_count", "company_size", "size"]
+        )
+        has_specialties = any(
+            k in result for k in ["specialties", "industries", "industry", "tags"]
+        )
 
         print(f"Result keys: {result.keys()}")
         print(f"Has employees field: {has_employees}, Has specialties field: {has_specialties}")
 
         # At least one should be present
-        assert has_employees or has_specialties, "Expected employee_count or specialties in LinkedIn company data"
+        assert has_employees or has_specialties, (
+            "Expected employee_count or specialties in LinkedIn company data"
+        )
 
         # Log company size and industry
-        company_size = result.get('company_size') or result.get('employee_count') or result.get('size', 'Unknown')
-        industry = result.get('industry') or result.get('industries', 'Unknown')
+        company_size = (
+            result.get("company_size")
+            or result.get("employee_count")
+            or result.get("size", "Unknown")
+        )
+        industry = result.get("industry") or result.get("industries", "Unknown")
         print(f"Company Size: {company_size}")
         print(f"Industry: {industry}")
 
@@ -271,7 +291,9 @@ class TestLiveDiscoveryEnrichment:
         # Cleanup
         await bright_data_client.close()
 
-    @pytest.mark.skip(reason="Live Bright Data API test — requires active credentials and live network. Run manually on demand, not in CI baseline.")
+    @pytest.mark.skip(
+        reason="Live Bright Data API test — requires active credentials and live network. Run manually on demand, not in CI baseline."
+    )
     @pytest.mark.asyncio
     async def test_decision_maker_discovery_advisible(self, bright_data_client):
         """
@@ -286,10 +308,7 @@ class TestLiveDiscoveryEnrichment:
         print(f"Searching Google: {query}")
 
         # Execute Google search
-        results = await bright_data_client.search_google(
-            query=query,
-            max_results=10
-        )
+        results = await bright_data_client.search_google(query=query, max_results=10)
 
         # Log raw results (truncated)
         raw_str = str(results)
@@ -304,19 +323,21 @@ class TestLiveDiscoveryEnrichment:
         dm_title = None
 
         for result in results:
-            url = result.get('url') or result.get('link', '')
-            title = result.get('title', '')
+            url = result.get("url") or result.get("link", "")
+            title = result.get("title", "")
 
-            if 'linkedin.com/in/' in url.lower():
+            if "linkedin.com/in/" in url.lower():
                 linkedin_profile_url = url
                 # Parse name from title (usually "Name - Title | LinkedIn")
-                if ' - ' in title:
-                    dm_name = title.split(' - ')[0].strip()
-                    dm_title = title.split(' - ')[1].split(' | ')[0].strip() if ' | ' in title else ''
-                elif ' | ' in title:
-                    dm_name = title.split(' | ')[0].strip()
+                if " - " in title:
+                    dm_name = title.split(" - ")[0].strip()
+                    dm_title = (
+                        title.split(" - ")[1].split(" | ")[0].strip() if " | " in title else ""
+                    )
+                elif " | " in title:
+                    dm_name = title.split(" | ")[0].strip()
                 else:
-                    dm_name = title.replace(' | LinkedIn', '').strip()
+                    dm_name = title.replace(" | LinkedIn", "").strip()
                 break
 
         assert linkedin_profile_url, "Expected at least 1 result with linkedin.com/in/ URL"
@@ -334,7 +355,9 @@ class TestLiveDiscoveryEnrichment:
         # Cleanup
         await bright_data_client.close()
 
-    @pytest.mark.skip(reason="Live Bright Data API test — requires active credentials and live network. Run manually on demand, not in CI baseline.")
+    @pytest.mark.skip(
+        reason="Live Bright Data API test — requires active credentials and live network. Run manually on demand, not in CI baseline."
+    )
     @pytest.mark.asyncio
     async def test_linkedin_profile_enrichment_advisible(self, bright_data_client):
         """
@@ -353,11 +376,11 @@ class TestLiveDiscoveryEnrichment:
             print("No URL from T-DM, searching for fallback...")
             results = await bright_data_client.search_google(
                 query="AdVisible digital marketing agency founder LinkedIn Australia",
-                max_results=10
+                max_results=10,
             )
             for result in results:
-                url = result.get('url') or result.get('link', '')
-                if 'linkedin.com/in/' in url.lower():
+                url = result.get("url") or result.get("link", "")
+                if "linkedin.com/in/" in url.lower():
                     linkedin_url = url
                     break
 
@@ -377,8 +400,10 @@ class TestLiveDiscoveryEnrichment:
         assert result, "Expected non-empty LinkedIn profile result"
 
         # Check for headline or current_title
-        has_headline = any(k in result for k in ['headline', 'title', 'current_title', 'occupation'])
-        has_name = any(k in result for k in ['name', 'full_name', 'first_name'])
+        has_headline = any(
+            k in result for k in ["headline", "title", "current_title", "occupation"]
+        )
+        has_name = any(k in result for k in ["name", "full_name", "first_name"])
 
         print(f"Result keys: {result.keys()}")
         print(f"Has headline field: {has_headline}, Has name field: {has_name}")
@@ -386,8 +411,12 @@ class TestLiveDiscoveryEnrichment:
         assert has_headline or has_name, "Expected headline or name in LinkedIn profile data"
 
         # Log name and title
-        name = result.get('name') or result.get('full_name') or f"{result.get('first_name', '')} {result.get('last_name', '')}".strip()
-        title = result.get('headline') or result.get('title') or result.get('occupation', 'Unknown')
+        name = (
+            result.get("name")
+            or result.get("full_name")
+            or f"{result.get('first_name', '')} {result.get('last_name', '')}".strip()
+        )
+        title = result.get("headline") or result.get("title") or result.get("occupation", "Unknown")
 
         print(f"Name: {name}")
         print(f"Title: {title}")
@@ -399,7 +428,9 @@ class TestLiveDiscoveryEnrichment:
         # Cleanup
         await bright_data_client.close()
 
-    @pytest.mark.skip(reason="Live Bright Data API test — requires active credentials and live network. Run manually on demand, not in CI baseline.")
+    @pytest.mark.skip(
+        reason="Live Bright Data API test — requires active credentials and live network. Run manually on demand, not in CI baseline."
+    )
     @pytest.mark.asyncio
     async def test_full_pipeline_advisible(self, bright_data_client, abn_client):
         """
@@ -425,13 +456,13 @@ class TestLiveDiscoveryEnrichment:
         print("\n[T0] GMB Discovery...")
         try:
             gmb_results = await bright_data_client.search_google_maps(
-                query="advisible",
-                location="Melbourne VIC",
-                max_results=5
+                query="advisible", location="Melbourne VIC", max_results=5
             )
             if gmb_results and len(gmb_results) > 0:
                 summary["gmb_found"] = True
-                business_name = gmb_results[0].get('title') or gmb_results[0].get('name') or 'AdVisible'
+                business_name = (
+                    gmb_results[0].get("title") or gmb_results[0].get("name") or "AdVisible"
+                )
                 print(f"  ✓ Found: {business_name}")
             else:
                 print("  ✗ No GMB results")
@@ -448,10 +479,7 @@ class TestLiveDiscoveryEnrichment:
             for name in search_names:
                 try:
                     results = await abn_client.search_by_name(
-                        name=name,
-                        state=state,
-                        limit=5,
-                        active_only=True
+                        name=name, state=state, limit=5, active_only=True
                     )
                     if results:
                         abn_results = results
@@ -463,9 +491,9 @@ class TestLiveDiscoveryEnrichment:
                 break
 
         if abn_results and len(abn_results) > 0:
-            abn = abn_results[0].get('abn', '')
-            status = abn_results[0].get('status', '')
-            if status == 'Active':
+            abn = abn_results[0].get("abn", "")
+            status = abn_results[0].get("status", "")
+            if status == "Active":
                 summary["abn_verified"] = True
                 print(f"  ✓ ABN: {abn} (Active)")
             else:
@@ -481,7 +509,9 @@ class TestLiveDiscoveryEnrichment:
             )
             if linkedin_company:
                 summary["linkedin_company"] = True
-                size = linkedin_company.get('company_size') or linkedin_company.get('employee_count', 'Unknown')
+                size = linkedin_company.get("company_size") or linkedin_company.get(
+                    "employee_count", "Unknown"
+                )
                 print(f"  ✓ Company found, Size: {size}")
             else:
                 print("  ✗ No LinkedIn company data")
@@ -493,14 +523,13 @@ class TestLiveDiscoveryEnrichment:
         dm_linkedin_url = None
         try:
             dm_results = await bright_data_client.search_google(
-                query="AdVisible founder CEO LinkedIn Australia",
-                max_results=10
+                query="AdVisible founder CEO LinkedIn Australia", max_results=10
             )
             for result in dm_results:
-                url = result.get('url') or result.get('link', '')
-                if 'linkedin.com/in/' in url.lower():
+                url = result.get("url") or result.get("link", "")
+                if "linkedin.com/in/" in url.lower():
                     dm_linkedin_url = url
-                    title = result.get('title', '')
+                    title = result.get("title", "")
                     summary["dm_identified"] = True
                     print(f"  ✓ DM found: {title[:50]}...")
                     break
@@ -516,8 +545,8 @@ class TestLiveDiscoveryEnrichment:
                 dm_profile = await bright_data_client.scrape_linkedin_profile(dm_linkedin_url)
                 if dm_profile:
                     summary["dm_linkedin_profile"] = True
-                    name = dm_profile.get('name') or dm_profile.get('full_name', 'Unknown')
-                    headline = dm_profile.get('headline') or dm_profile.get('title', 'Unknown')
+                    name = dm_profile.get("name") or dm_profile.get("full_name", "Unknown")
+                    headline = dm_profile.get("headline") or dm_profile.get("title", "Unknown")
                     print(f"  ✓ Profile: {name} - {headline[:30]}...")
                 else:
                     print("  ✗ No profile data returned")

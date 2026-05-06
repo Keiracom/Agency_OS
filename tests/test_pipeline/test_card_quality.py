@@ -4,6 +4,7 @@ Tests for card quality fixes — Directive #305:
 - Location waterfall (resolve_location)
 - Placeholder filter (is_placeholder_email, is_placeholder_phone)
 """
+
 from __future__ import annotations
 
 import pytest
@@ -13,6 +14,7 @@ from src.pipeline.email_waterfall import is_placeholder_email, is_placeholder_ph
 
 
 # ── resolve_business_name ─────────────────────────────────────────────────────
+
 
 def test_abn_trading_name_priority():
     """ABN trading name wins over domain stem."""
@@ -61,6 +63,7 @@ def test_abn_legal_name_used_when_trading_empty():
 
 # ── resolve_location ──────────────────────────────────────────────────────────
 
+
 def test_gmb_address_suburb_state():
     """GMB address parsed to suburb + state."""
     gmb_data = {"gmb_address": "42 Main St, Parramatta NSW 2150"}
@@ -89,6 +92,7 @@ def test_australia_only_when_all_fail():
 
 # ── is_placeholder_email ──────────────────────────────────────────────────────
 
+
 def test_placeholder_email_exact_match():
     assert is_placeholder_email("example@mail.com") is True
 
@@ -102,6 +106,7 @@ def test_real_email_passes():
 
 
 # ── is_placeholder_phone ─────────────────────────────────────────────────────
+
 
 def test_placeholder_phone_all_same_digit():
     assert is_placeholder_phone("0000000000") is True

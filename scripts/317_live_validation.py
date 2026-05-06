@@ -20,6 +20,7 @@ Location: national (Australia) — no geographic filter
 Matches production v7 cycle behaviour for a generalist agency profile.
     --output PATH   JSON output file (default: scripts/output/317_validation.json)
 """
+
 from __future__ import annotations
 
 import argparse
@@ -78,7 +79,8 @@ async def run_validation(
         co_credits = domains  # worst-case: 1 credit per domain
         logger.warning(
             "LIVE RUN — estimated cost: ~$%.2f AUD, ~%d ContactOut credits",
-            approx_aud, co_credits,
+            approx_aud,
+            co_credits,
         )
 
     start = time.time()
@@ -87,6 +89,7 @@ async def run_validation(
     env_file = Path("/home/elliotbot/.config/agency-os/.env")
     if env_file.exists():
         from dotenv import load_dotenv
+
         load_dotenv(env_file)
         logger.info("Loaded env from %s", env_file)
     else:
@@ -112,6 +115,7 @@ async def run_validation(
             from src.pipeline.email_waterfall import discover_email
             from src.pipeline.mobile_waterfall import run_mobile_waterfall
             from src.pipeline.pipeline_orchestrator import PipelineOrchestrator
+
             logger.info("All imports OK")
         except ImportError as e:
             logger.error("Import failed: %s", e)
@@ -137,7 +141,12 @@ async def run_validation(
             random.seed(42)  # Deterministic for reproducibility
             rotation_size = min(5, len(all_cats))
             category_codes = random.sample(all_cats, rotation_size)
-            logger.info("Multi-category rotation: %d of %d categories selected: %s", rotation_size, len(all_cats), category_codes)
+            logger.info(
+                "Multi-category rotation: %d of %d categories selected: %s",
+                rotation_size,
+                len(all_cats),
+                category_codes,
+            )
 
             # Build injectable dependencies
             # Strip SQLAlchemy dialect prefix — asyncpg needs plain postgresql://
@@ -155,7 +164,11 @@ async def run_validation(
             # Layer2Discovery.pull_batch() is broken (no offset forwarding, no pagination).
             # See #317.3 diagnosis for details.
             discovery = MultiCategoryDiscovery(dfs_client)
-            logger.info("Discovery class: %s (has next_batch: %s)", type(discovery).__name__, hasattr(discovery, 'next_batch'))
+            logger.info(
+                "Discovery class: %s (has next_batch: %s)",
+                type(discovery).__name__,
+                hasattr(discovery, "next_batch"),
+            )
             free_enrichment = FreeEnrichment(conn=pool)
             scorer = ProspectScorer()
             dm_identification = DMIdentification(bd_client=bd_client, dfs_client=dfs_client)
@@ -194,20 +207,22 @@ async def run_validation(
             await pool.close()
 
             for card in pipeline_result.prospects:
-                results.append({
-                    "domain": card.domain,
-                    "company_name": card.company_name,
-                    "dm_name": card.dm_name,
-                    "dm_email": card.dm_email,
-                    "dm_email_source": card.dm_email_source,
-                    "dm_email_confidence": card.dm_email_confidence,
-                    "dm_email_verified": card.dm_email_verified,
-                    "dm_mobile": card.dm_mobile,
-                    "dm_mobile_source": card.dm_mobile_source,
-                    "dm_mobile_tier": card.dm_mobile_tier,
-                    "intent_score": card.intent_score,
-                    "affordability_score": card.affordability_score,
-                })
+                results.append(
+                    {
+                        "domain": card.domain,
+                        "company_name": card.company_name,
+                        "dm_name": card.dm_name,
+                        "dm_email": card.dm_email,
+                        "dm_email_source": card.dm_email_source,
+                        "dm_email_confidence": card.dm_email_confidence,
+                        "dm_email_verified": card.dm_email_verified,
+                        "dm_mobile": card.dm_mobile,
+                        "dm_mobile_source": card.dm_mobile_source,
+                        "dm_mobile_tier": card.dm_mobile_tier,
+                        "intent_score": card.intent_score,
+                        "affordability_score": card.affordability_score,
+                    }
+                )
 
             stats = pipeline_result.stats
             logger.info(
@@ -223,12 +238,8 @@ async def run_validation(
     elapsed = time.time() - start
 
     # ── Metrics ───────────────────────────────────────────────────────────────
-    contactout_hits = sum(
-        1 for r in results if r.get("dm_email_source") == "contactout"
-    )
-    mobile_hits = sum(
-        1 for r in results if r.get("dm_mobile_source") == "contactout"
-    )
+    contactout_hits = sum(1 for r in results if r.get("dm_email_source") == "contactout")
+    mobile_hits = sum(1 for r in results if r.get("dm_mobile_source") == "contactout")
 
     summary = {
         "run_at": datetime.utcnow().isoformat(),
@@ -274,9 +285,13 @@ async def run_validation(
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Directive #317 live v7 validation run (multi-category, national)")
+    parser = argparse.ArgumentParser(
+        description="Directive #317 live v7 validation run (multi-category, national)"
+    )
     parser.add_argument("--domains", type=int, default=10, help="Number of domains to process")
-    parser.add_argument("--dry-run", action="store_true", help="Skip paid API calls (import check only)")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Skip paid API calls (import check only)"
+    )
     parser.add_argument(
         "--output",
         default="scripts/output/317_validation.json",

@@ -43,7 +43,7 @@ def mock_lead():
 @pytest.fixture
 def mock_db():
     """Create a mock async database session.
-    
+
     Uses MagicMock base with async commit() to avoid RuntimeWarnings
     from sync methods like db.add() returning unawaited coroutines.
     """
@@ -64,17 +64,19 @@ class TestEmailCISWiring:
     """Test CIS wiring in email engine."""
 
     @pytest.mark.asyncio
-    async def test_email_sent_calls_record_outreach_outcome(self, mock_lead, mock_db, mock_activity):
+    async def test_email_sent_calls_record_outreach_outcome(
+        self, mock_lead, mock_db, mock_activity
+    ):
         """Test: email send calls record_outreach_outcome with correct channel + fields."""
         campaign_id = uuid4()
         subject = "Test Subject"
         sequence_step = 1
-        
+
         with patch("src.engines.email.Activity", return_value=mock_activity):
             with patch("src.services.cis_service.get_cis_service") as mock_get_cis:
                 mock_cis_service = AsyncMock()
                 mock_get_cis.return_value = mock_cis_service
-                
+
                 engine = EmailEngine()
                 await engine._log_activity(
                     db=mock_db,
@@ -88,11 +90,11 @@ class TestEmailCISWiring:
                     content_preview="Test content",
                     html_content="<p>Test content</p>",
                 )
-                
+
                 # Verify CIS service was called
                 mock_cis_service.record_outreach_outcome.assert_called_once()
                 call_args = mock_cis_service.record_outreach_outcome.call_args
-                
+
                 # Verify correct arguments
                 assert call_args.kwargs["activity_id"] == mock_activity.id
                 assert call_args.kwargs["lead_id"] == mock_lead.id
@@ -112,7 +114,7 @@ class TestEmailCISWiring:
             with patch("src.services.cis_service.get_cis_service") as mock_get_cis:
                 mock_cis_service = AsyncMock()
                 mock_get_cis.return_value = mock_cis_service
-                
+
                 engine = EmailEngine()
                 await engine._log_activity(
                     db=mock_db,
@@ -120,7 +122,7 @@ class TestEmailCISWiring:
                     campaign_id=uuid4(),
                     action="bounced",  # Not "sent"
                 )
-                
+
                 # CIS should NOT be called for non-sent actions
                 mock_cis_service.record_outreach_outcome.assert_not_called()
 
@@ -132,7 +134,7 @@ class TestEmailCISWiring:
                 mock_cis_service = AsyncMock()
                 mock_cis_service.record_outreach_outcome.side_effect = Exception("CIS DB error")
                 mock_get_cis.return_value = mock_cis_service
-                
+
                 engine = EmailEngine()
                 # Should NOT raise even though CIS fails
                 await engine._log_activity(
@@ -141,7 +143,7 @@ class TestEmailCISWiring:
                     campaign_id=uuid4(),
                     action="sent",
                 )
-                
+
                 # Verify activity was still committed
                 mock_db.add.assert_called_once()
                 mock_db.commit.assert_called_once()
@@ -151,16 +153,18 @@ class TestLinkedInCISWiring:
     """Test CIS wiring in LinkedIn engine."""
 
     @pytest.mark.asyncio
-    async def test_linkedin_sent_calls_record_outreach_outcome(self, mock_lead, mock_db, mock_activity):
+    async def test_linkedin_sent_calls_record_outreach_outcome(
+        self, mock_lead, mock_db, mock_activity
+    ):
         """Test: linkedin send calls record_outreach_outcome with channel=linkedin."""
         campaign_id = uuid4()
         sequence_step = 2
-        
+
         with patch("src.engines.linkedin.Activity", return_value=mock_activity):
             with patch("src.services.cis_service.get_cis_service") as mock_get_cis:
                 mock_cis_service = AsyncMock()
                 mock_get_cis.return_value = mock_cis_service
-                
+
                 engine = LinkedInEngine()
                 await engine._log_activity(
                     db=mock_db,
@@ -172,11 +176,11 @@ class TestLinkedInCISWiring:
                     message_content="Test LinkedIn message",
                     sequence_step=sequence_step,
                 )
-                
+
                 # Verify CIS service was called
                 mock_cis_service.record_outreach_outcome.assert_called_once()
                 call_args = mock_cis_service.record_outreach_outcome.call_args
-                
+
                 # Verify correct arguments
                 assert call_args.kwargs["activity_id"] == mock_activity.id
                 assert call_args.kwargs["lead_id"] == mock_lead.id
@@ -196,7 +200,7 @@ class TestLinkedInCISWiring:
             with patch("src.services.cis_service.get_cis_service") as mock_get_cis:
                 mock_cis_service = AsyncMock()
                 mock_get_cis.return_value = mock_cis_service
-                
+
                 engine = LinkedInEngine()
                 await engine._log_activity(
                     db=mock_db,
@@ -204,7 +208,7 @@ class TestLinkedInCISWiring:
                     campaign_id=uuid4(),
                     action="connection_request",  # Not "sent"
                 )
-                
+
                 # CIS should NOT be called for non-sent actions
                 mock_cis_service.record_outreach_outcome.assert_not_called()
 
@@ -216,7 +220,7 @@ class TestLinkedInCISWiring:
                 mock_cis_service = AsyncMock()
                 mock_cis_service.record_outreach_outcome.side_effect = Exception("CIS DB error")
                 mock_get_cis.return_value = mock_cis_service
-                
+
                 engine = LinkedInEngine()
                 # Should NOT raise even though CIS fails
                 await engine._log_activity(
@@ -225,7 +229,7 @@ class TestLinkedInCISWiring:
                     campaign_id=uuid4(),
                     action="sent",
                 )
-                
+
                 # Verify activity was still committed
                 mock_db.add.assert_called_once()
                 mock_db.commit.assert_called_once()
@@ -239,12 +243,12 @@ class TestSMSCISWiring:
         """Test: sms send calls record_outreach_outcome with channel=sms."""
         campaign_id = uuid4()
         sequence_step = 1
-        
+
         with patch("src.engines.sms.Activity", return_value=mock_activity):
             with patch("src.services.cis_service.get_cis_service") as mock_get_cis:
                 mock_cis_service = AsyncMock()
                 mock_get_cis.return_value = mock_cis_service
-                
+
                 engine = SMSEngine()
                 await engine._log_activity(
                     db=mock_db,
@@ -257,11 +261,11 @@ class TestSMSCISWiring:
                     sequence_step=sequence_step,
                     from_number="+61400000000",
                 )
-                
+
                 # Verify CIS service was called
                 mock_cis_service.record_outreach_outcome.assert_called_once()
                 call_args = mock_cis_service.record_outreach_outcome.call_args
-                
+
                 # Verify correct arguments
                 assert call_args.kwargs["activity_id"] == mock_activity.id
                 assert call_args.kwargs["lead_id"] == mock_lead.id
@@ -281,7 +285,7 @@ class TestSMSCISWiring:
             with patch("src.services.cis_service.get_cis_service") as mock_get_cis:
                 mock_cis_service = AsyncMock()
                 mock_get_cis.return_value = mock_cis_service
-                
+
                 engine = SMSEngine()
                 await engine._log_activity(
                     db=mock_db,
@@ -289,7 +293,7 @@ class TestSMSCISWiring:
                     campaign_id=uuid4(),
                     action="delivered",  # Not "sent"
                 )
-                
+
                 # CIS should NOT be called for non-sent actions
                 mock_cis_service.record_outreach_outcome.assert_not_called()
 
@@ -301,7 +305,7 @@ class TestSMSCISWiring:
                 mock_cis_service = AsyncMock()
                 mock_cis_service.record_outreach_outcome.side_effect = Exception("CIS DB error")
                 mock_get_cis.return_value = mock_cis_service
-                
+
                 engine = SMSEngine()
                 # Should NOT raise even though CIS fails
                 await engine._log_activity(
@@ -310,7 +314,7 @@ class TestSMSCISWiring:
                     campaign_id=uuid4(),
                     action="sent",
                 )
-                
+
                 # Verify activity was still committed
                 mock_db.add.assert_called_once()
                 mock_db.commit.assert_called_once()
@@ -320,32 +324,36 @@ class TestCISWiringIntegration:
     """Cross-channel integration tests."""
 
     @pytest.mark.asyncio
-    async def test_all_channels_use_same_cis_service_method(self, mock_lead, mock_db, mock_activity):
+    async def test_all_channels_use_same_cis_service_method(
+        self, mock_lead, mock_db, mock_activity
+    ):
         """Verify all channels call the same record_outreach_outcome method."""
         engines = [
             ("email", EmailEngine(), "src.engines.email"),
             ("linkedin", LinkedInEngine(), "src.engines.linkedin"),
             ("sms", SMSEngine(), "src.engines.sms"),
         ]
-        
+
         for channel, engine, module_path in engines:
             with patch(f"{module_path}.Activity", return_value=mock_activity):
                 with patch("src.services.cis_service.get_cis_service") as mock_get_cis:
                     mock_cis_service = AsyncMock()
                     mock_get_cis.return_value = mock_cis_service
-                    
+
                     await engine._log_activity(
                         db=mock_db,
                         lead=mock_lead,
                         campaign_id=uuid4(),
                         action="sent",
                     )
-                    
+
                     # Verify record_outreach_outcome was called (not some other method)
-                    assert mock_cis_service.record_outreach_outcome.called, \
+                    assert mock_cis_service.record_outreach_outcome.called, (
                         f"{channel} engine did not call record_outreach_outcome"
-                    
+                    )
+
                     # Verify the channel parameter matches
                     call_args = mock_cis_service.record_outreach_outcome.call_args
-                    assert call_args.kwargs["channel"] == channel, \
+                    assert call_args.kwargs["channel"] == channel, (
                         f"{channel} engine passed wrong channel: {call_args.kwargs['channel']}"
+                    )

@@ -110,7 +110,9 @@ class TestSuppressionAndConversion:
 
 class TestGetChannelForStep:
     def test_preferred_email_returned_when_available(self):
-        assert get_channel_for_step(1, has_email=True, has_phone=False, has_linkedin=False) == "email"
+        assert (
+            get_channel_for_step(1, has_email=True, has_phone=False, has_linkedin=False) == "email"
+        )
 
     def test_falls_back_to_linkedin_when_no_email(self):
         # Step 1 prefers email; linkedin is next in fallback order

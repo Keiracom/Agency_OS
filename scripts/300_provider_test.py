@@ -34,7 +34,9 @@ dental = [d for d in with_li if d.get("category") == "Dental"][:4]
 construction = [d for d in with_li if d.get("category") == "Construction"][:3]
 legal = [d for d in with_li if d.get("category") == "Legal"][:3]
 sample = dental + construction + legal
-print(f"\nSelected {len(sample)} leads: {len(dental)} dental, {len(construction)} construction, {len(legal)} legal")
+print(
+    f"\nSelected {len(sample)} leads: {len(dental)} dental, {len(construction)} construction, {len(legal)} legal"
+)
 
 
 def call_contactout(linkedin_url: str) -> dict:
@@ -184,7 +186,9 @@ for provider in ["contactout", "forager"]:
     emails = sum(1 for r in results if r[provider]["email_found"])
     mobiles = sum(1 for r in results if r[provider]["mobile_found"])
     both = sum(1 for r in results if r[provider]["email_found"] and r[provider]["mobile_found"])
-    neither = sum(1 for r in results if not r[provider]["email_found"] and not r[provider]["mobile_found"])
+    neither = sum(
+        1 for r in results if not r[provider]["email_found"] and not r[provider]["mobile_found"]
+    )
     avg_ms = sum(r[provider]["response_time_ms"] for r in results) / len(results)
     errors = [r[provider]["error"] for r in results if r[provider]["error"]]
 

@@ -46,6 +46,7 @@ FLAT_PAYLOAD = {
 # extract_prospect_from_booking
 # ---------------------------------------------------------------------------
 
+
 class TestExtractProspectFromBooking:
     def test_calendly_shape(self):
         prospect = extract_prospect_from_booking(CALENDLY_PAYLOAD)
@@ -76,6 +77,7 @@ class TestExtractProspectFromBooking:
 # ---------------------------------------------------------------------------
 # pause_prospect_cadence
 # ---------------------------------------------------------------------------
+
 
 class TestPauseProspectCadence:
     def test_returns_paused_false_without_supabase(self):
@@ -117,6 +119,7 @@ class TestPauseProspectCadence:
 # create_deal_from_booking
 # ---------------------------------------------------------------------------
 
+
 class TestCreateDealFromBooking:
     def test_deal_shape(self):
         with patch("src.pipeline.booking_handler._HAS_SUPABASE", False):
@@ -150,6 +153,7 @@ class TestCreateDealFromBooking:
 # ---------------------------------------------------------------------------
 # handle_booking_webhook — integration of all helpers
 # ---------------------------------------------------------------------------
+
 
 class TestHandleBookingWebhook:
     def test_missing_email_returns_error(self):

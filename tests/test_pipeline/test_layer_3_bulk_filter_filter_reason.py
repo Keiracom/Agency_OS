@@ -6,6 +6,7 @@ filter_reason to business_universe (BU Closed-Loop S1 acceptance gate).
 We do NOT hit a real DB; we mock asyncpg.Connection and assert that the SQL
 UPDATE issued for each drop branch carries the expected filter_reason value.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -68,11 +69,18 @@ async def test_layer3_drop_below_threshold_writes_specific_filter_reason(monkeyp
     conn = _make_conn(rows)
 
     dfs = MagicMock()
-    dfs.bulk_domain_metrics = AsyncMock(return_value=[
-        # Returned by DFS, but every metric is below threshold → drop.
-        {"domain": "weak.com.au", "organic_etv": 0.0,
-         "paid_etv": 0.0, "backlinks_count": 0, "domain_rank": 0},
-    ])
+    dfs.bulk_domain_metrics = AsyncMock(
+        return_value=[
+            # Returned by DFS, but every metric is below threshold → drop.
+            {
+                "domain": "weak.com.au",
+                "organic_etv": 0.0,
+                "paid_etv": 0.0,
+                "backlinks_count": 0,
+                "domain_rank": 0,
+            },
+        ]
+    )
 
     _patch_signal_repo(monkeypatch)
     engine = Layer3BulkFilter(conn, dfs)

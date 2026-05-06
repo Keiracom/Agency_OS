@@ -1,4 +1,5 @@
 """Tests for domain_blocklist utility. Directive #267"""
+
 from src.utils.domain_blocklist import is_blocked
 
 

@@ -7,6 +7,7 @@ The Resend Python SDK (`pip install resend`) is the canonical client.
 We keep the wrapper minimal so route handlers don't need to know about
 SDK shape.
 """
+
 from __future__ import annotations
 
 import base64
@@ -32,9 +33,7 @@ def _build_client():
     try:
         import resend  # type: ignore
     except ImportError as exc:
-        raise ResendError(
-            "resend package not installed. Run: pip install 'resend>=0.8.0'"
-        ) from exc
+        raise ResendError("resend package not installed. Run: pip install 'resend>=0.8.0'") from exc
     resend.api_key = api_key
     return resend
 
@@ -52,7 +51,8 @@ def send_email(
     if not body_html and not body_text:
         raise ResendError("either body_html or body_text is required")
     sender = from_address or os.environ.get(
-        "RESEND_DEFAULT_FROM", "noreply@keiracom.com",
+        "RESEND_DEFAULT_FROM",
+        "noreply@keiracom.com",
     )
     resend = _build_client()
     payload: dict[str, Any] = {
@@ -89,13 +89,13 @@ def verify_webhook_signature(raw_body: bytes, signature_header: str | None) -> b
         return False
     secret = os.environ.get("RESEND_WEBHOOK_SECRET", "")
     if not secret:
-        logger.warning(
-            "[resend_client] RESEND_WEBHOOK_SECRET unset — rejecting webhook"
-        )
+        logger.warning("[resend_client] RESEND_WEBHOOK_SECRET unset — rejecting webhook")
         return False
     try:
         digest = hmac.new(
-            secret.encode("utf-8"), raw_body, hashlib.sha256,
+            secret.encode("utf-8"),
+            raw_body,
+            hashlib.sha256,
         ).digest()
         expected_b64 = base64.b64encode(digest).decode("ascii")
     except Exception as exc:
@@ -110,10 +110,8 @@ def verify_webhook_signature(raw_body: bytes, signature_header: str | None) -> b
         if not token:
             continue
         if token.startswith("v1,"):
-            candidates.append(token[len("v1,"):])
+            candidates.append(token[len("v1,") :])
         else:
             # Bare token (no version prefix) — accept verbatim.
             candidates.append(token)
-    return any(
-        hmac.compare_digest(expected_b64, c) for c in candidates
-    )
+    return any(hmac.compare_digest(expected_b64, c) for c in candidates)

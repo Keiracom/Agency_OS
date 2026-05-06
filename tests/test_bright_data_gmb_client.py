@@ -1,4 +1,5 @@
 """Tests for BrightDataGMBClient — Directive #260"""
+
 import pytest
 from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch, call
@@ -38,7 +39,9 @@ async def test_search_returns_mapped_result():
         "address": "123 Main St, Sydney NSW 2000",
     }
     with patch.object(client, "_trigger_snapshot", new_callable=AsyncMock, return_value="snap123"):
-        with patch.object(client, "_poll_and_fetch", new_callable=AsyncMock, return_value=[raw_result]):
+        with patch.object(
+            client, "_poll_and_fetch", new_callable=AsyncMock, return_value=[raw_result]
+        ):
             result = await client.search_by_name("Acme Marketing")
     assert result is not None
     assert result["gmb_place_id"] == "ChIJ123"

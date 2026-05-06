@@ -129,11 +129,21 @@ class TestCampaignMetrics:
         with patch.object(reporter_engine, "get_campaign_by_id", return_value=mock_campaign):
             # Mock activities
             activities = [
-                create_mock_activity(mock_campaign.id, uuid4(), mock_campaign.client_id, "email", "sent"),
-                create_mock_activity(mock_campaign.id, uuid4(), mock_campaign.client_id, "email", "delivered"),
-                create_mock_activity(mock_campaign.id, uuid4(), mock_campaign.client_id, "email", "opened"),
-                create_mock_activity(mock_campaign.id, uuid4(), mock_campaign.client_id, "email", "clicked"),
-                create_mock_activity(mock_campaign.id, uuid4(), mock_campaign.client_id, "email", "replied"),
+                create_mock_activity(
+                    mock_campaign.id, uuid4(), mock_campaign.client_id, "email", "sent"
+                ),
+                create_mock_activity(
+                    mock_campaign.id, uuid4(), mock_campaign.client_id, "email", "delivered"
+                ),
+                create_mock_activity(
+                    mock_campaign.id, uuid4(), mock_campaign.client_id, "email", "opened"
+                ),
+                create_mock_activity(
+                    mock_campaign.id, uuid4(), mock_campaign.client_id, "email", "clicked"
+                ),
+                create_mock_activity(
+                    mock_campaign.id, uuid4(), mock_campaign.client_id, "email", "replied"
+                ),
             ]
 
             # Mock database query
@@ -165,13 +175,29 @@ class TestCampaignMetrics:
             # Create 10 sent, 9 delivered, 5 opened, 2 clicked
             activities = []
             for _ in range(10):
-                activities.append(create_mock_activity(mock_campaign.id, uuid4(), mock_campaign.client_id, "email", "sent"))
+                activities.append(
+                    create_mock_activity(
+                        mock_campaign.id, uuid4(), mock_campaign.client_id, "email", "sent"
+                    )
+                )
             for _ in range(9):
-                activities.append(create_mock_activity(mock_campaign.id, uuid4(), mock_campaign.client_id, "email", "delivered"))
+                activities.append(
+                    create_mock_activity(
+                        mock_campaign.id, uuid4(), mock_campaign.client_id, "email", "delivered"
+                    )
+                )
             for _ in range(5):
-                activities.append(create_mock_activity(mock_campaign.id, uuid4(), mock_campaign.client_id, "email", "opened"))
+                activities.append(
+                    create_mock_activity(
+                        mock_campaign.id, uuid4(), mock_campaign.client_id, "email", "opened"
+                    )
+                )
             for _ in range(2):
-                activities.append(create_mock_activity(mock_campaign.id, uuid4(), mock_campaign.client_id, "email", "clicked"))
+                activities.append(
+                    create_mock_activity(
+                        mock_campaign.id, uuid4(), mock_campaign.client_id, "email", "clicked"
+                    )
+                )
 
             mock_result = MagicMock()
             mock_result.scalars.return_value.all.return_value = activities
@@ -201,11 +227,21 @@ class TestCampaignMetrics:
         """Test campaign metrics with multiple channels."""
         with patch.object(reporter_engine, "get_campaign_by_id", return_value=mock_campaign):
             activities = [
-                create_mock_activity(mock_campaign.id, uuid4(), mock_campaign.client_id, "email", "sent"),
-                create_mock_activity(mock_campaign.id, uuid4(), mock_campaign.client_id, "sms", "sent"),
-                create_mock_activity(mock_campaign.id, uuid4(), mock_campaign.client_id, "linkedin", "sent"),
-                create_mock_activity(mock_campaign.id, uuid4(), mock_campaign.client_id, "email", "replied"),
-                create_mock_activity(mock_campaign.id, uuid4(), mock_campaign.client_id, "sms", "replied"),
+                create_mock_activity(
+                    mock_campaign.id, uuid4(), mock_campaign.client_id, "email", "sent"
+                ),
+                create_mock_activity(
+                    mock_campaign.id, uuid4(), mock_campaign.client_id, "sms", "sent"
+                ),
+                create_mock_activity(
+                    mock_campaign.id, uuid4(), mock_campaign.client_id, "linkedin", "sent"
+                ),
+                create_mock_activity(
+                    mock_campaign.id, uuid4(), mock_campaign.client_id, "email", "replied"
+                ),
+                create_mock_activity(
+                    mock_campaign.id, uuid4(), mock_campaign.client_id, "sms", "replied"
+                ),
             ]
 
             mock_result = MagicMock()
@@ -270,7 +306,9 @@ class TestClientMetrics:
             # Mock activities query
             activities = [
                 create_mock_activity(mock_campaign.id, uuid4(), mock_client.id, "email", "sent"),
-                create_mock_activity(mock_campaign.id, uuid4(), mock_client.id, "email", "delivered"),
+                create_mock_activity(
+                    mock_campaign.id, uuid4(), mock_client.id, "email", "delivered"
+                ),
                 create_mock_activity(mock_campaign.id, uuid4(), mock_client.id, "email", "replied"),
             ]
             activities_result = MagicMock()
@@ -334,9 +372,7 @@ class TestALSDistribution:
     """Test ALS tier distribution."""
 
     @pytest.mark.asyncio
-    async def test_get_als_distribution_campaign(
-        self, reporter_engine, mock_db_session
-    ):
+    async def test_get_als_distribution_campaign(self, reporter_engine, mock_db_session):
         """Test ALS distribution for a campaign."""
         campaign_id = uuid4()
 
@@ -364,9 +400,7 @@ class TestALSDistribution:
         assert result.data["percentages"]["hot"] == 12.5  # 5/40 = 12.5%
 
     @pytest.mark.asyncio
-    async def test_get_als_distribution_client(
-        self, reporter_engine, mock_db_session
-    ):
+    async def test_get_als_distribution_client(self, reporter_engine, mock_db_session):
         """Test ALS distribution for a client."""
         client_id = uuid4()
 
@@ -388,9 +422,7 @@ class TestALSDistribution:
         assert result.data["distribution"]["warm"] == 20
 
     @pytest.mark.asyncio
-    async def test_get_als_distribution_requires_filter(
-        self, reporter_engine, mock_db_session
-    ):
+    async def test_get_als_distribution_requires_filter(self, reporter_engine, mock_db_session):
         """Test ALS distribution requires campaign_id or client_id."""
         result = await reporter_engine.get_als_distribution(
             db=mock_db_session,
@@ -409,16 +441,37 @@ class TestLeadEngagement:
     """Test lead engagement metrics."""
 
     @pytest.mark.asyncio
-    async def test_get_lead_engagement_success(
-        self, reporter_engine, mock_db_session, mock_lead
-    ):
+    async def test_get_lead_engagement_success(self, reporter_engine, mock_db_session, mock_lead):
         """Test successful lead engagement retrieval."""
         with patch.object(reporter_engine, "get_lead_by_id", return_value=mock_lead):
             activities = [
-                create_mock_activity(uuid4(), mock_lead.id, uuid4(), "email", "sent", datetime.now(UTC) - timedelta(days=2)),
-                create_mock_activity(uuid4(), mock_lead.id, uuid4(), "email", "opened", datetime.now(UTC) - timedelta(days=1)),
-                create_mock_activity(uuid4(), mock_lead.id, uuid4(), "email", "clicked", datetime.now(UTC) - timedelta(hours=12)),
-                create_mock_activity(uuid4(), mock_lead.id, uuid4(), "email", "replied", datetime.now(UTC)),
+                create_mock_activity(
+                    uuid4(),
+                    mock_lead.id,
+                    uuid4(),
+                    "email",
+                    "sent",
+                    datetime.now(UTC) - timedelta(days=2),
+                ),
+                create_mock_activity(
+                    uuid4(),
+                    mock_lead.id,
+                    uuid4(),
+                    "email",
+                    "opened",
+                    datetime.now(UTC) - timedelta(days=1),
+                ),
+                create_mock_activity(
+                    uuid4(),
+                    mock_lead.id,
+                    uuid4(),
+                    "email",
+                    "clicked",
+                    datetime.now(UTC) - timedelta(hours=12),
+                ),
+                create_mock_activity(
+                    uuid4(), mock_lead.id, uuid4(), "email", "replied", datetime.now(UTC)
+                ),
             ]
 
             mock_result = MagicMock()
@@ -441,9 +494,7 @@ class TestLeadEngagement:
             assert result.data["engagement_summary"]["is_engaged"] is True
 
     @pytest.mark.asyncio
-    async def test_get_lead_engagement_timeline(
-        self, reporter_engine, mock_db_session, mock_lead
-    ):
+    async def test_get_lead_engagement_timeline(self, reporter_engine, mock_db_session, mock_lead):
         """Test lead engagement includes timeline."""
         with patch.object(reporter_engine, "get_lead_by_id", return_value=mock_lead):
             activities = [
@@ -475,18 +526,24 @@ class TestDailyActivity:
     """Test daily activity metrics."""
 
     @pytest.mark.asyncio
-    async def test_get_daily_activity_success(
-        self, reporter_engine, mock_db_session, mock_client
-    ):
+    async def test_get_daily_activity_success(self, reporter_engine, mock_db_session, mock_client):
         """Test successful daily activity retrieval."""
         with patch.object(reporter_engine, "validate_client_active", return_value=True):
             # Create activities at different hours
             now = datetime.now(UTC)
             activities = [
-                create_mock_activity(uuid4(), uuid4(), mock_client.id, "email", "sent", now.replace(hour=9)),
-                create_mock_activity(uuid4(), uuid4(), mock_client.id, "email", "sent", now.replace(hour=9)),
-                create_mock_activity(uuid4(), uuid4(), mock_client.id, "sms", "sent", now.replace(hour=14)),
-                create_mock_activity(uuid4(), uuid4(), mock_client.id, "email", "opened", now.replace(hour=15)),
+                create_mock_activity(
+                    uuid4(), uuid4(), mock_client.id, "email", "sent", now.replace(hour=9)
+                ),
+                create_mock_activity(
+                    uuid4(), uuid4(), mock_client.id, "email", "sent", now.replace(hour=9)
+                ),
+                create_mock_activity(
+                    uuid4(), uuid4(), mock_client.id, "sms", "sent", now.replace(hour=14)
+                ),
+                create_mock_activity(
+                    uuid4(), uuid4(), mock_client.id, "email", "opened", now.replace(hour=15)
+                ),
             ]
 
             mock_result = MagicMock()

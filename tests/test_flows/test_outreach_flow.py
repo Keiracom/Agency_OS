@@ -99,10 +99,7 @@ async def test_get_leads_ready_for_outreach_success():
     async def mock_get_session():
         yield mock_db
 
-    with patch(
-        "src.orchestration.flows.outreach_flow.get_db_session",
-        mock_get_session
-    ):
+    with patch("src.orchestration.flows.outreach_flow.get_db_session", mock_get_session):
         result = await get_leads_ready_for_outreach_task.fn(limit=50)
 
         assert result["total_leads"] == 1
@@ -122,10 +119,7 @@ async def test_get_leads_ready_for_outreach_no_leads():
     async def mock_get_session():
         yield mock_db
 
-    with patch(
-        "src.orchestration.flows.outreach_flow.get_db_session",
-        mock_get_session
-    ):
+    with patch("src.orchestration.flows.outreach_flow.get_db_session", mock_get_session):
         result = await get_leads_ready_for_outreach_task.fn(limit=50)
 
         assert result["total_leads"] == 0
@@ -159,10 +153,7 @@ async def test_jit_validate_outreach_success(mock_client, mock_campaign, mock_le
     async def mock_get_session():
         yield mock_db
 
-    with patch(
-        "src.orchestration.flows.outreach_flow.get_db_session",
-        mock_get_session
-    ):
+    with patch("src.orchestration.flows.outreach_flow.get_db_session", mock_get_session):
         result = await jit_validate_outreach_task.fn(
             lead_id=str(mock_lead.id),
             campaign_id=str(mock_campaign.id),
@@ -187,10 +178,7 @@ async def test_jit_validate_outreach_no_credits(mock_client, mock_campaign, mock
     async def mock_get_session():
         yield mock_db
 
-    with patch(
-        "src.orchestration.flows.outreach_flow.get_db_session",
-        mock_get_session
-    ):
+    with patch("src.orchestration.flows.outreach_flow.get_db_session", mock_get_session):
         with pytest.raises(ValueError, match="no credits"):
             await jit_validate_outreach_task.fn(
                 lead_id=str(mock_lead.id),
@@ -200,9 +188,7 @@ async def test_jit_validate_outreach_no_credits(mock_client, mock_campaign, mock
 
 
 @pytest.mark.asyncio
-async def test_jit_validate_outreach_lead_unsubscribed(
-    mock_client, mock_campaign, mock_lead
-):
+async def test_jit_validate_outreach_lead_unsubscribed(mock_client, mock_campaign, mock_lead):
     """Test JIT validation fails when lead is unsubscribed."""
     mock_lead.status = LeadStatus.UNSUBSCRIBED
 
@@ -225,10 +211,7 @@ async def test_jit_validate_outreach_lead_unsubscribed(
     async def mock_get_session():
         yield mock_db
 
-    with patch(
-        "src.orchestration.flows.outreach_flow.get_db_session",
-        mock_get_session
-    ):
+    with patch("src.orchestration.flows.outreach_flow.get_db_session", mock_get_session):
         with pytest.raises(ValueError, match="unsubscribed"):
             await jit_validate_outreach_task.fn(
                 lead_id=str(mock_lead.id),
@@ -281,32 +264,29 @@ async def test_send_email_outreach_success():
     mock_content = MagicMock()
     mock_content.generate_email = AsyncMock(
         return_value=EngineResult.ok(
-            data={"subject": "Test Subject - Reaching Out About Partnership", "body": "Hello John, I wanted to reach out regarding a potential partnership opportunity that could benefit Test Corp. I believe our solutions would be a great fit for your technology needs."}
+            data={
+                "subject": "Test Subject - Reaching Out About Partnership",
+                "body": "Hello John, I wanted to reach out regarding a potential partnership opportunity that could benefit Test Corp. I believe our solutions would be a great fit for your technology needs.",
+            }
         )
     )
 
     # Mock email engine
     mock_email = MagicMock()
-    mock_email.send_email = AsyncMock(
-        return_value=EngineResult.ok(data={"message_id": "msg123"})
-    )
+    mock_email.send_email = AsyncMock(return_value=EngineResult.ok(data={"message_id": "msg123"}))
 
-    with patch(
-        "src.orchestration.flows.outreach_flow.get_db_session",
-        mock_get_session
-    ), patch(
-        "src.orchestration.flows.outreach_flow.get_content_engine",
-        return_value=mock_content
-    ), patch(
-        "src.orchestration.flows.outreach_flow.get_email_engine",
-        return_value=mock_email
-    ), patch(
-        "src.orchestration.flows.outreach_flow.get_allocator_engine",
-        return_value=mock_allocator
+    with (
+        patch("src.orchestration.flows.outreach_flow.get_db_session", mock_get_session),
+        patch(
+            "src.orchestration.flows.outreach_flow.get_content_engine", return_value=mock_content
+        ),
+        patch("src.orchestration.flows.outreach_flow.get_email_engine", return_value=mock_email),
+        patch(
+            "src.orchestration.flows.outreach_flow.get_allocator_engine",
+            return_value=mock_allocator,
+        ),
     ):
-        result = await send_email_outreach_task.fn(
-            lead_id, campaign_id, resource, "autopilot"
-        )
+        result = await send_email_outreach_task.fn(lead_id, campaign_id, resource, "autopilot")
 
         assert result["success"] is True
         assert result["channel"] == "email"
@@ -332,16 +312,14 @@ async def test_send_email_outreach_rate_limit_exceeded():
         return_value=EngineResult.fail(error="Rate limit exceeded")
     )
 
-    with patch(
-        "src.orchestration.flows.outreach_flow.get_db_session",
-        mock_get_session
-    ), patch(
-        "src.orchestration.flows.outreach_flow.get_allocator_engine",
-        return_value=mock_allocator
+    with (
+        patch("src.orchestration.flows.outreach_flow.get_db_session", mock_get_session),
+        patch(
+            "src.orchestration.flows.outreach_flow.get_allocator_engine",
+            return_value=mock_allocator,
+        ),
     ):
-        result = await send_email_outreach_task.fn(
-            lead_id, campaign_id, resource, "autopilot"
-        )
+        result = await send_email_outreach_task.fn(lead_id, campaign_id, resource, "autopilot")
 
         assert result["success"] is False
         assert "Rate limit" in result["error"]
@@ -384,39 +362,37 @@ async def test_send_linkedin_outreach_success():
     # Mock content engine
     mock_content = MagicMock()
     mock_content.generate_linkedin_message = AsyncMock(
-        return_value=EngineResult.ok(data={"message": "Hi there! I noticed your work at the company and would love to connect and discuss potential opportunities for collaboration."})
+        return_value=EngineResult.ok(
+            data={
+                "message": "Hi there! I noticed your work at the company and would love to connect and discuss potential opportunities for collaboration."
+            }
+        )
     )
 
     # Mock LinkedIn engine
     mock_linkedin = MagicMock()
-    mock_linkedin.send_connection_request = AsyncMock(
-        return_value=EngineResult.ok(data={})
-    )
+    mock_linkedin.send_connection_request = AsyncMock(return_value=EngineResult.ok(data={}))
 
     # Mock timing engine to bypass business hours check
     mock_timing = MagicMock()
     mock_timing.is_weekend.return_value = False
     mock_timing.is_business_hours.return_value = True
 
-    with patch(
-        "src.orchestration.flows.outreach_flow.get_db_session",
-        mock_get_session
-    ), patch(
-        "src.orchestration.flows.outreach_flow.get_content_engine",
-        return_value=mock_content
-    ), patch(
-        "src.orchestration.flows.outreach_flow.get_linkedin_engine",
-        return_value=mock_linkedin
-    ), patch(
-        "src.orchestration.flows.outreach_flow.get_allocator_engine",
-        return_value=mock_allocator
-    ), patch(
-        "src.orchestration.flows.outreach_flow.get_timing_engine",
-        return_value=mock_timing
+    with (
+        patch("src.orchestration.flows.outreach_flow.get_db_session", mock_get_session),
+        patch(
+            "src.orchestration.flows.outreach_flow.get_content_engine", return_value=mock_content
+        ),
+        patch(
+            "src.orchestration.flows.outreach_flow.get_linkedin_engine", return_value=mock_linkedin
+        ),
+        patch(
+            "src.orchestration.flows.outreach_flow.get_allocator_engine",
+            return_value=mock_allocator,
+        ),
+        patch("src.orchestration.flows.outreach_flow.get_timing_engine", return_value=mock_timing),
     ):
-        result = await send_linkedin_outreach_task.fn(
-            lead_id, campaign_id, resource, "autopilot"
-        )
+        result = await send_linkedin_outreach_task.fn(lead_id, campaign_id, resource, "autopilot")
 
         assert result["success"] is True
         assert result["channel"] == "linkedin"
@@ -459,31 +435,29 @@ async def test_send_sms_outreach_success():
     # Mock content engine
     mock_content = MagicMock()
     mock_content.generate_sms = AsyncMock(
-        return_value=EngineResult.ok(data={"message": "Hi John! Just following up on the partnership discussion. Would you have 15 mins this week to connect?"})
+        return_value=EngineResult.ok(
+            data={
+                "message": "Hi John! Just following up on the partnership discussion. Would you have 15 mins this week to connect?"
+            }
+        )
     )
 
     # Mock SMS engine
     mock_sms = MagicMock()
-    mock_sms.send_sms = AsyncMock(
-        return_value=EngineResult.ok(data={"message_id": "sms123"})
-    )
+    mock_sms.send_sms = AsyncMock(return_value=EngineResult.ok(data={"message_id": "sms123"}))
 
-    with patch(
-        "src.orchestration.flows.outreach_flow.get_db_session",
-        mock_get_session
-    ), patch(
-        "src.orchestration.flows.outreach_flow.get_content_engine",
-        return_value=mock_content
-    ), patch(
-        "src.orchestration.flows.outreach_flow.get_sms_engine",
-        return_value=mock_sms
-    ), patch(
-        "src.orchestration.flows.outreach_flow.get_allocator_engine",
-        return_value=mock_allocator
+    with (
+        patch("src.orchestration.flows.outreach_flow.get_db_session", mock_get_session),
+        patch(
+            "src.orchestration.flows.outreach_flow.get_content_engine", return_value=mock_content
+        ),
+        patch("src.orchestration.flows.outreach_flow.get_sms_engine", return_value=mock_sms),
+        patch(
+            "src.orchestration.flows.outreach_flow.get_allocator_engine",
+            return_value=mock_allocator,
+        ),
     ):
-        result = await send_sms_outreach_task.fn(
-            lead_id, campaign_id, resource, "autopilot"
-        )
+        result = await send_sms_outreach_task.fn(lead_id, campaign_id, resource, "autopilot")
 
         assert result["success"] is True
         assert result["channel"] == "sms"
@@ -498,18 +472,19 @@ async def test_send_sms_outreach_success():
 @pytest.mark.asyncio
 async def test_hourly_outreach_flow_no_leads():
     """Test hourly outreach flow with no leads."""
-    mock_get_leads = AsyncMock(return_value={
-        "total_leads": 0,
-        "leads_by_channel": {
-            "email": [],
-            "linkedin": [],
-            "sms": [],
-        },
-    })
+    mock_get_leads = AsyncMock(
+        return_value={
+            "total_leads": 0,
+            "leads_by_channel": {
+                "email": [],
+                "linkedin": [],
+                "sms": [],
+            },
+        }
+    )
 
     with patch(
-        "src.orchestration.flows.outreach_flow.get_leads_ready_for_outreach_task",
-        mock_get_leads
+        "src.orchestration.flows.outreach_flow.get_leads_ready_for_outreach_task", mock_get_leads
     ):
         result = await hourly_outreach_flow.fn(batch_size=50)
 

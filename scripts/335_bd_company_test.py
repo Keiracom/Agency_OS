@@ -4,6 +4,7 @@ RUN 1: single batch of 20 URLs.
 RUN 2: 5 parallel batches of 4 URLs each.
 Dataset: gd_l1vikfnt1wgvvqz95w
 """
+
 import asyncio
 import json
 import os
@@ -88,7 +89,9 @@ async def poll_until_ready(client, api_key, snapshot_id, label="", poll_interval
             resp = await client.get(prog_url, headers=headers(api_key), timeout=15.0)
             status_data = resp.json()
             status = status_data.get("status", "unknown")
-            print(f"  [{label}] poll#{attempt} elapsed={elapsed:.0f}s status={status} data={json.dumps(status_data)[:150]}")
+            print(
+                f"  [{label}] poll#{attempt} elapsed={elapsed:.0f}s status={status} data={json.dumps(status_data)[:150]}"
+            )
             if status == "ready":
                 return elapsed
             if status in ("failed", "error"):
@@ -116,24 +119,33 @@ async def run1_single_batch(api_key):
         elapsed = await poll_until_ready(client, api_key, snapshot_id, label="run1")
         results = await download_snapshot(client, api_key, snapshot_id, label="run1")
     wall_time = time.time() - t0
-    print(f"\n  RUN 1 wall_time={wall_time:.1f}s records={len(results) if isinstance(results, list) else 1}")
+    print(
+        f"\n  RUN 1 wall_time={wall_time:.1f}s records={len(results) if isinstance(results, list) else 1}"
+    )
     out_path = "scripts/output/335_bd_run1_single_batch.json"
     with open(out_path, "w") as f:
-        json.dump({"snapshot_id": snapshot_id, "wall_time_seconds": wall_time,
-                   "records_returned": len(results) if isinstance(results, list) else 1,
-                   "results": results}, f, indent=2)
+        json.dump(
+            {
+                "snapshot_id": snapshot_id,
+                "wall_time_seconds": wall_time,
+                "records_returned": len(results) if isinstance(results, list) else 1,
+                "results": results,
+            },
+            f,
+            indent=2,
+        )
     print(f"  Saved to {out_path}")
     return wall_time, results
 
 
 async def run2_parallel_batches(api_key):
     print("\n=== RUN 2: 5 parallel batches of 4 URLs ===")
-    batches = [COMPANY_URLS[i:i+4] for i in range(0, 20, 4)]
+    batches = [COMPANY_URLS[i : i + 4] for i in range(0, 20, 4)]
     t0 = time.time()
     async with httpx.AsyncClient() as client:
         # Trigger all 5 simultaneously
         trigger_tasks = [
-            trigger_batch(client, api_key, batch, label=f"run2-b{i+1}")
+            trigger_batch(client, api_key, batch, label=f"run2-b{i + 1}")
             for i, batch in enumerate(batches)
         ]
         snapshot_ids = await asyncio.gather(*trigger_tasks)
@@ -141,7 +153,7 @@ async def run2_parallel_batches(api_key):
 
         # Poll all 5 concurrently
         poll_tasks = [
-            poll_until_ready(client, api_key, sid, label=f"run2-b{i+1}")
+            poll_until_ready(client, api_key, sid, label=f"run2-b{i + 1}")
             for i, sid in enumerate(snapshot_ids)
         ]
         elapsed_times = await asyncio.gather(*poll_tasks)
@@ -149,7 +161,7 @@ async def run2_parallel_batches(api_key):
 
         # Download all
         dl_tasks = [
-            download_snapshot(client, api_key, sid, label=f"run2-b{i+1}")
+            download_snapshot(client, api_key, sid, label=f"run2-b{i + 1}")
             for i, sid in enumerate(snapshot_ids)
         ]
         batch_results = await asyncio.gather(*dl_tasks)
@@ -165,13 +177,17 @@ async def run2_parallel_batches(api_key):
 
     out_path = "scripts/output/335_bd_run2_parallel_batches.json"
     with open(out_path, "w") as f:
-        json.dump({
-            "snapshot_ids": snapshot_ids,
-            "wall_time_seconds": wall_time,
-            "per_batch_elapsed_seconds": elapsed_times,
-            "records_returned": len(all_results),
-            "results": all_results,
-        }, f, indent=2)
+        json.dump(
+            {
+                "snapshot_ids": snapshot_ids,
+                "wall_time_seconds": wall_time,
+                "per_batch_elapsed_seconds": elapsed_times,
+                "records_returned": len(all_results),
+                "results": all_results,
+            },
+            f,
+            indent=2,
+        )
     print(f"  Saved to {out_path}")
     return wall_time, all_results
 
@@ -180,7 +196,7 @@ def print_sample_records(results, n=2):
     print(f"\n=== SAMPLE RECORDS (first {n}) ===")
     sample = results[:n] if isinstance(results, list) else [results]
     for i, rec in enumerate(sample):
-        print(f"\n--- Record {i+1} ---")
+        print(f"\n--- Record {i + 1} ---")
         print(json.dumps(rec, indent=2))
 
 
@@ -194,7 +210,9 @@ async def main():
     wall2, results2 = await run2_parallel_batches(api_key)
 
     print("\n=== FINAL REPORT ===")
-    print(f"RUN 1 (single batch 20):    wall_time={wall1:.1f}s  records={len(results1) if isinstance(results1, list) else 1}")
+    print(
+        f"RUN 1 (single batch 20):    wall_time={wall1:.1f}s  records={len(results1) if isinstance(results1, list) else 1}"
+    )
     print(f"RUN 2 (5x parallel, 4 ea):  wall_time={wall2:.1f}s  records={len(results2)}")
 
     # Fields available

@@ -9,6 +9,7 @@ Confirms:
   - ABN data appears in enrichment dict flowing to affordability gate
   - AbnMatchConfidence enum values
 """
+
 import pytest
 import re
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -16,9 +17,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
+
 def _make_fe(rows=None):
     """Build a FreeEnrichment with mocked asyncpg connection."""
     from src.pipeline.free_enrichment import FreeEnrichment
+
     conn = MagicMock()
     conn.fetch = AsyncMock(return_value=rows or [])
     conn.fetchrow = AsyncMock(return_value=None)
@@ -70,6 +73,7 @@ def _make_row(
 
 # ── Test 1: Known business name + postcode → correct ABN ─────────────────────
 
+
 @pytest.mark.asyncio
 async def test_known_dental_domain_matches_abn():
     """dentistsatpymble.com.au → keywords [dentists, pymble] → ABN row returned."""
@@ -91,9 +95,11 @@ async def test_known_dental_domain_matches_abn():
 
 # ── Test 2: Pty Ltd normalisation ─────────────────────────────────────────────
 
+
 def test_abn_clean_entity_name_strips_pty_ltd_variants():
     """Common Pty Ltd variants normalise to the same cleaned name."""
     from src.pipeline.free_enrichment import FreeEnrichment
+
     fe = FreeEnrichment.__new__(FreeEnrichment)
     fe._pool = None
 
@@ -115,9 +121,11 @@ def test_abn_clean_entity_name_strips_pty_ltd_variants():
 
 # ── Test 3: Sole trader + no GST → affordability hard gate ───────────────────
 
+
 def test_sole_trader_no_gst_triggers_hard_gate():
     """ProspectScorer.score_affordability rejects sole trader with no GST."""
     from src.pipeline.prospect_scorer import ProspectScorer
+
     scorer = ProspectScorer()
     enrichment = {
         "entity_type": "Individual/Sole Trader",
@@ -135,6 +143,7 @@ def test_sole_trader_no_gst_triggers_hard_gate():
 def test_company_gst_registered_passes_gate():
     """Australian Private Company + GST registered passes affordability gate."""
     from src.pipeline.prospect_scorer import ProspectScorer
+
     scorer = ProspectScorer()
     enrichment = {
         "entity_type": "Australian Private Company",
@@ -150,6 +159,7 @@ def test_company_gst_registered_passes_gate():
 
 
 # ── Test 4: No match → abn_matched=False (not empty dict) ────────────────────
+
 
 @pytest.mark.asyncio
 async def test_no_match_returns_abn_matched_false():
@@ -171,6 +181,7 @@ async def test_no_match_returns_abn_matched_false():
 
 
 # ── Test 5: ABN data in enrichment dict flows to affordability gate ───────────
+
 
 @pytest.mark.asyncio
 async def test_enrich_from_spider_includes_abn_data():
@@ -196,9 +207,11 @@ async def test_enrich_from_spider_includes_abn_data():
 
 # ── Test 6: ABN confidence enum ──────────────────────────────────────────────
 
+
 def test_abn_confidence_exact_on_high_similarity():
     """_abn_confidence returns EXACT when names are ≥90% similar."""
     from src.pipeline.free_enrichment import FreeEnrichment, ABNMatchConfidence
+
     fe = FreeEnrichment.__new__(FreeEnrichment)
     fe._pool = None
     result = fe._abn_confidence("Pymble Dental", "Pymble Dental")
@@ -208,6 +221,7 @@ def test_abn_confidence_exact_on_high_similarity():
 def test_abn_confidence_low_on_dissimilar():
     """_abn_confidence returns LOW when names are dissimilar."""
     from src.pipeline.free_enrichment import FreeEnrichment, ABNMatchConfidence
+
     fe = FreeEnrichment.__new__(FreeEnrichment)
     fe._pool = None
     result = fe._abn_confidence("Pymble Dental", "Completely Different Business Pty Ltd")
@@ -216,9 +230,11 @@ def test_abn_confidence_low_on_dissimilar():
 
 # ── Test 7: domain keyword extraction ────────────────────────────────────────
 
+
 def test_extract_domain_keywords_hyphenated():
     """Hyphenated domains split correctly."""
     from src.pipeline.free_enrichment import FreeEnrichment
+
     fe = FreeEnrichment.__new__(FreeEnrichment)
     fe._pool = None
     kw = fe._extract_domain_keywords("bright-smile-dental.com.au")
@@ -229,6 +245,7 @@ def test_extract_domain_keywords_hyphenated():
 def test_extract_domain_keywords_concatenated():
     """Concatenated domains split on stopword boundaries."""
     from src.pipeline.free_enrichment import FreeEnrichment
+
     fe = FreeEnrichment.__new__(FreeEnrichment)
     fe._pool = None
     kw = fe._extract_domain_keywords("dentistsatpymble.com.au")
@@ -238,6 +255,7 @@ def test_extract_domain_keywords_concatenated():
 
 
 # ── Test 8: Example query showing successful match ────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_successful_match_example():

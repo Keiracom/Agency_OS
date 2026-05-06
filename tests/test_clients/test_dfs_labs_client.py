@@ -145,6 +145,7 @@ async def test_domain_metrics_by_categories_custom_dates(client):
 # Directive #304-FIX
 # ============================================
 
+
 @pytest.mark.asyncio
 async def test_get_latest_available_date_uses_api(client):
     """
@@ -190,6 +191,7 @@ async def test_get_latest_available_date_uses_api(client):
 # Test 5: _get_latest_available_date — fallback on empty response
 # Directive #304-FIX
 # ============================================
+
 
 @pytest.mark.asyncio
 async def test_get_latest_available_date_fallback_on_empty(client):

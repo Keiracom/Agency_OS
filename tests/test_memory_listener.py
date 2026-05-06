@@ -1,6 +1,7 @@
 """
 Tests for src/telegram_bot/memory_listener.py
 """
+
 import sys
 import os
 
@@ -91,6 +92,7 @@ async def test_find_relevant_memories_no_env():
     with patch.dict(os.environ, {}, clear=True):
         # Patch the module-level globals directly
         import memory_listener as ml
+
         original_url, original_key = ml.SUPABASE_URL, ml.SUPABASE_KEY
         ml.SUPABASE_URL = ""
         ml.SUPABASE_KEY = ""

@@ -80,27 +80,39 @@ async def test_httpx_returns_none_triggers_spider_fallback():
     }
 
     async with MagicMock() as mock_client:
-        mock_client.post = AsyncMock(return_value=MagicMock(
-            status_code=200,
-            json=MagicMock(return_value=[{
-                "content": "<html>real content</html>",
-                "links": [],
-                "metadata": {"title": "Acme Dental"},
-            }]),
-        ))
+        mock_client.post = AsyncMock(
+            return_value=MagicMock(
+                status_code=200,
+                json=MagicMock(
+                    return_value=[
+                        {
+                            "content": "<html>real content</html>",
+                            "links": [],
+                            "metadata": {"title": "Acme Dental"},
+                        }
+                    ]
+                ),
+            )
+        )
 
     with patch("src.pipeline.free_enrichment.httpx.AsyncClient") as mock_httpx_cls:
         mock_client_instance = AsyncMock()
         mock_client_instance.__aenter__ = AsyncMock(return_value=mock_client_instance)
         mock_client_instance.__aexit__ = AsyncMock(return_value=False)
-        mock_client_instance.post = AsyncMock(return_value=MagicMock(
-            status_code=200,
-            json=MagicMock(return_value=[{
-                "content": "real content " * 100,
-                "links": [],
-                "metadata": {"title": "Acme Dental"},
-            }]),
-        ))
+        mock_client_instance.post = AsyncMock(
+            return_value=MagicMock(
+                status_code=200,
+                json=MagicMock(
+                    return_value=[
+                        {
+                            "content": "real content " * 100,
+                            "links": [],
+                            "metadata": {"title": "Acme Dental"},
+                        }
+                    ]
+                ),
+            )
+        )
         mock_httpx_cls.return_value = mock_client_instance
 
         result = await fe._scrape_website("acmedental.com.au")
@@ -113,20 +125,28 @@ async def test_httpx_returns_none_triggers_spider_fallback():
 async def test_httpx_returns_short_html_triggers_spider_fallback():
     """When HttpxScraper returns html < 1000 chars, Spider should be called."""
     fe = _make_enrichment()
-    fe._httpx.scrape = AsyncMock(return_value={"html": "<html>short</html>", "title": None, "status_code": 200})
+    fe._httpx.scrape = AsyncMock(
+        return_value={"html": "<html>short</html>", "title": None, "status_code": 200}
+    )
 
     with patch("src.pipeline.free_enrichment.httpx.AsyncClient") as mock_httpx_cls:
         mock_client_instance = AsyncMock()
         mock_client_instance.__aenter__ = AsyncMock(return_value=mock_client_instance)
         mock_client_instance.__aexit__ = AsyncMock(return_value=False)
-        mock_client_instance.post = AsyncMock(return_value=MagicMock(
-            status_code=200,
-            json=MagicMock(return_value=[{
-                "content": "real content " * 100,
-                "links": [],
-                "metadata": {"title": "Test"},
-            }]),
-        ))
+        mock_client_instance.post = AsyncMock(
+            return_value=MagicMock(
+                status_code=200,
+                json=MagicMock(
+                    return_value=[
+                        {
+                            "content": "real content " * 100,
+                            "links": [],
+                            "metadata": {"title": "Test"},
+                        }
+                    ]
+                ),
+            )
+        )
         mock_httpx_cls.return_value = mock_client_instance
 
         result = await fe._scrape_website("acmedental.com.au")
@@ -144,14 +164,20 @@ async def test_spider_fallback_count_increments_per_fallback():
         mock_client_instance = AsyncMock()
         mock_client_instance.__aenter__ = AsyncMock(return_value=mock_client_instance)
         mock_client_instance.__aexit__ = AsyncMock(return_value=False)
-        mock_client_instance.post = AsyncMock(return_value=MagicMock(
-            status_code=200,
-            json=MagicMock(return_value=[{
-                "content": "content " * 100,
-                "links": [],
-                "metadata": {"title": "Test"},
-            }]),
-        ))
+        mock_client_instance.post = AsyncMock(
+            return_value=MagicMock(
+                status_code=200,
+                json=MagicMock(
+                    return_value=[
+                        {
+                            "content": "content " * 100,
+                            "links": [],
+                            "metadata": {"title": "Test"},
+                        }
+                    ]
+                ),
+            )
+        )
         mock_httpx_cls.return_value = mock_client_instance
 
         await fe._scrape_website("domain1.com.au")
@@ -179,7 +205,9 @@ async def test_spider_not_called_when_httpx_succeeds():
     """Confirm Spider API endpoint is never hit when httpx returns good content."""
     fe = _make_enrichment()
     long_html = USABLE_HTML * 10
-    fe._httpx.scrape = AsyncMock(return_value={"html": long_html, "title": "Test", "status_code": 200})
+    fe._httpx.scrape = AsyncMock(
+        return_value={"html": long_html, "title": "Test", "status_code": 200}
+    )
 
     with patch("src.pipeline.free_enrichment.httpx.AsyncClient") as mock_cls:
         await fe._scrape_website("test.com.au")

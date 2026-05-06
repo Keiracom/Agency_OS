@@ -1,4 +1,5 @@
 """Tests for src/pipeline/channel_router.py"""
+
 import pytest
 from src.pipeline.channel_router import route_prospect
 
@@ -86,29 +87,21 @@ def test_no_reachability():
 
 def test_high_cis_promotes_voice_when_full_coverage():
     """High CIS (>=85) with phone available should promote voice to primary."""
-    result = route_prospect(
-        has_email=True, has_phone=True, has_linkedin=True, cis_score=90
-    )
+    result = route_prospect(has_email=True, has_phone=True, has_linkedin=True, cis_score=90)
     assert result["primary_channel"] == "voice"
     assert "high_cis_voice_priority" in result["routing_reason"]
 
 
 def test_high_cis_adds_extra_touch():
     """High CIS should append an extra touch to the sequence."""
-    result_high = route_prospect(
-        has_email=True, has_phone=True, has_linkedin=True, cis_score=90
-    )
-    result_normal = route_prospect(
-        has_email=True, has_phone=True, has_linkedin=True, cis_score=60
-    )
+    result_high = route_prospect(has_email=True, has_phone=True, has_linkedin=True, cis_score=90)
+    result_normal = route_prospect(has_email=True, has_phone=True, has_linkedin=True, cis_score=60)
     assert len(result_high["recommended_sequence"]) > len(result_normal["recommended_sequence"])
 
 
 def test_high_cis_extra_touch_is_voice_when_phone_available():
     """Extra touch for high CIS should be voice if phone is available."""
-    result = route_prospect(
-        has_email=False, has_phone=True, has_linkedin=True, cis_score=90
-    )
+    result = route_prospect(has_email=False, has_phone=True, has_linkedin=True, cis_score=90)
     extra = result["recommended_sequence"][-1]
     assert extra["channel"] == "voice"
     assert extra["note"] == "high-value extra touch"
@@ -116,9 +109,7 @@ def test_high_cis_extra_touch_is_voice_when_phone_available():
 
 def test_low_cis_restricts_to_email_when_available():
     """Low CIS (<40) with email should reduce to email-only touches."""
-    result = route_prospect(
-        has_email=True, has_phone=True, has_linkedin=True, cis_score=30
-    )
+    result = route_prospect(has_email=True, has_phone=True, has_linkedin=True, cis_score=30)
     assert result["primary_channel"] == "email"
     assert result["fallback_channels"] == []
     assert "low_cis_email_only" in result["routing_reason"]
@@ -128,9 +119,7 @@ def test_low_cis_restricts_to_email_when_available():
 
 def test_low_cis_no_email_keeps_best_available():
     """Low CIS without email should not force email-only (email unavailable)."""
-    result = route_prospect(
-        has_email=False, has_phone=True, has_linkedin=True, cis_score=25
-    )
+    result = route_prospect(has_email=False, has_phone=True, has_linkedin=True, cis_score=25)
     # No email means low-CIS email-only clause does not fire
     assert result["primary_channel"] == "voice"
     assert "low_cis_email_only" not in result["routing_reason"]
@@ -138,9 +127,7 @@ def test_low_cis_no_email_keeps_best_available():
 
 def test_mid_cis_no_adjustment():
     """Mid-range CIS (40-84) should produce unmodified base routing."""
-    result = route_prospect(
-        has_email=True, has_phone=True, has_linkedin=True, cis_score=60
-    )
+    result = route_prospect(has_email=True, has_phone=True, has_linkedin=True, cis_score=60)
     assert result["primary_channel"] == "email"
     assert "high_cis" not in result["routing_reason"]
     assert "low_cis" not in result["routing_reason"]

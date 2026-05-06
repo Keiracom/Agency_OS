@@ -1,4 +1,5 @@
 """GOV-PHASE2 — Gatekeeper verdict emit instrumentation tests."""
+
 from __future__ import annotations
 
 from unittest.mock import patch
@@ -23,9 +24,12 @@ def common_args() -> dict:
 
 
 def test_emit_on_allow_true(common_args: dict) -> None:
-    with patch.object(gatekeeper, "_post_decision",
-                      return_value={"allow": True, "deny_reasons": []}), \
-         patch("src.governance._mcp_helpers.governance_event_emit") as emit:
+    with (
+        patch.object(
+            gatekeeper, "_post_decision", return_value={"allow": True, "deny_reasons": []}
+        ),
+        patch("src.governance._mcp_helpers.governance_event_emit") as emit,
+    ):
         result = gatekeeper.check_completion_claim(**common_args)
     assert result.allow is True
     assert emit.call_count == 1
@@ -36,9 +40,12 @@ def test_emit_on_allow_true(common_args: dict) -> None:
 
 
 def test_emit_on_deny(common_args: dict) -> None:
-    with patch.object(gatekeeper, "_post_decision",
-                      return_value={"allow": False, "deny_reasons": ["G2 fail"]}), \
-         patch("src.governance._mcp_helpers.governance_event_emit") as emit:
+    with (
+        patch.object(
+            gatekeeper, "_post_decision", return_value={"allow": False, "deny_reasons": ["G2 fail"]}
+        ),
+        patch("src.governance._mcp_helpers.governance_event_emit") as emit,
+    ):
         result = gatekeeper.check_completion_claim(**common_args)
     assert result.allow is False
     assert result.reasons == ["G2 fail"]
@@ -47,9 +54,10 @@ def test_emit_on_deny(common_args: dict) -> None:
 
 
 def test_emit_on_opa_error(common_args: dict) -> None:
-    with patch.object(gatekeeper, "_post_decision",
-                      side_effect=httpx.ConnectError("boom")), \
-         patch("src.governance._mcp_helpers.governance_event_emit") as emit:
+    with (
+        patch.object(gatekeeper, "_post_decision", side_effect=httpx.ConnectError("boom")),
+        patch("src.governance._mcp_helpers.governance_event_emit") as emit,
+    ):
         result = gatekeeper.check_completion_claim(**common_args)
     assert result.allow is False
     assert emit.call_count == 1

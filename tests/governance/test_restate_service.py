@@ -6,6 +6,7 @@ These tests verify:
 - The `governance` virtual object exists
 - Required handler names are registered on the object
 """
+
 import importlib
 import sys
 import types
@@ -16,6 +17,7 @@ import pytest
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _stub_restate() -> None:
     """Install a minimal stub of the restate package so tests run without
     the restate-sdk installed in CI / local envs that skip it."""
@@ -25,6 +27,7 @@ def _stub_restate() -> None:
     class _ObjectContext:
         async def get(self, key):
             return None
+
         async def set(self, key, value):
             pass
 
@@ -37,6 +40,7 @@ def _stub_restate() -> None:
             def decorator(fn):
                 self._handlers[fn.__name__] = fn
                 return fn
+
             return decorator
 
     def _app(services):
@@ -57,6 +61,7 @@ def _stub_restate() -> None:
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 def test_module_imports():
     _stub_restate()

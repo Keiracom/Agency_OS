@@ -57,7 +57,6 @@ FACTS: list[dict] = [
         "tags": ["governance_doc", "claude_md", "stack"],
         "section": "Project",
     },
-
     # -----------------------------------------------------------------------
     # MCP BRIDGE
     # -----------------------------------------------------------------------
@@ -82,7 +81,6 @@ FACTS: list[dict] = [
         "tags": ["governance_doc", "claude_md", "mcp", "law"],
         "section": "MCP Bridge",
     },
-
     # -----------------------------------------------------------------------
     # SUPABASE
     # -----------------------------------------------------------------------
@@ -96,7 +94,6 @@ FACTS: list[dict] = [
         "tags": ["governance_doc", "claude_md", "supabase", "infrastructure"],
         "section": "Supabase",
     },
-
     # -----------------------------------------------------------------------
     # ACTIVE ENRICHMENT PATH
     # -----------------------------------------------------------------------
@@ -130,7 +127,6 @@ FACTS: list[dict] = [
         "tags": ["governance_doc", "claude_md", "enrichment", "gates"],
         "section": "Active Enrichment Path",
     },
-
     # -----------------------------------------------------------------------
     # DEAD REFERENCES
     # -----------------------------------------------------------------------
@@ -211,7 +207,6 @@ FACTS: list[dict] = [
         "tags": ["governance_doc", "claude_md", "dead_reference", "enrichment"],
         "section": "Dead References",
     },
-
     # -----------------------------------------------------------------------
     # GOVERNANCE LAWS
     # -----------------------------------------------------------------------
@@ -423,11 +418,7 @@ def _already_seeded() -> set[str]:
         import httpx
         from src.memory.client import MEMORIES_ENDPOINT, _supabase_headers, _supabase_url
 
-        url = (
-            _supabase_url()
-            + MEMORIES_ENDPOINT
-            + "?tags=cs.{claude_md}&select=content&limit=200"
-        )
+        url = _supabase_url() + MEMORIES_ENDPOINT + "?tags=cs.{claude_md}&select=content&limit=200"
         resp = httpx.get(url, headers=_supabase_headers(), timeout=10)
         if resp.status_code == 200:
             rows = resp.json()

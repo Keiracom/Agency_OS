@@ -1,4 +1,5 @@
 """Tests for AffordabilityScorer — Directive #288."""
+
 import pytest
 from src.pipeline.affordability_scoring import AffordabilityScorer, AffordabilityResult
 
@@ -115,6 +116,7 @@ def test_professional_email_adds_point(scorer):
 
 
 # --- Three-state GST model tests (#328.6) ---
+
 
 def test_affordability_gst_unknown_not_hard_reject(scorer):
     """GST unknown (None) should NOT hard-reject at affordability gate."""

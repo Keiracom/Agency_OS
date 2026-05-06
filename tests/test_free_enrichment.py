@@ -1,4 +1,5 @@
 """Tests for FreeEnrichment — Directive #282."""
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -166,7 +167,9 @@ async def test_abn_join_matches_registry():
     result = await fe._match_abn("test-business.com.au", "Test Pty Ltd", "VIC")
     assert result["abn_matched"] is True
     # gst_registered should be returned from the matched row
-    assert result.get("gst_registered") is True or result.get("gst_registered") is None  # depends on confidence path
+    assert (
+        result.get("gst_registered") is True or result.get("gst_registered") is None
+    )  # depends on confidence path
 
 
 # ─── Test 10: ABN no match sets False ─────────────────────────────────────────
@@ -267,7 +270,11 @@ async def test_completion_timestamp_set():
             with patch.object(
                 fe,
                 "_enrich_dns",
-                return_value={"dns_mx_provider": "google", "dns_has_spf": True, "dns_has_dkim": False},
+                return_value={
+                    "dns_mx_provider": "google",
+                    "dns_has_spf": True,
+                    "dns_has_dkim": False,
+                },
             ):
                 with patch.object(
                     fe,

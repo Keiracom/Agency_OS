@@ -6,6 +6,7 @@ a chunk that IS the answer, not a chunk that contains the answer in a list.
 Deletes 2 combined chunks (35e7db15 MANUAL, e603df7c ARCHITECTURE) and
 inserts 12 individual chunks in their place.
 """
+
 import json
 import os
 import sys
@@ -157,34 +158,39 @@ def main() -> None:
                 headers=sb_headers,
             )
             if del_resp.status_code not in (200, 204):
-                print(f"DELETE FAILED for {rid}: {del_resp.status_code} {del_resp.text[:200]}", file=sys.stderr)
+                print(
+                    f"DELETE FAILED for {rid}: {del_resp.status_code} {del_resp.text[:200]}",
+                    file=sys.stderr,
+                )
                 sys.exit(1)
             print(f"  deleted {rid}")
 
         # Step 3 — insert 12 new chunks
         rows = []
         for c in NEW_CHUNKS:
-            rows.append({
-                "callsign": "system",
-                "source_type": "verified_fact",
-                "content": c["content"],
-                "typed_metadata": {
-                    "source": "governance_doc",
-                    "section": c["section"],
-                    "sub_section": c["sub_section"],
-                    "origin_file": c["origin_file"],
-                    "seeded_at": now_iso,
-                    "seeded_by": DIRECTIVE_ID,
-                    "ingested_by": DIRECTIVE_ID,
-                    "fix_tag": FIX_TAG,
-                },
-                "tags": c["tags"],
-                "state": "confirmed",
-                "confidence": 1.0,
-                "trust": "dave_confirmed",
-                "embedding": c["_embedding"],
-                "directive_id": DIRECTIVE_ID,
-            })
+            rows.append(
+                {
+                    "callsign": "system",
+                    "source_type": "verified_fact",
+                    "content": c["content"],
+                    "typed_metadata": {
+                        "source": "governance_doc",
+                        "section": c["section"],
+                        "sub_section": c["sub_section"],
+                        "origin_file": c["origin_file"],
+                        "seeded_at": now_iso,
+                        "seeded_by": DIRECTIVE_ID,
+                        "ingested_by": DIRECTIVE_ID,
+                        "fix_tag": FIX_TAG,
+                    },
+                    "tags": c["tags"],
+                    "state": "confirmed",
+                    "confidence": 1.0,
+                    "trust": "dave_confirmed",
+                    "embedding": c["_embedding"],
+                    "directive_id": DIRECTIVE_ID,
+                }
+            )
 
         ins_resp = client.post(
             f"{sb_url}/rest/v1/agent_memories",
@@ -196,7 +202,9 @@ def main() -> None:
             sys.exit(1)
         print(f"  inserted {len(rows)} individual dead-ref chunks")
 
-    print(f"\nGOV-10 fix complete: -2 combined, +{len(NEW_CHUNKS)} individual = net +{len(NEW_CHUNKS) - 2} rows")
+    print(
+        f"\nGOV-10 fix complete: -2 combined, +{len(NEW_CHUNKS)} individual = net +{len(NEW_CHUNKS) - 2} rows"
+    )
 
 
 if __name__ == "__main__":

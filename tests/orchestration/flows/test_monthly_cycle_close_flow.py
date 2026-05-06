@@ -6,6 +6,7 @@ replied > complete), idempotent close, event emission, next-cycle trigger
 fire, schedule cron/timezone. Uses an in-memory FakeConn to record all
 executed/fetched SQL without needing a real DB.
 """
+
 from __future__ import annotations
 
 from datetime import date
@@ -52,6 +53,7 @@ class FakeConn:
 
 # -- find_cycles_to_close ---------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_find_cycles_filters_by_age_and_status():
     rows = [
@@ -74,6 +76,7 @@ async def test_find_cycles_returns_empty_when_no_matches():
 
 # -- transition_cycle_prospects — priority + counts --------------------------
 
+
 @pytest.mark.asyncio
 async def test_transition_priority_meeting_beats_reply_beats_complete():
     # meeting=2, replied=3, complete=5 — all three UPDATEs fire in order.
@@ -95,6 +98,7 @@ async def test_transition_idempotent_when_all_already_terminal():
 
 # -- mark_cycle_closed ------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_mark_cycle_closed_gates_on_active():
     conn = FakeConn()
@@ -106,6 +110,7 @@ async def test_mark_cycle_closed_gates_on_active():
 
 
 # -- emit_cycle_close_event -------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_emit_cycle_close_event_inserts_outreach_event():
@@ -123,6 +128,7 @@ async def test_emit_cycle_close_event_inserts_outreach_event():
 
 
 # -- trigger_next_cycle_release ---------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_trigger_next_cycle_release_calls_injected_fn():
@@ -149,6 +155,7 @@ async def test_trigger_next_cycle_release_swallows_error():
 
 # -- close_cycles_task composition ------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_close_cycles_task_end_to_end_two_cycles():
     cycles = [
@@ -159,7 +166,7 @@ async def test_close_cycles_task_end_to_end_two_cycles():
     # order of rowcounts: (meeting, replied, complete, mark, event) × 2
     conn = FakeConn(
         fetch_returns=[cycles],
-        execute_rowcounts=[2, 3, 5, 1, 1,  1, 2, 4, 1, 1],
+        execute_rowcounts=[2, 3, 5, 1, 1, 1, 2, 4, 1, 1],
     )
     calls = []
 
@@ -169,7 +176,9 @@ async def test_close_cycles_task_end_to_end_two_cycles():
     summary = await close_cycles_task(conn, trigger)
     assert summary.cycles_closed == 2
     assert summary.transitions == {
-        "meeting_booked": 3, "replied": 5, "complete": 9,
+        "meeting_booked": 3,
+        "replied": 5,
+        "complete": 9,
     }
     assert summary.events_emitted == 2
     assert summary.next_cycles_released == 2
@@ -191,6 +200,7 @@ async def test_close_cycles_task_no_cycles_returns_zero_summary():
 
 # -- monthly_cycle_close_flow (via .fn) -------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_flow_fn_composes_summary():
     conn = FakeConn(fetch_returns=[[]])
@@ -204,6 +214,7 @@ async def test_flow_fn_composes_summary():
 
 
 # -- schedule ---------------------------------------------------------------
+
 
 def test_get_schedule_cron_and_tz():
     s = get_monthly_cycle_close_schedule()

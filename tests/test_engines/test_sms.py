@@ -17,6 +17,7 @@ from src.models.base import ChannelType, LeadStatus
 @pytest.fixture
 def mock_sms_client():
     """Mock SMS client."""
+
     class MockSMSClient:
         def __init__(self):
             self.dncr_numbers = set()
@@ -50,6 +51,7 @@ def sms_engine(mock_sms_client):
 @pytest.fixture
 def mock_db():
     """Mock database session."""
+
     class MockDB:
         def __init__(self):
             self.committed = False
@@ -65,11 +67,14 @@ def mock_db():
             class Result:
                 def scalar_one_or_none(self):
                     return None
+
                 def scalars(self):
                     class Scalars:
                         def all(self):
                             return []
+
                     return Scalars()
+
             return Result()
 
     return MockDB()
@@ -78,6 +83,7 @@ def mock_db():
 @pytest.fixture
 def mock_lead():
     """Mock lead."""
+
     class MockLead:
         id = uuid4()
         client_id = uuid4()
@@ -98,6 +104,7 @@ def mock_lead():
 @pytest.fixture
 def mock_campaign():
     """Mock campaign."""
+
     class MockCampaign:
         id = uuid4()
         client_id = uuid4()
@@ -124,6 +131,7 @@ class TestSMSEngine:
     @pytest.mark.asyncio
     async def test_send_missing_from_number(self, sms_engine, mock_db, mock_lead, mock_campaign):
         """Test send fails without from_number."""
+
         async def mock_get_lead(db, lead_id):
             return mock_lead
 
@@ -173,6 +181,7 @@ class TestSMSEngine:
     @pytest.mark.skip(reason="SMS provider removed (Directive #167). Pending Telnyx wiring (P3).")
     async def test_send_success(self, sms_engine, mock_db, mock_lead, mock_campaign):
         """Test successful SMS send."""
+
         async def mock_get_lead(db, lead_id):
             return mock_lead
 
@@ -184,6 +193,7 @@ class TestSMSEngine:
 
         # Mock rate limiter
         from src.integrations import redis
+
         original_check = redis.rate_limiter.check_and_increment
 
         async def mock_check(*args, **kwargs):
@@ -212,7 +222,9 @@ class TestSMSEngine:
 
     @pytest.mark.asyncio
     @pytest.mark.skip(reason="SMS provider removed (Directive #167). Pending Telnyx wiring (P3).")
-    async def test_send_dncr_rejection(self, sms_engine, mock_db, mock_lead, mock_campaign, mock_sms_client):
+    async def test_send_dncr_rejection(
+        self, sms_engine, mock_db, mock_lead, mock_campaign, mock_sms_client
+    ):
         """Test SMS rejected by DNCR check."""
         # Add lead's phone to DNCR list
         mock_sms_client.dncr_numbers.add(mock_lead.phone)
@@ -228,6 +240,7 @@ class TestSMSEngine:
 
         # Mock rate limiter
         from src.integrations import redis
+
         original_check = redis.rate_limiter.check_and_increment
 
         async def mock_check(*args, **kwargs):
@@ -237,6 +250,7 @@ class TestSMSEngine:
 
         # Ensure TEST_MODE is off so phone isn't redirected before DNCR check
         from src.config import settings
+
         original_test_mode = settings.TEST_MODE
         settings.TEST_MODE = False
 
@@ -260,7 +274,9 @@ class TestSMSEngine:
 
     @pytest.mark.asyncio
     @pytest.mark.skip(reason="SMS provider removed (Directive #167). Pending Telnyx wiring (P3).")
-    async def test_send_skip_dncr(self, sms_engine, mock_db, mock_lead, mock_campaign, mock_sms_client):
+    async def test_send_skip_dncr(
+        self, sms_engine, mock_db, mock_lead, mock_campaign, mock_sms_client
+    ):
         """Test SMS send with DNCR check skipped."""
         # Add lead's phone to DNCR list
         mock_sms_client.dncr_numbers.add(mock_lead.phone)
@@ -276,6 +292,7 @@ class TestSMSEngine:
 
         # Mock rate limiter
         from src.integrations import redis
+
         original_check = redis.rate_limiter.check_and_increment
 
         async def mock_check(*args, **kwargs):
@@ -328,12 +345,14 @@ class TestSMSEngine:
             send_count += 1
             if send_count == 1:
                 # Success - return mock success result directly
-                return EngineResult.ok(data={
-                    "message_sid": f"SM{uuid4().hex[:32]}",
-                    "to_number": "+61400000000",
-                    "from_number": kwargs.get("from_number", "+61400111222"),
-                    "status": "queued",
-                })
+                return EngineResult.ok(
+                    data={
+                        "message_sid": f"SM{uuid4().hex[:32]}",
+                        "to_number": "+61400000000",
+                        "from_number": kwargs.get("from_number", "+61400111222"),
+                        "status": "queued",
+                    }
+                )
             elif send_count == 2:
                 # DNCR rejection
                 return EngineResult.fail(

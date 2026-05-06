@@ -1,4 +1,5 @@
 """Tests for DFSLabsClient.ads_search_by_domain — Directive #291."""
+
 import pytest
 from decimal import Decimal
 from unittest.mock import AsyncMock, patch
@@ -12,10 +13,22 @@ def _c():
 @pytest.mark.asyncio
 async def test_ads_found_returns_dict():
     client = _c()
-    mock = {"items": [
-        {"type": "ads_search", "format": "text", "first_shown": "2025-01-01", "last_shown": "2026-03-29"},
-        {"type": "ads_search", "format": "video", "first_shown": "2024-06-01", "last_shown": "2026-03-28"},
-    ]}
+    mock = {
+        "items": [
+            {
+                "type": "ads_search",
+                "format": "text",
+                "first_shown": "2025-01-01",
+                "last_shown": "2026-03-29",
+            },
+            {
+                "type": "ads_search",
+                "format": "video",
+                "first_shown": "2024-06-01",
+                "last_shown": "2026-03-28",
+            },
+        ]
+    }
     with patch.object(client, "_post", new_callable=AsyncMock, return_value=mock):
         r = await client.ads_search_by_domain("dental.com.au")
     assert r["is_running_ads"] is True

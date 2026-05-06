@@ -441,14 +441,16 @@ async def test_historical_rank_overview(client):
     """Verify historical_rank_overview returns 6 months of data with year/month/metrics."""
     items = []
     for month in range(1, 7):
-        items.append({
-            "year": 2025,
-            "month": month,
-            "metrics": {
-                "organic": {"etv": 10000 + month * 500, "count": 200 + month * 10},
-                "paid": {"etv": 500.0, "count": 5},
-            },
-        })
+        items.append(
+            {
+                "year": 2025,
+                "month": month,
+                "metrics": {
+                    "organic": {"etv": 10000 + month * 500, "count": 200 + month * 10},
+                    "paid": {"etv": 500.0, "count": 5},
+                },
+            }
+        )
 
     result_data = {"items": items}
     response_json = make_dfs_response(result_data)
@@ -489,21 +491,26 @@ async def test_cost_tracking(client):
         return mock_resp
 
     # Setup mock responses
-    dbt_result = {"total_count": 1, "items": [{"domain": "x.com.au", "title": "X", "description": "", "technologies": {}}]}
+    dbt_result = {
+        "total_count": 1,
+        "items": [{"domain": "x.com.au", "title": "X", "description": "", "technologies": {}}],
+    }
     cd_result = {"items": []}
     dro_result = {"items": [{"metrics": {"organic": {}, "paid": {}}}]}
 
     mock_http_client = AsyncMock()
-    mock_http_client.post = AsyncMock(side_effect=[
-        make_post_mock(dbt_result),
-        make_post_mock(cd_result),
-        make_post_mock(dro_result),
-    ])
+    mock_http_client.post = AsyncMock(
+        side_effect=[
+            make_post_mock(dbt_result),
+            make_post_mock(cd_result),
+            make_post_mock(dro_result),
+        ]
+    )
 
     with patch.object(client, "_get_client", return_value=mock_http_client):
-        await client.domains_by_technology("HubSpot")          # $0.015
-        await client.competitors_domain("example.com.au")      # $0.011
-        await client.domain_rank_overview("example.com.au")    # $0.010
+        await client.domains_by_technology("HubSpot")  # $0.015
+        await client.competitors_domain("example.com.au")  # $0.011
+        await client.domain_rank_overview("example.com.au")  # $0.010
 
     expected_usd = 0.015 + 0.011 + 0.010  # = 0.036
 
@@ -545,7 +552,10 @@ async def test_retry_on_429(client):
     mock_429.raise_for_status = MagicMock(side_effect=Exception("429 Too Many Requests"))
 
     # Success response
-    result_data = {"total_count": 1, "items": [{"domain": "x.com.au", "title": "X", "description": "", "technologies": {}}]}
+    result_data = {
+        "total_count": 1,
+        "items": [{"domain": "x.com.au", "title": "X", "description": "", "technologies": {}}],
+    }
     success_resp = make_mock_response(make_dfs_response(result_data))
 
     mock_http_client = AsyncMock()
@@ -575,11 +585,13 @@ async def test_retry_on_429(client):
     # Since tenacity is applied at class definition, we test via integration:
     # patch raise_for_status to raise on first call, succeed on second
     success_result = {"total_count": 1, "items": []}
-    responses_iter = iter([
-        # First: raises on raise_for_status (simulating 429)
-        None,  # will be replaced below
-        make_mock_response(make_dfs_response(success_result)),
-    ])
+    responses_iter = iter(
+        [
+            # First: raises on raise_for_status (simulating 429)
+            None,  # will be replaced below
+            make_mock_response(make_dfs_response(success_result)),
+        ]
+    )
 
     resp_429 = MagicMock()
     resp_429.status_code = 429

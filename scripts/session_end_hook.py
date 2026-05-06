@@ -33,6 +33,7 @@ Hook input contract (Claude Code SessionEnd, current docs):
 
 We tolerate missing keys.
 """
+
 from __future__ import annotations
 
 import json
@@ -60,11 +61,13 @@ VENV_PY = "/home/elliotbot/clawd/venv/bin/python3"
 
 # ── Step 1: mirror MANUAL.md if it changed since last mirror ───────────────
 
+
 def _git_blob_hash(path: Path) -> str | None:
     try:
         out = subprocess.check_output(
             ["git", "hash-object", str(path)],
-            cwd=str(REPO_ROOT), stderr=subprocess.DEVNULL,
+            cwd=str(REPO_ROOT),
+            stderr=subprocess.DEVNULL,
         )
         return out.decode().strip()
     except (subprocess.CalledProcessError, FileNotFoundError):
@@ -91,7 +94,7 @@ def maybe_mirror_manual() -> dict:
     report["manual_present"] = True
 
     current = _git_blob_hash(MANUAL_PATH)
-    last    = _last_mirrored_blob()
+    last = _last_mirrored_blob()
     changed = bool(current and current != last)
     report["changed"] = changed
 
@@ -105,16 +108,18 @@ def maybe_mirror_manual() -> dict:
 
     try:
         result = subprocess.run(
-            [VENV_PY if Path(VENV_PY).exists() else "python3",
-             str(MIRROR_SCRIPT), "--force"],
+            [VENV_PY if Path(VENV_PY).exists() else "python3", str(MIRROR_SCRIPT), "--force"],
             cwd=str(REPO_ROOT),
-            capture_output=True, text=True, timeout=20,
+            capture_output=True,
+            text=True,
+            timeout=20,
         )
         report["mirror_invoked"] = True
         report["exit_code"] = result.returncode
         if result.returncode != 0:
-            logger.warning("mirror exited %d. stderr tail: %s",
-                           result.returncode, (result.stderr or "")[-200:])
+            logger.warning(
+                "mirror exited %d. stderr tail: %s", result.returncode, (result.stderr or "")[-200:]
+            )
         else:
             logger.info("mirror succeeded — Drive doc updated")
     except subprocess.TimeoutExpired:
@@ -125,6 +130,7 @@ def maybe_mirror_manual() -> dict:
 
 
 # ── Steps 2 + 3: write to ceo_memory + daily_log ───────────────────────────
+
 
 def _supabase_dsn() -> str | None:
     """Resolve a postgres DSN for asyncpg.
@@ -138,18 +144,16 @@ def _supabase_dsn() -> str | None:
     Strips the SQLAlchemy 'postgresql+asyncpg://' prefix because
     asyncpg.connect rejects it.
     """
-    raw = (
-        os.environ.get("DATABASE_URL")
-        or os.environ.get("SUPABASE_DB_URL")
-        or ""
-    ).strip()
+    raw = (os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL") or "").strip()
     if raw:
         return raw.replace("postgresql+asyncpg://", "postgresql://")
     try:
         sys.path.insert(0, str(REPO_ROOT))
         from dotenv import load_dotenv
+
         load_dotenv(ENV_FILE)
         from src.config.settings import settings  # type: ignore[import-not-found]
+
         return (settings.database_url or "").replace(
             "postgresql+asyncpg://", "postgresql://"
         ) or None
@@ -160,13 +164,13 @@ def _supabase_dsn() -> str | None:
 
 def _build_summary(hook_input: dict, mirror_report: dict) -> dict:
     return {
-        "session_id":     hook_input.get("session_id"),
-        "ended_at":       datetime.now(UTC).isoformat(),
-        "reason":         hook_input.get("reason", "unknown"),
-        "cwd":            hook_input.get("cwd"),
-        "transcript":     hook_input.get("transcript_path"),
-        "hook_event":     hook_input.get("hook_event_name", "SessionEnd"),
-        "manual_mirror":  mirror_report,
+        "session_id": hook_input.get("session_id"),
+        "ended_at": datetime.now(UTC).isoformat(),
+        "reason": hook_input.get("reason", "unknown"),
+        "cwd": hook_input.get("cwd"),
+        "transcript": hook_input.get("transcript_path"),
+        "hook_event": hook_input.get("hook_event_name", "SessionEnd"),
+        "manual_mirror": mirror_report,
     }
 
 
@@ -195,7 +199,8 @@ def write_memory(summary: dict) -> dict:
                     ON CONFLICT (key) DO UPDATE
                       SET value = EXCLUDED.value, updated_at = NOW()
                     """,
-                    key, json.dumps(summary),
+                    key,
+                    json.dumps(summary),
                 )
                 out["ceo_memory_upserted"] = True
 
@@ -213,7 +218,9 @@ def write_memory(summary: dict) -> dict:
                     VALUES (gen_random_uuid(), $1, 'daily_log', $2, $3::jsonb,
                             NOW(), NOW(), 'confirmed')
                     """,
-                    callsign, content, json.dumps(summary),
+                    callsign,
+                    content,
+                    json.dumps(summary),
                 )
                 out["daily_log_written"] = True
             finally:
@@ -226,6 +233,7 @@ def write_memory(summary: dict) -> dict:
 
 
 # ── entry-point ────────────────────────────────────────────────────────────
+
 
 def read_hook_input() -> dict:
     """Read JSON hook input from stdin. Returns {} on any failure."""
@@ -257,6 +265,7 @@ def main() -> int:
     directive_id = os.environ.get("DIRECTIVE_ID", "")
     try:
         from src.governance.gatekeeper import check_completion_claim, opa_health
+
         if directive_id and opa_health():
             callsign = os.environ.get("CALLSIGN", "unknown")
             result = check_completion_claim(
@@ -265,10 +274,18 @@ def main() -> int:
                 claim_text=f"Session ended: {summary.get('reason', 'unknown')}",
                 evidence=f"$ session_end auto-check\nceo_memory={memory_report.get('ceo_memory_upserted')}, daily_log={memory_report.get('daily_log_written')}",
                 target_files=[],
-                store_writes=[sw for sw in [
-                    {"directive_id": directive_id, "store": "ceo_memory"} if memory_report.get("ceo_memory_upserted") else None,
-                    {"directive_id": directive_id, "store": "manual"} if mirror_report.get("mirror_invoked") else None,
-                ] if sw is not None],
+                store_writes=[
+                    sw
+                    for sw in [
+                        {"directive_id": directive_id, "store": "ceo_memory"}
+                        if memory_report.get("ceo_memory_upserted")
+                        else None,
+                        {"directive_id": directive_id, "store": "manual"}
+                        if mirror_report.get("mirror_invoked")
+                        else None,
+                    ]
+                    if sw is not None
+                ],
                 frozen_paths=[],
             )
             gatekeeper_report["checked"] = True
@@ -278,6 +295,7 @@ def main() -> int:
                 try:
                     from src.governance.tg_alert import alert_on_deny
                     import hashlib
+
                     claim_hash = hashlib.sha256(f"session-end-{callsign}".encode()).hexdigest()[:16]
                     alert_on_deny(
                         callsign=callsign,

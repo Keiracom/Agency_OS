@@ -16,6 +16,7 @@ Plus:
   - nurture without email -> escalate
   - apply_actions executes inserts for schedule_next + nurture, swallows errors
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
@@ -41,7 +42,9 @@ def _p(**kw) -> dict:
         "current_sequence_step": 0,
         "total_touches_sent": 0,
         "meeting_booked_at": None,
-        "has_email": True, "has_phone": True, "has_linkedin": True,
+        "has_email": True,
+        "has_phone": True,
+        "has_linkedin": True,
         "timezone": "Australia/Sydney",
         "ooo_return_date": None,
     }
@@ -55,6 +58,7 @@ def _decider() -> DailyDecider:
 
 # ---------- positive paths ---------------------------------------------------
 
+
 def test_no_touches_yet_schedules_step_1():
     a = _decider()._decide_one(_p())
     assert a.action == "schedule_next"
@@ -65,65 +69,91 @@ def test_no_touches_yet_schedules_step_1():
 
 def test_gap_exceeded_schedules_next_step():
     last = datetime.now(UTC) - timedelta(days=5)  # step 2 requires 3d gap
-    a = _decider()._decide_one(_p(
-        current_sequence_step=1, total_touches_sent=1, last_touch_sent_at=last,
-    ))
+    a = _decider()._decide_one(
+        _p(
+            current_sequence_step=1,
+            total_touches_sent=1,
+            last_touch_sent_at=last,
+        )
+    )
     assert a.action == "schedule_next"
     assert a.sequence_step == 2
 
 
 def test_too_soon_skips():
     last = datetime.now(UTC) - timedelta(days=1)  # needs 3d to advance to step 2
-    a = _decider()._decide_one(_p(
-        current_sequence_step=1, total_touches_sent=1, last_touch_sent_at=last,
-    ))
+    a = _decider()._decide_one(
+        _p(
+            current_sequence_step=1,
+            total_touches_sent=1,
+            last_touch_sent_at=last,
+        )
+    )
     assert a.action == "skip"
     assert "too soon" in a.reason
 
 
 def test_positive_reply_skips():
-    a = _decider()._decide_one(_p(
-        last_reply_intent="positive_interested",
-        current_sequence_step=2, total_touches_sent=2,
-    ))
+    a = _decider()._decide_one(
+        _p(
+            last_reply_intent="positive_interested",
+            current_sequence_step=2,
+            total_touches_sent=2,
+        )
+    )
     assert a.action == "skip"
     assert "replied" in a.reason
 
 
 def test_unsubscribe_skips_as_suppressed():
-    a = _decider()._decide_one(_p(
-        last_reply_intent="unsubscribe", current_sequence_step=1, total_touches_sent=1,
-    ))
+    a = _decider()._decide_one(
+        _p(
+            last_reply_intent="unsubscribe",
+            current_sequence_step=1,
+            total_touches_sent=1,
+        )
+    )
     assert a.action == "skip"
     assert "suppressed" in a.reason
 
 
 def test_ooo_with_future_return_skips():
     future = (datetime.now(UTC) + timedelta(days=5)).isoformat()
-    a = _decider()._decide_one(_p(
-        last_reply_intent="out_of_office", ooo_return_date=future,
-        current_sequence_step=1, total_touches_sent=1,
-    ))
+    a = _decider()._decide_one(
+        _p(
+            last_reply_intent="out_of_office",
+            ooo_return_date=future,
+            current_sequence_step=1,
+            total_touches_sent=1,
+        )
+    )
     assert a.action == "skip"
     assert "ooo" in a.reason
 
 
 def test_ooo_past_resume_schedules_again():
     past = (datetime.now(UTC) - timedelta(days=5)).isoformat()
-    a = _decider()._decide_one(_p(
-        last_reply_intent="out_of_office", ooo_return_date=past,
-        current_sequence_step=2, total_touches_sent=2,
-        last_touch_sent_at=datetime.now(UTC) - timedelta(days=30),
-    ))
+    a = _decider()._decide_one(
+        _p(
+            last_reply_intent="out_of_office",
+            ooo_return_date=past,
+            current_sequence_step=2,
+            total_touches_sent=2,
+            last_touch_sent_at=datetime.now(UTC) - timedelta(days=30),
+        )
+    )
     assert a.action == "schedule_next"
 
 
 def test_sequence_exhausted_becomes_nurture():
     last = datetime.now(UTC) - timedelta(days=30)
-    a = _decider()._decide_one(_p(
-        current_sequence_step=MAX_STEP, total_touches_sent=MAX_STEP,
-        last_touch_sent_at=last,
-    ))
+    a = _decider()._decide_one(
+        _p(
+            current_sequence_step=MAX_STEP,
+            total_touches_sent=MAX_STEP,
+            last_touch_sent_at=last,
+        )
+    )
     assert a.action == "nurture"
     assert a.channel == "email"
     expected_min = datetime.now(UTC) + timedelta(days=NURTURE_INTERVAL_DAYS - 1)
@@ -138,38 +168,52 @@ def test_meeting_booked_skips_permanently():
 
 # ---------- escalation paths -------------------------------------------------
 
+
 def test_no_usable_channel_escalates():
-    a = _decider()._decide_one(_p(
-        has_email=False, has_phone=False, has_linkedin=False,
-    ))
+    a = _decider()._decide_one(
+        _p(
+            has_email=False,
+            has_phone=False,
+            has_linkedin=False,
+        )
+    )
     assert a.action == "escalate"
     assert "no usable channel" in a.reason
 
 
 def test_exhausted_without_email_escalates():
-    a = _decider()._decide_one(_p(
-        current_sequence_step=MAX_STEP, total_touches_sent=MAX_STEP,
-        has_email=False, has_phone=True, has_linkedin=True,
-    ))
+    a = _decider()._decide_one(
+        _p(
+            current_sequence_step=MAX_STEP,
+            total_touches_sent=MAX_STEP,
+            has_email=False,
+            has_phone=True,
+            has_linkedin=True,
+        )
+    )
     assert a.action == "escalate"
     assert "nurture" in a.reason
 
 
 # ---------- evaluate_all hits the DB path -----------------------------------
 
+
 @pytest.mark.asyncio
 async def test_evaluate_all_fetches_and_decides():
     db = AsyncMock()
-    db.fetch = AsyncMock(return_value=[
-        _p(lead_id="a"),
-        _p(lead_id="b", meeting_booked_at=datetime.now(UTC)),
-    ])
+    db.fetch = AsyncMock(
+        return_value=[
+            _p(lead_id="a"),
+            _p(lead_id="b", meeting_booked_at=datetime.now(UTC)),
+        ]
+    )
     actions = await DailyDecider().evaluate_all(db, client_id="c1")
     assert [a.action for a in actions] == ["schedule_next", "skip"]
     db.fetch.assert_awaited_once()
 
 
 # ---------- apply_actions ---------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_apply_actions_writes_scheduled_rows_and_counts():
@@ -178,10 +222,10 @@ async def test_apply_actions_writes_scheduled_rows_and_counts():
     when = datetime.now(UTC) + timedelta(days=1)
     actions = [
         DeciderAction("l1", "schedule_next", "email", when, "", 1),
-        DeciderAction("l2", "nurture",       "email", when, "", None),
-        DeciderAction("l3", "skip",          None,    None, "too soon", None),
-        DeciderAction("l4", "suppress",      None,    None, "unsub", None),
-        DeciderAction("l5", "escalate",      None,    None, "no channel", None),
+        DeciderAction("l2", "nurture", "email", when, "", None),
+        DeciderAction("l3", "skip", None, None, "too soon", None),
+        DeciderAction("l4", "suppress", None, None, "unsub", None),
+        DeciderAction("l5", "escalate", None, None, "no channel", None),
     ]
     counts = await apply_actions(db, "client-1", actions)
     assert counts["scheduled"] == 1
@@ -200,7 +244,8 @@ async def test_apply_actions_swallows_db_errors():
     db.execute = AsyncMock(side_effect=RuntimeError("dead conn"))
     when = datetime.now(UTC) + timedelta(days=1)
     counts = await apply_actions(
-        db, "c1",
+        db,
+        "c1",
         [DeciderAction("l1", "schedule_next", "email", when, "", 1)],
     )
     assert counts["errors"] == 1

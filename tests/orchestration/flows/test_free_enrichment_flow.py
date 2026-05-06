@@ -8,6 +8,7 @@ Hermetic — mocks asyncpg pool + FreeEnrichment.run(). Verifies:
   - free_enrichment_flow skips the promote step when promote_stage_0=False.
   - Summary surfaces both promoted and enrichment stats.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -36,6 +37,7 @@ def _make_pool(execute_return: str = "UPDATE 17") -> tuple[MagicMock, MagicMock]
 
 # ── promote_stage_0_rows unit tests ─────────────────────────────────────────
 
+
 def test_promote_stage_0_rows_targets_null_and_zero_only():
     pool, conn = _make_pool("UPDATE 42")
     promoted = asyncio.run(fe_flow_mod.promote_stage_0_rows.fn(pool))
@@ -60,19 +62,32 @@ def test_promote_stage_0_rows_returns_zero_on_unparseable_update_response():
 
 # ── free_enrichment_flow end-to-end tests ───────────────────────────────────
 
+
 def test_flow_runs_two_phases_when_promote_enabled():
     """promote_stage_0=True → both promote + enrich tasks run."""
     pool, conn = _make_pool("UPDATE 100")
-    fake_enrich = AsyncMock(return_value={
-        "total": 100, "completed": 80, "abn_matched": 60,
-        "abn_unmatched": 20, "dns_skipped": 5, "spider_failed": 2, "errors": [],
-    })
+    fake_enrich = AsyncMock(
+        return_value={
+            "total": 100,
+            "completed": 80,
+            "abn_matched": 60,
+            "abn_unmatched": 20,
+            "dns_skipped": 5,
+            "spider_failed": 2,
+            "errors": [],
+        }
+    )
 
-    with patch.object(fe_flow_mod, "_open_pool", AsyncMock(return_value=pool)), \
-         patch.object(fe_flow_mod.run_free_enrichment, "fn", fake_enrich):
-        summary = asyncio.run(fe_flow_mod.free_enrichment_flow.fn(
-            limit=100, promote_stage_0=True,
-        ))
+    with (
+        patch.object(fe_flow_mod, "_open_pool", AsyncMock(return_value=pool)),
+        patch.object(fe_flow_mod.run_free_enrichment, "fn", fake_enrich),
+    ):
+        summary = asyncio.run(
+            fe_flow_mod.free_enrichment_flow.fn(
+                limit=100,
+                promote_stage_0=True,
+            )
+        )
 
     assert summary["promoted"] == 100
     assert summary["enrichment"]["total"] == 100
@@ -85,16 +100,28 @@ def test_flow_runs_two_phases_when_promote_enabled():
 def test_flow_skips_promote_when_disabled():
     """promote_stage_0=False → only enrich runs, promoted stays 0, no UPDATE issued."""
     pool, conn = _make_pool("UPDATE 999")  # would be 999 if promote ran
-    fake_enrich = AsyncMock(return_value={"total": 0, "completed": 0,
-                                          "abn_matched": 0, "abn_unmatched": 0,
-                                          "dns_skipped": 0, "spider_failed": 0,
-                                          "errors": []})
+    fake_enrich = AsyncMock(
+        return_value={
+            "total": 0,
+            "completed": 0,
+            "abn_matched": 0,
+            "abn_unmatched": 0,
+            "dns_skipped": 0,
+            "spider_failed": 0,
+            "errors": [],
+        }
+    )
 
-    with patch.object(fe_flow_mod, "_open_pool", AsyncMock(return_value=pool)), \
-         patch.object(fe_flow_mod.run_free_enrichment, "fn", fake_enrich):
-        summary = asyncio.run(fe_flow_mod.free_enrichment_flow.fn(
-            limit=50, promote_stage_0=False,
-        ))
+    with (
+        patch.object(fe_flow_mod, "_open_pool", AsyncMock(return_value=pool)),
+        patch.object(fe_flow_mod.run_free_enrichment, "fn", fake_enrich),
+    ):
+        summary = asyncio.run(
+            fe_flow_mod.free_enrichment_flow.fn(
+                limit=50,
+                promote_stage_0=False,
+            )
+        )
 
     assert summary["promoted"] == 0
     assert summary["promote_stage_0"] is False
@@ -107,8 +134,10 @@ def test_flow_summary_carries_run_start_and_limit():
     pool, _ = _make_pool("UPDATE 0")
     fake_enrich = AsyncMock(return_value={"total": 0})
 
-    with patch.object(fe_flow_mod, "_open_pool", AsyncMock(return_value=pool)), \
-         patch.object(fe_flow_mod.run_free_enrichment, "fn", fake_enrich):
+    with (
+        patch.object(fe_flow_mod, "_open_pool", AsyncMock(return_value=pool)),
+        patch.object(fe_flow_mod.run_free_enrichment, "fn", fake_enrich),
+    ):
         summary = asyncio.run(fe_flow_mod.free_enrichment_flow.fn(limit=200))
 
     assert "run_start_ts" in summary

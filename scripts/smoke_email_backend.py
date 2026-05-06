@@ -25,6 +25,7 @@ section, set RESEND_WEBHOOK_SECRET in the Railway env, then send.
 Honest pre-revenue smoke: this does send a real email. Costs one Resend
 free-tier credit. No fabricated data.
 """
+
 from __future__ import annotations
 
 import base64
@@ -50,7 +51,9 @@ WEBHOOK_SECRET = os.environ.get("RESEND_WEBHOOK_SECRET", "smoke-test-secret")
 def _sign(body: bytes) -> str:
     """Build a Svix-style `v1,<base64>` signature header."""
     digest = hmac.new(
-        WEBHOOK_SECRET.encode("utf-8"), body, hashlib.sha256,
+        WEBHOOK_SECRET.encode("utf-8"),
+        body,
+        hashlib.sha256,
     ).digest()
     return "v1," + base64.b64encode(digest).decode("ascii")
 
@@ -118,8 +121,10 @@ def main() -> int:
     # ── Step 3: simulated Resend webhooks (real HMAC, real DB) ───────────
     print()
     print("=== Step 3: POST /api/email/webhook (real HMAC, simulated payload) ===")
-    print("  (Resend → localhost requires a tunnel; we simulate the payload "
-          "but use a true Svix-format HMAC against the live route + DB.)")
+    print(
+        "  (Resend → localhost requires a tunnel; we simulate the payload "
+        "but use a true Svix-format HMAC against the live route + DB.)"
+    )
     _post_webhook(client, message_id, "email.delivered")
     _post_webhook(client, message_id, "email.opened")
 
@@ -144,13 +149,12 @@ def main() -> int:
     print()
     print("=== Verification ===")
     ok_status = actual_status == expected_status
-    ok_events = (
-        "email.delivered" in event_types and "email.opened" in event_types
+    ok_events = "email.delivered" in event_types and "email.opened" in event_types
+    print(
+        f"  status = {actual_status!r} (expected {expected_status!r}): "
+        f"{'OK' if ok_status else 'FAIL'}"
     )
-    print(f"  status = {actual_status!r} (expected {expected_status!r}): "
-          f"{'OK' if ok_status else 'FAIL'}")
-    print(f"  events contain delivered + opened: "
-          f"{'OK' if ok_events else 'FAIL'}  ({event_types})")
+    print(f"  events contain delivered + opened: {'OK' if ok_events else 'FAIL'}  ({event_types})")
     return 0 if (ok_status and ok_events and bad_resp.status_code == 401) else 1
 
 

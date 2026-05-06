@@ -2,6 +2,7 @@
 Tests for generate_vulnerability_report() — Directive #306.
 Tests the Stage 7c Sonnet synthesis function and ProspectCard field.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -78,11 +79,14 @@ _MOCK_INTELLIGENCE = {
 
 # ── test_1: full data returns all 6 sections ─────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_1_full_data_returns_all_sections():
-    with patch.object(intel_module, "_call_anthropic", new=AsyncMock(
-        return_value=(json.dumps(_FULL_MOCK_RESULT), 800, 300)
-    )):
+    with patch.object(
+        intel_module,
+        "_call_anthropic",
+        new=AsyncMock(return_value=(json.dumps(_FULL_MOCK_RESULT), 800, 300)),
+    ):
         result = await generate_vulnerability_report(
             domain="example.com.au",
             company_name="Example Pty Ltd",
@@ -108,6 +112,7 @@ async def test_1_full_data_returns_all_sections():
 
 # ── test_2: missing competitors gives "Insufficient Data" grade ──────────────
 
+
 @pytest.mark.asyncio
 async def test_2_missing_competitors_gives_insufficient():
     partial_result = dict(_FULL_MOCK_RESULT)
@@ -117,9 +122,11 @@ async def test_2_missing_competitors_gives_insufficient():
         "findings": [],
         "competitors": [],
     }
-    with patch.object(intel_module, "_call_anthropic", new=AsyncMock(
-        return_value=(json.dumps(partial_result), 700, 250)
-    )):
+    with patch.object(
+        intel_module,
+        "_call_anthropic",
+        new=AsyncMock(return_value=(json.dumps(partial_result), 700, 250)),
+    ):
         result = await generate_vulnerability_report(
             domain="nocomp.com.au",
             company_name="No Comp Co",
@@ -133,6 +140,7 @@ async def test_2_missing_competitors_gives_insufficient():
 
 # ── test_3: missing ads data does not crash ───────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_3_missing_ads_gives_appropriate_grade():
     no_ads_result = dict(_FULL_MOCK_RESULT)
@@ -142,9 +150,11 @@ async def test_3_missing_ads_gives_appropriate_grade():
         "findings": ["No advertising data available"],
         "data": {},
     }
-    with patch.object(intel_module, "_call_anthropic", new=AsyncMock(
-        return_value=(json.dumps(no_ads_result), 600, 200)
-    )):
+    with patch.object(
+        intel_module,
+        "_call_anthropic",
+        new=AsyncMock(return_value=(json.dumps(no_ads_result), 600, 200)),
+    ):
         result = await generate_vulnerability_report(
             domain="noads.com.au",
             company_name="No Ads Ltd",
@@ -158,11 +168,14 @@ async def test_3_missing_ads_gives_appropriate_grade():
 
 # ── test_4: result has all top-level required keys ────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_4_result_json_has_required_keys():
-    with patch.object(intel_module, "_call_anthropic", new=AsyncMock(
-        return_value=(json.dumps(_FULL_MOCK_RESULT), 800, 300)
-    )):
+    with patch.object(
+        intel_module,
+        "_call_anthropic",
+        new=AsyncMock(return_value=(json.dumps(_FULL_MOCK_RESULT), 800, 300)),
+    ):
         result = await generate_vulnerability_report(
             domain="keys-check.com.au",
             company_name="Keys Check Co",
@@ -176,6 +189,7 @@ async def test_4_result_json_has_required_keys():
 
 # ── test_5: ProspectCard has vulnerability_report field ──────────────────────
 
+
 def test_5_vulnerability_report_on_prospect_card():
     card = ProspectCard(domain="x.com.au", company_name="X", location="Sydney")
     assert hasattr(card, "vulnerability_report")
@@ -183,6 +197,7 @@ def test_5_vulnerability_report_on_prospect_card():
 
 
 # ── test_6: GLOBAL_SEM_SONNET semaphore is acquired ──────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_6_sonnet_semaphore_acquired():
@@ -198,9 +213,11 @@ async def test_6_sonnet_semaphore_acquired():
     real_sem.acquire = tracking_acquire  # type: ignore[method-assign]
 
     with patch.object(intel_module, "GLOBAL_SEM_SONNET", real_sem):
-        with patch.object(intel_module, "_call_anthropic", new=AsyncMock(
-            return_value=(json.dumps(_FULL_MOCK_RESULT), 800, 300)
-        )):
+        with patch.object(
+            intel_module,
+            "_call_anthropic",
+            new=AsyncMock(return_value=(json.dumps(_FULL_MOCK_RESULT), 800, 300)),
+        ):
             await generate_vulnerability_report(
                 domain="sem-test.com.au",
                 company_name="Sem Test",
@@ -213,6 +230,7 @@ async def test_6_sonnet_semaphore_acquired():
 
 # ── test_7: _VULN_SYSTEM_BLOCK has prompt caching header ─────────────────────
 
+
 def test_7_prompt_caching_block_present():
     assert "cache_control" in _VULN_SYSTEM_BLOCK
     assert _VULN_SYSTEM_BLOCK["cache_control"] == {"type": "ephemeral"}
@@ -220,11 +238,12 @@ def test_7_prompt_caching_block_present():
 
 # ── test_8: API error returns fallback dict ───────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_8_api_error_returns_fallback():
-    with patch.object(intel_module, "_call_anthropic", new=AsyncMock(
-        side_effect=Exception("API error")
-    )):
+    with patch.object(
+        intel_module, "_call_anthropic", new=AsyncMock(side_effect=Exception("API error"))
+    ):
         result = await generate_vulnerability_report(
             domain="error.com.au",
             company_name="Error Co",

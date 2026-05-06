@@ -21,6 +21,7 @@ from src.clients.dfs_serp_client import (
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_client() -> DFSSerpClient:
     return DFSSerpClient(login="test_user", password="test_pass")
 
@@ -38,11 +39,13 @@ def _task_post_response(task_id: str = "task-001", items: list[dict] | None = No
 
 def _task_get_response(task_id: str, items: list[dict]) -> dict:
     return {
-        "tasks": [{
-            "id": task_id,
-            "status_code": DFS_STATUS_SUCCESS,
-            "result": [{"items": items}],
-        }]
+        "tasks": [
+            {
+                "id": task_id,
+                "status_code": DFS_STATUS_SUCCESS,
+                "result": [{"items": items}],
+            }
+        ]
     }
 
 
@@ -76,6 +79,7 @@ def _mock_http_client(post_response: dict, get_response: dict):
 # Test 1: find_dm returns correctly mapped fields
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_find_dm_returns_mapped_fields():
     client = _make_client()
@@ -106,12 +110,17 @@ async def test_find_dm_returns_mapped_fields():
 # Test 2: find_dm returns None when no LinkedIn results
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_find_dm_returns_none_no_linkedin():
     client = _make_client()
     task_id = "task-002"
     items = [
-        {"url": "https://www.someotherdomain.com/profile/john", "title": "John - CEO", "rank_group": 1},
+        {
+            "url": "https://www.someotherdomain.com/profile/john",
+            "title": "John - CEO",
+            "rank_group": 1,
+        },
         {"url": "https://facebook.com/john.doe", "title": "John Doe", "rank_group": 2},
     ]
     mock_http = _mock_http_client(
@@ -128,6 +137,7 @@ async def test_find_dm_returns_none_no_linkedin():
 # ---------------------------------------------------------------------------
 # Test 3: dm_confidence is lower at position 5
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_dm_confidence_lower_at_position_5():
@@ -157,6 +167,7 @@ async def test_dm_confidence_lower_at_position_5():
 # ---------------------------------------------------------------------------
 # Test 4: cost tracking increments correctly across multiple calls
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_cost_tracking_increments():
@@ -200,6 +211,7 @@ async def test_cost_tracking_increments():
 # Test 5: POST body contains exactly 1 task
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_one_task_per_post_body():
     client = _make_client()
@@ -219,6 +231,4 @@ async def test_one_task_per_post_body():
     post_payload = call_args.kwargs.get("json") or call_args.args[1]
 
     assert isinstance(post_payload, list), "POST payload should be a list"
-    assert len(post_payload) == 1, (
-        f"Expected exactly 1 task in POST body, got {len(post_payload)}"
-    )
+    assert len(post_payload) == 1, f"Expected exactly 1 task in POST body, got {len(post_payload)}"

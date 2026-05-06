@@ -4,7 +4,9 @@ Run before every cohort run to verify env vars, provider connectivity, and crede
 
 Usage: python scripts/preflight_check.py
 """
+
 import sys
+
 sys.path.insert(0, "/home/elliotbot/clawd/Agency_OS")
 
 from dotenv import dotenv_values
@@ -23,6 +25,7 @@ REQUIRED_KEYS = [
     "TELEGRAM_TOKEN",
 ]
 
+
 def check_env():
     """Verify all required env vars present with non-empty values."""
     ok = True
@@ -34,6 +37,7 @@ def check_env():
             print(f"  ✗ {key} MISSING")
             ok = False
     return ok
+
 
 def main():
     print("Pipeline F v2.1 — Pre-flight Check")
@@ -48,6 +52,7 @@ def main():
         sys.exit(1)
 
     print("\nPre-flight PASSED. Ready to run.")
+
 
 if __name__ == "__main__":
     main()

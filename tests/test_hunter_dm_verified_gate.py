@@ -6,12 +6,10 @@ runtime conditional is enforced — not merely documented.
 """
 from __future__ import annotations
 
-import asyncio
 import os
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -44,7 +42,7 @@ async def test_hunter_not_called_when_dm_not_verified():
 
         from src.pipeline.email_waterfall import discover_email
 
-        result = await discover_email(
+        await discover_email(
             domain="example.com",
             dm_name="John Doe",
             dm_verified=False,
@@ -69,7 +67,7 @@ async def test_hunter_called_when_dm_verified_and_name_present():
 
         from src.pipeline.email_waterfall import discover_email
 
-        result = await discover_email(
+        await discover_email(
             domain="example.com",
             dm_name="John Doe",
             dm_verified=True,
@@ -99,7 +97,7 @@ async def test_hunter_skipped_when_no_api_key():
 
         from src.pipeline.email_waterfall import discover_email
 
-        result = await discover_email(
+        await discover_email(
             domain="example.com",
             dm_name="John Doe",
             dm_verified=True,

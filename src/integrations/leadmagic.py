@@ -816,6 +816,48 @@ class LeadmagicClient:
             return CreditBalance()
 
     # ========================================
+    # EMAIL VERIFICATION
+    # ========================================
+
+    async def verify_email(self, email: str) -> dict:
+        """Verify an email address via Leadmagic email-validation endpoint.
+
+        Cost: 1 credit per 4 validations ($0.00375 AUD per email).
+
+        Returns:
+            dict with keys: email, status ('valid'|'invalid'|'risky'|'unknown'),
+            is_deliverable (bool), is_free_provider (bool).
+        """
+        if _is_mock_mode():
+            logger.info("[Leadmagic] MOCK MODE: verify_email %s → valid", email)
+            return {
+                "email": email,
+                "status": "valid",
+                "is_deliverable": True,
+                "is_free_provider": False,
+            }
+
+        if not email or "@" not in email:
+            return {"email": email, "status": "invalid", "is_deliverable": False}
+
+        try:
+            response = await self._request(
+                method="POST",
+                endpoint="/email-validation",
+                data={"email": email.strip().lower()},
+            )
+            status = (response.get("status") or "unknown").lower()
+            return {
+                "email": email,
+                "status": status,
+                "is_deliverable": status in ("valid", "risky"),
+                "is_free_provider": response.get("is_free_provider", False),
+            }
+        except Exception as exc:
+            logger.warning("[Leadmagic] verify_email failed for %s: %s", email, exc)
+            return {"email": email, "status": "unknown", "is_deliverable": False}
+
+    # ========================================
     # BATCH OPERATIONS
     # ========================================
 

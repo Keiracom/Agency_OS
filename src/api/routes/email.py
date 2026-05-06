@@ -212,7 +212,9 @@ async def post_webhook(request: Request) -> dict[str, Any]:
     sig = request.headers.get("svix-signature") or request.headers.get(
         "resend-signature"
     )
-    if not verify_webhook_signature(raw, sig):
+    msg_id = request.headers.get("svix-id")
+    timestamp = request.headers.get("svix-timestamp")
+    if not verify_webhook_signature(raw, sig, msg_id=msg_id, timestamp=timestamp):
         raise HTTPException(status_code=401, detail="invalid signature")
     try:
         payload = json.loads(raw.decode("utf-8") or "{}")

@@ -36,8 +36,10 @@ def _prospect(email="test@dental.com.au", name="Jane Smith", company="Smile Dent
         domain="dental.com.au",
         dm_email=email,
         dm_name=name,
-        company_name=company,
-        industry="dental",
+        display_name=company,
+        gmb_category="dental",
+        state="NSW",
+        suburb="Pymble",
     )
 
 
@@ -48,9 +50,19 @@ def test_render_template_replaces_tags():
     assert result == "Hi Jane at Smile Dental"
 
 
+def test_render_template_aiden_tags():
+    executor = CampaignExecutor(sequence_steps=SAMPLE_STEPS, step=1)
+    prospect = _prospect()
+    result = executor._render_template(
+        "Hi {{dm_name}} at {{display_name}} in {{suburb}}, {{state}}", prospect
+    )
+    assert result == "Hi Jane at Smile Dental in Pymble, NSW"
+
+
 def test_render_template_fallbacks_when_name_missing():
     executor = CampaignExecutor(sequence_steps=SAMPLE_STEPS, step=1)
     prospect = _prospect(name=None, company=None)
+    # company=None sets display_name=None in _prospect helper
     result = executor._render_template("Hi {{first_name}} at {{company_name}}", prospect)
     assert result == "Hi there at your practice"
 

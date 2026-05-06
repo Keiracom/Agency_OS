@@ -26,6 +26,13 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 
+def _clean_display_name(name: str | None) -> str | None:
+    """Strip GMB scraper cruft from display_name (e.g. ' | Medical Marketing Agency Sydney')."""
+    if not name:
+        return name
+    return name.split(" | ")[0].strip()
+
+
 @dataclass
 class ProspectRecord:
     """A BU row eligible for outreach."""
@@ -34,8 +41,10 @@ class ProspectRecord:
     domain: str
     dm_email: str
     dm_name: str | None = None
-    company_name: str | None = None
-    industry: str | None = None
+    display_name: str | None = None
+    gmb_category: str | None = None
+    state: str | None = None
+    suburb: str | None = None
 
 
 @dataclass
@@ -136,18 +145,32 @@ class CampaignExecutor:
         raise ValueError(f"Invalid sequence format in {path}")
 
     def _render_template(self, template: str, prospect: ProspectRecord) -> str:
-        """Replace merge tags in a template string."""
+        """Replace merge tags in a template string.
+
+        Supports both tag namespaces:
+        - Native: {{first_name}}, {{company_name}}, {{domain}}, {{industry}}
+        - Aiden's: {{dm_name}}, {{display_name}}, {{state}}, {{suburb}}, {{sender_name}}
+        """
         first_name = ""
         if prospect.dm_name:
             parts = prospect.dm_name.strip().split()
             first_name = parts[0] if parts else ""
 
         replacements = {
+            # Native namespace
             "{{first_name}}": first_name or "there",
-            "{{company_name}}": prospect.company_name or "your practice",
+            "{{company_name}}": prospect.display_name or "your practice",
             "{{domain}}": prospect.domain or "",
-            "{{industry}}": prospect.industry or "",
+            "{{industry}}": prospect.gmb_category or "",
             "{{email}}": prospect.dm_email or "",
+            # Aiden's namespace
+            "{{dm_name}}": first_name or "there",
+            "{{display_name}}": _clean_display_name(prospect.display_name) or "your practice",
+            "{{state}}": prospect.state or "Australia",
+            "{{suburb}}": prospect.suburb or "your area",
+            "{{sender_name}}": self.from_address.split("<")[0].strip()
+            if "<" in self.from_address
+            else self.from_address.split("@")[0],
         }
         result = template
         for tag, value in replacements.items():
@@ -155,41 +178,54 @@ class CampaignExecutor:
         return result
 
     async def _fetch_prospects(self) -> list[ProspectRecord]:
-        """Query BU for eligible prospects."""
+        """Query BU for eligible prospects.
+
+        Uses parameterized queries to prevent SQL injection.
+        Column names match actual BU schema: display_name, gmb_category,
+        state, suburb (NOT company_name/industry which don't exist).
+        """
         import asyncpg
 
         dsn = os.environ.get("DATABASE_URL_MIGRATIONS") or os.environ.get("DATABASE_URL", "")
         if dsn.startswith("postgresql+asyncpg://"):
             dsn = dsn.replace("postgresql+asyncpg://", "postgresql://", 1)
 
-        where_clauses = [
-            "dm_email IS NOT NULL",
-            "dm_email_verified = true",
-            f"COALESCE(dm_email_confidence, 0) >= {self.min_confidence}",
-            "NOT EXISTS (SELECT 1 FROM public.global_suppression gs WHERE LOWER(gs.email) = LOWER(bu.dm_email))",
-        ]
+        params: list = [self.min_confidence, self.daily_limit]
+        industry_clause = ""
         if self.filter_industry:
-            where_clauses.append(f"industry ILIKE '%{self.filter_industry}%'")
+            industry_clause = "AND gmb_category ILIKE $3"
+            params.append(f"%{self.filter_industry}%")
 
         sql = (
-            "SELECT id::text, domain, dm_email, dm_name, company_name, industry "
+            "SELECT id::text, domain, dm_email, dm_name, display_name, "
+            "       gmb_category, state, suburb "
             "FROM public.business_universe bu "
-            f"WHERE {' AND '.join(where_clauses)} "
-            f"ORDER BY COALESCE(dm_email_confidence, 0) DESC "
-            f"LIMIT {self.daily_limit}"
+            "WHERE dm_email IS NOT NULL "
+            "  AND dm_name IS NOT NULL "
+            "  AND dm_email_verified = true "
+            "  AND COALESCE(dm_email_confidence, 0) >= $1 "
+            "  AND NOT EXISTS ("
+            "    SELECT 1 FROM public.global_suppression gs "
+            "    WHERE LOWER(gs.email) = LOWER(bu.dm_email)"
+            "  ) "
+            f"  {industry_clause} "
+            "ORDER BY COALESCE(dm_email_confidence, 0) DESC "
+            "LIMIT $2"
         )
 
         conn = await asyncpg.connect(dsn)
         try:
-            rows = await conn.fetch(sql)
+            rows = await conn.fetch(sql, *params)
             return [
                 ProspectRecord(
                     id=r["id"],
                     domain=r["domain"] or "",
                     dm_email=r["dm_email"],
                     dm_name=r.get("dm_name"),
-                    company_name=r.get("company_name"),
-                    industry=r.get("industry"),
+                    display_name=r.get("display_name"),
+                    gmb_category=r.get("gmb_category"),
+                    state=r.get("state"),
+                    suburb=r.get("suburb"),
                 )
                 for r in rows
             ]

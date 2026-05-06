@@ -1,7 +1,7 @@
 # Agency OS Manual
 
-Last updated: 2026-04-25 UTC
-Directive CD-PLAYER-V1: CD Player streaming pipeline shipped, BU+CIS audit complete, Closed-Loop Engine scoped
+Last updated: 2026-05-06 UTC
+Directive: Email infrastructure + Railway config + enrichment run (26 PRs #519-#555 since last update)
 Next scheduled update: BU Closed-Loop Engine (ORION) + Phase 2.1 dashboard (ATLAS)
 
 > **Primary store.** This file is the CEO SSOT. Google Doc is an auto-generated mirror.
@@ -23,25 +23,25 @@ Revenue model for BU: API subscriptions, Salesforce/HubSpot marketplace, bulk an
 
 ## SECTION 2 — CURRENT STATE
 
-**Last directive:** GOV-CONSOLIDATION-2026-05-01 (governance + memory + observability marathon — 26 PRs #474–#501)
+**Last directive:** Email infrastructure + Railway config + BU enrichment (PRs #519-#555)
 **Pipeline F status:** P5 COMPLETE, PHASE 1.5 COMPLETE, DASHBOARD DESIGN COMPLETE, CD PLAYER V1 SHIPPED
-**Phase 1.5 result:** Operational autonomy achieved. Clone architecture live. Dual-concur governance ratified.
-**Dashboard result:** Master Agency Desk v10 shipped (2344 lines). 5 concepts explored. Demo archaeology revealed product is a Sales Intelligence Briefing System.
-**CD Player v1 result:** Pipeline_orchestrator unified with cohort_runner proven stages. Per-domain streaming, SSECardStreamer, capacity skip (Stage 6), drop-triggered refill (8% default). Budget P0 fix: 4-layer defence in depth (admission control + per-stage gate + max_in_flight + run-level kill). Budget incident: $73 AUD burned on T5 live test — fixed structurally.
+**Test baseline:** 3179 passed, 0 failed (up from 2152)
+**BU status:** 8,643 businesses, 311 decision maker emails (58 new from Hunter enrichment 2026-05-06), 355 BDMs total
+**Last merged PR:** #555 (Railway toml service config fix)
+**Team roster:** ELLIOT + AIDEN + MAX (COO) — ATLAS + ORION clones available but dispatch unreliable
 
-**Governance + Observability state (2026-05-01):**
-- GOV-PHASE 1 + 1.5 + 2 + 3 + 4 SHIPPED: PreToolUse recorder → governance_events; OPA Gatekeeper live with verdict instrumentation; check_claim.py CLI gate + DoD C5; SessionEnd auto-enforcement (observe-only); enforcer R2/R3 recalibrated.
-- Memory: Mem0 SDK 2.x live with hybrid recall (`MEMORY_RECALL_BACKEND=hybrid`); /save + /recall TG handlers wired; 1589 legacy rows migrated `elliot_internal.memories → public.agent_memories` with `legacy_source`/`legacy_id` provenance keys; ~2170 rows total in agent_memories.
-- Observability: Phoenix Auditor live on Railway (`auditor-phoenix-production.up.railway.app`); Python adapter + watermark export-loop systemd service active; first synthetic span verified live.
-- COO bot Max (`@MaxCOO_Bot`): live as systemd service, hourly digest delivery, on-demand `/status` command verified working.
-- Railway services: Phoenix + Restate-server + OPA + Restate-py-service all created. Restate Python service deploy hit Railpack-vs-dockerfilePath blocker (deferred to follow-up: needs `rootDirectory=infra/restate` solution).
-- Rule consolidation: 60+ scattered rules → 7 consolidated rules ratified in `docs/governance/CONSOLIDATED_RULES.md` (PR #501). Tension decisions: interruption=implicit, dead-references=architecture, infra-rules=separate, dual-concur-timing=hard-LLM-evaluated. CLAUDE.md migration follow-up.
-
-**Next phase:** BU Closed-Loop Engine (ORION, free-mode) + Phase 2.1 dashboard wiring (ATLAS) — parallel tracks
-**Test baseline:** 2152 passed, 0 failed, 28 skipped (pre-session; not re-baselined this session — governance work landed without test additions to the main suites)
-**BU status:** 8,593 businesses (2,747 new dental from T5 recovery), 253 emails, 90 mobiles, 508 BDMs. 4 full cards, 162 actionable (email+LinkedIn).
-**Last merged PR:** #501 (7 consolidated rules — canonical governance)
-**Team roster:** ELLIOT + AIDEN + ATLAS + ORION + SCOUT (5 sessions)
+**Session 2026-05-05/06 deliverables (26 PRs #519-#555):**
+- Email domain agencyxos.ai fully verified: DKIM + DMARC + SPF all live
+- Admin dashboard redeployed on Vercel (cron fixed for Hobby plan)
+- PR #554: Email backend critical bugs fixed (HMAC Svix format + RLS anon policy removed)
+- PR #555: Railway toml service names corrected (agency-os, prefect-server, prefect-worker)
+- Redis relay Phase 1+2 shipped, Phase 3 prepped
+- Ruff cleanup: 304 errors → 0, CI gate green
+- Test suite: 60 failures → 0 (CD Player v1 rewrite, stale mock fixes)
+- Governance: 60+ rules → 7 consolidated rules (CONSOLIDATED_RULES.md)
+- 273 stale git branches pruned
+- Hunter.io enrichment: 84 high-value domains processed, 58 emails found
+- Railway: all 3 services redeployed with PR #555 config
 
 ### BU + CIS Audit (2026-04-25)
 
@@ -141,22 +141,24 @@ Sprints 0–6 complete (#279–#306). All core pipeline modules built:
 
 **Testing + provider resolution.**
 
-- 87% of emails unverified (pattern/HTML only — no SMTP confirmation)
-- ContactOut: subscribed ($49/mo), API key demo-locked — waiting on support
-- Forager: best APAC benchmarks, API key returns 404 — waiting on support
-- Reacher: open source SMTP verifier, Docker ready, port 25 blocked on Vultr AND Railway
-- Leadmagic mobile: 0% AU coverage — dead for mobile enrichment
-- Stage 10 (LinkedIn DM profiles): BD batch takes 30+ min for 260 URLs — SLA unresolved
+- ContactOut: credits exhausted, needs top-up (NOT demo-locked — dave_corrections)
+- Hunter.io: WORKING. 724 searches remaining, 984 verifications remaining. Second most reliable email source
+- Reacher: DEAD. Port 25 permanently blocked everywhere. Not an option. Removed from all plans (dave_corrections)
+- Leadmagic: API key present, plan unpurchased. ~$80 AUD to activate
+- Forager: still 404, likely dead
+- Stage 10 (LinkedIn DM profiles): BD batch SLA unresolved
 
 ### Blocking Items
 
 | Blocker | Owner | Status |
 |---------|-------|--------|
-| ContactOut API key demo-locked | Dave | Waiting on ContactOut support |
-| Forager API 404 | Dave | Waiting on Forager support |
-| Reacher port 25 blocked (Vultr + Railway) | Dave | Needs dedicated VPS or Oracle Cloud free tier |
-| BD LinkedIn DM batch SLA (30+ min for 260 URLs) | Dave | Needs BD support ticket |
-| Email verification: 87% unverified | — | Blocked on above provider resolutions |
+| Salesforge API key | Dave | Returns 401/404 on all endpoints — key invalid. Smartlead integration partially exists in codebase as alternative |
+| ContactOut credits | Dave | Credits exhausted — needs top-up (billing, not tech). Was most reliable email source |
+| Leadmagic credits | Dave | ~$80 AUD needed to activate person discovery pipeline. API key present but plan unpurchased |
+| Stripe AU | Dave | Not set up — blocks payment collection from customers |
+| Reacher | — | DEAD permanently. Port 25 blocked on all managed cloud. Removed from all plans |
+| Forager API | — | Returns 404. Support unresponsive. Consider deprecated |
+| Prefect server | Max | Railway service deploys but runs Agency OS API instead of Prefect — startCommand override not applying from railway.toml |
 
 ---
 

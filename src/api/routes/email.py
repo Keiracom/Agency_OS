@@ -81,6 +81,62 @@ def _connect():
 # ── Bounce ratchet ──────────────────────────────────────────────────────────
 
 
+def _handle_reply(data: dict) -> None:
+    """On email.replied event, record the reply on the BU prospect row.
+
+    Resend webhook ``data`` for replied events contains ``to`` (recipient
+    list — the prospect's email) and may contain ``subject`` and a
+    ``message_id`` for the reply. We merge a small jsonb payload onto
+    ``business_universe.category_baselines.email_reply`` so downstream
+    consumers (campaign engine pausing the sequence, CIS feedback, sales
+    routing) can detect the reply without scanning email_events.
+
+    Idempotent: re-running on the same payload overwrites the same key
+    with the same value — no harm. Failures are logged but don't fail
+    the webhook (we still 200 to Resend).
+    """
+    recipients = data.get("to") or []
+    if isinstance(recipients, str):
+        recipients = [recipients]
+    if not recipients:
+        return
+
+    payload = {
+        "replied_at": datetime.now(UTC).isoformat(),
+        "subject": (data.get("subject") or "")[:200],  # cap noise
+        "message_id": data.get("message_id") or data.get("email_id"),
+    }
+    payload_json = json.dumps(payload)
+
+    try:
+        with _connect() as conn, conn.cursor() as cur:
+            for email in recipients:
+                email = str(email).strip().lower()
+                if not email:
+                    continue
+                cur.execute(
+                    "UPDATE public.business_universe "
+                    "SET category_baselines = COALESCE(category_baselines, '{}'::jsonb) || "
+                    "    jsonb_build_object('email_reply', %s::jsonb), "
+                    "    last_signal_refresh = NOW() "
+                    "WHERE LOWER(dm_email) = %s",
+                    (payload_json, email),
+                )
+                if cur.rowcount > 0:
+                    logger.info(
+                        "[email/reply] recorded reply on BU: %s (%d rows)",
+                        email, cur.rowcount,
+                    )
+                else:
+                    logger.info(
+                        "[email/reply] no BU match for replier: %s (orphan reply)",
+                        email,
+                    )
+            conn.commit()
+    except Exception as exc:
+        logger.error("[email/reply] BU update failed: %s", exc)
+
+
 def _bounce_ratchet(data: dict, event_type: str) -> None:
     """On hard bounce or complaint, unverify BU email and suppress if complained.
 
@@ -320,6 +376,11 @@ async def post_webhook(request: Request) -> dict[str, Any]:
         "email.opened": "opened",
         "email.clicked": "clicked",
         "email.failed": "failed",
+        # email.replied recognised but mapped to None — the email_events.status
+        # CHECK constraint doesn't include 'replied' (would need a migration).
+        # Reply is recorded in the events jsonb + BU category_baselines via
+        # _handle_reply() below, which is sufficient for the closed-loop signal.
+        "email.replied": None,
     }
     new_status = status_map.get(event_type)
     now = datetime.now(UTC)
@@ -351,6 +412,12 @@ async def post_webhook(request: Request) -> dict[str, Any]:
     # Bounce ratchet: hard bounce/complaint → unverify + suppress
     if event_type in ("email.bounced", "email.complained"):
         _bounce_ratchet(data, event_type)
+
+    # Reply detection: closed-loop feedback — record on BU so campaign engine
+    # can pause future steps, sales can route warm replies, and CIS can score
+    # which prospects converted.
+    if event_type == "email.replied":
+        _handle_reply(data)
 
     return {"ok": True, "message_id": message_id, "applied_status": new_status}
 

@@ -26,6 +26,13 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 
+def _clean_display_name(name: str | None) -> str | None:
+    """Strip GMB scraper cruft from display_name (e.g. ' | Medical Marketing Agency Sydney')."""
+    if not name:
+        return name
+    return name.split(" | ")[0].strip()
+
+
 @dataclass
 class ProspectRecord:
     """A BU row eligible for outreach."""
@@ -34,8 +41,10 @@ class ProspectRecord:
     domain: str
     dm_email: str
     dm_name: str | None = None
-    company_name: str | None = None
-    industry: str | None = None
+    display_name: str | None = None
+    gmb_category: str | None = None
+    state: str | None = None
+    suburb: str | None = None
 
 
 @dataclass
@@ -93,34 +102,75 @@ class CampaignExecutor:
 
         # Load sequence
         if sequence_steps:
-            self.steps = [SequenceStep(**s) for s in sequence_steps]
+            self.steps = [SequenceStep(**self._normalize_step(s)) for s in sequence_steps]
         elif sequence_path:
             self.steps = self._load_sequence(sequence_path)
         else:
             raise ValueError("Either sequence_path or sequence_steps required")
 
     @staticmethod
+    def _normalize_step(raw: dict) -> dict:
+        """Normalize step dict to SequenceStep fields.
+
+        Handles both schemas:
+        - Ours: {"step_number": 1, "subject_template": "...", "body_template": "..."}
+        - Aiden's: {"step": 1, "subject": "...", "body_text": "...", "body_html": "..."}
+        """
+        out = dict(raw)
+        # step → step_number
+        if "step" in out and "step_number" not in out:
+            out["step_number"] = out.pop("step")
+        # subject → subject_template
+        if "subject" in out and "subject_template" not in out:
+            out["subject_template"] = out.pop("subject")
+        # body_text or body_html → body_template
+        if "body_template" not in out:
+            out["body_template"] = out.pop("body_text", None) or out.pop("body_html", "")
+        # Drop extra keys that SequenceStep doesn't accept
+        valid = {"step_number", "subject_template", "body_template", "delay_days", "channel"}
+        return {k: v for k, v in out.items() if k in valid}
+
+    @staticmethod
     def _load_sequence(path: str) -> list[SequenceStep]:
-        """Load sequence steps from a JSON file."""
+        """Load sequence steps from a JSON file.
+
+        Accepts both schema variants:
+        - {"steps": [...]} (CampaignExecutor native)
+        - {"emails": [...]} (campaign_sender.py / Aiden's format)
+        """
         data = json.loads(Path(path).read_text())
-        steps_data = data.get("steps") or data
+        steps_data = data.get("steps") or data.get("emails") or data
         if isinstance(steps_data, list):
-            return [SequenceStep(**s) for s in steps_data]
+            return [SequenceStep(**CampaignExecutor._normalize_step(s)) for s in steps_data]
         raise ValueError(f"Invalid sequence format in {path}")
 
     def _render_template(self, template: str, prospect: ProspectRecord) -> str:
-        """Replace merge tags in a template string."""
+        """Replace merge tags in a template string.
+
+        Supports both tag namespaces:
+        - Native: {{first_name}}, {{company_name}}, {{domain}}, {{industry}}
+        - Aiden's: {{dm_name}}, {{display_name}}, {{state}}, {{suburb}}, {{sender_name}}
+        """
         first_name = ""
         if prospect.dm_name:
             parts = prospect.dm_name.strip().split()
             first_name = parts[0] if parts else ""
 
         replacements = {
+            # Native namespace
             "{{first_name}}": first_name or "there",
-            "{{company_name}}": prospect.company_name or "your practice",
+            "{{company_name}}": prospect.display_name or "your practice",
             "{{domain}}": prospect.domain or "",
-            "{{industry}}": prospect.industry or "",
+            "{{industry}}": prospect.gmb_category or "",
             "{{email}}": prospect.dm_email or "",
+            # Aiden's namespace
+            "{{dm_name}}": first_name or "there",
+            "{{display_name}}": _clean_display_name(prospect.display_name) or "your practice",
+            "{{state}}": prospect.state or "Australia",
+            "{{suburb}}": prospect.suburb or "your area",
+            "{{sender_name}}": self.from_address.split("<")[0].strip()
+            if "<" in self.from_address
+            else self.from_address.split("@")[0],
         }
         result = template
         for tag, value in replacements.items():
@@ -128,41 +178,58 @@ class CampaignExecutor:
         return result
 
     async def _fetch_prospects(self) -> list[ProspectRecord]:
-        """Query BU for eligible prospects."""
+        """Query BU for eligible prospects.
+
+        Uses parameterized queries to prevent SQL injection.
+        Column names match actual BU schema: display_name, gmb_category,
+        state, suburb (NOT company_name/industry which don't exist).
+        """
         import asyncpg
 
         dsn = os.environ.get("DATABASE_URL_MIGRATIONS") or os.environ.get("DATABASE_URL", "")
         if dsn.startswith("postgresql+asyncpg://"):
             dsn = dsn.replace("postgresql+asyncpg://", "postgresql://", 1)
 
-        where_clauses = [
-            "dm_email IS NOT NULL",
-            "dm_email_verified = true",
-            f"COALESCE(dm_email_confidence, 0) >= {self.min_confidence}",
-            "NOT EXISTS (SELECT 1 FROM public.global_suppression gs WHERE LOWER(gs.email) = LOWER(bu.dm_email))",
-        ]
+        params: list = [self.min_confidence, self.daily_limit]
+        industry_clause = ""
         if self.filter_industry:
-            where_clauses.append(f"industry ILIKE '%{self.filter_industry}%'")
+            industry_clause = "AND gmb_category ILIKE $3"
+            params.append(f"%{self.filter_industry}%")
 
         sql = (
-            "SELECT id::text, domain, dm_email, dm_name, company_name, industry "
+            "SELECT id::text, domain, dm_email, dm_name, display_name, "
+            "       gmb_category, state, suburb "
             "FROM public.business_universe bu "
-            f"WHERE {' AND '.join(where_clauses)} "
-            f"ORDER BY COALESCE(dm_email_confidence, 0) DESC "
-            f"LIMIT {self.daily_limit}"
+            "WHERE dm_email IS NOT NULL "
+            "  AND dm_name IS NOT NULL "
+            "  AND dm_email_verified = true "
+            "  AND COALESCE(dm_email_confidence, 0) >= $1 "
+            "  AND LOWER(SPLIT_PART(dm_email, '@', 1)) NOT IN ("
+            "    'hello','info','reception','admin','office',"
+            "    'contact','sales','enquiries','support','hi','team'"
+            "  ) "
+            "  AND NOT EXISTS ("
+            "    SELECT 1 FROM public.global_suppression gs "
+            "    WHERE LOWER(gs.email) = LOWER(bu.dm_email)"
+            "  ) "
+            f"  {industry_clause} "
+            "ORDER BY COALESCE(dm_email_confidence, 0) DESC "
+            "LIMIT $2"
         )
 
         conn = await asyncpg.connect(dsn)
         try:
-            rows = await conn.fetch(sql)
+            rows = await conn.fetch(sql, *params)
             return [
                 ProspectRecord(
                     id=r["id"],
                     domain=r["domain"] or "",
                     dm_email=r["dm_email"],
                     dm_name=r.get("dm_name"),
-                    company_name=r.get("company_name"),
-                    industry=r.get("industry"),
+                    display_name=r.get("display_name"),
+                    gmb_category=r.get("gmb_category"),
+                    state=r.get("state"),
+                    suburb=r.get("suburb"),
                 )
                 for r in rows
             ]

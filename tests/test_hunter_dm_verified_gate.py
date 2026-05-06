@@ -50,7 +50,7 @@ async def test_hunter_not_called_when_dm_not_verified():
             domain="example.com",
             dm_name="John Doe",
             dm_verified=False,
-            skip_layers=[1, 2, 3],  # skip paid layers, force Hunter path only
+            skip_layers=[0, 3, 5],  # skip ContactOut, Leadmagic, BrightData — isolate Hunter path
         )
 
     # Hunter GET must never have been called
@@ -75,8 +75,8 @@ async def test_hunter_called_when_dm_verified_and_name_present():
             domain="example.com",
             dm_name="John Doe",
             dm_verified=True,
-            # skip L0 contact_data, L1 contactout, L3 leadmagic so only Hunter runs
-            skip_layers=[2, 3],
+            # skip ContactOut, Leadmagic, BrightData so only Hunter runs
+            skip_layers=[0, 3, 5],
             contactout_result=None,
             contact_data=None,
         )
@@ -105,7 +105,7 @@ async def test_hunter_skipped_when_no_api_key():
             domain="example.com",
             dm_name="John Doe",
             dm_verified=True,
-            skip_layers=[2, 3],
+            skip_layers=[0, 3, 5],
             contactout_result=None,
             contact_data=None,
         )

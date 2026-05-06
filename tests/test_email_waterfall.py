@@ -32,7 +32,7 @@ async def test_layer1_mailto_returns_email():
         domain="pymbledental.com.au",
         dm_name="Michael Chen",
         contact_data={"company_email": "michael.chen@pymbledental.com.au"},
-        skip_layers=[2, 3],
+        skip_layers=[3, 5],
     )
     assert result.email == "michael.chen@pymbledental.com.au"
     assert result.source == "contact_registry"
@@ -48,7 +48,7 @@ async def test_layer1_name_match_gives_high_confidence():
         domain="pymbledental.com.au",
         dm_name="Michael Chen",
         contact_data={"company_email": "michael.chen@pymbledental.com.au"},
-        skip_layers=[2, 3],
+        skip_layers=[3, 5],
     )
     # contact_registry source is unverified, confidence is low
     assert result.confidence == "low"
@@ -63,7 +63,7 @@ async def test_layer1_no_html_falls_through():
         domain="dentist.com.au",
         dm_name="Jane Smith",
         html=None,
-        skip_layers=[2, 3],
+        skip_layers=[3, 5],
     )
     assert result.source == "none"
 
@@ -141,7 +141,7 @@ async def test_layer2_leadmagic_verified_email():
             domain="dentist.com.au",
             dm_name="Michael Chen",
             html=NO_EMAIL_HTML,
-            skip_layers=[1, 3],
+            skip_layers=[1, 5],
         )
 
     assert result.source == "leadmagic"
@@ -169,7 +169,7 @@ async def test_layer2_leadmagic_not_found_falls_through():
             domain="dentist.com.au",
             dm_name="Michael Chen",
             html=NO_EMAIL_HTML,
-            skip_layers=[1, 3],
+            skip_layers=[1, 5],
         )
 
     assert result.email is None
@@ -378,7 +378,7 @@ async def test_contactout_beats_generic_inbox():
         dm_name="Michael Chen",
         html=GENERIC_HTML,
         contactout_result=contactout,
-        skip_layers=[2, 3],  # skip paid layers
+        skip_layers=[3, 5],  # skip paid layers
     )
 
     assert result.email == "michael.chen@dentist.com.au"
@@ -400,7 +400,7 @@ async def test_generic_inbox_falls_through_without_contactout():
         dm_name="Michael Chen",
         html=GENERIC_HTML,
         contactout_result=None,
-        skip_layers=[2, 3],  # skip paid layers
+        skip_layers=[3, 5],  # skip paid layers
     )
 
     # Generic inbox should fall through to generic fallback (not short-circuit)

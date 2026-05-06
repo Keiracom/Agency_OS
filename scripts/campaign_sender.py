@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-"""scripts/campaign_sender.py — render and (dry-run) send campaign emails.
+"""DEPRECATED — use scripts/run_campaign.py + src/engines/campaign_executor.py instead.
+
+This script is superseded by the CampaignExecutor engine which handles both
+schema formats, parameterized queries, dual tag namespaces, and quality gates.
+
+Original description:
+scripts/campaign_sender.py — render and (dry-run) send campaign emails.
 
 Reads a campaign sequence JSON, queries Supabase business_universe for
 matching prospects with verified emails, replaces merge tags, and either
@@ -14,6 +20,7 @@ Usage:
     python scripts/campaign_sender.py --step 2 --limit 5  # dry-run step 2
     python scripts/campaign_sender.py --live --limit 1    # send 1 real email
 """
+
 from __future__ import annotations
 
 import argparse
@@ -27,9 +34,7 @@ from pathlib import Path
 from typing import Any
 
 DEFAULT_ENV_FILE = Path("/home/elliotbot/clawd/Agency_OS/config/.env")
-DEFAULT_CAMPAIGN = Path(
-    "/home/elliotbot/clawd/Agency_OS-max/campaigns/dental_sequence_v1.json"
-)
+DEFAULT_CAMPAIGN = Path("/home/elliotbot/clawd/Agency_OS-max/campaigns/dental_sequence_v1.json")
 MCP_BRIDGE_DIR = Path("/home/elliotbot/clawd/skills/mcp-bridge")
 TAG_RE = re.compile(r"\{\{\s*(\w+)\s*\}\}")
 
@@ -46,17 +51,13 @@ def load_env(path: Path) -> None:
 
 
 def psycopg_dsn() -> str:
-    url = (
-        os.environ.get("DATABASE_URL")
-        or os.environ.get("DATABASE_URL_MIGRATIONS")
-        or ""
-    )
+    url = os.environ.get("DATABASE_URL") or os.environ.get("DATABASE_URL_MIGRATIONS") or ""
     if not url:
         sys.exit("ERROR: DATABASE_URL not configured (looked in env + .env file)")
     if url.startswith("postgresql+asyncpg://"):
-        url = "postgresql://" + url[len("postgresql+asyncpg://"):]
+        url = "postgresql://" + url[len("postgresql+asyncpg://") :]
     elif url.startswith("postgres+asyncpg://"):
-        url = "postgresql://" + url[len("postgres+asyncpg://"):]
+        url = "postgresql://" + url[len("postgres+asyncpg://") :]
     return url
 
 
@@ -129,7 +130,12 @@ def build_context(p: Prospect, sender_name: str) -> dict[str, str]:
 
 
 def send_via_mcp(
-    *, to: str, subject: str, html: str, text: str, sender: str,
+    *,
+    to: str,
+    subject: str,
+    html: str,
+    text: str,
+    sender: str,
 ) -> dict[str, Any]:
     payload = {
         "from_address": sender,
@@ -140,7 +146,11 @@ def send_via_mcp(
     }
     proc = subprocess.run(
         [
-            "node", "scripts/mcp-bridge.js", "call", "resend", "send_email",
+            "node",
+            "scripts/mcp-bridge.js",
+            "call",
+            "resend",
+            "send_email",
             json.dumps(payload),
         ],
         cwd=MCP_BRIDGE_DIR,
@@ -176,14 +186,18 @@ def main() -> int:
     )
     ap.add_argument("--min-confidence", type=int, default=70)
     ap.add_argument(
-        "--require-verified", action=argparse.BooleanOptionalAction, default=True,
+        "--require-verified",
+        action=argparse.BooleanOptionalAction,
+        default=True,
     )
     ap.add_argument(
-        "--vertical-match", default=None,
+        "--vertical-match",
+        default=None,
         help="Override gmb_category ILIKE pattern (default derived from campaign vertical)",
     )
     ap.add_argument(
-        "--live", action="store_true",
+        "--live",
+        action="store_true",
         help="Actually send via Resend (default = dry-run, no network call)",
     )
     args = ap.parse_args()
@@ -211,7 +225,9 @@ def main() -> int:
     print(f"campaign        : {campaign.get('campaign_name')}")
     print(f"step            : {args.step}/{len(steps)}  delay_days={template.get('delay_days')}")
     print(f"vertical pattern: {pattern}  (campaign vertical={campaign.get('vertical')})")
-    print(f"filters         : verified={args.require_verified}, min_confidence={args.min_confidence}")
+    print(
+        f"filters         : verified={args.require_verified}, min_confidence={args.min_confidence}"
+    )
     print(f"prospects found : {len(prospects)} (limit={args.limit})")
     print(f"from            : {args.from_address}")
     print()
@@ -224,9 +240,7 @@ def main() -> int:
         api_key = os.environ.get("RESEND_API_KEY", "")
         if not api_key:
             sys.exit("ERROR: --live set but RESEND_API_KEY missing")
-        confirm = input(
-            f"About to send {len(prospects)} REAL emails. Type 'SEND' to confirm: "
-        )
+        confirm = input(f"About to send {len(prospects)} REAL emails. Type 'SEND' to confirm: ")
         if confirm.strip() != "SEND":
             print("Aborted.")
             return 1

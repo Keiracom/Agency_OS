@@ -124,3 +124,68 @@ async def test_4xx_raises_valueerror():
     with patch.object(client, "_get_client", return_value=mock_http):
         with pytest.raises(ValueError, match="Bright Data API error: 401"):
             await client._scraper_request("some_dataset", [{"url": "https://example.com"}])
+
+
+# ── Live smoke (Phase 1a pre-cohort sweep) ────────────────────────────────────
+# Closes audit checklist item #7 (template § C) for bright_data_linkedin_client.py.
+# Real BD Scrapers API call — caps at 20 records × $0.00075 = ~$0.015 USD max.
+
+import os as _os
+
+
+@pytest.mark.live
+@pytest.mark.asyncio
+async def test_bd_linkedin_live_smoke():
+    """Real BD LinkedIn lookup of a known-stable AU company.
+
+    Asserts the call completes and at least one structured employee/staff
+    record comes back. Failure indicates BD URL/auth/dataset drift — mocks
+    would not catch this (the lesson from PR #587/#588).
+
+    Cost: ≤ 20 records × $0.00075 = ~$0.015 USD per run. Budget-safe.
+    """
+    if not _os.environ.get("BRIGHTDATA_API_KEY"):
+        pytest.skip("BRIGHTDATA_API_KEY env var unset; live smoke skipped")
+
+    company = _os.environ.get(
+        "BD_LINKEDIN_LIVE_SMOKE_COMPANY",
+        # Stable AU company — large permanent LinkedIn presence.
+        "Atlassian",
+    )
+    # Use the direct-URL input path — that's the 1-row pattern the dispatch
+    # asked for. The keyword-discover path on this dataset currently 400s
+    # with "Incorrect discovery collector id" (real BD contract drift the
+    # smoke surfaced on first run; tracked separately for connector fix).
+    linkedin_url = _os.environ.get(
+        "BD_LINKEDIN_LIVE_SMOKE_URL",
+        "https://www.linkedin.com/company/atlassian/",
+    )
+
+    client = BrightDataLinkedInClient()
+    people = await client.lookup_company_people(
+        company_name=company,
+        linkedin_url=linkedin_url,
+    )
+
+    # `lookup_company_people` swallows exceptions and returns []. Empty list
+    # for a known-stable target = contract regression, fail loudly.
+    assert isinstance(people, list), (
+        f"BD LinkedIn returned non-list ({type(people).__name__}) for "
+        f"{company!r} — schema drift?"
+    )
+    assert len(people) > 0, (
+        f"BD LinkedIn returned 0 records for {company!r} — likely URL/auth/"
+        "dataset-contract drift (mocks would not catch this)"
+    )
+    # Spot-check that records carry at least one of the keys downstream
+    # picks decision-makers from. The dataset returns various shapes; we
+    # just need ONE of these populated on the first record.
+    first = people[0]
+    assert isinstance(first, dict), f"first record is not a dict: {first!r}"
+    has_signal = any(
+        first.get(k) for k in ("name", "title", "linkedin_url", "url")
+    )
+    assert has_signal, (
+        f"first record has no name/title/linkedin_url — schema drift?: "
+        f"{first!r}"
+    )

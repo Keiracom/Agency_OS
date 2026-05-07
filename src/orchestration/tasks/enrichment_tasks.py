@@ -62,7 +62,7 @@ async def enrich_lead_task(
         Enrichment result with:
             - success: bool
             - lead_id: UUID
-            - enrichment_source: str (cache, siege_waterfall, camoufox)
+            - enrichment_source: str (cache, siege_waterfall, camoufox) — note: "siege_waterfall" string literal preserved for downstream telemetry compatibility despite file rename to waterfall_v2.py
             - confidence: float
             - fields_enriched: list[str]
 

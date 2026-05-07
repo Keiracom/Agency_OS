@@ -6,7 +6,7 @@ TASK: POOL-012 (Gap fix - pool population trigger)
 DEPENDENCIES:
   - src/engines/scout.py
   - src/integrations/supabase.py
-  - src/integrations/siege_waterfall.py (SSOT for enrichment)
+  - src/pipeline/waterfall_v2.py (SSOT for enrichment — renamed from siege_waterfall.py PR-A #593)
 RULES APPLIED:
   - Rule 1: Follow blueprint exactly
   - Rule 11: Session passed as argument
@@ -15,7 +15,7 @@ RULES APPLIED:
 
 ENRICHMENT STRATEGY:
   All enrichment now flows through Siege Waterfall (5-tier Australian B2B pipeline).
-  See src/integrations/siege_waterfall.py for tier details.
+  See src/pipeline/waterfall_v2.py for tier details.
 
 WATERFALL STRATEGY:
   Tier 1: Search by INDUSTRY from portfolio, EXCLUDE portfolio domains (lookalikes)
@@ -1129,4 +1129,4 @@ async def pool_population_batch_flow(
 #     - All tiers apply get_who_refined_criteria() before search
 #     - Refines titles, industries, and company size based on conversion patterns
 #     - Transparent logging of refinement application
-# [x] SIEGE WATERFALL: All enrichment flows through siege_waterfall.py (SSOT)
+# [x] SIEGE WATERFALL: All enrichment flows through waterfall_v2.py (SSOT — renamed from siege_waterfall.py PR-A #593)

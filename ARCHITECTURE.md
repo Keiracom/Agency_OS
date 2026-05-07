@@ -522,9 +522,6 @@ Terms used throughout this document and in code. Defined ONCE here; referenced e
 - **Propensity** — 100-pt score measuring fit + timing. Service-aware, ICP-configured per agency at onboarding.
 - **CIS** — Conversion Intelligence System. Learning component of ALS that improves scores from campaign outcomes.
 - **Opportunity Score** — 100-pt score identifying businesses with scale but low digital presence (§6 OPPORTUNITY).
-- **HOT tier** — leads scoring ≥85 Propensity. Active outreach campaign target.
-- **WARM-PASSIVE tier** — high CIS but no recent trigger signal. Held in cold pool with periodic re-scan.
-- **COLD-POOL** — high-fit prospects without active triggers. Held until trigger emerges; do not blind-send.
 - **Pre-revenue** — current operating state. Zero paying customers; no social-proof claims permitted.
 - **Bare pointer** — module file containing only a one-line link to ARCHITECTURE.md (per `docs/governance/SOP_ARCHITECTURE_SSOT.md` §4).
 - **Drift detector** — Layer 6 hook (`scripts/ssot_drift_check.sh`) that fires on `SessionStart:clear` to catch module paraphrase regressions.
@@ -546,9 +543,10 @@ Terms used throughout this document and in code. Defined ONCE here; referenced e
 - CI runs `ruff check src/` + `ruff format --check src/` + scoped pytest on PRs
 
 ### Sandbox accounts
-- Most vendors offer free/trial tiers (Adzuna, Hunter limited)
+- Most current LIVE VENDORS (§4) offer free/trial tiers for development; check vendor docs for limits.
 - Bright Data dev workspace separate from prod (cost-controlled)
 - Lemlist/SmartLead — NOT IN STACK (deprecated per §3 DEPRECATED VENDORS)
+- Adzuna is a Phase 1b pre-registered future connector (§14), NOT a current sandbox account
 
 ### Worktree convention
 - Elliot main: `/home/elliotbot/clawd/Agency_OS/`

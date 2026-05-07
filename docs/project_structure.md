@@ -53,7 +53,6 @@ coo_bot
 data
 detectors
 engines
-enrichment
 evo
 fixtures
 governance

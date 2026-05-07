@@ -23,6 +23,12 @@ Before writing any code that calls an external service:
 
 ---
 
+## PROJECT STRUCTURE
+
+See [docs/project_structure.md](docs/project_structure.md) for the auto-generated directory tree. Regenerate via `find . -maxdepth 2 -type d` from repo root when top-level structure changes.
+
+---
+
 ## SECTION 1 — WHAT IS SIEGE WATERFALL
 
 Siege Waterfall is Agency OS proprietary orchestration
@@ -48,6 +54,21 @@ Vendors inside it are replaced. The orchestrator improves.
 ---
 
 ## SECTION 2 — SYSTEM ARCHITECTURE OVERVIEW
+
+```mermaid
+flowchart LR
+    ICP[Verify ICP] --> T0[T0 Discovery<br/>DataForSEO]
+    T0 --> Bulk[Bulk insert<br/>lead_pool]
+    Bulk --> ABN[BU ABN match<br/>local JOIN]
+    ABN --> Act[Activate<br/>campaign]
+    Act --> FB[Flow B fires<br/>async]
+    FB --> Par[Parallel via asyncio.gather<br/>T1 / T1.25 / T1.5 / T2 / T3 / T-DM0]
+    Par --> S2[Stage 2<br/>Person discovery]
+    S2 --> S25[Stage 2.5<br/>Social presence<br/>Propensity ≥70]
+    S25 --> S3[Stage 3<br/>T5 Mobile<br/>Propensity ≥85]
+    S3 --> ALS[ALS Scoring]
+    ALS --> OUT[Outreach Stack<br/>Salesforge / Unipile / ElevenAgents]
+```
 
 ### FLOW A — Synchronous discovery (target under 6 minutes)
 1. Verify ICP (2s)
@@ -452,3 +473,112 @@ Report if you encounter them. Do not route around them.
 8. Message generation: untested with real data.
 9. ✅ RESOLVED 2026-03-17: LEADMAGIC_API_KEY set on
    Railway via GraphQL upsert.
+
+---
+
+## SECTION 11 — SECURITY
+
+### Authentication
+- User auth: Supabase Auth (email + magic link)
+- Bot auth: callsign-based via CALLSIGN env var (no per-bot password)
+- Service-to-service: API keys + GUID/secret per vendor (see §9 ENVIRONMENT VARIABLES)
+
+### Secret handling
+- All API keys live in Railway env vars (production) or `~/.config/agency-os/.env` (local dev)
+- NEVER commit keys to repo. `.env*` files are gitignored.
+- Rotate via Railway dashboard or GraphQL API per memory pin `reference_railway_graphql.md`
+- Pre-call SOP: query `elliot_internal.api_keys_ledger` before assuming a key works
+
+### Network security
+- All vendor APIs use HTTPS
+- Bright Data scrapes via residential proxy (egress IP rotation handled by vendor)
+- No incoming public endpoints from bot callsigns; FastAPI runs behind Railway router
+
+### Data security
+- PII (email, mobile, names) lives in Supabase
+- Row-Level Security (RLS) gates per-agency access
+- ALS proprietary scoring weights NEVER exposed to agency customer (per §6 ALS SCORING)
+
+### Compliance
+- AU SPAM Act: SMS requires explicit prior opt-in (Telnyx on hold until consent flow ratified — see §7 OUTREACH STACK)
+- Email outreach: opt-out footer + sender authentication (SPF/DKIM/DMARC at registrar level)
+- DNCR check before voice campaigns (Telnyx integration)
+
+---
+
+## SECTION 12 — GLOSSARY
+
+Terms used throughout this document and in code. Defined ONCE here; referenced everywhere else.
+
+- **Siege Waterfall** — Agency OS's proprietary orchestration layer (§1). NOT a vendor. The code that decides which vendor to call, in what order, with what gates.
+- **Flow A** — synchronous discovery phase, target <6min. Builds the universe of fit-prospects (§2).
+- **Flow B** — asynchronous parallel enrichment phase, target <10min. Per-lead via `asyncio.gather` (§2).
+- **T0–T5** — enrichment tier numbering. T0 = discovery; T1-T5 = company + person enrichment stages (§5).
+- **T-DM0–T-DM4** — decision-maker enrichment tier numbering. Person-level data acquisition (§5 Stage 2/2.5).
+- **ABN** — Australian Business Number. 11-digit identifier from the Australian Business Register (ABR).
+- **GMB** — Google My Business (now Google Business Profile). Source of T0 + T2 enrichment data.
+- **ALS** — Agency Lead Scoring. Proprietary scoring system (§6) — Reachability + Propensity dimensions.
+- **Reachability** — 100-pt score measuring channel access (email/LinkedIn/mobile confirmed).
+- **Propensity** — 100-pt score measuring fit + timing. Service-aware, ICP-configured per agency at onboarding.
+- **CIS** — Conversion Intelligence System. Learning component of ALS that improves scores from campaign outcomes.
+- **Opportunity Score** — 100-pt score identifying businesses with scale but low digital presence (§6 OPPORTUNITY).
+- **Pre-revenue** — current operating state. Zero paying customers; no social-proof claims permitted.
+- **Bare pointer** — module file containing only a one-line link to ARCHITECTURE.md (per `docs/governance/SOP_ARCHITECTURE_SSOT.md` §4).
+- **Drift detector** — Layer 6 hook (`scripts/ssot_drift_check.sh`) that fires on `SessionStart:clear` to catch module paraphrase regressions.
+
+---
+
+## SECTION 13 — DEV & TESTING ENVIRONMENT
+
+### Local setup
+- Python virtualenv at `/home/elliotbot/clawd/venv/`
+- Frontend: Next.js — `cd frontend && npm install`
+- Local DB: Supabase project shared with prod (no separate dev instance currently)
+- Env vars: `~/.config/agency-os/.env` (local) mirrors Railway prod set
+
+### Test infrastructure
+- pytest markers: `live` (real API calls, opt-in via `pytest -m live`), `integration`, `e2e`
+- Default test run: `pytest -m "not live"` (offline, mocks)
+- Live-smoke tests cover 1 connector each (per `docs/audits/2026-05-07_connector_live_smoke_audit.md`)
+- CI runs `ruff check src/` + `ruff format --check src/` + scoped pytest on PRs
+
+### Sandbox accounts
+- Most current LIVE VENDORS (§4) offer free/trial tiers for development; check vendor docs for limits.
+- Bright Data dev workspace separate from prod (cost-controlled)
+- Lemlist/SmartLead — NOT IN STACK (deprecated per §3 DEPRECATED VENDORS)
+- Adzuna is a Phase 1b pre-registered future connector (§14), NOT a current sandbox account
+
+### Worktree convention
+- Elliot main: `/home/elliotbot/clawd/Agency_OS/`
+- Aiden: `/home/elliotbot/clawd/Agency_OS-aiden/`
+- Atlas (clone): `/home/elliotbot/clawd/Agency_OS-atlas/`
+- Scout (research): `/home/elliotbot/clawd/Agency_OS-scout/`
+
+---
+
+## SECTION 14 — FUTURE ROADMAP
+
+Forward-looking work. Distinct from §10 (reactive technical debt). Items here represent direction, not commitment.
+
+### Phase 1a — Density-rerank cohort validation (current)
+- Build: density score module, NEGATIVE filter, cohort harness, CIS-band stratification
+- Cohort: 50/arm parallel A/B (CIS-ordered control vs density-reranked variant)
+- Pre-cohort sweep: BD LinkedIn + BD GMB + ABN live-smoke (PR #602 closed checklist item #7)
+- Gate: Dave's two-phase re-scope approval
+
+### Phase 1b — Connector additions (conditional on 1a baseline)
+- Pre-registered ranking: (1) Adzuna jobs, (2) ASIC officer changes, (3) WHOIS, (4) ASIC strike-off (NEGATIVE strengthening), (5) Seek-via-BD fallback
+- Stop rule: stop adding when marginal lift on primary metric falls below 1pp (noise floor)
+
+### Phase 2 — Outreach validation
+- First 100-prospect cohort end-to-end (enrichment → scoring → tier → outreach → reply)
+- Dependency: Phase 1a baseline established + Salesforge integration live-tested
+
+### Phase 3 — Pipeline F v2.2 / consolidation
+- Merge `pipeline_orchestrator` streaming shell with `cohort_runner` `_run_stage` functions (Option C, ratified 2026-05)
+- Cutover: enable `relay-consumer.service`, disable old `inotifywait` watchers
+- Gate: Dave-only
+
+### Long-horizon
+- Workforce platform-play (Keiracom Workforce thesis) — deferred until Agency OS reaches paying-customer milestone
+- Multi-agency federation (single Agency OS instance serving N agencies)

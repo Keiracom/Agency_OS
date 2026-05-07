@@ -84,6 +84,54 @@ def _is_mock_mode() -> bool:
     return os.getenv("LEADMAGIC_MOCK", "").lower() in ("true", "1", "yes")
 
 
+def _is_production_environment() -> bool:
+    """Detect production environment via env var or worktree path heuristic.
+
+    Returns True when running in production. Used by the mock-mode guardrail
+    below to refuse module load if mock mode is enabled in production —
+    catastrophic-blast-radius-prevention (mock returns fake AU mobile numbers
+    + fake emails to real campaigns).
+
+    Resolution order (explicit env beats path heuristic):
+    1. FASTAPI_ENV in {dev, development, test, staging} → False (explicit non-prod)
+    2. FASTAPI_ENV == production → True (explicit prod)
+    3. FASTAPI_ENV unset or unrecognised → worktree-path heuristic
+    """
+    env = os.getenv("FASTAPI_ENV", "").lower()
+    if env in ("dev", "development", "test", "staging"):
+        return False
+    if env == "production":
+        return True
+    # FASTAPI_ENV unset/unrecognised — fall back to worktree path heuristic.
+    # Main worktree path indicates production code is loaded
+    # (Aiden/Atlas/Scout/Orion clone worktrees are dev-shaped).
+    return os.path.abspath(__file__).startswith("/home/elliotbot/clawd/Agency_OS/")
+
+
+def _assert_mock_safe() -> None:
+    """Refuse module load if LEADMAGIC_MOCK is enabled in production.
+
+    Mock mode returns realistic-but-fake AU mobile numbers + emails that
+    would be sent to real prospects in cohorts — catastrophic deliverability
+    + reputational damage if accidentally toggled in production.
+
+    Defensive guardrail: fails fast at import time, NOT at first call,
+    so misconfiguration is caught before any campaign starts.
+    """
+    if _is_mock_mode() and _is_production_environment():
+        raise RuntimeError(
+            "LEADMAGIC_MOCK is enabled in a production environment — "
+            "refusing module load. Mock mode returns fake AU mobile numbers "
+            "and emails which would be sent to real campaign prospects. "
+            "Either unset LEADMAGIC_MOCK or set FASTAPI_ENV to a non-production "
+            "value (and ensure you're not running from /home/elliotbot/clawd/Agency_OS/) "
+            "to proceed."
+        )
+
+
+_assert_mock_safe()
+
+
 # ============================================
 # ENUMS
 # ============================================

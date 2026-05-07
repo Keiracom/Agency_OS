@@ -506,7 +506,32 @@ Report if you encounter them. Do not route around them.
 
 ---
 
-## SECTION 12 — DEV & TESTING ENVIRONMENT
+## SECTION 12 — GLOSSARY
+
+Terms used throughout this document and in code. Defined ONCE here; referenced everywhere else.
+
+- **Siege Waterfall** — Agency OS's proprietary orchestration layer (§1). NOT a vendor. The code that decides which vendor to call, in what order, with what gates.
+- **Flow A** — synchronous discovery phase, target <6min. Builds the universe of fit-prospects (§2).
+- **Flow B** — asynchronous parallel enrichment phase, target <10min. Per-lead via `asyncio.gather` (§2).
+- **T0–T5** — enrichment tier numbering. T0 = discovery; T1-T5 = company + person enrichment stages (§5).
+- **T-DM0–T-DM4** — decision-maker enrichment tier numbering. Person-level data acquisition (§5 Stage 2/2.5).
+- **ABN** — Australian Business Number. 11-digit identifier from the Australian Business Register (ABR).
+- **GMB** — Google My Business (now Google Business Profile). Source of T0 + T2 enrichment data.
+- **ALS** — Agency Lead Scoring. Proprietary scoring system (§6) — Reachability + Propensity dimensions.
+- **Reachability** — 100-pt score measuring channel access (email/LinkedIn/mobile confirmed).
+- **Propensity** — 100-pt score measuring fit + timing. Service-aware, ICP-configured per agency at onboarding.
+- **CIS** — Conversion Intelligence System. Learning component of ALS that improves scores from campaign outcomes.
+- **Opportunity Score** — 100-pt score identifying businesses with scale but low digital presence (§6 OPPORTUNITY).
+- **HOT tier** — leads scoring ≥85 Propensity. Active outreach campaign target.
+- **WARM-PASSIVE tier** — high CIS but no recent trigger signal. Held in cold pool with periodic re-scan.
+- **COLD-POOL** — high-fit prospects without active triggers. Held until trigger emerges; do not blind-send.
+- **Pre-revenue** — current operating state. Zero paying customers; no social-proof claims permitted.
+- **Bare pointer** — module file containing only a one-line link to ARCHITECTURE.md (per `docs/governance/SOP_ARCHITECTURE_SSOT.md` §4).
+- **Drift detector** — Layer 6 hook (`scripts/ssot_drift_check.sh`) that fires on `SessionStart:clear` to catch module paraphrase regressions.
+
+---
+
+## SECTION 13 — DEV & TESTING ENVIRONMENT
 
 ### Local setup
 - Python virtualenv at `/home/elliotbot/clawd/venv/`
@@ -533,7 +558,7 @@ Report if you encounter them. Do not route around them.
 
 ---
 
-## SECTION 13 — FUTURE ROADMAP
+## SECTION 14 — FUTURE ROADMAP
 
 Forward-looking work. Distinct from §10 (reactive technical debt). Items here represent direction, not commitment.
 
@@ -559,28 +584,3 @@ Forward-looking work. Distinct from §10 (reactive technical debt). Items here r
 ### Long-horizon
 - Workforce platform-play (Keiracom Workforce thesis) — deferred until Agency OS reaches paying-customer milestone
 - Multi-agency federation (single Agency OS instance serving N agencies)
-
----
-
-## SECTION 14 — GLOSSARY
-
-Terms used throughout this document and in code. Defined ONCE here; referenced everywhere else.
-
-- **Siege Waterfall** — Agency OS's proprietary orchestration layer (§1). NOT a vendor. The code that decides which vendor to call, in what order, with what gates.
-- **Flow A** — synchronous discovery phase, target <6min. Builds the universe of fit-prospects (§2).
-- **Flow B** — asynchronous parallel enrichment phase, target <10min. Per-lead via `asyncio.gather` (§2).
-- **T0–T5** — enrichment tier numbering. T0 = discovery; T1-T5 = company + person enrichment stages (§5).
-- **T-DM0–T-DM4** — decision-maker enrichment tier numbering. Person-level data acquisition (§5 Stage 2/2.5).
-- **ABN** — Australian Business Number. 11-digit identifier from the Australian Business Register (ABR).
-- **GMB** — Google My Business (now Google Business Profile). Source of T0 + T2 enrichment data.
-- **ALS** — Agency Lead Scoring. Proprietary scoring system (§6) — Reachability + Propensity dimensions.
-- **Reachability** — 100-pt score measuring channel access (email/LinkedIn/mobile confirmed).
-- **Propensity** — 100-pt score measuring fit + timing. Service-aware, ICP-configured per agency at onboarding.
-- **CIS** — Conversion Intelligence System. Learning component of ALS that improves scores from campaign outcomes.
-- **Opportunity Score** — 100-pt score identifying businesses with scale but low digital presence (§6 OPPORTUNITY).
-- **HOT tier** — leads scoring ≥85 Propensity. Active outreach campaign target.
-- **WARM-PASSIVE tier** — high CIS but no recent trigger signal. Held in cold pool with periodic re-scan.
-- **COLD-POOL** — high-fit prospects without active triggers. Held until trigger emerges; do not blind-send.
-- **Pre-revenue** — current operating state. Zero paying customers; no social-proof claims permitted.
-- **Bare pointer** — module file containing only a one-line link to ARCHITECTURE.md (per `docs/governance/SOP_ARCHITECTURE_SSOT.md` §4).
-- **Drift detector** — Layer 6 hook (`scripts/ssot_drift_check.sh`) that fires on `SessionStart:clear` to catch module paraphrase regressions.

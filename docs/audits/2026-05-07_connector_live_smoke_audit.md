@@ -20,12 +20,12 @@ This audit finds every other connector with the same QA gap so we can prioritise
 
 ## Findings
 
-**26 network connectors total. 1 has a live smoke (austender). 25 are mock-only.**
+**29 network connectors total. 1 has a live smoke (austender). 28 are mock-only.**
 
 | Risk tier | Count | Connectors |
 |-----------|-------|------------|
-| HIGH (3rd-party) | 22 | 21 missing live + 1 covered (austender) |
-| MEDIUM (infra)   | 4  | redis, supabase, smartlead_mcp, camoufox_scraper |
+| HIGH (3rd-party) | 24 | 23 missing live + 1 covered (austender) |
+| MEDIUM (infra)   | 5  | redis, supabase, smartlead_mcp, camoufox_scraper, httpx_scraper |
 | LOW              | 0  | — |
 
 ## Connector × test × live-marker table
@@ -68,10 +68,10 @@ This audit finds every other connector with the same QA gap so we can prioritise
 
 | Tier | Has live | Missing live | % covered |
 |------|----------|--------------|-----------|
-| HIGH | 1 | 21 | 4.5% |
-| MEDIUM | 0 | 4 | 0% |
+| HIGH | 1 | 23 | 4.2% |
+| MEDIUM | 0 | 5 | 0% |
 | LOW | — | — | — |
-| **Total** | **1** | **25** | **3.8%** |
+| **Total** | **1** | **28** | **3.4%** |
 
 Per the dispatch, **writing the live tests is out of scope for this PR.** Each per-connector live test will be its own dispatch. Templates below are recommendations, **not** to be added in this audit PR.
 

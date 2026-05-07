@@ -87,10 +87,10 @@ Without a gate, we'd run Leadmagic email enrichment on all 2,520 leads that made
 **Codebase:** `/home/elliotbot/clawd`
 
 **Read these first:**
-- `src/enrichment/campaign_trigger.py` — active pipeline entry point
-- `src/enrichment/discovery_modes.py` — current MapsFirstDiscovery
-- `src/enrichment/query_translator.py` — discovery orchestration
-- `src/enrichment/waterfall_v2.py` — enrichment waterfall
+- `src/pipeline/campaign_trigger.py` — active pipeline entry point
+- `src/pipeline/discovery_modes.py` — current MapsFirstDiscovery
+- `src/pipeline/query_translator.py` — discovery orchestration
+- `src/pipeline/waterfall_v2.py` — enrichment waterfall
 - `src/integrations/bright_data_client.py` — BD SERP client
 - `src/integrations/leadmagic.py` — email/mobile enrichment
 - `src/integrations/abn_client.py` — ABN lookup
@@ -1580,9 +1580,9 @@ async def _enrich_lead(self, lead: LeadRecord) -> LeadRecord:
 
 ## FILES TO MODIFY
 
-6. `src/enrichment/discovery_modes.py` — Add `YPFirstDiscovery` class
-7. `src/enrichment/campaign_trigger.py` — Wire YP as T0, add gap scoring pre-step
-8. `src/enrichment/waterfall_v2.py` — Add stages 6-14 to the pipeline
+6. `src/pipeline/discovery_modes.py` — Add `YPFirstDiscovery` class
+7. `src/pipeline/campaign_trigger.py` — Wire YP as T0, add gap scoring pre-step
+8. `src/pipeline/waterfall_v2.py` — Add stages 6-14 to the pipeline
 
 ---
 

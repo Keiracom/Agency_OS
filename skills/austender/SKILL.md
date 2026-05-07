@@ -2,7 +2,7 @@
 
 **Purpose:** F2.2 alternative discovery model — surface AU SMB suppliers who just won a government contract (intent + revenue signal), and government agencies actively procuring tech (formal buying intent). Net-new discovery feed; complements existing SERP/ABN/LinkedIn discovery.
 **Status:** ✅ Public OCDS API — no credential gate. Ready to integrate.
-**Source:** AusTender OCDS-compliant JSON API at `tenders.gov.au`.
+**Source:** AusTender OCDS-compliant JSON API at `https://api.tenders.gov.au/ocds`.
 **Credentials Required:** NONE. Public open-contracting data per Australian Government policy.
 **Cost gate:** Free. Only operational cost is downstream pipeline processing.
 
@@ -47,8 +47,9 @@
 
 **Daily fetch:**
 - `date_from: date` — required. Inclusive lower bound. Reject if > today.
-- `date_to: date` — required. Inclusive upper bound. Reject if `date_to - date_from > 14 days` (use multiple calls for longer windows; OCDS endpoints time out on wide ranges).
-- `value_min_aud: int` — optional. Default 50000 (AUD $50k). Below 1000 = reject (noise).
+- `date_to: date` — required. Inclusive upper bound. The 14-day cap from the legacy WAF-fronted endpoint **no longer applies** post-PR #600 — `api.tenders.gov.au` paginates with `links.next`, so wide ranges work. Wrapper still rejects future or inverted ranges.
+- `value_min_aud: int` — optional. Default 50000 (AUD $50k). Below 1000 = reject (noise). **Filtered client-side** — the live API exposes no `min` query param, so the wrapper drains the cursor then drops below-threshold releases before returning.
+- Date format passed in URL path as full **ISO 8601 UTC** (`2026-05-04T00:00:00Z`), not bare `YYYY-MM-DD`. Helper `_to_iso_z(d)` does the conversion.
 - `release_types: list[str]` — optional. Default `['award']`. Accept any of `['planning', 'tender', 'award', 'contract', 'implementation']`. F2.2 uses `award` only.
 
 **ABN match flow:**
@@ -56,7 +57,7 @@
 - If `supplier.country != 'AU'` or ABN missing, drop the record (F2.2 scope is AU SMBs only).
 
 **Never pass:**
-- A `date_from` more than 365 days back without paginating — AusTender returns large result sets that risk timeouts.
+- A `date_from` more than 365 days back without bounded log batching — the cursor will work, but you'll drain a lot of pages and downstream pipelines may not be sized for the burst. Use `date_range_chunks(start, end, step_days=7)` to batch for log clarity.
 - Raw description / narrative as a search filter — OCDS narrative is unstructured and inconsistent across agencies.
 - A contract_id from a different OCDS feed (e.g. NZ GETS) — federation is conceptual, not implemented; cross-feed IDs collide.
 
@@ -112,13 +113,16 @@ fetch_release_by_id("CN3987654-A2")  # contract notice ID from a BU row
 
 | Endpoint | Method | Purpose |
 |---|---|---|
-| `https://www.tenders.gov.au/Atm/Search/Ocds/releases.json` | GET | Daily releases by date range. Query: `?date={YYYY-MM-DD}&type=award` |
-| `https://www.tenders.gov.au/Atm/Search/Ocds/contracts.json` | GET | Historical contracts. Query: `?from={YYYY-MM-DD}&to={YYYY-MM-DD}&min={amount}` |
-| `https://www.tenders.gov.au/Atm/Search/Ocds/release/{ocid}` | GET | Single release by OCID (Open Contracting ID). |
+| `https://api.tenders.gov.au/ocds/findByDates/contractPublished/{startISO}/{endISO}` | GET | Awarded contracts in [start, end] date window. ISO 8601 UTC (`Z`-suffixed) timestamps in path; cursor pagination via `links.next` (100 releases / page). |
+| `https://api.tenders.gov.au/ocds/release/{ocid}` | GET | Single release by OCID (Open Contracting ID). |
 
-**Base URL:** `https://www.tenders.gov.au/Atm/Search/Ocds/`
+**Base URL:** `https://api.tenders.gov.au/ocds`
 **Auth:** None.
 **Format:** JSON conforming to OCDS 1.1 (https://standard.open-contracting.org/1.1/en/).
+**Pagination:** cursor-based. Each page response includes `data["links"]["next"]`; walk until absent (or until `_MAX_PAGES = 200` safety belt fires — ≈20k contracts per window).
+**Value filtering:** client-side only. The legacy `min` query param does **not** exist on `api.tenders.gov.au`. Drop below-threshold releases after pagination drains.
+
+> **Deprecated (do not use):** the legacy WAF-fronted public-portal OCDS path on `www.tenders.gov.au` — returned 403 in production. PR #587 / #588 originally pointed there; PR #600 migrated the client to `api.tenders.gov.au`.
 
 ---
 
@@ -126,14 +130,23 @@ fetch_release_by_id("CN3987654-A2")  # contract notice ID from a BU row
 
 | OCDS path | BU column / jsonb path |
 |---|---|
-| `releases[*].parties[role='supplier'].identifier.id` (scheme=AU-ABN) | `business_universe.abn` |
+| `releases[*].parties[role='supplier'].identifier.id` (scheme=AU-ABN) **OR** `releases[*].parties[role='supplier'].additionalIdentifiers[scheme=AU-ABN].id` | `business_universe.abn` |
 | `releases[*].parties[role='supplier'].name` | `business_universe.display_name` (only on INSERT; never overwrite existing) |
+| `releases[*].parties[role='supplier'].address.countryName` (`AUSTRALIA` uppercase on live feed; case-insensitive match) | drop record if not AU |
 | `releases[*].id` (contract_id / OCID) | `category_baselines.austender.contract_id` (jsonb) |
-| `releases[*].awards[*].value.amount` | `category_baselines.austender.contract_value_aud` (jsonb) |
-| `releases[*].date` (award type) | `category_baselines.austender.awarded_date` (jsonb) |
-| `releases[*].parties[role='buyer'].name` | `category_baselines.austender.agency_name` (jsonb) |
-| `releases[*].awards[*].items[*].classification.id` | `category_baselines.austender.classification_id` (jsonb) |
+| `releases[*].contracts[*].value.amount` (string!) **preferred** — fall back to `releases[*].awards[*].value.amount` | `category_baselines.austender.contract_value_aud` (jsonb, AUD only) |
+| `releases[*].contracts[*].dateSigned` **preferred** — fall back to `releases[*].awards[*].date`, then `releases[*].date` | `category_baselines.austender.awarded_date` (jsonb) |
+| `releases[*].parties[role='procuringEntity'].name` (live feed) **OR** `releases[*].parties[role='buyer'].name` (OCDS spec) | `category_baselines.austender.agency_name` (jsonb) |
+| `releases[*].contracts[*].items[*].classification.id` (preferred) **OR** `releases[*].awards[*].items[*].classification.id` | `category_baselines.austender.classification_id` (jsonb) |
 | Pipeline routing | `discovery_source = 'austender_supplier'`, `signal_source = 'austender_supplier'`, `signal_checked_at = NOW()`, `pipeline_stage = 0` |
+
+**Live-feed deviations from OCDS spec** (verified against `api.tenders.gov.au` 2026-05-07 — encoded in `src/integrations/austender_client.py` post-PR #600):
+
+- `value.amount` arrives as a JSON **string** (e.g. `"607987.88"`), not a number. Coerce with `float()`.
+- Buyer party uses role `procuringEntity` (OCDS extension), not bare `buyer`. Parser accepts both.
+- Supplier ABN lives under `additionalIdentifiers[]` (array), not `identifier{}` (object). Parser walks both.
+- `countryName` is uppercase `AUSTRALIA`. Match case-insensitively.
+- Award value is on `contracts[i]` not `awards[i]`. Parser prefers contracts; falls back to awards for older releases.
 
 **No schema migration in v1.** Existing BU columns cover everything via `category_baselines` jsonb. AusTender ships the same day specs land.
 
@@ -167,10 +180,11 @@ fetch_release_by_id("CN3987654-A2")  # contract notice ID from a BU row
 
 | File | Usage |
 |---|---|
-| `src/integrations/austender_client.py` | TBD — main HTTP client. ~80 lines. Uses `httpx.AsyncClient`, no auth, OCDS schema parsing. |
-| `src/pipeline/austender_discovery.py` | TBD — bridges client output to BU. Calls `abn_match.py` shared helper, writes `category_baselines.austender` jsonb. |
-| `src/pipeline/abn_match.py` | TBD — refactor of existing ABN match logic from `cohort_runner` into shared helper. **Refactor PR is a prerequisite for AusTender + Seek skills.** |
-| `scripts/ingest_austender.py` | TBD — CLI wrapper for daily cron. `--date-from`, `--date-to`, `--min-value`, `--dry-run` (default), `--live`. |
+| `src/integrations/austender_client.py` | ✅ live (PR #587/#588 → PR #600). HTTP client over `api.tenders.gov.au/ocds`. `httpx.AsyncClient`, no auth, ISO 8601 + cursor paging. ~330 lines including `AwardEvent` parser. |
+| `src/pipeline/austender_discovery.py` | ✅ live. Bridges `AwardEvent` to BU. Calls `abn_match.py` shared helper, writes `category_baselines.austender` jsonb. |
+| `src/pipeline/abn_match.py` | ✅ live. Shared helper consumed by AusTender + cohort runners. |
+| `scripts/ingest_austender.py` | ✅ live. CLI wrapper for daily cron. `--date-from`, `--date-to`, `--min-value`, `--dry-run` (default), `--live`. Verified end-to-end on 2026-05-07: `fetched=634 parsed=634 would-write=590 errors=0` for a 7-day window ≥ AUD 50k. |
+| `tests/integrations/test_austender_client.py` | ✅ 26 unit tests + 1 `@pytest.mark.live` smoke (deselected by default; opt in with `pytest -m live`). |
 
 **LAW XII:** direct calls to `src/integrations/austender_client.py` outside skill execution are forbidden. The skill is the canonical interface.
 **LAW XIII:** any change to AusTender call patterns updates this SKILL.md in the same PR.
@@ -186,14 +200,14 @@ fetch_release_by_id("CN3987654-A2")  # contract notice ID from a BU row
 
 ---
 
-## Pending Verification (DO NOT SKIP BEFORE FIRST PRODUCTION USE)
+## Pending Verification (status post-PR #600)
 
-1. **OCDS schema variation** — confirm fields `parties[role='supplier'].identifier.id` are present + `scheme = 'AU-ABN'` on a sample of 50 recent awards. Some agencies use legacy CN-format IDs without ABN inline.
-2. **Pagination behaviour** — confirm date-range query returns paginated results when N > 1000; test pagination cursor format (`next_url` vs `offset` parameter).
-3. **Awards vs Contracts feed split** — `releases.json` and `contracts.json` overlap in coverage. Determine which is canonical for "award event" purposes (provisional answer: `releases.json` filtered by `tag = 'award'`).
-4. **Value threshold empirical tuning** — start at AUD $50k, log discarded volume, ratchet down if signal density too low.
-5. **Buyer-of-record vs end user** — for whole-of-government panel contracts, the named buyer (e.g. DTA) may not be the actual customer. May need a follow-up enrichment step for panel orders.
-6. **Backfill scope** — initial 90-day seed: estimate 600–1500 supplier-side prospects depending on value threshold. Capacity-check downstream pipeline before kicking off.
+1. **OCDS schema variation** — *resolved* by PR #600. Live audit on `api.tenders.gov.au` 2026-05-07: ABN lives in `additionalIdentifiers[]` (not spec-bare `identifier`), buyer role is `procuringEntity` (not `buyer`), `countryName` is uppercase `AUSTRALIA`, `value.amount` is a JSON string. Parser handles all four deviations.
+2. **Pagination behaviour** — *resolved* by PR #600. `links.next` cursor walked until exhausted; safety belt at `_MAX_PAGES = 200` (≈20k contracts per window).
+3. **Awards vs Contracts feed split** — *resolved* by PR #600. The canonical endpoint for our use is `/findByDates/contractPublished/{startISO}/{endISO}` (the `releases.json` / `contracts.json` paths from the legacy WAF endpoint don't exist on `api.tenders.gov.au`). Award value lives on `contracts[i].value`; parser falls back to `awards[i].value` for older releases.
+4. **Value threshold empirical tuning** — *partially resolved*. AUD $50k floor returns 634 releases over a 7-day window, of which 590 (93%) clear the AU-supplier filter. Tune empirically post-cutover.
+5. **Buyer-of-record vs end user** — still open. Whole-of-government panel contracts (DTA etc.) name the panel as buyer, not the actual customer. Follow-up enrichment step for panel orders is pending.
+6. **Backfill scope** — *partially resolved*. 90-day seed is now feasible because cursor paging removes the date-range cap. Capacity-check downstream pipeline before kicking off.
 
 ---
 
@@ -224,3 +238,12 @@ fetch_release_by_id("CN3987654-A2")  # contract notice ID from a BU row
 - [x] **LAW XII / XIII governance note** — skill is canonical interface
 - [x] **Pending Verification** section listing every assumption before production
 - [x] **Migration / Comparison** vs F2.1 baseline
+
+---
+
+## History / Related PRs
+
+- **PR #583** — initial skill spec (this file's first version) under the deprecated public-portal OCDS path on `www.tenders.gov.au`.
+- **PR #587 / #588** — original connector + discovery slice. Mocks-only test suite passed but the URL was WAF-blocked at egress — production returned 403.
+- **PR #600** — connector migrated to `api.tenders.gov.au/ocds`. Full ISO 8601 timestamps in path. Cursor paging via `links.next`. Removed `_MAX_DATE_RANGE_DAYS` cap. Bonus parser fixes (contract-side value, string-amount coerce, `procuringEntity` role, `additionalIdentifiers` ABN, uppercase `AUSTRALIA`). First connector to introduce `@pytest.mark.live` marker. **This SKILL.md update tracks PR #600 per LAW XIII.**
+- **Connector live-smoke audit (2026-05-07)** — `docs/audits/2026-05-07_connector_live_smoke_audit.md`. Identifies 25 other connectors with the mocks-only QA gap that #587/#588 had.

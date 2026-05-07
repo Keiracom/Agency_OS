@@ -14,7 +14,7 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src"))
 
-from integrations.dncr_client import DNCRClient, DNCRResult
+from src.integrations.dncr import DNCRClient, DNCRResult
 
 
 # ---------------------------------------------------------------------------

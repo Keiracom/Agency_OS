@@ -37,8 +37,7 @@ __all__ = [
     "get_elevenlabs_client",
     "LeadmagicClient",
     "get_leadmagic_client",
-    "SiegeWaterfall",
-    "get_siege_waterfall",
+    # SiegeWaterfall + get_siege_waterfall removed PR-A #593 (file deleted, replaced by src/pipeline/waterfall_v2.py)
     # Routers for FastAPI
     "calendar_booking_router",
 ]

@@ -14,7 +14,7 @@ DEPENDENCIES:
 - src/engines/base.py
 - src/engines/url_validator.py
 - src/integrations/camoufox_scraper.py
-- src/integrations/siege_waterfall.py
+- src/pipeline/waterfall_v2.py (renamed from src/integrations/siege_waterfall.py PR-A #593)
 - src/integrations/gmb_scraper.py
 - src/exceptions.py
 
@@ -60,11 +60,8 @@ from src.integrations.camoufox_scraper import (
     is_camoufox_available,
 )
 
-# from src.integrations.siege_waterfall import (
-#     EnrichmentTier,
-#     SiegeWaterfall,
-#     get_siege_waterfall,
-# )
+# Note: src/integrations/siege_waterfall.py was deleted in PR-A #593;
+# enrichment now flows through src/pipeline/waterfall_v2.py.
 
 # Portfolio page paths to fetch directly (ICP-FIX-008)
 PORTFOLIO_PATHS = [
@@ -176,7 +173,6 @@ class ICPScraperEngine(BaseEngine):
         anthropic_client: AnthropicClient | None = None,
         url_validator: URLValidator | None = None,
         camoufox_scraper: CamoufoxScraper | None = None,
-        siege_waterfall: object | None = None,  # was SiegeWaterfall (removed PR-A)
     ):
         """
         Initialize with optional client overrides for testing.
@@ -185,12 +181,10 @@ class ICPScraperEngine(BaseEngine):
             anthropic_client: Optional Anthropic client override
             url_validator: Optional URL validator override
             camoufox_scraper: Optional Camoufox scraper override
-            siege_waterfall: Optional SiegeWaterfall override
         """
         self._anthropic = anthropic_client
         self._url_validator = url_validator
         self._camoufox = camoufox_scraper
-        self._siege_waterfall = siege_waterfall
 
     @property
     def name(self) -> str:
@@ -224,13 +218,6 @@ class ICPScraperEngine(BaseEngine):
         from src.config.settings import settings
 
         return settings.camoufox_enabled and is_camoufox_available()
-
-    @property
-    def siege_waterfall(self):  # was SiegeWaterfall (removed PR-A)
-        """Get Siege Waterfall for AU business enrichment."""
-        if self._siege_waterfall is None:
-            raise NotImplementedError("dead path: removed in PR-A #593")
-        return self._siege_waterfall
 
     def _extract_domain(self, url: str) -> str:
         """Extract domain from URL."""

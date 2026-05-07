@@ -1,7 +1,7 @@
 # ARCHITECTURE.md
 # Agency OS — Locked System Architecture
 # Ratified: March 17 2026 | Authority: CEO (Claude) | Amended: March 18 2026 | Directives #217, #218
-# Last validated: 2026-05-07 (Layer 1 SSOT alignment — Lemlist+SmartLead added to §3)
+# Last validated: 2026-05-07 (Layer 7 SSOT cleanup — Siege Waterfall path corrected to src/pipeline/waterfall_v2.py per PR-A #593 rename)
 # DO NOT MODIFY without an explicit CEO directive that
 # names this file and specifies the exact change.
 #
@@ -45,11 +45,16 @@ Siege Waterfall is the orchestration layer that:
 
 The vendors Siege Waterfall calls are in SECTION 4.
 The orchestration logic lives in:
-  src/integrations/siege_waterfall.py
+  src/pipeline/waterfall_v2.py
   src/engines/scout.py
 
 Siege Waterfall is never deprecated. It is our core IP.
 Vendors inside it are replaced. The orchestrator improves.
+
+(Implementation note: the waterfall logic was renamed from
+`src/integrations/siege_waterfall.py` to `src/pipeline/waterfall_v2.py`
+in PR-A #593 consolidation. "Siege Waterfall" remains the conceptual
+name for our proprietary orchestration; the file path moved.)
 
 ---
 

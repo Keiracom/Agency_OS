@@ -13,7 +13,7 @@ DEPENDENCIES:
   - src/engines/base.py
   - src/integrations/redis.py
   - src/integrations/camoufox_scraper.py (LinkedIn scraping)
-  - src/integrations/siege_waterfall.py (SSOT for AU enrichment)
+  - src/pipeline/waterfall_v2.py (SSOT for AU enrichment — renamed from siege_waterfall.py PR-A #593)
   - src/models/lead.py
 RULES APPLIED:
   - Rule 1: Follow blueprint exactly
@@ -26,7 +26,7 @@ PHASE 24A CHANGES:
   - Added enrich_to_pool method for pool-first enrichment
   - Added search_and_populate_pool for bulk pool population
   - Modified enrich_lead to optionally write to pool
-  - Enrichment SSOT: siege_waterfall.py
+  - Enrichment SSOT: waterfall_v2.py (renamed from siege_waterfall.py PR-A #593)
 
 PHASE 24F CHANGES:
   - Added filter_suppressed_leads method for client-specific filtering
@@ -124,17 +124,14 @@ class ScoutEngine(BaseEngine):
 
     def __init__(
         self,
-        siege_waterfall: object | None = None,  # was SiegeWaterfall (removed PR-A)
         camoufox_scraper: CamoufoxScraper | None = None,
     ):
         """
         Initialize Scout engine with integration clients.
 
         Args:
-            siege_waterfall: Optional SiegeWaterfall (uses singleton if not provided)
             camoufox_scraper: Optional CamoufoxScraper for LinkedIn (lazy init if not provided)
         """
-        self._siege_waterfall = siege_waterfall
         self._camoufox = camoufox_scraper
         self.leadmagic = get_leadmagic_client()
 
@@ -148,12 +145,6 @@ class ScoutEngine(BaseEngine):
         if self._camoufox is None:
             self._camoufox = CamoufoxScraper()
         return self._camoufox
-
-    @property
-    def siege_waterfall(self):  # was SiegeWaterfall (removed PR-A)
-        if self._siege_waterfall is None:
-            raise NotImplementedError("dead path: removed in PR-A #593")
-        return self._siege_waterfall
 
     async def enrich_lead(
         self,
@@ -671,7 +662,7 @@ class ScoutEngine(BaseEngine):
         Write enriched signals back to business_universe.
         Directive #215: LinkedIn, DataForSEO, and confidence score write-backs.
         Directive #217: Opportunity score write-back.
-        Architectural note: siege_waterfall.py is a pure data layer (no db access).
+        Architectural note: waterfall_v2.py is a pure data layer (no db access; renamed from siege_waterfall.py PR-A #593).
         All BU write-backs are performed here in scout.py where the db session lives.
         """
         if not domain:

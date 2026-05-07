@@ -77,8 +77,8 @@ Compare main failures vs feature branch to identify failures introduced by #144.
 ## FILES MODIFIED IN PR #131
 
 1. `src/integrations/bright_data_client.py` — GMB discovery methods
-2. `src/enrichment/discovery_modes.py` — GMBFirstDiscovery class
-3. `src/enrichment/query_translator.py` — GMB_FIRST mode
+2. `src/pipeline/discovery_modes.py` — GMBFirstDiscovery class
+3. `src/pipeline/query_translator.py` — GMB_FIRST mode
 4. `src/orchestration/flows/batch_controller_flow.py` — Wire GMB discovery
 5. `src/integrations/siege_waterfall.py` — Enrichment tiers + SIZE_GATE
 6. `src/engines/scorer.py` — Dual scoring system

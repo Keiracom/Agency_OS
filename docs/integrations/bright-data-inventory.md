@@ -358,8 +358,8 @@ HOT_THRESHOLD = 85
 | File | Purpose |
 |------|---------|
 | `src/integrations/bright_data_client.py` | Unified SERP + Scrapers API client |
-| `src/enrichment/discovery_modes.py` | Mode A/B/C discovery logic |
-| `src/enrichment/waterfall_v2.py` | Full Phase 1→2→3 pipeline |
+| `src/pipeline/discovery_modes.py` | Mode A/B/C discovery logic |
+| `src/pipeline/waterfall_v2.py` | Full Phase 1→2→3 pipeline |
 
 ---
 

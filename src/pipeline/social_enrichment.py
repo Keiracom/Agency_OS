@@ -23,7 +23,10 @@ import asyncio
 import logging
 from decimal import Decimal
 
-from src.integrations.bright_data_linkedin_client import COST_PER_RECORD_USD, BrightDataLinkedInClient
+from src.integrations.bright_data_linkedin_client import (
+    COST_PER_RECORD_USD,
+    BrightDataLinkedInClient,
+)
 
 logger = logging.getLogger(__name__)
 

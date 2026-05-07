@@ -23,7 +23,7 @@ import logging
 import time
 from typing import Any
 
-from src.clients.dfs_labs_client import DFSLabsClient
+from src.integrations.dfs_labs_client import DFSLabsClient
 from src.intelligence.contact_waterfall import (
     filter_dm_posts,
     run_contact_waterfall,

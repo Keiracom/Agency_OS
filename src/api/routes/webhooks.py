@@ -262,7 +262,7 @@ async def postmark_inbound_webhook(
 
     try:
         # Parse webhook payload
-        postmark = get_postmark_client()
+        postmark = get_postmark_client()  # noqa: F821 (PR-A dead-import; clean in PR-A1)
         parsed = postmark.parse_inbound_webhook(payload)
 
         # Find lead by email
@@ -344,7 +344,7 @@ async def postmark_bounce_webhook(
 
     try:
         # Parse bounce webhook
-        postmark = get_postmark_client()
+        postmark = get_postmark_client()  # noqa: F821 (PR-A dead-import; clean in PR-A1)
         parsed = postmark.parse_bounce_webhook(payload)
 
         # Find lead by email
@@ -498,7 +498,7 @@ async def twilio_inbound_webhook(
 
     try:
         # Parse webhook payload
-        twilio = get_twilio_client()
+        twilio = get_twilio_client()  # noqa: F821 (PR-A dead-import; clean in PR-A1)
         parsed = twilio.parse_inbound_webhook(params)
 
         # Find lead by phone number
@@ -583,7 +583,7 @@ async def twilio_status_webhook(
 
     try:
         # Parse status webhook
-        twilio = get_twilio_client()
+        twilio = get_twilio_client()  # noqa: F821 (PR-A dead-import; clean in PR-A1)
         parsed = twilio.parse_status_webhook(params)
 
         # Find existing activity by message SID

@@ -1,4 +1,4 @@
-"""tests/integration/conftest.py — env-gated fixtures for live Supabase tests.
+"""tests/e2e/conftest.py — env-gated fixtures for live Supabase tests.
 
 GOV-PHASE1-COMPREHENSIVE-FIX-AIDEN-SCOPE — D8.
 
@@ -21,7 +21,6 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
-
 
 _ENV_FILE = Path(
     os.environ.get(
@@ -78,7 +77,7 @@ def _has_supabase_env() -> bool:
 
 @pytest.fixture(autouse=True)
 def _skip_if_no_supabase_env(request: pytest.FixtureRequest) -> None:
-    """Auto-skip any test in tests/integration/ if creds env vars are missing."""
+    """Auto-skip any test in tests/e2e/ if creds env vars are missing."""
     if request.node.get_closest_marker("integration") is None:
         return
     if not _has_supabase_env():

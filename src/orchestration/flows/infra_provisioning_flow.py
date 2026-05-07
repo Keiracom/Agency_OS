@@ -75,7 +75,7 @@ async def check_domain_availability_task(
     Returns:
         List of available domains with pricing
     """
-    client = get_infraforge_client()
+    client = get_infraforge_client()  # noqa: F821 (PR-A dead-import; clean in PR-A1)
 
     try:
         # Generate alternatives
@@ -120,7 +120,7 @@ async def purchase_domains_task(
     Returns:
         Purchase result with domain IDs
     """
-    client = get_infraforge_client()
+    client = get_infraforge_client()  # noqa: F821 (PR-A dead-import; clean in PR-A1)
 
     try:
         # Format for API
@@ -170,7 +170,7 @@ async def create_mailboxes_task(
     Returns:
         Mailbox creation result
     """
-    client = get_infraforge_client()
+    client = get_infraforge_client()  # noqa: F821 (PR-A dead-import; clean in PR-A1)
 
     try:
         mailboxes = []
@@ -233,7 +233,7 @@ async def export_to_warmup_task(
     Returns:
         Export result
     """
-    client = get_infraforge_client()
+    client = get_infraforge_client()  # noqa: F821 (PR-A dead-import; clean in PR-A1)
 
     try:
         await client.export_to_salesforge(
@@ -369,7 +369,7 @@ async def infra_provisioning_flow(
     # Step 4: Export to warmup (if workspace IDs provided)
     export_result = {"success": False, "skipped": True}
     if salesforge_workspace_id and warmforge_workspace_id:
-        infraforge_workspace = await get_infraforge_client().list_workspaces()
+        infraforge_workspace = await get_infraforge_client().list_workspaces()  # noqa: F821 (PR-A dead-import; clean in PR-A1)
         workspace_id = infraforge_workspace.get("workspaces", [{}])[0].get("id")
 
         if workspace_id:

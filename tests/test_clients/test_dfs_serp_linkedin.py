@@ -10,8 +10,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from src.clients.dfs_labs_client import DFSLabsClient
-
+from src.integrations.dfs_labs_client import DFSLabsClient
 
 # ============================================
 # Fixtures + helpers

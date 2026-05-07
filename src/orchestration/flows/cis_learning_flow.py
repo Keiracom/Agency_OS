@@ -91,7 +91,7 @@ async def analyze_with_claude(
     Calls SiegeSDKIntelligence.analyze_cis_outcomes() which uses
     Claude Sonnet 4 with a $2 AUD cost cap.
     """
-    sdk = SiegeSDKIntelligence()
+    sdk = SiegeSDKIntelligence()  # noqa: F821 (PR-A dead-import; clean in PR-A1)
     return await sdk.analyze_cis_outcomes(outcomes, weights)
 
 

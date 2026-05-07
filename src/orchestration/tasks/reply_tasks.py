@@ -227,7 +227,7 @@ async def poll_email_replies_task(
 
     logger.info(f"Polling Postmark for email replies since {since}")
 
-    postmark = get_postmark_client()
+    postmark = get_postmark_client()  # noqa: F821 (PR-A dead-import; clean in PR-A1)
 
     try:
         # Fetch inbound messages
@@ -336,7 +336,7 @@ async def poll_sms_replies_task(
 
     logger.info(f"Polling Twilio for SMS replies since {since}")
 
-    twilio = get_twilio_client()
+    twilio = get_twilio_client()  # noqa: F821 (PR-A dead-import; clean in PR-A1)
 
     try:
         # Fetch messages

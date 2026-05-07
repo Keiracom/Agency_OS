@@ -552,8 +552,8 @@ async def pipeline_f_master_flow(
     budget_cap_aud:      Explicit AUD budget override. If None, tier default wins.
     domains_per_category: Legacy parameter, ignored by the streaming path.
     """
-    from src.clients.dfs_labs_client import DFSLabsClient
     from src.integrations.bright_data_client import BrightDataClient
+    from src.integrations.dfs_labs_client import DFSLabsClient
     from src.integrations.leadmagic import LeadmagicClient
     from src.intelligence.gemini_client import GeminiClient
     from src.pipeline.pipeline_orchestrator import PipelineOrchestrator, ProspectCard

@@ -29,7 +29,7 @@ from difflib import SequenceMatcher
 
 import httpx
 
-from src.common.phone_classifier import classify_au_phone
+from src.utils.phone_classifier import classify_au_phone
 
 logger = logging.getLogger(__name__)
 

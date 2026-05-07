@@ -9,13 +9,11 @@ All tests use mocks — NO live API calls.
 Uses pytest + pytest-asyncio + unittest.mock.
 """
 
-from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from src.clients.dfs_labs_client import DFSAuthError, DFSLabsClient
-
+from src.integrations.dfs_labs_client import DFSAuthError, DFSLabsClient
 
 # ============================================
 # Fixtures
@@ -563,7 +561,7 @@ async def test_retry_on_429(client):
 
     with patch.object(client, "_get_client", return_value=mock_http_client):
         # Patch tenacity wait to avoid actual sleep in tests
-        with patch("src.clients.dfs_labs_client.wait_exponential") as mock_wait:
+        with patch("src.integrations.dfs_labs_client.wait_exponential") as mock_wait:
             mock_wait.return_value = MagicMock(return_value=0)
             # Re-patch the actual _post retry decorator to use zero wait
             with patch.object(

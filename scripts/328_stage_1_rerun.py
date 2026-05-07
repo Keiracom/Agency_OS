@@ -49,8 +49,8 @@ async def run_stage_1_rerun():
 
         load_dotenv(env_file)
 
-    from src.clients.dfs_labs_client import DFSLabsClient
-    from src.config.category_etv_windows import get_etv_window, CATEGORY_ETV_WINDOWS
+    from src.config.category_etv_windows import CATEGORY_ETV_WINDOWS, get_etv_window
+    from src.integrations.dfs_labs_client import DFSLabsClient
 
     dfs = DFSLabsClient(
         login=os.getenv("DATAFORSEO_LOGIN", ""),

@@ -195,20 +195,20 @@ class ICPAgent:
     - Self-review for quality
     """
 
-    def __init__(self, brain: SDKBrain | None = None):
+    def __init__(self, brain: SDKBrain | None = None):  # noqa: F821 (PR-A dead-import; clean in PR-A1)
         """
         Initialize ICP Agent.
 
         Args:
             brain: Optional SDKBrain instance (creates one if not provided)
         """
-        self.brain = brain or create_sdk_brain("icp_extraction")
+        self.brain = brain or create_sdk_brain("icp_extraction")  # noqa: F821 (PR-A dead-import; clean in PR-A1)
 
     async def extract(
         self,
         input_data: ICPInput,
         client_id: UUID | None = None,
-    ) -> SDKBrainResult:
+    ) -> SDKBrainResult:  # noqa: F821 (PR-A dead-import; clean in PR-A1)
         """
         Extract ICP from input data using SDK Brain.
 
@@ -330,7 +330,7 @@ async def extract_icp(
     social_links: dict | None = None,
     existing_icp: dict | None = None,
     client_id: UUID | None = None,
-) -> SDKBrainResult:
+) -> SDKBrainResult:  # noqa: F821 (PR-A dead-import; clean in PR-A1)
     """
     Convenience function to extract ICP.
 

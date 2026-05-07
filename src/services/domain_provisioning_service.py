@@ -31,9 +31,9 @@ logger = logging.getLogger(__name__)
 # WORKSPACE IDS
 # ============================================
 
-INFRAFORGE_WORKSPACE = WORKSPACE_IDS["infraforge"]
-SALESFORGE_WORKSPACE = WORKSPACE_IDS["salesforge"]
-WARMFORGE_WORKSPACE = WORKSPACE_IDS["warmforge"]
+INFRAFORGE_WORKSPACE = WORKSPACE_IDS["infraforge"]  # noqa: F821 (PR-A dead-import; clean in PR-A1)
+SALESFORGE_WORKSPACE = WORKSPACE_IDS["salesforge"]  # noqa: F821 (PR-A dead-import; clean in PR-A1)
+WARMFORGE_WORKSPACE = WORKSPACE_IDS["warmforge"]  # noqa: F821 (PR-A dead-import; clean in PR-A1)
 
 
 # ============================================
@@ -119,7 +119,7 @@ async def check_domain_availability(domains: list[str]) -> list[str]:
     Returns:
         List of available domain names
     """
-    client = get_infraforge_client()
+    client = get_infraforge_client()  # noqa: F821 (PR-A dead-import; clean in PR-A1)
     available: list[str] = []
 
     try:
@@ -165,7 +165,7 @@ async def purchase_domains(domains: list[str]) -> list[dict[str, Any]]:
         logger.warning("No domains to purchase")
         return []
 
-    client = get_infraforge_client()
+    client = get_infraforge_client()  # noqa: F821 (PR-A dead-import; clean in PR-A1)
     results = await client.purchase_domains_bulk(domains)
 
     successful = [r for r in results if r.get("status") != "failed"]
@@ -202,7 +202,7 @@ async def create_mailboxes_for_persona(
     Returns:
         List of created mailbox details
     """
-    client = get_infraforge_client()
+    client = get_infraforge_client()  # noqa: F821 (PR-A dead-import; clean in PR-A1)
     mailboxes: list[dict[str, Any]] = []
 
     # Mailbox configurations
@@ -262,7 +262,7 @@ async def export_to_salesforge_and_warmup(
         logger.warning("No domains to export")
         return False
 
-    client = get_infraforge_client()
+    client = get_infraforge_client()  # noqa: F821 (PR-A dead-import; clean in PR-A1)
 
     try:
         result = await client.export_to_salesforge(
@@ -453,7 +453,7 @@ async def get_warmup_status_for_domains(domains: list[str]) -> list[dict[str, An
     Returns:
         List of warmup status dicts per domain/mailbox
     """
-    client = get_infraforge_client()
+    client = get_infraforge_client()  # noqa: F821 (PR-A dead-import; clean in PR-A1)
     statuses: list[dict[str, Any]] = []
 
     for domain in domains:

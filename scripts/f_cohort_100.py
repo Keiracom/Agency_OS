@@ -23,8 +23,8 @@ from typing import Any
 
 import httpx as _httpx
 
-from src.clients.dfs_labs_client import DFSLabsClient
 from src.config.category_etv_windows import CATEGORY_ETV_WINDOWS, get_etv_window
+from src.integrations.dfs_labs_client import DFSLabsClient
 from src.intelligence.contact_waterfall import (
     fetch_dm_posts,
     run_contact_waterfall,

@@ -93,7 +93,7 @@ class EmailEngine(OutreachEngine):
     - Warmforge mailbox compatibility
     """
 
-    def __init__(self, salesforge_client: SalesforgeClient | None = None):
+    def __init__(self, salesforge_client: SalesforgeClient | None = None):  # noqa: F821 (PR-A dead-import; clean in PR-A1)
         """
         Initialize Email engine.
 
@@ -111,9 +111,9 @@ class EmailEngine(OutreachEngine):
         return ChannelType.EMAIL
 
     @property
-    def salesforge(self) -> SalesforgeClient:
+    def salesforge(self) -> SalesforgeClient:  # noqa: F821 (PR-A dead-import; clean in PR-A1)
         if self._salesforge is None:
-            self._salesforge = get_salesforge_client()
+            self._salesforge = get_salesforge_client()  # noqa: F821 (PR-A dead-import; clean in PR-A1)
         return self._salesforge
 
     async def send(

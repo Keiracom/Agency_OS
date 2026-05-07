@@ -14,7 +14,7 @@ import logging
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from src.clients.dfs_labs_client import DFSLabsClient
+    from src.integrations.dfs_labs_client import DFSLabsClient
 
 logger = logging.getLogger(__name__)
 

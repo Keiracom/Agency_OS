@@ -1,5 +1,5 @@
 """
-FILE: tests/integration/test_directive_041_integration.py
+FILE: tests/e2e/test_directive_041_integration.py
 PURPOSE: Integration test for CEO Directive #041 — T-DM2 LinkedIn Posts + T-DM3 X Posts
 DIRECTIVE: 041
 DATE: 2026-02-18
@@ -19,7 +19,7 @@ Expected output per lead:
 import asyncio
 import json
 import logging
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import uuid4
 
@@ -310,7 +310,7 @@ async def run_integration_test():
     }
 
     # Write results
-    output_path = "/home/elliotbot/clawd/tests/integration/directive_041_results.json"
+    output_path = "/home/elliotbot/clawd/tests/e2e/directive_041_results.json"
     with open(output_path, "w") as f:
         json.dump(output, f, indent=2, default=str)
 

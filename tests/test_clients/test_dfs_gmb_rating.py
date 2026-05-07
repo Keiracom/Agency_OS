@@ -1,8 +1,8 @@
 """Tests for GMB rating parsing in DFSLabsClient.maps_search_gmb — Directive #295 Task C."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from decimal import Decimal
+
+import pytest
 
 
 def _make_dfs_result(item: dict) -> dict:
@@ -23,7 +23,7 @@ def _make_dfs_empty() -> dict:
 
 async def _call_gmb(item_or_none):
     """Helper: call maps_search_gmb with a mocked HTTP client."""
-    from src.clients.dfs_labs_client import DFSLabsClient
+    from src.integrations.dfs_labs_client import DFSLabsClient
 
     mock_response = MagicMock()
     mock_response.status_code = 200

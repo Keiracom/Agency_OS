@@ -23,8 +23,8 @@ from urllib.parse import urlparse
 import asyncpg
 import httpx
 
-from src.clients.dfs_labs_client import DFSLabsClient
 from src.enrichment.signal_config import SignalConfigRepository
+from src.integrations.dfs_labs_client import DFSLabsClient
 from src.utils.domain_blocklist import is_blocked
 
 logger = logging.getLogger(__name__)

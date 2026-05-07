@@ -1,4 +1,4 @@
-"""tests/integration/test_governance_hooks_live.py — live Supabase tests
+"""tests/e2e/test_governance_hooks_live.py — live Supabase tests
 for the Aiden-scope governance hooks.
 
 GOV-PHASE1-COMPREHENSIVE-FIX-AIDEN-SCOPE — D7.
@@ -17,10 +17,8 @@ from __future__ import annotations
 
 import os
 import uuid
-from datetime import datetime, timedelta, timezone
 
 import pytest
-
 
 pytestmark = pytest.mark.integration
 
@@ -45,7 +43,7 @@ def test_governance_event_emit_round_trip(cleanup_rows):
         callsign=callsign,
         event_type=event_type,
         event_data={"smoke": True},
-        tool_name="tests.integration.governance_hooks_live",
+        tool_name="tests.e2e.governance_hooks_live",
     )
     assert ok is True
 

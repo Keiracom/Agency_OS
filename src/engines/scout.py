@@ -126,7 +126,7 @@ class ScoutEngine(BaseEngine):
 
     def __init__(
         self,
-        siege_waterfall: SiegeWaterfall | None = None,
+        siege_waterfall: SiegeWaterfall | None = None,  # noqa: F821 (PR-A dead-import; clean in PR-A1)
         camoufox_scraper: CamoufoxScraper | None = None,
     ):
         """
@@ -152,9 +152,9 @@ class ScoutEngine(BaseEngine):
         return self._camoufox
 
     @property
-    def siege_waterfall(self) -> SiegeWaterfall:
+    def siege_waterfall(self) -> SiegeWaterfall:  # noqa: F821 (PR-A dead-import; clean in PR-A1)
         if self._siege_waterfall is None:
-            self._siege_waterfall = get_siege_waterfall()
+            self._siege_waterfall = get_siege_waterfall()  # noqa: F821 (PR-A dead-import; clean in PR-A1)
         return self._siege_waterfall
 
     async def enrich_lead(
@@ -862,7 +862,9 @@ class ScoutEngine(BaseEngine):
                 # Run Siege Waterfall (skip Tier 5 unless already high ALS)
                 siege_result = await self.siege_waterfall.enrich_lead(
                     lead_data,
-                    skip_tiers=[EnrichmentTier.IDENTITY],  # Skip expensive Tier 5
+                    skip_tiers=[
+                        EnrichmentTier.IDENTITY  # noqa: F821 (PR-A dead-import; clean in PR-A1)
+                    ],  # Skip expensive Tier 5  # noqa: F821 (PR-A dead-import; clean in PR-A1)
                 )
 
                 # Directive #200: GMB leads already carry company-level data in
@@ -996,7 +998,9 @@ class ScoutEngine(BaseEngine):
             # Run Siege Waterfall for non-AU leads (same flow, different country detection)
             siege_result = await self.siege_waterfall.enrich_lead(
                 lead_data,
-                skip_tiers=[EnrichmentTier.IDENTITY],  # Skip expensive Tier 5
+                skip_tiers=[
+                    EnrichmentTier.IDENTITY  # noqa: F821 (PR-A dead-import; clean in PR-A1)
+                ],  # Skip expensive Tier 5  # noqa: F821 (PR-A dead-import; clean in PR-A1)
             )
 
             if siege_result.sources_used > 0:

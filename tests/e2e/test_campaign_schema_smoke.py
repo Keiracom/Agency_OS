@@ -1,4 +1,4 @@
-"""tests/integration/test_campaign_schema_smoke.py — EXPLAIN-based schema gate.
+"""tests/e2e/test_campaign_schema_smoke.py — EXPLAIN-based schema gate.
 
 Runs `EXPLAIN` against the live Postgres schema for the SQL queries used by
 campaign_sender (scripts/campaign_sender.py) and CampaignExecutor
@@ -37,7 +37,7 @@ def _load_env_if_needed() -> None:
     `tests/conftest.py` force-sets a placeholder DSN at module load. Live
     integration tests need the real value, so we re-read the env file when
     the current value matches the placeholder. Mirrors the pattern in
-    `tests/integration/conftest.py` for SUPABASE_* keys.
+    `tests/e2e/conftest.py` for SUPABASE_* keys.
     """
     current = os.environ.get("DATABASE_URL", "")
     if current and current != _PLACEHOLDER_DSN:

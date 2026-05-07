@@ -14,20 +14,18 @@ import logging
 import os
 import sys
 import time
-from collections import Counter, defaultdict
 from datetime import datetime
-from decimal import Decimal
 
 import asyncpg
 from dotenv import load_dotenv
 
 load_dotenv("/home/elliotbot/.config/agency-os/.env", override=True)
 
-from src.clients.dfs_labs_client import DFSLabsClient
-from src.clients.bright_data_gmb_client import BrightDataGMBClient
-from src.integrations.leadmagic import LeadmagicClient
-from src.integrations.anthropic import AnthropicClient
 from src.enrichment.signal_config import SignalConfigRepository
+from src.integrations.anthropic import AnthropicClient
+from src.integrations.bright_data_gmb_client import BrightDataGMBClient
+from src.integrations.dfs_labs_client import DFSLabsClient
+from src.integrations.leadmagic import LeadmagicClient
 from src.pipeline.stage_1_discovery import Stage1Discovery
 from src.pipeline.stage_2_gmb_lookup import Stage2GMBLookup
 from src.pipeline.stage_3_dfs_profile import Stage3DFSProfile

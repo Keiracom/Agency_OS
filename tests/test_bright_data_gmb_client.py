@@ -92,3 +92,56 @@ async def test_poll_returns_none_on_failed_status():
     mock_client.get = AsyncMock(return_value=mock_resp)
     result = await client._poll_and_fetch(mock_client, "snap_failed")
     assert result is None
+
+
+# ── Live smoke (Phase 1a pre-cohort sweep) ────────────────────────────────────
+# Closes audit checklist item #7 (template § C) for bright_data_gmb_client.py.
+# Real BD dataset trigger + poll + fetch — costs per-record on the result set.
+# Marked @pytest.mark.live so default `pytest -m "not live"` skips it.
+
+import os as _os
+
+
+@pytest.mark.live
+@pytest.mark.asyncio
+async def test_bd_gmb_live_smoke():
+    """Real BD GMB dataset trigger against a known-stable AU chain location.
+
+    Asserts the snapshot completes and the mapped row carries the keys we
+    rely on downstream (place_id, name, address). Failure here indicates
+    BD URL/auth/contract drift, NOT a behaviour bug — mocks cover behaviour.
+
+    Cost: per-record on the result set. Result count is bounded by BD's
+    discover_new behaviour for the keyword; AU chain locations typically
+    return single-digit rows. Budget: ≤ ~$0.50 AUD per run.
+    """
+    if not _os.environ.get("BRIGHTDATA_API_KEY"):
+        pytest.skip("BRIGHTDATA_API_KEY env var unset; live smoke skipped")
+
+    # Use env override to swap the target for ad-hoc debugging.
+    target = _os.environ.get(
+        "BD_GMB_LIVE_SMOKE_TARGET",
+        # Major AU chain — stable permanent listing, dense GMB coverage.
+        # (Atlassian Sydney was the dispatch suggestion but returned 0 rows
+        # on the discover_new dataset; McDonald's verified to return rows
+        # consistently within ~90s poll on first verification run.)
+        "McDonald's Sydney",
+    )
+
+    client = BrightDataGMBClient()
+    result = await client.search_by_name(target, country="Australia")
+    # `search_by_name` returns None on no-match. For a known-stable target
+    # that's a contract regression, fail loudly.
+    assert result is not None, (
+        f"BD GMB returned None for target={target!r} — likely URL/auth/"
+        "dataset-contract drift (mocks would not catch this)"
+    )
+    # Dataset shape we depend on downstream — `_map_item` returns rows
+    # keyed gmb_place_id / gmb_category / address / phone / lat / lng.
+    # gmb_place_id is required (mapper returns None without it); address
+    # is the field downstream BU writes consume for matching.
+    for required_key in ("gmb_place_id", "address"):
+        assert result.get(required_key), (
+            f"BD GMB result missing {required_key!r} — schema drift?: "
+            f"{result!r}"
+        )

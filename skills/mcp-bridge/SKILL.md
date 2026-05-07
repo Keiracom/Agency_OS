@@ -1,6 +1,6 @@
 ---
 name: mcp-bridge
-description: Bridge to MCP servers - call any tool from our 11 custom MCP servers (prefect, railway, prospeo, dataforseo, vercel, salesforge, vapi, telnyx, unipile, resend, memory). Use for enrichment, infrastructure, outreach, and memory operations.
+description: Bridge to MCP servers - call any tool from our 12 custom MCP servers (prefect, railway, prospeo, dataforseo, vercel, smartlead, vapi, telnyx, unipile, resend, memory). Use for enrichment, infrastructure, outreach, and memory operations.
 ---
 
 # MCP Bridge
@@ -29,7 +29,7 @@ node scripts/mcp-bridge.js call <server> <tool> [args_json]
 | `vercel` | Infrastructure | Frontend deployments - projects, domains |
 | `prospeo` | Enrichment | Email finder and verification |
 | `dataforseo` | Enrichment | SERP, keywords, backlinks |
-| `salesforge` | Outreach | Email campaigns and sequences |
+| `smartlead` | Outreach | Cold-outbound campaigns (116+ tools via LeadMagic MCP) |
 | `vapi` | Outreach | Voice AI - assistants, calls |
 | `telnyx` | Outreach | SMS and voice communications |
 | `unipile` | Outreach | LinkedIn automation |

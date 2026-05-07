@@ -1,244 +1,40 @@
 # SKILL INDEX — Agency OS
 
-**Purpose:** Master index of all skills available for Claude Code agents.  
-**Location:** `/home/elliotbot/clawd/skills/`  
-**Last Updated:** February 17, 2026
-
----
-
-## Related Documentation
-
-| Resource | Location | Purpose |
-|----------|----------|--------|
-| Slim Blueprint | `PROJECT_BLUEPRINT.md` | Quick overview |
-| Architecture | `docs/architecture/` | System design docs |
-| Phase Specs | `docs/phases/` | Phase-specific details |
-| Database Schema | `docs/specs/database/` | Schema definitions |
-| Engine Specs | `docs/specs/engines/` | Engine specifications |
-| Integration Specs | `docs/specs/integrations/` | API wrapper specs |
-| Full Archive | `PROJECT_BLUEPRINT_FULL_ARCHIVE.md` | Original complete blueprint |
-
----
-
-## How Skills Work
-
-Skills are structured documentation that agents read before executing tasks. They provide:
-- Detailed specifications
-- File structures
-- Code patterns
-- Implementation order
-- Success criteria
-
-**Usage:** All agents read the relevant SKILL.md before starting any related task.
-
----
-
-## Enrichment Skills (Siege Waterfall)
-
-Skills for the 5-tier enrichment waterfall. Created CEO Directive #031 (Feb 2026).
-
-| Skill | Location | Purpose | Status |
-|-------|----------|---------|--------|
-| **ABN Lookup** | `skills/enrichment/abn-lookup/` | Tier 1: Australian Business Register | ✅ Working |
-| **Bright Data LinkedIn** | `skills/enrichment/brightdata-linkedin/` | Tier 1.5: LinkedIn company enrichment | ✅ Working |
-| **Bright Data GMB** | `skills/enrichment/brightdata-gmb/` | Tier 2: Google Maps SERP (replaces DIY scraper) | ✅ Working |
-| **Leadmagic Email** | `skills/enrichment/leadmagic-email/` | Tier 3: Email lookup @ $0.015/lead (replaces Hunter) | 🔧 Pending |
-| **Leadmagic Mobile** | `skills/enrichment/leadmagic-mobile/` | Tier 5: Mobile lookup @ $0.077/lead (replaces Kaspr) | 🔧 Pending |
-| **DataForSEO** | `skills/enrichment/dataforseo/` | T-DM0: Ad-spend signal @ $0.0465 combined with BD LinkedIn | 🔧 Pending |
-**Quick test all:**
-```bash
-cd /home/elliotbot/clawd && source .venv/bin/activate
-python skills/enrichment/abn-lookup/test.py
-python skills/enrichment/brightdata-linkedin/test.py
-python skills/enrichment/brightdata-gmb/test.py
-```
-
----
-
-## Agent Skills (Core)
-
-These skills define how the 3-agent pipeline operates:
-
-| Skill | Location | Purpose | Status |
-|-------|----------|---------|--------|
-| Builder Agent | `skills/agents/BUILDER_SKILL.md` | Code patterns, standards, templates | ✅ v2.0 |
-| QA Agent | `skills/agents/QA_SKILL.md` | Check patterns, issue routing, reports | ✅ v2.0 |
-| Fixer Agent | `skills/agents/FIXER_SKILL.md` | Fix patterns, documentation format | ✅ v2.0 |
-| Pipeline Coordination | `skills/agents/COORDINATION_SKILL.md` | How 3 agents work together | ✅ v2.0 |
-
----
-
-## Frontend Skills
-
-| Skill | Location | Purpose | Status |
-|-------|----------|---------|--------|
-| Admin Dashboard | `skills/frontend/ADMIN_DASHBOARD.md` | Platform owner dashboard | ⚠️ Outdated (see Phase 21) |
-| **Frontend-Backend Connection** | `skills/frontend/FRONTEND_BACKEND_SKILL.md` | Phase 13 API integration | ✅ Ready |
-| **Missing UI Features** | `skills/frontend/MISSING_UI_SKILL.md` | Phase 14 Replies, Meetings, Credits | ✅ Ready |
-| **v0.dev Integration** | `skills/frontend/V0_SKILL.md` | v0 SDK usage, prompts, iteration | ✅ Ready |
-| **Phase 21 UI Overhaul** | `skills/frontend/PHASE_21_UI_SKILL.md` | Design system, components, layouts | ✅ Ready |
-| User Dashboard | `skills/frontend/USER_DASHBOARD.md` | Client-facing dashboard | 🔴 Not Started |
-
----
-
-## Backend Skills
-
-| Skill | Location | Purpose | Status |
-|-------|----------|---------|--------|
-| API Routes | `skills/backend/API_SKILL.md` | FastAPI route patterns | 🔴 Not Started |
-| Engines | `skills/backend/ENGINE_SKILL.md` | Engine implementation | 🔴 Not Started |
-| Integrations | `skills/backend/INTEGRATION_SKILL.md` | Channel integrations | 🔴 Not Started |
-
----
-
-## Phase Skills
-
-| Skill | Location | Purpose | Status |
-|-------|----------|---------|--------|
-| ICP Discovery | `skills/icp/ICP_SKILL.md` | Phase 11 ICP extraction | 🔴 Not Started |
-| **Campaign Generation** | `skills/campaign/CAMPAIGN_SKILL.md` | Phase 12A campaign skills | ✅ Ready |
-| Onboarding | `skills/onboarding/ONBOARDING_SKILL.md` | Client onboarding flow | 🔴 Not Started |
-| **Live UX Testing** | `skills/testing/LIVE_UX_TEST_SKILL.md` | Phase 15 end-to-end testing | ✅ Ready |
-| **E2E Session Skill** | `skills/testing/E2E_SKILL.md` | /e2e commands for multi-session testing | ✅ Ready |
-| **E2E Testing System** | `docs/e2e/E2E_MASTER.md` | Phase 21 comprehensive E2E testing | ✅ Ready |
-| **LinkedIn Connection** | `skills/linkedin/LINKEDIN_CONNECTION_SKILL.md` | Phase 24H credential-based HeyReach connection | ✅ Ready |
-| **Conversion Intelligence** | `skills/conversion/CONVERSION_SKILL.md` | Phase 16 learning system | ✅ Ready |
-| **CRM Integration** | `skills/crm/CRM_INTEGRATION_SKILL.md` | Phase 24E + 24F CRM push & customer import | ✅ Ready |
-
----
-
-## Database Skills
-
-| Skill | Location | Purpose | Status |
-|-------|----------|---------|--------|
-| Migrations | `skills/database/MIGRATION_SKILL.md` | Supabase migrations | 🔴 Not Started |
-| RLS Policies | `skills/database/RLS_SKILL.md` | Row-level security | 🔴 Not Started |
-
----
-
-## DevOps Skills
-
-| Skill | Location | Purpose | Status |
-|-------|----------|---------|--------|
-| Deployment | `skills/deployment/SKILL.md` | Production deployment | 🔴 Not Started |
-| Troubleshooting | `skills/troubleshooting/SKILL.md` | Common issues | 🔴 Not Started |
-
----
-
-## How Agents Use Skills
-
-### Builder Agent
-1. Reads `skills/agents/BUILDER_SKILL.md` for templates
-2. Reads phase skill (e.g., `skills/icp/ICP_SKILL.md`) for requirements
-3. Creates code following both
-
-### QA Agent
-1. Reads `skills/agents/QA_SKILL.md` for check patterns
-2. Reads phase skill for context-specific checks
-3. Routes issues correctly (MISSING→Builder, VIOLATION→Fixer)
-
-### Fixer Agent
-1. Reads `skills/agents/FIXER_SKILL.md` for fix patterns
-2. Reads phase skill for context-specific fixes
-3. Applies fixes, documents everything
-
----
-
-## Creating New Skills
-
-When starting a new phase, create a skill file:
-
-```markdown
-# SKILL.md — [Phase/Feature Name]
-
-**Skill:** [Name]
-**Author:** [Who created it]
-**Version:** [X.X]
-**Created:** [Date]
-
----
-
-## Purpose
-
-[What this skill enables]
-
----
-
-## Prerequisites
-
-[What must exist before using this skill]
-
----
-
-## Required Files
-
-[List all files that must be created]
-
-| File | Purpose |
-|------|---------|
-| path/to/file.py | Description |
-
----
-
-## Required Patterns
-
-[Context-specific patterns for this skill]
-
----
-
-## Implementation Order
-
-[Step-by-step order]
-
----
-
-## Success Criteria
-
-[How to know it's done correctly]
-
----
-
-## QA Checks
-
-[Context-specific checks for QA agent]
-
----
-
-## Fix Patterns
-
-[Context-specific fix patterns for Fixer agent]
-```
-
----
-
-## Quick Reference: Agent Pipeline
-
-```
-Terminal 1 (Builder)        Terminal 2 (QA)          Terminal 3 (Fixer)
-────────────────────       ────────────────         ─────────────────
-Prompt:                    Prompt:                  Prompt:
-BUILDER_AGENT_PROMPT.md    QA_AGENT_PROMPT.md       FIXER_AGENT_PROMPT.md
-
-Reads:                     Reads:                   Reads:
-- PROGRESS.md              - PROGRESS.md            - qa_reports/
-- builder_tasks/           - src/, frontend/        - PROGRESS.md
-- Current phase skill      - fixer_reports/         - Current phase skill
-
-Writes:                    Writes:                  Writes:
-- src/, frontend/          - qa_reports/            - src/, frontend/
-- PROGRESS.md              - builder_tasks/         - fixer_reports/
-
-Cycle:                     Cycle:                   Cycle:
-On demand                  90 seconds               2 minutes
-```
-
----
-
-## Current Build Focus
-
-Check PROGRESS.md to find:
-- Current phase (look for 🟡)
-- Active tasks
-- Which skill file applies
-
----
+**Last Updated:** 2026-05-07 (post-cleanup: PR-A dead code, PR-B renames, PR-C folder reorg)
+
+## Canonical Skills (active, live code path)
+
+| Skill | File | Live Code | Notes |
+|-------|------|-----------|-------|
+| austender | `skills/austender/SKILL.md` | `src/integrations/austender_client.py` | F2.2 discovery, public OCDS API |
+| asic-new-co | `skills/asic-new-co/SKILL.md` | pending | Blocked on ASIC DSP API key |
+| callback-poller | `skills/callback-poller/SKILL.md` | Prefect callback polling | |
+| dataforseo | `skills/dataforseo/SKILL.md` | `src/integrations/dataforseo.py` | SERP + keyword signals |
+| decomposer | `skills/decomposer/SKILL.md` | Task decomposition protocol | |
+| drive-manual | `skills/drive-manual/SKILL.md` | Google Drive mirror | |
+| hubspot | `skills/hubspot/SKILL.md` | pending | Blocked on per-tenant token |
+| leadmagic | `skills/leadmagic/SKILL.md` | `src/integrations/leadmagic.py` | T3 email + T5 mobile |
+| mcp-bridge | `skills/mcp-bridge/SKILL.md` | `skills/mcp-bridge/scripts/mcp-bridge.js` | 12 MCP servers |
+| pipedrive | `skills/pipedrive/SKILL.md` | `src/integrations/pipedrive_client.py` | First CRM integration |
+| pr-tool | `skills/pr-tool/SKILL.md` | GitHub PR creation | |
+| seek | `skills/seek/SKILL.md` | pending | Blocked on Apify token |
+| smartlead | `skills/smartlead/SKILL.md` | MCP bridge dispatch (116 tools) | Replaces Salesforge |
+| superpowers | `skills/superpowers/SKILL.md` | Agent capability extensions | |
+| three-store-save | `skills/three-store-save/SKILL.md` | Session persistence | |
+
+## Legacy Skills (non-standard naming, kept as reference)
+
+| Dir | Files | Notes |
+|-----|-------|-------|
+| agents/ | 4 .md files | Agent role definitions (Builder/QA/Fixer/Coordination) |
+| campaign/ | CAMPAIGN_SKILL.md | Campaign management reference |
+| conversion/ | CONVERSION_SKILL.md | Conversion tracking reference |
+| crm/ | CRM_INTEGRATION_SKILL.md | Generic CRM — superseded by pipedrive + hubspot |
+| frontend/ | 5 .md files | Frontend build guides |
+| linkedin/ | LINKEDIN_CONNECTION_SKILL.md | LinkedIn automation reference |
+| testing/ | 2 .md files | Test methodology (E2E + Live UX) |
+
+## Deleted (empty dirs removed in this PR)
+
+- `skills/email/` — empty, no content
+- `skills/enrichment/` — empty, no content

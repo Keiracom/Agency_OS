@@ -204,8 +204,8 @@ print(f"Plan: {balance.plan}")
 | File | Usage |
 |------|-------|
 | `src/integrations/leadmagic.py` | Main client implementation |
-| `src/integrations/siege_waterfall.py` | T3 + T5 integration |
-| `src/engines/waterfall_verification_worker.py` | Waterfall orchestration |
+| `src/pipeline/email_waterfall.py` | T3 email finder integration |
+| `src/pipeline/mobile_waterfall.py` | T5 mobile finder integration |
 
 ## Governance
 

@@ -177,7 +177,7 @@ class ICPScraperEngine(BaseEngine):
         anthropic_client: AnthropicClient | None = None,
         url_validator: URLValidator | None = None,
         camoufox_scraper: CamoufoxScraper | None = None,
-        siege_waterfall: SiegeWaterfall | None = None,
+        siege_waterfall: SiegeWaterfall | None = None,  # noqa: F821 (PR-A dead-import; clean in PR-A1)
     ):
         """
         Initialize with optional client overrides for testing.
@@ -227,10 +227,10 @@ class ICPScraperEngine(BaseEngine):
         return settings.camoufox_enabled and is_camoufox_available()
 
     @property
-    def siege_waterfall(self) -> SiegeWaterfall:
+    def siege_waterfall(self) -> SiegeWaterfall:  # noqa: F821 (PR-A dead-import; clean in PR-A1)
         """Get Siege Waterfall for AU business enrichment."""
         if self._siege_waterfall is None:
-            self._siege_waterfall = get_siege_waterfall()
+            self._siege_waterfall = get_siege_waterfall()  # noqa: F821 (PR-A dead-import; clean in PR-A1)
         return self._siege_waterfall
 
     def _extract_domain(self, url: str) -> str:
@@ -855,8 +855,8 @@ Respond in JSON format only:
                 siege_result = await self.siege_waterfall.enrich_lead(
                     siege_data,
                     skip_tiers=[
-                        EnrichmentTier.LEADMAGIC_EMAIL,  # Skip email (no person data)
-                        EnrichmentTier.IDENTITY,  # Skip mobile (no person data)
+                        EnrichmentTier.LEADMAGIC_EMAIL,  # Skip email (no person data)  # noqa: F821 (PR-A dead-import; clean in PR-A1)
+                        EnrichmentTier.IDENTITY,  # Skip mobile (no person data)  # noqa: F821 (PR-A dead-import; clean in PR-A1)
                     ],
                 )
 

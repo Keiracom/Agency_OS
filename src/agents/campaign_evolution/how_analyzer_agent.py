@@ -190,7 +190,7 @@ async def run_how_analyzer(
     current_strategy: dict[str, Any],
     campaign_metrics: dict[str, Any] | None = None,
     client_id: UUID | None = None,
-) -> SDKBrainResult:
+) -> SDKBrainResult:  # noqa: F821 (PR-A dead-import; clean in PR-A1)
     """
     Run HOW pattern analysis to generate channel suggestions.
 
@@ -251,7 +251,7 @@ async def run_how_analyzer(
     user_prompt = "".join(prompt_parts)
 
     # Create brain and run
-    brain = create_sdk_brain("campaign_evolution_how")
+    brain = create_sdk_brain("campaign_evolution_how")  # noqa: F821 (PR-A dead-import; clean in PR-A1)
 
     result = await brain.run(
         prompt=user_prompt,

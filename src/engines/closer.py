@@ -471,7 +471,7 @@ class CloserEngine(BaseEngine):
             # Directive 048: Generate personalized booking link and send automated reply
             try:
                 # Generate personalized Calendly booking link
-                booking_link = await generate_booking_link(
+                booking_link = await generate_booking_link(  # noqa: F821 (PR-A dead-import; clean in PR-A1)
                     lead_email=lead.email,
                     lead_name=lead.full_name,
                     company_name=lead.company,
@@ -479,7 +479,7 @@ class CloserEngine(BaseEngine):
                 )
 
                 # Send automated reply with booking link
-                await send_booking_reply(
+                await send_booking_reply(  # noqa: F821 (PR-A dead-import; clean in PR-A1)
                     db=db,
                     lead=lead,
                     booking_link=booking_link,

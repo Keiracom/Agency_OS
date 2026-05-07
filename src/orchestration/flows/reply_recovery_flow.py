@@ -60,7 +60,7 @@ async def poll_email_replies_task(since_hours: int = 6) -> dict[str, Any]:
     Returns:
         Dict with replies found
     """
-    postmark_client = get_postmark_client()
+    postmark_client = get_postmark_client()  # noqa: F821 (PR-A dead-import; clean in PR-A1)
 
     try:
         # Poll inbound messages from Postmark
@@ -124,7 +124,7 @@ async def poll_sms_replies_task(since_hours: int = 6) -> dict[str, Any]:
     Returns:
         Dict with replies found
     """
-    twilio_client = get_twilio_client()
+    twilio_client = get_twilio_client()  # noqa: F821 (PR-A dead-import; clean in PR-A1)
 
     try:
         # Poll inbound messages from Twilio

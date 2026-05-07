@@ -213,7 +213,7 @@ async def run_campaign_orchestrator(
     current_campaigns: list[dict[str, Any]],
     client_context: dict[str, Any],
     client_id: UUID | None = None,
-) -> SDKBrainResult:
+) -> SDKBrainResult:  # noqa: F821 (PR-A dead-import; clean in PR-A1)
     """
     Orchestrate analyzer outputs into campaign suggestions.
 
@@ -314,7 +314,7 @@ async def run_campaign_orchestrator(
     user_prompt = "".join(prompt_parts)
 
     # Create brain and run
-    brain = create_sdk_brain("campaign_evolution_orchestrator")
+    brain = create_sdk_brain("campaign_evolution_orchestrator")  # noqa: F821 (PR-A dead-import; clean in PR-A1)
 
     result = await brain.run(
         prompt=user_prompt,

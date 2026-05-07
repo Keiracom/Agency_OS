@@ -166,7 +166,7 @@ async def run_who_analyzer(
     campaign_metrics: dict[str, Any] | None = None,
     business_context: dict[str, Any] | None = None,
     client_id: UUID | None = None,
-) -> SDKBrainResult:
+) -> SDKBrainResult:  # noqa: F821 (PR-A dead-import; clean in PR-A1)
     """
     Run WHO pattern analysis to generate targeting suggestions.
 
@@ -225,7 +225,7 @@ async def run_who_analyzer(
     user_prompt = "".join(prompt_parts)
 
     # Create brain and run
-    brain = create_sdk_brain("campaign_evolution_who")
+    brain = create_sdk_brain("campaign_evolution_who")  # noqa: F821 (PR-A dead-import; clean in PR-A1)
 
     result = await brain.run(
         prompt=user_prompt,

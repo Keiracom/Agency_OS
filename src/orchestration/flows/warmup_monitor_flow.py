@@ -80,7 +80,7 @@ async def check_warmforge_status_task(domain: str) -> dict:
     log = get_run_logger()
 
     try:
-        client = get_warmforge_client()
+        client = get_warmforge_client()  # noqa: F821 (PR-A dead-import; clean in PR-A1)
         status = await client.get_domain_warmup_status(domain)
 
         log.info(

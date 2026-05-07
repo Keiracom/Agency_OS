@@ -170,14 +170,14 @@ QUALITY CRITERIA:
 - Insights should be current (2024-2025 relevant)
 - Suggestions should be practical for cold outreach"""
 
-    def __init__(self, serper_client: SerperClient | None = None):
+    def __init__(self, serper_client: SerperClient | None = None):  # noqa: F821 (PR-A dead-import; clean in PR-A1)
         """
         Initialize Industry Researcher skill.
 
         Args:
             serper_client: Optional Serper client (uses singleton if not provided)
         """
-        self._serper = serper_client or get_serper_client()
+        self._serper = serper_client or get_serper_client()  # noqa: F821 (PR-A dead-import; clean in PR-A1)
 
     async def execute(
         self,

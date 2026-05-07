@@ -1,5 +1,5 @@
 """
-Contract: src/enrichment/email_verifier.py
+Contract: src/pipeline/email_verifier.py
 Purpose: SMTP-based email discovery and verification. Zero cost. No external API.
          Discovers DM emails via RCPT TO probing across 13 pattern variants.
          Groups by domain to reuse SMTP connections and MX lookups.

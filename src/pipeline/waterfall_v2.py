@@ -1,10 +1,10 @@
 """
-FILE: src/enrichment/waterfall_v2.py
+FILE: src/pipeline/waterfall_v2.py
 PURPOSE: Full Phase 1→2→3 pipeline for Waterfall v2
 PHASE: SIEGE (CEO Directive #023)
 TASK: Waterfall v2 Pipeline Implementation
 DEPENDENCIES:
-  - src/enrichment/discovery_modes.py
+  - src/pipeline/discovery_modes.py
   - src/integrations/bright_data_client.py (TBD)
   - src/integrations/abn_client.py
   - src/integrations/leadmagic.py

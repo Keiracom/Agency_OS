@@ -1,4 +1,4 @@
-"""Tests for src/enrichment/email_verifier.py — Directive #301."""
+"""Tests for src/pipeline/email_verifier.py — Directive #301."""
 
 from __future__ import annotations
 

@@ -117,8 +117,17 @@ MCP bridge → exec (then write a skill). When a fix changes how an external ser
 corresponding skill file is updated in the same PR. Long-running tasks (>60s expected) use async
 patterns.
 
-**Triggers when:** A bot writes code in response, calls an external service, or takes on a task that
-could be delegated.
+**LAW XVIII — Write Delegation Enforcement (runtime gate).** Callsign bots
+(`elliot`, `aiden`, `max`, `atlas`, `orion`, `scout`) MUST NOT execute write tools (`Edit`, `Write`,
+`MultiEdit`, `NotebookEdit`) directly. Every mutation is delegated to a sub-agent. Runtime enforcement:
+PreToolUse hook `scripts/hooks/enforce_delegation.py` blocks write tools when `CALLSIGN ∈
+{elliot,aiden,max,atlas,orion,scout}` and `DAVE_OVERRIDE != 1`. **Escape hatch:** `DAVE_OVERRIDE=1`
+in the bot's environment passes the call through and appends an audit record to
+`logs/governance/dave_override.jsonl`. All blocks append to `logs/governance/law_xviii_blocks.jsonl`
+with timestamp, callsign, tool, and file path.
+
+**Triggers when:** A bot writes code in response, calls an external service, takes on a task that
+could be delegated, or — for callsign bots — invokes a write tool directly.
 
 **Satisfied by:**
 - Tasks requiring >50 lines are decomposed and delegated to a sub-agent.
@@ -126,13 +135,18 @@ could be delegated.
 - Skill file updated in same PR as any change to how an external service is called.
 - Async/gather patterns used for operations expected to exceed 60 seconds.
 - Agent plans, dispatches, verifies, and reports — does not become the keyboard.
+- Callsign bots delegate all write tools (`Edit`/`Write`/`MultiEdit`/`NotebookEdit`) to sub-agents;
+  direct invocation is blocked at PreToolUse by `enforce_delegation.py` unless `DAVE_OVERRIDE=1` is
+  set, in which case the call is allowed and audit-logged.
 
 **Violation:** Flag `ORCHESTRATE violation` if response contains >50 lines of code, or if an external
-API is called without a skill/ reference.
+API is called without a skill/ reference. Flag `ORCHESTRATE-XVIII violation` when a callsign bot's
+write tool is blocked (recorded in `law_xviii_blocks.jsonl`) or when `DAVE_OVERRIDE=1` is used without
+prior Dave authorisation in chat (recorded in `dave_override.jsonl` for review).
 
 **Absorbs:** LAW V (50-Line Protection), LAW VI (Skills-First Operations), LAW VII (Timeout Protection),
 LAW XI (Orchestrate), LAW XII (Skills-First Integration), LAW XIII (Skill Currency Enforcement),
-LAW XV-A (Skills Are Mandatory).
+LAW XV-A (Skills Are Mandatory), LAW XVIII (Write Delegation Enforcement).
 
 ---
 

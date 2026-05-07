@@ -141,12 +141,121 @@ def test_parser_handles_no_supplier_party():
 
 
 def test_parser_handles_missing_awards():
-    """No awards → contract_value_aud and awarded_date are None."""
+    """No awards AND no contracts → contract_value_aud is None.
+
+    awarded_date now falls back to release.date when neither
+    contracts.dateSigned nor awards.date is set — that's the most truthful
+    timestamp the live feed gives us, so we don't drop the row.
+    """
     release = _release_fixture(awards=[])
     event = AwardEvent.from_ocds_release(release)
     assert event is not None
     assert event.contract_value_aud is None
-    assert event.awarded_date is None
+    assert event.awarded_date == "2026-04-15"
+
+
+def test_parser_reads_value_from_contracts_first():
+    """When both contract.value and award.value exist, contract.value
+    wins — matches the live api.tenders.gov.au shape (PR #587/#588 fix)."""
+    release = _release_fixture(
+        contracts=[
+            {
+                "id": "CN-1",
+                "dateSigned": "2026-04-15T00:00:00Z",
+                "value": {"amount": "150000.50", "currency": "AUD"},
+            }
+        ],
+        awards=[
+            {
+                "date": "2026-04-15T00:00:00Z",
+                "value": {"amount": 75000, "currency": "AUD"},
+            }
+        ],
+    )
+    event = AwardEvent.from_ocds_release(release)
+    assert event is not None
+    assert event.contract_value_aud == 150000
+
+
+def test_parser_accepts_string_amounts():
+    """Live feed sends value.amount as a JSON string (e.g. '607987.88').
+    Parser must coerce — not crash on the type mismatch."""
+    release = _release_fixture(
+        contracts=[
+            {
+                "id": "CN-2",
+                "dateSigned": "2026-04-15T00:00:00Z",
+                "value": {"amount": "607987.88", "currency": "AUD"},
+            }
+        ],
+        awards=[],
+    )
+    event = AwardEvent.from_ocds_release(release)
+    assert event is not None
+    assert event.contract_value_aud == 607987
+
+
+def test_parser_reads_abn_from_additional_identifiers():
+    """Live feed puts the AU-ABN under `additionalIdentifiers` (array),
+    not the spec-bare `identifier` field. Parser must walk both."""
+    release = _release_fixture(
+        parties=[
+            {
+                "name": "Hamilton Company Australia",
+                "roles": ["supplier"],
+                "additionalIdentifiers": [
+                    {"id": "50674984886", "scheme": "AU-ABN"},
+                ],
+                "address": {"countryName": "AUSTRALIA"},
+            },
+            {"name": "Buyer", "roles": ["procuringEntity"]},
+        ],
+    )
+    event = AwardEvent.from_ocds_release(release)
+    assert event is not None
+    assert event.supplier_abn is not None
+    assert event.supplier_country == "AU"
+    assert event.is_au_supplier() is True
+
+
+def test_parser_normalises_uppercase_australia_country():
+    """countryName comes through as 'AUSTRALIA' on the live feed.
+    Match must be case-insensitive."""
+    release = _release_fixture(
+        parties=[
+            {
+                "name": "Acme",
+                "roles": ["supplier"],
+                "identifier": {"scheme": "AU-ABN", "id": "33051775556"},
+                "address": {"countryName": "AUSTRALIA"},
+            },
+        ],
+    )
+    event = AwardEvent.from_ocds_release(release)
+    assert event is not None
+    assert event.supplier_country == "AU"
+
+
+def test_parser_recognises_procuringEntity_role():
+    """Live feed uses role 'procuringEntity' (OCDS extension) instead of
+    the spec-bare 'buyer'. Parser must accept both for buyer-name lookup."""
+    release = _release_fixture(
+        parties=[
+            {
+                "name": "Acme Pty Ltd",
+                "roles": ["supplier"],
+                "identifier": {"scheme": "AU-ABN", "id": "33051775556"},
+                "address": {"countryName": "AU"},
+            },
+            {
+                "name": "Department of Defence",
+                "roles": ["procuringEntity"],
+            },
+        ],
+    )
+    event = AwardEvent.from_ocds_release(release)
+    assert event is not None
+    assert event.agency_name == "Department of Defence"
 
 
 def test_is_au_supplier_only_when_abn_and_country_match():
@@ -206,13 +315,25 @@ async def test_fetch_awards_rejects_inverted_range():
 
 
 @pytest.mark.asyncio
-async def test_fetch_awards_rejects_wide_range():
+async def test_fetch_awards_accepts_wide_range():
+    """The legacy WAF-fronted endpoint timed out on >14-day ranges, so the
+    client used to raise. api.tenders.gov.au paginates with links.next, so
+    wide ranges are now valid input — validation must NOT raise."""
     client = AusTenderClient()
-    with pytest.raises(ValueError, match="too wide"):
-        await client.fetch_awards(
+    # Don't actually hit the network here — patch httpx so this stays fast.
+    from unittest.mock import AsyncMock, patch
+    fake_response = AsyncMock()
+    fake_response.raise_for_status = lambda: None
+    fake_response.json = lambda: {"releases": [], "links": {}}
+    fake_client = AsyncMock()
+    fake_client.__aenter__.return_value = fake_client
+    fake_client.get = AsyncMock(return_value=fake_response)
+    with patch("httpx.AsyncClient", return_value=fake_client):
+        result = await client.fetch_awards(
             date_from=date(2026, 1, 1),
-            date_to=date(2026, 5, 1),  # ~120 days
+            date_to=date(2026, 4, 30),  # ~120 days — old code would raise
         )
+    assert result == []
 
 
 @pytest.mark.asyncio
@@ -236,3 +357,39 @@ async def test_fetch_release_by_id_rejects_empty_ocid():
 def test_min_contract_value_constant():
     """Sanity: documented threshold matches research finding."""
     assert MIN_CONTRACT_VALUE_AUD == 50000
+
+
+# ── Live smoke (network) ─────────────────────────────────────────────────────
+# Process lesson from PR #587/#588: connector unit tests passed against the
+# WAF-blocked legacy URL because every HTTP call was mocked. Mocks pass
+# against any URL. We add at least one live smoke that hits the real
+# api.tenders.gov.au feed — guarded by `live` marker so default `pytest`
+# skips it; CI / manual verification runs `pytest -m live`.
+
+
+@pytest.mark.live
+@pytest.mark.asyncio
+async def test_fetch_awards_live_smoke_returns_releases():
+    """Hit api.tenders.gov.au for the last 7 closed days, ≥AUD 50k.
+
+    Asserts only that the call succeeds and returns ≥1 release — the
+    point is to catch URL/path/format breakage early. The number of
+    releases on any given week varies; the only zero-tolerance signal
+    is total breakage (URL change, WAF block, schema rename)."""
+    from datetime import timedelta
+
+    today = date.today()
+    awards = await AusTenderClient().fetch_awards(
+        date_from=today - timedelta(days=7),
+        date_to=today - timedelta(days=1),
+        value_min_aud=50_000,
+    )
+    assert isinstance(awards, list)
+    assert len(awards) > 0, (
+        "live AusTender feed returned 0 releases — "
+        "URL/path/format may have regressed"
+    )
+    # Spot-check the payload shape so we notice if OCDS schema drifts.
+    sample = awards[0]
+    assert "ocid" in sample or "id" in sample
+    assert "contracts" in sample or "awards" in sample

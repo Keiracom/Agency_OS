@@ -19,7 +19,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.integrations.infraforge import WORKSPACE_IDS, get_infraforge_client
+# DEAD: from src.integrations.infraforge import WORKSPACE_IDS, get_infraforge_client
 from src.models.persona import Persona
 from src.models.resource_pool import ResourceStatus, ResourceType
 from src.services.resource_assignment_service import add_resource_to_pool

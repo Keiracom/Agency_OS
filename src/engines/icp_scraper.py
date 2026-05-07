@@ -59,11 +59,13 @@ from src.integrations.camoufox_scraper import (
     get_camoufox_scraper,
     is_camoufox_available,
 )
-from src.integrations.siege_waterfall import (
-    EnrichmentTier,
-    SiegeWaterfall,
-    get_siege_waterfall,
-)
+
+# DEAD: siege_waterfall removed (replaced by current pipeline waterfall).
+# from src.integrations.siege_waterfall import (
+#     EnrichmentTier,
+#     SiegeWaterfall,
+#     get_siege_waterfall,
+# )
 
 # Portfolio page paths to fetch directly (ICP-FIX-008)
 PORTFOLIO_PATHS = [

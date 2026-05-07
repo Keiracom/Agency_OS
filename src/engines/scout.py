@@ -64,7 +64,8 @@ from src.integrations.camoufox_scraper import CamoufoxScraper
 from src.integrations.dataforseo import get_dataforseo_client  # Directive #218: pre-gate DataForSEO
 from src.integrations.leadmagic import get_leadmagic_client
 from src.integrations.redis import enrichment_cache
-from src.integrations.siege_waterfall import EnrichmentTier, SiegeWaterfall, get_siege_waterfall
+
+# DEAD: from src.integrations.siege_waterfall import EnrichmentTier, SiegeWaterfall, get_siege_waterfall
 from src.models.base import LeadStatus
 from src.models.lead import Lead
 from src.models.lead_social_post import LeadSocialPost

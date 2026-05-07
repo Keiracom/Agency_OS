@@ -41,8 +41,9 @@ from src.engines.closer import get_closer_engine
 # DEPRECATED: Vapi voice engine removed 2026-02-25. Voice stack: ElevenAgents + Twilio AU
 # from src.engines.voice import get_voice_engine
 from src.exceptions import WebhookError
-from src.integrations.postmark import get_postmark_client
-from src.integrations.twilio import get_twilio_client
+
+# DEAD: from src.integrations.postmark import get_postmark_client
+# DEAD: from src.integrations.twilio import get_twilio_client
 from src.integrations.unipile import get_unipile_client
 from src.models.activity import Activity
 from src.models.base import ChannelType

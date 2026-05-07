@@ -36,7 +36,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.engines.base import BaseEngine, EngineResult
 from src.integrations.anthropic import AnthropicClient, get_anthropic_client
-from src.integrations.calendar_booking import generate_booking_link, send_booking_reply
+
+# DEAD: from src.integrations.calendar_booking import generate_booking_link, send_booking_reply
 from src.models.activity import Activity
 from src.models.base import ChannelType, IntentType, LeadStatus
 from src.models.lead import Lead

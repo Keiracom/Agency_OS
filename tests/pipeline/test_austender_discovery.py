@@ -128,9 +128,7 @@ async def test_ingest_new_row_takes_insert_path():
     """No existing row (UPDATE returns None) → INSERT path."""
     conn = MagicMock()
     conn.fetchval = AsyncMock(return_value=None)  # UPDATE matched 0 rows
-    conn.fetchrow = AsyncMock(
-        return_value={"id": "new-bu-uuid", "inserted": True}
-    )
+    conn.fetchrow = AsyncMock(return_value={"id": "new-bu-uuid", "inserted": True})
 
     result = await ingest_award_event(_au_event(), conn, "batch-1", dry_run=False)
     assert result == ("new-bu-uuid", True)
@@ -143,9 +141,7 @@ async def test_ingest_insert_returning_handles_conflict_path():
     """INSERT ... ON CONFLICT DO UPDATE — xmax!=0 means conflict, was_inserted=False."""
     conn = MagicMock()
     conn.fetchval = AsyncMock(return_value=None)
-    conn.fetchrow = AsyncMock(
-        return_value={"id": "conflict-bu-uuid", "inserted": False}
-    )
+    conn.fetchrow = AsyncMock(return_value={"id": "conflict-bu-uuid", "inserted": False})
 
     result = await ingest_award_event(_au_event(), conn, "batch-1", dry_run=False)
     assert result == ("conflict-bu-uuid", False)
@@ -168,9 +164,7 @@ async def test_run_ingest_aggregates_counters():
                 "address": {"countryName": "AU"},
             }
         ],
-        "awards": [
-            {"value": {"amount": 75000, "currency": "AUD"}, "date": "2026-04-15"}
-        ],
+        "awards": [{"value": {"amount": 75000, "currency": "AUD"}, "date": "2026-04-15"}],
     }
     non_au_release = {
         "ocid": "ocds-foreign-1",
@@ -182,9 +176,7 @@ async def test_run_ingest_aggregates_counters():
                 "address": {"countryName": "United States"},
             }
         ],
-        "awards": [
-            {"value": {"amount": 100000, "currency": "AUD"}, "date": "2026-04-15"}
-        ],
+        "awards": [{"value": {"amount": 100000, "currency": "AUD"}, "date": "2026-04-15"}],
     }
     low_value_release = {
         "ocid": "ocds-au-CN2",
@@ -196,9 +188,7 @@ async def test_run_ingest_aggregates_counters():
                 "address": {"countryName": "AU"},
             }
         ],
-        "awards": [
-            {"value": {"amount": 10000, "currency": "AUD"}, "date": "2026-04-15"}
-        ],
+        "awards": [{"value": {"amount": 10000, "currency": "AUD"}, "date": "2026-04-15"}],
     }
 
     mock_client = MagicMock()
@@ -278,9 +268,7 @@ async def test_run_ingest_dry_run_no_db_calls():
                 "address": {"countryName": "AU"},
             }
         ],
-        "awards": [
-            {"value": {"amount": 75000, "currency": "AUD"}, "date": "2026-04-15"}
-        ],
+        "awards": [{"value": {"amount": 75000, "currency": "AUD"}, "date": "2026-04-15"}],
     }
     mock_client = MagicMock()
     mock_client.fetch_awards = AsyncMock(return_value=[valid_release])
@@ -318,7 +306,15 @@ def test_yesterday_aest_returns_date():
 
 
 def test_ingest_result_str_includes_all_counters():
-    r = IngestResult(fetched=10, parsed=8, filtered_non_au=2, filtered_low_value=1, inserted=3, updated=2, errors=0)
+    r = IngestResult(
+        fetched=10,
+        parsed=8,
+        filtered_non_au=2,
+        filtered_low_value=1,
+        inserted=3,
+        updated=2,
+        errors=0,
+    )
     s = str(r)
     assert "fetched=10" in s
     assert "parsed=8" in s

@@ -28,9 +28,11 @@ from sqlalchemy import and_, desc, select
 
 from src.engines.closer import CloserEngine
 from src.exceptions import ValidationError
-from src.integrations.postmark import get_postmark_client
+
+# DEAD: from src.integrations.postmark import get_postmark_client
 from src.integrations.supabase import get_db_session
-from src.integrations.twilio import get_twilio_client
+
+# DEAD: from src.integrations.twilio import get_twilio_client
 from src.models.base import ChannelType
 from src.models.lead import Lead
 

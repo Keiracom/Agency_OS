@@ -182,7 +182,7 @@ async def process_domain(
                 dm_linkedin_url=dm_linkedin,
                 contact_data=contact_data,
                 leadmagic_client=leadmagic,
-                brightdata_client=None,  # skip BD for now — Leadmagic first
+                bright_data_linkedin_client=None,  # skip BD for now — Leadmagic first
             )
 
             if mobile_res.tier_used == 1:

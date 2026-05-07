@@ -493,12 +493,12 @@ class PipelineOrchestrator:
         prospect_scorer=None,
         intelligence=None,
         leadmagic_client=None,
-        brightdata_client=None,
+        bright_data_linkedin_client=None,
     ):
         # CD Player v1 clients
         self._dfs = dfs_client
         self._gemini = gemini_client
-        self._bd = bd_client or brightdata_client
+        self._bd = bd_client or bright_data_linkedin_client
         self._lm = lm_client or leadmagic_client
         self._discovery = discovery
         self._on_card = on_card
@@ -514,7 +514,7 @@ class PipelineOrchestrator:
         self._ads_client = ads_client
         self._intelligence = intelligence
         self._leadmagic_client = lm_client or leadmagic_client
-        self._brightdata_client = bd_client or brightdata_client
+        self._bright_data_linkedin_client = bd_client or bright_data_linkedin_client
 
     # ── Core per-domain processor ─────────────────────────────────────────
 

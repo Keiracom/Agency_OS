@@ -87,7 +87,7 @@ class VoiceCall(Base, UUIDMixin):
     # ===== CALL IDENTIFIERS =====
     phone_number: Mapped[str] = mapped_column(Text, nullable=False)
     call_sid: Mapped[str | None] = mapped_column(Text, nullable=True)  # Twilio SID
-    elevenagets_call_id: Mapped[str | None] = mapped_column(
+    elevenagents_call_id: Mapped[str | None] = mapped_column(
         Text, nullable=True, index=True
     )  # ElevenAgents call ID
     twilio_call_sid: Mapped[str | None] = mapped_column(Text, nullable=True)

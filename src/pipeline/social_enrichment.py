@@ -3,7 +3,7 @@ Contract: src/pipeline/social_enrichment.py
 Purpose: LinkedIn company page + DM profile scraping via existing BrightDataLinkedInClient.
          Feeds into classify_intent (company data) and refine_evidence (DM activity).
 Layer: 4 - orchestration
-Imports: src.integrations.brightdata_client
+Imports: src.integrations.bright_data_linkedin_client
 Directive: #300-FIX Issues 13-14
 
 Stage 9:  scrape_linkedin_company — run on intent-passed domains with company LinkedIn URL
@@ -23,7 +23,7 @@ import asyncio
 import logging
 from decimal import Decimal
 
-from src.integrations.brightdata_client import COST_PER_RECORD_USD, BrightDataLinkedInClient
+from src.integrations.bright_data_linkedin_client import COST_PER_RECORD_USD, BrightDataLinkedInClient
 
 logger = logging.getLogger(__name__)
 

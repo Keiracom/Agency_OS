@@ -243,7 +243,7 @@ class Settings(BaseSettings):
     # TTS: ElevenLabs Flash v2.5 (sole TTS engine)
     elevenlabs_api_key: str = Field(default="", description="ElevenLabs API key (TTS)")
     # ElevenAgents (Conversational AI)
-    elevenagets_agent_id: str = Field(
+    elevenagents_agent_id: str = Field(
         default="", description="ElevenAgents agent ID (populated after create_agent)"
     )
     elevenlabs_voice_id: str = Field(default="", description="ElevenLabs voice ID for Alex agent")

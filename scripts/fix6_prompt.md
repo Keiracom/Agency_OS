@@ -183,7 +183,7 @@ from dotenv import load_dotenv
 load_dotenv("/home/elliotbot/.config/agency-os/.env")
 
 import httpx
-from src.integrations.brightdata_client import BRIGHTDATA_SCRAPER_KEY
+from src.integrations.bright_data_linkedin_client import BRIGHTDATA_SCRAPER_KEY
 
 r = httpx.get(
     "https://api.brightdata.com/datasets/v3/progress/sd_mnfd94hgsyllcqjlx",

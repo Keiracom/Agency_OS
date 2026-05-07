@@ -20,7 +20,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.integrations.dncr_client import DNCRResult
+from src.integrations.dncr import DNCRResult
 from src.outreach.safety.dncr_adapter import build_dncr_lookup
 
 PHONE = "+61411111111"

@@ -651,7 +651,7 @@ async def _run_stage8(
             domain_data["errors"].append(f"stage8c_verify: {exc}")
 
     # 8d: Mobile waterfall (uses contactout_result, no duplicate API call)
-    # Pass brightdata_client (bd) and contact_data from Stage 3 identity (Fix D2.2-1)
+    # Pass bright_data_linkedin_client (bd) and contact_data from Stage 3 identity (Fix D2.2-1)
     mobile_result = None
     try:
         if _suppressed:
@@ -665,7 +665,7 @@ async def _run_stage8(
             dm_linkedin_url=dm_linkedin,
             contact_data=contact_data_mobile or None,
             contactout_result=contactout_result,
-            brightdata_client=bd,
+            bright_data_linkedin_client=bd,
             leadmagic_client=lm,
         )
     except Exception as exc:

@@ -70,7 +70,7 @@ async def run_mobile_waterfall(
     dm_linkedin_url: str | None,
     contact_data: dict | None,
     leadmagic_client: Any | None = None,
-    brightdata_client: Any | None = None,
+    bright_data_linkedin_client: Any | None = None,
     sem_paid: asyncio.Semaphore | None = None,
     contactout_result: dict | None = None,
 ) -> MobileResult:
@@ -82,7 +82,7 @@ async def run_mobile_waterfall(
         dm_linkedin_url: LinkedIn profile URL from DM identification stage.
         contact_data: Free contact signals extracted during scrape (may contain mobile).
         leadmagic_client: Optional LeadmagicClient for Layer 2 ($0.077).
-        brightdata_client: Optional BrightDataLinkedInClient for Layer 3 ($0.00075).
+        bright_data_linkedin_client: Optional BrightDataLinkedInClient for Layer 3 ($0.00075).
         sem_paid: Optional semaphore to gate paid calls.
         contactout_result: Pre-fetched ContactOut enrichment dict (from
             enrich_dm_via_contactout). Used as Layer 0 primary — no additional
@@ -147,11 +147,11 @@ async def run_mobile_waterfall(
             )
 
     # ── Layer 3: Bright Data LinkedIn profile ─────────────────────────────────
-    if brightdata_client is not None and dm_linkedin_url:
+    if bright_data_linkedin_client is not None and dm_linkedin_url:
         async with _sem:
 
             async def _do_brightdata_mobile():
-                return await brightdata_client.get_profile(linkedin_url=dm_linkedin_url)
+                return await bright_data_linkedin_client.get_profile(linkedin_url=dm_linkedin_url)
 
             profile = await _with_retry(_do_brightdata_mobile, label="brightdata-mobile")
 

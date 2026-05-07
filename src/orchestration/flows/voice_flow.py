@@ -6,13 +6,13 @@ TASK: FLOW-029
 
 VOICE STACK: ElevenAgents + Twilio AU
   - Vapi deprecated and removed (2026-02-25)
-  - Active client: src/integrations/elevenagets_client.py
+  - Active client: src/integrations/elevenagents_client.py
   - Twilio AU number: +61240126220 (voice-only)
   - Morgan assistant in Vapi dashboard is STALE - do not use
 
 DEPENDENCIES:
   - src/integrations/supabase.py
-  - src/integrations/elevenagets_client.py
+  - src/integrations/elevenagents_client.py
   - src/services/voice_compliance_validator.py
   - src/services/voice_context_builder.py
   - src/models/lead.py
@@ -414,9 +414,9 @@ async def initiate_call_task(
             f"voice-calls-{agency_id}",
             occupy=1,
         ):
-            from src.integrations.elevenagets_client import get_elevenagets_client
+            from src.integrations.elevenagents_client import get_elevenagents_client
 
-            client = await get_elevenagets_client()
+            client = await get_elevenagents_client()
 
             result = await client.initiate_call(
                 phone=context["phone"],

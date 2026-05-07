@@ -68,7 +68,7 @@ class TestVoiceCallModel:
             "campaign_id",
             "phone_number",
             "call_sid",
-            "elevenagets_call_id",
+            "elevenagents_call_id",
             "outcome",
             "outcome_raw",
             "duration_seconds",
@@ -176,7 +176,7 @@ class TestWebhookOutcomeMapping:
 
     def test_map_outcome_from_signal(self):
         """Test outcome mapping from raw signals."""
-        from src.api.webhooks.elevenagets import _map_outcome
+        from src.api.webhooks.elevenagents import _map_outcome
 
         # Positive outcomes
         assert _map_outcome("interested", None) == "INTERESTED"
@@ -204,7 +204,7 @@ class TestWebhookOutcomeMapping:
 
     def test_map_outcome_from_event_type(self):
         """Test outcome mapping from event types when no signal."""
-        from src.api.webhooks.elevenagets import _map_outcome
+        from src.api.webhooks.elevenagents import _map_outcome
 
         assert _map_outcome(None, "call_initiated") == "INITIATED"
         assert _map_outcome(None, "call_answered") == "CALL_ANSWERED"
@@ -216,7 +216,7 @@ class TestWebhookOutcomeMapping:
 
     def test_map_outcome_signal_takes_precedence(self):
         """Test that outcome signal takes precedence over event type."""
-        from src.api.webhooks.elevenagets import _map_outcome
+        from src.api.webhooks.elevenagents import _map_outcome
 
         # Even with call_completed event, a "booked" signal should map to BOOKED
         assert _map_outcome("booked", "call_completed") == "BOOKED"
@@ -224,7 +224,7 @@ class TestWebhookOutcomeMapping:
 
     def test_map_status_normalization(self):
         """Test status normalization from ElevenAgents."""
-        from src.api.webhooks.elevenagets import _map_status
+        from src.api.webhooks.elevenagents import _map_status
 
         assert _map_status("initiated") == "initiated"
         assert _map_status("ringing") == "ringing"
@@ -422,21 +422,21 @@ class TestWebhookHandlers:
     def test_no_answer_handler_returns_correct_outcome(self):
         """Test no-answer webhook handler returns NO_ANSWER outcome."""
         # Verify the expected outcome mapping
-        from src.api.webhooks.elevenagets import _map_outcome
+        from src.api.webhooks.elevenagents import _map_outcome
 
         outcome = _map_outcome(None, "no_answer")
         assert outcome == "NO_ANSWER"
 
     def test_busy_handler_returns_correct_outcome(self):
         """Test busy webhook handler returns BUSY outcome."""
-        from src.api.webhooks.elevenagets import _map_outcome
+        from src.api.webhooks.elevenagents import _map_outcome
 
         outcome = _map_outcome(None, "busy")
         assert outcome == "BUSY"
 
     def test_call_declined_handler_returns_correct_outcome(self):
         """Test call_declined webhook handler returns CALL_DECLINED outcome."""
-        from src.api.webhooks.elevenagets import _map_outcome
+        from src.api.webhooks.elevenagents import _map_outcome
 
         outcome = _map_outcome(None, "call_declined")
         assert outcome == "CALL_DECLINED"

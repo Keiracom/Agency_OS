@@ -24,6 +24,10 @@ Features:
 import contextlib
 import hashlib
 import logging
+import os
+from collections.abc import Callable
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import httpx
@@ -33,6 +37,125 @@ from src.config.settings import settings
 from src.exceptions import APIError, IntegrationError
 
 logger = logging.getLogger(__name__)
+
+
+# ── Sync DNCR client (consolidated from dncr_client.py per PR-B 2026-05-07) ──
+#
+# Two distinct DNCR clients live in this module:
+#   - DNCRClient       — async (Twilio SMS compliance path, primary use)
+#   - SyncDNCRClient   — sync (compliance_guard adapter; B2B voice/SMS pre-call)
+
+DNCR_DEFAULT_BASE_URL = "https://api.dncr.acma.gov.au/v1"
+DNCR_DEFAULT_TIMEOUT = 10.0
+DNCR_DEFAULT_CACHE_TTL_HOURS = 24
+
+
+@dataclass
+class DNCRResult:
+    """Result of a sync DNCR lookup. None registered = degraded API."""
+
+    registered: bool | None
+    registered_at: datetime | None
+    last_checked: datetime
+    status: str
+
+
+class SyncDNCRClient:
+    """Sync DNCR client with in-memory 24hr cache. Never raises — degraded on any failure."""
+
+    def __init__(
+        self,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        timeout: float = DNCR_DEFAULT_TIMEOUT,
+        cache_ttl_hours: int | None = None,
+        http_client: httpx.Client | None = None,
+        now_fn: Callable[[], datetime] = lambda: datetime.now(UTC),
+    ):
+        self.api_key = api_key or os.environ.get("DNCR_API_KEY")
+        self.base_url = (
+            base_url or os.environ.get("DNCR_API_BASE_URL") or DNCR_DEFAULT_BASE_URL
+        ).rstrip("/")
+        self.timeout = timeout
+        ttl_hours = (
+            cache_ttl_hours
+            if cache_ttl_hours is not None
+            else int(os.environ.get("DNCR_CACHE_TTL_HOURS", DNCR_DEFAULT_CACHE_TTL_HOURS))
+        )
+        self.cache_ttl = timedelta(hours=ttl_hours)
+        self._http = http_client
+        self._now = now_fn
+        self._cache: dict[str, tuple[datetime, DNCRResult]] = {}
+
+    def lookup(self, phone_number: str) -> DNCRResult:
+        normalised = self._normalise(phone_number)
+        cached = self._cache_get(normalised)
+        if cached is not None:
+            return cached
+        result = self._fetch(normalised) if self.api_key else self._degraded("no_api_key")
+        self._cache_put(normalised, result)
+        return result
+
+    def _fetch(self, phone: str) -> DNCRResult:
+        try:
+            client = self._http or httpx.Client(timeout=self.timeout)
+            resp = client.get(
+                f"{self.base_url}/lookup",
+                params={"phone": phone},
+                headers={"Authorization": f"Bearer {self.api_key}"},
+            )
+            if resp.status_code == 429:
+                return self._degraded("rate_limited")
+            if resp.status_code >= 400:
+                logger.warning("DNCR lookup %s returned %s", phone, resp.status_code)
+                return self._degraded("network")
+            data = resp.json()
+            return DNCRResult(
+                registered=bool(data.get("registered")),
+                registered_at=self._parse_iso(data.get("registered_at")),
+                last_checked=self._now(),
+                status="ok",
+            )
+        except (httpx.HTTPError, httpx.TimeoutException) as exc:
+            logger.warning("DNCR network failure for %s: %s", phone, exc)
+            return self._degraded("network")
+        except (ValueError, KeyError) as exc:
+            logger.warning("DNCR parse failure for %s: %s", phone, exc)
+            return self._degraded("parse")
+
+    def _degraded(self, kind: str) -> DNCRResult:
+        return DNCRResult(
+            registered=None, registered_at=None, last_checked=self._now(), status=f"degraded:{kind}"
+        )
+
+    def _cache_get(self, phone: str) -> DNCRResult | None:
+        entry = self._cache.get(phone)
+        if entry is None:
+            return None
+        stored_at, result = entry
+        if self._now() - stored_at > self.cache_ttl:
+            return None
+        return result
+
+    def _cache_put(self, phone: str, result: DNCRResult) -> None:
+        if result.status != "ok":
+            return
+        self._cache[phone] = (self._now(), result)
+
+    @staticmethod
+    def _normalise(phone: str) -> str:
+        if not phone:
+            return ""
+        return "".join(c for c in phone if c.isdigit() or c == "+")
+
+    @staticmethod
+    def _parse_iso(s: str | None) -> datetime | None:
+        if not s:
+            return None
+        try:
+            return datetime.fromisoformat(s.replace("Z", "+00:00"))
+        except ValueError:
+            return None
 
 
 class DNCRClient:

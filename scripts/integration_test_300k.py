@@ -199,7 +199,7 @@ def load_json(filename: str) -> dict | list:
 def check_bd_snapshot() -> list[dict]:
     """One-time synchronous check of the BD snapshot."""
     import httpx as hx
-    from src.integrations.brightdata_client import BRIGHTDATA_SCRAPER_KEY
+    from src.integrations.bright_data_linkedin_client import BRIGHTDATA_SCRAPER_KEY
 
     key = BRIGHTDATA_SCRAPER_KEY
     try:

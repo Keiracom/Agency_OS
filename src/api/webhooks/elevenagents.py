@@ -1,12 +1,12 @@
 """
-FILE: src/api/webhooks/elevenagets.py
+FILE: src/api/webhooks/elevenagents.py
 PURPOSE: Webhook handlers for ElevenAgents call events - captures all voice outcomes for CIS
 PHASE: 17 (Launch Prerequisites), CIS Gap 1 Fix
 TASK: VOICE-008, CIS-GAP-001
 DEPENDENCIES:
   - fastapi
   - sqlalchemy
-  - src/integrations/elevenagets_client.py
+  - src/integrations/elevenagents_client.py
   - src/models/voice_call.py
   - src/db/session.py
 RULES APPLIED:
@@ -36,7 +36,7 @@ from src.api.dependencies import get_db
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/webhooks/elevenagets", tags=["webhooks", "elevenagets"])
+router = APIRouter(prefix="/api/webhooks/elevenagents", tags=["webhooks", "elevenagents"])
 
 
 # ============================================
@@ -115,12 +115,12 @@ def _map_outcome(raw_outcome: str | None, event_type: str | None) -> str:
     return "CALL_COMPLETED"
 
 
-def _map_status(elevenagets_status: str) -> str:
+def _map_status(elevenagents_status: str) -> str:
     """
     Map ElevenAgents status to our internal status values.
 
     Args:
-        elevenagets_status: Status from ElevenAgents API.
+        elevenagents_status: Status from ElevenAgents API.
 
     Returns:
         Normalized status string.
@@ -139,7 +139,7 @@ def _map_status(elevenagets_status: str) -> str:
         "canceled": "failed",
         "answered": "in-progress",
     }
-    return status_map.get(elevenagets_status.lower(), elevenagets_status)
+    return status_map.get(elevenagents_status.lower(), elevenagents_status)
 
 
 # ============================================
@@ -185,9 +185,9 @@ async def handle_call_completed(
         raise HTTPException(status_code=400, detail="Invalid JSON payload")
 
     # Parse webhook payload
-    from src.integrations.elevenagets_client import get_elevenagets_client
+    from src.integrations.elevenagents_client import get_elevenagents_client
 
-    client = get_elevenagets_client()
+    client = get_elevenagents_client()
     parsed = client.parse_webhook(payload)
 
     logger.info(
@@ -219,7 +219,7 @@ async def handle_call_completed(
     try:
         await _update_voice_call_record(
             db=db,
-            elevenagets_call_id=parsed.call_id,
+            elevenagents_call_id=parsed.call_id,
             voice_call_record_id=voice_call_record_id,
             status=_map_status(parsed.status),
             duration_seconds=parsed.duration_seconds,
@@ -274,9 +274,9 @@ async def handle_call_started(
         logger.error(f"ElevenAgents webhook (started): invalid JSON: {e}")
         raise HTTPException(status_code=400, detail="Invalid JSON payload")
 
-    from src.integrations.elevenagets_client import get_elevenagets_client
+    from src.integrations.elevenagents_client import get_elevenagents_client
 
-    client = get_elevenagets_client()
+    client = get_elevenagents_client()
     parsed = client.parse_webhook(payload)
 
     logger.info(f"ElevenAgents call started: call_id={parsed.call_id}, status={parsed.status}")
@@ -290,7 +290,7 @@ async def handle_call_started(
     try:
         await _update_voice_call_record(
             db=db,
-            elevenagets_call_id=parsed.call_id,
+            elevenagents_call_id=parsed.call_id,
             voice_call_record_id=voice_call_record_id,
             status=_map_status(parsed.status),
             twilio_call_sid=parsed.call_sid,
@@ -319,9 +319,9 @@ async def handle_call_answered(
         logger.error(f"ElevenAgents webhook (answered): invalid JSON: {e}")
         raise HTTPException(status_code=400, detail="Invalid JSON payload")
 
-    from src.integrations.elevenagets_client import get_elevenagets_client
+    from src.integrations.elevenagents_client import get_elevenagents_client
 
-    client = get_elevenagets_client()
+    client = get_elevenagents_client()
     parsed = client.parse_webhook(payload)
 
     logger.info(f"ElevenAgents call answered: call_id={parsed.call_id}")
@@ -334,7 +334,7 @@ async def handle_call_answered(
     try:
         await _update_voice_call_record(
             db=db,
-            elevenagets_call_id=parsed.call_id,
+            elevenagents_call_id=parsed.call_id,
             voice_call_record_id=voice_call_record_id,
             status="in-progress",
             event_type="call_answered",
@@ -362,9 +362,9 @@ async def handle_call_declined(
         logger.error(f"ElevenAgents webhook (declined): invalid JSON: {e}")
         raise HTTPException(status_code=400, detail="Invalid JSON payload")
 
-    from src.integrations.elevenagets_client import get_elevenagets_client
+    from src.integrations.elevenagents_client import get_elevenagents_client
 
-    client = get_elevenagets_client()
+    client = get_elevenagents_client()
     parsed = client.parse_webhook(payload)
 
     logger.warning(f"ElevenAgents call declined: call_id={parsed.call_id}")
@@ -377,7 +377,7 @@ async def handle_call_declined(
     try:
         await _update_voice_call_record(
             db=db,
-            elevenagets_call_id=parsed.call_id,
+            elevenagents_call_id=parsed.call_id,
             voice_call_record_id=voice_call_record_id,
             status="completed",
             outcome="CALL_DECLINED",
@@ -406,9 +406,9 @@ async def handle_no_answer(
         logger.error(f"ElevenAgents webhook (no-answer): invalid JSON: {e}")
         raise HTTPException(status_code=400, detail="Invalid JSON payload")
 
-    from src.integrations.elevenagets_client import get_elevenagets_client
+    from src.integrations.elevenagents_client import get_elevenagents_client
 
-    client = get_elevenagets_client()
+    client = get_elevenagents_client()
     parsed = client.parse_webhook(payload)
 
     logger.info(f"ElevenAgents no answer: call_id={parsed.call_id}")
@@ -421,7 +421,7 @@ async def handle_no_answer(
     try:
         await _update_voice_call_record(
             db=db,
-            elevenagets_call_id=parsed.call_id,
+            elevenagents_call_id=parsed.call_id,
             voice_call_record_id=voice_call_record_id,
             status="completed",
             outcome="NO_ANSWER",
@@ -450,9 +450,9 @@ async def handle_busy(
         logger.error(f"ElevenAgents webhook (busy): invalid JSON: {e}")
         raise HTTPException(status_code=400, detail="Invalid JSON payload")
 
-    from src.integrations.elevenagets_client import get_elevenagets_client
+    from src.integrations.elevenagents_client import get_elevenagents_client
 
-    client = get_elevenagets_client()
+    client = get_elevenagents_client()
     parsed = client.parse_webhook(payload)
 
     logger.info(f"ElevenAgents busy: call_id={parsed.call_id}")
@@ -465,7 +465,7 @@ async def handle_busy(
     try:
         await _update_voice_call_record(
             db=db,
-            elevenagets_call_id=parsed.call_id,
+            elevenagents_call_id=parsed.call_id,
             voice_call_record_id=voice_call_record_id,
             status="completed",
             outcome="BUSY",
@@ -494,9 +494,9 @@ async def handle_call_failed(
         logger.error(f"ElevenAgents webhook (failed): invalid JSON: {e}")
         raise HTTPException(status_code=400, detail="Invalid JSON payload")
 
-    from src.integrations.elevenagets_client import get_elevenagets_client
+    from src.integrations.elevenagents_client import get_elevenagents_client
 
-    client = get_elevenagets_client()
+    client = get_elevenagents_client()
     parsed = client.parse_webhook(payload)
 
     error_reason = payload.get("error", "unknown")
@@ -510,7 +510,7 @@ async def handle_call_failed(
     try:
         await _update_voice_call_record(
             db=db,
-            elevenagets_call_id=parsed.call_id,
+            elevenagents_call_id=parsed.call_id,
             voice_call_record_id=voice_call_record_id,
             status="failed",
             outcome="FAILED",
@@ -531,7 +531,7 @@ async def handle_call_failed(
 
 async def _update_voice_call_record(
     db: AsyncSession,
-    elevenagets_call_id: str,
+    elevenagents_call_id: str,
     voice_call_record_id: str | None = None,
     status: str | None = None,
     duration_seconds: int | None = None,
@@ -553,11 +553,11 @@ async def _update_voice_call_record(
     - event_type and timestamp
     - als_score_at_call (already captured at dispatch)
 
-    Tries to find record by voice_call_record_id first, then by elevenagets_call_id.
+    Tries to find record by voice_call_record_id first, then by elevenagents_call_id.
 
     Args:
         db: Database session.
-        elevenagets_call_id: ElevenAgents call ID.
+        elevenagents_call_id: ElevenAgents call ID.
         voice_call_record_id: UUID of voice_calls record.
         status: Call status.
         duration_seconds: Call duration.
@@ -578,7 +578,7 @@ async def _update_voice_call_record(
 
     # Build update dict
     update_data: dict[str, Any] = {
-        "elevenagets_call_id": elevenagets_call_id,
+        "elevenagents_call_id": elevenagents_call_id,
         "updated_at": datetime.now(UTC),
     }
 
@@ -614,18 +614,18 @@ async def _update_voice_call_record(
         except ValueError:
             logger.warning(f"Invalid UUID for voice_call_record_id: {voice_call_record_id}")
 
-    # Fall back to finding by elevenagets_call_id
+    # Fall back to finding by elevenagents_call_id
     stmt = (
         update(VoiceCall)
-        .where(VoiceCall.elevenagets_call_id == elevenagets_call_id)
+        .where(VoiceCall.elevenagents_call_id == elevenagents_call_id)
         .values(**update_data)
     )
     result = await db.execute(stmt)
     if result.rowcount > 0:
         await db.commit()
-        logger.info(f"Updated voice_calls by elevenagets_call_id: {elevenagets_call_id}")
+        logger.info(f"Updated voice_calls by elevenagents_call_id: {elevenagents_call_id}")
     else:
-        logger.warning(f"No voice_calls record found for call_id: {elevenagets_call_id}")
+        logger.warning(f"No voice_calls record found for call_id: {elevenagents_call_id}")
 
 
 async def _trigger_post_call_processor(

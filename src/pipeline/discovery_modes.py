@@ -1,5 +1,5 @@
 """
-FILE: src/enrichment/discovery_modes.py
+FILE: src/pipeline/discovery_modes.py
 PURPOSE: Mode A/B/C discovery logic for Waterfall v2 Pipeline
 PHASE: SIEGE (CEO Directive #023)
 TASK: Waterfall v2 Pipeline Implementation

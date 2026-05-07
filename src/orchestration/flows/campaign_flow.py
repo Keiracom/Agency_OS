@@ -24,7 +24,6 @@ from uuid import UUID
 from prefect import flow, task
 from sqlalchemy import and_, select, update
 
-from src.enrichment.campaign_trigger import CampaignDiscoveryTrigger
 from src.integrations.abn_client import get_abn_client
 from src.integrations.bright_data_client import get_bright_data_client
 from src.integrations.leadmagic import get_leadmagic_client
@@ -33,6 +32,7 @@ from src.models.base import CampaignStatus, LeadStatus, SubscriptionStatus
 from src.models.campaign import Campaign
 from src.models.client import Client
 from src.models.lead import Lead
+from src.pipeline.campaign_trigger import CampaignDiscoveryTrigger
 from src.prefect_utils.completion_hook import on_completion_hook
 from src.prefect_utils.hooks import on_failure_hook
 from src.services.domain_pool_manager import DomainPoolManager

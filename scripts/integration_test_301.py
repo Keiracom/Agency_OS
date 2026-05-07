@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 
 load_dotenv("/home/elliotbot/.config/agency-os/.env")
 
-from src.enrichment.email_verifier import (
+from src.pipeline.email_verifier import (
     generate_patterns,
     discover_email,
     verify_emails,

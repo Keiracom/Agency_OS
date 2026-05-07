@@ -17,18 +17,18 @@ class TestDiscoveryModeEnum:
     """Test DiscoveryMode enum"""
 
     def test_mode_b_value(self):
-        from enrichment.discovery_modes import DiscoveryMode
+        from src.pipeline.discovery_modes import DiscoveryMode
 
         assert DiscoveryMode.MAPS_FIRST.value == "mode_b"
 
     def test_mode_c_value(self):
-        from enrichment.discovery_modes import DiscoveryMode
+        from src.pipeline.discovery_modes import DiscoveryMode
 
         assert DiscoveryMode.PARALLEL.value == "mode_c"
 
     def test_abn_first_deprecated(self):
         """ABN_FIRST was deprecated per Waterfall v3 Decision #1 (2026-03-01)"""
-        from enrichment.discovery_modes import DiscoveryMode
+        from src.pipeline.discovery_modes import DiscoveryMode
 
         assert not hasattr(DiscoveryMode, "ABN_FIRST")
 
@@ -37,7 +37,7 @@ class TestCampaignConfig:
     """Test CampaignConfig dataclass"""
 
     def test_config_required_fields(self):
-        from enrichment.discovery_modes import CampaignConfig, DiscoveryMode
+        from src.pipeline.discovery_modes import CampaignConfig, DiscoveryMode
 
         config = CampaignConfig(
             mode=DiscoveryMode.MAPS_FIRST, industry="Advertising", location="Melbourne"
@@ -48,7 +48,7 @@ class TestCampaignConfig:
         assert config.location == "Melbourne"
 
     def test_config_optional_fields(self):
-        from enrichment.discovery_modes import CampaignConfig, DiscoveryMode
+        from src.pipeline.discovery_modes import CampaignConfig, DiscoveryMode
 
         config = CampaignConfig(
             mode=DiscoveryMode.MAPS_FIRST,
@@ -67,7 +67,7 @@ class TestMapsFirstDiscovery:
 
     @pytest.mark.asyncio
     async def test_uses_bright_data_serp(self):
-        from enrichment.discovery_modes import CampaignConfig, DiscoveryMode, MapsFirstDiscovery
+        from src.pipeline.discovery_modes import CampaignConfig, DiscoveryMode, MapsFirstDiscovery
 
         mock_client = Mock()
         mock_client.search_google_maps = Mock(
@@ -83,7 +83,7 @@ class TestMapsFirstDiscovery:
 
     @pytest.mark.asyncio
     async def test_verifies_with_abn_lookup(self):
-        from enrichment.discovery_modes import MapsFirstDiscovery
+        from src.pipeline.discovery_modes import MapsFirstDiscovery
 
         mock_client = Mock()
         MapsFirstDiscovery(bright_data_client=mock_client)

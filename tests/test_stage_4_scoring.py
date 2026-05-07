@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
 
 from src.pipeline.stage_4_scoring import Stage4Scorer, PIPELINE_STAGE_S4, _normalise_category
-from src.enrichment.signal_config import SignalConfig, ServiceSignal
+from src.pipeline.signal_config import SignalConfig, ServiceSignal
 
 
 # ─── Fixtures ────────────────────────────────────────────────────────────────

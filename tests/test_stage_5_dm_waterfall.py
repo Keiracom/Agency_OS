@@ -13,7 +13,7 @@ from src.pipeline.stage_5_dm_waterfall import (
     PIPELINE_STAGE_S5,
     DM_SOURCE_NONE,
 )
-from src.enrichment.signal_config import SignalConfig, ServiceSignal
+from src.pipeline.signal_config import SignalConfig, ServiceSignal
 
 
 # ─── Fixtures ────────────────────────────────────────────────────────────────

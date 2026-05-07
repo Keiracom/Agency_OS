@@ -1,5 +1,5 @@
 """
-Contract: src/enrichment/signal_config.py
+Contract: src/pipeline/signal_config.py
 Purpose: Signal configuration repository — v6 schema (services jsonb, competitor_config)
 Layer: 2 - integrations (reads DB only, no engine imports)
 Imports: asyncpg

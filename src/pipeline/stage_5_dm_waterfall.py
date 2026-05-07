@@ -21,7 +21,7 @@ from typing import Any, Protocol
 import asyncpg
 import httpx
 
-from src.enrichment.signal_config import SignalConfigRepository
+from src.pipeline.signal_config import SignalConfigRepository
 
 logger = logging.getLogger(__name__)
 

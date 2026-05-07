@@ -19,20 +19,16 @@ RULES APPLIED:
 """
 
 import logging
-from datetime import UTC, datetime, timedelta
+from datetime import datetime
 from typing import Any
 from uuid import UUID
 
 from prefect import task
-from sqlalchemy import and_, desc, select
+from sqlalchemy import and_, select
 
 from src.engines.closer import CloserEngine
 from src.exceptions import ValidationError
-
-# DEAD: from src.integrations.postmark import get_postmark_client
 from src.integrations.supabase import get_db_session
-
-# DEAD: from src.integrations.twilio import get_twilio_client
 from src.models.base import ChannelType
 from src.models.lead import Lead
 
@@ -222,86 +218,7 @@ async def poll_email_replies_task(
             - failed: int
             - replies: list[dict]
     """
-    if since is None:
-        since = datetime.now(UTC) - timedelta(hours=1)
-
-    logger.info(f"Polling Postmark for email replies since {since}")
-
-    postmark = get_postmark_client()  # noqa: F821 (PR-A dead-import; clean in PR-A1)
-
-    try:
-        # Fetch inbound messages
-        messages = await postmark.get_inbound_messages(
-            count=limit,
-            offset=0,
-        )
-
-        processed = 0
-        failed = 0
-        replies = []
-
-        async with get_db_session() as db:
-            for msg in messages:
-                try:
-                    # Parse message
-                    from_email = msg.get("From", "")
-                    message_content = msg.get("TextBody") or msg.get("HtmlBody", "")
-                    in_reply_to = msg.get("Headers", {}).get("In-Reply-To")
-                    message_id = msg.get("MessageID")
-
-                    # Find lead by email
-                    stmt = (
-                        select(Lead)
-                        .where(
-                            and_(
-                                Lead.email == from_email,
-                                Lead.deleted_at.is_(None),
-                            )
-                        )
-                        .order_by(desc(Lead.created_at))
-                    )
-                    result = await db.execute(stmt)
-                    lead = result.scalar_one_or_none()
-
-                    if not lead:
-                        logger.warning(f"No lead found for email {from_email}")
-                        continue
-
-                    # Process reply
-                    await process_reply_task(
-                        lead_id=lead.id,
-                        message=message_content,
-                        channel=ChannelType.EMAIL,
-                        provider_message_id=message_id,
-                        in_reply_to=in_reply_to,
-                        metadata={"from_polling": True},
-                    )
-
-                    replies.append(
-                        {
-                            "lead_id": str(lead.id),
-                            "from_email": from_email,
-                            "message_id": message_id,
-                        }
-                    )
-                    processed += 1
-
-                except Exception as e:
-                    logger.error(f"Failed to process email reply: {e}")
-                    failed += 1
-
-        logger.info(f"Email polling complete. Processed: {processed}, Failed: {failed}")
-
-        return {
-            "total": len(messages),
-            "processed": processed,
-            "failed": failed,
-            "replies": replies,
-        }
-
-    except Exception as e:
-        logger.error(f"Email polling failed: {e}")
-        raise
+    raise NotImplementedError("dead path: postmark removed in PR-A #593")
 
 
 @task(
@@ -331,83 +248,7 @@ async def poll_sms_replies_task(
             - failed: int
             - replies: list[dict]
     """
-    if since is None:
-        since = datetime.now(UTC) - timedelta(hours=1)
-
-    logger.info(f"Polling Twilio for SMS replies since {since}")
-
-    twilio = get_twilio_client()  # noqa: F821 (PR-A dead-import; clean in PR-A1)
-
-    try:
-        # Fetch messages
-        messages = await twilio.get_messages(
-            date_sent_after=since,
-            limit=limit,
-        )
-
-        processed = 0
-        failed = 0
-        replies = []
-
-        async with get_db_session() as db:
-            for msg in messages:
-                try:
-                    from_number = msg.get("from")
-                    message_content = msg.get("body", "")
-                    message_sid = msg.get("sid")
-
-                    # Find lead by phone
-                    stmt = (
-                        select(Lead)
-                        .where(
-                            and_(
-                                Lead.phone == from_number,
-                                Lead.deleted_at.is_(None),
-                            )
-                        )
-                        .order_by(desc(Lead.created_at))
-                    )
-                    result = await db.execute(stmt)
-                    lead = result.scalar_one_or_none()
-
-                    if not lead:
-                        logger.warning(f"No lead found for phone {from_number}")
-                        continue
-
-                    # Process reply
-                    await process_reply_task(
-                        lead_id=lead.id,
-                        message=message_content,
-                        channel=ChannelType.SMS,
-                        provider_message_id=message_sid,
-                        metadata={"from_polling": True},
-                    )
-
-                    replies.append(
-                        {
-                            "lead_id": str(lead.id),
-                            "from_number": from_number,
-                            "message_sid": message_sid,
-                        }
-                    )
-                    processed += 1
-
-                except Exception as e:
-                    logger.error(f"Failed to process SMS reply: {e}")
-                    failed += 1
-
-        logger.info(f"SMS polling complete. Processed: {processed}, Failed: {failed}")
-
-        return {
-            "total": len(messages),
-            "processed": processed,
-            "failed": failed,
-            "replies": replies,
-        }
-
-    except Exception as e:
-        logger.error(f"SMS polling failed: {e}")
-        raise
+    raise NotImplementedError("dead path: twilio removed in PR-A #593")
 
 
 # NOTE: poll_linkedin_replies_task removed - HeyReach deprecated, use Unipile instead

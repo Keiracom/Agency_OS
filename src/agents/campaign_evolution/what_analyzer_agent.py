@@ -16,8 +16,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-# DEAD: from src.integrations.sdk_brain import SDKBrainResult, create_sdk_brain
-
 logger = logging.getLogger(__name__)
 
 
@@ -188,7 +186,7 @@ async def run_what_analyzer(
     campaign_metrics: dict[str, Any] | None = None,
     business_context: dict[str, Any] | None = None,
     client_id: UUID | None = None,
-) -> SDKBrainResult:  # noqa: F821 (PR-A dead-import; clean in PR-A1)
+) -> Any:  # was SDKBrainResult (removed PR-A)
     """
     Run WHAT pattern analysis to generate content suggestions.
 
@@ -249,24 +247,8 @@ async def run_what_analyzer(
         "Document winning patterns to amplify and losing patterns to avoid."
     )
 
-    user_prompt = "".join(prompt_parts)
-
     # Create brain and run
-    brain = create_sdk_brain("campaign_evolution_what")  # noqa: F821 (PR-A dead-import; clean in PR-A1)
-
-    result = await brain.run(
-        prompt=user_prompt,
-        tools=[],  # No tools needed - analyzing provided data
-        output_schema=WHATAnalysis,
-        system=WHAT_ANALYZER_SYSTEM_PROMPT,
-    )
-
-    logger.info(
-        f"WHAT analyzer complete: confidence={result.data.confidence if result.success else 'N/A'}, "
-        f"cost=${result.cost_aud:.4f}"
-    )
-
-    return result
+    raise NotImplementedError("dead path: sdk_brain removed in PR-A #593")
 
 
 # ============================================

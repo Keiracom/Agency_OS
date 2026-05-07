@@ -25,7 +25,6 @@ from uuid import UUID
 from prefect import flow, task
 from prefect.task_runners import ConcurrentTaskRunner
 
-# DEAD: from src.integrations.infraforge import get_infraforge_client
 from src.integrations.supabase import get_db_session
 from src.prefect_utils.completion_hook import on_completion_hook
 from src.prefect_utils.hooks import on_failure_hook
@@ -75,34 +74,7 @@ async def check_domain_availability_task(
     Returns:
         List of available domains with pricing
     """
-    client = get_infraforge_client()  # noqa: F821 (PR-A dead-import; clean in PR-A1)
-
-    try:
-        # Generate alternatives
-        alternatives = await client.generate_alternative_domains(base_name, count * 2)
-
-        available = []
-        for domain in alternatives.get("domains", []):
-            # Check availability
-            availability = await client.check_domain_availability(domain["name"])
-            if availability.get("available"):
-                available.append(
-                    {
-                        "domain": domain["name"],
-                        "price_usd": availability.get("price", 14),
-                        "price_aud": availability.get("price", 14) * 1.55,
-                    }
-                )
-
-            if len(available) >= count:
-                break
-
-        logger.info(f"Found {len(available)} available domains for base: {base_name}")
-        return available
-
-    except Exception as e:
-        logger.error(f"Domain availability check failed: {e}")
-        raise
+    raise NotImplementedError("dead path: infraforge removed in PR-A #593")
 
 
 @task(name="purchase_domains", retries=1)
@@ -120,33 +92,7 @@ async def purchase_domains_task(
     Returns:
         Purchase result with domain IDs
     """
-    client = get_infraforge_client()  # noqa: F821 (PR-A dead-import; clean in PR-A1)
-
-    try:
-        # Format for API
-        domain_list = [{"domain": d["domain"]} for d in domains]
-
-        result = await client.buy_domains(domain_list)
-
-        # Calculate cost
-        total_cost_aud = len(domains) * DOMAIN_COST_PER_YEAR_AUD
-
-        logger.info(
-            f"Purchased {len(domains)} domains for client {client_id}. "
-            f"Cost: ${total_cost_aud:.2f} AUD/year"
-        )
-
-        return {
-            "success": True,
-            "domains_purchased": len(domains),
-            "cost_aud_year": total_cost_aud,
-            "cost_aud_month": total_cost_aud / 12,
-            "domain_ids": result.get("domainIds", []),
-        }
-
-    except Exception as e:
-        logger.error(f"Domain purchase failed: {e}")
-        raise
+    raise NotImplementedError("dead path: infraforge removed in PR-A #593")
 
 
 @task(name="create_mailboxes", retries=2, retry_delay_seconds=10)
@@ -170,46 +116,7 @@ async def create_mailboxes_task(
     Returns:
         Mailbox creation result
     """
-    client = get_infraforge_client()  # noqa: F821 (PR-A dead-import; clean in PR-A1)
-
-    try:
-        mailboxes = []
-        for domain in domains:
-            for i in range(mailboxes_per_domain):
-                # Generate professional email prefixes
-                prefixes = ["outreach", "hello", "contact", "team", "sales"]
-                prefix = prefixes[i % len(prefixes)]
-
-                mailboxes.append(
-                    {
-                        "email": f"{prefix}{i + 1}@{domain}",
-                        "firstName": "Agency",
-                        "lastName": "Outreach",
-                    }
-                )
-
-        result = await client.create_mailboxes(mailboxes)
-
-        # Calculate cost
-        total_mailboxes = len(mailboxes)
-        monthly_cost_aud = total_mailboxes * MAILFORGE_COST_PER_MAILBOX_AUD
-
-        logger.info(
-            f"Created {total_mailboxes} mailboxes across {len(domains)} domains. "
-            f"Cost: ${monthly_cost_aud:.2f} AUD/month"
-        )
-
-        return {
-            "success": True,
-            "mailboxes_created": total_mailboxes,
-            "domains_used": len(domains),
-            "cost_aud_month": monthly_cost_aud,
-            "mailbox_ids": result.get("mailboxIds", []),
-        }
-
-    except Exception as e:
-        logger.error(f"Mailbox creation failed: {e}")
-        raise
+    raise NotImplementedError("dead path: infraforge removed in PR-A #593")
 
 
 @task(name="export_to_warmup", retries=2, retry_delay_seconds=5)
@@ -233,29 +140,7 @@ async def export_to_warmup_task(
     Returns:
         Export result
     """
-    client = get_infraforge_client()  # noqa: F821 (PR-A dead-import; clean in PR-A1)
-
-    try:
-        await client.export_to_salesforge(
-            from_workspace_id=from_workspace_id,
-            to_workspace_id=to_salesforge_workspace_id,
-            to_warmforge_workspace_id=to_warmforge_workspace_id,
-            tag_name=tag_name,
-            warmup_activated=True,  # Auto-start warmup
-        )
-
-        logger.info(f"Exported mailboxes to Salesforge/WarmForge with tag: {tag_name}")
-
-        return {
-            "success": True,
-            "exported": True,
-            "warmup_activated": True,
-            "tag": tag_name,
-        }
-
-    except Exception as e:
-        logger.error(f"Export to warmup failed: {e}")
-        raise
+    raise NotImplementedError("dead path: infraforge removed in PR-A #593")
 
 
 @task(name="log_provisioning_cost")
@@ -366,19 +251,8 @@ async def infra_provisioning_flow(
         client_id=client_id,
     )
 
-    # Step 4: Export to warmup (if workspace IDs provided)
+    # Step 4: Export to warmup (dead path: infraforge removed in PR-A #593)
     export_result = {"success": False, "skipped": True}
-    if salesforge_workspace_id and warmforge_workspace_id:
-        infraforge_workspace = await get_infraforge_client().list_workspaces()  # noqa: F821 (PR-A dead-import; clean in PR-A1)
-        workspace_id = infraforge_workspace.get("workspaces", [{}])[0].get("id")
-
-        if workspace_id:
-            export_result = await export_to_warmup_task(
-                from_workspace_id=workspace_id,
-                to_salesforge_workspace_id=salesforge_workspace_id,
-                to_warmforge_workspace_id=warmforge_workspace_id,
-                tag_name=f"client_{client_id}",
-            )
 
     # Step 5: Log costs
     await log_provisioning_cost_task(

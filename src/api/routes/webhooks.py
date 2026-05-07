@@ -41,9 +41,6 @@ from src.engines.closer import get_closer_engine
 # DEPRECATED: Vapi voice engine removed 2026-02-25. Voice stack: ElevenAgents + Twilio AU
 # from src.engines.voice import get_voice_engine
 from src.exceptions import WebhookError
-
-# DEAD: from src.integrations.postmark import get_postmark_client
-# DEAD: from src.integrations.twilio import get_twilio_client
 from src.integrations.unipile import get_unipile_client
 from src.models.activity import Activity
 from src.models.base import ChannelType
@@ -248,81 +245,7 @@ async def postmark_inbound_webhook(
     Returns:
         Success response
     """
-    # Get raw payload and signature
-    payload = await request.json()
-    signature = request.headers.get("X-Postmark-Signature")
-
-    # Verify signature (currently placeholder)
-    # NOTE: Implement custom verification in production
-    if settings.is_production and not verify_postmark_signature(await request.body(), signature):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid webhook signature",
-        )
-
-    try:
-        # Parse webhook payload
-        postmark = get_postmark_client()  # noqa: F821 (PR-A dead-import; clean in PR-A1)
-        parsed = postmark.parse_inbound_webhook(payload)
-
-        # Find lead by email
-        from_email = parsed["from_email"]
-        if not from_email:
-            return {"status": "ignored", "reason": "no_sender_email"}
-
-        lead = await find_lead_by_email(db, from_email)
-        if not lead:
-            return {"status": "ignored", "reason": "lead_not_found"}
-
-        # Check for duplicate processing
-        message_id = parsed["message_id"]
-        if message_id and await check_duplicate_activity(db, lead.id, message_id):
-            return {"status": "ignored", "reason": "already_processed"}
-
-        # Extract message content (prefer stripped text)
-        message = parsed["stripped_text"] or parsed["text_body"] or ""
-        if not message:
-            return {"status": "ignored", "reason": "empty_message"}
-
-        # Process reply via Closer engine
-        closer = get_closer_engine()
-        result = await closer.process_reply(
-            db=db,
-            lead_id=lead.id,
-            message=message,
-            channel=ChannelType.EMAIL,
-            provider_message_id=message_id,
-            in_reply_to=parsed["in_reply_to"],
-            metadata={
-                "from_name": parsed["from_name"],
-                "subject": parsed["subject"],
-                "to_email": parsed["to_email"],
-                "date": parsed["date"],
-                "has_attachments": len(parsed["attachments"]) > 0,
-            },
-        )
-
-        if not result.success:
-            raise WebhookError(
-                url="/webhooks/postmark/inbound",
-                message=f"Reply processing failed: {result.error}",
-            )
-
-        return {
-            "status": "processed",
-            "lead_id": str(lead.id),
-            "intent": result.data["intent"],
-            "confidence": result.data["confidence"],
-            "activity_id": result.data["activity_id"],
-        }
-
-    except Exception as e:
-        # Log error but return 200 to prevent Postmark retries
-        logger.exception("Postmark inbound webhook error: %s", e)
-        return {
-            "status": "error",
-            "error": str(e),
-        }
+    raise NotImplementedError("dead path: postmark removed in PR-A #593")
 
 
 @router.post("/postmark/bounce")
@@ -340,60 +263,7 @@ async def postmark_bounce_webhook(
     Returns:
         Success response
     """
-    payload = await request.json()
-
-    try:
-        # Parse bounce webhook
-        postmark = get_postmark_client()  # noqa: F821 (PR-A dead-import; clean in PR-A1)
-        parsed = postmark.parse_bounce_webhook(payload)
-
-        # Find lead by email
-        email = parsed["email"]
-        if not email:
-            return {"status": "ignored", "reason": "no_email"}
-
-        lead = await find_lead_by_email(db, email)
-        if not lead:
-            return {"status": "ignored", "reason": "lead_not_found"}
-
-        # Update lead status to bounced
-        from src.models.base import LeadStatus
-
-        lead.status = LeadStatus.BOUNCED
-        lead.bounce_count += 1
-
-        # Log bounce activity
-        activity = Activity(
-            client_id=lead.client_id,
-            campaign_id=lead.campaign_id,
-            lead_id=lead.id,
-            channel=ChannelType.EMAIL,
-            action="bounced",
-            provider_message_id=parsed["message_id"],
-            provider="postmark",
-            provider_status=parsed["bounce_type"],
-            metadata={
-                "bounce_type": parsed["bounce_type"],
-                "description": parsed["description"],
-                "details": parsed["details"],
-                "can_activate": parsed["can_activate"],
-            },
-        )
-        db.add(activity)
-
-        await db.commit()
-
-        return {
-            "status": "processed",
-            "lead_id": str(lead.id),
-            "bounce_type": parsed["bounce_type"],
-        }
-
-    except Exception as e:
-        return {
-            "status": "error",
-            "error": str(e),
-        }
+    raise NotImplementedError("dead path: postmark removed in PR-A #593")
 
 
 @router.post("/postmark/spam")
@@ -480,86 +350,7 @@ async def twilio_inbound_webhook(
     Returns:
         TwiML response (empty to acknowledge)
     """
-    # Get form data
-    form_data = await request.form()
-    params = dict(form_data)
-
-    # Get signature for verification
-    signature = request.headers.get("X-Twilio-Signature")
-
-    # Verify signature
-    # Construct full URL for signature verification
-    url = str(request.url)
-    if settings.is_production and not verify_twilio_signature(url, params, signature):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid Twilio signature",
-        )
-
-    try:
-        # Parse webhook payload
-        twilio = get_twilio_client()  # noqa: F821 (PR-A dead-import; clean in PR-A1)
-        parsed = twilio.parse_inbound_webhook(params)
-
-        # Find lead by phone number
-        from_number = parsed["from_number"]
-        if not from_number:
-            # Return empty TwiML to acknowledge
-            return {"status": "ignored", "reason": "no_phone_number"}
-
-        lead = await find_lead_by_phone(db, from_number)
-        if not lead:
-            return {"status": "ignored", "reason": "lead_not_found"}
-
-        # Check for duplicate processing
-        message_sid = parsed["message_sid"]
-        if message_sid and await check_duplicate_activity(db, lead.id, message_sid):
-            return {"status": "ignored", "reason": "already_processed"}
-
-        # Extract message content
-        message = parsed["body"]
-        if not message:
-            return {"status": "ignored", "reason": "empty_message"}
-
-        # Process reply via Closer engine
-        closer = get_closer_engine()
-        result = await closer.process_reply(
-            db=db,
-            lead_id=lead.id,
-            message=message,
-            channel=ChannelType.SMS,
-            provider_message_id=message_sid,
-            metadata={
-                "from_number": from_number,
-                "to_number": parsed["to_number"],
-                "from_city": parsed["from_city"],
-                "from_state": parsed["from_state"],
-                "from_country": parsed["from_country"],
-                "num_media": parsed["num_media"],
-            },
-        )
-
-        if not result.success:
-            raise WebhookError(
-                url="/webhooks/twilio/inbound",
-                message=f"Reply processing failed: {result.error}",
-            )
-
-        # Return empty TwiML response to acknowledge
-        # Twilio expects TwiML, but empty is fine
-        return {
-            "status": "processed",
-            "lead_id": str(lead.id),
-            "intent": result.data["intent"],
-            "confidence": result.data["confidence"],
-        }
-
-    except Exception as e:
-        # Return empty response to prevent Twilio retries
-        return {
-            "status": "error",
-            "error": str(e),
-        }
+    raise NotImplementedError("dead path: twilio removed in PR-A #593")
 
 
 @router.post("/twilio/status")
@@ -577,63 +368,7 @@ async def twilio_status_webhook(
     Returns:
         Success response
     """
-    # Get form data
-    form_data = await request.form()
-    params = dict(form_data)
-
-    try:
-        # Parse status webhook
-        twilio = get_twilio_client()  # noqa: F821 (PR-A dead-import; clean in PR-A1)
-        parsed = twilio.parse_status_webhook(params)
-
-        # Find existing activity by message SID
-        message_sid = parsed["message_sid"]
-        if not message_sid:
-            return {"status": "ignored", "reason": "no_message_sid"}
-
-        stmt = select(Activity).where(Activity.provider_message_id == message_sid)
-        result = await db.execute(stmt)
-        activity = result.scalar_one_or_none()
-
-        if not activity:
-            return {"status": "ignored", "reason": "activity_not_found"}
-
-        # Update activity with delivery status
-        message_status = parsed["message_status"]
-        activity.provider_status = message_status
-
-        # If delivered, create a new activity
-        if message_status == "delivered":
-            delivered_activity = Activity(
-                client_id=activity.client_id,
-                campaign_id=activity.campaign_id,
-                lead_id=activity.lead_id,
-                channel=ChannelType.SMS,
-                action="delivered",
-                provider_message_id=message_sid,
-                provider="twilio",
-                provider_status=message_status,
-            )
-            db.add(delivered_activity)
-
-        # If failed, log the error
-        if message_status in ("failed", "undelivered"):
-            activity.metadata["error_code"] = parsed.get("error_code")
-            activity.metadata["error_message"] = parsed.get("error_message")
-
-        await db.commit()
-
-        return {
-            "status": "processed",
-            "message_sid": message_sid,
-            "message_status": message_status,
-        }
-
-    except Exception as e:
-        return {
-            "status": "error",
-            "error": str(e),
-        }
+    raise NotImplementedError("dead path: twilio removed in PR-A #593")
 
 
 # ============================================

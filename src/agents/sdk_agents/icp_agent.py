@@ -20,8 +20,6 @@ from pydantic import BaseModel, Field
 
 from src.agents.sdk_agents.sdk_tools import ICP_TOOLS
 
-# DEAD: from src.integrations.sdk_brain import SDKBrain, SDKBrainResult, create_sdk_brain
-
 logger = logging.getLogger(__name__)
 
 
@@ -195,20 +193,20 @@ class ICPAgent:
     - Self-review for quality
     """
 
-    def __init__(self, brain: SDKBrain | None = None):  # noqa: F821 (PR-A dead-import; clean in PR-A1)
+    def __init__(self, brain: object | None = None):  # was SDKBrain (removed PR-A)
         """
         Initialize ICP Agent.
 
         Args:
             brain: Optional SDKBrain instance (creates one if not provided)
         """
-        self.brain = brain or create_sdk_brain("icp_extraction")  # noqa: F821 (PR-A dead-import; clean in PR-A1)
+        raise NotImplementedError("dead path: sdk_brain removed in PR-A #593")
 
     async def extract(
         self,
         input_data: ICPInput,
         client_id: UUID | None = None,
-    ) -> SDKBrainResult:  # noqa: F821 (PR-A dead-import; clean in PR-A1)
+    ):  # was SDKBrainResult (removed PR-A)
         """
         Extract ICP from input data using SDK Brain.
 
@@ -330,7 +328,7 @@ async def extract_icp(
     social_links: dict | None = None,
     existing_icp: dict | None = None,
     client_id: UUID | None = None,
-) -> SDKBrainResult:  # noqa: F821 (PR-A dead-import; clean in PR-A1)
+):  # was SDKBrainResult (removed PR-A)
     """
     Convenience function to extract ICP.
 

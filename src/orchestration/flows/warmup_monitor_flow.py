@@ -19,8 +19,6 @@ from prefect.runtime import flow_run
 from sqlalchemy import select
 
 from src.config.database import get_db_session
-
-# DEAD: from src.integrations.warmforge import get_warmforge_client
 from src.models.resource_pool import ResourcePool, ResourceStatus, ResourceType
 from src.prefect_utils.completion_hook import on_completion_hook
 from src.prefect_utils.hooks import on_failure_hook
@@ -77,29 +75,7 @@ async def check_warmforge_status_task(domain: str) -> dict:
     Returns:
         Dict with warm, heat_score, mailbox_count, warmed_count
     """
-    log = get_run_logger()
-
-    try:
-        client = get_warmforge_client()  # noqa: F821 (PR-A dead-import; clean in PR-A1)
-        status = await client.get_domain_warmup_status(domain)
-
-        log.info(
-            f"WarmForge status for {domain}: "
-            f"warm={status['warm']}, heat_score={status['heat_score']}, "
-            f"mailboxes={status['warmed_count']}/{status['mailbox_count']}"
-        )
-
-        return status
-
-    except Exception as e:
-        log.error(f"Failed to check WarmForge for {domain}: {e}")
-        return {
-            "warm": False,
-            "heat_score": 0,
-            "mailbox_count": 0,
-            "warmed_count": 0,
-            "error": str(e),
-        }
+    raise NotImplementedError("dead path: warmforge removed in PR-A #593")
 
 
 @task(name="update_domain_status", retries=2, retry_delay_seconds=5)

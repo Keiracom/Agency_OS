@@ -60,7 +60,6 @@ from src.engines.content_utils import build_content_snapshot
 from src.exceptions import ResourceRateLimitError
 from src.integrations.redis import rate_limiter
 
-# DEAD: salesforge removed (invalid API key, replaced by Smartlead).
 # from src.integrations.salesforge import SalesforgeClient, get_salesforge_client
 from src.models.activity import Activity
 from src.models.base import ChannelType
@@ -93,7 +92,9 @@ class EmailEngine(OutreachEngine):
     - Warmforge mailbox compatibility
     """
 
-    def __init__(self, salesforge_client: SalesforgeClient | None = None):  # noqa: F821 (PR-A dead-import; clean in PR-A1)
+    def __init__(
+        self, salesforge_client: object | None = None
+    ):  # was SalesforgeClient (removed PR-A)
         """
         Initialize Email engine.
 
@@ -111,9 +112,9 @@ class EmailEngine(OutreachEngine):
         return ChannelType.EMAIL
 
     @property
-    def salesforge(self) -> SalesforgeClient:  # noqa: F821 (PR-A dead-import; clean in PR-A1)
+    def salesforge(self):  # was SalesforgeClient (removed PR-A)
         if self._salesforge is None:
-            self._salesforge = get_salesforge_client()  # noqa: F821 (PR-A dead-import; clean in PR-A1)
+            raise NotImplementedError("dead path: removed in PR-A #593")
         return self._salesforge
 
     async def send(

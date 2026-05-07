@@ -34,8 +34,6 @@ from pydantic import BaseModel, Field
 
 from src.agents.skills.base_skill import BaseSkill, SkillResult
 
-# DEAD: from src.integrations.serper import SerperClient, get_serper_client
-
 if TYPE_CHECKING:
     from src.integrations.anthropic import AnthropicClient
 
@@ -170,14 +168,14 @@ QUALITY CRITERIA:
 - Insights should be current (2024-2025 relevant)
 - Suggestions should be practical for cold outreach"""
 
-    def __init__(self, serper_client: SerperClient | None = None):  # noqa: F821 (PR-A dead-import; clean in PR-A1)
+    def __init__(self, serper_client: object | None = None):  # was SerperClient (removed PR-A)
         """
         Initialize Industry Researcher skill.
 
         Args:
             serper_client: Optional Serper client (uses singleton if not provided)
         """
-        self._serper = serper_client or get_serper_client()  # noqa: F821 (PR-A dead-import; clean in PR-A1)
+        raise NotImplementedError("dead path: serper removed in PR-A #593")
 
     async def execute(
         self,

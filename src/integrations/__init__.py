@@ -16,14 +16,10 @@ NOTE: T3 email and T5 mobile enrichment provided by Leadmagic.
 # Agency OS - Integrations Package
 
 from src.integrations.abn_client import ABNClient, get_abn_client
-
-# DEAD: from src.integrations.calendar_booking import router as calendar_booking_router
 from src.integrations.elevenagents_client import ElevenAgentsClient, get_elevenagents_client
 from src.integrations.elevenlabs import ElevenLabsClient, get_elevenlabs_client
 from src.integrations.leadmagic import LeadmagicClient, get_leadmagic_client
 
-# DEAD: from src.integrations.serper import SerperClient, get_serper_client
-# DEAD: from src.integrations.siege_waterfall import SiegeWaterfall, get_siege_waterfall
 # Billing & Booking (stripe_billing.py removed — canonical file is stripe.py)
 # The active billing router lives in src/api/routes/billing.py
 from src.integrations.vapi import VapiClient, get_vapi_client

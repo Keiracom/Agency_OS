@@ -64,8 +64,6 @@ from src.integrations.camoufox_scraper import CamoufoxScraper
 from src.integrations.dataforseo import get_dataforseo_client  # Directive #218: pre-gate DataForSEO
 from src.integrations.leadmagic import get_leadmagic_client
 from src.integrations.redis import enrichment_cache
-
-# DEAD: from src.integrations.siege_waterfall import EnrichmentTier, SiegeWaterfall, get_siege_waterfall
 from src.models.base import LeadStatus
 from src.models.lead import Lead
 from src.models.lead_social_post import LeadSocialPost
@@ -126,7 +124,7 @@ class ScoutEngine(BaseEngine):
 
     def __init__(
         self,
-        siege_waterfall: SiegeWaterfall | None = None,  # noqa: F821 (PR-A dead-import; clean in PR-A1)
+        siege_waterfall: object | None = None,  # was SiegeWaterfall (removed PR-A)
         camoufox_scraper: CamoufoxScraper | None = None,
     ):
         """
@@ -152,9 +150,9 @@ class ScoutEngine(BaseEngine):
         return self._camoufox
 
     @property
-    def siege_waterfall(self) -> SiegeWaterfall:  # noqa: F821 (PR-A dead-import; clean in PR-A1)
+    def siege_waterfall(self):  # was SiegeWaterfall (removed PR-A)
         if self._siege_waterfall is None:
-            self._siege_waterfall = get_siege_waterfall()  # noqa: F821 (PR-A dead-import; clean in PR-A1)
+            raise NotImplementedError("dead path: removed in PR-A #593")
         return self._siege_waterfall
 
     async def enrich_lead(
@@ -863,8 +861,8 @@ class ScoutEngine(BaseEngine):
                 siege_result = await self.siege_waterfall.enrich_lead(
                     lead_data,
                     skip_tiers=[
-                        EnrichmentTier.IDENTITY  # noqa: F821 (PR-A dead-import; clean in PR-A1)
-                    ],  # Skip expensive Tier 5  # noqa: F821 (PR-A dead-import; clean in PR-A1)
+                        # EnrichmentTier removed (PR-A #593)
+                    ],  # Skip expensive Tier 5 (EnrichmentTier removed PR-A)
                 )
 
                 # Directive #200: GMB leads already carry company-level data in
@@ -999,8 +997,8 @@ class ScoutEngine(BaseEngine):
             siege_result = await self.siege_waterfall.enrich_lead(
                 lead_data,
                 skip_tiers=[
-                    EnrichmentTier.IDENTITY  # noqa: F821 (PR-A dead-import; clean in PR-A1)
-                ],  # Skip expensive Tier 5  # noqa: F821 (PR-A dead-import; clean in PR-A1)
+                    # EnrichmentTier removed (PR-A #593)
+                ],  # Skip expensive Tier 5 (EnrichmentTier removed PR-A)
             )
 
             if siege_result.sources_used > 0:

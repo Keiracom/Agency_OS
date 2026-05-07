@@ -27,7 +27,6 @@ import os
 
 from prefect import flow, get_run_logger, task
 
-# DEAD: from src.integrations.sdk_brain import SiegeSDKIntelligence
 from src.integrations.supabase import get_db_session
 from src.prefect_utils.completion_hook import on_completion_hook
 from src.prefect_utils.hooks import on_failure_hook
@@ -91,8 +90,7 @@ async def analyze_with_claude(
     Calls SiegeSDKIntelligence.analyze_cis_outcomes() which uses
     Claude Sonnet 4 with a $2 AUD cost cap.
     """
-    sdk = SiegeSDKIntelligence()  # noqa: F821 (PR-A dead-import; clean in PR-A1)
-    return await sdk.analyze_cis_outcomes(outcomes, weights)
+    raise NotImplementedError("dead path: sdk_brain removed in PR-A #593")
 
 
 @task(name="cis-apply-deltas")

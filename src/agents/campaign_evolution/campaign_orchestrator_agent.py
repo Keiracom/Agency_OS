@@ -19,8 +19,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-# DEAD: from src.integrations.sdk_brain import SDKBrainResult, create_sdk_brain
-
 logger = logging.getLogger(__name__)
 
 
@@ -213,7 +211,7 @@ async def run_campaign_orchestrator(
     current_campaigns: list[dict[str, Any]],
     client_context: dict[str, Any],
     client_id: UUID | None = None,
-) -> SDKBrainResult:  # noqa: F821 (PR-A dead-import; clean in PR-A1)
+) -> Any:  # was SDKBrainResult (removed PR-A)
     """
     Orchestrate analyzer outputs into campaign suggestions.
 
@@ -311,39 +309,8 @@ async def run_campaign_orchestrator(
         "Remember: ALL suggestions require client approval - never auto-apply."
     )
 
-    user_prompt = "".join(prompt_parts)
-
     # Create brain and run
-    brain = create_sdk_brain("campaign_evolution_orchestrator")  # noqa: F821 (PR-A dead-import; clean in PR-A1)
-
-    result = await brain.run(
-        prompt=user_prompt,
-        tools=[],
-        output_schema=CampaignSuggestionOutput,
-        system=ORCHESTRATOR_SYSTEM_PROMPT,
-    )
-
-    # Post-process: Filter suggestions below confidence threshold
-    if result.success and result.data:
-        filtered_suggestions = []
-        for suggestion in result.data.suggestions:
-            threshold = CONFIDENCE_THRESHOLDS.get(suggestion.suggestion_type, 0.7)
-            if suggestion.confidence >= threshold:
-                filtered_suggestions.append(suggestion)
-            else:
-                logger.info(
-                    f"Filtered suggestion '{suggestion.title}' - "
-                    f"confidence {suggestion.confidence} < threshold {threshold}"
-                )
-        result.data.suggestions = filtered_suggestions
-
-    logger.info(
-        f"Orchestrator complete: {len(result.data.suggestions) if result.success else 0} suggestions, "
-        f"confidence={result.data.overall_confidence if result.success else 'N/A'}, "
-        f"cost=${result.cost_aud:.4f}"
-    )
-
-    return result
+    raise NotImplementedError("dead path: sdk_brain removed in PR-A #593")
 
 
 # ============================================

@@ -36,8 +36,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.engines.base import BaseEngine, EngineResult
 from src.integrations.anthropic import AnthropicClient, get_anthropic_client
-
-# DEAD: from src.integrations.calendar_booking import generate_booking_link, send_booking_reply
 from src.models.activity import Activity
 from src.models.base import ChannelType, IntentType, LeadStatus
 from src.models.lead import Lead
@@ -471,21 +469,7 @@ class CloserEngine(BaseEngine):
             # Directive 048: Generate personalized booking link and send automated reply
             try:
                 # Generate personalized Calendly booking link
-                booking_link = await generate_booking_link(  # noqa: F821 (PR-A dead-import; clean in PR-A1)
-                    lead_email=lead.email,
-                    lead_name=lead.full_name,
-                    company_name=lead.company,
-                    client_id=lead.client_id,
-                )
-
-                # Send automated reply with booking link
-                await send_booking_reply(  # noqa: F821 (PR-A dead-import; clean in PR-A1)
-                    db=db,
-                    lead=lead,
-                    booking_link=booking_link,
-                )
-                actions.append("booking_link_generated")
-                actions.append("automated_reply_sent")
+                pass  # dead path: calendar_booking removed in PR-A #593
 
                 # CIS: Record ALS tier conversion when meeting is requested
                 try:

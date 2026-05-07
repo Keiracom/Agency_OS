@@ -16,8 +16,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-# DEAD: from src.integrations.sdk_brain import SDKBrainResult, create_sdk_brain
-
 logger = logging.getLogger(__name__)
 
 
@@ -190,7 +188,7 @@ async def run_how_analyzer(
     current_strategy: dict[str, Any],
     campaign_metrics: dict[str, Any] | None = None,
     client_id: UUID | None = None,
-) -> SDKBrainResult:  # noqa: F821 (PR-A dead-import; clean in PR-A1)
+) -> Any:  # was SDKBrainResult (removed PR-A)
     """
     Run HOW pattern analysis to generate channel suggestions.
 
@@ -248,24 +246,8 @@ async def run_how_analyzer(
         "Define tier-specific channel strategies."
     )
 
-    user_prompt = "".join(prompt_parts)
-
     # Create brain and run
-    brain = create_sdk_brain("campaign_evolution_how")  # noqa: F821 (PR-A dead-import; clean in PR-A1)
-
-    result = await brain.run(
-        prompt=user_prompt,
-        tools=[],  # No tools needed - analyzing provided data
-        output_schema=HOWAnalysis,
-        system=HOW_ANALYZER_SYSTEM_PROMPT,
-    )
-
-    logger.info(
-        f"HOW analyzer complete: confidence={result.data.confidence if result.success else 'N/A'}, "
-        f"cost=${result.cost_aud:.4f}"
-    )
-
-    return result
+    raise NotImplementedError("dead path: sdk_brain removed in PR-A #593")
 
 
 # ============================================

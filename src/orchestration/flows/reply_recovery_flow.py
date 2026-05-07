@@ -27,11 +27,7 @@ from prefect import flow, task
 from sqlalchemy import and_, select
 
 from src.engines.closer import get_closer_engine
-
-# DEAD: from src.integrations.postmark import get_postmark_client
 from src.integrations.supabase import get_db_session
-
-# DEAD: from src.integrations.twilio import get_twilio_client
 from src.integrations.unipile import get_unipile_client
 from src.models.activity import Activity
 from src.models.base import ChannelType
@@ -60,55 +56,7 @@ async def poll_email_replies_task(since_hours: int = 6) -> dict[str, Any]:
     Returns:
         Dict with replies found
     """
-    postmark_client = get_postmark_client()  # noqa: F821 (PR-A dead-import; clean in PR-A1)
-
-    try:
-        # Poll inbound messages from Postmark
-        since_time = datetime.now(UTC) - timedelta(hours=since_hours)
-
-        replies = await postmark_client.get_inbound_messages(
-            count=100,
-            offset=0,
-        )
-
-        # Filter to messages since cutoff time
-        recent_replies = []
-        for reply in replies:
-            received_at = reply.get("ReceivedAt")
-            if (
-                received_at
-                and datetime.fromisoformat(received_at.replace("Z", "+00:00")) > since_time
-            ):
-                recent_replies.append(
-                    {
-                        "message_id": reply.get("MessageID"),
-                        "from_email": reply.get("From"),
-                        "subject": reply.get("Subject"),
-                        "text_body": reply.get("TextBody"),
-                        "html_body": reply.get("HtmlBody"),
-                        "received_at": received_at,
-                        "in_reply_to": reply.get("Headers", [{}])[0].get("Value")
-                        if reply.get("Headers")
-                        else None,
-                    }
-                )
-
-        logger.info(f"Polled {len(recent_replies)} email replies from last {since_hours} hours")
-
-        return {
-            "channel": "email",
-            "replies_found": len(recent_replies),
-            "replies": recent_replies,
-        }
-
-    except Exception as e:
-        logger.error(f"Failed to poll email replies: {e}")
-        return {
-            "channel": "email",
-            "replies_found": 0,
-            "replies": [],
-            "error": str(e),
-        }
+    raise NotImplementedError("dead path: postmark removed in PR-A #593")
 
 
 @task(name="poll_sms_replies", retries=2, retry_delay_seconds=10)
@@ -124,45 +72,7 @@ async def poll_sms_replies_task(since_hours: int = 6) -> dict[str, Any]:
     Returns:
         Dict with replies found
     """
-    twilio_client = get_twilio_client()  # noqa: F821 (PR-A dead-import; clean in PR-A1)
-
-    try:
-        # Poll inbound messages from Twilio
-        since_time = datetime.now(UTC) - timedelta(hours=since_hours)
-
-        replies = await twilio_client.get_inbound_messages(
-            date_sent_after=since_time,
-            limit=100,
-        )
-
-        recent_replies = []
-        for reply in replies:
-            recent_replies.append(
-                {
-                    "message_sid": reply.get("sid"),
-                    "from_phone": reply.get("from"),
-                    "to_phone": reply.get("to"),
-                    "body": reply.get("body"),
-                    "date_sent": reply.get("date_sent"),
-                }
-            )
-
-        logger.info(f"Polled {len(recent_replies)} SMS replies from last {since_hours} hours")
-
-        return {
-            "channel": "sms",
-            "replies_found": len(recent_replies),
-            "replies": recent_replies,
-        }
-
-    except Exception as e:
-        logger.error(f"Failed to poll SMS replies: {e}")
-        return {
-            "channel": "sms",
-            "replies_found": 0,
-            "replies": [],
-            "error": str(e),
-        }
+    raise NotImplementedError("dead path: twilio removed in PR-A #593")
 
 
 @task(name="poll_linkedin_replies", retries=2, retry_delay_seconds=10)

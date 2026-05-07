@@ -19,7 +19,6 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-# DEAD: from src.integrations.infraforge import WORKSPACE_IDS, get_infraforge_client
 from src.models.persona import Persona
 from src.models.resource_pool import ResourceStatus, ResourceType
 from src.services.resource_assignment_service import add_resource_to_pool
@@ -30,10 +29,7 @@ logger = logging.getLogger(__name__)
 # ============================================
 # WORKSPACE IDS
 # ============================================
-
-INFRAFORGE_WORKSPACE = WORKSPACE_IDS["infraforge"]  # noqa: F821 (PR-A dead-import; clean in PR-A1)
-SALESFORGE_WORKSPACE = WORKSPACE_IDS["salesforge"]  # noqa: F821 (PR-A dead-import; clean in PR-A1)
-WARMFORGE_WORKSPACE = WORKSPACE_IDS["warmforge"]  # noqa: F821 (PR-A dead-import; clean in PR-A1)
+# Removed: INFRAFORGE/SALESFORGE/WARMFORGE workspace constants — dead imports cleaned in PR-A #593.
 
 
 # ============================================
@@ -119,28 +115,7 @@ async def check_domain_availability(domains: list[str]) -> list[str]:
     Returns:
         List of available domain names
     """
-    client = get_infraforge_client()  # noqa: F821 (PR-A dead-import; clean in PR-A1)
-    available: list[str] = []
-
-    try:
-        results = await client.check_domain_availability(domains)
-
-        for result in results:
-            domain = result.get("domain", "")
-            is_available = result.get("available", False)
-
-            if is_available:
-                available.append(domain)
-                logger.debug(f"Domain available: {domain}")
-            else:
-                logger.debug(f"Domain unavailable: {domain}")
-
-    except Exception as e:
-        logger.error(f"Error checking domain availability: {e}")
-        # Return empty list on error - caller should handle
-
-    logger.info(f"Availability check: {len(available)}/{len(domains)} domains available")
-    return available
+    raise NotImplementedError("dead path: infraforge removed in PR-A #593")
 
 
 # ============================================
@@ -165,18 +140,7 @@ async def purchase_domains(domains: list[str]) -> list[dict[str, Any]]:
         logger.warning("No domains to purchase")
         return []
 
-    client = get_infraforge_client()  # noqa: F821 (PR-A dead-import; clean in PR-A1)
-    results = await client.purchase_domains_bulk(domains)
-
-    successful = [r for r in results if r.get("status") != "failed"]
-    failed = [r for r in results if r.get("status") == "failed"]
-
-    if failed:
-        for f in failed:
-            logger.warning(f"Failed to purchase domain {f.get('domain')}: {f.get('error')}")
-
-    logger.info(f"Purchased {len(successful)}/{len(domains)} domains")
-    return successful
+    raise NotImplementedError("dead path: infraforge removed in PR-A #593")
 
 
 # ============================================
@@ -202,38 +166,7 @@ async def create_mailboxes_for_persona(
     Returns:
         List of created mailbox details
     """
-    client = get_infraforge_client()  # noqa: F821 (PR-A dead-import; clean in PR-A1)
-    mailboxes: list[dict[str, Any]] = []
-
-    # Mailbox configurations
-    mailbox_configs = [
-        {
-            "prefix": persona.first_name.lower(),
-            "display_name": persona.full_name,
-        },
-        {
-            "prefix": f"{persona.first_name[0].lower()}.{persona.last_name.lower()}",
-            "display_name": persona.display_name,
-        },
-    ]
-
-    for config in mailbox_configs:
-        try:
-            result = await client.create_mailbox(
-                domain=domain,
-                email_prefix=config["prefix"],
-                display_name=config["display_name"],
-                first_name=persona.first_name,
-                last_name=persona.last_name,
-            )
-            mailboxes.append(result)
-            logger.info(f"Created mailbox: {result.get('email')}")
-
-        except Exception as e:
-            logger.error(f"Failed to create mailbox {config['prefix']}@{domain}: {e}")
-            # Continue with other mailboxes
-
-    return mailboxes
+    raise NotImplementedError("dead path: infraforge removed in PR-A #593")
 
 
 # ============================================
@@ -262,24 +195,7 @@ async def export_to_salesforge_and_warmup(
         logger.warning("No domains to export")
         return False
 
-    client = get_infraforge_client()  # noqa: F821 (PR-A dead-import; clean in PR-A1)
-
-    try:
-        result = await client.export_to_salesforge(
-            domains=domains,
-            warmup_activated=True,
-        )
-
-        exported_count = result.get("exported_count", 0)
-        logger.info(
-            f"Exported {exported_count} mailboxes to Salesforge (tag: {tag_name}, warmup: enabled)"
-        )
-
-        return result.get("success", False)
-
-    except Exception as e:
-        logger.error(f"Export to Salesforge failed: {e}")
-        return False
+    raise NotImplementedError("dead path: infraforge removed in PR-A #593")
 
 
 # ============================================
@@ -453,33 +369,7 @@ async def get_warmup_status_for_domains(domains: list[str]) -> list[dict[str, An
     Returns:
         List of warmup status dicts per domain/mailbox
     """
-    client = get_infraforge_client()  # noqa: F821 (PR-A dead-import; clean in PR-A1)
-    statuses: list[dict[str, Any]] = []
-
-    for domain in domains:
-        try:
-            # Get mailboxes for domain
-            mailboxes = await client.get_mailboxes(domain=domain)
-
-            for mailbox in mailboxes:
-                email = mailbox.get("email", "")
-                if not email:
-                    continue
-
-                status = await client.get_warmup_status(email)
-                statuses.append(status)
-
-        except Exception as e:
-            logger.warning(f"Failed to get warmup status for {domain}: {e}")
-            statuses.append(
-                {
-                    "domain": domain,
-                    "status": "error",
-                    "error": str(e),
-                }
-            )
-
-    return statuses
+    raise NotImplementedError("dead path: infraforge removed in PR-A #593")
 
 
 async def provision_domain_only(

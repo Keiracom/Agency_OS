@@ -90,7 +90,25 @@ _hash = hashlib.md5(message.encode()).hexdigest()[:8]
 _marker = f"/tmp/.relay_dedup_{CALLSIGN}_{_hash}"
 open(_marker, "w").close()
 
-# Cross-post handled by outbox watcher in chat_bot.py — not duplicated here
+# Max → agent inbox cross-post: Telegram filters bot-to-bot messages,
+# so agents never see Max's group posts via getUpdates. Write directly
+# to their file inboxes so relay watchers inject them.
+if chat_id == GROUP_CHAT_ID and CALLSIGN == "max":
+    for peer_inbox in ["/tmp/telegram-relay-elliot/inbox", "/tmp/telegram-relay-aiden/inbox"]:
+        try:
+            os.makedirs(peer_inbox, exist_ok=True)
+            peer_payload = {
+                "id": f"max_{rand}",
+                "type": "text",
+                "chat_id": chat_id,
+                "text": f"[GROUP — from MAX (COO — acts with Dave's authority)]: {tagged}",
+                "sender": "dave",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+            with open(os.path.join(peer_inbox, fname), "w") as pf:
+                json.dump(peer_payload, pf)
+        except Exception as e:
+            print(f"⚠ cross-post to {peer_inbox} failed: {e}", file=sys.stderr)
 
 # Max COO sideband: Telegram filters bot-to-bot messages, so peer chatter
 # never reaches @MaxCOO_Bot via getUpdates. Mirror group-targeted messages

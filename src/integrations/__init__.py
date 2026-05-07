@@ -18,7 +18,7 @@ NOTE: T3 email and T5 mobile enrichment provided by Leadmagic.
 from src.integrations.abn_client import ABNClient, get_abn_client
 
 # DEAD: from src.integrations.calendar_booking import router as calendar_booking_router
-from src.integrations.elevenagets_client import ElevenAgentsClient, get_elevenagets_client
+from src.integrations.elevenagents_client import ElevenAgentsClient, get_elevenagents_client
 from src.integrations.elevenlabs import ElevenLabsClient, get_elevenlabs_client
 from src.integrations.leadmagic import LeadmagicClient, get_leadmagic_client
 
@@ -36,7 +36,7 @@ __all__ = [
     "VapiClient",
     "get_vapi_client",
     "ElevenAgentsClient",
-    "get_elevenagets_client",
+    "get_elevenagents_client",
     "ElevenLabsClient",
     "get_elevenlabs_client",
     "LeadmagicClient",

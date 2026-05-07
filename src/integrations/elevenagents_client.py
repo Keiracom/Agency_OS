@@ -1,5 +1,5 @@
 """
-FILE: src/integrations/elevenagets_client.py
+FILE: src/integrations/elevenagents_client.py
 PURPOSE: ElevenAgents Conversational AI client for Alex voice agent
 PHASE: 17 (Launch Prerequisites)
 TASK: VOICE-008
@@ -74,7 +74,7 @@ class CallInitResult:
     """Result from initiating an outbound call."""
 
     success: bool
-    elevenagets_call_id: str | None = None
+    elevenagents_call_id: str | None = None
     twilio_call_sid: str | None = None
     voice_call_record_id: str | None = None  # UUID of voice_calls record
     error: str | None = None
@@ -148,13 +148,13 @@ class ElevenAgentsClient:
         """
         self.api_key = api_key or settings.elevenlabs_api_key
         if not self.api_key:
-            raise IntegrationError("elevenagets", "ELEVENLABS_API_KEY not configured")
+            raise IntegrationError("elevenagents", "ELEVENLABS_API_KEY not configured")
 
         self.headers = {
             "xi-api-key": self.api_key,
             "Content-Type": "application/json",
         }
-        self._agent_id = settings.elevenagets_agent_id or None
+        self._agent_id = settings.elevenagents_agent_id or None
         self._prompt_cache: dict[str, str] = {}
 
     @property
@@ -269,7 +269,7 @@ class ElevenAgentsClient:
             if response.status_code not in (200, 201):
                 logger.error(f"ElevenAgents create_agent failed: {response.text}")
                 raise IntegrationError(
-                    "elevenagets",
+                    "elevenagents",
                     f"Failed to create agent: {response.status_code}",
                     {"response": response.text},
                 )
@@ -283,7 +283,7 @@ class ElevenAgentsClient:
 
         except (httpx.RequestError, httpx.TimeoutException) as e:
             logger.error(f"ElevenAgents create_agent failed after retries: {e}")
-            raise IntegrationError("elevenagets", f"Failed to create agent: {e}") from e
+            raise IntegrationError("elevenagents", f"Failed to create agent: {e}") from e
 
     async def _update_agent(self, agent_id: str, config: AgentConfig) -> str:
         """Update an existing agent."""
@@ -315,7 +315,7 @@ class ElevenAgentsClient:
             if response.status_code != 200:
                 logger.error(f"ElevenAgents update_agent failed: {response.text}")
                 raise IntegrationError(
-                    "elevenagets",
+                    "elevenagents",
                     f"Failed to update agent: {response.status_code}",
                     {"response": response.text},
                 )
@@ -325,7 +325,7 @@ class ElevenAgentsClient:
 
         except (httpx.RequestError, httpx.TimeoutException) as e:
             logger.error(f"ElevenAgents update_agent failed after retries: {e}")
-            raise IntegrationError("elevenagets", f"Failed to update agent: {e}") from e
+            raise IntegrationError("elevenagents", f"Failed to update agent: {e}") from e
 
     async def get_agent(self, agent_id: str | None = None) -> dict:
         """
@@ -342,13 +342,13 @@ class ElevenAgentsClient:
         """
         agent_id = agent_id or self._agent_id
         if not agent_id:
-            raise IntegrationError("elevenagets", "No agent_id configured")
+            raise IntegrationError("elevenagents", "No agent_id configured")
 
         try:
             response = await self._request("GET", f"/convai/agents/{agent_id}")
             if response.status_code != 200:
                 raise IntegrationError(
-                    "elevenagets",
+                    "elevenagents",
                     f"Failed to get agent: {response.status_code}",
                     {"response": response.text},
                 )
@@ -356,7 +356,7 @@ class ElevenAgentsClient:
 
         except (httpx.RequestError, httpx.TimeoutException) as e:
             logger.error(f"ElevenAgents get_agent failed: {e}")
-            raise IntegrationError("elevenagets", f"Failed to get agent: {e}") from e
+            raise IntegrationError("elevenagents", f"Failed to get agent: {e}") from e
 
     async def initiate_call(
         self,
@@ -423,7 +423,7 @@ class ElevenAgentsClient:
                 },
             },
             "metadata": metadata,
-            "webhook_url": f"{settings.base_url}/api/webhooks/elevenagets/call-completed",
+            "webhook_url": f"{settings.base_url}/api/webhooks/elevenagents/call-completed",
         }
 
         try:
@@ -443,17 +443,17 @@ class ElevenAgentsClient:
                 )
 
             data = response.json()
-            elevenagets_call_id = data.get("call_id")
+            elevenagents_call_id = data.get("call_id")
             twilio_call_sid = data.get("telephony", {}).get("call_sid")
 
             logger.info(
                 f"ElevenAgents call initiated: phone={phone[:6]}***, "
-                f"call_id={elevenagets_call_id}, twilio_sid={twilio_call_sid}"
+                f"call_id={elevenagents_call_id}, twilio_sid={twilio_call_sid}"
             )
 
             return CallInitResult(
                 success=True,
-                elevenagets_call_id=elevenagets_call_id,
+                elevenagents_call_id=elevenagents_call_id,
                 twilio_call_sid=twilio_call_sid,
                 voice_call_record_id=voice_call_record_id,
             )
@@ -487,7 +487,7 @@ class ElevenAgentsClient:
 
             if response.status_code != 200:
                 raise IntegrationError(
-                    "elevenagets",
+                    "elevenagents",
                     f"Failed to get call status: {response.status_code}",
                     {"call_id": call_id, "response": response.text},
                 )
@@ -506,7 +506,7 @@ class ElevenAgentsClient:
 
         except (httpx.RequestError, httpx.TimeoutException) as e:
             logger.error(f"ElevenAgents get_call_status failed: call_id={call_id}, error={e}")
-            raise IntegrationError("elevenagets", f"Failed to get call status: {e}") from e
+            raise IntegrationError("elevenagents", f"Failed to get call status: {e}") from e
 
     async def end_call(self, call_id: str) -> bool:
         """
@@ -618,10 +618,10 @@ class ElevenAgentsClient:
 # Singleton Pattern
 # ============================================
 
-_elevenagets_client: ElevenAgentsClient | None = None
+_elevenagents_client: ElevenAgentsClient | None = None
 
 
-def get_elevenagets_client() -> ElevenAgentsClient:
+def get_elevenagents_client() -> ElevenAgentsClient:
     """
     Get or create ElevenAgents client singleton instance.
 
@@ -631,16 +631,16 @@ def get_elevenagets_client() -> ElevenAgentsClient:
     Raises:
         IntegrationError: If API key not configured.
     """
-    global _elevenagets_client
-    if _elevenagets_client is None:
-        _elevenagets_client = ElevenAgentsClient()
-    return _elevenagets_client
+    global _elevenagents_client
+    if _elevenagents_client is None:
+        _elevenagents_client = ElevenAgentsClient()
+    return _elevenagents_client
 
 
-def reset_elevenagets_client() -> None:
+def reset_elevenagents_client() -> None:
     """Reset the singleton client (useful for testing)."""
-    global _elevenagets_client
-    _elevenagets_client = None
+    global _elevenagents_client
+    _elevenagents_client = None
 
 
 # ============================================
@@ -652,7 +652,7 @@ def reset_elevenagets_client() -> None:
 # [x] All methods are async (where appropriate)
 # [x] Proper error handling with IntegrationError
 # [x] Dataclasses for request/response models
-# [x] Singleton pattern with get_elevenagets_client()
+# [x] Singleton pattern with get_elevenagents_client()
 # [x] All functions have type hints
 # [x] All functions have docstrings
 # [x] Webhook parsing method included

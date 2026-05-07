@@ -1,11 +1,11 @@
 """
-Contract: src/integrations/brightdata_client.py
+Contract: src/integrations/bright_data_linkedin_client.py
 Purpose: LinkedIn DM lookup via Bright Data Scrapers API (new Scrapers API key)
 Layer: 2 - integrations
 Imports: models only
 Consumers: src/pipeline/dm_identification.py
 
-brightdata_client.py — LinkedIn DM lookup via Bright Data Scrapers API.
+bright_data_linkedin_client.py — LinkedIn DM lookup via Bright Data Scrapers API.
 Directive #286 | Cost: $0.00075/record ($0.75/1000)
 """
 

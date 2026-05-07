@@ -110,7 +110,7 @@ async def run_canonical():
     from src.pipeline.prospect_scorer import ProspectScorer
     from src.pipeline.dm_identification import DMIdentification
     from src.clients.dfs_labs_client import DFSLabsClient
-    from src.integrations.brightdata_client import BrightDataLinkedInClient
+    from src.integrations.bright_data_linkedin_client import BrightDataLinkedInClient
     from src.utils.asyncpg_connection import get_asyncpg_pool
     from src.config.settings import settings
     from src.pipeline import intelligence as _intelligence_module

@@ -1,9 +1,9 @@
-"""Tests for src/integrations/brightdata_client.py — Directive #286"""
+"""Tests for src/integrations/bright_data_linkedin_client.py — Directive #286"""
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from src.integrations.brightdata_client import BrightDataLinkedInClient
+from src.integrations.bright_data_linkedin_client import BrightDataLinkedInClient
 
 
 # ---------------------------------------------------------------------------

@@ -117,7 +117,7 @@ except ImportError:
     LeadmagicClient = None  # type: ignore
 
 try:
-    from src.integrations.brightdata_client import BrightDataLinkedInClient
+    from src.integrations.bright_data_linkedin_client import BrightDataLinkedInClient
 except ImportError:
     BrightDataLinkedInClient = None  # type: ignore
 

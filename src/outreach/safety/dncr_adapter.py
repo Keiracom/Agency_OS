@@ -14,7 +14,8 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 
-from src.integrations.dncr_client import DNCRClient, DNCRResult
+from src.integrations.dncr import DNCRResult
+from src.integrations.dncr import SyncDNCRClient as DNCRClient
 
 logger = logging.getLogger(__name__)
 

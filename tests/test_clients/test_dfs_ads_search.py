@@ -1,9 +1,11 @@
 """Tests for DFSLabsClient.ads_search_by_domain — Directive #291."""
 
-import pytest
 from decimal import Decimal
 from unittest.mock import AsyncMock, patch
-from src.clients.dfs_labs_client import DFSLabsClient
+
+import pytest
+
+from src.integrations.dfs_labs_client import DFSLabsClient
 
 
 def _c():

@@ -2,14 +2,13 @@
 # PURPOSE: Tests for DFSGMapsClient
 # DIRECTIVE: #248
 
-import asyncio
 from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
 
-from src.clients.dfs_gmaps_client import (
+from src.integrations.dfs_gmaps_client import (
     COST_PER_SEARCH_AUD,
     DFS_STATUS_AUTH_FAILURE,
     DFS_STATUS_INVALID_LOCATION,
@@ -17,7 +16,6 @@ from src.clients.dfs_gmaps_client import (
     DFSGMapsClient,
     DFSInvalidLocationError,
 )
-
 
 # ============================================================
 # Helpers

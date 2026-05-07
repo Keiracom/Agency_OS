@@ -21,8 +21,8 @@ from typing import Any
 
 import asyncpg
 
-from src.clients.dfs_labs_client import DFSLabsClient
 from src.enrichment.signal_config import SignalConfigRepository
+from src.integrations.dfs_labs_client import DFSLabsClient
 
 logger = logging.getLogger(__name__)
 

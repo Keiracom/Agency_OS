@@ -10,7 +10,6 @@ import pytest
 from src.pipeline.paid_enrichment import PaidEnrichment, affordability_gate
 from src.pipeline.pipeline_orchestrator import ProspectCard
 
-
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
 
@@ -427,7 +426,7 @@ async def test_backlinks_parser_fix():
 
     # Verify backlinks_summary parsed the trend correctly from the client
     # (new=10 > lost=3 * 1.1=3.3, so trend="growing")
-    from src.clients.dfs_labs_client import DFSLabsClient
+    from src.integrations.dfs_labs_client import DFSLabsClient
 
     client = DFSLabsClient.__new__(DFSLabsClient)
     # Direct unit test of parser logic via a mock _post call

@@ -34,8 +34,8 @@ for _k, _v in env.items():
     if _v is not None:
         os.environ.setdefault(_k, _v)
 
-from src.clients.dfs_labs_client import DFSLabsClient
 from src.integrations.bright_data_client import BrightDataClient
+from src.integrations.dfs_labs_client import DFSLabsClient
 from src.integrations.leadmagic import LeadmagicClient
 from src.intelligence.gemini_client import GeminiClient
 from src.pipeline.pipeline_orchestrator import PipelineOrchestrator, ProspectCard

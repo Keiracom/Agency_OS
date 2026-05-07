@@ -1,8 +1,7 @@
 """Tests for BrightDataGMBClient._parse_rating staticmethod."""
 
-import pytest
 
-from src.clients.bright_data_gmb_client import BrightDataGMBClient
+from src.integrations.bright_data_gmb_client import BrightDataGMBClient
 
 parse = BrightDataGMBClient._parse_rating
 

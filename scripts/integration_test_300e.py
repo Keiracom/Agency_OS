@@ -23,9 +23,10 @@ from dotenv import load_dotenv
 load_dotenv("/home/elliotbot/.config/agency-os/.env")
 
 import asyncpg
+
 from src.config.settings import settings
-from src.clients.dfs_labs_client import DFSLabsClient
-from src.pipeline.intelligence import classify_intent, analyse_reviews
+from src.integrations.dfs_labs_client import DFSLabsClient
+from src.pipeline.intelligence import analyse_reviews, classify_intent
 from src.utils.asyncpg_connection import get_asyncpg_pool
 
 INPUT_AFFORD = os.path.join(os.path.dirname(__file__), "output", "300d_afford.json")
@@ -136,7 +137,7 @@ async def upsert_domain(pool: asyncpg.Pool, result: dict) -> None:
                 result.get("intent_score", 0),
                 json.dumps(result.get("evidence", [])),
             )
-    except Exception as exc:
+    except Exception:
         pass  # non-fatal; JSON output is primary record
 
 

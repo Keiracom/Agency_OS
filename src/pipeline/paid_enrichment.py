@@ -15,8 +15,8 @@ from typing import Any
 
 import asyncpg
 
-from src.clients.dfs_gmaps_client import DFSGMapsClient
-from src.clients.dfs_labs_client import DFSLabsClient
+from src.integrations.dfs_gmaps_client import DFSGMapsClient
+from src.integrations.dfs_labs_client import DFSLabsClient
 from src.pipeline.pipeline_orchestrator import GLOBAL_SEM_DFS
 from src.utils.domain_parser import extract_business_name
 

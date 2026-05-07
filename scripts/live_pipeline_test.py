@@ -12,7 +12,7 @@ import logging
 import os
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import datetime
 from decimal import Decimal
 
 import asyncpg
@@ -47,9 +47,10 @@ CATEGORY = "dentist"
 STAGE1_SPEND_CAP = 5.0  # AUD — for 5 suburbs this should be ~$0.15
 
 # ── IMPORTS ────────────────────────────────────────────────────────────────────
-from src.clients.dfs_gmaps_client import DFSGMapsClient, get_dfs_gmaps_client
 from src.pipeline.stage2_free_signals import Stage2FreeSignals
 from src.pipeline.stage3_propensity import Stage3Propensity
+
+from src.integrations.dfs_gmaps_client import DFSGMapsClient, get_dfs_gmaps_client
 
 
 async def get_db_pool():
@@ -94,7 +95,7 @@ async def run_stage1(dfs_client: DFSGMapsClient, db_pool):
             )
 
             # Spend cap check
-            from src.clients.dfs_gmaps_client import COST_PER_SEARCH_AUD
+            from src.integrations.dfs_gmaps_client import COST_PER_SEARCH_AUD
 
             if dfs_client.estimated_cost_aud + COST_PER_SEARCH_AUD > Decimal(str(STAGE1_SPEND_CAP)):
                 log.warning(f"  Spend cap AUD {STAGE1_SPEND_CAP} reached — stopping discovery")

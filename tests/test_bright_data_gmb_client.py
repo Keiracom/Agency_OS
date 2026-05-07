@@ -1,11 +1,11 @@
 """Tests for BrightDataGMBClient — Directive #260"""
 
-import pytest
-from decimal import Decimal
-from unittest.mock import AsyncMock, MagicMock, patch, call
-import httpx
+from unittest.mock import AsyncMock, MagicMock, patch
 
-from src.clients.bright_data_gmb_client import BrightDataGMBClient, COST_PER_RECORD_USD
+import httpx
+import pytest
+
+from src.integrations.bright_data_gmb_client import COST_PER_RECORD_USD, BrightDataGMBClient
 
 
 def make_client():

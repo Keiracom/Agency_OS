@@ -12,8 +12,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from src.clients.dfs_labs_client import DFSLabsClient
-
+from src.integrations.dfs_labs_client import DFSLabsClient
 
 # ============================================
 # Fixtures + helpers
@@ -200,7 +199,7 @@ async def test_get_latest_available_date_fallback_on_empty(client):
     _get_latest_available_date() falls back to today minus 35 days.
     No exception is raised; the fallback date is used for the API call.
     """
-    from datetime import date, timedelta
+    from datetime import date
 
     # Mock GET available_history returning empty result
     empty_hist_resp = make_mock_response(

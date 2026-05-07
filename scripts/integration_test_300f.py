@@ -21,7 +21,7 @@ load_dotenv("/home/elliotbot/.config/agency-os/.env")
 
 import asyncpg
 from src.config.settings import settings
-from src.clients.dfs_labs_client import DFSLabsClient
+from src.integrations.dfs_labs_client import DFSLabsClient
 from src.integrations.bright_data_linkedin_client import DM_TITLE_PRIORITY
 from src.utils.asyncpg_connection import get_asyncpg_pool
 

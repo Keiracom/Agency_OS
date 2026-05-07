@@ -33,9 +33,9 @@ for _k, _v in env.items():
     if _v is not None:
         os.environ.setdefault(_k, _v)
 
-from src.clients.dfs_labs_client import DFSLabsClient
 from src.config.category_etv_windows import CATEGORY_ETV_WINDOWS, get_etv_window
 from src.integrations.bright_data_client import BrightDataClient
+from src.integrations.dfs_labs_client import DFSLabsClient
 from src.integrations.leadmagic import LeadmagicClient
 from src.intelligence.dfs_signal_bundle import build_signal_bundle
 from src.intelligence.enhanced_vr import run_stage10_vr_and_messaging

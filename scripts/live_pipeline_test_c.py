@@ -7,20 +7,19 @@ import asyncio
 import json
 import logging
 import time
-from decimal import Decimal
 from uuid import UUID
 
 import asyncpg
-
-from src.config.settings import get_settings
-from src.clients.dfs_serp_client import DFSSerpClient
-from src.integrations.leadmagic import LeadmagicClient
-from src.integrations.anthropic import AnthropicClient
 from src.pipeline.stage4_dm_identification import Stage4DMIdentification
 from src.pipeline.stage5_email_enrichment import Stage5EmailEnrichment
 from src.pipeline.stage6_reachability import Stage6Reachability
-from src.pipeline.campaign_claimer import CampaignClaimer
 from src.pipeline.stage7_personalisation import Stage7Personalisation
+
+from src.config.settings import get_settings
+from src.integrations.anthropic import AnthropicClient
+from src.integrations.dfs_serp_client import DFSSerpClient
+from src.integrations.leadmagic import LeadmagicClient
+from src.pipeline.campaign_claimer import CampaignClaimer
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)

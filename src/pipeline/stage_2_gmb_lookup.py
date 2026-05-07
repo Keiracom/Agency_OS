@@ -18,7 +18,7 @@ from typing import Any
 
 import asyncpg
 
-from src.clients.bright_data_gmb_client import BrightDataGMBClient
+from src.integrations.bright_data_gmb_client import BrightDataGMBClient
 from src.utils.domain_parser import extract_business_name
 
 logger = logging.getLogger(__name__)

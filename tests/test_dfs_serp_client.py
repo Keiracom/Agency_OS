@@ -4,18 +4,16 @@
 
 from __future__ import annotations
 
-import json
 from decimal import Decimal
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from src.clients.dfs_serp_client import (
+from src.integrations.dfs_serp_client import (
     COST_PER_SERP_AUD,
     DFS_STATUS_SUCCESS,
     DFSSerpClient,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

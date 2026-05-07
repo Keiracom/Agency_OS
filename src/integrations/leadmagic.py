@@ -91,13 +91,21 @@ def _is_production_environment() -> bool:
     below to refuse module load if mock mode is enabled in production —
     catastrophic-blast-radius-prevention (mock returns fake AU mobile numbers
     + fake emails to real campaigns).
+
+    Resolution order (explicit env beats path heuristic):
+    1. FASTAPI_ENV in {dev, development, test, staging} → False (explicit non-prod)
+    2. FASTAPI_ENV == production → True (explicit prod)
+    3. FASTAPI_ENV unset or unrecognised → worktree-path heuristic
     """
-    if os.getenv("FASTAPI_ENV", "").lower() == "production":
+    env = os.getenv("FASTAPI_ENV", "").lower()
+    if env in ("dev", "development", "test", "staging"):
+        return False
+    if env == "production":
         return True
-    # Heuristic: main worktree path indicates production code is loaded
-    # (Aiden/Atlas/Scout/Orion clone worktrees are dev-shaped)
-    abs_path = os.path.abspath(__file__)
-    return abs_path.startswith("/home/elliotbot/clawd/Agency_OS/")
+    # FASTAPI_ENV unset/unrecognised — fall back to worktree path heuristic.
+    # Main worktree path indicates production code is loaded
+    # (Aiden/Atlas/Scout/Orion clone worktrees are dev-shaped).
+    return os.path.abspath(__file__).startswith("/home/elliotbot/clawd/Agency_OS/")
 
 
 def _assert_mock_safe() -> None:

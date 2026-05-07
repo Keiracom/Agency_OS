@@ -63,21 +63,53 @@ def test_mock_safe_production_env_with_mock_on_raises():
             _assert_mock_safe()
 
 
-def test_mock_safe_production_via_worktree_path_heuristic():
-    """Production heuristic: main worktree path triggers production detection."""
+def test_explicit_dev_env_overrides_path_heuristic():
+    """FASTAPI_ENV=dev MUST short-circuit before worktree-path heuristic.
+
+    This is the bug Elliot caught in PR #610 review: original logic returned
+    True if path matched main worktree EVEN WHEN FASTAPI_ENV=dev was explicit.
+    Means a developer on main worktree setting FASTAPI_ENV=dev still got
+    RuntimeError at module load.
+
+    Fix: explicit dev/test/staging env values short-circuit to False before
+    path check fires.
+    """
     from src.integrations.leadmagic import _is_production_environment
 
-    # Heuristic check: when __file__ resolves to main worktree, production = True
-    # Direct unit test of the detection function
-    with patch.dict(os.environ, {"FASTAPI_ENV": "dev"}, clear=False):
-        # FASTAPI_ENV=dev shouldn't override worktree-path heuristic
-        # We can't easily fake __file__ in this test, so this asserts
-        # the function returns based on real path resolution
+    for dev_value in ("dev", "development", "test", "staging", "DEV", "Test"):
+        with patch.dict(os.environ, {"FASTAPI_ENV": dev_value}, clear=False):
+            assert _is_production_environment() is False, (
+                f"FASTAPI_ENV={dev_value} must override worktree-path heuristic"
+            )
+
+
+def test_explicit_production_env_returns_true_independent_of_path():
+    """FASTAPI_ENV=production returns True regardless of worktree path."""
+    from src.integrations.leadmagic import _is_production_environment
+
+    with patch.dict(os.environ, {"FASTAPI_ENV": "production"}, clear=False):
+        assert _is_production_environment() is True
+
+
+def test_unset_env_falls_back_to_path_heuristic():
+    """FASTAPI_ENV unset/empty falls back to worktree-path detection.
+
+    Aiden worktree path (/home/elliotbot/clawd/Agency_OS-aiden/) → not main
+    → returns False. Asserted directly without trying to fake __file__.
+    """
+    from src.integrations.leadmagic import _is_production_environment
+
+    # Clear FASTAPI_ENV to force fallback to path heuristic
+    env_without_fastapi = {k: v for k, v in os.environ.items() if k != "FASTAPI_ENV"}
+    with patch.dict(os.environ, env_without_fastapi, clear=True):
         result = _is_production_environment()
-        # Aiden worktree path → not production
-        assert result is False or "/clawd/Agency_OS/" in os.path.abspath(
-            "src/integrations/leadmagic.py"
-        )
+        # In Aiden worktree the test file path doesn't start with main worktree
+        # path → result must be False. In Elliot main worktree result would be True.
+        # Test asserts function correctly reflects the path it's loaded from.
+        import src.integrations.leadmagic as lm_mod
+
+        expected = os.path.abspath(lm_mod.__file__).startswith("/home/elliotbot/clawd/Agency_OS/")
+        assert result is expected
 
 
 def test_mock_safe_various_truthy_values_in_production():

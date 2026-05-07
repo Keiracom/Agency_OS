@@ -92,7 +92,9 @@ class EmailEngine(OutreachEngine):
     - Warmforge mailbox compatibility
     """
 
-    def __init__(self, salesforge_client: object | None = None):  # was SalesforgeClient (removed PR-A)
+    def __init__(
+        self, salesforge_client: object | None = None
+    ):  # was SalesforgeClient (removed PR-A)
         """
         Initialize Email engine.
 

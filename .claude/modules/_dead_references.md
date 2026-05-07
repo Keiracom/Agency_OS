@@ -1,13 +1,9 @@
 ## Dead References (Do Not Use)
 
-| Dead | Replacement |
-|------|-------------|
-| Proxycurl | Bright Data LinkedIn Profile (gd_l1viktl72bvl7bjuj0) |
-| Apollo (enrichment) | Waterfall Tiers 1-5 |
-| Apify (GMB scraping) | Bright Data GMB Web Scraper (gd_m8ebnr0q2qlklc02fz). EXCEPTION: Apify harvestapi/linkedin-profile-scraper active in Pipeline F v2.1 for L2 LinkedIn verification. Apify facebook-posts-scraper active for Stage 9 social. |
-| SDK agents (enrichment/email/voice_kb) | Smart Prompts + sdk_brain.py |
-| MEMORY.md (new writes) | Supabase elliot_internal.memories |
-| HANDOFF.md (new writes) | Supabase elliot_internal.memories |
-| HunterIO (email verify) | Leadmagic ($0.015/email). EXCEPTION: Hunter email-finder active in Pipeline F v2.1 as L2 email fallback (score >= 70). |
-| Kaspr | Leadmagic mobile ($0.077) |
-| ABNFirstDiscovery | MapsFirstDiscovery (Waterfall v3) |
+**Source of truth:** [ARCHITECTURE.md](../../ARCHITECTURE.md) §SECTION 3 (Deprecated Vendors).
+
+**DO NOT maintain the deprecated-vendors list in this file.** Read ARCHITECTURE.md §3 fresh every session.
+
+Duplicating the list creates drift — the previous table here missed entries ratified into ARCHITECTURE.md after this file's last update (e.g. Direct mail removed permanently as a channel; Lemlist + SmartLead never accepted into SSOT despite recommendation drafts).
+
+Any deprecation list previously living in this file was stale and removed (Layer 1 SSOT alignment, 2026-05-07).

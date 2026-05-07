@@ -1,7 +1,9 @@
 ## Active Enrichment Path
 
-T0 GMB -> T1 ABN -> T1.5a SERP Maps -> T1.5b SERP LinkedIn -> T2 LinkedIn Company -> ALS gate (>=20) -> T2.5 LinkedIn People -> T3 Leadmagic Email -> T5 Leadmagic Mobile
+**Source of truth:** [ARCHITECTURE.md](../../ARCHITECTURE.md) §SECTION 2 (System Architecture Overview) + §SECTION 5 (Enrichment Tiers Complete Spec).
 
-**Decision-maker path:** T-DM0 DataForSEO ($0.0465) -> T-DM1 BD Profile ($0.0015) -> T-DM2/2b/3/4 (Propensity >=70)
+**DO NOT quote pipeline stages from this file.** Read ARCHITECTURE.md fresh every session.
 
-**ALS gates:** PRE_ALS_GATE = 20 | HOT_THRESHOLD = 85
+The canonical pipeline shape is FLOW A (sync discovery, target <6min) + FLOW B (async parallel enrichment via `asyncio.gather`, target <10min). T0 is DataForSEO `domain_metrics_by_categories`, NOT Bright Data GMB scrape (GMB is T2 backfill only). Live channels and vendors are listed in ARCHITECTURE.md §SECTION 4.
+
+Any pipeline prose previously living in this file was stale and removed (Layer 1 SSOT alignment, 2026-05-07).

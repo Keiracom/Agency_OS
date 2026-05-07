@@ -1,6 +1,7 @@
 # ARCHITECTURE.md
 # Agency OS — Locked System Architecture
 # Ratified: March 17 2026 | Authority: CEO (Claude) | Amended: March 18 2026 | Directives #217, #218
+# Last validated: 2026-05-07 (Layer 1 SSOT alignment — Lemlist+SmartLead added to §3)
 # DO NOT MODIFY without an explicit CEO directive that
 # names this file and specifies the exact change.
 #
@@ -114,6 +115,8 @@ Report to CEO before continuing.
 | SERP API    | Search results      | DataForSEO             |
 | Direct mail | Outreach channel    | Removed permanently    |
 | ZeroBounce  | Email validation    | Parked — do not build  |
+| Lemlist     | Email outreach (proposed but never adopted) | Salesforge (Section 4 — wired and ready) |
+| SmartLead   | Email infra (dropped from primary watchlist) | Salesforge (Section 4 — wired and ready) |
 
 ---
 

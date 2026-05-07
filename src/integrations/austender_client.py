@@ -56,11 +56,7 @@ def _to_iso_z(d: date) -> str:
     The live API rejects bare YYYY-MM-DD; it expects e.g.
     `2026-05-04T00:00:00Z` in the URL path.
     """
-    return (
-        datetime.combine(d, time.min, tzinfo=UTC)
-        .isoformat()
-        .replace("+00:00", "Z")
-    )
+    return datetime.combine(d, time.min, tzinfo=UTC).isoformat().replace("+00:00", "Z")
 
 
 class AusTenderClient:
@@ -72,7 +68,9 @@ class AusTenderClient:
     """
 
     def __init__(
-        self, base_url: str = _BASE_URL, timeout: float = _REQUEST_TIMEOUT,
+        self,
+        base_url: str = _BASE_URL,
+        timeout: float = _REQUEST_TIMEOUT,
     ) -> None:
         self._base_url = base_url.rstrip("/")
         self._timeout = timeout
@@ -104,8 +102,7 @@ class AusTenderClient:
         self._validate_range(date_from, date_to)
         if value_min_aud < 1000:
             raise ValueError(
-                f"value_min_aud must be >= 1000 AUD (got {value_min_aud}); "
-                "below is noise"
+                f"value_min_aud must be >= 1000 AUD (got {value_min_aud}); below is noise"
             )
 
         first_url = self._base_url + _PATH_TEMPLATE.format(
@@ -141,7 +138,8 @@ class AusTenderClient:
                 if not isinstance(releases, list):
                     logger.warning(
                         "[austender] unexpected releases shape on page %d: %s",
-                        pages, type(releases).__name__,
+                        pages,
+                        type(releases).__name__,
                     )
                     break
 
@@ -150,7 +148,8 @@ class AusTenderClient:
                     if not ocid or ocid in seen_ocids:
                         continue
                     if not _release_clears_value_threshold(
-                        release, value_min_aud,
+                        release,
+                        value_min_aud,
                     ):
                         continue
                     seen_ocids.add(ocid)
@@ -160,20 +159,21 @@ class AusTenderClient:
 
         if pages >= _MAX_PAGES:
             logger.warning(
-                "[austender] hit _MAX_PAGES=%d; cursor truncated", _MAX_PAGES,
+                "[austender] hit _MAX_PAGES=%d; cursor truncated",
+                _MAX_PAGES,
             )
         logger.info(
             "[austender] %d releases ≥ AUD %d across %d page(s)",
-            len(out), value_min_aud, pages,
+            len(out),
+            value_min_aud,
+            pages,
         )
         return out
 
     async def fetch_release_by_id(self, ocid: str) -> dict[str, Any] | None:
         """Fetch a single OCDS release by Open Contracting ID."""
         if not ocid or not isinstance(ocid, str):
-            raise ValueError(
-                f"ocid must be a non-empty string, got {ocid!r}"
-            )
+            raise ValueError(f"ocid must be a non-empty string, got {ocid!r}")
         url = f"{self._base_url}/release/{ocid}"
         logger.info("[austender] GET %s", url)
 
@@ -193,13 +193,9 @@ class AusTenderClient:
     @staticmethod
     def _validate_range(date_from: date, date_to: date) -> None:
         if not isinstance(date_from, date) or not isinstance(date_to, date):
-            raise ValueError(
-                "date_from and date_to must be datetime.date instances"
-            )
+            raise ValueError("date_from and date_to must be datetime.date instances")
         if date_to < date_from:
-            raise ValueError(
-                f"date_to {date_to} is before date_from {date_from}"
-            )
+            raise ValueError(f"date_to {date_to} is before date_from {date_from}")
         if date_to > date.today():
             raise ValueError(f"date_to {date_to} is in the future")
         # NOTE: the legacy 14-day cap was needed for the WAF-fronted
@@ -226,7 +222,8 @@ def _coerce_amount(raw: Any) -> float | None:
 
 
 def _release_clears_value_threshold(
-    release: dict[str, Any], value_min_aud: int,
+    release: dict[str, Any],
+    value_min_aud: int,
 ) -> bool:
     """True iff ANY contract on the release has currency=AUD and amount
     >= value_min_aud. Releases without an AUD amount are dropped."""
@@ -333,11 +330,9 @@ class AwardEvent:
         )
         buyer = next(
             (
-                p for p in parties
-                if any(
-                    r in (p.get("roles") or [])
-                    for r in ("procuringEntity", "buyer")
-                )
+                p
+                for p in parties
+                if any(r in (p.get("roles") or []) for r in ("procuringEntity", "buyer"))
             ),
             None,
         )
@@ -352,15 +347,9 @@ class AwardEvent:
         supplier_name = None
         if supplier:
             supplier_name = supplier.get("name")
-            country = (supplier.get("address") or {}).get(
-                "countryName"
-            ) or supplier.get("country")
+            country = (supplier.get("address") or {}).get("countryName") or supplier.get("country")
             country_norm = (country or "").strip().upper()
-            supplier_country = (
-                "AU"
-                if country_norm in ("AU", "AUSTRALIA", "AUS")
-                else country
-            )
+            supplier_country = "AU" if country_norm in ("AU", "AUSTRALIA", "AUS") else country
             # Try `identifier` first (spec-bare), then walk
             # `additionalIdentifiers` for the AU-ABN entry.
             id_candidates: list[dict[str, Any]] = []
@@ -369,9 +358,7 @@ class AwardEvent:
                 id_candidates.append(primary)
             extra = supplier.get("additionalIdentifiers") or []
             if isinstance(extra, list):
-                id_candidates.extend(
-                    e for e in extra if isinstance(e, dict)
-                )
+                id_candidates.extend(e for e in extra if isinstance(e, dict))
             for ident in id_candidates:
                 if ident.get("scheme") in ("AU-ABN", "ABN"):
                     supplier_abn = canonicalize_abn(ident.get("id"))
@@ -406,9 +393,7 @@ class AwardEvent:
             awarded_date_raw = contracts[0].get("dateSigned")
             items = contracts[0].get("items") or []
             if items:
-                classification_id = (items[0].get("classification") or {}).get(
-                    "id"
-                )
+                classification_id = (items[0].get("classification") or {}).get("id")
         if not awarded_date_raw:
             awards = release.get("awards") or []
             if awards:
@@ -416,18 +401,14 @@ class AwardEvent:
                 if classification_id is None:
                     items = awards[0].get("items") or []
                     if items:
-                        classification_id = (
-                            items[0].get("classification") or {}
-                        ).get("id")
+                        classification_id = (items[0].get("classification") or {}).get("id")
         if not awarded_date_raw:
             awarded_date_raw = release.get("date")
 
         awarded_date: str | None = None
         if awarded_date_raw:
             try:
-                parsed = datetime.fromisoformat(
-                    str(awarded_date_raw).replace("Z", "+00:00")
-                )
+                parsed = datetime.fromisoformat(str(awarded_date_raw).replace("Z", "+00:00"))
                 awarded_date = parsed.date().isoformat()
             except (ValueError, AttributeError):
                 awarded_date = str(awarded_date_raw)
@@ -445,7 +426,9 @@ class AwardEvent:
 
 
 def date_range_chunks(
-    start: date, end: date, step_days: int = 7,
+    start: date,
+    end: date,
+    step_days: int = 7,
 ) -> list[tuple[date, date]]:
     """Split a date range into chunks of <= step_days for paginated fetching.
 

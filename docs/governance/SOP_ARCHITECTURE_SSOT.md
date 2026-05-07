@@ -18,7 +18,7 @@ Everything else (CLAUDE.md, .claude/modules/, ceo_memory snapshots, training kno
 Before any directive work:
 1. Read ARCHITECTURE.md fresh (cat, not from memory)
 2. Read dave_corrections table (`SELECT * FROM public.dave_corrections ORDER BY corrected_at DESC LIMIT 20`)
-3. If architecture was last validated >7 days ago, flag before proceeding
+3. If architecture was last validated >7 days ago, flag to TG group (peer + Max) before proceeding
 
 Skipping this is a governance violation.
 

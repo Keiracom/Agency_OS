@@ -7,7 +7,7 @@ CEO Directive #163: Verify Campaign → CampaignConfig translation.
 import pytest
 from uuid import uuid4
 
-from src.enrichment.query_translator import CampaignConfig
+from src.pipeline.query_translator import CampaignConfig
 from src.services.campaign_config_builder import CampaignConfigBuilder
 
 

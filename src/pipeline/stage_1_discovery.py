@@ -18,8 +18,8 @@ from typing import Any
 
 import asyncpg
 
-from src.enrichment.signal_config import SignalConfigRepository
 from src.integrations.dfs_labs_client import DFSLabsClient
+from src.pipeline.signal_config import SignalConfigRepository
 from src.utils.domain_blocklist import is_blocked
 
 logger = logging.getLogger(__name__)

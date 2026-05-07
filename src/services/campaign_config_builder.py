@@ -4,8 +4,8 @@ CampaignConfigBuilder — Campaign to CampaignConfig translation layer.
 CEO Directive #163: Builds CampaignConfig from Campaign ORM for QueryTranslator.
 """
 
-from src.enrichment.query_translator import CampaignConfig
 from src.models.campaign import Campaign
+from src.pipeline.query_translator import CampaignConfig
 
 
 class CampaignConfigBuilder:

@@ -12,7 +12,7 @@ from src.pipeline.stage_7_haiku import (
     HAIKU_INPUT_COST_PER_TOKEN,
     HAIKU_OUTPUT_COST_PER_TOKEN,
 )
-from src.enrichment.signal_config import SignalConfig, ServiceSignal
+from src.pipeline.signal_config import SignalConfig, ServiceSignal
 
 
 AGENCY_PROFILE = {

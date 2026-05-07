@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from src.enrichment.signal_config import ServiceSignal, SignalConfig
+from src.pipeline.signal_config import ServiceSignal, SignalConfig
 from src.pipeline.layer_2_discovery import Layer2Discovery
 
 

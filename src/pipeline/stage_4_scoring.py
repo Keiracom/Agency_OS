@@ -20,7 +20,7 @@ from typing import Any
 
 import asyncpg
 
-from src.enrichment.signal_config import ServiceSignal, SignalConfig, SignalConfigRepository
+from src.pipeline.signal_config import ServiceSignal, SignalConfig, SignalConfigRepository
 from src.utils.domain_blocklist import is_blocked
 
 

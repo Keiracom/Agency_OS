@@ -40,8 +40,8 @@ def _logger() -> logging.Logger:
     return logging.getLogger(__name__)
 
 
-from src.enrichment.signal_config import SignalConfigRepository
 from src.exceptions import AgencyProfileMissingError
+from src.pipeline.signal_config import SignalConfigRepository
 from src.pipeline.stage_9_vulnerability_enrichment import Stage9VulnerabilityEnrichment
 from src.pipeline.stage_10_message_generator import Stage10MessageGenerator
 from src.prefect_utils.hooks import on_failure_hook

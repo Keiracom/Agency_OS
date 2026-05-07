@@ -18,7 +18,7 @@ from typing import Any
 
 import asyncpg
 
-from src.enrichment.signal_config import SignalConfigRepository
+from src.pipeline.signal_config import SignalConfigRepository
 
 logger = logging.getLogger(__name__)
 

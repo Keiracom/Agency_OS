@@ -7,7 +7,7 @@ DIRECTIVE: CEO Directive #168 - Prevent non-AU/NZ companies polluting leads
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 
-from src.enrichment.waterfall_v2 import WaterfallV2, LeadRecord
+from src.pipeline.waterfall_v2 import WaterfallV2, LeadRecord
 
 
 class TestValidateAuNzHeadquarters:

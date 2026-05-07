@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from src.pipeline.stage_3_dfs_profile import Stage3DFSProfile, PIPELINE_STAGE_S3
-from src.enrichment.signal_config import SignalConfig, ServiceSignal
+from src.pipeline.signal_config import SignalConfig, ServiceSignal
 
 
 # ─── Fixtures ────────────────────────────────────────────────────────────────

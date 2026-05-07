@@ -12,7 +12,7 @@ from src.pipeline.stage_6_reachability import (
     validate_linkedin_url,
     calculate_reachability,
 )
-from src.enrichment.signal_config import SignalConfig, ServiceSignal
+from src.pipeline.signal_config import SignalConfig, ServiceSignal
 
 
 def make_config(channel_config=None):

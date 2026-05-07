@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch, call
 from contextlib import asynccontextmanager
 
 from src.pipeline.stage_1_discovery import Stage1Discovery, PIPELINE_STAGE_S1, DISCOVERY_SOURCE
-from src.enrichment.signal_config import SignalConfig, ServiceSignal
+from src.pipeline.signal_config import SignalConfig, ServiceSignal
 
 
 # ─── Fixtures ───────────────────────────────────────────────────────────────

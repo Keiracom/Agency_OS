@@ -3,7 +3,7 @@ Contract: src/pipeline/rescore_engine.py
 Purpose: Monthly re-score of pipeline_stage=-1 rejects against current signal configs.
          Promotes qualifying leads back to pipeline_stage=1 for re-enrichment.
 Layer: 4 - orchestration
-Imports: src.enrichment.signal_config, src.pipeline.stage_4_scoring
+Imports: src.pipeline.signal_config, src.pipeline.stage_4_scoring
 Consumers: src/orchestration/flows/rescore_flow.py
 """
 
@@ -14,8 +14,8 @@ from dataclasses import dataclass, field
 
 import asyncpg
 
-from src.enrichment.signal_config import SignalConfigRepository
 from src.pipeline.conversion_feedback import get_category_conversion_boosts
+from src.pipeline.signal_config import SignalConfigRepository
 from src.pipeline.stage_4_scoring import _calc_budget_score, _calc_pain_score
 
 logger = logging.getLogger(__name__)

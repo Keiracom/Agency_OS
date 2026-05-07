@@ -9,14 +9,14 @@ import traceback
 
 import structlog
 
-from src.enrichment.discovery_filters import DiscoveryFilters
-from src.enrichment.keyword_expander import KeywordExpander
-from src.enrichment.location_expander import LocationExpander
-from src.enrichment.query_translator import CampaignConfig, QueryTranslator
-from src.enrichment.waterfall_v2 import LeadRecord, WaterfallV2
 from src.integrations.abn_client import ABNClient
 from src.integrations.bright_data_client import BrightDataClient
 from src.integrations.supabase import get_async_supabase_service_client
+from src.pipeline.discovery_filters import DiscoveryFilters
+from src.pipeline.keyword_expander import KeywordExpander
+from src.pipeline.location_expander import LocationExpander
+from src.pipeline.query_translator import CampaignConfig, QueryTranslator
+from src.pipeline.waterfall_v2 import LeadRecord, WaterfallV2
 
 logger = structlog.get_logger()
 

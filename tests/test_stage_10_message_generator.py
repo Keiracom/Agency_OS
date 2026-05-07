@@ -11,7 +11,7 @@ from src.pipeline.stage_10_message_generator import (
     HAIKU_MODEL,
     PIPELINE_STAGE_S10,
 )
-from src.enrichment.signal_config import SignalConfig
+from src.pipeline.signal_config import SignalConfig
 
 
 AGENCY_PROFILE = {

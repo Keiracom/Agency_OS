@@ -17,12 +17,12 @@ class TestWaterfallConstants:
     """Verify waterfall constants"""
 
     def test_pre_als_gate_value(self):
-        from enrichment.waterfall_v2 import WaterfallV2
+        from src.pipeline.waterfall_v2 import WaterfallV2
 
         assert WaterfallV2.PRE_ALS_GATE == 20
 
     def test_hot_threshold_value(self):
-        from enrichment.waterfall_v2 import WaterfallV2
+        from src.pipeline.waterfall_v2 import WaterfallV2
 
         assert WaterfallV2.HOT_THRESHOLD == 85
 
@@ -31,7 +31,7 @@ class TestLeadRecord:
     """Test LeadRecord dataclass"""
 
     def test_lead_record_defaults(self):
-        from enrichment.waterfall_v2 import LeadRecord
+        from src.pipeline.waterfall_v2 import LeadRecord
 
         lead = LeadRecord()
 
@@ -40,7 +40,7 @@ class TestLeadRecord:
         assert lead.cost_aud == 0.0
 
     def test_lead_record_with_values(self):
-        from enrichment.waterfall_v2 import LeadRecord
+        from src.pipeline.waterfall_v2 import LeadRecord
 
         lead = LeadRecord(abn="12345678901", business_name="Test Company", propensity_score=75)
 
@@ -54,7 +54,7 @@ class TestPreALSGate:
 
     @pytest.mark.asyncio
     async def test_low_score_skips_tier_2_5(self):
-        from enrichment.waterfall_v2 import LeadRecord, WaterfallV2
+        from src.pipeline.waterfall_v2 import LeadRecord, WaterfallV2
 
         mock_client = Mock()
         waterfall = WaterfallV2(bright_data_client=mock_client)
@@ -70,7 +70,7 @@ class TestPreALSGate:
 
     @pytest.mark.asyncio
     async def test_low_score_skips_tier_3(self):
-        from enrichment.waterfall_v2 import LeadRecord, WaterfallV2
+        from src.pipeline.waterfall_v2 import LeadRecord, WaterfallV2
 
         mock_client = Mock()
         waterfall = WaterfallV2(bright_data_client=mock_client)
@@ -86,7 +86,7 @@ class TestHotThreshold:
 
     @pytest.mark.asyncio
     async def test_warm_score_skips_tier_5(self):
-        from enrichment.waterfall_v2 import LeadRecord, WaterfallV2
+        from src.pipeline.waterfall_v2 import LeadRecord, WaterfallV2
 
         mock_client = Mock()
         waterfall = WaterfallV2(bright_data_client=mock_client)
@@ -102,7 +102,7 @@ class TestALSCalculation:
     """Test ALS scoring algorithm"""
 
     def test_als_range(self):
-        from enrichment.waterfall_v2 import LeadRecord, WaterfallV2
+        from src.pipeline.waterfall_v2 import LeadRecord, WaterfallV2
 
         mock_client = Mock()
         waterfall = WaterfallV2(bright_data_client=mock_client)
@@ -113,7 +113,7 @@ class TestALSCalculation:
         assert 0 <= score <= 100
 
     def test_hiring_signal_increases_timing_score(self):
-        from enrichment.waterfall_v2 import LeadRecord, WaterfallV2
+        from src.pipeline.waterfall_v2 import LeadRecord, WaterfallV2
 
         mock_client = Mock()
         waterfall = WaterfallV2(bright_data_client=mock_client)
@@ -138,7 +138,7 @@ class TestTierSequence:
 
     @pytest.mark.asyncio
     async def test_tier_order_tracked(self):
-        from enrichment.waterfall_v2 import LeadRecord, WaterfallV2
+        from src.pipeline.waterfall_v2 import LeadRecord, WaterfallV2
 
         mock_client = Mock()
         waterfall = WaterfallV2(bright_data_client=mock_client)
@@ -157,7 +157,7 @@ class TestCostAccumulation:
     """Test cost tracking through pipeline"""
 
     def test_lead_cost_accumulates(self):
-        from enrichment.waterfall_v2 import LeadRecord
+        from src.pipeline.waterfall_v2 import LeadRecord
 
         lead = LeadRecord(cost_aud=0.0)
 

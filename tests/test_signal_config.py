@@ -2,7 +2,7 @@
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock
-from src.enrichment.signal_config import (
+from src.pipeline.signal_config import (
     SignalConfigRepository,
     SignalConfig,
     ServiceSignal,

@@ -17,7 +17,7 @@ class TestDiscoveryMode:
     """Test discovery mode selection"""
 
     def test_mode_enum_values(self):
-        from enrichment.query_translator import DiscoveryMode
+        from src.pipeline.query_translator import DiscoveryMode
 
         # ABN_FIRST deprecated per Waterfall v3 Decision #1 (2026-03-01)
         assert DiscoveryMode.MAPS_FIRST.value == "maps"
@@ -28,7 +28,7 @@ class TestQueryEstimation:
     """Test query count estimation"""
 
     def test_maps_query_estimation_basic(self):
-        from enrichment.query_translator import QueryTranslator, CampaignConfig, DiscoveryMode
+        from src.pipeline.query_translator import QueryTranslator, CampaignConfig, DiscoveryMode
 
         # Create minimal translator
         translator = QueryTranslator(
@@ -52,7 +52,7 @@ class TestQueryEstimation:
         assert estimate >= 1  # At least one query needed
 
     def test_maps_query_estimation(self):
-        from enrichment.query_translator import QueryTranslator, CampaignConfig, DiscoveryMode
+        from src.pipeline.query_translator import QueryTranslator, CampaignConfig, DiscoveryMode
 
         translator = QueryTranslator(
             abn_client=Mock(),
@@ -80,7 +80,7 @@ class TestDedupHash:
     """Test deduplication hash computation"""
 
     def test_abn_dedup_uses_abn(self):
-        from enrichment.query_translator import QueryTranslator
+        from src.pipeline.query_translator import QueryTranslator
 
         translator = QueryTranslator(
             abn_client=Mock(),
@@ -96,7 +96,7 @@ class TestDedupHash:
         assert hash_result == "abn:12345678901"
 
     def test_maps_dedup_uses_name_address(self):
-        from enrichment.query_translator import QueryTranslator
+        from src.pipeline.query_translator import QueryTranslator
 
         translator = QueryTranslator(
             abn_client=Mock(),
@@ -118,7 +118,7 @@ class TestKeywordExpander:
 
     @pytest.mark.asyncio
     async def test_lookup_known_vertical(self):
-        from enrichment.keyword_expander import KeywordExpander
+        from src.pipeline.keyword_expander import KeywordExpander
 
         mock_supabase = Mock()
         mock_supabase.table.return_value.select.return_value.eq.return_value.single.return_value.execute = AsyncMock(
@@ -133,7 +133,7 @@ class TestKeywordExpander:
 
     @pytest.mark.asyncio
     async def test_fallback_to_claude(self):
-        from enrichment.keyword_expander import KeywordExpander
+        from src.pipeline.keyword_expander import KeywordExpander
 
         # When DB lookup returns None, should call Claude
         mock_supabase = Mock()
@@ -146,7 +146,7 @@ class TestKeywordExpander:
         # Would verify Claude API is called for unknown vertical
 
     def test_caching(self):
-        from enrichment.keyword_expander import KeywordExpander
+        from src.pipeline.keyword_expander import KeywordExpander
 
         expander = KeywordExpander()
         expander._cache["test_vertical"] = ["test", "keywords"]
@@ -160,7 +160,7 @@ class TestLocationExpander:
 
     @pytest.mark.asyncio
     async def test_lookup_known_city(self):
-        from enrichment.location_expander import LocationExpander
+        from src.pipeline.location_expander import LocationExpander
 
         mock_supabase = Mock()
         mock_supabase.table.return_value.select.return_value.eq.return_value.eq.return_value.execute = AsyncMock(
@@ -175,7 +175,7 @@ class TestLocationExpander:
         # assert "CBD" in suburbs
 
     def test_state_inference(self):
-        from enrichment.location_expander import LocationExpander
+        from src.pipeline.location_expander import LocationExpander
 
         expander = LocationExpander()
 
@@ -190,7 +190,7 @@ class TestDiscoveryFilters:
     """Test filter logic"""
 
     def test_hard_discard_cancelled_abn(self):
-        from enrichment.discovery_filters import DiscoveryFilters
+        from src.pipeline.discovery_filters import DiscoveryFilters
 
         filters = DiscoveryFilters()
 
@@ -201,7 +201,7 @@ class TestDiscoveryFilters:
         assert reason == "cancelled_abn"
 
     def test_hard_discard_trust(self):
-        from enrichment.discovery_filters import DiscoveryFilters
+        from src.pipeline.discovery_filters import DiscoveryFilters
 
         filters = DiscoveryFilters()
 
@@ -212,7 +212,7 @@ class TestDiscoveryFilters:
         assert "trust" in reason
 
     def test_hard_discard_super_fund(self):
-        from enrichment.discovery_filters import DiscoveryFilters
+        from src.pipeline.discovery_filters import DiscoveryFilters
 
         filters = DiscoveryFilters()
 
@@ -223,7 +223,7 @@ class TestDiscoveryFilters:
         assert "super fund" in reason
 
     def test_hard_discard_government(self):
-        from enrichment.discovery_filters import DiscoveryFilters
+        from src.pipeline.discovery_filters import DiscoveryFilters
 
         filters = DiscoveryFilters()
 
@@ -234,7 +234,7 @@ class TestDiscoveryFilters:
         assert "department of" in reason
 
     def test_soft_flag_holding_no_business_name(self):
-        from enrichment.discovery_filters import DiscoveryFilters
+        from src.pipeline.discovery_filters import DiscoveryFilters
 
         filters = DiscoveryFilters()
 
@@ -254,7 +254,7 @@ class TestDiscoveryFilters:
         assert "soft_flag" in reason
 
     def test_holding_with_business_name_passes(self):
-        from enrichment.discovery_filters import DiscoveryFilters
+        from src.pipeline.discovery_filters import DiscoveryFilters
 
         filters = DiscoveryFilters()
 
@@ -271,7 +271,7 @@ class TestDiscoveryFilters:
         assert filters.is_holding_with_business_name(record) is True
 
     def test_active_company_passes(self):
-        from enrichment.discovery_filters import DiscoveryFilters
+        from src.pipeline.discovery_filters import DiscoveryFilters
 
         filters = DiscoveryFilters()
 
@@ -288,7 +288,7 @@ class TestDiscoveryFilters:
         assert reason is None
 
     def test_maps_results_pass_through(self):
-        from enrichment.discovery_filters import DiscoveryFilters
+        from src.pipeline.discovery_filters import DiscoveryFilters
 
         filters = DiscoveryFilters()
 
@@ -304,7 +304,7 @@ class TestCampaignConfig:
     """Test campaign configuration"""
 
     def test_config_fields(self):
-        from enrichment.query_translator import CampaignConfig, DiscoveryMode
+        from src.pipeline.query_translator import CampaignConfig, DiscoveryMode
 
         config = CampaignConfig(
             campaign_id="camp-123",

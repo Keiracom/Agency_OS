@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
 
-from src.enrichment.signal_config import ServiceSignal, SignalConfig
+from src.pipeline.signal_config import ServiceSignal, SignalConfig
 from src.pipeline.layer_3_bulk_filter import FilterStats, Layer3BulkFilter
 
 

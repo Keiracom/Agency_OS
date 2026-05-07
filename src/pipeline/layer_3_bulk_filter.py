@@ -19,8 +19,8 @@ from dataclasses import dataclass, field
 
 import asyncpg
 
-from src.enrichment.signal_config import SignalConfigRepository
 from src.integrations.dfs_labs_client import DFSLabsClient
+from src.pipeline.signal_config import SignalConfigRepository
 
 logger = logging.getLogger(__name__)
 

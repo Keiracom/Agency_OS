@@ -42,15 +42,15 @@ from datetime import UTC, datetime
 
 import structlog
 
-from src.enrichment.discovery_modes import (
+from src.integrations.leadmagic import (
+    LeadmagicCreditExhaustedError,
+    LeadmagicNoPlanError,
+)
+from src.pipeline.discovery_modes import (
     CampaignConfig,
     DiscoveryMode,
     DiscoveryRecord,
     MapsFirstDiscovery,
-)
-from src.integrations.leadmagic import (
-    LeadmagicCreditExhaustedError,
-    LeadmagicNoPlanError,
 )
 
 logger = structlog.get_logger()

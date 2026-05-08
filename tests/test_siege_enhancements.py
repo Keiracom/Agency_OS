@@ -69,8 +69,8 @@ class TestAustralianLeadNoApolloFallback:
             },
             total_cost_aud=0.018,
             tier_results=[
-                MagicMock(tier=EnrichmentTier.ABN, success=True),
-                MagicMock(tier=EnrichmentTier.GMB, success=True),
+                MagicMock(tier=MagicMock(value="ABN"), success=True, skipped=False),
+                MagicMock(tier=MagicMock(value="GMB"), success=True, skipped=False),
             ],
         )
         return mock

@@ -37,14 +37,14 @@ class TestCosts:
     """Verify cost constants match the SSOT"""
 
     def test_serp_cost(self):
-        from integrations.bright_data_client import COSTS_AUD
+        from integrations.bright_data_client import COSTS_USD
 
-        assert COSTS_AUD["serp_request"] == 0.0015
+        assert COSTS_USD["serp_request"] == 0.0015
 
     def test_scraper_cost(self):
-        from integrations.bright_data_client import COSTS_AUD
+        from integrations.bright_data_client import COSTS_USD
 
-        assert COSTS_AUD["scraper_record"] == 0.0015
+        assert COSTS_USD["scraper_record"] == 0.0015
 
 
 class TestBrightDataClientInit:
@@ -91,7 +91,7 @@ class TestCostTracking:
         assert "total_aud" in breakdown
 
     def test_cost_calculation(self):
-        from integrations.bright_data_client import COSTS_AUD, BrightDataClient
+        from integrations.bright_data_client import BrightDataClient, _cost_aud
 
         client = BrightDataClient(api_key="test-key")
 
@@ -99,7 +99,8 @@ class TestCostTracking:
         client.costs.serp_requests = 10
         client.costs.scraper_records = 5
 
-        expected = (10 * COSTS_AUD["serp_request"]) + (5 * COSTS_AUD["scraper_record"])
+        # _cost_aud() converts USD → AUD via settings.aud_per_usd (LAW II SSOT).
+        expected = _cost_aud("serp_request", count=10) + _cost_aud("scraper_record", count=5)
         assert client.get_total_cost() == expected
 
 

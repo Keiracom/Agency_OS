@@ -83,6 +83,7 @@ def _cost_aud(usd: float) -> float:
 
     return usd * settings.aud_per_usd
 
+
 # Rate limiting
 MAX_REQUESTS_PER_SECOND = 10
 REQUEST_DELAY_SECONDS = 1.0  # 1 second between requests

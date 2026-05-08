@@ -36,6 +36,7 @@ def _cost_per_serp_aud() -> Decimal:
 
     return COST_PER_SERP_USD * Decimal(str(settings.aud_per_usd))
 
+
 DFS_SERP_LOCATION_AU = 2036
 DFS_LINKEDIN_IN_PATTERN = "linkedin.com/in/"
 

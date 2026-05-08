@@ -125,9 +125,7 @@ class Settings(BaseSettings):
     # stored in the vendor's billing currency (USD). This single SSOT converts
     # to AUD at runtime for LAW II compliance ("All financial outputs in $AUD").
     # Update this value when AUD/USD shifts materially.
-    aud_per_usd: float = Field(
-        default=1.55, description="AUD per USD exchange rate (LAW II SSOT)"
-    )
+    aud_per_usd: float = Field(default=1.55, description="AUD per USD exchange rate (LAW II SSOT)")
 
     # === API Keys ===
     anthropic_api_key: str = Field(default="", description="Anthropic/Claude API key")

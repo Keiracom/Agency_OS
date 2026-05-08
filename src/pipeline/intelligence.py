@@ -52,15 +52,25 @@ SYSTEM_PIPELINE_CLIENT_ID = UUID("00000000-0000-0000-0000-000000000001")
 # Per-token Anthropic pricing in USD per their public pricing page.
 # AUD conversion derived at runtime via settings.aud_per_usd (LAW II SSOT).
 # Source of truth (USD): https://www.anthropic.com/api/pricing as of 2026-05-08.
+#
+# Includes both DATED full IDs (the response model_id Anthropic returns) AND
+# UNDATED aliases (what callsites in this module pass as `model=` — see
+# _MODEL_SONNET / _MODEL_HAIKU below). Without the alias keys, the pricing
+# lookup misses every real call and the helper warn-and-skips silently —
+# captured by Aiden review on PR #630.
+_HAIKU_PRICE = {"input": 0.80 / 1_000_000, "output": 4.00 / 1_000_000}
+_SONNET_PRICE = {"input": 3.00 / 1_000_000, "output": 15.00 / 1_000_000}
 ANTHROPIC_PRICING_USD = {
     # Claude 3.5 Haiku (legacy): $0.80 / $4.00 per 1M tokens
-    "claude-3-5-haiku-20241022": {"input": 0.80 / 1_000_000, "output": 4.00 / 1_000_000},
-    # Claude Haiku 4.5: $0.80 / $4.00 per 1M tokens
-    "claude-haiku-4-5-20251001": {"input": 0.80 / 1_000_000, "output": 4.00 / 1_000_000},
+    "claude-3-5-haiku-20241022": _HAIKU_PRICE,
+    # Claude Haiku 4.5
+    "claude-haiku-4-5-20251001": _HAIKU_PRICE,
+    "claude-haiku-4-5": _HAIKU_PRICE,  # alias used by _MODEL_HAIKU
     # Claude Sonnet 4: $3.00 / $15.00 per 1M tokens
-    "claude-sonnet-4-20250514": {"input": 3.00 / 1_000_000, "output": 15.00 / 1_000_000},
-    # Claude Sonnet 4.6 (1M context): same per-token as Sonnet 4
-    "claude-sonnet-4-6": {"input": 3.00 / 1_000_000, "output": 15.00 / 1_000_000},
+    "claude-sonnet-4-20250514": _SONNET_PRICE,
+    # Claude Sonnet 4.5 / 4.6 (1M context)
+    "claude-sonnet-4-5": _SONNET_PRICE,  # alias used by _MODEL_SONNET
+    "claude-sonnet-4-6": _SONNET_PRICE,
 }
 
 

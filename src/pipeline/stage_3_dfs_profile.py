@@ -21,6 +21,7 @@ from typing import Any
 
 import asyncpg
 
+from src.config.settings import settings
 from src.integrations.dfs_labs_client import DFSLabsClient
 from src.pipeline.signal_config import SignalConfigRepository
 
@@ -102,7 +103,7 @@ class Stage3DFSProfile:
             "profiled": profiled,
             "api_errors": errors,
             "cost_usd": cost_usd,
-            "cost_aud": round(cost_usd * 1.55, 4),
+            "cost_aud": round(cost_usd * settings.aud_per_usd, 4),
         }
         logger.info(f"Stage 3 complete: {result}")
         return result

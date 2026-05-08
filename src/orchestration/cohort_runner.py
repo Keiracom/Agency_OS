@@ -34,6 +34,7 @@ for _k, _v in env.items():
         os.environ.setdefault(_k, _v)
 
 from src.config.category_etv_windows import CATEGORY_ETV_WINDOWS, get_etv_window
+from src.config.settings import settings
 from src.integrations.bright_data_client import BrightDataClient
 from src.integrations.dfs_labs_client import DFSLabsClient
 from src.integrations.leadmagic import LeadmagicClient
@@ -927,7 +928,7 @@ def _build_summary(pipeline: list[dict], wall_s: float) -> dict:
         },
         "drop_reasons": dict(drop_reasons),
         "cost_usd": round(total_cost, 4),
-        "cost_aud": round(total_cost * 1.55, 4),
+        "cost_aud": round(total_cost * settings.aud_per_usd, 4),
         "cost_per_card": round(total_cost / cards, 4) if cards else None,
         "wall_clock_s": round(wall_s, 1),
         "per_stage_timing": per_stage_timing,

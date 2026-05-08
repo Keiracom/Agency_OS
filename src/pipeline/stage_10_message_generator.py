@@ -18,6 +18,7 @@ from typing import Any
 
 import asyncpg
 
+from src.config.settings import settings
 from src.pipeline.signal_config import SignalConfigRepository
 from src.pipeline.stage_10_critic import CRITIC_PASS_THRESHOLD, critique_and_revise  # noqa: F401
 from src.utils.domain_blocklist import BLOCKED_DOMAINS
@@ -261,7 +262,7 @@ class Stage10MessageGenerator:
             "dms_processed": dms_processed,
             "skipped_no_bdm": skipped_no_bdm,
             "cost_usd": round(self._stats["cost_usd"], 6),
-            "cost_aud": round(self._stats["cost_usd"] * 1.55, 4),
+            "cost_aud": round(self._stats["cost_usd"] * settings.aud_per_usd, 4),
             "cache_hit_rate": cache_hit_rate,
             "per_channel": self._stats["per_channel"],
         }

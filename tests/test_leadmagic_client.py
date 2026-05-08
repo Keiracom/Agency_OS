@@ -11,8 +11,9 @@ from src.integrations.leadmagic import (
     MobileFinderResult,
     EmailStatus,
     MobileStatus,
-    COST_EMAIL_FINDER_AUD,
-    COST_MOBILE_FINDER_AUD,
+    COST_EMAIL_FINDER_USD,
+    COST_MOBILE_FINDER_USD,
+    _cost_aud,
 )
 
 
@@ -175,8 +176,8 @@ async def test_cost_tracking(client):
         await client.find_email("Bob", "Jones", "example.com")
         await client.find_mobile("https://linkedin.com/in/test")
 
-    expected_min = 2 * COST_EMAIL_FINDER_AUD + COST_MOBILE_FINDER_AUD
+    expected_min = 2 * _cost_aud(COST_EMAIL_FINDER_USD) + _cost_aud(COST_MOBILE_FINDER_USD)
     assert client.total_cost_aud >= expected_min - 0.0001
     assert client.total_cost_aud == pytest.approx(
-        2 * COST_EMAIL_FINDER_AUD + COST_MOBILE_FINDER_AUD, abs=0.0001
+        2 * _cost_aud(COST_EMAIL_FINDER_USD) + _cost_aud(COST_MOBILE_FINDER_USD), abs=0.0001
     )

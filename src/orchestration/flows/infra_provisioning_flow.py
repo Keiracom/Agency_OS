@@ -36,10 +36,27 @@ logger = logging.getLogger(__name__)
 # CONSTANTS
 # ============================================
 
-# Cost constants (AUD)
-MAILFORGE_COST_PER_MAILBOX_AUD = 4.65  # $3 USD × 1.55
-DOMAIN_COST_PER_YEAR_AUD = 21.70  # $14 USD × 1.55
-DOMAIN_COST_PER_MONTH_AUD = DOMAIN_COST_PER_YEAR_AUD / 12  # ~$1.81
+# Vendor pricing in USD (Mailforge + domain registrars bill in USD per their
+# public pricing pages). AUD conversion derived via settings.aud_per_usd
+# (LAW II SSOT) — do NOT pre-multiply by 1.55 here.
+MAILFORGE_COST_PER_MAILBOX_USD = 3.0  # Mailforge mailbox subscription
+DOMAIN_COST_PER_YEAR_USD = 14.0  # Domain registrar yearly fee
+
+
+def _mailforge_cost_per_mailbox_aud() -> float:
+    from src.config.settings import settings
+
+    return MAILFORGE_COST_PER_MAILBOX_USD * settings.aud_per_usd
+
+
+def _domain_cost_per_year_aud() -> float:
+    from src.config.settings import settings
+
+    return DOMAIN_COST_PER_YEAR_USD * settings.aud_per_usd
+
+
+def _domain_cost_per_month_aud() -> float:
+    return _domain_cost_per_year_aud() / 12
 
 # Default configuration
 DEFAULT_MAILBOXES_PER_DOMAIN = 2

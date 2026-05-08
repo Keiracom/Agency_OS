@@ -24,7 +24,17 @@ DFS_SERP_LIVE_ENDPOINT = "/serp/google/organic/live/advanced"
 DFS_STATUS_SUCCESS = 20000
 DFS_STATUS_AUTH_FAILURE = 40200
 
-COST_PER_SERP_AUD = Decimal("0.00930")  # $0.006 USD * 1.55 AUD/USD
+# Vendor pricing in USD (DataForSEO bills in USD per their public pricing page).
+# AUD conversion happens at runtime via _cost_per_serp_aud() using
+# settings.aud_per_usd (LAW II SSOT). Do NOT pre-multiply by 1.55 here.
+COST_PER_SERP_USD = Decimal("0.006")  # $0.006 USD per SERP query
+
+
+def _cost_per_serp_aud() -> Decimal:
+    """Return per-SERP cost in AUD using settings SSOT (LAW II)."""
+    from src.config.settings import settings
+
+    return COST_PER_SERP_USD * Decimal(str(settings.aud_per_usd))
 
 DFS_SERP_LOCATION_AU = 2036
 DFS_LINKEDIN_IN_PATTERN = "linkedin.com/in/"
@@ -75,7 +85,7 @@ class DFSSerpClient:
 
     @property
     def estimated_cost_aud(self) -> Decimal:
-        return self.queries_made * COST_PER_SERP_AUD
+        return Decimal(self.queries_made) * _cost_per_serp_aud()
 
     @retry(
         stop=stop_after_attempt(3),

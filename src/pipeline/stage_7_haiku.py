@@ -20,6 +20,7 @@ from typing import Any
 
 import asyncpg
 
+from src.config.settings import settings
 from src.pipeline.signal_config import SignalConfigRepository
 
 logger = logging.getLogger(__name__)
@@ -156,7 +157,7 @@ class Stage7Haiku:
         return {
             "messages_generated": messages_generated,
             "cost_usd": self.total_cost_usd,
-            "cost_aud": round(self.total_cost_usd * 1.55, 4),
+            "cost_aud": round(self.total_cost_usd * settings.aud_per_usd, 4),
         }
 
     async def _generate_messages(

@@ -31,6 +31,7 @@ import asyncpg
 from prefect import flow, task
 from prefect.cache_policies import NO_CACHE
 
+from src.config.settings import settings
 from src.prefect_utils.completion_hook import on_completion_hook
 from src.prefect_utils.hooks import on_failure_hook
 
@@ -58,7 +59,7 @@ _KEIRACOM_PROFILE = {
 }
 
 # ── Budget / gate constants ──────────────────────────────────────────────────
-_USD_TO_AUD = 1.55
+# AUD/USD conversion lives in settings.aud_per_usd (LAW II SSOT).
 _PASS_THRESHOLD = 70  # dm_messages quality gate (email_scoring_gate.PASS_THRESHOLD)
 
 
@@ -658,7 +659,7 @@ async def pipeline_f_master_flow(
         "enrichment_failed": result.stats.enrichment_failed,
         "affordability_rejected": result.stats.affordability_rejected,
         "cost_usd": round(result.stats.total_cost_usd, 4),
-        "cost_aud": round(result.stats.total_cost_usd * _USD_TO_AUD, 4),
+        "cost_aud": round(result.stats.total_cost_usd * settings.aud_per_usd, 4),
         "budget_cap_aud": effective_budget_aud,
         "elapsed_s": round(result.stats.elapsed_seconds, 1),
     }

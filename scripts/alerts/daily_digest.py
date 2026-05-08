@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Last-24h digest (cost, calls, BU updates, leads created) to TG group."""
+
 from __future__ import annotations
 
 import asyncio

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Fires when today's sdk_usage_log cost crosses 80% (warn) / 100% (exceeded) of BUDGET_DAILY_AUD."""
+
 from __future__ import annotations
 
 import asyncio
@@ -34,7 +35,9 @@ async def main() -> int:
     else:
         print(f"OK: ${spent:.2f}/${BUDGET:.2f} AUD ({pct:.0f}%)")
         return 0
-    msg = f"[ELLIOT] {emoji} budget {label}: ${spent:.2f}/${BUDGET:.2f} AUD ({pct:.0f}% of daily cap)"
+    msg = (
+        f"[ELLIOT] {emoji} budget {label}: ${spent:.2f}/${BUDGET:.2f} AUD ({pct:.0f}% of daily cap)"
+    )
     subprocess.run(["tg", "-g", msg], check=False)
     print(msg)
     return 0

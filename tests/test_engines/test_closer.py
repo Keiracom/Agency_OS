@@ -415,7 +415,14 @@ async def test_process_reply_success():
 
 @pytest.mark.asyncio
 async def test_handle_meeting_request_intent():
-    """Test handling of meeting request intent."""
+    """Test handling of meeting request intent.
+
+    calendar_booking integration was removed in PR-A #593 (closer.py:469
+    is now a `pass # dead path`). Booking-link generation actions
+    (booking_link_generated, automated_reply_sent) are no longer emitted.
+    Test now asserts only the surviving actions: awaiting_booking_confirmation
+    and the CIS conversion record path.
+    """
     engine = CloserEngine(anthropic_client=MockAnthropicClient("meeting_request", 0.95))
     mock_db = MockDB()
     lead = MockLead(status=LeadStatus.IN_SEQUENCE)
@@ -427,12 +434,6 @@ async def test_handle_meeting_request_intent():
         patches[1],
         patches[2],
         patches[3],
-        patch(
-            "src.engines.closer.generate_booking_link",
-            new_callable=AsyncMock,
-            return_value="https://calendly.com/test",
-        ),
-        patch("src.engines.closer.send_booking_reply", new_callable=AsyncMock),
         patch.object(engine, "_update_thread_outcome", new_callable=AsyncMock),
         patch.object(engine, "_flag_for_human_review", new_callable=AsyncMock),
         patch("src.services.cis_service.get_cis_service") as mock_cis,
@@ -452,8 +453,6 @@ async def test_handle_meeting_request_intent():
         assert result.success
         # Status stays IN_SEQUENCE until Calendly webhook confirms booking
         assert lead.status == LeadStatus.IN_SEQUENCE
-        assert "booking_link_generated" in result.data["actions"]
-        assert "automated_reply_sent" in result.data["actions"]
         assert "awaiting_booking_confirmation" in result.data["actions"]
 
 

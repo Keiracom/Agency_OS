@@ -98,7 +98,7 @@ def test_flow_runs_two_phases_when_promote_enabled():
 
 
 def test_flow_skips_promote_when_disabled():
-    """promote_stage_0=False → only enrich runs, promoted stays 0, no UPDATE issued."""
+    """promote_stage_0=False → backfill runs (gap #11), promote does not."""
     pool, conn = _make_pool("UPDATE 999")  # would be 999 if promote ran
     fake_enrich = AsyncMock(
         return_value={
@@ -125,8 +125,12 @@ def test_flow_skips_promote_when_disabled():
 
     assert summary["promoted"] == 0
     assert summary["promote_stage_0"] is False
-    # Connection.execute should NOT have been called for promote.
-    conn.execute.assert_not_called()
+    # Backfill (gap #11) always runs; promote-stage-0 UPDATE must NOT run.
+    # Verify no execute call mentions "pipeline_stage" (the promote SQL signature).
+    promote_calls = [
+        call for call in conn.execute.await_args_list if "pipeline_stage" in str(call)
+    ]
+    assert promote_calls == [], "promote_stage_0_rows must not run when promote_stage_0=False"
     fake_enrich.assert_awaited_once_with(50)
 
 

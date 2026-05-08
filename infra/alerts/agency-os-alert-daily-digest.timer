@@ -1,0 +1,9 @@
+[Unit]
+Description=Run daily digest at 23:55 AEST (13:55 UTC)
+
+[Timer]
+OnCalendar=*-*-* 13:55:00 UTC
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,8 @@
+[Unit]
+Description=Agency OS — pipeline failure alert (permanent_* spikes in business_universe)
+
+[Service]
+Type=oneshot
+ExecStart=/home/elliotbot/clawd/Agency_OS/.venv/bin/python /home/elliotbot/clawd/Agency_OS/scripts/alerts/pipeline_failure_alert.py
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env

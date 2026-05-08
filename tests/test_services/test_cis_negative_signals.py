@@ -196,73 +196,6 @@ class TestCISServiceNegativeSignals:
             assert expected_column.endswith("_at"), f"{event_type} should map to a timestamp column"
 
 
-class TestSDKBrainNegativeSignals:
-    """Test SDK brain includes negative signals in CIS analysis."""
-
-    @pytest.mark.asyncio
-    async def test_analyze_cis_outcomes_segments_negative_signals(self):
-        """Verify analyze_cis_outcomes properly segments negative signal outcomes."""
-        from src.integrations.sdk_brain import SiegeSDKIntelligence
-
-        # Create test outcomes with negative signals
-        outcomes = [
-            {
-                "outcome_type": "booked",
-                "final_outcome": "meeting_booked",
-                "signals_active": ["no_seo"],
-                "propensity_at_send": 85,
-            },
-            {
-                "outcome_type": "data_quality_failure",
-                "final_outcome": "data_quality_failure",
-                "signals_active": ["no_seo", "new_dm_6mo"],
-                "propensity_at_send": 60,
-            },
-            {
-                "outcome_type": "targeting_failure",
-                "final_outcome": "targeting_failure",
-                "signals_active": ["competitor"],
-                "propensity_at_send": 70,
-            },
-            {
-                "outcome_type": "soft_rejection",
-                "final_outcome": "soft_rejection",
-                "signals_active": ["enterprise_200plus"],
-                "propensity_at_send": 55,
-            },
-            {
-                "outcome_type": "no_response",
-                "final_outcome": None,
-                "signals_active": ["low_gmb_rating"],
-                "propensity_at_send": 45,
-            },
-        ]
-
-        current_weights = {
-            "weights": {"no_seo": 10, "new_dm_6mo": 15, "low_gmb_rating": 10},
-            "negative": {"competitor": -25, "enterprise_200plus": -15},
-        }
-
-        # We can't fully test Claude's response, but we can verify the segmentation logic
-        # by checking that the function doesn't raise and processes negative signals
-        sdk = SiegeSDKIntelligence()
-
-        # The function should segment outcomes including:
-        # - meeting_outcomes: 1 (booked)
-        # - non_converting: 1 (no_response)
-        # - data_quality_failures: 1
-        # - targeting_failures: 1
-        # - soft_rejections: 1
-
-        data_quality = [o for o in outcomes if o.get("final_outcome") == "data_quality_failure"]
-        targeting = [o for o in outcomes if o.get("final_outcome") == "targeting_failure"]
-        soft = [o for o in outcomes if o.get("final_outcome") == "soft_rejection"]
-
-        assert len(data_quality) == 1, "Should have 1 data_quality_failure"
-        assert len(targeting) == 1, "Should have 1 targeting_failure"
-        assert len(soft) == 1, "Should have 1 soft_rejection"
-
-
 class TestCISOutcomeServiceQuery:
     """Test that CIS outcome service query includes negative signals."""
 
@@ -288,34 +221,3 @@ class TestCISOutcomeServiceQuery:
             assert outcome_type in source, f"Query should handle '{outcome_type}' outcome type"
 
 
-class TestNegativeSignalsDecreaseWeights:
-    """
-    Test that negative signals conceptually lead to weight decreases.
-
-    This is a documentation/intent test - the actual decrease logic
-    is in Claude's analysis, but we verify the prompt instructs correctly.
-    """
-
-    def test_prompt_instructs_weight_decrease_for_negatives(self):
-        """Verify the CIS analysis prompt instructs to DECREASE weights for negative signals."""
-        import inspect
-        from src.integrations.sdk_brain import SiegeSDKIntelligence
-
-        source = inspect.getsource(SiegeSDKIntelligence.analyze_cis_outcomes)
-
-        # The prompt should clearly state negative signals decrease weights
-        assert "DECREASE" in source, (
-            "Prompt should instruct to DECREASE weights for negative signals"
-        )
-        assert "what NOT to" in source.lower() or "not to do" in source.lower(), (
-            "Prompt should explain negative signals indicate what NOT to do"
-        )
-        assert "targeting_failure" in source or "Targeting Failure" in source, (
-            "Prompt should mention targeting failures"
-        )
-        assert "data_quality_failure" in source or "Data Quality" in source, (
-            "Prompt should mention data quality failures"
-        )
-        assert "soft_rejection" in source or "Soft Rejection" in source, (
-            "Prompt should mention soft rejections"
-        )

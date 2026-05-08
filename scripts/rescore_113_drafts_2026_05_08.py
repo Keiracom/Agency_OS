@@ -62,7 +62,11 @@ def score_decay_factor(age_days: float) -> float:
     return 0.70
 
 
-PROPENSITY_DROP_THRESHOLD = 70  # Stage 4 default min_score_to_enrich
+# Send-gate threshold: 70 = hot-tier classification per bu_closed_loop_flow.py:159
+# + ARCHITECTURE.md §5 STAGE 2.5 social enrichment gate.
+# (Stage 4 default min_score_to_enrich is 30 per stage_4_scoring.py:85 — that's
+# the lower-stakes "spend more enrichment $$" gate, not the send gate.)
+PROPENSITY_DROP_THRESHOLD = 70
 
 
 async def main(apply: bool) -> int:

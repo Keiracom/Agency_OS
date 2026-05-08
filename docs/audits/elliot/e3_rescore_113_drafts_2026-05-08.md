@@ -23,7 +23,7 @@ Script: `scripts/rescore_113_drafts_2026_05_08.py`
    - age >= 180 days → 0.70
 3. Multiply current `bu.propensity_score` by decay factor
 4. Verdict bands:
-   - **DROP**: decayed propensity < 70 (Stage 4 default `min_score_to_enrich`)
+   - **DROP**: decayed propensity < 70 (send gate per `bu_closed_loop_flow.py:159` hot-tier classification + ARCHITECTURE.md §5 STAGE 2.5 social enrichment gate; **Stage 4 default `min_score_to_enrich` is 30** per `stage_4_scoring.py:85` — credit Aiden for citation correction)
    - **WARM**: 70-84
    - **HOT**: 85+
 5. Track which BU rows were re-enriched since message creation (`bu.updated_at > msg.created_at`)

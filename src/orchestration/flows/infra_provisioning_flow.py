@@ -58,6 +58,7 @@ def _domain_cost_per_year_aud() -> float:
 def _domain_cost_per_month_aud() -> float:
     return _domain_cost_per_year_aud() / 12
 
+
 # Default configuration
 DEFAULT_MAILBOXES_PER_DOMAIN = 2
 DEFAULT_DOMAINS_COUNT = 10

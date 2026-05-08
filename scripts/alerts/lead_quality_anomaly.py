@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import asyncio
 import os
-import subprocess
 import sys
 
 import asyncpg
@@ -41,7 +40,8 @@ async def main() -> int:
     if base == 0 or (base - cur) / base < DROP:
         return print(f"OK: 24h pass={cur:.1%} vs 7d={base:.1%}") or 0
     msg = f"[ELLIOT] 📉 lead quality anomaly: 24h pass-rate {cur:.1%} vs 7d {base:.1%} (drop ≥ {DROP * 100:.0f}%, threshold≥{PASS})"
-    subprocess.run(["tg", "-g", msg], check=False)
+    proc = await asyncio.create_subprocess_exec("tg", "-g", msg)
+    await proc.wait()
     return print(msg) or 0
 
 

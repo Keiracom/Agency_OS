@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import asyncio
 import os
-import subprocess
 import sys
 
 import asyncpg
@@ -38,7 +37,8 @@ async def main() -> int:
     msg = (
         f"[ELLIOT] {emoji} budget {label}: ${spent:.2f}/${BUDGET:.2f} AUD ({pct:.0f}% of daily cap)"
     )
-    subprocess.run(["tg", "-g", msg], check=False)
+    proc = await asyncio.create_subprocess_exec("tg", "-g", msg)
+    await proc.wait()
     print(msg)
     return 0
 

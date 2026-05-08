@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import asyncio
 import os
-import subprocess
 import sys
 
 import asyncpg
@@ -40,7 +39,8 @@ async def main() -> int:
         f"[ELLIOT] 📊 24h digest: ${float(cost['c']):.2f} AUD "
         f"({cost['n']} SDK calls, top {top_s}) | BU updates {bu_n} | leads {lead_n}"
     )
-    subprocess.run(["tg", "-g", msg], check=False)
+    proc = await asyncio.create_subprocess_exec("tg", "-g", msg)
+    await proc.wait()
     print(msg)
     return 0
 

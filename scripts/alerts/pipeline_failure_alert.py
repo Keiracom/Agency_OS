@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import asyncio
 import os
-import subprocess
 import sys
 
 import asyncpg
@@ -36,7 +35,8 @@ async def main() -> int:
         return 0
     parts = ", ".join(f"{r}={n}" for r, n in spikes)
     msg = f"[ELLIOT] ⚠️ pipeline failures (last {WINDOW_HOURS}h): {parts}"
-    subprocess.run(["tg", "-g", msg], check=False)
+    proc = await asyncio.create_subprocess_exec("tg", "-g", msg)
+    await proc.wait()
     print(msg)
     return 0
 

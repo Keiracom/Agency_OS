@@ -124,20 +124,36 @@ class ScoutEngine(BaseEngine):
 
     def __init__(
         self,
+        siege_waterfall: Any = None,
         camoufox_scraper: CamoufoxScraper | None = None,
     ):
         """
         Initialize Scout engine with integration clients.
 
         Args:
+            siege_waterfall: Optional WaterfallV2 instance (lazy init if not provided).
+                Kept named `siege_waterfall` for backward compatibility — the
+                underlying impl is `src/pipeline/waterfall_v2.py` (renamed from
+                siege_waterfall.py in PR-A #593). Tests + body still reference
+                `self.siege_waterfall` to avoid a 10+ call-site rename.
             camoufox_scraper: Optional CamoufoxScraper for LinkedIn (lazy init if not provided)
         """
+        self._siege_waterfall = siege_waterfall
         self._camoufox = camoufox_scraper
         self.leadmagic = get_leadmagic_client()
 
     @property
     def name(self) -> str:
         return "scout"
+
+    @property
+    def siege_waterfall(self) -> Any:
+        """Get or create WaterfallV2 instance (lazy init)."""
+        if self._siege_waterfall is None:
+            from src.pipeline.waterfall_v2 import WaterfallV2
+
+            self._siege_waterfall = WaterfallV2()
+        return self._siege_waterfall
 
     @property
     def camoufox(self) -> CamoufoxScraper:

@@ -33,12 +33,13 @@ export function FoundingSpots({
           const data = await response.json();
           setRemaining(data.spots_remaining);
         } else {
-          // Fallback if API not available
-          setRemaining(17);
+          // Fallback if API not available — must be truthful (zero customers,
+          // so all 20 spots are available). Was previously 17 (implying 3 taken).
+          setRemaining(20);
         }
       } catch {
-        // Fallback to static number if fetch fails
-        setRemaining(17);
+        // Fallback to static number if fetch fails — see note above.
+        setRemaining(20);
         setError(true);
       }
       setLoading(false);
@@ -130,10 +131,11 @@ export function useFoundingSpots() {
           setRemaining(data.spots_remaining);
           setTotalSpots(data.total_spots);
         } else {
-          setRemaining(17);
+          // Truthful fallback — zero customers, all 20 spots available.
+          setRemaining(20);
         }
       } catch {
-        setRemaining(17);
+        setRemaining(20);
       }
       setLoading(false);
     }

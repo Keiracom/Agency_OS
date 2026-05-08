@@ -22,8 +22,7 @@ def _make_row(
     dfs_organic_etv: float = 600.0,
 ) -> MagicMock:
     """Build a mock asyncpg.Record."""
-    row = MagicMock()
-    row.__getitem__ = lambda self, key: {
+    data = {
         "id": bu_id,
         "filter_reason": filter_reason,
         "gmb_rating": gmb_rating,
@@ -32,10 +31,14 @@ def _make_row(
         "dfs_organic_etv": dfs_organic_etv,
         "backlinks_count": 0,
         "updated_at": None,
+        "scored_at": None,
         "domain": "example.com.au",
         "gmb_category": "Plumber",
         "pipeline_stage": -1,
-    }[key]
+    }
+    row = MagicMock()
+    row.__getitem__ = lambda self, key: data[key]
+    row.get = lambda key, default=None: data.get(key, default)
     return row
 
 

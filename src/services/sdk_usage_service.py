@@ -85,7 +85,7 @@ async def log_sdk_usage(
             :id, :client_id, :lead_id, :campaign_id, :user_id,
             :agent_type, :model_used,
             :input_tokens, :output_tokens, :cached_tokens, :cost_aud,
-            :turns_used, :duration_ms, :tool_calls::jsonb,
+            :turns_used, :duration_ms, CAST(:tool_calls AS jsonb),
             :success, :error_message, :created_at
         )
     """)

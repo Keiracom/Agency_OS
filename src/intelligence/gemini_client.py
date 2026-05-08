@@ -143,7 +143,9 @@ class GeminiClient:
         result: dict[str, Any] = {"input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0}
         try:
             result = await gemini_call_with_retry(
-                api_key=self.api_key, model=model, **call_kwargs,
+                api_key=self.api_key,
+                model=model,
+                **call_kwargs,
             )
             if result.get("f_status") != "success":
                 success = False

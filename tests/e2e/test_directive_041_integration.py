@@ -172,8 +172,11 @@ async def run_waterfall_on_lead(lead: dict) -> IntegrationTestResult:
     """
     from decimal import Decimal
 
-    # Cost constants from waterfall_verification_worker.py
-    COSTS_AUD = {
+    # Vendor pricing in USD (mirrors waterfall_verification_worker.py COSTS_USD).
+    # AUD conversion via settings.aud_per_usd at accumulation time (LAW II SSOT).
+    from src.config.settings import settings as _settings
+
+    COSTS_USD = {
         "abn_seed": Decimal("0.00"),
         "asic_verify": Decimal("0.00"),
         "gmb_scraper": Decimal("0.0062"),
@@ -184,6 +187,10 @@ async def run_waterfall_on_lead(lead: dict) -> IntegrationTestResult:
         "dm3_x_posts": Decimal("0.0030"),
     }
 
+    def _cost_aud(key: str) -> Decimal:
+        """Convert USD vendor cost to AUD via settings SSOT (LAW II)."""
+        return COSTS_USD[key] * Decimal(str(_settings.aud_per_usd))
+
     result = IntegrationTestResult(lead)
 
     try:
@@ -193,23 +200,23 @@ async def run_waterfall_on_lead(lead: dict) -> IntegrationTestResult:
 
         # Simulate T1: ABN Seed
         result.tiers_hit.append("T1_ABN_SEED")
-        result.total_cost_aud += COSTS_AUD["abn_seed"]
+        result.total_cost_aud += _cost_aud("abn_seed")
 
         # Simulate T1.25: ASIC Verify
         result.tiers_hit.append("T1.25_ASIC_VERIFY")
-        result.total_cost_aud += COSTS_AUD["asic_verify"]
+        result.total_cost_aud += _cost_aud("asic_verify")
 
         # Simulate T2: GMB Scraper
         result.tiers_hit.append("T2_GMB_SCRAPER")
-        result.total_cost_aud += COSTS_AUD["gmb_scraper"]
+        result.total_cost_aud += _cost_aud("gmb_scraper")
 
         # Simulate T3: Hunter.io
         result.tiers_hit.append("T3_HUNTER_IO")
-        result.total_cost_aud += COSTS_AUD["hunter_io"]
+        result.total_cost_aud += _cost_aud("hunter_io")
 
         # T-DM0: LinkedIn Discovery (always runs)
         result.tiers_hit.append("T_DM0_LINKEDIN_DISCOVERY")
-        result.total_cost_aud += COSTS_AUD["dm0_linkedin_discovery"]
+        result.total_cost_aud += _cost_aud("dm0_linkedin_discovery")
 
         # Check ALS threshold for social intelligence
         if lead["propensity_score"] >= 70:
@@ -222,7 +229,7 @@ async def run_waterfall_on_lead(lead: dict) -> IntegrationTestResult:
             # posts = await worker._tier_dm2_linkedin_posts(dm_linkedin_url)
             # For now, we mark it as hit and add cost
             result.tiers_hit.append("T_DM2_LINKEDIN_POSTS")
-            result.total_cost_aud += COSTS_AUD["dm2_linkedin_posts"]
+            result.total_cost_aud += _cost_aud("dm2_linkedin_posts")
 
             # T-DM3: X Posts
             logger.info(
@@ -233,7 +240,7 @@ async def run_waterfall_on_lead(lead: dict) -> IntegrationTestResult:
             # x_handle = await worker._discover_x_handle(website, dm_name, registered_name)
             # posts = await worker._tier_dm3_x_posts(x_handle)
             result.tiers_hit.append("T_DM3_X_POSTS")
-            result.total_cost_aud += COSTS_AUD["dm3_x_posts"]
+            result.total_cost_aud += _cost_aud("dm3_x_posts")
         else:
             # Below ALS threshold
             result.tiers_skipped.append("T_DM2_LINKEDIN_POSTS")

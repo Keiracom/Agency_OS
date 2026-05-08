@@ -21,8 +21,33 @@ GEMINI_MODEL = "gemini-2.5-flash"
 GEMINI_MODEL_DM = "gemini-3.1-pro-preview"
 GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta"
 
-INPUT_COST = 0.00000015  # per token
-OUTPUT_COST = 0.0000006  # per token
+# Per-token Gemini pricing in USD per Google's published rates as of 2026-05-08.
+# Source: https://ai.google.dev/gemini-api/docs/pricing
+# AUD conversion happens downstream in sdk_usage_log writers (LAW II SSOT).
+# Unknown models fall back to flash rates and emit a one-time warning.
+GEMINI_PRICING_USD: dict[str, dict[str, float]] = {
+    # Gemini 2.5 Flash: $0.15 / $0.60 per 1M tokens
+    "gemini-2.5-flash": {"input": 0.15 / 1_000_000, "output": 0.60 / 1_000_000},
+    # Gemini 3.1 Pro Preview: $1.25 / $10.00 per 1M tokens (used for DM-verify)
+    "gemini-3.1-pro-preview": {"input": 1.25 / 1_000_000, "output": 10.00 / 1_000_000},
+}
+_FALLBACK_PRICE = GEMINI_PRICING_USD["gemini-2.5-flash"]
+_warned_unknown_models: set[str] = set()
+
+
+def _price_for(model: str) -> dict[str, float]:
+    """Return per-token USD pricing for a Gemini model. Falls back to flash rates with a one-time warning."""
+    price = GEMINI_PRICING_USD.get(model)
+    if price is not None:
+        return price
+    if model not in _warned_unknown_models:
+        logger.warning(
+            "gemini_retry: no pricing for model %s — falling back to gemini-2.5-flash rates "
+            "(cost will be approximate; add to GEMINI_PRICING_USD)",
+            model,
+        )
+        _warned_unknown_models.add(model)
+    return _FALLBACK_PRICE
 
 
 async def gemini_call_with_retry(
@@ -111,7 +136,8 @@ async def gemini_call_with_retry(
             usage = data.get("usageMetadata", {})
             in_tok = usage.get("promptTokenCount", 0)
             out_tok = usage.get("candidatesTokenCount", 0)
-            cost = in_tok * INPUT_COST + out_tok * OUTPUT_COST
+            price = _price_for(effective_model)
+            cost = in_tok * price["input"] + out_tok * price["output"]
             total_in += in_tok
             total_out += out_tok
             total_cost += cost

@@ -26,10 +26,115 @@ import json
 import logging
 import os
 import re
+import time
+from uuid import UUID
 
 import httpx
 
 logger = logging.getLogger(__name__)
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# E1 cost instrumentation — Phase 1 deliverable per Dave's PHASE_1_KICKOFF.
+# Round 1: log every Anthropic call to sdk_usage_log via best-effort writer.
+# Round 2 (deferred): per-vendor tracking (DataForSEO, Bright Data, Leadmagic,
+# ContactOut). Any dashboard surfacing aggregated "per-prospect cost" from
+# sdk_usage_log alone must label it AI-ONLY until R2 vendor tracking lands.
+# ────────────────────────────────────────────────────────────────────────────
+
+# Sentinel client row — must pre-exist in `public.clients` table. Run
+# scripts/insert_system_pipeline_client.sql once before pipeline runs.
+# CASCADE FOOTGUN: sdk_usage_log.client_id has ON DELETE CASCADE → if this
+# row is deleted, every sdk_usage_log row referencing it goes too. Helper
+# below has a pre-write guard that refuses writes if the row is missing.
+SYSTEM_PIPELINE_CLIENT_ID = UUID("00000000-0000-0000-0000-000000000001")
+
+# Per-token Anthropic pricing in USD per their public pricing page.
+# AUD conversion derived at runtime via settings.aud_per_usd (LAW II SSOT).
+# Source of truth (USD): https://www.anthropic.com/api/pricing as of 2026-05-08.
+#
+# Includes both DATED full IDs (the response model_id Anthropic returns) AND
+# UNDATED aliases (what callsites in this module pass as `model=` — see
+# _MODEL_SONNET / _MODEL_HAIKU below). Without the alias keys, the pricing
+# lookup misses every real call and the helper warn-and-skips silently —
+# captured by Aiden review on PR #630.
+_HAIKU_PRICE = {"input": 0.80 / 1_000_000, "output": 4.00 / 1_000_000}
+_SONNET_PRICE = {"input": 3.00 / 1_000_000, "output": 15.00 / 1_000_000}
+ANTHROPIC_PRICING_USD = {
+    # Claude 3.5 Haiku (legacy): $0.80 / $4.00 per 1M tokens
+    "claude-3-5-haiku-20241022": _HAIKU_PRICE,
+    # Claude Haiku 4.5
+    "claude-haiku-4-5-20251001": _HAIKU_PRICE,
+    "claude-haiku-4-5": _HAIKU_PRICE,  # alias used by _MODEL_HAIKU
+    # Claude Sonnet 4: $3.00 / $15.00 per 1M tokens
+    "claude-sonnet-4-20250514": _SONNET_PRICE,
+    # Claude Sonnet 4.5 / 4.6 (1M context)
+    "claude-sonnet-4-5": _SONNET_PRICE,  # alias used by _MODEL_SONNET
+    "claude-sonnet-4-6": _SONNET_PRICE,
+}
+
+
+async def _log_anthropic_call_to_sdk_usage(
+    model: str,
+    input_tokens: int,
+    output_tokens: int,
+    duration_ms: int,
+    *,
+    success: bool = True,
+    error_message: str | None = None,
+) -> None:
+    """Best-effort write of an Anthropic call to sdk_usage_log (E1 R1, AI-only).
+
+    Never raises. If sentinel row missing or DB write fails, logs a warning
+    and returns. Pipeline continues regardless.
+    """
+    try:
+        from sqlalchemy import text  # local import — avoid cold-path cost
+
+        from src.config.settings import settings
+        from src.integrations.supabase import get_db_session
+        from src.services.sdk_usage_service import log_sdk_usage
+
+        pricing = ANTHROPIC_PRICING_USD.get(model)
+        if not pricing:
+            logger.warning("E1: no pricing for model %s — sdk_usage_log write skipped", model)
+            return
+
+        cost_usd = pricing["input"] * input_tokens + pricing["output"] * output_tokens
+        cost_aud = cost_usd * settings.aud_per_usd
+
+        async with get_db_session() as db:
+            # Pre-write sentinel guard. ON DELETE CASCADE on the FK means
+            # if anyone DELETEs SYSTEM_PIPELINE_CLIENT_ID, every row here
+            # vanishes. Guard refuses to write rather than 500 on FK violation.
+            sentinel_check = await db.execute(
+                text("SELECT 1 FROM clients WHERE id = :id AND deleted_at IS NULL"),
+                {"id": SYSTEM_PIPELINE_CLIENT_ID},
+            )
+            if sentinel_check.scalar() is None:
+                logger.warning(
+                    "E1: SYSTEM_PIPELINE_CLIENT_ID %s missing from clients — "
+                    "run scripts/insert_system_pipeline_client.sql first. "
+                    "sdk_usage_log write skipped.",
+                    SYSTEM_PIPELINE_CLIENT_ID,
+                )
+                return
+
+            await log_sdk_usage(
+                db=db,
+                client_id=SYSTEM_PIPELINE_CLIENT_ID,
+                agent_type="pipeline_intelligence",
+                model_used=model,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                cost_aud=cost_aud,
+                duration_ms=duration_ms,
+                success=success,
+                error_message=error_message,
+            )
+    except Exception as e:
+        logger.warning("E1: sdk_usage_log write failed (best-effort): %s", e)
+
 
 # ── Semaphores — defined here and re-exported; pipeline_orchestrator imports these ──
 # Defined in intelligence.py to avoid circular import with pipeline_orchestrator.
@@ -132,15 +237,39 @@ async def _call_anthropic(
         "system": system_blocks,
         "messages": [{"role": "user", "content": user_content}],
     }
-    async with httpx.AsyncClient(timeout=60.0) as client:
-        resp = await client.post(_ANTHROPIC_API, headers=headers, json=payload)
-        resp.raise_for_status()
-        data = resp.json()
+    started_at = time.time()
+    success = True
+    error_msg: str | None = None
+    in_tok = out_tok = 0
+    text = ""
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            resp = await client.post(_ANTHROPIC_API, headers=headers, json=payload)
+            resp.raise_for_status()
+            data = resp.json()
 
-    text = data["content"][0]["text"] if data.get("content") else ""
-    usage = data.get("usage", {})
-    in_tok = usage.get("input_tokens", 0)
-    out_tok = usage.get("output_tokens", 0)
+        text = data["content"][0]["text"] if data.get("content") else ""
+        usage = data.get("usage", {})
+        in_tok = usage.get("input_tokens", 0)
+        out_tok = usage.get("output_tokens", 0)
+    except Exception as e:
+        success = False
+        error_msg = str(e)[:500]
+        raise
+    finally:
+        # E1: best-effort cost log. Never breaks the call.
+        duration_ms = int((time.time() - started_at) * 1000)
+        try:
+            await _log_anthropic_call_to_sdk_usage(
+                model=model,
+                input_tokens=in_tok,
+                output_tokens=out_tok,
+                duration_ms=duration_ms,
+                success=success,
+                error_message=error_msg,
+            )
+        except Exception:
+            pass
     return text, in_tok, out_tok
 
 

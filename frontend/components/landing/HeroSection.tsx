@@ -86,7 +86,7 @@ export default function AgencyOSHero() {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber opacity-75" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-amber" />
               </span>
-              <span className="text-sm text-ink/90 font-medium">Only 17 of 20 founding spots remaining</span>
+              <span className="text-sm text-ink/90 font-medium">20 founding spots available</span>
             </div>
 
             {/* Headline - Mint gradient */}

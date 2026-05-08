@@ -76,8 +76,11 @@ class MatchConfidence(StrEnum):
     NO_MATCH = "no_match"  # Below threshold or no GMB result
 
 
-# Cost per operation in AUD (2026 pricing)
-COSTS_AUD = {
+# Vendor pricing in USD (Bright Data, Leadmagic, DataForSEO, ZeroBounce all
+# bill in USD per their public pricing pages). AUD conversion happens at
+# runtime via _cost_aud() using settings.aud_per_usd (LAW II SSOT). Do NOT
+# pre-multiply by 1.55 here — see _cost_aud() helper.
+COSTS_USD = {
     VerificationTier.ABN_SEED: Decimal("0.00"),  # Free (data.gov.au)
     VerificationTier.ASIC_VERIFY: Decimal("0.00"),  # Free (ABR SearchByASIC) - CEO Directive #039
     VerificationTier.GMB_SCRAPER: Decimal("0.0062"),  # GMB scraper (Bright Data)
@@ -93,6 +96,14 @@ COSTS_AUD = {
         "0.0030"
     ),  # Bright Data X Posts ($0.0015) + X handle discovery ($0.0015)
 }
+
+
+def _cost_aud(tier: "VerificationTier") -> Decimal:
+    """Return AUD-converted cost for a verification tier (LAW II)."""
+    from src.config.settings import settings
+
+    return COSTS_USD[tier] * Decimal(str(settings.aud_per_usd))
+
 
 # Bright Data Dataset IDs for T-DM2 and T-DM3
 BRIGHTDATA_LINKEDIN_POSTS_DATASET = "gd_lyy3tktm25m4avu764"
@@ -428,7 +439,7 @@ class WaterfallVerificationWorker(BaseEngine):
                 step_number=step_number,
                 step_type="source",
                 source_name=VerificationTier.ABN_SEED.value,
-                cost_aud=COSTS_AUD[VerificationTier.ABN_SEED],
+                cost_aud=_cost_aud(VerificationTier.ABN_SEED),
                 success=abn_result is not None,
                 data_added=["abn", "legal_name", "entity_type"] if abn_result else [],
                 latency_ms=latency_ms,
@@ -463,7 +474,7 @@ class WaterfallVerificationWorker(BaseEngine):
                     step_number=step_number,
                     step_type="verification",
                     source_name=VerificationTier.ASIC_VERIFY.value,
-                    cost_aud=COSTS_AUD[VerificationTier.ASIC_VERIFY],
+                    cost_aud=_cost_aud(VerificationTier.ASIC_VERIFY),
                     success=asic_success,
                     data_added=["registered_name", "acn"] if asic_success else [],
                     latency_ms=latency_ms,
@@ -549,7 +560,7 @@ class WaterfallVerificationWorker(BaseEngine):
                     step_number=step_number,
                     step_type="enrichment",
                     source_name=VerificationTier.DM2_LINKEDIN_POSTS.value,
-                    cost_aud=COSTS_AUD[VerificationTier.DM2_LINKEDIN_POSTS],
+                    cost_aud=_cost_aud(VerificationTier.DM2_LINKEDIN_POSTS),
                     success=dm2_success,
                     data_added=["dm_linkedin_posts"] if dm2_success else [],
                     latency_ms=latency_ms,
@@ -595,7 +606,7 @@ class WaterfallVerificationWorker(BaseEngine):
                     step_number=step_number,
                     step_type="enrichment",
                     source_name=VerificationTier.DM3_X_POSTS.value,
-                    cost_aud=COSTS_AUD[VerificationTier.DM3_X_POSTS],
+                    cost_aud=_cost_aud(VerificationTier.DM3_X_POSTS),
                     success=dm3_success,
                     data_added=["dm_x_handle", "dm_x_posts"]
                     if dm3_success
@@ -678,7 +689,7 @@ class WaterfallVerificationWorker(BaseEngine):
                 step_number=step_number,
                 step_type="enrichment",
                 source_name=VerificationTier.GMB_SCRAPER.value,
-                cost_aud=COSTS_AUD[VerificationTier.GMB_SCRAPER],
+                cost_aud=_cost_aud(VerificationTier.GMB_SCRAPER),
                 success=gmb_success,
                 data_added=data_added,
                 error_message=errors[-1] if not gmb_success else None,
@@ -747,7 +758,7 @@ class WaterfallVerificationWorker(BaseEngine):
                             step_number=step_number,
                             step_type="verification",
                             source_name=VerificationTier.ZEROBOUNCE.value,
-                            cost_aud=COSTS_AUD[VerificationTier.ZEROBOUNCE],
+                            cost_aud=_cost_aud(VerificationTier.ZEROBOUNCE),
                             success=zb_success,
                             data_added=["email_verified"] if zb_success else [],
                             error_message=errors[-1] if not zb_success else None,
@@ -762,7 +773,7 @@ class WaterfallVerificationWorker(BaseEngine):
                     step_number=step_number if not needs_escalation else step_number - 1,
                     step_type="verification",
                     source_name=VerificationTier.LEADMAGIC_EMAIL.value,
-                    cost_aud=COSTS_AUD[VerificationTier.LEADMAGIC_EMAIL],
+                    cost_aud=_cost_aud(VerificationTier.LEADMAGIC_EMAIL),
                     success=leadmagic_success,
                     data_added=data_added,
                     error_message=None if leadmagic_success else errors[-1],

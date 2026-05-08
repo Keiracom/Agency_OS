@@ -55,100 +55,11 @@ async def test_pool_population_handles_empty_gmb():
 # ============================================
 # FIX 3: test_enrich_tier_failure_continues
 # ============================================
-
-
-@pytest.mark.asyncio
-async def test_enrich_tier_failure_continues():
-    """
-    FIX 3: When one enrichment tier raises an unexpected exception, subsequent tiers
-    must still run. Specifically: T1 ABN raising should NOT prevent T3 Leadmagic.
-    """
-    from src.integrations.siege_waterfall import EnrichmentTier, SiegeWaterfall, TierResult
-
-    waterfall = SiegeWaterfall()
-
-    # T1 ABN: raises an unexpected exception
-    async def boom_abn(lead):
-        raise RuntimeError("ABN service exploded")
-
-    # T1.5 LinkedIn: returns skipped (no URL)
-    async def skip_linkedin(lead, icp_passed=True):
-        return TierResult(
-            tier=EnrichmentTier.LINKEDIN_COMPANY,
-            success=False,
-            skipped=True,
-            skip_reason="No company LinkedIn URL available",
-        )
-
-    # T3 Leadmagic: returns success (verifies it ran despite T1 failure)
-    async def success_leadmagic(lead):
-        return TierResult(
-            tier=EnrichmentTier.LEADMAGIC_EMAIL,
-            success=True,
-            data={"email": "test@example.com"},
-            cost_aud=0.015,
-        )
-
-    # T2 GMB: returns skipped
-    async def skip_gmb(lead):
-        return TierResult(
-            tier=EnrichmentTier.GMB,
-            success=False,
-            skipped=True,
-            skip_reason="T0 discovery already has GMB data (T0/T2 merge)",
-        )
-
-    # T5: skipped
-    async def skip_t5(lead, als, force=False):
-        return TierResult(
-            tier=EnrichmentTier.IDENTITY,
-            success=False,
-            skipped=True,
-            skip_reason="ALS 40 < 85 threshold",
-        )
-
-    waterfall.tier1_abn = boom_abn
-    waterfall.tier1_5_linkedin_company = skip_linkedin
-    waterfall.tier2_gmb = skip_gmb
-    waterfall.tier3_leadmagic_email = success_leadmagic
-    waterfall.tier5_identity = skip_t5
-
-    # Also mock resolve_linkedin_url — tag linkedin_url_unknown=True so SIZE_GATE is bypassed
-    async def skip_resolve(lead):
-        return TierResult(
-            tier=EnrichmentTier.LINKEDIN_COMPANY,
-            success=False,
-            data={"linkedin_url_unknown": True},  # Bypass SIZE_GATE (Directive #148)
-            skip_reason="No company LinkedIn URL found via SERP",
-        )
-
-    waterfall.resolve_linkedin_url = skip_resolve
-
-    # Patch _calculate_als to return 40 (above T3 gate of 35, below T5 gate of 85)
-    with patch.object(waterfall, "_calculate_als", return_value=40):
-        result = await waterfall.enrich_lead(
-            {
-                "company_name": "Acme Corp",
-                "email": "owner@acme.com.au",
-                "domain": "acme.com.au",
-                "company_linkedin_url": None,
-            },
-            skip_tiers=[],
-        )
-
-    # T1 failed (exception swallowed) — should appear as failed tier
-    t1_results = [r for r in result.tier_results if r.tier == EnrichmentTier.ABN]
-    assert len(t1_results) == 1
-    assert t1_results[0].success is False
-    assert "ABN service exploded" in (t1_results[0].error or "")
-
-    # T3 Leadmagic should have succeeded (proving it ran despite T1 failure)
-    t3_results = [r for r in result.tier_results if r.tier == EnrichmentTier.LEADMAGIC_EMAIL]
-    assert len(t3_results) == 1, "Tier 3 should have run despite Tier 1 failure"
-    assert t3_results[0].success is True, "Tier 3 should have succeeded"
-
-    # At least 1 source used (T3)
-    assert result.sources_used >= 1
+# REMOVED: src/integrations/siege_waterfall.py was deleted in 89272b2d
+# (PR-A cleanup, "replaced by current pipeline waterfall"). The
+# SiegeWaterfall class and its EnrichmentTier/TierResult types no longer
+# exist; the per-tier graceful-degradation guarantee this test asserted
+# now lives in src/pipeline/ and should be re-tested there if needed.
 
 
 # ============================================

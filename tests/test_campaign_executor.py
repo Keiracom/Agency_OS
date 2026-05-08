@@ -102,7 +102,7 @@ def test_sequence_step_not_found_raises():
     with pytest.raises(ValueError, match="Step 99 not found"):
         import asyncio
 
-        asyncio.get_event_loop().run_until_complete(executor.run())
+        asyncio.run(executor.run())
 
 
 def test_summary_empty_before_run():

@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from src.integrations.dfs_serp_client import (
-    COST_PER_SERP_AUD,
+    _cost_per_serp_aud,
     DFS_STATUS_SUCCESS,
     DFSSerpClient,
 )
@@ -199,7 +199,7 @@ async def test_cost_tracking_increments():
         await client.find_decision_maker("Corp", "Sydney", "NSW")
 
     assert client.queries_made == 3, f"Expected 3 queries, got {client.queries_made}"
-    expected_cost = Decimal("3") * COST_PER_SERP_AUD
+    expected_cost = Decimal("3") * _cost_per_serp_aud()
     assert client.estimated_cost_aud == expected_cost, (
         f"Expected cost {expected_cost}, got {client.estimated_cost_aud}"
     )

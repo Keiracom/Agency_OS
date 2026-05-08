@@ -31,10 +31,13 @@ DATASET_IDS = {
     "x_posts": "gd_lwdb4vjm1qvm96sbq2",  # X/Twitter posts dataset
 }
 
-COSTS_AUD = {
+# Vendor pricing in USD (Bright Data bills in USD per their public pricing page).
+# AUD conversion happens at runtime via _cost_aud() using settings.aud_per_usd
+# (LAW II SSOT). Do NOT pre-multiply by 1.55 here — see _cost_aud() helper.
+COSTS_USD = {
     "serp_request": 0.0015,
     "scraper_record": 0.0015,
-    # Siege Waterfall v3 costs (Directive #144)
+    # Pipeline F costs (Directive #144)
     "gmb_discovery": 0.001,  # T0 GMB-first discovery
     "gmb_reviews": 0.001,  # T2.5 GMB reviews
     "linkedin_company": 0.025,  # T1.5 LinkedIn company
@@ -42,6 +45,13 @@ COSTS_AUD = {
     "linkedin_posts": 0.0015,  # T-DM2 LinkedIn posts 90d
     "x_posts": 0.0025,  # T-DM3 X posts 90d
 }
+
+
+def _cost_aud(key: str, count: int = 1) -> float:
+    """Return AUD-converted cost for `count` calls of pricing key (LAW II)."""
+    from src.config.settings import settings
+
+    return COSTS_USD[key] * settings.aud_per_usd * count
 
 
 class BrightDataError(Exception):
@@ -59,10 +69,9 @@ class CostTracker:
 
     @property
     def total_aud(self) -> float:
-        """Calculate total cost in AUD for this session"""
-        return (
-            self.serp_requests * COSTS_AUD["serp_request"]
-            + self.scraper_records * COSTS_AUD["scraper_record"]
+        """Calculate total cost in AUD for this session (LAW II)."""
+        return _cost_aud("serp_request", count=self.serp_requests) + _cost_aud(
+            "scraper_record", count=self.scraper_records
         )
 
 
@@ -446,7 +455,7 @@ class BrightDataClient:
             category=category,
             location=location,
             records=records_returned,
-            cost_aud=records_returned * COSTS_AUD["gmb_discovery"],
+            cost_aud=_cost_aud("gmb_discovery", count=records_returned),
         )
 
         return results[:limit]
@@ -478,7 +487,7 @@ class BrightDataClient:
                 "gmb_reviews_complete",
                 place_id=place_id,
                 reviews_count=len(reviews),
-                cost_aud=COSTS_AUD["gmb_reviews"],
+                cost_aud=_cost_aud("gmb_reviews"),
             )
             return reviews
 
@@ -518,7 +527,7 @@ class BrightDataClient:
                 "linkedin_company_enriched",
                 url=linkedin_url,
                 has_posts=bool(result.get("updates", [])),
-                cost_aud=COSTS_AUD["linkedin_company"],
+                cost_aud=_cost_aud("linkedin_company"),
             )
             return result
 
@@ -593,7 +602,7 @@ class BrightDataClient:
             logger.info(
                 "linkedin_profile_enriched",
                 url=linkedin_url,
-                cost_aud=COSTS_AUD["linkedin_profile"],
+                cost_aud=_cost_aud("linkedin_profile"),
             )
             return result
 
@@ -647,7 +656,7 @@ class BrightDataClient:
                 "linkedin_posts_90d_complete",
                 url=linkedin_url,
                 posts_count=len(filtered_posts),
-                cost_aud=COSTS_AUD["linkedin_posts"],
+                cost_aud=_cost_aud("linkedin_posts"),
             )
             return filtered_posts
 
@@ -740,7 +749,7 @@ class BrightDataClient:
             first_name=first_name,
             last_name=last_name,
             title=title,
-            cost_aud=COSTS_AUD["linkedin_profile"],
+            cost_aud=_cost_aud("linkedin_profile"),
         )
 
         return {
@@ -797,7 +806,7 @@ class BrightDataClient:
                 "x_posts_90d_complete",
                 handle=handle,
                 posts_count=len(filtered_posts),
-                cost_aud=COSTS_AUD["x_posts"],
+                cost_aud=_cost_aud("x_posts"),
             )
             return filtered_posts
 
@@ -813,9 +822,9 @@ class BrightDataClient:
         """Return costs by method/tier."""
         return {
             "serp_requests": self.costs.serp_requests,
-            "serp_cost_aud": self.costs.serp_requests * COSTS_AUD["serp_request"],
+            "serp_cost_aud": _cost_aud("serp_request", count=self.costs.serp_requests),
             "scraper_records": self.costs.scraper_records,
-            "scraper_cost_aud": self.costs.scraper_records * COSTS_AUD["scraper_record"],
+            "scraper_cost_aud": _cost_aud("scraper_record", count=self.costs.scraper_records),
             "total_aud": self.costs.total_aud,
         }
 

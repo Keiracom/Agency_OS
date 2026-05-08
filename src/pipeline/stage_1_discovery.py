@@ -18,6 +18,7 @@ from typing import Any
 
 import asyncpg
 
+from src.config.settings import settings
 from src.integrations.dfs_labs_client import DFSLabsClient
 from src.pipeline.signal_config import SignalConfigRepository
 from src.utils.domain_blocklist import is_blocked
@@ -99,7 +100,7 @@ class Stage1Discovery:
             "duplicates_skipped": total_duplicates,
             "api_calls": total_api_calls,
             "cost_usd": cost_usd,
-            "cost_aud": round(cost_usd * 1.55, 4),
+            "cost_aud": round(cost_usd * settings.aud_per_usd, 4),
             "technologies_searched": len(technologies),
         }
         logger.info(f"Stage 1 complete: {result}")

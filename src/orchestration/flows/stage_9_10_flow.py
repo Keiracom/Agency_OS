@@ -40,6 +40,7 @@ def _logger() -> logging.Logger:
     return logging.getLogger(__name__)
 
 
+from src.config.settings import settings
 from src.exceptions import AgencyProfileMissingError
 from src.pipeline.signal_config import SignalConfigRepository
 from src.pipeline.stage_9_vulnerability_enrichment import Stage9VulnerabilityEnrichment
@@ -221,7 +222,7 @@ async def stage_9_10_pipeline(
                     "stage_9_contactout_usd": round(s9_co_cost, 4),
                     "stage_10_messages_usd": round(s10_cost, 4),
                     "total_usd": round(total_est, 4),
-                    "total_aud": round(total_est * 1.55, 4),
+                    "total_aud": round(total_est * settings.aud_per_usd, 4),
                 },
                 "expected_writes": {
                     "business_universe.vulnerability_report": len(selected),
@@ -278,7 +279,7 @@ async def stage_9_10_pipeline(
             "stage_10": s10_result,
             "channel_counts": channel_counts,
             "total_cost_usd": round(total_cost, 6),
-            "total_cost_aud": round(total_cost * 1.55, 4),
+            "total_cost_aud": round(total_cost * settings.aud_per_usd, 4),
             "budget_cap_usd": budget_cap_usd,
         }
 

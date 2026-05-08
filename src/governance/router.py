@@ -28,13 +28,14 @@ from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from typing import Any, Literal
 
+from src.config.settings import settings
 from src.telegram_bot.openai_cost_logger import COST_LOG_PATH, log_openai_call
 
 logger = logging.getLogger(__name__)
 
 Audience = Literal["dave", "peer", "system"]
 DEFAULT_MODEL = "gpt-4o-mini"
-_USD_TO_AUD = 1.55
+# AUD/USD conversion lives in settings.aud_per_usd (LAW II SSOT).
 _DEFAULT_DAILY_CAP_AUD = 5.00
 
 
@@ -64,7 +65,7 @@ def _daily_cost_usd_today() -> float:
 def _over_daily_cap() -> bool:
     """Return True if today's OpenAI spend (converted to AUD) exceeds ROUTER_DAILY_CAP_AUD."""
     cap_aud = float(os.environ.get("ROUTER_DAILY_CAP_AUD", _DEFAULT_DAILY_CAP_AUD))
-    spent_aud = _daily_cost_usd_today() * _USD_TO_AUD
+    spent_aud = _daily_cost_usd_today() * settings.aud_per_usd
     if spent_aud >= cap_aud:
         logger.warning(
             "router: daily cap reached ($%.4f AUD of $%.2f AUD limit); skipping OpenAI classifier",
@@ -186,7 +187,7 @@ def classify(
                 callsign=cs,
                 event_type="router_cost_cap_reached",
                 event_data={
-                    "spent_aud": round(_daily_cost_usd_today() * _USD_TO_AUD, 4),
+                    "spent_aud": round(_daily_cost_usd_today() * settings.aud_per_usd, 4),
                     "cap_aud": float(
                         os.environ.get("ROUTER_DAILY_CAP_AUD", _DEFAULT_DAILY_CAP_AUD)
                     ),

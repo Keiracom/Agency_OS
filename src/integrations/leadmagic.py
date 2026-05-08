@@ -70,9 +70,18 @@ logger = logging.getLogger(__name__)
 BASE_URL = "https://api.leadmagic.io"
 DEFAULT_TIMEOUT = 30.0
 
-# Cost per operation in $AUD (LAW II compliance)
-COST_EMAIL_FINDER_AUD = 0.015  # T3 email enrichment
-COST_MOBILE_FINDER_AUD = 0.077  # T5 mobile enrichment
+# Vendor pricing in USD (Leadmagic bills in USD per their public pricing page).
+# AUD conversion happens at runtime via _cost_aud() using settings.aud_per_usd
+# (LAW II SSOT). Do NOT pre-multiply by 1.55 here.
+COST_EMAIL_FINDER_USD = 0.015  # T3 email enrichment
+COST_MOBILE_FINDER_USD = 0.077  # T5 mobile enrichment
+
+
+def _cost_aud(usd: float) -> float:
+    """Convert USD vendor cost to AUD using settings SSOT (LAW II)."""
+    from src.config.settings import settings
+
+    return usd * settings.aud_per_usd
 
 # Rate limiting
 MAX_REQUESTS_PER_SECOND = 10
@@ -599,7 +608,7 @@ class LeadmagicClient:
             except ValueError:
                 status = EmailStatus.UNKNOWN
 
-            cost = self._track_cost(COST_EMAIL_FINDER_AUD) if found else 0.0
+            cost = self._track_cost(_cost_aud(COST_EMAIL_FINDER_USD)) if found else 0.0
 
             return EmailFinderResult(
                 found=found,
@@ -718,7 +727,7 @@ class LeadmagicClient:
             if first_name and last_name:
                 full_name = f"{first_name} {last_name}"
 
-            cost = self._track_cost(COST_MOBILE_FINDER_AUD) if found else 0.0
+            cost = self._track_cost(_cost_aud(COST_MOBILE_FINDER_USD)) if found else 0.0
 
             return MobileFinderResult(
                 found=found,

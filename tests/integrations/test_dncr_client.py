@@ -6,16 +6,15 @@ from __future__ import annotations
 
 import os
 import sys
-from datetime import datetime, timedelta, timezone
-from unittest.mock import MagicMock, patch
+from datetime import UTC, datetime, timedelta
+from unittest.mock import MagicMock
 
 import httpx
-import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src"))
 
-from src.integrations.dncr import DNCRClient, DNCRResult
-
+from src.integrations.dncr import DNCRResult
+from src.integrations.dncr import SyncDNCRClient as DNCRClient
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -40,7 +39,7 @@ def _mock_response(
     return mock_client
 
 
-_BASE_TIME = datetime(2025, 6, 1, 12, 0, 0, tzinfo=timezone.utc)
+_BASE_TIME = datetime(2025, 6, 1, 12, 0, 0, tzinfo=UTC)
 
 
 def _fixed_now(t: datetime = _BASE_TIME):
@@ -60,7 +59,7 @@ class TestHappyPathRegistered:
         client = DNCRClient(api_key="test-key", http_client=mock_http, now_fn=_fixed_now())
         result = client.lookup("+61400000000")
         assert result.registered is True
-        assert result.registered_at == datetime(2025, 1, 1, tzinfo=timezone.utc)
+        assert result.registered_at == datetime(2025, 1, 1, tzinfo=UTC)
         assert result.status == "ok"
 
 

@@ -1,14 +1,17 @@
 /**
  * FILE: app/api/leads/counts/route.ts
- * PURPOSE: Lead tier distribution counts (T1/T2/T3/Unscored)
- * TODO: Replace mock data with Supabase aggregations on leads table
+ * PURPOSE: Lead tier distribution from Supabase leads.als_tier aggregation.
+ *          Returns one row per als_tier value (hot/warm/cool/cold) plus an
+ *          "unscored" bucket for NULL als_tier. Honest counts; no mocks.
  */
 
 import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
 
-// Types
+export type LeadTier = "hot" | "warm" | "cool" | "cold" | "unscored";
+
 export interface TierCount {
-  tier: "T1" | "T2" | "T3" | "unscored";
+  tier: LeadTier;
   label: string;
   count: number;
   percentage: number;
@@ -23,58 +26,69 @@ export interface LeadCountsResponse {
   lastUpdated: string;
 }
 
-// Mock data
-const mockTierCounts: TierCount[] = [
-  {
-    tier: "T1",
-    label: "Tier 1 - Hot",
-    count: 47,
-    percentage: 13.7,
-    description: "High-intent, decision-makers at ideal companies",
-    color: "#22c55e", // green
-  },
-  {
-    tier: "T2",
-    label: "Tier 2 - Warm",
-    count: 124,
-    percentage: 36.3,
-    description: "Good fit, may need nurturing",
-    color: "#f59e0b", // amber
-  },
-  {
-    tier: "T3",
-    label: "Tier 3 - Cold",
-    count: 98,
-    percentage: 28.7,
-    description: "Lower priority, long-term potential",
-    color: "#3b82f6", // blue
-  },
-  {
-    tier: "unscored",
-    label: "Unscored",
-    count: 73,
-    percentage: 21.3,
-    description: "Awaiting enrichment and scoring",
-    color: "#6b7280", // gray
-  },
-];
+const TIER_META: Record<LeadTier, { label: string; description: string; color: string }> = {
+  hot: { label: "Hot", description: "High-intent, decision-makers at ideal companies", color: "#EF4444" },
+  warm: { label: "Warm", description: "Good fit, may need nurturing", color: "#F59E0B" },
+  cool: { label: "Cool", description: "Lower priority, long-term potential", color: "#3B82F6" },
+  cold: { label: "Cold", description: "Minimal signals, deprioritised", color: "#64748B" },
+  unscored: { label: "Unscored", description: "Awaiting enrichment and scoring", color: "#6B7280" },
+};
+
+const ORDER: LeadTier[] = ["hot", "warm", "cool", "cold", "unscored"];
 
 export async function GET() {
   try {
-    // TODO: Supabase integration
-    // const supabase = createClient(...)
-    // const { data } = await supabase.rpc('get_lead_tier_counts')
-    // OR:
-    // const { data } = await supabase
-    //   .from('leads')
-    //   .select('tier')
-    //   .then(res => aggregate by tier)
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
 
-    const total = mockTierCounts.reduce((sum, t) => sum + t.count, 0);
+    const { data, error } = await supabase
+      .from("leads")
+      .select("als_tier");
+    if (error) {
+      console.error("Lead counts query error:", error);
+      return NextResponse.json(
+        { success: false, error: "Failed to fetch lead counts" },
+        { status: 500 }
+      );
+    }
+
+    const counts: Record<LeadTier, number> = {
+      hot: 0,
+      warm: 0,
+      cool: 0,
+      cold: 0,
+      unscored: 0,
+    };
+    for (const row of data ?? []) {
+      const t = (row as { als_tier: string | null }).als_tier;
+      if (t && t in counts) {
+        counts[t as LeadTier]++;
+      } else {
+        counts.unscored++;
+      }
+    }
+
+    const total = ORDER.reduce((sum, t) => sum + counts[t], 0);
+    const tiers: TierCount[] = ORDER.map((tier) => ({
+      tier,
+      label: TIER_META[tier].label,
+      count: counts[tier],
+      percentage: total > 0 ? Number(((counts[tier] / total) * 100).toFixed(1)) : 0,
+      description: TIER_META[tier].description,
+      color: TIER_META[tier].color,
+    }));
 
     return NextResponse.json({
       success: true,
-      data: mockTierCounts,
+      data: tiers,
       total,
       lastUpdated: new Date().toISOString(),
     } as LeadCountsResponse);

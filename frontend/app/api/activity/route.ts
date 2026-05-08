@@ -1,18 +1,19 @@
 /**
  * FILE: app/api/activity/route.ts
- * PURPOSE: Live activity feed for dashboard
- * TODO: Replace mock data with Supabase real-time subscription or polling
+ * PURPOSE: Live activity feed for dashboard, scoped to the authenticated user's client via RLS.
+ *          Returns activities table rows joined with leads for name/company display.
+ *          Honest empty state when no rows (Phase 1 pre-revenue: 0 sent → 0 activity).
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
 
-// Types
 export interface ActivityItem {
   id: string;
-  type: "email_sent" | "email_opened" | "reply_received" | "meeting_booked" | "lead_enriched" | "call_completed";
+  type: string; // raw activities.action — UI maps display name
   leadName: string;
   companyName: string;
-  channel: "email" | "linkedin" | "sms" | "voice" | "direct_mail";
+  channel: string;
   message: string;
   timestamp: string;
   metadata?: Record<string, unknown>;
@@ -25,90 +26,80 @@ export interface ActivityResponse {
   cursor?: string;
 }
 
-// Mock data
-const mockActivity: ActivityItem[] = [
-  {
-    id: "act_001",
-    type: "reply_received",
-    leadName: "Sarah Chen",
-    companyName: "TechFlow Digital",
-    channel: "email",
-    message: "Interested in learning more about your services",
-    timestamp: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
-  },
-  {
-    id: "act_002",
-    type: "meeting_booked",
-    leadName: "Marcus Thompson",
-    companyName: "GrowthLab Agency",
-    channel: "email",
-    message: "Booked 30-min discovery call for Thursday 2pm",
-    timestamp: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
-  },
-  {
-    id: "act_003",
-    type: "email_opened",
-    leadName: "Emma Rodriguez",
-    companyName: "Pixel Perfect Studios",
-    channel: "email",
-    message: "Opened email: 'Quick question about your marketing'",
-    timestamp: new Date(Date.now() - 22 * 60 * 1000).toISOString(),
-  },
-  {
-    id: "act_004",
-    type: "call_completed",
-    leadName: "James Wilson",
-    companyName: "Velocity Marketing",
-    channel: "voice",
-    message: "AI call completed - positive sentiment detected",
-    timestamp: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
-  },
-  {
-    id: "act_005",
-    type: "lead_enriched",
-    leadName: "Lisa Park",
-    companyName: "Creative Surge",
-    channel: "email",
-    message: "Lead enriched with Apollo data - decision maker confirmed",
-    timestamp: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: "act_006",
-    type: "email_sent",
-    leadName: "David Kumar",
-    companyName: "NextGen Digital",
-    channel: "email",
-    message: "Sent sequence step 2: Follow-up email",
-    timestamp: new Date(Date.now() - 90 * 60 * 1000).toISOString(),
-  },
-];
+type ActivityRow = {
+  id: string;
+  action: string | null;
+  channel: string | null;
+  content_preview: string | null;
+  subject: string | null;
+  created_at: string;
+  metadata: Record<string, unknown> | null;
+  leads: {
+    first_name: string | null;
+    last_name: string | null;
+    company: string | null;
+  } | null;
+};
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const limit = parseInt(searchParams.get("limit") || "10");
+    const limit = Math.min(parseInt(searchParams.get("limit") || "10"), 200);
     const cursor = searchParams.get("cursor");
-    const type = searchParams.get("type"); // filter by activity type
+    const action = searchParams.get("type"); // legacy param name
 
-    // TODO: Supabase integration
-    // const supabase = createClient(...)
-    // let query = supabase.from('activity_feed').select('*').order('timestamp', { ascending: false }).limit(limit)
-    // if (cursor) query = query.lt('timestamp', cursor)
-    // if (type) query = query.eq('type', type)
-    // const { data, error } = await query
-
-    let filteredActivity = [...mockActivity];
-    if (type) {
-      filteredActivity = filteredActivity.filter((a) => a.type === type);
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 }
+      );
     }
 
-    const data = filteredActivity.slice(0, limit);
+    let query = supabase
+      .from("activities")
+      .select(
+        "id, action, channel, content_preview, subject, created_at, metadata, leads(first_name, last_name, company)"
+      )
+      .order("created_at", { ascending: false })
+      .limit(limit + 1);
+    if (cursor) query = query.lt("created_at", cursor);
+    if (action) query = query.eq("action", action);
+
+    const { data, error } = await query;
+    if (error) {
+      console.error("Activity feed query error:", error);
+      return NextResponse.json(
+        { success: false, error: "Failed to fetch activity feed" },
+        { status: 500 }
+      );
+    }
+
+    const rows = (data ?? []) as unknown as ActivityRow[];
+    const hasMore = rows.length > limit;
+    const page = rows.slice(0, limit);
+
+    const items: ActivityItem[] = page.map((row) => ({
+      id: row.id,
+      type: row.action ?? "unknown",
+      leadName:
+        [row.leads?.first_name, row.leads?.last_name].filter(Boolean).join(" ") ||
+        "Unknown",
+      companyName: row.leads?.company ?? "",
+      channel: row.channel ?? "email",
+      message: row.content_preview ?? row.subject ?? "",
+      timestamp: row.created_at,
+      metadata: row.metadata ?? undefined,
+    }));
 
     return NextResponse.json({
       success: true,
-      data,
-      hasMore: filteredActivity.length > limit,
-      cursor: data.length > 0 ? data[data.length - 1].timestamp : undefined,
+      data: items,
+      hasMore,
+      cursor: items.length > 0 ? items[items.length - 1].timestamp : undefined,
     } as ActivityResponse);
   } catch (error) {
     console.error("Activity feed error:", error);

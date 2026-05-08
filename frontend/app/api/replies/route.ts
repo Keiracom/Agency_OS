@@ -1,12 +1,13 @@
 /**
  * FILE: app/api/replies/route.ts
- * PURPOSE: Reply inbox - all incoming replies needing attention
- * TODO: Replace mock data with Supabase + email provider integration
+ * PURPOSE: Reply inbox — incoming replies needing attention.
+ *          Queries activities filtered to reply-shaped actions, joined
+ *          with leads for sender display. Honest empty state when no rows.
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
 
-// Types
 export interface Reply {
   id: string;
   leadId: string;
@@ -14,13 +15,11 @@ export interface Reply {
   companyName: string;
   leadEmail: string;
   leadTitle: string;
-  channel: "email" | "linkedin" | "sms";
+  channel: string;
   subject: string;
   snippet: string;
-  fullBody: string;
-  sentiment: "positive" | "neutral" | "negative" | "unsubscribe";
-  status: "unread" | "read" | "replied" | "archived";
-  suggestedReply?: string;
+  sentiment: string;
+  status: string;
   receivedAt: string;
   threadId?: string;
   sequenceStep?: number;
@@ -33,112 +32,98 @@ export interface RepliesResponse {
   unread: number;
 }
 
-// Mock data
-const mockReplies: Reply[] = [
-  {
-    id: "rpl_001",
-    leadId: "lead_201",
-    leadName: "Sarah Chen",
-    companyName: "TechFlow Digital",
-    leadEmail: "sarah@techflow.com.au",
-    leadTitle: "Marketing Director",
-    channel: "email",
-    subject: "Re: Quick question about your agency",
-    snippet: "Hi, thanks for reaching out. I'd be interested in learning more about how you help agencies with...",
-    fullBody: "Hi,\n\nThanks for reaching out. I'd be interested in learning more about how you help agencies with lead generation. We've been struggling to find quality leads lately.\n\nCould you share some case studies or examples of agencies you've worked with?\n\nBest,\nSarah",
-    sentiment: "positive",
-    status: "unread",
-    suggestedReply: "Hi Sarah, great to hear from you! I'd be happy to share some case studies. We recently helped a Melbourne-based agency increase their qualified meetings by 340%. Would you have 15 minutes this week for a quick call?",
-    receivedAt: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
-    sequenceStep: 1,
-  },
-  {
-    id: "rpl_002",
-    leadId: "lead_202",
-    leadName: "Michael Brown",
-    companyName: "Creative Pulse",
-    leadEmail: "michael@creativepulse.com.au",
-    leadTitle: "CEO",
-    channel: "email",
-    subject: "Re: Partnership opportunity",
-    snippet: "Not interested right now, but maybe reach out again in a few months...",
-    fullBody: "Hi,\n\nNot interested right now, but maybe reach out again in a few months when we've sorted out our current projects.\n\nCheers,\nMichael",
-    sentiment: "neutral",
-    status: "unread",
-    suggestedReply: "Hi Michael, completely understand - timing is everything. I'll set a reminder to follow up in Q3. In the meantime, feel free to reach out if anything changes. Best of luck with your current projects!",
-    receivedAt: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
-    sequenceStep: 2,
-  },
-  {
-    id: "rpl_003",
-    leadId: "lead_203",
-    leadName: "Emma Johnson",
-    companyName: "Bright Marketing Co",
-    leadEmail: "emma@brightmarketing.com.au",
-    leadTitle: "Founder",
-    channel: "linkedin",
-    subject: "LinkedIn Message",
-    snippet: "This sounds interesting! I've been looking for something like this. When can we chat?",
-    fullBody: "This sounds interesting! I've been looking for something like this. When can we chat?",
-    sentiment: "positive",
-    status: "read",
-    suggestedReply: "Fantastic, Emma! I have availability tomorrow at 10am or Thursday at 2pm AEST. Which works better for you? Here's my calendar link: [CALENDAR_LINK]",
-    receivedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-    sequenceStep: 1,
-  },
-  {
-    id: "rpl_004",
-    leadId: "lead_204",
-    leadName: "David Wilson",
-    companyName: "Digital Dynamics",
-    leadEmail: "david@digitaldynamics.com.au",
-    leadTitle: "Managing Director",
-    channel: "email",
-    subject: "Re: Helping agencies like yours",
-    snippet: "Please remove me from your list",
-    fullBody: "Please remove me from your list.\n\nDavid",
-    sentiment: "unsubscribe",
-    status: "unread",
-    receivedAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
-    sequenceStep: 3,
-  },
-];
+type ActivityRow = {
+  id: string;
+  lead_id: string | null;
+  channel: string | null;
+  subject: string | null;
+  content_preview: string | null;
+  thread_id: string | null;
+  sequence_step: number | null;
+  intent: string | null;
+  created_at: string;
+  metadata: Record<string, unknown> | null;
+  leads: {
+    first_name: string | null;
+    last_name: string | null;
+    company: string | null;
+    email: string | null;
+    title: string | null;
+  } | null;
+};
+
+const REPLY_ACTIONS = ["reply.received", "reply_received", "received_reply"];
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const status = searchParams.get("status"); // unread, read, replied, archived
-    const sentiment = searchParams.get("sentiment"); // positive, neutral, negative, unsubscribe
-    const channel = searchParams.get("channel"); // email, linkedin, sms
-    const limit = parseInt(searchParams.get("limit") || "50");
+    const sentiment = searchParams.get("sentiment");
+    const channel = searchParams.get("channel");
+    const limit = Math.min(parseInt(searchParams.get("limit") || "50"), 200);
 
-    // TODO: Supabase integration
-    // const supabase = createClient(...)
-    // let query = supabase.from('replies').select('*, leads(name, company_name, email, title)')
-    // if (status) query = query.eq('status', status)
-    // if (sentiment) query = query.eq('sentiment', sentiment)
-    // if (channel) query = query.eq('channel', channel)
-    // const { data } = await query.order('received_at', { ascending: false }).limit(limit)
-
-    let filtered = [...mockReplies];
-    
-    if (status) {
-      filtered = filtered.filter((r) => r.status === status);
-    }
-    if (sentiment) {
-      filtered = filtered.filter((r) => r.sentiment === sentiment);
-    }
-    if (channel) {
-      filtered = filtered.filter((r) => r.channel === channel);
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 }
+      );
     }
 
-    const unreadCount = mockReplies.filter((r) => r.status === "unread").length;
+    let query = supabase
+      .from("activities")
+      .select(
+        "id, lead_id, channel, subject, content_preview, thread_id, sequence_step, intent, created_at, metadata, leads(first_name, last_name, company, email, title)"
+      )
+      .in("action", REPLY_ACTIONS)
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    if (channel) query = query.eq("channel", channel);
+    if (sentiment) query = query.eq("intent", sentiment);
+
+    const { data, error } = await query;
+    if (error) {
+      console.error("Replies query error:", error);
+      return NextResponse.json(
+        { success: false, error: "Failed to fetch replies" },
+        { status: 500 }
+      );
+    }
+
+    const rows = (data ?? []) as unknown as ActivityRow[];
+
+    const replies: Reply[] = rows.map((row) => {
+      const meta = (row.metadata ?? {}) as Record<string, unknown>;
+      const status = typeof meta.status === "string" ? meta.status : "unread";
+      return {
+        id: row.id,
+        leadId: row.lead_id ?? "",
+        leadName:
+          [row.leads?.first_name, row.leads?.last_name].filter(Boolean).join(" ") ||
+          "Unknown",
+        companyName: row.leads?.company ?? "",
+        leadEmail: row.leads?.email ?? "",
+        leadTitle: row.leads?.title ?? "",
+        channel: row.channel ?? "email",
+        subject: row.subject ?? "",
+        snippet: row.content_preview ?? "",
+        sentiment: row.intent ?? "neutral",
+        status,
+        receivedAt: row.created_at,
+        threadId: row.thread_id ?? undefined,
+        sequenceStep: row.sequence_step ?? undefined,
+      };
+    });
+
+    const unread = replies.filter((r) => r.status === "unread").length;
 
     return NextResponse.json({
       success: true,
-      data: filtered.slice(0, limit),
-      total: filtered.length,
-      unread: unreadCount,
+      data: replies,
+      total: replies.length,
+      unread,
     } as RepliesResponse);
   } catch (error) {
     console.error("Replies error:", error);

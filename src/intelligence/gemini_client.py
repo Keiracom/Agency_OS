@@ -15,10 +15,13 @@ Ratified: 2026-04-14. Pipeline F architecture refactor.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import logging
 import os
+import time
 from typing import Any
+from uuid import UUID
 
 from src.intelligence.comprehend_schema_f3a import STAGE3_IDENTIFY_PROMPT
 from src.intelligence.comprehend_schema_f3b import STAGE7_ANALYSE_PROMPT
@@ -31,6 +34,67 @@ GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta"
 
 INPUT_COST_PER_TOKEN = 0.00000015
 OUTPUT_COST_PER_TOKEN = 0.0000006
+
+# E1 R2: shared sentinel client_id for AI-only cost tracking. Must stay in sync
+# with src/pipeline/intelligence.py:SYSTEM_PIPELINE_CLIENT_ID. Pre-seeded via
+# scripts/insert_system_pipeline_client.sql. CASCADE FOOTGUN: deleting this row
+# also deletes every sdk_usage_log row referencing it (FK on delete cascade).
+SYSTEM_PIPELINE_CLIENT_ID = UUID("00000000-0000-0000-0000-000000000001")
+
+
+async def _log_gemini_call_to_sdk_usage(
+    model: str,
+    input_tokens: int,
+    output_tokens: int,
+    cost_usd: float,
+    duration_ms: int,
+    agent_type: str = "pipeline_gemini",
+    *,
+    success: bool = True,
+    error_message: str | None = None,
+) -> None:
+    """Best-effort write of a Gemini call to sdk_usage_log (E1 R2, AI-only).
+
+    Mirrors _log_anthropic_call_to_sdk_usage in src/pipeline/intelligence.py.
+    Never raises. Trusts gemini_retry.cost_usd (single per-token rate for
+    gemini-2.5-flash; per-model pricing variance is a known follow-up).
+    """
+    try:
+        from sqlalchemy import text
+
+        from src.config.settings import settings
+        from src.integrations.supabase import get_db_session
+        from src.services.sdk_usage_service import log_sdk_usage
+
+        cost_aud = cost_usd * settings.aud_per_usd
+
+        async with get_db_session() as db:
+            sentinel_check = await db.execute(
+                text("SELECT 1 FROM clients WHERE id = :id AND deleted_at IS NULL"),
+                {"id": SYSTEM_PIPELINE_CLIENT_ID},
+            )
+            if sentinel_check.scalar() is None:
+                logger.warning(
+                    "E1 R2: SYSTEM_PIPELINE_CLIENT_ID %s missing from clients — "
+                    "run scripts/insert_system_pipeline_client.sql. Write skipped.",
+                    SYSTEM_PIPELINE_CLIENT_ID,
+                )
+                return
+
+            await log_sdk_usage(
+                db=db,
+                client_id=SYSTEM_PIPELINE_CLIENT_ID,
+                agent_type=agent_type,
+                model_used=model,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                cost_aud=cost_aud,
+                duration_ms=duration_ms,
+                success=success,
+                error_message=error_message,
+            )
+    except Exception as e:
+        logger.warning("E1 R2: gemini sdk_usage_log write failed (best-effort): %s", e)
 
 
 class GeminiClient:
@@ -59,6 +123,51 @@ class GeminiClient:
         self._total_output_tokens += result.get("output_tokens", 0)
         self._total_cost_usd += result.get("cost_usd", 0.0)
         self._call_count += 1
+
+    async def _call_and_log(
+        self,
+        *,
+        model: str,
+        agent_type: str,
+        **call_kwargs: Any,
+    ) -> dict[str, Any]:
+        """E1 R2: wrap gemini_call_with_retry with timing + in-memory tally + sdk_usage_log.
+
+        Returns the same dict gemini_call_with_retry returns. Never raises from
+        the logging side; propagates network/HTTP exceptions exactly as the
+        underlying call does.
+        """
+        started_at = time.time()
+        success = True
+        error_msg: str | None = None
+        result: dict[str, Any] = {"input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0}
+        try:
+            result = await gemini_call_with_retry(
+                api_key=self.api_key,
+                model=model,
+                **call_kwargs,
+            )
+            if result.get("f_status") != "success":
+                success = False
+                error_msg = (result.get("f_failure_reason") or "")[:500] or None
+            return result
+        except BaseException as e:
+            success = False
+            error_msg = (str(e) or type(e).__name__)[:500]
+            raise
+        finally:
+            self._accumulate(result)
+            with contextlib.suppress(Exception):
+                await _log_gemini_call_to_sdk_usage(
+                    model=model,
+                    input_tokens=result.get("input_tokens", 0),
+                    output_tokens=result.get("output_tokens", 0),
+                    cost_usd=result.get("cost_usd", 0.0),
+                    duration_ms=int((time.time() - started_at) * 1000),
+                    agent_type=agent_type,
+                    success=success,
+                    error_message=error_msg,
+                )
 
     async def call_f3a(
         self,
@@ -102,13 +211,13 @@ class GeminiClient:
             return {"content": {}, "f_status": "dry_run", "cost_usd": 0}
         try:
             result = await asyncio.wait_for(
-                gemini_call_with_retry(
-                    api_key=self.api_key,
+                self._call_and_log(
+                    model=GEMINI_MODEL_DM,
+                    agent_type="pipeline_gemini_f3a_identify",
                     system_prompt=STAGE3_IDENTIFY_PROMPT,
                     user_prompt=user_prompt,
                     enable_grounding=True,
                     max_retries=max_retries,
-                    model=GEMINI_MODEL_DM,
                 ),
                 timeout=60.0,
             )
@@ -122,7 +231,6 @@ class GeminiClient:
                 "f_status": "comprehension_timeout",
                 "cost_usd": 0,
             }
-        self._accumulate(result)
 
         if result.get("f_status") == "failed":
             result["content"] = result.get("content") or {}
@@ -172,15 +280,14 @@ class GeminiClient:
             "Verify this is the correct LOCAL Australian decision-maker."
         )
 
-        v_result = await gemini_call_with_retry(
-            api_key=self.api_key,
+        v_result = await self._call_and_log(
+            model=GEMINI_MODEL_DM,
+            agent_type="pipeline_gemini_dm_verify",
             system_prompt=verify_system,
             user_prompt=verify_prompt,
             enable_grounding=True,
             max_retries=max_retries,
-            model=GEMINI_MODEL_DM,
         )
-        self._accumulate(v_result)
 
         v_content = v_result.get("content")
         if not v_content or v_result.get("f_status") != "success":
@@ -249,14 +356,14 @@ class GeminiClient:
         if os.environ.get("DRY_RUN"):
             logger.info("[DRY-RUN] Would call Gemini call_f3b: %d chars prompt", len(user_prompt))
             return {"content": {}, "f_status": "dry_run", "cost_usd": 0}
-        result = await gemini_call_with_retry(
-            api_key=self.api_key,
+        result = await self._call_and_log(
+            model=GEMINI_MODEL,
+            agent_type="pipeline_gemini_f3b_analyse",
             system_prompt=STAGE7_ANALYSE_PROMPT,
             user_prompt=user_prompt,
             enable_grounding=False,
             max_retries=max_retries,
         )
-        self._accumulate(result)
         return result
 
     async def comprehend(
@@ -285,14 +392,14 @@ class GeminiClient:
                 "url_context_used": False,
                 "model": GEMINI_MODEL,
             }
-        result = await gemini_call_with_retry(
-            api_key=self.api_key,
+        result = await self._call_and_log(
+            model=GEMINI_MODEL,
+            agent_type="pipeline_gemini_comprehend",
             system_prompt=system_prompt,
             user_prompt=user_prompt,
             enable_grounding=enable_grounding,
             max_retries=max_retries,
         )
-        self._accumulate(result)
         # Remap f_status -> f3_status for backward compat
         out = dict(result)
         out["f3_status"] = out.pop("f_status", "failed")

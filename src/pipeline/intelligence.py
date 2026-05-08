@@ -22,6 +22,7 @@ All calls:
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import logging
 import os
@@ -259,7 +260,7 @@ async def _call_anthropic(
     finally:
         # E1: best-effort cost log. Never breaks the call.
         duration_ms = int((time.time() - started_at) * 1000)
-        try:
+        with contextlib.suppress(Exception):
             await _log_anthropic_call_to_sdk_usage(
                 model=model,
                 input_tokens=in_tok,
@@ -268,8 +269,6 @@ async def _call_anthropic(
                 success=success,
                 error_message=error_msg,
             )
-        except Exception:
-            pass
     return text, in_tok, out_tok
 
 

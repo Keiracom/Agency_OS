@@ -1,7 +1,7 @@
 # ARCHITECTURE.md
 # Agency OS — Locked System Architecture
 # Ratified: March 17 2026 | Authority: CEO (Claude) | Amended: March 18 2026 | Directives #217, #218
-# Last validated: 2026-05-07 (Layer 7 SSOT cleanup — Siege Waterfall path corrected to src/pipeline/waterfall_v2.py per PR-A #593 rename)
+# Last validated: 2026-05-08 (§5 rewritten to F2.2 — 6-layer email waterfall + 4-layer mobile waterfall, ContactOut primary, Leadmagic mobile demoted; canonical implementation src/pipeline/{email,mobile}_waterfall.py; prior 2-tier Hunter→Leadmagic email + Leadmagic-only mobile DEPRECATED)
 # DO NOT MODIFY without an explicit CEO directive that
 # names this file and specifies the exact change.
 #
@@ -226,13 +226,53 @@ T2.5: Bright Data GMB Reviews
   Purpose: portfolio intelligence (reveals agency client
            names from review authors) + reputation signals
 
-T3: Leadmagic email
-  Env var: LEADMAGIC_API_KEY
-  Cost: $0.015 per record
-  Returns: verified work email + confidence score
-  L2 fallback: Hunter.io email-finder (free, included in plan)
-               Returns email if score >= 70 before Leadmagic call
-  Replaces: Hunter.io primary role (now L2 fallback only)
+T3: Email waterfall (6-layer, F2.2 — ContactOut primary)
+  Canonical implementation: src/pipeline/email_waterfall.py
+  Short-circuits on first hit. Replaces deprecated 2-tier
+  Hunter→Leadmagic flow ("Siege Waterfall v3" — DEPRECATED).
+
+  Layer 0 — Contact registry (free)
+    Source: contact_data JSONB (already-scraped company_email)
+    Gate: name-match against DM identity
+    Cost: FREE
+
+  Layer 1 — ContactOut /v1/people/enrich (PRIMARY)
+    Env vars: CONTACTOUT_API_KEY
+    Cost: SEARCH credit (~$0.02 USD if billable)
+    current_match: email domain matches current employer →
+                   high confidence, accepted as L1 result.
+    stale: domain mismatch → falls through to Hunter, but
+           the fetched result is cached for L4 fallback +
+           reused by mobile waterfall L0 (no re-charge).
+
+  Layer 2 — Hunter email-finder (free)
+    Env var: HUNTER_API_KEY
+    Cost: FREE — included in plan, 2,000 calls/month
+    Gate: confidence score >= 70 required to accept
+
+  Layer 2.5 — Prospeo email-finder
+    Env var: PROSPEO_API_KEY
+    Cost: $0.01 USD per lookup
+    Returns: name + domain → verified email
+
+  Layer 3 — Leadmagic email finder
+    Env var: LEADMAGIC_API_KEY
+    Cost: $0.015 USD per lookup
+    Returns: verified work email + confidence score
+
+  Layer 4 — ContactOut stale fallback
+    Cost: FREE (re-uses already-paid L1 credit)
+    Action: accept the stale-match email surfaced at L1
+            after Leadmagic miss (better than no email).
+
+  Layer 5 — Bright Data LinkedIn profile (last chance)
+    Env var: BRIGHTDATA_API_KEY
+    Cost: $0.00075 USD per record
+    Returns: profile-derived email, unverified
+
+  GOV-8 note: website HTML scrape REMOVED (D2.1B).
+  Stage 3 Gemini already extracts dm_email + primary_email
+  from cached website content — no re-fetch in waterfall.
 
 T-DM0: DataForSEO
   Env var: DATAFORSEO_LOGIN, DATAFORSEO_PASSWORD
@@ -309,12 +349,45 @@ T-DM4: Bright Data Facebook page posts
 Requires: first_name + last_name + domain from Stage 2.
 If Stage 2 returns no person: Stage 3 skips entirely.
 
-T5: Leadmagic mobile
-  Env var: LEADMAGIC_API_KEY
-  Cost: $0.077 per record
-  Gate: Reachability gap present AND Propensity >= 85
-  Returns: verified direct mobile number
-  Replaces: Kaspr (DEPRECATED — never reference)
+T5: Mobile waterfall (4-layer, F2.2 — ContactOut primary)
+  Canonical implementation: src/pipeline/mobile_waterfall.py
+  Gate: Reachability gap present AND Propensity >= 85.
+  Short-circuits on first find. Replaces deprecated
+  Leadmagic-only flow — Leadmagic AU mobile coverage was
+  0%, hence ContactOut promoted to primary.
+
+  Layer 0 — ContactOut (PRIMARY, pre-fetched)
+    Source: contactout_result dict from email waterfall L1
+            (already-paid SEARCH credit — NO additional charge)
+    Cost: $0.00 (re-uses email L1 lookup)
+    Returns: AU mobile from LinkedIn profile if surfaced
+    Reason: Leadmagic AU mobile = 0% coverage. ContactOut
+            sources mobile from LinkedIn profile cache —
+            highest-yield AU path.
+
+  Layer 1 — Website regex on cached HTML (free)
+    Source: contact_data HTML from prior scrape
+    Cost: FREE
+    Patterns: 04XX XXX XXX (AU domestic)
+              +614XX XXX XXX (international format)
+    Normalises +614 → 04 prefix.
+
+  Layer 2 — Leadmagic mobile (DEMOTED to fallback)
+    Env var: LEADMAGIC_API_KEY
+    Cost: $0.077 USD per lookup
+    Returns: verified direct mobile number
+    Why demoted: 0% AU coverage discovered post-launch.
+                 Kept as fallback for non-AU prospects +
+                 instances where ContactOut returns no
+                 mobile but Leadmagic happens to have one.
+
+  Layer 3 — Bright Data LinkedIn profile (last chance)
+    Env var: BRIGHTDATA_API_KEY
+    Cost: $0.00075 USD per lookup
+    Returns: profile-derived mobile, unverified
+
+  Replaces: Kaspr (DEPRECATED — never reference) and
+            single-source Leadmagic mobile (DEPRECATED).
 
 ---
 

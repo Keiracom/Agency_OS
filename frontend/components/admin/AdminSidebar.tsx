@@ -66,6 +66,11 @@ const navItems: NavItem[] = [
     icon: Users,
   },
   {
+    title: "Operations",
+    href: "/admin/ops",
+    icon: BarChart3,
+  },
+  {
     title: "Activity",
     href: "/admin/activity",
     icon: Activity,

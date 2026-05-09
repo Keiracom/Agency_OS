@@ -14,7 +14,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
-  BarChart3,
   Settings,
   Radio,
   List,
@@ -48,12 +47,6 @@ const navSections: NavSection[] = [
       { title: "Pipeline", href: "/dashboard/pipeline", icon: Radio },
       { title: "Feed",     href: "/dashboard/activity", icon: List },
       { title: "Meetings", href: "/dashboard/meetings", icon: Calendar },
-    ],
-  },
-  {
-    title: "Report",
-    items: [
-      { title: "Progress", href: "/dashboard/reports", icon: BarChart3 },
     ],
   },
   {

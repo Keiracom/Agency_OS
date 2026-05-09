@@ -32,7 +32,6 @@ const navItems: NavItem[] = [
   { label: "Campaigns", href: "/dashboard/campaigns", icon: Target },
   { label: "Leads", href: "/dashboard/leads", icon: Users },
   { label: "Replies", href: "/dashboard/replies", icon: MessageSquare },
-  { label: "Reports", href: "/dashboard/reports", icon: BarChart3 },
   { label: "Settings", href: "/dashboard/settings", icon: Settings },
 ];
 

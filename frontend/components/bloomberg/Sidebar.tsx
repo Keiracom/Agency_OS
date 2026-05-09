@@ -37,12 +37,6 @@ const navSections: { title: string; items: NavItem[] }[] = [
     ],
   },
   {
-    title: "Analytics",
-    items: [
-      { key: "reports", label: "Reports", icon: BarChart3, href: "/dashboard/reports" },
-    ],
-  },
-  {
     title: "Settings",
     items: [
       { key: "settings", label: "Settings", icon: Settings, href: "/dashboard/settings" },

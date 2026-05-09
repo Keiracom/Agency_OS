@@ -96,14 +96,6 @@ const defaultQuickActions: SearchResult[] = [
     icon: <MessageSquare className="w-4 h-4" />,
     href: "/dashboard/replies",
   },
-  {
-    id: "action-analytics",
-    category: "action",
-    title: "View analytics",
-    subtitle: "Campaign performance reports",
-    icon: <TrendingUp className="w-4 h-4" />,
-    href: "/dashboard/reports",
-  },
 ];
 
 // ============================================

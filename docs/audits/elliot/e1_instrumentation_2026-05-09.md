@@ -16,19 +16,36 @@
 
 ## Final sdk_usage_log shape (post-merge)
 
-`agent_type` values written by the pipeline:
+`agent_type` values the helpers will write when invoked:
 
-- `pipeline_intelligence` — Sonnet/Haiku via `src/pipeline/intelligence.py:_call_anthropic`
-- `pipeline_gemini_f3a_identify` — Pro DM, Stage 3 IDENTIFY
-- `pipeline_gemini_dm_verify` — Pro DM, Stage 3 verification step
-- `pipeline_gemini_f3b_analyse` — Flash, Stage 7 ANALYSE
-- `pipeline_gemini_comprehend` — Flash, legacy `comprehend()` path
+- `pipeline_intelligence` — Sonnet/Haiku via `src/pipeline/intelligence.py:_call_anthropic`. **Helper code merged + sentinel guard verified at merge time per `cb079e84` commit body. Live end-to-end prod verification still pending — see Verification status below.**
+- `pipeline_gemini_f3a_identify` — Pro DM, Stage 3 IDENTIFY. Live-verified.
+- `pipeline_gemini_dm_verify` — Pro DM, Stage 3 verification step. Live-verified.
+- `pipeline_gemini_f3b_analyse` — Flash, Stage 7 ANALYSE. Live-verified.
+- `pipeline_gemini_comprehend` — Flash, legacy `comprehend()` path. Helper merged; not yet exercised by a prod run.
 
-`model_used` values seen in production: `gemini-2.5-flash`, `gemini-3.1-pro-preview`, `claude-sonnet-4-5`, `claude-haiku-4-5`.
+`model_used` values **seen live in `sdk_usage_log`**: `gemini-2.5-flash`, `gemini-3.1-pro-preview`. `claude-sonnet-4-5` and `claude-haiku-4-5` are configured in `ANTHROPIC_PRICING_USD` but **not yet observed in the table** — see Verification status below.
 
 `cost_aud` = `cost_usd × settings.aud_per_usd` (1.55 SSOT, LAW II). `cost_usd` for Anthropic is computed in `src/pipeline/intelligence.py:ANTHROPIC_PRICING_USD`, for Gemini in `src/intelligence/gemini_retry.py:GEMINI_PRICING_USD`.
 
-## Verification on real prod data (2026-05-08 23:55–23:59 UTC)
+## Verification status
+
+**Gemini half: live-verified end-to-end on prod data 2026-05-08 23:55–23:59 UTC.** See SQL + back-calc tables below.
+
+**Anthropic half: helper code + sentinel guard verified at merge time** (per `cb079e84` commit body documents an INSERT/DELETE round-trip). **Live end-to-end verification on prod data is still outstanding.** Symmetric verification by Aiden 2026-05-09 found 0 `pipeline_intelligence%` rows in `sdk_usage_log` post-merge:
+
+```
+SELECT COUNT(*) FILTER (WHERE agent_type LIKE 'pipeline_intelligence%') AS anthropic_rows,
+       COUNT(*) FILTER (WHERE agent_type LIKE 'pipeline_gemini%') AS gemini_rows
+FROM sdk_usage_log;
+→ anthropic_rows=0, gemini_rows=11
+```
+
+Reason the Anthropic half didn't fire during smoke: cohort_runner hit DataForSEO 402 walls at Stage 1/2, dropped the cohort early, never reached the Anthropic-bound stages (7+, `generate_vulnerability_report` etc.). No code defect — same chokepoint pattern as Gemini, sentinel guard verified at merge time. The gap is **prod observation**, not implementation.
+
+Live verification of the Anthropic side requires a non-DFS-blocked cohort run (depends on the DFS-402 top-up-or-swap decision pending with Dave). Future session should re-query `sdk_usage_log` for `pipeline_intelligence%` rows after the next clean cohort and confirm `cost_aud = (input_tokens × ANTHROPIC_PRICING_USD[model]['input'] + output_tokens × ANTHROPIC_PRICING_USD[model]['output']) × 1.55` to 6 decimals, mirroring the Gemini back-calc shown below.
+
+## Verification on real prod data — Gemini half (2026-05-08 23:55–23:59 UTC)
 
 Two cohort_runner runs on real AU SMB domains. Verbatim sdk_usage_log query and back-calc against published rates:
 

@@ -45,13 +45,21 @@
 
 | Component | Mock dependency | Real Supabase / FastAPI target | Wiring complexity |
 |---|---|---|---|
-| `ProfileSection` | `mockUserProfile` | `supabase.auth.getUser()` + `users` table | Low — auth + 1 SELECT |
-| `TeamSection` | `mockTeamMembers` | `client_users` JOIN `users` (membership table) | Low |
-| `IntegrationsSection` + `IntegrationCard` | `mockIntegrations` | `client_integrations` table — **NEEDS CHECK** | Medium |
-| `NotificationsSection` | `mockNotifications` | `notification_preferences` table — **NEEDS CHECK** | Medium |
+| `ProfileSection` | `mockUserProfile` | `supabase.auth.getUser()` + `users` table (exists, 22 rows) | Low — auth + 1 SELECT |
+| `TeamSection` | `mockTeamMembers` | `memberships` JOIN `users` | Low |
+| `IntegrationsSection` + `IntegrationCard` | `mockIntegrations` | `client_integrations` table — **MISSING in prod schema** | Medium + schema migration |
+| `NotificationsSection` | `mockNotifications` | `notification_preferences` table — **MISSING in prod schema** | Medium + schema migration |
 | `BillingSection` | `mockBillingInfo` | Stripe (price_id=None per audit, blocked) | **High — blocked on Stripe** |
 
-**Wire LOC estimate:** ~150-200 LOC if integrations + notification tables exist; +50 if they need to be created. Billing blocked on Stripe.
+**Wire LOC estimate:** ~250-300 LOC. Both `client_integrations` and `notification_preferences` are confirmed missing from `public` schema (verified 2026-05-09 by Elliot via independent table-existence query) — wiring requires creating both tables first (+50 LOC migration each, +100 total). Billing blocked on Stripe.
+
+**Schema verification (verbatim):**
+```
+client_integrations            MISSING
+notification_preferences       MISSING
+users                          EXISTS, rows=22
+memberships                    EXISTS
+```
 
 **Descope alternative:** index page is just a card grid linking to sub-pages. Could be reduced to 50 LOC of static cards pointing at the WORKS sub-pages (`/dashboard/settings/profile`, `/dashboard/settings/notifications`, `/dashboard/settings/icp`, `/dashboard/settings/linkedin`). No data needed.
 
@@ -80,7 +88,7 @@
 | Surface | Wire LOC | Descope LOC saved | Pre-revenue value of wiring | Recommended path |
 |---|---|---|---|---|
 | `/dashboard/reports` | ~300 (8 components) + 3 blocked | -1,500 | Low (mostly zeros, voice + revenue blocked) | **Descope** — re-add when there's data |
-| `/dashboard/settings` | ~200 (4 components) + 1 blocked | -800 (reduce to 50-LOC card grid) | Low (sub-pages already work) | **Reduce to card grid** |
+| `/dashboard/settings` | ~250-300 (4 components, 2 require new schema migrations) + 1 blocked | -800 (reduce to 50-LOC card grid) | Low (sub-pages already work) | **Reduce to card grid** |
 | `/dashboard/inbox/[id]` | ~700 (11 components, 7 shapes) | -1,600 | Low (parent redirect makes it orphaned) | **Descope** — fix NotificationsPanel link |
 
 **Total wiring effort:** ~1,200 LOC across 22 components, blocked on 4 upstream gaps (voice path, Stripe, integrations table, notification table existence).
@@ -101,6 +109,6 @@
 
 - Does `/dashboard/reports` ship as a marketing-credibility surface (i.e. clients see it during sales cycle even if zeros) or as a post-revenue dashboard?
 - Should `/dashboard/inbox/[id]` exist as a per-reply detail view, or is the activity feed (which has expandable cards per `<ActivityFeed/>`) the canonical reply-detail surface?
-- Are `client_integrations` and `notification_preferences` tables already in production schema? If not, settings wiring grows.
+- ~~Are `client_integrations` and `notification_preferences` tables already in production schema? If not, settings wiring grows.~~ Resolved: both confirmed missing 2026-05-09 (Elliot verification). Settings wiring requires schema migrations before component wiring is possible — strengthens the descope recommendation.
 
-The recommendation works regardless of these answers — descoping is reversible.
+The recommendation works regardless of remaining open questions — descoping is reversible.

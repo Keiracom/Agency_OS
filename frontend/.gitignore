@@ -1,2 +1,7 @@
 .vercel
 .env*.local
+
+# TypeScript incremental build cache (regenerated on every tsc run).
+# Tracked historically; un-track via `git rm --cached frontend/tsconfig.tsbuildinfo`
+# in this PR.
+*.tsbuildinfo

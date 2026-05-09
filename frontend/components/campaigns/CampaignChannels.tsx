@@ -1,6 +1,6 @@
 'use client';
 
-import { ChannelType, channelEmoji } from '@/data/mock-campaigns';
+import { ChannelType, channelEmoji } from './types';
 
 interface Props {
   channels: ChannelType[];

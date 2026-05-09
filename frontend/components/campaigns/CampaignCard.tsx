@@ -1,6 +1,6 @@
 'use client';
 
-import { Campaign } from '@/data/mock-campaigns';
+import { Campaign } from './types';
 import { CampaignStatusBadge } from './CampaignStatusBadge';
 import { CampaignChannels } from './CampaignChannels';
 import { CampaignMetrics } from './CampaignMetrics';

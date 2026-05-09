@@ -1,6 +1,6 @@
 'use client';
 
-import { SequenceStep as StepType } from '@/data/mock-campaigns';
+import { SequenceStep as StepType } from './types';
 import { SequenceStep } from './SequenceStep';
 
 interface Props {

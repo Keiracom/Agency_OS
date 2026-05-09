@@ -1,6 +1,6 @@
 'use client';
 
-import { SequenceStep as StepType, channelEmoji } from '@/data/mock-campaigns';
+import { SequenceStep as StepType, channelEmoji } from './types';
 
 interface Props {
   step: StepType;

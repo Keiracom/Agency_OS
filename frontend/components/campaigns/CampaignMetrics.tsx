@@ -1,6 +1,6 @@
 'use client';
 
-import { MetricData } from '@/data/mock-campaigns';
+import { MetricData } from './types';
 
 interface Props {
   metrics: MetricData[];

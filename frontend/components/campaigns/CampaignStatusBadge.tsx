@@ -1,6 +1,6 @@
 'use client';
 
-import { CampaignStatus, statusStyles } from '@/data/mock-campaigns';
+import { CampaignStatus, statusStyles } from './types';
 
 interface Props {
   status: CampaignStatus;

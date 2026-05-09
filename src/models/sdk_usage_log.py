@@ -8,7 +8,7 @@ Consumers: sdk_brain, engines, api
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 from uuid import UUID
 
@@ -22,6 +22,16 @@ from src.models.base import Base
 if TYPE_CHECKING:
     from src.models.client import Client
     from src.models.lead import Lead
+
+
+def _now_utc() -> datetime:
+    """Timezone-aware UTC default for SQLAlchemy DateTime columns.
+
+    Replaces the deprecated `datetime.utcnow` (no-tz) pattern. Module-level
+    function (not a lambda) so SQLAlchemy's signature-detection treats it as
+    a context-less callable.
+    """
+    return datetime.now(UTC)
 
 
 class SDKUsageLog(Base):
@@ -106,7 +116,7 @@ class SDKUsageLog(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        default=datetime.utcnow,
+        default=_now_utc,
     )
 
     # Soft delete

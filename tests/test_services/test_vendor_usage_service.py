@@ -7,7 +7,7 @@ from uuid import UUID, uuid4
 
 import pytest
 
-from src.services.vendor_usage_service import log_vendor_usage
+from src.services.vendor_usage_service import get_client_vendor_spend, log_vendor_usage
 
 SENTINEL = UUID("00000000-0000-0000-0000-000000000001")
 
@@ -99,3 +99,55 @@ async def test_log_vendor_usage_returns_unique_ids(mock_session):
         db=mock_session, client_id=SENTINEL, vendor="brightdata", endpoint="gmb_lookup"
     )
     assert id1 != id2
+
+
+def _row(vendor: str, call_count: int, total_cost: float, total_units: int, avg: float):
+    """Build an asyncpg-Row-like mock for fetchall()."""
+    from types import SimpleNamespace
+
+    return SimpleNamespace(
+        vendor=vendor,
+        call_count=call_count,
+        total_cost=total_cost,
+        total_units=total_units,
+        avg_cost_per_call=avg,
+    )
+
+
+@pytest.mark.asyncio
+async def test_get_client_vendor_spend_aggregates_by_vendor(mock_session):
+    """Aggregates per-vendor counts/cost/units; total_cost_aud = sum across vendors."""
+    fake_rows = [
+        _row("dataforseo", call_count=120, total_cost=2.40, total_units=120, avg=0.02),
+        _row("leadmagic", call_count=45, total_cost=0.90, total_units=45, avg=0.02),
+        _row("contactout", call_count=10, total_cost=0.30, total_units=20, avg=0.03),
+    ]
+    fetch_result = AsyncMock()
+    fetch_result.fetchall = lambda: fake_rows  # sync method on the result object
+    mock_session.execute = AsyncMock(return_value=fetch_result)
+
+    summary = await get_client_vendor_spend(mock_session, client_id=SENTINEL, days=30)
+
+    assert summary["client_id"] == str(SENTINEL)
+    assert summary["period_days"] == 30
+    assert summary["total_calls"] == 175
+    assert abs(summary["total_cost_aud"] - 3.60) < 1e-6
+    assert set(summary["breakdown"]) == {"dataforseo", "leadmagic", "contactout"}
+    assert summary["breakdown"]["dataforseo"]["call_count"] == 120
+    assert summary["breakdown"]["dataforseo"]["total_units"] == 120
+    assert summary["breakdown"]["dataforseo"]["avg_cost_per_call"] == 0.02
+
+
+@pytest.mark.asyncio
+async def test_get_client_vendor_spend_empty(mock_session):
+    """No rows → zero totals + empty breakdown, never raises."""
+    fetch_result = AsyncMock()
+    fetch_result.fetchall = lambda: []
+    mock_session.execute = AsyncMock(return_value=fetch_result)
+
+    summary = await get_client_vendor_spend(mock_session, client_id=SENTINEL, days=7)
+
+    assert summary["total_calls"] == 0
+    assert summary["total_cost_aud"] == 0.0
+    assert summary["breakdown"] == {}
+    assert summary["period_days"] == 7

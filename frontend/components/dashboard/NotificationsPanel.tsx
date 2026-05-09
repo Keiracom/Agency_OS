@@ -123,7 +123,7 @@ export const mockNotifications: Notification[] = [
     message: "Thanks for reaching out! I'd love to learn more about your solution...",
     timestamp: new Date(Date.now() - 5 * 60 * 1000), // 5 mins ago
     read: false,
-    href: "/dashboard/inbox?replyId=rep-123",
+    href: "/dashboard/activity",
     meta: { leadId: "lead-456", campaignId: "camp-789" },
   },
   {
@@ -162,7 +162,7 @@ export const mockNotifications: Notification[] = [
     message: "We're interested in scheduling a call next week...",
     timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000), // 6 hours ago
     read: true,
-    href: "/dashboard/inbox?replyId=rep-124",
+    href: "/dashboard/activity",
     meta: { leadId: "lead-457" },
   },
   {

@@ -48,6 +48,7 @@ from src.models.resource_pool import (
 from src.models.sdk_usage_log import SDKUsageLog
 from src.models.url_validation import URLValidationResult
 from src.models.user import User
+from src.models.vendor_usage_log import VendorUsageLog
 from src.models.voice_call import VoiceCall, VoiceCallContext, VoiceCallOutcome
 
 __all__ = [
@@ -83,6 +84,8 @@ __all__ = [
     "LinkedInCredential",
     # SDK Brain
     "SDKUsageLog",
+    # Vendor cost tracking (E1 R3)
+    "VendorUsageLog",
     # Client Intelligence
     "ClientIntelligence",
     # Resource Pool

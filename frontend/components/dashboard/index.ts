@@ -20,7 +20,6 @@ export {
 export {
   NotificationsPanel,
   useNotifications,
-  mockNotifications,
   type Notification,
   type NotificationType,
   type NotificationsPanelProps,

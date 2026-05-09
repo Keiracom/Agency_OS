@@ -112,72 +112,6 @@ const notificationTypeConfig: Record<NotificationType, NotificationTypeConfig> =
 };
 
 // ============================================
-// Mock Data
-// ============================================
-
-export const mockNotifications: Notification[] = [
-  {
-    id: "notif-1",
-    type: "reply",
-    title: "New reply from Sarah Chen",
-    message: "Thanks for reaching out! I'd love to learn more about your solution...",
-    timestamp: new Date(Date.now() - 5 * 60 * 1000), // 5 mins ago
-    read: false,
-    href: "/dashboard/activity",
-    meta: { leadId: "lead-456", campaignId: "camp-789" },
-  },
-  {
-    id: "notif-2",
-    type: "meeting",
-    title: "Meeting booked with TechCorp",
-    message: "Marcus Johnson scheduled a demo for tomorrow at 2:00 PM AEST",
-    timestamp: new Date(Date.now() - 32 * 60 * 1000), // 32 mins ago
-    read: false,
-    href: "/dashboard/calendar?meetingId=meet-101",
-    meta: { meetingId: "meet-101", campaignId: "camp-789" },
-  },
-  {
-    id: "notif-3",
-    type: "milestone",
-    title: "Campaign hit 100 responses!",
-    message: "Your 'SaaS Decision Makers Q1' campaign reached a major milestone",
-    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
-    read: false,
-    href: "/dashboard/campaigns/camp-789",
-    meta: { campaignId: "camp-789" },
-  },
-  {
-    id: "notif-4",
-    type: "alert",
-    title: "Email warmup complete",
-    message: "Your new sender domain keiracom.io is now fully warmed and ready",
-    timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000), // 4 hours ago
-    read: true,
-    meta: { severity: "info" },
-  },
-  {
-    id: "notif-5",
-    type: "reply",
-    title: "Positive reply from DataFlow Inc",
-    message: "We're interested in scheduling a call next week...",
-    timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000), // 6 hours ago
-    read: true,
-    href: "/dashboard/activity",
-    meta: { leadId: "lead-457" },
-  },
-  {
-    id: "notif-6",
-    type: "alert",
-    title: "Bounce rate warning",
-    message: "Campaign 'Enterprise Outreach' has a 5.2% bounce rate. Consider cleaning your list.",
-    timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
-    read: true,
-    href: "/dashboard/campaigns/camp-456",
-    meta: { severity: "warning", campaignId: "camp-456" },
-  },
-];
-
-// ============================================
 // Utility Functions
 // ============================================
 
@@ -342,7 +276,7 @@ function EmptyState() {
 // ============================================
 
 export function NotificationsPanel({
-  notifications = mockNotifications,
+  notifications = [],
   onNotificationClick,
   onMarkRead,
   onMarkAllRead,
@@ -520,7 +454,7 @@ export function NotificationsPanel({
 // Hook for managing notifications state
 // ============================================
 
-export function useNotifications(initialNotifications: Notification[] = mockNotifications) {
+export function useNotifications(initialNotifications: Notification[] = []) {
   const [notifications, setNotifications] = useState<Notification[]>(initialNotifications);
 
   const markAsRead = useCallback((notificationId: string) => {

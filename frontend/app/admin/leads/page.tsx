@@ -28,17 +28,23 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-// Mock data
-const mockLeads = [
-  { id: "1", email: "john@acme.com", name: "John Smith", company: "Acme Corp", client: "LeadGen Pro", als: 85, tier: "hot", status: "in_sequence" },
-  { id: "2", email: "sarah@tech.co", name: "Sarah Johnson", company: "TechCo", client: "GrowthLab", als: 72, tier: "warm", status: "enriched" },
-  { id: "3", email: "mike@startup.io", name: "Mike Wilson", company: "StartupIO", client: "ScaleUp Co", als: 91, tier: "hot", status: "converted" },
-  { id: "4", email: "lisa@enterprise.com", name: "Lisa Brown", company: "Enterprise Inc", client: "Enterprise Co", als: 45, tier: "cold", status: "new" },
-  { id: "5", email: "david@agency.com", name: "David Lee", company: "Agency XYZ", client: "Marketing Plus", als: 78, tier: "warm", status: "in_sequence" },
-  { id: "6", email: "emma@corp.net", name: "Emma Davis", company: "CorpNet", client: "LeadGen Pro", als: 88, tier: "hot", status: "in_sequence" },
-  { id: "7", email: "james@biz.com", name: "James Miller", company: "BizCom", client: "GrowthLab", als: 62, tier: "warm", status: "enriched" },
-  { id: "8", email: "anna@global.io", name: "Anna White", company: "GlobalIO", client: "Enterprise Co", als: 95, tier: "hot", status: "converted" },
-];
+// Pre-revenue honesty: empty array beats fake names ("John Smith",
+// "Sarah Johnson", "Acme Corp", etc. that would show in admin/leads
+// post-login). Real wiring against the leads table is the Phase 4
+// admin Tier A batch (per docs/audits/aiden/admin_dashboard_mock_audit_2026-05-09.md).
+// Filters + stats logic below still works against an empty input.
+interface Lead {
+  id: string;
+  email: string;
+  name: string;
+  company: string;
+  client: string;
+  als: number;
+  tier: "hot" | "warm" | "cold";
+  status: "new" | "enriched" | "scored" | "in_sequence" | "converted" | "unsubscribed" | "bounced";
+}
+
+const mockLeads: Lead[] = [];
 
 const tierColors = {
   hot: "bg-amber-glow text-error border-amber/20",

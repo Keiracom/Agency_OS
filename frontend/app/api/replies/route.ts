@@ -96,10 +96,15 @@ export async function GET(request: NextRequest) {
 
     const replies: Reply[] = rows.map((row) => {
       const meta = (row.metadata ?? {}) as Record<string, unknown>;
+      // status is not yet a first-class column — until a writer populates
+      // metadata.status (read/replied/archived), every row reads "unread".
+      // metadata.status is the forward-compat hook for that writer.
       const status = typeof meta.status === "string" ? meta.status : "unread";
       return {
         id: row.id,
         leadId: row.lead_id ?? "",
+        // "Unknown" surfaces in the UI when leads JOIN returns no name —
+        // happens for activities recorded against deleted/anonymised leads.
         leadName:
           [row.leads?.first_name, row.leads?.last_name].filter(Boolean).join(" ") ||
           "Unknown",

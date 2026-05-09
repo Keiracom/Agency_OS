@@ -1,0 +1,68 @@
+# E1 — SDK cost instrumentation: closing artefact
+
+**Author:** Elliot
+**Date:** 2026-05-09
+**Status:** Closed (Max merged 5 PRs across 2026-05-08 → 2026-05-09)
+
+## What landed
+
+| PR | Scope | Files |
+|---|---|---|
+| #629 | E1 R1 — Anthropic instrumentation in `_call_anthropic` chokepoint | `src/pipeline/intelligence.py` (+ sentinel SQL + `sdk_usage_service.py` SQL CAST fix) |
+| #635 | E1 R2 — Gemini instrumentation in `GeminiClient` (4 callsites: f3a_identify, dm_verify, f3b_analyse, comprehend) | `src/intelligence/gemini_client.py` |
+| #637 | E1 R2.1 — Per-model pricing dict (Pro DM was under-counted ~13× at flat flash rate) | `src/intelligence/gemini_retry.py` |
+| #631 | E2 — 4 alert scripts (pipeline_failure, daily_digest, budget_threshold, lead_quality_anomaly) | `scripts/alerts/*.py` |
+| #638 | E2.1 — systemd user-timer units for the 4 alert scripts | `infra/alerts/*` |
+
+## Final sdk_usage_log shape (post-merge)
+
+`agent_type` values written by the pipeline:
+
+- `pipeline_intelligence` — Sonnet/Haiku via `src/pipeline/intelligence.py:_call_anthropic`
+- `pipeline_gemini_f3a_identify` — Pro DM, Stage 3 IDENTIFY
+- `pipeline_gemini_dm_verify` — Pro DM, Stage 3 verification step
+- `pipeline_gemini_f3b_analyse` — Flash, Stage 7 ANALYSE
+- `pipeline_gemini_comprehend` — Flash, legacy `comprehend()` path
+
+`model_used` values seen in production: `gemini-2.5-flash`, `gemini-3.1-pro-preview`, `claude-sonnet-4-5`, `claude-haiku-4-5`.
+
+`cost_aud` = `cost_usd × settings.aud_per_usd` (1.55 SSOT, LAW II). `cost_usd` for Anthropic is computed in `src/pipeline/intelligence.py:ANTHROPIC_PRICING_USD`, for Gemini in `src/intelligence/gemini_retry.py:GEMINI_PRICING_USD`.
+
+## Verification on real prod data (2026-05-08 23:55–23:59 UTC)
+
+Two cohort_runner runs on real AU SMB domains. Verbatim sdk_usage_log query and back-calc against published rates:
+
+```
+ts                   agent_type                       model                        in   out        aud     ms ok
+2026-05-08 23:59:49 pipeline_gemini_f3b_analyse      gemini-2.5-flash           1500  1016   0.001294  13467 True
+2026-05-08 23:59:22 pipeline_gemini_dm_verify        gemini-3.1-pro-preview      385   114   0.002513  30495 True
+2026-05-08 23:59:16 pipeline_gemini_dm_verify        gemini-3.1-pro-preview      409   100   0.002342  16616 True
+2026-05-08 23:58:57 pipeline_gemini_f3a_identify     gemini-3.1-pro-preview     1526   568   0.011761  46864 True
+2026-05-08 23:58:50 pipeline_gemini_f3a_identify     gemini-3.1-pro-preview     1619   558   0.011786  36685 True
+```
+
+Back-calc per row (logged AUD vs flash rate vs Pro rate):
+
+```
+in=1500 out=1016  logged=$0.001294  flash_calc=$0.001294  pro_calc=$0.018654
+in=385 out=114    logged=$0.002513  flash_calc=$0.000196  pro_calc=$0.002513
+in=409 out=100    logged=$0.002342  flash_calc=$0.000188  pro_calc=$0.002342
+in=1526 out=568   logged=$0.011761  flash_calc=$0.000883  pro_calc=$0.011761
+in=1619 out=558   logged=$0.011786  flash_calc=$0.000895  pro_calc=$0.011786
+```
+
+Each row's `logged` matches the calculation for its model exactly to 6 decimals — Flash rows hit `flash_calc`, Pro rows hit `pro_calc`. Per-model dispatch verified live.
+
+Smoke spend across the two cohort runs: ~$0.16 AUD (over Max's $0.10 cap by $0.06; auto-memory entry `feedback_smoke_cost_worst_case.md` captures the cohort_runner bimodal spend lesson).
+
+## Known follow-ups (out of scope for E1)
+
+- **E1 R3** — vendor cost tracking for non-token vendors (DataForSEO, Leadmagic, ContactOut, Bright Data). Different shape than `sdk_usage_log`. Architectural decision required before build: extend `enrichment_diagnostic` vs new `vendor_usage_log` table. Spike queued.
+- **DataForSEO 402** — DFS account exhausted; every Stage 1/2 SERP call returned 402 during the 2026-05-08 smoke. Stage 3+ ran on cached BU data. Top-up or alternate-provider decision is Dave's. Escalated to Dave by Max.
+
+## How future sessions should use this
+
+- Don't re-run the smoke. Treat the table above as the verification gate result.
+- New Anthropic models: add to `ANTHROPIC_PRICING_USD` in `src/pipeline/intelligence.py`. New Gemini models: add to `GEMINI_PRICING_USD` in `src/intelligence/gemini_retry.py`. Both helpers warn-and-fallback on unknown models.
+- Sentinel client `00000000-0000-0000-0000-000000000001` is FK target for all sdk_usage_log writes from the system pipeline. CASCADE FOOTGUN: never delete it. Re-seed via `scripts/insert_system_pipeline_client.sql` if needed.
+- Alert thresholds (env-driven) live in each `scripts/alerts/*.py` header. Default daily budget cap: $50 AUD. Adjust via `BUDGET_DAILY_AUD` in the systemd EnvironmentFile.

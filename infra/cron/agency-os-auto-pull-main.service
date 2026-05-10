@@ -1,0 +1,6 @@
+[Unit]
+Description=Agency OS — auto-pull origin/main into Elliot + Aiden worktrees when on main + clean
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/env bash /home/elliotbot/clawd/Agency_OS/scripts/auto_pull_main.sh

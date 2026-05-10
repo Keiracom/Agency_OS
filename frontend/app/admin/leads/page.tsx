@@ -8,7 +8,9 @@
 "use client";
 
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Search } from "lucide-react";
+import { createBrowserClient } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -28,11 +30,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-// Pre-revenue honesty: empty array beats fake names ("John Smith",
-// "Sarah Johnson", "Acme Corp", etc. that would show in admin/leads
-// post-login). Real wiring against the leads table is the Phase 4
-// admin Tier A batch (per docs/audits/aiden/admin_dashboard_mock_audit_2026-05-09.md).
-// Filters + stats logic below still works against an empty input.
+// Phase 4 admin Tier A wiring (2026-05-10): replaces the prior empty-array
+// honesty pass (PR #661) with live Supabase queries against `leads` table
+// joined with `clients` for cross-client display name. Filters + stats logic
+// below unchanged — operates on the fetched array.
 interface Lead {
   id: string;
   email: string;
@@ -44,7 +45,52 @@ interface Lead {
   status: "new" | "enriched" | "scored" | "in_sequence" | "converted" | "unsubscribed" | "bounced";
 }
 
-const mockLeads: Lead[] = [];
+type LeadRow = {
+  id: string;
+  email: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  company: string | null;
+  als_score: number | null;
+  als_tier: string | null;
+  status: string | null;
+  client_id: string | null;
+  clients: { name: string | null } | null;
+};
+
+const TIER_OF = (score: number | null): "hot" | "warm" | "cold" => {
+  if (score == null) return "cold";
+  if (score >= 70) return "hot";
+  if (score >= 40) return "warm";
+  return "cold";
+};
+
+const STATUS_OF = (raw: string | null): Lead["status"] => {
+  const allowed = ["new", "enriched", "scored", "in_sequence", "converted", "unsubscribed", "bounced"];
+  return (allowed.includes(raw ?? "") ? raw : "new") as Lead["status"];
+};
+
+async function fetchAdminLeads(): Promise<Lead[]> {
+  const sb = createBrowserClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const client = sb as any;
+  const { data, error } = await client
+    .from("leads")
+    .select("id, email, first_name, last_name, company, als_score, als_tier, status, client_id, clients(name)")
+    .order("als_score", { ascending: false, nullsFirst: false })
+    .limit(500);
+  if (error) throw error;
+  return ((data ?? []) as LeadRow[]).map((row) => ({
+    id: row.id,
+    email: row.email ?? "",
+    name: [row.first_name, row.last_name].filter(Boolean).join(" ") || "Unknown",
+    company: row.company ?? "",
+    client: row.clients?.name ?? "",
+    als: row.als_score ?? 0,
+    tier: (["hot", "warm", "cold"].includes(row.als_tier ?? "") ? row.als_tier : TIER_OF(row.als_score)) as Lead["tier"],
+    status: STATUS_OF(row.status),
+  }));
+}
 
 const tierColors = {
   hot: "bg-amber-glow text-error border-amber/20",
@@ -67,7 +113,13 @@ export default function AdminLeadsPage() {
   const [tierFilter, setTierFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
 
-  const filteredLeads = mockLeads.filter((lead) => {
+  const { data: leads = [], isLoading } = useQuery({
+    queryKey: ["admin-leads"],
+    queryFn: fetchAdminLeads,
+    staleTime: 30 * 1000,
+  });
+
+  const filteredLeads = leads.filter((lead) => {
     const matchesSearch =
       lead.email.toLowerCase().includes(search.toLowerCase()) ||
       lead.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -79,9 +131,9 @@ export default function AdminLeadsPage() {
   });
 
   // ALS distribution
-  const hotLeads = mockLeads.filter((l) => l.als >= 70).length;
-  const warmLeads = mockLeads.filter((l) => l.als >= 40 && l.als < 70).length;
-  const coldLeads = mockLeads.filter((l) => l.als < 40).length;
+  const hotLeads = leads.filter((l) => l.als >= 70).length;
+  const warmLeads = leads.filter((l) => l.als >= 40 && l.als < 70).length;
+  const coldLeads = leads.filter((l) => l.als < 40).length;
 
   return (
     <div className="space-y-6">
@@ -100,7 +152,7 @@ export default function AdminLeadsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{mockLeads.length.toLocaleString()}</div>
+            <div className="text-2xl font-bold">{isLoading ? "…" : leads.length.toLocaleString()}</div>
           </CardContent>
         </Card>
         <Card>

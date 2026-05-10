@@ -8,8 +8,10 @@
 "use client";
 
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { Search, Mail, MessageSquare, Linkedin, ExternalLink } from "lucide-react";
+import { createBrowserClient } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -43,81 +45,60 @@ interface Reply {
   timestamp: Date;
 }
 
-// Mock data
-const mockReplies: Reply[] = [
-  {
-    id: "1",
-    client: "LeadGen Pro",
-    clientId: "cl1",
-    leadEmail: "john@acme.com",
-    leadId: "l1",
-    leadName: "John Smith",
-    channel: "email",
-    intent: "interested",
-    message: "Thanks for reaching out! I'd love to learn more about your services.",
-    timestamp: new Date(Date.now() - 1000 * 60 * 15),
-  },
-  {
-    id: "2",
-    client: "GrowthLab",
-    clientId: "cl2",
-    leadEmail: "sarah@tech.co",
-    leadId: "l2",
-    leadName: "Sarah Johnson",
-    channel: "email",
-    intent: "meeting_request",
-    message: "Can we schedule a call for next Tuesday?",
-    timestamp: new Date(Date.now() - 1000 * 60 * 45),
-  },
-  {
-    id: "3",
-    client: "ScaleUp Co",
-    clientId: "cl3",
-    leadEmail: "mike@startup.io",
-    leadId: "l3",
-    leadName: "Mike Wilson",
-    channel: "linkedin",
-    intent: "question",
-    message: "What are your pricing options for small teams?",
-    timestamp: new Date(Date.now() - 1000 * 60 * 90),
-  },
-  {
-    id: "4",
-    client: "Marketing Plus",
-    clientId: "cl4",
-    leadEmail: "lisa@enterprise.com",
-    leadId: "l4",
-    leadName: "Lisa Brown",
-    channel: "sms",
-    intent: "not_interested",
-    message: "Not interested at this time, thanks.",
-    timestamp: new Date(Date.now() - 1000 * 60 * 120),
-  },
-  {
-    id: "5",
-    client: "Enterprise Co",
-    clientId: "cl5",
-    leadEmail: "david@agency.com",
-    leadId: "l5",
-    leadName: "David Lee",
-    channel: "email",
-    intent: "out_of_office",
-    message: "I'm out of the office until January 5th.",
-    timestamp: new Date(Date.now() - 1000 * 60 * 180),
-  },
-  {
-    id: "6",
-    client: "LeadGen Pro",
-    clientId: "cl1",
-    leadEmail: "emma@corp.net",
-    leadId: "l6",
-    leadName: "Emma Davis",
-    channel: "email",
-    intent: "unsubscribe",
-    message: "Please remove me from your mailing list.",
-    timestamp: new Date(Date.now() - 1000 * 60 * 240),
-  },
-];
+// Phase 4 admin Tier A wiring (2026-05-10): replaces hardcoded mockReplies
+// with live activities query filtered to reply-shaped actions, joined with
+// leads + clients for sender + client display. Same action enum as
+// /api/replies route (PR #639).
+const REPLY_ACTIONS = ["reply.received", "reply_received", "received_reply"];
+
+type ActivityRow = {
+  id: string;
+  client_id: string | null;
+  lead_id: string | null;
+  channel: string | null;
+  intent: string | null;
+  content_preview: string | null;
+  created_at: string;
+  leads: {
+    email: string | null;
+    first_name: string | null;
+    last_name: string | null;
+  } | null;
+  clients: { name: string | null } | null;
+};
+
+const CHANNEL_OF = (raw: string | null): "email" | "sms" | "linkedin" => {
+  if (raw === "sms" || raw === "linkedin") return raw;
+  return "email";
+};
+
+async function fetchAdminReplies(): Promise<Reply[]> {
+  const sb = createBrowserClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const client = sb as any;
+  const { data, error } = await client
+    .from("activities")
+    .select(
+      "id, client_id, lead_id, channel, intent, content_preview, created_at, leads(email, first_name, last_name), clients(name)"
+    )
+    .in("action", REPLY_ACTIONS)
+    .order("created_at", { ascending: false })
+    .limit(200);
+  if (error) throw error;
+  return ((data ?? []) as ActivityRow[]).map((row) => ({
+    id: row.id,
+    client: row.clients?.name ?? "",
+    clientId: row.client_id ?? "",
+    leadEmail: row.leads?.email ?? "",
+    leadId: row.lead_id ?? "",
+    leadName:
+      [row.leads?.first_name, row.leads?.last_name].filter(Boolean).join(" ") || "Unknown",
+    channel: CHANNEL_OF(row.channel),
+    intent: row.intent ?? "neutral",
+    message: row.content_preview ?? "",
+    timestamp: new Date(row.created_at),
+  }));
+}
 
 const intentColors: Record<string, string> = {
   interested: "bg-amber/10 text-amber border-amber/20",
@@ -155,9 +136,15 @@ export default function AdminRepliesPage() {
   const [clientFilter, setClientFilter] = useState("all");
   const [channelFilter, setChannelFilter] = useState("all");
 
-  const clients = Array.from(new Set(mockReplies.map((r) => r.client)));
+  const { data: replies = [], isLoading } = useQuery({
+    queryKey: ["admin-replies"],
+    queryFn: fetchAdminReplies,
+    staleTime: 30 * 1000,
+  });
 
-  const filteredReplies = mockReplies.filter((reply) => {
+  const clients = Array.from(new Set(replies.map((r) => r.client).filter(Boolean)));
+
+  const filteredReplies = replies.filter((reply) => {
     const matchesSearch =
       reply.leadEmail.toLowerCase().includes(search.toLowerCase()) ||
       reply.leadName.toLowerCase().includes(search.toLowerCase()) ||
@@ -169,9 +156,10 @@ export default function AdminRepliesPage() {
   });
 
   // Stats
-  const interestedCount = mockReplies.filter((r) => r.intent === "interested").length;
-  const meetingCount = mockReplies.filter((r) => r.intent === "meeting_request").length;
-  const questionCount = mockReplies.filter((r) => r.intent === "question").length;
+  const interestedCount = replies.filter((r) => r.intent === "interested").length;
+  const meetingCount = replies.filter((r) => r.intent === "meeting_request").length;
+  const questionCount = replies.filter((r) => r.intent === "question").length;
+  void isLoading; // surfaced via row count "0" pre-revenue; loading flag unused for stats
 
   return (
     <div className="space-y-6">
@@ -192,7 +180,7 @@ export default function AdminRepliesPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{mockReplies.length}</div>
+            <div className="text-2xl font-bold">{replies.length}</div>
           </CardContent>
         </Card>
         <Card>

@@ -23,9 +23,11 @@ import {
   Calendar,
   Database,
   DollarSign,
+  RefreshCw,
   TrendingDown,
   Zap,
 } from "lucide-react";
+import { AutoRefresh } from "./AutoRefresh";
 
 interface CostBreakdownRow {
   group: string;
@@ -149,21 +151,34 @@ function formatAUD(amount: number): string {
 export default async function OpsPanelPage() {
   const data = await fetchOpsData();
 
+  const renderedAt = new Date().toLocaleTimeString("en-AU", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Operations</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Real-time view of cost, pipeline activity, and conversion. All
-          data live from Supabase. Pre-revenue means honest zeros where
-          there&apos;s no traffic yet.
-        </p>
-        {data.errors && (
-          <p className="text-xs text-red-600 mt-2">
-            Some queries failed: {data.errors}
+      <AutoRefresh intervalMs={30_000} />
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Operations</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Real-time view of cost, pipeline activity, and conversion. All
+            data live from Supabase. Pre-revenue means honest zeros where
+            there&apos;s no traffic yet.
           </p>
-        )}
+        </div>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground whitespace-nowrap">
+          <RefreshCw className="w-3 h-3" />
+          <span>Auto-refresh 30s · last {renderedAt}</span>
+        </div>
       </div>
+      {data.errors && (
+        <p className="text-xs text-red-600">
+          Some queries failed: {data.errors}
+        </p>
+      )}
 
       {/* Top KPIs */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

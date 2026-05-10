@@ -20,25 +20,34 @@ import { ReactNode } from "react";
 
 // Mocked Supabase channel factory. Each test swaps in a channel with
 // controllable .subscribe() and .on() behaviour.
-const mockChannel = () => {
-  let onSubscribe: ((s: string) => void) | null = null;
-  const handlers: Array<(payload: unknown) => void> = [];
+//
+// vi.hoisted wrapper: vi.mock factories are hoisted to the top of the file
+// before any other top-level code runs, so any helper they reference must
+// also live inside a hoisted block. Without this, the factory captures
+// `mockChannel` before its declaration is reached and fails at module-init
+// time with "Cannot access 'mockChannel' before initialization".
+const { mockChannel } = vi.hoisted(() => {
+  const mockChannel = () => {
+    let onSubscribe: ((s: string) => void) | null = null;
+    const handlers: Array<(payload: unknown) => void> = [];
 
-  const channel = {
-    on: vi.fn((_event: string, _cfg: unknown, handler: (p: unknown) => void) => {
-      handlers.push(handler);
-      return channel;
-    }),
-    subscribe: vi.fn((cb: (s: string) => void) => {
-      onSubscribe = cb;
-      return channel;
-    }),
-    // Test helpers (not part of real supabase-js API)
-    _fire: (status: string) => onSubscribe?.(status),
-    _receive: (payload: unknown) => handlers.forEach((h) => h(payload)),
+    const channel = {
+      on: vi.fn((_event: string, _cfg: unknown, handler: (p: unknown) => void) => {
+        handlers.push(handler);
+        return channel;
+      }),
+      subscribe: vi.fn((cb: (s: string) => void) => {
+        onSubscribe = cb;
+        return channel;
+      }),
+      // Test helpers (not part of real supabase-js API)
+      _fire: (status: string) => onSubscribe?.(status),
+      _receive: (payload: unknown) => handlers.forEach((h) => h(payload)),
+    };
+    return channel;
   };
-  return channel;
-};
+  return { mockChannel };
+});
 
 vi.mock("@/lib/supabase", () => {
   const channel = mockChannel();
@@ -78,9 +87,12 @@ const wrapper = ({ children }: { children: ReactNode }) => {
 describe("useLiveActivityFeed", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.useFakeTimers();
   });
   afterEach(() => vi.useRealTimers());
+  // Note: vi.useFakeTimers() is scoped per-test (only the 10s-timeout test
+  // needs it). Globally enabling fake timers breaks testing-library's
+  // waitFor() — its retry interval ticks against the timer source, so a
+  // wall-clock waitFor inside a fake-timers test hangs until test timeout.
 
   it("subscribes to 4 realtime tables on mount (cis_outreach_outcomes + replies + dm_meetings + client_suppression)", async () => {
     const { result } = renderHook(() => useLiveActivityFeed({ limit: 8 }), {
@@ -123,6 +135,7 @@ describe("useLiveActivityFeed", () => {
   });
 
   it("falls back to polling if subscribe does not settle within 10s", async () => {
+    vi.useFakeTimers();
     const { result } = renderHook(() => useLiveActivityFeed(), { wrapper });
     // Do NOT fire any status — let timeout fire
     await act(async () => {

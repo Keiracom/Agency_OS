@@ -7,7 +7,9 @@
 
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { createBrowserClient } from "@/lib/supabase";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -40,25 +42,67 @@ interface ClientLimit {
   linkedinLimit: number;
 }
 
-// Mock data
-const mockRateLimits: RateLimit[] = [
-  { service: "Apollo", resource: "API Enrichments", used: 80, limit: 100, resets: "2:00 PM", status: "warning" },
-  { service: "HeyReach", resource: "LinkedIn Actions", used: 15, limit: 17, resets: "Midnight", status: "warning" },
-  { service: "Resend", resource: "Emails", used: 1847, limit: 10000, resets: "Midnight", status: "ok" },
-  { service: "Twilio", resource: "SMS", used: 234, limit: 1000, resets: "Midnight", status: "ok" },
-  { service: "Synthflow", resource: "Voice Calls", used: 12, limit: 50, resets: "Midnight", status: "ok" },
-  { service: "Lob", resource: "Mail Pieces", used: 5, limit: 100, resets: "Midnight", status: "ok" },
-  { service: "Anthropic", resource: "AI Spend ($)", used: 89, limit: 500, resets: "Midnight", status: "ok" },
-];
+// Phase 4 admin Tier B wiring (2026-05-10): live `rate_limits` table from
+// PR #664. Reset time computed at query time as window_started_at +
+// period_seconds (matches migration comment on IMMUTABLE-index gotcha).
+// Status: ≥90% critical, ≥80% warning, else ok. mockClientLimits deferred
+// — rate_limits is platform-scoped (no client_id), per-client tracking
+// needs separate schema work.
+type RateLimitRow = {
+  vendor: string;
+  endpoint: string;
+  limit_value: number;
+  period_seconds: number;
+  current_count: number;
+  window_started_at: string;
+};
 
-const mockClientLimits: ClientLimit[] = [
-  { client: "LeadGen Pro", emailUsed: 45, emailLimit: 50, smsUsed: 78, smsLimit: 100, linkedinUsed: 15, linkedinLimit: 17 },
-  { client: "GrowthLab", emailUsed: 32, emailLimit: 50, smsUsed: 45, smsLimit: 100, linkedinUsed: 12, linkedinLimit: 17 },
-  { client: "Enterprise Co", emailUsed: 28, emailLimit: 50, smsUsed: 34, smsLimit: 100, linkedinUsed: 8, linkedinLimit: 17 },
-  { client: "ScaleUp Co", emailUsed: 18, emailLimit: 50, smsUsed: 23, smsLimit: 100, linkedinUsed: 5, linkedinLimit: 17 },
-];
+function statusFromPct(pct: number): "ok" | "warning" | "critical" {
+  if (pct >= 90) return "critical";
+  if (pct >= 80) return "warning";
+  return "ok";
+}
+
+function formatReset(windowStart: string, periodSeconds: number): string {
+  const reset = new Date(new Date(windowStart).getTime() + periodSeconds * 1000);
+  const sameDay = reset.toDateString() === new Date().toDateString();
+  return sameDay
+    ? reset.toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit" })
+    : reset.toLocaleDateString("en-AU", { month: "short", day: "numeric" });
+}
+
+async function fetchRateLimits(): Promise<RateLimit[]> {
+  const sb = createBrowserClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const client = sb as any;
+  const { data, error } = await client
+    .from("rate_limits")
+    .select("vendor, endpoint, limit_value, period_seconds, current_count, window_started_at")
+    .is("deleted_at", null)
+    .order("vendor", { ascending: true });
+  if (error) throw error;
+  return ((data ?? []) as RateLimitRow[]).map((row) => {
+    const pct = row.limit_value > 0 ? (row.current_count / row.limit_value) * 100 : 0;
+    return {
+      service: row.vendor,
+      resource: row.endpoint,
+      used: row.current_count,
+      limit: row.limit_value,
+      resets: formatReset(row.window_started_at, row.period_seconds),
+      status: statusFromPct(pct),
+    };
+  });
+}
+
+const EMPTY_CLIENT_LIMITS: ClientLimit[] = [];
 
 export default function AdminRateLimitsPage() {
+  const { data: mockRateLimits = [] } = useQuery({
+    queryKey: ["admin-rate-limits"],
+    queryFn: fetchRateLimits,
+    staleTime: 30 * 1000,
+  });
+  const mockClientLimits = EMPTY_CLIENT_LIMITS;
   const warningCount = mockRateLimits.filter((r) => r.status === "warning").length;
   const criticalCount = mockRateLimits.filter((r) => r.status === "critical").length;
 

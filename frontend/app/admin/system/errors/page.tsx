@@ -8,6 +8,8 @@
 "use client";
 
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { createBrowserClient } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -39,69 +41,60 @@ interface ErrorEntry {
   resolved: boolean;
 }
 
-// Mock data
-const mockErrors: ErrorEntry[] = [
-  {
-    id: "1",
-    timestamp: new Date(Date.now() - 1000 * 60 * 23),
-    type: "ConnectionTimeout",
-    message: "Connection to Apollo API timed out after 30s",
-    service: "apollo.py",
-    count: 3,
-    level: "error",
-    resolved: false,
-  },
-  {
-    id: "2",
-    timestamp: new Date(Date.now() - 1000 * 60 * 59),
-    type: "RateLimitExceeded",
-    message: "HeyReach rate limit exceeded for seat_123",
-    service: "heyreach.py",
-    count: 1,
-    level: "warning",
-    resolved: false,
-  },
-  {
-    id: "3",
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2),
-    type: "ValidationError",
-    message: "Invalid email format: user@.com",
-    service: "scout.py",
-    count: 2,
-    level: "warning",
-    resolved: true,
-  },
-  {
-    id: "4",
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 4),
-    type: "AuthenticationError",
-    message: "Twilio authentication failed - invalid API key",
-    service: "twilio.py",
-    count: 5,
-    level: "error",
-    resolved: true,
-  },
-  {
-    id: "5",
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 6),
-    type: "DatabaseError",
-    message: "Connection pool exhausted",
-    service: "supabase.py",
-    count: 1,
-    level: "error",
-    resolved: true,
-  },
-  {
-    id: "6",
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 8),
-    type: "AISpendLimitError",
-    message: "Daily AI spend limit reached: $500/$500",
-    service: "anthropic.py",
-    count: 1,
-    level: "error",
-    resolved: true,
-  },
-];
+// Phase 4 admin Tier B wiring (2026-05-10): live `system_errors` table
+// from PR #664. Schema: id, source, severity, message, context (jsonb),
+// resolved_at, resolved_by, created_at, deleted_at. UI fields mapped:
+// - "type": derived from context.type if present, else first token of message
+// - "service": source field directly
+// - "count": context.count if present, else 1 (system_errors stores per-
+//   occurrence rows, not aggregated)
+// - "level": severity narrowed to error|warning|info (info if severity is
+//   "warning" and not in our enum, default error)
+type SystemErrorRow = {
+  id: string;
+  source: string;
+  severity: string;
+  message: string;
+  context: Record<string, unknown> | null;
+  resolved_at: string | null;
+  created_at: string;
+};
+
+function severityToLevel(s: string): "error" | "warning" | "info" {
+  if (s === "warning") return "warning";
+  if (s === "info") return "info";
+  return "error";
+}
+
+async function fetchSystemErrors(): Promise<ErrorEntry[]> {
+  const sb = createBrowserClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const client = sb as any;
+  const { data, error } = await client
+    .from("system_errors")
+    .select("id, source, severity, message, context, resolved_at, created_at")
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .limit(200);
+  if (error) throw error;
+  return ((data ?? []) as SystemErrorRow[]).map((row) => {
+    const ctx = (row.context ?? {}) as Record<string, unknown>;
+    const type = (typeof ctx.type === "string" ? ctx.type : null)
+      ?? row.message.split(/[\s:]/)[0]
+      ?? "Error";
+    const count = typeof ctx.count === "number" ? ctx.count : 1;
+    return {
+      id: row.id,
+      timestamp: new Date(row.created_at),
+      type,
+      message: row.message,
+      service: row.source,
+      count,
+      level: severityToLevel(row.severity),
+      resolved: row.resolved_at !== null,
+    };
+  });
+}
 
 const levelColors = {
   error: "bg-amber-glow text-error border-amber/20",
@@ -120,6 +113,12 @@ function formatTimeAgo(date: Date): string {
 export default function AdminErrorsPage() {
   const [levelFilter, setLevelFilter] = useState("all");
   const [resolvedFilter, setResolvedFilter] = useState("all");
+
+  const { data: mockErrors = [] } = useQuery({
+    queryKey: ["admin-system-errors"],
+    queryFn: fetchSystemErrors,
+    staleTime: 30 * 1000,
+  });
 
   const filteredErrors = mockErrors.filter((error) => {
     const matchesLevel = levelFilter === "all" || error.level === levelFilter;

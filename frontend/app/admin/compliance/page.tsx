@@ -8,7 +8,9 @@
 "use client";
 
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { createBrowserClient } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -20,22 +22,77 @@ import {
   CheckCircle,
 } from "lucide-react";
 
-// Mock data
-const mockCompliance = {
-  suppressionCount: 1247,
-  bounceRate: 2.3,
-  spamComplaints: 5,
-  dncrBlocks: 23,
-  lastAudit: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7),
-  status: "healthy" as const,
-  recentIssues: [
-    { type: "bounce", count: 12, client: "GrowthLab" },
-    { type: "spam", count: 2, client: "LeadGen Pro" },
-    { type: "dncr", count: 5, client: "ScaleUp Co" },
-  ],
+// Phase 4 admin Tier B wiring (2026-05-10): aggregates from
+// `email_suppression` + `email_events` (last 30d). bounceRate needs a
+// sent-count denominator from activities — deferred (pre-revenue 0
+// sent). dncrBlocks = 0 (voice channel; 0 calls fired). lastAudit
+// defaults to epoch (UI shows "—").
+type ComplianceData = {
+  suppressionCount: number;
+  bounceRate: number;
+  spamComplaints: number;
+  dncrBlocks: number;
+  lastAudit: Date;
+  status: "healthy" | "issues";
+  recentIssues: Array<{ type: string; count: number; client: string }>;
+};
+
+async function fetchCompliance(): Promise<ComplianceData> {
+  const sb = createBrowserClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const client = sb as any;
+  const [{ count: suppressionCount }, { data: events }] = await Promise.all([
+    client.from("email_suppression").select("*", { count: "exact", head: true }).is("deleted_at", null),
+    client
+      .from("email_events")
+      .select("event_type, clients(name)")
+      .in("event_type", ["bounce", "hard_bounce", "soft_bounce", "spam", "complaint"])
+      .gte("event_at", new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()),
+  ]);
+  const eventRows = (events ?? []) as Array<{ event_type: string; clients: { name: string | null } | null }>;
+  const totalBounceish = eventRows.length;
+  const spamComplaints = eventRows.filter((r) => r.event_type === "spam" || r.event_type === "complaint").length;
+  const grouped = new Map<string, number>();
+  for (const r of eventRows) {
+    const bucket = r.event_type === "spam" || r.event_type === "complaint" ? "spam" : "bounce";
+    const c = r.clients?.name ?? "Unknown";
+    const key = `${bucket}::${c}`;
+    grouped.set(key, (grouped.get(key) ?? 0) + 1);
+  }
+  const recentIssues = Array.from(grouped.entries())
+    .map(([key, count]) => {
+      const [type, c] = key.split("::");
+      return { type, count, client: c };
+    })
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
+  return {
+    suppressionCount: suppressionCount ?? 0,
+    bounceRate: 0,
+    spamComplaints,
+    dncrBlocks: 0,
+    lastAudit: new Date(0),
+    status: totalBounceish > 50 ? "issues" : "healthy",
+    recentIssues,
+  };
+}
+
+const EMPTY_COMPLIANCE: ComplianceData = {
+  suppressionCount: 0,
+  bounceRate: 0,
+  spamComplaints: 0,
+  dncrBlocks: 0,
+  lastAudit: new Date(0),
+  status: "healthy",
+  recentIssues: [],
 };
 
 export default function AdminCompliancePage() {
+  const { data: mockCompliance = EMPTY_COMPLIANCE } = useQuery({
+    queryKey: ["admin-compliance"],
+    queryFn: fetchCompliance,
+    staleTime: 30 * 1000,
+  });
   const bounceStatus = mockCompliance.bounceRate < 2 ? "good" : mockCompliance.bounceRate < 5 ? "warning" : "critical";
 
   return (

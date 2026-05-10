@@ -8,6 +8,8 @@
 "use client";
 
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { createBrowserClient } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -45,23 +47,53 @@ interface ClientBounceRate {
   spamComplaints: number;
 }
 
-// Mock data
-const mockBounces: BounceEntry[] = [
-  { id: "1", email: "invalid@nowhere.com", client: "GrowthLab", type: "hard", reason: "Mailbox does not exist", timestamp: new Date(Date.now() - 1000 * 60 * 30) },
-  { id: "2", email: "full@mailbox.com", client: "LeadGen Pro", type: "soft", reason: "Mailbox full", timestamp: new Date(Date.now() - 1000 * 60 * 60) },
-  { id: "3", email: "spam@marked.com", client: "LeadGen Pro", type: "spam", reason: "Marked as spam by recipient", timestamp: new Date(Date.now() - 1000 * 60 * 90) },
-  { id: "4", email: "old@domain.net", client: "ScaleUp Co", type: "hard", reason: "Domain not found", timestamp: new Date(Date.now() - 1000 * 60 * 120) },
-  { id: "5", email: "temp@issue.com", client: "GrowthLab", type: "soft", reason: "Temporary delivery failure", timestamp: new Date(Date.now() - 1000 * 60 * 150) },
-  { id: "6", email: "blocked@company.com", client: "Enterprise Co", type: "hard", reason: "Recipient blocked sender", timestamp: new Date(Date.now() - 1000 * 60 * 180) },
-];
+// Phase 4 admin Tier B wiring (2026-05-10): live query against
+// `email_events` filtered to bounce/spam-shaped event_types, joined
+// with leads (for email) + clients (for client name).
+//
+// Pre-revenue: 0 emails sent → email_events likely empty → all stats
+// render 0 honestly. Per-client bounce rates aggregate is deferred —
+// requires sent-count from activities + bounce-count from email_events
+// in a single GROUP BY query, more involved than scope of this PR.
+// Empty array shows no rows, "0 clients at risk" stat is correct.
+type EventRow = {
+  id: string;
+  event_type: string;
+  event_at: string;
+  leads: { email: string | null } | null;
+  clients: { name: string | null } | null;
+};
 
-const mockClientRates: ClientBounceRate[] = [
-  { client: "GrowthLab", sent: 450, bounced: 32, bounceRate: 7.1, spamComplaints: 2 },
-  { client: "LeadGen Pro", sent: 890, bounced: 18, bounceRate: 2.0, spamComplaints: 3 },
-  { client: "ScaleUp Co", sent: 320, bounced: 5, bounceRate: 1.6, spamComplaints: 0 },
-  { client: "Enterprise Co", sent: 560, bounced: 8, bounceRate: 1.4, spamComplaints: 0 },
-  { client: "Marketing Plus", sent: 280, bounced: 3, bounceRate: 1.1, spamComplaints: 0 },
-];
+const BOUNCE_EVENT_TYPES = ["bounce", "hard_bounce", "soft_bounce", "complaint", "spam"];
+
+function eventTypeToBucket(et: string): "hard" | "soft" | "spam" {
+  if (et === "spam" || et === "complaint") return "spam";
+  if (et === "soft_bounce") return "soft";
+  return "hard"; // hard_bounce + generic "bounce" → hard
+}
+
+async function fetchBounces(): Promise<BounceEntry[]> {
+  const sb = createBrowserClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const client = sb as any;
+  const { data, error } = await client
+    .from("email_events")
+    .select("id, event_type, event_at, leads(email), clients(name)")
+    .in("event_type", BOUNCE_EVENT_TYPES)
+    .order("event_at", { ascending: false })
+    .limit(200);
+  if (error) throw error;
+  return ((data ?? []) as EventRow[]).map((row) => ({
+    id: row.id,
+    email: row.leads?.email ?? "",
+    client: row.clients?.name ?? "",
+    type: eventTypeToBucket(row.event_type),
+    reason: row.event_type, // raw event_type as the reason for now
+    timestamp: new Date(row.event_at),
+  }));
+}
+
+const EMPTY_CLIENT_RATES: ClientBounceRate[] = [];
 
 const typeColors = {
   hard: "bg-amber-glow text-error border-amber/20",
@@ -79,6 +111,13 @@ function formatTimeAgo(date: Date): string {
 
 export default function AdminBouncesPage() {
   const [typeFilter, setTypeFilter] = useState("all");
+
+  const { data: mockBounces = [] } = useQuery({
+    queryKey: ["admin-bounces"],
+    queryFn: fetchBounces,
+    staleTime: 30 * 1000,
+  });
+  const mockClientRates = EMPTY_CLIENT_RATES;
 
   const filteredBounces = mockBounces.filter(
     (bounce) => typeFilter === "all" || bounce.type === typeFilter

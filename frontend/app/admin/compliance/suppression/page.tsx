@@ -8,7 +8,9 @@
 "use client";
 
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Search, Plus, Upload, Trash2 } from "lucide-react";
+import { createBrowserClient } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -39,14 +41,41 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 
-// Mock data
-const mockSuppressionList = [
-  { id: "1", email: "spam@badactor.com", reason: "spam", source: "system", addedBy: "System", addedAt: new Date(Date.now() - 1000 * 60 * 60 * 24) },
-  { id: "2", email: "john@unsubscribed.com", reason: "unsubscribe", source: "LeadGen Pro", addedBy: "User Request", addedAt: new Date(Date.now() - 1000 * 60 * 60 * 48) },
-  { id: "3", email: "bounced@invalid.net", reason: "bounce", source: "GrowthLab", addedBy: "System", addedAt: new Date(Date.now() - 1000 * 60 * 60 * 72) },
-  { id: "4", email: "competitor@rival.com", reason: "manual", source: "Admin", addedBy: "dave@agency.com", addedAt: new Date(Date.now() - 1000 * 60 * 60 * 96) },
-  { id: "5", email: "noreply@company.com", reason: "manual", source: "Admin", addedBy: "dave@agency.com", addedAt: new Date(Date.now() - 1000 * 60 * 60 * 120) },
-];
+// Phase 4 admin Tier B wiring (2026-05-10): live query against
+// `email_suppression` table from PR #664. Schema:
+// id, email, client_id, reason, source, notes, created_at, deleted_at.
+// Mock had `addedBy` field — schema has no per-row author column today,
+// so we display `source` in its place (good enough until a created_by
+// column is added in a follow-up).
+type SuppressionRow = {
+  id: string;
+  email: string;
+  reason: string;
+  source: string;
+  notes: string | null;
+  created_at: string;
+};
+
+async function fetchSuppressionList() {
+  const sb = createBrowserClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const client = sb as any;
+  const { data, error } = await client
+    .from("email_suppression")
+    .select("id, email, reason, source, notes, created_at")
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .limit(500);
+  if (error) throw error;
+  return ((data ?? []) as SuppressionRow[]).map((row) => ({
+    id: row.id,
+    email: row.email,
+    reason: row.reason,
+    source: row.source,
+    addedBy: row.notes ?? row.source,
+    addedAt: new Date(row.created_at),
+  }));
+}
 
 const reasonColors = {
   spam: "bg-amber-glow text-error border-amber/20",
@@ -69,6 +98,12 @@ export default function AdminSuppressionPage() {
   const [newEmail, setNewEmail] = useState("");
   const [newReason, setNewReason] = useState("manual");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+
+  const { data: mockSuppressionList = [] } = useQuery({
+    queryKey: ["admin-suppression"],
+    queryFn: fetchSuppressionList,
+    staleTime: 30 * 1000,
+  });
 
   const filteredList = mockSuppressionList.filter((item) => {
     const matchesSearch = item.email.toLowerCase().includes(search.toLowerCase());

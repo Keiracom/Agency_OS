@@ -8,8 +8,10 @@
 "use client";
 
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { createBrowserClient } from "@/lib/supabase";
 import {
   ArrowLeft,
   Eye,
@@ -37,42 +39,91 @@ import {
 } from "@/components/ui/table";
 import { ClientHealthIndicator } from "@/components/admin/ClientHealthIndicator";
 
-// Mock client data
-const mockClient = {
-  id: "1",
-  name: "LeadGen Pro",
-  tier: "velocity" as const,
-  mrr: 999,
-  status: "active" as const,
-  healthScore: 92,
-  creditsRemaining: 2500,
-  creditsTotal: 5000,
-  createdAt: new Date("2024-06-15"),
-  renewalDate: new Date("2025-01-15"),
-  lastActivity: new Date(Date.now() - 1000 * 60 * 5),
-  team: [
-    { id: "1", name: "John Smith", email: "john@leadgenpro.com", role: "owner" },
-    { id: "2", name: "Jane Doe", email: "jane@leadgenpro.com", role: "admin" },
-    { id: "3", name: "Bob Wilson", email: "bob@leadgenpro.com", role: "member" },
-  ],
-  campaigns: [
-    { id: "1", name: "Q4 Outreach", status: "active", leads: 450, sent: 380, replies: 23 },
-    { id: "2", name: "Tech Startups", status: "active", leads: 320, sent: 290, replies: 18 },
-    { id: "3", name: "Enterprise Push", status: "paused", leads: 890, sent: 750, replies: 45 },
-    { id: "4", name: "SMB Nurture", status: "completed", leads: 680, sent: 680, replies: 52 },
-  ],
-  recentActivity: [
-    { id: "1", action: "Email sent", details: "to john@acme.com", timestamp: new Date(Date.now() - 1000 * 60 * 5), channel: "email" },
-    { id: "2", action: "Lead enriched", details: "ALS: 82", timestamp: new Date(Date.now() - 1000 * 60 * 15), channel: null },
-    { id: "3", action: "Reply received", details: "from sarah@tech.co", timestamp: new Date(Date.now() - 1000 * 60 * 45), channel: "email" },
-    { id: "4", action: "LinkedIn sent", details: "connection request", timestamp: new Date(Date.now() - 1000 * 60 * 60), channel: "linkedin" },
-  ],
-  billing: [
-    { id: "1", date: new Date("2024-12-01"), amount: 999, status: "paid", invoice: "INV-2024-1201" },
-    { id: "2", date: new Date("2024-11-01"), amount: 999, status: "paid", invoice: "INV-2024-1101" },
-    { id: "3", date: new Date("2024-10-01"), amount: 999, status: "paid", invoice: "INV-2024-1001" },
-  ],
+// Phase 4 admin Tier A wiring (2026-05-10): replaces hardcoded mockClient
+// with live `clients` JOIN `memberships` JOIN `users` for the team list.
+// Nested arrays (campaigns / recentActivity / billing) default to empty —
+// pre-revenue (no campaigns sent, no Stripe, no activity yet). Each
+// section's wire-up is a separate follow-up once outbound flows + Stripe
+// are unblocked.
+type ClientDetail = {
+  id: string;
+  name: string;
+  tier: "ignition" | "velocity" | "spark";
+  mrr: number;
+  status: "active" | "trialing" | "past_due" | "paused" | "cancelled";
+  healthScore: number;
+  creditsRemaining: number;
+  creditsTotal: number;
+  createdAt: Date;
+  renewalDate: Date;
+  lastActivity: Date;
+  team: { id: string; name: string; email: string; role: string }[];
+  campaigns: { id: string; name: string; status: string; leads: number; sent: number; replies: number }[];
+  recentActivity: { id: string; action: string; details: string; timestamp: Date; channel: string | null }[];
+  billing: { id: string; date: Date; amount: number; status: string; invoice: string }[];
 };
+
+type ClientRow = {
+  id: string;
+  name: string;
+  tier: string | null;
+  subscription_status: string | null;
+  created_at: string;
+  updated_at: string;
+  memberships: Array<{
+    role: string | null;
+    deleted_at: string | null;
+    users: { id: string; email: string; full_name: string | null } | null;
+  }> | null;
+};
+
+async function fetchAdminClient(clientId: string): Promise<ClientDetail | null> {
+  const sb = createBrowserClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const client = sb as any;
+  const { data, error } = await client
+    .from("clients")
+    .select(
+      "id, name, tier, subscription_status, created_at, updated_at, memberships(role, deleted_at, users(id, email, full_name))"
+    )
+    .eq("id", clientId)
+    .maybeSingle();
+  if (error || !data) return null;
+  const row = data as ClientRow;
+  const allowedTier: ClientDetail["tier"] = (["ignition", "velocity", "spark"].includes(row.tier ?? "")
+    ? (row.tier as ClientDetail["tier"])
+    : "ignition");
+  const allowedStatus: ClientDetail["status"] = (
+    ["active", "trialing", "past_due", "paused", "cancelled"].includes(row.subscription_status ?? "")
+      ? (row.subscription_status as ClientDetail["status"])
+      : "active"
+  );
+  const team = (row.memberships ?? [])
+    .filter((m) => m.deleted_at === null && m.users)
+    .map((m) => ({
+      id: m.users!.id,
+      name: m.users!.full_name ?? m.users!.email,
+      email: m.users!.email,
+      role: m.role ?? "member",
+    }));
+  return {
+    id: row.id,
+    name: row.name,
+    tier: allowedTier,
+    mrr: 0,
+    status: allowedStatus,
+    healthScore: 0,
+    creditsRemaining: 0,
+    creditsTotal: 0,
+    createdAt: new Date(row.created_at),
+    renewalDate: new Date(row.created_at),
+    lastActivity: new Date(row.updated_at),
+    team,
+    campaigns: [],
+    recentActivity: [],
+    billing: [],
+  };
+}
 
 const tierColors = {
   ignition: "bg-panel/10 text-amber border-default/20",
@@ -113,10 +164,38 @@ function formatTimeAgo(date: Date): string {
 
 export default function AdminClientDetailPage() {
   const params = useParams();
+  const clientId = (params?.id ?? "") as string;
   const [activeTab, setActiveTab] = useState("overview");
 
-  // In production, fetch client data based on params.id
-  const client = mockClient;
+  const { data: client, isLoading } = useQuery({
+    queryKey: ["admin-client", clientId],
+    queryFn: () => fetchAdminClient(clientId),
+    enabled: !!clientId,
+    staleTime: 30 * 1000,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <p className="text-sm text-muted-foreground">Loading…</p>
+      </div>
+    );
+  }
+
+  if (!client) {
+    return (
+      <div className="space-y-6">
+        <Link
+          href="/admin/clients"
+          className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Clients
+        </Link>
+        <p className="text-sm text-muted-foreground">Client not found.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

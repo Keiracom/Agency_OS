@@ -8,7 +8,9 @@
 "use client";
 
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Search, MoreHorizontal, Eye, UserX, Shield } from "lucide-react";
+import { createBrowserClient } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -48,75 +50,54 @@ interface User {
   isPlatformAdmin: boolean;
 }
 
-// Mock data
-const mockUsers: User[] = [
-  {
-    id: "1",
-    name: "Dave Williams",
-    email: "dave@agency.com",
-    clients: [],
-    lastActive: new Date(Date.now() - 1000 * 60 * 5),
-    status: "active",
-    isPlatformAdmin: true,
-  },
-  {
-    id: "2",
-    name: "John Smith",
-    email: "john@leadgenpro.com",
-    clients: [{ name: "LeadGen Pro", role: "owner" }],
-    lastActive: new Date(Date.now() - 1000 * 60 * 30),
-    status: "active",
-    isPlatformAdmin: false,
-  },
-  {
-    id: "3",
-    name: "Sarah Johnson",
-    email: "sarah@growthlab.co",
-    clients: [{ name: "GrowthLab", role: "owner" }],
-    lastActive: new Date(Date.now() - 1000 * 60 * 60 * 2),
-    status: "active",
-    isPlatformAdmin: false,
-  },
-  {
-    id: "4",
-    name: "Mike Wilson",
-    email: "mike@scaleup.io",
-    clients: [{ name: "ScaleUp Co", role: "admin" }],
-    lastActive: new Date(Date.now() - 1000 * 60 * 60 * 24),
-    status: "active",
-    isPlatformAdmin: false,
-  },
-  {
-    id: "5",
-    name: "Lisa Brown",
-    email: "lisa@enterprise.com",
-    clients: [
-      { name: "Enterprise Co", role: "owner" },
-      { name: "Marketing Plus", role: "admin" },
-    ],
-    lastActive: new Date(Date.now() - 1000 * 60 * 60 * 48),
-    status: "active",
-    isPlatformAdmin: false,
-  },
-  {
-    id: "6",
-    name: "Bob Chen",
-    email: "bob@leadgenpro.com",
-    clients: [{ name: "LeadGen Pro", role: "member" }],
-    lastActive: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7),
-    status: "inactive",
-    isPlatformAdmin: false,
-  },
-  {
-    id: "7",
-    name: "Alice Wong",
-    email: "alice@suspended.com",
-    clients: [{ name: "Suspended Co", role: "owner" }],
-    lastActive: new Date(Date.now() - 1000 * 60 * 60 * 24 * 30),
-    status: "suspended",
-    isPlatformAdmin: false,
-  },
-];
+// Phase 4 admin Tier A wiring (2026-05-10): replaces hardcoded mockUsers
+// with live users + memberships + clients query. Status field synthesised
+// from updated_at recency (active <30d, inactive >30d) since the users
+// table doesn't track a separate status column today. Suspended state
+// would need a future schema column (deferred).
+type UserRow = {
+  id: string;
+  email: string;
+  full_name: string | null;
+  is_platform_admin: boolean;
+  updated_at: string;
+  memberships: Array<{
+    role: string | null;
+    deleted_at: string | null;
+    clients: { name: string | null } | null;
+  }> | null;
+};
+
+async function fetchAdminUsers(): Promise<User[]> {
+  const sb = createBrowserClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const client = sb as any;
+  const { data, error } = await client
+    .from("users")
+    .select(
+      "id, email, full_name, is_platform_admin, updated_at, memberships(role, deleted_at, clients(name))"
+    )
+    .order("updated_at", { ascending: false })
+    .limit(500);
+  if (error) throw error;
+  const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  return ((data ?? []) as UserRow[]).map((row) => {
+    const lastActive = new Date(row.updated_at);
+    const status: User["status"] = lastActive.getTime() > thirtyDaysAgo ? "active" : "inactive";
+    const clients = (row.memberships ?? [])
+      .filter((m) => m.deleted_at === null && m.clients?.name)
+      .map((m) => ({ name: m.clients?.name ?? "", role: m.role ?? "member" }));
+    return {
+      id: row.id,
+      name: row.full_name ?? row.email,
+      email: row.email,
+      clients,
+      lastActive,
+      status,
+      isPlatformAdmin: row.is_platform_admin,
+    };
+  });
+}
 
 const roleColors: Record<string, string> = {
   owner: "bg-amber/10 text-amber border-amber/20",
@@ -153,7 +134,13 @@ export default function AdminUsersPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
-  const filteredUsers = mockUsers.filter((user) => {
+  const { data: users = [] } = useQuery({
+    queryKey: ["admin-users"],
+    queryFn: fetchAdminUsers,
+    staleTime: 30 * 1000,
+  });
+
+  const filteredUsers = users.filter((user) => {
     const matchesSearch =
       user.name.toLowerCase().includes(search.toLowerCase()) ||
       user.email.toLowerCase().includes(search.toLowerCase());
@@ -161,8 +148,8 @@ export default function AdminUsersPage() {
     return matchesSearch && matchesStatus;
   });
 
-  const activeCount = mockUsers.filter((u) => u.status === "active").length;
-  const adminCount = mockUsers.filter((u) => u.isPlatformAdmin).length;
+  const activeCount = users.filter((u) => u.status === "active").length;
+  const adminCount = users.filter((u) => u.isPlatformAdmin).length;
 
   return (
     <div className="space-y-6">
@@ -183,7 +170,7 @@ export default function AdminUsersPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{mockUsers.length}</div>
+            <div className="text-2xl font-bold">{users.length}</div>
           </CardContent>
         </Card>
         <Card>
@@ -214,7 +201,7 @@ export default function AdminUsersPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-amber">
-              {mockUsers.filter((u) => u.status === "suspended").length}
+              {users.filter((u) => u.status === "suspended").length}
             </div>
           </CardContent>
         </Card>

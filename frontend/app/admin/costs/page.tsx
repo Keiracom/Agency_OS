@@ -8,36 +8,142 @@
 "use client";
 
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Cpu, Send, ArrowRight, TrendingUp, TrendingDown } from "lucide-react";
+import { createBrowserClient } from "@/lib/supabase";
 
-// Mock data
-const mockCosts = {
-  totalMTD: 2847.52,
-  aiCosts: 1247.83,
-  channelCosts: 1599.69,
-  lastMonth: 2650.00,
-  projectedEOM: 3200.00,
+// Phase 4 admin Tier A wiring (2026-05-10): replaces hardcoded mockCosts
+// with live aggregates from sdk_usage_log (AI) + vendor_usage_log (channels).
+// Same source as /admin/ops cost cards (PR #656). MTD = month-to-date.
+// Per-AI-agent + per-channel breakdowns map agent_type prefixes + vendor IDs
+// to the existing UI category labels (content/reply/cmo for AI, channel
+// names for vendor). Last-month + projected-EOM derived from same tables.
+type CostsData = {
+  totalMTD: number;
+  aiCosts: number;
+  channelCosts: number;
+  lastMonth: number;
+  projectedEOM: number;
   byCategory: {
-    ai: {
-      content: 523,
-      reply: 412,
-      cmo: 312,
-    },
-    channels: {
-      email: 456,
-      sms: 389,
-      linkedin: 534,
-      voice: 156,
-      mail: 64,
-    },
+    ai: { content: number; reply: number; cmo: number };
+    channels: { email: number; sms: number; linkedin: number; voice: number; mail: number };
+  };
+};
+
+function startOfMonth(d: Date): string {
+  return new Date(d.getFullYear(), d.getMonth(), 1).toISOString();
+}
+
+function endOfPriorMonth(d: Date): string {
+  return new Date(d.getFullYear(), d.getMonth(), 0, 23, 59, 59).toISOString();
+}
+
+function startOfPriorMonth(d: Date): string {
+  return new Date(d.getFullYear(), d.getMonth() - 1, 1).toISOString();
+}
+
+async function fetchAdminCosts(): Promise<CostsData> {
+  const sb = createBrowserClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const client = sb as any;
+  const now = new Date();
+  const monthStart = startOfMonth(now);
+  const priorStart = startOfPriorMonth(now);
+  const priorEnd = endOfPriorMonth(now);
+  const dayOfMonth = now.getDate();
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+
+  const [{ data: sdkMTD }, { data: vendorMTD }, { data: sdkPrior }, { data: vendorPrior }] = await Promise.all([
+    client
+      .from("sdk_usage_log")
+      .select("agent_type, cost_aud")
+      .gte("created_at", monthStart),
+    client
+      .from("vendor_usage_log")
+      .select("vendor, cost_aud")
+      .gte("created_at", monthStart),
+    client
+      .from("sdk_usage_log")
+      .select("cost_aud")
+      .gte("created_at", priorStart)
+      .lte("created_at", priorEnd),
+    client
+      .from("vendor_usage_log")
+      .select("cost_aud")
+      .gte("created_at", priorStart)
+      .lte("created_at", priorEnd),
+  ]);
+
+  const sumCost = (rows: Array<{ cost_aud: string | number }> | null) =>
+    (rows ?? []).reduce((s, r) => s + (typeof r.cost_aud === "string" ? Number(r.cost_aud) : r.cost_aud || 0), 0);
+
+  const aiCosts = sumCost(sdkMTD ?? []);
+  const channelCosts = sumCost(vendorMTD ?? []);
+  const totalMTD = aiCosts + channelCosts;
+  const lastMonth = sumCost(sdkPrior ?? []) + sumCost(vendorPrior ?? []);
+  const projectedEOM = dayOfMonth > 0 ? (totalMTD / dayOfMonth) * daysInMonth : totalMTD;
+
+  // AI breakdown by agent_type prefix
+  const aiBreakdown = { content: 0, reply: 0, cmo: 0 };
+  for (const row of (sdkMTD ?? []) as Array<{ agent_type: string | null; cost_aud: string | number }>) {
+    const cost = typeof row.cost_aud === "string" ? Number(row.cost_aud) : row.cost_aud || 0;
+    const at = row.agent_type ?? "";
+    if (at.includes("comprehend") || at.includes("analyse") || at.includes("identify")) aiBreakdown.content += cost;
+    else if (at.includes("reply") || at.includes("dm_verify")) aiBreakdown.reply += cost;
+    else if (at.includes("cmo") || at.includes("smart_prompt")) aiBreakdown.cmo += cost;
+    else aiBreakdown.content += cost; // default bucket
+  }
+
+  // Channel breakdown by vendor
+  const channelBreakdown = { email: 0, sms: 0, linkedin: 0, voice: 0, mail: 0 };
+  for (const row of (vendorMTD ?? []) as Array<{ vendor: string | null; cost_aud: string | number }>) {
+    const cost = typeof row.cost_aud === "string" ? Number(row.cost_aud) : row.cost_aud || 0;
+    const v = (row.vendor ?? "").toLowerCase();
+    if (v.includes("salesforge") || v.includes("resend") || v.includes("postmark")) channelBreakdown.email += cost;
+    else if (v.includes("telnyx") || v.includes("twilio")) channelBreakdown.sms += cost;
+    else if (v.includes("unipile") || v.includes("heyreach") || v.includes("linkedin")) channelBreakdown.linkedin += cost;
+    else if (v.includes("vapi") || v.includes("voice") || v.includes("eleven")) channelBreakdown.voice += cost;
+    else if (v.includes("mail") || v.includes("postal")) channelBreakdown.mail += cost;
+    else channelBreakdown.email += cost; // default bucket for enrichment vendors etc.
+  }
+
+  return {
+    totalMTD,
+    aiCosts,
+    channelCosts,
+    lastMonth,
+    projectedEOM,
+    byCategory: { ai: aiBreakdown, channels: channelBreakdown },
+  };
+}
+
+const EMPTY_COSTS: CostsData = {
+  totalMTD: 0,
+  aiCosts: 0,
+  channelCosts: 0,
+  lastMonth: 0,
+  projectedEOM: 0,
+  byCategory: {
+    ai: { content: 0, reply: 0, cmo: 0 },
+    channels: { email: 0, sms: 0, linkedin: 0, voice: 0, mail: 0 },
   },
 };
 
 export default function AdminCostsOverviewPage() {
-  const changePercent = ((mockCosts.totalMTD - mockCosts.lastMonth) / mockCosts.lastMonth) * 100;
-  const aiPercent = Math.round((mockCosts.aiCosts / mockCosts.totalMTD) * 100);
+  const { data: mockCosts = EMPTY_COSTS } = useQuery({
+    queryKey: ["admin-costs"],
+    queryFn: fetchAdminCosts,
+    staleTime: 30 * 1000,
+  });
+
+  const changePercent = mockCosts.lastMonth > 0
+    ? ((mockCosts.totalMTD - mockCosts.lastMonth) / mockCosts.lastMonth) * 100
+    : 0;
+  const aiPercent = mockCosts.totalMTD > 0
+    ? Math.round((mockCosts.aiCosts / mockCosts.totalMTD) * 100)
+    : 0;
   const channelPercent = 100 - aiPercent;
 
   return (

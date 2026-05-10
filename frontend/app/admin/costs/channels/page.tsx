@@ -7,7 +7,9 @@
 
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { createBrowserClient } from "@/lib/supabase";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -20,71 +22,106 @@ import {
 } from "@/components/ui/table";
 import { Mail, MessageSquare, Linkedin, Phone, Package } from "lucide-react";
 
-// Mock data
-const mockChannelCosts = {
-  total: 1599.69,
-  channels: [
-    {
-      name: "Email",
-      provider: "Resend",
-      icon: Mail,
-      color: "bg-panel",
-      sent: 18470,
-      cost: 456.23,
-      costPer: 0.025,
-      budget: 600,
-    },
-    {
-      name: "SMS",
-      provider: "Twilio",
-      icon: MessageSquare,
-      color: "bg-amber",
-      sent: 2340,
-      cost: 389.45,
-      costPer: 0.166,
-      budget: 500,
-    },
-    {
-      name: "LinkedIn",
-      provider: "HeyReach",
-      icon: Linkedin,
-      color: "bg-amber",
-      sent: 4560,
-      cost: 534.12,
-      costPer: 0.117,
-      budget: 700,
-    },
-    {
-      name: "Voice",
-      provider: "Synthflow",
-      icon: Phone,
-      color: "bg-amber",
-      sent: 156,
-      cost: 156.00,
-      costPer: 1.00,
-      budget: 300,
-    },
-    {
-      name: "Mail",
-      provider: "Lob",
-      icon: Package,
-      color: "bg-orange-500",
-      sent: 45,
-      cost: 63.89,
-      costPer: 1.42,
-      budget: 200,
-    },
-  ],
-  byClient: [
-    { client: "LeadGen Pro", email: 123.45, sms: 89.20, linkedin: 156.78, voice: 45.00, mail: 12.34 },
-    { client: "GrowthLab", email: 98.76, sms: 67.89, linkedin: 123.45, voice: 34.00, mail: 8.90 },
-    { client: "Enterprise Co", email: 87.65, sms: 78.90, linkedin: 89.12, voice: 28.00, mail: 15.67 },
-    { client: "ScaleUp Co", email: 65.43, sms: 45.67, linkedin: 67.89, voice: 22.00, mail: 9.87 },
-    { client: "Marketing Plus", email: 45.12, sms: 34.56, linkedin: 45.67, voice: 15.00, mail: 6.78 },
-  ],
+// Phase 4 admin Tier A wiring (2026-05-10): live aggregates from
+// vendor_usage_log GROUP BY vendor (channel mapping) + per client_id
+// for byClient breakdown. Pre-revenue: 0 vendors fired, all rows render
+// 0. Real fill on E1 R3 PR 2/3 client wiring landing.
+type ChannelRow = {
+  name: string;
+  provider: string;
+  icon: typeof Mail;
+  color: string;
+  sent: number;
+  cost: number;
+  costPer: number;
+  budget: number;
+};
+
+type ChannelCosts = {
+  total: number;
+  channels: ChannelRow[];
+  byClient: Array<{ client: string; email: number; sms: number; linkedin: number; voice: number; mail: number }>;
+};
+
+type VendorRow = { vendor: string | null; cost_aud: string | number; client_id: string | null };
+
+const CHANNEL_DEFS: Array<{ name: string; provider: string; icon: typeof Mail; color: string; budget: number }> = [
+  { name: "Email", provider: "Resend / Salesforge", icon: Mail, color: "bg-panel", budget: 600 },
+  { name: "SMS", provider: "Telnyx", icon: MessageSquare, color: "bg-amber", budget: 500 },
+  { name: "LinkedIn", provider: "Unipile", icon: Linkedin, color: "bg-amber", budget: 700 },
+  { name: "Voice", provider: "ElevenAgents", icon: Phone, color: "bg-amber", budget: 300 },
+  { name: "Mail", provider: "—", icon: Package, color: "bg-orange-500", budget: 200 },
+];
+
+function vendorToChannel(v: string): "email" | "sms" | "linkedin" | "voice" | "mail" {
+  const x = v.toLowerCase();
+  if (x.includes("salesforge") || x.includes("resend") || x.includes("postmark")) return "email";
+  if (x.includes("telnyx") || x.includes("twilio")) return "sms";
+  if (x.includes("unipile") || x.includes("heyreach") || x.includes("linkedin")) return "linkedin";
+  if (x.includes("vapi") || x.includes("voice") || x.includes("eleven")) return "voice";
+  if (x.includes("mail") || x.includes("postal")) return "mail";
+  return "email";
+}
+
+async function fetchChannelCosts(): Promise<ChannelCosts> {
+  const sb = createBrowserClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const client = sb as any;
+  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+
+  const { data: vendorRows } = await client
+    .from("vendor_usage_log")
+    .select("vendor, cost_aud, client_id")
+    .gte("created_at", monthStart);
+  const { data: clientRows } = await client.from("clients").select("id, name");
+
+  const clientNameById = new Map<string, string>();
+  for (const c of (clientRows ?? []) as Array<{ id: string; name: string }>) {
+    clientNameById.set(c.id, c.name);
+  }
+
+  const channelTotals: Record<string, number> = { email: 0, sms: 0, linkedin: 0, voice: 0, mail: 0 };
+  const byClientMap = new Map<string, { email: number; sms: number; linkedin: number; voice: number; mail: number }>();
+  let total = 0;
+
+  for (const row of (vendorRows ?? []) as VendorRow[]) {
+    const cost = typeof row.cost_aud === "string" ? Number(row.cost_aud) : row.cost_aud || 0;
+    const ch = vendorToChannel(row.vendor ?? "");
+    channelTotals[ch] += cost;
+    total += cost;
+    if (row.client_id) {
+      const cur = byClientMap.get(row.client_id) ?? { email: 0, sms: 0, linkedin: 0, voice: 0, mail: 0 };
+      cur[ch] += cost;
+      byClientMap.set(row.client_id, cur);
+    }
+  }
+
+  const channels: ChannelRow[] = CHANNEL_DEFS.map((def) => {
+    const key = vendorToChannel(def.name);
+    return { ...def, sent: 0, cost: channelTotals[key] ?? 0, costPer: 0 };
+  });
+
+  const byClient = Array.from(byClientMap.entries()).map(([clientId, breakdown]) => ({
+    client: clientNameById.get(clientId) ?? "Unknown",
+    ...breakdown,
+  }));
+
+  return { total, channels, byClient };
+}
+
+const EMPTY_CHANNEL_COSTS: ChannelCosts = {
+  total: 0,
+  channels: CHANNEL_DEFS.map((def) => ({ ...def, sent: 0, cost: 0, costPer: 0 })),
+  byClient: [],
 };
 
 export default function AdminChannelCostsPage() {
+  const { data: mockChannelCosts = EMPTY_CHANNEL_COSTS } = useQuery({
+    queryKey: ["admin-channel-costs"],
+    queryFn: fetchChannelCosts,
+    staleTime: 30 * 1000,
+  });
+
   return (
     <div className="space-y-6">
       {/* Header */}

@@ -29,6 +29,8 @@ const CANONICAL_REPLACEMENTS: ReadonlyArray<readonly [RegExp, string]> = [
   // Voice AI providers
   [/\bElevenAgents\b/gi, "Voice AI"],
   [/\bElevenLabs?\s+Agents?\b/gi, "Voice AI"],
+  // Bare "ElevenLabs" without "Agent(s)" — defensive against truncated copy.
+  [/\bElevenLabs?\b/gi, "Voice AI"],
 
   // Email sending providers
   [/\bSalesforge\b/gi, "Email"],
@@ -39,6 +41,11 @@ const CANONICAL_REPLACEMENTS: ReadonlyArray<readonly [RegExp, string]> = [
   [/\bProspeo\b/gi, "Contact finder"],
   [/\bLeadmagic\b/gi, "Contact finder"],
   [/\bBright\s*Data\b/gi, "Profile data"],
+  [/\bProxycurl\b/gi, "Profile data"],
+
+  // SEO data providers — DataForSEO bare mention (the \bDFS\b above only
+  // catches the abbreviation; full vendor name needs its own pattern).
+  [/\bDataForSEO\b/gi, "Organic"],
 ];
 
 /**

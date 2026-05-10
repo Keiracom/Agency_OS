@@ -8,7 +8,9 @@
 "use client";
 
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Search, Filter } from "lucide-react";
+import { createBrowserClient } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -28,17 +30,50 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-// Mock data
-const mockCampaigns = [
-  { id: "1", name: "Q4 Outreach", client: "LeadGen Pro", status: "active", leads: 450, sent: 380, replies: 23, replyRate: 6.1 },
-  { id: "2", name: "Tech Startups", client: "LeadGen Pro", status: "active", leads: 320, sent: 290, replies: 18, replyRate: 6.2 },
-  { id: "3", name: "Enterprise Push", client: "GrowthLab", status: "active", leads: 890, sent: 750, replies: 45, replyRate: 6.0 },
-  { id: "4", name: "SMB Nurture", client: "ScaleUp Co", status: "paused", leads: 680, sent: 680, replies: 52, replyRate: 7.6 },
-  { id: "5", name: "Holiday Campaign", client: "Marketing Plus", status: "active", leads: 245, sent: 180, replies: 12, replyRate: 6.7 },
-  { id: "6", name: "B2B Outreach", client: "Enterprise Co", status: "active", leads: 1200, sent: 890, replies: 67, replyRate: 7.5 },
-  { id: "7", name: "Startup Connect", client: "Enterprise Co", status: "completed", leads: 500, sent: 500, replies: 42, replyRate: 8.4 },
-  { id: "8", name: "Agency Leads", client: "TechVentures", status: "draft", leads: 0, sent: 0, replies: 0, replyRate: 0 },
-];
+// Phase 4 admin Tier A wiring (2026-05-10): replaces hardcoded mockCampaigns
+// with live `campaigns` + `clients` join. Activity-derived metrics
+// (leads / sent / replies / replyRate) currently render 0 — pre-revenue
+// (0 emails sent ever per audit). Real aggregation deferred to a follow-up
+// once outbound flows are wired (Stripe + Salesforge unblock).
+interface Campaign {
+  id: string;
+  name: string;
+  client: string;
+  status: string;
+  leads: number;
+  sent: number;
+  replies: number;
+  replyRate: number;
+}
+
+type CampaignRow = {
+  id: string;
+  name: string;
+  status: string | null;
+  clients: { name: string | null } | null;
+};
+
+async function fetchAdminCampaigns(): Promise<Campaign[]> {
+  const sb = createBrowserClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const client = sb as any;
+  const { data, error } = await client
+    .from("campaigns")
+    .select("id, name, status, clients(name)")
+    .order("created_at", { ascending: false })
+    .limit(500);
+  if (error) throw error;
+  return ((data ?? []) as CampaignRow[]).map((row) => ({
+    id: row.id,
+    name: row.name,
+    client: row.clients?.name ?? "",
+    status: row.status ?? "draft",
+    leads: 0,
+    sent: 0,
+    replies: 0,
+    replyRate: 0,
+  }));
+}
 
 const statusColors = {
   active: "bg-amber/10 text-amber border-amber/20",
@@ -51,7 +86,13 @@ export default function AdminCampaignsPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
-  const filteredCampaigns = mockCampaigns.filter((campaign) => {
+  const { data: campaigns = [] } = useQuery({
+    queryKey: ["admin-campaigns"],
+    queryFn: fetchAdminCampaigns,
+    staleTime: 30 * 1000,
+  });
+
+  const filteredCampaigns = campaigns.filter((campaign) => {
     const matchesSearch =
       campaign.name.toLowerCase().includes(search.toLowerCase()) ||
       campaign.client.toLowerCase().includes(search.toLowerCase());

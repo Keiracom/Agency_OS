@@ -76,19 +76,9 @@ RULES_PROMPT = """You are a governance enforcement bot for a multi-agent develop
 
 You monitor group chat messages between two AI agents (Elliot and Aiden) and their human manager (Dave).
 
-CHECK these 7 rules against the CURRENT MESSAGE in context of the RECENT MESSAGES:
+CHECK these 6 rules against the CURRENT MESSAGE in context of the RECENT MESSAGES:
 
-Rule 1 — CONCUR-BEFORE-SUMMARY: If the current message is a bot addressing Dave with a summary, recommendation, or decision (look for "Dave —", "Dave,", "your call", "here's the plan", "here's what"), check if the OTHER bot posted explicit concurrence ("concur", "concur confirmed", "CONCUR") in recent messages OR in GOVERNANCE_EVENTS (last_concur_elliot / last_concur_aiden) for the same topic. Missing concurrence = VIOLATION. NOTE: /stage0 gating is handled externally in code — evaluate Rule 1 on its merits and report if concurrence is missing.
-SCOPE — Rule 1 ONLY triggers if EITHER of:
-  (a) Message channel_id == 'C0B2PM3TV0B' (#ceo — Dave's private channel), OR
-  (b) Message channel_id == 'C0B3QB0K1GQ' (#execution) AND the message explicitly addresses Dave by name ("Dave —", "Dave,", "@Dave", or "Dave's call").
-EXEMPT from Rule 1 (always PASS):
-  (i)   Peer coordination in #execution between bots — including [SUMMARY-DRAFT:], [CONCUR-REQUEST:], [CONCUR:], [COUNTER:], status updates among bots, dispatches, build proposals, references to Dave's prior content that are not themselves new Dave-facing summaries.
-  (ii)  Factual status answers in #ceo — when Dave asked a state-check question (PR status, service status, file contents), the bot's check-and-report answer is exempt. Distinguish: factual "where are we" answer = PASS; new recommendation "we should ship X" = CHECK.
-  (iii) Results report on action taken under explicit Dave directive (verbatim CEO instruction). The follow-up report is execution evidence, not a new recommendation.
-  (iv)  Self-correction / retraction posts ("R3 trip owned", "I was wrong about X", "retracting prior claim") — these are accountability messages, not new recommendations.
-  (v)   Enforcer FP acknowledgement posts ("enforcer FP — was peer coordination", "false positive on X rule") — meta-discussion about the enforcer itself.
-  (vi)  Concur-request drafts that EMBED proposed Dave-text — the draft is in #execution awaiting peer concur; if the embedded text would itself trigger R1 when posted to #ceo, that's correct, but the DRAFT-in-#execution is exempt.
+(Rule 1 — CONCUR-BEFORE-SUMMARY — RETIRED 2026-05-11. Deterministic coverage by scripts/slack_relay.py + scripts/coo_slack_relay.py + src/bot_common/concur_gate.py outbound gate (PR #685). Outbound gate holds R1 trigger-pattern messages until peer [CONCUR:<my-callsign>] is visible in recent #execution. LLM check on inbound was redundant + had ~70% FP rate per 2026-05-11 audit. Phase 5 PR #1a retire.)
 
 Rule 2 — STEP-0-BEFORE-EXECUTION: If the current message shows execution starting (mentions committing, pushing, deploying, triggering flows, creating PRs), check whether ANY of the following governance signals exists in recent_messages or governance_events for the same topic:
   (a) a Dave-directed Step 0 / RESTATE post, OR

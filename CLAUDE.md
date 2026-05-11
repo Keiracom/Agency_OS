@@ -14,6 +14,8 @@
 
 @.claude/modules/_hierarchy.md
 
+@.claude/modules/_completion_discipline.md
+
 @.claude/modules/_mcp_bridge.md
 
 ## Supabase — Primary Memory Store (LAW IX)

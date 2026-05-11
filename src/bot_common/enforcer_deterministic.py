@@ -4,8 +4,7 @@ Deterministic-first architecture: each check runs a fast regex/text scan
 BEFORE the LLM call. If deterministic returns a result, the caller skips
 gpt-4o-mini. If it returns None, the caller falls through to LLM.
 
-Rules implemented: R2, R4, R8 (deterministic)
-Stubs (pending Max PR #2): R3, R6 (hybrid pre-filter + LLM fallback)
+Rules implemented: R2, R4, R8 (deterministic); R3, R6 (hybrid pre-filter + LLM fallback)
 Retired (docs/governance/deprecated/): R1 (concur_gate.py), R5, R7
 LLM-only: R9 (semantic, stays in RULES_PROMPT)
 """
@@ -63,25 +62,136 @@ def check_r4(text: str) -> dict | None:
 
 
 # ---------------------------------------------------------------------------
-# Stubs — R3, R6  (return None = fall through to LLM until Max PR #2 lands)
+# R3 — COMPLETION-REQUIRES-VERIFICATION (hybrid)
 # R5 + R7 RETIRED — see docs/governance/deprecated/
 # ---------------------------------------------------------------------------
 
+# Exceptions: gatekeeper and synthetic messages always pass.
+_R3_EXCEPTION_RE = re.compile(
+    r"\[GOVERNANCE\]\s+Gatekeeper"
+    r"|observe-only"
+    r"|synthetic test",
+    re.IGNORECASE,
+)
+
+# STRICT completion triggers — always check for evidence.
+_R3_STRICT_RE = re.compile(
+    r"\bcomplete\b"
+    r"|all stores written"
+    r"|4-store save complete"
+    r"|store save complete"
+    r"|task complete"
+    r"|build complete",
+    re.IGNORECASE,
+)
+
+# SOFT trigger — "done" at word boundary, not preceded by "not", "isn't", "won't be".
+_R3_SOFT_RE = re.compile(r"(?<!not\s)(?<!isn't\s)(?<!won't be\s)\bdone\b", re.IGNORECASE)
+
+# Evidence patterns — if any match alongside a claim → PASS.
+_R3_EVIDENCE_RE = re.compile(
+    r"\b[0-9a-f]{7,40}\b"                     # commit hash
+    r"|PR\s*#\d+\s+(?:merged|closed|open)"     # PR reference with state
+    r"|^[\$>→]"                                 # terminal output line
+    r"|PID\s+\d+"                               # PID
+    r"|ActiveState="                            # systemd state
+    r"|exit\s+code"                             # exit code
+    r"|\d+/\d+\s+(?:pass|fail)"                # test counts
+    r"|tests?\s+pass"                           # test pass
+    r"|rows?\s+affected"                        # SQL output
+    r"|\bSELECT\b|\bINSERT\b|\bUPDATE\b"       # SQL keywords
+    r"|\d+\s+(?:insertion|deletion)"            # git diff stats
+    r"|\d{4}-\d{2}-\d{2}.*UTC"                 # timestamp with detail
+    r"|commit\s+[0-9a-f]{7,}",                 # commit message format
+    re.IGNORECASE | re.MULTILINE,
+)
+
 
 def check_r3(text: str) -> tuple[dict | None, bool]:
-    """R3 — COMPLETION-REQUIRES-VERIFICATION.  Stub — pending Max PR #2 hybrid impl.
+    """R3 — COMPLETION-REQUIRES-VERIFICATION (hybrid).
 
-    Returns (result, skip_llm).  Both False here — fall through to LLM.
+    Returns (result, skip_llm):
+      - STRICT claim + evidence    → (None, True)       PASS, skip LLM
+      - STRICT claim + no evidence → (violation, True)  VIOLATION, skip LLM
+      - SOFT "done" + evidence     → (None, True)       PASS, skip LLM
+      - SOFT "done" + no evidence  → (None, False)      ambiguous, fall through to LLM
+      - No claim                   → (None, False)      not applicable, fall through to LLM
     """
+    if _R3_EXCEPTION_RE.search(text):
+        return None, True
+
+    has_evidence = bool(_R3_EVIDENCE_RE.search(text))
+
+    if _R3_STRICT_RE.search(text):
+        if has_evidence:
+            return None, True
+        return {
+            "violation": True,
+            "rule_number": 3,
+            "rule_name": "COMPLETION-REQUIRES-VERIFICATION",
+            "detail": "Completion claim made without inline evidence (commit hash, PR state, terminal output, etc.).",
+            "should_have": "Every completion claim must include verifiable evidence such as a commit hash, PR number with state, or raw terminal output.",
+        }, True
+
+    if _R3_SOFT_RE.search(text):
+        if has_evidence:
+            return None, True
+        return None, False
+
     return None, False
+
+
+# ---------------------------------------------------------------------------
+# R6 — SAVE-CLAIM-REQUIRES-PROOF (hybrid)
+# ---------------------------------------------------------------------------
+
+_R6_SAVE_RE = re.compile(
+    r"state saved"
+    r"|4-store save complete"
+    r"|ceo_memory updated"
+    r"|manual updated"
+    r"|drive mirror"
+    r"|daily_log written"
+    r"|stores written"
+    r"|store save complete",
+    re.IGNORECASE,
+)
+
+_R6_EVIDENCE_RE = re.compile(
+    r"\b[0-9a-f]{7,40}\b"              # commit hash (MANUAL)
+    r"|rows?\s+affected"               # SQL output (ceo_memory)
+    r"|\bINSERT\b|\bupsert\b"          # SQL keywords (ceo_memory)
+    r"|updated_at"                     # ceo_memory field
+    r"|\d+\s*bytes?"                   # byte count (Drive)
+    r"|\bsuccess\b|\bmirrored\b"       # Drive success marker
+    r"|\bSELECT\b"                     # query result (daily_log)
+    r"|\brow\b"                        # row reference (daily_log)
+    r"|\bdaily_log\b",                 # explicit daily_log mention with evidence context
+    re.IGNORECASE,
+)
 
 
 def check_r6(text: str) -> tuple[dict | None, bool]:
-    """R6 — SAVE-CLAIM-REQUIRES-PROOF.  Stub — pending Max PR #2 hybrid impl.
+    """R6 — SAVE-CLAIM-REQUIRES-PROOF (hybrid).
 
-    Returns (result, skip_llm).  Both False here — fall through to LLM.
+    Returns (result, skip_llm):
+      - Save claim + ≥1 store evidence → (None, True)       PASS, skip LLM
+      - Save claim + 0 store evidence  → (violation, True)  VIOLATION, skip LLM
+      - No save claim                  → (None, False)      not applicable, fall through to LLM
     """
-    return None, False
+    if not _R6_SAVE_RE.search(text):
+        return None, False
+
+    if _R6_EVIDENCE_RE.search(text):
+        return None, True
+
+    return {
+        "violation": True,
+        "rule_number": 6,
+        "rule_name": "SAVE-CLAIM-REQUIRES-PROOF",
+        "detail": "Save/store claim made without store-specific evidence (commit hash, SQL output, byte count, etc.).",
+        "should_have": "Every save claim must include proof: commit hash for MANUAL, SQL rows affected for ceo_memory, byte count or 'mirrored' for Drive, query result for daily_log.",
+    }, True
 
 
 # ---------------------------------------------------------------------------

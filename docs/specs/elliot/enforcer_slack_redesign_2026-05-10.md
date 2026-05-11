@@ -176,6 +176,7 @@ Cooldown is bot-process-global (one `last_flag_times` dict). Doesn't matter that
 | Dual-post phase doubles LLM cost (TG enforcer + Slack enforcer both query gpt-4o-mini) | Certain | Low | Time-bounded (24h); ~$0.50 USD at current rate |
 | Existing TG `BOT_INBOXES` filesystem path changes during Aiden's relay rewrite | Low | Medium (interjections silently fail to reach bots) | Aiden's AIDEN-SLACK-MIGRATION-001 explicitly carves enforcer code out of scope; verify enforcer inbox writes still land during smoke |
 | Slack rate limits (Tier 2: 50 msgs/sec for chat.postMessage) | Very Low | Low | Cooldown already enforces ≤1 interjection per rule per 5 min; well under any tier limit |
+| Rule 7 (CLONE-DIRECT-GROUP-POST) trigger pattern matches arbitrary `[atlas]` / `[orion]` substring — fires on bots **describing** the rule, not posting AS the clone (observed false positive 2026-05-11 on this spec PR) | High (during meta-discussion) | Low (cooldown limits noise) | In Slack rewrite, scope Rule 7 to **sender** prefix detection only (Slack's `event.user` / `bot_id` is already structured — match callsign-from-sender against the clone allowlist, ignore message text). Pre-filter `should_check` keeps `[atlas]` for backward-compat but the rule-evaluation prompt should explicitly exclude messages where the bot's own callsign (extracted from sender, not text) is in the allowlist (ELLIOT, AIDEN, DAVE, SCOUT, ENFORCER). |
 
 ---
 

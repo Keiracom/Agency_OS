@@ -218,13 +218,17 @@ _R2_EXECUTION_RE = re.compile(
 )
 
 # Exemptions — these mention execution language but are NOT new actions.
+# Track 4 (FP-tuning 2026-05-11): expanded protocol-tag list to mirror PR #710's
+# R9 exempt superset. Prior version covered only [propose:|summary-draft:|
+# concur-request:]; missed [concur:|ready:|busy:|fp-log:|valid-fire:|dispatch:]
+# which produced R2 ×6 FPs this session on status posts containing merge/ship
+# keywords. The `[\w:-]*\]` post-colon pattern absorbs nested-task-id form
+# like [BUSY:aiden:dispatch-batch-2026-05-11-20:40].
 _R2_EXEMPT_RE = re.compile(
     r"\bpr\s*#\d+\s+merged\s+(?:earlier|prior|already|2026)"
     r"|\b(?:will|going to|about to|planning to|propose to)\s+(?:commit|push|deploy|merge|create|trigger)"
     r"|\b(?:not|haven't|won't)\s+(?:yet\s+)?(?:committed|pushed|deployed|merged)"
-    r"|\[propose:"
-    r"|\[summary-draft:"
-    r"|\[concur-request:",
+    r"|\[(?:propose|summary-draft|concur-request|concur|ready|busy|fp-log|valid-fire|dispatch|dispatch-proposal)[\w:-]*\]",
     re.IGNORECASE,
 )
 
@@ -266,10 +270,21 @@ def check_r2(text: str, recent_messages: list[str] | None = None) -> dict | None
 # R8 — DISPATCH-COORDINATION
 # ---------------------------------------------------------------------------
 
+# Track 4 (FP-tuning 2026-05-11): tightened to past-tense / definite-action verbs
+# only. Prior version matched "dispatching" (gerund) which over-matched on
+# conditional/offer phrasing like "I can dispatch" or "dispatching takes ~30s".
+# Now requires explicit completed-action or imperative form, NOT conditional.
 _R8_DISPATCH_RE = re.compile(
     r"\b(?:dispatched|injected|tmux paste|tmux send-keys|"
     r"atlas dispatched|orion dispatched|clone dispatch|"
-    r"sent dispatch|dispatching now)\b",
+    r"sent dispatch|firing dispatch now|dispatch fired)\b",
+    re.IGNORECASE,
+)
+
+# Conditional/offer language that explicitly is NOT a dispatch action.
+_R8_CONDITIONAL_RE = re.compile(
+    r"\b(?:can|could|would|will|may|might)\s+(?:dispatch|dispatching)\b"
+    r"|\b(?:if|once|after|when)\s+(?:you|elliot|max|aiden)\s+(?:confirm|concur|approve)",
     re.IGNORECASE,
 )
 
@@ -284,6 +299,10 @@ def check_r8(text: str, recent_messages: list[str] | None = None) -> dict | None
     AND peer [CONCUR] in recent_messages before it. Missing either = VIOLATION.
     """
     if not _R8_DISPATCH_RE.search(text):
+        return None
+    # Track 4: exempt conditional/offer language ("I can dispatch", "will dispatch
+    # if you confirm"). These are not dispatch actions; they're proposals.
+    if _R8_CONDITIONAL_RE.search(text):
         return None
     if recent_messages is None:
         return None  # conservative pass when no context available

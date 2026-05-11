@@ -90,6 +90,29 @@ _R9_EXEMPT_RE = re.compile(
     r"|@\w+\s+—\s+(?:roll-?up|audit|review|own|next)",
     re.IGNORECASE,
 )
+
+# R3 (COMPLETION-REQUIRES-VERIFICATION) post-LLM exempt — Track 4 (FP-tuning
+# 2026-05-11). LLM mis-fires R3 by hallucinating "claims completion with done"
+# when the message has NO completion word. This catches the LLM-hallucination
+# class that #714's r3_skip short-circuit doesn't cover (#714 only short-circuits
+# when both R3 + R6 deterministic checks resolved with positive triggers).
+# When the LLM fires R3 on a message that contains substantial evidence patterns
+# (commit hashes, PR refs, gh CLI output, test counts), suppress.
+_R3_LLM_EVIDENCE_RE = re.compile(
+    r"\b[0-9a-f]{7,40}\b"  # commit hash
+    r"|PR\s*#\d+"  # PR reference (any form)
+    r'|"state"\s*:\s*"(?:MERGED|OPEN|CLOSED)"'  # gh JSON
+    r'|"mergeCommit"\s*:\s*\{'
+    r'|"mergedAt"\s*:\s*"\d{4}-'
+    r"|\bMERGEABLE\b|\bMERGED\b|\bSUCCESS\b|\bFAILURE\b"
+    r"|\d+\s+(?:passed|failed|error|errors)\b"  # pytest "N passed" form
+    r"|\d+/\d+\s+(?:pass|fail)"  # ratio form
+    r"|^[\$>→]"  # terminal output line
+    r"|\bgh\s+pr\s+(?:view|merge|create)\b"  # gh CLI invocation
+    r"|\bgit\s+(?:log|cat-file)\b",  # git CLI invocation
+    re.IGNORECASE | re.MULTILINE,
+)
+
 last_flag_times: dict[str, float] = {}
 governance_events: dict = {}
 
@@ -280,6 +303,16 @@ def run_enforcer(event: dict, text: str, web: WebClient) -> None:
     if result.get("rule_number") == 9 and _R9_EXEMPT_RE.search(text):
         logger.info(
             "ENFORCER R9 suppressed by post-LLM exempt regex (text contained [PROPOSE:] or next-action subject)"
+        )
+        return
+    # R3 post-LLM exempt — Track 4. Suppress LLM-hallucinated R3 violations
+    # when the message contains substantial evidence patterns (commit hashes,
+    # PR refs, gh CLI output, test counts, etc.). This catches the class of
+    # FPs where check_r3 returned (None, False) — no STRICT/SOFT trigger fired —
+    # but the LLM hallucinated "completion claim with 'done'" anyway.
+    if result.get("rule_number") == 3 and _R3_LLM_EVIDENCE_RE.search(text):
+        logger.info(
+            "ENFORCER R3 suppressed by post-LLM evidence regex (text contained commit/PR/CLI evidence)"
         )
         return
     _fire_violation(result, web)

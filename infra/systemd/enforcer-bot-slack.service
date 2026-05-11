@@ -1,0 +1,18 @@
+[Unit]
+Description=Agency OS — Slack enforcer (ENFORCER-BUILD-001)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+Environment="ENFORCER_OBSERVE_ONLY=1"
+ExecStart=/home/elliotbot/clawd/venv/bin/python3 -m src.bot_common.enforcer_bot
+Restart=always
+RestartSec=5
+StandardOutput=append:/home/elliotbot/clawd/logs/enforcer-bot-slack.log
+StandardError=append:/home/elliotbot/clawd/logs/enforcer-bot-slack.log
+
+[Install]
+WantedBy=default.target

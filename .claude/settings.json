@@ -38,6 +38,23 @@
             "type": "command",
             "command": "bash /home/elliotbot/clawd/Agency_OS/.claude/hooks/stop_relay_hook.sh",
             "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/session_store_stop.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/session_store_posttooluse.sh",
+            "timeout": 5
           }
         ]
       }

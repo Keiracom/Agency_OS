@@ -80,10 +80,11 @@ message_window: deque = deque(maxlen=MAX_WINDOW)
 
 # R9 (DIRECTIVE-INITIATIVE) post-LLM exempt patterns. FP-tuning 2026-05-11:
 # LLM mis-fires R9 on dispatches that already name concrete next-action subjects
-# ([PROPOSE:], "I'll/will <verb>", "@<name> ships/drops/owns <X>", @-mentions
-# for audit roll-ups). Suppress R9 fires when any of these are present.
+# ([PROPOSE:], [READY:], [BUSY:], [CONCUR-REQUEST], [FP-LOG:], [DISPATCH],
+# "I'll/will <verb>", "@<name> ships/drops/owns <X>"). Suppress R9 fires
+# when any of these structured protocol tags are present.
 _R9_EXEMPT_RE = re.compile(
-    r"\[propose:\w+\]"
+    r"\[(?:propose|ready|busy|concur-request|concur|fp-log|valid-fire|dispatch)[\w:-]*\]"
     r"|\b(?:i'?ll|i will|aiden will|elliot will|max will|orion will|atlas will|scout will)\b"
     r"|@\w+\s+(?:ships?|drops?|owns?|takes?|opens?|merges?|files?|pushes?)\b"
     r"|@\w+\s+—\s+(?:roll-?up|audit|review|own|next)",

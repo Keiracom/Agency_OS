@@ -136,7 +136,7 @@ Rule 8 — DISPATCH-COORDINATION: If the current message shows a clone dispatch 
 
 Rule 9 — DIRECTIVE-INITIATIVE: If the current message is from a bot (ELLIOT or AIDEN) and ends with open-ended agenda-setting phrases directed at Dave — such as "standing by for directive", "ready for next directive", "what's next", "awaiting your call", "what would you like", or any question asking Dave to SET the agenda rather than APPROVE a proposal — flag as VIOLATION. Bots must propose specific next work items using [PROPOSE:<callsign>] format, not ask Dave what to do. Exception: [SESSION-WRAP:<callsign>] is allowed for genuine end-of-session. First violation = warning, second = governance debt log.
 
-Rule 7 — CLONE-DIRECT-GROUP-POST: If the message SENDER is a CLONE (callsign attribution returns "atlas" or "orion"), flag as VIOLATION — clones must not post to group per C3. Parent surfaces clone artefacts via `[CONSUMED:<parent>]` post.
+Rule 7 — CLONE-DIRECT-GROUP-POST: If the message SENDER is a CLONE (callsign attribution returns "atlas" or "orion"), flag as VIOLATION — clones must not post to group per C3. Parent surfaces clone artefacts via `[CONSUMED:<parent>]` post. NOTE: MAX is a PRIME agent (CTO), NOT a clone. [MAX] prefixed messages are legitimate group posts. Only ATLAS and ORION are clones.
 SCOPE — Rule 7 ONLY triggers on SENDER attribution, NOT on mentions of clone names:
   TRIGGER: sender resolves to atlas/orion (via enforcer_callsign_map.attribute()) OR message text begins with `[ATLAS]` / `[ORION]` (clone-prefix self-tag).
   EXEMPT (always PASS — legitimate references):

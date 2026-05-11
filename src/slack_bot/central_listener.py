@@ -38,6 +38,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import sys
 import time
 import uuid
@@ -74,8 +75,20 @@ ALERTS_CHANNEL = os.environ.get("SLACK_ALERTS_CHANNEL", "C0B2EJU53EK")
 ENFORCER_USERNAME = "Enforcer"
 ENFORCER_ICON = ":rotating_light:"
 
-# Enforcer in-process state (lost on restart; reconstitutes from next 20 messages)
+# Enforcer in-process state (lost on restart; reconstitutes from next MAX_WINDOW messages)
 message_window: deque = deque(maxlen=MAX_WINDOW)
+
+# R9 (DIRECTIVE-INITIATIVE) post-LLM exempt patterns. FP-tuning 2026-05-11:
+# LLM mis-fires R9 on dispatches that already name concrete next-action subjects
+# ([PROPOSE:], "I'll/will <verb>", "@<name> ships/drops/owns <X>", @-mentions
+# for audit roll-ups). Suppress R9 fires when any of these are present.
+_R9_EXEMPT_RE = re.compile(
+    r"\[propose:\w+\]"
+    r"|\b(?:i'?ll|i will|aiden will|elliot will|max will|orion will|atlas will|scout will)\b"
+    r"|@\w+\s+(?:ships?|drops?|owns?|takes?|opens?|merges?|files?|pushes?)\b"
+    r"|@\w+\s+—\s+(?:roll-?up|audit|review|own|next)",
+    re.IGNORECASE,
+)
 last_flag_times: dict[str, float] = {}
 governance_events: dict = {}
 
@@ -257,6 +270,13 @@ def run_enforcer(event: dict, text: str, web: WebClient) -> None:
 
     result = check_with_llm(text, list(message_window), channel_id=event.get("channel", ""))
     if not result or not result.get("violation"):
+        return
+    # R9 post-LLM exempt — suppress DIRECTIVE-INITIATIVE fires when the message
+    # already contains a [PROPOSE:] block or names an explicit next-action subject.
+    if result.get("rule_number") == 9 and _R9_EXEMPT_RE.search(text):
+        logger.info(
+            "ENFORCER R9 suppressed by post-LLM exempt regex (text contained [PROPOSE:] or next-action subject)"
+        )
         return
     _fire_violation(result, web)
 

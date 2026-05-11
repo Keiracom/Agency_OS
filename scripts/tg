@@ -63,6 +63,20 @@ if not message:
     print("Usage: tg [-g|-d|-c <chat_id>] \"message\"")
     sys.exit(1)
 
+# S1 verify gate — block fabricated PR#/commit-hash in completion claims.
+# Skip via R_VERIFY_SKIP=1 for one-shot edge cases. Repo path: same parent
+# as scripts/ dir holding this file.
+try:
+    _repo_root = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+    sys.path.insert(0, _repo_root)
+    from src.bot_common.verify_gate import gate_check as _verify_gate
+    _ok, _blocker = _verify_gate(message)
+    if not _ok:
+        print(f"R_VERIFY_BLOCKED: {_blocker}", file=sys.stderr)
+        sys.exit(2)
+except ImportError:
+    pass  # repo path resolution failed; fall through ungated
+
 # Auto-detect chat_id from last incoming if not specified
 if chat_id is None:
     if os.path.exists(STATE_FILE):

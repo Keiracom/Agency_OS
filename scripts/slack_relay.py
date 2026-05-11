@@ -122,6 +122,19 @@ def post(channel: str, text: str) -> dict:
 
 def main() -> int:
     channel, message = parse_args(sys.argv[1:])
+    # S1 verify gate (Phase 6 — block fabricated PR# / commit-hash in completion
+    # claims at outbound. Per Claude sign-off 2026-05-11.).
+    try:
+        _repo = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+        if _repo not in sys.path:
+            sys.path.insert(0, _repo)
+        from src.bot_common.verify_gate import gate_check as verify_gate_check
+        ok, blocker = verify_gate_check(message)
+        if not ok:
+            print(f"R_VERIFY_BLOCKED: {blocker}", file=sys.stderr)
+            return 2
+    except ImportError:
+        pass  # repo not on sys.path; fall through ungated rather than break all posts
     # R1 outbound gate (P0 per Max directive 2026-05-11 — hold trigger-pattern
     # messages until peer concur is in the recent #execution window).
     try:

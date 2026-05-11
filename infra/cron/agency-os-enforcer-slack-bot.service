@@ -1,0 +1,13 @@
+[Unit]
+Description=Agency OS — Slack Enforcer Bot (ENFORCER-BUILD-001, Socket Mode)
+
+[Service]
+Type=simple
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+ExecStart=/home/elliotbot/clawd/venv/bin/python3 -m src.slack_bot.enforcer_bot
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

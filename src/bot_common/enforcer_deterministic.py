@@ -90,19 +90,19 @@ _R3_SOFT_RE = re.compile(r"(?<!not\s)(?<!isn't\s)(?<!won't be\s)\bdone\b", re.IG
 
 # Evidence patterns — if any match alongside a claim → PASS.
 _R3_EVIDENCE_RE = re.compile(
-    r"\b[0-9a-f]{7,40}\b"                     # commit hash
-    r"|PR\s*#\d+\s+(?:merged|closed|open)"     # PR reference with state
-    r"|^[\$>→]"                                 # terminal output line
-    r"|PID\s+\d+"                               # PID
-    r"|ActiveState="                            # systemd state
-    r"|exit\s+code"                             # exit code
-    r"|\d+/\d+\s+(?:pass|fail)"                # test counts
-    r"|tests?\s+pass"                           # test pass
-    r"|rows?\s+affected"                        # SQL output
-    r"|\bSELECT\b|\bINSERT\b|\bUPDATE\b"       # SQL keywords
-    r"|\d+\s+(?:insertion|deletion)"            # git diff stats
-    r"|\d{4}-\d{2}-\d{2}.*UTC"                 # timestamp with detail
-    r"|commit\s+[0-9a-f]{7,}",                 # commit message format
+    r"\b[0-9a-f]{7,40}\b"  # commit hash
+    r"|PR\s*#\d+\s+(?:merged|closed|open)"  # PR reference with state
+    r"|^[\$>→]"  # terminal output line
+    r"|PID\s+\d+"  # PID
+    r"|ActiveState="  # systemd state
+    r"|exit\s+code"  # exit code
+    r"|\d+/\d+\s+(?:pass|fail)"  # test counts
+    r"|tests?\s+pass"  # test pass
+    r"|rows?\s+affected"  # SQL output
+    r"|\bSELECT\b|\bINSERT\b|\bUPDATE\b"  # SQL keywords
+    r"|\d+\s+(?:insertion|deletion)"  # git diff stats
+    r"|\d{4}-\d{2}-\d{2}.*UTC"  # timestamp with detail
+    r"|commit\s+[0-9a-f]{7,}",  # commit message format
     re.IGNORECASE | re.MULTILINE,
 )
 
@@ -158,15 +158,15 @@ _R6_SAVE_RE = re.compile(
 )
 
 _R6_EVIDENCE_RE = re.compile(
-    r"\b[0-9a-f]{7,40}\b"              # commit hash (MANUAL)
-    r"|rows?\s+affected"               # SQL output (ceo_memory)
-    r"|\bINSERT\b|\bupsert\b"          # SQL keywords (ceo_memory)
-    r"|updated_at"                     # ceo_memory field
-    r"|\d+\s*bytes?"                   # byte count (Drive)
-    r"|\bsuccess\b|\bmirrored\b"       # Drive success marker
-    r"|\bSELECT\b"                     # query result (daily_log)
-    r"|\brow\b"                        # row reference (daily_log)
-    r"|\bdaily_log\b",                 # explicit daily_log mention with evidence context
+    r"\b[0-9a-f]{7,40}\b"  # commit hash (MANUAL)
+    r"|rows?\s+affected"  # SQL output (ceo_memory)
+    r"|\bINSERT\b|\bupsert\b"  # SQL keywords (ceo_memory)
+    r"|updated_at"  # ceo_memory field
+    r"|\d+\s*bytes?"  # byte count (Drive)
+    r"|\bsuccess\b|\bmirrored\b"  # Drive success marker
+    r"|\bSELECT\b"  # query result (daily_log)
+    r"|\brow\b"  # row reference (daily_log)
+    r"|\bdaily_log\b",  # explicit daily_log mention with evidence context
     re.IGNORECASE,
 )
 

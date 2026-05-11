@@ -41,7 +41,13 @@ USERNAME = os.environ.get("SLACK_BOT_USERNAME", CALLSIGN.capitalize())
 # Optional per-callsign icon override. Slack accepts either an emoji shortcode
 # (":technologist:") via icon_emoji OR a fully-qualified URL via icon_url. We
 # expose both so callers can choose; URL wins if both are set.
-ICON_EMOJI = os.environ.get("SLACK_BOT_ICON_EMOJI", "")
+# Per Dave 2026-05-11: Elliot's :technologist: must be permanent (no inline
+# env required). Per-callsign defaults below; env override still wins.
+_DEFAULT_ICON_BY_CALLSIGN: dict[str, str] = {
+    "elliot": ":technologist:",
+    "enforcer": ":rotating_light:",
+}
+ICON_EMOJI = os.environ.get("SLACK_BOT_ICON_EMOJI", _DEFAULT_ICON_BY_CALLSIGN.get(CALLSIGN, ""))
 ICON_URL = os.environ.get("SLACK_BOT_ICON_URL", "")
 
 # Channel IDs (verified 2026-05-11 per AIDEN-SLACK-MIGRATION-001 dispatch)

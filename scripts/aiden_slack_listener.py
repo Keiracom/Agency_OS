@@ -40,11 +40,11 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
-CHANNEL = os.environ.get("SLACK_LISTENER_CHANNEL", "C0B3QB0K1GQ")
+CHANNELS = [c.strip() for c in os.environ.get("SLACK_LISTENER_CHANNELS", "C0B3QB0K1GQ,C0B2PM3TV0B").split(",") if c.strip()]
 POLL = float(os.environ.get("LISTENER_POLL_SECONDS", "20"))
 TOKEN = os.environ.get("SLACK_BOT_TOKEN", "")
 INBOX = Path("/tmp/telegram-relay-aiden/inbox")
-STATE_FILE = Path("/tmp/aiden-slack-listener-state")
+STATE_DIR = Path("/tmp/aiden-slack-listener-state.d")
 GROUP_CHAT_ID = -1003926592540  # preserved so relay_watcher's last_chat_id still works for any legacy tg reply paths
 
 CALLSIGN_TRIGGERS = ("aiden", "all", "both", "team")
@@ -59,16 +59,22 @@ def slack_get(method: str, params: dict) -> dict:
         return json.loads(r.read())
 
 
-def load_cursor() -> str:
-    if STATE_FILE.exists():
-        return STATE_FILE.read_text().strip()
+def _state_path(channel: str) -> Path:
+    return STATE_DIR / f"{channel}.cursor"
+
+
+def load_cursor(channel: str) -> str:
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    p = _state_path(channel)
+    if p.exists():
+        return p.read_text().strip()
     cursor = f"{time.time():.6f}"
-    STATE_FILE.write_text(cursor)
+    p.write_text(cursor)
     return cursor
 
 
-def save_cursor(ts: str) -> None:
-    STATE_FILE.write_text(ts)
+def save_cursor(channel: str, ts: str) -> None:
+    _state_path(channel).write_text(ts)
 
 
 def should_keep(text: str, has_bot_id: bool) -> bool:
@@ -104,14 +110,14 @@ def write_inbox(text: str, sender: str) -> None:
     (INBOX / fname).write_text(json.dumps(payload))
 
 
-def poll_once(cursor: str) -> str:
+def poll_once(channel: str, cursor: str) -> str:
     try:
-        result = slack_get("conversations.history", {"channel": CHANNEL, "oldest": cursor, "inclusive": "false", "limit": "100"})
+        result = slack_get("conversations.history", {"channel": channel, "oldest": cursor, "inclusive": "false", "limit": "100"})
     except urllib.error.URLError as e:
-        print(f"slack history fetch failed: {e}", file=sys.stderr, flush=True)
+        print(f"slack history fetch failed ({channel}): {e}", file=sys.stderr, flush=True)
         return cursor
     if not result.get("ok"):
-        print(f"slack rejected: {result}", file=sys.stderr, flush=True)
+        print(f"slack rejected ({channel}): {result}", file=sys.stderr, flush=True)
         return cursor
     messages = result.get("messages", [])
     if not messages:
@@ -125,7 +131,7 @@ def poll_once(cursor: str) -> str:
         has_bot = bool(msg.get("bot_id"))
         if should_keep(text, has_bot):
             write_inbox(text, sender_from(msg))
-            print(f"inbox <- {msg.get('ts')} ({len(text)}ch)", flush=True)
+            print(f"inbox <- {channel} {msg.get('ts')} ({len(text)}ch)", flush=True)
         new_cursor = msg.get("ts", new_cursor)
     return new_cursor
 
@@ -134,11 +140,12 @@ def main() -> int:
     if not TOKEN:
         print("ERROR: SLACK_BOT_TOKEN not set", file=sys.stderr)
         return 2
-    cursor = load_cursor()
-    print(f"aiden_slack_listener: channel={CHANNEL} poll={POLL}s cursor={cursor}", flush=True)
+    cursors = {ch: load_cursor(ch) for ch in CHANNELS}
+    print(f"aiden_slack_listener: channels={CHANNELS} poll={POLL}s", flush=True)
     while True:
-        cursor = poll_once(cursor)
-        save_cursor(cursor)
+        for ch in CHANNELS:
+            cursors[ch] = poll_once(ch, cursors[ch])
+            save_cursor(ch, cursors[ch])
         time.sleep(POLL)
 
 

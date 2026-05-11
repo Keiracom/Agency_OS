@@ -51,7 +51,7 @@ from slack_sdk.socket_mode.request import SocketModeRequest
 from slack_sdk.socket_mode.response import SocketModeResponse
 from slack_sdk.web import WebClient
 
-from src.bot_common.enforcer_deterministic import check_r4
+from src.bot_common.enforcer_deterministic import check_r2, check_r4, check_r8
 from src.bot_common.enforcer_rules import (
     CHECK_MODEL,
     FLAG_COOLDOWN_SECONDS,
@@ -209,9 +209,9 @@ def _fire_violation(result: dict, web: WebClient) -> None:
 def run_enforcer(event: dict, text: str, web: WebClient) -> None:
     """Deterministic-first enforcer pipeline.
 
-    1. Run applicable deterministic checks (R4 now; R2/R3/R6/R8 via stubs).
+    1. Run applicable deterministic checks (R2, R4, R8; R3/R6 still stubs).
     2. If deterministic returns a violation → fire immediately, skip LLM.
-    3. If no deterministic result → fall through to LLM for remaining rules (R9 + stubs).
+    3. If no deterministic result → fall through to LLM for remaining rules (R9 + R3/R6 stubs).
     Set ENFORCER_DETERMINISTIC=0 to revert to LLM-only path.
     """
     if event.get("channel") != LISTEN_CHANNEL:
@@ -227,10 +227,16 @@ def run_enforcer(event: dict, text: str, web: WebClient) -> None:
     logger.info("ENFORCER CHECK from=%s text=%s", callsign, text[:80])
 
     if ENFORCER_DETERMINISTIC:
-        r4 = check_r4(text)
-        if r4:
-            _fire_violation(r4, web)
-            return
+        recent = list(message_window)
+        for check_fn, check_args in (
+            (check_r4, (text,)),
+            (check_r2, (text, recent)),
+            (check_r8, (text, recent)),
+        ):
+            result = check_fn(*check_args)
+            if result:
+                _fire_violation(result, web)
+                return
 
     result = check_with_llm(text, list(message_window), channel_id=event.get("channel", ""))
     if not result or not result.get("violation"):

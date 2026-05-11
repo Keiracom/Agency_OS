@@ -1,144 +1,68 @@
 #!/usr/bin/env python3
-"""tg — send a message to Telegram via the outbox relay (auto-routes to last incoming chat).
+"""tg — Slack relay shim (callsign-fix Phase 2).
 
-Usage:
-    tg "message"                    → reply to last incoming chat
-    tg -g "message"                 → force send to group
-    tg -d "message"                 → force send to DM (private)
-    tg -c <chat_id> "message"       → send to specific chat_id
-    echo "message" | tg             → read from stdin
+Post-cutover: `tg` no longer writes to the Telegram outbox. It is now a thin
+delegator over `scripts/slack_relay.py`, so legacy callsites keep working but
+their messages land in Slack instead.
+
+Usage (preserved from pre-cutover tg):
+    tg "msg"                 → #execution
+    tg -g "msg"              → #execution (group)
+    tg -d "msg"              → #ceo (prime callsigns) | #execution (clones)
+    tg -c <channel> "msg"    → named channel ("execution", "ceo", ...) or ID
+    echo "msg" | tg          → reads from stdin
+
+Callsign attribution and Slack auth are handled inside slack_relay.py. Exit
+codes from slack_relay.py propagate unchanged.
 """
-import json
+
+from __future__ import annotations
+
 import os
+import subprocess
 import sys
-import uuid
-from datetime import datetime, timezone
+from pathlib import Path
 
-CALLSIGN = os.environ.get("CALLSIGN", "elliot")
-RELAY_DIR = f"/tmp/telegram-relay-{CALLSIGN}"
-OUTBOX = f"{RELAY_DIR}/outbox"
-STATE_FILE = f"{RELAY_DIR}/last_chat_id"
-CALLSIGN_TAG = f"[{CALLSIGN.upper()}]"
+PRIME_CALLSIGNS = frozenset({"elliot", "aiden", "enforcer", "max"})
 
-DM_CHAT_ID = 7267788033
-GROUP_CHAT_ID = -1003926592540
+_SCRIPT_DIR = Path(__file__).resolve().parent
+SLACK_RELAY = _SCRIPT_DIR / "slack_relay.py"
 
-# Peer bot cross-post: map callsign → other bot's inbox for bot-to-bot visibility
-PEER_CALLSIGNS = {"elliot": "aiden", "aiden": "elliot"}
-PEER_INBOX = f"/tmp/telegram-relay-{PEER_CALLSIGNS.get(CALLSIGN, '')}/inbox" if CALLSIGN in PEER_CALLSIGNS else None
 
-os.makedirs(OUTBOX, exist_ok=True)
-
-# Parse args
-args = sys.argv[1:]
-chat_id = None
-message_parts = []
-
-VALID_FLAGS = {"-g", "--group", "-d", "--dm", "-c", "--chat"}
-
-i = 0
-while i < len(args):
-    if args[i] in ("-g", "--group"):
-        chat_id = GROUP_CHAT_ID
-    elif args[i] in ("-d", "--dm"):
-        chat_id = DM_CHAT_ID
-    elif args[i] in ("-c", "--chat") and i + 1 < len(args):
-        chat_id = int(args[i + 1])
+def translate(argv: list[str], callsign: str) -> list[str]:
+    """Map legacy tg argv → slack_relay.py argv. Pure for tests."""
+    out: list[str] = []
+    i = 0
+    while i < len(argv):
+        a = argv[i]
+        if a in ("-g", "--group"):
+            out.append("-g")
+        elif a in ("-d", "--dm"):
+            channel = "ceo" if callsign.lower() in PRIME_CALLSIGNS else "execution"
+            out.extend(["-c", channel])
+        elif a in ("-c", "--chat", "--channel"):
+            if i + 1 >= len(argv):
+                print("tg: -c requires a channel name or ID", file=sys.stderr)
+                sys.exit(2)
+            out.extend(["-c", argv[i + 1]])
+            i += 1
+        else:
+            out.append(a)
         i += 1
-    elif args[i].startswith("-") and args[i] not in VALID_FLAGS:
-        print(f"Unknown flag: {args[i]}", file=sys.stderr)
-        print(f"Valid flags: -g (group), -d (DM), -c <chat_id>", file=sys.stderr)
-        sys.exit(1)
-    else:
-        message_parts.append(args[i])
-    i += 1
+    return out
 
-message = " ".join(message_parts)
 
-# Read from stdin if no message arg
-if not message and not sys.stdin.isatty():
-    message = sys.stdin.read().strip()
+def main(argv: list[str] | None = None) -> int:
+    argv = list(sys.argv[1:] if argv is None else argv)
+    callsign = os.environ.get("CALLSIGN", "elliot")
+    relay_argv = translate(argv, callsign)
+    if not SLACK_RELAY.exists():
+        print(f"tg: slack_relay.py not found at {SLACK_RELAY}", file=sys.stderr)
+        return 2
+    cmd = [sys.executable, str(SLACK_RELAY), *relay_argv]
+    # Inherit stdin so `echo "msg" | tg` pipes through to slack_relay.
+    return subprocess.run(cmd, check=False).returncode
 
-if not message:
-    print("Usage: tg [-g|-d|-c <chat_id>] \"message\"")
-    sys.exit(1)
 
-# S1 verify gate — block fabricated PR#/commit-hash in completion claims.
-# Skip via R_VERIFY_SKIP=1 for one-shot edge cases. Repo path: same parent
-# as scripts/ dir holding this file.
-try:
-    _repo_root = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-    sys.path.insert(0, _repo_root)
-    from src.bot_common.verify_gate import gate_check as _verify_gate
-    _ok, _blocker = _verify_gate(message)
-    if not _ok:
-        print(f"R_VERIFY_BLOCKED: {_blocker}", file=sys.stderr)
-        sys.exit(2)
-except ImportError:
-    pass  # repo path resolution failed; fall through ungated
-
-# Auto-detect chat_id from last incoming if not specified
-if chat_id is None:
-    if os.path.exists(STATE_FILE):
-        with open(STATE_FILE) as f:
-            chat_id = int(f.read().strip())
-    else:
-        chat_id = DM_CHAT_ID
-
-# Prefix with callsign tag (LAW XVII)
-tagged = f"{CALLSIGN_TAG} {message}"
-
-# Write to outbox
-ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-rand = uuid.uuid4().hex[:8]
-fname = f"{ts}_{rand}.json"
-
-payload = {"type": "text", "chat_id": chat_id, "text": tagged}
-path = os.path.join(OUTBOX, fname)
-with open(path, "w") as f:
-    json.dump(payload, f)
-
-# FIX 2: Write de-dup marker so Stop hook doesn't double-relay this content
-import hashlib
-_hash = hashlib.md5(message.encode()).hexdigest()[:8]
-_marker = f"/tmp/.relay_dedup_{CALLSIGN}_{_hash}"
-open(_marker, "w").close()
-
-# Max → agent inbox cross-post: Telegram filters bot-to-bot messages,
-# so agents never see Max's group posts via getUpdates. Write directly
-# to their file inboxes so relay watchers inject them.
-if chat_id == GROUP_CHAT_ID and CALLSIGN == "max":
-    for peer_inbox in ["/tmp/telegram-relay-elliot/inbox", "/tmp/telegram-relay-aiden/inbox"]:
-        try:
-            os.makedirs(peer_inbox, exist_ok=True)
-            peer_payload = {
-                "id": f"max_{rand}",
-                "type": "text",
-                "chat_id": chat_id,
-                "text": f"[GROUP — from MAX (COO — acts with Dave's authority)]: {tagged}",
-                "sender": "dave",
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-            }
-            with open(os.path.join(peer_inbox, fname), "w") as pf:
-                json.dump(peer_payload, pf)
-        except Exception as e:
-            print(f"⚠ cross-post to {peer_inbox} failed: {e}", file=sys.stderr)
-
-# Max COO sideband: Telegram filters bot-to-bot messages, so peer chatter
-# never reaches @MaxCOO_Bot via getUpdates. Mirror group-targeted messages
-# into Max's file inbox so his bot can read them via inbox-poll.
-if chat_id == GROUP_CHAT_ID and CALLSIGN in PEER_CALLSIGNS:
-    coo_inbox = "/tmp/coo-inbox"
-    os.makedirs(coo_inbox, exist_ok=True)
-    coo_payload = {
-        "sender_callsign": CALLSIGN,
-        "text": tagged,
-        "timestamp_iso": datetime.now(timezone.utc).isoformat(),
-        "message_id": rand,
-        "chat_id": chat_id,
-    }
-    with open(os.path.join(coo_inbox, fname), "w") as f:
-        json.dump(coo_payload, f)
-
-dest = "DM" if chat_id == DM_CHAT_ID else "group" if chat_id == GROUP_CHAT_ID else str(chat_id)
-print(f"→ {CALLSIGN_TAG} sent to {dest} (chat {chat_id})")
+if __name__ == "__main__":
+    sys.exit(main())

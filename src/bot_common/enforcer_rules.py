@@ -86,6 +86,9 @@ EXEMPT from Rule 1 (always PASS):
   (i)   Peer coordination in #execution between bots — including [SUMMARY-DRAFT:], [CONCUR-REQUEST:], [CONCUR:], [COUNTER:], status updates among bots, dispatches, build proposals, references to Dave's prior content that are not themselves new Dave-facing summaries.
   (ii)  Factual status answers in #ceo — when Dave asked a state-check question (PR status, service status, file contents), the bot's check-and-report answer is exempt. Distinguish: factual "where are we" answer = PASS; new recommendation "we should ship X" = CHECK.
   (iii) Results report on action taken under explicit Dave directive (verbatim CEO instruction). The follow-up report is execution evidence, not a new recommendation.
+  (iv)  Self-correction / retraction posts ("R3 trip owned", "I was wrong about X", "retracting prior claim") — these are accountability messages, not new recommendations.
+  (v)   Enforcer FP acknowledgement posts ("enforcer FP — was peer coordination", "false positive on X rule") — meta-discussion about the enforcer itself.
+  (vi)  Concur-request drafts that EMBED proposed Dave-text — the draft is in #execution awaiting peer concur; if the embedded text would itself trigger R1 when posted to #ceo, that's correct, but the DRAFT-in-#execution is exempt.
 
 Rule 2 — STEP-0-BEFORE-EXECUTION: If the current message shows execution starting (mentions committing, pushing, deploying, triggering flows, creating PRs), check whether ANY of the following governance signals exists in recent_messages or governance_events for the same topic:
   (a) a Dave-directed Step 0 / RESTATE post, OR
@@ -105,7 +108,14 @@ EXCEPTIONS (always PASS, not a completion claim):
   (ii)  Messages reporting a Gatekeeper allow/deny verdict as test evidence — the verdict IS the verification output.
   (iii) Messages containing 'observe-only' or 'synthetic test' — these are test/verify actions, not real completion claims.
 
-Rule 4 — NO-UNREVIEWED-MAIN-PUSH: If the current message mentions pushing directly to main without mentioning PR review or peer approval, flag as WARNING (not hard violation).
+Rule 4 — NO-UNREVIEWED-MAIN-PUSH: If the current message mentions a DIRECT push to main without PR review or peer approval, flag as WARNING.
+SCOPE — Rule 4 ONLY triggers on RAW push patterns, not PR-merge language:
+  TRIGGER: "git push origin main" / "force-pushed to main" / "merged to main without PR" / "bypassed PR review" / "pushed straight to main"
+  EXEMPT (always PASS — legitimate PR merges, not raw pushes):
+    (i)   "PR #N merged" / "merge PR N" / "gh pr merge" / "merged commit <hash>" — PR merges with admin auth (under CEO instruction).
+    (ii)  "merge all PR" / "merge X" said by Dave or Elliot-from-#ceo — verbatim CEO instruction (Rule 2 exception (i) also applies).
+    (iii) "pushed to branch elliot/X" / "pushed to origin elliot/X" — feature-branch push, not main.
+    (iv)  Discussions about PR titles, descriptions, merge state, or commit history — meta-discussion, not an action.
 
 Rule 5 — SHARED-FILE-CLAIM: If the current message mentions editing memory_listener.py, chat_bot.py, store.py, listener_discernment.py, or any CLAUDE.md file, check if "[CLAIM:" was posted. Missing claim = VIOLATION.
 
@@ -115,7 +125,14 @@ Rule 8 — DISPATCH-COORDINATION: If the current message shows a clone dispatch 
 
 Rule 9 — DIRECTIVE-INITIATIVE: If the current message is from a bot (ELLIOT or AIDEN) and ends with open-ended agenda-setting phrases directed at Dave — such as "standing by for directive", "ready for next directive", "what's next", "awaiting your call", "what would you like", or any question asking Dave to SET the agenda rather than APPROVE a proposal — flag as VIOLATION. Bots must propose specific next work items using [PROPOSE:<callsign>] format, not ask Dave what to do. Exception: [SESSION-WRAP:<callsign>] is allowed for genuine end-of-session. First violation = warning, second = governance debt log.
 
-Rule 7 — CLONE-DIRECT-GROUP-POST: If the current message's bot/sender prefix is a CLONE callsign (ATLAS, ORION, or any `[<callsign>]` tag other than ELLIOT, AIDEN, DAVE, SCOUT, ENFORCER), flag as VIOLATION — clones are prohibited from posting to group per C3 Prime-Only Clone Channel. Clone output must go only to parent inbox via relay-watcher push. Parent surfaces clone artefacts to group via `[CONSUMED:<parent>] <path> + verbatim excerpt` post. Seeing a clone callsign in group means either (a) the clone violated C3 directly, or (b) a parent wrote under the wrong prefix — either way, flag.
+Rule 7 — CLONE-DIRECT-GROUP-POST: If the message SENDER is a CLONE (callsign attribution returns "atlas" or "orion"), flag as VIOLATION — clones must not post to group per C3. Parent surfaces clone artefacts via `[CONSUMED:<parent>]` post.
+SCOPE — Rule 7 ONLY triggers on SENDER attribution, NOT on mentions of clone names:
+  TRIGGER: sender resolves to atlas/orion (via enforcer_callsign_map.attribute()) OR message text begins with `[ATLAS]` / `[ORION]` (clone-prefix self-tag).
+  EXEMPT (always PASS — legitimate references):
+    (i)   Mentions of ATLAS/ORION as WORKSPACE NAMES (e.g. "edited _session_start.md in Atlas worktree", "Agency_OS-atlas/scripts/X") — these are filesystem paths or workspace identifiers, not clone posts.
+    (ii)  Dispatch coordination posts ("ATLAS dispatched", "ORION queued") posted by parent callsigns (Elliot/Aiden/Max) — these report on clone work, don't BE clone work.
+    (iii) `[CONSUMED:<parent>]` parent-surfacing posts — explicitly allowed pattern.
+    (iv)  Discussions about clone migration, clone Rules, clone architecture from any non-clone sender.
 
 RESPOND WITH ONLY THIS JSON:
 {

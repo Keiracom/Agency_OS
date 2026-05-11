@@ -110,16 +110,17 @@ def test_record_turn_start_writes_turns_row(captured_posts) -> None:
     assert payload["status"] == "in_progress"
 
 
-def test_record_tool_call_writes_log_and_files(captured_posts) -> None:
+def test_record_tool_call_writes_log_and_files(captured_posts, tmp_path) -> None:
     tid = UUID("00000000-0000-0000-0000-000000000002")
+    fake_file = str(tmp_path / "x.py")
     lid = recorder.record_tool_call(
         turn_id=tid,
         tool_name="Edit",
-        tool_args={"file_path": "/tmp/x.py", "old_string": "a", "new_string": "b"},
+        tool_args={"file_path": fake_file, "old_string": "a", "new_string": "b"},
         exit_status="success",
         files=[
             {
-                "file_path": "/tmp/x.py",
+                "file_path": fake_file,
                 "operation": "edit",
                 "lines_added": 1,
                 "lines_removed": 1,
@@ -134,7 +135,7 @@ def test_record_tool_call_writes_log_and_files(captured_posts) -> None:
     assert log_call[1]["tool_name"] == "Edit"
     assert log_call[1]["exit_status"] == "success"
     assert files_call[0] == "turn_files"
-    assert files_call[1]["file_path"] == "/tmp/x.py"
+    assert files_call[1]["file_path"] == fake_file
     assert files_call[1]["operation"] == "edit"
     assert files_call[1]["lines_added"] == 1
 
@@ -150,7 +151,7 @@ def test_record_turn_complete_patches_turns_row(captured_patches) -> None:
     assert payload["status"] == "completed"
     assert payload["input_tokens"] == 1000
     assert payload["output_tokens"] == 500
-    assert payload["cost_aud"] == 0.05
+    assert payload["cost_aud"] == pytest.approx(0.05)
     assert "completed_at" in payload
 
 
@@ -167,17 +168,17 @@ def test_record_session_end_patches_sessions_row(captured_patches) -> None:
 def test_mark_session_stuck(captured_patches) -> None:
     sid = UUID("00000000-0000-0000-0000-000000000005")
     recorder.mark_session_stuck(session_id=sid)
-    table, params, payload = captured_patches[0]
+    table, _params, payload = captured_patches[0]
     assert table == "sessions"
     assert payload["status"] == "stuck"
 
 
-def test_swallow_on_failure() -> None:
+def test_swallow_on_failure(tmp_path) -> None:
     """sb_post raises → recorder returns None, no exception bubbles up."""
 
     def raise_fn(*args, **kwargs):
         raise RuntimeError("supabase down")
 
     with patch.object(recorder, "sb_post", side_effect=raise_fn):
-        sid = recorder.record_session_start(callsign="aiden", working_directory="/tmp")
+        sid = recorder.record_session_start(callsign="aiden", working_directory=str(tmp_path))
         assert sid is None  # best-effort: no row created, but no exception

@@ -32,7 +32,6 @@ LAST_TS_PATH = Path("/tmp/max-slack-listener-last-ts.json")
 
 CHANNELS_TO_POLL = {
     "C0B3QB0K1GQ": "execution",
-    "C0B2PM3TV0B": "ceo",
     "C0B2UCNRJ86": "ops",
 }
 

@@ -51,6 +51,7 @@ from slack_sdk.socket_mode.request import SocketModeRequest
 from slack_sdk.socket_mode.response import SocketModeResponse
 from slack_sdk.web import WebClient
 
+from src.bot_common.enforcer_deterministic import check_r4
 from src.bot_common.enforcer_rules import (
     CHECK_MODEL,
     FLAG_COOLDOWN_SECONDS,
@@ -67,6 +68,7 @@ logger = logging.getLogger("slack-central-listener")
 BOT_TOKEN = os.environ.get("SLACK_BOT_TOKEN", "")
 APP_TOKEN = os.environ.get("SLACK_ENFORCER_APP_TOKEN", "")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
+ENFORCER_DETERMINISTIC = os.environ.get("ENFORCER_DETERMINISTIC", "1") == "1"
 LISTEN_CHANNEL = os.environ.get("SLACK_LISTEN_CHANNEL", "C0B3QB0K1GQ")  # enforcer scope
 ALERTS_CHANNEL = os.environ.get("SLACK_ALERTS_CHANNEL", "C0B2EJU53EK")
 ENFORCER_USERNAME = "Enforcer"
@@ -188,8 +190,30 @@ def post_interjection(web: WebClient, text: str, rule_num: int) -> None:
                 logger.warning("enforcer inbox write failed %s: %s", inbox, exc)
 
 
+def _fire_violation(result: dict, web: WebClient) -> None:
+    """Post an enforcer interjection if not in cooldown."""
+    rule_num = result.get("rule_number")
+    flag_key = f"rule_{rule_num}"
+    now = time.time()
+    if flag_key in last_flag_times and (now - last_flag_times[flag_key]) < FLAG_COOLDOWN_SECONDS:
+        return
+    last_flag_times[flag_key] = now
+    rule_name = result.get("rule_name", "unknown")
+    detail = result.get("detail", "")
+    should_have = result.get("should_have", "")
+    interjection = f"Rule {rule_num} -- {rule_name}: {detail}. {should_have}."
+    logger.info("VIOLATION: %s", interjection)
+    post_interjection(web, interjection, rule_num if isinstance(rule_num, int) else 0)
+
+
 def run_enforcer(event: dict, text: str, web: WebClient) -> None:
-    """Enforcer check on #execution events (was in src/slack_bot/enforcer_bot.py)."""
+    """Deterministic-first enforcer pipeline.
+
+    1. Run applicable deterministic checks (R4 now; R2/R3/R6/R8 via stubs).
+    2. If deterministic returns a violation → fire immediately, skip LLM.
+    3. If no deterministic result → fall through to LLM for remaining rules (R9 + stubs).
+    Set ENFORCER_DETERMINISTIC=0 to revert to LLM-only path.
+    """
     if event.get("channel") != LISTEN_CHANNEL:
         return
     callsign = attribute(event)
@@ -201,21 +225,17 @@ def run_enforcer(event: dict, text: str, web: WebClient) -> None:
     if not should_check(text):
         return
     logger.info("ENFORCER CHECK from=%s text=%s", callsign, text[:80])
+
+    if ENFORCER_DETERMINISTIC:
+        r4 = check_r4(text)
+        if r4:
+            _fire_violation(r4, web)
+            return
+
     result = check_with_llm(text, list(message_window), channel_id=event.get("channel", ""))
     if not result or not result.get("violation"):
         return
-    rule_num = result.get("rule_number")
-    rule_name = result.get("rule_name", "unknown")
-    detail = result.get("detail", "")
-    should_have = result.get("should_have", "")
-    flag_key = f"rule_{rule_num}"
-    now = time.time()
-    if flag_key in last_flag_times and (now - last_flag_times[flag_key]) < FLAG_COOLDOWN_SECONDS:
-        return
-    last_flag_times[flag_key] = now
-    interjection = f"Rule {rule_num} -- {rule_name}: {detail}. {should_have}."
-    logger.info("VIOLATION: %s", interjection)
-    post_interjection(web, interjection, rule_num if isinstance(rule_num, int) else 0)
+    _fire_violation(result, web)
 
 
 def process_event(event: dict, web: WebClient | None = None) -> None:

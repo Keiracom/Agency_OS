@@ -61,10 +61,7 @@ def has_peer_concur(my_callsign: str, bot_token: str, channel: str = EXECUTION_C
         return False
     if not data.get("ok"):
         return False
-    for msg in data.get("messages", []):
-        if needle in (msg.get("text") or "").lower():
-            return True
-    return False
+    return any(needle in (msg.get("text") or "").lower() for msg in data.get("messages", []))
 
 
 def gate_check(text: str, my_callsign: str, bot_token: str, peer_label: str = "peer") -> tuple[bool, str | None]:

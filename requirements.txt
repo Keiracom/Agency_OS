@@ -41,6 +41,9 @@ prefect>=3.0.0
 # === Retry Logic ===
 tenacity>=8.2.0
 
+# === Slack ===
+slack-sdk>=3.27.0
+
 # === Auth ===
 python-jose>=3.3.0
 

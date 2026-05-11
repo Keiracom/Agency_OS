@@ -47,7 +47,14 @@ sys.modules["slack_sdk.socket_mode.response"].SocketModeResponse = type(
 )  # type: ignore[attr-defined]
 sys.modules["slack_sdk.web"].WebClient = type("WebClient", (), {})  # type: ignore[attr-defined]
 
-from src.slack_bot.central_listener import _R3_LLM_EVIDENCE_RE  # noqa: E402
+from src.bot_common.enforcer_deterministic import _R3_EVIDENCE_RE  # noqa: E402
+from src.slack_bot.central_listener import _R3_LLM_EVIDENCE_EXTRAS_RE  # noqa: E402
+
+
+def _r3_post_llm_match(text: str) -> bool:
+    """Mirror central_listener.run_enforcer's post-LLM R3 evidence check."""
+    return bool(_R3_EVIDENCE_RE.search(text) or _R3_LLM_EVIDENCE_EXTRAS_RE.search(text))
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # R2 exempt regex — protocol-tag coverage
@@ -136,23 +143,23 @@ def test_r8_fires_on_imperative_now() -> None:
 
 
 def test_r3_llm_evidence_commit_hash() -> None:
-    assert _R3_LLM_EVIDENCE_RE.search("commit 6a3661b1 verified")
+    assert _r3_post_llm_match("commit 6a3661b1 verified")
 
 
 def test_r3_llm_evidence_pr_ref() -> None:
-    assert _R3_LLM_EVIDENCE_RE.search("PR #715 open with all CI green")
+    assert _r3_post_llm_match("PR #715 open with all CI green")
 
 
 def test_r3_llm_evidence_gh_json_state() -> None:
-    assert _R3_LLM_EVIDENCE_RE.search('{"state":"MERGED","mergeCommit":{"oid":"abc123"}}')
+    assert _r3_post_llm_match('{"state":"MERGED","mergeCommit":{"oid":"abc123"}}')
 
 
 def test_r3_llm_evidence_pytest_count() -> None:
-    assert _R3_LLM_EVIDENCE_RE.search("14 passed in 0.18s")
+    assert _r3_post_llm_match("14 passed in 0.18s")
 
 
 def test_r3_llm_evidence_ci_success() -> None:
-    assert _R3_LLM_EVIDENCE_RE.search("CI: ALL SUCCESS\nDead Reference Guard")
+    assert _r3_post_llm_match("CI: ALL SUCCESS\nDead Reference Guard")
 
 
 def test_r3_llm_evidence_terminal_prefix() -> None:
@@ -162,10 +169,10 @@ def test_r3_llm_evidence_terminal_prefix() -> None:
 
 
 def test_r3_llm_evidence_gh_cli() -> None:
-    assert _R3_LLM_EVIDENCE_RE.search("$ gh pr view 715 --json state")
+    assert _r3_post_llm_match("$ gh pr view 715 --json state")
 
 
 def test_r3_llm_evidence_no_match_on_bare_dave_directed() -> None:
     """Anti-broadening: a real R3-violation candidate (no evidence) should NOT match."""
-    assert not _R3_LLM_EVIDENCE_RE.search("Dave, the task is complete.")
-    assert not _R3_LLM_EVIDENCE_RE.search("Done!")
+    assert not _r3_post_llm_match("Dave, the task is complete.")
+    assert not _r3_post_llm_match("Done!")

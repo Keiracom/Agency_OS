@@ -38,6 +38,11 @@ CALLSIGN = os.environ.get("CALLSIGN", "aiden")
 CALLSIGN_TAG = f"[{CALLSIGN.upper()}]"
 BOT_TOKEN = os.environ.get("SLACK_BOT_TOKEN", "")
 USERNAME = os.environ.get("SLACK_BOT_USERNAME", CALLSIGN.capitalize())
+# Optional per-callsign icon override. Slack accepts either an emoji shortcode
+# (":technologist:") via icon_emoji OR a fully-qualified URL via icon_url. We
+# expose both so callers can choose; URL wins if both are set.
+ICON_EMOJI = os.environ.get("SLACK_BOT_ICON_EMOJI", "")
+ICON_URL = os.environ.get("SLACK_BOT_ICON_URL", "")
 
 # Channel IDs (verified 2026-05-11 per AIDEN-SLACK-MIGRATION-001 dispatch)
 CHANNELS = {
@@ -86,7 +91,12 @@ def post(channel: str, text: str) -> dict:
         sys.exit(2)
     if not text.startswith(CALLSIGN_TAG):
         text = f"{CALLSIGN_TAG} {text}"
-    body = json.dumps({"channel": channel, "text": text, "username": USERNAME}).encode("utf-8")
+    payload: dict = {"channel": channel, "text": text, "username": USERNAME}
+    if ICON_URL:
+        payload["icon_url"] = ICON_URL
+    elif ICON_EMOJI:
+        payload["icon_emoji"] = ICON_EMOJI
+    body = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(
         "https://slack.com/api/chat.postMessage",
         data=body,

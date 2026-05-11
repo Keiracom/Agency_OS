@@ -103,10 +103,21 @@ EXCEPTIONS (always PASS, no Step 0 required):
   (v)   Task approved via [PROPOSE:<callsign>] + Dave "approve" — execution starts immediately after approval without separate Step 0 post.
 
 Rule 3 — COMPLETION-REQUIRES-VERIFICATION: If the current message claims task completion ("complete", "done", "all stores written", "4-store save complete"), check if verification evidence was posted (terminal output, SQL results, test output, commit hashes). Claim without evidence = VIOLATION.
+EVIDENCE RECOGNITION — the following patterns COUNT as valid evidence when present in the same message as a completion claim (PASS, not violation):
+  - Commit hashes (7+ hex chars, e.g. "f2eaae09", "commit 067df9aa")
+  - PR references with state ("PR #694 merged", "gh pr view → MERGED")
+  - Terminal/command output (lines starting with $, >, →, or indented command output)
+  - grep/git/systemd output (PID numbers, ActiveState=, "passed", "15/15", exit codes)
+  - SQL results or query output
+  - Timestamps with specific operational details ("restarted Mon 2026-05-11 09:49:45 UTC")
+  - File diffs or stat output ("5 insertions, 4 deletions")
+  - Verbatim log lines or service output
+If a message contains BOTH a completion claim AND any of these evidence patterns inline, it is NOT a violation — the evidence is present.
 EXCEPTIONS (always PASS, not a completion claim):
   (i)   Messages starting with '[GOVERNANCE] Gatekeeper DENY' or '[GATEKEEPER-DENY:' — these are automated gate outputs (the opposite of completion claims), not bot assertions of done.
   (ii)  Messages reporting a Gatekeeper allow/deny verdict as test evidence — the verdict IS the verification output.
   (iii) Messages containing 'observe-only' or 'synthetic test' — these are test/verify actions, not real completion claims.
+  (iv)  Peer-to-peer status updates in #execution that include inline evidence (systemd output, git log, grep results) — the evidence IS the verification.
 
 Rule 4 — NO-UNREVIEWED-MAIN-PUSH: If the current message mentions a DIRECT push to main without PR review or peer approval, flag as WARNING.
 SCOPE — Rule 4 ONLY triggers on RAW push patterns, not PR-merge language:

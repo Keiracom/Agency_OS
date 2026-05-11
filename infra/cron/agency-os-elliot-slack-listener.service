@@ -1,0 +1,12 @@
+[Unit]
+Description=Agency OS — Elliot Slack listener (Step 3.5 inbound)
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/env python3 /home/elliotbot/clawd/Agency_OS/scripts/elliot_slack_listener.py
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

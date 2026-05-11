@@ -1,4 +1,6 @@
-# CLAUDE.md — Agency OS Project Config (Aiden worktree)
+# CLAUDE.md — Agency OS Project Config
+
+@IDENTITY.md
 
 @.claude/modules/_project_overview.md
 
@@ -20,7 +22,7 @@ Session START query:
 ```sql
 SELECT source_type AS type, LEFT(content, 200) AS preview, created_at::date AS date
 FROM public.agent_memories
-WHERE callsign = 'aiden' AND state != 'archived'
+WHERE callsign = '<your_callsign>' AND state != 'archived'
   AND source_type IN ('daily_log', 'core_fact')
 ORDER BY created_at DESC LIMIT 10;
 ```
@@ -28,7 +30,7 @@ ORDER BY created_at DESC LIMIT 10;
 Session END — write daily_log before closing:
 ```sql
 INSERT INTO public.agent_memories (id, callsign, source_type, content, typed_metadata, created_at, valid_from, state)
-VALUES (gen_random_uuid(), 'aiden', 'daily_log', '<summary: what was done, PRs, decisions, blockers>', '{}'::jsonb, NOW(), NOW(), 'confirmed');
+VALUES (gen_random_uuid(), '<your_callsign>', 'daily_log', '<summary: what was done, PRs, decisions, blockers>', '{}'::jsonb, NOW(), NOW(), 'confirmed');
 ```
 
 @.claude/modules/_governance_rules.md

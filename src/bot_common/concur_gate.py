@@ -64,7 +64,9 @@ def has_peer_concur(my_callsign: str, bot_token: str, channel: str = EXECUTION_C
     return any(needle in (msg.get("text") or "").lower() for msg in data.get("messages", []))
 
 
-def gate_check(text: str, my_callsign: str, bot_token: str, peer_label: str = "peer") -> tuple[bool, str | None]:
+def gate_check(
+    text: str, my_callsign: str, bot_token: str, peer_label: str = "peer"
+) -> tuple[bool, str | None]:
     """Return (allow, replacement_message).
 
     allow=True  -> caller posts text unchanged.

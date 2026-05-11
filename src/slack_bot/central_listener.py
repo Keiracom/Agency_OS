@@ -80,10 +80,10 @@ last_flag_times: dict[str, float] = {}
 governance_events: dict = {}
 
 CHANNEL_ROUTES: dict[str, list[str]] = {
-    "C0B2PM3TV0B": ["elliot"],                       # #ceo
-    "C0B3QB0K1GQ": ["elliot", "aiden", "max"],       # #execution
-    "C0B2EJU53EK": ["aiden"],                         # #alerts
-    "C0B2U15PSEA": ["aiden"],                         # #completed_directives
+    "C0B2PM3TV0B": ["elliot"],  # #ceo
+    "C0B3QB0K1GQ": ["elliot", "aiden", "max"],  # #execution
+    "C0B2EJU53EK": ["aiden"],  # #alerts
+    "C0B2U15PSEA": ["aiden"],  # #completed_directives
 }
 
 CALLSIGN_TO_INBOX: dict[str, list[Path]] = {
@@ -113,12 +113,14 @@ def sender_from(msg: dict) -> str:
 
 
 def write_inbox(callsign: str, text: str, sender: str) -> None:
-    payload = json.dumps({
-        "type": "text",
-        "chat_id": GROUP_CHAT_ID,
-        "text": text,
-        "sender": sender,
-    })
+    payload = json.dumps(
+        {
+            "type": "text",
+            "chat_id": GROUP_CHAT_ID,
+            "text": text,
+            "sender": sender,
+        }
+    )
     fname = f"slack_{int(time.time())}_{uuid.uuid4().hex[:8]}.json"
     for inbox in CALLSIGN_TO_INBOX.get(callsign, []):
         inbox.mkdir(parents=True, exist_ok=True)
@@ -142,7 +144,10 @@ def check_with_llm(current_msg: str, recent_msgs: list[str], channel_id: str = "
         with httpx.Client(timeout=15) as client:
             resp = client.post(
                 "https://api.openai.com/v1/chat/completions",
-                headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
+                headers={
+                    "Authorization": f"Bearer {OPENAI_API_KEY}",
+                    "Content-Type": "application/json",
+                },
                 json={
                     "model": CHECK_MODEL,
                     "messages": [
@@ -167,7 +172,9 @@ def post_interjection(web: WebClient, text: str, rule_num: int) -> None:
         targets.append(LISTEN_CHANNEL)
     for ch in targets:
         try:
-            web.chat_postMessage(channel=ch, text=text, username=ENFORCER_USERNAME, icon_emoji=ENFORCER_ICON)
+            web.chat_postMessage(
+                channel=ch, text=text, username=ENFORCER_USERNAME, icon_emoji=ENFORCER_ICON
+            )
         except Exception as exc:
             logger.warning("interjection post to %s failed: %s", ch, exc)
     # Mirror into each bot inbox (tmux delivery) — same shape as old enforcer
@@ -272,7 +279,9 @@ def process_event(event: dict, web: WebClient | None = None) -> None:
             if self_tag and text.startswith(self_tag):
                 continue
             write_inbox(callsign, text, sender)
-        logger.info("fanout %s ts=%s -> %s (%dch)", channel, event.get("ts", "?"), routes, len(text))
+        logger.info(
+            "fanout %s ts=%s -> %s (%dch)", channel, event.get("ts", "?"), routes, len(text)
+        )
     # ENFORCER (only on #execution)
     if web is not None:
         try:

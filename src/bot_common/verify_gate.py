@@ -100,7 +100,9 @@ def verify_pr(pr_num: int) -> tuple[bool, str]:
     try:
         result = subprocess.run(
             ["gh", "pr", "view", str(pr_num), "--json", "state"],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
     except (subprocess.TimeoutExpired, FileNotFoundError):
         return True, ""  # conservative pass on gh failure (network etc.)
@@ -109,6 +111,7 @@ def verify_pr(pr_num: int) -> tuple[bool, str]:
             return False, ""
         return True, ""  # other gh failure → conservative pass
     import json
+
     try:
         data = json.loads(result.stdout)
         return True, data.get("state", "")
@@ -121,7 +124,9 @@ def verify_commit(commit_hash: str) -> bool:
     try:
         result = subprocess.run(
             ["git", "cat-file", "-t", commit_hash],
-            capture_output=True, text=True, timeout=5,
+            capture_output=True,
+            text=True,
+            timeout=5,
         )
     except (subprocess.TimeoutExpired, FileNotFoundError):
         return True  # conservative pass on git failure

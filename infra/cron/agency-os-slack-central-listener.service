@@ -1,0 +1,15 @@
+[Unit]
+Description=Agency OS — Slack Central Listener (single Socket Mode subscriber, fans out)
+
+[Service]
+Type=simple
+ExecStart=/home/elliotbot/clawd/venv/bin/python3 -m src.slack_bot.central_listener
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+Restart=on-failure
+RestartSec=5
+StandardOutput=append:/home/elliotbot/clawd/logs/slack-central-listener.log
+StandardError=append:/home/elliotbot/clawd/logs/slack-central-listener.log
+
+[Install]
+WantedBy=default.target

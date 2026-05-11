@@ -41,7 +41,7 @@ import urllib.request
 from pathlib import Path
 
 CHANNELS = [c.strip() for c in os.environ.get("SLACK_LISTENER_CHANNELS", "C0B3QB0K1GQ").split(",") if c.strip()]
-POLL = float(os.environ.get("LISTENER_POLL_SECONDS", "20"))
+POLL = float(os.environ.get("LISTENER_POLL_SECONDS", "8"))
 TOKEN = os.environ.get("SLACK_BOT_TOKEN", "")
 INBOX = Path("/tmp/telegram-relay-aiden/inbox")
 STATE_DIR = Path("/tmp/aiden-slack-listener-state.d")
@@ -50,6 +50,11 @@ GROUP_CHAT_ID = -1003926592540  # preserved so relay_watcher's last_chat_id stil
 CALLSIGN_TRIGGERS = ("aiden", "all", "both", "team")
 KEEP_TAGS = ("[ELLIOT]", "[MAX]", "[ENFORCER]", "[DAVE]")
 SELF_TAG = "[AIDEN]"
+
+BACKOFF_INITIAL = 30.0
+BACKOFF_MAX = 120.0
+_backoff_until: float = 0.0
+_backoff_current: float = BACKOFF_INITIAL
 
 
 def slack_get(method: str, params: dict) -> dict:
@@ -111,14 +116,32 @@ def write_inbox(text: str, sender: str) -> None:
 
 
 def poll_once(channel: str, cursor: str) -> str:
+    global _backoff_until, _backoff_current
+    if time.time() < _backoff_until:
+        return cursor
     try:
         result = slack_get("conversations.history", {"channel": channel, "oldest": cursor, "inclusive": "false", "limit": "100"})
+    except urllib.error.HTTPError as e:
+        if e.code == 429:
+            retry_after = float(e.headers.get("Retry-After") or _backoff_current)
+            _backoff_until = time.time() + retry_after
+            _backoff_current = min(_backoff_current * 2, BACKOFF_MAX)
+            print(f"history fetch 429 ({channel}): backoff {retry_after}s (next={_backoff_current})", file=sys.stderr, flush=True)
+            return cursor
+        print(f"slack history fetch failed ({channel}): {e}", file=sys.stderr, flush=True)
+        return cursor
     except urllib.error.URLError as e:
         print(f"slack history fetch failed ({channel}): {e}", file=sys.stderr, flush=True)
         return cursor
     if not result.get("ok"):
-        print(f"slack rejected ({channel}): {result}", file=sys.stderr, flush=True)
+        if result.get("error") == "ratelimited":
+            _backoff_until = time.time() + _backoff_current
+            _backoff_current = min(_backoff_current * 2, BACKOFF_MAX)
+            print(f"history fetch ratelimited ({channel}): backoff {_backoff_current}s", file=sys.stderr, flush=True)
+        else:
+            print(f"slack rejected ({channel}): {result}", file=sys.stderr, flush=True)
         return cursor
+    _backoff_current = BACKOFF_INITIAL
     messages = result.get("messages", [])
     if not messages:
         return cursor

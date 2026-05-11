@@ -27,7 +27,7 @@ import os
 import sys
 import time
 from collections import deque
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import httpx
 from slack_sdk.socket_mode import SocketModeClient
@@ -108,7 +108,7 @@ def write_bot_inboxes(text: str) -> None:
     """Mirror enforcer interjection into each bot inbox (same JSON shape as TG)."""
     import uuid
 
-    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     for inbox in BOT_INBOXES:
         try:
             os.makedirs(inbox, exist_ok=True)
@@ -118,7 +118,7 @@ def write_bot_inboxes(text: str) -> None:
                 "type": "text",
                 "text": f"[ENFORCER]: {text}",
                 "sender": "enforcer",
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "surface": "slack",
             }
             with open(os.path.join(inbox, fname), "w") as f:

@@ -122,6 +122,20 @@ def post(channel: str, text: str) -> dict:
 
 def main() -> int:
     channel, message = parse_args(sys.argv[1:])
+    # R1 outbound gate (P0 per Max directive 2026-05-11 — hold trigger-pattern
+    # messages until peer concur is in the recent #execution window).
+    try:
+        from src.bot_common.concur_gate import env_skip, gate_check
+    except ImportError:
+        # Repo not on sys.path (rare — e.g. invoked from outside the repo
+        # root). Fall through ungated rather than block all posts.
+        env_skip = lambda: True  # noqa: E731
+        gate_check = None
+    if gate_check and not env_skip():
+        allow, replacement = gate_check(message, CALLSIGN, BOT_TOKEN)
+        if not allow and replacement is not None:
+            message = replacement
+            print(f"⚠  concur-gate HELD original; posting CONCUR-REQUEST instead", file=sys.stderr)
     result = post(channel, message)
     if not result.get("ok"):
         print(f"ERROR: Slack rejected: {result}", file=sys.stderr)

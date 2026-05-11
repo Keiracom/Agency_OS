@@ -30,11 +30,41 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 import urllib.error
 import urllib.request
+from pathlib import Path
 
-CALLSIGN = os.environ.get("CALLSIGN", "aiden")
+
+def _resolve_callsign() -> str:
+    """Resolve callsign from env → IDENTITY.md → hard fail.
+
+    Per Dave directive #6 (callsign bug fix 2026-05-11): no silent default.
+    A relay that defaults to 'aiden' when run from the wrong worktree can
+    misattribute posts. Require explicit env OR ./IDENTITY.md resolution.
+    """
+    env_val = os.environ.get("CALLSIGN", "").strip()
+    if env_val:
+        return env_val.lower()
+    identity_path = Path(__file__).resolve().parent.parent / "IDENTITY.md"
+    if identity_path.exists():
+        match = re.search(
+            r"^\s*\*\*?CALLSIGN:?\*\*?\s*([A-Za-z]\w*)",
+            identity_path.read_text(),
+            re.IGNORECASE | re.MULTILINE,
+        )
+        if match:
+            return match.group(1).lower()
+    print(
+        "ERROR: CALLSIGN unresolved — set CALLSIGN env var or ensure "
+        f"{identity_path} contains a `**CALLSIGN:** <name>` header",
+        file=sys.stderr,
+    )
+    sys.exit(2)
+
+
+CALLSIGN = _resolve_callsign()
 CALLSIGN_TAG = f"[{CALLSIGN.upper()}]"
 BOT_TOKEN = os.environ.get("SLACK_BOT_TOKEN", "")
 USERNAME = os.environ.get("SLACK_BOT_USERNAME", CALLSIGN.capitalize())
@@ -50,14 +80,43 @@ _DEFAULT_ICON_BY_CALLSIGN: dict[str, str] = {
 ICON_EMOJI = os.environ.get("SLACK_BOT_ICON_EMOJI", _DEFAULT_ICON_BY_CALLSIGN.get(CALLSIGN, ""))
 ICON_URL = os.environ.get("SLACK_BOT_ICON_URL", "")
 
-# Channel IDs (verified 2026-05-11 per AIDEN-SLACK-MIGRATION-001 dispatch)
+# Channel IDs (verified 2026-05-11 per AIDEN-SLACK-MIGRATION-001 dispatch).
+# "ops" = Max's COO channel (mirrors coo_slack_relay.py CHANNELS dict).
 CHANNELS = {
     "execution": "C0B3QB0K1GQ",
     "ceo": "C0B2PM3TV0B",
     "alerts": "C0B2EJU53EK",
     "completed_directives": "C0B2U15PSEA",
+    "ops": "C0B2UCNRJ86",
 }
 DEFAULT_CHANNEL = os.environ.get("SLACK_DEFAULT_CHANNEL", CHANNELS["execution"])
+
+# Per-callsign outbound allowlist (Dave directive #6 callsign bug fix 2026-05-11).
+# Worktree's CALLSIGN determines which channels it may post to. #ceo is always
+# Dave-Elliot exclusive; clones (atlas/orion/scout) post to #execution only.
+# Aiden also writes #completed_directives per Protocol #4 (directive completion log).
+_ALLOWED_CHANNELS_BY_CALLSIGN: dict[str, frozenset[str]] = {
+    # Elliot (COO, runs prime worktree): execution + ceo + ops + completed_directives.
+    # Per Elliot Step 0 12:00:24 UTC ("main = execution+ceo+ops") + Protocol #4
+    # (completion log channel added to dispatch 2026-05-11 20:42).
+    "elliot": frozenset(
+        {
+            CHANNELS["execution"],
+            CHANNELS["ceo"],
+            CHANNELS["ops"],
+            CHANNELS["completed_directives"],
+        }
+    ),
+    # Aiden (build agent): execution + completed_directives (Protocol #4 mandate).
+    "aiden": frozenset({CHANNELS["execution"], CHANNELS["completed_directives"]}),
+    # Max (CTO): execution only (mirrors coo_slack_relay.py).
+    "max": frozenset({CHANNELS["execution"]}),
+    # Clones (atlas/orion/scout): execution only per Step 0.
+    "atlas": frozenset({CHANNELS["execution"]}),
+    "orion": frozenset({CHANNELS["execution"]}),
+    "scout": frozenset({CHANNELS["execution"]}),
+}
+ALLOWED_CHANNELS = _ALLOWED_CHANNELS_BY_CALLSIGN.get(CALLSIGN, frozenset({CHANNELS["execution"]}))
 
 
 def parse_args(argv: list[str]) -> tuple[str, str]:
@@ -95,6 +154,14 @@ def post(channel: str, text: str) -> dict:
     if not BOT_TOKEN:
         print("ERROR: SLACK_BOT_TOKEN not set", file=sys.stderr)
         sys.exit(2)
+    if channel not in ALLOWED_CHANNELS:
+        print(
+            f"ERROR: {CALLSIGN}-relay refuses post to {channel} — "
+            f"not in worktree allowlist {sorted(ALLOWED_CHANNELS)} "
+            f"(Dave directive #6, callsign bug fix)",
+            file=sys.stderr,
+        )
+        sys.exit(2)
     if not text.startswith(CALLSIGN_TAG):
         text = f"{CALLSIGN_TAG} {text}"
     payload: dict = {"channel": channel, "text": text, "username": USERNAME}
@@ -129,6 +196,7 @@ def main() -> int:
         if _repo not in sys.path:
             sys.path.insert(0, _repo)
         from src.bot_common.verify_gate import gate_check as verify_gate_check
+
         ok, blocker = verify_gate_check(message)
         if not ok:
             print(f"R_VERIFY_BLOCKED: {blocker}", file=sys.stderr)
@@ -148,7 +216,7 @@ def main() -> int:
         allow, replacement = gate_check(message, CALLSIGN, BOT_TOKEN)
         if not allow and replacement is not None:
             message = replacement
-            print(f"⚠  concur-gate HELD original; posting CONCUR-REQUEST instead", file=sys.stderr)
+            print("⚠  concur-gate HELD original; posting CONCUR-REQUEST instead", file=sys.stderr)
     result = post(channel, message)
     if not result.get("ok"):
         print(f"ERROR: Slack rejected: {result}", file=sys.stderr)

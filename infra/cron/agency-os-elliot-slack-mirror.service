@@ -1,0 +1,14 @@
+[Unit]
+Description=Agency OS — Elliot Slack mirror (DUAL_POST half of Step 3 migration)
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/env python3 /home/elliotbot/clawd/Agency_OS/scripts/elliot_slack_mirror.py
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+Environment=CALLSIGN=elliot
+Environment=SLACK_BOT_USERNAME=Elliot
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

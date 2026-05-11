@@ -269,6 +269,9 @@ def run_enforcer(event: dict, text: str, web: WebClient) -> None:
             _fire_violation(r6_result, web)
             return
 
+        if r3_skip and r6_skip:
+            return
+
     result = check_with_llm(text, list(message_window), channel_id=event.get("channel", ""))
     if not result or not result.get("violation"):
         return

@@ -40,7 +40,7 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
-CHANNELS = [c.strip() for c in os.environ.get("SLACK_LISTENER_CHANNELS", "C0B3QB0K1GQ,C0B2PM3TV0B").split(",") if c.strip()]
+CHANNELS = [c.strip() for c in os.environ.get("SLACK_LISTENER_CHANNELS", "C0B3QB0K1GQ").split(",") if c.strip()]
 POLL = float(os.environ.get("LISTENER_POLL_SECONDS", "20"))
 TOKEN = os.environ.get("SLACK_BOT_TOKEN", "")
 INBOX = Path("/tmp/telegram-relay-aiden/inbox")

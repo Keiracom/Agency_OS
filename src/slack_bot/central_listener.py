@@ -52,7 +52,14 @@ from slack_sdk.socket_mode.request import SocketModeRequest
 from slack_sdk.socket_mode.response import SocketModeResponse
 from slack_sdk.web import WebClient
 
-from src.bot_common.enforcer_deterministic import check_r2, check_r3, check_r4, check_r6, check_r8
+from src.bot_common.enforcer_deterministic import (
+    _R3_EVIDENCE_RE,
+    check_r2,
+    check_r3,
+    check_r4,
+    check_r6,
+    check_r8,
+)
 from src.bot_common.enforcer_rules import (
     CHECK_MODEL,
     FLAG_COOLDOWN_SECONDS,
@@ -90,6 +97,23 @@ _R9_EXEMPT_RE = re.compile(
     r"|@\w+\s+—\s+(?:roll-?up|audit|review|own|next)",
     re.IGNORECASE,
 )
+
+# R3 (COMPLETION-REQUIRES-VERIFICATION) post-LLM exempt — Track 4 (FP-tuning
+# 2026-05-11). Suppresses LLM-hallucinated R3 fires on messages with substantial
+# evidence. Pre-LLM `_R3_EVIDENCE_RE` (imported from enforcer_deterministic)
+# already covers commit hashes, JSON state, MERGEABLE/MERGED/SUCCESS/FAILURE,
+# pytest counts, terminal $ prefix, etc. This module adds the small set of
+# LLM-stage extras that the pre-LLM regex deliberately omits (bare `PR #N`
+# without prose-state suffix, gh+git CLI invocations) — patterns most useful
+# only when correcting LLM hallucinations on output that's already verbatim
+# CLI rather than completion prose.
+_R3_LLM_EVIDENCE_EXTRAS_RE = re.compile(
+    r"PR\s*#\d+"  # PR reference (any form — pre-LLM regex requires prose state suffix)
+    r"|\bgh\s+pr\s+(?:view|merge|create)\b"  # gh CLI invocation
+    r"|\bgit\s+(?:log|cat-file)\b",  # git CLI invocation
+    re.IGNORECASE,
+)
+
 last_flag_times: dict[str, float] = {}
 governance_events: dict = {}
 
@@ -280,6 +304,18 @@ def run_enforcer(event: dict, text: str, web: WebClient) -> None:
     if result.get("rule_number") == 9 and _R9_EXEMPT_RE.search(text):
         logger.info(
             "ENFORCER R9 suppressed by post-LLM exempt regex (text contained [PROPOSE:] or next-action subject)"
+        )
+        return
+    # R3 post-LLM exempt — Track 4. Suppress LLM-hallucinated R3 violations
+    # when the message contains substantial evidence patterns. Re-uses the
+    # pre-LLM `_R3_EVIDENCE_RE` (commit hashes, JSON, MERGEABLE/SUCCESS, pytest
+    # counts, terminal $) plus a small set of LLM-stage extras (bare PR ref,
+    # gh+git CLI invocations).
+    if result.get("rule_number") == 3 and (
+        _R3_EVIDENCE_RE.search(text) or _R3_LLM_EVIDENCE_EXTRAS_RE.search(text)
+    ):
+        logger.info(
+            "ENFORCER R3 suppressed by post-LLM evidence regex (text contained commit/PR/CLI evidence)"
         )
         return
     _fire_violation(result, web)

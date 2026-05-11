@@ -17,7 +17,9 @@ concur_gate.py and central_listener.py.
 from __future__ import annotations
 
 CHECK_MODEL = "gpt-4o-mini"
-MAX_WINDOW = 20
+# R2-A (FP-tuning 2026-05-11): bumped 20→50 so Step-0 RESTATE earlier in a
+# directive thread remains in scope after multiple peer interleaves.
+MAX_WINDOW = 50
 FLAG_COOLDOWN_SECONDS = 300
 
 # Per PR #672 decision #2: R3 (completion-without-evidence) + R6 (save-without-proof)

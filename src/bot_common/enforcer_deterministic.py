@@ -89,9 +89,18 @@ _R3_STRICT_RE = re.compile(
 _R3_SOFT_RE = re.compile(r"(?<!not\s)(?<!isn't\s)(?<!won't be\s)\bdone\b", re.IGNORECASE)
 
 # Evidence patterns — if any match alongside a claim → PASS.
+# FP-tuning 2026-05-11: expanded with JSON-shape patterns to catch verbatim
+# `gh pr view` / CI rollup output that prior regex missed (FP-LOG:R3 ×3 on
+# 2026-05-11 ~20:31–20:35 — messages had 7+ SUCCESS rows + commit hashes
+# but R3 STRICT still fired because evidence regex required prose form).
 _R3_EVIDENCE_RE = re.compile(
     r"\b[0-9a-f]{7,40}\b"  # commit hash
-    r"|PR\s*#\d+\s+(?:merged|closed|open)"  # PR reference with state
+    r"|PR\s*#\d+\s+(?:merged|closed|open)"  # PR reference with state (prose)
+    r'|"state"\s*:\s*"(?:MERGED|OPEN|CLOSED)"'  # gh pr view JSON state
+    r'|"mergeCommit"\s*:\s*\{'  # gh pr view JSON mergeCommit
+    r'|"mergedAt"\s*:\s*"\d{4}-'  # gh pr view JSON mergedAt timestamp
+    r"|\bMERGEABLE\b|\bMERGED\b"  # gh CLI state words
+    r"|\bSUCCESS\b|\bFAILURE\b"  # CI check status row
     r"|^[\$>→]"  # terminal output line
     r"|PID\s+\d+"  # PID
     r"|ActiveState="  # systemd state

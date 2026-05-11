@@ -105,7 +105,8 @@ _R3_EVIDENCE_RE = re.compile(
     r"|PID\s+\d+"  # PID
     r"|ActiveState="  # systemd state
     r"|exit\s+code"  # exit code
-    r"|\d+/\d+\s+(?:pass|fail)"  # test counts
+    r"|\d+/\d+\s+(?:pass|fail)"  # test counts ratio form
+    r"|\d+\s+(?:passed|failed|error|errors)\b"  # pytest "N passed in 0.69s" form
     r"|tests?\s+pass"  # test pass
     r"|rows?\s+affected"  # SQL output
     r"|\bSELECT\b|\bINSERT\b|\bUPDATE\b"  # SQL keywords

@@ -25,6 +25,15 @@ from pathlib import Path
 
 PRIME_CALLSIGNS = frozenset({"elliot", "aiden", "enforcer", "max"})
 
+# Legacy Telegram chat IDs (pre-cutover) → Slack channel names. Preserves
+# backward compat for older scripts that hardcode numeric chat IDs in a
+# `-c <id>` invocation. slack_relay.py's allowlist still enforces who may
+# post where, so a translated-but-forbidden channel still exits 2.
+LEGACY_TG_CHAT_MAP: dict[str, str] = {
+    "-1003926592540": "execution",
+    "7267788033": "ceo",
+}
+
 _SCRIPT_DIR = Path(__file__).resolve().parent
 SLACK_RELAY = _SCRIPT_DIR / "slack_relay.py"
 
@@ -44,7 +53,8 @@ def translate(argv: list[str], callsign: str) -> list[str]:
             if i + 1 >= len(argv):
                 print("tg: -c requires a channel name or ID", file=sys.stderr)
                 sys.exit(2)
-            out.extend(["-c", argv[i + 1]])
+            target = argv[i + 1]
+            out.extend(["-c", LEGACY_TG_CHAT_MAP.get(target, target)])
             i += 1
         else:
             out.append(a)

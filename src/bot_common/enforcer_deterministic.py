@@ -218,14 +218,15 @@ _R2_EXECUTION_RE = re.compile(
 )
 
 # Exemptions — these mention execution language but are NOT new actions.
-# Track 4 (FP-tuning 2026-05-11): expanded protocol-tag list to mirror PR #710's
-# R9 exempt superset. Prior version covered only [propose:|summary-draft:|
-# concur-request:]; missed [concur:|ready:|busy:|fp-log:|valid-fire:|dispatch:]
-# which produced R2 ×6 FPs this session on status posts containing merge/ship
-# keywords. The `[\w:-]*\]` post-colon pattern absorbs nested-task-id form
-# like [BUSY:aiden:dispatch-batch-2026-05-11-20:40].
+# Track 4 (FP-tuning 2026-05-11): protocol-tag superset (mirror PR #710's R9).
+# Track 5 (FP-tuning 2026-05-11): verification-style phrasing exempts —
+# "merged and verified" / "merged at <ISO>" / "mergeCommit" — caught by Max's
+# post-Track-4 trace at 23:23:13 UTC.
 _R2_EXEMPT_RE = re.compile(
     r"\bpr\s*#\d+\s+merged\s+(?:earlier|prior|already|2026)"
+    r"|\bmerged\s+and\s+verified\b"  # Track 5: verification-style status post
+    r"|\bmerged\s+at\s+\d{4}-"  # Track 5: ISO timestamp form
+    r"|\bmergeCommit\b"  # Track 5: gh JSON field reference
     r"|\b(?:will|going to|about to|planning to|propose to)\s+(?:commit|push|deploy|merge|create|trigger)"
     r"|\b(?:not|haven't|won't)\s+(?:yet\s+)?(?:committed|pushed|deployed|merged)"
     r"|\[(?:propose|summary-draft|concur-request|concur|ready|busy|fp-log|valid-fire|dispatch|dispatch-proposal)[\w:-]*\]",
@@ -282,9 +283,22 @@ _R8_DISPATCH_RE = re.compile(
 )
 
 # Conditional/offer language that explicitly is NOT a dispatch action.
+# Track 5 (FP-tuning 2026-05-11): added COO/CTO own-clone dispatch exempt
+# + Dave-authorized cross-dispatch exempt. Per memory pin: clones are 1:1
+# (elliot→atlas, aiden→orion); dispatching your own clone is operationally
+# normal and doesn't need a [DISPATCH-PROPOSAL]→[CONCUR] cycle. Cross-
+# dispatch requires Dave authorization (override flag).
 _R8_CONDITIONAL_RE = re.compile(
     r"\b(?:can|could|would|will|may|might)\s+(?:dispatch|dispatching)\b"
-    r"|\b(?:if|once|after|when)\s+(?:you|elliot|max|aiden)\s+(?:confirm|concur|approve)",
+    r"|\b(?:if|once|after|when)\s+(?:you|elliot|max|aiden)\s+(?:confirm|concur|approve)"
+    # Track 5: COO/CTO own-clone dispatch — always valid, no proposal needed
+    r"|\belliot[\s\S]{0,40}?dispatched?\s+\w*atlas"
+    r"|\baiden[\s\S]{0,40}?dispatched?\s+\w*orion"
+    # Track 5: Dave-authorized dispatches (CEO override)
+    r"|\bdave[\s-]?(?:authoris|authoriz)(?:e|ed|ation)"
+    r"|\bcross[\s-]dispatch\s+override"
+    r"|\bdave\s+directive\s+#\d+"
+    r"|\bceo[\s-]?(?:delegated|override)",
     re.IGNORECASE,
 )
 

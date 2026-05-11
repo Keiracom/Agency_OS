@@ -94,7 +94,24 @@ _R9_EXEMPT_RE = re.compile(
     r"\[(?:propose|ready|busy|concur-request|concur|fp-log|valid-fire|dispatch)[\w:-]*\]"
     r"|\b(?:i'?ll|i will|aiden will|elliot will|max will|orion will|atlas will|scout will)\b"
     r"|@\w+\s+(?:ships?|drops?|owns?|takes?|opens?|merges?|files?|pushes?)\b"
-    r"|@\w+\s+—\s+(?:roll-?up|audit|review|own|next)",
+    r"|@\w+\s+—\s+(?:roll-?up|audit|review|own|next)"
+    # Track 5 (2026-05-11): status terminators that LLM mis-classifies as
+    # agenda-setting. "Standing ready" / "Standing by" / "Standing down"
+    # indicate availability while peers have in-flight work, not directive
+    # solicitation. Per Max's FP-LOG:R9 trace 2026-05-11.
+    r"|\b(?:standing\s+(?:ready|by|down|firm)|standing\.?$)",
+    re.IGNORECASE | re.MULTILINE,
+)
+
+# Track 5 (2026-05-11): universal protocol-tag exempt. Per Max's architectural
+# insight after [FP-LOG:R8] fired on his OWN R8 FP-analysis tally post — the
+# message contained 'COO clone dispatch' inside [FP-LOG:R8] context, which
+# triggered R8's dispatch regex. Per-rule protocol-tag exempts don't cover R4
+# or R8. Solution: universal exempt at top of run_enforcer that skips ALL
+# deterministic + LLM checks when message is a governance protocol artifact
+# (status post, FP tally, concur ack, propose, etc.).
+_UNIVERSAL_PROTOCOL_TAG_RE = re.compile(
+    r"\[(?:propose|summary-draft|concur-request|concur|ready|busy|fp-log|valid-fire|dispatch|dispatch-proposal)[\w:-]*\]",
     re.IGNORECASE,
 )
 
@@ -268,6 +285,16 @@ def run_enforcer(event: dict, text: str, web: WebClient) -> None:
     if callsign == "dave":
         return
     if not should_check(text):
+        return
+    # Track 5 universal exempt: governance protocol tags ([PROPOSE:],
+    # [CONCUR:], [READY:], [BUSY:], [FP-LOG:], etc.) skip ALL rule checks.
+    # These are status/governance artifacts, not execution-action messages.
+    # Per Max's architectural fix 2026-05-11 (self-referential R8 FP).
+    if _UNIVERSAL_PROTOCOL_TAG_RE.search(text):
+        logger.info(
+            "ENFORCER skipped by universal protocol-tag exempt: %s",
+            text[:80],
+        )
         return
     logger.info("ENFORCER CHECK from=%s text=%s", callsign, text[:80])
 

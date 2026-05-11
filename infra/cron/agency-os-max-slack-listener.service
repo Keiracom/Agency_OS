@@ -1,0 +1,12 @@
+[Unit]
+Description=Agency OS — Max Slack listener (polling stopgap pre-Socket-Mode)
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/env python3 /home/elliotbot/clawd/Agency_OS-max/scripts/coo_slack_listener.py
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

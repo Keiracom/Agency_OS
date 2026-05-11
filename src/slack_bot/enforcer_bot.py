@@ -69,14 +69,19 @@ BOT_INBOXES = (
 )
 
 
-def check_with_llm(current_msg: str, recent_msgs: list[str]) -> dict | None:
-    """Synchronous gpt-4o-mini call. Returns {violation, rule_number, ...} or None on failure."""
+def check_with_llm(current_msg: str, recent_msgs: list[str], channel_id: str = "") -> dict | None:
+    """Synchronous gpt-4o-mini call. Returns {violation, rule_number, ...} or None on failure.
+
+    channel_id is passed so RULES_PROMPT Rule 1 SCOPE can evaluate channel-aware
+    detection (#ceo vs #execution vs other).
+    """
     if not OPENAI_API_KEY:
         logger.warning("OPENAI_API_KEY not set — rule check disabled")
         return None
     user_content = json.dumps(
         {
             "current_message": current_msg,
+            "current_channel_id": channel_id,
             "recent_messages": list(recent_msgs)[-MAX_WINDOW:],
             "governance_events": governance_events,
         },
@@ -163,7 +168,7 @@ def process_event(event: dict, web: WebClient) -> None:
         return
 
     logger.info("CHECK msg from=%s text=%s", callsign, text[:80])
-    result = check_with_llm(text, list(message_window))
+    result = check_with_llm(text, list(message_window), channel_id=event.get("channel", ""))
     if not result or not result.get("violation"):
         return
 

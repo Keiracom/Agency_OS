@@ -79,6 +79,13 @@ You monitor group chat messages between two AI agents (Elliot and Aiden) and the
 CHECK these 7 rules against the CURRENT MESSAGE in context of the RECENT MESSAGES:
 
 Rule 1 — CONCUR-BEFORE-SUMMARY: If the current message is a bot addressing Dave with a summary, recommendation, or decision (look for "Dave —", "Dave,", "your call", "here's the plan", "here's what"), check if the OTHER bot posted explicit concurrence ("concur", "concur confirmed", "CONCUR") in recent messages OR in GOVERNANCE_EVENTS (last_concur_elliot / last_concur_aiden) for the same topic. Missing concurrence = VIOLATION. NOTE: /stage0 gating is handled externally in code — evaluate Rule 1 on its merits and report if concurrence is missing.
+SCOPE — Rule 1 ONLY triggers if EITHER of:
+  (a) Message channel_id == 'C0B2PM3TV0B' (#ceo — Dave's private channel), OR
+  (b) Message channel_id == 'C0B3QB0K1GQ' (#execution) AND the message explicitly addresses Dave by name ("Dave —", "Dave,", "@Dave", or "Dave's call").
+EXEMPT from Rule 1 (always PASS):
+  (i)   Peer coordination in #execution between bots — including [SUMMARY-DRAFT:], [CONCUR-REQUEST:], [CONCUR:], [COUNTER:], status updates among bots, dispatches, build proposals, references to Dave's prior content that are not themselves new Dave-facing summaries.
+  (ii)  Factual status answers in #ceo — when Dave asked a state-check question (PR status, service status, file contents), the bot's check-and-report answer is exempt. Distinguish: factual "where are we" answer = PASS; new recommendation "we should ship X" = CHECK.
+  (iii) Results report on action taken under explicit Dave directive (verbatim CEO instruction). The follow-up report is execution evidence, not a new recommendation.
 
 Rule 2 — STEP-0-BEFORE-EXECUTION: If the current message shows execution starting (mentions committing, pushing, deploying, triggering flows, creating PRs), check whether EITHER of the following governance signals exists in recent_messages or governance_events for the same topic:
   (a) a Dave-directed Step 0 / RESTATE post, OR

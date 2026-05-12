@@ -139,9 +139,28 @@ def test_compose_capsule_assembles_sections(capsule_mod, monkeypatch) -> None:
     monkeypatch.setattr(capsule_mod, "collect_recent_memories", lambda c: [])
     out = capsule_mod.compose_capsule("max")
     assert "Anti-Amnesia Capsule — max" in out
+    assert "## LINEAR + BEADS" in out  # Outcome 4 — survives /compact
     assert "## HEARTBEAT" in out
     assert "## GIT" in out
     assert "## MEMORIES" not in out  # empty section omitted
+
+
+def test_compose_capsule_linear_beads_reminders_present(capsule_mod) -> None:
+    """Outcome 4 (Dave directive ts 1778568850): the two reminder lines
+    survive /compact. They appear in the capsule output verbatim."""
+    out = capsule_mod.compose_capsule("max")
+    assert "Linear board: https://linear.app/keiracom" in out
+    assert "Beads: run `bd ready`" in out
+
+
+def test_compose_capsule_linear_beads_section_appears_first(capsule_mod, monkeypatch) -> None:
+    """Reminders come first so they survive truncation under MAX_CAPSULE_CHARS."""
+    long_hb = ["HB: " + "x" * 500 for _ in range(20)]
+    monkeypatch.setattr(capsule_mod, "collect_heartbeat", lambda: long_hb)
+    monkeypatch.setattr(capsule_mod, "collect_git", lambda: [])
+    monkeypatch.setattr(capsule_mod, "collect_recent_memories", lambda c: [])
+    out = capsule_mod.compose_capsule("max")
+    assert out.index("## LINEAR + BEADS") < out.index("## HEARTBEAT")
 
 
 def test_compose_capsule_applies_char_cap(capsule_mod, monkeypatch) -> None:
@@ -152,15 +171,24 @@ def test_compose_capsule_applies_char_cap(capsule_mod, monkeypatch) -> None:
     out = capsule_mod.compose_capsule("max")
     assert len(out) <= capsule_mod.MAX_CAPSULE_CHARS
     assert out.endswith("[truncated]")
+    # LINEAR + BEADS is first → must still be visible after truncation
+    assert "## LINEAR + BEADS" in out
+    assert "Linear board: https://linear.app/keiracom" in out
+
+
+def test_collect_linear_beads_reminders_exact_content(capsule_mod) -> None:
+    """Two reminder lines must be deterministic + verbatim."""
+    lines = capsule_mod.collect_linear_beads_reminders()
+    assert len(lines) == 2
+    assert lines[0] == "Linear board: https://linear.app/keiracom — query at session start."
+    assert lines[1] == "Beads: run `bd ready` before claiming any work."
 
 
 # write_capsule + read_capsule + main ────────────────────────────────────────
 
 
 def test_write_capsule_creates_file(capsule_mod, isolated_home, monkeypatch) -> None:
-    monkeypatch.setattr(
-        capsule_mod, "CAPSULE_DIR", isolated_home / ".claude" / "capsules"
-    )
+    monkeypatch.setattr(capsule_mod, "CAPSULE_DIR", isolated_home / ".claude" / "capsules")
     monkeypatch.setattr(capsule_mod, "collect_heartbeat", lambda: ["HB: x"])
     monkeypatch.setattr(capsule_mod, "collect_git", lambda: [])
     monkeypatch.setattr(capsule_mod, "collect_recent_memories", lambda c: [])
@@ -171,15 +199,11 @@ def test_write_capsule_creates_file(capsule_mod, isolated_home, monkeypatch) -> 
 
 
 def test_read_capsule_missing_is_noop(capsule_mod, isolated_home, monkeypatch) -> None:
-    monkeypatch.setattr(
-        capsule_mod, "CAPSULE_DIR", isolated_home / ".claude" / "capsules"
-    )
+    monkeypatch.setattr(capsule_mod, "CAPSULE_DIR", isolated_home / ".claude" / "capsules")
     capsule_mod.read_capsule("ghost")  # silent no-op
 
 
-def test_read_capsule_streams_to_stdout(
-    capsule_mod, isolated_home, monkeypatch, capsys
-) -> None:
+def test_read_capsule_streams_to_stdout(capsule_mod, isolated_home, monkeypatch, capsys) -> None:
     cdir = isolated_home / ".claude" / "capsules"
     cdir.mkdir(parents=True)
     (cdir / "max_capsule.md").write_text("CAPSULE BODY 123")
@@ -192,9 +216,7 @@ def test_read_capsule_streams_to_stdout(
 
 def test_main_write_mode_returns_zero(capsule_mod, isolated_home, monkeypatch) -> None:
     monkeypatch.setattr(sys, "argv", ["anti_amnesia_capsule.py"])
-    monkeypatch.setattr(
-        capsule_mod, "CAPSULE_DIR", isolated_home / ".claude" / "capsules"
-    )
+    monkeypatch.setattr(capsule_mod, "CAPSULE_DIR", isolated_home / ".claude" / "capsules")
     monkeypatch.setenv("CALLSIGN", "max")
     monkeypatch.setattr(capsule_mod, "collect_heartbeat", lambda: [])
     monkeypatch.setattr(capsule_mod, "collect_git", lambda: ["BRANCH: x"])
@@ -204,8 +226,6 @@ def test_main_write_mode_returns_zero(capsule_mod, isolated_home, monkeypatch) -
 
 def test_main_read_mode_returns_zero(capsule_mod, isolated_home, monkeypatch) -> None:
     monkeypatch.setattr(sys, "argv", ["anti_amnesia_capsule.py", "--read"])
-    monkeypatch.setattr(
-        capsule_mod, "CAPSULE_DIR", isolated_home / ".claude" / "capsules"
-    )
+    monkeypatch.setattr(capsule_mod, "CAPSULE_DIR", isolated_home / ".claude" / "capsules")
     monkeypatch.setenv("CALLSIGN", "max")
     assert capsule_mod.main() == 0

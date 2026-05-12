@@ -958,6 +958,21 @@ Outcomes delivered:
 All 6 PRs merged to main (commits 9291c961, f05397da, 1d1322db, e1f43cef, c831fead, 1f6a97ac). 91+ new tests across 4 modules. Live smoke verified each outcome.
 
 Author: Aiden. Specs: Max (Outcome 2), Dave directive (1-6), Atlas (Outcome 6 diagnosis). Approvals: Elliot+Max dual-CTO concur on each PR.
+
+### [AIDEN] Directive WAVE-1 (PR #768, 2026-05-12)
+Wave 1 Memory Audit Cleanup — Complete (2026-05-12)
+
+Per Dave directive ts 1778565940 + Elliot dispatch. Four items shipped end-to-end addressing audit Pattern A 'unclosed migration paths':
+
+- Item 1 (PR #756 already-shipped, verified by Aiden): public.messages table writes empirically wired via UserPromptSubmit hook → record_message handler. Pre-fix 0 rows, post-fix 73+ rows in ~3 hours. Verified via SQL count + sample row inspection on 2026-05-12.
+
+- Item 2 (PR #769, MERGED ff4da21b, Max): cis_directive_metrics dedup (20 duplicate pairs removed) + UNIQUE INDEX with NULLS NOT DISTINCT semantics on (directive_id, directive_ref) + ON CONFLICT DO UPDATE in scripts/three_store_save.py. Handles both numeric (directive_id>0, directive_ref=NULL) and non-numeric (directive_id=0, directive_ref text) directives consistently.
+
+- Item 3 (PR #770, MERGED 2b91f939, Max): mem0 cleanly retired. 82 rows read via mem0 SDK, all migrated to public.agent_memories with node_set=['rescued', 'mem0_migration'], callsign='system' (content was governance/architecture from LISTENER-KNOWLEDGE-SEED-V1, not agent-specific). MEM0_INTEGRATION_ENABLED=false + MEMORY_RECALL_BACKEND=supabase. ceo_memory ceo:mem0_decision_2026-05-01 → status='RETIRED', retired_at=2026-05-12T06:29:50.930701Z. mem0_adapter.py kept in place behind the gate (no code deletion).
+
+- Item 4 (PR #768, MERGED 2cf5ffab, Aiden): scripts/check_migration_completeness.py + 8 unit tests + new 'Migration Completeness Guard' CI job. Fails when a PR removes INSERT INTO X / UPDATE X without removing/rerouting readers of X. Guard self-tested cleanly on its own PR. Closes Pattern A enforcement loop in CI.
+
+LAW XV three-store save (Aiden owns per directive).
 ## SECTION 14 — COMPETITIVE INTELLIGENCE
 
 Direct competitors (signal-based AI BDR category):

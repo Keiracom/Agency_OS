@@ -13,9 +13,9 @@ Audit + replay + auto-skill-gen + session resumption stack — read sessions, re
 | # | Stage | PRs | Status |
 |---|-------|-----|--------|
 | 1 | Schema foundation | [#715](https://github.com/Keiracom/Agency_OS/pull/715), [#718](https://github.com/Keiracom/Agency_OS/pull/718) | MERGED |
-| 2 | Replay-on-claim | [#719](https://github.com/Keiracom/Agency_OS/pull/719), [#724](https://github.com/Keiracom/Agency_OS/pull/724) | #719 MERGED, #724 OPEN |
-| 3 | Auto skill-gen | [#720](https://github.com/Keiracom/Agency_OS/pull/720) | MERGED |
-| 4 | UUID resumption | [#725](https://github.com/Keiracom/Agency_OS/pull/725) | OPEN |
+| 2 | Replay-on-claim | [#719](https://github.com/Keiracom/Agency_OS/pull/719), [#724](https://github.com/Keiracom/Agency_OS/pull/724) | MERGED |
+| 3 | Auto skill-gen | [#720](https://github.com/Keiracom/Agency_OS/pull/720), [#728](https://github.com/Keiracom/Agency_OS/pull/728) | MERGED |
+| 4 | UUID resumption | [#725](https://github.com/Keiracom/Agency_OS/pull/725) | MERGED |
 
 ## Stage 1 — Schema Foundation (PR-A)
 
@@ -62,15 +62,15 @@ Extraction: PR# regex (`\bPRs?\s*#?\s*(\d+)\b` + `pull request N` + orphan `#N`)
 - PR evidence: `verify_pr.sh`, `gh pr view`, `gh pr merge`, `gh pr checks`, `gh api repos`
 - Commit evidence: `git cat-file`, `git log`, `git show`
 
-Per-pattern query is `ilike.*pattern*` on `tool_args_json`, `limit=20`, ordered `started_at desc`. The PR# / hash must appear as a substring in the matched row's args.
+Per-pattern query is `ilike.*pattern*` on `tool_args_json->>command` (scoped to `tool_name=Bash`), `limit=20`, ordered `started_at desc`. The PR# / hash must appear as a substring in the matched row's args.
 
 **Listener integration** (PR #724, OPEN): wires `verify_completion_claim` into the Slack central listener behind env flag `REPLAY_ON_CLAIM_ENABLED` so cutover is reversible.
 
 ## Stage 3 — Auto Skill-Gen (PR-B)
 
-Reads a directive-bounded slice of `turn_logs`, compresses to a prompt, invokes `claude --no-hooks --print` via subprocess to synthesise a `SKILL.md`, writes to `skills/<derived-name>/SKILL.md`, opens a PR for human review.
+Reads a directive-bounded slice of `turn_logs`, compresses to a prompt, invokes `claude --print --session-id <uuid>` via subprocess to synthesise a `SKILL.md`, writes to `skills/<derived-name>/SKILL.md`, opens a PR for human review.
 
-**Critical pattern — `--no-hooks` recursion guard**: the spawned `claude` process MUST be invoked with `--no-hooks`, otherwise the inner session triggers `PostToolUse` + `Stop` hooks that record into `session_store`, which would re-enter `skill_gen` if it's ever wired into a hook itself. The `--no-hooks` flag is mandatory for any subprocess `claude` invocation that runs inside a hook context. (Atlas chose Option B — per-call subprocess — over Option A long-lived worker; one-shot nature, simpler tests, fits the clone lifecycle.)
+**Critical pattern — env-marker recursion guard** (PR #728): the spawned `claude` process gets `CLAUDE_CODE_SKILL_GEN=1` in its environment. The session_store hooks (`.claude/hooks/session_store_posttooluse.sh`, `session_store_stop.sh`) check this variable at script entry and `exit 0` on match — preventing nested `turn_logs` writes / infinite loops. The earlier `--no-hooks` flag was a phantom (doesn't exist in Claude CLI v2.1.139); `--bare` exists but forces API-key auth (incompatible with OAuth). (Atlas chose Option B — per-call subprocess — over Option A long-lived worker; one-shot nature, simpler tests, fits the clone lifecycle.)
 
 OAuth-only — $0 incremental under Max plan. No API key required. NO Agency OS pipeline code touched.
 

@@ -161,18 +161,6 @@ def test_resolve_session_uuid_finds_synthetic_session(synthetic_drevon_rows):
     assert found == synthetic_drevon_rows["session_uuid"]
 
 
-# DISCOVERED BUG: src.replay.claim_verifier issues `ilike.*pattern*` against
-# the JSONB column `turn_logs.tool_args_json`, which PostgREST rejects with
-# 404 (operator does not exist for jsonb). Because the function catches the
-# exception and returns []-for-each-pattern, every call resolves to (False,
-# "no evidence") regardless of input — so the True-evidence assertion below
-# is xfail and the False-evidence one would pass for the wrong reason. Fix
-# requires extracting a JSON field (tool_args_json->>0, or a dedicated text
-# column) — out of scope for this PR but reported in PR body + outbox.
-@pytest.mark.xfail(
-    reason="claim_verifier ilike-on-JSONB returns 404 in PostgREST (pre-existing bug discovered by this test); see PR body.",
-    strict=True,
-)
 def test_verify_completion_claim_returns_true_for_synthetic_evidence(
     synthetic_drevon_rows,
 ):
@@ -185,10 +173,8 @@ def test_verify_completion_claim_returns_true_for_synthetic_evidence(
 
 
 def test_verify_completion_claim_handles_missing_evidence_path(synthetic_drevon_rows):
-    """Even with the ilike-JSONB bug above, the no-evidence path must remain
-    safe (returns False with a reason string, never raises). This anchors the
-    best-effort contract — the launcher / listener must never crash because
-    of a malformed query."""
+    """No-evidence path must remain safe (returns False with a reason string,
+    never raises). Anchors the best-effort contract."""
     from src.replay.claim_verifier import verify_completion_claim
 
     pr = synthetic_drevon_rows["fabricated_pr"]

@@ -9,9 +9,10 @@ Tenant encoding (per Dave gap-3 resolution):
     dataset_name = f"{org_id}__{app_id}"      # e.g. "keiracom_platform__agency_os"
     node_set     = [f"agent:{agent_id}"] + extras  # e.g. ["agent:aiden", "test"]
 
-Backing stores (per /home/elliotbot/.config/agency-os/.env COGNEE_* block):
-    LLM       : Ollama llama3.2 (local)
-    Embedding : fastembed
+Backing stores (per /home/elliotbot/.config/agency-os/.env LLM_*/EMBEDDING_*
+block; Gemini amendment ts 1778563xxx swapped Ollama → Gemini):
+    LLM       : Gemini 2.5 Flash via Google AI Studio (GEMINI_API_KEY)
+    Embedding : Gemini text-embedding-004 (768 dims)
     Vector DB : pgvector on $SUPABASE_DB_URL
     Relational: sqlalchemy on $SUPABASE_DB_URL
     Graph DB  : Kuzu at /home/elliotbot/clawd/cognee_graph/

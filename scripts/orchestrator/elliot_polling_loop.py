@@ -114,6 +114,38 @@ THROTTLE_PATTERNS: tuple[str, ...] = (
 )
 THROTTLE_RE = re.compile("|".join(THROTTLE_PATTERNS), re.IGNORECASE)
 
+# Duration-extraction patterns (KEI-19 GAP A fix). Two sources surface a
+# numeric wait time: HTTP `retry-after: <seconds>` and Anthropic's CLI banner
+# `Brewed for <N> <unit>`. Both return (duration_min, source); unknown → (0, "unknown").
+_RETRY_AFTER_RE = re.compile(r"retry-?after[:\s]+(\d+)", re.IGNORECASE)
+_BREWED_FOR_RE = re.compile(
+    r"brewed for\s+(\d+)\s*(seconds?|secs?|minutes?|mins?|hours?|hrs?|h|m|s)?",
+    re.IGNORECASE,
+)
+
+
+def _extract_throttle_duration(text: str) -> tuple[int, str]:
+    """Return (duration_min, source) parsed from throttle text.
+
+    source ∈ {'retry_after', 'brewed_for', 'unknown'}. Sub-minute durations
+    round UP to 1 (zero-duration would re-trigger GAP A — the alert must
+    always have a non-zero ETA if a duration was advertised).
+    """
+    m = _BREWED_FOR_RE.search(text)
+    if m:
+        value = int(m.group(1))
+        unit = (m.group(2) or "minute").lower()
+        if unit.startswith(("hour", "hr", "h")):
+            return value * 60, "brewed_for"
+        if unit.startswith(("min", "m")):
+            return max(1, value), "brewed_for"
+        return max(1, (value + 59) // 60), "brewed_for"  # seconds → ceil minutes
+    m = _RETRY_AFTER_RE.search(text)
+    if m:
+        seconds = int(m.group(1))  # HTTP spec: retry-after value is seconds
+        return max(1, (seconds + 59) // 60), "retry_after"
+    return 0, "unknown"
+
 
 def _cycle_period_seconds(now: datetime | None = None) -> int:
     """KEI-34: return the current polling-cycle period in seconds.
@@ -132,16 +164,19 @@ class CycleSignals:
     linear_stale: list[dict]
     idle_agents: list[str]
     prefect_failures: list[dict]
-    rate_limit_transitions: list[tuple[str, str, int]] = field(default_factory=list)
+    rate_limit_transitions: list[tuple[str, str, int, str]] = field(default_factory=list)
+    """List of (callsign, transition, duration_min, source) where transition is
+    'throttled' (first detection) or 'resumed' (clearing detection). For
+    'throttled': duration_min is parsed wait-ETA (>=1 if advertised, 0 if
+    unknown), source ∈ {'retry_after', 'brewed_for', 'unknown'}. For
+    'resumed': duration_min is minutes-since-throttle-start, source is ''.
+    (KEI-19 GAP A — source/duration on onset, not retrospective only.)"""
     # KEI-34 component 1 — agents idle >= ORCHESTRATOR_IDLE_CYCLES * cycle_period
     # (strict-cycle threshold; tighter than idle_agents which uses IDLE_AGENT_MINUTES).
     orchestrator_idle_agents: list[str] = field(default_factory=list)
     # KEI-27 — Linear KEI In Progress for >STALE_KEI_HOURS with no activity.
     # Broader "silently died" lane vs linear_stale (orchestrator stale lane).
     kei_stale: list[dict] = field(default_factory=list)
-    """List of (callsign, transition, duration_min) where transition is
-    'throttled' (first detection) or 'resumed' (clearing detection). Duration
-    is minutes-since-throttle-start for 'resumed' (0 for 'throttled')."""
 
     def is_silent(self) -> bool:
         return not (
@@ -533,16 +568,21 @@ def _capture_pane_tail(session: str, lines: int = 10) -> str:
 
 def poll_rate_limited_agents(
     now: datetime | None = None,
-) -> list[tuple[str, str, int]]:
-    """Return list of (callsign, transition, duration_min) for THIS cycle.
+) -> list[tuple[str, str, int, str]]:
+    """Return list of (callsign, transition, duration_min, source) for THIS cycle.
 
-    transition ∈ {'throttled', 'resumed'}. duration_min is 0 for 'throttled'
-    and minutes-since-throttle-start for 'resumed'.
+    transition ∈ {'throttled', 'resumed'}.
+    For 'throttled': duration_min is the parsed wait ETA from the pane text
+    (>=1 if a value was advertised, 0 if no parseable duration), and source is
+    one of {'retry_after', 'brewed_for', 'unknown'} indicating which pattern
+    surfaced the value (KEI-19 GAP A fix — wait duration on onset, not just
+    retrospectively on resume).
+    For 'resumed': duration_min is minutes-since-throttle-start; source is ''.
     """
     ts_now = now or datetime.now(UTC)
     prior = _load_throttle_state()
     next_state = dict(prior)
-    transitions: list[tuple[str, str, int]] = []
+    transitions: list[tuple[str, str, int, str]] = []
 
     for callsign, session in CALLSIGN_TO_TMUX.items():
         tail = _capture_pane_tail(session)
@@ -550,7 +590,8 @@ def poll_rate_limited_agents(
         prev_throttled_since = prior.get(callsign)
 
         if is_throttled and not prev_throttled_since:
-            transitions.append((callsign, "throttled", 0))
+            duration_min, source = _extract_throttle_duration(tail)
+            transitions.append((callsign, "throttled", duration_min, source))
             next_state[callsign] = ts_now.isoformat()
         elif not is_throttled and prev_throttled_since:
             try:
@@ -558,7 +599,7 @@ def poll_rate_limited_agents(
                 duration_min = max(0, int((ts_now - start).total_seconds() // 60))
             except ValueError:
                 duration_min = 0
-            transitions.append((callsign, "resumed", duration_min))
+            transitions.append((callsign, "resumed", duration_min, ""))
             next_state.pop(callsign, None)
         # else: no transition
 
@@ -664,17 +705,27 @@ def compose_dispatches(signals: CycleSignals) -> list[tuple[str, str]]:
 
     if signals.rate_limit_transitions:
         throttled = [
-            (cs, dur) for cs, t, dur in signals.rate_limit_transitions if t == "throttled"
+            (cs, dur, src)
+            for cs, t, dur, src in signals.rate_limit_transitions
+            if t == "throttled"
         ]
         resumed = [
-            (cs, dur) for cs, t, dur in signals.rate_limit_transitions if t == "resumed"
+            (cs, dur) for cs, t, dur, _src in signals.rate_limit_transitions if t == "resumed"
         ]
         if throttled:
-            names = ", ".join(cs for cs, _ in throttled)
+            # KEI-19 GAP A/B fix: surface per-agent wait ETA on onset (not just
+            # on resume) and drop the "informational not actionable" framing —
+            # the alert IS the action (Dave's awareness, no manual check).
+            def _line(cs: str, dur: int, src: str) -> str:
+                if dur > 0:
+                    return f"  - {cs}: wait ~{dur}m (source: {src})"
+                return f"  - {cs}: throttled (no ETA parsed)"
+
+            lines = [_line(cs, dur, src) for cs, dur, src in throttled]
             msg = (
-                f"[PROPOSE:elliot] Anthropic throttle detected — {len(throttled)} agent(s): {names}.\n"
-                f"Throttle signal grep on tmux pane tail (rate limit / 429 / retry-after / brewed). "
-                f"Agents will resume on next clean cycle; this is informational not actionable."
+                f"[PROPOSE:elliot] Anthropic throttle detected — {len(throttled)} agent(s):\n"
+                + "\n".join(lines)
+                + "\nAuto-clearing on resume; per-agent resumed-after duration follows."
             )
             dispatches.append((CEO_CHANNEL_NAME, msg))
         if resumed:

@@ -451,7 +451,8 @@ def test_poll_rate_limited_clean_to_throttled_emits(loop_mod, monkeypatch, tmp_p
         {"aiden": "Working on PR...\nrate limit reached. retry-after 60\n"},
     )
     out = loop_mod.poll_rate_limited_agents(now=datetime(2026, 5, 12, 22, 0, tzinfo=UTC))
-    assert ("aiden", "throttled", 0) in out
+    # KEI-19 GAP A: retry-after 60s rounds up to 1 min, source surfaced.
+    assert ("aiden", "throttled", 1, "retry_after") in out
     assert state_path.exists()
     state = json.loads(state_path.read_text())
     assert "aiden" in state
@@ -496,8 +497,8 @@ def test_compose_dispatches_throttle_transitions_to_ceo(loop_mod):
         idle_agents=[],
         prefect_failures=[],
         rate_limit_transitions=[
-            ("aiden", "throttled", 0),
-            ("orion", "resumed", 12),
+            ("aiden", "throttled", 5, "brewed_for"),
+            ("orion", "resumed", 12, ""),
         ],
     )
     dispatches = loop_mod.compose_dispatches(sig)
@@ -506,5 +507,36 @@ def test_compose_dispatches_throttle_transitions_to_ceo(loop_mod):
     assert len(ceo_msgs) == 2
     throttled_msg = next(m for m in ceo_msgs if "throttle detected" in m)
     assert "aiden" in throttled_msg
+    # KEI-19 GAP A: onset must surface duration + source.
+    assert "wait ~5m" in throttled_msg
+    assert "brewed_for" in throttled_msg
+    # KEI-19 GAP B: "informational not actionable" wording is gone.
+    assert "informational not actionable" not in throttled_msg
     resumed_msg = next(m for m in ceo_msgs if "throttle cleared" in m)
     assert "orion resumed after 12m" in resumed_msg
+
+
+# KEI-19 GAP A new tests ─────────────────────────────────────────────────────
+
+
+def test_extract_throttle_duration_retry_after_seconds(loop_mod):
+    # HTTP retry-after value is seconds per RFC; 60s → 1 min (ceil).
+    assert loop_mod._extract_throttle_duration("HTTP 429. retry-after: 60") == (1, "retry_after")
+    # 90s → 2 min (ceil).
+    assert loop_mod._extract_throttle_duration("retry-after 90") == (2, "retry_after")
+    # Unparseable → (0, 'unknown').
+    assert loop_mod._extract_throttle_duration("rate limit reached, please wait") == (
+        0,
+        "unknown",
+    )
+
+
+def test_extract_throttle_duration_brewed_for_units(loop_mod):
+    # Default unit (when only a bare number) is minutes per Anthropic CLI convention.
+    assert loop_mod._extract_throttle_duration("Brewed for 5") == (5, "brewed_for")
+    # Explicit minutes.
+    assert loop_mod._extract_throttle_duration("brewed for 5 minutes") == (5, "brewed_for")
+    # Seconds round UP to 1 minute floor.
+    assert loop_mod._extract_throttle_duration("brewed for 30 seconds") == (1, "brewed_for")
+    # Hours multiply.
+    assert loop_mod._extract_throttle_duration("brewed for 2 hours") == (120, "brewed_for")

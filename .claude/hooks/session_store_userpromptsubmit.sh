@@ -8,8 +8,10 @@
 # Bash plumbing only — the actual recording logic lives in
 # src/session_store/userpromptsubmit_handler.py (tested module). Mirrors the
 # session_store_posttooluse.sh shape: read stdin, resolve callsign, background
-# subprocess, never block the agent. Adds a per-callsign monotone
-# message_index counter at /tmp/.msgidx_<callsign>.
+# subprocess, never block the agent. Per-callsign state files (session
+# pointer + monotone message index) live under $XDG_STATE_HOME/agency-os/
+# <callsign>/ via src/bot_common/state_paths.py (PR #757). Follow-up will
+# migrate the legacy posttooluse + stop hooks to the same location.
 #
 # stdin format (Claude Code UserPromptSubmit):
 #   { "prompt": "<user text>", "session_id": "...", ... }

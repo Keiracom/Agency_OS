@@ -47,7 +47,7 @@ def test_extract_prompt_valid() -> None:
 
 
 def test_resolve_session_id_from_existing_state(tmp_path: Path) -> None:
-    state = tmp_path / ".session_max"
+    state = tmp_path / "session"
     state.write_text("abc12345-0000-0000-0000-000000000000:0:0")
     start_fn = MagicMock()
     sid = h._resolve_session_id("max", "/cwd", state, start_fn=start_fn)
@@ -56,7 +56,7 @@ def test_resolve_session_id_from_existing_state(tmp_path: Path) -> None:
 
 
 def test_resolve_session_id_creates_when_missing(tmp_path: Path) -> None:
-    state = tmp_path / ".session_max"
+    state = tmp_path / "session"
     new_sid = uuid4()
     start_fn = MagicMock(return_value=new_sid)
     sid = h._resolve_session_id("max", "/cwd", state, start_fn=start_fn)
@@ -67,7 +67,7 @@ def test_resolve_session_id_creates_when_missing(tmp_path: Path) -> None:
 
 
 def test_resolve_session_id_start_fn_returns_none(tmp_path: Path) -> None:
-    state = tmp_path / ".session_max"
+    state = tmp_path / "session"
     start_fn = MagicMock(return_value=None)
     assert h._resolve_session_id("max", "/cwd", state, start_fn=start_fn) is None
 
@@ -80,19 +80,19 @@ def test_read_message_index_missing(tmp_path: Path) -> None:
 
 
 def test_read_message_index_valid(tmp_path: Path) -> None:
-    p = tmp_path / ".msgidx_max"
+    p = tmp_path / "msgidx"
     p.write_text("42")
     assert h._read_message_index(p) == 42
 
 
 def test_read_message_index_invalid_text_returns_zero(tmp_path: Path) -> None:
-    p = tmp_path / ".msgidx_max"
+    p = tmp_path / "msgidx"
     p.write_text("not a number")
     assert h._read_message_index(p) == 0
 
 
 def test_write_message_index_round_trip(tmp_path: Path) -> None:
-    p = tmp_path / ".msgidx_max"
+    p = tmp_path / "msgidx"
     h._write_message_index(p, 7)
     assert p.read_text() == "7"
 
@@ -134,7 +134,7 @@ def test_handle_session_resolve_failure_returns_none(tmp_path: Path) -> None:
 def test_handle_happy_path_records_and_increments(tmp_path: Path) -> None:
     session_uuid = uuid4()
     msg_uuid = uuid4()
-    (tmp_path / ".session_max").write_text(f"{session_uuid}:0:0")
+    (tmp_path / "session").write_text(f"{session_uuid}:0:0")
     record_msg = MagicMock(return_value=msg_uuid)
     record_start = MagicMock()
 
@@ -157,13 +157,13 @@ def test_handle_happy_path_records_and_increments(tmp_path: Path) -> None:
     assert call.kwargs["content_text"] == "hello there"
     assert call.kwargs["content_bytes"] == len("hello there".encode("utf-8"))
     assert call.kwargs["store_full_content"] is True
-    assert (tmp_path / ".msgidx_max").read_text() == "1"
+    assert (tmp_path / "msgidx").read_text() == "1"
 
 
 def test_handle_increments_existing_message_index(tmp_path: Path) -> None:
     session_uuid = uuid4()
-    (tmp_path / ".session_max").write_text(f"{session_uuid}:0:0")
-    (tmp_path / ".msgidx_max").write_text("3")
+    (tmp_path / "session").write_text(f"{session_uuid}:0:0")
+    (tmp_path / "msgidx").write_text("3")
     record_msg = MagicMock(return_value=uuid4())
 
     h.handle_user_prompt_submit(
@@ -176,11 +176,11 @@ def test_handle_increments_existing_message_index(tmp_path: Path) -> None:
     )
 
     assert record_msg.call_args.kwargs["message_index"] == 3
-    assert (tmp_path / ".msgidx_max").read_text() == "4"
+    assert (tmp_path / "msgidx").read_text() == "4"
 
 
 def test_handle_record_message_returns_none(tmp_path: Path) -> None:
-    (tmp_path / ".session_max").write_text(f"{uuid4()}:0:0")
+    (tmp_path / "session").write_text(f"{uuid4()}:0:0")
     record_msg = MagicMock(return_value=None)
     result = h.handle_user_prompt_submit(
         callsign="max",
@@ -192,11 +192,11 @@ def test_handle_record_message_returns_none(tmp_path: Path) -> None:
     )
     assert result is None
     # Index still advances — best-effort, monotone preserves uniqueness
-    assert (tmp_path / ".msgidx_max").read_text() == "1"
+    assert (tmp_path / "msgidx").read_text() == "1"
 
 
 def test_handle_record_message_raises_value_error(tmp_path: Path) -> None:
-    (tmp_path / ".session_max").write_text(f"{uuid4()}:0:0")
+    (tmp_path / "session").write_text(f"{uuid4()}:0:0")
     record_msg = MagicMock(side_effect=ValueError("bad payload"))
     result = h.handle_user_prompt_submit(
         callsign="max",
@@ -208,4 +208,4 @@ def test_handle_record_message_raises_value_error(tmp_path: Path) -> None:
     )
     assert result is None
     # Index NOT advanced on raise — we never reached the write
-    assert not (tmp_path / ".msgidx_max").exists()
+    assert not (tmp_path / "msgidx").exists()

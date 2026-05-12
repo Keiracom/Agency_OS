@@ -24,6 +24,7 @@ from collections.abc import Callable
 from pathlib import Path
 from uuid import UUID
 
+from src.bot_common.state_paths import resolve_state_dir
 from src.session_store.recorder import record_message, record_session_start
 
 logger = logging.getLogger("session_store.userpromptsubmit_handler")
@@ -89,11 +90,16 @@ def handle_user_prompt_submit(
     payload_text: str,
     working_directory: str | None = None,
     *,
-    session_state_dir: str = "/tmp",
+    session_state_dir: str | None = None,
     record_message_fn: Callable[..., UUID | None] = record_message,
     record_session_start_fn: Callable[..., UUID | None] = record_session_start,
 ) -> UUID | None:
     """Record a single UserPromptSubmit event to public.messages.
+
+    State files (session pointer + monotone message index) live in
+    `session_state_dir`. When None (production default), resolves to
+    `$XDG_STATE_HOME/agency-os/<callsign>/` via `bot_common.state_paths`.
+    Tests pass an explicit tmp_path to isolate.
 
     Returns the new messages row UUID on success, None on best-effort failure.
     Never raises — the hook always exits 0.
@@ -101,8 +107,16 @@ def handle_user_prompt_submit(
     prompt = _extract_prompt(payload_text)
     if not prompt:
         return None
-    session_state = Path(session_state_dir) / f".session_{callsign}"
-    msgidx_state = Path(session_state_dir) / f".msgidx_{callsign}"
+    if session_state_dir is None:
+        try:
+            state_dir = resolve_state_dir(callsign)
+        except (ValueError, OSError) as exc:
+            logger.warning("resolve_state_dir failed for %s: %s", callsign, exc)
+            return None
+    else:
+        state_dir = Path(session_state_dir)
+    session_state = state_dir / "session"
+    msgidx_state = state_dir / "msgidx"
     sid = _resolve_session_id(
         callsign=callsign,
         working_directory=working_directory or os.getcwd(),

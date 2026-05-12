@@ -125,9 +125,41 @@ def enrich_dispatch(
     return context + text
 
 
+_ON_WAKE_QUERY_TEMPLATE = (
+    "Recent decisions for callsign {callsign} — what is the current task context, "
+    "what KEI issues are open, what was decided in the last 24 hours, "
+    "and what should the agent resume on?"
+)
+
+
+def _on_wake_query() -> str:
+    """KEI-31 component 2: synthesize a generic restart-context query
+    using the callsign from IDENTITY.md (or CALLSIGN env). The query
+    surfaces recent decisions + open KEI context for the resumed session."""
+    cs = os.environ.get("CALLSIGN", "")
+    if not cs:
+        identity = os.path.expanduser("./IDENTITY.md")
+        if os.path.isfile(identity):
+            try:
+                with open(identity) as f:
+                    for line in f:
+                        if "CALLSIGN:" in line:
+                            cs = line.split("CALLSIGN:")[-1].strip().strip("*").strip().lower()
+                            break
+            except OSError:
+                pass
+    return _ON_WAKE_QUERY_TEMPLATE.format(callsign=cs or "agent")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--text", default=None, help="dispatch text (overrides stdin)")
+    parser.add_argument(
+        "--on-wake",
+        action="store_true",
+        help="KEI-31 component 2: synthesize restart-context query from callsign and "
+        "emit recall hits as markdown block on stdout (no stdin needed)",
+    )
     parser.add_argument("--limit", type=int, default=DEFAULT_LIMIT)
     parser.add_argument("--org-id", default=DEFAULT_ORG)
     parser.add_argument("--app-id", default=DEFAULT_APP)
@@ -135,7 +167,9 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     try:
-        if args.text is not None:
+        if args.on_wake:
+            text = _on_wake_query()
+        elif args.text is not None:
             text = args.text
         elif not sys.stdin.isatty():
             text = sys.stdin.read()

@@ -1,0 +1,9 @@
+[Unit]
+Description=Run hook-failure monitor every 5 min (KEI-11 Outcome 3 — within-5-min SLA)
+
+[Timer]
+OnCalendar=*:0/5
+Persistent=true
+
+[Install]
+WantedBy=timers.target

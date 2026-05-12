@@ -41,10 +41,33 @@ Defense in depth. Email is the BS default and survives Slack app outages. Slack 
 
 The integration is a one-time setup (per-workspace), not a recurring check. The verify-only script is an operator-invoked diagnostic, not a scheduled job. Running it on a timer would just produce noise once the integration exists.
 
+## PR-C-v2 phase 1 (shipped 2026-05-12)
+
+`scripts/orchestrator/betterstack_routing_policy.py` creates a single notification policy ("Agency OS — Critical incidents") with one escalation step targeting `all_slack_integrations`. Until the `#execution` integration exists, that's only the `#ceo` one (id 102756) — so phase-1 routes critical incidents to `#ceo`, matching the first arm of Dave's spec.
+
+Empirical schema (probed against BS v2 + docs at `betterstack.com/docs/uptime/api/escalation-policies/`):
+
+```json
+{
+  "name": "Agency OS — Critical incidents",
+  "steps": [{
+    "type": "escalation",
+    "wait_before": 0,
+    "urgency_id": <created via POST /urgencies>,
+    "step_members": [{"type": "all_slack_integrations"}]
+  }]
+}
+```
+
+## PR-C-v2 phase 2 (gated on OAuth from §steps above)
+
+When the operator OAuth dance creates the `#execution` integration, re-run `betterstack_routing_policy.py`. It is idempotent — script picks up the new integration via `all_slack_integrations` automatically. To route resolved + routine to `#execution` ONLY (not `#ceo`), a separate policy + step targeting the specific integration is required; phase-2 will add that in a fast-follow PR.
+
 ## Related
 
 - `scripts/orchestrator/betterstack_setup.py` — heartbeats bootstrap (PR-A, merged)
 - `scripts/orchestrator/betterstack_uptime_monitors.py` — uptime monitors (PR-B, merged + PR #788 fixes)
-- `scripts/orchestrator/betterstack_slack_routing.py` — verify-only readiness check (PR-C, this file)
-- PR-C-v2 (future) — automated policy wire-in once OAuth done
-- PR-D — public status page (separate, planned)
+- `scripts/orchestrator/betterstack_slack_routing.py` — verify-only readiness check (PR-C, merged)
+- `scripts/orchestrator/betterstack_routing_policy.py` — automated policy wire-in (PR-C-v2 phase-1, this file)
+- `scripts/orchestrator/betterstack_status_page.py` — public status page (PR-D, merged)
+- PR-C-v3 (future) — second policy + integration-specific routing once OAuth done

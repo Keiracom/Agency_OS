@@ -8,14 +8,12 @@ Covers:
 
 from __future__ import annotations
 
-import os
 import stat
 from pathlib import Path
 
 import pytest
 
 from src.bot_common import state_paths as sp
-
 
 # _xdg_state_home ────────────────────────────────────────────────────────────
 

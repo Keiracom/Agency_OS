@@ -154,9 +154,14 @@ def generate(
         invoke_kwargs["runner"] = claude_runner
     claude_result = invoke(prompt, **invoke_kwargs)
     if claude_result.returncode != 0:
+        # claude --print writes CLI errors (e.g. "Credit balance is too low",
+        # auth failures, plan-limit messages) to STDOUT, not stderr. Earlier
+        # versions only surfaced stderr — leaving the RuntimeError text empty
+        # and the real cause invisible. Include both so callers can diagnose.
         raise RuntimeError(
             f"claude invocation failed (exit {claude_result.returncode}): "
-            f"{claude_result.stderr[:500]}"
+            f"stdout={claude_result.stdout[:500]!r} "
+            f"stderr={claude_result.stderr[:500]!r}"
         )
     skill_name = derive_skill_name(session, skill_name_override)
     skill_path = write_skill(repo_root, skill_name, claude_result.stdout, overwrite=overwrite)

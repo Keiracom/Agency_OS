@@ -229,6 +229,19 @@ def main() -> int:
         if not allow and replacement is not None:
             message = replacement
             print("⚠  concur-gate HELD original; posting CONCUR-REQUEST instead", file=sys.stderr)
+    # R11 CEO-FORMAT-GATE — block #ceo posts violating plain-English bullets-only
+    # convention (Dave directive ts ~1778582530). Runs AFTER concur-gate so the
+    # system-generated CONCUR-REQUEST replacement passes through (it's exempt).
+    try:
+        from src.bot_common.enforcer_deterministic import check_r11
+
+        ceo_block = check_r11(message, channel=channel)
+        if ceo_block is not None:
+            print(f"R_CEO_FORMAT_BLOCKED: {ceo_block['detail']}", file=sys.stderr)
+            print(f"  should_have: {ceo_block['should_have']}", file=sys.stderr)
+            return 2
+    except ImportError:
+        pass  # repo not on sys.path; fall through ungated rather than break all posts
     result = post(channel, message)
     if not result.get("ok"):
         print(f"ERROR: Slack rejected: {result}", file=sys.stderr)

@@ -17,6 +17,11 @@ start, snapshotted by the PreCompact hook (scripts/pre_compact_alert.py).
 - Branch: <branch-name>
 - Subject: <commit subject line>
 
+## Model
+
+- Configured: <callsign-from-IDENTITY.md → lookup in CLAUDE.md §Callsign → Model Assignment table>
+- Running: <actual `--model` flag at startup, if known; otherwise "unknown — check tmux session launch command">
+
 ## Blockers
 
 - <bulleted list, or "none">

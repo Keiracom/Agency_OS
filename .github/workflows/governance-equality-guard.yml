@@ -1,0 +1,44 @@
+name: Governance Equality Guard
+
+# KEI-12 / Item #1 (Scout's MEDIUM recommendation #5).
+# Fails CI when CLAUDE.md (kept in-repo for git-history reasons) drifts from
+# origin/main. The symlink approach was rejected for CLAUDE.md specifically
+# because branch-X-has-its-own-CLAUDE.md is the natural source-control model;
+# instead we keep duplicated copies + this guard enforces equality on PR.
+#
+# Pattern source: scripts/check_migration_completeness.py (Wave 1 Item 4) —
+# CI-gate-as-code rather than docs-only convention.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - CLAUDE.md
+
+jobs:
+  governance-equality:
+    name: CLAUDE.md Equality Guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compare CLAUDE.md md5 against origin/main
+        run: |
+          BASE_REF="${{ github.event.pull_request.base.ref }}"
+          git fetch origin "$BASE_REF" --depth=1
+          main_hash=$(git show "origin/$BASE_REF":CLAUDE.md | md5sum | awk '{print $1}')
+          head_hash=$(md5sum CLAUDE.md | awk '{print $1}')
+          if [ "$main_hash" != "$head_hash" ]; then
+            echo "::error::CLAUDE.md hash diverged from origin/$BASE_REF"
+            echo "  main:  $main_hash"
+            echo "  HEAD:  $head_hash"
+            echo ""
+            echo "KEI-12 / Item #1 convention: CLAUDE.md is kept duplicated"
+            echo "across worktrees + on main. Per-worktree edits must NOT change"
+            echo "CLAUDE.md. Edit the source/template upstream + sync all worktrees"
+            echo "in a coordinated PR. See docs/wave2/symlink_governance_audit.md."
+            exit 1
+          fi
+          echo "CLAUDE.md hash matches origin/$BASE_REF — equality preserved."

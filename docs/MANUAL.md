@@ -973,6 +973,21 @@ Per Dave directive ts 1778565940 + Elliot dispatch. Four items shipped end-to-en
 - Item 4 (PR #768, MERGED 2cf5ffab, Aiden): scripts/check_migration_completeness.py + 8 unit tests + new 'Migration Completeness Guard' CI job. Fails when a PR removes INSERT INTO X / UPDATE X without removing/rerouting readers of X. Guard self-tested cleanly on its own PR. Closes Pattern A enforcement loop in CI.
 
 LAW XV three-store save (Aiden owns per directive).
+
+### [AIDEN] Directive WAVE-2-PRIORITY-RESET (PR #775, 2026-05-12)
+Wave 2 Priority-Reset Directive Bundle — Complete (2026-05-12)
+
+Per Dave priority-reset ts 1778570450 + Elliot dispatch. Three jump-queue items shipped end-to-end:
+
+- KEI-5 / Cognee Phase 0 (PR #764, MERGED b02b1b73, Aiden): wrapper + smoke runner + README. Smoke verified end-to-end via Option E (Dave ts 1778572400) bypassing aiosqlite SEGV path when ENABLE_BACKEND_ACCESS_CONTROL=false. Evidence verbatim posted to #ceo via Elliot relay 2026-05-12 ~08:00 UTC. Backing stack: SQLite + NetworkX + Gemini gemini-2.5-flash + gemini/gemini-embedding-001 (text-embedding-004 + embedding-001 both 404'd from Gemini API v1beta on this server).
+
+- KEI-17 / Elliot Polling Loop (PR #774, MERGED 06fe5dd6, Aiden): mechanical orchestrator sweep. 4 polling sources (bd ready / Linear stale / agent_status_observations idle / Prefect failures) → [DISPATCH-PROPOSAL] in #execution + [PROPOSE:elliot] in #ceo. 60s timer (peak AEST) / 60min (overnight). Closes idle-agent miss-mode permanently.
+
+- Wave 2 Outcome 3 / R10 LINEAR-KEI-GATE (PR #775, MERGED 4a29d333, Aiden): new deterministic enforcer rule. Fires when completion claim lacks KEI tag OR KEI tag present but Linear status update missing within 60s window. 12 new tests + 44 pre-existing pass.
+
+- Wave 2 Outcome 4 / Anti-amnesia capsule Linear+Beads extension (PR #773, MERGED b4c4b81f, Max): 2 reminder lines prepended to capsule body; survives /compact via top-of-capsule placement.
+
+All four items dual-CTO concurred (author + reviewer per Dave's session brief). LAW XV three-store save (Aiden owns per directive).
 ## SECTION 14 — COMPETITIVE INTELLIGENCE
 
 Direct competitors (signal-based AI BDR category):

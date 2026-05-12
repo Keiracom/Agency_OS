@@ -40,10 +40,16 @@ from typing import Any
 
 API_BASE = "https://uptime.betterstack.com/api/v2"
 
-# (name, url, check_frequency_sec, expected_http_status_codes) per Elliot dispatch.
-# 60s cadence per dispatch.
+# (pronounceable_name, url, check_frequency_sec, expected_http_status_codes).
+# 60s cadence per Elliot dispatch; Better Stack tier may coerce upward (observed 180s).
+# Expected codes empirically chosen from live probes:
+#   - agencyxos.ai responds 200 direct, no redirect (probed 2026-05-12). Sending
+#     [301,302] alongside 200 trips Better Stack 422 ("Cannot follow redirects
+#     when expecting a 3xx status code") when follow_redirects=true (default).
+#   - Supabase REST root returns 401 publicly (no anon-200 endpoint exists on
+#     PostgREST). Accept [200,401,404] so the monitor stays UP on healthy host.
 MONITORS: list[tuple[str, str, int, list[int]]] = [
-    ("agencyxos.ai", "https://agencyxos.ai", 60, [200, 301, 302]),
+    ("agencyxos.ai", "https://agencyxos.ai", 60, [200]),
     (
         "supabase-rest",
         "https://jatzvazlbusedwsnqxzr.supabase.co/rest/v1/",
@@ -80,6 +86,15 @@ def list_monitors(api_key: str) -> list[dict]:
     return resp.get("data", []) or []
 
 
+def _desired_config_drift(attrs: dict, url: str, freq: int, codes: list[int]) -> bool:
+    """True iff existing monitor attrs differ from desired config."""
+    if attrs.get("url") != url:
+        return True
+    if attrs.get("expected_status_codes") != codes:
+        return True
+    return attrs.get("check_frequency") != freq
+
+
 def ensure_monitor(
     api_key: str,
     name: str,
@@ -88,19 +103,45 @@ def ensure_monitor(
     expected_codes: list[int],
     existing: list[dict],
 ) -> dict | None:
-    """Return monitor record (existing-by-url or newly created)."""
-    for m in existing:
-        attrs = m.get("attributes", {})
-        if attrs.get("url") == url:
-            return m
-    body: dict[str, Any] = {
+    """Return monitor record. Match by URL OR pronounceable_name; PATCH if config drifts.
+
+    Idempotent: re-run safely. If a monitor with matching URL or matching name
+    exists with stale/wrong config (wrong URL on manually-created record, wrong
+    expected_status_codes, wrong frequency), PATCH it in place — never POST a
+    duplicate.
+    """
+    desired_body: dict[str, Any] = {
         "url": url,
         "monitor_type": "status",
         "pronounceable_name": name,
         "check_frequency": frequency_sec,
         "expected_status_codes": expected_codes,
     }
-    resp = _request("POST", f"{API_BASE}/monitors", api_key, body)
+
+    matched: dict | None = None
+    for m in existing:
+        attrs = m.get("attributes", {})
+        if attrs.get("url") == url or attrs.get("pronounceable_name") == name:
+            matched = m
+            break
+
+    if matched:
+        attrs = matched.get("attributes", {})
+        if not _desired_config_drift(attrs, url, frequency_sec, expected_codes):
+            return matched
+        mid = matched.get("id")
+        patch_body = {
+            "url": url,
+            "pronounceable_name": name,
+            "check_frequency": frequency_sec,
+            "expected_status_codes": expected_codes,
+        }
+        resp = _request("PATCH", f"{API_BASE}/monitors/{mid}", api_key, patch_body)
+        if not resp:
+            return None
+        return resp.get("data")
+
+    resp = _request("POST", f"{API_BASE}/monitors", api_key, desired_body)
     if not resp:
         return None
     return resp.get("data")
@@ -121,10 +162,16 @@ def main() -> int:
     for name, url, freq, codes in MONITORS:
         m = ensure_monitor(api_key, name, url, freq, codes, existing)
         if not m:
-            print(f"# {name}: CREATE FAILED — review stderr", file=sys.stderr)
+            print(f"# {name}: CREATE/PATCH FAILED — review stderr", file=sys.stderr)
             continue
         attrs = m.get("attributes", {})
-        print(f"# {name}: id={m.get('id')} url={attrs.get('url')} freq={freq}s", file=sys.stderr)
+        actual_freq = attrs.get("check_frequency", freq)
+        print(
+            f"# {name}: id={m.get('id')} url={attrs.get('url')} "
+            f"freq_requested={freq}s freq_actual={actual_freq}s "
+            f"expected_codes={attrs.get('expected_status_codes')}",
+            file=sys.stderr,
+        )
 
     print("", file=sys.stderr)
     print(

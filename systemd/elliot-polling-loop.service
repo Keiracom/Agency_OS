@@ -1,0 +1,12 @@
+[Unit]
+Description=KEI-17 Elliot Polling Loop (one-shot orchestrator sweep)
+After=network.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+Environment="PYTHONPATH=/home/elliotbot/clawd/Agency_OS"
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+ExecStart=/usr/bin/python3 -B /home/elliotbot/clawd/Agency_OS/scripts/orchestrator/elliot_polling_loop.py
+StandardOutput=append:/home/elliotbot/clawd/logs/elliot-polling-loop.log
+StandardError=append:/home/elliotbot/clawd/logs/elliot-polling-loop.log

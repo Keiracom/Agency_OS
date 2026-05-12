@@ -1,0 +1,10 @@
+[Unit]
+Description=KEI-17 Elliot Polling Loop Timer (every 60s; script self-throttles outside peak hours)
+
+[Timer]
+OnBootSec=30
+OnUnitActiveSec=60
+AccuracySec=5
+
+[Install]
+WantedBy=timers.target

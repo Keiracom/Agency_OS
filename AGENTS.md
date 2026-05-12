@@ -6,11 +6,19 @@ This folder is home. Treat it that way.
 
 When background agents complete, **do not rely on heartbeat responses to notify Dave**.
 
-**Rule:** When all spawned agents for a task batch finish, immediately send a direct Telegram message using the `message` tool:
+**Rule:** When all spawned agents for a task batch finish, immediately post a Slack message via `scripts/slack_relay.py`:
 
 ```
-message(action=send, channel=telegram, to=7267788033, message="✅ All done. [1-line summary of what completed]. What's next?")
+scripts/slack_relay.py "✅ All done. [1-line summary of what completed]. What's next?"
 ```
+
+Default channel is `#execution` (routine completion alerts). For CEO-direct posts, target `#ceo` via the channel ID flag:
+
+```
+scripts/slack_relay.py -c <ceo-channel-id> "..."
+```
+
+Dave reads Slack `#execution`, not your terminal — completion claims that don't land in Slack don't exist.
 
 **When to send:**
 - Final agent in a wave completes → send wave summary

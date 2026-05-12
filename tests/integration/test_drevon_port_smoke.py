@@ -161,18 +161,13 @@ def test_resolve_session_uuid_finds_synthetic_session(synthetic_drevon_rows):
     assert found == synthetic_drevon_rows["session_uuid"]
 
 
-# DISCOVERED BUG: src.replay.claim_verifier issues `ilike.*pattern*` against
-# the JSONB column `turn_logs.tool_args_json`, which PostgREST rejects with
-# 404 (operator does not exist for jsonb). Because the function catches the
-# exception and returns []-for-each-pattern, every call resolves to (False,
-# "no evidence") regardless of input — so the True-evidence assertion below
-# is xfail and the False-evidence one would pass for the wrong reason. Fix
-# requires extracting a JSON field (tool_args_json->>0, or a dedicated text
-# column) — out of scope for this PR but reported in PR body + outbox.
-@pytest.mark.xfail(
-    reason="claim_verifier ilike-on-JSONB returns 404 in PostgREST (pre-existing bug discovered by this test); see PR body.",
-    strict=True,
-)
+# Bug fix lineage: this test originally documented the JSONB-ilike-rejection
+# bug in src.replay.claim_verifier (PostgREST 42883: ilike vs jsonb). PR #729
+# (commit 0f8b5060) fixed it via `tool_args_json->>command` arrow extraction
+# scoped to `tool_name=eq.Bash`. The xfail-strict mark was lifted in PR #730
+# (2026-05-12) so this test now asserts the post-fix expected behavior:
+# verify_completion_claim returns (True, evidence-summary) when the synthetic
+# turn_logs row contains a verify_pr.sh command referencing the synthetic PR#.
 def test_verify_completion_claim_returns_true_for_synthetic_evidence(
     synthetic_drevon_rows,
 ):

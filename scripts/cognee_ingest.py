@@ -183,6 +183,302 @@ def collect_chunks(
     return chunks
 
 
+# ─── Stream 2/3/4 SQL-backed loaders ────────────────────────────────────────
+# Per Dave directive ts ~1778618600: Phase 1 corpus extension beyond .md files.
+# Each loader emits (source_tag, chunk_content, node_set) tuples — same shape
+# collect_chunks() outputs, so main() can just concat with file-derived chunks.
+
+
+def _safe_sb_get(table: str, params: dict) -> list:
+    """Best-effort sb_get wrapper. Returns [] on import failure or REST error
+    (logged). The stream-loader is called inside the main() pre-flight, where
+    a partial-source-failure should not abort the whole ingest."""
+    try:
+        from src.evo.supabase_client import sb_get
+    except ImportError as exc:
+        logger.warning("supabase_client import failed: %s", exc)
+        return []
+    try:
+        return sb_get(table, params)
+    except Exception as exc:  # noqa: BLE001 — best-effort
+        logger.warning("sb_get %s failed: %s", table, exc)
+        return []
+
+
+def _stream_2_chunks() -> list[tuple[str, str, list[str]]]:
+    """Stream 2: Supabase memory tables (agent_memories + ceo_memory +
+    governance_events + cis_directive_metrics). One chunk per row, tagged
+    with table + per-row metadata in node_set."""
+    out: list[tuple[str, str, list[str]]] = []
+
+    # agent_memories — content + callsign + source_type
+    for r in _safe_sb_get(
+        "agent_memories",
+        {
+            "state": "eq.confirmed",
+            "select": "id,callsign,source_type,content,typed_metadata",
+            "order": "created_at.desc",
+            "limit": "1000",
+        },
+    ):
+        content = r.get("content") or ""
+        if not content.strip():
+            continue
+        callsign = r.get("callsign", "unknown")
+        source_type = r.get("source_type", "unknown")
+        out.append(
+            (
+                "agent_memories",
+                content,
+                [
+                    "source:agent_memories",
+                    f"callsign:{callsign}",
+                    f"type:{source_type}",
+                    f"row:{r.get('id', '?')}",
+                ],
+            )
+        )
+
+    # ceo_memory — key + value (jsonb)
+    import json as _json
+
+    for r in _safe_sb_get("ceo_memory", {"select": "key,value", "limit": "500"}):
+        key = r.get("key", "")
+        value = r.get("value", "")
+        if isinstance(value, (dict, list)):
+            value_str = _json.dumps(value, default=str)
+        else:
+            value_str = str(value or "")
+        if not value_str.strip():
+            continue
+        out.append(
+            (
+                "ceo_memory",
+                f"[{key}]\n{value_str}",
+                ["source:ceo_memory", f"key:{key}"],
+            )
+        )
+
+    # governance_events — event log (best-effort; skip if table missing)
+    for r in _safe_sb_get(
+        "governance_events",
+        {"select": "event_type,payload,created_at", "order": "created_at.desc", "limit": "200"},
+    ):
+        event_type = r.get("event_type", "unknown")
+        payload = r.get("payload", "")
+        if isinstance(payload, (dict, list)):
+            payload_str = _json.dumps(payload, default=str)
+        else:
+            payload_str = str(payload or "")
+        if not payload_str.strip():
+            continue
+        out.append(
+            (
+                "governance_events",
+                f"[{event_type}]\n{payload_str}",
+                ["source:governance_events", f"event_type:{event_type}"],
+            )
+        )
+
+    # cis_directive_metrics — execution metrics
+    for r in _safe_sb_get(
+        "cis_directive_metrics",
+        {"select": "directive_id,directive_ref,notes,callsign,agents_used", "limit": "500"},
+    ):
+        notes = r.get("notes") or ""
+        if not notes.strip():
+            continue
+        directive_ref = r.get("directive_ref") or str(r.get("directive_id", "?"))
+        out.append(
+            (
+                "cis_directive_metrics",
+                f"[directive {directive_ref}]\n{notes}",
+                [
+                    "source:cis_directive_metrics",
+                    f"directive_ref:{directive_ref}",
+                    f"callsign:{r.get('callsign', '?')}",
+                ],
+            )
+        )
+
+    return out
+
+
+def _stream_3_chunks() -> list[tuple[str, str, list[str]]]:
+    """Stream 3: Drevon-port audit tables (sessions + turns + turn_logs).
+    Chunk per row; turn_logs aggregates per-turn into one chunk to limit
+    volume + keep semantic context together."""
+    out: list[tuple[str, str, list[str]]] = []
+
+    # sessions — one chunk per session row
+    for r in _safe_sb_get(
+        "sessions",
+        {
+            "deleted_at": "is.null",
+            "select": "id,callsign,session_uuid,working_directory,started_at,ended_at,status",
+            "order": "started_at.desc",
+            "limit": "300",
+        },
+    ):
+        content = (
+            f"[session {r.get('id', '?')}] callsign={r.get('callsign', '?')} "
+            f"status={r.get('status', '?')} cwd={r.get('working_directory', '?')} "
+            f"started={r.get('started_at', '?')} ended={r.get('ended_at', '?')}"
+        )
+        out.append(
+            (
+                "sessions",
+                content,
+                [
+                    "source:sessions",
+                    f"callsign:{r.get('callsign', '?')}",
+                    f"status:{r.get('status', '?')}",
+                    f"row:{r.get('id', '?')}",
+                ],
+            )
+        )
+
+    # turns — one chunk per turn
+    for r in _safe_sb_get(
+        "turns",
+        {
+            "deleted_at": "is.null",
+            "select": "id,session_id,turn_index,status,input_tokens,output_tokens,cost_aud",
+            "order": "started_at.desc",
+            "limit": "500",
+        },
+    ):
+        content = (
+            f"[turn {r.get('turn_index', '?')} of session {r.get('session_id', '?')}] "
+            f"status={r.get('status', '?')} in_toks={r.get('input_tokens', '?')} "
+            f"out_toks={r.get('output_tokens', '?')} cost_aud={r.get('cost_aud', '?')}"
+        )
+        out.append(
+            (
+                "turns",
+                content,
+                ["source:turns", f"session:{r.get('session_id', '?')}", f"row:{r.get('id', '?')}"],
+            )
+        )
+
+    # turn_logs — per-row chunks; tool_args_json carries the meaningful content
+    import json as _json
+
+    for r in _safe_sb_get(
+        "turn_logs",
+        {
+            "deleted_at": "is.null",
+            "select": "id,turn_id,tool_name,tool_args_json,tool_result_summary,exit_status",
+            "order": "started_at.desc",
+            "limit": "500",
+        },
+    ):
+        tool_name = r.get("tool_name", "?")
+        tool_args = r.get("tool_args_json") or {}
+        args_str = (
+            _json.dumps(tool_args, default=str)
+            if isinstance(tool_args, (dict, list))
+            else str(tool_args)
+        )
+        summary = r.get("tool_result_summary") or ""
+        exit_status = r.get("exit_status", "?")
+        content = (
+            f"[tool_call {tool_name} exit={exit_status}] "
+            f"args={args_str[:500]} summary={summary[:300]}"
+        )
+        out.append(
+            (
+                "turn_logs",
+                content,
+                [
+                    "source:turn_logs",
+                    f"tool:{tool_name}",
+                    f"exit:{exit_status}",
+                    f"row:{r.get('id', '?')}",
+                ],
+            )
+        )
+
+    return out
+
+
+def _stream_4_chunks() -> list[tuple[str, str, list[str]]]:
+    """Stream 4: mem0-rescued subset of agent_memories (PR #770 tagged
+    typed_metadata.node_set=['rescued','mem0_migration']).
+
+    PostgREST JSONB contains-operator (cs) for the node_set tag.
+    """
+    out: list[tuple[str, str, list[str]]] = []
+
+    for r in _safe_sb_get(
+        "agent_memories",
+        {
+            "source_type": "eq.rescued_from_mem0",
+            "select": "id,callsign,content,typed_metadata",
+            "limit": "200",
+        },
+    ):
+        content = r.get("content") or ""
+        if not content.strip():
+            continue
+        meta = r.get("typed_metadata") or {}
+        mem0_id = meta.get("mem0_id", "?") if isinstance(meta, dict) else "?"
+        out.append(
+            (
+                "mem0_rescued",
+                content,
+                [
+                    "source:mem0_rescued",
+                    f"callsign:{r.get('callsign', '?')}",
+                    f"mem0_id:{mem0_id}",
+                    "rescued",
+                    "mem0_migration",
+                ],
+            )
+        )
+
+    return out
+
+
+def collect_stream_chunks(stream_id: int) -> list[tuple[str, str, list[str]]]:
+    """Dispatch to the right loader. Stream 1 still uses _stream_1_sources +
+    collect_chunks (file-backed); 2/3/4 use SQL loaders defined above."""
+    if stream_id == 1:
+        sources = _stream_1_sources()
+        return collect_chunks(sources)
+    if stream_id == 2:
+        return _stream_2_chunks()
+    if stream_id == 3:
+        return _stream_3_chunks()
+    if stream_id == 4:
+        return _stream_4_chunks()
+    logger.warning("unknown stream id: %d", stream_id)
+    return []
+
+
+def parse_streams(raw: str) -> list[int]:
+    """'all' → [1,2,3,4]; comma-separated digits → subset; default [1]."""
+    if not raw.strip():
+        return [1]
+    if raw.strip().lower() == "all":
+        return [1, 2, 3, 4]
+    out: list[int] = []
+    for token in raw.split(","):
+        token = token.strip()
+        if not token:
+            continue
+        try:
+            n = int(token)
+        except ValueError:
+            logger.warning("--streams unknown token: %r (skipped)", token)
+            continue
+        if n in (1, 2, 3, 4):
+            out.append(n)
+        else:
+            logger.warning("--streams unknown id: %d (skipped)", n)
+    return out or [1]
+
+
 def parse_sources_override(raw: str) -> list[tuple[Path, str, list[str]]]:
     """`--sources` value to (path, tag, extras) triples. Tag = 'override:<filename>'."""
     out: list[tuple[Path, str, list[str]]] = []
@@ -263,22 +559,33 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--app-id", default=DEFAULT_APP)
     parser.add_argument("--agent-id", default=DEFAULT_AGENT)
     parser.add_argument("--skip-cognify", action="store_true")
+    parser.add_argument(
+        "--streams",
+        default="1",
+        help="comma-separated stream ids (1,2,3,4) or 'all'. Default: 1 (back-compat).",
+    )
     args = parser.parse_args(argv)
 
+    # --sources override forces stream 1 file-mode (existing back-compat).
+    # Otherwise --streams selects which stream loaders to run + concat.
     if args.sources.strip():
         sources = parse_sources_override(args.sources)
         logger.info("--sources override: %d explicit paths", len(sources))
+        chunks = collect_chunks(sources)
     else:
-        sources = _stream_1_sources()
-        if args.include_aux_skills:
-            sources.extend(_aux_skill_sources())
-        logger.info(
-            "STREAM_1_SOURCES default: %d files%s",
-            len(sources),
-            " (+ aux skills)" if args.include_aux_skills else "",
-        )
-
-    chunks = collect_chunks(sources)
+        stream_ids = parse_streams(args.streams)
+        logger.info("ingesting streams: %s", stream_ids)
+        chunks: list[tuple[str, str, list[str]]] = []
+        for sid in stream_ids:
+            if sid == 1:
+                sources = _stream_1_sources()
+                if args.include_aux_skills:
+                    sources.extend(_aux_skill_sources())
+                stream_chunks = collect_chunks(sources)
+            else:
+                stream_chunks = collect_stream_chunks(sid)
+            logger.info("stream %d: %d chunks", sid, len(stream_chunks))
+            chunks.extend(stream_chunks)
     if not chunks:
         logger.warning("no chunks collected — nothing to ingest")
         return 1

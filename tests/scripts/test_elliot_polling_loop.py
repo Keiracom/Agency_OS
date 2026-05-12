@@ -100,6 +100,26 @@ def test_poll_bd_ready_handles_bad_json(loop_mod, monkeypatch):
     assert loop_mod.poll_bd_ready() == []
 
 
+# Agency_OS-yvz fix (a): bd invoked via absolute ~/.local/bin/bd path so
+# systemd --user services with restricted PATH don't FileNotFoundError.
+
+
+def test_poll_bd_ready_uses_absolute_bd_path(loop_mod, monkeypatch):
+    captured: list[list[str]] = []
+
+    def _capture(cmd, *a, **k):
+        captured.append(cmd)
+        return MagicMock(returncode=0, stdout="[]", stderr="")
+
+    monkeypatch.setattr(loop_mod.subprocess, "run", _capture)
+    loop_mod.poll_bd_ready()
+    assert captured, "subprocess.run was not invoked"
+    assert captured[0][0].endswith("/.local/bin/bd"), (
+        f"expected absolute bd path, got {captured[0][0]!r}"
+    )
+    assert captured[0][1:] == ["ready", "--json"]
+
+
 # poll_linear_stale ──────────────────────────────────────────────────────────
 
 
@@ -126,6 +146,39 @@ def test_poll_idle_agents_no_dsn(loop_mod, monkeypatch):
     monkeypatch.delenv("DATABASE_URL", raising=False)
     monkeypatch.delenv("DATABASE_URL_MIGRATIONS", raising=False)
     assert loop_mod.poll_idle_agents() == []
+
+
+# Agency_OS-yvz fix (b): asyncpg.connect must pass statement_cache_size=0 so
+# Supabase's pgbouncer (transaction pool) doesn't error on prepared-statement
+# re-use across pool checkouts.
+
+
+def test_poll_idle_agents_passes_statement_cache_size_zero(loop_mod, monkeypatch):
+    monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@h:5432/d")
+    captured_kwargs: list[dict] = []
+
+    pytest.importorskip("asyncpg")  # skip if asyncpg isn't installed on this host
+
+    class _FakeConn:
+        async def fetch(self, *a, **k):
+            return []
+
+        async def close(self):
+            return None
+
+    async def _fake_connect(*args, **kwargs):
+        captured_kwargs.append(kwargs)
+        return _FakeConn()
+
+    import asyncpg
+
+    monkeypatch.setattr(asyncpg, "connect", _fake_connect)
+    out = loop_mod.poll_idle_agents()
+    assert out == []
+    assert captured_kwargs, "asyncpg.connect was not invoked"
+    assert captured_kwargs[0].get("statement_cache_size") == 0, (
+        f"expected statement_cache_size=0 for pgbouncer compat, got {captured_kwargs[0]!r}"
+    )
 
 
 # poll_prefect_failures ──────────────────────────────────────────────────────

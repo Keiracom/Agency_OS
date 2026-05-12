@@ -29,6 +29,25 @@ Revenue model for BU: API subscriptions, Salesforce/HubSpot marketplace, bulk an
 **Dashboard result:** Master Agency Desk v10 shipped (2344 lines). 5 concepts explored. Demo archaeology revealed product is a Sales Intelligence Briefing System.
 **CD Player v1 result:** Pipeline_orchestrator unified with cohort_runner proven stages. Per-domain streaming, SSECardStreamer, capacity skip (Stage 6), drop-triggered refill (8% default). Budget P0 fix: 4-layer defence in depth (admission control + per-stage gate + max_in_flight + run-level kill). Budget incident: $73 AUD burned on T5 live test — fixed structurally.
 
+### Fabrication Defense — Three-Layer Architecture (2026-05-12, fully active)
+
+Per Dave arm-three-passive directive (2026-05-12). Three layers, all active in production:
+
+- **Layer 1 — Discipline:** `.claude/modules/_completion_discipline.md` (PR #717). Reminds agents to run verification commands and paste verbatim terminal output before posting completion claims. Loads at every session-start CLAUDE.md re-read.
+- **Layer 2 — Outbound gate:** `src/bot_common/verify_gate.py` (PR #703). Blocks Slack outbound messages containing fabricated PR# or commit-hash claims by running `gh pr view <N>` + `git cat-file -t <hash>` before letting the post through. R_VERIFY_SKIP=1 env bypass for one-shot edge cases.
+- **Layer 3 — Replay-on-claim:** `src/replay/claim_verifier.py` (PR #719) integrated into `central_listener.run_enforcer` (PR #724), JSONB-arrow query fix (PR #729), xfail-strict lift (PR #730). When the enforcer LLM fires R3 on a completion claim, the post-LLM filter queries `turn_logs` for actual `verify_pr.sh` / `gh pr view` / `git cat-file` invocations matching the claim's PR#/commit-hash. Evidence present → suppress; absent → fire. Gated by `REPLAY_ON_CLAIM_ENABLED` env var.
+
+**Activation 2026-05-12T02:07:08Z:** `REPLAY_ON_CLAIM_ENABLED=1` added to `/home/elliotbot/.config/agency-os/.env`; central_listener restarted (PID 3337600). Layer 3 now in the runtime enforcement path.
+
+**Activation evidence:** 4/4 integration tests pass against real Supabase (`tests/integration/test_drevon_port_smoke.py`):
+- `test_verify_completion_claim_returns_true_for_synthetic_evidence` (legitimate path)
+- `test_verify_completion_claim_handles_missing_evidence_path` (fabricated path)
+- `test_resolve_session_uuid_finds_synthetic_session` + `test_soft_deleted_session_excluded_from_resolver` (PR-C integration)
+
+**ceo_memory key:** `governance:fabrication_defense_armed = true` (set 2026-05-12T02:08:02Z).
+
+Pattern extends to other claim classes (test-pass, deploy, memory-write, file-write, slack-post) — future PRs as patterns emerge.
+
 **Governance + Observability state (2026-05-01):**
 - GOV-PHASE 1 + 1.5 + 2 + 3 + 4 SHIPPED: PreToolUse recorder → governance_events; OPA Gatekeeper live with verdict instrumentation; check_claim.py CLI gate + DoD C5; SessionEnd auto-enforcement (observe-only); enforcer R2/R3 recalibrated.
 - Memory: Mem0 SDK 2.x live with hybrid recall (`MEMORY_RECALL_BACKEND=hybrid`); /save + /recall TG handlers wired; 1589 legacy rows migrated `elliot_internal.memories → public.agent_memories` with `legacy_source`/`legacy_id` provenance keys; ~2170 rows total in agent_memories.

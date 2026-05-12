@@ -29,7 +29,13 @@ xmltodict>=0.13.0
 
 # === AI ===
 anthropic>=0.39.0
-pydantic-ai>=0.1.0
+# pydantic-ai meta-package depends on pydantic-ai-slim[mistral] which requires
+# mistralai>=1.2.5 (no installable version on PyPI per uv resolution 2026-05-12).
+# Codebase uses only pydantic_ai.Agent + pydantic_ai.models.anthropic (grep
+# src/ scripts/ skills/ confirms no mistralai imports), so we depend on
+# pydantic-ai-slim with the [anthropic] extra directly and skip the broken
+# mistral chain.
+pydantic-ai-slim[anthropic]>=0.1.0
 # docstring-parser removed — not imported anywhere
 
 # === Math/Optimization (Phase 16 Conversion Intelligence) ===

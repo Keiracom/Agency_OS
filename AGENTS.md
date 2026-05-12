@@ -279,6 +279,12 @@ bd close <id>         # Complete work
 - Run `bd prime` for detailed command reference and session close protocol
 - Use `bd remember` for persistent knowledge — do NOT use MEMORY.md files
 
+### Agent Protocol (Dave directive 2026-05-12 ts 1778567000)
+
+1. **`bd ready`** — run before claiming ANY Linear issue. Returns only issues whose dependencies are closed. Out-of-sequence pickup is forbidden.
+2. **`bd create --discovered-from <parent-id>`** — when you find work outside the current issue scope, create a child issue linked to the parent so the graph captures the discovery context.
+3. **`bd remember`** — for facts that must survive `/compact` (e.g. ratified decisions, hard-won empirical findings). Replaces ad-hoc memory pin proliferation.
+
 **Architecture in one line:** issues live in a local Dolt DB; sync uses `refs/dolt/data` on your git remote; `.beads/issues.jsonl` is a passive export. See https://github.com/gastownhall/beads/blob/main/docs/SYNC_CONCEPTS.md for details and anti-patterns.
 
 ## Session Completion

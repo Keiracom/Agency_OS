@@ -231,7 +231,15 @@ _R2_EXEMPT_RE = re.compile(
     r"|\bmergeCommit\b"  # Track 5: gh JSON field reference
     r"|\b(?:will|going to|about to|planning to|propose to)\s+(?:commit|push|deploy|merge|create|trigger)"
     r"|\b(?:not|haven't|won't)\s+(?:yet\s+)?(?:committed|pushed|deployed|merged)"
-    r"|\[(?:propose|summary-draft|concur-request|concur|ready|busy|fp-log|valid-fire|dispatch|dispatch-proposal|dispatch-complete|state|complete)[\w:-]*\]",
+    r"|\[(?:propose|summary-draft|concur-request|concur|ready|busy|fp-log|valid-fire|dispatch|dispatch-proposal|dispatch-complete|state|complete)[\w:-]*\]"
+    # Track 8: status-report exempts — past-tense reporting, not new execution
+    r"|\bdeployed\b.*\blistener\s+restart"
+    r"|\bfully\s+deployed\b"
+    r"|\d+\s+PRs?\s+merged"
+    r"|\bsession\s+(?:total|tally)\b.*\bmerged\b"
+    r"|\bmerge\s+pull\s+request\b"
+    r"|\bdeployed\s+at\s+\d"
+    r"|\bshipped\s+in\s+PR\b",
     re.IGNORECASE,
 )
 

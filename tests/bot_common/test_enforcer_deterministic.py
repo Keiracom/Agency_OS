@@ -258,6 +258,32 @@ def test_r2_recent_messages_none_conservative_pass() -> None:
     assert check_r2(text, recent_messages=None) is None
 
 
+def test_r2_exempt_fully_deployed_status() -> None:
+    """Track 8: 'FULLY DEPLOYED' is status reporting, not new execution."""
+    assert check_r2("Track 7 FULLY DEPLOYED. Listener restarted at 01:24 UTC.", recent_messages=[]) is None
+
+
+def test_r2_exempt_pr_tally() -> None:
+    """Track 8: '19 PRs merged' is a tally, not new merge execution."""
+    assert check_r2("Session total: 19 PRs merged (#722-741).", recent_messages=[]) is None
+    assert check_r2("19 PRs merged this session.", recent_messages=[]) is None
+
+
+def test_r2_exempt_deployed_at_timestamp() -> None:
+    """Track 8: 'deployed at <digit>' is past-tense status."""
+    assert check_r2("Deployed at 01:12:05 UTC. R9 LAYER 2 active.", recent_messages=[]) is None
+
+
+def test_r2_exempt_shipped_in_pr() -> None:
+    """Track 8: 'shipped in PR' is past-tense reference."""
+    assert check_r2("Shipped in PR #740 to main.", recent_messages=[]) is None
+
+
+def test_r2_exempt_merge_pull_request() -> None:
+    """Track 8: GitHub merge commit message format."""
+    assert check_r2("Merge pull request #741 from Keiracom/max/r9-standby-exempt", recent_messages=[]) is None
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # check_r8 — DISPATCH-COORDINATION
 # ─────────────────────────────────────────────────────────────────────────────

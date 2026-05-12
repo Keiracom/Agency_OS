@@ -40,12 +40,17 @@ _MAX_CHRONOLOGY = 200
 
 
 def _fetch_turns(session_id: str, start_ts: str, end_ts: str) -> list[dict]:
+    # PostgREST: lte on a nullable column excludes NULL (SQL three-valued
+    # logic). Active sessions have in-progress turns with completed_at=null;
+    # without the explicit `is.null` branch they were silently dropped from
+    # the compression window. or=() includes both. Bracketing the OR clause
+    # lets the `started_at gte` constraint AND with the whole disjunction.
     return sb_get(
         "turns",
         {
             "session_id": f"eq.{session_id}",
             "started_at": f"gte.{start_ts}",
-            "completed_at": f"lte.{end_ts}",
+            "or": f"(completed_at.is.null,completed_at.lte.{end_ts})",
             "order": "turn_index.asc",
         },
     )

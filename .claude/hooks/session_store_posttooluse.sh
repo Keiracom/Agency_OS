@@ -14,6 +14,12 @@
 
 set -u
 
+# Recursion guard for src/skill_gen — when this hook fires inside a
+# `claude` subprocess spawned by claude_invoke.invoke(), early-exit so we
+# don't cascade nested turn_logs writes / infinite loops. The marker
+# `CLAUDE_CODE_SKILL_GEN=1` is set in src/skill_gen/claude_invoke.py.
+[ "${CLAUDE_CODE_SKILL_GEN:-}" = "1" ] && exit 0
+
 LOG_DIR="${SESSION_STORE_LOG_DIR:-/tmp/agency-os-session-store}"
 mkdir -p "$LOG_DIR" 2>/dev/null || true
 

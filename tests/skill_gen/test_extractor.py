@@ -125,3 +125,43 @@ def test_compress_truncates_long_user_messages():
     )
     assert len(out["user_messages"]) == 1
     assert len(out["user_messages"][0]) == 500
+
+
+def test_compress_includes_in_progress_turn_with_null_completed_at():
+    """Active sessions have turns with completed_at=null. The extractor's
+    _fetch_turns now uses or=(completed_at.is.null, completed_at.lte.<end>)
+    so the caller-side fetcher returns in-progress turns. The downstream
+    compress() must NOT drop them.
+
+    Empirical context: 2026-05-12 smoke run against session 102348b5 had 1
+    active turn with completed_at=null and 90 tool_calls; the original
+    `completed_at lte` filter returned [], producing an empty CompressedSession.
+    """
+    in_progress_turn = {
+        "id": "t-active",
+        "turn_index": 0,
+        "session_id": "s-active",
+        "started_at": "2026-05-11T23:49:52Z",
+        "completed_at": None,
+        "status": "in_progress",
+    }
+    log = {
+        "id": "log-1",
+        "turn_id": "t-active",
+        "tool_name": "Bash",
+        "exit_status": "success",
+        "tool_result_summary": "ran a command",
+        "started_at": "2026-05-11T23:50:00Z",
+    }
+    out = compress(
+        "s-active",
+        "2026-05-11T23:00:00Z",
+        "2026-05-12T01:00:00Z",
+        fetch_turns=lambda *a: [in_progress_turn],
+        fetch_turn_logs=lambda turn_ids: [log] if "t-active" in turn_ids else [],
+        fetch_turn_files=lambda *a: [],
+        fetch_user_messages=lambda *a: [],
+    )
+    assert out["turn_count"] == 1
+    assert out["tool_call_freq"] == {"Bash": 1}
+    assert out["chronology"][0]["tool"] == "Bash"

@@ -20,8 +20,8 @@ from __future__ import annotations
 import json
 import logging
 import os
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 from uuid import UUID
 
 from src.session_store.recorder import record_message, record_session_start

@@ -132,7 +132,7 @@ def main(argv: list[str] | None = None) -> int:
             sys.exit(2)
         print(f"ERROR: Slack API error: {error_code}", file=sys.stderr)
         sys.exit(1)
-    except Exception as e:
+    except (OSError, ConnectionError, TimeoutError) as e:
         print(f"ERROR: network failure: {e}", file=sys.stderr)
         sys.exit(1)
 

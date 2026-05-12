@@ -68,11 +68,19 @@ def _extract_commit_hashes(text: str) -> list[str]:
 def _query_turn_logs_for_pattern(pattern: str, callsign: str | None) -> list[dict]:
     """Query turn_logs for tool_args_json containing `pattern`.
 
+    Per Orion integration smoke 2026-05-12 (PR #727): PostgREST rejects `ilike`
+    on JSONB type directly with error 42883. Extract the 'command' field via
+    `->>` operator first (the Bash tool's args are stored as
+    `{"command": "<bash>"}`), then ilike on the extracted text. Scopes the
+    query to tool_name='Bash' since command-line evidence (verify_pr.sh /
+    gh pr / git cat-file) only comes from Bash invocations.
+
     Caller's responsibility to filter further (PR# substring match, session match).
     """
     params: dict[str, str] = {
         "select": "id,turn_id,tool_name,tool_args_json,started_at",
-        "tool_args_json": f"ilike.*{pattern}*",
+        "tool_name": "eq.Bash",
+        "tool_args_json->>command": f"ilike.*{pattern}*",
         "order": "started_at.desc",
         "limit": "20",
     }

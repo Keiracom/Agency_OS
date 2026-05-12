@@ -41,6 +41,8 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
+import os
+import subprocess
 import sys
 from collections.abc import Iterable
 from pathlib import Path
@@ -300,7 +302,35 @@ def main(argv: list[str] | None = None) -> int:
         )
     )
     logger.info("done: %d ok / %d failed", ok, fail)
+    # Better Stack heartbeat (GOV-9 C resolution from PR-B #786): cognee
+    # service runs on localhost so external HTTP monitoring isn't viable;
+    # we observe successful ingest runs via heartbeat instead. Skip on
+    # dry-run + on any failure so the monitor only ticks on clean success.
+    if not args.dry_run and fail == 0 and ok > 0:
+        _heartbeat()
     return 0 if fail == 0 else 1
+
+
+def _heartbeat() -> None:
+    """Better Stack heartbeat ping — best-effort, env-var-gated.
+
+    Sent as the LAST step of main() on clean success only (no dry-run, no
+    failures). Mirrors the pattern in elliot_polling_loop.py::_heartbeat.
+    Missing env → skip; subprocess failure → log + drop. Never raises.
+    """
+    url = os.environ.get("BETTERSTACK_HB_COGNEE_PHASE1_INGEST", "")
+    if not url:
+        return
+    try:
+        subprocess.run(
+            ["curl", "-fsS", "-m", "5", url],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError) as exc:
+        logger.warning("BetterStack heartbeat ping failed: %s", exc)
 
 
 if __name__ == "__main__":

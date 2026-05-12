@@ -607,3 +607,102 @@ def test_r11_single_long_bullet_not_prose():
     # Either passes entirely or only flags non-prose issues.
     if out is not None:
         assert "prose paragraph" not in out["detail"]
+
+
+# ---------------------------------------------------------------------------
+# R13 — DECISION-MIRROR-TO-CEO
+# ---------------------------------------------------------------------------
+
+EXECUTION_CH = "C0B3QB0K1GQ"
+CEO_CH_R13 = "C0B2PM3TV0B"
+
+
+def test_r13_propose_with_inline_mirror_token_passes():
+    """Case 1: PROPOSE in #execution WITH inline mirror token → pass (no fire)."""
+    from src.bot_common.enforcer_deterministic import check_r13
+
+    msg = (
+        "[PROPOSE:elliot] Take ownership of the rate-limit detection P1. "
+        "Mirrored to #ceo for Dave visibility."
+    )
+    assert check_r13(msg, channel=EXECUTION_CH) is None
+
+
+def test_r13_propose_without_mirror_token_fires():
+    """Case 2: PROPOSE in #execution WITHOUT mirror token → fail (fires to #ceo)."""
+    from src.bot_common.enforcer_deterministic import check_r13
+
+    msg = (
+        "[PROPOSE:elliot] Need Dave decision on whether to proceed with the "
+        "destructive migration before the post-restart bundle ships."
+    )
+    out = check_r13(msg, channel=EXECUTION_CH)
+    assert out is not None
+    assert out["rule_number"] == 13
+    assert out["rule_name"] == "DECISION-MIRROR-TO-CEO"
+    assert "not escalated" in out["detail"]
+    assert out["fire_message"] == "Blocker in #execution not escalated — [paste message]"
+
+
+def test_r13_propose_in_ceo_is_noop():
+    """Case 3: PROPOSE in #ceo itself → no-op (rule only enforces #execution leak)."""
+    from src.bot_common.enforcer_deterministic import check_r13
+
+    msg = "[PROPOSE:elliot] Dave decision on the post-restart bundle ordering."
+    assert check_r13(msg, channel=CEO_CH_R13) is None
+
+
+def test_r13_non_propose_message_in_execution_is_noop():
+    """Case 4: non-PROPOSE message in #execution → no-op (rule only triggers on
+    decision-needed signals)."""
+    from src.bot_common.enforcer_deterministic import check_r13
+
+    msg = "Shipped PR #821 — CI green, awaiting peer FINAL on the diff."
+    assert check_r13(msg, channel=EXECUTION_CH) is None
+
+
+def test_r13_each_decision_trigger_phrase_fires_without_mirror():
+    """Spot-check every documented decision-needed trigger phrase fires when
+    no mirror token is present in #execution. Pins the regex shape against
+    accidental edits."""
+    from src.bot_common.enforcer_deterministic import check_r13
+
+    phrases = [
+        "[PROPOSE:elliot] some decision",
+        "This is a Dave decision",
+        "CEO call required here",
+        "Standing for Dave reply",
+        "Blocker requires Dave verbatim",
+        "Blocker requires CEO ratification",
+    ]
+    for p in phrases:
+        out = check_r13(p, channel=EXECUTION_CH)
+        assert out is not None, f"phrase did not fire R13: {p!r}"
+        assert out["rule_number"] == 13
+
+
+def test_r13_each_mirror_token_suppresses_fire():
+    """Spot-check every documented mirror-token form suppresses fire on a
+    decision-needed #execution post."""
+    from src.bot_common.enforcer_deterministic import check_r13
+
+    base = "[PROPOSE:elliot] something needs Dave decision."
+    tokens = [
+        "Mirrored to #ceo",
+        "Posting to #ceo now",
+        "[CEO-MIRROR: ts 1778628999]",
+        "#ceo mirror in flight",
+        "per R13",
+    ]
+    for t in tokens:
+        msg = f"{base} {t}"
+        out = check_r13(msg, channel=EXECUTION_CH)
+        assert out is None, f"token did not suppress R13: {t!r}"
+
+
+def test_r13_no_channel_defaults_to_pass():
+    """When channel is unknown / None, R13 must not fire — same convention as R11."""
+    from src.bot_common.enforcer_deterministic import check_r13
+
+    msg = "[PROPOSE:elliot] Dave decision needed."
+    assert check_r13(msg, channel=None) is None

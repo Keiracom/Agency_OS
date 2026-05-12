@@ -661,3 +661,79 @@ def check_r14(
         "fire_message": "Idle agents enumerated without dispatch — orchestrator "
         "action gap. [paste message]",
     }
+
+
+# ---------------------------------------------------------------------------
+# R13 — DECISION-MIRROR-TO-CEO
+# ---------------------------------------------------------------------------
+#
+# Per CEO directive ts ~1778628200 + dual-CTO (Max+Elliot) strict-zero
+# interpretation ts ~1778626830: an Elliot-orchestrator post to #execution
+# that signals a Dave-bound decision MUST contain an inline #ceo-mirror token
+# in the same message body. No cross-channel state, no timing window, no
+# fingerprint cache — pure content check on the #execution post itself.
+#
+# Pass: regex match for the mirror-reference token in the post body.
+# Fail: no token → fire to #ceo flagging unescalated blocker.
+
+# Trigger phrases — decision-needed signals (Elliot-orchestrator-bound).
+_R13_DECISION_NEEDED_RE = re.compile(
+    r"\[PROPOSE:elliot\]"
+    r"|Dave decision"
+    r"|CEO call"
+    r"|standing for (?:Dave|CEO)"
+    r"|blocker requires? (?:Dave|CEO)",
+    re.IGNORECASE,
+)
+
+# CEO-mirror token — inline acknowledgement that the post is already
+# mirrored to or coordinated with #ceo.
+_R13_CEO_MIRROR_TOKEN_RE = re.compile(
+    r"mirrored to #ceo"
+    r"|posting to #ceo"
+    r"|\[CEO-MIRROR"
+    r"|#ceo mirror"
+    r"|per R13",
+    re.IGNORECASE,
+)
+
+# R14 (KEI-34) already defines _R14_EXECUTION_CHANNEL_ID privately. We keep
+# this module-level alias because (a) R14's comment explicitly says
+# "duplicate is defensive against ordering — if R13 merges second it
+# reuses its own def", and (b) external callers of check_r13 / R13 docs
+# reference EXECUTION_CHANNEL_ID by that name. Both constants resolve to
+# the same channel id; no behavioural conflict.
+EXECUTION_CHANNEL_ID = _R14_EXECUTION_CHANNEL_ID
+
+
+def check_r13(text: str, *, channel: str | None = None) -> dict | None:
+    """R13 — DECISION-MIRROR-TO-CEO.
+
+    Strict-zero / inline-token interpretation (dual-CTO ratified):
+      - Applies only to messages on #execution (channel id C0B3QB0K1GQ).
+      - Fires when text matches DECISION_NEEDED but NOT CEO_MIRROR.
+      - No-op for #ceo posts (rule only enforces the #execution leak),
+        for non-decision messages, and for any message outside #execution.
+
+    Returns a violation dict for fire-to-#ceo, or None on pass / no-op.
+    """
+    if channel != EXECUTION_CHANNEL_ID:
+        return None
+    if not _R13_DECISION_NEEDED_RE.search(text):
+        return None
+    if _R13_CEO_MIRROR_TOKEN_RE.search(text):
+        return None
+    return {
+        "violation": True,
+        "rule_number": 13,
+        "rule_name": "DECISION-MIRROR-TO-CEO",
+        "detail": "Blocker in #execution not escalated — Dave-bound decision posted "
+        "to #execution without an inline #ceo-mirror token.",
+        "should_have": (
+            "Add an inline reference to the #ceo mirror in the same message body "
+            "(e.g. 'Mirrored to #ceo', 'Posting to #ceo', '[CEO-MIRROR:...]') OR "
+            "post the decision-needed escalation to #ceo first per the "
+            "R13-blocker-escalation runbook."
+        ),
+        "fire_message": "Blocker in #execution not escalated — [paste message]",
+    }

@@ -124,36 +124,11 @@ def collect_recent_memories(callsign: str) -> list[str]:
         return []
 
 
-def collect_recent_outbox(callsign: str) -> list[str]:
-    # /tmp is publicly writable — flagged by SonarCloud S5443. Resolution
-    # pending the systemic state_paths helper (Option A, Aiden + Elliot
-    # ratified 2026-05-12): a follow-up PR will introduce src/bot_common/
-    # state_paths.py::resolve_state_dir() returning $HOME/.local/state/
-    # agency-os/<callsign>/, and this function will rebase to use that path
-    # instead of /tmp. Until then S5443 fires here.
-    outbox = Path(f"/tmp/telegram-relay-{callsign}/outbox")
-    if not outbox.is_dir():
-        return []
-    try:
-        files = sorted(outbox.glob("*"), key=lambda p: p.stat().st_mtime, reverse=True)[:3]
-        out = []
-        for f in files:
-            try:
-                preview = f.read_text(errors="replace")[:120].replace("\n", " ")
-                out.append(f"TG-OUT: {preview}")
-            except OSError:
-                continue
-        return out
-    except OSError:
-        return []
-
-
 def compose_capsule(callsign: str) -> str:
     sections: list[tuple[str, list[str]]] = [
         ("HEARTBEAT", collect_heartbeat()),
         ("GIT", collect_git()),
         ("MEMORIES", collect_recent_memories(callsign)),
-        ("RECENT TG", collect_recent_outbox(callsign)),
     ]
     timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
     header = f"# Anti-Amnesia Capsule — {callsign}\n_Snapshot: {timestamp}_\n"

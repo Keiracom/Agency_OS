@@ -1,21 +1,19 @@
 """tests for scripts/anti_amnesia_capsule.py — Stream 4 Item #3 (capsule extension).
 
-Mocks subprocess / HEARTBEAT.md / Supabase / outbox to test:
+Mocks subprocess / HEARTBEAT.md / Supabase to test:
   - resolve_callsign env / IDENTITY.md / fallback
   - collect_heartbeat: missing / empty / multi-line strips + caps
   - collect_git: branch, dirty marker, commits
   - collect_recent_memories: no env vars / urllib error / ok path
-  - collect_recent_outbox: missing dir / empty / multi-file
   - compose_capsule: assembles sections, applies char cap, omits empty sections
   - write_capsule: writes to ~/.claude/capsules/<callsign>_capsule.md
-  - read_capsule: missing capsule returns 0; present capsule streams to stdout
+  - read_capsule: missing capsule is a silent no-op; present capsule streams
   - main: --read mode vs default write mode, both return 0 (best-effort)
 """
 
 from __future__ import annotations
 
 import importlib.util
-import io
 import sys
 import urllib.error
 from pathlib import Path
@@ -132,13 +130,6 @@ def test_collect_recent_memories_urllib_error_swallowed(capsule_mod, monkeypatch
         assert capsule_mod.collect_recent_memories("max") == []
 
 
-# collect_recent_outbox ──────────────────────────────────────────────────────
-
-
-def test_collect_recent_outbox_missing_dir(capsule_mod) -> None:
-    assert capsule_mod.collect_recent_outbox("ghost-callsign-xyz") == []
-
-
 # compose_capsule ────────────────────────────────────────────────────────────
 
 
@@ -146,7 +137,6 @@ def test_compose_capsule_assembles_sections(capsule_mod, monkeypatch) -> None:
     monkeypatch.setattr(capsule_mod, "collect_heartbeat", lambda: ["HB: thing"])
     monkeypatch.setattr(capsule_mod, "collect_git", lambda: ["BRANCH: main"])
     monkeypatch.setattr(capsule_mod, "collect_recent_memories", lambda c: [])
-    monkeypatch.setattr(capsule_mod, "collect_recent_outbox", lambda c: [])
     out = capsule_mod.compose_capsule("max")
     assert "Anti-Amnesia Capsule — max" in out
     assert "## HEARTBEAT" in out
@@ -159,7 +149,6 @@ def test_compose_capsule_applies_char_cap(capsule_mod, monkeypatch) -> None:
     monkeypatch.setattr(capsule_mod, "collect_heartbeat", lambda: long_hb)
     monkeypatch.setattr(capsule_mod, "collect_git", lambda: [])
     monkeypatch.setattr(capsule_mod, "collect_recent_memories", lambda c: [])
-    monkeypatch.setattr(capsule_mod, "collect_recent_outbox", lambda c: [])
     out = capsule_mod.compose_capsule("max")
     assert len(out) <= capsule_mod.MAX_CAPSULE_CHARS
     assert out.endswith("[truncated]")
@@ -175,7 +164,6 @@ def test_write_capsule_creates_file(capsule_mod, isolated_home, monkeypatch) -> 
     monkeypatch.setattr(capsule_mod, "collect_heartbeat", lambda: ["HB: x"])
     monkeypatch.setattr(capsule_mod, "collect_git", lambda: [])
     monkeypatch.setattr(capsule_mod, "collect_recent_memories", lambda c: [])
-    monkeypatch.setattr(capsule_mod, "collect_recent_outbox", lambda c: [])
     capsule_mod.write_capsule("max")
     path = isolated_home / ".claude" / "capsules" / "max_capsule.md"
     assert path.exists()
@@ -211,7 +199,6 @@ def test_main_write_mode_returns_zero(capsule_mod, isolated_home, monkeypatch) -
     monkeypatch.setattr(capsule_mod, "collect_heartbeat", lambda: [])
     monkeypatch.setattr(capsule_mod, "collect_git", lambda: ["BRANCH: x"])
     monkeypatch.setattr(capsule_mod, "collect_recent_memories", lambda c: [])
-    monkeypatch.setattr(capsule_mod, "collect_recent_outbox", lambda c: [])
     assert capsule_mod.main() == 0
 
 

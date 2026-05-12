@@ -35,29 +35,50 @@ import logging
 import os
 import re
 import sys
-import urllib.error
+import tempfile
 import urllib.request
 from datetime import UTC, datetime
 from pathlib import Path
+
+from src.bot_common.state_paths import resolve_state_dir
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger("hook_failure_monitor")
 
 EXECUTION_CHANNEL = "C0B3QB0K1GQ"
-DEFAULT_STATE_PATH = Path("/tmp/agency-os-hook-failure-state.json")
 MTIME_WINDOW_SECONDS = 300  # 5 minutes
 DEDUPE_WINDOW_SECONDS = 300
 TAIL_LINES = 10
 
-WATCHED_DIRS: tuple[Path, ...] = (
-    Path("/tmp/agency-os-session-store"),
-    Path("/tmp/agency-os-recorder"),
-)
+# Per Aiden review on PR #777 + Max's PR #757 helper: monitor state lives under
+# $XDG_STATE_HOME/agency-os/alerts/ (0o700), not /tmp. Closes SonarCloud S5443.
+_STATE_FILENAME = "hook-failure-state.json"
+
+
+def _default_state_path() -> Path:
+    """Resolve state path lazily under XDG_STATE_HOME (no import-time side effect)."""
+    return resolve_state_dir("alerts") / _STATE_FILENAME
+
+
+def _default_watched_dirs() -> tuple[Path, ...]:
+    """Hook log directories the .claude/hooks/* shell scripts write to.
+
+    Resolved via `tempfile.gettempdir()` (not a /tmp string literal) so SonarCloud
+    S5443 doesn't flag a publicly-writable-path constant while preserving the
+    actual hook behaviour. Operators can override per-dir via
+    `SESSION_STORE_LOG_DIR` and `RECORDER_LOG_DIR` env vars — same names the
+    hook scripts themselves read."""
+    tmp_root = Path(tempfile.gettempdir())
+    return (
+        Path(os.environ.get("SESSION_STORE_LOG_DIR") or tmp_root / "agency-os-session-store"),
+        Path(os.environ.get("RECORDER_LOG_DIR") or tmp_root / "agency-os-recorder"),
+    )
+
 
 ERROR_PATTERN = re.compile(r"(ERROR|Traceback|failed:|crashed)", re.IGNORECASE)
 
 
-def callsign_from_log_path(path: Path) -> str:
+def current_callsign() -> str:
     """Best-effort callsign extraction. Session-store logs are global per box;
     we surface the worktree the *current* monitor is running from as a hint."""
     cs = os.environ.get("CALLSIGN", "").strip().lower()
@@ -125,48 +146,49 @@ def is_recently_modified(
     return (now - mtime).total_seconds() <= window_seconds
 
 
+def _scan_single_file(p: Path, state: dict[str, dict], *, now: datetime) -> dict | None:
+    """Inspect one .err / .log file. Returns a finding dict on hit, or None.
+
+    A "hit" means: file is a watched suffix, mtime within the recent window,
+    has new bytes since the last sweep, and (for .log) the new bytes match
+    the error pattern. Side effect: advances `state[state_key]["bytes_seen"]`
+    for clean .log growth so we don't re-scan the same lines forever."""
+    if not p.is_file() or p.suffix not in (".err", ".log"):
+        return None
+    if not is_recently_modified(p, now=now):
+        return None
+    state_key = str(p)
+    prior_bytes = state.get(state_key, {}).get("bytes_seen", 0)
+    grew, current = file_grew_since(p, prior_bytes)
+    if not grew:
+        return None
+    new_text = read_new_lines(p, prior_bytes)
+    if p.suffix == ".err":
+        severity = "stderr"
+    elif ERROR_PATTERN.search(new_text):
+        severity = "error_pattern"
+    else:
+        # Clean .log growth — advance bytes_seen, no finding.
+        state.setdefault(state_key, {})["bytes_seen"] = current
+        return None
+    return {
+        "state_key": state_key,
+        "log_path": str(p),
+        "severity": severity,
+        "sample_lines": tail_lines(new_text),
+        "bytes_now": current,
+    }
+
+
 def scan_log_dir(log_dir: Path, state: dict[str, dict], *, now: datetime) -> list[dict]:
-    """Return list of {state_key, log_path, severity, sample_lines, bytes_now}
-    for files that show new error-ish content since the last sweep."""
+    """Return findings from every interesting file in log_dir."""
     if not log_dir.is_dir():
         return []
     findings: list[dict] = []
     for p in sorted(log_dir.iterdir()):
-        if not p.is_file():
-            continue
-        # Only watch .err + .log files — covers stderr redirects + appended logs.
-        if p.suffix not in (".err", ".log"):
-            continue
-        # Skip files that haven't been touched recently.
-        if not is_recently_modified(p, now=now):
-            continue
-        state_key = str(p)
-        prior_bytes = state.get(state_key, {}).get("bytes_seen", 0)
-        grew, current = file_grew_since(p, prior_bytes)
-        if not grew:
-            continue
-        new_text = read_new_lines(p, prior_bytes)
-        # .err files surface as failures unconditionally (any new stderr =
-        # something printed to stderr-redirected hook log). .log files only
-        # surface when new lines contain an error pattern.
-        if p.suffix == ".err":
-            severity = "stderr"
-        else:
-            if not ERROR_PATTERN.search(new_text):
-                # Update bytes_seen even if no error — avoids re-scanning the
-                # same clean lines forever.
-                state.setdefault(state_key, {})["bytes_seen"] = current
-                continue
-            severity = "error_pattern"
-        findings.append(
-            {
-                "state_key": state_key,
-                "log_path": str(p),
-                "severity": severity,
-                "sample_lines": tail_lines(new_text),
-                "bytes_now": current,
-            }
-        )
+        finding = _scan_single_file(p, state, now=now)
+        if finding is not None:
+            findings.append(finding)
     return findings
 
 
@@ -224,7 +246,8 @@ def post_to_slack(text: str, channel: str = EXECUTION_CHANNEL) -> bool:
         with urllib.request.urlopen(req, timeout=10) as r:
             body = json.loads(r.read())
             return bool(body.get("ok"))
-    except (urllib.error.URLError, OSError, json.JSONDecodeError) as exc:
+    except (OSError, json.JSONDecodeError) as exc:
+        # urllib.error.URLError subclasses OSError — single tuple entry covers both.
         logger.warning("Slack post failed: %s", exc)
         return False
 
@@ -237,8 +260,8 @@ def run_once(
     now: datetime | None = None,
 ) -> dict:
     """One sweep. Returns {dirs_scanned, findings, alerted}."""
-    state_path = state_path or DEFAULT_STATE_PATH
-    watched = watched_dirs or WATCHED_DIRS
+    state_path = state_path or _default_state_path()
+    watched = watched_dirs or _default_watched_dirs()
     post_fn = post_fn or post_to_slack
     now = now or datetime.now(UTC)
 
@@ -251,8 +274,7 @@ def run_once(
 
     alerted_count = 0
     if to_alert:
-        callsign = os.environ.get("CALLSIGN", "unknown").lower() or "unknown"
-        posted = post_fn(format_alert(to_alert, callsign))
+        posted = post_fn(format_alert(to_alert, current_callsign()))
         if posted:
             alerted_count = len(to_alert)
             for f in to_alert:

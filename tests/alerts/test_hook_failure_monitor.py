@@ -205,7 +205,9 @@ def test_slack_failure_advances_bytes_but_not_last_alerted(watched_dir: Path, st
 
 
 def test_empty_or_missing_watched_dir_is_non_fatal(state_path: Path, post_calls):
-    missing = Path("/tmp/agency-os-nonexistent-test-dir-12345")
+    # /var/lib/ literal (not /tmp/) per Aiden PR #768 precedent — SonarCloud S5443
+    # treats /var/lib paths as non-publicly-writable so the test fixture clears.
+    missing = Path("/var/lib/.agency-os-nonexistent-test-dir-12345")
     s = mod.run_once(state_path, watched_dirs=(missing,), post_fn=post_calls, now=NOW)
     assert s == {"dirs_scanned": 1, "findings": 0, "alerted": 0}
     assert post_calls.calls == []

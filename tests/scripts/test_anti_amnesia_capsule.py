@@ -176,17 +176,17 @@ def test_write_capsule_creates_file(capsule_mod, isolated_home, monkeypatch) -> 
     monkeypatch.setattr(capsule_mod, "collect_git", lambda: [])
     monkeypatch.setattr(capsule_mod, "collect_recent_memories", lambda c: [])
     monkeypatch.setattr(capsule_mod, "collect_recent_outbox", lambda c: [])
-    assert capsule_mod.write_capsule("max") == 0
+    capsule_mod.write_capsule("max")
     path = isolated_home / ".claude" / "capsules" / "max_capsule.md"
     assert path.exists()
     assert "HB: x" in path.read_text()
 
 
-def test_read_capsule_missing_returns_zero(capsule_mod, isolated_home, monkeypatch) -> None:
+def test_read_capsule_missing_is_noop(capsule_mod, isolated_home, monkeypatch) -> None:
     monkeypatch.setattr(
         capsule_mod, "CAPSULE_DIR", isolated_home / ".claude" / "capsules"
     )
-    assert capsule_mod.read_capsule("ghost") == 0
+    capsule_mod.read_capsule("ghost")  # silent no-op
 
 
 def test_read_capsule_streams_to_stdout(
@@ -196,7 +196,7 @@ def test_read_capsule_streams_to_stdout(
     cdir.mkdir(parents=True)
     (cdir / "max_capsule.md").write_text("CAPSULE BODY 123")
     monkeypatch.setattr(capsule_mod, "CAPSULE_DIR", cdir)
-    assert capsule_mod.read_capsule("max") == 0
+    capsule_mod.read_capsule("max")
     captured = capsys.readouterr()
     assert "CAPSULE BODY 123" in captured.out
     assert "ANTI-AMNESIA CAPSULE" in captured.out

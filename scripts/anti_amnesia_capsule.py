@@ -52,7 +52,7 @@ def resolve_callsign() -> str:
     for candidate in (Path.cwd() / "IDENTITY.md", Path.cwd().parent / "IDENTITY.md"):
         if candidate.exists():
             match = re.search(
-                r"^\s*\*\*?CALLSIGN:?\*\*?\s*([A-Za-z]\w*)",
+                r"^\s*\*\*?CALLSIGN:?\*\*?\s*([a-z]\w*)",
                 candidate.read_text(),
                 re.IGNORECASE | re.MULTILINE,
             )
@@ -65,7 +65,7 @@ def _run(args: list[str], timeout: int = 5) -> str:
     try:
         result = subprocess.run(args, capture_output=True, text=True, timeout=timeout)
         return result.stdout.strip()
-    except (subprocess.TimeoutExpired, FileNotFoundError, OSError) as exc:
+    except (subprocess.TimeoutExpired, OSError) as exc:
         logger.warning("subprocess %s failed: %s", args[:2], exc)
         return ""
 
@@ -119,12 +119,18 @@ def collect_recent_memories(callsign: str) -> list[str]:
         with urllib.request.urlopen(req, timeout=5) as r:
             rows = _json.loads(r.read())
         return [f"MEM[{r['source_type']}]: {r['content'][:120]}" for r in rows]
-    except (urllib.error.URLError, _json.JSONDecodeError, OSError, KeyError, TypeError) as exc:
+    except (_json.JSONDecodeError, OSError, KeyError, TypeError) as exc:
         logger.warning("agent_memories query failed: %s", exc)
         return []
 
 
 def collect_recent_outbox(callsign: str) -> list[str]:
+    # /tmp is publicly writable — flagged by SonarCloud S5443. Resolution
+    # pending the systemic state_paths helper (Option A, Aiden + Elliot
+    # ratified 2026-05-12): a follow-up PR will introduce src/bot_common/
+    # state_paths.py::resolve_state_dir() returning $HOME/.local/state/
+    # agency-os/<callsign>/, and this function will rebase to use that path
+    # instead of /tmp. Until then S5443 fires here.
     outbox = Path(f"/tmp/telegram-relay-{callsign}/outbox")
     if not outbox.is_dir():
         return []
@@ -167,30 +173,26 @@ def capsule_path(callsign: str) -> Path:
     return CAPSULE_DIR / f"{callsign}_capsule.md"
 
 
-def write_capsule(callsign: str) -> int:
+def write_capsule(callsign: str) -> None:
     try:
         CAPSULE_DIR.mkdir(parents=True, exist_ok=True)
         path = capsule_path(callsign)
         path.write_text(compose_capsule(callsign))
         print(f"[capsule] wrote {path} ({path.stat().st_size}B)", file=sys.stderr)
-        return 0
     except OSError as exc:
         logger.warning("capsule write failed: %s", exc)
-        return 0  # never block compaction
 
 
-def read_capsule(callsign: str) -> int:
+def read_capsule(callsign: str) -> None:
     path = capsule_path(callsign)
     if not path.exists():
-        return 0
+        return
     try:
         sys.stdout.write("\n=== ANTI-AMNESIA CAPSULE ===\n")
         sys.stdout.write(path.read_text())
         sys.stdout.write("\n=== END CAPSULE ===\n")
-        return 0
     except OSError as exc:
         logger.warning("capsule read failed: %s", exc)
-        return 0
 
 
 def main() -> int:
@@ -199,8 +201,10 @@ def main() -> int:
     args = parser.parse_args()
     callsign = resolve_callsign()
     if args.read:
-        return read_capsule(callsign)
-    return write_capsule(callsign)
+        read_capsule(callsign)
+    else:
+        write_capsule(callsign)
+    return 0  # best-effort — never block
 
 
 if __name__ == "__main__":

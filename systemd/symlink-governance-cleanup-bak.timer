@@ -1,0 +1,13 @@
+[Unit]
+Description=KEI-12 symlink-governance cleanup-bak timer (one-shot at 24h post-swap)
+
+[Timer]
+OnCalendar=2026-05-13 10:51:00 UTC
+AccuracySec=1min
+# Persistent=false: don't fire late if the box is off at the trigger time.
+# If we miss the window, operator runs --cleanup-bak manually + this unit
+# can be removed (it's a one-shot, no recurring schedule).
+Persistent=false
+
+[Install]
+WantedBy=timers.target

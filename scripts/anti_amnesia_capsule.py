@@ -124,8 +124,28 @@ def collect_recent_memories(callsign: str) -> list[str]:
         return []
 
 
+def collect_linear_beads_reminders() -> list[str]:
+    """Static post-/compact reminders that the Linear+Beads workflow exists.
+
+    Per Dave directive ts 1778568850 Outcome 4 (Elliot dispatch ts 1778569xxx):
+    a session that survived /compact may have lost the AGENTS.md + CLAUDE.md
+    Beads-integration text from its working context. These two lines remind
+    the resuming agent to query Linear at session start and to run `bd ready`
+    before claiming new work.
+    """
+    return [
+        "Linear board: https://linear.app/keiracom — query at session start.",
+        "Beads: run `bd ready` before claiming any work.",
+    ]
+
+
 def compose_capsule(callsign: str) -> str:
+    # LINEAR + BEADS reminders come first so they survive the 1500-char
+    # truncation cap even when downstream sections push the body over budget.
+    # They're the post-/compact safety net per Dave directive ts 1778568850
+    # Outcome 4 — most-protected content.
     sections: list[tuple[str, list[str]]] = [
+        ("LINEAR + BEADS", collect_linear_beads_reminders()),
         ("HEARTBEAT", collect_heartbeat()),
         ("GIT", collect_git()),
         ("MEMORIES", collect_recent_memories(callsign)),

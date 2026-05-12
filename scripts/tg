@@ -8,7 +8,7 @@ their messages land in Slack instead.
 Usage (preserved from pre-cutover tg):
     tg "msg"                 → #execution
     tg -g "msg"              → #execution (group)
-    tg -d "msg"              → #ceo (prime callsigns) | #execution (clones)
+    tg -d "msg"              → #ceo (prime callsigns) | exit 2 reject (clones)
     tg -c <channel> "msg"    → named channel ("execution", "ceo", ...) or ID
     echo "msg" | tg          → reads from stdin
 
@@ -47,8 +47,20 @@ def translate(argv: list[str], callsign: str) -> list[str]:
         if a in ("-g", "--group"):
             out.append("-g")
         elif a in ("-d", "--dm"):
-            channel = "ceo" if callsign.lower() in PRIME_CALLSIGNS else "execution"
-            out.extend(["-c", channel])
+            # Clone callsigns (atlas/orion/scout) have no DM privileges — they
+            # post to #execution only per Dave directive #6 worktree allowlist.
+            # Earlier behaviour silently fell back to #execution, hiding the
+            # intent mismatch. Reject explicitly so the caller sees the
+            # contract violation.
+            if callsign.lower() not in PRIME_CALLSIGNS:
+                print(
+                    f"tg: -d (DM routing) not supported for clone callsign "
+                    f"'{callsign}'. Clones post to #execution only. Use no "
+                    f"flag or '-g' instead.",
+                    file=sys.stderr,
+                )
+                sys.exit(2)
+            out.extend(["-c", "ceo"])
         elif a in ("-c", "--chat", "--channel"):
             if i + 1 >= len(argv):
                 print("tg: -c requires a channel name or ID", file=sys.stderr)

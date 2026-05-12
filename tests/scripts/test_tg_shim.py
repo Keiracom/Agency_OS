@@ -1,7 +1,7 @@
 """Tests for scripts/tg — Slack relay shim (callsign-fix Phase 2).
 
 Verifies:
-    - CLI flag translation (-g, -d prime, -d clone, -c, no-flag default)
+    - CLI flag translation (-g, -d prime, -d clone reject, -c, no-flag default)
     - stdin pipe pass-through
     - exit code propagation from slack_relay.py
     - callsign attribution preserved (via slack_relay.py, not re-prepended in tg)
@@ -42,10 +42,21 @@ def test_translate_dm_prime_routes_to_ceo():
         assert tg.translate(["-d", "msg"], callsign) == ["-c", "ceo", "msg"], callsign
 
 
-def test_translate_dm_clone_falls_back_to_execution():
+def test_translate_dm_clone_rejects_with_exit_2(capsys):
+    """Clones (atlas/orion/scout) have no DM privileges — -d must reject.
+
+    Falling back to #execution silently was the original PR #712 behaviour;
+    today's contract (Elliot dispatch 2026-05-12, concurred ts 1778544356.893729)
+    is explicit rejection so the operator sees the intent mismatch.
+    """
     tg = _load_tg()
     for callsign in ("atlas", "orion", "scout"):
-        assert tg.translate(["-d", "msg"], callsign) == ["-c", "execution", "msg"], callsign
+        with pytest.raises(SystemExit) as exc:
+            tg.translate(["-d", "msg"], callsign)
+        assert exc.value.code == 2, callsign
+        err = capsys.readouterr().err
+        assert "not supported for clone callsign" in err, callsign
+        assert callsign in err, callsign
 
 
 def test_translate_channel_flag_named_and_id():

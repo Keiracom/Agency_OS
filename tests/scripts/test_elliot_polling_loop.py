@@ -252,6 +252,50 @@ def test_compose_dispatches_linear_stale_escalates_to_ceo(loop_mod):
     assert "KEI-99" in msg
 
 
+# Agency_OS-3gy: Linear returns assignee=null on unassigned issues (key
+# present, value None). Empirical crash on next polling cycle post the bd
+# subprocess + asyncpg fixes (PR #792). Trace: AttributeError 'NoneType'
+# object has no attribute 'get' in compose_dispatches.
+
+
+def test_compose_dispatches_linear_stale_handles_null_assignee(loop_mod):
+    """Linear-stale issue with assignee=None (unassigned) must not crash."""
+    sig = loop_mod.CycleSignals(
+        bd_ready=[],
+        linear_stale=[
+            {
+                "identifier": "KEI-100",
+                "title": "Unassigned stuck",
+                "updatedAt": "2026-05-11T00:00:00Z",
+                "assignee": None,  # ← the empirical Linear shape
+            },
+        ],
+        idle_agents=[],
+        prefect_failures=[],
+    )
+    dispatches = loop_mod.compose_dispatches(sig)
+    assert len(dispatches) == 1
+    chan, msg = dispatches[0]
+    assert chan == "#ceo"
+    assert "KEI-100" in msg
+    assert "assignee ?" in msg  # default '?' when assignee dict has no name
+
+
+def test_compose_dispatches_linear_stale_handles_missing_assignee_key(loop_mod):
+    """Linear-stale issue with no assignee key at all also must not crash."""
+    sig = loop_mod.CycleSignals(
+        bd_ready=[],
+        linear_stale=[
+            {"identifier": "KEI-101", "title": "No assignee key", "updatedAt": "x"},
+        ],
+        idle_agents=[],
+        prefect_failures=[],
+    )
+    dispatches = loop_mod.compose_dispatches(sig)
+    assert len(dispatches) == 1
+    assert "KEI-101" in dispatches[0][1]
+
+
 def test_compose_dispatches_prefect_failures_escalate_to_ceo(loop_mod):
     sig = loop_mod.CycleSignals(
         bd_ready=[],

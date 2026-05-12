@@ -284,7 +284,10 @@ def compose_dispatches(signals: CycleSignals) -> list[tuple[str, str]]:
     if signals.linear_stale:
         lines = [
             f"  - {it.get('identifier', '?')} {it.get('title', '?')} "
-            f"(last update {it.get('updatedAt', '?')}, assignee {it.get('assignee', {}).get('name', '?')})"
+            # `(it.get('assignee') or {})` — Linear returns assignee=null on
+            # unassigned issues (key present, value None); plain default-{}
+            # access returns None and .get('name') raises AttributeError.
+            f"(last update {it.get('updatedAt', '?')}, assignee {(it.get('assignee') or {}).get('name', '?')})"
             for it in signals.linear_stale[:10]
         ]
         msg = (

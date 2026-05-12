@@ -25,6 +25,46 @@ import argparse
 import asyncio
 import sys
 import traceback
+from pathlib import Path
+
+# Make the repo root importable so `from src.cognee.client import ...` works
+# when this script is invoked directly. The script lives at scripts/, so the
+# repo root is two parents up from __file__.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+# --- .env pre-flight ---
+# Load /home/elliotbot/.config/agency-os/.env if not already in environment.
+# Cognee 1.0.9 reads pydantic-settings discrete env vars (DB_HOST, DB_PORT,
+# DB_USERNAME, DB_PASSWORD, DB_NAME and VECTOR_DB_* equivalents) — not a single
+# URL. Our .env stores connection info as DATABASE_URL_MIGRATIONS (postgres URL,
+# port 5432 / session mode). Parse it and inject the discrete vars Cognee
+# expects when they're absent from os.environ.
+import os
+from urllib.parse import urlparse
+
+
+def _inject_cognee_db_vars() -> None:
+    db_url = os.environ.get("DATABASE_URL_MIGRATIONS") or os.environ.get("DATABASE_URL")
+    if not db_url:
+        return
+    p = urlparse(db_url)
+    discrete = {
+        "DB_HOST": p.hostname or "",
+        "DB_PORT": str(p.port or ""),
+        "DB_USERNAME": p.username or "",
+        "DB_PASSWORD": p.password or "",
+        "DB_NAME": p.path.lstrip("/") or "postgres",
+        "VECTOR_DB_HOST": p.hostname or "",
+        "VECTOR_DB_PORT": str(p.port or ""),
+        "VECTOR_DB_USERNAME": p.username or "",
+        "VECTOR_DB_PASSWORD": p.password or "",
+        "VECTOR_DB_NAME": p.path.lstrip("/") or "postgres",
+    }
+    for k, v in discrete.items():
+        os.environ.setdefault(k, v)
+
+
+_inject_cognee_db_vars()
 
 # Fixed per Phase 0 directive (Elliot dispatch ts 1778562982 step 5).
 SMOKE_CONTENT = (
@@ -37,6 +77,16 @@ EXPECTED_TOKEN = "domain_metrics_by_categories"
 
 async def _run(org_id: str, app_id: str, agent_id: str) -> int:
     from src.cognee.client import add, cognify, search
+
+    # One-time bootstrap of Cognee's relational schema. Cognee's HTTP server
+    # (cognee.api.client:app) calls this at startup; the in-process SDK path
+    # we use in this wrapper needs it explicitly. Idempotent — safe on re-run.
+    from cognee.infrastructure.databases.relational.create_db_and_tables import (
+        create_db_and_tables,
+    )
+
+    print("[smoke] bootstrap → cognee.create_db_and_tables() (idempotent)")
+    await create_db_and_tables()
 
     print(f"[smoke] add → dataset={org_id}__{app_id} agent={agent_id} node_set=[test]")
     await add(

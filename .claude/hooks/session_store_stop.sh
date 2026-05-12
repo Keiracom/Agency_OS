@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
-# Drevon PR-A — Stop hook that closes the open session row (status='closed').
-# Companion to .claude/hooks/session_store_posttooluse.sh which opens it.
-# Best-effort recording — always exits 0. NOT yet wired in .claude/settings.json
-# (follow-up).
+# Drevon PR-A + PR-C clean-close — Stop hook closes the open session row with
+# status='closed_clean' so PR-C resolver can pick the UUID back up via
+# `claude --resume <uuid>` on the next launch. status='closed' is now reserved
+# for caller-initiated graceful closes that should NOT resume (none today).
+# Watchdog continues to mark unresponsive rows status='stuck'.
+# Best-effort recording — always exits 0.
 
 set -u
 
@@ -58,7 +60,7 @@ if os.path.exists(session_state):
         from uuid import UUID
         sid = open(session_state).read().strip().split(':')[0]
         if sid:
-            record_session_end(session_id=UUID(sid), status='closed')
+            record_session_end(session_id=UUID(sid), status='closed_clean')
         os.remove(session_state)
     except Exception as e:
         sys.stderr.write(f'session close failed: {e}\n')

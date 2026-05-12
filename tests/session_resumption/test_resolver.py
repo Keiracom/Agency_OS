@@ -42,16 +42,29 @@ def test_resolve_filters_by_callsign(captured_sb_get):
     assert captured_sb_get["params"]["callsign"] == "eq.max"
 
 
-def test_resolve_excludes_non_active_status(captured_sb_get):
+def test_resolve_filters_to_resumable_statuses(captured_sb_get):
+    """PR-C clean-close: status IN ('active', 'closed_clean'). Stuck/closed
+    sessions are still skipped; closed_clean rows (planned restart) ARE
+    resumable so the next launcher exec can `claude --resume <uuid>`."""
     resolver.resolve_session_uuid("elliot")
-    # Resolver must explicitly bound to active so stuck/closed sessions are skipped.
-    assert captured_sb_get["params"]["status"] == "eq.active"
+    assert captured_sb_get["params"]["status"] == "in.(active,closed_clean)"
 
 
-def test_resolve_excludes_ended_and_deleted_rows(captured_sb_get):
+def test_resolve_does_not_filter_ended_at(captured_sb_get):
+    """closed_clean rows have ended_at set by the Stop hook but are still
+    resumable, so the resolver must NOT add ended_at IS NULL."""
     resolver.resolve_session_uuid("scout")
-    assert captured_sb_get["params"]["ended_at"] == "is.null"
+    assert "ended_at" not in captured_sb_get["params"]
     assert captured_sb_get["params"]["deleted_at"] == "is.null"
+
+
+def test_resolve_returns_uuid_from_closed_clean_row(captured_sb_get):
+    """Empirical contract: planned tmux kill → Stop hook writes
+    status='closed_clean' + ended_at → next launcher resolves the same UUID
+    so `claude --resume` actually fires."""
+    uid = str(uuid4())
+    captured_sb_get["response"] = [{"session_uuid": uid}]
+    assert resolver.resolve_session_uuid("aiden") == uid
 
 
 def test_resolve_requires_session_uuid_present(captured_sb_get):

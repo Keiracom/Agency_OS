@@ -165,6 +165,18 @@ def test_record_session_end_patches_sessions_row(captured_patches) -> None:
     assert "ended_at" in payload
 
 
+def test_record_session_end_defaults_to_closed_clean(captured_patches) -> None:
+    """PR-C clean-close fix: planned restarts (Stop hook) must default to
+    status='closed_clean' so the next launcher invocation resolves the UUID
+    and exec's `claude --resume <uuid>`. Regression guard: a previous default
+    of 'closed' silently broke resume on every clean tmux kill."""
+    sid = UUID("00000000-0000-0000-0000-000000000006")
+    recorder.record_session_end(session_id=sid)
+    _table, _params, payload = captured_patches[0]
+    assert payload["status"] == "closed_clean"
+    assert "ended_at" in payload
+
+
 def test_mark_session_stuck(captured_patches) -> None:
     sid = UUID("00000000-0000-0000-0000-000000000005")
     recorder.mark_session_stuck(session_id=sid)

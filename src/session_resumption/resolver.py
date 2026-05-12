@@ -1,8 +1,11 @@
 """resolver.py — read + claim Claude Code session_uuid for a callsign.
 
 Read path (resolve_session_uuid): PostgREST GET on sessions, filtered to
-watchdog-fresh + status='active' + session_uuid IS NOT NULL, ordered by
-started_at desc, limit 1. Returns the session_uuid string or None.
+watchdog-fresh + status IN ('active', 'closed_clean') + session_uuid IS NOT
+NULL, ordered by started_at desc, limit 1. Returns the session_uuid string
+or None. 'closed_clean' rows are planned-restart targets — the Stop hook
+writes that status to preserve the UUID for `claude --resume` on the next
+launcher invocation. 'stuck' and 'closed' rows are excluded.
 
 Write path (claim_session_uuid): delegates to src.session_store.recorder
 .record_session_start to keep schema knowledge in one place. Returns the
@@ -21,6 +24,7 @@ from src.evo.supabase_client import sb_get
 logger = logging.getLogger("session_resumption.resolver")
 
 DEFAULT_FRESH_MINUTES = 30
+RESUMABLE_STATUSES = ("active", "closed_clean")
 
 
 def resolve_session_uuid(
@@ -29,16 +33,18 @@ def resolve_session_uuid(
 ) -> str | None:
     """Return the most-recent resumable session_uuid for callsign, or None.
 
-    Resumable = ended_at IS NULL AND status='active' AND session_uuid IS NOT
-    NULL AND started_at >= NOW() - INTERVAL fresh_minutes. Best-effort: any
-    Supabase failure logs + returns None so the launcher falls through to a
-    fresh session rather than blocking.
+    Resumable = status IN ('active', 'closed_clean') AND session_uuid IS NOT
+    NULL AND started_at >= NOW() - INTERVAL fresh_minutes. ended_at is NOT
+    filtered — closed_clean rows have ended_at set by the Stop hook but are
+    still resumable targets for planned restarts (PR-C clean-close bug fix).
+    Stuck/closed rows are excluded by status. Best-effort: any Supabase
+    failure logs + returns None so the launcher falls through to a fresh
+    session rather than blocking.
     """
     cutoff_iso = (datetime.now(UTC) - timedelta(minutes=fresh_minutes)).isoformat()
     params = {
         "callsign": f"eq.{callsign}",
-        "status": "eq.active",
-        "ended_at": "is.null",
+        "status": f"in.({','.join(RESUMABLE_STATUSES)})",
         "session_uuid": "not.is.null",
         "started_at": f"gte.{cutoff_iso}",
         "deleted_at": "is.null",

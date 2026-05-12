@@ -202,8 +202,10 @@ def record_tool_call(
     return lid
 
 
-def record_session_end(session_id: UUID, *, status: str = "closed") -> None:
-    """Close a sessions row."""
+def record_session_end(session_id: UUID, *, status: str = "closed_clean") -> None:
+    """Close a sessions row. Default 'closed_clean' preserves UUID for PR-C
+    `claude --resume` on planned restarts. Pass status='closed' for graceful
+    closes that should NOT resume (no current caller does this)."""
     _safe_patch(
         "sessions",
         {"id": f"eq.{session_id}"},

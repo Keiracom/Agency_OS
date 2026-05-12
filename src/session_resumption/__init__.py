@@ -21,8 +21,10 @@ Design notes:
   - Freshness measured from sessions.started_at (no last_activity column on
     sessions per current schema). Watchdog complements this by reaping rows
     that exceed stuck_minutes regardless of activity.
-  - Resolver excludes status='stuck' and status='closed' explicitly so
-    clear_stuck_sessions takes effect immediately.
+  - Resolver accepts status IN ('active', 'closed_clean') — both are
+    resumable. 'closed_clean' rows are written by the Stop hook on planned
+    tmux kill / clean restart and preserve the session_uuid for `claude
+    --resume` (PR-C clean-close fix). 'stuck' and 'closed' are excluded.
   - All DB writes are best-effort: if Supabase is unreachable the launcher
     must still spawn `claude` with a fresh UUID rather than block startup.
 """

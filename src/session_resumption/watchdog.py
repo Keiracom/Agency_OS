@@ -1,9 +1,14 @@
 """watchdog.py — mark stale active sessions as status='stuck'.
 
-Periodic sweep entry point. Finds sessions where ended_at IS NULL AND
-started_at < NOW() - INTERVAL stuck_minutes, then calls
-session_store.recorder.mark_session_stuck on each (which sets ended_at
-and status='stuck' atomically per row).
+Periodic sweep entry point. Finds sessions where status='active' AND
+ended_at IS NULL AND started_at < NOW() - INTERVAL stuck_minutes, then
+calls session_store.recorder.mark_session_stuck on each (which sets
+ended_at and status='stuck' atomically per row).
+
+PR-C clean-close note: rows with status='closed_clean' are LEFT ALONE.
+Those are planned-restart targets owned by the Stop hook + resolver pair.
+The resolver's started_at freshness window prevents resumption of stale
+closed_clean rows; no need for the watchdog to reap them.
 
 Called from .claude/hooks/session_resumption_watchdog.sh on a cadence
 chosen by the operator (cron / systemd timer / agent loop).

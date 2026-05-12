@@ -127,12 +127,17 @@
       {
         "hooks": [
           {
-            "command": "cd /home/elliotbot/clawd/Agency_OS \u0026\u0026 PYTHONPATH=/home/elliotbot/clawd/Agency_OS /home/elliotbot/clawd/venv/bin/python3 scripts/governance_router.py",
+            "command": "cd /home/elliotbot/clawd/Agency_OS && PYTHONPATH=/home/elliotbot/clawd/Agency_OS /home/elliotbot/clawd/venv/bin/python3 scripts/governance_router.py",
             "timeout": 10,
             "type": "command"
           },
           {
             "command": "bash /home/elliotbot/clawd/Agency_OS/.claude/hooks/stop_relay_hook.sh",
+            "timeout": 5,
+            "type": "command"
+          },
+          {
+            "command": "bash /home/elliotbot/clawd/Agency_OS/scripts/hooks/emit_ready_marker.sh",
             "timeout": 5,
             "type": "command"
           },

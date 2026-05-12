@@ -238,8 +238,8 @@ _R2_EXEMPT_RE = re.compile(
     r"|\d+\s+PRs?\s+merged"
     r"|\bsession\s+(?:total|tally)\b.*\bmerged\b"
     r"|\bmerge\s+pull\s+request\b"
-    r"|\bdeployed\s+(?:at|to|on|via)\b"
-    r"|\bshipped\s+(?:in|via|to|as)\b",
+    r"|\bdeployed\s+at\s+\d"
+    r"|\bshipped\s+in\s+PR\b",
     re.IGNORECASE,
 )
 

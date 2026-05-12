@@ -270,12 +270,12 @@ def test_r2_exempt_pr_tally() -> None:
 
 
 def test_r2_exempt_deployed_at_timestamp() -> None:
-    """Track 8: 'deployed at <timestamp>' is past-tense status."""
+    """Track 8: 'deployed at <digit>' is past-tense status."""
     assert check_r2("Deployed at 01:12:05 UTC. R9 LAYER 2 active.", recent_messages=[]) is None
 
 
 def test_r2_exempt_shipped_in_pr() -> None:
-    """Track 8: 'shipped in PR #N' is past-tense reference."""
+    """Track 8: 'shipped in PR' is past-tense reference."""
     assert check_r2("Shipped in PR #740 to main.", recent_messages=[]) is None
 
 

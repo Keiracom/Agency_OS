@@ -110,7 +110,7 @@ def load_state(state_path: Path) -> dict[str, str]:
 
 def save_state(state_path: Path, state: dict[str, str]) -> None:
     state_path.parent.mkdir(parents=True, exist_ok=True)
-    state_path.write_text(json.dumps(state, indent=2, sort_keys=True))
+    state_path.write_text(json.dumps(state, indent=2, sort_keys=True))  # NOSONAR — path is helper-resolved via state_paths.resolve_state_dir(); callsign regex-validated at the helper boundary; no user input reaches this write
 
 
 def should_alert(pr_number: int, state: dict[str, str], now: datetime | None = None) -> bool:

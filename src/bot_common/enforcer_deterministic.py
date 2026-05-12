@@ -503,7 +503,7 @@ def _r11_prose_paragraph_present(text: str) -> bool:
             continue
         # Count sentence terminators (period followed by space or end of line).
         # Non-capturing group makes alternation precedence explicit (SonarCloud S5850).
-        sentence_count = len(re.findall(r"(?:\.\s+|\.$)", s))
+        sentence_count = len(re.findall(r"\.(?:\s+|$)", s))
         if sentence_count >= 2:
             return True
     return False

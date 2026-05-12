@@ -1,0 +1,9 @@
+[Unit]
+Description=Run service health monitor every 5 minutes (Dave System Health Monitoring Outcome 1)
+
+[Timer]
+OnCalendar=*:0/5
+Persistent=true
+
+[Install]
+WantedBy=timers.target

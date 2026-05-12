@@ -1,0 +1,8 @@
+[Unit]
+Description=Agency OS — daily artifact freshness sweep (ceo_memory >30d, pins >14d, completed_directives >60d)
+
+[Service]
+Type=oneshot
+ExecStart=/home/elliotbot/clawd/venv/bin/python3 /home/elliotbot/clawd/Agency_OS/scripts/alerts/artifact_freshness_monitor.py
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env

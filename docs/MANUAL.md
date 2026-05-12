@@ -941,6 +941,23 @@ OPEN STATE FOR NEXT SESSION:
 - Demo handoff to Dave is the next revenue-pathway item (Dave-action: IS_DEMO_MODE + seed_demo_tenant.py --execute + login as demo@keiracom.com)
 - Step 4: cost forensic on the $47 burn + Salesforge/Unipile key audit via api_keys_ledger (queued for next session)
 - P11 sidecar runtime wire-up DONE in PR #433 (GOV-12 satisfied for full ATLAS chain)
+
+### [AIDEN] Directive 10015 (PR #752, 2026-05-12)
+Task 1B: System Health Monitoring — 6 Outcomes Complete (2026-05-12)
+
+Dave directive 2026-05-12 — comprehensive system health observability + LAW XV mechanical enforcement.
+
+Outcomes delivered:
+1. Service Health Monitor (PR #747) — 5-min systemd timer + alerts for 9 listener/relay services to #execution
+2. LAW XV Mechanical Gate (PR #752) — outbound gate blocks completion claims that skip the 4-store save
+3. Session-Start Audit (PR #748) — agent_memories row on session start; Slack alert on DB failure
+4. Artifact Freshness Sweep (PR #750) — daily cron flags ceo_memory >30d, slack pins >14d, completed_directives >60d
+5. PreCompact Alert + HEARTBEAT.md Template (PR #751) — Claude Code hook snapshots state to #execution before compaction
+6. Scout Audit + Dispatch-Loop Fix (PR #749) — relay_watcher.sh handles task_dispatch + else-fallback; closes 16-day silent-drop bug
+
+All 6 PRs merged to main (commits 9291c961, f05397da, 1d1322db, e1f43cef, c831fead, 1f6a97ac). 91+ new tests across 4 modules. Live smoke verified each outcome.
+
+Author: Aiden. Specs: Max (Outcome 2), Dave directive (1-6), Atlas (Outcome 6 diagnosis). Approvals: Elliot+Max dual-CTO concur on each PR.
 ## SECTION 14 — COMPETITIVE INTELLIGENCE
 
 Direct competitors (signal-based AI BDR category):

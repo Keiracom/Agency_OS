@@ -111,6 +111,30 @@ def test_at_mention_rollup_exempt() -> None:
     assert _R9_EXEMPT_RE.search("@max — audit pending.")
 
 
+def test_continuing_standby_exempt() -> None:
+    """Track 7: 'Continuing standby' is gated-status, not directive-seeking."""
+    assert _R9_EXEMPT_RE.search("Continuing standby.")
+    assert _R9_EXEMPT_RE.search("[AIDEN] Continuing standby. Wakeup at 01:15.")
+
+
+def test_wakeup_schedule_exempt() -> None:
+    """Track 7: 'Wakeup at HH:MM' is a timer schedule, not directive-seeking."""
+    assert _R9_EXEMPT_RE.search("Wakeup at 01:29 scheduled. Standing by.")
+    assert _R9_EXEMPT_RE.search("Wakeup at 01:15 fires shortly.")
+
+
+def test_holding_posture_exempt() -> None:
+    """Track 7: 'Holding posture' is status, not directive-seeking."""
+    assert _R9_EXEMPT_RE.search("Holding posture correct.")
+
+
+def test_awaiting_concur_exempt() -> None:
+    """Track 7: 'Awaiting concur' is gated on peer, not asking Dave."""
+    assert _R9_EXEMPT_RE.search("Awaiting concur from Elliot.")
+    assert _R9_EXEMPT_RE.search("Awaiting your concur.")
+    assert _R9_EXEMPT_RE.search("Awaiting your PR.")
+
+
 def test_anti_broadening_dave_directed_agenda() -> None:
     """Genuine Dave-directed agenda-setting → NOT exempt (R9 should still fire)."""
     assert not _R9_EXEMPT_RE.search("Dave, what should we do next?")

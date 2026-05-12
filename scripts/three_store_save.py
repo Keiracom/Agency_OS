@@ -289,6 +289,12 @@ def save_metrics(
 
         conn = await asyncpg.connect(dsn, statement_cache_size=0)
         try:
+            # Wave 1 Item 2 (audit Pattern A fix): upsert on (directive_id,
+            # directive_ref) — compound key with NULLS NOT DISTINCT semantics
+            # (Postgres 15+ via supabase/migrations/20260512_cis_directive_
+            # metrics_unique_dedup.sql). Replay updates completed_date +
+            # increments execution_rounds + refreshes mutable fields; original
+            # issued_date + created_at are preserved.
             await conn.execute(
                 """
                 INSERT INTO cis_directive_metrics (
@@ -300,6 +306,15 @@ def save_metrics(
                   $5, $6, $7,
                   $8, $9, $10, $11, $12
                 )
+                ON CONFLICT (directive_id, directive_ref) DO UPDATE SET
+                  completed_date = EXCLUDED.completed_date,
+                  execution_rounds = cis_directive_metrics.execution_rounds + 1,
+                  scope_creep = EXCLUDED.scope_creep,
+                  verification_first_pass = EXCLUDED.verification_first_pass,
+                  save_completed = EXCLUDED.save_completed,
+                  agents_used = EXCLUDED.agents_used,
+                  notes = EXCLUDED.notes,
+                  callsign = EXCLUDED.callsign
                 """,
                 directive_id,
                 directive_ref,

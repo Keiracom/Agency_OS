@@ -180,6 +180,50 @@ def test_save_metrics_numeric_directive_uses_directive_id(monkeypatch):
     assert args[1] is None
 
 
+def test_save_metrics_includes_on_conflict_compound_key(monkeypatch):
+    """Wave 1 Item 2: replay must not duplicate rows. INSERT uses ON CONFLICT
+    (directive_id, directive_ref) DO UPDATE for the compound-key upsert
+    (NULLS NOT DISTINCT in the migration handles numeric directives where
+    directive_ref is always NULL)."""
+    monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@h/d")
+    conn = _FakeConn()
+    _patch_asyncpg(monkeypatch, conn)
+    tss.save_metrics("D7", 707, "summary", dry_run=False, callsign="max")
+    sql, _ = conn.executed[0]
+    assert "INSERT INTO cis_directive_metrics" in sql
+    assert "ON CONFLICT (directive_id, directive_ref) DO UPDATE SET" in sql
+
+
+def test_save_metrics_on_conflict_increments_execution_rounds(monkeypatch):
+    """ON CONFLICT path increments execution_rounds (captures replay count)."""
+    monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@h/d")
+    conn = _FakeConn()
+    _patch_asyncpg(monkeypatch, conn)
+    tss.save_metrics("D7", 707, "summary", dry_run=False)
+    sql, _ = conn.executed[0]
+    assert "execution_rounds = cis_directive_metrics.execution_rounds + 1" in sql
+
+
+def test_save_metrics_on_conflict_updates_mutable_fields(monkeypatch):
+    """ON CONFLICT replaces completed_date, notes, callsign, agents_used, and
+    the three boolean status flags with EXCLUDED.* — the replay's new values."""
+    monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@h/d")
+    conn = _FakeConn()
+    _patch_asyncpg(monkeypatch, conn)
+    tss.save_metrics("D7", 707, "summary", dry_run=False)
+    sql, _ = conn.executed[0]
+    for field in (
+        "completed_date = EXCLUDED.completed_date",
+        "scope_creep = EXCLUDED.scope_creep",
+        "verification_first_pass = EXCLUDED.verification_first_pass",
+        "save_completed = EXCLUDED.save_completed",
+        "agents_used = EXCLUDED.agents_used",
+        "notes = EXCLUDED.notes",
+        "callsign = EXCLUDED.callsign",
+    ):
+        assert field in sql, f"missing {field!r} in DO UPDATE SET"
+
+
 def test_save_ceo_memory_swallows_asyncpg_error(monkeypatch):
     monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@h/d")
     import sys

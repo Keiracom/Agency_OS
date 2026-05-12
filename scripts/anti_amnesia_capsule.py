@@ -97,11 +97,12 @@ def collect_recent_memories(callsign: str) -> list[str]:
     key = os.environ.get("SUPABASE_SERVICE_KEY") or os.environ.get("SUPABASE_ANON_KEY", "")
     if not url or not key:
         return []
-    try:
-        import urllib.parse
-        import urllib.request
-        import json as _json
+    import json as _json
+    import urllib.error
+    import urllib.parse
+    import urllib.request
 
+    try:
         params = urllib.parse.urlencode(
             {
                 "callsign": f"eq.{callsign}",
@@ -118,7 +119,7 @@ def collect_recent_memories(callsign: str) -> list[str]:
         with urllib.request.urlopen(req, timeout=5) as r:
             rows = _json.loads(r.read())
         return [f"MEM[{r['source_type']}]: {r['content'][:120]}" for r in rows]
-    except Exception as exc:  # noqa: BLE001 — best-effort
+    except (urllib.error.URLError, _json.JSONDecodeError, OSError, KeyError, TypeError) as exc:
         logger.warning("agent_memories query failed: %s", exc)
         return []
 
@@ -173,7 +174,7 @@ def write_capsule(callsign: str) -> int:
         path.write_text(compose_capsule(callsign))
         print(f"[capsule] wrote {path} ({path.stat().st_size}B)", file=sys.stderr)
         return 0
-    except Exception as exc:  # noqa: BLE001 — best-effort
+    except OSError as exc:
         logger.warning("capsule write failed: %s", exc)
         return 0  # never block compaction
 

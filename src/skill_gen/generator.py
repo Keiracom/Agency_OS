@@ -1,4 +1,4 @@
-"""generator.py — orchestrator: compress → claude → SKILL.md → PR.
+"""generator.py — orchestrator: compress → Gemini → SKILL.md → PR.
 
 End-to-end pipeline for Drevon PR-B internal tooling. Each step is split so
 callers / tests can substitute components.
@@ -6,7 +6,10 @@ callers / tests can substitute components.
 Naming: skill name is derived from the dominant tool pattern or an explicit
 override. Heuristic in `derive_skill_name()`.
 
-PR opener uses `gh pr create` via subprocess; tests inject a stub.
+LLM call uses Gemini 2.5 Flash Lite via `src.skill_gen.gemini_invoke`.
+The earlier `claude --print` subprocess approach (PR #720, PR #728) was
+abandoned 2026-05-12 — see gemini_invoke.py docstring for the pivot
+rationale. PR opener uses `gh pr create` via subprocess; tests inject a stub.
 """
 
 from __future__ import annotations
@@ -14,12 +17,13 @@ from __future__ import annotations
 import json
 import re
 import subprocess
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from src.skill_gen.claude_invoke import ClaudeResult, invoke
 from src.skill_gen.extractor import CompressedSession, compress
+from src.skill_gen.gemini_invoke import GeminiResult, invoke
 
 _SKILL_PROMPT_TEMPLATE = """\
 You are generating a reusable SKILL.md from a captured Claude Code session.
@@ -65,7 +69,7 @@ class GenerateResult:
     skill_path: Path
     skill_name: str
     pr_url: str | None
-    claude: ClaudeResult
+    llm: GeminiResult
 
 
 def derive_skill_name(session: CompressedSession, override: str | None) -> str:
@@ -135,40 +139,36 @@ def generate(
     *,
     skill_name_override: str | None = None,
     overwrite: bool = False,
-    claude_runner=None,
+    client_factory: Callable[[str], Any] | None = None,
     pr_runner=subprocess.run,
     extractor_overrides: dict[str, Any] | None = None,
 ) -> GenerateResult:
-    """End-to-end: compress → claude → write → PR.
+    """End-to-end: compress → Gemini → write → PR.
 
     Injection points:
-        - `claude_runner`: replaces subprocess.run in claude_invoke.invoke
-        - `pr_runner`: replaces subprocess.run in open_pr
-        - `extractor_overrides`: keyword args forwarded to `compress()`
+        - `client_factory`: replaces the google.genai.Client builder in
+          gemini_invoke.invoke. Tests inject a stub that returns canned text.
+        - `pr_runner`: replaces subprocess.run in open_pr.
+        - `extractor_overrides`: keyword args forwarded to `compress()`.
     """
     compress_kwargs = extractor_overrides or {}
     session = compress(session_id, start_ts, end_ts, **compress_kwargs)
     prompt = build_prompt(session)
     invoke_kwargs: dict[str, Any] = {}
-    if claude_runner is not None:
-        invoke_kwargs["runner"] = claude_runner
-    claude_result = invoke(prompt, **invoke_kwargs)
-    if claude_result.returncode != 0:
-        # claude --print writes CLI errors (e.g. "Credit balance is too low",
-        # auth failures, plan-limit messages) to STDOUT, not stderr. Earlier
-        # versions only surfaced stderr — leaving the RuntimeError text empty
-        # and the real cause invisible. Include both so callers can diagnose.
+    if client_factory is not None:
+        invoke_kwargs["client_factory"] = client_factory
+    llm_result = invoke(prompt, **invoke_kwargs)
+    if not llm_result.text.strip():
         raise RuntimeError(
-            f"claude invocation failed (exit {claude_result.returncode}): "
-            f"stdout={claude_result.stdout[:500]!r} "
-            f"stderr={claude_result.stderr[:500]!r}"
+            f"Gemini returned empty text (model={llm_result.model}, "
+            f"prompt_tokens={llm_result.prompt_tokens}). Cannot write empty SKILL.md."
         )
     skill_name = derive_skill_name(session, skill_name_override)
-    skill_path = write_skill(repo_root, skill_name, claude_result.stdout, overwrite=overwrite)
+    skill_path = write_skill(repo_root, skill_name, llm_result.text, overwrite=overwrite)
     pr_url = open_pr(repo_root, skill_path, directive_ref, runner=pr_runner)
     return GenerateResult(
         skill_path=skill_path,
         skill_name=skill_name,
         pr_url=pr_url,
-        claude=claude_result,
+        llm=llm_result,
     )

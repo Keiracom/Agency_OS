@@ -35,11 +35,12 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import subprocess
 import sys
 import urllib.error
 import urllib.request
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -77,15 +78,50 @@ INBOX_PATHS: dict[str, str] = {
 }
 
 
+# tmux session name per callsign (empirical 2026-05-12: elliot+max sessions
+# are named with -bot suffix; clones + aiden use bare callsign).
+CALLSIGN_TO_TMUX: dict[str, str] = {
+    "elliot": "elliottbot",
+    "aiden": "aiden",
+    "max": "maxbot",
+    "atlas": "atlas",
+    "orion": "orion",
+    "scout": "scout",
+}
+
+# Anthropic throttle signal patterns. Case-insensitive substring match on the
+# last 10 lines of the agent's tmux pane. Anchored loosely — agents writing
+# the string 'rate limit' into source code mid-edit will trip false positives,
+# but the alternative is missing the actual throttle. Acceptable tradeoff per
+# Dave directive ts ~1778619750.
+THROTTLE_PATTERNS: tuple[str, ...] = (
+    r"rate limit",
+    r"\b429\b",
+    r"retry-?after",
+    r"brewed for",
+)
+THROTTLE_RE = re.compile("|".join(THROTTLE_PATTERNS), re.IGNORECASE)
+
+
 @dataclass
 class CycleSignals:
     bd_ready: list[dict]
     linear_stale: list[dict]
     idle_agents: list[str]
     prefect_failures: list[dict]
+    rate_limit_transitions: list[tuple[str, str, int]] = field(default_factory=list)
+    """List of (callsign, transition, duration_min) where transition is
+    'throttled' (first detection) or 'resumed' (clearing detection). Duration
+    is minutes-since-throttle-start for 'resumed' (0 for 'throttled')."""
 
     def is_silent(self) -> bool:
-        return not (self.bd_ready or self.linear_stale or self.idle_agents or self.prefect_failures)
+        return not (
+            self.bd_ready
+            or self.linear_stale
+            or self.idle_agents
+            or self.prefect_failures
+            or self.rate_limit_transitions
+        )
 
 
 # Time-of-day gate ───────────────────────────────────────────────────────────
@@ -240,6 +276,98 @@ def poll_prefect_failures(now: datetime | None = None) -> list[dict]:
         return []
 
 
+# Rate-limit detection ───────────────────────────────────────────────────────
+#
+# Per Dave directive ts ~1778619750. Poll each callsign's tmux pane for
+# Anthropic throttle signals; emit (callsign, transition, duration_min) on
+# state change. State persists across cycles via JSON file at /tmp/...
+#
+# State machine:
+#   (prev=clean, current=clean)      → no-op
+#   (prev=clean, current=throttled)  → emit ('throttled', 0); record start ts
+#   (prev=throttled, current=throttled) → no-op (already alerted)
+#   (prev=throttled, current=clean)  → emit ('resumed', duration_min); clear
+
+_THROTTLE_STATE_PATH_DEFAULT = "/tmp/elliot-polling-loop-throttle-state.json"  # NOSONAR — canonical state path for systemd-user loop, not user-supplied
+
+
+def _throttle_state_path() -> str:
+    return os.environ.get("AGENCY_OS_THROTTLE_STATE_PATH", _THROTTLE_STATE_PATH_DEFAULT)
+
+
+def _load_throttle_state() -> dict[str, str]:
+    """Return {callsign: throttled_since_iso}. Empty dict on missing/corrupt file."""
+    p = Path(_throttle_state_path())
+    if not p.exists():
+        return {}
+    try:
+        return json.loads(p.read_text() or "{}")
+    except (OSError, json.JSONDecodeError) as exc:
+        logger.warning("throttle state load failed: %s", exc)
+        return {}
+
+
+def _save_throttle_state(state: dict[str, str]) -> None:
+    p = Path(_throttle_state_path())
+    try:
+        p.write_text(json.dumps(state, indent=2, sort_keys=True))
+    except OSError as exc:
+        logger.warning("throttle state save failed: %s", exc)
+
+
+def _capture_pane_tail(session: str, lines: int = 10) -> str:
+    try:
+        proc = subprocess.run(  # noqa: S603 — controlled args, no shell
+            ["tmux", "capture-pane", "-t", f"{session}:0", "-p"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+        return ""
+    if proc.returncode != 0:
+        return ""
+    out_lines = proc.stdout.splitlines()
+    return "\n".join(out_lines[-lines:])
+
+
+def poll_rate_limited_agents(
+    now: datetime | None = None,
+) -> list[tuple[str, str, int]]:
+    """Return list of (callsign, transition, duration_min) for THIS cycle.
+
+    transition ∈ {'throttled', 'resumed'}. duration_min is 0 for 'throttled'
+    and minutes-since-throttle-start for 'resumed'.
+    """
+    ts_now = now or datetime.now(UTC)
+    prior = _load_throttle_state()
+    next_state = dict(prior)
+    transitions: list[tuple[str, str, int]] = []
+
+    for callsign, session in CALLSIGN_TO_TMUX.items():
+        tail = _capture_pane_tail(session)
+        is_throttled = bool(THROTTLE_RE.search(tail)) if tail else False
+        prev_throttled_since = prior.get(callsign)
+
+        if is_throttled and not prev_throttled_since:
+            transitions.append((callsign, "throttled", 0))
+            next_state[callsign] = ts_now.isoformat()
+        elif not is_throttled and prev_throttled_since:
+            try:
+                start = datetime.fromisoformat(prev_throttled_since)
+                duration_min = max(0, int((ts_now - start).total_seconds() // 60))
+            except ValueError:
+                duration_min = 0
+            transitions.append((callsign, "resumed", duration_min))
+            next_state.pop(callsign, None)
+        # else: no transition
+
+    if next_state != prior:
+        _save_throttle_state(next_state)
+
+    return transitions
+
+
 # Aggregator + dispatcher ────────────────────────────────────────────────────
 
 
@@ -249,6 +377,7 @@ def collect_signals(now: datetime | None = None) -> CycleSignals:
         linear_stale=poll_linear_stale(now),
         idle_agents=poll_idle_agents(now),
         prefect_failures=poll_prefect_failures(now),
+        rate_limit_transitions=poll_rate_limited_agents(now),
     )
 
 
@@ -311,6 +440,29 @@ def compose_dispatches(signals: CycleSignals) -> list[tuple[str, str]]:
             + "\nIntent: create Linear KEI tagged pipeline-incident (manual until Linear MCP write wired)."
         )
         dispatches.append((CEO_CHANNEL_NAME, msg))
+
+    if signals.rate_limit_transitions:
+        throttled = [
+            (cs, dur) for cs, t, dur in signals.rate_limit_transitions if t == "throttled"
+        ]
+        resumed = [
+            (cs, dur) for cs, t, dur in signals.rate_limit_transitions if t == "resumed"
+        ]
+        if throttled:
+            names = ", ".join(cs for cs, _ in throttled)
+            msg = (
+                f"[PROPOSE:elliot] Anthropic throttle detected — {len(throttled)} agent(s): {names}.\n"
+                f"Throttle signal grep on tmux pane tail (rate limit / 429 / retry-after / brewed). "
+                f"Agents will resume on next clean cycle; this is informational not actionable."
+            )
+            dispatches.append((CEO_CHANNEL_NAME, msg))
+        if resumed:
+            lines = [f"  - {cs} resumed after {dur}m throttle" for cs, dur in resumed]
+            msg = (
+                f"[PROPOSE:elliot] Anthropic throttle cleared — {len(resumed)} agent(s):\n"
+                + "\n".join(lines)
+            )
+            dispatches.append((CEO_CHANNEL_NAME, msg))
 
     return dispatches
 

@@ -12,6 +12,7 @@ run without bd, Linear, Prefect, asyncpg, or Slack. The script's contract:
 from __future__ import annotations
 
 import importlib.util
+import json
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -423,3 +424,87 @@ def test_send_dispatch_inbox_missing_dir_drops_quietly(loop_mod, monkeypatch, tm
 def test_send_dispatch_unknown_inbox_callsign_drops(loop_mod):
     """inbox:<unmapped> drops quietly (best-effort)."""
     loop_mod.send_dispatch("inbox:unknown_callsign", "text")  # no raise
+
+
+# Rate-limit detection (Dave P1 directive ts ~1778619750) ────────────────────
+
+
+def _stub_capture_pane(loop_mod, monkeypatch, output_per_session: dict[str, str]):
+    """Patch _capture_pane_tail to return scripted output per session-name."""
+    def _fake(session, lines=10):
+        return output_per_session.get(session, "")
+    monkeypatch.setattr(loop_mod, "_capture_pane_tail", _fake)
+
+
+def test_poll_rate_limited_clean_to_clean_no_transition(loop_mod, monkeypatch, tmp_path):
+    monkeypatch.setenv("AGENCY_OS_THROTTLE_STATE_PATH", str(tmp_path / "state.json"))
+    _stub_capture_pane(loop_mod, monkeypatch, {})  # all empty (clean)
+    assert loop_mod.poll_rate_limited_agents() == []
+
+
+def test_poll_rate_limited_clean_to_throttled_emits(loop_mod, monkeypatch, tmp_path):
+    state_path = tmp_path / "state.json"
+    monkeypatch.setenv("AGENCY_OS_THROTTLE_STATE_PATH", str(state_path))
+    _stub_capture_pane(
+        loop_mod,
+        monkeypatch,
+        {"aiden": "Working on PR...\nrate limit reached. retry-after 60\n"},
+    )
+    out = loop_mod.poll_rate_limited_agents(now=datetime(2026, 5, 12, 22, 0, tzinfo=UTC))
+    assert ("aiden", "throttled", 0) in out
+    assert state_path.exists()
+    state = json.loads(state_path.read_text())
+    assert "aiden" in state
+
+
+def test_poll_rate_limited_throttled_to_throttled_no_emit(loop_mod, monkeypatch, tmp_path):
+    state_path = tmp_path / "state.json"
+    monkeypatch.setenv("AGENCY_OS_THROTTLE_STATE_PATH", str(state_path))
+    state_path.write_text(json.dumps({"aiden": "2026-05-12T22:00:00+00:00"}))
+    _stub_capture_pane(
+        loop_mod,
+        monkeypatch,
+        {"aiden": "still rate limit-ed, brewed for 30 more seconds"},
+    )
+    out = loop_mod.poll_rate_limited_agents(now=datetime(2026, 5, 12, 22, 5, tzinfo=UTC))
+    assert out == []
+
+
+def test_poll_rate_limited_throttled_to_clean_emits_resumed(loop_mod, monkeypatch, tmp_path):
+    state_path = tmp_path / "state.json"
+    monkeypatch.setenv("AGENCY_OS_THROTTLE_STATE_PATH", str(state_path))
+    state_path.write_text(json.dumps({"aiden": "2026-05-12T22:00:00+00:00"}))
+    _stub_capture_pane(loop_mod, monkeypatch, {})  # clean now
+    out = loop_mod.poll_rate_limited_agents(now=datetime(2026, 5, 12, 22, 15, tzinfo=UTC))
+    # Resumed event for aiden with 15-min duration
+    assert any(t for t in out if t[0] == "aiden" and t[1] == "resumed" and t[2] == 15)
+    state = json.loads(state_path.read_text())
+    assert "aiden" not in state
+
+
+def test_poll_rate_limited_pattern_429_matches(loop_mod, monkeypatch, tmp_path):
+    monkeypatch.setenv("AGENCY_OS_THROTTLE_STATE_PATH", str(tmp_path / "state.json"))
+    _stub_capture_pane(loop_mod, monkeypatch, {"orion": "HTTP 429 Too Many Requests"})
+    out = loop_mod.poll_rate_limited_agents()
+    assert any(t[0] == "orion" and t[1] == "throttled" for t in out)
+
+
+def test_compose_dispatches_throttle_transitions_to_ceo(loop_mod):
+    sig = loop_mod.CycleSignals(
+        bd_ready=[],
+        linear_stale=[],
+        idle_agents=[],
+        prefect_failures=[],
+        rate_limit_transitions=[
+            ("aiden", "throttled", 0),
+            ("orion", "resumed", 12),
+        ],
+    )
+    dispatches = loop_mod.compose_dispatches(sig)
+    # Two #ceo dispatches: one throttled-list, one resumed-list.
+    ceo_msgs = [m for chan, m in dispatches if chan == "#ceo"]
+    assert len(ceo_msgs) == 2
+    throttled_msg = next(m for m in ceo_msgs if "throttle detected" in m)
+    assert "aiden" in throttled_msg
+    resumed_msg = next(m for m in ceo_msgs if "throttle cleared" in m)
+    assert "orion resumed after 12m" in resumed_msg

@@ -146,13 +146,19 @@ CHANNEL_ROUTES: dict[str, list[str]] = {
     "C0B2U15PSEA": ["aiden"],  # #completed_directives
 }
 
+# NOSONAR: /tmp/telegram-relay-<callsign>/inbox paths are the production contract
+# with the per-callsign inbox-watcher systemd units (e.g. atlas-inbox-watcher.service).
+# The listener writes INTO these dirs; the watcher services create them with
+# restrictive modes. Migration to $XDG_STATE_HOME is a Phase 2 candidate per the
+# 2026-05-12 memory audit (Pattern A — unclosed migrations). Don't migrate here
+# without also updating watcher unit files in lockstep.
 CALLSIGN_TO_INBOX: dict[str, list[Path]] = {
-    "elliot": [Path("/tmp/telegram-relay-elliot/inbox")],
-    "aiden": [Path("/tmp/telegram-relay-aiden/inbox")],
-    "max": [Path("/tmp/telegram-relay-max/inbox"), Path("/tmp/coo-inbox")],
-    "atlas": [Path("/tmp/telegram-relay-atlas/inbox")],
-    "orion": [Path("/tmp/telegram-relay-orion/inbox")],
-    "scout": [Path("/tmp/telegram-relay-scout/inbox")],
+    "elliot": [Path("/tmp/telegram-relay-elliot/inbox")],  # NOSONAR S5443
+    "aiden": [Path("/tmp/telegram-relay-aiden/inbox")],  # NOSONAR S5443
+    "max": [Path("/tmp/telegram-relay-max/inbox"), Path("/tmp/coo-inbox")],  # NOSONAR S5443
+    "atlas": [Path("/tmp/telegram-relay-atlas/inbox")],  # NOSONAR S5443
+    "orion": [Path("/tmp/telegram-relay-orion/inbox")],  # NOSONAR S5443
+    "scout": [Path("/tmp/telegram-relay-scout/inbox")],  # NOSONAR S5443
 }
 
 SELF_TAG_BY_CALLSIGN = {
@@ -419,6 +425,22 @@ def run_enforcer(event: dict, text: str, web: WebClient) -> None:
     _fire_violation(result, web)
 
 
+def _fanout_to_routes(routes: list[str], text: str, sender: str) -> None:
+    """Fan out a #execution-channel message to each callsign's inbox.
+
+    Skips self-tagged messages (e.g. [ELLIOT] prefix → elliot's inbox).
+    Skips ambient messages for clones (atlas/orion/scout) unless explicitly
+    addressed via _is_clone_addressed(). Primes always receive.
+    """
+    for callsign in routes:
+        self_tag = SELF_TAG_BY_CALLSIGN.get(callsign, "")
+        if self_tag and text.startswith(self_tag):
+            continue
+        if callsign in CLONE_CALLSIGNS and not _is_clone_addressed(callsign, text):
+            continue
+        write_inbox(callsign, text, sender)
+
+
 def process_event(event: dict, web: WebClient | None = None) -> None:
     if event.get("type") != "message":
         return
@@ -429,22 +451,11 @@ def process_event(event: dict, web: WebClient | None = None) -> None:
     text = event.get("text") or ""
     if not text:
         return
-    # FANOUT
     if routes:
-        sender = sender_from(event)
-        for callsign in routes:
-            self_tag = SELF_TAG_BY_CALLSIGN.get(callsign, "")
-            if self_tag and text.startswith(self_tag):
-                continue
-            # Clones receive #execution messages only when explicitly addressed.
-            # Primes (elliot/aiden/max) always receive (existing behavior).
-            if callsign in CLONE_CALLSIGNS and not _is_clone_addressed(callsign, text):
-                continue
-            write_inbox(callsign, text, sender)
+        _fanout_to_routes(routes, text, sender_from(event))
         logger.info(
             "fanout %s ts=%s -> %s (%dch)", channel, event.get("ts", "?"), routes, len(text)
         )
-    # ENFORCER (only on #execution)
     if web is not None:
         try:
             run_enforcer(event, text, web)

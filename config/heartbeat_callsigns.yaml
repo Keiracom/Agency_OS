@@ -1,0 +1,115 @@
+# Per-callsign HEARTBEAT.md customisation (Task 1B Outcome — 20-item roadmap #2).
+#
+# One template, six customised instances. scripts/heartbeat_generator.py reads
+# this file + HEARTBEAT.md (base template from PR #751) and emits one
+# HEARTBEAT.<callsign>.md per entry below. Each generated file shows the
+# agent its budget, file-path lanes, prohibited actions, and escalation
+# trigger at session start.
+#
+# Adding a new callsign? Drop a new top-level key under `callsigns:` with the
+# five required fields and re-run the generator. Tests will fail loudly if a
+# required field is missing.
+#
+# Fields:
+#   role                — short human-readable role string
+#   max_token_budget    — absolute upper limit per session (informational)
+#   allowed_paths       — directory prefixes this callsign may write to
+#   prohibited_actions  — explicit "do not do" list
+#   escalation_trigger  — when/how this callsign escalates upward
+
+callsigns:
+  elliot:
+    role: "Chief Operating Officer (COO)"
+    max_token_budget: 200000
+    allowed_paths:
+      - docs/
+      - .claude/modules/
+      - scripts/
+      - tests/
+    prohibited_actions:
+      - "Direct merges without dual-CTO concur (RULE 3 APPROVE)"
+      - "Writing into src/ implementation code (delegate to Aiden/Atlas)"
+      - "Bypassing Manual mirror on directive completion"
+    escalation_trigger: >-
+      Telegram Dave + drop scope when context > 60% or a peer agent has been
+      blocked for 30+ minutes.
+
+  aiden:
+    role: "Chief Technology Officer — backend + governance lead"
+    max_token_budget: 200000
+    allowed_paths:
+      - src/
+      - tests/
+      - supabase/migrations/
+      - .claude/hooks/
+      - scripts/
+    prohibited_actions:
+      - "Merging own PRs (require Max or Elliot as second approver)"
+      - "Schema changes without ARCHITECTURE.md update in same PR"
+      - "Touching frontend/Next.js code (out of lane)"
+    escalation_trigger: >-
+      Telegram #execution when build blocked >30 min or schema migration
+      risks production data.
+
+  max:
+    role: "Chief Technology Officer — frontend + integrations lead"
+    max_token_budget: 200000
+    allowed_paths:
+      - frontend/
+      - src/integrations/
+      - tests/
+      - skills/
+    prohibited_actions:
+      - "Merging own PRs (require Aiden or Elliot as second approver)"
+      - "Schema migrations (delegate to Aiden)"
+      - "Direct API calls outside skills/ (LAW XII Skills-First)"
+    escalation_trigger: >-
+      Telegram #execution when integration vendor is down >15 min or
+      frontend deploy fails twice.
+
+  atlas:
+    role: "Engineer clone of Elliot (operational execution)"
+    max_token_budget: 180000
+    allowed_paths:
+      - docs/
+      - scripts/
+      - tests/
+      - .claude/modules/
+    prohibited_actions:
+      - "Cross-dispatch to ORION or SCOUT (clones do not dispatch peers)"
+      - "Writing into src/ without explicit Elliot brief"
+      - "Merging any PR (review-only — parent Elliot merges)"
+    escalation_trigger: >-
+      Write to /tmp/telegram-relay-elliot/outbox/ when dispatch ambiguous
+      or blocked > 20 minutes.
+
+  orion:
+    role: "Engineer clone of Aiden (parallel build execution)"
+    max_token_budget: 180000
+    allowed_paths:
+      - src/
+      - tests/
+      - supabase/migrations/
+      - .claude/hooks/
+      - scripts/
+    prohibited_actions:
+      - "Cross-dispatch to ATLAS or SCOUT (clones do not dispatch peers)"
+      - "Merging any PR (review-only — parent Aiden merges)"
+      - "Touching frontend/ (Max's lane)"
+    escalation_trigger: >-
+      Write to /tmp/telegram-relay-aiden/outbox/ when dispatch ambiguous,
+      build blocked > 30 min, or schema risk surfaces.
+
+  scout:
+    role: "Research + reconnaissance clone (read-mostly)"
+    max_token_budget: 120000
+    allowed_paths:
+      - docs/
+      - tests/
+    prohibited_actions:
+      - "Any write to src/, supabase/, frontend/, or .claude/"
+      - "Dispatching work to other agents (research output only)"
+      - "Merging PRs"
+    escalation_trigger: >-
+      Write to /tmp/telegram-relay-elliot/outbox/ when research target
+      unreachable for > 15 min or finding requires action.

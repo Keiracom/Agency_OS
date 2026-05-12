@@ -106,9 +106,22 @@ def should_run_now(now: datetime | None = None) -> bool:
 # Source pollers ─────────────────────────────────────────────────────────────
 
 
+# Absolute path to the bd binary. systemd --user services inherit a restricted
+# PATH that does NOT include ~/.local/bin (where pipx-installed bd lives), so a
+# bare "bd" command resolves to FileNotFoundError under systemd. Path-in-code
+# is more robust against future systemd unit edits — Scout's recommendation
+# in docs/wave2/polling_loop_bug_diagnosis.md.
+_BD_BIN = os.path.expanduser("~/.local/bin/bd")
+
+
 def poll_bd_ready() -> list[dict]:
     try:
-        proc = subprocess.run(["bd", "ready", "--json"], capture_output=True, text=True, timeout=10)
+        proc = subprocess.run(  # noqa: S603 — absolute path, no shell, no user input
+            [_BD_BIN, "ready", "--json"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
         if proc.returncode != 0:
             logger.warning("bd ready exit %d: %s", proc.returncode, proc.stderr[:200])
             return []
@@ -174,7 +187,16 @@ def poll_idle_agents(now: datetime | None = None) -> list[str]:
         return []
 
     async def _q() -> list[str]:
-        conn = await asyncpg.connect(dsn.replace("postgresql+asyncpg://", "postgresql://"))
+        # statement_cache_size=0 disables asyncpg's automatic prepared-statement
+        # caching, which collides with Supabase's pgbouncer running in
+        # transaction pool mode. pgbouncer's own hint surfaces in the error:
+        # "pgbouncer with pool_mode set to transaction or statement does not
+        # support prepared statements properly." Per Scout's diagnosis in
+        # docs/wave2/polling_loop_bug_diagnosis.md.
+        conn = await asyncpg.connect(
+            dsn.replace("postgresql+asyncpg://", "postgresql://"),
+            statement_cache_size=0,
+        )
         try:
             rows = await conn.fetch(sql, candidates)
         finally:

@@ -9,6 +9,11 @@
         "hooks": [
           {
             "type": "command",
+            "command": "/home/elliotbot/clawd/venv/bin/python3 scripts/session_start_audit.py",
+            "timeout": 10
+          },
+          {
+            "type": "command",
             "command": "/home/elliotbot/clawd/venv/bin/python3 scripts/context_compiler.py --budget 2000",
             "timeout": 15
           }

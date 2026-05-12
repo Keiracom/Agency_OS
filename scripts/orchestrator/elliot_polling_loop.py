@@ -529,6 +529,15 @@ def send_dispatch(channel: str, text: str) -> None:
 
 def run_cycle(now: datetime | None = None) -> int:
     """Returns the number of dispatches sent (0 = silent cycle)."""
+    # Defense-in-depth per Scout's peak-window diagnosis (f42cc4d4): log the
+    # in-process PEAK_HOURS_UTC set every cycle so future drift between code
+    # and the worktree's actual checked-out file is diff-able from log alone.
+    n = now or datetime.now(UTC)
+    logger.info(
+        "cycle start — PEAK_HOURS_UTC=%s now=%s",
+        sorted(PEAK_HOURS_UTC),
+        n.isoformat(),
+    )
     if not should_run_now(now):
         logger.info("outside peak window + minute!=0 → silent skip")
         return 0

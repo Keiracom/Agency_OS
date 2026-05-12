@@ -1,250 +1,302 @@
 {
-  "permissions": {
-    "defaultMode": "bypassPermissions"
-  },
   "hooks": {
-    "SessionStart": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/home/elliotbot/clawd/venv/bin/python3 scripts/session_start_audit.py",
-            "timeout": 10
-          },
-          {
-            "type": "command",
-            "command": "/home/elliotbot/clawd/venv/bin/python3 scripts/context_compiler.py --budget 2000",
-            "timeout": 15
-          },
-          {
-            "type": "command",
-            "command": "/home/elliotbot/clawd/venv/bin/python3 scripts/anti_amnesia_capsule.py --read",
-            "timeout": 5
-          }
-        ]
-      },
-      {
-        "matcher": "clear",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash scripts/ssot_drift_check.sh",
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "cd /home/elliotbot/clawd/Agency_OS && PYTHONPATH=/home/elliotbot/clawd/Agency_OS /home/elliotbot/clawd/venv/bin/python3 scripts/governance_router.py",
-            "timeout": 10
-          },
-          {
-            "type": "command",
-            "command": "bash /home/elliotbot/clawd/Agency_OS/.claude/hooks/stop_relay_hook.sh",
-            "timeout": 5
-          },
-          {
-            "type": "command",
-            "command": "bash .claude/hooks/session_store_stop.sh",
-            "timeout": 5
-          }
-        ]
-      }
-    ],
     "PostToolUse": [
       {
-        "matcher": "*",
         "hooks": [
           {
-            "type": "command",
             "command": "bash .claude/hooks/session_store_posttooluse.sh",
-            "timeout": 5
+            "timeout": 5,
+            "type": "command"
           }
-        ]
-      }
-    ],
-    "UserPromptSubmit": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash .claude/hooks/session_store_userpromptsubmit.sh",
-            "timeout": 5
-          }
-        ]
-      }
-    ],
-    "SessionEnd": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/home/elliotbot/clawd/venv/bin/python3 scripts/session_end_hook.py",
-            "timeout": 30
-          }
-        ]
+        ],
+        "matcher": "*"
       }
     ],
     "PreCompact": [
       {
-        "matcher": "*",
         "hooks": [
           {
-            "type": "command",
             "command": "/home/elliotbot/clawd/venv/bin/python3 scripts/pre_compact_alert.py",
-            "timeout": 10
+            "timeout": 10,
+            "type": "command"
           },
           {
-            "type": "command",
             "command": "/home/elliotbot/clawd/venv/bin/python3 scripts/anti_amnesia_capsule.py",
-            "timeout": 10
+            "timeout": 10,
+            "type": "command"
           }
-        ]
+        ],
+        "matcher": "*"
+      },
+      {
+        "hooks": [
+          {
+            "command": "bd prime",
+            "type": "command"
+          }
+        ],
+        "matcher": ""
       }
     ],
     "PreToolUse": [
       {
-        "matcher": "Write|Edit|NotebookEdit",
         "hooks": [
           {
-            "type": "command",
             "command": "/home/elliotbot/clawd/venv/bin/python3 scripts/governance_hooks.py --mode warn",
-            "timeout": 10
+            "timeout": 10,
+            "type": "command"
           }
-        ]
+        ],
+        "matcher": "Write|Edit|NotebookEdit"
       },
       {
-        "matcher": "*",
         "hooks": [
           {
-            "type": "command",
             "command": ".claude/hooks/recorder_hook.sh",
-            "timeout": 5
+            "timeout": 5,
+            "type": "command"
           }
-        ]
+        ],
+        "matcher": "*"
       },
       {
-        "matcher": "*",
         "hooks": [
           {
-            "type": "command",
             "command": "bash .claude/hooks/inbox_check_hook.sh",
-            "timeout": 5
+            "timeout": 5,
+            "type": "command"
           }
-        ]
+        ],
+        "matcher": "*"
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "command": "/home/elliotbot/clawd/venv/bin/python3 scripts/session_end_hook.py",
+            "timeout": 30,
+            "type": "command"
+          }
+        ],
+        "matcher": "*"
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "command": "/home/elliotbot/clawd/venv/bin/python3 scripts/session_start_audit.py",
+            "timeout": 10,
+            "type": "command"
+          },
+          {
+            "command": "/home/elliotbot/clawd/venv/bin/python3 scripts/context_compiler.py --budget 2000",
+            "timeout": 15,
+            "type": "command"
+          },
+          {
+            "command": "/home/elliotbot/clawd/venv/bin/python3 scripts/anti_amnesia_capsule.py --read",
+            "timeout": 5,
+            "type": "command"
+          }
+        ],
+        "matcher": "*"
+      },
+      {
+        "hooks": [
+          {
+            "command": "bash scripts/ssot_drift_check.sh",
+            "timeout": 10,
+            "type": "command"
+          }
+        ],
+        "matcher": "clear"
+      },
+      {
+        "hooks": [
+          {
+            "command": "bd prime",
+            "type": "command"
+          }
+        ],
+        "matcher": ""
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "command": "cd /home/elliotbot/clawd/Agency_OS \u0026\u0026 PYTHONPATH=/home/elliotbot/clawd/Agency_OS /home/elliotbot/clawd/venv/bin/python3 scripts/governance_router.py",
+            "timeout": 10,
+            "type": "command"
+          },
+          {
+            "command": "bash /home/elliotbot/clawd/Agency_OS/.claude/hooks/stop_relay_hook.sh",
+            "timeout": 5,
+            "type": "command"
+          },
+          {
+            "command": "bash .claude/hooks/session_store_stop.sh",
+            "timeout": 5,
+            "type": "command"
+          }
+        ],
+        "matcher": "*"
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "command": "bash .claude/hooks/session_store_userpromptsubmit.sh",
+            "timeout": 5,
+            "type": "command"
+          }
+        ],
+        "matcher": "*"
       }
     ]
   },
   "mcpServers": {
-    "supabase": {
-      "command": "npx",
-      "args": ["-y", "@supabase/mcp-server-supabase", "--access-token", "${SUPABASE_ACCESS_TOKEN}"],
-      "env": {
-        "SUPABASE_URL": "${SUPABASE_URL}"
-      }
-    },
-    "redis": {
-      "command": "npx",
-      "args": ["-y", "@upstash/mcp-server"],
-      "env": {
-        "UPSTASH_EMAIL": "${UPSTASH_EMAIL}",
-        "UPSTASH_API_KEY": "${UPSTASH_API_KEY}"
-      }
-    },
-    "prefect": {
-      "command": "node",
-      "args": ["/home/elliotbot/clawd/mcp-servers/prefect-mcp/dist/index.js"],
-      "env": {
-        "PREFECT_API_URL": "${PREFECT_API_URL}"
-      }
-    },
-    "railway": {
-      "command": "node",
-      "args": ["/home/elliotbot/clawd/mcp-servers/railway-mcp/dist/index.js"],
-      "env": {
-        "RAILWAY_TOKEN": "${Railway_Token}"
-      }
-    },
-    "prospeo": {
-      "command": "node",
-      "args": ["/home/elliotbot/clawd/mcp-servers/prospeo-mcp/dist/index.js"],
-      "env": {
-        "PROSPEO_API_KEY": "${PROSPEO_API_KEY}"
-      }
-    },
     "dataforseo": {
+      "args": [
+        "/home/elliotbot/clawd/mcp-servers/dataforseo-mcp/dist/index.js"
+      ],
       "command": "node",
-      "args": ["/home/elliotbot/clawd/mcp-servers/dataforseo-mcp/dist/index.js"],
       "env": {
         "DATAFORSEO_LOGIN": "${DATAFORSEO_LOGIN}",
         "DATAFORSEO_PASSWORD": "${DATAFORSEO_PASSWORD}"
       }
     },
-    "vercel": {
+    "keiradrive": {
+      "args": [
+        "/home/elliotbot/clawd/mcp-servers/keiradrive-mcp/server.py"
+      ],
+      "command": "/home/elliotbot/clawd/venv/bin/python3"
+    },
+    "keiramail": {
+      "args": [
+        "/home/elliotbot/clawd/mcp-servers/gmail-mcp/server.py"
+      ],
+      "command": "/home/elliotbot/clawd/venv/bin/python3"
+    },
+    "memory": {
+      "args": [
+        "/home/elliotbot/clawd/mcp-servers/memory-mcp/dist/index.js"
+      ],
       "command": "node",
-      "args": ["/home/elliotbot/clawd/mcp-servers/vercel-mcp/dist/index.js"],
       "env": {
-        "VERCEL_TOKEN": "${VERCEL_TOKEN}"
+        "SUPABASE_SERVICE_KEY": "${SUPABASE_SERVICE_KEY}",
+        "SUPABASE_URL": "${SUPABASE_URL}"
+      }
+    },
+    "prefect": {
+      "args": [
+        "/home/elliotbot/clawd/mcp-servers/prefect-mcp/dist/index.js"
+      ],
+      "command": "node",
+      "env": {
+        "PREFECT_API_URL": "${PREFECT_API_URL}"
+      }
+    },
+    "prospeo": {
+      "args": [
+        "/home/elliotbot/clawd/mcp-servers/prospeo-mcp/dist/index.js"
+      ],
+      "command": "node",
+      "env": {
+        "PROSPEO_API_KEY": "${PROSPEO_API_KEY}"
+      }
+    },
+    "railway": {
+      "args": [
+        "/home/elliotbot/clawd/mcp-servers/railway-mcp/dist/index.js"
+      ],
+      "command": "node",
+      "env": {
+        "RAILWAY_TOKEN": "${Railway_Token}"
+      }
+    },
+    "redis": {
+      "args": [
+        "-y",
+        "@upstash/mcp-server"
+      ],
+      "command": "npx",
+      "env": {
+        "UPSTASH_API_KEY": "${UPSTASH_API_KEY}",
+        "UPSTASH_EMAIL": "${UPSTASH_EMAIL}"
+      }
+    },
+    "resend": {
+      "args": [
+        "/home/elliotbot/clawd/mcp-servers/resend-mcp/dist/index.js"
+      ],
+      "command": "node",
+      "env": {
+        "RESEND_API_KEY": "${RESEND_API_KEY}"
       }
     },
     "salesforge": {
+      "args": [
+        "/home/elliotbot/clawd/mcp-servers/salesforge-mcp/dist/index.js"
+      ],
       "command": "node",
-      "args": ["/home/elliotbot/clawd/mcp-servers/salesforge-mcp/dist/index.js"],
       "env": {
         "SALESFORGE_API_KEY": "${SALESFORGE_API_KEY}"
       }
     },
-    "vapi": {
-      "command": "node",
-      "args": ["/home/elliotbot/clawd/mcp-servers/vapi-mcp/dist/index.js"],
+    "supabase": {
+      "args": [
+        "-y",
+        "@supabase/mcp-server-supabase",
+        "--access-token",
+        "${SUPABASE_ACCESS_TOKEN}"
+      ],
+      "command": "npx",
       "env": {
-        "VAPI_API_KEY": "${VAPI_API_KEY}"
+        "SUPABASE_URL": "${SUPABASE_URL}"
       }
     },
     "telnyx": {
+      "args": [
+        "/home/elliotbot/clawd/mcp-servers/telnyx-mcp/dist/index.js"
+      ],
       "command": "node",
-      "args": ["/home/elliotbot/clawd/mcp-servers/telnyx-mcp/dist/index.js"],
       "env": {
         "TELNYX_API_KEY": "${TELNYX_API_KEY}"
       }
     },
     "unipile": {
+      "args": [
+        "/home/elliotbot/clawd/mcp-servers/unipile-mcp/dist/index.js"
+      ],
       "command": "node",
-      "args": ["/home/elliotbot/clawd/mcp-servers/unipile-mcp/dist/index.js"],
       "env": {
         "UNIPILE_API_KEY": "${UNIPILE_API_KEY}"
       }
     },
-    "resend": {
+    "vapi": {
+      "args": [
+        "/home/elliotbot/clawd/mcp-servers/vapi-mcp/dist/index.js"
+      ],
       "command": "node",
-      "args": ["/home/elliotbot/clawd/mcp-servers/resend-mcp/dist/index.js"],
       "env": {
-        "RESEND_API_KEY": "${RESEND_API_KEY}"
+        "VAPI_API_KEY": "${VAPI_API_KEY}"
       }
     },
-    "memory": {
+    "vercel": {
+      "args": [
+        "/home/elliotbot/clawd/mcp-servers/vercel-mcp/dist/index.js"
+      ],
       "command": "node",
-      "args": ["/home/elliotbot/clawd/mcp-servers/memory-mcp/dist/index.js"],
       "env": {
-        "SUPABASE_URL": "${SUPABASE_URL}",
-        "SUPABASE_SERVICE_KEY": "${SUPABASE_SERVICE_KEY}"
+        "VERCEL_TOKEN": "${VERCEL_TOKEN}"
       }
-    },
-    "keiramail": {
-      "command": "/home/elliotbot/clawd/venv/bin/python3",
-      "args": ["/home/elliotbot/clawd/mcp-servers/gmail-mcp/server.py"]
-    },
-    "keiradrive": {
-      "command": "/home/elliotbot/clawd/venv/bin/python3",
-      "args": ["/home/elliotbot/clawd/mcp-servers/keiradrive-mcp/server.py"]
     }
+  },
+  "permissions": {
+    "defaultMode": "bypassPermissions"
   }
 }

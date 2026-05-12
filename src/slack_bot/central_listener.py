@@ -345,6 +345,26 @@ def run_enforcer(event: dict, text: str, web: WebClient) -> None:
             "ENFORCER R3 suppressed by post-LLM evidence regex (text contained commit/PR/CLI evidence)"
         )
         return
+    # R3 post-LLM REPLAY-ON-CLAIM — Drevon PR-A.5 listener integration.
+    # When REPLAY_ON_CLAIM_ENABLED=1, query turn_logs (PR-A schema) for actual
+    # verify_pr.sh / gh pr view / git cat-file invocations matching PR#/commit
+    # refs in the claim. If evidence found → suppress; otherwise fire.
+    # Disabled by default — turn_logs needs accumulation post-#718 hook-wiring
+    # before this check has reliable data. Activate after observation window.
+    if result.get("rule_number") == 3 and os.environ.get("REPLAY_ON_CLAIM_ENABLED") == "1":
+        try:
+            from src.replay import verify_completion_claim
+
+            verified, reason = verify_completion_claim(text, callsign=callsign)
+            if verified:
+                logger.info("ENFORCER R3 suppressed by replay-on-claim (PR-A.5): %s", reason)
+                return
+            logger.info("ENFORCER R3 confirmed by replay-on-claim (PR-A.5): %s", reason)
+        except Exception as exc:
+            logger.warning(
+                "replay-on-claim raised — proceeding with LLM verdict (best-effort): %s",
+                exc,
+            )
     _fire_violation(result, web)
 
 

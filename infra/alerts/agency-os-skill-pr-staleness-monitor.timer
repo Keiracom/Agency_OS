@@ -1,0 +1,9 @@
+[Unit]
+Description=Run skill-PR staleness breach monitor every 15 min (KEI-11 Outcome 2)
+
+[Timer]
+OnCalendar=*:0/15
+Persistent=true
+
+[Install]
+WantedBy=timers.target

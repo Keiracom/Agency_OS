@@ -1,0 +1,10 @@
+[Unit]
+Description=Agency OS — Skill PR staleness breach monitor (KEI-11 Outcome 2, Dave directive 2026-05-12)
+
+[Service]
+Type=oneshot
+ExecStart=/home/elliotbot/clawd/venv/bin/python3 /home/elliotbot/clawd/Agency_OS/scripts/alerts/skill_pr_staleness_monitor.py
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+StandardOutput=append:/home/elliotbot/clawd/logs/skill-pr-staleness-monitor.log
+StandardError=append:/home/elliotbot/clawd/logs/skill-pr-staleness-monitor.log

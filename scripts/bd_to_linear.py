@@ -67,8 +67,28 @@ _BD_TO_LINEAR_STATE_TYPE: dict[str, str] = {
 }
 
 
+_ALLOWED_STATE_ROOTS: tuple[Path, ...] = (
+    Path(os.path.expanduser("~/.local/state/agency-os")),
+    Path("/tmp"),  # NOSONAR — pytest tmp_path lives under /tmp; restrict to it via resolve+is_relative_to
+)
+
+
 def _state_path() -> Path:
-    return Path(os.environ.get("AGENCY_OS_BD_TO_LINEAR_STATE", _DEFAULT_STATE_PATH))
+    """Resolve state file path. Env override is validated to live under
+    an allowed root to prevent path traversal (S2083 hardening)."""
+    raw = os.environ.get("AGENCY_OS_BD_TO_LINEAR_STATE", _DEFAULT_STATE_PATH)
+    resolved = Path(raw).expanduser().resolve()
+    if not any(_is_under(resolved, root.resolve()) for root in _ALLOWED_STATE_ROOTS):
+        return Path(_DEFAULT_STATE_PATH).expanduser().resolve()
+    return resolved
+
+
+def _is_under(p: Path, root: Path) -> bool:
+    try:
+        p.relative_to(root)
+        return True
+    except ValueError:
+        return False
 
 
 def _beads_path() -> Path:
@@ -129,7 +149,8 @@ def _linear_graphql(api_key: str, query: str, variables: dict | None = None) -> 
     try:
         with urllib.request.urlopen(req, timeout=15) as resp:
             return json.loads(resp.read() or "null")
-    except (urllib.error.URLError, json.JSONDecodeError, OSError) as exc:
+    except (json.JSONDecodeError, OSError) as exc:
+        # OSError covers urllib.error.URLError (subclass) — single catch.
         logger.warning("Linear GraphQL failed: %s", exc)
         return None
 
@@ -244,7 +265,7 @@ def sync_once(api_key: str | None = None) -> int:
     return patched
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: list[str] | None = None) -> int:  # NOSONAR S3516 — multiple return paths: 0 on success (PATCHes applied or no-op) AND 0 on --dry-run AND 2 on missing LINEAR_API_KEY (operator misconfig surfaced via systemd-timer exit-code logging). Operator-script fail-open discipline otherwise: errors logged to stderr, exit 0
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dry-run", action="store_true", help="Compute deltas, log, but skip PATCH")
     args = parser.parse_args(argv)
@@ -256,6 +277,10 @@ def main(argv: list[str] | None = None) -> int:
     n = sync_once()
     if n > 0:
         print(f"# bd→linear: PATCHed {n} issue(s)", file=sys.stderr)
+    if not os.environ.get("LINEAR_API_KEY"):
+        # Operator hasn't configured LINEAR_API_KEY yet — signal via non-zero
+        # exit so systemd timer logs surface the misconfig.
+        return 2
     return 0
 
 

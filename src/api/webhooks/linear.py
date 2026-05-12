@@ -50,6 +50,20 @@ LINEAR_STATE_TO_BD: dict[str, str] = {
 _BD_WRAPPER = "/home/elliotbot/clawd/Agency_OS/scripts/linear_to_bd.py"
 
 
+def _python_bin() -> str:
+    """Prefer repo-local .venv (canonical) over the legacy shared
+    /home/elliotbot/clawd/venv. Max's PR-2 review flagged the shared venv
+    as corrupt per Atlas's cognee-recall SKILL.md; switch to repo-local."""
+    candidates = (
+        "/home/elliotbot/clawd/Agency_OS/.venv/bin/python3",
+        "/home/elliotbot/clawd/venv/bin/python3",
+    )
+    for c in candidates:
+        if os.path.isfile(c):
+            return c
+    return "python3"
+
+
 def _verify_signature(secret: str, body: bytes, signature_header: str) -> bool:
     """Constant-time HMAC SHA-256 verify per Linear webhook docs."""
     if not signature_header or not secret:
@@ -109,7 +123,7 @@ def _dispatch_to_bd(event: dict[str, Any]) -> None:
     """Fire-and-forget subprocess to scripts/linear_to_bd.py. Fail-open."""
     try:
         subprocess.run(  # noqa: S603 — controlled args, no shell, payload validated
-            ["/home/elliotbot/clawd/venv/bin/python3", _BD_WRAPPER, "--json"],
+            [_python_bin(), _BD_WRAPPER, "--json"],
             input=json.dumps(event),
             text=True,
             capture_output=True,

@@ -177,6 +177,35 @@ def test_r3_exception_governance_gatekeeper_passes() -> None:
     assert skip is True
 
 
+def test_r3_adjective_complete_not_strict() -> None:
+    """Track 7: 'coverage chain complete' is adjective, not completion claim."""
+    result, skip = check_r3("coverage chain complete — bot_common fully unit-tested")
+    assert result is None
+    assert skip is False
+
+
+def test_r3_adjective_is_complete_not_strict() -> None:
+    """Track 7: 'X is complete' adjective form falls through to LLM."""
+    result, skip = check_r3("bot_common coverage chain is complete")
+    assert result is None
+    assert skip is False
+
+
+def test_r3_deployment_complete_without_evidence_violates() -> None:
+    """Track 7: compound 'deployment complete' still triggers STRICT."""
+    result, skip = check_r3("Deployment complete. All services green.")
+    assert result is not None
+    assert result["rule_number"] == 3
+    assert skip is True
+
+
+def test_r3_migration_complete_with_evidence_passes() -> None:
+    """Track 7: compound 'migration complete' + commit hash → PASS."""
+    result, skip = check_r3("Migration complete — commit abc1234 applied.")
+    assert result is None
+    assert skip is True
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # check_r2 — STEP-0-BEFORE-EXECUTION
 # ─────────────────────────────────────────────────────────────────────────────

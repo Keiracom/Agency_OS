@@ -76,12 +76,14 @@ _R3_EXCEPTION_RE = re.compile(
 
 # STRICT completion triggers — always check for evidence.
 _R3_STRICT_RE = re.compile(
-    r"\bcomplete\b"
-    r"|all stores written"
+    r"all stores written"
     r"|4-store save complete"
     r"|store save complete"
     r"|task complete"
-    r"|build complete",
+    r"|build complete"
+    r"|deployment complete"
+    r"|migration complete"
+    r"|merge complete",
     re.IGNORECASE,
 )
 

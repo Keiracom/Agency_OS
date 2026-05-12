@@ -1,0 +1,9 @@
+[Unit]
+Description=Run artifact freshness monitor daily at 09:00 local
+
+[Timer]
+OnCalendar=*-*-* 09:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

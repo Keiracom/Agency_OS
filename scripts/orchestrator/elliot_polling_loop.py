@@ -371,9 +371,30 @@ def run_cycle(now: datetime | None = None) -> int:
     return len(dispatches)
 
 
+def _heartbeat() -> None:
+    """Better Stack heartbeat ping (Dave directive ts ~1778588500). Sent as the
+    LAST step of each cycle so the monitor only ticks on a clean cycle.
+    Best-effort: no key set → skip; subprocess failure → log + drop.
+    """
+    url = os.environ.get("BETTERSTACK_HB_ELLIOT_POLLING_LOOP", "")
+    if not url:
+        return
+    try:
+        subprocess.run(
+            ["curl", "-fsS", "-m", "5", url],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+    except (subprocess.TimeoutExpired, OSError) as exc:
+        logger.warning("betterstack heartbeat failed: %s", exc)
+
+
 def main() -> int:
     sent = run_cycle()
     logger.info("cycle complete — %d dispatch(es) sent", sent)
+    _heartbeat()
     return 0
 
 

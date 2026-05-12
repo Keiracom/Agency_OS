@@ -38,6 +38,9 @@ def fake_cognee(monkeypatch):
         side_effect=lambda email, tenant_id=None, **_: _make_user(email, tenant_id)
     )
 
+    # Default: access control ON. Tests of the OFF behavior monkeypatch this
+    # to a false-y value via the `client_no_access_control` fixture.
+    monkeypatch.setenv("ENABLE_BACKEND_ACCESS_CONTROL", "true")
     monkeypatch.setitem(sys.modules, "cognee", fake)
     monkeypatch.setitem(sys.modules, "cognee.modules.users.methods", users_methods)
     sys.modules.pop("src.cognee.client", None)
@@ -239,3 +242,54 @@ async def test_different_orgs_get_different_users(client, fake_cognee):
     assert add_users[0] is not add_users[1]
     assert add_users[0].tenant_id == "keiracom_platform"
     assert add_users[1].tenant_id == "other_org"
+
+
+# Access-control OFF behavior (Dave Option E, ts 1778572400) ────────────────
+
+
+@pytest.mark.asyncio
+async def test_add_skips_user_minting_when_access_control_off(client, fake_cognee, monkeypatch):
+    """Option E: ENABLE_BACKEND_ACCESS_CONTROL=false → wrapper does NOT mint
+    a User, does NOT call get_user_by_email/create_user. Avoids the aiosqlite
+    User-query path that segfaults on this server's stack.
+    """
+    monkeypatch.setenv("ENABLE_BACKEND_ACCESS_CONTROL", "false")
+    await client.add("hello", org_id="o", app_id="a", agent_id="aiden")
+    _, kwargs = fake_cognee.top.add.call_args
+    assert "user" not in kwargs
+    fake_cognee.users.get_user_by_email.assert_not_awaited()
+    fake_cognee.users.create_user.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_search_skips_user_minting_when_access_control_off(client, fake_cognee, monkeypatch):
+    monkeypatch.setenv("ENABLE_BACKEND_ACCESS_CONTROL", "false")
+    await client.search("q", org_id="o", app_id="a")
+    _, kwargs = fake_cognee.top.search.call_args
+    assert "user" not in kwargs
+    fake_cognee.users.get_user_by_email.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_add_passes_user_when_access_control_true(client, fake_cognee, monkeypatch):
+    """Inverse of the off case: access control ON (default per fixture) DOES
+    pass user= to cognee.add. Existing tests cover the prose; this is the
+    explicit boolean-toggle sanity test."""
+    monkeypatch.setenv("ENABLE_BACKEND_ACCESS_CONTROL", "true")
+    await client.add("hello", org_id="o", app_id="a", agent_id="aiden")
+    _, kwargs = fake_cognee.top.add.call_args
+    assert "user" in kwargs
+    assert kwargs["user"].tenant_id == "o"
+
+
+def test_access_control_enabled_is_case_insensitive(client, monkeypatch):
+    monkeypatch.setenv("ENABLE_BACKEND_ACCESS_CONTROL", "TRUE")
+    assert client._access_control_enabled() is True
+    monkeypatch.setenv("ENABLE_BACKEND_ACCESS_CONTROL", "TrUe")
+    assert client._access_control_enabled() is True
+    monkeypatch.setenv("ENABLE_BACKEND_ACCESS_CONTROL", "false")
+    assert client._access_control_enabled() is False
+    monkeypatch.setenv("ENABLE_BACKEND_ACCESS_CONTROL", "")
+    assert client._access_control_enabled() is False
+    monkeypatch.delenv("ENABLE_BACKEND_ACCESS_CONTROL", raising=False)
+    assert client._access_control_enabled() is False

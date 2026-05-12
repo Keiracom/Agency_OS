@@ -30,9 +30,24 @@ block; Gemini amendment ts 1778563xxx swapped Ollama → Gemini):
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
 import cognee
+
+
+def _access_control_enabled() -> bool:
+    """True iff Cognee's multi-user access control is on (env: ENABLE_BACKEND_ACCESS_CONTROL).
+
+    Per Dave's Option E ts 1778572400 + Aiden escalation-3 ts 1778571845: when
+    access control is off the wrapper skips per-tenant Cognee User minting so
+    the aiosqlite User-query path (segfault site on this server's Python 3.12.3
+    / aiosqlite 0.22.1 stack) is not exercised. Trade-off: Validation Query #4
+    cross-tenant isolation is not enforced at Phase 0 — Phase 0 is single-tenant
+    API-surface verify anyway, consistent with the directive's Phase 0 framing.
+    """
+    return os.environ.get("ENABLE_BACKEND_ACCESS_CONTROL", "").lower() == "true"
+
 
 # In-process cache so we mint each Cognee User exactly once per process. Cognee's
 # user store is the SQLAlchemy Dataset/User DB, so this is purely a hot-path
@@ -101,8 +116,10 @@ async def add(
     """
     dataset = _dataset_name(org_id, app_id)
     tags = _agent_node_set(agent_id, node_set)
-    user = await _get_or_create_user(org_id)
-    return await cognee.add(content, dataset_name=dataset, node_set=tags, user=user)
+    kwargs: dict[str, Any] = {"dataset_name": dataset, "node_set": tags}
+    if _access_control_enabled():
+        kwargs["user"] = await _get_or_create_user(org_id)
+    return await cognee.add(content, **kwargs)
 
 
 async def cognify() -> Any:
@@ -140,8 +157,9 @@ async def search(
     (per-User permission rows) because the User is org-specific.
     """
     dataset = _dataset_name(org_id, app_id)
-    user = await _get_or_create_user(org_id)
-    kwargs: dict[str, Any] = {"datasets": [dataset], "user": user}
+    kwargs: dict[str, Any] = {"datasets": [dataset]}
+    if _access_control_enabled():
+        kwargs["user"] = await _get_or_create_user(org_id)
     if agent_id:
         kwargs["node_set"] = [f"agent:{agent_id}"]
     return await cognee.search(query, **kwargs)

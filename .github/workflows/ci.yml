@@ -63,9 +63,14 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install dependencies
+        # pip >=26.0 enforces a maximum dependency resolution depth that
+        # rejects this repo's requirements.txt + extras (resolution-too-deep).
+        # Pin to <26 until requirements.txt is refactored with lower-bounds.
+        # Combine the two installs into one pip invocation so resolution runs
+        # once over the union of constraints instead of twice sequentially.
         run: |
-          pip install -r requirements.txt
-          pip install mypy types-redis
+          pip install --upgrade "pip<26"
+          pip install -r requirements.txt mypy types-redis
 
       - name: Run mypy
         run: mypy src/ --ignore-missing-imports --no-error-summary || true
@@ -127,9 +132,11 @@ jobs:
             ${{ runner.os }}-pip-
 
       - name: Install dependencies
+        # See mypy job above — pip <26 + combined invocation avoids the
+        # resolution-too-deep error from pip 26.0's new depth limit.
         run: |
-          pip install -r requirements.txt
-          pip install pytest pytest-asyncio pytest-cov
+          pip install --upgrade "pip<26"
+          pip install -r requirements.txt pytest pytest-asyncio pytest-cov
 
       - name: Run tests
         run: pytest tests/ -v --tb=short --cov=src --cov-report=term-missing || true

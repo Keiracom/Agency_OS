@@ -1,0 +1,8 @@
+[Unit]
+Description=Agency OS — weekly LLM Wiki regeneration (Karpathy pattern)
+
+[Service]
+Type=oneshot
+ExecStart=/home/elliotbot/clawd/venv/bin/python3 /home/elliotbot/clawd/Agency_OS/scripts/compile_llm_wiki.py
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env

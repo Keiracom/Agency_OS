@@ -346,3 +346,104 @@ def check_r8(text: str, recent_messages: list[str] | None = None) -> dict | None
         "detail": f"Dispatch action without prior {' + '.join(missing)} in recent_messages.",
         "should_have": "Post [DISPATCH-PROPOSAL:<callsign>] and wait for peer [CONCUR] before dispatching.",
     }
+
+
+# ---------------------------------------------------------------------------
+# R10 — LINEAR-KEI-GATE (Wave 2 Outcome 3, Dave priority-reset ts 1778570450)
+# ---------------------------------------------------------------------------
+
+# Completion-claim phrases that should be paired with a Linear KEI status update.
+# Mirrors enforcer_rules.TRIGGER_PATTERNS for the completion-claim subset but
+# narrower — only the patterns that signal "work just shipped", not generic
+# discussion of work.
+_R10_COMPLETION_RE = re.compile(
+    r"\bpr\s*#\d+\s+(?:merged|shipped|landed|deployed)\b"
+    r"|\bmerged\s+(?:at\s+)?(?:sha\s+)?[a-f0-9]{7,40}\b"
+    r"|\[READY:[a-z]+\]"
+    r"|\b(?:directive|wave|outcome)\s+(?:\w+\s+)?(?:complete|completed|shipped|done)\b"
+    r"|\ball\s+stores?\s+written\b"
+    r"|\bfour[-\s]?store\s+save\s+complete\b",
+    re.IGNORECASE,
+)
+
+# Anti-broadening: exempt past-tense citations / future intent / negation.
+_R10_EXEMPT_RE = re.compile(
+    r"\b(?:will|going to|about to|planning to)\s+(?:ship|merge|deploy)"
+    r"|\bhaven't\s+(?:shipped|merged|deployed)\b"
+    r"|\bnot\s+(?:shipped|merged|deployed)\s+yet\b"
+    r"|\b(?:retro|review|recap)\b",
+    re.IGNORECASE,
+)
+
+# KEI tag extraction. Linear's identifier prefix is KEI-<digits>.
+_R10_KEI_RE = re.compile(r"\bKEI-\d+\b")
+
+
+def check_r10(
+    text: str,
+    *,
+    linear_kei_recently_updated: callable = None,
+    window_seconds: int = 60,
+) -> dict | None:
+    """R10 — LINEAR-KEI-GATE.
+
+    Fires when a completion claim (PR merged / [READY:] / sha line / wave done)
+    lacks a corresponding Linear KEI status update within `window_seconds`.
+
+    Two failure modes:
+      (a) Completion claim with NO KEI-<N> tag → "untaggable, can't verify".
+      (b) Completion claim with KEI tag, but Linear shows no recent updatedAt
+          mutation on that KEI → "claim without Linear sync".
+
+    `linear_kei_recently_updated(kei_id: str, window_seconds: int) -> bool` is
+    injected for testability; default None skips the (b) check entirely (returns
+    None for (a)-only mode) so tests can exercise just the pattern logic.
+    """
+    if not _R10_COMPLETION_RE.search(text):
+        return None
+    if _R10_EXEMPT_RE.search(text):
+        return None
+    kei_matches = _R10_KEI_RE.findall(text)
+
+    if not kei_matches:
+        return {
+            "violation": True,
+            "rule_number": 10,
+            "rule_name": "LINEAR-KEI-GATE",
+            "detail": (
+                "Completion claim without KEI-<N> tag — cannot verify Linear sync. "
+                "Tag the Linear issue so the orchestrator can mirror state."
+            ),
+            "should_have": (
+                "Include the KEI tag (e.g. 'KEI-17') in the completion message OR "
+                "ensure the PR title contains it."
+            ),
+        }
+
+    if linear_kei_recently_updated is None:
+        # No injectable check provided — treat as conservative pass (the tag is
+        # present; caller will run the Linear check separately if desired).
+        return None
+
+    stale_keis: list[str] = []
+    for kei in set(kei_matches):
+        try:
+            if not linear_kei_recently_updated(kei, window_seconds):
+                stale_keis.append(kei)
+        except Exception:  # noqa: BLE001 — best-effort; conservative pass on probe failure
+            continue
+    if not stale_keis:
+        return None
+    return {
+        "violation": True,
+        "rule_number": 10,
+        "rule_name": "LINEAR-KEI-GATE",
+        "detail": (
+            f"Completion claim references {', '.join(sorted(stale_keis))} but no "
+            f"Linear status update in last {window_seconds}s — sync KEI state."
+        ),
+        "should_have": (
+            "Update the Linear KEI state to Done / In Review / appropriate next state "
+            "before posting the completion claim — or within the 60s window after."
+        ),
+    }

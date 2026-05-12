@@ -260,7 +260,10 @@ def test_r2_recent_messages_none_conservative_pass() -> None:
 
 def test_r2_exempt_fully_deployed_status() -> None:
     """Track 8: 'FULLY DEPLOYED' is status reporting, not new execution."""
-    assert check_r2("Track 7 FULLY DEPLOYED. Listener restarted at 01:24 UTC.", recent_messages=[]) is None
+    assert (
+        check_r2("Track 7 FULLY DEPLOYED. Listener restarted at 01:24 UTC.", recent_messages=[])
+        is None
+    )
 
 
 def test_r2_exempt_pr_tally() -> None:
@@ -281,7 +284,10 @@ def test_r2_exempt_shipped_in_pr() -> None:
 
 def test_r2_exempt_merge_pull_request() -> None:
     """Track 8: GitHub merge commit message format."""
-    assert check_r2("Merge pull request #741 from Keiracom/max/r9-standby-exempt", recent_messages=[]) is None
+    assert (
+        check_r2("Merge pull request #741 from Keiracom/max/r9-standby-exempt", recent_messages=[])
+        is None
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -334,3 +340,121 @@ def test_r8_recent_messages_none_conservative_pass() -> None:
     """recent_messages=None → conservative pass."""
     text = "Atlas dispatched per Dave directive."
     assert check_r8(text, recent_messages=None) is None
+
+
+# ---------------------------------------------------------------------------
+# R10 — LINEAR-KEI-GATE (Wave 2 Outcome 3)
+# ---------------------------------------------------------------------------
+
+
+def test_r10_no_completion_phrase_returns_none():
+    from src.bot_common.enforcer_deterministic import check_r10
+
+    assert check_r10("just chatting about KEI-17 design") is None
+
+
+def test_r10_pr_merged_without_kei_tag_fires():
+    from src.bot_common.enforcer_deterministic import check_r10
+
+    out = check_r10("PR #774 merged at sha abc1234")
+    assert out is not None
+    assert out["rule_number"] == 10
+    assert "without KEI-<N> tag" in out["detail"]
+
+
+def test_r10_pr_merged_with_kei_tag_no_check_fn_passes():
+    from src.bot_common.enforcer_deterministic import check_r10
+
+    # KEI tag present; no Linear-check fn injected → conservative pass.
+    out = check_r10("PR #774 merged (KEI-17) at sha abc1234")
+    assert out is None
+
+
+def test_r10_ready_marker_with_kei_tag_and_recent_linear_update_passes():
+    from src.bot_common.enforcer_deterministic import check_r10
+
+    # Inject a Linear-check fn that says "yes, KEI-17 was updated".
+    fresh = lambda kei, window: True  # noqa: E731
+    out = check_r10("[READY:aiden] KEI-17 polling loop shipped", linear_kei_recently_updated=fresh)
+    assert out is None
+
+
+def test_r10_ready_marker_with_stale_kei_fires():
+    from src.bot_common.enforcer_deterministic import check_r10
+
+    stale = lambda kei, window: False  # noqa: E731
+    out = check_r10(
+        "[READY:aiden] KEI-17 polling loop shipped",
+        linear_kei_recently_updated=stale,
+    )
+    assert out is not None
+    assert out["rule_number"] == 10
+    assert "KEI-17" in out["detail"]
+    assert "no Linear status update" in out["detail"]
+
+
+def test_r10_multiple_keis_mixed_fresh_and_stale_fires_only_on_stale():
+    from src.bot_common.enforcer_deterministic import check_r10
+
+    # KEI-17 fresh, KEI-18 stale.
+    def probe(kei, window):
+        return kei == "KEI-17"
+
+    out = check_r10(
+        "Wave 2 KEI-17 + KEI-18 outcomes complete — PR #774 merged",
+        linear_kei_recently_updated=probe,
+    )
+    assert out is not None
+    assert "KEI-18" in out["detail"]
+    assert "KEI-17" not in out["detail"]  # the fresh one is omitted
+
+
+def test_r10_exempt_future_intent_passes():
+    from src.bot_common.enforcer_deterministic import check_r10
+
+    # Future intent should NOT fire even with completion-shaped phrase.
+    assert check_r10("planning to merge PR #774 once CI greens") is None
+    assert check_r10("will deploy after smoke verifies") is None
+
+
+def test_r10_exempt_negation_passes():
+    from src.bot_common.enforcer_deterministic import check_r10
+
+    assert check_r10("we haven't merged PR #774 yet — Max is reviewing") is None
+
+
+def test_r10_exempt_retro_recap_passes():
+    from src.bot_common.enforcer_deterministic import check_r10
+
+    # Recap-style mention of past completion should not fire.
+    assert check_r10("retro of yesterday: PR #774 merged on time") is None
+
+
+def test_r10_completion_probe_failure_does_not_fire():
+    from src.bot_common.enforcer_deterministic import check_r10
+
+    # If the Linear-check fn raises, that single KEI is skipped (conservative).
+    def probe(kei, window):
+        raise RuntimeError("Linear API down")
+
+    out = check_r10(
+        "[READY:aiden] KEI-17 polling loop shipped",
+        linear_kei_recently_updated=probe,
+    )
+    assert out is None  # no stale_keis collected → conservative pass
+
+
+def test_r10_four_store_save_complete_phrase_fires_when_no_kei():
+    from src.bot_common.enforcer_deterministic import check_r10
+
+    out = check_r10("four-store save complete for Wave 1 cleanup")
+    assert out is not None
+    assert "without KEI-<N> tag" in out["detail"]
+
+
+def test_r10_directive_done_phrase_fires_when_no_kei():
+    from src.bot_common.enforcer_deterministic import check_r10
+
+    out = check_r10("Wave 2 Outcome 3 complete — enforcer rule shipped")
+    assert out is not None
+    assert "without KEI-<N> tag" in out["detail"]

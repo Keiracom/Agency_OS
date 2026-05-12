@@ -31,11 +31,15 @@ Every call is scoped by three IDs:
 Internally encoded as:
 
 ```
-dataset_name = f"{org_id}__{app_id}"          # "keiracom_platform__agency_os"
-node_set     = [f"agent:{agent_id}", ...extras]  # ["agent:aiden", "test"]
+user.email     = f"{org_id}@keiracom.local"        # mints per-tenant Cognee User
+user.tenant_id = org_id                            # propagates to dataset UUID
+dataset_name   = f"{org_id}__{app_id}"             # "keiracom_platform__agency_os"
+node_set       = [f"agent:{agent_id}", ...extras]  # ["agent:aiden", "test"]
 ```
 
 Every chunk you `add()` carries the writing agent's tag automatically. `search()` can optionally filter to a specific agent.
+
+**Cross-tenant isolation (Scout Q4, Elliot amendment ts 1778565xxx):** the wrapper auto-mints one Cognee User per `org_id` on first use (idempotent — looked up by email, then created if absent). Cognee derives `dataset.id = uuid5(NAMESPACE_OID, f"{dataset_name}{user.id}{user.tenant_id}")` and enforces per-user permission rows at the auth layer, so distinct `org_id` callers cannot read each other's datasets even if they pass the same `dataset_name` string. The User cache is process-local; the SDK-side User store is durable.
 
 ### Calls
 

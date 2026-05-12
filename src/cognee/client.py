@@ -5,9 +5,19 @@ all Cognee usage in this codebase MUST go through these four functions. Direct
 imports of the cognee SDK outside this module are forbidden — keeps the multi-
 tenant naming convention + agent-scoped node_set tagging consistent.
 
-Tenant encoding (per Dave gap-3 resolution):
-    dataset_name = f"{org_id}__{app_id}"      # e.g. "keiracom_platform__agency_os"
-    node_set     = [f"agent:{agent_id}"] + extras  # e.g. ["agent:aiden", "test"]
+Tenant encoding (per Dave gap-3 resolution + Scout Q4 + Elliot ts 1778565xxx):
+    user.email     = f"{org_id}@keiracom.local"        # mints per-tenant Cognee User
+    user.tenant_id = org_id                            # propagates to dataset UUID derivation
+    dataset_name   = f"{org_id}__{app_id}"             # e.g. "keiracom_platform__agency_os"
+    node_set       = [f"agent:{agent_id}"] + extras    # e.g. ["agent:aiden", "test"]
+
+Why per-tenant User minting (Scout Q4): Cognee derives
+    dataset.id = uuid5(NAMESPACE_OID, f"{dataset_name}{user.id}{user.tenant_id}")
+and scopes ops via set_database_global_context_variables(dataset.id, dataset.owner_id).
+If every Keiracom tenant wrote as one shared default User, distinct dataset_names
+would still share owner_id → Dave's Validation Query 4 (cross-namespace isolation)
+would fail. Minting one User per org_id with tenant_id=org_id gives true isolation
+at both the dataset-UUID and auth-permission layers.
 
 Backing stores (per /home/elliotbot/.config/agency-os/.env LLM_*/EMBEDDING_*
 block; Gemini amendment ts 1778563xxx swapped Ollama → Gemini):
@@ -24,6 +34,11 @@ from typing import Any
 
 import cognee
 
+# In-process cache so we mint each Cognee User exactly once per process. Cognee's
+# user store is the SQLAlchemy Dataset/User DB, so this is purely a hot-path
+# optimisation — cold lookups still go through get_user_by_email.
+_USER_CACHE: dict[str, Any] = {}
+
 
 def _dataset_name(org_id: str, app_id: str) -> str:
     """Compose the Cognee dataset name from org + app scopes."""
@@ -39,6 +54,37 @@ def _agent_node_set(agent_id: str, extras: list[str] | None) -> list[str]:
     return [f"agent:{agent_id}", *(extras or [])]
 
 
+def _tenant_email(org_id: str) -> str:
+    """Synthetic email used as the Cognee User identifier for a Keiracom tenant.
+
+    Not a real mailbox — Cognee uses email as the User primary lookup key.
+    Convention: f"{org_id}@keiracom.local" so per-org isolation is deterministic.
+    """
+    if not org_id:
+        raise ValueError(f"org_id required for tenant User minting (got {org_id!r})")
+    return f"{org_id}@keiracom.local"
+
+
+async def _get_or_create_user(org_id: str) -> Any:
+    """Return the Cognee User scoped to this Keiracom tenant; mint if absent.
+
+    Idempotent: caches the resolved User in-process; on cache miss, calls
+    cognee.modules.users.methods.get_user_by_email; if that returns None, calls
+    create_user with email + tenant_id=org_id. Subsequent calls hit the cache.
+    """
+    if org_id in _USER_CACHE:
+        return _USER_CACHE[org_id]
+
+    from cognee.modules.users.methods import create_user, get_user_by_email
+
+    email = _tenant_email(org_id)
+    user = await get_user_by_email(email)
+    if user is None:
+        user = await create_user(email=email, tenant_id=org_id, is_superuser=False)
+    _USER_CACHE[org_id] = user
+    return user
+
+
 async def add(
     content: str,
     *,
@@ -51,17 +97,20 @@ async def add(
 
     agent_id is required so every chunk is tagged with the writing agent —
     enables agent-scoped retrieval + audit trail for memory provenance.
+    Per-tenant Cognee User is auto-minted on first call for this org_id.
     """
     dataset = _dataset_name(org_id, app_id)
     tags = _agent_node_set(agent_id, node_set)
-    return await cognee.add(content, dataset_name=dataset, node_set=tags)
+    user = await _get_or_create_user(org_id)
+    return await cognee.add(content, dataset_name=dataset, node_set=tags, user=user)
 
 
 async def cognify() -> Any:
     """Process pending added data into the knowledge graph + embeddings.
 
     Must be called after add() before search() can return new content.
-    Cognee processes ALL pending datasets in one pass.
+    Cognee processes ALL pending datasets in one pass; per-tenant scoping
+    is already baked into each dataset's owner_id via the User-on-add path.
     """
     return await cognee.cognify()
 
@@ -83,14 +132,16 @@ async def search(
     app_id: str,
     agent_id: str | None = None,
 ) -> Any:
-    """Semantic search the per-org/app Cognee dataset.
+    """Semantic search the per-org/app Cognee dataset, scoped to this tenant's User.
 
     agent_id is optional on read — when set, scopes results to chunks tagged
     `agent:<agent_id>`. When None, returns results across all agents in the
-    org/app scope.
+    org/app scope. Cross-tenant reads are blocked by Cognee's auth layer
+    (per-User permission rows) because the User is org-specific.
     """
     dataset = _dataset_name(org_id, app_id)
-    kwargs: dict[str, Any] = {"datasets": [dataset]}
+    user = await _get_or_create_user(org_id)
+    kwargs: dict[str, Any] = {"datasets": [dataset], "user": user}
     if agent_id:
         kwargs["node_set"] = [f"agent:{agent_id}"]
     return await cognee.search(query, **kwargs)

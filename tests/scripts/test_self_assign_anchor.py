@@ -55,6 +55,60 @@ def test_case_insensitive_matches():
     assert mod._is_ready_marker("[ready:AIDEN] case insensitive", "aiden") is True
 
 
+# ─── Clone-callsign role-filter (Agency_OS-g41) ────────────────────────
+#
+# Clone callsigns (atlas/orion/scout) must skip-claim entirely — polling loop
+# is their canonical dispatch path. Empirical evidence: Scout false-positive
+# auto-claims on Agency_OS-dhe + Agency_OS-yvz this session, both research
+# [READY:scout] in doc-completion posts that triggered primary build claims.
+
+
+def test_clone_callsign_skips_self_assign(monkeypatch):
+    """Clones (scout/orion/atlas) MUST NOT spawn bd subprocess, even with
+    an anchored [READY:<clone>] in the message body."""
+    mod = _load_slack_relay()
+    monkeypatch.setattr(mod, "CALLSIGN", "scout")
+
+    def _raise_if_called(*args, **kwargs):
+        raise AssertionError("subprocess.run must not be invoked for clone callsigns")
+
+    import subprocess
+
+    monkeypatch.setattr(subprocess, "run", _raise_if_called)
+
+    # Returns None without raising — proves the guard fired before any subprocess.
+    assert mod._maybe_self_assign("[READY:scout] doc done") is None
+
+
+def test_primary_callsign_proceeds_past_clone_guard(monkeypatch):
+    """Primary callsigns (aiden/max/elliot) must still proceed past the clone
+    guard and reach the subprocess path (which we sentinel-trip)."""
+    mod = _load_slack_relay()
+    monkeypatch.setattr(mod, "CALLSIGN", "aiden")
+
+    calls = []
+    import subprocess
+
+    def _capture(*args, **kwargs):
+        calls.append(args[0] if args else None)
+        # Return a fake CompletedProcess that bails the rest of the function.
+        return subprocess.CompletedProcess(args=args[0] if args else [], returncode=1, stdout="", stderr="")
+
+    monkeypatch.setattr(subprocess, "run", _capture)
+
+    mod._maybe_self_assign("[READY:aiden] starting work")
+    assert any(c and c[0] == "bd" for c in calls), (
+        f"expected bd subprocess invocation; got {calls!r}"
+    )
+
+
+def test_clone_callsigns_set_matches_channel_access_map():
+    """Defensive: the clone set must equal the clone keys in _channel_access."""
+    mod = _load_slack_relay()
+    channel_clones = {"atlas", "orion", "scout"}
+    assert frozenset(channel_clones) == mod._CLONE_CALLSIGNS
+
+
 if __name__ == "__main__":
     import pytest
 

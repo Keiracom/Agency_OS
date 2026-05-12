@@ -283,12 +283,25 @@ def _is_ready_marker(message: str, callsign: str) -> bool:
     return bool(pattern.search(message))
 
 
+# Clone callsigns never auto-claim primary build work — the polling loop is
+# their canonical dispatch path. Empirical false-positives (Scout 2026-05-12
+# on Agency_OS-dhe + Agency_OS-yvz: research [READY:scout] in doc-completion
+# posts auto-claimed unrelated build issues) drove this guard. Polling loop
+# itself is currently broken (Agency_OS-yvz) — clones go idle silently until
+# that fix lands, which is preferable to the wrong-issue claim.
+_CLONE_CALLSIGNS: frozenset[str] = frozenset({"atlas", "orion", "scout"})
+
+
 def _maybe_self_assign(message: str) -> None:
     """If message contains an anchored [READY:<my-callsign>], try bd ready → bd claim.
 
     Best-effort + non-blocking: subprocess timeouts + missing bd binary log
     + return. Never raises. The polling loop is the safety net if this fails.
+
+    Clones (atlas/orion/scout) skip-claim entirely — see _CLONE_CALLSIGNS.
     """
+    if CALLSIGN.lower() in _CLONE_CALLSIGNS:
+        return
     if not _is_ready_marker(message, CALLSIGN):
         return
     import subprocess as _sub

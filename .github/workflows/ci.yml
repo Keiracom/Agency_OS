@@ -29,6 +29,73 @@ jobs:
           echo "OK: crm_sync_flow not present."
 
   # ============================================
+  # Guard: Migration Completeness (Wave 1 Item 4, audit Pattern A)
+  # ============================================
+  # Fails when a PR removes a writer (INSERT INTO X / UPDATE X) but leaves
+  # readers of X in src/scripts/skills. Closes the "unclosed migration paths"
+  # pattern surfaced by the 2026-05-12 memory audit
+  # (docs/audits/memory_audit_2026-05-12.md).
+  migration-completeness:
+    name: Migration Completeness Guard
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Detect removed write targets in diff
+        id: detect
+        run: |
+          BASE_REF="${{ github.event.pull_request.base.ref }}"
+          git fetch origin "$BASE_REF" --depth=50
+          # Removed INSERT INTO <X> / UPDATE <X> lines in src/scripts/skills.
+          # Extract <X> (table identifier, may contain dots for schema-qualified).
+          TARGETS=$(git diff "origin/$BASE_REF...HEAD" -- src/ scripts/ skills/ \
+            | grep -E '^-[^-]' \
+            | grep -oE '(INSERT[[:space:]]+INTO|UPDATE)[[:space:]]+[a-zA-Z_][a-zA-Z0-9_.]*' \
+            | awk '{print $NF}' \
+            | sort -u || true)
+          if [ -z "$TARGETS" ]; then
+            echo "No removed write targets detected — Pattern A check skipped."
+          else
+            echo "Detected removed write targets:"
+            echo "$TARGETS"
+          fi
+          {
+            echo "targets<<EOF"
+            echo "$TARGETS"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Check each removed target for residual readers
+        run: |
+          TARGETS="${{ steps.detect.outputs.targets }}"
+          if [ -z "$TARGETS" ]; then
+            echo "Pattern A check: nothing to verify."
+            exit 0
+          fi
+          FAIL=0
+          while IFS= read -r target; do
+            [ -z "$target" ] && continue
+            echo "::group::Checking $target"
+            if ! python3 scripts/check_migration_completeness.py --removed-target "$target"; then
+              FAIL=1
+            fi
+            echo "::endgroup::"
+          done <<< "$TARGETS"
+          if [ "$FAIL" -ne 0 ]; then
+            echo "::error::Pattern A violation — see audit memory_audit_2026-05-12.md"
+            exit 1
+          fi
+          echo "All removed targets have no residual readers."
+
+  # ============================================
   # Backend: Lint, Type Check, Test
   # ============================================
   backend-lint:

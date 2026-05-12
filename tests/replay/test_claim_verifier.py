@@ -25,7 +25,10 @@ def mock_sb_get():
     rows_by_pattern: dict[str, list[dict]] = {}
 
     def fake_get(table: str, params: dict) -> list[dict]:
-        ilike_val = params.get("tool_args_json", "")
+        # JSONB-fix (post-PR #727): real query now uses tool_args_json->>command
+        # instead of raw tool_args_json (PostgREST rejects ilike on JSONB type).
+        # Stub accepts both for backwards compat.
+        ilike_val = params.get("tool_args_json->>command", params.get("tool_args_json", ""))
         for needle, rows in rows_by_pattern.items():
             if needle in ilike_val:
                 return rows
@@ -168,6 +171,43 @@ def test_slack_channel_id_prefix_skipped(mock_sb_get) -> None:
     verified, reason = claim_verifier.verify_completion_claim(text)
     # The 'c0b...' hash is skipped, and no PR refs → no refs → verified True
     assert verified is True
+
+
+def test_query_uses_jsonb_arrow_operator_not_raw_jsonb_ilike() -> None:
+    """Regression: lock the JSONB-arrow query shape against the Orion-#727 bug.
+
+    Pre-fix, claim_verifier passed `tool_args_json=ilike.*pattern*` which
+    PostgREST rejects with 42883 (no operator: ilike vs jsonb). Post-fix,
+    the query uses `tool_args_json->>command=ilike.*pattern*` + `tool_name=eq.Bash`
+    scoping. This test asserts the params shape so the fix can't regress
+    silently.
+    """
+    captured_params: list[dict] = []
+
+    def capture(table: str, params: dict) -> list[dict]:
+        captured_params.append(dict(params))
+        return []
+
+    from unittest.mock import patch as _patch
+
+    with _patch.object(claim_verifier, "sb_get", side_effect=capture):
+        claim_verifier.verify_completion_claim("PR #715 merged")
+    assert captured_params, "expected at least one sb_get call"
+    first = captured_params[0]
+    # Critical: the broken shape is `tool_args_json: ilike...` directly on the JSONB col
+    keys = list(first)
+    # Critical: the broken shape is `tool_args_json: ilike...` directly on the JSONB col
+    assert "tool_args_json" not in keys or "->>" in keys[0], (
+        "regression — raw tool_args_json ilike will fail with PostgREST 42883 on JSONB"
+    )
+    # Correct shape: arrow-operator extraction + Bash scope
+    assert any("->>command" in k for k in keys), (
+        "expected tool_args_json->>command in params, got keys: " + str(keys)
+    )
+    assert first.get("tool_name") == "eq.Bash", (
+        "expected tool_name=eq.Bash scope on JSONB-extracted query, got: "
+        + str(first.get("tool_name"))
+    )
 
 
 def test_sb_get_failure_returns_no_evidence(mock_sb_get) -> None:

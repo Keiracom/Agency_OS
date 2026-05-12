@@ -52,6 +52,13 @@ PEAK_HOURS_UTC = set(list(range(21, 24)) + list(range(0, 14)))  # 21–13 UTC in
 STALE_LINEAR_HOURS = 12
 IDLE_AGENT_MINUTES = 30
 PREFECT_WINDOW_MINUTES = 5
+# KEI-34 strict-cycle reading per Dave verbatim ts ~1778629860: 'Idle agents
+# with unblocked work is the failure we're fixing. 15 minutes is too long.'
+# Component 1 fires when an agent has been idle >= ORCHESTRATOR_IDLE_CYCLES *
+# current_cycle_period_seconds (60s peak, 3600s off-peak).
+ORCHESTRATOR_IDLE_CYCLES = 1
+PEAK_CYCLE_SECONDS = 60
+OFF_PEAK_CYCLE_SECONDS = 3600
 
 EXECUTION_CHANNEL_NAME = "#execution"
 CEO_CHANNEL_NAME = "#ceo"
@@ -103,6 +110,17 @@ THROTTLE_PATTERNS: tuple[str, ...] = (
 THROTTLE_RE = re.compile("|".join(THROTTLE_PATTERNS), re.IGNORECASE)
 
 
+def _cycle_period_seconds(now: datetime | None = None) -> int:
+    """KEI-34: return the current polling-cycle period in seconds.
+    Peak hours = 60s (run-every-minute); off-peak = 3600s (run-every-hour).
+    Used by _orchestrator_discipline_check to enforce strict-cycle staleness.
+    """
+    n = now or datetime.now(UTC)
+    if n.hour in PEAK_HOURS_UTC:
+        return PEAK_CYCLE_SECONDS
+    return OFF_PEAK_CYCLE_SECONDS
+
+
 @dataclass
 class CycleSignals:
     bd_ready: list[dict]
@@ -110,6 +128,9 @@ class CycleSignals:
     idle_agents: list[str]
     prefect_failures: list[dict]
     rate_limit_transitions: list[tuple[str, str, int]] = field(default_factory=list)
+    # KEI-34 component 1 — agents idle >= ORCHESTRATOR_IDLE_CYCLES * cycle_period
+    # (strict-cycle threshold; tighter than idle_agents which uses IDLE_AGENT_MINUTES).
+    orchestrator_idle_agents: list[str] = field(default_factory=list)
     """List of (callsign, transition, duration_min) where transition is
     'throttled' (first detection) or 'resumed' (clearing detection). Duration
     is minutes-since-throttle-start for 'resumed' (0 for 'throttled')."""
@@ -248,6 +269,58 @@ def poll_idle_agents(now: datetime | None = None) -> list[str]:
         return []
 
 
+def poll_orchestrator_idle_agents(now: datetime | None = None) -> list[str]:
+    """KEI-34 strict-cycle threshold per Dave verbatim ts ~1778629860.
+
+    Returns callsigns whose last_activity_at is older than
+    ORCHESTRATOR_IDLE_CYCLES * _cycle_period_seconds(now). At peak hours
+    cycle period = 60s; off-peak = 3600s. Tighter than IDLE_AGENT_MINUTES
+    (30m) — by design, per Dave's '15 minutes is too long' override.
+
+    Same DB query shape as poll_idle_agents but with the strict cutoff.
+    Best-effort: DB failure or DSN-unset returns []."""
+    dsn = os.environ.get("DATABASE_URL", "") or os.environ.get("DATABASE_URL_MIGRATIONS", "")
+    if not dsn:
+        return []
+    n = now or datetime.now(UTC)
+    threshold_s = ORCHESTRATOR_IDLE_CYCLES * _cycle_period_seconds(n)
+    cutoff = n - timedelta(seconds=threshold_s)
+    sql = (
+        "SELECT DISTINCT ON (callsign) callsign, last_activity_at "
+        "FROM keiracom_admin.agent_status_observations "
+        "WHERE callsign = ANY($1::text[]) "
+        "ORDER BY callsign, observed_at DESC"
+    )
+    candidates = list(PRIMES) + list(CLONES)
+    try:
+        import asyncio
+
+        import asyncpg
+    except ImportError:
+        return []
+
+    async def _q() -> list[str]:
+        conn = await asyncpg.connect(
+            dsn.replace("postgresql+asyncpg://", "postgresql://"),
+            statement_cache_size=0,
+        )
+        try:
+            rows = await conn.fetch(sql, candidates)
+        finally:
+            await conn.close()
+        return [
+            r["callsign"]
+            for r in rows
+            if r["last_activity_at"] and r["last_activity_at"] < cutoff
+        ]
+
+    try:
+        return asyncio.run(_q())
+    except (OSError, RuntimeError, Exception) as exc:  # noqa: BLE001 — best-effort
+        logger.warning("orchestrator-idle query failed: %s", exc)
+        return []
+
+
 def poll_prefect_failures(now: datetime | None = None) -> list[dict]:
     """Failed Prefect flow runs in the last PREFECT_WINDOW_MINUTES."""
     api_url = os.environ.get("PREFECT_API_URL", "").rstrip("/")
@@ -378,6 +451,7 @@ def collect_signals(now: datetime | None = None) -> CycleSignals:
         idle_agents=poll_idle_agents(now),
         prefect_failures=poll_prefect_failures(now),
         rate_limit_transitions=poll_rate_limited_agents(now),
+        orchestrator_idle_agents=poll_orchestrator_idle_agents(now),
     )
 
 
@@ -464,7 +538,67 @@ def compose_dispatches(signals: CycleSignals) -> list[tuple[str, str]]:
             )
             dispatches.append((CEO_CHANNEL_NAME, msg))
 
+    _orchestrator_discipline_check(signals, dispatches)
     return dispatches
+
+
+def _orchestrator_discipline_check(signals: CycleSignals, dispatches: list[tuple[str, str]]) -> None:
+    """KEI-34 component 1: surface orchestrator-discipline gap to #ceo when
+    bd_ready has unblocked items AND any agent is idle ≥1 cycle AND
+    compose_dispatches did NOT pair every idle agent (or no dispatch fired).
+
+    Per Dave verbatim ts ~1778629860 strict-cycle override:
+      'KEI-34 threshold: 1 polling cycle. Not 15 minutes. Idle agents with
+       unblocked work is the failure we're fixing.'
+
+    Uses signals.orchestrator_idle_agents (gated by ORCHESTRATOR_IDLE_CYCLES *
+    _cycle_period_seconds — 60s peak, 3600s off-peak). Distinct from
+    signals.idle_agents which is gated by IDLE_AGENT_MINUTES (30m, used for
+    the normal idle×ready pairing dispatch).
+
+    Fire conditions (EITHER):
+      (1) bd_ready has unblocked items AND zero idle-this-cycle agents have
+          been paired by compose_dispatches yet (compose_dispatches uses
+          idle_agents which is the looser 30m threshold — strict-cycle agents
+          may be a subset; if no strict-cycle agents got paired, we fire).
+      (2) Excess unblocked ready work beyond the dispatched pairs.
+
+    Mutates dispatches list in place. Always returns None.
+    """
+    ready_n = len(signals.bd_ready)
+    if ready_n == 0:
+        return
+    strict_idle = list(signals.orchestrator_idle_agents)
+    strict_idle_n = len(strict_idle)
+    loose_idle_n = len(signals.idle_agents)
+    paired_n = min(ready_n, loose_idle_n)
+    excess_ready = ready_n - paired_n
+    # Fire when:
+    #   (i)  strict-idle agents exist but compose_dispatches yielded fewer
+    #        pairings than strict-idle count (strict-idle ⊆ loose-idle, so
+    #        we expect every strict-idle to be in pairs)
+    #   (ii) excess ready work beyond loose pairing
+    #   (iii) zero loose-idle but non-zero ready
+    fire = False
+    if strict_idle_n > 0 and paired_n < strict_idle_n:
+        fire = True
+    if excess_ready > 0:
+        fire = True
+    if loose_idle_n == 0 and ready_n > 0:
+        fire = True
+    if not fire:
+        return
+    strict_idle_summary = ", ".join(strict_idle) if strict_idle else "none"
+    top = signals.bd_ready[0]
+    msg = (
+        f"[PROPOSE:elliot] {ready_n} unblocked item(s), "
+        f"{strict_idle_n} agent(s) idle ≥1 cycle, "
+        f"{loose_idle_n} agent(s) idle ≥{IDLE_AGENT_MINUTES}m, "
+        f"{paired_n} paired — orchestrator-discipline gap. "
+        f"Strict-idle: {strict_idle_summary}. "
+        f"Top ready: {top.get('id', '?')} (P{top.get('priority', '?')})."
+    )
+    dispatches.append((CEO_CHANNEL_NAME, msg))
 
 
 def _write_inbox_dispatch(callsign: str, text: str) -> None:

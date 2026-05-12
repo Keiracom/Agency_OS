@@ -19,7 +19,7 @@ start, snapshotted by the PreCompact hook (scripts/pre_compact_alert.py).
 
 ## Model
 
-- Configured: <callsign-from-IDENTITY.md → lookup in CLAUDE.md §Callsign → Model Assignment table>
+- Configured: <callsign-from-IDENTITY.md → lookup in ceo_memory key `orchestration:model_assignment` (SQL-anchored Elliot UPSERT 2026-05-12 22:45:30 UTC)>
 - Running: <actual `--model` flag at startup, if known; otherwise "unknown — check tmux session launch command">
 
 ## Blockers

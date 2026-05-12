@@ -249,7 +249,61 @@ def main() -> int:
     ts = result.get("ts", "")
     ch = result.get("channel", channel)
     print(f"→ {CALLSIGN_TAG} sent to Slack #{ch} (ts {ts})")
+    # Layer-3 mechanical self-assignment (Dave directive ts ~1778584800).
+    # On [READY:<callsign>] emission, fire bd ready + claim first unblocked
+    # so the agent self-assigns immediately rather than waiting for the
+    # 60s polling loop. Best-effort: subprocess failures log + drop.
+    _maybe_self_assign(message)
     return 0
+
+
+def _maybe_self_assign(message: str) -> None:
+    """If message contains [READY:<my-callsign>], try bd ready → bd claim first.
+
+    Best-effort + non-blocking: subprocess timeouts + missing bd binary log
+    + return. Never raises. The polling loop is the safety net if this fails.
+    """
+    if f"[READY:{CALLSIGN}]".lower() not in message.lower():
+        return
+    import subprocess as _sub
+
+    try:
+        proc = _sub.run(["bd", "ready", "--json"], capture_output=True, text=True, timeout=10)
+    except (FileNotFoundError, _sub.TimeoutExpired, OSError) as exc:
+        print(f"[self-assign] bd ready unavailable: {exc}", file=sys.stderr)
+        return
+    if proc.returncode != 0:
+        print(f"[self-assign] bd ready exit {proc.returncode}", file=sys.stderr)
+        return
+    try:
+        issues = json.loads(proc.stdout or "[]")
+    except json.JSONDecodeError as exc:
+        print(f"[self-assign] bd ready json parse: {exc}", file=sys.stderr)
+        return
+    if not issues:
+        print("[self-assign] bd ready empty — nothing to claim", file=sys.stderr)
+        return
+    first_id = issues[0].get("id")
+    if not first_id:
+        return
+    try:
+        claim = _sub.run(
+            ["bd", "update", first_id, "--claim"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    except (FileNotFoundError, _sub.TimeoutExpired, OSError) as exc:
+        print(f"[self-assign] bd claim unavailable: {exc}", file=sys.stderr)
+        return
+    if claim.returncode != 0:
+        print(
+            f"[self-assign] claim race on {first_id} (exit {claim.returncode}) — "
+            f"falling back to polling-loop dispatch",
+            file=sys.stderr,
+        )
+        return
+    print(f"[self-assign] claimed {first_id} — work starts immediately", file=sys.stderr)
 
 
 if __name__ == "__main__":

@@ -22,10 +22,11 @@ import logging
 import os
 import subprocess
 import sys
-import urllib.error
 import urllib.request
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+
+from src.bot_common.state_paths import resolve_state_dir
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger("skill_pr_staleness_monitor")
@@ -34,8 +35,16 @@ EXECUTION_CHANNEL = "C0B3QB0K1GQ"
 SKILL_PR_BREACH_HOURS = 48
 SKILL_PR_DEDUPE_HOURS = 24
 SKILL_GEN_PATH_PREFIX = "src/skill_gen/"
-DEFAULT_STATE_PATH = Path("/tmp/agency-os-skill-pr-staleness-state.json")
+# Per Aiden review on PR #776 + Max's PR #757 helper: state file lives under
+# $XDG_STATE_HOME/agency-os/alerts/ (0o700), not /tmp. Closes SonarCloud S5443.
+_STATE_FILENAME = "skill-pr-staleness-state.json"
 GH_REPO = os.environ.get("GH_REPO", "Keiracom/Agency_OS")
+
+
+def _default_state_path() -> Path:
+    """Resolve the per-machine state path under XDG_STATE_HOME (lazy — directory
+    creation deferred to first call so module import has no side effects)."""
+    return resolve_state_dir("alerts") / _STATE_FILENAME
 
 
 def gh_list_open_prs() -> list[dict]:
@@ -159,7 +168,8 @@ def post_to_slack(text: str, channel: str = EXECUTION_CHANNEL) -> bool:
         with urllib.request.urlopen(req, timeout=10) as r:
             body = json.loads(r.read())
             return bool(body.get("ok"))
-    except (urllib.error.URLError, OSError, json.JSONDecodeError) as exc:
+    except (OSError, json.JSONDecodeError) as exc:
+        # urllib.error.URLError subclasses OSError — single tuple entry covers both.
         logger.warning("Slack post failed: %s", exc)
         return False
 
@@ -175,7 +185,7 @@ def run_once(
 
     All side-effects (gh, slack, state file) are injectable for tests.
     """
-    state_path = state_path or DEFAULT_STATE_PATH
+    state_path = state_path or _default_state_path()
     gh_fn = gh_fn or gh_list_open_prs
     post_fn = post_fn or post_to_slack
     now = now or datetime.now(UTC)

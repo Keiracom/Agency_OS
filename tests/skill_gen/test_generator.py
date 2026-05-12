@@ -1,4 +1,9 @@
-"""Tests for src/skill_gen/generator.py — orchestrator + PR opener."""
+"""Tests for src/skill_gen/generator.py — orchestrator + PR opener.
+
+Post Gemini pivot (2026-05-12): the LLM injection point is `client_factory`
+(forwarded to gemini_invoke.invoke), not `claude_runner`. Tests build a
+stub google.genai.Client substitute and pass its factory.
+"""
 
 from __future__ import annotations
 
@@ -53,6 +58,24 @@ def _empty_session(**overrides) -> CompressedSession:
     return base
 
 
+def _gemini_client_factory(text: str):
+    """Build a google.genai.Client substitute that returns `text` from
+    generate_content."""
+
+    class _Models:
+        def generate_content(self, *, model, contents):
+            return SimpleNamespace(
+                text=text,
+                usage_metadata=SimpleNamespace(prompt_token_count=100, candidates_token_count=20),
+            )
+
+    class _Client:
+        def __init__(self, _api_key):
+            self.models = _Models()
+
+    return lambda api_key: _Client(api_key)
+
+
 def test_derive_skill_name_from_override():
     sess = _empty_session()
     assert derive_skill_name(sess, "My Skill! Name") == "my-skill-name"
@@ -73,7 +96,6 @@ def test_build_prompt_embeds_session_json():
     prompt = build_prompt(sess)
     assert "SKILL.md" in prompt
     assert '"Read": 1' in prompt
-    assert "--- " not in prompt.split("```json")[0] or True  # template shape preserved
 
 
 def test_write_skill_creates_dir_and_file(tmp_path: Path):
@@ -86,7 +108,6 @@ def test_write_skill_refuses_overwrite_by_default(tmp_path: Path):
     write_skill(tmp_path, "demo-skill", "first")
     with pytest.raises(FileExistsError):
         write_skill(tmp_path, "demo-skill", "second")
-    # overwrite=True allowed
     p = write_skill(tmp_path, "demo-skill", "third", overwrite=True)
     assert p.read_text() == "third"
 
@@ -119,11 +140,9 @@ def test_open_pr_returns_none_on_gh_failure(tmp_path: Path):
     assert open_pr(tmp_path, skill_path, "ref", runner=runner) is None
 
 
-def test_generate_end_to_end_with_stubs(tmp_path: Path):
-    """Full pipeline: stubbed extractor + stubbed claude + stubbed gh."""
-
-    def claude_runner(cmd, **kwargs):
-        return SimpleNamespace(stdout=_SKILL_BODY, stderr="", returncode=0)
+def test_generate_end_to_end_with_stubs(tmp_path: Path, monkeypatch):
+    """Full pipeline: stubbed extractor + stubbed Gemini client + stubbed gh."""
+    monkeypatch.setenv("GEMINI_API_KEY", "fake-test-key")
 
     pr_calls: dict = {}
 
@@ -152,7 +171,7 @@ def test_generate_end_to_end_with_stubs(tmp_path: Path):
         start_ts="t0",
         end_ts="t1",
         directive_ref="dir-#42",
-        claude_runner=claude_runner,
+        client_factory=_gemini_client_factory(_SKILL_BODY),
         pr_runner=pr_runner,
         extractor_overrides=extractor_overrides,
     )
@@ -160,20 +179,19 @@ def test_generate_end_to_end_with_stubs(tmp_path: Path):
     assert res.skill_path.read_text() == _SKILL_BODY
     assert res.pr_url == "https://github.com/x/y/pull/42"
     assert "[ATLAS] feat(skills): auto-generated from dir-#42" in pr_calls["cmd"]
+    # Token usage from the stubbed response surfaced on GenerateResult.
+    assert res.llm.prompt_tokens == 100
+    assert res.llm.output_tokens == 20
+    assert res.llm.model.startswith("gemini-")
 
 
-def test_generate_raises_on_claude_failure_surfaces_stdout_and_stderr(tmp_path: Path):
-    """RuntimeError must include both streams.
+def test_generate_raises_on_empty_gemini_response(tmp_path: Path, monkeypatch):
+    """If Gemini returns empty text we refuse to write an empty SKILL.md.
 
-    claude --print writes CLI errors to STDOUT (e.g. "Credit balance is too
-    low"), not stderr. Previous error message format dropped stdout, leaving
-    the real cause invisible. Verified empirically against PR #728 re-run
-    (atlas outbox 20260512_0115_pr720_flag_fix_complete.json).
+    The RuntimeError must surface the model name + token usage so callers
+    can diagnose (e.g. content-filter rejection, prompt-too-large, etc.).
     """
-
-    def claude_runner(cmd, **kwargs):
-        # Real-world failure mode: error on stdout, stderr empty, non-zero exit.
-        return SimpleNamespace(stdout="Credit balance is too low", stderr="", returncode=1)
+    monkeypatch.setenv("GEMINI_API_KEY", "fake-test-key")
 
     extractor_overrides = {
         "fetch_turns": lambda *a: [],
@@ -181,47 +199,14 @@ def test_generate_raises_on_claude_failure_surfaces_stdout_and_stderr(tmp_path: 
         "fetch_turn_files": lambda *a: [],
         "fetch_user_messages": lambda *a: [],
     }
-    with pytest.raises(RuntimeError) as exc_info:
+    with pytest.raises(RuntimeError, match="Gemini returned empty text"):
         generate(
             repo_root=tmp_path,
             session_id="s1",
             start_ts="t0",
             end_ts="t1",
             directive_ref="r",
-            claude_runner=claude_runner,
-            pr_runner=lambda *a, **kw: SimpleNamespace(stdout="", stderr="", returncode=0),
-            extractor_overrides=extractor_overrides,
-        )
-    msg = str(exc_info.value)
-    assert "claude invocation failed" in msg
-    assert "Credit balance is too low" in msg, (
-        f"stdout content missing from RuntimeError; got: {msg!r}"
-    )
-    # exit code visible
-    assert "exit 1" in msg
-
-
-def test_generate_raises_includes_stderr_when_present(tmp_path: Path):
-    """The stderr branch still surfaces — the polish includes BOTH streams, not
-    a swap. Asymmetry would re-hide whichever stream is the real cause."""
-
-    def claude_runner(cmd, **kwargs):
-        return SimpleNamespace(stdout="", stderr="rate limited", returncode=2)
-
-    extractor_overrides = {
-        "fetch_turns": lambda *a: [],
-        "fetch_turn_logs": lambda *a: [],
-        "fetch_turn_files": lambda *a: [],
-        "fetch_user_messages": lambda *a: [],
-    }
-    with pytest.raises(RuntimeError, match="rate limited"):
-        generate(
-            repo_root=tmp_path,
-            session_id="s1",
-            start_ts="t0",
-            end_ts="t1",
-            directive_ref="r",
-            claude_runner=claude_runner,
+            client_factory=_gemini_client_factory(""),
             pr_runner=lambda *a, **kw: SimpleNamespace(stdout="", stderr="", returncode=0),
             extractor_overrides=extractor_overrides,
         )

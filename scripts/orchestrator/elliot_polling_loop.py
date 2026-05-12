@@ -47,7 +47,7 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger("elliot_polling_loop")
 
 # Time-of-day window. AEST = UTC+10.
-PEAK_HOURS_UTC = set(list(range(21, 24)) + list(range(0, 11)))  # 21–10 UTC inclusive
+PEAK_HOURS_UTC = set(list(range(21, 24)) + list(range(0, 14)))  # 21–13 UTC inclusive = 07–23 AEST
 STALE_LINEAR_HOURS = 12
 IDLE_AGENT_MINUTES = 30
 PREFECT_WINDOW_MINUTES = 5

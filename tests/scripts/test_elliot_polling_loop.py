@@ -50,6 +50,34 @@ def test_should_run_now_overnight_other_minute(loop_mod):
     assert loop_mod.should_run_now(datetime(2026, 5, 12, 15, 30, tzinfo=UTC)) is False
 
 
+# New boundary tests for Dave's KEI-17 schedule amendment ts ~1778584000:
+# Peak window AEST 07:00–24:00 (UTC 21:00 prev day → 14:00 today, exclusive).
+# Off-peak AEST 00:00–07:00 (UTC 14:00 → 21:00, exclusive).
+
+
+def test_should_run_now_peak_window_late_boundary(loop_mod):
+    # 13:59 UTC = 23:59 AEST — last minute of peak window
+    assert loop_mod.should_run_now(datetime(2026, 5, 12, 13, 59, tzinfo=UTC)) is True
+
+
+def test_should_run_now_off_peak_starts_at_14_utc(loop_mod):
+    # 14:00 UTC = 00:00 AEST — first hour of off-peak; minute==0 still fires (hourly)
+    assert loop_mod.should_run_now(datetime(2026, 5, 12, 14, 0, tzinfo=UTC)) is True
+    # 14:30 UTC = 00:30 AEST — off-peak hour, minute!=0 → skip
+    assert loop_mod.should_run_now(datetime(2026, 5, 12, 14, 30, tzinfo=UTC)) is False
+
+
+def test_should_run_now_off_peak_late_skip(loop_mod):
+    # 20:59 UTC = 06:59 AEST — last off-peak hour, minute!=0 → skip
+    assert loop_mod.should_run_now(datetime(2026, 5, 12, 20, 59, tzinfo=UTC)) is False
+
+
+def test_should_run_now_peak_starts_at_21_utc(loop_mod):
+    # 21:00 UTC = 07:00 AEST — first hour of peak; any minute runs
+    assert loop_mod.should_run_now(datetime(2026, 5, 12, 21, 0, tzinfo=UTC)) is True
+    assert loop_mod.should_run_now(datetime(2026, 5, 12, 21, 37, tzinfo=UTC)) is True
+
+
 # poll_bd_ready ──────────────────────────────────────────────────────────────
 
 

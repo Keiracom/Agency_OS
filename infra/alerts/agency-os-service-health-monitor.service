@@ -1,0 +1,10 @@
+[Unit]
+Description=Agency OS — Service Health Monitor (System Health Monitoring Outcome 1, Dave directive 2026-05-12)
+
+[Service]
+Type=oneshot
+ExecStart=/home/elliotbot/clawd/venv/bin/python3 /home/elliotbot/clawd/Agency_OS/scripts/alerts/service_health_monitor.py
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+StandardOutput=append:/home/elliotbot/clawd/logs/service-health-monitor.log
+StandardError=append:/home/elliotbot/clawd/logs/service-health-monitor.log

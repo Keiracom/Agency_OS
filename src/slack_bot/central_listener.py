@@ -137,7 +137,11 @@ governance_events: dict = {}
 
 CHANNEL_ROUTES: dict[str, list[str]] = {
     "C0B2PM3TV0B": ["elliot"],  # #ceo
-    "C0B3QB0K1GQ": ["elliot", "aiden", "max"],  # #execution
+    # Per Dave 2026-05-12 (Option B): clones added to #execution routing with
+    # tag-filtered fan-out via _is_clone_addressed(). Catches @atlas /
+    # @orion / @scout / [ATLAS] / [ORION] / [SCOUT] references so explicit
+    # dispatches reach clones; ambient team chatter does not.
+    "C0B3QB0K1GQ": ["elliot", "aiden", "max", "atlas", "orion", "scout"],
     "C0B2EJU53EK": ["aiden"],  # #alerts
     "C0B2U15PSEA": ["aiden"],  # #completed_directives
 }
@@ -146,15 +150,43 @@ CALLSIGN_TO_INBOX: dict[str, list[Path]] = {
     "elliot": [Path("/tmp/telegram-relay-elliot/inbox")],
     "aiden": [Path("/tmp/telegram-relay-aiden/inbox")],
     "max": [Path("/tmp/telegram-relay-max/inbox"), Path("/tmp/coo-inbox")],
+    "atlas": [Path("/tmp/telegram-relay-atlas/inbox")],
+    "orion": [Path("/tmp/telegram-relay-orion/inbox")],
+    "scout": [Path("/tmp/telegram-relay-scout/inbox")],
 }
 
 SELF_TAG_BY_CALLSIGN = {
     "elliot": "[ELLIOT]",
     "aiden": "[AIDEN]",
     "max": "[MAX]",
+    "atlas": "[ATLAS]",
+    "orion": "[ORION]",
+    "scout": "[SCOUT]",
 }
 
-KEEP_TAGS = ("[ELLIOT]", "[AIDEN]", "[MAX]", "[ENFORCER]", "[DAVE]")
+# Clones receive #execution messages only when explicitly addressed. Tag-filter
+# keeps ambient team chatter out of clone inboxes (otherwise every message
+# would spam every clone). Matches: @atlas / [ATLAS] / "Atlas — " / "Atlas:" /
+# "Atlas," / case-insensitive on the bare word too if at sentence start.
+CLONE_CALLSIGNS = frozenset({"atlas", "orion", "scout"})
+_CLONE_ADDRESS_PATTERNS = {
+    cs: re.compile(
+        rf"@{cs}\b|\[{cs}\]|\b{cs}\s+(?:—|:|,|—)|^{cs}\b",
+        re.IGNORECASE | re.MULTILINE,
+    )
+    for cs in CLONE_CALLSIGNS
+}
+
+KEEP_TAGS = (
+    "[ELLIOT]",
+    "[AIDEN]",
+    "[MAX]",
+    "[ATLAS]",
+    "[ORION]",
+    "[SCOUT]",
+    "[ENFORCER]",
+    "[DAVE]",
+)
 GROUP_CHAT_ID = -1003926592540
 
 
@@ -166,6 +198,24 @@ def sender_from(msg: dict) -> str:
     if msg.get("bot_id"):
         return "slackbot"
     return msg.get("user") or "human"
+
+
+def _is_clone_addressed(callsign: str, text: str) -> bool:
+    """Return True if a #execution message specifically addresses this clone.
+
+    Tag-filter for clone fan-out (Option B per Dave 2026-05-12). Catches:
+      - @atlas / @orion / @scout (Slack-style mention without lookup)
+      - [ATLAS] / [ORION] / [SCOUT] (callsign tag prefix or inline)
+      - "Atlas — ..." / "Atlas: ..." / "Atlas, ..." (direct address forms)
+      - "atlas " at the start of a line (case-insensitive)
+
+    Returns False for any message that does not specifically reference the
+    clone — keeps ambient team chatter out of clone inboxes.
+    """
+    pattern = _CLONE_ADDRESS_PATTERNS.get(callsign)
+    if pattern is None:
+        return False
+    return bool(pattern.search(text))
 
 
 def write_inbox(callsign: str, text: str, sender: str) -> None:
@@ -385,6 +435,10 @@ def process_event(event: dict, web: WebClient | None = None) -> None:
         for callsign in routes:
             self_tag = SELF_TAG_BY_CALLSIGN.get(callsign, "")
             if self_tag and text.startswith(self_tag):
+                continue
+            # Clones receive #execution messages only when explicitly addressed.
+            # Primes (elliot/aiden/max) always receive (existing behavior).
+            if callsign in CLONE_CALLSIGNS and not _is_clone_addressed(callsign, text):
                 continue
             write_inbox(callsign, text, sender)
         logger.info(

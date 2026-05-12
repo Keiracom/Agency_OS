@@ -1,0 +1,11 @@
+[Unit]
+Description=KEI-12 symlink-governance cleanup-bak (one-shot, 24h post-swap)
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+ExecStart=/home/elliotbot/clawd/Agency_OS/scripts/orchestrator/symlink_governance_cleanup_wrapper.sh
+StandardOutput=append:/home/elliotbot/clawd/logs/symlink-governance-cleanup-bak.log
+StandardError=append:/home/elliotbot/clawd/logs/symlink-governance-cleanup-bak.log

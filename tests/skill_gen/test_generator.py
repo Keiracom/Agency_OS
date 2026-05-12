@@ -162,7 +162,49 @@ def test_generate_end_to_end_with_stubs(tmp_path: Path):
     assert "[ATLAS] feat(skills): auto-generated from dir-#42" in pr_calls["cmd"]
 
 
-def test_generate_raises_on_claude_failure(tmp_path: Path):
+def test_generate_raises_on_claude_failure_surfaces_stdout_and_stderr(tmp_path: Path):
+    """RuntimeError must include both streams.
+
+    claude --print writes CLI errors to STDOUT (e.g. "Credit balance is too
+    low"), not stderr. Previous error message format dropped stdout, leaving
+    the real cause invisible. Verified empirically against PR #728 re-run
+    (atlas outbox 20260512_0115_pr720_flag_fix_complete.json).
+    """
+
+    def claude_runner(cmd, **kwargs):
+        # Real-world failure mode: error on stdout, stderr empty, non-zero exit.
+        return SimpleNamespace(stdout="Credit balance is too low", stderr="", returncode=1)
+
+    extractor_overrides = {
+        "fetch_turns": lambda *a: [],
+        "fetch_turn_logs": lambda *a: [],
+        "fetch_turn_files": lambda *a: [],
+        "fetch_user_messages": lambda *a: [],
+    }
+    with pytest.raises(RuntimeError) as exc_info:
+        generate(
+            repo_root=tmp_path,
+            session_id="s1",
+            start_ts="t0",
+            end_ts="t1",
+            directive_ref="r",
+            claude_runner=claude_runner,
+            pr_runner=lambda *a, **kw: SimpleNamespace(stdout="", stderr="", returncode=0),
+            extractor_overrides=extractor_overrides,
+        )
+    msg = str(exc_info.value)
+    assert "claude invocation failed" in msg
+    assert "Credit balance is too low" in msg, (
+        f"stdout content missing from RuntimeError; got: {msg!r}"
+    )
+    # exit code visible
+    assert "exit 1" in msg
+
+
+def test_generate_raises_includes_stderr_when_present(tmp_path: Path):
+    """The stderr branch still surfaces — the polish includes BOTH streams, not
+    a swap. Asymmetry would re-hide whichever stream is the real cause."""
+
     def claude_runner(cmd, **kwargs):
         return SimpleNamespace(stdout="", stderr="rate limited", returncode=2)
 
@@ -172,7 +214,7 @@ def test_generate_raises_on_claude_failure(tmp_path: Path):
         "fetch_turn_files": lambda *a: [],
         "fetch_user_messages": lambda *a: [],
     }
-    with pytest.raises(RuntimeError, match="claude invocation failed"):
+    with pytest.raises(RuntimeError, match="rate limited"):
         generate(
             repo_root=tmp_path,
             session_id="s1",

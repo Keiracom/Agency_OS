@@ -105,6 +105,50 @@ print(t)
         done
         tmux send-keys -t "$TMUX_TARGET" "[TG-${sender^^}] Dave sent a file: $file_path ($file_name)"
         sleep 0.5; tmux send-keys -t "$TMUX_TARGET" C-m
+
+    elif [ "$msg_type" = "task_dispatch" ]; then
+        text=$(python3 -c "
+import json
+d = json.load(open('$fpath'))
+sender = d.get('from', 'unknown')
+brief = d.get('brief', 'no brief').replace('\n', ' ')
+task_ref = d.get('task_ref', '')
+suffix = f' (ref: {task_ref})' if task_ref else ''
+print(f'[DISPATCH FROM {sender.upper()}] {brief}{suffix}')
+" 2>/dev/null)
+        if [ -n "$text" ]; then
+            echo "[relay-watcher-${CALLSIGN}] Dispatch: ${text:0:80}..."
+            for attempt in $(seq 1 60); do
+                prompt_ready=$(tmux capture-pane -t "$TMUX_TARGET" -p 2>/dev/null | tail -5 | grep -c '❯' || true)
+                if [ "$prompt_ready" -gt 0 ]; then break; fi
+                sleep 2
+            done
+            tmux send-keys -t "$TMUX_TARGET" "$text"
+            sleep 0.5
+            tmux send-keys -t "$TMUX_TARGET" C-m
+        fi
+
+    else
+        # Fallback: format any unknown message type for injection
+        text=$(python3 -c "
+import json
+d = json.load(open('$fpath'))
+t = d.get('text', d.get('brief', json.dumps(d, default=str)))
+t = t.replace('\n', ' ')[:500]
+print(t)
+" 2>/dev/null)
+        sender=$(python3 -c "import json; print(json.load(open('$fpath')).get('sender', json.load(open('$fpath')).get('from','unknown')))" 2>/dev/null)
+        if [ -n "$text" ]; then
+            echo "[relay-watcher-${CALLSIGN}] Unknown type '${msg_type}' from ${sender}: ${text:0:80}..."
+            for attempt in $(seq 1 60); do
+                prompt_ready=$(tmux capture-pane -t "$TMUX_TARGET" -p 2>/dev/null | tail -5 | grep -c '❯' || true)
+                if [ "$prompt_ready" -gt 0 ]; then break; fi
+                sleep 2
+            done
+            tmux send-keys -t "$TMUX_TARGET" "[TG-${sender^^}] $text"
+            sleep 0.5
+            tmux send-keys -t "$TMUX_TARGET" C-m
+        fi
     fi
 
     # Move to processed (don't delete — audit trail)

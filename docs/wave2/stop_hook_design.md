@@ -58,7 +58,9 @@ Docs say Stop hooks **don't support matchers** — but our current `settings.jso
 
 The new hook MUST be ordered AFTER `governance_router.py` (i.e. read stdin from the temp-file fallback, same pattern as `stop_relay_hook.sh`). Order in the JSON array determines firing order.
 
-## 2. Implementation sketch — `.claude/hooks/emit_ready_marker.sh`
+## 2. Implementation sketch — `scripts/hooks/emit_ready_marker.sh`
+
+**Path correction (2026-05-12, post-KEI-12 review by Aiden):** original draft placed the script at `.claude/hooks/emit_ready_marker.sh`. After KEI-12 symlinks `.claude/hooks/` → `~/.config/agency-os/hooks/`, a repo-tracked file at that path is masked at runtime by the symlink target. Move script to `scripts/hooks/emit_ready_marker.sh` (mirrors `scripts/governance_router.py` convention — referenced from `settings.json` via absolute path, version-controlled, propagates across worktrees on `git pull`). Settings wire-up below updated accordingly.
 
 ```bash
 #!/usr/bin/env bash
@@ -105,8 +107,10 @@ exit 0
 Wire-up in `.claude/settings.json` — append to existing `Stop` array AFTER `stop_relay_hook.sh`:
 
 ```json
-{"type": "command", "command": "bash .claude/hooks/emit_ready_marker.sh", "timeout": 5}
+{"type": "command", "command": "bash /home/elliotbot/clawd/Agency_OS/scripts/hooks/emit_ready_marker.sh", "timeout": 5}
 ```
+
+(Absolute path matches the `governance_router.py` convention already used in the same Stop array — see `settings.json:44`.)
 
 ## 3. Edge cases
 

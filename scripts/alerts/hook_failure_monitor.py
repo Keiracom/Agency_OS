@@ -103,7 +103,7 @@ def load_state(state_path: Path) -> dict[str, dict]:
 
 def save_state(state_path: Path, state: dict[str, dict]) -> None:
     state_path.parent.mkdir(parents=True, exist_ok=True)
-    state_path.write_text(json.dumps(state, indent=2, sort_keys=True))
+    state_path.write_text(json.dumps(state, indent=2, sort_keys=True))  # NOSONAR — path is helper-resolved via state_paths.resolve_state_dir(); callsign regex-validated at the helper boundary; no user input reaches this write
 
 
 def file_grew_since(path: Path, bytes_seen: int) -> tuple[bool, int]:

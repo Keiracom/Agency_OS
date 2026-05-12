@@ -63,8 +63,7 @@ def resolve_state_dir(callsign: str) -> Path:
     """
     if not _CALLSIGN_RE.fullmatch(callsign):
         raise ValueError(
-            f"invalid callsign for state path: {callsign!r} "
-            f"(must match {_CALLSIGN_RE.pattern})"
+            f"invalid callsign for state path: {callsign!r} (must match {_CALLSIGN_RE.pattern})"
         )
     base = _xdg_state_home() / _APP_SUBDIR / callsign
     base.mkdir(parents=True, exist_ok=True, mode=0o700)

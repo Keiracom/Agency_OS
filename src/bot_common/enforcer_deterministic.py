@@ -447,3 +447,125 @@ def check_r10(
             "before posting the completion claim — or within the 60s window after."
         ),
     }
+
+
+# ---------------------------------------------------------------------------
+# R11 — CEO-FORMAT-GATE (Dave directive ts ~1778582530)
+# ---------------------------------------------------------------------------
+#
+# Mechanical enforcement of the #ceo plain-English bullets-only convention.
+# Fires on outbound to channel "ceo" (C0B2PM3TV0B) when the body violates the
+# format. Pin-discipline isn't enough; this is the runtime gate that blocks
+# bad-format posts BEFORE they hit Slack.
+#
+# Wired into scripts/slack_relay.py main() AFTER concur-gate (so the system-
+# generated CONCUR-REQUEST replacements pass through; only original agent text
+# is gated).
+
+# Bold category header — markdown ** ** at line start.
+_R11_HEADER_RE = re.compile(r"^\s*\*\*[^*]+\*\*", re.MULTILINE)
+
+# Bullet markers: -, *, •, numbered (1.) at line start.
+_R11_BULLET_RE = re.compile(r"^\s*(?:[-*•]|\d+\.)\s+", re.MULTILINE)
+
+# Banned tokens that indicate technical-density (not plain-English):
+_R11_BANNED_RES = (
+    re.compile(r"\bPR\s*#\d+", re.IGNORECASE),  # PR references
+    re.compile(r"\b[a-f0-9]{7,40}\b"),  # commit SHAs
+    re.compile(r"\bscripts/[A-Za-z0-9_/.\-]+"),  # file paths under scripts/
+    re.compile(r"\bsrc/[A-Za-z0-9_/.\-]+"),  # file paths under src/
+    re.compile(r"\.claude/[A-Za-z0-9_/.\-]+"),  # file paths under .claude/
+    re.compile(r"\b[A-Z][A-Z_]+_API_KEY\b"),  # env var names ending API_KEY
+    re.compile(r"\b[A-Z][A-Z_]+_PROVIDER\b"),  # env var names ending PROVIDER
+    re.compile(r"```"),  # code fences
+)
+
+# Exempt: system-generated CONCUR-REQUEST replacements (concur_gate output).
+_R11_EXEMPT_RE = re.compile(
+    r"\[CONCUR-REQUEST:[A-Z]+\]"
+    r"|requesting concurrence from peer",
+    re.IGNORECASE,
+)
+
+
+def _r11_prose_paragraph_present(text: str) -> bool:
+    """Heuristic: any 'line' that's >150 chars AND has 2+ sentences (period followed
+    by space) AND has NO bullet marker is a prose paragraph.
+
+    Threshold deliberately conservative — single long bulleted explanation is fine;
+    only un-bulleted multi-sentence runs trip the rule.
+    """
+    for line in text.splitlines():
+        s = line.strip()
+        if len(s) < 150:
+            continue
+        if _R11_BULLET_RE.match(line):
+            continue
+        # Count sentence terminators (period followed by space or end of line).
+        sentence_count = len(re.findall(r"\.\s+|\.$", s))
+        if sentence_count >= 2:
+            return True
+    return False
+
+
+def check_r11(text: str, *, channel: str | None = None) -> dict | None:
+    """R11 — CEO-FORMAT-GATE.
+
+    Fires when:
+      - channel is the #ceo channel (C0B2PM3TV0B); AND
+      - message body violates the plain-English bullets convention.
+
+    Failure modes:
+      (a) Lacks any **bold category header** (markdown ** ** at line start)
+      (b) Contains a prose paragraph (>=150 char un-bulleted line with 2+ sentences)
+      (c) Contains banned technical tokens: PR #N, commit SHAs, file paths
+          under scripts/|src/|.claude/, env var names ending _API_KEY|_PROVIDER,
+          code fences ```
+
+    `channel` defaults to None (treat as non-ceo → pass).
+    `text` body of the message.
+
+    Returns violation dict with `rule_number=11` + `detail` listing violations,
+    or None when channel != ceo OR text is exempt OR text passes all checks.
+    """
+    CEO_CHANNEL_ID = "C0B2PM3TV0B"
+    if channel != CEO_CHANNEL_ID:
+        return None
+    if _R11_EXEMPT_RE.search(text):
+        return None
+
+    violations: list[str] = []
+
+    # (a) Missing bold header
+    if not _R11_HEADER_RE.search(text):
+        violations.append("no bold category header (**...** at line start)")
+
+    # (b) Prose paragraph
+    if _r11_prose_paragraph_present(text):
+        violations.append("prose paragraph (un-bulleted line ≥150 chars with 2+ sentences)")
+
+    # (c) Banned technical tokens
+    banned_found: list[str] = []
+    for pat in _R11_BANNED_RES:
+        m = pat.search(text)
+        if m:
+            banned_found.append(m.group(0)[:30])
+    if banned_found:
+        violations.append(f"banned technical tokens: {', '.join(banned_found)}")
+
+    if not violations:
+        return None
+
+    return {
+        "violation": True,
+        "rule_number": 11,
+        "rule_name": "CEO-FORMAT-GATE",
+        "detail": "#ceo post violates plain-English bullets-only convention: "
+        + "; ".join(violations),
+        "should_have": (
+            "Rewrite as: **Bold Category** headers + bullet list (- or •) only. "
+            "Lead with OUTCOME + business meaning. No PR numbers, commit SHAs, "
+            "file paths, env vars, or code fences. Technical detail stays in "
+            "#execution. See feedback_ceo_plain_english_summaries.md."
+        ),
+    }

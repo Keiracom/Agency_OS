@@ -458,3 +458,152 @@ def test_r10_directive_done_phrase_fires_when_no_kei():
     out = check_r10("Wave 2 Outcome 3 complete — enforcer rule shipped")
     assert out is not None
     assert "without KEI-<N> tag" in out["detail"]
+
+
+# ---------------------------------------------------------------------------
+# R11 — CEO-FORMAT-GATE (Wave 2 Dave directive)
+# ---------------------------------------------------------------------------
+
+CEO_CH = "C0B2PM3TV0B"
+EXEC_CH = "C0B3QB0K1GQ"
+
+
+def test_r11_non_ceo_channel_always_passes():
+    from src.bot_common.enforcer_deterministic import check_r11
+
+    # Even a clearly bad-format message passes if channel isn't #ceo.
+    bad = "Random prose dump merged PR #774 with commit abc1234 in scripts/foo.py"
+    assert check_r11(bad, channel=EXEC_CH) is None
+    assert check_r11(bad, channel=None) is None
+
+
+def test_r11_ceo_well_formatted_passes():
+    from src.bot_common.enforcer_deterministic import check_r11
+
+    good = """**Outcome**
+- Phase 0 verified end-to-end on local stack
+- Smoke test passed both assertions
+
+**Next**
+- Phase 1 ingest unblocked"""
+    assert check_r11(good, channel=CEO_CH) is None
+
+
+def test_r11_ceo_missing_bold_header_fires():
+    from src.bot_common.enforcer_deterministic import check_r11
+
+    no_header = """- bullet one is fine on its own
+- bullet two also
+- but no header"""
+    out = check_r11(no_header, channel=CEO_CH)
+    assert out is not None
+    assert out["rule_number"] == 11
+    assert "no bold category header" in out["detail"]
+
+
+def test_r11_ceo_prose_paragraph_fires():
+    from src.bot_common.enforcer_deterministic import check_r11
+
+    prose = (
+        "**Header**\n"
+        "This is one long sentence about something. "
+        "And this is a second sentence in the same line that makes it prose. "
+        "Plus a third for safety to ensure the heuristic trips on 2+ sentences in 150+ chars."
+    )
+    out = check_r11(prose, channel=CEO_CH)
+    assert out is not None
+    assert "prose paragraph" in out["detail"]
+
+
+def test_r11_ceo_pr_number_banned():
+    from src.bot_common.enforcer_deterministic import check_r11
+
+    with_pr = """**Header**
+- something happened
+- merged PR #774 today"""
+    out = check_r11(with_pr, channel=CEO_CH)
+    assert out is not None
+    assert "PR #774" in out["detail"] or "banned technical tokens" in out["detail"]
+
+
+def test_r11_ceo_commit_sha_banned():
+    from src.bot_common.enforcer_deterministic import check_r11
+
+    with_sha = """**Header**
+- something happened
+- at sha abc1234def56"""
+    out = check_r11(with_sha, channel=CEO_CH)
+    assert out is not None
+    assert "banned technical tokens" in out["detail"]
+
+
+def test_r11_ceo_file_path_banned():
+    from src.bot_common.enforcer_deterministic import check_r11
+
+    with_path = """**Header**
+- changed src/cognee/client.py and scripts/foo.sh
+- result was good"""
+    out = check_r11(with_path, channel=CEO_CH)
+    assert out is not None
+    assert "banned technical tokens" in out["detail"]
+
+
+def test_r11_ceo_env_var_name_banned():
+    from src.bot_common.enforcer_deterministic import check_r11
+
+    with_env = """**Header**
+- set GEMINI_API_KEY
+- and DB_PROVIDER too"""
+    out = check_r11(with_env, channel=CEO_CH)
+    assert out is not None
+    assert "banned technical tokens" in out["detail"]
+
+
+def test_r11_ceo_code_fence_banned():
+    from src.bot_common.enforcer_deterministic import check_r11
+
+    with_fence = """**Header**
+- something
+```
+code block here
+```"""
+    out = check_r11(with_fence, channel=CEO_CH)
+    assert out is not None
+    assert "banned technical tokens" in out["detail"]
+
+
+def test_r11_concur_request_replacement_exempt():
+    """System-generated CONCUR-REQUEST messages from concur_gate pass through —
+    they're not agent-authored prose, they're a wrapper artifact."""
+    from src.bot_common.enforcer_deterministic import check_r11
+
+    concur = "[AIDEN] [CONCUR-REQUEST:AIDEN] requesting concurrence from peer on: ..."
+    # Even though it doesn't have a bold header, exempt path returns None.
+    assert check_r11(concur, channel=CEO_CH) is None
+
+
+def test_r11_multiple_violations_stacked_in_detail():
+    from src.bot_common.enforcer_deterministic import check_r11
+
+    bad = "merged PR #774 in scripts/foo.py"  # no header, PR, path
+    out = check_r11(bad, channel=CEO_CH)
+    assert out is not None
+    detail = out["detail"]
+    assert "no bold category header" in detail
+    assert "banned technical tokens" in detail
+
+
+def test_r11_single_long_bullet_not_prose():
+    """A SINGLE bulleted long line shouldn't trip prose-paragraph heuristic
+    (the rule targets un-bulleted multi-sentence runs)."""
+    from src.bot_common.enforcer_deterministic import check_r11
+
+    long_bullet = (
+        "**Header**\n"
+        "- this is a very long bullet that has a couple of sentences in it. "
+        "It's still a bullet though so the prose heuristic should not fire on it."
+    )
+    out = check_r11(long_bullet, channel=CEO_CH)
+    # Either passes entirely or only flags non-prose issues.
+    if out is not None:
+        assert "prose paragraph" not in out["detail"]

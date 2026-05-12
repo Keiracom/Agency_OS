@@ -95,11 +95,12 @@ _R9_EXEMPT_RE = re.compile(
     r"|\b(?:i'?ll|i will|aiden will|elliot will|max will|orion will|atlas will|scout will)\b"
     r"|@\w+\s+(?:ships?|drops?|owns?|takes?|opens?|merges?|files?|pushes?)\b"
     r"|@\w+\s+—\s+(?:roll-?up|audit|review|own|next)"
-    # Track 5 (2026-05-11): status terminators that LLM mis-classifies as
-    # agenda-setting. "Standing ready" / "Standing by" / "Standing down"
-    # indicate availability while peers have in-flight work, not directive
-    # solicitation. Per Max's FP-LOG:R9 trace 2026-05-11.
-    r"|\b(?:standing\s+(?:ready|by|down|firm)|standing\.?$)",
+    # Track 5+7: status terminators that LLM mis-classifies as agenda-setting.
+    r"|\b(?:standing\s+(?:ready|by|down|firm)|standing\.?$)"
+    r"|\bcontinuing\s+standby\b"
+    r"|\bwakeup\s+(?:at\s+)?\d{2}:\d{2}\b"
+    r"|\bholding\s+(?:posture|position)\b"
+    r"|\bawaiting\s+(?:concur|your\s+(?:concur|pr))\b",
     re.IGNORECASE | re.MULTILINE,
 )
 

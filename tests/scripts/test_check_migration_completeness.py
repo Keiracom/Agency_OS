@@ -131,18 +131,18 @@ def test_excludes_pycache_dirs(tmp_path):
 
 def test_fixed_string_handles_dots_and_slashes(tmp_path):
     """Default --fixed-strings mode lets target contain dots / slashes
-    (e.g. 'elliot_internal.memories', '/tmp/.session_') without regex escaping.
+    (e.g. 'elliot_internal.memories', '/var/lib/.session_') without regex escaping.
     """
     src = tmp_path / "src"
     src.mkdir()
     (src / "consumer.py").write_text(
-        "PATH = '/tmp/.session_aiden'\nprint(elliot_internal.memories)\n"
+        "PATH = '/var/lib/.session_aiden'\nprint(elliot_internal.memories)\n"
     )
 
     r1 = _run("--removed-target", "elliot_internal.memories", "--check-paths", str(src))
     assert r1.returncode == 1
     assert "consumer.py" in r1.stdout
 
-    r2 = _run("--removed-target", "/tmp/.session_", "--check-paths", str(src))
+    r2 = _run("--removed-target", "/var/lib/.session_", "--check-paths", str(src))
     assert r2.returncode == 1
     assert "consumer.py" in r2.stdout

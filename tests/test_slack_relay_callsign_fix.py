@@ -18,6 +18,16 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 RELAY = REPO_ROOT / "scripts" / "slack_relay.py"
 
 
+def _worktree_callsign() -> str:
+    """Read callsign from IDENTITY.md so tests work in any worktree."""
+    identity = REPO_ROOT / "IDENTITY.md"
+    if identity.exists():
+        for line in identity.read_text().splitlines():
+            if line.startswith("**CALLSIGN:**"):
+                return line.split("**CALLSIGN:**")[1].strip()
+    return "unknown"
+
+
 def _run(env: dict[str, str], args: list[str], cwd: Path | None = None) -> subprocess.CompletedProcess:
     base_env = {"PATH": os.environ.get("PATH", "")}
     base_env.update(env)
@@ -33,6 +43,7 @@ def _run(env: dict[str, str], args: list[str], cwd: Path | None = None) -> subpr
 
 def test_callsign_resolves_from_identity_md(tmp_path: Path) -> None:
     """No CALLSIGN env + IDENTITY.md present → resolves callsign from file."""
+    callsign = _worktree_callsign()
     result = _run(
         env={
             "SLACK_BOT_TOKEN": "fake-token",
@@ -42,7 +53,7 @@ def test_callsign_resolves_from_identity_md(tmp_path: Path) -> None:
         args=["-c", "C0B2PM3TV0B", "test"],
     )
     assert result.returncode == 2
-    assert "aiden-relay refuses post" in result.stderr
+    assert f"{callsign}-relay refuses post" in result.stderr
     assert "not in worktree allowlist" in result.stderr
 
 

@@ -62,10 +62,18 @@ PRIMES = ("aiden", "max")  # elliot orchestrates; she doesn't dispatch to hersel
 # Clones receive dispatches via inbox-watcher JSON drops, NOT via Slack channel
 # fan-out (the listener path is uptime-sensitive; direct inbox write is the
 # Layer 3 mechanical close).
+# NOSONAR S5443 ×3 below: /tmp/telegram-relay-<cs>/inbox is the systemd
+# inotify-watcher contract (per .claude/hooks/inbox_check_hook.sh + the
+# per-callsign relay-watcher services). Cannot migrate to ~/.local/state
+# without a coordinated watcher refactor. Defense-in-depth: callsign keys
+# are regex-validated upstream (PR #757 state_paths.resolve_state_dir
+# pattern + per_callsign_outbound_allowlist in slack_relay.py); no user
+# input reaches the path string. Same justification as central_listener.py
+# inbox-watcher integration.
 INBOX_PATHS: dict[str, str] = {
-    "atlas": "/tmp/telegram-relay-atlas/inbox",
-    "orion": "/tmp/telegram-relay-orion/inbox",
-    "scout": "/tmp/telegram-relay-scout/inbox",
+    "atlas": "/tmp/telegram-relay-atlas/inbox",  # NOSONAR
+    "orion": "/tmp/telegram-relay-orion/inbox",  # NOSONAR
+    "scout": "/tmp/telegram-relay-scout/inbox",  # NOSONAR
 }
 
 

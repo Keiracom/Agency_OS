@@ -269,7 +269,7 @@ def _maybe_self_assign(message: str) -> None:
 
     try:
         proc = _sub.run(["bd", "ready", "--json"], capture_output=True, text=True, timeout=10)
-    except (FileNotFoundError, _sub.TimeoutExpired, OSError) as exc:
+    except (_sub.TimeoutExpired, OSError) as exc:
         print(f"[self-assign] bd ready unavailable: {exc}", file=sys.stderr)
         return
     if proc.returncode != 0:
@@ -293,7 +293,7 @@ def _maybe_self_assign(message: str) -> None:
             text=True,
             timeout=10,
         )
-    except (FileNotFoundError, _sub.TimeoutExpired, OSError) as exc:
+    except (_sub.TimeoutExpired, OSError) as exc:
         print(f"[self-assign] bd claim unavailable: {exc}", file=sys.stderr)
         return
     if claim.returncode != 0:

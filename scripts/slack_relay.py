@@ -203,6 +203,18 @@ def main() -> int:
             return 2
     except ImportError:
         pass  # repo not on sys.path; fall through ungated rather than break all posts
+    # LAW XV mechanical gate (Outcome 2 — block completion claims that haven't
+    # written all 3 queryable stores. Per Max spec ts 1778553034 / Dave directive
+    # 2026-05-12.).
+    try:
+        from src.bot_common.session_end_gate import gate_check as law_xv_gate_check
+
+        ok, blocker = law_xv_gate_check(message)
+        if not ok:
+            print(blocker, file=sys.stderr)
+            return 2
+    except ImportError:
+        pass
     # R1 outbound gate (P0 per Max directive 2026-05-11 — hold trigger-pattern
     # messages until peer concur is in the recent #execution window).
     try:

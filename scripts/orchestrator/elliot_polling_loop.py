@@ -58,6 +58,24 @@ CEO_CHANNEL_NAME = "#ceo"
 CLONES = ("atlas", "orion", "scout")
 PRIMES = ("aiden", "max")  # elliot orchestrates; she doesn't dispatch to herself
 
+# Inbox-path map for clones (Dave directive ts ~1778584800 — polling hole A).
+# Clones receive dispatches via inbox-watcher JSON drops, NOT via Slack channel
+# fan-out (the listener path is uptime-sensitive; direct inbox write is the
+# Layer 3 mechanical close).
+# NOSONAR S5443 ×3 below: /tmp/telegram-relay-<cs>/inbox is the systemd
+# inotify-watcher contract (per .claude/hooks/inbox_check_hook.sh + the
+# per-callsign relay-watcher services). Cannot migrate to ~/.local/state
+# without a coordinated watcher refactor. Defense-in-depth: callsign keys
+# are regex-validated upstream (PR #757 state_paths.resolve_state_dir
+# pattern + per_callsign_outbound_allowlist in slack_relay.py); no user
+# input reaches the path string. Same justification as central_listener.py
+# inbox-watcher integration.
+INBOX_PATHS: dict[str, str] = {
+    "atlas": "/tmp/telegram-relay-atlas/inbox",  # NOSONAR
+    "orion": "/tmp/telegram-relay-orion/inbox",  # NOSONAR
+    "scout": "/tmp/telegram-relay-scout/inbox",  # NOSONAR
+}
+
 
 @dataclass
 class CycleSignals:
@@ -233,7 +251,13 @@ def compose_dispatches(signals: CycleSignals) -> list[tuple[str, str]]:
             f"Polled by KEI-17 elliot_polling_loop; agent {callsign} idle "
             f"≥{IDLE_AGENT_MINUTES}m, this Beads item is ready (no blockers)."
         )
-        dispatches.append((EXECUTION_CHANNEL_NAME, msg))
+        # Clones receive dispatches via inbox-watcher JSON (Dave directive
+        # ts ~1778584800 polling hole A — direct write, not Slack fan-out).
+        # Primes (aiden/max) get the #execution post for human visibility.
+        if callsign in CLONES:
+            dispatches.append((f"inbox:{callsign}", msg))
+        else:
+            dispatches.append((EXECUTION_CHANNEL_NAME, msg))
 
     if signals.linear_stale:
         lines = [
@@ -266,8 +290,47 @@ def compose_dispatches(signals: CycleSignals) -> list[tuple[str, str]]:
     return dispatches
 
 
+def _write_inbox_dispatch(callsign: str, text: str) -> None:
+    """Write a dispatch JSON to the clone's inbox directory (Dave polling hole A
+    fix ts ~1778584800). Clones' inbox-watchers pick up the file + inject into
+    their tmux session. Direct write — doesn't depend on central listener
+    Slack fan-out being live.
+    """
+    inbox = INBOX_PATHS.get(callsign)
+    if not inbox:
+        logger.warning("no inbox path for callsign %r — dropping dispatch", callsign)
+        return
+    inbox_dir = Path(inbox)
+    if not inbox_dir.is_dir():
+        logger.warning("inbox dir %s missing — dropping dispatch", inbox)
+        return
+    import uuid
+
+    payload = {
+        "type": "task_dispatch",
+        "from": "elliot_polling_loop",
+        "brief": text,
+        "polled_at": datetime.now(UTC).isoformat(),
+    }
+    fname = f"{datetime.now(UTC).strftime('%Y%m%d_%H%M%S')}_polling_{uuid.uuid4().hex[:8]}.json"
+    target = inbox_dir / fname
+    try:
+        target.write_text(json.dumps(payload, indent=2))
+    except OSError as exc:
+        logger.warning("inbox write %s failed: %s", target, exc)
+
+
 def send_dispatch(channel: str, text: str) -> None:
-    """Post via scripts/slack_relay.py. Best-effort; relay failure logs + drops."""
+    """Route dispatch by target type. Best-effort; failures log + drop.
+
+    - 'inbox:<callsign>' → write JSON to clone's inbox dir (Dave polling hole A).
+    - '#execution' / '#ceo' / other → scripts/slack_relay.py.
+    """
+    if channel.startswith("inbox:"):
+        callsign = channel.split(":", 1)[1]
+        _write_inbox_dispatch(callsign, text)
+        return
+
     relay = Path(__file__).resolve().parent / "slack_relay.py"
     flag = "-g" if channel == EXECUTION_CHANNEL_NAME else "-c"
     try:

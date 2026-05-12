@@ -271,3 +271,58 @@ def test_run_cycle_dispatches_when_signals_present(loop_mod, monkeypatch):
     assert len(sent) == 1
     assert sent[0][0] == "#execution"
     assert "[DISPATCH-PROPOSAL:aiden]" in sent[0][1]
+
+
+# Polling hole A (Dave directive ts ~1778584800) — clone inbox dispatch ─────
+
+
+def test_compose_dispatches_clone_targets_inbox_not_execution(loop_mod):
+    """Clone callsigns (atlas/orion/scout) get inbox:<cs> target, not #execution.
+    Primes (aiden/max) still get #execution."""
+    sig = loop_mod.CycleSignals(
+        bd_ready=[
+            {"id": "A1", "title": "T1", "priority": 0},
+            {"id": "A2", "title": "T2", "priority": 0},
+            {"id": "A3", "title": "T3", "priority": 0},
+        ],
+        linear_stale=[],
+        idle_agents=["atlas", "aiden", "orion"],
+        prefect_failures=[],
+    )
+    dispatches = loop_mod.compose_dispatches(sig)
+    assert len(dispatches) == 3
+    targets = [d[0] for d in dispatches]
+    assert "inbox:atlas" in targets
+    assert "#execution" in targets
+    assert "inbox:orion" in targets
+
+
+def test_send_dispatch_inbox_writes_json_file(loop_mod, monkeypatch, tmp_path):
+    """send_dispatch('inbox:atlas', text) writes a JSON dispatch file to the
+    monkeypatched inbox path."""
+    inbox = tmp_path / "telegram-relay-atlas" / "inbox"
+    inbox.mkdir(parents=True)
+    monkeypatch.setitem(loop_mod.INBOX_PATHS, "atlas", str(inbox))
+
+    loop_mod.send_dispatch("inbox:atlas", "[DISPATCH-PROPOSAL:atlas] do thing")
+    files = list(inbox.iterdir())
+    assert len(files) == 1
+    import json as _json
+
+    payload = _json.loads(files[0].read_text())
+    assert payload["type"] == "task_dispatch"
+    assert payload["from"] == "elliot_polling_loop"
+    assert "[DISPATCH-PROPOSAL:atlas]" in payload["brief"]
+
+
+def test_send_dispatch_inbox_missing_dir_drops_quietly(loop_mod, monkeypatch, tmp_path):
+    """If the clone's inbox dir doesn't exist (clone offline / pre-watcher),
+    drop the dispatch instead of crashing."""
+    monkeypatch.setitem(loop_mod.INBOX_PATHS, "atlas", str(tmp_path / "nonexistent"))
+    # Should not raise.
+    loop_mod.send_dispatch("inbox:atlas", "text")
+
+
+def test_send_dispatch_unknown_inbox_callsign_drops(loop_mod):
+    """inbox:<unmapped> drops quietly (best-effort)."""
+    loop_mod.send_dispatch("inbox:unknown_callsign", "text")  # no raise

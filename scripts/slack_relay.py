@@ -249,7 +249,87 @@ def main() -> int:
     ts = result.get("ts", "")
     ch = result.get("channel", channel)
     print(f"→ {CALLSIGN_TAG} sent to Slack #{ch} (ts {ts})")
+    # Layer-3 mechanical self-assignment (Dave directive ts ~1778584800).
+    # On [READY:<callsign>] emission, fire bd ready + claim first unblocked
+    # so the agent self-assigns immediately rather than waiting for the
+    # 60s polling loop. Best-effort: subprocess failures log + drop.
+    _maybe_self_assign(message)
     return 0
+
+
+def _is_ready_marker(message: str, callsign: str) -> bool:
+    """True iff message contains an ANCHORED [READY:<callsign>] state marker.
+
+    v2 anchoring (Dave directive + Elliot dispatch ts ~1778586700) — fixes the
+    false-positive from the empirical first-fire (PR #783 announce post had
+    [READY:aiden] in PROSE describing the hook behaviour; the substring-anywhere
+    match fired + claimed an unrelated P0 issue).
+
+    Match position rules (any one matches → ready):
+      - Start of message (optionally preceded by whitespace)
+      - Start of any line in the message
+      - Right after the callsign tag prefix '[<CALLSIGN>]' at start
+
+    Prose mentions of '[READY:aiden]' embedded mid-sentence DO NOT match.
+    """
+    # `]` is a literal delimiter — no \b needed; the brackets themselves are
+    # the bookends. Anchored at (start-of-string | newline) + optional callsign
+    # tag prefix, so prose 'Next live [READY:aiden] emission' (mid-sentence)
+    # does NOT match.
+    pattern = re.compile(
+        rf"(?:^|\n)\s*(?:\[{re.escape(callsign.upper())}\]\s*)?\[READY:{re.escape(callsign)}\]",
+        re.IGNORECASE,
+    )
+    return bool(pattern.search(message))
+
+
+def _maybe_self_assign(message: str) -> None:
+    """If message contains an anchored [READY:<my-callsign>], try bd ready → bd claim.
+
+    Best-effort + non-blocking: subprocess timeouts + missing bd binary log
+    + return. Never raises. The polling loop is the safety net if this fails.
+    """
+    if not _is_ready_marker(message, CALLSIGN):
+        return
+    import subprocess as _sub
+
+    try:
+        proc = _sub.run(["bd", "ready", "--json"], capture_output=True, text=True, timeout=10)
+    except (_sub.TimeoutExpired, OSError) as exc:
+        print(f"[self-assign] bd ready unavailable: {exc}", file=sys.stderr)
+        return
+    if proc.returncode != 0:
+        print(f"[self-assign] bd ready exit {proc.returncode}", file=sys.stderr)
+        return
+    try:
+        issues = json.loads(proc.stdout or "[]")
+    except json.JSONDecodeError as exc:
+        print(f"[self-assign] bd ready json parse: {exc}", file=sys.stderr)
+        return
+    if not issues:
+        print("[self-assign] bd ready empty — nothing to claim", file=sys.stderr)
+        return
+    first_id = issues[0].get("id")
+    if not first_id:
+        return
+    try:
+        claim = _sub.run(
+            ["bd", "update", first_id, "--claim"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    except (_sub.TimeoutExpired, OSError) as exc:
+        print(f"[self-assign] bd claim unavailable: {exc}", file=sys.stderr)
+        return
+    if claim.returncode != 0:
+        print(
+            f"[self-assign] claim race on {first_id} (exit {claim.returncode}) — "
+            f"falling back to polling-loop dispatch",
+            file=sys.stderr,
+        )
+        return
+    print(f"[self-assign] claimed {first_id} — work starts immediately", file=sys.stderr)
 
 
 if __name__ == "__main__":

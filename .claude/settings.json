@@ -96,6 +96,21 @@
             "type": "command"
           },
           {
+            "command": "/home/elliotbot/clawd/venv/bin/python3 scripts/cognee_recall.py --on-wake",
+            "timeout": 15,
+            "type": "command"
+          },
+          {
+            "command": "/home/elliotbot/clawd/venv/bin/python3 scripts/bd_task_state_injection.py",
+            "timeout": 10,
+            "type": "command"
+          },
+          {
+            "command": "/home/elliotbot/clawd/venv/bin/python3 scripts/session_uuid_resume.py",
+            "timeout": 10,
+            "type": "command"
+          },
+          {
             "command": "/home/elliotbot/clawd/venv/bin/python3 scripts/anti_amnesia_capsule.py --read",
             "timeout": 5,
             "type": "command"

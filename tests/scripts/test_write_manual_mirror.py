@@ -259,3 +259,59 @@ def test_warn_when_hook_path_points_elsewhere(monkeypatch, caplog, tmp_manual):
     with caplog.at_level("WARNING"), patch.object(mirror, "mirror_to_drive"):
         mirror.main([])
     assert any(".husky" in r.message and ".githooks" in r.message for r in caplog.records)
+
+
+# KEI-9 Wave 2 item 3: persist Drive mirror exit code to state file ─────────
+
+
+def test_persist_exit_code_writes_state(tmp_manual):
+    """persist_exit_code records exit code + outcome label + timestamp."""
+    mirror.persist_exit_code(0, "mirrored")
+    state = mirror.load_state()
+    assert state["last_exit_code"] == 0
+    assert state["last_outcome"] == "mirrored"
+    assert "last_exit_recorded_at" in state
+
+
+def test_persist_exit_code_preserves_existing_state(tmp_manual):
+    """persist_exit_code MUST NOT clobber the fingerprint or mirrored_at fields."""
+    mirror.save_state({"last_fingerprint": {"git_blob": "abc123"}, "last_mirrored_at": "2026-05-12T22:00:00+00:00"})
+    mirror.persist_exit_code(2, "refused_unchanged")
+    state = mirror.load_state()
+    assert state["last_fingerprint"] == {"git_blob": "abc123"}
+    assert state["last_mirrored_at"] == "2026-05-12T22:00:00+00:00"
+    assert state["last_exit_code"] == 2
+    assert state["last_outcome"] == "refused_unchanged"
+
+
+def test_main_persists_exit_code_on_missing_manual(tmp_manual, monkeypatch):
+    """When MANUAL.md is absent, main returns 3 AND records the outcome."""
+    manual_path, _state_path = tmp_manual
+    monkeypatch.setattr(mirror, "MANUAL_PATH", manual_path.parent / "nonexistent.md")
+    rc = mirror.main([])
+    assert rc == 3
+    state = mirror.load_state()
+    assert state.get("last_exit_code") == 3
+    assert state.get("last_outcome") == "missing_manual"
+
+
+def test_main_persists_exit_code_on_refused_unchanged(tmp_manual, monkeypatch):
+    """First mirror succeeds (recording mirrored), second refuses (recording refused_unchanged)."""
+    with patch.object(mirror, "mirror_to_drive"):
+        mirror.main([])  # initial mirror succeeds
+    rc = mirror.main([])  # second run refuses unchanged
+    assert rc == 2
+    state = mirror.load_state()
+    assert state.get("last_exit_code") == 2
+    assert state.get("last_outcome") == "refused_unchanged"
+
+
+def test_main_persists_exit_code_on_check_unchanged(tmp_manual, monkeypatch):
+    """--check on unchanged returns 2 and records check_unchanged."""
+    with patch.object(mirror, "mirror_to_drive"):
+        mirror.main([])  # establish state
+    rc = mirror.main(["--check"])
+    assert rc == 2
+    state = mirror.load_state()
+    assert state.get("last_exit_code") == 2
+    assert state.get("last_outcome") == "check_unchanged"

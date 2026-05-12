@@ -125,6 +125,33 @@ def save_state(state: dict) -> None:
     STATE_PATH.write_text(json.dumps(state, indent=2), encoding="utf-8")
 
 
+def persist_exit_code(exit_code: int, outcome: str) -> None:
+    """KEI-9 Wave 2 item 3: persist Drive mirror exit code + outcome label
+    to the state file so post-restart sessions can read whether the last
+    mirror succeeded.
+
+    Outcome labels (matching main() return paths):
+      0 / "mirrored"          — successful mirror
+      0 / "check_changed"     — --check mode said changed (would-mirror)
+      2 / "check_unchanged"   — --check mode said unchanged (would-refuse)
+      2 / "refused_unchanged" — main run refused due to unchanged content
+      3 / "missing_manual"    — MANUAL.md not found
+
+    Best-effort: failures here must not change the main() exit code. This
+    is observability metadata, not control flow.
+    """
+    try:
+        state = load_state() or {}
+        state["last_exit_code"] = int(exit_code)
+        state["last_outcome"] = str(outcome)
+        state["last_exit_recorded_at"] = subprocess.check_output(  # noqa: S603 — controlled args, no shell
+            ["date", "-Iseconds"]
+        ).decode().strip()
+        save_state(state)
+    except (OSError, subprocess.SubprocessError) as exc:
+        logger.warning("persist_exit_code failed (non-fatal): %s", exc)
+
+
 def is_unchanged(current: dict, last: dict) -> bool:
     """Equal when the most-stable available identifier matches.
     Prefers git blob hash; falls back to sha256."""
@@ -307,6 +334,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if not MANUAL_PATH.exists():
         logger.error(f"MANUAL.md not found at {MANUAL_PATH}")
+        persist_exit_code(3, "missing_manual")
         return 3
 
     current_fp = fingerprint(MANUAL_PATH)
@@ -323,8 +351,10 @@ def main(argv: list[str] | None = None) -> int:
                 current_fp.get("git_blob", "n/a"),
                 current_fp["sha256"][:12],
             )
+            persist_exit_code(2, "check_unchanged")
             return 2
         logger.info("MANUAL.md CHANGED since last mirror — mirror would proceed.")
+        persist_exit_code(0, "check_changed")
         return 0
 
     if unchanged and not args.force:
@@ -335,6 +365,7 @@ def main(argv: list[str] | None = None) -> int:
             current_fp.get("git_blob", "n/a"),
             current_fp["sha256"][:12],
         )
+        persist_exit_code(2, "refused_unchanged")
         return 2
 
     if args.force and unchanged:

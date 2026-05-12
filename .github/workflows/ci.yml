@@ -64,13 +64,15 @@ jobs:
 
       - name: Install dependencies
         # pip >=26.0 enforces a maximum dependency resolution depth that
-        # rejects this repo's requirements.txt + extras (resolution-too-deep).
-        # Pin to <26 until requirements.txt is refactored with lower-bounds.
-        # Combine the two installs into one pip invocation so resolution runs
-        # once over the union of constraints instead of twice sequentially.
+        # rejects this repo's requirements.txt + extras (resolution-too-deep);
+        # the prior `pip<26` pin worked but took >10 min to resolve. Switched
+        # to `uv pip install` which uses a much faster resolver — same install
+        # completes in seconds. Tech debt: add lower-bound pins in
+        # requirements.txt for future-proofing, then drop the uv shim if pip
+        # 26+ becomes viable.
         run: |
-          pip install --upgrade "pip<26"
-          pip install -r requirements.txt mypy types-redis
+          pip install uv
+          uv pip install --system -r requirements.txt mypy types-redis
 
       - name: Run mypy
         run: mypy src/ --ignore-missing-imports --no-error-summary || true
@@ -132,11 +134,12 @@ jobs:
             ${{ runner.os }}-pip-
 
       - name: Install dependencies
-        # See mypy job above — pip <26 + combined invocation avoids the
-        # resolution-too-deep error from pip 26.0's new depth limit.
+        # See mypy job above — uv pip's faster resolver handles the
+        # requirements.txt + extras combination that pip 26.0 rejects and
+        # pip 25.x took >10 min on.
         run: |
-          pip install --upgrade "pip<26"
-          pip install -r requirements.txt pytest pytest-asyncio pytest-cov
+          pip install uv
+          uv pip install --system -r requirements.txt pytest pytest-asyncio pytest-cov
 
       - name: Run tests
         run: pytest tests/ -v --tb=short --cov=src --cov-report=term-missing || true

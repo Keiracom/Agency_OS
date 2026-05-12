@@ -88,6 +88,13 @@ arize-phoenix-otel>=0.16.0,<1.0.0  # Phoenix OTLP tracer registration
 # 20260512_0115). ~3x cheaper than Anthropic Haiku for this payload shape.
 google-genai>=0.8.0
 
+# === Slack ===
+# Used by src/slack_bot/central_listener.py (socket-mode listener) +
+# skills/slack-file-upload/upload.py (files_upload_v2 wrapper). The package
+# was installed at deploy time pre-2026-05-12 but never declared here —
+# new envs failed silently. Added during the slack-file-upload skill build.
+slack_sdk>=3.41.0,<4.0.0
+
 # === Testing ===
 pytest>=7.4.0
 pytest-asyncio>=0.21.0

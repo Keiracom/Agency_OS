@@ -111,7 +111,7 @@ _R9_EXEMPT_RE = re.compile(
 # deterministic + LLM checks when message is a governance protocol artifact
 # (status post, FP tally, concur ack, propose, etc.).
 _UNIVERSAL_PROTOCOL_TAG_RE = re.compile(
-    r"\[(?:propose|summary-draft|concur-request|concur|ready|busy|fp-log|valid-fire|dispatch|dispatch-proposal)[\w:-]*\]",
+    r"\[(?:propose|summary-draft|concur-request|concur|ready|busy|fp-log|valid-fire|dispatch|dispatch-proposal|dispatch-complete|state|complete)[\w:-]*\]",
     re.IGNORECASE,
 )
 

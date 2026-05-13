@@ -36,7 +36,13 @@ from typing import Any
 
 import cognee
 
-_LANCE_WRITE_SEM: asyncio.Semaphore | None = None
+# Eager init: asyncio.Semaphore() constructor is loop-agnostic in Python 3.10+
+# (attaches to loop on first acquire). Module-level eager-create eliminates any
+# theoretical race in the prior lazy-init `if None: assign` pattern (single-loop
+# asyncio is yield-point-atomic, but multi-loop test harnesses could theoretically
+# pass both `is None` checks before either assigns). Audit-and-clean-up follow-up
+# to PR #826 per Aiden+Max+Elliot triple-concur ts ~1778662900.
+_LANCE_WRITE_SEM: asyncio.Semaphore = asyncio.Semaphore(1)
 
 
 def _install_lance_writer_serialiser() -> None:
@@ -69,9 +75,6 @@ def _install_lance_writer_serialiser() -> None:
         return
 
     async def serialised_index_data_points(self, *args, **kwargs):  # type: ignore[no-untyped-def]
-        global _LANCE_WRITE_SEM
-        if _LANCE_WRITE_SEM is None:
-            _LANCE_WRITE_SEM = asyncio.Semaphore(1)
         async with _LANCE_WRITE_SEM:
             return await orig(self, *args, **kwargs)
 

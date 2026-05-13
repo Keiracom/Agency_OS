@@ -63,11 +63,10 @@ import re
 import shutil
 import subprocess
 import sys
-import urllib.error
 import urllib.request
 from typing import Any
 
-_BD_ID_RE = re.compile(r"^[A-Za-z0-9_]+-[A-Za-z0-9]+$")
+_BD_ID_RE = re.compile(r"^\w+-[A-Za-z0-9]+$")
 _LINEAR_GRAPHQL = "https://api.linear.app/graphql"
 
 
@@ -150,7 +149,8 @@ def _post_linear_comment(
     try:
         with urllib.request.urlopen(req, timeout=15) as r:
             body_obj = json.loads(r.read())
-    except (urllib.error.URLError, OSError, json.JSONDecodeError):
+    except (OSError, json.JSONDecodeError):
+        # urllib.error.URLError subclasses OSError — single tuple entry covers both.
         return False
     return bool((body_obj.get("data") or {}).get("commentCreate", {}).get("success"))
 

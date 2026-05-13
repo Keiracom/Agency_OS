@@ -22,6 +22,8 @@ import importlib.util
 import sys
 from pathlib import Path
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 SCRIPT = REPO_ROOT / "scripts" / "kei_duplicate_detector.py"
 _spec = importlib.util.spec_from_file_location("kei_duplicate_detector", SCRIPT)
@@ -68,7 +70,7 @@ def test_duplicate_above_threshold_flags_and_posts_comment():
     assert result["duplicate_found"] is True
     assert result["reason"] == "above_threshold"
     assert result["best_match"]["bd_id"] == "Agency_OS-exist"
-    assert result["best_match"]["similarity"] == 0.92
+    assert result["best_match"]["similarity"] == pytest.approx(0.92)
     assert result["linear_comment"] == "posted"
     assert len(comments) == 1
     assert comments[0][0] == "KEI-99"
@@ -94,7 +96,7 @@ def test_duplicate_below_threshold_does_not_flag():
 
     assert result["duplicate_found"] is False
     assert result["reason"] == "below_threshold"
-    assert result["best_match"]["similarity"] == 0.40
+    assert result["best_match"]["similarity"] == pytest.approx(0.40)
     assert comments == []
 
 

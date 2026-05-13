@@ -1,8 +1,12 @@
 """tests for src/bot_common/concur_gate.py — R1 outbound concur gate.
 
-concur_gate.py shipped without dedicated test coverage. This file fills
-the gap with mock-based unit tests covering:
-  - should_gate: trigger pattern detection (uses TRIGGER_PATTERNS)
+Post KEI-38 (Dave verbatim 2026-05-14): the gate fires ONLY on a literal
+[CONCUR:<callsign>] or [BLOCK:<callsign>] token. Substring-match on the
+broad enforcer TRIGGER_PATTERNS list is gone — that list is for the LLM
+governance pre-filter, not for the outbound concur gate.
+
+Covers:
+  - should_gate: anchored-regex token detection
   - has_peer_concur: Slack history lookup (mocked urlopen)
   - gate_check: main entry — allow-as-is vs replacement-with-CONCUR-REQUEST
   - env_skip: env bypass parsing
@@ -25,32 +29,73 @@ import pytest
 from src.bot_common import concur_gate
 
 # ─────────────────────────────────────────────────────────────────────────────
-# should_gate — trigger pattern detection
+# should_gate — anchored-token detection (KEI-38, Dave verbatim 2026-05-14)
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def test_should_gate_matches_committed_keyword() -> None:
-    """`commit` is in TRIGGER_PATTERNS (committal verb)."""
-    assert concur_gate.should_gate("Just committed the fix.")
+def test_should_gate_matches_concur_token() -> None:
+    """Literal [CONCUR:<callsign>] token → gate fires."""
+    assert concur_gate.should_gate("[CONCUR:max] release looks fine")
 
 
-def test_should_gate_matches_merged_keyword() -> None:
-    assert concur_gate.should_gate("PR merged to main.")
+def test_should_gate_matches_block_token() -> None:
+    """Literal [BLOCK:<callsign>] token → gate fires."""
+    assert concur_gate.should_gate("[BLOCK:elliot] hold on the rebase")
 
 
-def test_should_gate_matches_pr_hash() -> None:
-    """`pr #` substring triggers."""
-    assert concur_gate.should_gate("Looking at PR #715 right now.")
+def test_should_gate_case_insensitive_token() -> None:
+    """Tokens are matched case-insensitively."""
+    assert concur_gate.should_gate("[concur:scout] verified")
+    assert concur_gate.should_gate("[Block:Aiden] stop")
 
 
-def test_should_gate_case_insensitive() -> None:
-    """should_gate lowercases the text first."""
-    assert concur_gate.should_gate("PR MERGED to main.")
+def test_should_gate_does_not_match_prose_concur() -> None:
+    """KEI-38 core fix — prose containing 'concur' must NOT trigger the gate."""
+    assert not concur_gate.should_gate("we concur on this approach")
+    assert not concur_gate.should_gate("shape-concur with hold")
+    assert not concur_gate.should_gate("Max FINAL CONCUR on PR #842")
+
+
+def test_should_gate_does_not_match_final_concur_token() -> None:
+    """[FINAL CONCUR:<name>] is a merge-authorisation declaration, not a R1 trigger."""
+    assert not concur_gate.should_gate("[FINAL CONCUR:ELLIOT] merging now")
+    assert not concur_gate.should_gate("[FINAL CONCUR:max]")
+
+
+def test_should_gate_does_not_match_concur_request_stub() -> None:
+    """[CONCUR-REQUEST:<callsign>] is the hold-stub itself — breaks recursion."""
+    assert not concur_gate.should_gate(
+        "[CONCUR-REQUEST:AIDEN] requesting concurrence from peer on: PR merge"
+    )
+
+
+def test_should_gate_no_match_on_completion_prose() -> None:
+    """Old TRIGGER_PATTERNS substrings (merged, committed, PR #N, done) no longer gate.
+
+    This is the KEI-38 unblock for Max — factual completion claims pass through
+    without requiring peer concur. Peer-review discipline lives elsewhere.
+    """
+    assert not concur_gate.should_gate("Just committed the fix.")
+    assert not concur_gate.should_gate("PR merged to main.")
+    assert not concur_gate.should_gate("Looking at PR #715 right now.")
+    assert not concur_gate.should_gate("PR MERGED to main.")
+    assert not concur_gate.should_gate("Task done, all stores written.")
 
 
 def test_should_gate_no_match_on_plain_text() -> None:
-    """Plain status text without trigger words → no gate."""
+    """Plain status text without trigger tokens → no gate."""
     assert not concur_gate.should_gate("Hello team, standing by for next dispatch.")
+
+
+def test_should_gate_no_match_on_empty_brackets() -> None:
+    """[CONCUR:] with empty callsign → no gate (anchored regex requires [a-z]+ after colon)."""
+    assert not concur_gate.should_gate("[CONCUR:] missing callsign")
+
+
+def test_should_gate_matches_token_with_hyphenated_callsign() -> None:
+    """Callsigns with hyphens or underscores are valid (e.g. atlas-bot)."""
+    assert concur_gate.should_gate("[CONCUR:atlas-bot] noted")
+    assert concur_gate.should_gate("[BLOCK:test_user] stop")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -159,7 +204,7 @@ def test_has_peer_concur_slack_api_not_ok_returns_false() -> None:
 
 
 def test_gate_check_no_trigger_allows() -> None:
-    """No R1 trigger pattern → (True, None) regardless of peer concur."""
+    """No R1 trigger token → (True, None) regardless of peer concur."""
     allow, replacement = concur_gate.gate_check(
         "Standing by, no shipping happening.", "aiden", "fake-token"
     )
@@ -167,36 +212,52 @@ def test_gate_check_no_trigger_allows() -> None:
     assert replacement is None
 
 
+def test_gate_check_prose_concur_allows() -> None:
+    """KEI-38: prose 'we concur' must pass through without peer-concur lookup."""
+    # Patch has_peer_concur to fail loudly if called — the gate must short-circuit
+    # at should_gate=False before reaching the Slack lookup.
+    with patch.object(
+        concur_gate, "has_peer_concur", side_effect=AssertionError("should not be called")
+    ):
+        allow, replacement = concur_gate.gate_check(
+            "we concur on this approach", "max", "fake-token"
+        )
+    assert allow is True
+    assert replacement is None
+
+
 def test_gate_check_trigger_with_concur_allows() -> None:
-    """Trigger pattern present AND peer concur in history → (True, None)."""
+    """[CONCUR:<callsign>] token AND peer concur in history → (True, None)."""
     with patch.object(concur_gate, "has_peer_concur", return_value=True):
-        allow, replacement = concur_gate.gate_check("PR merged to main.", "aiden", "fake-token")
+        allow, replacement = concur_gate.gate_check(
+            "[CONCUR:max] verified the diff", "aiden", "fake-token"
+        )
     assert allow is True
     assert replacement is None
 
 
 def test_gate_check_trigger_without_concur_blocks(tmp_path, monkeypatch) -> None:
-    """Trigger pattern + NO peer concur → (False, replacement) + hold file written."""
+    """[CONCUR:<callsign>] token + NO peer concur → (False, replacement) + hold file."""
     # Redirect _pending_dir to tmp_path so we don't touch real /tmp
     monkeypatch.setattr(concur_gate, "_pending_dir", lambda cs: tmp_path / cs)
+    text = "[CONCUR:max] verified the diff"
     with patch.object(concur_gate, "has_peer_concur", return_value=False):
-        allow, replacement = concur_gate.gate_check("PR merged to main.", "aiden", "fake-token")
+        allow, replacement = concur_gate.gate_check(text, "aiden", "fake-token")
     assert allow is False
     assert replacement is not None
     assert "[CONCUR-REQUEST:AIDEN]" in replacement
-    assert "PR merged to main." in replacement.lower() or "merged" in replacement.lower()
     # Hold file written under tmp_path
     hold_dir = tmp_path / "aiden"
     assert hold_dir.exists()
     hold_files = list(hold_dir.glob("*.txt"))
     assert len(hold_files) == 1
-    assert hold_files[0].read_text() == "PR merged to main."
+    assert hold_files[0].read_text() == text
 
 
 def test_gate_check_topic_sha_in_replacement(tmp_path, monkeypatch) -> None:
     """Replacement message references the held file by topic-sha."""
     monkeypatch.setattr(concur_gate, "_pending_dir", lambda cs: tmp_path / cs)
-    text = "PR merged to main."
+    text = "[BLOCK:elliot] hold on the rebase"
     expected_sha = concur_gate._topic_sha(text)
     with patch.object(concur_gate, "has_peer_concur", return_value=False):
         _, replacement = concur_gate.gate_check(text, "aiden", "fake-token")

@@ -146,3 +146,34 @@ def test_fixed_string_handles_dots_and_slashes(tmp_path):
     r2 = _run("--removed-target", "/var/lib/.session_", "--check-paths", str(src))
     assert r2.returncode == 1
     assert "consumer.py" in r2.stdout
+
+
+def test_sql_reserved_keyword_skips_gracefully():
+    """KEI-47: when the upstream CI extractor captures a SQL reserved keyword
+    (FROM/WHERE/SET/etc) as the supposed table — because prose like
+    `[UPDATE FROM {callsign}]` slipped through the awk $NF regex — the
+    Python checker recognises it and exits 0 (SKIP) instead of grep-ing
+    100s of unrelated SQL queries and failing.
+    """
+    for keyword in ("FROM", "WHERE", "SET", "from", "Where"):  # case-insensitive
+        result = _run("--removed-target", keyword)
+        assert result.returncode == 0, (
+            f"keyword {keyword!r} should SKIP not FAIL — stdout={result.stdout}"
+        )
+        assert "SKIP" in result.stdout
+        assert "KEI-47" in result.stdout
+
+
+def test_sql_reserved_set_completeness():
+    """KEI-47: sanity-check that the SQL_RESERVED_WORDS frozenset includes the
+    actual keyword that triggered the false-positive in PR #843 (FROM)
+    plus the common ones a real schema-coupled diff might trip on."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("check_migration_completeness_kei47", SCRIPT)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    must_include = {"FROM", "WHERE", "SET", "JOIN", "INTO", "VALUES", "WITH"}
+    assert must_include <= mod.SQL_RESERVED_WORDS, (
+        f"missing keywords: {must_include - mod.SQL_RESERVED_WORDS}"
+    )

@@ -38,6 +38,55 @@ DEFAULT_CHECK_PATHS = ("src", "scripts", "skills")
 EXCLUDE_DIRS = ("__pycache__", "node_modules", ".venv", ".git")
 EXCLUDE_GLOBS = ("*.pyc",)
 
+# KEI-47 (rolled into PR #843 per Dave override ts ~1778709000): the upstream
+# CI extractor regex (.github/workflows/ci.yml — `grep -oE '(INSERT INTO|UPDATE) <ident>'`)
+# captures SQL reserved keywords (FROM/WHERE/SET/…) when prose contains
+# patterns like "[UPDATE FROM {callsign}]" (Slack message templates, log
+# format strings). awk $NF then picks the keyword as the supposed table.
+# Pattern A check is meaningless on reserved words — they always have
+# 100s of readers across SQL queries. Defensive guard here makes the
+# check_migration_completeness.py invocation a no-op for those tokens
+# even if the upstream regex leaks them through.
+SQL_RESERVED_WORDS = frozenset(
+    {
+        "FROM",
+        "WHERE",
+        "SET",
+        "JOIN",
+        "ON",
+        "AS",
+        "AND",
+        "OR",
+        "NOT",
+        "NULL",
+        "TRUE",
+        "FALSE",
+        "INTO",
+        "VALUES",
+        "GROUP",
+        "ORDER",
+        "BY",
+        "HAVING",
+        "LIMIT",
+        "OFFSET",
+        "RETURNING",
+        "WITH",
+        "UNION",
+        "ALL",
+        "DISTINCT",
+        "EXISTS",
+        "IN",
+        "BETWEEN",
+        "LIKE",
+        "IS",
+        "CASE",
+        "WHEN",
+        "THEN",
+        "ELSE",
+        "END",
+    }
+)
+
 
 def _grep_for_target(target: str, check_paths: list[Path], extra_flag: str | None) -> list[str]:
     """Run grep across check_paths for `target`; return matching file:line strings.
@@ -97,6 +146,15 @@ def main() -> int:
     if not target:
         print("[check] --removed-target cannot be empty", file=sys.stderr)
         return 2
+
+    # KEI-47: defensive skip for SQL reserved-keyword false-positives
+    # (see SQL_RESERVED_WORDS docstring).
+    if target.upper() in SQL_RESERVED_WORDS:
+        print(
+            f"[check] SKIP — {target!r} is a SQL reserved keyword, not a table identifier. "
+            "Upstream extractor false-positive (see KEI-47)."
+        )
+        return 0
 
     check_paths = [Path(p.strip()) for p in args.check_paths.split(",") if p.strip()]
     hits = _grep_for_target(target, check_paths, args.extra_grep_flag)

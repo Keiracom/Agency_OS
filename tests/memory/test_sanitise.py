@@ -85,7 +85,7 @@ POSITIVE_CASES = [
     ),
     # 12. Generic password assignment (= form)
     (
-        "password = hunter2secret",
+        "password = hunter2secret",  # NOSONAR — intentional test corpus entry, not a real credential
         "generic_secret_assignment matched",
     ),
     # 13. Generic token assignment (: form)

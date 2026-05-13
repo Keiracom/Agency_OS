@@ -269,6 +269,108 @@ def poll_idle_agents(now: datetime | None = None) -> list[str]:
         return []
 
 
+def _descendant_pids(pid: int) -> list[int]:
+    """Walk the process tree under pid, returning all descendant PIDs.
+
+    KEI-34 v2 Addition 3 — empirical Max diagnostic 2026-05-13:
+      bash pane_pid (S 0% CPU) → bash wrapper child (S) → bash -c child (S)
+      → python3 ingest grandchild (R 78% CPU). Single-level pgrep -P misses
+      the long-running grandchild. Recursive walk is required.
+    """
+    descendants: list[int] = []
+    frontier = [pid]
+    seen: set[int] = {pid}
+    while frontier:
+        next_frontier: list[int] = []
+        for p in frontier:
+            try:
+                proc = subprocess.run(  # noqa: S603 — controlled args, no shell, pid is int
+                    ["pgrep", "-P", str(p)],
+                    capture_output=True,
+                    text=True,
+                    timeout=3,
+                    check=False,
+                )
+            except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+                continue
+            if proc.returncode != 0:
+                continue
+            for line in proc.stdout.splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    child = int(line)
+                except ValueError:
+                    continue
+                if child in seen:
+                    continue
+                seen.add(child)
+                descendants.append(child)
+                next_frontier.append(child)
+        frontier = next_frontier
+    return descendants
+
+
+def _agent_has_active_subprocess(callsign: str) -> bool:
+    """KEI-34 v2 Addition 3 — return True iff the callsign's tmux session has
+    ANY descendant process in R state OR with CPU > 0%.
+
+    Walks the full process tree under the pane_pid (per Max's diagnostic
+    ts ~1778631099: bash parent S 0% CPU + python3 grandchild R 78% CPU
+    is the canonical false-positive case). Single-level pgrep -P missed
+    the grandchild.
+
+    Best-effort: any subprocess/tmux failure returns False (conservative —
+    don't suppress idle dispatch if we can't probe).
+    """
+    session = CALLSIGN_TO_TMUX.get(callsign.lower())
+    if not session:
+        return False
+    try:
+        pane_proc = subprocess.run(  # noqa: S603 — controlled args, no shell
+            ["tmux", "list-panes", "-t", f"{session}:0", "-F", "#{pane_pid}"],
+            capture_output=True,
+            text=True,
+            timeout=3,
+            check=False,
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+        return False
+    if pane_proc.returncode != 0:
+        return False
+    try:
+        pane_pid = int(pane_proc.stdout.strip().splitlines()[0])
+    except (IndexError, ValueError):
+        return False
+    pids_to_check = [pane_pid, *_descendant_pids(pane_pid)]
+    try:
+        ps_proc = subprocess.run(  # noqa: S603 — controlled args, no shell
+            ["ps", "-p", ",".join(str(p) for p in pids_to_check), "-o", "stat=,pcpu="],
+            capture_output=True,
+            text=True,
+            timeout=3,
+            check=False,
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+        return False
+    if ps_proc.returncode != 0:
+        return False
+    for line in ps_proc.stdout.splitlines():
+        parts = line.split()
+        if len(parts) < 2:
+            continue
+        stat = parts[0]
+        try:
+            cpu = float(parts[1])
+        except ValueError:
+            continue
+        # R = running; CPU > 0 = active in last sample window.
+        if "R" in stat or cpu > 0.0:
+            return True
+    return False
+
+
 def poll_orchestrator_idle_agents(now: datetime | None = None) -> list[str]:
     """KEI-34 strict-cycle threshold per Dave verbatim ts ~1778629860.
 
@@ -315,10 +417,13 @@ def poll_orchestrator_idle_agents(now: datetime | None = None) -> list[str]:
         ]
 
     try:
-        return asyncio.run(_q())
+        timestamp_idle = asyncio.run(_q())
     except (OSError, RuntimeError, Exception) as exc:  # noqa: BLE001 — best-effort
         logger.warning("orchestrator-idle query failed: %s", exc)
         return []
+    # KEI-34 v2 Addition 3 — filter out callsigns whose tmux session has an
+    # active descendant subprocess (Cognee ingest / long-running tool case).
+    return [cs for cs in timestamp_idle if not _agent_has_active_subprocess(cs)]
 
 
 def poll_prefect_failures(now: datetime | None = None) -> list[dict]:
@@ -674,6 +779,7 @@ def run_cycle(now: datetime | None = None) -> int:
     )
     if not should_run_now(now):
         logger.info("outside peak window + minute!=0 → silent skip")
+        _emit_dispatch_outcome_heartbeat([], None, no_work=True)
         return 0
     signals = collect_signals(now)
     if signals.is_silent():
@@ -684,11 +790,52 @@ def run_cycle(now: datetime | None = None) -> int:
             len(signals.idle_agents),
             len(signals.prefect_failures),
         )
+        _emit_dispatch_outcome_heartbeat([], signals, no_work=True)
         return 0
     dispatches = compose_dispatches(signals)
     for channel, text in dispatches:
         send_dispatch(channel, text)
+    _emit_dispatch_outcome_heartbeat(dispatches, signals, no_work=False)
     return len(dispatches)
+
+
+def _emit_dispatch_outcome_heartbeat(
+    dispatches: list[tuple[str, str]],
+    signals: CycleSignals | None,
+    *,
+    no_work: bool,
+) -> None:
+    """KEI-34 v2 Addition 1 — Better Stack dispatch-outcome heartbeat per Dave
+    verbatim ts ~1778631000.
+
+    Fires the heartbeat URL only when:
+      (a) one or more dispatches were emitted this cycle, OR
+      (b) no_work=True (genuine no-work state — silent skip OR is_silent()).
+
+    If the loop runs but idle agents exist AND ready work exists AND no
+    dispatch fires → no heartbeat fires → Better Stack alerts within 2 min
+    (per Dave's spec).
+
+    Env: BETTERSTACK_HB_DISPATCH_OUTCOME (operator-provisioned post-merge).
+    """
+    url = os.environ.get("BETTERSTACK_HB_DISPATCH_OUTCOME", "")
+    if not url:
+        return
+    # Suppress heartbeat when there IS work but no dispatch fired — that's
+    # the orchestrator-discipline-gap case BS should alert on.
+    if not no_work and not dispatches:
+        if signals is not None and (signals.bd_ready or signals.orchestrator_idle_agents):
+            return
+    try:
+        subprocess.run(  # noqa: S603 — controlled args, no shell
+            ["curl", "-fsS", "-m", "5", url],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+    except (subprocess.TimeoutExpired, OSError) as exc:
+        logger.warning("BS dispatch-outcome heartbeat failed: %s", exc)
 
 
 def _heartbeat() -> None:

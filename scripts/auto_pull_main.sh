@@ -47,6 +47,13 @@ _alerted_path() {
     echo "$(_state_path "$1").alerted"
 }
 
+# KEI-34 v2 Addition 2 — dirty-worktree #ceo escalation flag (distinct from
+# .alerted which goes to #execution). Separate state file avoids alert-spam
+# both channels.
+_alerted_ceo_path() {
+    echo "$(_state_path "$1").alerted-ceo"
+}
+
 _streak_get() {
     local f
     f=$(_state_path "$1")
@@ -62,7 +69,7 @@ _streak_inc() {
 }
 
 _streak_reset() {
-    rm -f "$(_state_path "$1")" "$(_alerted_path "$1")" 2>/dev/null || true
+    rm -f "$(_state_path "$1")" "$(_alerted_path "$1")" "$(_alerted_ceo_path "$1")" 2>/dev/null || true
 }
 
 _emit_alert() {
@@ -80,11 +87,41 @@ _emit_alert() {
     touch "$alerted_flag" 2>/dev/null || true
 }
 
+# KEI-34 v2 Addition 2 — escalate to #ceo on dirty-worktree-skip-streak >=2.
+# Distinct alert channel + state flag from the #execution alert. Stale code
+# running silently is worse than no code running per Dave verbatim ts ~1778631000.
+_emit_dirty_worktree_ceo_alert() {
+    # $1 = worktree, $2 = reason (only fires when reason contains "working tree dirty")
+    case "$2" in
+        *"working tree dirty"*) ;;
+        *) return 0 ;;
+    esac
+    local alerted_ceo_flag
+    alerted_ceo_flag=$(_alerted_ceo_path "$1")
+    [ -f "$alerted_ceo_flag" ] && return 0   # already alerted #ceo this streak
+    local streak msg
+    streak=$(_streak_get "$1")
+    local minutes=$((streak * 5))
+    msg="[PROPOSE:elliot] DIRTY WORKTREE STALE CODE — $1 has had a dirty working tree for $streak consecutive auto-pull cycles (~${minutes}m). The polling loop is running STALE code that does not include recently-merged PRs. Resolve the dirty state immediately (stash or commit) so origin/main can ff-merge and the loop deploys current code. Per Dave verbatim ts ~1778631000."
+    if [ -x "$RELAY" ] || [ -r "$RELAY" ]; then
+        /home/elliotbot/clawd/venv/bin/python3 "$RELAY" -g "$msg" -c ceo >/dev/null 2>&1 || true
+    fi
+    touch "$alerted_ceo_flag" 2>/dev/null || true
+}
+
+# KEI-34 v2 Addition 2 threshold: 2 consecutive dirty skips is enough.
+# Dirty worktree = stale code, separate concern from the 3-cycle generic alert.
+DIRTY_WORKTREE_CEO_THRESHOLD="${AGENCY_OS_DIRTY_WORKTREE_CEO_THRESHOLD:-2}"
+
 _handle_skip() {
     # $1 = worktree, $2 = reason
     _streak_inc "$1"
     local streak
     streak=$(_streak_get "$1")
+    # Dirty-worktree-specific #ceo escalation at streak >= 2 (Addition 2).
+    if [ "$streak" -ge "$DIRTY_WORKTREE_CEO_THRESHOLD" ]; then
+        _emit_dirty_worktree_ceo_alert "$1" "$2"
+    fi
     if [ "$streak" -ge "$SKIP_ALERT_THRESHOLD" ]; then
         _emit_alert "$1" "$2"
     fi

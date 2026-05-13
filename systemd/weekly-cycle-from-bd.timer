@@ -1,0 +1,10 @@
+[Unit]
+Description=KEI-29 Weekly Linear cycle from bd ready — fires Monday 07:00 AEST (Sun 21:00 UTC)
+
+[Timer]
+OnCalendar=Sun *-*-* 21:00:00 UTC
+Persistent=true
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

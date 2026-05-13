@@ -28,8 +28,8 @@ from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from typing import Any, Literal
 
-from src.config.settings import settings
 from src.bot_common.openai_cost_logger import COST_LOG_PATH, log_openai_call
+from src.config.settings import settings
 
 logger = logging.getLogger(__name__)
 

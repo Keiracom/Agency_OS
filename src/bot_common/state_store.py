@@ -72,12 +72,11 @@ def save_state(
     """Write JSON `state` to `path`; log warning on OSError.
 
     `path` MUST come from resolve_state_path() (or another caller-validated
-    allowlist resolver) — the write below is annotated NOSONAR on that basis.
+    allowlist resolver) — the inline NOSONAR on the write line documents that.
     """
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
-        # NOSONAR — path is helper-resolved via resolve_state_path() which
-        # validates the env override against ALLOWED_STATE_ROOTS; not user-supplied.
-        path.write_text(json.dumps(state, indent=2, sort_keys=True))
+        payload = json.dumps(state, indent=2, sort_keys=True)
+        path.write_text(payload)  # NOSONAR — caller-validated via resolve_state_path()
     except OSError as exc:
         logger.warning("%s save failed: %s", label, exc)

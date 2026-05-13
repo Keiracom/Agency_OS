@@ -21,10 +21,13 @@ def caplog_warn(caplog: pytest.LogCaptureFixture) -> pytest.LogCaptureFixture:
     return caplog
 
 
-def test_resolve_state_path_uses_default_when_env_unset(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_resolve_state_path_uses_default_when_env_unset(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     monkeypatch.delenv("KEI35_TEST_STATE", raising=False)
-    p = state_store.resolve_state_path("KEI35_TEST_STATE", "/tmp/kei35-default.json")
-    assert p == Path("/tmp/kei35-default.json").resolve()
+    default = tmp_path / "kei35-default.json"
+    p = state_store.resolve_state_path("KEI35_TEST_STATE", str(default))
+    assert p == default.resolve()
 
 
 def test_resolve_state_path_honours_env_under_allowlist(
@@ -32,18 +35,21 @@ def test_resolve_state_path_honours_env_under_allowlist(
 ) -> None:
     """tmp_path is under /tmp, which is allowlisted."""
     override = tmp_path / "override.json"
+    default = tmp_path / "default.json"
     monkeypatch.setenv("KEI35_TEST_STATE", str(override))
-    p = state_store.resolve_state_path("KEI35_TEST_STATE", "/tmp/default.json")
+    p = state_store.resolve_state_path("KEI35_TEST_STATE", str(default))
     assert p == override.resolve()
 
 
 def test_resolve_state_path_falls_back_when_env_outside_allowlist(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     """Env override pointing outside ALLOWED_STATE_ROOTS → fallback to default."""
-    monkeypatch.setenv("KEI35_TEST_STATE", "/etc/evil.json")
-    p = state_store.resolve_state_path("KEI35_TEST_STATE", "/tmp/safe.json")
-    assert p == Path("/tmp/safe.json").resolve()
+    safe_default = tmp_path / "safe.json"
+    out_of_allowlist = "/etc/evil.json"  # NOSONAR — test fixture; refused by function
+    monkeypatch.setenv("KEI35_TEST_STATE", out_of_allowlist)
+    p = state_store.resolve_state_path("KEI35_TEST_STATE", str(safe_default))
+    assert p == safe_default.resolve()
 
 
 def test_load_state_missing_returns_empty(tmp_path: Path) -> None:
@@ -88,9 +94,13 @@ def test_save_state_logs_on_oserror(
     )
 
 
-def test_is_under_helper_true_when_inside() -> None:
-    assert state_store._is_under(Path("/tmp/agency-os/foo"), Path("/tmp"))
+def test_is_under_helper_true_when_inside(tmp_path: Path) -> None:
+    """tmp_path is a child of /tmp on this platform — exercises the under-root branch."""
+    nested = tmp_path / "agency-os" / "foo"
+    assert state_store._is_under(nested, tmp_path)
 
 
-def test_is_under_helper_false_when_outside() -> None:
-    assert not state_store._is_under(Path("/etc/passwd"), Path("/tmp"))
+def test_is_under_helper_false_when_outside(tmp_path: Path) -> None:
+    """A path outside tmp_path should not be detected as under it."""
+    outside_literal = "/etc/passwd"  # NOSONAR — Path() ctor only, no FS access
+    assert not state_store._is_under(Path(outside_literal), tmp_path)

@@ -1,0 +1,12 @@
+[Unit]
+Description=KEI-29 Weekly Linear cycle from bd ready (one-shot)
+After=network.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+Environment="PYTHONPATH=/home/elliotbot/clawd/Agency_OS"
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+ExecStart=/usr/bin/python3 -B /home/elliotbot/clawd/Agency_OS/scripts/orchestrator/weekly_cycle_from_bd.py
+StandardOutput=append:/home/elliotbot/clawd/logs/weekly-cycle-from-bd.log
+StandardError=append:/home/elliotbot/clawd/logs/weekly-cycle-from-bd.log

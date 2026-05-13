@@ -28,7 +28,12 @@ already exists; this plan documents the operational steps + oracles + rollback.
    Must print `No active cognee processes — migration would be safe NOW.` (NOT `REFUSE`).
 3. **Target path does not exist.** `ls /home/elliotbot/.cognee_system` must return ENOENT.
 4. **Disk space.** `df -h /home/elliotbot` must show ≥ 3× source size free (1.5 GB source → ≥ 4.5 GB free).
-5. **Worktree clean.** `git status` in `/home/elliotbot/clawd/Agency_OS-aiden` shows no uncommitted changes other than the planned `.env` edit.
+5. **Worktree clean.** `git status` in `/home/elliotbot/clawd/Agency_OS-aiden` shows no uncommitted changes (the `.env` edit lives OUTSIDE the repo at `/home/elliotbot/.config/agency-os/.env` and is operator-edited separately — not a worktree concern).
+6. **systemd env-loader audit.** Per Max review ts ~1778663400: services not loading from `/home/elliotbot/.config/agency-os/.env` (i.e. using inline `Environment=` instead of `EnvironmentFile=`) need explicit `SYSTEM_ROOT_DIRECTORY=` added to their unit. Audit per-service:
+   ```
+   systemctl --user cat aiden-relay-watcher.service atlas-relay-watcher.service orion-relay-watcher.service scout-relay-watcher.service 2>/dev/null | grep -E '^Environment(File)?='
+   ```
+   Services using `EnvironmentFile=...env` need no unit edit. Services using `Environment=` inline need `SYSTEM_ROOT_DIRECTORY=/home/elliotbot/.cognee_system` added.
 
 ## 2. cp -a invocation + size-verify oracle
 
@@ -62,7 +67,9 @@ SYSTEM_ROOT_DIRECTORY=/home/elliotbot/.cognee_system
 
 Cognee reads this via `cognee.base_config.system_root_directory` (Pydantic BaseSettings env-mapping at `base_config.py:13`).
 
-**Restart required for any long-running Cognee-using service / process:**
+**Restart required for any long-running Cognee-using service / process** (per Max review ts ~1778663300):
+- `uvicorn cognee.api.client` server (PID 3952420 as of 2026-05-13, running since May 12) — `pkill -f "uvicorn cognee.api.client"` then re-launch.
+- Per-callsign inbox-watcher services that invoke `cognee_recall.py` at dispatch-enrich time — restart via `systemctl --user restart <callsign>-inbox-watcher.service` (verify via `systemctl --user list-units --plain | grep cognee`).
 - `aiden-relay-watcher.service` (if it imports cognee — verify via `systemctl --user cat aiden-relay-watcher.service`).
 - Any cognee_recall.py invocations in agent inbox watchers.
 
@@ -109,8 +116,11 @@ the source. Rollback is just an env-flip reversal.
 6. Dual-CTO concur (Max + Elliot) + Dave restart-readiness ack.
 7. Self-merge on triple-bot concur + Max re-FINAL.
 
-## 7. Open questions for VQ4 review (Max-facing)
+## 7. Open questions — answered (Max review ts ~1778663300)
 
-- Does Stream 3+4 require the relocated path during ingest, or is cutover post-ingest sufficient?
-- Are there other Cognee-using consumers (besides cognee_recall) that need restart?
-- Should the SYSTEM_ROOT_DIRECTORY env be added to systemd unit `Environment=` lines for services running outside the agency-os/.env loader?
+- **Q1: Does Stream 3+4 require the relocated path during ingest, or is cutover post-ingest sufficient?**
+  Max: cutover POST-INGEST ONLY. Stream 3+4 launched against venv-resident path; mid-ingest path-flip would either torn-cp with active writes OR diverge Stream writes from env-pointed path. Pre-flight check 2 ("No active cognee process") enforces this.
+- **Q2: Other Cognee-using consumers (besides cognee_recall)?**
+  Max: yes — uvicorn cognee.api.client server (PID 3952420), per-callsign inbox-watcher services invoking cognee_recall.py. Both folded into §3 restart list.
+- **Q3: Should `SYSTEM_ROOT_DIRECTORY` be in systemd unit `Environment=` lines for services outside the agency-os/.env loader?**
+  Max: yes for services not loading from `.env`. Folded into pre-flight check 6 (audit via `systemctl --user cat <unit> | grep -E '^Environment(File)?='`). Services using `EnvironmentFile=` need no unit edit; services using `Environment=` inline need explicit `SYSTEM_ROOT_DIRECTORY=...` added.

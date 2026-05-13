@@ -1,0 +1,20 @@
+[Unit]
+Description=Agency OS Layer 3 Idle Enforcement Daemon (KEI-45)
+Documentation=https://linear.app/keiracom/issue/KEI-45
+After=network-online.target
+Wants=network-online.target
+StartLimitBurst=5
+StartLimitIntervalSec=300
+
+[Service]
+Type=simple
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+EnvironmentFile=-/home/elliotbot/.config/agency-os/.env
+ExecStart=/home/elliotbot/clawd/venv/bin/python3 /home/elliotbot/clawd/Agency_OS/scripts/idle_enforcer.py
+Restart=on-failure
+RestartSec=30
+StandardOutput=append:/home/elliotbot/clawd/logs/agent-idle-enforcer.log
+StandardError=append:/home/elliotbot/clawd/logs/agent-idle-enforcer.log
+
+[Install]
+WantedBy=default.target

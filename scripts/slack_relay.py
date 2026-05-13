@@ -35,6 +35,11 @@ import sys
 import urllib.error
 import urllib.request
 from pathlib import Path
+from typing import Final
+
+_LAST_POST_STATE_PATH: Final[Path] = Path(
+    os.path.expanduser("~/.local/state/agency-os/callsign-last-post.json")
+)
 
 
 def _resolve_callsign() -> str:
@@ -181,10 +186,41 @@ def post(channel: str, text: str) -> dict:
     )
     try:
         with urllib.request.urlopen(req, timeout=10) as r:
-            return json.loads(r.read())
+            response = json.loads(r.read())
     except urllib.error.URLError as e:
         print(f"ERROR: network failure: {e}", file=sys.stderr)
         sys.exit(1)
+    _record_last_post(CALLSIGN)  # KEI-34 v3 HOLE B — track progress-cadence
+    return response
+
+
+def _record_last_post(callsign: str) -> None:
+    """KEI-34 v3 HOLE B — record per-callsign last-Slack-post timestamp.
+    Polling-loop reads this file to detect long-running tracks silent past
+    LONG_RUNNING_TRACK_PROGRESS_MIN (30 min default). Best-effort; failure
+    is non-fatal.
+
+    Path is a module-level Final[Path] constant (NOT user-controlled input) so
+    the read-modify-write is not a SonarCloud S2083 path-injection vector.
+    The isinstance(state, dict) guard defends against a tampered state file
+    that could otherwise hand a non-dict back into the update path."""
+    try:
+        _LAST_POST_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        state: dict = {}
+        if _LAST_POST_STATE_PATH.exists():
+            try:
+                loaded = json.loads(_LAST_POST_STATE_PATH.read_text() or "{}")
+                if isinstance(loaded, dict):
+                    state = loaded
+            except (OSError, json.JSONDecodeError):
+                state = {}
+        from datetime import UTC as _utc
+        from datetime import datetime as _dt
+
+        state[callsign] = _dt.now(_utc).isoformat()
+        _LAST_POST_STATE_PATH.write_text(json.dumps(state, indent=2, sort_keys=True))
+    except OSError:
+        pass
 
 
 def main() -> int:

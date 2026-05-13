@@ -24,13 +24,14 @@ be called ad-hoc by Elliot's orchestration tooling.
 from __future__ import annotations
 
 import argparse
-import json
 import logging
 import os
 import subprocess
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
+
+from src.bot_common.state_store import load_state, resolve_state_path, save_state
 
 logger = logging.getLogger("auto_session_recovery")
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
@@ -59,52 +60,24 @@ CALLSIGN_TO_WORKTREE: dict[str, str] = {
 
 CLAUDE_PROJECTS_ROOT = Path.home() / ".claude" / "projects"
 
-_DEFAULT_STATE_PATH = os.path.expanduser(
-    "~/.local/state/agency-os/session-recovery-attempts.json"
-)
-_ALLOWED_STATE_ROOTS: tuple[Path, ...] = (
-    Path(os.path.expanduser("~/.local/state/agency-os")),
-    Path("/tmp"),  # NOSONAR — pytest tmp_path
-)
+_DEFAULT_STATE_PATH = os.path.expanduser("~/.local/state/agency-os/session-recovery-attempts.json")
+_STATE_ENV_VAR = "AGENCY_OS_SESSION_RECOVERY_STATE"
 
 # Two-attempt threshold (Dave verbatim): retry once, escalate on second fail.
 MAX_RECOVERY_ATTEMPTS = 2
 SLACK_RELAY_PATH = "/home/elliotbot/clawd/Agency_OS/scripts/slack_relay.py"
 
 
-def _is_under(p: Path, root: Path) -> bool:
-    try:
-        p.relative_to(root)
-        return True
-    except ValueError:
-        return False
-
-
 def _state_path() -> Path:
-    raw = os.environ.get("AGENCY_OS_SESSION_RECOVERY_STATE", _DEFAULT_STATE_PATH)
-    resolved = Path(raw).expanduser().resolve()
-    if not any(_is_under(resolved, root.resolve()) for root in _ALLOWED_STATE_ROOTS):
-        return Path(_DEFAULT_STATE_PATH).expanduser().resolve()
-    return resolved
+    return resolve_state_path(_STATE_ENV_VAR, _DEFAULT_STATE_PATH)
 
 
 def _load_state() -> dict[str, dict]:
-    p = _state_path()
-    if not p.exists():
-        return {}
-    try:
-        return json.loads(p.read_text() or "{}")
-    except (OSError, json.JSONDecodeError):
-        return {}
+    return load_state(_state_path())
 
 
 def _save_state(state: dict[str, dict]) -> None:
-    p = _state_path()
-    try:
-        p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(json.dumps(state, indent=2, sort_keys=True))  # NOSONAR — _state_path resolves against allowlist
-    except OSError as exc:
-        logger.warning("recovery-state save failed: %s", exc)
+    save_state(_state_path(), state, logger, label="recovery-state")
 
 
 def _alive_sessions() -> set[str]:
@@ -190,7 +163,12 @@ def _tmux(*args: str) -> bool:
         logger.warning("tmux %s failed: %s", args[0] if args else "?", exc)
         return False
     if proc.returncode != 0:
-        logger.warning("tmux %s rc=%d: %s", args[0] if args else "?", proc.returncode, proc.stderr.strip()[:200])
+        logger.warning(
+            "tmux %s rc=%d: %s",
+            args[0] if args else "?",
+            proc.returncode,
+            proc.stderr.strip()[:200],
+        )
     return proc.returncode == 0
 
 
@@ -295,7 +273,9 @@ def run(now: datetime | None = None) -> int:
         if success:
             logger.info("%s: recovery attempt %d apparently succeeded", callsign, attempts)
         elif attempts >= MAX_RECOVERY_ATTEMPTS:
-            logger.error("%s: recovery failed at attempt %d — escalating to #ceo", callsign, attempts)
+            logger.error(
+                "%s: recovery failed at attempt %d — escalating to #ceo", callsign, attempts
+            )
             _escalate_to_ceo(callsign, attempts)
         else:
             logger.warning(

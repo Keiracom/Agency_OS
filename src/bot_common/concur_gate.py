@@ -1,12 +1,19 @@
 """concur_gate.py — outbound R1 gate (P0 per Max directive 2026-05-11).
 
 Imported by scripts/slack_relay.py + scripts/coo_slack_relay.py to block
-trigger-pattern messages from reaching Slack until at least one peer has
-posted [CONCUR:<my-callsign>] in the recent message window.
+explicit governance-action messages from reaching Slack until at least
+one peer has posted [CONCUR:<my-callsign>] in the recent message window.
 
 Single source of truth for: trigger detection, peer concur lookup, hold
 file location. Other modules MUST NOT reimplement R1 detection — extend
 this module.
+
+Trigger (KEI-38, Dave verbatim 2026-05-14):
+  Gate fires ONLY on a literal [CONCUR:<callsign>] or [BLOCK:<callsign>]
+  token. Prose containing the word "concur" does NOT trigger. Tokens
+  with prefixes ([FINAL CONCUR:...], [CONCUR-REQUEST:...]) do NOT trigger
+  either, since they signal a different governance action (final
+  authorisation / hold-stub).
 
 Behaviour:
   gate_check(text, callsign, ...) -> (allow, replacement)
@@ -25,14 +32,19 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import urllib.error
 import urllib.request
 from pathlib import Path
 
-from src.bot_common.enforcer_rules import TRIGGER_PATTERNS
-
 CONCUR_LOOKBACK = 10
 EXECUTION_CHANNEL = "C0B3QB0K1GQ"
+
+# Anchored trigger: literal [CONCUR:<callsign>] or [BLOCK:<callsign>].
+# Requires `[` immediately followed by CONCUR: or BLOCK:, which excludes
+# [FINAL CONCUR:...] (preceded by FINAL), [CONCUR-REQUEST:...] (uses `-`
+# not `:` after CONCUR), and prose containing the word "concur".
+_GATE_TRIGGER = re.compile(r"\[(?:CONCUR|BLOCK):[a-z][a-z0-9_-]*\]", re.IGNORECASE)
 
 
 def _pending_dir(callsign: str) -> Path:
@@ -44,9 +56,8 @@ def _topic_sha(text: str) -> str:
 
 
 def should_gate(text: str) -> bool:
-    """True if the text matches an R1 trigger pattern."""
-    lower = text.lower()
-    return any(p in lower for p in TRIGGER_PATTERNS)
+    """True if the text contains a literal [CONCUR:<callsign>] or [BLOCK:<callsign>] token."""
+    return bool(_GATE_TRIGGER.search(text))
 
 
 def has_peer_concur(my_callsign: str, bot_token: str, channel: str = EXECUTION_CHANNEL) -> bool:

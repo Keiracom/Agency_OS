@@ -64,6 +64,22 @@ PREFECT_WINDOW_MINUTES = 5
 ORCHESTRATOR_IDLE_CYCLES = 1
 PEAK_CYCLE_SECONDS = 60
 OFF_PEAK_CYCLE_SECONDS = 3600
+# KEI-34 v3 HOLE A — canonical long-running-command patterns to detect
+# detached subprocesses (e.g., Cognee ingest PID 844898 detached from
+# claude session tree, invisible to pane-pid descendant walk). System-wide
+# ps scan filtered by these patterns. Narrow allowlist: conservative
+# false-negative bias > false-positive on incidental Python (pytest, mypy).
+_LONG_RUNNING_CMD_PATTERNS: tuple[str, ...] = (
+    r"cognee_ingest",
+    r"pipeline_runner",
+    r"ingest --streams",
+    r"--scrape",
+    r"cohort_runner",
+)
+_LONG_RUNNING_CMD_RE = re.compile("|".join(_LONG_RUNNING_CMD_PATTERNS), re.IGNORECASE)
+# KEI-34 v3 HOLE B — escalate to #ceo if a callsign with an active long-
+# running subprocess has not posted to #execution within this many minutes.
+LONG_RUNNING_TRACK_PROGRESS_MIN = 30
 
 EXECUTION_CHANNEL_NAME = "#execution"
 CEO_CHANNEL_NAME = "#ceo"
@@ -177,6 +193,10 @@ class CycleSignals:
     # KEI-27 — Linear KEI In Progress for >STALE_KEI_HOURS with no activity.
     # Broader "silently died" lane vs linear_stale (orchestrator stale lane).
     kei_stale: list[dict] = field(default_factory=list)
+    # KEI-34 v3 HOLE B — callsigns with active long-running subprocess but
+    # no #execution post within LONG_RUNNING_TRACK_PROGRESS_MIN minutes.
+    long_running_silent_callsigns: list[tuple[str, int]] = field(default_factory=list)
+    """List of (callsign, minutes_since_last_post)."""
 
     def is_silent(self) -> bool:
         return not (
@@ -186,6 +206,7 @@ class CycleSignals:
             or self.prefect_failures
             or self.rate_limit_transitions
             or self.kei_stale
+            or self.long_running_silent_callsigns
         )
 
 
@@ -425,7 +446,68 @@ def _agent_has_active_subprocess(callsign: str) -> bool:
         # R = running; CPU > 0 = active in last sample window.
         if "R" in stat or cpu > 0.0:
             return True
-    return False
+    # KEI-34 v3 HOLE A fallback — detached subprocess case. The canonical
+    # example is Max's Cognee ingest PID 844898 reparented away from claude
+    # session tree (recursive pgrep -P pane_pid misses it). System-wide ps
+    # scan + canonical long-running command pattern allowlist + same-user
+    # filter (single-user box = elliotbot). Narrow allowlist prevents
+    # false-positives on incidental Python (pytest, mypy, etc.).
+    return _system_wide_long_running_subprocess()
+
+
+def _system_wide_long_running_subprocess() -> bool:
+    """KEI-34 v3 HOLE A — system-wide scan for long-running detached subprocess
+    matching _LONG_RUNNING_CMD_PATTERNS. Returns True if any canonical long-
+    running command is active under the polling-loop user."""
+    try:
+        ps_proc = subprocess.run(  # noqa: S603 — controlled args, no shell
+            ["ps", "-eo", "args"],
+            capture_output=True,
+            text=True,
+            timeout=3,
+            check=False,
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+        return False
+    if ps_proc.returncode != 0:
+        return False
+    return any(_LONG_RUNNING_CMD_RE.search(line) for line in ps_proc.stdout.splitlines())
+
+
+def poll_long_running_silent(now: datetime | None = None) -> list[tuple[str, int]]:
+    """KEI-34 v3 HOLE B — for each callsign with an active long-running
+    subprocess, check time-since-last-Slack-post. Return list of
+    (callsign, minutes_since_last_post) for those silent
+    >= LONG_RUNNING_TRACK_PROGRESS_MIN.
+
+    Reads ~/.local/state/agency-os/callsign-last-post.json written by
+    scripts/slack_relay.py on every outbound. Best-effort; returns []
+    on any read/parse failure.
+    """
+    state_path = Path(os.path.expanduser("~/.local/state/agency-os/callsign-last-post.json"))
+    if not state_path.exists():
+        return []
+    try:
+        last_posts = json.loads(state_path.read_text() or "{}")
+    except (OSError, json.JSONDecodeError):
+        return []
+    n = now or datetime.now(UTC)
+    threshold = timedelta(minutes=LONG_RUNNING_TRACK_PROGRESS_MIN)
+    out: list[tuple[str, int]] = []
+    for callsign in CALLSIGN_TO_TMUX:
+        if not _agent_has_active_subprocess(callsign):
+            continue
+        last_iso = last_posts.get(callsign, "")
+        if not last_iso:
+            continue
+        try:
+            last_dt = datetime.fromisoformat(last_iso)
+        except ValueError:
+            continue
+        elapsed = n - last_dt
+        if elapsed >= threshold:
+            out.append((callsign, int(elapsed.total_seconds() // 60)))
+    return out
 
 
 def poll_orchestrator_idle_agents(now: datetime | None = None) -> list[str]:
@@ -621,6 +703,7 @@ def collect_signals(now: datetime | None = None) -> CycleSignals:
         rate_limit_transitions=poll_rate_limited_agents(now),
         orchestrator_idle_agents=poll_orchestrator_idle_agents(now),
         kei_stale=poll_kei_stale(now),
+        long_running_silent_callsigns=poll_long_running_silent(now),
     )
 
 
@@ -687,6 +770,22 @@ def compose_dispatches(signals: CycleSignals) -> list[tuple[str, str]]:
                 + "\n".join(lines)
             )
             dispatches.append((CEO_CHANNEL_NAME, msg))
+
+    if signals.long_running_silent_callsigns:
+        # KEI-34 v3 HOLE B — long-running-track-without-progress-post escalation.
+        lines = [
+            f"  - {cs} running long task with no progress-post for {mins}m"
+            for cs, mins in signals.long_running_silent_callsigns
+        ]
+        msg = (
+            f"[PROPOSE:elliot] Long-running track silent — "
+            f"{len(signals.long_running_silent_callsigns)} callsign(s) with active "
+            f"long-running subprocess and no #execution post for "
+            f">{LONG_RUNNING_TRACK_PROGRESS_MIN}m:\n"
+            + "\n".join(lines)
+            + "\nRequest status snapshot."
+        )
+        dispatches.append((CEO_CHANNEL_NAME, msg))
 
     if signals.prefect_failures:
         lines = [

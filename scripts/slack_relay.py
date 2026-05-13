@@ -181,10 +181,37 @@ def post(channel: str, text: str) -> dict:
     )
     try:
         with urllib.request.urlopen(req, timeout=10) as r:
-            return json.loads(r.read())
+            response = json.loads(r.read())
     except urllib.error.URLError as e:
         print(f"ERROR: network failure: {e}", file=sys.stderr)
         sys.exit(1)
+    _record_last_post(CALLSIGN)  # KEI-34 v3 HOLE B — track progress-cadence
+    return response
+
+
+def _record_last_post(callsign: str) -> None:
+    """KEI-34 v3 HOLE B — record per-callsign last-Slack-post timestamp.
+    Polling-loop reads this file to detect long-running tracks silent past
+    LONG_RUNNING_TRACK_PROGRESS_MIN (30 min default). Best-effort; failure
+    is non-fatal."""
+    try:
+        from pathlib import Path
+
+        p = Path(os.path.expanduser("~/.local/state/agency-os/callsign-last-post.json"))
+        p.parent.mkdir(parents=True, exist_ok=True)
+        state: dict = {}
+        if p.exists():
+            try:
+                state = json.loads(p.read_text() or "{}")
+            except (OSError, json.JSONDecodeError):
+                state = {}
+        from datetime import UTC as _utc
+        from datetime import datetime as _dt
+
+        state[callsign] = _dt.now(_utc).isoformat()
+        p.write_text(json.dumps(state, indent=2, sort_keys=True))
+    except OSError:
+        pass
 
 
 def main() -> int:

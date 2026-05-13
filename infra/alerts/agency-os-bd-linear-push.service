@@ -1,0 +1,10 @@
+[Unit]
+Description=Agency OS — bd → Linear immediate push (KEI-22 D3, Dave directive 2026-05-13)
+
+[Service]
+Type=oneshot
+ExecStart=/home/elliotbot/clawd/venv/bin/python3 /home/elliotbot/clawd/Agency_OS/scripts/bd_status_to_linear_immediate.py
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+StandardOutput=append:/home/elliotbot/clawd/logs/bd-linear-push.log
+StandardError=append:/home/elliotbot/clawd/logs/bd-linear-push.log

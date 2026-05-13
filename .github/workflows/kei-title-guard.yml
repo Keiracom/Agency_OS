@@ -1,0 +1,75 @@
+name: KEI Title Guard
+
+# KEI-22 D2 — CI gate enforcing KEI issue ID in PR title.
+#
+# Per Dave CEO directive ts ~1778653940 (KEI-22 Urgent): "KEI-25 (GitHub →
+# Linear native) is not catching all cases — PRs merged without proper KEI
+# issue ID references in PR title bypass the integration entirely."
+#
+# This gate fails CI when a PR title does NOT contain a KEI reference,
+# forcing every PR to be properly tracked at the Linear board level.
+#
+# Pass conditions: title contains any of:
+#   - KEI-N / kei-N    (canonical Linear issue id)
+#   - kei9 / kei22     (no-hyphen variants used in branch names)
+#   - keiN             (case-insensitive)
+#
+# Exempt conditions (no KEI ref required):
+#   - PR labelled 'no-kei' (operator opt-out for tooling/auto PRs)
+#   - PR title starts with 'chore(deps):' (dependabot)
+#   - PR title starts with 'Revert ' (revert PRs inherit the original's KEI)
+#
+# Pattern source: governance-equality-guard.yml (KEI-12 / Item #1 — CI-gate-
+# as-code rather than docs-only convention).
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+    branches: [main]
+
+jobs:
+  kei-title-guard:
+    name: KEI ID required in PR title
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR title for KEI reference
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+        run: |
+          set -euo pipefail
+          title="$PR_TITLE"
+          labels="$PR_LABELS"
+
+          # Exempt label
+          if echo "$labels" | grep -qi '"no-kei"'; then
+            echo "::notice::PR labelled 'no-kei' — gate exempted."
+            exit 0
+          fi
+
+          # Exempt prefixes (case-sensitive — dependabot uses lowercase 'chore(deps)')
+          if echo "$title" | grep -qE '^(chore\(deps\):|Revert )'; then
+            echo "::notice::Exempt title prefix — gate skipped."
+            exit 0
+          fi
+
+          # KEI reference regex: KEI-N, kei-N, or kei<digits> (no hyphen).
+          if echo "$title" | grep -qiE '\b(kei[- ]?[0-9]+)\b'; then
+            echo "::notice::PR title carries KEI reference — gate passed."
+            exit 0
+          fi
+
+          echo "::error::PR title must contain a KEI issue id (e.g. 'KEI-22', 'kei-30', 'kei22')."
+          echo ""
+          echo "Current title: $title"
+          echo ""
+          echo "Why: KEI-22 D2 — Linear integration relies on PR titles for"
+          echo "issue↔PR linking. Titles without a KEI id bypass the auto-link"
+          echo "and create the board-drift bug that caused today's bad dispatch"
+          echo "(KEI-27/KEI-28 showed Todo in Linear when both were already Done)."
+          echo ""
+          echo "Fix: rename the PR title to include the KEI id, e.g."
+          echo "  '[ORION] feat(...): KEI-22 — Linear ↔ Beads sync'"
+          echo "Or add the 'no-kei' label if the PR is intentionally KEI-free"
+          echo "(tooling / dependabot / similar)."
+          exit 1

@@ -1,0 +1,10 @@
+[Unit]
+Description=Agency OS — Linear ↔ Beads weekly divergence sweep (KEI-22 D4, Dave directive 2026-05-13)
+
+[Service]
+Type=oneshot
+ExecStart=/home/elliotbot/clawd/venv/bin/python3 /home/elliotbot/clawd/Agency_OS/scripts/orchestrator/linear_beads_divergence_sweep.py
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+StandardOutput=append:/home/elliotbot/clawd/logs/linear-beads-divergence-sweep.log
+StandardError=append:/home/elliotbot/clawd/logs/linear-beads-divergence-sweep.log

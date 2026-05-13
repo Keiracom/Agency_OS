@@ -111,6 +111,11 @@
             "type": "command"
           },
           {
+            "command": "/home/elliotbot/clawd/venv/bin/python3 scripts/orchestrator/session_start_bd_linear_sync.py",
+            "timeout": 30,
+            "type": "command"
+          },
+          {
             "command": "/home/elliotbot/clawd/venv/bin/python3 scripts/anti_amnesia_capsule.py --read",
             "timeout": 5,
             "type": "command"

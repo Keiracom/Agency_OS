@@ -1,0 +1,10 @@
+[Unit]
+Description=Push bd status changes to Linear every 60s (KEI-22 D3 — Dave-required immediate push cadence)
+
+[Timer]
+OnBootSec=60
+OnUnitActiveSec=60
+AccuracySec=10s
+
+[Install]
+WantedBy=timers.target

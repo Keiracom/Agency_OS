@@ -1,0 +1,19 @@
+[Unit]
+Description=Agency OS Agent — AIDEN (callsign=aiden, tmux=aiden)
+Documentation=https://linear.app/keiracom/issue/KEI-43
+After=network-online.target
+Wants=network-online.target
+StartLimitBurst=5
+StartLimitIntervalSec=300
+
+[Service]
+Type=simple
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS-aiden
+ExecStart=/home/elliotbot/clawd/Agency_OS-aiden/scripts/systemd_agent_supervisor.sh aiden aiden /home/elliotbot/clawd/Agency_OS-aiden
+Restart=on-failure
+RestartSec=10
+StandardOutput=append:/home/elliotbot/clawd/logs/aiden-agent.log
+StandardError=append:/home/elliotbot/clawd/logs/aiden-agent.log
+
+[Install]
+WantedBy=default.target

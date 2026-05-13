@@ -1,0 +1,19 @@
+[Unit]
+Description=Agency OS Agent — MAX (callsign=max, tmux=maxbot)
+Documentation=https://linear.app/keiracom/issue/KEI-43
+After=network-online.target
+Wants=network-online.target
+StartLimitBurst=5
+StartLimitIntervalSec=300
+
+[Service]
+Type=simple
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS-max
+ExecStart=/home/elliotbot/clawd/Agency_OS-max/scripts/systemd_agent_supervisor.sh max maxbot /home/elliotbot/clawd/Agency_OS-max
+Restart=on-failure
+RestartSec=10
+StandardOutput=append:/home/elliotbot/clawd/logs/max-agent.log
+StandardError=append:/home/elliotbot/clawd/logs/max-agent.log
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+# .githooks/pre-commit — KEI-22 D6 Layer 3 mechanical gate.
+#
+# Per Dave CEO directive ts ~1778667100:
+#
+#   BRANCH=$(git branch --show-current)
+#   CLAIM=$(bd check-claim --branch $BRANCH)
+#   if [ -z "$CLAIM" ]; then
+#     echo 'ERROR: No active bd claim for $BRANCH. Run bd claim [KEI-ID] first.'
+#     exit 1
+#   fi
+#
+# No bd claim = commit physically fails. Hard stop. No LLM involved.
+#
+# Installation: operator runs `scripts/orchestrator/install_pre_commit_hook.sh`
+# per-worktree to point git's hooksPath at this directory.
+#
+# Pattern A escape hatches:
+#   AGENCY_OS_BD_HARDFAIL=0 (default)   — degrade soft if bd binary missing
+#                                          (don't cascade infra outage to
+#                                           commit outage). Warns once.
+#   AGENCY_OS_BD_HARDFAIL=1             — fail closed even when bd is down.
+#                                          Strict mode; production-grade.
+#   GIT_NO_VERIFY=1                     — git's standard --no-verify bypass.
+#                                          Logged; visible in commit metadata.
+
+set -u
+
+# Resolve branch name. Detached-HEAD (rebases, cherry-picks) → skip the
+# gate — git operations in that state are mid-flight and have their own
+# semantics.
+BRANCH="$(git branch --show-current 2>/dev/null || echo "")"
+if [[ -z "$BRANCH" ]]; then
+    exit 0
+fi
+
+# Exempt branch prefixes that are operator/automated workflow, not agent build.
+case "$BRANCH" in
+    main | master | release/* | hotfix/*)
+        # main-class branches don't go through pre-commit on routine commits
+        # (PR merges + force-pushes bypass anyway). Soft-allow.
+        exit 0
+        ;;
+esac
+
+# Locate the bd_check_claim wrapper.
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || echo "")"
+CHECK="$REPO_ROOT/scripts/orchestrator/bd_check_claim.sh"
+if [[ ! -x "$CHECK" ]]; then
+    # Wrapper missing — likely a worktree on a branch that pre-dates KEI-22.
+    # Degrade-soft so historical work doesn't break.
+    echo "warning: $CHECK missing — Layer 3 gate skipped." >&2
+    exit 0
+fi
+
+"$CHECK" --branch "$BRANCH" >/dev/null 2>&1
+rc=$?
+
+if [[ $rc -eq 0 ]]; then
+    # Valid claim — allow commit. Exit code is the source of truth (the
+    # claim id itself is informational, not needed by the gate).
+    exit 0
+fi
+
+if [[ $rc -eq 2 ]]; then
+    # bd binary missing. Pattern A: soft-allow unless HARDFAIL=1.
+    if [[ "${AGENCY_OS_BD_HARDFAIL:-0}" == "1" ]]; then
+        echo "ERROR (HARDFAIL=1): bd binary missing — commit refused." >&2
+        exit 1
+    fi
+    echo "warning: bd binary missing — Layer 3 gate degraded-soft." >&2
+    exit 0
+fi
+
+# rc=1 = no valid claim. HARD STOP per Dave directive.
+cat >&2 <<EOF
+ERROR: KEI-22 D6 Layer 3 mechanical gate — no active bd claim for branch '$BRANCH'.
+
+Dave standing rule (CEO ts ~1778667000 + ~1778667100):
+  "Linear is the only source of work. Beads is the enforcement mechanism.
+   Cannot build without active bd claim on Linear-sourced task."
+
+Required chain:
+  1. KEI exists in Linear (Todo / In Progress)
+  2. bd sync --pull-if-stale (D1 SessionStart hook does this)
+  3. bd update <Agency_OS-id> --assignee <callsign>
+  4. bd update <Agency_OS-id> --claim   (sets status=in_progress)
+  5. Commit retries — this gate will pass.
+
+Quick fix:
+  bd ready                          # find an unblocked KEI
+  bd update <Agency_OS-id> --assignee \$CALLSIGN
+  bd update <Agency_OS-id> --claim
+  git commit ...                    # retry
+
+Escape hatch (operator-authorised only):
+  git commit --no-verify ...
+
+Companion: KEI-22 D5 PreToolUse hook (scripts/orchestrator/check_bd_claim_before_build.py)
+provides the same gate at the Claude Code tool-call level.
+EOF
+exit 1

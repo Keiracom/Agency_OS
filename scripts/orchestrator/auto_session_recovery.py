@@ -109,15 +109,18 @@ def _save_state(state: dict[str, dict]) -> None:
 
 def _alive_sessions() -> set[str]:
     """Return set of currently-attached/detached tmux session names."""
+    # Static argv list (no shell, no untrusted interpolation); S603 noqa is the
+    # canonical pattern for these in-repo subprocess wrappers.
     try:
-        proc = subprocess.run(  # noqa: S603 — fixed args, no shell
+        proc = subprocess.run(  # noqa: S603
             ["tmux", "list-sessions", "-F", "#{session_name}"],
             capture_output=True,
             text=True,
             timeout=10,
             check=False,
         )
-    except (subprocess.TimeoutExpired, FileNotFoundError, OSError) as exc:
+    except (subprocess.TimeoutExpired, OSError) as exc:
+        # FileNotFoundError is a subclass of OSError — single catch covers both.
         logger.warning("tmux list-sessions failed: %s", exc)
         return set()
     if proc.returncode != 0:
@@ -171,15 +174,19 @@ def latest_session_id(callsign: str) -> str | None:
 
 def _tmux(*args: str) -> bool:
     """Run a tmux subcommand; return True on rc=0."""
+    # `args` is internally-constructed (callers in this module pass fixed
+    # subcommand + session names from CALLSIGN_TO_TMUX); no shell, no
+    # untrusted interpolation.
     try:
-        proc = subprocess.run(  # noqa: S603 — fixed cmd, no shell
+        proc = subprocess.run(  # noqa: S603
             ["tmux", *args],
             capture_output=True,
             text=True,
             timeout=15,
             check=False,
         )
-    except (subprocess.TimeoutExpired, FileNotFoundError, OSError) as exc:
+    except (subprocess.TimeoutExpired, OSError) as exc:
+        # FileNotFoundError ⊂ OSError — single catch covers both.
         logger.warning("tmux %s failed: %s", args[0] if args else "?", exc)
         return False
     if proc.returncode != 0:
@@ -236,8 +243,12 @@ def _escalate_to_ceo(callsign: str, attempts: int) -> None:
         "Manual intervention required: check worktree state, claude session jsonl, "
         "and any in-flight PR/dispatch on that callsign's branch."
     )
+    # SLACK_RELAY_PATH is a module-level constant pointing at a repo-internal
+    # script; argv is fully internal. Reason captured in this surrounding
+    # comment rather than as inline noqa text (Sonar parses inline noqa
+    # trailing-text as malformed).
     try:
-        subprocess.run(  # noqa: S603 — fixed args, no shell
+        subprocess.run(  # noqa: S603
             ["python3", SLACK_RELAY_PATH, "-c", "ceo", msg],
             capture_output=True,
             text=True,

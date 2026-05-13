@@ -30,10 +30,56 @@ block; Gemini amendment ts 1778563xxx swapped Ollama → Gemini):
 
 from __future__ import annotations
 
+import asyncio
 import os
 from typing import Any
 
 import cognee
+
+_LANCE_WRITE_SEM: asyncio.Semaphore | None = None
+
+
+def _install_lance_writer_serialiser() -> None:
+    """Serialise concurrent Lance writes from Cognee's pipeline scheduler.
+
+    Cognee's cognee.tasks.storage.index_data_points fires batch index calls via
+    asyncio.gather with no per-writer semaphore. With VECTOR_DB_PROVIDER=lancedb
+    that races Lance's default single-writer policy (lance-4.0.0/src/dataset/
+    write/retry.rs:48 — 2 retries / 30s timeout), causing "Too many concurrent
+    writers" exceptions. Crash anchor: 2026-05-13T01:54:53 — see PR #825 +
+    docs/wave2/kei23_stream2_crash_diagnosis.md.
+
+    Patches LanceDBAdapter.index_data_points (the funnel all batch tasks flow
+    through, delegating to create_data_points -> collection.merge_insert) with
+    a module-level asyncio.Semaphore(1). Idempotent — sets __kei23_serialised__
+    so repeated imports do not stack wrappers.
+
+    Active only when VECTOR_DB_PROVIDER=lancedb. Other providers (pgvector,
+    chromadb) handle their own writer concurrency. Remove this once Cognee
+    upstream serialises or exposes a knob.
+    """
+    if os.environ.get("VECTOR_DB_PROVIDER", "").lower() != "lancedb":
+        return
+    try:
+        from cognee.infrastructure.databases.vector.lancedb.LanceDBAdapter import LanceDBAdapter
+    except ImportError:
+        return
+    orig = LanceDBAdapter.index_data_points
+    if getattr(orig, "__kei23_serialised__", False):
+        return
+
+    async def serialised_index_data_points(self, *args, **kwargs):  # type: ignore[no-untyped-def]
+        global _LANCE_WRITE_SEM
+        if _LANCE_WRITE_SEM is None:
+            _LANCE_WRITE_SEM = asyncio.Semaphore(1)
+        async with _LANCE_WRITE_SEM:
+            return await orig(self, *args, **kwargs)
+
+    serialised_index_data_points.__kei23_serialised__ = True  # type: ignore[attr-defined]
+    LanceDBAdapter.index_data_points = serialised_index_data_points
+
+
+_install_lance_writer_serialiser()
 
 
 def _access_control_enabled() -> bool:

@@ -29,7 +29,7 @@ from datetime import UTC, datetime
 from typing import Any, Literal
 
 from src.config.settings import settings
-from src.telegram_bot.openai_cost_logger import COST_LOG_PATH, log_openai_call
+from src.bot_common.openai_cost_logger import COST_LOG_PATH, log_openai_call
 
 logger = logging.getLogger(__name__)
 

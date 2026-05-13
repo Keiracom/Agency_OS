@@ -16,7 +16,7 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-RELAY_WATCHER = REPO_ROOT / "src" / "telegram_bot" / "relay_watcher.sh"
+RELAY_WATCHER = REPO_ROOT / "scripts" / "orchestrator" / "relay_watcher.sh"
 
 
 def _run_python_extract(fpath: str, code: str) -> str:

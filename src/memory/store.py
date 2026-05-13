@@ -46,7 +46,7 @@ def _generate_embedding(text: str) -> list[float] | None:
         if resp.status_code == 200:
             emb_data = resp.json()
             try:
-                from src.telegram_bot.openai_cost_logger import log_openai_call
+                from src.bot_common.openai_cost_logger import log_openai_call
 
                 usage = emb_data.get("usage", {})
                 log_openai_call(

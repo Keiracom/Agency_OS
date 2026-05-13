@@ -24,6 +24,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import subprocess
 import sys
 from datetime import UTC, datetime
@@ -34,6 +35,14 @@ logger = logging.getLogger("pre_compact_alert")
 
 EXECUTION_CHANNEL = "C0B3QB0K1GQ"
 HEARTBEAT_PATH = Path("HEARTBEAT.md")
+
+# KEI-36 — placeholder text → auto-populate source. Each key is the literal
+# `<...>` placeholder as it appears in HEARTBEAT.md; value comes from
+# auto_populate_heartbeat() arguments. Fields without a mechanical source
+# (Phase / Configured model — no Callsign→Model table in CLAUDE.md yet) are
+# intentionally left out so they remain placeholders and trigger
+# [HEARTBEAT-INCOMPLETE] warning.
+_PLACEHOLDER_PATTERN = re.compile(r"<[^>\n]+>")
 
 
 def resolve_callsign() -> str:
@@ -137,6 +146,157 @@ def post_to_slack(text: str, channel: str = EXECUTION_CHANNEL) -> bool:
         return False
 
 
+def _bd_ready_first() -> str:
+    """KEI-36 — first ready issue from `bd ready --json`. '' on any failure."""
+    try:
+        result = subprocess.run(  # noqa: S603
+            ["bd", "ready", "--json"], capture_output=True, text=True, timeout=10, check=False
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return ""
+    if result.returncode != 0 or not result.stdout.strip():
+        return ""
+    try:
+        rows = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return ""
+    if not isinstance(rows, list) or not rows:
+        return ""
+    first = rows[0]
+    if not isinstance(first, dict):
+        return ""
+    ident = first.get("id") or first.get("Identifier") or ""
+    title = first.get("title") or first.get("Title") or ""
+    return f"{ident}: {title}".strip(": ").strip() or ""
+
+
+def _bd_blocked_list() -> str:
+    """KEI-36 — blockers from `bd list --status=blocked --json`. 'none' if empty."""
+    try:
+        result = subprocess.run(  # noqa: S603
+            ["bd", "list", "--status=blocked", "--json"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return ""
+    if result.returncode != 0 or not result.stdout.strip():
+        return ""
+    try:
+        rows = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return ""
+    if not isinstance(rows, list) or not rows:
+        return "none"
+    bullets = []
+    for r in rows:
+        if not isinstance(r, dict):
+            continue
+        ident = r.get("id") or ""
+        title = r.get("title") or ""
+        if ident or title:
+            bullets.append(f"{ident}: {title}".strip(": ").strip())
+    return "; ".join(bullets) if bullets else "none"
+
+
+def _git_files_touched(branch: str) -> str:
+    """KEI-36 — files changed on current branch vs origin/main. '' on failure."""
+    if not branch or branch == "main":
+        return ""
+    out = _run(["git", "diff", "--name-only", "origin/main...HEAD"])
+    if not out:
+        return ""
+    files = [line for line in out.splitlines() if line.strip()]
+    if not files:
+        return ""
+    return ", ".join(files[:10]) + (f" (+{len(files) - 10} more)" if len(files) > 10 else "")
+
+
+def _git_short_sha() -> str:
+    return _run(["git", "rev-parse", "--short", "HEAD"])
+
+
+def _git_commit_subject() -> str:
+    return _run(["git", "log", "-1", "--pretty=%s"])
+
+
+def _directive_from_branch(branch: str) -> str:
+    """KEI-36 — extract directive label from branch name like 'aiden/kei36-...'."""
+    if not branch or branch == "main":
+        return ""
+    m = re.search(
+        r"(kei[\s\-_]*\d+|directive[\s\-_]*\d+|agency_os[\s\-_]*\w+)", branch, re.IGNORECASE
+    )
+    return m.group(1).upper().replace("-", "-") if m else ""
+
+
+def auto_populate_heartbeat(
+    text: str,
+    *,
+    git_short_sha: str,
+    branch: str,
+    commit_subject: str,
+    files_touched: str,
+    directive: str,
+    blockers: str,
+    next_action: str,
+) -> str:
+    """KEI-36 — fill HEARTBEAT.md placeholder fields from mechanical sources.
+
+    Empty-string args are skipped (placeholder preserved → triggers
+    [HEARTBEAT-INCOMPLETE] warning downstream). Phase + Goal + Model fields
+    have no mechanical source on this side and are deliberately left as
+    placeholders for the agent to fill OR for the warning to surface.
+    """
+    replacements = {
+        "<git short-sha>": git_short_sha,
+        "<branch-name>": branch,
+        "<commit subject line>": commit_subject,
+        "<list>": files_touched,
+        "<directive number or label>": directive,
+        '<bulleted list, or "none">': blockers,
+        "<single concrete next step the next session should execute>": next_action,
+    }
+    for placeholder, value in replacements.items():
+        if value:
+            text = text.replace(placeholder, value, 1)
+    return text
+
+
+def find_residual_placeholders(text: str) -> list[str]:
+    """KEI-36 — return list of `<...>` strings still in the text.
+
+    Excludes literal-template fences inside heading-cadence section (lines
+    starting with '- 40%' / '- 50%' etc.) so 'if >60%' references aren't
+    counted as placeholders.
+    """
+    found: list[str] = []
+    in_skip_block = False
+    for line in text.splitlines():
+        if line.startswith("## Heartbeat Cadence"):
+            in_skip_block = True
+            continue
+        if line.startswith("## "):
+            in_skip_block = False
+        if in_skip_block:
+            continue
+        found.extend(_PLACEHOLDER_PATTERN.findall(line))
+    return found
+
+
+def post_heartbeat_incomplete_warning(
+    residual: list[str], channel: str = EXECUTION_CHANNEL
+) -> bool:
+    """KEI-36 — post [HEARTBEAT-INCOMPLETE] listing residual placeholders."""
+    if not residual:
+        return False
+    fields = ", ".join(sorted(set(residual)))
+    text = f"[HEARTBEAT-INCOMPLETE] residual placeholders pre-snapshot: {fields}"
+    return post_to_slack(text, channel=channel)
+
+
 def read_hook_input() -> dict:
     """Read JSON hook input from stdin. {} if stdin empty / invalid."""
     if sys.stdin.isatty():
@@ -152,8 +312,29 @@ def read_hook_input() -> dict:
 def main() -> int:
     hook_input = read_hook_input()
     callsign = resolve_callsign()
-    heartbeat = read_heartbeat()
     git = git_context()
+    # KEI-36 — auto-populate HEARTBEAT.md placeholders BEFORE snapshotting.
+    if HEARTBEAT_PATH.exists():
+        try:
+            raw = HEARTBEAT_PATH.read_text()
+            populated = auto_populate_heartbeat(
+                raw,
+                git_short_sha=_git_short_sha(),
+                branch=git["branch"] if git["branch"] != "?" else "",
+                commit_subject=_git_commit_subject(),
+                files_touched=_git_files_touched(git["branch"]),
+                directive=_directive_from_branch(git["branch"]),
+                blockers=_bd_blocked_list(),
+                next_action=_bd_ready_first(),
+            )
+            if populated != raw:
+                HEARTBEAT_PATH.write_text(populated)
+            residual = find_residual_placeholders(populated)
+            if residual:
+                post_heartbeat_incomplete_warning(residual)
+        except OSError as exc:
+            logger.warning("HEARTBEAT auto-populate failed: %s", exc)
+    heartbeat = read_heartbeat()
     text = format_alert(callsign, hook_input, heartbeat, git)
     posted = post_to_slack(text)
     logger.info(

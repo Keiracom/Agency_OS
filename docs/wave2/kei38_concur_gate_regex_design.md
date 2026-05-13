@@ -96,12 +96,45 @@ Today this session, agents have used `[HOLD:aiden]` to flag a PR-review hold (no
 
 Recommend: **exclude HOLD from gate** — it's an informational PR-review tag, not a governance-coordination claim. Author can clear by amending + re-FINAL.
 
+## Scope expansion — Enforcer Rule 2 narrowing (Dave ts ~1778666400)
+
+Same regex-narrowing pattern applies to the Enforcer Rule 2 "STEP-0-BEFORE-EXECUTION" check, which today fires on completion actions (PR self-merge, [TASK-COMPLETE] post, peer concur-release) and misclassifies them as "execution starting without Step-0". Empirical case: PR #834 self-merge ts ~1778666040 triggered Rule 2 even though it was the COMPLETION of work whose Step 0 was already on record (Aiden [STARTING] ts 1778665588 + bd claim + Elliot+Max FINAL).
+
+### Required Rule 2 narrowing
+
+Enforcer Rule 2 must fire ONLY when an agent posts content matching execution-start patterns AND there is NO prior Step-0 / FINAL-CONCUR / Dave-directive on record for the referenced task-id.
+
+Specifically, Rule 2 should NOT fire on:
+1. **Completion posts**: `[TASK-COMPLETE]`, PR-self-merge announcements, `bd close` notifications.
+2. **Peer-release posts**: `[CONCUR:callsign] release on ...` — these are governance-coordination, not execution-start.
+3. **Status/informational posts**: factual answers to Dave queries, Stream-status cadence updates, BS alert acknowledgements.
+
+Rule 2 SHOULD continue firing on:
+- `[STARTING]` posts that lack a preceding bd-claim or [CONCUR:peer] FINAL.
+- New `[PROPOSE:callsign]` self-assigned items followed immediately by tool calls (without `[STARTING]` in between).
+- Subagent dispatches that bypass the Step 0 RESTATE protocol.
+
+### Implementation note for Enforcer hook
+
+The enforcer's `recent_messages` check should also look for a `[STARTING]` post that matches the current execution target (PR number / task-id / KEI-N). If found within the last N messages (default N=20), Rule 2 passes.
+
+### Test cases
+
+| Input | Rule 2 should |
+|---|---|
+| `[TASK-COMPLETE] PR #834 merged @ 0d093be0` | NOT FIRE — completion action |
+| `[CONCUR:elliot] release on PR #834` | NOT FIRE — governance-release |
+| `[STARTING] KEI-37 design — owned by aiden` | NOT FIRE (this IS the Step-0 signal) |
+| `Editing scripts/foo.py` (no [STARTING] within last 20 msgs) | FIRE — execution without claim |
+| Tool call to Edit/Bash with no Step-0 in recent_messages | FIRE — correct enforcement |
+
 ## Acceptance criteria
 
 - Max can post `[MAX] Status: Stream 2 sealed` directly to #execution without gate-held.
 - Max can post `CONCUR with EMPIRICAL CORRECTION on step 2:` prose review without gate-held.
 - `[CONCUR:elliot]` actual governance concur still gate-fires correctly.
 - Test suite covers all match + no-match rows above with explicit regex_assertions.
+- Enforcer Rule 2 narrowing per §scope-expansion above: completion-action + governance-release + status-prose all pass; `[STARTING]`-less execution starts still fire.
 
 ## Implementation handoff for Elliot
 

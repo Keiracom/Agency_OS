@@ -50,6 +50,11 @@ logger = logging.getLogger("elliot_polling_loop")
 # Time-of-day window. AEST = UTC+10.
 PEAK_HOURS_UTC = set(list(range(21, 24)) + list(range(0, 14)))  # 21–13 UTC inclusive = 07–23 AEST
 STALE_LINEAR_HOURS = 12
+# KEI-27 — broader "silently died" stale threshold. Linear KEI In Progress
+# for >24h with no commit/comment/status change → #ceo alert. Distinct lane
+# from STALE_LINEAR_HOURS (12h orchestrator-stale): KEI_STALE captures work
+# that's quietly dropped between sessions.
+STALE_KEI_HOURS = 24
 IDLE_AGENT_MINUTES = 30
 PREFECT_WINDOW_MINUTES = 5
 # KEI-34 strict-cycle reading per Dave verbatim ts ~1778629860: 'Idle agents
@@ -131,6 +136,9 @@ class CycleSignals:
     # KEI-34 component 1 — agents idle >= ORCHESTRATOR_IDLE_CYCLES * cycle_period
     # (strict-cycle threshold; tighter than idle_agents which uses IDLE_AGENT_MINUTES).
     orchestrator_idle_agents: list[str] = field(default_factory=list)
+    # KEI-27 — Linear KEI In Progress for >STALE_KEI_HOURS with no activity.
+    # Broader "silently died" lane vs linear_stale (orchestrator stale lane).
+    kei_stale: list[dict] = field(default_factory=list)
     """List of (callsign, transition, duration_min) where transition is
     'throttled' (first detection) or 'resumed' (clearing detection). Duration
     is minutes-since-throttle-start for 'resumed' (0 for 'throttled')."""
@@ -142,6 +150,7 @@ class CycleSignals:
             or self.idle_agents
             or self.prefect_failures
             or self.rate_limit_transitions
+            or self.kei_stale
         )
 
 
@@ -188,12 +197,12 @@ def poll_bd_ready() -> list[dict]:
         return []
 
 
-def poll_linear_stale(now: datetime | None = None) -> list[dict]:
-    """Linear In-Progress issues with no activity > STALE_LINEAR_HOURS."""
+def _query_linear_stale(hours: int, now: datetime | None) -> list[dict]:
+    """Shared Linear GraphQL: state=started + updatedAt < (now-hours)."""
     api_key = os.environ.get("LINEAR_API_KEY", "")
     if not api_key:
         return []
-    cutoff = (now or datetime.now(UTC)) - timedelta(hours=STALE_LINEAR_HOURS)
+    cutoff = (now or datetime.now(UTC)) - timedelta(hours=hours)
     query = """
     query StaleIssues($since: DateTimeOrDuration!) {
       issues(filter: {state: {type: {eq: "started"}}, updatedAt: {lt: $since}}, first: 20) {
@@ -211,8 +220,21 @@ def poll_linear_stale(now: datetime | None = None) -> list[dict]:
             body = json.loads(resp.read())
         return body.get("data", {}).get("issues", {}).get("nodes", []) or []
     except (urllib.error.URLError, json.JSONDecodeError, KeyError, OSError) as exc:
-        logger.warning("Linear stale query failed: %s", exc)
+        logger.warning("Linear stale query failed (%dh): %s", hours, exc)
         return []
+
+
+def poll_linear_stale(now: datetime | None = None) -> list[dict]:
+    """Linear In-Progress issues with no activity > STALE_LINEAR_HOURS (12h —
+    orchestrator-stale lane)."""
+    return _query_linear_stale(STALE_LINEAR_HOURS, now)
+
+
+def poll_kei_stale(now: datetime | None = None) -> list[dict]:
+    """KEI-27: Linear KEI In Progress with no activity > STALE_KEI_HOURS (24h
+    — silently-died lane). Distinct from poll_linear_stale (12h orchestrator
+    lane); both stay. Reuses shared _query_linear_stale helper."""
+    return _query_linear_stale(STALE_KEI_HOURS, now)
 
 
 def poll_idle_agents(now: datetime | None = None) -> list[str]:
@@ -557,6 +579,7 @@ def collect_signals(now: datetime | None = None) -> CycleSignals:
         prefect_failures=poll_prefect_failures(now),
         rate_limit_transitions=poll_rate_limited_agents(now),
         orchestrator_idle_agents=poll_orchestrator_idle_agents(now),
+        kei_stale=poll_kei_stale(now),
     )
 
 
@@ -604,6 +627,25 @@ def compose_dispatches(signals: CycleSignals) -> list[tuple[str, str]]:
             + "\n".join(lines)
         )
         dispatches.append((CEO_CHANNEL_NAME, msg))
+
+    if signals.kei_stale:
+        # KEI-27: 24h+ stale KEI alert. Dedupe against linear_stale (12h
+        # subset) so we don't double-post the same issues to #ceo.
+        already_in_linear_stale = {it.get("identifier") for it in signals.linear_stale}
+        kei_extras = [it for it in signals.kei_stale if it.get("identifier") not in already_in_linear_stale]
+        if kei_extras:
+            lines = [
+                f"  - {it.get('identifier', '?')} {it.get('title', '?')} "
+                f"(last update {it.get('updatedAt', '?')}, assignee {(it.get('assignee') or {}).get('name', '?')})"
+                for it in kei_extras[:10]
+            ]
+            msg = (
+                f"[PROPOSE:elliot] KEI silently-died sweep — "
+                f"{len(kei_extras)} issue(s) In Progress > {STALE_KEI_HOURS}h with "
+                f"no commit/comment/status-change:\n"
+                + "\n".join(lines)
+            )
+            dispatches.append((CEO_CHANNEL_NAME, msg))
 
     if signals.prefect_failures:
         lines = [

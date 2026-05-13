@@ -1,0 +1,19 @@
+[Unit]
+Description=Agency OS Agent — ATLAS (callsign=atlas, tmux=atlas)
+Documentation=https://linear.app/keiracom/issue/KEI-43
+After=network-online.target
+Wants=network-online.target
+StartLimitBurst=5
+StartLimitIntervalSec=300
+
+[Service]
+Type=simple
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS-atlas
+ExecStart=/home/elliotbot/clawd/Agency_OS-atlas/scripts/systemd_agent_supervisor.sh atlas atlas /home/elliotbot/clawd/Agency_OS-atlas
+Restart=on-failure
+RestartSec=10
+StandardOutput=append:/home/elliotbot/clawd/logs/atlas-agent.log
+StandardError=append:/home/elliotbot/clawd/logs/atlas-agent.log
+
+[Install]
+WantedBy=default.target

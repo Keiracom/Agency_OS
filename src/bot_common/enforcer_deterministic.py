@@ -570,3 +570,94 @@ def check_r11(text: str, *, channel: str | None = None) -> dict | None:
             "#execution. See feedback_ceo_plain_english_summaries.md."
         ),
     }
+
+
+# ---------------------------------------------------------------------------
+# R14 — ORCHESTRATOR-DISPATCH-DISCIPLINE (KEI-34 component 2)
+# ---------------------------------------------------------------------------
+#
+# Per CEO directive ts ~1778628900 + dual-CTO ratified Step 0 (Max+Elliot
+# ts ~1778629820+1778629779): an Elliot post in #execution that enumerates
+# idle agents (acknowledgement) MUST also contain a dispatch token in the
+# same message body. Strict-zero / inline-token shape parallel to R13.
+# Failure to dispatch within the same message → fire to #ceo.
+#
+# Pass: regex match for any dispatch token in the post body.
+# Fail: idle-status acknowledged but no dispatch token → fire.
+
+# Trigger phrases — idle-agent enumeration / acknowledgement patterns.
+_R14_IDLE_STATUS_RE = re.compile(
+    r"\bidle (?:agents?|clones?)\b"
+    r"|\[READY:[a-z]+\]"
+    r"|agent(?:s)? idle"
+    r"|standing(?:\sby)? (?:on )?(?:agents?|idle)",
+    re.IGNORECASE,
+)
+
+# Dispatch tokens — markers that the same message body contains a dispatch.
+_R14_DISPATCH_TOKEN_RE = re.compile(
+    r"\[DISPATCH-PROPOSAL:"
+    r"|\[DISPATCH:"
+    r"|\bdispatching\b"
+    r"|\bEXPLICIT (?:DISPATCH|GO)\b"
+    r"|\bbranch\s+[\w/-]+\b"
+    r"|\bopen(?:ing)?\s+PR\b"
+    r"|\bpicks?\s+up\s+KEI-\d+",
+    re.IGNORECASE,
+)
+
+# Elliot is the orchestrator under R14 — only Elliot's posts trigger.
+_R14_ORCHESTRATOR_CALLSIGN = "elliot"
+
+# Channel id for #execution. Orion's PR #814 R13 introduces a module-level
+# EXECUTION_CHANNEL_ID with the same value; this internal duplicate is
+# defensive against ordering. If #814 merges first the inline below stays
+# private + correct; if this PR merges first #814 reuses its own def.
+_R14_EXECUTION_CHANNEL_ID = "C0B3QB0K1GQ"
+
+
+def check_r14(
+    text: str,
+    *,
+    channel: str | None = None,
+    callsign: str | None = None,
+) -> dict | None:
+    """R14 — ORCHESTRATOR-DISPATCH-DISCIPLINE.
+
+    Strict-zero / inline-token interpretation (dual-CTO ratified):
+      - Applies only to messages on #execution (channel id C0B3QB0K1GQ).
+      - Applies only to Elliot's posts (orchestrator-specific discipline;
+        Aiden/Max/clones don't have orchestrator-dispatch responsibility).
+      - Fires when text matches IDLE_STATUS but NOT DISPATCH_TOKEN.
+      - No-op for #ceo posts (rule only enforces #execution leak),
+        for non-Elliot callsigns, for non-idle messages, and for any
+        message outside #execution.
+
+    Returns a violation dict for fire-to-#ceo, or None on pass / no-op.
+    """
+    if channel != _R14_EXECUTION_CHANNEL_ID:
+        return None
+    if (callsign or "").lower() != _R14_ORCHESTRATOR_CALLSIGN:
+        return None
+    if not _R14_IDLE_STATUS_RE.search(text):
+        return None
+    if _R14_DISPATCH_TOKEN_RE.search(text):
+        return None
+    return {
+        "violation": True,
+        "rule_number": 14,
+        "rule_name": "ORCHESTRATOR-DISPATCH-DISCIPLINE",
+        "detail": "Idle agents enumerated in #execution by Elliot without an "
+        "inline dispatch token in the same message body. Dave directive "
+        "ts ~1778628900: 'agents should never rely on Elliot to dispatch "
+        "routine work — Elliot becomes exception handler only.'",
+        "should_have": (
+            "Pair the idle-agent acknowledgement with a dispatch in the same "
+            "message body (e.g. '[DISPATCH-PROPOSAL:<callsign>] ...', "
+            "'Dispatching <callsign> to KEI-NN', 'EXPLICIT DISPATCH ...', "
+            "'Branch <name> off main') OR run bd ready + assign-first-unblocked "
+            "before posting idle-state."
+        ),
+        "fire_message": "Idle agents enumerated without dispatch — orchestrator "
+        "action gap. [paste message]",
+    }

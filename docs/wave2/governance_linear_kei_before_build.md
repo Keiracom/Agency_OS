@@ -3,6 +3,7 @@
 **Author:** Aiden (design only — per Dave verbatim ts ~1778666900)
 **Implementer:** Elliot (post-compact ratification + execute, bundled with KEI-37/38/39 + ceo_memory hygiene)
 **Beads:** Agency_OS-8lz — P2
+**ceo_memory:** `ceo:rule:no_build_without_linear_issue` (Dave backfilled ts ~1778667300 per new `ceo:rule:ceo_operational_directives_recorded` standing rule)
 **Self-referential:** this bd issue + design doc were created BEFORE the branch + commit per the rule it documents.
 
 ## Dave verbatim — canonical sources
@@ -16,6 +17,18 @@
 > Linear is the only source of work. Beads is the enforcement mechanism. Cannot build without active bd claim on Linear-sourced task. No exceptions. Chain: KEI in Linear → bd sync → bd claim → Enforcer confirms → build begins. Any step missing = HARD STOP at tool level.
 
 Applies to all 6 callsigns going forward. The hardening (Beads as enforcement mechanism, tool-level hard stop) shifts the rule from agent-discipline to mechanical-enforcement.
+
+### ceo_memory anchor (Dave backfilled ts ~1778667300)
+
+Per the new Dave standing rule "CEO directives establishing rules MUST be recorded in ceo_memory at issue-time" (`ceo:rule:ceo_operational_directives_recorded`), this rule's canonical anchor is:
+
+- **Key:** `ceo:rule:no_build_without_linear_issue`
+- **Companion key (Layer 3 enforcement):** `ceo:rule:beads_layer3_enforcement`
+- **Companion key (sourcing):** `ceo:rule:linear_only_source_of_work`
+
+KEI-37 boot_state schema includes a `rules_ref` array pointing at all active `ceo:rule:*` keys so every new CEO session loads them on start (Elliot's KEI-37 post-compact lane). KEI-22 deliverable 7 ships the auto-record mechanism that writes future Dave-issued rules to `ceo:rule:*` keys automatically via Slack-relay governance-trigger-phrase detection.
+
+Until KEI-22 deliverable 7 ships, Elliot writes rules to ceo_memory manually as they're issued. Dave's backfill ts ~1778667300 caught the prior 7 unrecorded rules.
 
 ## Rule restated for GOVERNANCE.md
 

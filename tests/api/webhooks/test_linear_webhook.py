@@ -41,6 +41,8 @@ def client(mod, monkeypatch):
     monkeypatch.setenv("LINEAR_WEBHOOK_SECRET", TEST_SECRET)
     captured: list[dict] = []
     monkeypatch.setattr(mod, "_dispatch_to_bd", lambda event: captured.append(event))
+    # KEI-22: stub the tasks-table dispatch so unit tests don't reach Supabase.
+    monkeypatch.setattr(mod, "_dispatch_to_tasks", lambda event: None)
     app = FastAPI()
     app.include_router(mod.router)
     return TestClient(app), captured
@@ -83,7 +85,12 @@ def test_correct_signature_passes_through(client):
         {
             "action": "create",
             "type": "Issue",
-            "data": {"identifier": "KEI-99", "title": "x", "priority": 2, "url": "https://linear.app/x"},
+            "data": {
+                "identifier": "KEI-99",
+                "title": "x",
+                "priority": 2,
+                "url": "https://linear.app/x",
+            },
         },
     )
     assert resp.status_code == 200

@@ -134,6 +134,89 @@ def _dispatch_to_bd(event: dict[str, Any]) -> None:
         logger.warning("linear_to_bd dispatch failed: %s", exc)
 
 
+# KEI-22 (Dave directive 2026-05-14): tasks table is now the canonical queue
+# source. Linear webhook writes here in addition to bd during transition.
+# Linear priority enum (0=none,1=urgent,2=high,3=medium,4=low) maps to a
+# small-int priority on public.tasks (1=Urgent, 2=High, 3=Medium, 4=Low,
+# matching the bd convention 0=critical/1=high/... but tasks table uses
+# Linear's own range: P1 is the highest fired by webhook).
+LINEAR_TO_TASKS_PRIORITY: dict[int, int] = {0: 4, 1: 1, 2: 2, 3: 3, 4: 4}
+
+
+def _dispatch_to_tasks(event: dict[str, Any]) -> None:
+    """Mirror a Linear event into public.tasks. Fail-open.
+
+    On create: INSERT (id, title, priority, status='available', linear_url).
+    On status update: UPDATE status using the Linear state mapping —
+    started → active, completed/canceled → done (also clears claimed_by).
+    Conflicts on existing id: UPDATE the mutable fields rather than skipping,
+    so the webhook is idempotent against re-deliveries.
+    """
+    op = event.get("op")
+    identifier = event.get("identifier")
+    url = event.get("url") or f"https://linear.app/keiracom/issue/{identifier}"
+    if not (op and identifier):
+        return
+    dsn = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL", "")
+    if not dsn:
+        logger.warning("tasks dispatch skipped: DATABASE_URL/SUPABASE_DB_URL unset")
+        return
+    dsn = dsn.replace("postgresql+asyncpg://", "postgresql://", 1)
+    try:
+        import psycopg
+
+        with psycopg.connect(dsn, connect_timeout=10) as conn, conn.cursor() as cur:
+            if op == "create":
+                cur.execute(
+                    """
+                    INSERT INTO public.tasks (id, title, priority, status, linear_url, created_at, updated_at)
+                    VALUES (%s, %s, %s, 'available', %s, NOW(), NOW())
+                    ON CONFLICT (id) DO UPDATE
+                       SET title = EXCLUDED.title,
+                           priority = EXCLUDED.priority,
+                           linear_url = EXCLUDED.linear_url,
+                           updated_at = NOW()
+                    """,
+                    (
+                        identifier,
+                        event.get("title") or "(no title)",
+                        LINEAR_TO_TASKS_PRIORITY.get(event.get("priority", 0), 3),
+                        url,
+                    ),
+                )
+            elif op == "status":
+                new_status = "done" if event.get("bd_status") == "closed" else "active"
+                # Clear the claim only on "done" so an in-flight claim survives
+                # an "In Progress" → "In Progress" no-op re-dispatch.
+                if new_status == "done":
+                    cur.execute(
+                        """
+                        UPDATE public.tasks
+                           SET status = 'done',
+                               claimed_by = NULL,
+                               claimed_at = NULL,
+                               linear_url = COALESCE(linear_url, %s),
+                               updated_at = NOW()
+                         WHERE id = %s
+                        """,
+                        (url, identifier),
+                    )
+                else:
+                    cur.execute(
+                        """
+                        UPDATE public.tasks
+                           SET status = 'active',
+                               linear_url = COALESCE(linear_url, %s),
+                               updated_at = NOW()
+                         WHERE id = %s
+                        """,
+                        (url, identifier),
+                    )
+            conn.commit()
+    except Exception as exc:  # noqa: BLE001 — fail-open per webhook discipline
+        logger.warning("tasks dispatch failed for %s: %s", identifier, exc)
+
+
 @router.post("")
 @router.post("/")
 async def receive_linear_webhook(request: Request) -> dict[str, str]:
@@ -153,4 +236,5 @@ async def receive_linear_webhook(request: Request) -> dict[str, str]:
     if not event:
         return {"status": "ignored"}
     _dispatch_to_bd(event)
+    _dispatch_to_tasks(event)  # KEI-22 — Supabase tasks SSOT (parallel to bd during transition)
     return {"status": "ok", "op": event["op"], "identifier": event["identifier"]}

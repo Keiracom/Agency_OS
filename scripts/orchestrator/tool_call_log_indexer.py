@@ -190,7 +190,10 @@ def index_row(row: ToolCallRow) -> bool:
                 logger.info("index_row %s already exists (422 = idempotent no-op)", row.id)
                 return True
             logger.warning("index_row %s HTTPError=%s attempt=%d", row.id, exc.code, attempt)
-        except (urlerror.URLError, TimeoutError, OSError) as exc:
+        except OSError as exc:
+            # OSError covers urllib.error.URLError + TimeoutError + plain socket errors
+            # (URLError + TimeoutError both subclass OSError per PEP 3151 / urllib docs).
+            # Sonar S5713 — drop redundant subclasses.
             logger.warning("index_row %s transient %s attempt=%d", row.id, exc, attempt)
         if attempt < MAX_RETRIES:
             time.sleep(backoff)

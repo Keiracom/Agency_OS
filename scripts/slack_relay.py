@@ -371,9 +371,9 @@ _CLONE_CALLSIGNS: frozenset[str] = frozenset({"atlas", "orion", "scout"})
 # 5 is Elliot's directive value.
 _STEP0_INBOX_SCAN_DEPTH = 5
 # Inbox base dir, env-overridable for tests. Defaults to /tmp which is the
-# canonical relay-listener location on the host. NOSONAR S5443 — /tmp is the
-# documented runtime location for the per-callsign relay inbox; tests
-# override via AGENCY_OS_RELAY_INBOX_BASE.
+# documented runtime location for the per-callsign relay inbox; tests override
+# via AGENCY_OS_RELAY_INBOX_BASE. The S5443 suppression is the inline marker
+# on the assignment below.
 _RELAY_INBOX_BASE = os.environ.get("AGENCY_OS_RELAY_INBOX_BASE", "/tmp")  # NOSONAR
 
 

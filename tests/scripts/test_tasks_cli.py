@@ -177,6 +177,135 @@ def test_ready_clamps_limit_argument(mod, patch_connect) -> None:
     assert cur.last_params == (250,)
 
 
+# ─── ready --agent (KEI-53 Phase B) ───────────────────────────────────────────
+
+
+def test_ready_agent_uses_personalised_sql_path(mod, patch_connect) -> None:
+    """--agent <callsign> triggers the agent_profiles JOIN + personalised_score column."""
+    cur = _Cursor(fetchall_rows=[], description=[("id",), ("personalised_score",)])
+    patch_connect(cur)
+    rc = mod.main(["ready", "--agent", "elliot", "--limit", "10"])
+    assert rc == 0
+    # Personalised SQL references agent_profiles and personalised_score.
+    assert "agent_profiles" in cur.last_sql
+    assert "personalised_score" in cur.last_sql
+    # Params: (callsign, limit) — lowercased callsign.
+    assert cur.last_params == ("elliot", 10)
+
+
+def test_ready_agent_lowercases_callsign(mod, patch_connect) -> None:
+    cur = _Cursor(fetchall_rows=[], description=[("id",)])
+    patch_connect(cur)
+    mod.main(["ready", "--agent", "ELLIOT"])
+    assert cur.last_params[0] == "elliot"
+
+
+def test_ready_agent_emits_personalised_score_in_json(mod, patch_connect, capsys) -> None:
+    """JSON output preserves existing keys + adds personalised_score per Max note #3."""
+    cur = _Cursor(
+        fetchall_rows=[
+            (
+                "KEI-63",
+                "deprecation",
+                1,
+                "available",
+                None,
+                None,
+                None,
+                ["python", "governance"],
+                "url",
+                None,
+                None,
+                1.7,
+            ),
+        ],
+        description=[
+            ("id",),
+            ("title",),
+            ("priority",),
+            ("status",),
+            ("claimed_by",),
+            ("claimed_at",),
+            ("dependencies",),
+            ("tags",),
+            ("linear_url",),
+            ("created_at",),
+            ("updated_at",),
+            ("personalised_score",),
+        ],
+    )
+    patch_connect(cur)
+    rc = mod.main(["ready", "--agent", "elliot", "--json"])
+    assert rc == 0
+    data = json.loads(capsys.readouterr().out)
+    assert len(data) == 1
+    # Existing keys preserved.
+    assert data[0]["id"] == "KEI-63"
+    assert data[0]["title"] == "deprecation"
+    assert data[0]["priority"] == 1
+    # New key added.
+    assert data[0]["personalised_score"] == 1.7
+
+
+def test_ready_without_agent_uses_unpersonalised_sql(mod, patch_connect) -> None:
+    """Default `ready` (no --agent) still uses the original SQL — no personalised cost."""
+    cur = _Cursor(fetchall_rows=[], description=[("id",)])
+    patch_connect(cur)
+    mod.main(["ready"])
+    # Unpersonalised path: SELECT FROM public.tasks WHERE status='available' ORDER BY priority/created_at.
+    assert "agent_profiles" not in cur.last_sql
+    assert "personalised_score" not in cur.last_sql
+
+
+def test_ready_agent_empty_string_falls_back_to_default(mod, patch_connect) -> None:
+    """--agent '' (empty after strip) does not trigger personalised path."""
+    cur = _Cursor(fetchall_rows=[], description=[("id",)])
+    patch_connect(cur)
+    mod.main(["ready", "--agent", "   "])
+    assert "agent_profiles" not in cur.last_sql
+
+
+def test_ready_agent_human_output_includes_score_marker(mod, patch_connect, capsys) -> None:
+    """Non-JSON human output for --agent shows [score=X.XX] suffix + personalised banner."""
+    cur = _Cursor(
+        fetchall_rows=[
+            (
+                "KEI-63",
+                "deprecation",
+                1,
+                "available",
+                None,
+                None,
+                None,
+                ["python", "governance"],
+                "url",
+                None,
+                None,
+                1.7,
+            ),
+        ],
+        description=[
+            ("id",),
+            ("title",),
+            ("priority",),
+            ("status",),
+            ("claimed_by",),
+            ("claimed_at",),
+            ("dependencies",),
+            ("tags",),
+            ("linear_url",),
+            ("created_at",),
+            ("updated_at",),
+            ("personalised_score",),
+        ],
+    )
+    patch_connect(cur)
+    mod.main(["ready", "--agent", "elliot"])
+    out = capsys.readouterr().out
+    assert "[score=1.70]" in out
+    assert "personalised for elliot" in out
+
+
 # ─── claim ────────────────────────────────────────────────────────────────────
 
 

@@ -78,8 +78,11 @@ class _FakeResponse:
 def test_constants_defined(relay):
     """KEI-40 backoff constants exist + are sane."""
     assert relay._KEI40_MAX_RETRIES == 5
-    assert relay._KEI40_BASE_BACKOFF_SECONDS == 1.0
-    assert relay._KEI40_MAX_BACKOFF_SECONDS == 30.0
+    # pytest.approx() avoids S1244 float-equality warning per
+    # reference_sonarcloud_verify_pattern.md — these are exact-integer
+    # constants stored as floats, but Sonar S1244 flags the == check.
+    assert relay._KEI40_BASE_BACKOFF_SECONDS == pytest.approx(1.0)
+    assert relay._KEI40_MAX_BACKOFF_SECONDS == pytest.approx(30.0)
 
 
 def test_post_with_retry_returns_on_first_success(relay):
@@ -138,7 +141,9 @@ def test_post_with_retry_backoff_caps_at_max_seconds(relay):
     # Simulate: base=1.0, max_backoff=30, but a higher attempt would exceed.
     # 2^5 * 1 = 32 → capped to 30.
     # We can't easily exercise attempt=5 without retry-budget; verify the math via constants.
-    assert min(relay._KEI40_BASE_BACKOFF_SECONDS * (2**5), relay._KEI40_MAX_BACKOFF_SECONDS) == 30.0
+    assert min(
+        relay._KEI40_BASE_BACKOFF_SECONDS * (2**5), relay._KEI40_MAX_BACKOFF_SECONDS
+    ) == pytest.approx(30.0)
 
 
 def test_post_with_retry_429_exhausts_after_max_retries(relay):

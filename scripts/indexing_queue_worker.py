@@ -211,7 +211,7 @@ def process_batch(conn: Any, batch: list[QueueRow], max_attempts: int) -> dict[s
             if terminal:
                 counters["failed"] += 1
                 alert_ceo(row.id, repr(exc))
-                logger.error("row %s FAILED terminal: %s", row.id, exc)
+                logger.exception("row %s FAILED terminal", row.id)
             else:
                 counters["retry"] += 1
                 logger.warning("row %s retry (%d/%d): %s", row.id, row.attempts, max_attempts, exc)

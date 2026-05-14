@@ -71,3 +71,25 @@ class FakeConn:
 
     def __exit__(self, *a: Any) -> None:
         return None
+
+
+def make_patch_connect(monkeypatch: Any) -> Any:
+    """Return a builder fn that installs a fake psycopg.connect.
+
+    Used as the body of test fixtures across tests/scripts/* to dedupe
+    the `monkeypatch.setattr(psycopg, 'connect', ...)` boilerplate.
+    Sets a placeholder DATABASE_URL so `_dsn()` succeeds when called.
+
+        @pytest.fixture
+        def patch_connect(mod, monkeypatch):
+            return make_patch_connect(monkeypatch)
+    """
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test/x")
+
+    def _patch(cur: FakeCursor) -> FakeCursor:
+        import psycopg
+
+        monkeypatch.setattr(psycopg, "connect", lambda *a, **kw: FakeConn(cur))
+        return cur
+
+    return _patch

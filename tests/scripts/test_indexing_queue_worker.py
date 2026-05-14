@@ -24,9 +24,10 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 SCRIPT = REPO_ROOT / "scripts" / "indexing_queue_worker.py"
 
-# Shared psycopg fakes (Aiden's KEI-54 amend extracted these; KEI-61 reuses).
+# Shared psycopg fakes + patch_connect builder (Aiden's KEI-54 amend
+# extracted these; KEI-61 reuses).
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _db_mocks import FakeConn, FakeCursor  # type: ignore[import-not-found]  # noqa: E402
+from _db_mocks import FakeCursor, make_patch_connect  # type: ignore[import-not-found]  # noqa: E402
 
 _Cursor = FakeCursor  # legacy alias kept for the existing test bodies below
 
@@ -42,15 +43,7 @@ def mod():
 
 @pytest.fixture
 def patch_connect(mod, monkeypatch):
-    monkeypatch.setenv("DATABASE_URL", "postgresql://test/x")
-
-    def _patch(cur: FakeCursor):
-        import psycopg
-
-        monkeypatch.setattr(psycopg, "connect", lambda *a, **kw: FakeConn(cur))
-        return cur
-
-    return _patch
+    return make_patch_connect(monkeypatch)
 
 
 # ─── env helpers ───────────────────────────────────────────────────────────────

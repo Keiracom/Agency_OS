@@ -39,24 +39,28 @@ DO $$
 DECLARE
     opus_model   CONSTANT TEXT := 'claude-opus-4-7';
     sonnet_model CONSTANT TEXT := 'claude-sonnet-4-6';
+    -- Common tag literals hoisted per Sonar plsql:S1192 (≥4 repeats).
+    py           CONSTANT TEXT := 'python';
+    cognee_tag   CONSTANT TEXT := 'cognee';
+    infra_tag    CONSTANT TEXT := 'infrastructure';
 BEGIN
     INSERT INTO public.agent_profiles
         (callsign, configured_model, context_tags, capability_weights)
     VALUES
         ('elliot', opus_model,
-            ARRAY['orchestration', 'governance', 'python'],
+            ARRAY['orchestration', 'governance', py],
             '{"orchestration": 0.9, "governance": 0.9, "python": 0.8, "cognee": 0.6}'::jsonb),
         ('aiden',  opus_model,
-            ARRAY['code_review', 'refactoring', 'python', 'ci'],
+            ARRAY['code_review', 'refactoring', py, 'ci'],
             '{"code_review": 0.9, "refactoring": 0.8, "python": 0.8, "ci": 0.7}'::jsonb),
         ('max',    opus_model,
-            ARRAY['cognee', 'memory', 'python'],
+            ARRAY[cognee_tag, 'memory', py],
             '{"cognee": 0.9, "memory": 0.9, "python": 0.7, "systemd": 0.3}'::jsonb),
         ('atlas',  sonnet_model,
-            ARRAY['systemd', 'infrastructure', 'python'],
+            ARRAY['systemd', infra_tag, py],
             '{"systemd": 0.9, "infrastructure": 0.8, "python": 0.6, "cognee": 0.3}'::jsonb),
         ('orion',  sonnet_model,
-            ARRAY['parallel_build', 'python', 'infrastructure'],
+            ARRAY['parallel_build', py, infra_tag],
             '{"parallel_build": 0.8, "python": 0.7, "infrastructure": 0.7}'::jsonb),
         ('scout',  sonnet_model,
             ARRAY['research', 'analysis', 'documentation'],

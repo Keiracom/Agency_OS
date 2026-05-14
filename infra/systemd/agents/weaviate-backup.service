@@ -1,0 +1,14 @@
+[Unit]
+Description=Agency OS — Weaviate data dir backup snapshot (KEI-60)
+Documentation=https://linear.app/keiracom/issue/KEI-60
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+EnvironmentFile=-/home/elliotbot/.config/agency-os/.env
+ExecStart=/home/elliotbot/clawd/Agency_OS/scripts/orchestrator/weaviate_backup.sh
+StandardOutput=append:/home/elliotbot/clawd/logs/weaviate-backup.log
+StandardError=append:/home/elliotbot/clawd/logs/weaviate-backup.log
+# Small footprint — backup process is just tar + gzip + find.
+MemoryMax=256M

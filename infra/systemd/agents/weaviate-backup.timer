@@ -1,0 +1,15 @@
+[Unit]
+Description=Daily Weaviate backup timer (KEI-60)
+Documentation=https://linear.app/keiracom/issue/KEI-60
+Requires=weaviate-backup.service
+
+[Timer]
+# Fire daily at 03:30 UTC (13:30 AEST — off-peak for Vultr Sydney host).
+OnCalendar=*-*-* 03:30:00
+# Survive missed runs (suspended/restarted host).
+Persistent=true
+# Run as oneshot service.
+Unit=weaviate-backup.service
+
+[Install]
+WantedBy=timers.target

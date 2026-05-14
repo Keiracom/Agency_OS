@@ -41,10 +41,11 @@ HEARTBEAT_PATH = Path("HEARTBEAT.md")
 # auto_populate_heartbeat() arguments.
 _PLACEHOLDER_PATTERN = re.compile(r"<[^>\n]+>")
 
-# KEI-36 follow-up (2026-05-14) — callsign → configured model. Static interim
-# map; the directive's reference to ceo_memory key `orchestration:model_assignment`
-# is a future migration target. Values match recent commit authors' actual model.
-_CONFIGURED_MODEL_MAP = {
+# KEI-53 — fallback callsign → model map used only when agent_profiles
+# Supabase read fails (network down, RLS blocked, etc). Primary source of
+# truth is public.agent_profiles.configured_model (migration
+# 20260514_kei53_agent_profiles.sql). Values stay in lockstep with seed.
+_CONFIGURED_MODEL_FALLBACK = {
     "aiden": "claude-opus-4-7",
     "max": "claude-opus-4-7",
     "elliot": "claude-opus-4-7",
@@ -52,6 +53,13 @@ _CONFIGURED_MODEL_MAP = {
     "orion": "claude-sonnet-4-6",
     "scout": "claude-sonnet-4-6",
 }
+
+# KEI-53 — Supabase PostgREST endpoint for agent_profiles reads. Public
+# anon-readable per migration; we only SELECT, never write here.
+_SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://jatzvazlbusedwsnqxzr.supabase.co").rstrip(
+    "/"
+)
+_SUPABASE_ANON_KEY = os.environ.get("SUPABASE_ANON_KEY", "")
 
 # Placeholders that are intentional agent-fill (no mechanical source). The
 # residual-detector skips lines containing these so [HEARTBEAT-INCOMPLETE]
@@ -242,12 +250,40 @@ def _git_commit_subject() -> str:
 
 
 def _configured_model_for_callsign(callsign: str) -> str:
-    """KEI-36 follow-up — look up configured model from static callsign map.
+    """KEI-53 — look up configured model from public.agent_profiles.
 
-    Returns the model id from _CONFIGURED_MODEL_MAP or '' if callsign unknown.
-    Future: replace with ceo_memory `orchestration:model_assignment` SQL read.
+    Primary path: SELECT configured_model FROM public.agent_profiles
+    WHERE callsign=$1 via Supabase PostgREST. Times out at 3s.
+    Fallback path: _CONFIGURED_MODEL_FALLBACK map (kept in lockstep with
+    migration seed). Returns '' if callsign unknown and Supabase down.
     """
-    return _CONFIGURED_MODEL_MAP.get(callsign.lower(), "")
+    cs = callsign.lower()
+    if _SUPABASE_ANON_KEY:
+        try:
+            import urllib.error
+            import urllib.parse
+            import urllib.request
+
+            qs = urllib.parse.urlencode({"callsign": f"eq.{cs}", "select": "configured_model"})
+            req = urllib.request.Request(
+                f"{_SUPABASE_URL}/rest/v1/agent_profiles?{qs}",
+                headers={
+                    "apikey": _SUPABASE_ANON_KEY,
+                    "Authorization": f"Bearer {_SUPABASE_ANON_KEY}",
+                    "Accept": "application/json",
+                },
+            )
+            with urllib.request.urlopen(req, timeout=3) as r:
+                rows = json.loads(r.read())
+            if isinstance(rows, list) and rows and isinstance(rows[0], dict):
+                model = rows[0].get("configured_model")
+                if isinstance(model, str) and model:
+                    return model
+        except (OSError, ValueError) as exc:
+            # urllib.error.URLError ⊂ OSError; json.JSONDecodeError ⊂ ValueError —
+            # both caught implicitly per Sonar S5713 (no redundant subclasses).
+            logger.warning("agent_profiles lookup for %s failed (%s); using fallback map", cs, exc)
+    return _CONFIGURED_MODEL_FALLBACK.get(cs, "")
 
 
 def _running_model() -> str:

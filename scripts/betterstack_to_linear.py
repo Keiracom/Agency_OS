@@ -43,55 +43,27 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+from src.bot_common.state_store import load_state, resolve_state_path, save_state
+
 logger = logging.getLogger("bs_to_linear")
 logging.basicConfig(level=logging.WARNING, format="%(levelname)s: %(message)s")
 
 _LINEAR_GRAPHQL = "https://api.linear.app/graphql"
 _DEFAULT_TEAM_ID = "4686528f-ce77-4c2f-968b-3dc76b34d6fe"  # Keiracom team
-_DEFAULT_STATE_PATH = os.path.expanduser(
-    "~/.local/state/agency-os/betterstack-incidents.json"
-)
-
-_ALLOWED_STATE_ROOTS: tuple[Path, ...] = (
-    Path(os.path.expanduser("~/.local/state/agency-os")),
-    Path("/tmp"),  # NOSONAR — pytest tmp_path
-)
-
-
-def _is_under(p: Path, root: Path) -> bool:
-    try:
-        p.relative_to(root)
-        return True
-    except ValueError:
-        return False
+_DEFAULT_STATE_PATH = os.path.expanduser("~/.local/state/agency-os/betterstack-incidents.json")
+_STATE_ENV_VAR = "AGENCY_OS_BS_INCIDENTS_STATE"
 
 
 def _state_path() -> Path:
-    """Resolve state path; env override validated against _ALLOWED_STATE_ROOTS."""
-    raw = os.environ.get("AGENCY_OS_BS_INCIDENTS_STATE", _DEFAULT_STATE_PATH)
-    resolved = Path(raw).expanduser().resolve()
-    if not any(_is_under(resolved, root.resolve()) for root in _ALLOWED_STATE_ROOTS):
-        return Path(_DEFAULT_STATE_PATH).expanduser().resolve()
-    return resolved
+    return resolve_state_path(_STATE_ENV_VAR, _DEFAULT_STATE_PATH)
 
 
 def _load_state() -> dict[str, dict]:
-    p = _state_path()
-    if not p.exists():
-        return {}
-    try:
-        return json.loads(p.read_text() or "{}")
-    except (OSError, json.JSONDecodeError):
-        return {}
+    return load_state(_state_path())
 
 
 def _save_state(state: dict[str, dict]) -> None:
-    p = _state_path()
-    try:
-        p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(json.dumps(state, indent=2, sort_keys=True))  # NOSONAR — path is helper-resolved via _state_path() which validates the env override against _ALLOWED_STATE_ROOTS via _is_under; not user-supplied
-    except OSError as exc:
-        logger.warning("state save failed: %s", exc)
+    save_state(_state_path(), state, logger)
 
 
 def _linear_graphql(api_key: str, query: str, variables: dict | None = None) -> dict | None:
@@ -112,11 +84,9 @@ def _linear_graphql(api_key: str, query: str, variables: dict | None = None) -> 
 
 
 def _resolve_started_state_id(api_key: str, team_id: str) -> str | None:
-    query = (
-        'query($id:String!){team(id:$id){states{nodes{id name type}}}}'
-    )
+    query = "query($id:String!){team(id:$id){states{nodes{id name type}}}}"
     resp = _linear_graphql(api_key, query, {"id": team_id})
-    states = (((resp or {}).get("data") or {}).get("team", {}).get("states", {}).get("nodes") or [])
+    states = ((resp or {}).get("data") or {}).get("team", {}).get("states", {}).get("nodes") or []
     for s in states:
         if s.get("type") == "started":
             return s.get("id")
@@ -133,7 +103,9 @@ def _resolve_assignee_id(api_key: str) -> str | None:
     return nodes[0].get("id") if nodes else None
 
 
-def _create_linear_issue(api_key: str, event: dict, team_id: str, state_id: str | None, assignee_id: str | None) -> dict | None:
+def _create_linear_issue(
+    api_key: str, event: dict, team_id: str, state_id: str | None, assignee_id: str | None
+) -> dict | None:
     title = f"BetterStack incident — {event['monitor_name']}: {event['cause'][:80]}"
     description = (
         f"Auto-created from Better Stack incident webhook.\n\n"
@@ -155,15 +127,17 @@ def _create_linear_issue(api_key: str, event: dict, team_id: str, state_id: str 
     if assignee_id:
         input_fields["assigneeId"] = assignee_id
     mutation = (
-        'mutation($input:IssueCreateInput!){'
-        'issueCreate(input:$input){success issue{id identifier url}}}'
+        "mutation($input:IssueCreateInput!){"
+        "issueCreate(input:$input){success issue{id identifier url}}}"
     )
     resp = _linear_graphql(api_key, mutation, {"input": input_fields})
     issue = (((resp or {}).get("data") or {}).get("issueCreate") or {}).get("issue")
     return issue
 
 
-def handle_incident(event: dict) -> int:  # NOSONAR S3516 — multiple return paths: 0 success/idempotent-skip, 2 missing LINEAR_API_KEY (operator misconfig signal), 0 graceful no-op on no-incident-id or create-failure; failures fail-open + logged per operator-script discipline
+def handle_incident(
+    event: dict,
+) -> int:  # NOSONAR S3516 — multiple return paths: 0 success/idempotent-skip, 2 missing LINEAR_API_KEY (operator misconfig signal), 0 graceful no-op on no-incident-id or create-failure; failures fail-open + logged per operator-script discipline
     """Idempotent create: skip if incident_id already mapped to a Linear issue."""
     incident_id = event.get("incident_id", "")
     if not incident_id:

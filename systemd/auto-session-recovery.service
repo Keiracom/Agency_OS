@@ -1,0 +1,12 @@
+[Unit]
+Description=KEI-35 Auto Session Recovery (one-shot)
+After=network.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+Environment="PYTHONPATH=/home/elliotbot/clawd/Agency_OS"
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+ExecStart=/usr/bin/python3 -B /home/elliotbot/clawd/Agency_OS/scripts/orchestrator/auto_session_recovery.py
+StandardOutput=append:/home/elliotbot/clawd/logs/auto-session-recovery.log
+StandardError=append:/home/elliotbot/clawd/logs/auto-session-recovery.log

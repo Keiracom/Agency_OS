@@ -41,7 +41,7 @@ echo "KEI-41 Phase 2 systemd remediation — dry-run summary:"
 echo ""
 echo "Will DISABLE (already inactive — disable just removes wants links):"
 for unit in "${DEAD_UNITS[@]}"; do
-    if [ -f "$UNIT_DIR/$unit" ]; then
+    if [[ -f "$UNIT_DIR/$unit" ]]; then
         state=$(systemctl --user is-enabled "$unit" 2>/dev/null || echo unknown)
         echo "  $unit (current: $state)"
     fi
@@ -49,26 +49,26 @@ done
 echo ""
 echo "Will PATCH ExecStart paths in (sed $OLD_PATH -> $NEW_PATH):"
 for unit in "${ACTIVE_RELAY_UNITS[@]}"; do
-    if [ -f "$UNIT_DIR/$unit" ] && grep -q "$OLD_PATH" "$UNIT_DIR/$unit"; then
+    if [[ -f "$UNIT_DIR/$unit" ]] && grep -q "$OLD_PATH" "$UNIT_DIR/$unit"; then
         echo "  $unit (contains old path)"
     fi
 done
 echo ""
 
-if [ "${1:-}" != "--execute" ]; then
+if [[ "${1:-}" != "--execute" ]]; then
     echo "Pass --execute to perform the changes."
     exit 0
 fi
 
 echo "Executing..."
 for unit in "${DEAD_UNITS[@]}"; do
-    if [ -f "$UNIT_DIR/$unit" ]; then
+    if [[ -f "$UNIT_DIR/$unit" ]]; then
         systemctl --user disable "$unit" 2>&1 || echo "  (already disabled): $unit"
     fi
 done
 
 for unit in "${ACTIVE_RELAY_UNITS[@]}"; do
-    if [ -f "$UNIT_DIR/$unit" ] && grep -q "$OLD_PATH" "$UNIT_DIR/$unit"; then
+    if [[ -f "$UNIT_DIR/$unit" ]] && grep -q "$OLD_PATH" "$UNIT_DIR/$unit"; then
         cp "$UNIT_DIR/$unit" "$UNIT_DIR/$unit.kei41bak"
         sed -i "s|$OLD_PATH|$NEW_PATH|g" "$UNIT_DIR/$unit"
         echo "  patched $unit (backup at $unit.kei41bak)"

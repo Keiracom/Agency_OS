@@ -1,12 +1,10 @@
-"""Tests for scripts/orchestrator/betterstack_slack_routing.py — PR-C verify-only.
+"""Tests for scripts/orchestrator/betterstack_slack_routing.py — KEI-20 readiness probe.
 
-The script is a read-only diagnostic: it hits BS v2 /slack-integrations,
-inspects the response for an #alerts integration (channel C0B2EJU53EK),
-prints READY/NOT-READY to stderr, and always exits 0. Tests cover:
+Probes BS v2 /slack-integrations for both target channels:
+  - #ceo       (C0B2PM3TV0B)  — critical-policy target
+  - #execution (C0B3QB0K1GQ)  — routine-policy target (gated on OAuth)
 
-  - find_alerts_integration: by channel id, by channel name, missing case
-  - report: READY path (#alerts present) and NOT-READY path (runbook printed)
-  - main: missing API key → still returns 0 (operator-diagnostic discipline)
+Always exits 0 (operator-diagnostic, never blocks).
 """
 
 from __future__ import annotations
@@ -30,66 +28,46 @@ def mod():
     return m
 
 
-# find_alerts_integration ─────────────────────────────────────────────────────
+# ─── find_integration_by_channel_id ──────────────────────────────────────────
 
 
-def test_find_alerts_integration_match_by_channel_id(mod):
+def test_find_integration_by_channel_id_match(mod):
     integrations = [
-        {
-            "id": "999",
-            "attributes": {
-                "slack_channel_id": "C0B2EJU53EK",
-                "slack_channel_name": "#alerts",
-            },
-        },
+        {"id": "999", "attributes": {"slack_channel_id": "C0B2EJU53EK"}},
+        {"id": "102756", "attributes": {"slack_channel_id": "C0B2PM3TV0B"}},
     ]
-    result = mod.find_alerts_integration(integrations)
+    result = mod.find_integration_by_channel_id(integrations, "C0B2PM3TV0B")
     assert result is not None
-    assert result["id"] == "999"
+    assert result["id"] == "102756"
 
 
-def test_find_alerts_integration_match_by_channel_name(mod):
-    integrations = [
-        {
-            "id": "888",
-            "attributes": {
-                "slack_channel_id": "OTHER",
-                "slack_channel_name": "alerts",
-            },
-        },
-    ]
-    result = mod.find_alerts_integration(integrations)
-    assert result is not None
-    assert result["id"] == "888"
+def test_find_integration_by_channel_id_miss_returns_none(mod):
+    integrations = [{"id": "999", "attributes": {"slack_channel_id": "C0B2EJU53EK"}}]
+    assert mod.find_integration_by_channel_id(integrations, "C0B3QB0K1GQ") is None
 
 
-def test_find_alerts_integration_missing_returns_none(mod):
+def test_find_integration_by_channel_id_empty_returns_none(mod):
+    assert mod.find_integration_by_channel_id([], "C0B2PM3TV0B") is None
+
+
+# ─── report ──────────────────────────────────────────────────────────────────
+
+
+def test_report_both_present_prints_two_ready_lines(mod, capsys):
     integrations = [
         {
             "id": "102756",
             "attributes": {
                 "slack_channel_id": "C0B2PM3TV0B",
                 "slack_channel_name": "#ceo",
+                "slack_status": "active",
             },
         },
-    ]
-    assert mod.find_alerts_integration(integrations) is None
-
-
-def test_find_alerts_integration_empty_list_returns_none(mod):
-    assert mod.find_alerts_integration([]) is None
-
-
-# report ──────────────────────────────────────────────────────────────────────
-
-
-def test_report_ready_when_alerts_integration_present(mod, capsys):
-    integrations = [
         {
-            "id": "999",
+            "id": "200000",
             "attributes": {
-                "slack_channel_id": "C0B2EJU53EK",
-                "slack_channel_name": "#alerts",
+                "slack_channel_id": "C0B3QB0K1GQ",
+                "slack_channel_name": "#execution",
                 "slack_status": "active",
             },
         },
@@ -97,11 +75,11 @@ def test_report_ready_when_alerts_integration_present(mod, capsys):
     rc = mod.report(integrations)
     assert rc == 0
     captured = capsys.readouterr()
-    assert "READY" in captured.err
-    assert "id=999" in captured.err
+    assert "READY — #ceo integration found (id=102756)" in captured.err
+    assert "READY — #execution integration found (id=200000)" in captured.err
 
 
-def test_report_not_ready_prints_oauth_runbook(mod, capsys):
+def test_report_ceo_only_prints_execution_gate(mod, capsys):
     integrations = [
         {
             "id": "102756",
@@ -115,24 +93,34 @@ def test_report_not_ready_prints_oauth_runbook(mod, capsys):
     rc = mod.report(integrations)
     assert rc == 0
     captured = capsys.readouterr()
-    assert "NOT READY" in captured.err
-    assert "OAuth required" in captured.err
+    assert "READY — #ceo integration found" in captured.err
+    assert "DEFERRED — no #execution integration found" in captured.err
     assert "team/integrations/slack" in captured.err
 
 
-def test_report_no_integrations_prints_runbook(mod, capsys):
+def test_report_no_integrations_prints_both_runbooks(mod, capsys):
     rc = mod.report([])
     assert rc == 0
     captured = capsys.readouterr()
     assert "Existing slack integrations: 0" in captured.err
-    assert "OAuth required" in captured.err
+    assert "NOT READY — no #ceo integration found" in captured.err
+    assert "DEFERRED — no #execution integration found" in captured.err
+    # Both OAuth runbooks should fire.
+    assert captured.err.count("Open https://uptime.betterstack.com") == 2
 
 
-# main ────────────────────────────────────────────────────────────────────────
+# ─── main ────────────────────────────────────────────────────────────────────
 
 
 def test_main_missing_api_key_returns_zero(mod, monkeypatch):
-    """Operator-diagnostic: never block. Missing key → return 0 silently-with-stderr."""
+    """Operator-diagnostic: never block. Missing key → return 0."""
     monkeypatch.delenv("BETTERSTACK_API_KEY", raising=False)
     rc = mod.main()
     assert rc == 0
+
+
+def test_channel_id_env_overrides(mod, monkeypatch):
+    monkeypatch.setenv("AGENCY_OS_BETTERSTACK_CEO_CHANNEL_ID", "C_FAKE_CEO")
+    monkeypatch.setenv("AGENCY_OS_BETTERSTACK_EXECUTION_CHANNEL_ID", "C_FAKE_EXEC")
+    assert mod._ceo_channel_id() == "C_FAKE_CEO"
+    assert mod._execution_channel_id() == "C_FAKE_EXEC"

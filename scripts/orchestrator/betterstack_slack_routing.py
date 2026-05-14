@@ -1,33 +1,30 @@
 #!/usr/bin/env python3
 """betterstack_slack_routing.py — Better Stack Slack-routing readiness check.
 
-PR-C (verify-only iteration) of the Better Stack bundle. Original scope was
-"create notification policy + wire all monitors/heartbeats to Slack #alerts",
-but the BS v2 API has two blockers preventing full automation:
+Operator diagnostic for the Better Stack severity-routing pipeline (KEI-20).
+Lists the BS Slack integrations on the team and reports which channels are
+already wired for the alert-routing policies built by
+`scripts/orchestrator/betterstack_routing_policy.py`.
 
-  1. Slack integrations are OAuth-scoped: a NEW BS Slack integration pointing
-     at #alerts must be operator-created via the BS dashboard's OAuth flow.
-     The v2 API doesn't expose integration creation.
-  2. Policy step JSON schema (for type="slack" / "team_email" / "webhook")
-     returns vague "allowed_values: {type: X}" errors on every field combo
-     probed empirically 2026-05-12. Cannot ratify schema without working
-     example, which depends on (1).
+Per Dave directive ts ~1778618200 (re-stated by Elliot ts ~1778741000):
+critical incidents → #ceo, routine + resolved → #execution.
 
-So this PR ships a READ-ONLY verification script that:
-  - Lists existing BS Slack integrations + their channel routing.
-  - Detects whether an #alerts integration exists (channel C0B2EJU53EK).
-  - Prints either "READY for policy build" with the integration_id, OR
-    "OAuth required" with explicit operator steps.
+Target channels for the two policies:
+  - #ceo       (C0B2PM3TV0B)  — must exist for critical wiring
+  - #execution (C0B3QB0K1GQ)  — must exist for routine wiring (gated on OAuth)
 
-Once an operator completes the OAuth dance and re-runs this script with a
-positive verdict, PR-C-v2 wires the actual notification policy referencing
-the now-known integration_id.
+The Better Stack v2 API does NOT expose Slack integration creation — that
+requires OAuth via the BS dashboard. This script just verifies which side of
+the gate we're on and prints operator instructions when one or both are
+missing.
 
 Usage:
     BETTERSTACK_API_KEY=<key> python3 scripts/orchestrator/betterstack_slack_routing.py
 
 Env overrides (tests):
     AGENCY_OS_BETTERSTACK_API_BASE — override API root (default uptime.betterstack.com/api/v2)
+    AGENCY_OS_BETTERSTACK_CEO_CHANNEL_ID         — default C0B2PM3TV0B
+    AGENCY_OS_BETTERSTACK_EXECUTION_CHANNEL_ID   — default C0B3QB0K1GQ
 
 Always exits 0 — operator-diagnostic, never blocks anything.
 """
@@ -40,9 +37,8 @@ import sys
 import urllib.error
 import urllib.request
 
-# Target Slack channel for alerts (verified against scripts/slack_relay.py CHANNELS map).
-ALERTS_CHANNEL_ID = "C0B2EJU53EK"
-ALERTS_CHANNEL_NAME = "#alerts"
+CEO_CHANNEL_ID_DEFAULT = "C0B2PM3TV0B"
+EXECUTION_CHANNEL_ID_DEFAULT = "C0B3QB0K1GQ"
 
 API_BASE_DEFAULT = "https://uptime.betterstack.com/api/v2"
 
@@ -53,6 +49,16 @@ def _auth_headers(api_key: str) -> dict[str, str]:
 
 def _api_base() -> str:
     return os.environ.get("AGENCY_OS_BETTERSTACK_API_BASE", API_BASE_DEFAULT)
+
+
+def _ceo_channel_id() -> str:
+    return os.environ.get("AGENCY_OS_BETTERSTACK_CEO_CHANNEL_ID", CEO_CHANNEL_ID_DEFAULT)
+
+
+def _execution_channel_id() -> str:
+    return os.environ.get(
+        "AGENCY_OS_BETTERSTACK_EXECUTION_CHANNEL_ID", EXECUTION_CHANNEL_ID_DEFAULT
+    )
 
 
 def list_slack_integrations(api_key: str) -> list[dict]:
@@ -68,33 +74,30 @@ def list_slack_integrations(api_key: str) -> list[dict]:
     return body.get("data", []) or []
 
 
-def find_alerts_integration(integrations: list[dict]) -> dict | None:
-    """Return the integration record pointing at #alerts, else None."""
+def find_integration_by_channel_id(integrations: list[dict], channel_id: str) -> dict | None:
+    """Return the integration record pointing at the given Slack channel id, else None."""
     for it in integrations:
-        attrs = it.get("attributes", {})
-        if attrs.get("slack_channel_id") == ALERTS_CHANNEL_ID:
-            return it
-        if attrs.get("slack_channel_name") in {ALERTS_CHANNEL_NAME, "alerts"}:
+        if it.get("attributes", {}).get("slack_channel_id") == channel_id:
             return it
     return None
 
 
-def print_oauth_runbook() -> None:
-    """Operator-facing instructions when no #alerts integration exists."""
+def print_oauth_runbook(channel_name: str, channel_id: str) -> None:
+    """Operator-facing instructions when a required integration is missing."""
     print(
-        "# Better Stack Slack-routing — operator OAuth required\n"
+        f"# Better Stack Slack-routing — OAuth required for {channel_name}\n"
         "#\n"
-        "# No existing BS Slack integration points at #alerts (channel\n"
-        f"# {ALERTS_CHANNEL_ID}). To enable PR-C-v2 (policy wire-in), an operator\n"
-        "# must complete BS's Slack OAuth flow via the dashboard. Steps:\n"
+        "# No existing BS Slack integration points at "
+        f"{channel_name} (channel {channel_id}).\n"
+        "# Operator must complete BS's Slack OAuth flow via the dashboard:\n"
         "#\n"
         "#   1. Open https://uptime.betterstack.com/team/integrations/slack\n"
         "#   2. Click 'Add Slack workspace' (OAuth flow opens Slack auth page)\n"
         "#   3. Authorise the Keiracom workspace for the Better Stack app\n"
-        f"#   4. When prompted for default channel, select #alerts (id {ALERTS_CHANNEL_ID})\n"
+        f"#   4. When prompted for default channel, select {channel_name} (id {channel_id})\n"
         "#   5. Save\n"
-        "#   6. Re-run this script — it should now report READY with the new\n"
-        "#      integration_id for PR-C-v2 to consume\n"
+        "#   6. Re-run scripts/orchestrator/betterstack_routing_policy.py — it's\n"
+        "#      idempotent and will pick up the new integration_id.\n"
         "#\n"
         "# See docs/runbooks/betterstack-slack-routing.md for the full procedure.\n",
         file=sys.stderr,
@@ -102,9 +105,15 @@ def print_oauth_runbook() -> None:
 
 
 def report(integrations: list[dict]) -> int:
-    """Print findings to stderr; return advisory exit-code value (always-0 in main)."""
+    """Print findings to stderr; return 0 (operator-diagnostic, never blocks)."""
+    ceo_id = _ceo_channel_id()
+    exec_id = _execution_channel_id()
+
     print("# Better Stack Slack-routing — readiness check", file=sys.stderr)
-    print(f"# Looking for an integration pointing at {ALERTS_CHANNEL_NAME} ({ALERTS_CHANNEL_ID})", file=sys.stderr)
+    print(
+        f"# Looking for integrations on #ceo ({ceo_id}) and #execution ({exec_id})",
+        file=sys.stderr,
+    )
     print(f"# Existing slack integrations: {len(integrations)}", file=sys.stderr)
     for it in integrations:
         attrs = it.get("attributes", {})
@@ -114,16 +123,30 @@ def report(integrations: list[dict]) -> int:
             file=sys.stderr,
         )
 
-    match = find_alerts_integration(integrations)
-    if match:
+    ceo_match = find_integration_by_channel_id(integrations, ceo_id)
+    exec_match = find_integration_by_channel_id(integrations, exec_id)
+
+    if ceo_match:
+        print(f"# READY — #ceo integration found (id={ceo_match.get('id')})", file=sys.stderr)
+    else:
+        print("# NOT READY — no #ceo integration found", file=sys.stderr)
+        print_oauth_runbook("#ceo", ceo_id)
+
+    if exec_match:
         print(
-            f"# READY — #alerts integration found (id={match.get('id')}). "
-            f"PR-C-v2 can wire the notification policy referencing this id.",
+            f"# READY — #execution integration found (id={exec_match.get('id')}).\n"
+            "# Severity-routing fully wireable: betterstack_routing_policy.py will\n"
+            "# create the routine policy and attach it to monitors.expiration_policy_id.",
             file=sys.stderr,
         )
-        return 0
-    print("# NOT READY — no #alerts integration found.", file=sys.stderr)
-    print_oauth_runbook()
+    else:
+        print(
+            "# DEFERRED — no #execution integration found. Routine + resolved\n"
+            "# routing is gated until OAuth completes.",
+            file=sys.stderr,
+        )
+        print_oauth_runbook("#execution", exec_id)
+
     return 0
 
 

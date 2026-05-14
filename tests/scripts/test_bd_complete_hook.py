@@ -78,8 +78,12 @@ def _run_hook(
     log_path: Path,
     extra_env: dict | None = None,
     args: list[str] | None = None,
+    fake_worktree: Path | None = None,
 ) -> subprocess.CompletedProcess:
     """Run the hook script with mocked bd and log, capturing all output."""
+    # Use a non-existent sub-path of tmp_path so the hook falls through to
+    # env-var callsign resolution without attempting IDENTITY.md lookup.
+    worktree = str(fake_worktree / "fake-worktree") if fake_worktree else str(log_path.parent / "fake-worktree")
     env = {
         **os.environ,
         "AGENCY_OS_BD_BIN": str(fake_bd),
@@ -87,9 +91,9 @@ def _run_hook(
         # Use a callsign that's not in CALLSIGN_TO_TMUX (tmux absent is OK —
         # we just verify the log; no real tmux needed for unit tests).
         "CALLSIGN": "elliot",
-        # Point at a non-existent worktree — the hook gracefully falls through
-        # to env-var callsign resolution.
-        "AGENCY_OS_WORKTREE_ROOT": "/tmp/kei63-test-worktree-nonexistent",
+        # Point at a non-existent worktree sub-path — the hook gracefully falls
+        # through to env-var callsign resolution (no IDENTITY.md there).
+        "AGENCY_OS_WORKTREE_ROOT": worktree,
     }
     if extra_env:
         env.update(extra_env)

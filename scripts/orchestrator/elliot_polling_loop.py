@@ -801,7 +801,7 @@ def inject_bd_ready_into_pane(session: str, callsign: str) -> None:
     Best-effort: any failure logs and returns — never raises.
     """
     try:
-        proc = subprocess.run(  # noqa: S603 — controlled args, no shell
+        proc = subprocess.run(  # noqa: S603 — controlled args, no shell, no user input
             ["tmux", "send-keys", "-t", f"{session}:0", "bd ready", "Enter"],
             capture_output=True,
             text=True,

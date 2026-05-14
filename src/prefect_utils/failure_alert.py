@@ -35,4 +35,4 @@ def send_failure_alert(
         )
         logger.info("Failure alert sent for flow '%s'", flow_name)
     except Exception as exc:
-        logger.error("Failed to send Slack failure alert: %s", exc)
+        logger.exception("Failed to send Slack failure alert: %s", exc)

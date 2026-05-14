@@ -1,0 +1,20 @@
+[Unit]
+Description=KEI-45 Realtime listener — wakes agents on Supabase tasks events
+Documentation=https://linear.app/keiracom/issue/KEI-45
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/home/elliotbot/clawd/Agency_OS/.venv/bin/python3 /home/elliotbot/clawd/Agency_OS/scripts/orchestrator/kei45_realtime_listener.py
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+Restart=on-failure
+RestartSec=10
+StartLimitBurst=5
+StartLimitIntervalSec=300
+StandardOutput=append:/home/elliotbot/clawd/logs/kei45-realtime-listener.log
+StandardError=append:/home/elliotbot/clawd/logs/kei45-realtime-listener.log
+
+[Install]
+WantedBy=default.target

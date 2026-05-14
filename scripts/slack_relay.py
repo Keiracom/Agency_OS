@@ -32,9 +32,18 @@ import json
 import os
 import re
 import sys
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
+
+# KEI-40: rate-limit retry config. Slack chat.postMessage returns HTTP 429 with
+# Retry-After header on tier-3 method rate-limits (~1 req/sec for chat.postMessage).
+# Exponential backoff with header-respect avoids the governance-noise pattern
+# Dave flagged ts ~1778666400 (relay exit non-zero without retry = false stuck signal).
+_KEI40_MAX_RETRIES = 5
+_KEI40_BASE_BACKOFF_SECONDS = 1.0
+_KEI40_MAX_BACKOFF_SECONDS = 30.0
 from typing import Final
 
 _LAST_POST_STATE_PATH: Final[Path] = Path(
@@ -185,13 +194,40 @@ def post(channel: str, text: str) -> dict:
         method="POST",
     )
     try:
-        with urllib.request.urlopen(req, timeout=10) as r:
-            response = json.loads(r.read())
+        response = _post_with_retry(req)
     except urllib.error.URLError as e:
         print(f"ERROR: network failure: {e}", file=sys.stderr)
         sys.exit(1)
     _record_last_post(CALLSIGN)  # KEI-34 v3 HOLE B — track progress-cadence
     return response
+
+
+def _post_with_retry(req: urllib.request.Request) -> dict:
+    """KEI-40 — POST with exponential-backoff retry on HTTP 429 rate-limits.
+
+    Respects Slack's Retry-After header when present; falls back to exponential
+    delay (1s / 2s / 4s / 8s / 16s capped at 30s). Non-429 HTTPError + other
+    URLError types fail-fast (re-raised — no retry). After _KEI40_MAX_RETRIES
+    exhausted on 429s, the final HTTPError is re-raised.
+    """
+    for attempt in range(_KEI40_MAX_RETRIES + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=10) as r:
+                return json.loads(r.read())
+        except urllib.error.HTTPError as e:
+            if e.code != 429 or attempt == _KEI40_MAX_RETRIES:
+                raise
+            retry_after_header = e.headers.get("Retry-After", "") if e.headers else ""
+            try:
+                wait = float(retry_after_header)
+            except (ValueError, TypeError):
+                wait = min(_KEI40_BASE_BACKOFF_SECONDS * (2**attempt), _KEI40_MAX_BACKOFF_SECONDS)
+            print(
+                f"WARN: Slack 429, retry {attempt + 1}/{_KEI40_MAX_RETRIES} after {wait}s",
+                file=sys.stderr,
+            )
+            time.sleep(wait)
+    raise RuntimeError("unreachable — loop should always return or raise")
 
 
 def _record_last_post(callsign: str) -> None:

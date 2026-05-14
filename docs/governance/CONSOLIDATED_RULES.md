@@ -219,6 +219,51 @@ a vendor from the Dead References table in ARCHITECTURE.md.
 
 ---
 
+## STANDING RULE — Pre-execution claim protocol (KEI-39, ratified 2026-05-13)
+
+Before executing ANY task or subtask transition, every agent MUST complete the 4-step sequence:
+
+1. **`bd claim <task-id>`** — claim Beads ownership. `bd show <task-id>` returns `Status: IN_PROGRESS` and `Assignee: <callsign>`.
+2. **Linear** — set assignee field + add comment `"Starting <subtask> now"` (via `linear-server` MCP or direct GraphQL).
+3. **`#execution` post** — `[STARTING] <task description> — owned by <callsign>` via `scripts/slack_relay.py` (CALLSIGN env per cwd-trapdoor workaround until KEI-22 ships).
+4. **THEN execute** — only after steps 1-3 confirm.
+
+**Applies to:**
+- Starting a new KEI from `Todo` status.
+- Starting the next stream / phase / subtask within a running KEI (Stream 2 → Streams 3+4 is a transition).
+- Resuming a task after a crash, restart, or context compaction.
+- Picking up a `[PROPOSE:callsign]` self-assigned item (treat as task-start).
+
+**Does NOT apply to:**
+- Single-shot informational posts (status / concur / release).
+- Sub-step granularity within an already-claimed atomic task (editing one file vs another within the same PR).
+- Reviewing a peer's PR (review is not execution; concur tags handle that lane).
+- Diagnostic commands (`git log`, `ps`, `bd ready`, `gh pr view`).
+
+**CEO dispatch safety check:** Before any CEO dispatch:
+1. Does Linear show an assignee on this task? Yes → owned, do NOT dispatch.
+2. Is there a recent `[STARTING]` post in `#execution` for this task-id? Yes → owned, do NOT dispatch.
+3. Both no → task is unowned, safe to dispatch.
+
+**Failure modes:**
+- Linear MCP outage → degrade to step 1 + step 3 only. Log governance debt as `KEI39_LINEAR_SKIP`.
+- Slack relay outage → DO NOT execute. Investigate cross-agent collision risk first.
+- Agent forgets the protocol → Enforcer hook fires `KEI39_VIOLATION` when an agent reports `[TASK-COMPLETE]` without a prior `[STARTING]` for the same task-id (follow-up enforcer rule).
+
+**Violation:** Flag `KEI39_CLAIM_SKIPPED` to peer review + governance debt log. Same-shape penalty as `RULE 2 COORDINATE` skip.
+
+**Source:** `docs/wave2/kei39_claim_protocol_design.md` (PR #834 merged @ 0d093be0). Implementation: this section.
+
+**ceo_memory anchor:** `ceo:rule:pre_execution_claim_protocol` (per `ceo:rule:ceo_operational_directives_recorded`).
+
+**Composes with:**
+- RULE 2 COORDINATE (claim-before-touch sub-rule).
+- KEI-37 boot_state (`active_keis` field surfaces all currently-claimed tasks).
+- KEI-42 governance_current (snapshots this rule + composition).
+- KEI-67 CONCUR routing (filed; any-available-peer with claim-state visibility).
+
+---
+
 ## Tension Decisions (Ratified 2026-05-01)
 
 | # | Tension | Decision |

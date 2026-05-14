@@ -12,6 +12,7 @@ LLM-only: R9 (semantic, stays in RULES_PROMPT)
 from __future__ import annotations
 
 import re
+from datetime import UTC, datetime
 
 # ---------------------------------------------------------------------------
 # R4 — NO-UNREVIEWED-MAIN-PUSH
@@ -660,4 +661,128 @@ def check_r14(
         ),
         "fire_message": "Idle agents enumerated without dispatch — orchestrator "
         "action gap. [paste message]",
+    }
+
+
+# ---------------------------------------------------------------------------
+# R12 — AUTO-KEI ENFORCER (KEI-18 / Linear KEI-18)
+# ---------------------------------------------------------------------------
+#
+# Per CEO directive ts ~1778665700: any CEO directive posted to #ceo that
+# does not result in a new Linear KEI within 5 minutes triggers a reminder
+# to Elliot to create one. Closes the conversational-directive →
+# tracked-work gap.
+#
+# Detection has two parts:
+#   1. is_directive(text) — pattern match for CEO-directive shape
+#   2. check_r12(directive_ts, now, linear_keis_since_callback) —
+#      fires if 5+ minutes have elapsed and the callback reports no new
+#      Linear KEI created in the window.
+#
+# The polling loop invokes check_r12 against pending directive timestamps
+# captured by is_directive. Stateless detector + stateful timer; same
+# composition pattern as R13 + R14.
+
+# CEO-directive markers — imperative verbs, urgency keywords, action targets.
+# Conservative bias: false-positives on Dave status-questions are
+# acceptable (R12 reminder is non-destructive); false-negatives on real
+# directives are the failure mode this rule closes.
+_R12_DIRECTIVE_PATTERNS: tuple[str, ...] = (
+    r"\b(?:URGENT|IMMEDIATELY|NOW)\b",
+    r"\b(?:build|ship|deliver|ratify|dispatch|raise|execute|merge|self-merge"
+    r"|claim|fix|amend|extend|close|open|push|run|create|file)\b",
+    r"\bdrop\s+everything\b",
+    r"\b(?:should|must)\s+(?:be\s+)?(?:done|shipped|built|fixed|ratified|merged|closed)\b",
+)
+_R12_DIRECTIVE_RE = re.compile("|".join(_R12_DIRECTIVE_PATTERNS), re.IGNORECASE)
+
+# Questions are NEVER directives — trailing '?' on the last sentence excludes.
+_R12_QUESTION_TAIL_RE = re.compile(r"\?\s*$")
+
+# Dave's Slack user ID. Defensive: any callsign starting with U (Slack user
+# ID convention) and matching Dave's specific ID. Falls back to a 'dave'
+# callsign for testing convenience.
+_R12_CEO_USER_ID = "U091TGTPB9U"
+_R12_CEO_CALLSIGN_ALIASES = ("dave", "ceo", _R12_CEO_USER_ID)
+
+# #ceo channel id — channel-gated to the CEO discussion lane only.
+_R12_CEO_CHANNEL_ID = "C0B2PM3TV0B"
+
+# 5-minute response window per Dave verbatim.
+_R12_KEI_CREATE_WINDOW_SECONDS = 300
+
+
+def is_r12_directive(
+    text: str,
+    *,
+    channel: str | None = None,
+    callsign: str | None = None,
+) -> bool:
+    """True if the post is a CEO-directive shape in #ceo from Dave.
+
+    Channel-gated to #ceo; callsign-gated to Dave's user_id / 'dave' /
+    'ceo'. Pattern match: any of URGENT / imperative-verb / 'drop
+    everything' / 'should/must be <action>' AND last sentence is NOT a
+    question. Stateless. Used by the polling loop to stamp directive
+    timestamps; the 5-min timer + Linear scan is in check_r12.
+    """
+    if channel != _R12_CEO_CHANNEL_ID:
+        return False
+    if (callsign or "").lower() not in {a.lower() for a in _R12_CEO_CALLSIGN_ALIASES}:
+        return False
+    if not text.strip():
+        return False
+    if _R12_QUESTION_TAIL_RE.search(text):
+        return False
+    return bool(_R12_DIRECTIVE_RE.search(text))
+
+
+def check_r12(
+    directive_text: str,
+    directive_ts: datetime,
+    *,
+    now: datetime | None = None,
+    linear_keis_since_count: int = 0,
+    channel: str | None = None,
+    callsign: str | None = None,
+) -> dict | None:
+    """R12 — AUTO-KEI ENFORCER.
+
+    Fires when:
+      - directive_text was a CEO directive in #ceo from Dave (is_r12_directive),
+      - 5+ minutes have elapsed since directive_ts,
+      - linear_keis_since_count == 0 (no new KEI created in the window).
+
+    Returns a violation dict for reminder-post-to-#execution, or None on
+    pass / no-op. Caller (polling loop) supplies the Linear count via the
+    callback / argument.
+    """
+    if not is_r12_directive(directive_text, channel=channel, callsign=callsign):
+        return None
+    n = now or datetime.now(UTC)
+    if (n - directive_ts).total_seconds() < _R12_KEI_CREATE_WINDOW_SECONDS:
+        return None
+    if linear_keis_since_count > 0:
+        return None
+    return {
+        "violation": True,
+        "rule_number": 12,
+        "rule_name": "AUTO-KEI-ENFORCER",
+        "detail": "CEO directive posted to #ceo at "
+        f"{directive_ts.isoformat()} without a new Linear KEI created within "
+        f"{_R12_KEI_CREATE_WINDOW_SECONDS // 60} minutes. Conversational "
+        "directives must land in Linear for tracked-work continuity.",
+        "should_have": (
+            "Elliot (or any agent the directive targets) creates a Linear KEI "
+            "within 5 minutes of the #ceo directive — `bd create` + Linear "
+            "sync OR direct Linear GraphQL issueCreate. Use 'orchestration:"
+            "directive_NN' ceo_memory anchor if the directive is governance- "
+            "or rule-level."
+        ),
+        "fire_message": (
+            f"[R12-REMINDER:elliot] CEO directive at {directive_ts.isoformat()} "
+            f"has no Linear KEI after {_R12_KEI_CREATE_WINDOW_SECONDS // 60} "
+            "minutes — create one OR confirm directive is informational-only. "
+            "Excerpt: [paste first 200 chars of directive_text]"
+        ),
     }

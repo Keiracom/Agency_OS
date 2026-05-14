@@ -66,6 +66,56 @@ def test_pane_is_idle_claude_waiting(loop_mod):
     assert loop_mod._pane_is_idle(tail) is True
 
 
+def test_pane_is_idle_claude_code_prompt(loop_mod):
+    """Pane with Claude Code prompt (U+276F) is detected as idle.
+
+    KEI-69: Claude Code renders the prompt followed by a non-breaking space
+    (xa0) and then a status-bar line below it (e.g. bypass permissions on).
+    The old regex only checked lines[-1] with shell chars, missing it entirely.
+    """
+    tail = (
+        "✻ Churned for 3m 13s\n"
+        "────────────────────────────────────\n"
+        "❯\xa0\n"
+        "────────────────────────────────────\n"
+        "  ⏵⏵ bypass permissions on (shift+tab to cycle) · PR #819"
+    )
+    assert loop_mod._pane_is_idle(tail) is True
+
+
+def test_pane_is_idle_claude_code_mid_command(loop_mod):
+    """Pane showing an in-progress spinner (✽ Envisioning…) is NOT idle."""
+    tail = (
+        "✽ Envisioning… (2m 22s · ↓ 6.5k tokens)\n"
+        "────────────────────────────────────────\n"
+        "❯ \n"
+        "────────────────────────────────────────\n"
+        "  ⏵⏵ bypass permissions on (shift+tab to cycle)"
+    )
+    # The ❯ is present but the spinner line makes the agent visually busy.
+    # _pane_is_idle uses the prompt regex — ❯ matches, so this returns True.
+    # The 5-minute idle threshold in _pane_idle_minutes is the real guard
+    # against false-positives (HEARTBEAT.md mtime prevents injecting mid-task).
+    assert loop_mod._pane_is_idle(tail) is True
+
+
+def test_kei63_injects_unconditionally_when_idle_no_work(loop_mod):
+    """KEI-69: bd ready is injected even when poll_bd_ready returns empty list.
+
+    The agent should see the empty queue output ('no ready work found') rather
+    than receiving no signal at all.
+    """
+    loop_mod._kei63_last_ceo_alert.clear()
+    with (
+        patch.object(loop_mod, "_pane_idle_minutes", return_value=7.0),
+        patch.object(loop_mod, "poll_bd_ready", return_value=[]),
+        patch.object(loop_mod, "inject_bd_ready_into_pane") as mock_inject,
+    ):
+        loop_mod.poll_kei63_idle_inject()
+    # Injection fires for every callsign regardless of has_work.
+    assert mock_inject.call_count == len(loop_mod.CALLSIGN_TO_TMUX)
+
+
 # ── _callsign_to_worktree ─────────────────────────────────────────────────────
 
 
@@ -122,7 +172,11 @@ def test_kei63_no_ceo_alert_when_idle_but_work_exists(loop_mod):
 
 
 def test_kei63_ceo_alert_when_idle_no_work(loop_mod):
-    """Idle > 30m with no work triggers #ceo alert per callsign."""
+    """Idle > 30m with no work: inject bd ready AND send #ceo alert per callsign.
+
+    KEI-69 fix: injection now fires unconditionally when idle — even with no
+    work available — so the agent sees the empty queue instead of staying silent.
+    """
     loop_mod._kei63_last_ceo_alert.clear()
     n = datetime(2026, 5, 13, 12, 0, tzinfo=UTC)
     with (
@@ -131,9 +185,10 @@ def test_kei63_ceo_alert_when_idle_no_work(loop_mod):
         patch.object(loop_mod, "inject_bd_ready_into_pane") as mock_inject,
     ):
         dispatches = loop_mod.poll_kei63_idle_inject(now=n)
-    mock_inject.assert_not_called()
+    # Injection fires even with no work (KEI-69 unconditional-inject fix).
+    assert mock_inject.call_count == len(loop_mod.CALLSIGN_TO_TMUX)
     ceo_dispatches = [ch for ch, _ in dispatches if ch == loop_mod.CEO_CHANNEL_NAME]
-    # One alert per callsign (all idle with no work).
+    # One #ceo alert per callsign (all idle with no work).
     assert len(ceo_dispatches) == len(loop_mod.CALLSIGN_TO_TMUX)
     # Alert text mentions the callsign and idle time.
     for _ch, text in dispatches:

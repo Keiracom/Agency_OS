@@ -550,9 +550,7 @@ def poll_orchestrator_idle_agents(now: datetime | None = None) -> list[str]:
         finally:
             await conn.close()
         return [
-            r["callsign"]
-            for r in rows
-            if r["last_activity_at"] and r["last_activity_at"] < cutoff
+            r["callsign"] for r in rows if r["last_activity_at"] and r["last_activity_at"] < cutoff
         ]
 
     try:
@@ -720,22 +718,27 @@ KEI63_COO_ALERT_DEDUP_MINUTES: int = 30
 # Per-process dedup state: {callsign: last_ceo_alert_utc}
 _kei63_last_ceo_alert: dict[str, datetime] = {}
 
-# Pane-prompt patterns — a pane showing only these at the end is "idle at shell".
-_PROMPT_RE = re.compile(r"[\$#>]\s*$", re.MULTILINE)
+# Pane-prompt patterns — a pane showing any of these is "idle at prompt".
+# KEI-69 fix: Claude Code uses ❯ (U+276F) as its prompt, optionally followed
+# by a non-breaking space (\xa0). The status bar (⏵⏵ bypass permissions…)
+# renders BELOW the ❯ line, so we must scan ALL non-blank lines, not just the
+# last one.  Shell prompts ($, #, >) are retained for non-Claude panes.
+_PROMPT_RE = re.compile(r"([\$#>❯][\s\xa0]*$)", re.MULTILINE)
 
 
 def _pane_is_idle(pane_tail: str) -> bool:
-    """Return True if the pane tail ends at a shell prompt (agent waiting for input).
+    """Return True if ANY non-blank line in the pane tail is a shell/Claude prompt.
 
-    Heuristic: strip blank lines from the end; if the last non-blank line ends
-    with a $ / # / > prompt character, the pane is idle. A pane mid-command will
-    not have a trailing prompt in its visible window.
+    Heuristic: Claude Code renders its ❯ prompt followed by a status bar line
+    (e.g. '⏵⏵ bypass permissions on…'), so the last non-blank line is NOT the
+    prompt.  We scan all non-blank lines so both the shell-prompt pattern
+    ($, #, >) and Claude Code's ❯ (U+276F, optionally trailed by \\xa0) are
+    detected wherever they appear in the visible window.
     """
     lines = [l for l in pane_tail.splitlines() if l.strip()]
     if not lines:
         return False
-    last = lines[-1]
-    return bool(_PROMPT_RE.search(last))
+    return any(bool(_PROMPT_RE.search(line)) for line in lines)
 
 
 def _pane_idle_minutes(session: str, now: datetime | None = None) -> float:
@@ -810,7 +813,9 @@ def inject_bd_ready_into_pane(session: str, callsign: str) -> None:
             check=False,
         )
         if proc.returncode != 0:
-            logger.warning("inject_bd_ready tmux rc=%d for %s: %s", proc.returncode, session, proc.stderr[:100])
+            logger.warning(
+                "inject_bd_ready tmux rc=%d for %s: %s", proc.returncode, session, proc.stderr[:100]
+            )
         else:
             logger.info("KEI-63: injected 'bd ready' into %s (%s)", session, callsign)
     except (subprocess.TimeoutExpired, OSError) as exc:
@@ -839,12 +844,20 @@ def poll_kei63_idle_inject(
         if idle_min < KEI63_IDLE_INJECT_MINUTES:
             continue  # not idle enough — skip
 
-        if has_work:
-            inject_bd_ready_into_pane(session, callsign)
-        elif idle_min >= KEI63_IDLE_ESCALATE_MINUTES:
+        # KEI-69 fix: inject bd ready unconditionally when idle.
+        # When bd ready returns nothing ("no ready work"), the agent still
+        # benefits from seeing the empty queue — it confirms there's nothing
+        # to pick up rather than leaving the clone silent.  Gating on has_work
+        # caused clones to receive zero injections whenever all Beads issues
+        # had blocking dependencies (the normal state in our backlog).
+        inject_bd_ready_into_pane(session, callsign)
+        if idle_min >= KEI63_IDLE_ESCALATE_MINUTES and not has_work:
             # Idle > 30 min + no work → #ceo alert (deduped).
             last_alert = _kei63_last_ceo_alert.get(callsign)
-            if last_alert is None or (n - last_alert).total_seconds() / 60 >= KEI63_COO_ALERT_DEDUP_MINUTES:
+            if (
+                last_alert is None
+                or (n - last_alert).total_seconds() / 60 >= KEI63_COO_ALERT_DEDUP_MINUTES
+            ):
                 _kei63_last_ceo_alert[callsign] = n
                 msg = (
                     f"[PROPOSE:elliot] KEI-63 idle-agent escalation: "
@@ -852,7 +865,9 @@ def poll_kei63_idle_inject(
                     f"No bd ready items. Manual triage required."
                 )
                 dispatches.append((CEO_CHANNEL_NAME, msg))
-                logger.info("KEI-63: #ceo escalation for %s idle=%dm no_work", callsign, int(idle_min))
+                logger.info(
+                    "KEI-63: #ceo escalation for %s idle=%dm no_work", callsign, int(idle_min)
+                )
 
     return dispatches
 
@@ -922,7 +937,9 @@ def compose_dispatches(signals: CycleSignals) -> list[tuple[str, str]]:
         # KEI-27: 24h+ stale KEI alert. Dedupe against linear_stale (12h
         # subset) so we don't double-post the same issues to #ceo.
         already_in_linear_stale = {it.get("identifier") for it in signals.linear_stale}
-        kei_extras = [it for it in signals.kei_stale if it.get("identifier") not in already_in_linear_stale]
+        kei_extras = [
+            it for it in signals.kei_stale if it.get("identifier") not in already_in_linear_stale
+        ]
         if kei_extras:
             lines = [
                 f"  - {it.get('identifier', '?')} {it.get('title', '?')} "
@@ -932,8 +949,7 @@ def compose_dispatches(signals: CycleSignals) -> list[tuple[str, str]]:
             msg = (
                 f"[PROPOSE:elliot] KEI silently-died sweep — "
                 f"{len(kei_extras)} issue(s) In Progress > {STALE_KEI_HOURS}h with "
-                f"no commit/comment/status-change:\n"
-                + "\n".join(lines)
+                f"no commit/comment/status-change:\n" + "\n".join(lines)
             )
             dispatches.append((CEO_CHANNEL_NAME, msg))
 
@@ -970,9 +986,7 @@ def compose_dispatches(signals: CycleSignals) -> list[tuple[str, str]]:
 
     if signals.rate_limit_transitions:
         throttled = [
-            (cs, dur, src)
-            for cs, t, dur, src in signals.rate_limit_transitions
-            if t == "throttled"
+            (cs, dur, src) for cs, t, dur, src in signals.rate_limit_transitions if t == "throttled"
         ]
         resumed = [
             (cs, dur) for cs, t, dur, _src in signals.rate_limit_transitions if t == "resumed"
@@ -1005,7 +1019,9 @@ def compose_dispatches(signals: CycleSignals) -> list[tuple[str, str]]:
     return dispatches
 
 
-def _orchestrator_discipline_check(signals: CycleSignals, dispatches: list[tuple[str, str]]) -> None:
+def _orchestrator_discipline_check(
+    signals: CycleSignals, dispatches: list[tuple[str, str]]
+) -> None:
     """KEI-34 component 1: surface orchestrator-discipline gap to #ceo when
     bd_ready has unblocked items AND any agent is idle ≥1 cycle AND
     compose_dispatches did NOT pair every idle agent (or no dispatch fired).

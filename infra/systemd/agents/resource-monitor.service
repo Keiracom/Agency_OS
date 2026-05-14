@@ -1,0 +1,20 @@
+[Unit]
+Description=Agency OS resource monitor (KEI-56: cgroup + RAM → audit_logs)
+Documentation=https://linear.app/keiracom/issue/KEI-56
+After=network-online.target
+Wants=network-online.target
+StartLimitBurst=5
+StartLimitIntervalSec=300
+
+[Service]
+Type=simple
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+EnvironmentFile=-/home/elliotbot/.config/agency-os/.env
+ExecStart=/home/elliotbot/clawd/venv/bin/python3 /home/elliotbot/clawd/Agency_OS/scripts/orchestrator/resource_monitor.py
+Restart=on-failure
+RestartSec=30
+StandardOutput=append:/home/elliotbot/clawd/logs/resource-monitor.log
+StandardError=append:/home/elliotbot/clawd/logs/resource-monitor.log
+
+[Install]
+WantedBy=default.target

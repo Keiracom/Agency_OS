@@ -32,26 +32,20 @@ def mod():
 
 
 # KEI-54 Phase A amend: shared psycopg mocks live in _db_mocks.py per
-# Sonar new_duplicated_lines_density. _Cursor/_Conn renamed to FakeCursor/
-# FakeConn — public names exposed across all tests/scripts test modules.
+# Sonar new_duplicated_lines_density. _Cursor renamed to FakeCursor; the
+# patch_connect builder lives in _db_mocks.make_patch_connect (KEI-61
+# extraction) so both this file and test_indexing_queue_worker.py share
+# one source of truth.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _db_mocks import FakeConn, FakeCursor  # type: ignore[import-not-found]  # noqa: E402
+from _db_mocks import FakeCursor, make_patch_connect  # type: ignore[import-not-found]  # noqa: E402
 
 _Cursor = FakeCursor  # legacy alias; existing test bodies still use _Cursor
 
 
 @pytest.fixture
 def patch_connect(mod, monkeypatch):
-    """Return a builder that installs a fake psycopg.connect returning FakeConn(cur)."""
-    monkeypatch.setenv("DATABASE_URL", "postgresql://test/x")
-
-    def _patch(cur: FakeCursor):
-        import psycopg
-
-        monkeypatch.setattr(psycopg, "connect", lambda *a, **kw: FakeConn(cur))
-        return cur
-
-    return _patch
+    """Return a builder that installs a fake psycopg.connect (via _db_mocks)."""
+    return make_patch_connect(monkeypatch)
 
 
 # ─── DSN + callsign helpers ─────────────────────────────────────────────────

@@ -30,15 +30,54 @@ jobs:
           git fetch origin "$BASE_REF" --depth=1
           main_hash=$(git show "origin/$BASE_REF":CLAUDE.md | md5sum | awk '{print $1}')
           head_hash=$(md5sum CLAUDE.md | awk '{print $1}')
-          if [ "$main_hash" != "$head_hash" ]; then
-            echo "::error::CLAUDE.md hash diverged from origin/$BASE_REF"
-            echo "  main:  $main_hash"
-            echo "  HEAD:  $head_hash"
-            echo ""
-            echo "KEI-12 / Item #1 convention: CLAUDE.md is kept duplicated"
-            echo "across worktrees + on main. Per-worktree edits must NOT change"
-            echo "CLAUDE.md. Edit the source/template upstream + sync all worktrees"
-            echo "in a coordinated PR. See docs/wave2/symlink_governance_audit.md."
-            exit 1
+
+          if [ "$main_hash" = "$head_hash" ]; then
+            echo "CLAUDE.md hash matches origin/$BASE_REF — equality preserved."
+            exit 0
           fi
-          echo "CLAUDE.md hash matches origin/$BASE_REF — equality preserved."
+
+          # Hash diverged — check for authorised exemptions (Option C, Dave ratify ts ~1778720000).
+          #
+          # Exemption 1: PR adds at least one new @.claude/modules/_*.md include line.
+          #   Rationale: pairing a CLAUDE.md edit with a new module include is the
+          #   natural governance-extension pattern; it is self-documenting.
+          #
+          # Exemption 2: PR title OR any commit on this branch starts with
+          #   [CALLSIGN] feat(governance): or [CALLSIGN] feat(kei<N>):
+          #   Rationale: explicit CEO directive trace in the commit/title signals
+          #   an authorised governance change.
+
+          # Exemption 1 — new @include line added to CLAUDE.md
+          diff_added_modules=$(git diff "origin/${BASE_REF}...HEAD" -- CLAUDE.md \
+            | grep -cE '^\+@\.claude/modules/_[a-z_]+\.md$' || true)
+          if [ "${diff_added_modules}" -gt 0 ]; then
+            echo "::notice::CLAUDE.md hash diverged but exemption applied — paired with ${diff_added_modules} new @.claude/modules/ include(s)."
+            exit 0
+          fi
+
+          # Exemption 2 — governance-tagged PR title
+          pr_title="${{ github.event.pull_request.title }}"
+          if echo "${pr_title}" | grep -qE '\[(ELLIOT|AIDEN|MAX|ATLAS|ORION|SCOUT)\] feat\((governance|kei[0-9]+)\)'; then
+            echo "::notice::CLAUDE.md hash diverged but exemption applied — PR title is governance-tagged: ${pr_title}"
+            exit 0
+          fi
+
+          # Exemption 2 — governance-tagged commit message on this branch
+          if git log --pretty=%s "origin/${BASE_REF}..HEAD" \
+               | grep -qE '\[(ELLIOT|AIDEN|MAX|ATLAS|ORION|SCOUT)\] feat\((governance|kei[0-9]+)\)'; then
+            echo "::notice::CLAUDE.md hash diverged but exemption applied — commit message is governance-tagged."
+            exit 0
+          fi
+
+          # No exemption matched — fail as before.
+          echo "::error::CLAUDE.md hash diverged from origin/${BASE_REF} without exemption"
+          echo "  main:  ${main_hash}"
+          echo "  HEAD:  ${head_hash}"
+          echo ""
+          echo "KEI-12 / Item #1 convention: CLAUDE.md is kept duplicated"
+          echo "across worktrees + on main. To change CLAUDE.md legitimately:"
+          echo "  (a) pair with a new @.claude/modules/_*.md include line, OR"
+          echo "  (b) tag the PR title/commits as [CALLSIGN] feat(governance): or feat(kei<N>):"
+          echo "Either exemption signals an authorised governance change."
+          echo "See docs/wave2/symlink_governance_audit.md."
+          exit 1

@@ -370,23 +370,29 @@ _CLONE_CALLSIGNS: frozenset[str] = frozenset({"atlas", "orion", "scout"})
 # requirement but may miss legitimate Step 0s separated by peer chatter.
 # 5 is Elliot's directive value.
 _STEP0_INBOX_SCAN_DEPTH = 5
+# Inbox base dir, env-overridable for tests. Defaults to /tmp which is the
+# canonical relay-listener location on the host. NOSONAR S5443 — /tmp is the
+# documented runtime location for the per-callsign relay inbox; tests
+# override via AGENCY_OS_RELAY_INBOX_BASE.
+_RELAY_INBOX_BASE = os.environ.get("AGENCY_OS_RELAY_INBOX_BASE", "/tmp")  # NOSONAR
 
 
 def _has_recent_step0_restate(callsign: str) -> bool:
     """KEI-72: True if a [STEP-0-RESTATE:<callsign>] marker appears in any of
     the last `_STEP0_INBOX_SCAN_DEPTH` processed inbox messages.
 
-    Scans `/tmp/telegram-relay-<callsign>/processed/`. Messages there are
-    JSON dicts with at least a `text` field; the relay listener moves files
-    here once they're consumed. The agent's own Step-0-RESTATE outbound
-    (posted via tg) is echoed back through the central listener into the
-    same inbox, so this scan covers self-emitted markers.
+    Scans `<_RELAY_INBOX_BASE>/telegram-relay-<callsign>/processed/`.
+    Messages there are JSON dicts with at least a `text` field; the relay
+    listener moves files here once they're consumed. The agent's own
+    Step-0-RESTATE outbound (posted via tg) is echoed back through the
+    central listener into the same inbox, so this scan covers self-emitted
+    markers.
 
     Returns False (and skips the auto-claim) when the marker isn't found —
     fail-fast at the validation layer. Closes the gap left by KEI-71 (which
     only handled the env-unset path).
     """
-    inbox_processed = Path(f"/tmp/telegram-relay-{callsign.lower()}/processed")
+    inbox_processed = Path(_RELAY_INBOX_BASE) / f"telegram-relay-{callsign.lower()}" / "processed"
     if not inbox_processed.is_dir():
         return False
     needle = f"[STEP-0-RESTATE:{callsign.upper()}]"

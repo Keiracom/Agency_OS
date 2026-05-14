@@ -42,16 +42,46 @@ def test_resolve_filters_by_callsign(captured_sb_get):
     assert captured_sb_get["params"]["callsign"] == "eq.max"
 
 
-def test_resolve_excludes_non_active_status(captured_sb_get):
+def test_resolve_accepts_active_and_closed_clean_status(captured_sb_get):
+    """KEI-65 — resolver must include closed_clean rows so planned tmux kills
+    preserve the session_uuid for `claude --resume`. 'stuck' and 'closed' are
+    still excluded by the in.() enumeration."""
     resolver.resolve_session_uuid("elliot")
-    # Resolver must explicitly bound to active so stuck/closed sessions are skipped.
-    assert captured_sb_get["params"]["status"] == "eq.active"
+    assert captured_sb_get["params"]["status"] == "in.(active,closed_clean)"
 
 
-def test_resolve_excludes_ended_and_deleted_rows(captured_sb_get):
+def test_resolve_resumable_statuses_constant_matches_filter(captured_sb_get):
+    """RESUMABLE_STATUSES is the single source of truth for the in.() filter."""
+    resolver.resolve_session_uuid("max")
+    expected = f"in.({','.join(resolver.RESUMABLE_STATUSES)})"
+    assert captured_sb_get["params"]["status"] == expected
+    assert resolver.RESUMABLE_STATUSES == ("active", "closed_clean")
+
+
+def test_resolve_excludes_deleted_rows(captured_sb_get):
+    """deleted_at filter must remain — soft-deleted rows are never resumable."""
     resolver.resolve_session_uuid("scout")
-    assert captured_sb_get["params"]["ended_at"] == "is.null"
     assert captured_sb_get["params"]["deleted_at"] == "is.null"
+
+
+def test_resolve_does_not_filter_on_ended_at(captured_sb_get):
+    """KEI-65 — closed_clean rows have ended_at set by record_session_end.
+    Filtering ended_at=is.null would exclude them. The status filter alone
+    is the resumability gate."""
+    resolver.resolve_session_uuid("orion")
+    assert "ended_at" not in captured_sb_get["params"]
+
+
+def test_resolve_returns_uuid_for_closed_clean_row(captured_sb_get):
+    """KEI-65 acceptance criterion — resolver returns the session_uuid for
+    a row that the Stop hook closed with status=closed_clean."""
+    uid = str(uuid4())
+    captured_sb_get["response"] = [{"session_uuid": uid}]
+    # The mock captures whatever params the resolver sends; the response is
+    # what Supabase would return for those params. We assert the resolver
+    # surfaces the UUID rather than dropping it.
+    assert resolver.resolve_session_uuid("max") == uid
+    assert "closed_clean" in captured_sb_get["params"]["status"]
 
 
 def test_resolve_requires_session_uuid_present(captured_sb_get):

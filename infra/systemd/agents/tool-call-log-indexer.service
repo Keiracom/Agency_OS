@@ -1,0 +1,21 @@
+[Unit]
+Description=Agency OS — Tool call log indexer (KEI-54B Stage B)
+Documentation=https://linear.app/keiracom/issue/KEI-54
+After=network-online.target weaviate.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+EnvironmentFile=-/home/elliotbot/.config/agency-os/.env
+ExecStart=/home/elliotbot/clawd/Agency_OS/.venv/bin/python3 /home/elliotbot/clawd/Agency_OS/scripts/orchestrator/tool_call_log_indexer.py
+Restart=on-failure
+RestartSec=15
+StandardOutput=append:/home/elliotbot/clawd/logs/tool-call-log-indexer.log
+StandardError=append:/home/elliotbot/clawd/logs/tool-call-log-indexer.log
+# Same memory ceiling as Scout's KEI-61 indexing_queue worker — small worker footprint.
+MemoryMax=512M
+MemoryHigh=400M
+
+[Install]
+WantedBy=default.target

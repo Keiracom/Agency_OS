@@ -200,9 +200,14 @@ def test_ready_agent_lowercases_callsign(mod, patch_connect) -> None:
     assert cur.last_params[0] == "elliot"
 
 
-def test_ready_agent_emits_personalised_score_in_json(mod, patch_connect, capsys) -> None:
-    """JSON output preserves existing keys + adds personalised_score per Max note #3."""
-    cur = _Cursor(
+def _personalised_cursor(score: float = 1.7) -> _Cursor:
+    """Factory: _Cursor mocking the personalised ready SQL response.
+
+    Single source of truth for the 12-column tuple + description used by
+    --agent path tests. Extracted to avoid Sonar new_duplicated_lines_density
+    flagging the inline cursor construction across multiple tests.
+    """
+    return _Cursor(
         fetchall_rows=[
             (
                 "KEI-63",
@@ -216,7 +221,7 @@ def test_ready_agent_emits_personalised_score_in_json(mod, patch_connect, capsys
                 "url",
                 None,
                 None,
-                1.7,
+                score,
             ),
         ],
         description=[
@@ -234,6 +239,11 @@ def test_ready_agent_emits_personalised_score_in_json(mod, patch_connect, capsys
             ("personalised_score",),
         ],
     )
+
+
+def test_ready_agent_emits_personalised_score_in_json(mod, patch_connect, capsys) -> None:
+    """JSON output preserves existing keys + adds personalised_score per Max note #3."""
+    cur = _personalised_cursor()
     patch_connect(cur)
     rc = mod.main(["ready", "--agent", "elliot", "--json"])
     assert rc == 0
@@ -243,8 +253,7 @@ def test_ready_agent_emits_personalised_score_in_json(mod, patch_connect, capsys
     assert data[0]["id"] == "KEI-63"
     assert data[0]["title"] == "deprecation"
     assert data[0]["priority"] == 1
-    # New key added.
-    # pytest.approx avoids Sonar S1244 float-equality finding
+    # pytest.approx avoids Sonar S1244 float-equality
     # (per reference_sonarcloud_verify_pattern.md anchored 2026-05-13).
     assert data[0]["personalised_score"] == pytest.approx(1.7)
 
@@ -269,38 +278,7 @@ def test_ready_agent_empty_string_falls_back_to_default(mod, patch_connect) -> N
 
 def test_ready_agent_human_output_includes_score_marker(mod, patch_connect, capsys) -> None:
     """Non-JSON human output for --agent shows [score=X.XX] suffix + personalised banner."""
-    cur = _Cursor(
-        fetchall_rows=[
-            (
-                "KEI-63",
-                "deprecation",
-                1,
-                "available",
-                None,
-                None,
-                None,
-                ["python", "governance"],
-                "url",
-                None,
-                None,
-                1.7,
-            ),
-        ],
-        description=[
-            ("id",),
-            ("title",),
-            ("priority",),
-            ("status",),
-            ("claimed_by",),
-            ("claimed_at",),
-            ("dependencies",),
-            ("tags",),
-            ("linear_url",),
-            ("created_at",),
-            ("updated_at",),
-            ("personalised_score",),
-        ],
-    )
+    cur = _personalised_cursor()
     patch_connect(cur)
     mod.main(["ready", "--agent", "elliot"])
     out = capsys.readouterr().out

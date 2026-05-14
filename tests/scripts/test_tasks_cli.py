@@ -244,7 +244,9 @@ def test_ready_agent_emits_personalised_score_in_json(mod, patch_connect, capsys
     assert data[0]["title"] == "deprecation"
     assert data[0]["priority"] == 1
     # New key added.
-    assert data[0]["personalised_score"] == 1.7
+    # pytest.approx avoids Sonar S1244 float-equality finding
+    # (per reference_sonarcloud_verify_pattern.md anchored 2026-05-13).
+    assert data[0]["personalised_score"] == pytest.approx(1.7)
 
 
 def test_ready_without_agent_uses_unpersonalised_sql(mod, patch_connect) -> None:

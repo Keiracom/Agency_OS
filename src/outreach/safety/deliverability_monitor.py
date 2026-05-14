@@ -199,7 +199,7 @@ class DeliverabilityMonitor:
 
 
 def default_emitter():
-    """Lazy-import to avoid pulling httpx into unit tests that don't use Telegram."""
-    from src.outreach.safety.alert_emitter import TelegramAlertEmitter
+    """Lazy-import to avoid pulling subprocess into unit tests that don't use alerting."""
+    from src.outreach.safety.alert_emitter import SlackAlertEmitter
 
-    return TelegramAlertEmitter()
+    return SlackAlertEmitter()

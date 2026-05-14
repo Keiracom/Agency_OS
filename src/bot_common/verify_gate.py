@@ -1,7 +1,7 @@
 """verify_gate.py — outbound verification gate for completion claims (S1).
 
 Catches fabricated PR numbers and commit hashes in outbound messages BEFORE
-posting to Slack / Telegram. Deterministic, no LLM.
+posting to Slack. Deterministic, no LLM.
 
 Trigger: message contains completion-pattern phrase (shipped/merged/landed/etc.)
 AND references a PR number or commit hash.

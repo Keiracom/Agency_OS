@@ -149,24 +149,27 @@ STAGE8_WATERFALL_COST = 0.015  # scraper ($0.004) + ContactOut (~$0.011)
 STAGE9_COST_PER_DOMAIN = 0.027  # BD LinkedIn DM ($0.002) + company ($0.025)
 
 # ---------------------------------------------------------------------------
-# Telegram helper
+# Slack progress helper (formerly Telegram — KEI-41 Phase 3)
 # ---------------------------------------------------------------------------
 
 
 def _tg(msg: str) -> None:
-    token = env.get("TELEGRAM_TOKEN", "")
-    if not token:
-        return
-    try:
-        import httpx
+    """Send a progress notification to #alerts via slack_relay.py.
 
-        httpx.post(
-            f"https://api.telegram.org/bot{token}/sendMessage",
-            json={"chat_id": "7267788033", "text": f"[EVO] {msg}"},
-            timeout=10,
+    Function name retained for call-site compatibility.
+    Formerly sent to Telegram API — removed in KEI-41 Phase 3.
+    """
+    import contextlib
+    import subprocess
+    from pathlib import Path
+
+    relay = Path(__file__).resolve().parents[2] / "scripts" / "slack_relay.py"
+    with contextlib.suppress(Exception):
+        subprocess.run(
+            ["python3", str(relay), "-c", "alerts", f"[EVO] {msg}"],
+            check=False,
+            timeout=15,
         )
-    except Exception as exc:
-        logger.warning("TG progress notif failed: %s", exc)
 
 
 def _tg_progress(stage_label: str, pipeline: list[dict], cost_so_far: float) -> None:

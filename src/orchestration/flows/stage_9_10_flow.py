@@ -10,7 +10,7 @@ Inputs: BDM IDs (explicit list) OR top-N by propensity with dedup
 Outputs: dm_messages rows with status='draft'
 Budget: hard cap per run (default $5 USD)
 Concurrency: anthropic=12, contactout=15
-Alerting: Telegram on failure
+Alerting: Slack on failure
 """
 
 from __future__ import annotations

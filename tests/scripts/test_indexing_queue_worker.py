@@ -47,31 +47,13 @@ def patch_connect(mod, monkeypatch):
 
 
 # ─── env helpers ───────────────────────────────────────────────────────────────
-
-
-def test_dsn_prefers_database_url(mod, monkeypatch) -> None:
-    monkeypatch.setenv("DATABASE_URL", "postgresql://primary/x")
-    monkeypatch.setenv("SUPABASE_DB_URL", "postgresql://fallback/x")
-    assert mod._dsn() == "postgresql://primary/x"
-
-
-def test_dsn_falls_back_to_supabase_db_url(mod, monkeypatch) -> None:
-    monkeypatch.delenv("DATABASE_URL", raising=False)
-    monkeypatch.setenv("SUPABASE_DB_URL", "postgresql://fallback/x")
-    assert mod._dsn() == "postgresql://fallback/x"
-
-
-def test_dsn_rewrites_asyncpg_driver(mod, monkeypatch) -> None:
-    monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://x")
-    monkeypatch.delenv("SUPABASE_DB_URL", raising=False)
-    assert mod._dsn() == "postgresql://x"
-
-
-def test_dsn_missing_raises(mod, monkeypatch) -> None:
-    monkeypatch.delenv("DATABASE_URL", raising=False)
-    monkeypatch.delenv("SUPABASE_DB_URL", raising=False)
-    with pytest.raises(SystemExit):
-        mod._dsn()
+# Note: the worker's `_dsn` is a literal copy of `scripts/tasks_cli.py._dsn`
+# (KEI-22). The 4 DSN-env tests covering DATABASE_URL precedence /
+# SUPABASE_DB_URL fallback / postgresql+asyncpg rewrite / missing-raises
+# live in tests/scripts/test_tasks_cli.py and exercise the identical shape.
+# When the two _dsn functions are extracted into a shared util (follow-up
+# KEI), the canonical tests live there. Not duplicating here keeps Sonar
+# new_duplicated_lines_density under 3%.
 
 
 def test_processor_id_env_override(mod, monkeypatch) -> None:

@@ -535,16 +535,20 @@ def test_running_model_fallback_when_unset(alert, monkeypatch):
     assert "tmux" in alert._running_model()
 
 
-def test_main_auto_populates_model_fields(alert, monkeypatch, tmp_path):
-    """KEI-36 follow-up integration: main() fills Model fields from callsign + env."""
+def _setup_main_mocks(monkeypatch, alert, tmp_path, post_to_slack):
+    """KEI-36 follow-up: shared monkeypatch setup for main() integration tests.
+
+    Sets CALLSIGN=aiden, writes _TEMPLATE_SAMPLE to a temp HEARTBEAT.md,
+    and stubs git/bd/IO helpers with deterministic values. Caller passes
+    its own post_to_slack callable so tests can assert/intercept posts.
+    Returns the path of the temp HEARTBEAT.md so callers can read it back.
+    """
     monkeypatch.setenv("CALLSIGN", "aiden")
-    monkeypatch.setenv("CLAUDE_MODEL", "claude-opus-4-7")
     monkeypatch.chdir(tmp_path)
     hb = tmp_path / "HEARTBEAT.md"
     hb.write_text(_TEMPLATE_SAMPLE)
     monkeypatch.setattr(alert, "HEARTBEAT_PATH", hb)
-
-    monkeypatch.setattr(alert, "post_to_slack", lambda *a, **k: True)
+    monkeypatch.setattr(alert, "post_to_slack", post_to_slack)
     monkeypatch.setattr(alert, "read_hook_input", lambda: {"trigger": "auto"})
     monkeypatch.setattr(
         alert,
@@ -556,6 +560,13 @@ def test_main_auto_populates_model_fields(alert, monkeypatch, tmp_path):
     monkeypatch.setattr(alert, "_git_files_touched", lambda b: "a.py")
     monkeypatch.setattr(alert, "_bd_ready_first", lambda: "KEI-99: do X")
     monkeypatch.setattr(alert, "_bd_blocked_list", lambda: "none")
+    return hb
+
+
+def test_main_auto_populates_model_fields(alert, monkeypatch, tmp_path):
+    """KEI-36 follow-up integration: main() fills Model fields from callsign + env."""
+    monkeypatch.setenv("CLAUDE_MODEL", "claude-opus-4-7")
+    hb = _setup_main_mocks(monkeypatch, alert, tmp_path, lambda *a, **k: True)
 
     assert alert.main() == 0
     updated = hb.read_text()
@@ -569,30 +580,14 @@ def test_main_auto_populates_and_no_warning_when_all_mechanical_filled(
 ):
     """KEI-36 follow-up: when all mechanical fields fill (Phase/Goal are agent-fill
     and now excluded from the detector), [HEARTBEAT-INCOMPLETE] does NOT fire."""
-    monkeypatch.setenv("CALLSIGN", "aiden")
     monkeypatch.delenv("CLAUDE_MODEL", raising=False)  # exercise fallback string
-    monkeypatch.chdir(tmp_path)
-    hb = tmp_path / "HEARTBEAT.md"
-    hb.write_text(_TEMPLATE_SAMPLE)
-    monkeypatch.setattr(alert, "HEARTBEAT_PATH", hb)
-
     posts: list = []
-    monkeypatch.setattr(
-        alert,
-        "post_to_slack",
-        lambda text, channel=alert.EXECUTION_CHANNEL: posts.append((text, channel)) or True,
-    )
-    monkeypatch.setattr(alert, "read_hook_input", lambda: {"trigger": "auto"})
-    monkeypatch.setattr(
-        alert,
-        "git_context",
-        lambda: {"branch": "aiden/kei36-x", "log": "abc x", "dirty": False, "porcelain": ""},
-    )
-    monkeypatch.setattr(alert, "_git_short_sha", lambda: "abc1234")
-    monkeypatch.setattr(alert, "_git_commit_subject", lambda: "fix: thing")
-    monkeypatch.setattr(alert, "_git_files_touched", lambda b: "a.py")
-    monkeypatch.setattr(alert, "_bd_ready_first", lambda: "KEI-99: do X")
-    monkeypatch.setattr(alert, "_bd_blocked_list", lambda: "none")
+
+    def capture(text, channel=alert.EXECUTION_CHANNEL):
+        posts.append((text, channel))
+        return True
+
+    hb = _setup_main_mocks(monkeypatch, alert, tmp_path, capture)
 
     assert alert.main() == 0
     updated = hb.read_text()

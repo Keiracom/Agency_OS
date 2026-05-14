@@ -691,6 +691,172 @@ def poll_rate_limited_agents(
     return transitions
 
 
+# KEI-63 — idle-injection via tmux pane activity ────────────────────────────
+#
+# Two-tier approach per Dave verbatim spec ts ~1778728600:
+#   Tier 1 (completion hook): bd_complete_hook.sh fires at `bd close` time.
+#   Tier 2 (fallback poller): this polling loop injects `bd ready` every cycle
+#     when a pane has been idle > KEI63_IDLE_INJECT_MINUTES AND bd ready has work.
+#
+# Idle detection: pane content is captured via `tmux capture-pane -p -t session:0`.
+# Freshness is inferred by the presence of an active prompt character ($ / >) in
+# the last non-blank line of the pane. A pane showing a shell prompt without an
+# in-progress command is considered idle. A pane running a command (no trailing
+# prompt in the visible window) is considered busy.
+#
+# The poller injects `bd ready` (the display command) rather than `bd claim`
+# directly — the agent reads the list and decides which to claim, preserving
+# agent autonomy and KEI-22 SKIP LOCKED atomicity on claim.
+#
+# The 30-minute / no-work escalation path:
+#   If idle > KEI63_IDLE_ESCALATE_MINUTES AND bd ready returns 0 items,
+#   post a #ceo alert. Deduped via _kei63_last_ceo_alert dict to avoid spam.
+
+KEI63_IDLE_INJECT_MINUTES: int = 5
+KEI63_IDLE_ESCALATE_MINUTES: int = 30
+# Minimum minutes between repeated #ceo escalations for the same callsign.
+KEI63_COO_ALERT_DEDUP_MINUTES: int = 30
+
+# Per-process dedup state: {callsign: last_ceo_alert_utc}
+_kei63_last_ceo_alert: dict[str, datetime] = {}
+
+# Pane-prompt patterns — a pane showing only these at the end is "idle at shell".
+_PROMPT_RE = re.compile(r"[\$#>]\s*$", re.MULTILINE)
+
+
+def _pane_is_idle(pane_tail: str) -> bool:
+    """Return True if the pane tail ends at a shell prompt (agent waiting for input).
+
+    Heuristic: strip blank lines from the end; if the last non-blank line ends
+    with a $ / # / > prompt character, the pane is idle. A pane mid-command will
+    not have a trailing prompt in its visible window.
+    """
+    lines = [l for l in pane_tail.splitlines() if l.strip()]
+    if not lines:
+        return False
+    last = lines[-1]
+    return bool(_PROMPT_RE.search(last))
+
+
+def _pane_idle_minutes(session: str, now: datetime | None = None) -> float:
+    """Estimate idle duration from the pane.
+
+    Strategy: capture the pane with timestamps (-e flag). Parse the oldest
+    timestamp visible in the pane tail. If capture-pane -e is unavailable or
+    the session is missing, fall back to mtime of the HEARTBEAT.md file in the
+    callsign's worktree (the KEI-45 design pattern: lower-latency freshness
+    signal than DB).
+
+    Returns idle minutes as float; returns 0.0 if the agent appears busy.
+    """
+    n = now or datetime.now(UTC)
+    tail = _capture_pane_tail(session, lines=20)
+    if not tail:
+        return 0.0  # session absent — not idle (conservative)
+    if not _pane_is_idle(tail):
+        return 0.0  # pane shows an in-progress command — not idle
+    # We can't easily parse a timestamp from the raw pane. Use the HEARTBEAT.md
+    # mtime as the freshness proxy (KEI-45 pattern, already relied on by the
+    # existing idle-agent detection path in poll_idle_agents).
+    # Map session name → callsign to find worktree.
+    session_to_callsign = {v: k for k, v in CALLSIGN_TO_TMUX.items()}
+    callsign = session_to_callsign.get(session, "")
+    worktree = _callsign_to_worktree(callsign)
+    hb_path = Path(worktree) / "HEARTBEAT.md" if worktree else None
+    if hb_path and hb_path.exists():
+        try:
+            mtime_ts = hb_path.stat().st_mtime
+            age_seconds = (n - datetime.fromtimestamp(mtime_ts, tz=UTC)).total_seconds()
+            return max(0.0, age_seconds / 60.0)
+        except OSError:
+            pass
+    # No HEARTBEAT.md — return a conservative 0 (don't false-positive idle).
+    return 0.0
+
+
+def _callsign_to_worktree(callsign: str) -> str:
+    """Return the canonical worktree path for a callsign.
+
+    Source-of-truth: the auto_session_recovery.py WORKTREES dict.
+    Hardcoded fallback so this module stays self-contained.
+    """
+    _WORKTREES: dict[str, str] = {
+        "elliot": "/home/elliotbot/clawd/Agency_OS",
+        "aiden": "/home/elliotbot/clawd/Agency_OS-aiden",
+        "max": "/home/elliotbot/clawd/Agency_OS-max",
+        "atlas": "/home/elliotbot/clawd/Agency_OS-atlas",
+        "orion": "/home/elliotbot/clawd/Agency_OS-orion",
+        "scout": "/home/elliotbot/clawd/Agency_OS-scout",
+    }
+    return _WORKTREES.get(callsign.lower(), "")
+
+
+def inject_bd_ready_into_pane(session: str, callsign: str) -> None:
+    """Inject `bd ready` into a tmux pane so the agent sees the next-task queue.
+
+    Uses `tmux send-keys` — same pattern as relay_watcher.sh. The agent reads
+    the list and claims their next task. We inject the display command, not a
+    direct claim, to preserve agent autonomy and KEI-22 atomicity.
+
+    Best-effort: any failure logs and returns — never raises.
+    """
+    try:
+        # S603: controlled args, no shell, no user input — internal tmux command only
+        proc = subprocess.run(  # noqa: S603
+            ["tmux", "send-keys", "-t", f"{session}:0", "bd ready", "Enter"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+        if proc.returncode != 0:
+            logger.warning("inject_bd_ready tmux rc=%d for %s: %s", proc.returncode, session, proc.stderr[:100])
+        else:
+            logger.info("KEI-63: injected 'bd ready' into %s (%s)", session, callsign)
+    except (subprocess.TimeoutExpired, OSError) as exc:
+        logger.warning("inject_bd_ready send-keys failed for %s: %s", session, exc)
+
+
+def poll_kei63_idle_inject(
+    now: datetime | None = None,
+) -> list[tuple[str, str]]:
+    """KEI-63 fallback poller: check each agent's pane; inject `bd ready` if idle.
+
+    Returns list of (channel, message) tuples for #ceo escalation when an
+    agent is idle > KEI63_IDLE_ESCALATE_MINUTES with zero available work.
+    Side-effect: calls inject_bd_ready_into_pane for idle agents with work.
+
+    Dedup: injections are best-effort every cycle; #ceo escalations are deduped
+    via _kei63_last_ceo_alert (KEI63_COO_ALERT_DEDUP_MINUTES per callsign).
+    """
+    n = now or datetime.now(UTC)
+    ready_issues = poll_bd_ready()
+    has_work = len(ready_issues) > 0
+    dispatches: list[tuple[str, str]] = []
+
+    for callsign, session in CALLSIGN_TO_TMUX.items():
+        idle_min = _pane_idle_minutes(session, n)
+        if idle_min < KEI63_IDLE_INJECT_MINUTES:
+            continue  # not idle enough — skip
+
+        if has_work:
+            inject_bd_ready_into_pane(session, callsign)
+        elif idle_min >= KEI63_IDLE_ESCALATE_MINUTES:
+            # Idle > 30 min + no work → #ceo alert (deduped).
+            last_alert = _kei63_last_ceo_alert.get(callsign)
+            if last_alert is None or (n - last_alert).total_seconds() / 60 >= KEI63_COO_ALERT_DEDUP_MINUTES:
+                _kei63_last_ceo_alert[callsign] = n
+                msg = (
+                    f"[PROPOSE:elliot] KEI-63 idle-agent escalation: "
+                    f"{callsign} idle ≥{int(idle_min)}m with ZERO unblocked work. "
+                    f"No bd ready items. Manual triage required."
+                )
+                dispatches.append((CEO_CHANNEL_NAME, msg))
+                logger.info("KEI-63: #ceo escalation for %s idle=%dm no_work", callsign, int(idle_min))
+
+    return dispatches
+
+
 # Aggregator + dispatcher ────────────────────────────────────────────────────
 
 
@@ -974,7 +1140,13 @@ def run_cycle(now: datetime | None = None) -> int:
         _emit_dispatch_outcome_heartbeat([], None, no_work=True)
         return 0
     signals = collect_signals(now)
-    if signals.is_silent():
+
+    # KEI-63 fallback poller: runs every cycle (including silent cycles) so
+    # idle agents get `bd ready` injected even when no other signal fires.
+    # Returns #ceo escalation tuples for idle+no-work cases.
+    kei63_dispatches = poll_kei63_idle_inject(now)
+
+    if signals.is_silent() and not kei63_dispatches:
         logger.info(
             "no signals this cycle (bd_ready=%d, linear_stale=%d, idle=%d, prefect=%d)",
             len(signals.bd_ready),
@@ -985,6 +1157,7 @@ def run_cycle(now: datetime | None = None) -> int:
         _emit_dispatch_outcome_heartbeat([], signals, no_work=True)
         return 0
     dispatches = compose_dispatches(signals)
+    dispatches.extend(kei63_dispatches)
     for channel, text in dispatches:
         send_dispatch(channel, text)
     _emit_dispatch_outcome_heartbeat(dispatches, signals, no_work=False)

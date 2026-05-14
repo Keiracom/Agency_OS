@@ -1,0 +1,10 @@
+[Unit]
+Description=KEI-35 Auto Session Recovery Timer (every 60s — dead-tmux detection + restart)
+
+[Timer]
+OnBootSec=120
+OnUnitActiveSec=60
+AccuracySec=5
+
+[Install]
+WantedBy=timers.target

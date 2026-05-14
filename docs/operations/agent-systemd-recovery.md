@@ -111,6 +111,75 @@ Operator runbook + unit files are checked into the repo so:
   `scripts/orchestrator/elliot_polling_loop.py` changes without these files
   changing in lockstep.
 
+---
+
+## KEI-63 — Idle-agent auto-dispatch (bd completion hook + OpenClaw idle fallback)
+
+**Linear:** [KEI-66](https://linear.app/keiracom/issue/KEI-66)
+**bd:** Agency_OS-3nri4k
+
+### What ships
+
+Two small extensions to existing infrastructure that eliminate idle gaps:
+
+**1. Completion hook — `scripts/orchestrator/bd_complete_hook.sh`**
+
+Agents call this instead of `bd close` directly. It:
+
+1. Runs `bd close "$@"` (marks the task done — bd's own logic, unmodified).
+2. On success: runs `bd ready --claim --json` to atomically claim the next available task.
+3. If a task is claimed: injects `bd claim <id>` into the agent's canonical tmux pane via `tmux send-keys`. Agent transitions directly to new work. Zero idle gap.
+4. If no task: logs `idle:no_work` to `/home/elliotbot/clawd/logs/kei63-completion-hook.log`.
+5. Always exits 0 — hook failure never blocks `bd close` from completing.
+
+Callsign resolution (first wins): `$CALLSIGN` env var → `IDENTITY.md` in worktree → `git config user.name`.
+
+**2. OpenClaw idle fallback — `poll_kei63_idle_inject` in `elliot_polling_loop.py`**
+
+Every polling cycle (1 min peak, 60 min overnight), for each agent:
+
+- Checks if pane is idle > 5 min (pane ends with a shell prompt AND HEARTBEAT.md is stale).
+- If idle + work available: injects `bd ready` into the tmux pane so the agent sees the queue.
+- If idle > 30 min + NO work: posts a `#ceo` alert (deduped per 30-min window per callsign).
+
+### How to verify it is working
+
+```bash
+# Check the completion hook log for injection events.
+tail -f /home/elliotbot/clawd/logs/kei63-completion-hook.log
+
+# Run the acceptance test directly.
+bash /home/elliotbot/clawd/Agency_OS/scripts/kei63_acceptance_test.sh
+
+# Run pytest for the unit tests.
+python -m pytest tests/scripts/test_bd_complete_hook.py tests/scripts/test_elliot_polling_loop_kei63.py -v
+```
+
+### How to disable for debugging
+
+```bash
+# Disable injection in the completion hook (skip the post-close step):
+AGENCY_OS_BD_HOOK_LOG=/dev/null CALLSIGN="" bash scripts/orchestrator/bd_complete_hook.sh <issue-id>
+
+# Disable the idle fallback poller: comment out poll_kei63_idle_inject() in run_cycle()
+# (no env-var gate by design — the poller is lightweight and always-on).
+```
+
+### CALLSIGN_TO_TMUX map
+
+Both the hook and the poller use the same canonical map (defined in `elliot_polling_loop.py`):
+
+| Callsign | tmux session |
+|----------|--------------|
+| elliot   | elliottbot   |
+| aiden    | aiden        |
+| max      | maxbot       |
+| atlas    | atlas        |
+| orion    | orion        |
+| scout    | scout        |
+
+If a callsign is added or a tmux session renamed: update `CALLSIGN_TO_TMUX` in `elliot_polling_loop.py` AND the `declare -A CALLSIGN_TO_TMUX` in `bd_complete_hook.sh` in the same PR.
+
 ## Related
 
 - KEI-35 — detection-based session recovery (already shipped); complementary to

@@ -56,10 +56,16 @@ jobs:
           git fetch origin "$BASE_REF" --depth=50
           # Removed INSERT INTO <X> / UPDATE <X> lines in src/scripts/skills.
           # Extract <X> (table identifier, may contain dots for schema-qualified).
+          # KEI-47: filter SQL reserved keywords from the capture set.
+          # Prose like "[UPDATE FROM {callsign}]" was tripping the regex with
+          # FROM captured as the supposed table name. The Python checker has a
+          # defense-in-depth skip for the same set; this upstream filter
+          # prevents the noise from reaching the checker at all.
           TARGETS=$(git diff "origin/$BASE_REF...HEAD" -- src/ scripts/ skills/ \
             | grep -E '^-[^-]' \
             | grep -oE '(INSERT[[:space:]]+INTO|UPDATE)[[:space:]]+[a-zA-Z_][a-zA-Z0-9_.]*' \
             | awk '{print $NF}' \
+            | grep -ivxE 'FROM|WHERE|SET|JOIN|ON|AS|AND|OR|NOT|NULL|TRUE|FALSE|INTO|VALUES|GROUP|ORDER|BY|HAVING|LIMIT|OFFSET|RETURNING|WITH|UNION|ALL|DISTINCT|EXISTS|IN|BETWEEN|LIKE|IS|CASE|WHEN|THEN|ELSE|END' \
             | sort -u || true)
           if [ -z "$TARGETS" ]; then
             echo "No removed write targets detected — Pattern A check skipped."

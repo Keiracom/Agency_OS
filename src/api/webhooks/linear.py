@@ -237,4 +237,34 @@ async def receive_linear_webhook(request: Request) -> dict[str, str]:
         return {"status": "ignored"}
     _dispatch_to_bd(event)
     _dispatch_to_tasks(event)  # KEI-22 — Supabase tasks SSOT (parallel to bd during transition)
+    _dispatch_to_indexing_queue("linear", payload)  # KEI-61 — durable staging buffer
     return {"status": "ok", "op": event["op"], "identifier": event["identifier"]}
+
+
+def _dispatch_to_indexing_queue(source: str, raw_payload: dict[str, Any]) -> None:
+    """KEI-61: enqueue the raw webhook payload for durable async indexing.
+
+    Webhooks fire fast and return 200 to the sender; the indexing_queue_worker
+    drains the queue, processes via LlamaIndex+Weaviate, and writes the audit
+    log. Survives downstream restarts because the row is persisted before any
+    processing runs. Fail-open per webhook discipline.
+    """
+    dsn = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL", "")
+    if not dsn:
+        logger.warning("indexing_queue dispatch skipped: DATABASE_URL/SUPABASE_DB_URL unset")
+        return
+    dsn = dsn.replace("postgresql+asyncpg://", "postgresql://", 1)
+    try:
+        import psycopg
+
+        with psycopg.connect(dsn, connect_timeout=10) as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO public.indexing_queue (source, payload, status)
+                VALUES (%s, %s::jsonb, 'pending')
+                """,
+                (source, json.dumps(raw_payload)),
+            )
+            conn.commit()
+    except Exception as exc:  # noqa: BLE001 — webhook discipline: fail-open
+        logger.warning("indexing_queue dispatch failed for %s: %s", source, exc)

@@ -43,6 +43,8 @@ def client(mod, monkeypatch):
     monkeypatch.setattr(mod, "_dispatch_to_bd", lambda event: captured.append(event))
     # KEI-22: stub the tasks-table dispatch so unit tests don't reach Supabase.
     monkeypatch.setattr(mod, "_dispatch_to_tasks", lambda event: None)
+    # KEI-61: stub the indexing_queue dispatch so unit tests don't reach Supabase.
+    monkeypatch.setattr(mod, "_dispatch_to_indexing_queue", lambda source, payload: None)
     app = FastAPI()
     app.include_router(mod.router)
     return TestClient(app), captured

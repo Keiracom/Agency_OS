@@ -1,0 +1,21 @@
+[Unit]
+Description=Agency OS — Indexing Queue Worker (KEI-61)
+Documentation=https://linear.app/keiracom/issue/KEI-61
+After=network-online.target cognee.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/home/elliotbot/clawd/Agency_OS/.venv/bin/python3 /home/elliotbot/clawd/Agency_OS/scripts/indexing_queue_worker.py
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+Restart=on-failure
+RestartSec=10
+StandardOutput=append:/home/elliotbot/clawd/logs/indexing-queue-worker.log
+StandardError=append:/home/elliotbot/clawd/logs/indexing-queue-worker.log
+# KEI-44-class memory cap on the worker too — small footprint, conservative cap.
+MemoryMax=512M
+MemoryHigh=400M
+
+[Install]
+WantedBy=default.target

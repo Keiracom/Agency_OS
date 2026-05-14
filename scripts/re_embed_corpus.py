@@ -175,8 +175,8 @@ def _re_embed_collection(
                 if not dry_run:
                     client.update_vector(collection, obj_id, vector)
                 succeeded += 1
-            except Exception as exc:
-                log.error("Failed to re-embed object %s: %s", obj_id, exc)
+            except Exception:
+                log.exception("Failed to re-embed object %s", obj_id)
                 failed_ids.append(obj_id)
 
         log.info(
@@ -214,8 +214,8 @@ def _verify_spot_check(
                 passed += 1
             else:
                 log.warning("Spot-check query returned 0 results: %r", probe)
-        except Exception as exc:
-            log.error("Spot-check query error: %s", exc)
+        except Exception:
+            log.exception("Spot-check query error")
 
     log.info("Spot-check: %d/%d queries returned results", passed, n_queries)
     return passed == n_queries
@@ -258,6 +258,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Re-embed Weaviate corpus after an embedding model change.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
+        exit_on_error=False,
     )
     parser.add_argument("--old-model", required=True, help="Previous embedding model name (e.g. gemini-embedding-001)")
     parser.add_argument("--new-model", required=True, help="New embedding model name (e.g. gemini-embedding-002)")
@@ -287,6 +288,70 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
+def _resolve_client(args: argparse.Namespace, client: _WeaviateClient | None) -> tuple[_WeaviateClient | None, int]:
+    """Return (client, exit_code). exit_code non-zero means connection failed."""
+    if client is not None:
+        return client, 0
+    try:
+        return _build_real_client(args.weaviate_url), 0
+    except ImportError:
+        log.exception("Cannot connect")
+        return None, 3
+    except Exception:
+        log.exception("Weaviate connection failure")
+        return None, 3
+
+
+def _process_collections(
+    client: _WeaviateClient,
+    collections: list[str],
+    new_model: str,
+    dry_run: bool,
+    batch_size: int,
+) -> tuple[int, list[str]]:
+    """Re-embed all collections; run spot-checks when live. Returns (succeeded, failed_ids)."""
+    total_succeeded = 0
+    all_failed: list[str] = []
+
+    for collection in collections:
+        succeeded, failed = _re_embed_collection(client, collection, new_model, dry_run, batch_size)
+        total_succeeded += succeeded
+        all_failed.extend(failed)
+
+    if not dry_run:
+        for collection in collections:
+            if not _verify_spot_check(client, collection, new_model):
+                log.error("Spot-check FAILED for collection '%s'", collection)
+
+    return total_succeeded, all_failed
+
+
+def _emit_result(
+    args: argparse.Namespace,
+    collections: list[str],
+    total_succeeded: int,
+    all_failed: list[str],
+) -> int:
+    """Write audit log and return exit code (0 or 4)."""
+    _write_audit_log(
+        old_model=args.old_model,
+        new_model=args.new_model,
+        collections=collections,
+        n_objects=total_succeeded + len(all_failed),
+        failed_ids=all_failed,
+        dry_run=args.dry_run,
+    )
+    if all_failed:
+        log.error(
+            "%d object(s) failed — manual reconciliation required. IDs: %s",
+            len(all_failed),
+            all_failed,
+        )
+        return 4
+    log.info("Re-embed complete: %d objects, model %s → %s", total_succeeded, args.old_model, args.new_model)
+    return 0
+
+
 def main(argv: list[str] | None = None, client: _WeaviateClient | None = None) -> int:
     """
     Entry point.  Returns exit code (0, 2, 3, or 4).
@@ -295,7 +360,7 @@ def main(argv: list[str] | None = None, client: _WeaviateClient | None = None) -
     """
     try:
         args = _parse_args(argv)
-    except SystemExit:
+    except (argparse.ArgumentError, SystemExit):
         return 2
 
     collections = [c.strip() for c in args.collections.split(",") if c.strip()]
@@ -308,53 +373,15 @@ def main(argv: list[str] | None = None, client: _WeaviateClient | None = None) -
     else:
         log.warning("LIVE mode — corpus WILL be mutated")
 
-    # Build client
-    if client is None:
-        try:
-            client = _build_real_client(args.weaviate_url)
-        except ImportError as exc:
-            log.error("Cannot connect: %s", exc)
-            return 3
-        except Exception as exc:
-            log.error("Weaviate connection failure: %s", exc)
-            return 3
+    resolved_client, err = _resolve_client(args, client)
+    if err:
+        return err
 
-    # Re-embed all collections
-    total_succeeded = 0
-    all_failed: list[str] = []
-
-    for collection in collections:
-        succeeded, failed = _re_embed_collection(
-            client, collection, args.new_model, args.dry_run, args.batch_size
-        )
-        total_succeeded += succeeded
-        all_failed.extend(failed)
-
-    # Spot-check (only if not dry-run — corpus unchanged in dry-run)
-    if not args.dry_run and client is not None:
-        for collection in collections:
-            if not _verify_spot_check(client, collection, args.new_model):
-                log.error("Spot-check FAILED for collection '%s'", collection)
-
-    _write_audit_log(
-        old_model=args.old_model,
-        new_model=args.new_model,
-        collections=collections,
-        n_objects=total_succeeded + len(all_failed),
-        failed_ids=all_failed,
-        dry_run=args.dry_run,
+    assert resolved_client is not None  # guaranteed by _resolve_client contract
+    total_succeeded, all_failed = _process_collections(
+        resolved_client, collections, args.new_model, args.dry_run, args.batch_size
     )
-
-    if all_failed:
-        log.error(
-            "%d object(s) failed — manual reconciliation required. IDs: %s",
-            len(all_failed),
-            all_failed,
-        )
-        return 4
-
-    log.info("Re-embed complete: %d objects, model %s → %s", total_succeeded, args.old_model, args.new_model)
-    return 0
+    return _emit_result(args, collections, total_succeeded, all_failed)
 
 
 if __name__ == "__main__":

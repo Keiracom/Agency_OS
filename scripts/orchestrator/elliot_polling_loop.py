@@ -723,7 +723,7 @@ _kei63_last_ceo_alert: dict[str, datetime] = {}
 # by a non-breaking space (\xa0). The status bar (⏵⏵ bypass permissions…)
 # renders BELOW the ❯ line, so we must scan ALL non-blank lines, not just the
 # last one.  Shell prompts ($, #, >) are retained for non-Claude panes.
-_PROMPT_RE = re.compile(r"([\$#>❯][\s\xa0]*$)", re.MULTILINE)
+_PROMPT_RE = re.compile(r"([$#>❯][\s\xa0]*$)", re.MULTILINE)
 
 
 def _pane_is_idle(pane_tail: str) -> bool:

@@ -81,8 +81,8 @@ def test_constants_defined(relay):
     # pytest.approx() avoids S1244 float-equality warning per
     # reference_sonarcloud_verify_pattern.md — these are exact-integer
     # constants stored as floats, but Sonar S1244 flags the == check.
-    assert relay._KEI40_BASE_BACKOFF_SECONDS == pytest.approx(1.0)
-    assert relay._KEI40_MAX_BACKOFF_SECONDS == pytest.approx(30.0)
+    assert pytest.approx(1.0) == relay._KEI40_BASE_BACKOFF_SECONDS
+    assert pytest.approx(30.0) == relay._KEI40_MAX_BACKOFF_SECONDS
 
 
 def test_post_with_retry_returns_on_first_success(relay):

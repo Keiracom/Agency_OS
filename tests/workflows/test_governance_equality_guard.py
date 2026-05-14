@@ -6,10 +6,11 @@ extracted from .github/workflows/governance-equality-guard.yml.
 
 Scenarios verified:
   1. No CLAUDE.md change       → PASS  (equality preserved)
-  2. Changed + new @include    → PASS  (exemption 1)
-  3. Changed + gov PR title    → PASS  (exemption 2 via PR title)
-  4. Changed + gov commit msg  → PASS  (exemption 2 via commit message)
-  5. Changed + no exemption    → FAIL  (guard blocks)
+  2. Changed + new @include    → PASS  (exemption — diff-derived, S7630-safe)
+  3. Changed + no exemption    → FAIL  (guard blocks)
+
+PR-title and commit-message exemption tests removed — those exemptions were
+dropped in the S7630 fix (attacker-controlled inputs).
 """
 
 import os
@@ -45,10 +46,6 @@ def _extract_shell_script() -> str:
         stripped = stripped.replace(
             "${{ github.event.pull_request.base.ref }}", "$BASE_REF_INJECT"
         )
-        # Replace ${{ github.event.pull_request.title }} → $PR_TITLE_INJECT
-        stripped = stripped.replace(
-            "${{ github.event.pull_request.title }}", "$PR_TITLE_INJECT"
-        )
         lines.append(stripped)
     return "\n".join(lines)
 
@@ -61,7 +58,7 @@ GUARD_SCRIPT = _extract_shell_script()
 # ---------------------------------------------------------------------------
 
 def _write_fake_git(tmp_path: Path, base_content: str, head_content: str,
-                    diff_output: str, log_output: str) -> Path:
+                    diff_output: str) -> Path:
     """
     Build a fake git workspace under tmp_path.
 
@@ -77,15 +74,12 @@ def _write_fake_git(tmp_path: Path, base_content: str, head_content: str,
     # Write canned output files
     (tmp_path / "_fake_base.txt").write_text(base_content)
     (tmp_path / "_fake_diff.txt").write_text(diff_output)
-    (tmp_path / "_fake_log.txt").write_text(log_output)
 
     # Fake git binary — handles only the calls the guard makes:
     #   git fetch origin <ref> --depth=1   → no-op
     #   git show origin/<ref>:CLAUDE.md    → cat _fake_base.txt
     #   git diff origin/<ref>...HEAD -- CLAUDE.md → cat _fake_diff.txt
-    #   git log --pretty=%s origin/<ref>..HEAD    → cat _fake_log.txt
     fake_git = tmp_path / "git"
-    # FAKE_DIR is injected into the script at write time (absolute path, no escaping issues)
     fake_dir = str(tmp_path)
     fake_git.write_text(
         textwrap.dedent(f"""\
@@ -98,8 +92,6 @@ def _write_fake_git(tmp_path: Path, base_content: str, head_content: str,
             cat "$FAKE_DIR/_fake_base.txt" ;;
           "diff "*)
             cat "$FAKE_DIR/_fake_diff.txt" ;;
-          "log "*)
-            cat "$FAKE_DIR/_fake_log.txt" ;;
           *)
             echo "fake git: unhandled: $*" >&2
             exit 1 ;;
@@ -111,13 +103,12 @@ def _write_fake_git(tmp_path: Path, base_content: str, head_content: str,
     return tmp_path
 
 
-def _run_guard(tmp_path: Path, pr_title: str, base_ref: str = "main") -> subprocess.CompletedProcess:
-    """Run the extracted guard script in tmp_path with the given env."""
+def _run_guard(tmp_path: Path, base_ref: str = "main") -> subprocess.CompletedProcess:
+    """Run the extracted guard script in tmp_path."""
     env = {
         **os.environ,
         "PATH": f"{tmp_path}:{os.environ['PATH']}",  # fake git first
         "BASE_REF_INJECT": base_ref,
-        "PR_TITLE_INJECT": pr_title,
     }
     # Prepend BASE_REF assignment so the script can resolve it
     script = f"BASE_REF={base_ref!r}\n" + GUARD_SCRIPT
@@ -144,66 +135,30 @@ COMMON_HEAD = COMMON_BASE  # identical → hash match
 # ---------------------------------------------------------------------------
 
 def test_no_claude_md_change(tmp_path):
-    _write_fake_git(tmp_path, COMMON_BASE, COMMON_HEAD,
-                    diff_output="", log_output="")
-    result = _run_guard(tmp_path, pr_title="[AIDEN] feat: something unrelated")
+    _write_fake_git(tmp_path, COMMON_BASE, COMMON_HEAD, diff_output="")
+    result = _run_guard(tmp_path)
     assert result.returncode == 0, f"Expected PASS.\nstdout={result.stdout}\nstderr={result.stderr}"
     assert "equality preserved" in result.stdout
 
 
 # ---------------------------------------------------------------------------
-# Test 2: Changed + new @include → exemption 1 fires
+# Test 2: Changed + new @include → exemption fires (diff-derived, S7630-safe)
 # ---------------------------------------------------------------------------
 
-def test_exemption_1_new_include(tmp_path):
+def test_exemption_new_include(tmp_path):
     base = "line1\n"
     head = "line1\n@.claude/modules/_discovery_log.md\n"
     # diff output simulates what 'git diff ... -- CLAUDE.md' would print
     diff = "+@.claude/modules/_discovery_log.md"
-    _write_fake_git(tmp_path, base, head, diff_output=diff, log_output="")
-    result = _run_guard(tmp_path, pr_title="[ELLIOT] chore: untagged")
-    assert result.returncode == 0, f"Expected PASS (exemption 1).\nstdout={result.stdout}\nstderr={result.stderr}"
+    _write_fake_git(tmp_path, base, head, diff_output=diff)
+    result = _run_guard(tmp_path)
+    assert result.returncode == 0, f"Expected PASS (exemption).\nstdout={result.stdout}\nstderr={result.stderr}"
     assert "exemption applied" in result.stdout
     assert "include" in result.stdout
 
 
 # ---------------------------------------------------------------------------
-# Test 3: Changed + governance-tagged PR title → exemption 2 (title)
-# ---------------------------------------------------------------------------
-
-def test_exemption_2_pr_title(tmp_path):
-    base = "line1\n"
-    head = "line1\nsome other change\n"
-    # No new @include line in diff
-    diff = "+some other change"
-    _write_fake_git(tmp_path, base, head, diff_output=diff, log_output="")
-    result = _run_guard(
-        tmp_path,
-        pr_title="[ELLIOT] feat(governance): extend the guard with exemptions",
-    )
-    assert result.returncode == 0, f"Expected PASS (exemption 2 title).\nstdout={result.stdout}\nstderr={result.stderr}"
-    assert "exemption applied" in result.stdout
-    assert "governance-tagged" in result.stdout
-
-
-# ---------------------------------------------------------------------------
-# Test 4: Changed + governance-tagged commit message → exemption 2 (commit)
-# ---------------------------------------------------------------------------
-
-def test_exemption_2_commit_message(tmp_path):
-    base = "line1\n"
-    head = "line1\nsome other change\n"
-    diff = "+some other change"
-    log = "[ELLIOT] feat(kei50): discovery log module add"
-    _write_fake_git(tmp_path, base, head, diff_output=diff, log_output=log)
-    result = _run_guard(tmp_path, pr_title="[ELLIOT] chore: not tagged")
-    assert result.returncode == 0, f"Expected PASS (exemption 2 commit).\nstdout={result.stdout}\nstderr={result.stderr}"
-    assert "exemption applied" in result.stdout
-    assert "governance-tagged" in result.stdout
-
-
-# ---------------------------------------------------------------------------
-# Test 5: Changed + no exemption → guard fails
+# Test 3: Changed + no exemption → guard fails
 # ---------------------------------------------------------------------------
 
 def test_no_exemption_fails(tmp_path):
@@ -211,12 +166,7 @@ def test_no_exemption_fails(tmp_path):
     head = "line1\nrogue change\n"
     # diff has no @include pattern
     diff = "+rogue change"
-    # commit log has no governance tag
-    log = "[ELLIOT] chore: random cleanup"
-    _write_fake_git(tmp_path, base, head, diff_output=diff, log_output=log)
-    result = _run_guard(
-        tmp_path,
-        pr_title="[ELLIOT] fix: something without governance tag",
-    )
+    _write_fake_git(tmp_path, base, head, diff_output=diff)
+    result = _run_guard(tmp_path)
     assert result.returncode == 1, f"Expected FAIL (no exemption).\nstdout={result.stdout}\nstderr={result.stderr}"
     assert "without exemption" in result.stdout or "without exemption" in result.stderr

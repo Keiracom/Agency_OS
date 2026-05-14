@@ -363,6 +363,51 @@ def _is_ready_marker(message: str, callsign: str) -> bool:
 # that fix lands, which is preferable to the wrong-issue claim.
 _CLONE_CALLSIGNS: frozenset[str] = frozenset({"atlas", "orion", "scout"})
 
+# KEI-72: second-gate window for the Step-0-RESTATE auto-claim check.
+# Scans this many most-recently-processed inbox messages for the agent's
+# own [STEP-0-RESTATE:<callsign>] marker. Larger windows risk stale-claim
+# (an old Step 0 from a different directive); smaller windows tighten the
+# requirement but may miss legitimate Step 0s separated by peer chatter.
+# 5 is Elliot's directive value.
+_STEP0_INBOX_SCAN_DEPTH = 5
+
+
+def _has_recent_step0_restate(callsign: str) -> bool:
+    """KEI-72: True if a [STEP-0-RESTATE:<callsign>] marker appears in any of
+    the last `_STEP0_INBOX_SCAN_DEPTH` processed inbox messages.
+
+    Scans `/tmp/telegram-relay-<callsign>/processed/`. Messages there are
+    JSON dicts with at least a `text` field; the relay listener moves files
+    here once they're consumed. The agent's own Step-0-RESTATE outbound
+    (posted via tg) is echoed back through the central listener into the
+    same inbox, so this scan covers self-emitted markers.
+
+    Returns False (and skips the auto-claim) when the marker isn't found —
+    fail-fast at the validation layer. Closes the gap left by KEI-71 (which
+    only handled the env-unset path).
+    """
+    inbox_processed = Path(f"/tmp/telegram-relay-{callsign.lower()}/processed")
+    if not inbox_processed.is_dir():
+        return False
+    needle = f"[STEP-0-RESTATE:{callsign.upper()}]"
+    try:
+        files = sorted(
+            (p for p in inbox_processed.iterdir() if p.is_file()),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )[:_STEP0_INBOX_SCAN_DEPTH]
+    except OSError:
+        return False
+    for path in files:
+        try:
+            data = json.loads(path.read_text() or "{}")
+        except (OSError, json.JSONDecodeError):
+            continue
+        text = data.get("text", "") or ""
+        if needle in text:
+            return True
+    return False
+
 
 def _maybe_self_assign(message: str) -> None:
     """If message contains an anchored [READY:<my-callsign>], try bd ready → bd claim.
@@ -371,10 +416,23 @@ def _maybe_self_assign(message: str) -> None:
     + return. Never raises. The polling loop is the safety net if this fails.
 
     Clones (atlas/orion/scout) skip-claim entirely — see _CLONE_CALLSIGNS.
+
+    KEI-72: also refuse claim when there's no recent [STEP-0-RESTATE:<callsign>]
+    marker in the last _STEP0_INBOX_SCAN_DEPTH inbox messages. Closes the
+    'CALLSIGN-set-but-no-Step-0' auto-reclaim loop Elliot flagged at
+    2026-05-14T09:08Z.
     """
     if CALLSIGN.lower() in _CLONE_CALLSIGNS:
         return
     if not _is_ready_marker(message, CALLSIGN):
+        return
+    if not _has_recent_step0_restate(CALLSIGN):
+        print(
+            f"[self-assign] refusing claim — no [STEP-0-RESTATE:{CALLSIGN.upper()}] "
+            f"in the last {_STEP0_INBOX_SCAN_DEPTH} processed inbox messages. "
+            "Agent must post a Step 0 RESTATE before slack_relay auto-claims (KEI-72).",
+            file=sys.stderr,
+        )
         return
     import subprocess as _sub
 

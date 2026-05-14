@@ -99,7 +99,7 @@ def cmd_ready(args: argparse.Namespace) -> int:
                 sql = (
                     f"SELECT t.{', t.'.join(_READY_COLUMNS.split(', '))}, "
                     f"{_PERSONALISED_SCORE_SUBQUERY} "
-                    "FROM public.tasks t WHERE t.status = 'available' "
+                    "FROM public.tasks t WHERE t.status = 'available' AND t.claimed_by IS NULL "
                     "ORDER BY personalised_score DESC, "
                     "t.priority ASC, t.created_at ASC LIMIT %s"
                 )
@@ -107,7 +107,7 @@ def cmd_ready(args: argparse.Namespace) -> int:
             else:
                 sql = (
                     f"SELECT {_READY_COLUMNS} FROM public.tasks "
-                    "WHERE status = 'available' "
+                    "WHERE status = 'available' AND claimed_by IS NULL "
                     "ORDER BY priority ASC, created_at ASC LIMIT %s"
                 )
                 cur.execute(sql, (limit,))
@@ -155,6 +155,7 @@ def cmd_claim(args: argparse.Namespace) -> int:
                       SELECT id
                         FROM public.tasks
                        WHERE status = 'available'
+                         AND claimed_by IS NULL
                        ORDER BY priority ASC, created_at ASC
                        FOR UPDATE SKIP LOCKED
                        LIMIT 1

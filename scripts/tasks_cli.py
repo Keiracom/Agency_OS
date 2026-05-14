@@ -133,10 +133,26 @@ def cmd_ready(args: argparse.Namespace) -> int:
 
 
 def cmd_claim(args: argparse.Namespace) -> int:
-    """Atomically claim one task (by id, or the next available)."""
+    """Atomically claim one task (by id, or the next available).
+
+    KEI-71: refuse the claim when the resolved callsign is the
+    DEFAULT_CALLSIGN sentinel ('unknown') — Elliot Dave-direct callout
+    2026-05-14T08:30Z: silent sentinel-writes (`claimed_by='unknown'`)
+    leak when an agent omits `CALLSIGN=<callsign>` from the env. Fail
+    fast at the validation layer so the operator notices the env gap
+    instead of orphan-claiming a row.
+    """
     import psycopg
 
     cs = _callsign(args.callsign)
+    if cs == DEFAULT_CALLSIGN:
+        print(
+            "ERROR: callsign resolves to the DEFAULT_CALLSIGN sentinel "
+            f"({DEFAULT_CALLSIGN!r}). Set CALLSIGN=<your_callsign> in the env or "
+            "pass --callsign explicitly. Refusing to write a sentinel claim.",
+            file=sys.stderr,
+        )
+        return 1
     try:
         with psycopg.connect(_dsn()) as conn, conn.cursor() as cur:
             if args.id:

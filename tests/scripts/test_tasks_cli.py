@@ -270,6 +270,24 @@ def test_claim_returns_null_when_nothing_available(mod, patch_connect, capsys, m
     assert capsys.readouterr().out.strip() == "null"
 
 
+def test_claim_refuses_default_callsign_sentinel(mod, capsys, monkeypatch) -> None:
+    """KEI-71: cmd_claim refuses to write 'unknown' as claimed_by — fail-fast."""
+    monkeypatch.delenv("CALLSIGN", raising=False)
+    monkeypatch.delenv("TASKS_CALLSIGN", raising=False)
+    rc = mod.main(["claim", "--id", "KEI-39"])
+    assert rc == 1
+    captured = capsys.readouterr()
+    assert "DEFAULT_CALLSIGN sentinel" in captured.err
+    assert "'unknown'" in captured.err
+
+
+def test_claim_refuses_explicit_unknown_callsign(mod, capsys, monkeypatch) -> None:
+    """Explicit --callsign unknown also refused (defensive)."""
+    rc = mod.main(["claim", "--callsign", "unknown"])
+    assert rc == 1
+    assert "DEFAULT_CALLSIGN sentinel" in capsys.readouterr().err
+
+
 # ─── complete ────────────────────────────────────────────────────────────────
 
 

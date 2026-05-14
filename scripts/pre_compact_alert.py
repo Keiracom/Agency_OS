@@ -279,7 +279,8 @@ def _configured_model_for_callsign(callsign: str) -> str:
                 model = rows[0].get("configured_model")
                 if isinstance(model, str) and model:
                     return model
-        except (urllib.error.URLError, OSError, json.JSONDecodeError, ValueError) as exc:
+        except (OSError, json.JSONDecodeError, ValueError) as exc:
+            # urllib.error.URLError is an OSError subclass — kept implicit per Sonar S5713.
             logger.warning("agent_profiles lookup for %s failed (%s); using fallback map", cs, exc)
     return _CONFIGURED_MODEL_FALLBACK.get(cs, "")
 

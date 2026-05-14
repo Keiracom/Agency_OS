@@ -33,33 +33,40 @@ COMMENT ON COLUMN public.agent_profiles.capability_weights IS
 
 -- Initial seed for 6 known callsigns (matches global CLAUDE.md agent table
 -- + Dave's KEI-53 description seed; model values from KEI-36 _CONFIGURED_MODEL_MAP
--- which this row supersedes).
-INSERT INTO public.agent_profiles
-    (callsign, configured_model, context_tags, capability_weights)
-VALUES
-    ('elliot', 'claude-opus-4-7',
-        ARRAY['orchestration', 'governance', 'python'],
-        '{"orchestration": 0.9, "governance": 0.9, "python": 0.8, "cognee": 0.6}'::jsonb),
-    ('aiden',  'claude-opus-4-7',
-        ARRAY['code_review', 'refactoring', 'python', 'ci'],
-        '{"code_review": 0.9, "refactoring": 0.8, "python": 0.8, "ci": 0.7}'::jsonb),
-    ('max',    'claude-opus-4-7',
-        ARRAY['cognee', 'memory', 'python'],
-        '{"cognee": 0.9, "memory": 0.9, "python": 0.7, "systemd": 0.3}'::jsonb),
-    ('atlas',  'claude-sonnet-4-6',
-        ARRAY['systemd', 'infrastructure', 'python'],
-        '{"systemd": 0.9, "infrastructure": 0.8, "python": 0.6, "cognee": 0.3}'::jsonb),
-    ('orion',  'claude-sonnet-4-6',
-        ARRAY['parallel_build', 'python', 'infrastructure'],
-        '{"parallel_build": 0.8, "python": 0.7, "infrastructure": 0.7}'::jsonb),
-    ('scout',  'claude-sonnet-4-6',
-        ARRAY['research', 'analysis', 'documentation'],
-        '{"research": 0.9, "analysis": 0.8, "documentation": 0.7}'::jsonb)
-ON CONFLICT (callsign) DO UPDATE SET
-    configured_model   = EXCLUDED.configured_model,
-    context_tags       = EXCLUDED.context_tags,
-    capability_weights = EXCLUDED.capability_weights,
-    updated_at         = NOW();
+-- which this row supersedes). Model id strings hoisted into PL/pgSQL
+-- variables per Sonar plsql:S1192 (no duplicate literals).
+DO $$
+DECLARE
+    opus_model   CONSTANT TEXT := 'claude-opus-4-7';
+    sonnet_model CONSTANT TEXT := 'claude-sonnet-4-6';
+BEGIN
+    INSERT INTO public.agent_profiles
+        (callsign, configured_model, context_tags, capability_weights)
+    VALUES
+        ('elliot', opus_model,
+            ARRAY['orchestration', 'governance', 'python'],
+            '{"orchestration": 0.9, "governance": 0.9, "python": 0.8, "cognee": 0.6}'::jsonb),
+        ('aiden',  opus_model,
+            ARRAY['code_review', 'refactoring', 'python', 'ci'],
+            '{"code_review": 0.9, "refactoring": 0.8, "python": 0.8, "ci": 0.7}'::jsonb),
+        ('max',    opus_model,
+            ARRAY['cognee', 'memory', 'python'],
+            '{"cognee": 0.9, "memory": 0.9, "python": 0.7, "systemd": 0.3}'::jsonb),
+        ('atlas',  sonnet_model,
+            ARRAY['systemd', 'infrastructure', 'python'],
+            '{"systemd": 0.9, "infrastructure": 0.8, "python": 0.6, "cognee": 0.3}'::jsonb),
+        ('orion',  sonnet_model,
+            ARRAY['parallel_build', 'python', 'infrastructure'],
+            '{"parallel_build": 0.8, "python": 0.7, "infrastructure": 0.7}'::jsonb),
+        ('scout',  sonnet_model,
+            ARRAY['research', 'analysis', 'documentation'],
+            '{"research": 0.9, "analysis": 0.8, "documentation": 0.7}'::jsonb)
+    ON CONFLICT (callsign) DO UPDATE SET
+        configured_model   = EXCLUDED.configured_model,
+        context_tags       = EXCLUDED.context_tags,
+        capability_weights = EXCLUDED.capability_weights,
+        updated_at         = NOW();
+END $$;
 
 -- Update trigger to keep updated_at fresh on any column change.
 CREATE OR REPLACE FUNCTION public._agent_profiles_set_updated_at()

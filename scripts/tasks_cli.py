@@ -40,6 +40,24 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 DEFAULT_CALLSIGN = "unknown"
 
+# Canonical column list shared by ready/show paths. Single source of truth
+# (avoids Sonar new_duplicated_lines_density on the column projection).
+_READY_COLUMNS = (
+    "id, title, priority, status, claimed_by, claimed_at, "
+    "dependencies, tags, linear_url, created_at, updated_at"
+)
+
+# KEI-53 Phase B — personalised score subquery joining agent_profiles.
+# JSONB key-exists (?) gates the cast so non-matching tags don't error.
+_PERSONALISED_SCORE_SUBQUERY = """COALESCE(
+    (SELECT SUM((ap.capability_weights->>tag)::float)
+     FROM public.agent_profiles ap,
+          unnest(t.tags) AS tag
+     WHERE ap.callsign = %s
+       AND ap.capability_weights ? tag),
+    0.0
+) AS personalised_score"""
+
 
 def _dsn() -> str:
     dsn = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL", "")
@@ -76,44 +94,23 @@ def cmd_ready(args: argparse.Namespace) -> int:
     try:
         with psycopg.connect(_dsn()) as conn, conn.cursor() as cur:
             if agent:
-                # KEI-53 — personalised path.
-                # Affinity = SUM over t.tags of agent_profiles.capability_weights[tag].
-                # `?` is JSONB key-exists; `->>` is text extraction (cast to float).
-                # Tie-break: personalised_score DESC, priority ASC, created_at ASC
-                # (deterministic per Max note #2).
-                cur.execute(
-                    """
-                    SELECT t.id, t.title, t.priority, t.status, t.claimed_by,
-                           t.claimed_at, t.dependencies, t.tags, t.linear_url,
-                           t.created_at, t.updated_at,
-                           COALESCE(
-                             (SELECT SUM((ap.capability_weights->>tag)::float)
-                              FROM public.agent_profiles ap,
-                                   unnest(t.tags) AS tag
-                              WHERE ap.callsign = %s
-                                AND ap.capability_weights ? tag),
-                             0.0
-                           ) AS personalised_score
-                    FROM public.tasks t
-                    WHERE t.status = 'available'
-                    ORDER BY personalised_score DESC,
-                             t.priority ASC, t.created_at ASC
-                    LIMIT %s
-                    """,
-                    (agent, limit),
+                # KEI-53 — personalised path. Tie-break per Max note #2:
+                # personalised_score DESC, priority ASC, created_at ASC.
+                sql = (
+                    f"SELECT t.{', t.'.join(_READY_COLUMNS.split(', '))}, "
+                    f"{_PERSONALISED_SCORE_SUBQUERY} "
+                    "FROM public.tasks t WHERE t.status = 'available' "
+                    "ORDER BY personalised_score DESC, "
+                    "t.priority ASC, t.created_at ASC LIMIT %s"
                 )
+                cur.execute(sql, (agent, limit))
             else:
-                cur.execute(
-                    """
-                    SELECT id, title, priority, status, claimed_by, claimed_at,
-                           dependencies, tags, linear_url, created_at, updated_at
-                    FROM public.tasks
-                    WHERE status = 'available'
-                    ORDER BY priority ASC, created_at ASC
-                    LIMIT %s
-                    """,
-                    (limit,),
+                sql = (
+                    f"SELECT {_READY_COLUMNS} FROM public.tasks "
+                    "WHERE status = 'available' "
+                    "ORDER BY priority ASC, created_at ASC LIMIT %s"
                 )
+                cur.execute(sql, (limit,))
             rows = _rows_to_dicts(cur)
     except psycopg.Error:
         logger.exception("ready query failed")

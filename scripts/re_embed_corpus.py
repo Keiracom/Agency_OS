@@ -360,8 +360,12 @@ def main(argv: list[str] | None = None, client: _WeaviateClient | None = None) -
     """
     try:
         args = _parse_args(argv)
-    except (argparse.ArgumentError, SystemExit):
+    except argparse.ArgumentError:
         return 2
+    except SystemExit as exc:
+        if exc.code == 2:
+            return 2
+        raise
 
     collections = [c.strip() for c in args.collections.split(",") if c.strip()]
     if not collections:

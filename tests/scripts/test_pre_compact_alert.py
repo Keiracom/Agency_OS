@@ -511,16 +511,66 @@ def test_post_heartbeat_incomplete_warning_calls_slack(alert, monkeypatch):
     assert "<x>" in text and "<y>" in text
 
 
-def test_configured_model_for_callsign_known(alert):
-    """KEI-36 follow-up: known callsigns map to current model."""
+def test_configured_model_for_callsign_known_via_fallback(alert, monkeypatch):
+    """KEI-53: when SUPABASE_ANON_KEY unset, fall back to static map."""
+    monkeypatch.setattr(alert, "_SUPABASE_ANON_KEY", "")
     assert alert._configured_model_for_callsign("aiden") == "claude-opus-4-7"
     assert alert._configured_model_for_callsign("orion") == "claude-sonnet-4-6"
     assert alert._configured_model_for_callsign("AIDEN") == "claude-opus-4-7"  # case-insensitive
 
 
-def test_configured_model_for_callsign_unknown_returns_empty(alert):
+def test_configured_model_for_callsign_unknown_returns_empty(alert, monkeypatch):
+    monkeypatch.setattr(alert, "_SUPABASE_ANON_KEY", "")
     assert alert._configured_model_for_callsign("nobody") == ""
     assert alert._configured_model_for_callsign("") == ""
+
+
+def test_configured_model_for_callsign_uses_supabase_when_key_set(alert, monkeypatch):
+    """KEI-53: primary path queries agent_profiles via PostgREST."""
+    monkeypatch.setattr(alert, "_SUPABASE_ANON_KEY", "test-anon-key")
+    import urllib.request
+
+    class FakeResp:
+        def read(self) -> bytes:
+            return b'[{"configured_model": "claude-sonnet-4-7-experimental"}]'
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+    with patch.object(urllib.request, "urlopen", return_value=FakeResp()):
+        assert alert._configured_model_for_callsign("aiden") == "claude-sonnet-4-7-experimental"
+
+
+def test_configured_model_for_callsign_supabase_failure_falls_back(alert, monkeypatch):
+    """KEI-53: PostgREST failure → fallback map (resilience)."""
+    monkeypatch.setattr(alert, "_SUPABASE_ANON_KEY", "test-anon-key")
+    import urllib.error
+    import urllib.request
+
+    with patch.object(urllib.request, "urlopen", side_effect=urllib.error.URLError("conn refused")):
+        assert alert._configured_model_for_callsign("max") == "claude-opus-4-7"
+
+
+def test_configured_model_for_callsign_supabase_empty_rows_falls_back(alert, monkeypatch):
+    """KEI-53: empty PostgREST response → fallback map (callsign not yet seeded)."""
+    monkeypatch.setattr(alert, "_SUPABASE_ANON_KEY", "test-anon-key")
+    import urllib.request
+
+    class FakeResp:
+        def read(self) -> bytes:
+            return b"[]"
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+    with patch.object(urllib.request, "urlopen", return_value=FakeResp()):
+        assert alert._configured_model_for_callsign("scout") == "claude-sonnet-4-6"
 
 
 def test_running_model_from_env(alert, monkeypatch):

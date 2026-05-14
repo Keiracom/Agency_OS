@@ -262,6 +262,44 @@ def cmd_show(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_deprecate(args: argparse.Namespace) -> int:
+    """KEI-63 — mark a discovery_log row deprecated. Excludes it from bd claim
+    context injection (KEI-55 pipeline) and future Weaviate retrieval (KEI-46/47).
+
+    Acceptance: discovery_log.mark_deprecated() flips deprecated=True on the
+    most recent row with the given KEI. load_active_discoveries() then excludes it.
+    """
+    import importlib.util
+
+    repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    spec = importlib.util.spec_from_file_location(
+        "discovery_log",
+        os.path.join(repo_root, "scripts", "orchestrator", "discovery_log.py"),
+    )
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+    callsign = (args.callsign or os.environ.get("CALLSIGN", "")).strip().lower()
+    if not callsign:
+        print("ERROR: --callsign required or set CALLSIGN env", file=sys.stderr)
+        return 2
+
+    try:
+        row = mod.mark_deprecated(kei=args.id, reason=args.reason, by=callsign)
+    except mod.DiscoveryLogError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    if args.json:
+        print(json.dumps(row, default=str))
+    else:
+        print(
+            f"deprecated {row['kei']} (by {row['deprecated_by']}, "
+            f"reason={row['deprecated_reason']!r}, at {row['deprecated_at']})"
+        )
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="subcmd", required=True)
@@ -297,6 +335,16 @@ def main(argv: list[str] | None = None) -> int:
     p_show.add_argument("id")
     p_show.add_argument("--json", action="store_true")
     p_show.set_defaults(func=cmd_show)
+
+    p_deprecate = sub.add_parser(
+        "deprecate",
+        help="KEI-63 — mark a discovery_log entry deprecated (filtered from bd claim)",
+    )
+    p_deprecate.add_argument("id", help="KEI of the discovery to deprecate")
+    p_deprecate.add_argument("--reason", required=True, help="why deprecated")
+    p_deprecate.add_argument("--callsign", help="override CALLSIGN env")
+    p_deprecate.add_argument("--json", action="store_true")
+    p_deprecate.set_defaults(func=cmd_deprecate)
 
     args = parser.parse_args(argv)
     return args.func(args)

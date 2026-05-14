@@ -78,6 +78,12 @@ case "$subcmd" in
         fi
         exec "$BD_ORIGINAL" show "$@"
         ;;
+    deprecate)
+        # KEI-63 — `bd deprecate <kei> --reason <r>` marks a discovery_log row
+        # deprecated. Excluded from bd claim context injection + future
+        # Weaviate retrieval. Routes to tasks_cli.cmd_deprecate.
+        exec python3 "$TASKS_CLI" deprecate "$@"
+        ;;
     "")
         # No subcommand → bd-original handles help.
         exec "$BD_ORIGINAL"

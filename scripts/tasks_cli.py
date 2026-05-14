@@ -40,6 +40,24 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 DEFAULT_CALLSIGN = "unknown"
 
+# Canonical column list shared by ready/show paths. Single source of truth
+# (avoids Sonar new_duplicated_lines_density on the column projection).
+_READY_COLUMNS = (
+    "id, title, priority, status, claimed_by, claimed_at, "
+    "dependencies, tags, linear_url, created_at, updated_at"
+)
+
+# KEI-53 Phase B — personalised score subquery joining agent_profiles.
+# JSONB key-exists (?) gates the cast so non-matching tags don't error.
+_PERSONALISED_SCORE_SUBQUERY = """COALESCE(
+    (SELECT SUM((ap.capability_weights->>tag)::float)
+     FROM public.agent_profiles ap,
+          unnest(t.tags) AS tag
+     WHERE ap.callsign = %s
+       AND ap.capability_weights ? tag),
+    0.0
+) AS personalised_score"""
+
 
 def _dsn() -> str:
     dsn = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL", "")
@@ -62,23 +80,37 @@ def _rows_to_dicts(cur: Any) -> list[dict]:
 
 
 def cmd_ready(args: argparse.Namespace) -> int:
-    """List available tasks ordered by priority ASC then created_at ASC."""
+    """List available tasks ordered by priority ASC then created_at ASC.
+
+    KEI-53 Phase B: if --agent <callsign> is supplied, re-rank by
+    personalised affinity score = SUM(capability_weight × matching_tag).
+    Adds `personalised_score` to each row; preserves existing JSON shape
+    (no renames) per Max's tasks-cli compat note.
+    """
     import psycopg
 
     limit = max(1, min(args.limit, 250))
+    agent = (args.agent or "").strip().lower() if getattr(args, "agent", None) else ""
     try:
         with psycopg.connect(_dsn()) as conn, conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT id, title, priority, status, claimed_by, claimed_at,
-                       dependencies, tags, linear_url, created_at, updated_at
-                FROM public.tasks
-                WHERE status = 'available'
-                ORDER BY priority ASC, created_at ASC
-                LIMIT %s
-                """,
-                (limit,),
-            )
+            if agent:
+                # KEI-53 — personalised path. Tie-break per Max note #2:
+                # personalised_score DESC, priority ASC, created_at ASC.
+                sql = (
+                    f"SELECT t.{', t.'.join(_READY_COLUMNS.split(', '))}, "
+                    f"{_PERSONALISED_SCORE_SUBQUERY} "
+                    "FROM public.tasks t WHERE t.status = 'available' "
+                    "ORDER BY personalised_score DESC, "
+                    "t.priority ASC, t.created_at ASC LIMIT %s"
+                )
+                cur.execute(sql, (agent, limit))
+            else:
+                sql = (
+                    f"SELECT {_READY_COLUMNS} FROM public.tasks "
+                    "WHERE status = 'available' "
+                    "ORDER BY priority ASC, created_at ASC LIMIT %s"
+                )
+                cur.execute(sql, (limit,))
             rows = _rows_to_dicts(cur)
     except psycopg.Error:
         logger.exception("ready query failed")
@@ -87,8 +119,12 @@ def cmd_ready(args: argparse.Namespace) -> int:
         print(json.dumps(rows, default=str))
     else:
         for r in rows:
-            print(f"  P{r['priority']:>1}  {r['id']:<24}  {r['title']}")
-        print(f"\n{len(rows)} available")
+            score_suffix = ""
+            if agent and "personalised_score" in r:
+                score_suffix = f"  [score={r['personalised_score']:.2f}]"
+            print(f"  P{r['priority']:>1}  {r['id']:<24}  {r['title']}{score_suffix}")
+        suffix = f" (personalised for {agent})" if agent else ""
+        print(f"\n{len(rows)} available{suffix}")
     return 0
 
 
@@ -232,6 +268,10 @@ def main(argv: list[str] | None = None) -> int:
     p_ready = sub.add_parser("ready", help="list available tasks")
     p_ready.add_argument("--json", action="store_true")
     p_ready.add_argument("--limit", type=int, default=50)
+    p_ready.add_argument(
+        "--agent",
+        help="KEI-53 — personalise ranking via agent_profiles.capability_weights",
+    )
     p_ready.set_defaults(func=cmd_ready)
 
     p_claim = sub.add_parser("claim", help="atomically claim a task")

@@ -59,7 +59,8 @@ class _Cursor:
         return self
 
     def __exit__(self, *a: Any) -> None:
-        pass
+        # Context-manager protocol; the in-memory fake has nothing to clean up.
+        return None
 
 
 class _Conn:
@@ -77,7 +78,8 @@ class _Conn:
         return self
 
     def __exit__(self, *a: Any) -> None:
-        pass
+        # Context-manager protocol; the in-memory fake has nothing to clean up.
+        return None
 
 
 @pytest.fixture

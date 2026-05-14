@@ -80,8 +80,8 @@ def cmd_ready(args: argparse.Namespace) -> int:
                 (limit,),
             )
             rows = _rows_to_dicts(cur)
-    except psycopg.Error as exc:
-        logger.error("ready query failed: %s", exc)
+    except psycopg.Error:
+        logger.exception("ready query failed")
         return 2
     if args.json:
         print(json.dumps(rows, default=str))
@@ -134,8 +134,8 @@ def cmd_claim(args: argparse.Namespace) -> int:
                 )
             row = cur.fetchone()
             conn.commit()
-    except psycopg.Error as exc:
-        logger.error("claim query failed: %s", exc)
+    except psycopg.Error:
+        logger.exception("claim query failed")
         return 2
     if row is None:
         if args.json:
@@ -174,8 +174,8 @@ def cmd_complete(args: argparse.Namespace) -> int:
             )
             row = cur.fetchone()
             conn.commit()
-    except psycopg.Error as exc:
-        logger.error("complete query failed: %s", exc)
+    except psycopg.Error:
+        logger.exception("complete query failed")
         return 2
     if row is None:
         if args.json:
@@ -206,8 +206,8 @@ def cmd_show(args: argparse.Namespace) -> int:
                 (args.id,),
             )
             rows = _rows_to_dicts(cur)
-    except psycopg.Error as exc:
-        logger.error("show query failed: %s", exc)
+    except psycopg.Error:
+        logger.exception("show query failed")
         return 2
     if not rows:
         print(f"not found: {args.id}", file=sys.stderr)

@@ -8,6 +8,7 @@ StartLimitIntervalSec=300
 
 [Service]
 Type=simple
+Environment="CALLSIGN=elliot"
 WorkingDirectory=/home/elliotbot/clawd/Agency_OS
 ExecStart=/home/elliotbot/clawd/Agency_OS/scripts/systemd_agent_supervisor.sh elliot elliottbot /home/elliotbot/clawd/Agency_OS
 Restart=on-failure

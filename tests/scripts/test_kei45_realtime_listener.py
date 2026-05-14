@@ -35,6 +35,15 @@ def test_callsign_map_matches_canonical_tmux_names():
     assert CALLSIGN_TO_TMUX["scout"] == "scout"
 
 
+# Payload shape mirrors supabase-py 2.x AsyncRealtimeChannel postgres_changes
+# delivery (empirically confirmed via DEBUG-log smoke 2026-05-14):
+#   {"data": {"type": "INSERT"|"UPDATE", "record": {...}, ...}, "ids": [...]}
+
+def _payload(event_type: str, record: dict) -> dict:
+    return {"data": {"type": event_type, "record": record, "schema": "public",
+                     "table": "tasks"}, "ids": [9019328]}
+
+
 def test_on_task_event_fires_wake_for_insert_available():
     """INSERT event with status='available' fans wake to all 6 agents."""
     wakes: list = []
@@ -43,10 +52,7 @@ def test_on_task_event_fires_wake_for_insert_available():
         wakes.append(callsign)
 
     with mock.patch.object(_mod, "inject_bd_ready_into_pane", fake_inject):
-        on_task_event({
-            "eventType": "INSERT",
-            "new": {"id": "KEI-99", "status": "available"},
-        })
+        on_task_event(_payload("INSERT", {"id": "KEI-99", "status": "available"}))
 
     assert set(wakes) == set(CALLSIGN_TO_TMUX)
 
@@ -59,10 +65,7 @@ def test_on_task_event_fires_wake_for_update_to_available():
         wakes.append(callsign)
 
     with mock.patch.object(_mod, "inject_bd_ready_into_pane", fake_inject):
-        on_task_event({
-            "eventType": "UPDATE",
-            "new": {"id": "KEI-99", "status": "available"},
-        })
+        on_task_event(_payload("UPDATE", {"id": "KEI-99", "status": "available"}))
 
     assert set(wakes) == set(CALLSIGN_TO_TMUX)
 
@@ -75,10 +78,7 @@ def test_on_task_event_ignores_non_available_status():
         wakes.append(callsign)
 
     with mock.patch.object(_mod, "inject_bd_ready_into_pane", fake_inject):
-        on_task_event({
-            "eventType": "UPDATE",
-            "new": {"id": "KEI-99", "status": "active"},
-        })
+        on_task_event(_payload("UPDATE", {"id": "KEI-99", "status": "active"}))
 
     assert wakes == []
 
@@ -91,12 +91,28 @@ def test_on_task_event_ignores_done_status():
         wakes.append(callsign)
 
     with mock.patch.object(_mod, "inject_bd_ready_into_pane", fake_inject):
-        on_task_event({
-            "eventType": "UPDATE",
-            "new": {"id": "KEI-99", "status": "done"},
-        })
+        on_task_event(_payload("UPDATE", {"id": "KEI-99", "status": "done"}))
 
     assert wakes == []
+
+
+def test_on_task_event_handles_realtime_enum_event_type():
+    """supabase-py may pass an enum with .value attribute instead of bare str."""
+    wakes: list = []
+
+    class _FakeEnum:
+        value = "INSERT"
+
+    def fake_inject(callsign):
+        wakes.append(callsign)
+
+    with mock.patch.object(_mod, "inject_bd_ready_into_pane", fake_inject):
+        on_task_event({
+            "data": {"type": _FakeEnum(), "record": {"id": "KEI-99", "status": "available"}},
+            "ids": [1],
+        })
+
+    assert set(wakes) == set(CALLSIGN_TO_TMUX)
 
 
 def test_inject_skips_unknown_callsign(caplog):

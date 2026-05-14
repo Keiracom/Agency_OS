@@ -30,11 +30,11 @@ Usage:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import signal
 import subprocess
-import sys
 import time
 from typing import Any
 
@@ -114,64 +114,80 @@ def inject_bd_ready_into_pane(callsign: str) -> None:
 
 
 def on_task_event(payload: dict[str, Any]) -> None:
-    """Realtime callback: payload is the postgres_changes event dict.
+    """Realtime callback. supabase-py 2.x delivers payload shape:
+        {"data": {"type": INSERT|UPDATE, "record": {...}, ...}, "ids": [...]}
 
-    Fires wake-up on INSERT (new task) OR UPDATE where status='available'
-    (re-availability after a previous claim was released).
+    Fires wake-up on INSERT or UPDATE where status='available'. Empirical
+    payload shape confirmed via DEBUG-log smoke test 2026-05-14.
     """
-    event_type = payload.get("eventType") or payload.get("type")
-    new = payload.get("new") or {}
-    status = new.get("status")
-    kei_id = new.get("id", "?")
+    data = payload.get("data") or {}
+    event_type = data.get("type")
+    if hasattr(event_type, "value"):
+        event_type = event_type.value
+    record = data.get("record") or {}
+    status = record.get("status")
+    kei_id = record.get("id", "?")
 
-    if event_type == "INSERT" and status == "available":
-        logger.info("EVENT new-available %s — fanning out wake-up", kei_id)
-        for callsign in CALLSIGN_TO_TMUX:
-            inject_bd_ready_into_pane(callsign)
-    elif event_type == "UPDATE" and status == "available":
-        logger.info("EVENT re-available %s — fanning out wake-up", kei_id)
+    if event_type in ("INSERT", "UPDATE") and status == "available":
+        logger.info("EVENT %s available %s — fanning out wake-up", event_type, kei_id)
         for callsign in CALLSIGN_TO_TMUX:
             inject_bd_ready_into_pane(callsign)
     else:
         logger.debug("EVENT ignored type=%s status=%s id=%s", event_type, status, kei_id)
 
 
-def main() -> int:
-    """Block-subscribe to public.tasks Realtime postgres_changes channel."""
+async def async_main() -> int:
+    """Block-subscribe to public.tasks Realtime postgres_changes channel.
+
+    supabase-py 2.x supports Realtime ONLY in the async client (sync raises
+    NotImplementedError on channel()). Caught by empirical smoke 2026-05-14
+    pre-merge — see PR #869 amend log.
+    """
     if not SUPABASE_URL or not SUPABASE_KEY:
         logger.error("SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY/SUPABASE_ANON_KEY env vars required")
         return 2
 
     try:
-        from supabase import create_client  # type: ignore[import-untyped]
+        from supabase import acreate_client  # type: ignore[import-untyped]
     except ImportError:
         logger.error("supabase-py not installed; pip install supabase>=2.3.0")
         return 2
 
-    client = create_client(SUPABASE_URL, SUPABASE_KEY)
+    client = await acreate_client(SUPABASE_URL, SUPABASE_KEY)
     channel = client.channel("kei45-task-events")
-    channel.on_postgres_changes(
-        event="*",
-        schema="public",
-        table="tasks",
-        callback=on_task_event,
-    )
-    channel.subscribe()
-    logger.info("subscribed to public.tasks postgres_changes — listening for wake-up events")
+    for ev in ("INSERT", "UPDATE"):
+        channel.on_postgres_changes(
+            event=ev,
+            schema="public",
+            table="tasks",
+            callback=on_task_event,
+        )
+    def _subscribe_state(state, err):  # type: ignore[no-untyped-def]
+        logger.info("channel state: %s (err=%s)", state, err)
 
-    # Block forever — handle SIGTERM gracefully so systemd restart is clean.
+    await channel.subscribe(_subscribe_state)
+    logger.info("subscribe() returned — waiting for SUBSCRIBED state...")
+
+    stop_event = asyncio.Event()
+
     def _shutdown(signum, frame):  # type: ignore[no-untyped-def]
         logger.info("received signal %d; shutting down", signum)
-        try:
-            channel.unsubscribe()
-        except Exception:  # noqa: BLE001 — best-effort on shutdown
-            pass
-        sys.exit(0)
+        stop_event.set()
 
     signal.signal(signal.SIGTERM, _shutdown)
     signal.signal(signal.SIGINT, _shutdown)
-    while True:
-        time.sleep(60)
+
+    await stop_event.wait()
+
+    try:
+        await channel.unsubscribe()
+    except Exception:  # noqa: BLE001 — best-effort on shutdown
+        pass
+    return 0
+
+
+def main() -> int:
+    return asyncio.run(async_main())
 
 
 if __name__ == "__main__":

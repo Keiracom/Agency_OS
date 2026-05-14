@@ -38,11 +38,30 @@ HEARTBEAT_PATH = Path("HEARTBEAT.md")
 
 # KEI-36 — placeholder text → auto-populate source. Each key is the literal
 # `<...>` placeholder as it appears in HEARTBEAT.md; value comes from
-# auto_populate_heartbeat() arguments. Fields without a mechanical source
-# (Phase / Configured model — no Callsign→Model table in CLAUDE.md yet) are
-# intentionally left out so they remain placeholders and trigger
-# [HEARTBEAT-INCOMPLETE] warning.
+# auto_populate_heartbeat() arguments.
 _PLACEHOLDER_PATTERN = re.compile(r"<[^>\n]+>")
+
+# KEI-36 follow-up (2026-05-14) — callsign → configured model. Static interim
+# map; the directive's reference to ceo_memory key `orchestration:model_assignment`
+# is a future migration target. Values match recent commit authors' actual model.
+_CONFIGURED_MODEL_MAP = {
+    "aiden": "claude-opus-4-7",
+    "max": "claude-opus-4-7",
+    "elliot": "claude-opus-4-7",
+    "atlas": "claude-sonnet-4-6",
+    "orion": "claude-sonnet-4-6",
+    "scout": "claude-sonnet-4-6",
+}
+
+# Placeholders that are intentional agent-fill (no mechanical source). The
+# residual-detector skips lines containing these so [HEARTBEAT-INCOMPLETE]
+# doesn't fire on fields the auto-populate isn't expected to handle.
+_AGENT_FILL_PLACEHOLDERS = frozenset(
+    {
+        "<one-line>",
+        "<scope/decompose/execute/verify/report>",
+    }
+)
 
 
 def resolve_callsign() -> str:
@@ -222,6 +241,28 @@ def _git_commit_subject() -> str:
     return _run(["git", "log", "-1", "--pretty=%s"])
 
 
+def _configured_model_for_callsign(callsign: str) -> str:
+    """KEI-36 follow-up — look up configured model from static callsign map.
+
+    Returns the model id from _CONFIGURED_MODEL_MAP or '' if callsign unknown.
+    Future: replace with ceo_memory `orchestration:model_assignment` SQL read.
+    """
+    return _CONFIGURED_MODEL_MAP.get(callsign.lower(), "")
+
+
+def _running_model() -> str:
+    """KEI-36 follow-up — actual --model the process is running.
+
+    Reads CLAUDE_MODEL env var (set by tmux session launch script if known).
+    Falls back to 'unknown — check tmux session launch command' which matches
+    the HEARTBEAT.md template's documented fallback.
+    """
+    val = os.environ.get("CLAUDE_MODEL", "").strip()
+    if val:
+        return val
+    return "unknown — check tmux session launch command"
+
+
 def _directive_from_branch(branch: str) -> str:
     """KEI-36 — extract directive label from branch name like 'aiden/kei36-...'."""
     if not branch or branch == "main":
@@ -242,14 +283,25 @@ def auto_populate_heartbeat(
     directive: str,
     blockers: str,
     next_action: str,
+    configured_model: str = "",
+    running_model: str = "",
 ) -> str:
     """KEI-36 — fill HEARTBEAT.md placeholder fields from mechanical sources.
 
     Empty-string args are skipped (placeholder preserved → triggers
-    [HEARTBEAT-INCOMPLETE] warning downstream). Phase + Goal + Model fields
-    have no mechanical source on this side and are deliberately left as
-    placeholders for the agent to fill OR for the warning to surface.
+    [HEARTBEAT-INCOMPLETE] warning downstream UNLESS the placeholder is in
+    _AGENT_FILL_PLACEHOLDERS). Phase + Goal stay as agent-fill; Model fields
+    now auto-populate from callsign map + CLAUDE_MODEL env (KEI-36 follow-up).
     """
+    long_configured = (
+        "<callsign-from-IDENTITY.md → lookup in ceo_memory key "
+        "`orchestration:model_assignment` (SQL-anchored Elliot UPSERT "
+        "2026-05-12 22:45:30 UTC)>"
+    )
+    long_running = (
+        "<actual `--model` flag at startup, if known; otherwise "
+        '"unknown — check tmux session launch command">'
+    )
     replacements = {
         "<git short-sha>": git_short_sha,
         "<branch-name>": branch,
@@ -258,6 +310,8 @@ def auto_populate_heartbeat(
         "<directive number or label>": directive,
         '<bulleted list, or "none">': blockers,
         "<single concrete next step the next session should execute>": next_action,
+        long_configured: configured_model,
+        long_running: running_model,
     }
     for placeholder, value in replacements.items():
         if value:
@@ -282,7 +336,12 @@ def find_residual_placeholders(text: str) -> list[str]:
             in_skip_block = False
         if in_skip_block:
             continue
-        found.extend(_PLACEHOLDER_PATTERN.findall(line))
+        for match in _PLACEHOLDER_PATTERN.findall(line):
+            # KEI-36 follow-up — skip intentional agent-fill placeholders so
+            # [HEARTBEAT-INCOMPLETE] doesn't fire on Phase/Goal fields the
+            # auto-populate isn't expected to handle mechanically.
+            if match not in _AGENT_FILL_PLACEHOLDERS:
+                found.append(match)
     return found
 
 
@@ -326,6 +385,8 @@ def main() -> int:
                 directive=_directive_from_branch(git["branch"]),
                 blockers=_bd_blocked_list(),
                 next_action=_bd_ready_first(),
+                configured_model=_configured_model_for_callsign(callsign),
+                running_model=_running_model(),
             )
             if populated != raw:
                 HEARTBEAT_PATH.write_text(populated)

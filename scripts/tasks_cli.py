@@ -40,6 +40,10 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 DEFAULT_CALLSIGN = "unknown"
 
+# Shared help text for --callsign across subcommands (Sonar S1192 — avoid
+# duplicating the same string literal across multiple add_argument calls).
+_CALLSIGN_HELP = "override CALLSIGN env"
+
 # Canonical column list shared by ready/show paths. Single source of truth
 # (avoids Sonar new_duplicated_lines_density on the column projection).
 _READY_COLUMNS = (
@@ -315,13 +319,13 @@ def main(argv: list[str] | None = None) -> int:
 
     p_claim = sub.add_parser("claim", help="atomically claim a task")
     p_claim.add_argument("--id", help="specific task id; omit to take next available")
-    p_claim.add_argument("--callsign", help="override CALLSIGN env")
+    p_claim.add_argument("--callsign", help=_CALLSIGN_HELP)
     p_claim.add_argument("--json", action="store_true")
     p_claim.set_defaults(func=cmd_claim)
 
     p_complete = sub.add_parser("complete", help="mark task done")
     p_complete.add_argument("id", help="task id")
-    p_complete.add_argument("--callsign", help="override CALLSIGN env")
+    p_complete.add_argument("--callsign", help=_CALLSIGN_HELP)
     p_complete.add_argument(
         "--force-mode",
         default="strict",
@@ -342,7 +346,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     p_deprecate.add_argument("id", help="KEI of the discovery to deprecate")
     p_deprecate.add_argument("--reason", required=True, help="why deprecated")
-    p_deprecate.add_argument("--callsign", help="override CALLSIGN env")
+    p_deprecate.add_argument("--callsign", help=_CALLSIGN_HELP)
     p_deprecate.add_argument("--json", action="store_true")
     p_deprecate.set_defaults(func=cmd_deprecate)
 

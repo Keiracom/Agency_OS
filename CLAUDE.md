@@ -45,6 +45,8 @@ VALUES (gen_random_uuid(), '<your_callsign>', 'daily_log', '<summary: what was d
 
 @.claude/modules/_enrichment_path.md
 
+@.claude/modules/_discovery_log.md
+
 @.claude/modules/_directive_format.md
 
 @.claude/modules/_session_end.md

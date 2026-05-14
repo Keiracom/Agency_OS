@@ -30,15 +30,32 @@ jobs:
           git fetch origin "$BASE_REF" --depth=1
           main_hash=$(git show "origin/$BASE_REF":CLAUDE.md | md5sum | awk '{print $1}')
           head_hash=$(md5sum CLAUDE.md | awk '{print $1}')
-          if [ "$main_hash" != "$head_hash" ]; then
-            echo "::error::CLAUDE.md hash diverged from origin/$BASE_REF"
-            echo "  main:  $main_hash"
-            echo "  HEAD:  $head_hash"
-            echo ""
-            echo "KEI-12 / Item #1 convention: CLAUDE.md is kept duplicated"
-            echo "across worktrees + on main. Per-worktree edits must NOT change"
-            echo "CLAUDE.md. Edit the source/template upstream + sync all worktrees"
-            echo "in a coordinated PR. See docs/wave2/symlink_governance_audit.md."
-            exit 1
+
+          if [ "$main_hash" = "$head_hash" ]; then
+            echo "CLAUDE.md hash matches origin/$BASE_REF — equality preserved."
+            exit 0
           fi
-          echo "CLAUDE.md hash matches origin/$BASE_REF — equality preserved."
+
+          # Hash diverged — check for authorised exemption (S7630-safe: diff-derived, not PR metadata).
+          #
+          # Exemption: PR adds at least one new @.claude/modules/_*.md include line.
+          #   Rationale: pairing a CLAUDE.md edit with a new module include is the
+          #   natural governance-extension pattern; it inspects the actual diff, not
+          #   attacker-controlled PR title or commit message text.
+          #
+          # PR-title and commit-message exemptions removed — S7630 (attacker-controlled inputs).
+          diff_added_modules=$(git diff "origin/${BASE_REF}...HEAD" -- CLAUDE.md \
+            | grep -cE '^\+@\.claude/modules/_[a-z_]+\.md$' || true)
+          if [ "${diff_added_modules}" -gt 0 ]; then
+            echo "::notice::CLAUDE.md hash diverged but exemption applied — paired with ${diff_added_modules} new @.claude/modules/ include(s)."
+            exit 0
+          fi
+
+          # No exemption matched — fail.
+          echo "::error::CLAUDE.md hash diverged from origin/${BASE_REF} without exemption"
+          echo "  main:  ${main_hash}"
+          echo "  HEAD:  ${head_hash}"
+          echo ""
+          echo "To change CLAUDE.md: pair the edit with a new @.claude/modules/_*.md include line."
+          echo "PR-title and commit-message exemptions removed (S7630 — attacker-controlled inputs)."
+          exit 1

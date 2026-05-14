@@ -11,8 +11,11 @@ from typing import Any
 
 
 class FakeCursor:
-    """Minimal psycopg cursor stand-in. Records the last execute() call;
-    returns caller-provided fetchall_rows / fetchone_row.
+    """Minimal psycopg cursor stand-in. Records every execute() call;
+    `last_sql`/`last_params` point at the most recent call (backward-compat
+    with tests that only need the last call); `executed` is the full
+    [(sql, params), ...] history (used by tests that exercise multi-execute
+    paths, e.g. KEI-61's mark_done which does UPDATE then INSERT).
     """
 
     def __init__(
@@ -24,12 +27,18 @@ class FakeCursor:
         self._all = fetchall_rows or []
         self._one = fetchone_row
         self.description = [type("col", (), {"name": c[0]})() for c in (description or [])]
-        self.last_sql: str = ""
-        self.last_params: tuple | None = None
+        self.executed: list[tuple[str, tuple | None]] = []
+
+    @property
+    def last_sql(self) -> str:
+        return self.executed[-1][0] if self.executed else ""
+
+    @property
+    def last_params(self) -> tuple | None:
+        return self.executed[-1][1] if self.executed else None
 
     def execute(self, sql: str, params: tuple | None = None) -> None:
-        self.last_sql = sql
-        self.last_params = params
+        self.executed.append((sql, params))
 
     def fetchall(self) -> list[tuple]:
         return self._all

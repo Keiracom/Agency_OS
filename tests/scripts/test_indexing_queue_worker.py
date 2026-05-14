@@ -18,12 +18,17 @@ from __future__ import annotations
 import importlib.util
 import sys
 from pathlib import Path
-from typing import Any
 
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 SCRIPT = REPO_ROOT / "scripts" / "indexing_queue_worker.py"
+
+# Shared psycopg fakes (Aiden's KEI-54 amend extracted these; KEI-61 reuses).
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _db_mocks import FakeConn, FakeCursor  # type: ignore[import-not-found]  # noqa: E402
+
+_Cursor = FakeCursor  # legacy alias kept for the existing test bodies below
 
 
 @pytest.fixture(scope="module")
@@ -35,60 +40,14 @@ def mod():
     return m
 
 
-class _Cursor:
-    def __init__(
-        self,
-        fetchall_rows: list[tuple] | None = None,
-        fetchone_row: tuple | None = None,
-        description: list[tuple] | None = None,
-    ) -> None:
-        self._all = fetchall_rows or []
-        self._one = fetchone_row
-        self.description = [type("col", (), {"name": c[0]})() for c in (description or [])]
-        self.executed: list[tuple[str, tuple | None]] = []
-
-    def execute(self, sql: str, params: tuple | None = None) -> None:
-        self.executed.append((sql, params))
-
-    def fetchall(self) -> list[tuple]:
-        return self._all
-
-    def fetchone(self) -> tuple | None:
-        return self._one
-
-    def __enter__(self) -> _Cursor:
-        return self
-
-    def __exit__(self, *a: Any) -> None:
-        return None
-
-
-class _Conn:
-    def __init__(self, cur: _Cursor) -> None:
-        self._cur = cur
-        self.commits = 0
-
-    def cursor(self) -> _Cursor:
-        return self._cur
-
-    def commit(self) -> None:
-        self.commits += 1
-
-    def __enter__(self) -> _Conn:
-        return self
-
-    def __exit__(self, *a: Any) -> None:
-        return None
-
-
 @pytest.fixture
 def patch_connect(mod, monkeypatch):
     monkeypatch.setenv("DATABASE_URL", "postgresql://test/x")
 
-    def _patch(cur: _Cursor):
+    def _patch(cur: FakeCursor):
         import psycopg
 
-        monkeypatch.setattr(psycopg, "connect", lambda *a, **kw: _Conn(cur))
+        monkeypatch.setattr(psycopg, "connect", lambda *a, **kw: FakeConn(cur))
         return cur
 
     return _patch

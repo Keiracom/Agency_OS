@@ -8,6 +8,7 @@ StartLimitIntervalSec=300
 
 [Service]
 Type=simple
+Environment="CALLSIGN=orion"
 WorkingDirectory=/home/elliotbot/clawd/Agency_OS-orion
 ExecStart=/home/elliotbot/clawd/Agency_OS-orion/scripts/systemd_agent_supervisor.sh orion orion /home/elliotbot/clawd/Agency_OS-orion
 Restart=on-failure

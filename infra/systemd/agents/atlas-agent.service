@@ -8,6 +8,7 @@ StartLimitIntervalSec=300
 
 [Service]
 Type=simple
+Environment="CALLSIGN=atlas"
 WorkingDirectory=/home/elliotbot/clawd/Agency_OS-atlas
 ExecStart=/home/elliotbot/clawd/Agency_OS-atlas/scripts/systemd_agent_supervisor.sh atlas atlas /home/elliotbot/clawd/Agency_OS-atlas
 Restart=on-failure

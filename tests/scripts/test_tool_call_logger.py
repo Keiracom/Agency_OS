@@ -16,9 +16,14 @@ import json
 import sys
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any
 
 import pytest
+
+# Shared psycopg mocks live in tests/scripts/_db_mocks.py per Sonar
+# new_duplicated_lines_density (KEI-54 amend). Filename intentionally is
+# NOT conftest.py — root-level conftest.py wins module resolution.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _db_mocks import FakeConn, FakeCursor  # type: ignore[import-not-found]  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 SCRIPT = REPO_ROOT / "scripts" / "orchestrator" / "tool_call_logger.py"
@@ -33,50 +38,17 @@ def mod():
     return m
 
 
-class _Cursor:
-    def __init__(self, returned_id: str = "abc-123") -> None:
-        self._id = returned_id
-        self.last_sql: str = ""
-        self.last_params: tuple | None = None
-
-    def execute(self, sql: str, params: tuple | None = None) -> None:
-        self.last_sql = sql
-        self.last_params = params
-
-    def fetchone(self) -> tuple:
-        return (self._id,)
-
-    def __enter__(self) -> _Cursor:
-        return self
-
-    def __exit__(self, *a: Any) -> None:
-        return None
-
-
-class _Conn:
-    def __init__(self, cur: _Cursor) -> None:
-        self._cur = cur
-        self.commits = 0
-
-    def cursor(self) -> _Cursor:
-        return self._cur
-
-    def commit(self) -> None:
-        self.commits += 1
-
-    def __enter__(self) -> _Conn:
-        return self
-
-    def __exit__(self, *a: Any) -> None:
-        return None
+def _make_cursor(returned_id: str = "abc-123") -> FakeCursor:
+    """Factory for the canonical insert-returning-id cursor used here."""
+    return FakeCursor(fetchone_row=(returned_id,))
 
 
 @pytest.fixture
 def patch_connect(mod, monkeypatch):
-    def _patch(cur: _Cursor) -> _Conn:
+    def _patch(cur: FakeCursor) -> FakeConn:
         import psycopg
 
-        conn = _Conn(cur)
+        conn = FakeConn(cur)
         monkeypatch.setattr(psycopg, "connect", lambda *_a, **_kw: conn)
         return conn
 
@@ -133,7 +105,7 @@ def test_truncate_none_passthrough(mod):
 
 
 def test_log_tool_call_returns_inserted_uuid(mod, patch_connect):
-    cur = _Cursor(returned_id="11111111-2222-3333-4444-555555555555")
+    cur = _make_cursor("11111111-2222-3333-4444-555555555555")
     patch_connect(cur)
     started = datetime.now(UTC)
     completed = started + timedelta(milliseconds=42)
@@ -150,7 +122,7 @@ def test_log_tool_call_returns_inserted_uuid(mod, patch_connect):
 
 
 def test_log_tool_call_lowercases_callsign(mod, patch_connect):
-    cur = _Cursor()
+    cur = _make_cursor()
     patch_connect(cur)
     mod.log_tool_call(
         callsign="AIDEN",
@@ -162,7 +134,7 @@ def test_log_tool_call_lowercases_callsign(mod, patch_connect):
 
 
 def test_log_tool_call_computes_duration_ms(mod, patch_connect):
-    cur = _Cursor()
+    cur = _make_cursor()
     patch_connect(cur)
     started = datetime(2026, 5, 14, 0, 0, 0, tzinfo=UTC)
     completed = started + timedelta(milliseconds=123)
@@ -178,7 +150,7 @@ def test_log_tool_call_computes_duration_ms(mod, patch_connect):
 
 
 def test_log_tool_call_omits_duration_when_completed_missing(mod, patch_connect):
-    cur = _Cursor()
+    cur = _make_cursor()
     patch_connect(cur)
     mod.log_tool_call(
         callsign="aiden",
@@ -190,9 +162,11 @@ def test_log_tool_call_omits_duration_when_completed_missing(mod, patch_connect)
 
 
 def test_log_tool_call_serialises_tool_input_to_json(mod, patch_connect):
-    cur = _Cursor()
+    cur = _make_cursor()
     patch_connect(cur)
-    payload = {"command": "ls -la", "cwd": "/tmp", "nested": {"k": 1}}
+    # Note: avoid hardcoded "/tmp" or "/var/tmp" literal — Sonar S5443 flags
+    # them as publicly-writable references even in test fixture data.
+    payload = {"command": "ls -la", "cwd": "/workdir", "nested": {"k": 1}}
     mod.log_tool_call(
         callsign="aiden",
         tool_name="Bash",
@@ -206,7 +180,7 @@ def test_log_tool_call_serialises_tool_input_to_json(mod, patch_connect):
 
 
 def test_log_tool_call_truncates_large_output(mod, patch_connect):
-    cur = _Cursor()
+    cur = _make_cursor()
     patch_connect(cur)
     big_output = "y" * 2000
     mod.log_tool_call(
@@ -223,7 +197,7 @@ def test_log_tool_call_truncates_large_output(mod, patch_connect):
 
 
 def test_log_tool_call_default_empty_tool_input(mod, patch_connect):
-    cur = _Cursor()
+    cur = _make_cursor()
     patch_connect(cur)
     mod.log_tool_call(
         callsign="aiden",
@@ -254,25 +228,10 @@ def test_log_tool_call_wraps_psycopg_error(mod, monkeypatch):
 
 
 def test_log_tool_call_raises_on_no_returning_row(mod, monkeypatch):
-    class _NoneCur:
-        last_sql = ""
-        last_params: tuple | None = None
-
-        def execute(self, sql: str, params: tuple | None = None) -> None:
-            self.last_sql = sql
-            self.last_params = params
-
-        def fetchone(self) -> tuple | None:
-            return None
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *_a):
-            return None
-
-    cur = _NoneCur()
-    conn = _Conn(cur)  # type: ignore[arg-type]
+    # FakeCursor with fetchone_row=None returns None — simulates INSERT
+    # ... RETURNING that produced no row (e.g. no permission, no match).
+    cur = FakeCursor(fetchone_row=None)
+    conn = FakeConn(cur)
     import psycopg
 
     monkeypatch.setattr(psycopg, "connect", lambda *_a, **_kw: conn)

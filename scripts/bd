@@ -84,6 +84,16 @@ case "$subcmd" in
         # Weaviate retrieval. Routes to tasks_cli.cmd_deprecate.
         exec python3 "$TASKS_CLI" deprecate "$@"
         ;;
+    verify)
+        # KEI-58 — `bd verify <kei>` discovery freshness (FRESH/STALE/EXPIRED).
+        # Routes to bd_verify.py over discovery_log.jsonl. Exit 0 on any verdict;
+        # non-zero only on missing row so callers can distinguish "stale" from
+        # "no such discovery". Falls through to bd-original if shim missing.
+        if [[ -f "$AGENCY_OS_REPO/scripts/bd_verify.py" ]]; then
+            exec env PYTHONPATH="$AGENCY_OS_REPO${PYTHONPATH:+:$PYTHONPATH}" python3 "$AGENCY_OS_REPO/scripts/bd_verify.py" "$@"
+        fi
+        exec "$BD_ORIGINAL" verify "$@"
+        ;;
     "")
         # No subcommand → bd-original handles help.
         exec "$BD_ORIGINAL"

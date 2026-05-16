@@ -18,15 +18,22 @@ Public API:
     load_active_discoveries() -> list[dict]   # filter out deprecated=True
     append_discovery(entry: dict) -> None     # write a new row
     mark_deprecated(kei: str, reason: str, by: str) -> dict  # mutate row
+    compute_freshness(row, now=None) -> dict  # KEI-58 — fresh|stale|expired + reason
+    load_fresh_discoveries() -> list[dict]    # KEI-58 — active AND not expired
 """
 
 from __future__ import annotations
 
 import json
 import os
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
+
+from scripts.orchestrator.context_version import context_drift, current_context_version
+
+STALE_AGE = timedelta(days=30)
+EXPIRED_AGE = timedelta(days=90)
 
 DEFAULT_DISCOVERY_LOG = Path(
     os.environ.get(
@@ -126,3 +133,56 @@ def mark_deprecated(
             fh.write(json.dumps(r) + "\n")
     tmp.replace(path)
     return rows[target_idx]
+
+
+def _parse_iso(ts: str) -> datetime | None:
+    try:
+        return datetime.fromisoformat(ts.replace("Z", "+00:00"))
+    except (ValueError, AttributeError):
+        return None
+
+
+def compute_freshness(
+    row: dict[str, Any],
+    now: datetime | None = None,
+    *,
+    current_version: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Classify a discovery row's freshness. Returns {verdict, reason, age_days, drift}.
+
+    Rule (KEI-58, 30/90 ratified by Elliot ts ~1778899332):
+      EXPIRED if age > 90d (regardless of context drift — old lessons rot).
+      STALE   if age > 30d OR any context_version field differs from current.
+      FRESH   otherwise.
+    Verdict precedence: EXPIRED beats STALE beats FRESH.
+    """
+    now = now or datetime.now(UTC)
+    current_version = current_version if current_version is not None else current_context_version()
+    written_at = _parse_iso(row.get("created_at") or row.get("written_at") or "")
+    age = now - written_at if written_at else timedelta.max
+    age_days = age.days if age != timedelta.max else None
+    drift = context_drift(row.get("context_version"), current_version)
+    if age >= EXPIRED_AGE:
+        return {"verdict": "expired", "reason": f"age {age_days}d >= 90d", "age_days": age_days, "drift": drift}
+    if age >= STALE_AGE:
+        return {"verdict": "stale", "reason": f"age {age_days}d >= 30d", "age_days": age_days, "drift": drift}
+    if drift:
+        return {"verdict": "stale", "reason": f"context drift on {drift}", "age_days": age_days, "drift": drift}
+    return {"verdict": "fresh", "reason": "within 30d and context unchanged", "age_days": age_days, "drift": []}
+
+
+def load_fresh_discoveries(path: Path | None = None) -> list[dict[str, Any]]:
+    """Active rows minus EXPIRED. STALE retained but tagged via `_freshness` key.
+
+    Caller for bd recall + future bd claim auto-injection (KEI-51): exclude
+    EXPIRED entirely; surface STALE with the freshness tag so the UI can badge.
+    """
+    current = current_context_version()
+    out: list[dict[str, Any]] = []
+    for row in load_active_discoveries(path):
+        f = compute_freshness(row, current_version=current)
+        if f["verdict"] == "expired":
+            continue
+        row["_freshness"] = f
+        out.append(row)
+    return out

@@ -41,10 +41,28 @@ router = APIRouter(prefix="/api/webhooks/linear", tags=["webhooks", "linear"])
 LINEAR_TO_BD_PRIORITY: dict[int, int] = {0: 4, 1: 0, 2: 1, 3: 2, 4: 3}
 
 # Linear state name → bd status (Linear's StateType enum: triage/backlog/unstarted/started/completed/canceled).
+# KEI-84 extension: backlog/unstarted (Todo) → available; canceled → 'cancelled' (own bucket, not 'closed').
 LINEAR_STATE_TO_BD: dict[str, str] = {
+    "backlog": "available",
+    "unstarted": "available",
+    "triage": "available",
     "started": "active",
     "completed": "closed",
-    "canceled": "closed",
+    "canceled": "cancelled",
+}
+
+# KEI-84: separate Linear state → public.tasks.status mapping per spec acceptance
+# (Backlog/Todo → available; In Progress/In Review → active; Done → done;
+# Cancelled/Duplicate → cancelled). 'In Review' shares Linear's started StateType
+# with 'In Progress'; both → active. 'Duplicate' is a custom state that Linear
+# canonically maps under canceled StateType → cancelled.
+LINEAR_STATE_TO_TASK_STATUS: dict[str, str] = {
+    "backlog": "available",
+    "unstarted": "available",
+    "triage": "available",
+    "started": "active",
+    "completed": "done",
+    "canceled": "cancelled",
 }
 
 _BD_WRAPPER = "/home/elliotbot/clawd/Agency_OS/scripts/linear_to_bd.py"
@@ -114,8 +132,17 @@ def _normalise_event(payload: dict[str, Any]) -> dict[str, Any] | None:
                 "op": "status",
                 "identifier": identifier,
                 "bd_status": LINEAR_STATE_TO_BD[state],
+                "task_status": LINEAR_STATE_TO_TASK_STATUS.get(state),
                 "url": data.get("url") or f"https://linear.app/keiracom/issue/{identifier}",
             }
+    if action == "remove":
+        # KEI-84: Linear issue deleted → flip task to cancelled (preserve row + history).
+        return {
+            "op": "remove",
+            "identifier": identifier,
+            "task_status": "cancelled",
+            "url": data.get("url") or f"https://linear.app/keiracom/issue/{identifier}",
+        }
     return None
 
 
@@ -185,18 +212,21 @@ def _dispatch_to_tasks(event: dict[str, Any]) -> None:
                     ),
                 )
             elif op == "status":
-                new_status = "done" if event.get("bd_status") == "closed" else "active"
-                # Clear the claim only on "done" so an in-flight claim survives
-                # an "In Progress" → "In Progress" no-op re-dispatch.
+                # KEI-84: full status mapping per spec acceptance.
+                # task_status is the spec'd target ('available'|'active'|'done'|'cancelled');
+                # falls back to legacy bd_status if older normalised event arrives.
+                new_status = event.get("task_status")
+                if new_status is None:
+                    new_status = "done" if event.get("bd_status") == "closed" else "active"
+                # KEI-84 invariant: never downgrade a 'done' task (Linear could
+                # legitimately re-open via state change, but the spec hard-no's
+                # downgrade). Skip the UPDATE on done rows.
                 if new_status == "done":
                     cur.execute(
                         """
                         UPDATE public.tasks
-                           SET status = 'done',
-                               claimed_by = NULL,
-                               claimed_at = NULL,
-                               linear_url = COALESCE(linear_url, %s),
-                               updated_at = NOW()
+                           SET status = 'done', claimed_by = NULL, claimed_at = NULL,
+                               linear_url = COALESCE(linear_url, %s), updated_at = NOW()
                          WHERE id = %s
                         """,
                         (url, identifier),
@@ -205,13 +235,25 @@ def _dispatch_to_tasks(event: dict[str, Any]) -> None:
                     cur.execute(
                         """
                         UPDATE public.tasks
-                           SET status = 'active',
+                           SET status = %s,
                                linear_url = COALESCE(linear_url, %s),
                                updated_at = NOW()
-                         WHERE id = %s
+                         WHERE id = %s AND status != 'done'
                         """,
-                        (url, identifier),
+                        (new_status, url, identifier),
                     )
+            elif op == "remove":
+                # KEI-84: Linear issue deletion → flip to cancelled. Same never-downgrade-done guard.
+                cur.execute(
+                    """
+                    UPDATE public.tasks
+                       SET status = 'cancelled',
+                           linear_url = COALESCE(linear_url, %s),
+                           updated_at = NOW()
+                     WHERE id = %s AND status != 'done'
+                    """,
+                    (url, identifier),
+                )
             conn.commit()
     except Exception as exc:  # noqa: BLE001 — fail-open per webhook discipline
         logger.warning("tasks dispatch failed for %s: %s", identifier, exc)

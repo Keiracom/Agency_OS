@@ -1,0 +1,35 @@
+[Unit]
+Description=Agency OS — Cognee API server (knowledge graph + memory layer)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Use Agency_OS/.venv (clean mistralai 1.9.11) — shared /home/elliotbot/clawd/venv/
+# has corrupted mistralai 2.0.5 (missing __init__.py) per Atlas + Elliot verify
+# 2026-05-12 ts 1778567xxx. Option C of A/B/C/D — narrowest-blast-radius fix.
+# KEI-77 — cognee_kuzu_capped_launcher.py monkey-patches ladybug Database init
+# to clamp max_db_size + buffer_pool_size, fixing the 4 GB mmap collision with
+# the KEI-44 3 GB cgroup cap. See: scripts/cognee_kuzu_capped_launcher.py.
+ExecStart=/home/elliotbot/clawd/Agency_OS/.venv/bin/python3 /home/elliotbot/clawd/Agency_OS/scripts/cognee_kuzu_capped_launcher.py
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+# KEI-77 — Kuzu clamps (units = MB). 1024 MB max_db_size + 768 MB buffer_pool +
+# cognee runtime (~800 MB peak observed RSS) = ~2.5 GB; comfortable under the
+# 3 GB cgroup cap below.
+Environment="COGNEE_KUZU_MAX_DB_SIZE_MB=1024"
+Environment="COGNEE_KUZU_BUFFER_POOL_MB=768"
+Restart=on-failure
+RestartSec=5
+# KEI-44 — 3 GB cgroup memory cap on the long-running cognee service.
+# PR #846 shipped cognee_capped.sh (only capped ad-hoc subprocess launches);
+# the live service was bypassing the cap (verified 2026-05-14T07:48Z:
+# MemoryMax=infinity on PID 1278). 3 GB matches Orion's acceptance test in
+# scripts/orchestrator/cognee_cap_acceptance_test.sh.
+MemoryMax=3G
+MemoryHigh=2700M
+StandardOutput=append:/home/elliotbot/clawd/logs/cognee.log
+StandardError=append:/home/elliotbot/clawd/logs/cognee.log
+
+[Install]
+WantedBy=default.target

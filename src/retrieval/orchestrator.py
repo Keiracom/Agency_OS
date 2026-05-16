@@ -2,8 +2,9 @@
 
 Sits between `agent_query.query()` and the Weaviate vector store. Owns:
     * Multi-collection routing (one VectorStoreIndex per collection).
-    * Re-rank pass — disabled in PR1; raw ANN scores are returned and the
-      bypass flag is set to True. FlashRank wiring is a follow-up KEI.
+    * Two-stage retrieval: Weaviate k_initial vector hits → FlashRank
+      cross-encoder rerank → k_returned final. Bypass-falls-back to raw
+      ANN when FlashRank is unavailable or exceeds its latency budget.
     * Citation extraction — every retrieved node carries a source_id,
       collection, score, and 80-char excerpt back to the caller.
 
@@ -20,13 +21,16 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
-from src.retrieval import weaviate_store
+from src.retrieval import rerankers, weaviate_store
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_K_INITIAL = 20
 DEFAULT_K_RETURNED = 5
-RAW_ANN_RERANK_BYPASS = True  # PR1: no reranker; raw ANN only. Follow-up KEI wires FlashRank.
+# Legacy export retained so existing callers (and tests) that import the
+# bypass-default constant don't break — the actual bypass flag now comes
+# from `rerankers.rerank_top_k` per query (RerankOutcome.bypassed).
+RAW_ANN_RERANK_BYPASS = True
 
 
 @dataclass(frozen=True)
@@ -80,6 +84,72 @@ def index_document(
             weaviate_store.close_client(weaviate_client)
 
 
+@dataclass(frozen=True)
+class RetrievalOutcome:
+    nodes: tuple[RetrievedNode, ...]
+    bypass_rerank: bool
+    rerank_reason: str
+    rerank_elapsed_ms: int
+
+
+def _gather_ann_pool(
+    text: str,
+    collections: tuple[str, ...],
+    k_initial: int,
+    weaviate_client: Any,
+) -> list[RetrievedNode]:
+    pool: list[RetrievedNode] = []
+    for collection in collections:
+        try:
+            index = _build_index(weaviate_client, collection)
+            retriever = index.as_retriever(similarity_top_k=k_initial)
+            nodes = retriever.retrieve(text)
+        except Exception:  # noqa: BLE001
+            logger.warning("retrieve failed for %s", collection, exc_info=True)
+            continue
+        for node in nodes:
+            pool.append(
+                RetrievedNode(
+                    text=node.get_content(),
+                    score=float(node.score or 0.0),
+                    metadata=dict(node.metadata or {}),
+                    collection=collection,
+                )
+            )
+    pool.sort(key=lambda n: n.score, reverse=True)
+    return pool
+
+
+def retrieve_with_outcome(
+    text: str,
+    collections: tuple[str, ...],
+    *,
+    k_initial: int = DEFAULT_K_INITIAL,
+    k_returned: int = DEFAULT_K_RETURNED,
+    rerank: bool = True,
+    client: Any | None = None,
+) -> RetrievalOutcome:
+    """Run the two-stage retrieval and surface the bypass flag verbatim."""
+    owned = client is None
+    weaviate_client = client if client is not None else weaviate_store._connect_client()
+    try:
+        pool = _gather_ann_pool(text, collections, k_initial, weaviate_client)
+    finally:
+        if owned:
+            weaviate_store.close_client(weaviate_client)
+    if not pool:
+        return RetrievalOutcome((), False, "empty_pool", 0)
+    if not rerank:
+        return RetrievalOutcome(tuple(pool[:k_returned]), True, "rerank_disabled", 0)
+    outcome = rerankers.rerank_top_k(text, tuple(pool), top_k=k_returned)
+    return RetrievalOutcome(
+        nodes=outcome.nodes,
+        bypass_rerank=outcome.bypassed,
+        rerank_reason=outcome.reason,
+        rerank_elapsed_ms=outcome.elapsed_ms,
+    )
+
+
 def retrieve_nodes(
     text: str,
     collections: tuple[str, ...],
@@ -88,34 +158,14 @@ def retrieve_nodes(
     k_returned: int = DEFAULT_K_RETURNED,
     client: Any | None = None,
 ) -> tuple[RetrievedNode, ...]:
-    """Fan-out across collections, gather top-K nodes, sort by score desc.
-
-    No re-ranker in PR1 — returns raw ANN scores. The caller sees
-    `bypass_rerank=True` on the QueryResult so observability tells truth.
-    """
-    owned = client is None
-    weaviate_client = client if client is not None else weaviate_store._connect_client()
-    out: list[RetrievedNode] = []
-    try:
-        for collection in collections:
-            try:
-                index = _build_index(weaviate_client, collection)
-                retriever = index.as_retriever(similarity_top_k=k_initial)
-                nodes = retriever.retrieve(text)
-            except Exception:  # noqa: BLE001
-                logger.warning("retrieve failed for %s", collection, exc_info=True)
-                continue
-            for node in nodes:
-                out.append(
-                    RetrievedNode(
-                        text=node.get_content(),
-                        score=float(node.score or 0.0),
-                        metadata=dict(node.metadata or {}),
-                        collection=collection,
-                    )
-                )
-    finally:
-        if owned:
-            weaviate_store.close_client(weaviate_client)
-    out.sort(key=lambda n: n.score, reverse=True)
-    return tuple(out[:k_returned])
+    """Backwards-compatible thin wrapper — agents that only need the node
+    tuple keep calling this; agents that want the bypass flag call
+    `retrieve_with_outcome`."""
+    outcome = retrieve_with_outcome(
+        text=text,
+        collections=collections,
+        k_initial=k_initial,
+        k_returned=k_returned,
+        client=client,
+    )
+    return outcome.nodes

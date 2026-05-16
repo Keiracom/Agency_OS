@@ -22,9 +22,18 @@ def _mk_node(text: str, score: float, metadata: dict) -> orchestrator.RetrievedN
     )
 
 
+def _outcome(nodes: tuple[orchestrator.RetrievedNode, ...]) -> orchestrator.RetrievalOutcome:
+    return orchestrator.RetrievalOutcome(
+        nodes=nodes, bypass_rerank=True, rerank_reason="test", rerank_elapsed_ms=0
+    )
+
+
 def _query_top_source(metadata: dict) -> str:
     nodes = (_mk_node("hit", 0.95, metadata),)
-    with patch("src.retrieval.agent_query.orchestrator.retrieve_nodes", return_value=nodes):
+    with patch(
+        "src.retrieval.agent_query.orchestrator.retrieve_with_outcome",
+        return_value=_outcome(nodes),
+    ):
         result = agent_query.query("anything?", agent="test", min_score=0.50)
     return result.citations[0].source_id
 
@@ -62,6 +71,9 @@ def test_collection_fallback_when_metadata_empty():
 def test_parent_path_falls_back_to_section_when_missing():
     md = {"chunk_id": "c-1", "section": "Anti-hallucination guard"}
     nodes = (_mk_node("hit", 0.95, md),)
-    with patch("src.retrieval.agent_query.orchestrator.retrieve_nodes", return_value=nodes):
+    with patch(
+        "src.retrieval.agent_query.orchestrator.retrieve_with_outcome",
+        return_value=_outcome(nodes),
+    ):
         result = agent_query.query("q?", agent="test", min_score=0.50)
     assert result.citations[0].parent_path == "Anti-hallucination guard"

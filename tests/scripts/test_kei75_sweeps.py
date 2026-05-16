@@ -12,8 +12,6 @@ import importlib
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
-import pytest
-
 sweeps = importlib.import_module("scripts.orchestrator.kei75_sweeps")
 
 
@@ -52,14 +50,16 @@ def _fake_client(by_collection: dict[str, list[SimpleNamespace]]) -> MagicMock:
 
 
 def test_wave4_raw_text_counts_empty_objects():
-    client = _fake_client({
-        "Sessions": [
-            _obj("a", {"raw_text": "hello"}),
-            _obj("b", {"raw_text": ""}),
-            _obj("c", {"raw_text": "   "}),
-            _obj("d", {"raw_text": None}),
-        ]
-    })
+    client = _fake_client(
+        {
+            "Sessions": [
+                _obj("a", {"raw_text": "hello"}),
+                _obj("b", {"raw_text": ""}),
+                _obj("c", {"raw_text": "   "}),
+                _obj("d", {"raw_text": None}),
+            ]
+        }
+    )
     report = sweeps.sweep_wave4_raw_text(client, apply=False)
     assert report["sweep"] == "wave4-raw-text"
     assert report["would_change"] == 3
@@ -74,26 +74,39 @@ def test_wave4_raw_text_applies_deletions():
 
 
 def test_wave4_agent_counts_unknown_only():
-    client = _fake_client({
-        "Sessions": [
-            _obj("a", {"agent": "max"}),
-            _obj("b", {"agent": "unknown"}),
-            _obj("c", {"agent": "unknown"}),
-        ]
-    })
+    client = _fake_client(
+        {
+            "Sessions": [
+                _obj("a", {"agent": "max"}),
+                _obj("b", {"agent": "unknown"}),
+                _obj("c", {"agent": "unknown"}),
+            ]
+        }
+    )
     report = sweeps.sweep_wave4_agent(client, apply=False)
     assert report["would_change"] == 2
 
 
 def test_wave3_dedup_keeps_oldest_within_bucket():
-    client = _fake_client({
-        "Discoveries": [
-            _obj("old", {"raw_text": "same body", "source_path": "x.md", "created_at": "2026-01"}),
-            _obj("mid", {"raw_text": "same body", "source_path": "x.md", "created_at": "2026-03"}),
-            _obj("new", {"raw_text": "same body", "source_path": "x.md", "created_at": "2026-05"}),
-            _obj("unique", {"raw_text": "different", "source_path": "x.md", "created_at": "2026-01"}),
-        ]
-    })
+    client = _fake_client(
+        {
+            "Discoveries": [
+                _obj(
+                    "old", {"raw_text": "same body", "source_path": "x.md", "created_at": "2026-01"}
+                ),
+                _obj(
+                    "mid", {"raw_text": "same body", "source_path": "x.md", "created_at": "2026-03"}
+                ),
+                _obj(
+                    "new", {"raw_text": "same body", "source_path": "x.md", "created_at": "2026-05"}
+                ),
+                _obj(
+                    "unique",
+                    {"raw_text": "different", "source_path": "x.md", "created_at": "2026-01"},
+                ),
+            ]
+        }
+    )
     report = sweeps.sweep_wave3_dedup(client, apply=False)
     assert report["would_change"] == 2  # mid + new dropped, old kept, unique kept
     assert "old" not in report["sample"]
@@ -101,26 +114,32 @@ def test_wave3_dedup_keeps_oldest_within_bucket():
 
 
 def test_wave3_dedup_skips_empty_text():
-    client = _fake_client({
-        "Discoveries": [
-            _obj("a", {"raw_text": "", "source_path": "x.md", "created_at": "2026-01"}),
-            _obj("b", {"raw_text": "  ", "source_path": "x.md", "created_at": "2026-01"}),
-        ]
-    })
+    client = _fake_client(
+        {
+            "Discoveries": [
+                _obj("a", {"raw_text": "", "source_path": "x.md", "created_at": "2026-01"}),
+                _obj("b", {"raw_text": "  ", "source_path": "x.md", "created_at": "2026-01"}),
+            ]
+        }
+    )
     report = sweeps.sweep_wave3_dedup(client, apply=False)
     assert report["would_change"] == 0
 
 
 def test_role_flag_strips_prefix_and_sets_metadata():
-    client = _fake_client({
-        "Discoveries": [
-            _obj("a", {"raw_text": "[ROLE-CONTEXT-PRE-2026-05-11: 'CTO'=Elliot, 'COO'=Max] body"}),
-            _obj("b", {"raw_text": "plain body"}),
-        ],
-        "Sessions": [
-            _obj("c", {"raw_text": "[ROLE-CONTEXT-PRE-2026-05-11: foo] line two"}),
-        ],
-    })
+    client = _fake_client(
+        {
+            "Discoveries": [
+                _obj(
+                    "a", {"raw_text": "[ROLE-CONTEXT-PRE-2026-05-11: 'CTO'=Elliot, 'COO'=Max] body"}
+                ),
+                _obj("b", {"raw_text": "plain body"}),
+            ],
+            "Sessions": [
+                _obj("c", {"raw_text": "[ROLE-CONTEXT-PRE-2026-05-11: foo] line two"}),
+            ],
+        }
+    )
     report = sweeps.sweep_role_flag(client, apply=True)
     assert report["would_change"] == 2
     discoveries = client.collections.get("Discoveries")
@@ -133,4 +152,10 @@ def test_role_flag_strips_prefix_and_sets_metadata():
 
 
 def test_sweep_names_exposes_all_plus_individual():
-    assert sweeps.SWEEP_NAMES == {"wave4-raw-text", "wave4-agent", "wave3-dedup", "role-flag", "all"}
+    assert {
+        "wave4-raw-text",
+        "wave4-agent",
+        "wave3-dedup",
+        "role-flag",
+        "all",
+    } == sweeps.SWEEP_NAMES

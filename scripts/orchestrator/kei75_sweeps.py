@@ -7,9 +7,9 @@ Three repair passes Atlas's query-quality probes surfaced after Wave 3 + Wave 4:
                       from session header re-derive, else delete the orphan.
 2. wave4-agent      — Sessions WHERE agent='unknown': re-tag from chunk metadata
                       callsign_hint where available; otherwise stamp 'historic'.
-3. wave3-dedup      — Discoveries: dedupe by md5(raw_text) within the same
+3. wave3-dedup      — Discoveries: dedupe by sha256(raw_text) within the same
                       source_type+source_table+source_path tuple. Keeps oldest
-                      by created_at.
+                      by created_at. (sha256 = identity fingerprint, not crypto.)
 4. role-flag        — Strip the inline `[ROLE-CONTEXT-PRE-2026-05-11:...]`
                       prefix from raw_text on both Discoveries + Sessions, and
                       set metadata.role_flag='pre_2026-05-11_role_swap' instead.
@@ -116,7 +116,7 @@ def sweep_wave3_dedup(client: Any, apply: bool) -> dict:
         if not text.strip():
             continue
         key = props.get("source_path") or props.get("source_table") or "unkeyed"
-        digest = hashlib.md5(text.encode("utf-8")).hexdigest()  # noqa: S324
+        digest = hashlib.sha256(text.encode("utf-8")).hexdigest()
         bucket = f"{key}:{digest}"
         created = str(props.get("created_at") or "")
         by_hash[bucket].append((str(obj.uuid), created))

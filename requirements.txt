@@ -95,6 +95,28 @@ google-genai>=0.8.0
 # new envs failed silently. Added during the slack-file-upload skill build.
 slack_sdk>=3.41.0,<4.0.0
 
+# === Retrieval orchestration (KEI-49) ===
+# LlamaIndex OSS as the read-side over Weaviate. Scout's design spec
+# (docs/wave2/kei49_llamaindex_orchestration_research.md §4) pinned
+# llama-index 0.10 + vector-stores-weaviate 0.1.*, but that combo
+# is incompatible with weaviate-client v4 (the 0.1.* line requires
+# weaviate-client <4.0). The empirical-compatible matrix is the
+# current line: vector-stores-weaviate 1.6.x pulls llama-index-core
+# 0.14.x and accepts weaviate-client 4.5+. Hierarchical chunking +
+# FlashRank reranker stay deferred to follow-up KEIs; PR1 ships raw
+# ANN against the current line so the empirical pin matrix is
+# captured in lock-step with the build.
+llama-index>=0.12,<0.16
+llama-index-vector-stores-weaviate>=1.6,<2
+llama-index-embeddings-huggingface>=0.5,<1
+# Upper bound 4.20: weaviate-client 4.20+ removed `_ContextManagerWrapper`,
+# which llama-index-vector-stores-weaviate 1.6.0 still imports. Empirical
+# proof: pip-install with weaviate-client 4.21.0 produces ImportError on
+# `from weaviate.collections.batch.batch_wrapper import _ContextManagerWrapper`.
+# Move the upper bound up when a vector-stores-weaviate release stops
+# importing the removed symbol.
+weaviate-client>=4.5,<4.20
+
 # === Testing ===
 pytest>=7.4.0
 pytest-asyncio>=0.21.0

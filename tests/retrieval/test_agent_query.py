@@ -25,9 +25,27 @@ def _mk_node(text: str, score: float, *, source_id: str = "doc-1") -> orchestrat
     )
 
 
+def _outcome(
+    nodes: tuple[orchestrator.RetrievedNode, ...],
+    *,
+    bypass_rerank: bool = True,
+    reason: str = "test",
+    elapsed_ms: int = 0,
+) -> orchestrator.RetrievalOutcome:
+    return orchestrator.RetrievalOutcome(
+        nodes=nodes,
+        bypass_rerank=bypass_rerank,
+        rerank_reason=reason,
+        rerank_elapsed_ms=elapsed_ms,
+    )
+
+
 def test_query_returns_top_citation_when_above_min_score():
     nodes = (_mk_node("the quick brown fox jumps over the lazy dog", 0.92),)
-    with patch("src.retrieval.agent_query.orchestrator.retrieve_nodes", return_value=nodes):
+    with patch(
+        "src.retrieval.agent_query.orchestrator.retrieve_with_outcome",
+        return_value=_outcome(nodes),
+    ):
         result = agent_query.query("fox?", agent="test", min_score=0.5)
     assert result.citations
     assert result.citations[0].source_id == "doc-1"
@@ -38,7 +56,10 @@ def test_query_returns_top_citation_when_above_min_score():
 
 def test_citation_required_returns_empty_answer_when_below_threshold():
     nodes = (_mk_node("low-quality match", 0.20),)
-    with patch("src.retrieval.agent_query.orchestrator.retrieve_nodes", return_value=nodes):
+    with patch(
+        "src.retrieval.agent_query.orchestrator.retrieve_with_outcome",
+        return_value=_outcome(nodes),
+    ):
         result = agent_query.query(
             "anything?", agent="test", citation_required=True, min_score=0.50
         )
@@ -48,7 +69,10 @@ def test_citation_required_returns_empty_answer_when_below_threshold():
 
 def test_citation_required_false_returns_low_score_answer():
     nodes = (_mk_node("still useful even if score is low", 0.20),)
-    with patch("src.retrieval.agent_query.orchestrator.retrieve_nodes", return_value=nodes):
+    with patch(
+        "src.retrieval.agent_query.orchestrator.retrieve_with_outcome",
+        return_value=_outcome(nodes),
+    ):
         result = agent_query.query(
             "anything?", agent="test", citation_required=False, min_score=0.50
         )
@@ -59,13 +83,19 @@ def test_citation_required_false_returns_low_score_answer():
 def test_excerpt_is_capped_to_80_chars():
     long_text = "x" * 200
     nodes = (_mk_node(long_text, 0.90),)
-    with patch("src.retrieval.agent_query.orchestrator.retrieve_nodes", return_value=nodes):
+    with patch(
+        "src.retrieval.agent_query.orchestrator.retrieve_with_outcome",
+        return_value=_outcome(nodes),
+    ):
         result = agent_query.query("anything?", agent="test", min_score=0.0)
     assert len(result.citations[0].excerpt) == 80
 
 
 def test_empty_retrieve_returns_empty_when_citation_required():
-    with patch("src.retrieval.agent_query.orchestrator.retrieve_nodes", return_value=()):
+    with patch(
+        "src.retrieval.agent_query.orchestrator.retrieve_with_outcome",
+        return_value=_outcome(()),
+    ):
         result = agent_query.query("anything?", agent="test")
     assert result.answer == ""
     assert result.citations == ()
@@ -73,7 +103,10 @@ def test_empty_retrieve_returns_empty_when_citation_required():
 
 def test_synthesised_answer_carries_source_marker():
     nodes = (_mk_node("relevant fact about raspberries", 0.85, source_id="probe-123"),)
-    with patch("src.retrieval.agent_query.orchestrator.retrieve_nodes", return_value=nodes):
+    with patch(
+        "src.retrieval.agent_query.orchestrator.retrieve_with_outcome",
+        return_value=_outcome(nodes),
+    ):
         result = agent_query.query("raspberries?", agent="test", min_score=0.0)
     assert "[probe-123]" in result.answer
 
@@ -81,6 +114,19 @@ def test_synthesised_answer_carries_source_marker():
 def test_max_tokens_bounds_answer_length():
     long_text = "alpha " * 200
     nodes = (_mk_node(long_text, 0.90, source_id="long-doc"),)
-    with patch("src.retrieval.agent_query.orchestrator.retrieve_nodes", return_value=nodes):
+    with patch(
+        "src.retrieval.agent_query.orchestrator.retrieve_with_outcome",
+        return_value=_outcome(nodes),
+    ):
         result = agent_query.query("q?", agent="test", min_score=0.0, max_tokens=10)
     assert len(result.answer) <= 10 * 4 + 1
+
+
+def test_bypass_rerank_propagates_from_outcome():
+    nodes = (_mk_node("hit", 0.90),)
+    with patch(
+        "src.retrieval.agent_query.orchestrator.retrieve_with_outcome",
+        return_value=_outcome(nodes, bypass_rerank=False, reason="reranked"),
+    ):
+        result = agent_query.query("q?", agent="test", min_score=0.0)
+    assert result.bypass_rerank is False

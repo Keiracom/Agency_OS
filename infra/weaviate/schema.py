@@ -39,6 +39,11 @@ MANDATORY_PROPERTIES = (
     {"name": "created_at", "dataType": ["date"]},
     {"name": "agent", "dataType": ["text"]},
     {"name": "kei", "dataType": ["text"]},
+    # source_id (KEI-75 PR2): chunk_id / source_path / file_path / explicit
+    # origin marker so citation resolution can point at the doc that actually
+    # matched. Backfilled on existing Sessions via scripts/orchestrator/
+    # kei75_sessions_source_id.py; fresh installs pick it up at class create.
+    {"name": "source_id", "dataType": ["text"]},
 )
 
 

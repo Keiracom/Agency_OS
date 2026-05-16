@@ -189,13 +189,13 @@ def query(
         `QueryResult` with answer + citations + elapsed_ms + bypass flag.
     """
     started = time.monotonic()
-    nodes = orchestrator.retrieve_nodes(
+    outcome = orchestrator.retrieve_with_outcome(
         text=text,
         collections=collections,
         k_initial=k_initial,
         k_returned=k_returned,
     )
-    citations = tuple(_node_to_citation(n) for n in nodes)
+    citations = tuple(_node_to_citation(n) for n in outcome.nodes)
     qualified = tuple(c for c in citations if c.score >= min_score)
     if citation_required and not qualified:
         answer = ""
@@ -212,12 +212,12 @@ def query(
         k_initial=k_initial,
         k_returned=k_returned,
         elapsed_ms=elapsed_ms,
-        bypass_rerank=orchestrator.RAW_ANN_RERANK_BYPASS,
+        bypass_rerank=outcome.bypass_rerank,
         top_citation=top,
     )
     return QueryResult(
         answer=answer,
         citations=emitted_citations,
         elapsed_ms=elapsed_ms,
-        bypass_rerank=orchestrator.RAW_ANN_RERANK_BYPASS,
+        bypass_rerank=outcome.bypass_rerank,
     )

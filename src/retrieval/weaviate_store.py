@@ -30,9 +30,7 @@ WEAVIATE_PORT_HTTP = int(os.environ.get("WEAVIATE_PORT", "8090"))
 WEAVIATE_PORT_GRPC = int(os.environ.get("WEAVIATE_PORT_GRPC", "50051"))
 WEAVIATE_TEXT_KEY = "raw_text"
 
-EXPECTED_COLLECTIONS = frozenset(
-    {"Codebase", "Decisions", "Discoveries", "Sessions", "Keis"}
-)
+EXPECTED_COLLECTIONS = frozenset({"Codebase", "Decisions", "Discoveries", "Sessions", "Keis"})
 
 
 @dataclass(frozen=True)
@@ -106,8 +104,7 @@ def get_vector_store(collection: str, *, client: Any | None = None) -> Any:
     """
     if collection not in EXPECTED_COLLECTIONS:
         raise ValueError(
-            f"unknown collection {collection!r}; expected one of "
-            f"{sorted(EXPECTED_COLLECTIONS)}"
+            f"unknown collection {collection!r}; expected one of {sorted(EXPECTED_COLLECTIONS)}"
         )
     from llama_index.vector_stores.weaviate import WeaviateVectorStore
 

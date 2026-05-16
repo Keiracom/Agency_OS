@@ -90,24 +90,24 @@ def _record_event(
             conn.cursor() as cur,
         ):
             cur.execute(
-                    """
+                """
                     INSERT INTO public.retrieval_events
                       (agent, query_text, collections, k_initial, k_returned,
                        elapsed_ms, bypass_rerank, top_citation_id, top_score)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                     """,
-                    (
-                        payload["agent"],
-                        payload["query_text"],
-                        payload["collections"],
-                        payload["k_initial"],
-                        payload["k_returned"],
-                        payload["elapsed_ms"],
-                        payload["bypass_rerank"],
-                        payload["top_citation_id"],
-                        payload["top_score"],
-                    ),
-                )
+                (
+                    payload["agent"],
+                    payload["query_text"],
+                    payload["collections"],
+                    payload["k_initial"],
+                    payload["k_returned"],
+                    payload["elapsed_ms"],
+                    payload["bypass_rerank"],
+                    payload["top_citation_id"],
+                    payload["top_score"],
+                ),
+            )
     except Exception:  # noqa: BLE001
         logger.debug("retrieval_events insert failed (non-fatal)", exc_info=True)
 

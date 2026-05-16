@@ -39,7 +39,9 @@ def test_query_returns_top_citation_when_above_min_score():
 def test_citation_required_returns_empty_answer_when_below_threshold():
     nodes = (_mk_node("low-quality match", 0.20),)
     with patch("src.retrieval.agent_query.orchestrator.retrieve_nodes", return_value=nodes):
-        result = agent_query.query("anything?", agent="test", citation_required=True, min_score=0.50)
+        result = agent_query.query(
+            "anything?", agent="test", citation_required=True, min_score=0.50
+        )
     assert result.answer == ""
     assert result.citations == ()
 
@@ -47,7 +49,9 @@ def test_citation_required_returns_empty_answer_when_below_threshold():
 def test_citation_required_false_returns_low_score_answer():
     nodes = (_mk_node("still useful even if score is low", 0.20),)
     with patch("src.retrieval.agent_query.orchestrator.retrieve_nodes", return_value=nodes):
-        result = agent_query.query("anything?", agent="test", citation_required=False, min_score=0.50)
+        result = agent_query.query(
+            "anything?", agent="test", citation_required=False, min_score=0.50
+        )
     assert result.answer != ""
     assert result.citations
 

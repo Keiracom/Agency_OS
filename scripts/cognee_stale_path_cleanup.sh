@@ -26,10 +26,15 @@ if [[ ! -e "$STALE_PATH" ]]; then
 fi
 
 # Verify the live cognee process is NOT using this path (paranoid check).
-LIVE_DB_PATH=$(grep -h "database_path=" /home/elliotbot/clawd/logs/cognee.log 2>/dev/null | tail -1)
-if echo "$LIVE_DB_PATH" | grep -q "cognee_data"; then
-    echo "cognee_stale_path_cleanup: ABORT — live cognee.log database_path mentions cognee_data:" >&2
-    echo "  $LIVE_DB_PATH" >&2
+# Cognee structlog wraps fields in ANSI colour codes — match the literal
+# field name (no `=` required) and filter for the stale-path substring.
+# Failed grep returns 1 — use `|| true` to play nice with `set -e`.
+LIVE_HITS=$(grep -h "database_path" /home/elliotbot/clawd/logs/cognee.log 2>/dev/null \
+            | tail -50 | grep -c "/clawd/cognee_data" || true)
+if [[ "$LIVE_HITS" -gt 0 ]]; then
+    echo "cognee_stale_path_cleanup: ABORT — live cognee.log database_path mentions /clawd/cognee_data ($LIVE_HITS hits in tail -50)" >&2
+    grep -h "database_path" /home/elliotbot/clawd/logs/cognee.log 2>/dev/null \
+        | tail -1 >&2
     exit 1
 fi
 

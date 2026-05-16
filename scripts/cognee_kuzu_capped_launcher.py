@@ -28,6 +28,48 @@ from __future__ import annotations
 import os
 import sys
 
+# Provider → env-var that typically holds the key for that provider.
+# Cognee/LiteLLM expects LLM_API_KEY + EMBEDDING_API_KEY, but our .env stores
+# secrets under provider-specific names (GEMINI_API_KEY etc) so they're not
+# duplicated. This mapping bridges that at launch (KEI-81).
+_PROVIDER_KEY_ENV = {
+    "gemini": "GEMINI_API_KEY",
+    "google": "GEMINI_API_KEY",
+    "openai": "OPENAI_API_KEY",
+    "anthropic": "ANTHROPIC_API_KEY",
+    "groq": "GROQ_API_KEY",
+}
+
+
+def _map_provider_key(target_env: str, provider_env: str) -> None:
+    """If `target_env` is unset/empty but the configured provider has a
+    matching `<PROVIDER>_API_KEY` env var, copy it across. Idempotent;
+    skip when target already has a non-empty value (operator override wins).
+    """
+    if os.environ.get(target_env, "").strip():
+        return
+    provider = (os.environ.get(provider_env, "") or "").strip().lower()
+    source_env = _PROVIDER_KEY_ENV.get(provider)
+    if not source_env:
+        return
+    source_val = os.environ.get(source_env, "").strip()
+    if not source_val:
+        return
+    os.environ[target_env] = source_val
+    print(
+        f"[cognee_kuzu_capped_launcher] mapped {target_env}={source_env} "
+        f"(provider={provider})",
+        file=sys.stderr,
+    )
+
+
+def _apply_key_mapping() -> None:
+    """Map provider-specific keys to LiteLLM-expected LLM_API_KEY +
+    EMBEDDING_API_KEY. KEI-81 fix.
+    """
+    _map_provider_key("LLM_API_KEY", "LLM_PROVIDER")
+    _map_provider_key("EMBEDDING_API_KEY", "EMBEDDING_PROVIDER")
+
 
 def _apply_patch() -> None:
     """Monkey-patch ladybug.database.Database.__init__ to clamp sizes."""
@@ -61,6 +103,7 @@ def _apply_patch() -> None:
 
 
 def main() -> int:
+    _apply_key_mapping()
     _apply_patch()
     # Exec uvicorn with the patched runtime. sys.executable + `-m uvicorn` so
     # the launcher works under systemd (where PATH doesn't include the venv's

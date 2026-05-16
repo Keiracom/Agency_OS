@@ -62,10 +62,13 @@ def _apply_patch() -> None:
 
 def main() -> int:
     _apply_patch()
-    # Exec uvicorn with the patched runtime. Use os.execvp so cognee.service
-    # PID stays singular (no orphaned launcher process).
+    # Exec uvicorn with the patched runtime. sys.executable + `-m uvicorn` so
+    # the launcher works under systemd (where PATH doesn't include the venv's
+    # bin/ dir, and bare `uvicorn` is FileNotFoundError). Using -m also keeps
+    # cognee.service PID singular — execvp replaces the launcher process.
     args = [
-        "uvicorn",
+        sys.executable,
+        "-m", "uvicorn",
         "cognee.api.client:app",
         "--host", os.environ.get("COGNEE_HOST", "127.0.0.1"),
         "--port", os.environ.get("COGNEE_PORT", "8000"),

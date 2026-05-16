@@ -56,5 +56,5 @@ def test_close_client_swallows_errors():
 
 
 def test_expected_collections_match_schema_module():
-    expected = {"Codebase", "Decisions", "Discoveries", "Sessions", "Keis"}
-    assert weaviate_store.EXPECTED_COLLECTIONS == frozenset(expected)
+    expected = frozenset({"Codebase", "Decisions", "Discoveries", "Sessions", "Keis"})
+    assert expected == weaviate_store.EXPECTED_COLLECTIONS

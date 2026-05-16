@@ -16,7 +16,7 @@ import logging
 import os
 import time
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Literal
 
 from src.retrieval import orchestrator
 
@@ -85,9 +85,11 @@ def _record_event(
     try:
         import psycopg
 
-        with psycopg.connect(dsn, prepare_threshold=None, autocommit=True) as conn:
-            with conn.cursor() as cur:
-                cur.execute(
+        with (
+            psycopg.connect(dsn, prepare_threshold=None, autocommit=True) as conn,
+            conn.cursor() as cur,
+        ):
+            cur.execute(
                     """
                     INSERT INTO public.retrieval_events
                       (agent, query_text, collections, k_initial, k_returned,

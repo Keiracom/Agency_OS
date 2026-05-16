@@ -60,7 +60,8 @@ def render_for_claim(
         truncated:      1 if any rows dropped, 0 otherwise
     """
     eligible = [
-        r for r in rows
+        r
+        for r in rows
         if r.get("state", "permanent") == "permanent"
         and (r.get("_freshness") or {}).get("verdict") != "expired"
     ]

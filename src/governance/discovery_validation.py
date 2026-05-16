@@ -153,7 +153,9 @@ def submit_discovery(
             "concur_callsign": "",
             "challenged_by": "",
             "counter_findings": "",
-            "context_version": json.dumps({"kei": kei, "date": now.strftime("%Y-%m-%d"), "software_versions": {}}),
+            "context_version": json.dumps(
+                {"kei": kei, "date": now.strftime("%Y-%m-%d"), "software_versions": {}}
+            ),
         },
     }
 
@@ -195,7 +197,9 @@ def submit_concur(discovery_id: str, peer_callsign: str) -> bool:
         }
     }
     _patch_object(discovery_id, patch)
-    logger.info("submit_concur %s by %s — promote_to_permanent should follow", discovery_id, peer_callsign)
+    logger.info(
+        "submit_concur %s by %s — promote_to_permanent should follow", discovery_id, peer_callsign
+    )
     return True
 
 
@@ -230,7 +234,9 @@ def promote_to_permanent(discovery_id: str) -> bool:
             logger.info("promote_to_permanent %s copied to Discoveries", discovery_id)
     except urlerror.HTTPError as exc:
         if exc.code == 422:
-            logger.info("promote_to_permanent %s already in Discoveries — idempotent no-op", discovery_id)
+            logger.info(
+                "promote_to_permanent %s already in Discoveries — idempotent no-op", discovery_id
+            )
         else:
             raise
 
@@ -303,7 +309,11 @@ def expire_stale_staging(now: datetime | None = None) -> dict[str, int]:
         try:
             expires_dt = datetime.fromisoformat(expires_raw.replace("Z", "+00:00"))
         except ValueError:
-            logger.warning("expire_stale_staging: cannot parse expires_at=%r for %s", expires_raw, obj.get("id"))
+            logger.warning(
+                "expire_stale_staging: cannot parse expires_at=%r for %s",
+                expires_raw,
+                obj.get("id"),
+            )
             continue
 
         if expires_dt >= now:
@@ -384,11 +394,7 @@ def _query_staging_objects() -> list[dict[str, Any]]:
         logger.error("_query_staging_objects: Weaviate unreachable — %s", exc)
         return []
 
-    items = (
-        data.get("data", {})
-        .get("Get", {})
-        .get("Staging_discoveries", [])
-    ) or []
+    items = (data.get("data", {}).get("Get", {}).get("Staging_discoveries", [])) or []
     # Normalise: promote _additional.id to top-level id for uniform access.
     result = []
     for item in items:
@@ -461,8 +467,12 @@ if __name__ == "__main__":
         environment_hash="test",
     )
     _obj = _fetch_object(_test_id)
-    assert _obj.get("properties", {}).get("state") == "staging", "state should be staging after submit"
-    assert _obj.get("properties", {}).get("validation_tier") == 1, "tier should be 1 for routine text"
+    assert _obj.get("properties", {}).get("state") == "staging", (
+        "state should be staging after submit"
+    )
+    assert _obj.get("properties", {}).get("validation_tier") == 1, (
+        "tier should be 1 for routine text"
+    )
     print(f"PASS test-2: submit_discovery id={_test_id}")
 
     # Test 3 — submit_concur raises for tier-1
@@ -476,7 +486,9 @@ if __name__ == "__main__":
     # Patch the staging object to an already-expired timestamp.
     _patch_object(_test_id, {"properties": {"expires_at": "2000-01-01T00:00:00Z"}})
     _expire_result = expire_stale_staging()
-    assert _expire_result["tier_1_promoted"] >= 1, f"expected >=1 tier_1_promoted, got {_expire_result}"
+    assert _expire_result["tier_1_promoted"] >= 1, (
+        f"expected >=1 tier_1_promoted, got {_expire_result}"
+    )
     print(f"PASS test-4: expire_stale_staging promotes tier-1 — {_expire_result}")
 
     if errors:

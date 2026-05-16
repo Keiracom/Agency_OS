@@ -1,0 +1,13 @@
+[Unit]
+Description=Agency OS — Auto-KEI enforcer (KEI-18 R12)
+Documentation=https://linear.app/keiracom/issue/KEI-18
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+EnvironmentFile=-/home/elliotbot/.config/agency-os/.env
+ExecStart=/home/elliotbot/clawd/Agency_OS/.venv/bin/python3 /home/elliotbot/clawd/Agency_OS/scripts/auto_kei_enforcer.py --once
+StandardOutput=append:/home/elliotbot/clawd/logs/auto-kei-enforcer.log
+StandardError=append:/home/elliotbot/clawd/logs/auto-kei-enforcer.log
+MemoryMax=128M

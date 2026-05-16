@@ -1,0 +1,15 @@
+[Unit]
+Description=Auto-KEI enforcer timer (KEI-18 R12, every 90s)
+Documentation=https://linear.app/keiracom/issue/KEI-18
+Requires=auto-kei-enforcer.service
+
+[Timer]
+# Fire every 90 seconds. Per Dave spec: every 1-2 min.
+# OnUnitActiveSec defers next run by 90s from previous start.
+OnBootSec=2min
+OnUnitActiveSec=90s
+Persistent=true
+Unit=auto-kei-enforcer.service
+
+[Install]
+WantedBy=timers.target

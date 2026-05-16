@@ -131,7 +131,7 @@ def _node_to_citation(node: orchestrator.RetrievedNode) -> Citation:
     )
 
 
-def _synthesise_answer(text: str, citations: tuple[Citation, ...], max_tokens: int) -> str:
+def _synthesise_answer(citations: tuple[Citation, ...], max_tokens: int) -> str:
     """PR1 synth: extractive — return the top citation's excerpt with
     source markers. LLM-driven synth (CitationQueryEngine.synthesise) is a
     follow-up KEI; PR1's job is "indexes test doc + queries + accurate
@@ -194,7 +194,7 @@ def query(
         emitted_citations: tuple[Citation, ...] = ()
     else:
         emitted_citations = qualified or citations
-        answer = _synthesise_answer(text, emitted_citations, max_tokens)
+        answer = _synthesise_answer(emitted_citations, max_tokens)
     elapsed_ms = int((time.monotonic() - started) * 1000)
     top = emitted_citations[0] if emitted_citations else None
     _record_event(

@@ -44,6 +44,27 @@ from pathlib import Path
 _KEI40_MAX_RETRIES = 5
 _KEI40_BASE_BACKOFF_SECONDS = 1.0
 _KEI40_MAX_BACKOFF_SECONDS = 30.0
+
+# KEI-80: escalation-keyword scan (Dave 30-min hot-patch 2026-05-16).
+# Any outbox message containing one of these phrases fires a direct post to
+# #ceo BEFORE the normal relay. Both posts happen — the CEO post is additive.
+# Store as module-level constant so tests can patch it.
+ESCALATION_KEYWORDS: list[str] = [
+    "awaiting",
+    "decision needed",
+    "option a",
+    "option b",
+    "option c",
+    "blocked",
+    "ceo decision",
+    "dave decision",
+    "your call",
+    "holding for",
+]
+# Maximum body length (chars) forwarded in the [ESCALATION] prefix post.
+# Longer bodies are truncated with an ellipsis marker to avoid Slack friction.
+_ESCALATION_MAX_BODY_CHARS = 500
+
 from typing import Final
 
 _LAST_POST_STATE_PATH: Final[Path] = Path(
@@ -259,6 +280,60 @@ def _record_last_post(callsign: str) -> None:
         pass
 
 
+def _contains_escalation_keyword(text: str) -> bool:
+    """KEI-80: Return True if text contains any ESCALATION_KEYWORDS (case-insensitive)."""
+    lower = text.lower()
+    return any(kw.lower() in lower for kw in ESCALATION_KEYWORDS)
+
+
+def _maybe_escalate_to_ceo(channel: str, text: str, callsign: str) -> None:
+    """KEI-80: Fire a direct #ceo post when outbox message contains escalation language.
+
+    Rules (per Dave 30-min hot-patch spec 2026-05-16):
+    - Skipped when target channel is already #ceo (avoid double-post).
+    - Skipped when message body already has [ESCALATION] prefix (avoid re-fire).
+    - Body truncated at _ESCALATION_MAX_BODY_CHARS chars; appends '…(truncated)'.
+    - CEO post fires BEFORE normal relay; failure is non-fatal (try/except → log).
+    - Uses a raw urllib POST identical to _post_with_retry but targeted at #ceo.
+    """
+    ceo_channel = CHANNELS["ceo"]
+    if channel == ceo_channel:
+        return
+    if text.startswith("[ESCALATION]"):
+        return
+    if not _contains_escalation_keyword(text):
+        return
+    if not BOT_TOKEN:
+        print("KEI-80 WARN: SLACK_BOT_TOKEN not set — skipping CEO escalation", file=sys.stderr)
+        return
+    body_text = text
+    if len(body_text) > _ESCALATION_MAX_BODY_CHARS:
+        body_text = body_text[:_ESCALATION_MAX_BODY_CHARS] + "…(truncated)"
+    ceo_text = f"[ESCALATION] {callsign} · {body_text}"
+    payload: dict = {"channel": ceo_channel, "text": ceo_text, "username": USERNAME}
+    if ICON_URL:
+        payload["icon_url"] = ICON_URL
+    elif ICON_EMOJI:
+        payload["icon_emoji"] = ICON_EMOJI
+    body = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(
+        "https://slack.com/api/chat.postMessage",
+        data=body,
+        headers={
+            "Authorization": f"Bearer {BOT_TOKEN}",
+            "Content-Type": "application/json; charset=utf-8",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10) as r:
+            result = json.loads(r.read())
+        if not result.get("ok"):
+            print(f"KEI-80 WARN: CEO escalation post rejected: {result}", file=sys.stderr)
+    except Exception as exc:  # noqa: BLE001
+        print(f"KEI-80 WARN: CEO escalation post failed: {exc}", file=sys.stderr)
+
+
 def main() -> int:
     channel, message = parse_args(sys.argv[1:])
     # S1 verify gate (Phase 6 — block fabricated PR# / commit-hash in completion
@@ -314,6 +389,9 @@ def main() -> int:
             return 2
     except ImportError:
         pass  # repo not on sys.path; fall through ungated rather than break all posts
+    # KEI-80: escalation-keyword scan — fires direct #ceo post BEFORE normal relay.
+    # Failure of CEO post is non-fatal; normal relay always continues.
+    _maybe_escalate_to_ceo(channel, message, CALLSIGN)
     result = post(channel, message)
     if not result.get("ok"):
         print(f"ERROR: Slack rejected: {result}", file=sys.stderr)

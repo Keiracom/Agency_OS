@@ -25,15 +25,13 @@ class _FakeCursor:
     def execute(self, sql, params=None):
         self.executed.append((sql, params))
 
-    def fetchall(self):
+    def _next_recipe(self):
         out = self._recipes[self._idx]
         self._idx += 1
         return out
 
-    def fetchone(self):
-        out = self._recipes[self._idx]
-        self._idx += 1
-        return out
+    fetchall = _next_recipe
+    fetchone = _next_recipe
 
     def __enter__(self):
         return self

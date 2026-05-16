@@ -1,20 +1,14 @@
 [Unit]
-Description=Agency OS Agent — AIDEN (callsign=aiden, tmux=aiden)
-Documentation=https://linear.app/keiracom/issue/KEI-43
-After=network-online.target
-Wants=network-online.target
-StartLimitBurst=5
-StartLimitIntervalSec=300
+Description=Keiracom aiden agent session
+After=network.target
 
 [Service]
-Type=simple
+Type=oneshot
+RemainAfterExit=yes
 Environment="CALLSIGN=aiden"
-WorkingDirectory=/home/elliotbot/clawd/Agency_OS-aiden
-ExecStart=/home/elliotbot/clawd/Agency_OS-aiden/scripts/systemd_agent_supervisor.sh aiden aiden /home/elliotbot/clawd/Agency_OS-aiden
-Restart=on-failure
-RestartSec=10
-StandardOutput=append:/home/elliotbot/clawd/logs/aiden-agent.log
-StandardError=append:/home/elliotbot/clawd/logs/aiden-agent.log
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+ExecStart=/bin/bash -c 'tmux has-session -t aiden 2>/dev/null || tmux new-session -d -s aiden "claude"'
+ExecStartPost=/home/elliotbot/clawd/Agency_OS/scripts/agent_online_notify.sh AIDEN 15
 
 [Install]
 WantedBy=default.target

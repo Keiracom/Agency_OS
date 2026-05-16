@@ -1,20 +1,14 @@
 [Unit]
-Description=Agency OS Agent — ORION (callsign=orion, tmux=orion)
-Documentation=https://linear.app/keiracom/issue/KEI-43
-After=network-online.target
-Wants=network-online.target
-StartLimitBurst=5
-StartLimitIntervalSec=300
+Description=Keiracom orion agent session
+After=network.target
 
 [Service]
-Type=simple
+Type=oneshot
+RemainAfterExit=yes
 Environment="CALLSIGN=orion"
-WorkingDirectory=/home/elliotbot/clawd/Agency_OS-orion
-ExecStart=/home/elliotbot/clawd/Agency_OS-orion/scripts/systemd_agent_supervisor.sh orion orion /home/elliotbot/clawd/Agency_OS-orion
-Restart=on-failure
-RestartSec=10
-StandardOutput=append:/home/elliotbot/clawd/logs/orion-agent.log
-StandardError=append:/home/elliotbot/clawd/logs/orion-agent.log
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+ExecStart=/bin/bash -c 'tmux has-session -t orion 2>/dev/null || tmux new-session -d -s orion "claude"'
+ExecStartPost=/home/elliotbot/clawd/Agency_OS/scripts/agent_online_notify.sh ORION 15
 
 [Install]
 WantedBy=default.target

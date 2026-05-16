@@ -1,20 +1,14 @@
 [Unit]
-Description=Agency OS Agent — SCOUT (callsign=scout, tmux=scout)
-Documentation=https://linear.app/keiracom/issue/KEI-43
-After=network-online.target
-Wants=network-online.target
-StartLimitBurst=5
-StartLimitIntervalSec=300
+Description=Keiracom scout agent session
+After=network.target
 
 [Service]
-Type=simple
+Type=oneshot
+RemainAfterExit=yes
 Environment="CALLSIGN=scout"
-WorkingDirectory=/home/elliotbot/clawd/Agency_OS-scout
-ExecStart=/home/elliotbot/clawd/Agency_OS-scout/scripts/systemd_agent_supervisor.sh scout scout /home/elliotbot/clawd/Agency_OS-scout
-Restart=on-failure
-RestartSec=10
-StandardOutput=append:/home/elliotbot/clawd/logs/scout-agent.log
-StandardError=append:/home/elliotbot/clawd/logs/scout-agent.log
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+ExecStart=/bin/bash -c 'tmux has-session -t scout 2>/dev/null || tmux new-session -d -s scout "claude"'
+ExecStartPost=/home/elliotbot/clawd/Agency_OS/scripts/agent_online_notify.sh SCOUT 15
 
 [Install]
 WantedBy=default.target

@@ -19,6 +19,10 @@ from src.governance.rules_client import upsert_rule
 logger = logging.getLogger("governance_rules_seed")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
+# Source-doc constants (extracted per Sonar S1192 — repeated string literals).
+SRC_CONSOLIDATED = "docs/governance/CONSOLIDATED_RULES.md"
+SRC_CLAUDE_GLOBAL = "CLAUDE.md global"
+
 # Rule rows: (id, category, rule, source_doc).
 # id uses kei-79-style stable prefixes so re-runs match-by-id, not match-by-text.
 SEED_RULES: tuple[dict[str, str], ...] = (
@@ -26,43 +30,43 @@ SEED_RULES: tuple[dict[str, str], ...] = (
         "id": "rule-r1-verify",
         "category": "concur",
         "rule": "VERIFY: truth over speed; run verification before claiming done. Verbatim output, not paraphrase.",
-        "source_doc": "docs/governance/CONSOLIDATED_RULES.md",
+        "source_doc": SRC_CONSOLIDATED,
     },
     {
         "id": "rule-r2-coordinate",
         "category": "claiming",
         "rule": "COORDINATE: no overlap, no surprise; claim before touch; peer before dispatch.",
-        "source_doc": "docs/governance/CONSOLIDATED_RULES.md",
+        "source_doc": SRC_CONSOLIDATED,
     },
     {
         "id": "rule-r3-approve",
         "category": "concur",
         "rule": "APPROVE: two checkpoints only — queue approval + merge approval.",
-        "source_doc": "docs/governance/CONSOLIDATED_RULES.md",
+        "source_doc": SRC_CONSOLIDATED,
     },
     {
         "id": "rule-r4-orchestrate",
         "category": "deliberation",
         "rule": "ORCHESTRATE: delegate, don't execute; sub-agents build, bots verify.",
-        "source_doc": "docs/governance/CONSOLIDATED_RULES.md",
+        "source_doc": SRC_CONSOLIDATED,
     },
     {
         "id": "rule-r5-communicate",
         "category": "communication",
         "rule": "COMMUNICATE: right channel, right density; concise, always propose.",
-        "source_doc": "docs/governance/CONSOLIDATED_RULES.md",
+        "source_doc": SRC_CONSOLIDATED,
     },
     {
         "id": "rule-r6-govern",
         "category": "governance-meta",
         "rule": "GOVERN: rules are code, not comments; runtime enforcement required.",
-        "source_doc": "docs/governance/CONSOLIDATED_RULES.md",
+        "source_doc": SRC_CONSOLIDATED,
     },
     {
         "id": "rule-r7-business",
         "category": "governance-meta",
         "rule": "BUSINESS: Australia-first, pre-revenue honest; $AUD, no fake social proof.",
-        "source_doc": "docs/governance/CONSOLIDATED_RULES.md",
+        "source_doc": SRC_CONSOLIDATED,
     },
     {
         "id": "rule-callsign-discipline",
@@ -92,25 +96,25 @@ SEED_RULES: tuple[dict[str, str], ...] = (
         "id": "rule-skills-first",
         "category": "claiming",
         "rule": "LAW XII Skills-First: check skills/ before any external service call; never direct-call src/integrations/* outside skill execution.",
-        "source_doc": "CLAUDE.md global",
+        "source_doc": SRC_CLAUDE_GLOBAL,
     },
     {
         "id": "rule-skill-currency",
         "category": "governance-meta",
         "rule": "LAW XIII: when a fix changes an external service call, the corresponding skill file must update in the same PR.",
-        "source_doc": "CLAUDE.md global",
+        "source_doc": SRC_CLAUDE_GLOBAL,
     },
     {
         "id": "rule-raw-output",
         "category": "concur",
         "rule": "LAW XIV: paste verbatim terminal output, never summarise or paraphrase verification evidence.",
-        "source_doc": "CLAUDE.md global",
+        "source_doc": SRC_CLAUDE_GLOBAL,
     },
     {
         "id": "rule-four-store",
         "category": "concur",
         "rule": "LAW XV Four-Store: directive completion writes to docs/MANUAL.md + ceo_memory + cis_directive_metrics + Drive mirror. KEI-74 sync queue automates 3 of 4.",
-        "source_doc": "CLAUDE.md global",
+        "source_doc": SRC_CLAUDE_GLOBAL,
     },
     {
         "id": "rule-completion-discipline",

@@ -77,6 +77,7 @@ def test_list_active_rules_filters_by_category(monkeypatch):
     fake = _FakeConn(recipes)
     _install(monkeypatch, fake)
     rules_client.list_active_rules(category="claiming")
+    assert fake._cursor.executed, "expected at least one execute() call"
     sql, params = fake._cursor.executed[-1]
     assert "category=%s" in sql
     assert params == ("claiming",)

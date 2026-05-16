@@ -1,0 +1,10 @@
+[Unit]
+Description=Agency OS — CEO Decision Sweeper Timer (KEI-79; hourly)
+
+[Timer]
+OnBootSec=15min
+OnUnitActiveSec=1h
+Unit=ceo-decision-sweeper.service
+
+[Install]
+WantedBy=default.target

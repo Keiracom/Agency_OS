@@ -55,8 +55,22 @@ def _topic_sha(text: str) -> str:
     return hashlib.sha1(text.encode("utf-8")).hexdigest()[:12]
 
 
+# KEI-79 escalation sentinel — bd escalate emits this BEFORE the direct-post call so
+# downstream gates recognise the escalation as a Step-0 surrogate (Dave authorisation
+# IS the gate event for an escalation path). Exempt from CONCUR matching.
+_ESCALATION_SENTINEL = re.compile(
+    r"\[ESCALATION-INITIATED:[a-z][a-z0-9_-]*:[A-Z]+-\d+\]", re.IGNORECASE
+)
+
+
 def should_gate(text: str) -> bool:
-    """True if the text contains a literal [CONCUR:<callsign>] or [BLOCK:<callsign>] token."""
+    """True if the text contains a literal [CONCUR:<callsign>] or [BLOCK:<callsign>] token.
+
+    KEI-79 carve-out: [ESCALATION-INITIATED:<callsign>:<task-id>] sentinels are NOT gated
+    even if they incidentally contain a concur-shaped substring downstream.
+    """
+    if _ESCALATION_SENTINEL.search(text):
+        return False
     return bool(_GATE_TRIGGER.search(text))
 
 

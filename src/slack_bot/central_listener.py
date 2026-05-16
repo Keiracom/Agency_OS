@@ -47,6 +47,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import httpx
+import psycopg
 from slack_sdk.socket_mode import SocketModeClient
 from slack_sdk.socket_mode.request import SocketModeRequest
 from slack_sdk.socket_mode.response import SocketModeResponse
@@ -79,6 +80,11 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 ENFORCER_DETERMINISTIC = os.environ.get("ENFORCER_DETERMINISTIC", "1") == "1"
 LISTEN_CHANNEL = os.environ.get("SLACK_LISTEN_CHANNEL", "C0B3QB0K1GQ")  # enforcer scope
 ALERTS_CHANNEL = os.environ.get("SLACK_ALERTS_CHANNEL", "C0B2EJU53EK")
+DATABASE_URL = os.environ.get("DATABASE_URL", "")
+
+# Auto-KEI: #ceo channel id — messages starting with [CEO] trigger task creation.
+CEO_CHANNEL = "C0B2PM3TV0B"
+CEO_PREFIX = "[CEO]"
 ENFORCER_USERNAME = "Enforcer"
 ENFORCER_ICON = ":rotating_light:"
 
@@ -441,6 +447,89 @@ def _fanout_to_routes(routes: list[str], text: str, sender: str) -> None:
         write_inbox(callsign, text, sender)
 
 
+def _extract_ceo_title(text: str) -> str | None:
+    """Strip [CEO] prefix and return the first non-empty line (max 200 chars).
+
+    Returns None if the body is empty after stripping — e.g. bare '[CEO]' post.
+    """
+    body = text
+    if body.upper().startswith(CEO_PREFIX.upper()):
+        body = body[len(CEO_PREFIX) :]
+    for line in body.splitlines():
+        stripped = line.strip()
+        if stripped:
+            return stripped[:200]
+    return None
+
+
+def _insert_kei_task(title: str) -> str | None:
+    """Insert a new KEI task into public.tasks and return the new KEI id.
+
+    Uses a single psycopg connection per call (listener is long-running; avoid
+    holding a persistent connection across arbitrary idle periods).
+
+    Returns None on any failure so the caller can log-and-skip gracefully.
+    Idempotency: tasks.id has a UNIQUE constraint; duplicate inserts raise
+    IntegrityError which is caught and treated as a skip (one winner).
+    """
+    db_url = DATABASE_URL.replace("+asyncpg", "")
+    if not db_url:
+        logger.warning("auto-KEI: DATABASE_URL not set — skipping insert")
+        return None
+    try:
+        with psycopg.connect(db_url) as conn, conn.cursor() as cur:
+            cur.execute(
+                "SELECT COALESCE(MAX((substring(id FROM 'KEI-([0-9]+)'))::int), 0) + 1"
+                " FROM public.tasks WHERE id ~ '^KEI-[0-9]+$'"
+            )
+            row = cur.fetchone()
+            next_n: int = row[0] if row else 1
+            kei_id = f"KEI-{next_n}"
+            cur.execute(
+                "INSERT INTO public.tasks (id, title, status, dependencies, required_persona)"
+                " VALUES (%s, %s, %s, %s, %s)",
+                (kei_id, title, "available", [], None),
+            )
+            conn.commit()
+            logger.info("auto-KEI: inserted %s — %s", kei_id, title)
+            return kei_id
+    except psycopg.errors.UniqueViolation:
+        logger.info("auto-KEI: duplicate insert skipped (race guard)")
+        return None
+    except Exception as exc:
+        logger.warning("auto-KEI: DB insert failed: %s", exc)
+        return None
+
+
+def _maybe_auto_create_kei(event: dict, web: WebClient | None) -> None:
+    """Auto-KEI intercept for [CEO]-prefixed messages in #ceo channel.
+
+    Fires BEFORE the normal fanout so it runs regardless of fanout outcome.
+    Best-effort: any failure is logged but never blocks the fanout relay.
+    """
+    channel = event.get("channel", "")
+    text = (event.get("text") or "").strip()
+    if channel != CEO_CHANNEL:
+        return
+    if not text.upper().startswith(CEO_PREFIX.upper()):
+        return
+    title = _extract_ceo_title(text)
+    if not title:
+        logger.info("auto-KEI: [CEO] post has empty body after strip — skip")
+        return
+    kei_id = _insert_kei_task(title)
+    if kei_id is None:
+        return
+    if web is not None:
+        try:
+            web.chat_postMessage(
+                channel=CEO_CHANNEL,
+                text=f"[System] {kei_id} created — {title}",
+            )
+        except Exception as exc:
+            logger.warning("auto-KEI: confirmation post failed: %s", exc)
+
+
 def process_event(event: dict, web: WebClient | None = None) -> None:
     if event.get("type") != "message":
         return
@@ -451,6 +540,12 @@ def process_event(event: dict, web: WebClient | None = None) -> None:
     text = event.get("text") or ""
     if not text:
         return
+    # Auto-KEI intercept: fires BEFORE fanout; best-effort; does not block relay.
+    try:
+        _maybe_auto_create_kei(event, web)
+    except Exception as exc:
+        logger.exception("auto-KEI error (non-blocking): %s", exc)
+
     if routes:
         _fanout_to_routes(routes, text, sender_from(event))
         logger.info(

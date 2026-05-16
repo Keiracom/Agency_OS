@@ -8,7 +8,7 @@ RemainAfterExit=yes
 Environment="CALLSIGN=elliot"
 EnvironmentFile=/home/elliotbot/.config/agency-os/.env
 ExecStart=/bin/bash -c 'tmux has-session -t elliottbot 2>/dev/null || tmux new-session -d -s elliottbot "claude"'
-ExecStartPost=/home/elliotbot/clawd/Agency_OS/scripts/agent_online_notify.sh ELLIOT 15
+ExecStartPost=/home/elliotbot/clawd/Agency_OS/scripts/elliot_fleet_notify.sh 20
 
 [Install]
 WantedBy=default.target

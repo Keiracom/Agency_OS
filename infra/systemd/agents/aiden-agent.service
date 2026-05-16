@@ -8,7 +8,7 @@ RemainAfterExit=yes
 Environment="CALLSIGN=aiden"
 EnvironmentFile=/home/elliotbot/.config/agency-os/.env
 ExecStart=/bin/bash -c 'tmux has-session -t aiden 2>/dev/null || tmux new-session -d -s aiden "claude"'
-ExecStartPost=/home/elliotbot/clawd/Agency_OS/scripts/agent_online_notify.sh AIDEN 15
+ExecStartPost=/home/elliotbot/clawd/Agency_OS/scripts/agent_online_notify.sh AIDEN 15 C0B3QB0K1GQ
 
 [Install]
 WantedBy=default.target

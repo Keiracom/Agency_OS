@@ -1,20 +1,14 @@
 [Unit]
-Description=Agency OS Agent — ATLAS (callsign=atlas, tmux=atlas)
-Documentation=https://linear.app/keiracom/issue/KEI-43
-After=network-online.target
-Wants=network-online.target
-StartLimitBurst=5
-StartLimitIntervalSec=300
+Description=Keiracom atlas agent session
+After=network.target
 
 [Service]
-Type=simple
+Type=oneshot
+RemainAfterExit=yes
 Environment="CALLSIGN=atlas"
-WorkingDirectory=/home/elliotbot/clawd/Agency_OS-atlas
-ExecStart=/home/elliotbot/clawd/Agency_OS-atlas/scripts/systemd_agent_supervisor.sh atlas atlas /home/elliotbot/clawd/Agency_OS-atlas
-Restart=on-failure
-RestartSec=10
-StandardOutput=append:/home/elliotbot/clawd/logs/atlas-agent.log
-StandardError=append:/home/elliotbot/clawd/logs/atlas-agent.log
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+ExecStart=/bin/bash -c 'tmux has-session -t atlas 2>/dev/null || tmux new-session -d -s atlas "claude"'
+ExecStartPost=/home/elliotbot/clawd/Agency_OS/scripts/agent_online_notify.sh ATLAS 15 C0B3QB0K1GQ
 
 [Install]
 WantedBy=default.target

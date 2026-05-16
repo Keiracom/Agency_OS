@@ -175,6 +175,7 @@ def test_non_issue_payload_ignored(client):
 
 
 def test_unhandled_state_ignored(client):
+    # KEI-84: 'backlog' is now handled (→ available). Use a truly-unknown state.
     c, captured = client
     resp = _signed_request(
         c,
@@ -183,7 +184,7 @@ def test_unhandled_state_ignored(client):
             "type": "Issue",
             "data": {
                 "identifier": "KEI-77",
-                "state": {"name": "Backlog", "type": "backlog"},
+                "state": {"name": "Custom", "type": "custom_unknown_state"},
                 "url": "https://linear.app/x",
             },
         },

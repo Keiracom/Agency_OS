@@ -94,6 +94,26 @@ case "$subcmd" in
         fi
         exec "$BD_ORIGINAL" verify "$@"
         ;;
+    escalate)
+        # KEI-79 — `bd escalate <description> [--options A,B,C] [--task KEI-X]`
+        # Writes ceo_decisions row + flips task to status=escalated + posts to #ceo.
+        exec env PYTHONPATH="$AGENCY_OS_REPO${PYTHONPATH:+:$PYTHONPATH}" python3 "$AGENCY_OS_REPO/scripts/bd_escalate.py" "$@"
+        ;;
+    ceo-queue)
+        # KEI-79 — `bd ceo-queue` lists awaiting escalations. Orchestrator visibility.
+        exec env PYTHONPATH="$AGENCY_OS_REPO${PYTHONPATH:+:$PYTHONPATH}" python3 -c "
+import os, psycopg
+dsn = (os.environ.get('DATABASE_URL') or os.environ.get('SUPABASE_DB_URL')).replace('+asyncpg','')
+with psycopg.connect(dsn, prepare_threshold=None, autocommit=True) as conn:
+    with conn.cursor() as cur:
+        cur.execute(\"SELECT task_id, escalated_by, requested_at, description, rate_limit_flagged FROM public.ceo_decisions WHERE status='awaiting' ORDER BY requested_at\")
+        rows = cur.fetchall()
+        if not rows: print('no awaiting escalations'); exit(0)
+        for tid, by, ts, desc, flag in rows:
+            tag = ' [RATE-LIMIT]' if flag else ''
+            print(f'{tid:10s} {by:8s} {ts:%Y-%m-%dT%H:%MZ}  {desc[:80]}{tag}')
+"
+        ;;
     "")
         # No subcommand → bd-original handles help.
         exec "$BD_ORIGINAL"

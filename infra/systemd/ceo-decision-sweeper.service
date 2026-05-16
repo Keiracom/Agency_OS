@@ -1,0 +1,12 @@
+[Unit]
+Description=Agency OS — CEO Decision Sweeper (KEI-79)
+Documentation=https://linear.app/keiracom/issue/KEI-79
+
+[Service]
+Type=oneshot
+ExecStart=/home/elliotbot/clawd/Agency_OS/.venv/bin/python3 /home/elliotbot/clawd/Agency_OS/scripts/orchestrator/ceo_decision_sweeper.py
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+StandardOutput=append:/home/elliotbot/clawd/logs/ceo-decision-sweeper.log
+StandardError=append:/home/elliotbot/clawd/logs/ceo-decision-sweeper.log
+MemoryMax=128M

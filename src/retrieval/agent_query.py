@@ -115,11 +115,19 @@ def _record_event(
 def _node_to_citation(node: orchestrator.RetrievedNode) -> Citation:
     excerpt = node.text.strip().replace("\n", " ")[:EXCERPT_LEN]
     md = node.metadata or {}
+    # KEI-75: prefer specific identifiers (chunk_id, source_path, explicit
+    # source_id) over the umbrella `kei` tag. The old ordering hoisted
+    # md.get('kei') above source_path, which made every citation read
+    # 'KEI-73' on the Wave 3 corpus and 'discoveries:unknown' on chunks
+    # without a tag — neither points the operator at the doc that actually
+    # matched.
     source_id = (
         md.get("source_id")
-        or md.get("kei")
-        or md.get("doc_id")
+        or md.get("chunk_id")
+        or md.get("source_path")
         or md.get("file_path")
+        or md.get("doc_id")
+        or md.get("kei")
         or f"{node.collection.lower()}:unknown"
     )
     return Citation(
@@ -127,7 +135,7 @@ def _node_to_citation(node: orchestrator.RetrievedNode) -> Citation:
         collection=node.collection,
         score=node.score,
         excerpt=excerpt,
-        parent_path=str(md.get("parent_path") or ""),
+        parent_path=str(md.get("parent_path") or md.get("section") or ""),
     )
 
 

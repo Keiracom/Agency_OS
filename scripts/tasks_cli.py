@@ -164,7 +164,7 @@ def cmd_claim(args: argparse.Namespace) -> int:
                      WHERE id = %s
                        AND status = 'available'
                        AND (claimed_by IS NULL OR claimed_by = %s)
-                     RETURNING id, title, priority, status, claimed_by, linear_url
+                     RETURNING id, title, priority, status, claimed_by, linear_url, tags
                     """,
                     (cs, args.id, cs),
                 )
@@ -185,7 +185,7 @@ def cmd_claim(args: argparse.Namespace) -> int:
                            claimed_at = NOW(), updated_at = NOW()
                       FROM next
                      WHERE t.id = next.id
-                     RETURNING t.id, t.title, t.priority, t.status, t.claimed_by, t.linear_url
+                     RETURNING t.id, t.title, t.priority, t.status, t.claimed_by, t.linear_url, t.tags
                     """,
                     (cs,),
                 )
@@ -200,11 +200,28 @@ def cmd_claim(args: argparse.Namespace) -> int:
         else:
             print("nothing to claim" if not args.id else f"could not claim {args.id}")
         return 0
-    cols = ["id", "title", "priority", "status", "claimed_by", "linear_url"]
+    cols = ["id", "title", "priority", "status", "claimed_by", "linear_url", "tags"]
     claimed = dict(zip(cols, row, strict=False))
     if args.json:
-        print(json.dumps(claimed))
+        print(json.dumps(claimed, default=str))
     else:
+        # KEI-51 — context preamble before the success line. Best-effort:
+        # failure to render preamble must never block the claim print itself.
+        try:
+            import importlib.util as _u
+
+            repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            spec = _u.spec_from_file_location(
+                "claim_context_injector",
+                os.path.join(repo_root, "scripts", "orchestrator", "claim_context_injector.py"),
+            )
+            inj = _u.module_from_spec(spec)
+            spec.loader.exec_module(inj)
+            preamble = inj.format_preamble(kei=claimed["id"], tags=claimed.get("tags") or [])
+            if preamble:
+                print(preamble)
+        except Exception:
+            logger.exception("KEI-51 preamble emit failed (non-fatal)")
         print(f"claimed {claimed['id']} by {claimed['claimed_by']}: {claimed['title']}")
     return 0
 

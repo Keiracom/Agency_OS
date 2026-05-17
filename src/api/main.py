@@ -468,7 +468,7 @@ app.include_router(elevenagents_router)
 app.include_router(linear_webhook_router)
 # src.api.webhooks.github — KEI-97 GitHub PR webhook auto-creates REVIEW-PR-N tasks (router carries /api/webhooks/github prefix).
 app.include_router(github_webhook_router)
-# KEI-150: Paddle MoR inbound webhook (router carries /api/webhooks/paddle prefix).
+# src.api.webhooks.paddle — KEI-150 Paddle MoR inbound webhook (router carries /api/webhooks/paddle prefix).
 app.include_router(paddle_webhook_router)
 # Task #20: Email backend (Resend send + status + HMAC-verified webhook).
 # email_router carries its own `/api/email` prefix — no extra prefix here.

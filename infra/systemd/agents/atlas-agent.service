@@ -1,14 +1,22 @@
 [Unit]
-Description=Keiracom atlas agent session
-After=network.target
+Description=Keiracom atlas agent session (KEI-94 keep-alive)
+Documentation=https://linear.app/keiracom/issue/KEI-94
+After=network-online.target
+Wants=network-online.target
+StartLimitBurst=5
+StartLimitIntervalSec=300
 
 [Service]
-Type=oneshot
-RemainAfterExit=yes
+Type=simple
 Environment="CALLSIGN=atlas"
 EnvironmentFile=/home/elliotbot/.config/agency-os/.env
-ExecStart=/bin/bash -c 'tmux has-session -t atlas 2>/dev/null || tmux new-session -d -s atlas "claude"'
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS-atlas
+ExecStart=/home/elliotbot/clawd/Agency_OS/scripts/agent_keepalive.sh atlas atlas /home/elliotbot/clawd/Agency_OS-atlas
 ExecStartPost=/home/elliotbot/clawd/Agency_OS/scripts/agent_online_notify.sh ATLAS 15 C0B3QB0K1GQ
+Restart=always
+RestartSec=10
+StandardOutput=append:/home/elliotbot/clawd/logs/atlas-agent.log
+StandardError=append:/home/elliotbot/clawd/logs/atlas-agent.log
 
 [Install]
 WantedBy=default.target

@@ -1,0 +1,25 @@
+name: Operational Deployment Check
+
+# KEI-108 Part 2: no paths: filter. The gate exists because service files
+# and webhook handlers have proliferated across multiple infra/ subdirs,
+# and a paths: filter would re-introduce the same blind spot KEI-108
+# was opened to close. Runs on every PR; the check script is fast.
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Reject shipped-but-not-wired (KEI-108)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run operational-deployment check
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: bash scripts/ci/check_operational_deployment.sh

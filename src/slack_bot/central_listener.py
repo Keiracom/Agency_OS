@@ -81,36 +81,6 @@ LISTEN_CHANNEL = os.environ.get("SLACK_LISTEN_CHANNEL", "C0B3QB0K1GQ")  # enforc
 ALERTS_CHANNEL = os.environ.get("SLACK_ALERTS_CHANNEL", "C0B2EJU53EK")
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
 
-
-def _get_active_claim_source(callsign: str) -> str | None:
-    """KEI-95: return claim_source for callsign's currently active task.
-
-    Queries public.tasks WHERE status='active' AND claimed_by=callsign.
-    Returns 'auto_loop' or 'manual' if found; None on any failure (DB
-    unreachable, no active task) — callers treat None as 'manual'
-    (safe default, governance-preserving).
-    """
-    dsn = DATABASE_URL.replace("postgresql+asyncpg://", "postgresql://", 1)
-    if not dsn:
-        return None
-    try:
-        import psycopg
-
-        with psycopg.connect(dsn, connect_timeout=2) as conn, conn.cursor() as cur:
-            cur.execute(
-                "SELECT claim_source FROM public.tasks "
-                "WHERE status = 'active' AND claimed_by = %s "
-                "ORDER BY claimed_at DESC LIMIT 1",
-                (callsign.lower(),),
-            )
-            row = cur.fetchone()
-            if row:
-                return str(row[0])
-    except Exception:  # noqa: BLE001 — conservative pass on any DB error
-        pass
-    return None
-
-
 # Auto-KEI: #ceo channel id — messages starting with [CEO] trigger task creation.
 CEO_CHANNEL = "C0B2PM3TV0B"
 CEO_PREFIX = "[CEO]"
@@ -392,14 +362,12 @@ def run_enforcer(event: dict, text: str, web: WebClient) -> None:
 
     if ENFORCER_DETERMINISTIC:
         recent = list(message_window)
-        # KEI-95: inject claim_source_lookup so R2/R8 can exempt auto_loop claims.
-        _lookup = _get_active_claim_source
-        for check_fn, check_args, check_kwargs in (
-            (check_r4, (text,), {}),
-            (check_r2, (text, recent), {"callsign": callsign, "claim_source_lookup": _lookup}),
-            (check_r8, (text, recent), {"callsign": callsign, "claim_source_lookup": _lookup}),
+        for check_fn, check_args in (
+            (check_r4, (text,)),
+            (check_r2, (text, recent)),
+            (check_r8, (text, recent)),
         ):
-            result = check_fn(*check_args, **check_kwargs)
+            result = check_fn(*check_args)
             if result:
                 _fire_violation(result, web)
                 return

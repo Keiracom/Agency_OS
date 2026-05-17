@@ -99,3 +99,52 @@ def test_cursor_corrupt_returns_epoch(tmp_path, monkeypatch):
     bad.write_text("not-json")
     monkeypatch.setattr(mod, "CURSOR_PATH", bad)
     assert mod._read_cursor() == mod.EPOCH_ISO
+
+
+def test_git_log_since_drops_boundary_commit(monkeypatch):
+    """Aiden HOLD #1: `git log --since` is inclusive at the boundary second.
+    The fetch path must drop any commit whose committed_iso matches the cursor
+    exactly — otherwise it gets re-POSTed every poll.
+    """
+    cursor = "2026-05-17T10:00:00+00:00"
+    boundary_sha = "boundary123"
+    newer_sha = "newer456"
+
+    fake_stdout = (
+        f"{boundary_sha}\x1fatlas\x1f{cursor}\x1fboundary commit\x1f\x1e"
+        f"{newer_sha}\x1fatlas\x1f2026-05-17T11:00:00+00:00\x1fnewer commit\x1f\x1e"
+    )
+
+    class _Proc:
+        returncode = 0
+        stdout = fake_stdout
+        stderr = ""
+
+    monkeypatch.setattr(mod.subprocess, "run", lambda *a, **kw: _Proc())
+
+    out = mod._git_log_since(cursor, 50)
+    shas = [c.sha for c in out]
+    assert boundary_sha not in shas
+    assert newer_sha in shas
+
+
+def test_git_log_since_preserves_body_with_embedded_field_separator(monkeypatch):
+    """Aiden HOLD #2: rec.split(_FIELD_SEP, 4) must keep body intact even
+    when the body contains a \\x1f byte.
+    """
+    sha = "withbody789"
+    embedded_body = "line one\x1fembedded sep should not split"
+    fake_stdout = f"{sha}\x1fatlas\x1f2026-05-17T12:00:00+00:00\x1fsubj\x1f{embedded_body}\x1e"
+
+    class _Proc:
+        returncode = 0
+        stdout = fake_stdout
+        stderr = ""
+
+    monkeypatch.setattr(mod.subprocess, "run", lambda *a, **kw: _Proc())
+
+    out = mod._git_log_since("1970-01-01T00:00:00Z", 10)
+    assert len(out) == 1
+    assert out[0].sha == sha
+    # The embedded sep + everything after must be preserved in `body`.
+    assert "embedded sep should not split" in out[0].body

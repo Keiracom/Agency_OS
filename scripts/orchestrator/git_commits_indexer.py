@@ -148,15 +148,27 @@ def _git_log_since(cursor_iso: str, limit: int) -> list[GitCommit]:
     records = [r for r in proc.stdout.split(_RECORD_SEP) if r.strip()]
     commits: list[GitCommit] = []
     for rec in records:
-        parts = rec.split(_FIELD_SEP)
+        # maxsplit=4: keep body intact even if it contains embedded \x1f bytes
+        # (rare — binary-adjacent patch notes, pasted terminal output — but
+        # cheap to be safe per Aiden review).
+        parts = rec.split(_FIELD_SEP, 4)
         if len(parts) < 5:
             continue
         sha, author, committed_iso, subject, body = parts[0], parts[1], parts[2], parts[3], parts[4]
+        committed_iso = committed_iso.strip()
+        # `git log --since` is INCLUSIVE at the boundary second. Drop any
+        # commit whose timestamp equals the cursor — it was already indexed
+        # on the prior poll. Without this we'd re-POST 1 row per poll forever
+        # (Weaviate dedups via deterministic UUID so it's not a correctness
+        # bug, but it inflates the outcome counter and would silently mute
+        # the Gate 4 zero_outcome_window alert during truly-idle states).
+        if cursor_iso and committed_iso == cursor_iso:
+            continue
         commits.append(
             GitCommit(
                 sha=sha.strip(),
                 author=author.strip(),
-                committed_iso=committed_iso.strip(),
+                committed_iso=committed_iso,
                 subject=subject.strip(),
                 body=body.strip(),
             )

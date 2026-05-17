@@ -52,8 +52,9 @@ ts() { date -u +%Y-%m-%dT%H:%M:%SZ; }
 log() { printf '%s [kei45-idle-daemon] %s\n' "$(ts)" "$*" >>"$LOG_FILE"; }
 
 require_cmd() {
-    command -v "$1" >/dev/null 2>&1 || {
-        log "ERROR: required command missing: $1"
+    local cmd="$1"
+    command -v "$cmd" >/dev/null 2>&1 || {
+        log "ERROR: required command missing: $cmd"
         exit 2
     }
 }

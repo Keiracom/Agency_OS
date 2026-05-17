@@ -90,7 +90,8 @@ serve(async (req: Request): Promise<Response> => {
   let payload: LinearWebhookPayload;
   try {
     payload = await req.json();
-  } catch (_e) {
+  } catch (e) {
+    console.error("[kei45_linear_webhook] failed to parse request body as JSON:", e);
     return new Response("invalid JSON", { status: 400 });
   }
 

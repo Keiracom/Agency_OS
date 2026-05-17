@@ -38,16 +38,17 @@ END $$;
 CREATE OR REPLACE FUNCTION public.kei45_emit_task_event() RETURNS trigger
 LANGUAGE plpgsql AS $func$
 DECLARE
-    event_type text;
-    payload    jsonb;
+    event_type  text;
+    payload     jsonb;
+    status_available CONSTANT text := 'available';
 BEGIN
-    IF TG_OP = 'INSERT' AND NEW.status = 'available' THEN
+    IF TG_OP = 'INSERT' AND NEW.status = status_available THEN
         event_type := 'new_available';
-    ELSIF TG_OP = 'UPDATE' AND OLD.status = 'available' AND NEW.status = 'active' THEN
+    ELSIF TG_OP = 'UPDATE' AND OLD.status = status_available AND NEW.status = 'active' THEN
         event_type := 'claimed';
     ELSIF TG_OP = 'UPDATE' AND OLD.status = 'active' AND NEW.status = 'done' THEN
         event_type := 'completed';
-    ELSIF TG_OP = 'UPDATE' AND OLD.status = 'active' AND NEW.status = 'available' THEN
+    ELSIF TG_OP = 'UPDATE' AND OLD.status = 'active' AND NEW.status = status_available THEN
         event_type := 'unclaimed';
     ELSE
         event_type := 'other';

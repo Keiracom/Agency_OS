@@ -215,20 +215,20 @@ def test_invoice_paid_dispatches_to_handler(client, mod, monkeypatch):
             return self
 
         def __exit__(self, *_):
-            pass
+            pass  # context-manager protocol no-op — psycopg.Cursor.__exit__ closes resources; test mock has none
 
     class FakeConn:
         def cursor(self):
             return FakeCursor()
 
         def commit(self):
-            pass
+            pass  # mock — production psycopg.Connection.commit is the no-op replacement target
 
         def __enter__(self):
             return self
 
         def __exit__(self, *_):
-            pass
+            pass  # context-manager protocol no-op — psycopg.Connection.__exit__ closes the conn; test mock has none
 
     import types
 
@@ -299,20 +299,20 @@ def test_subscription_updated_dispatches_with_tier_map(client, mod, monkeypatch)
             return self
 
         def __exit__(self, *_):
-            pass
+            pass  # context-manager protocol no-op — psycopg.Cursor.__exit__ closes resources; test mock has none
 
     class FakeConn:
         def cursor(self):
             return FakeCursor()
 
         def commit(self):
-            pass
+            pass  # mock — production psycopg.Connection.commit is the no-op replacement target
 
         def __enter__(self):
             return self
 
         def __exit__(self, *_):
-            pass
+            pass  # context-manager protocol no-op — psycopg.Connection.__exit__ closes the conn; test mock has none
 
     import types
 
@@ -362,9 +362,10 @@ def test_handler_db_failure_fails_open_returns_200(client, mod, monkeypatch):
     """psycopg.connect raises → handler swallows exception, webhook still returns 200."""
     import types
 
-    fake_psycopg = types.SimpleNamespace(
-        connect=lambda *a, **kw: (_ for _ in ()).throw(RuntimeError("db down"))
-    )
+    def _connect_raises(*_args, **_kwargs):
+        raise RuntimeError("db down")
+
+    fake_psycopg = types.SimpleNamespace(connect=_connect_raises)
     monkeypatch.setenv("DATABASE_URL", "postgresql://fake/db")
     monkeypatch.setattr(mod, "_dsn_from_env", lambda: "postgresql://fake/db")
 

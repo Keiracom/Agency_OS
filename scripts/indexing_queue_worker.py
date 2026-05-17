@@ -38,11 +38,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-# KEI-91 Gate 4 heartbeat tick.
-_SRC = Path(__file__).resolve().parents[1] / "src"
-if str(_SRC) not in sys.path:
-    sys.path.insert(0, str(_SRC))
-from observability.heartbeat import tick as _heartbeat_tick  # noqa: E402
+# KEI-91 Gate 4 heartbeat tick via shared shim. The shim lives one dir down
+# (scripts/orchestrator/_heartbeat_shim.py); put that dir on sys.path so the
+# import works the same way as the scripts/orchestrator/*.py wires.
+_SHIM_DIR = Path(__file__).resolve().parent / "orchestrator"
+if str(_SHIM_DIR) not in sys.path:
+    sys.path.insert(0, str(_SHIM_DIR))
+from _heartbeat_shim import heartbeat_tick as _heartbeat_tick  # noqa: E402
 
 logger = logging.getLogger("indexing_queue_worker")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s: %(message)s")

@@ -26,17 +26,12 @@ import json
 import logging
 import os
 import subprocess
-import sys
 import time
-from pathlib import Path
 from urllib import error as urlerror
 from urllib import request as urlrequest
 
-# KEI-91 Gate 4 heartbeat tick.
-_SRC = Path(__file__).resolve().parents[2] / "src"
-if str(_SRC) not in sys.path:
-    sys.path.insert(0, str(_SRC))
-from observability.heartbeat import tick as _heartbeat_tick  # noqa: E402
+# KEI-91 Gate 4 heartbeat tick via shared shim.
+from _heartbeat_shim import heartbeat_tick as _heartbeat_tick  # noqa: E402
 
 logger = logging.getLogger("completion_sync_worker")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")

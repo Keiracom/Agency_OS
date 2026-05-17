@@ -32,22 +32,15 @@ import signal
 import sys
 import time
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any
 
 import psycopg
+from _heartbeat_shim import heartbeat_tick as _heartbeat_tick
 from indexer_base import (
     BaseIndexer,
     aggregate_count,
     deterministic_uuid,
 )
-
-# KEI-91 Gate 4 — heartbeat tick. Path-prepend keeps existing indexer
-# units working without a systemd PYTHONPATH change.
-_SRC = Path(__file__).resolve().parents[2] / "src"
-if str(_SRC) not in sys.path:
-    sys.path.insert(0, str(_SRC))
-from observability.heartbeat import tick as _heartbeat_tick  # noqa: E402
 
 logger = logging.getLogger("ceo_memory_indexer")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")

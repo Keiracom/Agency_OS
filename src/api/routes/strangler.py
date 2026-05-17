@@ -14,7 +14,7 @@ route taken, and wall-clock latency. No request payload body is logged (PII guar
 
 import logging
 import time
-from typing import Any
+from typing import Annotated, Any
 from uuid import UUID
 
 import httpx
@@ -70,7 +70,6 @@ async def _get_use_model_b(tenant_id: UUID, db: AsyncSession) -> bool:
 
 
 async def _route_model_a(
-    payload: dict[str, Any],
     tenant_id: UUID,
 ) -> dict[str, Any]:
     """
@@ -81,7 +80,7 @@ async def _route_model_a(
     follow-up once the Strangler Fig routing is validated; this shim
     preserves the fork without modifying Model A code.
     """
-    # TODO(KEI-180 follow-up): delegate to src/orchestration/flows/outreach_flow.py
+    # Follow-up wiring tracked in KEI-180 dispatch — delegate to src/orchestration/flows/outreach_flow.py
     return {"model": "a", "tenant_id": str(tenant_id)}
 
 
@@ -141,10 +140,10 @@ async def _log_route_decision(
 # ---------------------------------------------------------------------------
 
 
-@router.post("/outreach", response_model=OutreachResponse)
+@router.post("/outreach")
 async def outreach(
     req: OutreachRequest,
-    db: AsyncSession = Depends(get_db_session),
+    db: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> OutreachResponse:
     """
     Route an outreach request per the Strangler Fig feature flag.
@@ -167,10 +166,10 @@ async def outreach(
                 "Model B dispatcher failed for tenant %s — failing open to Model A",
                 req.tenant_id,
             )
-            await _route_model_a(req.payload, req.tenant_id)
+            await _route_model_a(req.tenant_id)
             route = "model_b_failover"
     else:
-        await _route_model_a(req.payload, req.tenant_id)
+        await _route_model_a(req.tenant_id)
 
     latency_ms = (time.perf_counter() - t0) * 1000
     await _log_route_decision(req.tenant_id, route, latency_ms, db)

@@ -19,8 +19,8 @@ from src.api.routes.strangler import router
 # App fixture
 # ---------------------------------------------------------------------------
 
-TENANT_A = uuid4()  # use_model_b = False
-TENANT_B = uuid4()  # use_model_b = True
+TENANT_A = uuid4()
+TENANT_B = uuid4()
 
 
 def _make_app(use_model_b: bool):

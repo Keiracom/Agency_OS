@@ -144,6 +144,10 @@ def _release_stale_claims(cur: Any) -> int:
     number of rows released for caller-side logging. Fail-open: caller wraps
     in try/except so a release failure never blocks the originating read.
     """
+    # S608 false-positive: the INTERVAL value is the module-level
+    # STALE_CLAIM_INTERVAL_HOURS constant (int-cast from TASKS_STALE_CLAIM_HOURS
+    # env var at import time), never user input. The suppression below uses
+    # bare ruff-noqa-S608 syntax (no trailing prose) to satisfy Sonar S7632.
     cur.execute(
         f"""
         UPDATE public.tasks t
@@ -158,7 +162,7 @@ def _release_stale_claims(cur: Any) -> int:
                SELECT 1 FROM public.task_verifications v
                 WHERE v.task_id = t.id
            )
-        """  # noqa: S608 — interval is from int-cast env var, not user input
+        """  # noqa: S608
     )
     return cur.rowcount or 0
 

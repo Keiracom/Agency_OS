@@ -172,3 +172,209 @@ def test_verify_unit_empty_secret(mod):
     body = b'{"event_type":"subscription.activated"}'
     sig = _make_sig(TEST_SECRET, body)
     assert mod.verify_paddle_signature("", body, sig) is False
+
+
+# ---------------------------------------------------------------------------
+# KEI-152: dispatch + handler tests
+# ---------------------------------------------------------------------------
+
+
+def _make_paid_payload(sub_id: str = "sub_abc123") -> bytes:
+    return json.dumps({"event_type": "invoice.paid", "data": {"subscription_id": sub_id}}).encode()
+
+
+def _make_txn_payload(sub_id: str = "sub_abc123") -> bytes:
+    return json.dumps(
+        {"event_type": "transaction.completed", "data": {"subscription_id": sub_id}}
+    ).encode()
+
+
+def _make_sub_updated_payload(sub_id: str = "sub_abc123", price_id: str = "pri_abc") -> bytes:
+    return json.dumps(
+        {
+            "event_type": "subscription.updated",
+            "data": {
+                "id": sub_id,
+                "items": [{"price": {"id": price_id}}],
+            },
+        }
+    ).encode()
+
+
+def test_invoice_paid_dispatches_to_handler(client, mod, monkeypatch):
+    """invoice.paid with subscription_id → _handle_invoice_paid called, UPDATE contains last_paid_at."""
+    executed_sql: list[str] = []
+
+    class FakeCursor:
+        rowcount = 1
+
+        def execute(self, sql, params=None):
+            executed_sql.append(sql)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            pass
+
+    class FakeConn:
+        def cursor(self):
+            return FakeCursor()
+
+        def commit(self):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            pass
+
+    import types
+
+    fake_psycopg = types.SimpleNamespace(connect=lambda *a, **kw: FakeConn())
+    monkeypatch.setenv("DATABASE_URL", "postgresql://fake/db")
+    monkeypatch.setattr(mod, "_dsn_from_env", lambda: "postgresql://fake/db")
+
+    import sys
+
+    sys.modules["psycopg"] = fake_psycopg
+
+    body = _make_paid_payload()
+    sig = _make_sig(TEST_SECRET, body)
+    resp = _post(client, body, sig)
+    assert resp.status_code == 200
+    assert any("last_paid_at" in sql for sql in executed_sql)
+
+    del sys.modules["psycopg"]
+
+
+def test_transaction_completed_alias_dispatches(client, mod, monkeypatch):
+    """transaction.completed (Paddle v2 name) also routes to _handle_invoice_paid."""
+    called: list[dict] = []
+
+    def fake_handle(payload):
+        called.append(payload)
+
+    monkeypatch.setattr(mod, "_handle_invoice_paid", fake_handle)
+
+    body = _make_txn_payload()
+    sig = _make_sig(TEST_SECRET, body)
+    resp = _post(client, body, sig)
+    assert resp.status_code == 200
+    assert len(called) == 1
+
+
+def test_invoice_paid_missing_sub_id_no_db_call(mod, monkeypatch):
+    """Empty subscription_id → no psycopg.connect call, warning logged."""
+    connect_called: list[bool] = []
+
+    import types
+
+    fake_psycopg = types.SimpleNamespace(connect=lambda *a, **kw: connect_called.append(True))
+
+    import sys
+
+    sys.modules["psycopg"] = fake_psycopg
+    monkeypatch.setenv("DATABASE_URL", "postgresql://fake/db")
+
+    payload = {"event_type": "invoice.paid", "data": {"subscription_id": ""}}
+    mod._handle_invoice_paid(payload)
+    assert connect_called == []
+
+    del sys.modules["psycopg"]
+
+
+def test_subscription_updated_dispatches_with_tier_map(client, mod, monkeypatch):
+    """subscription.updated + valid PADDLE_PRICE_TO_TIER → UPDATE SQL contains tier."""
+    executed_sql: list[str] = []
+
+    class FakeCursor:
+        rowcount = 1
+
+        def execute(self, sql, params=None):
+            executed_sql.append(sql)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            pass
+
+    class FakeConn:
+        def cursor(self):
+            return FakeCursor()
+
+        def commit(self):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            pass
+
+    import types
+
+    fake_psycopg = types.SimpleNamespace(connect=lambda *a, **kw: FakeConn())
+    monkeypatch.setenv("DATABASE_URL", "postgresql://fake/db")
+    monkeypatch.setenv("PADDLE_PRICE_TO_TIER", json.dumps({"pri_abc": "pro"}))
+    monkeypatch.setattr(mod, "_dsn_from_env", lambda: "postgresql://fake/db")
+
+    import sys
+
+    sys.modules["psycopg"] = fake_psycopg
+
+    body = _make_sub_updated_payload(price_id="pri_abc")
+    sig = _make_sig(TEST_SECRET, body)
+    resp = _post(client, body, sig)
+    assert resp.status_code == 200
+    assert any("tier" in sql for sql in executed_sql)
+
+    del sys.modules["psycopg"]
+
+
+def test_subscription_updated_unmapped_price_no_db_call(mod, monkeypatch):
+    """price_id not in PADDLE_PRICE_TO_TIER → no DB call, warning."""
+    connect_called: list[bool] = []
+
+    import types
+
+    fake_psycopg = types.SimpleNamespace(connect=lambda *a, **kw: connect_called.append(True))
+
+    import sys
+
+    sys.modules["psycopg"] = fake_psycopg
+    monkeypatch.setenv("DATABASE_URL", "postgresql://fake/db")
+    monkeypatch.setenv("PADDLE_PRICE_TO_TIER", json.dumps({"pri_other": "pro"}))
+
+    payload = {
+        "event_type": "subscription.updated",
+        "data": {"id": "sub_abc", "items": [{"price": {"id": "pri_abc"}}]},
+    }
+    mod._handle_subscription_updated(payload)
+    assert connect_called == []
+
+    del sys.modules["psycopg"]
+
+
+def test_handler_db_failure_fails_open_returns_200(client, mod, monkeypatch):
+    """psycopg.connect raises → handler swallows exception, webhook still returns 200."""
+    import types
+
+    fake_psycopg = types.SimpleNamespace(
+        connect=lambda *a, **kw: (_ for _ in ()).throw(RuntimeError("db down"))
+    )
+    monkeypatch.setenv("DATABASE_URL", "postgresql://fake/db")
+    monkeypatch.setattr(mod, "_dsn_from_env", lambda: "postgresql://fake/db")
+
+    import sys
+
+    sys.modules["psycopg"] = fake_psycopg
+
+    body = _make_paid_payload()
+    sig = _make_sig(TEST_SECRET, body)
+    resp = _post(client, body, sig)
+    assert resp.status_code == 200
+
+    del sys.modules["psycopg"]

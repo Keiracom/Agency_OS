@@ -6,7 +6,7 @@ from .failure_alert import send_failure_alert
 
 # Add to any flow with: @flow(on_failure=[on_failure_hook])
 def on_failure_hook(flow, flow_run, state) -> None:
-    """Prefect 3.x on_failure hook — sends a Telegram alert on flow failure."""
+    """Prefect 3.x on_failure hook — sends a Slack alert on flow failure."""
     flow_name = getattr(flow, "name", str(flow))
     flow_run_id = str(getattr(flow_run, "id", "unknown"))
     deployment_id = str(getattr(flow_run, "deployment_id", None) or "") or None

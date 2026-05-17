@@ -1,4 +1,4 @@
-"""auth_gate.py — Write evo_auth_requests row, notify Telegram, poll for response."""
+"""auth_gate.py — Write evo_auth_requests row, notify via Slack, poll for response."""
 
 import time
 

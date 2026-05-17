@@ -3,7 +3,7 @@ openai_cost_weekly.py — weekly OpenAI cost summary from daily rollup JSONL.
 
 Reads last 7 days of /home/elliotbot/clawd/logs/openai-cost-daily.jsonl,
 computes 7-day totals, writes to Supabase ceo_memory key
-'ceo:openai_weekly_cost', and sends Telegram summary to group.
+'ceo:openai_weekly_cost', and sends Slack summary to #execution.
 
 Intended to run via systemd timer on Fridays at 18:00 AEST (08:00 UTC).
 """
@@ -103,8 +103,8 @@ def write_to_ceo_memory(supabase_url: str, supabase_key: str, summary: dict) -> 
         print("ceo_memory updated: ceo:openai_weekly_cost")
 
 
-def send_telegram(summary: dict) -> None:
-    """Send weekly summary to Telegram group."""
+def send_slack_summary(summary: dict) -> None:
+    """Send weekly summary to Slack #execution via tg shim."""
     total = summary["total_usd"]
     total_aud = round(total * 1.55, 4)
     by_uc = summary.get("by_use_case", {})
@@ -132,7 +132,7 @@ def main() -> None:
     entries = load_last_7_days(DAILY_LOG)
     summary = compute_weekly(entries)
     write_to_ceo_memory(supabase_url, supabase_key, summary)
-    send_telegram(summary)
+    send_slack_summary(summary)
     print(json.dumps(summary, indent=2))
 
 

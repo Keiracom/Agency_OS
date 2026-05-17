@@ -127,7 +127,7 @@ def _emit_snapshot_failure_alert(stage: str, exc: Exception) -> None:
     $0.0006/send) before the in-memory delta hits the $25 spark cap.
 
     logger.error tags the failure for log-scrape pickup. Best-effort
-    Telegram broadcast via src/prefect_utils/failure_alert.py — failure
+    Slack alert via src/prefect_utils/failure_alert.py — failure
     of the alert itself is swallowed so the flow stays running.
     """
     logger.error(
@@ -148,7 +148,7 @@ def _emit_snapshot_failure_alert(stage: str, exc: Exception) -> None:
             timestamp=datetime.now(UTC).isoformat(),
         )
     except Exception as alert_exc:
-        logger.error("outreach_budget_snapshot_alert: telegram emit failed: %s", alert_exc)
+        logger.error("outreach_budget_snapshot_alert: slack alert emit failed: %s", alert_exc)
 
 
 @task(name="snapshot_outreach_spend", retries=1, retry_delay_seconds=2)

@@ -21,8 +21,6 @@ from collections import Counter
 from datetime import UTC, datetime
 from typing import Any
 
-import httpx as _httpx
-
 from src.config.category_etv_windows import CATEGORY_ETV_WINDOWS, get_etv_window
 from src.integrations.dfs_labs_client import DFSLabsClient
 from src.intelligence.contact_waterfall import (
@@ -60,16 +58,21 @@ BUDGET_TOTAL, BUDGET_GEMINI, BUDGET_APIFY, BUDGET_WARN_PCT = 25.0, 2.0, 8.0, 0.8
 
 
 def _tg(msg: str) -> None:
-    import contextlib
+    """Send a progress notification to #alerts via slack_relay.py.
 
-    token = os.environ.get("TELEGRAM_TOKEN", "")
-    if not token:
-        return
+    Function name retained for call-site compatibility.
+    Formerly sent to Telegram API — removed in KEI-41 Phase 3.
+    """
+    import contextlib
+    import subprocess
+    from pathlib import Path
+
+    relay = Path(__file__).resolve().parent / "slack_relay.py"
     with contextlib.suppress(Exception):
-        _httpx.post(
-            f"https://api.telegram.org/bot{token}/sendMessage",
-            json={"chat_id": "7267788033", "text": f"[EVO] {msg}"},
-            timeout=10,
+        subprocess.run(
+            ["python3", str(relay), "-c", "alerts", f"[EVO] {msg}"],
+            check=False,
+            timeout=15,
         )
 
 
@@ -534,7 +537,7 @@ async def main() -> None:
 
         completed += len(batch)
 
-        # Progress Telegram every 25 completions
+        # Progress Slack alert every 25 completions
         if completed % 25 == 0 or completed == len(domain_pairs):
             clf = Counter(r.get("classification", "dropped") for r in all_results)
             _tg(

@@ -1,12 +1,12 @@
-import logging
-import os
+from __future__ import annotations
 
-import httpx
+import logging
+import subprocess
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_TOKEN")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "7267788033")
+_RELAY = Path(__file__).resolve().parents[2] / "scripts" / "slack_relay.py"
 
 
 def send_failure_alert(
@@ -15,23 +15,24 @@ def send_failure_alert(
     error_message: str,
     timestamp: str,
 ) -> None:
-    """Send a Telegram alert when a Prefect flow fails."""
+    """Send a Slack alert when a Prefect flow fails.
+
+    Routes via scripts/slack_relay.py to #alerts channel.
+    Formerly posted to Telegram API — removed in KEI-41 Phase 3.
+    """
     text = (
-        "🚨 *Prefect Flow FAILED*\n"
-        f"Flow: {flow_name}\n"
-        f"Run ID: {flow_run_id}\n"
-        f"Error: {error_message}\n"
+        "[PREFECT FAILURE] "
+        f"Flow: {flow_name} | "
+        f"Run ID: {flow_run_id} | "
+        f"Error: {error_message} | "
         f"Time: {timestamp}"
     )
-    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-    payload = {
-        "chat_id": TELEGRAM_CHAT_ID,
-        "text": text,
-        "parse_mode": "Markdown",
-    }
     try:
-        response = httpx.post(url, json=payload, timeout=10)
-        response.raise_for_status()
+        subprocess.run(
+            ["python3", str(_RELAY), "-c", "alerts", text],
+            check=False,
+            timeout=15,
+        )
         logger.info("Failure alert sent for flow '%s'", flow_name)
     except Exception as exc:
-        logger.error("Failed to send Telegram alert: %s", exc)
+        logger.exception("Failed to send Slack failure alert: %s", exc)

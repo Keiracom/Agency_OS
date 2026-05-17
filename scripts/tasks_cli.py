@@ -361,6 +361,58 @@ def cmd_claim(args: argparse.Namespace) -> int:
     return 0
 
 
+def _load_evidence_payload(evidence_path: str) -> dict | None:
+    """Read evidence from a file path or stdin ('-'). Returns the parsed JSON
+    dict on success, or None on read/parse failure (after printing the error)."""
+    try:
+        if evidence_path == "-":
+            raw = sys.stdin.read()
+        else:
+            with open(evidence_path) as fh:
+                raw = fh.read()
+        return json.loads(raw)
+    except (OSError, json.JSONDecodeError) as exc:
+        print(f"ERROR: could not load evidence from {evidence_path!r}: {exc}", file=sys.stderr)
+        return None
+
+
+def _execute_atomic_complete(
+    cur: Any,
+    task_id: str,
+    callsign: str,
+    behavioral_test: str,
+    canonical_str: str,
+    force_mode: str,
+) -> tuple[Any, ...] | None:
+    """INSERT task_verifications row + UPDATE tasks.status='done' in a single
+    transaction. Returns the UPDATE's RETURNING row, or None when the task is
+    not claimed by the caller (caller-side rollback expected)."""
+    import uuid as _uuid
+
+    cur.execute(
+        """
+        INSERT INTO public.task_verifications
+               (id, task_id, verified_by, behavioral_test, test_output, created_at)
+        VALUES (%s, %s, %s, %s, %s, NOW())
+        """,
+        (str(_uuid.uuid4()), task_id, callsign, behavioral_test, canonical_str),
+    )
+    cur.execute(
+        """
+        UPDATE public.tasks
+           SET status = 'done',
+               claimed_by = NULL,
+               claimed_at = NULL,
+               updated_at = NOW()
+         WHERE id = %s
+           AND (claimed_by = %s OR %s = 'force')
+         RETURNING id, title, status
+        """,
+        (task_id, callsign, force_mode),
+    )
+    return cur.fetchone()
+
+
 def cmd_complete(args: argparse.Namespace) -> int:
     """Mark a claimed task done.
 
@@ -371,7 +423,7 @@ def cmd_complete(args: argparse.Namespace) -> int:
     """
     import psycopg
 
-    # ── Gate 2: evidence required ────────────────────────────────────────────
+    # Gate 2: evidence flag required.
     evidence_path: str | None = getattr(args, "evidence", None)
     if not evidence_path:
         print(
@@ -381,19 +433,10 @@ def cmd_complete(args: argparse.Namespace) -> int:
         )
         return 1
 
-    # ── Load evidence ────────────────────────────────────────────────────────
-    try:
-        if evidence_path == "-":
-            raw = sys.stdin.read()
-        else:
-            with open(evidence_path) as fh:
-                raw = fh.read()
-        evidence_payload = json.loads(raw)
-    except (OSError, json.JSONDecodeError) as exc:
-        print(f"ERROR: could not load evidence from {evidence_path!r}: {exc}", file=sys.stderr)
+    evidence_payload = _load_evidence_payload(evidence_path)
+    if evidence_payload is None:
         return 1
 
-    # ── Schema validation ─────────────────────────────────────────────────────
     schema_err = _validate_evidence_schema(evidence_payload)
     if schema_err:
         print(f"evidence schema invalid: {schema_err}", file=sys.stderr)
@@ -401,7 +444,6 @@ def cmd_complete(args: argparse.Namespace) -> int:
 
     canonical_str = json.dumps(evidence_payload, sort_keys=True, ensure_ascii=False)
     evidence_hash = _canonical_hash(evidence_payload)
-
     cs = _callsign(args.callsign)
     behavioral_test = (
         evidence_payload["acceptance_items"][0]
@@ -411,7 +453,6 @@ def cmd_complete(args: argparse.Namespace) -> int:
 
     try:
         with psycopg.connect(_dsn()) as conn, conn.cursor() as cur:
-            # ── Hash uniqueness check ─────────────────────────────────────────
             prior_id, prior_ts = _check_hash_uniqueness(cur, args.id, evidence_hash)
             if prior_id is not None:
                 print(
@@ -420,32 +461,9 @@ def cmd_complete(args: argparse.Namespace) -> int:
                     file=sys.stderr,
                 )
                 return 1
-
-            # ── Atomic transaction: INSERT verification + UPDATE task ─────────
-            import uuid as _uuid
-
-            cur.execute(
-                """
-                INSERT INTO public.task_verifications
-                       (id, task_id, verified_by, behavioral_test, test_output, created_at)
-                VALUES (%s, %s, %s, %s, %s, NOW())
-                """,
-                (str(_uuid.uuid4()), args.id, cs, behavioral_test, canonical_str),
+            row = _execute_atomic_complete(
+                cur, args.id, cs, behavioral_test, canonical_str, args.force_mode
             )
-            cur.execute(
-                """
-                UPDATE public.tasks
-                   SET status = 'done',
-                       claimed_by = NULL,
-                       claimed_at = NULL,
-                       updated_at = NOW()
-                 WHERE id = %s
-                   AND (claimed_by = %s OR %s = 'force')
-                 RETURNING id, title, status
-                """,
-                (args.id, cs, args.force_mode),
-            )
-            row = cur.fetchone()
             if row is None:
                 conn.rollback()
                 if args.json:

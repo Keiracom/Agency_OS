@@ -6,8 +6,8 @@ Covers:
   - claim race lost on first → retry next, eventually succeed
   - claim race lost on all attempts → graceful no-op
   - no eligible work (empty bd ready)
-  - eligibility filter: never claim a peer's assigned work
-  - eligibility filter: unassigned OR same-callsign assignee both pass
+  - eligibility filter: KEI-150 — any agent can claim any item (assignee
+    filtering removed; phase-lock + SKIP LOCKED gate mechanically)
   - priority ordering: P0 beats P1, P1 beats P2
   - dry-run prints the target without calling claim_fn
   - invalid callsign rejected
@@ -119,14 +119,15 @@ def test_no_eligible_work_when_bd_ready_empty():
     assert result["reason"] == "no_eligible_work"
 
 
-# ─── 5. Eligibility filter: never poach peer's work ─────────────────────
+# ─── 5. KEI-150 — assignee filtering removed; any agent can claim any item ───
 
 
-def test_does_not_claim_peer_assigned_work():
-    """Issue assigned to atlas must NEVER be claimed by orion — Pattern A
-    teaching: writer-side migration must include reader close. Same shape
-    here: claiming a peer's work would steal context that peer already
-    started accumulating."""
+def test_claims_peer_assigned_work_kei150():
+    """KEI-150 (Dave 2026-05-17) — assignee filtering removed. Phase-lock
+    + SKIP LOCKED handle eligibility mechanically; an item assigned to
+    atlas in Linear is still claimable by orion via the auto-claim loop.
+    The prior 'never poach' rule blocked agents from picking up stale
+    pre-assignments and was the #1 source of READY-loop idle time."""
     items = [
         _item("Agency_OS-peer", priority="P0", assignee="atlas"),
     ]
@@ -137,9 +138,9 @@ def test_does_not_claim_peer_assigned_work():
         return True
 
     result = mod.run(callsign="orion", ready_fn=lambda: items, claim_fn=claim_fn)
-    assert result["claimed"] is False
-    assert result["reason"] == "no_eligible_work"
-    assert claimed == []
+    assert result["claimed"] is True
+    assert result["issue_id"] == "Agency_OS-peer"
+    assert claimed == ["Agency_OS-peer"]
 
 
 # ─── 6. Eligibility filter: own-callsign assignee passes ────────────────

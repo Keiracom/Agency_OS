@@ -33,6 +33,7 @@ import argparse
 import logging
 import os
 import sys
+import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -162,7 +163,7 @@ def _search(query: str) -> list:
         return []
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
@@ -177,7 +178,10 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     callsign = args.callsign.strip().lower()
-    output_path = Path(args.output) if args.output else Path(f"/tmp/cognee-context-{callsign}.md")
+    tmp_dir = tempfile.gettempdir()
+    output_path = (
+        Path(args.output) if args.output else Path(tmp_dir) / f"cognee-context-{callsign}.md"
+    )
     query = args.query or _WAKE_QUERY_TEMPLATE.format(callsign=callsign)
 
     # Always load discrete DB env vars from DATABASE_URL_MIGRATIONS.
@@ -195,7 +199,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"[cognee_session_start] no LLM key — wrote stub to {output_path}", flush=True)
         except OSError as exc:
             logger.warning("could not write stub: %s", exc)
-        return 0
+        return
 
     print(
         f"[cognee_session_start] callsign={callsign} org={args.org_id} app={args.app_id} top_k={args.top_k}",
@@ -220,8 +224,7 @@ def main(argv: list[str] | None = None) -> int:
         logger.warning("could not write output file %s: %s", output_path, exc)
         # Still exit 0 — session must not block.
 
-    return 0  # always
-
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()
+    sys.exit(0)

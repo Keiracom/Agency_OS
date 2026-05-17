@@ -44,34 +44,6 @@ def _stub_slack_sdk() -> None:
 def _load_central_listener() -> types.ModuleType:
     """Load central_listener with slack_sdk stubbed out."""
     _stub_slack_sdk()
-    # Also stub transitive deps that may be missing in the test env.
-    for dep in (
-        "src.bot_common.enforcer_deterministic",
-        "src.bot_common.enforcer_rules",
-        "src.slack_bot.enforcer_callsign_map",
-    ):
-        if dep not in sys.modules:
-            stub = types.ModuleType(dep)
-            # Provide attributes referenced at import time.
-            for attr in (
-                "_R3_EVIDENCE_RE",
-                "check_r2",
-                "check_r3",
-                "check_r4",
-                "check_r6",
-                "check_r8",
-                "CHECK_MODEL",
-                "FLAG_COOLDOWN_SECONDS",
-                "HIGH_SEVERITY_RULES",
-                "MAX_WINDOW",
-                "RULES_PROMPT",
-                "should_check",
-                "attribute",
-            ):
-                setattr(stub, attr, MagicMock())
-            stub.MAX_WINDOW = 50  # type: ignore[attr-defined]
-            sys.modules[dep] = stub
-
     # Force fresh load (remove any cached half-initialised module).
     sys.modules.pop("src.slack_bot.central_listener", None)
     sys.modules.pop("src.slack_bot", None)

@@ -81,21 +81,6 @@ async def check_api_keys() -> list[dict]:
     return findings
 
 
-@task(name="check-enforcer-alive", cache_policy=NO_CACHE)
-async def check_enforcer_alive() -> dict:
-    """Check if enforcer bot process is running."""
-    import subprocess
-
-    result = subprocess.run(
-        ["pgrep", "-f", "enforcer_bot.py"],
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode == 0:
-        return {"status": "ok", "pid": result.stdout.strip()}
-    return {"status": "down", "pid": None}
-
-
 @task(name="check-recent-flow-failures", cache_policy=NO_CACHE)
 async def check_recent_flow_failures() -> list[dict]:
     """Check for flow failures in the last hour."""
@@ -202,19 +187,6 @@ async def health_check_flow() -> dict:
             }
         )
 
-    # Check enforcer
-    enforcer = await check_enforcer_alive()
-    if enforcer["status"] != "ok":
-        findings.append(
-            {
-                "signal_type": "service_down",
-                "tier": 3,
-                "severity": "CRITICAL",
-                "description": "Enforcer bot process not running",
-                "metadata": enforcer,
-            }
-        )
-
     # Check recent flow failures
     flow_failures = await check_recent_flow_failures()
     for ff in flow_failures:
@@ -275,7 +247,6 @@ async def health_check_flow() -> dict:
         "checks": [
             "prefect_worker",
             "api_keys",
-            "enforcer",
             "flow_failures",
             "test_baseline",
             "swap_pressure",
@@ -357,7 +328,7 @@ async def dispatch_t1_fixes(findings: list[dict]) -> int:
                 if not row:
                     continue
                 # Risk check: don't T1-fix if touching sensitive files
-                sensitive_patterns = ["migration", "CLAUDE.md", "enforcer", "workflow"]
+                sensitive_patterns = ["migration", "CLAUDE.md", "workflow"]
                 desc = f.get("description", "").lower()
                 if any(p in desc for p in sensitive_patterns):
                     logger.info("T1 skip (risk-escalate to T2): %s", f["signal_type"])

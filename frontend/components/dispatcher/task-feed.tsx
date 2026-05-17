@@ -58,7 +58,7 @@ export function TaskFeed({
   tasks,
   loading = false,
   emptyMessage = "No tasks yet. Submit your first task to get started.",
-}: TaskFeedProps) {
+}: Readonly<TaskFeedProps>) {
   if (loading) {
     return (
       <div data-testid="task-feed-loading" className="py-8 text-center text-sm text-muted-foreground">

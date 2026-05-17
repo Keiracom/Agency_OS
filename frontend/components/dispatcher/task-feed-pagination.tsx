@@ -24,7 +24,7 @@ export function TaskFeedPagination({
   onPrev,
   onNext,
   pageLabel,
-}: TaskFeedPaginationProps) {
+}: Readonly<TaskFeedPaginationProps>) {
   return (
     <div data-testid="task-feed-pagination" className="flex items-center justify-between py-4">
       <button

@@ -1,0 +1,13 @@
+[Unit]
+Description=Agency OS — Heartbeat monitor every 5 minutes (KEI-91 Gate 4)
+Documentation=https://linear.app/keiracom/issue/KEI-91
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+AccuracySec=15s
+Persistent=true
+Unit=heartbeat-monitor.service
+
+[Install]
+WantedBy=timers.target

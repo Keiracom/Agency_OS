@@ -43,6 +43,10 @@ from typing import Any
 from urllib import error as urlerror
 from urllib import request as urlrequest
 
+# KEI-91 Gate 4 heartbeat tick via shared shim (depth-agnostic path resolver,
+# ImportError-only suppression with warn-log on failure).
+from _heartbeat_shim import heartbeat_tick as _heartbeat_tick  # noqa: E402
+
 logger = logging.getLogger("tool_call_log_indexer")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
@@ -245,6 +249,12 @@ def process_batch(conn: Any, batch_size: int) -> dict[str, int]:
     logger.info("batch: %s", outcome)
     if rows:
         write_audit(conn, outcome)
+    # KEI-91 heartbeat — outcome counter is rows flipped indexed=true.
+    _heartbeat_tick(
+        "tool-call-log-indexer",
+        outcome_increment=outcome["done"],
+        status="ok" if outcome["failed"] == 0 else "degraded",
+    )
     return outcome
 
 

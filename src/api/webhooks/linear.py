@@ -33,6 +33,13 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
 
+# KEI-91 Gate 4 — outcome+aliveness heartbeat. Counter is HMAC-PASSED events
+# specifically (not all received requests): when HMAC verify is silently
+# failing (today's incident pattern), counter stays 0 even though the
+# handler is alive and returning 200 — the monitor's zero_outcome_window
+# rule then fires within minutes.
+from src.observability.heartbeat import tick as _heartbeat_tick
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/webhooks/linear", tags=["webhooks", "linear"])
@@ -295,24 +302,52 @@ def _dispatch_to_tasks(event: dict[str, Any]) -> None:
 @router.post("")
 @router.post("/")
 async def receive_linear_webhook(request: Request) -> dict[str, str]:
-    """Receive a Linear webhook event, verify HMAC, dispatch to bd CRUD."""
+    """Receive a Linear webhook event, verify HMAC, dispatch to bd CRUD.
+
+    KEI-91 Gate 4: this handler emits the load-bearing heartbeat for the
+    "service alive returning 200 but silently HMAC-failing" pattern. The
+    outcome counter increments ONLY on a successful HMAC verify, so the
+    monitor's zero_outcome_window rule catches the silent-fail state
+    even though the handler keeps returning HTTP responses.
+    """
     body = await request.body()
     secret = os.environ.get("LINEAR_WEBHOOK_SECRET", "")
     signature = request.headers.get("linear-signature", "")
     if not _verify_signature(secret, body, signature):
         logger.warning("linear webhook signature verify failed")
+        # Heartbeat tick with status=error — counter does NOT increment on
+        # HMAC fail. Monitor will see status=error AND eventually zero-outcome.
+        _heartbeat_tick(
+            "linear-webhook-handler",
+            outcome_increment=0,
+            status="error",
+            error_message="HMAC verification failed",
+        )
         raise HTTPException(status_code=401, detail="signature verification failed")
     try:
         payload = json.loads(body or b"{}")
     except json.JSONDecodeError:
         logger.warning("linear webhook malformed json payload")
+        # HMAC passed but payload malformed — still increment counter
+        # (the handler is doing its meaningful HMAC-verify work), but flag
+        # status as degraded so the monitor sees the asymmetry.
+        _heartbeat_tick(
+            "linear-webhook-handler",
+            outcome_increment=1,
+            status="degraded",
+            error_message="malformed json payload",
+        )
         return {"status": "malformed"}
     event = _normalise_event(payload)
     if not event:
+        # HMAC passed but event-type filter dropped it — still meaningful work.
+        _heartbeat_tick("linear-webhook-handler", outcome_increment=1, status="ok")
         return {"status": "ignored"}
     _dispatch_to_bd(event)
     _dispatch_to_tasks(event)  # KEI-22 — Supabase tasks SSOT (parallel to bd during transition)
     _dispatch_to_indexing_queue("linear", payload)  # KEI-61 — durable staging buffer
+    # Successful HMAC-pass + UPDATE-applied — the canonical outcome event.
+    _heartbeat_tick("linear-webhook-handler", outcome_increment=1, status="ok")
     return {"status": "ok", "op": event["op"], "identifier": event["identifier"]}
 
 

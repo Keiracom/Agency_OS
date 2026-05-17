@@ -30,6 +30,9 @@ import time
 from urllib import error as urlerror
 from urllib import request as urlrequest
 
+# KEI-91 Gate 4 heartbeat tick via shared shim.
+from _heartbeat_shim import heartbeat_tick as _heartbeat_tick  # noqa: E402
+
 logger = logging.getLogger("completion_sync_worker")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
@@ -201,8 +204,20 @@ def main() -> int:
             stats = run_once(args.batch)
             if stats["selected"]:
                 logger.info("batch %s", stats)
+            # KEI-91 heartbeat — outcome = rows successfully processed.
+            _heartbeat_tick(
+                "completion-sync-worker",
+                outcome_increment=int(stats.get("processed", 0)),
+                status="ok" if stats.get("failed", 0) == 0 else "degraded",
+            )
         except Exception as exc:  # noqa: BLE001 — daemon must survive
             logger.exception("batch failed: %s", exc)
+            _heartbeat_tick(
+                "completion-sync-worker",
+                outcome_increment=0,
+                status="error",
+                error_message=str(exc)[:500],
+            )
         if args.once:
             return 0
         time.sleep(POLL_INTERVAL_SECONDS)

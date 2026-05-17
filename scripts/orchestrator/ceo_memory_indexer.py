@@ -35,6 +35,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import psycopg
+from _heartbeat_shim import heartbeat_tick as _heartbeat_tick
 from indexer_base import (
     BaseIndexer,
     aggregate_count,
@@ -167,6 +168,11 @@ def main() -> None:
                 outcome.to_dict(),
                 aggregate_count(DECISIONS_CLASS),
             )
+            _heartbeat_tick(
+                "ceo-memory-indexer",
+                outcome_increment=outcome.success,
+                status="ok" if outcome.failed == 0 else "degraded",
+            )
             return
         while not _shutdown_requested:
             try:
@@ -176,8 +182,19 @@ def main() -> None:
                     outcome.to_dict(),
                     aggregate_count(DECISIONS_CLASS),
                 )
-            except Exception:
+                _heartbeat_tick(
+                    "ceo-memory-indexer",
+                    outcome_increment=outcome.success,
+                    status="ok" if outcome.failed == 0 else "degraded",
+                )
+            except Exception as exc:  # noqa: BLE001 — broad on purpose: any exception is a heartbeat-worthy signal
                 logger.exception("batch failed — sleeping then continuing")
+                _heartbeat_tick(
+                    "ceo-memory-indexer",
+                    outcome_increment=0,
+                    status="error",
+                    error_message=str(exc)[:500],
+                )
             for _ in range(POLL_SECONDS):
                 if _shutdown_requested:
                     break

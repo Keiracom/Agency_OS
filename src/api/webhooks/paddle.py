@@ -57,8 +57,7 @@ def verify_paddle_signature(secret: str, body: bytes, signature_header: str) -> 
     if not secret or not signature_header:
         return False
     try:
-        pairs = (item.split("=", 1) for item in signature_header.split(";"))
-        parts = {kv[0]: kv[1] for kv in pairs if len(kv) == 2}
+        parts = dict(item.split("=", 1) for item in signature_header.split(";"))
         ts_str = parts.get("ts", "")
         h1 = parts.get("h1", "")
     except (ValueError, AttributeError):

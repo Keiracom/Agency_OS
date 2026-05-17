@@ -104,6 +104,31 @@ def test_callsign_interpolated_in_output_filename(tmp_path, css_mod):
     assert expected.exists(), f"expected {expected} to exist; got {list(tmp_path.iterdir())}"
 
 
+# ── helpers for login+search mock ─────────────────────────────────────────────
+
+
+def _mock_resp(body: bytes) -> MagicMock:
+    """Build a context-manager-compatible MagicMock for urllib.request.urlopen."""
+    resp = MagicMock()
+    resp.read.return_value = body
+    resp.__enter__ = lambda s: s
+    resp.__exit__ = MagicMock(return_value=False)
+    return resp
+
+
+def _urlopen_sequence(*bodies: bytes):
+    """Return a side_effect callable that yields responses in order."""
+    resps = [_mock_resp(b) for b in bodies]
+    counter = [0]
+
+    def _side_effect(req, timeout=None):
+        r = resps[counter[0]]
+        counter[0] += 1
+        return r
+
+    return _side_effect
+
+
 # ── test 4: zero-hits → stub markdown with expected no-results text ───────────
 
 
@@ -111,26 +136,11 @@ def test_zero_hits_writes_no_results_stub(tmp_path, css_mod):
     """When Cognee returns empty list, output contains the no-results sentinel."""
     out = tmp_path / "context-zero.md"
 
-    # Simulate successful login returning a token, then empty search result.
-    login_resp = MagicMock()
-    login_resp.read.return_value = b'{"access_token": "tok"}'
-    login_resp.__enter__ = lambda s: s
-    login_resp.__exit__ = MagicMock(return_value=False)
-
-    search_resp = MagicMock()
-    search_resp.read.return_value = b"[]"
-    search_resp.__enter__ = lambda s: s
-    search_resp.__exit__ = MagicMock(return_value=False)
-
-    responses = [login_resp, search_resp]
-    call_count = [0]
-
-    def _urlopen(req, timeout=None):
-        resp = responses[call_count[0]]
-        call_count[0] += 1
-        return resp
-
-    with patch("urllib.request.urlopen", side_effect=_urlopen):
+    side_effect = _urlopen_sequence(
+        b'{"access_token": "tok"}',  # login
+        b"[]",  # search — empty
+    )
+    with patch("urllib.request.urlopen", side_effect=side_effect):
         _run(css_mod, ["--callsign", "elliot", "--output", str(out)])
 
     assert out.exists()
@@ -150,26 +160,11 @@ def test_happy_path_two_hits_in_output(tmp_path, css_mod):
     hit_a = "Decision: use Railway for compute (KEI-107)"
     hit_b = "Open KEI: KEI-136 cognee-session-start Phase 0.5 blocker"
 
-    login_resp = MagicMock()
-    login_resp.read.return_value = b'{"access_token": "tok"}'
-    login_resp.__enter__ = lambda s: s
-    login_resp.__exit__ = MagicMock(return_value=False)
-
-    search_resp = MagicMock()
     # Cognee returns list of strings (or dicts); script does str(hit).strip()
-    search_resp.read.return_value = f'["{hit_a}", "{hit_b}"]'.encode()
-    search_resp.__enter__ = lambda s: s
-    search_resp.__exit__ = MagicMock(return_value=False)
+    search_body = f'["{hit_a}", "{hit_b}"]'.encode()
+    side_effect = _urlopen_sequence(b'{"access_token": "tok"}', search_body)
 
-    responses = [login_resp, search_resp]
-    call_count = [0]
-
-    def _urlopen(req, timeout=None):
-        resp = responses[call_count[0]]
-        call_count[0] += 1
-        return resp
-
-    with patch("urllib.request.urlopen", side_effect=_urlopen):
+    with patch("urllib.request.urlopen", side_effect=side_effect):
         _run(css_mod, ["--callsign", "elliot", "--output", str(out)])
 
     assert out.exists()

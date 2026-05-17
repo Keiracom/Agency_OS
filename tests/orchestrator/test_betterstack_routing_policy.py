@@ -180,12 +180,14 @@ def test_ensure_urgency_creates_when_missing(mod, monkeypatch):
     result = mod.ensure_urgency("k", "Critical")
     assert result is not None
     assert result["id"] == "200"
-    # Sonar S5727 false-positive guard: captured_body is mutated via nonlocal
-    # inside the monkeypatched _fake_request closure; Sonar's flow analysis
-    # can't trace closure-mutation-via-monkeypatch and thinks captured_body
-    # is still None at the equality check below.
-    assert captured_body is not None
-    assert captured_body == {
+    # S5727 false positive on both asserts: captured_body is mutated via
+    # nonlocal inside the monkeypatched _fake_request closure invoked by
+    # mod.ensure_urgency above. Sonar's flow analyzer can't trace
+    # closure-mutation-via-monkeypatch and treats captured_body as still
+    # None at this point. The assertions are correct and the closure
+    # firing is verified by the test passing.
+    assert captured_body is not None  # NOSONAR S5727 — see above
+    assert captured_body == {  # NOSONAR S5727 — see above
         "name": "Critical",
         "email": True,
         "push": False,

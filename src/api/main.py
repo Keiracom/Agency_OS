@@ -417,6 +417,7 @@ from src.api.routes.patterns import router as patterns_router
 from src.api.routes.pool import router as pool_router
 from src.api.routes.replies import router as replies_router
 from src.api.routes.reports import router as reports_router
+from src.api.routes.strangler import router as strangler_router
 from src.api.routes.tiers import router as tiers_router
 from src.api.routes.unipile import router as unipile_router
 from src.api.routes.webhooks import router as webhooks_router
@@ -473,6 +474,8 @@ app.include_router(paddle_webhook_router)
 # Task #20: Email backend (Resend send + status + HMAC-verified webhook).
 # email_router carries its own `/api/email` prefix — no extra prefix here.
 app.include_router(email_router)
+# src.api.routes.strangler — KEI-180 Strangler Fig per-tenant Model A/B routing (Phase 0.5 P0).
+app.include_router(strangler_router)
 
 
 # ============================================

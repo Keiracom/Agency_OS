@@ -23,9 +23,11 @@ import logging
 import os
 import time
 import uuid
+from abc import ABC, abstractmethod
 from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Any
+from dataclasses import dataclass
+from typing import Any, Generic, TypeVar
 from urllib import error as urlerror
 from urllib import request as urlrequest
 
@@ -141,3 +143,56 @@ def aggregate_count(class_name: str) -> int | None:
         return body["data"]["Aggregate"][class_name][0]["meta"]["count"]
     except (KeyError, ValueError, urlerror.URLError, OSError):
         return None
+
+
+R = TypeVar("R")  # Source-row type (per-indexer dataclass).
+
+
+@dataclass(frozen=True)
+class BatchOutcome:
+    selected: int
+    success: int
+    failed: int
+
+    def to_dict(self) -> dict[str, int]:
+        return {"selected": self.selected, "success": self.success, "failed": self.failed}
+
+
+class BaseIndexer(ABC, Generic[R]):
+    """Architectural contract for source → Weaviate indexers (KEI-85).
+
+    Subclasses MUST implement:
+      - source_name: stable string used as the first arg of deterministic_uuid()
+      - target_class: Weaviate class name (e.g. "Decisions", "Keis")
+      - class_schema: Weaviate class schema body for ensure_class()
+      - identity_key(row): per-row source-local identity (used in deterministic UUID)
+      - fetch_batch(batch_size): list[R] of source rows to attempt
+      - build_object(row): the Weaviate POST body (must set "id" + "class" + "properties")
+
+    The base implements ensure_class + the index_once loop so every per-source
+    indexer ends up with the same convergence/idempotency story.
+    """
+
+    source_name: str
+    target_class: str
+    class_schema: dict
+
+    @abstractmethod
+    def fetch_batch(self, batch_size: int) -> list[R]: ...
+
+    @abstractmethod
+    def build_object(self, row: R) -> dict: ...
+
+    def ensure_target_class(self) -> None:
+        ensure_class(self.target_class, self.class_schema)
+
+    def index_once(self, batch_size: int) -> BatchOutcome:
+        rows = self.fetch_batch(batch_size)
+        success = 0
+        failed = 0
+        for row in rows:
+            if post_object(self.build_object(row)):
+                success += 1
+            else:
+                failed += 1
+        return BatchOutcome(selected=len(rows), success=success, failed=failed)

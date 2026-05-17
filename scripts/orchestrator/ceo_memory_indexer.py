@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """ceo_memory_indexer.py — KEI-85 phase A: index public.ceo_memory into Weaviate Decisions.
 
-Reads `public.ceo_memory` (key text, value jsonb, updated_at timestamptz, version int)
-and POSTs one Weaviate Decisions object per (key, version) tuple. Deterministic UUID
-makes the POST idempotent — same row always maps to same Weaviate id, so repeated
-runs are no-ops (422 already-exists is treated as success).
+Reads `public.ceo_memory` (live prod schema: key text, value jsonb, updated_at
+timestamptz, version int — verified via Supabase MCP information_schema query
+2026-05-17) and POSTs one Weaviate Decisions object per (key, version) tuple.
+Deterministic UUID makes the POST idempotent — same row always maps to same
+Weaviate id, so repeated runs are no-ops (422 already-exists is treated as
+success).
 
 ceo_memory has no `indexed` boolean, so we don't mark rows. The indexer is
 convergent: every batch sweeps all rows and Weaviate dedups.
@@ -34,10 +36,9 @@ from typing import Any
 
 import psycopg
 from indexer_base import (
+    BaseIndexer,
     aggregate_count,
     deterministic_uuid,
-    ensure_class,
-    post_object,
 )
 
 logger = logging.getLogger("ceo_memory_indexer")
@@ -93,14 +94,30 @@ def _dsn() -> str:
     return raw.replace("postgresql+asyncpg://", "postgresql://", 1)
 
 
-def fetch_batch(conn: psycopg.Connection, batch: int) -> list[CeoMemoryRow]:
-    with conn.cursor() as cur:
-        cur.execute(
-            "SELECT key, value, updated_at, COALESCE(version, 1) "
-            "FROM public.ceo_memory ORDER BY updated_at NULLS LAST LIMIT %s",
-            (batch,),
-        )
-        return [CeoMemoryRow(*r) for r in cur.fetchall()]
+class CeoMemoryIndexer(BaseIndexer[CeoMemoryRow]):
+    """ceo_memory → Decisions concrete indexer (KEI-85 phase A)."""
+
+    source_name = SOURCE_NAME
+    target_class = DECISIONS_CLASS
+    class_schema = DECISIONS_SCHEMA
+
+    def __init__(self, conn: psycopg.Connection) -> None:
+        self._conn = conn
+
+    def fetch_batch(self, batch_size: int) -> list[CeoMemoryRow]:
+        with self._conn.cursor() as cur:
+            cur.execute(
+                # Stable secondary sort on `key` to make the LIMIT deterministic
+                # when multiple rows share the same updated_at timestamp.
+                "SELECT key, value, updated_at, COALESCE(version, 1) "
+                "FROM public.ceo_memory "
+                "ORDER BY updated_at NULLS LAST, key ASC LIMIT %s",
+                (batch_size,),
+            )
+            return [CeoMemoryRow(*r) for r in cur.fetchall()]
+
+    def build_object(self, row: CeoMemoryRow) -> dict:
+        return build_decision(row)
 
 
 def build_decision(row: CeoMemoryRow) -> dict:
@@ -124,39 +141,35 @@ def build_decision(row: CeoMemoryRow) -> dict:
     }
 
 
-def index_once(conn: psycopg.Connection, batch_size: int) -> dict[str, int]:
-    rows = fetch_batch(conn, batch_size)
-    success = 0
-    failed = 0
-    for row in rows:
-        if post_object(build_decision(row)):
-            success += 1
-        else:
-            failed += 1
-    return {"selected": len(rows), "success": success, "failed": failed}
-
-
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--once", action="store_true")
     parser.add_argument("--batch", type=int, default=BATCH_SIZE_DEFAULT)
     args = parser.parse_args()
 
-    ensure_class(DECISIONS_CLASS, DECISIONS_SCHEMA)
     logger.info(
         "indexer start source=%s class=%s batch=%d", SOURCE_NAME, DECISIONS_CLASS, args.batch
     )
 
     with psycopg.connect(_dsn(), autocommit=True) as conn:
+        indexer = CeoMemoryIndexer(conn)
+        indexer.ensure_target_class()
+
         if args.once:
-            outcome = index_once(conn, args.batch)
-            logger.info("once outcome=%s class_count=%s", outcome, aggregate_count(DECISIONS_CLASS))
+            outcome = indexer.index_once(args.batch)
+            logger.info(
+                "once outcome=%s class_count=%s",
+                outcome.to_dict(),
+                aggregate_count(DECISIONS_CLASS),
+            )
             return 0
         while not _shutdown_requested:
             try:
-                outcome = index_once(conn, args.batch)
+                outcome = indexer.index_once(args.batch)
                 logger.info(
-                    "batch outcome=%s class_count=%s", outcome, aggregate_count(DECISIONS_CLASS)
+                    "batch outcome=%s class_count=%s",
+                    outcome.to_dict(),
+                    aggregate_count(DECISIONS_CLASS),
                 )
             except Exception:
                 logger.exception("batch failed — sleeping then continuing")

@@ -82,3 +82,41 @@ def test_environment_hash_is_deterministic_and_hex16():
     eh = doc["properties"]["environment_hash"]
     assert len(eh) == 16
     int(eh, 16)  # raises if not hex
+
+
+def test_ceo_memory_indexer_satisfies_base_indexer_abc():
+    """ABC contract: CeoMemoryIndexer is a concrete BaseIndexer subclass with
+    all abstract methods implemented + the three required class attributes set.
+    """
+    import indexer_base
+
+    assert issubclass(mod.CeoMemoryIndexer, indexer_base.BaseIndexer)
+    assert mod.CeoMemoryIndexer.source_name == "ceo_memory"
+    assert mod.CeoMemoryIndexer.target_class == "Decisions"
+    assert isinstance(mod.CeoMemoryIndexer.class_schema, dict)
+    assert mod.CeoMemoryIndexer.class_schema["class"] == "Decisions"
+    # Abstract methods must be overridden — instantiating with a None conn
+    # would otherwise fail if any @abstractmethod is unfulfilled.
+    # `__abstractmethods__` is empty when all abstracts are implemented.
+    assert mod.CeoMemoryIndexer.__abstractmethods__ == frozenset()
+
+
+def test_base_indexer_cannot_be_instantiated_directly():
+    """Architectural contract — the ABC must refuse direct instantiation
+    so subclasses are forced to provide the abstract methods.
+    """
+    import indexer_base
+    import pytest
+
+    with pytest.raises(TypeError):
+        indexer_base.BaseIndexer()  # type: ignore[abstract]
+
+
+def test_batch_outcome_to_dict_shape():
+    """BatchOutcome -> dict shape is the API logged in production —
+    keep it stable so downstream parsers don't break.
+    """
+    import indexer_base
+
+    outcome = indexer_base.BatchOutcome(selected=10, success=8, failed=2)
+    assert outcome.to_dict() == {"selected": 10, "success": 8, "failed": 2}

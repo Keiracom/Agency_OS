@@ -10,6 +10,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts" / "orchestrator"))
 
@@ -100,12 +102,14 @@ def test_read_cursor_default_when_corrupt(tmp_path, monkeypatch):
     bad = tmp_path / "bad.cursor"
     bad.write_text("not-json-content")
     monkeypatch.setattr(mod, "CURSOR_PATH", bad)
-    assert mod._read_cursor() == "1970-01-01T00:00:00Z"
+    assert mod._read_cursor() == mod.EPOCH_ISO
 
 
 def test_parse_retry_after_seconds():
-    assert mod._parse_retry_after("30") == 30.0
-    assert mod._parse_retry_after("0.5") == 0.5
+    # Sonar S1244: avoid float equality. pytest.approx covers the tiny FP
+    # representation gap without losing the assertion's intent.
+    assert mod._parse_retry_after("30") == pytest.approx(30.0)
+    assert mod._parse_retry_after("0.5") == pytest.approx(0.5)
 
 
 def test_parse_retry_after_returns_none_on_unparseable():

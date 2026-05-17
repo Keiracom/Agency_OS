@@ -47,6 +47,8 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 
 KEIS_CLASS = "Keis"
 SOURCE_NAME = "linear"
+# Sonar S1192: define the epoch fallback literal once and reuse.
+EPOCH_ISO = "1970-01-01T00:00:00Z"
 POLL_SECONDS = int(os.environ.get("LINEAR_STATE_POLL_SECONDS", "60"))
 BATCH_SIZE_DEFAULT = int(os.environ.get("LINEAR_STATE_BATCH_SIZE", "100"))
 TEAM_KEY = os.environ.get("LINEAR_TEAM_KEY", "KEI")
@@ -106,11 +108,11 @@ def _api_key() -> str:
 
 def _read_cursor() -> str:
     if not CURSOR_PATH.exists():
-        return "1970-01-01T00:00:00Z"
+        return EPOCH_ISO
     try:
-        return json.loads(CURSOR_PATH.read_text()).get("updated_at", "1970-01-01T00:00:00Z")
+        return json.loads(CURSOR_PATH.read_text()).get("updated_at", EPOCH_ISO)
     except (ValueError, OSError):
-        return "1970-01-01T00:00:00Z"
+        return EPOCH_ISO
 
 
 def _write_cursor(updated_at: str) -> None:
@@ -230,6 +232,35 @@ def _parse_nodes(nodes: list[dict]) -> list[LinearIssue]:
     ]
 
 
+def _fetch_page(
+    cursor: str, batch_size: int, after: str | None
+) -> tuple[list[LinearIssue], str | None] | None:
+    """Single GraphQL page fetch. Returns `(issues, next_after)` on success;
+    `next_after` is None when this is the last page. Returns None on any
+    error so the caller can drop out of the pagination loop. Extracted so
+    `fetch_linear_issues` stays under SonarCloud's cognitive-complexity cap.
+    """
+    variables: dict[str, Any] = {
+        "filter": {
+            "team": {"key": {"eq": TEAM_KEY}},
+            "updatedAt": {"gt": cursor},
+        },
+        "first": batch_size,
+    }
+    if after:
+        variables["after"] = after
+    try:
+        body = _graphql(LINEAR_QUERY, variables)
+    except (urlerror.URLError, OSError, ValueError):
+        return None
+    if body.get("errors"):
+        return None
+    issues_block = body.get("data", {}).get("issues", {}) or {}
+    page_info = issues_block.get("pageInfo", {}) or {}
+    next_after = page_info.get("endCursor") if page_info.get("hasNextPage") else None
+    return _parse_nodes(issues_block.get("nodes", []) or []), next_after
+
+
 def fetch_linear_issues(cursor: str, batch_size: int) -> list[LinearIssue]:
     """Fetch ALL issues with updatedAt > cursor, paginating via hasNextPage.
 
@@ -239,40 +270,20 @@ def fetch_linear_issues(cursor: str, batch_size: int) -> list[LinearIssue]:
     collected: list[LinearIssue] = []
     after: str | None = None
     for page in range(1, MAX_PAGINATION_PAGES + 1):
-        variables: dict[str, Any] = {
-            "filter": {
-                "team": {"key": {"eq": TEAM_KEY}},
-                "updatedAt": {"gt": cursor},
-            },
-            "first": batch_size,
-        }
-        if after:
-            variables["after"] = after
-        try:
-            body = _graphql(LINEAR_QUERY, variables)
-        except (urlerror.URLError, OSError, ValueError) as exc:
+        result = _fetch_page(cursor, batch_size, after)
+        if result is None:
             logger.warning(
-                "linear_api transient on page %d (%s) — returning partial batch (%d so far)",
+                "linear_api page %d failed — returning partial batch (%d)",
                 page,
-                exc,
                 len(collected),
             )
             return collected
-        errors = body.get("errors")
-        if errors:
-            logger.warning("linear_api errors=%s — stopping at page %d", errors, page)
-            return collected
-        issues_block = body.get("data", {}).get("issues", {}) or {}
-        nodes = issues_block.get("nodes", []) or []
-        collected.extend(_parse_nodes(nodes))
-        page_info = issues_block.get("pageInfo", {}) or {}
-        if not page_info.get("hasNextPage"):
-            return collected
-        after = page_info.get("endCursor")
-        if not after:
+        issues, after = result
+        collected.extend(issues)
+        if after is None:
             return collected
     logger.warning(
-        "linear_api pagination cap hit at %d pages (%d issues) — next poll drains the rest",
+        "pagination cap %d reached (%d issues) — next poll drains the rest",
         MAX_PAGINATION_PAGES,
         len(collected),
     )
@@ -323,7 +334,7 @@ def build_keis_doc(issue: LinearIssue) -> dict:
         "properties": {
             "raw_text": raw_text,
             "environment_hash": env_hash,
-            "created_at": issue.updated_at or "1970-01-01T00:00:00Z",
+            "created_at": issue.updated_at or EPOCH_ISO,
             "agent": "system",
             "kei": issue.identifier,
         },

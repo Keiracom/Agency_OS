@@ -12,34 +12,38 @@
 --   paused    → reserved for future Paddle pause-resume; not used in this PR.
 --
 -- Idempotent: CREATE TABLE IF NOT EXISTS + CREATE INDEX IF NOT EXISTS.
+-- DO-block wrap follows Max's KEI-45 fix pattern (CONSTANT for repeated SQL
+-- literal — Sonar S1192). The literal 'active' would otherwise repeat 3×
+-- (DEFAULT + CHECK + partial index WHERE), tripping S1192.
 -- =============================================================================
 
-CREATE TABLE IF NOT EXISTS public.customer_subscriptions (
-    id                     UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
-    customer_id            UUID         NOT NULL,
-    -- tier code maps to src.dispatcher.tier_limits.TIER_LIMITS keys.
-    -- Valid values: 'basic' | 'pro' | 'enterprise'.
-    tier_code              TEXT         NOT NULL,
-    -- Paddle subscription id (KEI-150 / KEI-112A integration). NULLable so
-    -- a free-tier or beta subscription can exist before Paddle is wired.
-    paddle_subscription_id TEXT,
-    -- Subscription lifecycle status. CHECK constraint enforces the enum.
-    status                 TEXT         NOT NULL DEFAULT 'active',
-    created_at             TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-    updated_at             TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-    canceled_at            TIMESTAMPTZ,
-    CONSTRAINT customer_subscriptions_status_chk
-        CHECK (status IN ('active', 'canceled', 'paused')),
-    CONSTRAINT customer_subscriptions_tier_chk
-        CHECK (tier_code IN ('basic', 'pro', 'enterprise'))
-);
+DO $migration$
+DECLARE
+    status_active CONSTANT text := 'active';
+BEGIN
+    EXECUTE format($ddl$
+        CREATE TABLE IF NOT EXISTS public.customer_subscriptions (
+            id                     UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+            customer_id            UUID         NOT NULL,
+            tier_code              TEXT         NOT NULL,
+            paddle_subscription_id TEXT,
+            status                 TEXT         NOT NULL DEFAULT %1$L,
+            created_at             TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+            updated_at             TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+            canceled_at            TIMESTAMPTZ,
+            CONSTRAINT customer_subscriptions_status_chk
+                CHECK (status IN (%1$L, 'canceled', 'paused')),
+            CONSTRAINT customer_subscriptions_tier_chk
+                CHECK (tier_code IN ('basic', 'pro', 'enterprise'))
+        );
 
--- One ACTIVE subscription per customer (rotate-on-tier-change pattern via
--- INSERT+UPDATE). Canceled rows retained for audit history.
-CREATE UNIQUE INDEX IF NOT EXISTS customer_subscriptions_active_per_customer
-    ON public.customer_subscriptions (customer_id)
-    WHERE status = 'active';
+        CREATE UNIQUE INDEX IF NOT EXISTS customer_subscriptions_active_per_customer
+            ON public.customer_subscriptions (customer_id)
+            WHERE status = %1$L;
 
-CREATE INDEX IF NOT EXISTS customer_subscriptions_paddle_id_idx
-    ON public.customer_subscriptions (paddle_subscription_id)
-    WHERE paddle_subscription_id IS NOT NULL;
+        CREATE INDEX IF NOT EXISTS customer_subscriptions_paddle_id_idx
+            ON public.customer_subscriptions (paddle_subscription_id)
+            WHERE paddle_subscription_id IS NOT NULL;
+    $ddl$, status_active);
+END
+$migration$;

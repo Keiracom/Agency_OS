@@ -32,6 +32,8 @@ from src.dispatcher.tier_limits import TIER_LIMITS, Tier, limits_for
 
 router = APIRouter(prefix="/subscriptions", tags=["subscriptions"])
 
+_NOT_FOUND_DETAIL = "subscription not found"
+
 
 class SubscriptionCreate(BaseModel):
     customer_id: UUID
@@ -77,7 +79,7 @@ def _row_to_read(row) -> SubscriptionRead:
     )
 
 
-@router.post("", response_model=SubscriptionRead, status_code=status.HTTP_201_CREATED)
+@router.post("", status_code=status.HTTP_201_CREATED)
 async def create_subscription(
     payload: SubscriptionCreate,
     db: Annotated[AsyncSession, Depends(get_db_session)],
@@ -121,7 +123,7 @@ async def create_subscription(
     return _row_to_read(row)
 
 
-@router.get("/{subscription_id}", response_model=SubscriptionRead)
+@router.get("/{subscription_id}")
 async def get_subscription(
     subscription_id: UUID,
     db: Annotated[AsyncSession, Depends(get_db_session)],
@@ -140,11 +142,11 @@ async def get_subscription(
     )
     row = result.one_or_none()
     if row is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="subscription not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=_NOT_FOUND_DETAIL)
     return _row_to_read(row)
 
 
-@router.patch("/{subscription_id}", response_model=SubscriptionRead)
+@router.patch("/{subscription_id}")
 async def update_subscription_tier(
     subscription_id: UUID,
     payload: SubscriptionUpdate,
@@ -181,9 +183,7 @@ async def update_subscription_tier(
         )
         existing = check.one_or_none()
         if existing is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="subscription not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=_NOT_FOUND_DETAIL)
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"subscription is {existing.status}, not active — cannot update tier",
@@ -192,7 +192,7 @@ async def update_subscription_tier(
     return _row_to_read(row)
 
 
-@router.delete("/{subscription_id}", response_model=SubscriptionRead)
+@router.delete("/{subscription_id}")
 async def cancel_subscription(
     subscription_id: UUID,
     db: Annotated[AsyncSession, Depends(get_db_session)],
@@ -217,6 +217,6 @@ async def cancel_subscription(
     )
     row = result.one_or_none()
     if row is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="subscription not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=_NOT_FOUND_DETAIL)
     await db.commit()
     return _row_to_read(row)

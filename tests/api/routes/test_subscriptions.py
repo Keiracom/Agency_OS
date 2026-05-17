@@ -48,7 +48,9 @@ def _make_db_session(execute_results: list):
     session = MagicMock()
     results_iter = iter(execute_results)
 
-    async def fake_execute(_query, _params=None):
+    def fake_execute(_query, _params=None):
+        # AsyncMock(side_effect=sync_callable) returns this value as the
+        # awaited result — no internal await needed in the stub itself.
         item = next(results_iter)
         if isinstance(item, Exception):
             raise item
@@ -136,7 +138,7 @@ def test_create_subscription_rejects_unknown_tier(client_with_db):
 def test_create_subscription_conflict_on_duplicate_active(client_with_db):
     """Partial unique index raises IntegrityError → 409 with friendly msg."""
     client_with_db.db_results["results"] = [
-        IntegrityError("dup", {}, Exception("active subscription exists"))
+        IntegrityError("dup", {}, RuntimeError("active subscription exists"))
     ]
     resp = client_with_db.post(
         "/api/v1/subscriptions",

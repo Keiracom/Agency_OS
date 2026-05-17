@@ -82,6 +82,11 @@ def _record_event(
     dsn = os.environ.get("RETRIEVAL_EVENTS_DSN") or os.environ.get("DATABASE_URL")
     if not dsn:
         return
+    # KEI-103: Supabase pooler DSN often comes as `postgresql+asyncpg://...`
+    # but psycopg3 only parses `postgresql://`. Strip the dialect tag here so
+    # the INSERT actually fires; without this, _record_event silently no-ops
+    # and retrieval_events stays at 0 (memory: reference_psycopg_supabase_pgbouncer).
+    dsn = dsn.replace("postgresql+asyncpg://", "postgresql://", 1)
     try:
         import psycopg
 

@@ -611,6 +611,62 @@ def _execute_atomic_complete(
     return cur.fetchone()
 
 
+def cmd_heartbeat(args: argparse.Namespace) -> int:
+    """KEI-105 — write heartbeat_at = NOW() on a task the caller has claimed.
+
+    Updates `public.tasks` for `id = %s AND claimed_by = %s` so an agent can
+    only heartbeat tasks it currently owns. Returns rc=0 with the updated
+    row on success, rc=1 when the task is not owned by the caller (so the
+    helper is safe to invoke from auto-claim loops without sentinel
+    side-effects), rc=2 on DB error. Idempotent — repeat calls just
+    refresh the timestamp.
+
+    Pairs with KEI-104 stale-claim auto-release: a recent heartbeat_at
+    signals "actively working" even if claimed_at is old, so the release
+    helper can avoid releasing live claims (follow-up integration).
+    """
+    import psycopg
+
+    cs = _callsign(args.callsign)
+    if cs == DEFAULT_CALLSIGN:
+        print(
+            "ERROR: callsign resolves to the DEFAULT_CALLSIGN sentinel "
+            f"({DEFAULT_CALLSIGN!r}). Set CALLSIGN=<your_callsign> in the env or "
+            "pass --callsign explicitly. Refusing to write a sentinel heartbeat.",
+            file=sys.stderr,
+        )
+        return 1
+    try:
+        with psycopg.connect(_dsn()) as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE public.tasks
+                   SET heartbeat_at = NOW(),
+                       updated_at = NOW()
+                 WHERE id = %s
+                   AND claimed_by = %s
+                 RETURNING id, claimed_by, heartbeat_at
+                """,
+                (args.id, cs),
+            )
+            row = cur.fetchone()
+            conn.commit()
+    except psycopg.Error:
+        logger.exception("heartbeat query failed")
+        return 2
+    if row is None:
+        if args.json:
+            print("null")
+        else:
+            print(f"could not heartbeat {args.id} (not claimed by {cs}?)", file=sys.stderr)
+        return 1
+    if args.json:
+        print(json.dumps({"id": row[0], "claimed_by": row[1], "heartbeat_at": str(row[2])}))
+    else:
+        print(f"heartbeat {row[0]} by {row[1]} at {row[2]}")
+    return 0
+
+
 def cmd_complete(args: argparse.Namespace) -> int:
     """Mark a claimed task done.
 
@@ -832,6 +888,15 @@ def main(argv: list[str] | None = None) -> int:
     p_deprecate.add_argument("--callsign", help=_CALLSIGN_HELP)
     p_deprecate.add_argument("--json", action="store_true")
     p_deprecate.set_defaults(func=cmd_deprecate)
+
+    p_heartbeat = sub.add_parser(
+        "heartbeat",
+        help="KEI-105 — write heartbeat_at on a claimed task (active-work signal)",
+    )
+    p_heartbeat.add_argument("id", help="task id (KEI-NN) whose heartbeat to update")
+    p_heartbeat.add_argument("--callsign", help=_CALLSIGN_HELP)
+    p_heartbeat.add_argument("--json", action="store_true")
+    p_heartbeat.set_defaults(func=cmd_heartbeat)
 
     args = parser.parse_args(argv)
     return args.func(args)

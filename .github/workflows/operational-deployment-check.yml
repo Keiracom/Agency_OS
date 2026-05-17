@@ -1,15 +1,12 @@
 name: Operational Deployment Check
 
+# KEI-108 Part 2: no paths: filter. The gate exists because service files
+# and webhook handlers have proliferated across multiple infra/ subdirs,
+# and a paths: filter would re-introduce the same blind spot KEI-108
+# was opened to close. Runs on every PR; the check script is fast.
+
 on:
   pull_request:
-    paths:
-      - 'infra/systemd/**/*.service'
-      - 'systemd/**/*.service'
-      - 'src/api/webhooks/**/*.py'
-      - 'src/api/main.py'
-      - 'scripts/install*.sh'
-      - 'scripts/ci/check_operational_deployment.sh'
-      - '.github/workflows/operational-deployment-check.yml'
 
 permissions:
   contents: read

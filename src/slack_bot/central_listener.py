@@ -337,7 +337,11 @@ def run_enforcer(event: dict, text: str, web: WebClient) -> None:
     2. Hybrid: R3, R6 — evidence regex pre-filter; STRICT resolved, SOFT falls through.
     3. LLM fallback: R3 SOFT "done" + R9 (semantic).
     Set ENFORCER_DETERMINISTIC=0 to revert to LLM-only path.
+    Set ENFORCER_ENABLED=0 to kill the enforcer entirely (Dave 2026-05-17 — mechanical
+    gates handle governance; ENFORCER becomes advisory only).
     """
+    if os.environ.get("ENFORCER_ENABLED", "1") != "1":
+        return
     if event.get("channel") != LISTEN_CHANNEL:
         return
     callsign = attribute(event)

@@ -203,14 +203,29 @@ def cmd_ready(args: argparse.Namespace) -> int:
     personalised affinity score = SUM(capability_weight × matching_tag).
     Adds `personalised_score` to each row; preserves existing JSON shape
     (no renames) per Max's tasks-cli compat note.
+
+    KEI-97: if --callsign is supplied, filter out tasks where
+    excluded_callsign matches the given callsign (author-exclusion for
+    REVIEW-PR tasks). Without --callsign, the exclusion filter is skipped
+    (legacy behaviour preserved).
     """
     import psycopg
 
     limit = max(1, min(args.limit, 250))
     agent = (args.agent or "").strip().lower() if getattr(args, "agent", None) else ""
+    # KEI-97 — callsign for author-exclusion filter (distinct from --agent
+    # personalisation). Falls back to env; None means no exclusion filter.
+    callsign_arg = getattr(args, "callsign", None)
+    callsign = (callsign_arg or "").strip().lower() if callsign_arg else ""
     try:
         with psycopg.connect(_dsn()) as conn, conn.cursor() as cur:
             phase_max = _current_phase_max(cur)
+            # KEI-97 — exclusion clause appended only when --callsign given.
+            exclusion_clause = (
+                "AND (t.excluded_callsign IS NULL OR t.excluded_callsign != %s) "
+                if callsign
+                else ""
+            )
             if agent:
                 # KEI-53 — personalised path. Tie-break per Max note #2:
                 # personalised_score DESC, priority ASC, created_at ASC.
@@ -220,19 +235,26 @@ def cmd_ready(args: argparse.Namespace) -> int:
                     f"{_PERSONALISED_SCORE_SUBQUERY} "
                     "FROM public.tasks t WHERE t.status = 'available' AND t.claimed_by IS NULL "
                     "AND t.phase <= %s "
+                    f"{exclusion_clause}"
                     "ORDER BY personalised_score DESC, "
                     "t.priority ASC, t.created_at ASC LIMIT %s"
                 )
-                cur.execute(sql, (agent, phase_max, limit))
+                params: tuple = (
+                    (agent, phase_max, callsign, limit) if callsign else (agent, phase_max, limit)
+                )
+                cur.execute(sql, params)
             else:
                 # KEI-86 — phase-lock filter on the non-personalised path too.
+                # KEI-97 — exclusion clause spliced in when callsign known.
                 sql = (
                     f"SELECT {_READY_COLUMNS} FROM public.tasks "
                     "WHERE status = 'available' AND claimed_by IS NULL "
                     "AND phase <= %s "
+                    f"{exclusion_clause}"
                     "ORDER BY priority ASC, created_at ASC LIMIT %s"
                 )
-                cur.execute(sql, (phase_max, limit))
+                params = (phase_max, callsign, limit) if callsign else (phase_max, limit)
+                cur.execute(sql, params)
             rows = _rows_to_dicts(cur)
     except psycopg.Error:
         logger.exception("ready query failed")
@@ -597,6 +619,10 @@ def main(argv: list[str] | None = None) -> int:
     p_ready.add_argument(
         "--agent",
         help="KEI-53 — personalise ranking via agent_profiles.capability_weights",
+    )
+    p_ready.add_argument(
+        "--callsign",
+        help="KEI-97 — exclude tasks where excluded_callsign matches this callsign (author-exclusion for REVIEW-PR tasks)",
     )
     p_ready.set_defaults(func=cmd_ready)
 

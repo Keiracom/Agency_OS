@@ -382,7 +382,7 @@ def test_ac7_token_ceiling_enforced() -> None:
         for i in range(50)
     ]
 
-    text, stats = render_for_claim(rows, token_ceiling=500)
+    _, stats = render_for_claim(rows, token_ceiling=500)
 
     assert stats["tokens"] <= 500
     assert stats["truncated"] == 1
@@ -407,7 +407,7 @@ def test_ac7_default_ceiling_is_500() -> None:
         for i in range(30)
     ]
 
-    text, stats = render_for_claim(rows)  # No explicit ceiling
+    _, stats = render_for_claim(rows)  # No explicit ceiling
 
     assert stats["tokens"] <= 500
     assert stats["truncated"] == 1

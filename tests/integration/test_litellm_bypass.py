@@ -41,7 +41,7 @@ def _proxy_reachable(
     try:
         with socket.create_connection((host, port), timeout=timeout):
             return True
-    except (TimeoutError, OSError):
+    except OSError:
         return False
 
 

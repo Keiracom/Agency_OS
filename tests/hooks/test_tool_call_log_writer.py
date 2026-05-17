@@ -173,7 +173,7 @@ class TestDbInsert:
             {"tool_name": "Read", "tool_input": {"file_path": "/tmp/x"}, "tool_response": "ok"},
             mock_connect,
         )
-        sql, params = _last_execute(mock_cur)
+        sql, _ = _last_execute(mock_cur)
         assert "public.tool_call_log" in sql
 
     def test_insert_params_callsign(self, monkeypatch):

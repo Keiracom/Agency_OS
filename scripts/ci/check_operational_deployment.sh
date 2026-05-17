@@ -25,7 +25,7 @@ added_files() {
 }
 
 fail() {
-  echo "::error::$*"
+  echo "::error::$*" >&2
   FAILED=1
 }
 
@@ -33,7 +33,7 @@ FAILED=0
 
 # Check 1 — any new *.service file anywhere must have a matching installer/acceptance reference.
 while IFS= read -r svc; do
-  [ -z "$svc" ] && continue
+  [[ -z "$svc" ]] && continue
   unit="$(basename "$svc" .service)"
   if ! git grep -l "${unit}\.service" -- 'scripts/install*' 'scripts/**/install*.sh' 'scripts/**/*acceptance*.sh' >/dev/null 2>&1; then
     fail "Operational-deployment gap: $svc has no matching scripts/install*.sh entry or acceptance test referencing ${unit}.service. See KEI-108 sweep audit (bd Agency_OS-rom)."
@@ -42,9 +42,9 @@ done < <(added_files '*.service')
 
 # Check 2 — new APIRouter under src/api/webhooks/ needs src. -prefixed import + include_router in main.py.
 while IFS= read -r handler; do
-  [ -z "$handler" ] && continue
+  [[ -z "$handler" ]] && continue
   router_var=$(grep -oE '^[a-zA-Z_][a-zA-Z0-9_]* *= *APIRouter' "$handler" | head -1 | awk '{print $1}')
-  [ -z "$router_var" ] && continue
+  [[ -z "$router_var" ]] && continue
   module="src.${handler#src/}"; module="${module%.py}"; module="${module//\//.}"
   if ! grep -qE "from ${module} import" src/api/main.py 2>/dev/null; then
     fail "Operational-deployment gap: $handler defines '$router_var' but src/api/main.py has no 'from ${module} import …' (router unreachable). See KEI-108 sweep audit (bd Agency_OS-rom)."

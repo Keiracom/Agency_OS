@@ -11,7 +11,7 @@ CFG_DST="$HOME/.config/litellm/config.yaml"
 UNIT_SRC="$REPO_ROOT/infra/litellm/litellm.service"
 UNIT_DST="$HOME/.config/systemd/user/litellm.service"
 
-if [ ! -x "$VENV/bin/python" ]; then
+if [[ ! -x "$VENV/bin/python" ]]; then
   python3 -m venv "$VENV"
 fi
 

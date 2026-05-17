@@ -1,0 +1,11 @@
+[Unit]
+Description=Agency OS Fleet Supervisor (KEI-174)
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/home/elliotbot/clawd/venv/bin/python3 /home/elliotbot/clawd/Agency_OS/scripts/fleet_supervisor.py
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+StandardOutput=append:/home/elliotbot/clawd/logs/fleet-supervisor.log
+StandardError=append:/home/elliotbot/clawd/logs/fleet-supervisor.log

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import importlib.util
+import math
 import sys
 from pathlib import Path
 
@@ -47,12 +48,12 @@ class _PhaseCursor:
 
 def test_current_phase_max_fails_open_when_row_missing():
     mod = _load_mod()
-    assert mod._current_phase_max(_PhaseCursor(None)) == 99.0
+    assert math.isclose(mod._current_phase_max(_PhaseCursor(None)), 99.0)
 
 
 def test_current_phase_max_reads_value():
     mod = _load_mod()
-    assert mod._current_phase_max(_PhaseCursor(({"current_phase_max": 0},))) == 0.0
+    assert math.isclose(mod._current_phase_max(_PhaseCursor(({"current_phase_max": 0},))), 0.0)
 
 
 def test_current_phase_max_fails_open_on_malformed_json():
@@ -98,4 +99,4 @@ def test_cmd_claim_next_available_passes_phase_in_cte(monkeypatch):
     ns = argparse.Namespace(id=None, callsign=None, json=True)
     assert mod.cmd_claim(ns) == 0
     assert "phase <= %s" in cur.last_sql
-    assert cur.last_params is not None and cur.last_params[0] == 0.0
+    assert cur.last_params is not None and math.isclose(cur.last_params[0], 0.0)

@@ -119,3 +119,45 @@ def test_unknown_sink_records_error(monkeypatch):
     assert ok is False
     err = conn.cursor_calls[-1].executed[-1][1][0]
     assert "unknown sink" in err
+
+
+# KEI-173 — drive_manual sink must treat rc=2 (MANUAL unchanged) as success.
+
+
+def test_drive_manual_rc2_treated_as_success(monkeypatch):
+    """rc=2 means write_manual_mirror refused to re-mirror identical content
+    ('refused_unchanged'). Drive is already current — sink succeeds, queue row
+    is marked processed=true. Without this, repeated completions between Manual
+    edits would each retry 3× and abandon."""
+
+    def fake_run(args, **kwargs):
+        from types import SimpleNamespace
+
+        return SimpleNamespace(returncode=2, stderr="unchanged")
+
+    monkeypatch.setattr(csw.subprocess, "run", fake_run)
+    monkeypatch.setattr(csw.os.path, "isfile", lambda p: True)
+    conn = _FakeConn()
+    ok = csw._process_row(conn, _row(target_sink="drive_manual"))
+    assert ok is True
+    final_sql = conn.cursor_calls[-1].executed[-1][0]
+    assert "processed=TRUE" in final_sql
+
+
+def test_drive_manual_rc3_still_treated_as_failure(monkeypatch):
+    """rc=3 (missing_manual) is a real error — sink must raise SinkError so
+    the worker records attempts++ and eventually abandons after MAX_ATTEMPTS."""
+
+    def fake_run(args, **kwargs):
+        from types import SimpleNamespace
+
+        return SimpleNamespace(returncode=3, stderr="MANUAL.md not found")
+
+    monkeypatch.setattr(csw.subprocess, "run", fake_run)
+    monkeypatch.setattr(csw.os.path, "isfile", lambda p: True)
+    conn = _FakeConn()
+    ok = csw._process_row(conn, _row(target_sink="drive_manual"))
+    assert ok is False
+    sql, params = conn.cursor_calls[-1].executed[-1]
+    assert "attempts=attempts+1" in sql
+    assert "exit=3" in params[0]

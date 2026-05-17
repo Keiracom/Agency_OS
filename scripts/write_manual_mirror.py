@@ -125,7 +125,7 @@ def save_state(state: dict) -> None:
     STATE_PATH.write_text(json.dumps(state, indent=2), encoding="utf-8")
 
 
-def persist_exit_code(exit_code: int, outcome: str) -> None:
+def persist_exit_code(exit_code: int, outcome: str, task_id: str | None = None) -> None:
     """KEI-9 Wave 2 item 3: persist Drive mirror exit code + outcome label
     to the state file so post-restart sessions can read whether the last
     mirror succeeded.
@@ -137,6 +137,11 @@ def persist_exit_code(exit_code: int, outcome: str) -> None:
       2 / "refused_unchanged" — main run refused due to unchanged content
       3 / "missing_manual"    — MANUAL.md not found
 
+    KEI-173: task_id captures the originating completion_sync_queue task
+    (e.g. "KEI-XYZ") so the state file back-links to the directive that
+    triggered the mirror. Worker (completion_sync_worker._sink_drive_manual)
+    passes it via --task-id.
+
     Best-effort: failures here must not change the main() exit code. This
     is observability metadata, not control flow.
     """
@@ -144,9 +149,15 @@ def persist_exit_code(exit_code: int, outcome: str) -> None:
         state = load_state() or {}
         state["last_exit_code"] = int(exit_code)
         state["last_outcome"] = str(outcome)
-        state["last_exit_recorded_at"] = subprocess.check_output(  # noqa: S603 — controlled args, no shell
-            ["date", "-Iseconds"]
-        ).decode().strip()
+        state["last_exit_recorded_at"] = (
+            subprocess.check_output(  # noqa: S603 — controlled args, no shell
+                ["date", "-Iseconds"]
+            )
+            .decode()
+            .strip()
+        )
+        if task_id:
+            state["last_task_id"] = str(task_id)
         save_state(state)
     except (OSError, subprocess.SubprocessError) as exc:
         logger.warning("persist_exit_code failed (non-fatal): %s", exc)
@@ -323,6 +334,16 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Install the post-commit hook (git config core.hooksPath .githooks) and exit.",
     )
+    ap.add_argument(
+        "--task-id",
+        type=str,
+        default=None,
+        help=(
+            "KEI-173: originating task id (e.g. 'KEI-NNN') passed by "
+            "completion_sync_worker for audit trail. Recorded in state file's "
+            "last_task_id field. Does not alter mirror logic."
+        ),
+    )
     args = ap.parse_args(argv)
 
     # M11-1 — handle install first; it doesn't need MANUAL.md.
@@ -334,7 +355,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if not MANUAL_PATH.exists():
         logger.error(f"MANUAL.md not found at {MANUAL_PATH}")
-        persist_exit_code(3, "missing_manual")
+        persist_exit_code(3, "missing_manual", task_id=args.task_id)
         return 3
 
     current_fp = fingerprint(MANUAL_PATH)
@@ -351,10 +372,10 @@ def main(argv: list[str] | None = None) -> int:
                 current_fp.get("git_blob", "n/a"),
                 current_fp["sha256"][:12],
             )
-            persist_exit_code(2, "check_unchanged")
+            persist_exit_code(2, "check_unchanged", task_id=args.task_id)
             return 2
         logger.info("MANUAL.md CHANGED since last mirror — mirror would proceed.")
-        persist_exit_code(0, "check_changed")
+        persist_exit_code(0, "check_changed", task_id=args.task_id)
         return 0
 
     if unchanged and not args.force:
@@ -365,7 +386,7 @@ def main(argv: list[str] | None = None) -> int:
             current_fp.get("git_blob", "n/a"),
             current_fp["sha256"][:12],
         )
-        persist_exit_code(2, "refused_unchanged")
+        persist_exit_code(2, "refused_unchanged", task_id=args.task_id)
         return 2
 
     if args.force and unchanged:
@@ -382,7 +403,10 @@ def main(argv: list[str] | None = None) -> int:
     # block the staleness check.
     state["last_fingerprint"] = current_fp
     state["last_mirrored_at"] = subprocess.check_output(["date", "-Iseconds"]).decode().strip()
+    if args.task_id:
+        state["last_task_id"] = str(args.task_id)
     save_state(state)
+    persist_exit_code(0, "mirrored", task_id=args.task_id)
     logger.info(f"State persisted to {STATE_PATH}")
     logger.info("Done.")
     return 0

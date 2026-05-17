@@ -1,0 +1,16 @@
+[Unit]
+Description=KEI-45 idle-daemon — fallback for dead Realtime subscription
+Documentation=https://linear.app/keiracom/issue/KEI-45
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/home/elliotbot/clawd/Agency_OS/scripts/orchestrator/kei45_idle_daemon.sh
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+StandardOutput=append:/home/elliotbot/clawd/logs/kei45-idle-daemon.log
+StandardError=append:/home/elliotbot/clawd/logs/kei45-idle-daemon.log
+TimeoutStartSec=120
+
+[Install]
+WantedBy=default.target

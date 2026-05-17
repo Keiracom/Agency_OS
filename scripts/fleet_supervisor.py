@@ -353,7 +353,7 @@ def fetch_pr_comments(pr_number: int) -> list[dict]:
         return []
 
 
-_REVIEW_COMMENT_PATTERN_TMPL = r"\[REVIEW(?::(?:approve|hold(?:-final)?))?" r":{callsign}\]"
+_REVIEW_COMMENT_PATTERN_TMPL = r"\[REVIEW(?::(?:approve|hold(?:-final)))?:{callsign}\]"
 
 
 def comment_has_review_marker(body: str, callsign: str) -> bool:

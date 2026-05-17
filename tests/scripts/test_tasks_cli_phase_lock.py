@@ -58,7 +58,7 @@ def test_current_phase_max_reads_value():
 
 def test_current_phase_max_fails_open_on_malformed_json():
     mod = _load_mod()
-    assert mod._current_phase_max(_PhaseCursor(({"wrong_key": 1},))) == 99.0
+    assert math.isclose(mod._current_phase_max(_PhaseCursor(({"wrong_key": 1},))), 99.0)
 
 
 def test_cmd_claim_id_rejects_above_lock(monkeypatch, capsys):

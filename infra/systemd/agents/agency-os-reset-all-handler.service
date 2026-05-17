@@ -9,8 +9,8 @@ StartLimitIntervalSec=300
 [Service]
 Type=simple
 EnvironmentFile=/home/elliotbot/.config/agency-os/.env
-WorkingDirectory=/home/elliotbot/clawd/Agency_OS-max
-ExecStart=/usr/bin/python3 /home/elliotbot/clawd/Agency_OS-max/scripts/orchestrator/reset_all_handler.py
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+ExecStart=/usr/bin/python3 /home/elliotbot/clawd/Agency_OS/scripts/orchestrator/reset_all_handler.py
 Restart=always
 RestartSec=10
 StandardOutput=append:/home/elliotbot/clawd/logs/reset-all-handler.log

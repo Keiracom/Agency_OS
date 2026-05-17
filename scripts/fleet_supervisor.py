@@ -426,6 +426,146 @@ def inject_task(session: str, prompt: str) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Per-agent scenario handlers
+# ---------------------------------------------------------------------------
+
+
+def _handle_dead_tmux(
+    callsign: str,
+    tmux_session: str,
+    service: str,
+    conn: psycopg.Connection,
+    phase_max: int,
+    status: AgentStatus,
+) -> AgentStatus | None:
+    """Scenario 4: tmux session dead — restart service then claim next task."""
+    if tmux_has_session(tmux_session):
+        return None
+    log.info("[%s] tmux session dead — restarting service", callsign)
+    try:
+        restart_service(service)
+    except subprocess.CalledProcessError as exc:
+        log.warning("[%s] restart failed: %s", callsign, exc)
+    status.tmux_alive = False
+    claim = claim_next_task(conn, callsign, phase_max)
+    if claim:
+        task_id, title = claim
+        lin_title, description = fetch_linear_description(task_id)
+        effective_title = lin_title or title
+        prompt = build_task_prompt(task_id, effective_title, description)
+        if tmux_has_session(tmux_session):
+            inject_task(tmux_session, prompt)
+        status.active_task_id = task_id
+        status.active_task_title = effective_title
+        status.summary = f"session dead, restarted, claimed {task_id}"
+    else:
+        status.summary = "session dead, restarted, queue empty"
+    return status
+
+
+def _handle_idle_with_queue(
+    callsign: str,
+    tmux_session: str,
+    conn: psycopg.Connection,
+    phase_max: int,
+    status: AgentStatus,
+) -> AgentStatus | None:
+    """Scenario 1: no active claim, queue has items — claim and inject."""
+    new_claim = claim_next_task(conn, callsign, phase_max)
+    if new_claim is None:
+        return None
+    task_id, title = new_claim
+    lin_title, description = fetch_linear_description(task_id)
+    effective_title = lin_title or title
+    prompt = build_task_prompt(task_id, effective_title, description)
+    inject_task(tmux_session, prompt)
+    status.active_task_id = task_id
+    status.active_task_title = effective_title
+    status.summary = f"was idle, claimed {task_id}, injected task"
+    log.info("[%s] Scenario 1: claimed %s", callsign, task_id)
+    return status
+
+
+def _handle_idle_no_queue(
+    callsign: str,
+    tmux_session: str,
+    prs: list[dict],
+    conn: psycopg.Connection,
+    status: AgentStatus,
+) -> AgentStatus:
+    """Scenario 2/5: no claim, queue empty — assign PR review or log idle."""
+    review_pr = find_pr_for_review(prs, callsign)
+    if review_pr:
+        pr_number = review_pr["number"]
+        pr_title = review_pr.get("title", f"PR #{pr_number}")
+        pr_url = review_pr.get("url", f"https://github.com/keiracom/Agency_OS/pull/{pr_number}")
+        insert_review_task(conn, callsign, pr_number, pr_title, pr_url)
+        prompt = build_review_prompt(pr_number, pr_title, pr_url, callsign)
+        inject_task(tmux_session, prompt)
+        status.active_task_id = f"REVIEW-PR-{pr_number}"
+        status.active_task_title = f"Review PR #{pr_number}"
+        status.summary = f"was idle, reviewing PR #{pr_number}"
+        log.info("[%s] Scenario 2: assigned PR #%d review", callsign, pr_number)
+        return status
+    authored = [p for p in prs if is_authored_by_callsign(p, callsign)]
+    if authored:
+        log.info("[%s] Scenario 5: has open PR, queue empty — correctly idle", callsign)
+        status.summary = "shipped pull request, idle, queue empty"
+    else:
+        log.info("[%s] Scenario 2: queue empty, no reviews — correctly idle", callsign)
+        status.summary = "queue empty, no reviews — correctly idle"
+    return status
+
+
+def _handle_active_claim(
+    callsign: str,
+    tmux_session: str,
+    service: str,
+    conn: psycopg.Connection,
+    claim: tuple[str, str],
+    status: AgentStatus,
+) -> AgentStatus:
+    """Scenario 3/6: agent has active claim — check activity, nudge or restart."""
+    task_id, title = claim
+    status.active_task_id = task_id
+    status.active_task_title = title
+    last_call = get_last_tool_call(conn, callsign)
+    status.last_tool_call = last_call
+    now_utc = _dt.datetime.now(_dt.UTC)
+    if last_call is None:
+        minutes_ago = INACTIVITY_MINUTES + 1
+    else:
+        lc = last_call if last_call.tzinfo is not None else last_call.replace(tzinfo=_dt.UTC)
+        minutes_ago = (now_utc - lc).total_seconds() / 60
+    if minutes_ago < INACTIVITY_MINUTES:
+        m = int(minutes_ago)
+        log.info("[%s] active on %s (last call %dm ago)", callsign, task_id, m)
+        status.summary = f"building {task_id} (last activity {m}m ago)"
+        return status
+    is_full = context_is_full(tmux_session)
+    status.context_full = is_full
+    if is_full:
+        log.info("[%s] 100%% context — restarting + re-claiming %s", callsign, task_id)
+        try:
+            restart_service(service)
+        except subprocess.CalledProcessError as exc:
+            log.warning("[%s] restart failed: %s", callsign, exc)
+        lin_title, description = fetch_linear_description(task_id)
+        effective_title = lin_title or title
+        prompt = build_task_prompt(task_id, effective_title, description)
+        if tmux_has_session(tmux_session):
+            inject_task(tmux_session, prompt)
+        status.summary = f"100%% context, restarted, re-claimed {task_id}"
+    else:
+        nudge = f"You have {task_id} claimed. Resume building. Title: {title}"
+        inject_task(tmux_session, nudge)
+        m = int(minutes_ago)
+        log.info("[%s] nudged on %s (%dm stale)", callsign, task_id, m)
+        status.summary = f"nudged on {task_id} ({m}m stale)"
+    return status
+
+
+# ---------------------------------------------------------------------------
 # Per-agent scenario runner
 # ---------------------------------------------------------------------------
 
@@ -445,125 +585,20 @@ def process_agent(
         service_name=service,
     )
 
-    # Scenario 4: tmux session dead
-    if not tmux_has_session(tmux_session):
-        log.info("[%s] tmux session dead — restarting service", callsign)
-        try:
-            restart_service(service)
-        except subprocess.CalledProcessError as exc:
-            log.warning("[%s] restart failed: %s", callsign, exc)
-        status.tmux_alive = False
-        # After restart fall through to Scenario 1 (claim + inject)
-        claim = claim_next_task(conn, callsign, phase_max)
-        if claim:
-            task_id, title = claim
-            lin_title, description = fetch_linear_description(task_id)
-            effective_title = lin_title or title
-            prompt = build_task_prompt(task_id, effective_title, description)
-            if tmux_has_session(tmux_session):
-                inject_task(tmux_session, prompt)
-            status.active_task_id = task_id
-            status.active_task_title = effective_title
-            status.summary = f"session dead, restarted, claimed {task_id}"
-        else:
-            status.summary = "session dead, restarted, queue empty"
-        return status
+    result = _handle_dead_tmux(callsign, tmux_session, service, conn, phase_max, status)
+    if result is not None:
+        return result
 
     status.tmux_alive = True
-
-    # Check current claim
     claim = get_active_claim(conn, callsign)
 
     if claim is None:
-        # Scenario 1: no claim, queue has items
-        new_claim = claim_next_task(conn, callsign, phase_max)
-        if new_claim:
-            task_id, title = new_claim
-            lin_title, description = fetch_linear_description(task_id)
-            effective_title = lin_title or title
-            prompt = build_task_prompt(task_id, effective_title, description)
-            inject_task(tmux_session, prompt)
-            status.active_task_id = task_id
-            status.active_task_title = effective_title
-            status.summary = f"was idle, claimed {task_id}, injected task"
-            log.info("[%s] Scenario 1: claimed %s", callsign, task_id)
-            return status
+        result = _handle_idle_with_queue(callsign, tmux_session, conn, phase_max, status)
+        if result is not None:
+            return result
+        return _handle_idle_no_queue(callsign, tmux_session, prs, conn, status)
 
-        # Scenario 2: no claim, queue empty — look for PR review
-        review_pr = find_pr_for_review(prs, callsign)
-        if review_pr:
-            pr_number = review_pr["number"]
-            pr_title = review_pr.get("title", f"PR #{pr_number}")
-            pr_url = review_pr.get("url", f"https://github.com/keiracom/Agency_OS/pull/{pr_number}")
-            insert_review_task(conn, callsign, pr_number, pr_title, pr_url)
-            prompt = build_review_prompt(pr_number, pr_title, pr_url, callsign)
-            inject_task(tmux_session, prompt)
-            status.active_task_id = f"REVIEW-PR-{pr_number}"
-            status.active_task_title = f"Review PR #{pr_number}"
-            status.summary = f"was idle, reviewing PR #{pr_number}"
-            log.info("[%s] Scenario 2: assigned PR #%d review", callsign, pr_number)
-            return status
-
-        # Scenario 5: agent shipped PR + went idle — check for authored open PRs
-        authored = [p for p in prs if is_authored_by_callsign(p, callsign)]
-        if authored:
-            # Agent has an open PR — start next build task (Scenario 1 already tried)
-            # Queue was empty, so agent is correctly idle after shipping
-            log.info("[%s] Scenario 5: has open PR, queue empty — correctly idle", callsign)
-            status.summary = "shipped pull request, idle, queue empty"
-        else:
-            log.info("[%s] Scenario 2: queue empty, no reviews — correctly idle", callsign)
-            status.summary = "queue empty, no reviews — correctly idle"
-        return status
-
-    # Agent has an active claim
-    task_id, title = claim
-    status.active_task_id = task_id
-    status.active_task_title = title
-
-    # Scenario 3: claimed + check activity
-    last_call = get_last_tool_call(conn, callsign)
-    status.last_tool_call = last_call
-
-    now_utc = _dt.datetime.now(_dt.UTC)
-    if last_call is None:
-        minutes_ago = INACTIVITY_MINUTES + 1  # treat as stale
-    else:
-        # Normalize last_call to UTC-aware if it's naive
-        lc = last_call if last_call.tzinfo is not None else last_call.replace(tzinfo=_dt.UTC)
-        minutes_ago = (now_utc - lc).total_seconds() / 60
-
-    if minutes_ago < INACTIVITY_MINUTES:
-        m = int(minutes_ago)
-        log.info("[%s] active on %s (last call %dm ago)", callsign, task_id, m)
-        status.summary = f"building {task_id} (last activity {m}m ago)"
-        return status
-
-    # Stale — check context
-    is_full = context_is_full(tmux_session)
-    status.context_full = is_full
-
-    if is_full:
-        log.info("[%s] 100%% context — restarting + re-claiming %s", callsign, task_id)
-        try:
-            restart_service(service)
-        except subprocess.CalledProcessError as exc:
-            log.warning("[%s] restart failed: %s", callsign, exc)
-        # re-claim same KEI after restart
-        lin_title, description = fetch_linear_description(task_id)
-        effective_title = lin_title or title
-        prompt = build_task_prompt(task_id, effective_title, description)
-        if tmux_has_session(tmux_session):
-            inject_task(tmux_session, prompt)
-        status.summary = f"100%% context, restarted, re-claimed {task_id}"
-    else:
-        nudge = f"You have {task_id} claimed. Resume building. Title: {title}"
-        inject_task(tmux_session, nudge)
-        m = int(minutes_ago)
-        log.info("[%s] nudged on %s (%dm stale)", callsign, task_id, m)
-        status.summary = f"nudged on {task_id} ({m}m stale)"
-
-    return status
+    return _handle_active_claim(callsign, tmux_session, service, conn, claim, status)
 
 
 # ---------------------------------------------------------------------------

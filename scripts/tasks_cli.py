@@ -84,6 +84,34 @@ def _rows_to_dicts(cur: Any) -> list[dict]:
     return [dict(zip(cols, r, strict=False)) for r in cur.fetchall()]
 
 
+def _enqueue_linear_sync(task_id: str, target_status: str) -> None:
+    """KEI-106 — enqueue Supabase→Linear status sync on claim/complete.
+
+    The completion_sync_worker (KEI-74) drains public.completion_sync_queue and
+    POSTs Linear's issueUpdate per row. This helper just lands the row; the
+    worker owns the Linear API call + retries. Fail-open: queue INSERT failure
+    must not block the originating claim/complete write. The KEI-74 backfill
+    script catches any dropped events.
+
+    Existing rows in completion_sync_queue use the KEI-NN identifier directly
+    in task_id (Linear's issueUpdate accepts identifiers, not just UUIDs).
+    """
+    import psycopg
+
+    try:
+        with psycopg.connect(_dsn()) as conn, conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO public.completion_sync_queue "
+                "(id, task_id, target_sink, target_status, attempts, processed, "
+                "created_at, updated_at) "
+                "VALUES (gen_random_uuid(), %s, 'linear', %s, 0, FALSE, NOW(), NOW())",
+                (task_id, target_status),
+            )
+            conn.commit()
+    except Exception:
+        logger.debug("KEI-106 linear-sync enqueue failed (non-fatal)", exc_info=True)
+
+
 def _current_phase_max(cur: Any) -> float:
     """KEI-86 — read ceo_memory key 'ceo:phase_lock' → current_phase_max.
 
@@ -366,16 +394,17 @@ def cmd_claim(args: argparse.Namespace) -> int:
     claimed = dict(zip(cols, row, strict=False))
     # KEI-103 — fire retrieval on every successful claim so cognee_recall/Weaviate
     # is actually exercised (the writers existed but no production caller did).
-    # Records a row in public.retrieval_events for audit + observability.
-    # Fail-open: agent_query.query() has its own try/except for Weaviate-down
-    # and DSN-missing; we re-catch ImportError + anything else so a broken
-    # retrieval layer never blocks a claim.
+    # Fail-open: agent_query.query() has its own try/except; we re-catch
+    # ImportError + anything else so a broken retrieval layer never blocks a claim.
     try:
         from src.retrieval.agent_query import query as _retrieval_query
 
         _retrieval_query(claimed["title"], agent=claimed["claimed_by"])
     except Exception:
         logger.debug("retrieval query for claim failed (non-fatal)", exc_info=True)
+    # KEI-106 — propagate claim status to Linear via completion_sync_queue
+    # (worker KEI-74 owns the Linear API call). Fail-open inside the helper.
+    _enqueue_linear_sync(claimed["id"], "active")
     if args.json:
         print(json.dumps(claimed, default=str))
     else:
@@ -526,6 +555,9 @@ def cmd_complete(args: argparse.Namespace) -> int:
         logger.exception("complete query failed")
         return 2
 
+    # KEI-106 — propagate completion to Linear via completion_sync_queue.
+    # Reached only when commit succeeded (row is not None at this point).
+    _enqueue_linear_sync(row[0], "done")
     if args.json:
         print(json.dumps({"id": row[0], "title": row[1], "status": row[2]}))
     else:

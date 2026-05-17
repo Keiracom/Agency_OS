@@ -242,6 +242,16 @@ def test_ready_agent_human_output_includes_score_marker(mod, patch_connect, caps
 # ─── claim ────────────────────────────────────────────────────────────────────
 
 
+def _find_executed(cur, predicate) -> tuple[str, tuple] | None:
+    """Locate the first (sql, params) entry in cur.executed matching predicate.
+    Helper for tests that need to skip past KEI-106's queue-INSERT side-effect.
+    """
+    for sql, params in cur.executed:
+        if predicate(sql):
+            return sql, params
+    return None
+
+
 def test_claim_targeted_id(mod, patch_connect, capsys, monkeypatch) -> None:
     monkeypatch.setenv("CALLSIGN", "scout")
     cur = _Cursor(fetchone_row=("KEI-39", "title", 1, "active", "scout", "url"))
@@ -251,7 +261,8 @@ def test_claim_targeted_id(mod, patch_connect, capsys, monkeypatch) -> None:
     out = json.loads(capsys.readouterr().out)
     assert out["id"] == "KEI-39"
     assert out["claimed_by"] == "scout"
-    assert cur.last_params == ("scout", "KEI-39", "scout")
+    update = _find_executed(cur, lambda s: "UPDATE public.tasks" in s and "claimed_by" in s)
+    assert update is not None and update[1] == ("scout", "KEI-39", "scout")
 
 
 def test_claim_next_available_uses_skip_locked(mod, patch_connect, monkeypatch) -> None:
@@ -260,7 +271,7 @@ def test_claim_next_available_uses_skip_locked(mod, patch_connect, monkeypatch) 
     patch_connect(cur)
     rc = mod.main(["claim", "--json"])
     assert rc == 0
-    assert "FOR UPDATE SKIP LOCKED" in cur.last_sql
+    assert _find_executed(cur, lambda s: "FOR UPDATE SKIP LOCKED" in s) is not None
 
 
 def test_claim_returns_null_when_nothing_available(mod, patch_connect, capsys, monkeypatch) -> None:
@@ -351,6 +362,64 @@ def test_claim_succeeds_when_retrieval_query_raises(
     assert out["id"] == "KEI-39"
 
 
+# ─── KEI-106: completion_sync_queue enqueue on claim/complete ────────────────
+
+
+def _find_queue_insert(cur) -> tuple[str, tuple] | None:
+    """Helper: locate the INSERT INTO public.completion_sync_queue execute call."""
+    for sql, params in cur.executed:
+        if "INSERT INTO public.completion_sync_queue" in sql:
+            return sql, params
+    return None
+
+
+def test_claim_enqueues_linear_sync_active(mod, patch_connect, monkeypatch) -> None:
+    """KEI-106 — successful claim INSERTs a row in completion_sync_queue with
+    target_sink='linear' AND target_status='active' so the worker (KEI-74)
+    flips the matching Linear KEI to In Progress.
+    """
+    monkeypatch.setenv("CALLSIGN", "aiden")
+    cur = _Cursor(
+        fetchone_row=("KEI-106", "build supabase->linear sync", 1, "active", "aiden", "url")
+    )
+    patch_connect(cur)
+    rc = mod.main(["claim", "--id", "KEI-106", "--json"])
+    assert rc == 0
+    insert = _find_queue_insert(cur)
+    assert insert is not None, "claim must enqueue completion_sync_queue row"
+    _sql, params = insert
+    assert params == ("KEI-106", "active")
+
+
+def test_claim_race_loss_does_not_enqueue(mod, patch_connect, monkeypatch) -> None:
+    """KEI-106 — when claim returns row=None (race loss / nothing-to-claim),
+    no queue row should be written.
+    """
+    monkeypatch.setenv("CALLSIGN", "aiden")
+    cur = _Cursor(fetchone_row=None)
+    patch_connect(cur)
+    rc = mod.main(["claim", "--id", "KEI-106", "--json"])
+    assert rc == 0
+    assert _find_queue_insert(cur) is None, "race-loss claim must NOT enqueue"
+
+
+def test_enqueue_linear_sync_swallows_connect_failure(mod, monkeypatch) -> None:
+    """KEI-106 — fail-open contract: when psycopg.connect raises inside the
+    helper, the exception is caught and logged. The helper returns cleanly
+    so cmd_claim/cmd_complete are never blocked by a broken queue path.
+    """
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test/x")
+    import psycopg
+
+    def _boom(*_a, **_kw):
+        raise RuntimeError("simulated queue write failure")
+
+    monkeypatch.setattr(psycopg, "connect", _boom)
+    # Must not raise:
+    mod._enqueue_linear_sync("KEI-106", "active")
+    mod._enqueue_linear_sync("KEI-106", "done")
+
+
 # ─── complete ────────────────────────────────────────────────────────────────
 
 
@@ -380,7 +449,8 @@ def test_complete_force_mode_passes_force_sentinel(mod, patch_connect, monkeypat
     cur = _Cursor(fetchone_row=("KEI-39", "title", "done"))
     patch_connect(cur)
     mod.main(["complete", "KEI-39", "--force-mode", "force"])
-    assert cur.last_params == ("KEI-39", "scout", "force")
+    update = _find_executed(cur, lambda s: "UPDATE public.tasks" in s and "status = 'done'" in s)
+    assert update is not None and update[1] == ("KEI-39", "scout", "force")
 
 
 # ─── show ────────────────────────────────────────────────────────────────────

@@ -290,6 +290,67 @@ def test_claim_refuses_explicit_unknown_callsign(mod, capsys, monkeypatch) -> No
     assert "DEFAULT_CALLSIGN sentinel" in capsys.readouterr().err
 
 
+# ─── KEI-103: retrieval hook on successful claim ─────────────────────────────
+
+
+def test_claim_fires_retrieval_query_on_success(mod, patch_connect, monkeypatch) -> None:
+    """KEI-103 — successful claim must invoke src.retrieval.agent_query.query
+    with the claimed task's title + claimed_by callsign. This is the wire that
+    makes public.retrieval_events receive a row per claim cycle.
+    """
+    monkeypatch.setenv("CALLSIGN", "scout")
+    cur = _Cursor(
+        fetchone_row=("KEI-39", "diagnose cognee read pathway", 1, "active", "scout", "url")
+    )
+    patch_connect(cur)
+
+    calls: list[tuple] = []
+
+    def _spy_query(text: str, *, agent: str, **kwargs):
+        calls.append((text, agent, kwargs))
+        return None  # query returns QueryResult in prod; tests don't care about return
+
+    import sys as _sys
+    import types as _types
+
+    fake_module = _types.ModuleType("src.retrieval.agent_query")
+    fake_module.query = _spy_query
+    monkeypatch.setitem(_sys.modules, "src.retrieval.agent_query", fake_module)
+
+    rc = mod.main(["claim", "--id", "KEI-39", "--json"])
+    assert rc == 0
+    assert len(calls) == 1
+    text, agent, _kwargs = calls[0]
+    assert text == "diagnose cognee read pathway"
+    assert agent == "scout"
+
+
+def test_claim_succeeds_when_retrieval_query_raises(
+    mod, patch_connect, capsys, monkeypatch
+) -> None:
+    """KEI-103 — retrieval failure (Weaviate down, import error, anything) must
+    NOT block the claim. Fail-open per cognee_recall + agent_query contract.
+    """
+    monkeypatch.setenv("CALLSIGN", "scout")
+    cur = _Cursor(fetchone_row=("KEI-39", "title", 1, "active", "scout", "url"))
+    patch_connect(cur)
+
+    def _broken_query(text, *, agent, **kwargs):
+        raise RuntimeError("simulated Weaviate down")
+
+    import sys as _sys
+    import types as _types
+
+    fake_module = _types.ModuleType("src.retrieval.agent_query")
+    fake_module.query = _broken_query
+    monkeypatch.setitem(_sys.modules, "src.retrieval.agent_query", fake_module)
+
+    rc = mod.main(["claim", "--id", "KEI-39", "--json"])
+    assert rc == 0
+    out = json.loads(capsys.readouterr().out)
+    assert out["id"] == "KEI-39"
+
+
 # ─── complete ────────────────────────────────────────────────────────────────
 
 

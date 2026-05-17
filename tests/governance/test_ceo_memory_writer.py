@@ -98,3 +98,64 @@ def test_dsn_falls_back_to_supabase_url(monkeypatch: pytest.MonkeyPatch) -> None
     monkeypatch.delenv("DATABASE_URL", raising=False)
     monkeypatch.setenv("SUPABASE_DB_URL", "postgresql://fallback/x")
     assert ceo_memory_writer._dsn() == "postgresql://fallback/x"
+
+
+class _RaisingCursor(_Cursor):
+    """Cursor that raises CheckViolation on the second execute (the UPDATE/INSERT)
+    to simulate the trigger refusing the write — KEI-87 negative-path proof."""
+
+    def __init__(self, exc: BaseException) -> None:
+        super().__init__()
+        self._exc = exc
+        self._call = 0
+
+    def execute(self, sql: str, params: tuple | None = None) -> None:
+        super().execute(sql, params)
+        self._call += 1
+        if self._call >= 2:
+            raise self._exc
+
+
+class _RaisingConn(_Conn):
+    def __init__(self, exc: BaseException) -> None:
+        super().__init__()
+        self.cur = _RaisingCursor(exc)
+
+
+def test_upsert_propagates_trigger_check_violation() -> None:
+    """Wrapper passes through the CheckViolation when the trigger refuses.
+    Simulates SET LOCAL agency_os.callsign='aiden' → trigger RAISES on ceo:*.
+    """
+    import psycopg
+
+    conn = _RaisingConn(
+        psycopg.errors.CheckViolation("KEI-87 ceo_memory write-guard: aiden not in (elliot, dave)")
+    )
+    with patch("psycopg.connect", return_value=conn):
+        with pytest.raises(psycopg.errors.CheckViolation):
+            ceo_memory_writer.upsert_ceo_memory_key("aiden", "ceo:phase_lock", {"v": 1})
+    # SET LOCAL still executed; the exception happens on the INSERT (call 2)
+    assert any("SET LOCAL agency_os.callsign" in s for s, _ in conn.cur.executed)
+
+
+def test_update_propagates_trigger_check_violation() -> None:
+    """Same negative-path proof on update_ceo_memory_value."""
+    import psycopg
+
+    conn = _RaisingConn(psycopg.errors.CheckViolation("refused"))
+    with patch("psycopg.connect", return_value=conn):
+        with pytest.raises(psycopg.errors.CheckViolation):
+            ceo_memory_writer.update_ceo_memory_value("max", "ceo:phase_lock", {"v": 2})
+
+
+def test_upsert_uses_prepare_threshold_none(monkeypatch: pytest.MonkeyPatch) -> None:
+    """psycopg.connect called with prepare_threshold=None per pgbouncer pin."""
+    captured: dict[str, Any] = {}
+
+    def _fake_connect(dsn: str, **kwargs: Any) -> _Conn:
+        captured["kwargs"] = kwargs
+        return _Conn()
+
+    monkeypatch.setattr("psycopg.connect", _fake_connect)
+    ceo_memory_writer.upsert_ceo_memory_key("elliot", "ceo:phase_lock", {"v": 99})
+    assert captured["kwargs"].get("prepare_threshold") is None

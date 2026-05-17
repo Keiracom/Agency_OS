@@ -41,8 +41,11 @@ BEGIN
             USING ERRCODE = 'check_violation';
     END IF;
 
-    IF caller NOT IN ('elliot', 'dave', 'max', 'aiden', 'atlas', 'orion', 'scout', 'enforcer') THEN
-        RAISE EXCEPTION 'KEI-87 ceo_memory write-guard: agency_os.callsign=% is not in the ceo_memory allowlist (key=%)', caller, NEW.key
+    -- Per 3-way ratified spec (elliot+max+aiden 2026-05-17 ts ~1779010883):
+    -- allowlist = (elliot, dave). Aiden's PR #922 review caught the prior
+    -- permissive-first draft as scope-delta from ratified shape. Tightened.
+    IF caller NOT IN ('elliot', 'dave') THEN
+        RAISE EXCEPTION 'KEI-87 ceo_memory write-guard: agency_os.callsign=% is not in (elliot, dave) — refused write on key %', caller, NEW.key
             USING ERRCODE = 'check_violation';
     END IF;
 

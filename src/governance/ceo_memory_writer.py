@@ -48,7 +48,10 @@ def upsert_ceo_memory_key(callsign: str, key: str, value: Mapping[str, Any]) -> 
     import psycopg  # local import — keeps callers without psycopg from paying import cost
 
     cs = _require_callsign(callsign)
-    with psycopg.connect(_dsn()) as conn, conn.cursor() as cur:
+    # prepare_threshold=None per reference_psycopg_supabase_pgbouncer: Supabase
+    # pooler is txn-mode pgbouncer; psycopg3 cached prepared statements break on
+    # first repeated execute() across pool connections.
+    with psycopg.connect(_dsn(), prepare_threshold=None) as conn, conn.cursor() as cur:
         cur.execute("SET LOCAL agency_os.callsign = %s", (cs,))
         cur.execute(
             """
@@ -67,7 +70,10 @@ def update_ceo_memory_value(callsign: str, key: str, value: Mapping[str, Any]) -
     import psycopg
 
     cs = _require_callsign(callsign)
-    with psycopg.connect(_dsn()) as conn, conn.cursor() as cur:
+    # prepare_threshold=None per reference_psycopg_supabase_pgbouncer: Supabase
+    # pooler is txn-mode pgbouncer; psycopg3 cached prepared statements break on
+    # first repeated execute() across pool connections.
+    with psycopg.connect(_dsn(), prepare_threshold=None) as conn, conn.cursor() as cur:
         cur.execute("SET LOCAL agency_os.callsign = %s", (cs,))
         cur.execute(
             "UPDATE public.ceo_memory SET value = %s::jsonb, updated_at = NOW() WHERE key = %s",

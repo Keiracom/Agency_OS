@@ -83,6 +83,23 @@ def _rows_to_dicts(cur: Any) -> list[dict]:
     return [dict(zip(cols, r, strict=False)) for r in cur.fetchall()]
 
 
+def _current_phase_max(cur: Any) -> float:
+    """KEI-86 — read ceo_memory key 'ceo:phase_lock' → current_phase_max.
+
+    Fail-open returns 99 (effectively unlocked) if the key is absent or the
+    JSON shape is unexpected — preserves backwards-compat for any caller that
+    runs before the migration lands. Real lock is enforced once the row exists.
+    """
+    cur.execute("SELECT value FROM public.ceo_memory WHERE key = 'ceo:phase_lock'")
+    row = cur.fetchone()
+    if not row:
+        return 99.0
+    try:
+        return float(row[0]["current_phase_max"])
+    except (KeyError, TypeError, ValueError):
+        return 99.0
+
+
 def cmd_ready(args: argparse.Namespace) -> int:
     """List available tasks ordered by priority ASC then created_at ASC.
 
@@ -97,24 +114,29 @@ def cmd_ready(args: argparse.Namespace) -> int:
     agent = (args.agent or "").strip().lower() if getattr(args, "agent", None) else ""
     try:
         with psycopg.connect(_dsn()) as conn, conn.cursor() as cur:
+            phase_max = _current_phase_max(cur)
             if agent:
                 # KEI-53 — personalised path. Tie-break per Max note #2:
                 # personalised_score DESC, priority ASC, created_at ASC.
+                # KEI-86 — also filter by phase <= current_phase_max.
                 sql = (
                     f"SELECT t.{', t.'.join(_READY_COLUMNS.split(', '))}, "
                     f"{_PERSONALISED_SCORE_SUBQUERY} "
                     "FROM public.tasks t WHERE t.status = 'available' AND t.claimed_by IS NULL "
+                    "AND t.phase <= %s "
                     "ORDER BY personalised_score DESC, "
                     "t.priority ASC, t.created_at ASC LIMIT %s"
                 )
-                cur.execute(sql, (agent, limit))
+                cur.execute(sql, (agent, phase_max, limit))
             else:
+                # KEI-86 — phase-lock filter on the non-personalised path too.
                 sql = (
                     f"SELECT {_READY_COLUMNS} FROM public.tasks "
                     "WHERE status = 'available' AND claimed_by IS NULL "
+                    "AND phase <= %s "
                     "ORDER BY priority ASC, created_at ASC LIMIT %s"
                 )
-                cur.execute(sql, (limit,))
+                cur.execute(sql, (phase_max, limit))
             rows = _rows_to_dicts(cur)
     except psycopg.Error:
         logger.exception("ready query failed")
@@ -155,7 +177,30 @@ def cmd_claim(args: argparse.Namespace) -> int:
         return 1
     try:
         with psycopg.connect(_dsn()) as conn, conn.cursor() as cur:
+            phase_max = _current_phase_max(cur)
             if args.id:
+                # KEI-86 — phase pre-check on targeted claim so we can emit
+                # an explanatory error instead of silently returning 'could
+                # not claim …' (which is indistinguishable from a race loss).
+                # Fail-open on parse errors so legacy rows / fixtures without
+                # a numeric phase fall through to the UPDATE's own filter.
+                cur.execute("SELECT phase FROM public.tasks WHERE id = %s", (args.id,))
+                _phase_row = cur.fetchone()
+                _task_phase: float | None = None
+                if _phase_row is not None:
+                    try:
+                        _task_phase = float(_phase_row[0])
+                    except (TypeError, ValueError):
+                        _task_phase = None
+                if _task_phase is not None and _task_phase > phase_max:
+                    print(
+                        f"ERROR: KEI-86 phase-lock — task {args.id} is phase {_task_phase} "
+                        f"but ceo:phase_lock.current_phase_max is {phase_max}. "
+                        "Wait for CEO to advance the lock or pick a task at phase "
+                        f"<= {phase_max}.",
+                        file=sys.stderr,
+                    )
+                    return 1
                 cur.execute(
                     """
                     UPDATE public.tasks
@@ -169,6 +214,7 @@ def cmd_claim(args: argparse.Namespace) -> int:
                     (cs, args.id, cs),
                 )
             else:
+                # KEI-86 — also filter the next-available SELECT by phase.
                 cur.execute(
                     """
                     WITH next AS (
@@ -176,6 +222,7 @@ def cmd_claim(args: argparse.Namespace) -> int:
                         FROM public.tasks
                        WHERE status = 'available'
                          AND claimed_by IS NULL
+                         AND phase <= %s
                        ORDER BY priority ASC, created_at ASC
                        FOR UPDATE SKIP LOCKED
                        LIMIT 1
@@ -187,7 +234,7 @@ def cmd_claim(args: argparse.Namespace) -> int:
                      WHERE t.id = next.id
                      RETURNING t.id, t.title, t.priority, t.status, t.claimed_by, t.linear_url, t.tags
                     """,
-                    (cs,),
+                    (phase_max, cs),
                 )
             row = cur.fetchone()
             conn.commit()

@@ -411,3 +411,76 @@ def test_agent_has_reviewed():
     pr = {"reviews": [{"body": "looks good [REVIEW:elliot] APPROVE"}]}
     assert fs.agent_has_reviewed(pr, "elliot") is True
     assert fs.agent_has_reviewed(pr, "aiden") is False
+
+
+# ---------------------------------------------------------------------------
+# KEI-176: find_pr_for_review checks PR comments for [REVIEW:callsign] markers
+# ---------------------------------------------------------------------------
+
+
+def test_find_pr_for_review_skips_already_reviewed(monkeypatch):
+    """Agent does NOT get dispatched for a PR where its [REVIEW:callsign] is in comments."""
+    pr = {
+        "number": 55,
+        "title": "[ELLIOT] feat: some work",
+        "url": "https://github.com/org/repo/pull/55",
+        "reviews": [],
+    }
+
+    def fake_fetch_comments(pr_number):
+        return [{"body": "[REVIEW:aiden] APPROVE — looks good"}]
+
+    monkeypatch.setattr(fs, "fetch_pr_comments", fake_fetch_comments)
+
+    result = fs.find_pr_for_review([pr], "aiden")
+
+    # aiden has reviewed this PR via comment — must NOT be selected
+    assert result is None
+
+
+def test_find_pr_for_review_picks_unreviewed_pr(monkeypatch):
+    """When one PR has an aiden review comment and another doesn't, pick the unreviewed one."""
+    pr_reviewed = {
+        "number": 10,
+        "title": "[ELLIOT] feat: reviewed thing",
+        "url": "https://github.com/org/repo/pull/10",
+        "reviews": [],
+    }
+    pr_fresh = {
+        "number": 20,
+        "title": "[ELLIOT] feat: fresh thing",
+        "url": "https://github.com/org/repo/pull/20",
+        "reviews": [],
+    }
+
+    def fake_fetch_comments(pr_number):
+        if pr_number == 10:
+            return [{"body": "[REVIEW:aiden] HOLD — needs changes"}]
+        return []
+
+    monkeypatch.setattr(fs, "fetch_pr_comments", fake_fetch_comments)
+
+    result = fs.find_pr_for_review([pr_reviewed, pr_fresh], "aiden")
+
+    assert result is not None
+    assert result["number"] == 20
+
+
+def test_find_pr_for_review_callsign_case_insensitive(monkeypatch):
+    """[REVIEW:AIDEN] (uppercase) is recognized as aiden already reviewed."""
+    pr = {
+        "number": 77,
+        "title": "[ELLIOT] feat: caps test",
+        "url": "https://github.com/org/repo/pull/77",
+        "reviews": [],
+    }
+
+    def fake_fetch_comments(pr_number):
+        return [{"body": "[REVIEW:AIDEN] APPROVE"}]
+
+    monkeypatch.setattr(fs, "fetch_pr_comments", fake_fetch_comments)
+
+    result = fs.find_pr_for_review([pr], "aiden")
+
+    # Despite uppercase AIDEN, the match should fire and the PR should be skipped
+    assert result is None

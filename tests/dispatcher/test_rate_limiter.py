@@ -22,17 +22,23 @@ from src.dispatcher.rate_limiter import (
 )
 
 
-def _client_with_counter(initial: int = 0) -> AsyncMock:
-    """Build a fake Redis async client whose INCR returns a monotonic
-    counter starting just above ``initial``. Tracks calls for assertions."""
+def _fake_incr_factory(initial: int = 0):
+    """Build a sync side_effect that returns a monotonic counter starting
+    just above ``initial`` — used by _client_with_counter for INCR."""
     state = {"n": initial}
 
-    async def fake_incr(key: str) -> int:
+    def fake_incr(_key: str) -> int:
         state["n"] += 1
         return state["n"]
 
+    return fake_incr
+
+
+def _client_with_counter(initial: int = 0) -> AsyncMock:
+    """Build a fake Redis async client whose INCR returns a monotonic
+    counter starting just above ``initial``. Tracks calls for assertions."""
     mock = AsyncMock()
-    mock.incr = AsyncMock(side_effect=fake_incr)
+    mock.incr = AsyncMock(side_effect=_fake_incr_factory(initial))
     mock.expire = AsyncMock(return_value=True)
     mock.aclose = AsyncMock()
     return mock
@@ -42,11 +48,7 @@ def _client_with_counter(initial: int = 0) -> AsyncMock:
 def fake_client(monkeypatch):
     """Stub get_valkey_client with a per-test counter mock."""
     client = _client_with_counter()
-
-    async def fake_get_client():
-        return client
-
-    monkeypatch.setattr(rate_limiter, "get_valkey_client", fake_get_client)
+    monkeypatch.setattr(rate_limiter, "get_valkey_client", lambda: client)
     return client
 
 
@@ -108,7 +110,7 @@ async def test_check_and_increment_uses_different_key_per_tenant(monkeypatch):
     cross-tenant counter sharing."""
     keys_incremented: list[str] = []
 
-    async def fake_incr(key):
+    def fake_incr(key):
         keys_incremented.append(key)
         return 1
 
@@ -117,10 +119,7 @@ async def test_check_and_increment_uses_different_key_per_tenant(monkeypatch):
     client.expire = AsyncMock()
     client.aclose = AsyncMock()
 
-    async def fake_get_client():
-        return client
-
-    monkeypatch.setattr(rate_limiter, "get_valkey_client", fake_get_client)
+    monkeypatch.setattr(rate_limiter, "get_valkey_client", lambda: client)
     await check_and_increment(tenant_id="alpha", limit=10, window_size_s=60, now_unix=1715904000)
     await check_and_increment(tenant_id="beta", limit=10, window_size_s=60, now_unix=1715904000)
     assert keys_incremented == ["rl:alpha:1715904000", "rl:beta:1715904000"]
@@ -136,10 +135,7 @@ async def test_check_and_increment_uses_different_key_per_window(monkeypatch):
     client.expire = AsyncMock()
     client.aclose = AsyncMock()
 
-    async def fake_get_client():
-        return client
-
-    monkeypatch.setattr(rate_limiter, "get_valkey_client", fake_get_client)
+    monkeypatch.setattr(rate_limiter, "get_valkey_client", lambda: client)
     await check_and_increment(tenant_id="t", limit=10, window_size_s=60, now_unix=1715904030)
     # 61 seconds later → next window
     await check_and_increment(tenant_id="t", limit=10, window_size_s=60, now_unix=1715904091)
@@ -173,10 +169,7 @@ async def test_check_and_increment_closes_client_on_failure(monkeypatch):
     client.expire = AsyncMock()
     client.aclose = AsyncMock()
 
-    async def fake_get_client():
-        return client
-
-    monkeypatch.setattr(rate_limiter, "get_valkey_client", fake_get_client)
+    monkeypatch.setattr(rate_limiter, "get_valkey_client", lambda: client)
     with pytest.raises(ConnectionError):
         await check_and_increment(tenant_id="t", limit=10, window_size_s=60, now_unix=1715904000)
     client.aclose.assert_awaited_once()

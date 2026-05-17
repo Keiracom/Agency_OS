@@ -115,7 +115,7 @@ async def check_and_increment(
     key = tenant_rl_key(tenant_id, window_start)
     ttl_s = window_size_s * _TTL_MULTIPLIER
 
-    client = await get_valkey_client()
+    client = get_valkey_client()
     try:
         # INCR returns the post-increment value. EXPIRE is idempotent —
         # safe to call every request even though we only need it on the

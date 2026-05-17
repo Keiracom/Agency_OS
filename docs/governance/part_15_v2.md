@@ -36,7 +36,7 @@ Bypass of pre-spawn CONCUR for "simple" tasks requires **all six** of the follow
 
 **SPOF list (editable in this doc):** `relay_watcher.sh`, `slack_relay.py`, `tg` shim, Valkey coordination bus, Dispatcher, `central_listener`, inbox-watcher systemd services.
 
-**Anchor:** PR #907 (relay watcher session resilience) — single-file, +57 LoC, no schema, no external contract, bypass-loggable. Under five conditions it qualifies for bypass. Without the SPOF clause, every callsign's inbox flows through that loop and the bypass *becomes* the path. Aiden caught this gap; adopted.
+**Anchor:** PR #907 (relay watcher session resilience) — single-file, +57 LoC, no schema, no external contract, bypass-loggable. Strictly the +57 LoC fails condition 2 (<50 LoC), so this exact PR wouldn't reach the bypass gate; but the SPOF concern still illustrates why a hypothetical 30-LoC fix to the same file must NOT qualify either — every callsign's inbox flows through that loop and without the SPOF clause the bypass *becomes* the path. Aiden caught the loose framing during PR #909 review; adopted.
 
 ### Refinement #2 — Enforcer regex deprecation uses fixture-replay, not free-running shadow
 

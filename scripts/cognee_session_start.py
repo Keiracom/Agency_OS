@@ -122,16 +122,42 @@ def _format_hits(hits: list, callsign: str, query: str, top_k: int) -> str:
 
 
 async def _search(query: str, org_id: str, app_id: str, agent_id: str) -> list:
-    """Call src.cognee.client.search. Any exception logs and returns []."""
+    """Query Cognee HTTP API. Bypasses SDK to avoid Ladybug DB lock conflict
+    with running cognee.service. Fail-open: any error → returns [].
+    """
+    import json
+    import urllib.error
+    import urllib.parse
+    import urllib.request
+
+    base = os.environ.get("COGNEE_BASE_URL", "http://localhost:8000")
+    user = os.environ.get("COGNEE_USER", "default_user@example.com")
+    pw = os.environ.get("COGNEE_PASSWORD", "default_password")
+
     try:
-        from src.cognee.client import search
-    except ImportError as exc:
-        logger.warning("src.cognee.client import failed — Cognee not installed? %s", exc)
-        return []
-    try:
-        return await search(query, org_id=org_id, app_id=app_id, agent_id=None) or []
-    except Exception as exc:  # noqa: BLE001 — fail-open
-        logger.warning("cognee.search raised: %s", exc)
+        login_body = urllib.parse.urlencode({"username": user, "password": pw}).encode()
+        req = urllib.request.Request(
+            f"{base}/api/v1/auth/login",
+            data=login_body,
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            token = json.loads(resp.read()).get("access_token")
+        if not token:
+            logger.warning("cognee: login returned no token")
+            return []
+        search_body = json.dumps({"search_type": "CHUNKS", "query": query, "top_k": 5}).encode()
+        req = urllib.request.Request(
+            f"{base}/api/v1/search",
+            data=search_body,
+            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            return json.loads(resp.read()) or []
+    except (urllib.error.URLError, json.JSONDecodeError, OSError) as exc:
+        logger.warning("cognee HTTP query failed: %s", exc)
         return []
 
 

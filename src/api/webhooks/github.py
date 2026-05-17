@@ -122,8 +122,13 @@ def _close_review_task(pr_number: int) -> None:
         logger.warning("github webhook tasks close failed for %s: %s", task_id, exc)
 
 
-@router.post("")
-@router.post("/")
+_RECEIVE_RESPONSES: dict[int | str, dict[str, Any]] = {
+    401: {"description": "HMAC signature verification failed."}
+}
+
+
+@router.post("", responses=_RECEIVE_RESPONSES)
+@router.post("/", responses=_RECEIVE_RESPONSES)
 async def receive_github_webhook(request: Request) -> dict[str, str]:
     """Receive a GitHub webhook event, verify HMAC, dispatch to public.tasks.
 

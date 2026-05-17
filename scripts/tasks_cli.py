@@ -249,6 +249,18 @@ def cmd_claim(args: argparse.Namespace) -> int:
         return 0
     cols = ["id", "title", "priority", "status", "claimed_by", "linear_url", "tags"]
     claimed = dict(zip(cols, row, strict=False))
+    # KEI-103 — fire retrieval on every successful claim so cognee_recall/Weaviate
+    # is actually exercised (the writers existed but no production caller did).
+    # Records a row in public.retrieval_events for audit + observability.
+    # Fail-open: agent_query.query() has its own try/except for Weaviate-down
+    # and DSN-missing; we re-catch ImportError + anything else so a broken
+    # retrieval layer never blocks a claim.
+    try:
+        from src.retrieval.agent_query import query as _retrieval_query
+
+        _retrieval_query(claimed["title"], agent=claimed["claimed_by"])
+    except Exception:
+        logger.debug("retrieval query for claim failed (non-fatal)", exc_info=True)
     if args.json:
         print(json.dumps(claimed, default=str))
     else:

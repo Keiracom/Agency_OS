@@ -30,13 +30,20 @@ import json
 import logging
 import os
 import subprocess
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 logger = logging.getLogger("indexing_queue_writer")
 
-VALID_SOURCES: frozenset[str] = frozenset({
-    "git", "slack", "linear", "ceo_memory", "tool_log",
-})
+VALID_SOURCES: frozenset[str] = frozenset(
+    {
+        "git",
+        "slack",
+        "linear",
+        "ceo_memory",
+        "tool_log",
+    }
+)
 
 DEFAULT_PROJECT_ID = os.environ.get("SUPABASE_PROJECT_ID", "jatzvazlbusedwsnqxzr")
 DEFAULT_MCP_BRIDGE = os.environ.get(
@@ -79,7 +86,7 @@ def _default_write_fn(source: str, payload: dict[str, Any]) -> str:
         f"VALUES ('{source}', '{payload_json}'::jsonb) RETURNING id"
     )
     mcp_args = {"project_id": DEFAULT_PROJECT_ID, "query": sql}
-    proc = subprocess.run(  # noqa: S603 — controlled args, no shell
+    proc = subprocess.run(  # noqa: S603
         [
             "node",
             os.path.join(DEFAULT_MCP_BRIDGE, "scripts", "mcp-bridge.js"),

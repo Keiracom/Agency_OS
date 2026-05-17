@@ -6,16 +6,16 @@ start, snapshotted by the PreCompact hook (scripts/pre_compact_alert.py).
 
 ## Active Task
 
-- Directive: <directive number or label>
-- Goal: <one-line>
-- Phase: <scope/decompose/execute/verify/report>
-- Files touched (current PR): infra/systemd/agents/linear-state-indexer.service, scripts/install_linear_state_indexer.sh, scripts/orchestrator/linear_state_indexer.py, tests/scripts/test_linear_state_indexer.py
+- Directive: KEI-90 (Gate 3 — peer-verify on deployment-class KEIs)
+- Goal: rebuild PR #928 on post-#925 main; ship Gate 3 with Dave-solo-ops 2-of-3 path
+- Phase: verify → report (tests 11/11, ruff clean, KEI-108 gate clean; commit + push pending)
+- Files touched (current PR): scripts/tasks_cli.py, supabase/migrations/20260517_kei90_gate3_deployment_peer_verify.sql, tests/scripts/test_tasks_cli_gate3.py
 
 ## Last Good Commit
 
-- SHA: e0cbce13
-- Branch: main
-- Subject: [ATLAS] feat(kei85): phase B — linear_state_indexer (Linear KEI state → Keis)
+- SHA: 66696057
+- Branch: origin/main
+- Subject: refactor(kei107): deduplicate mock helpers in test_cognee_session_start (#926)
 
 ## Model
 
@@ -28,7 +28,7 @@ start, snapshotted by the PreCompact hook (scripts/pre_compact_alert.py).
 
 ## Next Action
 
-- <single concrete next step the next session should execute>
+- Commit + push max/kei90-gate3-rebased; update PR #928 (or open replacement). After dual-concur, merge per Dave PR-duty directive.
 
 ## Heartbeat Cadence (CLAUDE.md context thresholds)
 

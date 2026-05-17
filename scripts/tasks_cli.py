@@ -262,6 +262,125 @@ def _print_ready_rows(rows: list[dict], agent: str) -> None:
     print(f"\n{len(rows)} available{suffix}")
 
 
+def _gate3_dave_solo_ops(
+    cur: Any,
+    verified_by: str,
+    secondary_verifier: str,
+    verifier_session: str,
+) -> tuple[str | None, str]:
+    """Dave-solo-ops 2-of-3 path (extracted; keeps cognitive complexity low).
+
+    Spec (3-way ratified KEI-128 ts ~1779010883, sharpened by Aiden's PR #928
+    review): when builder=='dave', require SIMULTANEOUS --verifier <a> +
+    --secondary-verifier <b> where a != b, neither is 'dave', and both have
+    distinct session_uuids (verifier_session != b's most-recent
+    tool_call_log session_uuid). Prevents single-agent fake-quorum via
+    session-renewal.
+    """
+    sb = (secondary_verifier or "").strip().lower()
+    if not sb:
+        return (
+            "ERROR: KEI-90 Gate 3 Dave-solo-ops — both --verifier and "
+            "--secondary-verifier <callsign> are required when builder=='dave'.",
+            verified_by,
+        )
+    if verified_by == sb:
+        return (
+            f"ERROR: KEI-90 Gate 3 Dave-solo-ops — --verifier ({verified_by!r}) "
+            f"and --secondary-verifier ({sb!r}) must be distinct callsigns.",
+            verified_by,
+        )
+    if verified_by == "dave" or sb == "dave":
+        return (
+            "ERROR: KEI-90 Gate 3 Dave-solo-ops — neither --verifier nor "
+            "--secondary-verifier may be 'dave' (builder is dave).",
+            verified_by,
+        )
+    cur.execute(
+        """
+        SELECT session_uuid FROM public.tool_call_log
+         WHERE callsign = %s ORDER BY created_at DESC LIMIT 1
+        """,
+        (sb,),
+    )
+    row = cur.fetchone()
+    sb_session = (row[0] if row and row[0] else "").strip()
+    if not sb_session:
+        return (
+            f"ERROR: KEI-90 Gate 3 Dave-solo-ops — secondary verifier ({sb!r}) "
+            "has no tool_call_log session_uuid on record (independence "
+            "cannot be proven).",
+            verified_by,
+        )
+    if sb_session == verifier_session:
+        return (
+            "ERROR: KEI-90 Gate 3 Dave-solo-ops — verifier_session_uuid and "
+            "secondary verifier's session_uuid must be distinct.",
+            verified_by,
+        )
+    return None, verified_by
+
+
+def _check_gate3_peer_verify(
+    cur: Any,
+    task_id: str,
+    callsign: str,
+    verifier_arg: str | None,
+    verifier_session: str,
+    secondary_verifier_arg: str | None = None,
+) -> tuple[str | None, str]:
+    """KEI-90 Gate 3: peer-verify on deployment-class tasks.
+
+    Returns (error_or_None, verified_by_callsign). When the task's
+    deployment=false the function is a no-op returning (None, callsign).
+    """
+    cur.execute(
+        "SELECT deployment, claimed_by FROM public.tasks WHERE id = %s",
+        (task_id,),
+    )
+    row = cur.fetchone()
+    deployment = bool(row[0]) if row and row[0] is not None else False
+    builder = (row[1] if row and row[1] else "").strip().lower()
+    if not deployment:
+        return None, callsign
+    if not verifier_arg:
+        return (
+            f"ERROR: KEI-90 Gate 3 — task is deployment=true; --verifier "
+            f"<callsign> is required (must differ from builder={builder!r}).",
+            callsign,
+        )
+    verified_by = (verifier_arg or "").strip().lower() or callsign
+    if not verifier_session:
+        return (
+            "ERROR: KEI-90 Gate 3 — evidence.verifier_session_uuid is "
+            "required for deployment=true tasks (session-independence).",
+            verified_by,
+        )
+    if builder == "dave":
+        err, verified_by = _gate3_dave_solo_ops(
+            cur, verified_by, secondary_verifier_arg or "", verifier_session
+        )
+        if err:
+            return err, verified_by
+    elif verified_by == builder:
+        return (
+            f"ERROR: KEI-90 Gate 3 — verifier ({verified_by!r}) must differ "
+            f"from builder ({builder!r}).",
+            verified_by,
+        )
+    cur.execute(
+        "SELECT 1 FROM public.tool_call_log WHERE callsign = %s AND session_uuid = %s LIMIT 1",
+        (builder, verifier_session),
+    )
+    if cur.fetchone() is not None:
+        return (
+            f"ERROR: KEI-90 Gate 3 — verifier_session_uuid matches a prior "
+            f"session of builder ({builder!r}); session-independence required.",
+            verified_by,
+        )
+    return None, verified_by
+
+
 def cmd_ready(args: argparse.Namespace) -> int:
     """List available tasks ordered by priority ASC then created_at ASC.
 
@@ -524,6 +643,9 @@ def cmd_complete(args: argparse.Namespace) -> int:
     canonical_str = json.dumps(evidence_payload, sort_keys=True, ensure_ascii=False)
     evidence_hash = _canonical_hash(evidence_payload)
     cs = _callsign(args.callsign)
+    verifier_arg = getattr(args, "verifier", None)
+    secondary_arg = getattr(args, "secondary_verifier", None)
+    verifier_session = str(evidence_payload.get("verifier_session_uuid", "")).strip()
     behavioral_test = (
         evidence_payload["acceptance_items"][0]
         if evidence_payload["acceptance_items"]
@@ -532,6 +654,13 @@ def cmd_complete(args: argparse.Namespace) -> int:
 
     try:
         with psycopg.connect(_dsn()) as conn, conn.cursor() as cur:
+            # KEI-90 Gate 3: deployment peer-verify (extracted helper).
+            gate3_err, verified_by = _check_gate3_peer_verify(
+                cur, args.id, cs, verifier_arg, verifier_session, secondary_arg
+            )
+            if gate3_err:
+                print(gate3_err, file=sys.stderr)
+                return 1
             prior_id, prior_ts = _check_hash_uniqueness(cur, args.id, evidence_hash)
             if prior_id is not None:
                 print(
@@ -541,7 +670,7 @@ def cmd_complete(args: argparse.Namespace) -> int:
                 )
                 return 1
             row = _execute_atomic_complete(
-                cur, args.id, cs, behavioral_test, canonical_str, args.force_mode
+                cur, args.id, verified_by, behavioral_test, canonical_str, args.force_mode
             )
             if row is None:
                 conn.rollback()
@@ -669,6 +798,17 @@ def main(argv: list[str] | None = None) -> int:
         default="strict",
         choices=["strict", "force"],
         help="force=allow completion regardless of claimed_by (admin)",
+    )
+    p_complete.add_argument(
+        "--verifier",
+        metavar="CALLSIGN",
+        help="KEI-90 Gate 3: verifier callsign for deployment=true tasks. Must differ from builder; verifier_session_uuid in evidence must differ from any builder tool_call_log session_uuid.",
+    )
+    p_complete.add_argument(
+        "--secondary-verifier",
+        dest="secondary_verifier",
+        metavar="CALLSIGN",
+        help="KEI-90 Gate 3 Dave-solo-ops: second verifier callsign when builder=='dave'. Must differ from --verifier; neither may be 'dave'; secondary's most-recent tool_call_log session_uuid must differ from verifier_session_uuid.",
     )
     p_complete.add_argument(
         "--evidence",

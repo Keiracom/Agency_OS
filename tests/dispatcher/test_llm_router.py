@@ -199,7 +199,7 @@ def test_forward_handles_missing_usage_block(monkeypatch):
     forward(body={}, customer_id="c", task_id="t", cost_sink=events.append)
     assert events[0].input_tokens == 0
     assert events[0].output_tokens == 0
-    assert events[0].cost_aud == 0.0
+    assert events[0].cost_aud == pytest.approx(0.0)
     assert events[0].model == "x"
 
 

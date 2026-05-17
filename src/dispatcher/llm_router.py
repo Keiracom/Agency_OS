@@ -102,7 +102,8 @@ def _post_json(url: str, body: dict[str, Any], timeout_s: float) -> tuple[int, d
         except (json.JSONDecodeError, OSError):
             payload = {"error": str(exc)}
         return int(exc.code), payload
-    except (urlerror.URLError, TimeoutError, OSError) as exc:
+    except (urlerror.URLError, OSError) as exc:
+        # TimeoutError is a subclass of OSError in Python 3.10+, covered already
         raise LiteLLMRouterError(f"litellm transport error: {exc}") from exc
 
 

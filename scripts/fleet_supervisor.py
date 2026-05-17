@@ -570,6 +570,34 @@ def list_open_prs() -> list[dict[str, Any]]:
         return []
 
 
+def fetch_pr_comments(pr_number: int) -> list[dict]:
+    """Fetch PR comments via gh pr view --json comments. Returns list of comment dicts."""
+    result = subprocess.run(
+        ["gh", "pr", "view", str(pr_number), "--json", "comments"],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        log.warning("gh pr view %d comments failed: %s", pr_number, result.stderr)
+        return []
+    try:
+        data = json.loads(result.stdout) or {}
+        return data.get("comments") or []
+    except json.JSONDecodeError:
+        return []
+
+
+_REVIEW_COMMENT_PATTERN_TMPL = r"\[REVIEW(?::(?:approve|hold(?:-final)?))?:{callsign}\]"
+
+
+def comment_has_review_marker(body: str, callsign: str) -> bool:
+    """Return True if body contains any [REVIEW:...:<callsign>] variant (case-insensitive)."""
+    import re
+
+    pattern = _REVIEW_COMMENT_PATTERN_TMPL.format(callsign=re.escape(callsign))
+    return bool(re.search(pattern, body, re.IGNORECASE))
+
+
 def agent_has_reviewed(pr: dict, callsign: str) -> bool:
     """Check if callsign already posted a [REVIEW:callsign] comment on this PR."""
     reviews = pr.get("reviews") or []

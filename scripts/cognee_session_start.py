@@ -30,18 +30,19 @@ Exit codes:
 from __future__ import annotations
 
 import argparse
-import asyncio
 import logging
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 # Make repo root importable when called from any cwd.
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
-logging.basicConfig(level=logging.WARNING, format="%(levelname)s [cognee_session_start]: %(message)s")
+logging.basicConfig(
+    level=logging.WARNING, format="%(levelname)s [cognee_session_start]: %(message)s"
+)
 logger = logging.getLogger("cognee_session_start")
 
 DEFAULT_ORG = "keiracom_platform"
@@ -90,14 +91,14 @@ def _load_env() -> None:
 
 def _format_hits(hits: list, callsign: str, query: str, top_k: int) -> str:
     """Render hits as a markdown file for agent consumption."""
-    ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    ts = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     lines = [
         f"# Cognee Session Context — {callsign}",
-        f"",
+        "",
         f"Generated: {ts}  ",
         f"Query: `{query}`  ",
         f"Hits: {min(len(hits), top_k)} / {top_k} requested",
-        f"",
+        "",
     ]
     if not hits:
         lines += ["_No Cognee results for this callsign. Fresh session with no prior context._", ""]
@@ -110,7 +111,7 @@ def _format_hits(hits: list, callsign: str, query: str, top_k: int) -> str:
         preview = text[:MAX_HIT_CHARS]
         if len(text) > MAX_HIT_CHARS:
             preview += "…"
-        lines += [f"### {i}.", f"", preview, ""]
+        lines += [f"### {i}.", "", preview, ""]
 
     lines += [
         "---",
@@ -121,7 +122,7 @@ def _format_hits(hits: list, callsign: str, query: str, top_k: int) -> str:
     return "\n".join(lines)
 
 
-async def _search(query: str, org_id: str, app_id: str, agent_id: str) -> list:
+def _search(query: str) -> list:
     """Query Cognee HTTP API. Bypasses SDK to avoid Ladybug DB lock conflict
     with running cognee.service. Fail-open: any error → returns [].
     """
@@ -156,18 +157,22 @@ async def _search(query: str, org_id: str, app_id: str, agent_id: str) -> list:
         )
         with urllib.request.urlopen(req, timeout=10) as resp:
             return json.loads(resp.read()) or []
-    except (urllib.error.URLError, json.JSONDecodeError, OSError) as exc:
+    except (urllib.error.URLError, json.JSONDecodeError) as exc:
         logger.warning("cognee HTTP query failed: %s", exc)
         return []
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("--callsign", required=True, help="Agent callsign (e.g. elliot, aiden)")
     parser.add_argument("--org-id", default=DEFAULT_ORG)
     parser.add_argument("--app-id", default=DEFAULT_APP)
     parser.add_argument("--top-k", type=int, default=DEFAULT_TOP_K)
-    parser.add_argument("--query", default=None, help="Override wake query (auto-generated if omitted)")
+    parser.add_argument(
+        "--query", default=None, help="Override wake query (auto-generated if omitted)"
+    )
     parser.add_argument("--output", default=None, help="Override output path")
     args = parser.parse_args(argv)
 
@@ -192,13 +197,16 @@ def main(argv: list[str] | None = None) -> int:
             logger.warning("could not write stub: %s", exc)
         return 0
 
-    print(f"[cognee_session_start] callsign={callsign} org={args.org_id} app={args.app_id} top_k={args.top_k}", flush=True)
+    print(
+        f"[cognee_session_start] callsign={callsign} org={args.org_id} app={args.app_id} top_k={args.top_k}",
+        flush=True,
+    )
     print(f"[cognee_session_start] query: {query}", flush=True)
 
     try:
-        hits = asyncio.run(_search(query, args.org_id, args.app_id, callsign))
+        hits = _search(query)
     except Exception as exc:  # noqa: BLE001 — fail-open
-        logger.warning("asyncio.run raised: %s", exc)
+        logger.warning("_search raised: %s", exc)
         hits = []
 
     print(f"[cognee_session_start] got {len(hits)} hit(s)", flush=True)

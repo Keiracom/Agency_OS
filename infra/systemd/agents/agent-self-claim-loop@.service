@@ -1,0 +1,21 @@
+[Unit]
+Description=Keiracom agent self-claim loop (%i) — KEI-92 / Linear KEI-130
+Documentation=https://linear.app/keiracom/issue/KEI-92
+After=network-online.target
+Wants=network-online.target
+StartLimitBurst=5
+StartLimitIntervalSec=300
+
+[Service]
+Type=simple
+Environment="CALLSIGN=%i"
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+ExecStart=/home/elliotbot/clawd/Agency_OS/scripts/orchestrator/agent_self_claim_loop.sh --callsign %i
+Restart=always
+RestartSec=10
+StandardOutput=append:/home/elliotbot/clawd/logs/agent-self-claim-loop-%i.log
+StandardError=append:/home/elliotbot/clawd/logs/agent-self-claim-loop-%i.log
+
+[Install]
+WantedBy=default.target

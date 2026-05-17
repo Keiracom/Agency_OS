@@ -1,0 +1,22 @@
+[Unit]
+Description=Agency OS — Linear KEI state → Weaviate Keis indexer (KEI-85 phase B)
+Documentation=https://linear.app/keiracom/issue/KEI-85
+After=network-online.target weaviate.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+EnvironmentFile=-/home/elliotbot/.config/agency-os/.env
+Environment=PYTHONPATH=/home/elliotbot/clawd/Agency_OS/scripts/orchestrator
+ExecStart=/home/elliotbot/clawd/Agency_OS/.venv/bin/python3 /home/elliotbot/clawd/Agency_OS/scripts/orchestrator/linear_state_indexer.py
+Restart=on-failure
+RestartSec=15
+StandardOutput=append:/home/elliotbot/clawd/logs/linear-state-indexer.log
+StandardError=append:/home/elliotbot/clawd/logs/linear-state-indexer.log
+# KEI-44 cgroup pattern — small worker footprint (Linear API + JSON only).
+MemoryMax=256M
+MemoryHigh=200M
+
+[Install]
+WantedBy=default.target

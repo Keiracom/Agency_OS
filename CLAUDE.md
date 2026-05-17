@@ -8,6 +8,8 @@
 
 @.claude/modules/_session_start.md
 
+@.claude/modules/_autonomous_worker.md
+
 @.claude/modules/_orchestrator.md
 
 @.claude/modules/_law_clean_tree.md

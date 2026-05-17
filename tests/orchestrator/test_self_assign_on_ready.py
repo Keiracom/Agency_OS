@@ -6,8 +6,8 @@ Covers:
   - claim race lost on first → retry next, eventually succeed
   - claim race lost on all attempts → graceful no-op
   - no eligible work (empty bd ready)
-  - eligibility filter: KEI-150 — any agent can claim any item (assignee
-    filtering removed; phase-lock + SKIP LOCKED gate mechanically)
+  - equal-worker model: any agent may claim any KEI (assignee filter removed
+    per Dave 2026-05-17 standing order — phase-lock + SKIP LOCKED governs)
   - priority ordering: P0 beats P1, P1 beats P2
   - dry-run prints the target without calling claim_fn
   - invalid callsign rejected
@@ -119,15 +119,13 @@ def test_no_eligible_work_when_bd_ready_empty():
     assert result["reason"] == "no_eligible_work"
 
 
-# ─── 5. KEI-150 — assignee filtering removed; any agent can claim any item ───
+# ─── 5. Equal-worker model: any agent claims any eligible KEI ────────────
 
 
-def test_claims_peer_assigned_work_kei150():
-    """KEI-150 (Dave 2026-05-17) — assignee filtering removed. Phase-lock
-    + SKIP LOCKED handle eligibility mechanically; an item assigned to
-    atlas in Linear is still claimable by orion via the auto-claim loop.
-    The prior 'never poach' rule blocked agents from picking up stale
-    pre-assignments and was the #1 source of READY-loop idle time."""
+def test_any_agent_can_claim_peer_assigned_work():
+    """Equal-worker model (Dave 2026-05-17): assignee filter is gone.
+    Any agent in bd ready output is claimable by any callsign.
+    Phase-lock + SKIP LOCKED in bd governs collision, not the filter."""
     items = [
         _item("Agency_OS-peer", priority="P0", assignee="atlas"),
     ]
@@ -141,9 +139,6 @@ def test_claims_peer_assigned_work_kei150():
     assert result["claimed"] is True
     assert result["issue_id"] == "Agency_OS-peer"
     assert claimed == ["Agency_OS-peer"]
-
-
-# ─── 6. Eligibility filter: own-callsign assignee passes ────────────────
 
 
 def test_claims_own_pre_assigned_work():

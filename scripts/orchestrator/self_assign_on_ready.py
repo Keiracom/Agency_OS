@@ -42,9 +42,9 @@ Exit codes:
 
 Selection policy:
   - 'bd ready --json' filters to unblocked + open issues.
-  - We filter further to:
-        unassigned  OR  assignee == callsign
-    so the hook never poaches another agent's work.
+  - Equal-worker model (Dave 2026-05-17): no assignee filter — any agent
+    may claim any eligible KEI. Phase-lock + SKIP LOCKED in bd prevents
+    collision.
   - We sort by priority (P0 first → P4 last), then by created date asc.
   - We attempt 'bd update <id> --claim' on the first match; on failure
     (e.g. another agent grabbed it microseconds before), try the next.
@@ -109,20 +109,6 @@ def _bd_claim(bd_bin: str, issue_id: str) -> bool:
     return result.returncode == 0
 
 
-def _eligible(item: dict, callsign: str) -> bool:
-    """KEI-150 — assignee filtering removed (Dave 2026-05-17).
-
-    Phase-lock (KEI-86) + SELECT FOR UPDATE SKIP LOCKED already gate
-    eligibility mechanically; the prior owner/assignee-match heuristic
-    blocked agents from picking up work that no peer was actively
-    building. Returning True universally lets any agent claim any
-    visible KEI from the phase-gated queue. The `item` and `callsign`
-    arguments are retained for backwards-compatible test fixtures and
-    a possible future per-row policy hook.
-    """
-    del item, callsign  # intentionally unused — see docstring
-    return True
-
 
 def _result(
     *,
@@ -167,7 +153,8 @@ def run(
             return _result(claimed=False, callsign=callsign, reason="bd_unavailable")
         return _result(claimed=False, callsign=callsign, reason="no_eligible_work")
 
-    eligible = [i for i in items if _eligible(i, callsign)]
+    # Equal-worker model (Dave 2026-05-17): no assignee filter; any callsign claims any eligible KEI.
+    eligible = [i for i in items if True]
     if not eligible:
         return _result(claimed=False, callsign=callsign, reason="no_eligible_work")
 

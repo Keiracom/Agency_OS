@@ -129,7 +129,7 @@ async def _search(query: str, org_id: str, app_id: str, agent_id: str) -> list:
         logger.warning("src.cognee.client import failed — Cognee not installed? %s", exc)
         return []
     try:
-        return await search(query, org_id=org_id, app_id=app_id, agent_id=agent_id) or []
+        return await search(query, org_id=org_id, app_id=app_id, agent_id=None) or []
     except Exception as exc:  # noqa: BLE001 — fail-open
         logger.warning("cognee.search raised: %s", exc)
         return []

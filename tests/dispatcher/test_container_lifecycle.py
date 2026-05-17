@@ -195,8 +195,8 @@ def test_wait_healthy_respects_custom_host(monkeypatch):
         return True
 
     monkeypatch.setattr("src.dispatcher.container_lifecycle._probe_health", probe)
-    assert wait_healthy(_handle(port=9000), timeout_s=1.0, interval_s=0.01, host="10.0.0.5")
-    assert captured == {"host": "10.0.0.5", "port": 9000, "path": "/healthz"}
+    assert wait_healthy(_handle(port=9000), timeout_s=1.0, interval_s=0.01, host="container-host")
+    assert captured == {"host": "container-host", "port": 9000, "path": "/healthz"}
 
 
 def test_wait_healthy_uses_handle_health_path(monkeypatch):

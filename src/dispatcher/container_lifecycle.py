@@ -61,8 +61,9 @@ class ContainerHandle:
 def _run_docker(
     args: list[str], timeout_s: float = DEFAULT_DOCKER_CMD_TIMEOUT_S
 ) -> subprocess.CompletedProcess:
+    # controlled args, no shell — S603 suppressed
     try:
-        return subprocess.run(  # noqa: S603 — controlled args, no shell
+        return subprocess.run(  # noqa: S603
             [DOCKER_CLI, *args],
             capture_output=True,
             text=True,

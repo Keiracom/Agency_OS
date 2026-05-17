@@ -173,7 +173,8 @@ def mode_post() -> int:
             body = resp.read().decode("utf-8", errors="replace")
             log("INFO", f"liveliness ok ({resp.status}): {body[:200]}")
             return 0
-    except (urllib.error.URLError, TimeoutError, OSError) as e:
+    except OSError as e:
+        # OSError covers URLError + TimeoutError per PEP 3151 (Sonar S5713 — drop redundant subclasses).
         log("FATAL", f"liveliness probe failed: {e}")
         return 1
 

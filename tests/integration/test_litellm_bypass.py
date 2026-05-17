@@ -41,7 +41,8 @@ def _proxy_reachable(
     try:
         with socket.create_connection((host, port), timeout=timeout):
             return True
-    except (TimeoutError, OSError):
+    except OSError:
+        # TimeoutError subclasses OSError per PEP 3151 (Sonar S5713).
         return False
 
 

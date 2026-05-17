@@ -170,17 +170,17 @@ class TestDbInsert:
         mock_connect, mock_cur = _capture_connect()
         self._run_main_with_mock_db(
             monkeypatch,
-            {"tool_name": "Read", "tool_input": {"file_path": "/tmp/x"}, "tool_response": "ok"},
+            {"tool_name": "Read", "tool_input": {"file_path": "/tmp/x"}, "tool_response": "ok"},  # noqa: S5443 — fixture payload, not FS path (KEI-88)
             mock_connect,
         )
-        sql, params = _last_execute(mock_cur)
+        sql, _ = _last_execute(mock_cur)
         assert "public.tool_call_log" in sql
 
     def test_insert_params_callsign(self, monkeypatch):
         mock_connect, mock_cur = _capture_connect()
         self._run_main_with_mock_db(
             monkeypatch,
-            {"tool_name": "Read", "tool_input": {"file_path": "/tmp/x"}, "tool_response": "ok"},
+            {"tool_name": "Read", "tool_input": {"file_path": "/tmp/x"}, "tool_response": "ok"},  # noqa: S5443
             mock_connect,
         )
         _, params = _last_execute(mock_cur)
@@ -200,7 +200,7 @@ class TestDbInsert:
         mock_connect, mock_cur = _capture_connect()
         self._run_main_with_mock_db(
             monkeypatch,
-            {"tool_name": "Read", "tool_input": {"file_path": "/tmp/x"}, "tool_response": "ok"},
+            {"tool_name": "Read", "tool_input": {"file_path": "/tmp/x"}, "tool_response": "ok"},  # noqa: S5443
             mock_connect,
         )
         _, params = _last_execute(mock_cur)
@@ -208,7 +208,7 @@ class TestDbInsert:
         tool_input_json = params[3]
         assert isinstance(tool_input_json, str)
         parsed = json.loads(tool_input_json)
-        assert parsed["file_path"] == "/tmp/x"
+        assert parsed["file_path"] == "/tmp/x"  # noqa: S5443 — fixture string, not FS path (KEI-88)
 
 
 # ---------------------------------------------------------------------------
@@ -218,7 +218,7 @@ class TestDbInsert:
 
 class TestToolInputCap:
     def test_small_payload_preserved(self):
-        small = {"file_path": "/tmp/test.py"}
+        small = {"file_path": "/tmp/test.py"}  # noqa: S5443 — fixture payload string (KEI-88)
         result = _cap_tool_input(small)
         parsed = json.loads(result)
         assert parsed == small

@@ -40,6 +40,8 @@ WEAVIATE_BASE = f"http://{WEAVIATE_HOST}:{WEAVIATE_PORT}"  # NOSONAR python:S533
 STAGING_COLLECTION = "Staging_discoveries"
 PERMANENT_COLLECTION = "Discoveries"
 
+_ISO8601_Z = "%Y-%m-%dT%H:%M:%SZ"
+
 # Tier expiry windows.
 _TIER_EXPIRY: dict[int, timedelta] = {
     1: timedelta(hours=24),
@@ -142,14 +144,14 @@ def submit_discovery(
         "properties": {
             "raw_text": text,
             "environment_hash": environment_hash,
-            "created_at": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "created_at": now.strftime(_ISO8601_Z),
             "agent": agent,
             "kei": kei,
             "validation_tier": tier,
             "tier_classification_reason": reason,
             "state": "staging",
             "submitted_by": agent,
-            "expires_at": expires_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "expires_at": expires_at.strftime(_ISO8601_Z),
             "concur_callsign": "",
             "challenged_by": "",
             "counter_findings": "",
@@ -196,7 +198,7 @@ def submit_concur(discovery_id: str, peer_callsign: str) -> bool:
     patch = {
         "properties": {
             "concur_callsign": peer_callsign,
-            "concur_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "concur_at": datetime.now(UTC).strftime(_ISO8601_Z),
         }
     }
     _patch_object(discovery_id, patch)
@@ -269,7 +271,7 @@ def challenge(
         "properties": {
             "state": "challenged",
             "challenged_by": challenged_by_callsign,
-            "challenged_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "challenged_at": datetime.now(UTC).strftime(_ISO8601_Z),
             "counter_findings": appended,
         }
     }
@@ -362,8 +364,9 @@ def _patch_object(object_id: str, patch: dict) -> None:
     """PATCH partial update on a Weaviate Staging_discoveries object."""
     path = f"/v1/objects/{STAGING_COLLECTION}/{object_id}"
     try:
-        with _http_request("PATCH", path, patch):
-            pass
+        # Side-effect-only call: response body unused, only HTTP status matters.
+        with _http_request("PATCH", path, patch) as _resp:
+            _resp.read()
     except urlerror.HTTPError as exc:
         raise RuntimeError(f"_patch_object {object_id} failed: HTTP {exc.code}") from exc
 
@@ -392,8 +395,8 @@ def _query_staging_objects() -> list[dict[str, Any]]:
     try:
         with _http_request("POST", "/v1/graphql", query) as resp:
             data = _read_response(resp)
-    except OSError as exc:
-        logger.error("_query_staging_objects: Weaviate unreachable — %s", exc)
+    except OSError:
+        logger.exception("_query_staging_objects: Weaviate unreachable")
         return []
 
     items = (data.get("data", {}).get("Get", {}).get("Staging_discoveries", [])) or []
@@ -417,7 +420,8 @@ def _notify_dave(discovery_id: str, text: str) -> None:
         f"text (first 200 chars): {text[:200]}"
     )
     with contextlib.suppress(Exception):
-        subprocess.run(  # noqa: S603 — fixed argv, no shell
+        # Fixed argv, no shell — S603 suppressed; argv is a literal list.
+        subprocess.run(  # noqa: S603
             ["tg", "-c", "ceo", msg],
             timeout=10,
             check=False,

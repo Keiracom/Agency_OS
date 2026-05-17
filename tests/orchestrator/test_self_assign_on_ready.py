@@ -252,3 +252,81 @@ def test_cli_main_prints_json_and_exits_zero(capsys, monkeypatch):
     payload = _json.loads(out)
     assert payload["callsign"] == "orion"
     assert payload["claimed"] is False
+
+
+# ─── 12. Int priorities (post-KEI-86 bd ready) — regression for fleet-idle ──
+
+
+def test_priority_key_handles_int_priority_no_crash():
+    """KEI fleet-idle root cause: bd ready --json now returns priority as int,
+    not 'P<N>' string. _priority_key must NOT raise AttributeError on
+    int.upper() — the bug that crashed every self-claim loop fleet-wide."""
+    item = {"id": "X", "priority": 1, "created": "2026-05-17T00:00:00Z"}
+    # Must not raise.
+    key = mod._priority_key(item)
+    assert key[0] == 1
+
+
+def test_priority_key_int_sort_order_preserved():
+    """Int 0 sorts before int 1, before int 2 — same as the legacy 'P0'/'P1'/'P2' shape."""
+    p0 = mod._priority_key({"id": "a", "priority": 0, "created": "2026-05-17T00:00:00Z"})
+    p1 = mod._priority_key({"id": "b", "priority": 1, "created": "2026-05-17T00:00:00Z"})
+    p2 = mod._priority_key({"id": "c", "priority": 2, "created": "2026-05-17T00:00:00Z"})
+    assert p0 < p1 < p2
+
+
+def test_claim_picks_int_priority_zero_over_two(monkeypatch):
+    """Equal-worker run with int-priority bd ready output picks P0 first.
+
+    Reproducer for the fleet-idle bug: replace string priorities with ints
+    in the ready feed, confirm the sort still selects the lowest-number
+    priority instead of raising 'int has no attribute upper'.
+    """
+    items = [
+        {
+            "id": "Agency_OS-aaa",
+            "title": "t",
+            "priority": 2,
+            "assignee": "",
+            "owner": "",
+            "created": "2026-05-17T10:00:00Z",
+        },
+        {
+            "id": "Agency_OS-bbb",
+            "title": "urgent",
+            "priority": 0,
+            "assignee": "",
+            "owner": "",
+            "created": "2026-05-17T10:00:00Z",
+        },
+        {
+            "id": "Agency_OS-ccc",
+            "title": "t",
+            "priority": 1,
+            "assignee": "",
+            "owner": "",
+            "created": "2026-05-17T10:00:00Z",
+        },
+    ]
+    claimed: list[str] = []
+
+    def claim_fn(iid: str) -> bool:
+        claimed.append(iid)
+        return True
+
+    result = mod.run(callsign="scout", ready_fn=lambda: items, claim_fn=claim_fn)
+    assert result["claimed"] is True
+    assert result["issue_id"] == "Agency_OS-bbb"
+    assert claimed == ["Agency_OS-bbb"]
+
+
+def test_priority_key_handles_none_priority():
+    """None priority must default to 9 (lowest) — not raise."""
+    key = mod._priority_key({"id": "x", "priority": None, "created": ""})
+    assert key[0] == 9
+
+
+def test_priority_key_handles_unrecognised_string():
+    """Unrecognised string (e.g. 'HIGH') falls back to 9."""
+    key = mod._priority_key({"id": "x", "priority": "HIGH", "created": ""})
+    assert key[0] == 9

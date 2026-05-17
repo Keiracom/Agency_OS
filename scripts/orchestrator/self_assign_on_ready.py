@@ -65,10 +65,20 @@ _CALLSIGN_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_-]*$")
 
 
 def _priority_key(item: dict) -> tuple:
-    """Sort key: lower-number priority first; fall back to created_at asc."""
-    pri_raw = (item.get("priority") or "").upper()
-    m = re.match(r"P(\d+)", pri_raw)
-    pri_n = int(m.group(1)) if m else 9
+    """Sort key: lower-number priority first; fall back to created_at asc.
+
+    Tolerates both int (`bd ready --json` post-KEI-86) and 'P<N>' string
+    (legacy) priorities. AttributeError on int.upper() was crashing every
+    self-claim loop and stranding the entire fleet on otherwise-eligible
+    queues — diagnosed by Elliot at the central #execution dispatch.
+    """
+    pri = item.get("priority")
+    if isinstance(pri, int):
+        pri_n = pri
+    else:
+        pri_raw = str(pri or "").upper()
+        m = re.match(r"P(\d+)", pri_raw)
+        pri_n = int(m.group(1)) if m else 9
     return (pri_n, item.get("created", "") or item.get("created_at", ""))
 
 

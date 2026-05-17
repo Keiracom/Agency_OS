@@ -120,8 +120,11 @@ def test_dispatch_happy_path(client):
 def test_dispatch_returns_429_when_tenant_rate_limited(client):
     """RateLimitExceededError from enforce_for_tenant → 429 with Retry-After."""
 
-    async def fake_enforce(*, tenant_id, now_unix=None):
-        raise RateLimitExceededError(tenant_id=tenant_id, limit=60, window_size_s=60, current=61)
+    fake_enforce = AsyncMock(
+        side_effect=RateLimitExceededError(
+            tenant_id="cust-1", limit=60, window_size_s=60, current=61
+        )
+    )
 
     with patch.object(dispatcher_app, "enforce_for_tenant", fake_enforce):
         resp = client.post(
@@ -136,8 +139,11 @@ def test_dispatch_returns_429_when_tenant_rate_limited(client):
 def test_dispatch_does_not_call_llm_when_rate_limited(client):
     """If rate-limit refuses, the LLM forward MUST NOT run (would cost $)."""
 
-    async def fake_enforce(*, tenant_id, now_unix=None):
-        raise RateLimitExceededError(tenant_id=tenant_id, limit=60, window_size_s=60, current=61)
+    fake_enforce = AsyncMock(
+        side_effect=RateLimitExceededError(
+            tenant_id="cust-1", limit=60, window_size_s=60, current=61
+        )
+    )
 
     called = {"forward": False}
 

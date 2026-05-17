@@ -149,10 +149,9 @@ def persist_exit_code(exit_code: int, outcome: str, task_id: str | None = None) 
         state = load_state() or {}
         state["last_exit_code"] = int(exit_code)
         state["last_outcome"] = str(outcome)
+        # controlled args, no shell — S603 suppressed
         state["last_exit_recorded_at"] = (
-            subprocess.check_output(  # noqa: S603 — controlled args, no shell
-                ["date", "-Iseconds"]
-            )
+            subprocess.check_output(["date", "-Iseconds"])  # noqa: S603
             .decode()
             .strip()
         )

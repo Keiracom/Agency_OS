@@ -1,14 +1,22 @@
 [Unit]
-Description=Keiracom orion agent session
-After=network.target
+Description=Keiracom orion agent session (KEI-94 keep-alive)
+Documentation=https://linear.app/keiracom/issue/KEI-94
+After=network-online.target
+Wants=network-online.target
+StartLimitBurst=5
+StartLimitIntervalSec=300
 
 [Service]
-Type=oneshot
-RemainAfterExit=yes
+Type=simple
 Environment="CALLSIGN=orion"
 EnvironmentFile=/home/elliotbot/.config/agency-os/.env
-ExecStart=/bin/bash -c 'tmux has-session -t orion 2>/dev/null || tmux new-session -d -s orion "claude"'
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS-orion
+ExecStart=/home/elliotbot/clawd/Agency_OS/scripts/agent_keepalive.sh orion orion /home/elliotbot/clawd/Agency_OS-orion
 ExecStartPost=/home/elliotbot/clawd/Agency_OS/scripts/agent_online_notify.sh ORION 15 C0B3QB0K1GQ
+Restart=always
+RestartSec=10
+StandardOutput=append:/home/elliotbot/clawd/logs/orion-agent.log
+StandardError=append:/home/elliotbot/clawd/logs/orion-agent.log
 
 [Install]
 WantedBy=default.target

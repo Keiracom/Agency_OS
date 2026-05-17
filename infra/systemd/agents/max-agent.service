@@ -1,14 +1,22 @@
 [Unit]
-Description=Keiracom max agent session
-After=network.target
+Description=Keiracom max agent session (KEI-94 keep-alive)
+Documentation=https://linear.app/keiracom/issue/KEI-94
+After=network-online.target
+Wants=network-online.target
+StartLimitBurst=5
+StartLimitIntervalSec=300
 
 [Service]
-Type=oneshot
-RemainAfterExit=yes
+Type=simple
 Environment="CALLSIGN=max"
 EnvironmentFile=/home/elliotbot/.config/agency-os/.env
-ExecStart=/bin/bash -c 'tmux has-session -t maxbot 2>/dev/null || tmux new-session -d -s maxbot "claude"'
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS-max
+ExecStart=/home/elliotbot/clawd/Agency_OS/scripts/agent_keepalive.sh maxbot max /home/elliotbot/clawd/Agency_OS-max
 ExecStartPost=/home/elliotbot/clawd/Agency_OS/scripts/agent_online_notify.sh MAX 15 C0B3QB0K1GQ
+Restart=always
+RestartSec=10
+StandardOutput=append:/home/elliotbot/clawd/logs/max-agent.log
+StandardError=append:/home/elliotbot/clawd/logs/max-agent.log
 
 [Install]
 WantedBy=default.target

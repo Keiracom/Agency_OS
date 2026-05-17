@@ -1,14 +1,22 @@
 [Unit]
-Description=Keiracom elliot agent session
-After=network.target
+Description=Keiracom elliot agent session (KEI-94 keep-alive)
+Documentation=https://linear.app/keiracom/issue/KEI-94
+After=network-online.target
+Wants=network-online.target
+StartLimitBurst=5
+StartLimitIntervalSec=300
 
 [Service]
-Type=oneshot
-RemainAfterExit=yes
+Type=simple
 Environment="CALLSIGN=elliot"
 EnvironmentFile=/home/elliotbot/.config/agency-os/.env
-ExecStart=/bin/bash -c 'tmux has-session -t elliottbot 2>/dev/null || tmux new-session -d -s elliottbot "claude"'
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+ExecStart=/home/elliotbot/clawd/Agency_OS/scripts/agent_keepalive.sh elliottbot elliot /home/elliotbot/clawd/Agency_OS
 ExecStartPost=/home/elliotbot/clawd/Agency_OS/scripts/elliot_fleet_notify.sh 20
+Restart=always
+RestartSec=10
+StandardOutput=append:/home/elliotbot/clawd/logs/elliot-agent.log
+StandardError=append:/home/elliotbot/clawd/logs/elliot-agent.log
 
 [Install]
 WantedBy=default.target

@@ -99,6 +99,12 @@ case "$subcmd" in
         # Writes ceo_decisions row + flips task to status=escalated + posts to #ceo.
         exec env PYTHONPATH="$AGENCY_OS_REPO${PYTHONPATH:+:$PYTHONPATH}" python3 "$AGENCY_OS_REPO/scripts/bd_escalate.py" "$@"
         ;;
+    fleet-check)
+        # KEI-94 + KEI-97 — `bd fleet-check [--no-post] [--channel ceo|execution]`
+        # Captures last 10 lines from each agent tmux pane and posts a bullet
+        # report to #ceo. Bypasses the Supabase task-state abstraction.
+        exec python3 "$AGENCY_OS_REPO/scripts/bd_fleet_check.py" "$@"
+        ;;
     ceo-queue)
         # KEI-79 — `bd ceo-queue` lists awaiting escalations. Orchestrator visibility.
         exec env PYTHONPATH="$AGENCY_OS_REPO${PYTHONPATH:+:$PYTHONPATH}" python3 -c "

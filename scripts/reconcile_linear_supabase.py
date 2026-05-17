@@ -36,8 +36,14 @@ from typing import Any
 logger = logging.getLogger("reconcile_linear_supabase")
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
+# KEI-100 review note 3: import the canonical team-ID constant from the
+# webhook module rather than duplicating the literal here. Repo-root must
+# be on sys.path because reconcile_linear_supabase.py is invoked as a
+# standalone script (`python scripts/reconcile_linear_supabase.py`).
+sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parent.parent))
+from src.api.webhooks.linear import LINEAR_TEAM_ID_DEFAULT as _DEFAULT_TEAM_ID  # noqa: E402
+
 _LINEAR_GRAPHQL_URL = "https://api.linear.app/graphql"
-_DEFAULT_TEAM_ID = "4686528f-ce77-4c2f-968b-3dc76b34d6fe"  # Keiracom team
 
 # Mirror of LINEAR_STATE_TO_TASK_STATUS from src/api/webhooks/linear.py
 LINEAR_STATE_TO_TASK_STATUS: dict[str, str] = {
@@ -267,7 +273,11 @@ def main(apply: bool = False) -> None:
         logger.error("psycopg not installed; pip install psycopg")
         sys.exit(2)
 
-    with psycopg.connect(dsn, connect_timeout=15) as conn:
+    # KEI-100 review note 2: prepare_threshold=None per
+    # reference_psycopg_supabase_pgbouncer pin — Supabase pooler in txn-mode
+    # drops PREPARE, which psycopg3 emits when reuse threshold (default 5)
+    # is hit. Single-shot script, low impact, but the canonical guard.
+    with psycopg.connect(dsn, connect_timeout=15, prepare_threshold=None) as conn:
         supabase_tasks = _fetch_supabase_tasks(conn)
         logger.info("  → %d Supabase tasks rows fetched", len(supabase_tasks))
 

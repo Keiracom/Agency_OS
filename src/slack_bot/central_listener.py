@@ -462,7 +462,6 @@ def _extract_ceo_title(text: str) -> str | None:
 
 
 _LINEAR_GRAPHQL_URL = "https://api.linear.app/graphql"
-_LINEAR_TEAM_ID_DEFAULT = "4686528f-ce77-4c2f-968b-3dc76b34d6fe"  # Keiracom team
 
 
 def _create_kei_via_linear(title: str) -> str | None:
@@ -474,16 +473,27 @@ def _create_kei_via_linear(title: str) -> str | None:
           The Part-3 webhook title-guard expects plain titles (no KEI-prefix) on fresh creates,
           so we skip the prefix-update: the title stays unprefixed here.
 
+    Eventual-consistency note (Max review note 1): this function returns as soon
+    as Linear's issueCreate succeeds. The corresponding public.tasks row lands
+    asynchronously via the Linear webhook (~1-3s typical). Auto-KEI has no
+    immediate consumer of the Supabase row (the confirmation post uses the
+    returned Linear identifier directly), so this is acceptable. Any caller
+    that needs to read the Supabase row should poll with a short timeout.
+
     The Linear webhook (src/api/webhooks/linear.py) handles the Supabase upsert
     when it receives the Issue.create event from Linear — we do NOT insert directly.
 
     Returns None on any failure so the caller can log-and-skip gracefully.
     """
+    # Import locally to avoid top-of-module import cycles (webhook imports
+    # FastAPI which we don't want loaded at listener startup if not needed).
+    from src.api.webhooks.linear import LINEAR_TEAM_ID_DEFAULT
+
     api_key = os.environ.get("LINEAR_API_KEY", "")
     if not api_key:
         logger.warning("auto-KEI: LINEAR_API_KEY not set — cannot create Linear issue")
         return None
-    team_id = os.environ.get("LINEAR_TEAM_ID", _LINEAR_TEAM_ID_DEFAULT)
+    team_id = os.environ.get("LINEAR_TEAM_ID", LINEAR_TEAM_ID_DEFAULT)
     mutation = (
         "mutation($input:IssueCreateInput!){"
         "issueCreate(input:$input){success issue{id identifier url}}}"

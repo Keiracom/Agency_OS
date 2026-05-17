@@ -37,6 +37,12 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/webhooks/linear", tags=["webhooks", "linear"])
 
+# KEI-100 review note 3 — single source of truth for the Keiracom Linear
+# team UUID. Consumers (auto-KEI in central_listener, reconcile script)
+# import from here instead of duplicating the literal. Env LINEAR_TEAM_ID
+# overrides in both consumers.
+LINEAR_TEAM_ID_DEFAULT = "4686528f-ce77-4c2f-968b-3dc76b34d6fe"  # Keiracom team
+
 # Linear → bd priority map (Linear is 0=no-priority,1=urgent,2=high,3=medium,4=low;
 # bd is 0=critical, 1=high, 2=medium, 3=low, 4=backlog). Linear-urgent → bd-0.
 LINEAR_TO_BD_PRIORITY: dict[int, int] = {0: 4, 1: 0, 2: 1, 3: 2, 4: 3}

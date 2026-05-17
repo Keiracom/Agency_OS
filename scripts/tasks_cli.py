@@ -247,6 +247,22 @@ def cmd_claim(args: argparse.Namespace) -> int:
         else:
             print("nothing to claim" if not args.id else f"could not claim {args.id}")
         return 0
+    # KEI-103 — fire retrieval_query on every successful claim so retrieval_events
+    # populates.  Scout diagnosis ts ~1779028392: writer (agent_query.query) and
+    # claim-path both exist; they were simply never wired together.
+    # Fail-open: retrieval failure must not block the claim itself — the DB write
+    # is a best-effort context-prime side-channel, not a hard dependency.
+    try:
+        from src.retrieval.agent_query import query as _retrieval_query
+
+        _retrieval_query(
+            row[1],  # task title (RETURNING col 1 — id=0, title=1)
+            agent=cs,
+            collections=("Discoveries", "Decisions", "Keis"),
+        )
+    except Exception:
+        logger.debug("KEI-103 retrieval_query failed (non-fatal)", exc_info=True)
+
     cols = ["id", "title", "priority", "status", "claimed_by", "linear_url", "tags"]
     claimed = dict(zip(cols, row, strict=False))
     if args.json:

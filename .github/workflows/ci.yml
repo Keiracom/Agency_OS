@@ -61,12 +61,25 @@ jobs:
           # FROM captured as the supposed table name. The Python checker has a
           # defense-in-depth skip for the same set; this upstream filter
           # prevents the noise from reaching the checker at all.
-          TARGETS=$(git diff "origin/$BASE_REF...HEAD" -- src/ scripts/ skills/ \
-            | grep -E '^-[^-]' \
-            | grep -oE '(INSERT[[:space:]]+INTO|UPDATE)[[:space:]]+[a-zA-Z_][a-zA-Z0-9_.]*' \
-            | awk '{print $NF}' \
-            | grep -ivxE 'FROM|WHERE|SET|JOIN|ON|AS|AND|OR|NOT|NULL|TRUE|FALSE|INTO|VALUES|GROUP|ORDER|BY|HAVING|LIMIT|OFFSET|RETURNING|WITH|UNION|ALL|DISTINCT|EXISTS|IN|BETWEEN|LIKE|IS|CASE|WHEN|THEN|ELSE|END' \
-            | sort -u || true)
+          # KEI-100: also compute ADDED writers and net them out. Pattern A is
+          # "writer removed, readers kept" — a replacement (writer moved to a
+          # different file/function in the same diff) is NOT the audit
+          # concern, but the removed-only extractor flagged it as such. Net
+          # set = removed minus added; replacement targets drop out.
+          RESERVED='FROM|WHERE|SET|JOIN|ON|AS|AND|OR|NOT|NULL|TRUE|FALSE|INTO|VALUES|GROUP|ORDER|BY|HAVING|LIMIT|OFFSET|RETURNING|WITH|UNION|ALL|DISTINCT|EXISTS|IN|BETWEEN|LIKE|IS|CASE|WHEN|THEN|ELSE|END'
+          extract_targets() {
+            local line_prefix="$1"
+            git diff "origin/$BASE_REF...HEAD" -- src/ scripts/ skills/ \
+              | grep -E "^${line_prefix}[^${line_prefix}]" \
+              | grep -oE '(INSERT[[:space:]]+INTO|UPDATE)[[:space:]]+[a-zA-Z_][a-zA-Z0-9_.]*' \
+              | awk '{print $NF}' \
+              | grep -ivxE "$RESERVED" \
+              | sort -u
+          }
+          REMOVED=$(extract_targets '-' || true)
+          ADDED=$(extract_targets '\+' || true)
+          # comm -23 = lines in first file not in second = removed minus added.
+          TARGETS=$(comm -23 <(echo "$REMOVED") <(echo "$ADDED") || true)
           if [ -z "$TARGETS" ]; then
             echo "No removed write targets detected — Pattern A check skipped."
           else

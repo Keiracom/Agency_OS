@@ -47,7 +47,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import httpx
-import psycopg
 from slack_sdk.socket_mode import SocketModeClient
 from slack_sdk.socket_mode.request import SocketModeRequest
 from slack_sdk.socket_mode.response import SocketModeResponse
@@ -462,43 +461,71 @@ def _extract_ceo_title(text: str) -> str | None:
     return None
 
 
-def _insert_kei_task(title: str) -> str | None:
-    """Insert a new KEI task into public.tasks and return the new KEI id.
+_LINEAR_GRAPHQL_URL = "https://api.linear.app/graphql"
 
-    Uses a single psycopg connection per call (listener is long-running; avoid
-    holding a persistent connection across arbitrary idle periods).
+
+def _create_kei_via_linear(title: str) -> str | None:
+    """Create a new KEI issue in Linear and return the assigned identifier (e.g. "KEI-85").
+
+    Phase 1 of the two-phase create (Max Note 2):
+      (a) POST issueCreate with title — Linear assigns the identifier.
+      (b) Optionally update title to "{identifier}: {title}" if convention requires prefix.
+          The Part-3 webhook title-guard expects plain titles (no KEI-prefix) on fresh creates,
+          so we skip the prefix-update: the title stays unprefixed here.
+
+    Eventual-consistency note (Max review note 1): this function returns as soon
+    as Linear's issueCreate succeeds. The corresponding public.tasks row lands
+    asynchronously via the Linear webhook (~1-3s typical). Auto-KEI has no
+    immediate consumer of the Supabase row (the confirmation post uses the
+    returned Linear identifier directly), so this is acceptable. Any caller
+    that needs to read the Supabase row should poll with a short timeout.
+
+    The Linear webhook (src/api/webhooks/linear.py) handles the Supabase upsert
+    when it receives the Issue.create event from Linear — we do NOT insert directly.
 
     Returns None on any failure so the caller can log-and-skip gracefully.
-    Idempotency: tasks.id has a UNIQUE constraint; duplicate inserts raise
-    IntegrityError which is caught and treated as a skip (one winner).
     """
-    db_url = DATABASE_URL.replace("+asyncpg", "")
-    if not db_url:
-        logger.warning("auto-KEI: DATABASE_URL not set — skipping insert")
+    # Import locally to avoid top-of-module import cycles (webhook imports
+    # FastAPI which we don't want loaded at listener startup if not needed).
+    from src.api.webhooks.linear import LINEAR_TEAM_ID_DEFAULT
+
+    api_key = os.environ.get("LINEAR_API_KEY", "")
+    if not api_key:
+        logger.warning("auto-KEI: LINEAR_API_KEY not set — cannot create Linear issue")
         return None
+    team_id = os.environ.get("LINEAR_TEAM_ID", LINEAR_TEAM_ID_DEFAULT)
+    mutation = (
+        "mutation($input:IssueCreateInput!){"
+        "issueCreate(input:$input){success issue{id identifier url}}}"
+    )
+    body = json.dumps(
+        {"query": mutation, "variables": {"input": {"teamId": team_id, "title": title}}}
+    ).encode()
+    req = httpx.Request(
+        "POST",
+        _LINEAR_GRAPHQL_URL,
+        headers={"Authorization": api_key, "Content-Type": "application/json"},
+        content=body,
+    )
     try:
-        with psycopg.connect(db_url) as conn, conn.cursor() as cur:
-            cur.execute(
-                "SELECT COALESCE(MAX((substring(id FROM 'KEI-([0-9]+)'))::int), 0) + 1"
-                " FROM public.tasks WHERE id ~ '^KEI-[0-9]+$'"
-            )
-            row = cur.fetchone()
-            next_n: int = row[0] if row else 1
-            kei_id = f"KEI-{next_n}"
-            cur.execute(
-                "INSERT INTO public.tasks (id, title, status, dependencies, required_persona)"
-                " VALUES (%s, %s, %s, %s, %s)",
-                (kei_id, title, "available", [], None),
-            )
-            conn.commit()
-            logger.info("auto-KEI: inserted %s — %s", kei_id, title)
-            return kei_id
-    except psycopg.errors.UniqueViolation:
-        logger.info("auto-KEI: duplicate insert skipped (race guard)")
-        return None
+        with httpx.Client(timeout=15) as client:
+            resp = client.send(req)
+            resp.raise_for_status()
+            payload = resp.json()
     except Exception as exc:
-        logger.warning("auto-KEI: DB insert failed: %s", exc)
+        logger.warning("auto-KEI: Linear GraphQL request failed: %s", exc)
         return None
+    issue = (((payload or {}).get("data") or {}).get("issueCreate") or {}).get("issue")
+    if not issue:
+        errors = (payload or {}).get("errors")
+        logger.warning("auto-KEI: issueCreate returned no issue; errors=%s", errors)
+        return None
+    identifier: str = issue.get("identifier", "")
+    if not identifier:
+        logger.warning("auto-KEI: issueCreate returned issue with no identifier: %s", issue)
+        return None
+    logger.info("auto-KEI: Linear issue %s created — %s", identifier, title)
+    return identifier
 
 
 def _maybe_auto_create_kei(event: dict, web: WebClient | None) -> None:
@@ -517,7 +544,7 @@ def _maybe_auto_create_kei(event: dict, web: WebClient | None) -> None:
     if not title:
         logger.info("auto-KEI: [CEO] post has empty body after strip — skip")
         return
-    kei_id = _insert_kei_task(title)
+    kei_id = _create_kei_via_linear(title)
     if kei_id is None:
         return
     if web is not None:

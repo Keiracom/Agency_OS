@@ -27,6 +27,7 @@ import hmac
 import json
 import logging
 import os
+import re
 import subprocess
 from typing import Any
 
@@ -35,6 +36,12 @@ from fastapi import APIRouter, HTTPException, Request
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/webhooks/linear", tags=["webhooks", "linear"])
+
+# KEI-100 review note 3 — single source of truth for the Keiracom Linear
+# team UUID. Consumers (auto-KEI in central_listener, reconcile script)
+# import from here instead of duplicating the literal. Env LINEAR_TEAM_ID
+# overrides in both consumers.
+LINEAR_TEAM_ID_DEFAULT = "4686528f-ce77-4c2f-968b-3dc76b34d6fe"  # Keiracom team
 
 # Linear → bd priority map (Linear is 0=no-priority,1=urgent,2=high,3=medium,4=low;
 # bd is 0=critical, 1=high, 2=medium, 3=low, 4=backlog). Linear-urgent → bd-0.
@@ -66,6 +73,12 @@ LINEAR_STATE_TO_TASK_STATUS: dict[str, str] = {
 }
 
 _BD_WRAPPER = "/home/elliotbot/clawd/Agency_OS/scripts/linear_to_bd.py"
+
+# KEI-100 — title-guard: reject payloads where the title starts with a KEI-N prefix
+# that doesn't match the issue's own identifier. Precompile for performance.
+# Valid: title has NO prefix ("Relay watcher") or prefix matches identifier ("KEI-83 Relay watcher").
+# Invalid: title="KEI-99 Relay watcher" but identifier="KEI-83" → 400.
+_KEI_PREFIX_RE = re.compile(r"^KEI-(\d+)\b", re.IGNORECASE)
 
 
 def _python_bin() -> str:
@@ -116,6 +129,26 @@ def _normalise_event(payload: dict[str, Any]) -> dict[str, Any] | None:
     identifier = data.get("identifier")
     if not identifier:
         return None
+
+    # KEI-100 title-guard: if title starts with KEI-N prefix, it must match identifier.
+    # This catches mis-routed creates (e.g. Auto-KEI inserted a Supabase row with a
+    # different KEI number than the Linear-assigned identifier).
+    # Titles without a KEI-prefix are allowed (canonical going-forward form).
+    title_raw = data.get("title") or ""
+    title_match = _KEI_PREFIX_RE.match(title_raw)
+    if title_match:
+        prefix_in_title = f"KEI-{title_match.group(1)}"
+        # Case-insensitive compare; Linear identifiers are always "KEI-N" uppercase.
+        if prefix_in_title.upper() != identifier.upper():
+            logger.warning(
+                "title-guard reject: title prefix %s does not match identifier %s",
+                prefix_in_title,
+                identifier,
+            )
+            raise HTTPException(
+                status_code=400,
+                detail=f"title prefix {prefix_in_title} conflicts with identifier {identifier}",
+            )
 
     if action == "create":
         return {

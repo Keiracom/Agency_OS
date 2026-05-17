@@ -104,6 +104,14 @@ def _sink_ceo_memory(conn, task_id: str, target_status: str) -> None:
 
 
 def _sink_drive_manual(task_id: str) -> None:
+    """Invoke the Drive mirror for the originating task.
+
+    KEI-173: rc=2 means MANUAL.md is unchanged since the last successful
+    mirror (write_manual_mirror.py outcome 'refused_unchanged'). Drive is
+    already consistent — no work to do — so the sink treats it as success,
+    not a SinkError. Otherwise repeated completions between Manual edits
+    would each retry 3× and abandon, polluting the queue.
+    """
     script = os.path.join(SCRIPT_ROOT, "scripts", "write_manual_mirror.py")
     if not os.path.isfile(script):
         raise SinkError(f"missing {script}")
@@ -117,8 +125,12 @@ def _sink_drive_manual(task_id: str) -> None:
         )
     except subprocess.TimeoutExpired as exc:
         raise SinkError("drive_manual timeout") from exc
-    if out.returncode != 0:
-        raise SinkError(f"drive_manual exit={out.returncode}: {out.stderr[:200]}")
+    if out.returncode == 0:
+        return
+    if out.returncode == 2:
+        logger.info("[%s/drive_manual] MANUAL.md unchanged — Drive already current", task_id)
+        return
+    raise SinkError(f"drive_manual exit={out.returncode}: {out.stderr[:200]}")
 
 
 def _due_now(row) -> bool:

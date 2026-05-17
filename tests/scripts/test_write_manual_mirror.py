@@ -275,7 +275,12 @@ def test_persist_exit_code_writes_state(tmp_manual):
 
 def test_persist_exit_code_preserves_existing_state(tmp_manual):
     """persist_exit_code MUST NOT clobber the fingerprint or mirrored_at fields."""
-    mirror.save_state({"last_fingerprint": {"git_blob": "abc123"}, "last_mirrored_at": "2026-05-12T22:00:00+00:00"})
+    mirror.save_state(
+        {
+            "last_fingerprint": {"git_blob": "abc123"},
+            "last_mirrored_at": "2026-05-12T22:00:00+00:00",
+        }
+    )
     mirror.persist_exit_code(2, "refused_unchanged")
     state = mirror.load_state()
     assert state["last_fingerprint"] == {"git_blob": "abc123"}
@@ -315,3 +320,48 @@ def test_main_persists_exit_code_on_check_unchanged(tmp_manual, monkeypatch):
     state = mirror.load_state()
     assert state.get("last_exit_code") == 2
     assert state.get("last_outcome") == "check_unchanged"
+
+
+# KEI-173 — --task-id flag accepted + recorded for completion_sync_worker audit
+
+
+def test_task_id_flag_accepted_on_check(tmp_manual):
+    """--task-id is accepted alongside --check (no argparse error) and
+    persists to state.last_task_id for audit traceability."""
+    rc = mirror.main(["--check", "--task-id", "KEI-173"])
+    assert rc == 0  # fresh state → treated as 'changed'
+    state = mirror.load_state()
+    assert state.get("last_task_id") == "KEI-173"
+
+
+def test_task_id_flag_recorded_on_refused_unchanged(tmp_manual):
+    """When the second call refuses (rc=2), --task-id is still recorded so
+    the audit trail shows which task triggered the (refused) sink call."""
+    with patch.object(mirror, "mirror_to_drive"):
+        mirror.main(["--task-id", "KEI-100"])  # initial mirror
+    rc = mirror.main(["--task-id", "KEI-173"])
+    assert rc == 2
+    state = mirror.load_state()
+    assert state.get("last_task_id") == "KEI-173"
+    assert state.get("last_outcome") == "refused_unchanged"
+
+
+def test_task_id_flag_recorded_on_successful_mirror(tmp_manual):
+    """Happy path: a fresh mirror records the task_id on the success path."""
+    with patch.object(mirror, "mirror_to_drive") as m:
+        rc = mirror.main(["--task-id", "KEI-173"])
+    assert rc == 0
+    m.assert_called_once()
+    state = mirror.load_state()
+    assert state.get("last_task_id") == "KEI-173"
+    assert state.get("last_outcome") == "mirrored"
+
+
+def test_no_task_id_flag_still_works(tmp_manual):
+    """Backwards compatible: bare invocation (post-commit hook, manual run)
+    still works without --task-id and does not write last_task_id."""
+    with patch.object(mirror, "mirror_to_drive"):
+        rc = mirror.main([])
+    assert rc == 0
+    state = mirror.load_state()
+    assert "last_task_id" not in state

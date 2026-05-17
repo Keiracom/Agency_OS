@@ -129,6 +129,44 @@ def _current_phase_max(cur: Any) -> float:
         return 99.0
 
 
+STALE_CLAIM_INTERVAL_HOURS = int(os.environ.get("TASKS_STALE_CLAIM_HOURS", "2"))
+
+
+def _release_stale_claims(cur: Any) -> int:
+    """KEI-104 — auto-release abandoned active claims back to available.
+
+    A claim is "stale" when status='active' AND claimed_at older than
+    TASKS_STALE_CLAIM_HOURS (default 2h) AND no task_verifications row exists
+    for that task. Without this, an agent that crashed/lost context mid-claim
+    leaves the task permanently locked — peers cannot bd ready or bd claim it.
+
+    Idempotent: re-running on already-released rows is a no-op. Returns the
+    number of rows released for caller-side logging. Fail-open: caller wraps
+    in try/except so a release failure never blocks the originating read.
+    """
+    # S608 false-positive: the INTERVAL value is the module-level
+    # STALE_CLAIM_INTERVAL_HOURS constant (int-cast from TASKS_STALE_CLAIM_HOURS
+    # env var at import time), never user input. The suppression below uses
+    # bare ruff-noqa-S608 syntax (no trailing prose) to satisfy Sonar S7632.
+    cur.execute(
+        f"""
+        UPDATE public.tasks t
+           SET status = 'available',
+               claimed_by = NULL,
+               claimed_at = NULL,
+               updated_at = NOW()
+         WHERE t.status = 'active'
+           AND t.claimed_at IS NOT NULL
+           AND t.claimed_at < NOW() - INTERVAL '{STALE_CLAIM_INTERVAL_HOURS} hours'
+           AND NOT EXISTS (
+               SELECT 1 FROM public.task_verifications v
+                WHERE v.task_id = t.id
+           )
+        """  # noqa: S608
+    )
+    return cur.rowcount or 0
+
+
 # ─── KEI-89 Gate 2: evidence validation helpers ─────────────────────────────
 
 # Minimum characters required in any commands[].output field. Catches lazy
@@ -402,6 +440,16 @@ def cmd_ready(args: argparse.Namespace) -> int:
     callsign = (callsign_arg or "").strip().lower() if callsign_arg else ""
     try:
         with psycopg.connect(_dsn()) as conn, conn.cursor() as cur:
+            # KEI-104 — release any stale claims before listing so abandoned
+            # rows surface again. Fail-open: ready listing must not block on
+            # release-helper failure.
+            try:
+                released = _release_stale_claims(cur)
+                if released:
+                    conn.commit()
+                    logger.info("KEI-104 released %d stale active claim(s)", released)
+            except Exception:
+                logger.debug("KEI-104 stale-claim release failed (non-fatal)", exc_info=True)
             phase_max = _current_phase_max(cur)
             sql, params = _build_ready_sql(agent, callsign, phase_max, limit)
             cur.execute(sql, params)
@@ -439,6 +487,15 @@ def cmd_claim(args: argparse.Namespace) -> int:
         return 1
     try:
         with psycopg.connect(_dsn()) as conn, conn.cursor() as cur:
+            # KEI-104 — release any stale claims before claiming so abandoned
+            # rows become claimable again. Fail-open per release-helper contract.
+            try:
+                released = _release_stale_claims(cur)
+                if released:
+                    conn.commit()
+                    logger.info("KEI-104 released %d stale active claim(s)", released)
+            except Exception:
+                logger.debug("KEI-104 stale-claim release failed (non-fatal)", exc_info=True)
             phase_max = _current_phase_max(cur)
             if args.id:
                 # KEI-86 — phase pre-check on targeted claim so we can emit

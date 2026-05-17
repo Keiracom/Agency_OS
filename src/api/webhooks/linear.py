@@ -27,6 +27,7 @@ import hmac
 import json
 import logging
 import os
+import re
 import subprocess
 from typing import Any
 
@@ -66,6 +67,12 @@ LINEAR_STATE_TO_TASK_STATUS: dict[str, str] = {
 }
 
 _BD_WRAPPER = "/home/elliotbot/clawd/Agency_OS/scripts/linear_to_bd.py"
+
+# KEI-100 — title-guard: reject payloads where the title starts with a KEI-N prefix
+# that doesn't match the issue's own identifier. Precompile for performance.
+# Valid: title has NO prefix ("Relay watcher") or prefix matches identifier ("KEI-83 Relay watcher").
+# Invalid: title="KEI-99 Relay watcher" but identifier="KEI-83" → 400.
+_KEI_PREFIX_RE = re.compile(r"^KEI-(\d+)\b", re.IGNORECASE)
 
 
 def _python_bin() -> str:
@@ -116,6 +123,26 @@ def _normalise_event(payload: dict[str, Any]) -> dict[str, Any] | None:
     identifier = data.get("identifier")
     if not identifier:
         return None
+
+    # KEI-100 title-guard: if title starts with KEI-N prefix, it must match identifier.
+    # This catches mis-routed creates (e.g. Auto-KEI inserted a Supabase row with a
+    # different KEI number than the Linear-assigned identifier).
+    # Titles without a KEI-prefix are allowed (canonical going-forward form).
+    title_raw = data.get("title") or ""
+    title_match = _KEI_PREFIX_RE.match(title_raw)
+    if title_match:
+        prefix_in_title = f"KEI-{title_match.group(1)}"
+        # Case-insensitive compare; Linear identifiers are always "KEI-N" uppercase.
+        if prefix_in_title.upper() != identifier.upper():
+            logger.warning(
+                "title-guard reject: title prefix %s does not match identifier %s",
+                prefix_in_title,
+                identifier,
+            )
+            raise HTTPException(
+                status_code=400,
+                detail=f"title prefix {prefix_in_title} conflicts with identifier {identifier}",
+            )
 
     if action == "create":
         return {

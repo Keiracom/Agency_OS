@@ -130,3 +130,67 @@ def test_bypass_rerank_propagates_from_outcome():
     ):
         result = agent_query.query("q?", agent="test", min_score=0.0)
     assert result.bypass_rerank is False
+
+
+def test_record_event_strips_asyncpg_dialect_from_dsn(monkeypatch):
+    """KEI-103 — `_record_event` must rewrite `postgresql+asyncpg://` DSNs
+    to plain `postgresql://` so psycopg3 can parse the Supabase pooler URL.
+    Without the strip, psycopg.ProgrammingError fires and retrieval_events
+    silently stays at 0 (the actual KEI-103 root cause).
+    """
+    monkeypatch.setenv(
+        "DATABASE_URL",
+        "postgresql+asyncpg://u:p@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres",
+    )
+    monkeypatch.delenv("RETRIEVAL_EVENTS_DSN", raising=False)
+
+    captured = {}
+
+    class _FakeCur:
+        def execute(self, *_a, **_k):
+            captured["executed"] = True
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return False
+
+    class _FakeConn:
+        def cursor(self):
+            return _FakeCur()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return False
+
+    def _fake_connect(dsn, **_kw):
+        captured["dsn"] = dsn
+        return _FakeConn()
+
+    import importlib  # noqa: PLC0415
+    import sys  # noqa: PLC0415
+    import types  # noqa: PLC0415
+
+    fake_psycopg = types.ModuleType("psycopg")
+    fake_psycopg.connect = _fake_connect
+    monkeypatch.setitem(sys.modules, "psycopg", fake_psycopg)
+    importlib.reload(agent_query)
+
+    agent_query._record_event(
+        agent="test",
+        query_text="q",
+        collections=("Discoveries",),
+        k_initial=1,
+        k_returned=1,
+        elapsed_ms=0,
+        bypass_rerank=True,
+        top_citation=None,
+    )
+    assert captured.get("executed") is True
+    # The DSN reaching psycopg.connect must be the stripped form, not the
+    # `postgresql+asyncpg://` raw env value.
+    assert captured["dsn"].startswith("postgresql://")
+    assert "+asyncpg" not in captured["dsn"]

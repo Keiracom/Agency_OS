@@ -276,7 +276,18 @@ def cmd_claim(args: argparse.Namespace) -> int:
             )
             inj = _u.module_from_spec(spec)
             spec.loader.exec_module(inj)
-            preamble = inj.format_preamble(kei=claimed["id"], tags=claimed.get("tags") or [])
+            # KEI-103 — wire Weaviate recall source so retrieval_events grows
+            # per bd claim. Source is fail-open: import/query errors yield [].
+            weaviate_src = inj.weaviate_recall_source(
+                kei=claimed["id"],
+                title=claimed.get("title") or "",
+                callsign=claimed.get("claimed_by") or cs,
+            )
+            preamble = inj.format_preamble(
+                kei=claimed["id"],
+                tags=claimed.get("tags") or [],
+                extra_sources=(weaviate_src,),
+            )
             if preamble:
                 print(preamble)
         except Exception:

@@ -29,6 +29,7 @@ Exit codes:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import logging
 import os
@@ -98,6 +99,101 @@ def _current_phase_max(cur: Any) -> float:
         return float(row[0]["current_phase_max"])
     except (KeyError, TypeError, ValueError):
         return 99.0
+
+
+# ─── KEI-89 Gate 2: evidence validation helpers ─────────────────────────────
+
+# Minimum characters required in any commands[].output field. Catches lazy
+# single-word pastes like "ok" or "exit 0" that provide no verification signal.
+_EVIDENCE_MIN_OUTPUT_LEN = 16
+
+
+def _validate_command_entry(i: int, entry: object) -> str | None:
+    """Validate a single commands[] entry shape + min-length on output."""
+    if not isinstance(entry, dict):
+        return f"commands[{i}] must be an object"
+    if "cmd" not in entry:
+        return f"commands[{i}].cmd missing"
+    if "output" not in entry:
+        return f"commands[{i}].output missing"
+    output_len = len(str(entry["output"]))
+    if output_len < _EVIDENCE_MIN_OUTPUT_LEN:
+        return (
+            f"commands[{i}].output too short "
+            f"(min {_EVIDENCE_MIN_OUTPUT_LEN} chars, got {output_len})"
+        )
+    return None
+
+
+def _validate_evidence_schema(payload: dict) -> str | None:
+    """Validate the evidence JSON payload shape. Returns an error string on
+    failure, or None when the payload is valid.
+
+    Required fields:
+      - acceptance_items  list[str], non-empty
+      - commands          list[{cmd: str, output: str}] where each output >= 16 chars
+      - verifier_session_uuid  str, non-empty
+      - timestamp         str (ISO 8601), non-empty
+    """
+    for field in ("acceptance_items", "commands", "verifier_session_uuid", "timestamp"):
+        if field not in payload:
+            return f"{field} missing"
+
+    items = payload["acceptance_items"]
+    if not isinstance(items, list) or len(items) == 0:
+        return "acceptance_items must be a non-empty list"
+
+    cmds = payload["commands"]
+    if not isinstance(cmds, list) or len(cmds) == 0:
+        return "commands must be a non-empty list"
+    for i, entry in enumerate(cmds):
+        err = _validate_command_entry(i, entry)
+        if err:
+            return err
+
+    if not str(payload.get("verifier_session_uuid", "")).strip():
+        return "verifier_session_uuid must be a non-empty string"
+    if not str(payload.get("timestamp", "")).strip():
+        return "timestamp must be a non-empty string"
+
+    return None
+
+
+def _canonical_hash(payload: dict) -> str:
+    """Return sha256 hex of the canonical JSON representation (sort_keys=True)."""
+    canonical = json.dumps(payload, sort_keys=True, ensure_ascii=False)
+    return hashlib.sha256(canonical.encode()).hexdigest()
+
+
+def _check_hash_uniqueness(
+    cur: Any, task_id: str, evidence_hash: str
+) -> tuple[str | None, str | None]:
+    """Check task_verifications for reuse of the same evidence text on a
+    DIFFERENT task within the last 30 days.
+
+    Returns (prior_task_id, prior_created_at) if a collision is found,
+    or (None, None) if the evidence is unique.
+    """
+    cur.execute(
+        """
+        SELECT task_id, test_output, created_at
+          FROM public.task_verifications
+         WHERE task_id != %s
+           AND created_at >= NOW() - INTERVAL '30 days'
+        """,
+        (task_id,),
+    )
+    rows = cur.fetchall()
+    for row in rows:
+        prior_task_id_val, stored_output, prior_ts = row[0], row[1], row[2]
+        try:
+            stored_payload = json.loads(stored_output)
+            stored_hash = _canonical_hash(stored_payload)
+        except (json.JSONDecodeError, TypeError, AttributeError):
+            continue
+        if stored_hash == evidence_hash:
+            return str(prior_task_id_val), str(prior_ts)
+    return None, None
 
 
 def cmd_ready(args: argparse.Namespace) -> int:
@@ -296,37 +392,121 @@ def cmd_claim(args: argparse.Namespace) -> int:
     return 0
 
 
+def _load_evidence_payload(evidence_path: str) -> dict | None:
+    """Read evidence from a file path or stdin ('-'). Returns the parsed JSON
+    dict on success, or None on read/parse failure (after printing the error)."""
+    try:
+        if evidence_path == "-":
+            raw = sys.stdin.read()
+        else:
+            with open(evidence_path) as fh:
+                raw = fh.read()
+        return json.loads(raw)
+    except (OSError, json.JSONDecodeError) as exc:
+        print(f"ERROR: could not load evidence from {evidence_path!r}: {exc}", file=sys.stderr)
+        return None
+
+
+def _execute_atomic_complete(
+    cur: Any,
+    task_id: str,
+    callsign: str,
+    behavioral_test: str,
+    canonical_str: str,
+    force_mode: str,
+) -> tuple[Any, ...] | None:
+    """INSERT task_verifications row + UPDATE tasks.status='done' in a single
+    transaction. Returns the UPDATE's RETURNING row, or None when the task is
+    not claimed by the caller (caller-side rollback expected)."""
+    import uuid as _uuid
+
+    cur.execute(
+        """
+        INSERT INTO public.task_verifications
+               (id, task_id, verified_by, behavioral_test, test_output, created_at)
+        VALUES (%s, %s, %s, %s, %s, NOW())
+        """,
+        (str(_uuid.uuid4()), task_id, callsign, behavioral_test, canonical_str),
+    )
+    cur.execute(
+        """
+        UPDATE public.tasks
+           SET status = 'done',
+               claimed_by = NULL,
+               claimed_at = NULL,
+               updated_at = NOW()
+         WHERE id = %s
+           AND (claimed_by = %s OR %s = 'force')
+         RETURNING id, title, status
+        """,
+        (task_id, callsign, force_mode),
+    )
+    return cur.fetchone()
+
+
 def cmd_complete(args: argparse.Namespace) -> int:
-    """Mark a claimed task done."""
+    """Mark a claimed task done.
+
+    KEI-89 Gate 2: --evidence <path|-> is required. Without it the command
+    exits with a non-zero code and an explanatory error. With it, the
+    evidence JSON is schema-validated and checked for hash uniqueness before
+    the atomic INSERT+UPDATE transaction.
+    """
     import psycopg
 
+    # Gate 2: evidence flag required.
+    evidence_path: str | None = getattr(args, "evidence", None)
+    if not evidence_path:
+        print(
+            "ERROR: --evidence <path|-> is required. Pass a JSON file path or '-' to "
+            "read from stdin. Refusing to complete without structured evidence.",
+            file=sys.stderr,
+        )
+        return 1
+
+    evidence_payload = _load_evidence_payload(evidence_path)
+    if evidence_payload is None:
+        return 1
+
+    schema_err = _validate_evidence_schema(evidence_payload)
+    if schema_err:
+        print(f"evidence schema invalid: {schema_err}", file=sys.stderr)
+        return 1
+
+    canonical_str = json.dumps(evidence_payload, sort_keys=True, ensure_ascii=False)
+    evidence_hash = _canonical_hash(evidence_payload)
     cs = _callsign(args.callsign)
+    behavioral_test = (
+        evidence_payload["acceptance_items"][0]
+        if evidence_payload["acceptance_items"]
+        else "see commands"
+    )
+
     try:
         with psycopg.connect(_dsn()) as conn, conn.cursor() as cur:
-            cur.execute(
-                """
-                UPDATE public.tasks
-                   SET status = 'done',
-                       claimed_by = NULL,
-                       claimed_at = NULL,
-                       updated_at = NOW()
-                 WHERE id = %s
-                   AND (claimed_by = %s OR %s = 'force')
-                 RETURNING id, title, status
-                """,
-                (args.id, cs, args.force_mode),
+            prior_id, prior_ts = _check_hash_uniqueness(cur, args.id, evidence_hash)
+            if prior_id is not None:
+                print(
+                    f"evidence text matches prior verification on task {prior_id} "
+                    f"at {prior_ts} — reuse not allowed",
+                    file=sys.stderr,
+                )
+                return 1
+            row = _execute_atomic_complete(
+                cur, args.id, cs, behavioral_test, canonical_str, args.force_mode
             )
-            row = cur.fetchone()
+            if row is None:
+                conn.rollback()
+                if args.json:
+                    print("null")
+                else:
+                    print(f"could not complete {args.id} (not claimed by {cs}?)")
+                return 1
             conn.commit()
     except psycopg.Error:
         logger.exception("complete query failed")
         return 2
-    if row is None:
-        if args.json:
-            print("null")
-        else:
-            print(f"could not complete {args.id} (not claimed by {cs}?)")
-        return 1
+
     if args.json:
         print(json.dumps({"id": row[0], "title": row[1], "status": row[2]}))
     else:
@@ -434,6 +614,11 @@ def main(argv: list[str] | None = None) -> int:
         default="strict",
         choices=["strict", "force"],
         help="force=allow completion regardless of claimed_by (admin)",
+    )
+    p_complete.add_argument(
+        "--evidence",
+        metavar="PATH",
+        help="KEI-89 Gate 2: path to evidence JSON file, or '-' to read from stdin. Required.",
     )
     p_complete.add_argument("--json", action="store_true")
     p_complete.set_defaults(func=cmd_complete)

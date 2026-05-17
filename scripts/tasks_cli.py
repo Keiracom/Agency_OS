@@ -108,6 +108,23 @@ def _current_phase_max(cur: Any) -> float:
 _EVIDENCE_MIN_OUTPUT_LEN = 16
 
 
+def _validate_command_entry(i: int, entry: object) -> str | None:
+    """Validate a single commands[] entry shape + min-length on output."""
+    if not isinstance(entry, dict):
+        return f"commands[{i}] must be an object"
+    if "cmd" not in entry:
+        return f"commands[{i}].cmd missing"
+    if "output" not in entry:
+        return f"commands[{i}].output missing"
+    output_len = len(str(entry["output"]))
+    if output_len < _EVIDENCE_MIN_OUTPUT_LEN:
+        return (
+            f"commands[{i}].output too short "
+            f"(min {_EVIDENCE_MIN_OUTPUT_LEN} chars, got {output_len})"
+        )
+    return None
+
+
 def _validate_evidence_schema(payload: dict) -> str | None:
     """Validate the evidence JSON payload shape. Returns an error string on
     failure, or None when the payload is valid.
@@ -118,8 +135,7 @@ def _validate_evidence_schema(payload: dict) -> str | None:
       - verifier_session_uuid  str, non-empty
       - timestamp         str (ISO 8601), non-empty
     """
-    required = ("acceptance_items", "commands", "verifier_session_uuid", "timestamp")
-    for field in required:
+    for field in ("acceptance_items", "commands", "verifier_session_uuid", "timestamp"):
         if field not in payload:
             return f"{field} missing"
 
@@ -131,17 +147,9 @@ def _validate_evidence_schema(payload: dict) -> str | None:
     if not isinstance(cmds, list) or len(cmds) == 0:
         return "commands must be a non-empty list"
     for i, entry in enumerate(cmds):
-        if not isinstance(entry, dict):
-            return f"commands[{i}] must be an object"
-        if "cmd" not in entry:
-            return f"commands[{i}].cmd missing"
-        if "output" not in entry:
-            return f"commands[{i}].output missing"
-        if len(str(entry["output"])) < _EVIDENCE_MIN_OUTPUT_LEN:
-            return (
-                f"commands[{i}].output too short "
-                f"(min {_EVIDENCE_MIN_OUTPUT_LEN} chars, got {len(str(entry['output']))})"
-            )
+        err = _validate_command_entry(i, entry)
+        if err:
+            return err
 
     if not str(payload.get("verifier_session_uuid", "")).strip():
         return "verifier_session_uuid must be a non-empty string"

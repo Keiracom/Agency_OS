@@ -78,7 +78,7 @@ async def test_pool_prefers_valkey_url(monkeypatch):
         return AsyncMock()
 
     monkeypatch.setattr(valkey_pool.ConnectionPool, "from_url", fake_from_url)
-    await valkey_pool.get_valkey_pool()
+    valkey_pool.get_valkey_pool()
     assert captured["url"] == "redis://valkey-host:6380/3"
     assert captured["kwargs"]["decode_responses"] is True
     assert captured["kwargs"]["max_connections"] == 20
@@ -95,7 +95,7 @@ async def test_pool_falls_back_to_redis_url(monkeypatch):
         "from_url",
         lambda url, **kw: captured.setdefault("url", url) or AsyncMock(),
     )
-    await valkey_pool.get_valkey_pool()
+    valkey_pool.get_valkey_pool()
     assert captured["url"] == "redis://shared:6379/1"
 
 
@@ -110,7 +110,7 @@ async def test_pool_falls_back_to_default(monkeypatch):
         "from_url",
         lambda url, **kw: captured.setdefault("url", url) or AsyncMock(),
     )
-    await valkey_pool.get_valkey_pool()
+    valkey_pool.get_valkey_pool()
     assert captured["url"] == DEFAULT_VALKEY_URL
 
 
@@ -128,9 +128,9 @@ async def test_pool_is_cached_across_calls(monkeypatch):
         return AsyncMock()
 
     monkeypatch.setattr(valkey_pool.ConnectionPool, "from_url", fake_from_url)
-    p1 = await valkey_pool.get_valkey_pool()
-    p2 = await valkey_pool.get_valkey_pool()
-    p3 = await valkey_pool.get_valkey_pool()
+    p1 = valkey_pool.get_valkey_pool()
+    p2 = valkey_pool.get_valkey_pool()
+    p3 = valkey_pool.get_valkey_pool()
     assert p1 is p2 is p3
     assert calls["n"] == 1
 
@@ -147,9 +147,9 @@ async def test_reset_pool_invalidates_cache(monkeypatch):
         return mock_pool
 
     monkeypatch.setattr(valkey_pool.ConnectionPool, "from_url", fake_from_url)
-    await valkey_pool.get_valkey_pool()
+    valkey_pool.get_valkey_pool()
     await reset_valkey_pool()
-    await valkey_pool.get_valkey_pool()
+    valkey_pool.get_valkey_pool()
     assert calls["n"] == 2
 
 
@@ -165,10 +165,7 @@ async def test_smoke_incr_runs_incr_and_expire(monkeypatch):
     mock_client.expire = AsyncMock(return_value=True)
     mock_client.aclose = AsyncMock()
 
-    async def fake_get_client():
-        return mock_client
-
-    monkeypatch.setattr(valkey_pool, "get_valkey_client", fake_get_client)
+    monkeypatch.setattr(valkey_pool, "get_valkey_client", lambda: mock_client)
 
     value = await smoke_incr()
     assert value == 1
@@ -191,10 +188,7 @@ async def test_smoke_incr_returns_post_increment_value(monkeypatch):
     mock_client.expire = AsyncMock(return_value=True)
     mock_client.aclose = AsyncMock()
 
-    async def fake_get_client():
-        return mock_client
-
-    monkeypatch.setattr(valkey_pool, "get_valkey_client", fake_get_client)
+    monkeypatch.setattr(valkey_pool, "get_valkey_client", lambda: mock_client)
     assert await smoke_incr() == 6
 
 
@@ -207,10 +201,7 @@ async def test_smoke_incr_closes_client_even_on_failure(monkeypatch):
     mock_client.expire = AsyncMock()
     mock_client.aclose = AsyncMock()
 
-    async def fake_get_client():
-        return mock_client
-
-    monkeypatch.setattr(valkey_pool, "get_valkey_client", fake_get_client)
+    monkeypatch.setattr(valkey_pool, "get_valkey_client", lambda: mock_client)
     with pytest.raises(ConnectionError):
         await smoke_incr()
     mock_client.aclose.assert_awaited_once()

@@ -57,10 +57,15 @@ def _resolve_url() -> str:
     return os.environ.get(VALKEY_URL_ENV) or os.environ.get(FALLBACK_URL_ENV) or DEFAULT_VALKEY_URL
 
 
-async def get_valkey_pool() -> ConnectionPool:
+def get_valkey_pool() -> ConnectionPool:
     """Lazy-init the dispatcher Valkey pool. Same instance for the lifetime
     of the process — pool reset is handled by `reset_valkey_pool()` (test
-    fixtures only)."""
+    fixtures only).
+
+    Sync because pool creation is in-memory (no I/O until first command).
+    `redis.asyncio.ConnectionPool.from_url` doesn't open sockets — those
+    are minted lazily per command by the Redis client.
+    """
     global _pool
     if _pool is None:
         url = _resolve_url()
@@ -73,12 +78,11 @@ async def get_valkey_pool() -> ConnectionPool:
     return _pool
 
 
-async def get_valkey_client() -> Redis:
+def get_valkey_client() -> Redis:
     """Get a Redis client bound to the dispatcher pool. Caller is
     responsible for `await client.aclose()` when done (or use as
     `async with`)."""
-    pool = await get_valkey_pool()
-    return Redis(connection_pool=pool)
+    return Redis(connection_pool=get_valkey_pool())
 
 
 async def reset_valkey_pool() -> None:
@@ -93,12 +97,13 @@ async def reset_valkey_pool() -> None:
         _pool = None
 
 
-def tenant_rl_key(tenant_id: str, window_start_unix: int) -> str:
+def tenant_rl_key(tenant_id: str, window_start_unix: int | float) -> str:
     """Build a per-tenant rate-limit key.
 
     Args:
         tenant_id: Customer UUID string. Must be non-empty.
-        window_start_unix: Integer unix seconds at the start of the window.
+        window_start_unix: Unix seconds at the start of the window. Accepts
+            ``int`` or ``float`` (e.g. ``time.time()``) and truncates to int.
 
     Returns:
         ``rl:<tenant_id>:<window_start_unix>``
@@ -122,7 +127,7 @@ async def smoke_incr() -> int:
     failure so the caller can decide whether to treat it as degraded vs
     fatal.
     """
-    client = await get_valkey_client()
+    client = get_valkey_client()
     try:
         smoke_key = f"{RL_NAMESPACE_PREFIX}:_smoke:{os.getpid()}"
         value = await client.incr(smoke_key)

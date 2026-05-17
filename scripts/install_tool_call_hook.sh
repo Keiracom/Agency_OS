@@ -19,6 +19,7 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 WRITER_SCRIPT="$REPO_ROOT/scripts/hooks/tool_call_log_writer.py"
+# Single-host design: venv path is fixed to the one machine this system runs on.
 VENV_PYTHON="/home/elliotbot/clawd/venv/bin/python3"
 SETTINGS_FILE="${HOME}/.claude/settings.json"
 

@@ -41,8 +41,15 @@ logging.basicConfig(
 )
 logger = logging.getLogger("tool_call_log_writer")
 
-_ENV_FILE = Path("/home/elliotbot/.config/agency-os/.env")
+_ENV_FILE = Path(
+    "/home/elliotbot/.config/agency-os/.env"
+)  # single-host design — one machine per deployment
 _OUTPUT_EXCERPT_MAX = 500
+
+# Maximum serialised bytes for tool_input before the oversized sentinel replaces it.
+# Prevents multi-MB Write/Edit/Bash payloads from bloating tool_call_log JSONB.
+# 64 KB chosen to cover virtually all normal structured inputs while capping runaway payloads.
+_TOOL_INPUT_MAX_BYTES = 65_536  # 64 KB
 
 
 def _load_env() -> None:
@@ -74,17 +81,32 @@ def _dsn() -> str:
 
 
 def _callsign() -> str:
+    # CALLSIGN env var is the canonical source per LAW XVII — agent processes export it.
+    # IDENTITY.md file fallback was removed: cwd when hook fires is tool-dependent and
+    # unreliable (e.g. Bash tool runs from arbitrary dirs). Env is always available.
     cs = (os.environ.get("CALLSIGN") or "").strip().lower()
-    if cs:
-        return cs
-    try:
-        identity = Path("./IDENTITY.md").read_text()
-        for line in identity.splitlines():
-            if "CALLSIGN:" in line:
-                return line.split("CALLSIGN:")[-1].strip().strip("*").strip().lower()
-    except OSError:
-        pass
-    return "unknown"
+    return cs if cs else "unknown"
+
+
+def _cap_tool_input(tool_input: dict) -> str:
+    """Serialise tool_input with a hard byte cap.
+
+    If the JSON representation exceeds _TOOL_INPUT_MAX_BYTES (64 KB), the full
+    payload is replaced with a compact sentinel that records size + tool_name so
+    the row is still query-able. This prevents multi-MB Write/Edit/Bash bodies
+    from bloating the JSONB column.
+
+    Returns the serialised string (always valid JSON) ready for %s::jsonb.
+    """
+    serialised = json.dumps(tool_input, ensure_ascii=False)
+    if len(serialised.encode()) <= _TOOL_INPUT_MAX_BYTES:
+        return serialised
+    sentinel = {
+        "_truncated": True,
+        "original_size_bytes": len(serialised.encode()),
+        "tool_name": tool_input.get("tool_name") if isinstance(tool_input, dict) else None,
+    }
+    return json.dumps(sentinel, ensure_ascii=False)
 
 
 def _truncate(text: str | None) -> str | None:
@@ -148,6 +170,7 @@ def main() -> None:
 
     callsign = _callsign()
     excerpt = _truncate(_extract_output(tool_response))
+    tool_input_json = _cap_tool_input(tool_input)
 
     try:
         import psycopg  # type: ignore[import]
@@ -171,7 +194,7 @@ def main() -> None:
                     callsign,
                     session_id,
                     tool_name,
-                    json.dumps(tool_input, ensure_ascii=False),
+                    tool_input_json,
                     excerpt,
                     started_at,
                     completed_at,

@@ -612,6 +612,31 @@ def cmd_claim(args: argparse.Namespace) -> int:
                 print(preamble)
         except Exception:
             logger.exception("KEI-51 preamble emit failed (non-fatal)")
+        # KEI-76 — Cognee session-memory preamble (second context block).
+        # Sits between the KEI-51 discovery_log block and the success line.
+        # Fail-open per cognee_recall contract: any failure → empty preamble.
+        try:
+            import importlib.util as _u
+
+            _orch = os.path.join(
+                os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                "scripts",
+                "orchestrator",
+            )
+            cog_spec = _u.spec_from_file_location(
+                "cognee_recall_injector",
+                os.path.join(_orch, "cognee_recall_injector.py"),
+            )
+            cog_inj = _u.module_from_spec(cog_spec)
+            cog_spec.loader.exec_module(cog_inj)
+            cog_preamble = cog_inj.format_preamble(
+                kei=claimed["id"],
+                callsign=claimed.get("claimed_by") or cs,
+            )
+            if cog_preamble:
+                print(cog_preamble)
+        except Exception:
+            logger.exception("KEI-76 cognee preamble emit failed (non-fatal)")
         print(f"claimed {claimed['id']} by {claimed['claimed_by']}: {claimed['title']}")
     return 0
 

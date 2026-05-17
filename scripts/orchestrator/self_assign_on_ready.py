@@ -110,16 +110,18 @@ def _bd_claim(bd_bin: str, issue_id: str) -> bool:
 
 
 def _eligible(item: dict, callsign: str) -> bool:
-    """Filter rule: unassigned OR assigned to this callsign — never poach."""
-    owner = (item.get("owner") or "").strip()
-    assignee = (item.get("assignee") or "").strip()
-    # 'owner' on bd is typically the email user; 'assignee' (set by --assignee
-    # flag) carries the callsign. Either being equal to callsign is fine.
-    if assignee == callsign:
-        return True
-    if not owner and not assignee:
-        return True
-    return owner == callsign
+    """KEI-150 — assignee filtering removed (Dave 2026-05-17).
+
+    Phase-lock (KEI-86) + SELECT FOR UPDATE SKIP LOCKED already gate
+    eligibility mechanically; the prior owner/assignee-match heuristic
+    blocked agents from picking up work that no peer was actively
+    building. Returning True universally lets any agent claim any
+    visible KEI from the phase-gated queue. The `item` and `callsign`
+    arguments are retained for backwards-compatible test fixtures and
+    a possible future per-row policy hook.
+    """
+    del item, callsign  # intentionally unused — see docstring
+    return True
 
 
 def _result(

@@ -3,8 +3,8 @@ openai_cost_rollup.py — daily OpenAI cost summary from the JSONL cost log.
 
 Reads last 24h of /home/elliotbot/clawd/logs/openai-cost.jsonl,
 computes totals by use_case and callsign, writes a daily summary line to
-/home/elliotbot/clawd/logs/openai-cost-daily.jsonl, and sends a Telegram
-summary to the group.
+/home/elliotbot/clawd/logs/openai-cost-daily.jsonl, and sends a Slack
+summary to #execution.
 
 Intended to run via systemd timer at 23:55 AEST (13:55 UTC).
 """
@@ -74,8 +74,8 @@ def write_daily_summary(summary: dict) -> None:
         f.write(json.dumps(summary) + "\n")
 
 
-def send_telegram(summary: dict) -> None:
-    """Send daily summary to Telegram group."""
+def send_slack_summary(summary: dict) -> None:
+    """Send daily summary to Slack #execution via tg shim."""
     total = summary["total_usd"]
     by_uc = summary.get("by_use_case", {})
     embed_cost = (
@@ -100,7 +100,7 @@ def main() -> None:
     entries = load_last_24h(COST_LOG)
     summary = compute_summary(entries)
     write_daily_summary(summary)
-    send_telegram(summary)
+    send_slack_summary(summary)
     print(json.dumps(summary, indent=2))
 
 

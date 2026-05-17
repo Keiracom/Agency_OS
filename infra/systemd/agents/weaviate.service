@@ -1,0 +1,27 @@
+[Unit]
+Description=Weaviate vector database (collective intelligence foundation, KEI-48)
+Documentation=https://linear.app/keiracom/issue/KEI-48
+After=network-online.target
+Wants=network-online.target
+StartLimitBurst=3
+StartLimitIntervalSec=300
+
+[Service]
+Type=simple
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+EnvironmentFile=-/home/elliotbot/.config/agency-os/.env
+# Cgroup memory cap (KEI-107, Dave directive 2026-05-17) — explicit at unit
+# level so the cap is visible to operators reading the unit file, not buried
+# in the launcher script default. The launcher passes this via
+# `systemd-run --user --scope -p MemoryMax=$AGENCY_OS_WEAVIATE_MAX_MEM`.
+# Per KEI-44 discovery: cgroup MemoryMax caps RSS only (not virtual), which
+# is the correct mechanism for Python+numpy+Go services on Vultr Sydney.
+Environment=AGENCY_OS_WEAVIATE_MAX_MEM=3G
+ExecStart=/home/elliotbot/clawd/Agency_OS/scripts/orchestrator/weaviate_capped.sh
+Restart=on-failure
+RestartSec=15
+StandardOutput=append:/home/elliotbot/clawd/logs/weaviate.log
+StandardError=append:/home/elliotbot/clawd/logs/weaviate.log
+
+[Install]
+WantedBy=default.target

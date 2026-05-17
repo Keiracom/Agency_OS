@@ -1,0 +1,29 @@
+[Unit]
+Description=Agency OS — LiteLLM governance_tier proxy (KEI-100 / Linear KEI-73)
+After=network-online.target
+Wants=network-online.target
+StartLimitBurst=5
+StartLimitIntervalSec=300
+
+[Service]
+Type=simple
+WorkingDirectory=/home/elliotbot/clawd
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+Environment="LITELLM_CONFIG_PATH=/home/elliotbot/.config/litellm/config.yaml"
+
+# Boot dry-run: hard fail if ANTHROPIC_API_KEY missing/invalid; warn-only on OpenAI/Google
+ExecStartPre=/home/elliotbot/clawd/litellm-venv/bin/python /home/elliotbot/clawd/Agency_OS/scripts/litellm_boot_check.py --mode pre
+
+ExecStart=/home/elliotbot/clawd/litellm-venv/bin/litellm \
+    --config /home/elliotbot/.config/litellm/config.yaml \
+    --port 4000 \
+    --host 127.0.0.1
+
+Restart=always
+RestartSec=10
+
+StandardOutput=append:/home/elliotbot/clawd/logs/litellm.log
+StandardError=append:/home/elliotbot/clawd/logs/litellm.log
+
+[Install]
+WantedBy=default.target

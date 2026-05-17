@@ -9,20 +9,56 @@ INBOX="${RELAY_DIR}/inbox"
 PROCESSED="${RELAY_DIR}/processed"
 STATE_FILE="${RELAY_DIR}/last_chat_id"
 
-# Map callsign to tmux session name
-if [ "$CALLSIGN" = "elliot" ]; then
-    TMUX_TARGET="elliottbot:0.0"
-elif [ "$CALLSIGN" = "aiden" ]; then
-    TMUX_TARGET="aiden:0.0"
-elif [ "$CALLSIGN" = "scout" ]; then
-    TMUX_TARGET="scout:0.0"
-else
-    TMUX_TARGET="${CALLSIGN}bot:0.0"
-fi
+# KEI-99 / Linear KEI-83 — Priority list per callsign. Tried in order; first
+# session that `tmux has-session` answers gets the message. If Dave manually
+# starts a session with a non-default name (e.g. `elliot` instead of
+# `elliottbot`), delivery still works.
+case "$CALLSIGN" in
+    elliot)  TMUX_CANDIDATES=("elliottbot:0.0" "elliot:0.0" "elliot-agent:0.0") ;;
+    aiden)   TMUX_CANDIDATES=("aiden:0.0" "aidenbot:0.0" "aiden-agent:0.0") ;;
+    scout)   TMUX_CANDIDATES=("scout:0.0" "scoutbot:0.0" "scout-agent:0.0") ;;
+    max)     TMUX_CANDIDATES=("maxbot:0.0" "max:0.0" "max-agent:0.0") ;;
+    *)       TMUX_CANDIDATES=("${CALLSIGN}bot:0.0" "${CALLSIGN}:0.0" "${CALLSIGN}-agent:0.0") ;;
+esac
+TMUX_TARGET="${TMUX_CANDIDATES[0]}"
+
+# Resolve a live tmux target. Sets TMUX_TARGET on success; returns 1 if all
+# candidates miss. Logs a promotion when we settle on a non-primary name.
+resolve_tmux_target() {
+    local candidate session previous="$TMUX_TARGET"
+    for candidate in "${TMUX_CANDIDATES[@]}"; do
+        session="${candidate%%:*}"
+        if tmux has-session -t "$session" 2>/dev/null; then
+            if [[ "$candidate" != "$previous" ]]; then
+                echo "[relay-watcher-${CALLSIGN}] PROMOTED session: $previous → $candidate"
+            fi
+            TMUX_TARGET="$candidate"
+            return 0
+        fi
+    done
+    return 1
+}
+
+# Alert on delivery failure. Elliot is the only callsign with #ceo access
+# (per acceptance criteria); every other callsign falls back to #execution
+# where peers can pick up the alert. Failures here are swallowed so the
+# watcher never crashes on a notification path.
+alert_delivery_failure() {
+    local tg_bin alert_channel msg
+    tg_bin="$(command -v tg 2>/dev/null)"
+    [[ -x "$tg_bin" ]] || return 0
+    if [ "$CALLSIGN" = "elliot" ]; then
+        alert_channel="ceo"
+    else
+        alert_channel="execution"
+    fi
+    msg="[SYSTEM] [${CALLSIGN^^}] relay delivery failed — no live tmux session under known names: ${TMUX_CANDIDATES[*]}. Manual intervention required."
+    CALLSIGN="$CALLSIGN" "$tg_bin" -c "$alert_channel" "$msg" >/dev/null 2>&1 || true
+}
 
 mkdir -p "$INBOX" "$PROCESSED"
 
-echo "[relay-watcher-${CALLSIGN}] Started. Watching $INBOX → tmux $TMUX_TARGET"
+echo "[relay-watcher-${CALLSIGN}] Started. Watching $INBOX → tmux candidates: ${TMUX_CANDIDATES[*]}"
 
 # H10 — also watch -e moved_to so we don't drop dispatches the Write tool
 # delivers via atomic rename (which fires moved_to, not create).
@@ -35,6 +71,16 @@ inotifywait -m -q -e create -e moved_to "$INBOX" --format '%f' 2>/dev/null | whi
 
     # Small delay to let file finish writing
     sleep 0.2
+
+    # KEI-99: Resolve a live tmux session BEFORE attempting delivery. If no
+    # candidate is live, alert #ceo and quarantine the message (move to
+    # processed so we don't busy-loop on the same file).
+    if ! resolve_tmux_target; then
+        echo "[relay-watcher-${CALLSIGN}] DELIVERY FAILED — no live tmux session in: ${TMUX_CANDIDATES[*]}"
+        alert_delivery_failure
+        mv "$fpath" "$PROCESSED/" 2>/dev/null
+        continue
+    fi
 
     # Parse the message
     msg_type=$(python3 -c "import json; print(json.load(open('$fpath')).get('type',''))" 2>/dev/null)

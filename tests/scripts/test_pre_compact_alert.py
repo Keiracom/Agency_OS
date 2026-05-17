@@ -305,7 +305,7 @@ _TEMPLATE_SAMPLE = """# HEARTBEAT.md
 
 ## Model
 
-- Configured: <callsign-from-IDENTITY.md → lookup in CLAUDE.md §Callsign → Model Assignment table>
+- Configured: <callsign-from-IDENTITY.md → lookup in ceo_memory key `orchestration:model_assignment` (SQL-anchored Elliot UPSERT 2026-05-12 22:45:30 UTC)>
 - Running: <actual `--model` flag at startup, if known; otherwise "unknown — check tmux session launch command">
 
 ## Blockers
@@ -360,8 +360,8 @@ def test_auto_populate_skips_empty_values(alert):
     assert "<commit subject line>" in out
 
 
-def test_auto_populate_leaves_phase_and_model_placeholders(alert):
-    """Phase + Configured + Running model have NO mechanical source — must persist as placeholders."""
+def test_auto_populate_leaves_phase_and_goal_placeholders_only(alert):
+    """KEI-36 follow-up: Phase + Goal stay agent-fill; Model auto-populates when args given."""
     out = alert.auto_populate_heartbeat(
         _TEMPLATE_SAMPLE,
         git_short_sha="abc1234",
@@ -371,13 +371,42 @@ def test_auto_populate_leaves_phase_and_model_placeholders(alert):
         directive="d",
         blockers="none",
         next_action="n",
+        configured_model="claude-opus-4-7",
+        running_model="claude-opus-4-7",
     )
+    # Phase + Goal remain (agent-fill, no mechanical source)
     assert "<scope/decompose/execute/verify/report>" in out
-    assert "<callsign-from-IDENTITY.md" in out
-    assert "<actual `--model` flag" in out
+    assert "<one-line>" in out
+    # Model placeholders now replaced with actual model strings
+    assert "<callsign-from-IDENTITY.md" not in out
+    assert "<actual `--model` flag" not in out
+    assert "claude-opus-4-7" in out
 
 
 def test_find_residual_placeholders_returns_unfilled(alert):
+    """KEI-36 follow-up: Phase + Goal are agent-fill — excluded from residual."""
+    out = alert.auto_populate_heartbeat(
+        _TEMPLATE_SAMPLE,
+        git_short_sha="abc1234",
+        branch="x",
+        commit_subject="s",
+        files_touched="f",
+        directive="d",
+        blockers="none",
+        next_action="n",
+        configured_model="claude-opus-4-7",
+        running_model="claude-opus-4-7",
+    )
+    residual = alert.find_residual_placeholders(out)
+    # Phase + Goal are intentional agent-fill, excluded from residual detector.
+    assert not any("scope/decompose" in r for r in residual)
+    assert "<one-line>" not in residual
+    # All other mechanical fields were filled → empty residual.
+    assert residual == []
+
+
+def test_find_residual_placeholders_returns_model_when_unfilled(alert):
+    """When model args omitted, Configured/Running model placeholders DO surface."""
     out = alert.auto_populate_heartbeat(
         _TEMPLATE_SAMPLE,
         git_short_sha="abc1234",
@@ -389,9 +418,8 @@ def test_find_residual_placeholders_returns_unfilled(alert):
         next_action="n",
     )
     residual = alert.find_residual_placeholders(out)
-    # At minimum Phase + Configured + Running + Goal remain (no value provided for goal here either — value="" or no source).
-    assert any("scope/decompose" in r for r in residual)
-    assert any("Callsign" in r or "callsign" in r for r in residual)
+    assert any("callsign-from-IDENTITY.md" in r for r in residual)
+    assert any("actual `--model` flag" in r for r in residual)
 
 
 def test_find_residual_placeholders_skips_heartbeat_cadence_section(alert):
@@ -483,20 +511,94 @@ def test_post_heartbeat_incomplete_warning_calls_slack(alert, monkeypatch):
     assert "<x>" in text and "<y>" in text
 
 
-def test_main_auto_populates_and_warns(alert, monkeypatch, tmp_path):
-    """Integration: main() → auto-populate writes back + posts incomplete warning."""
+def test_configured_model_for_callsign_known_via_fallback(alert, monkeypatch):
+    """KEI-53: when SUPABASE_ANON_KEY unset, fall back to static map."""
+    monkeypatch.setattr(alert, "_SUPABASE_ANON_KEY", "")
+    assert alert._configured_model_for_callsign("aiden") == "claude-opus-4-7"
+    assert alert._configured_model_for_callsign("orion") == "claude-sonnet-4-6"
+    assert alert._configured_model_for_callsign("AIDEN") == "claude-opus-4-7"  # case-insensitive
+
+
+def test_configured_model_for_callsign_unknown_returns_empty(alert, monkeypatch):
+    monkeypatch.setattr(alert, "_SUPABASE_ANON_KEY", "")
+    assert alert._configured_model_for_callsign("nobody") == ""
+    assert alert._configured_model_for_callsign("") == ""
+
+
+def test_configured_model_for_callsign_uses_supabase_when_key_set(alert, monkeypatch):
+    """KEI-53: primary path queries agent_profiles via PostgREST."""
+    monkeypatch.setattr(alert, "_SUPABASE_ANON_KEY", "test-anon-key")
+    import urllib.request
+
+    class FakeResp:
+        def read(self) -> bytes:
+            return b'[{"configured_model": "claude-sonnet-4-7-experimental"}]'
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+    with patch.object(urllib.request, "urlopen", return_value=FakeResp()):
+        assert alert._configured_model_for_callsign("aiden") == "claude-sonnet-4-7-experimental"
+
+
+def test_configured_model_for_callsign_supabase_failure_falls_back(alert, monkeypatch):
+    """KEI-53: PostgREST failure → fallback map (resilience)."""
+    monkeypatch.setattr(alert, "_SUPABASE_ANON_KEY", "test-anon-key")
+    import urllib.error
+    import urllib.request
+
+    with patch.object(urllib.request, "urlopen", side_effect=urllib.error.URLError("conn refused")):
+        assert alert._configured_model_for_callsign("max") == "claude-opus-4-7"
+
+
+def test_configured_model_for_callsign_supabase_empty_rows_falls_back(alert, monkeypatch):
+    """KEI-53: empty PostgREST response → fallback map (callsign not yet seeded)."""
+    monkeypatch.setattr(alert, "_SUPABASE_ANON_KEY", "test-anon-key")
+    import urllib.request
+
+    class FakeResp:
+        def read(self) -> bytes:
+            return b"[]"
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+    with patch.object(urllib.request, "urlopen", return_value=FakeResp()):
+        assert alert._configured_model_for_callsign("scout") == "claude-sonnet-4-6"
+
+
+def test_running_model_from_env(alert, monkeypatch):
+    """KEI-36 follow-up: CLAUDE_MODEL env wins when set."""
+    monkeypatch.setenv("CLAUDE_MODEL", "claude-sonnet-4-6")
+    assert alert._running_model() == "claude-sonnet-4-6"
+
+
+def test_running_model_fallback_when_unset(alert, monkeypatch):
+    monkeypatch.delenv("CLAUDE_MODEL", raising=False)
+    assert "unknown" in alert._running_model()
+    assert "tmux" in alert._running_model()
+
+
+def _setup_main_mocks(monkeypatch, alert, tmp_path, post_to_slack):
+    """KEI-36 follow-up: shared monkeypatch setup for main() integration tests.
+
+    Sets CALLSIGN=aiden, writes _TEMPLATE_SAMPLE to a temp HEARTBEAT.md,
+    and stubs git/bd/IO helpers with deterministic values. Caller passes
+    its own post_to_slack callable so tests can assert/intercept posts.
+    Returns the path of the temp HEARTBEAT.md so callers can read it back.
+    """
     monkeypatch.setenv("CALLSIGN", "aiden")
     monkeypatch.chdir(tmp_path)
     hb = tmp_path / "HEARTBEAT.md"
     hb.write_text(_TEMPLATE_SAMPLE)
     monkeypatch.setattr(alert, "HEARTBEAT_PATH", hb)
-
-    posts: list = []
-    monkeypatch.setattr(
-        alert,
-        "post_to_slack",
-        lambda text, channel=alert.EXECUTION_CHANNEL: posts.append((text, channel)) or True,
-    )
+    monkeypatch.setattr(alert, "post_to_slack", post_to_slack)
     monkeypatch.setattr(alert, "read_hook_input", lambda: {"trigger": "auto"})
     monkeypatch.setattr(
         alert,
@@ -508,11 +610,41 @@ def test_main_auto_populates_and_warns(alert, monkeypatch, tmp_path):
     monkeypatch.setattr(alert, "_git_files_touched", lambda b: "a.py")
     monkeypatch.setattr(alert, "_bd_ready_first", lambda: "KEI-99: do X")
     monkeypatch.setattr(alert, "_bd_blocked_list", lambda: "none")
+    return hb
+
+
+def test_main_auto_populates_model_fields(alert, monkeypatch, tmp_path):
+    """KEI-36 follow-up integration: main() fills Model fields from callsign + env."""
+    monkeypatch.setenv("CLAUDE_MODEL", "claude-opus-4-7")
+    hb = _setup_main_mocks(monkeypatch, alert, tmp_path, lambda *a, **k: True)
+
+    assert alert.main() == 0
+    updated = hb.read_text()
+    assert updated.count("claude-opus-4-7") == 2  # Configured + Running both filled
+    assert "<callsign-from-IDENTITY.md" not in updated
+    assert "<actual `--model` flag" not in updated
+
+
+def test_main_auto_populates_and_no_warning_when_all_mechanical_filled(
+    alert, monkeypatch, tmp_path
+):
+    """KEI-36 follow-up: when all mechanical fields fill (Phase/Goal are agent-fill
+    and now excluded from the detector), [HEARTBEAT-INCOMPLETE] does NOT fire."""
+    monkeypatch.delenv("CLAUDE_MODEL", raising=False)  # exercise fallback string
+    posts: list = []
+
+    def capture(text, channel=alert.EXECUTION_CHANNEL):
+        posts.append((text, channel))
+        return True
+
+    hb = _setup_main_mocks(monkeypatch, alert, tmp_path, capture)
 
     assert alert.main() == 0
     updated = hb.read_text()
     assert "abc1234" in updated  # SHA populated
     assert "aiden/kei36-x" in updated  # branch populated
-    # Phase + model placeholders remain → incomplete warning fires
+    assert "claude-opus-4-7" in updated  # configured model populated
+    assert "unknown — check tmux" in updated  # running model fallback populated
+    # Phase + Goal stay as placeholders BUT are agent-fill — no incomplete warning.
     incomplete = [t for t, _ in posts if "[HEARTBEAT-INCOMPLETE]" in t]
-    assert len(incomplete) == 1
+    assert len(incomplete) == 0

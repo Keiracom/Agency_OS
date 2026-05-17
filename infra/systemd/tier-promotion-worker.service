@@ -1,0 +1,17 @@
+[Unit]
+Description=Agency OS — Tier Promotion Worker (KEI-55)
+Documentation=https://linear.app/keiracom/issue/KEI-55
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/home/elliotbot/clawd/Agency_OS/.venv/bin/python3 /home/elliotbot/clawd/Agency_OS/scripts/orchestrator/tier_promotion_worker.py --once
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+User=elliotbot
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

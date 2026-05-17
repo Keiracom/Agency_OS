@@ -1,0 +1,131 @@
+#!/usr/bin/env bash
+# bd — KEI-22 SSOT shim.
+#
+# Intercepts the three queue commands (ready / update --claim / close) and
+# routes them to scripts/tasks_cli.py which queries public.tasks in Supabase
+# (project jatzvazlbusedwsnqxzr). All other bd subcommands fall through to the
+# real Beads binary at $BD_ORIGINAL (default ~/.local/bin/bd-original).
+#
+# Installed at ~/.local/bin/bd by scripts/install_bd_shim.sh, which renames the
+# real binary to bd-original first. Dave directive 2026-05-14: "bd ready
+# returns tasks from Supabase. Run it. If it returns Supabase tasks, paste the
+# output. If it still hits Beads — finish the wiring."
+#
+# Env:
+#   BD_ORIGINAL — path to the renamed real bd binary (default
+#                 ~/.local/bin/bd-original).
+#   AGENCY_OS_REPO — path to repo root (default /home/elliotbot/clawd/Agency_OS).
+#   DATABASE_URL or SUPABASE_DB_URL — postgres DSN (consumed by tasks_cli).
+#   CALLSIGN — claimant identifier (consumed by tasks_cli for claim/close).
+#
+# Exit codes pass through from tasks_cli or bd-original.
+
+set -euo pipefail
+
+BD_ORIGINAL="${BD_ORIGINAL:-$HOME/.local/bin/bd-original}"
+AGENCY_OS_REPO="${AGENCY_OS_REPO:-/home/elliotbot/clawd/Agency_OS}"
+TASKS_CLI="$AGENCY_OS_REPO/scripts/tasks_cli.py"
+AGENCY_OS_ENV="${AGENCY_OS_ENV:-$HOME/.config/agency-os/.env}"
+
+# Auto-load DATABASE_URL / CALLSIGN / etc. from the canonical env file if the
+# parent shell hasn't already set them. This lets every agent's bd-ready hit
+# Supabase without each agent's tmux launcher needing to pre-export anything.
+if [[ -z "${DATABASE_URL:-}${SUPABASE_DB_URL:-}" && -r "$AGENCY_OS_ENV" ]]; then
+    # shellcheck disable=SC1090
+    set -a; source "$AGENCY_OS_ENV"; set +a
+fi
+
+# If tasks_cli is missing (e.g. shim installed but repo moved) fall through to
+# bd-original for everything so we don't break the agent loop.
+if [[ ! -x "$TASKS_CLI" && ! -f "$TASKS_CLI" ]]; then
+    exec "$BD_ORIGINAL" "$@"
+fi
+
+subcmd="${1:-}"
+shift || true
+
+case "$subcmd" in
+    ready)
+        # `bd ready` — list available tasks. JSON shape compatible with the
+        # legacy `bd ready --json` callers (slack_relay self-assign, polling
+        # loops, weekly_cycle_from_bd, pre_compact_alert).
+        exec python3 "$TASKS_CLI" ready "$@"
+        ;;
+    claim|close)
+        # `bd close <id>` → tasks_cli complete <id>.
+        # `bd claim <id>` / `bd claim --any` → tasks_cli claim.
+        # (Beads' `bd update <id> --claim` form is handled in the catch-all.)
+        if [[ "$subcmd" == "close" ]]; then
+            exec python3 "$TASKS_CLI" complete "$@"
+        else
+            exec python3 "$TASKS_CLI" claim "$@"
+        fi
+        ;;
+    update)
+        # `bd update <id> --claim` is the Beads idiom for claiming. Detect it.
+        if [[ "$#" -ge 1 && "$*" == *"--claim"* ]]; then
+            # Extract the id (first positional arg before --claim).
+            id="$1"
+            exec python3 "$TASKS_CLI" claim --id "$id"
+        fi
+        exec "$BD_ORIGINAL" "$subcmd" "$@"
+        ;;
+    show)
+        # `bd show <id>` — Supabase first (if id matches a row), else fall
+        # through to bd-original. Best-effort: ignore Supabase failure.
+        if [[ "$#" -ge 1 ]] && python3 "$TASKS_CLI" show "$1" --json > /dev/null 2>&1; then
+            exec python3 "$TASKS_CLI" show "$@"
+        fi
+        exec "$BD_ORIGINAL" show "$@"
+        ;;
+    deprecate)
+        # KEI-63 — `bd deprecate <kei> --reason <r>` marks a discovery_log row
+        # deprecated. Excluded from bd claim context injection + future
+        # Weaviate retrieval. Routes to tasks_cli.cmd_deprecate.
+        exec python3 "$TASKS_CLI" deprecate "$@"
+        ;;
+    verify)
+        # KEI-58 — `bd verify <kei>` discovery freshness (FRESH/STALE/EXPIRED).
+        # Routes to bd_verify.py over discovery_log.jsonl. Exit 0 on any verdict;
+        # non-zero only on missing row so callers can distinguish "stale" from
+        # "no such discovery". Falls through to bd-original if shim missing.
+        if [[ -f "$AGENCY_OS_REPO/scripts/bd_verify.py" ]]; then
+            exec env PYTHONPATH="$AGENCY_OS_REPO${PYTHONPATH:+:$PYTHONPATH}" python3 "$AGENCY_OS_REPO/scripts/bd_verify.py" "$@"
+        fi
+        exec "$BD_ORIGINAL" verify "$@"
+        ;;
+    escalate)
+        # KEI-79 — `bd escalate <description> [--options A,B,C] [--task KEI-X]`
+        # Writes ceo_decisions row + flips task to status=escalated + posts to #ceo.
+        exec env PYTHONPATH="$AGENCY_OS_REPO${PYTHONPATH:+:$PYTHONPATH}" python3 "$AGENCY_OS_REPO/scripts/bd_escalate.py" "$@"
+        ;;
+    fleet-check)
+        # KEI-94 + KEI-97 — `bd fleet-check [--no-post] [--channel ceo|execution]`
+        # Captures last 10 lines from each agent tmux pane and posts a bullet
+        # report to #ceo. Bypasses the Supabase task-state abstraction.
+        exec python3 "$AGENCY_OS_REPO/scripts/bd_fleet_check.py" "$@"
+        ;;
+    ceo-queue)
+        # KEI-79 — `bd ceo-queue` lists awaiting escalations. Orchestrator visibility.
+        exec env PYTHONPATH="$AGENCY_OS_REPO${PYTHONPATH:+:$PYTHONPATH}" python3 -c "
+import os, psycopg
+dsn = (os.environ.get('DATABASE_URL') or os.environ.get('SUPABASE_DB_URL')).replace('+asyncpg','')
+with psycopg.connect(dsn, prepare_threshold=None, autocommit=True) as conn:
+    with conn.cursor() as cur:
+        cur.execute(\"SELECT task_id, escalated_by, requested_at, description, rate_limit_flagged FROM public.ceo_decisions WHERE status='awaiting' ORDER BY requested_at\")
+        rows = cur.fetchall()
+        if not rows: print('no awaiting escalations'); exit(0)
+        for tid, by, ts, desc, flag in rows:
+            tag = ' [RATE-LIMIT]' if flag else ''
+            print(f'{tid:10s} {by:8s} {ts:%Y-%m-%dT%H:%MZ}  {desc[:80]}{tag}')
+"
+        ;;
+    "")
+        # No subcommand → bd-original handles help.
+        exec "$BD_ORIGINAL"
+        ;;
+    *)
+        # Everything else (linear sync, dolt, prime, etc.) → real bd.
+        exec "$BD_ORIGINAL" "$subcmd" "$@"
+        ;;
+esac

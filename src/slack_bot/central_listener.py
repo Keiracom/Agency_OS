@@ -79,6 +79,11 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 ENFORCER_DETERMINISTIC = os.environ.get("ENFORCER_DETERMINISTIC", "1") == "1"
 LISTEN_CHANNEL = os.environ.get("SLACK_LISTEN_CHANNEL", "C0B3QB0K1GQ")  # enforcer scope
 ALERTS_CHANNEL = os.environ.get("SLACK_ALERTS_CHANNEL", "C0B2EJU53EK")
+DATABASE_URL = os.environ.get("DATABASE_URL", "")
+
+# Auto-KEI: #ceo channel id — messages starting with [CEO] trigger task creation.
+CEO_CHANNEL = "C0B2PM3TV0B"
+CEO_PREFIX = "[CEO]"
 ENFORCER_USERNAME = "Enforcer"
 ENFORCER_ICON = ":rotating_light:"
 
@@ -332,7 +337,11 @@ def run_enforcer(event: dict, text: str, web: WebClient) -> None:
     2. Hybrid: R3, R6 — evidence regex pre-filter; STRICT resolved, SOFT falls through.
     3. LLM fallback: R3 SOFT "done" + R9 (semantic).
     Set ENFORCER_DETERMINISTIC=0 to revert to LLM-only path.
+    Set ENFORCER_ENABLED=0 to kill the enforcer entirely (Dave 2026-05-17 — mechanical
+    gates handle governance; ENFORCER becomes advisory only).
     """
+    if os.environ.get("ENFORCER_ENABLED", "1") != "1":
+        return
     if event.get("channel") != LISTEN_CHANNEL:
         return
     callsign = attribute(event)
@@ -441,6 +450,119 @@ def _fanout_to_routes(routes: list[str], text: str, sender: str) -> None:
         write_inbox(callsign, text, sender)
 
 
+def _extract_ceo_title(text: str) -> str | None:
+    """Strip [CEO] prefix and return the first non-empty line (max 200 chars).
+
+    Returns None if the body is empty after stripping — e.g. bare '[CEO]' post.
+    """
+    body = text
+    if body.upper().startswith(CEO_PREFIX.upper()):
+        body = body[len(CEO_PREFIX) :]
+    for line in body.splitlines():
+        stripped = line.strip()
+        if stripped:
+            return stripped[:200]
+    return None
+
+
+_LINEAR_GRAPHQL_URL = "https://api.linear.app/graphql"
+
+
+def _create_kei_via_linear(title: str) -> str | None:
+    """Create a new KEI issue in Linear and return the assigned identifier (e.g. "KEI-85").
+
+    Phase 1 of the two-phase create (Max Note 2):
+      (a) POST issueCreate with title — Linear assigns the identifier.
+      (b) Optionally update title to "{identifier}: {title}" if convention requires prefix.
+          The Part-3 webhook title-guard expects plain titles (no KEI-prefix) on fresh creates,
+          so we skip the prefix-update: the title stays unprefixed here.
+
+    Eventual-consistency note (Max review note 1): this function returns as soon
+    as Linear's issueCreate succeeds. The corresponding public.tasks row lands
+    asynchronously via the Linear webhook (~1-3s typical). Auto-KEI has no
+    immediate consumer of the Supabase row (the confirmation post uses the
+    returned Linear identifier directly), so this is acceptable. Any caller
+    that needs to read the Supabase row should poll with a short timeout.
+
+    The Linear webhook (src/api/webhooks/linear.py) handles the Supabase upsert
+    when it receives the Issue.create event from Linear — we do NOT insert directly.
+
+    Returns None on any failure so the caller can log-and-skip gracefully.
+    """
+    # Import locally to avoid top-of-module import cycles (webhook imports
+    # FastAPI which we don't want loaded at listener startup if not needed).
+    from src.api.webhooks.linear import LINEAR_TEAM_ID_DEFAULT
+
+    api_key = os.environ.get("LINEAR_API_KEY", "")
+    if not api_key:
+        logger.warning("auto-KEI: LINEAR_API_KEY not set — cannot create Linear issue")
+        return None
+    team_id = os.environ.get("LINEAR_TEAM_ID", LINEAR_TEAM_ID_DEFAULT)
+    mutation = (
+        "mutation($input:IssueCreateInput!){"
+        "issueCreate(input:$input){success issue{id identifier url}}}"
+    )
+    body = json.dumps(
+        {"query": mutation, "variables": {"input": {"teamId": team_id, "title": title}}}
+    ).encode()
+    req = httpx.Request(
+        "POST",
+        _LINEAR_GRAPHQL_URL,
+        headers={"Authorization": api_key, "Content-Type": "application/json"},
+        content=body,
+    )
+    try:
+        with httpx.Client(timeout=15) as client:
+            resp = client.send(req)
+            resp.raise_for_status()
+            payload = resp.json()
+    except Exception as exc:
+        logger.warning("auto-KEI: Linear GraphQL request failed: %s", exc)
+        return None
+    issue = (((payload or {}).get("data") or {}).get("issueCreate") or {}).get("issue")
+    if not issue:
+        errors = (payload or {}).get("errors")
+        logger.warning("auto-KEI: issueCreate returned no issue; errors=%s", errors)
+        return None
+    identifier: str = issue.get("identifier", "")
+    if not identifier:
+        logger.warning("auto-KEI: issueCreate returned issue with no identifier: %s", issue)
+        return None
+    logger.info("auto-KEI: Linear issue %s created — %s", identifier, title)
+    return identifier
+
+
+def _maybe_auto_create_kei(event: dict, web: WebClient | None) -> None:
+    """Auto-KEI intercept for [CEO]-prefixed messages in #ceo channel.
+
+    Fires BEFORE the normal fanout so it runs regardless of fanout outcome.
+    Best-effort: any failure is logged but never blocks the fanout relay.
+    """
+    if os.environ.get("AUTO_KEI_FROM_CEO", "0") != "1":
+        return
+    channel = event.get("channel", "")
+    text = (event.get("text") or "").strip()
+    if channel != CEO_CHANNEL:
+        return
+    if not text.upper().startswith(CEO_PREFIX.upper()):
+        return
+    title = _extract_ceo_title(text)
+    if not title:
+        logger.info("auto-KEI: [CEO] post has empty body after strip — skip")
+        return
+    kei_id = _create_kei_via_linear(title)
+    if kei_id is None:
+        return
+    if web is not None:
+        try:
+            web.chat_postMessage(
+                channel=CEO_CHANNEL,
+                text=f"[System] {kei_id} created — {title}",
+            )
+        except Exception as exc:
+            logger.warning("auto-KEI: confirmation post failed: %s", exc)
+
+
 def process_event(event: dict, web: WebClient | None = None) -> None:
     if event.get("type") != "message":
         return
@@ -451,6 +573,12 @@ def process_event(event: dict, web: WebClient | None = None) -> None:
     text = event.get("text") or ""
     if not text:
         return
+    # Auto-KEI intercept: fires BEFORE fanout; best-effort; does not block relay.
+    try:
+        _maybe_auto_create_kei(event, web)
+    except Exception as exc:
+        logger.exception("auto-KEI error (non-blocking): %s", exc)
+
     if routes:
         _fanout_to_routes(routes, text, sender_from(event))
         logger.info(

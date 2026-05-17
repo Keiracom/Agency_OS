@@ -38,11 +38,38 @@ HEARTBEAT_PATH = Path("HEARTBEAT.md")
 
 # KEI-36 — placeholder text → auto-populate source. Each key is the literal
 # `<...>` placeholder as it appears in HEARTBEAT.md; value comes from
-# auto_populate_heartbeat() arguments. Fields without a mechanical source
-# (Phase / Configured model — no Callsign→Model table in CLAUDE.md yet) are
-# intentionally left out so they remain placeholders and trigger
-# [HEARTBEAT-INCOMPLETE] warning.
+# auto_populate_heartbeat() arguments.
 _PLACEHOLDER_PATTERN = re.compile(r"<[^>\n]+>")
+
+# KEI-53 — fallback callsign → model map used only when agent_profiles
+# Supabase read fails (network down, RLS blocked, etc). Primary source of
+# truth is public.agent_profiles.configured_model (migration
+# 20260514_kei53_agent_profiles.sql). Values stay in lockstep with seed.
+_CONFIGURED_MODEL_FALLBACK = {
+    "aiden": "claude-opus-4-7",
+    "max": "claude-opus-4-7",
+    "elliot": "claude-opus-4-7",
+    "atlas": "claude-sonnet-4-6",
+    "orion": "claude-sonnet-4-6",
+    "scout": "claude-sonnet-4-6",
+}
+
+# KEI-53 — Supabase PostgREST endpoint for agent_profiles reads. Public
+# anon-readable per migration; we only SELECT, never write here.
+_SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://jatzvazlbusedwsnqxzr.supabase.co").rstrip(
+    "/"
+)
+_SUPABASE_ANON_KEY = os.environ.get("SUPABASE_ANON_KEY", "")
+
+# Placeholders that are intentional agent-fill (no mechanical source). The
+# residual-detector skips lines containing these so [HEARTBEAT-INCOMPLETE]
+# doesn't fire on fields the auto-populate isn't expected to handle.
+_AGENT_FILL_PLACEHOLDERS = frozenset(
+    {
+        "<one-line>",
+        "<scope/decompose/execute/verify/report>",
+    }
+)
 
 
 def resolve_callsign() -> str:
@@ -222,6 +249,56 @@ def _git_commit_subject() -> str:
     return _run(["git", "log", "-1", "--pretty=%s"])
 
 
+def _configured_model_for_callsign(callsign: str) -> str:
+    """KEI-53 — look up configured model from public.agent_profiles.
+
+    Primary path: SELECT configured_model FROM public.agent_profiles
+    WHERE callsign=$1 via Supabase PostgREST. Times out at 3s.
+    Fallback path: _CONFIGURED_MODEL_FALLBACK map (kept in lockstep with
+    migration seed). Returns '' if callsign unknown and Supabase down.
+    """
+    cs = callsign.lower()
+    if _SUPABASE_ANON_KEY:
+        try:
+            import urllib.error
+            import urllib.parse
+            import urllib.request
+
+            qs = urllib.parse.urlencode({"callsign": f"eq.{cs}", "select": "configured_model"})
+            req = urllib.request.Request(
+                f"{_SUPABASE_URL}/rest/v1/agent_profiles?{qs}",
+                headers={
+                    "apikey": _SUPABASE_ANON_KEY,
+                    "Authorization": f"Bearer {_SUPABASE_ANON_KEY}",
+                    "Accept": "application/json",
+                },
+            )
+            with urllib.request.urlopen(req, timeout=3) as r:
+                rows = json.loads(r.read())
+            if isinstance(rows, list) and rows and isinstance(rows[0], dict):
+                model = rows[0].get("configured_model")
+                if isinstance(model, str) and model:
+                    return model
+        except (OSError, ValueError) as exc:
+            # urllib.error.URLError ⊂ OSError; json.JSONDecodeError ⊂ ValueError —
+            # both caught implicitly per Sonar S5713 (no redundant subclasses).
+            logger.warning("agent_profiles lookup for %s failed (%s); using fallback map", cs, exc)
+    return _CONFIGURED_MODEL_FALLBACK.get(cs, "")
+
+
+def _running_model() -> str:
+    """KEI-36 follow-up — actual --model the process is running.
+
+    Reads CLAUDE_MODEL env var (set by tmux session launch script if known).
+    Falls back to 'unknown — check tmux session launch command' which matches
+    the HEARTBEAT.md template's documented fallback.
+    """
+    val = os.environ.get("CLAUDE_MODEL", "").strip()
+    if val:
+        return val
+    return "unknown — check tmux session launch command"
+
+
 def _directive_from_branch(branch: str) -> str:
     """KEI-36 — extract directive label from branch name like 'aiden/kei36-...'."""
     if not branch or branch == "main":
@@ -242,14 +319,25 @@ def auto_populate_heartbeat(
     directive: str,
     blockers: str,
     next_action: str,
+    configured_model: str = "",
+    running_model: str = "",
 ) -> str:
     """KEI-36 — fill HEARTBEAT.md placeholder fields from mechanical sources.
 
     Empty-string args are skipped (placeholder preserved → triggers
-    [HEARTBEAT-INCOMPLETE] warning downstream). Phase + Goal + Model fields
-    have no mechanical source on this side and are deliberately left as
-    placeholders for the agent to fill OR for the warning to surface.
+    [HEARTBEAT-INCOMPLETE] warning downstream UNLESS the placeholder is in
+    _AGENT_FILL_PLACEHOLDERS). Phase + Goal stay as agent-fill; Model fields
+    now auto-populate from callsign map + CLAUDE_MODEL env (KEI-36 follow-up).
     """
+    long_configured = (
+        "<callsign-from-IDENTITY.md → lookup in ceo_memory key "
+        "`orchestration:model_assignment` (SQL-anchored Elliot UPSERT "
+        "2026-05-12 22:45:30 UTC)>"
+    )
+    long_running = (
+        "<actual `--model` flag at startup, if known; otherwise "
+        '"unknown — check tmux session launch command">'
+    )
     replacements = {
         "<git short-sha>": git_short_sha,
         "<branch-name>": branch,
@@ -258,6 +346,8 @@ def auto_populate_heartbeat(
         "<directive number or label>": directive,
         '<bulleted list, or "none">': blockers,
         "<single concrete next step the next session should execute>": next_action,
+        long_configured: configured_model,
+        long_running: running_model,
     }
     for placeholder, value in replacements.items():
         if value:
@@ -282,7 +372,12 @@ def find_residual_placeholders(text: str) -> list[str]:
             in_skip_block = False
         if in_skip_block:
             continue
-        found.extend(_PLACEHOLDER_PATTERN.findall(line))
+        for match in _PLACEHOLDER_PATTERN.findall(line):
+            # KEI-36 follow-up — skip intentional agent-fill placeholders so
+            # [HEARTBEAT-INCOMPLETE] doesn't fire on Phase/Goal fields the
+            # auto-populate isn't expected to handle mechanically.
+            if match not in _AGENT_FILL_PLACEHOLDERS:
+                found.append(match)
     return found
 
 
@@ -326,6 +421,8 @@ def main() -> int:
                 directive=_directive_from_branch(git["branch"]),
                 blockers=_bd_blocked_list(),
                 next_action=_bd_ready_first(),
+                configured_model=_configured_model_for_callsign(callsign),
+                running_model=_running_model(),
             )
             if populated != raw:
                 HEARTBEAT_PATH.write_text(populated)

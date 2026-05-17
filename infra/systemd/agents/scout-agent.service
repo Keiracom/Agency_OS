@@ -1,6 +1,6 @@
 [Unit]
-Description=Agency OS Agent — SCOUT (callsign=scout, tmux=scout)
-Documentation=https://linear.app/keiracom/issue/KEI-43
+Description=Keiracom scout agent session (KEI-94 keep-alive)
+Documentation=https://linear.app/keiracom/issue/KEI-94
 After=network-online.target
 Wants=network-online.target
 StartLimitBurst=5
@@ -8,9 +8,15 @@ StartLimitIntervalSec=300
 
 [Service]
 Type=simple
+Environment="CALLSIGN=scout"
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
 WorkingDirectory=/home/elliotbot/clawd/Agency_OS-scout
-ExecStart=/home/elliotbot/clawd/Agency_OS-scout/scripts/systemd_agent_supervisor.sh scout scout /home/elliotbot/clawd/Agency_OS-scout
-Restart=on-failure
+# KEI-140 ExecStartPre — fail-open via '-' prefix. See atlas-agent.service for full rationale.
+ExecStartPre=-/usr/bin/git -C /home/elliotbot/clawd/Agency_OS-scout pull origin main --rebase --autostash
+ExecStartPre=-/home/elliotbot/clawd/Agency_OS/.venv/bin/python3 /home/elliotbot/clawd/Agency_OS/scripts/cognee_session_start.py --callsign scout
+ExecStart=/home/elliotbot/clawd/Agency_OS/scripts/agent_keepalive.sh scout scout /home/elliotbot/clawd/Agency_OS-scout
+ExecStartPost=/home/elliotbot/clawd/Agency_OS/scripts/agent_online_notify.sh SCOUT 15 C0B3QB0K1GQ
+Restart=always
 RestartSec=10
 StandardOutput=append:/home/elliotbot/clawd/logs/scout-agent.log
 StandardError=append:/home/elliotbot/clawd/logs/scout-agent.log

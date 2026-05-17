@@ -9,22 +9,22 @@ start, snapshotted by the PreCompact hook (scripts/pre_compact_alert.py).
 - Directive: <directive number or label>
 - Goal: <one-line>
 - Phase: <scope/decompose/execute/verify/report>
-- Files touched (current PR): <list>
+- Files touched (current PR): infra/systemd/agents/linear-state-indexer.service, scripts/install_linear_state_indexer.sh, scripts/orchestrator/linear_state_indexer.py, tests/scripts/test_linear_state_indexer.py
 
 ## Last Good Commit
 
-- SHA: <git short-sha>
-- Branch: <branch-name>
-- Subject: <commit subject line>
+- SHA: e0cbce13
+- Branch: main
+- Subject: [ATLAS] feat(kei85): phase B — linear_state_indexer (Linear KEI state → Keis)
 
 ## Model
 
-- Configured: <callsign-from-IDENTITY.md → lookup in ceo_memory key `orchestration:model_assignment` (SQL-anchored Elliot UPSERT 2026-05-12 22:45:30 UTC)>
-- Running: <actual `--model` flag at startup, if known; otherwise "unknown — check tmux session launch command">
+- Configured: claude-opus-4-7
+- Running: unknown — check tmux session launch command
 
 ## Blockers
 
-- <bulleted list, or "none">
+- none
 
 ## Next Action
 

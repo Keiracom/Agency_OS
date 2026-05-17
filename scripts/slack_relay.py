@@ -44,6 +44,27 @@ from pathlib import Path
 _KEI40_MAX_RETRIES = 5
 _KEI40_BASE_BACKOFF_SECONDS = 1.0
 _KEI40_MAX_BACKOFF_SECONDS = 30.0
+
+# KEI-80: escalation-keyword scan (Dave 30-min hot-patch 2026-05-16).
+# Any outbox message containing one of these phrases fires a direct post to
+# #ceo BEFORE the normal relay. Both posts happen — the CEO post is additive.
+# Store as module-level constant so tests can patch it.
+ESCALATION_KEYWORDS: list[str] = [
+    "awaiting",
+    "decision needed",
+    "option a",
+    "option b",
+    "option c",
+    "blocked",
+    "ceo decision",
+    "dave decision",
+    "your call",
+    "holding for",
+]
+# Maximum body length (chars) forwarded in the [ESCALATION] prefix post.
+# Longer bodies are truncated with an ellipsis marker to avoid Slack friction.
+_ESCALATION_MAX_BODY_CHARS = 500
+
 from typing import Final
 
 _LAST_POST_STATE_PATH: Final[Path] = Path(
@@ -259,6 +280,60 @@ def _record_last_post(callsign: str) -> None:
         pass
 
 
+def _contains_escalation_keyword(text: str) -> bool:
+    """KEI-80: Return True if text contains any ESCALATION_KEYWORDS (case-insensitive)."""
+    lower = text.lower()
+    return any(kw.lower() in lower for kw in ESCALATION_KEYWORDS)
+
+
+def _maybe_escalate_to_ceo(channel: str, text: str, callsign: str) -> None:
+    """KEI-80: Fire a direct #ceo post when outbox message contains escalation language.
+
+    Rules (per Dave 30-min hot-patch spec 2026-05-16):
+    - Skipped when target channel is already #ceo (avoid double-post).
+    - Skipped when message body already has [ESCALATION] prefix (avoid re-fire).
+    - Body truncated at _ESCALATION_MAX_BODY_CHARS chars; appends '…(truncated)'.
+    - CEO post fires BEFORE normal relay; failure is non-fatal (try/except → log).
+    - Uses a raw urllib POST identical to _post_with_retry but targeted at #ceo.
+    """
+    ceo_channel = CHANNELS["ceo"]
+    if channel == ceo_channel:
+        return
+    if text.startswith("[ESCALATION]"):
+        return
+    if not _contains_escalation_keyword(text):
+        return
+    if not BOT_TOKEN:
+        print("KEI-80 WARN: SLACK_BOT_TOKEN not set — skipping CEO escalation", file=sys.stderr)
+        return
+    body_text = text
+    if len(body_text) > _ESCALATION_MAX_BODY_CHARS:
+        body_text = body_text[:_ESCALATION_MAX_BODY_CHARS] + "…(truncated)"
+    ceo_text = f"[ESCALATION] {callsign} · {body_text}"
+    payload: dict = {"channel": ceo_channel, "text": ceo_text, "username": USERNAME}
+    if ICON_URL:
+        payload["icon_url"] = ICON_URL
+    elif ICON_EMOJI:
+        payload["icon_emoji"] = ICON_EMOJI
+    body = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(
+        "https://slack.com/api/chat.postMessage",
+        data=body,
+        headers={
+            "Authorization": f"Bearer {BOT_TOKEN}",
+            "Content-Type": "application/json; charset=utf-8",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10) as r:
+            result = json.loads(r.read())
+        if not result.get("ok"):
+            print(f"KEI-80 WARN: CEO escalation post rejected: {result}", file=sys.stderr)
+    except Exception as exc:  # noqa: BLE001
+        print(f"KEI-80 WARN: CEO escalation post failed: {exc}", file=sys.stderr)
+
+
 def main() -> int:
     channel, message = parse_args(sys.argv[1:])
     # S1 verify gate (Phase 6 — block fabricated PR# / commit-hash in completion
@@ -314,6 +389,9 @@ def main() -> int:
             return 2
     except ImportError:
         pass  # repo not on sys.path; fall through ungated rather than break all posts
+    # KEI-80: escalation-keyword scan — fires direct #ceo post BEFORE normal relay.
+    # Failure of CEO post is non-fatal; normal relay always continues.
+    _maybe_escalate_to_ceo(channel, message, CALLSIGN)
     result = post(channel, message)
     if not result.get("ok"):
         print(f"ERROR: Slack rejected: {result}", file=sys.stderr)
@@ -363,6 +441,57 @@ def _is_ready_marker(message: str, callsign: str) -> bool:
 # that fix lands, which is preferable to the wrong-issue claim.
 _CLONE_CALLSIGNS: frozenset[str] = frozenset({"atlas", "orion", "scout"})
 
+# KEI-72: second-gate window for the Step-0-RESTATE auto-claim check.
+# Scans this many most-recently-processed inbox messages for the agent's
+# own [STEP-0-RESTATE:<callsign>] marker. Larger windows risk stale-claim
+# (an old Step 0 from a different directive); smaller windows tighten the
+# requirement but may miss legitimate Step 0s separated by peer chatter.
+# 5 is Elliot's directive value.
+_STEP0_INBOX_SCAN_DEPTH = 5
+# Inbox base dir, env-overridable for tests. Defaults to /tmp which is the
+# documented runtime location for the per-callsign relay inbox; tests override
+# via AGENCY_OS_RELAY_INBOX_BASE. The S5443 suppression is the inline marker
+# on the assignment below.
+_RELAY_INBOX_BASE = os.environ.get("AGENCY_OS_RELAY_INBOX_BASE", "/tmp")  # NOSONAR
+
+
+def _has_recent_step0_restate(callsign: str) -> bool:
+    """KEI-72: True if a [STEP-0-RESTATE:<callsign>] marker appears in any of
+    the last `_STEP0_INBOX_SCAN_DEPTH` processed inbox messages.
+
+    Scans `<_RELAY_INBOX_BASE>/telegram-relay-<callsign>/processed/`.
+    Messages there are JSON dicts with at least a `text` field; the relay
+    listener moves files here once they're consumed. The agent's own
+    Step-0-RESTATE outbound (posted via tg) is echoed back through the
+    central listener into the same inbox, so this scan covers self-emitted
+    markers.
+
+    Returns False (and skips the auto-claim) when the marker isn't found —
+    fail-fast at the validation layer. Closes the gap left by KEI-71 (which
+    only handled the env-unset path).
+    """
+    inbox_processed = Path(_RELAY_INBOX_BASE) / f"telegram-relay-{callsign.lower()}" / "processed"
+    if not inbox_processed.is_dir():
+        return False
+    needle = f"[STEP-0-RESTATE:{callsign.upper()}]"
+    try:
+        files = sorted(
+            (p for p in inbox_processed.iterdir() if p.is_file()),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )[:_STEP0_INBOX_SCAN_DEPTH]
+    except OSError:
+        return False
+    for path in files:
+        try:
+            data = json.loads(path.read_text() or "{}")
+        except (OSError, json.JSONDecodeError):
+            continue
+        text = data.get("text", "") or ""
+        if needle in text:
+            return True
+    return False
+
 
 def _maybe_self_assign(message: str) -> None:
     """If message contains an anchored [READY:<my-callsign>], try bd ready → bd claim.
@@ -371,10 +500,23 @@ def _maybe_self_assign(message: str) -> None:
     + return. Never raises. The polling loop is the safety net if this fails.
 
     Clones (atlas/orion/scout) skip-claim entirely — see _CLONE_CALLSIGNS.
+
+    KEI-72: also refuse claim when there's no recent [STEP-0-RESTATE:<callsign>]
+    marker in the last _STEP0_INBOX_SCAN_DEPTH inbox messages. Closes the
+    'CALLSIGN-set-but-no-Step-0' auto-reclaim loop Elliot flagged at
+    2026-05-14T09:08Z.
     """
     if CALLSIGN.lower() in _CLONE_CALLSIGNS:
         return
     if not _is_ready_marker(message, CALLSIGN):
+        return
+    if not _has_recent_step0_restate(CALLSIGN):
+        print(
+            f"[self-assign] refusing claim — no [STEP-0-RESTATE:{CALLSIGN.upper()}] "
+            f"in the last {_STEP0_INBOX_SCAN_DEPTH} processed inbox messages. "
+            "Agent must post a Step 0 RESTATE before slack_relay auto-claims (KEI-72).",
+            file=sys.stderr,
+        )
         return
     import subprocess as _sub
 

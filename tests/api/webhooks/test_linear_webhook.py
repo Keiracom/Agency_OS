@@ -43,6 +43,8 @@ def client(mod, monkeypatch):
     monkeypatch.setattr(mod, "_dispatch_to_bd", lambda event: captured.append(event))
     # KEI-22: stub the tasks-table dispatch so unit tests don't reach Supabase.
     monkeypatch.setattr(mod, "_dispatch_to_tasks", lambda event: None)
+    # KEI-61: stub the indexing_queue dispatch so unit tests don't reach Supabase.
+    monkeypatch.setattr(mod, "_dispatch_to_indexing_queue", lambda source, payload: None)
     app = FastAPI()
     app.include_router(mod.router)
     return TestClient(app), captured
@@ -173,6 +175,7 @@ def test_non_issue_payload_ignored(client):
 
 
 def test_unhandled_state_ignored(client):
+    # KEI-84: 'backlog' is now handled (→ available). Use a truly-unknown state.
     c, captured = client
     resp = _signed_request(
         c,
@@ -181,7 +184,7 @@ def test_unhandled_state_ignored(client):
             "type": "Issue",
             "data": {
                 "identifier": "KEI-77",
-                "state": {"name": "Backlog", "type": "backlog"},
+                "state": {"name": "Custom", "type": "custom_unknown_state"},
                 "url": "https://linear.app/x",
             },
         },

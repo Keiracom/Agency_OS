@@ -42,14 +42,15 @@ DECLARE
     payload     jsonb;
     status_available CONSTANT text := 'available';
     status_active    CONSTANT text := 'active';
+    op_update        CONSTANT text := 'UPDATE';
 BEGIN
     IF TG_OP = 'INSERT' AND NEW.status = status_available THEN
         event_type := 'new_available';
-    ELSIF TG_OP = 'UPDATE' AND OLD.status = status_available AND NEW.status = status_active THEN
+    ELSIF TG_OP = op_update AND OLD.status = status_available AND NEW.status = status_active THEN
         event_type := 'claimed';
-    ELSIF TG_OP = 'UPDATE' AND OLD.status = status_active AND NEW.status = 'done' THEN
+    ELSIF TG_OP = op_update AND OLD.status = status_active AND NEW.status = 'done' THEN
         event_type := 'completed';
-    ELSIF TG_OP = 'UPDATE' AND OLD.status = status_active AND NEW.status = status_available THEN
+    ELSIF TG_OP = op_update AND OLD.status = status_active AND NEW.status = status_available THEN
         event_type := 'unclaimed';
     ELSE
         event_type := 'other';

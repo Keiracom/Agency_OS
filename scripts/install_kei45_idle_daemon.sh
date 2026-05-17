@@ -32,9 +32,9 @@ DAEMON_SH="${REPO_ROOT}/scripts/orchestrator/kei45_idle_daemon.sh"
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
 
-[ -f "$UNIT_SERVICE" ] || fail "missing $UNIT_SERVICE"
-[ -f "$UNIT_TIMER" ]   || fail "missing $UNIT_TIMER"
-[ -x "$DAEMON_SH" ]    || fail "missing or non-executable $DAEMON_SH"
+[[ -f "$UNIT_SERVICE" ]] || fail "missing $UNIT_SERVICE"
+[[ -f "$UNIT_TIMER" ]]   || fail "missing $UNIT_TIMER"
+[[ -x "$DAEMON_SH" ]]    || fail "missing or non-executable $DAEMON_SH"
 
 grep -q 'kei45_idle_daemon\.sh' "$UNIT_SERVICE" \
     || fail "$UNIT_SERVICE does not reference kei45_idle_daemon.sh in ExecStart"

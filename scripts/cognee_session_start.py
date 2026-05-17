@@ -178,6 +178,24 @@ def main(argv: list[str] | None = None) -> None:
     args = parser.parse_args(argv)
 
     callsign = args.callsign.strip().lower()
+
+    # LAW XVII callsign guard: if both --callsign and $CALLSIGN are set they must match.
+    env_callsign = os.environ.get("CALLSIGN", "").strip().lower()
+    if callsign and env_callsign and callsign != env_callsign:
+        logger.warning(
+            "--callsign %s disagrees with $CALLSIGN %s; using --callsign",
+            callsign,
+            env_callsign,
+        )
+    elif not callsign and not env_callsign:
+        print(
+            "ERROR [cognee_session_start]: --callsign is required and $CALLSIGN is not set.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+    elif not callsign:
+        callsign = env_callsign
+
     tmp_dir = tempfile.gettempdir()
     output_path = (
         Path(args.output) if args.output else Path(tmp_dir) / f"cognee-context-{callsign}.md"

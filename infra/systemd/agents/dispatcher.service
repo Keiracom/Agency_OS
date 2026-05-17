@@ -1,0 +1,17 @@
+[Unit]
+Description=Keiracom Customer Dispatcher (KEI-179)
+Documentation=https://linear.app/keiracom/issue/KEI-179
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/home/elliotbot/clawd/venv/bin/python3 -m src.dispatcher
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+StandardOutput=append:/home/elliotbot/clawd/logs/dispatcher.log
+StandardError=append:/home/elliotbot/clawd/logs/dispatcher.log
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

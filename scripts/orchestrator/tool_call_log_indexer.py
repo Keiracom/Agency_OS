@@ -37,11 +37,19 @@ import json
 import logging
 import os
 import signal
+import sys
 import time
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 from urllib import error as urlerror
 from urllib import request as urlrequest
+
+# KEI-91 Gate 4 heartbeat tick.
+_SRC = Path(__file__).resolve().parents[2] / "src"
+if str(_SRC) not in sys.path:
+    sys.path.insert(0, str(_SRC))
+from observability.heartbeat import tick as _heartbeat_tick  # noqa: E402
 
 logger = logging.getLogger("tool_call_log_indexer")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -245,6 +253,12 @@ def process_batch(conn: Any, batch_size: int) -> dict[str, int]:
     logger.info("batch: %s", outcome)
     if rows:
         write_audit(conn, outcome)
+    # KEI-91 heartbeat — outcome counter is rows flipped indexed=true.
+    _heartbeat_tick(
+        "tool-call-log-indexer",
+        outcome_increment=outcome["done"],
+        status="ok" if outcome["failed"] == 0 else "degraded",
+    )
     return outcome
 
 

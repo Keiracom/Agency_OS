@@ -32,6 +32,7 @@ import signal
 import sys
 import time
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 import psycopg
@@ -40,6 +41,13 @@ from indexer_base import (
     aggregate_count,
     deterministic_uuid,
 )
+
+# KEI-91 Gate 4 — heartbeat tick. Path-prepend keeps existing indexer
+# units working without a systemd PYTHONPATH change.
+_SRC = Path(__file__).resolve().parents[2] / "src"
+if str(_SRC) not in sys.path:
+    sys.path.insert(0, str(_SRC))
+from observability.heartbeat import tick as _heartbeat_tick  # noqa: E402
 
 logger = logging.getLogger("ceo_memory_indexer")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -167,6 +175,11 @@ def main() -> None:
                 outcome.to_dict(),
                 aggregate_count(DECISIONS_CLASS),
             )
+            _heartbeat_tick(
+                "ceo-memory-indexer",
+                outcome_increment=outcome.success,
+                status="ok" if outcome.failed == 0 else "degraded",
+            )
             return
         while not _shutdown_requested:
             try:
@@ -176,8 +189,19 @@ def main() -> None:
                     outcome.to_dict(),
                     aggregate_count(DECISIONS_CLASS),
                 )
-            except Exception:
+                _heartbeat_tick(
+                    "ceo-memory-indexer",
+                    outcome_increment=outcome.success,
+                    status="ok" if outcome.failed == 0 else "degraded",
+                )
+            except Exception as exc:  # noqa: BLE001 — broad on purpose: any exception is a heartbeat-worthy signal
                 logger.exception("batch failed — sleeping then continuing")
+                _heartbeat_tick(
+                    "ceo-memory-indexer",
+                    outcome_increment=0,
+                    status="error",
+                    error_message=str(exc)[:500],
+                )
             for _ in range(POLL_SECONDS):
                 if _shutdown_requested:
                     break

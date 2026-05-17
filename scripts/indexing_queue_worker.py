@@ -32,9 +32,17 @@ import os
 import signal
 import socket
 import subprocess
+import sys
 import time
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
+
+# KEI-91 Gate 4 heartbeat tick.
+_SRC = Path(__file__).resolve().parents[1] / "src"
+if str(_SRC) not in sys.path:
+    sys.path.insert(0, str(_SRC))
+from observability.heartbeat import tick as _heartbeat_tick  # noqa: E402
 
 logger = logging.getLogger("indexing_queue_worker")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s: %(message)s")
@@ -254,8 +262,22 @@ def run(
                         counters["retry"],
                         counters["failed"],
                     )
+                    # KEI-91 heartbeat — outcome = rows done this batch.
+                    _heartbeat_tick(
+                        "indexing-queue-worker",
+                        outcome_increment=int(counters.get("done", 0)),
+                        status="ok" if counters.get("failed", 0) == 0 else "degraded",
+                    )
                 else:
                     logger.debug("queue empty; sleeping %ds", poll_interval)
+                    # Heartbeat even when queue is empty so the monitor sees
+                    # liveness; outcome=0 is correct (no work was available,
+                    # not that work was attempted and failed).
+                    _heartbeat_tick(
+                        "indexing-queue-worker",
+                        outcome_increment=0,
+                        status="ok",
+                    )
                 iteration += 1
                 if max_iterations is not None and iteration >= max_iterations:
                     break

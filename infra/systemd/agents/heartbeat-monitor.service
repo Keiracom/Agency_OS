@@ -1,0 +1,14 @@
+[Unit]
+Description=Agency OS — Heartbeat monitor scan (KEI-91 Gate 4)
+Documentation=https://linear.app/keiracom/issue/KEI-91
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+EnvironmentFile=-/home/elliotbot/.config/agency-os/.env
+ExecStart=/home/elliotbot/clawd/Agency_OS/.venv/bin/python3 /home/elliotbot/clawd/Agency_OS/scripts/orchestrator/heartbeat_monitor.py
+StandardOutput=append:/home/elliotbot/clawd/logs/heartbeat-monitor.log
+StandardError=append:/home/elliotbot/clawd/logs/heartbeat-monitor.log
+# Small scan + a few alerts — keep this tight.
+MemoryMax=128M

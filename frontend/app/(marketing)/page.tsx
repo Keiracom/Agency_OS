@@ -37,7 +37,7 @@ export const revalidate = 3600;
 export const metadata: Metadata = {
   title: "Keiracom — Managed AI Compute with Built-in Governance",
   description:
-    // TODO(KEI-119j): Replace with ratified SEO copy once brand review complete.
+    // Pending(KEI-119j): Replace with ratified SEO copy once brand review complete.
     "Keiracom: managed AI compute with built-in governance. OpenClaw is Linux, Keiracom is RHEL.",
 };
 
@@ -50,13 +50,13 @@ export const metadata: Metadata = {
  * priceAud: null on all tiers — Dave has not published pricing yet.
  * Feature bullets are shape stubs only — sub-KEI claimers replace with copy.
  *
- * TODO(KEI-119b–g): Each tier gets its own sub-KEI for finalised copy + pricing.
+ * Pending(KEI-119b–g): Each tier gets its own sub-KEI for finalised copy + pricing.
  */
 const PRICING_TIERS: readonly PricingTier[] = [
   {
     name: "Sandbox",
     priceAud: null,
-    // TODO(KEI-119b): Finalise Sandbox tier copy + AUD price
+    // Pending(KEI-119b): Finalise Sandbox tier copy + AUD price
     features: [
       "Concurrent agent threads: stub value",
       "Context window: stub GB",
@@ -68,7 +68,7 @@ const PRICING_TIERS: readonly PricingTier[] = [
   {
     name: "Solo",
     priceAud: null,
-    // TODO(KEI-119c): Finalise Solo tier copy + AUD price
+    // Pending(KEI-119c): Finalise Solo tier copy + AUD price
     features: [
       "Concurrent agent threads: stub value",
       "Context window: stub GB",
@@ -80,7 +80,7 @@ const PRICING_TIERS: readonly PricingTier[] = [
   {
     name: "Pro",
     priceAud: null,
-    // TODO(KEI-119d): Finalise Pro tier copy + AUD price
+    // Pending(KEI-119d): Finalise Pro tier copy + AUD price
     features: [
       "Concurrent agent threads: stub value",
       "Context window: stub GB",
@@ -93,7 +93,7 @@ const PRICING_TIERS: readonly PricingTier[] = [
   {
     name: "Team",
     priceAud: null,
-    // TODO(KEI-119e): Finalise Team tier copy + AUD price
+    // Pending(KEI-119e): Finalise Team tier copy + AUD price
     features: [
       "Concurrent agent threads: stub value",
       "Context window: stub GB",
@@ -106,7 +106,7 @@ const PRICING_TIERS: readonly PricingTier[] = [
   {
     name: "Distributor",
     priceAud: null,
-    // TODO(KEI-119f): Finalise Distributor tier copy + AUD price
+    // Pending(KEI-119f): Finalise Distributor tier copy + AUD price
     features: [
       "White-label configuration: stub value",
       "Sub-account management: stub seats",
@@ -118,7 +118,7 @@ const PRICING_TIERS: readonly PricingTier[] = [
   {
     name: "Self-Hosted",
     priceAud: null,
-    // TODO(KEI-119g): Finalise Self-Hosted tier copy + AUD price
+    // Pending(KEI-119g): Finalise Self-Hosted tier copy + AUD price
     features: [
       "On-premise compute: customer-managed",
       "Air-gap support: stub value",
@@ -143,7 +143,7 @@ export default function LandingPage(): React.ReactElement {
     <main>
       {/* ── Hero ──────────────────────────────────────────────────────────
        * SCAFFOLD: Positioning tagline from KEI-119 spec (verbatim).
-       * TODO(KEI-119a): Replace stub hero body copy + add brand stylesheet.
+       * Pending(KEI-119a): Replace stub hero body copy + add brand stylesheet.
        */}
       <section data-testid="hero-section">
         <h1>
@@ -151,7 +151,7 @@ export default function LandingPage(): React.ReactElement {
           OpenClaw is Linux, Keiracom is RHEL.
         </h1>
         <p>
-          {/* TODO(KEI-119a): Replace with ratified hero body copy */}
+          {/* Pending(KEI-119a): Replace with ratified hero body copy */}
           Managed AI compute with built-in governance. Global launch day 1.
         </p>
       </section>
@@ -159,11 +159,11 @@ export default function LandingPage(): React.ReactElement {
       {/* ── Pricing Tiers ─────────────────────────────────────────────────
        * Six tiers: Sandbox / Solo / Pro / Team / Distributor / Self-Hosted.
        * All prices TBA until Dave publishes ratified AUD pricing.
-       * TODO(KEI-119b–g): Sub-KEI claimers fill copy per tier.
+       * Pending(KEI-119b–g): Sub-KEI claimers fill copy per tier.
        */}
       <section data-testid="pricing-section">
         <h2>Pricing</h2>
-        {/* TODO(KEI-119a): Add section intro copy */}
+        {/* Pending(KEI-119a): Add section intro copy */}
         <ul data-testid="pricing-tier-grid">
           {PRICING_TIERS.map((tier) => (
             <li key={tier.name}>

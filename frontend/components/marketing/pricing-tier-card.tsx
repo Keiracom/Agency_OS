@@ -52,10 +52,13 @@ export interface PricingTier {
 export function PricingTierCard({
   tier,
 }: Readonly<{ tier: PricingTier }>): React.ReactElement {
-  const priceDisplay =
-    tier.priceAud === null
-      ? "$AUD TBA — private beta pricing"
-      : `A$${tier.priceAud} AUD${tier.priceLabel ? ` ${tier.priceLabel}` : ""}`;
+  let priceDisplay: string;
+  if (tier.priceAud === null) {
+    priceDisplay = "$AUD TBA — private beta pricing";
+  } else {
+    const value = `A$${tier.priceAud} AUD`;
+    priceDisplay = tier.priceLabel ? `${value} ${tier.priceLabel}` : value;
+  }
 
   return (
     <article
@@ -78,12 +81,12 @@ export function PricingTierCard({
       {/* CTA — sub-KEI: wire href + button variant */}
       {tier.highlightCta === true ? (
         <div data-testid="cta-highlight">
-          {/* TODO(sub-KEI): Replace with real CTA button + route */}
+          {/* Pending(sub-KEI): Replace with real CTA button + route */}
           <button type="button">Get started</button>
         </div>
       ) : (
         <div>
-          {/* TODO(sub-KEI): Replace with real CTA button + route */}
+          {/* Pending(sub-KEI): Replace with real CTA button + route */}
           <button type="button">Learn more</button>
         </div>
       )}

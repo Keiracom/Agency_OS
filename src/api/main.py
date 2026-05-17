@@ -417,6 +417,7 @@ from src.api.routes.patterns import router as patterns_router
 from src.api.routes.pool import router as pool_router
 from src.api.routes.replies import router as replies_router
 from src.api.routes.reports import router as reports_router
+from src.api.routes.subscriptions import router as subscriptions_router
 from src.api.routes.tiers import router as tiers_router
 from src.api.routes.unipile import router as unipile_router
 from src.api.routes.webhooks import router as webhooks_router
@@ -451,6 +452,8 @@ app.include_router(linkedin_router, prefix="/api/v1")
 app.include_router(pool_router, prefix="/api/v1")
 # Phase H, Item 44: Daily Digest
 app.include_router(digest_router, prefix="/api/v1")
+# KEI-151: Customer Subscriptions CRUD (Part 17.2)
+app.include_router(subscriptions_router, prefix="/api/v1")
 # Unipile BYOA Multi-Tenancy
 app.include_router(unipile_router, prefix="/api/v1")
 # Step 8/8: Stripe Billing

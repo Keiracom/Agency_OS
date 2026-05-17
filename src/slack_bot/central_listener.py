@@ -534,6 +534,8 @@ def _maybe_auto_create_kei(event: dict, web: WebClient | None) -> None:
     Fires BEFORE the normal fanout so it runs regardless of fanout outcome.
     Best-effort: any failure is logged but never blocks the fanout relay.
     """
+    if os.environ.get("AUTO_KEI_FROM_CEO", "0") != "1":
+        return
     channel = event.get("channel", "")
     text = (event.get("text") or "").strip()
     if channel != CEO_CHANNEL:

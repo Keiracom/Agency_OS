@@ -529,7 +529,9 @@ def process_agent(
     if last_call is None:
         minutes_ago = INACTIVITY_MINUTES + 1  # treat as stale
     else:
-        minutes_ago = (now_utc - last_call.replace(tzinfo=_dt.UTC)).total_seconds() / 60
+        # Normalize last_call to UTC-aware if it's naive
+        lc = last_call if last_call.tzinfo is not None else last_call.replace(tzinfo=_dt.UTC)
+        minutes_ago = (now_utc - lc).total_seconds() / 60
 
     if minutes_ago < INACTIVITY_MINUTES:
         m = int(minutes_ago)

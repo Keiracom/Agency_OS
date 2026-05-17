@@ -173,7 +173,8 @@ def test_scenario_2_idle_no_work(monkeypatch):
 
 def test_scenario_3_stuck_low_context(monkeypatch):
     conn = MagicMock()
-    stale_ts = NOW_UTC - _dt.timedelta(minutes=16)
+    # Return a timestamp 16 minutes ago (stale beyond the 15-min threshold)
+    stale_ts = _dt.datetime.now(_dt.UTC) - _dt.timedelta(minutes=16)
 
     monkeypatch.setattr(fs, "get_phase_max", lambda c: 99)
     monkeypatch.setattr(fs, "get_active_claim", lambda c, cs: ("KEI-55", "Stale task"))
@@ -184,11 +185,7 @@ def test_scenario_3_stuck_low_context(monkeypatch):
     monkeypatch.setattr(fs, "inject_task", inject_mock)
     monkeypatch.setattr(fs, "restart_service", MagicMock())
 
-    with patch("fleet_supervisor._dt") as mock_dt:
-        mock_dt.datetime.now.return_value = NOW_UTC
-        mock_dt.timezone = _dt.timezone
-        mock_dt.timedelta = _dt.timedelta
-        status = fs.process_agent(AGENT_ELLIOT, conn, [], 99)
+    status = fs.process_agent(AGENT_ELLIOT, conn, [], 99)
 
     inject_mock.assert_called_once()
     nudge_text = inject_mock.call_args[0][1]
@@ -203,7 +200,8 @@ def test_scenario_3_stuck_low_context(monkeypatch):
 
 def test_scenario_3_stuck_high_context(monkeypatch):
     conn = MagicMock()
-    stale_ts = NOW_UTC - _dt.timedelta(minutes=16)
+    # Return a timestamp 16 minutes ago (stale beyond the 15-min threshold)
+    stale_ts = _dt.datetime.now(_dt.UTC) - _dt.timedelta(minutes=16)
 
     restart_mock = MagicMock()
     inject_mock = MagicMock()
@@ -217,11 +215,7 @@ def test_scenario_3_stuck_high_context(monkeypatch):
     monkeypatch.setattr(fs, "inject_task", inject_mock)
     monkeypatch.setattr(fs, "fetch_linear_description", lambda kei: ("Context-full task", "desc"))
 
-    with patch("fleet_supervisor._dt") as mock_dt:
-        mock_dt.datetime.now.return_value = NOW_UTC
-        mock_dt.timezone = _dt.timezone
-        mock_dt.timedelta = _dt.timedelta
-        status = fs.process_agent(AGENT_ELLIOT, conn, [], 99)
+    status = fs.process_agent(AGENT_ELLIOT, conn, [], 99)
 
     restart_mock.assert_called_once_with("elliot-agent")
     inject_mock.assert_called_once()

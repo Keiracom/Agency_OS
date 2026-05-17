@@ -16,7 +16,7 @@ const _sample: DispatcherTask[] = [
     id: "task-1",
     title: "First customer task",
     status: "done",
-    cost_usd: 0.12,
+    cost_aud: 0.12,
     created_at: "2026-05-17T10:00:00Z",
     completed_at: "2026-05-17T10:05:00Z",
   },
@@ -24,7 +24,7 @@ const _sample: DispatcherTask[] = [
     id: "task-2",
     title: "Second task running",
     status: "active",
-    cost_usd: null,
+    cost_aud: null,
     created_at: "2026-05-17T10:30:00Z",
     completed_at: null,
   },
@@ -48,9 +48,9 @@ describe("TaskFeed", () => {
     expect(screen.getByText("Second task running")).toBeInTheDocument();
   });
 
-  test("renders dash for null cost and dollar for present cost", () => {
+  test("renders dash for null cost and AUD-prefixed dollar for present cost", () => {
     render(<TaskFeed tasks={_sample} />);
-    expect(screen.getByText("$0.12")).toBeInTheDocument();
+    expect(screen.getByText("A$0.12")).toBeInTheDocument();
     expect(screen.getByText("—")).toBeInTheDocument();
   });
 

@@ -32,7 +32,10 @@ export interface DispatcherTask {
   id: string;
   title: string;
   status: DispatcherTaskStatus;
-  cost_usd: number | null;
+  // LAW II Australia First — all financial values stored + displayed in $AUD.
+  // Field name carries the unit so sub-KEI claimers can't silently propagate
+  // USD through 10+ consumer files (anchored: feedback_currency_label_must_match_value 2026-05-08).
+  cost_aud: number | null;
   created_at: string;
   completed_at: string | null;
 }
@@ -76,7 +79,7 @@ export function TaskFeed({
         <TableRow>
           <TableHead>Title</TableHead>
           <TableHead>Status</TableHead>
-          <TableHead className="text-right">Cost</TableHead>
+          <TableHead className="text-right">Cost (AUD)</TableHead>
           <TableHead className="text-right">Submitted</TableHead>
         </TableRow>
       </TableHeader>
@@ -86,7 +89,7 @@ export function TaskFeed({
             <TableCell className="font-medium">{task.title}</TableCell>
             <TableCell>{STATUS_LABEL[task.status]}</TableCell>
             <TableCell className="text-right">
-              {task.cost_usd === null ? "—" : `$${task.cost_usd.toFixed(2)}`}
+              {task.cost_aud === null ? "—" : `A$${task.cost_aud.toFixed(2)}`}
             </TableCell>
             <TableCell className="text-right text-muted-foreground">
               {new Date(task.created_at).toLocaleString()}

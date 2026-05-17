@@ -47,7 +47,7 @@ const DEFAULT_RESULT: UseTaskFeedResult = {
 
 export function useTaskFeed(_opts: UseTaskFeedOptions = {}): UseTaskFeedResult {
   // Stub — sub-KEI implements:
-  //   - Supabase query: SELECT id, title, status, cost_usd, created_at, completed_at
+  //   - Supabase query: SELECT id, title, status, cost_aud, created_at, completed_at
   //                     FROM public.tasks
   //                    WHERE customer_id = <session.user.id>
   //                    ORDER BY created_at DESC

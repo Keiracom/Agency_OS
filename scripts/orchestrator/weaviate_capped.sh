@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
-# weaviate_capped.sh — launch Weaviate under a 2.5 GB systemd memory cap.
+# weaviate_capped.sh — launch Weaviate under a 3 GB systemd memory cap.
+#
+# Default cap raised from 2.5G → 3G on 2026-05-17 (KEI-107, Dave directive)
+# to align with KEI-44 discovery + Max's verified cgroup pattern for
+# Python+numpy+Go services on Vultr Sydney.
 #
 # Closes Beads Agency_OS-... / Linear KEI-48 (Install Weaviate on Vultr Sydney).
 # Same pattern as scripts/orchestrator/cognee_capped.sh (KEI-44 sha 3b133132).
@@ -26,7 +30,7 @@
 #   WEAVIATE_HOST             default 127.0.0.1 (loopback-only; reverse-proxy if exposing)
 #   WEAVIATE_PORT             default 8090 (crowdsec holds 8080)
 #   WEAVIATE_DATA_DIR         default /home/elliotbot/clawd/weaviate-data
-#   AGENCY_OS_WEAVIATE_MAX_MEM    default 2.5G (passed to -p MemoryMax=)
+#   AGENCY_OS_WEAVIATE_MAX_MEM    default 3G (passed to -p MemoryMax=, KEI-107)
 #   AGENCY_OS_SYSTEMD_RUN     path to systemd-run binary (default 'systemd-run')
 #   AGENCY_OS_SYSTEMD_RUN_SKIP    if set, print resolved command + exit 0 (tests)
 #
@@ -35,7 +39,7 @@
 
 set -euo pipefail
 
-MAX_MEM="${AGENCY_OS_WEAVIATE_MAX_MEM:-2.5G}"
+MAX_MEM="${AGENCY_OS_WEAVIATE_MAX_MEM:-3G}"
 SYSTEMD_RUN="${AGENCY_OS_SYSTEMD_RUN:-systemd-run}"
 WEAVIATE_BIN="${WEAVIATE_BIN:-/home/elliotbot/clawd/weaviate-bin/weaviate}"
 WEAVIATE_HOST="${WEAVIATE_HOST:-127.0.0.1}"

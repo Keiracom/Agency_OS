@@ -1,0 +1,12 @@
+[Unit]
+Description=Agency OS — KEI-105 heartbeat writer timer for callsign %i
+Documentation=https://linear.app/keiracom/issue/KEI-105
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=15min
+AccuracySec=30s
+Unit=heartbeat-writer@%i.service
+
+[Install]
+WantedBy=timers.target

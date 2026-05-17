@@ -185,6 +185,30 @@ def test_priority_falls_back_to_created_at_when_priority_missing():
     assert sorted_ids == ["Agency_OS-old", "Agency_OS-new"]
 
 
+def test_priority_handles_int_priority_from_tasks_cli_json():
+    """Regression: bd ready --json post-KEI-22 returns priority as int
+    (1/2/3/4), not 'P\\d' string. _priority_key must not raise
+    AttributeError ('int' object has no attribute 'upper') on the int shape.
+    """
+    items = [
+        _item("Agency_OS-low", priority=3),
+        _item("Agency_OS-mid", priority=2),
+        _item("Agency_OS-hi", priority=0),
+    ]
+    sorted_ids = [i["id"] for i in sorted(items, key=mod._priority_key)]
+    assert sorted_ids == ["Agency_OS-hi", "Agency_OS-mid", "Agency_OS-low"]
+
+
+def test_priority_handles_mixed_int_and_str_priority():
+    """Robustness: mixed feed (one int, one P-string) sorts without crash."""
+    items = [
+        _item("Agency_OS-int", priority=2),
+        _item("Agency_OS-str", priority="P1"),
+    ]
+    sorted_ids = [i["id"] for i in sorted(items, key=mod._priority_key)]
+    assert sorted_ids == ["Agency_OS-str", "Agency_OS-int"]
+
+
 # ─── 8. Dry-run prints target without calling claim_fn ──────────────────
 
 

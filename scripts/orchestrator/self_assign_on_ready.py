@@ -65,8 +65,17 @@ _CALLSIGN_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_-]*$")
 
 
 def _priority_key(item: dict) -> tuple:
-    """Sort key: lower-number priority first; fall back to created_at asc."""
-    pri_raw = (item.get("priority") or "").upper()
+    """Sort key: lower-number priority first; fall back to created_at asc.
+
+    bd ready --json now returns priority as int (1/2/3/4) post-KEI-22 SSOT
+    migration. Coerce to str before .upper() so the old 'P\\d+' regex still
+    matches both int + 'P1' string shapes — int '1' becomes '1', regex misses,
+    fall-through to pri_n=9 (lowest precedence). Then re-handle int directly.
+    """
+    raw = item.get("priority")
+    if isinstance(raw, int):
+        return (raw, item.get("created", "") or item.get("created_at", ""))
+    pri_raw = str(raw or "").upper()
     m = re.match(r"P(\d+)", pri_raw)
     pri_n = int(m.group(1)) if m else 9
     return (pri_n, item.get("created", "") or item.get("created_at", ""))

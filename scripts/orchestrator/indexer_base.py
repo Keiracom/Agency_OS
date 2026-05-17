@@ -35,7 +35,12 @@ logger = logging.getLogger("indexer_base")
 
 WEAVIATE_HOST = os.environ.get("WEAVIATE_HOST", "127.0.0.1")
 WEAVIATE_PORT = os.environ.get("WEAVIATE_PORT", "8090")
-WEAVIATE_BASE = f"http://{WEAVIATE_HOST}:{WEAVIATE_PORT}"
+# Loopback-only by design — Weaviate binds 127.0.0.1 per scripts/orchestrator/
+# weaviate_capped.sh and serves plain HTTP. TLS is terminated at the
+# Cloudflare Tunnel layer (T0.3, separate KEI), never at the Weaviate process.
+# Switching this to https://127.0.0.1 would break the connection — there is
+# no TLS listener inside the cgroup. NOSONAR S5332 (loopback HTTP is safe).
+WEAVIATE_BASE = f"http://{WEAVIATE_HOST}:{WEAVIATE_PORT}"  # NOSONAR S5332
 
 MAX_RETRIES = 3
 INITIAL_BACKOFF_SECONDS = 1.0

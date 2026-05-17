@@ -141,7 +141,12 @@ def build_decision(row: CeoMemoryRow) -> dict:
     }
 
 
-def main() -> int:
+def main() -> None:
+    """Indexer entry point. Raises SystemExit on missing config; otherwise
+    runs until SIGTERM/SIGINT in daemon mode, or exits after one batch in
+    --once mode. Returns None — exit code is implicit (0 on clean shutdown,
+    non-zero only if SystemExit was raised by a config error path).
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("--once", action="store_true")
     parser.add_argument("--batch", type=int, default=BATCH_SIZE_DEFAULT)
@@ -162,7 +167,7 @@ def main() -> int:
                 outcome.to_dict(),
                 aggregate_count(DECISIONS_CLASS),
             )
-            return 0
+            return
         while not _shutdown_requested:
             try:
                 outcome = indexer.index_once(args.batch)
@@ -178,8 +183,8 @@ def main() -> int:
                     break
                 time.sleep(1)
     logger.info("indexer exiting cleanly")
-    return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()
+    sys.exit(0)

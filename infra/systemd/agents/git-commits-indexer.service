@@ -1,0 +1,22 @@
+[Unit]
+Description=Agency OS — git commits → Weaviate Codebase indexer (KEI-85 phase C)
+Documentation=https://linear.app/keiracom/issue/KEI-85
+After=network-online.target weaviate.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+EnvironmentFile=-/home/elliotbot/.config/agency-os/.env
+Environment=PYTHONPATH=/home/elliotbot/clawd/Agency_OS/scripts/orchestrator
+ExecStart=/home/elliotbot/clawd/Agency_OS/.venv/bin/python3 /home/elliotbot/clawd/Agency_OS/scripts/orchestrator/git_commits_indexer.py
+Restart=on-failure
+RestartSec=15
+StandardOutput=append:/home/elliotbot/clawd/logs/git-commits-indexer.log
+StandardError=append:/home/elliotbot/clawd/logs/git-commits-indexer.log
+# KEI-44 cgroup pattern — small worker footprint (git subprocess + JSON only).
+MemoryMax=256M
+MemoryHigh=200M
+
+[Install]
+WantedBy=default.target

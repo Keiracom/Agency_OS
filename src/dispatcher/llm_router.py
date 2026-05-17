@@ -227,9 +227,16 @@ def _emit_cost(
     try:
         cost_sink(event)
     except Exception as exc:  # noqa: BLE001 — sink is consumer-owned; must isolate
+        # Strip control chars from user-controlled IDs before logging (S5145).
+        safe_task = "".join(
+            c if c.isprintable() and c not in "\r\n" else "?" for c in str(task_id)
+        )[:64]
+        safe_customer = "".join(
+            c if c.isprintable() and c not in "\r\n" else "?" for c in str(customer_id)
+        )[:64]
         logger.warning(
             "cost_sink raised for task %s (customer %s): %s",
-            task_id,
-            customer_id,
+            safe_task,
+            safe_customer,
             exc,
         )

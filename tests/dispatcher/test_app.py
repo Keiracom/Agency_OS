@@ -6,7 +6,7 @@ so /dispatch can be exercised end-to-end without live Valkey or LiteLLM.
 
 from __future__ import annotations
 
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -72,8 +72,7 @@ def test_health_does_not_call_rate_limiter(client):
 def test_dispatch_happy_path(client):
     """Rate limit OK + LLM 2xx → 200 with the model response embedded."""
 
-    async def fake_enforce(*, tenant_id, now_unix=None):
-        return _decision()
+    fake_enforce = AsyncMock(return_value=_decision())
 
     def fake_forward(*, body, customer_id, task_id, cost_sink=None, **_kw):
         if cost_sink:
@@ -161,8 +160,7 @@ def test_dispatch_returns_429_on_upstream_litellm_rate_exhaust(client):
     """LiteLLMRateLimitExhaustedError → 429 with longer Retry-After (60s)
     so customer doesn't immediately retry into the same upstream issue."""
 
-    async def fake_enforce(*, tenant_id, now_unix=None):
-        return _decision()
+    fake_enforce = AsyncMock(return_value=_decision())
 
     def upstream_429(**_kw):
         raise LiteLLMRateLimitExhaustedError("litellm 429 after 3 retries")
@@ -179,8 +177,7 @@ def test_dispatch_returns_429_on_upstream_litellm_rate_exhaust(client):
 def test_dispatch_returns_502_on_litellm_router_error(client):
     """Generic LiteLLMRouterError (5xx upstream, transport failure) → 502."""
 
-    async def fake_enforce(*, tenant_id, now_unix=None):
-        return _decision()
+    fake_enforce = AsyncMock(return_value=_decision())
 
     def upstream_500(**_kw):
         raise LiteLLMRouterError("litellm status 500: upstream outage")

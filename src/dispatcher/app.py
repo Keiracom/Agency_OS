@@ -41,6 +41,15 @@ from src.dispatcher.tier_limits import enforce_for_tenant
 
 logger = logging.getLogger(__name__)
 
+
+def _sanitize_for_log(value: str, *, max_len: int = 64) -> str:
+    """Strip control chars + truncate user-controlled identifier before
+    logging. Defends against log-injection (CRLF, ANSI escapes) per Sonar
+    S5145. UUIDs / KEI-NNN style IDs pass through unchanged."""
+    cleaned = "".join(c if c.isprintable() and c not in "\r\n" else "?" for c in str(value))
+    return cleaned[:max_len]
+
+
 app = FastAPI(
     title="Keiracom Dispatcher",
     description="Customer-facing dispatcher service (KEI-179). Receives Model B "
@@ -88,13 +97,15 @@ async def dispatch(payload: DispatchRequest) -> DispatchResponse:
         502 — LiteLLM gateway returned a non-2xx non-429 OR transport error.
         500 — unexpected router failure.
     """
+    safe_tenant = _sanitize_for_log(payload.customer_id)
+    safe_task = _sanitize_for_log(payload.task_id)
     try:
         decision = await enforce_for_tenant(tenant_id=payload.customer_id)
     except RateLimitExceededError as exc:
         logger.info(
             "dispatcher 429 tenant=%s task=%s limit=%d window=%ds",
-            payload.customer_id,
-            payload.task_id,
+            safe_tenant,
+            safe_task,
             exc.limit,
             exc.window_size_s,
         )
@@ -118,8 +129,8 @@ async def dispatch(payload: DispatchRequest) -> DispatchResponse:
         # customer doesn't immediately retry into the same upstream issue.
         logger.warning(
             "dispatcher upstream-429 tenant=%s task=%s",
-            payload.customer_id,
-            payload.task_id,
+            safe_tenant,
+            safe_task,
         )
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
@@ -129,8 +140,8 @@ async def dispatch(payload: DispatchRequest) -> DispatchResponse:
     except LiteLLMRouterError as exc:
         logger.warning(
             "dispatcher 502 tenant=%s task=%s err=%s",
-            payload.customer_id,
-            payload.task_id,
+            safe_tenant,
+            safe_task,
             exc,
         )
         raise HTTPException(

@@ -23,8 +23,13 @@
 set -euo pipefail
 
 POLL_SECONDS="${POLL_SECONDS:-60}"
+# Emit [DEGRADED:callsign tg=bd_down] after this many consecutive non-eligible
+# non-claimed ticks where the underlying bd binary returned an unusable
+# response. Keeps the agent observably-failing instead of silently-running
+# (Gate 4 outcome-counter alignment).
+DEGRADED_AFTER="${DEGRADED_AFTER:-5}"
 CALLSIGN_ARG=""
-while [ $# -gt 0 ]; do
+while [[ $# -gt 0 ]]; do
   case "$1" in
     --callsign) CALLSIGN_ARG="$2"; shift 2;;
     --poll-seconds) POLL_SECONDS="$2"; shift 2;;
@@ -32,13 +37,15 @@ while [ $# -gt 0 ]; do
   esac
 done
 CALLSIGN="${CALLSIGN_ARG:-${CALLSIGN:-}}"
-[ -n "$CALLSIGN" ] || { echo "[self-claim-loop] CALLSIGN not set" >&2; exit 2; }
+[[ -n "$CALLSIGN" ]] || { echo "[self-claim-loop] CALLSIGN not set" >&2; exit 2; }
 
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 # ASSIGN_PATH override lets tests inject a stub self_assign_on_ready.py.
 ASSIGN="${ASSIGN_PATH:-$REPO_ROOT/scripts/orchestrator/self_assign_on_ready.py}"
 TG_BIN="$(command -v tg || true)"
 READY_POSTED=0
+DEGRADED_POSTED=0
+DEGRADED_STREAK=0
 
 while true; do
   result=$(python3 "$ASSIGN" --callsign "$CALLSIGN" 2>/dev/null || echo '{"claimed":false,"reason":"exception"}')
@@ -48,14 +55,24 @@ while true; do
       issue=$(echo "$result" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("issue_id",""))')
       echo "[self-claim-loop:$CALLSIGN] claimed $issue"
       READY_POSTED=0
+      DEGRADED_POSTED=0
+      DEGRADED_STREAK=0
       ;;
     no_eligible_work)
-      if [ "$READY_POSTED" = "0" ] && [ -n "$TG_BIN" ]; then
+      if [[ "$READY_POSTED" = "0" && -n "$TG_BIN" ]]; then
         CALLSIGN="$CALLSIGN" "$TG_BIN" "[READY:$CALLSIGN]" >/dev/null 2>&1 || true
         READY_POSTED=1
       fi
+      DEGRADED_STREAK=0
       ;;
-    race_lost_all|bd_unavailable|invalid_callsign|exception|*)
+    bd_unavailable|exception)
+      DEGRADED_STREAK=$((DEGRADED_STREAK + 1))
+      if [[ "$DEGRADED_STREAK" -ge "$DEGRADED_AFTER" && "$DEGRADED_POSTED" = "0" && -n "$TG_BIN" ]]; then
+        CALLSIGN="$CALLSIGN" "$TG_BIN" "[DEGRADED:$CALLSIGN tg=bd_down]" >/dev/null 2>&1 || true
+        DEGRADED_POSTED=1
+      fi
+      ;;
+    race_lost_all|invalid_callsign|*)
       ;;
   esac
   sleep "$POLL_SECONDS"

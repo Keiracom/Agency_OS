@@ -17,6 +17,7 @@ TEMPLATE_DST="$UNIT_DIR/agent-self-claim-loop@.service"
 CALLSIGNS=("elliot" "aiden" "max" "atlas" "orion" "scout")
 
 install -d -m 0755 "$UNIT_DIR"
+install -d -m 0755 "/home/elliotbot/clawd/logs"
 install -m 0644 "$TEMPLATE_SRC" "$TEMPLATE_DST"
 
 systemctl --user daemon-reload

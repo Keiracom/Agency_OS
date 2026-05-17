@@ -21,6 +21,7 @@ import importlib.util
 import json
 import sys
 import time
+import types
 from pathlib import Path
 
 import pytest
@@ -179,6 +180,55 @@ def test_verify_unit_empty_secret(mod):
 # ---------------------------------------------------------------------------
 
 
+class _FakeCursor:
+    """Module-level psycopg cursor mock — shared across KEI-152 dispatch tests.
+
+    Records every SQL passed to execute() into the `executed_sql` list bound
+    at construction. Extracted out of inline per-test definitions to avoid
+    Sonar new_duplicated_lines_density spike (per Aiden's HOLD on PR #981).
+    """
+
+    rowcount = 1
+
+    def __init__(self, executed_sql: list[str]) -> None:
+        self._executed_sql = executed_sql
+
+    def execute(self, sql: str, params: object = None) -> None:
+        self._executed_sql.append(sql)
+
+    def __enter__(self) -> _FakeCursor:
+        return self
+
+    def __exit__(self, *_: object) -> None:
+        return None  # context-manager protocol no-op — production psycopg.Cursor.__exit__ closes resources; test mock has none
+
+
+class _FakeConn:
+    """Module-level psycopg connection mock — shared across KEI-152 dispatch tests."""
+
+    def __init__(self, executed_sql: list[str]) -> None:
+        self._executed_sql = executed_sql
+
+    def cursor(self) -> _FakeCursor:
+        return _FakeCursor(self._executed_sql)
+
+    def commit(self) -> None:
+        return None  # mock — production psycopg.Connection.commit is the no-op replacement target
+
+    def __enter__(self) -> _FakeConn:
+        return self
+
+    def __exit__(self, *_: object) -> None:
+        return None  # context-manager protocol no-op — production psycopg.Connection.__exit__ closes the conn; test mock has none
+
+
+def _make_fake_psycopg(executed_sql: list[str]) -> types.SimpleNamespace:
+    """Build a fake psycopg module exposing connect() that returns a FakeConn
+    backed by the caller-supplied executed_sql list.
+    """
+    return types.SimpleNamespace(connect=lambda *_a, **_kw: _FakeConn(executed_sql))
+
+
 def _make_paid_payload(sub_id: str = "sub_abc123") -> bytes:
     return json.dumps({"event_type": "invoice.paid", "data": {"subscription_id": sub_id}}).encode()
 
@@ -204,40 +254,9 @@ def _make_sub_updated_payload(sub_id: str = "sub_abc123", price_id: str = "pri_a
 def test_invoice_paid_dispatches_to_handler(client, mod, monkeypatch):
     """invoice.paid with subscription_id → _handle_invoice_paid called, UPDATE contains last_paid_at."""
     executed_sql: list[str] = []
-
-    class FakeCursor:
-        rowcount = 1
-
-        def execute(self, sql, params=None):
-            executed_sql.append(sql)
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *_):
-            pass  # context-manager protocol no-op — psycopg.Cursor.__exit__ closes resources; test mock has none
-
-    class FakeConn:
-        def cursor(self):
-            return FakeCursor()
-
-        def commit(self):
-            pass  # mock — production psycopg.Connection.commit is the no-op replacement target
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *_):
-            pass  # context-manager protocol no-op — psycopg.Connection.__exit__ closes the conn; test mock has none
-
-    import types
-
-    fake_psycopg = types.SimpleNamespace(connect=lambda *a, **kw: FakeConn())
+    fake_psycopg = _make_fake_psycopg(executed_sql)
     monkeypatch.setenv("DATABASE_URL", "postgresql://fake/db")
     monkeypatch.setattr(mod, "_dsn_from_env", lambda: "postgresql://fake/db")
-
-    import sys
-
     sys.modules["psycopg"] = fake_psycopg
 
     body = _make_paid_payload()
@@ -288,40 +307,10 @@ def test_invoice_paid_missing_sub_id_no_db_call(mod, monkeypatch):
 def test_subscription_updated_dispatches_with_tier_map(client, mod, monkeypatch):
     """subscription.updated + valid PADDLE_PRICE_TO_TIER → UPDATE SQL contains tier."""
     executed_sql: list[str] = []
-
-    class FakeCursor:
-        rowcount = 1
-
-        def execute(self, sql, params=None):
-            executed_sql.append(sql)
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *_):
-            pass  # context-manager protocol no-op — psycopg.Cursor.__exit__ closes resources; test mock has none
-
-    class FakeConn:
-        def cursor(self):
-            return FakeCursor()
-
-        def commit(self):
-            pass  # mock — production psycopg.Connection.commit is the no-op replacement target
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *_):
-            pass  # context-manager protocol no-op — psycopg.Connection.__exit__ closes the conn; test mock has none
-
-    import types
-
-    fake_psycopg = types.SimpleNamespace(connect=lambda *a, **kw: FakeConn())
+    fake_psycopg = _make_fake_psycopg(executed_sql)
     monkeypatch.setenv("DATABASE_URL", "postgresql://fake/db")
     monkeypatch.setenv("PADDLE_PRICE_TO_TIER", json.dumps({"pri_abc": "pro"}))
     monkeypatch.setattr(mod, "_dsn_from_env", lambda: "postgresql://fake/db")
-
-    import sys
 
     sys.modules["psycopg"] = fake_psycopg
 

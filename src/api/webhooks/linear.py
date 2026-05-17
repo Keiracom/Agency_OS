@@ -299,8 +299,16 @@ def _dispatch_to_tasks(event: dict[str, Any]) -> None:
         logger.warning("tasks dispatch failed for %s: %s", identifier, exc)
 
 
-@router.post("")
-@router.post("/")
+_RECEIVE_RESPONSES: dict[int | str, dict[str, Any]] = {
+    400: {
+        "description": "Title-prefix guard mismatch — KEI-N in title does not match Linear identifier."
+    },
+    401: {"description": "HMAC signature verification failed."},
+}
+
+
+@router.post("", responses=_RECEIVE_RESPONSES)
+@router.post("/", responses=_RECEIVE_RESPONSES)
 async def receive_linear_webhook(request: Request) -> dict[str, str]:
     """Receive a Linear webhook event, verify HMAC, dispatch to bd CRUD.
 

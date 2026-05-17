@@ -29,7 +29,7 @@ resolve_tmux_target() {
     for candidate in "${TMUX_CANDIDATES[@]}"; do
         session="${candidate%%:*}"
         if tmux has-session -t "$session" 2>/dev/null; then
-            if [ "$candidate" != "$previous" ]; then
+            if [[ "$candidate" != "$previous" ]]; then
                 echo "[relay-watcher-${CALLSIGN}] PROMOTED session: $previous → $candidate"
             fi
             TMUX_TARGET="$candidate"
@@ -46,7 +46,7 @@ resolve_tmux_target() {
 alert_delivery_failure() {
     local tg_bin alert_channel msg
     tg_bin="$(command -v tg 2>/dev/null)"
-    [ -x "$tg_bin" ] || return 0
+    [[ -x "$tg_bin" ]] || return 0
     if [ "$CALLSIGN" = "elliot" ]; then
         alert_channel="ceo"
     else

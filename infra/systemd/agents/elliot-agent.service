@@ -11,6 +11,10 @@ Type=simple
 Environment="CALLSIGN=elliot"
 EnvironmentFile=/home/elliotbot/.config/agency-os/.env
 WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+# KEI-140 ExecStartPre — fail-open via '-' prefix. See atlas-agent.service for full rationale.
+# Elliot runs from the main worktree (Agency_OS).
+ExecStartPre=-/usr/bin/git -C /home/elliotbot/clawd/Agency_OS pull origin main --rebase --autostash
+ExecStartPre=-/home/elliotbot/clawd/Agency_OS/.venv/bin/python3 /home/elliotbot/clawd/Agency_OS/scripts/cognee_session_start.py --callsign elliot
 ExecStart=/home/elliotbot/clawd/Agency_OS/scripts/agent_keepalive.sh elliottbot elliot /home/elliotbot/clawd/Agency_OS
 ExecStartPost=/home/elliotbot/clawd/Agency_OS/scripts/elliot_fleet_notify.sh 20
 Restart=always

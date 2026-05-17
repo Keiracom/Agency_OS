@@ -335,12 +335,15 @@ def main(argv: list[str] | None = None) -> int:
     )
     ap.add_argument(
         "--task-id",
-        type=str,
+        dest="task_id",
+        metavar="KEI-NN",
         default=None,
         help=(
-            "KEI-173: originating task id (e.g. 'KEI-NNN') passed by "
-            "completion_sync_worker for audit trail. Recorded in state file's "
-            "last_task_id field. Does not alter mirror logic."
+            "KEI-173: source task id for audit/log traceability. Accepted from the "
+            "completion_sync_worker drive_manual sink which passes the originating "
+            "task id with every mirror invocation. The mirror itself is task-agnostic "
+            "(always mirrors current MANUAL.md state); the flag is logged so "
+            "completion_sync_queue can correlate sink runs with the triggering completion."
         ),
     )
     args = ap.parse_args(argv)

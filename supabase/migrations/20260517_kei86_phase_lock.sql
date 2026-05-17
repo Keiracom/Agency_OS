@@ -38,6 +38,13 @@ ALTER TABLE public.tasks
   ALTER COLUMN phase SET NOT NULL;
 
 -- Seed the phase lock at 0 (current state — Phase 0 only).
+--
+-- GOV-12 exception (Dave-approved 2026-05-17, option c): this migration
+-- adds READ-side enforcement only. The WRITE side (advancing
+-- current_phase_max) shares the gates-as-comments hole that all 400+
+-- ceo_memory keys carry today. Mechanical write-guard is tracked as the
+-- cross-cutting follow-up Linear KEI-87 (RLS or BEFORE UPDATE trigger on
+-- the 'ceo:' prefix). KEI-86 ships unblocked; KEI-87 closes the surface.
 INSERT INTO public.ceo_memory (key, value)
 VALUES ('ceo:phase_lock', '{"current_phase_max": 0}'::jsonb)
 ON CONFLICT (key) DO NOTHING;

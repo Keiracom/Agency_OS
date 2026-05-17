@@ -361,6 +361,82 @@ def cmd_claim(args: argparse.Namespace) -> int:
     return 0
 
 
+def _check_gate3_peer_verify(
+    cur: Any,
+    task_id: str,
+    callsign: str,
+    verifier_arg: str | None,
+    verifier_session: str,
+) -> tuple[str | None, str]:
+    """KEI-90 Gate 3: peer-verify on deployment-class tasks.
+
+    Returns (error_or_None, verified_by_callsign). When the task's
+    deployment=false the function is a no-op returning (None, callsign).
+
+    Enforces:
+      - --verifier <callsign> required on deployment=true tasks
+      - verifier != builder (unless Dave-solo-ops 2-of-3 path)
+      - evidence.verifier_session_uuid != any prior tool_call_log
+        session_uuid for the builder (independence)
+      - Dave-solo-ops: when builder=='dave', accept any verifier from a
+        distinct session; require >=1 prior task_verifications row.
+    """
+    cur.execute(
+        "SELECT deployment, claimed_by FROM public.tasks WHERE id = %s",
+        (task_id,),
+    )
+    row = cur.fetchone()
+    deployment = bool(row[0]) if row and row[0] is not None else False
+    builder = (row[1] if row and row[1] else "").strip().lower()
+    if not deployment:
+        return None, callsign
+    if not verifier_arg:
+        return (
+            f"ERROR: KEI-90 Gate 3 — task is deployment=true; --verifier "
+            f"<callsign> is required (must differ from builder={builder!r}).",
+            callsign,
+        )
+    verified_by = (verifier_arg or "").strip().lower() or callsign
+    if builder == "dave":
+        cur.execute(
+            """
+            SELECT COUNT(DISTINCT (test_output::jsonb)->>'verifier_session_uuid')
+              FROM public.task_verifications WHERE task_id = %s
+            """,
+            (task_id,),
+        )
+        prior_count = int((cur.fetchone() or [0])[0] or 0)
+        if prior_count < 1:
+            return (
+                "ERROR: KEI-90 Gate 3 Dave-solo-ops 2-of-3 — need >=1 prior "
+                "verifier from a distinct session before this one. Got 0.",
+                verified_by,
+            )
+    elif verified_by == builder:
+        return (
+            f"ERROR: KEI-90 Gate 3 — verifier ({verified_by!r}) must differ "
+            f"from builder ({builder!r}).",
+            verified_by,
+        )
+    if not verifier_session:
+        return (
+            "ERROR: KEI-90 Gate 3 — evidence.verifier_session_uuid is "
+            "required for deployment=true tasks (session-independence).",
+            verified_by,
+        )
+    cur.execute(
+        "SELECT 1 FROM public.tool_call_log WHERE callsign = %s AND session_uuid = %s LIMIT 1",
+        (builder, verifier_session),
+    )
+    if cur.fetchone() is not None:
+        return (
+            f"ERROR: KEI-90 Gate 3 — verifier_session_uuid matches a prior "
+            f"session of builder ({builder!r}); session-independence required.",
+            verified_by,
+        )
+    return None, verified_by
+
+
 def cmd_complete(args: argparse.Namespace) -> int:
     """Mark a claimed task done.
 
@@ -368,6 +444,10 @@ def cmd_complete(args: argparse.Namespace) -> int:
     exits with a non-zero code and an explanatory error. With it, the
     evidence JSON is schema-validated and checked for hash uniqueness before
     the atomic INSERT+UPDATE transaction.
+
+    KEI-90 Gate 3: deployment-class tasks (public.tasks.deployment=true)
+    additionally require --verifier with session_uuid independence — see
+    _check_gate3_peer_verify above.
     """
     import psycopg
 
@@ -403,6 +483,8 @@ def cmd_complete(args: argparse.Namespace) -> int:
     evidence_hash = _canonical_hash(evidence_payload)
 
     cs = _callsign(args.callsign)
+    verifier_arg = getattr(args, "verifier", None)
+    verifier_session = str(evidence_payload.get("verifier_session_uuid", "")).strip()
     behavioral_test = (
         evidence_payload["acceptance_items"][0]
         if evidence_payload["acceptance_items"]
@@ -411,6 +493,14 @@ def cmd_complete(args: argparse.Namespace) -> int:
 
     try:
         with psycopg.connect(_dsn()) as conn, conn.cursor() as cur:
+            # ── KEI-90 Gate 3: deployment peer-verify (extracted) ─────────────
+            gate3_err, verified_by = _check_gate3_peer_verify(
+                cur, args.id, cs, verifier_arg, verifier_session
+            )
+            if gate3_err:
+                print(gate3_err, file=sys.stderr)
+                return 1
+
             # ── Hash uniqueness check ─────────────────────────────────────────
             prior_id, prior_ts = _check_hash_uniqueness(cur, args.id, evidence_hash)
             if prior_id is not None:
@@ -430,7 +520,7 @@ def cmd_complete(args: argparse.Namespace) -> int:
                        (id, task_id, verified_by, behavioral_test, test_output, created_at)
                 VALUES (%s, %s, %s, %s, %s, NOW())
                 """,
-                (str(_uuid.uuid4()), args.id, cs, behavioral_test, canonical_str),
+                (str(_uuid.uuid4()), args.id, verified_by, behavioral_test, canonical_str),
             )
             cur.execute(
                 """
@@ -570,6 +660,11 @@ def main(argv: list[str] | None = None) -> int:
         "--evidence",
         metavar="PATH",
         help="KEI-89 Gate 2: path to evidence JSON file, or '-' to read from stdin. Required.",
+    )
+    p_complete.add_argument(
+        "--verifier",
+        metavar="CALLSIGN",
+        help="KEI-90 Gate 3: verifier callsign for deployment=true tasks. Must differ from builder; verifier_session_uuid in evidence must differ from any builder tool_call_log session_uuid.",
     )
     p_complete.add_argument("--json", action="store_true")
     p_complete.set_defaults(func=cmd_complete)

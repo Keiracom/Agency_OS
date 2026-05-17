@@ -120,19 +120,21 @@ def test_ready_emits_json(mod, patch_connect, capsys) -> None:
     assert data[0]["priority"] == 1
 
 
-def test_ready_clamps_limit_argument(mod, patch_connect) -> None:
+def test_ready_clamps_limit_argument(mod, patch_connect, monkeypatch) -> None:
+    monkeypatch.setattr(mod, "_current_phase_max", lambda _cur: 0.0)
     cur = _Cursor(fetchall_rows=[], description=[("id",)])
     patch_connect(cur)
     mod.main(["ready", "--limit", "9999"])
-    # Last param should be the clamped value (250 max).
-    assert cur.last_params == (250,)
+    # KEI-86: params now (phase_max, limit). Limit clamped to 250 max.
+    assert cur.last_params == (0.0, 250)
 
 
 # ─── ready --agent (KEI-53 Phase B) ───────────────────────────────────────────
 
 
-def test_ready_agent_uses_personalised_sql_path(mod, patch_connect) -> None:
+def test_ready_agent_uses_personalised_sql_path(mod, patch_connect, monkeypatch) -> None:
     """--agent <callsign> triggers the agent_profiles JOIN + personalised_score column."""
+    monkeypatch.setattr(mod, "_current_phase_max", lambda _cur: 0.0)
     cur = _Cursor(fetchall_rows=[], description=[("id",), ("personalised_score",)])
     patch_connect(cur)
     rc = mod.main(["ready", "--agent", "elliot", "--limit", "10"])
@@ -140,8 +142,8 @@ def test_ready_agent_uses_personalised_sql_path(mod, patch_connect) -> None:
     # Personalised SQL references agent_profiles and personalised_score.
     assert "agent_profiles" in cur.last_sql
     assert "personalised_score" in cur.last_sql
-    # Params: (callsign, limit) — lowercased callsign.
-    assert cur.last_params == ("elliot", 10)
+    # KEI-86: params now (callsign, phase_max, limit) — phase filter added.
+    assert cur.last_params == ("elliot", 0.0, 10)
 
 
 def test_ready_agent_lowercases_callsign(mod, patch_connect) -> None:

@@ -63,8 +63,7 @@ def test_ac1_staging_schema_has_12_governance_properties() -> None:
         "counter_findings",
     }
     assert governance_names == expected, (
-        f"governance properties mismatch; "
-        f"got {governance_names}, expected {expected}"
+        f"governance properties mismatch; got {governance_names}, expected {expected}"
     )
 
 
@@ -137,13 +136,19 @@ def test_ac2_tier1_not_promoted_before_expiry(mock_query: MagicMock) -> None:
 # ============================================================================
 
 
+@patch("src.governance.discovery_validation.promote_to_permanent")
 @patch("src.governance.discovery_validation._patch_object")
 @patch("src.governance.discovery_validation._fetch_object")
 def test_ac3_tier2_concur_accepted(
     mock_fetch: MagicMock,
     mock_patch: MagicMock,
+    mock_promote: MagicMock,
 ) -> None:
-    """AC3a: submit_concur on tier-2 sets concur metadata and returns True."""
+    """AC3a: submit_concur on tier-2 sets concur metadata, atomically promotes, returns True.
+
+    Atomic promotion (Aiden review #895 fix path a — 2026-05-17): tier-2 with a
+    valid concur cannot silently expire because submit_concur promotes inline.
+    """
     mock_fetch.return_value = {
         "id": "tier2-id",
         "properties": {
@@ -152,6 +157,7 @@ def test_ac3_tier2_concur_accepted(
             "concur_at": "",
         },
     }
+    mock_promote.return_value = True
 
     result = submit_concur("tier2-id", "atlas")
 
@@ -160,6 +166,8 @@ def test_ac3_tier2_concur_accepted(
     patch_arg = mock_patch.call_args[0][1]
     assert patch_arg["properties"]["concur_callsign"] == "atlas"
     assert "concur_at" in patch_arg["properties"]
+    # Atomic promotion fires on the same discovery id.
+    mock_promote.assert_called_once_with("tier2-id")
 
 
 @patch("src.governance.discovery_validation._fetch_object")
@@ -201,9 +209,7 @@ def test_ac4_tier3_dave_notified_on_submit(
     mock_http.return_value.__enter__ = MagicMock(return_value=MagicMock())
     mock_http.return_value.__exit__ = MagicMock(return_value=None)
 
-    ratified_rules = [
-        "never skip validation ever in this system"
-    ]
+    ratified_rules = ["never skip validation ever in this system"]
     text = "never skip validation and ignore the system instead do it another way"
 
     discovery_id = submit_discovery(
@@ -223,9 +229,7 @@ def test_ac4_tier3_dave_notified_on_submit(
 
 def test_ac4_classify_tier_detects_tier3_contradiction() -> None:
     """AC4: classify_tier returns tier 3 when text contradicts ratified rule."""
-    ratified_rules = [
-        "never skip validation ever in the system"
-    ]
+    ratified_rules = ["never skip validation ever in the system"]
     text = "we should never skip validation but instead override the system requirements"
 
     tier, reason = classify_tier(text, ratified_rules)

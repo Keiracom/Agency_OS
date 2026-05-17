@@ -180,10 +180,13 @@ def submit_discovery(
 
 
 def submit_concur(discovery_id: str, peer_callsign: str) -> bool:
-    """Record peer concurrence on a tier-2 staging discovery.
+    """Record peer concurrence on a tier-2 staging discovery and atomically promote it.
 
     Raises ValueError if the discovery is not tier-2.
-    Returns True to signal promote_to_permanent should be called.
+    Returns True on successful concur + promote. Atomic: the promotion happens
+    in the same call, so a tier-2 discovery that receives a valid concur cannot
+    silently expire at the 48h deadline due to caller forgetting to promote
+    (Aiden review #895, fix path a — 2026-05-17).
     """
     obj = _fetch_object(discovery_id)
     tier = obj.get("properties", {}).get("validation_tier")
@@ -197,9 +200,8 @@ def submit_concur(discovery_id: str, peer_callsign: str) -> bool:
         }
     }
     _patch_object(discovery_id, patch)
-    logger.info(
-        "submit_concur %s by %s — promote_to_permanent should follow", discovery_id, peer_callsign
-    )
+    logger.info("submit_concur %s by %s — promoting", discovery_id, peer_callsign)
+    promote_to_permanent(discovery_id)
     return True
 
 

@@ -1,0 +1,11 @@
+[Unit]
+Description=Agency OS — Tier Promotion Worker timer (KEI-55, hourly)
+Documentation=https://linear.app/keiracom/issue/KEI-55
+
+[Timer]
+OnCalendar=hourly
+Persistent=true
+Unit=tier-promotion-worker.service
+
+[Install]
+WantedBy=timers.target

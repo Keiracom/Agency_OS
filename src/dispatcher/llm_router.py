@@ -227,16 +227,18 @@ def _emit_cost(
     try:
         cost_sink(event)
     except Exception as exc:  # noqa: BLE001 — sink is consumer-owned; must isolate
-        # Strip control chars from user-controlled IDs before logging (S5145).
-        safe_task = "".join(
-            c if c.isprintable() and c not in "\r\n" else "?" for c in str(task_id)
-        )[:64]
-        safe_customer = "".join(
-            c if c.isprintable() and c not in "\r\n" else "?" for c in str(customer_id)
-        )[:64]
+        # SHA-256 prefix is Sonar S5145's recognised sanitiser pattern for
+        # user-controlled identifiers — defends against log injection AND
+        # PII leakage. Operators with the plaintext id can recompute to grep.
+        import hashlib
+
+        task_hash = hashlib.sha256(str(task_id).encode("utf-8", errors="replace")).hexdigest()[:12]
+        customer_hash = hashlib.sha256(
+            str(customer_id).encode("utf-8", errors="replace")
+        ).hexdigest()[:12]
         logger.warning(
-            "cost_sink raised for task %s (customer %s): %s",
-            safe_task,
-            safe_customer,
+            "cost_sink raised for task=%s customer=%s: %s",
+            task_hash,
+            customer_hash,
             exc,
         )

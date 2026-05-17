@@ -24,6 +24,7 @@ Run as a service:
 
 from __future__ import annotations
 
+import hashlib
 import logging
 from typing import Any
 
@@ -42,12 +43,13 @@ from src.dispatcher.tier_limits import enforce_for_tenant
 logger = logging.getLogger(__name__)
 
 
-def _sanitize_for_log(value: str, *, max_len: int = 64) -> str:
-    """Strip control chars + truncate user-controlled identifier before
-    logging. Defends against log-injection (CRLF, ANSI escapes) per Sonar
-    S5145. UUIDs / KEI-NNN style IDs pass through unchanged."""
-    cleaned = "".join(c if c.isprintable() and c not in "\r\n" else "?" for c in str(value))
-    return cleaned[:max_len]
+def _log_id(value: str) -> str:
+    """Return a short SHA-256 prefix of a user-controlled identifier — safe
+    for logs. Hashing (Sonar S5145 sanitizer pattern) prevents log injection
+    (CRLF, ANSI escapes) AND PII leakage. 12 hex chars = 48 bits, enough
+    for in-cycle correlation; operators with the plaintext id can recompute
+    the prefix to grep historical logs."""
+    return hashlib.sha256(str(value).encode("utf-8", errors="replace")).hexdigest()[:12]
 
 
 app = FastAPI(
@@ -97,8 +99,8 @@ async def dispatch(payload: DispatchRequest) -> DispatchResponse:
         502 — LiteLLM gateway returned a non-2xx non-429 OR transport error.
         500 — unexpected router failure.
     """
-    safe_tenant = _sanitize_for_log(payload.customer_id)
-    safe_task = _sanitize_for_log(payload.task_id)
+    safe_tenant = _log_id(payload.customer_id)
+    safe_task = _log_id(payload.task_id)
     try:
         decision = await enforce_for_tenant(tenant_id=payload.customer_id)
     except RateLimitExceededError as exc:

@@ -128,12 +128,6 @@ def _validate_command_entry(i: int, entry: object) -> str | None:
 def _validate_evidence_schema(payload: dict) -> str | None:
     """Validate the evidence JSON payload shape. Returns an error string on
     failure, or None when the payload is valid.
-
-    Required fields:
-      - acceptance_items  list[str], non-empty
-      - commands          list[{cmd: str, output: str}] where each output >= 16 chars
-      - verifier_session_uuid  str, non-empty
-      - timestamp         str (ISO 8601), non-empty
     """
     for field in ("acceptance_items", "commands", "verifier_session_uuid", "timestamp"):
         if field not in payload:
@@ -170,9 +164,6 @@ def _check_hash_uniqueness(
 ) -> tuple[str | None, str | None]:
     """Check task_verifications for reuse of the same evidence text on a
     DIFFERENT task within the last 30 days.
-
-    Returns (prior_task_id, prior_created_at) if a collision is found,
-    or (None, None) if the evidence is unique.
     """
     cur.execute(
         """
@@ -196,6 +187,53 @@ def _check_hash_uniqueness(
     return None, None
 
 
+def _build_ready_sql(agent: str, callsign: str, phase_max: int, limit: int) -> tuple[str, tuple]:
+    """Compose the ready-query SQL + params for personalised/legacy and
+    callsign-excluded/all variants. Extracted so cmd_ready stays under
+    SonarCloud's cognitive-complexity cap (S3776)."""
+    exclusion_clause = (
+        "AND (t.excluded_callsign IS NULL OR t.excluded_callsign != %s) " if callsign else ""
+    )
+    if agent:
+        sql = (
+            f"SELECT t.{', t.'.join(_READY_COLUMNS.split(', '))}, "
+            f"{_PERSONALISED_SCORE_SUBQUERY} "
+            "FROM public.tasks t WHERE t.status = 'available' AND t.claimed_by IS NULL "
+            "AND t.phase <= %s "
+            f"{exclusion_clause}"
+            "ORDER BY personalised_score DESC, "
+            "t.priority ASC, t.created_at ASC LIMIT %s"
+        )
+        params: tuple = (
+            (agent, phase_max, callsign, limit) if callsign else (agent, phase_max, limit)
+        )
+        return sql, params
+    # KEI-97 — exclusion clause splices in identically on the non-personalised path.
+    sql = (
+        f"SELECT {_READY_COLUMNS} FROM public.tasks "
+        "WHERE status = 'available' AND claimed_by IS NULL "
+        "AND phase <= %s "
+        f"{exclusion_clause}"
+        "ORDER BY priority ASC, created_at ASC LIMIT %s"
+    )
+    params = (phase_max, callsign, limit) if callsign else (phase_max, limit)
+    return sql, params
+
+
+def _print_ready_rows(rows: list[dict], agent: str) -> None:
+    """Render the human-readable ready listing. Extracted from cmd_ready
+    so the main entry-point stays under S3776's complexity cap."""
+    for r in rows:
+        score_suffix = (
+            f"  [score={r['personalised_score']:.2f}]"
+            if agent and "personalised_score" in r
+            else ""
+        )
+        print(f"  P{r['priority']:>1}  {r['id']:<24}  {r['title']}{score_suffix}")
+    suffix = f" (personalised for {agent})" if agent else ""
+    print(f"\n{len(rows)} available{suffix}")
+
+
 def cmd_ready(args: argparse.Namespace) -> int:
     """List available tasks ordered by priority ASC then created_at ASC.
 
@@ -203,36 +241,23 @@ def cmd_ready(args: argparse.Namespace) -> int:
     personalised affinity score = SUM(capability_weight × matching_tag).
     Adds `personalised_score` to each row; preserves existing JSON shape
     (no renames) per Max's tasks-cli compat note.
+
+    KEI-97: if --callsign is supplied, filter out tasks where
+    excluded_callsign matches the given callsign (author-exclusion for
+    REVIEW-PR tasks). Without --callsign, the exclusion filter is skipped
+    (legacy behaviour preserved).
     """
     import psycopg
 
     limit = max(1, min(args.limit, 250))
     agent = (args.agent or "").strip().lower() if getattr(args, "agent", None) else ""
+    callsign_arg = getattr(args, "callsign", None)
+    callsign = (callsign_arg or "").strip().lower() if callsign_arg else ""
     try:
         with psycopg.connect(_dsn()) as conn, conn.cursor() as cur:
             phase_max = _current_phase_max(cur)
-            if agent:
-                # KEI-53 — personalised path. Tie-break per Max note #2:
-                # personalised_score DESC, priority ASC, created_at ASC.
-                # KEI-86 — also filter by phase <= current_phase_max.
-                sql = (
-                    f"SELECT t.{', t.'.join(_READY_COLUMNS.split(', '))}, "
-                    f"{_PERSONALISED_SCORE_SUBQUERY} "
-                    "FROM public.tasks t WHERE t.status = 'available' AND t.claimed_by IS NULL "
-                    "AND t.phase <= %s "
-                    "ORDER BY personalised_score DESC, "
-                    "t.priority ASC, t.created_at ASC LIMIT %s"
-                )
-                cur.execute(sql, (agent, phase_max, limit))
-            else:
-                # KEI-86 — phase-lock filter on the non-personalised path too.
-                sql = (
-                    f"SELECT {_READY_COLUMNS} FROM public.tasks "
-                    "WHERE status = 'available' AND claimed_by IS NULL "
-                    "AND phase <= %s "
-                    "ORDER BY priority ASC, created_at ASC LIMIT %s"
-                )
-                cur.execute(sql, (phase_max, limit))
+            sql, params = _build_ready_sql(agent, callsign, phase_max, limit)
+            cur.execute(sql, params)
             rows = _rows_to_dicts(cur)
     except psycopg.Error:
         logger.exception("ready query failed")
@@ -240,13 +265,7 @@ def cmd_ready(args: argparse.Namespace) -> int:
     if args.json:
         print(json.dumps(rows, default=str))
     else:
-        for r in rows:
-            score_suffix = ""
-            if agent and "personalised_score" in r:
-                score_suffix = f"  [score={r['personalised_score']:.2f}]"
-            print(f"  P{r['priority']:>1}  {r['id']:<24}  {r['title']}{score_suffix}")
-        suffix = f" (personalised for {agent})" if agent else ""
-        print(f"\n{len(rows)} available{suffix}")
+        _print_ready_rows(rows, agent)
     return 0
 
 
@@ -597,6 +616,10 @@ def main(argv: list[str] | None = None) -> int:
     p_ready.add_argument(
         "--agent",
         help="KEI-53 — personalise ranking via agent_profiles.capability_weights",
+    )
+    p_ready.add_argument(
+        "--callsign",
+        help="KEI-97 — exclude tasks where excluded_callsign matches this callsign (author-exclusion for REVIEW-PR tasks)",
     )
     p_ready.set_defaults(func=cmd_ready)
 

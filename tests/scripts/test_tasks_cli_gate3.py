@@ -91,15 +91,35 @@ def test_deployment_true_clean_pass(mod):
     assert err is None and by == "elliot"
 
 
-def test_dave_solo_ops_zero_priors(mod):
-    # tasks row builder=dave + priors_count=0.
-    cur = _GateCursor([(True, "dave"), (0,)])
-    err, _ = mod._check_gate3_peer_verify(cur, "KEI-X", "elliot", "elliot", "uuid-1")
-    assert err is not None and "Dave-solo-ops" in err and "Got 0" in err
+def test_dave_solo_ops_missing_secondary(mod):
+    # tasks row builder=dave + no --secondary-verifier passed.
+    cur = _GateCursor([(True, "dave")])
+    err, _ = mod._check_gate3_peer_verify(cur, "KEI-X", "elliot", "elliot", "uuid-1", None)
+    assert err is not None and "secondary-verifier" in err
 
 
-def test_dave_solo_ops_one_prior_then_session_ok(mod):
-    # tasks row builder=dave + priors_count=1 + tool_call_log no-match.
-    cur = _GateCursor([(True, "dave"), (1,), None])
-    err, by = mod._check_gate3_peer_verify(cur, "KEI-X", "elliot", "max", "uuid-2")
-    assert err is None and by == "max"
+def test_dave_solo_ops_same_verifier_callsigns(mod):
+    cur = _GateCursor([(True, "dave")])
+    err, _ = mod._check_gate3_peer_verify(cur, "KEI-X", "elliot", "elliot", "uuid-1", "elliot")
+    assert err is not None and "distinct callsigns" in err
+
+
+def test_dave_solo_ops_secondary_is_dave(mod):
+    cur = _GateCursor([(True, "dave")])
+    err, _ = mod._check_gate3_peer_verify(cur, "KEI-X", "elliot", "elliot", "uuid-1", "dave")
+    assert err is not None and "may be 'dave'" in err
+
+
+def test_dave_solo_ops_clean_two_distinct_sessions(mod):
+    # tasks row builder=dave; secondary 'max' has tool_call_log session='uuid-b';
+    # final builder-vs-verifier tool_call_log check returns None.
+    cur = _GateCursor([(True, "dave"), ("uuid-b",), None])
+    err, by = mod._check_gate3_peer_verify(cur, "KEI-X", "elliot", "elliot", "uuid-a", "max")
+    assert err is None and by == "elliot"
+
+
+def test_dave_solo_ops_session_collision_with_secondary(mod):
+    # secondary 'max' has same session as the verifier's evidence uuid.
+    cur = _GateCursor([(True, "dave"), ("uuid-collide",)])
+    err, _ = mod._check_gate3_peer_verify(cur, "KEI-X", "elliot", "elliot", "uuid-collide", "max")
+    assert err is not None and "must be distinct" in err

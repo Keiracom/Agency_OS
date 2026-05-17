@@ -1,0 +1,20 @@
+[Unit]
+Description=Agency OS fleet-restart handler — Dave `reset all` trigger (KEI-93)
+Documentation=https://linear.app/keiracom/issue/KEI-93
+After=network-online.target
+Wants=network-online.target
+StartLimitBurst=5
+StartLimitIntervalSec=300
+
+[Service]
+Type=simple
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS-max
+ExecStart=/usr/bin/python3 /home/elliotbot/clawd/Agency_OS-max/scripts/orchestrator/reset_all_handler.py
+Restart=always
+RestartSec=10
+StandardOutput=append:/home/elliotbot/clawd/logs/reset-all-handler.log
+StandardError=append:/home/elliotbot/clawd/logs/reset-all-handler.log
+
+[Install]
+WantedBy=default.target

@@ -113,3 +113,31 @@ def test_source_agent_is_fixed_to_elliot():
     """
     doc = mod.build_memory(_row(metadata={"callsign": "aiden"}))
     assert doc["properties"]["agent"] == "elliot"
+
+
+def test_resolve_pg_dsn_strips_asyncpg(monkeypatch):
+    """run_db_indexer uses indexer_base.resolve_pg_dsn — must rewrite
+    `postgresql+asyncpg://` to psycopg-compatible `postgresql://`.
+    """
+    import indexer_base
+
+    monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://u:p@h:5432/d")
+    assert indexer_base.resolve_pg_dsn() == "postgresql://u:p@h:5432/d"
+
+
+def test_resolve_pg_dsn_falls_back_to_supabase_var(monkeypatch):
+    import indexer_base
+
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.setenv("SUPABASE_DB_URL", "postgresql://x:y@h:5432/d")
+    assert indexer_base.resolve_pg_dsn() == "postgresql://x:y@h:5432/d"
+
+
+def test_resolve_pg_dsn_raises_when_no_env(monkeypatch):
+    import indexer_base
+    import pytest
+
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.delenv("SUPABASE_DB_URL", raising=False)
+    with pytest.raises(SystemExit):
+        indexer_base.resolve_pg_dsn()

@@ -7,27 +7,27 @@
 ## What this PR delivers
 
 A skeleton for the dispatcher onboarding journey. Four stub Next.js pages in a new
-`frontend/app/(dispatcher)/` route group + a layout wrapper, plus this scope doc.
+`frontend/app/dispatcher/` route group + a layout wrapper, plus this scope doc.
 No logic — the sub-KEIs land the real implementation against these stubs.
 
 Created files:
 
 | Path | Sub-KEI | Logic owner |
 |---|---|---|
-| `frontend/app/(dispatcher)/layout.tsx` | scaffold | this PR |
-| `frontend/app/(dispatcher)/signup/page.tsx` | KEI-113A (KEI-154) | signup form + Supabase signUp + email-verify redirect |
-| `frontend/app/(dispatcher)/verify-email/page.tsx` | KEI-113A (KEI-154) | "check your email" prompt + post-verify redirect |
-| `frontend/app/(dispatcher)/onboarding/byo-key/page.tsx` | KEI-113B (KEI-155) | API key input + `pgp_sym_encrypt` on store |
-| `frontend/app/(dispatcher)/onboarding/first-task/page.tsx` | KEI-113C (KEI-156) | task form + Prefect enqueue + pending state |
-| `frontend/app/(dispatcher)/dashboard/page.tsx` | KEI-113D + KEI-114 family | feed + cost + key mgmt + thread gauge |
+| `frontend/app/dispatcher/layout.tsx` | scaffold | this PR |
+| `frontend/app/dispatcher/signup/page.tsx` | KEI-113A (KEI-154) | signup form + Supabase signUp + email-verify redirect |
+| `frontend/app/dispatcher/verify-email/page.tsx` | KEI-113A (KEI-154) | "check your email" prompt + post-verify redirect |
+| `frontend/app/dispatcher/onboarding/byo-key/page.tsx` | KEI-113B (KEI-155) | API key input + `pgp_sym_encrypt` on store |
+| `frontend/app/dispatcher/onboarding/first-task/page.tsx` | KEI-113C (KEI-156) | task form + Prefect enqueue + pending state |
+| `frontend/app/dispatcher/dashboard/page.tsx` | KEI-113D + KEI-114 family | feed + cost + key mgmt + thread gauge |
 
-## Why a separate `(dispatcher)` route group
+## Why a separate `dispatcher` route group
 
 The existing `frontend/app/(auth)/signup/page.tsx` and `frontend/app/onboarding/*`
 were built for the internal Agency_OS app (agency users onboarding their own
 clients — agency/CRM/LinkedIn steps). The Part 17 Dispatcher is a separate
 **customer-facing** product: external companies submit tasks to Keiracom. Two
-distinct audiences, two distinct flows. The `(dispatcher)` Next.js route group
+distinct audiences, two distinct flows. The `dispatcher` Next.js route group
 keeps them cleanly separated without forcing a second Next.js app.
 
 ## Dependency graph (what the sub-KEIs need)
@@ -71,8 +71,8 @@ KEI-114D  (thread gauge, KEI-161)       ──┘   ↓
 
 ## Acceptance for this scaffold
 
-- [x] `frontend/app/(dispatcher)/{signup,verify-email,onboarding/byo-key,onboarding/first-task,dashboard}/page.tsx` render placeholder content
-- [x] `frontend/app/(dispatcher)/layout.tsx` shell present
+- [x] `frontend/app/dispatcher/{signup,verify-email,onboarding/byo-key,onboarding/first-task,dashboard}/page.tsx` render placeholder content
+- [x] `frontend/app/dispatcher/layout.tsx` shell present
 - [x] Frontend build still passes (no logic = no regressions)
 - [x] Scope doc captures the dep graph + sequencing for sub-KEI claimers
 - [x] All 4 sub-KEIs (KEI-154/155/156/157) have a target file to implement against

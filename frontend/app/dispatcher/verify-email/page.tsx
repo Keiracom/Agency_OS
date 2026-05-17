@@ -1,9 +1,9 @@
 /**
- * FILE: frontend/app/(dispatcher)/verify-email/page.tsx
+ * FILE: frontend/app/dispatcher/verify-email/page.tsx
  * PURPOSE: Email-verification waiting / confirm landing page.
  * KEI: 113A (KEI-154) — pairs with signup; renders the "check your email"
  *      state. The actual verify callback lives at /auth/callback (shared).
- *      On successful verify, redirect to /(dispatcher)/onboarding/byo-key.
+ *      On successful verify, redirect to /dispatcher/onboarding/byo-key.
  *
  * Stub only.
  */

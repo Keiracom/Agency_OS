@@ -1,5 +1,5 @@
 /**
- * FILE: frontend/app/(dispatcher)/dashboard/page.tsx
+ * FILE: frontend/app/dispatcher/dashboard/page.tsx
  * PURPOSE: Customer dashboard — task feed + cost + key management.
  * KEI: 113D (KEI-157) + KEI-114 family — implements:
  *      - First-task completion banner (KEI-113D)

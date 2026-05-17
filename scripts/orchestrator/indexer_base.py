@@ -18,13 +18,15 @@ Used by:
 
 from __future__ import annotations
 
+import argparse
 import json
 import logging
 import os
+import signal
 import time
 import uuid
 from abc import ABC, abstractmethod
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Any, Generic, TypeVar
@@ -202,3 +204,102 @@ class BaseIndexer(ABC, Generic[R]):
             else:
                 failed += 1
         return BatchOutcome(selected=len(rows), success=success, failed=failed)
+
+
+# ─── Shared DB-indexer runtime (KEI-109 dedup extraction) ────────────────────
+#
+# All Postgres-backed indexers (ceo_memory, elliot_memories, future schemas)
+# share the same daemon/--once dispatch, signal handling, DSN resolution, and
+# heartbeat reporting shape. `run_db_indexer` is the single entry point so
+# each leaf indexer only defines its IndexerClass and constants.
+
+
+def resolve_pg_dsn() -> str:
+    """Resolve DATABASE_URL / SUPABASE_DB_URL with the psycopg-compatible
+    rewrite for `postgresql+asyncpg://` DSNs.
+    """
+    raw = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL")
+    if not raw:
+        raise SystemExit("indexer: DATABASE_URL or SUPABASE_DB_URL must be set")
+    return raw.replace("postgresql+asyncpg://", "postgresql://", 1)
+
+
+def run_db_indexer(
+    indexer_factory: Callable[[Any], BaseIndexer],
+    *,
+    unit_name: str,
+    default_batch: int,
+    poll_seconds: int,
+) -> None:
+    """Daemon/--once runtime for Postgres-backed indexers.
+
+    `indexer_factory(conn)` returns a concrete BaseIndexer subclass instance.
+    `unit_name` is the systemd unit (e.g. "ceo-memory-indexer") used for
+    heartbeat tagging. `default_batch` + `poll_seconds` control loop cadence.
+
+    Imports `psycopg` and the heartbeat shim lazily so unit tests can import
+    indexer_base without those side-effects.
+    """
+    import psycopg  # noqa: PLC0415 — lazy to keep tests importable without psycopg
+    from _heartbeat_shim import (  # noqa: PLC0415 — lazy: shim does sys.path mutation on import
+        heartbeat_tick as _heartbeat_tick,
+    )
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--once", action="store_true")
+    parser.add_argument("--batch", type=int, default=default_batch)
+    args = parser.parse_args()
+
+    shutdown_flag = {"requested": False}
+
+    def _on_signal(signum: int, _frame: Any) -> None:
+        logger.info("signal %s received — shutdown", signum)
+        shutdown_flag["requested"] = True
+
+    signal.signal(signal.SIGTERM, _on_signal)
+    signal.signal(signal.SIGINT, _on_signal)
+
+    with psycopg.connect(resolve_pg_dsn(), autocommit=True) as conn:
+        indexer = indexer_factory(conn)
+        target_class = indexer.target_class
+        logger.info(
+            "indexer start source=%s class=%s batch=%d",
+            indexer.source_name,
+            target_class,
+            args.batch,
+        )
+        indexer.ensure_target_class()
+
+        def _tick_and_log(outcome: BatchOutcome, *, label: str) -> None:
+            logger.info(
+                "%s outcome=%s class_count=%s",
+                label,
+                outcome.to_dict(),
+                aggregate_count(target_class),
+            )
+            _heartbeat_tick(
+                unit_name,
+                outcome_increment=outcome.success,
+                status="ok" if outcome.failed == 0 else "degraded",
+            )
+
+        if args.once:
+            _tick_and_log(indexer.index_once(args.batch), label="once")
+            return
+
+        while not shutdown_flag["requested"]:
+            try:
+                _tick_and_log(indexer.index_once(args.batch), label="batch")
+            except Exception as exc:  # noqa: BLE001 — broad on purpose: any exception is a heartbeat-worthy signal
+                logger.exception("batch failed — sleeping then continuing")
+                _heartbeat_tick(
+                    unit_name,
+                    outcome_increment=0,
+                    status="error",
+                    error_message=str(exc)[:500],
+                )
+            for _ in range(poll_seconds):
+                if shutdown_flag["requested"]:
+                    break
+                time.sleep(1)
+    logger.info("indexer exiting cleanly")

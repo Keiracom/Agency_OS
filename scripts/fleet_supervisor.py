@@ -74,7 +74,7 @@ def _db_dsn() -> str:
     dsn = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL", "")
     if not dsn:
         raise RuntimeError("DATABASE_URL / SUPABASE_DB_URL not set")
-    return dsn
+    return dsn.replace("postgresql+asyncpg://", "postgresql://", 1)
 
 
 def _connect() -> psycopg.Connection:
@@ -122,8 +122,17 @@ def tmux_has_session(session: str) -> bool:
 
 
 def tmux_send(session: str, text: str) -> None:
+    # Two-call pattern: text in literal mode first, then Enter separately.
+    # Single-call ["text", "Enter"] is unreliable when text contains newlines
+    # (Claude tmux interprets embedded \n as soft-break and may eat the trailing Enter).
     subprocess.run(
-        ["tmux", "send-keys", "-t", session, text, "Enter"],
+        ["tmux", "send-keys", "-t", session, "-l", text],
+        check=True,
+    )
+    # Tiny pause so the input box registers the text before Enter fires.
+    time.sleep(0.3)
+    subprocess.run(
+        ["tmux", "send-keys", "-t", session, "Enter"],
         check=True,
     )
 
@@ -201,7 +210,9 @@ def claim_next_task(
         cur.execute(
             """
             SELECT id, title FROM public.tasks
-            WHERE status = 'available' AND (phase IS NULL OR phase <= %s)
+            WHERE status = 'available'
+              AND (phase IS NULL OR phase <= %s)
+              AND (is_parent IS NULL OR is_parent = false)
             ORDER BY priority ASC, created_at ASC
             LIMIT 1
             FOR UPDATE SKIP LOCKED
@@ -325,13 +336,58 @@ def list_open_prs() -> list[dict[str, Any]]:
         return []
 
 
+def fetch_pr_comments(pr_number: int) -> list[dict]:
+    """Fetch PR comments via gh pr view --json comments. Returns list of comment dicts."""
+    result = subprocess.run(
+        ["gh", "pr", "view", str(pr_number), "--json", "comments"],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        log.warning("gh pr view %d comments failed: %s", pr_number, result.stderr)
+        return []
+    try:
+        data = json.loads(result.stdout) or {}
+        return data.get("comments") or []
+    except json.JSONDecodeError:
+        return []
+
+
+_REVIEW_COMMENT_PATTERN_TMPL = r"\[REVIEW(?::(?:approve|hold(?:-final)?))?" r":{callsign}\]"
+
+
+def comment_has_review_marker(body: str, callsign: str) -> bool:
+    """Return True if body contains any [REVIEW:...:<callsign>] variant (case-insensitive)."""
+    import re
+
+    pattern = _REVIEW_COMMENT_PATTERN_TMPL.format(callsign=re.escape(callsign))
+    return bool(re.search(pattern, body, re.IGNORECASE))
+
+
 def agent_has_reviewed(pr: dict, callsign: str) -> bool:
-    """Check if callsign already posted a [REVIEW:callsign] comment on this PR."""
+    """Check if callsign already posted a [REVIEW:callsign] comment on this PR.
+
+    Checks both formal GitHub review objects (pr['reviews']) and PR comments
+    fetched via gh pr view --json comments, since agents post review markers
+    as Slack-relayed comments rather than formal GH reviews.
+    """
+    # Check formal review objects first (fast, no subprocess)
     reviews = pr.get("reviews") or []
-    tag = f"[REVIEW:{callsign}]"
+    tag = f"[REVIEW:{callsign}]".lower()
     for r in reviews:
-        body = r.get("body", "") or ""
+        body = (r.get("body", "") or "").lower()
         if tag in body:
+            return True
+
+    # Check PR comments for [REVIEW:<callsign>] markers
+    pr_number = pr.get("number")
+    if pr_number is None:
+        return False
+    comments = fetch_pr_comments(pr_number)
+    for c in comments:
+        body = c.get("body", "") or ""
+        if comment_has_review_marker(body, callsign):
+            log.info("%s already reviewed PR #%d — skip", callsign, pr_number)
             return True
     return False
 
@@ -606,11 +662,23 @@ def process_agent(
 # ---------------------------------------------------------------------------
 
 
+def _strip_ceo_banned_tokens(text: str) -> str:
+    """Strip PR numbers + technical tokens that #ceo format-blocks."""
+    import re
+
+    # PR #NNN or pull request #NNN -> 'pull request' / 'a pull request'
+    text = re.sub(r"(?:PR|pull request)\s*#\d+", "a pull request", text, flags=re.IGNORECASE)
+    return text
+
+
 def post_ceo_status(report: FleetReport) -> None:
     now_str = _dt.datetime.now(_dt.UTC).strftime("%H:%M UTC")
     lines = [f"**Fleet Status [{now_str}]**"]
     for s in report.statuses:
-        lines.append(f"- {s.callsign}: {s.summary}")
+        # Strip PR number tokens — banned in #ceo per plain-English convention.
+        # Replace "PR #NNN" / "pull request #NNN" patterns with neutral phrasing.
+        clean_summary = _strip_ceo_banned_tokens(s.summary)
+        lines.append(f"- {s.callsign}: {clean_summary}")
     lines.append("")
     lines.append(
         f"**Queue: {report.queue_available} available | "

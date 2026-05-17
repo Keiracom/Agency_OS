@@ -424,6 +424,7 @@ from src.api.routes.webhooks_outbound import router as webhooks_outbound_router
 from src.api.webhooks.elevenagents import router as elevenagents_router
 from src.api.webhooks.github import router as github_webhook_router
 from src.api.webhooks.linear import router as linear_webhook_router
+from src.api.webhooks.paddle import router as paddle_webhook_router
 
 app.include_router(health_router, prefix="/api/v1")
 app.include_router(campaigns_router, prefix="/api/v1")
@@ -467,6 +468,8 @@ app.include_router(elevenagents_router)
 app.include_router(linear_webhook_router)
 # src.api.webhooks.github — KEI-97 GitHub PR webhook auto-creates REVIEW-PR-N tasks (router carries /api/webhooks/github prefix).
 app.include_router(github_webhook_router)
+# src.api.webhooks.paddle — KEI-150 Paddle MoR inbound webhook (router carries /api/webhooks/paddle prefix).
+app.include_router(paddle_webhook_router)
 # Task #20: Email backend (Resend send + status + HMAC-verified webhook).
 # email_router carries its own `/api/email` prefix — no extra prefix here.
 app.include_router(email_router)

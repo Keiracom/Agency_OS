@@ -48,6 +48,19 @@ def patch_connect(mod, monkeypatch):
     return make_patch_connect(monkeypatch)
 
 
+@pytest.fixture(autouse=True)
+def _noop_release_stale_claims(mod, monkeypatch, request):
+    """KEI-104 — stale-claim release is wired into cmd_ready + cmd_claim by
+    default. For tests not exercising that wire, no-op the helper so it does
+    NOT show up in cur.executed[] and confuse predicate-based assertions on
+    the actual claim/complete UPDATEs. Tests in the KEI-104 section opt out
+    via the `kei104` marker.
+    """
+    if request.node.get_closest_marker("kei104"):
+        return
+    monkeypatch.setattr(mod, "_release_stale_claims", lambda _cur: 0, raising=False)
+
+
 # ─── DSN + callsign helpers ─────────────────────────────────────────────────
 
 
@@ -311,7 +324,7 @@ def test_claim_fires_retrieval_query_on_success(mod, patch_connect, monkeypatch)
     """
     monkeypatch.setenv("CALLSIGN", "scout")
     cur = _Cursor(
-        fetchone_row=("KEI-39", "diagnose cognee read pathway", 1, "active", "scout", "url")
+        fetchone_row=("KEI-39", "diagnose cognee read pathway", 1, "active", "scout", "url"),
     )
     patch_connect(cur)
 
@@ -319,7 +332,6 @@ def test_claim_fires_retrieval_query_on_success(mod, patch_connect, monkeypatch)
 
     def _spy_query(text: str, *, agent: str, **kwargs):
         calls.append((text, agent, kwargs))
-        return None  # query returns QueryResult in prod; tests don't care about return
 
     import sys as _sys
     import types as _types
@@ -337,7 +349,10 @@ def test_claim_fires_retrieval_query_on_success(mod, patch_connect, monkeypatch)
 
 
 def test_claim_succeeds_when_retrieval_query_raises(
-    mod, patch_connect, capsys, monkeypatch
+    mod,
+    patch_connect,
+    capsys,
+    monkeypatch,
 ) -> None:
     """KEI-103 — retrieval failure (Weaviate down, import error, anything) must
     NOT block the claim. Fail-open per cognee_recall + agent_query contract.
@@ -362,6 +377,124 @@ def test_claim_succeeds_when_retrieval_query_raises(
     assert out["id"] == "KEI-39"
 
 
+# ─── KEI-104: stale-claim timeout — auto-release abandoned active claims ────
+
+
+@pytest.mark.kei104
+def test_release_stale_claims_emits_update_with_2h_default(mod):
+    """The UPDATE matches active rows with claimed_at < NOW() - 2h and no
+    task_verifications row. Stale env override only affects the helper's
+    constant at import; runtime test uses module's loaded value.
+    """
+    cur = _Cursor()
+    cur.rowcount = 0
+    mod._release_stale_claims(cur)
+    sql = cur.last_sql
+    assert "UPDATE public.tasks t" in sql
+    assert "status = 'available'" in sql
+    assert "claimed_by = NULL" in sql
+    assert "claimed_at = NULL" in sql
+    assert "t.status = 'active'" in sql
+    assert "NOT EXISTS" in sql
+    assert "task_verifications" in sql
+    # Default 2h interval from STALE_CLAIM_INTERVAL_HOURS constant
+    assert (
+        "INTERVAL '2 hours'" in sql or f"INTERVAL '{mod.STALE_CLAIM_INTERVAL_HOURS} hours'" in sql
+    )
+
+
+@pytest.mark.kei104
+def test_release_stale_claims_returns_zero_when_no_stale(mod):
+    cur = _Cursor()
+    cur.rowcount = 0
+    assert mod._release_stale_claims(cur) == 0
+
+
+@pytest.mark.kei104
+def test_release_stale_claims_returns_rowcount(mod):
+    cur = _Cursor()
+    cur.rowcount = 3
+    assert mod._release_stale_claims(cur) == 3
+
+
+@pytest.mark.kei104
+def test_release_stale_claims_returns_zero_when_rowcount_none(mod):
+    """Psycopg cursor rowcount can be None on some operations — helper falls
+    back to 0 so caller's `if released:` check stays safe.
+    """
+    cur = _Cursor()
+    cur.rowcount = None
+    assert mod._release_stale_claims(cur) == 0
+
+
+@pytest.mark.kei104
+def test_cmd_ready_invokes_release_stale_claims(mod, patch_connect, monkeypatch) -> None:
+    """KEI-104 wire — cmd_ready calls _release_stale_claims before listing."""
+    called: list[bool] = []
+
+    def _spy(_cur):
+        called.append(True)
+        return 0
+
+    monkeypatch.setattr(mod, "_release_stale_claims", _spy)
+    cur = _Cursor(fetchall_rows=[], description=[("id",)])
+    patch_connect(cur)
+    rc = mod.main(["ready"])
+    assert rc == 0
+    assert called == [True]
+
+
+@pytest.mark.kei104
+def test_cmd_claim_invokes_release_stale_claims(mod, patch_connect, monkeypatch) -> None:
+    """KEI-104 wire — cmd_claim calls _release_stale_claims before claiming."""
+    monkeypatch.setenv("CALLSIGN", "scout")
+    called: list[bool] = []
+
+    def _spy(_cur):
+        called.append(True)
+        return 0
+
+    monkeypatch.setattr(mod, "_release_stale_claims", _spy)
+    cur = _Cursor(fetchone_row=("KEI-39", "title", 1, "active", "scout", "url"))
+    patch_connect(cur)
+    rc = mod.main(["claim", "--id", "KEI-39", "--json"])
+    assert rc == 0
+    assert called == [True]
+
+
+@pytest.mark.kei104
+def test_cmd_ready_swallows_release_stale_claims_failure(mod, patch_connect, monkeypatch) -> None:
+    """KEI-104 fail-open — release helper raising must NOT block ready listing."""
+
+    def _broken(_cur):
+        raise RuntimeError("simulated release failure")
+
+    monkeypatch.setattr(mod, "_release_stale_claims", _broken)
+    cur = _Cursor(fetchall_rows=[], description=[("id",)])
+    patch_connect(cur)
+    rc = mod.main(["ready"])
+    assert rc == 0
+
+
+@pytest.mark.kei104
+def test_cmd_claim_swallows_release_stale_claims_failure(
+    mod, patch_connect, capsys, monkeypatch
+) -> None:
+    """KEI-104 fail-open — release helper raising must NOT block claim."""
+    monkeypatch.setenv("CALLSIGN", "scout")
+
+    def _broken(_cur):
+        raise RuntimeError("simulated release failure")
+
+    monkeypatch.setattr(mod, "_release_stale_claims", _broken)
+    cur = _Cursor(fetchone_row=("KEI-39", "title", 1, "active", "scout", "url"))
+    patch_connect(cur)
+    rc = mod.main(["claim", "--id", "KEI-39", "--json"])
+    assert rc == 0
+    out = json.loads(capsys.readouterr().out)
+    assert out["id"] == "KEI-39"
+
+
 # ─── KEI-106: completion_sync_queue enqueue on claim/complete ────────────────
 
 
@@ -380,7 +513,7 @@ def test_claim_enqueues_linear_sync_active(mod, patch_connect, monkeypatch) -> N
     """
     monkeypatch.setenv("CALLSIGN", "aiden")
     cur = _Cursor(
-        fetchone_row=("KEI-106", "build supabase->linear sync", 1, "active", "aiden", "url")
+        fetchone_row=("KEI-106", "build supabase->linear sync", 1, "active", "aiden", "url"),
     )
     patch_connect(cur)
     rc = mod.main(["claim", "--id", "KEI-106", "--json"])
@@ -425,7 +558,7 @@ def test_enqueue_linear_sync_swallows_connect_failure(mod, monkeypatch) -> None:
 
 @pytest.mark.xfail(
     reason="Pre-existing Gate 2 (PR #925) breakage — cmd_complete now requires "
-    "--evidence; test needs full evidence-flow refactor. Out-of-scope for KEI-105.",
+    "--evidence; test needs full evidence-flow refactor. Out-of-scope for KEI-104/KEI-105.",
     strict=False,
 )
 def test_complete_strict_returns_done(mod, patch_connect, capsys, monkeypatch) -> None:
@@ -443,7 +576,10 @@ def test_complete_strict_returns_done(mod, patch_connect, capsys, monkeypatch) -
     strict=False,
 )
 def test_complete_strict_fails_when_not_claimed_by_caller(
-    mod, patch_connect, capsys, monkeypatch
+    mod,
+    patch_connect,
+    capsys,
+    monkeypatch,
 ) -> None:
     monkeypatch.setenv("CALLSIGN", "scout")
     cur = _Cursor(fetchone_row=None)

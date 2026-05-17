@@ -142,46 +142,54 @@ def post(token: str, text: str) -> None:
         logger.warning("Slack post failed: %s", exc)
 
 
-def _relay_outcome_healthy(callsign: str) -> bool:
-    """Gate 4: check KEI-91 heartbeat outcome counter in ceo_memory.
+def _parse_last_tick_age(last_tick: object) -> float | None:
+    """Convert a heartbeat last_tick_at (epoch float or ISO string) to age-seconds, or None."""
+    if last_tick is None:
+        return None
+    if isinstance(last_tick, (int, float)):
+        return time.time() - float(last_tick)
+    import datetime
 
-    Reads ceo_memory['heartbeat:relay-watcher-<callsign>'] jsonb and checks
-    that last_tick_at is within the last 60s AND outcome_count > 0.
-    Falls back to systemctl is-active on DB error with a warning.
-    """
+    try:
+        dt = datetime.datetime.fromisoformat(str(last_tick))
+    except ValueError:
+        return None
+    return time.time() - dt.timestamp()
+
+
+def _read_heartbeat(callsign: str) -> bool | None:
+    """Query ceo_memory heartbeat for callsign. Return health bool or None on DB error."""
     dsn = _dsn()
-    if dsn:
-        try:
-            import psycopg  # type: ignore[import-untyped]
+    if not dsn:
+        return None
+    try:
+        import psycopg  # type: ignore[import-untyped]
 
-            key = f"heartbeat:relay-watcher-{callsign}"
-            with psycopg.connect(dsn, prepare_threshold=None, autocommit=True) as conn:
-                row = conn.execute(
-                    "SELECT value FROM public.ceo_memory WHERE key = %s LIMIT 1", (key,)
-                ).fetchone()
-            if row is not None:
-                data = row[0] if isinstance(row[0], dict) else {}
-                last_tick = data.get("last_tick_at")
-                outcome_count = int(data.get("outcome_count", 0))
-                if last_tick is not None:
-                    # last_tick_at may be epoch float or ISO string
-                    if isinstance(last_tick, (int, float)):
-                        age = time.time() - float(last_tick)
-                    else:
-                        import datetime
+        key = f"heartbeat:relay-watcher-{callsign}"
+        with psycopg.connect(dsn, prepare_threshold=None, autocommit=True) as conn:
+            row = conn.execute(
+                "SELECT value FROM public.ceo_memory WHERE key = %s LIMIT 1", (key,)
+            ).fetchone()
+    except Exception as exc:
+        logger.warning(
+            "relay_outcome_healthy(%s): DB read failed (%s); falling back to is-active",
+            callsign,
+            exc,
+        )
+        return None
+    if row is None:
+        return False
+    data = row[0] if isinstance(row[0], dict) else {}
+    age = _parse_last_tick_age(data.get("last_tick_at"))
+    outcome_count = int(data.get("outcome_count", 0))
+    return age is not None and age < 60 and outcome_count > 0
 
-                        dt = datetime.datetime.fromisoformat(str(last_tick))
-                        age = time.time() - dt.timestamp()
-                    return age < 60 and outcome_count > 0
-            # key not found — service not yet registered
-            return False
-        except Exception as exc:
-            logger.warning(
-                "relay_outcome_healthy(%s): DB read failed (%s); falling back to is-active",
-                callsign,
-                exc,
-            )
-    # degraded path: liveness only
+
+def _relay_outcome_healthy(callsign: str) -> bool:
+    """Gate 4: heartbeat-derived outcome health; fall back to liveness on DB error."""
+    hb = _read_heartbeat(callsign)
+    if hb is not None:
+        return hb
     result = subprocess.run(
         ["systemctl", "--user", "is-active", f"relay-watcher-{callsign}.service"],
         capture_output=True,

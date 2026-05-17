@@ -19,7 +19,7 @@ install -m 0644 "$UNIT_SRC" "$UNIT_DST"
 
 # Copy handler script to main worktree so ExecStart path resolves at runtime.
 # The unit references /home/elliotbot/clawd/Agency_OS per feedback_systemd_worktree_main.
-if [ -d "$MAIN_WORKTREE/scripts/orchestrator" ]; then
+if [[ -d "$MAIN_WORKTREE/scripts/orchestrator" ]]; then
   install -m 0755 "$REPO_ROOT/scripts/orchestrator/reset_all_handler.py" "$MAIN_SCRIPT_DST"
   echo "[install] synced reset_all_handler.py → $MAIN_SCRIPT_DST"
 else

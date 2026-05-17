@@ -131,7 +131,6 @@ def test_cooldown_drops_second_within_60s(monkeypatch):
     now = time.time()
     if now - last_trigger >= COOLDOWN_SECONDS:
         triggered.append(now)
-        last_trigger = now
 
     assert triggered == [1000.0, 1080.0], f"unexpected trigger sequence: {triggered}"
 

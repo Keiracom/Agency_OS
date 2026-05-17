@@ -39,8 +39,9 @@ WEAVIATE_PORT = os.environ.get("WEAVIATE_PORT", "8090")
 # weaviate_capped.sh and serves plain HTTP. TLS is terminated at the
 # Cloudflare Tunnel layer (T0.3, separate KEI), never at the Weaviate process.
 # Switching this to https://127.0.0.1 would break the connection — there is
-# no TLS listener inside the cgroup. NOSONAR S5332 (loopback HTTP is safe).
-WEAVIATE_BASE = f"http://{WEAVIATE_HOST}:{WEAVIATE_PORT}"  # NOSONAR S5332
+# no TLS listener inside the cgroup. The NOSONAR below suppresses S5332 on
+# this line only; rationale is captured in this comment block.
+WEAVIATE_BASE = f"http://{WEAVIATE_HOST}:{WEAVIATE_PORT}"  # NOSONAR
 
 MAX_RETRIES = 3
 INITIAL_BACKOFF_SECONDS = 1.0

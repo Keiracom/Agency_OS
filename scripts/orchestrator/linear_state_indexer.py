@@ -121,25 +121,83 @@ def _write_cursor(updated_at: str) -> None:
         logger.warning("cursor persist failed (%s) — non-fatal", exc)
 
 
+MAX_GRAPHQL_RETRIES = 4
+INITIAL_BACKOFF_SECONDS = 1.0
+MAX_PAGINATION_PAGES = int(os.environ.get("LINEAR_STATE_MAX_PAGES", "20"))
+
+
 def _graphql(query: str, variables: dict) -> dict:
+    """Linear GraphQL POST with retry + 429 Retry-After respect.
+
+    Mirrors the indexer_base.post_object exponential-backoff shape so the
+    failure surface across Weaviate + Linear is uniform. On 429: parse
+    Retry-After header (seconds or http-date). On 5xx: exponential backoff.
+    On terminal failure: raise so caller surfaces the error.
+    """
     body = json.dumps({"query": query, "variables": variables}).encode("utf-8")
-    req = urlrequest.Request(
-        LINEAR_API,
-        data=body,
-        method="POST",
-        headers={
-            "Authorization": _api_key(),
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-        },
-    )
-    with urlrequest.urlopen(req, timeout=20) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+    backoff = INITIAL_BACKOFF_SECONDS
+    last_exc: Exception | None = None
+    for attempt in range(1, MAX_GRAPHQL_RETRIES + 1):
+        req = urlrequest.Request(
+            LINEAR_API,
+            data=body,
+            method="POST",
+            headers={
+                "Authorization": _api_key(),
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            },
+        )
+        try:
+            with urlrequest.urlopen(req, timeout=20) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+        except urlerror.HTTPError as exc:
+            last_exc = exc
+            if exc.code == 429:
+                retry_after = _parse_retry_after(exc.headers.get("Retry-After"))
+                wait = retry_after if retry_after is not None else backoff
+                logger.warning(
+                    "linear_api 429 (attempt=%d) — sleeping %ss",
+                    attempt,
+                    wait,
+                )
+                time.sleep(wait)
+                backoff *= 2
+                continue
+            if 500 <= exc.code < 600:
+                logger.warning(
+                    "linear_api %d (attempt=%d) — backoff %ss", exc.code, attempt, backoff
+                )
+                time.sleep(backoff)
+                backoff *= 2
+                continue
+            # 4xx other than 429 — terminal, do not retry.
+            raise
+        except (urlerror.URLError, OSError) as exc:
+            last_exc = exc
+            logger.warning(
+                "linear_api transient %s (attempt=%d) — backoff %ss", exc, attempt, backoff
+            )
+            time.sleep(backoff)
+            backoff *= 2
+    # All retries exhausted.
+    raise last_exc if last_exc else RuntimeError("linear_api retries exhausted")
+
+
+def _parse_retry_after(header_value: str | None) -> float | None:
+    if not header_value:
+        return None
+    try:
+        return float(header_value)
+    except ValueError:
+        # http-date form — give up parsing and let caller fall back to backoff
+        return None
 
 
 LINEAR_QUERY = """
-query KeisSince($filter: IssueFilter!, $first: Int!) {
-  issues(filter: $filter, first: $first, orderBy: updatedAt) {
+query KeisSince($filter: IssueFilter!, $first: Int!, $after: String) {
+  issues(filter: $filter, first: $first, after: $after, orderBy: updatedAt) {
+    pageInfo { hasNextPage endCursor }
     nodes {
       id
       identifier
@@ -155,24 +213,7 @@ query KeisSince($filter: IssueFilter!, $first: Int!) {
 """
 
 
-def fetch_linear_issues(cursor: str, batch_size: int) -> list[LinearIssue]:
-    variables = {
-        "filter": {
-            "team": {"key": {"eq": TEAM_KEY}},
-            "updatedAt": {"gt": cursor},
-        },
-        "first": batch_size,
-    }
-    try:
-        body = _graphql(LINEAR_QUERY, variables)
-    except (urlerror.URLError, OSError, ValueError) as exc:
-        logger.warning("linear_api transient %s — empty batch", exc)
-        return []
-    errors = body.get("errors")
-    if errors:
-        logger.warning("linear_api errors=%s — empty batch", errors)
-        return []
-    nodes = body.get("data", {}).get("issues", {}).get("nodes", []) or []
+def _parse_nodes(nodes: list[dict]) -> list[LinearIssue]:
     return [
         LinearIssue(
             id=n["id"],
@@ -187,6 +228,55 @@ def fetch_linear_issues(cursor: str, batch_size: int) -> list[LinearIssue]:
         )
         for n in nodes
     ]
+
+
+def fetch_linear_issues(cursor: str, batch_size: int) -> list[LinearIssue]:
+    """Fetch ALL issues with updatedAt > cursor, paginating via hasNextPage.
+
+    Hard-capped at MAX_PAGINATION_PAGES per fetch to bound one daemon poll's
+    work. Remaining issues drain on the next poll (cursor will have advanced).
+    """
+    collected: list[LinearIssue] = []
+    after: str | None = None
+    for page in range(1, MAX_PAGINATION_PAGES + 1):
+        variables: dict[str, Any] = {
+            "filter": {
+                "team": {"key": {"eq": TEAM_KEY}},
+                "updatedAt": {"gt": cursor},
+            },
+            "first": batch_size,
+        }
+        if after:
+            variables["after"] = after
+        try:
+            body = _graphql(LINEAR_QUERY, variables)
+        except (urlerror.URLError, OSError, ValueError) as exc:
+            logger.warning(
+                "linear_api transient on page %d (%s) — returning partial batch (%d so far)",
+                page,
+                exc,
+                len(collected),
+            )
+            return collected
+        errors = body.get("errors")
+        if errors:
+            logger.warning("linear_api errors=%s — stopping at page %d", errors, page)
+            return collected
+        issues_block = body.get("data", {}).get("issues", {}) or {}
+        nodes = issues_block.get("nodes", []) or []
+        collected.extend(_parse_nodes(nodes))
+        page_info = issues_block.get("pageInfo", {}) or {}
+        if not page_info.get("hasNextPage"):
+            return collected
+        after = page_info.get("endCursor")
+        if not after:
+            return collected
+    logger.warning(
+        "linear_api pagination cap hit at %d pages (%d issues) — next poll drains the rest",
+        MAX_PAGINATION_PAGES,
+        len(collected),
+    )
+    return collected
 
 
 class LinearStateIndexer(BaseIndexer[LinearIssue]):

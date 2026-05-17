@@ -101,3 +101,37 @@ def test_read_cursor_default_when_corrupt(tmp_path, monkeypatch):
     bad.write_text("not-json-content")
     monkeypatch.setattr(mod, "CURSOR_PATH", bad)
     assert mod._read_cursor() == "1970-01-01T00:00:00Z"
+
+
+def test_parse_retry_after_seconds():
+    assert mod._parse_retry_after("30") == 30.0
+    assert mod._parse_retry_after("0.5") == 0.5
+
+
+def test_parse_retry_after_returns_none_on_unparseable():
+    assert mod._parse_retry_after(None) is None
+    assert mod._parse_retry_after("") is None
+    # http-date form — we don't parse those, caller falls back to backoff.
+    assert mod._parse_retry_after("Wed, 21 Oct 2026 07:28:00 GMT") is None
+
+
+def test_parse_nodes_handles_missing_optional_fields():
+    nodes = [
+        {"id": "x1", "identifier": "KEI-1", "title": "t", "updatedAt": "2026-05-17T00:00:00Z"},
+        {
+            "id": "x2",
+            "identifier": "KEI-2",
+            "title": "t",
+            "description": None,
+            "state": None,
+            "assignee": None,
+            "priorityLabel": "",
+            "updatedAt": "2026-05-17T01:00:00Z",
+        },
+    ]
+    parsed = mod._parse_nodes(nodes)
+    assert len(parsed) == 2
+    assert parsed[0].description == ""
+    assert parsed[0].state_name == ""
+    assert parsed[1].state_type == ""
+    assert parsed[1].assignee == ""

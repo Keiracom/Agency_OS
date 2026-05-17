@@ -180,6 +180,11 @@ def test_ensure_urgency_creates_when_missing(mod, monkeypatch):
     result = mod.ensure_urgency("k", "Critical")
     assert result is not None
     assert result["id"] == "200"
+    # Sonar S5727 false-positive guard: captured_body is mutated via nonlocal
+    # inside the monkeypatched _fake_request closure; Sonar's flow analysis
+    # can't trace closure-mutation-via-monkeypatch and thinks captured_body
+    # is still None at the equality check below.
+    assert captured_body is not None
     assert captured_body == {
         "name": "Critical",
         "email": True,
@@ -337,7 +342,9 @@ def test_main_ceo_integration_missing_returns_1(mod, monkeypatch):
     assert mod.main() == 1
 
 
-def test_main_execution_integration_missing_returns_0_with_gate(mod, monkeypatch, capsys):
+def test_main_execution_integration_missing_returns_0_with_gate(  # NOSONAR S3776 — REST-mock nested branches mirror BetterStack API surface; reducing cognitive complexity here would obscure the route-table shape under test
+    mod, monkeypatch, capsys
+):
     """#ceo present, #execution missing → critical wired, routine gated, exit 0."""
     monkeypatch.setenv("BETTERSTACK_API_KEY", "k")
 
@@ -380,7 +387,9 @@ def test_main_execution_integration_missing_returns_0_with_gate(mod, monkeypatch
     assert "#execution" in captured.err
 
 
-def test_main_both_integrations_present_creates_both_policies(mod, monkeypatch):
+def test_main_both_integrations_present_creates_both_policies(  # NOSONAR S3776 — REST-mock nested branches mirror BetterStack API surface; reducing cognitive complexity here would obscure the route-table shape under test
+    mod, monkeypatch
+):
     monkeypatch.setenv("BETTERSTACK_API_KEY", "k")
 
     state = {"created_policies": [], "patches": []}

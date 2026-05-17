@@ -128,6 +128,23 @@ INITIAL_BACKOFF_SECONDS = 1.0
 MAX_PAGINATION_PAGES = int(os.environ.get("LINEAR_STATE_MAX_PAGES", "20"))
 
 
+def _handle_http_error(exc: urlerror.HTTPError, attempt: int, backoff: float) -> float | None:
+    """Decide retry-or-raise for an HTTPError. Returns the next backoff value if
+    retryable (caller must `continue`); returns None if terminal (caller must
+    re-raise). Sleeps internally on retry."""
+    if exc.code == 429:
+        retry_after = _parse_retry_after(exc.headers.get("Retry-After"))
+        wait = retry_after if retry_after is not None else backoff
+        logger.warning("linear_api 429 (attempt=%d) — sleeping %ss", attempt, wait)
+        time.sleep(wait)
+        return backoff * 2
+    if 500 <= exc.code < 600:
+        logger.warning("linear_api %d (attempt=%d) — backoff %ss", exc.code, attempt, backoff)
+        time.sleep(backoff)
+        return backoff * 2
+    return None
+
+
 def _graphql(query: str, variables: dict) -> dict:
     """Linear GraphQL POST with retry + 429 Retry-After respect.
 
@@ -155,26 +172,10 @@ def _graphql(query: str, variables: dict) -> dict:
                 return json.loads(resp.read().decode("utf-8"))
         except urlerror.HTTPError as exc:
             last_exc = exc
-            if exc.code == 429:
-                retry_after = _parse_retry_after(exc.headers.get("Retry-After"))
-                wait = retry_after if retry_after is not None else backoff
-                logger.warning(
-                    "linear_api 429 (attempt=%d) — sleeping %ss",
-                    attempt,
-                    wait,
-                )
-                time.sleep(wait)
-                backoff *= 2
-                continue
-            if 500 <= exc.code < 600:
-                logger.warning(
-                    "linear_api %d (attempt=%d) — backoff %ss", exc.code, attempt, backoff
-                )
-                time.sleep(backoff)
-                backoff *= 2
-                continue
-            # 4xx other than 429 — terminal, do not retry.
-            raise
+            next_backoff = _handle_http_error(exc, attempt, backoff)
+            if next_backoff is None:
+                raise
+            backoff = next_backoff
         except (urlerror.URLError, OSError) as exc:
             last_exc = exc
             logger.warning(
@@ -182,7 +183,6 @@ def _graphql(query: str, variables: dict) -> dict:
             )
             time.sleep(backoff)
             backoff *= 2
-    # All retries exhausted.
     raise last_exc if last_exc else RuntimeError("linear_api retries exhausted")
 
 

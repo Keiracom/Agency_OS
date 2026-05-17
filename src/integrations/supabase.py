@@ -327,9 +327,47 @@ async def cleanup() -> None:
 # [x] All functions have type hints
 # [x] All functions have docstrings
 
-# ============================================
+# ============================================================
+# KEI-181: Tenant Session Helper
+# ============================================================
+
+
+async def set_tenant_session(tenant_id: int, *, connection: AsyncSession | None = None) -> None:
+    """Set the agency_os.tenant_id session variable for RLS enforcement.
+
+    Must be called at the start of any anon/authenticated session before
+    reading or writing work tables that have RLS enabled.
+
+    The service-role key bypasses RLS automatically (no call needed).
+    Backend daemons that have not called this function also bypass RLS via
+    the ``IS NULL`` clause in every policy (defensive default).
+
+    Args:
+        tenant_id: The tenant to scope this session to.
+                   Dave = 1, customers = 2+.
+        connection: An open AsyncSession to execute on.
+                    If None, a fresh session is opened via get_db_session().
+
+    Raises:
+        ValueError: If tenant_id is not a positive integer.
+        IntegrationError: If the SET LOCAL statement fails.
+    """
+    if not isinstance(tenant_id, int) or tenant_id < 1:
+        raise ValueError(f"tenant_id must be a positive integer, got: {tenant_id!r}")
+
+    stmt = text(f"SET LOCAL agency_os.tenant_id = '{tenant_id}'")
+
+    if connection is not None:
+        await connection.execute(stmt)
+        return
+
+    async with get_db_session() as session:
+        await session.execute(stmt)
+
+
+# ============================================================
 # Backward Compatibility Aliases
-# ============================================
+# ============================================================
 # Used by src/config/database.py and other modules
 get_async_engine = get_engine
 AsyncSessionLocal = get_session_factory

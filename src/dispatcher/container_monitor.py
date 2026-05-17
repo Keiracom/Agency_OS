@@ -121,13 +121,62 @@ def _default_persist(task_id: str, result: MonitorResult) -> None:
             result.ended_at,
             task_id,
         )
-    except Exception as exc:  # noqa: BLE001
-        logger.error(
-            "%s persist failed for task %s: %s",
+    except Exception:  # noqa: BLE001
+        logger.exception(
+            "%s persist failed for task %s",
             _SOURCE_DOC,
             task_id,
-            exc,
         )
+
+
+def _one_poll(
+    handle: ContainerHandle,
+    *,
+    task_id: str,
+    start: float,
+    deadline: float | None,
+    persist_fn: Callable[[str, MonitorResult], None],
+    reap_fn: Callable[[ContainerHandle], None],
+    overall_timeout_s: float | None,
+) -> MonitorResult | None:
+    """Execute one inspect/timeout cycle; return MonitorResult on terminal state, None to continue."""
+    status, exit_code = _inspect_state(handle)
+
+    if status == "exited":
+        ended_at = dt.datetime.now(tz=dt.UTC)
+        result = MonitorResult(status="exited", exit_code=exit_code, ended_at=ended_at)
+        logger.info(
+            "%s container %s exited (code=%s) after %.1fs",
+            _SOURCE_DOC,
+            handle.id[:12],
+            exit_code,
+            time.monotonic() - start,
+        )
+        try:
+            reap_fn(handle)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("%s reap failed for %s: %s", _SOURCE_DOC, handle.id[:12], exc)
+        try:
+            persist_fn(task_id, result)
+        except Exception:  # noqa: BLE001
+            logger.exception("%s persist_fn raised for task %s", _SOURCE_DOC, task_id)
+        return result
+
+    if deadline is not None and time.monotonic() >= deadline:
+        result = MonitorResult(status="timeout", exit_code=None, ended_at=None)
+        logger.warning(
+            "%s monitor timed out after %.1fs for container %s",
+            _SOURCE_DOC,
+            overall_timeout_s,
+            handle.id[:12],
+        )
+        try:
+            persist_fn(task_id, result)
+        except Exception:  # noqa: BLE001
+            logger.exception("%s persist_fn raised on timeout for task %s", _SOURCE_DOC, task_id)
+        return result
+
+    return None
 
 
 def monitor_container(
@@ -167,44 +216,15 @@ def monitor_container(
     deadline = (start + overall_timeout_s) if overall_timeout_s is not None else None
 
     while True:
-        status, exit_code = _inspect_state(handle)
-
-        if status == "exited":
-            ended_at = dt.datetime.now(tz=dt.UTC)
-            result = MonitorResult(status="exited", exit_code=exit_code, ended_at=ended_at)
-            logger.info(
-                "%s container %s exited (code=%s) after %.1fs",
-                _SOURCE_DOC,
-                handle.id[:12],
-                exit_code,
-                time.monotonic() - start,
-            )
-            try:
-                _reap(handle)
-            except Exception as exc:  # noqa: BLE001
-                logger.warning("%s reap failed for %s: %s", _SOURCE_DOC, handle.id[:12], exc)
-
-            try:
-                _persist(task_id, result)
-            except Exception as exc:  # noqa: BLE001
-                logger.error("%s persist_fn raised for task %s: %s", _SOURCE_DOC, task_id, exc)
-
+        result = _one_poll(
+            handle,
+            task_id=task_id,
+            start=start,
+            deadline=deadline,
+            persist_fn=_persist,
+            reap_fn=_reap,
+            overall_timeout_s=overall_timeout_s,
+        )
+        if result is not None:
             return result
-
-        if deadline is not None and time.monotonic() >= deadline:
-            result = MonitorResult(status="timeout", exit_code=None, ended_at=None)
-            logger.warning(
-                "%s monitor timed out after %.1fs for container %s",
-                _SOURCE_DOC,
-                overall_timeout_s,
-                handle.id[:12],
-            )
-            try:
-                _persist(task_id, result)
-            except Exception as exc:  # noqa: BLE001
-                logger.error(
-                    "%s persist_fn raised on timeout for task %s: %s", _SOURCE_DOC, task_id, exc
-                )
-            return result
-
         time.sleep(poll_interval_s)

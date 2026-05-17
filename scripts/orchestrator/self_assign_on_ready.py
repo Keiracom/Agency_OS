@@ -96,7 +96,27 @@ def _bd_ready(bd_bin: str) -> list[dict]:
 
 
 def _bd_claim(bd_bin: str, issue_id: str) -> bool:
-    """Try `bd update <id> --claim`. Returns True on success."""
+    """Try `tasks_cli.py claim --id <id> --source auto_loop`. Returns True on success.
+
+    KEI-95: passes --source auto_loop so the DB claim_source column is set,
+    enabling the enforcer Rule 8 + Step-0 gate to skip the governance ceremony
+    for mechanical auto-claims. Falls back to `bd update <id> --claim` if
+    tasks_cli.py is unreachable (backwards-compat for test stubs that only
+    provide a bd mock).
+    """
+    tasks_cli = _resolve_tasks_cli()
+    if tasks_cli:
+        try:
+            result = subprocess.run(
+                [sys.executable, tasks_cli, "claim", "--id", issue_id, "--source", "auto_loop"],
+                capture_output=True,
+                text=True,
+                timeout=15,
+            )
+            return result.returncode == 0
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            pass
+    # Fallback: bd update (test stubs / legacy path)
     try:
         result = subprocess.run(
             [bd_bin, "update", issue_id, "--claim"],
@@ -107,6 +127,14 @@ def _bd_claim(bd_bin: str, issue_id: str) -> bool:
     except (subprocess.TimeoutExpired, FileNotFoundError):
         return False
     return result.returncode == 0
+
+
+def _resolve_tasks_cli() -> str | None:
+    """Return absolute path to scripts/tasks_cli.py, or None if not found."""
+    here = os.path.dirname(os.path.abspath(__file__))
+    candidate = os.path.join(here, "..", "tasks_cli.py")
+    candidate = os.path.normpath(candidate)
+    return candidate if os.path.isfile(candidate) else None
 
 
 def _eligible(item: dict, callsign: str) -> bool:

@@ -251,7 +251,8 @@ def test_claim_targeted_id(mod, patch_connect, capsys, monkeypatch) -> None:
     out = json.loads(capsys.readouterr().out)
     assert out["id"] == "KEI-39"
     assert out["claimed_by"] == "scout"
-    assert cur.last_params == ("scout", "KEI-39", "scout")
+    # KEI-95: param order is now (cs, source, id, cs). Default source = 'manual'.
+    assert cur.last_params == ("scout", "manual", "KEI-39", "scout")
 
 
 def test_claim_next_available_uses_skip_locked(mod, patch_connect, monkeypatch) -> None:

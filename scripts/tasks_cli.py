@@ -163,10 +163,16 @@ def cmd_claim(args: argparse.Namespace) -> int:
     leak when an agent omits `CALLSIGN=<callsign>` from the env. Fail
     fast at the validation layer so the operator notices the env gap
     instead of orphan-claiming a row.
+
+    KEI-95: --source arg sets claim_source column (auto_loop|manual).
+    auto_loop skips enforcer Rule 8 + Step-0 gate (mechanical claim via
+    phase-lock + SKIP LOCKED is sufficient governance). manual (default)
+    retains full CONCUR + Step 0 ceremony.
     """
     import psycopg
 
     cs = _callsign(args.callsign)
+    source = getattr(args, "source", "manual") or "manual"
     if cs == DEFAULT_CALLSIGN:
         print(
             "ERROR: callsign resolves to the DEFAULT_CALLSIGN sentinel "
@@ -205,13 +211,14 @@ def cmd_claim(args: argparse.Namespace) -> int:
                     """
                     UPDATE public.tasks
                        SET status = 'active', claimed_by = %s,
-                           claimed_at = NOW(), updated_at = NOW()
+                           claimed_at = NOW(), updated_at = NOW(),
+                           claim_source = %s
                      WHERE id = %s
                        AND status = 'available'
                        AND (claimed_by IS NULL OR claimed_by = %s)
                      RETURNING id, title, priority, status, claimed_by, linear_url, tags
                     """,
-                    (cs, args.id, cs),
+                    (cs, source, args.id, cs),
                 )
             else:
                 # KEI-86 — also filter the next-available SELECT by phase.
@@ -229,12 +236,13 @@ def cmd_claim(args: argparse.Namespace) -> int:
                     )
                     UPDATE public.tasks t
                        SET status = 'active', claimed_by = %s,
-                           claimed_at = NOW(), updated_at = NOW()
+                           claimed_at = NOW(), updated_at = NOW(),
+                           claim_source = %s
                       FROM next
                      WHERE t.id = next.id
                      RETURNING t.id, t.title, t.priority, t.status, t.claimed_by, t.linear_url, t.tags
                     """,
-                    (phase_max, cs),
+                    (phase_max, cs, source),
                 )
             row = cur.fetchone()
             conn.commit()
@@ -400,6 +408,16 @@ def main(argv: list[str] | None = None) -> int:
     p_claim = sub.add_parser("claim", help="atomically claim a task")
     p_claim.add_argument("--id", help="specific task id; omit to take next available")
     p_claim.add_argument("--callsign", help=_CALLSIGN_HELP)
+    p_claim.add_argument(
+        "--source",
+        choices=("auto_loop", "manual"),
+        default="manual",
+        help=(
+            "KEI-95: claim_source discriminator. "
+            "auto_loop = mechanical self-claim (enforcer R8/Step-0 exempt); "
+            "manual = orchestrator/peer dispatch (full governance retained, default)."
+        ),
+    )
     p_claim.add_argument("--json", action="store_true")
     p_claim.set_defaults(func=cmd_claim)
 

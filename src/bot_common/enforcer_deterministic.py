@@ -252,17 +252,36 @@ _R2_STEP0_RE = re.compile(
 )
 
 
-def check_r2(text: str, recent_messages: list[str] | None = None) -> dict | None:
+def check_r2(
+    text: str,
+    recent_messages: list[str] | None = None,
+    *,
+    callsign: str | None = None,
+    claim_source_lookup: callable | None = None,
+) -> dict | None:
     """R2 — STEP-0-BEFORE-EXECUTION.
 
     If text indicates execution starting AND no Step-0 / Objective / final-concur
     signal exists in the current message OR in recent_messages → VIOLATION.
     Else PASS.
+
+    KEI-95: if claim_source_lookup(callsign) returns 'auto_loop', the check is
+    skipped entirely — the agent's active task was claimed via the mechanical
+    self-claim loop (phase-lock + SKIP LOCKED provides sufficient governance).
+    Safe default: if lookup is None or raises, treat as 'manual' (fire as before).
     """
     if _R2_EXEMPT_RE.search(text):
         return None
     if not _R2_EXECUTION_RE.search(text):
         return None
+    # KEI-95 — self-claim exemption: skip Step-0 gate for auto_loop claims.
+    if callsign and claim_source_lookup is not None:
+        try:
+            src = claim_source_lookup(callsign)
+        except Exception:  # noqa: BLE001 — safe default on lookup failure
+            src = None
+        if src == "auto_loop":
+            return None
     if _R2_STEP0_RE.search(text):
         return None  # the message itself contains the Step 0 signal
     if recent_messages is None:
@@ -317,11 +336,22 @@ _R8_PROPOSAL_RE = re.compile(r"\[dispatch-proposal:[^\]]+\]", re.IGNORECASE)
 _R8_CONCUR_RE = re.compile(r"\[concur:[^\]]+\]", re.IGNORECASE)
 
 
-def check_r8(text: str, recent_messages: list[str] | None = None) -> dict | None:
+def check_r8(
+    text: str,
+    recent_messages: list[str] | None = None,
+    *,
+    callsign: str | None = None,
+    claim_source_lookup: callable | None = None,
+) -> dict | None:
     """R8 — DISPATCH-COORDINATION.
 
     If text shows a clone dispatch happening, require [DISPATCH-PROPOSAL:<callsign>]
     AND peer [CONCUR] in recent_messages before it. Missing either = VIOLATION.
+
+    KEI-95: if claim_source_lookup(callsign) returns 'auto_loop', the check is
+    skipped entirely — the agent's active task was claimed via the mechanical
+    self-claim loop, which has inherent governance via phase-lock + SKIP LOCKED.
+    Safe default: if lookup is None or raises, treat as 'manual' (fire as before).
     """
     if not _R8_DISPATCH_RE.search(text):
         return None
@@ -329,6 +359,14 @@ def check_r8(text: str, recent_messages: list[str] | None = None) -> dict | None
     # if you confirm"). These are not dispatch actions; they're proposals.
     if _R8_CONDITIONAL_RE.search(text):
         return None
+    # KEI-95 — self-claim exemption: skip dispatch-coordination for auto_loop claims.
+    if callsign and claim_source_lookup is not None:
+        try:
+            src = claim_source_lookup(callsign)
+        except Exception:  # noqa: BLE001 — safe default on lookup failure
+            src = None
+        if src == "auto_loop":
+            return None
     if recent_messages is None:
         return None  # conservative pass when no context available
     has_proposal = any(_R8_PROPOSAL_RE.search(m) for m in recent_messages)

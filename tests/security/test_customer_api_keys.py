@@ -95,7 +95,7 @@ def test_store_key_computes_correct_sha256_hash(monkeypatch):
         module.store_key(FAKE_CUSTOMER_ID, FAKE_PROVIDER, FAKE_PLAINTEXT)
 
     execute_calls = cur.execute.call_args_list
-    sql, params = execute_calls[0][0]
+    _, params = execute_calls[0][0]
     expected_hash = _expected_hash(FAKE_PLAINTEXT)
     assert expected_hash in params
 
@@ -114,7 +114,7 @@ def test_lookup_by_hash_uses_sha256_not_plaintext(monkeypatch):
     with patch("psycopg.connect", return_value=conn):
         module.lookup_by_hash(FAKE_PLAINTEXT)
 
-    sql, params = cur.execute.call_args[0]
+    _, params = cur.execute.call_args[0]
     expected_hash = _expected_hash(FAKE_PLAINTEXT)
     # The hash must appear in params
     assert expected_hash in params
@@ -139,7 +139,7 @@ def test_lookup_by_hash_returns_none_on_miss(monkeypatch):
     """When fetchone returns None, lookup_by_hash must return None."""
     monkeypatch.setenv("DATABASE_URL", "postgresql://localhost/test")
 
-    conn, cur = _make_conn_mock(fetchone_return=None)
+    conn, _ = _make_conn_mock(fetchone_return=None)
 
     with patch("psycopg.connect", return_value=conn):
         result = module.lookup_by_hash(FAKE_PLAINTEXT)
@@ -156,7 +156,7 @@ def test_lookup_by_hash_returns_dict_on_hit(monkeypatch):
     row_id = uuid.uuid4()
     cust_id = uuid.uuid4()
     now = datetime.datetime(2026, 5, 17, 0, 0, 0)
-    conn, cur = _make_conn_mock(fetchone_return=(row_id, cust_id, FAKE_PROVIDER, now, None))
+    conn, _ = _make_conn_mock(fetchone_return=(row_id, cust_id, FAKE_PROVIDER, now, None))
 
     with patch("psycopg.connect", return_value=conn):
         result = module.lookup_by_hash(FAKE_PLAINTEXT)
@@ -193,7 +193,7 @@ def test_decrypt_key_raises_if_row_not_found(monkeypatch):
     monkeypatch.setenv("CUSTOMER_KEY_ENCRYPTION_KEY", FAKE_MASTER_KEY)
     monkeypatch.setenv("DATABASE_URL", "postgresql://localhost/test")
 
-    conn, cur = _make_conn_mock(fetchone_return=None)
+    conn, _ = _make_conn_mock(fetchone_return=None)
 
     with (
         patch("psycopg.connect", return_value=conn),
@@ -269,7 +269,7 @@ def test_no_plaintext_or_master_key_in_logs(monkeypatch, caplog):
     monkeypatch.setenv("DATABASE_URL", "postgresql://localhost/test")
 
     new_id = uuid.uuid4()
-    conn, cur = _make_conn_mock(fetchone_return=(str(new_id),))
+    conn, _ = _make_conn_mock(fetchone_return=(str(new_id),))
 
     with (
         caplog.at_level(logging.DEBUG, logger="src.security.customer_api_keys"),

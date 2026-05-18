@@ -58,6 +58,16 @@ CHANNELS = {
 CAPTURE_LINES = 10
 TMUX_TIMEOUT_SEC = 5
 
+# KEI-97 zombie detection — any callsign whose last_heartbeat is older than
+# HEARTBEAT_STALE_SEC has missed ≥3 of the 30s pings. Treat as dead even if
+# tmux capture-pane returns a "live" buffer (zombie session).
+HEARTBEAT_STALE_SEC = 90
+_LIVENESS_SQL = """
+SELECT callsign,
+       EXTRACT(EPOCH FROM (NOW() - last_heartbeat))::int AS age_sec
+  FROM public.fleet_agents
+"""
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SLACK_RELAY = REPO_ROOT / "scripts" / "slack_relay.py"
 
@@ -88,12 +98,67 @@ def capture_pane(session: str) -> tuple[str, str]:
     return ("ALIVE", tail)
 
 
+def _resolve_dsn() -> str | None:
+    """psycopg-compatible DSN from env, stripping asyncpg prefix."""
+    import os
+
+    raw = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL", "")
+    if not raw:
+        return None
+    return raw.replace("postgresql+asyncpg://", "postgresql://", 1)
+
+
+def query_db_liveness() -> dict[str, int]:
+    """KEI-97 — return {callsign: age_seconds_since_last_heartbeat} from fleet_agents.
+
+    Fail-open: returns {} on missing DSN, missing psycopg, missing table, or any
+    DB error. The tmux-based status remains the primary signal; DB liveness only
+    *downgrades* ALIVE→DEAD when a heartbeat is stale.
+    """
+    dsn = _resolve_dsn()
+    if not dsn:
+        return {}
+    try:
+        import psycopg
+
+        with psycopg.connect(dsn, prepare_threshold=None) as conn, conn.cursor() as cur:
+            cur.execute(_LIVENESS_SQL)
+            return {row[0]: int(row[1]) for row in cur.fetchall()}
+    except Exception:  # noqa: BLE001 — fail-open per dispatch
+        return {}
+
+
+def reconcile_liveness(
+    label: str, tmux_status: str, age_map: dict[str, int]
+) -> tuple[str, str | None]:
+    """Combine tmux status with DB heartbeat age.
+
+    Returns (final_status, reason). final_status is ALIVE/DEAD/ERROR; reason is
+    a short suffix appended to the bullet when the DB downgrades the verdict.
+    """
+    age = age_map.get(label)
+    if age is None:
+        # No DB row → DB liveness unavailable for this callsign. Don't downgrade.
+        return tmux_status, None
+    if age > HEARTBEAT_STALE_SEC:
+        return "DEAD", f"no heartbeat for {age}s (stale > {HEARTBEAT_STALE_SEC}s)"
+    return tmux_status, None
+
+
 def collect_statuses() -> list[tuple[str, str, str, str]]:
-    """Return [(label, session, status, tail), ...] for the full fleet."""
+    """Return [(label, session, status, tail), ...] for the full fleet.
+
+    KEI-97 — DB heartbeat age can override a tmux ALIVE verdict if the agent
+    process has stopped pinging fleet_agents for ≥HEARTBEAT_STALE_SEC seconds.
+    """
+    age_map = query_db_liveness()
     out = []
     for label, session in FLEET:
         status, tail = capture_pane(session)
-        out.append((label, session, status, tail))
+        final_status, reason = reconcile_liveness(label, status, age_map)
+        if reason and final_status != status:
+            tail = reason
+        out.append((label, session, final_status, tail))
     return out
 
 

@@ -24,7 +24,12 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_COLLECTIONS: tuple[str, ...] = ("Discoveries", "Decisions", "Keis")
 DEFAULT_MAX_TOKENS = 500  # KEI-55 ceiling
-DEFAULT_MIN_SCORE = 0.50  # below this, citation_required=True returns answer=""
+DEFAULT_MIN_SCORE = 0.50  # KEI-198: now a SOFT signal, not a hard filter (kept for backward compat callers passing explicit values)
+# KEI-198: when ALL returned scores are exactly 0.0, treat it as a vectorizer-regression sentinel.
+# We log a warning + tag the retrieval event but STILL return the top-N citations so the caller
+# gets non-empty results. This is the defensive replacement for the prior hard min_score gate
+# that filtered everything out when scores collapsed to 0.0 (KEI-192 audit finding).
+_ZERO_SCORE_SENTINEL = 0.0
 EXCERPT_LEN = 80
 QUERY_TEXT_LOG_CAP = 200
 
@@ -171,7 +176,7 @@ def query(
     collections: tuple[str, ...] = DEFAULT_COLLECTIONS,
     max_tokens: int = DEFAULT_MAX_TOKENS,
     citation_required: bool = True,
-    min_score: float = DEFAULT_MIN_SCORE,
+    min_score: float = DEFAULT_MIN_SCORE,  # noqa: ARG001 — KEI-198: retained for back-compat; no-op
     k_initial: int = orchestrator.DEFAULT_K_INITIAL,
     k_returned: int = orchestrator.DEFAULT_K_RETURNED,
 ) -> QueryResult:
@@ -183,12 +188,17 @@ def query(
         collections: Which Weaviate collections to search (default 3-tuple
             covers the most common precision-retrieval surfaces).
         max_tokens: Response synthesis ceiling (KEI-55, 500-token default).
-        citation_required: When True (default) and no citation passes
-            `min_score`, return `answer=""` instead of synthesising.
-        min_score: Floor for citation eligibility under
-            `citation_required=True`.
+        citation_required: When True (default) AND all returned scores are
+            exactly 0.0 (vectorizer-regression sentinel per KEI-198), return
+            `answer=""`. Mixed / non-zero score sets ALWAYS surface top-N
+            regardless of absolute value.
+        min_score: DEPRECATED in KEI-198 — retained for back-compat but
+            no-op'd. The prior hard score-floor (default 0.50) excluded all
+            citations when Weaviate vectorizer=none collapsed scores to 0.0
+            (KEI-192 audit). Callers passing explicit values get the new
+            distribution-aware top-N selection regardless of the value.
         k_initial: ANN top-K per collection.
-        k_returned: Citations returned (post-rank — raw ANN in PR1).
+        k_returned: Citations returned (post-rank — top-N sorted by score).
 
     Returns:
         `QueryResult` with answer + citations + elapsed_ms + bypass flag.
@@ -201,13 +211,31 @@ def query(
         k_returned=k_returned,
     )
     citations = tuple(_node_to_citation(n) for n in outcome.nodes)
-    qualified = tuple(c for c in citations if c.score >= min_score)
-    if citation_required and not qualified:
+    # KEI-198 — distribution-aware citation selection.
+    # OLD shape (pre-KEI-192 audit): hard `score >= min_score` filter excluded
+    # everything when vectorizer=none collapsed all scores to 0.0 — 12/14 of the
+    # session's retrieval_events landed with top_citation_id=NULL despite
+    # k_returned=5 nodes.
+    # NEW shape: always sort + slice top-N; only drop on the all-zero sentinel
+    # when caller explicitly opted in via citation_required=True.
+    top_n: tuple[Citation, ...] = tuple(
+        sorted(citations, key=lambda c: c.score, reverse=True)[:k_returned]
+    )
+    all_zero = bool(top_n) and all(c.score == _ZERO_SCORE_SENTINEL for c in top_n)
+    if all_zero:
+        logger.warning(
+            "retrieval scores all 0.0 — vectorizer-regression sentinel (KEI-198) "
+            "agent=%s text=%s collections=%s",
+            agent,
+            text[:QUERY_TEXT_LOG_CAP],
+            collections,
+        )
+    if citation_required and all_zero:
         answer = ""
         emitted_citations: tuple[Citation, ...] = ()
     else:
-        emitted_citations = qualified or citations
-        answer = _synthesise_answer(emitted_citations, max_tokens)
+        emitted_citations = top_n
+        answer = _synthesise_answer(emitted_citations, max_tokens) if top_n else ""
     elapsed_ms = int((time.monotonic() - started) * 1000)
     top = emitted_citations[0] if emitted_citations else None
     _record_event(

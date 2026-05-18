@@ -54,7 +54,10 @@ def test_query_returns_top_citation_when_above_min_score():
     assert result.bypass_rerank is True
 
 
-def test_citation_required_returns_empty_answer_when_below_threshold():
+def test_low_score_citations_still_returned_post_kei198():
+    """KEI-198: low scores (non-zero) no longer get filtered by the prior
+    hard min_score floor. The distribution-aware top-N selection surfaces
+    them regardless of absolute value."""
     nodes = (_mk_node("low-quality match", 0.20),)
     with patch(
         "src.retrieval.agent_query.orchestrator.retrieve_with_outcome",
@@ -63,8 +66,10 @@ def test_citation_required_returns_empty_answer_when_below_threshold():
         result = agent_query.query(
             "anything?", agent="test", citation_required=True, min_score=0.50
         )
-    assert result.answer == ""
-    assert result.citations == ()
+    # KEI-198: low-but-nonzero scores now SURFACE (was empty pre-KEI-198).
+    assert result.citations
+    assert result.citations[0].score == pytest.approx(0.20)
+    assert result.answer != ""
 
 
 def test_citation_required_false_returns_low_score_answer():
@@ -78,6 +83,70 @@ def test_citation_required_false_returns_low_score_answer():
         )
     assert result.answer != ""
     assert result.citations
+
+
+def test_kei198_all_zero_scores_returns_empty_when_citation_required():
+    """KEI-198 sentinel: ALL scores exactly 0.0 = vectorizer regression.
+    With citation_required=True (default), return answer="" so callers
+    can detect the regression instead of getting silent vectorless results."""
+    nodes = (_mk_node("vectorless object 1", 0.0), _mk_node("vectorless object 2", 0.0))
+    with patch(
+        "src.retrieval.agent_query.orchestrator.retrieve_with_outcome",
+        return_value=_outcome(nodes),
+    ):
+        result = agent_query.query("anything?", agent="test", citation_required=True)
+    assert result.answer == ""
+    assert result.citations == ()
+
+
+def test_kei198_all_zero_scores_returns_top_n_when_citation_not_required():
+    """KEI-198: with citation_required=False, even all-zero-score nodes are
+    surfaced. Caller has opted into best-available regardless of confidence."""
+    nodes = (
+        _mk_node("vectorless object 1", 0.0, source_id="doc-a"),
+        _mk_node("vectorless object 2", 0.0, source_id="doc-b"),
+    )
+    with patch(
+        "src.retrieval.agent_query.orchestrator.retrieve_with_outcome",
+        return_value=_outcome(nodes),
+    ):
+        result = agent_query.query("anything?", agent="test", citation_required=False)
+    assert len(result.citations) == 2
+    assert {c.source_id for c in result.citations} == {"doc-a", "doc-b"}
+
+
+def test_kei198_top_n_sorted_by_score_descending():
+    """KEI-198: distribution-aware top-N picker returns highest-scored first."""
+    nodes = (
+        _mk_node("mid", 0.4, source_id="mid"),
+        _mk_node("hi", 0.9, source_id="hi"),
+        _mk_node("lo", 0.1, source_id="lo"),
+    )
+    with patch(
+        "src.retrieval.agent_query.orchestrator.retrieve_with_outcome",
+        return_value=_outcome(nodes),
+    ):
+        result = agent_query.query("anything?", agent="test")
+    ids = [c.source_id for c in result.citations]
+    assert ids == ["hi", "mid", "lo"]
+    assert result.citations[0].score == pytest.approx(0.9)
+
+
+def test_kei198_min_score_parameter_is_noop():
+    """KEI-198: explicit min_score parameter retained for back-compat but
+    no longer filters. A min_score=0.99 against nodes with scores <0.99 still
+    returns the nodes (pre-KEI-198 this would have returned empty)."""
+    nodes = (_mk_node("decent match", 0.50),)
+    with patch(
+        "src.retrieval.agent_query.orchestrator.retrieve_with_outcome",
+        return_value=_outcome(nodes),
+    ):
+        # Caller passes a high min_score; KEI-198 treats it as no-op
+        result = agent_query.query(
+            "anything?", agent="test", citation_required=True, min_score=0.99
+        )
+    assert result.citations
+    assert result.citations[0].score == pytest.approx(0.50)
 
 
 def test_excerpt_is_capped_to_80_chars():

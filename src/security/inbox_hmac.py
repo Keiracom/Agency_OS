@@ -25,6 +25,12 @@ Canonical form (deterministic across writers + readers):
 Environment:
     `INBOX_HMAC_SECRET` — shared secret, read from `~/.config/agency-os/.env`.
     Treat as secret-equivalent to TELEGRAM_BOT_TOKEN. Not to be logged.
+    `INBOX_HMAC_SECRET_PREVIOUS` — optional rotation window companion. When
+    set, `verify()` accepts payloads signed with EITHER the current secret
+    OR the previous one. This is the dual-key cutover lane (KEI-138): set
+    both during the rotation window, then unset PREVIOUS once
+    `dispatch_signature_metrics` shows zero traffic on the old fingerprint.
+    See docs/runbooks/hmac_rotation.md for the full SOP.
 """
 
 from __future__ import annotations
@@ -67,14 +73,32 @@ def sign(payload: dict, secret: str | None = None) -> dict:
     return signed
 
 
+def _candidate_secrets(primary: str | None) -> list[str]:
+    """Build the secret-try list for verify(): primary first, then
+    INBOX_HMAC_SECRET_PREVIOUS (rotation window companion). Order matters —
+    primary is tried first so the common path stays one compare."""
+    primary = primary or os.environ.get("INBOX_HMAC_SECRET")
+    candidates: list[str] = []
+    if primary:
+        candidates.append(primary)
+    previous = os.environ.get("INBOX_HMAC_SECRET_PREVIOUS")
+    if previous and previous != primary:
+        candidates.append(previous)
+    return candidates
+
+
 def verify(path: str | Path, secret: str | None = None) -> tuple[bool, str]:
     """Read `path`, recompute HMAC, compare with stored value.
 
     Returns (is_valid, reason). On mismatch, reason explains why — logs at
     WARNING level. Callers should log + skip-inject on (False, _).
+
+    Rotation: if `INBOX_HMAC_SECRET_PREVIOUS` is set in env, payloads signed
+    with EITHER secret verify successfully. This is the cutover lane for
+    KEI-138 — see docs/runbooks/hmac_rotation.md.
     """
-    secret = secret or os.environ.get("INBOX_HMAC_SECRET")
-    if not secret:
+    candidates = _candidate_secrets(secret)
+    if not candidates:
         return False, "INBOX_HMAC_SECRET not set"
 
     p = Path(path)
@@ -95,14 +119,16 @@ def verify(path: str | Path, secret: str | None = None) -> tuple[bool, str]:
     if not isinstance(stored, str):
         return False, f"{_HMAC_KEY} field missing or not a string (unsigned file)"
 
-    expected = _compute(payload, secret)
-    if not hmac.compare_digest(stored, expected):
-        logger.warning(
-            "HMAC mismatch for %s — computed %s, stored %s", p, expected[:12], stored[:12]
-        )
-        return False, "HMAC mismatch (tampered or signed with different secret)"
+    for candidate in candidates:
+        expected = _compute(payload, candidate)
+        if hmac.compare_digest(stored, expected):
+            return True, "ok"
 
-    return True, "ok"
+    logger.warning(
+        "HMAC mismatch for %s — stored %s did not match any of %d candidate secret(s)",
+        p, stored[:12], len(candidates),
+    )
+    return False, "HMAC mismatch (tampered or signed with unknown secret)"
 
 
-__all__ = ["sign", "verify"]
+__all__ = ["_candidate_secrets", "sign", "verify"]

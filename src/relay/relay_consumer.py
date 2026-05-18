@@ -5,6 +5,7 @@ PHASE: Change 1b Phase 2 — Redis BRPOP consumer
 DEPENDENCIES:
   - src/relay/redis_relay.py (pop)
   - src/security/inbox_hmac (sign/verify — file-path API; inline dict verify used here)
+  - src/security/dispatch_audit (KEI-138 — audit emit, fail-open)
 """
 
 from __future__ import annotations
@@ -37,17 +38,31 @@ QUEUE_MAP: dict[str, dict] = {
 # ── HMAC (inline dict verify — inbox_hmac.verify() expects a file path) ────────
 
 
-def _hmac_verify_dict(payload: dict, secret: str) -> tuple[bool, str]:
-    """Re-implement the canonical HMAC check from inbox_hmac directly on a dict."""
+def _hmac_verify_dict(payload: dict, secret: str) -> tuple[bool, str, str | None]:
+    """Re-implement the canonical HMAC check from inbox_hmac directly on a dict.
+
+    KEI-138 — supports rotation by trying both INBOX_HMAC_SECRET (primary
+    `secret` arg) and INBOX_HMAC_SECRET_PREVIOUS (env). Returns
+    (is_valid, reason, matched_secret_fingerprint).
+    matched_secret_fingerprint identifies which key passed (None on failure).
+    """
     stored = payload.get("hmac")
     if not isinstance(stored, str):
-        return False, "hmac field missing or not a string (unsigned payload)"
+        return False, "hmac field missing or not a string (unsigned payload)", None
+
+    candidates: list[str] = [secret]
+    previous = os.environ.get("INBOX_HMAC_SECRET_PREVIOUS")
+    if previous and previous != secret:
+        candidates.append(previous)
+
     filtered = {k: v for k, v in payload.items() if k != "hmac"}
     canonical = json.dumps(filtered, sort_keys=True, separators=(",", ":")).encode("utf-8")
-    expected = hmac_mod.new(secret.encode("utf-8"), canonical, hashlib.sha256).hexdigest()
-    if not hmac_mod.compare_digest(stored, expected):
-        return False, "HMAC mismatch"
-    return True, "ok"
+    for candidate in candidates:
+        expected = hmac_mod.new(candidate.encode("utf-8"), canonical, hashlib.sha256).hexdigest()
+        if hmac_mod.compare_digest(stored, expected):
+            fp = hashlib.sha256(candidate.encode("utf-8")).hexdigest()[:12]
+            return True, "ok", fp
+    return False, "HMAC mismatch", None
 
 
 # ── Tmux helpers ────────────────────────────────────────────────────────────────
@@ -142,7 +157,24 @@ async def consume_queue(queue: str, config: dict) -> None:
                 continue
 
             if queue_type == "dispatch" and hmac_secret:
-                ok, reason = _hmac_verify_dict(payload, hmac_secret)
+                ok, reason, matched_fp = _hmac_verify_dict(payload, hmac_secret)
+                # KEI-138 — emit audit row regardless of outcome (fail-open)
+                try:
+                    from src.security.dispatch_audit import emit_audit  # noqa: PLC0415
+                    audit_result = "ok" if ok else (
+                        "unsigned" if "missing" in reason else "mismatch"
+                    )
+                    emit_audit(
+                        "verify",
+                        result=audit_result,
+                        payload_id=str(payload.get("id") or payload.get("task_ref") or ""),
+                        target=queue,
+                        actor=str(payload.get("from", "")),
+                        secret_fingerprint=matched_fp,
+                        reason=None if ok else reason,
+                    )
+                except Exception:  # noqa: BLE001 — audit never blocks dispatch
+                    pass
                 if not ok:
                     logger.warning("HMAC reject on %s: %s", queue, reason)
                     continue

@@ -27,6 +27,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from security.inbox_hmac import sign  # noqa: E402
+from security.dispatch_audit import emit_audit, fingerprint  # noqa: E402
 from relay.redis_relay import push_sync as redis_push_sync, dispatch_queue  # noqa: E402
 
 
@@ -88,6 +89,17 @@ def main() -> int:
         redis_push_sync(dispatch_queue(args.target), signed)
     except Exception:
         pass  # fail-open — file write is primary
+
+    # KEI-138 — audit trail of every sign event (fail-open inside emit_audit)
+    emit_audit(
+        "sign",
+        result="ok",
+        payload_id=task_ref,
+        target=args.target,
+        actor=args.sender,
+        secret_fingerprint=fingerprint(os.environ.get("INBOX_HMAC_SECRET")),
+        file_path=str(out_path),
+    )
 
     print(str(out_path))
     return 0

@@ -274,7 +274,6 @@ def process_migration(
         logger.info("%s: no parseable schema targets — skipping", filepath)
         return
 
-    applied = all(schema_applied(conn, t) for t in targets if not t.is_idempotent_create)
     non_idempotent = [t for t in targets if not t.is_idempotent_create]
 
     # Idempotent-only migrations: skip entirely — IF NOT EXISTS means pre-existing is fine.

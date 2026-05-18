@@ -18,7 +18,7 @@ set -euo pipefail
 
 UNITS_DIR="${HOME}/.config/systemd/user"
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-UNIT_SOURCE="${REPO_DIR}/systemd/nova-agent.service"
+UNIT_SOURCE="${REPO_DIR}/infra/systemd/agents/nova-agent.service"
 
 if [[ ! -f "${UNIT_SOURCE}" ]]; then
     echo "missing source unit: ${UNIT_SOURCE}" >&2

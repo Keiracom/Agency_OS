@@ -26,6 +26,7 @@ httpx>=0.26.0
 
 # === XML Parsing (ABN Lookup API) ===
 xmltodict>=0.13.0
+lxml>=5.0.0  # used by scripts/load_business_universe.py for streaming XML parse
 
 # === AI ===
 anthropic>=0.39.0

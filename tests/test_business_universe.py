@@ -5,6 +5,9 @@ All tests use mocks - NO live downloads, NO live database operations.
 """
 
 import pytest
+
+pytest.importorskip("lxml")
+
 from dataclasses import dataclass
 from datetime import datetime
 from io import BytesIO

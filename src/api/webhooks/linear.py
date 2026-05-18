@@ -87,6 +87,10 @@ _BD_WRAPPER = "/home/elliotbot/clawd/Agency_OS/scripts/linear_to_bd.py"
 # Invalid: title="KEI-99 Relay watcher" but identifier="KEI-83" → 400.
 _KEI_PREFIX_RE = re.compile(r"^KEI-(\d+)\b", re.IGNORECASE)
 
+# KEI-183: extract [CALLSIGN] prefix from title (e.g. "[ELLIOT] feat: ...").
+# Captured group 1 is the callsign (uppercase); normalise to lowercase for persona column.
+_CALLSIGN_PREFIX_RE = re.compile(r"^\[([A-Z]+)\]")
+
 
 def _python_bin() -> str:
     """Prefer repo-local .venv (canonical) over the legacy shared
@@ -234,21 +238,28 @@ def _dispatch_to_tasks(event: dict[str, Any]) -> None:
 
         with psycopg.connect(dsn, connect_timeout=10) as conn, conn.cursor() as cur:
             if op == "create":
+                # KEI-183: extract persona from [CALLSIGN] title prefix (lowercase).
+                # e.g. "[ELLIOT] feat: ..." → persona = "elliot". No prefix → NULL.
+                title_str = event.get("title") or "(no title)"
+                _persona_match = _CALLSIGN_PREFIX_RE.match(title_str)
+                persona = _persona_match.group(1).lower() if _persona_match else None
                 cur.execute(
                     """
-                    INSERT INTO public.tasks (id, title, priority, status, linear_url, created_at, updated_at)
-                    VALUES (%s, %s, %s, 'available', %s, NOW(), NOW())
+                    INSERT INTO public.tasks (id, title, priority, status, linear_url, persona, created_at, updated_at)
+                    VALUES (%s, %s, %s, 'available', %s, %s, NOW(), NOW())
                     ON CONFLICT (id) DO UPDATE
                        SET title = EXCLUDED.title,
                            priority = EXCLUDED.priority,
                            linear_url = EXCLUDED.linear_url,
+                           persona = EXCLUDED.persona,
                            updated_at = NOW()
                     """,
                     (
                         identifier,
-                        event.get("title") or "(no title)",
+                        title_str,
                         LINEAR_TO_TASKS_PRIORITY.get(event.get("priority", 0), 3),
                         url,
+                        persona,
                     ),
                 )
             elif op == "status":

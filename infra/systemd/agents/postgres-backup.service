@@ -1,0 +1,16 @@
+[Unit]
+Description=Daily Postgres backup to Vultr Object Store (KEI-126)
+Documentation=https://linear.app/keiracom/issue/KEI-126
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+ExecStart=/home/elliotbot/clawd/Agency_OS/scripts/backup_postgres.sh
+StandardOutput=append:/home/elliotbot/clawd/logs/postgres-backup.log
+StandardError=append:/home/elliotbot/clawd/logs/postgres-backup.log
+
+[Install]
+WantedBy=default.target

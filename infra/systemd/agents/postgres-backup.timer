@@ -1,0 +1,16 @@
+[Unit]
+Description=Daily 01:00 UTC Postgres backup (KEI-126)
+Requires=postgres-backup.service
+
+[Timer]
+# Daily at 01:00 UTC. Persistent=true means the timer fires on next boot if
+# the host was offline at 01:00 (catches partial-outage cases).
+OnCalendar=*-*-* 01:00:00 UTC
+Persistent=true
+# Up to 5min randomized delay so multiple-fleet-hosts (if added later)
+# don't all hit Object Store at the same second.
+RandomizedDelaySec=300
+Unit=postgres-backup.service
+
+[Install]
+WantedBy=timers.target

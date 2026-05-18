@@ -68,7 +68,10 @@ def validate_pick(pick: str, options: list[str], task_id: str) -> None:
     """Exit 2 if pick is not in the declared options list."""
     if options and pick not in options:
         formatted = ", ".join(options)
-        print(f"pick '{pick}' not in options [{formatted}]", file=sys.stderr)
+        print(
+            f"pick '{pick}' not in options [{formatted}] for task {task_id}",
+            file=sys.stderr,
+        )
         raise SystemExit(2)
 
 

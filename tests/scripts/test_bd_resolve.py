@@ -296,11 +296,10 @@ def test_slack_failure_warn_to_stderr(monkeypatch: Any, capsys: Any) -> None:
     monkeypatch.setattr(psycopg, "connect", lambda *a, **kw: conn)
 
     # Patch _post_resolution to raise — resolve() must swallow and warn
-    monkeypatch.setattr(
-        bd_resolve,
-        "_post_resolution",
-        lambda *a, **k: (_ for _ in ()).throw(RuntimeError("rate limit")),
-    )
+    def _raise_rate_limit(*_a: Any, **_k: Any) -> None:
+        raise RuntimeError("rate limit")
+
+    monkeypatch.setattr(bd_resolve, "_post_resolution", _raise_rate_limit)
     result = bd_resolve.resolve(_make_args(pick="A"))
     assert result == 0
     assert "warn: ceo post failed" in capsys.readouterr().err

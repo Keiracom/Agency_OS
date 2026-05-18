@@ -19,16 +19,16 @@
 
 CREATE OR REPLACE VIEW public.claim_queue_metrics_v AS
 SELECT
-    COUNT(*) FILTER (WHERE status = 'available')                  AS available_count,
-    COUNT(*) FILTER (WHERE status = 'active')                     AS active_count,
-    COUNT(*) FILTER (WHERE status = 'blocked')                    AS blocked_count,
+    COUNT(*) FILTER (WHERE status = 'available')                  AS available_count,  -- NOSONAR plsql:S1192 — 'available'/'active'/'blocked' are public.tasks.status enum values
+    COUNT(*) FILTER (WHERE status = 'active')                     AS active_count,     -- NOSONAR plsql:S1192 — enum value
+    COUNT(*) FILTER (WHERE status = 'blocked')                    AS blocked_count,    -- NOSONAR plsql:S1192 — enum value
     EXTRACT(EPOCH FROM (NOW() - MIN(created_at)
-        FILTER (WHERE status = 'available')))::bigint              AS oldest_available_age_sec,
+        FILTER (WHERE status = 'available')))::bigint              AS oldest_available_age_sec,  -- NOSONAR plsql:S1192 — enum value
     EXTRACT(EPOCH FROM (NOW() - MIN(claimed_at)
-        FILTER (WHERE status = 'active' AND claimed_at IS NOT NULL)))::bigint
+        FILTER (WHERE status = 'active' AND claimed_at IS NOT NULL)))::bigint  -- NOSONAR plsql:S1192 — enum value
                                                                    AS oldest_active_age_sec,
     EXTRACT(EPOCH FROM (NOW() - MIN(heartbeat_at)
-        FILTER (WHERE status = 'active' AND heartbeat_at IS NOT NULL)))::bigint
+        FILTER (WHERE status = 'active' AND heartbeat_at IS NOT NULL)))::bigint  -- NOSONAR plsql:S1192 — enum value
                                                                    AS max_idle_seconds,
     NOW()                                                          AS computed_at
 FROM public.tasks;

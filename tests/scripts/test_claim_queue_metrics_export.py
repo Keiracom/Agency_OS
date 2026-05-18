@@ -61,7 +61,7 @@ def test_is_stalled_available_under_threshold(mod):
         "oldest_available_age_sec": 100,
         "max_idle_seconds": None,
     }
-    stalled, reason = mod.is_stalled(metrics, 300)
+    stalled, _ = mod.is_stalled(metrics, 300)
     assert stalled is False
 
 
@@ -73,7 +73,7 @@ def test_is_stalled_no_available_rows_ignored(mod):
         "oldest_available_age_sec": 999999,
         "max_idle_seconds": None,
     }
-    stalled, reason = mod.is_stalled(metrics, 300)
+    stalled, _ = mod.is_stalled(metrics, 300)
     assert stalled is False
 
 
@@ -96,7 +96,7 @@ def test_is_stalled_max_idle_null_is_failopen(mod):
         "oldest_available_age_sec": None,
         "max_idle_seconds": None,
     }
-    stalled, reason = mod.is_stalled(metrics, 300)
+    stalled, _ = mod.is_stalled(metrics, 300)
     assert stalled is False
 
 
@@ -153,7 +153,7 @@ def test_main_exits_clean_when_heartbeat_url_unset(mod, monkeypatch, caplog):
     Critical: must not error out — runbook says heartbeat URL is set AFTER install."""
     monkeypatch.delenv("CLAIM_QUEUE_HEARTBEAT_URL", raising=False)
     rc = mod.main()
-    assert rc == 0
+    assert rc is None
 
 
 def test_main_posts_heartbeat_on_healthy_queue(mod, monkeypatch):
@@ -173,7 +173,7 @@ def test_main_posts_heartbeat_on_healthy_queue(mod, monkeypatch):
         patch.object(mod, "post_heartbeat", return_value=True) as ph,
     ):
         rc = mod.main()
-    assert rc == 0
+    assert rc is None
     ph.assert_called_once_with("https://uptime.betterstack.com/api/v1/heartbeat/TOKEN")
 
 
@@ -194,7 +194,7 @@ def test_main_skips_heartbeat_on_stalled_queue(mod, monkeypatch, caplog):
         patch.object(mod, "post_heartbeat") as ph,
     ):
         rc = mod.main()
-    assert rc == 0
+    assert rc is None
     ph.assert_not_called()  # BS alert fires via missed heartbeat
 
 
@@ -204,7 +204,7 @@ def test_main_exits_clean_when_db_unreachable(mod, monkeypatch):
     monkeypatch.setenv("CLAIM_QUEUE_HEARTBEAT_URL", "https://example.com/hb")
     with patch.object(mod, "fetch_metrics", side_effect=OSError("connection refused")):
         rc = mod.main()
-    assert rc == 0
+    assert rc is None
 
 
 def test_main_threshold_override_via_env(mod, monkeypatch):
@@ -221,5 +221,5 @@ def test_main_threshold_override_via_env(mod, monkeypatch):
         patch.object(mod, "post_heartbeat") as ph,
     ):
         rc = mod.main()
-    assert rc == 0
+    assert rc is None
     ph.assert_not_called()

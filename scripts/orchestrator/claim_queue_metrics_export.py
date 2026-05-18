@@ -30,8 +30,6 @@ from __future__ import annotations
 
 import logging
 import os
-import sys
-import urllib.error
 import urllib.request
 
 logger = logging.getLogger(__name__)
@@ -103,19 +101,19 @@ def post_heartbeat(url: str) -> bool:
         req = urllib.request.Request(url, method="GET")
         with urllib.request.urlopen(req, timeout=10) as resp:
             return 200 <= resp.status < 300
-    except (urllib.error.URLError, urllib.error.HTTPError, OSError) as exc:
+    except OSError as exc:
         logger.warning("heartbeat POST failed: %s", exc)
         return False
 
 
-def main() -> int:
+def main() -> None:
     heartbeat_url = os.environ.get("CLAIM_QUEUE_HEARTBEAT_URL", "")
     if not heartbeat_url:
         logger.warning(
             "CLAIM_QUEUE_HEARTBEAT_URL unset — exporter exiting clean. "
             "Set it after Better Stack heartbeat creation (see runbook)."
         )
-        return 0
+        return
 
     threshold = int(
         os.environ.get("CLAIM_QUEUE_STALL_THRESHOLD_SEC", str(DEFAULT_STALL_THRESHOLD_SEC))
@@ -125,7 +123,7 @@ def main() -> int:
         metrics = fetch_metrics()
     except Exception as exc:
         logger.warning("fetch_metrics failed (skipping heartbeat — DB unreachable): %s", exc)
-        return 0
+        return
 
     stalled, reason = is_stalled(metrics, threshold)
     if stalled:
@@ -134,7 +132,7 @@ def main() -> int:
             reason,
             metrics,
         )
-        return 0
+        return
 
     ok = post_heartbeat(heartbeat_url)
     logger.info(
@@ -142,8 +140,7 @@ def main() -> int:
         "ok" if ok else "failed",
         metrics,
     )
-    return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()

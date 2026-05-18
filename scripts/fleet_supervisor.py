@@ -39,7 +39,13 @@ AGENTS = [
     {"callsign": "atlas", "tmux": "atlas:0", "service": "atlas-agent"},
     {"callsign": "orion", "tmux": "orion:0", "service": "orion-agent"},
     {"callsign": "scout", "tmux": "scout:0", "service": "scout-agent"},
+    {"callsign": "nova", "tmux": "nova:0", "service": "nova-agent"},
 ]
+
+# KEI-185 — supervisor v2 enable flag. When set to truthy, main() routes to
+# `src.fleet.supervisor_v2.run()` (KEI-183, Elliot PR #990). Falls back to v1
+# with a logged warning if v2 module is missing — flip-on order is enforced.
+FLEET_SUPERVISOR_V2_ENV = "FLEET_SUPERVISOR_V2_ENABLED"
 
 # tmux send-keys delay in seconds
 TMUX_DELAY = "0.5"
@@ -837,8 +843,35 @@ def post_ceo_status(report: FleetReport) -> None:
 # ---------------------------------------------------------------------------
 
 
+def _supervisor_v2_enabled() -> bool:
+    """KEI-185 — read `FLEET_SUPERVISOR_V2_ENABLED` env truthy-flag."""
+    raw = os.environ.get(FLEET_SUPERVISOR_V2_ENV, "").strip().lower()
+    return raw in {"1", "true", "yes", "on"}
+
+
+def _try_run_supervisor_v2() -> bool:
+    """Attempt v2 dispatch. Returns True on success, False on ImportError so
+    main() falls through to v1. Any exception inside v2.run() is left to
+    propagate — v2-on operators get the real trace, not a v1 silent-fallback.
+    """
+    try:
+        from src.fleet import supervisor_v2  # type: ignore[import-not-found]  # noqa: PLC0415
+    except ImportError:
+        log.warning(
+            "FLEET_SUPERVISOR_V2_ENABLED=1 but supervisor_v2 module missing "
+            "(KEI-183/PR #990 not yet merged) — falling back to v1"
+        )
+        return False
+    log.info("supervisor v2 ON (KEI-185 flag flipped) — routing to supervisor_v2.run()")
+    supervisor_v2.run()
+    return True
+
+
 def main() -> None:
     log.info("Fleet supervisor starting")
+    if _supervisor_v2_enabled() and _try_run_supervisor_v2():
+        log.info("Fleet supervisor complete (v2 path)")
+        return
     conn = _connect()
 
     try:

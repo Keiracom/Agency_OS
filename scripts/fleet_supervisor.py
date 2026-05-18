@@ -18,6 +18,7 @@ import datetime as _dt
 import json
 import logging
 import os
+import re
 import subprocess
 import sys
 import time
@@ -202,37 +203,95 @@ def get_active_claim(conn: psycopg.Connection, callsign: str) -> tuple[str, str]
     return (row[0], row[1]) if row else None
 
 
+_BLOCKER_PATTERN = re.compile(
+    r"""
+    (?:
+        follow-up\s+after       # FOLLOW-UP after KEI-N
+        | depends\s+on          # depends on KEI-N
+        | gated\s+on            # gated on KEI-N
+        | blocked\s+on          # blocked on KEI-N
+        | sub\s+of              # sub of KEI-N
+        | \(                    # (KEI-N follow-up)
+    )
+    \s*
+    (KEI-\d+)                   # capture group: KEI-N
+    """,
+    re.VERBOSE | re.IGNORECASE,
+)
+
+
+def extract_blocker_keis(title: str, description: str) -> list[str]:
+    """Return list of upper-cased KEI-N blocker identifiers from title + description."""
+    combined = f"{title}\n{description}"
+    return [m.group(1).upper() for m in _BLOCKER_PATTERN.finditer(combined)]
+
+
+def _blockers_active(conn: psycopg.Connection, kei_ids: list[str]) -> list[str]:
+    """Return KEI ids from kei_ids whose tasks are NOT done."""
+    if not kei_ids:
+        return []
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT id FROM public.tasks WHERE id = ANY(%s) AND status != 'done'",
+            (kei_ids,),
+        )
+        return [row[0] for row in cur.fetchall()]
+
+
 def claim_next_task(
     conn: psycopg.Connection, callsign: str, phase_max: int
 ) -> tuple[str, str] | None:
-    """Attempt to claim the highest-priority available task. Returns (id, title) or None."""
-    with conn.cursor() as cur:
-        cur.execute(
-            """
-            SELECT id, title FROM public.tasks
-            WHERE status = 'available'
-              AND (phase IS NULL OR phase <= %s)
-              AND (is_parent IS NULL OR is_parent = false)
-            ORDER BY priority ASC, created_at ASC
-            LIMIT 1
-            FOR UPDATE SKIP LOCKED
-            """,
-            (phase_max,),
-        )
-        row = cur.fetchone()
-        if not row:
-            return None
-        task_id, title = row[0], row[1]
-        cur.execute(
-            """
-            UPDATE public.tasks
-            SET status = 'active', claimed_by = %s, claimed_at = NOW()
-            WHERE id = %s
-            """,
-            (callsign, task_id),
-        )
-    conn.commit()
-    return (task_id, title)
+    """Attempt to claim the highest-priority available task. Returns (id, title) or None.
+
+    Skips tasks whose title/description reference a blocker KEI that is not yet done.
+    """
+    while True:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, title, COALESCE(description, '') FROM public.tasks
+                WHERE status = 'available'
+                  AND (phase IS NULL OR phase <= %s)
+                  AND (is_parent IS NULL OR is_parent = false)
+                ORDER BY priority ASC, created_at ASC
+                LIMIT 1
+                FOR UPDATE SKIP LOCKED
+                """,
+                (phase_max,),
+            )
+            row = cur.fetchone()
+            if not row:
+                return None
+            task_id, title, description = row[0], row[1], row[2]
+
+        blocker_keis = extract_blocker_keis(title, description)
+        active_blockers = _blockers_active(conn, blocker_keis)
+        if active_blockers:
+            log.info(
+                "[supervisor] skip %s — blocker %s not done",
+                task_id,
+                active_blockers[0],
+            )
+            # Mark temporarily so SKIP LOCKED won't re-select; we release below
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE public.tasks SET status = 'dep-blocked' WHERE id = %s",
+                    (task_id,),
+                )
+            conn.commit()
+            continue
+
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE public.tasks
+                SET status = 'active', claimed_by = %s, claimed_at = NOW()
+                WHERE id = %s
+                """,
+                (callsign, task_id),
+            )
+        conn.commit()
+        return (task_id, title)
 
 
 def release_stale_claims(conn: psycopg.Connection) -> int:

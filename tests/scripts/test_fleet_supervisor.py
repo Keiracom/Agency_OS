@@ -384,6 +384,104 @@ def test_build_review_prompt_format():
 
 
 # ---------------------------------------------------------------------------
+# extract_blocker_keis — KEI-204
+# ---------------------------------------------------------------------------
+
+
+def test_extract_blocker_keis_follow_up_after():
+    result = fs.extract_blocker_keis("FOLLOW-UP after KEI-185", "")
+    assert result == ["KEI-185"]
+
+
+def test_extract_blocker_keis_depends_on():
+    result = fs.extract_blocker_keis("depends on KEI-42", "")
+    assert result == ["KEI-42"]
+
+
+def test_extract_blocker_keis_sub_of():
+    result = fs.extract_blocker_keis("", "sub of KEI-183")
+    assert result == ["KEI-183"]
+
+
+def test_extract_blocker_keis_paren_follow_up():
+    result = fs.extract_blocker_keis("(KEI-196 follow-up)", "")
+    assert result == ["KEI-196"]
+
+
+def test_extract_blocker_keis_case_insensitive():
+    result = fs.extract_blocker_keis("follow-up after kei-185", "")
+    assert result == ["KEI-185"]
+
+
+def test_extract_blocker_keis_empty_for_no_pattern():
+    result = fs.extract_blocker_keis("Build new feature", "No dependencies here.")
+    assert result == []
+
+
+# ---------------------------------------------------------------------------
+# claim_next_task dep-blocked logic — KEI-204
+# ---------------------------------------------------------------------------
+
+
+def _make_dep_blocked_conn(
+    task_rows: list[tuple],
+    blocker_status_rows: list[tuple],
+) -> MagicMock:
+    """Build a mock psycopg connection for dep-blocked claim tests.
+
+    task_rows: each call to fetchone() for the candidate task SELECT.
+    blocker_status_rows: each call to fetchall() for the blocker active check.
+    """
+    conn = MagicMock()
+    cursor = MagicMock()
+    conn.cursor.return_value.__enter__ = MagicMock(return_value=cursor)
+    conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+    cursor.fetchone.side_effect = task_rows
+    cursor.fetchall.side_effect = blocker_status_rows
+    return conn
+
+
+def test_claim_next_task_skips_when_blocker_active(monkeypatch):
+    """Task whose title names an active blocker is skipped; returns None when queue exhausted."""
+    conn = _make_dep_blocked_conn(
+        task_rows=[
+            ("KEI-191", "FOLLOW-UP after KEI-185", ""),
+            None,  # second iteration: queue empty
+        ],
+        blocker_status_rows=[
+            [("KEI-185",)],  # blocker is active (not done)
+        ],
+    )
+    result = fs.claim_next_task(conn, "elliot", 99)
+    assert result is None
+
+
+def test_claim_next_task_proceeds_when_blocker_done(monkeypatch):
+    """Task whose blocker is done is claimed normally."""
+    conn = _make_dep_blocked_conn(
+        task_rows=[("KEI-191", "FOLLOW-UP after KEI-185", "")],
+        blocker_status_rows=[[]],  # no active blockers
+    )
+    result = fs.claim_next_task(conn, "elliot", 99)
+    assert result == ("KEI-191", "FOLLOW-UP after KEI-185")
+
+
+def test_claim_next_task_multiple_blockers_one_active(monkeypatch):
+    """Task with 2 blockers where 1 active + 1 done → still skip."""
+    conn = _make_dep_blocked_conn(
+        task_rows=[
+            ("KEI-200", "depends on KEI-10 and blocked on KEI-20", ""),
+            None,
+        ],
+        blocker_status_rows=[
+            [("KEI-20",)],  # KEI-20 still active, KEI-10 done
+        ],
+    )
+    result = fs.claim_next_task(conn, "elliot", 99)
+    assert result is None
+
+
+# ---------------------------------------------------------------------------
 # Task prompt: description truncated at 2000 chars
 # ---------------------------------------------------------------------------
 

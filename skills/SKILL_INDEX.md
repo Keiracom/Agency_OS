@@ -21,6 +21,7 @@
 | smartlead | `skills/smartlead/SKILL.md` | MCP bridge dispatch (116 tools) | Replaces Salesforge |
 | superpowers | `skills/superpowers/SKILL.md` | Agent capability extensions | |
 | three-store-save | `skills/three-store-save/SKILL.md` | Session persistence | |
+| weaviate-vectorizer | `skills/weaviate-vectorizer/SKILL.md` | `scripts/orchestrator/slack_history_ingest.py`, `scripts/orchestrator/kei196_reingest_with_vectorizer.py` | text2vec-google AI Studio config + per-request key header (KEI-196 / KEI-201 follow-up) |
 
 ## Legacy Skills (non-standard naming, kept as reference)
 

@@ -293,6 +293,64 @@ def _contains_escalation_keyword(text: str) -> bool:
     return any(kw.lower() in lower for kw in ESCALATION_KEYWORDS)
 
 
+# ---------------------------------------------------------------------------
+# KEI-33 — R13 BLOCKER ESCALATION (Dave directive 2026-05-18)
+# ---------------------------------------------------------------------------
+# Hard-redirect (not additive) outbound blocker messages from #execution to
+# #ceo. Triggered by canonical R13 markers + the dispatch's listed phrases.
+# Unlike KEI-80's additive escalation, R13 swaps the channel BEFORE the
+# post — so the message lands in #ceo ONLY (no duplicate to original
+# channel, no double-fire with KEI-80 since KEI-80 no-ops when
+# channel == #ceo).
+#
+# Gating: only redirect when the caller's CALLSIGN is permitted to post
+# #ceo. Clones (atlas/orion/scout/nova) keep their existing #execution
+# routing — they should escalate via dispatch chain, not by posting #ceo
+# directly. KEI-80's additive path still applies to clones (it goes via
+# the same bot token, not the clone's allowlist).
+
+# Anchored matchers (full regex). Case-insensitive. Compiled at import time.
+_R13_BLOCKER_PATTERNS: tuple[re.Pattern[str], ...] = (
+    # Canonical R13 marker: [BLOCKED:<callsign>] anywhere in the message.
+    re.compile(r"\[BLOCKED:[A-Za-z][A-Za-z0-9_-]*\]", re.IGNORECASE),
+    # Dispatch-listed phrasings.
+    re.compile(r"\bblocked on ceo\b", re.IGNORECASE),
+    re.compile(r"\bawaiting decision\b", re.IGNORECASE),
+    re.compile(r"\boption [abcd]\b/[abcd]", re.IGNORECASE),  # "option A/B/C"
+    re.compile(r"\boption [abcd]/[abcd](/[abcd])?\b", re.IGNORECASE),
+)
+
+
+def _is_r13_blocker(text: str) -> bool:
+    """Return True if text contains any canonical R13 blocker marker."""
+    return any(p.search(text) for p in _R13_BLOCKER_PATTERNS)
+
+
+def _r13_maybe_redirect(channel: str, text: str) -> str:
+    """KEI-33: If text contains an R13 blocker marker AND this callsign is
+    allowed to post #ceo, swap the outbound channel to #ceo. Otherwise
+    return the channel unchanged.
+
+    Pre-empts KEI-80's additive post (`_maybe_escalate_to_ceo` no-ops
+    when channel == ceo_channel) so we don't double-fire to #ceo.
+    """
+    ceo = CHANNELS["ceo"]
+    if channel == ceo:
+        return channel  # already heading to #ceo
+    if not _is_r13_blocker(text):
+        return channel
+    if ceo not in ALLOWED_CHANNELS:
+        # Clone callsigns can't post #ceo. Leave the message on #execution;
+        # the clone must escalate via the dispatch chain instead.
+        return channel
+    print(
+        f"R13: blocker marker detected in outbound from {CALLSIGN} — "
+        f"redirecting #execution → #ceo per Dave directive 2026-05-18",
+        file=sys.stderr,
+    )
+    return ceo
+
+
 def _maybe_escalate_to_ceo(channel: str, text: str, callsign: str) -> None:
     """KEI-80: Fire a direct #ceo post when outbox message contains escalation language.
 
@@ -343,6 +401,11 @@ def _maybe_escalate_to_ceo(channel: str, text: str, callsign: str) -> None:
 
 def main() -> int:
     channel, message = parse_args(sys.argv[1:])
+    # KEI-33 — R13 BLOCKER ESCALATION. Runs FIRST so the channel-swap is
+    # visible to every downstream gate (R11 #ceo-format, KEI-80 additive
+    # escalation). Redirect is a no-op for clone callsigns and for
+    # messages already headed to #ceo.
+    channel = _r13_maybe_redirect(channel, message)
     # S1 verify gate (Phase 6 — block fabricated PR# / commit-hash in completion
     # claims at outbound. Per Claude sign-off 2026-05-11.).
     try:

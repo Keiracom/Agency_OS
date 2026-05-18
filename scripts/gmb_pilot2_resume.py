@@ -13,6 +13,9 @@ from dotenv import load_dotenv
 load_dotenv(Path.home() / ".config" / "agency-os" / ".env")
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+from src.governance.ceo_memory_writer import upsert_ceo_memory_key  # noqa: E402
+
 MCP = ROOT / "skills" / "mcp-bridge" / "scripts" / "mcp-bridge.js"
 PROJ = "jatzvazlbusedwsnqxzr"
 GMB_DATASET = "gd_m8ebnr0q2qlklc02fz"
@@ -408,34 +411,29 @@ if match_rate < 60:
 
 # ── Phase 9: ceo_memory ─────────────────────────────────────────────────────
 print("\n[Phase 9] Writing ceo_memory...")
-payload = json.dumps(
-    {
-        "status": "complete",
-        "pilot": 2,
-        "snapshot_main": SNAPSHOT_ID,
-        "total_written": total_db,
-        "matched": matched_db,
-        "not_found": not_found_db,
-        "match_rate_pct": round(match_rate, 1),
-        "bd_valid": len(valid),
-        "bd_single_page_errors": len(single_page_errors),
-        "bd_other_errors": len(other_errors),
-        "bd_elapsed_sec": bd_elapsed,
-        "db_write_sec": round(db_elapsed, 1),
-        "match_by_keyword": kw_m,
-        "match_by_name_exact": name_m,
-        "match_by_prefix": prefix_m,
-        "pass_match_rate": match_rate >= 65,
-        "pass_zero_result": not_found_db < 120,
-        "pass_db_write": db_elapsed < 60,
-    }
-).replace("'", "''")
-
-mcp_sql(f"""
-    INSERT INTO ceo_memory (key, value, updated_at)
-    VALUES ('ceo:directive_227_complete', '{payload}'::jsonb, NOW())
-    ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value, updated_at=NOW();
-    UPDATE ceo_memory SET value=jsonb_set(value,'{{last_number}}','227'), updated_at=NOW()
+ceo_value = {
+    "status": "complete",
+    "pilot": 2,
+    "snapshot_main": SNAPSHOT_ID,
+    "total_written": total_db,
+    "matched": matched_db,
+    "not_found": not_found_db,
+    "match_rate_pct": round(match_rate, 1),
+    "bd_valid": len(valid),
+    "bd_single_page_errors": len(single_page_errors),
+    "bd_other_errors": len(other_errors),
+    "bd_elapsed_sec": bd_elapsed,
+    "db_write_sec": round(db_elapsed, 1),
+    "match_by_keyword": kw_m,
+    "match_by_name_exact": name_m,
+    "match_by_prefix": prefix_m,
+    "pass_match_rate": match_rate >= 65,
+    "pass_zero_result": not_found_db < 120,
+    "pass_db_write": db_elapsed < 60,
+}
+upsert_ceo_memory_key("elliot", "ceo:directive_227_complete", ceo_value)
+mcp_sql("""
+    UPDATE ceo_memory SET value=jsonb_set(value,'{last_number}','227'), updated_at=NOW()
     WHERE key='ceo:directives';
 """)
 print("  Done. Directive #227 complete.")

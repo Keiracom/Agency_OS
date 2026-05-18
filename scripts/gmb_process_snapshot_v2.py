@@ -5,10 +5,13 @@ Batched version — resumes from existing gmb_pilot_results rows.
 Inserts in chunks of 50, business_universe updates via VALUES batch.
 """
 
-import json, subprocess, re, time
+import json, subprocess, re, sys, time
 from pathlib import Path
 
 ROOT = Path("/home/elliotbot/clawd")
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from src.governance.ceo_memory_writer import upsert_ceo_memory_key  # noqa: E402
+
 MCP = ROOT / "skills/mcp-bridge/scripts/mcp-bridge.js"
 PROJ = "jatzvazlbusedwsnqxzr"
 BATCH = 50
@@ -273,13 +276,22 @@ print(
 
 # ── Step 7: Write ceo_memory ──────────────────────────────────────────────────
 cost_aud = (1000 * 0.0015 + matched_total * 0.001) * 1.55 if total > 0 else 0
-mcp_sql(f"""
-INSERT INTO ceo_memory (key, value, updated_at)
-VALUES ('ceo:directive_225_complete', '{{"status":"complete","snapshot":"sd_mmxcph0hucllcqzlm","records_returned":{len(valid)},"total_written":{total},"matched":{matched_total},"not_found":{not_found_total},"bd_errors":{len(errors)},"cost_aud":{round(cost_aud, 2)}}}'::jsonb, NOW())
-ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value, updated_at=NOW();
-""")
-mcp_sql(f"""
-UPDATE ceo_memory SET value = jsonb_set(value, '{{last_number}}', '225'), updated_at=NOW()
+upsert_ceo_memory_key(
+    "elliot",
+    "ceo:directive_225_complete",
+    {
+        "status": "complete",
+        "snapshot": "sd_mmxcph0hucllcqzlm",
+        "records_returned": len(valid),
+        "total_written": total,
+        "matched": matched_total,
+        "not_found": not_found_total,
+        "bd_errors": len(errors),
+        "cost_aud": round(cost_aud, 2),
+    },
+)
+mcp_sql("""
+UPDATE ceo_memory SET value = jsonb_set(value, '{last_number}', '225'), updated_at=NOW()
 WHERE key='ceo:directives';
 """)
 

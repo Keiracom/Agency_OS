@@ -131,23 +131,22 @@ def test_save_ceo_memory_no_dsn_returns_false(monkeypatch):
     assert tss.save_ceo_memory("D9", 999, "x", dry_run=False) is False
 
 
-def test_save_ceo_memory_executes_upsert_via_asyncpg(monkeypatch):
-    monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@h/d")
-    conn = _FakeConn()
-    _patch_asyncpg(monkeypatch, conn)
-    assert tss.save_ceo_memory("D7", 707, "atlas summary", dry_run=False, callsign="atlas") is True
-    assert conn.closed
-    assert len(conn.executed) == 1
-    sql, args = conn.executed[0]
-    assert "INSERT INTO ceo_memory" in sql
-    assert "ON CONFLICT (key) DO UPDATE" in sql
-    assert args[0] == "ceo:directive_D7_complete"
-    # JSON value carries callsign + pr.
-    import json as _json
+def test_save_ceo_memory_calls_wrapper(monkeypatch):
+    """save_ceo_memory delegates to upsert_ceo_memory_key (KEI-87 wrapper)."""
+    calls: list[tuple] = []
 
-    payload = _json.loads(args[1])
-    assert payload["pr"] == 707
-    assert payload["source"] == "atlas"
+    def _fake_upsert(callsign: str, key: str, value: dict) -> None:
+        calls.append((callsign, key, value))
+
+    monkeypatch.setattr(tss, "upsert_ceo_memory_key", _fake_upsert)
+    result = tss.save_ceo_memory("D7", 707, "atlas summary", dry_run=False, callsign="atlas")
+    assert result is True
+    assert len(calls) == 1
+    cs, key, val = calls[0]
+    assert cs == "atlas"
+    assert key == "ceo:directive_D7_complete"
+    assert val["pr"] == 707
+    assert val["source"] == "atlas"
 
 
 def test_save_metrics_dry_run_no_db(monkeypatch):
@@ -224,16 +223,11 @@ def test_save_metrics_on_conflict_updates_mutable_fields(monkeypatch):
         assert field in sql, f"missing {field!r} in DO UPDATE SET"
 
 
-def test_save_ceo_memory_swallows_asyncpg_error(monkeypatch):
-    monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@h/d")
-    import sys
-    import types
+def test_save_ceo_memory_swallows_wrapper_error(monkeypatch):
+    """save_ceo_memory returns False when the wrapper raises."""
 
-    fake = types.SimpleNamespace()
-
-    async def boom(*a, **k):
+    def _boom(*a, **k):
         raise RuntimeError("connection refused")
 
-    fake.connect = boom
-    monkeypatch.setitem(sys.modules, "asyncpg", fake)
+    monkeypatch.setattr(tss, "upsert_ceo_memory_key", _boom)
     assert tss.save_ceo_memory("D7", 707, "x", dry_run=False) is False

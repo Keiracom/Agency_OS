@@ -171,9 +171,7 @@ class Reaper:
         deadline = time.monotonic() + ttl if ttl is not None else float("inf")
         self._tmux_registry[handle.session_name] = (handle, deadline)
 
-    def register_container(
-        self, handle: ContainerHandle, *, ttl_s: float | None = None
-    ) -> None:
+    def register_container(self, handle: ContainerHandle, *, ttl_s: float | None = None) -> None:
         if not handle.name.startswith(self._container_prefix):
             raise ValueError(
                 f"container name {handle.name!r} does not start with "
@@ -210,11 +208,16 @@ class Reaper:
             if name not in self._tmux_registry:
                 events.append(self._kill_tmux(name, reason="orphan"))
 
-        # TTL-exceeded: registered AND live AND past deadline.
-        for name, (handle, deadline) in list(self._tmux_registry.items()):
+        # TTL-exceeded: registered AND live AND past deadline. Collect first,
+        # then pop after the loop so we never mutate the dict mid-iteration.
+        ttl_exceeded: list[str] = []
+        for name, (_handle, deadline) in self._tmux_registry.items():
             if name in scoped and now >= deadline:
-                events.append(self._kill_tmux(handle.session_name, reason="ttl_exceeded"))
-                self._tmux_registry.pop(name, None)
+                ttl_exceeded.append(name)
+        for name in ttl_exceeded:
+            handle = self._tmux_registry[name][0]
+            events.append(self._kill_tmux(handle.session_name, reason="ttl_exceeded"))
+            self._tmux_registry.pop(name, None)
 
         return (len(scoped), events)
 
@@ -235,23 +238,23 @@ class Reaper:
             if cid not in registered_ids:
                 events.append(self._kill_container_by_id(cid, name, reason="orphan"))
 
-        # TTL-exceeded
+        # TTL-exceeded — collect first, mutate after.
         live_ids = {cid for cid, _ in live}
-        for cid, (handle, deadline) in list(self._container_registry.items()):
+        ttl_exceeded: list[str] = []
+        for cid, (_handle, deadline) in self._container_registry.items():
             if cid in live_ids and now >= deadline:
-                events.append(
-                    self._kill_container_by_id(cid, handle.name, reason="ttl_exceeded")
-                )
-                self._container_registry.pop(cid, None)
+                ttl_exceeded.append(cid)
+        for cid in ttl_exceeded:
+            handle = self._container_registry[cid][0]
+            events.append(self._kill_container_by_id(cid, handle.name, reason="ttl_exceeded"))
+            self._container_registry.pop(cid, None)
 
         return (len(live), events)
 
     def _kill_tmux(self, name: str, *, reason: str) -> ReapEvent:
         try:
             handle = self._tmux_registry.get(name, (None, 0.0))[0]
-            target = handle or SessionHandle(
-                session_name=name, working_dir="/", command=""
-            )
+            target = handle or SessionHandle(session_name=name, working_dir="/", command="")
             terminate(target)
             logger.info("KEI-211 reaper killed tmux %r (%s)", name, reason)
             return ReapEvent(kind="tmux", name_or_id=name, reason=reason, success=True)
@@ -265,14 +268,10 @@ class Reaper:
             target = handle or ContainerHandle(id=cid, name=name, image="", port=0)
             kill_and_remove(target)
             logger.info("KEI-211 reaper killed container %s/%s (%s)", cid[:12], name, reason)
-            return ReapEvent(
-                kind="container", name_or_id=cid, reason=reason, success=True
-            )
+            return ReapEvent(kind="container", name_or_id=cid, reason=reason, success=True)
         except Exception as exc:  # noqa: BLE001
             logger.warning("KEI-211 reaper failed to kill container %s: %s", cid[:12], exc)
-            return ReapEvent(
-                kind="container", name_or_id=cid, reason=reason, success=False
-            )
+            return ReapEvent(kind="container", name_or_id=cid, reason=reason, success=False)
 
     def sweep(self) -> ReapResult:
         """Run one full pass; reap orphans + TTL-exceeded. Best-effort."""

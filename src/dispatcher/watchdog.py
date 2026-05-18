@@ -218,7 +218,11 @@ class Watchdog:
     def probe_all(self) -> dict[str, State]:
         """Probe every registered entry. Errors are swallowed per-entry."""
         results: dict[str, State] = {}
-        for key in list(self._entries):
+        # Snapshot keys first so an alert callback that mutates the registry
+        # (unlikely, but possible if a caller wires unregister into alert_fn)
+        # cannot raise RuntimeError on a mid-iteration size change.
+        keys = tuple(self._entries.keys())
+        for key in keys:
             try:
                 results[key] = self.probe_one(key)
             except Exception as exc:  # noqa: BLE001 — must not crash the sweep

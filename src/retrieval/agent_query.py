@@ -164,6 +164,43 @@ def _synthesise_answer(citations: tuple[Citation, ...], max_tokens: int) -> str:
     return answer[:char_cap]
 
 
+def _select_citations(
+    citations: tuple[Citation, ...],
+    min_score: float,
+    score_distribution_aware: bool,
+) -> tuple[Citation, ...]:
+    """KEI-198 — pick the best citations to emit.
+
+    Default (score_distribution_aware=True):
+        1. Sort by score descending.
+        2. If the top score is > 0.0 (meaningful distribution), keep citations
+           where score >= min_score; if that drops everything, fall back to the
+           sorted top-N so callers still see best-available.
+        3. If ALL scores are exactly 0.0 (sentinel for the KEI-192 vectorless
+           regression), skip the min_score filter and return the sorted top-N
+           anyway — discoverable retrieval beats silent emptiness.
+
+    Legacy (score_distribution_aware=False):
+        Apply the hard min_score floor only; matches pre-KEI-198 behaviour.
+
+    The function always returns a tuple sorted by score descending so callers
+    that look at `[0]` always get the strongest citation.
+    """
+    if not citations:
+        return ()
+    ranked = tuple(sorted(citations, key=lambda c: c.score, reverse=True))
+    if not score_distribution_aware:
+        # Legacy hard-floor only.
+        return tuple(c for c in ranked if c.score >= min_score)
+    top_score = ranked[0].score
+    if top_score <= 0.0:
+        # KEI-192 vectorless sentinel — all scores are zero, return best-N anyway.
+        return ranked
+    qualified = tuple(c for c in ranked if c.score >= min_score)
+    # If the threshold drops everything, surface best-available instead of nothing.
+    return qualified or ranked
+
+
 def query(
     text: str,
     *,
@@ -174,6 +211,7 @@ def query(
     min_score: float = DEFAULT_MIN_SCORE,
     k_initial: int = orchestrator.DEFAULT_K_INITIAL,
     k_returned: int = orchestrator.DEFAULT_K_RETURNED,
+    score_distribution_aware: bool = True,
 ) -> QueryResult:
     """Run one retrieval query.
 
@@ -183,12 +221,18 @@ def query(
         collections: Which Weaviate collections to search (default 3-tuple
             covers the most common precision-retrieval surfaces).
         max_tokens: Response synthesis ceiling (KEI-55, 500-token default).
-        citation_required: When True (default) and no citation passes
-            `min_score`, return `answer=""` instead of synthesising.
-        min_score: Floor for citation eligibility under
-            `citation_required=True`.
+        citation_required: When True (default) and the ranked citation list
+            is empty, return `answer=""` instead of synthesising.
+        min_score: Soft floor under score_distribution_aware=True
+            (KEI-198 default); hard floor under score_distribution_aware=False
+            (legacy pre-KEI-198 behaviour).
         k_initial: ANN top-K per collection.
         k_returned: Citations returned (post-rank — raw ANN in PR1).
+        score_distribution_aware: KEI-198 — when True (default), the
+            min_score filter becomes a SOFT threshold: empty filter result
+            falls back to the sorted top-N rather than dropping everything,
+            and all-zero scores (vectorless regression sentinel) skip the
+            filter entirely. Set False to restore the legacy hard floor.
 
     Returns:
         `QueryResult` with answer + citations + elapsed_ms + bypass flag.
@@ -201,12 +245,10 @@ def query(
         k_returned=k_returned,
     )
     citations = tuple(_node_to_citation(n) for n in outcome.nodes)
-    qualified = tuple(c for c in citations if c.score >= min_score)
-    if citation_required and not qualified:
+    emitted_citations = _select_citations(citations, min_score, score_distribution_aware)
+    if citation_required and not emitted_citations:
         answer = ""
-        emitted_citations: tuple[Citation, ...] = ()
     else:
-        emitted_citations = qualified or citations
         answer = _synthesise_answer(emitted_citations, max_tokens)
     elapsed_ms = int((time.monotonic() - started) * 1000)
     top = emitted_citations[0] if emitted_citations else None

@@ -54,14 +54,21 @@ def test_query_returns_top_citation_when_above_min_score():
     assert result.bypass_rerank is True
 
 
-def test_citation_required_returns_empty_answer_when_below_threshold():
+def test_citation_required_returns_empty_answer_when_below_threshold_legacy():
+    """Legacy pre-KEI-198 behaviour: hard min_score floor drops everything
+    → citation_required=True returns answer="". Preserved via
+    score_distribution_aware=False."""
     nodes = (_mk_node("low-quality match", 0.20),)
     with patch(
         "src.retrieval.agent_query.orchestrator.retrieve_with_outcome",
         return_value=_outcome(nodes),
     ):
         result = agent_query.query(
-            "anything?", agent="test", citation_required=True, min_score=0.50
+            "anything?",
+            agent="test",
+            citation_required=True,
+            min_score=0.50,
+            score_distribution_aware=False,
         )
     assert result.answer == ""
     assert result.citations == ()
@@ -194,3 +201,125 @@ def test_record_event_strips_asyncpg_dialect_from_dsn(monkeypatch):
     # `postgresql+asyncpg://` raw env value.
     assert captured["dsn"].startswith("postgresql://")
     assert "+asyncpg" not in captured["dsn"]
+
+
+# ============================================================================
+# KEI-198 — score-distribution-aware citation selection
+# ============================================================================
+
+
+def test_kei198_all_zero_scores_returns_top_n_anyway():
+    """KEI-192 vectorless sentinel: all scores 0.0 → top-N returned not nothing."""
+    nodes = (
+        _mk_node("relevant-looking content", 0.0),
+        _mk_node("also looks ok", 0.0),
+        _mk_node("third one", 0.0),
+    )
+    with patch(
+        "src.retrieval.agent_query.orchestrator.retrieve_with_outcome",
+        return_value=_outcome(nodes),
+    ):
+        result = agent_query.query(
+            "any query?",
+            agent="test",
+            citation_required=True,
+            min_score=0.50,
+            # score_distribution_aware=True is the default
+        )
+    # All three citations come back despite scores being below the 0.50 floor.
+    assert len(result.citations) == 3
+    assert result.answer != ""
+
+
+def test_kei198_low_score_fallback_returns_best_available():
+    """When the min_score filter would drop everything, return ranked top-N."""
+    nodes = (
+        _mk_node("low-score content", 0.20),
+        _mk_node("very-low-score content", 0.10),
+    )
+    with patch(
+        "src.retrieval.agent_query.orchestrator.retrieve_with_outcome",
+        return_value=_outcome(nodes),
+    ):
+        result = agent_query.query(
+            "any query?",
+            agent="test",
+            citation_required=True,
+            min_score=0.50,  # would drop both under legacy hard floor
+        )
+    # New behaviour: sorted top-N returned instead of empty.
+    assert len(result.citations) == 2
+    assert result.citations[0].score >= result.citations[1].score
+    assert result.answer != ""
+
+
+def test_kei198_mixed_scores_returns_highest_first():
+    """Citations sorted by score descending — best result is index [0]."""
+    nodes = (
+        _mk_node("middle score", 0.55),
+        _mk_node("highest score", 0.90),
+        _mk_node("lowest score", 0.30),
+    )
+    with patch(
+        "src.retrieval.agent_query.orchestrator.retrieve_with_outcome",
+        return_value=_outcome(nodes),
+    ):
+        result = agent_query.query(
+            "any query?",
+            agent="test",
+            citation_required=True,
+            min_score=0.50,
+        )
+    # Two pass the floor (0.90 and 0.55); 0.30 dropped under meaningful distribution.
+    assert len(result.citations) == 2
+    assert result.citations[0].score == pytest.approx(0.90)
+    assert result.citations[1].score == pytest.approx(0.55)
+
+
+def test_kei198_empty_retrieval_still_empty():
+    """No nodes returned → citation_required=True still gives empty answer."""
+    with patch(
+        "src.retrieval.agent_query.orchestrator.retrieve_with_outcome",
+        return_value=_outcome(()),
+    ):
+        result = agent_query.query("any?", agent="test", citation_required=True)
+    assert result.answer == ""
+    assert result.citations == ()
+
+
+def test_kei198_legacy_mode_preserves_hard_floor():
+    """score_distribution_aware=False keeps the pre-KEI-198 behaviour."""
+    nodes = (_mk_node("low", 0.10),)
+    with patch(
+        "src.retrieval.agent_query.orchestrator.retrieve_with_outcome",
+        return_value=_outcome(nodes),
+    ):
+        result = agent_query.query(
+            "q?",
+            agent="test",
+            citation_required=True,
+            min_score=0.50,
+            score_distribution_aware=False,
+        )
+    assert result.citations == ()
+    assert result.answer == ""
+
+
+def test_kei198_select_citations_helper_sorts_desc():
+    """_select_citations returns sorted-desc-by-score regardless of input order."""
+    from src.retrieval.agent_query import Citation, _select_citations
+
+    cites = (
+        Citation(source_id="a", collection="X", score=0.3, excerpt=""),
+        Citation(source_id="b", collection="X", score=0.9, excerpt=""),
+        Citation(source_id="c", collection="X", score=0.6, excerpt=""),
+    )
+    out = _select_citations(cites, min_score=0.5, score_distribution_aware=True)
+    assert [c.source_id for c in out] == ["b", "c"]
+
+
+def test_kei198_select_citations_empty_input_returns_empty():
+    """Defensive: empty input doesn't raise."""
+    from src.retrieval.agent_query import _select_citations
+
+    assert _select_citations((), min_score=0.5, score_distribution_aware=True) == ()

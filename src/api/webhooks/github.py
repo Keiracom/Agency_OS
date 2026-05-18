@@ -22,6 +22,7 @@ import hmac
 import json
 import logging
 import os
+import re
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
@@ -31,6 +32,14 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/webhooks/github", tags=["webhooks", "github"])
 
 _OPEN_ACTIONS = frozenset({"opened", "reopened"})
+
+# KEI-207 — auto-close matching KEI task on PR merge. Title parse first;
+# fallback to linear_url match from a Linear URL in the PR body.
+_KEI_TITLE_RE = re.compile(r"\bKEI-(\d+)\b", re.IGNORECASE)
+_LINEAR_URL_RE = re.compile(
+    r"https?://linear\.app/[\w-]+/issue/(KEI-\d+)[/\w-]*",
+    re.IGNORECASE,
+)
 
 
 def _verify_signature(secret: str, body: bytes, signature_header: str) -> bool:
@@ -122,6 +131,99 @@ def _close_review_task(pr_number: int) -> None:
         logger.warning("github webhook tasks close failed for %s: %s", task_id, exc)
 
 
+def extract_kei_id(pr_title: str, pr_body: str) -> str | None:
+    """KEI-207 — parse `KEI-\\d+` from PR title (primary) then PR body (fallback).
+
+    Returns the canonical `KEI-N` form (uppercase, no surrounding text), or
+    None if neither source contains a match. Title is the strong signal
+    (PR titles follow `[CALLSIGN] feat(kei-N): ...` convention); body is
+    the fallback (often contains "Closes KEI-N" or a Linear URL).
+    """
+    for source in (pr_title, pr_body):
+        if not source:
+            continue
+        m = _KEI_TITLE_RE.search(source)
+        if m:
+            return f"KEI-{m.group(1)}"
+    return None
+
+
+def extract_linear_url_kei(pr_body: str) -> str | None:
+    """KEI-207 fallback — pull a `KEI-N` out of a linear.app URL in the PR body.
+
+    Returns the canonical `KEI-N` form or None. Used when extract_kei_id()
+    fails (title + body have no bare KEI-N reference) but the PR body still
+    links to the Linear issue.
+    """
+    if not pr_body:
+        return None
+    m = _LINEAR_URL_RE.search(pr_body)
+    if m:
+        return m.group(1).upper()
+    return None
+
+
+def _close_kei_task(pr: dict[str, Any]) -> None:
+    """KEI-207 — on PR merge, auto-close the matching public.tasks KEI row.
+
+    Resolution order (mirrors Dave's KEI-207 spec):
+      1. Regex `KEI-\\d+` against PR title (then body) → UPDATE WHERE id = KEI-N.
+      2. Fallback: regex linear.app URL in PR body → UPDATE WHERE
+         linear_url LIKE '%KEI-N%' (catches tasks keyed by URL not slug).
+      3. No match: log and skip.
+
+    Idempotent: UPDATE with rowcount==0 on already-done rows is a no-op.
+    Fail-open per the file-level webhook discipline.
+    """
+    dsn = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL", "")
+    if not dsn:
+        logger.warning("github webhook KEI close skipped: DATABASE_URL/SUPABASE_DB_URL unset")
+        return
+    dsn = dsn.replace("postgresql+asyncpg://", "postgresql://", 1)
+
+    pr_number = pr.get("number")
+    pr_title = pr.get("title") or ""
+    pr_body = pr.get("body") or ""
+
+    kei_id = extract_kei_id(pr_title, pr_body)
+    fallback_kei = None if kei_id else extract_linear_url_kei(pr_body)
+    target_kei = kei_id or fallback_kei
+
+    if target_kei is None:
+        logger.info(
+            "github webhook PR #%s: no KEI-N in title/body/linear_url — skipping", pr_number
+        )
+        return
+
+    sql_by_id = "UPDATE public.tasks SET status = 'done', updated_at = NOW() WHERE id = %s"
+    sql_by_url = (
+        "UPDATE public.tasks SET status = 'done', updated_at = NOW() WHERE linear_url ILIKE %s"
+    )
+    url_pattern = f"%{target_kei}%"
+
+    try:
+        import psycopg
+
+        with psycopg.connect(dsn, connect_timeout=10) as conn, conn.cursor() as cur:
+            cur.execute(sql_by_id, (target_kei,))
+            rows_by_id = cur.rowcount
+            if rows_by_id == 0:
+                cur.execute(sql_by_url, (url_pattern,))
+                rows_by_url = cur.rowcount
+            else:
+                rows_by_url = 0
+            conn.commit()
+        logger.info(
+            "github webhook PR #%s: KEI close target=%s by_id=%d by_url=%d",
+            pr_number,
+            target_kei,
+            rows_by_id,
+            rows_by_url,
+        )
+    except Exception as exc:  # noqa: BLE001 — webhook discipline: fail-open
+        logger.warning("github webhook KEI close failed for %s: %s", target_kei, exc)
+
+
 _RECEIVE_RESPONSES: dict[int | str, dict[str, Any]] = {
     401: {"description": "HMAC signature verification failed."}
 }
@@ -170,6 +272,10 @@ async def receive_github_webhook(request: Request) -> dict[str, str]:
 
     if action == "closed":
         _close_review_task(pr_number)
+        # KEI-207 — only auto-close the matching KEI task when the PR was
+        # actually merged. Closed-without-merge means the work didn't ship.
+        if pr.get("merged") is True:
+            _close_kei_task(pr)
         return {"status": "ok", "action": action, "task_id": _task_id(pr_number)}
 
     # Other actions (assigned, labeled, synchronize, etc.) — ignore

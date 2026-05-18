@@ -51,7 +51,14 @@ if ! command -v tmux >/dev/null 2>&1; then
     exit 2
 fi
 
-claude_cmd="export CALLSIGN='$callsign' && cd '$worktree' && exec claude --dangerously-skip-permissions"
+# KEI-94 — in-pane respawn loop. The pane process is a `while true` shell;
+# claude runs as its child. When claude exits (clean shutdown, /clear path,
+# OOM, crash) the shell loops back, sleeps a moment to avoid a busy spawn
+# storm if claude crashes immediately, then re-spawns claude in the same
+# pane. The tmux session survives Claude exits — no full unit restart
+# needed. systemd's Restart=always remains the outer safety net for cases
+# where the wrapper itself dies.
+claude_cmd="export CALLSIGN='$callsign' && cd '$worktree' && while true; do claude --dangerously-skip-permissions; echo \"[keepalive] claude exited at \$(date -u +%FT%TZ), respawning in 2s\" >&2; sleep 2; done"
 
 if [[ -n "${KEEPALIVE_DRY:-}" ]]; then
     echo "[keepalive] would: tmux new-session -d -s '$session' -c '$worktree'"
@@ -101,18 +108,31 @@ else
     echo "[keepalive] tmux session=$session already alive — attaching watcher"
 fi
 
-# KEI-140 defense-in-depth: poll loop verifies the pane leader is `claude`,
-# not a stranded shell prompt. If claude failed to exec cleanly, send-keys
-# again. Cheap to check — one tmux + one /proc read per `poll_seconds`.
+# KEI-94 defense-in-depth: poll loop verifies that `claude` (or its in-pane
+# respawn-loop shell) is alive inside the pane's process tree. The pane leader
+# under the KEI-94 loop is bash (the `while true` wrapper); claude is bash's
+# child. So we walk children of the pane leader and look for claude. If no
+# claude child exists AND the pane leader itself isn't bash-running-the-loop
+# (i.e. the pane has been hijacked by a stranded shell prompt), re-issue the
+# claude_cmd via send-keys to recover. Cheap: one tmux + one pgrep per
+# `poll_seconds`.
 _pane_running_claude() {
     local pane_pid
     pane_pid=$(tmux list-panes -t "$session" -F '#{pane_pid}' 2>/dev/null | head -1 || true)
     [[ -n "$pane_pid" ]] || return 1
     [[ -d "/proc/$pane_pid" ]] || return 1
-    if [[ -r "/proc/$pane_pid/comm" ]]; then
-        grep -q claude "/proc/$pane_pid/comm" 2>/dev/null || return 1
+    # Walk the process tree under the pane leader. If claude appears anywhere,
+    # we're healthy. (Looking at pane leader alone would miss the KEI-94
+    # bash-loop-wrapping-claude topology.)
+    if pgrep -f -P "$pane_pid" claude >/dev/null 2>&1; then
+        return 0
     fi
-    return 0
+    # Pane leader itself running claude (legacy `exec claude` topology) also
+    # counts as healthy — supports gradual rollout.
+    if [[ -r "/proc/$pane_pid/comm" ]] && grep -q claude "/proc/$pane_pid/comm" 2>/dev/null; then
+        return 0
+    fi
+    return 1
 }
 
 # KEI-125: signal systemd we're ready (Type=notify requires this) + start

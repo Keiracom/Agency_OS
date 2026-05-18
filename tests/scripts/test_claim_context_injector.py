@@ -290,9 +290,15 @@ def test_cmd_claim_emits_preamble_before_success_line(
     success = "claimed KEI-51 by scout"
     assert success in out
     assert out.index("preamble-row-1") < out.index(success)
-    # Tags propagated into RETURNING — verifies wiring change held
-    assert "RETURNING" in cur.last_sql
-    assert " tags" in cur.last_sql or "tags\n" in cur.last_sql
+    # Tags propagated into RETURNING — verifies wiring change held.
+    # KEI-106 added a trailing completion_sync_queue INSERT after the claim,
+    # so we look across all executed SQL rather than only the last call.
+    claim_sql = next(
+        (sql for sql, _ in cur.executed if "RETURNING" in sql),
+        "",
+    )
+    assert claim_sql, f"no RETURNING SQL found in executed list: {cur.executed!r}"
+    assert " tags" in claim_sql or "tags\n" in claim_sql
 
 
 def test_cmd_claim_json_path_skips_preamble(

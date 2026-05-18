@@ -85,6 +85,9 @@ def test_primary_callsign_proceeds_past_clone_guard(monkeypatch):
     guard and reach the subprocess path (which we sentinel-trip)."""
     mod = _load_slack_relay()
     monkeypatch.setattr(mod, "CALLSIGN", "aiden")
+    # KEI-72 gate: stub the Step 0 RESTATE check to pass so the test exercises
+    # the bd subprocess path it cares about (clone-guard bypass for primaries).
+    monkeypatch.setattr(mod, "_has_recent_step0_restate", lambda _cs: True)
 
     calls = []
     import subprocess

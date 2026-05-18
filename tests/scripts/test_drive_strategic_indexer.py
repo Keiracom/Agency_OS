@@ -148,6 +148,111 @@ def test_build_object_matches_schema():
     assert props["ratified_by"] == "dave"
 
 
+# ─── main()/daemon contract — regression lock for KEI-208 follow-up ──────
+
+
+def test_indexer_exposes_ensure_target_class_not_ensure_class():
+    """Regression: main() called indexer.ensure_class() — AttributeError on
+    DriveStrategicIndexer because BaseIndexer defines ensure_target_class().
+    Class never got created in Weaviate as a result (Agency_OS-4f0o)."""
+    indexer = dsi.DriveStrategicIndexer()
+    assert hasattr(indexer, "ensure_target_class"), (
+        "BaseIndexer contract method missing — main() will AttributeError."
+    )
+    assert not hasattr(indexer, "ensure_class"), (
+        "`ensure_class` is the module-level helper, NOT an instance method. "
+        "If main() calls indexer.ensure_class() the script crashes before any "
+        "Weaviate write — that was the KEI-208 follow-up bug (Agency_OS-4f0o)."
+    )
+
+
+def test_daemon_loop_helper_exists_and_is_signal_safe():
+    """Regression: main() called indexer.run_forever(...) which doesn't exist
+    on BaseIndexer. The fix replaces it with _run_daemon_loop() helper in
+    drive_strategic_indexer; daemon mode would AttributeError without this."""
+    assert hasattr(dsi, "_run_daemon_loop"), (
+        "_run_daemon_loop helper missing — daemon mode (no --once) will "
+        "AttributeError on indexer.run_forever()."
+    )
+    # Calling it doesn't blow up on signal handler registration even when
+    # already in a worker thread (tests run under pytest's main thread).
+    import inspect
+
+    sig = inspect.signature(dsi._run_daemon_loop)
+    assert "poll_seconds" in sig.parameters
+    assert "batch_size" in sig.parameters
+
+
+def test_main_once_path_runs_without_attribute_error(monkeypatch, tmp_path):
+    """End-to-end regression: main(--once) used to crash with AttributeError
+    on indexer.ensure_class() before any Drive read or Weaviate POST. Mocks
+    out Drive + Weaviate; success criterion is "no AttributeError"."""
+    # Config: one fake doc; sections fetched via _fetch_all_sections is mocked.
+    cfg = tmp_path / "drive_targets.json"
+    cfg.write_text(json.dumps({"documents": [{"doc_id": "fake-doc", "title": "T"}]}))
+
+    fake_section = dsi.DriveSection(
+        doc_id="fake-doc",
+        doc_url="https://docs.google.com/document/d/fake-doc",
+        doc_title="T",
+        section="(intro)",
+        content="some text",
+        updated_at="2026-05-18",
+        ratified_by="dave",
+        ratified_at="2026-05-18",
+    )
+
+    def _fake_fetch_all(self):
+        return [fake_section]
+
+    monkeypatch.setattr(dsi.DriveStrategicIndexer, "_fetch_all_sections", _fake_fetch_all)
+
+    # Stub Weaviate HTTP: ensure_class GET 404 → POST schema; POST objects → 200.
+    ensure_calls: list[tuple[str, str]] = []
+    post_calls: list[tuple[str, dict]] = []
+
+    class _FakeResp:
+        def __init__(self, status: int, body: bytes = b""):
+            self.status = status
+            self._body = body
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def read(self):
+            return self._body
+
+    def _fake_ensure_class(name, schema):
+        ensure_calls.append((name, schema["class"]))
+
+    def _fake_post_object(obj):
+        post_calls.append((obj["class"], obj))
+        return True
+
+    # `ensure_class` + `post_object` live on indexer_base; patch there.
+    # drive_strategic_indexer does not re-import ensure_class so patching
+    # `dsi.ensure_class` would AttributeError.
+    import indexer_base  # noqa: PLC0415
+
+    monkeypatch.setattr(indexer_base, "ensure_class", _fake_ensure_class)
+    monkeypatch.setattr(indexer_base, "post_object", _fake_post_object)
+    monkeypatch.setattr(dsi, "aggregate_count", lambda _c: len(post_calls))
+    monkeypatch.setattr(sys, "argv", ["drive_strategic_indexer", "--once", "--config", str(cfg)])
+
+    rc = dsi.main()
+
+    assert rc == 0, f"main(--once) returned non-zero: {rc}"
+    assert ensure_calls == [("StrategicDocuments", "StrategicDocuments")], (
+        f"ensure_target_class did not invoke module ensure_class with the "
+        f"StrategicDocuments schema; got: {ensure_calls}"
+    )
+    assert len(post_calls) == 1, f"one section should map to one POST; got {len(post_calls)}"
+    assert post_calls[0][0] == "StrategicDocuments"
+
+
 def test_build_object_id_is_deterministic():
     """Same (doc_id, section) → same UUID across runs (idempotent upsert)."""
     section_a = dsi.DriveSection(

@@ -484,3 +484,97 @@ def test_find_pr_for_review_callsign_case_insensitive(monkeypatch):
 
     # Despite uppercase AIDEN, the match should fire and the PR should be skipped
     assert result is None
+
+
+# ---------------------------------------------------------------------------
+# KEI-190 — symmetric HOLD parsing (recognise [REVIEW:HOLD:callsign] same
+# as [REVIEW:approve:callsign]). Anchored ts 2026-05-18: prior regex required
+# `hold-final` literally and missed the plain `hold` form Scout/Atlas/Aiden
+# post — so supervisor re-dispatched HOLD'd PRs every 5 min to the same agent.
+# ---------------------------------------------------------------------------
+
+
+def test_comment_has_review_marker_bare_form():
+    """Plain `[REVIEW:callsign]` (no middle qualifier) — recognised."""
+    assert fs.comment_has_review_marker("[REVIEW:atlas] APPROVE notes", "atlas") is True
+
+
+def test_comment_has_review_marker_approve_variant():
+    """`[REVIEW:approve:callsign]` — recognised."""
+    assert fs.comment_has_review_marker("[REVIEW:approve:atlas] looks good", "atlas") is True
+
+
+def test_comment_has_review_marker_hold_lowercase():
+    """`[REVIEW:hold:callsign]` (lowercase, no -final) — KEI-190 fix.
+    Prior regex required `hold-final` and missed this form."""
+    assert fs.comment_has_review_marker("[REVIEW:hold:atlas] needs fix", "atlas") is True
+
+
+def test_comment_has_review_marker_hold_uppercase():
+    """`[REVIEW:HOLD:callsign]` (uppercase) — actual form agents post in
+    practice. Was the regression that caused 4+ re-dispatches per HOLD'd PR
+    today (anchor: Scout/Aiden/Max on #981/#982)."""
+    assert fs.comment_has_review_marker("[REVIEW:HOLD:atlas] blockers below", "atlas") is True
+
+
+def test_comment_has_review_marker_hold_final_preserved():
+    """`[REVIEW:HOLD-FINAL:callsign]` — backwards-compat with the variant
+    the prior regex did match. KEI-190 fix must not regress it."""
+    assert fs.comment_has_review_marker("[REVIEW:HOLD-FINAL:atlas] final blockers", "atlas") is True
+
+
+def test_comment_has_review_marker_negative_different_callsign():
+    """Negative path per feedback_negative_path_test_before_approve:
+    `[REVIEW:HOLD:scout]` MUST NOT match for callsign=atlas — otherwise
+    supervisor would skip dispatch even though atlas hasn't reviewed."""
+    assert fs.comment_has_review_marker("[REVIEW:HOLD:scout] needs fix", "atlas") is False
+    assert fs.comment_has_review_marker("[REVIEW:approve:scout] looks good", "atlas") is False
+
+
+def test_comment_has_review_marker_no_marker():
+    """Plain comment body with no review marker — no match."""
+    assert (
+        fs.comment_has_review_marker("Just a regular comment, no review marker here.", "atlas")
+        is False
+    )
+
+
+def test_find_pr_for_review_skips_on_hold_marker(monkeypatch):
+    """End-to-end: agent who already posted `[REVIEW:HOLD:callsign]` MUST
+    NOT be re-dispatched (the real bug that motivated this KEI)."""
+    pr = {
+        "number": 982,
+        "title": "[ATLAS] feat(kei179): dispatcher service",
+        "url": "https://github.com/org/repo/pull/982",
+        "reviews": [],
+    }
+
+    def fake_fetch_comments(pr_number):
+        return [{"body": "[REVIEW:HOLD:scout] 4× S5145 + 3× S7503, fix recipe below"}]
+
+    monkeypatch.setattr(fs, "fetch_pr_comments", fake_fetch_comments)
+    result = fs.find_pr_for_review([pr], "scout")
+    assert result is None, "scout already HOLD'd this PR; supervisor must not re-dispatch"
+
+
+def test_find_pr_for_review_still_dispatches_to_other_agent_on_hold(monkeypatch):
+    """Negative-path E2E: if scout HOLD'd, atlas (different callsign) IS
+    still eligible to review. The HOLD is per-callsign, not per-PR."""
+    pr = {
+        "number": 982,
+        "title": "[ATLAS] feat(kei179): dispatcher service",
+        "url": "https://github.com/org/repo/pull/982",
+        "reviews": [],
+    }
+
+    def fake_fetch_comments(pr_number):
+        return [{"body": "[REVIEW:HOLD:scout] blockers"}]
+
+    monkeypatch.setattr(fs, "fetch_pr_comments", fake_fetch_comments)
+    # atlas hasn't HOLD'd or approved — supervisor should select this PR for atlas
+    # NOTE: is_authored_by_callsign would also filter out PRs authored by the
+    # candidate; we use scout (not authored by atlas) so the find_pr_for_review
+    # decision is purely about review-marker recognition.
+    result = fs.find_pr_for_review([pr], "aiden")
+    assert result is not None
+    assert result["number"] == 982

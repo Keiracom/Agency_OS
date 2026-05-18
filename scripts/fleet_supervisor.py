@@ -353,7 +353,12 @@ def fetch_pr_comments(pr_number: int) -> list[dict]:
         return []
 
 
-_REVIEW_COMMENT_PATTERN_TMPL = r"\[REVIEW(?::(?:approve|hold(?:-final)))?:{callsign}\]"
+# KEI-190: `-final` made optional. Without the `?`, the prior pattern matched
+# only `[REVIEW:hold-final:callsign]` and missed the plain `[REVIEW:HOLD:callsign]`
+# variant that Scout/Atlas/Aiden/Max actually post — so the supervisor
+# re-dispatched the same HOLD'd PR to the same reviewer every 5 min.
+# Symmetric handling: approve, hold, hold-final all recognised; case-insensitive.
+_REVIEW_COMMENT_PATTERN_TMPL = r"\[REVIEW(?::(?:approve|hold(?:-final)?))?:{callsign}\]"
 
 
 def comment_has_review_marker(body: str, callsign: str) -> bool:

@@ -49,8 +49,49 @@ def test_checkpoint_path_xdg_state_home_wins(indexer, monkeypatch, tmp_path):
 def test_checkpoint_path_env_override_wins(indexer, monkeypatch, tmp_path):
     override = tmp_path / "custom.json"
     monkeypatch.setenv("SLACK_HISTORY_CHECKPOINT", str(override))
-    monkeypatch.setenv("XDG_STATE_HOME", "/should/be/ignored")
-    assert indexer.checkpoint_path() == override
+    # XDG override here is also under tmp_path (safe). The S2083 rejection of
+    # arbitrary outside-safe-roots paths is exercised in the tests below.
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "xdg-ignored"))
+    assert indexer.checkpoint_path() == override.resolve()
+
+
+# ─── Sonar S2083 — Path Traversal guard ──────────────────────────────────────
+
+
+def test_checkpoint_path_rejects_dotdot_override(indexer, monkeypatch, tmp_path):
+    """Override containing '..' segment is ignored; default is used."""
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("SLACK_HISTORY_CHECKPOINT", str(tmp_path / ".." / "escape.json"))
+    monkeypatch.delenv("XDG_STATE_HOME", raising=False)
+    p = indexer.checkpoint_path()
+    assert p == tmp_path / ".local" / "state" / "agency-os" / "slack_history_checkpoint.json"
+
+
+def test_checkpoint_path_rejects_relative_override(indexer, monkeypatch, tmp_path):
+    """Relative override is ignored; default is used."""
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("SLACK_HISTORY_CHECKPOINT", "relative/cp.json")
+    monkeypatch.delenv("XDG_STATE_HOME", raising=False)
+    p = indexer.checkpoint_path()
+    assert p == tmp_path / ".local" / "state" / "agency-os" / "slack_history_checkpoint.json"
+
+
+def test_checkpoint_path_rejects_outside_safe_roots(indexer, monkeypatch, tmp_path):
+    """Absolute override outside $HOME / /var/lib / /tmp is ignored."""
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("SLACK_HISTORY_CHECKPOINT", "/etc/passwd")
+    monkeypatch.delenv("XDG_STATE_HOME", raising=False)
+    p = indexer.checkpoint_path()
+    assert p == tmp_path / ".local" / "state" / "agency-os" / "slack_history_checkpoint.json"
+
+
+def test_checkpoint_path_rejects_outside_safe_roots_xdg(indexer, monkeypatch, tmp_path):
+    """XDG_STATE_HOME override outside safe roots is ignored; default is used."""
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.delenv("SLACK_HISTORY_CHECKPOINT", raising=False)
+    monkeypatch.setenv("XDG_STATE_HOME", "/etc")
+    p = indexer.checkpoint_path()
+    assert p == tmp_path / ".local" / "state" / "agency-os" / "slack_history_checkpoint.json"
 
 
 # ─── load/save round-trip ────────────────────────────────────────────────────

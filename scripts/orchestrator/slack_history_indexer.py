@@ -59,13 +59,53 @@ logger = logging.getLogger("slack_history_indexer")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
 
+# Sonar S2083 — Path Traversal guard.
+# SLACK_HISTORY_CHECKPOINT and XDG_STATE_HOME flow from the process environment;
+# an operator with env access could otherwise redirect writes anywhere on disk.
+# We canonicalize both via Path.resolve() and require the result to sit under
+# one of these safe parents before honouring the override.
+def _safe_state_parents() -> tuple[Path, ...]:
+    return (
+        Path.home().resolve(),
+        Path("/var/lib").resolve(),
+        Path("/tmp").resolve(),
+    )
+
+
+def _validated_env_path(env_name: str, raw: str) -> Path | None:
+    """Reject env-supplied paths containing '..' or resolving outside safe roots."""
+    if ".." in Path(raw).parts:
+        logger.warning("%s contains '..' segment — ignoring override", env_name)
+        return None
+    candidate = Path(raw)
+    if not candidate.is_absolute():
+        logger.warning("%s must be absolute — ignoring override", env_name)
+        return None
+    resolved = candidate.resolve()
+    if not any(resolved.is_relative_to(p) for p in _safe_state_parents()):
+        logger.warning("%s resolves outside safe roots — ignoring override", env_name)
+        return None
+    return resolved
+
+
 def checkpoint_path() -> Path:
-    """Resolve checkpoint path: env override → XDG_STATE_HOME → ~/.local/state."""
+    """Resolve checkpoint path: env override → XDG_STATE_HOME → ~/.local/state.
+
+    Both env overrides are validated via _validated_env_path to prevent
+    path traversal (Sonar S2083). Invalid overrides are logged and ignored,
+    falling through to the default safe location under $HOME/.local/state.
+    """
     override = os.environ.get("SLACK_HISTORY_CHECKPOINT")
     if override:
-        return Path(override)
-    state_root = os.environ.get("XDG_STATE_HOME") or str(Path.home() / ".local" / "state")
-    return Path(state_root) / "agency-os" / "slack_history_checkpoint.json"
+        safe = _validated_env_path("SLACK_HISTORY_CHECKPOINT", override)
+        if safe is not None:
+            return safe
+    xdg = os.environ.get("XDG_STATE_HOME")
+    if xdg:
+        safe_xdg = _validated_env_path("XDG_STATE_HOME", xdg)
+        if safe_xdg is not None:
+            return safe_xdg / "agency-os" / "slack_history_checkpoint.json"
+    return Path.home() / ".local" / "state" / "agency-os" / "slack_history_checkpoint.json"
 
 
 def load_checkpoint(path: Path) -> dict[str, str]:

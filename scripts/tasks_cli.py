@@ -784,11 +784,18 @@ def cmd_complete(args: argparse.Namespace) -> int:
     verifier_arg = getattr(args, "verifier", None)
     secondary_arg = getattr(args, "secondary_verifier", None)
     verifier_session = str(evidence_payload.get("verifier_session_uuid", "")).strip()
-    behavioral_test = (
-        evidence_payload["acceptance_items"][0]
-        if evidence_payload["acceptance_items"]
-        else "see commands"
-    )
+    # behavioral_test column is text; acceptance_items[0] may be a dict
+    # ({criterion, satisfied, evidence}) or a plain string depending on caller.
+    # Coerce to text: extract criterion when dict, JSON-serialise as fallback.
+    _first_item = evidence_payload["acceptance_items"][0] if evidence_payload["acceptance_items"] else None
+    if isinstance(_first_item, dict):
+        behavioral_test = _first_item.get("criterion") or json.dumps(
+            _first_item, sort_keys=True, ensure_ascii=False
+        )
+    elif _first_item is not None:
+        behavioral_test = str(_first_item)
+    else:
+        behavioral_test = "see commands"
 
     try:
         with psycopg.connect(_dsn()) as conn, conn.cursor() as cur:

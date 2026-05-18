@@ -255,7 +255,10 @@ jobs:
         # NO `|| true` mask — chaos test failure blocks the PR per KEI-132
         # acceptance ("PR blocked on chaos test failure"). Real-infrastructure
         # scenarios (chaos_db marker) auto-skip when DATABASE_URL not set.
-        run: pytest tests/chaos -v --tb=short --timeout=10
+        # --confcutdir scopes conftest loading to tests/chaos so the heavy
+        # root tests/conftest.py (sqlalchemy/httpx/app-deps) doesn't load —
+        # keeps the chaos-test install minimal + fast.
+        run: pytest tests/chaos -v --tb=short --timeout=10 --confcutdir=tests/chaos
 
   # ============================================
   # Frontend: Lint, Type Check, Build

@@ -136,12 +136,14 @@ def test_positive_valid_evidence_completes_task(mod, monkeypatch, tmp_path, caps
     ev_file = tmp_path / "evidence.json"
     ev_file.write_text(json.dumps(_VALID_EVIDENCE))
 
-    # Step sequence:
-    #  execute[0] = hash-uniqueness SELECT  → fetchall returns []  (no collision)
-    #  execute[1] = INSERT task_verifications → fetchone not called
-    #  execute[2] = UPDATE tasks RETURNING → fetchone returns the done row
+    # Step sequence (post KEI-90 Gate 3 addition):
+    #  execute[0] = Gate 3 SELECT deployment, claimed_by → fetchone returns (False, 'aiden')
+    #  execute[1] = hash-uniqueness SELECT  → fetchall returns []  (no collision)
+    #  execute[2] = INSERT task_verifications → fetchone not called
+    #  execute[3] = UPDATE tasks RETURNING → fetchone returns the done row
     cur = MultiStepCursor(
         step_responses=[
+            (False, "aiden"),  # Gate 3: deployment=False → no-op return
             [],  # hash check fetchall → no prior rows
             None,  # INSERT (no return used)
             ("KEI-89", "Gate 2 evidence test", "done"),  # UPDATE RETURNING
@@ -158,11 +160,11 @@ def test_positive_valid_evidence_completes_task(mod, monkeypatch, tmp_path, caps
     rc = mod.main(["complete", "KEI-89", "--evidence", str(ev_file)])
     assert rc == 0, capsys.readouterr().err
 
-    # Three execute calls fired: hash check, INSERT, UPDATE
-    assert len(cur.executed) == 3
+    # Five execute calls fired: Gate 3, hash check, INSERT, UPDATE, KEI-106 linear sync enqueue
+    assert len(cur.executed) == 5
 
     # INSERT contained the canonical JSON as test_output param
-    insert_sql, insert_params = cur.executed[1]
+    insert_sql, insert_params = cur.executed[2]
     assert "task_verifications" in insert_sql
     assert insert_params[1] == "KEI-89"  # task_id
     assert insert_params[2] == "aiden"  # verified_by
@@ -170,8 +172,8 @@ def test_positive_valid_evidence_completes_task(mod, monkeypatch, tmp_path, caps
     round_tripped = json.loads(stored_output)
     assert round_tripped["acceptance_items"] == _VALID_EVIDENCE["acceptance_items"]
 
-    # Commit fired; no rollback
-    assert conn.commits == 1
+    # Commits fired (main complete + KEI-106 linear sync enqueue); no rollback
+    assert conn.commits == 2
     assert conn.rollbacks == 0
 
     out = capsys.readouterr().out
@@ -236,6 +238,7 @@ def test_negative_hash_collision_rejects_reuse(mod, monkeypatch, tmp_path, capsy
 
     cur = MultiStepCursor(
         step_responses=[
+            (False, "aiden"),  # Gate 3: deployment=False → no-op return
             [prior_row],  # hash check fetchall → collision found
         ]
     )
@@ -253,8 +256,8 @@ def test_negative_hash_collision_rejects_reuse(mod, monkeypatch, tmp_path, capsy
     assert "matches prior verification" in err
     assert "KEI-88" in err
 
-    # Only the hash-check SELECT fired; no INSERT or UPDATE
-    assert len(cur.executed) == 1
+    # Gate 3 SELECT + hash-check SELECT fired; no INSERT or UPDATE
+    assert len(cur.executed) == 2
 
 
 # ─── (5) positive no extra side effects ──────────────────────────────────────
@@ -271,6 +274,7 @@ def test_positive_evidence_path_inserts_exactly_one_verification_row(
 
     cur = MultiStepCursor(
         step_responses=[
+            (False, "aiden"),  # Gate 3: deployment=False → no-op return
             [],  # hash check
             None,  # INSERT
             ("KEI-89", "Side-effect test task", "done"),  # UPDATE RETURNING
@@ -291,3 +295,108 @@ def test_positive_evidence_path_inserts_exactly_one_verification_row(
         sql for sql, _ in cur.executed if "INSERT" in sql.upper() and "task_verifications" in sql
     ]
     assert len(insert_calls) == 1, f"expected 1 INSERT, got {len(insert_calls)}: {insert_calls}"
+
+
+# ─── (6) Agency_OS-y244 regression — dict-shape acceptance_items ─────────────
+
+
+def test_positive_dict_acceptance_items_coerced_to_text(mod, monkeypatch, tmp_path, capsys):
+    """Regression: when acceptance_items[0] is a dict ({criterion, satisfied,
+    evidence}), behavioral_test must be coerced to text before SQL params bind.
+
+    Prior to Agency_OS-y244 fix the raw dict was passed to psycopg, which
+    raised `cannot adapt type 'dict' using placeholder '%s'` at the INSERT.
+    Post-fix: criterion field becomes the behavioral_test string; INSERT
+    binds a str cleanly.
+    """
+    dict_evidence = {
+        "acceptance_items": [
+            {
+                "criterion": "PR #1045 merged after dual-concur",
+                "satisfied": True,
+                "evidence": "gh api .../merge returned merged=true sha=9af6197a",
+            }
+        ],
+        "commands": [
+            {
+                "cmd": "gh pr view 1045 --json state",
+                "output": '{"state":"MERGED"} — verified PR landed cleanly on origin/main',
+            }
+        ],
+        "verifier_session_uuid": "session-uuid-y244-regression-test",
+        "timestamp": "2026-05-18T21:20:00+00:00",
+    }
+    ev_file = tmp_path / "dict_evidence.json"
+    ev_file.write_text(json.dumps(dict_evidence))
+
+    cur = MultiStepCursor(
+        step_responses=[
+            (False, "nova"),  # Gate 3: deployment=False → no-op return
+            [],
+            None,
+            ("KEI-y244", "Dict regression task", "done"),
+        ]
+    )
+    conn = TrackingFakeConn(cur)
+
+    import psycopg
+
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test/x")
+    monkeypatch.setenv("CALLSIGN", "nova")
+    monkeypatch.setattr(psycopg, "connect", lambda *a, **kw: conn)
+
+    rc = mod.main(["complete", "KEI-y244", "--evidence", str(ev_file)])
+    assert rc == 0, capsys.readouterr().err
+
+    _, insert_params = cur.executed[2]
+    behavioral_test_param = insert_params[3]
+    assert isinstance(behavioral_test_param, str), (
+        f"behavioral_test must be str (text column); got {type(behavioral_test_param).__name__}"
+    )
+    assert behavioral_test_param == "PR #1045 merged after dual-concur"
+
+
+def test_positive_dict_acceptance_items_without_criterion_falls_back_to_json(
+    mod, monkeypatch, tmp_path, capsys
+):
+    """Dict acceptance_item missing 'criterion' key → JSON-serialise the
+    whole dict so no data is lost.
+    """
+    dict_no_criterion = {
+        "acceptance_items": [{"description": "no criterion key here", "satisfied": True}],
+        "commands": [
+            {
+                "cmd": "synthetic test command",
+                "output": "synthetic output text long enough to pass min-length validator",
+            }
+        ],
+        "verifier_session_uuid": "session-no-criterion-fallback-uuid",
+        "timestamp": "2026-05-18T21:25:00+00:00",
+    }
+    ev_file = tmp_path / "no_criterion_evidence.json"
+    ev_file.write_text(json.dumps(dict_no_criterion))
+
+    cur = MultiStepCursor(
+        step_responses=[
+            (False, "nova"),  # Gate 3: deployment=False → no-op return
+            [],
+            None,
+            ("KEI-y244b", "Fallback task", "done"),
+        ]
+    )
+    conn = TrackingFakeConn(cur)
+
+    import psycopg
+
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test/x")
+    monkeypatch.setenv("CALLSIGN", "nova")
+    monkeypatch.setattr(psycopg, "connect", lambda *a, **kw: conn)
+
+    rc = mod.main(["complete", "KEI-y244b", "--evidence", str(ev_file)])
+    assert rc == 0, capsys.readouterr().err
+
+    _, insert_params = cur.executed[2]
+    behavioral_test_param = insert_params[3]
+    assert isinstance(behavioral_test_param, str)
+    parsed = json.loads(behavioral_test_param)
+    assert parsed == {"description": "no criterion key here", "satisfied": True}

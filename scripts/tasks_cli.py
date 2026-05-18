@@ -641,6 +641,22 @@ def cmd_claim(args: argparse.Namespace) -> int:
     return 0
 
 
+def _coerce_behavioral_test(acceptance_items: list) -> str:
+    """Coerce acceptance_items[0] to text for the behavioral_test column.
+
+    Dict with `criterion` → criterion string. Dict without → deterministic JSON
+    (no data loss). Plain string → passthrough (backwards-compat). Empty/None →
+    "see commands". Hoisted out of cmd_complete to keep its cognitive
+    complexity under the Sonar S3776 limit (y244 review feedback).
+    """
+    if not acceptance_items:
+        return "see commands"
+    first = acceptance_items[0]
+    if isinstance(first, dict):
+        return first.get("criterion") or json.dumps(first, sort_keys=True, ensure_ascii=False)
+    return str(first) if first is not None else "see commands"
+
+
 def _load_evidence_payload(evidence_path: str) -> dict | None:
     """Read evidence from a file path or stdin ('-'). Returns the parsed JSON
     dict on success, or None on read/parse failure (after printing the error)."""
@@ -784,11 +800,7 @@ def cmd_complete(args: argparse.Namespace) -> int:
     verifier_arg = getattr(args, "verifier", None)
     secondary_arg = getattr(args, "secondary_verifier", None)
     verifier_session = str(evidence_payload.get("verifier_session_uuid", "")).strip()
-    behavioral_test = (
-        evidence_payload["acceptance_items"][0]
-        if evidence_payload["acceptance_items"]
-        else "see commands"
-    )
+    behavioral_test = _coerce_behavioral_test(evidence_payload["acceptance_items"])
 
     try:
         with psycopg.connect(_dsn()) as conn, conn.cursor() as cur:

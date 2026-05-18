@@ -290,17 +290,26 @@ def insert_review_task(
     pr_number: int,
     pr_title: str,
     pr_url: str,
+    *,
+    single_reviewer: bool = False,
 ) -> None:
+    """Insert or update a REVIEW-PR-N task row.
+
+    When single_reviewer=True, sets tags = ARRAY['single_reviewer_only'] so
+    downstream agents see the eligibility marker without re-checking criteria.
+    """
     task_id = f"REVIEW-PR-{pr_number}"
+    tags_val = ["single_reviewer_only"] if single_reviewer else []
     with conn.cursor() as cur:
         cur.execute(
             """
-            INSERT INTO public.tasks (id, title, status, claimed_by, claimed_at, description)
-            VALUES (%s, %s, 'active', %s, NOW(), %s)
+            INSERT INTO public.tasks (id, title, status, claimed_by, claimed_at, description, tags)
+            VALUES (%s, %s, 'active', %s, NOW(), %s, %s)
             ON CONFLICT (id) DO UPDATE
-              SET status = 'active', claimed_by = EXCLUDED.claimed_by, claimed_at = NOW()
+              SET status = 'active', claimed_by = EXCLUDED.claimed_by, claimed_at = NOW(),
+                  tags = EXCLUDED.tags
             """,
-            (task_id, f"Review PR #{pr_number} — {pr_title}", callsign, pr_url),
+            (task_id, f"Review PR #{pr_number} — {pr_title}", callsign, pr_url, tags_val),
         )
     conn.commit()
 
@@ -396,6 +405,166 @@ def is_authored_by_callsign(pr: dict, callsign: str) -> bool:
     """Check if the PR title starts with [CALLSIGN] prefix."""
     title = pr.get("title", "") or ""
     return title.startswith(f"[{callsign.upper()}]")
+
+
+# ---------------------------------------------------------------------------
+# KEI-186: Single-reviewer-eligible gate
+# ---------------------------------------------------------------------------
+
+_SINGLE_REVIEWER_ALLOWED_PREFIXES = ("docs/", "tests/", "infra/")
+_SINGLE_REVIEWER_BLOCKED_PREFIXES = ("supabase/migrations/",)
+_SINGLE_REVIEWER_BLOCKED_ROUTE_PREFIXES = ("src/api/routes/", "src/api/webhooks/")
+_SINGLE_REVIEWER_LOC_LIMIT = 100
+
+
+def _fetch_sonar_data(pr_number: int) -> tuple[int, str]:
+    """Return (issue_count, qg_status) via dual SonarCloud endpoint check.
+
+    issue_count from /api/issues/search (unresolved NEW issues).
+    qg_status from /api/qualitygates/project_status.
+    Returns (-1, "UNKNOWN") on any failure — gate treats as ineligible.
+    """
+    sonar_token = os.environ.get("SONAR_TOKEN", "")
+    sonar_project = os.environ.get("SONAR_PROJECT_KEY", "keiracom_Agency_OS")
+    sonar_base = os.environ.get("SONAR_HOST_URL", "https://sonarcloud.io")
+    if not sonar_token:
+        log.warning("SONAR_TOKEN not set — single-reviewer gate assumes Sonar FAIL")
+        return (-1, "UNKNOWN")
+
+    headers = {"Authorization": f"Bearer {sonar_token}"}
+
+    def _get(path: str) -> dict:
+        url = f"{sonar_base}{path}"
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            return json.loads(resp.read())
+
+    try:
+        issues_data = _get(
+            f"/api/issues/search?projectKeys={sonar_project}&pullRequest={pr_number}&resolved=false"
+        )
+        issue_count = int(issues_data.get("total", -1))
+    except Exception as exc:
+        log.warning("Sonar issues fetch failed for PR #%d: %s", pr_number, exc)
+        return (-1, "UNKNOWN")
+
+    try:
+        qg_data = _get(
+            f"/api/qualitygates/project_status?projectKey={sonar_project}&pullRequest={pr_number}"
+        )
+        qg_status = qg_data.get("projectStatus", {}).get("status", "UNKNOWN") or "UNKNOWN"
+    except Exception as exc:
+        log.warning("Sonar QG fetch failed for PR #%d: %s", pr_number, exc)
+        return (issue_count, "UNKNOWN")
+
+    return (issue_count, qg_status)
+
+
+def is_single_reviewer_eligible(pr_number: int) -> bool:
+    """Return True when ALL KEI-186 single-reviewer criteria pass.
+
+    Criteria (all must hold):
+    - Sonar issues = 0 AND QG = OK (dual endpoint)
+    - CI all mandatory checks SUCCESS or SKIPPED
+    - Diff <= 100 LoC total
+    - Files only in docs/ tests/ infra/ (NOT supabase/migrations/)
+    - No new file under src/api/routes/ or src/api/webhooks/
+    - No new public.* table or column in diff
+    - No xfailed tests added in diff
+    - No new file under supabase/migrations/ (Aiden's edit)
+    """
+    import re
+
+    result = subprocess.run(
+        [
+            "gh",
+            "pr",
+            "view",
+            str(pr_number),
+            "--json",
+            "files,additions,deletions,statusCheckRollup",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        log.warning("gh pr view %d failed: %s", pr_number, result.stderr)
+        return False
+
+    try:
+        data = json.loads(result.stdout) or {}
+    except json.JSONDecodeError:
+        log.warning("gh pr view %d returned invalid JSON", pr_number)
+        return False
+
+    # LoC gate
+    total_loc = (data.get("additions") or 0) + (data.get("deletions") or 0)
+    if total_loc > _SINGLE_REVIEWER_LOC_LIMIT:
+        log.info(
+            "PR #%d blocked single-reviewer: %d LoC > %d",
+            pr_number,
+            total_loc,
+            _SINGLE_REVIEWER_LOC_LIMIT,
+        )
+        return False
+
+    # File-path gates
+    file_paths = [f.get("path", "") or "" for f in (data.get("files") or [])]
+    for path in file_paths:
+        if any(path.startswith(p) for p in _SINGLE_REVIEWER_BLOCKED_PREFIXES):
+            log.info("PR #%d blocked single-reviewer: migration file %s", pr_number, path)
+            return False
+        if any(path.startswith(p) for p in _SINGLE_REVIEWER_BLOCKED_ROUTE_PREFIXES):
+            log.info("PR #%d blocked single-reviewer: route/webhook file %s", pr_number, path)
+            return False
+        if not any(path.startswith(p) for p in _SINGLE_REVIEWER_ALLOWED_PREFIXES):
+            log.info("PR #%d blocked single-reviewer: non-allowed path %s", pr_number, path)
+            return False
+
+    # Diff-content gates (new public table/column + xfail)
+    diff_result = subprocess.run(
+        ["gh", "pr", "diff", str(pr_number)],
+        capture_output=True,
+        text=True,
+    )
+    if diff_result.returncode == 0:
+        diff_text = diff_result.stdout
+        if re.search(r"^\+.*CREATE TABLE\s+public\.", diff_text, re.IGNORECASE | re.MULTILINE):
+            log.info("PR #%d blocked single-reviewer: new public table", pr_number)
+            return False
+        if re.search(
+            r"^\+.*ALTER TABLE\s+public\..*ADD\s+COLUMN", diff_text, re.IGNORECASE | re.MULTILINE
+        ):
+            log.info("PR #%d blocked single-reviewer: new public column", pr_number)
+            return False
+        if re.search(r"^\+.*@pytest\.mark\.xfail", diff_text, re.MULTILINE):
+            log.info("PR #%d blocked single-reviewer: xfail decorator added", pr_number)
+            return False
+
+    # CI gate: all mandatory checks SUCCESS or SKIPPED
+    for check in data.get("statusCheckRollup") or []:
+        if check.get("isRequired", False) and check.get("conclusion", "") not in (
+            "SUCCESS",
+            "SKIPPED",
+        ):
+            log.info(
+                "PR #%d blocked single-reviewer: CI check %s not SUCCESS",
+                pr_number,
+                check.get("name"),
+            )
+            return False
+
+    # Sonar dual-endpoint gate
+    issue_count, qg_status = _fetch_sonar_data(pr_number)
+    if issue_count != 0:
+        log.info("PR #%d blocked single-reviewer: Sonar issues=%d", pr_number, issue_count)
+        return False
+    if qg_status != "OK":
+        log.info("PR #%d blocked single-reviewer: QG status=%s", pr_number, qg_status)
+        return False
+
+    log.info("PR #%d is single-reviewer-eligible", pr_number)
+    return True
 
 
 def find_pr_for_review(prs: list[dict], callsign: str) -> dict | None:

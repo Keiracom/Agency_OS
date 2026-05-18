@@ -176,3 +176,57 @@ def test_idle_v1_does_not_publish_nats(monkeypatch):
     fs.process_agent(AGENT_AIDEN, conn, [], 99)
 
     nats_mock.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# Tests 7-10: KEI-183 follow-up (Dave 2026-05-18) — structural dep enforcement
+# ---------------------------------------------------------------------------
+
+
+def test_kei183_followup_deps_clause_present_in_all_query_paths():
+    """The dependencies-enforcement clause must inject into every path: v1 +
+    v2, with and without open-PR filter. Structural-impossibility guarantee.
+    """
+    for v2 in (False, True):
+        for open_prs in (set(), {"KEI-999"}):
+            sql, _params = fs._build_task_query(v2, open_prs, "elliot", 99)
+            assert "dependencies IS NULL" in sql, (
+                f"v2={v2} open_prs={open_prs}: dep-NULL guard missing"
+            )
+            assert "cardinality(dependencies) = 0" in sql, (
+                f"v2={v2} open_prs={open_prs}: empty-array guard missing"
+            )
+            assert "FROM unnest(dependencies)" in sql, (
+                f"v2={v2} open_prs={open_prs}: dep-row sub-query missing"
+            )
+            assert "t_dep.status != 'done'" in sql, (
+                f"v2={v2} open_prs={open_prs}: status-not-done predicate missing"
+            )
+
+
+def test_kei183_followup_order_by_phase_then_priority():
+    """ORDER BY must put phase ahead of priority — Dave directive 2026-05-18.
+    Lower-phase work drains first; priority sort breaks ties within a phase.
+    """
+    sql, _params = fs._build_task_query(False, set(), "elliot", 99)
+    phase_idx = sql.find("phase ASC")
+    priority_idx = sql.find("priority ASC")
+    assert phase_idx != -1, "ORDER BY phase ASC missing"
+    assert priority_idx != -1, "ORDER BY priority ASC missing"
+    assert phase_idx < priority_idx, "phase must precede priority in ORDER BY (Dave 2026-05-18)"
+
+
+def test_kei183_followup_deps_clause_does_not_double_inject():
+    """The dep clause appears exactly once per query (avoid double-AND
+    rewrite if _build_task_query is called twice).
+    """
+    sql, _params = fs._build_task_query(True, {"KEI-999"}, "elliot", 99)
+    assert sql.count("FROM unnest(dependencies)") == 1
+
+
+def test_kei183_followup_deps_clause_uses_qualified_join():
+    """The dep-row join must reference public.tasks explicitly so the SQL
+    works regardless of search_path (defensive against runtime schema drift).
+    """
+    sql, _params = fs._build_task_query(False, set(), "elliot", 99)
+    assert "public.tasks t_dep" in sql, "dep join must be schema-qualified"

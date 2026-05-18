@@ -357,6 +357,25 @@ def fetch_open_pr_kei_ids() -> set[str]:
 
 _CANDIDATE_LIMIT = 10  # KEI-204 — top-N candidates to iterate; bounds dep-blocked rescan cost
 
+# KEI-183 follow-up (Dave 2026-05-18) — structural dep enforcement.
+# `tasks.dependencies` is a text[] ARRAY of task ids. A row is eligible only if
+# every entry resolves to a row in status='done'. This makes out-of-sequence
+# dispatch structurally impossible — no row reaches the candidate set unless
+# all its deps are done. Complements (does not replace) the title/description
+# keyword filter in extract_blocker_keis (KEI-204), which catches plain-prose
+# "depends on KEI-X" phrasings the dependencies column doesn't capture.
+_DEPS_CLAUSE = (
+    "AND (\n"
+    "    dependencies IS NULL\n"
+    "    OR cardinality(dependencies) = 0\n"
+    "    OR NOT EXISTS (\n"
+    "      SELECT 1 FROM unnest(dependencies) AS dep_id\n"
+    "      JOIN public.tasks t_dep ON t_dep.id = dep_id\n"
+    "      WHERE t_dep.status != 'done'\n"
+    "    )\n"
+    "  )\n"
+)
+
 
 def _build_task_query(
     v2: bool, open_pr_keis: set[str], callsign: str, phase_max: int
@@ -365,6 +384,10 @@ def _build_task_query(
 
     Extracted to reduce cognitive complexity in the caller (S3776).
     Four combinations: v2 × has_open_pr_filter.
+
+    KEI-183 follow-up — _DEPS_CLAUSE is injected on every path so the
+    dependency-enforcement gate is universal (v1 + v2, with and without
+    open-PR filter).
     """
     base = """
         SELECT id, title, COALESCE(description, '') FROM public.tasks
@@ -372,7 +395,10 @@ def _build_task_query(
           AND (phase IS NULL OR phase <= %s)
           AND (is_parent IS NULL OR is_parent = false)
     """
-    suffix = "ORDER BY priority ASC, created_at ASC\nLIMIT %s\nFOR UPDATE SKIP LOCKED"
+    base = base.rstrip() + "\n  " + _DEPS_CLAUSE
+    # KEI-183 follow-up — phase ASC first so lower-phase work drains before
+    # higher-phase work even within the same priority bucket (Dave directive).
+    suffix = "ORDER BY phase ASC NULLS LAST, priority ASC, created_at ASC\nLIMIT %s\nFOR UPDATE SKIP LOCKED"
     if open_pr_keis:
         if v2:
             sql = f"{base}  AND id != ALL(%s::text[])\n  AND (persona = %s OR persona IS NULL)\n{suffix}"

@@ -65,8 +65,9 @@ def _nats_publish_state(callsign: str, state: str) -> None:
     NATS is the canonical messaging backbone per KEI-205.
     """
     try:
-        import nats.aio.client as nats_client  # noqa: PLC0415 — lazy import, nats-py optional for v1 path
-        import asyncio
+        import asyncio  # noqa: PLC0415 — lazy import, inside try for v1-path optional
+
+        import nats.aio.client as nats_client  # noqa: PLC0415 — nats-py optional for v1 path
 
         payload = json.dumps({"state": state, "ts": int(time.time())}).encode()
         subject = f"keiracom.agent.status.{callsign}"

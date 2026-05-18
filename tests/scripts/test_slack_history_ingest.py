@@ -54,6 +54,32 @@ def test_noise_filter_keeps_real_content(mod):
     assert not mod.is_noise("Building KEI-201 now")
 
 
+def test_noise_filter_drops_bare_callsign_ping(mod):
+    """Bare-bracket pings like '[ATLAS]' alone are pure protocol noise."""
+    assert mod.is_noise("[ATLAS]")
+    assert mod.is_noise("[scout]")
+    assert mod.is_noise("  [ORION]  ")
+    assert mod.is_noise("[NOVA]")
+
+
+def test_noise_filter_keeps_callsign_with_payload(mod):
+    """Bracketed callsign with content after MUST be kept (it's a real ping with body)."""
+    assert not mod.is_noise("[ATLAS] please claim KEI-99")
+    assert not mod.is_noise("[SCOUT] dispatch received")
+
+
+def test_noise_filter_drops_vercel_ratelimit(mod):
+    assert mod.is_noise("Vercel rate limit hit on deploy")
+    assert mod.is_noise("429 too many requests from vercel API")
+    assert mod.is_noise("VERCEL: rate-limit retry after 60s")
+
+
+def test_noise_filter_keeps_vercel_non_ratelimit(mod):
+    """Vercel mentioned in non-ratelimit context (e.g. deploy success) must NOT be noise."""
+    assert not mod.is_noise("Vercel deploy succeeded for PR #1024")
+    assert not mod.is_noise("checking vercel logs for the build failure")
+
+
 def test_noise_filter_regex_precedence_supervisor_midstring(mod):
     """S5850 regression: `[SUPERVISOR] fleet` mid-string must NOT be flagged as noise.
 
@@ -224,8 +250,17 @@ def test_deterministic_id_differs_across_ts(mod):
 # ─── Schema ─────────────────────────────────────────────────────────────────
 
 
-def test_schema_uses_text2vec_transformers(mod):
-    assert mod.CORPUS_SCHEMA["vectorizer"] == "text2vec-transformers"
+def test_schema_uses_text2vec_google_ai_studio(mod):
+    """Dave Option A (KEI-196 swap) + KEI-201 empirical fix:
+    vectorizer=text2vec-google, AI Studio endpoint (no projectId), modelId
+    gemini-embedding-001 (NOT text-embedding-004 — that's the Vertex name
+    and 404s on AI Studio v1beta).
+    """
+    assert mod.CORPUS_SCHEMA["vectorizer"] == "text2vec-google"
+    mc = mod.CORPUS_SCHEMA["moduleConfig"]["text2vec-google"]
+    assert mc["apiEndpoint"] == "generativelanguage.googleapis.com"
+    assert mc["modelId"] == "gemini-embedding-001"
+    assert mc["vectorizeClassName"] is False
 
 
 def test_schema_has_required_properties(mod):

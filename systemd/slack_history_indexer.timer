@@ -1,0 +1,13 @@
+[Unit]
+Description=KEI-201 fires slack_history_indexer.service every 15 min
+Documentation=https://linear.app/keiracom/issue/KEI-201
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=15min
+AccuracySec=30s
+Persistent=true
+Unit=slack_history_indexer.service
+
+[Install]
+WantedBy=timers.target

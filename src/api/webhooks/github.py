@@ -1,6 +1,7 @@
 """src/api/webhooks/github.py — GitHub → public.tasks inbound webhook.
 
 KEI-97 Part A — Dave dispatch ts ~1779024750.
+KEI-207 — PR merge → auto-close KEI tasks in public.tasks.
 
 Receives GitHub webhook POSTs at /api/webhooks/github, verifies HMAC
 signature against GITHUB_WEBHOOK_SECRET (X-Hub-Signature-256 header),
@@ -9,7 +10,10 @@ and upserts REVIEW-PR-<N> rows in public.tasks.
 Event handling:
   - pull_request action='opened'|'reopened' → INSERT/upsert REVIEW-PR-<N>
     with status='available', excluded_callsign=PR author (lowercased).
-  - pull_request action='closed' (merged or not) → UPDATE status='done'.
+  - pull_request action='closed' (merged or not) → UPDATE REVIEW-PR-<N> status='done'.
+  - pull_request action='closed' AND merged=true → additionally close matching KEI
+    task: parse KEI-\\d+ from PR title (first match); fallback: match via
+    linear_url column. No match → log + skip, no error.
 
 Fail-open: HMAC fail → 401; malformed payload → 200 logged warning
 (retry-storm guard, same pattern as src/api/webhooks/linear.py).
@@ -22,11 +26,14 @@ import hmac
 import json
 import logging
 import os
+import re
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
 
 logger = logging.getLogger(__name__)
+
+_KEI_RE = re.compile(r"KEI-\d+")
 
 router = APIRouter(prefix="/api/webhooks/github", tags=["webhooks", "github"])
 
@@ -107,7 +114,10 @@ def _close_review_task(pr_number: int) -> None:
     try:
         import psycopg
 
-        with psycopg.connect(dsn, connect_timeout=10) as conn, conn.cursor() as cur:
+        with (
+            psycopg.connect(dsn, connect_timeout=10, prepare_threshold=None) as conn,
+            conn.cursor() as cur,
+        ):
             cur.execute(
                 """
                 UPDATE public.tasks
@@ -120,6 +130,99 @@ def _close_review_task(pr_number: int) -> None:
         logger.info("github webhook: closed task %s", task_id)
     except Exception as exc:  # noqa: BLE001 — webhook discipline: fail-open
         logger.warning("github webhook tasks close failed for %s: %s", task_id, exc)
+
+
+# ── KEI-207 — close KEI task on PR merge ─────────────────────────────────
+
+
+def _close_kei_task_by_id(kei_id: str) -> None:
+    """Mark a KEI task done by exact id match. Fail-open.
+
+    KEI-207: called when KEI-\\d+ found in PR title on merge.
+    prepare_threshold=None per reference_psycopg_supabase_pgbouncer (pgbouncer
+    transaction mode drops PREPARE statements).
+    """
+    dsn = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL", "")
+    if not dsn:
+        logger.warning("KEI-207: kei task close skipped — DATABASE_URL/SUPABASE_DB_URL unset")
+        return
+    dsn = dsn.replace("postgresql+asyncpg://", "postgresql://", 1)
+
+    try:
+        import psycopg
+
+        with (
+            psycopg.connect(dsn, connect_timeout=10, prepare_threshold=None) as conn,
+            conn.cursor() as cur,
+        ):
+            cur.execute(
+                "UPDATE public.tasks SET status = 'done', updated_at = NOW() WHERE id = %s",
+                (kei_id,),
+            )
+            conn.commit()
+        logger.info("KEI-207: closed kei task %s on PR merge", kei_id)
+    except Exception as exc:  # noqa: BLE001 — webhook discipline: fail-open
+        logger.warning("KEI-207: kei task close failed for %s: %s", kei_id, exc)
+
+
+def _close_kei_task_by_pr_url(pr_url: str) -> bool:
+    """Close KEI task by matching linear_url column. Returns True if a row was updated. Fail-open.
+
+    KEI-207 fallback: when PR title contains no KEI-\\d+, attempt to match
+    tasks.linear_url against the GitHub PR html_url. Returns False on DB error
+    or no match.
+    """
+    dsn = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL", "")
+    if not dsn:
+        logger.warning("KEI-207: fallback close skipped — DATABASE_URL/SUPABASE_DB_URL unset")
+        return False
+    dsn = dsn.replace("postgresql+asyncpg://", "postgresql://", 1)
+
+    try:
+        import psycopg
+
+        with (
+            psycopg.connect(dsn, connect_timeout=10, prepare_threshold=None) as conn,
+            conn.cursor() as cur,
+        ):
+            cur.execute(
+                "UPDATE public.tasks SET status = 'done', updated_at = NOW() WHERE linear_url = %s RETURNING id",
+                (pr_url,),
+            )
+            rows = cur.fetchall()
+            conn.commit()
+        if rows:
+            logger.info(
+                "KEI-207: fallback closed kei task(s) %s via linear_url match", [r[0] for r in rows]
+            )
+            return True
+        return False
+    except Exception as exc:  # noqa: BLE001 — webhook discipline: fail-open
+        logger.warning("KEI-207: fallback kei task close failed for url %s: %s", pr_url, exc)
+        return False
+
+
+def _handle_kei_task_close_on_merge(pr_title: str, pr_url: str) -> None:
+    """KEI-207 entry point: parse KEI-\\d+ from title; fallback to linear_url query.
+
+    Chain: title regex match → _close_kei_task_by_id.
+    No title match → _close_kei_task_by_pr_url.
+    No match either way → log + skip. No error raised; webhook stays fail-open.
+
+    Note: regex is case-sensitive (`KEI-\\d+`) matching Linear's canonical
+    uppercase convention. Lowercase 'kei-123' is intentionally not matched.
+    """
+    m = _KEI_RE.search(pr_title)
+    if m:
+        kei_id = m.group(0)
+        logger.info("KEI-207: title match %s for PR %s", kei_id, pr_url)
+        _close_kei_task_by_id(kei_id)
+        return
+
+    # Title parse failed — try linear_url fallback
+    matched = _close_kei_task_by_pr_url(pr_url)
+    if not matched:
+        logger.info("KEI-207: no matching task for PR %s, skipping", pr_url)
 
 
 _RECEIVE_RESPONSES: dict[int | str, dict[str, Any]] = {
@@ -170,6 +273,11 @@ async def receive_github_webhook(request: Request) -> dict[str, str]:
 
     if action == "closed":
         _close_review_task(pr_number)
+        # KEI-207: if the PR was actually merged, also close the matching KEI task.
+        if pr.get("merged") is True:
+            pr_title: str = pr.get("title") or ""
+            pr_url: str = pr.get("html_url") or ""
+            _handle_kei_task_close_on_merge(pr_title, pr_url)
         return {"status": "ok", "action": action, "task_id": _task_id(pr_number)}
 
     # Other actions (assigned, labeled, synchronize, etc.) — ignore

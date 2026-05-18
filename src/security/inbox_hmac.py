@@ -126,7 +126,9 @@ def verify(path: str | Path, secret: str | None = None) -> tuple[bool, str]:
 
     logger.warning(
         "HMAC mismatch for %s — stored %s did not match any of %d candidate secret(s)",
-        p, stored[:12], len(candidates),
+        p,
+        stored[:12],
+        len(candidates),
     )
     return False, "HMAC mismatch (tampered or signed with unknown secret)"
 

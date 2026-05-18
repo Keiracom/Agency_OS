@@ -65,6 +65,36 @@ def _hmac_verify_dict(payload: dict, secret: str) -> tuple[bool, str, str | None
     return False, "HMAC mismatch", None
 
 
+def _classify_verify_result(ok: bool, reason: str) -> str:
+    """Map (ok, reason) to a dispatch_audit.result enum value: ok | unsigned | mismatch."""
+    if ok:
+        return "ok"
+    if "missing" in reason:
+        return "unsigned"
+    return "mismatch"
+
+
+def _emit_verify_audit(
+    payload: dict, queue: str, ok: bool, reason: str, matched_fp: str | None
+) -> None:
+    """KEI-138 — record one verify event in dispatch_audit. Fail-open: audit
+    MUST NEVER raise out of the consumer hot path."""
+    try:
+        from src.security.dispatch_audit import emit_audit  # noqa: PLC0415
+
+        emit_audit(
+            "verify",
+            result=_classify_verify_result(ok, reason),
+            payload_id=str(payload.get("id") or payload.get("task_ref") or ""),
+            target=queue,
+            actor=str(payload.get("from", "")),
+            secret_fingerprint=matched_fp,
+            reason=None if ok else reason,
+        )
+    except Exception:  # noqa: BLE001 — audit never blocks dispatch
+        pass
+
+
 # ── Tmux helpers ────────────────────────────────────────────────────────────────
 
 
@@ -158,23 +188,7 @@ async def consume_queue(queue: str, config: dict) -> None:
 
             if queue_type == "dispatch" and hmac_secret:
                 ok, reason, matched_fp = _hmac_verify_dict(payload, hmac_secret)
-                # KEI-138 — emit audit row regardless of outcome (fail-open)
-                try:
-                    from src.security.dispatch_audit import emit_audit  # noqa: PLC0415
-                    audit_result = "ok" if ok else (
-                        "unsigned" if "missing" in reason else "mismatch"
-                    )
-                    emit_audit(
-                        "verify",
-                        result=audit_result,
-                        payload_id=str(payload.get("id") or payload.get("task_ref") or ""),
-                        target=queue,
-                        actor=str(payload.get("from", "")),
-                        secret_fingerprint=matched_fp,
-                        reason=None if ok else reason,
-                    )
-                except Exception:  # noqa: BLE001 — audit never blocks dispatch
-                    pass
+                _emit_verify_audit(payload, queue, ok, reason, matched_fp)
                 if not ok:
                     logger.warning("HMAC reject on %s: %s", queue, reason)
                     continue

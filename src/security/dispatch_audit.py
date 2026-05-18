@@ -58,8 +58,7 @@ def emit_audit(
                         secret_fingerprint, file_path, reason)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 """,
-                (action, result, payload_id, target, actor,
-                 secret_fingerprint, file_path, reason),
+                (action, result, payload_id, target, actor, secret_fingerprint, file_path, reason),
             )
             conn.commit()
         return True

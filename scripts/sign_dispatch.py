@@ -18,6 +18,7 @@ unknown target.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import os
 import sys
@@ -26,10 +27,10 @@ import uuid
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-from security.inbox_hmac import sign  # noqa: E402
+from relay.redis_relay import dispatch_queue
+from relay.redis_relay import push_sync as redis_push_sync  # noqa: E402
 from security.dispatch_audit import emit_audit, fingerprint  # noqa: E402
-from relay.redis_relay import push_sync as redis_push_sync, dispatch_queue  # noqa: E402
-
+from security.inbox_hmac import sign  # noqa: E402
 
 VALID_TARGETS = {
     "atlas": "/tmp/telegram-relay-atlas/inbox",
@@ -84,11 +85,9 @@ def main() -> int:
     out_path = inbox / f"{task_ref}.json"
     out_path.write_text(json.dumps(signed))
 
-    # Phase 1b dual-write: also push to Redis (fail-open)
-    try:
+    # Phase 1b dual-write: also push to Redis (fail-open — file write is primary)
+    with contextlib.suppress(Exception):
         redis_push_sync(dispatch_queue(args.target), signed)
-    except Exception:
-        pass  # fail-open — file write is primary
 
     # KEI-138 — audit trail of every sign event (fail-open inside emit_audit)
     emit_audit(

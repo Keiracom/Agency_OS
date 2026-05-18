@@ -63,7 +63,8 @@ def _run_hook(
         env.pop("TASK_REF", None)
 
     payload = json.dumps({"tool_name": tool_name, "tool_input": {}})
-    proc = subprocess.run(  # noqa: S603 — controlled args, no shell
+    # noqa rationale: controlled args list, shell=False — no injection risk
+    proc = subprocess.run(  # noqa: S603
         ["/bin/bash", str(HOOK)],
         input=payload,
         text=True,

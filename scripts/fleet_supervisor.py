@@ -140,7 +140,8 @@ def _db_dsn() -> str:
     dsn = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL", "")
     if not dsn:
         raise RuntimeError("DATABASE_URL / SUPABASE_DB_URL not set")
-    return dsn
+    # KEI-218: strip SQLAlchemy driver suffix — psycopg3 rejects '+asyncpg'.
+    return dsn.replace("postgresql+asyncpg://", "postgresql://", 1)
 
 
 def _connect() -> psycopg.Connection:

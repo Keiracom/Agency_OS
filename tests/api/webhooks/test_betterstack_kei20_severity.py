@@ -118,7 +118,7 @@ def test_synthetic_p2_lands_in_alerts(client) -> None:
 
 
 def test_synthetic_no_severity_lands_in_alerts(client) -> None:
-    c, posted = client
+    c, _ = client
     resp = _post(c, _incident_payload(priority=None))
     assert resp.status_code == 200
     body = resp.json()
@@ -130,7 +130,7 @@ def test_synthetic_no_severity_lands_in_alerts(client) -> None:
 def test_synthetic_critical_synonym_routes_to_ceo(client) -> None:
     # BS sometimes emits human-readable severity tokens. The receiver must
     # treat "critical" as P0 → #ceo.
-    c, posted = client
+    c, _ = client
     resp = _post(c, _incident_payload("critical"))
     assert resp.json()["channel"] == CHANNEL_CEO
 

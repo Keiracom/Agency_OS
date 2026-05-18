@@ -136,11 +136,12 @@ def _post_to_slack(channel: str, text: str) -> None:
         method="POST",
     )
     try:
-        with urllib.request.urlopen(req, timeout=5) as r:  # noqa: S310 — fixed Slack URL, controlled scheme
+        # Fixed Slack URL, controlled scheme — bandit S310 false positive.
+        with urllib.request.urlopen(req, timeout=5) as r:  # noqa: S310
             response = json.loads(r.read() or "null") or {}
         if not response.get("ok"):
             logger.warning("Slack chat.postMessage rejected: %s", response)
-    except (urllib.error.URLError, OSError, ValueError) as exc:
+    except (OSError, ValueError) as exc:
         logger.warning("Slack chat.postMessage failed (fail-open): %s", exc)
 
 

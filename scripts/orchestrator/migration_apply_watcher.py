@@ -37,8 +37,13 @@ MIGRATION_APPLY_TIMEOUT_MIN: int = int(os.environ.get("MIGRATION_APPLY_TIMEOUT_M
 SOURCE_DOC_WATCHER = "migration_apply_watcher"
 
 # Regex patterns to extract schema targets from SQL migration files.
-_ALTER_TABLE_RE = re.compile(
-    r"ALTER\s+TABLE\s+(?:IF\s+EXISTS\s+)?(?:public\.)?(\w+)\s+ADD\s+(?:COLUMN\s+)?(?:IF\s+NOT\s+EXISTS\s+)?(\w+)",
+# Split into two simpler patterns to keep Sonar S5843 complexity ≤20.
+_ALTER_TABLE_NAME_RE = re.compile(
+    r"ALTER\s+TABLE\s+(?:IF\s+EXISTS\s+)?(?:public\.)?(\w+)",
+    re.IGNORECASE,
+)
+_ALTER_COLUMN_NAME_RE = re.compile(
+    r"\bADD\s+(?:COLUMN\s+)?(?:IF\s+NOT\s+EXISTS\s+)?(\w+)",
     re.IGNORECASE,
 )
 _CREATE_TABLE_RE = re.compile(
@@ -59,12 +64,17 @@ def parse_migration_targets(filename: str, sql: str) -> list[MigrationTarget]:
     """Extract schema check targets from a migration SQL file (best-effort)."""
     targets: list[MigrationTarget] = []
 
-    for m in _ALTER_TABLE_RE.finditer(sql):
+    for m_table in _ALTER_TABLE_NAME_RE.finditer(sql):
+        # Find the column name in the remainder of the same ALTER statement.
+        rest = sql[m_table.end() :]
+        m_col = _ALTER_COLUMN_NAME_RE.search(rest)
+        if m_col is None:
+            continue
         targets.append(
             MigrationTarget(
                 filename=filename,
-                table=m.group(1),
-                column=m.group(2),
+                table=m_table.group(1),
+                column=m_col.group(1),
                 is_idempotent_create=False,
             )
         )
@@ -321,7 +331,7 @@ def main(argv: list[str] | None = None) -> None:
             for filepath, commit_ts in migrations:
                 process_migration(conn, filepath, commit_ts, now=now, dry_run=args.dry_run)
     except psycopg.OperationalError as exc:
-        logger.error("DB connection failed: %s", exc)
+        logger.exception("DB connection failed: %s", exc)
         sys.exit(1)
 
     logger.info("migration_apply_watcher: scan complete — %d files checked", len(migrations))

@@ -58,8 +58,12 @@ def test_tenant_spend_key_refuses_invalid_period():
 
 
 def test_cost_cents_aud_from_usd_uses_documented_rate():
-    """1.00 USD → 1.55 AUD → 155 cents (with the documented rate)."""
-    assert USD_TO_AUD_RATE == 1.55
+    """1.00 USD → 1.55 AUD → 155 cents (with the documented rate). Use
+    math.isclose for the float rate constant — Sonar S1244 forbids `==`
+    on floats. Int converter output is asserted directly."""
+    import math
+
+    assert math.isclose(USD_TO_AUD_RATE, 1.55, rel_tol=1e-9)
     assert cost_cents_aud_from_usd(1.00) == 155
 
 

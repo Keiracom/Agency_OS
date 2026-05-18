@@ -45,6 +45,11 @@ NATS_URL_ENV = "NATS_URL"
 DEFAULT_NATS_URL = "nats://127.0.0.1:4222"
 SUPABASE_DSN_ENV = "SUPABASE_DB_DSN"
 
+# asyncpg DSN scheme suffix that must be stripped before connect (asyncpg
+# itself doesn't accept the SQLAlchemy-style ``+asyncpg`` in the URL).
+# Reference: reference_psycopg_supabase_pgbouncer.md / kei207 prior art.
+_ASYNCPG_DSN_PREFIX = "+asyncpg"
+
 # LAW II — Australia First. 1 USD = 1.55 AUD per CLAUDE.md.
 USD_TO_AUD_RATE = 1.55
 
@@ -174,7 +179,7 @@ async def _write_spend_row(
     try:
         import asyncpg  # noqa: PLC0415 — optional in some test envs
 
-        dsn = dsn.replace("+asyncpg", "")
+        dsn = dsn.replace(_ASYNCPG_DSN_PREFIX, "")
         conn = await asyncpg.connect(dsn)
         try:
             await conn.execute(
@@ -212,7 +217,7 @@ async def _write_budget_warn_audit(
     try:
         import asyncpg  # noqa: PLC0415
 
-        dsn = dsn.replace("+asyncpg", "")
+        dsn = dsn.replace(_ASYNCPG_DSN_PREFIX, "")
         conn = await asyncpg.connect(dsn)
         try:
             await conn.execute(
@@ -240,7 +245,7 @@ async def _read_daily_budget_cents_aud(tenant_id: int) -> int | None:
     try:
         import asyncpg  # noqa: PLC0415
 
-        dsn = dsn.replace("+asyncpg", "")
+        dsn = dsn.replace(_ASYNCPG_DSN_PREFIX, "")
         conn = await asyncpg.connect(dsn)
         try:
             row = await conn.fetchrow(

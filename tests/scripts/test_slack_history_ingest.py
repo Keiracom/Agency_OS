@@ -54,6 +54,19 @@ def test_noise_filter_keeps_real_content(mod):
     assert not mod.is_noise("Building KEI-201 now")
 
 
+def test_noise_filter_regex_precedence_supervisor_midstring(mod):
+    """S5850 regression: `[SUPERVISOR] fleet` mid-string must NOT be flagged as noise.
+
+    Pre-fix regex `^\\s*\\[FLEET...\\]|\\[SUPERVISOR\\]\\s+(fleet|cycle)` had `|`
+    splitting the anchor — second branch matched anywhere. With `.match()` that's
+    latent (anchored at pos 0), but the explicit non-capturing group documents intent
+    and is safe under `.search()` if ever swapped.
+    """
+    assert not mod.is_noise("Dave said [SUPERVISOR] fleet status looks good")
+    assert not mod.is_noise("we should review [SUPERVISOR] cycle metrics")
+    assert not mod.is_noise("note: [FLEET-STATUS:supervisor] was mentioned")
+
+
 # ─── Message-type classifier ─────────────────────────────────────────────────
 
 

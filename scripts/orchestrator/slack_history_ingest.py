@@ -112,7 +112,8 @@ CORPUS_SCHEMA = {
 
 _READY_HEARTBEAT_RE = re.compile(r"^\s*\[READY:[a-z0-9_-]+\]\s*$", re.IGNORECASE)
 _FLEET_STATUS_RE = re.compile(
-    r"^\s*\[FLEET-?STATUS:[a-z0-9_-]+\]|\[SUPERVISOR\]\s+(fleet|cycle)", re.IGNORECASE
+    r"^\s*(?:\[FLEET-?STATUS:[a-z0-9_-]+\]|\[SUPERVISOR\]\s+(?:fleet|cycle))",
+    re.IGNORECASE,
 )
 
 
@@ -375,8 +376,8 @@ def ensure_class() -> None:
     data = json.dumps(CORPUS_SCHEMA).encode()
     req = urlrequest.Request(f"{WEAVIATE_BASE}/v1/schema", data=data, method="POST")
     req.add_header("Content-Type", "application/json")
-    with urlrequest.urlopen(req, timeout=30):
-        pass
+    with urlrequest.urlopen(req, timeout=30) as resp:
+        resp.read()
     logger.info("created class %s", CORPUS_CLASS)
 
 
@@ -385,7 +386,7 @@ def ensure_class() -> None:
 # ---------------------------------------------------------------------------
 
 
-def main(argv: list[str] | None = None) -> int:
+def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--dry-run",
@@ -404,8 +405,36 @@ def main(argv: list[str] | None = None) -> int:
         default=10_000,
         help="max messages per channel (default 10k; bumps higher for full backfill)",
     )
-    args = parser.parse_args(argv)
+    return parser
 
+
+def _process_channel(
+    slug: str,
+    ch_id: str,
+    limit: int,
+    dry_run: bool,
+    by_type: dict[str, int],
+) -> tuple[int, int, int, int]:
+    """Returns (kept, posted, failed, noise) for one channel."""
+    kept = posted = failed = noise = 0
+    for raw in paginate_history(ch_id, total_cap=limit):
+        msg = slack_to_message(slug, raw)
+        if msg is None:
+            noise += 1
+            continue
+        by_type[msg.message_type] = by_type.get(msg.message_type, 0) + 1
+        kept += 1
+        if dry_run:
+            continue
+        if post_object(build_object(msg)):
+            posted += 1
+        else:
+            failed += 1
+    return kept, posted, failed, noise
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = _build_parser().parse_args(argv)
     channels = (args.channel,) if args.channel else CHANNEL_SLUGS
     if not BOT_TOKEN:
         logger.error("SLACK_BOT_TOKEN not set — required for history extract")
@@ -421,9 +450,7 @@ def main(argv: list[str] | None = None) -> int:
 
     by_channel: dict[str, int] = {}
     by_type: dict[str, int] = {}
-    posted = 0
-    skipped_noise = 0
-    failed = 0
+    total_posted = total_noise = total_failed = 0
 
     for slug in channels:
         ch_id = channel_ids.get(slug)
@@ -431,33 +458,24 @@ def main(argv: list[str] | None = None) -> int:
             logger.warning("channel #%s did not resolve — skipping", slug)
             continue
         logger.info("extracting #%s (%s, limit=%d)", slug, ch_id, args.limit)
-        n_ch = 0
-        for raw in paginate_history(ch_id, total_cap=args.limit):
-            msg = slack_to_message(slug, raw)
-            if msg is None:
-                skipped_noise += 1
-                continue
-            by_type[msg.message_type] = by_type.get(msg.message_type, 0) + 1
-            n_ch += 1
-            if args.dry_run:
-                continue
-            obj = build_object(msg)
-            if post_object(obj):
-                posted += 1
-            else:
-                failed += 1
-        by_channel[slug] = n_ch
-        logger.info("#%s done: %d messages kept", slug, n_ch)
+        kept, posted, failed, noise = _process_channel(
+            slug, ch_id, args.limit, args.dry_run, by_type
+        )
+        by_channel[slug] = kept
+        total_posted += posted
+        total_failed += failed
+        total_noise += noise
+        logger.info("#%s done: %d messages kept", slug, kept)
 
     logger.info(
         "summary: by_channel=%s by_type=%s skipped_noise=%d posted=%d failed=%d",
         json.dumps(by_channel),
         json.dumps(by_type),
-        skipped_noise,
-        posted,
-        failed,
+        total_noise,
+        total_posted,
+        total_failed,
     )
-    return 0 if failed == 0 else 2
+    return 0 if total_failed == 0 else 2
 
 
 if __name__ == "__main__":

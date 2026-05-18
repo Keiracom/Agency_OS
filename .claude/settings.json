@@ -86,6 +86,11 @@
       {
         "hooks": [
           {
+            "command": "bash scripts/hooks/env_schema_validate.sh",
+            "timeout": 5,
+            "type": "command"
+          },
+          {
             "command": "/home/elliotbot/clawd/venv/bin/python3 scripts/session_start_audit.py",
             "timeout": 10,
             "type": "command"

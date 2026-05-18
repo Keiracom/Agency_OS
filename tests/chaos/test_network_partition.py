@@ -27,7 +27,7 @@ def _attempt_external_call_with_circuit_break(
     try:
         call_fn()
         return True
-    except (ConnectionRefusedError, ConnectionError) as exc:
+    except ConnectionError as exc:
         on_failure_fn(repr(exc))
         return False
 

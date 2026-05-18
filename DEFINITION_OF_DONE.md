@@ -17,6 +17,54 @@ Not a summary. Not a tick. Verbatim output.
 
 ---
 
+## DUAL CONCUR RULE (KEI-206 — Ratified 2026-05-18)
+
+PR merge eligibility requires approval from any 2 of the 3 deliberators
+(Elliot / Aiden / Max). The third deliberator is the tiebreaker on splits.
+
+### Who can approve
+
+Authors are excluded from approving their own PRs.
+
+| PR author | Can approve |
+|-----------|-------------|
+| Elliot    | Aiden + Max |
+| Aiden     | Elliot + Max |
+| Max       | Elliot + Aiden |
+
+Workers (Orion / Atlas / Scout / Worker-4) are not part of the deliberation
+layer and cannot contribute to dual-concur review.
+
+### How PR review is routed
+
+All PR reviews route to the deliberation layer (Elliot / Aiden / Max) only.
+Workers do not review PRs. John (Face) does not review PRs.
+
+Approval signal: `[REVIEW:approve:<callsign>]` in #execution from two
+eligible deliberators unblocks merge. The eligible pair is determined by
+the author exclusion rule above.
+
+### Splits and tiebreaking
+
+If two deliberators approve and the third holds, the two approvals win
+(dual concur is sufficient — third is a tiebreaker only on active splits,
+not a veto on a completed pair).
+
+If all three deliberators disagree, John surfaces the 3-way split to Dave
+in plain English (#ceo). Dave resolves.
+
+### Activation gate
+
+Dual concur (replacing triple concur) is active as of KEI-206 ratification
+(2026-05-18). Author-exclusion rule is active immediately.
+
+The broader 8-agent role structure (John / deliberators / workers) is gated
+on NATS-cutover completion. Until cutover completes, the prior orchestrator
+role (Elliot) still handles dispatch and queue triage. The dual-concur rule
+and author-exclusion rule apply NOW regardless of cutover status.
+
+---
+
 ## PRE-WORK (before any code change)
 
 [ ] P1. Architecture confirmed

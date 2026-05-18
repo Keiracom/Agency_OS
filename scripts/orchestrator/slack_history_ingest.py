@@ -253,11 +253,21 @@ def _slack_get(method: str, params: dict[str, Any]) -> dict[str, Any]:
 
 
 def resolve_channel_ids(slugs: tuple[str, ...]) -> dict[str, str]:
-    """Return {slug: channel_id} via conversations.list — slug = name without '#'."""
+    """Return {slug: channel_id} via conversations.list — slug = name without '#'.
+
+    Slack's conversations.list defaults to `types=public_channel`, which silently
+    drops private channels (#ops, #completed_directives, #alerts) even when the
+    bot is a member. `exclude_archived=False` lets archived channels (e.g. #ops)
+    be backfilled — their history is still readable and is in-scope per dispatch.
+    """
     mapping: dict[str, str] = {}
     cursor = ""
     while True:
-        params: dict[str, Any] = {"limit": 200, "exclude_archived": True}
+        params: dict[str, Any] = {
+            "limit": 200,
+            "exclude_archived": False,
+            "types": "public_channel,private_channel",
+        }
         if cursor:
             params["cursor"] = cursor
         body = _slack_get("conversations.list", params)

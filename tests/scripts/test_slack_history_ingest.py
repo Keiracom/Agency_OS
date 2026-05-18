@@ -268,3 +268,38 @@ def test_schema_has_required_properties(mod):
     # 5 standard + 4 corpus-specific
     assert {"raw_text", "environment_hash", "created_at", "agent", "kei"} <= props
     assert {"channel", "message_type", "ts", "thread_ts"} <= props
+
+
+# ─── Channel resolution ─────────────────────────────────────────────────────
+
+
+def test_resolve_channel_ids_includes_private_and_archived(mod, monkeypatch):
+    """conversations.list default is public_channel only — drops private channels
+    silently. Pre-fix this caused #ops, #completed_directives, #alerts to be
+    skipped on live extract (only #ceo + #execution made it into Slack_history).
+    Verify the fix passes types=public_channel,private_channel and
+    exclude_archived=False (so archived #ops backfills too).
+    """
+    captured: list[dict] = []
+
+    def fake_get(method, params):
+        captured.append({"method": method, "params": dict(params)})
+        return {
+            "channels": [
+                {"name": "ops", "id": "C_OPS", "is_private": True, "is_archived": True},
+                {"name": "ceo", "id": "C_CEO", "is_private": False},
+                {"name": "execution", "id": "C_EXEC", "is_private": False},
+            ],
+            "response_metadata": {"next_cursor": ""},
+        }
+
+    monkeypatch.setattr(mod, "BOT_TOKEN", "xoxb-test")
+    monkeypatch.setattr(mod, "_slack_get", fake_get)
+
+    result = mod.resolve_channel_ids(("ops", "ceo", "execution"))
+
+    assert result == {"ops": "C_OPS", "ceo": "C_CEO", "execution": "C_EXEC"}
+    assert len(captured) == 1
+    p = captured[0]["params"]
+    assert p["types"] == "public_channel,private_channel"
+    assert p["exclude_archived"] is False

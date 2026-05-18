@@ -232,6 +232,32 @@ jobs:
         # Note: Using || true initially until test suite is stable
 
   # ============================================
+  # Chaos Tests — KEI-132 harness (NO || true mask)
+  # ============================================
+  chaos-test:
+    name: Chaos Tests (PR gate)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          pip install uv
+          uv pip install --system pytest pytest-asyncio pytest-timeout
+
+      - name: Run chaos harness
+        # NO `|| true` mask — chaos test failure blocks the PR per KEI-132
+        # acceptance ("PR blocked on chaos test failure"). Real-infrastructure
+        # scenarios (chaos_db marker) auto-skip when DATABASE_URL not set.
+        run: pytest tests/chaos -v --tb=short --timeout=10
+
+  # ============================================
   # Frontend: Lint, Type Check, Build
   # ============================================
   frontend-check:

@@ -5,3 +5,17 @@ repos:
       - id: ruff
         args: [--fix]
       - id: ruff-format
+
+  # KEI-143: callsign-vs-IDENTITY.md mismatch guard. Blocks commits when the
+  # CALLSIGN env var is set but doesn't match the local IDENTITY.md. Catches
+  # the cross-worktree mistake before commits land with the wrong callsign tag.
+  # Skipped silently when CALLSIGN env is unset (humans without the agent env).
+  - repo: local
+    hooks:
+      - id: check-callsign-match
+        name: callsign matches IDENTITY.md (LAW XVII)
+        entry: bash scripts/git/check_callsign_match.sh
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [commit]

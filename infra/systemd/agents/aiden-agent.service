@@ -1,8 +1,9 @@
 [Unit]
 Description=Keiracom aiden agent session (KEI-94 keep-alive)
 Documentation=https://linear.app/keiracom/issue/KEI-94
-After=network-online.target
+After=network-online.target openclaw.service
 Wants=network-online.target
+Requires=openclaw.service
 StartLimitBurst=5
 StartLimitIntervalSec=300
 

@@ -205,6 +205,57 @@ def get_active_claim(conn: psycopg.Connection, callsign: str) -> tuple[str, str]
 
 _KEI_ID_RE = re.compile(r"\bkei[-\s]?\d+\b", re.IGNORECASE)
 
+# KEI-204 — dep-blocked drift filter. Captures the canonical phrasings used
+# by Elliot's filing scripts + Linear convention. Each pattern's capture
+# group is the KEI-NNN identifier that this row depends on; if any captured
+# blocker is still status != 'done', claim_next_task skips the row.
+# Patterns observed empirically across this session's 8 drift cases:
+#   "FOLLOW-UP after KEI-185"  (KEI-191)
+#   "depends on KEI-N"         (Linear convention)
+#   "gated on KEI-N"
+#   "blocked on KEI-N"
+#   "sub of KEI-185"           (KEI-193 / KEI-194)
+#   "(KEI-192 follow-up)"      (KEI-196 / KEI-197 / KEI-198)
+_BLOCKER_PATTERNS = [
+    re.compile(r"FOLLOW[\s-]?UP\s+after\s+(KEI-\d+)", re.IGNORECASE),
+    re.compile(r"depends\s+on\s+(KEI-\d+)", re.IGNORECASE),
+    re.compile(r"gated\s+on\s+(KEI-\d+)", re.IGNORECASE),
+    re.compile(r"blocked\s+on\s+(KEI-\d+)", re.IGNORECASE),
+    re.compile(r"sub\s+of\s+(KEI-\d+)", re.IGNORECASE),
+    re.compile(r"\((KEI-\d+)\s+follow[\s-]?up\)", re.IGNORECASE),
+]
+
+
+def extract_blocker_keis(text: str) -> set[str]:
+    """KEI-204 — extract KEI-NNN identifiers this row depends on from its
+    title+description. Uses the 6 canonical phrasings observed empirically
+    across the 2026-05-17→18 session's drift cases.
+
+    Returns the canonical uppercase set; caller is responsible for the
+    status='done' check against public.tasks.
+    """
+    if not text:
+        return set()
+    blockers: set[str] = set()
+    for pat in _BLOCKER_PATTERNS:
+        for m in pat.findall(text):
+            digits = "".join(c for c in m if c.isdigit())
+            if digits:
+                blockers.add(f"KEI-{digits}")
+    return blockers
+
+
+def _unfinished_blockers(cur: psycopg.Cursor, blocker_ids: set[str]) -> set[str]:
+    """KEI-204 — return the subset of blocker_ids whose tasks.status != 'done'.
+    Empty set means all blockers cleared; row is claimable."""
+    if not blocker_ids:
+        return set()
+    cur.execute(
+        "SELECT id FROM public.tasks WHERE id = ANY(%s::text[]) AND status != 'done'",
+        (sorted(blocker_ids),),
+    )
+    return {row[0] for row in cur.fetchall()}
+
 
 def fetch_open_pr_kei_ids() -> set[str]:
     """KEI-199 — return set of KEI-NNN identifiers mentioned in OPEN PR titles+bodies.
@@ -248,6 +299,9 @@ def fetch_open_pr_kei_ids() -> set[str]:
     return kei_ids
 
 
+_CANDIDATE_LIMIT = 10  # KEI-204 — top-N candidates to iterate; bounds dep-blocked rescan cost
+
+
 def claim_next_task(
     conn: psycopg.Connection, callsign: str, phase_max: int
 ) -> tuple[str, str] | None:
@@ -256,50 +310,67 @@ def claim_next_task(
     KEI-199 — filters out KEIs that already have an OPEN PR (title or body
     mentions). Without this, the supervisor loop re-claims already-shipped
     work (KEI-90 / 122 / 187 / 188 drift-syncs in the 2026-05-17→18 session).
+
+    KEI-204 — filters out FOLLOW-UP / sub-of / depends-on / gated-on rows
+    whose blocking KEI is still status != 'done'. Anchor: KEI-191
+    'FOLLOW-UP after KEI-C (KEI-185 Nova spawn)' was dispatched 3x in the
+    session despite the explicit dep gate (Max yield, Scout yield, Aiden
+    yield). Six canonical phrasings parsed via _BLOCKER_PATTERNS.
     """
     open_pr_keis = fetch_open_pr_kei_ids()
     with conn.cursor() as cur:
         if open_pr_keis:
             cur.execute(
                 """
-                SELECT id, title FROM public.tasks
+                SELECT id, title, COALESCE(description, '') FROM public.tasks
                 WHERE status = 'available'
                   AND (phase IS NULL OR phase <= %s)
                   AND (is_parent IS NULL OR is_parent = false)
                   AND id != ALL(%s::text[])
                 ORDER BY priority ASC, created_at ASC
-                LIMIT 1
+                LIMIT %s
                 FOR UPDATE SKIP LOCKED
                 """,
-                (phase_max, sorted(open_pr_keis)),
+                (phase_max, sorted(open_pr_keis), _CANDIDATE_LIMIT),
             )
         else:
             cur.execute(
                 """
-                SELECT id, title FROM public.tasks
+                SELECT id, title, COALESCE(description, '') FROM public.tasks
                 WHERE status = 'available'
                   AND (phase IS NULL OR phase <= %s)
                   AND (is_parent IS NULL OR is_parent = false)
                 ORDER BY priority ASC, created_at ASC
-                LIMIT 1
+                LIMIT %s
                 FOR UPDATE SKIP LOCKED
                 """,
-                (phase_max,),
+                (phase_max, _CANDIDATE_LIMIT),
             )
-        row = cur.fetchone()
-        if not row:
-            return None
-        task_id, title = row[0], row[1]
-        cur.execute(
-            """
-            UPDATE public.tasks
-            SET status = 'active', claimed_by = %s, claimed_at = NOW()
-            WHERE id = %s
-            """,
-            (callsign, task_id),
-        )
-    conn.commit()
-    return (task_id, title)
+        candidates = cur.fetchall()
+        for row in candidates:
+            task_id, title, description = row[0], row[1], row[2] or ""
+            blockers = extract_blocker_keis(title + "\n" + description)
+            if blockers:
+                unfinished = _unfinished_blockers(cur, blockers)
+                if unfinished:
+                    log.debug(
+                        "KEI-204: %s skipped — blocked by %s",
+                        task_id,
+                        sorted(unfinished),
+                    )
+                    continue
+            cur.execute(
+                """
+                UPDATE public.tasks
+                SET status = 'active', claimed_by = %s, claimed_at = NOW()
+                WHERE id = %s
+                """,
+                (callsign, task_id),
+            )
+            conn.commit()
+            return (task_id, title)
+    # Either no candidates OR all candidates dep-blocked
+    return None
 
 
 def release_stale_claims(conn: psycopg.Connection) -> int:

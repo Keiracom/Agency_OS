@@ -533,42 +533,62 @@ def test_fetch_open_pr_kei_ids_handles_malformed_json(monkeypatch):
     assert ids == set()
 
 
+class _FakeCur:
+    """Test helper: configurable cursor returning preset rows."""
+
+    def __init__(self, candidates=None, blocker_rows=None):
+        self.candidates = list(candidates or [])
+        self.blocker_rows = list(blocker_rows or [])
+        self._next_fetchall = self.candidates
+        self.executed = []
+
+    def execute(self, sql, params=None):
+        self.executed.append((sql, params))
+        # Heuristic: if the SQL references task_verifications OR public.tasks
+        # WHERE id = ANY (blocker lookup), the NEXT fetchall returns blocker_rows.
+        # Otherwise it returns the candidate list.
+        if "status != 'done'" in sql and "ANY" in sql:
+            self._next_fetchall = self.blocker_rows
+        else:
+            self._next_fetchall = self.candidates
+
+    def fetchall(self):
+        rows = self._next_fetchall
+        # Subsequent fetchall calls return [] unless re-armed by another execute.
+        self._next_fetchall = []
+        return rows
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        return False
+
+
+class _FakeConn:
+    def __init__(self, cur: _FakeCur):
+        self._cur = cur
+
+    def cursor(self):
+        return self._cur
+
+    def commit(self):
+        pass
+
+
 def test_claim_next_task_excludes_keis_with_open_prs(monkeypatch):
     """KEI-199 — when an open PR mentions KEI-N, claim_next_task SKIPS that
     KEI-N in the SELECT (id != ALL excluded_keis). Anchor scenario: the 4
     drift-syncs would have been prevented by this filter."""
-    # Mock fetch_open_pr_kei_ids to return one in-flight KEI
     with patch.object(fs, "fetch_open_pr_kei_ids", return_value={"KEI-188"}):
-        # Build a fake conn that records cursor.execute args
-        executed_queries = []
-
-        class _FakeCur:
-            def execute(self, sql, params=None):
-                executed_queries.append((sql, params))
-
-            def fetchone(self):
-                return ("KEI-200", "different task")
-
-            def __enter__(self):
-                return self
-
-            def __exit__(self, *_):
-                return False
-
-        class _FakeConn:
-            def cursor(self):
-                return _FakeCur()
-
-            def commit(self):
-                pass
-
-        result = fs.claim_next_task(_FakeConn(), "aiden", 99)
+        cur = _FakeCur(candidates=[("KEI-200", "different task", "")])
+        result = fs.claim_next_task(_FakeConn(cur), "aiden", 99)
         assert result == ("KEI-200", "different task")
-        # The SELECT must include id != ALL(...) with KEI-188 in the excluded list
-        select_query = next(q for q, _ in executed_queries if "SELECT id, title" in q)
+        select_query = next(q for q, _ in cur.executed if "SELECT id, title" in q)
         assert "!= ALL" in select_query
-        # Params should include the sorted exclusion list
-        select_params = next(p for q, p in executed_queries if "SELECT id, title" in q)
+        select_params = next(p for q, p in cur.executed if "SELECT id, title" in q)
+        # phase_max, sorted(open_pr_keis), candidate_limit
+        assert select_params[0] == 99
         assert select_params[1] == ["KEI-188"]
 
 
@@ -576,29 +596,77 @@ def test_claim_next_task_no_open_prs_uses_unfiltered_query(monkeypatch):
     """KEI-199 — when no open PRs exist (or fetch fails), the SELECT runs
     without the exclusion clause (preserves prior behaviour)."""
     with patch.object(fs, "fetch_open_pr_kei_ids", return_value=set()):
-        executed_queries = []
-
-        class _FakeCur:
-            def execute(self, sql, params=None):
-                executed_queries.append((sql, params))
-
-            def fetchone(self):
-                return ("KEI-300", "available task")
-
-            def __enter__(self):
-                return self
-
-            def __exit__(self, *_):
-                return False
-
-        class _FakeConn:
-            def cursor(self):
-                return _FakeCur()
-
-            def commit(self):
-                pass
-
-        result = fs.claim_next_task(_FakeConn(), "aiden", 99)
+        cur = _FakeCur(candidates=[("KEI-300", "available task", "")])
+        result = fs.claim_next_task(_FakeConn(cur), "aiden", 99)
         assert result == ("KEI-300", "available task")
-        select_query = next(q for q, _ in executed_queries if "SELECT id, title" in q)
+        select_query = next(q for q, _ in cur.executed if "SELECT id, title" in q)
         assert "!= ALL" not in select_query
+
+
+# ─── KEI-204: dep-blocked drift filter ──────────────────────────────────────
+
+
+def test_extract_blocker_keis_matches_six_canonical_phrasings():
+    """KEI-204 — the 6 patterns from this session's drift cases all extract."""
+    samples = {
+        "FOLLOW-UP after KEI-185": "KEI-185",
+        "depends on KEI-100": "KEI-100",
+        "gated on KEI-50": "KEI-50",
+        "blocked on KEI-99": "KEI-99",
+        "sub of KEI-185": "KEI-185",
+        "(KEI-192 follow-up)": "KEI-192",
+    }
+    for text, expected in samples.items():
+        blockers = fs.extract_blocker_keis(text)
+        assert expected in blockers, f"failed to extract {expected} from {text!r}"
+
+
+def test_extract_blocker_keis_empty_on_nondep_text():
+    """KEI-204 — no false positives when text mentions KEI-N without dep phrasing."""
+    assert fs.extract_blocker_keis("KEI-200: build feature") == set()
+    assert fs.extract_blocker_keis("") == set()
+    assert fs.extract_blocker_keis(None) == set()
+
+
+def test_claim_next_task_skips_dep_blocked_candidate(monkeypatch):
+    """KEI-204 — when top candidate's title says 'FOLLOW-UP after KEI-X' and
+    KEI-X is still status != 'done', claim_next_task skips it and tries next."""
+    with patch.object(fs, "fetch_open_pr_kei_ids", return_value=set()):
+        # Candidate 1: blocked on KEI-185 (not done). Candidate 2: clean.
+        cur = _FakeCur(
+            candidates=[
+                ("KEI-191", "FOLLOW-UP after KEI-185 migration", "details"),
+                ("KEI-300", "unblocked task", "no deps"),
+            ],
+            blocker_rows=[("KEI-185",)],  # KEI-185 still active = unfinished
+        )
+        result = fs.claim_next_task(_FakeConn(cur), "aiden", 99)
+        # Skip the blocked candidate, claim the clean one
+        assert result == ("KEI-300", "unblocked task")
+
+
+def test_claim_next_task_claims_dep_blocked_when_blocker_done(monkeypatch):
+    """KEI-204 — when 'FOLLOW-UP after KEI-X' AND KEI-X status == 'done',
+    claim_next_task proceeds with that row."""
+    with patch.object(fs, "fetch_open_pr_kei_ids", return_value=set()):
+        cur = _FakeCur(
+            candidates=[("KEI-191", "FOLLOW-UP after KEI-185 migration", "")],
+            blocker_rows=[],  # empty → KEI-185 is done OR not found
+        )
+        result = fs.claim_next_task(_FakeConn(cur), "aiden", 99)
+        assert result == ("KEI-191", "FOLLOW-UP after KEI-185 migration")
+
+
+def test_claim_next_task_returns_none_when_all_candidates_blocked(monkeypatch):
+    """KEI-204 — if every top-N candidate is dep-blocked, return None
+    instead of claiming a blocked row."""
+    with patch.object(fs, "fetch_open_pr_kei_ids", return_value=set()):
+        cur = _FakeCur(
+            candidates=[
+                ("KEI-301", "depends on KEI-100", ""),
+                ("KEI-302", "blocked on KEI-200", ""),
+            ],
+            blocker_rows=[("KEI-100",), ("KEI-200",)],  # both blockers unfinished
+        )
+        result = fs.claim_next_task(_FakeConn(cur), "aiden", 99)
+        assert result is None

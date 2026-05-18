@@ -570,13 +570,62 @@ def list_open_prs() -> list[dict[str, Any]]:
         return []
 
 
+def fetch_pr_comments(pr_number: int) -> list[dict]:
+    """Fetch PR comments via gh pr view --json comments. Returns list of comment dicts."""
+    result = subprocess.run(
+        ["gh", "pr", "view", str(pr_number), "--json", "comments"],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        log.warning("gh pr view %d comments failed: %s", pr_number, result.stderr)
+        return []
+    try:
+        data = json.loads(result.stdout) or {}
+        return data.get("comments") or []
+    except json.JSONDecodeError:
+        return []
+
+
+# KEI-190: trailing `?` on `-final` is the bug fix — previous regex required
+# `-final` to match, so bare `[REVIEW:HOLD:callsign]` (the form every reviewer
+# actually uses) was treated as "no review found" and the supervisor re-dispatched
+# the same PR every cycle. Now matches: bare `[REVIEW:callsign]`, `:approve:`,
+# `:hold:`, `:hold-final:` — symmetric APPROVE/HOLD parsing.
+_REVIEW_COMMENT_PATTERN_TMPL = r"\[REVIEW(?::(?:approve|hold(?:-final)?))?:{callsign}\]"
+
+
+def comment_has_review_marker(body: str, callsign: str) -> bool:
+    """Return True if body contains any [REVIEW:...:<callsign>] variant (case-insensitive)."""
+    import re
+
+    pattern = _REVIEW_COMMENT_PATTERN_TMPL.format(callsign=re.escape(callsign))
+    return bool(re.search(pattern, body, re.IGNORECASE))
+
+
+
 def agent_has_reviewed(pr: dict, callsign: str) -> bool:
-    """Check if callsign already posted a [REVIEW:callsign] comment on this PR."""
+    """Check if callsign already posted a [REVIEW:...:callsign] marker on this PR.
+
+    Checks both formal GitHub review objects (pr['reviews']) and PR comments
+    fetched via gh pr view --json comments, since agents post review markers
+    as Slack-relayed comments rather than formal GH reviews. Uses the
+    KEI-190 symmetric APPROVE/HOLD regex via comment_has_review_marker.
+    """
     reviews = pr.get("reviews") or []
-    tag = f"[REVIEW:{callsign}]"
     for r in reviews:
         body = r.get("body", "") or ""
-        if tag in body:
+        if comment_has_review_marker(body, callsign):
+            return True
+
+    pr_number = pr.get("number")
+    if pr_number is None:
+        return False
+    comments = fetch_pr_comments(pr_number)
+    for c in comments:
+        body = c.get("body", "") or ""
+        if comment_has_review_marker(body, callsign):
+            log.info("%s already reviewed PR #%d — skip", callsign, pr_number)
             return True
     return False
 
@@ -657,12 +706,79 @@ def build_task_prompt(task_id: str, title: str, description: str) -> str:
     )
 
 
+_SONAR_PROJECT_KEY = "Keiracom_Agency_OS"
+_SONAR_BASE = "https://sonarcloud.io/api"
+
+
+def fetch_sonar_status(pr_number: int) -> dict[str, Any]:
+    """KEI-189: dual-endpoint Sonar verify — issues + Quality Gate.
+
+    /api/issues/search returns S-rule findings (bugs/code smells/vulnerabilities).
+    /api/qualitygates/project_status returns the QG verdict including SEPARATE
+    conditions like new_duplicated_lines_density that the issues endpoint
+    does NOT surface.
+
+    Anchored on PRs #940/#963/#981 today where issues=0 but QG=ERROR on
+    dup-density — three of us missed the gap because we only checked /issues.
+    Encodes the feedback_sonarcloud_verify_pattern memory pin mechanically.
+
+    Returns {"issues_total": int, "qg_status": str, "qg_failing": list[str]}
+    on success; {} on any fetch failure (fail-open — review still proceeds,
+    agent sees missing-data in brief and can run curl themselves).
+    """
+    out: dict[str, Any] = {}
+    issues_url = f"{_SONAR_BASE}/issues/search?componentKeys={_SONAR_PROJECT_KEY}&pullRequest={pr_number}&resolved=false"
+    qg_url = f"{_SONAR_BASE}/qualitygates/project_status?projectKey={_SONAR_PROJECT_KEY}&pullRequest={pr_number}"
+    try:
+        with urllib.request.urlopen(issues_url, timeout=10) as resp:
+            data = json.loads(resp.read())
+        out["issues_total"] = int(data.get("total", 0))
+    except Exception as exc:
+        log.warning("Sonar /issues fetch failed for PR #%d: %s", pr_number, exc)
+    try:
+        with urllib.request.urlopen(qg_url, timeout=10) as resp:
+            data = json.loads(resp.read())
+        ps = data.get("projectStatus", {})
+        out["qg_status"] = ps.get("status", "UNKNOWN")
+        out["qg_failing"] = [
+            f"{c.get('metricKey')}={c.get('actualValue')} (>{c.get('errorThreshold')})"
+            for c in ps.get("conditions", [])
+            if c.get("status") == "ERROR"
+        ]
+    except Exception as exc:
+        log.warning("Sonar /qualitygates fetch failed for PR #%d: %s", pr_number, exc)
+    return out
+
+
+def _format_sonar_brief(sonar: dict[str, Any]) -> str:
+    """Format Sonar status for inclusion in the review brief. Returns empty
+    string if no data fetched (fail-open — reviewer runs curl themselves)."""
+    if not sonar:
+        return ""
+    lines = ["", "Sonar (BOTH endpoints — issues + QG — checked at brief-emit time):"]
+    if "issues_total" in sonar:
+        lines.append(f"  • /api/issues/search → total NEW unresolved: {sonar['issues_total']}")
+    if "qg_status" in sonar:
+        lines.append(f"  • /api/qualitygates/project_status → status: {sonar['qg_status']}")
+        for cond in sonar.get("qg_failing", []) or []:
+            lines.append(f"      FAIL: {cond}")
+    lines.append(
+        "  ⚠ APPROVE requires BOTH endpoints clean (issues=0 AND QG=OK). "
+        "QG can ERROR on dimensions like new_duplicated_lines_density that issues misses."
+    )
+    return "\n".join(lines)
+
+
 def build_review_prompt(pr_number: int, pr_title: str, pr_url: str, callsign: str) -> str:
+    """Emit the review-claim prompt. KEI-189: includes Sonar issues + QG snapshot."""
+    sonar = fetch_sonar_status(pr_number)
+    sonar_block = _format_sonar_brief(sonar)
     return (
         f"You auto-claimed review of PR #{pr_number}: {pr_title}. "
         f"URL: {pr_url}. "
         f"Run `gh pr view {pr_number}` + check CI/Sonar, "
-        f"post [REVIEW:{callsign}] APPROVE or HOLD with verbatim evidence. Don't ask — execute."
+        f"post [REVIEW:{callsign}] APPROVE or HOLD with verbatim evidence. "
+        f"Don't ask — execute.{sonar_block}"
     )
 
 

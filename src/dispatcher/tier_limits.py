@@ -103,16 +103,16 @@ def get_tenant_tier(tenant_id: str) -> Tier:
     except Exception as exc:  # noqa: BLE001 — tier lookup must fail-closed
         logger.warning(
             "tier lookup raised for tenant %s (%s) — defaulting to %s",
-            tenant_id,
-            exc,
+            tenant_id.replace("\n", "").replace("\r", ""),
+            str(exc).replace("\n", "").replace("\r", ""),
             DEFAULT_TIER,
         )
         return DEFAULT_TIER
     if tier not in TIER_LIMITS:
         logger.warning(
             "tier lookup returned unknown tier %r for %s — defaulting to %s",
-            tier,
-            tenant_id,
+            str(tier).replace("\n", "").replace("\r", ""),
+            tenant_id.replace("\n", "").replace("\r", ""),
             DEFAULT_TIER,
         )
         return DEFAULT_TIER

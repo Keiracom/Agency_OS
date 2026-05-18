@@ -1,0 +1,55 @@
+# Dockerfile.dispatcher — KEI-127 / bd Agency_OS-7e18dw
+#
+# Model B Dispatcher container image. Built by Railway server-side via
+# `railway up --service dispatcher` from `.github/workflows/build-push-docker.yml`
+# on every main push touching dispatcher source or this file.
+#
+# Slim image — no need for the API/Worker apt deps (gcc, libpq-dev) because
+# the dispatcher uses asyncpg (no compile) + httpx + PyJWT (transitive from
+# fastapi-users) for auth_minter. nats-py is NOT a dispatcher dep; NATS
+# message bus is consumed via the FastAPI side, not the dispatcher process.
+#
+# Entrypoint: uvicorn src.dispatcher.main:app on $PORT (Railway sets PORT).
+
+# syntax=docker/dockerfile:1.4
+
+FROM python:3.11-slim AS base
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+WORKDIR /app
+
+# curl is required for the HEALTHCHECK below.
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# === Dependencies ===
+FROM base AS dependencies
+COPY requirements.txt .
+RUN pip install --upgrade pip && pip install -r requirements.txt
+
+# === Production ===
+FROM dependencies AS production
+
+# Copy the dispatcher source. Dispatcher only imports from src.dispatcher.*
+# (verified via grep on `from src.` outside its own package — single match
+# is its own auth_minter side-effect import). Copy the full src/ tree to
+# stay forward-compatible with future cross-package imports without forcing
+# a Dockerfile change.
+COPY src/ ./src/
+
+# Non-root for runtime — same convention as Dockerfile (API/Worker).
+RUN adduser --disabled-password --gecos '' dispatcher \
+    && chown -R dispatcher:dispatcher /app
+USER dispatcher
+
+# Railway sets PORT; default to 4001 (matches the Vultr systemd default).
+EXPOSE 4001
+
+# Health probe hits /dispatcher/health — populated by src.dispatcher.main.app.
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:${PORT:-4001}/dispatcher/health || exit 1
+
+CMD ["sh", "-c", "uvicorn src.dispatcher.main:app --host 0.0.0.0 --port ${PORT:-4001} --log-level info"]

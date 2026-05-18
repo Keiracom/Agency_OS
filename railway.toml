@@ -50,3 +50,21 @@ startCommand = "prefect worker start --pool default --type process"
 [services.resources]
 # 4 GB ceiling — workers spawn sub-agents that each need ~512 MB.
 memoryMB = 4096
+
+# ── Service: Dispatcher (KEI-127 / KEI-213, Model B) ─────────────────────
+# Per-service builder override — uses Dockerfile.dispatcher so the
+# dispatcher image stays slim (no API/Worker apt deps) and a change to
+# either Dockerfile cannot drag the other service into a rebuild.
+[[services]]
+name = "dispatcher"
+[services.build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile.dispatcher"
+[services.deploy]
+startCommand = "uvicorn src.dispatcher.main:app --host 0.0.0.0 --port ${PORT:-4001} --log-level info"
+healthcheckPath = "/dispatcher/health"
+healthcheckTimeout = 30
+[services.resources]
+# 1 GB — dispatcher is FastAPI + auth_minter + interceptor_proxy + spend_tracker
+# + watchdog + reaper. No sub-agent spawn (that runs on Vultr / future hosts).
+memoryMB = 1024

@@ -54,19 +54,21 @@ def test_agent_routing_returns_v2_when_set(monkeypatch):
 
 
 def test_is_v2_false_when_global_flag_off(monkeypatch):
-    monkeypatch.setattr(fs, "SUPERVISOR_V2_ENABLED", False)
+    # KEI-222: canonical env path replaces the import-time SUPERVISOR_V2_ENABLED
+    # bool constant. Tests now setenv FLEET_SUPERVISOR_V2_ENABLED directly.
+    monkeypatch.delenv("FLEET_SUPERVISOR_V2_ENABLED", raising=False)
     monkeypatch.setenv("AGENT_ROUTING_ELLIOT", "v2")
     assert fs._is_v2("elliot") is False
 
 
 def test_is_v2_false_when_agent_routing_v1(monkeypatch):
-    monkeypatch.setattr(fs, "SUPERVISOR_V2_ENABLED", True)
+    monkeypatch.setenv("FLEET_SUPERVISOR_V2_ENABLED", "1")
     monkeypatch.setenv("AGENT_ROUTING_ELLIOT", "v1")
     assert fs._is_v2("elliot") is False
 
 
 def test_is_v2_true_when_both_set(monkeypatch):
-    monkeypatch.setattr(fs, "SUPERVISOR_V2_ENABLED", True)
+    monkeypatch.setenv("FLEET_SUPERVISOR_V2_ENABLED", "1")
     monkeypatch.setenv("AGENT_ROUTING_ELLIOT", "v2")
     assert fs._is_v2("elliot") is True
 

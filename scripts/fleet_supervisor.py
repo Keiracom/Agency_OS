@@ -29,18 +29,25 @@ from typing import Any
 import psycopg
 
 # ---------------------------------------------------------------------------
-# KEI-183: Supervisor v2 feature flags
+# KEI-183 / KEI-222: Supervisor v2 feature flags
 # ---------------------------------------------------------------------------
-# SUPERVISOR_V2_ENABLED=1  enables v2 for agents whose AGENT_ROUTING=v2.
+# FLEET_SUPERVISOR_V2_ENABLED=1  enables v2 for agents whose AGENT_ROUTING=v2.
 # AGENT_ROUTING_<CALLSIGN>=v2 (e.g. AGENT_ROUTING_ELLIOT=v2) opts that agent in.
-# Both default OFF — v1 path is unchanged when flags absent.
+# Both default OFF — v1 path is unchanged when flags absent. The flag is read
+# at runtime (not import time) so install/test env writes always take effect.
 
-SUPERVISOR_V2_ENABLED: bool = os.environ.get("SUPERVISOR_V2_ENABLED", "0") == "1"
+FLEET_SUPERVISOR_V2_ENV = "FLEET_SUPERVISOR_V2_ENABLED"
 
 # NATS connection details — canonical messaging backbone per KEI-205.
 # Valkey stays for KEI-117 rate limiting + KV state only; NATS is the
 # canonical messaging backbone per KEI-205.
 NATS_URL: str = os.environ.get("NATS_URL", "nats://127.0.0.1:4222")
+
+
+def _supervisor_v2_enabled() -> bool:
+    """KEI-185 — read `FLEET_SUPERVISOR_V2_ENABLED` env truthy-flag."""
+    raw = os.environ.get(FLEET_SUPERVISOR_V2_ENV, "").strip().lower()
+    return raw in {"1", "true", "yes", "on"}
 
 
 def _agent_routing(callsign: str) -> str:
@@ -51,7 +58,7 @@ def _agent_routing(callsign: str) -> str:
 
 def _is_v2(callsign: str) -> bool:
     """True when both global flag and per-agent routing are set to v2."""
-    return SUPERVISOR_V2_ENABLED and _agent_routing(callsign) == "v2"
+    return _supervisor_v2_enabled() and _agent_routing(callsign) == "v2"
 
 
 def _nats_publish_state(callsign: str, state: str) -> None:
@@ -100,11 +107,6 @@ AGENTS = [
     {"callsign": "scout", "tmux": "scout:0", "service": "scout-agent"},
     {"callsign": "nova", "tmux": "nova:0", "service": "nova-agent"},
 ]
-
-# KEI-185 — supervisor v2 enable flag. When set to truthy, main() routes to
-# `src.fleet.supervisor_v2.run()` (KEI-183, Elliot PR #990). Falls back to v1
-# with a logged warning if v2 module is missing — flip-on order is enforced.
-FLEET_SUPERVISOR_V2_ENV = "FLEET_SUPERVISOR_V2_ENABLED"
 
 # tmux send-keys delay in seconds
 TMUX_DELAY = "0.5"
@@ -883,12 +885,6 @@ def post_ceo_status(report: FleetReport) -> None:
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
-
-
-def _supervisor_v2_enabled() -> bool:
-    """KEI-185 — read `FLEET_SUPERVISOR_V2_ENABLED` env truthy-flag."""
-    raw = os.environ.get(FLEET_SUPERVISOR_V2_ENV, "").strip().lower()
-    return raw in {"1", "true", "yes", "on"}
 
 
 def _try_run_supervisor_v2() -> bool:

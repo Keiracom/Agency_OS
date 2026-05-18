@@ -259,7 +259,12 @@ def run_db_indexer(
     signal.signal(signal.SIGTERM, _on_signal)
     signal.signal(signal.SIGINT, _on_signal)
 
-    with psycopg.connect(resolve_pg_dsn(), autocommit=True) as conn:
+    # prepare_threshold=None per reference_psycopg_supabase_pgbouncer (KEI-54B
+    # PR #881): Supabase pooler is pgbouncer txn-mode and drops PREPARE between
+    # leases. Without this, psycopg3 auto-prepares after 5 executions and the
+    # next batch hits DuplicatePreparedStatement → InvalidSqlStatementName loop
+    # (root cause of KEI-70st — 20h stuck error stream after first ~200 rows).
+    with psycopg.connect(resolve_pg_dsn(), autocommit=True, prepare_threshold=None) as conn:
         indexer = indexer_factory(conn)
         target_class = indexer.target_class
         logger.info(

@@ -1,0 +1,49 @@
+name: Build + push Dispatcher image to Railway
+
+# KEI-127 / bd Agency_OS-7e18dw — Model B Dispatcher container deploy.
+#
+# On every push to main that touches dispatcher source or its packaging,
+# trigger a Railway deploy. Railway server-side reads `Dockerfile.dispatcher`
+# via the `dispatcher` service entry in `railway.toml`, builds the image,
+# pushes to Railway's internal registry, and redeploys the running service.
+# Existing `agency-os` deploy in `ci.yml` is unaffected.
+#
+# Auth: existing RAILWAY_TOKEN secret (same one ci.yml uses for the API
+# deploy). No new secrets required.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Dockerfile.dispatcher"
+      - "src/dispatcher/**"
+      - "railway.toml"
+      - ".github/workflows/build-push-docker.yml"
+      - "requirements.txt"
+
+permissions:
+  contents: read
+
+concurrency:
+  # One Dispatcher deploy at a time on main. New push cancels in-flight build.
+  group: dispatcher-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    name: Build + push Dispatcher to Railway
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Deploy Dispatcher to Railway
+        run: railway up --service dispatcher --detach
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}

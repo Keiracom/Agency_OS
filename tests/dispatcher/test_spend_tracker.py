@@ -21,7 +21,7 @@ from src.dispatcher.spend_tracker import (
     USD_TO_AUD_RATE,
     _seconds_until_midnight_utc,
     _seconds_until_month_boundary_utc,
-    cost_aud_cents_from_usd,
+    cost_cents_aud_from_usd,
     get_spend,
     record,
     tenant_spend_key,
@@ -57,26 +57,26 @@ def test_tenant_spend_key_refuses_invalid_period():
 # ─── LAW II conversion ─────────────────────────────────────────────────────
 
 
-def test_cost_aud_cents_from_usd_uses_documented_rate():
+def test_cost_cents_aud_from_usd_uses_documented_rate():
     """1.00 USD → 1.55 AUD → 155 cents (with the documented rate)."""
     assert USD_TO_AUD_RATE == 1.55
-    assert cost_aud_cents_from_usd(1.00) == 155
+    assert cost_cents_aud_from_usd(1.00) == 155
 
 
-def test_cost_aud_cents_from_usd_rounds_half_away_from_zero():
+def test_cost_cents_aud_from_usd_rounds_half_away_from_zero():
     """Small fragments must not silently vanish from billing totals."""
     # 0.001 USD * 1.55 * 100 = 0.155 cents → rounds to 0 (Python banker's rounding hits 0)
     # 0.005 USD * 1.55 * 100 = 0.775 cents → rounds to 1
-    assert cost_aud_cents_from_usd(0.005) == 1
+    assert cost_cents_aud_from_usd(0.005) == 1
 
 
-def test_cost_aud_cents_from_usd_zero():
-    assert cost_aud_cents_from_usd(0.0) == 0
+def test_cost_cents_aud_from_usd_zero():
+    assert cost_cents_aud_from_usd(0.0) == 0
 
 
-def test_cost_aud_cents_from_usd_refuses_negative():
+def test_cost_cents_aud_from_usd_refuses_negative():
     with pytest.raises(ValueError, match="non-negative"):
-        cost_aud_cents_from_usd(-0.01)
+        cost_cents_aud_from_usd(-0.01)
 
 
 # ─── TTL helpers ───────────────────────────────────────────────────────────
@@ -112,35 +112,35 @@ def test_ttl_never_zero():
     assert secs >= 1
 
 
-# ─── _compute_cost_aud_cents ───────────────────────────────────────────────
+# ─── _compute_cost_cents_aud ───────────────────────────────────────────────
 
 
 def test_compute_cost_returns_none_when_litellm_missing():
-    """No litellm → return None so caller falls back to its own cost_aud_cents."""
+    """No litellm → return None so caller falls back to its own cost_cents_aud."""
 
     def raise_import_error(*_args, **_kw):
         raise ImportError("litellm not installed")
 
     with patch("builtins.__import__", side_effect=raise_import_error):
-        assert spend_tracker._compute_cost_aud_cents("claude-sonnet-4-5", 100, 100) is None
+        assert spend_tracker._compute_cost_cents_aud("claude-sonnet-4-5", 100, 100) is None
 
 
-def test_compute_cost_converts_litellm_usd_to_aud_cents():
+def test_compute_cost_converts_litellm_usd_to_cents_aud():
     """LiteLLM returns (prompt_usd, completion_usd) tuple → sum × 155 → AUD cents."""
     fake_litellm = MagicMock()
     fake_litellm.cost_per_token = MagicMock(return_value=(0.01, 0.02))  # $0.03 USD
     with patch.dict("sys.modules", {"litellm": fake_litellm}):
-        result = spend_tracker._compute_cost_aud_cents("claude-sonnet-4-5", 100, 100)
+        result = spend_tracker._compute_cost_cents_aud("claude-sonnet-4-5", 100, 100)
     # 0.03 USD × 1.55 × 100 = 4.65 cents → rounds to 5 cents
     assert result == 5
 
 
 def test_compute_cost_returns_none_on_litellm_exception():
-    """Unknown model → litellm raises → _compute_cost_aud_cents returns None."""
+    """Unknown model → litellm raises → _compute_cost_cents_aud returns None."""
     fake_litellm = MagicMock()
     fake_litellm.cost_per_token = MagicMock(side_effect=ValueError("unknown model"))
     with patch.dict("sys.modules", {"litellm": fake_litellm}):
-        assert spend_tracker._compute_cost_aud_cents("made-up-model", 100, 100) is None
+        assert spend_tracker._compute_cost_cents_aud("made-up-model", 100, 100) is None
 
 
 # ─── record() — happy path ─────────────────────────────────────────────────
@@ -167,9 +167,9 @@ async def test_record_increments_daily_and_monthly(mock_valkey_client, monkeypat
     client, pipe = mock_valkey_client
     pipe.execute = AsyncMock(side_effect=[[0, 8], [0, 8]])  # 8 cents post-incr each
     monkeypatch.setattr(spend_tracker, "get_valkey_client", lambda: client)
-    monkeypatch.setattr(spend_tracker, "_compute_cost_aud_cents", lambda *_a, **_kw: None)
+    monkeypatch.setattr(spend_tracker, "_compute_cost_cents_aud", lambda *_a, **_kw: None)
     monkeypatch.setattr(spend_tracker, "_write_spend_row", AsyncMock(return_value=True))
-    monkeypatch.setattr(spend_tracker, "_read_daily_budget_aud_cents", AsyncMock(return_value=None))
+    monkeypatch.setattr(spend_tracker, "_read_daily_budget_cents_aud", AsyncMock(return_value=None))
 
     result = await record(
         tenant_id=1,
@@ -177,11 +177,11 @@ async def test_record_increments_daily_and_monthly(mock_valkey_client, monkeypat
         model="claude-sonnet-4-5",
         tokens_in=100,
         tokens_out=200,
-        cost_aud_cents=8,
+        cost_cents_aud=8,
     )
-    assert result["cost_aud_cents"] == 8
-    assert result["daily_total_aud_cents"] == 8
-    assert result["monthly_total_aud_cents"] == 8
+    assert result["cost_cents_aud"] == 8
+    assert result["daily_total_cents_aud"] == 8
+    assert result["monthly_total_cents_aud"] == 8
     assert result["budget_warn_fired"] is False
     # Two pipelines built (one per period)
     assert client.pipeline.call_count == 2
@@ -194,9 +194,9 @@ async def test_record_sets_ttl_only_on_first_write(mock_valkey_client, monkeypat
     # First period: didn't exist → expire called. Second period: existed → skipped.
     pipe.execute = AsyncMock(side_effect=[[0, 5], [1, 5]])
     monkeypatch.setattr(spend_tracker, "get_valkey_client", lambda: client)
-    monkeypatch.setattr(spend_tracker, "_compute_cost_aud_cents", lambda *_a, **_kw: None)
+    monkeypatch.setattr(spend_tracker, "_compute_cost_cents_aud", lambda *_a, **_kw: None)
     monkeypatch.setattr(spend_tracker, "_write_spend_row", AsyncMock(return_value=True))
-    monkeypatch.setattr(spend_tracker, "_read_daily_budget_aud_cents", AsyncMock(return_value=None))
+    monkeypatch.setattr(spend_tracker, "_read_daily_budget_cents_aud", AsyncMock(return_value=None))
 
     await record(
         tenant_id=1,
@@ -204,7 +204,7 @@ async def test_record_sets_ttl_only_on_first_write(mock_valkey_client, monkeypat
         model="m",
         tokens_in=10,
         tokens_out=10,
-        cost_aud_cents=5,
+        cost_cents_aud=5,
     )
     # First call (daily, didn't exist) → expire fired; second (monthly, existed) → skipped.
     assert client.expire.call_count == 1
@@ -219,9 +219,9 @@ async def test_record_uses_litellm_cost_when_within_1pct(mock_valkey_client, mon
     client, _ = mock_valkey_client
     client.pipeline.return_value.execute = AsyncMock(side_effect=[[0, 1005], [0, 1005]])
     monkeypatch.setattr(spend_tracker, "get_valkey_client", lambda: client)
-    monkeypatch.setattr(spend_tracker, "_compute_cost_aud_cents", lambda *_a, **_kw: 1005)
+    monkeypatch.setattr(spend_tracker, "_compute_cost_cents_aud", lambda *_a, **_kw: 1005)
     monkeypatch.setattr(spend_tracker, "_write_spend_row", AsyncMock(return_value=True))
-    monkeypatch.setattr(spend_tracker, "_read_daily_budget_aud_cents", AsyncMock(return_value=None))
+    monkeypatch.setattr(spend_tracker, "_read_daily_budget_cents_aud", AsyncMock(return_value=None))
 
     result = await record(
         tenant_id=1,
@@ -229,9 +229,9 @@ async def test_record_uses_litellm_cost_when_within_1pct(mock_valkey_client, mon
         model="claude-sonnet-4-5",
         tokens_in=100,
         tokens_out=100,
-        cost_aud_cents=1000,
+        cost_cents_aud=1000,
     )
-    assert result["cost_aud_cents"] == 1005
+    assert result["cost_cents_aud"] == 1005
 
 
 @pytest.mark.asyncio
@@ -244,9 +244,9 @@ async def test_record_uses_litellm_cost_even_when_divergent_logs_warning(
     client, _ = mock_valkey_client
     client.pipeline.return_value.execute = AsyncMock(side_effect=[[0, 1000], [0, 1000]])
     monkeypatch.setattr(spend_tracker, "get_valkey_client", lambda: client)
-    monkeypatch.setattr(spend_tracker, "_compute_cost_aud_cents", lambda *_a, **_kw: 1000)
+    monkeypatch.setattr(spend_tracker, "_compute_cost_cents_aud", lambda *_a, **_kw: 1000)
     monkeypatch.setattr(spend_tracker, "_write_spend_row", AsyncMock(return_value=True))
-    monkeypatch.setattr(spend_tracker, "_read_daily_budget_aud_cents", AsyncMock(return_value=None))
+    monkeypatch.setattr(spend_tracker, "_read_daily_budget_cents_aud", AsyncMock(return_value=None))
 
     with caplog.at_level(logging.WARNING):
         result = await record(
@@ -255,9 +255,9 @@ async def test_record_uses_litellm_cost_even_when_divergent_logs_warning(
             model="m",
             tokens_in=100,
             tokens_out=100,
-            cost_aud_cents=500,
+            cost_cents_aud=500,
         )
-    assert result["cost_aud_cents"] == 1000
+    assert result["cost_cents_aud"] == 1000
     assert any("cost divergence" in r.message for r in caplog.records)
 
 
@@ -265,13 +265,13 @@ async def test_record_uses_litellm_cost_even_when_divergent_logs_warning(
 async def test_record_falls_back_to_caller_cost_when_litellm_unavailable(
     mock_valkey_client, monkeypatch
 ):
-    """LiteLLM unavailable → caller cost_aud_cents used verbatim."""
+    """LiteLLM unavailable → caller cost_cents_aud used verbatim."""
     client, _ = mock_valkey_client
     client.pipeline.return_value.execute = AsyncMock(side_effect=[[0, 8], [0, 8]])
     monkeypatch.setattr(spend_tracker, "get_valkey_client", lambda: client)
-    monkeypatch.setattr(spend_tracker, "_compute_cost_aud_cents", lambda *_a, **_kw: None)
+    monkeypatch.setattr(spend_tracker, "_compute_cost_cents_aud", lambda *_a, **_kw: None)
     monkeypatch.setattr(spend_tracker, "_write_spend_row", AsyncMock(return_value=True))
-    monkeypatch.setattr(spend_tracker, "_read_daily_budget_aud_cents", AsyncMock(return_value=None))
+    monkeypatch.setattr(spend_tracker, "_read_daily_budget_cents_aud", AsyncMock(return_value=None))
 
     result = await record(
         tenant_id=1,
@@ -279,9 +279,9 @@ async def test_record_falls_back_to_caller_cost_when_litellm_unavailable(
         model="m",
         tokens_in=100,
         tokens_out=100,
-        cost_aud_cents=8,
+        cost_cents_aud=8,
     )
-    assert result["cost_aud_cents"] == 8
+    assert result["cost_cents_aud"] == 8
 
 
 # ─── budget warn path ──────────────────────────────────────────────────────
@@ -293,9 +293,9 @@ async def test_record_warns_when_daily_spend_exceeds_budget(mock_valkey_client, 
     # daily total post-incr = 1500 cents vs budget 1000 cents → exceeded
     client.pipeline.return_value.execute = AsyncMock(side_effect=[[0, 1500], [0, 1500]])
     monkeypatch.setattr(spend_tracker, "get_valkey_client", lambda: client)
-    monkeypatch.setattr(spend_tracker, "_compute_cost_aud_cents", lambda *_a, **_kw: None)
+    monkeypatch.setattr(spend_tracker, "_compute_cost_cents_aud", lambda *_a, **_kw: None)
     monkeypatch.setattr(spend_tracker, "_write_spend_row", AsyncMock(return_value=True))
-    monkeypatch.setattr(spend_tracker, "_read_daily_budget_aud_cents", AsyncMock(return_value=1000))
+    monkeypatch.setattr(spend_tracker, "_read_daily_budget_cents_aud", AsyncMock(return_value=1000))
     nats_mock = AsyncMock(return_value=True)
     monkeypatch.setattr(spend_tracker, "_publish_nats_warn", nats_mock)
     audit_mock = AsyncMock()
@@ -307,15 +307,15 @@ async def test_record_warns_when_daily_spend_exceeds_budget(mock_valkey_client, 
         model="m",
         tokens_in=10,
         tokens_out=10,
-        cost_aud_cents=1500,
+        cost_cents_aud=1500,
     )
     assert result["budget_warn_fired"] is True
     nats_mock.assert_awaited_once()
     audit_mock.assert_awaited_once()
     # Verify NATS payload field names are AUD-cents
     call_args = nats_mock.call_args
-    assert call_args.args[1] == 1500  # daily_spend_aud_cents
-    assert call_args.args[2] == 1000  # budget_aud_cents
+    assert call_args.args[1] == 1500  # daily_spend_cents_aud
+    assert call_args.args[2] == 1000  # budget_cents_aud
 
 
 @pytest.mark.asyncio
@@ -323,9 +323,9 @@ async def test_record_does_not_warn_when_under_budget(mock_valkey_client, monkey
     client, _ = mock_valkey_client
     client.pipeline.return_value.execute = AsyncMock(side_effect=[[0, 500], [0, 500]])
     monkeypatch.setattr(spend_tracker, "get_valkey_client", lambda: client)
-    monkeypatch.setattr(spend_tracker, "_compute_cost_aud_cents", lambda *_a, **_kw: None)
+    monkeypatch.setattr(spend_tracker, "_compute_cost_cents_aud", lambda *_a, **_kw: None)
     monkeypatch.setattr(spend_tracker, "_write_spend_row", AsyncMock(return_value=True))
-    monkeypatch.setattr(spend_tracker, "_read_daily_budget_aud_cents", AsyncMock(return_value=1000))
+    monkeypatch.setattr(spend_tracker, "_read_daily_budget_cents_aud", AsyncMock(return_value=1000))
     nats_mock = AsyncMock(return_value=True)
     monkeypatch.setattr(spend_tracker, "_publish_nats_warn", nats_mock)
 
@@ -335,7 +335,7 @@ async def test_record_does_not_warn_when_under_budget(mock_valkey_client, monkey
         model="m",
         tokens_in=10,
         tokens_out=10,
-        cost_aud_cents=500,
+        cost_cents_aud=500,
     )
     assert result["budget_warn_fired"] is False
     nats_mock.assert_not_awaited()
@@ -347,9 +347,9 @@ async def test_record_skips_budget_check_when_budget_is_null(mock_valkey_client,
     client, _ = mock_valkey_client
     client.pipeline.return_value.execute = AsyncMock(side_effect=[[0, 9_999_999], [0, 9_999_999]])
     monkeypatch.setattr(spend_tracker, "get_valkey_client", lambda: client)
-    monkeypatch.setattr(spend_tracker, "_compute_cost_aud_cents", lambda *_a, **_kw: None)
+    monkeypatch.setattr(spend_tracker, "_compute_cost_cents_aud", lambda *_a, **_kw: None)
     monkeypatch.setattr(spend_tracker, "_write_spend_row", AsyncMock(return_value=True))
-    monkeypatch.setattr(spend_tracker, "_read_daily_budget_aud_cents", AsyncMock(return_value=None))
+    monkeypatch.setattr(spend_tracker, "_read_daily_budget_cents_aud", AsyncMock(return_value=None))
     nats_mock = AsyncMock(return_value=True)
     monkeypatch.setattr(spend_tracker, "_publish_nats_warn", nats_mock)
 
@@ -359,7 +359,7 @@ async def test_record_skips_budget_check_when_budget_is_null(mock_valkey_client,
         model="m",
         tokens_in=10,
         tokens_out=10,
-        cost_aud_cents=9_999_999,
+        cost_cents_aud=9_999_999,
     )
     assert result["budget_warn_fired"] is False
     nats_mock.assert_not_awaited()
@@ -372,9 +372,9 @@ async def test_warn_only_does_not_kill_session(mock_valkey_client, monkeypatch):
     client, _ = mock_valkey_client
     client.pipeline.return_value.execute = AsyncMock(side_effect=[[0, 100_000], [0, 100_000]])
     monkeypatch.setattr(spend_tracker, "get_valkey_client", lambda: client)
-    monkeypatch.setattr(spend_tracker, "_compute_cost_aud_cents", lambda *_a, **_kw: None)
+    monkeypatch.setattr(spend_tracker, "_compute_cost_cents_aud", lambda *_a, **_kw: None)
     monkeypatch.setattr(spend_tracker, "_write_spend_row", AsyncMock(return_value=True))
-    monkeypatch.setattr(spend_tracker, "_read_daily_budget_aud_cents", AsyncMock(return_value=100))
+    monkeypatch.setattr(spend_tracker, "_read_daily_budget_cents_aud", AsyncMock(return_value=100))
     monkeypatch.setattr(spend_tracker, "_publish_nats_warn", AsyncMock(return_value=True))
     monkeypatch.setattr(spend_tracker, "_write_budget_warn_audit", AsyncMock())
 
@@ -385,7 +385,7 @@ async def test_warn_only_does_not_kill_session(mock_valkey_client, monkeypatch):
         model="m",
         tokens_in=10,
         tokens_out=10,
-        cost_aud_cents=100_000,
+        cost_cents_aud=100_000,
     )
     assert "kill" not in result
     assert "abort" not in result
@@ -431,15 +431,15 @@ async def test_record_continues_when_supabase_write_fails(mock_valkey_client, mo
     client, _ = mock_valkey_client
     client.pipeline.return_value.execute = AsyncMock(side_effect=[[0, 8], [0, 8]])
     monkeypatch.setattr(spend_tracker, "get_valkey_client", lambda: client)
-    monkeypatch.setattr(spend_tracker, "_compute_cost_aud_cents", lambda *_a, **_kw: None)
+    monkeypatch.setattr(spend_tracker, "_compute_cost_cents_aud", lambda *_a, **_kw: None)
     monkeypatch.setattr(spend_tracker, "_write_spend_row", AsyncMock(return_value=False))
-    monkeypatch.setattr(spend_tracker, "_read_daily_budget_aud_cents", AsyncMock(return_value=None))
+    monkeypatch.setattr(spend_tracker, "_read_daily_budget_cents_aud", AsyncMock(return_value=None))
     result = await record(
         tenant_id=1,
         callsign="max",
         model="m",
         tokens_in=10,
         tokens_out=10,
-        cost_aud_cents=8,
+        cost_cents_aud=8,
     )
-    assert result["daily_total_aud_cents"] == 8
+    assert result["daily_total_cents_aud"] == 8

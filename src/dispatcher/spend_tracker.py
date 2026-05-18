@@ -10,16 +10,16 @@ Each ``record()`` call:
    ``spend:<tenant_id>:monthly`` using ``INCRBY``. TTLs are set on the
    first write so the bucket auto-evicts at midnight UTC (daily) and
    month boundary UTC (monthly). No cron / reset job required.
-3. If the tenant has a non-NULL ``tenants.daily_budget_aud_cents`` and the
+3. If the tenant has a non-NULL ``tenants.daily_budget_cents_aud`` and the
    running daily total exceeds it, publishes a fail-open warn to NATS
    subject ``keiracom.dispatcher.spend.warn.<tenant_id>`` and writes a
    ``public.budget_warn_audit`` row. **No session kill at this stage —
    warn-only per KEI-212 spec.**
 
 **Currency (LAW II — Australia First):** every monetary field is integer
-``$AUD cents``. LiteLLM returns USD; ``cost_aud_cents_from_usd()`` is the
+``$AUD cents``. LiteLLM returns USD; ``cost_cents_aud_from_usd()`` is the
 canonical conversion (multiplier ``USD_TO_AUD_RATE`` per CLAUDE.md). The
-public ``record()`` signature takes ``cost_aud_cents: int`` so the caller
+public ``record()`` signature takes ``cost_cents_aud: int`` so the caller
 (interceptor_proxy) owns the conversion at ingress and we never store USD.
 
 Key namespace follows the KEI-117A contract documented in
@@ -64,7 +64,7 @@ def tenant_spend_key(tenant_id: str, period: Period) -> str:
     return f"{SPEND_NAMESPACE_PREFIX}:{tenant_id.strip()}:{period}"
 
 
-def cost_aud_cents_from_usd(cost_usd: float) -> int:
+def cost_cents_aud_from_usd(cost_usd: float) -> int:
     """Convert a USD float (e.g. ``litellm.cost_per_token`` output) to
     integer $AUD cents. Always rounds half-away-from-zero so a 0.001-cent
     fragment never disappears from billing totals.
@@ -89,16 +89,16 @@ def _seconds_until_month_boundary_utc(now: datetime | None = None) -> int:
     return max(int((next_month - now).total_seconds()), 1)
 
 
-def _compute_cost_aud_cents(model: str, tokens_in: int, tokens_out: int) -> int | None:
+def _compute_cost_cents_aud(model: str, tokens_in: int, tokens_out: int) -> int | None:
     """Return computed cost via litellm converted to $AUD cents; ``None``
     if litellm is unavailable or the model is unknown. Caller falls back
-    to its own ``cost_aud_cents`` in that case (interceptor_proxy already
+    to its own ``cost_cents_aud`` in that case (interceptor_proxy already
     holds the upstream-API cost).
     """
     try:
         from litellm import cost_per_token  # noqa: PLC0415 — optional dep
     except ImportError:
-        logger.debug("litellm not installed — caller cost_aud_cents will be used verbatim")
+        logger.debug("litellm not installed — caller cost_cents_aud will be used verbatim")
         return None
     try:
         prompt_cost_usd, completion_cost_usd = cost_per_token(
@@ -107,14 +107,14 @@ def _compute_cost_aud_cents(model: str, tokens_in: int, tokens_out: int) -> int 
             completion_tokens=tokens_out,
         )
         total_usd = float(prompt_cost_usd) + float(completion_cost_usd)
-        return cost_aud_cents_from_usd(total_usd)
+        return cost_cents_aud_from_usd(total_usd)
     except Exception as exc:  # noqa: BLE001 — model unknown / litellm internal error
         logger.warning("litellm.cost_per_token failed for model=%s: %s", model, exc)
         return None
 
 
 async def _publish_nats_warn(
-    tenant_id: str, daily_spend_aud_cents: int, budget_aud_cents: int
+    tenant_id: str, daily_spend_cents_aud: int, budget_cents_aud: int
 ) -> bool:
     """Fail-open publish to ``keiracom.dispatcher.spend.warn.<tenant_id>``.
 
@@ -130,8 +130,8 @@ async def _publish_nats_warn(
         payload = json.dumps(
             {
                 "tenant_id": tenant_id,
-                "daily_spend_aud_cents": daily_spend_aud_cents,
-                "budget_aud_cents": budget_aud_cents,
+                "daily_spend_cents_aud": daily_spend_cents_aud,
+                "budget_cents_aud": budget_cents_aud,
                 "ts": int(time.time()),
             }
         ).encode()
@@ -143,10 +143,10 @@ async def _publish_nats_warn(
         finally:
             await nc.close()
         logger.info(
-            "NATS PUBLISH spend.warn tenant=%s daily_aud_cents=%d budget_aud_cents=%d",
+            "NATS PUBLISH spend.warn tenant=%s daily_cents_aud=%d budget_cents_aud=%d",
             tenant_id,
-            daily_spend_aud_cents,
-            budget_aud_cents,
+            daily_spend_cents_aud,
+            budget_cents_aud,
         )
         return True
     except Exception as exc:  # noqa: BLE001 — NATS down / nats-py missing
@@ -160,7 +160,7 @@ async def _write_spend_row(
     model: str,
     tokens_in: int,
     tokens_out: int,
-    cost_aud_cents: int,
+    cost_cents_aud: int,
     metadata: dict,
 ) -> bool:
     """Insert one row into ``public.infra_spend_metrics``. Fail-open
@@ -181,7 +181,7 @@ async def _write_spend_row(
                 """
                 INSERT INTO public.infra_spend_metrics
                     (tenant_id, callsign, model, tokens_in, tokens_out,
-                     cost_aud_cents, metadata)
+                     cost_cents_aud, metadata)
                 VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
                 """,
                 tenant_id,
@@ -189,7 +189,7 @@ async def _write_spend_row(
                 model,
                 tokens_in,
                 tokens_out,
-                cost_aud_cents,
+                cost_cents_aud,
                 json.dumps(metadata),
             )
         finally:
@@ -202,8 +202,8 @@ async def _write_spend_row(
 
 async def _write_budget_warn_audit(
     tenant_id: int,
-    daily_spend_aud_cents: int,
-    budget_aud_cents: int,
+    daily_spend_cents_aud: int,
+    budget_cents_aud: int,
     nats_published: bool,
 ) -> None:
     dsn = os.environ.get(SUPABASE_DSN_ENV)
@@ -218,12 +218,12 @@ async def _write_budget_warn_audit(
             await conn.execute(
                 """
                 INSERT INTO public.budget_warn_audit
-                    (tenant_id, daily_spend_aud_cents, budget_aud_cents, nats_published)
+                    (tenant_id, daily_spend_cents_aud, budget_cents_aud, nats_published)
                 VALUES ($1, $2, $3, $4)
                 """,
                 tenant_id,
-                daily_spend_aud_cents,
-                budget_aud_cents,
+                daily_spend_cents_aud,
+                budget_cents_aud,
                 nats_published,
             )
         finally:
@@ -232,8 +232,8 @@ async def _write_budget_warn_audit(
         logger.warning("budget_warn_audit insert failed (non-fatal): %s", exc)
 
 
-async def _read_daily_budget_aud_cents(tenant_id: int) -> int | None:
-    """Read ``tenants.daily_budget_aud_cents`` for tenant. None = no budget set."""
+async def _read_daily_budget_cents_aud(tenant_id: int) -> int | None:
+    """Read ``tenants.daily_budget_cents_aud`` for tenant. None = no budget set."""
     dsn = os.environ.get(SUPABASE_DSN_ENV)
     if not dsn:
         return None
@@ -244,16 +244,16 @@ async def _read_daily_budget_aud_cents(tenant_id: int) -> int | None:
         conn = await asyncpg.connect(dsn)
         try:
             row = await conn.fetchrow(
-                "SELECT daily_budget_aud_cents FROM public.tenants WHERE id = $1",
+                "SELECT daily_budget_cents_aud FROM public.tenants WHERE id = $1",
                 tenant_id,
             )
-            if not row or row["daily_budget_aud_cents"] is None:
+            if not row or row["daily_budget_cents_aud"] is None:
                 return None
-            return int(row["daily_budget_aud_cents"])
+            return int(row["daily_budget_cents_aud"])
         finally:
             await conn.close()
     except Exception as exc:  # noqa: BLE001
-        logger.warning("tenants.daily_budget_aud_cents read failed (non-fatal): %s", exc)
+        logger.warning("tenants.daily_budget_cents_aud read failed (non-fatal): %s", exc)
         return None
 
 
@@ -278,7 +278,7 @@ async def record(
     model: str,
     tokens_in: int,
     tokens_out: int,
-    cost_aud_cents: int,
+    cost_cents_aud: int,
     metadata: dict | None = None,
 ) -> dict:
     """Record one model-call completion.
@@ -289,7 +289,7 @@ async def record(
         model: model name as understood by litellm (e.g. ``claude-sonnet-4-5``).
         tokens_in: prompt token count.
         tokens_out: completion token count.
-        cost_aud_cents: caller-computed cost in integer $AUD cents (LAW II).
+        cost_cents_aud: caller-computed cost in integer $AUD cents (LAW II).
             ``record()`` re-computes via ``litellm.cost_per_token`` when
             available and uses the LiteLLM value when within 1% of the
             caller value (acceptance criterion). On larger divergence the
@@ -297,26 +297,26 @@ async def record(
         metadata: optional jsonb payload (request id, route, etc.).
 
     Returns:
-        Dict with the recorded ``cost_aud_cents``, post-incr daily total
+        Dict with the recorded ``cost_cents_aud``, post-incr daily total
         (cents), post-incr monthly total (cents), and whether a budget warn
         fired. Never raises — all external legs are fail-open.
     """
     metadata = metadata or {}
-    litellm_cost_cents = _compute_cost_aud_cents(model, tokens_in, tokens_out)
-    if litellm_cost_cents is not None and cost_aud_cents > 0:
-        divergence = abs(litellm_cost_cents - cost_aud_cents) / cost_aud_cents
+    litellm_cost_cents = _compute_cost_cents_aud(model, tokens_in, tokens_out)
+    if litellm_cost_cents is not None and cost_cents_aud > 0:
+        divergence = abs(litellm_cost_cents - cost_cents_aud) / cost_cents_aud
         if divergence > 0.01:
             logger.warning(
-                "cost divergence > 1%% model=%s caller_aud_cents=%d litellm_aud_cents=%d",
+                "cost divergence > 1%% model=%s caller_cents_aud=%d litellm_cents_aud=%d",
                 model,
-                cost_aud_cents,
+                cost_cents_aud,
                 litellm_cost_cents,
             )
         recorded_cents = litellm_cost_cents
     elif litellm_cost_cents is not None:
         recorded_cents = litellm_cost_cents
     else:
-        recorded_cents = cost_aud_cents
+        recorded_cents = cost_cents_aud
 
     await _write_spend_row(
         tenant_id, callsign, model, tokens_in, tokens_out, recorded_cents, metadata
@@ -337,16 +337,16 @@ async def record(
         await client.aclose()
 
     warn_fired = False
-    budget_cents = await _read_daily_budget_aud_cents(tenant_id)
+    budget_cents = await _read_daily_budget_cents_aud(tenant_id)
     if budget_cents is not None and daily_total > budget_cents:
         published = await _publish_nats_warn(tenant_key, daily_total, budget_cents)
         await _write_budget_warn_audit(tenant_id, daily_total, budget_cents, published)
         warn_fired = True
 
     return {
-        "cost_aud_cents": recorded_cents,
-        "daily_total_aud_cents": daily_total,
-        "monthly_total_aud_cents": monthly_total,
+        "cost_cents_aud": recorded_cents,
+        "daily_total_cents_aud": daily_total,
+        "monthly_total_cents_aud": monthly_total,
         "budget_warn_fired": warn_fired,
     }
 

@@ -21,15 +21,20 @@ import json
 import logging
 import os
 import subprocess
+import urllib.error
+import urllib.request
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
+
+from src.api.webhooks.betterstack_severity_router import route as route_severity
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/webhooks/betterstack", tags=["webhooks", "betterstack"])
 
 _BS_WRAPPER = "/home/elliotbot/clawd/Agency_OS/scripts/betterstack_to_linear.py"
+_SLACK_POST_URL = "https://slack.com/api/chat.postMessage"
 
 
 def _python_bin() -> str:
@@ -109,6 +114,45 @@ def _dispatch_to_linear(event: dict[str, Any]) -> None:
         logger.warning("betterstack_to_linear dispatch failed: %s", exc)
 
 
+def _post_to_slack(channel: str, text: str) -> None:
+    """Fire-and-forget POST to Slack chat.postMessage. Fail-open.
+
+    KEI-20 — severity-routed channel selection happens in the caller via
+    betterstack_severity_router. This helper just delivers the message and
+    swallows any error so the Linear dispatch always proceeds.
+    """
+    token = os.environ.get("SLACK_BOT_TOKEN", "")
+    if not token:
+        logger.warning("SLACK_BOT_TOKEN unset — KEI-20 severity routing skipped")
+        return
+    body = json.dumps({"channel": channel, "text": text}).encode("utf-8")
+    req = urllib.request.Request(
+        _SLACK_POST_URL,
+        data=body,
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json; charset=utf-8",
+        },
+        method="POST",
+    )
+    try:
+        # Fixed Slack URL, controlled scheme — bandit S310 false positive.
+        with urllib.request.urlopen(req, timeout=5) as r:  # noqa: S310
+            response = json.loads(r.read() or "null") or {}
+        if not response.get("ok"):
+            logger.warning("Slack chat.postMessage rejected: %s", response)
+    except (OSError, ValueError) as exc:
+        logger.warning("Slack chat.postMessage failed (fail-open): %s", exc)
+
+
+def _format_slack_alert(event: dict[str, Any], severity: str) -> str:
+    """Single-line Slack alert body for a routed incident."""
+    return (
+        f"[BetterStack][{severity}] {event['monitor_name']} — {event['cause']} "
+        f"(incident_id={event['incident_id']}, status={event['status']})"
+    )
+
+
 _WEBHOOK_RESPONSES = {
     401: {"description": "Token verification failed (missing or wrong BETTERSTACK_WEBHOOK_SECRET)"},
     200: {
@@ -138,4 +182,15 @@ async def receive_betterstack_webhook(request: Request) -> dict[str, str]:
     if event["status"] not in {"started", "downtime", "down"}:
         return {"status": "ignored", "reason": f"status={event['status']!r} not actionable"}
     _dispatch_to_linear(event)
-    return {"status": "ok", "incident_id": event["incident_id"], "monitor": event["monitor_name"]}
+    # KEI-20 — severity-routed Slack alert. Pure router on raw payload (it
+    # extracts priority/severity/metadata.Priority from the original payload
+    # rather than the normalised event, since _normalise_incident drops those).
+    severity, channel = route_severity(payload)
+    _post_to_slack(channel, _format_slack_alert(event, severity))
+    return {
+        "status": "ok",
+        "incident_id": event["incident_id"],
+        "monitor": event["monitor_name"],
+        "severity": severity,
+        "channel": channel,
+    }

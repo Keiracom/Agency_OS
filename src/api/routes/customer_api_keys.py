@@ -42,7 +42,7 @@ class ByoKeyResponse(BaseModel):
     provider: str = Field(..., description="Provider echoed for confirmation")
 
 
-@router.post("/byo-key", response_model=ByoKeyResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/byo-key", status_code=status.HTTP_201_CREATED)
 async def store_byo_key(
     body: ByoKeyRequest,
     user: Annotated[CurrentUser, Depends(get_current_user_from_token)],

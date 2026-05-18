@@ -46,6 +46,7 @@ discover_callsign_sessions() {
             fi
         fi
     done
+    return 0
 }
 discover_callsign_sessions
 

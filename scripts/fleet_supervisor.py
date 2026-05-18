@@ -22,6 +22,7 @@ import subprocess
 import sys
 import time
 import urllib.request
+import uuid
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -251,6 +252,91 @@ def release_stale_claims(conn: psycopg.Connection) -> int:
         count = cur.rowcount
     conn.commit()
     return count
+
+
+# ---------------------------------------------------------------------------
+# KEI-202 — supervisor observation writer (institutional knowledge capture).
+#
+# Every detection+resolution event in the supervisor cycle writes a row to
+# public.agent_memories so the dataset accumulates for the Dispatcher +
+# Weaviate to eventually learn from. The supervisor builds its own
+# replacement: hardcoded scenario handlers → learned patterns over time.
+# ---------------------------------------------------------------------------
+
+SUPERVISOR_VERSION = 1  # bumped to 2 when KEI-185 flips supervisor v2 ON.
+
+
+def _write_observation(
+    conn: psycopg.Connection,
+    *,
+    cycle_id: str,
+    scenario: str,
+    agent_callsign: str,
+    kei_id: str | None,
+    action: str,
+    outcome: str,
+) -> None:
+    """Insert one supervisor_observation row into public.agent_memories.
+
+    Best-effort: if the INSERT fails (transient DB error, schema drift),
+    log a warning and continue the supervisor cycle. The fleet must survive
+    institutional-memory write failures.
+
+    Args:
+        conn: live psycopg connection (shared across the cycle).
+        cycle_id: UUID generated once per supervisor cycle so all
+            observations in one cycle correlate.
+        scenario: one of `scenario_1_idle_with_queue`, `scenario_2_idle_no_queue`,
+            `scenario_3_nudge_stale`, `scenario_3_restart_context_full`,
+            `scenario_4_dead_session`, `scenario_5_shipped_pr_idle`,
+            `scenario_6_stale_claim_release`.
+        agent_callsign: the agent the observation is ABOUT (atlas, scout, ...).
+            Note: the row's top-level ``callsign`` is always 'system' — this
+            parameter goes into typed_metadata.agent.
+        kei_id: KEI id that was claimed / nudged / re-dispatched if any.
+        action: short verb — `claimed`, `restarted`, `nudged`, `released`,
+            `dispatched_review`, `marked_idle`.
+        outcome: short noun phrase describing the resolved state.
+    """
+    content = json.dumps(
+        {
+            "scenario": scenario,
+            "agent": agent_callsign,
+            "kei_id": kei_id,
+            "action": action,
+            "outcome": outcome,
+            "timestamp": _dt.datetime.now(_dt.UTC).isoformat(),
+        }
+    )
+    typed_metadata = {
+        "cycle_id": cycle_id,
+        "supervisor_version": SUPERVISOR_VERSION,
+        "agent": agent_callsign,
+        "kei_id": kei_id,
+        "action": action,
+    }
+    tags = ["supervisor", "fleet_observation", scenario, agent_callsign]
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO public.agent_memories
+                    (callsign, source_type, content, typed_metadata, tags,
+                     valid_from, state, confidence, trust, access_count)
+                VALUES
+                    ('system', 'supervisor_observation', %s, %s::jsonb, %s,
+                     NOW(), 'confirmed', 1.0, 'agent_extracted', 0)
+                """,
+                (content, json.dumps(typed_metadata), tags),
+            )
+        conn.commit()
+    except Exception as exc:  # noqa: BLE001 — institutional-memory write is best-effort
+        log.warning(
+            "supervisor observation write failed (scenario=%s agent=%s): %s",
+            scenario,
+            agent_callsign,
+            exc,
+        )
 
 
 def get_last_tool_call(conn: psycopg.Connection, callsign: str) -> _dt.datetime | None:
@@ -631,7 +717,12 @@ def process_agent(
     conn: psycopg.Connection,
     prs: list[dict],
     phase_max: int,
+    cycle_id: str | None = None,
 ) -> AgentStatus:
+    # KEI-202: per-cycle UUID so all observations from one supervisor
+    # cycle correlate. Caller supplies via main(); tests may omit.
+    if cycle_id is None:
+        cycle_id = str(uuid.uuid4())
     callsign = agent["callsign"]
     tmux_session = agent["tmux"]
     service = agent["service"]
@@ -643,6 +734,7 @@ def process_agent(
 
     result = _handle_dead_tmux(callsign, tmux_session, service, conn, phase_max, status)
     if result is not None:
+        _record_handler_observation(conn, cycle_id, "scenario_4_dead_session", result)
         return result
 
     status.tmux_alive = True
@@ -651,10 +743,73 @@ def process_agent(
     if claim is None:
         result = _handle_idle_with_queue(callsign, tmux_session, conn, phase_max, status)
         if result is not None:
+            _record_handler_observation(conn, cycle_id, "scenario_1_idle_with_queue", result)
             return result
-        return _handle_idle_no_queue(callsign, tmux_session, prs, conn, status)
+        result = _handle_idle_no_queue(callsign, tmux_session, prs, conn, status)
+        # _handle_idle_no_queue covers both scenario 2 (review or correctly-idle)
+        # and scenario 5 (shipped PR + idle) — pick scenario tag from summary.
+        scenario = (
+            "scenario_2_idle_no_queue"
+            if "reviewing" in (result.summary or "")
+            else (
+                "scenario_5_shipped_pr_idle"
+                if "shipped pull request" in (result.summary or "")
+                else "scenario_2_correctly_idle"
+            )
+        )
+        _record_handler_observation(conn, cycle_id, scenario, result)
+        return result
 
-    return _handle_active_claim(callsign, tmux_session, service, conn, claim, status)
+    result = _handle_active_claim(callsign, tmux_session, service, conn, claim, status)
+    # _handle_active_claim covers building-fine OR scenario-3 nudge OR scenario-3 restart.
+    summary = result.summary or ""
+    if "100%" in summary or "restarted" in summary:
+        scenario = "scenario_3_restart_context_full"
+    elif "nudged" in summary:
+        scenario = "scenario_3_nudge_stale"
+    else:
+        scenario = "scenario_3_building_fine"
+    _record_handler_observation(conn, cycle_id, scenario, result)
+    return result
+
+
+def _record_handler_observation(
+    conn: psycopg.Connection,
+    cycle_id: str,
+    scenario: str,
+    status: AgentStatus,
+) -> None:
+    """Bridge between scenario handlers + _write_observation. Pulls
+    action/outcome out of the AgentStatus the handler populated, so the
+    handlers themselves stay focused on side-effects + the
+    observation-write logic lives in one place."""
+    summary = status.summary or ""
+    # Classify the action from the resolved status summary. Order matters —
+    # `restarted` must check before `claimed` because the restart-then-reclaim
+    # summary contains "re-claimed" (which substring-matches "claimed").
+    if "restarted" in summary:
+        action = "restarted"
+    elif "claimed" in summary:
+        action = "claimed"
+    elif "reviewing" in summary:
+        action = "dispatched_review"
+    elif "nudged" in summary:
+        action = "nudged"
+    elif "shipped" in summary:
+        action = "marked_idle_shipped"
+    elif "building" in summary:
+        action = "no_op_building"
+    else:
+        action = "marked_idle"
+    _write_observation(
+        conn,
+        cycle_id=cycle_id,
+        scenario=scenario,
+        agent_callsign=status.callsign,
+        kei_id=status.active_task_id,
+        action=action,
+        outcome=summary,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -702,12 +857,25 @@ def post_ceo_status(report: FleetReport) -> None:
 def main() -> None:
     log.info("Fleet supervisor starting")
     conn = _connect()
+    # KEI-202: one cycle_id per supervisor invocation correlates every
+    # observation written across the 6 agents during this cycle.
+    cycle_id = str(uuid.uuid4())
+    log.info("supervisor cycle %s starting", cycle_id)
 
     try:
         # Scenario 6: release stale claims first
         released = release_stale_claims(conn)
         if released:
             log.info("Released %d stale claim(s)", released)
+            _write_observation(
+                conn,
+                cycle_id=cycle_id,
+                scenario="scenario_6_stale_claim_release",
+                agent_callsign="system",
+                kei_id=None,
+                action="released",
+                outcome=f"released {released} stale claim(s) past {STALE_HOURS}h with no verification",
+            )
 
         phase_max = get_phase_max(conn)
         prs = list_open_prs()
@@ -717,7 +885,7 @@ def main() -> None:
 
         for agent in AGENTS:
             try:
-                status = process_agent(agent, conn, prs, phase_max)
+                status = process_agent(agent, conn, prs, phase_max, cycle_id=cycle_id)
             except Exception as exc:
                 log.exception("[%s] unhandled error: %s", agent["callsign"], exc)
                 status = AgentStatus(

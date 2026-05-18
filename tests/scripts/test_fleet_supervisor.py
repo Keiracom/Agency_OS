@@ -484,3 +484,177 @@ def test_find_pr_for_review_callsign_case_insensitive(monkeypatch):
 
     # Despite uppercase AIDEN, the match should fire and the PR should be skipped
     assert result is None
+
+
+# ---------------------------------------------------------------------------
+# KEI-202 — supervisor observation writer (institutional knowledge capture)
+# ---------------------------------------------------------------------------
+
+
+def _capture_observations_conn():
+    """Build a fake psycopg connection that records every INSERT'd
+    observation payload for assertions."""
+    captured: list[dict] = []
+    conn = MagicMock()
+    cursor = MagicMock()
+    conn.cursor.return_value.__enter__ = MagicMock(return_value=cursor)
+    conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+
+    def fake_execute(sql, params=None):
+        if "INSERT INTO public.agent_memories" in (sql or ""):
+            content, typed_metadata, tags = params
+            captured.append({"content": content, "typed_metadata": typed_metadata, "tags": tags})
+
+    cursor.execute = MagicMock(side_effect=fake_execute)
+    conn.commit = MagicMock()
+    conn._captured = captured
+    return conn
+
+
+def test_write_observation_inserts_correct_shape():
+    """One call → one INSERT with the documented column shape."""
+    import json as _json
+
+    conn = _capture_observations_conn()
+    fs._write_observation(
+        conn,
+        cycle_id="cycle-xyz",
+        scenario="scenario_1_idle_with_queue",
+        agent_callsign="atlas",
+        kei_id="KEI-202",
+        action="claimed",
+        outcome="was idle, claimed KEI-202, injected task",
+    )
+    assert len(conn._captured) == 1
+    row = conn._captured[0]
+    content = _json.loads(row["content"])
+    md = _json.loads(row["typed_metadata"])
+    assert content["scenario"] == "scenario_1_idle_with_queue"
+    assert content["agent"] == "atlas"
+    assert content["kei_id"] == "KEI-202"
+    assert content["action"] == "claimed"
+    assert content["outcome"] == "was idle, claimed KEI-202, injected task"
+    assert "timestamp" in content
+    assert md["cycle_id"] == "cycle-xyz"
+    assert md["supervisor_version"] == fs.SUPERVISOR_VERSION
+    assert md["agent"] == "atlas"
+    assert md["kei_id"] == "KEI-202"
+    assert md["action"] == "claimed"
+    assert "supervisor" in row["tags"]
+    assert "fleet_observation" in row["tags"]
+    assert "scenario_1_idle_with_queue" in row["tags"]
+    assert "atlas" in row["tags"]
+
+
+def test_write_observation_swallows_db_errors(caplog):
+    """Best-effort: institutional-memory write failure MUST NOT propagate.
+    The supervisor cycle survives + logs a warning (per feedback_silence_is_status
+    + supervisor-must-survive-downstream-outages)."""
+    conn = MagicMock()
+    cursor = MagicMock()
+    conn.cursor.return_value.__enter__ = MagicMock(return_value=cursor)
+    conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+    cursor.execute = MagicMock(side_effect=RuntimeError("supabase pooler down"))
+    conn.commit = MagicMock()
+
+    with caplog.at_level("WARNING"):
+        fs._write_observation(
+            conn,
+            cycle_id="cycle-xyz",
+            scenario="scenario_4_dead_session",
+            agent_callsign="atlas",
+            kei_id=None,
+            action="restarted",
+            outcome="session dead, restarted, queue empty",
+        )
+    assert any("supabase pooler down" in r.message for r in caplog.records)
+
+
+def test_record_handler_observation_classifies_actions():
+    """The bridge function inspects status.summary to pick the right action."""
+    import json as _json
+
+    conn = _capture_observations_conn()
+    cases = [
+        ("was idle, claimed KEI-X, injected task", "claimed"),
+        ("was idle, reviewing PR #42", "dispatched_review"),
+        ("100%% context, restarted, re-claimed KEI-X", "restarted"),
+        ("nudged on KEI-X (16m stale)", "nudged"),
+        ("shipped pull request, idle, queue empty", "marked_idle_shipped"),
+        ("building KEI-X (last activity 3m ago)", "no_op_building"),
+        ("queue empty, no reviews — correctly idle", "marked_idle"),
+    ]
+    for summary, _ in cases:
+        status = fs.AgentStatus(
+            callsign="atlas",
+            tmux_session="atlas:0",
+            service_name="atlas-agent",
+            summary=summary,
+        )
+        fs._record_handler_observation(conn, "cycle-1", "scenario_test", status)
+    assert len(conn._captured) == 7
+    for i, (_, expected) in enumerate(cases):
+        assert _json.loads(conn._captured[i]["content"])["action"] == expected, (
+            f"case {i}: {cases[i][0]!r} → expected {expected}"
+        )
+
+
+def test_process_agent_writes_observation_on_idle_with_queue(monkeypatch):
+    """E2E Scenario 1 — process_agent writes one observation row per resolution."""
+    import json as _json
+
+    conn = _capture_observations_conn()
+    monkeypatch.setattr(fs, "get_active_claim", lambda c, cs: None)
+    monkeypatch.setattr(fs, "claim_next_task", lambda c, cs, ph: ("KEI-100", "Test task"))
+    monkeypatch.setattr(fs, "fetch_linear_description", lambda kei: ("Test", "Do X"))
+    monkeypatch.setattr(fs, "tmux_has_session", lambda s: True)
+    monkeypatch.setattr(fs, "inject_task", MagicMock())
+
+    status = fs.process_agent(AGENT_ELLIOT, conn, [], 99, cycle_id="cycle-abc")
+
+    assert status.active_task_id == "KEI-100"
+    assert len(conn._captured) == 1
+    md = _json.loads(conn._captured[0]["typed_metadata"])
+    assert md["cycle_id"] == "cycle-abc"
+    assert "scenario_1_idle_with_queue" in conn._captured[0]["tags"]
+    assert md["action"] == "claimed"
+
+
+def test_process_agent_writes_observation_on_dead_session(monkeypatch):
+    """E2E Scenario 4 — dead-tmux resolution writes its observation."""
+    conn = _capture_observations_conn()
+    monkeypatch.setattr(fs, "tmux_has_session", lambda s: False)
+    monkeypatch.setattr(fs, "restart_service", MagicMock())
+    monkeypatch.setattr(fs, "claim_next_task", lambda c, cs, ph: None)
+    monkeypatch.setattr(fs, "inject_task", MagicMock())
+
+    status = fs.process_agent(AGENT_ELLIOT, conn, [], 99, cycle_id="cycle-abc")
+    assert status.tmux_alive is False
+    assert len(conn._captured) == 1
+    assert "scenario_4_dead_session" in conn._captured[0]["tags"]
+
+
+def test_process_agent_writes_observation_per_cycle_id(monkeypatch):
+    """3 process_agent calls — first two share cycle_id, third differs.
+    Observations downstream correlate per cycle for retrieval/analysis."""
+    import json as _json
+
+    conn = _capture_observations_conn()
+    monkeypatch.setattr(fs, "get_active_claim", lambda c, cs: None)
+    monkeypatch.setattr(fs, "claim_next_task", lambda c, cs, ph: ("KEI-X", "X"))
+    monkeypatch.setattr(fs, "fetch_linear_description", lambda kei: ("X", "x"))
+    monkeypatch.setattr(fs, "tmux_has_session", lambda s: True)
+    monkeypatch.setattr(fs, "inject_task", MagicMock())
+
+    fs.process_agent(AGENT_ELLIOT, conn, [], 99, cycle_id="cycle-shared")
+    fs.process_agent(AGENT_ELLIOT, conn, [], 99, cycle_id="cycle-shared")
+    fs.process_agent(AGENT_ELLIOT, conn, [], 99, cycle_id="cycle-other")
+
+    cycles = [_json.loads(c["typed_metadata"])["cycle_id"] for c in conn._captured]
+    assert cycles == ["cycle-shared", "cycle-shared", "cycle-other"]
+
+
+def test_supervisor_version_constant_exists():
+    """SUPERVISOR_VERSION sentinel is exposed for typed_metadata + KEI-185 bump."""
+    assert isinstance(fs.SUPERVISOR_VERSION, int)
+    assert fs.SUPERVISOR_VERSION >= 1

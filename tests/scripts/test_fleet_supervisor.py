@@ -7,6 +7,7 @@ Covers all 6 scenarios + CEO post format check.
 from __future__ import annotations
 
 import datetime as _dt
+import json
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -484,3 +485,120 @@ def test_find_pr_for_review_callsign_case_insensitive(monkeypatch):
 
     # Despite uppercase AIDEN, the match should fire and the PR should be skipped
     assert result is None
+
+
+# ─── KEI-199: PR-existence pre-check for claim dispatch ─────────────────────
+
+
+def test_fetch_open_pr_kei_ids_extracts_from_title_and_body(monkeypatch):
+    """KEI-199 — open PR titles + bodies are scanned for KEI-NNN tokens.
+    Anchor: 4 drift-syncs (KEI-90/122/187/188) caused by supervisor
+    re-claiming work already in-flight via OPEN PRs."""
+    fake_output = json.dumps(
+        [
+            {
+                "title": "[AIDEN] feat(kei199): supervisor PR-existence pre-check",
+                "body": "Closes KEI-199",
+            },
+            {"title": "[MAX] fix(kei188): migration apply gate", "body": "Also touches KEI-90"},
+            {"title": "[ELLIOT] docs(no-kei)", "body": "no kei mentioned"},
+        ]
+    )
+    fake_result = MagicMock(returncode=0, stdout=fake_output)
+    with patch("subprocess.run", return_value=fake_result):
+        ids = fs.fetch_open_pr_kei_ids()
+    assert ids == {"KEI-199", "KEI-188", "KEI-90"}
+
+
+def test_fetch_open_pr_kei_ids_fail_open_on_gh_error(monkeypatch):
+    """KEI-199 — gh CLI failure must NOT block claims (fail-open)."""
+    fake_result = MagicMock(returncode=1, stdout="", stderr="gh: not found")
+    with patch("subprocess.run", return_value=fake_result):
+        ids = fs.fetch_open_pr_kei_ids()
+    assert ids == set()
+
+
+def test_fetch_open_pr_kei_ids_fail_open_on_subprocess_exception(monkeypatch):
+    """KEI-199 — subprocess.SubprocessError or OSError still fail-open."""
+    with patch("subprocess.run", side_effect=OSError("no gh in PATH")):
+        ids = fs.fetch_open_pr_kei_ids()
+    assert ids == set()
+
+
+def test_fetch_open_pr_kei_ids_handles_malformed_json(monkeypatch):
+    """KEI-199 — JSON parse failure fail-opens to empty set."""
+    fake_result = MagicMock(returncode=0, stdout="not valid json")
+    with patch("subprocess.run", return_value=fake_result):
+        ids = fs.fetch_open_pr_kei_ids()
+    assert ids == set()
+
+
+def test_claim_next_task_excludes_keis_with_open_prs(monkeypatch):
+    """KEI-199 — when an open PR mentions KEI-N, claim_next_task SKIPS that
+    KEI-N in the SELECT (id != ALL excluded_keis). Anchor scenario: the 4
+    drift-syncs would have been prevented by this filter."""
+    # Mock fetch_open_pr_kei_ids to return one in-flight KEI
+    with patch.object(fs, "fetch_open_pr_kei_ids", return_value={"KEI-188"}):
+        # Build a fake conn that records cursor.execute args
+        executed_queries = []
+
+        class _FakeCur:
+            def execute(self, sql, params=None):
+                executed_queries.append((sql, params))
+
+            def fetchone(self):
+                return ("KEI-200", "different task")
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_):
+                return False
+
+        class _FakeConn:
+            def cursor(self):
+                return _FakeCur()
+
+            def commit(self):
+                pass
+
+        result = fs.claim_next_task(_FakeConn(), "aiden", 99)
+        assert result == ("KEI-200", "different task")
+        # The SELECT must include id != ALL(...) with KEI-188 in the excluded list
+        select_query = next(q for q, _ in executed_queries if "SELECT id, title" in q)
+        assert "!= ALL" in select_query
+        # Params should include the sorted exclusion list
+        select_params = next(p for q, p in executed_queries if "SELECT id, title" in q)
+        assert select_params[1] == ["KEI-188"]
+
+
+def test_claim_next_task_no_open_prs_uses_unfiltered_query(monkeypatch):
+    """KEI-199 — when no open PRs exist (or fetch fails), the SELECT runs
+    without the exclusion clause (preserves prior behaviour)."""
+    with patch.object(fs, "fetch_open_pr_kei_ids", return_value=set()):
+        executed_queries = []
+
+        class _FakeCur:
+            def execute(self, sql, params=None):
+                executed_queries.append((sql, params))
+
+            def fetchone(self):
+                return ("KEI-300", "available task")
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_):
+                return False
+
+        class _FakeConn:
+            def cursor(self):
+                return _FakeCur()
+
+            def commit(self):
+                pass
+
+        result = fs.claim_next_task(_FakeConn(), "aiden", 99)
+        assert result == ("KEI-300", "available task")
+        select_query = next(q for q, _ in executed_queries if "SELECT id, title" in q)
+        assert "!= ALL" not in select_query

@@ -1,0 +1,22 @@
+[Unit]
+Description=Keiracom nova agent session (KEI-185 third-engineer overflow clone)
+Documentation=https://linear.app/keiracom/issue/KEI-185
+After=network-online.target
+Wants=network-online.target
+StartLimitBurst=5
+StartLimitIntervalSec=300
+
+[Service]
+Type=simple
+Environment="CALLSIGN=nova"
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS-nova
+ExecStart=/home/elliotbot/clawd/Agency_OS/scripts/agent_keepalive.sh nova nova /home/elliotbot/clawd/Agency_OS-nova
+ExecStartPost=/home/elliotbot/clawd/Agency_OS/scripts/agent_online_notify.sh NOVA 15 C0B3QB0K1GQ
+Restart=always
+RestartSec=10
+StandardOutput=append:/home/elliotbot/clawd/logs/nova-agent.log
+StandardError=append:/home/elliotbot/clawd/logs/nova-agent.log
+
+[Install]
+WantedBy=default.target

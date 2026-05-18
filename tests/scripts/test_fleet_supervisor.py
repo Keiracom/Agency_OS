@@ -12,6 +12,8 @@ import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 # ---------------------------------------------------------------------------
 # Bootstrap: ensure scripts/ is importable
 # ---------------------------------------------------------------------------
@@ -670,3 +672,81 @@ def test_claim_next_task_returns_none_when_all_candidates_blocked(monkeypatch):
         )
         result = fs.claim_next_task(_FakeConn(cur), "aiden", 99)
         assert result is None
+
+
+# ---------------------------------------------------------------------------
+# KEI-185 — Nova in AGENTS list + supervisor v2 enable flag
+# ---------------------------------------------------------------------------
+
+
+def test_kei185_nova_is_seventh_agent_in_fleet():
+    """Nova must appear in AGENTS so the supervisor process_agent loop sees it."""
+    callsigns = [a["callsign"] for a in fs.AGENTS]
+    assert "nova" in callsigns
+    nova = next(a for a in fs.AGENTS if a["callsign"] == "nova")
+    assert nova["tmux"] == "nova:0"
+    assert nova["service"] == "nova-agent"
+
+
+def test_kei185_supervisor_v2_disabled_by_default(monkeypatch):
+    monkeypatch.delenv("FLEET_SUPERVISOR_V2_ENABLED", raising=False)
+    assert fs._supervisor_v2_enabled() is False
+
+
+@pytest.mark.parametrize("val", ["1", "true", "TRUE", "yes", "on", "Yes"])
+def test_kei185_supervisor_v2_enabled_recognises_truthy_strings(val, monkeypatch):
+    monkeypatch.setenv("FLEET_SUPERVISOR_V2_ENABLED", val)
+    assert fs._supervisor_v2_enabled() is True
+
+
+@pytest.mark.parametrize("val", ["0", "false", "no", "off", "", "   "])
+def test_kei185_supervisor_v2_enabled_rejects_falsy_strings(val, monkeypatch):
+    monkeypatch.setenv("FLEET_SUPERVISOR_V2_ENABLED", val)
+    assert fs._supervisor_v2_enabled() is False
+
+
+def test_kei185_try_run_supervisor_v2_falls_back_on_importerror(monkeypatch, caplog):
+    """When supervisor_v2 module is absent (KEI-183 PR #990 not merged),
+    _try_run_supervisor_v2 must log a warning and return False so main()
+    falls through to v1 instead of crashing.
+    """
+    import logging as _logging
+
+    real_import = (
+        __builtins__["__import__"] if isinstance(__builtins__, dict) else __builtins__.__import__
+    )
+
+    def _fake_import(name, *args, **kwargs):
+        if name == "src.fleet" or "supervisor_v2" in name:
+            raise ImportError("v2 stub absent")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr("builtins.__import__", _fake_import)
+    with caplog.at_level(_logging.WARNING):
+        result = fs._try_run_supervisor_v2()
+    assert result is False
+    assert any("PR #990" in r.message for r in caplog.records)
+
+
+def test_kei185_try_run_supervisor_v2_invokes_v2_when_present(monkeypatch):
+    """When v2 imports cleanly, _try_run_supervisor_v2 must call v2.run()
+    exactly once and return True so v1 is skipped.
+    """
+    import types as _types
+
+    v2_module = _types.ModuleType("src.fleet.supervisor_v2")
+    calls: list[str] = []
+
+    def _v2_run():
+        calls.append("ran")
+
+    v2_module.run = _v2_run  # type: ignore[attr-defined]
+    src_pkg = _types.ModuleType("src")
+    fleet_pkg = _types.ModuleType("src.fleet")
+    fleet_pkg.supervisor_v2 = v2_module  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "src", src_pkg)
+    monkeypatch.setitem(sys.modules, "src.fleet", fleet_pkg)
+    monkeypatch.setitem(sys.modules, "src.fleet.supervisor_v2", v2_module)
+    result = fs._try_run_supervisor_v2()
+    assert result is True
+    assert calls == ["ran"]

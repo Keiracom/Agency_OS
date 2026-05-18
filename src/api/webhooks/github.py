@@ -33,6 +33,11 @@ router = APIRouter(prefix="/api/webhooks/github", tags=["webhooks", "github"])
 
 _OPEN_ACTIONS = frozenset({"opened", "reopened"})
 
+# Sonar S1192 — DSN dialect strings used 3× each across helpers; module-level
+# constants keep the strip-call expression single-source.
+_DSN_ASYNCPG_PREFIX = "postgresql+asyncpg://"
+_DSN_SYNC_PREFIX = "postgresql://"
+
 # KEI-207 — auto-close matching KEI task on PR merge. Title parse first;
 # fallback to linear_url match from a Linear URL in the PR body.
 _KEI_TITLE_RE = re.compile(r"\bKEI-(\d+)\b", re.IGNORECASE)
@@ -66,7 +71,7 @@ def _upsert_review_task(pr: dict[str, Any]) -> None:
     if not dsn:
         logger.warning("github webhook tasks upsert skipped: DATABASE_URL/SUPABASE_DB_URL unset")
         return
-    dsn = dsn.replace("postgresql+asyncpg://", "postgresql://", 1)
+    dsn = dsn.replace(_DSN_ASYNCPG_PREFIX, _DSN_SYNC_PREFIX, 1)
 
     pr_number: int = pr["number"]
     pr_title: str = pr.get("title") or ""
@@ -110,7 +115,7 @@ def _close_review_task(pr_number: int) -> None:
     if not dsn:
         logger.warning("github webhook tasks close skipped: DATABASE_URL/SUPABASE_DB_URL unset")
         return
-    dsn = dsn.replace("postgresql+asyncpg://", "postgresql://", 1)
+    dsn = dsn.replace(_DSN_ASYNCPG_PREFIX, _DSN_SYNC_PREFIX, 1)
 
     task_id = _task_id(pr_number)
     try:
@@ -179,7 +184,7 @@ def _close_kei_task(pr: dict[str, Any]) -> None:
     if not dsn:
         logger.warning("github webhook KEI close skipped: DATABASE_URL/SUPABASE_DB_URL unset")
         return
-    dsn = dsn.replace("postgresql+asyncpg://", "postgresql://", 1)
+    dsn = dsn.replace(_DSN_ASYNCPG_PREFIX, _DSN_SYNC_PREFIX, 1)
 
     pr_number = pr.get("number")
     pr_title = pr.get("title") or ""

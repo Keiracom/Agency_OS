@@ -1,0 +1,15 @@
+[Unit]
+Description=Agency OS — KEI-97 fleet heartbeat timer for callsign %i
+Documentation=https://linear.app/keiracom/issue/KEI-97
+
+[Timer]
+# 30s cadence per KEI-97 spec — agent-process liveness signal.
+# CEO fleet-check flags any callsign whose last_heartbeat is older than 90s,
+# giving us ~3 missed beats of slack before declaring an agent dead.
+OnBootSec=15s
+OnUnitActiveSec=30s
+AccuracySec=5s
+Unit=fleet-heartbeat@%i.service
+
+[Install]
+WantedBy=timers.target

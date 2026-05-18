@@ -56,8 +56,13 @@ if echo "$BODY" | grep -qi -E "\[READY:(${CALLSIGN}|${SHOUTY})\]"; then
     exit 0
 fi
 
-# 6. Emit via slack relay. Fail-open: || true swallows any error.
-if command -v tg >/dev/null 2>&1; then
+# 6. Emit via helper — routes NATS vs Slack per AGENT_ROUTING_<CALLSIGN_UPPER>=v2.
+#    KEI-221 (c). READY_EMIT env override exists for tests; prod path resolves
+#    to scripts/agent_ready_emit.sh relative to this hook's own location.
+READY_EMIT="${READY_EMIT:-$(dirname "$0")/../agent_ready_emit.sh}"
+if [[ -x "$READY_EMIT" ]]; then
+    bash "$READY_EMIT" "$CALLSIGN" >/dev/null 2>&1 || true
+elif command -v tg >/dev/null 2>&1; then
     tg "[READY:${CALLSIGN}]" >/dev/null 2>&1 || true
 else
     /home/elliotbot/clawd/venv/bin/python3 \

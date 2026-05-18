@@ -1,0 +1,20 @@
+[Unit]
+Description=Agency OS — Drive → Weaviate StrategicDocuments indexer (KEI-208)
+Documentation=https://linear.app/keiracom/issue/KEI-208
+After=network-online.target weaviate.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+EnvironmentFile=-/home/elliotbot/.config/agency-os/.env
+# OPENAI_API_KEY required for text2vec-openai vectorizer (KEI-196 Option A).
+# Set in EnvironmentFile above or in the calling environment.
+ExecStart=/home/elliotbot/clawd/Agency_OS/.venv/bin/python3 /home/elliotbot/clawd/Agency_OS/scripts/orchestrator/drive_strategic_indexer.py --mode=incremental
+StandardOutput=append:/home/elliotbot/clawd/logs/drive_strategic_indexer.log
+StandardError=append:/home/elliotbot/clawd/logs/drive_strategic_indexer.log
+MemoryMax=512M
+MemoryHigh=400M
+
+[Install]
+WantedBy=default.target

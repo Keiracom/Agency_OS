@@ -1,0 +1,11 @@
+[Unit]
+Description=Fire Drive → Weaviate StrategicDocuments indexer every 6h (KEI-208)
+Requires=drive-strategic-indexer.service
+
+[Timer]
+OnBootSec=10min
+OnUnitActiveSec=6h
+Persistent=true
+
+[Install]
+WantedBy=timers.target

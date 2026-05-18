@@ -70,7 +70,7 @@ class _FakeCursor:
         return self
 
     def __exit__(self, *_):
-        pass
+        pass  # protocol no-op: cursor context manager exit requires no action in this mock
 
 
 class _FakeConn:
@@ -81,7 +81,7 @@ class _FakeConn:
         return self._cursor
 
     def commit(self):
-        pass
+        pass  # protocol no-op: fake connection commit requires no action in this mock
 
     def __enter__(self):
         return self

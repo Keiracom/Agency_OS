@@ -65,7 +65,7 @@ def _nats_publish_state(callsign: str, state: str) -> None:
     NATS is the canonical messaging backbone per KEI-205.
     """
     try:
-        import asyncio  # noqa: PLC0415 — lazy import, inside try for v1-path optional
+        import asyncio  # noqa: PLC0415 - lazy import inside try; nats-py optional on v1 path
 
         import nats.aio.client as nats_client  # noqa: PLC0415 — nats-py optional for v1 path
 
@@ -352,6 +352,38 @@ def fetch_open_pr_kei_ids() -> set[str]:
 _CANDIDATE_LIMIT = 10  # KEI-204 — top-N candidates to iterate; bounds dep-blocked rescan cost
 
 
+def _build_task_query(
+    v2: bool, open_pr_keis: set[str], callsign: str, phase_max: int
+) -> tuple[str, tuple]:
+    """Return (sql, params) for the candidate fetch in claim_next_task.
+
+    Extracted to reduce cognitive complexity in the caller (S3776).
+    Four combinations: v2 × has_open_pr_filter.
+    """
+    base = """
+        SELECT id, title, COALESCE(description, '') FROM public.tasks
+        WHERE status = 'available'
+          AND (phase IS NULL OR phase <= %s)
+          AND (is_parent IS NULL OR is_parent = false)
+    """
+    suffix = "ORDER BY priority ASC, created_at ASC\nLIMIT %s\nFOR UPDATE SKIP LOCKED"
+    if open_pr_keis:
+        if v2:
+            sql = f"{base}  AND id != ALL(%s::text[])\n  AND (persona = %s OR persona IS NULL)\n{suffix}"
+            params = (phase_max, sorted(open_pr_keis), callsign, _CANDIDATE_LIMIT)
+        else:
+            sql = f"{base}  AND id != ALL(%s::text[])\n{suffix}"
+            params = (phase_max, sorted(open_pr_keis), _CANDIDATE_LIMIT)
+    else:
+        if v2:
+            sql = f"{base}  AND (persona = %s OR persona IS NULL)\n{suffix}"
+            params = (phase_max, callsign, _CANDIDATE_LIMIT)
+        else:
+            sql = f"{base}{suffix}"
+            params = (phase_max, _CANDIDATE_LIMIT)
+    return sql, params
+
+
 def claim_next_task(
     conn: psycopg.Connection, callsign: str, phase_max: int
 ) -> tuple[str, str] | None:
@@ -373,72 +405,11 @@ def claim_next_task(
     v1 path is unchanged (no persona filter).
     """
     open_pr_keis = fetch_open_pr_kei_ids()
-
-    # KEI-183 v2: persona lane filter
-    if _is_v2(callsign):
-        persona_clause = "AND (persona = %s OR persona IS NULL)"
-    else:
-        persona_clause = ""
+    v2 = _is_v2(callsign)
+    sql, params = _build_task_query(v2, open_pr_keis, callsign, phase_max)
 
     with conn.cursor() as cur:
-        if open_pr_keis:
-            if _is_v2(callsign):
-                cur.execute(
-                    f"""
-                    SELECT id, title, COALESCE(description, '') FROM public.tasks
-                    WHERE status = 'available'
-                      AND (phase IS NULL OR phase <= %s)
-                      AND (is_parent IS NULL OR is_parent = false)
-                      AND id != ALL(%s::text[])
-                      {persona_clause}
-                    ORDER BY priority ASC, created_at ASC
-                    LIMIT %s
-                    FOR UPDATE SKIP LOCKED
-                    """,
-                    (phase_max, sorted(open_pr_keis), callsign, _CANDIDATE_LIMIT),
-                )
-            else:
-                cur.execute(
-                    """
-                    SELECT id, title, COALESCE(description, '') FROM public.tasks
-                    WHERE status = 'available'
-                      AND (phase IS NULL OR phase <= %s)
-                      AND (is_parent IS NULL OR is_parent = false)
-                      AND id != ALL(%s::text[])
-                    ORDER BY priority ASC, created_at ASC
-                    LIMIT %s
-                    FOR UPDATE SKIP LOCKED
-                    """,
-                    (phase_max, sorted(open_pr_keis), _CANDIDATE_LIMIT),
-                )
-        else:
-            if _is_v2(callsign):
-                cur.execute(
-                    f"""
-                    SELECT id, title, COALESCE(description, '') FROM public.tasks
-                    WHERE status = 'available'
-                      AND (phase IS NULL OR phase <= %s)
-                      AND (is_parent IS NULL OR is_parent = false)
-                      {persona_clause}
-                    ORDER BY priority ASC, created_at ASC
-                    LIMIT %s
-                    FOR UPDATE SKIP LOCKED
-                    """,
-                    (phase_max, callsign, _CANDIDATE_LIMIT),
-                )
-            else:
-                cur.execute(
-                    """
-                    SELECT id, title, COALESCE(description, '') FROM public.tasks
-                    WHERE status = 'available'
-                      AND (phase IS NULL OR phase <= %s)
-                      AND (is_parent IS NULL OR is_parent = false)
-                    ORDER BY priority ASC, created_at ASC
-                    LIMIT %s
-                    FOR UPDATE SKIP LOCKED
-                    """,
-                    (phase_max, _CANDIDATE_LIMIT),
-                )
+        cur.execute(sql, params)
         candidates = cur.fetchall()
         for row in candidates:
             task_id, title, description = row[0], row[1], row[2] or ""

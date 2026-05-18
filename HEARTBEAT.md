@@ -6,16 +6,17 @@ start, snapshotted by the PreCompact hook (scripts/pre_compact_alert.py).
 
 ## Active Task
 
-- Directive: KEI-90 (Gate 3 — peer-verify on deployment-class KEIs)
-- Goal: rebuild PR #928 on post-#925 main; ship Gate 3 with Dave-solo-ops 2-of-3 path
-- Phase: verify → report (tests 11/11, ruff clean, KEI-108 gate clean; commit + push pending)
-- Files touched (current PR): scripts/tasks_cli.py, supabase/migrations/20260517_kei90_gate3_deployment_peer_verify.sql, tests/scripts/test_tasks_cli_gate3.py
+- Directive: KEI-185 follow-up — S5603 unused-fn cleanup (test_spawn_nova.py:33 `_raise_on_import` removed) + HEARTBEAT refresh
+- Goal: clear Max's one-line lint suggestion from PR #1006 review + keep HEARTBEAT current post-PR-1006-merge
+- Phase: building → PR pending
+- Files touched: tests/scripts/test_spawn_nova.py (S5603 fix), HEARTBEAT.md (state refresh)
 
 ## Last Good Commit
 
-- SHA: 66696057
+- SHA: 815cdbefe
 - Branch: origin/main
-- Subject: refactor(kei107): deduplicate mock helpers in test_cognee_session_start (#926)
+- Subject: [AIDEN] feat(kei185): Nova engineer-clone scaffold + supervisor v2 enable flag (#1006)
+- Note: KEI-185 MERGED. KEI-199+204 also MERGED via PR #1000 (85e4a9a48). KEI-205 NATS install MERGED via PR #1005 (879b06b27). Supervisor v2 flip-on path: gated on KEI-183 (Elliot PR #990, NATS-redirect shipped at f33252a89, awaiting Max second concur) + KEI-184 (Orion PR #1004, on HOLD for 7× CRITICAL S5443 + 3× MINOR S100).
 
 ## Model
 
@@ -28,7 +29,9 @@ start, snapshotted by the PreCompact hook (scripts/pre_compact_alert.py).
 
 ## Next Action
 
-- Commit + push max/kei90-gate3-rebased; update PR #928 (or open replacement). After dual-concur, merge per Dave PR-duty directive.
+- Wait for peer review on PR #1000 (KEI-199 + KEI-204). After dual-concur, merge per Dave PR-duty directive.
+- T1-overflow standing: bd ready shows KEI-183 (Elliot lane, PR #990) + KEI-185 (dep-blocked on KEI-183+184). No claim unless explicitly redirected.
+- Drift-sync count this session: 12 (recorded in #execution thread). PR #1000 closes 2 of 3 supervisor blind spots once merged.
 
 ## Heartbeat Cadence (CLAUDE.md context thresholds)
 

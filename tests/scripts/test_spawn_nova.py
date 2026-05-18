@@ -29,10 +29,6 @@ def test_spawn_dry_run_returns_zero_without_invoking_session_manager(monkeypatch
     """Dry-run path must not import src.fleet.session_manager — the import is
     intentionally deferred so the CLI works pre-KEI-184-merge.
     """
-
-    def _raise_on_import(*_a, **_k):
-        raise AssertionError("dry-run must not import SessionManager")
-
     monkeypatch.setitem(sys.modules, "src.fleet.session_manager", None)
     with caplog.at_level(logging.INFO):
         rc = spawn_nova.spawn(dry_run=True)

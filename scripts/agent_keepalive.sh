@@ -80,6 +80,19 @@ _kill_claude_on_term() {
 }
 trap _kill_claude_on_term TERM INT
 
+# KEI-125 — systemd watchdog integration. Unit declares Type=notify +
+# WatchdogSec=30s; we notify --ready once tmux is up, then ping
+# WATCHDOG=1 in a background loop at half the watchdog interval so a
+# missed ping or two is tolerated. If THIS script hangs (the tmux poll
+# below stops issuing pings), systemd kills + restarts the unit → fresh
+# tmux + claude. agent_failover_notify.sh then posts to #ceo.
+_watchdog_loop() {
+    while :; do
+        systemd-notify WATCHDOG=1 2>/dev/null || true
+        sleep 15
+    done
+}
+
 if ! tmux has-session -t "$session" 2>/dev/null; then
     echo "[keepalive] spawning tmux session=$session callsign=$callsign worktree=$worktree"
     tmux new-session -d -s "$session" -c "$worktree"
@@ -102,6 +115,15 @@ _pane_running_claude() {
     return 0
 }
 
+# KEI-125: signal systemd we're ready (Type=notify requires this) + start
+# the WATCHDOG ping loop in the background. The trap above kills $! on exit
+# so the background loop doesn't outlive the keepalive.
+systemd-notify --ready 2>/dev/null || true
+_watchdog_loop &
+_watchdog_pid=$!
+# shellcheck disable=SC2064  # intentional $_watchdog_pid expansion at trap-set time
+trap "kill ${_watchdog_pid} 2>/dev/null; _kill_claude_on_term" TERM INT
+
 while tmux has-session -t "$session" 2>/dev/null; do
     if ! _pane_running_claude; then
         echo "[keepalive] pane leader is not claude — re-issuing claude_cmd" >&2
@@ -109,6 +131,10 @@ while tmux has-session -t "$session" 2>/dev/null; do
     fi
     sleep "$poll_seconds"
 done
+
+# Tear down watchdog before exiting so the background pinger doesn't keep
+# emitting WATCHDOG=1 after this script is gone (would race the unit-stop).
+kill "${_watchdog_pid}" 2>/dev/null || true
 
 echo "[keepalive] tmux session=$session terminated — exiting non-zero for systemd restart" >&2
 exit 1

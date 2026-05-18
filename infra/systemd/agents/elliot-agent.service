@@ -7,7 +7,7 @@ StartLimitBurst=5
 StartLimitIntervalSec=300
 
 [Service]
-Type=simple
+Type=notify
 Environment="CALLSIGN=elliot"
 EnvironmentFile=/home/elliotbot/.config/agency-os/.env
 WorkingDirectory=/home/elliotbot/clawd/Agency_OS
@@ -17,7 +17,10 @@ ExecStartPre=-/usr/bin/git -C /home/elliotbot/clawd/Agency_OS pull origin main -
 ExecStartPre=-/home/elliotbot/clawd/Agency_OS/.venv/bin/python3 /home/elliotbot/clawd/Agency_OS/scripts/cognee_session_start.py --callsign elliot
 ExecStart=/home/elliotbot/clawd/Agency_OS/scripts/agent_keepalive.sh elliottbot elliot /home/elliotbot/clawd/Agency_OS
 ExecStartPost=/home/elliotbot/clawd/Agency_OS/scripts/elliot_fleet_notify.sh 20
+ExecStartPost=-/home/elliotbot/clawd/Agency_OS/scripts/agent_failover_notify.sh ELLIOT 5
 Restart=always
+WatchdogSec=30s
+NotifyAccess=main
 RestartSec=10
 StandardOutput=append:/home/elliotbot/clawd/logs/elliot-agent.log
 StandardError=append:/home/elliotbot/clawd/logs/elliot-agent.log

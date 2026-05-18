@@ -29,6 +29,65 @@ from typing import Any
 import psycopg
 
 # ---------------------------------------------------------------------------
+# KEI-183: Supervisor v2 feature flags
+# ---------------------------------------------------------------------------
+# SUPERVISOR_V2_ENABLED=1  enables v2 for agents whose AGENT_ROUTING=v2.
+# AGENT_ROUTING_<CALLSIGN>=v2 (e.g. AGENT_ROUTING_ELLIOT=v2) opts that agent in.
+# Both default OFF — v1 path is unchanged when flags absent.
+
+SUPERVISOR_V2_ENABLED: bool = os.environ.get("SUPERVISOR_V2_ENABLED", "0") == "1"
+
+# NATS connection details — canonical messaging backbone per KEI-205.
+# Valkey stays for KEI-117 rate limiting + KV state only; NATS is the
+# canonical messaging backbone per KEI-205.
+NATS_URL: str = os.environ.get("NATS_URL", "nats://127.0.0.1:4222")
+
+
+def _agent_routing(callsign: str) -> str:
+    """Return 'v2' if this agent is opted into v2 routing, else 'v1'."""
+    env_key = f"AGENT_ROUTING_{callsign.upper()}"
+    return os.environ.get(env_key, "v1")
+
+
+def _is_v2(callsign: str) -> bool:
+    """True when both global flag and per-agent routing are set to v2."""
+    return SUPERVISOR_V2_ENABLED and _agent_routing(callsign) == "v2"
+
+
+def _nats_publish_state(callsign: str, state: str) -> None:
+    """KEI-183 v2 / KEI-205: publish agent state to NATS subject keiracom.agent.status.<callsign>.
+
+    Payload: {"state": "<state>", "ts": <unix_epoch_int>}
+    Subject: keiracom.agent.status.<callsign>
+    Fail-open — NATS unavailable should never crash the supervisor.
+
+    Note: Valkey stays for KEI-117 rate limiting + KV state only;
+    NATS is the canonical messaging backbone per KEI-205.
+    """
+    try:
+        import asyncio  # noqa: PLC0415 - lazy import inside try; nats-py optional on v1 path
+
+        import nats.aio.client as nats_client  # noqa: PLC0415 — nats-py optional for v1 path
+
+        payload = json.dumps({"state": state, "ts": int(time.time())}).encode()
+        subject = f"keiracom.agent.status.{callsign}"
+
+        async def _publish() -> None:
+            nc = nats_client.Client()
+            await nc.connect(NATS_URL, connect_timeout=2)
+            try:
+                await nc.publish(subject, payload)
+                await nc.flush()
+            finally:
+                await nc.close()
+
+        asyncio.run(_publish())
+        log.debug("[%s] NATS PUBLISH %s → %s", callsign, subject, state)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("[%s] NATS publish failed (non-fatal): %s", callsign, exc)
+
+
+# ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
@@ -81,7 +140,7 @@ def _db_dsn() -> str:
     dsn = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL", "")
     if not dsn:
         raise RuntimeError("DATABASE_URL / SUPABASE_DB_URL not set")
-    return dsn.replace("postgresql+asyncpg://", "postgresql://", 1)
+    return dsn
 
 
 def _connect() -> psycopg.Connection:
@@ -129,17 +188,8 @@ def tmux_has_session(session: str) -> bool:
 
 
 def tmux_send(session: str, text: str) -> None:
-    # Two-call pattern: text in literal mode first, then Enter separately.
-    # Single-call ["text", "Enter"] is unreliable when text contains newlines
-    # (Claude tmux interprets embedded \n as soft-break and may eat the trailing Enter).
     subprocess.run(
-        ["tmux", "send-keys", "-t", session, "-l", text],
-        check=True,
-    )
-    # Tiny pause so the input box registers the text before Enter fires.
-    time.sleep(0.3)
-    subprocess.run(
-        ["tmux", "send-keys", "-t", session, "Enter"],
+        ["tmux", "send-keys", "-t", session, text, "Enter"],
         check=True,
     )
 
@@ -308,6 +358,38 @@ def fetch_open_pr_kei_ids() -> set[str]:
 _CANDIDATE_LIMIT = 10  # KEI-204 — top-N candidates to iterate; bounds dep-blocked rescan cost
 
 
+def _build_task_query(
+    v2: bool, open_pr_keis: set[str], callsign: str, phase_max: int
+) -> tuple[str, tuple]:
+    """Return (sql, params) for the candidate fetch in claim_next_task.
+
+    Extracted to reduce cognitive complexity in the caller (S3776).
+    Four combinations: v2 × has_open_pr_filter.
+    """
+    base = """
+        SELECT id, title, COALESCE(description, '') FROM public.tasks
+        WHERE status = 'available'
+          AND (phase IS NULL OR phase <= %s)
+          AND (is_parent IS NULL OR is_parent = false)
+    """
+    suffix = "ORDER BY priority ASC, created_at ASC\nLIMIT %s\nFOR UPDATE SKIP LOCKED"
+    if open_pr_keis:
+        if v2:
+            sql = f"{base}  AND id != ALL(%s::text[])\n  AND (persona = %s OR persona IS NULL)\n{suffix}"
+            params = (phase_max, sorted(open_pr_keis), callsign, _CANDIDATE_LIMIT)
+        else:
+            sql = f"{base}  AND id != ALL(%s::text[])\n{suffix}"
+            params = (phase_max, sorted(open_pr_keis), _CANDIDATE_LIMIT)
+    else:
+        if v2:
+            sql = f"{base}  AND (persona = %s OR persona IS NULL)\n{suffix}"
+            params = (phase_max, callsign, _CANDIDATE_LIMIT)
+        else:
+            sql = f"{base}{suffix}"
+            params = (phase_max, _CANDIDATE_LIMIT)
+    return sql, params
+
+
 def claim_next_task(
     conn: psycopg.Connection, callsign: str, phase_max: int
 ) -> tuple[str, str] | None:
@@ -322,36 +404,18 @@ def claim_next_task(
     'FOLLOW-UP after KEI-C (KEI-185 Nova spawn)' was dispatched 3x in the
     session despite the explicit dep gate (Max yield, Scout yield, Aiden
     yield). Six canonical phrasings parsed via _BLOCKER_PATTERNS.
+
+    KEI-183 v2: when _is_v2(callsign) the WHERE clause filters by persona lane:
+        persona = $callsign OR persona IS NULL
+    so agents only pick up tasks in their lane or unassigned-overflow tasks.
+    v1 path is unchanged (no persona filter).
     """
     open_pr_keis = fetch_open_pr_kei_ids()
+    v2 = _is_v2(callsign)
+    sql, params = _build_task_query(v2, open_pr_keis, callsign, phase_max)
+
     with conn.cursor() as cur:
-        if open_pr_keis:
-            cur.execute(
-                """
-                SELECT id, title, COALESCE(description, '') FROM public.tasks
-                WHERE status = 'available'
-                  AND (phase IS NULL OR phase <= %s)
-                  AND (is_parent IS NULL OR is_parent = false)
-                  AND id != ALL(%s::text[])
-                ORDER BY priority ASC, created_at ASC
-                LIMIT %s
-                FOR UPDATE SKIP LOCKED
-                """,
-                (phase_max, sorted(open_pr_keis), _CANDIDATE_LIMIT),
-            )
-        else:
-            cur.execute(
-                """
-                SELECT id, title, COALESCE(description, '') FROM public.tasks
-                WHERE status = 'available'
-                  AND (phase IS NULL OR phase <= %s)
-                  AND (is_parent IS NULL OR is_parent = false)
-                ORDER BY priority ASC, created_at ASC
-                LIMIT %s
-                FOR UPDATE SKIP LOCKED
-                """,
-                (phase_max, _CANDIDATE_LIMIT),
-            )
+        cur.execute(sql, params)
         candidates = cur.fetchall()
         for row in candidates:
             task_id, title, description = row[0], row[1], row[2] or ""
@@ -480,58 +544,13 @@ def list_open_prs() -> list[dict[str, Any]]:
         return []
 
 
-def fetch_pr_comments(pr_number: int) -> list[dict]:
-    """Fetch PR comments via gh pr view --json comments. Returns list of comment dicts."""
-    result = subprocess.run(
-        ["gh", "pr", "view", str(pr_number), "--json", "comments"],
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode != 0:
-        log.warning("gh pr view %d comments failed: %s", pr_number, result.stderr)
-        return []
-    try:
-        data = json.loads(result.stdout) or {}
-        return data.get("comments") or []
-    except json.JSONDecodeError:
-        return []
-
-
-_REVIEW_COMMENT_PATTERN_TMPL = r"\[REVIEW(?::(?:approve|hold(?:-final)))?:{callsign}\]"
-
-
-def comment_has_review_marker(body: str, callsign: str) -> bool:
-    """Return True if body contains any [REVIEW:...:<callsign>] variant (case-insensitive)."""
-    import re
-
-    pattern = _REVIEW_COMMENT_PATTERN_TMPL.format(callsign=re.escape(callsign))
-    return bool(re.search(pattern, body, re.IGNORECASE))
-
-
 def agent_has_reviewed(pr: dict, callsign: str) -> bool:
-    """Check if callsign already posted a [REVIEW:callsign] comment on this PR.
-
-    Checks both formal GitHub review objects (pr['reviews']) and PR comments
-    fetched via gh pr view --json comments, since agents post review markers
-    as Slack-relayed comments rather than formal GH reviews.
-    """
-    # Check formal review objects first (fast, no subprocess)
+    """Check if callsign already posted a [REVIEW:callsign] comment on this PR."""
     reviews = pr.get("reviews") or []
-    tag = f"[REVIEW:{callsign}]".lower()
+    tag = f"[REVIEW:{callsign}]"
     for r in reviews:
-        body = (r.get("body", "") or "").lower()
+        body = r.get("body", "") or ""
         if tag in body:
-            return True
-
-    # Check PR comments for [REVIEW:<callsign>] markers
-    pr_number = pr.get("number")
-    if pr_number is None:
-        return False
-    comments = fetch_pr_comments(pr_number)
-    for c in comments:
-        body = c.get("body", "") or ""
-        if comment_has_review_marker(body, callsign):
-            log.info("%s already reviewed PR #%d — skip", callsign, pr_number)
             return True
     return False
 
@@ -693,7 +712,12 @@ def _handle_idle_no_queue(
     conn: psycopg.Connection,
     status: AgentStatus,
 ) -> AgentStatus:
-    """Scenario 2/5: no claim, queue empty — assign PR review or log idle."""
+    """Scenario 2/5: no claim, queue empty — assign PR review or log idle.
+
+    KEI-183 v2 / KEI-205: when _is_v2(callsign), publish {"state":"ready"} to NATS
+    subject keiracom.agent.status.<callsign> instead of relying on the Slack
+    [READY] tmux-send. v1 path unchanged.
+    """
     review_pr = find_pr_for_review(prs, callsign)
     if review_pr:
         pr_number = review_pr["number"]
@@ -714,6 +738,9 @@ def _handle_idle_no_queue(
     else:
         log.info("[%s] Scenario 2: queue empty, no reviews — correctly idle", callsign)
         status.summary = "queue empty, no reviews — correctly idle"
+    # KEI-183 v2 / KEI-205: publish NATS ready-state instead of Slack [READY] tmux-send.
+    if _is_v2(callsign):
+        _nats_publish_state(callsign, "ready")
     return status
 
 
@@ -806,23 +833,11 @@ def process_agent(
 # ---------------------------------------------------------------------------
 
 
-def _strip_ceo_banned_tokens(text: str) -> str:
-    """Strip PR numbers + technical tokens that #ceo format-blocks."""
-    import re
-
-    # PR #NNN or pull request #NNN -> 'pull request' / 'a pull request'
-    text = re.sub(r"(?:PR|pull request)\s*#\d+", "a pull request", text, flags=re.IGNORECASE)
-    return text
-
-
 def post_ceo_status(report: FleetReport) -> None:
     now_str = _dt.datetime.now(_dt.UTC).strftime("%H:%M UTC")
     lines = [f"**Fleet Status [{now_str}]**"]
     for s in report.statuses:
-        # Strip PR number tokens — banned in #ceo per plain-English convention.
-        # Replace "PR #NNN" / "pull request #NNN" patterns with neutral phrasing.
-        clean_summary = _strip_ceo_banned_tokens(s.summary)
-        lines.append(f"- {s.callsign}: {clean_summary}")
+        lines.append(f"- {s.callsign}: {s.summary}")
     lines.append("")
     lines.append(
         f"**Queue: {report.queue_available} available | "

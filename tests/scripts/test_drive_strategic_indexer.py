@@ -243,8 +243,9 @@ def test_config_loader_empty_returns_no_sections(tmp_path, monkeypatch):
     cfg = tmp_path / "drive_index_targets.json"
     cfg.write_text(json.dumps({"documents": []}))
     indexer = dsi.DriveStrategicIndexer(config_path=cfg)
-    # Patch _docs_client so we don't try to auth.
-    monkeypatch.setattr(
-        dsi, "_docs_client", lambda: (_ for _ in ()).throw(AssertionError("should not be called"))
-    )
+
+    def _should_not_be_called() -> None:
+        raise AssertionError("should not be called")
+
+    monkeypatch.setattr(dsi, "_docs_client", _should_not_be_called)
     assert indexer._fetch_all_sections() == []

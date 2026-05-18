@@ -288,7 +288,7 @@ def main() -> int:
             logger.info("StrategicDocuments count after run: %s", count)
         except Exception:  # noqa: BLE001
             pass
-        return 0
+        return 1 if outcome.failed else 0
     indexer.run_forever(poll_seconds=POLL_SECONDS, batch_size=args.batch)
     return 0
 

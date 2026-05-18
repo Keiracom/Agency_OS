@@ -59,16 +59,15 @@ logger = logging.getLogger("slack_history_indexer")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
 
-# Sonar S2083 — Path Traversal guard.
+# Sonar S2083 / S5443 — Path Traversal + publicly writable directories.
 # SLACK_HISTORY_CHECKPOINT and XDG_STATE_HOME flow from the process environment;
 # an operator with env access could otherwise redirect writes anywhere on disk.
-# We canonicalize both via Path.resolve() and require the result to sit under
-# one of these safe parents before honouring the override.
+# We canonicalize via Path.resolve() and require the result to sit under one of
+# these private safe parents. /tmp is intentionally excluded (S5443: world-writable).
 def _safe_state_parents() -> tuple[Path, ...]:
     return (
         Path.home().resolve(),
-        Path("/var/lib").resolve(),
-        Path("/tmp").resolve(),
+        Path("/var/lib/agency-os").resolve(),
     )
 
 
@@ -108,6 +107,11 @@ def checkpoint_path() -> Path:
     return Path.home() / ".local" / "state" / "agency-os" / "slack_history_checkpoint.json"
 
 
+def _sanitize_log_value(raw: object) -> str:
+    """Strip CR/LF from user-controlled values before logging (Sonar S5145)."""
+    return str(raw).replace("\n", "\\n").replace("\r", "\\r")
+
+
 def load_checkpoint(path: Path) -> dict[str, str]:
     """Return {channel_slug: last_ts} or {} if no checkpoint yet (cold start)."""
     if not path.exists():
@@ -120,11 +124,19 @@ def load_checkpoint(path: Path) -> dict[str, str]:
 
 
 def save_checkpoint(path: Path, data: dict[str, str]) -> None:
-    """Atomic write: tmp + rename → no torn writes if process dies mid-write."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(json.dumps(data, indent=2, sort_keys=True))
-    tmp.replace(path)
+    """Atomic write: tmp + rename → no torn writes if process dies mid-write.
+
+    Defence-in-depth: re-validate that the resolved path is under a safe parent
+    before writing (Sonar S2083 — taint analyzer may not follow upstream
+    validator across function boundaries).
+    """
+    resolved = path.resolve()
+    if not any(resolved.is_relative_to(p) for p in _safe_state_parents()):
+        raise ValueError(f"refusing to write checkpoint outside safe roots: {resolved}")
+    resolved.parent.mkdir(parents=True, exist_ok=True)
+    tmp = resolved.with_suffix(resolved.suffix + ".tmp")
+    tmp.write_text(json.dumps(data, indent=2, sort_keys=True))  # NOSONAR S2083 — path checked above
+    tmp.replace(resolved)
 
 
 def bootstrap_now_ts() -> str:
@@ -182,6 +194,35 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _ensure_schema_or_log() -> int:
+    """Return 0 on success, 3 on ensure_class failure. Logged with traceback."""
+    try:
+        ingest.ensure_class()
+    except Exception:  # noqa: BLE001 — surface any schema-create failure
+        logger.exception("ensure_class failed")
+        return 3
+    return 0
+
+
+def _index_one_channel(
+    slug: str,
+    ch_id: str,
+    checkpoint: dict[str, str],
+    by_type: dict[str, int],
+) -> tuple[int, int, int, str]:
+    """Wrapper around index_channel that emits the structured log line."""
+    oldest = checkpoint.get(slug) or bootstrap_now_ts()
+    cold_start = slug not in checkpoint
+    logger.info(
+        "indexing #%s (%s) since ts=%s%s",
+        _sanitize_log_value(slug),
+        _sanitize_log_value(ch_id),
+        _sanitize_log_value(oldest),
+        " [cold-start]" if cold_start else "",
+    )
+    return index_channel(slug, ch_id, oldest, by_type)
+
+
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
     if not ingest.BOT_TOKEN:
@@ -193,11 +234,9 @@ def main(argv: list[str] | None = None) -> int:
     channels = (args.channel,) if args.channel else ingest.CHANNEL_SLUGS
 
     if not args.dry_run:
-        try:
-            ingest.ensure_class()
-        except Exception as exc:  # noqa: BLE001 — surface any schema-create failure
-            logger.error("ensure_class failed: %s", exc)
-            return 3
+        schema_rc = _ensure_schema_or_log()
+        if schema_rc != 0:
+            return schema_rc
 
     channel_ids = ingest.resolve_channel_ids(channels)
     if not channel_ids:
@@ -213,18 +252,9 @@ def main(argv: list[str] | None = None) -> int:
     for slug in channels:
         ch_id = channel_ids.get(slug)
         if not ch_id:
-            logger.warning("channel #%s did not resolve — skipping", slug)
+            logger.warning("channel #%s did not resolve — skipping", _sanitize_log_value(slug))
             continue
-        oldest = checkpoint.get(slug) or bootstrap_now_ts()
-        cold_start = slug not in checkpoint
-        logger.info(
-            "indexing #%s (%s) since ts=%s%s",
-            slug,
-            ch_id,
-            oldest,
-            " [cold-start]" if cold_start else "",
-        )
-        kept, posted, failed, new_last_ts = index_channel(slug, ch_id, oldest, by_type)
+        kept, posted, failed, new_last_ts = _index_one_channel(slug, ch_id, checkpoint, by_type)
         by_channel[slug] = kept
         total_posted += posted
         total_failed += failed
@@ -242,7 +272,7 @@ def main(argv: list[str] | None = None) -> int:
         total_posted,
         total_failed,
         elapsed_ms,
-        cp_path,
+        _sanitize_log_value(cp_path),
     )
     return 0 if total_failed == 0 else 2
 

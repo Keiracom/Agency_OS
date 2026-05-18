@@ -39,6 +39,8 @@ def test_checkpoint_path_default(indexer, monkeypatch, tmp_path):
 
 
 def test_checkpoint_path_xdg_state_home_wins(indexer, monkeypatch, tmp_path):
+    """Safe roots are $HOME + /var/lib/agency-os; pytest tmp_path is set as HOME."""
+    monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.delenv("SLACK_HISTORY_CHECKPOINT", raising=False)
     state = tmp_path / "xdg-state"
     monkeypatch.setenv("XDG_STATE_HOME", str(state))
@@ -47,10 +49,10 @@ def test_checkpoint_path_xdg_state_home_wins(indexer, monkeypatch, tmp_path):
 
 
 def test_checkpoint_path_env_override_wins(indexer, monkeypatch, tmp_path):
+    """Override must resolve under safe parents — set HOME=tmp_path to make it so."""
+    monkeypatch.setenv("HOME", str(tmp_path))
     override = tmp_path / "custom.json"
     monkeypatch.setenv("SLACK_HISTORY_CHECKPOINT", str(override))
-    # XDG override here is also under tmp_path (safe). The S2083 rejection of
-    # arbitrary outside-safe-roots paths is exercised in the tests below.
     monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "xdg-ignored"))
     assert indexer.checkpoint_path() == override.resolve()
 
@@ -94,6 +96,21 @@ def test_checkpoint_path_rejects_outside_safe_roots_xdg(indexer, monkeypatch, tm
     assert p == tmp_path / ".local" / "state" / "agency-os" / "slack_history_checkpoint.json"
 
 
+def test_save_checkpoint_refuses_unsafe_path(indexer, monkeypatch, tmp_path):
+    """Sink-side defence-in-depth: save_checkpoint rejects paths outside safe roots."""
+    monkeypatch.setenv("HOME", str(tmp_path))
+    unsafe = Path("/etc/agency-os-pwn.json")
+    with pytest.raises(ValueError, match="outside safe roots"):
+        indexer.save_checkpoint(unsafe, {"ceo": "1.1"})
+
+
+def test_sanitize_log_value_strips_crlf(indexer):
+    """Sonar S5145 — newlines/CR are escaped so log lines can't be forged."""
+    assert indexer._sanitize_log_value("evil\nINJECTED") == "evil\\nINJECTED"
+    assert indexer._sanitize_log_value("crlf\r\nattack") == "crlf\\r\\nattack"
+    assert indexer._sanitize_log_value("clean") == "clean"
+
+
 # ─── load/save round-trip ────────────────────────────────────────────────────
 
 
@@ -107,22 +124,25 @@ def test_load_checkpoint_malformed_returns_empty(indexer, tmp_path):
     assert indexer.load_checkpoint(p) == {}
 
 
-def test_save_then_load_round_trip(indexer, tmp_path):
+def test_save_then_load_round_trip(indexer, monkeypatch, tmp_path):
+    monkeypatch.setenv("HOME", str(tmp_path))
     p = tmp_path / "cp.json"
     data = {"ceo": "1779065531.123", "execution": "1779065532.456"}
     indexer.save_checkpoint(p, data)
     assert indexer.load_checkpoint(p) == data
 
 
-def test_save_checkpoint_creates_parent_dir(indexer, tmp_path):
+def test_save_checkpoint_creates_parent_dir(indexer, monkeypatch, tmp_path):
+    monkeypatch.setenv("HOME", str(tmp_path))
     p = tmp_path / "nested" / "deeper" / "cp.json"
     indexer.save_checkpoint(p, {"ceo": "1.1"})
     assert p.exists()
     assert json.loads(p.read_text()) == {"ceo": "1.1"}
 
 
-def test_save_checkpoint_atomic_via_tmp_rename(indexer, tmp_path):
+def test_save_checkpoint_atomic_via_tmp_rename(indexer, monkeypatch, tmp_path):
     """Write goes through .tmp + rename → no partial file under target name."""
+    monkeypatch.setenv("HOME", str(tmp_path))
     p = tmp_path / "cp.json"
     indexer.save_checkpoint(p, {"ceo": "1.1"})
     # No leftover .tmp after success

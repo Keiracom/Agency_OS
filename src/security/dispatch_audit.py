@@ -50,7 +50,16 @@ def emit_audit(
     try:
         import psycopg  # noqa: PLC0415 — lazy import; audit is best-effort
 
-        with psycopg.connect(dsn, connect_timeout=2) as conn, conn.cursor() as cur:
+        # prepare_threshold=None disables psycopg3 auto-prepare. Required for
+        # Supabase pgbouncer txn-mode pooler (drops PREPARE between leases →
+        # DuplicatePreparedStatement after ~5 executions). Anchored as
+        # reference_psycopg_supabase_pgbouncer (max anchor KEI-54B PR #881;
+        # re-validated PR #1046 KEI-70st). Without this, every audit row past
+        # the 5th would silently fail — defeating KEI-138's observable-ops goal.
+        with (
+            psycopg.connect(dsn, connect_timeout=2, prepare_threshold=None) as conn,
+            conn.cursor() as cur,
+        ):
             cur.execute(
                 """
                 INSERT INTO public.dispatch_audit

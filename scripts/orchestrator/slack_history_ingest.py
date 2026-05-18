@@ -115,15 +115,28 @@ _FLEET_STATUS_RE = re.compile(
     r"^\s*(?:\[FLEET-?STATUS:[a-z0-9_-]+\]|\[SUPERVISOR\]\s+(?:fleet|cycle))",
     re.IGNORECASE,
 )
+_BARE_CALLSIGN_RE = re.compile(
+    r"^\s*\[(?:atlas|orion|scout|nova|max|aiden|elliot|claude|dave)\]\s*$",
+    re.IGNORECASE,
+)
+_VERCEL_RATELIMIT_RE = re.compile(
+    r"vercel.*(?:rate.?limit|too many requests|429)|"
+    r"(?:rate.?limit|too many requests|429).*vercel",
+    re.IGNORECASE,
+)
 
 
 def is_noise(text: str) -> bool:
-    """Return True if the message is a [READY:] heartbeat / fleet-status mirror."""
+    """Return True if the message is a heartbeat / fleet-mirror / bare-ping / Vercel-throttle."""
     if not text or not text.strip():
         return True
     if _READY_HEARTBEAT_RE.match(text):
         return True
-    if _FLEET_STATUS_RE.match(text):  # noqa: SIM103 — explicit return clearer than chain
+    if _FLEET_STATUS_RE.match(text):
+        return True
+    if _BARE_CALLSIGN_RE.match(text):
+        return True
+    if _VERCEL_RATELIMIT_RE.search(text):  # noqa: SIM103 — explicit return clearer than chain
         return True
     return False
 
@@ -250,11 +263,20 @@ def resolve_channel_ids(slugs: tuple[str, ...]) -> dict[str, str]:
     return mapping
 
 
-def paginate_history(channel_id: str, limit_per_page: int = 200, total_cap: int = 100_000):
+def paginate_history(
+    channel_id: str,
+    limit_per_page: int = 200,
+    total_cap: int = 100_000,
+    oldest: str = "",
+):
     """Yield message dicts from conversations.history for one channel.
 
     Sleeps 1.0s between pages to stay well under Slack's tier-2 rate limit
     (20 req/min on conversations.history for many workspaces).
+
+    `oldest`: if set (Slack ts like "1779065531.123456"), only messages with
+    ts > oldest are returned — used by the incremental indexer for the
+    since-last-checkpoint window.
     """
     cursor = ""
     yielded = 0
@@ -262,6 +284,8 @@ def paginate_history(channel_id: str, limit_per_page: int = 200, total_cap: int 
         params: dict[str, Any] = {"channel": channel_id, "limit": limit_per_page}
         if cursor:
             params["cursor"] = cursor
+        if oldest:
+            params["oldest"] = oldest
         try:
             body = _slack_get("conversations.history", params)
         except (urlerror.URLError, urlerror.HTTPError, RuntimeError) as exc:

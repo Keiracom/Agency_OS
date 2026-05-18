@@ -1,0 +1,19 @@
+[Unit]
+Description=KEI-201 Slack history → Weaviate incremental indexer (one-shot)
+Documentation=https://linear.app/keiracom/issue/KEI-201
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=%h/.config/agency-os/.env
+WorkingDirectory=%h/clawd/Agency_OS
+ExecStart=/usr/bin/python3 %h/clawd/Agency_OS/scripts/orchestrator/slack_history_indexer.py
+Nice=10
+StandardOutput=journal
+StandardError=journal
+TimeoutStartSec=300
+# Don't restart on failure — timer triggers next run; failures surface via journalctl
+
+[Install]
+WantedBy=default.target

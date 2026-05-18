@@ -54,6 +54,32 @@ def test_noise_filter_keeps_real_content(mod):
     assert not mod.is_noise("Building KEI-201 now")
 
 
+def test_noise_filter_drops_bare_callsign_ping(mod):
+    """Bare-bracket pings like '[ATLAS]' alone are pure protocol noise."""
+    assert mod.is_noise("[ATLAS]")
+    assert mod.is_noise("[scout]")
+    assert mod.is_noise("  [ORION]  ")
+    assert mod.is_noise("[NOVA]")
+
+
+def test_noise_filter_keeps_callsign_with_payload(mod):
+    """Bracketed callsign with content after MUST be kept (it's a real ping with body)."""
+    assert not mod.is_noise("[ATLAS] please claim KEI-99")
+    assert not mod.is_noise("[SCOUT] dispatch received")
+
+
+def test_noise_filter_drops_vercel_ratelimit(mod):
+    assert mod.is_noise("Vercel rate limit hit on deploy")
+    assert mod.is_noise("429 too many requests from vercel API")
+    assert mod.is_noise("VERCEL: rate-limit retry after 60s")
+
+
+def test_noise_filter_keeps_vercel_non_ratelimit(mod):
+    """Vercel mentioned in non-ratelimit context (e.g. deploy success) must NOT be noise."""
+    assert not mod.is_noise("Vercel deploy succeeded for PR #1024")
+    assert not mod.is_noise("checking vercel logs for the build failure")
+
+
 def test_noise_filter_regex_precedence_supervisor_midstring(mod):
     """S5850 regression: `[SUPERVISOR] fleet` mid-string must NOT be flagged as noise.
 

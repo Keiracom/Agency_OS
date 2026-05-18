@@ -7,7 +7,7 @@ StartLimitBurst=5
 StartLimitIntervalSec=300
 
 [Service]
-Type=simple
+Type=notify
 Environment="CALLSIGN=orion"
 EnvironmentFile=/home/elliotbot/.config/agency-os/.env
 WorkingDirectory=/home/elliotbot/clawd/Agency_OS-orion
@@ -16,7 +16,10 @@ ExecStartPre=-/usr/bin/git -C /home/elliotbot/clawd/Agency_OS-orion pull origin 
 ExecStartPre=-/home/elliotbot/clawd/Agency_OS/.venv/bin/python3 /home/elliotbot/clawd/Agency_OS/scripts/cognee_session_start.py --callsign orion
 ExecStart=/home/elliotbot/clawd/Agency_OS/scripts/agent_keepalive.sh orion orion /home/elliotbot/clawd/Agency_OS-orion
 ExecStartPost=/home/elliotbot/clawd/Agency_OS/scripts/agent_online_notify.sh ORION 15 C0B3QB0K1GQ
+ExecStartPost=-/home/elliotbot/clawd/Agency_OS/scripts/agent_failover_notify.sh ORION 5
 Restart=always
+WatchdogSec=30s
+NotifyAccess=main
 RestartSec=10
 StandardOutput=append:/home/elliotbot/clawd/logs/orion-agent.log
 StandardError=append:/home/elliotbot/clawd/logs/orion-agent.log

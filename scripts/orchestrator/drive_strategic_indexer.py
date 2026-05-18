@@ -87,8 +87,7 @@ def _docs_client() -> Any:
         from googleapiclient.discovery import build
     except ImportError as exc:
         raise RuntimeError(
-            "drive_strategic_indexer requires `pip install "
-            "google-api-python-client google-auth`"
+            "drive_strategic_indexer requires `pip install google-api-python-client google-auth`"
         ) from exc
 
     if not Path(SERVICE_ACCOUNT_FILE).exists():

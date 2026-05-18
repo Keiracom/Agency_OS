@@ -209,7 +209,16 @@ def test_class_schema_uses_openai_vectorizer():
     assert schema["class"] == "StrategicDocuments"
     assert schema["vectorizer"] == "text2vec-openai"
     property_names = {p["name"] for p in schema["properties"]}
-    assert {"doc_id", "doc_url", "title", "section", "content", "updated_at", "ratified_by", "ratified_at"} <= property_names
+    assert {
+        "doc_id",
+        "doc_url",
+        "title",
+        "section",
+        "content",
+        "updated_at",
+        "ratified_by",
+        "ratified_at",
+    } <= property_names
 
 
 # ─── config loader integration ───────────────────────────────────────────
@@ -235,5 +244,7 @@ def test_config_loader_empty_returns_no_sections(tmp_path, monkeypatch):
     cfg.write_text(json.dumps({"documents": []}))
     indexer = dsi.DriveStrategicIndexer(config_path=cfg)
     # Patch _docs_client so we don't try to auth.
-    monkeypatch.setattr(dsi, "_docs_client", lambda: (_ for _ in ()).throw(AssertionError("should not be called")))
+    monkeypatch.setattr(
+        dsi, "_docs_client", lambda: (_ for _ in ()).throw(AssertionError("should not be called"))
+    )
     assert indexer._fetch_all_sections() == []

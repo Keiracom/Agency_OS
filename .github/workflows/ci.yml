@@ -249,7 +249,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install uv
-          uv pip install --system pytest pytest-asyncio pytest-timeout
+          uv pip install --system pytest pytest-asyncio pytest-timeout httpx
 
       - name: Run chaos harness
         # NO `|| true` mask — chaos test failure blocks the PR per KEI-132

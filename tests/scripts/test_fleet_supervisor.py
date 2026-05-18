@@ -7,6 +7,7 @@ Covers all 6 scenarios + CEO post format check.
 from __future__ import annotations
 
 import datetime as _dt
+import json
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -484,3 +485,244 @@ def test_find_pr_for_review_callsign_case_insensitive(monkeypatch):
 
     # Despite uppercase AIDEN, the match should fire and the PR should be skipped
     assert result is None
+
+
+# ---------------------------------------------------------------------------
+# KEI-186: is_single_reviewer_eligible tests
+# ---------------------------------------------------------------------------
+
+
+def _make_gh_pr_view_output(
+    additions: int = 40,
+    deletions: int = 10,
+    files: list | None = None,
+    checks: list | None = None,
+) -> str:
+    """Build minimal gh pr view JSON payload."""
+    if files is None:
+        files = [{"path": "docs/README.md"}]
+    if checks is None:
+        checks = [{"name": "ci/test", "conclusion": "SUCCESS", "isRequired": True}]
+    return json.dumps(
+        {
+            "additions": additions,
+            "deletions": deletions,
+            "files": files,
+            "statusCheckRollup": checks,
+        }
+    )
+
+
+def _patch_sonar(monkeypatch, issue_count: int = 0, qg: str = "OK"):
+    monkeypatch.setattr(fs, "_fetch_sonar_data", lambda pr_number: (issue_count, qg))
+
+
+def _patch_gh_diff(monkeypatch, diff_text: str = ""):
+    """Patch subprocess.run only for gh pr diff calls."""
+    import subprocess as _sp
+
+    original_run = _sp.run
+
+    def patched_run(cmd, **kwargs):
+        if cmd[:3] == ["gh", "pr", "diff"]:
+            m = MagicMock()
+            m.returncode = 0
+            m.stdout = diff_text
+            return m
+        return original_run(cmd, **kwargs)
+
+    monkeypatch.setattr(fs.subprocess, "run", patched_run)
+
+
+def test_single_reviewer_eligible_clean_pr(monkeypatch):
+    """50 LoC docs-only PR with Sonar 0 + QG OK → True."""
+    payload = _make_gh_pr_view_output(additions=30, deletions=20, files=[{"path": "docs/foo.md"}])
+    _patch_sonar(monkeypatch, issue_count=0, qg="OK")
+
+    run_mock = MagicMock()
+    run_mock.return_value.returncode = 0
+    run_mock.return_value.stdout = payload
+
+    def fake_run(cmd, **kwargs):
+        r = MagicMock()
+        r.returncode = 0
+        if "diff" in cmd:
+            r.stdout = ""
+        else:
+            r.stdout = payload
+        return r
+
+    monkeypatch.setattr(fs.subprocess, "run", fake_run)
+
+    assert fs.is_single_reviewer_eligible(42) is True
+
+
+def test_single_reviewer_blocked_by_sonar(monkeypatch):
+    """Same clean diff but Sonar returns 1 NEW issue → False."""
+    payload = _make_gh_pr_view_output(additions=30, deletions=20, files=[{"path": "docs/foo.md"}])
+    _patch_sonar(monkeypatch, issue_count=1, qg="OK")
+
+    def fake_run(cmd, **kwargs):
+        r = MagicMock()
+        r.returncode = 0
+        if "diff" in cmd:
+            r.stdout = ""
+        else:
+            r.stdout = payload
+        return r
+
+    monkeypatch.setattr(fs.subprocess, "run", fake_run)
+
+    assert fs.is_single_reviewer_eligible(42) is False
+
+
+def test_single_reviewer_blocked_by_qg(monkeypatch):
+    """Sonar 0 issues but QG status ERROR → False."""
+    payload = _make_gh_pr_view_output(additions=30, deletions=20, files=[{"path": "docs/foo.md"}])
+    _patch_sonar(monkeypatch, issue_count=0, qg="ERROR")
+
+    def fake_run(cmd, **kwargs):
+        r = MagicMock()
+        r.returncode = 0
+        if "diff" in cmd:
+            r.stdout = ""
+        else:
+            r.stdout = payload
+        return r
+
+    monkeypatch.setattr(fs.subprocess, "run", fake_run)
+
+    assert fs.is_single_reviewer_eligible(42) is False
+
+
+def test_single_reviewer_blocked_by_new_route(monkeypatch):
+    """Diff includes src/api/routes/foo.py → False."""
+    payload = _make_gh_pr_view_output(
+        additions=10, deletions=5, files=[{"path": "src/api/routes/foo.py"}]
+    )
+    _patch_sonar(monkeypatch, issue_count=0, qg="OK")
+
+    def fake_run(cmd, **kwargs):
+        r = MagicMock()
+        r.returncode = 0
+        r.stdout = "" if "diff" in cmd else payload
+        return r
+
+    monkeypatch.setattr(fs.subprocess, "run", fake_run)
+
+    assert fs.is_single_reviewer_eligible(42) is False
+
+
+def test_single_reviewer_blocked_by_migration(monkeypatch):
+    """Diff includes supabase/migrations/*.sql → False (Aiden's edit)."""
+    payload = _make_gh_pr_view_output(
+        additions=10, deletions=5, files=[{"path": "supabase/migrations/0001_init.sql"}]
+    )
+    _patch_sonar(monkeypatch, issue_count=0, qg="OK")
+
+    def fake_run(cmd, **kwargs):
+        r = MagicMock()
+        r.returncode = 0
+        r.stdout = "" if "diff" in cmd else payload
+        return r
+
+    monkeypatch.setattr(fs.subprocess, "run", fake_run)
+
+    assert fs.is_single_reviewer_eligible(42) is False
+
+
+def test_single_reviewer_blocked_by_xfail(monkeypatch):
+    """Diff includes a new xfail decorator → False."""
+    payload = _make_gh_pr_view_output(
+        additions=10, deletions=5, files=[{"path": "tests/test_x.py"}]
+    )
+    _patch_sonar(monkeypatch, issue_count=0, qg="OK")
+    xfail_diff = "+@pytest.mark.xfail\ndef test_something(): pass"
+
+    def fake_run(cmd, **kwargs):
+        r = MagicMock()
+        r.returncode = 0
+        r.stdout = xfail_diff if "diff" in cmd else payload
+        return r
+
+    monkeypatch.setattr(fs.subprocess, "run", fake_run)
+
+    assert fs.is_single_reviewer_eligible(42) is False
+
+
+def test_single_reviewer_blocked_by_loc(monkeypatch):
+    """200 LoC docs-only diff → False (over 100 LoC threshold)."""
+    payload = _make_gh_pr_view_output(additions=150, deletions=50, files=[{"path": "docs/foo.md"}])
+    _patch_sonar(monkeypatch, issue_count=0, qg="OK")
+
+    def fake_run(cmd, **kwargs):
+        r = MagicMock()
+        r.returncode = 0
+        r.stdout = "" if "diff" in cmd else payload
+        return r
+
+    monkeypatch.setattr(fs.subprocess, "run", fake_run)
+
+    assert fs.is_single_reviewer_eligible(42) is False
+
+
+def test_find_pr_for_review_dispatches_to_one_callsign_when_eligible(monkeypatch):
+    """When PR is single-reviewer-eligible, insert_review_task called with single_reviewer=True."""
+    conn = MagicMock()
+    pr = {
+        "number": 42,
+        "title": "[AIDEN] feat: docs update",
+        "url": "https://github.com/org/repo/pull/42",
+        "reviews": [],
+    }
+
+    monkeypatch.setattr(fs, "get_phase_max", lambda c: 99)
+    monkeypatch.setattr(fs, "get_active_claim", lambda c, cs: None)
+    monkeypatch.setattr(fs, "claim_next_task", lambda c, cs, ph: None)
+    monkeypatch.setattr(fs, "tmux_has_session", lambda s: True)
+    monkeypatch.setattr(fs, "is_single_reviewer_eligible", lambda pr_number: True)
+    monkeypatch.setattr(fs, "fetch_pr_comments", lambda pr_number: [])
+
+    insert_mock = MagicMock()
+    monkeypatch.setattr(fs, "insert_review_task", insert_mock)
+    inject_mock = MagicMock()
+    monkeypatch.setattr(fs, "inject_task", inject_mock)
+
+    status = fs.process_agent(AGENT_ELLIOT, conn, [pr], 99)
+
+    assert status.active_task_id == "REVIEW-PR-42"
+    insert_mock.assert_called_once()
+    _, kwargs = insert_mock.call_args
+    assert kwargs.get("single_reviewer") is True
+    assert "single-reviewer" in status.summary
+
+
+def test_find_pr_for_review_dispatches_to_two_callsigns_when_not_eligible(monkeypatch):
+    """When PR is NOT single-reviewer-eligible, insert_review_task called with single_reviewer=False."""
+    conn = MagicMock()
+    pr = {
+        "number": 55,
+        "title": "[AIDEN] feat: big change",
+        "url": "https://github.com/org/repo/pull/55",
+        "reviews": [],
+    }
+
+    monkeypatch.setattr(fs, "get_phase_max", lambda c: 99)
+    monkeypatch.setattr(fs, "get_active_claim", lambda c, cs: None)
+    monkeypatch.setattr(fs, "claim_next_task", lambda c, cs, ph: None)
+    monkeypatch.setattr(fs, "tmux_has_session", lambda s: True)
+    monkeypatch.setattr(fs, "is_single_reviewer_eligible", lambda pr_number: False)
+    monkeypatch.setattr(fs, "fetch_pr_comments", lambda pr_number: [])
+
+    insert_mock = MagicMock()
+    monkeypatch.setattr(fs, "insert_review_task", insert_mock)
+    inject_mock = MagicMock()
+    monkeypatch.setattr(fs, "inject_task", inject_mock)
+
+    status = fs.process_agent(AGENT_ELLIOT, conn, [pr], 99)
+
+    assert status.active_task_id == "REVIEW-PR-55"
+    insert_mock.assert_called_once()
+    _, kwargs = insert_mock.call_args
+    assert kwargs.get("single_reviewer") is False
+    assert "single-reviewer" not in status.summary

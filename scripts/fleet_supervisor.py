@@ -549,19 +549,28 @@ def _handle_idle_no_queue(
     conn: psycopg.Connection,
     status: AgentStatus,
 ) -> AgentStatus:
-    """Scenario 2/5: no claim, queue empty — assign PR review or log idle."""
+    """Scenario 2/5: no claim, queue empty — assign PR review or log idle.
+
+    KEI-186: call is_single_reviewer_eligible when a review PR is found.
+    Tag the task row accordingly; summarise with "(single-reviewer)" when eligible.
+    """
     review_pr = find_pr_for_review(prs, callsign)
     if review_pr:
         pr_number = review_pr["number"]
         pr_title = review_pr.get("title", f"PR #{pr_number}")
         pr_url = review_pr.get("url", f"https://github.com/keiracom/Agency_OS/pull/{pr_number}")
-        insert_review_task(conn, callsign, pr_number, pr_title, pr_url)
+        eligible = is_single_reviewer_eligible(pr_number)
+        insert_review_task(conn, callsign, pr_number, pr_title, pr_url, single_reviewer=eligible)
         prompt = build_review_prompt(pr_number, pr_title, pr_url, callsign)
         inject_task(tmux_session, prompt)
         status.active_task_id = f"REVIEW-PR-{pr_number}"
         status.active_task_title = f"Review PR #{pr_number}"
-        status.summary = f"was idle, reviewing PR #{pr_number}"
-        log.info("[%s] Scenario 2: assigned PR #%d review", callsign, pr_number)
+        if eligible:
+            status.summary = f"was idle, reviewing PR #{pr_number} (single-reviewer)"
+            log.info("[%s] Scenario 2: assigned PR #%d single-reviewer review", callsign, pr_number)
+        else:
+            status.summary = f"was idle, reviewing PR #{pr_number}"
+            log.info("[%s] Scenario 2: assigned PR #%d review (dual)", callsign, pr_number)
         return status
     authored = [p for p in prs if is_authored_by_callsign(p, callsign)]
     if authored:

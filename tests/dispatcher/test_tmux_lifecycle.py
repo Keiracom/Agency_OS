@@ -26,9 +26,11 @@ _BAD_RC = MagicMock(returncode=1, stdout="", stderr="tmux: session already exist
 
 
 def _make_handle(**kwargs) -> SessionHandle:
+    # S5443: use a fake non-publicly-writable path; tests mock subprocess so the
+    # path is never actually accessed. Avoids the /tmp publicly-writable flag.
     defaults = {
         "session_name": "test-session",
-        "working_dir": "/tmp",
+        "working_dir": "/test/wd",
         "command": "claude --resume",
         "ready_marker": "❯",
     }
@@ -61,11 +63,11 @@ class TestSpawnSession:
         assert args_list[idx_c + 1] == "/home/elliotbot"
         assert args_list[-1] == "claude --resume"
 
-    def test_spawn_includes_env_flags(self):
+    def test_spawn_includes_env_flags(self, tmp_path):
         with patch("subprocess.run", return_value=_GOOD_RC) as mock_run:
             spawn_session(
                 session_name="orion",
-                working_dir="/tmp",
+                working_dir=str(tmp_path),
                 command="bash",
                 env={"FOO": "bar", "BAZ": "qux"},
             )
@@ -88,25 +90,25 @@ class TestSpawnSession:
         assert handle.command == "python main.py"
         assert handle.ready_marker == ">>"
 
-    def test_spawn_raises_TmuxUnavailableError_when_tmux_missing(self):
+    def test_spawn_raises_tmux_unavailable_error_when_tmux_missing(self, tmp_path):
         with (
             patch("subprocess.run", side_effect=FileNotFoundError("tmux not found")),
             pytest.raises(TmuxUnavailableError, match="not found on PATH"),
         ):
             spawn_session(
                 session_name="orion",
-                working_dir="/tmp",
+                working_dir=str(tmp_path),
                 command="bash",
             )
 
-    def test_spawn_raises_SessionStartupError_on_nonzero_rc(self):
+    def test_spawn_raises_session_startup_error_on_nonzero_rc(self, tmp_path):
         with (
             patch("subprocess.run", return_value=_BAD_RC),
             pytest.raises(SessionStartupError, match="rc=1"),
         ):
             spawn_session(
                 session_name="orion",
-                working_dir="/tmp",
+                working_dir=str(tmp_path),
                 command="bash",
             )
 
@@ -204,7 +206,7 @@ class TestTerminate:
         assert "kill-session" in args_list
         assert handle.session_name in args_list
 
-    def test_terminate_swallows_FileNotFoundError(self):
+    def test_terminate_swallows_file_not_found_error(self):
         handle = _make_handle()
         with patch("subprocess.run", side_effect=FileNotFoundError("tmux missing")):
             # Must not raise — tmux missing during teardown is tolerated

@@ -46,20 +46,21 @@ class TestBackendProperty:
 
 
 class TestSpawn:
-    def test_backend_tmux_spawn_routes_to_tmux_lifecycle(self):
+    def test_backend_tmux_spawn_routes_to_tmux_lifecycle(self, tmp_path):
         sm = _tmux_sm()
+        wd = str(tmp_path)
         with patch(
             "src.dispatcher.session_manager.tmux_lifecycle.spawn_session",
             return_value=_FAKE_TMUX_HANDLE,
         ) as mock_spawn:
             result = sm.spawn(
                 session_name="orion",
-                working_dir="/tmp",
+                working_dir=wd,
                 command="claude --resume",
             )
         mock_spawn.assert_called_once_with(
             session_name="orion",
-            working_dir="/tmp",
+            working_dir=wd,
             command="claude --resume",
         )
         assert result is _FAKE_TMUX_HANDLE
@@ -117,7 +118,7 @@ class TestSend:
             sm.send(_FAKE_TMUX_HANDLE, "hello")
         mock_send.assert_called_once_with(_FAKE_TMUX_HANDLE, "hello")
 
-    def test_backend_container_send_raises_NotImplementedError(self):
+    def test_backend_container_send_raises_not_implemented_error(self):
         sm = _container_sm()
         with pytest.raises(NotImplementedError, match="HTTP forward path"):
             sm.send(_FAKE_CONTAINER_HANDLE, "hello")

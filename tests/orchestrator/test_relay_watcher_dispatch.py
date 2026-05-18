@@ -13,8 +13,6 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-import pytest
-
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 RELAY_WATCHER = REPO_ROOT / "scripts" / "orchestrator" / "relay_watcher.sh"
 
@@ -37,7 +35,7 @@ def test_relay_watcher_script_exists() -> None:
 def test_relay_watcher_handles_task_dispatch_type() -> None:
     """relay_watcher.sh must contain a branch for task_dispatch."""
     content = RELAY_WATCHER.read_text()
-    assert 'task_dispatch' in content
+    assert "task_dispatch" in content
 
 
 def test_relay_watcher_has_fallback_else() -> None:
@@ -144,3 +142,101 @@ print(t)
 """
         result = _run_python_extract(f.name, code)
     assert result == "Something happened"
+
+
+# ─── KEI-99: session-name resilience (discover_callsign_sessions) ────────────
+
+
+def _run_discover_harness(callsign: str, live_sessions: list[str], tmp_path: Path) -> list[str]:
+    """Run the discover_callsign_sessions function with a stubbed `tmux`.
+
+    Replicates the case statement + function from relay_watcher.sh so the unit
+    test exercises the function's logic without invoking inotifywait.
+    """
+    stub_dir = tmp_path / "stub"
+    stub_dir.mkdir()
+    canned = "\n".join(live_sessions)
+    tmux_stub = stub_dir / "tmux"
+    tmux_stub.write_text(
+        "#!/bin/bash\n"
+        'if [[ "$1" == "list-sessions" ]]; then\n'
+        f"    cat <<'EOF'\n{canned}\nEOF\n"
+        "    exit 0\n"
+        "fi\n"
+        "exit 0\n"
+    )
+    tmux_stub.chmod(0o755)
+    harness = rf"""
+set -e
+export PATH={stub_dir}:$PATH
+export CALLSIGN={callsign}
+case "$CALLSIGN" in
+    elliot)  TMUX_CANDIDATES=("elliottbot:0.0" "elliot:0.0" "elliot-agent:0.0") ;;
+    aiden)   TMUX_CANDIDATES=("aiden:0.0" "aidenbot:0.0" "aiden-agent:0.0") ;;
+    scout)   TMUX_CANDIDATES=("scout:0.0" "scoutbot:0.0" "scout-agent:0.0") ;;
+    max)     TMUX_CANDIDATES=("maxbot:0.0" "max:0.0" "max-agent:0.0") ;;
+    *)       TMUX_CANDIDATES=("${{CALLSIGN}}bot:0.0" "${{CALLSIGN}}:0.0" "${{CALLSIGN}}-agent:0.0") ;;
+esac
+discover_callsign_sessions() {{
+    local -a live=()
+    local sess lowered cs_lower="${{CALLSIGN,,}}"
+    mapfile -t live < <(tmux list-sessions -F '#{{session_name}}' 2>/dev/null || true)
+    for sess in "${{live[@]}}"; do
+        lowered="${{sess,,}}"
+        if [[ "$lowered" == *"$cs_lower"* ]]; then
+            local candidate="${{sess}}:0.0"
+            local already=0
+            for existing in "${{TMUX_CANDIDATES[@]}}"; do
+                if [[ "$existing" == "$candidate" ]]; then
+                    already=1
+                    break
+                fi
+            done
+            if [[ $already -eq 0 ]]; then
+                TMUX_CANDIDATES+=("$candidate")
+            fi
+        fi
+    done
+}}
+discover_callsign_sessions
+printf '%s\n' "${{TMUX_CANDIDATES[@]}}"
+"""
+    result = subprocess.run(
+        ["bash", "-c", harness], capture_output=True, text=True, check=True, timeout=5
+    )
+    return [line for line in result.stdout.splitlines() if line]
+
+
+def test_discover_appends_substring_match(tmp_path: Path) -> None:
+    """Non-default session name containing callsign is appended as fallback."""
+    cands = _run_discover_harness("scout", ["scout-clawd", "unrelated"], tmp_path)
+    assert "scout:0.0" in cands  # primary preserved
+    assert "scout-clawd:0.0" in cands  # dynamic match appended
+    assert "unrelated:0.0" not in cands  # non-match excluded
+
+
+def test_discover_case_insensitive(tmp_path: Path) -> None:
+    """Capitalised session name still matches lowercase callsign."""
+    cands = _run_discover_harness("scout", ["SCOUT_alt", "Scout-Backup"], tmp_path)
+    assert "SCOUT_alt:0.0" in cands
+    assert "Scout-Backup:0.0" in cands
+
+
+def test_discover_dedupes_primary(tmp_path: Path) -> None:
+    """A live session that already matches a hardcoded primary is not duplicated."""
+    cands = _run_discover_harness("scout", ["scout", "scout-extra"], tmp_path)
+    assert cands.count("scout:0.0") == 1
+    assert "scout-extra:0.0" in cands
+
+
+def test_discover_no_live_sessions(tmp_path: Path) -> None:
+    """Empty tmux list-sessions leaves hardcoded primaries intact."""
+    cands = _run_discover_harness("scout", [], tmp_path)
+    assert cands == ["scout:0.0", "scoutbot:0.0", "scout-agent:0.0"]
+
+
+def test_discover_relay_watcher_script_contains_helper() -> None:
+    """The production script must define + call discover_callsign_sessions after the case."""
+    content = RELAY_WATCHER.read_text()
+    assert "discover_callsign_sessions" in content
+    assert content.count("discover_callsign_sessions") >= 2

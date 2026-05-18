@@ -20,6 +20,35 @@ case "$CALLSIGN" in
     max)     TMUX_CANDIDATES=("maxbot:0.0" "max:0.0" "max-agent:0.0") ;;
     *)       TMUX_CANDIDATES=("${CALLSIGN}bot:0.0" "${CALLSIGN}:0.0" "${CALLSIGN}-agent:0.0") ;;
 esac
+
+# KEI-99 final fallback: probe live tmux sessions for any whose name contains
+# the callsign (case-insensitive). Catches non-default session names Dave or
+# install scripts may create (e.g. `scout-clawd`, `scout_main`, capitalised
+# `Scout`). Dynamic candidates are appended AFTER the hardcoded primaries so
+# the curated names still win when available.
+discover_callsign_sessions() {
+    local -a live=()
+    local sess lowered cs_lower="${CALLSIGN,,}"
+    mapfile -t live < <(tmux list-sessions -F '#{session_name}' 2>/dev/null || true)
+    for sess in "${live[@]}"; do
+        lowered="${sess,,}"
+        if [[ "$lowered" == *"$cs_lower"* ]]; then
+            local candidate="${sess}:0.0"
+            local already=0
+            for existing in "${TMUX_CANDIDATES[@]}"; do
+                if [[ "$existing" == "$candidate" ]]; then
+                    already=1
+                    break
+                fi
+            done
+            if [[ $already -eq 0 ]]; then
+                TMUX_CANDIDATES+=("$candidate")
+            fi
+        fi
+    done
+}
+discover_callsign_sessions
+
 TMUX_TARGET="${TMUX_CANDIDATES[0]}"
 
 # Resolve a live tmux target. Sets TMUX_TARGET on success; returns 1 if all

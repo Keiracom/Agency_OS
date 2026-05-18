@@ -237,8 +237,8 @@ async def test_rate_limit_uses_kei117_namespace(fake_valkey: FakeValkey) -> None
     assert parts[2].isdigit()  # window_start_unix
 
 
-@pytest.mark.asyncio
-async def test_spend_key_uses_monthly_bucket(fake_valkey: FakeValkey) -> None:
+def test_spend_key_uses_monthly_bucket() -> None:
+    """Sync — exercises the pure key-shape helper. No Valkey, no await."""
     tenant_id = VALID_BODY["tenant_id"]
     key = interceptor_proxy._spend_key(tenant_id)
     assert key.startswith(f"spend:{tenant_id}:")

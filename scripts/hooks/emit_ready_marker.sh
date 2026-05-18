@@ -56,7 +56,19 @@ if echo "$BODY" | grep -qi -E "\[READY:(${CALLSIGN}|${SHOUTY})\]"; then
     exit 0
 fi
 
-# 6. Emit via slack relay. Fail-open: || true swallows any error.
+# 6a. KEI-221c — emit ready state on NATS subject keiracom.agent.status.<cs>
+# when FLEET_SUPERVISOR_V2_ENABLED + AGENT_ROUTING_<CALLSIGN>=v2 are both set.
+# Helper is fail-open — gate off / NATS unreachable / nats-py missing all
+# return 0. The Slack emit below stays in place for cutover safety; once v2
+# routing is observed-green a follow-up PR drops the Slack path for v2 agents.
+REPO_DIR="${KEI221C_REPO_DIR:-/home/elliotbot/clawd/Agency_OS}"
+NATS_HELPER="${REPO_DIR}/scripts/common/nats_status.py"
+if [[ -f "$NATS_HELPER" ]]; then
+    /home/elliotbot/clawd/venv/bin/python3 "$NATS_HELPER" \
+        "$CALLSIGN" ready >/dev/null 2>&1 || true
+fi
+
+# 6b. Emit via slack relay. Fail-open: || true swallows any error.
 if command -v tg >/dev/null 2>&1; then
     tg "[READY:${CALLSIGN}]" >/dev/null 2>&1 || true
 else

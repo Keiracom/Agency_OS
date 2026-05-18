@@ -1,4 +1,4 @@
-# KEI-196 — Weaviate Re-ingest with text2vec-transformers: Plan
+# KEI-196 — Weaviate Re-ingest with text2vec-google: Plan
 
 **Status:** Script + plan shipped (this PR). Live cutover is operator-gated.
 **KEI:** [KEI-196](https://linear.app/keiracom/issue/KEI-196) (M1 follow-up from KEI-192 memory audit).
@@ -26,7 +26,7 @@ Global_governance_patterns: vectorizer=none
 
 Without an embeddings vectorizer, `agent_query` similarity scores return 0.0. The default `min_score=0.50` filter then drops every result, and 12/14 retrieval_events end up with `top_citation_id=NULL`. Memory recall is effectively dead despite the data being indexed.
 
-## Fix: re-ingest 5 collections with text2vec-transformers
+## Fix: re-ingest 5 collections with text2vec-google
 
 Target collections (in cutover order):
 1. `AgentMemories` — smallest, lowest blast radius, validate-first
@@ -37,21 +37,19 @@ Target collections (in cutover order):
 
 ## Prerequisites (operator verifies BEFORE --execute)
 
-**1. t2v-transformers inference container reachable from Weaviate.** Typical setup:
+**1. text2vec-google module enabled in live Weaviate.** Dave Option A — no local inference
+container required. Uses Google AI Studio (Gemini API key) instead of a self-hosted
+transformers inference container. Verify:
 ```bash
-docker run -d \
-  --name t2v-transformers \
-  -p 8081:8080 \
-  -e ENABLE_CUDA=0 \
-  semitechnologies/transformers-inference:sentence-transformers-all-MiniLM-L6-v2
+curl -s http://127.0.0.1:8090/v1/meta | python3 -c "import json,sys; print('text2vec-google' in json.load(sys.stdin).get('modules', {}))"
 ```
+Expected: `True`
 
-Weaviate's `text2vec-transformers` module must be configured with `TRANSFORMERS_INFERENCE_API=http://t2v-transformers:8080` (or whatever the inference host is). Verify:
-```bash
-curl -s http://127.0.0.1:8090/v1/meta | jq '.modules."text2vec-transformers"'
-```
+**2. GOOGLE_API_KEY env var set.** The text2vec-google module reads `GOOGLE_API_KEY` at
+embedding time. Confirm the Weaviate process has this env var (or it is injected via the
+Weaviate config). No projectId required for AI Studio (projectId is Vertex AI only).
 
-**2. Backup directory writable.** Default: `/home/elliotbot/clawd/logs/kei196_backup/`. Operator checks `ls -ld` permissions before --execute.
+**3. Backup directory writable.** Default: `/home/elliotbot/clawd/logs/kei196_backup/`. Operator checks `ls -ld` permissions before --execute.
 
 **3. KEI-197 cleanup ran first** (recommended). If KEI-197's 6560 NULL-raw_text orphan cleanup runs BEFORE the re-ingest, the post-restore Discoveries class is ~6560 rows smaller — saves embedding compute + cleaner downstream queries.
 
@@ -96,7 +94,7 @@ If recreate succeeds but restore fails partway:
 - [x] Restore handles 422 already-exists as success (idempotent on re-run)
 - [x] Validate runs a `nearText` probe + returns the top certainty score
 - [x] `--class <Name>` restricts to one collection for cautious cutover
-- [ ] **Live re-ingest run** — operator-gated. Requires inference container + Weaviate module config verified first.
+- [ ] **Live re-ingest run** — operator-gated. Requires text2vec-google module enabled in Weaviate + GOOGLE_API_KEY env var set.
 - [ ] **agent_query.query() returns scores > 0.0 on representative queries** — post-validate confirmation
 - [ ] **Behavioural recall test** — query 'psycopg asyncpg DSN bug' returns Atlas's fix as top result via semantic similarity (not LIKE/regex)
 
@@ -104,7 +102,7 @@ If recreate succeeds but restore fails partway:
 
 - Live cutover (operator decides timing + verifies prereqs)
 - Inference container setup if not already running (ops/Atlas DevOps lane per ratified Tier 2)
-- Tuning `text2vec-transformers` model choice (MiniLM-L6-v2 is the sensible default for SaaS retrieval; larger models would improve recall at higher compute cost)
+- Tuning `text2vec-google` model choice (`text-embedding-004` is the default; other Gemini embedding models can be specified via `modelId` in moduleConfig)
 - Score threshold tuning post-cutover (KEI-198 is the M3 follow-up that adjusts min_score from the static 0.5 to a score-distribution-aware default)
 - Per-class custom moduleConfig (e.g. `vectorizeClassName` per collection — current default uses one config for all 5)
 

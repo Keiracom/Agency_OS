@@ -10,14 +10,14 @@ This script:
   1. Backs up each target collection's objects to a JSON file under
      /home/elliotbot/clawd/logs/kei196_backup/<class>.jsonl
   2. (Operator-gated) Drops the existing collection
-  3. (Operator-gated) Recreates with vectorizer=text2vec-transformers
+  3. (Operator-gated) Recreates with vectorizer=text2vec-google (AI Studio / Gemini)
   4. (Operator-gated) Re-POSTs all backed-up objects (vectorizer auto-embeds)
   5. Runs the score validation: agent_query returns score > 0.0 on a probe
 
 Prerequisites (operator must verify before --execute):
-  - t2v-transformers inference container reachable from Weaviate
-    (typical: docker run semitechnologies/transformers-inference:<MODEL>)
-  - Weaviate config has the text2vec-transformers module enabled
+  - Live Weaviate instance has text2vec-google module enabled (Dave Option A —
+    no local inference container required; uses GOOGLE_API_KEY env var for AI Studio)
+  - GOOGLE_API_KEY env var set with a valid Gemini API key
   - Backup directory writable: /home/elliotbot/clawd/logs/kei196_backup/
 
 Steps are independent + idempotent:
@@ -68,11 +68,13 @@ TARGET_COLLECTIONS: tuple[str, ...] = (
     "Codebase",
 )
 
-NEW_VECTORIZER = "text2vec-transformers"
+NEW_VECTORIZER = "text2vec-google"
+# text2vec-google (AI Studio / Gemini) — no local inference container needed.
+# projectId is Vertex AI only; omit for AI Studio (key-based auth via GOOGLE_API_KEY).
 NEW_MODULE_CONFIG = {
-    "text2vec-transformers": {
+    "text2vec-google": {
+        "modelId": "text-embedding-004",
         "vectorizeClassName": False,
-        "poolingStrategy": "masked_mean",
     }
 }
 
@@ -133,7 +135,7 @@ def backup_class(class_name: str, backup_dir: Path) -> int:
 
 
 def recreate_class_with_vectorizer(class_name: str) -> bool:
-    """DROP + CREATE class with text2vec-transformers. DESTRUCTIVE — operator-gated."""
+    """DROP + CREATE class with text2vec-google. DESTRUCTIVE — operator-gated."""
     existing = fetch_class_schema(class_name)
     if existing is None:
         logger.warning("class %s does not exist — skipping recreate", class_name)
@@ -198,8 +200,8 @@ def validate_scores(class_name: str, probe_query: str = "memory recall") -> tupl
     )
     try:
         body = _http_request("POST", "/v1/graphql", {"query": gql}) or {}
-    except urlerror.HTTPError as exc:
-        logger.error("validate %s failed: %s", class_name, exc)
+    except urlerror.HTTPError:
+        logger.exception("validate %s failed", class_name)
         return False, 0.0
     rows = body.get("data", {}).get("Get", {}).get(class_name, []) or []
     if not rows:
@@ -207,6 +209,45 @@ def validate_scores(class_name: str, probe_query: str = "memory recall") -> tupl
     additional = rows[0].get("_additional", {}) or {}
     certainty = float(additional.get("certainty") or 0.0)
     return certainty > 0.0, certainty
+
+
+def _run_steps(
+    step: str,
+    classes: tuple[str, ...],
+    backup_dir: Path,
+) -> int:
+    """Execute the requested pipeline steps across all target classes.
+
+    Extracted from main() to keep cognitive complexity within Sonar S3776 limits.
+    Returns 0 on success, 2 if validation fails for any class.
+    """
+    if step in ("backup", "all"):
+        total = sum(backup_class(c, backup_dir) for c in classes)
+        logger.info("backup step complete: %d objects across %d classes", total, len(classes))
+
+    if step in ("recreate", "all"):
+        for c in classes:
+            recreate_class_with_vectorizer(c)
+
+    if step in ("restore", "all"):
+        for c in classes:
+            restore_class(c, backup_dir)
+
+    if step in ("validate", "all"):
+        all_pass = True
+        for c in classes:
+            ok, score = validate_scores(c)
+            logger.info("validate %s: passed=%s top_certainty=%.3f", c, ok, score)
+            if not ok:
+                all_pass = False
+        if not all_pass:
+            # text2vec-google: check GOOGLE_API_KEY env var and module enabled in /v1/meta
+            logger.warning(
+                "validate failed for one or more classes — check GOOGLE_API_KEY env and text2vec-google module in Weaviate /v1/meta"
+            )
+            return 2
+
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -250,32 +291,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 1
 
-    if args.step in ("backup", "all"):
-        total = 0
-        for c in classes:
-            total += backup_class(c, backup_dir)
-        logger.info("backup step complete: %d objects across %d classes", total, len(classes))
-
-    if args.step in ("recreate", "all"):
-        for c in classes:
-            recreate_class_with_vectorizer(c)
-
-    if args.step in ("restore", "all"):
-        for c in classes:
-            restore_class(c, backup_dir)
-
-    if args.step in ("validate", "all"):
-        all_pass = True
-        for c in classes:
-            ok, score = validate_scores(c)
-            logger.info("validate %s: passed=%s top_certainty=%.3f", c, ok, score)
-            if not ok:
-                all_pass = False
-        if not all_pass:
-            logger.warning("validate failed for one or more classes — check inference container")
-            return 2
-
-    return 0
+    return _run_steps(args.step, classes, backup_dir)
 
 
 if __name__ == "__main__":

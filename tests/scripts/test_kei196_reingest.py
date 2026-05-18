@@ -42,10 +42,10 @@ def test_target_collections_five(mod):
     }
 
 
-def test_new_vectorizer_is_text2vec_transformers(mod):
-    """Per ratification: text2vec-transformers (sentence-transformers) is the choice."""
-    assert mod.NEW_VECTORIZER == "text2vec-transformers"
-    assert "text2vec-transformers" in mod.NEW_MODULE_CONFIG
+def test_new_vectorizer_is_text2vec_google(mod):
+    """Dave Option A: text2vec-google (AI Studio) — live Weaviate lacks text2vec-transformers."""
+    assert mod.NEW_VECTORIZER == "text2vec-google"
+    assert "text2vec-google" in mod.NEW_MODULE_CONFIG
 
 
 def test_destructive_step_requires_execute_flag(mod, capsys):
@@ -135,7 +135,8 @@ def test_validate_scores_returns_fail_when_certainty_zero(mod, monkeypatch):
     monkeypatch.setattr(mod, "_http_request", _fake_request)
     passed, score = mod.validate_scores("AgentMemories", "test probe")
     assert passed is False
-    assert score == 0.0
+    # certainty=0.0 exactly; use approx to avoid S1244 float-equality warning
+    assert score == pytest.approx(0.0)
 
 
 def test_validate_scores_returns_fail_when_no_results(mod, monkeypatch):
@@ -147,4 +148,5 @@ def test_validate_scores_returns_fail_when_no_results(mod, monkeypatch):
     monkeypatch.setattr(mod, "_http_request", _fake_request)
     passed, score = mod.validate_scores("AgentMemories", "test probe")
     assert passed is False
-    assert score == 0.0
+    # certainty defaults to 0.0 when no rows returned; use approx per S1244
+    assert score == pytest.approx(0.0)

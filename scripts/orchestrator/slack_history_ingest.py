@@ -71,6 +71,7 @@ WEAVIATE_BASE = f"http://{WEAVIATE_HOST}:{WEAVIATE_PORT}"  # NOSONAR
 
 SLACK_API = "https://slack.com/api"
 BOT_TOKEN = os.environ.get("SLACK_BOT_TOKEN", "")
+GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY", "")  # for text2vec-google AI Studio auth
 
 # Channel id → friendly slug used in metadata + filtering.
 # The actual channel ids are looked up via conversations.list at runtime; this
@@ -85,11 +86,18 @@ CHANNEL_SLUGS: tuple[str, ...] = (
 
 CORPUS_SCHEMA = {
     "class": CORPUS_CLASS,
-    "vectorizer": "text2vec-transformers",
+    # Dave Option A (KEI-196 swap): text2vec-google over text2vec-transformers
+    # — no self-hosted inference container. AI Studio endpoint (not Vertex)
+    # avoids projectId requirement. modelId=gemini-embedding-001 is the AI Studio
+    # name (KEI-196 commit 12cfaf93a's "text-embedding-004" is the Vertex name —
+    # empirically 404s on AI Studio v1beta; gemini-embedding-001 is the supported
+    # name per ListModels). Auth via X-Goog-Studio-Api-Key header per request.
+    "vectorizer": "text2vec-google",
     "moduleConfig": {
-        "text2vec-transformers": {
+        "text2vec-google": {
+            "apiEndpoint": "generativelanguage.googleapis.com",
+            "modelId": "gemini-embedding-001",
             "vectorizeClassName": False,
-            "poolingStrategy": "masked_mean",
         }
     },
     "properties": [
@@ -371,10 +379,17 @@ def build_object(msg: SlackMessage) -> dict[str, Any]:
 
 
 def post_object(obj: dict[str, Any]) -> bool:
-    """POST one object to Weaviate. Returns True on 200/422 (idempotent)."""
+    """POST one object to Weaviate. Returns True on 200/422 (idempotent).
+
+    Sends X-Goog-Studio-Api-Key header so Weaviate's text2vec-google module can
+    auth against AI Studio (Weaviate process does not have GOOGLE_APIKEY in
+    its env — see KEI-196 swap notes).
+    """
     data = json.dumps(obj).encode()
     req = urlrequest.Request(f"{WEAVIATE_BASE}/v1/objects", data=data, method="POST")
     req.add_header("Content-Type", "application/json")
+    if GOOGLE_API_KEY:
+        req.add_header("X-Goog-Studio-Api-Key", GOOGLE_API_KEY)
     try:
         with urlrequest.urlopen(req, timeout=30) as resp:
             return resp.status in (200, 201)

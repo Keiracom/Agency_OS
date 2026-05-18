@@ -250,8 +250,17 @@ def test_deterministic_id_differs_across_ts(mod):
 # ─── Schema ─────────────────────────────────────────────────────────────────
 
 
-def test_schema_uses_text2vec_transformers(mod):
-    assert mod.CORPUS_SCHEMA["vectorizer"] == "text2vec-transformers"
+def test_schema_uses_text2vec_google_ai_studio(mod):
+    """Dave Option A (KEI-196 swap) + KEI-201 empirical fix:
+    vectorizer=text2vec-google, AI Studio endpoint (no projectId), modelId
+    gemini-embedding-001 (NOT text-embedding-004 — that's the Vertex name
+    and 404s on AI Studio v1beta).
+    """
+    assert mod.CORPUS_SCHEMA["vectorizer"] == "text2vec-google"
+    mc = mod.CORPUS_SCHEMA["moduleConfig"]["text2vec-google"]
+    assert mc["apiEndpoint"] == "generativelanguage.googleapis.com"
+    assert mc["modelId"] == "gemini-embedding-001"
+    assert mc["vectorizeClassName"] is False
 
 
 def test_schema_has_required_properties(mod):

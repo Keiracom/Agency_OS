@@ -126,14 +126,14 @@ CHANNELS = {
 }
 DEFAULT_CHANNEL = os.environ.get("SLACK_DEFAULT_CHANNEL", CHANNELS["execution"])
 
-# Per-callsign outbound allowlist (Dave directive #6 callsign bug fix 2026-05-11).
-# Worktree's CALLSIGN determines which channels it may post to. #ceo is always
-# Dave-Elliot exclusive; clones (atlas/orion/scout) post to #execution only.
+# Per-callsign outbound allowlist (Dave directive #6 callsign bug fix 2026-05-11;
+# deliberation-layer #ceo grant 2026-05-18 per Dave directive).
+# Worktree's CALLSIGN determines which channels it may post to. Deliberation
+# layer (Elliot/Aiden/Max) may post to #ceo; clones (atlas/orion/scout/nova)
+# post to #execution only.
 # Aiden also writes #completed_directives per Protocol #4 (directive completion log).
 _ALLOWED_CHANNELS_BY_CALLSIGN: dict[str, frozenset[str]] = {
     # Elliot (COO, runs prime worktree): execution + ceo + ops + completed_directives.
-    # Per Elliot Step 0 12:00:24 UTC ("main = execution+ceo+ops") + Protocol #4
-    # (completion log channel added to dispatch 2026-05-11 20:42).
     "elliot": frozenset(
         {
             CHANNELS["execution"],
@@ -142,14 +142,21 @@ _ALLOWED_CHANNELS_BY_CALLSIGN: dict[str, frozenset[str]] = {
             CHANNELS["completed_directives"],
         }
     ),
-    # Aiden (build agent): execution + completed_directives (Protocol #4 mandate).
-    "aiden": frozenset({CHANNELS["execution"], CHANNELS["completed_directives"]}),
-    # Max (CTO): execution only (mirrors coo_slack_relay.py).
-    "max": frozenset({CHANNELS["execution"]}),
-    # Clones (atlas/orion/scout): execution only per Step 0.
+    # Aiden (deliberator — governance lens): execution + ceo + completed_directives.
+    "aiden": frozenset(
+        {
+            CHANNELS["execution"],
+            CHANNELS["ceo"],
+            CHANNELS["completed_directives"],
+        }
+    ),
+    # Max (deliberator — quality lens): execution + ceo.
+    "max": frozenset({CHANNELS["execution"], CHANNELS["ceo"]}),
+    # Clones (atlas/orion/scout/nova): execution only per Step 0.
     "atlas": frozenset({CHANNELS["execution"]}),
     "orion": frozenset({CHANNELS["execution"]}),
     "scout": frozenset({CHANNELS["execution"]}),
+    "nova": frozenset({CHANNELS["execution"]}),
 }
 ALLOWED_CHANNELS = _ALLOWED_CHANNELS_BY_CALLSIGN.get(CALLSIGN, frozenset({CHANNELS["execution"]}))
 

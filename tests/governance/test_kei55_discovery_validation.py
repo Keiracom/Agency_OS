@@ -613,3 +613,63 @@ def test_ac3_concur_rejects_non_tier2(mock_fetch: MagicMock) -> None:
         }
         with pytest.raises(ValueError):
             submit_concur("test", "peer")
+
+
+# ============================================================================
+# KEI-197 — null/empty raw_text guard at submit_discovery
+# ============================================================================
+
+
+def test_kei197_submit_discovery_rejects_empty_text() -> None:
+    """KEI-197 guard: empty text rejected before any Weaviate POST."""
+    with pytest.raises(ValueError, match="text must be a non-empty string"):
+        submit_discovery(
+            text="",
+            agent="scout",
+            kei="KEI-197",
+            ratified_rules=[],
+        )
+
+
+def test_kei197_submit_discovery_rejects_whitespace_only_text() -> None:
+    """KEI-197 guard: whitespace-only text rejected (no useful content)."""
+    with pytest.raises(ValueError, match="text must be a non-empty string"):
+        submit_discovery(
+            text="   \n\t  ",
+            agent="scout",
+            kei="KEI-197",
+            ratified_rules=[],
+        )
+
+
+def test_kei197_submit_discovery_rejects_none_text() -> None:
+    """KEI-197 guard: None text rejected — surfaces TypeError-equivalent early."""
+    with pytest.raises(ValueError, match="text must be a non-empty string"):
+        submit_discovery(
+            text=None,  # type: ignore[arg-type]
+            agent="scout",
+            kei="KEI-197",
+            ratified_rules=[],
+        )
+
+
+def test_kei197_submit_discovery_rejects_empty_agent() -> None:
+    """KEI-197 guard: empty agent rejected — orphan rows tagged with no callsign useless."""
+    with pytest.raises(ValueError, match="agent must be a non-empty string"):
+        submit_discovery(
+            text="real content here",
+            agent="",
+            kei="KEI-197",
+            ratified_rules=[],
+        )
+
+
+def test_kei197_submit_discovery_rejects_empty_kei() -> None:
+    """KEI-197 guard: empty kei rejected — discoveries must trace to a KEI."""
+    with pytest.raises(ValueError, match="kei must be a non-empty string"):
+        submit_discovery(
+            text="real content here",
+            agent="scout",
+            kei="",
+            ratified_rules=[],
+        )

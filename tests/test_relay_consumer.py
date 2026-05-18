@@ -1,44 +1,78 @@
-"""Tests for src/relay/relay_consumer.py — Change 1b Phase 2."""
+"""Tests for src/relay/relay_consumer.py — Change 1b Phase 2 + KEI-138 audit."""
 
-import hashlib
-import hmac
-import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from src.relay.relay_consumer import (
+    _classify_dispatch,
     _file_watchers_active,
-    _hmac_verify_dict,
     format_message,
     inject_into_tmux,
     wait_for_prompt,
 )
+from src.security.inbox_hmac import sign
 
-# ── HMAC verify ──────────────────────────────────────────────────────────────
-
-
-def test_hmac_verify_valid():
-    secret = "test-secret"
-    payload = {"type": "task_dispatch", "from": "elliot", "brief": "test"}
-    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
-    sig = hmac.new(secret.encode("utf-8"), canonical, hashlib.sha256).hexdigest()
-    signed = {**payload, "hmac": sig}
-    ok, reason = _hmac_verify_dict(signed, secret)
-    assert ok is True
-    assert reason == "ok"
+# ── _classify_dispatch (KEI-138 — replaces inline _hmac_verify_dict) ─────────
 
 
-def test_hmac_verify_missing():
-    ok, reason = _hmac_verify_dict({"type": "text"}, "secret")
-    assert ok is False
+def test_classify_signed_verified(monkeypatch):
+    monkeypatch.setenv("INBOX_HMAC_SECRET", "test-secret")
+    monkeypatch.delenv("INBOX_HMAC_SECRET_PREV", raising=False)
+    signed = sign({"type": "task_dispatch", "from": "elliot", "brief": "test"})
+    accept, status, idx, reason = _classify_dispatch(signed, hmac_secret_present=True)
+    assert accept is True
+    assert status == "signed_verified"
+    assert idx == 0
+    assert reason is None
+
+
+def test_classify_unsigned_when_secret_present(monkeypatch):
+    monkeypatch.setenv("INBOX_HMAC_SECRET", "test-secret")
+    monkeypatch.delenv("INBOX_HMAC_SECRET_PREV", raising=False)
+    accept, status, idx, reason = _classify_dispatch({"type": "text"}, hmac_secret_present=True)
+    assert accept is False
+    assert status == "unsigned"
+    assert idx == -1
     assert "missing" in reason
 
 
-def test_hmac_verify_mismatch():
-    ok, reason = _hmac_verify_dict({"type": "text", "hmac": "bad"}, "secret")
-    assert ok is False
+def test_classify_signed_invalid(monkeypatch):
+    monkeypatch.setenv("INBOX_HMAC_SECRET", "test-secret")
+    monkeypatch.delenv("INBOX_HMAC_SECRET_PREV", raising=False)
+    accept, status, idx, reason = _classify_dispatch(
+        {"type": "text", "hmac": "deadbeef"}, hmac_secret_present=True
+    )
+    assert accept is False
+    assert status == "signed_invalid"
+    assert idx == -1
     assert "mismatch" in reason.lower()
+
+
+def test_classify_no_secret_accepts_unsigned():
+    """Pre-rotation: if env has no secret, dispatch is accepted as no_secret status.
+
+    Matches the legacy behaviour (`if queue_type == "dispatch" and hmac_secret`)
+    — verify is only gated on when the operator has set the secret.
+    """
+    accept, status, idx, reason = _classify_dispatch(
+        {"type": "task_dispatch"}, hmac_secret_present=False
+    )
+    assert accept is True
+    assert status == "no_secret"
+    assert idx == -1
+    assert reason is None
+
+
+def test_classify_signed_with_prev_secret_during_rotation(monkeypatch):
+    monkeypatch.setenv("INBOX_HMAC_SECRET", "new-secret")
+    monkeypatch.setenv("INBOX_HMAC_SECRET_PREV", "old-secret")
+    signed_with_old = sign({"type": "task_dispatch", "from": "elliot"}, secret="old-secret")
+    accept, status, idx, reason = _classify_dispatch(signed_with_old, hmac_secret_present=True)
+    assert accept is True
+    assert status == "signed_verified"
+    assert idx == 1  # PREV slot
+    assert reason is None
 
 
 # ── format_message ───────────────────────────────────────────────────────────

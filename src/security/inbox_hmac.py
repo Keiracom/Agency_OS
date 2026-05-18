@@ -52,6 +52,56 @@ def _compute(payload: dict, secret: str) -> str:
     return hmac.new(secret.encode(_ENCODING), _canonical_bytes(payload), hashlib.sha256).hexdigest()
 
 
+def canonical_hash(payload: dict) -> str:
+    """SHA-256 hex of the canonical payload (used by KEI-138 dispatch_audit_log).
+
+    The hash excludes the `hmac` field — same canonical form sign/verify use.
+    """
+    return hashlib.sha256(_canonical_bytes(payload)).hexdigest()
+
+
+def _rotation_secrets(primary: str | None) -> list[str]:
+    """Return [primary, prev] secrets to try during a rotation window.
+
+    Primary defaults to INBOX_HMAC_SECRET; prev is INBOX_HMAC_SECRET_PREV.
+    Empty / unset / duplicate values are filtered. Order matters — primary
+    first so non-rotation verify is the common hot path.
+    """
+    primary = primary or os.environ.get("INBOX_HMAC_SECRET", "")
+    prev = os.environ.get("INBOX_HMAC_SECRET_PREV", "")
+    secrets: list[str] = []
+    for s in (primary, prev):
+        if s and s not in secrets:
+            secrets.append(s)
+    return secrets
+
+
+def verify_dict(payload: dict, secret: str | None = None) -> tuple[bool, str, int]:
+    """Verify HMAC of a dict payload against current + previous secrets.
+
+    Returns (ok, reason, secret_index). `secret_index` is 0 for primary, 1 for
+    INBOX_HMAC_SECRET_PREV — useful for KEI-138 rotation audit (signed_verified
+    rows with index=1 mean the dispatch was signed with the OLD secret and the
+    rotation window is still required).
+
+    No env mutation. No logging of payload content or secret values.
+    """
+    secrets = _rotation_secrets(secret)
+    if not secrets:
+        return False, "INBOX_HMAC_SECRET not set", -1
+
+    stored = payload.get(_HMAC_KEY)
+    if not isinstance(stored, str):
+        return False, f"{_HMAC_KEY} field missing or not a string (unsigned payload)", -1
+
+    for idx, s in enumerate(secrets):
+        expected = _compute(payload, s)
+        if hmac.compare_digest(stored, expected):
+            return True, "ok", idx
+
+    return False, "HMAC mismatch (tampered or signed with unknown secret)", -1
+
+
 def sign(payload: dict, secret: str | None = None) -> dict:
     """Return the payload with an `hmac` field added.
 
@@ -105,4 +155,4 @@ def verify(path: str | Path, secret: str | None = None) -> tuple[bool, str]:
     return True, "ok"
 
 
-__all__ = ["sign", "verify"]
+__all__ = ["canonical_hash", "sign", "verify", "verify_dict"]

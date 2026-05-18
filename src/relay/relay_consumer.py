@@ -4,20 +4,22 @@ PURPOSE: Single async consumer replacing 7 inotifywait bash watchers
 PHASE: Change 1b Phase 2 — Redis BRPOP consumer
 DEPENDENCIES:
   - src/relay/redis_relay.py (pop)
-  - src/security/inbox_hmac (sign/verify — file-path API; inline dict verify used here)
+  - src/security/inbox_hmac (sign/verify_dict — multi-secret rotation aware)
+  - src/security/dispatch_audit (KEI-138 audit log writer, fail-open)
 """
 
 from __future__ import annotations
 
 import asyncio
-import hashlib
-import hmac as hmac_mod
 import json
 import logging
 import os
 import signal
 import subprocess
 import sys
+
+from src.security.dispatch_audit import record_dispatch
+from src.security.inbox_hmac import canonical_hash, verify_dict
 
 logger = logging.getLogger(__name__)
 
@@ -34,20 +36,32 @@ QUEUE_MAP: dict[str, dict] = {
 }
 
 
-# ── HMAC (inline dict verify — inbox_hmac.verify() expects a file path) ────────
+# ── HMAC + audit (canonical_hash + verify_dict from src.security.inbox_hmac) ──
 
 
-def _hmac_verify_dict(payload: dict, secret: str) -> tuple[bool, str]:
-    """Re-implement the canonical HMAC check from inbox_hmac directly on a dict."""
-    stored = payload.get("hmac")
-    if not isinstance(stored, str):
-        return False, "hmac field missing or not a string (unsigned payload)"
-    filtered = {k: v for k, v in payload.items() if k != "hmac"}
-    canonical = json.dumps(filtered, sort_keys=True, separators=(",", ":")).encode("utf-8")
-    expected = hmac_mod.new(secret.encode("utf-8"), canonical, hashlib.sha256).hexdigest()
-    if not hmac_mod.compare_digest(stored, expected):
-        return False, "HMAC mismatch"
-    return True, "ok"
+def _classify_dispatch(
+    payload: dict, hmac_secret_present: bool
+) -> tuple[bool, str, int, str | None]:
+    """Map verify_dict outcome onto the audit hmac_status taxonomy.
+
+    Returns (accept_for_inject, hmac_status, secret_index, reason).
+    """
+    if not hmac_secret_present:
+        return True, "no_secret", -1, None
+    ok, reason, idx = verify_dict(payload)
+    if ok:
+        return True, "signed_verified", idx, None
+    if "missing or not a string" in reason:
+        return False, "unsigned", -1, reason
+    return False, "signed_invalid", -1, reason
+
+
+async def _audit_async(**kwargs) -> None:
+    """Run the sync audit insert off the event loop (fail-open)."""
+    try:
+        await asyncio.to_thread(record_dispatch, **kwargs)
+    except Exception as exc:
+        logger.warning("dispatch_audit dispatch failed: %s", exc)
 
 
 # ── Tmux helpers ────────────────────────────────────────────────────────────────
@@ -141,11 +155,26 @@ async def consume_queue(queue: str, config: dict) -> None:
             if payload is None:
                 continue
 
-            if queue_type == "dispatch" and hmac_secret:
-                ok, reason = _hmac_verify_dict(payload, hmac_secret)
-                if not ok:
+            if queue_type == "dispatch":
+                accept, hmac_status, secret_idx, reason = _classify_dispatch(
+                    payload, hmac_secret_present=bool(hmac_secret)
+                )
+                await _audit_async(
+                    queue=queue,
+                    target=tmux_target,
+                    hmac_status=hmac_status,
+                    payload_hash=canonical_hash(payload),
+                    secret_index=secret_idx,
+                    reason=reason,
+                )
+                if not accept:
                     logger.warning("HMAC reject on %s: %s", queue, reason)
                     continue
+                if secret_idx == 1:
+                    logger.info(
+                        "%s signed with INBOX_HMAC_SECRET_PREV (rotation window still active)",
+                        queue,
+                    )
 
             text = format_message(payload, queue_type, clone_name)
             if not text:

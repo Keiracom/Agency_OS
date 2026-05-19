@@ -50,13 +50,11 @@ Every tier includes the full agent-governance stack: peer-review gates, Step-0 R
 
 **$AUD TBA — private beta pricing.** Founding-cohort terms will lock at announcement; we will not advertise a price until Dave ratifies the model.
 
-(Note for the eventual reader: USD-equivalents will never appear here. Australia-first per LAW II. If you need $USD conversion for your own modelling, the rule is 1 USD = 1.55 AUD.)
-
 ### What we honestly do not have yet
 
 - **Customer logos.** Zero paying customers at launch. Founding cohort opens at launch.
 - **SOC 2.** Composio has it; we do not, yet. On the roadmap, not the launch.
-- **150+ pre-built tool integrations.** We integrate via Composio for now — that is the bundle. Build-out happens after the wedge is proven.
+- **150+ pre-built tool integrations.** Composio has 150+; we don't. Tool integration breadth is a roadmap item, not a launch feature.
 - **Brand recognition.** This is the first time most people are hearing about us.
 
 We say this on the record. The wedge is what we have; everything else is a roadmap. If that mismatch is a dealbreaker, this is not the product for you yet.
@@ -113,7 +111,7 @@ P.S. The product naming convention: OpenClaw is the open-source harness; Keiraco
 
 **Body:**
 
-For the last two years the "agent governance" conversation has been about tool access — OAuth, scopes, RBAC at the API layer. Composio raised US$25M for this and they did it well. Peta is doing it adjacent. Both are useful; neither is what we're building.
+For the last two years the "agent governance" conversation has been about tool access — OAuth, scopes, RBAC at the API layer. Composio raised US$25M Series A for this and they did it well. Peta is doing it adjacent. Both are useful; neither is what we're building.
 
 The gap that opens up the moment you run 3+ agents in parallel against a shared codebase isn't "did the agent have permission to call the GitHub API." It's: did the agent restate the objective before acting? Did a peer review the decision? Did completion produce verifiable evidence in all four required stores, or just one? Did anyone *check*?
 

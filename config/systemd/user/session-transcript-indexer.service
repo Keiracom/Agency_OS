@@ -1,0 +1,20 @@
+[Unit]
+Description=Agency OS — Claude session jsonl → Weaviate SessionTranscripts + SessionFacts (continuous)
+After=network-online.target weaviate.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+Environment=PYTHONPATH=/home/elliotbot/clawd/Agency_OS/scripts/orchestrator
+ExecStart=/home/elliotbot/clawd/Agency_OS/.venv/bin/python3 /home/elliotbot/clawd/Agency_OS/scripts/orchestrator/session_transcript_indexer.py --daemon 900
+Restart=on-failure
+RestartSec=30
+StandardOutput=append:/home/elliotbot/clawd/logs/session-transcript-indexer.log
+StandardError=append:/home/elliotbot/clawd/logs/session-transcript-indexer.log
+MemoryMax=512M
+MemoryHigh=400M
+
+[Install]
+WantedBy=default.target

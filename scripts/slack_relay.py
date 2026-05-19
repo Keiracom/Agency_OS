@@ -37,6 +37,22 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+# Slack access restricted to elliot only (Dave directive 2026-05-19 — only elliot
+# may post to Slack; default channel is #ceo). Other callsigns invoking this
+# script exit 2 with a clear denial message so callers know access was blocked.
+_CALLSIGN_ENFORCE = os.environ.get("CALLSIGN", "").strip().lower()
+if _CALLSIGN_ENFORCE and _CALLSIGN_ENFORCE != "elliot":
+    sys.stderr.write(
+        f"SLACK_ACCESS_DENIED: callsign={_CALLSIGN_ENFORCE!r} blocked. "
+        f"Only elliot may post to Slack per Dave directive 2026-05-19.\n"
+    )
+    sys.exit(2)
+# Elliot's default channel is #ceo (C0B2PM3TV0B), not #execution. Override the
+# module-default SLACK_DEFAULT_CHANNEL when running as elliot and no explicit
+# channel was set in the environment.
+if _CALLSIGN_ENFORCE == "elliot" and not os.environ.get("SLACK_DEFAULT_CHANNEL"):
+    os.environ["SLACK_DEFAULT_CHANNEL"] = "C0B2PM3TV0B"
+
 # KEI-40: rate-limit retry config. Slack chat.postMessage returns HTTP 429 with
 # Retry-After header on tier-3 method rate-limits (~1 req/sec for chat.postMessage).
 # Exponential backoff with header-respect avoids the governance-noise pattern

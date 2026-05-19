@@ -129,6 +129,11 @@
             "command": "/home/elliotbot/clawd/venv/bin/python3 scripts/anti_amnesia_capsule.py --read",
             "timeout": 5,
             "type": "command"
+          },
+          {
+            "command": "bash scripts/hooks/elliot_session_start_slack_wake.sh",
+            "timeout": 10,
+            "type": "command"
           }
         ],
         "matcher": "*"

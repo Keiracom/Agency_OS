@@ -1,0 +1,12 @@
+[Unit]
+Description=ELLIOT Inbox Watcher (Slack #ceo → Elliot tmux injection)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/home/elliotbot/clawd/scripts/elliot_inbox_watcher.sh
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

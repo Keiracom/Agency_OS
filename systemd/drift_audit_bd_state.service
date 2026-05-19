@@ -1,0 +1,18 @@
+[Unit]
+Description=Agency_OS-z27a — drift audit: bd in_progress vs merged PR cross-reference
+Documentation=https://linear.app/keiracom/issue/KEI-Agency_OS-z27a
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=%h/.config/agency-os/.env
+WorkingDirectory=%h/clawd/Agency_OS
+ExecStart=/usr/bin/python3 %h/clawd/Agency_OS/scripts/drift_audit_bd_state.py
+Nice=10
+StandardOutput=journal
+StandardError=journal
+TimeoutStartSec=180
+
+[Install]
+WantedBy=default.target

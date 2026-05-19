@@ -1,0 +1,12 @@
+[Unit]
+Description=Agency_OS-z27a — daily drift audit at 06:00 local
+Documentation=https://linear.app/keiracom/issue/KEI-Agency_OS-z27a
+
+[Timer]
+OnCalendar=daily
+RandomizedDelaySec=300
+Persistent=true
+Unit=drift_audit_bd_state.service
+
+[Install]
+WantedBy=timers.target

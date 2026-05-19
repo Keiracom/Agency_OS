@@ -35,6 +35,7 @@ import json
 import logging
 import os
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 import psycopg
@@ -47,6 +48,10 @@ AGENT_MEMORIES_CLASS = "AgentMemories"
 SOURCE_NAME = "agent_memories"
 POLL_SECONDS = int(os.environ.get("AGENT_MEMORIES_POLL_SECONDS", "30"))
 BATCH_SIZE_DEFAULT = int(os.environ.get("AGENT_MEMORIES_BATCH_SIZE", "200"))
+CURSOR_PATH = Path(os.environ.get(
+    "AGENT_MEMORIES_CURSOR_PATH",
+    "/home/elliotbot/clawd/Agency_OS/.agent_memories_indexer.cursor"
+))
 
 AGENT_MEMORIES_SCHEMA = {
     "class": AGENT_MEMORIES_CLASS,
@@ -81,19 +86,58 @@ class AgentMemoriesIndexer(BaseIndexer[AgentMemoryRow]):
 
     def __init__(self, conn: psycopg.Connection) -> None:
         self._conn = conn
+        self._cursor_created_at, self._cursor_id = self._load_cursor()
+        logger.info("indexer cursor loaded: created_at=%s id=%s", self._cursor_created_at, self._cursor_id)
+
+    def _load_cursor(self) -> tuple[str | None, str | None]:
+        if not CURSOR_PATH.exists():
+            return None, None
+        try:
+            d = json.loads(CURSOR_PATH.read_text())
+            return d.get("last_created_at"), d.get("last_id")
+        except (json.JSONDecodeError, OSError):
+            return None, None
+
+    def _save_cursor(self, created_at: Any, row_id: str) -> None:
+        try:
+            CURSOR_PATH.write_text(json.dumps({
+                "last_created_at": created_at.isoformat() if hasattr(created_at, "isoformat") else str(created_at),
+                "last_id": row_id,
+            }))
+        except OSError as e:
+            logger.warning("cursor save failed: %s", e)
 
     def fetch_batch(self, batch_size: int) -> list[AgentMemoryRow]:
         with self._conn.cursor() as cur:
-            cur.execute(
-                "SELECT id::text, callsign, source_type, content, typed_metadata, "
-                "tags, created_at "
-                "FROM public.agent_memories "
-                "WHERE state != 'archived' "
-                "AND (valid_to IS NULL OR valid_to > NOW()) "
-                "ORDER BY created_at NULLS LAST, id ASC LIMIT %s",
-                (batch_size,),
-            )
-            return [AgentMemoryRow(*r) for r in cur.fetchall()]
+            if self._cursor_created_at and self._cursor_id:
+                cur.execute(
+                    "SELECT id::text, callsign, source_type, content, typed_metadata, "
+                    "tags, created_at "
+                    "FROM public.agent_memories "
+                    "WHERE state != 'archived' "
+                    "AND (valid_to IS NULL OR valid_to > NOW()) "
+                    "AND (created_at, id::text) > (%s, %s) "
+                    "ORDER BY created_at NULLS LAST, id ASC LIMIT %s",
+                    (self._cursor_created_at, self._cursor_id, batch_size),
+                )
+            else:
+                cur.execute(
+                    "SELECT id::text, callsign, source_type, content, typed_metadata, "
+                    "tags, created_at "
+                    "FROM public.agent_memories "
+                    "WHERE state != 'archived' "
+                    "AND (valid_to IS NULL OR valid_to > NOW()) "
+                    "ORDER BY created_at NULLS LAST, id ASC LIMIT %s",
+                    (batch_size,),
+                )
+            rows = [AgentMemoryRow(*r) for r in cur.fetchall()]
+        # advance cursor on the last row of this batch
+        if rows:
+            last = rows[-1]
+            self._cursor_created_at = last.created_at.isoformat() if hasattr(last.created_at, "isoformat") else str(last.created_at)
+            self._cursor_id = last.id
+            self._save_cursor(last.created_at, last.id)
+        return rows
 
     def build_object(self, row: AgentMemoryRow) -> dict:
         return build_memory(row)

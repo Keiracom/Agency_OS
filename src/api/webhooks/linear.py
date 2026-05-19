@@ -364,10 +364,55 @@ async def receive_linear_webhook(request: Request) -> dict[str, str]:
         return {"status": "ignored"}
     _dispatch_to_bd(event)
     _dispatch_to_tasks(event)  # KEI-22 — Supabase tasks SSOT (parallel to bd during transition)
+    _emit_sync_event_linear(event)  # KEI-228 — origin-tagged event for K3 orchestrator
     _dispatch_to_indexing_queue("linear", payload)  # KEI-61 — durable staging buffer
     # Successful HMAC-pass + UPDATE-applied — the canonical outcome event.
     _heartbeat_tick("linear-webhook-handler", outcome_increment=1, status="ok")
     return {"status": "ok", "op": event["op"], "identifier": event["identifier"]}
+
+
+# KEI-228: map normalised webhook ops to sync_events.event_type. Coexists with
+# the legacy `_dispatch_to_*` paths during K2→K3 transition; once K3 lands the
+# old dispatchers can be removed and the K3 orchestrator becomes the sole
+# fan-out path (draining sync_events).
+_LINEAR_OP_TO_EVENT_TYPE: dict[str, str] = {
+    "create": "create",
+    "status": "update",  # narrowed below via task_status
+    "remove": "close",
+}
+
+
+def _emit_sync_event_linear(event: dict[str, Any]) -> None:
+    """Insert into public.sync_events with origin='linear'. Fail-open.
+
+    The K3 sync_orchestrator (next PR) drains these and dispatches to the
+    OTHER two stores (postgres + bd). Origin tag prevents loop-back to
+    Linear when the destination writes propagate.
+    """
+    op = event.get("op")
+    identifier = event.get("identifier")
+    if not (op and identifier):
+        return
+    dsn = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL", "")
+    if not dsn:
+        logger.warning("sync_events emit skipped: DATABASE_URL/SUPABASE_DB_URL unset")
+        return
+    dsn = dsn.replace("postgresql+asyncpg://", "postgresql://", 1)
+    event_type = _LINEAR_OP_TO_EVENT_TYPE.get(op, "update")
+    # status op with task_status=done → close; reopen detection deferred to K3.
+    if op == "status" and event.get("task_status") == "done":
+        event_type = "close"
+    try:
+        import psycopg
+
+        with psycopg.connect(dsn, connect_timeout=10) as conn, conn.cursor() as cur:
+            cur.execute(
+                "SELECT public.fn_emit_sync_event(%s, %s, %s, %s, %s::jsonb)",
+                ("linear", event_type, identifier, None, json.dumps(event)),
+            )
+            conn.commit()
+    except Exception as exc:  # noqa: BLE001 — fail-open per webhook discipline
+        logger.warning("sync_events emit failed for %s: %s", identifier, exc)
 
 
 def _dispatch_to_indexing_queue(source: str, raw_payload: dict[str, Any]) -> None:

@@ -274,25 +274,26 @@ def _dispatch_linear(event: dict[str, Any]) -> None:
 def _event_to_linear_state(event: dict[str, Any]) -> str | None:
     """Map an event to the target Linear state name.
 
-    KEI-233 safety guard: `update` events that carry `status='available'`
-    are NOT propagated to Linear. Postgres and bd-Dolt both default new
-    rows to `available` — propagating that back as `todo` silently
-    downgrades any Linear issue currently in `Done` / `Canceled` / `In
-    Progress` to the canonical-but-wrong `Todo` state. Linear is the
-    human board; only confident, terminal-direction transitions
-    (`close` → `done`, explicit `update` to `active`/`done`) propagate.
-    Anything ambiguous is dropped (returns None) so we never overwrite
-    Linear with a lower-confidence value.
+    KEI-236 policy lock (Dave 2026-05-19): Postgres is canonical, bd is the
+    agent CLI, Linear is a one-way visibility mirror. Only Postgres-origin
+    terminal transitions (close / reopen) propagate to Linear. Everything
+    else returns None so the orchestrator never overwrites Linear from a
+    non-canonical source.
+
+    Combined with the prior KEI-233 guard (no `available` → todo), this
+    pins the orchestrator to:
+      - bd-origin events: never go to Linear
+      - linear-origin events: never round-trip to Linear (origin-tag
+        loop prevention also blocks this in _process_event)
+      - postgres-origin events: ONLY when event_type ∈ {close, reopen}
     """
+    if event.get("origin") != "postgres":
+        return None
     et = event["event_type"]
     if et == "close":
         return "done"
     if et == "reopen":
         return "active"
-    if et == "update":
-        status = event["payload"].get("status")
-        # `available` deliberately excluded — see safety-guard comment above.
-        return {"active": "active", "done": "done"}.get(status)
     return None
 
 

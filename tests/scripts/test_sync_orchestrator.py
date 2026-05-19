@@ -335,6 +335,40 @@ def test_process_event_rolls_back_on_trigger_block(monkeypatch) -> None:
     assert "ROLLBACK TO SAVEPOINT" in all_sql
 
 
+def test_process_event_rolls_back_on_check_violation(monkeypatch) -> None:
+    """KEI-235-followup — CheckViolation (e.g. status='cancelled' rejected
+    by tasks_status_check) must also roll back savepoint and let batch
+    continue, not crash the worker."""
+    import psycopg.errors
+
+    event = _event(id="evt-2", origin="bd")
+    conn = _FakeConn()
+    monkeypatch.setattr(
+        so,
+        "_dispatch_postgres",
+        lambda c, e: (_ for _ in ()).throw(
+            psycopg.errors.CheckViolation('new row violates check constraint "tasks_status_check"')
+        ),
+    )
+    monkeypatch.setattr(so, "_dispatch_bd", lambda e: None)
+    monkeypatch.setattr(so, "_dispatch_linear", lambda e: None)
+    ok = so._process_event(conn, event)
+    assert ok is False  # treated same as DispatchError — batch survives
+
+
+def test_dispatch_postgres_coerces_cancelled_to_dismissed(monkeypatch) -> None:
+    """Pre-fix events with payload.status='cancelled' get coerced to
+    'dismissed' so the CHECK constraint doesn't reject them. The synthetic
+    verification also fires since 'dismissed' is now a terminal transition."""
+    event = _event(event_type="close", payload={"status": "cancelled", "bd_id": "Agency_OS-x"})
+    conn = _FakeConn()
+    so._dispatch_postgres(conn, event)
+    all_params = [params for c in conn._cursors for _, params in c.executed]
+    # The tasks UPSERT params: (task_id, bd_id, title, status, priority, linear_url)
+    upsert_params = [p for p in all_params if "dismissed" in str(p)]
+    assert upsert_params, "expected coerced status='dismissed' in tasks upsert"
+
+
 # ---------------------------------------------------------------------------
 # Postgres status → bd mapping.
 # ---------------------------------------------------------------------------

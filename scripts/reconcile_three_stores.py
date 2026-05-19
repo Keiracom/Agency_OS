@@ -34,14 +34,19 @@ _LINEAR_GRAPHQL_URL = "https://api.linear.app/graphql"
 _LINEAR_TEAM_ID_DEFAULT = "4686528f-ce77-4c2f-968b-3dc76b34d6fe"  # Keiracom
 _BD_BIN_DEFAULT = os.path.expanduser("~/.local/bin/bd")
 
-# Linear StateType → public.tasks.status (mirrors webhook mapping).
+# Linear StateType → public.tasks.status. Mirrors webhook mapping.
+# KEI-235-followup: Postgres tasks_status_check CHECK constraint allows
+# (available, active, pending_review, ready_for_execution, done, blocked,
+# dismissed) — NOT 'cancelled'. Linear's `canceled` therefore maps to
+# Postgres `dismissed`. CheckViolations on the old (canceled→cancelled)
+# mapping froze ~30 sync events 2026-05-19 14:42 UTC.
 LINEAR_STATE_TO_TASK_STATUS: dict[str, str] = {
     "backlog": "available",
     "unstarted": "available",
     "triage": "available",
     "started": "active",
     "completed": "done",
-    "canceled": "cancelled",
+    "canceled": "dismissed",
 }
 
 

@@ -93,6 +93,29 @@ def read_last_assistant_text(transcript_path: str) -> str:
     return last_text
 
 
+NOISE_RE = re.compile(
+    r"^\s*(?:\[?\w+@nats.*\]?\s*)?NATS echo[es]*[, ]|"
+    r"^\s*Standing\.?\s*$|"
+    r"^\s*(?:NATS echo[es]*|relay reflection)[\s,.;:]*(?:no action[\s.,;:]*)?(?:Standing\.?\s*)?$",
+    re.IGNORECASE | re.MULTILINE,
+)
+
+
+def is_noise_filler(text: str) -> bool:
+    """Suppress hook emit on NATS-echo / Standing-filler self-replies (Elliot 2026-05-19)."""
+    if not text or not text.strip():
+        return True
+    stripped = text.strip()
+    if NOISE_RE.search(stripped):
+        return True
+    low = stripped.lower()
+    if low in {"standing.", "standing", "no action. standing.", "nats echo, no action. standing."}:
+        return True
+    if len(stripped) < 120 and re.search(r"\bstanding\.?\s*$", low) and re.search(r"\b(echo|no action|acknowledged|holding|no change)\b", low):
+        return True
+    return False
+
+
 def classify(text: str) -> dict:
     cls = {"kind": "status", "pr_number": None, "topic_id": None}
     if not text:
@@ -154,6 +177,9 @@ def main() -> int:
         payload = {}
     transcript_path = payload.get("transcript_path") or ""
     text = read_last_assistant_text(transcript_path)
+    if is_noise_filler(text):
+        sys.stderr.write(f"[agent_stop_hook] {cs} noise-filler suppressed\n")
+        return 0
     cls = classify(text)
     envelope = {
         "from": cs,

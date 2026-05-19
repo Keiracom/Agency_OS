@@ -63,8 +63,11 @@ def _bd_bin() -> str:
 
 def _fetch_linear_issues(api_key: str, team_id: str) -> list[dict[str, Any]]:
     """Paginate through all Linear issues for the team."""
+    # KEI-233: Linear schema changed — team.id filter now requires ID! not String!.
+    # Old `$teamId: String!` was accepted historically; current Linear validates
+    # strictly and returns GRAPHQL_VALIDATION_FAILED on a mismatch.
     query = """
-    query($teamId: String!, $after: String) {
+    query($teamId: ID!, $after: String) {
       issues(filter: { team: { id: { eq: $teamId } } }, first: 100, after: $after) {
         pageInfo { hasNextPage endCursor }
         nodes { identifier title priority url state { type name } }
@@ -179,13 +182,46 @@ def build_join_table(
     return table
 
 
+def _linear_canonical_status(linear_iss: dict[str, Any]) -> str | None:
+    """Return the Postgres-shaped status mapped from Linear state, or None."""
+    state_type = (linear_iss.get("state") or {}).get("type") or ""
+    return LINEAR_STATE_TO_TASK_STATUS.get(state_type)
+
+
+def _has_field_drift(entry: dict[str, Any]) -> bool:
+    """True if a KEI present in all 3 stores has a stale Postgres status.
+
+    Treats Linear as canonical. Postgres-only buckets (`dismissed`, `blocked`)
+    have no Linear equivalent — never flagged as drift. Postgres `done` /
+    `cancelled` are sticky (matches the orchestrator's done-preservation
+    invariant in `_dispatch_postgres`); never re-opened automatically here.
+    """
+    stores = entry["stores"]
+    linear_iss = stores.get("linear") or {}
+    pg_row = stores.get("postgres") or {}
+    canonical = _linear_canonical_status(linear_iss)
+    if canonical is None:
+        return False
+    actual = pg_row.get("status")
+    if actual in ("dismissed", "blocked"):
+        return False
+    if actual in ("done", "cancelled"):
+        return False
+    # NULL pg.status counts as drift — the row exists but has no status set,
+    # so propagating Linear's canonical value is strictly an improvement.
+    return actual != canonical
+
+
 def detect_drift(table: dict[str, dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
-    """Classify each KEI into one of four buckets."""
+    """Classify each KEI into one of five buckets — four presence buckets plus
+    `field_drift` for KEIs present in all three stores but with a stale
+    Postgres status vs Linear (KEI-233)."""
     out: dict[str, list[dict[str, Any]]] = {
         "in_all_three": [],
         "missing_postgres": [],
         "missing_bd": [],
         "missing_linear": [],
+        "field_drift": [],
     }
     for kei, stores in table.items():
         # `is not None` (not truthiness) — an empty dict {} from a row with
@@ -194,6 +230,8 @@ def detect_drift(table: dict[str, dict[str, Any]]) -> dict[str, list[dict[str, A
         entry = {"kei": kei, "stores": stores}
         if has == {"linear", "postgres", "bd"}:
             out["in_all_three"].append(entry)
+            if _has_field_drift(entry):
+                out["field_drift"].append(entry)
         elif "postgres" not in has:
             out["missing_postgres"].append(entry)
         elif "bd" not in has:
@@ -259,6 +297,15 @@ def _emit_events(conn: Any, drift: dict[str, list[dict[str, Any]]]) -> int:
                 (origin, "create", entry["kei"], payload["bd_id"], json.dumps(payload)),
             )
             emitted += 1
+        # KEI-233 — field-drift bucket: Linear is canonical; orchestrator
+        # dispatches the corrected status to Postgres + bd via origin=linear.
+        for entry in drift["field_drift"]:
+            payload = _build_create_payload(entry["kei"], entry["stores"])
+            cur.execute(
+                "SELECT public.fn_emit_sync_event(%s, %s, %s, %s, %s::jsonb)",
+                ("linear", "update", entry["kei"], payload["bd_id"], json.dumps(payload)),
+            )
+            emitted += 1
     conn.commit()
     return emitted
 
@@ -268,13 +315,21 @@ def _print_summary(drift: dict[str, list[dict[str, Any]]], emitted: int | None) 
     print(f"missing_postgres:{len(drift['missing_postgres'])}")
     print(f"missing_bd:      {len(drift['missing_bd'])}")
     print(f"missing_linear:  {len(drift['missing_linear'])}")
+    print(f"field_drift:     {len(drift.get('field_drift', []))}")
     if emitted is not None:
         print(f"events_emitted:  {emitted}")
-    for bucket in ("missing_postgres", "missing_bd", "missing_linear"):
-        if drift[bucket]:
+    for bucket in ("missing_postgres", "missing_bd", "missing_linear", "field_drift"):
+        if drift.get(bucket):
             print(f"\n{bucket} (first 5):")
             for entry in drift[bucket][:5]:
-                print(f"  {entry['kei']}")
+                if bucket == "field_drift":
+                    l = entry["stores"].get("linear") or {}
+                    p = entry["stores"].get("postgres") or {}
+                    print(
+                        f"  {entry['kei']} linear={(l.get('state') or {}).get('type', '?')} pg_status={p.get('status')}"
+                    )
+                else:
+                    print(f"  {entry['kei']}")
 
 
 def main(argv: list[str] | None = None) -> int:

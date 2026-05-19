@@ -67,11 +67,15 @@ class _FakeCursor:
 class _FakeConn:
     def __init__(self) -> None:
         self._cursors: list[_FakeCursor] = []
+        self.rolled_back = False
 
     def cursor(self) -> _FakeCursor:
         cur = _FakeCursor()
         self._cursors.append(cur)
         return cur
+
+    def rollback(self) -> None:
+        self.rolled_back = True
 
 
 # ---------------------------------------------------------------------------
@@ -262,6 +266,73 @@ def test_linear_event_to_state_update_available_returns_none(monkeypatch) -> Non
 
 def test_linear_event_to_state_unmapped_returns_none() -> None:
     assert so._event_to_linear_state(_event(event_type="title_change")) is None
+
+
+# ---------------------------------------------------------------------------
+# KEI-235 — synthetic task_verifications + trigger-rollback resilience.
+# ---------------------------------------------------------------------------
+
+
+def test_dispatch_postgres_writes_synthetic_verification_for_done(monkeypatch) -> None:
+    """When payload.status='done', a task_verifications row is INSERTed
+    before the tasks UPDATE so the require_verification_before_done trigger
+    passes (KEI-235)."""
+    event = _event(event_type="close", payload={"status": "done", "bd_id": "Agency_OS-x"})
+    conn = _FakeConn()
+    so._dispatch_postgres(conn, event)
+    sqls = [c.executed for c in conn._cursors if c.executed]
+    flat = [sql for batch in sqls for sql, _ in batch]
+    verification_inserts = [s for s in flat if "INSERT INTO public.task_verifications" in s]
+    assert verification_inserts, "expected synthetic verification insert before done UPDATE"
+    # Verifier name must be 'linear-sync' (audit distinguishability).
+    all_params = [params for batch in sqls for _, params in batch]
+    verifier_params = [p for p in all_params if "linear-sync" in p]
+    assert verifier_params, "expected verified_by='linear-sync' in inserted row"
+
+
+def test_dispatch_postgres_skips_verification_for_non_terminal(monkeypatch) -> None:
+    """payload.status='active' or 'available' does NOT trip the trigger,
+    so no synthetic verification is written."""
+    event = _event(event_type="update", payload={"status": "active"})
+    conn = _FakeConn()
+    so._dispatch_postgres(conn, event)
+    flat_sqls = [sql for c in conn._cursors for sql, _ in c.executed]
+    assert not any("task_verifications" in s for s in flat_sqls)
+
+
+def test_dispatch_postgres_synthetic_verification_idempotent_via_not_exists(monkeypatch) -> None:
+    """The verification INSERT uses NOT EXISTS so repeats are no-ops."""
+    event = _event(event_type="close", payload={"status": "cancelled", "bd_id": "Agency_OS-x"})
+    conn = _FakeConn()
+    so._dispatch_postgres(conn, event)
+    flat_sqls = [sql for c in conn._cursors for sql, _ in c.executed]
+    insert_sql = next(s for s in flat_sqls if "INSERT INTO public.task_verifications" in s)
+    assert "NOT EXISTS" in insert_sql, "idempotency guard required"
+
+
+def test_process_event_rolls_back_on_trigger_block(monkeypatch) -> None:
+    """KEI-235 resilience — RaiseException from a governance trigger rolls
+    back the savepoint, NOT the whole batch."""
+    import psycopg.errors
+
+    event = _event(id="evt-1", origin="bd")
+    conn = _FakeConn()
+    monkeypatch.setattr(so, "_dispatch_bd", lambda e: called.append("bd"))
+    called: list[str] = []
+    monkeypatch.setattr(
+        so,
+        "_dispatch_postgres",
+        lambda c, e: (_ for _ in ()).throw(
+            psycopg.errors.RaiseException("BLOCKED: Task X cannot be marked done")
+        ),
+    )
+    monkeypatch.setattr(so, "_dispatch_linear", lambda e: called.append("linear"))
+    ok = so._process_event(conn, event)
+    assert ok is False  # batch continues; this event recorded as failed
+    # Savepoint sequence: SAVEPOINT, ROLLBACK TO SAVEPOINT, RELEASE SAVEPOINT
+    all_sql = " ".join(sql for c in conn._cursors for sql, _ in c.executed)
+    assert "SAVEPOINT" in all_sql
+    assert "ROLLBACK TO SAVEPOINT" in all_sql
 
 
 # ---------------------------------------------------------------------------

@@ -1,0 +1,13 @@
+[Unit]
+Description=Agency_OS-iosu — bd↔Linear sync every 10 minutes
+Documentation=https://linear.app/keiracom/issue/KEI-227
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=10min
+RandomizedDelaySec=60
+Persistent=true
+Unit=bd_linear_sync.service
+
+[Install]
+WantedBy=timers.target

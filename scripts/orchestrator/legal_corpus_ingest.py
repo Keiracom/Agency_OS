@@ -42,7 +42,6 @@ import argparse
 import hashlib
 import json
 import logging
-import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -99,64 +98,69 @@ class CorpusChunk:
         return hashlib.sha256(self.raw_text.encode("utf-8")).hexdigest()[:16]
 
 
-_CHUNK_DELIM = re.compile(r"^---$", re.MULTILINE)
-_HEADER_LINE = re.compile(r"^\s*([A-Za-z_]+)\s*:\s*(.+?)\s*$")
+_HEADER_KEYS = frozenset({"chunk_id", "source_url", "source_date"})
+
+
+def _parse_header_line(line: str) -> tuple[str, str] | None:
+    """Return (key, value) for a 'key: value' header line, else None.
+
+    Non-regex split avoids ReDoS risk (python:S5852); the format is a simple
+    'key: value' pair with no ambiguity worth a backtracking engine.
+    """
+    if not line or line[:1] == " " or ":" not in line:
+        return None
+    key, _, value = line.partition(":")
+    key_stripped = key.strip().lower()
+    if not key_stripped or not all(c.isalpha() or c == "_" for c in key_stripped):
+        return None
+    return key_stripped, value.strip()
+
+
+def _find_body_start(lines: list[str], headers: dict[str, str]) -> int:
+    """Return index of first body line; len(lines) means no body."""
+    for i, line in enumerate(lines):
+        parsed = _parse_header_line(line)
+        if parsed is not None:
+            headers[parsed[0]] = parsed[1]
+            continue
+        if headers and (line.strip() == "" or _parse_header_line(line) is None):
+            return i + 1 if line.strip() == "" else i
+    return len(lines)
+
+
+def _parse_chunk_section(category: str, section: str) -> CorpusChunk | None:
+    """Parse one chunk section; return None if malformed (warning logged)."""
+    lines = section.splitlines()
+    headers: dict[str, str] = {}
+    body_start = _find_body_start(lines, headers)
+    body = "\n".join(lines[body_start:]).strip()
+    chunk_id = headers.get("chunk_id", "").strip()
+    if not chunk_id or not body:
+        logger.warning(
+            "[%s] skipping malformed chunk: id=%r body_len=%d", category, chunk_id, len(body)
+        )
+        return None
+    return CorpusChunk(
+        category=category,
+        chunk_id=chunk_id,
+        source_url=headers.get("source_url", "").strip(),
+        source_date=headers.get("source_date", "").strip(),
+        raw_text=body,
+    )
 
 
 def parse_corpus_file(category: str, text: str) -> list[CorpusChunk]:
     """Parse a markdown corpus file into CorpusChunk records.
 
     File format: each chunk is a YAML-like header followed by the body, separated
-    by `---` lines. Headers required: chunk_id, source_url, source_date.
-
-      chunk_id: app-1-collection
-      source_url: https://www.oaic.gov.au/...
-      source_date: 2014-03-12
-
-      <body text — one normative passage>
-      ---
-      chunk_id: app-3-quality
-      ...
+    by `---` lines on their own. Headers required: chunk_id, source_url, source_date.
     """
+    sections = [s.strip() for s in text.split("\n---\n") if s.strip()]
     chunks: list[CorpusChunk] = []
-    sections = [s.strip() for s in _CHUNK_DELIM.split(text) if s.strip()]
     for section in sections:
-        lines = section.splitlines()
-        headers: dict[str, str] = {}
-        # Default: if the loop never finds a non-header transition (i.e. the
-        # whole section is headers with no body), body_start = len(lines) so
-        # the body slice comes out empty and the malformed check drops it.
-        body_start = len(lines)
-        for i, line in enumerate(lines):
-            m = _HEADER_LINE.match(line)
-            if m and not line.startswith(" "):
-                headers[m.group(1).lower()] = m.group(2)
-            else:
-                # First non-header line ends the header block.
-                if headers and line.strip() == "":
-                    body_start = i + 1
-                    break
-                if headers and not _HEADER_LINE.match(line):
-                    body_start = i
-                    break
-        body = "\n".join(lines[body_start:]).strip()
-        chunk_id = headers.get("chunk_id", "").strip()
-        source_url = headers.get("source_url", "").strip()
-        source_date = headers.get("source_date", "").strip()
-        if not chunk_id or not body:
-            logger.warning(
-                "[%s] skipping malformed chunk: id=%r body_len=%d", category, chunk_id, len(body)
-            )
-            continue
-        chunks.append(
-            CorpusChunk(
-                category=category,
-                chunk_id=chunk_id,
-                source_url=source_url,
-                source_date=source_date,
-                raw_text=body,
-            )
-        )
+        chunk = _parse_chunk_section(category, section)
+        if chunk is not None:
+            chunks.append(chunk)
     return chunks
 
 

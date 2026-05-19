@@ -79,8 +79,12 @@ def detect_divergence(a_text: str, m_text: str) -> list[str]:
             divergences.append(f"{who} HOLD on {m.group(1)}")
     # Tier-placement disagreements: "LAW X: HOT" vs "LAW X: POINTER"
     pattern = re.compile(r"(LAW\s*[A-Z\-]+\d*|GOV-\d+)\s*[:|]\s*(HOT|POINTER|REFERENCE)", re.IGNORECASE)
-    a_tiers = {m.group(1).upper(): m.group(2).upper() for m in pattern.finditer(a_text)}
-    m_tiers = {k: v for k, v in (m_tiers_iter := ((m.group(1).upper(), m.group(2).upper()) for m in pattern.finditer(m_text)))}
+    a_tiers: dict[str, str] = {}
+    for m in pattern.finditer(a_text):
+        a_tiers[m.group(1).upper()] = m.group(2).upper()
+    m_tiers: dict[str, str] = {}
+    for m in pattern.finditer(m_text):
+        m_tiers[m.group(1).upper()] = m.group(2).upper()
     for law in set(a_tiers) & set(m_tiers):
         if a_tiers[law] != m_tiers[law]:
             divergences.append(f"tier divergence on {law} — aiden={a_tiers[law]}, max={m_tiers[law]}")

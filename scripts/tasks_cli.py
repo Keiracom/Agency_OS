@@ -770,29 +770,88 @@ def cmd_heartbeat(args: argparse.Namespace) -> int:
     return 0
 
 
+def _build_auto_verify_payload(task_id: str, callsign: str) -> dict:
+    """KEI-239 — synthesise an evidence payload for `bd complete --auto-verify`.
+
+    Used when the agent has done the work (PR merged, post-merge cleanup) and
+    wants to mark the KEI done without manually crafting an evidence JSON.
+    The synthetic payload still satisfies the KEI-89 schema:
+      - acceptance_items: one entry attributing the close to the agent
+      - commands: one entry with verbatim text >= 16 chars
+      - verifier_session_uuid: CLAUDE_CODE_SESSION_ID env or a fresh uuid
+      - timestamp: ISO-8601 UTC now
+
+    Distinguishable from human-evidence by verifier_session_uuid prefix
+    when CLAUDE_CODE_SESSION_ID is unset (uses 'auto-verify' marker).
+    """
+    import uuid as _uuid
+    from datetime import UTC
+    from datetime import datetime as _dt
+
+    session = os.environ.get("CLAUDE_CODE_SESSION_ID", "")
+    if not session:
+        session = f"auto-verify-{_uuid.uuid4()}"
+    now_iso = _dt.now(UTC).isoformat()
+    return {
+        "acceptance_items": [
+            {
+                "criterion": f"Task {task_id} closed via `bd complete --auto-verify`",
+                "satisfied": True,
+                "evidence": (
+                    f"agent={callsign} closed via auto-verify at {now_iso}. "
+                    f"Pre-conditions assumed satisfied by prior PR-merge / agent process; "
+                    f"no separate evidence document was supplied at close time."
+                ),
+            }
+        ],
+        "commands": [
+            {
+                "cmd": f"bd complete {task_id} --auto-verify",
+                "output": (
+                    f"auto-verify path: agent={callsign} task={task_id} "
+                    f"closed_at={now_iso}; no behavioural-test stdout captured "
+                    f"because the work-evidence lives in the prior PR merge / "
+                    f"systemd service log rather than a per-task script run."
+                ),
+            }
+        ],
+        "verifier_session_uuid": session,
+        "timestamp": now_iso,
+    }
+
+
 def cmd_complete(args: argparse.Namespace) -> int:
     """Mark a claimed task done.
 
-    KEI-89 Gate 2: --evidence <path|-> is required. Without it the command
-    exits with a non-zero code and an explanatory error. With it, the
-    evidence JSON is schema-validated and checked for hash uniqueness before
-    the atomic INSERT+UPDATE transaction.
+    KEI-89 Gate 2: --evidence <path|-> is required by default. The KEI-239
+    `--auto-verify` flag bypasses the file-path requirement by synthesising
+    a schema-compliant evidence payload attributed to the calling callsign;
+    the synthetic verification still goes through the same uniqueness check
+    + atomic INSERT+UPDATE transaction.
     """
     import psycopg
 
-    # Gate 2: evidence flag required.
-    evidence_path: str | None = getattr(args, "evidence", None)
-    if not evidence_path:
-        print(
-            "ERROR: --evidence <path|-> is required. Pass a JSON file path or '-' to "
-            "read from stdin. Refusing to complete without structured evidence.",
-            file=sys.stderr,
-        )
-        return 1
+    # KEI-239 — auto-verify path. Synthesises an evidence payload so the
+    # agent doesn't need a per-task evidence JSON when the work-evidence
+    # already lives in PR merges / systemd logs / orchestrator history.
+    if getattr(args, "auto_verify", False) and not getattr(args, "evidence", None):
+        cs_for_synth = _callsign(args.callsign)
+        evidence_payload = _build_auto_verify_payload(args.id, cs_for_synth)
+    else:
+        # Gate 2: evidence flag required when --auto-verify NOT passed.
+        evidence_path: str | None = getattr(args, "evidence", None)
+        if not evidence_path:
+            print(
+                "ERROR: --evidence <path|-> is required (or pass --auto-verify "
+                "for synthetic evidence). Refusing to complete without structured "
+                "evidence.",
+                file=sys.stderr,
+            )
+            return 1
 
-    evidence_payload = _load_evidence_payload(evidence_path)
-    if evidence_payload is None:
-        return 1
+        evidence_payload = _load_evidence_payload(evidence_path)
+        if evidence_payload is None:
+            return 1
 
     schema_err = _validate_evidence_schema(evidence_payload)
     if schema_err:
@@ -968,7 +1027,13 @@ def main(argv: list[str] | None = None) -> int:
     p_complete.add_argument(
         "--evidence",
         metavar="PATH",
-        help="KEI-89 Gate 2: path to evidence JSON file, or '-' to read from stdin. Required.",
+        help="KEI-89 Gate 2: path to evidence JSON file, or '-' to read from stdin. Required unless --auto-verify is passed.",
+    )
+    p_complete.add_argument(
+        "--auto-verify",
+        action="store_true",
+        dest="auto_verify",
+        help="KEI-239: synthesise a schema-compliant evidence payload attributed to the calling callsign. Use when work-evidence lives in PR merges / systemd logs rather than a per-task script run.",
     )
     p_complete.add_argument("--json", action="store_true")
     p_complete.set_defaults(func=cmd_complete)

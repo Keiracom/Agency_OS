@@ -237,35 +237,43 @@ def test_linear_dispatch_missing_state_id_raises(monkeypatch) -> None:
 
 
 def test_linear_event_to_state_close_returns_done() -> None:
-    assert so._event_to_linear_state(_event(event_type="close")) == "done"
+    # KEI-236: only postgres-origin close propagates to Linear.
+    assert so._event_to_linear_state(_event(event_type="close", origin="postgres")) == "done"
 
 
 def test_linear_event_to_state_reopen_returns_active() -> None:
-    assert so._event_to_linear_state(_event(event_type="reopen")) == "active"
+    # KEI-236: only postgres-origin reopen propagates to Linear.
+    assert so._event_to_linear_state(_event(event_type="reopen", origin="postgres")) == "active"
 
 
-def test_linear_event_to_state_update_uses_payload_status() -> None:
-    assert (
-        so._event_to_linear_state(_event(event_type="update", payload={"status": "active"}))
-        == "active"
-    )
-    assert (
-        so._event_to_linear_state(_event(event_type="update", payload={"status": "done"})) == "done"
-    )
+def test_linear_event_to_state_update_returns_none_under_kei236() -> None:
+    """KEI-236: `update` events NEVER propagate to Linear regardless of
+    payload.status. Linear is a one-way mirror — only terminal transitions
+    (close/reopen) flow Postgres→Linear."""
+    for status in ("active", "done", "available", "dismissed"):
+        assert (
+            so._event_to_linear_state(
+                _event(event_type="update", origin="postgres", payload={"status": status})
+            )
+            is None
+        ), f"update with status={status} should return None under KEI-236"
 
 
-def test_linear_event_to_state_update_available_returns_none(monkeypatch) -> None:
-    """KEI-233 safety guard: 'available' is the Postgres/bd default — never
-    propagate back to Linear, otherwise we silently downgrade Linear's
-    Done/Canceled/In Progress issues to Todo."""
-    assert (
-        so._event_to_linear_state(_event(event_type="update", payload={"status": "available"}))
-        is None
-    )
+def test_linear_event_to_state_bd_origin_returns_none() -> None:
+    """KEI-236: bd-origin events never reach Linear (orchestrator one-way push)."""
+    for et in ("close", "reopen", "update"):
+        assert so._event_to_linear_state(_event(event_type=et, origin="bd")) is None
+
+
+def test_linear_event_to_state_linear_origin_returns_none() -> None:
+    """KEI-236: linear-origin events never round-trip to Linear (also
+    enforced by origin-tag loop prevention in _process_event)."""
+    for et in ("close", "reopen", "update"):
+        assert so._event_to_linear_state(_event(event_type=et, origin="linear")) is None
 
 
 def test_linear_event_to_state_unmapped_returns_none() -> None:
-    assert so._event_to_linear_state(_event(event_type="title_change")) is None
+    assert so._event_to_linear_state(_event(event_type="title_change", origin="postgres")) is None
 
 
 # ---------------------------------------------------------------------------

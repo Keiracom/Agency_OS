@@ -14,7 +14,10 @@
 import * as React from "react";
 import { Progress } from "../ui/progress";
 
-export type DispatcherTier = "free" | "starter" | "growth" | "scale" | "enterprise";
+// Aligned with backend contract:
+//   src/dispatcher/tier_limits.py        Tier = Literal["basic", "pro", "enterprise"]
+//   customer_subscriptions_tier_chk      CHECK (tier_code IN ('basic','pro','enterprise'))
+export type DispatcherTier = "basic" | "pro" | "enterprise";
 
 export interface ThreadUsage {
   /** Live count of concurrent threads currently consumed by this tenant. */
@@ -32,10 +35,8 @@ export interface ThreadUsageGaugeProps {
 }
 
 const TIER_LABEL: Record<DispatcherTier, string> = {
-  free: "Free",
-  starter: "Starter",
-  growth: "Growth",
-  scale: "Scale",
+  basic: "Basic",
+  pro: "Pro",
   enterprise: "Enterprise",
 };
 

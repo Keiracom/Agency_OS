@@ -10,8 +10,8 @@ import { render, screen } from "@testing-library/react";
 
 import { ThreadUsageGauge, type ThreadUsage } from "../thread-usage-gauge";
 
-const _half: ThreadUsage = { active: 5, ceiling: 10, tier: "starter" };
-const _atCeiling: ThreadUsage = { active: 10, ceiling: 10, tier: "growth" };
+const _half: ThreadUsage = { active: 5, ceiling: 10, tier: "basic" };
+const _atCeiling: ThreadUsage = { active: 10, ceiling: 10, tier: "pro" };
 const _enterprise: ThreadUsage = { active: 1, ceiling: 1000, tier: "enterprise" };
 
 describe("ThreadUsageGauge", () => {
@@ -34,25 +34,27 @@ describe("ThreadUsageGauge", () => {
     render(<ThreadUsageGauge usage={_half} />);
     expect(screen.getByTestId("thread-usage-gauge")).toBeInTheDocument();
     expect(screen.getByText("5 / 10 threads")).toBeInTheDocument();
-    expect(screen.getByText("Starter")).toBeInTheDocument();
+    expect(screen.getByText("Basic")).toBeInTheDocument();
   });
 
   test("sets data-tier attribute to the usage.tier value", () => {
     render(<ThreadUsageGauge usage={_enterprise} />);
-    const gauge = screen.getByTestId("thread-usage-gauge");
-    expect(gauge.getAttribute("data-tier")).toBe("enterprise");
+    const gauge = screen.getByTestId("thread-usage-gauge") as HTMLElement;
+    expect(gauge.dataset.tier).toBe("enterprise");
   });
 
   test("shows at-ceiling banner when active >= ceiling", () => {
     render(<ThreadUsageGauge usage={_atCeiling} />);
     expect(screen.getByTestId("thread-usage-at-ceiling")).toBeInTheDocument();
-    expect(screen.getByTestId("thread-usage-gauge").getAttribute("data-at-ceiling")).toBe("true");
+    const gauge = screen.getByTestId("thread-usage-gauge") as HTMLElement;
+    expect(gauge.dataset.atCeiling).toBe("true");
   });
 
   test("hides at-ceiling banner when below ceiling", () => {
     render(<ThreadUsageGauge usage={_half} />);
     expect(screen.queryByTestId("thread-usage-at-ceiling")).toBeNull();
-    expect(screen.getByTestId("thread-usage-gauge").getAttribute("data-at-ceiling")).toBe("false");
+    const gauge = screen.getByTestId("thread-usage-gauge") as HTMLElement;
+    expect(gauge.dataset.atCeiling).toBe("false");
   });
 
   test("renders Progress bar element via data-testid pass-through", () => {
@@ -61,14 +63,14 @@ describe("ThreadUsageGauge", () => {
   });
 
   test("ceiling=0 edge case renders without divide-by-zero (pct clamps to 0)", () => {
-    const broken: ThreadUsage = { active: 0, ceiling: 0, tier: "free" };
+    const broken: ThreadUsage = { active: 0, ceiling: 0, tier: "basic" };
     render(<ThreadUsageGauge usage={broken} />);
     // active 0 >= ceiling 0 — at-ceiling banner shows
     expect(screen.getByTestId("thread-usage-at-ceiling")).toBeInTheDocument();
   });
 
   test("active > ceiling (burst race) clamps display to ceiling-equivalent banner", () => {
-    const burst: ThreadUsage = { active: 15, ceiling: 10, tier: "scale" };
+    const burst: ThreadUsage = { active: 15, ceiling: 10, tier: "basic" };
     render(<ThreadUsageGauge usage={burst} />);
     expect(screen.getByText("15 / 10 threads")).toBeInTheDocument();
     expect(screen.getByTestId("thread-usage-at-ceiling")).toBeInTheDocument();

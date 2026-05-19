@@ -61,11 +61,37 @@ inject surface, not the reply surface). Replying in terminal is the explicit
 failure mode Dave anchored.
 MD
 
-# Auto-post wake message to #ceo. Brief + format-gate-compliant.
+# Fetch last 40 Slack #ceo messages (Dave-elliot recent conversation).
+# Per Dave 2026-05-19: this is the primary wake-recovery context.
+if [[ -f "$ENV_FILE" && -x "$PYTHON" ]]; then
+    (
+        # shellcheck source=/dev/null
+        set -a; source "$ENV_FILE"; set +a
+        timeout 12 "$PYTHON" /home/elliotbot/clawd/Agency_OS/scripts/hooks/slack_history_wake.py
+    ) >/dev/null 2>&1 || true
+fi
+
+# Probe live operational state — PIDs, services, bd, git, cursors.
+# Complements the Slack-history file: discussion + live state = full wake context.
+if [[ -x "$PYTHON" ]]; then
+    timeout 15 "$PYTHON" /home/elliotbot/clawd/Agency_OS/scripts/hooks/live_state_probe.py >/dev/null 2>&1 || true
+fi
+
+# Emit both context files to stdout so Claude Code's SessionStart hook
+# captures them as session context (same pattern as anti_amnesia_capsule).
+echo "=== SLACK CEO RECENT HISTORY (last 40 messages, wake-recovery context) ==="
+cat /tmp/elliot-slack-history.md 2>/dev/null || echo "(slack history file missing)"
+echo ""
+echo "=== LIVE OPERATIONAL STATE (PIDs, services, bd, git, cursors) ==="
+cat /tmp/elliot-live-state.md 2>/dev/null || echo "(live state file missing)"
+echo ""
+
+# Side-effect: post wake message to #ceo. Output suppressed.
 if [[ -f "$ENV_FILE" && -x "$RELAY" && -x "$PYTHON" ]]; then
     CALLSIGN=elliot timeout 15 "$PYTHON" "$RELAY" "**Elliot online**
 - Session resumed
 - Bidirectional Slack live
+- Recent ceo history fetched and live state snapshotted
 - Awaiting direction" >/dev/null 2>&1 || true
 fi
 

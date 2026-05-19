@@ -1,0 +1,13 @@
+[Unit]
+Description=Agency OS — Weekly external knowledge refresh (KEI-232)
+Documentation=https://linear.app/keiracom/issue/KEI-232
+
+[Timer]
+OnBootSec=15min
+OnCalendar=Sun 03:00 Australia/Sydney
+Persistent=true
+RandomizedDelaySec=600
+Unit=external-knowledge-ingester.service
+
+[Install]
+WantedBy=timers.target

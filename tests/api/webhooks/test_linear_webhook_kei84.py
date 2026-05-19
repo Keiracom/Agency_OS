@@ -60,9 +60,11 @@ def test_normalise_update_completed_maps_to_done():
     assert out["task_status"] == "done"
 
 
-def test_normalise_update_canceled_maps_to_cancelled():
+def test_normalise_update_canceled_maps_to_dismissed():
+    # KEI-235-followup: Postgres tasks_status_check rejects 'cancelled'.
+    # Linear canceled → Postgres dismissed (constraint-compliant).
     out = linear_webhook._normalise_event(_payload("update", "KEI-100", "canceled"))
-    assert out["task_status"] == "cancelled"
+    assert out["task_status"] == "dismissed"
 
 
 def test_normalise_remove_returns_cancelled_op():
@@ -93,8 +95,10 @@ def test_state_mapping_constants_cover_all_linear_state_types():
 
 
 def test_state_mapping_canceled_is_distinct_from_done():
-    # KEI-84 regression: prior code mapped canceled→closed→done; spec requires cancelled.
-    assert linear_webhook.LINEAR_STATE_TO_TASK_STATUS["canceled"] == "cancelled"
+    # KEI-235-followup: tasks_status_check rejects 'cancelled'. Linear `canceled`
+    # maps to Postgres `dismissed` (the constraint-compliant equivalent).
+    # Still must be distinct from completed→done.
+    assert linear_webhook.LINEAR_STATE_TO_TASK_STATUS["canceled"] == "dismissed"
     assert linear_webhook.LINEAR_STATE_TO_TASK_STATUS["completed"] == "done"
     assert (
         linear_webhook.LINEAR_STATE_TO_TASK_STATUS["canceled"]

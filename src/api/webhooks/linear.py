@@ -126,7 +126,9 @@ def _normalise_event(payload: dict[str, Any]) -> dict[str, Any] | None:
         "type": "Issue" | "Comment" | "IssueRelation",
         "data": { "id": "...", "identifier": "KEI-NN", "title": "...",
                    "priority": 0..4, "state": {"name": "...", "type": "..."},
-                   "url": "https://linear.app/...", ... },
+                   "url": "https://linear.app/...",
+                   "actor": { "id": "<uuid>", ... },
+                   ... },
         "createdAt": "...",
       }
     """
@@ -142,6 +144,24 @@ def _normalise_event(payload: dict[str, Any]) -> dict[str, Any] | None:
     identifier = data.get("identifier")
     if not identifier:
         return None
+
+    # KEI-238 — defence-in-depth against the loop pattern that downgraded
+    # 59 KEIs on 2026-05-19. When the orchestrator's own `issueUpdate`
+    # calls echo back via webhook, the `data.actor.id` matches LINEAR_VIEWER_ID
+    # (the API key's user id). Skip status-changes from our own writes —
+    # they would re-emit sync_events and risk loops if KEI-236's mirror-lock
+    # were ever weakened. `create` and `remove` actions still propagate
+    # (those are intentional Dave actions even if API-driven).
+    if action == "update":
+        actor_id = (data.get("actor") or {}).get("id") or ""
+        viewer_id = os.environ.get("LINEAR_VIEWER_ID", "")
+        if viewer_id and actor_id == viewer_id:
+            logger.info(
+                "ignored_self_echo: identifier=%s actor=%s — skipping webhook handler",
+                identifier,
+                actor_id,
+            )
+            return None
 
     # KEI-100 title-guard: if title starts with KEI-N prefix, it must match identifier.
     # This catches mis-routed creates (e.g. Auto-KEI inserted a Supabase row with a

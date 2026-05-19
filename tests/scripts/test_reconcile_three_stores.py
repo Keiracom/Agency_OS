@@ -287,3 +287,101 @@ def test_build_create_payload_default_linear_url(mod) -> None:
     assert payload["linear_url"] == "https://linear.app/keiracom/issue/KEI-11"
     assert payload["status"] == "available"
     assert payload["title"] == "(no title)"
+
+
+# ---------------------------------------------------------------------------
+# KEI-237 — postgres-canonical payload + emission flip.
+# ---------------------------------------------------------------------------
+
+
+def test_build_postgres_payload_prefers_postgres_status(mod) -> None:
+    """Under the new policy, Postgres is canonical — _build_postgres_payload
+    must return Postgres's status, NOT Linear's mapped status."""
+    stores = {
+        "linear": {
+            "title": "Linear title",
+            "state": {"type": "completed"},  # would map to 'done'
+            "priority": 1,
+            "url": "https://linear.app/keiracom/issue/KEI-9",
+        },
+        "postgres": {
+            "title": "Postgres title",
+            "status": "active",  # canonical under new policy
+            "priority": 4,
+            "bd_id": "Agency_OS-xxx",
+            "linear_url": "https://linear.app/keiracom/issue/KEI-9",
+        },
+        "bd": {"id": "Agency_OS-xxx"},
+    }
+    payload = mod._build_postgres_payload("KEI-9", stores)
+    assert payload["status"] == "active"  # Postgres wins
+    assert payload["title"] == "Postgres title"
+    assert payload["bd_id"] == "Agency_OS-xxx"
+
+
+def test_build_postgres_payload_falls_back_to_linear_url(mod) -> None:
+    """If pg.linear_url is missing, fall back to linear_iss.url, then default."""
+    stores = {
+        "postgres": {"status": "active"},
+        "linear": {"url": "https://linear.app/keiracom/issue/KEI-22/explicit-slug"},
+    }
+    payload = mod._build_postgres_payload("KEI-22", stores)
+    assert payload["linear_url"] == "https://linear.app/keiracom/issue/KEI-22/explicit-slug"
+
+
+def test_build_postgres_payload_default_status_available(mod) -> None:
+    """Missing pg.status → defaults to 'available' (KEI-237 ON CONFLICT-safe)."""
+    payload = mod._build_postgres_payload("KEI-30", {"postgres": {}})
+    assert payload["status"] == "available"
+
+
+def test_emit_events_field_drift_uses_postgres_origin(mod) -> None:
+    """KEI-237: field_drift entries emit origin='postgres' (not 'linear')."""
+
+    class _FakeCursor:
+        def __init__(self):
+            self.executed = []
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return None
+
+        def execute(self, sql, params=None):
+            self.executed.append((sql, params))
+
+    class _FakeConn:
+        def __init__(self):
+            self.cur = _FakeCursor()
+
+        def cursor(self):
+            return self.cur
+
+        def commit(self):
+            pass
+
+    drift = {
+        "missing_postgres": [],
+        "missing_bd": [],
+        "missing_linear": [],
+        "field_drift": [
+            {
+                "kei": "KEI-99",
+                "stores": {
+                    "linear": {"state": {"type": "completed"}},
+                    "postgres": {"status": "active", "bd_id": "Agency_OS-xx"},
+                    "bd": {"id": "Agency_OS-xx"},
+                },
+            }
+        ],
+    }
+    conn = _FakeConn()
+    emitted = mod._emit_events(conn, drift)
+    assert emitted == 1
+    sql, params = conn.cur.executed[0]
+    assert "fn_emit_sync_event" in sql
+    # params = (origin, event_type, task_id, bd_id, payload_json)
+    assert params[0] == "postgres", "field_drift must emit origin=postgres under KEI-237"
+    assert params[1] == "update"
+    assert params[2] == "KEI-99"

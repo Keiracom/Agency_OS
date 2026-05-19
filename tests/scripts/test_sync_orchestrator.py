@@ -245,6 +245,19 @@ def test_linear_event_to_state_update_uses_payload_status() -> None:
         so._event_to_linear_state(_event(event_type="update", payload={"status": "active"}))
         == "active"
     )
+    assert (
+        so._event_to_linear_state(_event(event_type="update", payload={"status": "done"})) == "done"
+    )
+
+
+def test_linear_event_to_state_update_available_returns_none(monkeypatch) -> None:
+    """KEI-233 safety guard: 'available' is the Postgres/bd default — never
+    propagate back to Linear, otherwise we silently downgrade Linear's
+    Done/Canceled/In Progress issues to Todo."""
+    assert (
+        so._event_to_linear_state(_event(event_type="update", payload={"status": "available"}))
+        is None
+    )
 
 
 def test_linear_event_to_state_unmapped_returns_none() -> None:

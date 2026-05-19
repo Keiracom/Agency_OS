@@ -142,6 +142,108 @@ def test_detect_drift_missing_linear(mod) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Field drift (KEI-233).
+# ---------------------------------------------------------------------------
+
+
+def test_field_drift_linear_completed_pg_available(mod) -> None:
+    """Linear says completed, Postgres says available → flagged as field_drift."""
+    table = {
+        "KEI-1": {
+            "linear": {"state": {"type": "completed"}},
+            "postgres": {"status": "available"},
+            "bd": {"id": "Agency_OS-aaa"},
+        }
+    }
+    drift = mod.detect_drift(table)
+    assert len(drift["field_drift"]) == 1
+    assert drift["field_drift"][0]["kei"] == "KEI-1"
+    # Also still appears in in_all_three — those buckets overlap.
+    assert len(drift["in_all_three"]) == 1
+
+
+def test_field_drift_skipped_when_status_already_matches(mod) -> None:
+    """Linear=completed → expected status='done'; Postgres=done → no drift."""
+    table = {
+        "KEI-2": {
+            "linear": {"state": {"type": "completed"}},
+            "postgres": {"status": "done"},
+            "bd": {"id": "Agency_OS-bbb"},
+        }
+    }
+    drift = mod.detect_drift(table)
+    assert drift["field_drift"] == []
+
+
+def test_field_drift_done_pg_is_sticky_even_if_linear_reopened(mod) -> None:
+    """Postgres `done` is preserved — orchestrator never re-opens done rows."""
+    table = {
+        "KEI-3": {
+            "linear": {"state": {"type": "started"}},
+            "postgres": {"status": "done"},
+            "bd": {"id": "Agency_OS-ccc"},
+        }
+    }
+    drift = mod.detect_drift(table)
+    assert drift["field_drift"] == []
+
+
+def test_field_drift_skips_postgres_only_buckets(mod) -> None:
+    """Postgres `dismissed` / `blocked` have no Linear equivalent — not drift."""
+    for status in ("dismissed", "blocked"):
+        table = {
+            "KEI-x": {
+                "linear": {"state": {"type": "completed"}},
+                "postgres": {"status": status},
+                "bd": {"id": "Agency_OS-x"},
+            }
+        }
+        drift = mod.detect_drift(table)
+        assert drift["field_drift"] == [], f"unexpected drift on pg={status}"
+
+
+def test_field_drift_null_pg_status_counts(mod) -> None:
+    """NULL pg.status with a canonical Linear value IS drift — propagate Linear."""
+    table = {
+        "KEI-4": {
+            "linear": {"state": {"type": "backlog"}},
+            "postgres": {"status": None},
+            "bd": {"id": "Agency_OS-ddd"},
+        }
+    }
+    drift = mod.detect_drift(table)
+    assert len(drift["field_drift"]) == 1
+    assert drift["field_drift"][0]["kei"] == "KEI-4"
+
+
+def test_field_drift_unmapped_linear_state_skipped(mod) -> None:
+    """If Linear state.type is not in our mapping, we can't decide canonical."""
+    table = {
+        "KEI-5": {
+            "linear": {"state": {"type": "weird-unknown"}},
+            "postgres": {"status": "available"},
+            "bd": {"id": "Agency_OS-eee"},
+        }
+    }
+    drift = mod.detect_drift(table)
+    assert drift["field_drift"] == []
+
+
+def test_field_drift_only_evaluated_for_in_all_three(mod) -> None:
+    """A KEI missing from a store is NOT also flagged as field_drift."""
+    table = {
+        "KEI-6": {
+            "linear": {"state": {"type": "completed"}},
+            "postgres": {"status": "available"},
+            # bd missing
+        }
+    }
+    drift = mod.detect_drift(table)
+    assert drift["field_drift"] == []
+    assert len(drift["missing_bd"]) == 1
+
+
+# ---------------------------------------------------------------------------
 # Payload construction.
 # ---------------------------------------------------------------------------
 

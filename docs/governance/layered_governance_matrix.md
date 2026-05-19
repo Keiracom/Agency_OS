@@ -493,3 +493,13 @@ The matrix above is the ratification candidate. Max's amendments in this appendi
 - [ ] **§OPEN Q5** — freshness SLO cost estimate (governance corpus is small; the ≤1h SLO is cheap)
 
 On Dave's ratify decision per checkbox: this doc becomes the ratified Layered Governance Matrix v1; implementation KEIs file; acceptance test runs; layered model rolls out gradually.
+
+
+---
+
+## POST-RATIFY DECISIONS (Dave 2026-05-19 in Slack #ceo)
+
+- **Fourth worker is Scout.** Workers = atlas, orion, scout, nova. Worker4 placeholder retires.
+- **Reviewer routing rule: first-in-not-busy.** When a PR or deliberation needs review, dispatch to whichever of aiden/max is idle first. No pre-existing pair. Workers do not have reviewer partners — both reviewers see every PR.
+- **Empty Weaviate collections:** delete Staging_discoveries, activate Drive indexer for StrategicDocuments.
+- **Atlas reset pattern:** clarified as Dave's own earlier instruction. No action; elliot in charge of dispatch hygiene from here.

@@ -1,0 +1,20 @@
+[Unit]
+Description=Agency OS — Sync Orchestrator (KEI-229)
+Documentation=https://linear.app/keiracom/issue/KEI-229
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/home/elliotbot/clawd/Agency_OS/.venv/bin/python3 /home/elliotbot/clawd/Agency_OS/scripts/orchestrator/sync_orchestrator.py
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+Restart=on-failure
+RestartSec=10
+StandardOutput=append:/home/elliotbot/clawd/logs/sync-orchestrator.log
+StandardError=append:/home/elliotbot/clawd/logs/sync-orchestrator.log
+MemoryMax=256M
+MemoryHigh=200M
+
+[Install]
+WantedBy=default.target

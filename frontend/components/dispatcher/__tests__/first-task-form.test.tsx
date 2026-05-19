@@ -74,7 +74,7 @@ describe("FirstTaskForm", () => {
     });
     expect(onSubmit).toHaveBeenCalledTimes(1);
     const form = screen.getByTestId("first-task-form");
-    expect(form.getAttribute("data-state")).toBe("pending");
+    expect((form as HTMLElement).dataset.state).toBe("pending");
   });
 
   test("custom pendingLabel prop overrides default", async () => {
@@ -118,13 +118,13 @@ describe("FirstTaskForm", () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
     render(<FirstTaskForm onSubmit={onSubmit} />);
     const form = screen.getByTestId("first-task-form");
-    expect(form.getAttribute("data-state")).toBe("idle");
+    expect((form as HTMLElement).dataset.state).toBe("idle");
     fireEvent.change(screen.getByTestId("first-task-title-input"), {
       target: { value: "valid task" },
     });
     fireEvent.click(screen.getByTestId("first-task-submit"));
     await waitFor(() => {
-      expect(form.getAttribute("data-state")).toBe("pending");
+      expect((form as HTMLElement).dataset.state).toBe("pending");
     });
   });
 });

@@ -646,7 +646,7 @@ def test_kei197_submit_discovery_rejects_none_text() -> None:
     """KEI-197 guard: None text rejected — surfaces TypeError-equivalent early."""
     with pytest.raises(ValueError, match="text must be a non-empty string"):
         submit_discovery(
-            text=None,  # type: ignore[arg-type]
+            text=None,  # type: ignore[arg-type]  # NOSONAR python:S5655 — intentional None pass exercises guard
             agent="scout",
             kei="KEI-197",
             ratified_rules=[],

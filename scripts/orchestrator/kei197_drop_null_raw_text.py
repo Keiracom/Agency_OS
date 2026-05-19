@@ -50,7 +50,7 @@ def _query_null_raw_text(class_name: str) -> list[dict]:
     agent='elliot'); add more callsigns if/when the audit surfaces them.
     """
     gql = (
-        f'{{ Get {{ {class_name}(limit: 10000) '
+        f"{{ Get {{ {class_name}(limit: 10000) "
         "{ _additional { id creationTimeUnix } agent kei raw_text created_at } } }"
     )
     query = {"query": gql}
@@ -63,8 +63,8 @@ def _query_null_raw_text(class_name: str) -> list[dict]:
     try:
         with urlrequest.urlopen(req, timeout=30) as resp:
             body = json.loads(resp.read().decode())
-    except urlerror.URLError as exc:
-        logger.error("Weaviate unreachable at %s: %s", WEAVIATE_BASE, exc)
+    except urlerror.URLError:
+        logger.exception("Weaviate unreachable at %s", WEAVIATE_BASE)
         return []
     rows = body.get("data", {}).get("Get", {}).get(class_name, []) or []
     # Client-side filter: keep only rows where raw_text is null/empty.

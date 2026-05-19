@@ -247,7 +247,12 @@ def detect_drift(table: dict[str, dict[str, Any]]) -> dict[str, list[dict[str, A
 
 
 def _build_create_payload(kei: str, stores: dict[str, Any]) -> dict[str, Any]:
-    """Pick the canonical record from whichever stores have it."""
+    """Pick the canonical record from whichever stores have it.
+
+    Used for the `missing_*` buckets where the store-being-backfilled has
+    no row yet — Linear is preferred as the seed because it's where Dave
+    creates KEIs (title/priority/intent live there first).
+    """
     linear_iss = stores.get("linear") or {}
     bd_iss = stores.get("bd") or {}
     pg_row = stores.get("postgres") or {}
@@ -269,6 +274,32 @@ def _build_create_payload(kei: str, stores: dict[str, Any]) -> dict[str, Any]:
         "status": status,
         "priority": priority,
         "linear_url": url,
+    }
+
+
+def _build_postgres_payload(kei: str, stores: dict[str, Any]) -> dict[str, Any]:
+    """KEI-237 — build payload from Postgres-as-canonical for field_drift events.
+
+    Under the Dave 2026-05-19 policy (bd=CLI, Postgres=canonical,
+    Linear=mirror), field-level drift between Postgres and another store
+    is resolved by propagating Postgres's value OUT, never the reverse.
+    The orchestrator's `_dispatch_linear` (per KEI-236) only writes
+    Linear on terminal `close`/`reopen` transitions, so `update` events
+    from this path effectively only correct bd-Dolt — Linear stays
+    where it is until a real terminal transition flows from Postgres.
+    """
+    bd_iss = stores.get("bd") or {}
+    pg_row = stores.get("postgres") or {}
+    linear_iss = stores.get("linear") or {}
+    return {
+        "id": kei,
+        "bd_id": pg_row.get("bd_id") or bd_iss.get("id"),
+        "title": pg_row.get("title") or linear_iss.get("title") or "(no title)",
+        "status": pg_row.get("status") or "available",
+        "priority": pg_row.get("priority"),
+        "linear_url": pg_row.get("linear_url")
+        or linear_iss.get("url")
+        or f"https://linear.app/keiracom/issue/{kei}",
     }
 
 
@@ -302,13 +333,17 @@ def _emit_events(conn: Any, drift: dict[str, list[dict[str, Any]]]) -> int:
                 (origin, "create", entry["kei"], payload["bd_id"], json.dumps(payload)),
             )
             emitted += 1
-        # KEI-233 — field-drift bucket: Linear is canonical; orchestrator
-        # dispatches the corrected status to Postgres + bd via origin=linear.
+        # KEI-237 — field-drift bucket: under the new policy Postgres is
+        # canonical, so we emit origin=postgres with the Postgres-side
+        # payload. The orchestrator (KEI-236) will dispatch to bd (fixes
+        # bd-Dolt) but skip the Linear write for `update` events — Linear
+        # stays where it is until a real terminal transition flows out
+        # via `close`/`reopen` events from the trigger.
         for entry in drift["field_drift"]:
-            payload = _build_create_payload(entry["kei"], entry["stores"])
+            payload = _build_postgres_payload(entry["kei"], entry["stores"])
             cur.execute(
                 "SELECT public.fn_emit_sync_event(%s, %s, %s, %s, %s::jsonb)",
-                ("linear", "update", entry["kei"], payload["bd_id"], json.dumps(payload)),
+                ("postgres", "update", entry["kei"], payload["bd_id"], json.dumps(payload)),
             )
             emitted += 1
     conn.commit()

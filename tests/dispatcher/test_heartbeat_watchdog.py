@@ -100,7 +100,9 @@ async def test_publish_zombie_emits_correct_subject_and_payload(monkeypatch):
 
     captured: dict[str, object] = {}
 
-    async def _capture(url, subject, payload):
+    async def _capture(
+        url, subject, payload
+    ):  # NOSONAR python:S7503 — _nats_publish is awaited; mock side_effect must return awaitable
         captured["url"] = url
         captured["subject"] = subject
         captured["payload"] = payload

@@ -223,7 +223,12 @@ def html_to_text(html: str) -> str:
 # ---------------------------------------------------------------------------
 
 
-_HEADING_RE = re.compile(r"^(#{1,6})\s+(.+)$", re.M)
+# Bounded character class + length cap — defends against catastrophic
+# backtracking on pathological inputs (Sonar S5852). `[^\n]{1,200}` is
+# equivalent to `.+$` under re.M for normal heading lines but cannot
+# explode quadratically. Titles are already truncated to 200 chars by
+# the consumer downstream.
+_HEADING_RE = re.compile(r"^(#{1,6})\s+([^\n]{1,200})$", re.M)
 
 
 def chunk_text(text: str, default_title: str) -> list[tuple[str, str]]:

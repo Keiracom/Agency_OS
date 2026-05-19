@@ -16,8 +16,11 @@ This script:
 
 Prerequisites (operator must verify before --execute):
   - Live Weaviate instance has text2vec-google module enabled (Dave Option A —
-    no local inference container required; uses GOOGLE_API_KEY env var for AI Studio)
-  - GOOGLE_API_KEY env var set with a valid Gemini API key
+    no local inference container required; AI Studio v1beta endpoint).
+  - GOOGLE_API_KEY env var set in THIS SCRIPT'S process with a valid Gemini
+    API key. Weaviate process itself does not need the key — auth is via
+    X-Goog-Studio-Api-Key header attached per-request by this script (KEI-201
+    follow-up PR #1025 commit ef408fe05).
   - Backup directory writable: /home/elliotbot/clawd/logs/kei196_backup/
 
 Steps are independent + idempotent:
@@ -60,6 +63,12 @@ BACKUP_DIR_DEFAULT = Path(
     os.environ.get("KEI196_BACKUP_DIR", "/home/elliotbot/clawd/logs/kei196_backup")
 )
 
+# Read at script-process level (not Weaviate-process). KEI-201 follow-up:
+# Scout's PR #1025 empirically confirmed Weaviate process does not carry
+# GOOGLE_API_KEY in its env, so AI Studio auth must come from a per-request
+# X-Goog-Studio-Api-Key header attached by THIS script.
+GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY", "")
+
 TARGET_COLLECTIONS: tuple[str, ...] = (
     "Discoveries",
     "Keis",
@@ -70,17 +79,39 @@ TARGET_COLLECTIONS: tuple[str, ...] = (
 
 NEW_VECTORIZER = "text2vec-google"
 # text2vec-google (AI Studio / Gemini) — no local inference container needed.
-# projectId is Vertex AI only; omit for AI Studio (key-based auth via GOOGLE_API_KEY).
+# KEI-201 follow-up corrections from Scout's empirical fix in PR #1025
+# (commit ef408fe05):
+#   - apiEndpoint=generativelanguage.googleapis.com — required for Weaviate to
+#     flip into AI-Studio (key-based) mode instead of Vertex (projectId-based).
+#   - modelId=gemini-embedding-001 — text-embedding-004 is the Vertex name and
+#     404s on AI Studio v1beta; gemini-embedding-001 is the supported AI Studio
+#     name per Gemini ListModels.
+# Auth pattern: per-request X-Goog-Studio-Api-Key header attached in
+# _http_request below (Weaviate process does not carry GOOGLE_API_KEY).
 NEW_MODULE_CONFIG = {
     "text2vec-google": {
-        "modelId": "text-embedding-004",
+        "apiEndpoint": "generativelanguage.googleapis.com",
+        "modelId": "gemini-embedding-001",
         "vectorizeClassName": False,
     }
 }
 
 
+def _attach_studio_key(req: urlrequest.Request) -> None:
+    """Add the AI Studio per-request key header when GOOGLE_API_KEY is set.
+
+    Weaviate's text2vec-google module needs this header to authenticate with
+    AI Studio v1beta on every embedding-triggering request (POST /v1/objects,
+    POST /v1/graphql nearText). Weaviate process does not carry the key in
+    its env — see KEI-201 PR #1025 / commit ef408fe05.
+    """
+    if GOOGLE_API_KEY:
+        req.add_header("X-Goog-Studio-Api-Key", GOOGLE_API_KEY)
+
+
 def _http_get(path: str) -> dict:
     req = urlrequest.Request(f"{WEAVIATE_BASE}{path}", method="GET")
+    _attach_studio_key(req)
     with urlrequest.urlopen(req, timeout=60) as resp:
         return json.loads(resp.read().decode())
 
@@ -89,6 +120,7 @@ def _http_request(method: str, path: str, body: dict | None = None) -> dict | No
     data = json.dumps(body).encode() if body is not None else None
     req = urlrequest.Request(f"{WEAVIATE_BASE}{path}", data=data, method=method)
     req.add_header("Content-Type", "application/json")
+    _attach_studio_key(req)
     with urlrequest.urlopen(req, timeout=60) as resp:
         raw = resp.read().decode()
         return json.loads(raw) if raw else None

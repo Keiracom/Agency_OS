@@ -1,0 +1,12 @@
+[Unit]
+Description=AIDEN Inbox Watcher (file inbox → aiden tmux injection)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/home/elliotbot/clawd/scripts/aiden_inbox_watcher.sh
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

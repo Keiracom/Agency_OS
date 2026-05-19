@@ -1,0 +1,19 @@
+[Unit]
+Description=Agency OS — NATS keiracom.dispatch.scout → scout tmux inbox bridge
+After=network-online.target nats-server.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+Environment=NATS_URL=nats://127.0.0.1:4222
+ExecStart=/home/elliotbot/clawd/Agency_OS/.venv/bin/python3 /home/elliotbot/clawd/Agency_OS/scripts/orchestrator/nats_tmux_bridge.py --callsign scout --subject keiracom.dispatch.scout
+Restart=on-failure
+RestartSec=5
+StandardOutput=append:/home/elliotbot/clawd/logs/scout-nats-dispatch-bridge.log
+StandardError=append:/home/elliotbot/clawd/logs/scout-nats-dispatch-bridge.log
+MemoryMax=128M
+
+[Install]
+WantedBy=default.target

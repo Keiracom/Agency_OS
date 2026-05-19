@@ -183,6 +183,16 @@
           }
         ],
         "matcher": "*"
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/elliotbot/clawd/Agency_OS/.venv/bin/python3 /home/elliotbot/clawd/Agency_OS/scripts/hooks/elliot_stop_hook.py",
+            "timeout": 30
+          }
+        ]
       }
     ],
     "UserPromptSubmit": [

@@ -46,10 +46,10 @@ def test_polling_clones_tuple_includes_nova():
 def test_polling_inbox_paths_covers_all_clones():
     mod = _load("elliot_polling_loop", POLLING)
     assert set(mod.INBOX_PATHS.keys()) == EXPECTED_CLONES
-    # NOSONAR S5443 — string-equality assertion, not a filesystem write. The
-    # /tmp inbox path is the systemd-relay convention asserted against
-    # elliot_polling_loop.INBOX_PATHS (which itself carries NOSONAR S5443).
-    assert mod.INBOX_PATHS["nova"] == "/tmp/telegram-relay-nova/inbox"  # NOSONAR S5443
+    # String-equality assertion, not a filesystem write. The /tmp inbox path is
+    # the systemd-relay convention asserted against elliot_polling_loop.INBOX_PATHS
+    # (which itself carries NOSONAR(S5443)).
+    assert mod.INBOX_PATHS["nova"] == "/tmp/telegram-relay-nova/inbox"  # NOSONAR(S5443)
 
 
 def test_recovery_callsign_to_tmux_covers_7_sessions():

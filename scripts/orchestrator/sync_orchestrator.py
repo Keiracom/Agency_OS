@@ -88,10 +88,16 @@ def _dispatch_postgres(conn: Any, event: dict[str, Any]) -> None:
     bd_id = event.get("bd_id") or payload.get("bd_id")
     title = payload.get("title") or "(no title)"
     status = payload.get("status")
+    # KEI-235-followup: coerce 'cancelled' → 'dismissed' to match the
+    # tasks_status_check CHECK constraint. Pre-fix events emitted by the
+    # reconciler still carry the old payload.status='cancelled'; without
+    # this coercion they'd hit a CheckViolation forever.
+    if status == "cancelled":
+        status = "dismissed"
     priority = payload.get("priority")
     linear_url = payload.get("linear_url")
     with conn.cursor() as cur:
-        if status in ("done", "cancelled"):
+        if status in ("done", "dismissed"):
             _ensure_sync_verification(cur, task_id, status, event)
         cur.execute(
             """
@@ -332,12 +338,23 @@ def _process_event(conn: Any, event: dict[str, Any]) -> bool:
                 sp_cur.execute(f"ROLLBACK TO SAVEPOINT {sp}")
             errors.append(f"{target}: {exc}")
             logger.warning("[%s/%s] %s", event["task_id"], target, exc)
-        except psycopg.errors.RaiseException as exc:
+        except (
+            psycopg.errors.RaiseException,
+            psycopg.errors.IntegrityError,
+            psycopg.errors.DataError,
+        ) as exc:
+            # Governance trigger raise OR constraint violation (check / FK /
+            # unique / not-null / data type). All fall under "this write
+            # was refused by Postgres" — roll back just this savepoint,
+            # let the batch continue, and let MAX_ATTEMPTS retry decide
+            # whether to abandon. KEI-235-followup broadened from
+            # RaiseException-only after CheckViolation on 'cancelled'
+            # froze the batch.
             with conn.cursor() as sp_cur:
                 sp_cur.execute(f"ROLLBACK TO SAVEPOINT {sp}")
-            errors.append(f"{target}: trigger-blocked: {str(exc).splitlines()[0][:160]}")
+            errors.append(f"{target}: db-refused: {str(exc).splitlines()[0][:160]}")
             logger.warning(
-                "[%s/%s] trigger blocked: %s",
+                "[%s/%s] db-refused: %s",
                 event["task_id"],
                 target,
                 str(exc).splitlines()[0][:200],

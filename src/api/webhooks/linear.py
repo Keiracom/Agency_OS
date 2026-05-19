@@ -76,7 +76,9 @@ LINEAR_STATE_TO_TASK_STATUS: dict[str, str] = {
     "triage": "available",
     "started": "active",
     "completed": "done",
-    "canceled": "cancelled",
+    # KEI-235-followup: tasks_status_check rejects 'cancelled' — Linear canceled
+    # maps to Postgres 'dismissed' (matches the constraint's allowed values).
+    "canceled": "dismissed",
 }
 
 _BD_WRAPPER = "/home/elliotbot/clawd/Agency_OS/scripts/linear_to_bd.py"

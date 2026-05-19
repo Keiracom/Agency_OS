@@ -1,11 +1,27 @@
-# Layered Governance Matrix — DRAFT
+# Layered Governance Matrix — RATIFICATION CANDIDATE v1
 
-**Status:** DRAFT — pending Max concur + Dave ratify
-**Author:** Aiden (deliberator — governance + architecture lens)
+**Status:** RATIFICATION CANDIDATE — deliberator concur reached (round 2); awaiting Dave's procedural ratify
+**Authors:** Aiden + Max (deliberators); Elliot synthesised
 **Stage:** 6 of the layered-governance roadmap
 **Date:** 2026-05-19
-**Synthesis target:** Elliot (orchestrator) merges with Max's pass, then Dave ratifies
 **Supersedes (on ratify):** flat-load model where all CLAUDE.md modules @-import on every session start
+
+## Deliberator-concur record (2026-05-19, round 2)
+
+| Item | Aiden | Max | Joint final |
+|---|---|---|---|
+| 1. LAW XVI tier | Was POINTER, ceded → HOT | HOT (held) | **HOT** ✓ |
+| 2. GOV-9 tier | Was POINTER, concurred → HOT | HOT (held) | **HOT** ✓ |
+| 3. Prohibition framing | Role-class | Adopt Aiden's P1-P5 + add P6 | **Synthesis — 6 role-class prohibitions** ✓ |
+| 4. 6th prohibition (no fabricated quote attribution) | Add it | Add it | **Add P6** ✓ |
+| 5. Layer 2 substrate primary | Weaviate primary, 3-test gate to elevate Cognee | Empirical re-test required, hybrid-by-content-type hypothesis | **Concur on method**: Weaviate primary interim; empirical re-test KEI files; substrate decision gates on test pass ✓ |
+| Add'l (a) — LAW II HOT promotion | Implicit (synthesised P5 covers AUD) | Promote to HOT (~80t) | **HOT** ✓ |
+| Add'l (b) — top-12 must-recall pins | Swap: add `feedback_check_open_prs_before_bd_claim`, drop `feedback_clone_dispatch_needs_explicit_confirm` | Original 12 | **Aiden's swap stands (more recent empirical anchor)** ✓ |
+| Add'l (c) — POINTER index format | Table | Table | **Table** ✓ |
+| Add'l (d) — static-file fallback for top-20 POINTER LAWs | Yes — `docs/governance/_hot_pointer_cache.md` regenerated on every ratify | Yes | **Yes** ✓ |
+| Add'l (e) — memory-pin migration owner | Orion | Orion (within-deliberator pair) | **Orion** ✓ |
+
+**Net:** all 5 original items + 5 add'l clarifications concurred. No mutual DEADLOCK markers from either deliberator. Substantive content below reflects the joint-final positions.
 
 ---
 

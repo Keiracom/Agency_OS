@@ -750,3 +750,140 @@ def test_kei185_try_run_supervisor_v2_invokes_v2_when_present(monkeypatch):
     result = fs._try_run_supervisor_v2()
     assert result is True
     assert calls == ["ran"]
+# ─── KEI-190: symmetric HOLD parsing ─────────────────────────────────────────
+
+
+def test_comment_marker_matches_bare_hold():
+    """KEI-190: [REVIEW:HOLD:orion] (the form every reviewer actually uses)
+    must match — prior regex required -final and silently re-dispatched."""
+    assert fs.comment_has_review_marker("[REVIEW:HOLD:orion]", "orion") is True
+
+
+def test_comment_marker_matches_lowercase_hold():
+    assert fs.comment_has_review_marker("[REVIEW:hold:scout] some body", "scout") is True
+
+
+def test_comment_marker_matches_hold_final():
+    assert fs.comment_has_review_marker("[REVIEW:HOLD-FINAL:max]", "max") is True
+
+
+def test_comment_marker_matches_approve():
+    """Regression — approve path must still match after the regex change."""
+    assert fs.comment_has_review_marker("[REVIEW:approve:aiden] LGTM", "aiden") is True
+
+
+def test_comment_marker_matches_bare_review():
+    """Backwards compat — bare [REVIEW:callsign] still matches."""
+    assert fs.comment_has_review_marker("[REVIEW:atlas] note", "atlas") is True
+
+
+def test_comment_marker_no_match_for_other_callsign():
+    assert fs.comment_has_review_marker("[REVIEW:HOLD:scout]", "orion") is False
+
+
+def test_agent_has_reviewed_skips_pr_with_hold_comment(monkeypatch):
+    """KEI-190 acceptance: PR with [REVIEW:HOLD:scout] is recognized as
+    already-reviewed by scout, supervisor does NOT re-dispatch."""
+    pr = {
+        "number": 981,
+        "title": "[ORION] feat(kei152): paddle handlers",
+        "reviews": [],
+    }
+    monkeypatch.setattr(
+        fs,
+        "fetch_pr_comments",
+        lambda _pr_number: [{"body": "[REVIEW:HOLD:scout] dup density 19.3%"}],
+    )
+    assert fs.agent_has_reviewed(pr, "scout") is True
+
+
+# ─── KEI-189: Sonar QG dual-endpoint check ───────────────────────────────────
+
+
+def test_fetch_sonar_status_returns_both_dimensions(monkeypatch):
+    """KEI-189: fetch_sonar_status reads issues + QG endpoints."""
+
+    class _Resp:
+        def __init__(self, body):
+            self._body = body
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return None
+
+        def read(self):
+            return self._body
+
+    def fake_urlopen(req, timeout=10):
+        url = req if isinstance(req, str) else getattr(req, "full_url", "")
+        if "issues/search" in url:
+            return _Resp(b'{"total": 3, "issues": []}')
+        if "qualitygates/project_status" in url:
+            return _Resp(
+                b'{"projectStatus": {"status": "ERROR", "conditions": ['
+                b'{"metricKey": "new_duplicated_lines_density", "status": "ERROR",'
+                b'"actualValue": "19.3", "errorThreshold": "3"}]}}'
+            )
+        return _Resp(b"{}")
+
+    monkeypatch.setattr(fs.urllib.request, "urlopen", fake_urlopen)
+    out = fs.fetch_sonar_status(981)
+    assert out["issues_total"] == 3
+    assert out["qg_status"] == "ERROR"
+    assert any("new_duplicated_lines_density" in c for c in out["qg_failing"])
+
+
+def test_fetch_sonar_status_fail_open(monkeypatch):
+    """Sonar fetch failure → empty dict, never raises."""
+
+    def bad_urlopen(*_a, **_k):
+        raise RuntimeError("network down")
+
+    monkeypatch.setattr(fs.urllib.request, "urlopen", bad_urlopen)
+    out = fs.fetch_sonar_status(999)
+    # Empty dict — fail-open, no fields set, no exception
+    assert out == {}
+
+
+def test_format_sonar_brief_renders_both_endpoints():
+    sonar = {
+        "issues_total": 2,
+        "qg_status": "ERROR",
+        "qg_failing": ["new_duplicated_lines_density=19.3 (>3)"],
+    }
+    text = fs._format_sonar_brief(sonar)
+    assert "/api/issues/search" in text
+    assert "total NEW unresolved: 2" in text
+    assert "/api/qualitygates/project_status" in text
+    assert "status: ERROR" in text
+    assert "new_duplicated_lines_density" in text
+    assert "BOTH endpoints" in text
+
+
+def test_format_sonar_brief_empty_when_no_data():
+    assert fs._format_sonar_brief({}) == ""
+
+
+def test_build_review_prompt_includes_sonar_block(monkeypatch):
+    """KEI-189 acceptance: review brief includes BOTH Sonar dimensions."""
+    monkeypatch.setattr(
+        fs,
+        "fetch_sonar_status",
+        lambda _n: {
+            "issues_total": 0,
+            "qg_status": "ERROR",
+            "qg_failing": ["new_duplicated_lines_density=19.3 (>3)"],
+        },
+    )
+    prompt = fs.build_review_prompt(
+        pr_number=981,
+        pr_title="[ORION] feat(kei152): paddle",
+        pr_url="https://github.com/x/y/pull/981",
+        callsign="aiden",
+    )
+    assert "Sonar" in prompt
+    assert "issues_total" in prompt or "total NEW" in prompt
+    assert "qg_status" in prompt or "status: ERROR" in prompt
+    assert "BOTH endpoints" in prompt

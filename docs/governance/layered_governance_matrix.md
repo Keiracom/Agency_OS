@@ -1,10 +1,12 @@
-# Layered Governance Matrix — RATIFICATION CANDIDATE v1
+# Layered Governance Matrix — RATIFIED v1
 
-**Status:** RATIFICATION CANDIDATE — deliberator concur reached (round 2); awaiting Dave's procedural ratify
+**Status:** RATIFIED v1 — Dave 2026-05-19
+**Ratified_at:** 2026-05-19 (Slack #ceo verbatim "Ratify")
+**Ratified_by:** Dave (CEO)
 **Authors:** Aiden + Max (deliberators); Elliot synthesised
-**Stage:** 6 of the layered-governance roadmap
-**Date:** 2026-05-19
-**Supersedes (on ratify):** flat-load model where all CLAUDE.md modules @-import on every session start
+**Stage:** 6 of the layered-governance roadmap — closed
+**Supersedes:** flat-load model where all CLAUDE.md modules @-import on every session start
+**Immutability:** LAW XV-C — modifications require explicit re-ratify via deliberator concur + Dave
 
 ## Deliberator-concur record (2026-05-19, round 2)
 

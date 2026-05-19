@@ -275,7 +275,8 @@ def test_claim_targeted_id(mod, patch_connect, capsys, monkeypatch) -> None:
     assert out["id"] == "KEI-39"
     assert out["claimed_by"] == "scout"
     update = _find_executed(cur, lambda s: "UPDATE public.tasks" in s and "claimed_by" in s)
-    assert update is not None and update[1] == ("scout", "KEI-39", "scout")
+    # KEI-227: WHERE (id = %s OR bd_id = %s) — args.id passed twice for the OR clause.
+    assert update is not None and update[1] == ("scout", "KEI-39", "KEI-39", "scout")
 
 
 def test_claim_next_available_uses_skip_locked(mod, patch_connect, monkeypatch) -> None:
@@ -599,7 +600,8 @@ def test_complete_force_mode_passes_force_sentinel(mod, patch_connect, monkeypat
     patch_connect(cur)
     mod.main(["complete", "KEI-39", "--force-mode", "force"])
     update = _find_executed(cur, lambda s: "UPDATE public.tasks" in s and "status = 'done'" in s)
-    assert update is not None and update[1] == ("KEI-39", "scout", "force")
+    # KEI-227: WHERE (id = %s OR bd_id = %s) — task_id passed twice for the OR clause.
+    assert update is not None and update[1] == ("KEI-39", "KEI-39", "scout", "force")
 
 
 # ─── KEI-105: heartbeat command ─────────────────────────────────────────────
@@ -619,7 +621,8 @@ def test_heartbeat_updates_when_claimed_by_caller(mod, patch_connect, capsys, mo
         cur, lambda s: "heartbeat_at = NOW()" in s and "UPDATE public.tasks" in s
     )
     assert update is not None
-    assert update[1] == ("KEI-39", "scout")
+    # KEI-227: WHERE (id = %s OR bd_id = %s) — args.id passed twice for the OR clause.
+    assert update[1] == ("KEI-39", "KEI-39", "scout")
 
 
 def test_heartbeat_returns_null_when_not_claimed_by_caller(

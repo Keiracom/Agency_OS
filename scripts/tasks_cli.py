@@ -503,7 +503,12 @@ def cmd_claim(args: argparse.Namespace) -> int:
                 # not claim …' (which is indistinguishable from a race loss).
                 # Fail-open on parse errors so legacy rows / fixtures without
                 # a numeric phase fall through to the UPDATE's own filter.
-                cur.execute("SELECT phase FROM public.tasks WHERE id = %s", (args.id,))
+                # KEI-227: id OR bd_id — caller may pass either the canonical
+                # Linear KEI-N or the bd-Dolt Agency_OS-xxx short-code.
+                cur.execute(
+                    "SELECT phase FROM public.tasks WHERE id = %s OR bd_id = %s",
+                    (args.id, args.id),
+                )
                 _phase_row = cur.fetchone()
                 _task_phase: float | None = None
                 if _phase_row is not None:
@@ -525,12 +530,12 @@ def cmd_claim(args: argparse.Namespace) -> int:
                     UPDATE public.tasks
                        SET status = 'active', claimed_by = %s,
                            claimed_at = NOW(), updated_at = NOW()
-                     WHERE id = %s
+                     WHERE (id = %s OR bd_id = %s)
                        AND status = 'available'
                        AND (claimed_by IS NULL OR claimed_by = %s)
                      RETURNING id, title, priority, status, claimed_by, linear_url, tags
                     """,
-                    (cs, args.id, cs),
+                    (cs, args.id, args.id, cs),
                 )
             else:
                 # KEI-86 — also filter the next-available SELECT by phase.
@@ -700,11 +705,11 @@ def _execute_atomic_complete(
                claimed_by = NULL,
                claimed_at = NULL,
                updated_at = NOW()
-         WHERE id = %s
+         WHERE (id = %s OR bd_id = %s)
            AND (claimed_by = %s OR %s = 'force')
          RETURNING id, title, status
         """,
-        (task_id, callsign, force_mode),
+        (task_id, task_id, callsign, force_mode),
     )
     return cur.fetchone()
 
@@ -741,11 +746,11 @@ def cmd_heartbeat(args: argparse.Namespace) -> int:
                 UPDATE public.tasks
                    SET heartbeat_at = NOW(),
                        updated_at = NOW()
-                 WHERE id = %s
+                 WHERE (id = %s OR bd_id = %s)
                    AND claimed_by = %s
                  RETURNING id, claimed_by, heartbeat_at
                 """,
-                (args.id, cs),
+                (args.id, args.id, cs),
             )
             row = cur.fetchone()
             conn.commit()

@@ -267,41 +267,59 @@ def context_is_full(session: str) -> bool:
     )
 
 
-# Signatures of a transient AI-provider stall in a Claude Code tmux pane
-# (Agency_OS-yerl). These are error-STATE phrasings — kept conservative so an
-# agent merely discussing rate limits in normal work is not false-flagged.
-_STALL_SIGNATURES = (
-    "rate_limit_error",
-    "overloaded_error",
-    "api_error",
-    "rate limit exceeded",
-    "exceeded your",
+# Claude Code renders an actual API/provider failure with one of these literal
+# banners (Agency_OS-yerl). The banner is the distinguishing signal: prose or
+# code that merely *mentions* rate limits — an agent reviewing a rate-limit PR,
+# error-handling code, pytest output containing "retrying in" — does not carry
+# Claude Code's own error rendering. Substring-matching loose phrasings anywhere
+# in the pane false-flags those working agents (PR #1112 review HOLD, Aiden).
+_STALL_BANNERS = (
+    "api error",
     "usage limit reached",
-    "retrying in",
-    "error 429",
-    "error 529",
-    "http 429",
-    "http 529",
-    "connection error",
-    "api error:",
+    "claude usage limit",
 )
+
+# A pane showing this is in the middle of a turn — Claude Code prints it only
+# while a request is running. An agent that is actively working is never a
+# stall, whatever strings are in its scrollback.
+_ACTIVE_WORK_MARKER = "esc to interrupt"
+
+# Only this many trailing non-blank lines count as the "idle tail". An error
+# banner is a stall only when it is the LAST meaningful content — not buried
+# in scrollback above ongoing work.
+_STALL_TAIL_LINES = 12
 
 
 def detect_agent_stall(session: str) -> str | None:
-    """Return the matched stall signature if the agent's tmux pane shows a
-    transient AI-provider error (rate-limit / overloaded / API error), else
-    None.
+    """Return the matched stall banner if the agent's tmux pane shows a
+    transient AI-provider error (rate-limit / overloaded / API error) as its
+    last idle-tail content, else None.
 
     A claimed agent stalled on such an error goes idle with no signal — the
     orchestrator only learns of it on a human nudge. This catches it FAST (on
     the next 5-min supervisor run), without waiting out the 15-minute generic
     INACTIVITY_MINUTES gate. Today's incident: Aiden + Max both stalled on a
     transient provider rate-limit mid-deliberation and nobody knew.
+
+    Three guards keep it false-positive-safe (PR #1112 HOLD):
+      1. an actively-working pane (turn spinner present) is never a stall;
+      2. the banner must be in the idle TAIL — the last few meaningful lines —
+         not anywhere in scrollback;
+      3. only Claude Code's own error-banner renderings count, not loose prose
+         mentioning rate limits.
     """
-    low = tmux_capture(session).lower()
-    for sig in _STALL_SIGNATURES:
-        if sig in low:
-            return sig
+    pane = tmux_capture(session)
+    low = pane.lower()
+    # Guard 1 — agent is mid-turn, not stalled.
+    if _ACTIVE_WORK_MARKER in low:
+        return None
+    # Guard 2 — only the idle tail counts.
+    tail_lines = [ln for ln in pane.splitlines() if ln.strip()][-_STALL_TAIL_LINES:]
+    tail = "\n".join(tail_lines).lower()
+    # Guard 3 — Claude Code error banner only.
+    for banner in _STALL_BANNERS:
+        if banner in tail:
+            return banner
     return None
 
 

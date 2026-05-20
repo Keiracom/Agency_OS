@@ -1044,24 +1044,26 @@ def test_get_active_claim_query_excludes_smoke_fixtures():
 
 # ---------------------------------------------------------------------------
 # Stall detection: fast error-aware detection of rate-limit/API-error stalls
-# (Agency_OS-yerl)
+# (Agency_OS-yerl). PR #1112 HOLD — must NOT false-flag working agents.
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.parametrize(
     "pane",
     [
-        "...\nAPI Error: rate_limit_error — please slow down\n>",
-        "Overloaded_error from the provider, retrying\n",
-        "  Retrying in 12s...  ",
-        "Error 529: service overloaded",
-        "Connection error — could not reach api.anthropic.com",
+        # API Error banner as the idle-tail content, idle prompt after it.
+        "Editing src/foo.py\n... lots of prior work ...\n"
+        "API Error: 429 rate_limit_error — please slow down\n>",
+        # Anthropic overload — Claude Code renders it as an API Error banner.
+        "Running the build\nAPI Error: 529 overloaded_error\n\n> ",
+        # Claude Code usage-limit banner.
+        "deliberating PR #1100\nClaude usage limit reached. Resets at 3pm.\n> ",
     ],
 )
 def test_detect_agent_stall_matches_provider_errors(monkeypatch, pane):
     monkeypatch.setattr(fs, "tmux_capture", lambda _s: pane)
-    sig = fs.detect_agent_stall("aiden:0")
-    assert sig is not None, f"stall signature must be detected in: {pane!r}"
+    banner = fs.detect_agent_stall("aiden:0")
+    assert banner is not None, f"stall banner must be detected in: {pane!r}"
 
 
 def test_detect_agent_stall_clean_pane_returns_none(monkeypatch):
@@ -1069,6 +1071,58 @@ def test_detect_agent_stall_clean_pane_returns_none(monkeypatch):
     monkeypatch.setattr(
         fs, "tmux_capture", lambda _s: "Editing src/foo.py\nRunning pytest...\n5 passed\n>"
     )
+    assert fs.detect_agent_stall("aiden:0") is None
+
+
+# --- negative-path: working panes that CONTAIN signature strings → None -----
+# (PR #1112 HOLD, Aiden: a substring match anywhere false-flags these.)
+
+
+def test_detect_agent_stall_reviewing_rate_limit_pr_returns_none(monkeypatch):
+    """An agent reviewing PR #1112 itself — its diff contains the literal
+    error-type strings — must NOT be flagged as stalled."""
+    pane = (
+        "Reviewing PR #1112 — the stall detector.\n"
+        '_STALL_SIGNATURES = ("rate_limit_error", "overloaded_error", "api_error")\n'
+        "The detect_agent_stall helper matches rate_limit_error in the pane.\n"
+        "Looks good — posting CONCUR.\n> "
+    )
+    monkeypatch.setattr(fs, "tmux_capture", lambda _s: pane)
+    assert fs.detect_agent_stall("aiden:0") is None
+
+
+def test_detect_agent_stall_test_output_returns_none(monkeypatch):
+    """pytest output mentioning 'retrying in' / 429 is normal work, not a stall."""
+    pane = (
+        "test_retry_backoff PASSED  # retrying in 2s then 4s\n"
+        "test_http_429_handling PASSED\n"
+        "12 passed in 3.1s\n> "
+    )
+    monkeypatch.setattr(fs, "tmux_capture", lambda _s: pane)
+    assert fs.detect_agent_stall("aiden:0") is None
+
+
+def test_detect_agent_stall_active_turn_returns_none(monkeypatch):
+    """A pane mid-turn ('esc to interrupt' spinner) is working, not stalled —
+    even if an API Error banner is present in scrollback."""
+    pane = (
+        "API Error: 429 rate_limit_error\n"
+        "... agent recovered and is working again ...\n"
+        "* Crunching... (esc to interrupt)\n"
+    )
+    monkeypatch.setattr(fs, "tmux_capture", lambda _s: pane)
+    assert fs.detect_agent_stall("aiden:0") is None
+
+
+def test_detect_agent_stall_banner_in_scrollback_returns_none(monkeypatch):
+    """An error banner buried above >12 lines of subsequent work is not the
+    idle tail — the agent recovered; do not flag."""
+    pane = (
+        "API Error: 429 rate_limit_error\n"
+        + "\n".join(f"recovered line {i}" for i in range(20))
+        + "\n> "
+    )
+    monkeypatch.setattr(fs, "tmux_capture", lambda _s: pane)
     assert fs.detect_agent_stall("aiden:0") is None
 
 
@@ -1092,5 +1146,5 @@ def test_handle_active_claim_stall_resume_nudges_and_surfaces(monkeypatch):
     )
     assert injected, "a stalled agent must receive a resume nudge"
     assert "resume" in injected[0][1].lower()
-    assert surfaced == [("aiden", "KEI-9", "rate_limit_error")]
+    assert surfaced == [("aiden", "KEI-9", "api error")]
     assert "STALL" in result.summary

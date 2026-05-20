@@ -126,7 +126,7 @@ def cognee_ingest_doc(doc: dict[str, Any]) -> None:
         raise RuntimeError(f"cognee ingest error: {result['error']}")
 
 
-def run(*, apply: bool) -> int:
+def run(*, apply: bool, keys: set[str] | None = None) -> int:
     try:
         import psycopg
     except ImportError:
@@ -140,10 +140,14 @@ def run(*, apply: bool) -> int:
 
     with psycopg.connect(dsn, prepare_threshold=None) as conn:
         docs = fetch_strategic_docs(conn)
+    if keys is not None:
+        # --keys allowlist: only ingest freshness-verified docs (per the
+        # 2026-05-20 HOLD — stale strategic docs must NOT be ingested).
+        docs = [d for d in docs if d["key"] in keys]
     if not docs:
-        logger.error("no strategic_doc:* entries in ceo_memory")
+        logger.error("no matching strategic_doc:* entries in ceo_memory")
         return 1
-    logger.info("found %d strategic docs in ceo_memory", len(docs))
+    logger.info("ingesting %d strategic doc(s)", len(docs))
 
     failed = 0
     for doc in docs:
@@ -164,8 +168,15 @@ def run(*, apply: bool) -> int:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--apply", action="store_true", help="Write Weaviate (default dry-run)")
+    parser.add_argument(
+        "--keys",
+        default=None,
+        help="comma-separated strategic_doc:* keys to ingest (default: all). "
+        "Use to ingest only freshness-verified docs.",
+    )
     args = parser.parse_args(argv)
-    return run(apply=args.apply)
+    keys = {k.strip() for k in args.keys.split(",")} if args.keys else None
+    return run(apply=args.apply, keys=keys)
 
 
 if __name__ == "__main__":

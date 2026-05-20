@@ -318,7 +318,15 @@ def _process_event(conn: Any, event: dict[str, Any]) -> bool:
     incident 2026-05-19 12:46 UTC: 168 events frozen behind one
     trigger-blocked KEI-215 done UPDATE).
     """
-    import psycopg  # noqa: PLC0415 — lazy import keeps unit tests psycopg-free
+    # Import the error CLASSES directly, not `import psycopg` + psycopg.errors.X.
+    # `import psycopg` does not bind the `errors` submodule reliably across
+    # CI collection orders / fake-psycopg test pollution; importing the classes
+    # binds them to local names that no sys.modules mutation can break.
+    from psycopg.errors import (  # noqa: PLC0415
+        DataError,
+        IntegrityError,
+        RaiseException,
+    )
 
     origin = event["origin"]
     targets = [s for s in ALL_STORES if s != origin]
@@ -340,9 +348,9 @@ def _process_event(conn: Any, event: dict[str, Any]) -> bool:
             errors.append(f"{target}: {exc}")
             logger.warning("[%s/%s] %s", event["task_id"], target, exc)
         except (
-            psycopg.errors.RaiseException,
-            psycopg.errors.IntegrityError,
-            psycopg.errors.DataError,
+            RaiseException,
+            IntegrityError,
+            DataError,
         ) as exc:
             # Governance trigger raise OR constraint violation (check / FK /
             # unique / not-null / data type). All fall under "this write

@@ -126,13 +126,13 @@ def test_upsert_propagates_trigger_check_violation() -> None:
     """Wrapper passes through the CheckViolation when the trigger refuses.
     Simulates SET LOCAL agency_os.callsign='aiden' → trigger RAISES on ceo:*.
     """
-    import psycopg
+    from psycopg.errors import CheckViolation
 
     conn = _RaisingConn(
-        psycopg.errors.CheckViolation("KEI-87 ceo_memory write-guard: aiden not in (elliot, dave)")
+        CheckViolation("KEI-87 ceo_memory write-guard: aiden not in (elliot, dave)")
     )
     with patch("psycopg.connect", return_value=conn):
-        with pytest.raises(psycopg.errors.CheckViolation):
+        with pytest.raises(CheckViolation):
             ceo_memory_writer.upsert_ceo_memory_key("aiden", "ceo:phase_lock", {"v": 1})
     # SET LOCAL still executed; the exception happens on the INSERT (call 2)
     assert any("SET LOCAL agency_os.callsign" in s for s, _ in conn.cur.executed)
@@ -140,11 +140,11 @@ def test_upsert_propagates_trigger_check_violation() -> None:
 
 def test_update_propagates_trigger_check_violation() -> None:
     """Same negative-path proof on update_ceo_memory_value."""
-    import psycopg
+    from psycopg.errors import CheckViolation
 
-    conn = _RaisingConn(psycopg.errors.CheckViolation("refused"))
+    conn = _RaisingConn(CheckViolation("refused"))
     with patch("psycopg.connect", return_value=conn):
-        with pytest.raises(psycopg.errors.CheckViolation):
+        with pytest.raises(CheckViolation):
             ceo_memory_writer.update_ceo_memory_value("max", "ceo:phase_lock", {"v": 2})
 
 

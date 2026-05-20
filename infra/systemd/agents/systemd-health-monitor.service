@@ -1,0 +1,16 @@
+[Unit]
+Description=Agency OS — KEI-141 systemd service health monitor
+Documentation=https://linear.app/keiracom/issue/KEI-141
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+EnvironmentFile=-/home/elliotbot/.config/agency-os/.env
+ExecStart=/home/elliotbot/clawd/Agency_OS/.venv/bin/python3 /home/elliotbot/clawd/Agency_OS/scripts/orchestrator/systemd_health_monitor.py
+StandardOutput=append:/home/elliotbot/clawd/logs/systemd-health-monitor.log
+StandardError=append:/home/elliotbot/clawd/logs/systemd-health-monitor.log
+
+[Install]
+WantedBy=default.target

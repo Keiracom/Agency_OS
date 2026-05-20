@@ -1,0 +1,12 @@
+[Unit]
+Description=Agency OS — KEI-141 systemd health monitor timer
+Documentation=https://linear.app/keiracom/issue/KEI-141
+
+[Timer]
+OnBootSec=30s
+OnUnitActiveSec=30s
+AccuracySec=5s
+Unit=systemd-health-monitor.service
+
+[Install]
+WantedBy=timers.target

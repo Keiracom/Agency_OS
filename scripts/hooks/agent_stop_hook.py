@@ -101,11 +101,19 @@ NOISE_RE = re.compile(
 )
 
 
+_BARE_CALLSIGN_RE = re.compile(r"^\[[A-Za-z]+\]\s*$")
+
+
 def is_noise_filler(text: str) -> bool:
     """Suppress hook emit on NATS-echo / Standing-filler self-replies (Elliot 2026-05-19)."""
     if not text or not text.strip():
         return True
     stripped = text.strip()
+    # Bare callsign tag with no body — e.g. "[NOVA]" / "[ORION]". The agent's
+    # stop hook read its own tag-only echo, classified it, republished it →
+    # loop. Same class as the NATS-echo loop (Elliot 2026-05-20).
+    if _BARE_CALLSIGN_RE.match(stripped):
+        return True
     if NOISE_RE.search(stripped):
         return True
     low = stripped.lower()

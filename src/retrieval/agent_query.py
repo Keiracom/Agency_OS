@@ -176,7 +176,7 @@ def query(
     collections: tuple[str, ...] = DEFAULT_COLLECTIONS,
     max_tokens: int = DEFAULT_MAX_TOKENS,
     citation_required: bool = True,
-    min_score: float = DEFAULT_MIN_SCORE,  # noqa: ARG001 — KEI-198: retained for back-compat; no-op
+    min_score: float = DEFAULT_MIN_SCORE,  # noqa: ARG001 KEI-198 back-compat  # NOSONAR S1172
     k_initial: int = orchestrator.DEFAULT_K_INITIAL,
     k_returned: int = orchestrator.DEFAULT_K_RETURNED,
 ) -> QueryResult:
@@ -210,7 +210,7 @@ def query(
         k_initial=k_initial,
         k_returned=k_returned,
     )
-    citations = tuple(_node_to_citation(n) for n in outcome.nodes)
+    citations = [_node_to_citation(n) for n in outcome.nodes]
     # KEI-198 — distribution-aware citation selection.
     # OLD shape (pre-KEI-192 audit): hard `score >= min_score` filter excluded
     # everything when vectorizer=none collapsed all scores to 0.0 — 12/14 of the

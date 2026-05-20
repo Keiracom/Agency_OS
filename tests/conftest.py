@@ -18,6 +18,16 @@ import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+# Pollution guard: pre-import psycopg.errors at conftest load — before any test
+# (or fake-psycopg fixture) runs. Several tests install a fake `psycopg` module
+# via monkeypatch.setitem(sys.modules, "psycopg", fake). If the FIRST process-wide
+# `import psycopg.errors` happens while a fake is installed, the `errors`
+# attribute is set on the fake (later discarded) and the real psycopg module
+# never receives it — subsequent `import psycopg.errors` then short-circuits on
+# the cached sys.modules entry without re-setting the attr, so `psycopg.errors`
+# raises AttributeError. Importing it here, first, binds it to the real module.
+import psycopg.errors  # noqa: F401,E402
+
 # Set test environment before importing app modules
 os.environ["ENVIRONMENT"] = (
     "development"  # Use development for tests (Settings model requires development/staging/production)

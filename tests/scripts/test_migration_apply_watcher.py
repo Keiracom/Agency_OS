@@ -78,7 +78,6 @@ def test_migration_not_applied_after_window_fires_alert():
         )
     mock_alert.assert_called_once()
     mock_upsert.assert_called_once_with(
-        conn,
         maw.debt_key("supabase/migrations/m.sql"),
         filename="supabase/migrations/m.sql",
         status="pending",
@@ -105,7 +104,6 @@ def test_alert_clears_when_apply_detected():
             conn, "supabase/migrations/m.sql", _RECENT_TS, now=_NOW, dry_run=False
         )
     mock_upsert.assert_called_once_with(
-        conn,
         maw.debt_key("supabase/migrations/m.sql"),
         filename="supabase/migrations/m.sql",
         status="resolved",

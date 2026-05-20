@@ -30,6 +30,9 @@ from pathlib import Path
 
 import psycopg
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from src.governance.ceo_memory_writer import upsert_ceo_memory_key  # noqa: E402
+
 logger = logging.getLogger("migration_apply_watcher")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
@@ -188,33 +191,22 @@ def get_debt_row(conn: psycopg.Connection, key: str) -> dict | None:
 
 
 def upsert_debt_row(
-    conn: psycopg.Connection,
     key: str,
     *,
     filename: str,
     status: str,
 ) -> None:
-    import json as _json
-
-    now_iso = _dt.datetime.now(_dt.UTC).isoformat()
-    value = _json.dumps(
+    callsign = os.environ.get("CALLSIGN", "system")
+    upsert_ceo_memory_key(
+        callsign,
+        key,
         {
             "source": SOURCE_DOC_WATCHER,
             "filename": Path(filename).name,
             "status": status,
-            "updated_at": now_iso,
-        }
+            "updated_at": _dt.datetime.now(_dt.UTC).isoformat(),
+        },
     )
-    with conn.cursor() as cur:
-        cur.execute(
-            """
-            INSERT INTO public.ceo_memory (key, value, updated_at)
-            VALUES (%s, %s::jsonb, NOW())
-            ON CONFLICT (key) DO UPDATE
-              SET value = EXCLUDED.value, updated_at = EXCLUDED.updated_at
-            """,
-            (key, value),
-        )
 
 
 def _dsn() -> str:
@@ -287,7 +279,7 @@ def process_migration(
         existing = get_debt_row(conn, key)
         if existing and existing.get("status") == "pending":
             logger.info("%s: schema now applied — resolving debt row", filepath)
-            upsert_debt_row(conn, key, filename=filepath, status="resolved")
+            upsert_debt_row(key, filename=filepath, status="resolved")
         else:
             logger.info("%s: applied, no pending debt — nothing to do", filepath)
         return
@@ -311,7 +303,7 @@ def process_migration(
     logger.warning("%s: migration not applied after %.1f min — firing alert", filepath, age_min)
     emit_ceo_alert(filepath, dry_run=dry_run)
     if not dry_run:
-        upsert_debt_row(conn, key, filename=filepath, status="pending")
+        upsert_debt_row(key, filename=filepath, status="pending")
 
 
 def main(argv: list[str] | None = None) -> None:

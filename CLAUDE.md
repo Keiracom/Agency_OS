@@ -81,9 +81,6 @@ bd close <id>         # Complete work
 - NEVER say "ready to push when you are" - YOU must push
 - If push fails, resolve and retry until it succeeds
 
-## Governance — Layered Matrix v1 (ratified 2026-05-19)
-
-Full classification of LAWs / modules / personas into HOT (always-loaded) / POINTER (lazy-loaded on trigger) / REFERENCE (Weaviate-only) tiers:
-`docs/governance/layered_governance_matrix.md`. The 9 modules retired by the matrix were deleted in this PR (KEI Agency_OS-uebi); their content lives in HOT (Step 0 RESTATE, MCP, hierarchy, completion discipline) or POINTER (LAW XVI, LAW I-A, governance rules, dead references, enrichment path) per §2 of the matrix.
+@.claude/modules/_layered_governance_matrix.md
 
 <!-- END BEADS INTEGRATION -->

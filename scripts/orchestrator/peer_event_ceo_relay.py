@@ -225,14 +225,9 @@ def _handle_envelope(subject: str, envelope: dict) -> None:
         if len(s["approvers"]) >= 2 and not s["holders"] and not s["posted_merge_ready"]:
             s["posted_merge_ready"] = True
             _save_state()
-        elif verdict == "hold" and not _is_throttled(("review_hold", sender, pr)):
-            _throttle[("review_hold", sender, pr)] = time.time()
-            body = (
-                f"- {reviewer} holds a PR pending author fix\n"
-                f"- One-line reason in the comment thread for the author\n"
-                f"- Author has been dispatched"
-            )
-            _post_ceo("Reviewer HOLD", body)
+        # Reviewer HOLD — Dave directive 2026-05-20: never post. Holds are
+        # internal review flow; Elliot dispatches the author. State is still
+        # tracked above so dual-concur detection works, but no #ceo post.
         return
 
     if kind == "blocker":

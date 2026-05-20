@@ -56,6 +56,21 @@ DEFAULT_BACKEND = "stub"
 DEFAULT_SLACK_RELAY = "/home/elliotbot/clawd/Agency_OS/scripts/slack_relay.py"
 _RUNNING = True
 
+# Supabase-pooler-safe psycopg connection kwargs (memory-group audit 2026-05-20):
+# - prepare_threshold=None: txn-mode pgbouncer drops PREPAREs across
+#   transactions; without this psycopg auto-prepares after 5 executes and
+#   raises DuplicatePreparedStatement (the crash that froze this worker).
+# - connect_timeout + TCP keepalives: a stalled / black-holed connection
+#   fails fast instead of hanging forever in poll() with no recovery.
+_CONNECT_KWARGS = {
+    "prepare_threshold": None,
+    "connect_timeout": 10,
+    "keepalives": 1,
+    "keepalives_idle": 30,
+    "keepalives_interval": 10,
+    "keepalives_count": 3,
+}
+
 
 def _dsn() -> str:
     dsn = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL", "")
@@ -249,7 +264,7 @@ def run(
     processor = _processor_id()
     iteration = 0
     try:
-        with psycopg.connect(_dsn()) as conn:
+        with psycopg.connect(_dsn(), **_CONNECT_KWARGS) as conn:
             reset = reset_stuck(conn)
             if reset:
                 logger.info("startup: reset %d stuck rows back to pending", reset)

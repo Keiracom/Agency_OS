@@ -59,6 +59,21 @@ MAX_RETRIES = 3
 INITIAL_BACKOFF_SECONDS = 1.0
 POLL_INTERVAL_SECONDS = 30.0
 
+# Supabase-pooler-safe psycopg connection kwargs (memory-group audit 2026-05-20):
+# - prepare_threshold=None: txn-mode pgbouncer drops PREPAREs across
+#   transactions (without it psycopg raises on the 2nd statement of a batch).
+# - connect_timeout + TCP keepalives: a stalled / black-holed connection
+#   fails fast instead of hanging forever in poll() — the failure mode that
+#   froze this indexer for 3 days with no error and no recovery.
+_CONNECT_KWARGS = {
+    "prepare_threshold": None,
+    "connect_timeout": 10,
+    "keepalives": 1,
+    "keepalives_idle": 30,
+    "keepalives_interval": 10,
+    "keepalives_count": 3,
+}
+
 _TOOL_CALLS_SCHEMA = {
     "class": TOOL_CALLS_CLASS,
     "description": "Tool calls indexed from public.tool_call_log (KEI-54B).",
@@ -273,12 +288,10 @@ def run(batch_size: int, poll_interval: float, max_iterations: int | None = None
     signal.signal(signal.SIGINT, _shutdown)
 
     while not stop["flag"]:
-        # prepare_threshold=None disables psycopg's prepared-statement caching.
-        # Supabase pooler runs in transaction-mode pgbouncer which doesn't
-        # preserve PREPARE statements across transactions; without this disable
-        # psycopg raises InvalidSqlStatementName on the second statement of
-        # any batch (mark_indexed loop fails on row 2).
-        with psycopg.connect(_dsn(), prepare_threshold=None) as conn:
+        # _CONNECT_KWARGS hardens the connection against the Supabase pooler
+        # (prepare-statement drop) AND against an indefinite poll() hang on a
+        # stalled connection (connect_timeout + keepalives).
+        with psycopg.connect(_dsn(), **_CONNECT_KWARGS) as conn:
             process_batch(conn, batch_size)
         iterations += 1
         if max_iterations is not None and iterations >= max_iterations:

@@ -123,6 +123,14 @@ flashrank>=0.2.7,<0.3
 # importing the removed symbol.
 weaviate-client>=4.5,<4.20
 
+# === Google Drive / Docs (drive_strategic_indexer — KEI-208) ===
+# scripts/orchestrator/drive_strategic_indexer.py imports googleapiclient +
+# google.auth to read the strategic-docs corpus. These were never declared,
+# so the indexer crashed on import every run (memory-group audit 2026-05-20,
+# Agency_OS-e4c1) — the StrategicDocuments Weaviate collection stayed empty.
+google-api-python-client>=2.100
+google-auth>=2.30
+
 # === Testing ===
 pytest>=7.4.0
 pytest-asyncio>=0.21.0

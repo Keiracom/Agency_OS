@@ -23,8 +23,8 @@ TMPFS="${WORK}/tmp"
 DURABLE="${WORK}/var-lib-agency-os"
 mkdir -p "$TMPFS" "$DURABLE"
 
-pass() { echo "  ✓ $1"; }
-fail() { echo "  ✗ $1" >&2; exit 1; }
+pass() { local msg="$1"; echo "  ✓ $msg"; }
+fail() { local msg="$1"; echo "  ✗ $msg" >&2; exit 1; }
 
 # -----------------------------------------------------------------------------
 # Case 1 — fresh migration preserves data + creates symlink

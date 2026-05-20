@@ -73,7 +73,8 @@ main() {
         exit 2
     fi
 
-    case "${1:-}" in
+    local cmd="${1:-}"
+    case "$cmd" in
         --all)
             for cs in "${CALLSIGNS[@]}"; do migrate_one "$cs"; done
             ;;
@@ -82,7 +83,7 @@ main() {
             exit 1
             ;;
         *)
-            migrate_one "$1"
+            migrate_one "$cmd"
             ;;
     esac
 

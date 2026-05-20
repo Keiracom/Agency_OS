@@ -4,13 +4,17 @@ KEI-100 / Linear KEI-73 — T0.2 LiteLLM boot-time dry-run.
 
 Modes:
   --mode pre   ExecStartPre. Validates provider keys BEFORE litellm binds 4000.
-               HARD FAIL (exit 1) if ANTHROPIC_API_KEY missing or invalid.
-               WARN (do not block) if OPENAI_API_KEY / GOOGLE_API_KEY absent or invalid;
+               HARD FAIL (exit 1) if OPENAI_API_KEY missing or invalid.
+               WARN (do not block) if GOOGLE_API_KEY absent or invalid;
                records `<alias>_<provider>_unavailable` row in litellm_alias_cache.
   --mode post  ExecStartPost (optional). HTTP-pings each governance_tier preset
                against http://127.0.0.1:4000 to confirm proxy is serving.
 
-Anthropic is mandatory per Aiden gap 2 resolution (2026-05-17 ts 1778983972.891719).
+Provider policy (Dave, 2026-05-20): internal governance tiers run on OpenAI
+or Gemini ONLY — never Anthropic. Worker agents use a Claude Max OAuth
+subscription; the Anthropic API is not in the operational path. OpenAI is the
+mandatory primary; Gemini is the warn-only failover. No Anthropic key is
+validated here.
 """
 
 from __future__ import annotations
@@ -22,7 +26,6 @@ import urllib.error
 import urllib.request
 from datetime import UTC, datetime, timedelta
 
-ANTHROPIC_KEY = "ANTHROPIC_API_KEY"
 OPENAI_KEY = "OPENAI_API_KEY"
 GOOGLE_KEY = "GOOGLE_API_KEY"
 
@@ -76,23 +79,6 @@ def _record_unavailable(alias: str, provider: str, reason: str) -> None:
         log("WARN", f"cache write failed for {alias}/{provider}: {e}")
 
 
-def _probe_anthropic() -> tuple[bool, str]:
-    try:
-        import anthropic
-    except ImportError as e:
-        return False, f"anthropic SDK not installed: {e}"
-    try:
-        client = anthropic.Anthropic(api_key=os.environ[ANTHROPIC_KEY])
-        client.messages.create(
-            model="claude-haiku-4-5",
-            max_tokens=1,
-            messages=[{"role": "user", "content": "hi"}],
-        )
-        return True, "ok"
-    except Exception as e:
-        return False, f"{type(e).__name__}: {e}"
-
-
 def _probe_openai() -> tuple[bool, str]:
     try:
         import openai
@@ -117,7 +103,7 @@ def _probe_google() -> tuple[bool, str]:
         return False, f"google-generativeai SDK not installed: {e}"
     try:
         genai.configure(api_key=os.environ[GOOGLE_KEY])
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        model = genai.GenerativeModel("gemini-2.5-flash")
         model.generate_content("hi", generation_config={"max_output_tokens": 1})
         return True, "ok"
     except Exception as e:
@@ -125,29 +111,20 @@ def _probe_google() -> tuple[bool, str]:
 
 
 def mode_pre() -> int:
-    """ExecStartPre: validate keys, hard fail Anthropic only."""
-    # Anthropic — MANDATORY
-    if not os.environ.get(ANTHROPIC_KEY):
-        log("FATAL", f"{ANTHROPIC_KEY} missing — blocking unit start (gap 2 hard fail)")
-        return 1
-
-    ok, reason = _probe_anthropic()
-    if not ok:
-        log("FATAL", f"{ANTHROPIC_KEY} invalid — {reason} — blocking unit start")
-        return 1
-    log("INFO", "ANTHROPIC_API_KEY: ok")
-
-    # OpenAI — WARN only
+    """ExecStartPre: validate keys, hard fail OpenAI (active primary) only."""
+    # OpenAI — MANDATORY (active primary provider per 2026-05-20 remediation)
     if not os.environ.get(OPENAI_KEY):
-        log("WARN", f"{OPENAI_KEY} missing — fallback degraded (Anthropic-only)")
-        _record_unavailable("governance_tier", "openai", "key_missing")
-    else:
-        ok, reason = _probe_openai()
-        if not ok:
-            log("WARN", f"{OPENAI_KEY} invalid — {reason} — fallback degraded")
-            _record_unavailable("governance_tier", "openai", reason[:200])
-        else:
-            log("INFO", "OPENAI_API_KEY: ok")
+        log("FATAL", f"{OPENAI_KEY} missing — blocking unit start (active primary provider)")
+        return 1
+
+    ok, reason = _probe_openai()
+    if not ok:
+        log("FATAL", f"{OPENAI_KEY} invalid — {reason} — blocking unit start")
+        return 1
+    log("INFO", "OPENAI_API_KEY: ok")
+
+    # Anthropic is intentionally NOT validated — governance tiers never route
+    # to Anthropic (Dave provider policy 2026-05-20).
 
     # Google — WARN only
     if not os.environ.get(GOOGLE_KEY):
@@ -161,7 +138,7 @@ def mode_pre() -> int:
         else:
             log("INFO", "GOOGLE_API_KEY: ok")
 
-    log("INFO", "boot pre-check passed — Anthropic mandatory ok, optional providers warn-only")
+    log("INFO", "boot pre-check passed — OpenAI mandatory ok, optional providers warn-only")
     return 0
 
 

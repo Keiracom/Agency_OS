@@ -85,31 +85,20 @@ def _rows_to_dicts(cur: Any) -> list[dict]:
 
 
 def _enqueue_linear_sync(task_id: str, target_status: str) -> None:
-    """KEI-106 — enqueue Supabase→Linear status sync on claim/complete.
+    """Locked to a no-op under the Linear-read-only LAW (Dave ratified
+    2026-05-20).
 
-    The completion_sync_worker (KEI-74) drains public.completion_sync_queue and
-    POSTs Linear's issueUpdate per row. This helper just lands the row; the
-    worker owns the Linear API call + retries. Fail-open: queue INSERT failure
-    must not block the originating claim/complete write. The KEI-74 backfill
-    script catches any dropped events.
+    This previously enqueued a public.completion_sync_queue row with
+    target_sink='linear' for the completion_sync_worker to POST as an
+    issueUpdate. Since Agency_OS-1x3x (Part 4) that worker's linear sink is
+    itself a hard no-op, so the enqueued rows were dead writes. Linear status
+    now propagates via the controlled one-way push
+    (scripts/orchestrator/linear_oneway_push.py) only.
 
-    Existing rows in completion_sync_queue use the KEI-NN identifier directly
-    in task_id (Linear's issueUpdate accepts identifiers, not just UUIDs).
+    Kept as a no-op stub so the claim/complete call sites need no change.
     """
-    import psycopg
-
-    try:
-        with psycopg.connect(_dsn()) as conn, conn.cursor() as cur:
-            cur.execute(
-                "INSERT INTO public.completion_sync_queue "
-                "(id, task_id, target_sink, target_status, attempts, processed, "
-                "created_at, updated_at) "
-                "VALUES (gen_random_uuid(), %s, 'linear', %s, 0, FALSE, NOW(), NOW())",
-                (task_id, target_status),
-            )
-            conn.commit()
-    except Exception:
-        logger.debug("KEI-106 linear-sync enqueue failed (non-fatal)", exc_info=True)
+    del task_id, target_status  # intentionally unused — enqueue suppressed
+    logger.debug("Linear-read-only LAW: linear-sync enqueue suppressed (no-op)")
 
 
 def _current_phase_max(cur: Any) -> float:

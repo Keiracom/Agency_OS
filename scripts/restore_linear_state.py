@@ -173,18 +173,17 @@ def find_pre_damage_state(
 
 
 def apply_restore(api_key: str, issue_uuid: str, state_id: str) -> bool:
-    """Set the issue's state via Linear's issueUpdate mutation. True on success."""
-    mutation = """
-    mutation($id: String!, $state: String!) {
-      issueUpdate(id: $id, input: { stateId: $state }) {
-        success
-        issue { state { type name } }
-      }
-    }
+    """Locked to a no-op under the Linear-read-only LAW (Dave ratified
+    2026-05-20). This previously POSTed an issueUpdate to restore an issue's
+    state. Linear is read-only — no automated process writes it. The recovery
+    model is now: fix the canonical store (Supabase), and the controlled
+    one-way push (scripts/orchestrator/linear_oneway_push.py) propagates the
+    corrected status to Linear. Returns False — no write was performed; the
+    detection/dry-run logic above still reports what WOULD be restored.
     """
-    resp = _graphql(api_key, mutation, {"id": issue_uuid, "state": state_id})
-    success = (((resp or {}).get("data") or {}).get("issueUpdate") or {}).get("success", False)
-    return bool(success)
+    del api_key, issue_uuid, state_id  # intentionally unused — write suppressed
+    logger.info("Linear-read-only LAW: restore write suppressed — recover via Supabase + push")
+    return False
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -45,7 +45,6 @@ logging.basicConfig(level=logging.WARNING, format="%(levelname)s: %(message)s")
 
 LINEAR_API_URL = "https://api.linear.app/graphql"
 KEI_TEAM_ID = "4686528f-ce77-4c2f-968b-3dc76b34d6fe"
-DEFAULT_LABEL_COLOR = "#95A5A6"  # neutral grey for auto-created labels
 
 LABEL_PATTERNS: list[tuple[str, list[str]]] = [
     ("audit-finding", ["audit", "pattern"]),
@@ -88,46 +87,10 @@ def infer_labels(title: str, description: str) -> list[str]:
     return matched
 
 
-def _team_label_map() -> dict[str, str]:
-    """Return {label_name: label_id} for the KEI team. Cached per call."""
-    data = _post(
-        "query($id: String!) { team(id: $id) { labels { nodes { id name } } } }",
-        {"id": KEI_TEAM_ID},
-    )
-    nodes = (data.get("data") or {}).get("team", {}).get("labels", {}).get("nodes", []) or []
-    return {n["name"]: n["id"] for n in nodes}
-
-
-def _create_label(name: str) -> str | None:
-    """Create a missing label in the KEI team. Returns new label id or None."""
-    data = _post(
-        "mutation($name: String!, $teamId: String!, $color: String!) {"
-        "  issueLabelCreate(input: { name: $name, teamId: $teamId, color: $color }) {"
-        "    success issueLabel { id name }"
-        "  }"
-        "}",
-        {"name": name, "teamId": KEI_TEAM_ID, "color": DEFAULT_LABEL_COLOR},
-    )
-    payload = (data.get("data") or {}).get("issueLabelCreate", {}) or {}
-    if payload.get("success"):
-        return (payload.get("issueLabel") or {}).get("id")
-    logger.warning("issueLabelCreate failed for %r: %s", name, data)
-    return None
-
-
-def _resolve_label_ids(names: list[str]) -> list[str]:
-    """Map label names → ids, creating any that don't exist."""
-    existing = _team_label_map()
-    out: list[str] = []
-    for name in names:
-        lid = existing.get(name)
-        if not lid:
-            lid = _create_label(name)
-            if lid:
-                existing[name] = lid
-        if lid:
-            out.append(lid)
-    return out
+# Linear-read-only LAW (Dave ratified 2026-05-20): the team-label-map read,
+# _create_label (issueLabelCreate) and _resolve_label_ids writer chain were
+# removed — auto_label_kei no longer writes Linear in any form. Label
+# inference still runs (read-only) via _issue_label_ids + infer_labels.
 
 
 def _issue_label_ids(issue_id: str) -> tuple[list[str], list[str]]:
@@ -166,19 +129,19 @@ def label_issue(issue_id: str, title: str, description: str) -> dict[str, Any]:
             "matched_no_change": True,
         }
 
-    new_ids = _resolve_label_ids(to_add_names)
-    final_ids = current_ids + new_ids
-
-    _post(
-        "mutation($id: String!, $labelIds: [String!]!) {"
-        "  issueUpdate(id: $id, input: { labelIds: $labelIds }) { success }"
-        "}",
-        {"id": issue_id, "labelIds": final_ids},
+    # Linear-read-only LAW (Dave ratified 2026-05-20): the issueUpdate label
+    # write is locked to a no-op. Linear is read-only — no automated process
+    # writes it. Label inference above still runs (read-only) so callers see
+    # what WOULD be applied; nothing is written to Linear.
+    logger.info(
+        "Linear-read-only LAW: label write suppressed for %s (would-add: %s)",
+        issue_id,
+        to_add_names,
     )
 
     return {
         "issue_id": issue_id,
-        "applied": to_add_names,
+        "applied": [],
         "skipped_already_present": [n for n in matched_names if n in current_names],
         "matched_no_change": False,
     }

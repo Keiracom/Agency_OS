@@ -545,10 +545,12 @@ def _find_queue_insert(cur) -> tuple[str, tuple] | None:
     return None
 
 
-def test_claim_enqueues_linear_sync_active(mod, patch_connect, monkeypatch) -> None:
-    """KEI-106 — successful claim INSERTs a row in completion_sync_queue with
-    target_sink='linear' AND target_status='active' so the worker (KEI-74)
-    flips the matching Linear KEI to In Progress.
+def test_claim_does_not_enqueue_linear_sync_law_locked(mod, patch_connect, monkeypatch) -> None:
+    """Linear-read-only LAW (Dave 2026-05-20): _enqueue_linear_sync is locked
+    to a no-op — a successful claim no longer INSERTs a target_sink='linear'
+    completion_sync_queue row. Linear status propagates via the one-way push
+    only; the previously-enqueued rows were dead writes (the worker's linear
+    sink is itself a no-op since Agency_OS-1x3x).
     """
     monkeypatch.setenv("CALLSIGN", "aiden")
     cur = _Cursor(
@@ -557,10 +559,7 @@ def test_claim_enqueues_linear_sync_active(mod, patch_connect, monkeypatch) -> N
     patch_connect(cur)
     rc = mod.main(["claim", "--id", "KEI-106", "--json"])
     assert rc == 0
-    insert = _find_queue_insert(cur)
-    assert insert is not None, "claim must enqueue completion_sync_queue row"
-    _sql, params = insert
-    assert params == ("KEI-106", "active")
+    assert _find_queue_insert(cur) is None, "linear-sink enqueue must be suppressed"
 
 
 def test_claim_race_loss_does_not_enqueue(mod, patch_connect, monkeypatch) -> None:

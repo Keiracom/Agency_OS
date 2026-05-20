@@ -101,8 +101,10 @@ def test_label_issue_idempotent_when_already_present(mod, monkeypatch):
     assert len(calls) == 1
 
 
-def test_label_issue_creates_missing_label_and_applies(mod, monkeypatch):
-    """Full flow: matched, not present on issue, label doesn't exist in team → create + apply."""
+def test_label_issue_law_locked_suppresses_linear_write(mod, monkeypatch):
+    """Linear-read-only LAW (Dave 2026-05-20): a label is matched and absent
+    on the issue, but the issueUpdate write is suppressed — applied is empty
+    and no issueUpdate is POSTed to Linear."""
     calls: list[tuple[str, dict]] = []
     team_label_map_state = {}  # starts empty (no labels in team)
 
@@ -140,9 +142,8 @@ def test_label_issue_creates_missing_label_and_applies(mod, monkeypatch):
 
     monkeypatch.setattr(mod, "_post", fake_post)
     rep = mod.label_issue("abc-123", "Build a new feature", "")
+    # A label WAS matched + absent → matched_no_change is False, but the
+    # write is LAW-locked: applied is empty, no issueUpdate is POSTed.
     assert rep["matched_no_change"] is False
-    assert rep["applied"] == ["build"]
-    # confirm the issueUpdate call carried our new label id
-    update_calls = [c for c in calls if "issueUpdate" in c[0]]
-    assert len(update_calls) == 1
-    assert update_calls[0][1]["labelIds"] == ["created-build"]
+    assert rep["applied"] == []
+    assert [c for c in calls if "issueUpdate" in c[0]] == [], "issueUpdate must be suppressed"

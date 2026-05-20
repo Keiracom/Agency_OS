@@ -1,10 +1,12 @@
-"""KEI-230 — tests for reconcile_three_stores.py.
+"""KEI-230 / KEI-237 — tests for reconcile_three_stores.py.
 
 Covers:
 - _kei_from_url: handles slug, no-slug, trailing-slash, empty
 - build_join_table: composes 3 store views by KEI
 - detect_drift: classifies in_all_three / missing_postgres / missing_bd / missing_linear
-- _build_create_payload: picks canonical fields (Linear status > postgres)
+- _has_field_drift: stale-status detection + KEI-237 normalised comparison
+- _format_drift_alert / _post_drift_alert: flag-only drift alert (KEI-237)
+- post_to_slack: token-absent guard
 """
 
 from __future__ import annotations
@@ -12,6 +14,7 @@ from __future__ import annotations
 import importlib.util
 import sys
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -142,7 +145,7 @@ def test_detect_drift_missing_linear(mod) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Field drift (KEI-233).
+# Field drift (KEI-233 + KEI-237 normalised comparison).
 # ---------------------------------------------------------------------------
 
 
@@ -203,7 +206,7 @@ def test_field_drift_skips_postgres_only_buckets(mod) -> None:
 
 
 def test_field_drift_null_pg_status_counts(mod) -> None:
-    """NULL pg.status with a canonical Linear value IS drift — propagate Linear."""
+    """NULL pg.status with a canonical Linear value IS drift — surface it."""
     table = {
         "KEI-4": {
             "linear": {"state": {"type": "backlog"}},
@@ -243,145 +246,122 @@ def test_field_drift_only_evaluated_for_in_all_three(mod) -> None:
     assert len(drift["missing_bd"]) == 1
 
 
-# ---------------------------------------------------------------------------
-# Payload construction.
-# ---------------------------------------------------------------------------
+def test_field_drift_comparison_is_case_and_whitespace_insensitive(mod) -> None:
+    """KEI-237 (c) — format noise (casing / whitespace) must NOT raise a flag.
 
-
-def test_build_create_payload_prefers_linear_status(mod) -> None:
-    stores = {
-        "linear": {
-            "title": "Linear title",
-            "state": {"type": "started", "name": "In Progress"},
-            "priority": 1,
-            "url": "https://linear.app/keiracom/issue/KEI-9",
-        },
-        "postgres": {"title": "Postgres title", "status": "done", "priority": 4},
-        "bd": {"id": "Agency_OS-xxx"},
+    Linear=started → canonical 'active'. Postgres status '  ACTIVE  ' differs
+    only in case + surrounding whitespace — normalised, it matches, so no
+    false field_drift flag.
+    """
+    table = {
+        "KEI-7": {
+            "linear": {"state": {"type": "started"}},  # canonical 'active'
+            "postgres": {"status": "  ACTIVE  "},
+            "bd": {"id": "Agency_OS-fff"},
+        }
     }
-    payload = mod._build_create_payload("KEI-9", stores)
-    assert payload["title"] == "Linear title"
-    assert payload["status"] == "active"  # started → active
-    assert payload["priority"] == 1
-    assert payload["bd_id"] == "Agency_OS-xxx"
-
-
-def test_build_create_payload_falls_back_to_postgres_when_no_linear(mod) -> None:
-    stores = {
-        "postgres": {
-            "title": "PG only",
-            "status": "available",
-            "priority": 3,
-            "bd_id": "Agency_OS-y",
-        },
-        "bd": {"id": "Agency_OS-y"},
-    }
-    payload = mod._build_create_payload("KEI-10", stores)
-    assert payload["title"] == "PG only"
-    assert payload["status"] == "available"
-    assert payload["bd_id"] == "Agency_OS-y"
-
-
-def test_build_create_payload_default_linear_url(mod) -> None:
-    payload = mod._build_create_payload("KEI-11", {})
-    assert payload["linear_url"] == "https://linear.app/keiracom/issue/KEI-11"
-    assert payload["status"] == "available"
-    assert payload["title"] == "(no title)"
+    drift = mod.detect_drift(table)
+    assert drift["field_drift"] == [], "case/whitespace noise must not drift-flag"
 
 
 # ---------------------------------------------------------------------------
-# KEI-237 — postgres-canonical payload + emission flip.
+# KEI-237 — flag-only drift alert (no auto-fix, no new table).
 # ---------------------------------------------------------------------------
 
 
-def test_build_postgres_payload_prefers_postgres_status(mod) -> None:
-    """Under the new policy, Postgres is canonical — _build_postgres_payload
-    must return Postgres's status, NOT Linear's mapped status."""
-    stores = {
-        "linear": {
-            "title": "Linear title",
-            "state": {"type": "completed"},  # would map to 'done'
-            "priority": 1,
-            "url": "https://linear.app/keiracom/issue/KEI-9",
-        },
-        "postgres": {
-            "title": "Postgres title",
-            "status": "active",  # canonical under new policy
-            "priority": 4,
-            "bd_id": "Agency_OS-xxx",
-            "linear_url": "https://linear.app/keiracom/issue/KEI-9",
-        },
-        "bd": {"id": "Agency_OS-xxx"},
-    }
-    payload = mod._build_postgres_payload("KEI-9", stores)
-    assert payload["status"] == "active"  # Postgres wins
-    assert payload["title"] == "Postgres title"
-    assert payload["bd_id"] == "Agency_OS-xxx"
-
-
-def test_build_postgres_payload_falls_back_to_linear_url(mod) -> None:
-    """If pg.linear_url is missing, fall back to linear_iss.url, then default."""
-    stores = {
-        "postgres": {"status": "active"},
-        "linear": {"url": "https://linear.app/keiracom/issue/KEI-22/explicit-slug"},
-    }
-    payload = mod._build_postgres_payload("KEI-22", stores)
-    assert payload["linear_url"] == "https://linear.app/keiracom/issue/KEI-22/explicit-slug"
-
-
-def test_build_postgres_payload_default_status_available(mod) -> None:
-    """Missing pg.status → defaults to 'available' (KEI-237 ON CONFLICT-safe)."""
-    payload = mod._build_postgres_payload("KEI-30", {"postgres": {}})
-    assert payload["status"] == "available"
-
-
-def test_emit_events_field_drift_uses_postgres_origin(mod) -> None:
-    """KEI-237: field_drift entries emit origin='postgres' (not 'linear')."""
-
-    class _FakeCursor:
-        def __init__(self):
-            self.executed = []
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *_):
-            return None
-
-        def execute(self, sql, params=None):
-            self.executed.append((sql, params))
-
-    class _FakeConn:
-        def __init__(self):
-            self.cur = _FakeCursor()
-
-        def cursor(self):
-            return self.cur
-
-        def commit(self):
-            pass
-
-    drift = {
+def _drift(**buckets: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+    base: dict[str, list[dict[str, Any]]] = {
+        "in_all_three": [],
         "missing_postgres": [],
         "missing_bd": [],
         "missing_linear": [],
-        "field_drift": [
+        "field_drift": [],
+    }
+    base.update(buckets)
+    return base
+
+
+def test_format_drift_alert_none_when_no_drift(mod) -> None:
+    """No drift in any actionable bucket → no alert text (None)."""
+    assert mod._format_drift_alert(_drift(in_all_three=[{"kei": "KEI-ok", "stores": {}}])) is None
+
+
+def test_format_drift_alert_lists_buckets_and_keis(mod) -> None:
+    drift = _drift(
+        missing_postgres=[{"kei": "KEI-20", "stores": {"linear": {}}}],
+        field_drift=[
             {
-                "kei": "KEI-99",
+                "kei": "KEI-21",
                 "stores": {
                     "linear": {"state": {"type": "completed"}},
-                    "postgres": {"status": "active", "bd_id": "Agency_OS-xx"},
-                    "bd": {"id": "Agency_OS-xx"},
+                    "postgres": {"status": "active"},
+                    "bd": {"id": "Agency_OS-x"},
                 },
             }
         ],
+    )
+    text = mod._format_drift_alert(drift)
+    assert text is not None
+    assert "[DRIFT]" in text
+    assert "2 KEI(s)" in text
+    assert "missing_postgres (1): KEI-20" in text
+    # field_drift entries carry the linear-vs-pg detail.
+    assert "KEI-21 (linear=completed pg=active)" in text
+    assert "no auto-fix" in text.lower()
+
+
+def test_format_drift_alert_truncates_long_bucket(mod) -> None:
+    """A bucket with >20 KEIs shows the first 20 + a (+N more) marker."""
+    drift = _drift(missing_bd=[{"kei": f"KEI-{i}", "stores": {"linear": {}}} for i in range(25)])
+    text = mod._format_drift_alert(drift)
+    assert text is not None
+    assert "(+5 more)" in text
+
+
+def test_post_drift_alert_no_drift_posts_nothing(mod, monkeypatch) -> None:
+    posted: list = []
+    monkeypatch.setattr(mod, "post_to_slack", lambda t, c: posted.append((t, c)) or True)
+    n = mod._post_drift_alert(_drift())
+    assert n == 0
+    assert posted == [], "no drift → no Slack post"
+
+
+def test_post_drift_alert_posts_consolidated_alert(mod, monkeypatch) -> None:
+    posted: list = []
+    monkeypatch.setattr(mod, "post_to_slack", lambda t, c: posted.append((t, c)) or True)
+    monkeypatch.delenv("DRIFT_ALERT_CHANNEL", raising=False)
+    drift = _drift(
+        missing_linear=[{"kei": "KEI-30", "stores": {"bd": {}}}],
+        missing_bd=[{"kei": "KEI-31", "stores": {"linear": {}}}],
+    )
+    n = mod._post_drift_alert(drift)
+    assert n == 2
+    assert len(posted) == 1, "exactly one consolidated alert"
+    text, channel = posted[0]
+    assert "KEI-30" in text and "KEI-31" in text
+    assert channel == mod._CEO_CHANNEL_DEFAULT  # defaults to #ceo
+
+
+def test_post_drift_alert_channel_is_env_overridable(mod, monkeypatch) -> None:
+    posted: list = []
+    monkeypatch.setattr(mod, "post_to_slack", lambda t, c: posted.append((t, c)) or True)
+    monkeypatch.setenv("DRIFT_ALERT_CHANNEL", "C-CUSTOM")
+    mod._post_drift_alert(_drift(missing_bd=[{"kei": "KEI-40", "stores": {"linear": {}}}]))
+    assert posted[0][1] == "C-CUSTOM"
+
+
+def test_post_to_slack_returns_false_without_token(mod, monkeypatch) -> None:
+    """No SLACK_BOT_TOKEN → best-effort no-op, returns False, never raises."""
+    monkeypatch.delenv("SLACK_BOT_TOKEN", raising=False)
+    assert mod.post_to_slack("hello", "C-X") is False
+
+
+def test_field_drift_detail_formats_linear_vs_pg(mod) -> None:
+    entry = {
+        "kei": "KEI-50",
+        "stores": {
+            "linear": {"state": {"type": "completed"}},
+            "postgres": {"status": "active"},
+        },
     }
-    conn = _FakeConn()
-    emitted = mod._emit_events(conn, drift)
-    assert emitted == 1
-    sql, params = conn.cur.executed[0]
-    assert "fn_emit_sync_event" in sql
-    # params = (origin, event_type, task_id, bd_id, payload_json)
-    assert params[0] == "postgres", "field_drift must emit origin=postgres under KEI-237"
-    assert params[1] == "update"
-    assert params[2] == "KEI-99"
+    assert mod._field_drift_detail(entry) == "KEI-50 (linear=completed pg=active)"

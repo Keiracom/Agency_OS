@@ -484,7 +484,12 @@ _R11_BANNED_RES = (
 # Exempt: system-generated CONCUR-REQUEST replacements (concur_gate output).
 _R11_EXEMPT_RE = re.compile(
     r"\[CONCUR-REQUEST:[A-Z]+\]"
-    r"|requesting concurrence from peer",
+    r"|requesting concurrence from peer"
+    # KEI-33 — R13 blocker escalation. When slack_relay redirects a
+    # [BLOCKED:<callsign>] message from #execution to #ceo, the urgency of
+    # the blocker overrides #ceo plain-English format. Exempt so the
+    # original blocker payload reaches Dave without format-gate friction.
+    r"|\[BLOCKED:[A-Za-z][A-Za-z0-9_-]*\]",
     re.IGNORECASE,
 )
 

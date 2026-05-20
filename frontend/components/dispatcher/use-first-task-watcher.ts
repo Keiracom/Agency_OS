@@ -57,14 +57,14 @@ export interface UseFirstTaskWatcherResult {
 export function useFirstTaskWatcher(
   _options: Readonly<UseFirstTaskWatcherOptions> = {}
 ): UseFirstTaskWatcherResult {
-  const [dismissed, setDismissed] = useState(false);
+  // KEI-157B claimer reads the dismissed flag; the stub only needs the setter so
+  // `dismiss` still triggers a re-render. Destructure the setter alone to avoid
+  // an unused binding.
+  const [, setDismissed] = useState(false);
 
   return {
     firstCompletedTask: null,
     loading: false,
     dismiss: () => setDismissed(true),
   };
-
-  // Suppress unused-variable warning for dismissed — KEI-157B claimer reads it.
-  void dismissed;
 }

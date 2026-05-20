@@ -82,6 +82,32 @@ def _throttled(callsign: str) -> bool:
     return False
 
 
+def _pane_idle(callsign: str) -> bool:
+    """True if the agent's tmux pane is at an idle prompt (safe to inject).
+
+    An agent mid-turn shows 'esc to interrupt' in the status line. Injecting
+    then would queue input on top of active work. We only inject when the
+    pane shows the empty prompt and no in-progress indicator.
+    """
+    target = TMUX_TARGETS.get(callsign)
+    if not target:
+        return False
+    try:
+        cp = subprocess.run(
+            ["tmux", "capture-pane", "-t", target, "-p"],
+            capture_output=True, text=True, timeout=5, check=False,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return False
+    if cp.returncode != 0:
+        return False
+    tail = "\n".join(cp.stdout.splitlines()[-12:]).lower()
+    # Mid-turn markers — Claude Code shows these only while processing.
+    if "esc to interrupt" in tail or "tokens ·" in tail or "tokens ·" in tail:
+        return False
+    return True
+
+
 def _inject(callsign: str, text: str) -> bool:
     target = TMUX_TARGETS.get(callsign)
     if not target:
@@ -309,6 +335,11 @@ def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--callsign", required=True)
     p.add_argument("--dry-run", action="store_true")
+    p.add_argument(
+        "--poll-mode", action="store_true",
+        help="Called from the 60s self-claim loop — require an idle pane "
+             "before injecting (don't interrupt mid-turn work).",
+    )
     args = p.parse_args(argv)
     cs = args.callsign.lower()
     if not args.dry_run and _throttled(cs):
@@ -328,6 +359,11 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.dry_run:
         print(prompt)
+        return 0
+    # Idle-pane guard: never inject on top of active work. Always enforced —
+    # stop-hook path fires at turn-end (pane already idle), poll path needs it.
+    if not _pane_idle(cs):
+        log.info("pane busy for %s — skip inject (work in progress)", cs)
         return 0
     _inject(cs, prompt)
     return 0

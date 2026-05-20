@@ -78,5 +78,12 @@ while true; do
     race_lost_all|invalid_callsign|*)
       ;;
   esac
+  # Poll-driven next-work prompter (Dave directive 2026-05-20): every cycle,
+  # check if this agent is idle with work waiting and inject the next task.
+  # Closes the gap where stop-hook-only prompting misses already-idle agents.
+  # --poll-mode enforces an idle-pane check so active work is never interrupted.
+  # Fail-open: a prompter error must not break the claim loop.
+  "$REPO_ROOT/.venv/bin/python3" "$REPO_ROOT/scripts/orchestrator/next_work_prompter.py" \
+    --callsign "$CALLSIGN" --poll-mode >/dev/null 2>&1 || true
   sleep "$POLL_SECONDS"
 done

@@ -220,14 +220,9 @@ def _handle_envelope(subject: str, envelope: dict) -> None:
             s["holders"].add(reviewer)
             s["approvers"].discard(reviewer)
         _save_state()
-        # Surface when dual-concur reached and we haven't posted yet
+        # Dual-concur intermediate state — Dave directive 2026-05-20: silent
+        # (we'll batch the actual-merge events in the half-hourly digest)
         if len(s["approvers"]) >= 2 and not s["holders"] and not s["posted_merge_ready"]:
-            body = (
-                f"- A PR has reached dual-concur from both deliberators\n"
-                f"- Approvers in: {', '.join(sorted(s['approvers']))}\n"
-                f"- I will merge it on the next pass"
-            )
-            _post_ceo("Merge eligible", body)
             s["posted_merge_ready"] = True
             _save_state()
         elif verdict == "hold" and not _is_throttled(("review_hold", sender, pr)):

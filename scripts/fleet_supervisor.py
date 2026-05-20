@@ -507,9 +507,15 @@ def release_merged_review_claims(conn: psycopg.Connection) -> int:
     A REVIEW-PR-<N> row (inserted by insert_review_task) stays status='active'
     forever once claimed — nothing transitions it when the PR merges, so the
     supervisor nudges the claimant indefinitely on a review that is already
-    done. This releases the claim (status='done') the moment its PR is no
-    longer open. Returns the count released. Fail-open: a gh failure on one
-    PR is logged and skipped, never aborts the sweep.
+    done. This releases the claim the moment its PR is no longer open.
+
+    Released to status='dismissed', NOT 'done': the require_verification_before
+    _done() Postgres trigger blocks 'done' without a task_verifications record,
+    and a review claim has none. Its own RAISE message prescribes 'dismissed'
+    for verification-less noise items — which a merged-PR review claim is.
+
+    Returns the count released. Fail-open: a gh failure on one PR is logged
+    and skipped, never aborts the sweep.
     """
     with conn.cursor() as cur:
         cur.execute(
@@ -539,7 +545,7 @@ def release_merged_review_claims(conn: psycopg.Connection) -> int:
         if state in ("MERGED", "CLOSED"):
             with conn.cursor() as cur:
                 cur.execute(
-                    "UPDATE public.tasks SET status = 'done' "
+                    "UPDATE public.tasks SET status = 'dismissed' "
                     "WHERE id = %s AND status = 'active'",
                     (task_id,),
                 )

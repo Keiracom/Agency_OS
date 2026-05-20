@@ -140,9 +140,9 @@ def test_check_all_services_one_failed(monitor) -> None:
 
 def test_format_alert_contains_service_and_state(monitor) -> None:
     text = monitor.format_alert(
-        {"service": "aiden-relay-watcher", "callsign": "aiden", "state": "failed", "log": "boom"}
+        {"service": "aiden-inbox-watcher", "callsign": "aiden", "state": "failed", "log": "boom"}
     )
-    assert "aiden-relay-watcher" in text
+    assert "aiden-inbox-watcher" in text
     assert "failed" in text
     assert "boom" in text
     assert "callsign=aiden" in text

@@ -246,11 +246,9 @@ def _handle_envelope(subject: str, envelope: dict) -> None:
         return
 
     if kind == "shipped":
-        if _is_throttled(("shipped", sender)):
-            return
-        _throttle[("shipped", sender)] = time.time()
-        body = f"- {sender} just completed a piece of work\n{_summary_to_bullets(summary, max_bullets=4)}"
-        _post_ceo("Agent shipped", body)
+        # Dave directive 2026-05-20: shipped events are noise unless batched.
+        # Suppressed at the relay level — half-hourly digest handled by a
+        # separate batcher (TODO). Blockers/incidents still bypass.
         return
 
     if kind == "deliberation":

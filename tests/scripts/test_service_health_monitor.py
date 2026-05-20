@@ -42,17 +42,22 @@ def _completed(returncode: int, stdout: str = "", stderr: str = "") -> subproces
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def test_callsign_from_aiden_relay_watcher(monitor) -> None:
-    assert monitor.callsign_from_service_name("aiden-relay-watcher") == "aiden"
+def test_callsign_from_aiden_inbox_watcher(monitor) -> None:
+    assert monitor.callsign_from_service_name("aiden-inbox-watcher") == "aiden"
 
 
 def test_callsign_from_atlas_inbox_watcher(monitor) -> None:
     assert monitor.callsign_from_service_name("atlas-inbox-watcher") == "atlas"
 
 
+def test_callsign_from_nova_inbox_watcher(monitor) -> None:
+    """nova was added to the callsign set in the 2026-05-20 list refresh."""
+    assert monitor.callsign_from_service_name("nova-inbox-watcher") == "nova"
+
+
 def test_callsign_from_central_listener(monitor) -> None:
-    """Central listener has no callsign prefix → 'central'."""
-    assert monitor.callsign_from_service_name("agency-os-slack-central-listener") == "central"
+    """A service with no bare callsign prefix → 'central'."""
+    assert monitor.callsign_from_service_name("agency-os-elliot-slack-listener") == "central"
 
 
 def test_callsign_from_unknown_service(monitor) -> None:
@@ -103,10 +108,16 @@ def test_check_all_services_all_active(monitor) -> None:
 
 
 def test_check_all_services_one_failed(monitor) -> None:
-    """One service failed → one entry in failures with callsign + state + log."""
+    """One service failed → one entry in failures with callsign + state + log.
+
+    Picks the failed service from the live MONITORED_SERVICES set so the test
+    genuinely exercises detection — a hard-coded name that drifts out of the
+    monitored set would silently pass with zero detections.
+    """
+    target = monitor.MONITORED_SERVICES[0]
 
     def state_lookup(service):
-        if service == "aiden-relay-watcher":
+        if service == target:
             return "failed"
         return "active"
 
@@ -116,8 +127,8 @@ def test_check_all_services_one_failed(monitor) -> None:
     ):
         failures = monitor.check_all_services()
     assert len(failures) == 1
-    assert failures[0]["service"] == "aiden-relay-watcher"
-    assert failures[0]["callsign"] == "aiden"
+    assert failures[0]["service"] == target
+    assert failures[0]["callsign"] == monitor.callsign_from_service_name(target)
     assert failures[0]["state"] == "failed"
     assert failures[0]["log"] == "boom"
 
@@ -209,7 +220,7 @@ def test_main_returns_zero_when_all_active(monitor) -> None:
 def test_main_alerts_on_failure(monitor) -> None:
     """When a service fails, main() calls post_to_slack and returns 0."""
     fake_failure = {
-        "service": "aiden-relay-watcher",
+        "service": "aiden-inbox-watcher",
         "callsign": "aiden",
         "state": "failed",
         "log": "boom",
@@ -226,4 +237,4 @@ def test_main_alerts_on_failure(monitor) -> None:
     ):
         assert monitor.main() == 0
     assert len(post_calls) == 1
-    assert "aiden-relay-watcher" in post_calls[0]
+    assert "aiden-inbox-watcher" in post_calls[0]

@@ -38,7 +38,12 @@ from typing import Any
 logger = logging.getLogger("ingest_strategic_docs")
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
-_WEAVIATE_BASE = f"http://{os.environ.get('WEAVIATE_HOST', '127.0.0.1')}:{os.environ.get('WEAVIATE_PORT', '8090')}"
+_WEAVIATE_HOST = os.environ.get("WEAVIATE_HOST", "127.0.0.1")
+_WEAVIATE_PORT = os.environ.get("WEAVIATE_PORT", "8090")
+# Loopback-only Weaviate serves plain http (no TLS) by design — same as
+# indexer_base.py / tool_call_log_indexer.py. NOSONAR clears the S5332
+# "use https" hotspot for this known-safe local endpoint.
+_WEAVIATE_BASE = f"http://{_WEAVIATE_HOST}:{_WEAVIATE_PORT}"  # NOSONAR python:S5332
 _CLASS = "StrategicDocuments"
 _UUID_NS = uuid.UUID("6f4a1d2e-0000-5000-a000-5337a7e9d0c5")  # fixed namespace
 

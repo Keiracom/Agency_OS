@@ -1,0 +1,18 @@
+[Unit]
+Description=NATS server with JetStream (KEI-205 — messaging layer)
+Documentation=https://linear.app/keiracom/issue/KEI-205
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/nats-server -c /home/elliotbot/clawd/Agency_OS/infra/nats/nats-server.conf
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+StandardOutput=append:/home/elliotbot/clawd/logs/nats-server.log
+StandardError=append:/home/elliotbot/clawd/logs/nats-server.log
+Restart=on-failure
+RestartSec=5
+# JetStream needs RAM headroom + file-descriptor budget.
+LimitNOFILE=65536
+
+[Install]
+WantedBy=default.target

@@ -26,6 +26,7 @@ httpx>=0.26.0
 
 # === XML Parsing (ABN Lookup API) ===
 xmltodict>=0.13.0
+lxml>=5.0.0  # used by scripts/load_business_universe.py for streaming XML parse
 
 # === AI ===
 anthropic>=0.39.0
@@ -125,5 +126,6 @@ weaviate-client>=4.5,<4.20
 # === Testing ===
 pytest>=7.4.0
 pytest-asyncio>=0.21.0
+pytest-timeout>=2.3.0  # KEI-132: chaos harness — bound each scenario to <60s
 fuzzywuzzy>=0.18.0
 python-Levenshtein>=0.21.0

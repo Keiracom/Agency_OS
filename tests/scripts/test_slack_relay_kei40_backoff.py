@@ -39,7 +39,11 @@ def monkeypatch_module(request):  # type: ignore[no-untyped-def]
     from _pytest.monkeypatch import MonkeyPatch
 
     mp = MonkeyPatch()
-    mp.setenv("CALLSIGN", "aiden")
+    # slack_relay.py hard-exits at import time for any non-elliot CALLSIGN
+    # (Dave directive 2026-05-19 Slack-access lock). Use elliot so the
+    # module imports cleanly; these tests exercise retry/backoff, not the
+    # callsign gate.
+    mp.setenv("CALLSIGN", "elliot")
     mp.setenv("SLACK_BOT_TOKEN", "xoxb-fake-test-token")
     request.addfinalizer(mp.undo)
     return mp

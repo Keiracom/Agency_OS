@@ -161,8 +161,11 @@ jobs:
           uv pip install --system -r requirements.txt mypy types-redis
 
       - name: Run mypy
+        # Debt: Agency_OS-9hj5 — 1282 pre-existing type errors across 142 files
+        # surfaced when KEI-222 removed the original blanket || true mask.
+        # Re-mask the mypy gate until the backlog clears — but tracked by a
+        # P2 KEI rather than the previous untracked "initially" comment.
         run: mypy src/ --ignore-missing-imports --no-error-summary || true
-        # Note: Using || true initially as codebase may have type issues to fix
 
   backend-test:
     name: Backend Tests (Pytest)
@@ -228,8 +231,7 @@ jobs:
           uv pip install --system -r requirements.txt pytest pytest-asyncio pytest-cov
 
       - name: Run tests
-        run: pytest tests/ -v --tb=short --cov=src --cov-report=term-missing || true
-        # Note: Using || true initially until test suite is stable
+        run: pytest tests/ -v --tb=short --cov=src --cov-report=term-missing
 
   # ============================================
   # Frontend: Lint, Type Check, Build
@@ -260,10 +262,16 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run ESLint
+        # Debt: Agency_OS-awth — frontend has no ESLint config committed; with
+        # a minimal next/core-web-vitals config, 79 lint errors surface from
+        # pre-existing code. Re-mask the gate behind a tracked KEI rather
+        # than leaving it silent.
         run: pnpm lint || true
 
       - name: Run TypeScript check
-        run: pnpm type-check || true
+        # Frontend type-check is HONEST: tsc --noEmit exits 0 on current main.
+        # No mask needed here — KEI-222 removed the original blanket || true.
+        run: pnpm type-check
 
       - name: Build
         run: pnpm build

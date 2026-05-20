@@ -94,6 +94,17 @@ def clear_replay_flag():
         os.environ["REPLAY_ON_CLAIM_ENABLED"] = prior
 
 
+@pytest.fixture(autouse=True)
+def enforcer_enabled(monkeypatch):
+    """Force enforcer on for these tests regardless of host .env (which may pin
+    ENFORCER_ENABLED=0 / ENFORCER_DETERMINISTIC=0). ENFORCER_DETERMINISTIC is
+    read at module-import time, so we also patch the module-level constant.
+    """
+    monkeypatch.setenv("ENFORCER_ENABLED", "1")
+    monkeypatch.setenv("ENFORCER_DETERMINISTIC", "1")
+    monkeypatch.setattr(central_listener, "ENFORCER_DETERMINISTIC", True)
+
+
 def _run(event: dict) -> None:
     central_listener.run_enforcer(event, event["text"], web=None)
 

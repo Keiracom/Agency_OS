@@ -4,21 +4,9 @@
 
 @.claude/modules/_project_overview.md
 
-@.claude/modules/_law_step0.md
-
 @.claude/modules/_session_start.md
 
 @.claude/modules/_orchestrator.md
-
-@.claude/modules/_law_clean_tree.md
-
-@.claude/modules/_law_architecture_first.md
-
-@.claude/modules/_hierarchy.md
-
-@.claude/modules/_completion_discipline.md
-
-@.claude/modules/_mcp_bridge.md
 
 ## Supabase — Primary Memory Store (LAW IX)
 
@@ -38,12 +26,6 @@ Session END — write daily_log before closing:
 INSERT INTO public.agent_memories (id, callsign, source_type, content, typed_metadata, created_at, valid_from, state)
 VALUES (gen_random_uuid(), '<your_callsign>', 'daily_log', '<summary: what was done, PRs, decisions, blockers>', '{}'::jsonb, NOW(), NOW(), 'confirmed');
 ```
-
-@.claude/modules/_governance_rules.md
-
-@.claude/modules/_dead_references.md
-
-@.claude/modules/_enrichment_path.md
 
 @.claude/modules/_discovery_log.md
 
@@ -98,4 +80,7 @@ bd close <id>         # Complete work
 - NEVER stop before pushing - that leaves work stranded locally
 - NEVER say "ready to push when you are" - YOU must push
 - If push fails, resolve and retry until it succeeds
+
+@.claude/modules/_layered_governance_matrix.md
+
 <!-- END BEADS INTEGRATION -->

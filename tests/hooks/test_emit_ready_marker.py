@@ -32,18 +32,25 @@ def _run_hook(
     callsign: str = "aiden",
     agent_id: str | None = None,
     tg_available: bool = True,
+    nats_available: bool = False,
+    routing_v2: bool = False,
     tmp_path: Path | None = None,
-) -> tuple[int, str, str]:
-    """Run the hook with a fake tg shim. Return (exit, stdout, tg_log)."""
+) -> tuple[int, str, str, str]:
+    """Run the hook with fake tg + optional nats shims. Return (exit, stdout, tg_log, nats_log)."""
     assert tmp_path is not None
     shim_dir = tmp_path / "bin"
     shim_dir.mkdir(parents=True, exist_ok=True)
     tg_log = tmp_path / "tg_invocations.log"
+    nats_log = tmp_path / "nats_invocations.log"
 
     if tg_available:
         tg_shim = shim_dir / "tg"
         tg_shim.write_text(f'#!/usr/bin/env bash\necho "$@" >> "{tg_log}"\nexit 0\n')
         tg_shim.chmod(0o755)
+    if nats_available:
+        nats_shim = shim_dir / "nats"
+        nats_shim.write_text(f'#!/usr/bin/env bash\necho "$@" >> "{nats_log}"\nexit 0\n')
+        nats_shim.chmod(0o755)
 
     env = os.environ.copy()
     env["CALLSIGN"] = callsign
@@ -51,6 +58,10 @@ def _run_hook(
     # Isolate from any real /tmp/.stop_event_payload.json on the host so tests
     # don't see leaked state from prior Stop events.
     env["STOP_EVENT_PAYLOAD_TEMP_PATH"] = str(tmp_path / "stop_payload.json")
+    if routing_v2:
+        env[f"AGENT_ROUTING_{callsign.upper()}"] = "v2"
+    else:
+        env.pop(f"AGENT_ROUTING_{callsign.upper()}", None)
     if agent_id:
         env["CLAUDE_AGENT_ID"] = agent_id
     else:
@@ -64,63 +75,66 @@ def _run_hook(
         env=env,
         timeout=10,
     )
-    log_contents = tg_log.read_text() if tg_log.exists() else ""
-    return proc.returncode, proc.stdout, log_contents
+    tg_contents = tg_log.read_text() if tg_log.exists() else ""
+    nats_contents = nats_log.read_text() if nats_log.exists() else ""
+    return proc.returncode, proc.stdout, tg_contents, nats_contents
 
 
 def test_empty_payload_fail_open(tmp_path: Path) -> None:
-    rc, _stdout, tg_log = _run_hook("", tmp_path=tmp_path)
+    rc, _stdout, tg_log, _nats_log = _run_hook("", tmp_path=tmp_path)
     assert rc == 0
     assert tg_log == ""
 
 
 def test_body_already_has_ready_marker_skips_emit(tmp_path: Path) -> None:
-    payload = json.dumps(
-        {"last_assistant_message": "Standing.\n\n[READY:aiden]"}
-    )
-    rc, _stdout, tg_log = _run_hook(payload, tmp_path=tmp_path)
+    payload = json.dumps({"last_assistant_message": "Standing.\n\n[READY:aiden]"})
+    rc, _stdout, tg_log, _nats_log = _run_hook(payload, tmp_path=tmp_path)
     assert rc == 0
     assert tg_log == ""
 
 
 def test_body_missing_marker_emits(tmp_path: Path) -> None:
-    payload = json.dumps(
-        {"last_assistant_message": "Holding for confirm — no marker here."}
-    )
-    rc, _stdout, tg_log = _run_hook(payload, tmp_path=tmp_path)
+    payload = json.dumps({"last_assistant_message": "Holding for confirm — no marker here."})
+    rc, _stdout, tg_log, _nats_log = _run_hook(payload, tmp_path=tmp_path)
     assert rc == 0
     assert "[READY:aiden]" in tg_log
 
 
 def test_subagent_skips_emit(tmp_path: Path) -> None:
     payload = json.dumps({"last_assistant_message": "Done. No marker."})
-    rc, _stdout, tg_log = _run_hook(
-        payload, agent_id="sub_abc123", tmp_path=tmp_path
-    )
+    rc, _stdout, tg_log, _nats_log = _run_hook(payload, agent_id="sub_abc123", tmp_path=tmp_path)
     assert rc == 0
     assert tg_log == ""
 
 
 def test_tg_missing_fail_open(tmp_path: Path) -> None:
     payload = json.dumps({"last_assistant_message": "Body without marker."})
-    rc, _stdout, _tg_log = _run_hook(
-        payload, tg_available=False, tmp_path=tmp_path
+    rc, _stdout, _tg_log, _nats_log = _run_hook(payload, tg_available=False, tmp_path=tmp_path)
+    assert rc == 0
+
+
+def test_routes_to_nats_when_v2_flag_set(tmp_path: Path) -> None:
+    """KEI-221 (c): with AGENT_ROUTING_AIDEN=v2 and nats present in PATH, the
+    hook must publish to NATS via agent_ready_emit.sh and NOT post to Slack tg."""
+    payload = json.dumps({"last_assistant_message": "Done — no marker."})
+    rc, _stdout, tg_log, nats_log = _run_hook(
+        payload, nats_available=True, routing_v2=True, tmp_path=tmp_path
     )
     assert rc == 0
+    assert "pub keiracom.agent.status.aiden" in nats_log
+    assert tg_log == "", f"tg must NOT be called when v2 routing flag set, got: {tg_log!r}"
 
 
 def test_case_insensitive_dedup(tmp_path: Path) -> None:
     payload = json.dumps({"last_assistant_message": "Wrap. [READY:AIDEN]"})
-    rc, _stdout, tg_log = _run_hook(payload, tmp_path=tmp_path)
+    rc, _stdout, tg_log, _nats_log = _run_hook(payload, tmp_path=tmp_path)
     assert rc == 0
     assert tg_log == ""
 
 
 def test_alt_body_key_message_content(tmp_path: Path) -> None:
-    payload = json.dumps(
-        {"message": {"content": "Reply via alt key. [READY:aiden]"}}
-    )
-    rc, _stdout, tg_log = _run_hook(payload, tmp_path=tmp_path)
+    payload = json.dumps({"message": {"content": "Reply via alt key. [READY:aiden]"}})
+    rc, _stdout, tg_log, _nats_log = _run_hook(payload, tmp_path=tmp_path)
     assert rc == 0
     assert tg_log == ""
 

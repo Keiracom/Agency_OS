@@ -1,0 +1,13 @@
+[Unit]
+Description=Agency OS — Migration apply gate watcher every 10 minutes (KEI-188)
+Documentation=https://linear.app/keiracom/issue/KEI-188
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=10min
+AccuracySec=30s
+Persistent=true
+Unit=migration-apply-watcher.service
+
+[Install]
+WantedBy=timers.target

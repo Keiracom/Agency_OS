@@ -1,13 +1,14 @@
 [Unit]
 Description=Keiracom aiden agent session (KEI-94 keep-alive)
 Documentation=https://linear.app/keiracom/issue/KEI-94
-After=network-online.target
+After=network-online.target openclaw.service
 Wants=network-online.target
+Requires=openclaw.service
 StartLimitBurst=5
 StartLimitIntervalSec=300
 
 [Service]
-Type=simple
+Type=notify
 Environment="CALLSIGN=aiden"
 EnvironmentFile=/home/elliotbot/.config/agency-os/.env
 WorkingDirectory=/home/elliotbot/clawd/Agency_OS-aiden
@@ -15,8 +16,11 @@ WorkingDirectory=/home/elliotbot/clawd/Agency_OS-aiden
 ExecStartPre=-/usr/bin/git -C /home/elliotbot/clawd/Agency_OS-aiden pull origin main --rebase --autostash
 ExecStartPre=-/home/elliotbot/clawd/Agency_OS/.venv/bin/python3 /home/elliotbot/clawd/Agency_OS/scripts/cognee_session_start.py --callsign aiden
 ExecStart=/home/elliotbot/clawd/Agency_OS/scripts/agent_keepalive.sh aiden aiden /home/elliotbot/clawd/Agency_OS-aiden
-ExecStartPost=/home/elliotbot/clawd/Agency_OS/scripts/agent_online_notify.sh AIDEN 15 C0B3QB0K1GQ
+ExecStartPost=-/home/elliotbot/clawd/Agency_OS/scripts/agent_online_notify.sh AIDEN 15 C0B3QB0K1GQ
+ExecStartPost=-/home/elliotbot/clawd/Agency_OS/scripts/agent_failover_notify.sh AIDEN 5
 Restart=always
+WatchdogSec=30s
+NotifyAccess=main
 RestartSec=10
 StandardOutput=append:/home/elliotbot/clawd/logs/aiden-agent.log
 StandardError=append:/home/elliotbot/clawd/logs/aiden-agent.log

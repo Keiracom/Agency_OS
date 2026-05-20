@@ -199,11 +199,42 @@ class BaseIndexer(ABC, Generic[R]):
         success = 0
         failed = 0
         for row in rows:
-            if post_object(self.build_object(row)):
+            obj = self.build_object(row)
+            if not _has_valid_raw_text(obj):
+                # KEI-103 / Agency_OS-ljz5: NULL or empty raw_text downstream
+                # crashes llama-index TextNode validation in retrieve_with_outcome,
+                # masking a 5-node ANN hit as a zero-hit miss. Belt-and-suspenders
+                # complement to Scout's PR #992 submit_discovery writer-side guard:
+                # this drops any indexer-produced object that would orphan in
+                # Weaviate. No POST occurs.
+                logger.warning(
+                    "indexer=%s skipping POST: id=%s has empty/NULL raw_text",
+                    self.source_name,
+                    obj.get("id"),
+                )
+                failed += 1
+                continue
+            if post_object(obj):
                 success += 1
             else:
                 failed += 1
         return BatchOutcome(selected=len(rows), success=success, failed=failed)
+
+
+def _has_valid_raw_text(obj: dict) -> bool:
+    """Return True if obj is safe to POST given the retrieval-orchestrator
+    contract (src/retrieval/weaviate_store.py WEAVIATE_TEXT_KEY = "raw_text").
+
+    No-op for indexers that don't write raw_text (drive_strategic uses
+    `content`, tool_call_log uses other fields) — their target classes are
+    not queried via the raw_text retrieval path.
+    """
+    props = obj.get("properties") or {}
+    if "raw_text" not in props:
+        # Indexer's class isn't on the raw_text retrieval contract — pass.
+        return True
+    rt = props["raw_text"]
+    return isinstance(rt, str) and bool(rt.strip())
 
 
 # ─── Shared DB-indexer runtime (KEI-109 dedup extraction) ────────────────────
@@ -259,7 +290,12 @@ def run_db_indexer(
     signal.signal(signal.SIGTERM, _on_signal)
     signal.signal(signal.SIGINT, _on_signal)
 
-    with psycopg.connect(resolve_pg_dsn(), autocommit=True) as conn:
+    # prepare_threshold=None per reference_psycopg_supabase_pgbouncer (KEI-54B
+    # PR #881): Supabase pooler is pgbouncer txn-mode and drops PREPARE between
+    # leases. Without this, psycopg3 auto-prepares after 5 executions and the
+    # next batch hits DuplicatePreparedStatement → InvalidSqlStatementName loop
+    # (root cause of KEI-70st — 20h stuck error stream after first ~200 rows).
+    with psycopg.connect(resolve_pg_dsn(), autocommit=True, prepare_threshold=None) as conn:
         indexer = indexer_factory(conn)
         target_class = indexer.target_class
         logger.info(

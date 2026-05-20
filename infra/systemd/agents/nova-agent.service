@@ -1,0 +1,37 @@
+[Unit]
+Description=Keiracom nova agent session (KEI-185 Nova spawn)
+Documentation=https://linear.app/keiracom/issue/KEI-185
+After=network-online.target openclaw.service
+Wants=network-online.target
+Requires=openclaw.service
+StartLimitBurst=5
+StartLimitIntervalSec=300
+
+[Service]
+Type=notify
+Environment="CALLSIGN=nova"
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS-nova
+# KEI-140 ExecStartPre — both fail-open via '-' prefix:
+# (a) rebase the worktree onto origin/main so each restart picks up the latest
+#     code. --autostash handles dirty trees; on conflict, git logs and exits
+#     non-zero — '-' makes systemd treat that as success so the keepalive
+#     still starts (Gate 4 outcome counter on the agent will eventually flag
+#     the missing pulls).
+# (b) hydrate /tmp/cognee-context-<callsign>.md from recent Cognee memory so
+#     the fresh claude session has Phase 0 context before its first turn.
+#     Empty/missing stub OK — script handles fail-open per its own contract.
+ExecStartPre=-/usr/bin/git -C /home/elliotbot/clawd/Agency_OS-nova pull origin main --rebase --autostash
+ExecStartPre=-/home/elliotbot/clawd/Agency_OS/.venv/bin/python3 /home/elliotbot/clawd/Agency_OS/scripts/cognee_session_start.py --callsign nova
+ExecStart=/home/elliotbot/clawd/Agency_OS/scripts/agent_keepalive.sh nova nova /home/elliotbot/clawd/Agency_OS-nova
+ExecStartPost=/home/elliotbot/clawd/Agency_OS/scripts/agent_online_notify.sh NOVA 15 C0B3QB0K1GQ
+ExecStartPost=-/home/elliotbot/clawd/Agency_OS/scripts/agent_failover_notify.sh NOVA 5
+Restart=always
+WatchdogSec=30s
+NotifyAccess=main
+RestartSec=10
+StandardOutput=append:/home/elliotbot/clawd/logs/nova-agent.log
+StandardError=append:/home/elliotbot/clawd/logs/nova-agent.log
+
+[Install]
+WantedBy=default.target

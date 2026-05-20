@@ -230,9 +230,51 @@ def _agent_type_from_env() -> str:
     }.get(cs, "build-2")
 
 
+_LINEAR_WRITE_RE = re.compile(
+    r"api\.linear\.app", re.IGNORECASE,
+)
+_LINEAR_MUTATION_RE = re.compile(
+    r"mutation\b[\s\S]{0,400}?\bissue(Update|Create|Archive|Delete|BatchUpdate|"
+    r"AddLabel|RemoveLabel|SetParent)\b",
+    re.IGNORECASE,
+)
+
+
+def _is_linear_write(hook_input: dict) -> bool:
+    """True if the tool call would POST a write mutation to Linear.
+
+    Ratified LAW 2026-05-20: Linear is read-only for all agents and automated
+    processes. Linear READS (GraphQL `query`) are fine — only `mutation` calls
+    against api.linear.app that touch an issue are blocked.
+    """
+    ti = hook_input.get("tool_input") or {}
+    # Bash command, or any string-valued tool param, gets scanned.
+    blob = ti.get("command") if isinstance(ti.get("command"), str) else ""
+    if not blob:
+        for v in ti.values():
+            if isinstance(v, str):
+                blob += "\n" + v
+    if not blob or not _LINEAR_WRITE_RE.search(blob):
+        return False
+    return bool(_LINEAR_MUTATION_RE.search(blob))
+
+
 def decide(hook_input: dict) -> tuple[int, str]:
     """Return (exit_code, message). exit_code=0 allows; 2 blocks."""
     tool_name = hook_input.get("tool_name") or ""
+
+    # LAW — LINEAR READ-ONLY (ratified 2026-05-20). Blocks any tool call that
+    # would POST a write mutation to Linear. Runs first — no agent or process
+    # may write Linear regardless of Step 0 / sandbox state.
+    if _is_linear_write(hook_input):
+        return (
+            2,
+            "LINEAR-WRITE violation — Linear is read-only per ratified LAW "
+            "2026-05-20. No agent or automated process may write Linear. "
+            "Status changes go to Supabase; a controlled one-way push carries "
+            "them to Linear. See docs/governance/CONSOLIDATED_RULES.md "
+            "§LAW — LINEAR IS READ-ONLY.",
+        )
 
     # GOV-12 sandbox check (P6 wire-up). Runs BEFORE the Step 0 check so
     # an off-allowlist tool is rejected even when Step 0 is satisfied.

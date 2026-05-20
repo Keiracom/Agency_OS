@@ -78,19 +78,29 @@ def _has_credentials() -> bool:
 
 
 async def _search(query: str, org_id: str, app_id: str, agent_id: str | None):
-    """Call src.cognee.client.search. Any failure logs + returns []."""
+    """HTTP-based Cognee search (replaces SDK to avoid ladybug lock conflict).
+
+    The cognee.service holds an exclusive lock on the graph DB file; the
+    in-process SDK from a separate script can't open it. Route through the
+    running server's HTTP API instead. Same fail-open contract.
+    """
     try:
-        from src.cognee.client import search
+        import sys as _sys
+
+        _sys.path.insert(0, "/home/elliotbot/clawd/Agency_OS/scripts")
+        from cognee_http_client import search as http_search
     except ImportError as exc:
-        logger.warning("cognee.client import failed: %s", exc)
+        logger.debug("cognee_http_client import failed: %s", exc)
         return []
     try:
-        kwargs: dict = {"org_id": org_id, "app_id": app_id}
-        if agent_id:
-            kwargs["agent_id"] = agent_id
-        result = await search(query, **kwargs)
-        return result or []
-    except Exception as exc:  # noqa: BLE001 — fail-open by contract
+        result = http_search(query, top_k=5, search_type="GRAPH_COMPLETION")
+        if isinstance(result, list):
+            return result
+        if isinstance(result, dict) and result.get("error"):
+            logger.warning("cognee http search err: %s", result.get("error"))
+            return []
+        return [result] if result else []
+    except Exception as exc:  # noqa: BLE001 — fail-open
         logger.warning("cognee.search failed: %s", exc)
         return []
 

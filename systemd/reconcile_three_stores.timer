@@ -1,0 +1,13 @@
+[Unit]
+Description=Agency_OS — 3-store reconciler every 30 min (KEI-230)
+Documentation=https://linear.app/keiracom/issue/KEI-230
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=30min
+RandomizedDelaySec=120
+Persistent=true
+Unit=reconcile_three_stores.service
+
+[Install]
+WantedBy=timers.target

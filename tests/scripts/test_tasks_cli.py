@@ -133,6 +133,44 @@ def test_ready_emits_json(mod, patch_connect, capsys) -> None:
     assert data[0]["priority"] == 1
 
 
+def test_ready_human_output_handles_null_priority(mod, patch_connect, capsys) -> None:
+    """bd ready must not crash when a row has priority=None (Postgres NULL).
+
+    Pre-fix: tasks_cli.py:298 raised
+        TypeError: unsupported format string passed to NoneType.__format__
+    on `print(f"  P{r['priority']:>1}  ...")`. Coerce None → 'X' + warn
+    so the row stays visible.
+    """
+    cur = _Cursor(
+        fetchall_rows=[
+            ("KEI-TEST", "smoke", None, "available", None, None, None, None, "url", None, None),
+        ],
+        description=[
+            ("id",),
+            ("title",),
+            ("priority",),
+            ("status",),
+            ("claimed_by",),
+            ("claimed_at",),
+            ("dependencies",),
+            ("tags",),
+            ("linear_url",),
+            ("created_at",),
+            ("updated_at",),
+        ],
+    )
+    patch_connect(cur)
+    rc = mod.main(["ready"])
+    assert rc == 0
+    captured = capsys.readouterr()
+    assert "PX" in captured.out, f"Expected 'PX' marker in stdout, got: {captured.out!r}"
+    assert "KEI-TEST" in captured.out
+    assert "NULL priority" in captured.err, (
+        f"Expected NULL-priority warning in stderr, got: {captured.err!r}"
+    )
+    assert "KEI-TEST" in captured.err
+
+
 def test_ready_clamps_limit_argument(mod, patch_connect, monkeypatch) -> None:
     monkeypatch.setattr(mod, "_current_phase_max", lambda _cur: 0.0)
     cur = _Cursor(fetchall_rows=[], description=[("id",)])
@@ -275,7 +313,8 @@ def test_claim_targeted_id(mod, patch_connect, capsys, monkeypatch) -> None:
     assert out["id"] == "KEI-39"
     assert out["claimed_by"] == "scout"
     update = _find_executed(cur, lambda s: "UPDATE public.tasks" in s and "claimed_by" in s)
-    assert update is not None and update[1] == ("scout", "KEI-39", "scout")
+    # KEI-227: WHERE (id = %s OR bd_id = %s) — args.id passed twice for the OR clause.
+    assert update is not None and update[1] == ("scout", "KEI-39", "KEI-39", "scout")
 
 
 def test_claim_next_available_uses_skip_locked(mod, patch_connect, monkeypatch) -> None:
@@ -599,7 +638,8 @@ def test_complete_force_mode_passes_force_sentinel(mod, patch_connect, monkeypat
     patch_connect(cur)
     mod.main(["complete", "KEI-39", "--force-mode", "force"])
     update = _find_executed(cur, lambda s: "UPDATE public.tasks" in s and "status = 'done'" in s)
-    assert update is not None and update[1] == ("KEI-39", "scout", "force")
+    # KEI-227: WHERE (id = %s OR bd_id = %s) — task_id passed twice for the OR clause.
+    assert update is not None and update[1] == ("KEI-39", "KEI-39", "scout", "force")
 
 
 # ─── KEI-105: heartbeat command ─────────────────────────────────────────────
@@ -619,7 +659,8 @@ def test_heartbeat_updates_when_claimed_by_caller(mod, patch_connect, capsys, mo
         cur, lambda s: "heartbeat_at = NOW()" in s and "UPDATE public.tasks" in s
     )
     assert update is not None
-    assert update[1] == ("KEI-39", "scout")
+    # KEI-227: WHERE (id = %s OR bd_id = %s) — args.id passed twice for the OR clause.
+    assert update[1] == ("KEI-39", "KEI-39", "scout")
 
 
 def test_heartbeat_returns_null_when_not_claimed_by_caller(

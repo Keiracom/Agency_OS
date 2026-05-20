@@ -1,0 +1,16 @@
+[Unit]
+Description=Agency OS — Governance Freshness Probe (KEI Agency_OS-cd36)
+After=network-online.target cognee.service nats-server.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+ExecStart=/home/elliotbot/clawd/Agency_OS/.venv/bin/python3 /home/elliotbot/clawd/Agency_OS/scripts/orchestrator/governance_freshness_probe.py
+StandardOutput=append:/home/elliotbot/clawd/logs/governance-freshness-probe.log
+StandardError=append:/home/elliotbot/clawd/logs/governance-freshness-probe.log
+TimeoutStartSec=600
+
+[Install]
+WantedBy=default.target

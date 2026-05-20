@@ -1,0 +1,19 @@
+[Unit]
+Description=KEI-136 claim-queue metrics → Better Stack heartbeat (oneshot)
+Documentation=https://linear.app/keiracom/issue/KEI-136
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=%h/.config/agency-os/.env
+WorkingDirectory=%h/clawd/Agency_OS
+ExecStart=/usr/bin/python3 %h/clawd/Agency_OS/scripts/orchestrator/claim_queue_metrics_export.py
+Nice=10
+StandardOutput=journal
+StandardError=journal
+TimeoutStartSec=60
+# Don't restart on failure — timer triggers next run; missing heartbeats are the alert signal
+
+[Install]
+WantedBy=default.target

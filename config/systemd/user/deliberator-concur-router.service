@@ -1,0 +1,18 @@
+[Unit]
+Description=Agency OS — Deliberator concur router (auto-dispatches round-2 concur on divergence)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+ExecStart=/home/elliotbot/clawd/Agency_OS/.venv/bin/python3 /home/elliotbot/clawd/Agency_OS/scripts/orchestrator/deliberator_concur_router.py --daemon 30
+Restart=on-failure
+RestartSec=10
+StandardOutput=append:/home/elliotbot/clawd/logs/deliberator-concur-router.log
+StandardError=append:/home/elliotbot/clawd/logs/deliberator-concur-router.log
+MemoryMax=64M
+
+[Install]
+WantedBy=default.target

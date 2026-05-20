@@ -26,12 +26,17 @@ import json
 import logging
 import os
 import subprocess
+import sys
 import time
+from pathlib import Path
 from urllib import error as urlerror
 from urllib import request as urlrequest
 
 # KEI-91 Gate 4 heartbeat tick via shared shim.
 from _heartbeat_shim import heartbeat_tick as _heartbeat_tick  # noqa: E402
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from src.governance.ceo_memory_writer import upsert_ceo_memory_key  # noqa: E402
 
 logger = logging.getLogger("completion_sync_worker")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -88,19 +93,13 @@ def _sink_linear(task_id: str, target_status: str) -> None:
         raise SinkError(f"linear rejected: {payload.get('errors') or payload}")
 
 
-def _sink_ceo_memory(conn, task_id: str, target_status: str) -> None:
-    with conn.cursor() as cur:
-        cur.execute(
-            """
-            INSERT INTO public.ceo_memory (key, value, updated_at)
-            VALUES (%s, %s::jsonb, NOW())
-            ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value, updated_at=NOW()
-            """,
-            (
-                f"completion:{task_id}",
-                json.dumps({"task_id": task_id, "status": target_status, "via": "kei74"}),
-            ),
-        )
+def _sink_ceo_memory(task_id: str, target_status: str) -> None:
+    callsign = os.environ.get("CALLSIGN", "system")
+    upsert_ceo_memory_key(
+        callsign,
+        f"completion:{task_id}",
+        {"task_id": task_id, "status": target_status, "via": "kei74"},
+    )
 
 
 def _sink_drive_manual(task_id: str) -> None:
@@ -145,7 +144,7 @@ def _process_row(conn, row) -> bool:
         if row["target_sink"] == "linear":
             _sink_linear(row["task_id"], row["target_status"])
         elif row["target_sink"] == "ceo_memory":
-            _sink_ceo_memory(conn, row["task_id"], row["target_status"])
+            _sink_ceo_memory(row["task_id"], row["target_status"])
         elif row["target_sink"] == "drive_manual":
             _sink_drive_manual(row["task_id"])
         else:

@@ -1,0 +1,18 @@
+[Unit]
+Description=Agency_OS — 3-store reconciler (Linear ↔ Postgres ↔ bd-Dolt) KEI-230
+Documentation=https://linear.app/keiracom/issue/KEI-230
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=%h/.config/agency-os/.env
+WorkingDirectory=%h/clawd/Agency_OS
+ExecStart=%h/clawd/Agency_OS/.venv/bin/python3 %h/clawd/Agency_OS/scripts/reconcile_three_stores.py --apply
+Nice=10
+StandardOutput=journal
+StandardError=journal
+TimeoutStartSec=300
+
+[Install]
+WantedBy=default.target

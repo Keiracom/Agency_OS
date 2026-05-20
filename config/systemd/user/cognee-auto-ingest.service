@@ -1,0 +1,18 @@
+[Unit]
+Description=Agency OS — Cognee auto-ingest watcher (re-ingests governance files on change)
+After=network-online.target cognee.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+ExecStart=/home/elliotbot/clawd/Agency_OS/.venv/bin/python3 /home/elliotbot/clawd/Agency_OS/scripts/cognee_auto_ingest.py --watch
+Restart=on-failure
+RestartSec=10
+StandardOutput=append:/home/elliotbot/clawd/logs/cognee-auto-ingest.log
+StandardError=append:/home/elliotbot/clawd/logs/cognee-auto-ingest.log
+MemoryMax=128M
+
+[Install]
+WantedBy=default.target

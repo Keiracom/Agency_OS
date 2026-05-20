@@ -37,7 +37,8 @@ logger = logging.getLogger("auto_session_recovery")
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 # Canonical callsign → tmux session name map. Mirrors CALLSIGN_TO_TMUX in
-# elliot_polling_loop.py:111 (elliot+max use -bot suffix; clones + aiden bare).
+# elliot_polling_loop.py (elliot+max use -bot suffix; clones + aiden bare).
+# KEI-69 — nova added so session recovery covers all 7 fleet sessions.
 CALLSIGN_TO_TMUX: dict[str, str] = {
     "elliot": "elliottbot",
     "aiden": "aiden",
@@ -45,6 +46,7 @@ CALLSIGN_TO_TMUX: dict[str, str] = {
     "atlas": "atlas",
     "orion": "orion",
     "scout": "scout",
+    "nova": "nova",
 }
 
 # Per-callsign worktree paths. elliot → main; others → -<callsign> suffix.
@@ -56,6 +58,7 @@ CALLSIGN_TO_WORKTREE: dict[str, str] = {
     "atlas": f"{_WORKTREE_ROOT}/Agency_OS-atlas",
     "orion": f"{_WORKTREE_ROOT}/Agency_OS-orion",
     "scout": f"{_WORKTREE_ROOT}/Agency_OS-scout",
+    "nova": f"{_WORKTREE_ROOT}/Agency_OS-nova",
 }
 
 CLAUDE_PROJECTS_ROOT = Path.home() / ".claude" / "projects"

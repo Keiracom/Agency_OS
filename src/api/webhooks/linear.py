@@ -76,7 +76,9 @@ LINEAR_STATE_TO_TASK_STATUS: dict[str, str] = {
     "triage": "available",
     "started": "active",
     "completed": "done",
-    "canceled": "cancelled",
+    # KEI-235-followup: tasks_status_check rejects 'cancelled' — Linear canceled
+    # maps to Postgres 'dismissed' (matches the constraint's allowed values).
+    "canceled": "dismissed",
 }
 
 _BD_WRAPPER = "/home/elliotbot/clawd/Agency_OS/scripts/linear_to_bd.py"
@@ -86,6 +88,10 @@ _BD_WRAPPER = "/home/elliotbot/clawd/Agency_OS/scripts/linear_to_bd.py"
 # Valid: title has NO prefix ("Relay watcher") or prefix matches identifier ("KEI-83 Relay watcher").
 # Invalid: title="KEI-99 Relay watcher" but identifier="KEI-83" → 400.
 _KEI_PREFIX_RE = re.compile(r"^KEI-(\d+)\b", re.IGNORECASE)
+
+# KEI-183: extract [CALLSIGN] prefix from title (e.g. "[ELLIOT] feat: ...").
+# Captured group 1 is the callsign (uppercase); normalise to lowercase for persona column.
+_CALLSIGN_PREFIX_RE = re.compile(r"^\[([A-Z]+)\]")
 
 
 def _python_bin() -> str:
@@ -120,7 +126,9 @@ def _normalise_event(payload: dict[str, Any]) -> dict[str, Any] | None:
         "type": "Issue" | "Comment" | "IssueRelation",
         "data": { "id": "...", "identifier": "KEI-NN", "title": "...",
                    "priority": 0..4, "state": {"name": "...", "type": "..."},
-                   "url": "https://linear.app/...", ... },
+                   "url": "https://linear.app/...",
+                   "actor": { "id": "<uuid>", ... },
+                   ... },
         "createdAt": "...",
       }
     """
@@ -136,6 +144,24 @@ def _normalise_event(payload: dict[str, Any]) -> dict[str, Any] | None:
     identifier = data.get("identifier")
     if not identifier:
         return None
+
+    # KEI-238 — defence-in-depth against the loop pattern that downgraded
+    # 59 KEIs on 2026-05-19. When the orchestrator's own `issueUpdate`
+    # calls echo back via webhook, the `data.actor.id` matches LINEAR_VIEWER_ID
+    # (the API key's user id). Skip status-changes from our own writes —
+    # they would re-emit sync_events and risk loops if KEI-236's mirror-lock
+    # were ever weakened. `create` and `remove` actions still propagate
+    # (those are intentional Dave actions even if API-driven).
+    if action == "update":
+        actor_id = (data.get("actor") or {}).get("id") or ""
+        viewer_id = os.environ.get("LINEAR_VIEWER_ID", "")
+        if viewer_id and actor_id == viewer_id:
+            logger.info(
+                "ignored_self_echo: identifier=%s actor=%s — skipping webhook handler",
+                identifier,
+                actor_id,
+            )
+            return None
 
     # KEI-100 title-guard: if title starts with KEI-N prefix, it must match identifier.
     # This catches mis-routed creates (e.g. Auto-KEI inserted a Supabase row with a
@@ -234,21 +260,28 @@ def _dispatch_to_tasks(event: dict[str, Any]) -> None:
 
         with psycopg.connect(dsn, connect_timeout=10) as conn, conn.cursor() as cur:
             if op == "create":
+                # KEI-183: extract persona from [CALLSIGN] title prefix (lowercase).
+                # e.g. "[ELLIOT] feat: ..." → persona = "elliot". No prefix → NULL.
+                title_str = event.get("title") or "(no title)"
+                _persona_match = _CALLSIGN_PREFIX_RE.match(title_str)
+                persona = _persona_match.group(1).lower() if _persona_match else None
                 cur.execute(
                     """
-                    INSERT INTO public.tasks (id, title, priority, status, linear_url, created_at, updated_at)
-                    VALUES (%s, %s, %s, 'available', %s, NOW(), NOW())
+                    INSERT INTO public.tasks (id, title, priority, status, linear_url, persona, created_at, updated_at)
+                    VALUES (%s, %s, %s, 'available', %s, %s, NOW(), NOW())
                     ON CONFLICT (id) DO UPDATE
                        SET title = EXCLUDED.title,
                            priority = EXCLUDED.priority,
                            linear_url = EXCLUDED.linear_url,
+                           persona = EXCLUDED.persona,
                            updated_at = NOW()
                     """,
                     (
                         identifier,
-                        event.get("title") or "(no title)",
+                        title_str,
                         LINEAR_TO_TASKS_PRIORITY.get(event.get("priority", 0), 3),
                         url,
+                        persona,
                     ),
                 )
             elif op == "status":
@@ -353,10 +386,55 @@ async def receive_linear_webhook(request: Request) -> dict[str, str]:
         return {"status": "ignored"}
     _dispatch_to_bd(event)
     _dispatch_to_tasks(event)  # KEI-22 — Supabase tasks SSOT (parallel to bd during transition)
+    _emit_sync_event_linear(event)  # KEI-228 — origin-tagged event for K3 orchestrator
     _dispatch_to_indexing_queue("linear", payload)  # KEI-61 — durable staging buffer
     # Successful HMAC-pass + UPDATE-applied — the canonical outcome event.
     _heartbeat_tick("linear-webhook-handler", outcome_increment=1, status="ok")
     return {"status": "ok", "op": event["op"], "identifier": event["identifier"]}
+
+
+# KEI-228: map normalised webhook ops to sync_events.event_type. Coexists with
+# the legacy `_dispatch_to_*` paths during K2→K3 transition; once K3 lands the
+# old dispatchers can be removed and the K3 orchestrator becomes the sole
+# fan-out path (draining sync_events).
+_LINEAR_OP_TO_EVENT_TYPE: dict[str, str] = {
+    "create": "create",
+    "status": "update",  # narrowed below via task_status
+    "remove": "close",
+}
+
+
+def _emit_sync_event_linear(event: dict[str, Any]) -> None:
+    """Insert into public.sync_events with origin='linear'. Fail-open.
+
+    The K3 sync_orchestrator (next PR) drains these and dispatches to the
+    OTHER two stores (postgres + bd). Origin tag prevents loop-back to
+    Linear when the destination writes propagate.
+    """
+    op = event.get("op")
+    identifier = event.get("identifier")
+    if not (op and identifier):
+        return
+    dsn = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL", "")
+    if not dsn:
+        logger.warning("sync_events emit skipped: DATABASE_URL/SUPABASE_DB_URL unset")
+        return
+    dsn = dsn.replace("postgresql+asyncpg://", "postgresql://", 1)
+    event_type = _LINEAR_OP_TO_EVENT_TYPE.get(op, "update")
+    # status op with task_status=done → close; reopen detection deferred to K3.
+    if op == "status" and event.get("task_status") == "done":
+        event_type = "close"
+    try:
+        import psycopg
+
+        with psycopg.connect(dsn, connect_timeout=10) as conn, conn.cursor() as cur:
+            cur.execute(
+                "SELECT public.fn_emit_sync_event(%s, %s, %s, %s, %s::jsonb)",
+                ("linear", event_type, identifier, None, json.dumps(event)),
+            )
+            conn.commit()
+    except Exception as exc:  # noqa: BLE001 — fail-open per webhook discipline
+        logger.warning("sync_events emit failed for %s: %s", identifier, exc)
 
 
 def _dispatch_to_indexing_queue(source: str, raw_payload: dict[str, Any]) -> None:

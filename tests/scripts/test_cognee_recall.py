@@ -1,6 +1,6 @@
 """tests for scripts/cognee_recall.py — KEI-7 dispatch enrichment wrapper.
 
-Mocks `src.cognee.client.search` via the injectable search_fn parameter on
+Mocks `cognee_http_client.search` via the injectable search_fn parameter on
 enrich_dispatch (production routes through asyncio.run + import).
 """
 
@@ -180,3 +180,47 @@ def test_main_search_raises_passes_through_via_top_level_except(
     captured = capsys.readouterr()
     assert rc == 0
     assert captured.out == "original"
+
+
+def test_cognee_client_import_failure_logs_at_debug_not_warning(
+    recall_mod, monkeypatch, caplog
+) -> None:
+    """Agency_OS-3uj7: when cognee_http_client is absent (e.g. wrapper venv
+    missing the optional dep), the import-failure path must log at DEBUG, not
+    WARNING. Cognee is fail-open by contract; emitting WARNING on every
+    `bd claim` invocation creates stderr noise that clutters session-start
+    output.
+
+    Module reference updated on rebase: the underlying client was renamed from
+    src.cognee.client → cognee_http_client during the Cognee HTTP-route
+    migration. The DEBUG-level intent applies equally to the new name; the
+    test patches the new symbol.
+    """
+    import logging
+
+    monkeypatch.setenv("LLM_API_KEY", "test-key")
+
+    real_import = (
+        __builtins__["__import__"] if isinstance(__builtins__, dict) else __builtins__.__import__
+    )
+
+    def fail_cognee_client(name, globals=None, locals=None, fromlist=(), level=0):
+        if name == "cognee_http_client":
+            raise ImportError("No module named cognee_http_client")
+        return real_import(name, globals, locals, fromlist, level)
+
+    monkeypatch.setitem(sys.modules, "cognee_http_client", None)
+    monkeypatch.setattr("builtins.__import__", fail_cognee_client)
+    monkeypatch.delitem(sys.modules, "cognee_http_client", raising=False)
+
+    caplog.set_level(logging.DEBUG, logger="cognee_recall")
+    out = recall_mod.enrich_dispatch("original brief")
+
+    assert out == "original brief"
+    import_failure_records = [
+        r for r in caplog.records if "cognee_http_client import failed" in r.getMessage()
+    ]
+    assert import_failure_records, "expected one DEBUG log for cognee_http_client import failure"
+    assert all(r.levelno == logging.DEBUG for r in import_failure_records), (
+        f"expected DEBUG, got levels {[r.levelname for r in import_failure_records]}"
+    )

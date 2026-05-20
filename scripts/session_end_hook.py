@@ -44,6 +44,9 @@ import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from src.governance.ceo_memory_writer import upsert_ceo_memory_key  # noqa: E402
+
 logging.basicConfig(
     level=logging.INFO,
     format="[session-end-hook] %(levelname)s: %(message)s",
@@ -178,38 +181,34 @@ def write_memory(summary: dict) -> dict:
     """Write to ceo_memory + public.agent_memories. Returns counts."""
     out = {"ceo_memory_upserted": False, "daily_log_written": False}
     dsn = _supabase_dsn()
+    callsign = os.environ.get("CALLSIGN", "elliot")
+
+    # --- ceo_memory: use the KEI-87 canonical wrapper (psycopg, sync) ---
+    key = f"ceo:session_end_{datetime.now(UTC).date().isoformat()}_{callsign}"
+    try:
+        upsert_ceo_memory_key(callsign, key, summary)
+        out["ceo_memory_upserted"] = True
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("ceo_memory write failed (non-fatal): %s", exc)
+
     if not dsn:
         return out
 
+    # --- agent_memories: asyncpg (no wrapper for this table) ---
     try:
-        # Use psycopg2 if asyncpg/asyncio inside a hook runtime is dicey;
-        # but asyncpg with asyncio.run is fine — keep one path.
         import asyncio
 
         import asyncpg
 
-        async def _go():
+        content = (
+            f"Session ended ({summary.get('reason')}). "
+            f"MANUAL mirror: changed={summary['manual_mirror'].get('changed')}, "
+            f"invoked={summary['manual_mirror'].get('mirror_invoked')}."
+        )
+
+        async def _write_daily_log() -> None:
             conn = await asyncpg.connect(dsn, statement_cache_size=0)
             try:
-                key = f"ceo:session_end_{datetime.now(UTC).date().isoformat()}_{os.environ.get('CALLSIGN', 'unknown')}"
-                await conn.execute(
-                    """
-                    INSERT INTO ceo_memory (key, value, updated_at)
-                    VALUES ($1, $2::jsonb, NOW())
-                    ON CONFLICT (key) DO UPDATE
-                      SET value = EXCLUDED.value, updated_at = NOW()
-                    """,
-                    key,
-                    json.dumps(summary),
-                )
-                out["ceo_memory_upserted"] = True
-
-                content = (
-                    f"Session ended ({summary.get('reason')}). "
-                    f"MANUAL mirror: changed={summary['manual_mirror'].get('changed')}, "
-                    f"invoked={summary['manual_mirror'].get('mirror_invoked')}."
-                )
-                callsign = os.environ.get("CALLSIGN", "elliot")
                 await conn.execute(
                     """
                     INSERT INTO public.agent_memories
@@ -222,13 +221,13 @@ def write_memory(summary: dict) -> dict:
                     content,
                     json.dumps(summary),
                 )
-                out["daily_log_written"] = True
             finally:
                 await conn.close()
 
-        asyncio.run(_go())
+        asyncio.run(_write_daily_log())
+        out["daily_log_written"] = True
     except Exception as exc:  # noqa: BLE001
-        logger.warning("memory writes failed (non-fatal): %s", exc)
+        logger.warning("daily_log write failed (non-fatal): %s", exc)
     return out
 
 

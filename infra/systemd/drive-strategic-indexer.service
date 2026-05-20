@@ -1,0 +1,19 @@
+[Unit]
+Description=Agency OS — Drive strategic docs → Weaviate StrategicDocuments indexer (KEI Agency_OS-3nwh)
+After=network-online.target weaviate.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+Environment=PYTHONPATH=/home/elliotbot/clawd/Agency_OS/scripts/orchestrator
+ExecStart=/home/elliotbot/clawd/Agency_OS/.venv/bin/python3 /home/elliotbot/clawd/Agency_OS/scripts/orchestrator/drive_strategic_indexer.py --once
+StandardOutput=append:/home/elliotbot/clawd/logs/drive-strategic-indexer.log
+StandardError=append:/home/elliotbot/clawd/logs/drive-strategic-indexer.log
+TimeoutStartSec=600
+MemoryMax=512M
+MemoryHigh=400M
+
+[Install]
+WantedBy=default.target

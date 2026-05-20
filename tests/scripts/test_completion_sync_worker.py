@@ -70,7 +70,11 @@ def test_due_now_respects_backoff_ladder():
     assert csw._due_now(_row(attempts=1, last_attempt_at=long_ago)) is True
 
 
-def test_process_row_ceo_memory_marks_processed():
+def test_process_row_ceo_memory_marks_processed(monkeypatch):
+    # Mock the ceo_memory wrapper — _sink_ceo_memory → upsert_ceo_memory_key
+    # opens a real psycopg connection (post-#1098 migration). Without this
+    # the test hits a live DB; sibling tests mock the sink the same way.
+    monkeypatch.setattr(csw, "upsert_ceo_memory_key", lambda *a, **k: None)
     conn = _FakeConn()
     ok = csw._process_row(conn, _row(target_sink="ceo_memory"))
     assert ok is True

@@ -1,0 +1,19 @@
+[Unit]
+Description=Agency OS — Elliot Slack Socket-mode listener (#ceo only, Dave directive 2026-05-19)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+Environment=CALLSIGN=elliot
+Environment=SLACK_LISTENER_CHANNELS=C0B2PM3TV0B
+ExecStart=/home/elliotbot/clawd/Agency_OS/.venv/bin/python3 /home/elliotbot/clawd/Agency_OS/scripts/elliot_socket_listener.py
+Restart=on-failure
+RestartSec=5
+StandardOutput=append:/home/elliotbot/clawd/logs/elliot-slack-listener.log
+StandardError=append:/home/elliotbot/clawd/logs/elliot-slack-listener.log
+
+[Install]
+WantedBy=default.target

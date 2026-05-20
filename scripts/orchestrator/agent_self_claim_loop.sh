@@ -42,6 +42,9 @@ CALLSIGN="${CALLSIGN_ARG:-${CALLSIGN:-}}"
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 # ASSIGN_PATH override lets tests inject a stub self_assign_on_ready.py.
 ASSIGN="${ASSIGN_PATH:-$REPO_ROOT/scripts/orchestrator/self_assign_on_ready.py}"
+# READY_EMIT routes [READY:] via NATS or Slack per AGENT_ROUTING_<CALLSIGN_UPPER>=v2.
+# KEI-221 (c): override READY_EMIT in tests; prod path is the helper at scripts/.
+READY_EMIT="${READY_EMIT:-$REPO_ROOT/scripts/agent_ready_emit.sh}"
 TG_BIN="$(command -v tg || true)"
 READY_POSTED=0
 DEGRADED_POSTED=0
@@ -59,8 +62,8 @@ while true; do
       DEGRADED_STREAK=0
       ;;
     no_eligible_work)
-      if [[ "$READY_POSTED" = "0" && -n "$TG_BIN" ]]; then
-        CALLSIGN="$CALLSIGN" "$TG_BIN" "[READY:$CALLSIGN]" >/dev/null 2>&1 || true
+      if [[ "$READY_POSTED" = "0" && -x "$READY_EMIT" ]]; then
+        bash "$READY_EMIT" "$CALLSIGN" >/dev/null 2>&1 || true
         READY_POSTED=1
       fi
       DEGRADED_STREAK=0
@@ -75,5 +78,12 @@ while true; do
     race_lost_all|invalid_callsign|*)
       ;;
   esac
+  # Poll-driven next-work prompter (Dave directive 2026-05-20): every cycle,
+  # check if this agent is idle with work waiting and inject the next task.
+  # Closes the gap where stop-hook-only prompting misses already-idle agents.
+  # --poll-mode enforces an idle-pane check so active work is never interrupted.
+  # Fail-open: a prompter error must not break the claim loop.
+  "$REPO_ROOT/.venv/bin/python3" "$REPO_ROOT/scripts/orchestrator/next_work_prompter.py" \
+    --callsign "$CALLSIGN" --poll-mode >/dev/null 2>&1 || true
   sleep "$POLL_SECONDS"
 done

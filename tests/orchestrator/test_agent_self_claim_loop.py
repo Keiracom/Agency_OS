@@ -55,6 +55,10 @@ def _run_loop(tmp: Path, stub_json: str, callsign: str = "scout", seconds: float
         "POLL_SECONDS": "1",
         "ASSIGN_PATH": str(stub_path),
     }
+    # Force the Slack (tg) fallback path by clearing the v2 routing flag.
+    # KEI-221 (c) introduced AGENT_ROUTING_<CS>=v2 to opt into NATS; if it's
+    # set in the host env, the loop would publish to NATS and never call tg.
+    env.pop(f"AGENT_ROUTING_{callsign.upper()}", None)
     out_path = tmp / "loop.out"
     with out_path.open("w") as out_f:
         proc = subprocess.Popen(
@@ -89,3 +93,48 @@ def test_no_eligible_posts_ready_once(tmp_path):
     )
     log = (tmp_path / "tg.log").read_text() if (tmp_path / "tg.log").exists() else ""
     assert log.count("[READY:scout]") == 1, f"expected 1 READY, got: {log!r}"
+
+
+def test_no_eligible_routes_to_nats_when_v2_flag_set(tmp_path):
+    """KEI-221 (c): with AGENT_ROUTING_SCOUT=v2, the loop must publish to NATS
+    via agent_ready_emit.sh and NOT post to Slack tg."""
+    _make_stub(
+        tmp_path,
+        '{"claimed": false, "reason": "no_eligible_work", "issue_id": null}',
+    )
+    fake_tg = tmp_path / "tg"
+    fake_nats = tmp_path / "nats"
+    tg_log = tmp_path / "tg.log"
+    nats_log = tmp_path / "nats.log"
+    fake_tg.write_text(f'#!/usr/bin/env bash\necho "TG: $*" >> {tg_log}\n')
+    fake_nats.write_text(f'#!/usr/bin/env bash\necho "NATS: $*" >> {nats_log}\n')
+    fake_tg.chmod(0o755)
+    fake_nats.chmod(0o755)
+    stub_path = tmp_path / "scripts" / "orchestrator" / "self_assign_on_ready.py"
+    env = {
+        **os.environ,
+        "CALLSIGN": "scout",
+        "PATH": f"{tmp_path}:{os.environ.get('PATH', '')}",
+        "POLL_SECONDS": "1",
+        "ASSIGN_PATH": str(stub_path),
+        "AGENT_ROUTING_SCOUT": "v2",
+    }
+    proc = subprocess.Popen(
+        ["bash", str(LOOP), "--callsign", "scout", "--poll-seconds", "1"],
+        env=env,
+        cwd=str(tmp_path),
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        preexec_fn=os.setsid,
+    )
+    try:
+        proc.wait(timeout=4.0)
+    except subprocess.TimeoutExpired:
+        os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+        try:
+            proc.wait(timeout=2)
+        except subprocess.TimeoutExpired:
+            os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+    nats_text = nats_log.read_text() if nats_log.exists() else ""
+    assert "pub keiracom.agent.status.scout" in nats_text, f"expected NATS pub, got: {nats_text!r}"
+    assert not tg_log.exists(), "tg must NOT be called when AGENT_ROUTING_SCOUT=v2"

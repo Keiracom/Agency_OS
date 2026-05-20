@@ -24,6 +24,9 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from src.governance.ceo_memory_writer import upsert_ceo_memory_key  # noqa: E402,I001
+
 
 # ---------------------------------------------------------------------------
 # DSN resolver — prefer DATABASE_URL, fall back to settings.database_url
@@ -189,12 +192,7 @@ def save_manual(
 def save_ceo_memory(
     directive: str, pr_number: int, summary: str, dry_run: bool, callsign: str = "elliot"
 ) -> bool:
-    """Upsert public.ceo_memory via asyncpg (no REST, no PostgREST).
-
-    statement_cache_size=0 so the connection works through Supabase's
-    pgbouncer transaction-mode pooler. Function stays sync — async
-    work is wrapped in asyncio.run so callers don't change.
-    """
+    """Upsert public.ceo_memory via the KEI-87 canonical wrapper."""
     key = f"ceo:directive_{directive}_complete"
     value = {
         "directive": directive,
@@ -209,31 +207,8 @@ def save_ceo_memory(
         print(f"  value={json.dumps(value)}")
         return True
 
-    dsn = _resolve_dsn()
-    if not dsn:
-        print("[STORE 2/4] ceo_memory: FAILED — DATABASE_URL / SUPABASE_DB_URL not set")
-        return False
-
-    async def _upsert() -> None:
-        import asyncpg
-
-        conn = await asyncpg.connect(dsn, statement_cache_size=0)
-        try:
-            await conn.execute(
-                """
-                INSERT INTO ceo_memory (key, value, updated_at)
-                VALUES ($1, $2::jsonb, NOW())
-                ON CONFLICT (key) DO UPDATE
-                  SET value = EXCLUDED.value, updated_at = NOW()
-                """,
-                key,
-                json.dumps(value),
-            )
-        finally:
-            await conn.close()
-
     try:
-        asyncio.run(_upsert())
+        upsert_ceo_memory_key(callsign, key, value)
         print(f"[STORE 2/4] ceo_memory: OK — key={key!r}")
         return True
     except Exception as exc:  # noqa: BLE001

@@ -41,6 +41,8 @@ from typing import Any
 
 import psycopg
 
+from src.governance.ceo_memory_writer import upsert_ceo_memory_key
+
 logger = logging.getLogger("heartbeat")
 
 PERIOD_SECONDS = int(os.environ.get("HEARTBEAT_PERIOD_SECONDS", "300"))  # 5 min default
@@ -121,21 +123,6 @@ def _read_previous(conn: psycopg.Connection, key: str) -> dict[str, Any] | None:
     return value if isinstance(value, dict) else None
 
 
-def _write_next(conn: psycopg.Connection, key: str, value: dict[str, Any]) -> None:
-    # Mirrors the canonical pattern from completion_sync_worker:
-    # INSERT ... ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value, updated_at=NOW().
-    with conn.cursor() as cur:
-        cur.execute(
-            """
-            INSERT INTO public.ceo_memory (key, value, updated_at)
-            VALUES (%s, %s::jsonb, NOW())
-            ON CONFLICT (key) DO UPDATE
-            SET value = EXCLUDED.value, updated_at = NOW()
-            """,
-            (key, json.dumps(value)),
-        )
-
-
 def tick(
     service_name: str,
     *,
@@ -151,18 +138,19 @@ def tick(
         logger.warning("heartbeat.tick(%s) — no DSN, skipping", service_name)
         return
     key = HEARTBEAT_KEY_PREFIX + service_name
+    callsign = os.environ.get("CALLSIGN", "system")
     try:
-        with psycopg.connect(dsn, autocommit=True) as conn:
+        with psycopg.connect(dsn, autocommit=True, prepare_threshold=None) as conn:
             previous = _read_previous(conn, key)
-            next_state = compute_next_state(
-                previous,
-                now=_now(),
-                outcome_increment=outcome_increment,
-                status=status,
-                error_message=error_message,
-                period_seconds=period_seconds,
-            )
-            _write_next(conn, key, next_state)
+        next_state = compute_next_state(
+            previous,
+            now=_now(),
+            outcome_increment=outcome_increment,
+            status=status,
+            error_message=error_message,
+            period_seconds=period_seconds,
+        )
+        upsert_ceo_memory_key(callsign, key, next_state)
     except Exception:
         # Fail-open — the calling service's main work matters more than the
         # heartbeat. Log and move on.

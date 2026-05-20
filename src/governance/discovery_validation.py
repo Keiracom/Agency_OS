@@ -129,7 +129,22 @@ def submit_discovery(
 
     Returns the Weaviate object id. Idempotent — deterministic UUID means
     a repeat submit with the same (agent, text, kei) is a 422 no-op.
+
+    KEI-197 guard: reject empty/None text BEFORE any Weaviate POST. The
+    KEI-192 memory audit found 10 orphan agent='elliot' rows with NULL
+    raw_text written in a single 2026-05-16 backfill burst; this guard
+    ensures the staging→permanent pipeline never produces another one.
     """
+    if text is None or not str(text).strip():
+        raise ValueError(
+            "submit_discovery: text must be a non-empty string (KEI-197 — "
+            "NULL/empty raw_text causes orphan rows in Discoveries; "
+            "see docs/wave3/kei197_null_raw_text_evidence.md)"
+        )
+    if not agent or not str(agent).strip():
+        raise ValueError("submit_discovery: agent must be a non-empty string")
+    if not kei or not str(kei).strip():
+        raise ValueError("submit_discovery: kei must be a non-empty string")
     tier, reason = classify_tier(text, ratified_rules)
     now = datetime.now(UTC)
     expires_at = now + _TIER_EXPIRY[tier]

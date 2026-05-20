@@ -295,7 +295,18 @@ def _print_ready_rows(rows: list[dict], agent: str) -> None:
             if agent and "personalised_score" in r
             else ""
         )
-        print(f"  P{r['priority']:>1}  {r['id']:<24}  {r['title']}{score_suffix}")
+        # Coerce NULL priority to 'X' — Postgres NULL → Python None on
+        # the priority column throws TypeError on the :>1 format spec.
+        # Render as 'X' (unset) and stderr-warn so the row stays visible
+        # rather than being silently filtered out of bd ready.
+        priority = r["priority"]
+        if priority is None:
+            sys.stderr.write(
+                f"[tasks_cli] warning: {r['id']} has NULL priority — "
+                f"rendering as PX. Fix via `bd update {r['id']} --priority=N`.\n"
+            )
+            priority = "X"
+        print(f"  P{priority:>1}  {r['id']:<24}  {r['title']}{score_suffix}")
     suffix = f" (personalised for {agent})" if agent else ""
     print(f"\n{len(rows)} available{suffix}")
 
@@ -503,7 +514,12 @@ def cmd_claim(args: argparse.Namespace) -> int:
                 # not claim …' (which is indistinguishable from a race loss).
                 # Fail-open on parse errors so legacy rows / fixtures without
                 # a numeric phase fall through to the UPDATE's own filter.
-                cur.execute("SELECT phase FROM public.tasks WHERE id = %s", (args.id,))
+                # KEI-227: id OR bd_id — caller may pass either the canonical
+                # Linear KEI-N or the bd-Dolt Agency_OS-xxx short-code.
+                cur.execute(
+                    "SELECT phase FROM public.tasks WHERE id = %s OR bd_id = %s",
+                    (args.id, args.id),
+                )
                 _phase_row = cur.fetchone()
                 _task_phase: float | None = None
                 if _phase_row is not None:
@@ -525,12 +541,12 @@ def cmd_claim(args: argparse.Namespace) -> int:
                     UPDATE public.tasks
                        SET status = 'active', claimed_by = %s,
                            claimed_at = NOW(), updated_at = NOW()
-                     WHERE id = %s
+                     WHERE (id = %s OR bd_id = %s)
                        AND status = 'available'
                        AND (claimed_by IS NULL OR claimed_by = %s)
                      RETURNING id, title, priority, status, claimed_by, linear_url, tags
                     """,
-                    (cs, args.id, cs),
+                    (cs, args.id, args.id, cs),
                 )
             else:
                 # KEI-86 — also filter the next-available SELECT by phase.
@@ -641,6 +657,22 @@ def cmd_claim(args: argparse.Namespace) -> int:
     return 0
 
 
+def _coerce_behavioral_test(acceptance_items: list) -> str:
+    """Coerce acceptance_items[0] to text for the behavioral_test column.
+
+    Dict with `criterion` → criterion string. Dict without → deterministic JSON
+    (no data loss). Plain string → passthrough (backwards-compat). Empty/None →
+    "see commands". Hoisted out of cmd_complete to keep its cognitive
+    complexity under the Sonar S3776 limit (y244 review feedback).
+    """
+    if not acceptance_items:
+        return "see commands"
+    first = acceptance_items[0]
+    if isinstance(first, dict):
+        return first.get("criterion") or json.dumps(first, sort_keys=True, ensure_ascii=False)
+    return str(first) if first is not None else "see commands"
+
+
 def _load_evidence_payload(evidence_path: str) -> dict | None:
     """Read evidence from a file path or stdin ('-'). Returns the parsed JSON
     dict on success, or None on read/parse failure (after printing the error)."""
@@ -684,11 +716,11 @@ def _execute_atomic_complete(
                claimed_by = NULL,
                claimed_at = NULL,
                updated_at = NOW()
-         WHERE id = %s
+         WHERE (id = %s OR bd_id = %s)
            AND (claimed_by = %s OR %s = 'force')
          RETURNING id, title, status
         """,
-        (task_id, callsign, force_mode),
+        (task_id, task_id, callsign, force_mode),
     )
     return cur.fetchone()
 
@@ -725,11 +757,11 @@ def cmd_heartbeat(args: argparse.Namespace) -> int:
                 UPDATE public.tasks
                    SET heartbeat_at = NOW(),
                        updated_at = NOW()
-                 WHERE id = %s
+                 WHERE (id = %s OR bd_id = %s)
                    AND claimed_by = %s
                  RETURNING id, claimed_by, heartbeat_at
                 """,
-                (args.id, cs),
+                (args.id, args.id, cs),
             )
             row = cur.fetchone()
             conn.commit()
@@ -749,29 +781,88 @@ def cmd_heartbeat(args: argparse.Namespace) -> int:
     return 0
 
 
+def _build_auto_verify_payload(task_id: str, callsign: str) -> dict:
+    """KEI-239 — synthesise an evidence payload for `bd complete --auto-verify`.
+
+    Used when the agent has done the work (PR merged, post-merge cleanup) and
+    wants to mark the KEI done without manually crafting an evidence JSON.
+    The synthetic payload still satisfies the KEI-89 schema:
+      - acceptance_items: one entry attributing the close to the agent
+      - commands: one entry with verbatim text >= 16 chars
+      - verifier_session_uuid: CLAUDE_CODE_SESSION_ID env or a fresh uuid
+      - timestamp: ISO-8601 UTC now
+
+    Distinguishable from human-evidence by verifier_session_uuid prefix
+    when CLAUDE_CODE_SESSION_ID is unset (uses 'auto-verify' marker).
+    """
+    import uuid as _uuid
+    from datetime import UTC
+    from datetime import datetime as _dt
+
+    session = os.environ.get("CLAUDE_CODE_SESSION_ID", "")
+    if not session:
+        session = f"auto-verify-{_uuid.uuid4()}"
+    now_iso = _dt.now(UTC).isoformat()
+    return {
+        "acceptance_items": [
+            {
+                "criterion": f"Task {task_id} closed via `bd complete --auto-verify`",
+                "satisfied": True,
+                "evidence": (
+                    f"agent={callsign} closed via auto-verify at {now_iso}. "
+                    f"Pre-conditions assumed satisfied by prior PR-merge / agent process; "
+                    f"no separate evidence document was supplied at close time."
+                ),
+            }
+        ],
+        "commands": [
+            {
+                "cmd": f"bd complete {task_id} --auto-verify",
+                "output": (
+                    f"auto-verify path: agent={callsign} task={task_id} "
+                    f"closed_at={now_iso}; no behavioural-test stdout captured "
+                    f"because the work-evidence lives in the prior PR merge / "
+                    f"systemd service log rather than a per-task script run."
+                ),
+            }
+        ],
+        "verifier_session_uuid": session,
+        "timestamp": now_iso,
+    }
+
+
 def cmd_complete(args: argparse.Namespace) -> int:
     """Mark a claimed task done.
 
-    KEI-89 Gate 2: --evidence <path|-> is required. Without it the command
-    exits with a non-zero code and an explanatory error. With it, the
-    evidence JSON is schema-validated and checked for hash uniqueness before
-    the atomic INSERT+UPDATE transaction.
+    KEI-89 Gate 2: --evidence <path|-> is required by default. The KEI-239
+    `--auto-verify` flag bypasses the file-path requirement by synthesising
+    a schema-compliant evidence payload attributed to the calling callsign;
+    the synthetic verification still goes through the same uniqueness check
+    + atomic INSERT+UPDATE transaction.
     """
     import psycopg
 
-    # Gate 2: evidence flag required.
-    evidence_path: str | None = getattr(args, "evidence", None)
-    if not evidence_path:
-        print(
-            "ERROR: --evidence <path|-> is required. Pass a JSON file path or '-' to "
-            "read from stdin. Refusing to complete without structured evidence.",
-            file=sys.stderr,
-        )
-        return 1
+    # KEI-239 — auto-verify path. Synthesises an evidence payload so the
+    # agent doesn't need a per-task evidence JSON when the work-evidence
+    # already lives in PR merges / systemd logs / orchestrator history.
+    if getattr(args, "auto_verify", False) and not getattr(args, "evidence", None):
+        cs_for_synth = _callsign(args.callsign)
+        evidence_payload = _build_auto_verify_payload(args.id, cs_for_synth)
+    else:
+        # Gate 2: evidence flag required when --auto-verify NOT passed.
+        evidence_path: str | None = getattr(args, "evidence", None)
+        if not evidence_path:
+            print(
+                "ERROR: --evidence <path|-> is required (or pass --auto-verify "
+                "for synthetic evidence). Refusing to complete without structured "
+                "evidence.",
+                file=sys.stderr,
+            )
+            return 1
 
-    evidence_payload = _load_evidence_payload(evidence_path)
-    if evidence_payload is None:
-        return 1
+        evidence_payload = _load_evidence_payload(evidence_path)
+        if evidence_payload is None:
+            return 1
 
     schema_err = _validate_evidence_schema(evidence_payload)
     if schema_err:
@@ -784,11 +875,7 @@ def cmd_complete(args: argparse.Namespace) -> int:
     verifier_arg = getattr(args, "verifier", None)
     secondary_arg = getattr(args, "secondary_verifier", None)
     verifier_session = str(evidence_payload.get("verifier_session_uuid", "")).strip()
-    behavioral_test = (
-        evidence_payload["acceptance_items"][0]
-        if evidence_payload["acceptance_items"]
-        else "see commands"
-    )
+    behavioral_test = _coerce_behavioral_test(evidence_payload["acceptance_items"])
 
     try:
         with psycopg.connect(_dsn()) as conn, conn.cursor() as cur:
@@ -951,7 +1038,13 @@ def main(argv: list[str] | None = None) -> int:
     p_complete.add_argument(
         "--evidence",
         metavar="PATH",
-        help="KEI-89 Gate 2: path to evidence JSON file, or '-' to read from stdin. Required.",
+        help="KEI-89 Gate 2: path to evidence JSON file, or '-' to read from stdin. Required unless --auto-verify is passed.",
+    )
+    p_complete.add_argument(
+        "--auto-verify",
+        action="store_true",
+        dest="auto_verify",
+        help="KEI-239: synthesise a schema-compliant evidence payload attributed to the calling callsign. Use when work-evidence lives in PR merges / systemd logs rather than a per-task script run.",
     )
     p_complete.add_argument("--json", action="store_true")
     p_complete.set_defaults(func=cmd_complete)

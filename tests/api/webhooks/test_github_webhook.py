@@ -57,17 +57,18 @@ def _pr_payload(
     body: str = "PR body",
     author: str = "aiden",
     action: str = "opened",
+    merged: bool | None = None,
 ) -> dict:
-    return {
-        "action": action,
-        "pull_request": {
-            "number": number,
-            "title": title,
-            "html_url": html_url,
-            "body": body,
-            "user": {"login": author},
-        },
+    pr: dict = {
+        "number": number,
+        "title": title,
+        "html_url": html_url,
+        "body": body,
+        "user": {"login": author},
     }
+    if merged is not None:
+        pr["merged"] = merged
+    return {"action": action, "pull_request": pr}
 
 
 # ── HMAC verification ───────────────────────────────────────────────────────
@@ -331,3 +332,200 @@ def test_close_task_writes_done(mod, monkeypatch):
     sql, params = fake_cur.execute.call_args[0]
     assert "done" in sql
     assert "REVIEW-PR-99" in params
+
+
+# ── KEI-207 — auto-close matching KEI task on PR merge ────────────────────
+
+
+def test_kei207_extract_kei_id_from_title(mod):
+    """Standard PR title format `[CALLSIGN] feat(kei-N): ...` parses cleanly."""
+    assert mod.extract_kei_id("[AIDEN] feat(kei-207): github webhook", "") == "KEI-207"
+    assert mod.extract_kei_id("[ATLAS] fix(KEI-85): retry", "irrelevant body") == "KEI-85"
+
+
+def test_kei207_extract_kei_id_falls_back_to_body(mod):
+    """If title has no KEI-N, scan PR body next."""
+    assert mod.extract_kei_id("Update docs", "Closes KEI-150 and related") == "KEI-150"
+
+
+def test_kei207_extract_kei_id_returns_none_when_absent(mod):
+    """No KEI-N anywhere → None."""
+    assert mod.extract_kei_id("Refactor stuff", "boring body") is None
+    assert mod.extract_kei_id("", "") is None
+
+
+def test_kei207_extract_linear_url_kei(mod):
+    """Linear URL in body yields KEI-N as fallback signal."""
+    body = (
+        "Implements https://linear.app/keiracom/issue/KEI-77/some-slug-here as part of this work."
+    )
+    assert mod.extract_linear_url_kei(body) == "KEI-77"
+
+
+def test_kei207_extract_linear_url_kei_no_url(mod):
+    """No Linear URL → None."""
+    assert mod.extract_linear_url_kei("nothing here") is None
+    assert mod.extract_linear_url_kei("") is None
+
+
+def test_kei207_pr_merged_triggers_kei_close(mod, monkeypatch):
+    """PR closed with merged=true → _close_kei_task called."""
+    kei_calls: list = []
+    monkeypatch.setattr(mod, "_upsert_review_task", lambda pr: None)
+    monkeypatch.setattr(mod, "_close_review_task", lambda n: None)
+    monkeypatch.setattr(mod, "_close_kei_task", lambda pr: kei_calls.append(pr.get("number")))
+
+    client = _make_client(mod, monkeypatch)
+    payload = _pr_payload(
+        number=42, action="closed", merged=True, title="[AIDEN] feat(kei-207): handler"
+    )
+    raw = json.dumps(payload).encode()
+    resp = client.post(
+        "/api/webhooks/github",
+        content=raw,
+        headers={
+            "x-hub-signature-256": _sign(raw),
+            "x-github-event": "pull_request",
+            "content-type": "application/json",
+        },
+    )
+    assert resp.status_code == 200
+    assert kei_calls == [42]
+
+
+def test_kei207_pr_closed_without_merge_skips_kei_close(mod, monkeypatch):
+    """PR closed without merge → _close_kei_task NOT called (work didn't ship)."""
+    kei_calls: list = []
+    monkeypatch.setattr(mod, "_upsert_review_task", lambda pr: None)
+    monkeypatch.setattr(mod, "_close_review_task", lambda n: None)
+    monkeypatch.setattr(mod, "_close_kei_task", lambda pr: kei_calls.append(pr.get("number")))
+
+    client = _make_client(mod, monkeypatch)
+    payload = _pr_payload(
+        number=42, action="closed", merged=False, title="[AIDEN] feat(kei-207): handler"
+    )
+    raw = json.dumps(payload).encode()
+    client.post(
+        "/api/webhooks/github",
+        content=raw,
+        headers={
+            "x-hub-signature-256": _sign(raw),
+            "x-github-event": "pull_request",
+            "content-type": "application/json",
+        },
+    )
+    assert kei_calls == []
+
+
+def test_kei207_close_kei_task_updates_by_id(mod, monkeypatch):
+    """Title-extracted KEI-N → UPDATE WHERE id = KEI-N (primary path)."""
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test/x")
+
+    fake_cur = MagicMock()
+    fake_cur.rowcount = 1  # primary UPDATE matched a row
+    fake_conn = MagicMock()
+    fake_conn.__enter__ = MagicMock(return_value=fake_conn)
+    fake_conn.__exit__ = MagicMock(return_value=False)
+    fake_conn.cursor.return_value.__enter__ = MagicMock(return_value=fake_cur)
+    fake_conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+
+    import psycopg
+
+    monkeypatch.setattr(psycopg, "connect", lambda *a, **kw: fake_conn)
+
+    pr = {
+        "number": 1001,
+        "title": "[AIDEN] feat(kei-207): handler",
+        "body": "Closes KEI-207",
+    }
+    mod._close_kei_task(pr)
+
+    # Only one execute call expected when primary path matches (no fallback fires).
+    assert fake_cur.execute.call_count == 1
+    sql, params = fake_cur.execute.call_args_list[0][0]
+    assert "WHERE id = %s" in sql
+    assert params == ("KEI-207",)
+
+
+def test_kei207_close_kei_task_falls_back_to_linear_url(mod, monkeypatch):
+    """Primary UPDATE rowcount=0 → fallback to linear_url ILIKE match."""
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test/x")
+
+    fake_cur = MagicMock()
+    fake_cur.rowcount = 0  # primary UPDATE matched nothing → fallback fires
+    fake_conn = MagicMock()
+    fake_conn.__enter__ = MagicMock(return_value=fake_conn)
+    fake_conn.__exit__ = MagicMock(return_value=False)
+    fake_conn.cursor.return_value.__enter__ = MagicMock(return_value=fake_cur)
+    fake_conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+
+    import psycopg
+
+    monkeypatch.setattr(psycopg, "connect", lambda *a, **kw: fake_conn)
+
+    pr = {
+        "number": 1002,
+        "title": "[AIDEN] feat(kei-207): handler",
+        "body": "Closes KEI-207",
+    }
+    mod._close_kei_task(pr)
+
+    # Two execute calls — primary (by id) then fallback (by url).
+    assert fake_cur.execute.call_count == 2
+    sql_primary, params_primary = fake_cur.execute.call_args_list[0][0]
+    sql_fallback, params_fallback = fake_cur.execute.call_args_list[1][0]
+    assert "WHERE id = %s" in sql_primary
+    assert params_primary == ("KEI-207",)
+    assert "linear_url ILIKE %s" in sql_fallback
+    assert params_fallback == ("%KEI-207%",)
+
+
+def test_kei207_close_kei_task_no_match_logs_and_skips(mod, monkeypatch, caplog):
+    """No KEI-N in title/body/linear-url → log skip, no DB call."""
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test/x")
+
+    fake_cur = MagicMock()
+    fake_conn = MagicMock()
+    fake_conn.cursor.return_value.__enter__ = MagicMock(return_value=fake_cur)
+    fake_conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+    import psycopg
+
+    monkeypatch.setattr(psycopg, "connect", lambda *a, **kw: fake_conn)
+
+    pr = {"number": 1003, "title": "untagged title", "body": "no kei reference"}
+    import logging
+
+    with caplog.at_level(logging.INFO):
+        mod._close_kei_task(pr)
+
+    assert fake_cur.execute.call_count == 0
+    assert any("no KEI-N" in r.message for r in caplog.records)
+
+
+def test_kei207_close_kei_task_uses_linear_url_when_title_lacks_kei(mod, monkeypatch):
+    """Title has no KEI-N but body has linear.app URL → fall back to URL parse."""
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test/x")
+
+    fake_cur = MagicMock()
+    fake_cur.rowcount = 0
+    fake_conn = MagicMock()
+    fake_conn.__enter__ = MagicMock(return_value=fake_conn)
+    fake_conn.__exit__ = MagicMock(return_value=False)
+    fake_conn.cursor.return_value.__enter__ = MagicMock(return_value=fake_cur)
+    fake_conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+
+    import psycopg
+
+    monkeypatch.setattr(psycopg, "connect", lambda *a, **kw: fake_conn)
+
+    pr = {
+        "number": 1004,
+        "title": "refactor stuff",  # no KEI-N
+        "body": "Implements https://linear.app/keiracom/issue/KEI-321/some-slug",
+    }
+    mod._close_kei_task(pr)
+
+    # Primary UPDATE fires against the linear-url-extracted KEI-N.
+    sql_primary, params_primary = fake_cur.execute.call_args_list[0][0]
+    assert "WHERE id = %s" in sql_primary
+    assert params_primary == ("KEI-321",)

@@ -1,0 +1,18 @@
+[Unit]
+Description=Agency_OS-iosu — periodic bd↔Linear sync pull
+Documentation=https://linear.app/keiracom/issue/KEI-227
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=%h/.config/agency-os/.env
+WorkingDirectory=%h/clawd/Agency_OS
+ExecStart=/bin/bash %h/clawd/Agency_OS/scripts/bd_linear_sync_periodic.sh
+Nice=10
+StandardOutput=journal
+StandardError=journal
+TimeoutStartSec=120
+
+[Install]
+WantedBy=default.target

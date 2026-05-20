@@ -18,6 +18,7 @@ import datetime as _dt
 import json
 import logging
 import os
+import re
 import subprocess
 import sys
 import time
@@ -26,6 +27,72 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import psycopg
+
+# ---------------------------------------------------------------------------
+# KEI-183 / KEI-222: Supervisor v2 feature flags
+# ---------------------------------------------------------------------------
+# FLEET_SUPERVISOR_V2_ENABLED=1  enables v2 for agents whose AGENT_ROUTING=v2.
+# AGENT_ROUTING_<CALLSIGN>=v2 (e.g. AGENT_ROUTING_ELLIOT=v2) opts that agent in.
+# Both default OFF — v1 path is unchanged when flags absent. The flag is read
+# at runtime (not import time) so install/test env writes always take effect.
+
+FLEET_SUPERVISOR_V2_ENV = "FLEET_SUPERVISOR_V2_ENABLED"
+
+# NATS connection details — canonical messaging backbone per KEI-205.
+# Valkey stays for KEI-117 rate limiting + KV state only; NATS is the
+# canonical messaging backbone per KEI-205.
+NATS_URL: str = os.environ.get("NATS_URL", "nats://127.0.0.1:4222")
+
+
+def _supervisor_v2_enabled() -> bool:
+    """KEI-185 — read `FLEET_SUPERVISOR_V2_ENABLED` env truthy-flag."""
+    raw = os.environ.get(FLEET_SUPERVISOR_V2_ENV, "").strip().lower()
+    return raw in {"1", "true", "yes", "on"}
+
+
+def _agent_routing(callsign: str) -> str:
+    """Return 'v2' if this agent is opted into v2 routing, else 'v1'."""
+    env_key = f"AGENT_ROUTING_{callsign.upper()}"
+    return os.environ.get(env_key, "v1")
+
+
+def _is_v2(callsign: str) -> bool:
+    """True when both global flag and per-agent routing are set to v2."""
+    return _supervisor_v2_enabled() and _agent_routing(callsign) == "v2"
+
+
+def _nats_publish_state(callsign: str, state: str) -> None:
+    """KEI-183 v2 / KEI-205: publish agent state to NATS subject keiracom.agent.status.<callsign>.
+
+    Payload: {"state": "<state>", "ts": <unix_epoch_int>}
+    Subject: keiracom.agent.status.<callsign>
+    Fail-open — NATS unavailable should never crash the supervisor.
+
+    Note: Valkey stays for KEI-117 rate limiting + KV state only;
+    NATS is the canonical messaging backbone per KEI-205.
+    """
+    try:
+        import asyncio  # noqa: PLC0415 - lazy import inside try; nats-py optional on v1 path
+
+        import nats.aio.client as nats_client  # noqa: PLC0415 — nats-py optional for v1 path
+
+        payload = json.dumps({"state": state, "ts": int(time.time())}).encode()
+        subject = f"keiracom.agent.status.{callsign}"
+
+        async def _publish() -> None:
+            nc = nats_client.Client()
+            await nc.connect(NATS_URL, connect_timeout=2)
+            try:
+                await nc.publish(subject, payload)
+                await nc.flush()
+            finally:
+                await nc.close()
+
+        asyncio.run(_publish())
+        log.debug("[%s] NATS PUBLISH %s → %s", callsign, subject, state)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("[%s] NATS publish failed (non-fatal): %s", callsign, exc)
+
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -38,6 +105,7 @@ AGENTS = [
     {"callsign": "atlas", "tmux": "atlas:0", "service": "atlas-agent"},
     {"callsign": "orion", "tmux": "orion:0", "service": "orion-agent"},
     {"callsign": "scout", "tmux": "scout:0", "service": "scout-agent"},
+    {"callsign": "nova", "tmux": "nova:0", "service": "nova-agent"},
 ]
 
 # tmux send-keys delay in seconds
@@ -74,6 +142,7 @@ def _db_dsn() -> str:
     dsn = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL", "")
     if not dsn:
         raise RuntimeError("DATABASE_URL / SUPABASE_DB_URL not set")
+    # KEI-218: strip SQLAlchemy driver suffix — psycopg3 rejects '+asyncpg'.
     return dsn.replace("postgresql+asyncpg://", "postgresql://", 1)
 
 
@@ -122,17 +191,8 @@ def tmux_has_session(session: str) -> bool:
 
 
 def tmux_send(session: str, text: str) -> None:
-    # Two-call pattern: text in literal mode first, then Enter separately.
-    # Single-call ["text", "Enter"] is unreliable when text contains newlines
-    # (Claude tmux interprets embedded \n as soft-break and may eat the trailing Enter).
     subprocess.run(
-        ["tmux", "send-keys", "-t", session, "-l", text],
-        check=True,
-    )
-    # Tiny pause so the input box registers the text before Enter fires.
-    time.sleep(0.3)
-    subprocess.run(
-        ["tmux", "send-keys", "-t", session, "Enter"],
+        ["tmux", "send-keys", "-t", session, text, "Enter"],
         check=True,
     )
 
@@ -202,37 +262,214 @@ def get_active_claim(conn: psycopg.Connection, callsign: str) -> tuple[str, str]
     return (row[0], row[1]) if row else None
 
 
+_KEI_ID_RE = re.compile(r"\bkei[-\s]?\d+\b", re.IGNORECASE)
+
+# KEI-204 — dep-blocked drift filter. Captures the canonical phrasings used
+# by Elliot's filing scripts + Linear convention. Each pattern's capture
+# group is the KEI-NNN identifier that this row depends on; if any captured
+# blocker is still status != 'done', claim_next_task skips the row.
+# Patterns observed empirically across this session's 8 drift cases:
+#   "FOLLOW-UP after KEI-185"  (KEI-191)
+#   "depends on KEI-N"         (Linear convention)
+#   "gated on KEI-N"
+#   "blocked on KEI-N"
+#   "sub of KEI-185"           (KEI-193 / KEI-194)
+#   "(KEI-192 follow-up)"      (KEI-196 / KEI-197 / KEI-198)
+_BLOCKER_PATTERNS = [
+    re.compile(r"FOLLOW[\s-]?UP\s+after\s+(KEI-\d+)", re.IGNORECASE),
+    re.compile(r"depends\s+on\s+(KEI-\d+)", re.IGNORECASE),
+    re.compile(r"gated\s+on\s+(KEI-\d+)", re.IGNORECASE),
+    re.compile(r"blocked\s+on\s+(KEI-\d+)", re.IGNORECASE),
+    re.compile(r"sub\s+of\s+(KEI-\d+)", re.IGNORECASE),
+    re.compile(r"\((KEI-\d+)\s+follow[\s-]?up\)", re.IGNORECASE),
+]
+
+
+def extract_blocker_keis(text: str) -> set[str]:
+    """KEI-204 — extract KEI-NNN identifiers this row depends on from its
+    title+description. Uses the 6 canonical phrasings observed empirically
+    across the 2026-05-17→18 session's drift cases.
+
+    Returns the canonical uppercase set; caller is responsible for the
+    status='done' check against public.tasks.
+    """
+    if not text:
+        return set()
+    blockers: set[str] = set()
+    for pat in _BLOCKER_PATTERNS:
+        for m in pat.findall(text):
+            digits = "".join(c for c in m if c.isdigit())
+            if digits:
+                blockers.add(f"KEI-{digits}")
+    return blockers
+
+
+def _unfinished_blockers(cur: psycopg.Cursor, blocker_ids: set[str]) -> set[str]:
+    """KEI-204 — return the subset of blocker_ids whose tasks.status != 'done'.
+    Empty set means all blockers cleared; row is claimable."""
+    if not blocker_ids:
+        return set()
+    cur.execute(
+        "SELECT id FROM public.tasks WHERE id = ANY(%s::text[]) AND status != 'done'",
+        (sorted(blocker_ids),),
+    )
+    return {row[0] for row in cur.fetchall()}
+
+
+def fetch_open_pr_kei_ids() -> set[str]:
+    """KEI-199 — return set of KEI-NNN identifiers mentioned in OPEN PR titles+bodies.
+
+    Used by claim_next_task() as a pre-claim filter to prevent the auto-claim
+    loop assigning work that's already in flight via an OPEN PR. Anchor:
+    4 drift-syncs in the 2026-05-17→18 session (KEI-90 / 122 / 187 / 188)
+    where agents were re-claimed onto KEIs that peers had already shipped.
+
+    Returns empty set on any gh CLI failure (fail-open — preserves prior
+    claim behaviour rather than blocking all claims on a CLI hiccup).
+    """
+    try:
+        result = subprocess.run(
+            ["gh", "pr", "list", "--state", "open", "--json", "title,body", "--limit", "100"],
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+    except (subprocess.SubprocessError, OSError):
+        log.debug("KEI-199: gh pr list failed — fail-open (returning empty set)")
+        return set()
+    if result.returncode != 0:
+        log.debug("KEI-199: gh pr list exit=%d — fail-open", result.returncode)
+        return set()
+    try:
+        prs = json.loads(result.stdout or "[]")
+    except json.JSONDecodeError:
+        return set()
+    kei_ids: set[str] = set()
+    for pr in prs:
+        title = pr.get("title") or ""
+        body = pr.get("body") or ""
+        for m in _KEI_ID_RE.findall(title) + _KEI_ID_RE.findall(body):
+            # Normalize to canonical KEI-NNN uppercase form (titles often
+            # carry lowercase "kei199" in commit-scope, identifiers in DB
+            # are always uppercase).
+            digits = "".join(c for c in m if c.isdigit())
+            if digits:
+                kei_ids.add(f"KEI-{digits}")
+    return kei_ids
+
+
+_CANDIDATE_LIMIT = 10  # KEI-204 — top-N candidates to iterate; bounds dep-blocked rescan cost
+
+# KEI-183 follow-up (Dave 2026-05-18) — structural dep enforcement.
+# `tasks.dependencies` is a text[] ARRAY of task ids. A row is eligible only if
+# every entry resolves to a row in status='done'. This makes out-of-sequence
+# dispatch structurally impossible — no row reaches the candidate set unless
+# all its deps are done. Complements (does not replace) the title/description
+# keyword filter in extract_blocker_keis (KEI-204), which catches plain-prose
+# "depends on KEI-X" phrasings the dependencies column doesn't capture.
+_DEPS_CLAUSE = (
+    "AND (\n"
+    "    dependencies IS NULL\n"
+    "    OR cardinality(dependencies) = 0\n"
+    "    OR NOT EXISTS (\n"
+    "      SELECT 1 FROM unnest(dependencies) AS dep_id\n"
+    "      JOIN public.tasks t_dep ON t_dep.id = dep_id\n"
+    "      WHERE t_dep.status != 'done'\n"
+    "    )\n"
+    "  )\n"
+)
+
+
+def _build_task_query(
+    v2: bool, open_pr_keis: set[str], callsign: str, phase_max: int
+) -> tuple[str, tuple]:
+    """Return (sql, params) for the candidate fetch in claim_next_task.
+
+    Extracted to reduce cognitive complexity in the caller (S3776).
+    Four combinations: v2 × has_open_pr_filter.
+
+    KEI-183 follow-up — _DEPS_CLAUSE is injected on every path so the
+    dependency-enforcement gate is universal (v1 + v2, with and without
+    open-PR filter).
+    """
+    base = """
+        SELECT id, title, COALESCE(description, '') FROM public.tasks
+        WHERE status = 'available'
+          AND (phase IS NULL OR phase <= %s)
+          AND (is_parent IS NULL OR is_parent = false)
+    """
+    base = base.rstrip() + "\n  " + _DEPS_CLAUSE
+    # KEI-183 follow-up — phase ASC first so lower-phase work drains before
+    # higher-phase work even within the same priority bucket (Dave directive).
+    suffix = "ORDER BY phase ASC NULLS LAST, priority ASC, created_at ASC\nLIMIT %s\nFOR UPDATE SKIP LOCKED"
+    if open_pr_keis:
+        if v2:
+            sql = f"{base}  AND id != ALL(%s::text[])\n  AND (persona = %s OR persona IS NULL)\n{suffix}"
+            params = (phase_max, sorted(open_pr_keis), callsign, _CANDIDATE_LIMIT)
+        else:
+            sql = f"{base}  AND id != ALL(%s::text[])\n{suffix}"
+            params = (phase_max, sorted(open_pr_keis), _CANDIDATE_LIMIT)
+    else:
+        if v2:
+            sql = f"{base}  AND (persona = %s OR persona IS NULL)\n{suffix}"
+            params = (phase_max, callsign, _CANDIDATE_LIMIT)
+        else:
+            sql = f"{base}{suffix}"
+            params = (phase_max, _CANDIDATE_LIMIT)
+    return sql, params
+
+
 def claim_next_task(
     conn: psycopg.Connection, callsign: str, phase_max: int
 ) -> tuple[str, str] | None:
-    """Attempt to claim the highest-priority available task. Returns (id, title) or None."""
+    """Attempt to claim the highest-priority available task. Returns (id, title) or None.
+
+    KEI-199 — filters out KEIs that already have an OPEN PR (title or body
+    mentions). Without this, the supervisor loop re-claims already-shipped
+    work (KEI-90 / 122 / 187 / 188 drift-syncs in the 2026-05-17→18 session).
+
+    KEI-204 — filters out FOLLOW-UP / sub-of / depends-on / gated-on rows
+    whose blocking KEI is still status != 'done'. Anchor: KEI-191
+    'FOLLOW-UP after KEI-C (KEI-185 Nova spawn)' was dispatched 3x in the
+    session despite the explicit dep gate (Max yield, Scout yield, Aiden
+    yield). Six canonical phrasings parsed via _BLOCKER_PATTERNS.
+
+    KEI-183 v2: when _is_v2(callsign) the WHERE clause filters by persona lane:
+        persona = $callsign OR persona IS NULL
+    so agents only pick up tasks in their lane or unassigned-overflow tasks.
+    v1 path is unchanged (no persona filter).
+    """
+    open_pr_keis = fetch_open_pr_kei_ids()
+    v2 = _is_v2(callsign)
+    sql, params = _build_task_query(v2, open_pr_keis, callsign, phase_max)
+
     with conn.cursor() as cur:
-        cur.execute(
-            """
-            SELECT id, title FROM public.tasks
-            WHERE status = 'available'
-              AND (phase IS NULL OR phase <= %s)
-              AND (is_parent IS NULL OR is_parent = false)
-            ORDER BY priority ASC, created_at ASC
-            LIMIT 1
-            FOR UPDATE SKIP LOCKED
-            """,
-            (phase_max,),
-        )
-        row = cur.fetchone()
-        if not row:
-            return None
-        task_id, title = row[0], row[1]
-        cur.execute(
-            """
-            UPDATE public.tasks
-            SET status = 'active', claimed_by = %s, claimed_at = NOW()
-            WHERE id = %s
-            """,
-            (callsign, task_id),
-        )
-    conn.commit()
-    return (task_id, title)
+        cur.execute(sql, params)
+        candidates = cur.fetchall()
+        for row in candidates:
+            task_id, title, description = row[0], row[1], row[2] or ""
+            blockers = extract_blocker_keis(title + "\n" + description)
+            if blockers:
+                unfinished = _unfinished_blockers(cur, blockers)
+                if unfinished:
+                    log.debug(
+                        "KEI-204: %s skipped — blocked by %s",
+                        task_id,
+                        sorted(unfinished),
+                    )
+                    continue
+            cur.execute(
+                """
+                UPDATE public.tasks
+                SET status = 'active', claimed_by = %s, claimed_at = NOW()
+                WHERE id = %s
+                """,
+                (callsign, task_id),
+            )
+            conn.commit()
+            return (task_id, title)
+    # Either no candidates OR all candidates dep-blocked
+    return None
 
 
 def release_stale_claims(conn: psycopg.Connection) -> int:
@@ -353,7 +590,12 @@ def fetch_pr_comments(pr_number: int) -> list[dict]:
         return []
 
 
-_REVIEW_COMMENT_PATTERN_TMPL = r"\[REVIEW(?::(?:approve|hold(?:-final)))?:{callsign}\]"
+# KEI-190: trailing `?` on `-final` is the bug fix — previous regex required
+# `-final` to match, so bare `[REVIEW:HOLD:callsign]` (the form every reviewer
+# actually uses) was treated as "no review found" and the supervisor re-dispatched
+# the same PR every cycle. Now matches: bare `[REVIEW:callsign]`, `:approve:`,
+# `:hold:`, `:hold-final:` — symmetric APPROVE/HOLD parsing.
+_REVIEW_COMMENT_PATTERN_TMPL = r"\[REVIEW:[^\]]*\b{callsign}\b"
 
 
 def comment_has_review_marker(body: str, callsign: str) -> bool:
@@ -365,21 +607,26 @@ def comment_has_review_marker(body: str, callsign: str) -> bool:
 
 
 def agent_has_reviewed(pr: dict, callsign: str) -> bool:
-    """Check if callsign already posted a [REVIEW:callsign] comment on this PR.
+    """Check if callsign already posted a [REVIEW:...] marker on this PR.
 
     Checks both formal GitHub review objects (pr['reviews']) and PR comments
     fetched via gh pr view --json comments, since agents post review markers
-    as Slack-relayed comments rather than formal GH reviews.
+    as Slack-relayed comments rather than formal GH reviews. Uses the
+    broadened pattern in `_REVIEW_COMMENT_PATTERN_TMPL` via the
+    comment_has_review_marker helper.
+
+    Agency_OS-wy3e: the prior narrow template missed real-world shapes like
+    [REVIEW:HOLD max] (space-separated), [REVIEW:HOLD-CONTINUED max], and
+    [REVIEW:APPROVE-WITH-NOTES:max]. The template was widened to a single
+    `\\[REVIEW:[^\\]]*\\b{callsign}\\b` pattern that accepts any verdict
+    prefix and any separator before the callsign — see _REVIEW_COMMENT_PATTERN_TMPL.
     """
-    # Check formal review objects first (fast, no subprocess)
     reviews = pr.get("reviews") or []
-    tag = f"[REVIEW:{callsign}]".lower()
     for r in reviews:
-        body = (r.get("body", "") or "").lower()
-        if tag in body:
+        body = r.get("body", "") or ""
+        if comment_has_review_marker(body, callsign):
             return True
 
-    # Check PR comments for [REVIEW:<callsign>] markers
     pr_number = pr.get("number")
     if pr_number is None:
         return False
@@ -468,12 +715,79 @@ def build_task_prompt(task_id: str, title: str, description: str) -> str:
     )
 
 
+_SONAR_PROJECT_KEY = "Keiracom_Agency_OS"
+_SONAR_BASE = "https://sonarcloud.io/api"
+
+
+def fetch_sonar_status(pr_number: int) -> dict[str, Any]:
+    """KEI-189: dual-endpoint Sonar verify — issues + Quality Gate.
+
+    /api/issues/search returns S-rule findings (bugs/code smells/vulnerabilities).
+    /api/qualitygates/project_status returns the QG verdict including SEPARATE
+    conditions like new_duplicated_lines_density that the issues endpoint
+    does NOT surface.
+
+    Anchored on PRs #940/#963/#981 today where issues=0 but QG=ERROR on
+    dup-density — three of us missed the gap because we only checked /issues.
+    Encodes the feedback_sonarcloud_verify_pattern memory pin mechanically.
+
+    Returns {"issues_total": int, "qg_status": str, "qg_failing": list[str]}
+    on success; {} on any fetch failure (fail-open — review still proceeds,
+    agent sees missing-data in brief and can run curl themselves).
+    """
+    out: dict[str, Any] = {}
+    issues_url = f"{_SONAR_BASE}/issues/search?componentKeys={_SONAR_PROJECT_KEY}&pullRequest={pr_number}&resolved=false"
+    qg_url = f"{_SONAR_BASE}/qualitygates/project_status?projectKey={_SONAR_PROJECT_KEY}&pullRequest={pr_number}"
+    try:
+        with urllib.request.urlopen(issues_url, timeout=10) as resp:
+            data = json.loads(resp.read())
+        out["issues_total"] = int(data.get("total", 0))
+    except Exception as exc:
+        log.warning("Sonar /issues fetch failed for PR #%d: %s", pr_number, exc)
+    try:
+        with urllib.request.urlopen(qg_url, timeout=10) as resp:
+            data = json.loads(resp.read())
+        ps = data.get("projectStatus", {})
+        out["qg_status"] = ps.get("status", "UNKNOWN")
+        out["qg_failing"] = [
+            f"{c.get('metricKey')}={c.get('actualValue')} (>{c.get('errorThreshold')})"
+            for c in ps.get("conditions", [])
+            if c.get("status") == "ERROR"
+        ]
+    except Exception as exc:
+        log.warning("Sonar /qualitygates fetch failed for PR #%d: %s", pr_number, exc)
+    return out
+
+
+def _format_sonar_brief(sonar: dict[str, Any]) -> str:
+    """Format Sonar status for inclusion in the review brief. Returns empty
+    string if no data fetched (fail-open — reviewer runs curl themselves)."""
+    if not sonar:
+        return ""
+    lines = ["", "Sonar (BOTH endpoints — issues + QG — checked at brief-emit time):"]
+    if "issues_total" in sonar:
+        lines.append(f"  • /api/issues/search → total NEW unresolved: {sonar['issues_total']}")
+    if "qg_status" in sonar:
+        lines.append(f"  • /api/qualitygates/project_status → status: {sonar['qg_status']}")
+        for cond in sonar.get("qg_failing", []) or []:
+            lines.append(f"      FAIL: {cond}")
+    lines.append(
+        "  ⚠ APPROVE requires BOTH endpoints clean (issues=0 AND QG=OK). "
+        "QG can ERROR on dimensions like new_duplicated_lines_density that issues misses."
+    )
+    return "\n".join(lines)
+
+
 def build_review_prompt(pr_number: int, pr_title: str, pr_url: str, callsign: str) -> str:
+    """Emit the review-claim prompt. KEI-189: includes Sonar issues + QG snapshot."""
+    sonar = fetch_sonar_status(pr_number)
+    sonar_block = _format_sonar_brief(sonar)
     return (
         f"You auto-claimed review of PR #{pr_number}: {pr_title}. "
         f"URL: {pr_url}. "
         f"Run `gh pr view {pr_number}` + check CI/Sonar, "
-        f"post [REVIEW:{callsign}] APPROVE or HOLD with verbatim evidence. Don't ask — execute."
+        f"post [REVIEW:{callsign}] APPROVE or HOLD with verbatim evidence. "
+        f"Don't ask — execute.{sonar_block}"
     )
 
 
@@ -549,7 +863,12 @@ def _handle_idle_no_queue(
     conn: psycopg.Connection,
     status: AgentStatus,
 ) -> AgentStatus:
-    """Scenario 2/5: no claim, queue empty — assign PR review or log idle."""
+    """Scenario 2/5: no claim, queue empty — assign PR review or log idle.
+
+    KEI-183 v2 / KEI-205: when _is_v2(callsign), publish {"state":"ready"} to NATS
+    subject keiracom.agent.status.<callsign> instead of relying on the Slack
+    [READY] tmux-send. v1 path unchanged.
+    """
     review_pr = find_pr_for_review(prs, callsign)
     if review_pr:
         pr_number = review_pr["number"]
@@ -570,6 +889,9 @@ def _handle_idle_no_queue(
     else:
         log.info("[%s] Scenario 2: queue empty, no reviews — correctly idle", callsign)
         status.summary = "queue empty, no reviews — correctly idle"
+    # KEI-183 v2 / KEI-205: publish NATS ready-state instead of Slack [READY] tmux-send.
+    if _is_v2(callsign):
+        _nats_publish_state(callsign, "ready")
     return status
 
 
@@ -662,23 +984,11 @@ def process_agent(
 # ---------------------------------------------------------------------------
 
 
-def _strip_ceo_banned_tokens(text: str) -> str:
-    """Strip PR numbers + technical tokens that #ceo format-blocks."""
-    import re
-
-    # PR #NNN or pull request #NNN -> 'pull request' / 'a pull request'
-    text = re.sub(r"(?:PR|pull request)\s*#\d+", "a pull request", text, flags=re.IGNORECASE)
-    return text
-
-
 def post_ceo_status(report: FleetReport) -> None:
     now_str = _dt.datetime.now(_dt.UTC).strftime("%H:%M UTC")
     lines = [f"**Fleet Status [{now_str}]**"]
     for s in report.statuses:
-        # Strip PR number tokens — banned in #ceo per plain-English convention.
-        # Replace "PR #NNN" / "pull request #NNN" patterns with neutral phrasing.
-        clean_summary = _strip_ceo_banned_tokens(s.summary)
-        lines.append(f"- {s.callsign}: {clean_summary}")
+        lines.append(f"- {s.callsign}: {s.summary}")
     lines.append("")
     lines.append(
         f"**Queue: {report.queue_available} available | "
@@ -699,8 +1009,29 @@ def post_ceo_status(report: FleetReport) -> None:
 # ---------------------------------------------------------------------------
 
 
+def _try_run_supervisor_v2() -> bool:
+    """Attempt v2 dispatch. Returns True on success, False on ImportError so
+    main() falls through to v1. Any exception inside v2.run() is left to
+    propagate — v2-on operators get the real trace, not a v1 silent-fallback.
+    """
+    try:
+        from src.fleet import supervisor_v2  # type: ignore[import-not-found]  # noqa: PLC0415
+    except ImportError:
+        log.warning(
+            "FLEET_SUPERVISOR_V2_ENABLED=1 but supervisor_v2 module missing "
+            "(KEI-183/PR #990 not yet merged) — falling back to v1"
+        )
+        return False
+    log.info("supervisor v2 ON (KEI-185 flag flipped) — routing to supervisor_v2.run()")
+    supervisor_v2.run()
+    return True
+
+
 def main() -> None:
     log.info("Fleet supervisor starting")
+    if _supervisor_v2_enabled() and _try_run_supervisor_v2():
+        log.info("Fleet supervisor complete (v2 path)")
+        return
     conn = _connect()
 
     try:

@@ -84,14 +84,14 @@ LONG_RUNNING_TRACK_PROGRESS_MIN = 30
 EXECUTION_CHANNEL_NAME = "#execution"
 CEO_CHANNEL_NAME = "#ceo"
 
-CLONES = ("atlas", "orion", "scout")
+CLONES = ("atlas", "orion", "scout", "nova")  # KEI-69 — nova added
 PRIMES = ("aiden", "max")  # elliot orchestrates; she doesn't dispatch to herself
 
 # Inbox-path map for clones (Dave directive ts ~1778584800 — polling hole A).
 # Clones receive dispatches via inbox-watcher JSON drops, NOT via Slack channel
 # fan-out (the listener path is uptime-sensitive; direct inbox write is the
 # Layer 3 mechanical close).
-# NOSONAR S5443 ×3 below: /tmp/telegram-relay-<cs>/inbox is the systemd
+# NOSONAR S5443 ×4 below: /tmp/telegram-relay-<cs>/inbox is the systemd
 # inotify-watcher contract (per .claude/hooks/inbox_check_hook.sh + the
 # per-callsign relay-watcher services). Cannot migrate to ~/.local/state
 # without a coordinated watcher refactor. Defense-in-depth: callsign keys
@@ -103,11 +103,13 @@ INBOX_PATHS: dict[str, str] = {
     "atlas": "/tmp/telegram-relay-atlas/inbox",  # NOSONAR
     "orion": "/tmp/telegram-relay-orion/inbox",  # NOSONAR
     "scout": "/tmp/telegram-relay-scout/inbox",  # NOSONAR
+    "nova": "/tmp/telegram-relay-nova/inbox",  # NOSONAR — KEI-69
 }
 
 
 # tmux session name per callsign (empirical 2026-05-12: elliot+max sessions
-# are named with -bot suffix; clones + aiden use bare callsign).
+# are named with -bot suffix; clones + aiden use bare callsign). KEI-69 adds
+# nova so the fallback poller monitors all 7 fleet sessions (elliot + 6).
 CALLSIGN_TO_TMUX: dict[str, str] = {
     "elliot": "elliottbot",
     "aiden": "aiden",
@@ -115,6 +117,7 @@ CALLSIGN_TO_TMUX: dict[str, str] = {
     "atlas": "atlas",
     "orion": "orion",
     "scout": "scout",
+    "nova": "nova",
 }
 
 # Anthropic throttle signal patterns. Case-insensitive substring match on the
@@ -790,6 +793,7 @@ def _callsign_to_worktree(callsign: str) -> str:
         "atlas": "/home/elliotbot/clawd/Agency_OS-atlas",
         "orion": "/home/elliotbot/clawd/Agency_OS-orion",
         "scout": "/home/elliotbot/clawd/Agency_OS-scout",
+        "nova": "/home/elliotbot/clawd/Agency_OS-nova",  # KEI-69
     }
     return _WORKTREES.get(callsign.lower(), "")
 

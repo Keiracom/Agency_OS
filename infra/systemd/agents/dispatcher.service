@@ -1,0 +1,27 @@
+[Unit]
+Description=Keiracom Dispatcher service (KEI-213) — interceptor proxy + watchdog + reaper
+Documentation=https://linear.app/keiracom/issue/KEI-213
+After=network-online.target nats-server.service
+Wants=network-online.target
+Requires=nats-server.service
+StartLimitBurst=5
+StartLimitIntervalSec=300
+
+[Service]
+Type=simple
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+ExecStart=/home/elliotbot/clawd/Agency_OS/.venv/bin/uvicorn src.dispatcher.main:app \
+    --host 127.0.0.1 \
+    --port ${DISPATCHER_PORT:-4001} \
+    --log-level info
+ExecStartPost=/home/elliotbot/clawd/Agency_OS/scripts/agent_online_notify.sh DISPATCHER 15 C0B3QB0K1GQ
+Restart=always
+RestartSec=10
+WatchdogSec=30s
+NotifyAccess=main
+StandardOutput=append:/home/elliotbot/clawd/logs/dispatcher.log
+StandardError=append:/home/elliotbot/clawd/logs/dispatcher.log
+
+[Install]
+WantedBy=default.target

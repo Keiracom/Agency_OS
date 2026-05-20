@@ -68,6 +68,16 @@
           }
         ],
         "matcher": "*"
+      },
+      {
+        "hooks": [
+          {
+            "command": "bash scripts/hooks/pre_task_signal.sh",
+            "timeout": 5,
+            "type": "command"
+          }
+        ],
+        "matcher": "Bash|Edit|Write|NotebookEdit"
       }
     ],
     "SessionEnd": [
@@ -85,6 +95,11 @@
     "SessionStart": [
       {
         "hooks": [
+          {
+            "command": "bash scripts/hooks/env_schema_validate.sh",
+            "timeout": 5,
+            "type": "command"
+          },
           {
             "command": "/home/elliotbot/clawd/venv/bin/python3 scripts/session_start_audit.py",
             "timeout": 10,
@@ -113,6 +128,11 @@
           {
             "command": "/home/elliotbot/clawd/venv/bin/python3 scripts/anti_amnesia_capsule.py --read",
             "timeout": 5,
+            "type": "command"
+          },
+          {
+            "command": "bash scripts/hooks/elliot_session_start_slack_wake.sh",
+            "timeout": 10,
             "type": "command"
           }
         ],
@@ -163,6 +183,16 @@
           }
         ],
         "matcher": "*"
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/elliotbot/clawd/Agency_OS/.venv/bin/python3 /home/elliotbot/clawd/Agency_OS/scripts/hooks/elliot_stop_hook.py",
+            "timeout": 30
+          }
+        ]
       }
     ],
     "UserPromptSubmit": [

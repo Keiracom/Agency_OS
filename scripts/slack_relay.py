@@ -37,6 +37,22 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+# Slack access restricted to elliot only (Dave directive 2026-05-19 — only elliot
+# may post to Slack; default channel is #ceo). Other callsigns invoking this
+# script exit 2 with a clear denial message so callers know access was blocked.
+_CALLSIGN_ENFORCE = os.environ.get("CALLSIGN", "").strip().lower()
+if _CALLSIGN_ENFORCE and _CALLSIGN_ENFORCE != "elliot":
+    sys.stderr.write(
+        f"SLACK_ACCESS_DENIED: callsign={_CALLSIGN_ENFORCE!r} blocked. "
+        f"Only elliot may post to Slack per Dave directive 2026-05-19.\n"
+    )
+    sys.exit(2)
+# Elliot's default channel is #ceo (C0B2PM3TV0B), not #execution. Override the
+# module-default SLACK_DEFAULT_CHANNEL when running as elliot and no explicit
+# channel was set in the environment.
+if _CALLSIGN_ENFORCE == "elliot" and not os.environ.get("SLACK_DEFAULT_CHANNEL"):
+    os.environ["SLACK_DEFAULT_CHANNEL"] = "C0B2PM3TV0B"
+
 # KEI-40: rate-limit retry config. Slack chat.postMessage returns HTTP 429 with
 # Retry-After header on tier-3 method rate-limits (~1 req/sec for chat.postMessage).
 # Exponential backoff with header-respect avoids the governance-noise pattern
@@ -126,14 +142,14 @@ CHANNELS = {
 }
 DEFAULT_CHANNEL = os.environ.get("SLACK_DEFAULT_CHANNEL", CHANNELS["execution"])
 
-# Per-callsign outbound allowlist (Dave directive #6 callsign bug fix 2026-05-11).
-# Worktree's CALLSIGN determines which channels it may post to. #ceo is always
-# Dave-Elliot exclusive; clones (atlas/orion/scout) post to #execution only.
+# Per-callsign outbound allowlist (Dave directive #6 callsign bug fix 2026-05-11;
+# deliberation-layer #ceo grant 2026-05-18 per Dave directive).
+# Worktree's CALLSIGN determines which channels it may post to. Deliberation
+# layer (Elliot/Aiden/Max) may post to #ceo; clones (atlas/orion/scout/nova)
+# post to #execution only.
 # Aiden also writes #completed_directives per Protocol #4 (directive completion log).
 _ALLOWED_CHANNELS_BY_CALLSIGN: dict[str, frozenset[str]] = {
     # Elliot (COO, runs prime worktree): execution + ceo + ops + completed_directives.
-    # Per Elliot Step 0 12:00:24 UTC ("main = execution+ceo+ops") + Protocol #4
-    # (completion log channel added to dispatch 2026-05-11 20:42).
     "elliot": frozenset(
         {
             CHANNELS["execution"],
@@ -142,14 +158,21 @@ _ALLOWED_CHANNELS_BY_CALLSIGN: dict[str, frozenset[str]] = {
             CHANNELS["completed_directives"],
         }
     ),
-    # Aiden (build agent): execution + completed_directives (Protocol #4 mandate).
-    "aiden": frozenset({CHANNELS["execution"], CHANNELS["completed_directives"]}),
-    # Max (CTO): execution only (mirrors coo_slack_relay.py).
-    "max": frozenset({CHANNELS["execution"]}),
-    # Clones (atlas/orion/scout): execution only per Step 0.
+    # Aiden (deliberator — governance lens): execution + ceo + completed_directives.
+    "aiden": frozenset(
+        {
+            CHANNELS["execution"],
+            CHANNELS["ceo"],
+            CHANNELS["completed_directives"],
+        }
+    ),
+    # Max (deliberator — quality lens): execution + ceo.
+    "max": frozenset({CHANNELS["execution"], CHANNELS["ceo"]}),
+    # Clones (atlas/orion/scout/nova): execution only per Step 0.
     "atlas": frozenset({CHANNELS["execution"]}),
     "orion": frozenset({CHANNELS["execution"]}),
     "scout": frozenset({CHANNELS["execution"]}),
+    "nova": frozenset({CHANNELS["execution"]}),
 }
 ALLOWED_CHANNELS = _ALLOWED_CHANNELS_BY_CALLSIGN.get(CALLSIGN, frozenset({CHANNELS["execution"]}))
 
@@ -286,6 +309,64 @@ def _contains_escalation_keyword(text: str) -> bool:
     return any(kw.lower() in lower for kw in ESCALATION_KEYWORDS)
 
 
+# ---------------------------------------------------------------------------
+# KEI-33 — R13 BLOCKER ESCALATION (Dave directive 2026-05-18)
+# ---------------------------------------------------------------------------
+# Hard-redirect (not additive) outbound blocker messages from #execution to
+# #ceo. Triggered by canonical R13 markers + the dispatch's listed phrases.
+# Unlike KEI-80's additive escalation, R13 swaps the channel BEFORE the
+# post — so the message lands in #ceo ONLY (no duplicate to original
+# channel, no double-fire with KEI-80 since KEI-80 no-ops when
+# channel == #ceo).
+#
+# Gating: only redirect when the caller's CALLSIGN is permitted to post
+# #ceo. Clones (atlas/orion/scout/nova) keep their existing #execution
+# routing — they should escalate via dispatch chain, not by posting #ceo
+# directly. KEI-80's additive path still applies to clones (it goes via
+# the same bot token, not the clone's allowlist).
+
+# Anchored matchers (full regex). Case-insensitive. Compiled at import time.
+_R13_BLOCKER_PATTERNS: tuple[re.Pattern[str], ...] = (
+    # Canonical R13 marker: [BLOCKED:<callsign>] anywhere in the message.
+    re.compile(r"\[BLOCKED:[A-Z][A-Z0-9_-]*\]", re.IGNORECASE),
+    # Dispatch-listed phrasings.
+    re.compile(r"\bblocked on ceo\b", re.IGNORECASE),
+    re.compile(r"\bawaiting decision\b", re.IGNORECASE),
+    re.compile(r"\boption [abcd]\b/[abcd]", re.IGNORECASE),  # "option A/B/C"
+    re.compile(r"\boption [abcd]/[abcd](/[abcd])?\b", re.IGNORECASE),
+)
+
+
+def _is_r13_blocker(text: str) -> bool:
+    """Return True if text contains any canonical R13 blocker marker."""
+    return any(p.search(text) for p in _R13_BLOCKER_PATTERNS)
+
+
+def _r13_maybe_redirect(channel: str, text: str) -> str:
+    """KEI-33: If text contains an R13 blocker marker AND this callsign is
+    allowed to post #ceo, swap the outbound channel to #ceo. Otherwise
+    return the channel unchanged.
+
+    Pre-empts KEI-80's additive post (`_maybe_escalate_to_ceo` no-ops
+    when channel == ceo_channel) so we don't double-fire to #ceo.
+    """
+    ceo = CHANNELS["ceo"]
+    if channel == ceo:
+        return channel  # already heading to #ceo
+    if not _is_r13_blocker(text):
+        return channel
+    if ceo not in ALLOWED_CHANNELS:
+        # Clone callsigns can't post #ceo. Leave the message on #execution;
+        # the clone must escalate via the dispatch chain instead.
+        return channel
+    print(
+        f"R13: blocker marker detected in outbound from {CALLSIGN} — "
+        f"redirecting #execution → #ceo per Dave directive 2026-05-18",
+        file=sys.stderr,
+    )
+    return ceo
+
+
 def _maybe_escalate_to_ceo(channel: str, text: str, callsign: str) -> None:
     """KEI-80: Fire a direct #ceo post when outbox message contains escalation language.
 
@@ -336,6 +417,11 @@ def _maybe_escalate_to_ceo(channel: str, text: str, callsign: str) -> None:
 
 def main() -> int:
     channel, message = parse_args(sys.argv[1:])
+    # KEI-33 — R13 BLOCKER ESCALATION. Runs FIRST so the channel-swap is
+    # visible to every downstream gate (R11 #ceo-format, KEI-80 additive
+    # escalation). Redirect is a no-op for clone callsigns and for
+    # messages already headed to #ceo.
+    channel = _r13_maybe_redirect(channel, message)
     # S1 verify gate (Phase 6 — block fabricated PR# / commit-hash in completion
     # claims at outbound. Per Claude sign-off 2026-05-11.).
     try:

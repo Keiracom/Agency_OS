@@ -18,11 +18,14 @@ Provides data access functions for:
 """
 
 import logging
+import os
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.governance.ceo_memory_writer import upsert_ceo_memory_key
 
 logger = logging.getLogger(__name__)
 
@@ -361,42 +364,24 @@ async def get_propensity_weights(db: AsyncSession) -> dict:
         return {"weights": {}, "negative": {}}
 
 
-async def save_propensity_weights(
-    db: AsyncSession,
+def save_propensity_weights(
     weights: dict,
 ) -> dict[str, Any]:
     """
     Save updated propensity weights to ceo_memory.
 
-    Performs an upsert to ceo:propensity_weights_v3.
+    Performs an upsert to ceo:propensity_weights_v3 via the KEI-87
+    upsert_ceo_memory_key wrapper — no DB session needed.
 
     Args:
-        db: Database session
         weights: Updated weights dict
 
     Returns:
         Dict with success status
     """
     try:
-        import json
-
-        query = text("""
-            INSERT INTO ceo_memory (key, value, updated_at)
-            VALUES ('ceo:propensity_weights_v3', :value, NOW())
-            ON CONFLICT (key) DO UPDATE
-            SET value = :value, updated_at = NOW()
-            RETURNING key
-        """)
-
-        await db.execute(
-            query,
-            {
-                "value": json.dumps(weights),
-            },
-        )
-
-        await db.commit()
-
+        callsign = os.environ.get("CALLSIGN", "system")
+        upsert_ceo_memory_key(callsign, "ceo:propensity_weights_v3", weights)
         logger.info("CIS: Saved updated propensity weights")
         return {"success": True}
 

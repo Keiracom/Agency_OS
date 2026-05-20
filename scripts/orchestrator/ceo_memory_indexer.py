@@ -157,7 +157,15 @@ def main() -> None:
         "indexer start source=%s class=%s batch=%d", SOURCE_NAME, DECISIONS_CLASS, args.batch
     )
 
-    with psycopg.connect(_dsn(), autocommit=True) as conn:
+    # prepare_threshold=None per reference_psycopg_supabase_pgbouncer (KEI-54B
+    # PR #881): Supabase pooler is pgbouncer txn-mode and drops PREPARE between
+    # leases. Without this, psycopg3 auto-prepares after 5 executions and the
+    # next batch hits DuplicatePreparedStatement → InvalidSqlStatementName loop.
+    # PR #1046 fixed this same bug in indexer_base.run_db_indexer; ceo_memory
+    # has its own main() that bypasses run_db_indexer (predates KEI-109 dedup
+    # extraction), so the fix must be reapplied here. Anchored Decisions count
+    # stuck at 300 — Agency_OS-hzk5.
+    with psycopg.connect(_dsn(), autocommit=True, prepare_threshold=None) as conn:
         indexer = CeoMemoryIndexer(conn)
         indexer.ensure_target_class()
 

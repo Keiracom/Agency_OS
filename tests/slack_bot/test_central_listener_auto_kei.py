@@ -1,11 +1,15 @@
-"""Tests for auto-KEI creation in central_listener.py (KEI-18).
+"""Tests for auto-KEI creation in central_listener.py (KEI-18, KEI-100 pivot).
 
 Per Dave-direct mandate 2026-05-16: messages in #ceo channel starting with
-[CEO] prefix trigger automatic task insertion into public.tasks and a
-confirmation post back to #ceo. Fanout relay must still fire regardless of
-auto-KEI outcome.
+[CEO] prefix trigger automatic KEI creation and a confirmation post back to
+#ceo. Fanout relay must still fire regardless of auto-KEI outcome.
 
-All tests use mocks — no live Slack or Supabase calls.
+KEI-100 pivot: creation goes via Linear GraphQL (Linear is source of truth);
+the Linear webhook handles the Supabase upsert asynchronously.
+
+KEI-144 hotpatch: behavior is env-gated behind AUTO_KEI_FROM_CEO=1.
+
+All tests use mocks — no live Slack or Linear calls.
 """
 
 from __future__ import annotations
@@ -14,7 +18,10 @@ import sys
 import types
 from unittest.mock import MagicMock, patch
 
-# Stub slack_sdk and psycopg before module import (same pattern as PR #711)
+# Stub slack_sdk before module import (same pattern as PR #711).
+# psycopg is NOT stubbed here — central_listener.py post-KEI-100 no longer
+# imports psycopg directly; stubbing it leaked into sys.modules and broke
+# unrelated tests (ceo_memory_writer, tool_call_logger, e2e schema smoke).
 for mod_name in (
     "slack_sdk",
     "slack_sdk.socket_mode",
@@ -31,26 +38,11 @@ sys.modules["slack_sdk.socket_mode.response"].SocketModeResponse = type(
 )
 sys.modules["slack_sdk.web"].WebClient = type("WebClient", (), {})
 
-# Stub psycopg at the top level before importing central_listener
-psycopg_stub = types.ModuleType("psycopg")
-psycopg_errors_stub = types.ModuleType("psycopg.errors")
-
-
-class _UniqueViolation(Exception):
-    pass
-
-
-psycopg_errors_stub.UniqueViolation = _UniqueViolation
-psycopg_stub.errors = psycopg_errors_stub
-psycopg_stub.connect = MagicMock()
-sys.modules["psycopg"] = psycopg_stub
-sys.modules["psycopg.errors"] = psycopg_errors_stub
-
 from src.slack_bot.central_listener import (  # noqa: E402
     CALLSIGN_TO_INBOX,
     CEO_CHANNEL,
+    _create_kei_via_linear,
     _extract_ceo_title,
-    _insert_kei_task,
     _maybe_auto_create_kei,
     process_event,
 )
@@ -74,96 +66,98 @@ def _execution_event(text: str) -> dict:
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# TEST 1: [CEO] prefix triggers INSERT with correct fields
+# TEST 1: _create_kei_via_linear posts Linear GraphQL and returns identifier
 # ──────────────────────────────────────────────────────────────────────────────
 
 
-def test_ceo_prefix_inserts_task() -> None:
-    """Mocked psycopg cursor receives INSERT with computed next id + extracted title + status='available'."""
-    mock_cursor = MagicMock()
-    mock_cursor.__enter__ = MagicMock(return_value=mock_cursor)
-    mock_cursor.__exit__ = MagicMock(return_value=False)
-    mock_cursor.fetchone.return_value = (42,)
+def test_create_kei_via_linear_returns_identifier() -> None:
+    """Linear issueCreate success → function returns the assigned identifier."""
+    mock_response = MagicMock()
+    mock_response.raise_for_status = MagicMock(return_value=None)
+    mock_response.json.return_value = {
+        "data": {
+            "issueCreate": {
+                "success": True,
+                "issue": {"id": "uuid-42", "identifier": "KEI-42", "url": "https://linear.app/x"},
+            }
+        }
+    }
 
-    mock_conn = MagicMock()
-    mock_conn.__enter__ = MagicMock(return_value=mock_conn)
-    mock_conn.__exit__ = MagicMock(return_value=False)
-    mock_conn.cursor.return_value = mock_cursor
+    mock_client = MagicMock()
+    mock_client.__enter__ = MagicMock(return_value=mock_client)
+    mock_client.__exit__ = MagicMock(return_value=False)
+    mock_client.send.return_value = mock_response
 
     with (
-        patch("src.slack_bot.central_listener.DATABASE_URL", "postgresql://fake/db"),
-        patch("src.slack_bot.central_listener.psycopg.connect", return_value=mock_conn),
+        patch.dict("os.environ", {"LINEAR_API_KEY": "lk_test"}, clear=False),
+        patch("src.slack_bot.central_listener.httpx.Client", return_value=mock_client),
     ):
-        kei_id = _insert_kei_task("File the migration KEI now.")
+        kei_id = _create_kei_via_linear("File the migration KEI now.")
 
     assert kei_id == "KEI-42"
-    # Verify INSERT was called with the right arguments
-    insert_call = mock_cursor.execute.call_args_list[1]
-    args = insert_call[0][1]  # positional args tuple passed to execute
-    assert args[0] == "KEI-42"
-    assert args[1] == "File the migration KEI now."
-    assert args[2] == "available"
-    assert args[3] == []
-    assert args[4] is None
+    # Verify the GraphQL request body contains the title
+    sent_request = mock_client.send.call_args[0][0]
+    body = sent_request.content.decode()
+    assert "File the migration KEI now." in body
+    assert "issueCreate" in body
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# TEST 2: No [CEO] prefix → INSERT not called
+# TEST 2: No [CEO] prefix → Linear create not called
 # ──────────────────────────────────────────────────────────────────────────────
 
 
-def test_no_prefix_skips_insert() -> None:
-    """Non-[CEO] message in #ceo channel does not trigger any INSERT."""
+def test_no_prefix_skips_linear_create() -> None:
+    """Non-[CEO] message in #ceo channel does not trigger Linear issue create."""
     mock_web = MagicMock()
     event = _ceo_event(NON_CEO_TEXT)
 
-    with patch("src.slack_bot.central_listener.psycopg.connect") as mock_connect:
+    with (
+        patch.dict("os.environ", {"AUTO_KEI_FROM_CEO": "1"}, clear=False),
+        patch("src.slack_bot.central_listener._create_kei_via_linear") as mock_create,
+    ):
         _maybe_auto_create_kei(event, mock_web)
-        mock_connect.assert_not_called()
+        mock_create.assert_not_called()
 
     mock_web.chat_postMessage.assert_not_called()
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# TEST 3: Empty body after [CEO] strip → INSERT skipped
+# TEST 3: Empty body after [CEO] strip → Linear create skipped
 # ──────────────────────────────────────────────────────────────────────────────
 
 
-def test_empty_body_skips_insert() -> None:
+def test_empty_body_skips_linear_create() -> None:
     """A bare [CEO] post (nothing after the prefix) skips auto-create."""
     mock_web = MagicMock()
     event = _ceo_event(EMPTY_CEO_TEXT)
 
-    with patch("src.slack_bot.central_listener.psycopg.connect") as mock_connect:
+    with (
+        patch.dict("os.environ", {"AUTO_KEI_FROM_CEO": "1"}, clear=False),
+        patch("src.slack_bot.central_listener._create_kei_via_linear") as mock_create,
+    ):
         _maybe_auto_create_kei(event, mock_web)
-        mock_connect.assert_not_called()
+        mock_create.assert_not_called()
 
     mock_web.chat_postMessage.assert_not_called()
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# TEST 4: Successful insert → confirmation posted to #ceo
+# TEST 4: Successful Linear create → confirmation posted to #ceo
 # ──────────────────────────────────────────────────────────────────────────────
 
 
 def test_confirmation_posted_on_success() -> None:
-    """After a successful insert, chat_postMessage is called with [System] KEI-N created — …"""
-    mock_cursor = MagicMock()
-    mock_cursor.__enter__ = MagicMock(return_value=mock_cursor)
-    mock_cursor.__exit__ = MagicMock(return_value=False)
-    mock_cursor.fetchone.return_value = (7,)
-
-    mock_conn = MagicMock()
-    mock_conn.__enter__ = MagicMock(return_value=mock_conn)
-    mock_conn.__exit__ = MagicMock(return_value=False)
-    mock_conn.cursor.return_value = mock_cursor
-
+    """After a successful Linear create, chat_postMessage is called with [System] KEI-N created — …"""
     mock_web = MagicMock()
     event = _ceo_event(CEO_EVENT_TEXT)
 
     with (
-        patch("src.slack_bot.central_listener.DATABASE_URL", "postgresql://fake/db"),
-        patch("src.slack_bot.central_listener.psycopg.connect", return_value=mock_conn),
+        patch.dict("os.environ", {"AUTO_KEI_FROM_CEO": "1"}, clear=False),
+        patch(
+            "src.slack_bot.central_listener._create_kei_via_linear",
+            return_value="KEI-7",
+        ),
     ):
         _maybe_auto_create_kei(event, mock_web)
 

@@ -24,21 +24,26 @@ def test_hmac_verify_valid():
     canonical = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
     sig = hmac.new(secret.encode("utf-8"), canonical, hashlib.sha256).hexdigest()
     signed = {**payload, "hmac": sig}
-    ok, reason = _hmac_verify_dict(signed, secret)
+    # KEI-138 — verify now returns (ok, reason, matched_fingerprint)
+    ok, reason, matched_fp = _hmac_verify_dict(signed, secret)
     assert ok is True
     assert reason == "ok"
+    expected_fp = hashlib.sha256(secret.encode("utf-8")).hexdigest()[:12]
+    assert matched_fp == expected_fp
 
 
 def test_hmac_verify_missing():
-    ok, reason = _hmac_verify_dict({"type": "text"}, "secret")
+    ok, reason, matched_fp = _hmac_verify_dict({"type": "text"}, "secret")
     assert ok is False
     assert "missing" in reason
+    assert matched_fp is None
 
 
 def test_hmac_verify_mismatch():
-    ok, reason = _hmac_verify_dict({"type": "text", "hmac": "bad"}, "secret")
+    ok, reason, matched_fp = _hmac_verify_dict({"type": "text", "hmac": "bad"}, "secret")
     assert ok is False
     assert "mismatch" in reason.lower()
+    assert matched_fp is None
 
 
 # ── format_message ───────────────────────────────────────────────────────────

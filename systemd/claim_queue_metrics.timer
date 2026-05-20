@@ -1,0 +1,13 @@
+[Unit]
+Description=KEI-136 fires claim_queue_metrics.service every 60s
+Documentation=https://linear.app/keiracom/issue/KEI-136
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=60s
+AccuracySec=5s
+Persistent=true
+Unit=claim_queue_metrics.service
+
+[Install]
+WantedBy=timers.target

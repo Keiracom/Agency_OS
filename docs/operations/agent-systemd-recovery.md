@@ -72,6 +72,31 @@ Expected timeline after `reboot`:
 
 If something is missing after ~3 minutes, see **Troubleshooting**.
 
+## OpenClaw relay dependency (KEI-95)
+
+Every `*-agent.service` unit declares `Requires=openclaw.service` +
+`After=network-online.target openclaw.service`. On a fresh boot the agent
+unit will NOT start until OpenClaw is up — preventing the silent-deaf
+agent failure mode where Claude Code initialises before the relay is ready
+and MCP/Slack inbound never reconnects.
+
+Two operator conditions must hold on a fresh host or after a reinstall:
+
+```bash
+# 1. Linger must be on (services need to start without a login session).
+sudo loginctl enable-linger elliotbot
+
+# 2. openclaw.service must be installed under ~/.config/systemd/user/
+#    and enabled. Source lives outside this repo; if it's missing,
+#    install_*_agent.sh exits and the dependency fails.
+systemctl --user is-enabled openclaw.service   # expect: enabled
+systemctl --user is-active  openclaw.service   # expect: active
+```
+
+If OpenClaw is unhealthy on boot, agent units stay in `inactive (waiting)`
+until OpenClaw becomes active — they will NOT crash-loop. Once OpenClaw
+comes up, agents follow within seconds.
+
 ## How a crashed agent recovers
 
 Each service runs `scripts/systemd_agent_supervisor.sh <callsign> <tmux> <worktree>`,

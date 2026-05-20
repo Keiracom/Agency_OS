@@ -1,0 +1,17 @@
+[Unit]
+Description=Agency OS — KEI-97 fleet heartbeat for callsign %i
+Documentation=https://linear.app/keiracom/issue/KEI-97
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+EnvironmentFile=-/home/elliotbot/.config/agency-os/.env
+Environment=CALLSIGN=%i
+ExecStart=/home/elliotbot/clawd/Agency_OS/.venv/bin/python3 /home/elliotbot/clawd/Agency_OS/scripts/orchestrator/fleet_heartbeat_writer.py
+StandardOutput=append:/home/elliotbot/clawd/logs/fleet-heartbeat-%i.log
+StandardError=append:/home/elliotbot/clawd/logs/fleet-heartbeat-%i.log
+
+[Install]
+WantedBy=default.target

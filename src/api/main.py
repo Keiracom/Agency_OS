@@ -402,6 +402,7 @@ from src.api.routes.bu_readiness import router as bu_readiness_router
 from src.api.routes.campaign_generation import router as campaign_generation_router
 from src.api.routes.campaigns import router as campaigns_router
 from src.api.routes.crm import router as crm_router
+from src.api.routes.customer_api_keys import router as customer_api_keys_router
 from src.api.routes.customers import router as customers_router
 from src.api.routes.cycles import router as cycles_router
 from src.api.routes.dashboard import router as dashboard_router
@@ -447,6 +448,8 @@ app.include_router(patterns_router, prefix="/api/v1/patterns")
 app.include_router(crm_router, prefix="/api/v1")
 # Phase 24F: Customer Import
 app.include_router(customers_router, prefix="/api/v1")
+# KEI-155 (KEI-113B): BYO customer API key entry (encrypts via pgcrypto)
+app.include_router(customer_api_keys_router, prefix="/api/v1")
 # Phase 24H: LinkedIn Connection
 app.include_router(linkedin_router, prefix="/api/v1")
 # Phase 24A: Lead Pool
@@ -469,7 +472,7 @@ app.include_router(elevenagents_router)
 app.include_router(linear_webhook_router)
 # src.api.webhooks.github — KEI-97 GitHub PR webhook auto-creates REVIEW-PR-N tasks (router carries /api/webhooks/github prefix).
 app.include_router(github_webhook_router)
-# src.api.webhooks.paddle — KEI-150 Paddle MoR inbound webhook (router carries /api/webhooks/paddle prefix).
+# src.api.webhooks.paddle — KEI-150 Paddle MoR inbound webhook + KEI-152 event handlers (router carries /api/webhooks/paddle prefix).
 app.include_router(paddle_webhook_router)
 # Task #20: Email backend (Resend send + status + HMAC-verified webhook).
 # email_router carries its own `/api/email` prefix — no extra prefix here.

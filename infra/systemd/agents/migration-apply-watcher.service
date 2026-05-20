@@ -1,0 +1,13 @@
+[Unit]
+Description=Agency OS — Migration apply gate watcher (KEI-188)
+Documentation=https://linear.app/keiracom/issue/KEI-188
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+EnvironmentFile=-/home/elliotbot/.config/agency-os/.env
+ExecStart=/home/elliotbot/clawd/Agency_OS/.venv/bin/python3 /home/elliotbot/clawd/Agency_OS/scripts/orchestrator/migration_apply_watcher.py
+StandardOutput=append:/home/elliotbot/clawd/logs/migration-apply-watcher.log
+StandardError=append:/home/elliotbot/clawd/logs/migration-apply-watcher.log
+MemoryMax=128M

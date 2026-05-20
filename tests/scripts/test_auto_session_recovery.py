@@ -36,13 +36,17 @@ def _stub_alive(asr_mod, monkeypatch, names: set[str]) -> None:
 
 
 def test_detect_dead_all_alive(asr_mod, monkeypatch):
-    _stub_alive(asr_mod, monkeypatch, {"elliottbot", "aiden", "maxbot", "atlas", "orion", "scout"})
+    _stub_alive(
+        asr_mod,
+        monkeypatch,
+        {"elliottbot", "aiden", "maxbot", "atlas", "orion", "scout", "nova"},
+    )
     assert asr_mod.detect_dead_callsigns() == []
 
 
 def test_detect_dead_max_missing(asr_mod, monkeypatch):
-    _stub_alive(asr_mod, monkeypatch, {"elliottbot", "aiden", "atlas", "orion", "scout"})
-    # maxbot session absent → max callsign reported dead
+    _stub_alive(asr_mod, monkeypatch, {"elliottbot", "aiden", "atlas", "orion", "scout", "nova"})
+    # maxbot session absent → max callsign reported dead (nova alive, not flagged)
     assert asr_mod.detect_dead_callsigns() == ["max"]
 
 
@@ -163,9 +167,7 @@ def test_run_two_attempt_threshold_then_escalate(asr_mod, monkeypatch, tmp_path)
         )
     )
     recover_calls: list[str] = []
-    monkeypatch.setattr(
-        asr_mod, "recover_session", lambda cs: recover_calls.append(cs) or False
-    )
+    monkeypatch.setattr(asr_mod, "recover_session", lambda cs: recover_calls.append(cs) or False)
     escalations: list[tuple[str, int]] = []
     monkeypatch.setattr(asr_mod, "_escalate_to_ceo", lambda cs, n: escalations.append((cs, n)))
     asr_mod.run(now=datetime(2026, 5, 13, 0, 5, tzinfo=UTC))

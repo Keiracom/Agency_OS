@@ -1136,10 +1136,12 @@ def test_handle_active_claim_stall_resume_nudges_and_surfaces(monkeypatch):
     monkeypatch.setattr(
         fs, "_nats_publish_stall", lambda cs, tid, sig: surfaced.append((cs, tid, sig))
     )
+
     # get_last_tool_call must NOT be reached — stall check returns first.
-    monkeypatch.setattr(
-        fs, "get_last_tool_call", lambda *_a: (_ for _ in ()).throw(AssertionError("reached"))
-    )
+    def _unreached(*_a):
+        raise AssertionError("get_last_tool_call reached — stall check must return first")
+
+    monkeypatch.setattr(fs, "get_last_tool_call", _unreached)
     status = fs.AgentStatus("aiden", "aiden:0", "aiden-agent", summary="")
     result = fs._handle_active_claim(
         "aiden", "aiden:0", "aiden-agent", MagicMock(), ("KEI-9", "deliberate"), status

@@ -211,20 +211,6 @@ def test_main_once_path_runs_without_attribute_error(monkeypatch, tmp_path):
     ensure_calls: list[tuple[str, str]] = []
     post_calls: list[tuple[str, dict]] = []
 
-    class _FakeResp:
-        def __init__(self, status: int, body: bytes = b""):
-            self.status = status
-            self._body = body
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *a):
-            return False
-
-        def read(self):
-            return self._body
-
     def _fake_ensure_class(name, schema):
         ensure_calls.append((name, schema["class"]))
 

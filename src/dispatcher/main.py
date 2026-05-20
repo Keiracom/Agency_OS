@@ -306,9 +306,7 @@ async def dispatcher_spawn(req: SpawnRequest) -> dict[str, Any]:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     try:
-        _register_session(
-            req.key, handle, hung_threshold_s=req.hung_threshold_s, ttl_s=req.ttl_s
-        )
+        _register_session(req.key, handle, hung_threshold_s=req.hung_threshold_s, ttl_s=req.ttl_s)
     except ValueError as exc:
         # Registration rejected (e.g. session name does not match the
         # reaper prefix). Tear the session down so it is not left orphaned.

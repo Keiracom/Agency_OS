@@ -214,15 +214,18 @@ def run_once(conn: Any, api_key: str, *, apply: bool) -> dict[str, Any]:
     for task in pending:
         kei = str(task["id"])
         status = task["status"]
+        if not apply:
+            # Dry-run only counts what WOULD push; it never writes Linear, so
+            # it must not resolve or require LINEAR_STATE_ID — that env var is
+            # absent in CI and would falsely mark the task `failed`.
+            logger.info("[dry-run] would push %s → %s", kei, status)
+            continue
         state_id = _linear_state_id(status or "")
         if not state_id:
             msg = f"no LINEAR_STATE_ID for status {status!r}"
             logger.error("%s: %s", kei, msg)
             failures.append((kei, msg))
             stats["failed"] += 1
-            continue
-        if not apply:
-            logger.info("[dry-run] would push %s → %s", kei, status)
             continue
         try:
             push_to_linear(api_key, kei, state_id)

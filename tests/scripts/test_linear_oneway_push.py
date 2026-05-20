@@ -202,6 +202,11 @@ def test_mark_synced_updates_only_watermark_column(mod):
 
 
 def test_run_once_dry_run_never_writes(mod, monkeypatch):
+    """Dry-run must NOT resolve LINEAR_STATE_ID — that env var is absent in
+    CI; resolving it in dry-run falsely marked a terminal task `failed`
+    (regression lock for the run 26152062782 failure). Env var explicitly
+    cleared here so the test mirrors CI, not a state-id-set local proxy."""
+    monkeypatch.delenv("LINEAR_STATE_ID_DONE", raising=False)
     cur = _Cursor(fetchall_rows=[("KEI-1", "done", None)])
     pushed = []
     monkeypatch.setattr(mod, "push_to_linear", lambda *a: pushed.append(a))

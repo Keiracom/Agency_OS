@@ -177,6 +177,9 @@ def run(
     comment_fn=None,
 ) -> dict[str, Any]:
     """Pure-Python entry point. Side effects injectable for tests."""
+    # Capture injection state BEFORE wrapping the default — bd availability
+    # only matters when we'd actually shell out to it (no test injection).
+    bd_fn_injected = bd_fn is not None
     bd_fn = bd_fn or (lambda: _bd_find_duplicates(bd_bin, threshold=threshold))
 
     base = {
@@ -193,7 +196,7 @@ def run(
         base["reason"] = "candidate_not_in_bd"
         return base
 
-    if not shutil.which(bd_bin) and bd_bin == "bd":
+    if not bd_fn_injected and not shutil.which(bd_bin) and bd_bin == "bd":
         base["reason"] = "bd_unavailable"
         return base
 

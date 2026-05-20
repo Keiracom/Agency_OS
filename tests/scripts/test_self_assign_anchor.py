@@ -4,7 +4,7 @@ import importlib.util
 import sys
 from pathlib import Path
 
-REPO_ROOT = Path("/home/elliotbot/clawd/Agency_OS-aiden")
+REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT_PATH = REPO_ROOT / "scripts" / "slack_relay.py"
 
 
@@ -95,7 +95,9 @@ def test_primary_callsign_proceeds_past_clone_guard(monkeypatch):
     def _capture(*args, **kwargs):
         calls.append(args[0] if args else None)
         # Return a fake CompletedProcess that bails the rest of the function.
-        return subprocess.CompletedProcess(args=args[0] if args else [], returncode=1, stdout="", stderr="")
+        return subprocess.CompletedProcess(
+            args=args[0] if args else [], returncode=1, stdout="", stderr=""
+        )
 
     monkeypatch.setattr(subprocess, "run", _capture)
 

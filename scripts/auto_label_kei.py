@@ -119,7 +119,9 @@ def label_issue(issue_id: str, title: str, description: str) -> dict[str, Any]:
             "matched_no_change": True,
         }
 
-    current_ids, current_names = _issue_label_ids(issue_id)
+    # Only the label NAMES are needed — the id list fed the issueUpdate
+    # write, which is LAW-locked out. Index [1] so no unused var is bound.
+    current_names = _issue_label_ids(issue_id)[1]
     to_add_names = [n for n in matched_names if n not in current_names]
     if not to_add_names:
         return {

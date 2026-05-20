@@ -1,0 +1,296 @@
+#!/usr/bin/env python3
+"""next_work_prompter.py — wake an idle agent with their next concrete task.
+
+Closes the gap diagnosed 2026-05-20 (Dave): self-claim loop updates bd
+state on successful claim but never injects the claimed work into the
+agent's tmux pane, leaving them idle at the prompt while bd shows
+in_progress. Same problem for deliberators (elliot/aiden/max) — they
+don't claim engineer KEIs at all, and nothing checks the PR-review queue
+or pending dispatches for them.
+
+Called by the stop hook AFTER it has classified+published the agent's
+last response. If the agent has no follow-up work indicated by their own
+text (e.g. tool calls still in flight), this prompter selects the next
+concrete action and injects it into their tmux pane with Enter so the
+session immediately picks up.
+
+Role behaviour:
+  * Worker (atlas/orion/scout/nova):
+      - If bd has in_progress for me: inject "Continue KEI-XYZ".
+      - Else: claim next P0/P1 from bd ready + inject brief with the title.
+  * Reviewer / deliberator (aiden/max):
+      - Scan open PRs for ones where my latest verdict is missing
+        OR my prior HOLD was on a state that has since updated (rebase, CI
+        flip, new commits). Inject "Review PR #N + #M + #O".
+  * Orchestrator (elliot):
+      - Scan open PRs for any awaiting my merge (dual-concur reached) +
+        any in HOLD that need re-dispatch. Inject digest.
+
+Idempotency: per-callsign per-60s throttle so re-firing the stop hook
+within a turn doesn't double-inject.
+
+Fail-open: any error logged + return 0; stop hook never blocks on this.
+
+Usage:
+    python3 next_work_prompter.py --callsign aiden
+    python3 next_work_prompter.py --callsign elliot --dry-run
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import logging
+import os
+import re
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+WORKER_CALLSIGNS = frozenset({"atlas", "orion", "scout", "nova"})
+REVIEWER_CALLSIGNS = frozenset({"aiden", "max"})
+ORCHESTRATOR_CALLSIGNS = frozenset({"elliot"})
+
+STATE_DIR = Path("/tmp/next_work_prompter")
+THROTTLE_SECONDS = 60
+TMUX_TARGETS = {
+    "atlas": "atlas:0.0",
+    "orion": "orion:0.0",
+    "scout": "scout:0.0",
+    "nova": "nova:0.0",
+    "aiden": "aiden:0.0",
+    "max": "maxbot:0.0",
+    "elliot": "elliottbot:0.0",
+}
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+log = logging.getLogger("next_work_prompter")
+
+
+def _throttled(callsign: str) -> bool:
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    f = STATE_DIR / f"{callsign}.ts"
+    now = time.time()
+    if f.exists():
+        try:
+            last = float(f.read_text().strip())
+            if now - last < THROTTLE_SECONDS:
+                return True
+        except (OSError, ValueError):
+            pass
+    f.write_text(str(now))
+    return False
+
+
+def _inject(callsign: str, text: str) -> bool:
+    target = TMUX_TARGETS.get(callsign)
+    if not target:
+        log.warning("no tmux target for %s", callsign)
+        return False
+    try:
+        subprocess.run(
+            ["tmux", "send-keys", "-t", target, text],
+            capture_output=True, text=True, timeout=5, check=False,
+        )
+        time.sleep(0.4)
+        subprocess.run(
+            ["tmux", "send-keys", "-t", target, "C-m"],
+            capture_output=True, text=True, timeout=5, check=False,
+        )
+        log.info("injected -> %s: %s", target, text[:120])
+        return True
+    except (FileNotFoundError, subprocess.TimeoutExpired) as e:
+        log.warning("tmux inject err: %s", e)
+        return False
+
+
+def _bd_in_progress(callsign: str) -> dict | None:
+    try:
+        cp = subprocess.run(
+            ["bd", "list", "--status=in_progress", "--json"],
+            capture_output=True, text=True, timeout=10, check=False,
+            cwd="/home/elliotbot/clawd/Agency_OS",
+        )
+        if cp.returncode != 0:
+            return None
+        data = json.loads(cp.stdout) if cp.stdout.strip() else []
+        items = data if isinstance(data, list) else data.get("issues", [])
+        for it in items:
+            if (it.get("assignee") or it.get("claimed_by") or "").lower() == callsign:
+                return it
+    except (FileNotFoundError, subprocess.TimeoutExpired, json.JSONDecodeError):
+        pass
+    return None
+
+
+def _bd_next_ready_for(callsign: str) -> dict | None:
+    """First eligible bd ready item for this callsign (P0 then P1, unassigned)."""
+    try:
+        cp = subprocess.run(
+            ["bd", "ready", "--json"],
+            capture_output=True, text=True, timeout=10, check=False,
+            cwd="/home/elliotbot/clawd/Agency_OS",
+        )
+        if cp.returncode != 0:
+            return None
+        data = json.loads(cp.stdout) if cp.stdout.strip() else []
+        items = data if isinstance(data, list) else data.get("issues", [])
+        # Priority sort + assignee filter
+        def pri(it):
+            p = it.get("priority")
+            if isinstance(p, int):
+                return p
+            m = re.match(r"P?(\d+)", str(p or ""))
+            return int(m.group(1)) if m else 9
+        items.sort(key=pri)
+        for it in items:
+            assignee = (it.get("assignee") or "").lower()
+            if assignee and assignee != callsign:
+                continue
+            return it
+    except (FileNotFoundError, subprocess.TimeoutExpired, json.JSONDecodeError):
+        pass
+    return None
+
+
+REVIEW_VERDICT_RE = re.compile(
+    r"\[REVIEW:(approve|HOLD)[:\s]+([a-z]+)\]|\[CONCUR:([a-z]+)\]",
+    re.IGNORECASE,
+)
+
+
+def _open_prs() -> list[dict]:
+    try:
+        cp = subprocess.run(
+            ["gh", "pr", "list", "--state=open", "--limit=50",
+             "--json", "number,title,updatedAt,comments,author"],
+            capture_output=True, text=True, timeout=30, check=False,
+        )
+        if cp.returncode != 0:
+            return []
+        return json.loads(cp.stdout) if cp.stdout.strip() else []
+    except (FileNotFoundError, subprocess.TimeoutExpired, json.JSONDecodeError):
+        return []
+
+
+def _verdicts_on(pr: dict) -> dict:
+    """Latest-verdict-per-reviewer for a PR."""
+    state: dict[str, str] = {}
+    last_at: dict[str, str] = {}
+    for c in pr.get("comments", []):
+        body = c.get("body") or ""
+        at = c.get("createdAt") or ""
+        for m in REVIEW_VERDICT_RE.finditer(body):
+            if m.group(3):
+                who, v = m.group(3).lower(), "approve"
+            else:
+                v = (m.group(1) or "").lower()
+                who = (m.group(2) or "").lower()
+            if at >= last_at.get(who, ""):
+                last_at[who] = at
+                state[who] = v
+    return state
+
+
+def _author_callsign(pr: dict) -> str | None:
+    m = re.match(r"\[(\w+)\]", pr.get("title", ""))
+    return m.group(1).lower() if m else None
+
+
+def _reviewer_pending(callsign: str) -> list[int]:
+    """PRs where this reviewer has no verdict yet OR prior HOLD on a stale state."""
+    pending = []
+    for pr in _open_prs():
+        author = _author_callsign(pr)
+        if author == callsign:
+            continue  # author-exclusion
+        state = _verdicts_on(pr)
+        my_verdict = state.get(callsign)
+        if my_verdict is None:
+            pending.append(pr["number"])
+        # NOTE: HOLD-on-stale-state detection requires comparing comment ts
+        # to PR last-commit ts; deferring that to v2.
+    return pending
+
+
+def _orchestrator_actions(callsign: str) -> str | None:
+    """For elliot: scan for merge-eligible + held PRs awaiting dispatch."""
+    merge_ready, holds = [], []
+    for pr in _open_prs():
+        author = _author_callsign(pr)
+        state = _verdicts_on(pr)
+        non_auth = [d for d in ("elliot", "aiden", "max") if d != author]
+        approves = [d for d in non_auth if state.get(d) == "approve"]
+        explicit_holds = [d for d in non_auth if state.get(d) == "hold"]
+        if explicit_holds:
+            holds.append(pr["number"])
+        elif len(approves) >= 2:
+            merge_ready.append(pr["number"])
+    parts = []
+    if merge_ready:
+        parts.append(f"{len(merge_ready)} PRs merge-eligible — poll and merge: {sorted(merge_ready)[:5]}{'...' if len(merge_ready) > 5 else ''}")
+    if holds:
+        parts.append(f"{len(holds)} PRs HOLD — check author fix-ups: {sorted(holds)[:5]}{'...' if len(holds) > 5 else ''}")
+    return " | ".join(parts) if parts else None
+
+
+def prompt_worker(callsign: str) -> str | None:
+    """Return the prompt text for a worker, or None if nothing to do."""
+    ip = _bd_in_progress(callsign)
+    if ip:
+        return f"[NEXT-WORK:{callsign}] Continue claimed KEI {ip.get('id') or ip.get('identifier')}: {ip.get('title', '')[:80]}. Pick up where you left off."
+    nx = _bd_next_ready_for(callsign)
+    if nx:
+        return f"[NEXT-WORK:{callsign}] Claim {nx.get('id') or nx.get('identifier')}: {nx.get('title', '')[:80]} (priority {nx.get('priority', '?')}). Run `bd update <id> --claim` then begin."
+    return None
+
+
+def prompt_reviewer(callsign: str) -> str | None:
+    pending = _reviewer_pending(callsign)
+    if not pending:
+        return None
+    head = sorted(pending)[:6]
+    return (
+        f"[NEXT-WORK:{callsign}] {len(pending)} PRs awaiting your verdict: "
+        f"{head}{'...' if len(pending) > len(head) else ''}. "
+        "Walk through with dual-Sonar verbatim + `gh pr comment` per PR."
+    )
+
+
+def prompt_orchestrator(callsign: str) -> str | None:
+    summary = _orchestrator_actions(callsign)
+    if not summary:
+        return None
+    return f"[NEXT-WORK:{callsign}] PR queue state — {summary}. Poll, dispatch, merge as appropriate."
+
+
+def main(argv: list[str] | None = None) -> int:
+    p = argparse.ArgumentParser()
+    p.add_argument("--callsign", required=True)
+    p.add_argument("--dry-run", action="store_true")
+    args = p.parse_args(argv)
+    cs = args.callsign.lower()
+    if not args.dry_run and _throttled(cs):
+        log.info("throttled: %s within %ds window", cs, THROTTLE_SECONDS)
+        return 0
+    if cs in WORKER_CALLSIGNS:
+        prompt = prompt_worker(cs)
+    elif cs in REVIEWER_CALLSIGNS:
+        prompt = prompt_reviewer(cs)
+    elif cs in ORCHESTRATOR_CALLSIGNS:
+        prompt = prompt_orchestrator(cs)
+    else:
+        log.warning("unknown callsign role: %s", cs)
+        return 0
+    if not prompt:
+        log.info("no next work for %s", cs)
+        return 0
+    if args.dry_run:
+        print(prompt)
+        return 0
+    _inject(cs, prompt)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

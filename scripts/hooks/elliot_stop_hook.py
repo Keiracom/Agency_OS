@@ -224,6 +224,19 @@ def post_to_ceo(message: str) -> bool:
     return False
 
 
+def _run_next_work_prompter() -> None:
+    """Wake gap fix (Dave directive 2026-05-20). Fail-open."""
+    try:
+        subprocess.run(
+            ["/home/elliotbot/clawd/Agency_OS/.venv/bin/python3",
+             "/home/elliotbot/clawd/Agency_OS/scripts/orchestrator/next_work_prompter.py",
+             "--callsign", "elliot"],
+            capture_output=True, text=True, timeout=20, check=False,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired) as e:
+        sys.stderr.write(f"[elliot_stop_hook] next_work_prompter err: {e}\n")
+
+
 def main() -> int:
     cs = os.environ.get("CALLSIGN", "").strip().lower()
     if cs and cs != "elliot":
@@ -235,25 +248,30 @@ def main() -> int:
     transcript_path = payload.get("transcript_path") or ""
     text = read_last_assistant_text(transcript_path)
     if not text:
+        _run_next_work_prompter()
         return 0
     policy = load_policy()
     kind, summary_src = classify(text, policy["verbosity"])
     if kind is None:
-        return 0  # not worth posting
+        _run_next_work_prompter()
+        return 0
     state = read_state()
     now = time.time()
     bypass_cooldown = kind in ("blocker", "incident")
     if not bypass_cooldown and (now - state.get("last_post_at", 0)) < policy["cool_down"]:
         sys.stderr.write(f"[elliot_stop_hook] cool-down active ({int(now - state.get('last_post_at',0))}s) — skipping {kind}\n")
+        _run_next_work_prompter()
         return 0
     if already_posted_this_turn(transcript_path, now - 120):
         sys.stderr.write(f"[elliot_stop_hook] manual slack post detected this turn — skipping {kind}\n")
+        _run_next_work_prompter()
         return 0
     msg = summarise_for_ceo(kind, summary_src)
     if post_to_ceo(msg):
         state["last_post_at"] = now
         write_state(state)
         sys.stderr.write(f"[elliot_stop_hook] posted {kind} to #ceo ({len(msg)}ch)\n")
+    _run_next_work_prompter()
     return 0
 
 

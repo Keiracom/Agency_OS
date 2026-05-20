@@ -215,6 +215,17 @@ def main() -> int:
     for subj in targets:
         publish_nats(subj, envelope)
     sys.stderr.write(f"[agent_stop_hook] {cs}/{cls['kind']} → {targets}\n")
+    # Next-work prompter: closes the "agent idle after turn-end" gap
+    # (Dave directive 2026-05-20). Fires for workers + reviewers; fail-open.
+    try:
+        subprocess.run(
+            ["/home/elliotbot/clawd/Agency_OS/.venv/bin/python3",
+             "/home/elliotbot/clawd/Agency_OS/scripts/orchestrator/next_work_prompter.py",
+             "--callsign", cs],
+            capture_output=True, text=True, timeout=20, check=False,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired) as e:
+        sys.stderr.write(f"[agent_stop_hook] next_work_prompter err: {e}\n")
     return 0
 
 

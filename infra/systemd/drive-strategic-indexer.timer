@@ -1,0 +1,12 @@
+[Unit]
+Description=Agency OS — Drive strategic indexer cadence (15min, KEI Agency_OS-3nwh)
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=15min
+RandomizedDelaySec=60
+Persistent=true
+Unit=drive-strategic-indexer.service
+
+[Install]
+WantedBy=timers.target

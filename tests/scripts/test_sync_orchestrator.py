@@ -223,17 +223,22 @@ def test_bd_dispatch_nonzero_exit_raises_dispatch_error() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_linear_dispatch_missing_api_key_raises(monkeypatch) -> None:
+def test_linear_dispatch_is_noop_with_no_api_key(monkeypatch) -> None:
+    """LAW 2026-05-20: Linear is read-only. _dispatch_linear is a hard-locked
+    no-op — it never POSTs and never raises, even with no LINEAR_API_KEY.
+    (Replaces test_linear_dispatch_missing_api_key_raises — the prior
+    DispatchError-on-missing-key behaviour was removed by ratified design.)"""
     monkeypatch.delenv("LINEAR_API_KEY", raising=False)
-    with pytest.raises(so.DispatchError, match="LINEAR_API_KEY"):
-        so._dispatch_linear(_event(event_type="close"))
+    assert so._dispatch_linear(_event(event_type="close")) is None
 
 
-def test_linear_dispatch_missing_state_id_raises(monkeypatch) -> None:
+def test_linear_dispatch_is_noop_with_no_state_id(monkeypatch) -> None:
+    """LAW 2026-05-20: _dispatch_linear no-ops regardless of env — it never
+    reads LINEAR_STATE_ID_* because it never writes Linear. (Replaces
+    test_linear_dispatch_missing_state_id_raises.)"""
     monkeypatch.setenv("LINEAR_API_KEY", "k")
     monkeypatch.delenv("LINEAR_STATE_ID_DONE", raising=False)
-    with pytest.raises(so.DispatchError, match="LINEAR_STATE_ID_DONE"):
-        so._dispatch_linear(_event(event_type="close"))
+    assert so._dispatch_linear(_event(event_type="close")) is None
 
 
 def test_linear_event_to_state_close_returns_done() -> None:

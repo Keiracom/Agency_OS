@@ -65,6 +65,40 @@ def test_fail_when_residual_readers_found(tmp_path):
     assert "another.py" in result.stdout
 
 
+def test_skip_when_writer_still_exists(tmp_path):
+    """Exit 0: a residual `INSERT INTO target` means the target is still
+    written — a consolidated writer is not a Pattern A removal."""
+    src = tmp_path / "src"
+    src.mkdir()
+    (src / "reader.py").write_text("rows = query('SELECT * FROM kept_table')\n")
+    (src / "writer.py").write_text("conn.execute('INSERT INTO kept_table (id) VALUES (1)')\n")
+    result = _run(
+        "--removed-target",
+        "kept_table",
+        "--check-paths",
+        str(src),
+    )
+    assert result.returncode == 0, (
+        f"expected 0, got {result.returncode}: {result.stdout}{result.stderr}"
+    )
+    assert "SKIP" in result.stdout
+    assert "still has a writer" in result.stdout
+    assert "writer.py" in result.stdout
+
+
+def test_skip_recognises_update_as_writer(tmp_path):
+    """UPDATE <target>, not just INSERT INTO, counts as a residual writer."""
+    src = tmp_path / "src"
+    src.mkdir()
+    (src / "reader.py").write_text("query('SELECT * FROM kept_table')\n")
+    (src / "writer.py").write_text("conn.execute('UPDATE kept_table SET x = 1')\n")
+    result = _run("--removed-target", "kept_table", "--check-paths", str(src))
+    assert result.returncode == 0, (
+        f"expected 0, got {result.returncode}: {result.stdout}{result.stderr}"
+    )
+    assert "SKIP" in result.stdout
+
+
 def test_error_on_empty_target(tmp_path):
     """Exit 2: empty --removed-target is an invocation error."""
     result = _run("--removed-target", "", "--check-paths", str(tmp_path))

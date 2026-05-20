@@ -28,6 +28,9 @@ from urllib.parse import urlparse
 import httpx
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+from src.governance.ceo_memory_writer import upsert_ceo_memory_key  # noqa: E402
+
 MCP = ROOT / "skills" / "mcp-bridge" / "scripts" / "mcp-bridge.js"
 PROJ = "jatzvazlbusedwsnqxzr"
 GMB_DATASET = "gd_m8ebnr0q2qlklc02fz"
@@ -761,42 +764,37 @@ def _write_ceo_memory(
     halted=False,
 ):
     print("\n[Phase 11] Writing ceo_memory...")
-    payload = json.dumps(
-        {
-            "status": "halted" if halted else "complete",
-            "pilot": 3,
-            "snapshot_main": snapshot_id,
-            "businesses": len(businesses),
-            "total_written": total_written,
-            "unique_abns": unique,
-            "matched": matched_db,
-            "not_found": not_found_db,
-            "match_rate_pct": round(match_rate, 1),
-            "bd_valid": len(valid),
-            "bd_single_page_errors": len(single_page_errors),
-            "bd_other_errors": len(other_errors),
-            "bd_elapsed_sec": round(bd_elapsed),
-            "db_write_sec": round(db_elapsed, 1),
-            "total_elapsed_sec": round(total_elapsed),
-            "pass_match_rate": match_rate >= 72,
-            "pass_zero_result": not_found_db < 280,
-            "pass_db_write": db_elapsed < 10,
-            "fixes_applied": [
-                "name_exclusion_expanded",
-                "ptr_personal_name_filter",
-                "ampersand_and_normalisation",
-                "legal_suffix_stripping",
-                "retry_reads_input_keyword",
-                "30s_ready_wait_before_download",
-            ],
-        }
-    ).replace("'", "''")
-
-    mcp_sql(f"""
-        INSERT INTO ceo_memory (key, value, updated_at)
-        VALUES ('ceo:directive_229_complete', '{payload}'::jsonb, NOW())
-        ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value, updated_at=NOW();
-        UPDATE ceo_memory SET value = jsonb_set(value, '{{last_number}}', '229'), updated_at=NOW()
+    ceo_value = {
+        "status": "halted" if halted else "complete",
+        "pilot": 3,
+        "snapshot_main": snapshot_id,
+        "businesses": len(businesses),
+        "total_written": total_written,
+        "unique_abns": unique,
+        "matched": matched_db,
+        "not_found": not_found_db,
+        "match_rate_pct": round(match_rate, 1),
+        "bd_valid": len(valid),
+        "bd_single_page_errors": len(single_page_errors),
+        "bd_other_errors": len(other_errors),
+        "bd_elapsed_sec": round(bd_elapsed),
+        "db_write_sec": round(db_elapsed, 1),
+        "total_elapsed_sec": round(total_elapsed),
+        "pass_match_rate": match_rate >= 72,
+        "pass_zero_result": not_found_db < 280,
+        "pass_db_write": db_elapsed < 10,
+        "fixes_applied": [
+            "name_exclusion_expanded",
+            "ptr_personal_name_filter",
+            "ampersand_and_normalisation",
+            "legal_suffix_stripping",
+            "retry_reads_input_keyword",
+            "30s_ready_wait_before_download",
+        ],
+    }
+    upsert_ceo_memory_key("elliot", "ceo:directive_229_complete", ceo_value)
+    mcp_sql("""
+        UPDATE ceo_memory SET value = jsonb_set(value, '{last_number}', '229'), updated_at=NOW()
         WHERE key='ceo:directives';
     """)
     print("  ceo_memory written.")

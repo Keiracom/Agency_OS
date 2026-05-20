@@ -28,6 +28,9 @@ from urllib.parse import urlparse
 import httpx
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+from src.governance.ceo_memory_writer import upsert_ceo_memory_key  # noqa: E402
+
 MCP = ROOT / "skills" / "mcp-bridge" / "scripts" / "mcp-bridge.js"
 PROJ = "jatzvazlbusedwsnqxzr"
 GMB_DATASET = "gd_m8ebnr0q2qlklc02fz"
@@ -627,37 +630,37 @@ def _write_ceo_memory(
     halted=False,
 ):
     print("\n[Phase 11] Writing ceo_memory...")
-    payload = json.dumps(
-        {
-            "status": "halted" if halted else "complete",
-            "pilot": 4,
-            "cohort": "null_trading_name_coalesce",
-            "snapshot_main": snapshot_id,
-            "businesses": len(businesses),
-            "matched": matched,
-            "not_found": not_found,
-            "match_rate_pct": round(match_rate, 1),
-            "pass_match_rate": match_rate >= 65,
-            "bd_valid": len(valid),
-            "bd_single_page_errors": len(single_page_errors),
-            "bd_elapsed_sec": round(bd_elapsed),
-            "db_write_sec": round(db_elapsed, 1),
-            "total_elapsed_sec": round(total_elapsed),
-            "coalesce_fix_applied": True,
-            "halted": halted,
-        }
-    ).replace("'", "''")
-
-    mcp_sql(f"""
-        INSERT INTO ceo_memory (key, value, updated_at)
-        VALUES ('ceo:directive_230_complete', '{payload}'::jsonb, NOW())
-        ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value, updated_at=NOW();
-        UPDATE ceo_memory SET value=jsonb_set(value,'{{last_number}}','230'), updated_at=NOW()
+    ceo_value = {
+        "status": "halted" if halted else "complete",
+        "pilot": 4,
+        "cohort": "null_trading_name_coalesce",
+        "snapshot_main": snapshot_id,
+        "businesses": len(businesses),
+        "matched": matched,
+        "not_found": not_found,
+        "match_rate_pct": round(match_rate, 1),
+        "pass_match_rate": match_rate >= 65,
+        "bd_valid": len(valid),
+        "bd_single_page_errors": len(single_page_errors),
+        "bd_elapsed_sec": round(bd_elapsed),
+        "db_write_sec": round(db_elapsed, 1),
+        "total_elapsed_sec": round(total_elapsed),
+        "coalesce_fix_applied": True,
+        "halted": halted,
+    }
+    upsert_ceo_memory_key("elliot", "ceo:directive_230_complete", ceo_value)
+    mcp_sql("""
+        UPDATE ceo_memory SET value=jsonb_set(value,'{last_number}','230'), updated_at=NOW()
         WHERE key='ceo:directives';
-        INSERT INTO ceo_memory (key, value, updated_at)
-        VALUES ('session_handoff_current', '{json.dumps({"updated": "2026-03-20", "last_directive": 230, "status": "complete" if not halted else "halted", "pilot_4_match_rate": round(match_rate, 1), "coalesce_fix_validated": match_rate >= 65}).replace("'", "''")}' ::jsonb, NOW())
-        ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value, updated_at=NOW();
     """)
+    handoff_value = {
+        "updated": "2026-03-20",
+        "last_directive": 230,
+        "status": "complete" if not halted else "halted",
+        "pilot_4_match_rate": round(match_rate, 1),
+        "coalesce_fix_validated": match_rate >= 65,
+    }
+    upsert_ceo_memory_key("elliot", "session_handoff_current", handoff_value)
     print("  ceo_memory written.")
 
 

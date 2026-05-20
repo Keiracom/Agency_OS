@@ -30,6 +30,7 @@ Usage (script-direct; the GitHub Action wraps this in a diff loop):
 from __future__ import annotations
 
 import argparse
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -120,6 +121,40 @@ def _grep_for_target(target: str, check_paths: list[Path], extra_flag: str | Non
     return [line for line in result.stdout.splitlines() if line.strip()]
 
 
+def _residual_writer(target: str, check_paths: list[Path]) -> str | None:
+    """Return a `file:line` if a writer for `target` still exists post-change.
+
+    Pattern A only applies when the writer was *removed*. The upstream
+    extractor flags a target whenever a removed `INSERT INTO`/`UPDATE` line
+    is not matched by an *added* one in the same diff (KEI-100 net-out). That
+    misses the consolidation case: N inline writers are rerouted to a shared
+    wrapper that pre-dates the diff, so the wrapper's `INSERT INTO target` is
+    neither added nor removed — the target reads as removed-only, yet it is
+    still actively written. If any `INSERT INTO target` / `UPDATE target`
+    remains in the tree, the migration is not a removal and Pattern A cannot
+    apply. (Writer-exists-but-uninvoked is a separate concern owned by the
+    KEI-108 shipped-but-not-wired guard.)
+    """
+    existing = [str(p) for p in check_paths if p.exists()]
+    if not existing:
+        return None
+
+    pattern = rf"(INSERT[[:space:]]+INTO|UPDATE)[[:space:]]+{re.escape(target)}"
+    args = ["grep", "-rnE"]
+    for d in EXCLUDE_DIRS:
+        args.extend(["--exclude-dir", d])
+    for g in EXCLUDE_GLOBS:
+        args.extend(["--exclude", g])
+    args.append(pattern)
+    args.extend(existing)
+
+    result = subprocess.run(args, capture_output=True, text=True, check=False)
+    if result.returncode not in (0, 1):
+        return None
+    lines = [line for line in result.stdout.splitlines() if line.strip()]
+    return lines[0] if lines else None
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -157,6 +192,19 @@ def main() -> int:
         return 0
 
     check_paths = [Path(p.strip()) for p in args.check_paths.split(",") if p.strip()]
+
+    # Skip when the target still has a writer post-change — a consolidated or
+    # relocated writer that pre-dates the diff means the target was not removed.
+    writer = _residual_writer(target, check_paths)
+    if writer is not None:
+        loc = ":".join(writer.split(":")[:2])
+        print(
+            f"[check] SKIP — {target!r} still has a writer post-change ({loc}). "
+            "Pattern A applies only when the writer was removed; a consolidated "
+            "writer that pre-dates the diff is not a removal."
+        )
+        return 0
+
     hits = _grep_for_target(target, check_paths, args.extra_grep_flag)
 
     if not hits:

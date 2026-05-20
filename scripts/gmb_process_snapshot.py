@@ -18,6 +18,11 @@ import json, subprocess, re, time
 from pathlib import Path
 
 ROOT = Path("/home/elliotbot/clawd")
+import sys  # noqa: E402
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from src.governance.ceo_memory_writer import upsert_ceo_memory_key  # noqa: E402
+
 MCP = ROOT / "skills/mcp-bridge/scripts/mcp-bridge.js"
 PROJ = "jatzvazlbusedwsnqxzr"
 
@@ -172,8 +177,19 @@ print(f"BD snapshot:    427s (7.1 min) — single batch")
 print(f"Est. cost:      ${cost_aud:.2f} AUD")
 
 # Save ceo_memory
-mcp_sql(f"""INSERT INTO ceo_memory (key, value, updated_at)
-VALUES ('ceo:directive_225_complete', '{{"status":"complete","snapshot":"sd_mmxcph0hucllcqzlm","records_returned":{len(valid)},"matched":{matched},"not_found":{not_found},"bd_errors":{len(errors)},"cost_aud":{round(cost_aud, 2)},"wall_clock_bd_sec":427}}'::jsonb, NOW())
-ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value, updated_at=NOW();""")
+upsert_ceo_memory_key(
+    "elliot",
+    "ceo:directive_225_complete",
+    {
+        "status": "complete",
+        "snapshot": "sd_mmxcph0hucllcqzlm",
+        "records_returned": len(valid),
+        "matched": matched,
+        "not_found": not_found,
+        "bd_errors": len(errors),
+        "cost_aud": round(cost_aud, 2),
+        "wall_clock_bd_sec": 427,
+    },
+)
 
 print("ceo_memory written. Done.")

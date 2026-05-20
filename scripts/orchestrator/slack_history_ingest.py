@@ -28,9 +28,10 @@ Usage:
     SLACK_BOT_TOKEN=xoxb-... python3 scripts/orchestrator/slack_history_ingest.py --dry-run
     SLACK_BOT_TOKEN=xoxb-... python3 scripts/orchestrator/slack_history_ingest.py --channel ceo --limit 500
 
-The script is one-shot. The companion daemon `slack_history_indexer.py` (filed
-as a follow-up KEI) handles the 15-min incremental indexing once the bulk
-extract has landed.
+The script is one-shot. The companion incremental daemon was decommissioned
+on 2026-05-19 (Agency_OS-7377) when Slack relays were retired — see commit
+history for slack_history_indexer.py. The Slack_history Weaviate collection
+(14,772 messages) remains queryable; only the writer was removed.
 
 Deterministic UUID per (channel, ts) tuple → re-ingest is idempotent (Weaviate
 422 already-exists treated as no-op).

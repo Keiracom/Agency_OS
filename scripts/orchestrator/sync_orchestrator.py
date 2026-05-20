@@ -234,41 +234,30 @@ def _postgres_status_to_bd(status: str) -> str | None:
 
 
 def _dispatch_linear(event: dict[str, Any]) -> None:
-    """POST issueUpdate to Linear GraphQL with stateId based on event_type."""
-    api_key = os.environ.get("LINEAR_API_KEY", "")
-    if not api_key:
-        raise DispatchError("LINEAR_API_KEY missing")
-    target_state = _event_to_linear_state(event)
-    if target_state is None:
-        logger.debug(
-            "[%s] event_type=%s not mapped to Linear state; skipping",
-            event["task_id"],
-            event["event_type"],
-        )
-        return
-    state_id = os.environ.get(f"LINEAR_STATE_ID_{target_state.upper()}", "")
-    if not state_id:
-        raise DispatchError(f"LINEAR_STATE_ID_{target_state.upper()} missing")
-    body = json.dumps(
-        {
-            "query": "mutation($id:String!,$state:String!){issueUpdate(id:$id,input:{stateId:$state}){success}}",
-            "variables": {"id": event["task_id"], "state": state_id},
-        }
-    ).encode()
-    req = urlrequest.Request(
-        LINEAR_API,
-        data=body,
-        method="POST",
-        headers={"Authorization": api_key, "Content-Type": "application/json"},
+    """Linear-write path — HARD-LOCKED to no-op (Dave ratified LAW 2026-05-20).
+
+    RATIFIED RULE: Linear is read-only for all agents and all automated
+    processes. No agent, no sync orchestrator, no reconciler may write to or
+    overwrite Linear state directly. Status propagation from Supabase to Linear
+    happens ONLY via the separate controlled one-way push — never through this
+    orchestrator.
+
+    This function previously POSTed an `issueUpdate` mutation. That write path
+    is the exact mechanism that corrupted ~45 KEIs (downgraded to Backlog).
+    It is now a logged no-op. The function is retained (not deleted) so any
+    caller still wired to it fails safe — it logs and returns, never writes.
+
+    Do NOT re-enable a Linear write here. If Supabase→Linear propagation is
+    needed, build it as the dedicated controlled one-way push component.
+    """
+    logger.info(
+        "[%s] Linear write SUPPRESSED — Linear is read-only per ratified LAW "
+        "2026-05-20 (event_type=%s, origin=%s). No issueUpdate sent.",
+        event.get("task_id", "?"),
+        event.get("event_type", "?"),
+        event.get("origin", "?"),
     )
-    try:
-        with urlrequest.urlopen(req, timeout=15) as resp:
-            payload = json.loads(resp.read())
-    except (urlerror.URLError, OSError) as exc:
-        raise DispatchError(f"linear network: {exc}") from exc
-    ok = ((payload.get("data") or {}).get("issueUpdate") or {}).get("success", False)
-    if not ok:
-        raise DispatchError(f"linear rejected: {payload.get('errors') or payload}")
+    return
 
 
 def _event_to_linear_state(event: dict[str, Any]) -> str | None:

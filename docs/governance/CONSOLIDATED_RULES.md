@@ -272,3 +272,41 @@ Before executing ANY task or subtask transition, every agent MUST complete the 4
 | 2 | Dead References table | ARCHITECTURE.md only. Not duplicated in this document. |
 | 3 | Infrastructure rules | SEPARATE document. Referenced from Rule 6 but not inlined. |
 | 4 | Dual-concur timing | HARD sub-rule in Rule 2. LLM-evaluated by enforcer on architecture decisions. |
+
+---
+
+## LAW — LINEAR IS READ-ONLY (Ratified 2026-05-20, Dave)
+
+**LAW-level rule. Not a suggestion. Effective immediately.**
+
+Linear is the master record. Supabase is the read-write replica. The two are kept in
+sync by a strictly one-directional, controlled mechanism — never a bidirectional
+reconciler that can overwrite in either direction.
+
+**The rule:**
+
+- **Linear is read-only** for every agent AND every automated process — no exceptions.
+  No agent, no `bd` command that pushes to Linear, no sync orchestrator, no reconciler
+  may write to or overwrite Linear state directly.
+- **Supabase is read-write** for agents. Agents claim work, update status, and write
+  all operational state to Supabase only.
+- **Propagation is one-way only.** Status changes in Supabase reach Linear via a
+  dedicated controlled one-way push — never through the orchestrator, never through a
+  bidirectional reconciler.
+- **Drift is flagged, never auto-fixed.** When the sync detects a difference between
+  Linear and Supabase it raises a flag for human review. It does NOT resolve drift by
+  overwriting either side. Drift resolution is a human or explicit-intentional action.
+
+**Why this exists:** the sync orchestrator's `_dispatch_linear` `issueUpdate` mutation
+overwrote Linear state and corrupted ~45 KEIs (downgraded to Backlog) on 2026-05-19.
+The bidirectional write path is the root cause. It is now permanently locked.
+
+**Enforcement:**
+- `scripts/orchestrator/sync_orchestrator.py` — `_dispatch_linear` is a hard-locked
+  no-op. The `issueUpdate` mutation is removed.
+- `scripts/reconcile_three_stores.py` — read-only by construction (verified).
+- `scripts/governance_hooks.py` — PreToolUse hook blocks any tool call that would
+  POST a Linear write mutation.
+
+**Violation:** Flag `LINEAR-WRITE violation`. Block the action. Any code reintroducing
+a Linear write from an agent or automated process is a LAW breach — revert on sight.

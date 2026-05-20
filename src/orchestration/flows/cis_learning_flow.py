@@ -191,9 +191,8 @@ async def save_updated_weights(weights: dict) -> bool:
 
     Performs upsert to ceo:propensity_weights_v3 in Supabase.
     """
-    async with get_db_session() as db:
-        result = await save_propensity_weights(db, weights)
-        return result.get("success", False)
+    result = save_propensity_weights(weights)
+    return result.get("success", False)
 
 
 @task(name="cis-log-run-start")

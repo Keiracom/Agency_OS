@@ -240,6 +240,7 @@ def test_completion_sync_worker_sink_calls_upsert(monkeypatch: pytest.MonkeyPatc
 
     assert len(calls) == 1
     cs, key, value = calls[0]
+    assert cs == "system"
     assert key == "completion:KEI-58"
     assert value["status"] == "done"
     assert value["via"] == "kei74"
@@ -261,7 +262,6 @@ def test_completion_sync_worker_sink_calls_upsert(monkeypatch: pytest.MonkeyPatc
 
 def test_cis_outcome_service_calls_upsert(monkeypatch: pytest.MonkeyPatch) -> None:
     """save_propensity_weights delegates to upsert_ceo_memory_key."""
-    import asyncio
     import sys
     from pathlib import Path
 
@@ -285,11 +285,12 @@ def test_cis_outcome_service_calls_upsert(monkeypatch: pytest.MonkeyPatch) -> No
     monkeypatch.setattr(cos, "upsert_ceo_memory_key", _fake_upsert)
     monkeypatch.setenv("CALLSIGN", "system")
 
-    result = asyncio.run(cos.save_propensity_weights(db=None, weights={"tier_a": 0.7}))
+    result = cos.save_propensity_weights(weights={"tier_a": 0.7})
 
     assert result["success"] is True
     assert len(calls) == 1
     cs, key, value = calls[0]
+    assert cs == "system"
     assert key == "ceo:propensity_weights_v3"
     assert value == {"tier_a": 0.7}
 

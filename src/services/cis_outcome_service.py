@@ -364,17 +364,16 @@ async def get_propensity_weights(db: AsyncSession) -> dict:
         return {"weights": {}, "negative": {}}
 
 
-async def save_propensity_weights(
-    db: AsyncSession,
+def save_propensity_weights(
     weights: dict,
 ) -> dict[str, Any]:
     """
     Save updated propensity weights to ceo_memory.
 
-    Performs an upsert to ceo:propensity_weights_v3.
+    Performs an upsert to ceo:propensity_weights_v3 via the KEI-87
+    upsert_ceo_memory_key wrapper — no DB session needed.
 
     Args:
-        db: Database session
         weights: Updated weights dict
 
     Returns:

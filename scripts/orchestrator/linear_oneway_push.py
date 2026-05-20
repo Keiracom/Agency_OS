@@ -162,16 +162,14 @@ def fetch_pending(conn: Any) -> list[dict[str, str | None]]:
     return out
 
 
-def push_to_linear(api_key: str, kei: str, state_id: str) -> None:
-    """POST a single issueUpdate mutation. Raises RuntimeError on any failure.
+def _linear_graphql(api_key: str, query: str, variables: dict[str, Any]) -> dict[str, Any]:
+    """POST a GraphQL op to Linear and return the parsed payload.
 
-    Linear's issueUpdate accepts the KEI-N identifier as `id` (proven by the
-    legacy completion_sync_worker path). This is the only Linear WRITE in the
-    whole component.
+    Shared by every Linear write (issueUpdate, issueCreate). Raises
+    RuntimeError on transport failure or top-level GraphQL errors. The
+    caller inspects payload['data'] for the operation-specific result.
     """
-    body = json.dumps(
-        {"query": _ISSUE_UPDATE_MUTATION, "variables": {"id": kei, "state": state_id}}
-    ).encode()
+    body = json.dumps({"query": query, "variables": variables}).encode()
     # S310: the URL is the fixed https Linear GraphQL endpoint, not user input.
     req = urllib.request.Request(  # noqa: S310
         _LINEAR_GRAPHQL_URL,
@@ -187,7 +185,25 @@ def push_to_linear(api_key: str, kei: str, state_id: str) -> None:
         raise RuntimeError(f"linear network error: {exc}") from exc
     if payload and payload.get("errors"):
         raise RuntimeError(f"linear GraphQL errors: {payload['errors']}")
-    ok = (((payload or {}).get("data") or {}).get("issueUpdate") or {}).get("success")
+    return payload or {}
+
+
+def _apply_task_update(conn: Any, sql: str, params: tuple) -> None:
+    """Run one bookkeeping UPDATE on public.tasks and commit. Shared by the
+    watermark / create-intent writers — each passes its own literal SQL."""
+    with conn.cursor() as cur:
+        cur.execute(sql, params)
+    conn.commit()
+
+
+def push_to_linear(api_key: str, kei: str, state_id: str) -> None:
+    """POST a single issueUpdate mutation. Raises RuntimeError on any failure.
+
+    Linear's issueUpdate accepts the KEI-N identifier as `id` (proven by the
+    legacy completion_sync_worker path).
+    """
+    payload = _linear_graphql(api_key, _ISSUE_UPDATE_MUTATION, {"id": kei, "state": state_id})
+    ok = ((payload.get("data") or {}).get("issueUpdate") or {}).get("success")
     if not ok:
         raise RuntimeError(f"linear rejected issueUpdate: {payload}")
 
@@ -195,12 +211,9 @@ def push_to_linear(api_key: str, kei: str, state_id: str) -> None:
 def mark_synced(conn: Any, kei: str, status: str | None) -> None:
     """Advance the watermark after a successful push. The KEI-228 emit
     trigger's watermark guard skips this UPDATE — no sync_event echo."""
-    with conn.cursor() as cur:
-        cur.execute(
-            "UPDATE public.tasks SET linear_synced_status = %s WHERE id = %s",
-            (status, kei),
-        )
-    conn.commit()
+    _apply_task_update(
+        conn, "UPDATE public.tasks SET linear_synced_status = %s WHERE id = %s", (status, kei)
+    )
 
 
 # ───────────────────────── GAP-A: KEI creation path ─────────────────────────
@@ -245,24 +258,8 @@ def create_in_linear(
         issue_input["description"] = description
     if priority is not None and 0 <= priority <= 4:
         issue_input["priority"] = priority
-    body = json.dumps(
-        {"query": _ISSUE_CREATE_MUTATION, "variables": {"input": issue_input}}
-    ).encode()
-    # S310: the URL is the fixed https Linear GraphQL endpoint, not user input.
-    req = urllib.request.Request(  # noqa: S310
-        _LINEAR_GRAPHQL_URL,
-        data=body,
-        method="POST",
-        headers={"Authorization": api_key, "Content-Type": "application/json"},
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=20) as resp:  # noqa: S310
-            payload = json.loads(resp.read() or "null")
-    except (OSError, json.JSONDecodeError) as exc:
-        raise RuntimeError(f"linear network error: {exc}") from exc
-    if payload and payload.get("errors"):
-        raise RuntimeError(f"linear GraphQL errors: {payload['errors']}")
-    result = ((payload or {}).get("data") or {}).get("issueCreate") or {}
+    payload = _linear_graphql(api_key, _ISSUE_CREATE_MUTATION, {"input": issue_input})
+    result = (payload.get("data") or {}).get("issueCreate") or {}
     if not result.get("success") or not (result.get("issue") or {}).get("url"):
         raise RuntimeError(f"linear rejected issueCreate: {payload}")
     return str(result["issue"]["url"])
@@ -275,34 +272,25 @@ def consume_create_intent(conn: Any, task_id: str) -> None:
     missed-create, never a corrupting duplicate Linear issue. A clean failure
     re-arms the flag (rearm_create_intent) so the next tick retries.
     """
-    with conn.cursor() as cur:
-        cur.execute(
-            "UPDATE public.tasks SET linear_create_pending = FALSE WHERE id = %s",
-            (task_id,),
-        )
-    conn.commit()
+    _apply_task_update(
+        conn, "UPDATE public.tasks SET linear_create_pending = FALSE WHERE id = %s", (task_id,)
+    )
 
 
 def record_created_url(conn: Any, task_id: str, url: str) -> None:
     """Record the new Linear URL on the task row — the create watermark."""
-    with conn.cursor() as cur:
-        cur.execute(
-            "UPDATE public.tasks SET linear_url = %s WHERE id = %s",
-            (url, task_id),
-        )
-    conn.commit()
+    _apply_task_update(
+        conn, "UPDATE public.tasks SET linear_url = %s WHERE id = %s", (url, task_id)
+    )
 
 
 def rearm_create_intent(conn: Any, task_id: str) -> None:
     """Re-set linear_create_pending after a CLEAN create failure so the next
     tick retries. Only an actual crash (not a clean failure) leaves the intent
     consumed — that surfaces as a missed-create, never a duplicate."""
-    with conn.cursor() as cur:
-        cur.execute(
-            "UPDATE public.tasks SET linear_create_pending = TRUE WHERE id = %s",
-            (task_id,),
-        )
-    conn.commit()
+    _apply_task_update(
+        conn, "UPDATE public.tasks SET linear_create_pending = TRUE WHERE id = %s", (task_id,)
+    )
 
 
 def _emit_failure_alert(failures: list[tuple[str, str]]) -> None:

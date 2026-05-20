@@ -2,10 +2,19 @@
 """reconcile_three_stores.py — KEI-230 K4 — belt-and-braces 3-store reconciler.
 
 Walks Linear + Postgres public.tasks + bd-Dolt, builds a canonical join
-table on (KEI-N, bd_id), detects drift (present in 1-of-3, 2-of-3, or
-all-3-but-divergent), and emits sync_events to backfill the missing
-rows. The K3 sync_orchestrator drains the events and writes to the
-target stores.
+table on (KEI-N, bd_id), and detects drift (present in 1-of-3, 2-of-3,
+or all-3-but-divergent).
+
+KEI-237 (Dave ratified 2026-05-20) — the reconciler RAISES A FLAG for
+human review; it does NOT auto-fix. ALL drift buckets (field_drift AND
+the three missing_* buckets) are flag-only. `--apply` posts ONE
+consolidated drift alert to the existing Slack alert path (#ceo by
+default) — the same channel the other scripts/alerts/* monitors use. It
+no longer emits sync_events and creates no new table. Propagation is
+handled by a controlled one-way push and/or a human acting on the
+alert — never by this detector. This removes the auto-fix feedback loop
+(reconciler emits event → orchestrator writes store → trigger emits
+event → …).
 
 Generalises scripts/reconcile_linear_supabase.py — which only does the
 Linear→Postgres direction one-shot — to a 3-way reconciler safe to run
@@ -13,7 +22,7 @@ on a 30-min systemd timer.
 
 Usage:
     python3 scripts/reconcile_three_stores.py            # dry-run summary
-    python3 scripts/reconcile_three_stores.py --apply    # emit events to sync_events
+    python3 scripts/reconcile_three_stores.py --apply    # post drift alert
 """
 
 from __future__ import annotations
@@ -33,6 +42,12 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 _LINEAR_GRAPHQL_URL = "https://api.linear.app/graphql"
 _LINEAR_TEAM_ID_DEFAULT = "4686528f-ce77-4c2f-968b-3dc76b34d6fe"  # Keiracom
 _BD_BIN_DEFAULT = os.path.expanduser("~/.local/bin/bd")
+
+# KEI-237 — drift alerts route to the existing Slack alert path (same bot-token
+# chat.postMessage the scripts/alerts/* monitors use). #ceo is the human-review
+# surface; env-overridable.
+_SLACK_API_URL = "https://slack.com/api/chat.postMessage"
+_CEO_CHANNEL_DEFAULT = "C0B2PM3TV0B"
 
 # Linear StateType → public.tasks.status. Mirrors webhook mapping.
 # KEI-235-followup: Postgres tasks_status_check CHECK constraint allows
@@ -200,6 +215,12 @@ def _has_field_drift(entry: dict[str, Any]) -> bool:
     have no Linear equivalent — never flagged as drift. Postgres `done` /
     `cancelled` are sticky (matches the orchestrator's done-preservation
     invariant in `_dispatch_postgres`); never re-opened automatically here.
+
+    KEI-237 (c) — comparison is tightened: both sides are normalised
+    (strip + lower-case) so field-format noise (casing, surrounding
+    whitespace) cannot raise a false flag. Only the mapped `status` enum
+    is compared — timestamps (updated_at etc.) are never compared, so
+    timestamp jitter cannot drift-flag either.
     """
     stores = entry["stores"]
     linear_iss = stores.get("linear") or {}
@@ -207,14 +228,16 @@ def _has_field_drift(entry: dict[str, Any]) -> bool:
     canonical = _linear_canonical_status(linear_iss)
     if canonical is None:
         return False
-    actual = pg_row.get("status")
-    if actual in ("dismissed", "blocked"):
+    norm_actual = str(pg_row.get("status") or "").strip().lower()
+    norm_canonical = str(canonical).strip().lower()
+    # Postgres-only / sticky terminal statuses — not drift.
+    if norm_actual in ("dismissed", "blocked", "done", "cancelled"):
         return False
-    if actual in ("done", "cancelled"):
-        return False
-    # NULL pg.status counts as drift — the row exists but has no status set,
-    # so propagating Linear's canonical value is strictly an improvement.
-    return actual != canonical
+    # NULL/empty pg.status with a real canonical IS drift — the row exists
+    # but has no status set; the canonical value is worth surfacing.
+    if not norm_actual:
+        return True
+    return norm_actual != norm_canonical
 
 
 def detect_drift(table: dict[str, dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
@@ -246,118 +269,102 @@ def detect_drift(table: dict[str, dict[str, Any]]) -> dict[str, list[dict[str, A
     return out
 
 
-def _build_create_payload(kei: str, stores: dict[str, Any]) -> dict[str, Any]:
-    """Pick the canonical record from whichever stores have it.
+# Drift buckets that become reviewable flags. `in_all_three` is the
+# healthy bucket — never flagged.
+_FLAG_BUCKETS = ("missing_postgres", "missing_bd", "missing_linear", "field_drift")
 
-    Used for the `missing_*` buckets where the store-being-backfilled has
-    no row yet — Linear is preferred as the seed because it's where Dave
-    creates KEIs (title/priority/intent live there first).
+
+def post_to_slack(text: str, channel: str) -> bool:
+    """Best-effort Slack post via bot-token chat.postMessage. Returns True on ok.
+
+    Mirrors the proven pattern in scripts/alerts/service_health_monitor.py —
+    the existing alert path. No retry, no exception propagation: a drift
+    alert that fails to post must not crash the timer.
     """
-    linear_iss = stores.get("linear") or {}
-    bd_iss = stores.get("bd") or {}
-    pg_row = stores.get("postgres") or {}
-    title = linear_iss.get("title") or pg_row.get("title") or bd_iss.get("title") or "(no title)"
-    linear_state_type = (linear_iss.get("state") or {}).get("type") or ""
-    status = (
-        LINEAR_STATE_TO_TASK_STATUS.get(linear_state_type) or pg_row.get("status") or "available"
+    token = os.environ.get("SLACK_BOT_TOKEN", "")
+    if not token:
+        logger.warning("SLACK_BOT_TOKEN not set — cannot post drift alert")
+        return False
+    payload = json.dumps(
+        {"channel": channel, "text": text, "username": "DriftReconciler", "icon_emoji": ":mag:"}
+    ).encode("utf-8")
+    req = urllib.request.Request(
+        _SLACK_API_URL,
+        data=payload,
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json; charset=utf-8",
+        },
+        method="POST",
     )
-    priority = linear_iss.get("priority") or pg_row.get("priority")
-    url = (
-        linear_iss.get("url")
-        or pg_row.get("linear_url")
-        or f"https://linear.app/keiracom/issue/{kei}"
-    )
-    return {
-        "id": kei,
-        "bd_id": bd_iss.get("id") or pg_row.get("bd_id"),
-        "title": title,
-        "status": status,
-        "priority": priority,
-        "linear_url": url,
-    }
+    try:
+        with urllib.request.urlopen(req, timeout=10) as r:
+            return bool(json.loads(r.read()).get("ok"))
+    except (OSError, json.JSONDecodeError) as exc:
+        # urllib.error.URLError subclasses OSError — OSError covers it.
+        logger.warning("Slack drift-alert post failed: %s", exc)
+        return False
 
 
-def _build_postgres_payload(kei: str, stores: dict[str, Any]) -> dict[str, Any]:
-    """KEI-237 — build payload from Postgres-as-canonical for field_drift events.
+def _field_drift_detail(entry: dict[str, Any]) -> str:
+    """One-line linear-state vs pg-status detail for a field_drift entry."""
+    linear_iss = entry["stores"].get("linear") or {}
+    pg_row = entry["stores"].get("postgres") or {}
+    state = (linear_iss.get("state") or {}).get("type", "?")
+    return f"{entry['kei']} (linear={state} pg={pg_row.get('status')})"
 
-    Under the Dave 2026-05-19 policy (bd=CLI, Postgres=canonical,
-    Linear=mirror), field-level drift between Postgres and another store
-    is resolved by propagating Postgres's value OUT, never the reverse.
-    The orchestrator's `_dispatch_linear` (per KEI-236) only writes
-    Linear on terminal `close`/`reopen` transitions, so `update` events
-    from this path effectively only correct bd-Dolt — Linear stays
-    where it is until a real terminal transition flows from Postgres.
+
+def _format_drift_alert(drift: dict[str, list[dict[str, Any]]]) -> str | None:
+    """Build the consolidated drift alert text. None when there is no drift.
+
+    One message summarising every flagged bucket — KEI lists for the
+    missing_* buckets, linear-vs-pg detail for field_drift. The reviewer
+    resolves manually or via the controlled one-way push.
     """
-    bd_iss = stores.get("bd") or {}
-    pg_row = stores.get("postgres") or {}
-    linear_iss = stores.get("linear") or {}
-    return {
-        "id": kei,
-        "bd_id": pg_row.get("bd_id") or bd_iss.get("id"),
-        "title": pg_row.get("title") or linear_iss.get("title") or "(no title)",
-        "status": pg_row.get("status") or "available",
-        "priority": pg_row.get("priority"),
-        "linear_url": pg_row.get("linear_url")
-        or linear_iss.get("url")
-        or f"https://linear.app/keiracom/issue/{kei}",
-    }
+    total = sum(len(drift.get(b, [])) for b in _FLAG_BUCKETS)
+    if total == 0:
+        return None
+    lines = [f"[DRIFT] reconcile_three_stores — {total} KEI(s) need human review"]
+    for bucket in _FLAG_BUCKETS:
+        entries = drift.get(bucket, [])
+        if not entries:
+            continue
+        if bucket == "field_drift":
+            detail = ", ".join(_field_drift_detail(e) for e in entries[:20])
+        else:
+            detail = ", ".join(e["kei"] for e in entries[:20])
+        more = f" (+{len(entries) - 20} more)" if len(entries) > 20 else ""
+        lines.append(f"  {bucket} ({len(entries)}): {detail}{more}")
+    lines.append("Flag-only — no auto-fix. Resolve manually or via the one-way push.")
+    return "\n".join(lines)
 
 
-def _emit_events(conn: Any, drift: dict[str, list[dict[str, Any]]]) -> int:
-    """Insert sync_events to backfill missing stores. Returns event count emitted."""
-    emitted = 0
-    with conn.cursor() as cur:
-        # Each "missing X" bucket emits an event from the FIRST present store as origin.
-        # K3 then dispatches to the OTHER two (including the missing one).
-        for entry in drift["missing_postgres"]:
-            origin = "linear" if entry["stores"].get("linear") else "bd"
-            payload = _build_create_payload(entry["kei"], entry["stores"])
-            cur.execute(
-                "SELECT public.fn_emit_sync_event(%s, %s, %s, %s, %s::jsonb)",
-                (origin, "create", entry["kei"], payload["bd_id"], json.dumps(payload)),
-            )
-            emitted += 1
-        for entry in drift["missing_bd"]:
-            origin = "linear" if entry["stores"].get("linear") else "postgres"
-            payload = _build_create_payload(entry["kei"], entry["stores"])
-            cur.execute(
-                "SELECT public.fn_emit_sync_event(%s, %s, %s, %s, %s::jsonb)",
-                (origin, "create", entry["kei"], payload["bd_id"], json.dumps(payload)),
-            )
-            emitted += 1
-        for entry in drift["missing_linear"]:
-            origin = "bd" if entry["stores"].get("bd") else "postgres"
-            payload = _build_create_payload(entry["kei"], entry["stores"])
-            cur.execute(
-                "SELECT public.fn_emit_sync_event(%s, %s, %s, %s, %s::jsonb)",
-                (origin, "create", entry["kei"], payload["bd_id"], json.dumps(payload)),
-            )
-            emitted += 1
-        # KEI-237 — field-drift bucket: under the new policy Postgres is
-        # canonical, so we emit origin=postgres with the Postgres-side
-        # payload. The orchestrator (KEI-236) will dispatch to bd (fixes
-        # bd-Dolt) but skip the Linear write for `update` events — Linear
-        # stays where it is until a real terminal transition flows out
-        # via `close`/`reopen` events from the trigger.
-        for entry in drift["field_drift"]:
-            payload = _build_postgres_payload(entry["kei"], entry["stores"])
-            cur.execute(
-                "SELECT public.fn_emit_sync_event(%s, %s, %s, %s, %s::jsonb)",
-                ("postgres", "update", entry["kei"], payload["bd_id"], json.dumps(payload)),
-            )
-            emitted += 1
-    conn.commit()
-    return emitted
+def _post_drift_alert(drift: dict[str, list[dict[str, Any]]]) -> int:
+    """Post one consolidated drift alert to #ceo. Returns flagged-KEI count.
+
+    KEI-237 — replaces sync_event emission. The reconciler DETECTS and
+    FLAGS via the existing Slack alert path; it does not auto-fix and
+    creates no new table.
+    """
+    text = _format_drift_alert(drift)
+    if text is None:
+        logger.info("no drift — no alert posted")
+        return 0
+    channel = os.environ.get("DRIFT_ALERT_CHANNEL", _CEO_CHANNEL_DEFAULT)
+    ok = post_to_slack(text, channel)
+    total = sum(len(drift.get(b, [])) for b in _FLAG_BUCKETS)
+    logger.info("drift alert posted=%s — %d KEI(s) flagged", ok, total)
+    return total
 
 
-def _print_summary(drift: dict[str, list[dict[str, Any]]], emitted: int | None) -> None:
+def _print_summary(drift: dict[str, list[dict[str, Any]]], flagged: int | None) -> None:
     print(f"in_all_three:    {len(drift['in_all_three'])}")
     print(f"missing_postgres:{len(drift['missing_postgres'])}")
     print(f"missing_bd:      {len(drift['missing_bd'])}")
     print(f"missing_linear:  {len(drift['missing_linear'])}")
     print(f"field_drift:     {len(drift.get('field_drift', []))}")
-    if emitted is not None:
-        print(f"events_emitted:  {emitted}")
+    if flagged is not None:
+        print(f"alert_flagged:   {flagged}")
     for bucket in ("missing_postgres", "missing_bd", "missing_linear", "field_drift"):
         if drift.get(bucket):
             print(f"\n{bucket} (first 5):")
@@ -374,7 +381,11 @@ def _print_summary(drift: dict[str, list[dict[str, Any]]], emitted: int | None) 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--apply", action="store_true", help="Emit sync_events (default dry-run)")
+    parser.add_argument(
+        "--apply",
+        action="store_true",
+        help="Post the drift alert to Slack #ceo (default dry-run, no alert)",
+    )
     args = parser.parse_args(argv)
 
     api_key = os.environ.get("LINEAR_API_KEY", "")
@@ -404,11 +415,10 @@ def main(argv: list[str] | None = None) -> int:
 
         table = build_join_table(linear_issues, postgres_rows, bd_issues)
         drift = detect_drift(table)
-        emitted: int | None = None
-        if args.apply:
-            emitted = _emit_events(conn, drift)
-            logger.info("emitted %d sync_events", emitted)
-    _print_summary(drift, emitted)
+    flagged: int | None = None
+    if args.apply:
+        flagged = _post_drift_alert(drift)
+    _print_summary(drift, flagged)
     return 0
 
 

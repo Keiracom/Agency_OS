@@ -162,7 +162,7 @@ def cognee_top_k(query: str, top_k: int = 3) -> list[str]:
     try:
         resp = search(query, top_k=top_k)
     except Exception as exc:  # noqa: BLE001 — fail-open
-        logger.warning("cognee search failed for %r: %s", query[:60], exc)
+        logger.warning("cognee search failed (query_len=%d): %s", len(query), exc)
         return []
     # Response shape varies — try the common keys.
     if isinstance(resp, list):

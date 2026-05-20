@@ -86,10 +86,11 @@ async def _search(query: str, org_id: str, app_id: str, agent_id: str | None):
     """
     try:
         import sys as _sys
+
         _sys.path.insert(0, "/home/elliotbot/clawd/Agency_OS/scripts")
         from cognee_http_client import search as http_search
     except ImportError as exc:
-        logger.warning("cognee_http_client import failed: %s", exc)
+        logger.debug("cognee_http_client import failed: %s", exc)
         return []
     try:
         result = http_search(query, top_k=5, search_type="GRAPH_COMPLETION")

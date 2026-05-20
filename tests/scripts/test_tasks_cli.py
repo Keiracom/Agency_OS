@@ -133,6 +133,44 @@ def test_ready_emits_json(mod, patch_connect, capsys) -> None:
     assert data[0]["priority"] == 1
 
 
+def test_ready_human_output_handles_null_priority(mod, patch_connect, capsys) -> None:
+    """bd ready must not crash when a row has priority=None (Postgres NULL).
+
+    Pre-fix: tasks_cli.py:298 raised
+        TypeError: unsupported format string passed to NoneType.__format__
+    on `print(f"  P{r['priority']:>1}  ...")`. Coerce None → 'X' + warn
+    so the row stays visible.
+    """
+    cur = _Cursor(
+        fetchall_rows=[
+            ("KEI-TEST", "smoke", None, "available", None, None, None, None, "url", None, None),
+        ],
+        description=[
+            ("id",),
+            ("title",),
+            ("priority",),
+            ("status",),
+            ("claimed_by",),
+            ("claimed_at",),
+            ("dependencies",),
+            ("tags",),
+            ("linear_url",),
+            ("created_at",),
+            ("updated_at",),
+        ],
+    )
+    patch_connect(cur)
+    rc = mod.main(["ready"])
+    assert rc == 0
+    captured = capsys.readouterr()
+    assert "PX" in captured.out, f"Expected 'PX' marker in stdout, got: {captured.out!r}"
+    assert "KEI-TEST" in captured.out
+    assert "NULL priority" in captured.err, (
+        f"Expected NULL-priority warning in stderr, got: {captured.err!r}"
+    )
+    assert "KEI-TEST" in captured.err
+
+
 def test_ready_clamps_limit_argument(mod, patch_connect, monkeypatch) -> None:
     monkeypatch.setattr(mod, "_current_phase_max", lambda _cur: 0.0)
     cur = _Cursor(fetchall_rows=[], description=[("id",)])

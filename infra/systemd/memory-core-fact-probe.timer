@@ -1,0 +1,12 @@
+[Unit]
+Description=Agency OS — Memory core-fact drift probe cadence (6h, Agency_OS-zbvs)
+
+[Timer]
+OnBootSec=15min
+OnUnitActiveSec=6h
+RandomizedDelaySec=300
+Persistent=true
+Unit=memory-core-fact-probe.service
+
+[Install]
+WantedBy=timers.target

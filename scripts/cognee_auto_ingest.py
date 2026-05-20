@@ -8,7 +8,9 @@ Two modes:
 Uses the Cognee HTTP API via cognee_http_client to avoid the SDK lock conflict.
 Fail-open per file; logs successes + failures to stderr.
 """
+
 from __future__ import annotations
+
 import argparse
 import logging
 import subprocess
@@ -17,7 +19,8 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, "/home/elliotbot/clawd/Agency_OS/scripts")
-from cognee_http_client import ingest as cognee_ingest, health as cognee_health  # noqa: E402
+from cognee_http_client import health as cognee_health
+from cognee_http_client import ingest as cognee_ingest  # noqa: E402
 
 REPO_ROOT = Path("/home/elliotbot/clawd/Agency_OS")
 WORKTREE_PARENT = REPO_ROOT.parent  # /home/elliotbot/clawd
@@ -37,6 +40,13 @@ WORKTREES = [w for w in WORKTREES if w.exists()]
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("cognee_auto_ingest")
+
+# Root-level core-truth docs — single source of truth for BOTH the --once
+# set (_files_in) and the --watch set (watch_loop). Before this was shared,
+# watch_loop omitted these (it watched only sub-dirs), so root-file edits —
+# notably ARCHITECTURE.md — never propagated to Cognee after the watcher
+# started (memory-content audit 2026-05-20, Agency_OS-zbvs).
+_ROOT_CORE_FILES = ("DEFINITION_OF_DONE.md", "ARCHITECTURE.md", "CLAUDE.md")
 
 
 def canonical_rel(path: Path) -> str:
@@ -58,7 +68,8 @@ def _files_in(root: Path) -> list[Path]:
     out: list[Path] = []
     out.extend(sorted((root / "personas").glob("*.md")))
     out.extend(sorted((root / "docs/governance").glob("*.md")))
-    for p in (root / "DEFINITION_OF_DONE.md", root / "ARCHITECTURE.md", root / "CLAUDE.md"):
+    for fname in _ROOT_CORE_FILES:
+        p = root / fname
         if p.exists():
             out.append(p)
     out.extend(sorted((root / ".claude/modules").glob("*.md")))
@@ -122,14 +133,23 @@ def run_once() -> dict:
 def watch_loop() -> None:
     dirs: list[Path] = []
     for root in WORKTREES:
-        for sub in ("personas", "docs/governance", ".claude/modules"):
-            d = root / sub
+        # The worktree ROOT itself is watched (non-recursively) so the
+        # root-level core-truth files in _ROOT_CORE_FILES propagate. A
+        # directory watch — not a file watch — is used so a rename-replace
+        # (e.g. git pull swapping ARCHITECTURE.md's inode) is still caught.
+        # The sub-dirs hold only flat *.md (see _files_in), so non-recursive
+        # is sufficient there too — `-r` is dropped to keep the root watch
+        # cheap (no .git / .venv recursion).
+        for sub in ("", "personas", "docs/governance", ".claude/modules"):
+            d = root / sub if sub else root
             if d.exists():
                 dirs.append(d)
     if not dirs:
         log.error("no watchable dirs; exiting")
         return
-    cmd = ["inotifywait", "-m", "-r", "-e", "modify,create,moved_to", "--format", "%w%f"] + [str(d) for d in dirs]
+    cmd = ["inotifywait", "-m", "-e", "modify,create,moved_to", "--format", "%w%f"] + [
+        str(d) for d in dirs
+    ]
     log.info("watching %d dirs across %d worktrees", len(dirs), len(WORKTREES))
     try:
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, text=True)
@@ -146,14 +166,19 @@ def watch_loop() -> None:
             fpath = line.strip()
             if not fpath.endswith(".md"):
                 continue
+            # A .md directly in a worktree root is ingested ONLY if it is a
+            # core-truth file — keeps the watch set aligned with _files_in
+            # (a stray root README.md must not get ingested).
+            ev = Path(fpath)
+            if ev.parent in WORKTREES and ev.name not in _ROOT_CORE_FILES:
+                continue
             now = time.time()
             if now - debounce.get(fpath, 0) < 5:
                 continue
             debounce[fpath] = now
-            p = Path(fpath)
-            if p.exists():
+            if ev.exists():
                 log.info("change detected: %s", fpath)
-                ingest_one(p)
+                ingest_one(ev)
         except KeyboardInterrupt:
             break
         except Exception as e:

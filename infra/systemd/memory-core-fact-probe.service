@@ -1,0 +1,17 @@
+[Unit]
+Description=Agency OS — Memory core-fact drift probe (Agency_OS-zbvs)
+After=network-online.target cognee.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+Environment=PYTHONPATH=/home/elliotbot/clawd/Agency_OS/scripts
+ExecStart=/home/elliotbot/clawd/Agency_OS/.venv/bin/python3 /home/elliotbot/clawd/Agency_OS/scripts/orchestrator/memory_core_fact_probe.py
+StandardOutput=append:/home/elliotbot/clawd/logs/memory-core-fact-probe.log
+StandardError=append:/home/elliotbot/clawd/logs/memory-core-fact-probe.log
+TimeoutStartSec=300
+
+[Install]
+WantedBy=default.target

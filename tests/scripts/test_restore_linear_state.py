@@ -130,3 +130,14 @@ def test_window_inclusive_at_boundaries(mod) -> None:
     history_end = [_event("2026-05-19T12:24:00Z", _ACTOR, "completed")]
     assert mod.find_pre_damage_state(history_start, _ACTOR, _W_START, _W_END) is not None
     assert mod.find_pre_damage_state(history_end, _ACTOR, _W_START, _W_END) is not None
+
+
+def test_apply_restore_is_law_locked_noop(mod, monkeypatch):
+    """Linear-read-only LAW (Dave 2026-05-20): apply_restore is locked to a
+    no-op — it returns False and never calls Linear's GraphQL endpoint.
+    Recovery is now: fix Supabase + let the one-way push propagate."""
+    called: list = []
+    monkeypatch.setattr(mod, "_graphql", lambda *a, **k: called.append(a) or {})
+    result = mod.apply_restore("fake-key", "issue-uuid", "state-uuid")
+    assert result is False
+    assert called == [], "apply_restore must not call Linear GraphQL"

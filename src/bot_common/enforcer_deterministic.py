@@ -778,11 +778,12 @@ def check_r12(
         f"{_R12_KEI_CREATE_WINDOW_SECONDS // 60} minutes. Conversational "
         "directives must land in Linear for tracked-work continuity.",
         "should_have": (
-            "Elliot (or any agent the directive targets) creates a Linear KEI "
-            "within 5 minutes of the #ceo directive — `bd create` + Linear "
-            "sync OR direct Linear GraphQL issueCreate. Use 'orchestration:"
-            "directive_NN' ceo_memory anchor if the directive is governance- "
-            "or rule-level."
+            "Elliot (or any agent the directive targets) creates a KEI "
+            "within 5 minutes of the #ceo directive via `bd create`. Linear "
+            "is read-only (Dave ratified LAW 2026-05-20) — no direct Linear "
+            "writes; status propagates via the one-way push. Use "
+            "'orchestration:directive_NN' ceo_memory anchor if the directive "
+            "is governance- or rule-level."
         ),
         "fire_message": (
             f"[R12-REMINDER:elliot] CEO directive at {directive_ts.isoformat()} "

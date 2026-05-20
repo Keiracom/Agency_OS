@@ -229,3 +229,13 @@ def _frozen_datetime(year, month, day, hour, minute):
             return real_datetime(year, month, day, hour, minute, tzinfo=tz or UTC)
 
     return _Frozen
+
+
+def test_add_issue_to_cycle_is_law_locked_noop(wc_mod, monkeypatch):
+    """Linear-read-only LAW (Dave 2026-05-20): _add_issue_to_cycle is locked
+    to a no-op — it returns False and never calls Linear's GraphQL endpoint."""
+    called: list = []
+    monkeypatch.setattr(wc_mod, "_linear_graphql", lambda *a, **k: called.append(a) or {})
+    result = wc_mod._add_issue_to_cycle("fake-key", "issue-uuid", "cycle-uuid")
+    assert result is False
+    assert called == [], "_add_issue_to_cycle must not call Linear GraphQL"

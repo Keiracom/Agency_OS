@@ -160,8 +160,10 @@ def test_positive_valid_evidence_completes_task(mod, monkeypatch, tmp_path, caps
     rc = mod.main(["complete", "KEI-89", "--evidence", str(ev_file)])
     assert rc == 0, capsys.readouterr().err
 
-    # Five execute calls fired: Gate 3, hash check, INSERT, UPDATE, KEI-106 linear sync enqueue
-    assert len(cur.executed) == 5
+    # Four execute calls fired: Gate 3, hash check, INSERT task_verifications,
+    # UPDATE tasks. The KEI-106 linear-sync enqueue is gone — _enqueue_linear_sync
+    # is locked to a no-op under the Linear-read-only LAW (Dave 2026-05-20).
+    assert len(cur.executed) == 4
 
     # INSERT contained the canonical JSON as test_output param
     insert_sql, insert_params = cur.executed[2]
@@ -172,9 +174,17 @@ def test_positive_valid_evidence_completes_task(mod, monkeypatch, tmp_path, caps
     round_tripped = json.loads(stored_output)
     assert round_tripped["acceptance_items"] == _VALID_EVIDENCE["acceptance_items"]
 
-    # Commits fired (main complete + KEI-106 linear sync enqueue); no rollback
-    assert conn.commits == 2
+    # One commit fired (main complete); no rollback. The KEI-106 linear-sync
+    # enqueue's separate connect+commit is gone — _enqueue_linear_sync is a
+    # no-op under the Linear-read-only LAW.
+    assert conn.commits == 1
     assert conn.rollbacks == 0
+
+    # Linear-read-only LAW guard — PROVES the lock: no completion_sync_queue
+    # (linear-sink) INSERT fired. _enqueue_linear_sync is a hard no-op.
+    assert not any("completion_sync_queue" in sql for sql, _ in cur.executed), (
+        "linear-sink enqueue must be suppressed under the Linear-read-only LAW"
+    )
 
     out = capsys.readouterr().out
     assert "KEI-89" in out

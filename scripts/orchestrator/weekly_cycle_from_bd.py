@@ -104,9 +104,7 @@ def filter_eligible(items: list[dict]) -> list[tuple[dict, int]]:
 
 def _resolve_kei_to_uuid(api_key: str, kei_number: int) -> str | None:
     """Translate KEI-N → Linear issue UUID."""
-    query = (
-        "query($n:Float!){issues(filter:{team:{key:{eq:\"KEI\"}},number:{eq:$n}}){nodes{id}}}"
-    )
+    query = 'query($n:Float!){issues(filter:{team:{key:{eq:"KEI"}},number:{eq:$n}}){nodes{id}}}'
     resp = _linear_graphql(api_key, query, {"n": float(kei_number)})
     nodes = (((resp or {}).get("data") or {}).get("issues") or {}).get("nodes") or []
     return nodes[0].get("id") if nodes else None
@@ -167,9 +165,7 @@ def _scan_existing_cycle(api_key: str, team_id: str, starts_at_iso: str) -> str 
 def _create_cycle(
     api_key: str, team_id: str, starts_at_iso: str, ends_at_iso: str, name: str
 ) -> str | None:
-    mutation = (
-        "mutation($input:CycleCreateInput!){cycleCreate(input:$input){success cycle{id}}}"
-    )
+    mutation = "mutation($input:CycleCreateInput!){cycleCreate(input:$input){success cycle{id}}}"
     input_fields = {
         "teamId": team_id,
         "name": name,
@@ -182,14 +178,14 @@ def _create_cycle(
 
 
 def _add_issue_to_cycle(api_key: str, issue_uuid: str, cycle_uuid: str) -> bool:
-    mutation = (
-        "mutation($id:String!,$cid:String!){"
-        "issueUpdate(id:$id,input:{cycleId:$cid}){success}}"
-    )
-    resp = _linear_graphql(api_key, mutation, {"id": issue_uuid, "cid": cycle_uuid})
-    return bool(
-        (((resp or {}).get("data") or {}).get("issueUpdate") or {}).get("success", False)
-    )
+    """Locked to a no-op under the Linear-read-only LAW (Dave ratified
+    2026-05-20). This previously POSTed an issueUpdate to assign an issue to
+    a Linear cycle. Linear is read-only — no automated process writes it.
+    Returns False — no cycle assignment was written.
+    """
+    del api_key, issue_uuid, cycle_uuid  # intentionally unused — write suppressed
+    logger.info("Linear-read-only LAW: cycle-assignment write suppressed")
+    return False
 
 
 def _cycle_name(starts_at_utc: datetime) -> str:

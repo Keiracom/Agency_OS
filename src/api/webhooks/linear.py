@@ -199,6 +199,11 @@ def _normalise_event(payload: dict[str, Any]) -> dict[str, Any] | None:
                 "identifier": identifier,
                 "bd_status": LINEAR_STATE_TO_BD[state],
                 "task_status": LINEAR_STATE_TO_TASK_STATUS.get(state),
+                # Carry the title so _dispatch_to_tasks can refresh the
+                # public.tasks.title column. Issue.update payloads always
+                # include the current title; without this, a row created
+                # title-less is never repaired by subsequent status events.
+                "title": data.get("title"),
                 "url": data.get("url") or f"https://linear.app/keiracom/issue/{identifier}",
             }
     if action == "remove":
@@ -241,7 +246,10 @@ def _dispatch_to_tasks(event: dict[str, Any]) -> None:
 
     On create: INSERT (id, title, priority, status='available', linear_url).
     On status update: UPDATE status using the Linear state mapping —
-    started → active, completed/canceled → done (also clears claimed_by).
+    started → active, completed/canceled → done (also clears claimed_by) —
+    and refresh the title column (Part 1 b) so a row created title-less is
+    repaired by the next status event. A placeholder title never clobbers a
+    real one (COALESCE/NULLIF guard).
     Conflicts on existing id: UPDATE the mutable fields rather than skipping,
     so the webhook is idempotent against re-deliveries.
     """
@@ -294,26 +302,33 @@ def _dispatch_to_tasks(event: dict[str, Any]) -> None:
                 # KEI-84 invariant: never downgrade a 'done' task (Linear could
                 # legitimately re-open via state change, but the spec hard-no's
                 # downgrade). Skip the UPDATE on done rows.
+                # Part 1 (b): refresh title on every status event. The nested
+                # NULLIF collapses ''/'(no title)' (and a missing title key →
+                # NULL) so COALESCE falls back to the existing title — a good
+                # title is never clobbered by a placeholder.
+                title_refresh = event.get("title")
                 if new_status == "done":
                     cur.execute(
                         """
                         UPDATE public.tasks
                            SET status = 'done', claimed_by = NULL, claimed_at = NULL,
+                               title = COALESCE(NULLIF(NULLIF(%s, ''), '(no title)'), title),
                                linear_url = COALESCE(linear_url, %s), updated_at = NOW()
                          WHERE id = %s
                         """,
-                        (url, identifier),
+                        (title_refresh, url, identifier),
                     )
                 else:
                     cur.execute(
                         """
                         UPDATE public.tasks
                            SET status = %s,
+                               title = COALESCE(NULLIF(NULLIF(%s, ''), '(no title)'), title),
                                linear_url = COALESCE(linear_url, %s),
                                updated_at = NOW()
                          WHERE id = %s AND status != 'done'
                         """,
-                        (new_status, url, identifier),
+                        (new_status, title_refresh, url, identifier),
                     )
             elif op == "remove":
                 # KEI-84: Linear issue deletion → flip to cancelled. Same never-downgrade-done guard.

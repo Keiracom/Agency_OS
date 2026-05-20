@@ -69,7 +69,8 @@ def _run_systemctl(extra_args: list[str]) -> list[str]:
     """
     cmd = [SYSTEMCTL, "--user", "--no-legend", "--plain", "--all"] + extra_args
     try:
-        result = subprocess.run(  # noqa: S603 — controlled args, no shell
+        # Controlled args (constant SYSTEMCTL + literal flags), no shell.
+        result = subprocess.run(  # noqa: S603
             cmd,
             capture_output=True,
             text=True,
@@ -147,7 +148,8 @@ def post_alert(tg_cli: str, message: str) -> bool:
     so monitor keeps running even if tg breaks).
     """
     try:
-        result = subprocess.run(  # noqa: S603 — controlled args, no shell
+        # Controlled args (tg cli + literal channel name), no shell.
+        result = subprocess.run(  # noqa: S603
             [tg_cli, "-c", "ceo", message],
             capture_output=True,
             text=True,

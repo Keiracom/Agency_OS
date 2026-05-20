@@ -163,7 +163,7 @@ def _open_prs() -> list[dict]:
     try:
         cp = subprocess.run(
             ["gh", "pr", "list", "--state=open", "--limit=50",
-             "--json", "number,title,updatedAt,comments,author"],
+             "--json", "number,title,updatedAt,comments,author,statusCheckRollup"],
             capture_output=True, text=True, timeout=30, check=False,
         )
         if cp.returncode != 0:
@@ -213,6 +213,30 @@ def _reviewer_pending(callsign: str) -> list[int]:
     return pending
 
 
+def _own_prs_needing_fix(callsign: str) -> list[int]:
+    """PRs this callsign authored that carry a HOLD or CI failure.
+
+    Closes the gap (Dave 2026-05-20): a reviewer with an empty review queue
+    would idle even while their own authored PRs sit blocked. Everyone is
+    responsible for their own authored PRs regardless of role.
+    """
+    out = []
+    for pr in _open_prs():
+        if _author_callsign(pr) != callsign:
+            continue
+        state = _verdicts_on(pr)
+        has_hold = any(v == "hold" for v in state.values())
+        # CI failure check
+        ci_fail = False
+        for chk in pr.get("statusCheckRollup", []) or []:
+            if (chk.get("conclusion") or "").upper() == "FAILURE":
+                ci_fail = True
+                break
+        if has_hold or ci_fail:
+            out.append(pr["number"])
+    return out
+
+
 def _orchestrator_actions(callsign: str) -> str | None:
     """For elliot: scan for merge-eligible + held PRs awaiting dispatch."""
     merge_ready, holds = [], []
@@ -236,6 +260,14 @@ def _orchestrator_actions(callsign: str) -> str | None:
 
 def prompt_worker(callsign: str) -> str | None:
     """Return the prompt text for a worker, or None if nothing to do."""
+    # Own blocked PRs take priority over claiming new work.
+    own_fix = _own_prs_needing_fix(callsign)
+    if own_fix:
+        return (
+            f"[NEXT-WORK:{callsign}] FIX your own {len(own_fix)} blocked PRs first: "
+            f"{sorted(own_fix)[:6]} — fetch CI/reviewer comments, push fix-up, "
+            "post [FIXED:<callsign>] before claiming anything new."
+        )
     ip = _bd_in_progress(callsign)
     if ip:
         return f"[NEXT-WORK:{callsign}] Continue claimed KEI {ip.get('id') or ip.get('identifier')}: {ip.get('title', '')[:80]}. Pick up where you left off."
@@ -246,15 +278,24 @@ def prompt_worker(callsign: str) -> str | None:
 
 
 def prompt_reviewer(callsign: str) -> str | None:
+    own_fix = _own_prs_needing_fix(callsign)
     pending = _reviewer_pending(callsign)
-    if not pending:
+    parts = []
+    if own_fix:
+        parts.append(
+            f"FIX your own {len(own_fix)} blocked PRs first: {sorted(own_fix)[:6]} "
+            "— fetch CI/reviewer comments, push fix-up, post [FIXED:<callsign>]"
+        )
+    if pending:
+        head = sorted(pending)[:6]
+        parts.append(
+            f"then review {len(pending)} PRs awaiting your verdict: "
+            f"{head}{'...' if len(pending) > len(head) else ''} "
+            "(dual-Sonar verbatim + gh pr comment)"
+        )
+    if not parts:
         return None
-    head = sorted(pending)[:6]
-    return (
-        f"[NEXT-WORK:{callsign}] {len(pending)} PRs awaiting your verdict: "
-        f"{head}{'...' if len(pending) > len(head) else ''}. "
-        "Walk through with dual-Sonar verbatim + `gh pr comment` per PR."
-    )
+    return f"[NEXT-WORK:{callsign}] " + " | ".join(parts)
 
 
 def prompt_orchestrator(callsign: str) -> str | None:

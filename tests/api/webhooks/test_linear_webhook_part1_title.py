@@ -12,52 +12,22 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO_ROOT))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from _webhook_mocks import FakeConn  # noqa: E402 — shared psycopg fakes
 
 from src.api.webhooks import linear as linear_webhook  # noqa: E402
 
 
-class _FakeCursor:
-    def __init__(self) -> None:
-        self.executed: list[tuple[str, tuple[Any, ...]]] = []
-
-    def __enter__(self) -> _FakeCursor:
-        return self
-
-    def __exit__(self, *_exc: object) -> None:
-        return None
-
-    def execute(self, sql: str, params: tuple[Any, ...] | None = None) -> None:
-        self.executed.append((sql, params or ()))
-
-
-class _FakeConn:
-    def __init__(self) -> None:
-        self._cur = _FakeCursor()
-        self.committed = False
-
-    def __enter__(self) -> _FakeConn:
-        return self
-
-    def __exit__(self, *_exc: object) -> None:
-        return None
-
-    def cursor(self) -> _FakeCursor:
-        return self._cur
-
-    def commit(self) -> None:
-        self.committed = True
-
-
 @pytest.fixture
 def fake_psycopg(monkeypatch):
-    conn = _FakeConn()
+    conn = FakeConn()
     fake = MagicMock()
     fake.connect = MagicMock(return_value=conn)
     monkeypatch.setitem(sys.modules, "psycopg", fake)

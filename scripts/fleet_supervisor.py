@@ -980,11 +980,17 @@ def process_agent(
 
 
 # ---------------------------------------------------------------------------
-# CEO post
+# Fleet-status post
 # ---------------------------------------------------------------------------
 
 
-def post_ceo_status(report: FleetReport) -> None:
+def post_fleet_status(report: FleetReport) -> None:
+    """Post the periodic fleet status to #execution.
+
+    Dave directive 2026-05-20: fleet status — per-agent nudge states + queue
+    counts — is operational/peer information, NOT a CEO outcome/blocker/
+    decision. It belongs in #execution. #ceo must never receive it.
+    """
     now_str = _dt.datetime.now(_dt.UTC).strftime("%H:%M UTC")
     lines = [f"**Fleet Status [{now_str}]**"]
     for s in report.statuses:
@@ -999,9 +1005,9 @@ def post_ceo_status(report: FleetReport) -> None:
 
     tg_script = os.path.join(os.path.dirname(__file__), "tg")
     try:
-        subprocess.run([tg_script, "-c", "ceo", text], check=True)
+        subprocess.run([tg_script, "-c", "execution", text], check=True)
     except Exception as exc:
-        log.warning("CEO post failed: %s", exc)
+        log.warning("fleet-status post failed: %s", exc)
 
 
 # ---------------------------------------------------------------------------
@@ -1059,7 +1065,7 @@ def main() -> None:
                 )
             report.statuses.append(status)
 
-        post_ceo_status(report)
+        post_fleet_status(report)
     finally:
         conn.close()
 

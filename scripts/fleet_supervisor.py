@@ -10,6 +10,9 @@ Scenarios handled per agent:
     4. tmux session dead → restart service + claim
     5. Agent shipped PR + went idle → start next build task
     6. Stale claims (>2h, no verification) → release back to available
+    7. Claimed agent's pane shows a transient AI-provider error (rate-limit /
+       overloaded / API error) → resume-nudge + surface to the orchestrator,
+       FAST — no 15-min wait (Agency_OS-yerl).
 """
 
 from __future__ import annotations
@@ -92,6 +95,48 @@ def _nats_publish_state(callsign: str, state: str) -> None:
         log.debug("[%s] NATS PUBLISH %s → %s", callsign, subject, state)
     except Exception as exc:  # noqa: BLE001
         log.warning("[%s] NATS publish failed (non-fatal): %s", callsign, exc)
+
+
+def _nats_publish_stall(callsign: str, task_id: str, signature: str) -> None:
+    """Surface a detected agent stall to keiracom.elliot.inbox so the
+    orchestrator knows without a human nudge (Agency_OS-yerl).
+
+    kind='status' (not 'incident') — the elliot-nats-inbox bridge delivers it
+    to Elliot's pane, while peer_event_ceo_relay leaves 'status' silent, so a
+    routine operational stall does not reach #ceo. Fail-open.
+    """
+    try:
+        import asyncio  # noqa: PLC0415 — lazy import; nats-py optional on v1 path
+
+        import nats.aio.client as nats_client  # noqa: PLC0415 — nats-py optional
+
+        summary = (
+            f"[STALL:{callsign}] agent stalled on '{signature}' while holding "
+            f"{task_id}. Auto-resume nudge sent to its pane — verify recovery; "
+            f"restart only if it does not resume."
+        )
+        payload = json.dumps(
+            {
+                "kind": "status",
+                "from": "fleet-supervisor",
+                "summary": summary,
+                "ts": int(time.time()),
+            }
+        ).encode()
+
+        async def _publish() -> None:
+            nc = nats_client.Client()
+            await nc.connect(NATS_URL, connect_timeout=2)
+            try:
+                await nc.publish("keiracom.elliot.inbox", payload)
+                await nc.flush()
+            finally:
+                await nc.close()
+
+        asyncio.run(_publish())
+        log.info("[%s] STALL surfaced to keiracom.elliot.inbox (%s)", callsign, signature)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("[%s] stall NATS publish failed (non-fatal): %s", callsign, exc)
 
 
 # ---------------------------------------------------------------------------
@@ -220,6 +265,44 @@ def context_is_full(session: str) -> bool:
     return bool(
         "context.*100%" in pane or "/clear to save" in pane or "100%" in pane and "context" in pane
     )
+
+
+# Signatures of a transient AI-provider stall in a Claude Code tmux pane
+# (Agency_OS-yerl). These are error-STATE phrasings — kept conservative so an
+# agent merely discussing rate limits in normal work is not false-flagged.
+_STALL_SIGNATURES = (
+    "rate_limit_error",
+    "overloaded_error",
+    "api_error",
+    "rate limit exceeded",
+    "exceeded your",
+    "usage limit reached",
+    "retrying in",
+    "error 429",
+    "error 529",
+    "http 429",
+    "http 529",
+    "connection error",
+    "api error:",
+)
+
+
+def detect_agent_stall(session: str) -> str | None:
+    """Return the matched stall signature if the agent's tmux pane shows a
+    transient AI-provider error (rate-limit / overloaded / API error), else
+    None.
+
+    A claimed agent stalled on such an error goes idle with no signal — the
+    orchestrator only learns of it on a human nudge. This catches it FAST (on
+    the next 5-min supervisor run), without waiting out the 15-minute generic
+    INACTIVITY_MINUTES gate. Today's incident: Aiden + Max both stalled on a
+    transient provider rate-limit mid-deliberation and nobody knew.
+    """
+    low = tmux_capture(session).lower()
+    for sig in _STALL_SIGNATURES:
+        if sig in low:
+            return sig
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -518,10 +601,7 @@ def release_merged_review_claims(conn: psycopg.Connection) -> int:
     and skipped, never aborts the sweep.
     """
     with conn.cursor() as cur:
-        cur.execute(
-            "SELECT id FROM public.tasks "
-            "WHERE status = 'active' AND id LIKE 'REVIEW-PR-%'"
-        )
+        cur.execute("SELECT id FROM public.tasks WHERE status = 'active' AND id LIKE 'REVIEW-PR-%'")
         review_ids = [r[0] for r in cur.fetchall()]
     released = 0
     for task_id in review_ids:
@@ -969,10 +1049,30 @@ def _handle_active_claim(
     claim: tuple[str, str],
     status: AgentStatus,
 ) -> AgentStatus:
-    """Scenario 3/6: agent has active claim — check activity, nudge or restart."""
+    """Scenario 3/6: agent has active claim — check activity, nudge or restart.
+
+    Scenario 7 (Agency_OS-yerl) runs FIRST: if the pane shows a transient
+    AI-provider error (rate-limit / overloaded / API error), the agent is
+    stalled even if its last tool call was recent — catch it now rather than
+    waiting out the 15-minute generic inactivity gate. A rate-limit stall is
+    recoverable by a fresh resume nudge, not a restart.
+    """
     task_id, title = claim
     status.active_task_id = task_id
     status.active_task_title = title
+
+    stall_sig = detect_agent_stall(tmux_session)
+    if stall_sig:
+        log.warning("[%s] STALL on %s — provider error signature %r", callsign, task_id, stall_sig)
+        resume = (
+            f"Your session hit a transient AI-provider error ({stall_sig}) while "
+            f"holding {task_id}. It has likely cleared — resume building. Title: {title}"
+        )
+        inject_task(tmux_session, resume)
+        _nats_publish_stall(callsign, task_id, stall_sig)
+        status.summary = f"STALL ({stall_sig}) — resume-nudged + surfaced to orchestrator"
+        return status
+
     last_call = get_last_tool_call(conn, callsign)
     status.last_tool_call = last_call
     now_utc = _dt.datetime.now(_dt.UTC)

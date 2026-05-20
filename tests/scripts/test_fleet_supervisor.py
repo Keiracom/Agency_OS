@@ -1040,3 +1040,57 @@ def test_get_active_claim_query_excludes_smoke_fixtures():
     fs.get_active_claim(conn, "orion")
     sql = cursor.execute.call_args[0][0]
     assert "Agency_OS-test001" in sql and "smoke" in sql.lower()
+
+
+# ---------------------------------------------------------------------------
+# Stall detection: fast error-aware detection of rate-limit/API-error stalls
+# (Agency_OS-yerl)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "pane",
+    [
+        "...\nAPI Error: rate_limit_error — please slow down\n>",
+        "Overloaded_error from the provider, retrying\n",
+        "  Retrying in 12s...  ",
+        "Error 529: service overloaded",
+        "Connection error — could not reach api.anthropic.com",
+    ],
+)
+def test_detect_agent_stall_matches_provider_errors(monkeypatch, pane):
+    monkeypatch.setattr(fs, "tmux_capture", lambda _s: pane)
+    sig = fs.detect_agent_stall("aiden:0")
+    assert sig is not None, f"stall signature must be detected in: {pane!r}"
+
+
+def test_detect_agent_stall_clean_pane_returns_none(monkeypatch):
+    """A normal working pane — no error state — is not flagged."""
+    monkeypatch.setattr(
+        fs, "tmux_capture", lambda _s: "Editing src/foo.py\nRunning pytest...\n5 passed\n>"
+    )
+    assert fs.detect_agent_stall("aiden:0") is None
+
+
+def test_handle_active_claim_stall_resume_nudges_and_surfaces(monkeypatch):
+    """A claimed agent whose pane shows a provider error → resume-nudged +
+    surfaced to the orchestrator, WITHOUT waiting the 15-min inactivity gate."""
+    injected: list = []
+    surfaced: list = []
+    monkeypatch.setattr(fs, "tmux_capture", lambda _s: "API Error: rate_limit_error\n>")
+    monkeypatch.setattr(fs, "inject_task", lambda s, t: injected.append((s, t)))
+    monkeypatch.setattr(
+        fs, "_nats_publish_stall", lambda cs, tid, sig: surfaced.append((cs, tid, sig))
+    )
+    # get_last_tool_call must NOT be reached — stall check returns first.
+    monkeypatch.setattr(
+        fs, "get_last_tool_call", lambda *_a: (_ for _ in ()).throw(AssertionError("reached"))
+    )
+    status = fs.AgentStatus("aiden", "aiden:0", "aiden-agent", summary="")
+    result = fs._handle_active_claim(
+        "aiden", "aiden:0", "aiden-agent", MagicMock(), ("KEI-9", "deliberate"), status
+    )
+    assert injected, "a stalled agent must receive a resume nudge"
+    assert "resume" in injected[0][1].lower()
+    assert surfaced == [("aiden", "KEI-9", "rate_limit_error")]
+    assert "STALL" in result.summary

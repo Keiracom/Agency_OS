@@ -312,7 +312,7 @@ def _contains_escalation_keyword(text: str) -> bool:
 # Anchored matchers (full regex). Case-insensitive. Compiled at import time.
 _R13_BLOCKER_PATTERNS: tuple[re.Pattern[str], ...] = (
     # Canonical R13 marker: [BLOCKED:<callsign>] anywhere in the message.
-    re.compile(r"\[BLOCKED:[A-Za-z][A-Za-z0-9_-]*\]", re.IGNORECASE),
+    re.compile(r"\[BLOCKED:[A-Z][A-Z0-9_-]*\]", re.IGNORECASE),
     # Dispatch-listed phrasings.
     re.compile(r"\bblocked on ceo\b", re.IGNORECASE),
     re.compile(r"\bawaiting decision\b", re.IGNORECASE),

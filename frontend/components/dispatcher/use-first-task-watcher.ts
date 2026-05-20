@@ -28,7 +28,6 @@
  * S1135 pre-empt: deferred work expressed as sub-KEIs in kei157_first_task_scope.md.
  */
 
-import { useState } from "react";
 import type { DispatcherTask } from "./task-feed";
 
 export interface UseFirstTaskWatcherOptions {
@@ -57,14 +56,11 @@ export interface UseFirstTaskWatcherResult {
 export function useFirstTaskWatcher(
   _options: Readonly<UseFirstTaskWatcherOptions> = {}
 ): UseFirstTaskWatcherResult {
-  // KEI-157B claimer reads the dismissed flag; the stub only needs the setter so
-  // `dismiss` still triggers a re-render. Destructure the setter alone to avoid
-  // an unused binding.
-  const [, setDismissed] = useState(false);
-
   return {
     firstCompletedTask: null,
     loading: false,
-    dismiss: () => setDismissed(true),
+    dismiss: () => {
+      /* KEI-157B claimer wires dismissal persistence; stub is a deliberate no-op. */
+    },
   };
 }

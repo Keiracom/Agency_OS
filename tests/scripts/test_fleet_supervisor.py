@@ -1002,7 +1002,10 @@ def test_release_merged_review_claims_releases_merged_pr():
         c.args[0] for c in cursor.execute.call_args_list if "UPDATE" in c.args[0].upper()
     ]
     assert update_sqls, "merged review claim must fire an UPDATE"
-    assert "done" in update_sqls[0]
+    # status='dismissed', not 'done' — the require_verification_before_done()
+    # PG trigger blocks 'done' without a task_verifications record.
+    assert "dismissed" in update_sqls[0]
+    assert "'done'" not in update_sqls[0]
     conn.commit.assert_called()
 
 

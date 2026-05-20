@@ -33,7 +33,6 @@ import logging
 import os
 import subprocess
 import sys
-import urllib.error
 import urllib.request
 from typing import Any
 
@@ -301,7 +300,8 @@ def post_to_slack(text: str, channel: str) -> bool:
     try:
         with urllib.request.urlopen(req, timeout=10) as r:
             return bool(json.loads(r.read()).get("ok"))
-    except (urllib.error.URLError, OSError, json.JSONDecodeError) as exc:
+    except (OSError, json.JSONDecodeError) as exc:
+        # urllib.error.URLError subclasses OSError — OSError covers it.
         logger.warning("Slack drift-alert post failed: %s", exc)
         return False
 

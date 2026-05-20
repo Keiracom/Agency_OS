@@ -347,6 +347,7 @@ def test_post_drift_alert_channel_is_env_overridable(mod, monkeypatch) -> None:
     monkeypatch.setattr(mod, "post_to_slack", lambda t, c: posted.append((t, c)) or True)
     monkeypatch.setenv("DRIFT_ALERT_CHANNEL", "C-CUSTOM")
     mod._post_drift_alert(_drift(missing_bd=[{"kei": "KEI-40", "stores": {"linear": {}}}]))
+    assert len(posted) == 1
     assert posted[0][1] == "C-CUSTOM"
 
 

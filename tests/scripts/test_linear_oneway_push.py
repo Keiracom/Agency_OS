@@ -22,6 +22,12 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 SCRIPT = REPO_ROOT / "scripts" / "orchestrator" / "linear_oneway_push.py"
 
+# Shared psycopg fakes — single source of truth, avoids Sonar
+# new_duplicated_lines_density on per-test cursor/conn stand-ins.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _db_mocks import FakeConn as _Conn  # noqa: E402
+from _db_mocks import FakeCursor as _Cursor  # noqa: E402
+
 
 @pytest.fixture(scope="module")
 def mod():
@@ -30,36 +36,6 @@ def mod():
     sys.modules["linear_oneway_push"] = m
     spec.loader.exec_module(m)
     return m
-
-
-class _Cursor:
-    def __init__(self, fetchall_rows=None):
-        self._all = fetchall_rows or []
-        self.executed: list[tuple[str, tuple | None]] = []
-
-    def execute(self, sql, params=None):
-        self.executed.append((sql, params))
-
-    def fetchall(self):
-        return self._all
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *a):
-        return None
-
-
-class _Conn:
-    def __init__(self, cur):
-        self._cur = cur
-        self.commits = 0
-
-    def cursor(self):
-        return self._cur
-
-    def commit(self):
-        self.commits += 1
 
 
 # ─── is_terminal_transition ────────────────────────────────────────────────

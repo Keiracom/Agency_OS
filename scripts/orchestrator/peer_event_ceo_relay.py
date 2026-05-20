@@ -231,11 +231,17 @@ def _handle_envelope(subject: str, envelope: dict) -> None:
         return
 
     if kind == "blocker":
-        body = f"- Source: {sender}\n{_summary_to_bullets(summary, max_bullets=4)}"
-        _post_ceo("Blocker — needs decision", body)
+        # Dave directive 2026-05-20: do NOT auto-relay blockers. Almost all
+        # blockers are peer/PR/CI/dependency blockers the orchestrator
+        # resolves directly — not CEO decisions. Judging whether a blocker
+        # genuinely needs Dave requires reasoning a regex can't do, so Elliot
+        # escalates the rare true CEO-blocker MANUALLY. Auto-relay stays silent.
+        log.info("blocker from %s — internal, not relayed (Elliot handles)", sender)
         return
 
     if kind == "incident":
+        # Incidents (service down / fleet stalled / data loss) DO reach Dave —
+        # these are operational state, not routine blockers.
         body = f"- Source: {sender}\n{_summary_to_bullets(summary, max_bullets=4)}"
         _post_ceo("Incident — critical state change", body)
         return

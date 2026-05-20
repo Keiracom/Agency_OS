@@ -5,6 +5,7 @@ Description=Agency OS — Hook failure monitor (KEI-11 Outcome 3, Dave directive
 Type=oneshot
 ExecStart=/home/elliotbot/clawd/venv/bin/python3 /home/elliotbot/clawd/Agency_OS/scripts/alerts/hook_failure_monitor.py
 WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+Environment=PYTHONPATH=/home/elliotbot/clawd/Agency_OS
 EnvironmentFile=/home/elliotbot/.config/agency-os/.env
 StandardOutput=append:/home/elliotbot/clawd/logs/hook-failure-monitor.log
 StandardError=append:/home/elliotbot/clawd/logs/hook-failure-monitor.log

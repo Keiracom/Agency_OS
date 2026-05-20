@@ -1,6 +1,10 @@
 nul
 .git
 .vercel
+# .claude/hooks is a symlink to an absolute dev-box path; on the Railway
+# builder it is a broken symlink that crashes `railway up` file indexing.
+# .claude/ is dev tooling and is never part of the deployed backend.
+.claude/
 node_modules
 __pycache__
 *.pyc

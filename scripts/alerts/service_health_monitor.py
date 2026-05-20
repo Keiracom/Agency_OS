@@ -28,17 +28,26 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger("service_health_monitor")
 
 # Services that comprise the Slack listener + per-callsign relay infrastructure.
+# Refreshed 2026-05-20 to the live fleet-comms units: the legacy
+# *-relay-watcher / agency-os-slack-central-listener names were removed when
+# the relay layer moved to per-callsign *-inbox-watcher + NATS bridges.
 # Edit deliberately when adding new agents / clones.
 MONITORED_SERVICES: tuple[str, ...] = (
-    "agency-os-slack-central-listener",
-    "aiden-relay-watcher",
-    "atlas-relay-watcher",
+    "agency-os-elliot-slack-listener",
+    "aiden-inbox-watcher",
     "atlas-inbox-watcher",
-    "max-relay-watcher",
-    "orion-relay-watcher",
+    "elliot-inbox-watcher",
+    "max-inbox-watcher",
+    "nova-inbox-watcher",
     "orion-inbox-watcher",
-    "scout-relay-watcher",
-    "relay-watcher",
+    "scout-inbox-watcher",
+    "aiden-nats-review-bridge",
+    "atlas-nats-dispatch-bridge",
+    "elliot-nats-inbox-bridge",
+    "max-nats-review-bridge",
+    "nova-nats-dispatch-bridge",
+    "orion-nats-dispatch-bridge",
+    "scout-nats-dispatch-bridge",
 )
 
 # Slack #execution channel ID
@@ -84,10 +93,10 @@ def get_recent_log(service: str, n: int = 5) -> str:
 
 def callsign_from_service_name(service: str) -> str:
     """Best-effort callsign extraction from service name prefix."""
-    for cs in ("aiden", "atlas", "max", "orion", "scout", "elliot"):
+    for cs in ("aiden", "atlas", "max", "nova", "orion", "scout", "elliot"):
         if service.startswith(cs + "-"):
             return cs
-    return "central"  # central_listener + shared relay-watcher
+    return "central"  # agency-os-elliot-slack-listener has no bare callsign prefix
 
 
 def post_to_slack(text: str, channel: str = EXECUTION_CHANNEL) -> bool:

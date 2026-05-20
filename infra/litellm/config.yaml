@@ -1,50 +1,50 @@
 # KEI-100 / Linear KEI-73 — T0.2 LiteLLM governance_tier proxy config
 # Deployed to ~/.config/litellm/config.yaml (user-space; KEI-48/77 loopback pattern)
 # LiteLLM 1.85.0 — proxy mode, port 4000, host 127.0.0.1
+#
+# PROVIDER POLICY (Dave, 2026-05-20): internal governance tiers must run on
+# OpenAI or Gemini ONLY — never Anthropic. Worker agents run on a Claude Max
+# OAuth subscription; the Anthropic pay-as-you-go API is NOT in the
+# operational path. Do not add any anthropic/* deployment to these groups.
+# Active routing per group: openai primary (weight 10) → gemini failover
+# (weight 1). num_retries lets a failed deployment fall through in-group.
 
 model_list:
   # ─── FAST preset (governance_tier_fast) — timeout=30s, max_tokens=2000 ───
-  - model_name: governance_tier_fast
-    litellm_params:
-      model: anthropic/claude-haiku-4-5
-      api_key: os.environ/ANTHROPIC_API_KEY
-      timeout: 30
-      max_tokens: 2000
   - model_name: governance_tier_fast
     litellm_params:
       model: openai/gpt-4o-mini
       api_key: os.environ/OPENAI_API_KEY
       timeout: 30
       max_tokens: 2000
+      weight: 10
   - model_name: governance_tier_fast
     litellm_params:
-      model: gemini/gemini-1.5-flash
+      model: gemini/gemini-2.5-flash
       api_key: os.environ/GOOGLE_API_KEY
       timeout: 30
       max_tokens: 2000
+      weight: 1
 
   # ─── PREMIUM preset (governance_tier_premium) — timeout=300s, max_tokens=10000 ───
-  - model_name: governance_tier_premium
-    litellm_params:
-      model: anthropic/claude-sonnet-4-6
-      api_key: os.environ/ANTHROPIC_API_KEY
-      timeout: 300
-      max_tokens: 10000
   - model_name: governance_tier_premium
     litellm_params:
       model: openai/gpt-4o
       api_key: os.environ/OPENAI_API_KEY
       timeout: 300
       max_tokens: 10000
+      weight: 10
   - model_name: governance_tier_premium
     litellm_params:
-      model: gemini/gemini-1.5-pro
+      model: gemini/gemini-2.5-pro
       api_key: os.environ/GOOGLE_API_KEY
       timeout: 300
       max_tokens: 10000
+      weight: 1
 
 litellm_settings:
-  # Fallback order: Anthropic primary → OpenAI secondary → Google tertiary
+  # Active routing: openai primary (weight 10) → gemini failover (weight 1).
+  # num_retries lets a failed deployment fall through to the next in-group.
   num_retries: 2
   request_timeout: 300
   drop_params: true

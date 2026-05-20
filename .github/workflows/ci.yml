@@ -38,7 +38,10 @@ jobs:
   migration-completeness:
     name: Migration Completeness Guard
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    # Runs on PRs AND on push-to-main. The push-to-main run is the
+    # recurrence guard: it catches a Pattern A regression that lands via a
+    # merge whose PR-time diff did not surface it (e.g. squash-merge skew).
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -52,8 +55,24 @@ jobs:
       - name: Detect removed write targets in diff
         id: detect
         run: |
-          BASE_REF="${{ github.event.pull_request.base.ref }}"
-          git fetch origin "$BASE_REF" --depth=50
+          # Resolve the diff range for BOTH event types. On a PR we diff
+          # against the base branch; on a push-to-main we diff the pushed
+          # commit range (github.event.before...HEAD), falling back to
+          # HEAD~1 when `before` is unset/all-zero (first push, force-push).
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_REF="${{ github.event.pull_request.base.ref }}"
+            git fetch origin "$BASE_REF" --depth=50
+            DIFF_RANGE="origin/$BASE_REF...HEAD"
+          else
+            BEFORE="${{ github.event.before }}"
+            if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+              DIFF_RANGE="HEAD~1...HEAD"
+            else
+              git fetch origin "$BEFORE" --depth=50 || true
+              DIFF_RANGE="$BEFORE...HEAD"
+            fi
+          fi
+          echo "Diff range: $DIFF_RANGE"
           # Removed INSERT INTO <X> / UPDATE <X> lines in src/scripts/skills.
           # Extract <X> (table identifier, may contain dots for schema-qualified).
           # KEI-47: filter SQL reserved keywords from the capture set.
@@ -69,7 +88,7 @@ jobs:
           RESERVED='FROM|WHERE|SET|JOIN|ON|AS|AND|OR|NOT|NULL|TRUE|FALSE|INTO|VALUES|GROUP|ORDER|BY|HAVING|LIMIT|OFFSET|RETURNING|WITH|UNION|ALL|DISTINCT|EXISTS|IN|BETWEEN|LIKE|IS|CASE|WHEN|THEN|ELSE|END'
           extract_targets() {
             local line_prefix="$1"
-            git diff "origin/$BASE_REF...HEAD" -- src/ scripts/ skills/ \
+            git diff "$DIFF_RANGE" -- src/ scripts/ skills/ \
               | grep -E "^${line_prefix}[^${line_prefix}]" \
               | grep -oE '(INSERT[[:space:]]+INTO|UPDATE)[[:space:]]+[a-zA-Z_][a-zA-Z0-9_.]*' \
               | awk '{print $NF}' \

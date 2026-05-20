@@ -283,7 +283,13 @@ def _register_session(
         _reaper.register_container(handle, ttl_s=ttl_s)  # type: ignore[union-attr]
 
 
-@app.post("/dispatcher/spawn")
+@app.post(
+    "/dispatcher/spawn",
+    responses={
+        400: {"description": "Unknown backend, bad spawn args, or registration rejected"},
+        503: {"description": "Supervisors not started, or backend CLI (tmux/docker) unavailable"},
+    },
+)
 async def dispatcher_spawn(req: SpawnRequest) -> dict[str, Any]:
     """Spawn a session via session_manager and put it under supervision.
 
@@ -325,7 +331,13 @@ async def dispatcher_spawn(req: SpawnRequest) -> dict[str, Any]:
     }
 
 
-@app.post("/dispatcher/terminate")
+@app.post(
+    "/dispatcher/terminate",
+    responses={
+        404: {"description": "No spawned session for the given key"},
+        503: {"description": "Supervisors not started"},
+    },
+)
 async def dispatcher_terminate(req: TerminateRequest) -> dict[str, Any]:
     """Terminate a spawned session and remove it from supervision."""
     if _watchdog is None or _reaper is None:

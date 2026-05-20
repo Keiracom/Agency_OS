@@ -14,6 +14,7 @@ Coverage:
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -189,7 +190,9 @@ def test_norm_status_maps_green_to_ok() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_spawn_registers_session_with_supervisors(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_spawn_registers_session_with_supervisors(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     """A spawned session must land in BOTH the watchdog and reaper registries."""
     import importlib
 
@@ -200,7 +203,8 @@ def test_spawn_registers_session_with_supervisors(monkeypatch: pytest.MonkeyPatc
     monkeypatch.setenv("DISPATCHER_TMUX_PREFIX", "disp-")
     monkeypatch.setenv("DISPATCHER_CONTAINER_PREFIX", "disp-")
 
-    handle = SessionHandle(session_name="disp-test-1", working_dir="/tmp", command="bash")
+    work_dir = str(tmp_path)
+    handle = SessionHandle(session_name="disp-test-1", working_dir=work_dir, command="bash")
 
     with (
         patch("src.dispatcher.main.get_spend", new=AsyncMock(return_value=0)),
@@ -217,7 +221,7 @@ def test_spawn_registers_session_with_supervisors(monkeypatch: pytest.MonkeyPatc
                     "key": "tenant-7-task-42",
                     "spawn_kwargs": {
                         "session_name": "disp-test-1",
-                        "working_dir": "/tmp",
+                        "working_dir": work_dir,
                         "command": "bash",
                     },
                 },
@@ -236,7 +240,9 @@ def test_spawn_registers_session_with_supervisors(monkeypatch: pytest.MonkeyPatc
 # ---------------------------------------------------------------------------
 
 
-def test_terminate_removes_session_from_supervisors(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_terminate_removes_session_from_supervisors(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     """Terminating a spawned session must clear it from watchdog + reaper."""
     import importlib
 
@@ -247,7 +253,8 @@ def test_terminate_removes_session_from_supervisors(monkeypatch: pytest.MonkeyPa
     monkeypatch.setenv("DISPATCHER_TMUX_PREFIX", "disp-")
     monkeypatch.setenv("DISPATCHER_CONTAINER_PREFIX", "disp-")
 
-    handle = SessionHandle(session_name="disp-test-2", working_dir="/tmp", command="bash")
+    work_dir = str(tmp_path)
+    handle = SessionHandle(session_name="disp-test-2", working_dir=work_dir, command="bash")
 
     with (
         patch("src.dispatcher.main.get_spend", new=AsyncMock(return_value=0)),
@@ -260,7 +267,7 @@ def test_terminate_removes_session_from_supervisors(monkeypatch: pytest.MonkeyPa
         with TestClient(main_mod.app) as client:
             spawn_kwargs = {
                 "session_name": "disp-test-2",
-                "working_dir": "/tmp",
+                "working_dir": work_dir,
                 "command": "bash",
             }
             client.post(

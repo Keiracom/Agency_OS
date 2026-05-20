@@ -9,12 +9,14 @@ SCRIPT_PATH = REPO_ROOT / "scripts" / "slack_relay.py"
 
 
 def _load_slack_relay():
-    # Module-level code reads SLACK_BOT_TOKEN + resolves CALLSIGN; ensure both
-    # are set before import.
+    # Module-level code hard-exits at import time if CALLSIGN is anything
+    # other than 'elliot' (Dave directive 2026-05-19 — Slack-access lock).
+    # Force CALLSIGN=elliot for the import to bypass the access guard; tests
+    # that exercise non-elliot callsign logic monkeypatch mod.CALLSIGN below.
     import os
 
     os.environ.setdefault("SLACK_BOT_TOKEN", "test-token")
-    os.environ.setdefault("CALLSIGN", "aiden")
+    os.environ["CALLSIGN"] = "elliot"
     spec = importlib.util.spec_from_file_location("slack_relay_test", SCRIPT_PATH)
     mod = importlib.util.module_from_spec(spec)
     sys.modules["slack_relay_test"] = mod

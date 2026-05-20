@@ -41,9 +41,9 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 _WEAVIATE_HOST = os.environ.get("WEAVIATE_HOST", "127.0.0.1")
 _WEAVIATE_PORT = os.environ.get("WEAVIATE_PORT", "8090")
 # Loopback-only Weaviate serves plain http (no TLS) by design — same as
-# indexer_base.py / tool_call_log_indexer.py. NOSONAR clears the S5332
-# "use https" hotspot for this known-safe local endpoint.
-_WEAVIATE_BASE = f"http://{_WEAVIATE_HOST}:{_WEAVIATE_PORT}"  # NOSONAR python:S5332
+# indexer_base.py / tool_call_log_indexer.py. The bare NOSONAR below
+# suppresses the S5332 "use https" hotspot for this known-safe local endpoint.
+_WEAVIATE_BASE = f"http://{_WEAVIATE_HOST}:{_WEAVIATE_PORT}"  # NOSONAR
 _CLASS = "StrategicDocuments"
 _UUID_NS = uuid.UUID("6f4a1d2e-0000-5000-a000-5337a7e9d0c5")  # fixed namespace
 
@@ -134,8 +134,8 @@ def run(*, apply: bool, keys: set[str] | None = None) -> int:
         return 2
     try:
         dsn = _dsn()
-    except RuntimeError as exc:
-        logger.error("%s", exc)
+    except RuntimeError:
+        logger.exception("startup config error")
         return 2
 
     with psycopg.connect(dsn, prepare_threshold=None) as conn:
@@ -158,8 +158,8 @@ def run(*, apply: bool, keys: set[str] | None = None) -> int:
             upsert_doc(doc)
             cognee_ingest_doc(doc)
             logger.info("ingested %s → Weaviate StrategicDocuments + Cognee", doc["key"])
-        except (RuntimeError, OSError, ImportError) as exc:
-            logger.error("ingest failed for %s: %s", doc["key"], exc)
+        except (RuntimeError, OSError, ImportError):
+            logger.exception("ingest failed for %s", doc["key"])
             failed += 1
     print(f"docs: {len(docs)}  failed: {failed}")
     return 1 if failed else 0

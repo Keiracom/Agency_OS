@@ -117,7 +117,8 @@ def _emit_drift_alert(drifts: list[dict[str, object]]) -> None:
     )
     envelope = {"from": "memory-core-fact-probe", "kind": "blocker", "summary": text}
     try:
-        subprocess.run(  # noqa: S603 — fixed args, no shell
+        # S603: fixed argument list, no shell, no user-controlled input.
+        subprocess.run(  # noqa: S603
             [_NATS_BIN, "pub", _ALERT_SUBJECT, json.dumps(envelope)],
             capture_output=True,
             timeout=5,

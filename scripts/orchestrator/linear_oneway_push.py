@@ -53,7 +53,6 @@ import logging
 import os
 import subprocess
 import sys
-import urllib.error
 import urllib.request
 from typing import Any
 
@@ -153,7 +152,8 @@ def push_to_linear(api_key: str, kei: str, state_id: str) -> None:
     body = json.dumps(
         {"query": _ISSUE_UPDATE_MUTATION, "variables": {"id": kei, "state": state_id}}
     ).encode()
-    req = urllib.request.Request(  # noqa: S310 — fixed https Linear endpoint
+    # S310: the URL is the fixed https Linear GraphQL endpoint, not user input.
+    req = urllib.request.Request(  # noqa: S310
         _LINEAR_GRAPHQL_URL,
         data=body,
         method="POST",
@@ -162,7 +162,8 @@ def push_to_linear(api_key: str, kei: str, state_id: str) -> None:
     try:
         with urllib.request.urlopen(req, timeout=20) as resp:  # noqa: S310
             payload = json.loads(resp.read() or "null")
-    except (urllib.error.URLError, OSError, json.JSONDecodeError) as exc:
+    except (OSError, json.JSONDecodeError) as exc:
+        # urllib.error.URLError is an OSError subclass — OSError covers it.
         raise RuntimeError(f"linear network error: {exc}") from exc
     if payload and payload.get("errors"):
         raise RuntimeError(f"linear GraphQL errors: {payload['errors']}")
@@ -193,14 +194,16 @@ def _emit_failure_alert(failures: list[tuple[str, str]]) -> None:
     )
     envelope = {"from": "linear-oneway-push", "kind": "blocker", "summary": text}
     try:
-        subprocess.run(  # noqa: S603 — fixed args, no shell
+        # S603: fixed argument list, no shell, no user-controlled input.
+        subprocess.run(  # noqa: S603
             [_NATS_BIN, "pub", _ALERT_SUBJECT, json.dumps(envelope)],
             capture_output=True,
             timeout=5,
             check=False,
         )
-    except (FileNotFoundError, subprocess.TimeoutExpired, OSError) as exc:
-        logger.error("failure-alert NATS publish failed: %s", exc)
+    except (subprocess.TimeoutExpired, OSError):
+        # FileNotFoundError is an OSError subclass — OSError covers it.
+        logger.exception("failure-alert NATS publish failed")
 
 
 def run_once(conn: Any, api_key: str, *, apply: bool) -> dict[str, Any]:
@@ -227,7 +230,7 @@ def run_once(conn: Any, api_key: str, *, apply: bool) -> dict[str, Any]:
             stats["pushed"] += 1
             logger.info("pushed %s → %s", kei, status)
         except RuntimeError as exc:
-            logger.error("push failed for %s: %s", kei, exc)
+            logger.exception("push failed for %s", kei)
             failures.append((kei, str(exc)))
             stats["failed"] += 1
     if failures:
@@ -243,8 +246,8 @@ def main(argv: list[str] | None = None) -> int:
     try:
         api_key = _linear_api_key()
         dsn = _dsn()
-    except RuntimeError as exc:
-        logger.error("%s", exc)
+    except RuntimeError:
+        logger.exception("startup config error")
         return 2
 
     try:

@@ -30,6 +30,9 @@ RETURNS TRIGGER LANGUAGE plpgsql AS $$
 DECLARE
     v_event_type TEXT;
     v_payload    JSONB;
+    -- Terminal statuses — single source of truth (avoids repeating the
+    -- 'done'/'cancelled' literals across the close/reopen branches).
+    v_terminal   CONSTANT TEXT[] := ARRAY['done', 'cancelled'];
 BEGIN
     IF TG_OP = 'INSERT' THEN
         v_event_type := 'create';
@@ -44,11 +47,11 @@ BEGIN
            AND NEW.linear_synced_status IS DISTINCT FROM OLD.linear_synced_status THEN
             RETURN NEW;
         END IF;
-        -- Closing transitions (status in done/cancelled) emit 'close';
+        -- Closing transitions (status in a terminal state) emit 'close';
         -- everything else is 'update'.
-        IF NEW.status IN ('done', 'cancelled') AND NEW.status IS DISTINCT FROM OLD.status THEN
+        IF NEW.status = ANY(v_terminal) AND NEW.status IS DISTINCT FROM OLD.status THEN
             v_event_type := 'close';
-        ELSIF OLD.status IN ('done', 'cancelled') AND NEW.status NOT IN ('done', 'cancelled') THEN
+        ELSIF OLD.status = ANY(v_terminal) AND NEW.status <> ALL(v_terminal) THEN
             v_event_type := 'reopen';
         ELSIF NEW.priority IS DISTINCT FROM OLD.priority THEN
             v_event_type := 'priority_change';

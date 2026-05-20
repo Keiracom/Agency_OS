@@ -295,7 +295,18 @@ def _print_ready_rows(rows: list[dict], agent: str) -> None:
             if agent and "personalised_score" in r
             else ""
         )
-        print(f"  P{r['priority']:>1}  {r['id']:<24}  {r['title']}{score_suffix}")
+        # Coerce NULL priority to 'X' — Postgres NULL → Python None on
+        # the priority column throws TypeError on the :>1 format spec.
+        # Render as 'X' (unset) and stderr-warn so the row stays visible
+        # rather than being silently filtered out of bd ready.
+        priority = r["priority"]
+        if priority is None:
+            sys.stderr.write(
+                f"[tasks_cli] warning: {r['id']} has NULL priority — "
+                f"rendering as PX. Fix via `bd update {r['id']} --priority=N`.\n"
+            )
+            priority = "X"
+        print(f"  P{priority:>1}  {r['id']:<24}  {r['title']}{score_suffix}")
     suffix = f" (personalised for {agent})" if agent else ""
     print(f"\n{len(rows)} available{suffix}")
 

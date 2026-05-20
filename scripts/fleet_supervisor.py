@@ -117,6 +117,15 @@ DESC_TRUNCATE = 2000
 # Stale claim threshold
 STALE_HOURS = 2
 
+# Smoke-test fixtures (Agency_OS-test001, KEI-TEST — title "smoke", NULL
+# priority, no scope) are not real work; they must never be claimed or nudged
+# on. SQL fragment excludes them by id and by any "smoke" in the title. Uses
+# %% so it survives psycopg's %s-param queries unescaped.
+_SMOKE_FIXTURE_EXCLUSION = (
+    "id NOT IN ('Agency_OS-test001', 'KEI-TEST') "
+    "AND lower(COALESCE(title, '')) NOT LIKE '%%smoke%%'"
+)
+
 # Inactivity threshold before nudge/restart (minutes)
 INACTIVITY_MINUTES = 15
 
@@ -251,9 +260,10 @@ def get_active_claim(conn: psycopg.Connection, callsign: str) -> tuple[str, str]
     """Return (task_id, title) for the active claim this callsign holds, or None."""
     with conn.cursor() as cur:
         cur.execute(
-            """
+            f"""
             SELECT id, title FROM public.tasks
             WHERE status = 'active' AND claimed_by = %s
+              AND {_SMOKE_FIXTURE_EXCLUSION}
             LIMIT 1
             """,
             (callsign,),
@@ -392,11 +402,12 @@ def _build_task_query(
     dependency-enforcement gate is universal (v1 + v2, with and without
     open-PR filter).
     """
-    base = """
+    base = f"""
         SELECT id, title, COALESCE(description, '') FROM public.tasks
         WHERE status = 'available'
           AND (phase IS NULL OR phase <= %s)
           AND (is_parent IS NULL OR is_parent = false)
+          AND {_SMOKE_FIXTURE_EXCLUSION}
     """
     base = base.rstrip() + "\n  " + _DEPS_CLAUSE
     # KEI-183 follow-up — phase ASC first so lower-phase work drains before
@@ -488,6 +499,55 @@ def release_stale_claims(conn: psycopg.Connection) -> int:
         count = cur.rowcount
     conn.commit()
     return count
+
+
+def release_merged_review_claims(conn: psycopg.Connection) -> int:
+    """Release REVIEW-PR-<N> claims whose PR has merged or closed.
+
+    A REVIEW-PR-<N> row (inserted by insert_review_task) stays status='active'
+    forever once claimed — nothing transitions it when the PR merges, so the
+    supervisor nudges the claimant indefinitely on a review that is already
+    done. This releases the claim (status='done') the moment its PR is no
+    longer open. Returns the count released. Fail-open: a gh failure on one
+    PR is logged and skipped, never aborts the sweep.
+    """
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT id FROM public.tasks "
+            "WHERE status = 'active' AND id LIKE 'REVIEW-PR-%'"
+        )
+        review_ids = [r[0] for r in cur.fetchall()]
+    released = 0
+    for task_id in review_ids:
+        m = re.match(r"REVIEW-PR-(\d+)$", task_id)
+        if not m:
+            continue
+        pr_number = m.group(1)
+        try:
+            # gh CLI, literal args, no shell — pr_number is a \d+ regex capture.
+            proc = subprocess.run(  # noqa: S603,S607
+                ["gh", "pr", "view", pr_number, "--json", "state", "-q", ".state"],
+                capture_output=True,
+                text=True,
+                timeout=15,
+                check=False,
+            )
+        except (subprocess.TimeoutExpired, FileNotFoundError) as exc:
+            log.warning("release_merged_review_claims: gh pr view %s failed: %s", pr_number, exc)
+            continue
+        state = (proc.stdout or "").strip().upper()
+        if state in ("MERGED", "CLOSED"):
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE public.tasks SET status = 'done' "
+                    "WHERE id = %s AND status = 'active'",
+                    (task_id,),
+                )
+                released += cur.rowcount
+            log.info("released review claim %s — PR #%s is %s", task_id, pr_number, state)
+    if released:
+        conn.commit()
+    return released
 
 
 def get_last_tool_call(conn: psycopg.Connection, callsign: str) -> _dt.datetime | None:
@@ -1045,6 +1105,12 @@ def main() -> None:
         released = release_stale_claims(conn)
         if released:
             log.info("Released %d stale claim(s)", released)
+
+        # Release review claims whose PR has merged/closed — stops the
+        # supervisor nudging indefinitely on a review that is already done.
+        released_reviews = release_merged_review_claims(conn)
+        if released_reviews:
+            log.info("Released %d merged/closed review claim(s)", released_reviews)
 
         phase_max = get_phase_max(conn)
         prs = list_open_prs()

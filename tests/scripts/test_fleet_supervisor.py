@@ -972,3 +972,68 @@ def test_build_review_prompt_includes_sonar_block(monkeypatch):
     assert "issues_total" in prompt or "total NEW" in prompt
     assert "qg_status" in prompt or "status: ERROR" in prompt
     assert "BOTH endpoints" in prompt
+
+
+# ---------------------------------------------------------------------------
+# Claim-release: REVIEW-PR claims released when the PR merges/closes
+# (Agency_OS-ln7j — kills infinite stale-nudge noise)
+# ---------------------------------------------------------------------------
+
+
+def _mock_conn():
+    conn = MagicMock()
+    cursor = MagicMock()
+    conn.cursor.return_value.__enter__ = MagicMock(return_value=cursor)
+    conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+    return conn, cursor
+
+
+def test_release_merged_review_claims_releases_merged_pr():
+    """A REVIEW-PR-<N> claim whose PR has MERGED is released (status='done')."""
+    conn, cursor = _mock_conn()
+    cursor.fetchall.return_value = [("REVIEW-PR-1106",)]
+    cursor.rowcount = 1
+    merged = MagicMock()
+    merged.stdout = "MERGED\n"
+    with patch.object(fs.subprocess, "run", return_value=merged):
+        released = fs.release_merged_review_claims(conn)
+    assert released == 1
+    update_sqls = [
+        c.args[0] for c in cursor.execute.call_args_list if "UPDATE" in c.args[0].upper()
+    ]
+    assert update_sqls, "merged review claim must fire an UPDATE"
+    assert "done" in update_sqls[0]
+    conn.commit.assert_called()
+
+
+def test_release_merged_review_claims_keeps_open_pr():
+    """A REVIEW-PR-<N> claim whose PR is still OPEN is NOT released."""
+    conn, cursor = _mock_conn()
+    cursor.fetchall.return_value = [("REVIEW-PR-2200",)]
+    cursor.rowcount = 1
+    open_pr = MagicMock()
+    open_pr.stdout = "OPEN\n"
+    with patch.object(fs.subprocess, "run", return_value=open_pr):
+        released = fs.release_merged_review_claims(conn)
+    assert released == 0
+    update_sqls = [
+        c.args[0] for c in cursor.execute.call_args_list if "UPDATE" in c.args[0].upper()
+    ]
+    assert not update_sqls, "an open PR's review claim must not be released"
+
+
+def test_candidate_sql_excludes_smoke_fixtures():
+    """claim_next_task's candidate query filters out the smoke-test fixtures."""
+    sql, _ = fs._build_task_query(v2=False, open_pr_keis=set(), callsign="orion", phase_max=99)
+    assert "Agency_OS-test001" in sql
+    assert "KEI-TEST" in sql
+    assert "smoke" in sql.lower()
+
+
+def test_get_active_claim_query_excludes_smoke_fixtures():
+    """get_active_claim never reports a smoke-test fixture as an active claim."""
+    conn, cursor = _mock_conn()
+    cursor.fetchone.return_value = None
+    fs.get_active_claim(conn, "orion")
+    sql = cursor.execute.call_args[0][0]
+    assert "Agency_OS-test001" in sql and "smoke" in sql.lower()

@@ -12,11 +12,27 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 SCRIPT = REPO_ROOT / "scripts" / "orchestrator" / "tool_call_log_indexer.py"
+# tool_call_log_indexer imports `_heartbeat_shim` (a sibling in
+# scripts/orchestrator/) — that dir must be on sys.path or collection fails.
+sys.path.insert(0, str(REPO_ROOT / "scripts" / "orchestrator"))
 
 _spec = importlib.util.spec_from_file_location("tool_call_log_indexer", SCRIPT)
 _mod = importlib.util.module_from_spec(_spec)
 sys.modules["tool_call_log_indexer"] = _mod
 _spec.loader.exec_module(_mod)
+
+
+def test_connect_kwargs_pooler_safe() -> None:
+    """Regression lock (Agency_OS-telw): the indexer's psycopg connection MUST
+    set connect_timeout + TCP keepalives so a stalled / black-holed Supabase
+    connection fails fast instead of hanging forever in poll() — the failure
+    mode that froze this indexer for 3 days with no error. prepare_threshold
+    stays None for the txn-mode pooler."""
+    kw = _mod._CONNECT_KWARGS
+    assert kw["prepare_threshold"] is None
+    assert kw["connect_timeout"] > 0
+    assert kw["keepalives"] == 1
+    assert kw["keepalives_idle"] > 0 and kw["keepalives_count"] > 0
 
 
 def _row(**overrides):

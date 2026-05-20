@@ -233,3 +233,17 @@ def test_run_max_iterations_exits_clean(mod, patch_connect, monkeypatch) -> None
     monkeypatch.setattr("time.sleep", lambda _s: None)
     rc = mod.run(batch_size=1, poll_interval=1, max_attempts=3, max_iterations=2)
     assert rc == 0
+
+
+def test_connect_kwargs_pooler_safe(mod) -> None:
+    """Regression lock (Agency_OS-wf2v): the worker's psycopg connection MUST
+    pass prepare_threshold=None — txn-mode pgbouncer drops PREPAREs, and
+    without it psycopg auto-prepares after 5 executes and raises
+    DuplicatePreparedStatement (the crash that froze the worker for 3 days).
+    It must also set connect_timeout + TCP keepalives so a stalled connection
+    cannot hang forever in poll()."""
+    kw = mod._CONNECT_KWARGS
+    assert kw["prepare_threshold"] is None
+    assert kw["connect_timeout"] > 0
+    assert kw["keepalives"] == 1
+    assert kw["keepalives_idle"] > 0 and kw["keepalives_count"] > 0

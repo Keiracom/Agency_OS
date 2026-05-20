@@ -14,10 +14,11 @@ import sys
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-import pytest
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT))
+# completion_sync_worker imports `_heartbeat_shim` (a sibling in
+# scripts/orchestrator/) — that dir must be on sys.path or collection fails.
+sys.path.insert(0, str(REPO_ROOT / "scripts" / "orchestrator"))
 
 from scripts.orchestrator import completion_sync_worker as csw  # noqa: E402
 
@@ -111,10 +112,24 @@ def test_process_row_records_error_on_sink_failure(monkeypatch):
     assert "attempts=attempts+1" in sql and "vendor 500" in params[0]
 
 
-def test_sink_linear_raises_when_api_key_missing(monkeypatch):
+def test_sink_linear_is_noop(monkeypatch):
+    """Agency_OS-1x3x Part 4: the linear sink is a hard no-op. It must NOT
+    raise and must NOT write Linear — Supabase→Linear status propagation
+    goes via the one-way push only. A row with target_sink='linear' fails
+    safe (processed, no write)."""
     monkeypatch.delenv("LINEAR_API_KEY", raising=False)
-    with pytest.raises(csw.SinkError):
-        csw._sink_linear("KEI-58", "done")
+    # No raise even with the API key absent — the sink does nothing.
+    assert csw._sink_linear("KEI-58", "done") is None
+
+
+def test_process_row_linear_marks_processed_without_write(monkeypatch):
+    """A target_sink='linear' row is marked processed (the no-op sink does
+    not raise SinkError) — it never retries, never writes Linear."""
+    conn = _FakeConn()
+    ok = csw._process_row(conn, _row(target_sink="linear"))
+    assert ok is True
+    sql, _ = conn.cursor_calls[-1].executed[-1]
+    assert "processed=TRUE" in sql
 
 
 def test_unknown_sink_records_error(monkeypatch):

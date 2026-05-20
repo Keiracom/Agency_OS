@@ -1,0 +1,16 @@
+[Unit]
+Description=Agency OS — One-way Supabase→Linear status push (Agency_OS-1x3x, sole sanctioned Linear writer)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+ExecStart=/home/elliotbot/clawd/Agency_OS/.venv/bin/python3 /home/elliotbot/clawd/Agency_OS/scripts/orchestrator/linear_oneway_push.py --apply
+StandardOutput=append:/home/elliotbot/clawd/logs/linear-oneway-push.log
+StandardError=append:/home/elliotbot/clawd/logs/linear-oneway-push.log
+TimeoutStartSec=600
+
+[Install]
+WantedBy=default.target

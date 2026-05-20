@@ -11,10 +11,11 @@ StartLimitIntervalSec=300
 Type=simple
 EnvironmentFile=/home/elliotbot/.config/agency-os/.env
 WorkingDirectory=/home/elliotbot/clawd/Agency_OS
-ExecStart=/home/elliotbot/clawd/Agency_OS/.venv/bin/uvicorn src.dispatcher.main:app \
-    --host 127.0.0.1 \
-    --port ${DISPATCHER_PORT:-4001} \
-    --log-level info
+# Wrapped in `sg docker` so the service process carries the docker group.
+# container_lifecycle + reaper drive the docker CLI; a user-mode systemd
+# manager cannot set SupplementaryGroups (no CAP_SETGID -> status=216/GROUP).
+# `$$` defers variable expansion to the shell that sg starts.
+ExecStart=/usr/bin/sg docker -c "exec /home/elliotbot/clawd/Agency_OS/.venv/bin/uvicorn src.dispatcher.main:app --host 127.0.0.1 --port $${DISPATCHER_PORT:-4001} --log-level info"
 ExecStartPost=/home/elliotbot/clawd/Agency_OS/scripts/agent_online_notify.sh DISPATCHER 15 C0B3QB0K1GQ
 Restart=always
 RestartSec=10

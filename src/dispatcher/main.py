@@ -19,17 +19,26 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import dataclasses
 import logging
 import os
 from collections.abc import AsyncGenerator
 from typing import Any
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
 
 import src.dispatcher.auth_minter  # noqa: F401 — imported for fail-fast side-effect
+from src.dispatcher.container_lifecycle import ContainerStartupError, DockerUnavailableError
 from src.dispatcher.interceptor_proxy import router as interceptor_router
 from src.dispatcher.reaper import Reaper
+from src.dispatcher.session_manager import Backend, SessionManager
 from src.dispatcher.spend_tracker import get_spend
+from src.dispatcher.tmux_lifecycle import (
+    SessionHandle,
+    SessionStartupError,
+    TmuxUnavailableError,
+)
 from src.dispatcher.watchdog import Watchdog
 
 logger = logging.getLogger(__name__)
@@ -72,6 +81,10 @@ _component_status: dict[str, str] = {
 _watchdog: Watchdog | None = None
 _reaper: Reaper | None = None
 
+# Sessions spawned via /dispatcher/spawn, keyed by supervisor registry key.
+# Lets /dispatcher/terminate find the handle + backend for clean teardown.
+_spawned: dict[str, dict[str, Any]] = {}
+
 
 # ---------------------------------------------------------------------------
 # Background loop helpers
@@ -84,6 +97,17 @@ TMUX_NAME_PREFIX = os.environ.get("DISPATCHER_TMUX_PREFIX", "disp-")
 CONTAINER_NAME_PREFIX = os.environ.get("DISPATCHER_CONTAINER_PREFIX", "disp-")
 
 
+def _norm_status(raw: str) -> str:
+    """Map a watchdog/reaper status into the {'ok','degraded'} vocabulary.
+
+    watchdog.health_snapshot() reports "green"/"degraded"; _component_status
+    and the /dispatcher/health aggregator speak "ok"/"degraded". Without this
+    map a healthy watchdog ("green") never equals "ok" and falsely drags the
+    whole service to "degraded" forever.
+    """
+    return "ok" if raw in ("ok", "green") else "degraded"
+
+
 async def _watchdog_loop(wd: Watchdog) -> None:
     """Run watchdog.probe_all() every 30 s. Updates _component_status."""
     _component_status["watchdog"] = "ok"
@@ -91,7 +115,7 @@ async def _watchdog_loop(wd: Watchdog) -> None:
         try:
             await asyncio.sleep(_WATCHDOG_POLL_INTERVAL_S)
             snapshot = wd.health_snapshot()
-            _component_status["watchdog"] = snapshot.get("status", "ok")
+            _component_status["watchdog"] = _norm_status(snapshot.get("status", "ok"))
         except asyncio.CancelledError:
             _component_status["watchdog"] = "stopped"
             raise
@@ -200,4 +224,123 @@ async def dispatcher_health() -> dict[str, Any]:
         logger.warning("KEI-213 health probe: spend_tracker unreachable")
 
     overall = "ok" if all(v == "ok" for v in _component_status.values()) else "degraded"
-    return {"status": overall, "components": dict(_component_status)}
+    result: dict[str, Any] = {"status": overall, "components": dict(_component_status)}
+    # Raw supervisor snapshots — surfaces watchdog/reaper tracked counts so a
+    # caller can see whether the supervisor loops track live work.
+    if _watchdog is not None and _reaper is not None:
+        result["supervisor"] = {
+            "watchdog": _watchdog.health_snapshot(),
+            "reaper": _reaper.health_snapshot(),
+        }
+    return result
+
+
+# ---------------------------------------------------------------------------
+# /dispatcher/spawn + /dispatcher/terminate — session lifecycle
+#
+# Wires session_manager into the running service and registers every
+# spawned session with the KEI-211 watchdog + reaper. Before this route
+# existed the supervisor loops swept an empty registry — they supervised
+# nothing, because no code path ever called .register().
+# ---------------------------------------------------------------------------
+
+
+class SpawnRequest(BaseModel):
+    """Spawn a tmux/container session and place it under supervision."""
+
+    backend: str  # "tmux" | "container"
+    key: str  # supervisor registry key — unique per session
+    spawn_kwargs: dict[str, Any]  # forwarded verbatim to SessionManager.spawn
+    hung_threshold_s: float | None = None  # watchdog hang-window override
+    ttl_s: float | None = None  # reaper TTL override
+
+
+class TerminateRequest(BaseModel):
+    """Terminate a previously spawned session by its registry key."""
+
+    key: str
+
+
+def _register_session(
+    key: str,
+    handle: Any,
+    *,
+    hung_threshold_s: float | None,
+    ttl_s: float | None,
+) -> None:
+    """Register a spawned handle with watchdog + reaper.
+
+    This is the wiring the audit found missing: without it the KEI-211
+    supervisor loops sweep an empty registry.
+    """
+    if hung_threshold_s is not None:
+        _watchdog.register(key, handle, hung_threshold_s=hung_threshold_s)  # type: ignore[union-attr]
+    else:
+        _watchdog.register(key, handle)  # type: ignore[union-attr]
+    if isinstance(handle, SessionHandle):
+        _reaper.register_tmux(handle, ttl_s=ttl_s)  # type: ignore[union-attr]
+    else:
+        _reaper.register_container(handle, ttl_s=ttl_s)  # type: ignore[union-attr]
+
+
+@app.post("/dispatcher/spawn")
+async def dispatcher_spawn(req: SpawnRequest) -> dict[str, Any]:
+    """Spawn a session via session_manager and put it under supervision.
+
+    Returns the handle plus post-registration supervisor counts so the
+    caller can confirm the session is actually being tracked.
+    """
+    if _watchdog is None or _reaper is None:
+        raise HTTPException(status_code=503, detail="dispatcher supervisors not started")
+    try:
+        backend = Backend(req.backend)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=f"unknown backend: {req.backend!r}") from exc
+
+    manager = SessionManager(backend=backend)
+    try:
+        handle = manager.spawn(**req.spawn_kwargs)
+    except (TmuxUnavailableError, DockerUnavailableError) as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except (SessionStartupError, ContainerStartupError, TypeError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    try:
+        _register_session(
+            req.key, handle, hung_threshold_s=req.hung_threshold_s, ttl_s=req.ttl_s
+        )
+    except ValueError as exc:
+        # Registration rejected (e.g. session name does not match the
+        # reaper prefix). Tear the session down so it is not left orphaned.
+        manager.terminate(handle)
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    _spawned[req.key] = {"handle": handle, "backend": backend}
+    rsnap = _reaper.health_snapshot()
+    return {
+        "spawned": True,
+        "key": req.key,
+        "backend": backend.value,
+        "handle": dataclasses.asdict(handle),
+        "watchdog_tracked": _watchdog.tracked,
+        "reaper_tracked": int(rsnap["tracked_tmux"]) + int(rsnap["tracked_containers"]),
+    }
+
+
+@app.post("/dispatcher/terminate")
+async def dispatcher_terminate(req: TerminateRequest) -> dict[str, Any]:
+    """Terminate a spawned session and remove it from supervision."""
+    if _watchdog is None or _reaper is None:
+        raise HTTPException(status_code=503, detail="dispatcher supervisors not started")
+    entry = _spawned.pop(req.key, None)
+    if entry is None:
+        raise HTTPException(status_code=404, detail=f"no spawned session for key {req.key!r}")
+
+    handle = entry["handle"]
+    SessionManager(backend=entry["backend"]).terminate(handle)
+    _watchdog.unregister(req.key)
+    if isinstance(handle, SessionHandle):
+        _reaper.unregister_tmux(handle.session_name)
+    else:
+        _reaper.unregister_container(handle.id)
+    return {"terminated": True, "key": req.key, "watchdog_tracked": _watchdog.tracked}

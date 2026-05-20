@@ -25,7 +25,9 @@ import argparse
 import json
 import logging
 import os
+import signal
 import sys
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -279,7 +281,12 @@ def main() -> int:
     args = parser.parse_args()
 
     indexer = DriveStrategicIndexer(config_path=args.config)
-    indexer.ensure_class()
+    # KEI-208 follow-up fix: was `indexer.ensure_class()` which is not on
+    # BaseIndexer — AttributeError crashed the script on first start, which
+    # is why the StrategicDocuments class never appeared in Weaviate despite
+    # PR #1018 being merged. Module-level `ensure_class(name, schema)` is the
+    # underlying helper; BaseIndexer's instance method is `ensure_target_class`.
+    indexer.ensure_target_class()
     if args.once:
         outcome = indexer.index_once(batch_size=args.batch)
         logger.info("once outcome: %s", outcome.to_dict())
@@ -289,7 +296,47 @@ def main() -> int:
         except Exception:  # noqa: BLE001
             pass
         return 1 if outcome.failed else 0
-    indexer.run_forever(poll_seconds=POLL_SECONDS, batch_size=args.batch)
+    return _run_daemon_loop(indexer, poll_seconds=POLL_SECONDS, batch_size=args.batch)
+
+
+def _run_daemon_loop(
+    indexer: DriveStrategicIndexer,
+    *,
+    poll_seconds: int,
+    batch_size: int,
+) -> int:
+    """Daemon loop for the Drive-backed indexer.
+
+    KEI-208 follow-up fix: was `indexer.run_forever(...)` which is not on
+    BaseIndexer — AttributeError would crash daemon mode on startup. Drive
+    indexer cannot use run_db_indexer (that's Postgres-specific via psycopg).
+    This inline loop mirrors the run_db_indexer signal-handling + sleep shape.
+    """
+    shutdown_flag = {"requested": False}
+
+    def _on_signal(signum: int, _frame: Any) -> None:
+        logger.info("signal %s received — shutdown", signum)
+        shutdown_flag["requested"] = True
+
+    signal.signal(signal.SIGTERM, _on_signal)
+    signal.signal(signal.SIGINT, _on_signal)
+
+    while not shutdown_flag["requested"]:
+        try:
+            outcome = indexer.index_once(batch_size=batch_size)
+            count = aggregate_count(STRATEGIC_CLASS)
+            logger.info(
+                "batch outcome=%s class_count=%s",
+                outcome.to_dict(),
+                count,
+            )
+        except Exception as exc:  # noqa: BLE001 — broad on purpose: surface every fault
+            logger.exception("batch failed — sleeping then continuing: %s", exc)
+        for _ in range(poll_seconds):
+            if shutdown_flag["requested"]:
+                break
+            time.sleep(1)
+    logger.info("drive_strategic_indexer exiting cleanly")
     return 0
 
 

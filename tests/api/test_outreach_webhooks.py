@@ -145,21 +145,34 @@ def test_fast_path_positive_hits_decision_tree(client, monkeypatch, store):
         ]
     )
 
-    code, body = _post(
-        client,
-        "/webhooks/unipile",
-        "shh",
-        "X-Unipile-Signature",
-        {
-            "message": "very interested, book me in please",
-            "thread_subject": "intro",
-            "from_profile_url": "linkedin.com/in/amy",
-            "lead_id": "lead-1",
-            "client_id": "c1",
-        },
+    # The keyword fast-path scores confidence as hits/total_keywords, which
+    # for a realistic reply caps well below FAST_PATH_FLOOR (0.7) — so the
+    # handler always escalates to llm_classify. Mock the LLM (matches the
+    # other tests in this file) to keep the test hermetic: CI runners have
+    # no OPENAI_API_KEY, and an unmocked call returns 'unclear'.
+    fake_llm = AsyncMock(
+        return_value={
+            "intent": "booking_request",
+            "confidence": 0.93,
+            "evidence_phrase": "book me in please",
+            "extracted": {},
+        }
     )
+    with patch.object(outreach_webhooks, "llm_classify", fake_llm):
+        code, body = _post(
+            client,
+            "/webhooks/unipile",
+            "shh",
+            "X-Unipile-Signature",
+            {
+                "message": "very interested, book me in please",
+                "thread_subject": "intro",
+                "from_profile_url": "linkedin.com/in/amy",
+                "lead_id": "lead-1",
+                "client_id": "c1",
+            },
+        )
     assert code == 200
-    # "book" + "interested" — router may pick booking (priority); either is a valid high-conf path
     assert body["intent"] in {"positive_interested", "booking_request"}
     assert body["mutations"] >= 2  # cancel existing + insert
 

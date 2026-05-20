@@ -33,6 +33,10 @@ WORKTREES=(
 SKIP_ALERT_THRESHOLD="${AGENCY_OS_AUTO_PULL_SKIP_THRESHOLD:-3}"
 STATE_DIR="${AGENCY_OS_AUTO_PULL_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/agency-os}"
 RELAY="${AGENCY_OS_AUTO_PULL_RELAY:-/home/elliotbot/clawd/Agency_OS/scripts/slack_relay.py}"
+# slack_relay.py is stdlib-only — any python3 runs it. Default to PATH python3
+# instead of a hardcoded venv path that does not exist on CI runners or in
+# non-prime worktrees. Overridable for environments that need a specific venv.
+RELAY_PYTHON="${AGENCY_OS_AUTO_PULL_PYTHON:-python3}"
 
 mkdir -p "$STATE_DIR" 2>/dev/null || true
 
@@ -82,7 +86,7 @@ _emit_alert() {
     local minutes=$((streak * 5))
     msg="[PROPOSE:elliot] auto-pull-main staleness — $1 has SKIPed $streak consecutive cycles (~${minutes}m stale). Reason: $2. Resolve the worktree state so origin/main can ff-merge."
     if [ -x "$RELAY" ] || [ -r "$RELAY" ]; then
-        /home/elliotbot/clawd/venv/bin/python3 "$RELAY" -g "$msg" >/dev/null 2>&1 || true
+        "${RELAY_PYTHON:-python3}" "$RELAY" -g "$msg" >/dev/null 2>&1 || true
     fi
     touch "$alerted_flag" 2>/dev/null || true
 }
@@ -104,7 +108,7 @@ _emit_dirty_worktree_ceo_alert() {
     local minutes=$((streak * 5))
     msg="[PROPOSE:elliot] DIRTY WORKTREE STALE CODE — $1 has had a dirty working tree for $streak consecutive auto-pull cycles (~${minutes}m). The polling loop is running STALE code that does not include recently-merged PRs. Resolve the dirty state immediately (stash or commit) so origin/main can ff-merge and the loop deploys current code. Per Dave verbatim ts ~1778631000."
     if [ -x "$RELAY" ] || [ -r "$RELAY" ]; then
-        /home/elliotbot/clawd/venv/bin/python3 "$RELAY" -g "$msg" -c ceo >/dev/null 2>&1 || true
+        "${RELAY_PYTHON:-python3}" "$RELAY" -g "$msg" -c ceo >/dev/null 2>&1 || true
     fi
     touch "$alerted_ceo_flag" 2>/dev/null || true
 }

@@ -3,7 +3,9 @@
 
 Drains public.completion_sync_queue rows WHERE processed=false in batches.
 Per row, dispatches by target_sink:
-    linear        — POST Linear GraphQL issueUpdate setting state
+    linear        — no-op since Agency_OS-1x3x (Part 4). Linear is read-only
+                    for automated processes; Supabase→Linear status goes via
+                    the one-way push (linear_oneway_push.py) only.
     ceo_memory    — INSERT public.ceo_memory row keyed completion:<task_id>
     drive_manual  — invoke scripts/write_manual_mirror.py <task_id>
 
@@ -22,15 +24,12 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import json
 import logging
 import os
 import subprocess
 import sys
 import time
 from pathlib import Path
-from urllib import error as urlerror
-from urllib import request as urlrequest
 
 # KEI-91 Gate 4 heartbeat tick via shared shim.
 from _heartbeat_shim import heartbeat_tick as _heartbeat_tick  # noqa: E402
@@ -41,7 +40,6 @@ from src.governance.ceo_memory_writer import upsert_ceo_memory_key  # noqa: E402
 logger = logging.getLogger("completion_sync_worker")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
-LINEAR_API = "https://api.linear.app/graphql"
 DEFAULT_BATCH_SIZE = 20
 MAX_ATTEMPTS = 3
 POLL_INTERVAL_SECONDS = 30.0
@@ -60,37 +58,25 @@ def _dsn() -> str:
     return dsn.replace("+asyncpg", "")
 
 
-def _linear_state_id(target_status: str) -> str:
-    return os.environ.get(f"LINEAR_STATE_ID_{target_status.upper()}", "")
-
-
 def _sink_linear(task_id: str, target_status: str) -> None:
-    api_key = os.environ.get("LINEAR_API_KEY", "")
-    if not api_key:
-        raise SinkError("LINEAR_API_KEY missing")
-    state_id = _linear_state_id(target_status)
-    if not state_id:
-        raise SinkError(f"LINEAR_STATE_ID_{target_status.upper()} missing")
-    body = json.dumps(
-        {
-            "query": "mutation($id:String!,$state:String!){issueUpdate(id:$id,input:{stateId:$state}){success}}",
-            "variables": {"id": task_id, "state": state_id},
-        }
-    ).encode()
-    req = urlrequest.Request(
-        LINEAR_API,
-        data=body,
-        method="POST",
-        headers={"Authorization": api_key, "Content-Type": "application/json"},
+    """Linear sink — HARD-LOCKED to no-op (Dave ratified LAW 2026-05-20).
+
+    Agency_OS-1x3x Part 4: Linear is read-only for every automated process.
+    Supabase→Linear status propagation happens ONLY via the controlled
+    one-way push (scripts/orchestrator/linear_oneway_push.py) — the sole
+    sanctioned Linear writer. This sink previously POSTed an issueUpdate
+    mutation; that competing writer is retired.
+
+    The function is retained (not deleted) so any completion_sync_queue row
+    still enqueued with target_sink='linear' fails SAFE — it is marked
+    processed without a Linear write, rather than erroring or reviving the
+    write path. ceo_memory + drive_manual sinks are unaffected.
+    """
+    logger.info(
+        "[%s/linear] no-op — Linear writes go via the one-way push only (target_status=%s ignored)",
+        task_id,
+        target_status,
     )
-    try:
-        with urlrequest.urlopen(req, timeout=15) as resp:
-            payload = json.loads(resp.read())
-    except (urlerror.URLError, OSError) as exc:
-        raise SinkError(f"linear network: {exc}") from exc
-    ok = ((payload.get("data") or {}).get("issueUpdate") or {}).get("success", False)
-    if not ok:
-        raise SinkError(f"linear rejected: {payload.get('errors') or payload}")
 
 
 def _sink_ceo_memory(task_id: str, target_status: str) -> None:

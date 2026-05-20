@@ -1,0 +1,12 @@
+[Unit]
+Description=Agency OS — One-way Supabase→Linear push cadence (15min, Agency_OS-1x3x)
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=15min
+RandomizedDelaySec=60
+Persistent=true
+Unit=linear-oneway-push.service
+
+[Install]
+WantedBy=timers.target

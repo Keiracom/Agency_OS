@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # elliot_fleet_notify.sh — ExecStartPost Slack relay for elliot-agent.service (KEI-86).
 #
-# Posts a consolidated fleet status to #ceo when the Elliot service starts.
-# Elliot is the only agent that posts to #ceo; all others post to #execution.
+# Posts a consolidated fleet status to #execution when the Elliot service
+# starts. Dave directive 2026-05-20: fleet status is operational/peer info,
+# NOT a CEO outcome/blocker/decision — it must NOT reach #ceo.
 # Reads SLACK_BOT_TOKEN from the unit's EnvironmentFile.
 #
 # Usage:
@@ -17,7 +18,9 @@
 set -euo pipefail
 
 DELAY="${1:-20}"
-CHANNEL="C0B2PM3TV0B"
+# #execution (C0B3QB0K1GQ) — fleet status is peer/operational info, not a
+# #ceo outcome/blocker/decision (Dave directive 2026-05-20).
+CHANNEL="C0B3QB0K1GQ"
 
 if [[ -z "${SLACK_BOT_TOKEN:-}" ]]; then
     echo "[elliot_fleet_notify] ERROR: SLACK_BOT_TOKEN not set" >&2
@@ -44,7 +47,7 @@ RESPONSE=$(curl -s -X POST https://slack.com/api/chat.postMessage \
 echo "[elliot_fleet_notify] Slack response: ${RESPONSE}"
 
 if echo "${RESPONSE}" | grep -q '"ok":true'; then
-    echo "[elliot_fleet_notify] Posted fleet status to #ceo"
+    echo "[elliot_fleet_notify] Posted fleet status to #execution"
     exit 0
 else
     echo "[elliot_fleet_notify] ERROR: Slack post failed: ${RESPONSE}" >&2

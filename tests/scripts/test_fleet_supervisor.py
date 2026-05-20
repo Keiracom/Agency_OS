@@ -305,11 +305,11 @@ def test_scenario_6_stale_claim_release():
 
 
 # ---------------------------------------------------------------------------
-# CEO post format: plain English, no PR #, no code fences
+# Fleet-status post: goes to #execution (NOT #ceo), correct format
 # ---------------------------------------------------------------------------
 
 
-def test_ceo_post_format(monkeypatch):
+def test_fleet_status_posts_to_execution(monkeypatch):
     report = fs.FleetReport(
         statuses=[
             fs.AgentStatus(
@@ -342,20 +342,25 @@ def test_ceo_post_format(monkeypatch):
         queue_done=10,
     )
 
-    posted_texts = []
+    posted_cmds = []
 
     def fake_subprocess_run(cmd, **kwargs):
         if cmd[0].endswith("tg"):
-            posted_texts.append(cmd[-1])
+            posted_cmds.append(list(cmd))
         result = MagicMock()
         result.returncode = 0
         return result
 
     with patch("fleet_supervisor.subprocess.run", side_effect=fake_subprocess_run):
-        fs.post_ceo_status(report)
+        fs.post_fleet_status(report)
 
-    assert posted_texts, "post_ceo_status should have called tg"
-    text = posted_texts[0]
+    assert posted_cmds, "post_fleet_status should have called tg"
+    cmd = posted_cmds[0]
+    text = cmd[-1]
+
+    # Dave directive 2026-05-20: fleet status goes to #execution, NEVER #ceo.
+    assert "execution" in cmd, f"fleet status must post to #execution; got {cmd!r}"
+    assert "ceo" not in cmd, f"fleet status must NOT reach #ceo; got {cmd!r}"
 
     # Must have Fleet Status header
     assert "Fleet Status" in text

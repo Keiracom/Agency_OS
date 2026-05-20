@@ -416,6 +416,84 @@ def test_agent_has_reviewed():
     assert fs.agent_has_reviewed(pr, "aiden") is False
 
 
+# ─── Agency_OS-wy3e: regex must cover all real-world review-comment shapes ──
+
+
+def test_agent_has_reviewed_matches_verdict_colon_form():
+    """Real comments like '[REVIEW:approve:max]' must register. Prior
+    substring-match only fired on '[REVIEW:max]' bare form → caused
+    supervisor to re-dispatch PRs Max had already reviewed."""
+    pr = {"reviews": [{"body": "code looks clean [REVIEW:approve:max]"}]}
+    assert fs.agent_has_reviewed(pr, "max") is True
+    assert fs.agent_has_reviewed(pr, "aiden") is False
+
+
+def test_agent_has_reviewed_matches_verdict_space_form():
+    """'[REVIEW:HOLD max]' form with space separator after verdict."""
+    pr = {"reviews": [{"body": "needs changes [REVIEW:HOLD max]"}]}
+    assert fs.agent_has_reviewed(pr, "max") is True
+
+
+def test_agent_has_reviewed_matches_hold_continued_form():
+    """'[REVIEW:HOLD-CONTINUED max]' — used when reviewer re-affirms hold."""
+    pr = {"reviews": [{"body": "still blocked [REVIEW:HOLD-CONTINUED max]"}]}
+    assert fs.agent_has_reviewed(pr, "max") is True
+
+
+def test_agent_has_reviewed_matches_approve_with_notes():
+    """'[REVIEW:APPROVE-WITH-NOTES:aiden]' multi-token verdict prefix."""
+    pr = {"reviews": [{"body": "[REVIEW:APPROVE-WITH-NOTES:aiden] minor nit"}]}
+    assert fs.agent_has_reviewed(pr, "aiden") is True
+
+
+def test_agent_has_reviewed_rejects_bot_only_comments():
+    """Acceptance #2: PR with only sonarqubecloud/vercel bot comments must
+    still report 'zero reviews'. Bots don't emit [REVIEW:...] markers, so the
+    regex naturally fails."""
+    pr = {
+        "reviews": [
+            {"body": "SonarCloud Quality Gate passed"},
+            {"body": "Vercel deployment preview ready"},
+            {"body": "✅ All checks have passed (12/12)"},
+        ]
+    }
+    assert fs.agent_has_reviewed(pr, "aiden") is False
+    assert fs.agent_has_reviewed(pr, "max") is False
+    assert fs.agent_has_reviewed(pr, "elliot") is False
+
+
+def test_agent_has_reviewed_prefix_bleed_guarded():
+    """Word boundary guard: 'max' must NOT match 'maxbot' or 'maximum'."""
+    pr = {"reviews": [{"body": "[REVIEW:approve:maxbot] some bot review"}]}
+    assert fs.agent_has_reviewed(pr, "max") is False
+
+
+def test_agent_has_reviewed_handles_multiple_reviewers():
+    """Two distinct [REVIEW:*:callsign] comments: each callsign registered."""
+    pr = {
+        "reviews": [
+            {"body": "[REVIEW:approve:aiden] looks good"},
+            {"body": "[REVIEW:HOLD max] needs more tests"},
+        ]
+    }
+    assert fs.agent_has_reviewed(pr, "aiden") is True
+    assert fs.agent_has_reviewed(pr, "max") is True
+    assert fs.agent_has_reviewed(pr, "elliot") is False
+
+
+def test_agent_has_reviewed_legacy_bare_form_still_works():
+    """Backwards-compatibility: '[REVIEW:elliot]' bare form (no verdict)
+    must continue to register — pre-existing test contract."""
+    pr = {"reviews": [{"body": "looks good [REVIEW:elliot]"}]}
+    assert fs.agent_has_reviewed(pr, "elliot") is True
+
+
+def test_agent_has_reviewed_case_insensitive_preserved():
+    """KEI-176 case-insensitive contract: '[REVIEW:AIDEN]' uppercase still hits."""
+    pr = {"reviews": [{"body": "[REVIEW:AIDEN] APPROVE"}]}
+    assert fs.agent_has_reviewed(pr, "aiden") is True
+
+
 # ---------------------------------------------------------------------------
 # KEI-176: find_pr_for_review checks PR comments for [REVIEW:callsign] markers
 # ---------------------------------------------------------------------------
@@ -750,6 +828,8 @@ def test_kei185_try_run_supervisor_v2_invokes_v2_when_present(monkeypatch):
     result = fs._try_run_supervisor_v2()
     assert result is True
     assert calls == ["ran"]
+
+
 # ─── KEI-190: symmetric HOLD parsing ─────────────────────────────────────────
 
 

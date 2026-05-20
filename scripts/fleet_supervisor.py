@@ -595,7 +595,7 @@ def fetch_pr_comments(pr_number: int) -> list[dict]:
 # actually uses) was treated as "no review found" and the supervisor re-dispatched
 # the same PR every cycle. Now matches: bare `[REVIEW:callsign]`, `:approve:`,
 # `:hold:`, `:hold-final:` — symmetric APPROVE/HOLD parsing.
-_REVIEW_COMMENT_PATTERN_TMPL = r"\[REVIEW(?::(?:approve|hold(?:-final)?))?:{callsign}\]"
+_REVIEW_COMMENT_PATTERN_TMPL = r"\[REVIEW:[^\]]*\b{callsign}\b"
 
 
 def comment_has_review_marker(body: str, callsign: str) -> bool:
@@ -606,14 +606,20 @@ def comment_has_review_marker(body: str, callsign: str) -> bool:
     return bool(re.search(pattern, body, re.IGNORECASE))
 
 
-
 def agent_has_reviewed(pr: dict, callsign: str) -> bool:
-    """Check if callsign already posted a [REVIEW:...:callsign] marker on this PR.
+    """Check if callsign already posted a [REVIEW:...] marker on this PR.
 
     Checks both formal GitHub review objects (pr['reviews']) and PR comments
     fetched via gh pr view --json comments, since agents post review markers
     as Slack-relayed comments rather than formal GH reviews. Uses the
-    KEI-190 symmetric APPROVE/HOLD regex via comment_has_review_marker.
+    broadened pattern in `_REVIEW_COMMENT_PATTERN_TMPL` via the
+    comment_has_review_marker helper.
+
+    Agency_OS-wy3e: the prior narrow template missed real-world shapes like
+    [REVIEW:HOLD max] (space-separated), [REVIEW:HOLD-CONTINUED max], and
+    [REVIEW:APPROVE-WITH-NOTES:max]. The template was widened to a single
+    `\\[REVIEW:[^\\]]*\\b{callsign}\\b` pattern that accepts any verdict
+    prefix and any separator before the callsign — see _REVIEW_COMMENT_PATTERN_TMPL.
     """
     reviews = pr.get("reviews") or []
     for r in reviews:

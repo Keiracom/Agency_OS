@@ -32,6 +32,19 @@ BLOCKER_RE = re.compile(r"\b(blocked|blocker|cannot|stuck|need.{0,20}decision|ne
 MERGE_READY_RE = re.compile(r"\b(merge.eligible|dual.concur|ready.to.merge|approved.by.both)\b", re.IGNORECASE)
 INCIDENT_RE = re.compile(r"\b(down|crashed|stalled|incident|degraded|failing)\b", re.IGNORECASE)
 ROUTINE_ACK_RE = re.compile(r"^(acknowledged|noted|got it|starting|running|checking|will|standing by|waiting)", re.IGNORECASE)
+# Review-process chatter — Dave directive 2026-05-20: review-nudge, PR-HOLD and
+# review-status belong in #execution, NOT #ceo. #ceo keeps only merge-completed
+# outcomes, blockers needing Dave, and Dave-decisions. A turn carrying any of
+# these markers is review-process flow — suppressed before it can trip the
+# completion / merge_ready / blocker classifiers below. Genuine merge-completed
+# turns ("merged PR #N — directive complete") carry no such marker and still post.
+REVIEW_CHATTER_RE = re.compile(
+    r"\[REVIEW:|\[NEXT-WORK:|\[FIXED:|\[HOLD:|\[CONCUR:|\[SHIPPED:"
+    r"|awaiting\s+(?:your\s+)?verdict|resume building|claimed review"
+    r"|review\s+\d+\s+PRs?\b|PRs?\s+awaiting|dual.?sonar"
+    r"|reviewer\s+(?:verdict|comment|nudge|HOLD)|PR.?HOLD|review.?nudge",
+    re.IGNORECASE,
+)
 SLACK_POST_MARKER_RE = re.compile(r"sent to Slack #C0B2PM3TV0B|\[ELLIOT\] sent to Slack")
 
 
@@ -145,9 +158,15 @@ def classify(text: str, verbosity: str) -> tuple[str | None, str]:
     first_line = text.strip().split("\n", 1)[0]
     if ROUTINE_ACK_RE.match(first_line) and len(text) < 300:
         return None, ""
-    # Incident / blocker — highest priority, bypasses cool-down
+    # Incident — genuine operational state-change; bypasses everything below.
     if INCIDENT_RE.search(text) and any(w in text.lower() for w in ("service", "indexer", "down", "stalled", "crashed")):
         return "incident", text
+    # Review-process chatter (Dave directive 2026-05-20) — suppress BEFORE the
+    # blocker / merge_ready / completion classifiers, so review-nudge / PR-HOLD
+    # / review-status turns never reach #ceo even when they happen to contain
+    # words like "merged" or "blocked". #ceo = #execution split.
+    if REVIEW_CHATTER_RE.search(text):
+        return None, ""
     if BLOCKER_RE.search(text):
         return "blocker", text
     if MERGE_READY_RE.search(text):

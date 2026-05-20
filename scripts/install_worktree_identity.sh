@@ -53,10 +53,18 @@ for entry in "${WORKTREES[@]}"; do
         continue
     fi
 
-    # Extract the first ```markdown ... ``` fenced block — the canonical content.
+    # Two supported runbook shapes:
+    #  (a) a wrapped runbook with the IDENTITY content in a ```markdown fence
+    #      (e.g. orion-identity.md) — extract the first fenced block;
+    #  (b) the runbook IS the raw IDENTITY content, starting with '# IDENTITY'
+    #      (e.g. aiden-identity.md) — use the whole file.
     block="$(awk '/^```markdown$/{f=1;next} /^```$/{if(f)exit} f' "$runbook")"
+    if [[ -z "$block" ]] && head -1 "$runbook" | grep -q '^# IDENTITY'; then
+        block="$(cat "$runbook")"
+    fi
     if [[ -z "$block" ]]; then
-        echo "WARN: ${cs} — runbook has no \`\`\`markdown block; cannot bootstrap" >&2
+        echo "WARN: ${cs} — runbook is neither a \`\`\`markdown block nor raw" \
+             "'# IDENTITY' content; cannot bootstrap" >&2
         rc=1
         continue
     fi

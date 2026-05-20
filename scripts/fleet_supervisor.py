@@ -524,7 +524,8 @@ def release_merged_review_claims(conn: psycopg.Connection) -> int:
             continue
         pr_number = m.group(1)
         try:
-            proc = subprocess.run(  # noqa: S603,S607 — controlled args, no shell
+            # gh CLI, literal args, no shell — pr_number is a \d+ regex capture.
+            proc = subprocess.run(  # noqa: S603,S607
                 ["gh", "pr", "view", pr_number, "--json", "state", "-q", ".state"],
                 capture_output=True,
                 text=True,

@@ -165,6 +165,9 @@ def run(
     if not _CALLSIGN_RE.fullmatch(callsign):
         return _result(claimed=False, callsign=callsign, reason="invalid_callsign")
 
+    # Capture injection state BEFORE wrapping defaults — bd availability
+    # only matters when we'd actually shell out to it (no test injection).
+    ready_fn_injected = ready_fn is not None
     ready_fn = ready_fn or (lambda: _bd_ready(bd_bin))
     claim_fn = claim_fn or (lambda iid: _bd_claim(bd_bin, iid))
 
@@ -172,7 +175,7 @@ def run(
     if not items:
         # Could be "bd binary missing" or genuine empty queue — caller
         # discriminates via bd_available check below.
-        if not shutil.which(bd_bin) and bd_bin == "bd":
+        if not ready_fn_injected and not shutil.which(bd_bin) and bd_bin == "bd":
             return _result(claimed=False, callsign=callsign, reason="bd_unavailable")
         return _result(claimed=False, callsign=callsign, reason="no_eligible_work")
 

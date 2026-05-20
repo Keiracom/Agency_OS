@@ -21,11 +21,12 @@ def test_collections_match_dave_spec() -> None:
 
 
 def test_mandatory_properties_present() -> None:
-    """Every collection must have the 5 properties from
-    docs/schema/weaviate-schema-requirements.md.
+    """Every collection must have the 6 properties from
+    docs/schema/weaviate-schema-requirements.md (raw_text/environment_hash/
+    created_at/agent/kei + KEI-75 source_id).
     """
     names = {p["name"] for p in schema.MANDATORY_PROPERTIES}
-    assert names == {"raw_text", "environment_hash", "created_at", "agent", "kei"}
+    assert names == {"raw_text", "environment_hash", "created_at", "agent", "kei", "source_id"}
 
     by_name = {p["name"]: p["dataType"] for p in schema.MANDATORY_PROPERTIES}
     assert by_name["raw_text"] == ["text"]
@@ -33,6 +34,7 @@ def test_mandatory_properties_present() -> None:
     assert by_name["created_at"] == ["date"]
     assert by_name["agent"] == ["text"]
     assert by_name["kei"] == ["text"]
+    assert by_name["source_id"] == ["text"]
 
 
 def test_class_definition_capitalises_name_and_pins_vectorizer_none() -> None:
@@ -46,6 +48,7 @@ def test_class_definition_capitalises_name_and_pins_vectorizer_none() -> None:
         "created_at",
         "agent",
         "kei",
+        "source_id",
     ]
 
 

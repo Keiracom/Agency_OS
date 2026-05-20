@@ -134,6 +134,7 @@ def test_auto_kei_uses_linear_identifier_in_confirmation(monkeypatch):
     central_listener = _load_central_listener()
 
     monkeypatch.setenv("LINEAR_API_KEY", "test-key")
+    monkeypatch.setenv("AUTO_KEI_FROM_CEO", "1")
 
     with patch.object(
         central_listener, "_create_kei_via_linear", return_value="KEI-85"

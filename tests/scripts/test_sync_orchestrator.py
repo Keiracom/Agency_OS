@@ -321,7 +321,7 @@ def test_dispatch_postgres_synthetic_verification_idempotent_via_not_exists(monk
 def test_process_event_rolls_back_on_trigger_block(monkeypatch) -> None:
     """KEI-235 resilience — RaiseException from a governance trigger rolls
     back the savepoint, NOT the whole batch."""
-    import psycopg.errors
+    from psycopg.errors import RaiseException
 
     event = _event(id="evt-1", origin="bd")
     conn = _FakeConn()
@@ -331,7 +331,7 @@ def test_process_event_rolls_back_on_trigger_block(monkeypatch) -> None:
         so,
         "_dispatch_postgres",
         lambda c, e: (_ for _ in ()).throw(
-            psycopg.errors.RaiseException("BLOCKED: Task X cannot be marked done")
+            RaiseException("BLOCKED: Task X cannot be marked done")
         ),
     )
     monkeypatch.setattr(so, "_dispatch_linear", lambda e: called.append("linear"))
@@ -347,7 +347,7 @@ def test_process_event_rolls_back_on_check_violation(monkeypatch) -> None:
     """KEI-235-followup — CheckViolation (e.g. status='cancelled' rejected
     by tasks_status_check) must also roll back savepoint and let batch
     continue, not crash the worker."""
-    import psycopg.errors
+    from psycopg.errors import CheckViolation
 
     event = _event(id="evt-2", origin="bd")
     conn = _FakeConn()
@@ -355,7 +355,7 @@ def test_process_event_rolls_back_on_check_violation(monkeypatch) -> None:
         so,
         "_dispatch_postgres",
         lambda c, e: (_ for _ in ()).throw(
-            psycopg.errors.CheckViolation('new row violates check constraint "tasks_status_check"')
+            CheckViolation('new row violates check constraint "tasks_status_check"')
         ),
     )
     monkeypatch.setattr(so, "_dispatch_bd", lambda e: None)

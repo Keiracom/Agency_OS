@@ -26,7 +26,14 @@ async def test_verify_sets_verified_true_on_deliverable():
     mock_client.__aenter__ = AsyncMock(return_value=mock_client)
     mock_client.__aexit__ = AsyncMock(return_value=False)
 
-    with patch("src.pipeline.email_waterfall.LeadmagicClient", return_value=mock_client):
+    # verify_discovered_email early-returns when settings.leadmagic_api_key is
+    # unset — patch it so the test is hermetic (CI runners have no key).
+    from src.config.settings import settings
+
+    with (
+        patch("src.pipeline.email_waterfall.LeadmagicClient", return_value=mock_client),
+        patch.object(settings, "leadmagic_api_key", "fake-test-key"),
+    ):
         result = await verify_discovered_email(email_result)
 
     assert result.verified is True

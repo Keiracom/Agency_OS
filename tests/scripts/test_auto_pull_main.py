@@ -127,12 +127,17 @@ _handle_skip "$WT" "working tree dirty"
         ["/bin/bash", str(helper)], capture_output=True, text=True, timeout=10
     )
     assert result.returncode == 0, result.stderr
-    # Streak now 5; .alerted flag prevents repeat-emit. Relay log should have
-    # exactly one entry (the first emit at threshold=3).
+    # Streak now 5; .alerted + .alerted_ceo flags prevent repeat-emit.
+    # Two distinct alerts fire (KEI-34 v2 Addition 2):
+    #   1. DIRTY WORKTREE STALE CODE → #ceo at streak >= 2 (one-shot).
+    #   2. auto-pull-main staleness → #execution at streak >= 3 (one-shot).
     relay_lines = relay_log.read_text().splitlines() if relay_log.exists() else []
-    assert len(relay_lines) == 1, f"expected one relay call, got {relay_lines!r}"
-    assert "auto-pull-main staleness" in relay_lines[0]
-    assert "3 consecutive cycles" in relay_lines[0]
+    assert len(relay_lines) == 2, f"expected two relay calls, got {relay_lines!r}"
+    dirty_line = next((l for l in relay_lines if "DIRTY WORKTREE STALE CODE" in l), None)
+    staleness_line = next((l for l in relay_lines if "auto-pull-main staleness" in l), None)
+    assert dirty_line is not None, f"missing #ceo dirty-worktree alert in {relay_lines!r}"
+    assert staleness_line is not None, f"missing #execution staleness alert in {relay_lines!r}"
+    assert "3 consecutive cycles" in staleness_line
 
 
 def test_alert_resets_after_success(tmp_path: Path) -> None:

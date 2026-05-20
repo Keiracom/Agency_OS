@@ -55,6 +55,10 @@ def _run_loop(tmp: Path, stub_json: str, callsign: str = "scout", seconds: float
         "POLL_SECONDS": "1",
         "ASSIGN_PATH": str(stub_path),
     }
+    # Force the Slack (tg) fallback path by clearing the v2 routing flag.
+    # KEI-221 (c) introduced AGENT_ROUTING_<CS>=v2 to opt into NATS; if it's
+    # set in the host env, the loop would publish to NATS and never call tg.
+    env.pop(f"AGENT_ROUTING_{callsign.upper()}", None)
     out_path = tmp / "loop.out"
     with out_path.open("w") as out_f:
         proc = subprocess.Popen(

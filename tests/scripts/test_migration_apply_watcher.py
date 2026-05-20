@@ -1,17 +1,31 @@
 """Unit tests for scripts/orchestrator/migration_apply_watcher.py (KEI-188).
 
 No DB / no Slack / no git. Pure-function and mock-based tests.
+
+Status: module not yet on main — landed alongside test+systemd+install via PR #990
+rebase but the .py source was dropped in commit a49425d5 as "scope bleed".
+Canonical landing PR for the module is #988 (Max KEI-188, OPEN). These tests
+are skipped until #988 merges; once it does, remove the pytest.skip block.
 """
 
 from __future__ import annotations
 
 import datetime as _dt
+import importlib.util
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts" / "orchestrator"))
+
+if importlib.util.find_spec("migration_apply_watcher") is None:
+    pytest.skip(
+        "migration_apply_watcher module not on main; KEI-188 lands via PR #988",
+        allow_module_level=True,
+    )
 
 import migration_apply_watcher as maw  # noqa: E402
 

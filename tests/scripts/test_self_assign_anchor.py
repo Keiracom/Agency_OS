@@ -4,17 +4,19 @@ import importlib.util
 import sys
 from pathlib import Path
 
-REPO_ROOT = Path("/home/elliotbot/clawd/Agency_OS-aiden")
+REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT_PATH = REPO_ROOT / "scripts" / "slack_relay.py"
 
 
 def _load_slack_relay():
-    # Module-level code reads SLACK_BOT_TOKEN + resolves CALLSIGN; ensure both
-    # are set before import.
+    # Module-level code hard-exits at import time if CALLSIGN is anything
+    # other than 'elliot' (Dave directive 2026-05-19 — Slack-access lock).
+    # Force CALLSIGN=elliot for the import to bypass the access guard; tests
+    # that exercise non-elliot callsign logic monkeypatch mod.CALLSIGN below.
     import os
 
     os.environ.setdefault("SLACK_BOT_TOKEN", "test-token")
-    os.environ.setdefault("CALLSIGN", "aiden")
+    os.environ["CALLSIGN"] = "elliot"
     spec = importlib.util.spec_from_file_location("slack_relay_test", SCRIPT_PATH)
     mod = importlib.util.module_from_spec(spec)
     sys.modules["slack_relay_test"] = mod
@@ -85,6 +87,9 @@ def test_primary_callsign_proceeds_past_clone_guard(monkeypatch):
     guard and reach the subprocess path (which we sentinel-trip)."""
     mod = _load_slack_relay()
     monkeypatch.setattr(mod, "CALLSIGN", "aiden")
+    # KEI-72 gate: stub the Step 0 RESTATE check to pass so the test exercises
+    # the bd subprocess path it cares about (clone-guard bypass for primaries).
+    monkeypatch.setattr(mod, "_has_recent_step0_restate", lambda _cs: True)
 
     calls = []
     import subprocess
@@ -92,7 +97,9 @@ def test_primary_callsign_proceeds_past_clone_guard(monkeypatch):
     def _capture(*args, **kwargs):
         calls.append(args[0] if args else None)
         # Return a fake CompletedProcess that bails the rest of the function.
-        return subprocess.CompletedProcess(args=args[0] if args else [], returncode=1, stdout="", stderr="")
+        return subprocess.CompletedProcess(
+            args=args[0] if args else [], returncode=1, stdout="", stderr=""
+        )
 
     monkeypatch.setattr(subprocess, "run", _capture)
 

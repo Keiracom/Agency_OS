@@ -115,7 +115,12 @@ def test_incident_started_dispatches(client):
         headers={"x-webhook-secret": SECRET},
     )
     assert resp.status_code == 200
-    assert resp.json() == {"status": "ok", "incident_id": "964390352", "monitor": "railway-prefect"}
+    body = resp.json()
+    # KEI-20 added severity-routing fields ("channel", "severity") to the
+    # response; the core ok/incident_id/monitor contract still holds.
+    assert body["status"] == "ok"
+    assert body["incident_id"] == "964390352"
+    assert body["monitor"] == "railway-prefect"
     assert len(captured) == 1
     assert captured[0]["incident_id"] == "964390352"
     assert captured[0]["cause"] == "DNS lookup failure"

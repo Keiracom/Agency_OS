@@ -147,7 +147,14 @@ def test_nova_can_post_execution() -> None:
 
 
 def test_nova_blocked_from_ceo() -> None:
-    """PR #1027 — nova is a clone; #ceo remains forbidden for clones."""
+    """PR #1027 — nova is a clone; #ceo remains forbidden for clones.
+
+    Superseded by the Dave 2026-05-19 Slack-access lock: when CALLSIGN is
+    set via env to any non-elliot value, slack_relay.py exits 2 at import
+    with a SLACK_ACCESS_DENIED message before the per-callsign allowlist is
+    even reached. Nova is still blocked from #ceo — the denial is now
+    broader (all channels) and the message changed.
+    """
     result = _run(
         env={
             "SLACK_BOT_TOKEN": "fake-token",
@@ -159,7 +166,8 @@ def test_nova_blocked_from_ceo() -> None:
         args=["-c", CHANNEL_CEO, CEO_COMPLIANT_BODY],
     )
     assert result.returncode == 2
-    assert f"nova-relay refuses post to {CHANNEL_CEO}" in result.stderr
+    assert "SLACK_ACCESS_DENIED" in result.stderr
+    assert "callsign='nova'" in result.stderr
 
 
 def test_env_callsign_overrides_identity(tmp_path: Path) -> None:
